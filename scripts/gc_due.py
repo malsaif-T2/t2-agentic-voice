@@ -161,7 +161,7 @@ def section(root: Path, config: HarnessConfig, now: Sequence[Grade] | None = Non
     doc = root / config.quality.doc
     recorded = recorded_grades(doc.read_text(encoding="utf-8")) if doc.is_file() else {}
     if now is None:
-        now = grades(read_sources(root), measured_coverage(root), config)
+        now = grades(read_sources(root, config), measured_coverage(root), config)
     drops, not_compared = compare(recorded, now)
     start = last.commit if last is not None else None
     commits = git(root, "rev-list", "--count", f"{start}..HEAD" if start else "HEAD") or "0"

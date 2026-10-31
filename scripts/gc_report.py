@@ -30,7 +30,6 @@ from pathlib import Path
 from scripts.harness_config import GcConfig, HarnessConfig, HarnessConfigError, load_config
 
 ROOT = Path(__file__).resolve().parents[1]
-CODE_DIRS = ("src", "scripts", "tests")
 SUPPRESSIONS = ("# noqa", "# type: ignore", "# pragma: no cover", "# fmt: skip")
 _NOQA_WITHOUT_REASON = re.compile(r"# noqa(?::\s*[A-Z]+\d+(?:,\s*[A-Z]+\d+)*)?\s*$")
 _SKIPPED_TOKENS = frozenset(
@@ -56,7 +55,7 @@ class Duplicate:
     second: str
 
 
-def python_files(root: Path, dirs: Sequence[str] = CODE_DIRS) -> list[Path]:
+def python_files(root: Path, dirs: Sequence[str]) -> list[Path]:
     return sorted(p for d in dirs for p in (root / d).rglob("*.py") if "__pycache__" not in p.parts)
 
 
@@ -227,8 +226,10 @@ def unknown_names(
 
 def report(root: Path, config: HarnessConfig) -> str:
     gc: GcConfig = config.gc
+    dirs = (*config.product_dirs, *config.arch.support_dirs)
     code = {
-        p.relative_to(root).as_posix(): p.read_text(encoding="utf-8") for p in python_files(root)
+        p.relative_to(root).as_posix(): p.read_text(encoding="utf-8")
+        for p in python_files(root, dirs)
     }
     product = {n: t for n, t in code.items() if not n.startswith("tests/")}
     docs = {
@@ -237,7 +238,7 @@ def report(root: Path, config: HarnessConfig) -> str:
     }
     lines = ["# Garbage-collection candidates", ""]
     found = duplicates(product, gc.min_tokens)
-    lines += [f"## Duplicates ({len(found)} runs of {gc.min_tokens}+ tokens in src/ and scripts/)"]
+    lines += [f"## Duplicates ({len(found)} runs of {gc.min_tokens}+ tokens outside tests/)"]
     lines += [f"- {d.tokens} tokens: {d.first} = {d.second}" for d in found] or ["- none"]
     unused = unreferenced(code, sorted(product), gc.hooks)
     lines += ["", f"## Unreferenced definitions ({len(unused)})"]
@@ -249,7 +250,7 @@ def report(root: Path, config: HarnessConfig) -> str:
     big = large_modules(code, gc.size_watch)
     lines += ["", f"## Modules above {gc.size_watch} lines ({len(big)})"]
     lines += [f"- {size} {name}" for size, name in big] or ["- none"]
-    bases = (*gc.path_bases, config.package_dir)
+    bases = (*gc.path_bases, *config.product_dirs)
     paths = unresolved_paths(root, code | docs, bases, gc.path_ignored)
     lines += ["", f"## Unresolved paths ({len(paths)})"]
     lines += [f"- {p}" for p in paths] or ["- none"]

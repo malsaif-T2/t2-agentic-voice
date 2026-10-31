@@ -22,7 +22,7 @@ from scripts.harness_toml import CONFIG_FILE, FIX, RULE, Lines, Table, tables
 _PACKAGE = re.compile(r"^[a-z_][a-z0-9_]*$")
 # The tables harness.toml may hold; [tool.*] holds other tools' settings (coverage.py's).
 _TABLES = frozenset(
-    {"package", "layers", "owners", "restricted", "subpackages", "rules", "modules"}
+    {"package", "layers", "owners", "restricted", "subpackages", "apps", "rules", "modules"}
     | {"docs", "plans", "references", "gc", "quality", "tool"}
 )
 WEIGHTS = ("coverage", "size", "suppressions", "duplication", "docstrings")
@@ -52,8 +52,24 @@ class SubpackageRule:
 
 
 @dataclass(frozen=True)
+class AppRule:
+    """A package built on the library (ARCH-PUBLIC): it imports only the library's public
+    modules and no other app, and the library never imports it."""
+
+    name: str
+    root: str  # the folder that holds it, from the repository root: "apps/x/src"
+
+    @property
+    def dir(self) -> str:
+        return f"{self.root}/{self.name}"
+
+
+@dataclass(frozen=True)
 class ArchConfig:
     package: str
+    package_root: str  # the folder that holds the package, from the repository root
+    public: frozenset[str]  # the modules an app may import: "app", "app.testing"
+    apps: tuple[AppRule, ...]
     layers: Mapping[str, frozenset[str]]  # layer -> the other layers it may import
     owners: Mapping[str, Ownership]  # top-level module -> the layers that may import it
     restricted: Mapping[str, Ownership]  # class name -> the layers that may construct it
@@ -63,6 +79,17 @@ class ArchConfig:
     architecture_doc: str  # "" when ARCH-DOC is off
     max_module_lines: int
     support_dirs: tuple[str, ...]
+
+    @property
+    def app_names(self) -> frozenset[str]:
+        return frozenset(app.name for app in self.apps)
+
+    def is_public(self, module: str) -> bool:
+        """Whether an app may import `module`: a public module, or one inside a public
+        subpackage. The package root being public makes only the root public."""
+        return module in self.public or any(
+            p != self.package and module.startswith(f"{p}.") for p in self.public
+        )
 
 
 @dataclass(frozen=True)
@@ -123,8 +150,13 @@ class HarnessConfig:
 
     @property
     def package_dir(self) -> str:
-        """The package's folder, from the repository root: `src/<name>`."""
-        return f"src/{self.arch.package}"
+        """The package's folder, from the repository root: `<root>/<name>`."""
+        return f"{self.arch.package_root}/{self.arch.package}"
+
+    @property
+    def product_dirs(self) -> tuple[str, ...]:
+        """The library's folder and every app's, from the repository root."""
+        return (self.package_dir, *(app.dir for app in self.arch.apps))
 
 
 def load_config(root: Path) -> HarnessConfig:
@@ -201,6 +233,10 @@ def _arch(data: dict[str, Any], lines: Lines, problems: list[Violation]) -> Arch
     name = package.string("name")
     if name and (not _PACKAGE.match(name) or keyword.iskeyword(name)):
         package.problem("name", f"'{name}' is not a Python package name")
+    public = frozenset(package.strings("public"))
+    for module in sorted(m for m in public if m.split(".")[0] != name):
+        package.problem("public", f"public module '{module}' is not inside package '{name}'")
+    apps = _apps(tables(data, "apps", lines, problems), name)
     layers_table = Table("layers", data.get("layers"), lines, problems)
     layers = {key: frozenset(layers_table.strings(key)) for key in layers_table.data}
     if not layers:
@@ -227,6 +263,9 @@ def _arch(data: dict[str, Any], lines: Lines, problems: list[Violation]) -> Arch
     modules = Table("modules", data.get("modules"), lines, problems)
     arch = ArchConfig(
         package=name,
+        package_root=package.string("root"),
+        public=public,
+        apps=apps,
         layers=layers,
         owners=owners,
         restricted=restricted,
@@ -240,6 +279,20 @@ def _arch(data: dict[str, Any], lines: Lines, problems: list[Violation]) -> Arch
     for table in (package, rules, modules):
         table.finish()
     return arch
+
+
+def _apps(groups: list[Table], package: str) -> tuple[AppRule, ...]:
+    """The [[apps]] tables: each a package name, distinct from the library's and each other's."""
+    found: list[AppRule] = []
+    for table in groups:
+        name = table.string("name")
+        if name and (not _PACKAGE.match(name) or keyword.iskeyword(name)):
+            table.problem("name", f"'{name}' is not a Python package name")
+        elif name in {package, *(app.name for app in found)}:
+            table.problem("name", f"'{name}' is already the library's or another app's name")
+        found.append(AppRule(name, table.string("root")))
+        table.finish()
+    return tuple(found)
 
 
 def _owned(groups: list[Table], key: str, layers: set[str]) -> dict[str, Ownership]:

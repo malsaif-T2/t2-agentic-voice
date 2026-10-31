@@ -110,7 +110,7 @@ expected answer. A run with any violation fails.
 Prompts, examples, and code are written for a pattern, in their own words, never copied from
 an item, dev or held-out. A pasted item makes the dev score measure memory and hides the
 overfitting held-out exists to show. A test fails if any item's text or reference solution
-appears under `src/` (with a self-test proving the search finds pasted text). If items share
+appears in a package's source (with a self-test proving the search finds pasted text). If items share
 fixtures with the product's tests, the product also names no distinctive identifier from those
 fixtures, since held-out cannot catch tuning to the data's own names.
 

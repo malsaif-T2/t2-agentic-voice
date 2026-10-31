@@ -1,12 +1,15 @@
 """Mechanically enforce the architecture that ARCHITECTURE.md describes: `uv run poe arch`.
 
 The rules' settings live in harness.toml ([package], [layers], [[owners]], [[restricted]],
-[[subpackages]], [rules], [modules]); this module only applies them.
+[[subpackages]], [[apps]], [rules], [modules]); this module only applies them.
 
 Rules
   ARCH-LAYER      internal imports follow the layer graph (an `importlib.import_module` or
                   `__import__` of a literal name counts as an import); code lives inside a
-                  layer; a subpackage's narrower rules hold
+                  layer; a subpackage's narrower rules hold; a layer never imports from the
+                  package root, which only re-exports the public API
+  ARCH-PUBLIC     an app in [[apps]] imports the library only through [package] public, and no
+                  other app (its import statements); the library never imports an app
   ARCH-OWNER      a library in [[owners]] is imported only by its layers
   ARCH-PRINT      no print() and no sys.stdout/sys.stderr writes, outside [rules]
                   output_allowed_files; use the structured logger
@@ -31,7 +34,7 @@ from pathlib import Path
 
 from scripts._common import Violation
 from scripts.arch_doc import check_layer_doc
-from scripts.harness_config import ArchConfig, HarnessConfig, run_check
+from scripts.harness_config import AppRule, ArchConfig, HarnessConfig, run_check
 from scripts.module_rules import check_support, parse_module
 
 ROOT = Path(__file__).resolve().parents[1]
@@ -114,10 +117,28 @@ class _ModuleChecker(ast.NodeVisitor):
             )
 
     def _check_internal(self, parts: list[str], line: int) -> None:
-        if len(parts) < 2 or parts[0] != self.arch.package:
+        if parts[0] in self.arch.app_names:
+            self._add(
+                line,
+                "ARCH-PUBLIC",
+                f"the library imports the app '{parts[0]}' ({'.'.join(parts)})",
+                "The library never depends on an app: move what both need into the library, or "
+                "let the app pass it in.",
+            )
             return
+        if len(parts) < 2 or parts[0] != self.arch.package or self.layer == ROOT_LAYER:
+            return  # the package root is the public API: it may re-export every layer
         target = parts[1]
-        if target not in self.arch.layers or target == self.layer:
+        if target not in self.arch.layers:
+            self._add(
+                line,
+                "ARCH-LAYER",
+                f"layer '{self.layer}' imports '{'.'.join(parts)}' from the package root",
+                "Import it from the layer that defines it; the package root only re-exports the "
+                "public API for apps.",
+            )
+            return
+        if target == self.layer:
             return
         for rule in self.arch.subpackages:
             if f"{self.rel}/".startswith(f"{rule.path}/") and target in rule.may_not_import:
@@ -200,6 +221,71 @@ class _ModuleChecker(ast.NodeVisitor):
             "Add a field to Settings in core/config.py (and .env.example), then read it via "
             "`get_settings()` or an injected Settings instance.",
         )
+
+
+class _AppChecker(ast.NodeVisitor):
+    """An app's import statements (ARCH-PUBLIC): the library only through its public modules,
+    and no other app."""
+
+    def __init__(self, arch: ArchConfig, *, app: str, display: str) -> None:
+        self.arch = arch
+        self.app = app
+        self.display = display
+        self.violations: list[Violation] = []
+
+    def visit_Import(self, node: ast.Import) -> None:
+        for alias in node.names:
+            self._check(alias.name.split("."), node.lineno)
+        self.generic_visit(node)
+
+    def visit_ImportFrom(self, node: ast.ImportFrom) -> None:
+        if node.level == 0 and node.module:
+            base = node.module.split(".")
+            # `from <library> import core`: the name may be a layer, so check the module too.
+            if base == [self.arch.package]:
+                for alias in node.names:
+                    if alias.name in self.arch.layers:
+                        self._check([*base, alias.name], node.lineno)
+            self._check(base, node.lineno)
+        self.generic_visit(node)
+
+    def _check(self, parts: list[str], line: int) -> None:
+        module = ".".join(parts)
+        if parts[0] in self.arch.app_names and parts[0] != self.app:
+            problem = f"app '{self.app}' imports the app '{parts[0]}' ({module})"
+            fix = "Apps share code only through the library: move it into its public API."
+        elif parts[0] == self.arch.package and not self.arch.is_public(module):
+            allowed = ", ".join(sorted(self.arch.public)) or "nothing"
+            problem = f"'{module}' is not public; an app may import only: {allowed}"
+            fix = (
+                f"Import it from the library's public API (`from {self.arch.package} import "
+                "...`). If apps need it, export it from the package root, or add the module to "
+                "[package] public in harness.toml, and record why in docs/design/decisions.md."
+            )
+        else:
+            return
+        self.violations.append(Violation(self.display, line, "ARCH-PUBLIC", problem, fix))
+
+
+def check_app(root: Path, app: AppRule, arch: ArchConfig) -> tuple[list[Violation], int]:
+    """An app's modules: the module rules, and ARCH-PUBLIC."""
+    app_dir = root / app.dir
+    if not (app_dir / "__init__.py").is_file():
+        init = f"{app.dir}/__init__.py"
+        fix = f"Set this [[apps]] entry's name and root to the app's package, or create {init}."
+        return [Violation("harness.toml", 1, "HARNESS-CONFIG", f"{init} does not exist", fix)], 0
+    violations: list[Violation] = []
+    files = sorted(app_dir.rglob("*.py"))
+    for path in files:
+        display = path.relative_to(root).as_posix()
+        source = path.read_text(encoding="utf-8")
+        tree, found = parse_module(display, source, arch.max_module_lines)
+        if tree is not None:
+            checker = _AppChecker(arch, app=app.name, display=display)
+            checker.visit(tree)
+            found += checker.violations
+        violations += found
+    return violations, len(files)
 
 
 def _writes_output(func: ast.expr) -> bool:
@@ -286,13 +372,16 @@ def check_repo(root: Path, config: HarnessConfig) -> tuple[list[Violation], int]
             1,
             "HARNESS-CONFIG",
             f"{config.package_dir}/__init__.py does not exist",
-            "Set [package] name in harness.toml to the package under src/, or create "
+            "Set [package] name and root in harness.toml to the library's package, or create "
             f"{config.package_dir}/__init__.py.",
         )
         return [missing], 0
-    package, package_count = check_tree(package_dir, root, arch)
+    violations, checked = check_tree(package_dir, root, arch)
+    for app in arch.apps:
+        found, count = check_app(root, app, arch)
+        violations, checked = violations + found, checked + count
     support, support_count = check_support(root, arch.support_dirs, arch.max_module_lines)
-    return package + support + check_layer_doc(root, arch), package_count + support_count
+    return violations + support + check_layer_doc(root, arch), checked + support_count
 
 
 def main(argv: Sequence[str] | None = None) -> int:

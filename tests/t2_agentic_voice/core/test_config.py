@@ -6,10 +6,9 @@ from pathlib import Path
 
 import pytest
 from pydantic import ValidationError
+from t2_agentic_voice.core.config import Settings, get_settings
 
-from ole5_voice.core.config import Settings, get_settings
-
-ROOT = Path(__file__).resolve().parents[2]
+ROOT = Path(__file__).resolve().parents[3]
 PREFIX = Settings.model_config.get("env_prefix", "")
 
 

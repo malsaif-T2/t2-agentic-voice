@@ -3,7 +3,9 @@
 Depth-first: each milestone produces a verified building block that the next one relies on.
 When a milestone starts, it gets an execution plan in [active/](active/) (see
 [README](README.md)). The owner sets the milestones and their order; the agent proposes them
-from [DESCRIPTION.md](../project/DESCRIPTION.md) and records the owner's answer here. Milestones
+from [DESCRIPTION.md](../project/DESCRIPTION.md) and records the owner's answer here. Each
+milestone builds the Ole5 app's work and the library work it forces together, so the app
+consumes the library through its public API as it grows (D-013). Milestones
 carry no delivery dates: work moves by plan and by what is verified
 ([WORKING-RULES.md](../../WORKING-RULES.md)).
 
@@ -13,7 +15,7 @@ decisions (`D-NNN`), which are permanent. Living docs cite only milestones in th
 
 | # | Milestone | Status |
 | --- | --- | --- |
-| M0 | Scaffold and harness | in progress ([000](active/000-project-scaffold.md)) |
+| M0 | Scaffold and harness | in progress ([000](active/000-project-scaffold.md), [001](active/001-library-and-app.md)) |
 | M1 | The measurement first: the owner's voice as a golden set | planned |
 | M2 | A call that listens and speaks, deployed | planned |
 | M3 | Interruptions and cancellation | planned |
@@ -40,14 +42,25 @@ Groq only (D-004), the hosting limits (D-005), the owner's own voice as the only
 Phase 0 (D-006), and a handoff that is a ticket (D-009). They await the owner's approval
 (plan 000).
 
+On 2026-10-31 the project became T2 Agentic Voice, a library and the Ole5 app built on it
+(D-013). Each milestone now also lists, under *Library*, the library work its Ole5 work
+forces, from the package design ([package-design.md](../design/package-design.md), section 16,
+D-017), proposed with it. The goals and the *Done when* lines are unchanged. A first version
+for teammates is not a milestone: it is tagged when a real teammate is ready to install it
+(the design's section 16.1).
+
 **M0 · Scaffold and harness.**
 - The project's idea in [DESCRIPTION.md](../project/DESCRIPTION.md), written with the owner.
 - The layers chosen for this domain, in `harness.toml` and [ARCHITECTURE.md](../../ARCHITECTURE.md).
 - The stack recorded as a decision, and the gate green locally and in CI.
+- The workspace of the library, the Ole5 app and `examples/minimal`, with ARCH-PUBLIC keeping
+  the app on the library's public API (plan 001, done).
+- The package design reviewed by the owner: what the library provides and what an app must
+  provide (D-017), with the teammate guide's index in [docs/guide/](../guide/README.md).
 
 *Done when* `uv run poe check` passes on the project's own package and layers, CI runs the same
-gate, and the owner has approved the layers, the stack, and the first milestones after this
-one.
+gate, and the owner has approved the layers, the stack, the package design, and the first
+milestones after this one.
 
 **M1 · The measurement first: the owner's voice as a golden set.**
 - The golden set ([evaluation.md](../design/evaluation.md), D-011): the 124 talk-over segments
@@ -63,6 +76,10 @@ one.
   talk-over clip, so M3's interruption window is chosen from data.
 - `core`'s tracing helpers sending spans to Phoenix: they take the turn's span as an argument,
   and a test proves no secret reaches a trace ([SECURITY.md](../SECURITY.md), invariant 5).
+- *Library:* the `SpeechToText` port and the Groq Whisper adapter above; the canonical
+  Arabic normalizer and digit normalization; the scorers as library functions (`wer`, `cer`,
+  term and ID recall, the sign test), while the golden-set runner stays in the app; the guide's
+  `evaluation.md`.
 
 *Done when* `poe eval` writes a baseline scorecard for Groq Whisper on the owner's voice, by
 language and by device; the noise (the same run twice) is recorded as a decision; and the gate
@@ -87,6 +104,13 @@ passes.
 - The owner's calls through the widget recorded with the recording setting on (invariant 8),
   each keeping the caller's track and the agent's playback timeline, so M3's targets are also
   checked on audio that came through WebRTC.
+- *Library:* everything above that is not Ole5's: Pipecat behind its own `media` layer (the
+  transport, VAD, Smart Turn, the speech bridges), the `TextToSpeech` port and the Orpheus
+  adapter, the call session in echo mode, signed single-use join tokens, the router and
+  `serve()`, the reference browser client and its protocol, the settings with a required `env`
+  and their generated reference; `examples/minimal` as an echo agent; the guide's
+  quickstart, serving, browser-client, settings, tracing and data pages. The widget is
+  Ole5's, built on the reference client.
 
 *Done when* the owner holds a call in Chrome on laptop speakers and on a headset, locally and
 from another network to the deployed backend, and hears each turn back; end-of-turn cut-offs
@@ -107,6 +131,10 @@ Groq model are recorded.
 - The history keeps only what the user heard, clause by clause.
 - The fallback when echo stays high on laptop speakers (Stop, Esc, and push-to-talk), and the
   warning for a Bluetooth hands-free microphone.
+- *Library:* the cancel scopes, the two-step interruption and the history of what was heard,
+  as library behaviour with Ole5's word additions as settings; audio replay for tests, and a
+  test that text-mode calls follow the same path as audio calls; the guide's concepts and
+  audio-troubleshooting pages.
 
 *Done when* the targets registered in its plan hold on the golden set's overlap clips and on
 M2's call recordings: a normal-volume «وقف» stops the agent within its target, the agent's own
@@ -123,6 +151,12 @@ steps pass in a live call.
 - The output guard on every sentence (invariant 2), and tool arguments parsed at the boundary
   (invariant 4).
 - Simulated calls for knowledge questions in Arabic and English, each scenario repeated.
+- *Library:* the `ChatModel` port and the Groq chat adapter, the talker loop, `@tool` with
+  its context and bound parameters, the output guard's ID rule, progress lines, a knowledge
+  protocol and helper tool, the text-call testing kit and its fakes, `t2v check`, and the
+  latency measurement; the Qdrant adapter and the prompts stay Ole5's. The package design
+  proposes moving the "deeper troubleshooting" job above to the thinker work after M7 (its
+  open question 17).
 
 *Done when* retrieval (the right passage in the top 5) and answer correctness are measured; the
 time to the first useful audio meets a target registered in its plan before any run; and the
@@ -140,6 +174,10 @@ rehearsal's password, archiving, and English questions pass.
   caller, read from the outbox.
 - Adversarial tests for invariants 1, 2, 3, 4, and 6, against a fake ticket system that refuses,
   times out, and replies late, with and without a lookup by request ID.
+- *Library:* `@action` for any side effect, with the read-back, the yes rule and its receipts,
+  the outbox and lookups, the record, the guard's claim rule, the caps, and the safety suite
+  teams run on their own actions; the T2 Ticket API adapter and the ticket action stay Ole5's.
+  How the handoff takes consent is the design's open question 6.
 
 *Done when* simulated calls create the right tickets with zero false action claims; the
 rehearsal's ticket flow passes, where an eager «نعم أرسلها» over the closing question creates the
@@ -157,6 +195,9 @@ spoken over an answer makes a handoff ticket at once.
   model, counted in the traces since M2, compared with the key's limits (the prototype found the
   key on Groq's on-demand tier, 400 requests a minute: Ole5-chatbot VOICE_LOG.md, 2026-10-27).
   The cap on live calls is set below that limit. Then how many calls the backend's CPU holds.
+- *Library:* timeouts and spoken fallbacks per provider, 429 handling with one limiter per
+  model, admission control with a busy notice, drain, usage in each call's report; the guide's
+  deployment and runbook pages.
 
 *Done when* every failure is reproduced in a test with a fake that fails, and the latency
 targets hold at the cap on live calls.
@@ -167,11 +208,19 @@ targets hold at the cap on live calls.
   the deployed backend.
 - A report for the owner, every number with its source
   ([docs/project/README.md](../project/README.md)).
+- *Library:* the guide completed (cookbooks with no Ole5 code, safety, troubleshooting); the
+  public API reviewed, each provisional module promoted or kept; the 1.0 question (the
+  design's open question 15).
 
 *Done when* the script passes on every device and the owner accepts the report.
 
 ## Planned later (not yet scheduled)
 
+- The thinker: the talker hands a complex task to a slower reasoning agent in the background;
+  optional and off by default (D-015), planned after M7 (the design's section 6.2 and open
+  question 16).
+- For teammates: the drop-in web widget, the server configured without Python, and an agent
+  plugged in over HTTP (D-014, later options).
 - Typed chat in the widget (D-009: a bonus).
 - Other providers, and a profile hosted in Saudi Arabia, as new adapters once the owner has other
   keys (D-004).
@@ -188,12 +237,21 @@ targets hold at the cap on live calls.
 - Traces go to Arize Phoenix (D-008).
 - A handoff is a ticket; typed chat is a bonus (D-009).
 - The Ole5 chatbot repository is a read-only source (D-010).
+- Approach 3, a dedicated voice agent (D-012).
+- T2 Agentic Voice: a shared library and the Ole5 app in one workspace (D-013).
+- Teammates use the library from Python first (D-014).
+- The thinker is optional and off by default (D-015).
+- Open-source code and projects may be used (D-016).
 
 ## Open questions (need a human decision)
 
 - Approve, change, or reject: the stack (D-002), the layers (D-003), SECURITY.md (D-007),
   evaluation.md (D-011), the description, the milestones M1 to M7, and WORKING-RULES.md
   (plan 000).
+- Approve, change, or reject the package design (D-017, plan 001) and answer its open
+  questions (its section 17), above all: what ships for the browser, the settings prefix,
+  the handoff and invariant 1, Pipecat's provider services, the licences, and how teammates
+  install the library (whether T2's package index exists).
 
 To decide before M2, which builds the call set-up and deploys it:
 

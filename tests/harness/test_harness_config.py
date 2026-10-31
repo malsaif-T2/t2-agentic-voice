@@ -84,6 +84,27 @@ def test_owners_must_name_real_layers_once(tmp_path: Path) -> None:
     assert "'httpx' is listed in two [[owners]] tables" in found
 
 
+def test_apps_and_the_public_api_are_read(tmp_path: Path) -> None:
+    apps = '\n[[apps]]\nname = "shop"\nroot = "apps/shop/src"\n'
+    loaded = config(tmp_path, SYNTHETIC + apps)
+    assert loaded.product_dirs == ("src/app", "apps/shop/src/shop")
+    assert loaded.arch.app_names == {"shop"}
+    modules = ("app", "app.core", "app.testing", "app.testing.fakes", "apps")
+    assert [loaded.arch.is_public(m) for m in modules] == [True, False, True, True, False]
+
+
+def test_apps_and_public_modules_are_checked(tmp_path: Path) -> None:
+    apps = (
+        '\n[[apps]]\nname = "app"\nroot = "apps/a/src"\n'
+        '\n[[apps]]\nname = "My-Shop"\nroot = "apps/b/src"\n'
+    )
+    text = SYNTHETIC.replace('public = ["app", "app.testing"]', 'public = ["app", "other.x"]')
+    found = {problem for _, problem in _problems(tmp_path, text + apps)}
+    assert "public module 'other.x' is not inside package 'app'" in found
+    assert "'app' is already the library's or another app's name" in found
+    assert "'My-Shop' is not a Python package name" in found
+
+
 def test_a_subpackage_rule_starts_with_a_layer(tmp_path: Path) -> None:
     text = SYNTHETIC.replace('path = "services/reports"', 'path = "reports"')
     found = {problem for _, problem in _problems(tmp_path, text)}

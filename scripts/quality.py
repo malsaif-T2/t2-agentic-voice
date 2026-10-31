@@ -138,11 +138,11 @@ def grades(
     ]
 
 
-def read_sources(root: Path) -> dict[str, str]:
-    """path -> text, for every module under src/ and scripts/."""
+def read_sources(root: Path, config: HarnessConfig) -> dict[str, str]:
+    """path -> text, for every module of the library and of scripts/."""
     return {
         p.relative_to(root).as_posix(): p.read_text(encoding="utf-8")
-        for p in python_files(root, ("src", "scripts"))
+        for p in python_files(root, (config.package_dir, "scripts"))
     }
 
 
@@ -190,7 +190,7 @@ def main(argv: Sequence[str] | None = None) -> int:
     coverage = measured_coverage(ROOT)
     if not coverage:
         print("No coverage data (.coverage): run `uv run poe test` first for the full score.\n")
-    found = grades(read_sources(ROOT), coverage, config)
+    found = grades(read_sources(ROOT, config), coverage, config)
     print(render(found, config.gc.size_watch), end="")
     return 0
 

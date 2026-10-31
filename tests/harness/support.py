@@ -15,6 +15,8 @@ from scripts.harness_config import HarnessConfig, load_config
 SYNTHETIC = """\
 [package]
 name = "app"
+root = "src"
+public = ["app", "app.testing"]
 
 [layers]
 core = []

@@ -2,7 +2,7 @@
 
 from __future__ import annotations
 
-from ole5_voice.core.errors import (
+from t2_agentic_voice.core.errors import (
     AppError,
     ConfigurationError,
     InvalidRequestError,

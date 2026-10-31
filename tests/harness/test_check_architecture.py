@@ -7,7 +7,18 @@ from pathlib import Path
 
 from scripts.check_architecture import ROOT, check_repo
 from scripts.harness_config import HarnessConfig, load_config
-from tests.harness.support import ARCHITECTURE, config, write
+from tests.harness.support import ARCHITECTURE, SYNTHETIC, config, write
+
+# Two apps on the synthetic library `app` (public: `app` and `app.testing`).
+APPS = (
+    '\n[[apps]]\nname = "shop"\nroot = "apps/shop/src"\n'
+    '\n[[apps]]\nname = "demo"\nroot = "examples/demo/src"\n'
+)
+APP_PACKAGES = {
+    "src/app/__init__.py": "",
+    "apps/shop/src/shop/__init__.py": "",
+    "examples/demo/src/demo/__init__.py": "",
+}
 
 
 def _check(tmp_path: Path, files: dict[str, str]) -> list[tuple[str, str]]:
@@ -21,7 +32,7 @@ def _check(tmp_path: Path, files: dict[str, str]) -> list[tuple[str, str]]:
 
 def test_repository_is_clean() -> None:
     violations, checked = check_repo(ROOT, load_config(ROOT))
-    assert checked > 10  # src/, scripts/, and tests/
+    assert checked > 10  # the library, the apps, scripts/, and tests/
     assert violations == [], "\n".join(map(str, violations))
 
 
@@ -154,6 +165,61 @@ def test_module_rules_apply_in_the_package(tmp_path: Path) -> None:
     assert sorted(_check(tmp_path, files)) == [
         ("core/big.py", "ARCH-SIZE"),
         ("core/broken.py", "ARCH-PARSE"),
+    ]
+
+
+def test_the_package_root_reexports_and_layers_never_import_from_it(tmp_path: Path) -> None:
+    files = {
+        "__init__.py": "from app.core.config import Settings\nfrom app.api import routes\n",
+        "core/y.py": "from app import core\n",
+        "domain/x.py": "from app import Settings\n",
+    }
+    assert _check(tmp_path, files) == [("domain/x.py", "ARCH-LAYER")]
+
+
+def _check_apps(tmp_path: Path, files: dict[str, str]) -> list[tuple[str, str]]:
+    """(path, rule) of each violation in a project with the library and both apps."""
+    loaded = config(tmp_path, SYNTHETIC + APPS)
+    write(tmp_path, {"ARCHITECTURE.md": ARCHITECTURE, **APP_PACKAGES, **files})
+    violations, _ = check_repo(tmp_path, loaded)
+    return sorted((v.path, v.rule) for v in violations)
+
+
+def test_an_app_imports_only_the_public_api(tmp_path: Path) -> None:
+    files = {
+        "apps/shop/src/shop/ok.py": (
+            "from app import Settings\nimport app\nimport app.testing.fakes\n"
+            "from app.testing import fake\nimport shop.ok\nimport httpx\nfrom . import ok\n"
+        ),
+        "apps/shop/src/shop/bad.py": (
+            "from app.core.config import Settings\nimport app.domain\nfrom app import core\n"
+        ),
+    }
+    assert _check_apps(tmp_path, files) == [("apps/shop/src/shop/bad.py", "ARCH-PUBLIC")] * 3
+
+
+def test_apps_stay_apart_from_each_other_and_from_the_library(tmp_path: Path) -> None:
+    files = {
+        "apps/shop/src/shop/x.py": "from demo import run\n",
+        "examples/demo/src/demo/big.py": "x = 1\n" * 41,
+        "src/app/core/y.py": "import shop\n",
+        "src/app/domain/z.py": "from shop.x import thing\n",
+    }
+    assert _check_apps(tmp_path, files) == [
+        ("apps/shop/src/shop/x.py", "ARCH-PUBLIC"),
+        ("examples/demo/src/demo/big.py", "ARCH-SIZE"),
+        ("src/app/core/y.py", "ARCH-PUBLIC"),
+        ("src/app/domain/z.py", "ARCH-PUBLIC"),
+    ]
+
+
+def test_a_missing_app_is_a_config_problem(tmp_path: Path) -> None:
+    loaded = config(tmp_path, SYNTHETIC + APPS)
+    write(tmp_path, {"ARCHITECTURE.md": ARCHITECTURE, "src/app/__init__.py": ""})
+    violations, _ = check_repo(tmp_path, loaded)
+    assert [(v.rule, v.problem) for v in violations] == [
+        ("HARNESS-CONFIG", "apps/shop/src/shop/__init__.py does not exist"),
+        ("HARNESS-CONFIG", "examples/demo/src/demo/__init__.py does not exist"),
     ]
 
 

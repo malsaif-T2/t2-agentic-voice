@@ -1,20 +1,28 @@
+# The workspace root of T2 Agentic Voice: the library (packages/t2-agentic-voice), the Ole5
+# Voice Agent built on it (apps/ole5-voice-agent), and the examples (examples/). The root is not
+# a package itself: it holds the members, the shared dev tools, and the one gate for all of them.
 [project]
-name = "ole5-voice-agent"
+name = "t2-agentic-voice-workspace"
 version = "0.1.0"
-description = "A voice-first support assistant for Ole5 that answers from the knowledge base and opens tickets only on a clear yes, in Saudi Arabic, MSA and English."
+description = "T2 Agentic Voice: a library for speech-first voice agents, the Ole5 Voice Agent built on it, and examples."
 requires-python = ">=3.12"
 dependencies = [
-    "pydantic>=2.13.5",
-    "pydantic-settings>=2.15.0",
-    "structlog>=26.1.0",
+    "t2-agentic-voice",
+    "ole5-voice-agent",
+    "t2-agentic-voice-minimal-example",
 ]
 
-[build-system]
-requires = ["uv_build>=0.11.31,<0.12.0"]
-build-backend = "uv_build"
+[tool.uv]
+# `uv sync` installs every member, editable, and builds nothing for the root.
+package = false
 
-[tool.uv.build-backend]
-module-name = "ole5_voice"
+[tool.uv.workspace]
+members = ["packages/*", "apps/*", "examples/*"]
+
+[tool.uv.sources]
+t2-agentic-voice = { workspace = true }
+ole5-voice-agent = { workspace = true }
+t2-agentic-voice-minimal-example = { workspace = true }
 
 [dependency-groups]
 dev = [
@@ -46,8 +54,8 @@ sequence = [{ cmd = "ruff format --check ." }, { cmd = "ruff check ." }]
 ignore_fail = "return_non_zero"
 
 [tool.poe.tasks.types]
-help = "Static type check (mypy strict) of src/, scripts/, and tests/"
-cmd = "mypy src scripts tests"
+help = "Static type check (mypy strict) of the members, scripts/, and tests/"
+cmd = "mypy packages/t2-agentic-voice/src apps/ole5-voice-agent/src examples/minimal/src scripts tests"
 
 [tool.poe.tasks.arch]
 help = "Enforce the layers and module rules of harness.toml (a FIX line for every violation)"
@@ -101,9 +109,10 @@ python_version = "3.12"
 strict = true
 warn_unreachable = true
 plugins = ["pydantic.mypy"]
-# src/ holds the package; scripts/ and tests/ are importable from the repository root. tests/
-# has no __init__.py files (pytest's importlib mode), so module names come from these bases.
-mypy_path = "src"
+# Each member's src/ holds its package; scripts/ and tests/ are importable from the repository
+# root. tests/ has no __init__.py files (pytest's importlib mode), so module names come from
+# these bases.
+mypy_path = ["packages/t2-agentic-voice/src", "apps/ole5-voice-agent/src", "examples/minimal/src"]
 explicit_package_bases = true
 
 [tool.pydantic-mypy]

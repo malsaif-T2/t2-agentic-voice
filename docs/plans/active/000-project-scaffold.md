@@ -18,7 +18,8 @@ harness came from a starter kit; this plan makes it this project's own.
   owner, and the owner approved it.
 - [ ] The layers for this domain are chosen and approved by the owner: `harness.toml`,
   [ARCHITECTURE.md](../../../ARCHITECTURE.md), and a decision in
-  [decisions.md](../../design/decisions.md) agree, and `src/` holds one package per layer.
+  [decisions.md](../../design/decisions.md) agree, and the library's package holds one package
+  per layer.
 - [ ] The stack is recorded as a decision and approved; `uv sync` installs the locked
   dependencies.
 - [x] `uv run poe check` runs lint, types, arch, docs, and test, and passes.
@@ -99,6 +100,12 @@ harness came from a starter kit; this plan makes it this project's own.
   SECURITY.md (D-007), evaluation.md (D-011), and the milestones; their review of
   WORKING-RULES.md; then step 6 (`git init`, the first commit, the remote, and CI), which needs
   the owner's go-ahead to commit.
+
+- 2026-10-31: Step 6 begun at the owner's go-ahead ("Yes, init and commit"): `git init` and the
+  first commit of the scaffold; the remote and CI wait for the owner. The project then became
+  T2 Agentic Voice, a library and the Ole5 app built on it (D-013, plan 001): the package that
+  criterion 3 speaks of is now the library's, `packages/t2-agentic-voice/src/t2_agentic_voice/`,
+  and the description awaiting approval is the widened one.
 
 ## Decision log
 

@@ -10,9 +10,9 @@ from pathlib import Path
 
 from pydantic import BaseModel, ConfigDict
 
-from ole5_voice.core.config import Environment, LogLevel, Settings
-from ole5_voice.core.errors import ConfigurationError
-from ole5_voice.core.logging import get_logger
+from t2_agentic_voice.core.config import Environment, LogLevel, Settings
+from t2_agentic_voice.core.errors import ConfigurationError
+from t2_agentic_voice.core.logging import get_logger
 
 log = get_logger(__name__)
 

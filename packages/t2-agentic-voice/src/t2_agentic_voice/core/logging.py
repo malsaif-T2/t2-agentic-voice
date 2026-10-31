@@ -1,7 +1,7 @@
 """Structured logging: the single logging entry point (ARCH-OWNER, ARCH-PRINT).
 
 Usage:
-    from ole5_voice.core.logging import get_logger
+    from t2_agentic_voice.core.logging import get_logger
 
     log = get_logger(__name__)
     log.info("order_created", items=3, duration_ms=34)
@@ -28,7 +28,7 @@ from typing import cast
 import structlog
 from structlog.typing import EventDict, FilteringBoundLogger, Processor, WrappedLogger
 
-from ole5_voice.core.config import LogFormat, LogLevel
+from t2_agentic_voice.core.config import LogFormat, LogLevel
 
 
 def configure_logging(

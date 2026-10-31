@@ -1,8 +1,9 @@
 # Architecture
 
-Ole5 Voice Agent is a real-time voice service: a Python backend that serves a web widget and
-runs one voice pipeline per call over WebRTC, with speech-to-text, the model, and
-text-to-speech from outside providers (Groq today, D-004). Two rules shape it most:
+T2 Agentic Voice is a library for real-time voice agents: an app built on it is a Python
+backend that serves a web widget and runs one voice pipeline per call over WebRTC, with
+speech-to-text, the model, and text-to-speech from outside providers (Groq today, D-004). The
+Ole5 Voice Agent is its first app. Two rules shape it most:
 
 - **Only the backend acts.** The talker (the model that speaks) asks for tools; the `actions`
   layer runs them, records what it completed, and words every outcome from a real result. No
@@ -13,14 +14,36 @@ text-to-speech from outside providers (Groq today, D-004). Two rules shape it mo
   without touching the layers that use it (GP-22).
 
 The layers were proposed by the agent on 2026-10-28 and await the owner's approval
-([D-003](docs/design/decisions.md)); the libraries they own are proposed in D-002.
+([D-003](docs/design/decisions.md)); the libraries they own are proposed in D-002. What the
+library provides to an app, and what an app must provide, is proposed in
+[package-design.md](docs/design/package-design.md) (D-017).
+
+## Repository layout: the library and its apps
+
+One repository, a uv workspace (D-013):
+
+```
+packages/t2-agentic-voice/   the library teammates install: src/t2_agentic_voice/, its layers
+apps/ole5-voice-agent/       the Ole5 Voice Agent: src/ole5_voice/, Ole5's prompt, tools,
+                             knowledge base and ticket system, and its web widget
+examples/minimal/            the smallest app: the guide's quickstart, and a test of the library
+tests/                       one subfolder per package, and harness/ for the checks' own tests
+```
+
+The library's **public API is its package root**: its `__init__.py` re-exports
+every name an app may use, and `[package] public` in harness.toml lists the modules an app may
+import. An app imports nothing else from the library and no other app, and the library never
+imports an app (ARCH-PUBLIC). So the Ole5 app uses the library exactly as a teammate's app
+would, and the minimal example breaks if the library starts to depend on Ole5. Inside the
+library, a layer imports from the layer that defines a name, never from the package root.
 
 ## Flow
 
-One call, top to bottom, naming the layer that does each step:
+One call, top to bottom, naming the library's layer that does each step; the app supplies its
+prompt, its tools and its backends (the knowledge base and the ticket system, for Ole5):
 
 ```
-web widget (web/)  microphone, speaker, captions, Stop; static files the api layer serves
+web widget         microphone, speaker, captions, Stop; static files the api layer serves
   ▼ api        checks the join token, hands the WebRTC offer to voice, builds the call's session
   ▼ voice      answers the offer; audio in; speech detection; end of turn; the two-step
                interruption; the turn's cancel scope
@@ -97,9 +120,11 @@ The agent's reasoning, from the questions the kit asks (D-003 records the altern
 
 ## The web widget
 
-The widget is plain HTML, JavaScript and CSS in `web/`, with no build step; `api` serves it.
-It is outside the package, so `poe arch` does not read it; it is checked by running it in a
-browser ([WORKING-RULES.md](WORKING-RULES.md), "Seeing it run").
+The widget is plain HTML, JavaScript and CSS, with no build step; the backend serves it. It is
+built for the Ole5 app first, in `apps/ole5-voice-agent/web/`; making it a drop-in for
+teammates' pages is a later option (D-014). It is not Python, so `poe arch` does not read it;
+it is checked by running it in a browser ([WORKING-RULES.md](WORKING-RULES.md), "Seeing it
+run").
 
 ## Conventions
 
@@ -142,7 +167,11 @@ The rules live in [harness.toml](harness.toml), the source of truth;
 
 - ARCH-LAYER: internal imports follow `[layers]` (an `importlib.import_module` or `__import__`
   of a literal name counts; a computed name cannot be checked, so avoid one), code sits inside
-  a layer, and a subpackage's narrower rules (`[[subpackages]]`) hold;
+  a layer, a subpackage's narrower rules (`[[subpackages]]`) hold, and no layer imports from
+  the package root;
+- ARCH-PUBLIC: an app in `[[apps]]` imports the library only through `[package] public`, and
+  no other app; the library never imports an app (an app's modules also follow the module
+  rules below; the layer and owner rules are the library's);
 - ARCH-OWNER: a library in `[[owners]]` is imported only by its layers;
 - ARCH-CONSTRUCT: a class in `[[restricted]]` is constructed only by its layers;
 - ARCH-PRINT: no `print` or direct writes to standard output outside the files `[rules]`

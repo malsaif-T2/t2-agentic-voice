@@ -1,0 +1,18 @@
+[project]
+name = "t2-agentic-voice"
+version = "0.1.0"
+description = "A library for speech-first voice agents that talk naturally, answer from a knowledge base, and act only on a clear spoken yes, in Arabic and English."
+readme = "README.md"
+requires-python = ">=3.12"
+dependencies = [
+    "pydantic>=2.13.5",
+    "pydantic-settings>=2.15.0",
+    "structlog>=26.1.0",
+]
+
+[build-system]
+requires = ["uv_build>=0.11.31,<0.12.0"]
+build-backend = "uv_build"
+
+[tool.uv.build-backend]
+module-name = "t2_agentic_voice"

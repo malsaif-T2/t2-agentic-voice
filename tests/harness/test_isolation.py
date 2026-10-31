@@ -11,8 +11,7 @@ import sys
 from pathlib import Path
 
 import pytest
-
-from ole5_voice.core.config import Settings, get_settings
+from t2_agentic_voice.core.config import Settings, get_settings
 
 ROOT = Path(__file__).resolve().parents[2]
 REPO_VAR = ROOT / "var"

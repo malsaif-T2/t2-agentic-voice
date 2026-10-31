@@ -1,0 +1,16 @@
+[project]
+name = "ole5-voice-agent"
+version = "0.1.0"
+description = "The Ole5 Voice Agent: a voice-first support assistant for Ole5, built on T2 Agentic Voice."
+requires-python = ">=3.12"
+dependencies = ["t2-agentic-voice"]
+
+[tool.uv.sources]
+t2-agentic-voice = { workspace = true }
+
+[build-system]
+requires = ["uv_build>=0.11.31,<0.12.0"]
+build-backend = "uv_build"
+
+[tool.uv.build-backend]
+module-name = "ole5_voice"

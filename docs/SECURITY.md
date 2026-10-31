@@ -1,7 +1,8 @@
 # Security
 
-The threat model and the invariants of Ole5 Voice Agent. Proposed by the agent on 2026-10-28
-([D-007](design/decisions.md)); the owner keeps or drops it in plan 000.
+The threat model and the invariants of T2 Agentic Voice and the Ole5 Voice Agent built on it.
+Proposed by the agent on 2026-10-28 ([D-007](design/decisions.md)); the owner keeps or drops it
+in plan 000.
 
 Each invariant names the test or check that will enforce it. Until the code it protects exists,
 an invariant is a requirement on the plan that builds that code: the plan adds the adversarial
@@ -59,7 +60,7 @@ never reused (DOC-REGISTER).
    Enforced by tests at each tool's boundary (GP-06).
 5. **Secrets stay in the backend.** API keys and service passwords are `SecretStr` settings,
    never sent to the browser, never logged, never traced. Enforced, once the first secret
-   setting exists, by a test in `tests/core/test_config.py` that every key and password is a
+   setting exists, by a test in `tests/t2_agentic_voice/core/test_config.py` that every key and password is a
    `SecretStr` and never appears in a repr or a log line, and, in the plan that adds tracing, by
    a test that no secret value appears in a trace.
 6. **Writes are never cut in half.** A ticket write runs as a job outside the turn that asked

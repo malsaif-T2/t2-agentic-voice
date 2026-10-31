@@ -4,7 +4,8 @@ Every configurable value is a field on `Settings`, loaded from environment varia
 project's prefix, or from a local `.env` file (environment variables win). Other modules call
 `get_settings()` or receive a `Settings` instance; they never touch `os.environ`.
 
-When you add a field, add it to `.env.example` too (tests/core/test_config.py fails otherwise).
+When you add a field, add it to `.env.example` too (tests/t2_agentic_voice/core/test_config.py
+fails otherwise).
 A secret is a `SecretStr` field, so it never shows in a repr or a log.
 """
 
@@ -23,7 +24,7 @@ LogFormat = Literal["console", "json"]
 
 class Settings(BaseSettings):
     model_config = SettingsConfigDict(
-        env_prefix="OLE5_VOICE_",
+        env_prefix="T2_AGENTIC_VOICE_",
         env_file=".env",
         env_file_encoding="utf-8",
         extra="ignore",

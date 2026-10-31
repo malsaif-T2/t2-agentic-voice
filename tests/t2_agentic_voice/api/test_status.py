@@ -3,10 +3,9 @@
 from __future__ import annotations
 
 import pytest
-
-from ole5_voice.api.status import Status, status
-from ole5_voice.core.config import Settings
-from ole5_voice.core.errors import ConfigurationError
+from t2_agentic_voice.api.status import Status, status
+from t2_agentic_voice.core.config import Settings
+from t2_agentic_voice.core.errors import ConfigurationError
 
 
 def test_status_summarizes_the_settings(settings: Settings) -> None:

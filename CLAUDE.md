@@ -1,10 +1,11 @@
-# Ole5 Voice Agent — agent map
+# T2 Agentic Voice — agent map
 
-A voice-first support assistant for Ole5 that answers from the knowledge base and opens
-tickets only on a clear yes, in Saudi Arabic, MSA and English. The owner's full description is
-in [DESCRIPTION.md](docs/project/DESCRIPTION.md). Stack: Python 3.12 · uv · pydantic; the
-product libraries (Pipecat, FastAPI, Groq, Phoenix) are proposed in
-[decisions.md](docs/design/decisions.md) (D-002). Groq is the only provider for now (D-004).
+T2 Agentic Voice is a Python library that T2's teams install for speech-first voice agents
+(turn-taking, interruptions, answers, actions only on a clear yes, in Saudi Arabic, MSA and
+English). Its first app, the **Ole5 Voice Agent**, is built here on its public API (D-013). The
+owner's full description is in [DESCRIPTION.md](docs/project/DESCRIPTION.md). Stack: Python 3.12
+· a uv workspace · pydantic; the product libraries (Pipecat, FastAPI, Groq, Phoenix) are proposed
+in [decisions.md](docs/design/decisions.md) (D-002). Groq is the only provider for now (D-004).
 
 This file is a **map, not a manual**. Open the linked doc when your task touches that area.
 
@@ -33,9 +34,11 @@ Run everything as `uv run poe <task>` (`uv run poe` lists tasks).
 | `gc` · `quality` | Say whether a garbage-collection round is due, then list its candidates · grade each layer after `check`; neither is a gate. |
 
 Add a row for every task the project adds. Add dependencies with `uv add <pkg>` (`--dev` for
-tooling); never use pip or edit `uv.lock`. Settings come from `OLE5_VOICE_*` environment
-variables or `.env`, and [.env.example](.env.example) lists them all. The harness's own rules (layers, owned
-libraries, required docs, size caps, the coverage floor) live in [harness.toml](harness.toml).
+tooling), in the member that needs them (`uv add --package t2-agentic-voice <pkg>`); never use
+pip or edit `uv.lock`. The library's settings come from `T2_AGENTIC_VOICE_*` environment
+variables or `.env`, and [.env.example](.env.example) lists them all. The harness's own rules
+(layers, the public API, the apps, owned libraries, required docs, size caps, the coverage
+floor) live in [harness.toml](harness.toml).
 
 ## Where things are
 
@@ -43,7 +46,9 @@ libraries, required docs, size caps, the coverage floor) live in [harness.toml](
 | --- | --- |
 | What we are building | [docs/project/DESCRIPTION.md](docs/project/DESCRIPTION.md) |
 | The owner's documents (meeting notes, reports, snapshots) and how to write them | [docs/project/README.md](docs/project/README.md) |
-| Layers, dependency rules, the main flow | [ARCHITECTURE.md](ARCHITECTURE.md) |
+| Layers, dependency rules, the library and its apps, the main flow | [ARCHITECTURE.md](ARCHITECTURE.md) |
+| What the library provides, what an app provides, its public API (proposed) | [docs/design/package-design.md](docs/design/package-design.md) |
+| How teammates use the library (the guide) | [docs/guide/README.md](docs/guide/README.md) |
 | How the agent works with the owner and other sessions; where new feedback goes | [WORKING-RULES.md](WORKING-RULES.md) |
 | Security invariants and threat model | [docs/SECURITY.md](docs/SECURITY.md) |
 | How a measured quality is measured, and a change judged | [docs/design/evaluation.md](docs/design/evaluation.md) |
@@ -60,7 +65,7 @@ libraries, required docs, size caps, the coverage floor) live in [harness.toml](
 ## Code map
 
 ```
-src/ole5_voice/
+packages/t2-agentic-voice/src/t2_agentic_voice/   the library; __init__.py is its public API
   core/       settings, structured logging, error types (AppError), tracing, shared types
   domain/     the call's rules and the ports, no IO: the yes rule, interruptions, speech text
   adapters/   the outside services behind the ports: Groq, the knowledge base, the tickets
@@ -68,19 +73,23 @@ src/ole5_voice/
   agent/      the talker: prompts, tool definitions, one turn, the output guard
   voice/      one call's real-time pipeline: WebRTC, end of turn, interruptions, cancel scope
   api/        HTTP and the composition root: the widget, call set-up, health
-web/          the browser widget (plain HTML/JS/CSS), served by api (not built yet)
+apps/ole5-voice-agent/src/ole5_voice/   the Ole5 app: only the library's public API (ARCH-PUBLIC)
+examples/minimal/src/minimal_example/   the smallest app: the quickstart, a test of the library
+apps/ole5-voice-agent/web/   Ole5's browser widget (plain HTML/JS/CSS; not built yet)
 scripts/      the harness: check_architecture.py (arch), check_docs.py (docs), gc_due.py and
               gc_report.py (gc), quality.py, and their helpers; all read harness.toml
               through harness_config.py
-tests/        mirrors src/; harness/ tests the checks themselves
+tests/        one folder per package (t2_agentic_voice/, ole5_voice/, minimal_example/);
+              harness/ tests the checks themselves
 docs/generated/  produced by commands, never edited by hand (a test fails when stale)
 ```
 
 ## Non-negotiables
 
-1. **Respect layer boundaries.** `uv run poe arch` explains each violation and its fix. A rule
-   changes in `harness.toml` and ARCHITECTURE.md's layer table together (ARCH-DOC checks that
-   they agree), with the reason in a decision (review).
+1. **Respect layer boundaries and the public API.** `uv run poe arch` explains each violation
+   and its fix. An app uses only what the library's package root exports. A rule changes in
+   `harness.toml` and ARCHITECTURE.md together (ARCH-DOC checks the layer table), with the
+   reason in a decision (review).
 2. **Parse at the boundaries.** Input from outside (requests, env, files, model output, database
    rows) becomes typed pydantic models. Never build on guessed shapes.
 3. **Structured logs only**, via `core.logging.get_logger`. No `print`, and never log secrets.

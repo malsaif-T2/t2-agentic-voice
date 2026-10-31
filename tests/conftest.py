@@ -9,8 +9,7 @@ from collections.abc import Iterator
 from pathlib import Path
 
 import pytest
-
-from ole5_voice.core.config import Settings, get_settings
+from t2_agentic_voice.core.config import Settings, get_settings
 
 # This project's environment variables, and the one that moves every runtime path.
 PREFIX = Settings.model_config.get("env_prefix", "")

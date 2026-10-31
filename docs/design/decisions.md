@@ -226,3 +226,112 @@ twice; DOC-REF: every `D-NNN` cited anywhere is a heading here), so keep its sha
   data limit of D-006. Simulated calls cover the talker and the backend.
 - **Consequences:** The measurement is built before the features it measures (the roadmap, M1).
   Every result describes the owner's voice only, while D-006 holds.
+
+## D-012 · Approach 3: a dedicated voice agent · 2026-10-31 · Accepted
+
+- **Context:** The owner presented three ways to bring voice to Ole5 to their manager: a
+  dictation and read-aloud button in the chat, the hybrid voice shell around the chat agent
+  (the October prototype), and a dedicated, speech-first voice agent (this repository).
+- **Decision:** Approach 3, the dedicated voice agent. The owner, on 2026-10-31: "I presented
+  the presentation and we are doing Approach 3 now."
+- **Consequences:** This repository is the voice product; the prototype's voice mode in the Ole5
+  chatbot repository stays as it is, read-only to us (D-010). What the prototype taught (its
+  recordings, word lists, voices and the rehearsal script) carries over.
+
+## D-013 · T2 Agentic Voice: a shared library and the Ole5 app in one workspace · 2026-10-31 · Accepted
+
+- **Context:** The owner widened the project: teammates should be able to reuse this work to add
+  voice to their own products, while the Ole5 Voice Agent is still required. The owner, on
+  2026-10-31: "We also need to rename the project to a more general name than
+  "Ole5-voice-agent" and the description it is bigger than that now", and "we need to imagine
+  it from their side in how they can use it in their projects, and how to make it good for
+  them. This requires our work to be highly modular, with settings they can change to fit them
+  and documentation to show them how to use it. All of this while we make our
+  "Ole5-voice-agent" because it is still required."
+- **Decision:** The project is named **T2 Agentic Voice** (the owner's answer, 2026-10-31). One
+  repository, a uv workspace of two packages (the owner chose "One repo, two packages" over one
+  package with use-case folders and over two repositories):
+  - the library teammates install: `packages/t2-agentic-voice`, distribution
+    `t2-agentic-voice`, import `t2_agentic_voice`, settings prefix `T2_AGENTIC_VOICE_` for now
+    (D-017, open question 4); its layers are those of D-003;
+  - the Ole5 Voice Agent: `apps/ole5-voice-agent`, import `ole5_voice`, built only on the
+    library's public API, exactly as a teammate's app would be;
+  - `examples/minimal`: the smallest app, the guide's quickstart and a test that the library
+    works without any Ole5 code.
+  The agent's mechanism: the library's public API is its package root, which re-exports what
+  apps use (`[package] public` in harness.toml). ARCH-PUBLIC fails an app that imports anything
+  else from the library, or another app, and fails the library if it imports an app; a layer
+  may not import from the package root. Tests stay in one `tests/` folder at the root, one
+  subfolder per package, under one gate.
+- **Consequences:** Ole5 proves the public API as it is built, and the minimal example catches a
+  library change that quietly depends on Ole5. Every name an app needs must be exported from the
+  package root, or the module made public with a decision. The [[owners]] rules apply to the
+  library's layers, not to apps (an app has no layers), so an app that imports a provider's
+  client directly is caught only in review. The folder on disk keeps its old name until the owner
+  renames it, since the agent's sessions run inside it. The package design that decides what the
+  library provides and requires is D-017.
+
+## D-014 · Teammates use the library from Python first · 2026-10-31 · Accepted
+
+- **Context:** A teammate could use the library several ways: as a Python library, through a
+  drop-in web widget, as a server configured by a file with no Python, or by plugging in their
+  own agent over HTTP.
+- **Decision:** The first version supports the Python library only (the owner's answer,
+  2026-10-31, from those four options). The others are later options.
+- **Consequences:** The library's public API is Python. The browser widget is built for the Ole5
+  app; making it a drop-in for teammates is a later decision, as are the config-only server and
+  the HTTP agent mode.
+
+## D-015 · The thinker is optional and off by default · 2026-10-31 · Accepted
+
+- **Context:** The agent proposed, on 2026-10-29, the pattern of Decagon Voice 3 and Sierra's
+  Tandem Voice: the fast talker may hand a complex task to a slower reasoning agent (the
+  thinker) that works in the background, a dedicated one or a chat agent behind an adapter.
+- **Decision:** The owner, on 2026-10-29: "Also make the thinker optional and not required."
+  The agent's mechanism: a setting chooses the thinker, and the default is none. With none, the
+  talker is never offered the tool; with one, the thinker never acts (it may only propose an
+  action, which still goes through the yes rule), each task has a time budget, and a result that
+  arrives after the caller moved on is dropped.
+- **Consequences:** Nothing up to the rehearsal depends on it: it is planned after M7. The
+  knowledge answers of M4 stay one search per question.
+
+## D-016 · Open-source code and projects may be used · 2026-10-31 · Accepted
+
+- **Context:** Much of a voice agent exists as open source: pipelines, transports, speech and
+  turn detection, client SDKs, evaluation tools.
+- **Decision:** The owner, on 2026-10-31: "Also we could use open-source code and projects to
+  help us accomplish ours." The agent's proposal for how: a permissive licence (MIT, BSD,
+  Apache-2.0) is used as a dependency through `uv add`; code copied into the repository keeps
+  its licence notice and names its source; a copyleft licence (GPL, AGPL) needs the owner's
+  approval first, since teammates' products would inherit it. Each new dependency is recorded in
+  the plan that adds it.
+- **Consequences:** Which projects to build on is part of the package design (D-017), including
+  whether Pipecat's own provider services may be used (ARCHITECTURE.md says today they are not).
+
+## D-017 · The package design: what the library provides, and what an app provides · 2026-10-31 · Proposed
+
+- **Context:** The owner, on 2026-10-31: "we need to determine what we provide for teammate
+  developers and what we require for them, I mean we need to do the whole design of the
+  package early."
+- **Decision (proposed by the agent on 2026-10-31; the owner approves, changes or rejects it in
+  plan 001):** [package-design.md](package-design.md). It was written by a workflow of nine
+  agents: three teammate personas (assumptions, not interviews), a survey of open-source building
+  blocks, a study of the developer APIs of LiveKit Agents, Pipecat, the OpenAI Agents SDK and
+  config-driven platforms, one synthesis, two adversarial reviews, and a revision. In short:
+  - a team declares a use case (`VoiceAgent`: instructions, languages, `@tool` read tools and
+    `@action` actions with read-back, done and claim templates) and runs it with
+    `VoiceRuntime`, as a sidecar process or mounted in a one-worker app;
+  - the library enforces the security invariants for every action at runtime: consent from
+    heard words after a played read-back, no claim without a record, identity from a signed
+    single-use join token, parsed model output, an outbox for writes;
+  - a team must bring a Python 3.12 process, its tools and actions, an identity source, a Groq
+    key, a page, a media path (UDP or TURN), durable storage, an `env`, and its data and
+    consent decisions; everything else has a default;
+  - a testing kit (`TextCall`, fakes, `ActionSafetySuite`) runs with no key and no Pipecat;
+  - Pipecat is wrapped behind a new `media` layer, with only its STT and TTS base classes used;
+  - twenty-three open questions, each with options and a recommendation.
+- **Consequences:** Until it is approved, nothing in it is built beyond plan 001's workspace and
+  ARCH-PUBLIC. Several parts would amend recorded decisions (D-002's Pipecat bullet, D-003's
+  layers, D-007's register, GP-22's wording); its section 16.3 lists the entries to write. The
+  settings prefix of the scaffold (`T2_AGENTIC_VOICE_`, D-013) is interim until its open
+  question 4 is answered.

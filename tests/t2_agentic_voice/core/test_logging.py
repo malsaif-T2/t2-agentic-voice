@@ -8,8 +8,7 @@ import sys
 from collections.abc import Iterator
 
 import pytest
-
-from ole5_voice.core.logging import configure_logging, get_logger
+from t2_agentic_voice.core.logging import configure_logging, get_logger
 
 
 @pytest.fixture(autouse=True)

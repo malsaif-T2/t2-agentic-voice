@@ -7,8 +7,13 @@
 # [layers] and [[owners]]) and record why in docs/design/decisions.md (review: no check reads it).
 
 [package]
-# The import package, at src/<name>/.
-name = "ole5_voice"
+# The library's import package, at <root>/<name>/ (D-013).
+name = "t2_agentic_voice"
+root = "packages/t2-agentic-voice/src"
+# Its public API: the modules an app may import (ARCH-PUBLIC). The package root re-exports the
+# names apps use; a public subpackage (such as a future "<name>.testing") makes its modules
+# public too. Everything else is internal, free to change without a major version.
+public = ["t2_agentic_voice"]
 
 # Each layer of the package (a folder directly under src/<name>/) and the other layers it may
 # import. A layer always may import itself. The graph may not have a cycle. Code must sit inside
@@ -70,6 +75,18 @@ fix = "HTTP lives in api/; a lower layer returns a typed model or raises an AppE
 # words and the read-back receipt, built only by voice; and a completed action, recorded only by
 # actions.
 
+# Packages built on the library, as a teammate's app would be (ARCH-PUBLIC, D-013): each imports
+# the library only through [package] public and no other app, and the library never imports
+# one. The module rules (size, fmt: skip, parse) apply to them too; the layer and owner rules do
+# not, since an app has no layers of its own.
+[[apps]]
+name = "ole5_voice"
+root = "apps/ole5-voice-agent/src"
+
+[[apps]]
+name = "minimal_example"
+root = "examples/minimal/src"
+
 # Narrower import rules for a subpackage inside a layer (ARCH-LAYER). Example:
 #
 # [[subpackages]]
@@ -78,7 +95,7 @@ fix = "HTTP lives in api/; a lower layer returns a typed model or raises an AppE
 # fix = "The transport only moves audio; the pipeline module wires it to the talker."
 
 [rules]
-# The only modules (relative to src/<name>/) that read the environment (ARCH-ENV).
+# The only modules (relative to the package folder) that read the environment (ARCH-ENV).
 env_allowed_files = ["core/config.py"]
 # Modules that may write to standard output directly (ARCH-PRINT); all others log.
 output_allowed_files = ["core/logging.py"]
@@ -87,7 +104,7 @@ output_allowed_files = ["core/logging.py"]
 architecture_doc = "ARCHITECTURE.md"
 
 [modules]
-# ARCH-SIZE, for every module in src/ and in the support folders.
+# ARCH-SIZE, for every module of the library, the apps, and the support folders.
 max_lines = 400
 # Folders outside the layers: only the module rules (size, fmt: skip, parse) apply there.
 support_dirs = ["scripts", "tests"]
@@ -115,7 +132,7 @@ required = [
 # History keeps the milestone numbers of its time, and may cite retired debt and principles.
 historical = ["docs/plans/completed/", "docs/design/decisions.md"]
 # Code that may not cite milestones, and whose citations must exist (DOC-MILESTONE, DOC-REF).
-code_dirs = ["src", "scripts", "tests"]
+code_dirs = ["packages", "apps", "examples", "scripts", "tests"]
 # Code exempt from those two rules: the harness tests whose fixtures cite made-up entries.
 code_exempt = ["tests/harness/test_check_docs.py", "tests/harness/test_gc_due.py"]
 # Files (or folders, ending in /) that may keep install placeholders on purpose: an uppercase
@@ -143,7 +160,8 @@ invariants = "docs/SECURITY.md"
 due_after_commits = 40
 min_tokens = 35
 size_watch = 300
-# Where a path named in a doc or a comment may be relative to (src/<name> is always added).
+# Where a path named in a doc or a comment may be relative to (the library's and each app's
+# package folder are always added).
 path_bases = ["", "docs", "docs/design", "docs/plans"]
 # Path prefixes that are not ours to resolve: runtime output, other libraries.
 path_ignored = ["var/"]
@@ -172,13 +190,13 @@ docstrings = 10
 # `uv run poe test` runs `pytest --cov --cov-config=harness.toml`. The floor is a ratchet: set it
 # a little under what CI measures, and raise it as coverage grows.
 [tool.coverage.run]
-source = ["ole5_voice", "scripts"]
+source = ["t2_agentic_voice", "ole5_voice", "minimal_example", "scripts"]
 # Line coverage on Python 3.12's sys.monitoring costs almost nothing; branch coverage falls back
 # to the slower tracer.
 core = "sysmon"
 
 [tool.coverage.report]
-# The scripts are measured for `poe quality`, but the floor is the product package's.
+# The scripts are measured for `poe quality`, but the floor is the product packages'.
 omit = ["scripts/*"]
 fail_under = 90
 show_missing = true
