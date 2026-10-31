@@ -16,7 +16,7 @@ decisions (`D-NNN`), which are permanent. Living docs cite only milestones in th
 | # | Milestone | Status |
 | --- | --- | --- |
 | M0 | Scaffold and harness | in progress ([000](active/000-project-scaffold.md); [001](completed/001-library-and-app.md) done) |
-| M1 | The measurement first: the owner's voice as a golden set | planned |
+| M1 | The measurement first: the owner's voice as a golden set | in progress ([002](active/002-golden-set-baseline.md)) |
 | M2 | A call that listens and speaks, deployed | planned |
 | M3 | Interruptions and cancellation | planned |
 | M4 | The talker and knowledge answers | planned |
