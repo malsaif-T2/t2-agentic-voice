@@ -1399,7 +1399,7 @@ Ole5's golden-set machinery stays in the app, under `apps/ole5-voice-agent/evals
 The layout built in plan 001, with the files this design adds; each lands with its milestone (section 16):
 
 ```
-Ole5-voice-agent/                     the repository; renamed t2-agentic-voice before the first teammate install (open question 13)
+t2-agentic-voice/                     the repository (renamed from Ole5-voice-agent on 2026-11-01, open question 13)
   pyproject.toml                      uv workspace root (not a package): members, dev tools, poe tasks
   uv.lock                             one lock for every member; one requires-python (>=3.12)
   harness.toml                        the rules for every member: the library's layers, [package] public, [[apps]]
@@ -1796,7 +1796,7 @@ The owner answered these on 2026-11-01, recorded in D-018; each answer follows i
 
     **Recommendation: (b) if teammates install from this repository, otherwise (c).** Teammates' install URLs and issue links should not name Ole5. The rename costs path updates in the owner's tooling.
 
-    **The owner's answer: (b).** The repository becomes `t2-agentic-voice` before the first teammate install; the owner renames the folder when no session runs in it.
+    **The owner's answer: (b).** The repository becomes `t2-agentic-voice` before the first teammate install; the owner renamed the folder on 2026-11-01.
 
 14. **The support model.**
     - (a) Issues in the repository, CONTRIBUTING.md, and best-effort answers.

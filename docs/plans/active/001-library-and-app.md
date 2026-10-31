@@ -84,6 +84,9 @@ built on it, so every milestone builds library and app together.
   guide's index and the settings prefix (`T2V_`, in `core/config.py` and `.env.example`) were
   changed to match. Waiting on the owner: approval of the design as amended and of the roadmap;
   T2's answer on its package index; the website team's answer on customer login.
+- 2026-11-01: The owner renamed the folder on disk from `Ole5-voice-agent` to `t2-agentic-voice`
+  (the design's open question 13). The design's layout tree and its answer to question 13 now
+  say so; the decision entries and the owner's quoted words keep the old name as written.
 
 ## Decision log
 
