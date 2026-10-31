@@ -49,6 +49,10 @@ D-017), proposed with it. The goals and the *Done when* lines are unchanged. A f
 for teammates is not a milestone: it is tagged when a real teammate is ready to install it
 (the design's section 16.1).
 
+On 2026-11-01 the owner answered the design's open questions (D-018): M4's background
+troubleshooting moved to the thinker, after M7, and M5's handoff is read back and confirmed
+like any action, which changes M5's *Done when* line.
+
 **M0 · Scaffold and harness.**
 - The project's idea in [DESCRIPTION.md](../project/DESCRIPTION.md), written with the owner.
 - The layers chosen for this domain, in `harness.toml` and [ARCHITECTURE.md](../../ARCHITECTURE.md).
@@ -104,8 +108,8 @@ passes.
 - The owner's calls through the widget recorded with the recording setting on (invariant 8),
   each keeping the caller's track and the agent's playback timeline, so M3's targets are also
   checked on audio that came through WebRTC.
-- *Library:* everything above that is not Ole5's: Pipecat behind its own `media` layer (the
-  transport, VAD, Smart Turn, the speech bridges), the `TextToSpeech` port and the Orpheus
+- *Library:* everything above that is not Ole5's: Pipecat inside `voice` (the transport,
+  VAD, Smart Turn, the speech bridges), the `TextToSpeech` port and the Orpheus
   adapter, the call session in echo mode, signed single-use join tokens, the router and
   `serve()`, the reference browser client and its protocol, the settings with a required `env`
   and their generated reference; `examples/minimal` as an echo agent; the guide's
@@ -146,17 +150,15 @@ steps pass in a live call.
   language per turn; `api` injects into it only the chat-model port and `actions`' tool runner,
   with a test of that wiring.
 - `actions`: one knowledge search per question (T2's Qdrant and embedding gateway, D-002), a
-  short spoken answer with the full steps on screen, a pre-recorded progress line while a tool
-  runs, and deeper troubleshooting as a background job.
+  short spoken answer with the full steps on screen, and a pre-recorded progress line while a
+  tool runs. Deeper troubleshooting in the background moved to the thinker, after M7 (D-018).
 - The output guard on every sentence (invariant 2), and tool arguments parsed at the boundary
   (invariant 4).
 - Simulated calls for knowledge questions in Arabic and English, each scenario repeated.
 - *Library:* the `ChatModel` port and the Groq chat adapter, the talker loop, `@tool` with
   its context and bound parameters, the output guard's ID rule, progress lines, a knowledge
   protocol and helper tool, the text-call testing kit and its fakes, `t2v check`, and the
-  latency measurement; the Qdrant adapter and the prompts stay Ole5's. The package design
-  proposes moving the "deeper troubleshooting" job above to the thinker work after M7 (its
-  open question 17).
+  latency measurement; the Qdrant adapter and the prompts stay Ole5's.
 
 *Done when* retrieval (the right passage in the top 5) and answer correctness are measured; the
 time to the first useful audio meets a target registered in its plan before any run; and the
@@ -170,19 +172,21 @@ rehearsal's password, archiving, and English questions pass.
   the outbox, a durable store behind a `domain` port, from which ticket writes run as jobs with
   a request ID and are never repeated blindly (invariant 6); a correction after creation added
   as a note to the same ticket; ticket status by the session's verified identity only
-  (invariant 3); the handoff ticket with the call's summary (D-009); the cap on creates per
-  caller, read from the outbox.
+  (invariant 3); the handoff ticket with the call's summary (D-009), read back and made only
+  after a clear yes, like any action (D-018); the cap on creates per caller, read from the
+  outbox.
 - Adversarial tests for invariants 1, 2, 3, 4, and 6, against a fake ticket system that refuses,
   times out, and replies late, with and without a lookup by request ID.
 - *Library:* `@action` for any side effect, with the read-back, the yes rule and its receipts,
   the outbox and lookups, the record, the guard's claim rule, the caps, and the safety suite
   teams run on their own actions; the T2 Ticket API adapter and the ticket action stay Ole5's.
-  How the handoff takes consent is the design's open question 6.
+  The handoff takes consent like any action: a read-back, then a clear yes (D-018).
 
 *Done when* simulated calls create the right tickets with zero false action claims; the
 rehearsal's ticket flow passes, where an eager «نعم أرسلها» over the closing question creates the
 ticket once the summary has played and a bare «نعم» there is asked again; and «أبغى موظف»
-spoken over an answer makes a handoff ticket at once.
+spoken over an answer stops the answer, reads the handoff back, and makes the handoff ticket
+after a clear yes.
 
 **M6 · Reliability and operations.**
 - A time limit and a visible fallback for every part: speech-to-text, the model,
@@ -209,8 +213,7 @@ targets hold at the cap on live calls.
 - A report for the owner, every number with its source
   ([docs/project/README.md](../project/README.md)).
 - *Library:* the guide completed (cookbooks with no Ole5 code, safety, troubleshooting); the
-  public API reviewed, each provisional module promoted or kept; the 1.0 question (the
-  design's open question 15).
+  public API reviewed, each provisional module promoted or kept; versions stay `0.x` (D-018).
 
 *Done when* the script passes on every device and the owner accepts the report.
 
@@ -242,23 +245,26 @@ targets hold at the cap on live calls.
 - Teammates use the library from Python first (D-014).
 - The thinker is optional and off by default (D-015).
 - Open-source code and projects may be used (D-016).
+- The owner's answers to the package design's open questions (D-018).
 
 ## Open questions (need a human decision)
 
 - Approve, change, or reject: the stack (D-002), the layers (D-003), SECURITY.md (D-007),
   evaluation.md (D-011), the description, the milestones M1 to M7, and WORKING-RULES.md
   (plan 000).
-- Approve, change, or reject the package design (D-017, plan 001) and answer its open
-  questions (its section 17), above all: what ships for the browser, the settings prefix,
-  the handoff and invariant 1, Pipecat's provider services, the licences, and how teammates
-  install the library (whether T2's package index exists).
+- Approve the package design as amended by the owner's answers (D-017, D-018, plan 001).
+- Whether T2's package index exists and can host the library (the design's open question 9;
+  the owner asks T2).
+- How teammates are supported: left until someone starts using the library (the design's
+  open question 14).
 
 To decide before M2, which builds the call set-up and deploys it:
 
 - How the website proves who the customer is: its server mints the join token for a logged-in
   customer, signed with a key the backend verifies, or the customer confirms a one-time code
   sent to their email. An email typed in the widget is only a contact address: a ticket made
-  with it is marked unverified for support staff, and it never unlocks ticket status.
+  with it is marked unverified for support staff, and it never unlocks ticket status. The
+  owner is asking the website team whether customers log in (D-018).
 - Where the backend and Phoenix run, and how WebRTC media reaches the backend from customers'
   networks (UDP ports, a TURN service, or another transport).
 - The voices: which Groq Orpheus Saudi Arabic voice and which English voice, and the register

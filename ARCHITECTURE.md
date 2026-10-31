@@ -16,7 +16,8 @@ Ole5 Voice Agent is its first app. Two rules shape it most:
 The layers were proposed by the agent on 2026-10-28 and await the owner's approval
 ([D-003](docs/design/decisions.md)); the libraries they own are proposed in D-002. What the
 library provides to an app, and what an app must provide, is proposed in
-[package-design.md](docs/design/package-design.md) (D-017).
+[package-design.md](docs/design/package-design.md) (D-017), with the owner's answers to its
+open questions in D-018.
 
 ## Repository layout: the library and its apps
 
@@ -142,10 +143,12 @@ run").
   installs Pipecat makes `configure_logging` remove loguru's default sink and forward its
   records at the configured level, so no framework debug line carries call content
   ([SECURITY.md](docs/SECURITY.md), invariant 8).
-- `voice` uses Pipecat for its pipeline, its WebRTC transport, and speech detection only. Its
-  own processors call the speech-to-text and text-to-speech ports and run `agent`'s turn inside
-  the turn's cancel scope. Pipecat's provider services (its Groq speech-to-text, model, and
-  text-to-speech services) are never used: they would reach Groq without a port (GP-22), and
+- `voice` uses Pipecat for its pipeline, its WebRTC transport, speech detection, and the base
+  classes of its speech-to-text and text-to-speech services (D-018). Its own subclasses of those
+  call the speech-to-text and text-to-speech ports, and its own processor runs `agent`'s turn
+  inside the turn's cancel scope. Pipecat's ready-made provider services (its Groq
+  speech-to-text, model, and text-to-speech services), its model services, and its own
+  interruptions are never used: a provider service would reach Groq without a port (GP-22), and
   ARCH-OWNER cannot see an import made inside Pipecat.
 - Every turn runs inside a cancel scope owned by `voice`: a stop, a correction, or new words
   cancel the model, the speech, and read-only lookups. Writes to the ticket system run as jobs

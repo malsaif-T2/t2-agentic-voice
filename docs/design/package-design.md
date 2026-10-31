@@ -1,8 +1,8 @@
 # T2 Agentic Voice: package design
 
-**Status: Proposed.** The agent drafted this on 2026-10-31 for the owner and revised it the same day after two reviews. Nothing in it is built. Nothing in it is decided until the owner approves it. Where it would change a recorded decision or an architecture rule, it says so and names the decision entry to write (section 16.3). Where the agent disagrees with a decision, it says so in section 17 and does not change the decision.
+**Status: Proposed, its open questions answered.** The agent drafted this on 2026-10-31 for the owner and revised it the same day after two reviews. On 2026-11-01 the owner answered its open questions (section 17, D-018), and the sections those answers touch were changed to match. Nothing in it is built. The design as a whole is decided when the owner approves it as amended. Where it would change a recorded decision or an architecture rule, it says so and names the decision entry to write (section 16.3). Where the agent disagrees with a decision, it says so in section 17 and does not change the decision.
 
-**Since the draft.** The design was written from commit `a0ca586`. The same day, plan 001 built its first step in a simpler form: one uv workspace with the library, the Ole5 app and `examples/minimal`; one `harness.toml` for the repository, with `[[apps]]` and the rule ARCH-PUBLIC (an app imports the library only through its public modules); and tests in one `tests/` folder at the root. Sections 12, 14 and 16 were aligned with that layout. The owner's decisions taken so far are D-012 to D-016; this design as a whole is D-017, proposed.
+**Since the draft.** The design was written from commit `a0ca586`. The same day, plan 001 built its first step in a simpler form: one uv workspace with the library, the Ole5 app and `examples/minimal`; one `harness.toml` for the repository, with `[[apps]]` and the rule ARCH-PUBLIC (an app imports the library only through its public modules); and tests in one `tests/` folder at the root. Sections 12, 14 and 16 were aligned with that layout. The owner's decisions taken so far are D-012 to D-016, and D-018 for the answers to section 17; this design as a whole is D-017, proposed.
 
 **Inputs:**
 - The owner's decisions of 2026-10-31: approach 3; one uv workspace; Python library only as the v1 usage mode for teammates; the thinker off by default; Groq only, behind ports; the hosting limits.
@@ -111,7 +111,7 @@ All the personas need the same things, and this design is built around them:
 - consent and claims enforced by the library at runtime;
 - an honest account of what runs where and what leaves the host.
 
-**Questions to put to real teammates before the contract is frozen** (open question 23):
+**Questions to put to real teammates** (the contract is fixed at M0, open question 23, so an answer that needs a change to it goes to the owner):
 1. Which Python version does your service run?
 2. Which web framework, and how many workers and replicas?
 3. How do your users sign in? Must your tools call other systems with the user's own token?
@@ -129,9 +129,9 @@ All the personas need the same things, and this design is built around them:
 | Area | What v1 provides | Built when |
 | --- | --- | --- |
 | Real-time call | WebRTC in the backend process (Pipecat SmallWebRTC). The browser's echo canceller works because the agent's audio arrives over a peer connection. Silero VAD and Smart Turn v3.2 run on CPU through ONNX, with no torch. The two-step interruption lowers the agent's voice, then decides from the transcribed overlap, because Groq Whisper gives no partial transcripts (D-004). Stop words, listening sounds and the agent's own echo are told apart. One cancel scope per turn; speech out clause by clause; a history of only what was heard. The library's voice session owns turn order, interruptions, cancellation and history; Pipecat's own interruptions and context handling are switched off (section 13). No Pipecat type appears in the public API | Ole5 M2, M3 |
-| Talker | The turn loop and the reply language per turn. The system prompt is composed from the library's rules, the team's instructions and the language section, and `agent.render_prompt()` shows it. Tool results reach the model as data, never as instructions. The prompt tells the talker to write numbers as digits | Ole5 M4 |
+| Talker | The turn loop and the reply language per turn. The system prompt is composed from the library's rules, the team's instructions and the language section, and `agent.render_prompt()` shows it. Tool results reach the model as data, never as instructions. The prompt tells the talker to write numbers as digits. When the caller asks for something no tool or action provides (a person, in an app with no handoff action), the talker says plainly that it cannot, and may offer a declared action that fits, such as a ticket, read back and confirmed like any other (open question 6) | Ole5 M4 |
 | Tools | `@tool` on an async function, or on a sync function (run in a worker thread). The `ctx` parameter is optional. `Tool.from_function(fn, ...)` wraps an existing function. `bind=` fills parameters from the session (for example `from_caller("subject")`) and hides them from the talker. Each tool has a timeout and a barge-in policy. A progress line is spoken only if the tool runs long. Duplicate calls follow a policy. Arguments are parsed before the function runs. `reports_on=` marks a status tool whose results may support claims (section 8.2) | Ole5 M4 |
-| Confirmed actions | `@action` provides: a read-back from the team's templates, with fixed values spoken through their labels; a read-back receipt; the yes rule from words heard through speech-to-text; a confirmed action that only the yes rule can build; a durable outbox and a job outside the turn; `ctx.request_id` as the idempotency key, with an optional lookup by it; outcome sentences from the real result; defined meanings for every error; the per-call record; per-call and per-caller caps. A second consent mode, `HeardRequest`, exists only if the owner amends invariant 1 (open question 6) | Ole5 M5 |
+| Confirmed actions | `@action` provides: a read-back from the team's templates, with fixed values spoken through their labels; a read-back receipt; the yes rule from words heard through speech-to-text; a confirmed action that only the yes rule can build; a durable outbox and a job outside the turn; `ctx.request_id` as the idempotency key, with an optional lookup by it; outcome sentences from the real result; defined meanings for every error; the per-call record; per-call and per-caller caps. Every action, a handoff included, takes consent this way (open question 6) | Ole5 M5 |
 | Output guard | Checks every clause before it is spoken, against a lexicon of claim phrases declared per action and per language plus a default list. A claim passes only if the call's record holds the action, or a declared status tool returned it in this call. ID-shaped numbers pass only with evidence, after digit scripts and spelled-out digits are normalized. Once the talker calls an action, the rest of its text in that turn is dropped. The guard is lexical: section 8.4 says what it can miss | Ole5 M4 (IDs), M5 (claims) |
 | Identity | A `Caller` fixed when the call starts, passed to every tool and action as `ctx.caller`. Nothing said in the call can change it. One `identity=` parameter on the runtime. `SignedJoinTokens` verifies single-use, short-lived join tokens that the team's website or app mints with `mint()` or with any JWT library. `DevIdentity` serves `t2v dev` only. Serving with no identity source is refused | Ole5 M2 |
 | Serving | Two shapes. A **sidecar**: `serve()` or `t2v serve` runs a separate one-worker process. This is the documented default for any service with more than one worker or replica. A **mount**: `runtime.router()` in an app that runs one worker on one instance. The router carries the runtime's lifespan. A lock file stops a second process from using the same `var_dir`. A per-call offer secret guards `/offer`. `server.allowed_origins` serves pages on another origin. Graceful drain | Ole5 M2, M6; `serve()` is also Core proof |
@@ -145,7 +145,7 @@ All the personas need the same things, and this design is built around them:
 | Testing kit | `TextCall` runs the real voice session, talker, actions, yes rule and guard with no audio, on a virtual clock. Also: `ScriptedLLM` (one entry per model request), `FunctionLLM`, fakes for every port, in-memory stores, assertions, `ActionSafetySuite`, opt-in live simulated callers (`simulate`), and `AudioCall`, which replays audio through the real turn-taking | Ole5 M3 to M5 |
 | Evaluation helpers | Functions, not a CLI: the canonical normalizer, word and character error rates, recall of terms and IDs, text produced from silence, and the paired sign test from evaluation.md. Ole5's golden-set runner, splits and history stay in the app | Ole5 M1 |
 | CLI | `t2v check`, `dev`, `serve`, `doctor`, `settings show --redacted`, `outbox list`, `outbox show`, `outbox reconcile` | Ole5 M2 to M5 |
-| Docs and versioning | The pages in section 14. SemVer and a changelog with a "Behavior changes" section, from the first tag a teammate installs | M0 onward |
+| Docs and versioning | The pages in section 14. SemVer and a changelog with a "Behavior changes" section, from the first tag a teammate installs; versions stay `0.x`, with no date for 1.0 (open question 15) | M0 onward |
 
 **Designed now, built later.** Each item below has a hook in v1, so adding it later changes no public signature.
 
@@ -175,13 +175,12 @@ All the personas need the same things, and this design is built around them:
 | Read tools | Functions with typed parameters, written against their own systems, async or sync. A tool must have no side effects, and must be safe to cancel or to have its result discarded. The library cannot check that a "read" does not write |
 | For each action | A pydantic draft model. Fixed value sets are `Literal` types or enums; in every declared language other than English, each value has a spoken label. A read-back template in every declared language. A `done` template and claim phrases in every declared language, written as past-tense claims ("I've opened"), not nouns ("request number"). An `execute` function that raises `ActionRejected` or `ActionNotSent` only when the action is definitely not done (section 6.4) |
 | An identity source | A website or app server that mints join tokens with the key it shares with the runtime (`SignedJoinTokens.mint()`, or any JWT library following the documented claims). Or, once built, an `authenticate` dependency (section 3.1). Identity never comes from a tool argument. Join-token claims can be read by the caller, so they never hold secrets |
-| A Groq key | A `SecretStr` setting, or a file. For each Orpheus model used, the account must have accepted its terms in the Groq console; both Orpheus models are previews (checked), and Arabic access may need Groq's account team (28 Oct research). The team reads the key's real rate limits in the console and sets a cap on live calls below them (section 10.4) |
-| Groq data controls | Zero Data Retention turned on in Groq's Data Controls, or a recorded reason why not (section 11) |
+| A Groq key | A `SecretStr` setting, or a file. For each Orpheus model used, the account must have accepted its terms in the Groq console; both Orpheus models are previews (checked), and Arabic access may need Groq's account team (28 Oct research). Apps share T2's one key (open question 11): each app sets its share of the key's real rate limits, read in the console, and a cap on live calls below that share (section 10.4) |
 | A page | A web page hosting the voice UI: a copy of the reference client, or their own code speaking `t2v/1`. It shows a consent screen before the microphone opens, and passes the accepted consent version and the recording choice to whatever mints the token. It is served over HTTPS (a secure context; localhost is exempt). If its origin differs from the voice backend's, that origin is listed in `server.allowed_origins` |
 | A media path | Callers' browsers must reach the backend's WebRTC media, either over open UDP or through a TURN relay. Networks that block UDP need TURN over TLS on port 443. Without a media path, calls from other networks fail (section 11) |
 | Durable storage | A persistent `var_dir` for the outbox and the used-token store (SQLite in v1), or their own stores through the ports |
 | An environment | `env` set to `dev`, `test`, `staging` or `prod`. It has no default, so a forgotten value fails at startup instead of switching the production checks off |
-| Data and consent decisions | The data controller's approval to send callers' audio and transcripts to Groq, given Groq's actual wording (section 11). The consent wording and its version. How long traces are kept. How a deletion request is served |
+| Consent wording | The consent wording and its version, shown before the microphone opens. Whether sending callers' audio to Groq suits the team's data is the team's own call; the owner explains Groq's terms to each team that adopts the library (open question 10) |
 | Evaluation data, before real users | A few recordings from consenting speakers on the real devices, with references written under the library's spelling guide, kept out of git. Scripted scenarios for their tools. Their own go-live thresholds. A demo needs none of this; going live without it is not supported |
 
 ### 3.3 What a teammate MAY provide
@@ -223,24 +222,15 @@ All the personas need the same things, and this design is built around them:
 ### 4.1 Install
 
 ```bash
-uv add "t2-agentic-voice[groq,voice,server] @ git+https://<host>/<repo>@t2-agentic-voice/v0.4.0#subdirectory=packages/t2-agentic-voice"
+uv add "t2-agentic-voice @ git+https://<host>/<repo>@t2-agentic-voice/v0.4.0#subdirectory=packages/t2-agentic-voice"
 uv run t2v doctor     # key valid; each language's TTS model and voice usable; model weights present
 ```
 
 Teammates install from a git tag until T2's index is used (section 15).
 
-**Extras:**
-- **Base install** (no extras): the declarations, the text-mode engine, the testing kit and join-token minting. It needs only pydantic, pydantic-settings, num2words, PyJWT and the OpenTelemetry API: no Pipecat, ONNX or FastAPI (open question 2).
-- `[voice]`: `pipecat-ai[webrtc]~=1.15.0`. Pipecat 1.15.0 has no `silero` extra: the Silero VAD and Smart Turn v3.2 ONNX files ship inside its base wheel (checked). The library never uses Pipecat's `local-smart-turn` extra, which pulls in torch and transformers (checked).
-- `[server]`: FastAPI and uvicorn.
-- `[groq]`: the Groq SDK.
-- `[phoenix]`: the OpenTelemetry SDK and the OTLP exporter.
-- `[eval]`: the scorers (jiwer).
-- `[all]`: everything.
+**One install, with no extras** (open question 2). Installing the library brings everything a call needs: Pipecat (`pipecat-ai[webrtc]~=1.15.0`), FastAPI and uvicorn, the Groq SDK, PyJWT, num2words, the OpenTelemetry API, SDK and OTLP exporter, and the scorers (jiwer). Pipecat 1.15.0 has no `silero` extra: the Silero VAD and Smart Turn v3.2 ONNX files ship inside its base wheel (checked). The library never uses Pipecat's `local-smart-turn` extra, which pulls in torch and transformers (checked).
 
-`[voice]` is heavy. Pipecat 1.15.0's base dependencies include numpy, numba, onnxruntime (1.24.3 or later), openai, protobuf (5.29.6 or later), Pillow, loguru, python-dotenv, num2words and an exact `sentencex==1.0.32`. Its `webrtc` extra adds aiortc and `opencv-python-headless` (all checked). The headless OpenCV package may clash with an installed `opencv-python` (**verify**). is-this-for-you.md lists these, with the install size measured in M2.
-
-If a module's extra is missing, importing it raises an `ImportError` with a FIX line that names the extra.
+The install is heavy. Pipecat 1.15.0's base dependencies include numpy, numba, onnxruntime (1.24.3 or later), openai, protobuf (5.29.6 or later), Pillow, loguru, python-dotenv, num2words and an exact `sentencex==1.0.32`. Its `webrtc` extra adds aiortc and `opencv-python-headless` (all checked). The headless OpenCV package may clash with an installed `opencv-python` (**verify**). is-this-for-you.md lists these, with the install size measured in M2.
 
 ### 4.2 Quickstart: `examples/minimal/app.py`
 
@@ -633,7 +623,7 @@ class TestOpenRequestIsSafe(ActionSafetySuite):  # the library's adversarial cas
         return HelpdeskDeps(itsm=FakeItsm())
 ```
 
-These run in CI with no key, no network and no Pipecat. Live scenario runs are opt-in. A team marks them `@pytest.mark.t2v_live`, registers the marker in its `conftest.py`, and deselects it with `addopts = "-m 'not t2v_live'"` (testing.md gives the three lines).
+These run in CI with no key and no network, and never start Pipecat. Live scenario runs are opt-in. A team marks them `@pytest.mark.t2v_live`, registers the marker in its `conftest.py`, and deselects it with `addopts = "-m 'not t2v_live'"` (testing.md gives the three lines).
 
 ### 4.7 Tune with settings, not code
 
@@ -670,8 +660,8 @@ The deployment guide (section 14) gives the reverse-proxy, coturn and Phoenix pi
 ### 4.9 Upgrade
 
 ```bash
-uv add "t2-agentic-voice[groq,voice,server] @ git+https://<host>/<repo>@t2-agentic-voice/v0.7.0#subdirectory=packages/t2-agentic-voice"
-# with a package index instead (section 15): uv add "t2-agentic-voice[groq,voice,server]~=0.7.0"
+uv add "t2-agentic-voice @ git+https://<host>/<repo>@t2-agentic-voice/v0.7.0#subdirectory=packages/t2-agentic-voice"
+# with a package index instead (section 15): uv add "t2-agentic-voice~=0.7.0"
 uv run t2v check helpdesk.voice:agent      # fails on removed settings, warns on deprecated ones
 uv run pytest                              # the offline suite, with no code change expected
 ```
@@ -686,25 +676,25 @@ Before upgrading, the team reads the changelog's "Behavior changes" section. Eac
 
 Stability levels are defined in section 5.4. "Provisional" covers everything that is not on the quickstart or the paths in sections 4.3 to 4.6, until a second team has used it.
 
-| Module | Contents | Extra | Stability |
-| --- | --- | --- | --- |
-| `t2_agentic_voice` | `VoiceAgent`, `Language`, `Vocabulary`, `Phrases`, `SpeakingRules`, `Say`, `ReadBack`, `Claims`, `Spoken`, `Card`, `tool`, `action`, `Tool`, `Action`, `from_caller`, `CallContext`, `ActionContext`, `Caller`, `Consent`, `CallStart`, `CallOptions`, `Providers`, `VoiceSettings`, `VoiceRuntime`; errors (`T2VoiceError`, `ConfigurationError`, `ToolError`, `ActionRejected`, `ActionNotSent`, `ProviderError`, `JoinRejected`). `HeardRequest` only if open question 6 picks (b) | none | stable |
-| `t2_agentic_voice.ports` | `SpeechToText`, `ChatModel`, `TextToSpeech`, `IdentityVerifier`, `UsedTokens`, `Outbox`, `KnowledgeBase`; data types `AudioClip`, `AudioChunk`, `Transcript`, `ChatRequest`, `ChatEvent` (`TextDelta`, `ToolCallRequest`, `Usage`, `Done`), `DataFlow`, `Passage`, `OutboxEntry` | none | stable (`KnowledgeBase`, `Outbox`, `UsedTokens`: provisional) |
-| `t2_agentic_voice.identity` | `SignedJoinTokens` (mint and verify), `DevIdentity`; later `Authenticate` | none | stable |
-| `t2_agentic_voice.groq` | `GroqSTT`, `GroqChat`, `GroqTTS` | `[groq]` | stable |
-| `t2_agentic_voice.server` | `serve(factory)`, `combine_lifespans` | `[server]` | stable |
-| `t2_agentic_voice.testing` | `TextCall`, `ScriptedLLM`, `FunctionLLM`, the fakes, `VirtualClock`, `ActionSafetySuite`, `assert_no_secret_leaks` | none | stable |
-| `t2_agentic_voice.testing.simulate` | `simulate`, `SimulatedCaller`, the hard checks | none | provisional |
-| `t2_agentic_voice.testing.audio` | `AudioCall` (audio replay) | `[voice]` | provisional |
-| `t2_agentic_voice.events` | Frozen event classes (section 6.6) | none | provisional |
-| `t2_agentic_voice.languages` | Presets, `normalize_arabic`, `normalize_digits`, `speak_number`, `speak_id`, `speak_date`, script detection | none | provisional |
-| `t2_agentic_voice.knowledge` | `knowledge_tool(kb, ...)` | none | provisional |
-| `t2_agentic_voice.stores` | `SqliteOutbox`, `SqliteUsedTokens`, `MemoryOutbox`, `MemoryUsedTokens` | none | provisional |
-| `t2_agentic_voice.tracing` | Tracing setup from settings, `Redactor`, Saudi PII patterns | `[phoenix]` | provisional |
-| `t2_agentic_voice.evals` | `wer`, `cer`, `term_recall`, `id_recall`, `silence_output`, `sign_test` | `[eval]` | provisional |
-| `t2_agentic_voice.experimental` | Later: `Thinker`, `Deliver`, `ThinkerBackend`, `LLMThinker` | none | experimental |
-| `t2v` command | Subcommand names and flags | `[server]` for `dev` and `serve` | stable (output text and `--json` shapes: provisional) |
-| Wire protocol `t2v/1` and `t2v-client.js` | Section 5.5 | — | provisional, apart from the version check at join |
+| Module | Contents | Stability |
+| --- | --- | --- |
+| `t2_agentic_voice` | `VoiceAgent`, `Language`, `Vocabulary`, `Phrases`, `SpeakingRules`, `Say`, `ReadBack`, `Claims`, `Spoken`, `Card`, `tool`, `action`, `Tool`, `Action`, `from_caller`, `CallContext`, `ActionContext`, `Caller`, `Consent`, `CallStart`, `CallOptions`, `Providers`, `VoiceSettings`, `VoiceRuntime`; errors (`T2VoiceError`, `ConfigurationError`, `ToolError`, `ActionRejected`, `ActionNotSent`, `ProviderError`, `JoinRejected`) | stable |
+| `t2_agentic_voice.ports` | `SpeechToText`, `ChatModel`, `TextToSpeech`, `IdentityVerifier`, `UsedTokens`, `Outbox`, `KnowledgeBase`; data types `AudioClip`, `AudioChunk`, `Transcript`, `ChatRequest`, `ChatEvent` (`TextDelta`, `ToolCallRequest`, `Usage`, `Done`), `DataFlow`, `Passage`, `OutboxEntry` | stable (`KnowledgeBase`, `Outbox`, `UsedTokens`: provisional) |
+| `t2_agentic_voice.identity` | `SignedJoinTokens` (mint and verify), `DevIdentity`; later `Authenticate` | stable |
+| `t2_agentic_voice.groq` | `GroqSTT`, `GroqChat`, `GroqTTS` | stable |
+| `t2_agentic_voice.server` | `serve(factory)`, `combine_lifespans` | stable |
+| `t2_agentic_voice.testing` | `TextCall`, `ScriptedLLM`, `FunctionLLM`, the fakes, `VirtualClock`, `ActionSafetySuite`, `assert_no_secret_leaks` | stable |
+| `t2_agentic_voice.testing.simulate` | `simulate`, `SimulatedCaller`, the hard checks | provisional |
+| `t2_agentic_voice.testing.audio` | `AudioCall` (audio replay) | provisional |
+| `t2_agentic_voice.events` | Frozen event classes (section 6.6) | provisional |
+| `t2_agentic_voice.languages` | Presets, `normalize_arabic`, `normalize_digits`, `speak_number`, `speak_id`, `speak_date`, script detection | provisional |
+| `t2_agentic_voice.knowledge` | `knowledge_tool(kb, ...)` | provisional |
+| `t2_agentic_voice.stores` | `SqliteOutbox`, `SqliteUsedTokens`, `MemoryOutbox`, `MemoryUsedTokens` | provisional |
+| `t2_agentic_voice.tracing` | Tracing setup from settings, `Redactor`, Saudi PII patterns | provisional |
+| `t2_agentic_voice.evals` | `wer`, `cer`, `term_recall`, `id_recall`, `silence_output`, `sign_test` | provisional |
+| `t2_agentic_voice.experimental` | Later: `Thinker`, `Deliver`, `ThinkerBackend`, `LLMThinker` | experimental |
+| `t2v` command | Subcommand names and flags | stable (output text and `--json` shapes: provisional) |
+| Wire protocol `t2v/1` and `t2v-client.js` | Section 5.5 | provisional, apart from the version check at join |
 
 The settings keys (section 7) are public too. Renaming or removing one follows the deprecation policy.
 
@@ -939,7 +929,7 @@ What v1 must already have for it, all built for M3 to M5 anyway:
 | `name` | no (the function's name) | The tool name the talker sees |
 | `description` | yes | Shown to the talker. Write it in English even for Arabic agents: the earlier research found English tool descriptions called more reliably |
 | The draft (the function's `draft` parameter type) | yes | A pydantic model, and the only schema the talker sees. A field named like consent is refused |
-| `read_back` | yes, unless `consent=HeardRequest(...)` | `ReadBack(templates, send_words=..., show_draft=True, max_attempts=2)`. Each template is a summary followed by a closing question. The receipt covers the summary |
+| `read_back` | yes | `ReadBack(templates, send_words=..., show_draft=True, max_attempts=2)`. Each template is a summary followed by a closing question. The receipt covers the summary |
 | `consent` | no; `ReadBack` | The consent mode (table below) |
 | `done` | yes | The outcome sentence, filled from the real result |
 | `failed`, `unknown`, `declined` | no; library defaults | `failed`: definitely not done. `unknown`: no reply and no lookup hit. `declined`: the caller said no |
@@ -954,7 +944,6 @@ What v1 must already have for it, all built for M3 to M5 anyway:
 | Mode | Consent | A yes spoken over the closing question | Available |
 | --- | --- | --- | --- |
 | `ReadBack` (the default) | The read-back's summary played in full without interruption (the receipt), then a yes from words heard through speech-to-text | Needs a send word, as in «نعم أرسلها». A bare «نعم» there is asked again (invariant 1) | v1 |
-| `HeardRequest(phrases)` | The caller's own request phrase, from a fixed per-language list, matched on heard words (never on model output). At most one such action per call | — | Only if the owner amends invariant 1 (open question 6) |
 | Stricter levels (every yes needs a send word; the draft card always shown) | — | — | On request |
 
 **The lifecycle the library runs.** No step belongs to the model:
@@ -998,7 +987,7 @@ talker calls open_request({...})
   - **Single use:** the `UsedTokens` store rejects a second use of a `jti`.
   - **Lifetime:** 60 s by default, 120 s at most, with a configurable clock-skew allowance.
   - **Readable claims:** a JWT is signed, not encrypted, so the caller can read every claim. Claims never hold secrets or internal data; serving.md says so.
-  - Website teams can mint tokens in any language with any JWT library, following the documented claims. `SignedJoinTokens.mint()` is the reference implementation in Python, in the base install.
+  - Website teams can mint tokens in any language with any JWT library, following the documented claims. `SignedJoinTokens.mint()` is the reference implementation in Python.
 - **Consent version.** When `privacy.consent_version` is set, `/join` refuses a token whose consent version differs, with a notice. The version is stamped on the call's report and its traces.
 
 ### 6.6 Events and hooks
@@ -1110,7 +1099,7 @@ Ole5's invariants (docs/SECURITY.md) are generalized from tickets to any action.
 
 | Invariant | What the library enforces, and how | What stays the app's |
 | --- | --- | --- |
-| 1. No action without consent heard from the caller | The talker's schema holds only the draft. The read-back is a template filled from the draft. Heard words are built only by the voice session, from speech-to-text results, and carry their source. Read-back receipts are built only by the voice session, from the transport's playback reports. The yes rule is the only thing that builds a `ConfirmedAction`, and the action runner accepts nothing else. Consent built from typed text reaches `execute` only when `env` is `test`, and serving refuses `test`. No public constructor or parameter accepts consent. These classes are `[[restricted]]` in the library's harness. Adversarial tests run in the library, and `ActionSafetySuite` runs the same cases on each team's actions. `HeardRequest` exists only after this invariant is amended (open question 6) | Templates that state every field that matters, truthfully. Spoken labels callers understand. Its own word additions |
+| 1. No action without consent heard from the caller | The talker's schema holds only the draft. The read-back is a template filled from the draft. Heard words are built only by the voice session, from speech-to-text results, and carry their source. Read-back receipts are built only by the voice session, from the transport's playback reports. The yes rule is the only thing that builds a `ConfirmedAction`, and the action runner accepts nothing else. Consent built from typed text reaches `execute` only when `env` is `test`, and serving refuses `test`. No public constructor or parameter accepts consent. These classes are `[[restricted]]` in the library's harness. Adversarial tests run in the library, and `ActionSafetySuite` runs the same cases on each team's actions. A handoff is an action like any other (open question 6) | Templates that state every field that matters, truthfully. Spoken labels callers understand. Its own word additions |
 | 2. No claim without a record | Outcome sentences come only from `done` templates filled from real results. The guard applies rules A to C (section 8.2) to every clause before TTS, and to model-written text shown on screen. A status result counts only from a tool declared with `reports_on=`. Simulated calls count violations, and the check runs in every `TextCall` | Claim phrases that cover how its domain talks ("submitted" against "approved"). `reports_on=` on its status tools. Tool results that carry only true data |
 | 3. Identity comes from the session | The `Caller` is fixed at join. `ctx.caller` is read-only, and nothing said in the call changes it. `bind=from_caller(...)` fills identity parameters from the session and hides them from the talker. `t2v check` warns about identity-like parameters left unbound | A correct identity source. Tools that scope data by `ctx.caller`, never by an argument |
 | 4. Model output is parsed | Every tool and action argument is parsed into pydantic types, and invalid values go back to the talker with the field named. `Literal` types and enums fix value sets, and `validate` checks against the backend's lists. Tool results and passages are framed as data in the prompt | Fixed sets that match its backend. No tool that executes instructions found in text |
@@ -1193,7 +1182,7 @@ Yes words and listening sounds spoken over the summary are ignored and do not co
 
 ### 9.2 `TextCall`
 
-`TextCall` runs the real voice session through a text transport, together with the real talker, actions, yes rule, guard and outbox (in memory by default). It needs no key, no network and no Pipecat, and it is deterministic. It always runs with `env="test"`, which is the only place typed text can stand in for heard words. It is not a chat channel, and testing.md says so.
+`TextCall` runs the real voice session through a text transport, together with the real talker, actions, yes rule, guard and outbox (in memory by default). It needs no key and no network, never starts Pipecat, and is deterministic. It always runs with `env="test"`, which is the only place typed text can stand in for heard words. It is not a chat channel, and testing.md says so.
 
 - **Playback.** The read-back counts as fully played unless the test says otherwise.
 - **Injection:**
@@ -1229,7 +1218,7 @@ Yes words and listening sounds spoken over the summary are ignored and do not co
 - It reports tool accuracy and false claims over the repeats, and the noise rules of evaluation.md apply to its results.
 - These tests are marked `t2v_live` and deselected by default.
 
-### 9.5 Audio replay (`[voice]`; provisional)
+### 9.5 Audio replay (provisional)
 
 `AudioCall` runs the real media pipeline on a transport fed from files, with no WebRTC: VAD, Smart Turn and the two-step interruption. It uses `FakeSTT` or a real provider.
 - It plays golden WAV files and measures the time from a stop word to silence, and how often the caller is cut off.
@@ -1240,7 +1229,7 @@ Yes words and listening sounds spoken over the summary are ignored and do not co
 
 The Groq adapters' tests in the library's CI check shapes, cancellation, errors, `max_chars` and that no secret appears in a repr. The live part is opt-in. Contract suites that other authors can subclass come when a teammate writes an adapter (section 3.1).
 
-### 9.7 Evaluation helpers (`[eval]`; provisional)
+### 9.7 Evaluation helpers (provisional)
 
 The prototype's scorer is ported to the library as functions, as D-010 allows:
 - the canonical Arabic normalizer (in `languages`);
@@ -1258,10 +1247,9 @@ Ole5's golden-set machinery stays in the app, under `apps/ole5-voice-agent/evals
 `examples/minimal` is a workspace member with its own `pyproject.toml`. It depends only on `t2-agentic-voice` and is banned from importing internals (section 12.5). CI runs:
 1. its text-mode tests in English and Saudi Arabic, with no key;
 2. `t2v check` on its agent;
-3. from M2, a **base-only job**: a fresh environment with no extras runs its text tests, which proves the base install needs no Pipecat;
-4. from M2, a **torch check**: the resolved `[voice]` set must not contain torch;
-5. from the first teammate tag, a **wheel job**: CI builds the library wheel and installs it with `[groq,voice,server]` into a fresh environment outside the workspace, then imports it, runs `t2v check`, starts `serve()` and requests `/health`, which proves the packaging;
-6. an opt-in live smoke test with a key, run by hand or on a schedule.
+3. from M2, a **torch check**: the resolved install must not contain torch;
+4. from the first teammate tag, a **wheel job**: CI builds the library wheel and installs it into a fresh environment outside the workspace, then imports it, runs `t2v check`, starts `serve()` and requests `/health`, which proves the packaging;
+5. an opt-in live smoke test with a key, run by hand or on a schedule.
 
 ---
 
@@ -1269,7 +1257,7 @@ Ole5's golden-set machinery stays in the app, under `apps/ole5-voice-agent/evals
 
 ### 10.1 Tracing
 
-- **Packages and providers.** The OpenTelemetry API is in the base install; the SDK and the OTLP exporter are in `[phoenix]`.
+- **Packages and providers.** The OpenTelemetry API, SDK and OTLP exporter are part of the one install.
   - The library uses the team's `TracerProvider` if one is given. Otherwise it builds a private one from `tracing.endpoint`.
   - It never calls `set_tracer_provider` and never instruments other libraries: no LangChain instrumentor, and Pipecat's own tracing is off.
   - Plain OTLP goes to Phoenix by default, and to any OpenTelemetry backend if the team points it elsewhere.
@@ -1299,7 +1287,7 @@ Ole5's golden-set machinery stays in the app, under `apps/ole5-voice-agent/evals
 - **Pipecat logs through loguru,** a process-wide logger:
   - The default, `logging.pipecat="off"`, calls `loguru.logger.disable("pipecat")` at runtime start. This is loguru's switch for one namespace; no sink is added or removed.
   - `"forward"` re-enables the namespace and adds a sink that forwards Pipecat's WARNING and above to `t2_agentic_voice.pipecat`. If the team's own loguru default sink is still installed, it also prints Pipecat's lower-level lines, which may hold call content; the logging docs say so, and recommend `forward` only where that sink is removed.
-  - With Pipecat's logs off, failures are still visible: the `media` layer turns Pipecat's error frames, transport and ICE failures, and processor exceptions into library log lines (with no call content) and `TransportFailed` or `ProviderFailed` events.
+  - With Pipecat's logs off, failures are still visible: the `voice` layer turns Pipecat's error frames, transport and ICE failures, and processor exceptions into library log lines (with no call content) and `TransportFailed` or `ProviderFailed` events.
   - This is the library's one global touch. It is limited to the `pipecat` namespace, which the contract reserves to the library.
 
 ### 10.3 Latency
@@ -1324,7 +1312,7 @@ Ole5's golden-set machinery stays in the app, under `apps/ole5-voice-agent/evals
   - TTS characters, requests and cache hits.
 - **Cost.** The library holds no prices. A price table and a daily budget are on request (section 3.1).
 - **Rate limits:**
-  - One limiter per model, shared by every runtime in the process, keyed by provider, key fingerprint and model, and sized from settings (the app's share of the key).
+  - One limiter per model, shared by every runtime in the process, keyed by provider, key fingerprint and model, and sized from settings: the app's share of T2's one shared key (open question 11).
   - It honours `retry-after` (set only on a 429) and the `x-ratelimit-limit-*`, `x-ratelimit-remaining-*` and `x-ratelimit-reset-*` headers for requests and tokens (checked).
   - Repeated 429s start a short cool-off, during which new calls are refused with a busy notice.
   - The spoken fallback plays a cached phrase, so it works even when TTS itself is rate-limited.
@@ -1335,7 +1323,7 @@ Ole5's golden-set machinery stays in the app, under `apps/ole5-voice-agent/evals
 
   One read of the page described these as the Developer plan's base limits; another read found the plan unclear. The prototype's key was on Groq's on-demand tier at 400 requests a minute (roadmap, M6). Clause-by-clause synthesis at 100 TTS requests a day would carry only a few calls. So M2 reads the key's real limits in the console, records them, and counts requests per call minute per model from then on (open question 21).
 - **TTS caching.** `lifespan` renders the fixed phrases once (greetings, progress lines, fallbacks, the yes-rule prompts) and caches them under `var_dir`, keyed by a hash of the text, model and voice. Rendered templates and talker clauses that repeat exactly are cached the same way.
-- **How many calls one key carries** (M6) comes from those counts. The cap on live calls is set below the key's limit.
+- **How many calls one key carries** (M6) comes from those counts. The cap on live calls is set below the app's share of the key's limit.
 
 ### 10.5 Health, readiness and drain
 
@@ -1373,7 +1361,7 @@ Ole5's golden-set machinery stays in the app, under `apps/ole5-voice-agent/evals
 | HTTPS | Required for the microphone outside localhost. TLS ends at the team's reverse proxy |
 | WebRTC media | See below |
 | Groq | A key. The terms accepted for each Orpheus model used. Both Orpheus models are previews, under 200 characters per request (checked). The key's real rate limits read and recorded (section 10.4). A spend limit set in the console (the team's choice) |
-| Groq data | Groq's "Your Data" page says (checked): by default Groq does not retain customer data from inference requests; it may keep logs for reliability or abuse checks for up to 30 days, which a customer can opt out of in Data Controls; Zero Data Retention can be turned on by any customer; data Groq does retain is held in Google Cloud buckets in the United States. The page does not say where requests are processed. The 28 Oct research's line that Groq "stores customer data in US GCP buckets" holds only for retained data. Teams turn on Zero Data Retention, or record why not, and give their data controller Groq's own wording |
+| Groq data | Groq's "Your Data" page says (checked): by default Groq does not retain customer data from inference requests; it may keep logs for reliability or abuse checks for up to 30 days, which a customer can opt out of in Data Controls; Zero Data Retention can be turned on by any customer; data Groq does retain is held in Google Cloud buckets in the United States. The page does not say where requests are processed. The 28 Oct research's line that Groq "stores customer data in US GCP buckets" holds only for retained data. The library sets no requirement here: the owner explains Groq's terms to each team that adopts the library, and each team decides for its own data (open question 10) |
 | Storage | `var_dir` on a persistent volume, holding the lock file, `outbox.db`, `used_tokens.db` and the phrase cache, one folder per agent. Recordings are stored there only if they are enabled |
 | Phoenix | A small service with auth on, a persistent volume and no public exposure. The Elastic License 2.0 allows running it inside T2, but not offering it as a service |
 | CPU per call | Not measured yet. M6 measures it with fake providers on a named machine, and the deployment guide publishes the number |
@@ -1411,7 +1399,7 @@ Ole5's golden-set machinery stays in the app, under `apps/ole5-voice-agent/evals
 The layout built in plan 001, with the files this design adds; each lands with its milestone (section 16):
 
 ```
-Ole5-voice-agent/                     the repository (its name: open question 13)
+Ole5-voice-agent/                     the repository; renamed t2-agentic-voice before the first teammate install (open question 13)
   pyproject.toml                      uv workspace root (not a package): members, dev tools, poe tasks
   uv.lock                             one lock for every member; one requires-python (>=3.12)
   harness.toml                        the rules for every member: the library's layers, [package] public, [[apps]]
@@ -1419,15 +1407,15 @@ Ole5-voice-agent/                     the repository (its name: open question 13
   CLAUDE.md  ARCHITECTURE.md  WORKING-RULES.md
   docs/                               the project's record: plans, roadmap, decisions, harness docs
   packages/t2-agentic-voice/
-    pyproject.toml                    distribution t2-agentic-voice; extras (proposed); requires-python
+    pyproject.toml                    distribution t2-agentic-voice; no extras (open question 2); requires-python
     README.md                         CHANGELOG.md  SUPPORT.md  CONTRIBUTING.md  THIRD_PARTY_NOTICES.md (proposed)
     src/t2_agentic_voice/
       __init__.py ports.py events.py languages.py knowledge.py identity.py stores.py
       groq.py server.py tracing.py evals.py              public facades (re-exports only)
-      core/ domain/ adapters/ actions/ agent/ voice/ media/ testing/ api/     the layers
+      core/ domain/ adapters/ actions/ agent/ voice/ testing/ api/     the layers
       api/static/t2v-client.js  api/static/dev.html      served by the router; shipped in the wheel
   apps/ole5-voice-agent/
-    pyproject.toml                    t2-agentic-voice from the workspace (extras when they exist)
+    pyproject.toml                    t2-agentic-voice from the workspace
     src/ole5_voice/                   today one package; core/ domain/ adapters/ agent/ api/ (proposed, 12.3)
     web/                              the Ole5 widget, built on t2v-client.js
     evals/                            items, references, manifests and hashes (D-006, D-011); no audio; never shipped
@@ -1447,20 +1435,18 @@ The golden set's audio lives under the git-ignored `var/` or in a private store,
 | `adapters` | The Groq adapters, the SQLite stores, signed join tokens, TURN credential minting | `core`, `domain` | `groq`, `sqlite3`, `jwt` |
 | `actions` | The tool runner (async and threaded), the action lifecycle, outbox jobs, the per-call record, per-call caps | `core`, `domain` | — |
 | `agent` | The talker: prompt composition; one turn from heard words to a reply and tool calls; the reply language; the guard applied per clause; the confirmation sub-flow, which calls the yes rule | `core`, `domain`, `actions` | — |
-| `voice` | The call session, without Pipecat: turn order, cancel scopes, heard words (with their source) and read-back receipts, playback bookkeeping, heard history, the two-step interruption flow, per-call limits, the text transport | `core`, `domain`, `agent` | — |
-| `media` (new) | Pipecat: the pipeline, SmallWebRTC, Silero, Smart Turn, the STT and TTS bridges, the session bridge, the file-fed transport. It maps Pipecat events to session events, carries out the session's commands, turns Pipecat errors into library events, and holds the loguru policy | `core`, `domain`, `voice` | `pipecat`, `loguru` |
-| `testing` (new, public) | Fakes, `TextCall`, `AudioCall`, `ScriptedLLM`, checks, `ActionSafetySuite`, `simulate`, scorers | `core`, `domain`, `actions`, `agent`, `voice`, `media` | `jiwer` |
+| `voice` | The call session: turn order, cancel scopes, heard words (with their source) and read-back receipts, playback bookkeeping, heard history, the two-step interruption flow, per-call limits, the text transport. And Pipecat, in modules of its own: the pipeline, SmallWebRTC, Silero, Smart Turn, the STT and TTS bridges, the session bridge, the file-fed transport; they map Pipecat events to session events, carry out the session's commands, turn Pipecat errors into library events, and hold the loguru policy. The session's modules never import Pipecat | `core`, `domain`, `agent` | `pipecat`, `loguru` |
+| `testing` (new, public) | Fakes, `TextCall`, `AudioCall`, `ScriptedLLM`, checks, `ActionSafetySuite`, `simulate`, scorers | `core`, `domain`, `actions`, `agent`, `voice` | `jiwer` |
 | `api` | The composition root: `VoiceRuntime`, the router, `serve`, the protocol models, the static client, the CLI | every layer | `fastapi`, `starlette`, `uvicorn` |
 
 **Proposed changes to Ole5's seven layers, with reasons:**
-1. **`media` is split out of `voice`.**
-   - The base install must work without Pipecat: the agent-graph persona's must-have, and what keeps teammates' CI light.
-   - Text-mode tests then run the same session code that builds heard words and receipts in a real call, so they test the real consent path. The parity test (section 9.5) checks this.
-   - Pipecat's churn stays inside one layer.
-   - SECURITY.md's wording ("only `voice` builds heard words and the read-back receipt") does not change, because `media` only reports playback and transcripts to the session.
-2. **A `testing` layer.** The testing kit is part of the contract. It must sit inside a layer for the harness, and it must not need FastAPI. `testing` imports `media` only in `testing/audio.py`. The base-only CI job proves that the rest never loads Pipecat, which the import rules cannot check.
-3. **loguru is owned by `media`,** not by `core` as D-002 and M2 planned. Pipecat is the only reason loguru is present, and the policy is to switch off one namespace, not to route a global logger.
-4. **Pipecat's STT and TTS base classes are wrapped; its LLM services are not used** (section 13). This supersedes a bullet of D-002 and the convention in ARCHITECTURE.md.
+1. **No `media` layer** (open question 2: one install, so nothing has to keep Pipecat out of a base install). Pipecat stays in `voice`, as ARCHITECTURE.md has it, in modules of its own:
+   - the session's modules never import Pipecat, so text-mode tests run the same session code that builds heard words and receipts in a real call, and test the real consent path; the parity test (section 9.5) checks this;
+   - Pipecat's churn stays inside those modules;
+   - SECURITY.md's wording ("only `voice` builds heard words and the read-back receipt") does not change.
+2. **A `testing` layer.** The testing kit is part of the contract. It must sit inside a layer for the harness, and it must not need FastAPI. `AudioCall`, in `testing/audio.py`, is its only module that runs Pipecat.
+3. **loguru is owned by `voice`,** not by `core` as D-002 and M2 planned. Pipecat is the only reason loguru is present, and the policy is to switch off one namespace, not to route a global logger.
+4. **Pipecat's STT and TTS base classes are wrapped; its LLM services are not used** (section 13, open question 8). D-018 supersedes D-002's bullet, and ARCHITECTURE.md's convention was changed to match on 2026-11-01.
 5. **Public facade modules sit at the package root.** Today the harness forbids modules directly under `src/<name>/` other than `__init__.py`.
 
 ### 12.3 The Ole5 app's layers
@@ -1479,7 +1465,7 @@ The app shrinks to five layers:
 - **Built in plan 001 (D-013):** one `harness.toml` for the repository. `[package] root` and `public` locate the library and its public modules; `[[apps]]` lists the Ole5 app and the example. ARCH-PUBLIC fails an app that imports a non-public library module or another app, and fails the library if it imports an app; a layer may not import from the package root. This replaces the per-member configurations the first draft proposed.
 - **The app's own layers (proposed, 12.3)** need `[[apps]]` to carry layers, or a configuration per member; the plan that gives the app its layers chooses.
 - **ARCH-BAN (new):** banned module prefixes, per member and per layer, with exceptions and a FIX line. It has two uses:
-  - In the library, it bans Pipecat's vendor service modules (`pipecat.services.<vendor>`) and its LLM-service and context-aggregator modules. It allows `pipecat.services.stt_service`, `pipecat.services.tts_service` and `pipecat.services.ai_service` in `media`. ARCH-OWNER cannot express this, because it matches top-level packages (survey).
+  - In the library, it bans Pipecat's vendor service modules (`pipecat.services.<vendor>`) and its LLM-service and context-aggregator modules. It allows `pipecat.services.stt_service`, `pipecat.services.tts_service` and `pipecat.services.ai_service` in `voice`. ARCH-OWNER cannot express this, because it matches top-level packages (survey).
   - In the app and the examples, it bans `pipecat` and `aiortc`. (The ban on non-public `t2_agentic_voice` modules exists already, as ARCH-PUBLIC.)
 - **ARCH-FACADE (new, with the first facade in M1):** each module listed in `[package] facades` contains only imports and `__all__`.
 - **ARCH-WORDS (new, small, M1):** the library's `src/` must not contain app names (`ole5`, `otrs`, `ds.t2.sa`), checked case-insensitively. This answers the fear that the library is "Ole5-shaped underneath".
@@ -1491,7 +1477,7 @@ The app shrinks to five layers:
 - **One invariants register.** `[references] invariants` in every member points at the library's SECURITY.md. The app's own rules are cited as "app invariant N"; the checker gains a second register only if the app needs one.
 - **CI:**
   - Python 3.12 only, matching the one `requires-python`;
-  - from M2: the base-only job, the torch check;
+  - from M2: the torch check;
   - a check that no audio file is committed under `apps/`;
   - from the first teammate tag: the public-API snapshot (griffe) and the wheel job (section 9.8).
 
@@ -1506,28 +1492,28 @@ The app shrinks to five layers:
 
 ## 13. Open-source building blocks
 
-Accepting each licence is the owner's call (WORKING-RULES.md), so the list is open question 20.
+Accepting each licence is the owner's call (WORKING-RULES.md): the owner accepted this list on 2026-11-01 (open question 20).
 
 | Component | Licence | Verdict | Where | Notes |
 | --- | --- | --- | --- | --- |
-| Pipecat (`pipecat-ai`) | BSD-2 | **Depend**, `pipecat-ai[webrtc]~=1.15.0` | `media` only | 1.15.0 was uploaded on 29 Oct and requires Python 3.11 or later (checked). It brings the user-turn redesign and deprecates the old turn APIs "until 2.0.0" (survey and a reviewer's reading of the release notes), so we write against the new API. Its wheel contains a `pipecat.flows` package and an `llm_with_backend` package (checked); `LLMWithBackend`'s status is from the survey. Per the survey, Daily is its only backer |
-| SmallWebRTC transport | BSD-2 | **Depend** (inside Pipecat) | `media` | One peer connection per call inside the process. Its request handler keys connections on `pc_id` (checked), so our router guards it (section 5.5) |
+| Pipecat (`pipecat-ai`) | BSD-2 | **Depend**, `pipecat-ai[webrtc]~=1.15.0` | `voice` only | 1.15.0 was uploaded on 29 Oct and requires Python 3.11 or later (checked). It brings the user-turn redesign and deprecates the old turn APIs "until 2.0.0" (survey and a reviewer's reading of the release notes), so we write against the new API. Its wheel contains a `pipecat.flows` package and an `llm_with_backend` package (checked); `LLMWithBackend`'s status is from the survey. Per the survey, Daily is its only backer |
+| SmallWebRTC transport | BSD-2 | **Depend** (inside Pipecat) | `voice` | One peer connection per call inside the process. Its request handler keys connections on `pc_id` (checked), so our router guards it (section 5.5) |
 | aiortc | BSD-3 | **Indirect** (Pipecat's `webrtc` extra) | — | Never imported by our code |
-| Silero VAD | MIT | **Depend** (in Pipecat's base wheel, checked) | `media` | Its thresholds become settings |
-| Smart Turn v3.2 | BSD-2 | **Depend** (the ONNX file is in Pipecat's base wheel, checked); vendor its training script later, for a Saudi fine-tune, outside the library | `media` | Per the survey, its card gives 89.76% accuracy on Arabic against 94.26% on English. Per a reviewer's reading of the 1.15 notes, stop strategies now combine differently, so we set ours explicitly |
-| `groq` SDK | Apache-2.0 (checked, 1.7.0) | **Depend** (`[groq]`) | `adapters` | Only `adapters` imports it |
-| PyJWT | MIT | **Depend** (base) | `adapters` | HS256 only |
+| Silero VAD | MIT | **Depend** (in Pipecat's base wheel, checked) | `voice` | Its thresholds become settings |
+| Smart Turn v3.2 | BSD-2 | **Depend** (the ONNX file is in Pipecat's base wheel, checked); vendor its training script later, for a Saudi fine-tune, outside the library | `voice` | Per the survey, its card gives 89.76% accuracy on Arabic against 94.26% on English. Per a reviewer's reading of the 1.15 notes, stop strategies now combine differently, so we set ours explicitly |
+| `groq` SDK | Apache-2.0 (checked, 1.7.0) | **Depend** | `adapters` | Only `adapters` imports it |
+| PyJWT | MIT | **Depend** | `adapters` | HS256 only |
 | pydantic, pydantic-settings | MIT | **Depend** | everywhere, `core` | — |
-| FastAPI, uvicorn | MIT, BSD-3 | **Depend** (`[server]`) | `api` | Router lifespans are merged by `include_router` (checked in 0.162.0) |
-| OpenTelemetry API, SDK, OTLP exporter | Apache-2.0 | **Depend**: the API in the base install, the rest in `[phoenix]` | `core` | — |
+| FastAPI, uvicorn | MIT, BSD-3 | **Depend** | `api` | Router lifespans are merged by `include_router` (checked in 0.162.0) |
+| OpenTelemetry API, SDK, OTLP exporter | Apache-2.0 | **Depend** | `core` | — |
 | OpenInference semantic conventions | Apache-2.0 | **Depend** | `core` | Attribute names only |
-| `openinference-instrumentation-pipecat` | Apache-2.0 | Open question 7 | `media` | It patches Pipecat process-wide and records transcripts on its own terms |
+| `openinference-instrumentation-pipecat` | Apache-2.0 | **Not used** (open question 7) | — | It patches Pipecat process-wide and records transcripts on its own terms |
 | Arize Phoenix server | Elastic License 2.0 | **Run** | small service | May be run inside T2, but not offered as a service |
 | coturn | BSD-3 style | **Run**, if the M2 test needs it | small service | TURN over TLS on 443 |
 | camel-tools | MIT | **Vendor** a few normalizers, with attribution | `domain` | The package itself pulls in torch |
 | num2words | LGPL-2.1 | **Depend**, unmodified, behind a `domain` function | `domain` | MSA numbers. IDs are spoken digit by digit from our own table. It is already a Pipecat base dependency (checked) |
 | sentencex | MIT | **Indirect** (Pipecat pins `==1.0.32`, checked) | — | Our own clause splitter in `domain` handles «؟» and «،», and Pipecat's TTS aggregation is set to pass text through, so text mode and audio mode split text the same way |
-| jiwer | Apache-2.0 | **Depend** (`[eval]`) | `testing` | — |
+| jiwer | Apache-2.0 | **Depend** | `testing` | — |
 | griffe | ISC | **Depend (dev)**, from the first teammate tag | CI | The public-API snapshot |
 | eot-bench | Apache-2.0; data CC-BY-4.0 | **Depend (dev)** | evals | Its Arabic slice is not Saudi speech |
 | Pipecat evals | BSD-2 | **Learn**; maybe dev later | — | Its default judge, caller voice and transcriber do not fit Arabic |
@@ -1548,7 +1534,7 @@ Accepting each licence is the owner's call (WORKING-RULES.md), so the list is op
 **The decision on Pipecat's provider services: wrap the STT and TTS base classes only** (open question 8):
 - **What stays.** The rule's purpose: providers are reached only through our ports and adapters (GP-22).
 - **What goes.** The blanket ban on Pipecat's service base classes.
-- **The bridges in `media`:**
+- **The bridges in `voice`:**
   - a speech-to-text bridge on `SegmentedSTTService` (present in 1.15.0, checked), calling the `SpeechToText` port;
   - a text-to-speech bridge on `TTSService`, calling the `TextToSpeech` port, with `text_aggregation_mode=TextAggregationMode.TOKEN` (present in 1.15.0, checked), so text passes straight through and our clause splitter in `domain` is the only splitter;
   - a **session bridge**: a plain `FrameProcessor`, not an `LLMService`. It forwards session events (the user's turn ended, with heard words; playback progress) to `voice`, and carries out the session's commands (speak a clause, duck, unduck, stop).
@@ -1557,7 +1543,7 @@ Accepting each licence is the owner's call (WORKING-RULES.md), so the list is op
 - **What we gain.** We keep Pipecat's transport, VAD, Smart Turn, segmented-STT padding and the STT and TTS metrics. We do not rebuild them.
 - **The ban.** ARCH-BAN forbids `pipecat.services.<vendor>` and Pipecat's LLM modules under `src/`. Pipecat's Groq services stay allowed outside the runtime: in evaluation factories, and in a parity check of our adapter against `GroqSTTService` on the golden set.
 - **The cost.** We depend on two base classes that still change. The mitigations: a test per bridge, the parity test, the pin, and every Pipecat upgrade as a plan of its own.
-- **Decision records.** This needs a decision entry that supersedes the D-002 bullet, and an edit to ARCHITECTURE.md's conventions.
+- **Decision records.** D-018 supersedes the D-002 bullet, and ARCHITECTURE.md's conventions say so (2026-11-01).
 
 ---
 
@@ -1568,8 +1554,8 @@ All docs are Markdown in `docs/guide/` of this repository for now, where the har
 | Page | Purpose | Lands with |
 | --- | --- | --- |
 | `README.md` | The first screen: what the library does, the contract in brief, the quickstart | M2 |
-| `contract.md` | PROVIDES, MUST and MAY (section 3), as a teammate reads them, with the "built when" labels. Provisional until a real teammate has answered the questions in section 2 | M0 |
-| `is-this-for-you.md` | The fit check: Python floor, OS and wheels, no torch, the heavy dependencies and known clashes (section 4.1), the one-process rule and the sidecar, network needs (UDP or TURN), what Groq keeps and where (section 11), Groq's low published limits, licences (Orpheus terms, Smart Turn, Silero), hosting limits | M2 |
+| `contract.md` | PROVIDES, MUST and MAY (section 3), as a teammate reads them, with the "built when" labels. Fixed at M0 (open question 23); a later change is the owner's decision, with a changelog entry | M0 |
+| `is-this-for-you.md` | The fit check: Python floor, OS and wheels, no torch, the heavy dependencies and known clashes (section 4.1), the one-process rule and the sidecar, network needs (UDP or TURN), Groq's low published limits, licences (Orpheus terms, Smart Turn, Silero), hosting limits | M2 |
 | `quickstart.md` | `examples/minimal` end to end: English first, then Saudi Arabic; ends with the "first call does not work" checklist driven by `t2v doctor` | M2 (echo version), M5 (final) |
 | `concepts.md` | Talker, tools, actions, turns, the two-step interruption, the cancel scope, heard history; a diagram of one turn | M3 |
 | `writing-for-voice.md` | How to write instructions for speech, tool descriptions, read-backs, claim phrases, send words and spoken labels, each with a good and a bad example | M4 |
@@ -1583,7 +1569,7 @@ All docs are Markdown in `docs/guide/` of this repository for now, where the har
 | `evaluation.md` | The evaluation helpers; recording your own golden set with consent and keeping audio out of git; the spelling guide; noise and the sign test | M1 |
 | `latency.md` | The per-stage budget measured on Groq from the end of speech, with progress lines apart; how to measure your own | M4 |
 | `tracing-and-logs.md` | Phoenix, your own `TracerProvider`, redaction, what a trace holds, the logging policy and the loguru default sink | M2 |
-| `data-and-privacy.md` | What leaves the host, to which provider, and what it keeps (Groq's own wording); Zero Data Retention; recording and the consent claim; retention; the consent version; what the DPO needs | M2 |
+| `data-and-privacy.md` | What the library itself stores and sends: what a trace holds and its redaction, the `var_dir` stores, audio never stored unless both the setting and the caller's consent allow it, the consent claim and its version. Groq's own terms are not covered here: the owner explains them to each team (open question 10) | M2 |
 | `audio-troubleshooting.md` | Echo on laptop speakers, Bluetooth hands-free microphones, microphone permissions, UDP and TURN failures | M3 |
 | `deployment.md` | The process model and the lock file, Docker, TURN behind a corporate proxy, one instance, drain, health and admission, capacity | M6 |
 | `runbook.md` | A Groq 429 storm or outage, a deprecated model, TURN down, Phoenix down or full, a stuck outbox write, key rotation, a deletion request, a suspected breach | M6 |
@@ -1591,7 +1577,7 @@ All docs are Markdown in `docs/guide/` of this repository for now, where the har
 | `cookbook/it-helpdesk.md`, `cookbook/hr-leave.md` | Worked use cases that use no Ole5 code | M5, M7 |
 | `reference/api.md` (generated) | The public modules, from docstrings (griffe), with each module's stability | M2 onward |
 | `upgrading.md` and `CHANGELOG.md` | Versioning, stability levels, deprecation, behaviour changes, the Pipecat pin and upgrade policy | The first teammate tag |
-| `SUPPORT.md`, `CONTRIBUTING.md` | How to report a problem; how to contribute adapters and docs; what support exists | The first teammate tag |
+| `SUPPORT.md`, `CONTRIBUTING.md` | How to report a problem; how to contribute adapters and docs; what support exists, decided when someone starts using the library (open question 14) | The first teammate tag |
 | `thinker.md` | The job lifecycle, delivery, the stale rules, bringing your own backend | After M7 |
 
 ---
@@ -1606,7 +1592,7 @@ All docs are Markdown in `docs/guide/` of this repository for now, where the har
 | A static simple index (PEP 503 files) on the website host | Fits D-005, since it is part of the website | Needs authentication in front of it for internal code |
 | Public PyPI | The easiest install | Exposes internal code; not wanted before T2 decides |
 
-**Recommendation** (open question 9): ask T2 now whether its package index exists. Use it from the first teammate install if it does; otherwise use git tags on a mirror repository. Public PyPI is not an option for now. Whatever the channel, the golden set's audio is never in git (section 9.7), so a teammate who can read the repository never gets the owner's recordings.
+**The owner's answer** (open question 9): T2's package index from the first teammate install if it exists, otherwise git tags on a mirror repository; the owner asks T2 whether the index exists. Public PyPI is not an option for now. Whatever the channel, the golden set's audio is never in git (section 9.7), so a teammate who can read the repository never gets the owner's recordings.
 
 - **Version scheme.** SemVer `MAJOR.MINOR.PATCH`, with `0.x` until 1.0. The version in `pyproject.toml` is bumped as milestones land. No tag is cut until a teammate is ready to install; tags are then `t2-agentic-voice/vX.Y.Z`. The app is never published; its deployments are tracked by image tag.
 - **Each tagged release carries:**
@@ -1628,18 +1614,18 @@ The Ole5 app is still required, and it drives the work. Each milestone keeps its
 
 | Milestone | Ole5 app work (goal unchanged) | Library work it forces |
 | --- | --- | --- |
-| **M0** Scaffold and harness (in progress) | The app moves to `apps/ole5-voice-agent` with its five layers | The workspace with three members and one `requires-python`, and ARCH-PUBLIC for the app and the example (both built, plan 001); the library's empty layers; `contract.md` (provisional); the decision entries (16.3). *Done when* `poe check` passes for every member, and the owner has approved this design, the contract and the decision entries, and has ruled on D-002, D-003, D-007 and D-011 in their amended form (plan 000) |
+| **M0** Scaffold and harness (in progress) | The app moves to `apps/ole5-voice-agent` with its five layers | The workspace with three members and one `requires-python`, and ARCH-PUBLIC for the app and the example (both built, plan 001); the library's empty layers; `contract.md` (fixed at M0, open question 23); the decision entries (16.3). *Done when* `poe check` passes for every member, and the owner has approved this design, the contract and the decision entries, and has ruled on D-002, D-003, D-007 and D-011 in their amended form (plan 000) |
 | **M1** Measurement first | The golden set from the owner's voice, with audio kept out of git; the golden-set runner and poe tasks of evaluation.md, in the app; the registration; the baseline scorecard | The `SpeechToText` port and the Groq Whisper adapter; the canonical Arabic normalizer, digit normalization and spelling-guide support; the scorer functions (`wer`, `cer`, recall, `sign_test`); the tracing helpers in `core`, with usage on STT spans; the test that no secret reaches a trace; the first facades with ARCH-FACADE and ARCH-WORDS |
-| **M2** A call that listens and speaks, deployed | The widget, built on the reference client; deployment to the owner's host; the network test and the media-path decision; the identity decision (open question 19); the owner's calls recorded with the recording setting and the consent claim on | The `media` layer (SmallWebRTC, Silero, Smart Turn, the STT and TTS bridges, the session bridge, Pipecat's interruptions off); the `TextToSpeech` port and the Groq Orpheus adapter (a model and voice per language, clause split under 200 characters, pronunciation, the phrase cache); the voice session in echo mode; the identity source Ole5 picked, plus `DevIdentity`; the used-token store; the offer secret; CORS; the router with its lifespan, `serve()`, the lock file and the dev page; `t2v-client.js` and `t2v/1`; `VoiceSettings` with a required `env`, and its generated reference; the loguru policy, Pipecat error events and the invariant 8 test; TURN credentials only if the network test needs TURN; `t2v doctor` (basic) and `t2v settings show`; the key's real limits read and recorded, and requests counted per call minute; the base-only job and the torch check; `examples/minimal` as an echo use case |
+| **M2** A call that listens and speaks, deployed | The widget, built on the reference client; deployment to the owner's host; the network test and the media-path decision; the identity decision (open question 19); the owner's calls recorded with the recording setting and the consent claim on | Pipecat's modules in `voice` (SmallWebRTC, Silero, Smart Turn, the STT and TTS bridges, the session bridge, Pipecat's interruptions off); the `TextToSpeech` port and the Groq Orpheus adapter (a model and voice per language, clause split under 200 characters, pronunciation, the phrase cache); the voice session in echo mode; the identity source Ole5 picked, plus `DevIdentity`; the used-token store; the offer secret; CORS; the router with its lifespan, `serve()`, the lock file and the dev page; `t2v-client.js` and `t2v/1`; `VoiceSettings` with a required `env`, and its generated reference; the loguru policy, Pipecat error events and the invariant 8 test; TURN credentials only if the network test needs TURN; `t2v doctor` (basic) and `t2v settings show`; the key's real limits read and recorded, and requests counted per call minute; the torch check; `examples/minimal` as an echo use case |
 | **M3** Interruptions and cancellation | The thresholds registered; the Ole5 word additions; the targets on the golden overlap clips and the M2 recordings | Cancel scopes; the two-step interruption (`duck` messages and the overlap window); the stop and listening presets; the own-echo rule; heard history; `AudioCall` and the parity test; in the client, a push-to-talk fallback and a Bluetooth hands-free warning |
 | **M4** The talker and knowledge answers | The Qdrant adapter and the search tool; the prompts; simulated knowledge calls | The `ChatModel` port and the Groq chat adapter; the talker loop; `@tool` (async and sync, `bind`, `reports_on`), `Tool.from_function` and `CallContext`; cards; reply language; prompt composition and `render_prompt`; the guard's ID rule with digit normalization; progress lines; `KnowledgeBase` and `knowledge_tool`; `TextCall`, `ScriptedLLM` and the fakes; `simulate`; `t2v check`; time-to-first-audio measurement and the latency page; `writing-for-voice.md`; the read tool in `examples/minimal` |
-| **M5** Tickets, ticket status and handoff | The T2 Ticket API adapter; the `create_ticket` action with spoken labels; the `ticket_status` tool with `reports_on`; the handoff (open question 6); Ole5's adversarial tests | `@action` and its lifecycle; the `ReadBack` consent mode, and `HeardRequest` if the owner amends invariant 1; the yes rule and receipts, with the heard-words source; the error meanings; the SQLite outbox, jobs and lookup; the record; the guard's claim rule and rule C; per-call and per-caller caps; `ActionSafetySuite`; the hard checks in `simulate`; `t2v outbox`; the action in `examples/minimal` |
+| **M5** Tickets, ticket status and handoff | The T2 Ticket API adapter; the `create_ticket` action with spoken labels; the `ticket_status` tool with `reports_on`; the handoff, confirmed like any action (open question 6); Ole5's adversarial tests | `@action` and its lifecycle; the `ReadBack` consent mode; the yes rule and receipts, with the heard-words source; the error meanings; the SQLite outbox, jobs and lookup; the record; the guard's claim rule and rule C; per-call and per-caller caps; `ActionSafetySuite`; the hard checks in `simulate`; `t2v outbox`; the action in `examples/minimal` |
 | **M6** Reliability and operations | Capacity: requests per call minute, calls per key, CPU; the cap set below the key's limit | Timeouts and fallbacks for each provider; 429 handling, the process-wide per-model limiter and cool-off; admission control with a busy notice; readiness on startup and drain only; idle timeout; drain; usage in the call report; the full `t2v doctor`; the deployment guide and the runbook; CPU per call measured |
-| **M7** The rehearsal | The script passes on every device; the report | Docs completed (cookbooks, safety, troubleshooting); the public API reviewed, with provisional modules promoted or kept; the 1.0 decision (open question 15) |
+| **M7** The rehearsal | The script passes on every device; the report | Docs completed (cookbooks, safety, troubleshooting); the public API reviewed, with provisional modules promoted or kept; versions stay `0.x` (open question 15) |
 
 **The first teammate tag** is not a milestone. Whenever a real teammate is ready to install, the tag is cut after: the griffe snapshot and the wheel job are on, the changelog, SUPPORT.md, CONTRIBUTING.md and upgrading.md exist, and the distribution channel (open question 9) is settled.
 
-M4's bullet "deeper troubleshooting as a background job" is the thinker pattern. The agent proposes moving it to the thinker work after M7 (open question 17). M4 keeps one fast search per question and an honest progress line.
+M4's bullet "deeper troubleshooting as a background job" is the thinker pattern. The owner moved it to the thinker work after M7 (open question 17). M4 keeps one fast search per question and an honest progress line.
 
 ### 16.2 After M7
 
@@ -1661,18 +1647,18 @@ No order is fixed among these; the owner chooses:
 ### 16.3 Decision entries to write
 
 Numbers are taken when each entry is written, after checking that no other session has claimed them. D-002, D-003, D-007 and D-011 are still Proposed, so the agent suggests the owner rules on them in their amended form in plan 000; that leaves fewer entries that supersede unaccepted ones.
-Recorded already, on 2026-10-31: the library and the app in one workspace, with the public-API rule (D-013); the v1 usage mode (D-014; what ships for the browser is still open question 1); the thinker's owner-decided part (D-015; building it after M7, in the experimental module, is still open questions 16 and 17); open source allowed (D-016; the licences are still open question 20). This design as a whole is D-017, proposed. Still to write, each when the owner rules on it:
-- Pipecat 1.15.x, wrapping only its STT and TTS base classes, and its own interruptions off. This supersedes a bullet of D-002 and amends the conventions in ARCHITECTURE.md.
+Recorded already, on 2026-10-31: the library and the app in one workspace, with the public-API rule (D-013); the v1 usage mode (D-014; what ships for the browser is still open question 1); the thinker's owner-decided part (D-015; building it after M7, in the experimental module, is still open questions 16 and 17); open source allowed (D-016; the licences are still open question 20). This design as a whole is D-017, proposed; the owner's answers to section 17 are D-018 (2026-11-01). Still to write, each when the owner rules on it:
+- Pipecat 1.15.x, wrapping only its STT and TTS base classes, and its own interruptions off. This supersedes a bullet of D-002 and amends the conventions in ARCHITECTURE.md. Done in D-018.
 - GP-22's "swapped by configuration" widened to "by a setting, or by passing an adapter object in code".
-- The library's layers (`media`, `testing`) and the app's five layers. This amends D-003.
+- The library's `testing` layer (with no `media` layer, D-018) and the app's five layers. This amends D-003.
 - The harness: one configuration per member, ARCH-BAN, ARCH-FACADE, ARCH-WORDS, one invariants register.
 - The public API, the stability levels, and the Python floor of 3.12.
 - Settings precedence, the prefix, and a required `env`.
 - Serving and identity: the sidecar and the mount, one process per `var_dir` with the lock file, one `identity=` source, the join-token format, the offer secret, consent in the token, and Ole5's identity answer (open question 19).
-- SECURITY.md generalized to actions and moved to the library as the one register, which amends D-007, with the handoff answer (open question 6).
+- SECURITY.md generalized to actions and moved to the library as the one register, which amends D-007. Invariant 1 itself stays: a handoff is confirmed like any action (D-018).
 - Evaluation: scorer functions in the library, the golden-set runner in the app, and audio kept out of git. This follows up D-011.
-- The tracing path (open question 7).
-- The licences accepted (open question 20).
+- The tracing path: done in D-018.
+- The licences accepted: done in D-018.
 
 ### 16.4 Risks carried
 
@@ -1683,7 +1669,7 @@ Recorded already, on 2026-10-31: the library and the app in one workspace, with 
   - a 10-second billing minimum per transcription request (checked), which makes each overlap check costly;
   - both Orpheus models are previews with a 200-character limit (checked);
   - published limits of 10 TTS requests a minute and 100 a day per Orpheus model, and 20 a minute for Whisper (section 10.4), which may cap Ole5 at a few calls a day unless the key's real limits are higher;
-  - one key's limits shared by every call;
+  - one key's limits shared by every call, and by every app (open question 11);
   - retained data stored in the US, and the processing location not stated.
 - **The guard is lexical** (section 8.4).
 - **aiortc's networking unknowns** until the M2 spike: the port range, Docker NAT, and relaying through TURN over TLS.
@@ -1695,6 +1681,8 @@ Recorded already, on 2026-10-31: the library and the app in one workspace, with 
 
 ## 17. Open questions for the owner
 
+The owner answered these on 2026-11-01, recorded in D-018; each answer follows its question, in the owner's own words where they wrote them. Two answers wait on a fact the owner is finding out (9: whether T2's package index exists; 19: whether Ole5's website logs customers in), and one is left until someone starts using the library (14).
+
 1. **What ships for the browser in v1?**
    - (a) Our own thin client `t2v-client.js` with our own protocol `t2v/1`, as a provisional reference.
    - (b) Pipecat's client-js and small-webrtc-transport, vendored as one bundle and speaking RTVI.
@@ -1702,11 +1690,15 @@ Recorded already, on 2026-10-31: the library and the app in one workspace, with 
 
    **Recommendation: (a).** It needs no build step and no daily-js, which is about 1.2 MB (survey). The protocol stays ours and versioned, apart from RTVI's renames. Ole5's widget and every teammate reuse it. The cost is a few hundred lines of JavaScript that we maintain. Keeping it provisional avoids a browser-facing contract before the widget mode is designed, which keeps the owner's "Python library only" decision.
 
+   **The owner's answer: (a).**
+
 2. **Should the base install leave out Pipecat (the `media` split)?**
    - (a) Yes. The base has declarations, the text engine, join-token minting and the testing kit; `[voice]` adds Pipecat.
    - (b) No. One install, always with Pipecat.
 
    **Recommendation: (a).** Teammates' CI and the agent-graph persona need a light, conflict-free base, and a team's main app can mint tokens without Pipecat. It costs one layer and one CI job.
+
+   **The owner's answer: (b), one install.** So there is no `media` layer and there are no extras: Pipecat stays in `voice` (section 12.2), and installing the library brings everything a call needs (section 4.1).
 
 3. **The library's Python floor.**
    - (a) 3.12, like Ole5, lowered later as a minor release when a real teammate needs 3.11.
@@ -1714,12 +1706,16 @@ Recorded already, on 2026-10-31: the library and the app in one workspace, with 
 
    **Recommendation: (a).** This changes the first draft's recommendation. A uv workspace resolves one `requires-python` for all members, so a 3.11 floor would need a separate unlocked CI job, and the harness's `sysmon` coverage needs 3.12. The only reason given for 3.11 was an assumed persona. Pipecat supports 3.11 (checked), so lowering later is possible.
 
+   **The owner's answer: (a).**
+
 4. **The library's default settings prefix.**
    - (a) `T2V_`.
    - (b) `T2_VOICE_`.
    - (c) No default: the app must always pass its own.
 
-   **Recommendation: (a)**, with `from_env(prefix=...)` for teams that want their own. Until this is decided, the scaffold's `Settings` uses `T2_AGENTIC_VOICE_` (D-013).
+   **Recommendation: (a)**, with `from_env(prefix=...)` for teams that want their own. Until the owner's answer below, the scaffold's `Settings` used `T2_AGENTIC_VOICE_` (D-013).
+
+   **The owner's answer: (a), `T2V_`.** The scaffold's `Settings` uses it from 2026-11-01.
 
 5. **One process per `var_dir` in v1?**
    - (a) Yes: SQLite stores, a lock file, the sidecar for multi-worker services, and the reasons documented.
@@ -1728,12 +1724,16 @@ Recorded already, on 2026-10-31: the library and the app in one workspace, with 
 
    **Recommendation: (a).** The stores are ports already. A shared adapter comes when a team needs more than one instance, and it would be one more small service under D-005.
 
+   **The owner's answer: (a).**
+
 6. **The handoff and invariant 1.** M5 says «أبغى موظف» makes a handoff ticket at once, but invariant 1 requires a read-back and a yes first.
    - (a) The handoff is a normal action with a short read-back.
    - (b) Amend invariant 1: an action declared with `consent=HeardRequest(...)` may take consent from a heard request phrase. The phrase comes from fixed per-language lists, it is matched on heard words (never on model output), and at most one such action runs per call. Nothing else about the yes rule changes: a bare yes over a closing question is still asked again.
    - (c) The handoff is not an action at all.
 
    **Recommendation: (b).** Consent still comes from heard words, the rehearsal step passes, and the harm of a mistaken handoff ticket is small. (c) would create a record outside the rules, so the agent advises against it.
+
+   **The owner's answer**, in their words: "if the agent has the ability to handoff, it should ask to confirm the action. otherwise it should clarify it can not do it. Or maybe offer a ticket instead. But in general is should ask to confirm." So invariant 1 is unchanged and `HeardRequest` is dropped: a handoff is an action like any other, read back and done only after a clear yes, as in (a). In an app with no handoff action, the talker says it cannot hand the call over, and may offer a ticket instead, confirmed the same way (section 3.1, Talker). For Ole5, where a handoff is a ticket (D-009), «أبغى موظف» starts the handoff's read-back.
 
 7. **The tracing path.**
    - (a) Our own spans, following OpenInference conventions.
@@ -1742,12 +1742,16 @@ Recorded already, on 2026-10-31: the library and the app in one workspace, with 
 
    **Recommendation: (a).** The turn, guard, receipt and confirmation spans have to be ours anyway. (b) patches Pipecat for the whole process and records content on its own terms. Mixing paths gives every step two spans. If (a) turns out costly, M2 spikes (b).
 
+   **The owner's answer: (a).**
+
 8. **Pipecat's provider services.**
    - (a) Wrap the STT and TTS base classes only; the session bridge is a plain processor; Pipecat's LLM services and interruptions are not used.
    - (b) Also wrap `LLMService` and use Pipecat's function-call machinery.
    - (c) Keep D-002's "never used" and write our own STT and TTS processors from scratch.
 
    **Recommendation: (a)**, as section 13 argues. (b) would give history, cancellation and tool calls two owners and make text-mode tests test a different path. (c) rebuilds padding, flushing and metrics that Pipecat already has. It also means starting on Pipecat 1.15.x rather than the 1.14 the research advised.
+
+   **The owner's answer: (a).** D-018 supersedes D-002's bullet, and ARCHITECTURE.md's conventions now say this.
 
 9. **Distribution.**
    - (a) T2's package index from the first teammate install if it exists; otherwise git tags on a mirror repository.
@@ -1756,12 +1760,16 @@ Recorded already, on 2026-10-31: the library and the app in one workspace, with 
 
    **Recommendation: (a).** Please ask T2 whether the "T2 package index" that DESCRIPTION.md mentions exists and can host this. (b) gives every teammate the app's code.
 
+   **The owner's answer: (a).** The owner asks T2 whether its package index exists and can host the library.
+
 10. **Sending teammates' audio to Groq.**
     - (a) The library documents the data flow in Groq's own words; each team turns on Zero Data Retention or records why not; each team's data controller signs off; internal pilots only until then.
     - (b) Wait for a T2-wide position first.
     - (c) Wait for a Saudi-hosted provider.
 
     **Recommendation: (a)**, and ask T2 compliance for a position in parallel. By Groq's page, inference data is not retained by default; logs may be kept up to 30 days unless opted out or ZDR is on; retained data sits in the US; the processing location is not stated (checked). HR data in particular needs the sign-off.
+
+    **The owner's answer**, in their words: "Do not worry about this, I will explain this to anyone that wants to use the package. They also should know this by themselves because of the models they will need to use". So the library sets no requirement here: no Zero Data Retention rule and no sign-off in the contract (section 3.2). Its guide documents only what the library itself stores and sends (section 14).
 
 11. **Groq keys.**
     - (a) One key per app.
@@ -1770,12 +1778,16 @@ Recorded already, on 2026-10-31: the library and the app in one workspace, with 
 
     **Recommendation: (a)**, so one app's load cannot exhaust another's limits. Use (b) only if T2 gives a single key.
 
+    **The owner's answer: (b), one shared key.** Each app sets its share of the key's limits (section 10.4).
+
 12. **Browser support for the reference client.**
     - (a) Chrome and Edge supported; Firefox and Safari best effort.
     - (b) All four supported.
     - (c) Chrome only.
 
     **Recommendation: (a).** This covers T2 laptops and Ole5's customers without a testing burden one person cannot carry. The Teams desktop webview is untested.
+
+    **The owner's answer: (a).**
 
 13. **The repository's name.** The project is named T2 Agentic Voice (D-013); the question is the repository's and its folder's name.
     - (a) Keep "Ole5-voice-agent".
@@ -1784,12 +1796,16 @@ Recorded already, on 2026-10-31: the library and the app in one workspace, with 
 
     **Recommendation: (b) if teammates install from this repository, otherwise (c).** Teammates' install URLs and issue links should not name Ole5. The rename costs path updates in the owner's tooling.
 
+    **The owner's answer: (b).** The repository becomes `t2-agentic-voice` before the first teammate install; the owner renames the folder when no session runs in it.
+
 14. **The support model.**
     - (a) Issues in the repository, CONTRIBUTING.md, and best-effort answers.
     - (b) (a) plus a named backup maintainer once a second team adopts the library.
     - (c) No support outside Ole5 until 1.0.
 
     **Recommendation: (b).** It answers the bus-factor fear without promising response times nobody can keep.
+
+    **The owner's answer**, in their words: "I am not sure yet, we can think about this when we really build it and someone starts using it". Open until then; SUPPORT.md is written with the answer.
 
 15. **When is 1.0?**
     - (a) When Ole5 passes M7.
@@ -1798,6 +1814,8 @@ Recorded already, on 2026-10-31: the library and the app in one workspace, with 
 
     **Recommendation: (b).** A second use case is the only real test that the API is not Ole5-shaped.
 
+    **The owner's answer: (c).** Versions stay `0.x`, with no date set for 1.0.
+
 16. **The thinker: when, and its first backend.**
     - (a) After M7, an LLM thinker on Groq first, then the LangGraph adapter.
     - (b) After M7, the LangGraph adapter first.
@@ -1805,17 +1823,23 @@ Recorded already, on 2026-10-31: the library and the app in one workspace, with 
 
     **Recommendation: (a).** It proves the stale, budget and delivery rules with the fewest moving parts. "After M7" is the agent's proposal, not the owner's decision; the design keeps nothing that blocks building it earlier.
 
+    **The owner's answer: (a).**
+
 17. **M4's "deeper troubleshooting as a background job".**
     - (a) Move it to the thinker work after M7. M4 keeps one fast search and a progress line.
     - (b) Keep a narrow mode for one slow read in the background in M4.
 
     **Recommendation: (a).** It matches the owner's decision that the thinker is optional, and it keeps M4 small. The prototype showed that slow searches are better made fast than run in the background.
 
+    **The owner's answer: (a).** The roadmap's M4 says so.
+
 18. **The join-token format.**
     - (a) A compact JWT, HS256 only, with documented claims.
     - (b) Our own HMAC format.
 
     **Recommendation: (a).** A website team in any language can mint one with a standard library, and the library's verifier accepts only HS256 with a known key ID. Its claims are readable by the caller under either option, so neither may carry secrets.
+
+    **The owner's answer: (a).**
 
 19. **How Ole5's website proves who the customer is** (open in the roadmap, to decide before M2).
     - (a) The website's server mints the join token for a logged-in customer (`SignedJoinTokens`).
@@ -1824,12 +1848,16 @@ Recorded already, on 2026-10-31: the library and the app in one workspace, with 
 
     **Recommendation: (a) if the website already has customer login; otherwise (b).** The library fits either unchanged, and only the chosen one is built in M2. An email typed in the widget stays a contact address that never unlocks ticket status (DESCRIPTION.md).
 
+    **The owner's answer: not known yet.** The owner asks the website team whether customers log in. M2 builds sign-in only after the answer.
+
 20. **The licences to accept** (the owner's call under WORKING-RULES.md).
     - (a) Accept the list in section 13 as it stands: Pipecat (BSD-2), aiortc (BSD-3), Silero (MIT), Smart Turn (BSD-2), the groq SDK (Apache-2.0), PyJWT (MIT), num2words (LGPL-2.1, as an unmodified dependency), camel-tools normalizers vendored with their notice (MIT), jiwer (Apache-2.0), coturn (BSD-3 style), Phoenix (Elastic License 2.0, run only), and the Orpheus terms in the Groq console.
     - (b) Accept all but the vendoring: write our own Arabic normalizers.
     - (c) Review each one separately.
 
     **Recommendation: (a).** All are used as the survey describes, and only camel-tools code is copied, under MIT with its notice.
+
+    **The owner's answer: (a).**
 
 21. **Groq's low published limits for Orpheus and Whisper.**
     - (a) Read the key's real limits in M2; if they are as published, ask Groq for higher limits on the key, and cache every repeated phrase meanwhile.
@@ -1838,6 +1866,8 @@ Recorded already, on 2026-10-31: the library and the app in one workspace, with 
 
     **Recommendation: (a).** At 100 TTS requests a day, Ole5 could not pass its rehearsal on every device. Caching helps only with repeated phrases.
 
+    **The owner's answer: (a).**
+
 22. **The serving shape teammates are told to use.**
     - (a) The sidecar by default for any service with more than one worker or replica; the mount for one-worker apps and demos.
     - (b) The mount only.
@@ -1845,11 +1875,15 @@ Recorded already, on 2026-10-31: the library and the app in one workspace, with 
 
     **Recommendation: (a).** Mounting forces one worker and a long drain on the host service, which a multi-worker service should not take on. The sidecar reuses the same token path as Ole5's website mode.
 
+    **The owner's answer: (a).**
+
 23. **When to freeze the contract.**
     - (a) `contract.md` lands in M0 marked provisional, and is frozen after at least one real teammate has answered the questions in section 2.
     - (b) Freeze it at M0.
 
     **Recommendation: (a).** The personas are the agent's assumptions, and the answers may change the MUST list (the Python floor, the serving shape, delegated credentials).
+
+    **The owner's answer: (b).** `contract.md` lands in M0 as the fixed contract. A later change to it is the owner's decision, recorded, with a changelog entry. The questions in section 2 are still put to real teammates.
 
 ---
 
@@ -1870,6 +1904,6 @@ Issues from the two reviews that were not applied as written, one line each:
 - **DX, `VoiceRuntime(agents=[...])` (low):** not added; one runtime per agent, with a process-wide limiter and per-agent stores.
 - **Architecture, key rotation moved to "On request" (high, scope):** partly applied; the join key is a map by key ID, which costs no extra code and allows rotation, and there is no separate rotation feature.
 - **Architecture, `authenticate=` moved to "On request" (high, scope):** applied, except that it is built in M2 if Ole5 picks the one-time email code (open question 19).
-- **Architecture, `logging.pipecat` defaulting to forward (low):** not applied; while a team's loguru default sink is installed, forwarding would also print Pipecat's DEBUG lines, which may hold transcripts (invariant 8). Instead, `media` turns Pipecat's errors and transport failures into library logs and events.
+- **Architecture, `logging.pipecat` defaulting to forward (low):** not applied; while a team's loguru default sink is installed, forwarding would also print Pipecat's DEBUG lines, which may hold transcripts (invariant 8). Instead, `voice` turns Pipecat's errors and transport failures into library logs and events (`media` before D-018).
 - **Architecture, the claim that Pipecat Flows is in core (medium, Pipecat pin):** checked rather than left as "verify"; the 1.15.0 wheel contains a `pipecat.flows` package.
 - **Architecture, Groq's Orpheus limits:** applied with care; the agent's own read of Groq's rate-limits page found the same numbers but described them as the Developer plan's base limits, so the design treats the owner's key as unknown until M2 reads it.

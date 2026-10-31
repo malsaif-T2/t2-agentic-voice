@@ -18,7 +18,8 @@ built on it, so every milestone builds library and app together.
   and the library never imports an app; a layer never imports from the package root. Each rule
   has tests in `tests/harness/`.
 - [x] Renamed: the project (T2 Agentic Voice), the library's package (`t2_agentic_voice`) and its
-  settings prefix (`T2_AGENTIC_VOICE_`); the Ole5 app keeps its name and package (`ole5_voice`).
+  settings prefix (`T2_AGENTIC_VOICE_`, then `T2V_` by D-018); the Ole5 app keeps its name and
+  package (`ole5_voice`).
 - [x] [DESCRIPTION.md](../../project/DESCRIPTION.md) widened to the library and its users,
   awaiting the owner's approval (plan 000).
 - [ ] The package design ([package-design.md](../../design/package-design.md), D-017) is
@@ -77,6 +78,12 @@ built on it, so every milestone builds library and app together.
   milestone, from the design's section 16, with the thinker under "Planned later". `uv run poe
   check` passes (111 tests, coverage 100%). Waiting on the owner: the design and its open
   questions, and the re-planned roadmap.
+- 2026-11-01: The owner answered the design's 23 open questions with the agent, in six groups
+  ordered by the milestone each blocks (D-018). The design, the roadmap (M2, M4, M5, M7 and its
+  open questions), ARCHITECTURE.md's Pipecat convention, DESCRIPTION.md's handoff line, the
+  guide's index and the settings prefix (`T2V_`, in `core/config.py` and `.env.example`) were
+  changed to match. Waiting on the owner: approval of the design as amended and of the roadmap;
+  T2's answer on its package index; the website team's answer on customer login.
 
 ## Decision log
 
@@ -92,6 +99,12 @@ built on it, so every milestone builds library and app together.
 - 2026-10-31: The folder on disk keeps the name `Ole5-voice-agent`: the agent's sessions run
   inside it, so renaming it from inside a session would break that session. The owner renames
   it when no session is open in it (nothing in the repository depends on the folder's name).
+- 2026-11-01: The owner's "one install" (the design's open question 2) is read as no extras at
+  all, not only Pipecat in the base install: each extra the design listed (`[groq]`, `[server]`,
+  `[phoenix]`, `[eval]`) held something a call or its tests need. The owner may still choose
+  optional extras for the tracing exporter and the scorers.
+- 2026-11-01: The open questions are answered, but the design as a whole stays Proposed (D-017)
+  until the owner approves it as amended, so its criterion stays open.
 
 ## The owner's decisions
 
@@ -113,3 +126,15 @@ questions:
   open-source code and projects to help us accomplish ours. Also we need to determine what we
   provide for teammate developers and what we require for them, I mean we need to do the whole
   design of the package early."
+
+On 2026-11-01, the answers to the design's open questions; D-018 lists every answer. The
+owner's own words:
+
+- The handoff: "if the agent has the ability to handoff, it should ask to confirm the action.
+  otherwise it should clarify it can not do it. Or maybe offer a ticket instead. But in general
+  is should ask to confirm."
+- Teammates' audio sent to Groq: "Do not worry about this, I will explain this to anyone that
+  wants to use the package. They also should know this by themselves because of the models they
+  will need to use"
+- Support for teammates: "I am not sure yet, we can think about this when we really build it
+  and someone starts using it"

@@ -16,8 +16,8 @@ run.
 
 | Page | What it will cover | Lands with |
 | --- | --- | --- |
-| `contract.md` | What the library provides, what you must provide, and what you may provide, with the default for each | M0 (provisional until real teammates have answered the design's questions) |
-| `is-this-for-you.md` | The fit check: Python version, operating system, the heavy dependencies, one process per data folder and the sidecar, network needs (UDP or TURN), what Groq keeps and where, Groq's published limits, the licences | M2 |
+| `contract.md` | What the library provides, what you must provide, and what you may provide, with the default for each | M0 (fixed then, D-018) |
+| `is-this-for-you.md` | The fit check: Python version, operating system, the heavy dependencies, one process per data folder and the sidecar, network needs (UDP or TURN), Groq's published limits, the licences | M2 |
 | `quickstart.md` | `examples/minimal` end to end, English first, then Saudi Arabic; a checklist for a first call that does not work | M2 (an echo agent), M5 (the final quickstart) |
 | `concepts.md` | The talker, tools, actions, turns, the two-step interruption, the cancel scope, the history of what the caller heard; one turn in a diagram | M3 |
 | `writing-for-voice.md` | Instructions written for speech, tool descriptions, read-backs, claim phrases, send words and spoken labels, each with a good and a bad example | M4 |
@@ -31,7 +31,7 @@ run.
 | `evaluation.md` | Recording your own test set with consent and keeping audio out of git; scoring; noise | M1 |
 | `latency.md` | Where the time goes in a turn, and how to measure yours | M4 |
 | `tracing-and-logs.md` | Phoenix or your own tracing, redaction, what a trace holds, the logging policy | M2 |
-| `data-and-privacy.md` | What leaves your host, to which provider, and what it keeps; recording and consent; retention | M2 |
+| `data-and-privacy.md` | What the library itself stores and sends: what a trace holds, the data folder, recording and consent | M2 |
 | `audio-troubleshooting.md` | Echo on laptop speakers, Bluetooth headsets, microphone permissions, UDP and TURN failures | M3 |
 | `deployment.md` | The process model, containers, TURN, drain, health, capacity | M6 |
 | `runbook.md` | Rate limits and outages, a stuck write, key rotation, a deletion request | M6 |

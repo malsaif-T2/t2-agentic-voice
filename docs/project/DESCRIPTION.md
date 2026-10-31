@@ -88,8 +88,9 @@ The Ole5 Voice Agent, on top of it:
 3. **Ticket creation:** the agent collects the details, reads them back, creates the ticket only
    after a clear yes, and says the number the ticket system returned.
 4. **Ticket status:** the customer's tickets and their states.
-5. **Handoff:** a ticket with a summary for support staff, made on request, and also when the
-   agent is stuck [agent's proposal]. There is no live transfer.
+5. **Handoff:** a ticket with a summary for support staff, made on request, and also offered
+   when the agent is stuck [agent's proposal]. Like any ticket, it is read back and made only
+   after a clear yes (D-018). There is no live transfer.
 6. **Typed chat** in the same widget: a bonus, not required.
 
 ## Out of scope

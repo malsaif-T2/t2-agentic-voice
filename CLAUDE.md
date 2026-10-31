@@ -35,7 +35,7 @@ Run everything as `uv run poe <task>` (`uv run poe` lists tasks).
 
 Add a row for every task the project adds. Add dependencies with `uv add <pkg>` (`--dev` for
 tooling), in the member that needs them (`uv add --package t2-agentic-voice <pkg>`); never use
-pip or edit `uv.lock`. The library's settings come from `T2_AGENTIC_VOICE_*` environment
+pip or edit `uv.lock`. The library's settings come from `T2V_*` environment
 variables or `.env`, and [.env.example](.env.example) lists them all. The harness's own rules
 (layers, the public API, the apps, owned libraries, required docs, size caps, the coverage
 floor) live in [harness.toml](harness.toml).

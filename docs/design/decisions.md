@@ -58,7 +58,7 @@ twice; DOC-REF: every `D-NNN` cited anywhere is a heading here), so keep its sha
 - **Evidence:** the owner, 2026-10-28: "in the new folder I have put some files to define how
   the Harness should Go and the dynamic of building this project."
 
-## D-002 · Technology stack · 2026-10-28 · Proposed
+## D-002 · Technology stack · 2026-10-28 · Proposed (its Pipecat bullet amended by D-018)
 
 - **Context:** The kit's default tooling is Python 3.12 with uv, poethepoet, ruff, mypy
   (strict), and pytest with coverage. The product needs real-time voice in a browser, from Groq
@@ -238,7 +238,7 @@ twice; DOC-REF: every `D-NNN` cited anywhere is a heading here), so keep its sha
   chatbot repository stays as it is, read-only to us (D-010). What the prototype taught (its
   recordings, word lists, voices and the rehearsal script) carries over.
 
-## D-013 · T2 Agentic Voice: a shared library and the Ole5 app in one workspace · 2026-10-31 · Accepted
+## D-013 · T2 Agentic Voice: a shared library and the Ole5 app in one workspace · 2026-10-31 · Accepted (its settings prefix amended by D-018)
 
 - **Context:** The owner widened the project: teammates should be able to reuse this work to add
   voice to their own products, while the Ole5 Voice Agent is still required. The owner, on
@@ -308,7 +308,7 @@ twice; DOC-REF: every `D-NNN` cited anywhere is a heading here), so keep its sha
 - **Consequences:** Which projects to build on is part of the package design (D-017), including
   whether Pipecat's own provider services may be used (ARCHITECTURE.md says today they are not).
 
-## D-017 · The package design: what the library provides, and what an app provides · 2026-10-31 · Proposed
+## D-017 · The package design: what the library provides, and what an app provides · 2026-10-31 · Proposed (its open questions answered in D-018)
 
 - **Context:** The owner, on 2026-10-31: "we need to determine what we provide for teammate
   developers and what we require for them, I mean we need to do the whole design of the
@@ -335,3 +335,66 @@ twice; DOC-REF: every `D-NNN` cited anywhere is a heading here), so keep its sha
   layers, D-007's register, GP-22's wording); its section 16.3 lists the entries to write. The
   settings prefix of the scaffold (`T2_AGENTIC_VOICE_`, D-013) is interim until its open
   question 4 is answered.
+
+## D-018 · The owner's answers to the package design's open questions · 2026-11-01 · Accepted
+
+- **Context:** The package design (D-017) ended with 23 open questions, each with options and
+  the agent's recommendation. The owner went through them with the agent on 2026-11-01, in six
+  groups ordered by the milestone each blocks. Section 17 of
+  [package-design.md](package-design.md) gives each question, its options, and the answer.
+- **Decision:** The owner's answers, by the design's question number:
+  - The agent's recommendation, taken:
+    - 1: our own thin browser client `t2v-client.js` and protocol `t2v/1`, provisional;
+    - 3: Python 3.12 as the floor;
+    - 4: the settings prefix `T2V_`, with `from_env(prefix=...)` for a team's own;
+    - 5: one process per `var_dir`, with SQLite stores;
+    - 7: our own spans, in OpenInference's format;
+    - 8: Pipecat's STT and TTS base classes wrapped; its model services and its interruptions
+      not used;
+    - 9: T2's package index if it exists, otherwise git tags on a mirror repository;
+    - 12: Chrome and Edge supported, Firefox and Safari best effort;
+    - 13: the repository renamed `t2-agentic-voice` before the first teammate install;
+    - 16: the thinker after M7, an LLM thinker on Groq first, then a LangGraph adapter;
+    - 17: M4's background troubleshooting moved to the thinker work;
+    - 18: join tokens as compact JWTs, HS256 only;
+    - 20: the licence list of the design's section 13;
+    - 21: the key's real limits read in M2, Groq asked to raise them if they are low, and
+      repeated phrases cached;
+    - 22: the sidecar by default; the mount for one-worker apps and demos.
+  - Chosen otherwise:
+    - 2: one install. The library always brings Pipecat and everything a call needs: there are
+      no extras and no `media` layer, and Pipecat stays in `voice`;
+    - 11: one shared Groq key; each app sets its share of the key's limits;
+    - 15: versions stay `0.x`, with no date for 1.0;
+    - 23: the contract is fixed at M0, not provisional; a later change is the owner's decision.
+  - In the owner's own words:
+    - 6, the handoff and invariant 1: "if the agent has the ability to handoff, it should ask to
+      confirm the action. otherwise it should clarify it can not do it. Or maybe offer a ticket
+      instead. But in general is should ask to confirm." So invariant 1 is unchanged: a handoff
+      is an action like any other, read back and done only after a clear yes, and an app with no
+      handoff action says it cannot hand the call over and may offer a ticket instead;
+    - 10, teammates' audio sent to Groq: "Do not worry about this, I will explain this to anyone
+      that wants to use the package. They also should know this by themselves because of the
+      models they will need to use". So the contract asks for no Zero Data Retention setting and
+      no data controller's sign-off;
+    - 14, support for teammates: "I am not sure yet, we can think about this when we really
+      build it and someone starts using it".
+  - Not known yet: 19, how Ole5's website proves who the customer is. The owner asks the website
+    team whether customers log in.
+- **Consequences:**
+  - The library's settings prefix is `T2V_` from this entry (it was `T2_AGENTIC_VOICE_`, D-013).
+  - D-002's bullet that Pipecat's provider services are never used is amended: `voice` builds
+    on Pipecat's STT and TTS base classes, which call our ports, while Pipecat's ready-made
+    provider services, its model services and its interruptions stay unused. ARCHITECTURE.md's
+    conventions say so.
+  - The design was changed to match: no extras, no `media` layer, no `HeardRequest`, the
+    contract fixed at M0, one shared key, `0.x`. The roadmap's M4 and M5 changed with it; M5's
+    rehearsal step now reads: «أبغى موظف» over an answer starts the handoff's read-back, and the
+    ticket is made after a clear yes.
+  - The agent read "one install" as no extras at all (plan 001's decision log); the owner may
+    still choose optional extras for the tracing exporter and the scorers.
+  - Still open: the design as a whole (D-017) awaits the owner's approval as amended; question 9
+    waits on whether T2's package index exists, 19 on the website team, and 14 until someone
+    starts using the library. The owner renames the folder when no session runs inside it.
+- **Evidence:** the owner's answers on 2026-11-01, to questions and options the agent wrote; the
+  three quoted above are the owner's own words.
