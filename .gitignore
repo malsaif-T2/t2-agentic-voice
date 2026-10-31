@@ -1,0 +1,28 @@
+# Python-generated files
+__pycache__/
+*.py[oc]
+build/
+dist/
+wheels/
+*.egg-info
+
+# Virtual environments
+.venv
+
+# Tool caches
+.mypy_cache/
+.ruff_cache/
+.pytest_cache/
+.coverage
+htmlcov/
+
+# Local configuration and secrets
+.env
+
+# Local runtime data (databases, run outputs, logs); Settings.var_dir
+var/
+
+# Agent worktrees live inside the repository, never in the OS temp folder, and are not committed
+.claude/worktrees/
+# Personal agent settings
+.claude/settings.local.json

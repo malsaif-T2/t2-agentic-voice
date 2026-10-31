@@ -1,0 +1,130 @@
+[project]
+name = "ole5-voice-agent"
+version = "0.1.0"
+description = "A voice-first support assistant for Ole5 that answers from the knowledge base and opens tickets only on a clear yes, in Saudi Arabic, MSA and English."
+requires-python = ">=3.12"
+dependencies = [
+    "pydantic>=2.13.5",
+    "pydantic-settings>=2.15.0",
+    "structlog>=26.1.0",
+]
+
+[build-system]
+requires = ["uv_build>=0.11.31,<0.12.0"]
+build-backend = "uv_build"
+
+[tool.uv.build-backend]
+module-name = "ole5_voice"
+
+[dependency-groups]
+dev = [
+    "mypy>=2.3.1",
+    "poethepoet>=0.48.0",
+    "pytest>=9.1.1",
+    "pytest-cov>=7.1.0",
+    "ruff>=0.16.9",
+]
+
+# --------------------------------------------------------------------------- tasks
+# `uv run poe` lists tasks. `uv run poe check` is the definition-of-done gate. The harness's own
+# settings (layers, owned libraries, required docs, size caps, the coverage floor) are in
+# harness.toml, which the checks read.
+
+[tool.poe.env]
+# Every task writes UTF-8, so non-ASCII text reads the same in a console, a pipe, or a file.
+# Piped, Python otherwise writes in the legacy code page on Windows
+# (tests/harness/test_commands.py).
+PYTHONIOENCODING = "utf-8"
+
+[tool.poe.tasks.fmt]
+help = "Auto-format and apply safe lint fixes (run this first when `lint` fails)"
+sequence = [{ cmd = "ruff format ." }, { cmd = "ruff check --fix ." }]
+
+[tool.poe.tasks.lint]
+help = "Check formatting and lint rules"
+sequence = [{ cmd = "ruff format --check ." }, { cmd = "ruff check ." }]
+ignore_fail = "return_non_zero"
+
+[tool.poe.tasks.types]
+help = "Static type check (mypy strict) of src/, scripts/, and tests/"
+cmd = "mypy src scripts tests"
+
+[tool.poe.tasks.arch]
+help = "Enforce the layers and module rules of harness.toml (a FIX line for every violation)"
+cmd = "python -m scripts.check_architecture"
+
+[tool.poe.tasks.docs]
+help = "Verify the knowledge base: required docs, links, orphans, placeholders, line endings, plans, registers, references"
+cmd = "python -m scripts.check_docs"
+
+[tool.poe.tasks.test]
+help = "Run the tests with line coverage, failing under the floor in harness.toml"
+cmd = "pytest --cov --cov-config=harness.toml"
+
+[tool.poe.tasks.check]
+help = "Definition-of-done gate: lint, types, arch, docs, test (runs all, fails if any fail)"
+sequence = ["lint", "types", "arch", "docs", "test"]
+ignore_fail = "return_non_zero"
+
+[tool.poe.tasks.gc]
+help = "Whether a garbage-collection round is due, then its candidates (not a gate)"
+sequence = [{ cmd = "python -m scripts.gc_due" }, { cmd = "python -m scripts.gc_report" }]
+
+[tool.poe.tasks.quality]
+help = "Grade each layer after `poe check` (not a gate); grades and gaps go in docs/harness/quality.md"
+cmd = "python -m scripts.quality"
+
+# --------------------------------------------------------------------------- ruff
+
+[tool.ruff]
+line-length = 100
+target-version = "py312"
+
+[tool.ruff.format]
+# LF everywhere, as .gitattributes stores it: `poe lint` flags a CRLF working copy (a Windows
+# editor or script), and `poe fmt` fixes it.
+line-ending = "lf"
+
+[tool.ruff.lint]
+select = ["E", "W", "F", "I", "B", "UP", "SIM", "C4", "N", "PTH", "RUF", "S"]
+
+[tool.ruff.lint.per-file-ignores]
+# Tests assert, use made-up secrets, and run this interpreter as a subprocess.
+"tests/**" = ["S101", "S105", "S106", "S603"]
+# ast.NodeVisitor requires visit_CamelCase method names.
+"scripts/**" = ["N802"]
+
+# --------------------------------------------------------------------------- mypy
+
+[tool.mypy]
+python_version = "3.12"
+strict = true
+warn_unreachable = true
+plugins = ["pydantic.mypy"]
+# src/ holds the package; scripts/ and tests/ are importable from the repository root. tests/
+# has no __init__.py files (pytest's importlib mode), so module names come from these bases.
+mypy_path = "src"
+explicit_package_bases = true
+
+[tool.pydantic-mypy]
+init_forbid_extra = true
+init_typed = true
+warn_required_dynamic_aliases = true
+
+# --------------------------------------------------------------------------- pytest
+# Coverage's settings (what is measured, and the floor) are in harness.toml.
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+pythonpath = ["."]
+addopts = ["-ra", "--strict-markers", "--strict-config", "--import-mode=importlib"]
+# An exception escaping a thread or a finalizer is a bug, never only a warning.
+filterwarnings = [
+    "error::pytest.PytestUnhandledThreadExceptionWarning",
+    "error::pytest.PytestUnraisableExceptionWarning",
+]
+# Tests that need something outside the repository declare a marker here and skip themselves
+# when it is absent, so CI and a fresh clone stay green.
+markers = [
+    "integration: needs an external service; skipped when it is not running",
+]

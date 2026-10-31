@@ -1,0 +1,185 @@
+# The harness's settings. Every check in scripts/ reads this file (scripts/harness_config.py),
+# so a project changes its rules here, never in the check code. Each key is required; a key the
+# loader does not know, or a value of the wrong kind, is a HARNESS-CONFIG violation.
+#
+# Changing [layers], [[owners]], [[restricted]], or [[subpackages]] changes the architecture:
+# update ARCHITECTURE.md in the same commit (ARCH-DOC fails until its layer table matches
+# [layers] and [[owners]]) and record why in docs/design/decisions.md (review: no check reads it).
+
+[package]
+# The import package, at src/<name>/.
+name = "ole5_voice"
+
+# Each layer of the package (a folder directly under src/<name>/) and the other layers it may
+# import. A layer always may import itself. The graph may not have a cycle. Code must sit inside
+# a layer: a module directly in src/<name>/ (other than __init__.py) is a violation.
+# The layers of a voice support call (D-003, ARCHITECTURE.md): rules without IO at the bottom,
+# the outside services beside the backend, the real-time pipeline above the talker, and the
+# HTTP surface on top as the composition root.
+[layers]
+core = []
+domain = ["core"]
+adapters = ["core", "domain"]
+actions = ["core", "domain"]
+agent = ["core", "domain", "actions"]
+voice = ["core", "domain", "agent"]
+api = ["core", "domain", "adapters", "actions", "agent", "voice"]
+
+# Libraries that only some layers may import (ARCH-OWNER), one table per group. The fix text is
+# printed with every violation, so it says what to do instead.
+[[owners]]
+modules = ["logging", "structlog"]
+layers = ["core"]
+fix = "Log via `from ole5_voice.core.logging import get_logger`; `log = get_logger(__name__)`; `log.info('event_name', key=value)`."
+
+[[owners]]
+modules = ["pydantic_settings"]
+layers = ["core"]
+fix = "Add a field to Settings in core/config.py (and to .env.example), then read it via `get_settings()` or an injected Settings."
+
+[[owners]]
+modules = ["opentelemetry", "openinference", "phoenix"]
+layers = ["core"]
+fix = "Trace through core's tracing helpers (one span per step, Phoenix behind them); never import the tracing libraries elsewhere."
+
+[[owners]]
+modules = ["groq", "httpx", "qdrant_client"]
+layers = ["adapters"]
+fix = "Reach an outside service through its port in domain/ports; the adapter that implements it lives in adapters/ and the api layer injects it."
+
+[[owners]]
+modules = ["pipecat"]
+layers = ["voice"]
+fix = "Keep the voice framework inside voice/; other layers take plain text, audio bytes, or domain models from it."
+
+[[owners]]
+modules = ["fastapi", "starlette", "uvicorn"]
+layers = ["api"]
+fix = "HTTP lives in api/; a lower layer returns a typed model or raises an AppError, and api maps it to a response."
+
+# Classes that only some layers may construct (ARCH-CONSTRUCT): calls, `.model_validate`, and
+# `.model_construct` all count. Use it for an object that only a validator may issue. Example:
+#
+# [[restricted]]
+# classes = ["ApprovedPayment"]
+# layers = ["domain"]
+# fix = "Only domain/approval.py issues an ApprovedPayment; call approve() instead of building one."
+#
+# Planned here, in the commit that creates each class (docs/SECURITY.md, invariants 1 and 2): a
+# confirmed ticket draft, issued only by domain's yes rule; its two inputs, the caller's heard
+# words and the read-back receipt, built only by voice; and a completed action, recorded only by
+# actions.
+
+# Narrower import rules for a subpackage inside a layer (ARCH-LAYER). Example:
+#
+# [[subpackages]]
+# path = "voice/transport"
+# may_not_import = ["agent"]
+# fix = "The transport only moves audio; the pipeline module wires it to the talker."
+
+[rules]
+# The only modules (relative to src/<name>/) that read the environment (ARCH-ENV).
+env_allowed_files = ["core/config.py"]
+# Modules that may write to standard output directly (ARCH-PRINT); all others log.
+output_allowed_files = ["core/logging.py"]
+# The doc that describes the layers: its layer table must match [layers] and [[owners]], row by
+# row (ARCH-DOC, scripts/arch_doc.py). "" turns it off.
+architecture_doc = "ARCHITECTURE.md"
+
+[modules]
+# ARCH-SIZE, for every module in src/ and in the support folders.
+max_lines = 400
+# Folders outside the layers: only the module rules (size, fmt: skip, parse) apply there.
+support_dirs = ["scripts", "tests"]
+
+[docs]
+# The agent's entry point: a map, not a manual (DOC-ENTRY). Every doc under docs/ must be
+# reachable from it by following links (DOC-ORPHAN).
+entry = "CLAUDE.md"
+max_entry_lines = 120
+# Docs that must exist (DOC-REQUIRED).
+required = [
+    "CLAUDE.md",
+    "ARCHITECTURE.md",
+    "docs/harness/PRINCIPLES.md",
+    "docs/harness/golden-principles.md",
+    "docs/harness/garbage-collection.md",
+    "docs/harness/quality.md",
+    "docs/plans/README.md",
+    "docs/plans/roadmap.md",
+    "docs/plans/tech-debt.md",
+    "docs/design/decisions.md",
+    "docs/SECURITY.md",
+    "docs/project/DESCRIPTION.md",
+]
+# History keeps the milestone numbers of its time, and may cite retired debt and principles.
+historical = ["docs/plans/completed/", "docs/design/decisions.md"]
+# Code that may not cite milestones, and whose citations must exist (DOC-MILESTONE, DOC-REF).
+code_dirs = ["src", "scripts", "tests"]
+# Code exempt from those two rules: the harness tests whose fixtures cite made-up entries.
+code_exempt = ["tests/harness/test_check_docs.py", "tests/harness/test_gc_due.py"]
+# Files (or folders, ending in /) that may keep install placeholders on purpose: an uppercase
+# name between double braces (DOC-PLACEHOLDER).
+placeholders_allowed_in = []
+
+[plans]
+roadmap = "docs/plans/roadmap.md"
+active = "docs/plans/active"
+completed = "docs/plans/completed"
+# The headings every plan must have, each on its own line (DOC-PLAN).
+sections = ["## Goal", "## Acceptance criteria", "## Plan", "## Progress log", "## Decision log"]
+
+# Where each kind of citation is recorded (DOC-REF). A registry whose doc is missing is skipped;
+# "" turns one off. Plans (`plan NNN`) are the files in [plans] active and completed.
+[references]
+decisions = "docs/design/decisions.md"
+tech_debt = "docs/plans/tech-debt.md"
+golden_principles = "docs/harness/golden-principles.md"
+invariants = "docs/SECURITY.md"
+
+# `uv run poe gc`: whether a garbage-collection round is due, and its candidates. Not a gate.
+# The numbers are starting values: recalibrate them in the first round and record why.
+[gc]
+due_after_commits = 40
+min_tokens = 35
+size_watch = 300
+# Where a path named in a doc or a comment may be relative to (src/<name> is always added).
+path_bases = ["", "docs", "docs/design", "docs/plans"]
+# Path prefixes that are not ours to resolve: runtime output, other libraries.
+path_ignored = ["var/"]
+# Methods a library calls on our subclasses, so they are never "unreferenced".
+hooks = ["emit"]
+# Names a doc may cite in backticks that are not in our code (other libraries' names; the two
+# below are Claude Code's tools for messaging other sessions, cited in WORKING-RULES.md).
+foreign_names = ["ListAgents", "SendMessage"]
+# Non-Python files whose text counts as code when docs cite names (globs from the root).
+name_files = ["pyproject.toml", "harness.toml", ".env.example"]
+
+# `uv run poe quality`: a grade per layer, after `uv run poe check`. Not a gate.
+[quality]
+doc = "docs/harness/quality.md"
+suppressions_floor = 10.0
+duplication_floor = 5
+
+[quality.weights]
+coverage = 40
+size = 20
+suppressions = 15
+duplication = 15
+docstrings = 10
+
+# The coverage floor and what is measured. coverage.py reads these two tables from this file:
+# `uv run poe test` runs `pytest --cov --cov-config=harness.toml`. The floor is a ratchet: set it
+# a little under what CI measures, and raise it as coverage grows.
+[tool.coverage.run]
+source = ["ole5_voice", "scripts"]
+# Line coverage on Python 3.12's sys.monitoring costs almost nothing; branch coverage falls back
+# to the slower tracer.
+core = "sysmon"
+
+[tool.coverage.report]
+# The scripts are measured for `poe quality`, but the floor is the product package's.
+omit = ["scripts/*"]
+fail_under = 90
+show_missing = true
+skip_covered = true

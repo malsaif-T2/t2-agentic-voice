@@ -1,0 +1,160 @@
+# Architecture
+
+Ole5 Voice Agent is a real-time voice service: a Python backend that serves a web widget and
+runs one voice pipeline per call over WebRTC, with speech-to-text, the model, and
+text-to-speech from outside providers (Groq today, D-004). Two rules shape it most:
+
+- **Only the backend acts.** The talker (the model that speaks) asks for tools; the `actions`
+  layer runs them, records what it completed, and words every outcome from a real result. No
+  sentence may claim an action that the call's record does not hold
+  ([SECURITY.md](docs/SECURITY.md), invariants 1 and 2).
+- **Every outside service is behind a port.** `domain` defines the protocol, `adapters`
+  implements it, and a setting picks the adapter, so a provider is swapped by configuration
+  without touching the layers that use it (GP-22).
+
+The layers were proposed by the agent on 2026-10-28 and await the owner's approval
+([D-003](docs/design/decisions.md)); the libraries they own are proposed in D-002.
+
+## Flow
+
+One call, top to bottom, naming the layer that does each step:
+
+```
+web widget (web/)  microphone, speaker, captions, Stop; static files the api layer serves
+  ▼ api        checks the join token, hands the WebRTC offer to voice, builds the call's session
+  ▼ voice      answers the offer; audio in; speech detection; end of turn; the two-step
+               interruption; the turn's cancel scope
+  ▼ adapters   speech-to-text turns each stretch of speech into text (through a domain port;
+               Groq's Whisper gives no partial transcripts)
+  ▼ agent      the talker: the user's words in, a reply and tool calls out
+  ▼ actions    runs each tool (knowledge search, ticket status, ticket flow, handoff),
+               records what it completed, words the outcome
+  ▼ adapters   the knowledge base and the ticket system (through domain ports)
+  ▲ voice      text-to-speech streams the reply clause by clause; a cancel stops it at once
+  ◆ domain     the rules every step applies: the yes rule, the ticket flow's states,
+               interruption words, Arabic normalization, how numbers are spoken
+  ◆ core       settings, structured logs, errors, and traces to Phoenix, for every layer
+```
+
+## Layers
+
+```
+               api
+    ┌───────────┼────────────┐
+  voice         │         adapters
+    │           │            │
+  agent         │            │
+    │           │            │
+  actions ◄─────┘            │
+    │                        │
+  domain ◄───────────────────┘
+    │
+  core
+```
+
+An arrow or a line down means "may import"; `api` may import every layer.
+
+| Layer | Responsibility | May import | Owns (only it may import) |
+| --- | --- | --- | --- |
+| `core` | Settings (`core/config.py`, the only module that reads the environment), structured logging (`core/logging.py`), the error types (`core/errors.py`: `AppError` and its subclasses, each with a stable `code`), tracing to Phoenix, and the types every layer shares | none | `logging`, `structlog`, `pydantic_settings`, `opentelemetry`, `openinference`, `phoenix` |
+| `domain` | The rules of a support call, with no IO: what counts as a clear yes, the ticket flow's states, what an interruption is, Arabic text normalization, how numbers and ticket IDs are spoken, and the ports (protocols) every outside service is reached through | core | — |
+| `adapters` | One adapter per port: speech-to-text, the chat model and text-to-speech (Groq), the knowledge base, the ticket system; each chosen by a setting | core, domain | `groq`, `httpx`, `qdrant_client` |
+| `actions` | The backend that acts: runs the talker's tools through the ports, keeps each call's record of completed actions, words every outcome from a real result | core, domain | — |
+| `agent` | The talker: prompts, the few tool definitions, the reply language, one turn from the user's words to a reply and tool calls; the output guard on every sentence | core, domain, actions | — |
+| `voice` | One call's real-time pipeline: answers the WebRTC offer (Pipecat's peer connection), audio in and out, speech detection, end of turn, interruptions, each turn's cancel scope, speech-to-text and text-to-speech wired to the talker | core, domain, agent | `pipecat` |
+| `api` | The HTTP surface and composition root: serves the widget, starts calls, reports health, builds the adapters from the settings and injects them, maps every error to one shape | core, domain, adapters, actions, agent, voice | `fastapi`, `starlette`, `uvicorn` |
+
+`harness.toml` holds the same rules in `[layers]` (who may import whom) and `[[owners]]` (which
+layer owns which library), and `poe arch` compares them with this table row by row (ARCH-DOC):
+one row per layer, its first cell the layer's name in backticks; **May import** the other
+layers it may import and **Owns** the libraries `[[owners]]` gives it, as names in backticks or
+separated by commas, or `none` or `—`. The Responsibility column is prose and is not read.
+Whether the reason for a change is recorded in a decision is a review, not a check.
+
+### Why these layers
+
+The agent's reasoning, from the questions the kit asks (D-003 records the alternatives):
+
+- **Where does IO happen?** Each kind has one owner: the provider and service clients in
+  `adapters`, the voice framework in `voice`, HTTP in `api`, tracing in `core`.
+- **What must stay pure?** The rules the prototype got wrong (what a yes is, what an
+  interruption is, when a ticket may be created) live in `domain`, with no IO, so each is a
+  plain function with plain tests.
+- **What must not know about each other?** `actions` never imports `adapters`: it gets the ports
+  injected, so the backend is tested with fakes and a provider swap never touches it. `agent`
+  never imports `adapters` or `voice`. `api` injects into the talker only the chat-model port
+  and the tool runner of `actions`, so the talker acts only through a tool call. No import rule
+  can enforce that, since the ports live in `domain`, which `agent` may import: it is a review,
+  plus a test of `api`'s wiring added with the talker. `voice` never imports `actions`: the
+  pipeline cannot act, only the talker's tool calls can, through `actions`.
+- **What is the outermost surface?** `api`, the HTTP routes and the composition root that
+  builds every adapter from the settings.
+- **What may only one layer create?** A confirmed ticket draft, issued only by `domain`'s yes
+  rule; its two inputs, the caller's heard words and the read-back receipt, built only by
+  `voice`; and a completed action, recorded only by `actions`. Each goes into `[[restricted]]`
+  (ARCH-CONSTRUCT) in the commit that creates its class ([SECURITY.md](docs/SECURITY.md),
+  invariants 1 and 2).
+
+## The web widget
+
+The widget is plain HTML, JavaScript and CSS in `web/`, with no build step; `api` serves it.
+It is outside the package, so `poe arch` does not read it; it is checked by running it in a
+browser ([WORKING-RULES.md](WORKING-RULES.md), "Seeing it run").
+
+## Conventions
+
+- Types shared across layers live in `core`; the ports and the call's rules live in `domain`.
+- `pydantic` is allowed everywhere: it is how data is parsed at boundaries, model output and
+  tool arguments included.
+- Lower layers raise `core.errors.AppError` subclasses with stable codes and user-safe
+  messages; only `api` maps them to its transport.
+- Configuration comes only from `Settings` in `core/config.py`, and `.env.example` lists every
+  setting. A provider is chosen by a setting, never by an import in a layer above `api`.
+- Logs are structured: `get_logger(__name__)`, snake_case event names, key/value context.
+  The standard library's `logging` (a framework's, a library's) is routed through the same
+  format by `configure_logging` in `core/logging.py`; a framework that installs its own
+  handlers is named in its `take_over`. Pipecat logs through loguru instead: the plan that
+  installs Pipecat makes `configure_logging` remove loguru's default sink and forward its
+  records at the configured level, so no framework debug line carries call content
+  ([SECURITY.md](docs/SECURITY.md), invariant 8).
+- `voice` uses Pipecat for its pipeline, its WebRTC transport, and speech detection only. Its
+  own processors call the speech-to-text and text-to-speech ports and run `agent`'s turn inside
+  the turn's cancel scope. Pipecat's provider services (its Groq speech-to-text, model, and
+  text-to-speech services) are never used: they would reach Groq without a port (GP-22), and
+  ARCH-OWNER cannot see an import made inside Pipecat.
+- Every turn runs inside a cancel scope owned by `voice`: a stop, a correction, or new words
+  cancel the model, the speech, and read-only lookups. Writes to the ticket system run as jobs
+  of `actions`, outside any turn, so a cancel never cuts one in half.
+- Every turn is one trace in Phoenix, with a span per step (speech-to-text, the model, each
+  tool, text-to-speech), recorded through `core`'s tracing helpers. The helpers take the turn's
+  span as an argument, since Pipecat runs each processor in its own task and an implicit
+  current span does not cross tasks.
+- The outermost layer turns every error, a crash included, into one shape for its transport,
+  with the error's stable code and the request's reference, and never echoes a rejected value
+  back (GP-19).
+- Models at a boundary reuse core's field types and constraints, so invalid input is rejected
+  as invalid input (a validation error, a usage error), never as a server error (GP-20).
+
+## Enforcement
+
+The rules live in [harness.toml](harness.toml), the source of truth;
+[scripts/check_architecture.py](scripts/check_architecture.py) applies them (`uv run poe arch`):
+
+- ARCH-LAYER: internal imports follow `[layers]` (an `importlib.import_module` or `__import__`
+  of a literal name counts; a computed name cannot be checked, so avoid one), code sits inside
+  a layer, and a subpackage's narrower rules (`[[subpackages]]`) hold;
+- ARCH-OWNER: a library in `[[owners]]` is imported only by its layers;
+- ARCH-CONSTRUCT: a class in `[[restricted]]` is constructed only by its layers;
+- ARCH-PRINT: no `print` or direct writes to standard output outside the files `[rules]`
+  allows;
+- ARCH-ENV: the environment is read only in the files `[rules]` allows;
+- ARCH-DOC: this doc's layer table matches `[layers]` and `[[owners]]`, row by row
+  ([scripts/arch_doc.py](scripts/arch_doc.py)).
+
+The rules for every module, including `scripts/` and `tests/` (a size limit, `# fmt: skip` only
+on data tables, valid Python), are in [scripts/module_rules.py](scripts/module_rules.py), with
+their settings under `[modules]`. Every violation message includes a FIX line.
+
+To change a rule, update `harness.toml` and this document together (ARCH-DOC fails until the
+layer table agrees) and record the reason in [docs/design/decisions.md](docs/design/decisions.md)
+(a review: no check reads it).
