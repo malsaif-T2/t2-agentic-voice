@@ -1,8 +1,8 @@
 # Security
 
 The threat model and the invariants of T2 Agentic Voice and the Ole5 Voice Agent built on it.
-Proposed by the agent on 2026-10-28 ([D-007](design/decisions.md)); the owner keeps or drops it
-in plan 000.
+Proposed by the agent on 2026-10-28 and approved by the owner on 2026-11-01
+([D-007](design/decisions.md)).
 
 Each invariant names the test or check that will enforce it. Until the code it protects exists,
 an invariant is a requirement on the plan that builds that code: the plan adds the adversarial

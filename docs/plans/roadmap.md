@@ -15,7 +15,7 @@ decisions (`D-NNN`), which are permanent. Living docs cite only milestones in th
 
 | # | Milestone | Status |
 | --- | --- | --- |
-| M0 | Scaffold and harness | in progress ([000](active/000-project-scaffold.md), [001](active/001-library-and-app.md)) |
+| M0 | Scaffold and harness | in progress ([000](active/000-project-scaffold.md); [001](completed/001-library-and-app.md) done) |
 | M1 | The measurement first: the owner's voice as a golden set | planned |
 | M2 | A call that listens and speaks, deployed | planned |
 | M3 | Interruptions and cancellation | planned |
@@ -39,8 +39,8 @@ design as milestones in the roadmap"). They come from the architecture proposal 
 earlier that day ([Ole5 Voice Agent Architecture](https://claude.ai/artifact/WVGaY7fH8mckPgGn45oMzJ),
 a Claude Docs document in the owner's account), adapted to the owner's messages of that day:
 Groq only (D-004), the hosting limits (D-005), the owner's own voice as the only data for
-Phase 0 (D-006), and a handoff that is a ticket (D-009). They await the owner's approval
-(plan 000).
+Phase 0 (D-006), and a handoff that is a ticket (D-009). The owner approved them on
+2026-11-01 (plan 000).
 
 On 2026-10-31 the project became T2 Agentic Voice, a library and the Ole5 app built on it
 (D-013). Each milestone now also lists, under *Library*, the library work its Ole5 work
@@ -246,13 +246,14 @@ targets hold at the cap on live calls.
 - The thinker is optional and off by default (D-015).
 - Open-source code and projects may be used (D-016).
 - The owner's answers to the package design's open questions (D-018).
+- Approved by the owner on 2026-11-01: the stack (D-002), the layers (D-003), SECURITY.md
+  (D-007), evaluation.md (D-011), the description, the milestones M1 to M7, and the package
+  design as amended (D-017).
 
 ## Open questions (need a human decision)
 
-- Approve, change, or reject: the stack (D-002), the layers (D-003), SECURITY.md (D-007),
-  evaluation.md (D-011), the description, the milestones M1 to M7, and WORKING-RULES.md
-  (plan 000).
-- Approve the package design as amended by the owner's answers (D-017, D-018, plan 001).
+- WORKING-RULES.md: which of its rules to keep, change, or add (plan 000).
+- A remote repository, so that CI runs the gate on every push (plan 000, TD-001).
 - Whether T2's package index exists and can host the library (the design's open question 9;
   the owner asks T2).
 - How teammates are supported: left until someone starts using the library (the design's

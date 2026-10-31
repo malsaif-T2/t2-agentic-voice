@@ -1,6 +1,6 @@
 # 001 · T2 Agentic Voice: the library and the Ole5 app
 
-Status: active · Milestone: M0 · Started: 2026-10-31
+Status: completed · Milestone: M0 · Started: 2026-10-31 · Completed: 2026-11-01
 
 ## Goal
 
@@ -22,11 +22,11 @@ built on it, so every milestone builds library and app together.
   package (`ole5_voice`).
 - [x] [DESCRIPTION.md](../../project/DESCRIPTION.md) widened to the library and its users,
   awaiting the owner's approval (plan 000).
-- [ ] The package design ([package-design.md](../../design/package-design.md), D-017) is
+- [x] The package design ([package-design.md](../../design/package-design.md), D-017) is
   approved or changed by the owner.
 - [x] The teammate guide's index, [docs/guide/](../../guide/README.md), lists its pages, each
   with its purpose and the milestone it lands with; each page is written when its part lands.
-- [ ] The roadmap pairs each milestone's Ole5 work with the library work it needs, and the owner
+- [x] The roadmap pairs each milestone's Ole5 work with the library work it needs, and the owner
   approves it.
 - [x] `uv run poe check` passes, and the restructure is a commit of its own.
 
@@ -87,6 +87,9 @@ built on it, so every milestone builds library and app together.
 - 2026-11-01: The owner renamed the folder on disk from `Ole5-voice-agent` to `t2-agentic-voice`
   (the design's open question 13). The design's layout tree and its answer to question 13 now
   say so; the decision entries and the owner's quoted words keep the old name as written.
+- 2026-11-01: Step 8 done. The owner approved the design as amended (D-017) and the re-planned
+  roadmap; every criterion is met and `uv run poe check` passes, so the plan moves to
+  `completed/`.
 
 ## Decision log
 
@@ -141,3 +144,5 @@ owner's own words:
   will need to use"
 - Support for teammates: "I am not sure yet, we can think about this when we really build it
   and someone starts using it"
+- Asked to approve the open proposals: "Approve all" (the package design as amended, the roadmap,
+  and plan 000's proposals).

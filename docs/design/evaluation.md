@@ -2,7 +2,7 @@
 
 How a measurable quality of the product is measured, and how a change to it is judged.
 
-*Proposed* ([D-011](decisions.md); the owner keeps or drops it in plan 000): speech-to-text,
+*Adopted* ([D-011](decisions.md), approved by the owner on 2026-11-01): speech-to-text,
 turn-taking, and the talker's answers vary from run to run (a hosted model, a network, timing),
 and some of them are tuned.
 

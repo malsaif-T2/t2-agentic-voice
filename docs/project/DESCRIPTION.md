@@ -14,7 +14,7 @@ approval. What is decided about *how* lives elsewhere: [ARCHITECTURE.md](../../A
 
 First drafted by the agent on 2026-10-28 for the Ole5 Voice Agent alone; widened on 2026-10-31,
 when the owner made the project a shared library (D-013). What is not the owner's carries its
-source in brackets, or is marked as the agent's. Awaiting the owner's approval (plan 000).
+source in brackets, or is marked as the agent's. Approved by the owner on 2026-11-01 (plan 000).
 
 ## The problem
 
@@ -107,7 +107,7 @@ The Ole5 Voice Agent, on top of it:
 ## Constraints
 
 From the owner, in their words ([plan 000](../plans/active/000-project-scaffold.md) and
-[plan 001](../plans/active/001-library-and-app.md) keep the full messages):
+[plan 001](../plans/completed/001-library-and-app.md) keep the full messages):
 
 - **Approach 3:** "I presented the presentation and we are doing Approach 3 now" (2026-10-31,
   D-012).
@@ -140,7 +140,7 @@ this project is an open question below.
 
 ## How success is measured
 
-[evaluation.md](../design/evaluation.md) is proposed for adoption (D-011). For the Ole5 Voice
+[evaluation.md](../design/evaluation.md) is adopted (D-011). For the Ole5 Voice
 Agent, everything is measured on the owner's own recordings (D-006) and on simulated calls:
 
 - speech-to-text accuracy on the owner's Saudi Arabic, MSA and English, by device (laptop

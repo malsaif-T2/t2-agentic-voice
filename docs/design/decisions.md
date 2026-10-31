@@ -58,7 +58,7 @@ twice; DOC-REF: every `D-NNN` cited anywhere is a heading here), so keep its sha
 - **Evidence:** the owner, 2026-10-28: "in the new folder I have put some files to define how
   the Harness should Go and the dynamic of building this project."
 
-## D-002 · Technology stack · 2026-10-28 · Proposed (its Pipecat bullet amended by D-018)
+## D-002 · Technology stack · 2026-10-28 · Accepted (the owner, 2026-11-01; its Pipecat bullet amended by D-018)
 
 - **Context:** The kit's default tooling is Python 3.12 with uv, poethepoet, ruff, mypy
   (strict), and pytest with coverage. The product needs real-time voice in a browser, from Groq
@@ -106,7 +106,7 @@ twice; DOC-REF: every `D-NNN` cited anywhere is a heading here), so keep its sha
   version is pinned and an upgrade is a plan of its own. If the owner's host cannot open a UDP
   path to the backend, WebRTC needs a TURN service or another transport (the roadmap, M2).
 
-## D-003 · Layered architecture, enforced from one config · 2026-10-28 · Proposed
+## D-003 · Layered architecture, enforced from one config · 2026-10-28 · Accepted (the owner, 2026-11-01)
 
 - **Context:** Agents replicate existing patterns, so drift has to be prevented structurally
   rather than by instruction. The prototype's failures came from its structure: the voice code
@@ -173,7 +173,7 @@ twice; DOC-REF: every `D-NNN` cited anywhere is a heading here), so keep its sha
 - **Evidence:** the owner, 2026-10-28: "For Phase 0, I do not have the ability to gather data
   other than my own. I am the only one working in this repo."
 
-## D-007 · SECURITY.md: threat model and invariants · 2026-10-28 · Proposed
+## D-007 · SECURITY.md: threat model and invariants · 2026-10-28 · Accepted (the owner, 2026-11-01)
 
 - **Context:** The product has trust boundaries: callers who must not reach each other's
   tickets, a model whose output is untrusted, a ticket system it writes to, and secrets in the
@@ -214,7 +214,7 @@ twice; DOC-REF: every `D-NNN` cited anywhere is a heading here), so keep its sha
   without affecting Joori work", and "You can use the old (Jooris) repo to help you initiate the
   new one."
 
-## D-011 · evaluation.md adopted: a golden set from the owner's recordings, and simulated calls · 2026-10-28 · Proposed
+## D-011 · evaluation.md adopted: a golden set from the owner's recordings, and simulated calls · 2026-10-28 · Accepted (the owner, 2026-11-01)
 
 - **Context:** Speech-to-text accuracy, turn-taking, and the talker's answers vary from run to
   run and cannot be settled by one assertion; the prototype's failures were found only by
@@ -308,7 +308,7 @@ twice; DOC-REF: every `D-NNN` cited anywhere is a heading here), so keep its sha
 - **Consequences:** Which projects to build on is part of the package design (D-017), including
   whether Pipecat's own provider services may be used (ARCHITECTURE.md says today they are not).
 
-## D-017 · The package design: what the library provides, and what an app provides · 2026-10-31 · Proposed (its open questions answered in D-018)
+## D-017 · The package design: what the library provides, and what an app provides · 2026-10-31 · Accepted (the owner, 2026-11-01, as amended by D-018)
 
 - **Context:** The owner, on 2026-10-31: "we need to determine what we provide for teammate
   developers and what we require for them, I mean we need to do the whole design of the

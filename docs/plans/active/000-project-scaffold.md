@@ -14,24 +14,24 @@ harness came from a starter kit; this plan makes it this project's own.
 
 - [x] No placeholder of the kit is left: `uv run poe docs` reports no DOC-PLACEHOLDER
   violation (it reads every file and every file and folder name, `.github/` included).
-- [ ] [DESCRIPTION.md](../../project/DESCRIPTION.md) states the product idea, written with the
+- [x] [DESCRIPTION.md](../../project/DESCRIPTION.md) states the product idea, written with the
   owner, and the owner approved it.
-- [ ] The layers for this domain are chosen and approved by the owner: `harness.toml`,
+- [x] The layers for this domain are chosen and approved by the owner: `harness.toml`,
   [ARCHITECTURE.md](../../../ARCHITECTURE.md), and a decision in
   [decisions.md](../../design/decisions.md) agree, and the library's package holds one package
   per layer.
-- [ ] The stack is recorded as a decision and approved; `uv sync` installs the locked
+- [x] The stack is recorded as a decision and approved; `uv sync` installs the locked
   dependencies.
 - [x] `uv run poe check` runs lint, types, arch, docs, and test, and passes.
 - [x] Every check reports each violation with a FIX line, and has tests in `tests/harness/`.
 - [x] `CLAUDE.md` is a map that reaches every doc, within its line cap.
-- [ ] The optional docs are adopted or dropped, each with its reason in the decision log:
+- [x] The optional docs are adopted or dropped, each with its reason in the decision log:
   [SECURITY.md](../../SECURITY.md) (does the product have trust boundaries?) and
   [evaluation.md](../../design/evaluation.md) (does it have a quality that can be measured?).
 - [ ] CI runs the same gate on every push and pull request, and passes.
 - [ ] The owner has read [WORKING-RULES.md](../../../WORKING-RULES.md) and said which rules to
   keep, change, or add; their answer is recorded there in the rule shape it describes.
-- [ ] The roadmap lists the milestones after this one, approved by the owner.
+- [x] The roadmap lists the milestones after this one, approved by the owner.
 
 ## Plan
 
@@ -106,6 +106,10 @@ harness came from a starter kit; this plan makes it this project's own.
   T2 Agentic Voice, a library and the Ole5 app built on it (D-013, plan 001): the package that
   criterion 3 speaks of is now the library's, `packages/t2-agentic-voice/src/t2_agentic_voice/`,
   and the description awaiting approval is the widened one.
+- 2026-11-01: The owner approved the description, the layers (D-003), the stack (D-002),
+  SECURITY.md (D-007), evaluation.md (D-011) and the milestones M1 to M7, with the package
+  design as amended (D-017, plan 001). Two criteria stay open: CI, which waits for a remote
+  (TD-001; the owner chose to start M1 first), and the owner's review of WORKING-RULES.md.
 
 ## Decision log
 
@@ -139,3 +143,9 @@ All on 2026-10-28, in the owner's words:
   of building this project."
 - "Do the files for the Harness (with description too, you know the idea already)"
 - "After Finishing with the Harness, write your proposed design as milestones in the roadmap."
+
+On 2026-11-01, the owner's answers to the agent's questions:
+
+- "Approve all": the stack (D-002), the layers (D-003), SECURITY.md (D-007), evaluation.md
+  (D-011), DESCRIPTION.md, the roadmap's M1 to M7, and the package design as amended (D-017).
+- "Start M1, CI later": M0 stays open only for CI, recorded as tech debt (TD-001).

@@ -4,7 +4,7 @@ T2 Agentic Voice is a Python library that T2's teams install for speech-first vo
 (turn-taking, interruptions, answers, actions only on a clear yes, in Saudi Arabic, MSA and
 English). Its first app, the **Ole5 Voice Agent**, is built here on its public API (D-013). The
 owner's full description is in [DESCRIPTION.md](docs/project/DESCRIPTION.md). Stack: Python 3.12
-· a uv workspace · pydantic; the product libraries (Pipecat, FastAPI, Groq, Phoenix) are proposed
+· a uv workspace · pydantic; the product libraries (Pipecat, FastAPI, Groq, Phoenix) are recorded
 in [decisions.md](docs/design/decisions.md) (D-002). Groq is the only provider for now (D-004).
 
 This file is a **map, not a manual**. Open the linked doc when your task touches that area.
@@ -47,7 +47,7 @@ floor) live in [harness.toml](harness.toml).
 | What we are building | [docs/project/DESCRIPTION.md](docs/project/DESCRIPTION.md) |
 | The owner's documents (meeting notes, reports, snapshots) and how to write them | [docs/project/README.md](docs/project/README.md) |
 | Layers, dependency rules, the library and its apps, the main flow | [ARCHITECTURE.md](ARCHITECTURE.md) |
-| What the library provides, what an app provides, its public API (proposed) | [docs/design/package-design.md](docs/design/package-design.md) |
+| What the library provides, what an app provides, its public API | [docs/design/package-design.md](docs/design/package-design.md) |
 | How teammates use the library (the guide) | [docs/guide/README.md](docs/guide/README.md) |
 | How the agent works with the owner and other sessions; where new feedback goes | [WORKING-RULES.md](WORKING-RULES.md) |
 | Security invariants and threat model | [docs/SECURITY.md](docs/SECURITY.md) |

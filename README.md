@@ -33,6 +33,6 @@ uv run poe              # every task
 - [docs/plans/roadmap.md](docs/plans/roadmap.md): the milestones, and the plans behind them.
 - [docs/design/decisions.md](docs/design/decisions.md): why things are the way they are.
 - [docs/design/package-design.md](docs/design/package-design.md): what the library provides
-  and what an app provides (proposed).
+  and what an app provides.
 - [WORKING-RULES.md](WORKING-RULES.md): how the agent works with the owner.
 - [harness.toml](harness.toml): the rules the checks enforce.

@@ -13,9 +13,9 @@ Ole5 Voice Agent is its first app. Two rules shape it most:
   implements it, and a setting picks the adapter, so a provider is swapped by configuration
   without touching the layers that use it (GP-22).
 
-The layers were proposed by the agent on 2026-10-28 and await the owner's approval
-([D-003](docs/design/decisions.md)); the libraries they own are proposed in D-002. What the
-library provides to an app, and what an app must provide, is proposed in
+The layers were proposed by the agent on 2026-10-28 and approved by the owner on 2026-11-01
+([D-003](docs/design/decisions.md)); the libraries they own are in D-002. What the
+library provides to an app, and what an app must provide, is in
 [package-design.md](docs/design/package-design.md) (D-017), with the owner's answers to its
 open questions in D-018.
 

@@ -15,3 +15,4 @@ shape.
 
 | ID | Debt | Why it matters | Proposed fix |
 | --- | --- | --- | --- |
+| TD-001 | CI does not run the gate: the repository has no remote yet (found in plan 000, 2026-11-01; the owner chose to start M1 first) | Only the local gate guards a commit, and M0 cannot close: its *Done when* and plan 000 require CI on every push and pull request | The owner creates a remote (GitHub or T2's git host); the agent pushes, checks that `.github/workflows/ci.yml` runs `uv run poe check` there, and closes plan 000 |

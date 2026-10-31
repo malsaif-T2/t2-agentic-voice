@@ -5,7 +5,7 @@ library, declare your use case, add your tools and the actions that need a spoke
 without a microphone or a key, and run it.
 
 **Status: nothing to install yet.** The library's public API is designed but not built: the
-design is [package-design.md](../design/package-design.md) (D-017, proposed), and its section 3
+design is [package-design.md](../design/package-design.md) (D-017, approved as amended by D-018), and its section 3
 is the contract, what the library provides and what your app must provide. The first version
 is used from Python only (D-014). Each page below is written when the part it describes lands
 in the library, with the milestone named in its row ([roadmap](../plans/roadmap.md)); code
