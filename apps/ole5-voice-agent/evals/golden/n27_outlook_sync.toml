@@ -1,0 +1,81 @@
+# Written by `python -m ole5_voice.evals.import_recordings` from the recorder's files:
+# import again rather than edit.
+id = "n27_outlook_sync"
+source = "script"
+kind = "paused_request"
+language = "mixed"
+text = "عندي مشكلة في Outlook ما يتزامن مع البريد"
+alternatives = []
+terms = ["Outlook"]
+
+[[variants]]
+id = "n27_outlook_sync-bluetooth-1-1"
+device = "bluetooth"
+session = "bluetooth-1"
+reference = "عندي مشكلة في Outlook ما يتزامن مع البريد"
+reference_source = "script"
+turn_ends_ms = [3992]
+tags = []
+
+[[variants.segments]]
+root = "owner"
+path = "bluetooth-1/n27_outlook_sync-bluetooth-1-1.wav"
+sha256 = "f94b474b8650f1ef187c18d8ccc613a7d9f722e0b9b5e5e02404d762b39bb87c"
+
+[[variants.confirmations]]
+at = 2026-11-01T21:39:45.051193+03:00
+review_pass = 3
+
+[[variants]]
+id = "n27_outlook_sync-laptop-1-1"
+device = "laptop"
+session = "laptop-1"
+reference = "عندي مشكلة في Outlook ما يتزامن مع البريد"
+reference_source = "script"
+turn_ends_ms = [3699]
+tags = []
+
+[[variants.segments]]
+root = "owner"
+path = "laptop-1/n27_outlook_sync-laptop-1-1.wav"
+sha256 = "610d6f86e659921289594885873f47059485112d4a67599f15a2e07026e90179"
+
+[[variants.confirmations]]
+at = 2026-11-01T21:45:49.466200+03:00
+review_pass = 3
+
+[[variants]]
+id = "n27_outlook_sync-laptop-1-3"
+device = "laptop"
+session = "laptop-1"
+reference = "عندي مشكلة في Outlook ما يتزامن مع البريد"
+reference_source = "script"
+turn_ends_ms = [3185]
+tags = []
+
+[[variants.segments]]
+root = "owner"
+path = "laptop-1/n27_outlook_sync-laptop-1-3.wav"
+sha256 = "6ac9d3ccb9d7cafde2349c34594eb2d3b1a15d6a8d81fa2b9b721b1d01906568"
+
+[[variants.confirmations]]
+at = 2026-11-01T21:45:53.676415+03:00
+review_pass = 3
+
+[[variants]]
+id = "n27_outlook_sync-wired-1-1"
+device = "wired"
+session = "wired-1"
+reference = "عندي مشكلة في Outlook ما يتزامن مع البريد"
+reference_source = "script"
+turn_ends_ms = [3888]
+tags = []
+
+[[variants.segments]]
+root = "owner"
+path = "wired-1/n27_outlook_sync-wired-1-1.wav"
+sha256 = "546dde09a21aba90e613b24862ce9df99e0a5d62cb9a6cfe65b58cb37415e7be"
+
+[[variants.confirmations]]
+at = 2026-11-01T21:51:02.453560+03:00
+review_pass = 3

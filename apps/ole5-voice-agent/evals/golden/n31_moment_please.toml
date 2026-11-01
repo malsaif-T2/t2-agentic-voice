@@ -1,0 +1,81 @@
+# Written by `python -m ole5_voice.evals.import_recordings` from the recorder's files:
+# import again rather than edit.
+id = "n31_moment_please"
+source = "script"
+kind = "stop_word"
+language = "saudi"
+text = "لحظة لو سمحت"
+alternatives = []
+terms = []
+
+[[variants]]
+id = "n31_moment_please-bluetooth-1-1"
+device = "bluetooth"
+session = "bluetooth-1"
+reference = "لحظة لو سمحت"
+reference_source = "script"
+turn_ends_ms = []
+tags = []
+
+[[variants.segments]]
+root = "owner"
+path = "bluetooth-1/n31_moment_please-bluetooth-1-1.wav"
+sha256 = "31b55661c181bed39489f141924b10b39cb01b4afa52ab11be747bb8728ce2b0"
+
+[[variants.confirmations]]
+at = 2026-11-01T21:39:58.632118+03:00
+review_pass = 3
+
+[[variants]]
+id = "n31_moment_please-laptop-1-1"
+device = "laptop"
+session = "laptop-1"
+reference = "لحظة لو سمحت"
+reference_source = "script"
+turn_ends_ms = []
+tags = []
+
+[[variants.segments]]
+root = "owner"
+path = "laptop-1/n31_moment_please-laptop-1-1.wav"
+sha256 = "a47021178f4dc207a435fe6dc890b97ce16631b534aa1cf3ea94e415eaae0ec3"
+
+[[variants.confirmations]]
+at = 2026-11-01T21:46:16.850492+03:00
+review_pass = 3
+
+[[variants]]
+id = "n31_moment_please-laptop-1-2"
+device = "laptop"
+session = "laptop-1"
+reference = "لحظة لو سمحت"
+reference_source = "script"
+turn_ends_ms = []
+tags = []
+
+[[variants.segments]]
+root = "owner"
+path = "laptop-1/n31_moment_please-laptop-1-2.wav"
+sha256 = "08069cc0057523f709d43da969800bb062f82d673cb8f4dca75efa9e3d6bee69"
+
+[[variants.confirmations]]
+at = 2026-11-01T21:46:19.061588+03:00
+review_pass = 3
+
+[[variants]]
+id = "n31_moment_please-wired-1-1"
+device = "wired"
+session = "wired-1"
+reference = "لحظة لو سمحت"
+reference_source = "script"
+turn_ends_ms = []
+tags = []
+
+[[variants.segments]]
+root = "owner"
+path = "wired-1/n31_moment_please-wired-1-1.wav"
+sha256 = "b78179c47a39779964d35132d740cf8110cd449193b112491997cf68f1caec1d"
+
+[[variants.confirmations]]
+at = 2026-11-01T21:51:13.252540+03:00
+review_pass = 3

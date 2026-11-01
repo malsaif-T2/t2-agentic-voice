@@ -1,0 +1,99 @@
+# Written by `python -m ole5_voice.evals.import_recordings` from the recorder's files:
+# import again rather than edit.
+id = "n41_aywa"
+source = "script"
+kind = "listening_sound"
+language = "saudi"
+text = "ايوه"
+alternatives = []
+terms = []
+
+[[variants]]
+id = "n41_aywa-bluetooth-1-1"
+device = "bluetooth"
+session = "bluetooth-1"
+reference = "ايوه"
+reference_source = "script"
+turn_ends_ms = []
+tags = []
+
+[[variants.segments]]
+root = "owner"
+path = "bluetooth-1/n41_aywa-bluetooth-1-1.wav"
+sha256 = "ba001a13670fa00c9066760e27f5493ca1e26293acb0499af290d53bcd929247"
+
+[[variants.confirmations]]
+at = 2026-11-01T21:40:25.677934+03:00
+review_pass = 3
+
+[[variants]]
+id = "n41_aywa-bluetooth-1-2"
+device = "bluetooth"
+session = "bluetooth-1"
+reference = "ايوه"
+reference_source = "script"
+turn_ends_ms = []
+tags = []
+
+[[variants.segments]]
+root = "owner"
+path = "bluetooth-1/n41_aywa-bluetooth-1-2.wav"
+sha256 = "f432217e83f9c97cf377805130ae4ada47b887a8971d541406b10e211fc55a90"
+
+[[variants.confirmations]]
+at = 2026-11-01T21:40:27.859300+03:00
+review_pass = 3
+
+[[variants]]
+id = "n41_aywa-laptop-1-1"
+device = "laptop"
+session = "laptop-1"
+reference = "ايوه"
+reference_source = "script"
+turn_ends_ms = []
+tags = []
+
+[[variants.segments]]
+root = "owner"
+path = "laptop-1/n41_aywa-laptop-1-1.wav"
+sha256 = "24be0ece888ba2d3e79943306fa2841ccda8d56a46372e4ff87f7128c255558e"
+
+[[variants.confirmations]]
+at = 2026-11-01T21:46:57.089925+03:00
+review_pass = 3
+
+[[variants]]
+id = "n41_aywa-laptop-1-2"
+device = "laptop"
+session = "laptop-1"
+reference = "ايوه"
+reference_source = "script"
+turn_ends_ms = []
+tags = []
+
+[[variants.segments]]
+root = "owner"
+path = "laptop-1/n41_aywa-laptop-1-2.wav"
+sha256 = "59db96a9b9811b9ed6557dcfec1e699b19e4ec8159e1393f518229ea22968b60"
+
+[[variants.confirmations]]
+at = 2026-11-01T21:46:58.961730+03:00
+review_pass = 3
+
+[[variants]]
+id = "n41_aywa-wired-1-1"
+device = "wired"
+session = "wired-1"
+reference = "ايوه"
+reference_source = "script"
+turn_ends_ms = []
+tags = []
+
+[[variants.segments]]
+root = "owner"
+path = "wired-1/n41_aywa-wired-1-1.wav"
+sha256 = "352a02d74a11e72a00611078cef410ef18f2897f169cfecd64363606884cf430"
+
+[[variants.confirmations]]
+at = 2026-11-01T21:51:34.311092+03:00
+review_pass = 3

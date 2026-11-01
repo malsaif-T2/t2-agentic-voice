@@ -1,0 +1,81 @@
+# Written by `python -m ole5_voice.evals.import_recordings` from the recorder's files:
+# import again rather than edit.
+id = "n30_enough"
+source = "script"
+kind = "stop_word"
+language = "saudi"
+text = "خلاص يكفي"
+alternatives = []
+terms = []
+
+[[variants]]
+id = "n30_enough-bluetooth-1-3"
+device = "bluetooth"
+session = "bluetooth-1"
+reference = "خلاص يكفي"
+reference_source = "script"
+turn_ends_ms = []
+tags = []
+
+[[variants.segments]]
+root = "owner"
+path = "bluetooth-1/n30_enough-bluetooth-1-3.wav"
+sha256 = "5466c43551e3eab5a7f08c85fce017b91210c852e91b146c1186968b3f8618e9"
+
+[[variants.confirmations]]
+at = 2026-11-01T21:39:55.685382+03:00
+review_pass = 3
+
+[[variants]]
+id = "n30_enough-laptop-1-1"
+device = "laptop"
+session = "laptop-1"
+reference = "خلاص يكفي"
+reference_source = "script"
+turn_ends_ms = []
+tags = []
+
+[[variants.segments]]
+root = "owner"
+path = "laptop-1/n30_enough-laptop-1-1.wav"
+sha256 = "04dabff19b644e69882ccea37c756ebaa7ad8e0917620d3e6290e43a7f1feae8"
+
+[[variants.confirmations]]
+at = 2026-11-01T21:46:12.397111+03:00
+review_pass = 3
+
+[[variants]]
+id = "n30_enough-laptop-1-2"
+device = "laptop"
+session = "laptop-1"
+reference = "خلاص يكفي"
+reference_source = "script"
+turn_ends_ms = []
+tags = []
+
+[[variants.segments]]
+root = "owner"
+path = "laptop-1/n30_enough-laptop-1-2.wav"
+sha256 = "1a8e3837e93e6722d4d3778cf511d46096fdd06e507979390ad14a2baca5a630"
+
+[[variants.confirmations]]
+at = 2026-11-01T21:46:14.617334+03:00
+review_pass = 3
+
+[[variants]]
+id = "n30_enough-wired-1-1"
+device = "wired"
+session = "wired-1"
+reference = "خلاص يكفي"
+reference_source = "script"
+turn_ends_ms = []
+tags = []
+
+[[variants.segments]]
+root = "owner"
+path = "wired-1/n30_enough-wired-1-1.wav"
+sha256 = "9f56bc475601f407d8571355dbeb238516752e9aff230c91849e52cfb6f231d0"
+
+[[variants.confirmations]]
+at = 2026-11-01T21:51:11.347047+03:00
+review_pass = 3

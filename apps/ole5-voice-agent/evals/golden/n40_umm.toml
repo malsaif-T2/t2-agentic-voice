@@ -1,0 +1,81 @@
+# Written by `python -m ole5_voice.evals.import_recordings` from the recorder's files:
+# import again rather than edit.
+id = "n40_umm"
+source = "script"
+kind = "listening_sound"
+language = "saudi"
+text = "امم"
+alternatives = []
+terms = []
+
+[[variants]]
+id = "n40_umm-bluetooth-1-1"
+device = "bluetooth"
+session = "bluetooth-1"
+reference = "امم"
+reference_source = "script"
+turn_ends_ms = []
+tags = []
+
+[[variants.segments]]
+root = "owner"
+path = "bluetooth-1/n40_umm-bluetooth-1-1.wav"
+sha256 = "2e49746832ce9f5c9d431ac9d1d6b07433800b1543cdff795a627509c222c8a0"
+
+[[variants.confirmations]]
+at = 2026-11-01T21:40:23.644738+03:00
+review_pass = 3
+
+[[variants]]
+id = "n40_umm-laptop-1-1"
+device = "laptop"
+session = "laptop-1"
+reference = "امم"
+reference_source = "script"
+turn_ends_ms = []
+tags = []
+
+[[variants.segments]]
+root = "owner"
+path = "laptop-1/n40_umm-laptop-1-1.wav"
+sha256 = "9bb1dc5de7fb5fdbe05b7be133a56c58e6c62741e81652371d3d17c496579d56"
+
+[[variants.confirmations]]
+at = 2026-11-01T21:46:52.197348+03:00
+review_pass = 3
+
+[[variants]]
+id = "n40_umm-laptop-1-2"
+device = "laptop"
+session = "laptop-1"
+reference = "امم"
+reference_source = "script"
+turn_ends_ms = []
+tags = []
+
+[[variants.segments]]
+root = "owner"
+path = "laptop-1/n40_umm-laptop-1-2.wav"
+sha256 = "a9e7851db76aebcf35cf4a15ed68c0d7cd1ad687a644f4d65fd7957e1582701f"
+
+[[variants.confirmations]]
+at = 2026-11-01T21:46:54.547822+03:00
+review_pass = 3
+
+[[variants]]
+id = "n40_umm-wired-1-1"
+device = "wired"
+session = "wired-1"
+reference = "امم"
+reference_source = "script"
+turn_ends_ms = []
+tags = []
+
+[[variants.segments]]
+root = "owner"
+path = "wired-1/n40_umm-wired-1-1.wav"
+sha256 = "a5e849cc1ce28d2270f6d438cd296d40c486461987c36ae7cbbc24aaf6a8a2f7"
+
+[[variants.confirmations]]
+at = 2026-11-01T21:51:32.465350+03:00
+review_pass = 3

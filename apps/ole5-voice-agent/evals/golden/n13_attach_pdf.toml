@@ -1,0 +1,63 @@
+# Written by `python -m ole5_voice.evals.import_recordings` from the recorder's files:
+# import again rather than edit.
+id = "n13_attach_pdf"
+source = "script"
+kind = "request"
+language = "english"
+text = "How do I attach a PDF to a correspondence?"
+alternatives = []
+terms = ["PDF"]
+
+[[variants]]
+id = "n13_attach_pdf-bluetooth-1-2"
+device = "bluetooth"
+session = "bluetooth-1"
+reference = "How do I attach a PDF to a correspondence?"
+reference_source = "script"
+turn_ends_ms = []
+tags = []
+
+[[variants.segments]]
+root = "owner"
+path = "bluetooth-1/n13_attach_pdf-bluetooth-1-2.wav"
+sha256 = "d0120e0ab476ddf6546544ac93cd128e5f772a218c677df04ca0fd14eeaca2e6"
+
+[[variants.confirmations]]
+at = 2026-11-01T21:38:35.763357+03:00
+review_pass = 3
+
+[[variants]]
+id = "n13_attach_pdf-laptop-1-2"
+device = "laptop"
+session = "laptop-1"
+reference = "How do I attach a PDF to a correspondence?"
+reference_source = "script"
+turn_ends_ms = []
+tags = []
+
+[[variants.segments]]
+root = "owner"
+path = "laptop-1/n13_attach_pdf-laptop-1-2.wav"
+sha256 = "bb58086e202707d64048a5e5d0a83c64ef6bdebfe2348ad327ed224241317aff"
+
+[[variants.confirmations]]
+at = 2026-11-01T21:43:54.347431+03:00
+review_pass = 3
+
+[[variants]]
+id = "n13_attach_pdf-wired-1-1"
+device = "wired"
+session = "wired-1"
+reference = "How do I attach a PDF to a correspondence?"
+reference_source = "script"
+turn_ends_ms = []
+tags = []
+
+[[variants.segments]]
+root = "owner"
+path = "wired-1/n13_attach_pdf-wired-1-1.wav"
+sha256 = "9d5b5e1a97be1d185ba55e2a387f8342cd3da805219d9e6388ab7fb80ea65f5c"
+
+[[variants.confirmations]]
+at = 2026-11-01T21:49:59.726443+03:00
+review_pass = 3

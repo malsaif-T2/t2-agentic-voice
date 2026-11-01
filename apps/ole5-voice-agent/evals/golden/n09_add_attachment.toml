@@ -1,0 +1,81 @@
+# Written by `python -m ole5_voice.evals.import_recordings` from the recorder's files:
+# import again rather than edit.
+id = "n09_add_attachment"
+source = "script"
+kind = "request"
+language = "msa"
+text = "أريد إضافة مرفق إلى المراسلة"
+alternatives = []
+terms = []
+
+[[variants]]
+id = "n09_add_attachment-bluetooth-1-1"
+device = "bluetooth"
+session = "bluetooth-1"
+reference = "أريد إضافة مرفق إلى المراسلة"
+reference_source = "script"
+turn_ends_ms = []
+tags = []
+
+[[variants.segments]]
+root = "owner"
+path = "bluetooth-1/n09_add_attachment-bluetooth-1-1.wav"
+sha256 = "d1b24ab5c3b90a16086d89628a14a79eb727ee450162e022d6f7f5e249e5ca61"
+
+[[variants.confirmations]]
+at = 2026-11-01T21:38:19.914157+03:00
+review_pass = 3
+
+[[variants]]
+id = "n09_add_attachment-laptop-1-1"
+device = "laptop"
+session = "laptop-1"
+reference = "أريد إضافة مرفق إلى المراسلة"
+reference_source = "script"
+turn_ends_ms = []
+tags = []
+
+[[variants.segments]]
+root = "owner"
+path = "laptop-1/n09_add_attachment-laptop-1-1.wav"
+sha256 = "4673fb9bb0d007588b7803e85d8972ca3cb2ec6ebda31cc12f02ea147887389b"
+
+[[variants.confirmations]]
+at = 2026-11-01T21:43:20.847723+03:00
+review_pass = 3
+
+[[variants]]
+id = "n09_add_attachment-laptop-1-2"
+device = "laptop"
+session = "laptop-1"
+reference = "أريد إضافة مرفق إلى المراسلة"
+reference_source = "script"
+turn_ends_ms = []
+tags = []
+
+[[variants.segments]]
+root = "owner"
+path = "laptop-1/n09_add_attachment-laptop-1-2.wav"
+sha256 = "4d1fb454c3296d6718c121b748f788a0a2786f95875bbf163bc0cb635c656dbe"
+
+[[variants.confirmations]]
+at = 2026-11-01T21:43:23.758943+03:00
+review_pass = 3
+
+[[variants]]
+id = "n09_add_attachment-wired-1-1"
+device = "wired"
+session = "wired-1"
+reference = "أريد إضافة مرفق إلى المراسلة"
+reference_source = "script"
+turn_ends_ms = []
+tags = []
+
+[[variants.segments]]
+root = "owner"
+path = "wired-1/n09_add_attachment-wired-1-1.wav"
+sha256 = "8383c5b94ba9d06ac7990ca18fbd63252463b0c598e0fdbc14588c7304609157"
+
+[[variants.confirmations]]
+at = 2026-11-01T21:49:38.738108+03:00
+review_pass = 3

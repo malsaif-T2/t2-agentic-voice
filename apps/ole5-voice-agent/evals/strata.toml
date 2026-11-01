@@ -4,51 +4,66 @@
 # variants or the script's lines do not hold these counts. A count changes only with the set it
 # counts, in the same commit, reviewed like the items.
 #
-# The set holds only the talk-over items so far, with the languages `import_talkover.py` gives
-# them (Q7). The [script] tables count the lines of the script the owner approved on 2026-11-01
-# (Q4); its recordings join the items and variants as they are imported. Variants are counted
+# The set holds the talk-over items, with the languages `import_talkover.py` gives them (Q7),
+# and the items of the script the owner approved on 2026-11-01 (Q4), whose lines the [script]
+# tables count, with every take the owner kept on the three devices. Variants are counted
 # by the device of their microphone and by their tags: the talk-over's condition (duck, pause),
 # whether the take began over the assistant, and its playback device.
 
 [items]
-total = 43
+total = 95
 
 [items.source]
+script = 52
 talkover = 43
 
 [items.language]
-english = 9
-mixed = 4
-msa = 7
-saudi = 23
+english = 21
+mixed = 10
+msa = 16
+none = 5
+saudi = 43
 
 [items.kind]
 confirmation = 4
-listening_sound = 10
-repeat_request = 1
-request = 19
+echo_only = 2
+listening_sound = 15
+noise = 2
+paused_request = 10
+repeat_request = 5
+request = 37
 short_request = 3
-stop_word = 6
+silence = 1
+stop_word = 12
+ticket_number = 4
 
 [variants]
-total = 118
+total = 337
 
 [variants.language]
-english = 21
-mixed = 12
-msa = 23
-saudi = 62
+english = 75
+mixed = 35
+msa = 60
+none = 15
+saudi = 152
 
 [variants.kind]
 confirmation = 13
-listening_sound = 25
-repeat_request = 4
-request = 54
+echo_only = 6
+listening_sound = 46
+noise = 6
+paused_request = 39
+repeat_request = 18
+request = 131
 short_request = 9
-stop_word = 13
+silence = 3
+stop_word = 36
+ticket_number = 30
 
 [variants.device]
-laptop = 118
+bluetooth = 59
+laptop = 215
+wired = 63
 
 [variants.tag]
 duck = 63

@@ -1,0 +1,81 @@
+# Written by `python -m ole5_voice.evals.import_recordings` from the recorder's files:
+# import again rather than edit.
+id = "n43_uh_huh"
+source = "script"
+kind = "listening_sound"
+language = "english"
+text = "uh-huh"
+alternatives = []
+terms = []
+
+[[variants]]
+id = "n43_uh_huh-bluetooth-1-1"
+device = "bluetooth"
+session = "bluetooth-1"
+reference = "uh-huh"
+reference_source = "script"
+turn_ends_ms = []
+tags = []
+
+[[variants.segments]]
+root = "owner"
+path = "bluetooth-1/n43_uh_huh-bluetooth-1-1.wav"
+sha256 = "21ffd70c488e627be72f8ce95afab9ff6dbd3ed937ad7ee1eb41d790e818f52f"
+
+[[variants.confirmations]]
+at = 2026-11-01T21:40:32.637193+03:00
+review_pass = 3
+
+[[variants]]
+id = "n43_uh_huh-laptop-1-2"
+device = "laptop"
+session = "laptop-1"
+reference = "uh-huh"
+reference_source = "script"
+turn_ends_ms = []
+tags = []
+
+[[variants.segments]]
+root = "owner"
+path = "laptop-1/n43_uh_huh-laptop-1-2.wav"
+sha256 = "499fcddbe09e2b7735d1dacd81ba0c0294cd63003be583fd7ff8f893aed5ef5a"
+
+[[variants.confirmations]]
+at = 2026-11-01T21:47:07.346358+03:00
+review_pass = 3
+
+[[variants]]
+id = "n43_uh_huh-laptop-1-3"
+device = "laptop"
+session = "laptop-1"
+reference = "uh-huh"
+reference_source = "script"
+turn_ends_ms = []
+tags = []
+
+[[variants.segments]]
+root = "owner"
+path = "laptop-1/n43_uh_huh-laptop-1-3.wav"
+sha256 = "27c395d261400c257965b443932f9ce66d878be9f0b9d21a82726b4c679ab07f"
+
+[[variants.confirmations]]
+at = 2026-11-01T21:47:09.712379+03:00
+review_pass = 3
+
+[[variants]]
+id = "n43_uh_huh-wired-1-1"
+device = "wired"
+session = "wired-1"
+reference = "uh-huh"
+reference_source = "script"
+turn_ends_ms = []
+tags = []
+
+[[variants.segments]]
+root = "owner"
+path = "wired-1/n43_uh_huh-wired-1-1.wav"
+sha256 = "c7dd86dc1b3aee33433e52dff616ebe76bd417084576504ff2e28934be005328"
+
+[[variants.confirmations]]
+at = 2026-11-01T21:51:38.435720+03:00
+review_pass = 3

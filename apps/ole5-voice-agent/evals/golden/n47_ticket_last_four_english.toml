@@ -1,0 +1,171 @@
+# Written by `python -m ole5_voice.evals.import_recordings` from the recorder's files:
+# import again rather than edit.
+id = "n47_ticket_last_four_english"
+source = "script"
+kind = "ticket_number"
+language = "english"
+text = "It's the ticket ending in 3906"
+alternatives = []
+terms = []
+
+[[variants]]
+id = "n47_ticket_last_four_english-bluetooth-1-1"
+device = "bluetooth"
+session = "bluetooth-1"
+reference = "It's the ticket ending in 3906"
+reference_source = "script"
+turn_ends_ms = []
+tags = []
+
+[[variants.segments]]
+root = "owner"
+path = "bluetooth-1/n47_ticket_last_four_english-bluetooth-1-1.wav"
+sha256 = "6a4482c702d2f51c5e19667ab146dd3205b8601308fffe1ee2ef14f4969a3671"
+
+[[variants.confirmations]]
+at = 2026-11-01T21:41:40.032955+03:00
+review_pass = 3
+
+[[variants]]
+id = "n47_ticket_last_four_english-bluetooth-1-2"
+device = "bluetooth"
+session = "bluetooth-1"
+reference = "It's the ticket ending in 3906"
+reference_source = "script"
+turn_ends_ms = []
+tags = []
+
+[[variants.segments]]
+root = "owner"
+path = "bluetooth-1/n47_ticket_last_four_english-bluetooth-1-2.wav"
+sha256 = "d2e2b2241432641da8eb75e9eed0c9c7b7108ff18298fb1110197f7892369f97"
+
+[[variants.confirmations]]
+at = 2026-11-01T21:41:44.850661+03:00
+review_pass = 3
+
+[[variants]]
+id = "n47_ticket_last_four_english-bluetooth-1-3"
+device = "bluetooth"
+session = "bluetooth-1"
+reference = "It's the ticket ending in 3906"
+reference_source = "script"
+turn_ends_ms = []
+tags = []
+
+[[variants.segments]]
+root = "owner"
+path = "bluetooth-1/n47_ticket_last_four_english-bluetooth-1-3.wav"
+sha256 = "c3a7708560da8af27346d5a9f89226c109a10760ced002fa532166eddac5c947"
+
+[[variants.confirmations]]
+at = 2026-11-01T21:41:50.706133+03:00
+review_pass = 3
+
+[[variants]]
+id = "n47_ticket_last_four_english-laptop-1-1"
+device = "laptop"
+session = "laptop-1"
+reference = "It's the ticket ending in 3906"
+reference_source = "script"
+turn_ends_ms = []
+tags = []
+
+[[variants.segments]]
+root = "owner"
+path = "laptop-1/n47_ticket_last_four_english-laptop-1-1.wav"
+sha256 = "1d8a2e9bfc5b5a81391a88efbbd4eac678fedd08f187d52270d4f1c735cf9c71"
+
+[[variants.confirmations]]
+at = 2026-11-01T21:48:38.186204+03:00
+review_pass = 3
+
+[[variants]]
+id = "n47_ticket_last_four_english-laptop-1-2"
+device = "laptop"
+session = "laptop-1"
+reference = "It's the ticket ending in 3906"
+reference_source = "script"
+turn_ends_ms = []
+tags = []
+
+[[variants.segments]]
+root = "owner"
+path = "laptop-1/n47_ticket_last_four_english-laptop-1-2.wav"
+sha256 = "769357b6625c7c5f4ffa04328810312747ad0069a723b3d885b901ba187e5bdb"
+
+[[variants.confirmations]]
+at = 2026-11-01T21:48:43.807439+03:00
+review_pass = 3
+
+[[variants]]
+id = "n47_ticket_last_four_english-laptop-1-3"
+device = "laptop"
+session = "laptop-1"
+reference = "It's the ticket ending in 3906"
+reference_source = "script"
+turn_ends_ms = []
+tags = []
+
+[[variants.segments]]
+root = "owner"
+path = "laptop-1/n47_ticket_last_four_english-laptop-1-3.wav"
+sha256 = "ae649b946c3e255cd80bcb08213703f690ea741ac4879def8fdac6b6f3f4b681"
+
+[[variants.confirmations]]
+at = 2026-11-01T21:48:49.441028+03:00
+review_pass = 3
+
+[[variants]]
+id = "n47_ticket_last_four_english-wired-1-1"
+device = "wired"
+session = "wired-1"
+reference = "It's the ticket ending in 3906"
+reference_source = "script"
+turn_ends_ms = []
+tags = []
+
+[[variants.segments]]
+root = "owner"
+path = "wired-1/n47_ticket_last_four_english-wired-1-1.wav"
+sha256 = "d8fa6904c62eb543dd78b8459ac02ad726f53c1267ed238fe4999f167ff2179a"
+
+[[variants.confirmations]]
+at = 2026-11-01T21:52:42.270585+03:00
+review_pass = 3
+
+[[variants]]
+id = "n47_ticket_last_four_english-wired-1-2"
+device = "wired"
+session = "wired-1"
+reference = "It's the ticket ending in 3906"
+reference_source = "script"
+turn_ends_ms = []
+tags = []
+
+[[variants.segments]]
+root = "owner"
+path = "wired-1/n47_ticket_last_four_english-wired-1-2.wav"
+sha256 = "fb87a18bc5e3616f154545fd706fe2cf94e118e14bcf0fb9a08554642d1cb678"
+
+[[variants.confirmations]]
+at = 2026-11-01T21:52:47.889784+03:00
+review_pass = 3
+
+[[variants]]
+id = "n47_ticket_last_four_english-wired-1-3"
+device = "wired"
+session = "wired-1"
+reference = "It's the ticket ending in 3906"
+reference_source = "script"
+turn_ends_ms = []
+tags = []
+
+[[variants.segments]]
+root = "owner"
+path = "wired-1/n47_ticket_last_four_english-wired-1-3.wav"
+sha256 = "235ce8b4c310846552592f4df33e5b86b20f299f4b10482aeea79264f6e1cdbf"
+
+[[variants.confirmations]]
+at = 2026-11-01T21:52:52.823113+03:00
+review_pass = 3

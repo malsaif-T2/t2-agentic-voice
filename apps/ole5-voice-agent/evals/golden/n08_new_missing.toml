@@ -1,0 +1,81 @@
+# Written by `python -m ole5_voice.evals.import_recordings` from the recorder's files:
+# import again rather than edit.
+id = "n08_new_missing"
+source = "script"
+kind = "request"
+language = "msa"
+text = "لا تظهر المراسلات الجديدة في صندوق الوارد"
+alternatives = []
+terms = []
+
+[[variants]]
+id = "n08_new_missing-bluetooth-1-1"
+device = "bluetooth"
+session = "bluetooth-1"
+reference = "لا تظهر المراسلات الجديدة في صندوق الوارد"
+reference_source = "script"
+turn_ends_ms = []
+tags = []
+
+[[variants.segments]]
+root = "owner"
+path = "bluetooth-1/n08_new_missing-bluetooth-1-1.wav"
+sha256 = "75d120db724102a068fcfe52fc04f73cfc7b86e1072768a2f20b7decdf4de916"
+
+[[variants.confirmations]]
+at = 2026-11-01T21:38:16.827389+03:00
+review_pass = 3
+
+[[variants]]
+id = "n08_new_missing-laptop-1-1"
+device = "laptop"
+session = "laptop-1"
+reference = "لا تظهر المراسلات الجديدة في صندوق الوارد"
+reference_source = "script"
+turn_ends_ms = []
+tags = []
+
+[[variants.segments]]
+root = "owner"
+path = "laptop-1/n08_new_missing-laptop-1-1.wav"
+sha256 = "3be80b6fd7fd9e43140f3071e50f80697b5b6a97fde3024932d3f5d2c0bb44aa"
+
+[[variants.confirmations]]
+at = 2026-11-01T21:43:13.356238+03:00
+review_pass = 3
+
+[[variants]]
+id = "n08_new_missing-laptop-1-2"
+device = "laptop"
+session = "laptop-1"
+reference = "لا تظهر المراسلات الجديدة في صندوق الوارد"
+reference_source = "script"
+turn_ends_ms = []
+tags = []
+
+[[variants.segments]]
+root = "owner"
+path = "laptop-1/n08_new_missing-laptop-1-2.wav"
+sha256 = "e2d2dae73c2cc9ff2d5b75301d3ba78bde5d5c96b94d9fd47836def0d7c22a5c"
+
+[[variants.confirmations]]
+at = 2026-11-01T21:43:17.001700+03:00
+review_pass = 3
+
+[[variants]]
+id = "n08_new_missing-wired-1-1"
+device = "wired"
+session = "wired-1"
+reference = "لا تظهر المراسلات الجديدة في صندوق الوارد"
+reference_source = "script"
+turn_ends_ms = []
+tags = []
+
+[[variants.segments]]
+root = "owner"
+path = "wired-1/n08_new_missing-wired-1-1.wav"
+sha256 = "cd165e9f5b76c5baa439eff713630a364836420b80bf2d7df507ac4aa7a68aef"
+
+[[variants.confirmations]]
+at = 2026-11-01T21:49:35.543922+03:00
+review_pass = 3

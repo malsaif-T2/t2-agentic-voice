@@ -1,0 +1,63 @@
+# Written by `python -m ole5_voice.evals.import_recordings` from the recorder's files:
+# import again rather than edit.
+id = "n48_silence"
+source = "script"
+kind = "silence"
+language = "none"
+text = ""
+alternatives = []
+terms = []
+
+[[variants]]
+id = "n48_silence-bluetooth-1-1"
+device = "bluetooth"
+session = "bluetooth-1"
+reference = ""
+reference_source = "none"
+turn_ends_ms = []
+tags = []
+
+[[variants.segments]]
+root = "owner"
+path = "bluetooth-1/n48_silence-bluetooth-1-1.wav"
+sha256 = "c6e935e4b79ce9783cb7965f1d17722d95b1d9a7523ea89ba66650088ffe0782"
+
+[[variants.confirmations]]
+at = 2026-11-01T21:41:53.384577+03:00
+review_pass = 3
+
+[[variants]]
+id = "n48_silence-laptop-1-1"
+device = "laptop"
+session = "laptop-1"
+reference = ""
+reference_source = "none"
+turn_ends_ms = []
+tags = []
+
+[[variants.segments]]
+root = "owner"
+path = "laptop-1/n48_silence-laptop-1-1.wav"
+sha256 = "35d609a90cb2bb1ff4698e07538f9b1c296db3883dc50502c3e2d1175d29ae3f"
+
+[[variants.confirmations]]
+at = 2026-11-01T21:48:51.465875+03:00
+review_pass = 3
+
+[[variants]]
+id = "n48_silence-wired-1-1"
+device = "wired"
+session = "wired-1"
+reference = ""
+reference_source = "none"
+turn_ends_ms = []
+tags = []
+
+[[variants.segments]]
+root = "owner"
+path = "wired-1/n48_silence-wired-1-1.wav"
+sha256 = "74bd49d24b6f50683ab0d6cb3c2d9afff4ad134efc99a716980f67ff1bd67b37"
+
+[[variants.confirmations]]
+at = 2026-11-01T21:52:55.426222+03:00
+review_pass = 3

@@ -1,0 +1,81 @@
+# Written by `python -m ole5_voice.evals.import_recordings` from the recorder's files:
+# import again rather than edit.
+id = "n26_inbox_loading"
+source = "script"
+kind = "paused_request"
+language = "english"
+text = "So the inbox it keeps loading and nothing shows up"
+alternatives = []
+terms = []
+
+[[variants]]
+id = "n26_inbox_loading-bluetooth-1-1"
+device = "bluetooth"
+session = "bluetooth-1"
+reference = "So the inbox it keeps loading and nothing shows up"
+reference_source = "script"
+turn_ends_ms = [4282]
+tags = []
+
+[[variants.segments]]
+root = "owner"
+path = "bluetooth-1/n26_inbox_loading-bluetooth-1-1.wav"
+sha256 = "d837863149b51572347c9779d4c6f082b4d5e78dfe5330dc5cd62fbd738d9edb"
+
+[[variants.confirmations]]
+at = 2026-11-01T21:39:40.311407+03:00
+review_pass = 3
+
+[[variants]]
+id = "n26_inbox_loading-laptop-1-2"
+device = "laptop"
+session = "laptop-1"
+reference = "So the inbox it keeps loading and nothing shows up"
+reference_source = "script"
+turn_ends_ms = [4276]
+tags = []
+
+[[variants.segments]]
+root = "owner"
+path = "laptop-1/n26_inbox_loading-laptop-1-2.wav"
+sha256 = "6abd49951d5eb54b927771839bc75ad98fce547f9076a7491f10f21e0cb86997"
+
+[[variants.confirmations]]
+at = 2026-11-01T21:45:39.783659+03:00
+review_pass = 3
+
+[[variants]]
+id = "n26_inbox_loading-laptop-1-3"
+device = "laptop"
+session = "laptop-1"
+reference = "So the inbox it keeps loading and nothing shows up"
+reference_source = "script"
+turn_ends_ms = [3785]
+tags = []
+
+[[variants.segments]]
+root = "owner"
+path = "laptop-1/n26_inbox_loading-laptop-1-3.wav"
+sha256 = "ac22b7c3969f64109224eb7eeded0198a948395bf07ecd3a87f38c0b3e05ac5c"
+
+[[variants.confirmations]]
+at = 2026-11-01T21:45:44.655391+03:00
+review_pass = 3
+
+[[variants]]
+id = "n26_inbox_loading-wired-1-1"
+device = "wired"
+session = "wired-1"
+reference = "So the inbox it keeps loading and nothing shows up"
+reference_source = "script"
+turn_ends_ms = [4530]
+tags = []
+
+[[variants.segments]]
+root = "owner"
+path = "wired-1/n26_inbox_loading-wired-1-1.wav"
+sha256 = "d2f059eaa9157e1dc293cc1294b3d4acd3f30767617e17ed4cc88959f52c6bfc"
+
+[[variants.confirmations]]
+at = 2026-11-01T21:50:57.864655+03:00
+review_pass = 3

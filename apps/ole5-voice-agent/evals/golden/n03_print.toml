@@ -1,0 +1,81 @@
+# Written by `python -m ole5_voice.evals.import_recordings` from the recorder's files:
+# import again rather than edit.
+id = "n03_print"
+source = "script"
+kind = "request"
+language = "saudi"
+text = "كيف أقدر أطبع المراسلة من النظام؟"
+alternatives = []
+terms = []
+
+[[variants]]
+id = "n03_print-bluetooth-1-1"
+device = "bluetooth"
+session = "bluetooth-1"
+reference = "كيف أقدر أطبع المراسلة من النظام؟"
+reference_source = "script"
+turn_ends_ms = []
+tags = []
+
+[[variants.segments]]
+root = "owner"
+path = "bluetooth-1/n03_print-bluetooth-1-1.wav"
+sha256 = "ed4623109d9d8b4d483f7922be5d3ebf3680ec3d810f76d9a12d91e07aa908da"
+
+[[variants.confirmations]]
+at = 2026-11-01T21:37:57.340657+03:00
+review_pass = 3
+
+[[variants]]
+id = "n03_print-laptop-1-1"
+device = "laptop"
+session = "laptop-1"
+reference = "كيف أقدر أطبع المراسلة من النظام؟"
+reference_source = "script"
+turn_ends_ms = []
+tags = []
+
+[[variants.segments]]
+root = "owner"
+path = "laptop-1/n03_print-laptop-1-1.wav"
+sha256 = "f8bc36151a389522226c13366cabb3cf6875a3534bbc7608e0097e9cc17a06bb"
+
+[[variants.confirmations]]
+at = 2026-11-01T21:42:32.169582+03:00
+review_pass = 3
+
+[[variants]]
+id = "n03_print-laptop-1-2"
+device = "laptop"
+session = "laptop-1"
+reference = "كيف أقدر أطبع المراسلة من النظام؟"
+reference_source = "script"
+turn_ends_ms = []
+tags = []
+
+[[variants.segments]]
+root = "owner"
+path = "laptop-1/n03_print-laptop-1-2.wav"
+sha256 = "d34895a0d894159c8b200e7463a06b66cee96a2b14cfdf0331ff948f83322cfa"
+
+[[variants.confirmations]]
+at = 2026-11-01T21:42:35.505220+03:00
+review_pass = 3
+
+[[variants]]
+id = "n03_print-wired-1-1"
+device = "wired"
+session = "wired-1"
+reference = "كيف أقدر أطبع المراسلة من النظام؟"
+reference_source = "script"
+turn_ends_ms = []
+tags = []
+
+[[variants.segments]]
+root = "owner"
+path = "wired-1/n03_print-wired-1-1.wav"
+sha256 = "3e7c4ccd0a413cb959b5210bc9f1ed0436e1f264f17c45d11715fca9a26dd1e3"
+
+[[variants.confirmations]]
+at = 2026-11-01T21:49:11.655947+03:00
+review_pass = 3

@@ -1,0 +1,81 @@
+# Written by `python -m ole5_voice.evals.import_recordings` from the recorder's files:
+# import again rather than edit.
+id = "n20_error_suddenly"
+source = "script"
+kind = "paused_request"
+language = "saudi"
+text = "أمس كنت أشتغل وفجأة طلع لي خطأ وما عاد يفتح البرنامج"
+alternatives = []
+terms = []
+
+[[variants]]
+id = "n20_error_suddenly-bluetooth-1-1"
+device = "bluetooth"
+session = "bluetooth-1"
+reference = "أمس كنت أشتغل وفجأة طلع لي خطأ وما عاد يفتح البرنامج"
+reference_source = "script"
+turn_ends_ms = [4426]
+tags = []
+
+[[variants.segments]]
+root = "owner"
+path = "bluetooth-1/n20_error_suddenly-bluetooth-1-1.wav"
+sha256 = "48f0e7b230db33338ef7169efd330e27264137617cd3f6f4d97fa71f2669a471"
+
+[[variants.confirmations]]
+at = 2026-11-01T21:39:02.317407+03:00
+review_pass = 3
+
+[[variants]]
+id = "n20_error_suddenly-laptop-1-1"
+device = "laptop"
+session = "laptop-1"
+reference = "أمس كنت أشتغل وفجأة طلع لي خطأ وما عاد يفتح البرنامج"
+reference_source = "script"
+turn_ends_ms = [5035]
+tags = []
+
+[[variants.segments]]
+root = "owner"
+path = "laptop-1/n20_error_suddenly-laptop-1-1.wav"
+sha256 = "b2580a44f76456b3d0e730023a04e4c04207a554b86c9f3e6cbabe6e9eb86dad"
+
+[[variants.confirmations]]
+at = 2026-11-01T21:44:42.119823+03:00
+review_pass = 3
+
+[[variants]]
+id = "n20_error_suddenly-laptop-1-2"
+device = "laptop"
+session = "laptop-1"
+reference = "أمس كنت أشتغل وفجأة طلع لي خطأ وما عاد يفتح البرنامج"
+reference_source = "script"
+turn_ends_ms = [4656]
+tags = []
+
+[[variants.segments]]
+root = "owner"
+path = "laptop-1/n20_error_suddenly-laptop-1-2.wav"
+sha256 = "38526c75d01f19fcdd3bc05b89189b93e43e3225d6b387252aed2219a4793bf9"
+
+[[variants.confirmations]]
+at = 2026-11-01T21:44:47.077497+03:00
+review_pass = 3
+
+[[variants]]
+id = "n20_error_suddenly-wired-1-1"
+device = "wired"
+session = "wired-1"
+reference = "أمس كنت أشتغل وفجأة طلع لي خطأ وما عاد يفتح البرنامج"
+reference_source = "script"
+turn_ends_ms = [4203]
+tags = []
+
+[[variants.segments]]
+root = "owner"
+path = "wired-1/n20_error_suddenly-wired-1-1.wav"
+sha256 = "f8b8ec449a398653ba5928e91020e7d423dec00661db28916aa177addc6c2525"
+
+[[variants.confirmations]]
+at = 2026-11-01T21:50:28.945993+03:00
+review_pass = 3

@@ -1,0 +1,63 @@
+# Written by `python -m ole5_voice.evals.import_recordings` from the recorder's files:
+# import again rather than edit.
+id = "n37_repeat_msa"
+source = "script"
+kind = "repeat_request"
+language = "msa"
+text = "هل يمكنك إعادة ما قلت؟"
+alternatives = []
+terms = []
+
+[[variants]]
+id = "n37_repeat_msa-bluetooth-1-1"
+device = "bluetooth"
+session = "bluetooth-1"
+reference = "هل يمكنك إعادة ما قلت؟"
+reference_source = "script"
+turn_ends_ms = []
+tags = []
+
+[[variants.segments]]
+root = "owner"
+path = "bluetooth-1/n37_repeat_msa-bluetooth-1-1.wav"
+sha256 = "f0c476597e672902252c163c28d8e60941e8f039458001cd0b86b4faf26a9853"
+
+[[variants.confirmations]]
+at = 2026-11-01T21:40:15.703774+03:00
+review_pass = 3
+
+[[variants]]
+id = "n37_repeat_msa-laptop-1-1"
+device = "laptop"
+session = "laptop-1"
+reference = "هل يمكنك إعادة ما قلت؟"
+reference_source = "script"
+turn_ends_ms = []
+tags = []
+
+[[variants.segments]]
+root = "owner"
+path = "laptop-1/n37_repeat_msa-laptop-1-1.wav"
+sha256 = "3c591ea8047fc6b01856238fb2ef49390debf9395a30e0525e5301bfd8992c6d"
+
+[[variants.confirmations]]
+at = 2026-11-01T21:46:39.964695+03:00
+review_pass = 3
+
+[[variants]]
+id = "n37_repeat_msa-wired-1-1"
+device = "wired"
+session = "wired-1"
+reference = "هل يمكنك إعادة ما قلت؟"
+reference_source = "script"
+turn_ends_ms = []
+tags = []
+
+[[variants.segments]]
+root = "owner"
+path = "wired-1/n37_repeat_msa-wired-1-1.wav"
+sha256 = "648645468cea42ccdb1c40985b659bbb478a395d41c239430e16f85a9146b726"
+
+[[variants.confirmations]]
+at = 2026-11-01T21:51:26.224069+03:00
+review_pass = 3

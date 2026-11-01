@@ -1,0 +1,117 @@
+# Written by `python -m ole5_voice.evals.import_recordings` from the recorder's files:
+# import again rather than edit.
+id = "n45_ticket_full_saudi"
+source = "script"
+kind = "ticket_number"
+language = "saudi"
+text = "رقم التذكرة 2026111782000917"
+alternatives = []
+terms = []
+
+[[variants]]
+id = "n45_ticket_full_saudi-bluetooth-1-1"
+device = "bluetooth"
+session = "bluetooth-1"
+reference = "رقم التذكرة 2026111782000917"
+reference_source = "script"
+turn_ends_ms = []
+tags = []
+
+[[variants.segments]]
+root = "owner"
+path = "bluetooth-1/n45_ticket_full_saudi-bluetooth-1-1.wav"
+sha256 = "8edb6b6d1c03b8807950f583f9a914380c1a082bd0136b3baa4b45777dae96c8"
+
+[[variants.confirmations]]
+at = 2026-11-01T21:40:59.224703+03:00
+review_pass = 3
+
+[[variants]]
+id = "n45_ticket_full_saudi-bluetooth-1-2"
+device = "bluetooth"
+session = "bluetooth-1"
+reference = "رقم التذكرة 2026111782000917"
+reference_source = "script"
+turn_ends_ms = []
+tags = []
+
+[[variants.segments]]
+root = "owner"
+path = "bluetooth-1/n45_ticket_full_saudi-bluetooth-1-2.wav"
+sha256 = "92a958a6a6cf463bdab471fc1e22aeb55250070d5a6890bc7fc01d644f678600"
+
+[[variants.confirmations]]
+at = 2026-11-01T21:41:10.633258+03:00
+review_pass = 3
+
+[[variants]]
+id = "n45_ticket_full_saudi-laptop-1-1"
+device = "laptop"
+session = "laptop-1"
+reference = "رقم التذكرة 2026111782000917"
+reference_source = "script"
+turn_ends_ms = []
+tags = []
+
+[[variants.segments]]
+root = "owner"
+path = "laptop-1/n45_ticket_full_saudi-laptop-1-1.wav"
+sha256 = "bd67427db4985c75bb149378ac293847c656eb756d9b241660e6393e2e0c858a"
+
+[[variants.confirmations]]
+at = 2026-11-01T21:47:49.829594+03:00
+review_pass = 3
+
+[[variants]]
+id = "n45_ticket_full_saudi-laptop-1-2"
+device = "laptop"
+session = "laptop-1"
+reference = "رقم التذكرة 2026111782000917"
+reference_source = "script"
+turn_ends_ms = []
+tags = []
+
+[[variants.segments]]
+root = "owner"
+path = "laptop-1/n45_ticket_full_saudi-laptop-1-2.wav"
+sha256 = "3f1276fe897bd0fba30ab5b444884639f7424d96de28391102d9bcf34812ffb4"
+
+[[variants.confirmations]]
+at = 2026-11-01T21:48:01.671600+03:00
+review_pass = 3
+
+[[variants]]
+id = "n45_ticket_full_saudi-wired-1-1"
+device = "wired"
+session = "wired-1"
+reference = "رقم التذكرة 2026111782000917"
+reference_source = "script"
+turn_ends_ms = []
+tags = []
+
+[[variants.segments]]
+root = "owner"
+path = "wired-1/n45_ticket_full_saudi-wired-1-1.wav"
+sha256 = "5588bba6c1e92377dd9a106231e396ced6d82587fdc6208947b79f27252414b3"
+
+[[variants.confirmations]]
+at = 2026-11-01T21:52:02.981830+03:00
+review_pass = 3
+
+[[variants]]
+id = "n45_ticket_full_saudi-wired-1-2"
+device = "wired"
+session = "wired-1"
+reference = "رقم التذكرة 2026111782000917"
+reference_source = "script"
+turn_ends_ms = []
+tags = []
+
+[[variants.segments]]
+root = "owner"
+path = "wired-1/n45_ticket_full_saudi-wired-1-2.wav"
+sha256 = "6c22d8650b8aaa88eb87908dfb7a72c71dc2cf86bd3ffd688e17482a4e9ae62b"
+
+[[variants.confirmations]]
+at = 2026-11-01T21:52:13.926116+03:00
+review_pass = 3

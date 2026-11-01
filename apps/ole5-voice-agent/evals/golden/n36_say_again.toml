@@ -1,0 +1,63 @@
+# Written by `python -m ole5_voice.evals.import_recordings` from the recorder's files:
+# import again rather than edit.
+id = "n36_say_again"
+source = "script"
+kind = "repeat_request"
+language = "saudi"
+text = "عيد الكلام مرة ثانية"
+alternatives = []
+terms = []
+
+[[variants]]
+id = "n36_say_again-bluetooth-1-1"
+device = "bluetooth"
+session = "bluetooth-1"
+reference = "عيد الكلام مرة ثانية"
+reference_source = "script"
+turn_ends_ms = []
+tags = []
+
+[[variants.segments]]
+root = "owner"
+path = "bluetooth-1/n36_say_again-bluetooth-1-1.wav"
+sha256 = "f0c95d15d4fe0e5dc968450b8eaea302b9d04f0c3a9068e150ba1e1e33b8ebf3"
+
+[[variants.confirmations]]
+at = 2026-11-01T21:40:12.705343+03:00
+review_pass = 3
+
+[[variants]]
+id = "n36_say_again-laptop-1-1"
+device = "laptop"
+session = "laptop-1"
+reference = "عيد الكلام مرة ثانية"
+reference_source = "script"
+turn_ends_ms = []
+tags = []
+
+[[variants.segments]]
+root = "owner"
+path = "laptop-1/n36_say_again-laptop-1-1.wav"
+sha256 = "7e186b9dad9841582e2e94ea53e9f29dd97b464959637cddeb78f02e8258403c"
+
+[[variants.confirmations]]
+at = 2026-11-01T21:46:37.007224+03:00
+review_pass = 3
+
+[[variants]]
+id = "n36_say_again-wired-1-1"
+device = "wired"
+session = "wired-1"
+reference = "عيد الكلام مرة ثانية"
+reference_source = "script"
+turn_ends_ms = []
+tags = []
+
+[[variants.segments]]
+root = "owner"
+path = "wired-1/n36_say_again-wired-1-1.wav"
+sha256 = "db27835f2f1bf95b1a048febb46ffd10f29cffc8698a7448da7c5263aaa19985"
+
+[[variants.confirmations]]
+at = 2026-11-01T21:51:23.665888+03:00
+review_pass = 3

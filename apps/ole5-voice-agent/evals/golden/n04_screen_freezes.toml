@@ -1,0 +1,81 @@
+# Written by `python -m ole5_voice.evals.import_recordings` from the recorder's files:
+# import again rather than edit.
+id = "n04_screen_freezes"
+source = "script"
+kind = "request"
+language = "saudi"
+text = "الشاشة تعلق لما أفتح صندوق الوارد"
+alternatives = []
+terms = []
+
+[[variants]]
+id = "n04_screen_freezes-bluetooth-1-1"
+device = "bluetooth"
+session = "bluetooth-1"
+reference = "الشاشة تعلق لما أفتح صندوق الوارد"
+reference_source = "script"
+turn_ends_ms = []
+tags = []
+
+[[variants.segments]]
+root = "owner"
+path = "bluetooth-1/n04_screen_freezes-bluetooth-1-1.wav"
+sha256 = "27d431cdef0e39d50a71a4deab4ca458a6bcdb7d0c5f1013e2b1cc8af267420d"
+
+[[variants.confirmations]]
+at = 2026-11-01T21:38:00.971672+03:00
+review_pass = 3
+
+[[variants]]
+id = "n04_screen_freezes-laptop-1-1"
+device = "laptop"
+session = "laptop-1"
+reference = "الشاشة تعلق لما أفتح صندوق الوارد"
+reference_source = "script"
+turn_ends_ms = []
+tags = []
+
+[[variants.segments]]
+root = "owner"
+path = "laptop-1/n04_screen_freezes-laptop-1-1.wav"
+sha256 = "952a2923939205d82bc0decfbfed6644edfc65f2820c9d36b8358587754d80ba"
+
+[[variants.confirmations]]
+at = 2026-11-01T21:42:39.026108+03:00
+review_pass = 3
+
+[[variants]]
+id = "n04_screen_freezes-laptop-1-2"
+device = "laptop"
+session = "laptop-1"
+reference = "الشاشة تعلق لما أفتح صندوق الوارد"
+reference_source = "script"
+turn_ends_ms = []
+tags = []
+
+[[variants.segments]]
+root = "owner"
+path = "laptop-1/n04_screen_freezes-laptop-1-2.wav"
+sha256 = "dec98a61053d85a1c8212de303023284e7a9c44091897d9937608963a0b8a64c"
+
+[[variants.confirmations]]
+at = 2026-11-01T21:42:42.215726+03:00
+review_pass = 3
+
+[[variants]]
+id = "n04_screen_freezes-wired-1-1"
+device = "wired"
+session = "wired-1"
+reference = "الشاشة تعلق لما أفتح صندوق الوارد"
+reference_source = "script"
+turn_ends_ms = []
+tags = []
+
+[[variants.segments]]
+root = "owner"
+path = "wired-1/n04_screen_freezes-wired-1-1.wav"
+sha256 = "5d177fad4091ddce7fad5e7528fc996a3ec90bd482b4946f6272eaaa371cb157"
+
+[[variants.confirmations]]
+at = 2026-11-01T21:49:15.001764+03:00
+review_pass = 3

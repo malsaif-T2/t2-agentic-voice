@@ -1,0 +1,63 @@
+# Written by `python -m ole5_voice.evals.import_recordings` from the recorder's files:
+# import again rather than edit.
+id = "n16_convert_pdf"
+source = "script"
+kind = "request"
+language = "mixed"
+text = "أبغى أحول المراسلة إلى PDF"
+alternatives = []
+terms = ["PDF"]
+
+[[variants]]
+id = "n16_convert_pdf-bluetooth-1-1"
+device = "bluetooth"
+session = "bluetooth-1"
+reference = "أبغى أحول المراسلة إلى PDF"
+reference_source = "script"
+turn_ends_ms = []
+tags = []
+
+[[variants.segments]]
+root = "owner"
+path = "bluetooth-1/n16_convert_pdf-bluetooth-1-1.wav"
+sha256 = "c9117b79e9e5701e776a6dcea5637c4509db3fabe5cdbeb48e0701a23a61c59c"
+
+[[variants.confirmations]]
+at = 2026-11-01T21:38:45.631142+03:00
+review_pass = 3
+
+[[variants]]
+id = "n16_convert_pdf-laptop-1-1"
+device = "laptop"
+session = "laptop-1"
+reference = "أبغى أحول المراسلة إلى PDF"
+reference_source = "script"
+turn_ends_ms = []
+tags = []
+
+[[variants.segments]]
+root = "owner"
+path = "laptop-1/n16_convert_pdf-laptop-1-1.wav"
+sha256 = "72b0f84dbd910a6215b9c0aca5720724d27c7b6c0214b7dd47e0f5acdc0d7465"
+
+[[variants.confirmations]]
+at = 2026-11-01T21:44:11.836192+03:00
+review_pass = 3
+
+[[variants]]
+id = "n16_convert_pdf-wired-1-1"
+device = "wired"
+session = "wired-1"
+reference = "أبغى أحول المراسلة إلى PDF"
+reference_source = "script"
+turn_ends_ms = []
+tags = []
+
+[[variants.segments]]
+root = "owner"
+path = "wired-1/n16_convert_pdf-wired-1-1.wav"
+sha256 = "a30856c6bc86d93b0b6d507e1cf796161965e50d2d919b6f80938539fee7db1b"
+
+[[variants.confirmations]]
+at = 2026-11-01T21:50:11.717305+03:00
+review_pass = 3

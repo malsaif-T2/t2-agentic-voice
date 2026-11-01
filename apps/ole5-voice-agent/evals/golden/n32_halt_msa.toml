@@ -1,0 +1,63 @@
+# Written by `python -m ole5_voice.evals.import_recordings` from the recorder's files:
+# import again rather than edit.
+id = "n32_halt_msa"
+source = "script"
+kind = "stop_word"
+language = "msa"
+text = "توقف من فضلك"
+alternatives = []
+terms = []
+
+[[variants]]
+id = "n32_halt_msa-bluetooth-1-1"
+device = "bluetooth"
+session = "bluetooth-1"
+reference = "توقف من فضلك"
+reference_source = "script"
+turn_ends_ms = []
+tags = []
+
+[[variants.segments]]
+root = "owner"
+path = "bluetooth-1/n32_halt_msa-bluetooth-1-1.wav"
+sha256 = "a441d8c6c4dcd7172e46aca95373a23a184f8f96083d88ef3de5af827914c9ca"
+
+[[variants.confirmations]]
+at = 2026-11-01T21:40:01.849490+03:00
+review_pass = 3
+
+[[variants]]
+id = "n32_halt_msa-laptop-1-1"
+device = "laptop"
+session = "laptop-1"
+reference = "توقف من فضلك"
+reference_source = "script"
+turn_ends_ms = []
+tags = []
+
+[[variants.segments]]
+root = "owner"
+path = "laptop-1/n32_halt_msa-laptop-1-1.wav"
+sha256 = "3b4e52eafaa25499ab00f492dbb56ab8dd496f4dc670fa387442fa452bee7b87"
+
+[[variants.confirmations]]
+at = 2026-11-01T21:46:21.074743+03:00
+review_pass = 3
+
+[[variants]]
+id = "n32_halt_msa-wired-1-1"
+device = "wired"
+session = "wired-1"
+reference = "توقف من فضلك"
+reference_source = "script"
+turn_ends_ms = []
+tags = []
+
+[[variants.segments]]
+root = "owner"
+path = "wired-1/n32_halt_msa-wired-1-1.wav"
+sha256 = "5757bce72e2067f682a83f4e73bb5c6436ec985409eac48de0690dc8f476c0be"
+
+[[variants.confirmations]]
+at = 2026-11-01T21:51:15.531950+03:00
+review_pass = 3

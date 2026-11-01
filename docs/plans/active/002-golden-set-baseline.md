@@ -1578,6 +1578,33 @@ run, [WORKING-RULES.md](../../../WORKING-RULES.md), "Measurement runs")
     groups, or digit by digit in digits or digit names, but not in compound number words
     («ألفين وستة وعشرين», "twenty twenty six"), which would score a right transcript wrong:
     TD-031, for the owner to rule on before R1.
+- 2026-11-01: The owner corrected the take confirmed by mistake ("Done the correction"): in
+  review mode, `n44_ticket_last_four-laptop-1-2` was confirmed in pass 3, typed in pass 4 as what
+  was said, «التذكرة اللي آخرها 4221», and confirmed in pass 5.
+- 2026-11-01: Step 19, in the linked worktree `plan-002-step-19`, cut from the main branch and
+  brought up to b69197b (`Plan 002: step 19, the new recordings imported, split and frozen`):
+  - `python -m ole5_voice.evals.import_recordings --takes` the main checkout's
+    `var/golden-audio` (read only): 52 items, 3 sessions, 219 variants, and the manifests
+    `owner-laptop-1.json`, `owner-wired-1.json` and `owner-bluetooth-1.json`, each with its
+    session's consent. A script checked every variant against the recorder's sidecars and the
+    reviews: each is a kept take (none discarded, none left out) with its line, device, session,
+    hash and turn ends; 218 hold their script's text, and the corrected take holds the owner's
+    typed text with only the pass-5 confirmation.
+  - `strata.toml`'s item and variant counts were written from the set (`count_strata`, by a
+    scratch script whose rendering first reproduced the committed file byte for byte): 95 items
+    (43 talk-over, 52 script) and 337 variants (laptop 215, wired 63, Bluetooth 59); its
+    [script] counts are unchanged, and `test_strata.py` pins the new totals.
+  - `split` with the committed salt: 29 of 95 items held out (10 talk-over, 19 script), every
+    variant of an item on its side (Q10): 106 variants held out, 231 dev. Re-run over the larger
+    set, the stratified allocation moved five talk-over items: b02_eh, b09_okay, k02_khalas and
+    s07_refer to dev, k03_tawaqqaf to held-out. No run had read any item's output: the only runs
+    so far used the reference answerer, which reads no audio. `split --check` passes.
+  - `poe golden --audio talkover=` the lab's folder `--audio owner=` the main checkout's
+    `var/golden-audio`: all 341 files (122 and 219) read, hashed and checked for their format;
+    `frozen.json` written with all 337 variants accepted and none left out; `--check` passes.
+  - `uv run --offline poe check` passes: 1216 tests and 1 skipped (the symbolic-link case), 100%
+    coverage (3598 statements), mypy strict on 144 files, arch and docs clean. The item set is
+    fixed from here until the close.
 
 ## Decision log
 
@@ -2808,6 +2835,11 @@ All entries are the agent's choices of 2026-11-01, with the agent's reasons.
   later check, as a typed reference always is, and never by editing or deleting a review file.
   One confirmed in the current pass is listed after the next run, since a pass holds one review
   of each take. The agent's choice.
+- 2026-11-01: Step 19's split is the committed salt's over the whole set, written once the new
+  items were in, as step 19 says, rather than keeping the talk-over items' earlier sides and
+  splitting the new items apart: the strata's proportions hold over the set the runs score, and
+  the five talk-over items it moved had been read by no answerer that hears audio. The agent's
+  choice.
 
 ## The owner's decisions
 

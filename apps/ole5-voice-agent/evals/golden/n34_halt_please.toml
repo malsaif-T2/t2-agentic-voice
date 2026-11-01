@@ -1,0 +1,81 @@
+# Written by `python -m ole5_voice.evals.import_recordings` from the recorder's files:
+# import again rather than edit.
+id = "n34_halt_please"
+source = "script"
+kind = "stop_word"
+language = "english"
+text = "stop, please"
+alternatives = []
+terms = []
+
+[[variants]]
+id = "n34_halt_please-bluetooth-1-1"
+device = "bluetooth"
+session = "bluetooth-1"
+reference = "stop, please"
+reference_source = "script"
+turn_ends_ms = []
+tags = []
+
+[[variants.segments]]
+root = "owner"
+path = "bluetooth-1/n34_halt_please-bluetooth-1-1.wav"
+sha256 = "2275885c7684bdcdbeb1e3d065487ad9b63c2bd0b7aee7f0f246abd80d525a85"
+
+[[variants.confirmations]]
+at = 2026-11-01T21:40:07.341373+03:00
+review_pass = 3
+
+[[variants]]
+id = "n34_halt_please-laptop-1-1"
+device = "laptop"
+session = "laptop-1"
+reference = "stop, please"
+reference_source = "script"
+turn_ends_ms = []
+tags = []
+
+[[variants.segments]]
+root = "owner"
+path = "laptop-1/n34_halt_please-laptop-1-1.wav"
+sha256 = "f4692a8121399bc5007a55d67073fcc0173100607a6e8cc18f5dc5cf94f3929c"
+
+[[variants.confirmations]]
+at = 2026-11-01T21:46:27.726590+03:00
+review_pass = 3
+
+[[variants]]
+id = "n34_halt_please-laptop-1-2"
+device = "laptop"
+session = "laptop-1"
+reference = "stop, please"
+reference_source = "script"
+turn_ends_ms = []
+tags = []
+
+[[variants.segments]]
+root = "owner"
+path = "laptop-1/n34_halt_please-laptop-1-2.wav"
+sha256 = "9493cdaece996c1a5c75f680c186f56a3e5840a4b9165ccec66a009cf5954699"
+
+[[variants.confirmations]]
+at = 2026-11-01T21:46:29.407388+03:00
+review_pass = 3
+
+[[variants]]
+id = "n34_halt_please-wired-1-1"
+device = "wired"
+session = "wired-1"
+reference = "stop, please"
+reference_source = "script"
+turn_ends_ms = []
+tags = []
+
+[[variants.segments]]
+root = "owner"
+path = "wired-1/n34_halt_please-wired-1-1.wav"
+sha256 = "952c14598758499aa5d167b3b47138d66048f2c0844744d04d8ea988930da483"
+
+[[variants.confirmations]]
+at = 2026-11-01T21:51:19.503945+03:00
+review_pass = 3

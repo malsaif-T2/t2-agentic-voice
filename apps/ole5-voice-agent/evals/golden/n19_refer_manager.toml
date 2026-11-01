@@ -1,0 +1,81 @@
+# Written by `python -m ole5_voice.evals.import_recordings` from the recorder's files:
+# import again rather than edit.
+id = "n19_refer_manager"
+source = "script"
+kind = "paused_request"
+language = "saudi"
+text = "عندي مراسلة أبغى أحيلها للمدير حقي"
+alternatives = []
+terms = []
+
+[[variants]]
+id = "n19_refer_manager-bluetooth-1-1"
+device = "bluetooth"
+session = "bluetooth-1"
+reference = "عندي مراسلة أبغى أحيلها للمدير حقي"
+reference_source = "script"
+turn_ends_ms = [3662]
+tags = []
+
+[[variants.segments]]
+root = "owner"
+path = "bluetooth-1/n19_refer_manager-bluetooth-1-1.wav"
+sha256 = "e5c704d8cd2067de689f7216fd6d795d2d80c141471350aa98840897f07238bf"
+
+[[variants.confirmations]]
+at = 2026-11-01T21:38:57.041620+03:00
+review_pass = 3
+
+[[variants]]
+id = "n19_refer_manager-laptop-1-1"
+device = "laptop"
+session = "laptop-1"
+reference = "عندي مراسلة أبغى أحيلها للمدير حقي"
+reference_source = "script"
+turn_ends_ms = [4964]
+tags = []
+
+[[variants.segments]]
+root = "owner"
+path = "laptop-1/n19_refer_manager-laptop-1-1.wav"
+sha256 = "998c90a88220848c00fc36ce08e2195863261d7641424a2dea7cc87129c86f13"
+
+[[variants.confirmations]]
+at = 2026-11-01T21:44:31.216349+03:00
+review_pass = 3
+
+[[variants]]
+id = "n19_refer_manager-laptop-1-2"
+device = "laptop"
+session = "laptop-1"
+reference = "عندي مراسلة أبغى أحيلها للمدير حقي"
+reference_source = "script"
+turn_ends_ms = [4407]
+tags = []
+
+[[variants.segments]]
+root = "owner"
+path = "laptop-1/n19_refer_manager-laptop-1-2.wav"
+sha256 = "76e8ec15c482f19ff331728a84e602ca06eabded349fa45148b73aba3850aa40"
+
+[[variants.confirmations]]
+at = 2026-11-01T21:44:36.511234+03:00
+review_pass = 3
+
+[[variants]]
+id = "n19_refer_manager-wired-1-1"
+device = "wired"
+session = "wired-1"
+reference = "عندي مراسلة أبغى أحيلها للمدير حقي"
+reference_source = "script"
+turn_ends_ms = [4146]
+tags = []
+
+[[variants.segments]]
+root = "owner"
+path = "wired-1/n19_refer_manager-wired-1-1.wav"
+sha256 = "669c6b6d7e8a1055d1f1003547ae681484b35ab5ead071e85617142e660b0a66"
+
+[[variants.confirmations]]
+at = 2026-11-01T21:50:23.859945+03:00
+review_pass = 3

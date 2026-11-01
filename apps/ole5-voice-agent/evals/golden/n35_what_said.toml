@@ -1,0 +1,81 @@
+# Written by `python -m ole5_voice.evals.import_recordings` from the recorder's files:
+# import again rather than edit.
+id = "n35_what_said"
+source = "script"
+kind = "repeat_request"
+language = "saudi"
+text = "وش قلت؟"
+alternatives = []
+terms = []
+
+[[variants]]
+id = "n35_what_said-bluetooth-1-1"
+device = "bluetooth"
+session = "bluetooth-1"
+reference = "وش قلت؟"
+reference_source = "script"
+turn_ends_ms = []
+tags = []
+
+[[variants.segments]]
+root = "owner"
+path = "bluetooth-1/n35_what_said-bluetooth-1-1.wav"
+sha256 = "d1786246f8bde6f6908b7dc367e7827ec3078753e313804f1cd4321c46c17b7c"
+
+[[variants.confirmations]]
+at = 2026-11-01T21:40:10.109101+03:00
+review_pass = 3
+
+[[variants]]
+id = "n35_what_said-laptop-1-1"
+device = "laptop"
+session = "laptop-1"
+reference = "وش قلت؟"
+reference_source = "script"
+turn_ends_ms = []
+tags = []
+
+[[variants.segments]]
+root = "owner"
+path = "laptop-1/n35_what_said-laptop-1-1.wav"
+sha256 = "a05ac118b27a82606b29df02f72eecb2b27375e1af927299e781114a1847613c"
+
+[[variants.confirmations]]
+at = 2026-11-01T21:46:31.311859+03:00
+review_pass = 3
+
+[[variants]]
+id = "n35_what_said-laptop-1-2"
+device = "laptop"
+session = "laptop-1"
+reference = "وش قلت؟"
+reference_source = "script"
+turn_ends_ms = []
+tags = []
+
+[[variants.segments]]
+root = "owner"
+path = "laptop-1/n35_what_said-laptop-1-2.wav"
+sha256 = "363ec4d4e39c0abfa8a39ee608450634819c3bc3ada900ea1b95411f28ffeaba"
+
+[[variants.confirmations]]
+at = 2026-11-01T21:46:34.132385+03:00
+review_pass = 3
+
+[[variants]]
+id = "n35_what_said-wired-1-1"
+device = "wired"
+session = "wired-1"
+reference = "وش قلت؟"
+reference_source = "script"
+turn_ends_ms = []
+tags = []
+
+[[variants.segments]]
+root = "owner"
+path = "wired-1/n35_what_said-wired-1-1.wav"
+sha256 = "ebb1e3f85472e85fad021bc1004b17807c7b61a61b2ca87f4aa5771dc61c4c09"
+
+[[variants.confirmations]]
+at = 2026-11-01T21:51:21.737340+03:00
+review_pass = 3

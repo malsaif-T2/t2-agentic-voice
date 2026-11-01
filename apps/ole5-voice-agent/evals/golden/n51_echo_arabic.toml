@@ -1,0 +1,63 @@
+# Written by `python -m ole5_voice.evals.import_recordings` from the recorder's files:
+# import again rather than edit.
+id = "n51_echo_arabic"
+source = "script"
+kind = "echo_only"
+language = "none"
+text = ""
+alternatives = []
+terms = []
+
+[[variants]]
+id = "n51_echo_arabic-bluetooth-1-1"
+device = "bluetooth"
+session = "bluetooth-1"
+reference = ""
+reference_source = "none"
+turn_ends_ms = []
+tags = []
+
+[[variants.segments]]
+root = "owner"
+path = "bluetooth-1/n51_echo_arabic-bluetooth-1-1.wav"
+sha256 = "29ac2803bf3f1496b13c7d101789dcdc3fc31f4d8b2dc539835bb051755952cd"
+
+[[variants.confirmations]]
+at = 2026-11-01T21:42:01.686250+03:00
+review_pass = 3
+
+[[variants]]
+id = "n51_echo_arabic-laptop-1-1"
+device = "laptop"
+session = "laptop-1"
+reference = ""
+reference_source = "none"
+turn_ends_ms = []
+tags = []
+
+[[variants.segments]]
+root = "owner"
+path = "laptop-1/n51_echo_arabic-laptop-1-1.wav"
+sha256 = "5f409abcab837cd59935c43950c2cc3f2b104b370a3662d826a0f02819784f42"
+
+[[variants.confirmations]]
+at = 2026-11-01T21:48:56.169653+03:00
+review_pass = 3
+
+[[variants]]
+id = "n51_echo_arabic-wired-1-1"
+device = "wired"
+session = "wired-1"
+reference = ""
+reference_source = "none"
+turn_ends_ms = []
+tags = []
+
+[[variants.segments]]
+root = "owner"
+path = "wired-1/n51_echo_arabic-wired-1-1.wav"
+sha256 = "64a1ef9931b3f780624f959e0d73802969bc2358a23009b79f61f8d054cd4a9a"
+
+[[variants.confirmations]]
+at = 2026-11-01T21:52:59.479798+03:00
+review_pass = 3

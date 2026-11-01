@@ -1,0 +1,171 @@
+# Written by `python -m ole5_voice.evals.import_recordings` from the recorder's files:
+# import again rather than edit.
+id = "n44_ticket_last_four"
+source = "script"
+kind = "ticket_number"
+language = "saudi"
+text = "التذكرة اللي آخرها 4821"
+alternatives = []
+terms = []
+
+[[variants]]
+id = "n44_ticket_last_four-bluetooth-1-1"
+device = "bluetooth"
+session = "bluetooth-1"
+reference = "التذكرة اللي آخرها 4821"
+reference_source = "script"
+turn_ends_ms = []
+tags = []
+
+[[variants.segments]]
+root = "owner"
+path = "bluetooth-1/n44_ticket_last_four-bluetooth-1-1.wav"
+sha256 = "875e2cb5856394cbc544c325b3a323ab319915f7278f8e74d0d65d3b81b25d85"
+
+[[variants.confirmations]]
+at = 2026-11-01T21:40:37.614273+03:00
+review_pass = 3
+
+[[variants]]
+id = "n44_ticket_last_four-bluetooth-1-3"
+device = "bluetooth"
+session = "bluetooth-1"
+reference = "التذكرة اللي آخرها 4821"
+reference_source = "script"
+turn_ends_ms = []
+tags = []
+
+[[variants.segments]]
+root = "owner"
+path = "bluetooth-1/n44_ticket_last_four-bluetooth-1-3.wav"
+sha256 = "08b66d254502be0c10c49ca3f382d72dac4a4162d680b4818c894adcddc3b227"
+
+[[variants.confirmations]]
+at = 2026-11-01T21:40:41.757969+03:00
+review_pass = 3
+
+[[variants]]
+id = "n44_ticket_last_four-bluetooth-1-4"
+device = "bluetooth"
+session = "bluetooth-1"
+reference = "التذكرة اللي آخرها 4821"
+reference_source = "script"
+turn_ends_ms = []
+tags = []
+
+[[variants.segments]]
+root = "owner"
+path = "bluetooth-1/n44_ticket_last_four-bluetooth-1-4.wav"
+sha256 = "754a82e1c7cb6efaad64baf06284a154ebc6d4b80734a70e5ab3bae12b17eaf7"
+
+[[variants.confirmations]]
+at = 2026-11-01T21:40:46.498590+03:00
+review_pass = 3
+
+[[variants]]
+id = "n44_ticket_last_four-laptop-1-1"
+device = "laptop"
+session = "laptop-1"
+reference = "التذكرة اللي آخرها 4821"
+reference_source = "script"
+turn_ends_ms = []
+tags = []
+
+[[variants.segments]]
+root = "owner"
+path = "laptop-1/n44_ticket_last_four-laptop-1-1.wav"
+sha256 = "9fbbcaa8ac7cd7e6dc2cdb176c8caf4ff2d2c02eea521226a192a8869632db6a"
+
+[[variants.confirmations]]
+at = 2026-11-01T21:47:14.019095+03:00
+review_pass = 3
+
+[[variants]]
+id = "n44_ticket_last_four-laptop-1-2"
+device = "laptop"
+session = "laptop-1"
+reference = "التذكرة اللي آخرها 4221"
+reference_source = "typed"
+turn_ends_ms = []
+tags = []
+
+[[variants.segments]]
+root = "owner"
+path = "laptop-1/n44_ticket_last_four-laptop-1-2.wav"
+sha256 = "af525a9533a655bd0a5693542a6f3ec20046c33b90cc11eca8eb8ac4d457d3df"
+
+[[variants.confirmations]]
+at = 2026-11-01T22:03:57.206993+03:00
+review_pass = 5
+
+[[variants]]
+id = "n44_ticket_last_four-laptop-1-3"
+device = "laptop"
+session = "laptop-1"
+reference = "التذكرة اللي آخرها 4821"
+reference_source = "script"
+turn_ends_ms = []
+tags = []
+
+[[variants.segments]]
+root = "owner"
+path = "laptop-1/n44_ticket_last_four-laptop-1-3.wav"
+sha256 = "0d9f04962d750f0f1a84069e6e54989e1d3220d2df4ca9a049f0005b0116e3a8"
+
+[[variants.confirmations]]
+at = 2026-11-01T21:47:38.197837+03:00
+review_pass = 3
+
+[[variants]]
+id = "n44_ticket_last_four-wired-1-2"
+device = "wired"
+session = "wired-1"
+reference = "التذكرة اللي آخرها 4821"
+reference_source = "script"
+turn_ends_ms = []
+tags = []
+
+[[variants.segments]]
+root = "owner"
+path = "wired-1/n44_ticket_last_four-wired-1-2.wav"
+sha256 = "eb2101f6b0b17734bd5b615fad9ff0b9fae6447d9ae9699f0567841b096a24ed"
+
+[[variants.confirmations]]
+at = 2026-11-01T21:51:43.106442+03:00
+review_pass = 3
+
+[[variants]]
+id = "n44_ticket_last_four-wired-1-3"
+device = "wired"
+session = "wired-1"
+reference = "التذكرة اللي آخرها 4821"
+reference_source = "script"
+turn_ends_ms = []
+tags = []
+
+[[variants.segments]]
+root = "owner"
+path = "wired-1/n44_ticket_last_four-wired-1-3.wav"
+sha256 = "d3ff108418665fc78236b594932036e279cf7758ee93e643bb215704427c9664"
+
+[[variants.confirmations]]
+at = 2026-11-01T21:51:46.852584+03:00
+review_pass = 3
+
+[[variants]]
+id = "n44_ticket_last_four-wired-1-5"
+device = "wired"
+session = "wired-1"
+reference = "التذكرة اللي آخرها 4821"
+reference_source = "script"
+turn_ends_ms = []
+tags = []
+
+[[variants.segments]]
+root = "owner"
+path = "wired-1/n44_ticket_last_four-wired-1-5.wav"
+sha256 = "3e6ac91b26ba0030dcfd7b6a24464a9afa0b1a80d996fd100904a96ab2a4bc33"
+
+[[variants.confirmations]]
+at = 2026-11-01T21:51:50.605974+03:00
+review_pass = 3

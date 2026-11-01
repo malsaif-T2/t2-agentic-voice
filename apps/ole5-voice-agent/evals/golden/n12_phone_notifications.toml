@@ -1,0 +1,81 @@
+# Written by `python -m ole5_voice.evals.import_recordings` from the recorder's files:
+# import again rather than edit.
+id = "n12_phone_notifications"
+source = "script"
+kind = "request"
+language = "english"
+text = "My notifications don't show up on my phone."
+alternatives = []
+terms = []
+
+[[variants]]
+id = "n12_phone_notifications-bluetooth-1-1"
+device = "bluetooth"
+session = "bluetooth-1"
+reference = "My notifications don't show up on my phone."
+reference_source = "script"
+turn_ends_ms = []
+tags = []
+
+[[variants.segments]]
+root = "owner"
+path = "bluetooth-1/n12_phone_notifications-bluetooth-1-1.wav"
+sha256 = "b0983ed09520599c63d381274204ecd00a0031b381195b1764952aa67c40d173"
+
+[[variants.confirmations]]
+at = 2026-11-01T21:38:32.131128+03:00
+review_pass = 3
+
+[[variants]]
+id = "n12_phone_notifications-laptop-1-1"
+device = "laptop"
+session = "laptop-1"
+reference = "My notifications don't show up on my phone."
+reference_source = "script"
+turn_ends_ms = []
+tags = []
+
+[[variants.segments]]
+root = "owner"
+path = "laptop-1/n12_phone_notifications-laptop-1-1.wav"
+sha256 = "3fafc81c8df913292e8587f05cecb85e86ceaa07ab44c70b2e624e01dbe72177"
+
+[[variants.confirmations]]
+at = 2026-11-01T21:43:46.106874+03:00
+review_pass = 3
+
+[[variants]]
+id = "n12_phone_notifications-laptop-1-2"
+device = "laptop"
+session = "laptop-1"
+reference = "My notifications don't show up on my phone."
+reference_source = "script"
+turn_ends_ms = []
+tags = []
+
+[[variants.segments]]
+root = "owner"
+path = "laptop-1/n12_phone_notifications-laptop-1-2.wav"
+sha256 = "82db8dbea4a30f70fb1454fddd409cf67eb1d3020307f13b6fa0f63b4420866f"
+
+[[variants.confirmations]]
+at = 2026-11-01T21:43:50.037796+03:00
+review_pass = 3
+
+[[variants]]
+id = "n12_phone_notifications-wired-1-1"
+device = "wired"
+session = "wired-1"
+reference = "My notifications don't show up on my phone."
+reference_source = "script"
+turn_ends_ms = []
+tags = []
+
+[[variants.segments]]
+root = "owner"
+path = "wired-1/n12_phone_notifications-wired-1-1.wav"
+sha256 = "cbfec7456e4a284c05ab54828bdd21c10645334246dc41c1dedc54408832ca22"
+
+[[variants.confirmations]]
+at = 2026-11-01T21:49:54.942646+03:00
+review_pass = 3
