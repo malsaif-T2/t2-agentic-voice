@@ -1,0 +1,27 @@
+{
+  "version": "0.0.1",
+  "configurations": [
+    {
+      "name": "recorder",
+      "runtimeExecutable": "uv",
+      "runtimeArgs": [
+        "run",
+        "--offline",
+        "poe",
+        "record",
+        "--out",
+        "var/recorder-preview",
+        "--session",
+        "preview",
+        "--device",
+        "laptop",
+        "--replies",
+        "../voice-lab/assets/talkover",
+        "--port",
+        "8765"
+      ],
+      "port": 8765,
+      "url": "http://127.0.0.1:8765"
+    }
+  ]
+}

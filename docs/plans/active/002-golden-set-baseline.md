@@ -1197,6 +1197,24 @@ run, [WORKING-RULES.md](../../../WORKING-RULES.md), "Measurement runs")
     folder given; fixed in the following commit).
   - After the merge `uv run --offline poe check` passes: 1129 tests and 1 skipped (the symbolic-link
     case), 100% coverage (3423 statements), mypy strict on 136 files, arch and docs clean.
+- 2026-11-01: Review fixes, track G (`Plan 002: review fixes, track G`):
+  - "What the owner does", steps 4 and 5, give `poe record` the `--replies` folder it needs to start
+    (the lab's `voice-lab\assets\talkover`, beside the main checkout), and step 5 gives the review
+    mode's command, with `--audio talkover=` the lab's recordings folder, so the talk-over variants
+    are reviewed too; the commands were checked by loading the recorder with the committed script,
+    which starts with the lab's replies folder given and refuses without it.
+  - `.claude/launch.json` is added, as WORKING-RULES.md's "Seeing it run" asks with the first such
+    surface and Track G left to the integrator: `git check-ignore` does not ignore it, so it is
+    committed. Its one configuration, `recorder`, runs `uv run --offline poe record --out
+    var/recorder-preview --session preview --device laptop --replies ../voice-lab/assets/talkover
+    --port 8765` from the main checkout (a folder under the git-ignored `var/`, and the lab's
+    replies by a path relative to the checkout, so no drive or user name), and opens
+    `http://127.0.0.1:8765`; the page itself is at the address with the token that the
+    `recorder_ready` line logs, since the server answers nothing else.
+  - Not done here: the page in Chrome (Track G's report), which needs the microphone: recording,
+    playing back, the waveform's marks and saving through the page are still unchecked.
+  - `uv run --offline poe check` passes: 1129 tests and 1 skipped (the symbolic-link case), 100%
+    coverage, mypy strict on 136 files, arch and docs clean.
 
 ## Decision log
 
@@ -2805,7 +2823,9 @@ before the run.
 3. **Before recording:** answer Q4, Q5, Q7 and Q9 and approve the script.
 4. **Recording**, one sitting per device, in a quiet room except for the noise items:
    - From the main checkout, `uv run poe record --out <a folder under var/, such as
-     var/golden-audio> --session <a name> --device <laptop, wired or bluetooth>`; open the
+     var/golden-audio> --session <a name> --device <laptop, wired or bluetooth> --replies
+     ..oice-labssets	alkover` (the lab's six agent replies, read only: the script's
+     echo-only lines play two of them, and the recorder does not start without them); open the
      address it prints in Chrome (it holds a token for that session, so use it as printed).
    - Pick the microphone and the output for the device: the laptop's own microphone and
      speakers; the wired headset; the Bluetooth headset (its microphone, as a caller would use it,
@@ -2817,9 +2837,13 @@ before the run.
      true turn end on its waveform (the end of the request, not the pauses).
    - Echo-only items: say nothing while the page plays the agent's reply. Silence: say nothing
      for the take's length. Noise: make the noise the item names and say nothing.
-5. **The check (Q9):** in the recorder's review mode, listen to each variant beside its
-   reference and confirm it, or type what was said; a variant you typed comes back in a later
-   review pass, to be confirmed against your text.
+5. **The check (Q9):** in the recorder's review mode (`uv run poe record --out <the same
+   folder> --replies ..oice-labssets	alkover --audio
+   talkover=..oice-lab
+ecordings	alkover`, with no `--session`, reviews the new takes and
+   the talk-over variants), listen to each variant beside its reference and confirm it, or type
+   what was said; a variant you typed comes back in a later review pass (a later run of the same
+   command), to be confirmed against your text.
 6. **Before the import and the runs:** answer Q10 before the import (step 19) and Q13 to Q19
    before the runs; read the key's limits in the Groq console, make sure nothing else uses
    the key, and approve the estimate and a budget cap.
