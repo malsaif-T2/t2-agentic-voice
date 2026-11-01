@@ -453,12 +453,12 @@ twice; DOC-REF: every `D-NNN` cited anywhere is a heading here), so keep its sha
   - Not built here: ARCH-BAN, one configuration per member, and one invariants register, which
     the design's 12.4 also lists; each lands with the plan that needs it.
   - **Proposed** (the agent's, beyond the design, for the owner to rule on): the key's name,
-    `banned_words` (the design names none); the files ARCH-WORDS reads (`*.py`, `*.md`, `*.toml`,
-    `*.json`, `*.txt`, `*.js`, `*.html`, `*.css`) and its reading of each file's path below
-    `[package] root` as well as its text, so a module named after an app is caught too; and what
-    it skips: `__pycache__/` and the folders above `[package] root`, since a bytecode file holds
-    its module's absolute path and the owner's checkout sits in a folder named
-    `OTRS-voice-agent`.
+    `banned_words` (the design names none); the files whose text ARCH-WORDS reads (`*.py`,
+    `*.md`, `*.toml`, `*.json`, `*.txt`, `*.js`, `*.html`, `*.css`), and the path below
+    `[package] root` of every file there, whatever its type, so a module, folder or asset named
+    after an app is caught too; and what it skips: `__pycache__/` and the folders above
+    `[package] root`, since a bytecode file holds its module's absolute path and the owner's
+    checkout sits in a folder named `OTRS-voice-agent`.
 - **Consequences:** A public name lives in the layer that owns it, under that layer's rules, and
   a facade says only which names are public. A banned word that is not an app's name changes
   `banned_words` with a decision. The facades themselves, and the names each holds, are recorded
@@ -564,7 +564,11 @@ twice; DOC-REF: every `D-NNN` cited anywhere is a heading here), so keep its sha
     OpenTelemetry SDK or exporter would read from an `OTEL_*` variable is left to them: each
     such value is passed explicitly, and any they read whatever is passed is listed as debt.
     This applies the design's 7.3 ("Other names are never read") to the tracing packages; plan
-    002's decision log lists the variables of the installed 1.45.2.
+    002's decision log lists the variables of the installed 1.45.2. To that end the library also
+    depends directly on `requests` (Apache-2.0, already locked under the exporter), owned by
+    `core` through its own `[[owners]]` row and used only for the `requests.Session` given to the
+    OTLP exporter: passing one is the only way to keep
+    `OTEL_PYTHON_EXPORTER_OTLP_HTTP_CREDENTIAL_PROVIDER` out (plan 002's decision log).
 - **Consequences:** D-002's heading points here. A team that already traces passes its own
   provider and gets the library's spans in its own backend. The owner runs Phoenix on the same
   machine, bound to 127.0.0.1 (plan 002, "What the owner does").

@@ -181,6 +181,17 @@ def test_from_env_reads_the_environment_and_its_env_file(
     assert (loaded.stt.model, loaded.log_level) == ("whisper-large-v3-turbo", "DEBUG")
 
 
+@pytest.mark.parametrize("kind", ["a missing file", "a folder"])
+def test_from_env_refuses_an_env_file_that_is_no_file(tmp_path: Path, kind: str) -> None:
+    """pydantic-settings skips a missing env file silently: a mistyped `--env-file` would run
+    on the defaults (GP-06)."""
+    path = tmp_path / "missing.env" if kind == "a missing file" else tmp_path
+    with pytest.raises(ConfigurationError, match="FIX:") as raised:
+        Settings.from_env(env_file=path)
+    assert raised.value.details == {"setting": "env_file"}
+    assert str(tmp_path) not in _shown(raised.value)
+
+
 def test_a_blank_value_keeps_the_default(monkeypatch: pytest.MonkeyPatch) -> None:
     """A blank timeout would otherwise fail, and a blank key file would become the path `.`."""
     monkeypatch.setenv(f"{PREFIX}STT__TIMEOUT_S", "")

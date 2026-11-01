@@ -203,10 +203,17 @@ class Settings(BaseSettings):
     @classmethod
     def from_env(cls, env_file: Path | None = None) -> Settings:
         """The settings from the environment and a `.env`: `env_file`, or `Settings`' own
-        default when None. Any setting that cannot load is a ConfigurationError naming each one
+        default when None. An `env_file` given that is no file is a ConfigurationError, since
+        pydantic-settings skips a missing one silently and a mistyped path would run on the
+        defaults (GP-06). Any setting that cannot load is a ConfigurationError naming each one
         (`T2V_GROQ__BASE_URL`) and why, with a FIX line, never the value it rejected (the
         design's 7.4). It is raised after the handler, so no exception chain leads back to the
         ValidationError, whose `errors()` would still return that value."""
+        if env_file is not None and not env_file.expanduser().is_file():
+            raise ConfigurationError(
+                "The env file given cannot be read. FIX: pass the path of an existing .env file.",
+                details={"setting": "env_file"},
+            )
         problems: list[tuple[str, str]] = []
         try:
             return cls() if env_file is None else cls(_env_file=env_file)

@@ -182,6 +182,8 @@ branch, `plan-002-integration` ([plans README](../README.md), "Parallel tracks")
    bytecode file holds its module's absolute path, and the owner's checkout sits under a folder
    named `OTRS-voice-agent`. Its tests include a `.pyc` holding a banned word, which is ignored.
    A grep of `packages/` on 2026-11-01 found none of the three, so it passes from the start.
+   Since Block 0's review it also reads the path below `src/` of every file there, whatever its
+   type (the progress log's review entry; D-020's Proposed bullet).
 6. **Small harness fixes.** The stale FIX text at `harness.toml` line 38 names
    `ole5_voice.core.logging`; it becomes `t2_agentic_voice.core.logging`. `.gitattributes` marks
    `*.wav`, `*.webm`, `*.ogg`, `*.mp3`, `*.m4a` and `*.flac` binary. Ruff's RUF001 to RUF003 flag
@@ -570,6 +572,27 @@ run, [WORKING-RULES.md](../../../WORKING-RULES.md), "Measurement runs")
   recorder's files), so each stays under ARCH-SIZE. `uv run poe check` passes: 347 tests,
   100% coverage, mypy strict on 126 files, `uv lock --check` clean. Next, the merge into
   `plan-002-integration`, by the integrating session.
+- 2026-11-01: Block 0's review, second round. After the five agents by concern (the harness,
+  security, faithfulness, correctness and the tracks' readiness) and the first fixes, a check of
+  those fixes raised 8 findings; each was checked by an agent told to refute it, and all 8 held
+  and are fixed in this commit (`Plan 002: review fixes, Block 0`); none was rejected, and none
+  goes to the owner. The fixes:
+  - `Settings.from_env` refuses an `env_file` that is no file, with a test of a missing file and
+    of a folder (`tests/t2_agentic_voice/core/test_config.py`), since pydantic-settings skips a
+    missing one silently.
+  - Track B's hook also sets `Authorization` to the settings' key after dropping the headers
+    outside its allow-list, and its test uses a lowercase `authorization` line: passing
+    `default_headers` alone left a lowercase line's value in the request beside the key (a probe
+    of groq 1.7.0, made-up keys). The groq entry of the decision log and TD-002 say so.
+  - D-023's Proposed bullet names `requests` and its `[[owners]]` row; D-020's says ARCH-WORDS
+    reads the text of the listed types and the path of every file below `[package] root`
+    (step 5 points to it).
+  - TD-004 names no track; the OpenTelemetry entry of the decision log says the review wrote the
+    debt rows as TD-002 to TD-007; the reference answerer's held-out runs are outside Q18's cap
+    and append no history line; `## Tracks` lists Block 0's test files, which no track edits.
+
+  `uv run poe check` passes: 349 tests, 100% coverage, mypy strict on 126 files, `uv lock
+  --check` clean. Next, the merge into `plan-002-integration`, by the integrating session.
 
 ## Decision log
 
@@ -770,8 +793,11 @@ All entries are the agent's choices of 2026-11-01, with the agent's reasons.
     which nothing on the path imports) and the auto-configuration's variables
     (`opentelemetry/sdk/_configuration`).
 
-  Track C keeps out each one of the second group it can, and reports the rest as debt rows; the
-  agent proposes those rows in Block 0's report, for the integrator to number.
+  Track C keeps out each one of the second group it can, and narrows TD-005 to the rest in its
+  report. Block 0's review wrote the debt rows it found as TD-002 to TD-007 (no other session
+  had taken a number: the main branch's `docs/plans/tech-debt.md` ends at TD-001); the
+  integrator keeps those numbers at the merge, or renumbers them and every citation in this plan
+  in the same commit (step 14).
 - 2026-11-01: Step 2 read the installed groq 1.7.0 as text for every `GROQ_*` variable it reads,
   the counterpart of the list above; Track B works from it (added in Block 0's review).
   - **Kept out by passing a value:** `GROQ_API_KEY` and `GROQ_BASE_URL` (`groq/_client.py`,
@@ -785,11 +811,18 @@ All entries are the agent's choices of 2026-11-01, with the agent's reasons.
     `groq` and `httpx` loggers to DEBUG or INFO, and at DEBUG logs the request's options, audio
     included (`_base_client.py`, lines 483-496) (TD-003).
 
-  Track B passes `default_headers` naming `Authorization`, so no variable replaces the key (not
-  left as debt: a value keeps it out), and drops every other header outside an allow-list with a
-  request hook on the `httpx.AsyncClient` it passes. `GROQ_LOG` is read on import, so the tests
-  drop it before collection (`tests/conftest.py`), and Track B tests it in a child process that
-  imports `t2_agentic_voice.groq`; what it cannot keep out it reports, narrowing TD-002 and TD-003.
+  Track B passes `default_headers` naming `Authorization`, but that alone keeps out only a line
+  of the same case: the SDK merges the two as dicts whose keys keep their case
+  (`{**parsed, **default_headers}`, `groq/_client.py`, lines 100 and 313), so a lowercase
+  `authorization` line stays beside it and httpx sends both values (corrected in Block 0's
+  second review: a probe of groq 1.7.0 against `httpx.MockTransport`, with made-up keys). So
+  the request hook on the `httpx.AsyncClient` it passes drops every header outside an
+  allow-list and then sets `request.headers["Authorization"]` to `Bearer` and the settings' key,
+  which removes every case variant (httpx's `Headers.__setitem__`): the request carries one
+  value, the key (the same probe). A hook keeps it out, so this is not left as debt. `GROQ_LOG`
+  is read on import, so the tests drop it before collection (`tests/conftest.py`), and Track B
+  tests it in a child process that imports `t2_agentic_voice.groq`; what it cannot keep out it
+  reports, narrowing TD-002 and TD-003.
 - 2026-11-01: A facade's module file is checked when `harness.toml` is loaded, as a
   HARNESS-CONFIG problem, like the rest of `[package]`; so every check, not only `poe arch`,
   refuses a facade with no module. The agent's choice: the plan names `harness_config.py` as
@@ -897,7 +930,11 @@ All entries are the agent's choices of 2026-11-01, with the agent's reasons.
     ValidationError; `get_settings()` loads through it. This narrows step 8's entry above: a
     ValidationError's text and repr never show the rejected value, but its `errors()` and
     `json()` still do by default, so a command reports settings errors only through `from_env`
-    (Track E's `--env-file` included).
+    (Track E's `--env-file` included). An `env_file` given that is no file (after `~` is
+    expanded, as pydantic-settings expands it) is a `ConfigurationError` with fixed text and a
+    FIX line, `details` `{"setting": "env_file"}`, raised before loading: pydantic-settings
+    skips a missing env file silently, so a mistyped `--env-file` would run on the defaults
+    (GP-06; added in Block 0's second review).
   - `ProviderError` rebuilds through its constructor when pickled or copied, keeping every
     attribute, notes included.
   - `parse_wav` turns `wave`'s bare RuntimeError (a chunk past the RIFF chunk's end) into
@@ -941,7 +978,12 @@ All entries are the agent's choices of 2026-11-01, with the agent's reasons.
     (preset values, scoring nothing themselves, so they cannot drift from Track A's).
   - A run covers one split: `poe eval` takes `--split dev` or `--split held-out`, as every
     registered run does, and step 15 runs the reference answerer once on each, rather than adding
-    a whole-set scope no registered run uses.
+    a whole-set scope no registered run uses. The reference answerer sends no request and
+    measures no model, so its held-out runs, in step 15 and in `test_reference_answerer.py`
+    inside every `poe check`, are not among the held-out runs Q18 caps; it appends no history
+    line (the entry on the `reference` answerer above), and `test_reference_answerer.py` writes
+    only into temporary folders, so no held-out line of step 15 reaches the committed
+    `history.jsonl`.
   - `requests` is a direct dependency of the library (`uv add --package t2-agentic-voice
     "requests>=2.34.2"`, already locked at that version, Apache-2.0: no new package or licence)
     with an `[[owners]]` row of its own for `core`, since only a `requests.Session` passed to
@@ -952,6 +994,21 @@ All entries are the agent's choices of 2026-11-01, with the agent's reasons.
     does not own.
   - `wer`, `cer` and `term_recall` keep their signatures and raise TypeError on a bare str
     (Track A builds the guard and its test); so does a `Matcher`.
+- 2026-11-01: Block 0's second review, the agent's choices (the rest are in the entries they
+  change: the groq list, `from_env`, a run covering one split):
+  - TD-004's fix names no track and stays the owner's or a later plan's: no Track B or C line
+    asks for `trust_env=False`, and turning off the proxy variables may break a run on a network
+    that needs a proxy, so it comes with a proxy setting or not at all. The lines of Tracks B
+    and C are unchanged.
+  - The debt rows keep the numbers the first fixes gave them, TD-002 to TD-007, since the main
+    branch's tracker ends at TD-001; step 14's rule, that the integrator numbers a track's rows,
+    still holds for the tracks.
+  - `## Tracks` names Block 0's test files one by one, the ones the first fixes added
+    (`test_runs.py`, `test_takes.py`, `tests/harness/test_import_isolation.py`) with the rest,
+    so a track that needs one changed asks the integrator, as for `models.py`.
+  - `requests` is recorded in D-023's Proposed bullet, which is new on this branch, as jiwer's
+    owner row is in D-019, since CLAUDE.md's first non-negotiable puts a rule's reason in a
+    decision.
 
 ## The owner's decisions
 
@@ -1064,8 +1121,14 @@ Each track builds in its own worktree against Block 0's interfaces and the fakes
 file; the files every track needs (settings, errors, ports, facades, `models.py`, `runs.py`,
 `takes.py`, `audio.py`, poe tasks, CLAUDE.md, `harness.toml`, ARCHITECTURE.md) belong to Block
 0, and this plan and `docs/plans/tech-debt.md` to the integrator, which copies each track's
-report into them (step 14). Library paths below are under
-`packages/t2-agentic-voice/src/t2_agentic_voice/`; app paths under
+report into them (step 14). Block 0's own tests and fixtures belong to it too, and no track
+edits them: `tests/conftest.py` and `tests/harness/` (`test_import_isolation.py` among them);
+in `tests/t2_agentic_voice/`, `core/test_config.py`, `core/test_errors.py`,
+`domain/test_ports.py`, `domain/test_rulings.py`, `domain/test_recall.py`, `test_facades.py`,
+`test_baselines.py` and the two files under `fixtures/`; in `tests/ole5_voice/evals/`,
+`fakes.py`, `samples.py`, `test_models.py`, `test_runs.py`, `test_takes.py`, `test_audio.py`,
+`test_fakes.py` and `test_commands.py`. A track that needs one changed asks the integrator.
+Library paths below are under `packages/t2-agentic-voice/src/t2_agentic_voice/`; app paths under
 `apps/ole5-voice-agent/src/ole5_voice/evals/`. In every track, no item's reference appears as a
 whole word in a source string or page text (Track D's test reads every string constant under
 `packages/`, `apps/*/src` and `examples/`): the one-word English ones are okay, stop, wait and
@@ -1108,22 +1171,25 @@ message, Track C's docstrings, Track E's progress lines, and Track G's control l
   base URL (`groq.base_url`) and timeout always passed explicitly, never none; an empty key or
   key-file value treated as unset; SDK retries off; `billed_seconds` is the larger of 10 s and the
   clip's length (Groq's documented minimum); the `DataFlow` values of the design's 6.1. The key
-  also goes in `default_headers` as `Authorization`, so `GROQ_CUSTOM_HEADERS` never replaces it,
-  and a request hook on the `httpx.AsyncClient` passed as `http_client` drops every header
-  outside an allow-list (the decision log's groq list; TD-002). Every exception the SDK raises,
-  not only its `APIError`s, becomes a `ProviderError` raised `from None`, never `from error`:
-  the SDK's exception chain can hold the request's headers.
+  also goes in `default_headers` as `Authorization`, and a request hook on the
+  `httpx.AsyncClient` passed as `http_client` drops every header outside an allow-list, then
+  sets `request.headers["Authorization"]` to `Bearer` and the settings' key, which removes every
+  case variant, so no `GROQ_CUSTOM_HEADERS` line, in any case, replaces the key or adds a second
+  one (the decision log's groq list; TD-002). Every exception the SDK raises, not only its
+  `APIError`s, becomes a `ProviderError` raised `from None`, never `from error`: the SDK's
+  exception chain can hold the request's headers.
 - Tests (a fake transport, no network): the request's fields equal Block 0's baseline; the
   result's shape; a cancel stops within 50 ms with no pending task and the client closed; a 429
   with `retry-after`, a 5xx, a timeout, a lost connection, a 401 and a 400 each become the right
   `ProviderError`; the key appears in no repr, error or log line, even when the fake server
   echoes the request's headers in its body; `GROQ_API_KEY` and `GROQ_BASE_URL`, set with
-  monkeypatch, change nothing in the request; `GROQ_CUSTOM_HEADERS`, set with monkeypatch to an
-  `Authorization` line with a made-up key and an `X-Made-Up` line, changes no header (the
-  settings' key sent, no `X-Made-Up`); `GROQ_LOG=debug`, read on import, in a child process that
-  imports `t2_agentic_voice.groq`: no root handler added and the `groq` and `httpx` loggers'
-  levels unchanged, or the case reported against TD-003; an empty key raises the
-  `ConfigurationError`.
+  monkeypatch, change nothing in the request; `GROQ_CUSTOM_HEADERS`, set with monkeypatch to a
+  lowercase `authorization: Bearer <made-up key>` line and an `X-Made-Up: 1` line, changes no
+  header (`request.headers.get_list("authorization")` is exactly `Bearer` and the settings' key,
+  and `x-made-up` is absent), and so does the same with a capitalized `Authorization` line;
+  `GROQ_LOG=debug`, read on import, in a child process that imports `t2_agentic_voice.groq`: no
+  root handler added and the `groq` and `httpx` loggers' levels unchanged, or the case reported
+  against TD-003; an empty key raises the `ConfigurationError`.
 
 **Track C · The tracing helpers (library, `core`).**
 - Goal: tracing set up from settings, the `Redactor`, and span helpers that take the parent span.
