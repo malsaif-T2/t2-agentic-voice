@@ -931,6 +931,11 @@ run, [WORKING-RULES.md](../../../WORKING-RULES.md), "Measurement runs")
     ole5_voice.evals.split --check` passes. After the merge `uv run --offline poe check` passes: 912
     tests (the characterization check among them, no longer skipped), 100% coverage (2004
     statements), mypy strict on 130 files, arch and docs clean.
+- 2026-11-01: Review fixes, track D (`Plan 002: review fixes, track D`): the skip in
+  `tests/ole5_voice/evals/test_matcher.py` that waited on Track A's normalizer is removed, with its
+  helper and the import only it used, since the characterization check ran and passed at the merge;
+  it now runs on every gate. `uv run --offline poe check` passes: 912 tests, none skipped, 100%
+  coverage, mypy strict on 130 files, arch and docs clean.
 
 ## Decision log
 

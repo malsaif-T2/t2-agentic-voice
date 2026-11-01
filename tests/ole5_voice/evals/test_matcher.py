@@ -23,7 +23,6 @@ from ole5_voice.evals.matcher import (
 )
 from ole5_voice.evals.models import TICKET_KIND
 from ole5_voice.evals.runs import Matcher
-from t2_agentic_voice.languages import normalize_arabic
 
 from tests.ole5_voice.evals.fakes import fake_normalize
 
@@ -166,13 +165,6 @@ def test_a_guide_that_is_not_toml_or_not_there_is_refused(tmp_path: Path) -> Non
         load_guide(tmp_path / "absent.toml")
 
 
-def _library_normalizer() -> None:
-    try:
-        normalize_arabic("")
-    except NotImplementedError:
-        pytest.skip("the library's normalizer is not built on this branch yet (Track A)")
-
-
 def test_the_library_normalizer_is_the_default(monkeypatch: pytest.MonkeyPatch) -> None:
     calls: list[str] = []
 
@@ -188,9 +180,8 @@ def test_the_library_normalizer_is_the_default(monkeypatch: pytest.MonkeyPatch) 
 
 
 def test_the_verdict_on_the_characterization_table_is_the_prototypes_norm() -> None:
-    # Run once the library's normalizer is built: each row's verdict string is the
-    # prototype's `norm` column, or the guide's string on a row the guide rules otherwise.
-    _library_normalizer()
+    # Each row's verdict string is the prototype's `norm` column, or the guide's string on a row
+    # the guide rules otherwise, with the library's own normalizer.
     judge = load_matcher(SPELLING)
     rows = json.loads(CHARACTERIZATION.read_text(encoding="utf-8"))["rows"]
     for row in rows:
