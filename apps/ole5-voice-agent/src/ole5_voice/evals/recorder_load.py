@@ -1,0 +1,196 @@
+"""What `poe record` reads at start (`recorder.py` serves it): the script, the replies
+`replies.json` names, every session's files below `--out` (`takes.py`), and, for the review
+mode, the golden-set variants below the `--audio` roots given whose files the manifests name.
+
+Each file is parsed strictly and checked against its place (GP-06): a session record, a sidecar
+or a review whose names differ from its file's is refused, naming the file, so the recorder
+never starts on a guess. A folder below `--out` that is a link is not read.
+"""
+
+from __future__ import annotations
+
+import re
+import tomllib
+from collections.abc import Callable, Sequence
+from datetime import datetime
+from pathlib import Path
+from typing import Final
+
+from pydantic import TypeAdapter, ValidationError
+
+from ole5_voice.evals import items as golden_items
+from ole5_voice.evals.models import Device, Item, Manifest, ManifestFile, Model, Name
+from ole5_voice.evals.recorder_state import (
+    Audio,
+    Entry,
+    Recorder,
+    RecorderError,
+    Reply,
+    local_now,
+    take_entry,
+)
+from ole5_voice.evals.takes import SESSION_FILE, Review, SessionRecord, TakeSidecar, load_script
+
+EVALS: Final = Path(__file__).resolve().parents[3] / "evals"  # apps/ole5-voice-agent/evals
+_REPO: Final = EVALS.parents[2]
+_REVIEW_FILE: Final = re.compile(
+    r"^(?P<take>[a-z0-9][a-z0-9_.-]*)\.review-(?P<n>[1-9][0-9]*)\.json$"
+)
+_NAME: TypeAdapter[str] = TypeAdapter(Name)
+
+
+def is_name(value: str) -> bool:
+    try:
+        _NAME.validate_python(value)
+    except ValidationError:
+        return False
+    return True
+
+
+def _parse[M: Model](model: type[M], path: Path) -> M:
+    try:
+        return model.model_validate_json(path.read_bytes())
+    except (OSError, ValidationError):
+        raise RecorderError(f"{path} is no valid {model.__name__}: fix it, or move it") from None
+
+
+_Reviews = dict[tuple[str, str], list[Review]]
+
+
+def _scan(out: Path) -> tuple[dict[str, SessionRecord], dict[str, TakeSidecar], _Reviews]:
+    """Every session's record, take sidecars and reviews below `--out`, each checked against its
+    place; a folder that is a link, or not named as a session is, is not read."""
+    records: dict[str, SessionRecord] = {}
+    takes: dict[str, TakeSidecar] = {}
+    reviews: _Reviews = {}
+    for folder in sorted(out.iterdir()) if out.is_dir() else []:
+        if not folder.is_dir() or folder.resolve() != folder or not is_name(folder.name):
+            continue
+        for path in sorted(folder.glob("*.json")):
+            if path.name == SESSION_FILE:
+                records[folder.name] = record = _parse(SessionRecord, path)
+                placed = record.session == folder.name
+            elif found := _REVIEW_FILE.match(path.name):
+                review = _parse(Review, path)
+                reviews.setdefault((folder.name, review.take), []).append(review)
+                placed = (review.take, review.review_pass) == (found["take"], int(found["n"]))
+            else:
+                take = _parse(TakeSidecar, path)
+                placed = (take.take, take.session, take.file) == (
+                    path.stem,
+                    folder.name,
+                    f"{path.stem}.wav",
+                ) and take.take not in takes
+                takes[take.take] = take
+            if not placed:
+                raise RecorderError(f"{path} names another session, take or pass than its place")
+    return records, takes, reviews
+
+
+def _replies(path: Path) -> dict[str, Reply]:
+    try:
+        found = TypeAdapter(list[Reply]).validate_json(path.read_bytes())
+    except (OSError, ValidationError):
+        raise RecorderError(f"{path} is no valid replies.json: give --replies its folder") from None
+    replies = {reply.id: reply for reply in found}
+    if len(replies) != len(found):
+        raise RecorderError(f"{path} gives two replies one ID")
+    return replies
+
+
+def _add_variants(
+    recorder: Recorder, audio: dict[str, Path], manifests: Path, items: Sequence[Item]
+) -> None:
+    """The golden-set variants below the roots given, each of whose segments is a file that a
+    manifest names, with the same SHA-256; a take of this recorder's comes first."""
+    named: dict[tuple[str, str], ManifestFile] = {}
+    for path in sorted(manifests.glob("*.json")):
+        manifest = _parse(Manifest, path)
+        named |= {(manifest.root, file.path): file for file in manifest.files}
+    if missing := audio.keys() - {root for root, _ in named}:
+        roots = ", ".join(sorted(missing))
+        raise RecorderError(f"no manifest under {manifests} names the root(s) {roots}")
+    folders = {root: folder.resolve() for root, folder in audio.items()}
+    for item in items:
+        for variant in item.variants:
+            if (
+                variant.id in recorder.entries
+                or {s.root for s in variant.segments} - folders.keys()
+            ):
+                continue
+            files = [named.get((s.root, s.path)) for s in variant.segments]
+            if any(
+                f is None or f.sha256 != s.sha256
+                for f, s in zip(files, variant.segments, strict=True)
+            ):
+                recorder.skipped.append(
+                    f"variant {variant.id}: a segment is no file its manifest names"
+                )
+                continue
+            recorder.entries[variant.id] = Entry(
+                id=variant.id,
+                session=variant.session,
+                of=item.id,
+                kind=item.kind,
+                language=item.language,
+                reference=variant.reference,
+                source=variant.reference_source,
+                audio=tuple(Audio(folders[s.root], s.path, s.sha256) for s in variant.segments),
+            )
+
+
+def load_recorder(
+    *,
+    out: Path,
+    script: Path,
+    session: str | None = None,
+    device: Device | None = None,
+    replies: Path | None = None,
+    audio: dict[str, Path] | None = None,
+    golden: Path = EVALS / "golden",
+    manifests: Path = EVALS / "manifests",
+    load_items: Callable[[Path], Sequence[Item]] | None = None,
+    clock: Callable[[], datetime] = local_now,
+) -> Recorder:
+    """The recorder for one run, or RecorderError naming what to give instead. `load_items`
+    reads the golden set's items (`items.load_items` unless another is given)."""
+    out = out.resolve()
+    if out.is_relative_to(_REPO) and not out.is_relative_to(_REPO / "var"):
+        raise RecorderError(f"--out {out} is in the repository, outside its git-ignored var/")
+    try:
+        lines = load_script(script)
+    except (OSError, tomllib.TOMLDecodeError, ValidationError):
+        raise RecorderError(f"{script} is no valid script.toml: give --script") from None
+    recorder = Recorder(out=out, script=lines, session=session, device=device, clock=clock)
+    if len(recorder.lines) != len(lines.lines):
+        raise RecorderError(f"{script} gives two lines one ID")
+    if replies is not None:
+        recorder.replies_dir = replies.resolve()
+        recorder.replies = _replies(recorder.replies_dir / "replies.json")
+    if missing := {line.reply for line in lines.lines if line.reply} - recorder.replies.keys():
+        raise RecorderError(
+            f"no replies.json names the replies {', '.join(sorted(missing))}: give --replies"
+        )
+    records, recorder.takes, reviews = _scan(out)
+    recorder.consent = records.get(session) if session else None
+    if recorder.consent is not None and recorder.consent.device != device:
+        raise RecorderError(
+            f"session {session} is recorded on the {recorder.consent.device} microphone"
+        )
+    for take in recorder.takes.values():
+        line = recorder.lines.get(take.line)
+        if line is None:
+            recorder.skipped.append(f"take {take.take}: the script has no line {take.line}")
+        elif take.status == "kept":
+            recorder.entries[take.take] = take_entry(out, take, line)
+    if audio:
+        try:
+            items = (load_items or golden_items.load_items)(golden)
+        except (OSError, ValueError):
+            raise RecorderError(f"the items under {golden} do not load: run poe golden") from None
+        _add_variants(recorder, audio, manifests, items)
+    for entry in recorder.entries.values():
+        entry.reviews.extend(reviews.get((entry.session, entry.id), []))
+    passes = [review.review_pass for found in reviews.values() for review in found]
+    recorder.review_pass = 1 + max(passes, default=0)
+    return recorder

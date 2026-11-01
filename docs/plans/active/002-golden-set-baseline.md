@@ -1099,6 +1099,104 @@ run, [WORKING-RULES.md](../../../WORKING-RULES.md), "Measurement runs")
     would leave step 15's reference runs with no variant.
   - After the merge `uv run --offline poe check` passes: 1034 tests, 100% coverage (2959
     statements), mypy strict on 132 files, arch and docs clean.
+- 2026-11-01: After Track E's merge, with the tree clean, the runner ran once on the real pieces of
+  Tracks A to F in this linked worktree, with no spend: `uv run --offline poe eval --answerer
+  reference --split dev` (an empty `--env-file` in the scratch folder, `--out` outside the
+  repository) scored 84 of 84 variants right, WER and CER 0, term recall 1, no violation, "one
+  speaker"; the same with `--split held-out` scored 36 of 36, its scorecard holding no variant. No
+  history line was appended. This is a check at the merge, not step 15, whose test is still to be
+  written.
+- 2026-11-01: Track G, the recorder, is merged (`Plan 002: merge track G`), from one commit on
+  `plan-002-track-g`, cut from 44aa043: 505e753 (`Plan 002: track G, the recorder (poe record) and
+  its page`). It replaces Block 0's stub `recorder.py` and adds `recorder_load.py`,
+  `recorder_state.py` and the page (`recorder_page/index.html`, `recorder_page/recorder.js`), with
+  the tests `tests/ole5_voice/evals/test_recorder.py`, `test_recorder_security.py` and
+  `recorder_support.py`; `## Tracks` now names the four files Track G's Owns line lacked, and the
+  files the Owns lines of Tracks D, E and F lacked (their deviations). `poe record --out <folder>
+  [--session <name> --device <laptop|wired|bluetooth>] [--script] [--replies <folder>] [--audio
+  <root>=<folder> ...] [--golden] [--manifests] [--port]` serves the page (plain HTML, CSS and JS,
+  nothing from another address) on 127.0.0.1 under a new token each run, and logs the address once,
+  in its `recorder_ready` line. From the track's report:
+  - The page asks for the speaker's consent first (their name, their own words and an agreement box,
+    written as `takes.SessionRecord` in `<session>/session.json`). It records each script line as 16
+    kHz mono 16-bit WAV through an AudioWorklet in an `AudioContext` of 16 kHz, requesting echo
+    cancellation, noise suppression, gain control and one channel, and plays the agent's reply
+    through the chosen output while recording an over-the-agent or echo-only line (the take ending
+    with the reply for an echo-only line, and after `seconds` for a fixed-length line). It plays the
+    take back from memory, takes each true turn end of a several-clause take (a line with more than
+    one clause in `say`) from clicks on its waveform, and saves the take as `<take>.wav` with its
+    `TakeSidecar` (the microphone's and the output's labels, the track's settings as the browser
+    reports them, kept or discarded); the server refuses any other format with `audio.parse_wav`.
+    Its review mode plays each kept take, and each golden-set variant the manifests name below the
+    `--audio` roots given, beside its reference; the owner confirms it (`Review`, verdict
+    `confirmed`) or types what it says (`typed`), written as `<session>/<take>.review-<pass>.json`.
+  - The server answers only its own Host and paths under its token; it takes a POST only from its
+    own Origin, as JSON, with a bounded body; it serves only its allow-list, each file looked up by
+    ID and sent only when no link leads to it, its bytes are WAV and they match the recorded
+    SHA-256; and it writes only new files below `--out`, named by `takes.py`'s helpers.
+  - Its sources: the agent replies are read only from `voice-lab/assets/talkover/replies.json` (6
+    replies, each with `id`, `lang`, `topic`, `ms` and `file`; the files are 24 kHz mono 16-bit WAV,
+    read 2026-11-01), in the lab's folder beside `Ole5-chatbot/`, which the owner gives as
+    `--replies`; the six replies pass the recorder's checks (a read-only load). The lab's own
+    recorder (`voice-lab/server.py`, `voice-lab/static/`) was neither read nor used, as the decision
+    log says. The capture settings are the decision log's; `takes.json` is not on the track's read
+    list, so it was not read.
+  - Its values, each a constant in the code: the token, 32 random bytes
+    (`secrets.token_urlsafe(32)`, 43 characters), compared with `hmac.compare_digest`; `MAX_BODY` 16
+    MiB, a take of about six and a half minutes as base64 in JSON; each request's socket timeout 30
+    s; `--port` 0 by default, a free port the OS picks; field limits of 200 characters for the
+    speaker, 4000 for the consent's words, 500 for device labels and 4000 for a typed text.
+  - Its tests, all on made-up WAV bytes and a temporary tree, with a real server on a free port of
+    127.0.0.1 in a thread and no device: `test_recorder.py` covers the behaviour (a take saved with
+    its sidecar and played back, the consent first and written once, no file replaced, turn ends,
+    the review passes, the variants beside their references, review-only, 13 startup refusals, and
+    the command); `test_recorder_security.py` the adversarial cases (GP-08): the bind address and
+    the token, no outside address and none of the four one-word English references in the page or
+    the code, 7 wrong Hosts, 10 wrong or missing tokens, 6 foreign or missing Origins and a doubled
+    one, non-JSON POSTs, a body too large or of no or a short length, 7 files that are not 16 kHz
+    mono 16-bit and bad base64, POST fields naming paths, 16 GETs off the allow-list, and 70
+    traversal targets (encoded and plain `..`, backslashes, absolute paths, absolute-form targets)
+    from every route. In the tree a made-up `.env` sits in the checkout above `--out`
+    (`var/golden-audio/../../.env`), in the old repository's folder, in each served folder and in
+    every folder above them; it is never read, through a folder link (a junction on Windows), a file
+    link (skipped on this account) or a hard link. 92 tests in all.
+  - Its check in a browser, partial: the page was loaded once in the browser pane, with a scratch
+    `script.toml` and `--out` in the agent's scratch folder and the lab's replies read only, nothing
+    recorded or submitted. It rendered the script from `api/state` with no console error (the
+    consent panel shown, Record disabled until the consent, the echo-only cue, the review tab). The
+    pane blocks the microphone, so capture, playback and saving through the page wait for a check in
+    Chrome.
+  - Deviation: the recorder is three modules, not one: `recorder.py` holds the server and the
+    command (272 lines), `recorder_load.py` what it reads at start (196) and `recorder_state.py`
+    what it holds, writes and serves (364), since one module came to 539 lines after formatting,
+    past ARCH-SIZE's 400. For the same reason the tests are three files: `test_recorder.py` (the
+    behaviour, 385), `test_recorder_security.py` (the adversarial tests, 399) and
+    `recorder_support.py` (the shared tree and client, 282).
+  - Deviation: the allow-list also holds the takes below `--out`, each looked up by its take ID
+    through its sidecar and sent only when its bytes match the sidecar's SHA-256: the page must play
+    a saved take back and review the new takes before step 19's import writes their manifests. The
+    plan's allow-list names only the replies `replies.json` names and the variants the manifests
+    name.
+  - Its debt rows are TD-022 (the page has no automated test) and TD-023 (the symbolic-link case
+    skips on the owner's account). It changed no row and asked for no change to Block 0.
+  - Its question for the owner: should the recorder refuse a take when the browser reports echo
+    cancellation, noise suppression or gain control off for the chosen microphone, instead of saving
+    it with the page's warning and the sidecar's record (the agent's choice)? Refusing would block a
+    sitting on a device whose browser reports one off.
+  - Not done: the page in Chrome (WORKING-RULES.md, "Seeing it run"): recording a take, playing it
+    back through the chosen output, the waveform's marks, and saving the consent, a take and a
+    review through the page are unchecked, and so are whether Chrome runs the microphone through an
+    `AudioContext` of 16 kHz and the worklet (UNVERIFIED) and `setSinkId` on the output.
+    `.claude/launch.json` for the recorder was left to the integrator (the following commit). The
+    no-item-in-source rule was checked by the track only for the four one-word English references;
+    Track D's test, merged first, now reads the recorder's files too, and passes. Reviewing real
+    golden-set variants needed Track D's `items.load_items`, merged first: the recorder's default.
+  - At the merge, the committed `script.toml`'s echo-only lines name the lab's replies ar_inbox and
+    en_signature, so `poe record` refuses to start without `--replies` ("give --replies"), which the
+    owner's step 4 below did not give (a probe of `load_recorder`, which starts with the lab's
+    folder given; fixed in the following commit).
+  - After the merge `uv run --offline poe check` passes: 1129 tests and 1 skipped (the symbolic-link
+    case), 100% coverage (3423 statements), mypy strict on 136 files, arch and docs clean.
 
 ## Decision log
 
@@ -1949,6 +2047,80 @@ All entries are the agent's choices of 2026-11-01, with the agent's reasons.
 - 2026-11-01: Track E: `run.py` calls Track F's `write_scorecard` with an empty sequence of results
   when the smoke test fails or a held-out run does not finish, which Track F's writer accepts
   (checked at the merge, the progress log). The agent's choice.
+- 2026-11-01: Track G: the recorder's token is the first part of every path
+  (`http://127.0.0.1:<port>/<token>/...`), not a query string or a cookie, so every relative address
+  on the page (its script, the audio worklet, each fetch, each audio file) carries it with no script
+  code, and no other site can hold it, since the cookies of 127.0.0.1 are shared across ports.
+  `Referrer-Policy: no-referrer` keeps it out of any Referer. The agent's choice.
+- 2026-11-01: Track G: `Host` must be one header exactly `127.0.0.1:<port>`. A POST must carry one
+  `Origin` exactly `http://127.0.0.1:<port>` (a POST with none is refused too) and the type
+  `application/json`, which a form from another page cannot send without a preflight the server
+  never answers. A POST's body is read before any refusal, so a refused POST leaves no unread bytes
+  on the connection, except one refused for its length (411, 413). The agent's choices.
+- 2026-11-01: Track G: every answer sends `Content-Security-Policy: default-src 'none'; script-src
+  'self'; style-src 'unsafe-inline'; media-src 'self' blob:; connect-src 'self'; img-src data:;
+  base-uri 'none'; form-action 'none'; frame-ancestors 'none'`, plus `Cross-Origin-Resource-Policy:
+  same-origin` (no other page can even embed its audio), `Cache-Control: no-store` and
+  `X-Content-Type-Options: nosniff`; inline styles are allowed for the page's one style block. What
+  `http.server` refuses itself (an unknown method, a bad request line) gets only its status's
+  phrase, never the request's text. No line is logged per request, since the path holds the token.
+  The agent's choices.
+- 2026-11-01: Track G: the address with the token is logged once, through the library's `get_logger`
+  (GP-03: no `print`), as the `recorder_ready` line on the owner's terminal. That one line is the
+  plan's "prints in the address", and the token is in no other line. The agent's reading.
+- 2026-11-01: Track G: `RecorderServer` turns off `allow_reuse_address`, since on Windows
+  SO_REUSEADDR would let another socket bind the same port. `--port` defaults to 0, a free port, so
+  Chrome asks for the microphone again in each new run. The agent's choices.
+- 2026-11-01: Track G: the allow-list's files are looked up by ID only: a reply by its ID in
+  `replies.json`, a take by its ID among the sidecars below `--out`, a variant's segment by the
+  variant's ID and the segment's index. A file is sent only when (1) resolving its path, links and
+  junctions included, gives the path itself, (2) its bytes start as RIFF/WAVE, and (3) they match
+  the SHA-256 its sidecar or manifest records (replies have no recorded hash, so they get the
+  RIFF/WAVE check only), so even a hard link to a `.env` is never sent. A reply's `file` must be a
+  plain `.wav` name beside `replies.json`. The agent's choices, from the decision log's recorder
+  entry.
+- 2026-11-01: Track G: the server names each take `<line>-<session>-<n>`, with n the first number
+  that names no take, no WAV and no sidecar yet; a request never names a file. A session's folder
+  below `--out` that is a link is neither read nor written. An `--out` inside this repository but
+  outside its git-ignored `var/` is refused at start, so no take can land where git would track it.
+  The agent's choices.
+- 2026-11-01: Track G: a review pass is one run of `poe record`, numbered one past the highest pass
+  found below `--out`. A take or a variant has at most one review a pass, since its file's name
+  `<take>.review-<pass>.json` holds the pass and is never replaced. An entry is due when it has no
+  review in this pass and its latest review, if any, is `typed`, so a text typed in pass n comes
+  back, as its reference, in pass n+1 or later, for a separate listen (Q9). The items' own
+  `confirmations` are not read for the queue: the review files below `--out` decide it. The agent's
+  choices.
+- 2026-11-01: Track G: a golden-set variant's review is written at `<out>/<the variant's
+  session>/<variant>.review-<pass>.json`; for the talk-over variants, that is a folder with no
+  `session.json`. Track D's `import_recordings` reads these reviews, and skips a folder that holds
+  only reviews (Track D's entry above), so its refusal of a session without one does not apply. The
+  agent's choice.
+- 2026-11-01: Track G: a variant enters the review mode only when every segment's root is among the
+  `--audio` roots given, and each (root, path) is named by a manifest with the same SHA-256;
+  otherwise it is left out and logged as `recorder_left_out`, as is a take whose line left the
+  script. A take of the recorder's own comes before a variant of the same ID. An `--audio` root that
+  no manifest names is refused at start. The items come from `items.load_items` (Track D); the tests
+  inject `FakeGoldenSet.load_items`. The agent's choices.
+- 2026-11-01: Track G: a kept take of a several-clause line must carry at least one true turn end,
+  and every turn end must lie within the take (`TurnEnds`: distinct, in order); a discarded take
+  needs none. The agent's choices.
+- 2026-11-01: Track G: the track's settings are recorded as the browser reports them, and a take is
+  not refused when the browser reports echo cancellation, noise suppression or gain control off: the
+  page warns, and the sidecar says so. The agent's choice, since some headsets may report one off
+  and refusing would block a sitting for a reason the owner cannot change (the owner's question in
+  the progress log).
+- 2026-11-01: Track G: without both `--session` and `--device`, the page only reviews, and the
+  consent and take POSTs are refused (409). A session's `session.json` fixes its device: a later run
+  of that session with another `--device` is refused at start. The consent's `on` is the local date,
+  and every `recorded_at` and review `at` is local time with its offset. The agent's choices.
+- 2026-11-01: Track G: `recorder.js` is both the page's script and its audio worklet; in the
+  worklet's scope it only registers the processor that passes each block of samples to the page, so
+  `script-src 'self'` covers the worklet with no `blob:`. The page refuses to record when the
+  browser will not run an `AudioContext` at 16 kHz. MediaStreamTrack's method that ends a track is
+  named after a one-word talk-over reference, so the page looks it up by its parts, and no page text
+  holds the word. Text from the script, the replies and the files is set as text, never as HTML. The
+  agent's choices.
 
 ## The owner's decisions
 
@@ -2162,7 +2334,7 @@ message, Track C's docstrings, Track E's progress lines, and Track G's control l
   `spelling.toml`, `allowed_in_source.toml`, `manifests/*.json`); tests
   `tests/ole5_voice/evals/` (`test_items.py`, `test_matcher.py`,
   `test_golden.py`, `test_split.py`, `test_strata.py`, `test_no_item_in_source.py`,
-  `test_no_audio.py`).
+  `test_no_audio.py`, and `test_import_recordings.py`, added at the merge).
 - May read: `voice-lab/recordings/talkover/refs.json` and `takes.json` (read only, D-010);
   `voice-lab/static/talkover.js` (the scripted phrases); evaluation.md's "The golden set",
   "Writing items" and "Splits".
@@ -2185,9 +2357,10 @@ message, Track C's docstrings, Track E's progress lines, and Track G's control l
 **Track E · The runner (app).**
 - Goal: `poe eval` as evaluation.md's "Running" and this registration say.
 - Owns: `run.py`, `answerers.py` (`reference`, `groq`, and optionally `prototype-cache`),
-  `windows.py`, `worktree.py` (the linked-worktree and clean-tree checks, through `git`); tests
-  `tests/ole5_voice/evals/` (`test_run.py`, `test_answerers.py`, `test_windows.py`,
-  `test_worktree.py`).
+  `windows.py`, `worktree.py` (the linked-worktree and clean-tree checks, through `git`), and
+  `run_parts.py`, added at the merge; tests `tests/ole5_voice/evals/` (`test_run.py`,
+  `test_answerers.py`, `test_windows.py`, `test_worktree.py`, and `test_run_parts.py`, added at
+  the merge).
 - May read: `models.py`, `runs.py`, `audio.py`, the library's facades, the matcher's, the
   items', the split's, the scorecard's and the history's interfaces (through Block 0's fakes
   until their tracks merge).
@@ -2220,8 +2393,8 @@ message, Track C's docstrings, Track E's progress lines, and Track G's control l
 **Track F · Scorecards, comparison and history (app).**
 - Goal: the scorecard, `poe eval-compare`, `history.jsonl` and its generated doc.
 - Owns: `scorecard.py`, `compare.py`, `history.py`; `docs/generated/eval-history.md` and its row
-  in `docs/generated/README.md`; tests `test_scorecard.py`, `test_compare.py`, `test_history.py`
-  (the freshness test).
+  in `docs/generated/README.md`; `apps/ole5-voice-agent/evals/history.jsonl` (added at the
+  merge); tests `test_scorecard.py`, `test_compare.py`, `test_history.py` (the freshness test).
 - May read: `models.py`, `runs.py`, the library's `evals` facade (through Block 0's
   `FakeScorers` until Track A merges), evaluation.md's "Judging a change" and "Run history".
 - Behaviour: accuracy, WER, CER (over variants with a non-empty reference only), term and ID
@@ -2237,8 +2410,9 @@ message, Track C's docstrings, Track E's progress lines, and Track G's control l
 
 **Track G · The recorder (app).**
 - Goal: `poe record`, the page the owner records and listens with.
-- Owns: `recorder.py`, `recorder_page/index.html`, `recorder_page/recorder.js`; tests
-  `test_recorder.py`.
+- Owns: `recorder.py`, `recorder_page/index.html`, `recorder_page/recorder.js`, and
+  `recorder_load.py` and `recorder_state.py`, added at the merge; tests `test_recorder.py`, and
+  `test_recorder_security.py` and `recorder_support.py`, added at the merge.
 - May read: `takes.py` (the script, the session record, the take sidecar, the review, and the
   files' names below `--out`), `models.py`, `audio.py`; `voice-lab/assets/talkover/` (the six
   agent replies and `replies.json`, served read only for over-the-agent and echo-only items).
