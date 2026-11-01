@@ -1,13 +1,18 @@
 """The strata: the items, their variants and the script's lines counted by each label, which
-the committed set must hold as `strata.toml` registers them."""
+the committed set must hold as `strata.toml` registers them; and the script's lines as the
+owner approved them: their counts, their spelling and their ticket numbers' shape."""
 
 from __future__ import annotations
 
+import re
 from collections import Counter
+from datetime import date, datetime
 
 from ole5_voice.evals.items import EVALS, Strata, count_strata, load_items, load_terms, read_toml
+from ole5_voice.evals.matcher import load_guide
 from ole5_voice.evals.models import TICKET_KIND, Item, Variant
 from ole5_voice.evals.takes import Script, load_script
+from t2_agentic_voice.languages import spelling_issues
 
 from tests.ole5_voice.evals import samples
 
@@ -42,8 +47,9 @@ def test_the_strata_count_items_variants_and_script_lines() -> None:
     assert (strata.script.total, strata.script.kind) == (1, {"silence": 1})
 
 
-# The draft script's lines by kind and language (Saudi, MSA, English, mixed, none): the agent's
-# proposal in plan 002's registration ("New recordings (N)"), until the owner approves it (Q4).
+# The script's lines by kind and language (Saudi, MSA, English, mixed, none): the agent's
+# proposal in plan 002's registration ("New recordings (N)"), which the owner approved on
+# 2026-11-01 (Q4).
 PROPOSAL = {
     "request": (6, 4, 4, 4, 0),
     "paused_request": (4, 2, 2, 2, 0),
@@ -58,7 +64,7 @@ PROPOSAL = {
 LANGUAGES = ("saudi", "msa", "english", "mixed", "none")
 
 
-def test_the_draft_script_holds_the_proposals_lines() -> None:
+def test_the_script_holds_the_approved_proposals_lines() -> None:
     script = load_script(EVALS / "script.toml")
     found = Counter((line.kind, line.language) for line in script.lines)
     expected = {
@@ -71,18 +77,44 @@ def test_the_draft_script_holds_the_proposals_lines() -> None:
     assert len(script.lines) == 52 and len({line.id for line in script.lines}) == 52
 
 
-def test_the_draft_scripts_lines_follow_the_spelling_guide() -> None:
+def test_the_scripts_lines_follow_the_spelling_guide() -> None:
     script = load_script(EVALS / "script.toml")
     terms = set(load_terms(EVALS / "terms.toml"))
+    guide = load_guide(EVALS / "spelling.toml")
     for line in script.lines:
         assert set(line.terms) <= terms, line.id
         assert all(term in line.text for term in line.terms), line.id
+        assert spelling_issues(line.text, guide.rules_for(line.kind)) == [], line.id
         silent = line.language == "none"
         assert silent == (line.text == ""), line.id  # no speech exactly where no language
         if line.kind == "listening_sound":
             assert line.text in script.listening_sounds, line.id
         if line.kind == "echo_only":
             assert line.reply in {"ar_inbox", "en_signature"}, line.id
+
+
+# An Ole5 ticket number, in the shape the owner gave on 2026-11-01 (plan 002, Q5): 16 digits,
+# the date as YYYYMMDD, then 82, then a 6-digit counter.
+TICKET_NUMBER = re.compile(r"(?P<date>[0-9]{8})82[0-9]{6}")
+
+
+def test_the_scripts_ticket_numbers_are_made_up_in_the_owners_shape() -> None:
+    script = load_script(EVALS / "script.toml")
+    numbers = {
+        line.id: re.findall(r"[0-9]+", line.text)
+        for line in script.lines
+        if line.kind == TICKET_KIND
+    }
+    assert all(len(found) == 1 for found in numbers.values()), numbers  # one number, in digits
+    full = {name: number for name, [number] in numbers.items() if len(number) != 4}
+    assert len(full) == 2 and len(set(full.values())) == 2, numbers  # and two of a last four
+    for name, number in full.items():
+        shaped = TICKET_NUMBER.fullmatch(number)
+        assert shaped is not None, name
+        # Dated after the day the owner gave the shape, so never one of the owner's examples.
+        day = datetime.strptime(shaped["date"], "%Y%m%d").date()
+        assert date(2026, 11, 1) < day <= date(2026, 12, 31), name
+    assert not [line.id for line in script.lines if "DRAFT" in line.cue]
 
 
 def test_the_committed_set_holds_its_registered_strata() -> None:
