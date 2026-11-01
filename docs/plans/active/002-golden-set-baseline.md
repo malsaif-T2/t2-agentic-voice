@@ -1542,6 +1542,11 @@ run, [WORKING-RULES.md](../../../WORKING-RULES.md), "Measurement runs")
   (`listening_sound`, `request`, `other`) pooled as the owner's rule says. Neither run appended a
   history line. The command-line check that step 15 left for step 19 passes on the talk-over
   set; step 19 makes it again once the new takes are in.
+- 2026-11-01: The owner settled Q10: the item wins ("The owner's decisions"). `split.py` already
+  splits by item alone, every variant of an item on one side, so no code changes; step 19 needs
+  no other answer from the owner. The owner reports the new recordings made on all three devices
+  ("I have finished recording all three ways"), so step 18's recording is done and its check
+  (Q9) follows.
 
 ## Decision log
 
@@ -2756,6 +2761,11 @@ All entries are the agent's choices of 2026-11-01, with the agent's reasons.
 - 2026-11-01: The left-out takes are a table in `import_talkover.py` (`LEFT_OUT`, take and
   reason), beside `LANGUAGE`, since the import alone reads them; `build` takes the table as an
   argument, so the tests pass their own, and `main` passes `LEFT_OUT`. The agent's choice.
+- 2026-11-01: The held-out split of the new recordings (N) is by item alone: every recording of a
+  held-out line is held out, and no recording sitting is held out whole, since each sitting is
+  one device and holding one out would leave that device with no dev recording. Dev and held-out
+  share the three sittings, so the held-out runs test unseen lines, not an unseen sitting. The
+  owner's answer (Q10).
 
 ## The owner's decisions
 
@@ -2830,6 +2840,10 @@ The same day, the owner's answers to the calls before recording:
 - The talk-over set's check, done: "I have finished the review, I ran it twice to confirm the
   edits too." Then, asked what should happen to two clips cut off at their start whose typed
   text the list of listening sounds refuses: "Leave the two clips out".
+- Q10, the held-out split of the new recordings: "Explain Q10 first"; after the agent's
+  explanation (the exam holds whole lines, each with its three recordings, or whole sittings,
+  each one device): "Yes, the line wins". So the item wins: every recording of a held-out line
+  is held out, and no sitting is held out whole.
 
 Earlier words this plan rests on, all of 2026-10-28 (D-004, D-006, D-010):
 
@@ -3431,7 +3445,8 @@ The owner's call before recording (all settled on 2026-11-01: "The owner's decis
   ("Proven twice"), logged as a `Deviation:` line.
 
 The owner's call before the import (step 19), which fixes the split and the strata:
-- **Q10.** For N: does the item win over the session in the held-out split? An item is one
+- **Q10.** *Settled on 2026-11-01: the item wins.* For N: does the item win over the session in
+  the held-out split? An item is one
   scripted line and a session one recording sitting: with the item winning, every recording of a
   held-out line stays out of tuning, while each sitting has lines on both sides. The agent
   recommends the item: T is one session, and one session per device would hold out a device.
@@ -3567,8 +3582,8 @@ before the run.
    the talk-over variants), listen to each variant beside its reference and confirm it, or type
    what was said; a variant you typed comes back in a later review pass (a later run of the same
    command), to be confirmed against your text.
-6. **Before the import and the runs:** answer Q10 before the import (step 19) and Q13 to Q19
-   before the runs; read the key's limits in the Groq console, make sure nothing else uses
+6. **Before the import and the runs:** answer Q10 before the import (step 19; done on
+   2026-11-01) and Q13 to Q19 before the runs; read the key's limits in the Groq console, make sure nothing else uses
    the key, and approve the estimate and a budget cap.
 7. **For the tracing check (step 22):** start Phoenix on this machine, in PowerShell:
    `$env:PHOENIX_WORKING_DIR = "<a persistent folder, such as var\phoenix>"` and
