@@ -251,6 +251,15 @@ async def _answer_all(
 
 
 def _run(args: argparse.Namespace, settings: Settings, parts: Parts) -> int:
+    # The settings go into the committed history, as the note does (its check: `_parser`).
+    if placed := [
+        name for name, value in _shown(settings, args).items() if holds_placeholder(value)
+    ]:
+        raise ConfigurationError(
+            f"{placed[0]} holds an install placeholder, which the docs check refuses in the "
+            "history. FIX: give the setting without one.",
+            details={"setting": placed[0]},
+        )
     checkout = inspect(parts.folder, parts.git)
     if (problem := checkout.refusal()) is not None:
         raise problem

@@ -99,7 +99,9 @@ function recorderPage() {
       await new Promise((done, failed) => {
         audio.onended = done;
         audio.onerror = () => failed(new Error("The audio did not play."));
-        audio.play().catch(failed);
+        // A refused playback is a NotAllowedError too: told apart, or `fail` blames the microphone.
+        const refused = new Error("The browser did not let the page play it: click Play again.");
+        audio.play().catch((error) => failed(error && error.name === "NotAllowedError" ? refused : error));
       });
     }
   }

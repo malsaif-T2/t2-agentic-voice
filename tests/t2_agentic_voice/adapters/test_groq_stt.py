@@ -273,7 +273,7 @@ SHELLS = [
     {"GROQ_CUSTOM_HEADERS": f"Authorization: Bearer {OTHER}\nX-Made-Up: 1"},
     {"GROQ_CUSTOM_HEADERS": MANY + "\nX-Stainless-Lang: made-up"},
     {"GROQ_CUSTOM_HEADERS": "Content-Type: multipart/form-data; boundary=madeup"},
-]  # a content-type line in another case fails the request: test_groq_stt_boundary.py
+]  # a content-type line in another case fails the request: test_groq_stt_checks.py
 
 
 @pytest.mark.parametrize("shell", SHELLS)

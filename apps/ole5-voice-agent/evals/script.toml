@@ -361,12 +361,10 @@ seconds = 5
 id = "n51_echo_arabic"
 kind = "echo_only"
 language = "none"
-cue = "Say nothing while the reply plays."
 reply = "ar_inbox"
 
 [[lines]]
 id = "n52_echo_english"
 kind = "echo_only"
 language = "none"
-cue = "Say nothing while the reply plays."
 reply = "en_signature"

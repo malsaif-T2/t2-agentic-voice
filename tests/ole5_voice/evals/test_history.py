@@ -115,6 +115,29 @@ def test_a_note_holding_an_install_placeholder_never_reaches_the_history(tmp_pat
     assert _line(note="{{ lower }} and {NAME}").note  # not a placeholder: kept
 
 
+@pytest.mark.parametrize(
+    "fields",
+    [
+        {"settings": {"tracing.project": "{{" + "NAME" + "}}"}},  # a value
+        {"settings": {"{{" + "NAME" + "}}": "x"}},  # a name
+        {"model": "whisper-{{" + "NAME" + "}}"},
+    ],
+)
+def test_a_setting_or_model_holding_an_install_placeholder_never_reaches_the_history(
+    tmp_path: Path, fields: dict[str, object]
+) -> None:
+    """Like the note: the settings and the model go into the committed history too (a run
+    refuses such a setting before it sends anything: test_run_pinned.py)."""
+    with pytest.raises(ValidationError, match="install placeholder"):
+        HistoryLine.model_validate(samples.history_line().model_dump() | fields)
+    with pytest.raises(ValidationError, match="install placeholder"):
+        RunInfo.model_validate(samples.run().model_dump() | fields)
+    path = tmp_path / "history.jsonl"
+    with pytest.raises(EvalDataError, match="install placeholder"):
+        append_line(_line().model_copy(update=fields), path)
+    assert not path.exists()
+
+
 def test_reading_names_the_bad_line_never_its_text(tmp_path: Path) -> None:
     path = tmp_path / "history.jsonl"
     leaked = samples.history_line().model_dump(mode="json") | {"settings": {"api_key": MADE_UP_KEY}}
@@ -206,13 +229,14 @@ def test_the_page_shows_the_spend_each_run_and_its_strata() -> None:
 
 def test_a_runs_own_text_is_escaped_so_it_renders_as_text(tmp_path: Path) -> None:
     """A note or setting holding Markdown never makes a link, an HTML tag, a placeholder the
-    docs check would flag, or a table cell of its own. (A note holding a placeholder is refused
-    before it is written: the test below.)"""
+    docs check would flag, or a table cell of its own. (A note, setting or model holding a
+    placeholder is refused before it is written: the tests above. The page escapes one anyway,
+    so the line is built unchecked.)"""
     placeholder = "{{" + "NAME" + "}}"  # written apart, or the docs check flags this file
     note = "see [the plan](missing.md) | <script>x</script> `c` *b*\nnext line"
     settings = {"odd|name": "a [b](c.md)", "other": placeholder}
     assert PLACEHOLDER.search(placeholder)  # unescaped, the docs check would flag it
-    line = _line(note=note, settings=settings, model="m|odd")
+    line = _line(note=note, model="m|odd").model_copy(update={"settings": settings})
     page = render_history([line])
     md = tmp_path / "docs" / "generated" / "eval-history.md"
     md.parent.mkdir(parents=True)

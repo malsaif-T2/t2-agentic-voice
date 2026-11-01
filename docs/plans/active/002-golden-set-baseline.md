@@ -1387,6 +1387,39 @@ run, [WORKING-RULES.md](../../../WORKING-RULES.md), "Measurement runs")
     step 19, as step 15 says.
   - `uv run --offline poe check` passes: 1176 tests and 1 skipped (the symbolic-link case), 100%
     coverage (3471 statements), mypy strict on 143 files, arch and docs (25 files) clean.
+- 2026-11-01: The integrator's own check of the merged branch, and the recorder's page in a
+  browser (`Plan 002: review fixes, the check and the recorder's page`):
+  - The gate, run again by the integrator at 2644858, passes as the check said (1176 tests and 1
+    skipped, 100% coverage), and `uv lock --check` is clean.
+  - The page, served by `poe record` from this worktree with `--out` in the agent's scratch folder,
+    opened in the desktop app's browser pane, which gives the page no microphone. It loads with no
+    console error and lists the script's 52 lines; the consent form saves `session.json`; the
+    lines, their clauses and cues show; the server answers a request with no token, another `Host`
+    or another `Origin` with 403. In review mode (`--audio talkover=` the lab's recordings), 120
+    variants are due; a click on Play fetches the variant's WAV, and "It says this" and a typed
+    text each write their `review-1.json` under `--out` and update the count. Not checked, since
+    the pane has no microphone: recording, playback of the reply while recording, saving a take,
+    the turn-end marks and the device lists. The owner's first sitting (step 17) is their check.
+  - Fixed from the page: a playback the browser refused (also a `NotAllowedError`) was reported as
+    the microphone being refused; it now says the browser did not let the page play it. The two
+    echo-only lines' cue in `script.toml` ("Say nothing while the reply plays.") repeated the
+    sentence the page writes from the line's reply, so the cue is removed (the script is still the
+    draft Q4 approves).
+  - Fixed from the check of the review's fixes (its three lows): DOC-CONTROL now also refuses a
+    lone carriage return, the escape that split step 5's line, reading the doc's bytes rather than
+    its text with universal newlines (a test case added); a setting's name or value and the model,
+    which go into the committed history as the note does, are refused when they hold an install
+    placeholder, by the models (`runs.Shown`, `runs.Plain`) and by `poe eval` before anything is
+    sent (tests in `test_history.py` and `test_run_pinned.py`, each failing on a mutant first);
+    and a test comment named a file that does not exist.
+  - Deviation: the step to start the page with `.claude/launch.json` was not used. The desktop
+    app's preview started the `ole5` entry of the launch file in the folder above the repository
+    (the chatbot, read-only under D-010) instead of `recorder`; it ran for 8 seconds and was
+    stopped, and the chatbot's checkout and the Phoenix folder show no change. The page was started
+    with `poe record` itself and opened at the address its `recorder_ready` line gives.
+  - `uv run --offline poe check` passes: 1180 tests and 1 skipped (the symbolic-link case), 100%
+    coverage (3476 statements), mypy strict on 143 files, arch and docs (25 files) clean; `uv lock
+    --check` is clean. Next: the owner's answers and step 16's merge into the main branch.
 
 ## Decision log
 
@@ -2454,6 +2487,11 @@ All entries are the agent's choices of 2026-11-01, with the agent's reasons.
   21" stays two numbers). The checker's proposal for the separator case, a `,` or U+066C between
   digits and followed by exactly three digits removed in `id_recall` alone, is put to the owner with
   it rather than applied. The agent's choice.
+- 2026-11-01: The integrator's check: nothing a run writes into the committed history may hold an
+  install placeholder (the note, each setting's name and value, the model), refused by the models
+  and, before anything is sent, by `poe eval`, rather than listing `history.jsonl` among the files
+  where the docs check allows one: the history then stays checked like any other file. The agent's
+  choice.
 
 ## The owner's decisions
 

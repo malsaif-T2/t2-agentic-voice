@@ -35,16 +35,34 @@ Outcome = Literal[
 SCORECARD_FILE: Final = "scorecard.json"
 # A setting that holds a secret, by its dotted name (`groq.api_key`).
 _SECRET_SETTING = re.compile(r"(^|[._])(api_key|key|secret|token|password)$")
+# An install placeholder, an uppercase name between double braces, as the docs check finds one
+# (`scripts/check_docs.py`, DOC-PLACEHOLDER) in every committed file, `history.jsonl` included.
+_PLACEHOLDER = re.compile(r"\{\{[A-Z][A-Z0-9_]*\}\}")
 
 
-def _secrets_hidden(value: dict[str, str]) -> dict[str, str]:
+def holds_placeholder(text: str) -> bool:
+    """Whether `text` holds an install placeholder, which nothing in a run's history may."""
+    return _PLACEHOLDER.search(text) is not None
+
+
+def _no_placeholder(text: str) -> str:
+    if holds_placeholder(text):
+        raise ValueError("holds an install placeholder, which the docs check refuses in history")
+    return text
+
+
+def _shown(value: dict[str, str]) -> dict[str, str]:
     if any(_SECRET_SETTING.search(k) and v not in ("set", "not set") for k, v in value.items()):
         raise ValueError('a secret setting is shown only as "set" or "not set"')
+    for setting in (*value, *value.values()):
+        _no_placeholder(setting)
     return value
 
 
 # Every setting a run used, resolved, by its dotted name; a secret only as "set" or "not set".
-Shown = Annotated[dict[str, str], AfterValidator(_secrets_hidden)]
+Shown = Annotated[dict[str, str], AfterValidator(_shown)]
+# Text a run writes into the committed history, which is never edited.
+Plain = Annotated[str, AfterValidator(_no_placeholder)]
 
 
 class Request(Model):
@@ -179,24 +197,8 @@ class WindowMetrics(Model):
     holds_word: int = Field(ge=0)  # of those, the windows that hold it
 
 
-# An install placeholder, an uppercase name between double braces, as the docs check finds one
-# (`scripts/check_docs.py`, DOC-PLACEHOLDER) in every committed file, `history.jsonl` included.
-_PLACEHOLDER = re.compile(r"\{\{[A-Z][A-Z0-9_]*\}\}")
-
-
-def holds_placeholder(text: str) -> bool:
-    """Whether `text` holds an install placeholder, which a run's note may not."""
-    return _PLACEHOLDER.search(text) is not None
-
-
-def _no_placeholder(note: str) -> str:
-    if holds_placeholder(note):
-        raise ValueError("holds an install placeholder, which the docs check refuses in history")
-    return note
-
-
 # Why a run is made: written into the committed history, which is never edited.
-Note = Annotated[str, Field(min_length=1), AfterValidator(_no_placeholder)]
+Note = Annotated[Plain, Field(min_length=1)]
 
 
 class RunInfo(Model):
@@ -207,7 +209,7 @@ class RunInfo(Model):
     started_at: datetime
     commit: Commit  # with `+` when the tree was dirty
     answerer: Name
-    model: str | None = None
+    model: Plain | None = None
     split: Split
     settings: Shown
     price_per_hour_usd: float = Field(ge=0, allow_inf_nan=False)  # `--price-per-hour`
@@ -257,7 +259,7 @@ class HistoryLine(Model):
     commit: Commit
     run: Name
     answerer: Name
-    model: str | None = None
+    model: Plain | None = None
     settings: Shown
     split: Split
     items: int = Field(ge=0)

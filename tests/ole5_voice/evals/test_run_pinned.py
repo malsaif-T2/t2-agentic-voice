@@ -112,3 +112,26 @@ def test_a_note_holding_an_install_placeholder_is_refused_before_anything_is_sen
         setup.main("--note", f"see {placeholder}")
     assert done.value.code == 2 and "install placeholder" in capsys.readouterr().err
     assert not setup.out().exists()
+
+
+def test_a_setting_holding_an_install_placeholder_is_refused_before_anything_is_sent(
+    tmp_path: Path, capsys: pytest.CaptureFixture[str]
+) -> None:
+    """The settings go into the committed history too: from a flag, or from the env file."""
+    placeholder = "{{" + "NAME" + "}}"  # written apart, or the docs check flags this file
+    placed = tmp_path / "placed.env"
+    placed.write_text(
+        f"T2V_GROQ__API_KEY=gsk_made-up-key-0000\nT2V_TRACING__PROJECT=ole5-{placeholder}\n",
+        encoding="utf-8",
+    )
+    url = f"https://made-up.example/{placeholder}"
+    for argv, setting in [
+        (["--base-url", url, "--env-file", _env(tmp_path)], "groq.base_url"),
+        (["--env-file", str(placed)], "tracing.project"),
+    ]:
+        setup = Setup(tmp_path / setting)
+        built = _capturing(setup)
+        assert setup.main(*argv) == 2
+        out = capsys.readouterr().out
+        assert f"{setting} holds an install placeholder" in out
+        assert built == [] and not setup.out().exists()

@@ -124,16 +124,18 @@ def test_crlf_line_endings_are_reported(tmp_path: Path) -> None:
 
 def test_control_characters_in_a_doc_are_reported(tmp_path: Path) -> None:
     """What a Windows path becomes when its backslashes are read as escapes (plan 002's
-    review): a vertical tab and a bell; a tab is kept, and the code is not read."""
+    review): a vertical tab and a bell, and a lone carriage return (`\\recordings`); a tab is
+    kept, and the code is not read."""
     files = {
         "CLAUDE.md": "a tab\tis fine\n--replies ..\x0boice-lab\x07ssets\n",
-        "docs/guide.md": "fine\nform feed \x0c here\n",
+        "docs/guide.md": "fine\nform feed \x0c here\n--audio talkover=..\\voice-lab\recordings\n",
         "src/app/mod.py": 'X = "\x0b"\n',
     }
     files["CLAUDE.md"] += "[guide](docs/guide.md)\n"
     assert _rules(tmp_path, files) == [
         ("CLAUDE.md", 2, "DOC-CONTROL"),
         ("docs/guide.md", 2, "DOC-CONTROL"),
+        ("docs/guide.md", 3, "DOC-CONTROL"),
     ]
 
 

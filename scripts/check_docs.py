@@ -50,7 +50,8 @@ NOT_OURS = frozenset({"var", "node_modules", "build", "dist", "htmlcov", "__pyca
 _LARGEST = 1_000_000  # bytes: a larger file is data, not a file the kit wrote
 # The C0 control characters and DEL, but the tab and the line ends: what a script makes of a
 # Windows path's backslashes when it reads them as escapes (\v, \a), which no editor shows.
-_CONTROL = re.compile("[\x00-\x08\x0b\x0c\x0e-\x1f\x7f]")
+# A carriage return counts: `\r` in a path read as an escape leaves a lone one (CRLF is DOC-EOL's).
+_CONTROL = re.compile("[\x00-\x08\x0b-\x1f\x7f]")
 
 _LINK = re.compile(r"!?\[[^\]]*\]\((<[^>]+>|[^)\s]+)(?:\s+\"[^\"]*\")?\)")
 _FENCE = re.compile(r"^\s*(```|~~~)")
@@ -281,9 +282,10 @@ def check_control_characters(root: Path, markdown: Sequence[Path]) -> list[Viola
     escapes, so the command a reader copies is not the one written (plan 002's review)."""
     violations: list[Violation] = []
     for path in markdown:
-        text = path.read_text(encoding="utf-8")
+        # Decoded, not read_text: universal newlines would make a lone carriage return a line end.
+        text = path.read_bytes().decode("utf-8")
         for lineno, line in enumerate(text.split("\n"), start=1):
-            if found := _CONTROL.search(line):
+            if found := _CONTROL.search(line.removesuffix("\r")):
                 violations.append(
                     Violation(
                         path.relative_to(root).as_posix(),
