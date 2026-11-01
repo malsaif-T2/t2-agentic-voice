@@ -1436,6 +1436,23 @@ run, [WORKING-RULES.md](../../../WORKING-RULES.md), "Measurement runs")
   segment): the only change to `evals/` is the two-line DRAFT comment gone from the 34 Arabic
   items. The debt row for the labels as a table in code is paid and removed, and its two
   citations here reworded.
+- 2026-11-01: The owner's answer on ID recall is merged (`Plan 002: merge the owner's answers,
+  ID recall`), from `plan-002-answers-idrecall`: d925580 and its review fixes 0307424.
+  - `id_recall` (`domain/scoring.py`) also finds an expected ID written as adjacent words made
+    only of digits whose digits, joined in order, are the ID: groups, hyphens, Latin and Arabic
+    thousands separators, since `normalize_arabic` reads each as a space. Found is the most IDs
+    one reading of the output finds, no output digit counting for two, so it is never below the
+    old rule. Nothing else changes: the verdict, WER, CER, term recall and `normalize_digits`.
+  - The agent told to refute it found the first version's longest-first reading lost whole runs
+    the old rule counted ("48 21 4821" against itself scored 1 of 3); the fix searches for the
+    reading that finds the most, checked against an exhaustive search on 30,000 random cases.
+    Its three lows are fixed or recorded: the guide row made exact, a stale test name, and an
+    Arabic prefix written onto a number's first group (و2026 1105 ...), which hides the grouped
+    number: a known limit, pinned by a test, as TD-028.
+  - Tests in `tests/t2_agentic_voice/domain/test_scoring.py` use a made-up number in the owner's
+    shape, never the owner's examples; each new test failed on a mutant first.
+  - `uv run --offline poe check` passes at the merge: 1204 tests and 1 skipped (the symbolic-link
+    case), 100% coverage (3510 statements), mypy strict on 143 files, arch and docs clean.
 
 ## Decision log
 
@@ -2532,6 +2549,32 @@ All entries are the agent's choices of 2026-11-01, with the agent's reasons.
 - 2026-11-01: The talk-over set's consent is the owner's sentence of 2026-11-01, quoted under
   "The owner's decisions", recorded in this plan rather than as a `session.json`, since the
   takes were made in the prototype's lab before the recorder existed. The owner's answer.
+- 2026-11-01: The owner's answers, ID recall: `id_recall` reads the output's scored form in
+  stretches, each made of the words made only of digits that stand next to each other. A run of
+  digits inside a word with letters (t1234, و2026) still counts whole but joins no neighbour, so an
+  Arabic prefix written onto a number's first group hides the grouped number. This is a known limit,
+  pinned by a test, with a debt row. Found is the most IDs one reading of the output finds. At each
+  group a reading passes on, or takes an ID still expected that the groups from there join to; every
+  reading is tried. A reading whose IDs another reading at the same group also took, plus more, is
+  dropped, since that other can follow it and lose at most the IDs it took beyond. So forty IDs held
+  twice take milliseconds, where trying every reading would take 2^40 steps. The search is a loop,
+  not a recursion, so a long output cannot hit Python's recursion limit. The first version took the
+  longest ID at each group instead, and the review found it lost whole runs the old rule counted:
+  "48 21 4821" against itself scored 1 of 3, and a ticket number said in groups and then whole,
+  against the ticket and its last four, scored 1 of 2. The most-found reading is never below the old
+  rule or that greedy one, and 30,000 random cases agreed with an exhaustive search. A join is never
+  longer than the longest expected ID. This follows the normalizers as they are: `normalize_arabic`
+  reads '-', ',', '٬' (U+066C), '٫' (U+066B), '.', '/' and ':' as a space, and `normalize_digits`
+  reads Arabic-Indic and Persian digits as 0 to 9. So a separator cannot be told from a space, and
+  every one joins: "48.21" and "48/21" hold 4821, as the verdict, which removes spaces, already
+  counts them. The tests use a made-up number in the owner's shape (2026110582000731) and its last
+  four (0731), never the owner's examples. The agent's choice.
+- 2026-11-01: The owner's answer ("Go with the recommended") overrides Track A's "45 21 stays two
+  numbers" for ID recall only: `id_recall` now finds 4521 in "45 21" and "45-21", and 4821 in
+  "4,821" and «٤٬٨٢١». `normalize_digits` still keeps "45 21" as two numbers, so the verdict, WER,
+  CER and term recall are unchanged. The checker's separate proposal for the separator case (a ','
+  or U+066C followed by exactly three digits, removed in `id_recall`) is not applied: joining a
+  number's groups covers it.
 
 ## The owner's decisions
 
@@ -3257,6 +3300,19 @@ before the run.
 - 2026-11-01, the same review, "The independent check of each reference": a run scores only the
   variants `poe golden` accepts (confirmed by the owner's listen, a typed one in a later pass),
   and logs how many it left out as a count; `frozen.json`'s `left_out` lists them.
+- 2026-11-01, the owner's answer, before any result: "The metrics", ID recall. An expected ID is
+  still a run of digits in the reference's scored form (`normalize_arabic`, then
+  `normalize_digits`). It is found in the output's scored form as a run of digits, as before, or as
+  words made only of digits that stand next to each other, with no other word between them, whose
+  digits joined in order are the ID. So a ticket number written in groups ("48 21", "48-21") or with
+  a Latin or Arabic thousands separator ("4,821", «٤٬٨٢١») counts as heard; since the normalizer
+  reads every punctuation mark as a space, "." and "/" join too. A part of the number, its groups in
+  another order, groups with a word between them, or a group with a letter written onto it ("و48
+  21") are not found, and a leading zero counts (0731 is not 731). An ID the reference holds twice
+  is found as often as the output holds it, up to that. Found is the most IDs one reading of the
+  output finds, no digit of the output counting for two IDs, so it is never less than comparing
+  whole runs gives. The verdict, WER, CER, term recall and `normalize_digits` are unchanged, and "45
+  21" stays two numbers in them.
 
 ## What the owner does
 
