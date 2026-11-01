@@ -31,12 +31,15 @@ examples/minimal/            the smallest app: the guide's quickstart, and a tes
 tests/                       one subfolder per package, and harness/ for the checks' own tests
 ```
 
-The library's **public API is its package root**: its `__init__.py` re-exports
-every name an app may use, and `[package] public` in harness.toml lists the modules an app may
-import. An app imports nothing else from the library and no other app, and the library never
-imports an app (ARCH-PUBLIC). So the Ole5 app uses the library exactly as a teammate's app
-would, and the minimal example breaks if the library starts to depend on Ole5. Inside the
-library, a layer imports from the layer that defines a name, never from the package root.
+The library's **public API is its package root and the facades beside it**: the root's
+`__init__.py` re-exports the main names, and each public facade (`ports`, `groq`, `languages`,
+`evals` and `tracing`, D-021) re-exports one area's names and holds nothing else (ARCH-FACADE);
+`[package] public` in harness.toml lists the modules an app may import, and `[package] facades`
+the facades among them. An app imports nothing else from the library and no other app, and the
+library never imports an app (ARCH-PUBLIC). So the Ole5 app uses the library exactly as a
+teammate's app would, and the minimal example breaks if the library starts to depend on Ole5.
+Inside the library, a layer imports from the layer that defines a name, never from the package
+root or a facade. The library's `src/` never names an app (ARCH-WORDS).
 
 ## Flow
 

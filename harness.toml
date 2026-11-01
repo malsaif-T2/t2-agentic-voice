@@ -13,12 +13,25 @@ root = "packages/t2-agentic-voice/src"
 # Its public API: the modules an app may import (ARCH-PUBLIC). The package root re-exports the
 # names apps use; a public subpackage (such as a future "<name>.testing") makes its modules
 # public too. Everything else is internal, free to change without a major version.
-public = ["t2_agentic_voice"]
+public = [
+    "t2_agentic_voice",
+    "t2_agentic_voice.ports",
+    "t2_agentic_voice.groq",
+    "t2_agentic_voice.languages",
+    "t2_agentic_voice.evals",
+    "t2_agentic_voice.tracing",
+]
 # The public modules that sit directly under the package root as thin facades, beside its
-# __init__.py (the design's 5.3): each is also in `public`, and holds only a docstring, imports
-# and `__all__` (ARCH-FACADE). Like the package root, a facade may import every layer, while
-# ARCH-OWNER still applies to it.
-facades = []
+# __init__.py (the design's 5.3; D-021): each is also in `public`, and holds only a docstring,
+# imports and `__all__` (ARCH-FACADE). Like the package root, a facade may import every layer,
+# while ARCH-OWNER still applies to it.
+facades = [
+    "t2_agentic_voice.ports",
+    "t2_agentic_voice.groq",
+    "t2_agentic_voice.languages",
+    "t2_agentic_voice.evals",
+    "t2_agentic_voice.tracing",
+]
 # Words the library's src/ never holds, in any case: the names of the apps built on it and of
 # their own services, so the library stays free of any one app (ARCH-WORDS). Read in the source
 # and text files under [package] root, never in __pycache__/.

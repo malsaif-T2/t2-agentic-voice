@@ -65,7 +65,8 @@ floor) live in [harness.toml](harness.toml).
 ## Code map
 
 ```
-packages/t2-agentic-voice/src/t2_agentic_voice/   the library; __init__.py is its public API
+packages/t2-agentic-voice/src/t2_agentic_voice/   the library; its public API is __init__.py
+  ports.py groq.py languages.py evals.py tracing.py   and these facades beside it (re-exports only)
   core/       settings, structured logging, error types (AppError), tracing, shared types
   domain/     the call's rules and the ports, no IO: the yes rule, interruptions, speech text
   adapters/   the outside services behind the ports: Groq, the knowledge base, the tickets

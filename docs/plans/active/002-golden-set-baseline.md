@@ -456,6 +456,19 @@ run, [WORKING-RULES.md](../../../WORKING-RULES.md), "Measurement runs")
   `provider_error`, kinds `rate_limited`, `timeout`, `connection_lost`, `server_error` and
   `rejected`; the package root exports it, and `tests/t2_agentic_voice/core/test_errors.py`'s
   code list has it.
+- 2026-11-01: Block 0, step 10, the library's part. The port: `domain/ports/__init__.py` and
+  `domain/ports/speech_to_text.py` (`DataFlow`, `AudioClip` with its `seconds`, `Transcript`
+  with `no_speech_prob`, and the `SpeechToText` protocol), with
+  `tests/t2_agentic_voice/domain/test_ports.py`. The stubs, each raising `NotImplementedError`
+  that names its track, each with a test in its track's file: Track A's `domain/text/arabic.py`,
+  `digits.py` and `spelling.py`, `domain/scoring.py`, `domain/sign_test.py` and
+  `testing/scorers.py`; Track B's `adapters/groq_stt.py`; Track C's `core/tracing.py` and
+  `core/redaction.py`. Two modules more, with their own tests, hold the types two tracks share:
+  `domain/text/rulings.py` (`SpellingRule`, `SpellingIssue`: Tracks A and D) and
+  `domain/recall.py` (`Recall`: Tracks A and F). The facades `ports.py`, `groq.py`,
+  `languages.py`, `evals.py` and `tracing.py`, now in `[package] facades` and `public`, with
+  `tests/t2_agentic_voice/test_facades.py` holding each one's names; ARCHITECTURE.md's
+  public-API paragraph and CLAUDE.md's code map name them.
 
 ## Decision log
 
@@ -687,6 +700,29 @@ All entries are the agent's choices of 2026-11-01, with the agent's reasons.
   message is fixed per kind and never holds the provider's text, which may echo the request;
   it refuses a retryable `rejected`, and a `retry_after_s` that is negative, not finite, or on
   an error that is not retryable. The agent's choices.
+- 2026-11-01: Block 0's library signatures, the agent's choices, which the tracks build to; a
+  track that needs one changed asks the integrator, since another track builds against it:
+  - `wer(references, outputs)` and `cer(references, outputs)` take two sequences and pool
+    them, since a stratum's rates are pooled (errors over all its references' length); one pair
+    is a list of one.
+  - `term_recall(reference, output, terms)` and `id_recall(reference, output)` return a
+    `Recall(expected, found)`, counts that add up over a stratum; `silence_output(output)` is
+    the characters produced, after normalization and with spaces removed.
+  - `spelling_issues(reference, rules)` takes the team's `SpellingRule`s (an id, the spellings
+    to avoid, what to write, the ruling's words and date) and returns `SpellingIssue`s.
+  - `sign_test(better, worse)` returns the two-sided p-value.
+  - `GroqSTT(api_key=, model=, base_url=, timeout_s=)`, `GroqSTT.from_settings(settings)`,
+    `transcribe` as the port's, and `aclose()`; Track B may add a keyword argument for its fake
+    transport.
+  - `Tracing.from_settings(settings, tracer_provider=None)`; `turn(session_id=, name="turn")`,
+    a context manager giving the root span; `speech_to_text(parent, model=, language=,
+    audio_seconds=)`, giving a `SpeechToTextSpan` whose `record(text=, language=,
+    billed_seconds=)` adds what came back; `dropped_spans`; `shutdown()`. The parent is an
+    OpenTelemetry `Span`, so a team's own span can be one.
+  - `Redactor(patterns, replacement="[redacted]")`, called on a text.
+- 2026-11-01: The types two tracks share live in modules of Block 0's own,
+  `domain/text/rulings.py` and `domain/recall.py`, not in the tracks' files the plan names, so
+  every file keeps one owner ("Parallel tracks": a file two tracks need goes into Block 0).
 
 ## The owner's decisions
 
