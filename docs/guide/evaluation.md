@@ -38,7 +38,7 @@ module's names.
 | Name | Module | What it gives |
 | --- | --- | --- |
 | `normalize_arabic(text)` | `languages` | `text` in one canonical form for comparison: no diacritics and no tatweel; the alef, hamza, teh marbuta and alef maksura forms folded; Latin letters in lower case; punctuation dropped; runs of space made one |
-| `normalize_digits(text)` | `languages` | `text` with every digit as 0 to 9: Arabic-Indic and Persian digits, and digits spelled out one word each, in Arabic or in English |
+| `normalize_digits(text)` | `languages` | `text` with every digit as 0 to 9: Arabic-Indic and Persian digits, and digits spelled out one word each, in Arabic or in English; a run of single digits with only spaces between them becomes one number (`4 5 2 1` reads `4521`) |
 | `spelling_issues(reference, rules)` | `languages` | A `SpellingIssue` (`rule`, `found`, `write`) for each place `reference` holds a spelling that one of your `SpellingRule`s avoids, as a whole word or phrase, both compared after `normalize_arabic`; empty when it follows them all |
 | `wer(references, outputs)` | `evals` | The word error rate, pair by pair and pooled: substitutions, deletions and insertions over all the references' words, both sides normalized |
 | `cer(references, outputs)` | `evals` | The character error rate, pooled as `wer` is, with every space removed first, so a word split differently is not counted twice |
@@ -120,10 +120,11 @@ is read.
 - **Keep the audio under the git-ignored `var/`, or in a private store** (D-022), and name its
   folder at run time: Ole5's `poe golden --audio <root>=<folder>` checks every file's hash and
   format against its manifest.
-- **Let a test fail on a stray file.** Ole5's `tests/ole5_voice/evals/test_no_audio.py`, inside
-  `poe check`, fails when an audio file sits under `apps/`, `packages/`, `examples/`, `docs/` or
-  `tests/`; and this repository's [.gitattributes](../../.gitattributes) marks the audio types
-  binary, so one that slips in is never converted.
+- **Let a test fail on a stray file.** Ole5's
+  [test_no_audio.py](../../tests/ole5_voice/evals/test_no_audio.py), inside `poe check`, fails when
+  an audio file sits under `apps/`, `packages/`, `examples/`, `docs/` or `tests/`; and this
+  repository's [.gitattributes](../../.gitattributes) marks the audio types binary, so one that
+  slips in is never converted.
 - **Whoever reads the repository never gets the voices.** Whatever channel the library ships
   through, the golden set's audio is never in git (the design's 15).
 
@@ -161,8 +162,8 @@ RULING = {
 lower-case name, when it avoids no spelling, quotes no one or gives a date that is no date, or
 when it holds a field the model does not know (the same file).
 
-**Ole5's guide, as an example:** `apps/ole5-voice-agent/evals/spelling.toml`. Its owner chose
-its rules on 2026-11-01 ("Use these rules", plan 002's Q8):
+**Ole5's guide, as an example:** [spelling.toml](../../apps/ole5-voice-agent/evals/spelling.toml).
+Its owner chose its rules on 2026-11-01 ("Use these rules", plan 002's Q8):
 
 - both texts are normalized before they are compared: the Arabic letter forms folded as the
   prototype did, no diacritics and no tatweel, Arabic-Indic digits read as 0 to 9, English in

@@ -1263,6 +1263,17 @@ run, [WORKING-RULES.md](../../../WORKING-RULES.md), "Measurement runs")
   - After the merge `uv run --offline poe check` passes: 1129 tests and 1 skipped (the symbolic-link
     case), 100% coverage (3423 statements), mypy strict on 136 files, arch and docs (25 files)
     clean.
+- 2026-11-01: Review fixes, track H (`Plan 002: review fixes, track H`): `docs/guide/evaluation.md`
+  links Ole5's `spelling.toml` and `test_no_audio.py`, Track D's files, as Track H's report gave the
+  change, with both paragraphs rewrapped to 100 columns; and its `normalize_digits` row says that a
+  run of single digits with only spaces between them becomes one number (`4 5 2 1` reads `4521`), as
+  Track A's decision log entry has it, which the row, written from Block 0's docstring, left out.
+  The rest of the helper table is left to the review of the merged code (Track H's report). `uv run
+  --offline poe check` passes: 1129 tests and 1 skipped (the symbolic-link case), 100% coverage
+  (3423 statements), mypy strict on 136 files, arch and docs (25 files) clean; `uv lock --check` is
+  clean. All eight tracks are merged into `plan-002-integration`. Next: the one review of the merged
+  code by three concerns, its fix round and check (step 16, as the owner chose), and step 15's
+  `test_reference_answerer.py`.
 
 ## Decision log
 
