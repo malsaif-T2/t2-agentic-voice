@@ -1,6 +1,6 @@
 """Tests never touch the developer's machine state: their .env, this project's variables in
-their shell, and their var/ data. And no command writes to var/ when the var-dir setting names
-another folder."""
+their shell, a provider's or a tracing tool's variables (GROQ_*, OTEL_*, PHOENIX_*), and their
+var/ data. And no command writes to var/ when the var-dir setting names another folder."""
 
 from __future__ import annotations
 
@@ -16,6 +16,7 @@ from t2_agentic_voice.core.config import Settings, get_settings
 ROOT = Path(__file__).resolve().parents[2]
 REPO_VAR = ROOT / "var"
 PREFIX = Settings.model_config.get("env_prefix", "")
+FOREIGN_PREFIXES = ("GROQ_", "OTEL_", "PHOENIX_")
 _HARD_CODED_VAR = re.compile(r"""ROOT\s*/\s*["']var["']""")
 FIX = "FIX: make the session fixture in tests/conftest.py isolate it again."
 
@@ -46,18 +47,38 @@ def test_no_setting_comes_from_the_shell() -> None:
     assert inherited == [f"{PREFIX}VAR_DIR"], f"Tests inherit {inherited}. {FIX}"
 
 
+def test_no_provider_or_tracing_variable_comes_from_the_shell() -> None:
+    """A real Groq key, an exporter's headers or Phoenix's settings never reach a test."""
+    inherited = sorted(n for n in os.environ if n.upper().startswith(FOREIGN_PREFIXES))
+    assert inherited == [], f"Tests inherit {inherited}. {FIX}"
+
+
 def test_a_shell_that_sets_this_projects_variables_changes_no_test() -> None:
-    """The check above, in a child run whose shell sets a debug level, prod, and a bad value."""
+    """The two checks above and the import-time one (test_import_isolation.py), in a child run
+    whose shell sets a debug level, prod, a bad value, and a provider's, an exporter's and
+    Phoenix's own variables, two of them read when their package is imported."""
     shell = {
         **os.environ,
         f"{PREFIX}ENV": "prod",
         f"{PREFIX}LOG_LEVEL": "NOPE",
         f"{PREFIX}LOG_FORMAT": "json",
+        f"{PREFIX}GROQ__API_KEY": "made-up-key-from-the-shell",
+        "GROQ_API_KEY": "made-up-key-from-the-shell",
+        "GROQ_LOG": "debug",
+        "OTEL_EXPORTER_OTLP_HEADERS": "authorization=made-up",
+        "OTEL_PYTHON_CONTEXT": "made_up_context",
+        "PHOENIX_WORKING_DIR": "made-up-folder",
     }
     here = Path(__file__).relative_to(ROOT).as_posix()
-    target = f"{here}::{test_no_setting_comes_from_the_shell.__name__}"
+    targets = [
+        f"{here}::{test.__name__}"
+        for test in (
+            test_no_setting_comes_from_the_shell,
+            test_no_provider_or_tracing_variable_comes_from_the_shell,
+        )
+    ] + [f"{Path(here).parent.as_posix()}/test_import_isolation.py"]
     done = subprocess.run(
-        [sys.executable, "-m", "pytest", "-q", "-p", "no:cacheprovider", target],
+        [sys.executable, "-m", "pytest", "-q", "-p", "no:cacheprovider", *targets],
         cwd=ROOT,
         env=shell,
         capture_output=True,

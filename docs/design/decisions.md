@@ -58,7 +58,7 @@ twice; DOC-REF: every `D-NNN` cited anywhere is a heading here), so keep its sha
 - **Evidence:** the owner, 2026-10-28: "in the new folder I have put some files to define how
   the Harness should Go and the dynamic of building this project."
 
-## D-002 · Technology stack · 2026-10-28 · Accepted (the owner, 2026-11-01; its Pipecat bullet amended by D-018)
+## D-002 · Technology stack · 2026-10-28 · Accepted (the owner, 2026-11-01; its Pipecat bullet amended by D-018, its tracing bullet by D-023)
 
 - **Context:** The kit's default tooling is Python 3.12 with uv, poethepoet, ruff, mypy
   (strict), and pytest with coverage. The product needs real-time voice in a browser, from Groq
@@ -106,7 +106,7 @@ twice; DOC-REF: every `D-NNN` cited anywhere is a heading here), so keep its sha
   version is pinned and an upgrade is a plan of its own. If the owner's host cannot open a UDP
   path to the backend, WebRTC needs a TURN service or another transport (the roadmap, M2).
 
-## D-003 · Layered architecture, enforced from one config · 2026-10-28 · Accepted (the owner, 2026-11-01)
+## D-003 · Layered architecture, enforced from one config · 2026-10-28 · Accepted (the owner, 2026-11-01; its layers amended by D-019)
 
 - **Context:** Agents replicate existing patterns, so drift has to be prevented structurally
   rather than by instruction. The prototype's failures came from its structure: the voice code
@@ -398,3 +398,178 @@ twice; DOC-REF: every `D-NNN` cited anywhere is a heading here), so keep its sha
     starts using the library. The owner renames the folder when no session runs inside it.
 - **Evidence:** the owner's answers on 2026-11-01, to questions and options the agent wrote; the
   three quoted above are the owner's own words.
+
+## D-019 · The library's `testing` layer · 2026-11-01 · Accepted (the owner, 2026-11-01, as the design's 12.2; one bullet Proposed)
+
+- **Context:** The package design (D-017, as amended by D-018) makes a testing kit part of the
+  contract: the fakes of every port, text-mode calls, the adversarial suite, simulated callers
+  and the evaluation scorers ([package-design.md](package-design.md), sections 9 and 12.2). Its
+  code must sit inside a layer, and a team's tests must not need the HTTP stack. Its first part,
+  the scorers `wer` and `cer` on jiwer, is built by plan 002, so the layer comes now. D-003 has
+  seven layers; this entry amends it.
+- **Decision** (as the design's 12.2 describes it):
+  - An eighth layer, `testing`, may import `core`, `domain`, `actions`, `agent` and `voice`; it
+    never imports `adapters`, so a test reaches a provider only through a port it passes in, nor
+    `api`. `api` may import it, as it imports every layer.
+  - `testing` is the only layer that may import `jiwer` (`[[owners]]`).
+  - `harness.toml` and [ARCHITECTURE.md](../../ARCHITECTURE.md) say so together (ARCH-DOC
+    compares them), and CLAUDE.md's code map has its line.
+  - Alternative considered (plan 002's decision log): our own edit distance in `domain`, like
+    the prototype's `lev`, with no new layer; set aside by the agent because GP-10 prefers a
+    well-known library, and the testing kit needs the layer anyway.
+  - **Proposed** (the agent's, beyond the design, for the owner to rule on): the layer joins
+    `[package] public` (its modules become public) in the plan that builds the testing kit's
+    fakes and `TextCall`. Until then it holds only the scorers, which an app reaches through the
+    `evals` facade at the package root, so none of its modules is public yet.
+- **Consequences:** The library has eight layers. jiwer stays out of the layers a call runs
+  through. When the testing kit lands, the parts that run Pipecat (`AudioCall`, the design's
+  12.2) stay in modules of their own inside `testing`, as `voice` keeps Pipecat's.
+- **Evidence:** the owner, 2026-11-01: "Approve all", for the package design as amended (plan
+  000); and, on whether that covers the entries recording what the design describes, "Yes, as
+  Accepted", with the agent's note that anything beyond the design is written as Proposed (plan
+  002, Q3).
+
+## D-020 · The harness checks ARCH-FACADE and ARCH-WORDS · 2026-11-01 · Accepted (the owner, 2026-11-01, as the design's 12.4; one bullet Proposed)
+
+- **Context:** The design puts the library's public modules at the package root as thin
+  facades that only re-export names (its 5.3), where the harness allowed only `__init__.py`.
+  Its 12.4 adds two checks with the first facade: ARCH-FACADE, each module listed in
+  `[package] facades` holds only imports and `__all__`; and ARCH-WORDS, the library's `src/`
+  holds no app name (`ole5`, `otrs`, `ds.t2.sa`), in any case, which answers the fear that the
+  library is shaped by one app underneath.
+- **Decision** (as the design's 12.4 describes it):
+  - `[package] facades` in `harness.toml` names the facades. `scripts/harness_config.py` checks
+    that each sits directly under the package root, is in `[package] public`, does not take a
+    layer's name, and has its module file. A facade is checked as the package root is: it may
+    import every layer, and ARCH-OWNER still applies to it. No layer imports a facade
+    (ARCH-LAYER), as no layer imports the package root.
+  - ARCH-FACADE (`scripts/arch_facade.py`): a facade holds its docstring, its imports and one
+    `__all__`, a list or tuple of string literals, and nothing else.
+  - ARCH-WORDS (`scripts/arch_words.py`): no word of `[package] banned_words` (`ole5`, `otrs`,
+    `ds.t2.sa`) in the library's `src/`, in any case, inside longer words too.
+  - ARCH-PUBLIC treats `from t2_agentic_voice import <facade>` as an import of that module, as
+    it already treated a layer's name; ARCH-PUBLIC itself moved into `scripts/arch_public.py`, so
+    `scripts/check_architecture.py` stays under ARCH-SIZE.
+  - Not built here: ARCH-BAN, one configuration per member, and one invariants register, which
+    the design's 12.4 also lists; each lands with the plan that needs it.
+  - **Proposed** (the agent's, beyond the design, for the owner to rule on): the key's name,
+    `banned_words` (the design names none); the files whose text ARCH-WORDS reads (`*.py`,
+    `*.md`, `*.toml`, `*.json`, `*.txt`, `*.js`, `*.html`, `*.css`), and the path below
+    `[package] root` of every file there, whatever its type, so a module, folder or asset named
+    after an app is caught too; and what it skips: `__pycache__/` and the folders above
+    `[package] root`, since a bytecode file holds its module's absolute path and the owner's
+    checkout sits in a folder named `OTRS-voice-agent`.
+- **Consequences:** A public name lives in the layer that owns it, under that layer's rules, and
+  a facade says only which names are public. A banned word that is not an app's name changes
+  `banned_words` with a decision. The facades themselves, and the names each holds, are recorded
+  with the first facades.
+- **Evidence:** as for D-019: the owner's "Approve all" and "Yes, as Accepted" (plan 002, Q3),
+  2026-11-01.
+
+## D-021 · The first public facades, and their stability · 2026-11-01 · Accepted (the owner, 2026-11-01, as the design's 5.1 and 5.3; one bullet Proposed)
+
+- **Context:** The design lists the library's public modules, each with a stability level (its
+  5.1, with the levels' rules in 5.4), and makes each public module at the package root a thin
+  facade (its 5.3; ARCH-FACADE, D-020). Plan 002 builds the first names behind five of them.
+- **Decision** (as the design's 5.1, 5.3 and 5.4 describe it):
+  - `t2_agentic_voice.ports`, stable: `SpeechToText`, `AudioClip`, `Transcript` and `DataFlow`
+    now; the other ports of 5.1 join it with the plans that build them.
+  - `t2_agentic_voice.groq`, stable: `GroqSTT` now; `GroqChat` and `GroqTTS` later.
+  - `t2_agentic_voice.languages`, provisional: `normalize_arabic`, `normalize_digits` and the
+    spelling-guide check now; the presets and the speaking functions later.
+  - `t2_agentic_voice.evals`, provisional: `wer`, `cer`, `term_recall`, `id_recall`,
+    `silence_output` and `sign_test`.
+  - `t2_agentic_voice.tracing`, provisional: tracing set up from settings, its span helpers,
+    and `Redactor`; the Saudi PII patterns later.
+  - Each is in `[package] public` and `[package] facades`, and re-exports names that live in the
+    layers (`domain`, `adapters`, `testing`, `core`); a layer never imports a facade.
+  - The package root also exports `ProviderError(kind, retryable, retry_after_s)`, one of 5.1's
+    errors, which every port raises on a provider's failure (the design's 6.1).
+  - A stable module follows SemVer and the deprecation policy; a provisional one may change in
+    any minor release, with the change in the changelog (5.4). A public signature names no type
+    from `groq` (5.3), which `GroqSTT`'s tests check.
+  - `Transcript` carries an optional `no_speech_prob`, Whisper's own estimate that a clip holds
+    no speech: the owner's ruling (plan 002, Q2), beyond the design's 6.1.
+  - **Proposed** (the agent's, beyond the design, for the owner to rule on): the public names
+    the design does not name, each the type or entry point of a function it does name: in
+    `languages`, `spelling_issues`, `SpellingRule` and `SpellingIssue` (the spelling-guide check
+    and its data); in `evals`, `Recall` (what `term_recall` and `id_recall` return); in
+    `tracing`, `Tracing` (the set-up, holding the span helpers) and `SpeechToTextSpan`. And, on
+    the stable `ports` types, beyond the design's 6.1: `AudioClip.seconds`, a read-only property
+    giving the clip's length (`len(pcm16) / 2 / sample_rate`); and their input checks, each
+    refusing a value as it is built: no unknown field on `DataFlow`, `AudioClip` or
+    `Transcript`, `pcm16` holding whole 16-bit samples (an even number of bytes), `sample_rate`
+    above 0, `billed_seconds` 0 or more, and `no_speech_prob` from 0 to 1 (GP-06: relaxing a
+    check later breaks no caller, while adding one later might).
+- **Consequences:** An app imports these modules by name (`from t2_agentic_voice.ports import
+  Transcript`), as ARCH-PUBLIC allows; the package root keeps the stable names of 5.1 that
+  exist so far. Moving a name from provisional to stable is a decision of its own, once a
+  second team has used it (5.4).
+- **Evidence:** as for D-019 (plan 002, Q3), 2026-11-01; and, for `no_speech_prob`, the
+  owner's "Keep it" (plan 002, Q2), 2026-11-01.
+
+## D-022 · Evaluation: the scorers in the library, the golden-set runner in the app, no audio in git · 2026-11-01 · Accepted (the owner, 2026-11-01, as the design's 9.7 and 12.1; one bullet Proposed)
+
+- **Context:** D-011 adopted [evaluation.md](evaluation.md). The package design splits it
+  between the library and its apps (its 9.7 and 12.1): every team needs the scorers, while a
+  golden set is one team's data. Plan 002 builds both halves for Ole5. This entry follows up
+  D-011, as the design's 16.3 lists it.
+- **Decision** (as the design's 9.7 and 12.1 describe it):
+  - The library holds the scorers, ported from the prototype's (D-010): the canonical Arabic
+    normalizer and digit normalization in `languages`; `wer` and `cer` after that normalization
+    (on jiwer, in `testing`, D-019), `term_recall`, `id_recall`, `silence_output` and
+    `sign_test` in `evals` (D-021). Their pure parts sit in `domain`.
+  - Ole5's golden-set machinery stays in the app, with its poe tasks: `poe golden`, `poe eval`
+    and `poe eval-compare`, item validation, the frozen answers, the splits, held-out
+    aggregates and `history.jsonl`, as evaluation.md defines them. A `t2v eval` command comes
+    when a second team records a golden set.
+  - Golden data stays in each team's repository, and its audio stays out of git: Ole5's keeps
+    only items, references, manifests and file hashes, and the audio lives under the
+    git-ignored `var/` or in a private store. Every number says "one speaker" while D-006 holds.
+  - **Proposed** (the agent's, beyond the design, for the owner to rule on; plan 002's decision
+    log has the reasons): the app's evaluation code in
+    `apps/ole5-voice-agent/src/ole5_voice/evals/`, inside the app's package, where the gate
+    lints, types and covers it, and its tests in `tests/ole5_voice/evals/`, while its data
+    stays in `apps/ole5-voice-agent/evals/`; and the check that no audio is committed as a test
+    inside `poe check`, failing on an audio file under `apps/`, `packages/`, `examples/`,
+    `docs/` or `tests/` (the design's 12.4: a CI check, under `apps/`), since CI waits for a
+    remote (TD-001).
+- **Consequences:** A second team scores its own golden set with the same functions, and the
+  guide's `evaluation.md` says how. The library publishes no golden data.
+- **Evidence:** as for D-019 (plan 002, Q3), 2026-11-01.
+
+## D-023 · Tracing: plain OTLP through the OpenTelemetry SDK, to Phoenix by default · 2026-11-01 · Accepted (the owner, 2026-11-01, as the design's 10.1; one bullet Proposed)
+
+- **Context:** D-002's tracing bullet reads "Arize Phoenix through `arize-phoenix-otel` and
+  OpenInference (D-008)". The package design, approved as amended (D-017), puts the
+  OpenTelemetry API, SDK and OTLP exporter in the library's one install and sends plain OTLP to
+  Phoenix by default (its 10.1). D-018 settled the tracing path the design left open (its
+  question 7): our own spans, in OpenInference's format, rather than an instrumentor or
+  Pipecat's tracing. D-018 names no package or exporter and leaves D-002's bullet as it was, so
+  this entry amends that bullet.
+- **Decision** (as the design's 10.1 describes it, with D-018's answer):
+  - The library depends on `opentelemetry-api`, `opentelemetry-sdk` and
+    `opentelemetry-exporter-otlp-proto-http`, and on `openinference-semantic-conventions` for
+    the attribute names only, all owned by `core`. Not `arize-phoenix-otel`, and no
+    instrumentor: `openinference-instrumentation-pipecat` is not used (D-018).
+  - It uses the team's `TracerProvider` if given, otherwise a private one built from
+    `tracing.endpoint`. It never calls `set_tracer_provider` and never instruments another
+    library.
+  - Plain OTLP over HTTP goes to Phoenix by default, or to any OpenTelemetry backend the team
+    points it at.
+  - Phoenix is run, never imported, outside the library's install (Elastic License 2.0, D-018).
+  - The spans, their attributes, the redaction hook, what is never exported (audio, secrets),
+    the bounded export queue and the explicit parent spans are the design's 10.1.
+  - **Proposed** (the agent's, beyond the design, for the owner to rule on): nothing the
+    OpenTelemetry SDK or exporter would read from an `OTEL_*` variable is left to them: each
+    such value is passed explicitly, and any they read whatever is passed is listed as debt.
+    This applies the design's 7.3 ("Other names are never read") to the tracing packages; plan
+    002's decision log lists the variables of the installed 1.45.2. To that end the library also
+    depends directly on `requests` (Apache-2.0, already locked under the exporter), owned by
+    `core` through its own `[[owners]]` row and used only for the `requests.Session` given to the
+    OTLP exporter: passing one is the only way to keep
+    `OTEL_PYTHON_EXPORTER_OTLP_HTTP_CREDENTIAL_PROVIDER` out (plan 002's decision log).
+- **Consequences:** D-002's heading points here. A team that already traces passes its own
+  provider and gets the library's spans in its own backend. The owner runs Phoenix on the same
+  machine, bound to 127.0.0.1 (plan 002, "What the owner does").
+- **Evidence:** as for D-019 (plan 002, Q3), 2026-11-01; D-018, question 7.

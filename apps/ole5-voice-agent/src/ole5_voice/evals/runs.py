@@ -1,0 +1,279 @@
+"""What a run produces: its requests, answers and window measures, a variant's result, the
+metrics, the run itself, its scorecard and its history line; and the protocols one part calls in
+another (the answerer, the matcher, the scorecard writer). Built on `models.py`'s field types,
+and as strict: a scorecard read back, by `eval-compare` or a person, is checked as it is read.
+"""
+
+from __future__ import annotations
+
+import re
+from collections.abc import Sequence
+from datetime import datetime
+from pathlib import Path
+from typing import Annotated, Final, Literal, Protocol, Self
+
+from pydantic import AfterValidator, Field, model_validator
+
+from ole5_voice.evals.models import (
+    Commit,
+    Device,
+    Kind,
+    Language,
+    Model,
+    Name,
+    Sha256,
+    Split,
+    Variant,
+)
+
+# How one request ended: answered, a provider's failure (the library's ProviderError kinds), or
+# still running at the variant's wall-clock limit.
+Outcome = Literal[
+    "ok", "rate_limited", "timeout", "connection_lost", "server_error", "rejected", "stuck"
+]
+# The scorecard's file name in a run's `--out` folder, which its history line names.
+SCORECARD_FILE: Final = "scorecard.json"
+# A setting that holds a secret, by its dotted name (`groq.api_key`).
+_SECRET_SETTING = re.compile(r"(^|[._])(api_key|key|secret|token|password)$")
+
+
+def _secrets_hidden(value: dict[str, str]) -> dict[str, str]:
+    if any(_SECRET_SETTING.search(k) and v not in ("set", "not set") for k, v in value.items()):
+        raise ValueError('a secret setting is shown only as "set" or "not set"')
+    return value
+
+
+# Every setting a run used, resolved, by its dotted name; a secret only as "set" or "not set".
+Shown = Annotated[dict[str, str], AfterValidator(_secrets_hidden)]
+
+
+class Request(Model):
+    """One request an answerer made for a variant, and how it ended."""
+
+    segment: int = Field(ge=0)
+    attempt: int = Field(ge=1)
+    latency_ms: float = Field(ge=0)
+    billed_seconds: float = Field(ge=0)
+    outcome: Outcome
+
+
+class Window(Model):
+    """What was heard in the first `ms` of a variant's first segment, with the registration's
+    measures of it, which the runner takes with Track E's `windows.py`."""
+
+    ms: int = Field(gt=0)
+    text: str
+    empty: bool  # nothing heard, after normalization
+    words: int = Field(ge=0)  # the words heard, after normalization
+    leading_words: int = Field(ge=0)  # how many of them match the reference's first, in order
+    holds_word: bool | None = None  # set only for a one-word reference: whether it was heard
+    reused: bool = False  # as long as the clip: the clip's own answer, not sent again
+
+    @model_validator(mode="after")
+    def _counts_agree(self) -> Self:
+        if self.empty != (self.words == 0) or self.leading_words > self.words:
+            raise ValueError("an empty window has no words, and its leading words are among them")
+        return self
+
+
+class SegmentAnswer(Model):
+    """What came back for one segment of a variant of several (a take the detector split)."""
+
+    text: str
+    language: str | None = None
+    confidence: float | None = None  # the provider's own scale (Whisper's mean log-probability)
+    no_speech_prob: float | None = Field(default=None, ge=0, le=1)
+
+
+class Answer(Model):
+    """What an answerer returned for one variant. Whisper's confidence and no-speech estimate are
+    kept, so a silence rule (the prototype's: a no-speech estimate above 0.6 with a confidence
+    below -0.4) can be scored again on stored scorecards, without a new request (D-021)."""
+
+    variant: Name
+    # The segments' transcripts, joined with a space; None when only the windows were sent.
+    text: str | None = None
+    language: str | None = None
+    # For a variant of several segments, the means of theirs, each weighted by its length.
+    confidence: float | None = None
+    no_speech_prob: float | None = Field(default=None, ge=0, le=1)
+    segments: tuple[SegmentAnswer, ...] = ()  # each segment's own, for a variant of several
+    requests: tuple[Request, ...] = ()
+    windows: tuple[Window, ...] = ()
+    # An infrastructure failure, which is not an answer: left out of every rate, and listed.
+    failure: Literal["provider", "stuck"] | None = None
+
+
+class AnswerRequest(Model):
+    """What the runner hands an answerer for one variant."""
+
+    segments: tuple[Path, ...] = Field(min_length=1)  # its audio files, resolved
+    language: str | None  # the hint sent ("ar", "en"), from the item's label
+    windows_ms: tuple[int, ...] = ()
+
+
+class VariantResult(Model):
+    """One variant scored: its strata, its reference, its answer and the verdict. It has a
+    verdict exactly when it was judged and answered: `right` is None for an infrastructure
+    failure (`answer.failure`) and in a run that sent only the windows (`judged` false)."""
+
+    item: Name
+    variant: Name
+    split: Split
+    kind: Kind
+    language: Language
+    device: Device
+    want: Name | None = None  # the item's
+    tags: tuple[Name, ...] = ()
+    reference: str
+    alternatives: tuple[str, ...] = ()
+    terms: tuple[str, ...] = ()  # the item's product terms (`Item.terms`), for term recall
+    answer: Answer
+    judged: bool = True
+    right: bool | None
+
+    @model_validator(mode="after")
+    def _verdict_fits(self) -> Self:
+        unjudged = not self.judged or self.answer.failure is not None
+        if unjudged != (self.right is None) or (not unjudged and self.answer.text is None):
+            raise ValueError("a variant has a verdict exactly when it was judged and answered")
+        return self
+
+
+class Metrics(Model):
+    """The numbers of a run, or of one stratum of it; a rate is None where nothing counts."""
+
+    variants: int = Field(ge=0)
+    right: int = Field(ge=0)
+    failures: int = Field(ge=0)  # infrastructure failures; an unjudged variant is not one
+    accuracy: float | None = None
+    wer: float | None = None
+    cer: float | None = None
+    term_recall: float | None = None
+    id_recall: float | None = None  # over the items of `models.TICKET_KIND`
+    silence_share: float | None = None  # of the empty-reference variants, those with output
+    silence_chars: int = Field(default=0, ge=0)
+    requests: int = Field(default=0, ge=0)
+    retries: int = Field(default=0, ge=0)
+    latency_median_ms: float | None = None
+    latency_p90_ms: float | None = None
+    billed_seconds: float = Field(default=0, ge=0)
+    cost_usd: float = Field(default=0, ge=0)  # billed hours times the run's price per hour
+
+
+class WindowMetrics(Model):
+    """The window measures of one window length over the clips of one language and `want`
+    label, as counts and sums, so every breakdown adds up. A held-out run keeps these, and no
+    variant."""
+
+    ms: int = Field(gt=0)
+    language: Language
+    want: Name | None = None
+    clips: int = Field(ge=0)
+    empty: int = Field(ge=0)
+    reused: int = Field(ge=0)
+    words: int = Field(ge=0)  # heard, after normalization
+    leading_words: int = Field(ge=0)
+    reference_words: int = Field(ge=0)  # so the share of leading words can be taken
+    one_word_clips: int = Field(ge=0)  # the clips whose reference is one word
+    holds_word: int = Field(ge=0)  # of those, the windows that hold it
+
+
+class RunInfo(Model):
+    """What a run was: when, at which commit, with which answerer, settings and data, and why.
+    A held-out run is never traced."""
+
+    name: Name
+    started_at: datetime
+    commit: Commit  # with `+` when the tree was dirty
+    answerer: Name
+    model: str | None = None
+    split: Split
+    settings: Shown
+    price_per_hour_usd: float = Field(ge=0, allow_inf_nan=False)  # `--price-per-hour`
+    data_digest: Sha256
+    note: str = Field(min_length=1)
+    windows_ms: tuple[int, ...] = ()
+    traced: bool = False
+
+    @model_validator(mode="after")
+    def _held_out_untraced(self) -> Self:
+        if self.split == "held-out" and self.traced:
+            raise ValueError("a held-out run is never traced")
+        return self
+
+
+class Scorecard(Model):
+    """A run's scorecard. A held-out run's holds aggregates only, no variant, and every variant
+    is of the run's split; both are refused as it is read. Built with the constructor or
+    `model_validate`, never `model_copy(update=...)`, which skips the checks."""
+
+    run: RunInfo
+    speakers: Literal["one speaker"] = "one speaker"  # the owner alone (D-006)
+    complete: bool
+    totals: Metrics
+    breakdowns: dict[str, dict[str, Metrics]]  # by language, device, kind and split
+    windows: tuple[WindowMetrics, ...] = ()
+    violations: int = Field(default=0, ge=0)
+    violations_reason: str = "no hard constraint applies to speech-to-text"
+    variants: tuple[VariantResult, ...] = ()
+
+    @model_validator(mode="after")
+    def _held_out_aggregates_only(self) -> Self:
+        if self.run.split == "held-out" and (self.variants or self.run.traced):
+            raise ValueError("a held-out run's scorecard holds aggregates only, and is untraced")
+        if any(result.split != self.run.split for result in self.variants):
+            raise ValueError("a scorecard holds only its own split's variants")
+        return self
+
+
+class HistoryLine(Model):
+    """One line of `history.jsonl` (evaluation.md, "Run history")."""
+
+    time: datetime
+    commit: Commit
+    run: Name
+    answerer: Name
+    model: str | None = None
+    settings: Shown
+    split: Split
+    items: int = Field(ge=0)
+    variants: int = Field(ge=0)
+    accuracy: float | None
+    violations: int = Field(ge=0)
+    billed_seconds: float = Field(ge=0)
+    price_per_hour_usd: float = Field(ge=0, allow_inf_nan=False)  # so the spend adds up
+    cost_usd: float = Field(ge=0)
+    latency_median_ms: float | None
+    breakdowns: dict[str, dict[str, float | None]]  # each stratum's accuracy
+    scorecard: str  # the scorecard's file name, `SCORECARD_FILE`
+    data_digest: Sha256
+    note: str = Field(min_length=1)
+    complete: bool
+
+
+class Answerer(Protocol):
+    """Gives one variant's answer: the `reference` answerer, the `groq` one, ..."""
+
+    name: str
+
+    async def answer(self, variant: Variant, request: AnswerRequest) -> Answer:
+        """The answer for `variant`, from its audio in `request`; a provider's failure after
+        the last attempt is an answer with `failure="provider"`, not an exception."""
+
+
+class Matcher(Protocol):
+    """Judges an output against a variant's references, under the spelling guide."""
+
+    def is_right(self, output: str, references: Sequence[str]) -> bool:
+        """Whether `output` says one of `references` (the reference and its alternatives);
+        TypeError when `references` is a str rather than a sequence of texts."""
+
+
+class ScorecardWriter(Protocol):
+    """Builds a run's scorecard from its results, and writes it into the run's folder."""
+
+    def __call__(
+        self, run: RunInfo, results: Sequence[VariantResult], *, complete: bool, out: Path
+    ) -> Scorecard:
+        """The scorecard of `results`, also written as `out / SCORECARD_FILE`."""
