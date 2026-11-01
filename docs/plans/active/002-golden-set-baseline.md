@@ -1657,6 +1657,11 @@ run, [WORKING-RULES.md](../../../WORKING-RULES.md), "Measurement runs")
   same totals as R1 (99 right, 0.429; WER 0.250; CER 0.103; term recall 0.333; ID recall 0.571),
   latency median 271 ms, 2,417.5 s billed, $0.075. Scorecard in `var/runs/r3-large-v3`. Spend
   so far $0.1773 of the $5 cap.
+- 2026-11-01: Run R4 (A2, `whisper-large-v3-turbo`, dev, untraced), at the measurement commit,
+  its smoke test passed: complete, 231 variants, 236 requests, no retry, no provider failure;
+  the same totals as R2 (70 right, 0.303; WER 0.360; CER 0.173; term recall 0.167; ID recall
+  0.286), latency median 396 ms, 2,417.5 s billed, $0.027. Scorecard in `var/runs/r4-turbo`.
+  Spend so far $0.2043 of the $5 cap.
 
 ## Decision log
 
