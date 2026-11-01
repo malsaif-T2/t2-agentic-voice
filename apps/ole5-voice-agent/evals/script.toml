@@ -1,0 +1,372 @@
+# The script of the owner's new recordings (plan 002's registration, "New recordings (N)"), read
+# by `poe record` and by the recordings import (`takes.load_script`).
+#
+# DRAFT: the agent's proposal, which the owner approves or changes before recording: the lines,
+# their kinds and counts, and their dialect labels (Q4); the ticket numbers' shape (Q5); and the
+# independent check of each recording (Q9). Nothing here is recorded until then. Ticket-number
+# and echo-only items are the agent's additions (evaluation.md measures ticket-number recall and
+# text from the agent's own echo); over-the-agent items on the two headsets are not proposed
+# here, and are the owner's call (Q4).
+#
+# Each line is said once on each of three devices: the laptop's speakers and microphone, a wired
+# headset, a Bluetooth headset. `say` holds the clauses, in order: a line of several pauses
+# between them, where the owner then marks the true turn end. A line with no `say` holds no
+# speech: `cue` says what to do, `seconds` how long, `reply` which agent reply plays meanwhile
+# (its ID in the lab's replies.json). References follow the spelling guide (spelling.toml):
+# product terms in Latin script, numbers as digits, contractions as said, and listening sounds
+# from the list below.
+#
+# The proposal's counts, by kind (Saudi, MSA, English, mixed): requests of one clause 6, 4, 4,
+# 4; requests of several clauses that pause 4, 2, 2, 2; stop words 3, 1, 2; repeat requests 2,
+# 1, 1; listening sounds 3 Saudi and 2 English; ticket numbers 2, 1, 1; silence or a noise 3;
+# the agent's echo only 2. That is 52 lines, 156 recordings; strata.toml holds the counts.
+
+# The fixed list of listening sounds, as references spell them (the spelling guide, Q8): the
+# talk-over's ten, and two English ones the agent adds.
+listening_sounds = ["اها", "امم", "ايوه", "ايه", "تمام", "تمام تمام", "طيب", "كمل", "mm-hmm", "okay", "uh-huh", "yeah"]
+
+# Requests of one clause, some with a product term.
+
+[[lines]]
+id = "n01_mail_slow"
+kind = "request"
+language = "saudi"
+say = ["البريد عندي ثقيل مرة اليوم"]
+
+[[lines]]
+id = "n02_not_received"
+kind = "request"
+language = "saudi"
+say = ["ما وصلتني المراسلة اللي أرسلوها لي"]
+
+[[lines]]
+id = "n03_print"
+kind = "request"
+language = "saudi"
+say = ["كيف أطبع المراسلة من النظام؟"]
+
+[[lines]]
+id = "n04_screen_freezes"
+kind = "request"
+language = "saudi"
+say = ["الشاشة تعلق لما أفتح صندوق الوارد"]
+
+[[lines]]
+id = "n05_who_received"
+kind = "request"
+language = "saudi"
+say = ["أبغى أعرف مين استلم المراسلة"]
+
+[[lines]]
+id = "n06_change_password"
+kind = "request"
+language = "saudi"
+say = ["أبي أغير كلمة المرور حقتي"]
+
+[[lines]]
+id = "n07_delegate"
+kind = "request"
+language = "msa"
+say = ["كيف يمكنني تفويض صلاحياتي لزميل أثناء إجازتي؟"]
+
+[[lines]]
+id = "n08_new_missing"
+kind = "request"
+language = "msa"
+say = ["لا تظهر المراسلات الجديدة في صندوق الوارد"]
+
+[[lines]]
+id = "n09_add_attachment"
+kind = "request"
+language = "msa"
+say = ["أريد إضافة مرفق إلى المراسلة"]
+
+[[lines]]
+id = "n10_reset_by_mail"
+kind = "request"
+language = "msa"
+say = ["هل يمكن استعادة كلمة المرور عبر البريد الإلكتروني؟"]
+
+[[lines]]
+id = "n11_sent_last_week"
+kind = "request"
+language = "english"
+say = ["Where can I find the correspondence I sent last week?"]
+
+[[lines]]
+id = "n12_phone_notifications"
+kind = "request"
+language = "english"
+say = ["My notifications don't show up on my phone."]
+
+[[lines]]
+id = "n13_attach_pdf"
+kind = "request"
+language = "english"
+say = ["How do I attach a PDF to a correspondence?"]
+terms = ["PDF"]
+
+[[lines]]
+id = "n14_reset_password"
+kind = "request"
+language = "english"
+say = ["I need to reset my password."]
+
+[[lines]]
+id = "n15_outlook_mail"
+kind = "request"
+language = "mixed"
+say = ["الإيميل ما يوصل على Outlook"]
+terms = ["Outlook"]
+
+[[lines]]
+id = "n16_convert_pdf"
+kind = "request"
+language = "mixed"
+say = ["أبغى أحول المراسلة إلى PDF"]
+terms = ["PDF"]
+
+[[lines]]
+id = "n17_save_word"
+kind = "request"
+language = "mixed"
+say = ["كيف أحفظ مرفق Word على جهازي؟"]
+terms = ["Word"]
+
+[[lines]]
+id = "n18_archive_in_ole5"
+kind = "request"
+language = "mixed"
+say = ["وين ألقى الأرشيف في Ole5؟"]
+terms = ["Ole5"]
+
+# Requests of several clauses that pause mid-sentence: a whole take each, its true turn end
+# marked after it.
+
+[[lines]]
+id = "n19_refer_manager"
+kind = "paused_request"
+language = "saudi"
+say = ["عندي مراسلة", "أبغى أحيلها", "للمدير حقي"]
+
+[[lines]]
+id = "n20_error_suddenly"
+kind = "paused_request"
+language = "saudi"
+say = ["أمس كنت أشتغل", "وفجأة طلع لي خطأ", "وما عاد يفتح البرنامج"]
+
+[[lines]]
+id = "n21_archived_later"
+kind = "paused_request"
+language = "saudi"
+say = ["أبغى أسأل", "عن المراسلات المؤرشفة", "وين تروح بعد فترة"]
+
+[[lines]]
+id = "n22_app_notifications"
+kind = "paused_request"
+language = "saudi"
+say = ["لو سمحت", "التطبيق في الجوال", "ما يرسل لي إشعارات"]
+
+[[lines]]
+id = "n23_signature_msa"
+kind = "paused_request"
+language = "msa"
+say = ["أريد أن أسأل", "عن طريقة إضافة توقيع", "إلى رسائلي"]
+
+[[lines]]
+id = "n24_login_msa"
+kind = "paused_request"
+language = "msa"
+say = ["لدي مشكلة", "في تسجيل الدخول", "منذ صباح اليوم"]
+
+[[lines]]
+id = "n25_archiving_question"
+kind = "paused_request"
+language = "english"
+say = ["I have a question", "about archiving", "old correspondence"]
+
+[[lines]]
+id = "n26_inbox_loading"
+kind = "paused_request"
+language = "english"
+say = ["So the inbox", "it keeps loading", "and nothing shows up"]
+
+[[lines]]
+id = "n27_outlook_sync"
+kind = "paused_request"
+language = "mixed"
+say = ["عندي مشكلة", "في Outlook", "ما يتزامن مع البريد"]
+terms = ["Outlook"]
+
+[[lines]]
+id = "n28_word_font"
+kind = "paused_request"
+language = "mixed"
+say = ["لما أفتح المرفق", "يفتح في Word", "بس الخط يطلع غلط"]
+terms = ["Word"]
+
+# Stop words: said while the agent would be talking.
+
+[[lines]]
+id = "n29_hold_saudi"
+kind = "stop_word"
+language = "saudi"
+say = ["استنى"]
+
+[[lines]]
+id = "n30_enough"
+kind = "stop_word"
+language = "saudi"
+say = ["خلاص يكفي"]
+
+[[lines]]
+id = "n31_moment_please"
+kind = "stop_word"
+language = "saudi"
+say = ["لحظة لو سمحت"]
+
+[[lines]]
+id = "n32_halt_msa"
+kind = "stop_word"
+language = "msa"
+say = ["توقف من فضلك"]
+
+[[lines]]
+id = "n33_hold_on"
+kind = "stop_word"
+language = "english"
+say = ["hold on"]
+
+[[lines]]
+id = "n34_halt_please"
+kind = "stop_word"
+language = "english"
+say = ["stop, please"]
+
+# Repeat requests.
+
+[[lines]]
+id = "n35_what_said"
+kind = "repeat_request"
+language = "saudi"
+say = ["وش قلت؟"]
+
+[[lines]]
+id = "n36_say_again"
+kind = "repeat_request"
+language = "saudi"
+say = ["عيد الكلام مرة ثانية"]
+
+[[lines]]
+id = "n37_repeat_msa"
+kind = "repeat_request"
+language = "msa"
+say = ["هل يمكنك إعادة ما قلت؟"]
+
+[[lines]]
+id = "n38_repeat_english"
+kind = "repeat_request"
+language = "english"
+say = ["Sorry, can you say that again?"]
+
+# Listening sounds, from the fixed list above.
+
+[[lines]]
+id = "n39_aha"
+kind = "listening_sound"
+language = "saudi"
+say = ["اها"]
+
+[[lines]]
+id = "n40_umm"
+kind = "listening_sound"
+language = "saudi"
+say = ["امم"]
+
+[[lines]]
+id = "n41_aywa"
+kind = "listening_sound"
+language = "saudi"
+say = ["ايوه"]
+
+[[lines]]
+id = "n42_mm_hmm"
+kind = "listening_sound"
+language = "english"
+say = ["mm-hmm"]
+
+[[lines]]
+id = "n43_uh_huh"
+kind = "listening_sound"
+language = "english"
+say = ["uh-huh"]
+
+# Ticket numbers read out, for ID recall. DRAFT (Q5): no source gives Ole5's ticket format; the
+# agent proposes two of the last four digits, which the prototype's agent read out, and two of a
+# full number. The two full-number lines hold no number yet: it is added in the shape the owner
+# gives, and until then they are not recorded. The four digits below are made up.
+
+[[lines]]
+id = "n44_ticket_last_four"
+kind = "ticket_number"
+language = "saudi"
+say = ["التذكرة اللي آخرها 4821"]
+
+[[lines]]
+id = "n45_ticket_full_saudi"
+kind = "ticket_number"
+language = "saudi"
+say = ["رقم التذكرة"]
+cue = "DRAFT (Q5): then the full ticket number, in the shape the owner gives"
+
+[[lines]]
+id = "n46_ticket_full_msa"
+kind = "ticket_number"
+language = "msa"
+say = ["رقم التذكرة هو"]
+cue = "DRAFT (Q5): then the full ticket number, in the shape the owner gives"
+
+[[lines]]
+id = "n47_ticket_last_four_english"
+kind = "ticket_number"
+language = "english"
+say = ["It's the ticket ending in 3906"]
+
+# Silence, or a noise with no speech: the reference is empty.
+
+[[lines]]
+id = "n48_silence"
+kind = "silence"
+language = "none"
+cue = "Say nothing; keep the room quiet."
+seconds = 5
+
+[[lines]]
+id = "n49_keyboard"
+kind = "noise"
+language = "none"
+cue = "Type on the keyboard; say nothing."
+seconds = 5
+
+[[lines]]
+id = "n50_cough"
+kind = "noise"
+language = "none"
+cue = "Cough once or twice; say nothing."
+seconds = 5
+
+# The agent's own echo only: a reply plays and the owner says nothing; the reference is empty.
+
+[[lines]]
+id = "n51_echo_arabic"
+kind = "echo_only"
+language = "none"
+cue = "Say nothing while the reply plays."
+reply = "ar_inbox"
+
+[[lines]]
+id = "n52_echo_english"
+kind = "echo_only"
+language = "none"
+cue = "Say nothing while the reply plays."
+reply = "en_signature"

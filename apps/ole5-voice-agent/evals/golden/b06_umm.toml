@@ -1,0 +1,40 @@
+# Written by `python -m ole5_voice.evals.import_talkover` from the lab's refs.json and
+# takes.json: import again rather than edit.
+# DRAFT: its language is the agent's proposal from the text, until the owner confirms or
+# changes it (plan 002, Q7).
+id = "b06_umm"
+source = "talkover"
+kind = "listening_sound"
+language = "saudi"
+text = "امم"
+alternatives = []
+terms = []
+want = "listen"
+
+[[variants]]
+id = "b06_umm__duck__speakers__183015"
+device = "laptop"
+session = "talkover-2026-10-27"
+reference = "امم"
+reference_source = "script"
+turn_ends_ms = []
+tags = ["duck", "over-assistant", "playback-speakers"]
+
+[[variants.segments]]
+root = "talkover"
+path = "b06_umm__duck__speakers__183015__seg1.wav"
+sha256 = "be08df48bfc99486a424fddcf9412bf4b192b8de1d11fe68a18d17fc4e92a302"
+
+[[variants]]
+id = "b06_umm__pause__speakers__184634"
+device = "laptop"
+session = "talkover-2026-10-27"
+reference = "امم"
+reference_source = "script"
+turn_ends_ms = []
+tags = ["over-assistant", "pause", "playback-speakers"]
+
+[[variants.segments]]
+root = "talkover"
+path = "b06_umm__pause__speakers__184634__seg1.wav"
+sha256 = "73b408b9dd932dbe68b07f556286a6ead6ca15d7e6924eff5cdc0b61874644b7"

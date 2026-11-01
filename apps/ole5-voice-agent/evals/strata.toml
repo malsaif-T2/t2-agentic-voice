@@ -1,0 +1,79 @@
+# The golden set's registered counts per stratum (plan 002's registration, "Strata";
+# evaluation.md, "Writing items": strata in fixed proportions, which a test enforces). `poe
+# golden` and tests/ole5_voice/evals/test_strata.py fail when the committed items, their
+# variants or the script's lines do not hold these counts. A count changes only with the set it
+# counts, in the same commit, reviewed like the items.
+#
+# DRAFT: the set holds only the talk-over items so far. Their languages are the agent's proposal
+# until the owner rules on each (Q7), and the new recordings' counts come with the approved
+# script (Q4), which the [script] tables count as it is now proposed. Variants are counted by the
+# device of their microphone and by their tags: the talk-over's condition (duck, pause), whether
+# the take began over the assistant, and its playback device.
+
+[items]
+total = 43
+
+[items.source]
+talkover = 43
+
+[items.language]
+english = 9
+mixed = 4
+msa = 7
+saudi = 23
+
+[items.kind]
+confirmation = 4
+listening_sound = 10
+repeat_request = 1
+request = 19
+short_request = 3
+stop_word = 6
+
+[variants]
+total = 120
+
+[variants.language]
+english = 21
+mixed = 12
+msa = 23
+saudi = 64
+
+[variants.kind]
+confirmation = 13
+listening_sound = 27
+repeat_request = 4
+request = 54
+short_request = 9
+stop_word = 13
+
+[variants.device]
+laptop = 120
+
+[variants.tag]
+duck = 63
+over-assistant = 108
+pause = 57
+playback-headset = 3
+playback-speakers = 117
+
+[script]
+total = 52
+
+[script.language]
+english = 12
+mixed = 6
+msa = 9
+none = 5
+saudi = 20
+
+[script.kind]
+echo_only = 2
+listening_sound = 5
+noise = 2
+paused_request = 10
+repeat_request = 4
+request = 18
+silence = 1
+stop_word = 6
+ticket_number = 4

@@ -1,0 +1,54 @@
+# Written by `python -m ole5_voice.evals.import_talkover` from the lab's refs.json and
+# takes.json: import again rather than edit.
+# DRAFT: its language is the agent's proposal from the text, until the owner confirms or
+# changes it (plan 002, Q7).
+id = "s08_archived_where"
+source = "talkover"
+kind = "request"
+language = "saudi"
+text = "وين ألقى المراسلات اللي أرشفتها قبل؟"
+alternatives = []
+terms = []
+want = "send"
+
+[[variants]]
+id = "s08_archived_where__duck__speakers__183148"
+device = "laptop"
+session = "talkover-2026-10-27"
+reference = "وين ألقى المراسلات اللي أرشفتها قبل؟"
+reference_source = "script"
+turn_ends_ms = []
+tags = ["duck", "over-assistant", "playback-speakers"]
+
+[[variants.segments]]
+root = "talkover"
+path = "s08_archived_where__duck__speakers__183148__seg1.wav"
+sha256 = "2a859d08949c574fa4ad1bbf3b689512e3bfae8b33ac59050827226b726a4e2a"
+
+[[variants]]
+id = "s08_archived_where__pause__speakers__184725"
+device = "laptop"
+session = "talkover-2026-10-27"
+reference = "وين ألقى المراسلات اللي أرشفتها قبل؟"
+reference_source = "script"
+turn_ends_ms = []
+tags = ["over-assistant", "pause", "playback-speakers"]
+
+[[variants.segments]]
+root = "talkover"
+path = "s08_archived_where__pause__speakers__184725__seg1.wav"
+sha256 = "c9e317082484eba4e56b17348b6c6bcbb6fc329df028aed3d525b4423514db15"
+
+[[variants]]
+id = "s08_archived_where__pause__speakers__184738"
+device = "laptop"
+session = "talkover-2026-10-27"
+reference = "وين ألقى المراسلات اللي أرشفتها قبل؟"
+reference_source = "script"
+turn_ends_ms = []
+tags = ["over-assistant", "pause", "playback-speakers"]
+
+[[variants.segments]]
+root = "talkover"
+path = "s08_archived_where__pause__speakers__184738__seg1.wav"
+sha256 = "5f5c494aafdeb0da9426585df00df7010664d063f1ed59e7f1543ee105044d75"

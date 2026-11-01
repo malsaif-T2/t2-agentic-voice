@@ -838,6 +838,99 @@ run, [WORKING-RULES.md](../../../WORKING-RULES.md), "Measurement runs")
     since `docs/guide/` is Track H's.
   - After the merge `uv run --offline poe check` passes: 833 tests, 100% coverage (1345 statements),
     mypy strict on 126 files, arch and docs clean.
+- 2026-11-01: Track D, the golden set's items, matcher, validation and split, is merged (`Plan 002:
+  merge track D`), from five commits on `plan-002-track-d`, cut from 44aa043: 5c13483 (the matcher,
+  Ole5's spelling guide, the items and their TOML writer), fd4eb2f (the two imports and the
+  talk-over items), be0069e (the deterministic split and the draft script), 4925b46 (`poe golden`,
+  the frozen answers and the strata) and 948f482 (the tests that keep items and audio out of the
+  product). It replaces Block 0's stubs `items.py`, `toml_write.py`, `import_talkover.py`,
+  `import_recordings.py`, `matcher.py`, `golden.py` and `split.py`, and adds the data under
+  `apps/ole5-voice-agent/evals/`: `spelling.toml` (quoting the owner's Q8 answer, "Use these rules",
+  2026-11-01, in each ruling), `terms.toml`, the draft `script.toml`, `split.json`, `strata.toml`,
+  `frozen.json`, an empty `allowed_in_source.toml`, `manifests/talkover.json` and 43 talk-over items
+  under `golden/`. No audio is in the repository. From the track's report:
+  - The talk-over sources, read as text or data only (D-010), in the lab's folder beside
+    `Ole5-chatbot/` (`voice-lab/`, not inside it): `voice-lab/recordings/talkover/refs.json` has 124
+    segments; `takes.json` has 124 takes, 116 with one segment, 4 with two and 4 with none
+    (r02_ghalat__pause__speakers__184559, s01_archive__pause__headset__185344,
+    y01_naam_irsilha__duck__speakers__182152, y03_yes_submit__duck__speakers__183225); there are 43
+    phrase IDs, and every take has the same `mic_label` (the laptop's microphone array). The 40
+    scripted phrases of `voice-lab/static/talkover.js` (the `PHRASES` table, lines 35-80) equal
+    `refs.json`'s text, kind, want and language for every take, and the 3 unscripted ones agree on
+    kind, want and language (a scratch script outside the repository); the import reads `refs.json`
+    and `takes.json`, not the script.
+  - An unscripted take's reference is the text the owner typed in the lab, its spaces collapsed as
+    `voice-lab/server.py` does (lines 329-344, `talkover_ref`); its variant's `reference_source` is
+    `typed`, and its item's `text` is empty, since the phrase has no scripted words.
+  - The matcher's verdict follows the prototype's `norm` and `text_score`
+    (`Ole5-chatbot/scripts/stt_eval.py`, lines 1062-1066 and 1079-1086): both texts go through
+    `normalize_arabic`, then `normalize_digits`, then every space is removed, and the output is
+    right when it equals any accepted reference. A word split in two counts as right («لو سمحت»
+    against «لوسمحت», «تمام تمام» against «تمامتمام», tested with the fake normalizer), and a test
+    checks the verdict against every row of Block 0's characterization table, with "57" on the two
+    gap rows.
+  - The talk-over import's output: 43 items, 120 variants and 124 files in `manifests/talkover.json`
+    (session talkover-2026-10-27, device laptop, consent null), all 16 kHz. Items by language:
+    english 9, mixed 4, msa 7, saudi 23. Variants by tag: duck 63, pause 57, over-assistant 108,
+    playback-speakers 117, playback-headset 3, which agree with the registration's segment counts
+    (duck 65 and pause 59 once the 4 split takes count twice); `strata.toml` registers them.
+  - Golden's validation was run once with the talk-over audio root, on the lab's folder, outside any
+    test, with a no-op spelling check standing in for Track A's stub: all 124 files match the
+    manifest's hash, rate and length, and no problem was found. `frozen.json` is fresh: 0 variants
+    accepted and 120 left out, since the owner has confirmed none yet (Q9), the 6 typed ones waiting
+    on their second confirmation.
+  - The split is by item, stratified by language and kind, from the salt plan-002-2026-11-01: it
+    holds out 13 of the 43 items and 36 of the 120 variants, and `python -m ole5_voice.evals.split
+    --check` passes on the committed `split.json`.
+  - The draft script (`script.toml`) holds the 52 lines of the registration's proposal: 18
+    one-clause requests, 10 paused requests, 6 stop words, 4 repeat requests, 5 listening sounds and
+    4 ticket numbers, with 1 silence, 2 noises and 2 echo-only lines, which use the lab's replies
+    ar_inbox and en_signature (`voice-lab/assets/talkover/replies.json`). It is marked as a draft
+    for Q4, Q5 and Q9; the ticket lines use `TICKET_KIND`, and the two full-number lines hold no
+    number until Q5. Its fixed list of listening sounds is the talk-over's ten plus "mm-hmm" and
+    "uh-huh". Each Arabic item's language is the agent's proposal, marked as a draft in its file
+    (Q7).
+  - The test that no item is in the product folds 90 references (every item's reference and
+    alternatives, and every script line) and searches 932 string constants and text files in 58
+    files under `packages/`, `apps/*/src` and `examples/`, finding none; its self-tests find pasted
+    text and ignore words that only contain a reference. At this merge it also reads Tracks A to C's
+    code (Track A's eleven digit names among it), and still finds none.
+  - Deviation: the recordings import's tests are in
+    `tests/ole5_voice/evals/test_import_recordings.py`, a file Track D's Owns line does not name;
+    with them `test_items.py` would pass ARCH-SIZE's 400 lines (it holds the items, the writer and
+    the talk-over import in 393). No other track owns the new file.
+  - Deviation: the talk-over import, not only `poe golden --audio`, hashes the lab's 124 WAV files
+    and reads their format with `audio.read_wav`, since a manifest needs each file's hash. It was
+    run once from the agent's shell, reading the lab's folder; the lab was not written. No test
+    reads audio: the import and `golden` take the reader as an argument, and tests pass a fake.
+  - Deviation: the lab is at `voice-lab/` beside `Ole5-chatbot/`, not at `Ole5-chatbot/voice-lab` as
+    the track's task said; it was read there, as text or data only.
+  - Deviation: `test_matcher.py`'s check of the verdict against the characterization table skipped
+    while Track A's normalizer raised NotImplementedError. Track A merged first, so it runs at this
+    merge, and its skip is removed in the following commit.
+  - Its debt rows are TD-016 (the dialect labels as a table in code) and TD-017 (the
+    no-item-in-source test's own copy of the letter folding). It changed no row and asked for no
+    change to Block 0.
+  - Its questions for the owner: Q4, Q5, Q7 and Q9 are still open, and nothing in the files answers
+    them (`script.toml` and the Arabic items' languages are drafts, the two full-number ticket lines
+    wait on the shape of an Ole5 ticket number, and every variant waits on the owner's listen);
+    `terms.toml` adds Ole5, the product's own name, as a product term beside Outlook, PDF, Word and
+    English: keep it or drop it with the script's approval (Q4)?; the talk-over manifest has no
+    consent record, since the decision log asks for consent only for the new recordings and the
+    talk-over takes are the owner's own from the prototype: should the owner's consent for the
+    talk-over set also be recorded, in words and dated?
+  - Not done: the new recordings are not imported, since none exist before Q4, Q5, Q9 and the
+    owner's sessions; the final talk-over import with the owner's dialect labels (Q7) and the import
+    of the reviews belong to step 19, when `strata.toml` and `split.json` change with Q10. No
+    variant is accepted (`frozen.json`: 0 accepted, 120 left out) until the owner confirms each one
+    (Q9); `items.accepted()` gives the checked variants. Whether the runner scores only those, and
+    whether step 15's reference-answerer check runs on every committed variant meanwhile, is left by
+    the track to Track E or the integrator.
+  - At the merge, `uv run --offline poe golden --check` runs end to end with Track A's real spelling
+    check (`golden_valid`, the frozen file checked, 120 variants left out), and `python -m
+    ole5_voice.evals.split --check` passes. After the merge `uv run --offline poe check` passes: 912
+    tests (the characterization check among them, no longer skipped), 100% coverage (2004
+    statements), mypy strict on 130 files, arch and docs clean.
 
 ## Decision log
 
@@ -1439,6 +1532,82 @@ All entries are the agent's choices of 2026-11-01, with the agent's reasons.
   explicitly, so a library span under a team's unsampled span is not sampled either. The turn span
   is started on an empty `Context()`, so an app's current span never becomes its parent. The agent's
   choice.
+- 2026-11-01: Track D: the lab's kinds map to the golden set's, so the kind breakdown lines up with
+  the new recordings: `sentence` and `unscripted` become `request`; `backchannel` becomes
+  `listening_sound`; `command` becomes `stop_word`, for wait commands too; `confirm` becomes
+  `confirmation`; the lab's `request` becomes `repeat_request` when its want is `repeat`, otherwise
+  `short_request`. The lab's `want` label is kept in `Item.want`. No kind holds a reference's words.
+  The agent's choice.
+- 2026-11-01: Track D: a talk-over variant is one take, and its ID is the take's name. Its device is
+  `laptop` (the microphone, as the decision log rules), and its session is `talkover-<date of
+  recorded_at>`. Its tags are its condition (`duck` or `pause`), `playback-<speakers|headset>`, and
+  `over-assistant` when its first segment began over the assistant: the first segment holds the
+  take's start and its windows. The agent's choice.
+- 2026-11-01: Track D: the independent check, the agent's encoding of Q9's proposal. A variant is
+  checked once it has at least one confirmation. A typed review makes its text the reference and
+  drops every earlier confirmation, and only a confirmation in a later pass counts, so the typing is
+  a typed reference's first act and its confirmation the second. A text the owner typed in the lab
+  counts as typed before any recorder pass, so one later confirmation checks it. Two reviews of one
+  take in one pass are refused, and so is an empty typed text.
+- 2026-11-01: Track D: the talk-over's reviews are read from the recorder's `--out` as
+  `takes.review_file(variant.session, variant.id, pass)`, that is
+  `<out>/talkover-2026-10-27/<variant>.review-<n>.json`, through `import_talkover`'s `--reviews`
+  option; Track G's review mode writes them there. `import_recordings` skips a folder that holds
+  only reviews, and refuses one that holds takes or WAVs with no `session.json` (the consent).
+- 2026-11-01: Track D: each language of an Arabic talk-over phrase is the agent's proposal, written
+  as `PROPOSED_LANGUAGE` in `import_talkover.py` (TD-016): 23 saudi, 7 msa and 4 mixed. msa: s01,
+  s05, s09, k03, r04, y01, y04; mixed (Arabic with a Latin product term): s03, s04, s11, s12. Each
+  Arabic item file carries a DRAFT comment until the owner rules (Q7). English phrases are
+  `english`, from the lab's label.
+- 2026-11-01: Track D: `spelling.toml` has two parts. `[[rulings]]` holds Q8's rules split into five
+  comparison rulings (letter-forms, digits, english-case, punctuation, spaces) and four on
+  references (product-terms, numbers, contractions, listening-sounds), each with the agent's
+  approved wording, the owner's words "Use these rules" and 2026-11-01; the matcher refuses a guide
+  without one of its five comparison rulings. `[[spellings]]` holds the avoid lists `poe golden`
+  checks, the agent's reading of the rulings: the Arabic-script spellings of Outlook, PDF and Word,
+  and the digit words 0 to 9, for ticket_number items only. The contractions ruling has no list.
+- 2026-11-01: Track D: `terms.toml` lists English, Ole5, Outlook, PDF and Word. An item holds a term
+  when the term is a whole word, case-sensitive, in its text or a variant's reference. Ole5 is the
+  agent's addition, for the owner to keep or drop with Q4.
+- 2026-11-01: Track D: the split algorithm, with integer arithmetic. Each (language, kind) stratum
+  holds out floor(30% of its items); the items left over to reach round(30% of the set) go to the
+  strata with the largest remainders, ties broken by the salted hash of the stratum's name; inside a
+  stratum, items are taken in order of sha256(salt + ID). The salt is committed in `split.json`;
+  `--check` keeps it, and `--salt` with `--check` is refused.
+- 2026-11-01: Track D: `frozen.json` holds each accepted variant's expected answers, not normalized:
+  its reference, then its item's alternatives. Each item there carries its split, kind, language,
+  want and terms, and a `left_out` list gives each unchecked variant with its reason. A normalizer
+  change therefore never changes the frozen file, and confirming a variant shows as a diff.
+- 2026-11-01: Track D: the manifests. `manifests/talkover.json` has root `talkover` and no consent.
+  Each recording session gets `manifests/<root>-<session>.json` (root `owner` by default), with that
+  session's consent. A new recording's hash and length come from its sidecar, and its sample rate
+  from `audio.SAMPLE_RATE`. `poe golden` refuses a new recording whose manifest holds no consent,
+  and any manifest file named by no segment or by two.
+- 2026-11-01: Track D: the talk-over import hashes each segment, and reads its length and rate, with
+  `audio.read_wav` as it writes the manifest, since a manifest needs each file's hash; `golden
+  --audio` repeats the check. Both take the reader as an argument, so tests pass a fake and never
+  read audio.
+- 2026-11-01: Track D: the checks `poe golden` runs, besides the acceptance criteria:
+  - a scripted reference equals its item's text, or its script line's for a new recording;
+  - an empty reference is exactly one with no speech, and an item of language `none` is exactly one
+    whose references are empty;
+  - a listening sound is in the script's list;
+  - the terms are in `terms.toml` and in the text;
+  - `split.json` names exactly the items, and `strata.toml`'s three tables equal the counts.
+
+  With `--audio`, a length may differ from the manifest's by up to 1e-4 s, and a path that resolves
+  outside its root's folder, through a link or a junction, is refused before it is read.
+- 2026-11-01: Track D: how the no-item-in-source test reads the source. It searches Python string
+  constants, docstrings and f-string parts included, and the whole text of text files; comments are
+  not searched. Both sides are folded with the test's own copy of the guide's letter folding
+  (TD-017), Arabic-Indic and Persian digits are read, and case and punctuation are ignored. An
+  underscore stays part of a word, so `stop_word` or `k05_stop` never holds `stop`. It searches the
+  script's lines as well as the items' references. The no-audio test finds a file by its extension
+  or by its first 12 bytes.
+- 2026-11-01: Track D: `load_matcher` keeps Block 0's signature and adds a keyword-only `normalize`,
+  for tests; by default it uses the library's normalizers. `golden.validate` takes the spelling
+  check and the audio reader as arguments, and `main` passes the library's `spelling_issues` and
+  `audio.read_wav`, so the tests ran on the track's branch with Block 0's fakes.
 
 ## The owner's decisions
 

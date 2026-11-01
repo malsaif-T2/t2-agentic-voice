@@ -1,0 +1,54 @@
+# Written by `python -m ole5_voice.evals.import_talkover` from the lab's refs.json and
+# takes.json: import again rather than edit.
+# DRAFT: its language is the agent's proposal from the text, until the owner confirms or
+# changes it (plan 002, Q7).
+id = "b08_kammil"
+source = "talkover"
+kind = "listening_sound"
+language = "saudi"
+text = "كمل"
+alternatives = []
+terms = []
+want = "listen"
+
+[[variants]]
+id = "b08_kammil__duck__speakers__183355"
+device = "laptop"
+session = "talkover-2026-10-27"
+reference = "كمل"
+reference_source = "script"
+turn_ends_ms = []
+tags = ["duck", "over-assistant", "playback-speakers"]
+
+[[variants.segments]]
+root = "talkover"
+path = "b08_kammil__duck__speakers__183355__seg1.wav"
+sha256 = "2d6812c915430870fc5b59d9044665befd8c5cd1d474e0b96bc578d466ffff68"
+
+[[variants]]
+id = "b08_kammil__duck__speakers__183405"
+device = "laptop"
+session = "talkover-2026-10-27"
+reference = "كمل"
+reference_source = "script"
+turn_ends_ms = []
+tags = ["duck", "over-assistant", "playback-speakers"]
+
+[[variants.segments]]
+root = "talkover"
+path = "b08_kammil__duck__speakers__183405__seg1.wav"
+sha256 = "dc74a1ba16065bc68d69c0275face6971e1b1ef973adb29d6f6a1e19d523a7eb"
+
+[[variants]]
+id = "b08_kammil__pause__speakers__184848"
+device = "laptop"
+session = "talkover-2026-10-27"
+reference = "كمل"
+reference_source = "script"
+turn_ends_ms = []
+tags = ["over-assistant", "pause", "playback-speakers"]
+
+[[variants.segments]]
+root = "talkover"
+path = "b08_kammil__pause__speakers__184848__seg1.wav"
+sha256 = "c778712c10024edf6df962db0e26a4f057d10051d5b4a89dd1d6f683d66e6547"

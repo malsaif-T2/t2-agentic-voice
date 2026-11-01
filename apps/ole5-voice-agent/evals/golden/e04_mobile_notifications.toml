@@ -1,0 +1,38 @@
+# Written by `python -m ole5_voice.evals.import_talkover` from the lab's refs.json and
+# takes.json: import again rather than edit.
+id = "e04_mobile_notifications"
+source = "talkover"
+kind = "request"
+language = "english"
+text = "The mobile app closes by itself when I open the notifications."
+alternatives = []
+terms = []
+want = "send"
+
+[[variants]]
+id = "e04_mobile_notifications__duck__speakers__183815"
+device = "laptop"
+session = "talkover-2026-10-27"
+reference = "The mobile app closes by itself when I open the notifications."
+reference_source = "script"
+turn_ends_ms = []
+tags = ["duck", "over-assistant", "playback-speakers"]
+
+[[variants.segments]]
+root = "talkover"
+path = "e04_mobile_notifications__duck__speakers__183815__seg1.wav"
+sha256 = "0ebf45ce1751742e5639144deb61349f89f7f16c5aed6b4055c5fb0ae49c4eda"
+
+[[variants]]
+id = "e04_mobile_notifications__pause__speakers__185201"
+device = "laptop"
+session = "talkover-2026-10-27"
+reference = "The mobile app closes by itself when I open the notifications."
+reference_source = "script"
+turn_ends_ms = []
+tags = ["over-assistant", "pause", "playback-speakers"]
+
+[[variants.segments]]
+root = "talkover"
+path = "e04_mobile_notifications__pause__speakers__185201__seg1.wav"
+sha256 = "c0c7b4ad137413cea705181b938a0a18e62c981ec7686966822ab521bdee688a"

@@ -1,0 +1,38 @@
+# Written by `python -m ole5_voice.evals.import_talkover` from the lab's refs.json and
+# takes.json: import again rather than edit.
+id = "k06_wait"
+source = "talkover"
+kind = "stop_word"
+language = "english"
+text = "wait"
+alternatives = []
+terms = []
+want = "wait"
+
+[[variants]]
+id = "k06_wait__duck__speakers__183705"
+device = "laptop"
+session = "talkover-2026-10-27"
+reference = "wait"
+reference_source = "script"
+turn_ends_ms = []
+tags = ["duck", "over-assistant", "playback-speakers"]
+
+[[variants.segments]]
+root = "talkover"
+path = "k06_wait__duck__speakers__183705__seg1.wav"
+sha256 = "43290aeb67b5d310000215299af8280ff15ab08250dce93874669e1c62570038"
+
+[[variants]]
+id = "k06_wait__pause__speakers__185052"
+device = "laptop"
+session = "talkover-2026-10-27"
+reference = "wait"
+reference_source = "script"
+turn_ends_ms = []
+tags = ["over-assistant", "pause", "playback-speakers"]
+
+[[variants.segments]]
+root = "talkover"
+path = "k06_wait__pause__speakers__185052__seg1.wav"
+sha256 = "7ac2b193fb0bdadca62fe59934d046c2f4d6a53703a3f9f3d4cef74a71d17d12"
