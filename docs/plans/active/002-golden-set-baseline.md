@@ -195,7 +195,8 @@ branch, `plan-002-integration` ([plans README](../README.md), "Parallel tracks")
    runner in the app, and audio kept out of git (follows D-011); and tracing as plain OTLP to
    Phoenix through the OpenTelemetry SDK (the design's 10.1), which amends D-002's tracing bullet
    ("Arize Phoenix through `arize-phoenix-otel` and OpenInference"), with D-002's heading status
-   updated to point at it. Their status follows the owner's answer to Q3.
+   updated to point at it. They are written as Accepted, as the owner ruled (Q3); anything an
+   entry adds beyond the approved design is written as Proposed, for the owner to rule on.
 8. **Settings.** In `core/config.py`, `env_nested_delimiter="__"`, `env_ignore_empty=True` and
    three groups: `groq` (`api_key`, a `SecretStr` or none; `api_key_file`, a path whose contents
    are the key; `base_url`, `https://api.groq.com`, the SDK's own default as step 2 reads it, so
@@ -226,8 +227,8 @@ branch, `plan-002-integration` ([plans README](../README.md), "Parallel tracks")
     keeps the coverage floor; each stub's test sits in the test file of the track that owns the
     stub, as `## Tracks` lists them, so the track replaces it in its own file):
     - `domain/ports/__init__.py` and `domain/ports/speech_to_text.py`: `DataFlow`, `AudioClip`,
-      `Transcript` (plus `no_speech_prob` if the owner agrees: Q2) and the `SpeechToText`
-      protocol, as in the design's 6.1;
+      `Transcript` (plus an optional `no_speech_prob`, as the owner ruled: Q2) and the
+      `SpeechToText` protocol, as in the design's 6.1;
     - the stubs each track fills: `domain/text/arabic.py`, `domain/text/digits.py`,
       `domain/text/spelling.py`, `domain/scoring.py`, `domain/sign_test.py`,
       `testing/scorers.py` (Track A); `adapters/groq_stt.py` (Track B); `core/tracing.py` and
@@ -383,6 +384,8 @@ run, [WORKING-RULES.md](../../../WORKING-RULES.md), "Measurement runs")
   log). Q5 moved to before recording, where the owner approves the script's ticket items with
   Q4: Block 0 and the tracks need no ticket shape, since `id_recall` is tested on made-up digit
   strings. Next: Q1 to Q3 and Q8, then Block 0.
+- 2026-11-01: The owner settled Q1 to Q3 and Q8, each with the agent's recommended answer
+  ("The owner's decisions"). Every call before Block 0 is settled; Block 0 starts.
 
 ## Decision log
 
@@ -565,6 +568,24 @@ On 2026-11-01, in the owner's words:
   A package whose licence is outside that section's table, certifi among them (Q1), goes to the
   owner first, since the question said every package was on the accepted list.
 
+On 2026-11-01, the owner's answers to the calls before Block 0 (the option each chose, in the
+agent's words of the question):
+
+- Q1, certifi under MPL-2.0, used unmodified: "Accept it".
+- Q2, keeping Whisper's `no_speech_prob` as an optional field of `Transcript`: "Keep it".
+- Q3, whether "Approve all" covers the decision entries for what the approved design already
+  describes: "Yes, as Accepted", with the agent's note that anything beyond the design is
+  written as Proposed.
+- Q8, Ole5's spelling guide: "Use these rules", for these rules as the agent put them:
+  - Before comparing, both texts are normalized: the Arabic letter forms folded as the
+    prototype did (أ إ آ to ا, ة to ه, ى to ي, ؤ to و, ئ to ي); no diacritics and no tatweel;
+    Arabic-Indic digits read as 0 to 9; English lowercase; punctuation ignored; spaces ignored
+    in the verdict, so two words written as one still count.
+  - References are written with product terms in Latin script, as the product writes them
+    (Outlook, PDF, Word); numbers as digits, and digits said one by one («خمسة سبعة») count as
+    those digits; English contractions as said ("don't" stays "don't"); listening sounds from
+    a fixed list that comes with the script (such as «اها», «امم», "mm-hmm").
+
 Earlier words this plan rests on, all of 2026-10-28 (D-004, D-006, D-010):
 
 - "Also for now I can only use the Groq API key, we can not try other models for now."
@@ -607,7 +628,7 @@ metadata:
 | `httpx`, `httpcore`, `idna` | groq | BSD-3-Clause |
 | `anyio`, `h11`, `sniffio` | groq | MIT (`sniffio`: MIT or Apache-2.0) |
 | `distro` | groq | Apache-2.0 |
-| `certifi` | httpx, requests | MPL-2.0: **the owner's call before Block 0 (Q1)** |
+| `certifi` | httpx, requests | MPL-2.0: accepted by the owner on 2026-11-01, used unmodified (Q1) |
 | `click` | jiwer | BSD-3-Clause |
 | `rapidfuzz` | jiwer | MIT |
 | `opentelemetry-semantic-conventions`, `opentelemetry-proto`, `opentelemetry-exporter-otlp-proto-common` and the exporter's other `opentelemetry-*` packages | the OpenTelemetry packages | Apache-2.0 |
@@ -1072,25 +1093,26 @@ Time:
 **Open questions, each settled before the step it gates**
 
 The owner's call before Block 0:
-- **Q1.** certifi (MPL-2.0) would come in with httpx, which the groq SDK requires (PyPI, read
-  2026-11-01), and with requests, which the HTTP exporter requires; that httpx and requests
-  need it, and its licence, are the agent's memory, UNVERIFIED until step 2 reads the lock. Its
-  licence is not in the design's 13 list, and D-016 asks the owner's approval for a copyleft
-  licence; MPL-2.0 is a weak copyleft one (the agent's reading). Accept it as an indirect
-  dependency, used unmodified? The agent recommends yes.
-- **Q2.** Add an optional `no_speech_prob` to `Transcript` (a change to the approved port of the
-  design's 6.1)? It is Whisper's own estimate that a clip holds no speech; keeping it lets M3 try
-  a silence filter later on the stored scorecards, without new requests. The agent recommends
-  yes: the prototype's silence rule used it (`stt.py`, lines 68-72).
-- **Q3.** Does "Approve all" (2026-11-01) cover the decision entries the design's 16.3 lists for
-  the `testing` layer, the new checks, the public facades and evaluation's split, so Block 0
-  writes them as Accepted? Or are they written as Proposed, for the owner to rule on each?
-- **Q8.** The spelling guide's rulings, in the owner's words, for
-  `apps/ole5-voice-agent/evals/spelling.toml`: product terms in Latin script as the product
-  writes them (the talk-over references already do); numbers as digits or words; ة and ه, ى
-  and ي, and the hamza forms (folded by the prototype's normalizer); the spelling of each
-  listening sound; English case and contractions. Before Block 0, since Track A tests these
-  rulings and Track D's matcher quotes them.
+- **Q1.** *Settled on 2026-11-01: accepted.* certifi (MPL-2.0) would come in with httpx, which the
+  groq SDK requires (PyPI, read 2026-11-01), and with requests, which the HTTP exporter requires;
+  that httpx and requests need it, and its licence, are the agent's memory, UNVERIFIED until step 2
+  reads the lock. Its licence is not in the design's 13 list, and D-016 asks the owner's approval
+  for a copyleft licence; MPL-2.0 is a weak copyleft one (the agent's reading). Accept it as an
+  indirect dependency, used unmodified? The agent recommends yes.
+- **Q2.** *Settled on 2026-11-01: kept.* Add an optional `no_speech_prob` to `Transcript` (a change
+  to the approved port of the design's 6.1)? It is Whisper's own estimate that a clip holds no
+  speech; keeping it lets M3 try a silence filter later on the stored scorecards, without new
+  requests. The agent recommends yes: the prototype's silence rule used it (`stt.py`, lines 68-72).
+- **Q3.** *Settled on 2026-11-01: written as Accepted.* Does "Approve all" (2026-11-01) cover the
+  decision entries the design's 16.3 lists for the `testing` layer, the new checks, the public
+  facades and evaluation's split, so Block 0 writes them as Accepted? Or are they written as
+  Proposed, for the owner to rule on each?
+- **Q8.** *Settled on 2026-11-01: the rules under "The owner's decisions".* The spelling guide's
+  rulings, in the owner's words, for `apps/ole5-voice-agent/evals/spelling.toml`: product terms in
+  Latin script as the product writes them (the talk-over references already do); numbers as digits
+  or words; ة and ه, ى and ي, and the hamza forms (folded by the prototype's normalizer); the
+  spelling of each listening sound; English case and contractions. Before Block 0, since Track A
+  tests these rulings and Track D's matcher quotes them.
 - **Q6, Q20 and Q21:** withdrawn on 2026-11-01, before Block 0 (the progress log). Q6, the
   consent note, is the agent's choice in the decision log; Q20, optional extras, was settled by
   the owner's "No, one install" (D-018); Q21, the downloads, by the owner's answer quoted in
@@ -1152,7 +1174,7 @@ before the run.
 
 ## What the owner does
 
-1. **Before Block 0:** answer Q1 to Q3 and Q8.
+1. **Before Block 0:** answer Q1 to Q3 and Q8 (done on 2026-11-01).
 2. **The Groq key, any time before the runs.** Put it in `.env` in the main checkout
    (`t2-agentic-voice\.env`) as `T2V_GROQ__API_KEY=<the key>`, or put the key alone in a file
    outside the repository and set `T2V_GROQ__API_KEY_FILE=<its full path>` there. The library
