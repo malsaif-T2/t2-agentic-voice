@@ -6,14 +6,22 @@ from __future__ import annotations
 
 import json
 import re
+from datetime import timedelta
 from pathlib import Path
 from typing import Any
 
 import pytest
 from ole5_voice.evals import import_recordings
-from ole5_voice.evals.items import GoldenSetError, load_items, load_manifests
-from ole5_voice.evals.models import TICKET_KIND, Item
-from ole5_voice.evals.takes import Script, review_file, session_file, take_sidecar
+from ole5_voice.evals.items import (
+    GoldenSetError,
+    accepted,
+    load_items,
+    load_manifests,
+    reviewed,
+    unchecked,
+)
+from ole5_voice.evals.models import TICKET_KIND, Confirmation, Item
+from ole5_voice.evals.takes import Review, Script, review_file, session_file, take_sidecar
 from ole5_voice.evals.toml_write import dump_item
 
 from tests.ole5_voice.evals import samples
@@ -114,6 +122,23 @@ def test_the_recordings_import_makes_an_item_of_each_line_recorded(tmp_path: Pat
     ]
 
 
+def test_a_typed_reference_is_accepted_only_after_its_second_confirmation(
+    tmp_path: Path,
+) -> None:
+    # From the recorder's files to what a run is scored on: typed in pass 1, left out and
+    # listed; confirmed against the typed words in pass 2, accepted.
+    _recorded(tmp_path)
+    items, _ = import_recordings.build(tmp_path, SCRIPT)
+    ticket = next(i for i in items if i.id == "n02")
+    assert "second confirmation" in (unchecked(ticket.variants[0]) or "")
+    assert [i.id for i in accepted(items)] == ["n01"]  # only n01's laptop take is confirmed
+    _review_file(tmp_path, "laptop-1", "n02-laptop-1", 2, "confirmed")
+    items, _ = import_recordings.build(tmp_path, SCRIPT)
+    ticket = next(i for i in accepted(items) if i.id == "n02")
+    assert ticket.variants[0].reference == "ends in 4812"
+    assert [c.review_pass for c in ticket.variants[0].confirmations] == [2]
+
+
 def _refused(out: Path, problem: str) -> None:
     with pytest.raises(GoldenSetError, match=re.escape(problem)):
         import_recordings.build(out, SCRIPT)
@@ -189,3 +214,42 @@ def test_the_recordings_command_writes_items_and_manifests_beside_the_talk_over(
     with pytest.raises(SystemExit) as refused:
         import_recordings.main(["--takes", str(out), "--root", "Not A Name"])
     assert refused.value.code == 2
+
+
+def _review(review_pass: int, verdict: str = "confirmed", text: str = "") -> Review:
+    return Review.model_validate(
+        {
+            "take": "t1",
+            "review_pass": review_pass,
+            "at": WHEN + timedelta(days=review_pass),
+            "verdict": verdict,
+            "text": text,
+        }
+    )
+
+
+def test_reviews_confirm_the_reference_or_replace_it_with_typed_words() -> None:
+    assert reviewed("stop now", "script", []) == ("stop now", "script", ())
+    reference, source, confirmations = reviewed("stop now", "script", [_review(2), _review(1)])
+    assert (reference, source, [c.review_pass for c in confirmations]) == (
+        "stop now",
+        "script",
+        [1, 2],
+    )
+    # Typed in pass 1 and confirmed in pass 2: the typed words, confirmed once after.
+    typed = reviewed("stop now", "script", [_review(1, "typed", " stop  then "), _review(2)])
+    assert (typed[0], typed[1], [c.review_pass for c in typed[2]]) == ("stop then", "typed", [2])
+    # A confirmation of the script's words does not confirm words typed later.
+    later = reviewed("stop now", "script", [_review(1), _review(2, "typed", "stop then")])
+    assert later == ("stop then", "typed", ())
+    assert reviewed("", "none", [_review(1)])[1:] == (
+        "none",
+        (Confirmation(at=WHEN + timedelta(days=1), review_pass=1),),
+    )
+
+
+def test_reviews_in_one_pass_twice_or_typed_empty_are_refused() -> None:
+    with pytest.raises(GoldenSetError, match="one review in each pass"):
+        reviewed("x", "script", [_review(1), _review(1, "typed", "y")])
+    with pytest.raises(GoldenSetError, match="review 1 of t1 is empty"):
+        reviewed("x", "script", [_review(1, "typed", "  ")])

@@ -1,0 +1,610 @@
+{
+  "about": "The golden set's expected answers, frozen by `uv run poe golden` from the items in golden/: each accepted variant's references (its own and its item's alternatives), and the variants left out until the owner's check. Never edited by hand: a changed item shows as a diff of this file, reviewed like code.",
+  "accepted": {
+    "items": 0,
+    "variants": 0
+  },
+  "items": [],
+  "left_out": [
+    {
+      "item": "b01_tamam",
+      "variant": "b01_tamam__duck__speakers__181917",
+      "why": "not yet confirmed by the owner's listen"
+    },
+    {
+      "item": "b01_tamam",
+      "variant": "b01_tamam__duck__speakers__181948",
+      "why": "not yet confirmed by the owner's listen"
+    },
+    {
+      "item": "b01_tamam",
+      "variant": "b01_tamam__duck__speakers__182001",
+      "why": "not yet confirmed by the owner's listen"
+    },
+    {
+      "item": "b01_tamam",
+      "variant": "b01_tamam__pause__headset__185354",
+      "why": "not yet confirmed by the owner's listen"
+    },
+    {
+      "item": "b01_tamam",
+      "variant": "b01_tamam__pause__speakers__184025",
+      "why": "not yet confirmed by the owner's listen"
+    },
+    {
+      "item": "b01_tamam",
+      "variant": "b01_tamam__pause__speakers__184038",
+      "why": "not yet confirmed by the owner's listen"
+    },
+    {
+      "item": "b02_eh",
+      "variant": "b02_eh__duck__speakers__182054",
+      "why": "not yet confirmed by the owner's listen"
+    },
+    {
+      "item": "b02_eh",
+      "variant": "b02_eh__pause__speakers__184112",
+      "why": "not yet confirmed by the owner's listen"
+    },
+    {
+      "item": "b03_aha",
+      "variant": "b03_aha__duck__speakers__182307",
+      "why": "not yet confirmed by the owner's listen"
+    },
+    {
+      "item": "b03_aha",
+      "variant": "b03_aha__pause__speakers__184219",
+      "why": "not yet confirmed by the owner's listen"
+    },
+    {
+      "item": "b04_tayyib",
+      "variant": "b04_tayyib__duck__speakers__182518",
+      "why": "not yet confirmed by the owner's listen"
+    },
+    {
+      "item": "b04_tayyib",
+      "variant": "b04_tayyib__pause__speakers__184343",
+      "why": "not yet confirmed by the owner's listen"
+    },
+    {
+      "item": "b05_aywa",
+      "variant": "b05_aywa__duck__speakers__182630",
+      "why": "not yet confirmed by the owner's listen"
+    },
+    {
+      "item": "b05_aywa",
+      "variant": "b05_aywa__duck__speakers__182642",
+      "why": "not yet confirmed by the owner's listen"
+    },
+    {
+      "item": "b05_aywa",
+      "variant": "b05_aywa__pause__speakers__184451",
+      "why": "not yet confirmed by the owner's listen"
+    },
+    {
+      "item": "b06_umm",
+      "variant": "b06_umm__duck__speakers__183015",
+      "why": "not yet confirmed by the owner's listen"
+    },
+    {
+      "item": "b06_umm",
+      "variant": "b06_umm__pause__speakers__184634",
+      "why": "not yet confirmed by the owner's listen"
+    },
+    {
+      "item": "b07_tamam_tamam",
+      "variant": "b07_tamam_tamam__duck__speakers__183133",
+      "why": "not yet confirmed by the owner's listen"
+    },
+    {
+      "item": "b07_tamam_tamam",
+      "variant": "b07_tamam_tamam__pause__speakers__184714",
+      "why": "not yet confirmed by the owner's listen"
+    },
+    {
+      "item": "b08_kammil",
+      "variant": "b08_kammil__duck__speakers__183355",
+      "why": "not yet confirmed by the owner's listen"
+    },
+    {
+      "item": "b08_kammil",
+      "variant": "b08_kammil__duck__speakers__183405",
+      "why": "not yet confirmed by the owner's listen"
+    },
+    {
+      "item": "b08_kammil",
+      "variant": "b08_kammil__pause__speakers__184848",
+      "why": "not yet confirmed by the owner's listen"
+    },
+    {
+      "item": "b09_okay",
+      "variant": "b09_okay__duck__speakers__183613",
+      "why": "not yet confirmed by the owner's listen"
+    },
+    {
+      "item": "b09_okay",
+      "variant": "b09_okay__duck__speakers__183624",
+      "why": "not yet confirmed by the owner's listen"
+    },
+    {
+      "item": "b09_okay",
+      "variant": "b09_okay__pause__speakers__184949",
+      "why": "not yet confirmed by the owner's listen"
+    },
+    {
+      "item": "b10_yeah",
+      "variant": "b10_yeah__duck__speakers__183733",
+      "why": "not yet confirmed by the owner's listen"
+    },
+    {
+      "item": "b10_yeah",
+      "variant": "b10_yeah__pause__speakers__185135",
+      "why": "not yet confirmed by the owner's listen"
+    },
+    {
+      "item": "e01_archive",
+      "variant": "e01_archive__duck__speakers__182207",
+      "why": "not yet confirmed by the owner's listen"
+    },
+    {
+      "item": "e01_archive",
+      "variant": "e01_archive__pause__speakers__184205",
+      "why": "not yet confirmed by the owner's listen"
+    },
+    {
+      "item": "e02_inbox_error",
+      "variant": "e02_inbox_error__duck__speakers__182946",
+      "why": "not yet confirmed by the owner's listen"
+    },
+    {
+      "item": "e02_inbox_error",
+      "variant": "e02_inbox_error__pause__speakers__184611",
+      "why": "not yet confirmed by the owner's listen"
+    },
+    {
+      "item": "e02_inbox_error",
+      "variant": "e02_inbox_error__pause__speakers__184624",
+      "why": "not yet confirmed by the owner's listen"
+    },
+    {
+      "item": "e03_signature",
+      "variant": "e03_signature__duck__speakers__183600",
+      "why": "not yet confirmed by the owner's listen"
+    },
+    {
+      "item": "e03_signature",
+      "variant": "e03_signature__pause__speakers__184937",
+      "why": "not yet confirmed by the owner's listen"
+    },
+    {
+      "item": "e04_mobile_notifications",
+      "variant": "e04_mobile_notifications__duck__speakers__183815",
+      "why": "not yet confirmed by the owner's listen"
+    },
+    {
+      "item": "e04_mobile_notifications",
+      "variant": "e04_mobile_notifications__pause__speakers__185201",
+      "why": "not yet confirmed by the owner's listen"
+    },
+    {
+      "item": "k01_wagif",
+      "variant": "k01_wagif__duck__speakers__182027",
+      "why": "not yet confirmed by the owner's listen"
+    },
+    {
+      "item": "k01_wagif",
+      "variant": "k01_wagif__pause__speakers__184102",
+      "why": "not yet confirmed by the owner's listen"
+    },
+    {
+      "item": "k02_khalas",
+      "variant": "k02_khalas__duck__speakers__182424",
+      "why": "not yet confirmed by the owner's listen"
+    },
+    {
+      "item": "k02_khalas",
+      "variant": "k02_khalas__pause__speakers__184310",
+      "why": "not yet confirmed by the owner's listen"
+    },
+    {
+      "item": "k03_tawaqqaf",
+      "variant": "k03_tawaqqaf__duck__speakers__182750",
+      "why": "not yet confirmed by the owner's listen"
+    },
+    {
+      "item": "k03_tawaqqaf",
+      "variant": "k03_tawaqqaf__pause__speakers__184529",
+      "why": "not yet confirmed by the owner's listen"
+    },
+    {
+      "item": "k04_lahza",
+      "variant": "k04_lahza__duck__speakers__183046",
+      "why": "not yet confirmed by the owner's listen"
+    },
+    {
+      "item": "k04_lahza",
+      "variant": "k04_lahza__duck__speakers__183112",
+      "why": "not yet confirmed by the owner's listen"
+    },
+    {
+      "item": "k04_lahza",
+      "variant": "k04_lahza__pause__speakers__184658",
+      "why": "not yet confirmed by the owner's listen"
+    },
+    {
+      "item": "k05_stop",
+      "variant": "k05_stop__duck__speakers__183523",
+      "why": "not yet confirmed by the owner's listen"
+    },
+    {
+      "item": "k05_stop",
+      "variant": "k05_stop__pause__speakers__184925",
+      "why": "not yet confirmed by the owner's listen"
+    },
+    {
+      "item": "k06_wait",
+      "variant": "k06_wait__duck__speakers__183705",
+      "why": "not yet confirmed by the owner's listen"
+    },
+    {
+      "item": "k06_wait",
+      "variant": "k06_wait__pause__speakers__185052",
+      "why": "not yet confirmed by the owner's listen"
+    },
+    {
+      "item": "r01_muwazzaf",
+      "variant": "r01_muwazzaf__duck__speakers__182319",
+      "why": "not yet confirmed by the owner's listen"
+    },
+    {
+      "item": "r01_muwazzaf",
+      "variant": "r01_muwazzaf__duck__speakers__182332",
+      "why": "not yet confirmed by the owner's listen"
+    },
+    {
+      "item": "r01_muwazzaf",
+      "variant": "r01_muwazzaf__duck__speakers__182345",
+      "why": "not yet confirmed by the owner's listen"
+    },
+    {
+      "item": "r01_muwazzaf",
+      "variant": "r01_muwazzaf__pause__speakers__184238",
+      "why": "not yet confirmed by the owner's listen"
+    },
+    {
+      "item": "r02_ghalat",
+      "variant": "r02_ghalat__duck__speakers__182915",
+      "why": "not yet confirmed by the owner's listen"
+    },
+    {
+      "item": "r02_ghalat",
+      "variant": "r02_ghalat__duck__speakers__182932",
+      "why": "not yet confirmed by the owner's listen"
+    },
+    {
+      "item": "r03_repeat",
+      "variant": "r03_repeat__duck__speakers__183202",
+      "why": "not yet confirmed by the owner's listen"
+    },
+    {
+      "item": "r03_repeat",
+      "variant": "r03_repeat__duck__speakers__183212",
+      "why": "not yet confirmed by the owner's listen"
+    },
+    {
+      "item": "r03_repeat",
+      "variant": "r03_repeat__pause__speakers__184749",
+      "why": "not yet confirmed by the owner's listen"
+    },
+    {
+      "item": "r03_repeat",
+      "variant": "r03_repeat__pause__speakers__184759",
+      "why": "not yet confirmed by the owner's listen"
+    },
+    {
+      "item": "r04_how_send",
+      "variant": "r04_how_send__duck__speakers__183648",
+      "why": "not yet confirmed by the owner's listen"
+    },
+    {
+      "item": "r04_how_send",
+      "variant": "r04_how_send__pause__speakers__185028",
+      "why": "not yet confirmed by the owner's listen"
+    },
+    {
+      "item": "r04_how_send",
+      "variant": "r04_how_send__pause__speakers__185038",
+      "why": "not yet confirmed by the owner's listen"
+    },
+    {
+      "item": "s01_archive",
+      "variant": "s01_archive__duck__speakers__181825",
+      "why": "not yet confirmed by the owner's listen"
+    },
+    {
+      "item": "s01_archive",
+      "variant": "s01_archive__duck__speakers__181841",
+      "why": "not yet confirmed by the owner's listen"
+    },
+    {
+      "item": "s01_archive",
+      "variant": "s01_archive__duck__speakers__181853",
+      "why": "not yet confirmed by the owner's listen"
+    },
+    {
+      "item": "s01_archive",
+      "variant": "s01_archive__pause__headset__185341",
+      "why": "not yet confirmed by the owner's listen"
+    },
+    {
+      "item": "s01_archive",
+      "variant": "s01_archive__pause__speakers__184003",
+      "why": "not yet confirmed by the owner's listen"
+    },
+    {
+      "item": "s02_inbox_morning",
+      "variant": "s02_inbox_morning__duck__speakers__182014",
+      "why": "not yet confirmed by the owner's listen"
+    },
+    {
+      "item": "s02_inbox_morning",
+      "variant": "s02_inbox_morning__pause__headset__185405",
+      "why": "not yet confirmed by the owner's listen"
+    },
+    {
+      "item": "s02_inbox_morning",
+      "variant": "s02_inbox_morning__pause__speakers__184050",
+      "why": "not yet confirmed by the owner's listen"
+    },
+    {
+      "item": "s03_signature_outlook",
+      "variant": "s03_signature_outlook__duck__speakers__182109",
+      "why": "not yet confirmed by the owner's listen"
+    },
+    {
+      "item": "s03_signature_outlook",
+      "variant": "s03_signature_outlook__duck__speakers__182123",
+      "why": "not yet confirmed by the owner's listen"
+    },
+    {
+      "item": "s03_signature_outlook",
+      "variant": "s03_signature_outlook__pause__speakers__184123",
+      "why": "not yet confirmed by the owner's listen"
+    },
+    {
+      "item": "s04_pdf",
+      "variant": "s04_pdf__duck__speakers__182400",
+      "why": "not yet confirmed by the owner's listen"
+    },
+    {
+      "item": "s04_pdf",
+      "variant": "s04_pdf__duck__speakers__182414",
+      "why": "not yet confirmed by the owner's listen"
+    },
+    {
+      "item": "s04_pdf",
+      "variant": "s04_pdf__pause__speakers__184251",
+      "why": "not yet confirmed by the owner's listen"
+    },
+    {
+      "item": "s05_password",
+      "variant": "s05_password__duck__speakers__182538",
+      "why": "not yet confirmed by the owner's listen"
+    },
+    {
+      "item": "s05_password",
+      "variant": "s05_password__pause__speakers__184354",
+      "why": "not yet confirmed by the owner's listen"
+    },
+    {
+      "item": "s05_password",
+      "variant": "s05_password__pause__speakers__184407",
+      "why": "not yet confirmed by the owner's listen"
+    },
+    {
+      "item": "s06_pause_error",
+      "variant": "s06_pause_error__duck__speakers__182658",
+      "why": "not yet confirmed by the owner's listen"
+    },
+    {
+      "item": "s06_pause_error",
+      "variant": "s06_pause_error__duck__speakers__182714",
+      "why": "not yet confirmed by the owner's listen"
+    },
+    {
+      "item": "s06_pause_error",
+      "variant": "s06_pause_error__pause__speakers__184504",
+      "why": "not yet confirmed by the owner's listen"
+    },
+    {
+      "item": "s06_pause_error",
+      "variant": "s06_pause_error__pause__speakers__184518",
+      "why": "not yet confirmed by the owner's listen"
+    },
+    {
+      "item": "s07_refer",
+      "variant": "s07_refer__duck__speakers__183032",
+      "why": "not yet confirmed by the owner's listen"
+    },
+    {
+      "item": "s07_refer",
+      "variant": "s07_refer__pause__speakers__184646",
+      "why": "not yet confirmed by the owner's listen"
+    },
+    {
+      "item": "s08_archived_where",
+      "variant": "s08_archived_where__duck__speakers__183148",
+      "why": "not yet confirmed by the owner's listen"
+    },
+    {
+      "item": "s08_archived_where",
+      "variant": "s08_archived_where__pause__speakers__184725",
+      "why": "not yet confirmed by the owner's listen"
+    },
+    {
+      "item": "s08_archived_where",
+      "variant": "s08_archived_where__pause__speakers__184738",
+      "why": "not yet confirmed by the owner's listen"
+    },
+    {
+      "item": "s09_restore_deleted",
+      "variant": "s09_restore_deleted__duck__speakers__183455",
+      "why": "not yet confirmed by the owner's listen"
+    },
+    {
+      "item": "s09_restore_deleted",
+      "variant": "s09_restore_deleted__duck__speakers__183509",
+      "why": "not yet confirmed by the owner's listen"
+    },
+    {
+      "item": "s09_restore_deleted",
+      "variant": "s09_restore_deleted__pause__speakers__184859",
+      "why": "not yet confirmed by the owner's listen"
+    },
+    {
+      "item": "s09_restore_deleted",
+      "variant": "s09_restore_deleted__pause__speakers__184912",
+      "why": "not yet confirmed by the owner's listen"
+    },
+    {
+      "item": "s10_mobile_notifications",
+      "variant": "s10_mobile_notifications__duck__speakers__183637",
+      "why": "not yet confirmed by the owner's listen"
+    },
+    {
+      "item": "s10_mobile_notifications",
+      "variant": "s10_mobile_notifications__pause__speakers__185001",
+      "why": "not yet confirmed by the owner's listen"
+    },
+    {
+      "item": "s10_mobile_notifications",
+      "variant": "s10_mobile_notifications__pause__speakers__185016",
+      "why": "not yet confirmed by the owner's listen"
+    },
+    {
+      "item": "s11_word_size",
+      "variant": "s11_word_size__duck__speakers__183720",
+      "why": "not yet confirmed by the owner's listen"
+    },
+    {
+      "item": "s11_word_size",
+      "variant": "s11_word_size__pause__speakers__185111",
+      "why": "not yet confirmed by the owner's listen"
+    },
+    {
+      "item": "s11_word_size",
+      "variant": "s11_word_size__pause__speakers__185124",
+      "why": "not yet confirmed by the owner's listen"
+    },
+    {
+      "item": "s12_language",
+      "variant": "s12_language__duck__speakers__183829",
+      "why": "not yet confirmed by the owner's listen"
+    },
+    {
+      "item": "s12_language",
+      "variant": "s12_language__pause__speakers__185215",
+      "why": "not yet confirmed by the owner's listen"
+    },
+    {
+      "item": "s12_language",
+      "variant": "s12_language__pause__speakers__185228",
+      "why": "not yet confirmed by the owner's listen"
+    },
+    {
+      "item": "u01_signature",
+      "variant": "u01_signature__duck__speakers__182558",
+      "why": "typed by the owner, waiting on its second confirmation in a later review pass"
+    },
+    {
+      "item": "u01_signature",
+      "variant": "u01_signature__pause__speakers__184420",
+      "why": "typed by the owner, waiting on its second confirmation in a later review pass"
+    },
+    {
+      "item": "u02_attachment",
+      "variant": "u02_attachment__duck__speakers__183307",
+      "why": "typed by the owner, waiting on its second confirmation in a later review pass"
+    },
+    {
+      "item": "u02_attachment",
+      "variant": "u02_attachment__pause__speakers__184828",
+      "why": "typed by the owner, waiting on its second confirmation in a later review pass"
+    },
+    {
+      "item": "u03_ticket",
+      "variant": "u03_ticket__duck__speakers__183849",
+      "why": "typed by the owner, waiting on its second confirmation in a later review pass"
+    },
+    {
+      "item": "u03_ticket",
+      "variant": "u03_ticket__pause__speakers__185243",
+      "why": "typed by the owner, waiting on its second confirmation in a later review pass"
+    },
+    {
+      "item": "y01_naam_irsilha",
+      "variant": "y01_naam_irsilha__duck__speakers__182134",
+      "why": "not yet confirmed by the owner's listen"
+    },
+    {
+      "item": "y01_naam_irsilha",
+      "variant": "y01_naam_irsilha__duck__speakers__182147",
+      "why": "not yet confirmed by the owner's listen"
+    },
+    {
+      "item": "y01_naam_irsilha",
+      "variant": "y01_naam_irsilha__pause__speakers__184133",
+      "why": "not yet confirmed by the owner's listen"
+    },
+    {
+      "item": "y01_naam_irsilha",
+      "variant": "y01_naam_irsilha__pause__speakers__184153",
+      "why": "not yet confirmed by the owner's listen"
+    },
+    {
+      "item": "y02_eh_irsilha",
+      "variant": "y02_eh_irsilha__duck__speakers__182804",
+      "why": "not yet confirmed by the owner's listen"
+    },
+    {
+      "item": "y02_eh_irsilha",
+      "variant": "y02_eh_irsilha__duck__speakers__182814",
+      "why": "not yet confirmed by the owner's listen"
+    },
+    {
+      "item": "y02_eh_irsilha",
+      "variant": "y02_eh_irsilha__duck__speakers__182827",
+      "why": "not yet confirmed by the owner's listen"
+    },
+    {
+      "item": "y02_eh_irsilha",
+      "variant": "y02_eh_irsilha__pause__speakers__184541",
+      "why": "not yet confirmed by the owner's listen"
+    },
+    {
+      "item": "y03_yes_submit",
+      "variant": "y03_yes_submit__duck__speakers__183236",
+      "why": "not yet confirmed by the owner's listen"
+    },
+    {
+      "item": "y03_yes_submit",
+      "variant": "y03_yes_submit__duck__speakers__183246",
+      "why": "not yet confirmed by the owner's listen"
+    },
+    {
+      "item": "y03_yes_submit",
+      "variant": "y03_yes_submit__pause__speakers__184811",
+      "why": "not yet confirmed by the owner's listen"
+    },
+    {
+      "item": "y04_naam",
+      "variant": "y04_naam__duck__speakers__183750",
+      "why": "not yet confirmed by the owner's listen"
+    },
+    {
+      "item": "y04_naam",
+      "variant": "y04_naam__pause__speakers__185149",
+      "why": "not yet confirmed by the owner's listen"
+    }
+  ]
+}

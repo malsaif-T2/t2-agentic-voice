@@ -5,7 +5,7 @@ from __future__ import annotations
 
 from collections import Counter
 
-from ole5_voice.evals.items import EVALS, count_strata, load_terms
+from ole5_voice.evals.items import EVALS, Strata, count_strata, load_items, load_terms, read_toml
 from ole5_voice.evals.models import TICKET_KIND, Item, Variant
 from ole5_voice.evals.takes import Script, load_script
 
@@ -83,3 +83,14 @@ def test_the_draft_scripts_lines_follow_the_spelling_guide() -> None:
             assert line.text in script.listening_sounds, line.id
         if line.kind == "echo_only":
             assert line.reply in {"ar_inbox", "en_signature"}, line.id
+
+
+def test_the_committed_set_holds_its_registered_strata() -> None:
+    registered = read_toml(EVALS / "strata.toml", Strata)
+    counted = count_strata(load_items(EVALS / "golden"), load_script(EVALS / "script.toml"))
+    assert counted == registered
+    # The talk-over as the registration describes it: 120 takes with segments, all on the
+    # laptop's microphone array, 3 played on a headset.
+    assert (registered.items.source, registered.variants.total) == ({"talkover": 43}, 120)
+    assert registered.variants.device == {"laptop": 120}
+    assert registered.variants.tag["playback-headset"] == 3

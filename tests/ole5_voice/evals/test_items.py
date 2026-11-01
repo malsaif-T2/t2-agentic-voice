@@ -14,7 +14,15 @@ from typing import Any
 import pytest
 from ole5_voice.evals import import_talkover
 from ole5_voice.evals.audio import AudioFormatError, Wav, sha256_of
-from ole5_voice.evals.items import GoldenSetError, load_items, load_manifests, load_terms, read_json
+from ole5_voice.evals.items import (
+    GoldenSetError,
+    accepted,
+    load_items,
+    load_manifests,
+    load_terms,
+    read_json,
+    unchecked,
+)
 from ole5_voice.evals.models import AudioRef, Confirmation, Item, Manifest, Variant
 from ole5_voice.evals.toml_write import dump_item
 
@@ -167,6 +175,34 @@ def test_a_confirmation_keeps_its_time_zone() -> None:
     assert times[0].tzinfo == UTC or times[0].utcoffset() == timedelta(0)
     assert times[1].tzinfo is None and times[1].microsecond == 123456
     assert times[2].utcoffset() == timedelta(hours=3)
+
+
+def _confirmed(variant: Variant, *passes: int) -> Variant:
+    confirmations = [{"at": WHEN, "review_pass": p} for p in passes]
+    return Variant.model_validate(variant.model_dump() | {"confirmations": confirmations})
+
+
+def _typed(variant: Variant) -> Variant:
+    return Variant.model_validate(variant.model_dump() | {"reference_source": "typed"})
+
+
+def test_a_variant_is_checked_once_the_owner_confirmed_it() -> None:
+    plain = samples.variant()
+    assert unchecked(plain) == "not yet confirmed by the owner's listen"
+    assert unchecked(_confirmed(plain, 1)) is None
+    # A typed reference with no second confirmation is left out (the plan's Track D, Tests).
+    assert "waiting on its second confirmation" in (unchecked(_typed(plain)) or "")
+    assert unchecked(_confirmed(_typed(plain), 2)) is None
+
+
+def test_only_checked_variants_are_accepted() -> None:
+    item = samples.item()
+    both = Item.model_validate(
+        item.model_dump()
+        | {"variants": (_confirmed(samples.variant("v1"), 1), samples.variant("v2"))}
+    )
+    assert [v.id for i in accepted([both]) for v in i.variants] == ["v1"]
+    assert accepted([item]) == ()
 
 
 # The talk-over import, on a made-up lab: its records as the lab writes them (with fields the
