@@ -1,23 +1,19 @@
 """Tracing helpers: the library's own spans, in OpenInference's format, as plain OTLP (D-023).
 
-`Tracing` uses the team's `TracerProvider` when one is given, otherwise a private one sending
-to `tracing.endpoint`, otherwise none, when every helper does nothing; it never installs a
-provider globally. Its span helpers take the parent span as an argument, since an implicit
-current span does not cross the pipeline's tasks (ARCHITECTURE.md). Every text attribute of
-every span they make passes through the `Redactor`; no bytes (audio) and no exception's message
-are ever exported (the design's 10.1). Public through the `tracing` facade (D-021).
-
-A private provider's spans go through a bounded queue to a worker thread, so an exporter that
-fails or hangs never reaches the caller; a span that cannot be queued or sent is counted. Every
-value the SDK and its OTLP exporter would read from an `OTEL_*` variable is passed (plan 002's
-decision log): a sampler, a `Resource` built directly, the span limits, a no-op meter provider,
-and the exporter's endpoint, timeout, compression and own `requests.Session`, which sends only
-the headers OTLP needs and verifies with requests' defaults. `OTEL_SDK_DISABLED` and
+`Tracing` uses the team's `TracerProvider` when given, otherwise a private one sending to
+`tracing.endpoint`, otherwise none; it never installs a provider globally. Its span helpers take
+the parent span as an argument, since an implicit current span does not cross the pipeline's
+tasks (ARCHITECTURE.md). Every text value passes through the `Redactor`; no bytes (audio) and no
+exception's message are exported (the design's 10.1). Public through the `tracing` facade
+(D-021). A private provider's spans go through a bounded queue to a worker thread, so a failing
+or hung exporter never reaches the caller, and every value the SDK and its exporter would read
+from an `OTEL_*` variable is passed (plan 002's decision log); `OTEL_SDK_DISABLED` and
 `OTEL_PYTHON_CONTEXT` are read whatever is passed (TD-005).
 """
 
 from __future__ import annotations
 
+import logging
 import threading
 from collections import deque
 from collections.abc import Iterator, Mapping
@@ -65,17 +61,14 @@ _BATCH_SPANS = 128  # spans per export request
 _DELAY_S = 1.0  # the longest a span sits in the queue before its batch is sent
 _EXPORT_TIMEOUT_S = 2.0  # one export request, the exporter's own retries included
 _CLOSE_S = 3.0  # the longest `shutdown` gives the last batch before counting it dropped
-# All eight limits, so none comes from an OTEL_*_LIMIT variable: the SDK's own 128 for the
-# attributes, events and links (then the span's, an event's and a link's attributes), and a cap
-# on a value's length.
+# All eight, so none comes from an OTEL_*_LIMIT variable: the SDK's own 128 for the attributes,
+# events, links, a span's, an event's and a link's attributes; and a cap on a value's length.
 _LIMITS = SpanLimits(128, 128, 128, 128, 128, 128, 8192, 8192)
-# The only headers an export request carries (requests adds Content-Length and the transport
-# its Host): neither OTEL_EXPORTER_OTLP_HEADERS nor a .netrc login reaches the backend.
+# All an export request carries, beside Content-Length and Host: no OTEL_* header, no .netrc login.
 _EXPORT_HEADERS = {
     "Content-Type": "application/x-protobuf",
     "User-Agent": f"t2-agentic-voice/{_VERSION}",
 }
-_ERROR_TYPE = "error.type"
 _STT_AUDIO_SECONDS = "stt.audio_seconds"
 _STT_BILLED_SECONDS = "stt.billed_seconds"
 _STT_LANGUAGE_SENT = "stt.language_sent"
@@ -182,10 +175,9 @@ class Tracing:
         redactor: Redactor | None = None,
         include_transcripts: bool = True,
     ) -> None:
-        """Tracing on `tracer_provider` (the team's own, left as it is), or on a private
-        provider sending to `exporter` through the bounded queue, filed under `project`, or off
-        when given neither; `redactor` runs on every text value, and `include_transcripts`
-        says whether a transcript goes in its span."""
+        """Tracing on `tracer_provider` (the team's own, left as it is), or on a private provider
+        sending to `exporter` through the bounded queue, filed under `project`, or off; `redactor`
+        runs on every text value, and `include_transcripts` keeps or drops the transcript."""
         if tracer_provider is not None and exporter is not None:
             raise ValueError("give a tracer provider or an exporter, not both")
         self._redact = redactor or Redactor([])
@@ -263,7 +255,7 @@ class Tracing:
         try:
             yield span
         except BaseException as error:
-            span.set_attribute(_ERROR_TYPE, type(error).__qualname__)
+            span.set_attribute("error.type", type(error).__qualname__)
             span.set_status(StatusCode.ERROR, type(error).__qualname__)
             raise
         finally:
@@ -277,11 +269,9 @@ class Tracing:
 
 
 class _Queue(SpanProcessor):
-    """The private provider's bounded queue and its worker thread, which sends the spans in
-    batches. Nothing here blocks or raises into the thread that ends a span, and a span that
-    cannot be queued or sent is counted. The SDK's batch processor is not used: it counts
-    nothing it drops unless an `OTEL_*` variable turns its metrics on, and its own shutdown
-    gives a hung exporter 30 seconds."""
+    """The private provider's bounded queue and the worker thread sending it in batches; nothing
+    here blocks or raises into the thread that ends a span. Not the SDK's batch processor, which
+    counts no drop unless an `OTEL_*` variable says so, and gives a hung exporter 30 s to close."""
 
     def __init__(self, exporter: SpanExporter) -> None:
         self._exporter = exporter
@@ -353,8 +343,7 @@ class _Queue(SpanProcessor):
 
 
 def _private_provider(queue: _Queue, project: str | None) -> SdkTracerProvider:
-    """A provider of the library's own, never installed globally, with every value the SDK
-    would read from an `OTEL_*` variable passed."""
+    """The library's own provider, never installed globally, every `OTEL_*` value passed."""
     attributes: dict[str, AnyValue] = {"service.name": "t2-agentic-voice"}
     if project:
         attributes[ResourceAttributes.PROJECT_NAME] = project
@@ -383,16 +372,27 @@ class _ExportSession(requests.Session):
 
 def _otlp_exporter(endpoint: str) -> OTLPSpanExporter:
     """Plain OTLP over HTTP to `endpoint`, every value the exporter would read from an
-    `OTEL_EXPORTER_OTLP_*` variable passed, and its session given."""
+    `OTEL_EXPORTER_OTLP_*` variable passed, and its own session. While it is built, the SDK's
+    warning about a malformed header variable is dropped: it quotes the value (a token, say),
+    and the session sends none of those headers anyway."""
+
+    def hide(record: logging.LogRecord) -> bool:  # a filter of this call's own
+        return False
+
     session = _ExportSession()
-    exporter = OTLPSpanExporter(
-        endpoint=endpoint,
-        headers={},
-        timeout=_EXPORT_TIMEOUT_S,
-        compression=Compression.NoCompression,
-        session=session,
-        meter_provider=NoOpMeterProvider(),
-    )
+    parser = logging.getLogger("opentelemetry.util.re")
+    parser.addFilter(hide)
+    try:
+        exporter = OTLPSpanExporter(
+            endpoint=endpoint,
+            headers={},
+            timeout=_EXPORT_TIMEOUT_S,
+            compression=Compression.NoCompression,
+            session=session,
+            meter_provider=NoOpMeterProvider(),
+        )
+    finally:
+        parser.removeFilter(hide)
     # The exporter sets these from OTEL_EXPORTER_OTLP_*CERTIFICATE and *CLIENT_KEY when no file
     # is passed; requests' own defaults are put back.
     session.verify, session.cert = True, None

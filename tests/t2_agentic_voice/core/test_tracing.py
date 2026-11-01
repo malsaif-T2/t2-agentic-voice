@@ -6,6 +6,7 @@ exporter, or a collector on 127.0.0.1."""
 from __future__ import annotations
 
 import http.server
+import logging
 import threading
 import time
 from collections.abc import Iterator, Sequence
@@ -28,6 +29,9 @@ from t2_agentic_voice.core.redaction import Redactor
 from t2_agentic_voice.core.tracing import Tracing
 
 MADE_UP_KEY = "gsk_made-up-key-for-tests-0123456789"
+TOKEN = f"Bearer {MADE_UP_KEY}"
+# The last entry is malformed: the SDK logs such an entry with its text.
+ENV_HEADERS = f"Authorization={TOKEN},x-made-up=1,Content-Type=text/plain,{TOKEN}"
 PHONE = "0512345678"
 RESOURCE = {"service.name": "t2-agentic-voice", "openinference.project.name": "golden-set"}
 NOBODY = "http://127.0.0.1:9"  # the discard port: nothing answers
@@ -94,10 +98,10 @@ def test_a_turn_and_its_speech_to_text_span_carry_openinference_names() -> None:
         "stt.language": "ar",
         "stt.billed_seconds": 10.0,
     }
-    assert turn.parent is None and stt.parent == turn.context
+    assert (turn.parent, stt.parent) == (None, turn.context)
+    scope = turn.instrumentation_scope.name if turn.instrumentation_scope else None
+    assert (scope, tracing.dropped_spans) == ("t2_agentic_voice", 0)
     assert dict(turn.resource.attributes) == RESOURCE
-    assert turn.instrumentation_scope is not None
-    assert (turn.instrumentation_scope.name, tracing.dropped_spans) == ("t2_agentic_voice", 0)
 
 
 def test_the_teams_provider_is_used_and_left_as_it_is(tmp_path: Path) -> None:
@@ -115,12 +119,12 @@ def test_the_teams_provider_is_used_and_left_as_it_is(tmp_path: Path) -> None:
     request, stt_span = exporter.get_finished_spans()[::-1]
     assert stt_span.parent == request.context
     attributes = dict(stt_span.attributes or {})
-    assert "output.value" not in attributes and "stt.language_sent" not in attributes
+    assert {"output.value", "stt.language_sent"}.isdisjoint(attributes)
     assert attributes["stt.language"] == "en"
     assert "hello there" not in _exported_text([stt_span])
     tracing.shutdown()
-    exporter.clear()
-    _one_turn(tracing)  # the team's provider still works after the library's shutdown
+    exporter.clear()  # the team's provider still works after the library's shutdown
+    _one_turn(tracing)
     assert (len(exporter.get_finished_spans()), tracing.dropped_spans) == (2, 0)
 
 
@@ -210,8 +214,7 @@ def test_no_secret_reaches_a_span_or_a_log_line(
 class _Failing(SpanExporter):
     """An exporter that raises, or says it failed; its close raises too."""
 
-    def __init__(self, *, raises: bool) -> None:
-        self.raises = raises
+    raises = True
 
     def export(self, spans: Sequence[ReadableSpan]) -> SpanExportResult:
         if self.raises:
@@ -224,10 +227,11 @@ class _Failing(SpanExporter):
 
 @pytest.mark.parametrize("raises", [True, False])
 def test_an_exporter_that_fails_never_reaches_the_caller(
-    raises: bool, capsys: pytest.CaptureFixture[str]
+    raises: bool, monkeypatch: pytest.MonkeyPatch, capsys: pytest.CaptureFixture[str]
 ) -> None:
     """Its spans are counted as dropped, and logged once by the failure's type alone."""
-    tracing = Tracing(exporter=_Failing(raises=raises))
+    monkeypatch.setattr(_Failing, "raises", raises)
+    tracing = Tracing(exporter=_Failing())
     _one_turn(tracing)
     tracing.shutdown()
     tracing.shutdown()  # twice is harmless
@@ -248,8 +252,7 @@ class _Hanging(SpanExporter):
 
 
 def test_an_exporter_that_hangs_never_holds_the_caller(monkeypatch: pytest.MonkeyPatch) -> None:
-    """The queue holds two spans while the first batch hangs; the next is dropped, and the two
-    still queued when `shutdown` gives up are dropped too, all counted, as is a later span."""
+    """Two spans queue behind a hung batch; the rest, and a later span, are counted dropped."""
     for name, value in (("_QUEUE_SPANS", 2), ("_BATCH_SPANS", 1), ("_CLOSE_S", 0.2)):
         monkeypatch.setattr(tracing_module, name, value)
     exporter = _Hanging()
@@ -294,8 +297,7 @@ def _described(spans: Sequence[ReadableSpan]) -> list[tuple[str, object, object]
 def test_otel_variables_change_no_span_resource_or_queue(monkeypatch: pytest.MonkeyPatch) -> None:
     tracing, exporter = _private()
     _one_turn(tracing)
-    tracing.shutdown()
-    baseline = _described(exporter.get_finished_spans())
+    baseline = _described(list(_finished(tracing, exporter).values()))
     for name, value in SHELL.items():
         monkeypatch.setenv(name, value)
     tracing, exporter = _private()
@@ -327,7 +329,6 @@ def _collector(status: int) -> Iterator[tuple[str, Received]]:
             body = self.rfile.read(int(self.headers.get("Content-Length", "0")))
             received.append((self.path, {k.lower(): v for k, v in self.headers.items()}, body))
             self.send_response(status)
-            self.send_header("Content-Length", "0")
             self.end_headers()
 
     server = http.server.ThreadingHTTPServer(("127.0.0.1", 0), Handler)
@@ -339,17 +340,15 @@ def _collector(status: int) -> Iterator[tuple[str, Received]]:
         server.server_close()
 
 
+@pytest.mark.parametrize("form", ["", "TRACES_"])
 def test_otlp_over_http_sends_only_its_own_headers_and_trust(
-    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+    form: str, tmp_path: Path, monkeypatch: pytest.MonkeyPatch, caplog: pytest.LogCaptureFixture
 ) -> None:
-    """The exporter's variables, set in the shell, change nothing: no header (a token among
-    them), no other endpoint, no compression or timeout, no certificate or client key, no
-    credential provider (each of these would change the request, or fail it, if read)."""
+    """The exporter's variables change no header (a token, even malformed), endpoint, compression,
+    timeout, certificate, client key or credential provider: each would change the request."""
     monkeypatch.setenv("NO_PROXY", "127.0.0.1")
-    token = f"Bearer {MADE_UP_KEY}"
     shell = SHELL | {
-        "OTEL_EXPORTER_OTLP_HEADERS": f"authorization={token},x-made-up=1",
-        "OTEL_EXPORTER_OTLP_TRACES_HEADERS": f"Authorization={token},Content-Type=text/plain",
+        f"OTEL_EXPORTER_OTLP_{form}HEADERS": ENV_HEADERS,
         "OTEL_EXPORTER_OTLP_ENDPOINT": NOBODY,
         "OTEL_EXPORTER_OTLP_TRACES_ENDPOINT": f"{NOBODY}/v1/traces",
         "OTEL_EXPORTER_OTLP_COMPRESSION": "gzip",
@@ -380,9 +379,10 @@ def test_otlp_over_http_sends_only_its_own_headers_and_trust(
     assert (path, tracing.dropped_spans, set(headers) <= SENT_HEADERS) == ("/v1/traces", 0, True)
     assert headers["content-type"] == "application/x-protobuf"
     assert MADE_UP_KEY not in repr(headers) and MADE_UP_KEY.encode() not in body
+    assert MADE_UP_KEY not in caplog.text  # the SDK quotes a malformed header variable
+    assert logging.getLogger("opentelemetry.util.re").filters == []
     assert [(kwargs["verify"], kwargs["cert"]) for kwargs in sent] == [(True, None)]
-    request = ExportTraceServiceRequest()
-    request.ParseFromString(body)
+    request = ExportTraceServiceRequest.FromString(body)
     [resource_spans] = request.resource_spans
     resource = {a.key: a.value.string_value for a in resource_spans.resource.attributes}
     names = sorted(span.name for scope in resource_spans.scope_spans for span in scope.spans)
