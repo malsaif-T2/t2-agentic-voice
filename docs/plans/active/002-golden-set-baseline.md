@@ -1531,6 +1531,17 @@ run, [WORKING-RULES.md](../../../WORKING-RULES.md), "Measurement runs")
     out; `poe golden --check` passes. `uv run --offline poe check` passes: 1216 tests and 1
     skipped (the symbolic-link case), 100% coverage (3598 statements), mypy strict on 144 files,
     arch and docs clean.
+- 2026-11-01: Step 15's two reference runs on the command line, now on the confirmed set, as
+  step 19 says, at 7060bb0 in `plan-002-talkover-review` with the tree clean, each with an empty
+  `--env-file` and its `--out` in the agent's scratch folder, outside the repository:
+  `uv run --offline poe eval --answerer reference --split dev`: 83 of 83 variants of 30 items
+  right (no unchecked variant left out), accuracy 1, WER and CER 0, term recall 1, ID recall none
+  (no talk-over item is a ticket number), 0 failures, 0 requests, cost 0, complete. With `--split
+  held-out`: 35 of 35 variants of 13 items right, the same totals, its scorecard holding no
+  variant, and its groups by language (`english`, `saudi`, `other`) and by kind
+  (`listening_sound`, `request`, `other`) pooled as the owner's rule says. Neither run appended a
+  history line. The command-line check that step 15 left for step 19 passes on the talk-over
+  set; step 19 makes it again once the new takes are in.
 
 ## Decision log
 
