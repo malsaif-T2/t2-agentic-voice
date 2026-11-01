@@ -1558,6 +1558,26 @@ run, [WORKING-RULES.md](../../../WORKING-RULES.md), "Measurement runs")
   (the ticket lines on every device), so 219 kept takes, where the registration counted 156. The
   owner chose to keep every kept take ("The owner's decisions"), and the registration's counts
   and estimate are amended. No review of the new takes exists yet: the owner's check (Q9) is next.
+- 2026-11-01: The owner's check of the new takes (Q9) is done: "Done with the review". All 219
+  kept takes were confirmed in one pass (review pass 3), none typed. The owner then added: "I
+  have pronounced numbers in different ways btw", and "There is one were I accidently approved
+  the number 4221 instead of 4821" (a take of the line whose script says 4821).
+  - The review page listed only the takes due, so a take confirmed by mistake could not be
+    corrected, although the server takes a review of any take and the import already lets a
+    later typed review replace the reference and drop the earlier confirmations (`reviewed` in
+    `items.py`). The page now also lists, in a closed "Confirmed" section, every take confirmed
+    before this pass, with Play and the box for what it says (no second confirmation), so the
+    owner can find that take and type what was said; it comes back for its own check in the
+    next pass (`Plan 002: the review page corrects a take confirmed by mistake`).
+  - Checked in the desktop app's browser pane on a scratch copy of the talk-over reviews, never
+    the owner's folder: pass 3 listed the 118 confirmed variants with no "It says this"; a typed
+    text moved one out of the list (117 confirmed, 1 typed); in pass 4 it was due with the typed
+    text and was confirmed; `read_reviews` and `reviewed` then give the typed text as its
+    reference with only the pass-4 confirmation. The page still has no automated test (TD-022).
+  - The ticket numbers said in different ways: the scorer finds a number written whole, in
+    groups, or digit by digit in digits or digit names, but not in compound number words
+    («ألفين وستة وعشرين», "twenty twenty six"), which would score a right transcript wrong:
+    TD-031, for the owner to rule on before R1.
 
 ## Decision log
 
@@ -2782,6 +2802,12 @@ All entries are the agent's choices of 2026-11-01, with the agent's reasons.
   registered): the ticket lines get several readings each, which ID recall needs, and the cost
   stays within the earlier estimate. A line kept twice weighs twice in the totals, which pool
   variants; results by device stay apart, and the sign test is by item. The owner's answer.
+- 2026-11-01: The review page lists the takes confirmed before the current pass in a closed
+  section below the queue, each with Play and the box for what it says but no second
+  confirmation, so a confirmation made by mistake is corrected by the owner's typed text and a
+  later check, as a typed reference always is, and never by editing or deleting a review file.
+  One confirmed in the current pass is listed after the next run, since a pass holds one review
+  of each take. The agent's choice.
 
 ## The owner's decisions
 
