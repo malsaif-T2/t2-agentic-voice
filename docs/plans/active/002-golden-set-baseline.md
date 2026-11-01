@@ -490,6 +490,33 @@ run, [WORKING-RULES.md](../../../WORKING-RULES.md), "Measurement runs")
   module with no `main`; `tests/ole5_voice/evals/test_commands.py` runs each command's `--help`
   as `python -m` would. CLAUDE.md gains two rows for the five tasks and a code-map line (112 of
   its 120 lines).
+- 2026-11-01: Block 0, step 11, the baselines, in `tests/t2_agentic_voice/fixtures/`:
+  - `groq_stt_request.json`: for a fixed made-up clip (1 s at 16 kHz, its samples given by a
+    formula, its WAV written with `wave`, 32,044 bytes, with its SHA-256) and the default
+    settings, the request `GroqSTT` must send: a POST to
+    `https://api.groq.com/openai/v1/audio/transcriptions` with the multipart fields `model`
+    `whisper-large-v3`, `language` `ar`, `response_format` `verbose_json` and `temperature`
+    `0` (the SDK sends a form value as `str(value)`,
+    `groq/_qs.py`, lines 120-128), no `prompt`, and the file `speech.wav` as `audio/wav`; the
+    client with `max_retries` 0 and a 6 s timeout. From the prototype's call
+    (`Ole5-chatbot/src/ole5_chat/voice/stt.py`, lines 221-246), the plan's reading of Groq's
+    reference, and the installed SDK (`groq/resources/audio/transcriptions.py`, lines 236 and
+    454, the path).
+  - `arabic_normalizer_characterization.json`: 37 rows, each an input with what the
+    prototype's `rules.normalize` (`Ole5-chatbot/src/ole5_chat/voice/rules.py`, lines 11-19)
+    and `stt_eval.norm` (`Ole5-chatbot/scripts/stt_eval.py`, lines 1059-1066) make of it,
+    written by reading the code, never by running it (D-010): each folded letter form, the
+    diacritics, tatweel and annotation marks, Arabic and Latin punctuation, Arabic-Indic and
+    Persian digits, spaces, mixed text with product terms, and a word split in two. Five rows
+    carry a `gap` the spelling guide rules on (a lone hamza, alef wasla, Farsi yeh, keheh,
+    digits spelled out), where Track A's output is the guide's. Before it was written, each
+    hand-written row was checked against an independent reading of the two functions, in a
+    scratch script outside the repository; the check caught one wrong row.
+
+  `tests/t2_agentic_voice/test_baselines.py` keeps both consistent: the clip rebuilds to its
+  hash, and every row's `norm` is its `normalize` with the digits read and the spaces removed.
+  `uv run poe arch` and `uv run poe docs` are clean. Block 0 is built; next, the review (step
+  12) and the merge into `plan-002-integration`, by the integrating session.
 
 ## Decision log
 

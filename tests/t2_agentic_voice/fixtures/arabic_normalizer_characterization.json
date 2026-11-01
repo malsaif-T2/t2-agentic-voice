@@ -1,0 +1,245 @@
+{
+  "about": [
+    "The canonical Arabic normalizer's characterization table: plan 002, Block 0, step 11.",
+    "Each row gives an input and what the prototype makes of it, written by reading its",
+    "code, never by running it (D-010): `normalize` is rules.normalize",
+    "(Ole5-chatbot/src/ole5_chat/voice/rules.py, lines 11-19), what every rule matched on;",
+    "`norm` is stt_eval.norm (Ole5-chatbot/scripts/stt_eval.py, lines 1059-1066), what the",
+    "scorer compared: normalize, then Arabic-Indic and Persian digits as ASCII, then every",
+    "space removed. Track A's normalize_arabic matches the `normalize` column, and its",
+    "verdict's comparison (normalize_arabic, normalize_digits, spaces removed) the `norm`",
+    "column, except on a row with a `gap`: there the prototype left a form the spelling",
+    "guide rules on (plan 002, Q8 and the decision log), and Track A's output is the",
+    "guide's, with the row's departure named in the plan's progress log."
+  ],
+  "rows": [
+    {
+      "input": "أنا",
+      "normalize": "انا",
+      "norm": "انا",
+      "note": "alef with hamza above folded to alef"
+    },
+    {
+      "input": "إلغاء",
+      "normalize": "الغاء",
+      "norm": "الغاء",
+      "note": "alef with hamza below folded to alef; the lone hamza at the end kept",
+      "gap": "a lone hamza"
+    },
+    {
+      "input": "آسف",
+      "normalize": "اسف",
+      "norm": "اسف",
+      "note": "alef with madda folded to alef"
+    },
+    {
+      "input": "رسالة",
+      "normalize": "رساله",
+      "norm": "رساله",
+      "note": "teh marbuta folded to heh"
+    },
+    {
+      "input": "على",
+      "normalize": "علي",
+      "norm": "علي",
+      "note": "alef maksura folded to yeh"
+    },
+    {
+      "input": "مسؤول",
+      "normalize": "مسوول",
+      "norm": "مسوول",
+      "note": "waw with hamza above folded to waw"
+    },
+    {
+      "input": "رئيس",
+      "normalize": "رييس",
+      "norm": "رييس",
+      "note": "yeh with hamza above folded to yeh"
+    },
+    {
+      "input": "مَرْحَبًا",
+      "normalize": "مرحبا",
+      "norm": "مرحبا",
+      "note": "fatha, sukun and tanween removed"
+    },
+    {
+      "input": "محمّدٍ",
+      "normalize": "محمد",
+      "norm": "محمد",
+      "note": "shadda and kasratan removed"
+    },
+    {
+      "input": "مـــرحبا",
+      "normalize": "مرحبا",
+      "norm": "مرحبا",
+      "note": "tatweel removed"
+    },
+    {
+      "input": "هٰذا",
+      "normalize": "هذا",
+      "norm": "هذا",
+      "note": "superscript alef removed"
+    },
+    {
+      "input": "قال ۚ نعم",
+      "normalize": "قال نعم",
+      "norm": "قالنعم",
+      "note": "a Quranic annotation mark (small high jeem) removed, and the spaces around it made one"
+    },
+    {
+      "input": "صلىؐ",
+      "normalize": "صلي",
+      "norm": "صلي",
+      "note": "an honorific sign (U+0610) removed, the alef maksura folded"
+    },
+    {
+      "input": "أنا",
+      "normalize": "انا",
+      "norm": "انا",
+      "note": "a combining hamza above (U+0654) removed, so a decomposed alef with hamza reads as alef"
+    },
+    {
+      "input": "نعم، أرسلها؟",
+      "normalize": "نعم ارسلها",
+      "norm": "نعمارسلها",
+      "note": "the Arabic comma and question mark dropped"
+    },
+    {
+      "input": "Stop!",
+      "normalize": "stop",
+      "norm": "stop",
+      "note": "Latin letters in lower case, punctuation dropped"
+    },
+    {
+      "input": "Don't",
+      "normalize": "don t",
+      "norm": "dont",
+      "note": "an apostrophe is punctuation: the contraction splits in two words, then joins in the verdict"
+    },
+    {
+      "input": "أرسل الملف PDF على Outlook",
+      "normalize": "ارسل الملف pdf علي outlook",
+      "norm": "ارسلالملفpdfعليoutlook",
+      "note": "Arabic with English product terms in Latin script"
+    },
+    {
+      "input": "رقم ١٢٣٤",
+      "normalize": "رقم ١٢٣٤",
+      "norm": "رقم1234",
+      "note": "Arabic-Indic digits: kept by normalize, read as ASCII digits by norm"
+    },
+    {
+      "input": "۱۲۳۴",
+      "normalize": "۱۲۳۴",
+      "norm": "1234",
+      "note": "Persian (Extended Arabic-Indic) digits: kept by normalize, read as ASCII by norm"
+    },
+    {
+      "input": "T-1234",
+      "normalize": "t 1234",
+      "norm": "t1234",
+      "note": "a hyphen is punctuation"
+    },
+    {
+      "input": "ticket_id",
+      "normalize": "ticket id",
+      "norm": "ticketid",
+      "note": "an underscore becomes a space"
+    },
+    {
+      "input": "  وقف \n وقف\t",
+      "normalize": "وقف وقف",
+      "norm": "وقفوقف",
+      "note": "spaces, newlines and tabs: runs made one, ends trimmed"
+    },
+    {
+      "input": "نعم ارسل",
+      "normalize": "نعم ارسل",
+      "norm": "نعمارسل",
+      "note": "a no-break space is a space"
+    },
+    {
+      "input": "",
+      "normalize": "",
+      "norm": "",
+      "note": "nothing in, nothing out"
+    },
+    {
+      "input": "؟!.",
+      "normalize": "",
+      "norm": "",
+      "note": "only punctuation: nothing out"
+    },
+    {
+      "input": "mm-hmm",
+      "normalize": "mm hmm",
+      "norm": "mmhmm",
+      "note": "an English listening sound"
+    },
+    {
+      "input": "تمام 👍",
+      "normalize": "تمام",
+      "norm": "تمام",
+      "note": "an emoji is dropped like punctuation"
+    },
+    {
+      "input": "OK تمام",
+      "normalize": "ok تمام",
+      "norm": "okتمام",
+      "note": "English and Arabic in one text"
+    },
+    {
+      "input": "yes, send it",
+      "normalize": "yes send it",
+      "norm": "yessendit",
+      "note": "an English comma"
+    },
+    {
+      "input": "لو سمحت",
+      "normalize": "لو سمحت",
+      "norm": "لوسمحت",
+      "note": "two words, which the verdict compares with the same words written as one"
+    },
+    {
+      "input": "لوسمحت",
+      "normalize": "لوسمحت",
+      "norm": "لوسمحت",
+      "note": "the same words written as one"
+    },
+    {
+      "input": "ٱلحمد",
+      "normalize": "ٱلحمد",
+      "norm": "ٱلحمد",
+      "note": "alef wasla (U+0671) is not folded",
+      "gap": "alef wasla"
+    },
+    {
+      "input": "علی",
+      "normalize": "علی",
+      "norm": "علی",
+      "note": "Farsi yeh (U+06CC) is not folded",
+      "gap": "Farsi yeh"
+    },
+    {
+      "input": "کتاب",
+      "normalize": "کتاب",
+      "norm": "کتاب",
+      "note": "keheh (U+06A9) is not folded",
+      "gap": "keheh"
+    },
+    {
+      "input": "خمسة سبعة",
+      "normalize": "خمسه سبعه",
+      "norm": "خمسهسبعه",
+      "note": "digits said one word each, in Arabic: words, never digits",
+      "gap": "digits spelled out"
+    },
+    {
+      "input": "five seven",
+      "normalize": "five seven",
+      "norm": "fiveseven",
+      "note": "digits said one word each, in English: words, never digits",
+      "gap": "digits spelled out"
+    }
+  ]
+}
