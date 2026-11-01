@@ -600,6 +600,67 @@ run, [WORKING-RULES.md](../../../WORKING-RULES.md), "Measurement runs")
   round's commit as its own, corrected here. After the merge `uv run poe check` passes (349
   tests, 100% coverage, mypy strict on 126 files) and `uv lock --check` is clean. Next, Tracks
   A to H, each in its own worktree cut from `plan-002-integration`.
+- 2026-11-01: Track A, text and scorers, is merged into `plan-002-integration` (`Plan 002: merge
+  track A`), the first track to merge. It was built on `plan-002-track-a`, cut from 44aa043, in four
+  commits, each gated on its own tree: 70a2490 (the Arabic normalizer and digit normalization),
+  2f2ec10 (the spelling-guide check), d1a11aa (the sign test by item) and 38b2cae (recall, text from
+  silence, WER and CER). Every stub Track A owns is replaced, with its stub test:
+  `normalize_arabic`, `normalize_digits`, `spelling_issues`, `term_recall`, `id_recall`,
+  `silence_output`, `sign_test`, `wer` and `cer`. From the track's report:
+  - Deviation: the owner chose a lighter review on 2026-11-01 ("Yes, go lighter"): the tracks are
+    merged with the gate after each and no review before the merge; one review of the merged code by
+    three concerns (security; measurement; harness and faithfulness), each reviewer's high and
+    medium findings checked by one agent told to refute them, one fix round and a check, replaces
+    step 14's reviews by track and stands as step 16's review of the code.
+  - `normalize_arabic` (`domain/text/arabic.py`) is ported from
+    `Ole5-chatbot/src/ole5_chat/voice/rules.py`, lines 11-19 (`TASHKEEL`, `NOT_WORD`, `FOLD`,
+    `normalize`), read as text. It runs the same steps in the same order: the marks removed, the
+    seven letter forms folded, lower case (`str.lower`, as the prototype), `_` as a space, every
+    character that is neither a word character nor a space read as a space, then runs of space
+    joined and the ends trimmed. `TASHKEEL`'s class, read as code points, is U+0610-U+061A,
+    U+064B-U+065F, U+0670, U+06D6-U+06ED and U+0640, written with `\u` escapes, each named in a
+    comment. It passes all 37 rows of Block 0's characterization table, and the prototype's own
+    normalizer test (`Ole5-chatbot/tests/test_voice_rules.py`, lines 10-14) is ported into
+    `tests/t2_agentic_voice/domain/test_arabic.py`.
+  - `normalize_digits` (`domain/text/digits.py`) reads Arabic-Indic and Persian digits as ASCII, as
+    the prototype's `DIGITS` table does (`Ole5-chatbot/scripts/stt_eval.py`, lines 1059-1066), and
+    the verdict's form (normalize, then digits, then spaces removed) is that file's `norm`. The one
+    departure is the table's: on its two `gap` rows («خمسة سبعة», "five seven") Track A's verdict
+    string is 57, the spelling guide's (Q8), where the prototype's `norm` keeps the words (خمسهسبعه,
+    fiveseven); a test asserts both that the gap rows give the guide's string and that they differ
+    from the prototype's.
+  - Not ported: the prototype's `lev` and `text_score` (`Ole5-chatbot/scripts/stt_eval.py`, lines
+    1069-1086), whose CER is capped at 1 per variant and taken against the closest accepted
+    reference. `cer` is jiwer's, pooled over a stratum and uncapped, as the decision log's verdict
+    entry says.
+  - The plan's UNVERIFIED reading of jiwer holds for the installed jiwer 4.0.0: in
+    `jiwer/process.py`, `process_words` has a "special edge-case for empty references" that sets the
+    WER to the number of insertions when the pooled references hold no word. Probed: `jiwer.wer("",
+    "a b")` is 2 (an int) and `jiwer.wer(["", "a"], ["x y", "a"])` is 2.0. A test in
+    `tests/t2_agentic_voice/testing/test_scorers.py` pins both, so `wer` and `cer` refuse a
+    reference that is empty after normalization with a ValueError.
+  - The tests cover the track's list: the characterization table (37 rows, against both
+    `normalize_arabic` and the verdict's form); each ruling of Q8 (the seven letter folds, the other
+    forms kept, diacritics and tatweel, lower case, punctuation, spaces ignored in the verdict,
+    contractions as said, and in `test_spelling.py` product terms in Latin script, numbers as digits
+    and listening sounds); Arabic-Indic and Persian digits; digits spelled one word each, in Arabic
+    and in English; WER and CER against hand-computed cases, empty output included; an empty
+    reference refused (ValueError); a bare str for `references`, `outputs` or `terms` refused
+    (TypeError); and the sign test at b = 6, w = 0 (2/64 = 0.03125), b = 5, w = 0 (0.0625) and b = w
+    (1). Adversarial tests: invisible format characters (bidirectional marks, zero-width characters,
+    a byte-order mark) never change a verdict; an avoided spelling is text, never a pattern;
+    malformed counts and inputs are refused.
+  - The only Arabic string constants Track A adds to `packages/` are the eleven digit names in
+    `domain/text/digits.py`, as `\u` escapes; its docstrings and messages hold none of okay, stop,
+    wait or yeah, and no Arabic.
+  - Its debt rows are TD-008 to TD-010 (the normalizer's missing Unicode composition step, term
+    recall on a Latin term with an Arabic prefix, and the digit names left out). It changed no row,
+    asked for no change to Block 0 and left no question for the owner.
+  - Not done by Track A: whether a one-word talk-over reference is one of the eleven digit names,
+    since `refs.json` is outside its May read; Track D's no-item-in-source test checks it when Track
+    D merges.
+  - After the merge `uv run --offline poe check` passes: 740 tests, 100% coverage (990 statements),
+    mypy strict on 126 files, arch and docs clean.
 
 ## Decision log
 
@@ -1016,6 +1077,62 @@ All entries are the agent's choices of 2026-11-01, with the agent's reasons.
   - `requests` is recorded in D-023's Proposed bullet, which is new on this branch, as jiwer's
     owner row is in D-019, since CLAUDE.md's first non-negotiable puts a rule's reason in a
     decision.
+- 2026-11-01: Track A's digit names: `normalize_digits` reads English zero to nine and Arabic صفر،
+  واحد، اثنين، اثنان، ثلاثة، أربعة، خمسة، ستة، سبعة، ثمانية، تسعة. Each is matched as a whole word
+  after `normalize_arabic`, so case and the folded letter forms do not matter. These are the forms a
+  digit is read by, one at a time. The short forms (ثلاث، أربع، خمس، ست، سبع، ثمان، تسع) and dialect
+  spellings (اتنين، تلاتة، تمنية) are left out: several short forms are also everyday words (ست,
+  سبع, تسع, خمس), so adding any is a ruling for the owner or a measured change (GP-18). The agent's
+  choice (TD-010).
+- 2026-11-01: Track A: a run of single digits, each a digit name or one written digit (any mix),
+  with only whitespace between them, becomes one number: «أربعة خمسة اثنين واحد», "four five two
+  one" and "4 5 2 1" all read 4521. This extends the design's 8.2 ("runs of digit words ...
+  collapsed into digits") to written single digits, so that a provider's "4 5 2 1" matches a
+  reference's 4521 in WER and in ID recall, as it already does in the verdict, which removes spaces.
+  A number of two or more digits is never joined to its neighbour ("45 21" stays two numbers): that
+  is a number said as a number, not digit by digit. The agent's choice.
+- 2026-11-01: Track A: a digit name on its own becomes its digit too ("one moment" reads "1
+  moment"), on both sides of every comparison, since the guide writes numbers as digits (Q8). The
+  verdict is unchanged by this. ID recall then counts such a digit as an ID, but it is reported over
+  the ticket-number items only. The agent's choice.
+- 2026-11-01: Track A: `normalize_digits` changes only the digits and the digit names, leaving every
+  other character, space and punctuation as written. The scorers call `normalize_arabic` first
+  (`scored_form` in `domain/scoring.py`, internal to the library and in no facade, since Block 0's
+  facade names are fixed), so punctuation between digits ("5, 7") is a space by then and the run
+  joins. Track D's matcher composes `normalize_arabic`, `normalize_digits` and the removal of spaces
+  itself, through `languages`.
+- 2026-11-01: Track A: `spelling_issues` returns one issue per avoided spelling found, however often
+  the reference holds it, ordered by rule and then by the rule's own spellings, the shape of Block
+  0's `FakeSpellingCheck`. `found` is the spelling as the rule writes it; when several of a rule's
+  spellings normalize alike (`test_rulings.py`'s أوتلوك and اوتلوك), it is the first of them. Every
+  rule is checked on every call. A ValueError naming the rule's id is raised for an avoided spelling
+  that is empty after normalization (it could never be found), and for one that the rule's own
+  `write` holds after normalization (a case-only ruling such as pdf to PDF, or ة to ه, would flag
+  every reference that follows it). The agent's choice: GP-06, a guide no reference can follow fails
+  loudly.
+- 2026-11-01: Track A: `term_recall` counts each distinct term once, matched as whole words in the
+  scored form, however often a text holds it and however many listed terms normalize to it; it
+  raises TypeError for a term that is not a str, and ValueError for a term that is empty after
+  normalization. `id_recall`'s IDs are the runs of [0-9] in the scored form (`normalize_arabic`,
+  then `normalize_digits`; Block 0's stub docstring named only `normalize_digits`), digits inside a
+  word included (t1234), counted as a multiset: an ID the reference holds twice is expected twice.
+  `silence_output` is the length of the scored form with its spaces removed. The agent's choices.
+- 2026-11-01: Track A: `wer` and `cer` also refuse with a ValueError an empty pair of sequences
+  (jiwer would return 0 for ([], [])), two sequences of different lengths and any non-str inside
+  them. So Track F calls them only for a stratum with at least one reference that is non-empty after
+  normalization, and reports no rate otherwise. A reference of only punctuation counts as empty; a
+  caller can test this with `silence_output(reference) == 0`, which uses the same form. The agent's
+  choice.
+- 2026-11-01: Track A: `sign_test` sums the binomial terms exactly in integers (each C(n, i + 1)
+  from C(n, i)) and divides once, so every case up to 40 by 40 equals evaluation.md's formula in
+  exact fractions rounded to a float. Very lopsided large counts underflow to 0.0 (5000 better and
+  none worse). A count that is not an int, or is a bool, raises TypeError; a negative count raises
+  ValueError. The agent's choice.
+- 2026-11-01: Track A: `normalize_arabic` keeps the prototype's behaviour exactly, including what it
+  does not do: no Unicode composition step, `str.lower` rather than `casefold`, and invisible format
+  characters read as spaces. The characterization table rules the port, and folding more would be a
+  new ruling or a measured change (the decision log's normalizer entry). The cases are pinned by
+  tests and listed as debt (TD-008).
 
 ## The owner's decisions
 
