@@ -77,8 +77,9 @@ EXPECTED: dict[tuple[str, str], tuple[float | None, ...]] = {
     ("kind", "ticket_number"): (2, 1, 0, 1 / 2, 0.25, None, 1 / 2, None, 0, 2, 0, 300, 308, 20),
     ("split", "dev"): (8, 3, 1, 3 / 7, 0.25, 2 / 3, 1 / 2, 1 / 2, 8, 12, 4, 290, 314, 72.5),
 }
-# The items each covers, counted by hand, not its variants: i1 to i5 in all, English i2 and i4.
-ITEMS = dict(zip(EXPECTED, [5, 2, 1, 1, 1, 2, 4, 2, 3, 1, 1, 5], strict=True))
+# The items each covers, counted by hand over its answered variants, not its variants: i1 to i5
+# but i4, whose one variant failed, so English is i2's alone.
+ITEMS = dict(zip(EXPECTED, [4, 1, 1, 1, 1, 1, 4, 2, 2, 1, 1, 4], strict=True))
 
 
 class LookupScorers(FakeScorers):
@@ -292,7 +293,7 @@ def test_a_run_of_windows_only_sums_each_windows_measures(tmp_path: Path) -> Non
     )
     # Nothing was judged: no verdict, no rate and no scorer called; the requests still count.
     assert card.totals == Metrics(
-        items=5,
+        items=4,  # not the stuck t3's
         variants=5,
         right=0,
         failures=1,
@@ -319,7 +320,11 @@ def test_a_held_out_scorecard_holds_aggregates_only(tmp_path: Path) -> None:
     results = [held_out(row) for row in ROWS]
     card = _card(tmp_path, results, scorers, run=_run(split="held-out"))
     assert (card.variants, card.totals.variants, card.totals.failures) == ((), 8, 1)
-    assert card.breakdowns["split"] == {"held-out": card.totals}
+    # The held-out group holds the totals' numbers, but for its rates over fewer than 3 items:
+    # term recall over i1 and i5, ID recall over i2, text from silence over i3. WER is over 3.
+    withheld = {"term_recall": None, "id_recall": None, "silence_share": None, "silence_chars": 0}
+    assert card.breakdowns["split"] == {"held-out": card.totals.model_copy(update=withheld)}
+    assert (card.totals.term_recall, card.totals.silence_chars) == (1.0, 2 * len(HELD_OUT_TEXT))
     written = (tmp_path / SCORECARD_FILE).read_text(encoding="utf-8")
     assert HELD_OUT_TEXT not in written
     assert '"v1"' not in written and '"i1"' not in written  # no variant or item named

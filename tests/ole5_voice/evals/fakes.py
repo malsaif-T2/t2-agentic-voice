@@ -125,7 +125,7 @@ class FakeScorecardWriter:
         scored = [r for r in results if r.right is not None]
         right = sum(1 for r in scored if r.right)
         totals = Metrics(
-            items=len({r.item for r in results}),
+            items=len({r.item for r in results if r.answer.failure is None}),
             variants=len(results),
             right=right,
             failures=sum(1 for r in results if r.answer.failure is not None),

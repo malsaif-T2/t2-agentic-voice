@@ -104,13 +104,17 @@ expected answer. A run with any violation fails.
 - **Tune on dev only.** Held-out measures; it is never used to choose a change.
 - **Held-out is read only as aggregates.** A run that includes held-out items writes a scorecard
   without per-item verdicts or outputs, and is never traced, so no one reads a held-out answer
-  item by item. Nor does an aggregate rest on too few items: wherever a held-out run's numbers
-  are broken down (by stratum, by window group, in the history and in a comparison), every group
-  of fewer items than the plan registers (3 in plan 002), counted as items rather than variants,
-  is pooled into one group, `(other)`, itself left out when it too is that small. The totals
-  stay whole, and a comparison sets two runs' groups side by side only where both cover the same
-  number of items. It runs only at a milestone's checkpoints, and the plan caps how many times,
-  so the milestone does not pick changes by held-out noise.
+  item by item. Nor is a held-out group shown that covers too few items: wherever a held-out
+  run's numbers are broken down (by stratum, by window group, in the history and in a
+  comparison), every group of fewer answered items than the plan registers (3 in plan 002),
+  counted as items rather than variants and without an item whose every variant failed, is
+  pooled into one group, `other`, itself left out when it too is that small. Within a group
+  shown, a rate taken over fewer items (WER and CER, term and ID recall, text from silence, a
+  window group's one-word clips) is left out. The totals stay whole, whatever they rest on. A
+  comparison sets two runs' groups side by side only where both cover the same items with no
+  failure, and refuses two held-out runs that cover different variants. A held-out run is made
+  only at a milestone's checkpoints, and the plan caps how many times, so the milestone does not
+  pick changes by held-out noise.
 - **Learning on dev.** When something is learned or auto-tuned from dev results, cut dev into
   committed *learn* and *check* halves (by item, stratified), learn on one and measure on the
   other only. A screen rule scales down with the smaller set.

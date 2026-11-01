@@ -220,13 +220,15 @@ def test_the_page_shows_the_spend_each_run_and_its_strata() -> None:
         price_per_hour_usd=0.111,
         cost_usd=1960 / 3600 * 0.111,
         latency_median_ms=295.4,
+        items=9,
+        variants=12,
         breakdowns={"language": {"saudi": _value(5, 0.3), "english": _value(4, None)}},
     )
     held_out = _line("h1", split="held-out", complete=False, billed_seconds=840.0, cost_usd=0.04)
     page = render_history([dev, held_out])
     assert "Spend so far: 2 run(s), 2800.0 billed seconds, $0.1004.\n" in page
     assert (
-        "| 1 | 2026-11-03T09:00:00+00:00 | r1 | 0f44056 | groq | whisper-large-v3 | dev | 1 | 1 "
+        "| 1 | 2026-11-03T09:00:00+00:00 | r1 | 0f44056 | groq | whisper-large-v3 | dev | 9 | 12 "
         "| 41.0% | 0 | 1960.0 | $0.0604 | 295 | yes |"
     ) in page
     assert "| 2 | 2026-11-03T09:00:00+00:00 | h1 | 0f44056 | reference | — | held-out |" in page

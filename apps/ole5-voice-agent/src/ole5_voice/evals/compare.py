@@ -10,8 +10,9 @@ noise), the smallest change one run can detect. The `--focus` items are shown ap
 verdict is still every item's. A variant either run did not judge (an infrastructure failure, or
 in one run only) is left out of both and listed. Held-out runs are compared by aggregates only,
 a stratum value only where both hold it over the same number of items (`HELD_OUT_MIN_ITEMS` or
-more). Two runs whose recorded commits, data digests or splits differ are refused, the difference
-named. The report names variants by their IDs, never by what was said.
+more) with no failure, and two held-out runs that cover different variants are refused. Two runs
+whose recorded commits, data digests or splits differ are refused, the difference named. The
+report names variants by their IDs, never by what was said.
 """
 
 from __future__ import annotations
@@ -179,7 +180,8 @@ def smallest_change(changed: int, items: int, sign_test: SignTest) -> int | None
 
 def compare(a: Scorecard, b: Scorecard, *, sign_test: SignTest, focus: Sequence[str] = ()) -> str:
     """The report of B judged against A; `ComparisonError` for two runs that differ in commit,
-    data or split, for `focus` on held-out runs, and for a focus item in neither run."""
+    data or split, for held-out runs that cover different variants or with `focus`, and for a
+    focus item in neither run."""
     differences = [
         f"their {what} differ (A {first}, B {second})"
         for what, first, second in (
@@ -194,6 +196,12 @@ def compare(a: Scorecard, b: Scorecard, *, sign_test: SignTest, focus: Sequence[
     held_out = a.run.split == "held-out"
     if held_out and focus:
         raise ComparisonError("held-out runs are compared by aggregates only: no --focus")
+    if held_out and a.totals.variants != b.totals.variants:
+        # Their difference would be the numbers of the variants one run holds and not the other.
+        raise ComparisonError(
+            "held-out runs that cover different variants cannot be compared "
+            f"(A {a.totals.variants}, B {b.totals.variants})"
+        )
     unknown = sorted(set(focus) - {result.item for result in (*a.variants, *b.variants)})
     if unknown:
         raise ComparisonError(f"--focus names {len(unknown)} item(s) in neither run")
@@ -202,7 +210,7 @@ def compare(a: Scorecard, b: Scorecard, *, sign_test: SignTest, focus: Sequence[
         lines.append(
             "Held-out runs are compared by aggregates only: no variant, no item, and a stratum "
             "value only where both runs hold it over the same number of items, at least "
-            f"{HELD_OUT_MIN_ITEMS}.\n"
+            f"{HELD_OUT_MIN_ITEMS}, with no failure.\n"
         )
     else:
         lines += _paired(*pair(a, b), focus=focus, sign_test=sign_test)
@@ -326,12 +334,14 @@ def _aggregates(a: Scorecard, b: Scorecard) -> list[str]:
 
 def _same_items(first: Metrics | None, second: Metrics | None) -> bool:
     """Whether both held-out runs hold a group over the same number of items, at least
-    `HELD_OUT_MIN_ITEMS`: so B - A is never taken between groups that pool other items, which
-    would tell the items between them apart."""
+    `HELD_OUT_MIN_ITEMS`, with no failure: at one data digest, the same items and variants, so
+    B - A is never taken between groups that pool other items or variants, which would tell
+    those between them apart (a failure moves an item's answered variants, and may pool it)."""
     return (
         first is not None
         and second is not None
         and first.items == second.items >= HELD_OUT_MIN_ITEMS
+        and first.failures == second.failures == 0
     )
 
 

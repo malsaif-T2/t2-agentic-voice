@@ -21,6 +21,7 @@ from ole5_voice.evals.models import (
     Language,
     Model,
     Name,
+    Other,
     Sha256,
     Split,
     Variant,
@@ -34,14 +35,11 @@ Outcome = Literal[
 # The scorecard's file name in a run's `--out` folder, which its history line names.
 SCORECARD_FILE: Final = "scorecard.json"
 # In a held-out run's scorecard, history line and comparison, a breakdown value or window group
-# that covers fewer items than this is pooled into one group, `OTHER`, itself left out when it
-# too covers fewer, so no held-out item's numbers are published alone (plan 002's registration,
+# that covers fewer answered items than this is pooled into one group, `models.OTHER`, itself
+# left out when it too covers fewer, and a rate of a group shown that is taken over fewer items
+# is left out, so no held-out item's numbers are published alone (plan 002's registration,
 # "Amendments", 2026-11-01). The totals are whole.
 HELD_OUT_MIN_ITEMS: Final = 3
-# The pooled group's name: no stratum value can take it (a kind or a `want` label is a
-# lower-case name), so it never merges with a real value.
-Other = Literal["(other)"]
-OTHER: Final[Other] = "(other)"
 # A setting that holds a secret, by its dotted name (`groq.api_key`).
 _SECRET_SETTING = re.compile(r"(^|[._])(api_key|key|secret|token|password)$")
 # An install placeholder, an uppercase name between double braces, as the docs check finds one
@@ -170,7 +168,7 @@ class VariantResult(Model):
 class Metrics(Model):
     """The numbers of a run, or of one stratum of it; a rate is None where nothing counts."""
 
-    items: int = Field(ge=0)  # the items its variants are of
+    items: int = Field(ge=0)  # the items its answered variants are of (no failure's)
     variants: int = Field(ge=0)
     right: int = Field(ge=0)
     failures: int = Field(ge=0)  # infrastructure failures; an unjudged variant is not one
@@ -188,12 +186,20 @@ class Metrics(Model):
     billed_seconds: float = Field(default=0, ge=0)
     cost_usd: float = Field(default=0, ge=0)  # billed hours times the run's price per hour
 
+    @model_validator(mode="after")
+    def _items_fit(self) -> Self:
+        answered = self.variants - self.failures
+        if self.items > answered or (self.items == 0) != (answered == 0):
+            raise ValueError("a group's items are those of its answered variants, one or more")
+        return self
+
 
 class WindowMetrics(Model):
     """The window measures of one window length over the clips of one language and `want`
     label, as counts and sums, so every breakdown adds up. A held-out run keeps these, and no
-    variant; its groups of one length that cover too few items are pooled as one, whose
-    `language` is `OTHER` and `want` None."""
+    variant; its groups of one length that cover fewer than `HELD_OUT_MIN_ITEMS` items are
+    pooled as one, whose `language` is `OTHER` and `want` None, and a group's one-word clips
+    are counted only when they are of that many items too."""
 
     ms: int = Field(gt=0)
     language: Language | Other
@@ -207,6 +213,12 @@ class WindowMetrics(Model):
     reference_words: int = Field(ge=0)  # so the share of leading words can be taken
     one_word_clips: int = Field(ge=0)  # the clips whose reference is one word
     holds_word: int = Field(ge=0)  # of those, the windows that hold it
+
+    @model_validator(mode="after")
+    def _items_fit(self) -> Self:
+        if self.items > self.clips or (self.items == 0) != (self.clips == 0):
+            raise ValueError("a window group's items are those of its clips, one or more")
+        return self
 
 
 # Why a run is made: written into the committed history, which is never edited.
@@ -263,7 +275,10 @@ class Scorecard(Model):
         if self.run.split == "held-out" and (self.variants or self.run.traced):
             raise ValueError("a held-out run's scorecard holds aggregates only, and is untraced")
         groups = [m.items for values in self.breakdowns.values() for m in values.values()]
-        if _too_small(self.run.split, [*groups, *(window.items for window in self.windows)]):
+        groups += [window.items for window in self.windows]
+        if any(items > self.totals.items for items in groups):
+            raise ValueError("a group covers no more items than the run's totals")
+        if _too_small(self.run.split, groups):
             raise ValueError(
                 f"a held-out run's groups each cover at least {HELD_OUT_MIN_ITEMS} items"
             )
@@ -310,6 +325,8 @@ class HistoryLine(Model):
     @model_validator(mode="after")
     def _held_out_groups(self) -> Self:
         counts = [value.items for values in self.breakdowns.values() for value in values.values()]
+        if any(items > self.items for items in counts):
+            raise ValueError("a stratum value covers no more items than the run")
         if _too_small(self.split, counts):
             raise ValueError(
                 f"a held-out run's stratum values each cover at least {HELD_OUT_MIN_ITEMS} items"

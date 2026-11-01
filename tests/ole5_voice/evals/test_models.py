@@ -7,6 +7,7 @@ import re
 
 import pytest
 from ole5_voice.evals.models import (
+    OTHER,
     TICKET_KIND,
     AudioRef,
     Item,
@@ -113,6 +114,16 @@ def test_an_item_that_cannot_be_right_is_refused(change: dict[str, object]) -> N
 def test_the_ticket_kind_is_a_kind() -> None:
     """Tracks D and F agree on it: D's ticket items carry it, F scores ID recall over them."""
     assert TypeAdapter(Kind).validate_python(TICKET_KIND) == "ticket_number"
+
+
+def test_no_kind_takes_the_held_out_pooled_groups_name() -> None:
+    """A held-out run pools its smaller groups into one, `OTHER`, which no kind may be named,
+    so the two never merge."""
+    assert OTHER == "other"
+    with pytest.raises(ValidationError, match="pooled group of a held-out run"):
+        TypeAdapter(Kind).validate_python(OTHER)
+    with pytest.raises(ValidationError, match="pooled group"):
+        Item.model_validate(ITEM | {"kind": OTHER})
 
 
 def test_a_manifest_holds_its_consent_and_files() -> None:

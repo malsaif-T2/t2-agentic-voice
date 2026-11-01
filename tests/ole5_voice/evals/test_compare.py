@@ -84,7 +84,9 @@ def _card(
         samples.run(name).model_dump() | {"split": split, "model": "whisper-large-v3"} | run
     )
     covered = len({result.item for result in results}) if items is None else items
-    totals = Metrics(items=covered, variants=len(results), right=1, failures=0, accuracy=accuracy)
+    totals = Metrics(
+        items=covered, variants=len(results) or covered, right=1, failures=0, accuracy=accuracy
+    )
     return Scorecard(
         run=info,
         complete=True,
