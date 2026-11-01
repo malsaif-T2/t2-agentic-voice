@@ -5,7 +5,7 @@ per `poe eval` run that called a provider, kept or not; never edited by hand
 ([generated docs](README.md), GP-11). Every number describes one speaker, the owner (D-006).
 Full scorecards stay out of git, in each run's `--out` folder.
 
-Spend so far: 8 run(s), 12460.1 billed seconds, $0.2705.
+Spend so far: 9 run(s), 13370.1 billed seconds, $0.2806.
 
 ## Runs
 
@@ -19,6 +19,7 @@ Spend so far: 8 run(s), 12460.1 billed seconds, $0.2705.
 | 6 | 2026-11-01T21:06:24+00:00 | w1-large-v3-500 | 1c3c4dc53fc96664ebb2aa5b5f434ca028f5a0ce | groq | whisper-large-v3 | dev | 33 | 90 | — | 0 | 910.0 | $0.0281 | 211 | yes |
 | 7 | 2026-11-01T21:16:19+00:00 | w2-turbo-500 | 1c3c4dc53fc96664ebb2aa5b5f434ca028f5a0ce | groq | whisper-large-v3-turbo | dev | 33 | 90 | — | 0 | 910.0 | $0.0101 | 187 | yes |
 | 8 | 2026-11-01T21:25:58+00:00 | w3-large-v3-750 | 1c3c4dc53fc96664ebb2aa5b5f434ca028f5a0ce | groq | whisper-large-v3 | dev | 33 | 90 | — | 0 | 910.0 | $0.0281 | 372 | yes |
+| 9 | 2026-11-01T21:35:29+00:00 | w4-turbo-750 | 1c3c4dc53fc96664ebb2aa5b5f434ca028f5a0ce | groq | whisper-large-v3-turbo | dev | 33 | 90 | — | 0 | 910.0 | $0.0101 | 194 | yes |
 
 ## Each run
 
@@ -376,6 +377,50 @@ Spend so far: 8 run(s), 12460.1 billed seconds, $0.2705.
 | Setting run.variant_timeout_s | 120.0 |
 | Setting run.windows_ms | 750 |
 | Setting stt.model | whisper-large-v3 |
+| Setting stt.provider | groq |
+| Setting stt.timeout_s | 6.0 |
+| Setting tracing.endpoint | none |
+| Setting tracing.include_transcripts | true |
+| Setting tracing.project | none |
+| Setting tracing.redact | 0 patterns |
+
+| Stratum | Value | Items | Accuracy |
+| --- | --- | --- | --- |
+| device | laptop | 33 | — |
+| kind | confirmation | 3 | — |
+| kind | listening_sound | 8 | — |
+| kind | repeat_request | 1 | — |
+| kind | request | 15 | — |
+| kind | short_request | 2 | — |
+| kind | stop_word | 4 | — |
+| language | english | 7 | — |
+| language | mixed | 3 | — |
+| language | msa | 4 | — |
+| language | saudi | 19 | — |
+| split | dev | 33 | — |
+
+### 9 · w4-turbo-750
+
+| Field | Value |
+| --- | --- |
+| Why | W4: A2, 750 ms windows of the dev talk-over clips |
+| Data digest | `90a0e16d5851bae05b89ccf557ef8facf50a6b5551f48257c9be14c32b0c992f` |
+| Scorecard | scorecard.json |
+| Price per hour of audio | $0.04 |
+| Setting env | dev |
+| Setting groq.api_key | set |
+| Setting groq.api_key_file | not set |
+| Setting groq.base_url | https://api.groq.com |
+| Setting log_format | console |
+| Setting log_level | INFO |
+| Setting run.cap_usd | 4.7299 |
+| Setting run.language_hint | label |
+| Setting run.max_attempts | 4 |
+| Setting run.max_rpm | 10 |
+| Setting run.smoke_only | false |
+| Setting run.variant_timeout_s | 120.0 |
+| Setting run.windows_ms | 750 |
+| Setting stt.model | whisper-large-v3-turbo |
 | Setting stt.provider | groq |
 | Setting stt.timeout_s | 6.0 |
 | Setting tracing.endpoint | none |
