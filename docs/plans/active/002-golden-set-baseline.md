@@ -1646,6 +1646,12 @@ run, [WORKING-RULES.md](../../../WORKING-RULES.md), "Measurement runs")
   with text (silence share 1.0), latency median 323 ms, 2,427.5 s billed, $0.075. By language:
   English 0.847, Saudi 0.370, MSA 0.256, mixed 0.050. Its scorecard is in the main checkout's
   `var/runs/r1-large-v3`. Spend so far $0.0755 of the $5 cap.
+- 2026-11-01: Run R2 (A2, `whisper-large-v3-turbo`, dev, untraced), at the measurement commit,
+  its smoke test passed: complete, 231 variants of 66 items, 236 requests, no retry, no provider
+  failure; 70 right (0.303), WER 0.360, CER 0.173, term recall 0.167, ID recall 0.286, silence
+  share 1.0, latency median 357 ms, 2,417.5 s billed, $0.027. By language: English 0.763, Saudi
+  0.180, MSA 0.163, mixed 0.000. Scorecard in `var/runs/r2-turbo`. Spend so far $0.1024 of
+  the $5 cap.
 
 ## Decision log
 
