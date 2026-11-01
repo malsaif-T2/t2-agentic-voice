@@ -573,3 +573,44 @@ twice; DOC-REF: every `D-NNN` cited anywhere is a heading here), so keep its sha
   provider and gets the library's spans in its own backend. The owner runs Phoenix on the same
   machine, bound to 127.0.0.1 (plan 002, "What the owner does").
 - **Evidence:** as for D-019 (plan 002, Q3), 2026-11-01; D-018, question 7.
+
+## D-024 · The speech-to-text noise on the golden set's dev split · 2026-11-02 · Accepted (the registered measurement, plan 002)
+
+- **Context:** evaluation.md's "Noise" measures how much one run differs from an identical one
+  before anything is tuned, so a later change is read against it. Plan 002 registered two
+  identical dev runs per model and the smallest change one run can detect (its "The noise").
+- **Decision** (the measured numbers, as registered): with each arm's settings as plan 002
+  registers them (Groq, `language` from the item's label, no prompt, temperature 0,
+  `verbose_json`), at the measurement commit 1c3c4dc on 2026-11-01:
+  - `whisper-large-v3`, R1 against R3: 0 of 231 variants changed their verdict, 0 of 66 items
+    better or worse (p = 1.0).
+  - `whisper-large-v3-turbo`, R2 against R4: 0 of 231 variants, 0 of 66 items (p = 1.0).
+  - So d = 0 for each model, and the smallest change one run can detect is c = 6 items
+    (b = 6, w = 0 gives p = 2/64 = 0.031 by the sign test; b = 5 gives 0.0625).
+- **Consequences:** a change to these arms that moves fewer than 6 of the dev split's 66 items
+  cannot be told from the noise with one run; a change is judged by the sign test by item with
+  this floor. The noise was measured on one evening with one key (TD-032): one run is one
+  sample, and repeated runs, on other days, are the lasting fix. Both runs of each model were
+  identical, so the comparison of the models (D-025) is not held back by the noise.
+- **Evidence:** the history lines of R1 to R4 (`apps/ole5-voice-agent/evals/history.jsonl`) and
+  `poe eval-compare` of R1 with R3 and of R2 with R4 (plan 002's progress log, 2026-11-02).
+
+## D-025 · `stt.model` stays `whisper-large-v3` · 2026-11-02 · Accepted (the registered rule, plan 002)
+
+- **Context:** plan 002 registered the keep or reject rule for `stt.model` before any run:
+  turbo becomes the default only if it is better beyond the noise in both comparisons with no
+  language or device stratum worse; large-v3 stays if large-v3 is better beyond the noise in
+  both (its "The keep and reject rule for `stt.model`").
+- **Decision:** the default stays `whisper-large-v3`, in `core/config.py` and `.env.example`,
+  where it already was, so no file changes. On the dev split (66 items, 231 variants), turbo
+  against large-v3, R2 against R1: 2 items better and 18 worse, p = 0.0004, beyond the noise
+  (D-024) in large-v3's favour; the replication, R4 against R3, gives the same (2 and 18,
+  p = 0.0004). Exact match 0.303 for turbo against 0.429 for large-v3, WER 0.360 against 0.250.
+  The stratum guard reads turbo worse beyond the noise on Saudi Arabic (2 better, 12 worse,
+  p = 0.0129), on the laptop (3 and 16, p = 0.0044) and on the wired headset (1 and 8,
+  p = 0.0391); the other strata are too small to guard.
+- **Consequences:** turbo's lower price ($0.04 an hour against $0.111) does not buy its loss on
+  Arabic. Every number describes one speaker, the owner (D-006). A later model or setting is
+  judged against large-v3 on this set, by the same rule.
+- **Evidence:** R1 to R4's history lines and `eval-compare` (plan 002's progress log,
+  2026-11-02).

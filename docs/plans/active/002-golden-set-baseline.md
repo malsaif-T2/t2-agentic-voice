@@ -1662,6 +1662,17 @@ run, [WORKING-RULES.md](../../../WORKING-RULES.md), "Measurement runs")
   the same totals as R2 (70 right, 0.303; WER 0.360; CER 0.173; term recall 0.167; ID recall
   0.286), latency median 396 ms, 2,417.5 s billed, $0.027. Scorecard in `var/runs/r4-turbo`.
   Spend so far $0.2043 of the $5 cap.
+- 2026-11-02: Steps 24 and 25, with `poe eval-compare` on the four dev runs (no request sent):
+  - The noise: R1 against R3 (large-v3) and R2 against R4 (turbo) each changed 0 of 231
+    variants and 0 of 66 items (p = 1.0), so d = 0 and one run detects a change of c = 6 items,
+    for each model: D-024, with TD-032 for a single evening's pair. Neither model's two runs
+    differ by p < 0.05, so the comparison is read.
+  - The baseline: R2 against R1, 2 items better and 18 worse under turbo, p = 0.0004, beyond the
+    noise in large-v3's favour; R4 against R3 the same. The stratum guard reads turbo worse
+    beyond the noise on Saudi Arabic (2 and 12, p = 0.0129), the laptop (3 and 16, p = 0.0044)
+    and the wired headset (1 and 8, p = 0.0391). By the registered rule, large-v3 is better in
+    both comparisons, so `stt.model` stays `whisper-large-v3` (D-025); it already is in
+    `core/config.py` and `.env.example`, so no file changes and no commit of its own is needed.
 
 ## Decision log
 
