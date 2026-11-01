@@ -1471,8 +1471,8 @@ run, [WORKING-RULES.md](../../../WORKING-RULES.md), "Measurement runs")
     `other` (3 items); kind `listening_sound`, `request` and `other` (4 items); device `laptop`
     and split `held-out` (13 items each); no group's term recall.
   - Debt: TD-029 (a left-out `other` can still be worked out from the totals and the groups
-    shown) and TD-030 (the totals' rates may rest on fewer than 3 items, to be put to the owner
-    before H1).
+    shown) and a row for the totals' rates resting on fewer than 3 items, put to the owner before
+    H1 (paid on 2026-11-01, when the owner ruled the totals follow the groups' rule).
   - `uv run --offline poe check` passes at the merge: 1215 tests and 1 skipped (the symbolic-link
     case), 100% coverage (3590 statements), mypy strict on 144 files, arch and docs clean.
 - 2026-11-01: The owner's answers on the script and the guide are merged (`Plan 002: merge the
@@ -1577,7 +1577,7 @@ run, [WORKING-RULES.md](../../../WORKING-RULES.md), "Measurement runs")
   - The ticket numbers said in different ways: the scorer finds a number written whole, in
     groups, or digit by digit in digits or digit names, but not in compound number words
     («ألفين وستة وعشرين», "twenty twenty six"), which would score a right transcript wrong:
-    TD-031, for the owner to rule on before R1.
+    TD-031, which the owner ruled on before R1 ("The owner's decisions").
 - 2026-11-01: The owner corrected the take confirmed by mistake ("Done the correction"): in
   review mode, `n44_ticket_last_four-laptop-1-2` was confirmed in pass 3, typed in pass 4 as what
   was said, «التذكرة اللي آخرها 4221», and confirmed in pass 5.
@@ -1614,6 +1614,15 @@ run, [WORKING-RULES.md](../../../WORKING-RULES.md), "Measurement runs")
   `none` language's two items left out, as the owner's rule says. Neither run appended a
   history line. The optional `prototype-cache` dry run is not made: Track E did not build that
   answerer (its report), and the runs below need no dry run.
+- 2026-11-01: Step 20: every call is settled (Q13 to Q19, the held-out totals and TD-031: "The
+  owner's decisions"), the estimate stands at about $0.36 against the owner's $5 cap, and the runs are
+  attended. The key is set (`poe eval --show-settings --env-file` the main checkout's `.env`:
+  `groq.api_key` set, `stt.model` whisper-large-v3, `groq.base_url` https://api.groq.com,
+  tracing none). The held-out totals' rule is built in the linked worktree
+  `plan-002-measurement`, cut from the main branch at fe48c6b: `write_scorecard` gives the
+  totals the groups' minimum, `test_held_out_groups.py` and `test_scorecard.py` pin it, and
+  evaluation.md says so; the debt row it pays is removed and its citation here reworded. This
+  commit is the measurement commit (step 21).
 
 ## Decision log
 
@@ -2849,6 +2858,12 @@ All entries are the agent's choices of 2026-11-01, with the agent's reasons.
   splitting the new items apart: the strata's proportions hold over the set the runs score, and
   the five talk-over items it moved had been read by no answerer that hears audio. The agent's
   choice.
+- 2026-11-01: When neither model is better beyond the noise, the default stays
+  `whisper-large-v3` (Q13); H1 and H2 are the only held-out runs (Q18); the runs are attended,
+  made by the agent in this session (Q19); a number written in compound words stays wrong as
+  registered, and the report counts those ticket misses (TD-031); Phoenix is started by the
+  agent for the tracing check, on 127.0.0.1 only, and stopped before the timed runs. The owner's
+  answers ("The owner's decisions").
 
 ## The owner's decisions
 
@@ -2930,6 +2945,18 @@ The same day, the owner's answers to the calls before recording:
 - The new recordings: "Also I have finished recording all three ways". Asked whether the lines
   with two or three kept takes on one device go in whole, or only the last kept take of each:
   "Keep every kept take (Recommended)".
+- The calls before the runs, 2026-11-01, after "lets finish what is left of M1": the budget cap
+  (Q17), asked with $2 recommended: "$5". Q13, Q14, Q16, Q18, Q19, the held-out totals and
+  TD-031, asked
+  whether to go with the agent's recommendations: "Yes, all recommended (Recommended)": keep
+  `whisper-large-v3` when neither model is better beyond the noise (Q13); no auto-detect arm
+  in M1 (Q14); 20 requests a minute (Q16); H1 and H2 only, once each, at the end (Q18);
+  attended runs, made by the agent in this session one after another (Q19); a held-out total's
+  rate over fewer than 3 items left out like a group's; a number in compound words
+  stays wrong as registered, the report counting the ticket misses written in words (TD-031).
+  Who starts Phoenix for the tracing check: "You start it (Recommended)". Whether anything
+  else uses the key during the runs: "Something might", so the runs pace at 10 requests a
+  minute rather than 20, as the question said.
 
 Earlier words this plan rests on, all of 2026-10-28 (D-004, D-006, D-010):
 
@@ -3643,6 +3670,13 @@ before the run.
   6 echo-only, the longest 25.75 s, from their sidecars): about 17,070 s, 2.37 h per model, so
   large-v3 about $0.26 and turbo about $0.10, about $0.36 in all, the earlier estimate's upper
   bound. The caveats stand: a refused request's billing is UNVERIFIED, and retries add requests.
+- 2026-11-01, the owner's answers, before any run that spends: the budget cap is $5 for every run
+  of steps 22 to 27 together (Q17); the runs pace at `--max-rpm 10`, not 20, since something
+  else might use the key (Q16), so a dev run of 231 requests takes about 23 minutes and all the
+  runs about 2.8 hours; held-out runs are H1 and H2 only (Q18); no auto-detect arm (Q14). A
+  held-out run's totals leave out a rate taken over fewer than 3 items, as its groups do
+  (`write_scorecard` gives the totals the same minimum); with the committed split no total of H1
+  or H2 rests on fewer. The other runner settings and the arms are as registered.
 
 ## What the owner does
 

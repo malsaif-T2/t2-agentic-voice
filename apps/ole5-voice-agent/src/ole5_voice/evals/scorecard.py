@@ -13,7 +13,8 @@ failures (evaluation.md, "Judging a change") and a run's unjudged variants, and 
 nothing counts. No canary applies to speech-to-text, so violations are 0, with that reason. A
 held-out run's scorecard holds aggregates only: it pools each breakdown value and window group
 that covers fewer than `HELD_OUT_MIN_ITEMS` answered items, and leaves out a number of a group
-shown that is taken over fewer (plan 002's registration, "Amendments"); its totals are whole.
+shown that is taken over fewer, its totals' included, though they cover every item (plan 002's
+registration, "Amendments").
 """
 
 from __future__ import annotations
@@ -126,7 +127,7 @@ def write_scorecard(
     scorecard = Scorecard(
         run=run,
         complete=complete,
-        totals=_metrics(scored, price, scorers),
+        totals=_metrics(scored, price, scorers, least=least),
         breakdowns={
             stratum: {
                 value: _metrics(group, price, scorers, least=least)

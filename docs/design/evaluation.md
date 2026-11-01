@@ -110,7 +110,8 @@ expected answer. A run with any violation fails.
   counted as items rather than variants and without an item whose every variant failed, is
   pooled into one group, `other`, itself left out when it too is that small. Within a group
   shown, a rate taken over fewer items (WER and CER, term and ID recall, text from silence, a
-  window group's one-word clips) is left out. The totals stay whole, whatever they rest on. A
+  window group's one-word clips) is left out, and so is such a rate of the totals, which cover
+  every item. A
   comparison sets two runs' groups side by side only where both cover the same items with no
   failure, and refuses two held-out runs that cover different variants. A held-out run is made
   only at a milestone's checkpoints, and the plan caps how many times, so the milestone does not
