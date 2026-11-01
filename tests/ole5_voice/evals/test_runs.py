@@ -44,7 +44,7 @@ LINE: dict[str, object] = {
     "price_per_hour_usd": 0.111,
     "cost_usd": 0.06,
     "latency_median_ms": 295.0,
-    "breakdowns": {"language": {"saudi": 0.3}},
+    "breakdowns": {"language": {"saudi": {"items": 20, "accuracy": 0.3}}},
     "scorecard": "scorecard.json",
     "data_digest": samples.SHA,
     "note": "the baseline, large-v3",
@@ -56,7 +56,7 @@ def _scorecard(**fields: object) -> dict[str, object]:
     card: dict[str, object] = {
         "run": samples.run().model_dump(mode="json"),
         "complete": True,
-        "totals": Metrics(variants=1, right=1, failures=0).model_dump(),
+        "totals": Metrics(items=1, variants=1, right=1, failures=0).model_dump(),
         "breakdowns": {},
     }
     return card | fields
@@ -117,6 +117,7 @@ def test_a_held_out_scorecard_holds_aggregates_only() -> None:
         WindowMetrics(
             ms=500,
             language="english",
+            items=3,
             clips=3,
             empty=1,
             reused=0,
@@ -127,7 +128,8 @@ def test_a_held_out_scorecard_holds_aggregates_only() -> None:
             holds_word=0,
         )
     ]
-    card = Scorecard.model_validate(_scorecard(run=_held_out(), windows=windows))
+    totals = Metrics(items=3, variants=3, right=3, failures=0).model_dump()
+    card = Scorecard.model_validate(_scorecard(run=_held_out(), windows=windows, totals=totals))
     assert (card.variants, card.windows[0].clips) == ((), 3)
     variant = samples.result(heard=HELD_OUT_TEXT).model_dump(mode="json") | {"split": "held-out"}
     refused = _scorecard(run=_held_out(), variants=[variant])
@@ -142,6 +144,33 @@ def test_a_dev_scorecard_never_holds_a_held_out_variant() -> None:
     variant = samples.result().model_dump() | {"split": "held-out"}
     with pytest.raises(ValidationError, match="its own split"):
         Scorecard.model_validate(_scorecard(variants=[variant]))
+
+
+def test_a_groups_items_fit_its_variants_its_clips_and_its_run() -> None:
+    """A group covers the items of its answered variants: no more than those variants, and one
+    or more when there is one. No group covers more items than its run. So an item count edited
+    by hand that cannot be right is refused as it is read."""
+    assert Metrics(items=2, variants=4, right=1, failures=1).items == 2
+    assert Metrics(items=0, variants=2, right=0, failures=2).items == 0  # every variant failed
+    for items, variants, failures in ((3, 1, 0), (2, 3, 2), (0, 2, 1), (1, 0, 0), (1, 1, 2)):
+        with pytest.raises(ValidationError, match="answered variants"):
+            Metrics(items=items, variants=variants, right=0, failures=failures)
+    counts = dict.fromkeys(["empty", "reused", "words", "leading_words", "reference_words"], 0)
+    window = {"ms": 500, "language": "saudi", "one_word_clips": 0, "holds_word": 0} | counts
+    assert WindowMetrics.model_validate(window | {"items": 2, "clips": 3}).items == 2
+    for items, clips in ((4, 3), (0, 1), (1, 0)):
+        with pytest.raises(ValidationError, match="its clips"):
+            WindowMetrics.model_validate(window | {"items": items, "clips": clips})
+    two = Metrics(items=2, variants=2, right=0, failures=0).model_dump()
+    for wider in (
+        {"breakdowns": {"language": {"saudi": two}}},
+        {"windows": [window | {"items": 2, "clips": 2}]},
+    ):
+        with pytest.raises(ValidationError, match="no more items than the run's totals"):
+            Scorecard.model_validate_json(json.dumps(_scorecard(**wider)))
+    wide = {"language": {"saudi": {"items": 61, "accuracy": 0.3}}}
+    with pytest.raises(ValidationError, match="no more items than the run"):
+        HistoryLine.model_validate(LINE | {"breakdowns": wide})
 
 
 def test_a_window_carries_its_measures() -> None:

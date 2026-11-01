@@ -17,8 +17,20 @@ from pydantic import AfterValidator, BaseModel, ConfigDict, Field, StringConstra
 Sha256 = Annotated[str, StringConstraints(pattern=r"^[0-9a-f]{64}$")]
 # An item's, a variant's, a take's, a root's or a session's name.
 Name = Annotated[str, StringConstraints(pattern=r"^[a-z0-9][a-z0-9_.-]{0,127}$")]
+# The name of a held-out run's pooled group (`runs.HELD_OUT_MIN_ITEMS`). No language, device or
+# split is named so, and no kind may be, so it never merges with a real value.
+Other = Literal["other"]
+OTHER: Final[Other] = "other"
+
+
+def _not_other(kind: str) -> str:
+    if kind == OTHER:
+        raise ValueError(f'"{OTHER}" names the pooled group of a held-out run, never a kind')
+    return kind
+
+
 # An item's kind: `request`, `stop_word`, `listening_sound`, ... (never a reference's words).
-Kind = Annotated[str, StringConstraints(pattern=r"^[a-z][a-z_]{0,63}$")]
+Kind = Annotated[str, StringConstraints(pattern=r"^[a-z][a-z_]{0,63}$"), AfterValidator(_not_other)]
 # The kind of the items that read out a ticket number, over which ID recall is scored.
 TICKET_KIND: Final = "ticket_number"
 Commit = Annotated[str, StringConstraints(pattern=r"^[0-9a-f]{7,40}\+?$")]

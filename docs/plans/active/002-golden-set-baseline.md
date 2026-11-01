@@ -1453,6 +1453,28 @@ run, [WORKING-RULES.md](../../../WORKING-RULES.md), "Measurement runs")
     shape, never the owner's examples; each new test failed on a mutant first.
   - `uv run --offline poe check` passes at the merge: 1204 tests and 1 skipped (the symbolic-link
     case), 100% coverage (3510 statements), mypy strict on 143 files, arch and docs clean.
+- 2026-11-01: The owner's answer on held-out groups is merged (`Plan 002: merge the owner's
+  answers, held-out groups`), from `plan-002-answers-heldout`: its build and its review fixes
+  389dcc0.
+  - In a held-out run, every group of fewer than 3 answered items (`HELD_OUT_MIN_ITEMS`, in
+    `runs.py`) is pooled into `other`, left out when `other` is that small too: in the
+    scorecard's breakdowns and window groups, the history line and its page, and `eval-compare`.
+    Within a group shown, a rate taken over fewer than 3 items is left out. Totals stay whole;
+    dev runs are unchanged. Groups now carry their item count (a history line's stratum value
+    is `{items, accuracy}`, with an Items column on the page), checked as a file is read.
+  - The agent told to refute it found two mediums, both fixed: an item whose every variant
+    failed still counted toward the 3, and a shown group's term recall could rest on one item
+    (s04_pdf, the held-out split's only item with a product term). Its four lows are fixed: the
+    amendment's wording, `eval-compare` refusing held-out runs over different variants, item
+    counts checked against what the data allows, and the name `other`, which no kind may take.
+  - What a held-out run would publish on the committed split: language `english`, `saudi` and
+    `other` (3 items); kind `listening_sound`, `request` and `other` (4 items); device `laptop`
+    and split `held-out` (13 items each); no group's term recall.
+  - Debt: TD-029 (a left-out `other` can still be worked out from the totals and the groups
+    shown) and TD-030 (the totals' rates may rest on fewer than 3 items, to be put to the owner
+    before H1).
+  - `uv run --offline poe check` passes at the merge: 1215 tests and 1 skipped (the symbolic-link
+    case), 100% coverage (3590 statements), mypy strict on 144 files, arch and docs clean.
 
 ## Decision log
 
@@ -2575,6 +2597,44 @@ All entries are the agent's choices of 2026-11-01, with the agent's reasons.
   CER and term recall are unchanged. The checker's separate proposal for the separator case (a ','
   or U+066C followed by exactly three digits, removed in `id_recall`) is not applied: joining a
   number's groups covers it.
+- 2026-11-01: The owner's answer on held-out groups: the pooled group is named `other`, as the
+  answer has it. No language, device or split is named so, and `Kind` now refuses the name, so no
+  kind can merge with it. A `want` label is not refused: it is no breakdown key, and the pooled
+  window group carries `language` `other`, which no language is. The name is one constant, `OTHER`
+  in `models.py` beside `Kind`; the threshold is `HELD_OUT_MIN_ITEMS = 3` in `runs.py`, whose
+  comment points at the registration's amendment. The agent's choice.
+- 2026-11-01: The same: window groups are pooled within each window length, never across lengths, so
+  `other` is one length's group, with `language` `other` and no `want` label. A window group's items
+  are those of its answered clips, since a failed variant's windows are left out as before. The
+  agent's choice.
+- 2026-11-01: The same: a group's items, for the threshold and for `Metrics.items` (the totals'
+  too), are the items of its answered variants. An item whose every variant failed is not counted,
+  since none of the group's rates rests on it; otherwise a group of 3 items, 2 of them failed, would
+  publish one item's accuracy. The window groups already counted their answered clips. The agent's
+  choice.
+- 2026-11-01: The same: within a held-out group shown, a rate taken over the variants of fewer than
+  3 items is left out (None, and no characters of text from silence). These rates are WER and CER,
+  term and ID recall, text from silence, and a window group's one-word clips and the windows that
+  hold the word. Accuracy is not checked apart, since its variants are the answered ones whose items
+  the group counts. Latency, requests, retries and billed seconds are not checked, since they are
+  not taken from what was heard. The totals are whole, as the owner's answer has them; whether their
+  rates follow the same rule is put to the owner before H1. The agent's choice.
+- 2026-11-01: The same: every group carries its item count, so the rule is checked when a scorecard
+  or history line is read. That means `Metrics.items` (the totals' too), `WindowMetrics.items`, and
+  a history line's stratum value as `StratumValue {items, accuracy}` instead of the accuracy alone,
+  with an Items column on the rendered page. The counts are also checked against what the data
+  allows: a group's items are at most its answered variants, and 0 exactly when nothing was
+  answered; a window group's are at most its clips; no group covers more items than the run. A group
+  carries no count per rate, so the read-back check does not see a rate over too few items; adding
+  four counts to every group was judged out of proportion. The history is committed, never edited
+  and still empty, so its shape changes now at no cost. The agent's choice.
+- 2026-11-01: The same: `eval-compare` shows a held-out stratum value only where both runs hold it
+  over the same number of items, at least 3, with no failure in either group. At one commit and one
+  data digest, that means the same items and variants, so B - A is never taken between groups that
+  pool different items or variants. It refuses two held-out runs whose totals cover different
+  numbers of variants, rather than different numbers of items, because the item counts now leave out
+  an item that failed in every variant, and refusing on them would block H1 against H2 over one
+  outage. The totals are compared as before, with an `items` row. The agent's choice.
 
 ## The owner's decisions
 
@@ -3313,6 +3373,27 @@ before the run.
   output finds, no digit of the output counting for two IDs, so it is never less than comparing
   whole runs gives. The verdict, WER, CER, term recall and `normalize_digits` are unchanged, and "45
   21" stays two numbers in them.
+- 2026-11-01, the owner's answer, before any result: wherever a held-out run's results are published
+  or compared, every value that covers fewer than 3 answered items is pooled into one group,
+  `other`; items are counted, not variants, and an item whose every variant failed is not counted.
+  Its numbers are taken over those items' variants as any group's are, and `other` is itself left
+  out when it too covers fewer than 3 items. Within a group shown, a rate taken over fewer than 3
+  items is left out: WER and CER (over the items with a reference), term recall (with a product
+  term), ID recall (of the ticket kind), text from silence (with an empty reference, its share and
+  its characters), and a window group's one-word clips and the windows that hold the word. This
+  holds in its scorecard's breakdowns by language, device, kind and split, its window groups of each
+  window length, its history line and the page rendered from it, and `eval-compare`'s held-out
+  aggregates. The totals are whole, and dev runs are unchanged. `eval-compare` shows a held-out
+  stratum value only where both runs hold it over the same number of items, at least 3, with no
+  failure in either, and refuses two held-out runs that cover different numbers of variants. A
+  held-out scorecard or history line holding a smaller group is refused as it is read, and no kind
+  may be named `other`. With the split as committed on 2026-11-01 (talk-over items only), a held-out
+  run would publish language `english`, `saudi` and `other` (mixed and msa, 3 items); kind
+  `listening_sound`, `request` and `other` (4 items); device `laptop` and split `held-out` (13 items
+  each); and no group's term recall, since s04_pdf is the only held-out item with a product term. A
+  held-out windows run, which Q15's answer leaves out, would publish at each length
+  `saudi`/`listen`, `saudi`/`send` and `other` (7 items). H1 and H2 are pooled by the same rule over
+  the split committed before them. No metric's definition changes.
 
 ## What the owner does
 

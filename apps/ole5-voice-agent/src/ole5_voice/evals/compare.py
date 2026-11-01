@@ -8,9 +8,11 @@ language and by device is the stratum guard, which marks a stratum too small to 
 every changed item on one side could not reach p < 0.05. For two runs of the same code (the
 noise), the smallest change one run can detect. The `--focus` items are shown apart, and the
 verdict is still every item's. A variant either run did not judge (an infrastructure failure, or
-in one run only) is left out of both and listed. Held-out runs are compared by aggregates only.
-Two runs whose recorded commits, data digests or splits differ are refused, the difference
-named. The report names variants by their IDs, never by what was said.
+in one run only) is left out of both and listed. Held-out runs are compared by aggregates only,
+a stratum value only where both hold it over the same number of items (`HELD_OUT_MIN_ITEMS` or
+more) with no failure, and two held-out runs that cover different variants are refused. Two runs
+whose recorded commits, data digests or splits differ are refused, the difference named. The
+report names variants by their IDs, never by what was said.
 """
 
 from __future__ import annotations
@@ -26,7 +28,13 @@ from typing import Final
 from pydantic import ValidationError
 from t2_agentic_voice import AppError, evals
 
-from ole5_voice.evals.runs import SCORECARD_FILE, Metrics, Scorecard, VariantResult
+from ole5_voice.evals.runs import (
+    HELD_OUT_MIN_ITEMS,
+    SCORECARD_FILE,
+    Metrics,
+    Scorecard,
+    VariantResult,
+)
 from ole5_voice.evals.scorecard import EvalDataError, first_problem
 
 ALPHA: Final = 0.05  # a p-value below it is beyond the noise
@@ -172,7 +180,8 @@ def smallest_change(changed: int, items: int, sign_test: SignTest) -> int | None
 
 def compare(a: Scorecard, b: Scorecard, *, sign_test: SignTest, focus: Sequence[str] = ()) -> str:
     """The report of B judged against A; `ComparisonError` for two runs that differ in commit,
-    data or split, for `focus` on held-out runs, and for a focus item in neither run."""
+    data or split, for held-out runs that cover different variants or with `focus`, and for a
+    focus item in neither run."""
     differences = [
         f"their {what} differ (A {first}, B {second})"
         for what, first, second in (
@@ -187,12 +196,22 @@ def compare(a: Scorecard, b: Scorecard, *, sign_test: SignTest, focus: Sequence[
     held_out = a.run.split == "held-out"
     if held_out and focus:
         raise ComparisonError("held-out runs are compared by aggregates only: no --focus")
+    if held_out and a.totals.variants != b.totals.variants:
+        # Their difference would be the numbers of the variants one run holds and not the other.
+        raise ComparisonError(
+            "held-out runs that cover different variants cannot be compared "
+            f"(A {a.totals.variants}, B {b.totals.variants})"
+        )
     unknown = sorted(set(focus) - {result.item for result in (*a.variants, *b.variants)})
     if unknown:
         raise ComparisonError(f"--focus names {len(unknown)} item(s) in neither run")
     lines = _header(a, b)
     if held_out:
-        lines.append("Held-out runs are compared by aggregates only: no variant, no item.\n")
+        lines.append(
+            "Held-out runs are compared by aggregates only: no variant, no item, and a stratum "
+            "value only where both runs hold it over the same number of items, at least "
+            f"{HELD_OUT_MIN_ITEMS}, with no failure.\n"
+        )
     else:
         lines += _paired(*pair(a, b), focus=focus, sign_test=sign_test)
     return "\n".join(lines + _aggregates(a, b)) + "\n"
@@ -305,12 +324,25 @@ def _aggregates(a: Scorecard, b: Scorecard) -> list[str]:
     ]
     strata = {(s, v) for card in (a, b) for s, values in card.breakdowns.items() for v in values}
     for stratum, value in sorted(strata):
-        accuracies = [
-            metrics.accuracy if (metrics := card.breakdowns.get(stratum, {}).get(value)) else None
-            for card in (a, b)
-        ]
+        groups = [card.breakdowns.get(stratum, {}).get(value) for card in (a, b)]
+        if a.run.split == "held-out" and not _same_items(*groups):
+            continue
+        accuracies = [group.accuracy if group else None for group in groups]
         lines.append(f"| {stratum} " + _compared(value, *accuracies))
     return lines
+
+
+def _same_items(first: Metrics | None, second: Metrics | None) -> bool:
+    """Whether both held-out runs hold a group over the same number of items, at least
+    `HELD_OUT_MIN_ITEMS`, with no failure: at one data digest, the same items and variants, so
+    B - A is never taken between groups that pool other items or variants, which would tell
+    those between them apart (a failure moves an item's answered variants, and may pool it)."""
+    return (
+        first is not None
+        and second is not None
+        and first.items == second.items >= HELD_OUT_MIN_ITEMS
+        and first.failures == second.failures == 0
+    )
 
 
 def _compared(label: str, first: float | None, second: float | None, *, whole: bool = False) -> str:
