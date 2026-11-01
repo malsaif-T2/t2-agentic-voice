@@ -1420,6 +1420,14 @@ run, [WORKING-RULES.md](../../../WORKING-RULES.md), "Measurement runs")
   - `uv run --offline poe check` passes: 1180 tests and 1 skipped (the symbolic-link case), 100%
     coverage (3476 statements), mypy strict on 143 files, arch and docs (25 files) clean; `uv lock
     --check` is clean. Next: the owner's answers and step 16's merge into the main branch.
+- 2026-11-01: The owner answered the eight questions of the merged tracks and their review, and
+  Q4, Q5 and Q9 ("The owner's decisions"); Q7 is put again, as a list. Three answers change code
+  and are built in linked worktrees cut from `plan-002-integration` at 736c3f1, each checked by
+  an agent told to refute it: ID recall over a number's groups (`plan-002-answers-idrecall`),
+  held-out groups under 3 items pooled (`plan-002-answers-heldout`), and the approved script with
+  the ticket shape plus the guide's note on the variables to leave unset
+  (`plan-002-answers-script`). The rest is recorded in the decision log. The owner's consent for
+  the talk-over set waits on the owner's sentence.
 
 ## Decision log
 
@@ -2492,6 +2500,22 @@ All entries are the agent's choices of 2026-11-01, with the agent's reasons.
   and, before anything is sent, by `poe eval`, rather than listing `history.jsonl` among the files
   where the docs check allows one: the history then stays checked like any other file. The agent's
   choice.
+- 2026-11-01: `OTEL_SDK_DISABLED` still turns the library's private tracing off (TD-005); the
+  library does not override it through the SDK's private `_disabled` flag, which could break
+  silently on an SDK upgrade, and the guide tells a teammate to leave it unset, with
+  `OTEL_PYTHON_CONTEXT` and `GROQ_LOG` (TD-003). The owner's answer ("The owner's decisions").
+- 2026-11-01: The recorder saves a take whose browser reports echo cancellation, noise
+  suppression or gain control off, with a warning on the page and the settings in its sidecar,
+  rather than refusing it, which would block a sitting on a device whose browser reports one
+  off. The owner's answer.
+- 2026-11-01: Q15 with `--clips-from`: a held-out window at least as long as its clip cannot
+  reuse the clip's answer, so the runner sends the whole clip as that window, marked not reused
+  (at most a few requests, within the estimate). The owner's answer.
+- 2026-11-01: "Ole5" stays a product term in `terms.toml`, beside Outlook, PDF, Word and English.
+  The owner's answer, with the script's approval (Q4).
+- 2026-11-01: No `--unchecked` flag for the reference answerer: a run scores the checked
+  variants only, and step 15's command-line runs are made at step 19 on the confirmed set, with
+  `test_reference_answerer.py` covering the check until then. The owner's answer.
 
 ## The owner's decisions
 
@@ -2529,6 +2553,38 @@ agent's words of the question):
     (Outlook, PDF, Word); numbers as digits, and digits said one by one («خمسة سبعة») count as
     those digits; English contractions as said ("don't" stays "don't"); listening sounds from
     a fixed list that comes with the script (such as «اها», «امم», "mm-hmm").
+
+On 2026-11-01, after the merged tracks were reviewed, the owner's answers to the eight questions
+they raised, each put with the agent's recommendation: "Go with the recommended with all of
+them". So, in the agent's words of each recommendation:
+
+1. ID recall counts a ticket number the speech-to-text writes in groups ("48 21" or "48-21" for
+   4821) as heard, and the thousands-separator case ("4,821", «٤٬٨٢١») is fixed too.
+2. In a held-out run's results, a group covering fewer than 3 items is merged into one group
+   named "other" (left out when "other" still covers fewer than 3), registered before H1.
+3. `OTEL_SDK_DISABLED` stays debt (TD-005), with the guide saying to leave it unset; the SDK's
+   private `_disabled` flag is not overridden.
+4. The recorder keeps saving a take whose browser reports echo cancellation, noise suppression or
+   gain control off, with a warning on the page and in the take's sidecar; it does not refuse it.
+5. Q15 with `--clips-from`: a held-out window at least as long as its clip sends the whole clip,
+   marked not reused. Accepted.
+6. The owner's consent for the talk-over set is recorded in words and dated; the owner's own
+   sentence is asked for, and written here when given.
+7. "Ole5" stays a product term in `terms.toml`.
+8. No `--unchecked` flag for the reference answerer: step 15's command-line runs are made at
+   step 19, on the confirmed set.
+
+The same day, the owner's answers to the calls before recording:
+
+- Q4, the script: "I Approve the recording script, I haven't rally tried it but if you see it
+  good then it is fine". The agent reviewed it before marking it approved (the progress log).
+- Q5, the ticket number's shape: the owner gave three examples of Ole5 ticket numbers (not
+  copied here, since they may be real tickets). Their shape: 16 digits, the date as YYYYMMDD,
+  then 82, then a 6-digit counter. The script's full numbers are made up in that shape.
+- Q7, the talk-over items' dialect: "I am not sure I understand the question correctly". The
+  agent put it again, as a list of the phrases with the label proposed for each; still open.
+- Q9, the independent check: "I can listen and judge, just give the samples and I can do that",
+  so (a): the owner listens to every variant and confirms it, in the recorder's review mode.
 
 Earlier words this plan rests on, all of 2026-10-28 (D-004, D-006, D-010):
 
@@ -3110,11 +3166,13 @@ The owner's call before Block 0:
   the owner's "No, one install" (D-018); Q21, the downloads, by the owner's answer quoted in
   "The owner's decisions".
 
-The owner's call before recording:
-- **Q4.** The script: the counts above; ticket-number and echo-only items; whether to add
+The owner's call before recording (Q4, Q5 and Q9 settled on 2026-11-01: "The owner's
+decisions"; Q7 still open):
+- **Q4.** *Settled: the script is approved, as proposed.* The script: the counts above; ticket-number and echo-only items; whether to add
   over-the-agent items on the two headsets (a reply plays while the owner speaks), which would
   give M3 overlap clips on every device.
-- **Q5.** The shape of a ticket number a customer reads out, for the script's ticket items. No
+- **Q5.** *Settled: 16 digits, the date as YYYYMMDD, then 82, then a 6-digit counter.* The
+  shape of a ticket number a customer reads out, for the script's ticket items. No
   source gives Ole5's real format: the prototype's tickets were mocks, `T-MOCK-` with a time and
   a counter (`Ole5-chatbot/src/ole5_chat/tickets/mock.py`, line 20), and its log says "the real
   OTRS format is unknown" (`Ole5-chatbot/VOICE_LOG.md`, line 21, D12). The prototype's agent
@@ -3123,7 +3181,7 @@ The owner's call before recording:
   and two of a full number in the shape the owner gives (the website team may know it).
 - **Q7.** The dialect of the talk-over Arabic items: the agent proposes Saudi, MSA or mixed for
   each phrase from its text; the owner confirms or changes each.
-- **Q9.** The independent check: (a) the owner listens to every variant and confirms it (the
+- **Q9.** *Settled: (a).* The independent check: (a) the owner listens to every variant and confirms it (the
   agent's recommendation); or (b) something lighter, such as only the unscripted variants, which
   would leave every scripted variant with no independent check: a departure from evaluation.md
   ("Proven twice"), logged as a `Deviation:` line.
@@ -3192,7 +3250,9 @@ before the run.
    reads only these names, never `GROQ_API_KEY` (the design's 7.3). The agent never opens `.env`:
    a run reads it through `Settings` when given `--env-file`, and `poe eval --show-settings` says
    only whether the key is set.
-3. **Before recording:** answer Q4, Q5, Q7 and Q9 and approve the script.
+3. **Before recording:** answer Q4, Q5, Q7 and Q9 and approve the script (all but Q7 done on
+   2026-11-01). The check of step 5 can start now on the 120 talk-over variants, before any new
+   recording: run step 5's command with `--out var/golden-audio`, the folder step 4 then uses.
 4. **Recording**, one sitting per device, in a quiet room except for the noise items:
    - From the main checkout, `uv run poe record --out <a folder under var/, such as
      var/golden-audio> --session <a name> --device <laptop, wired or bluetooth> --replies
