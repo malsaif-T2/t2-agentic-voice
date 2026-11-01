@@ -320,11 +320,12 @@ def test_a_held_out_scorecard_holds_aggregates_only(tmp_path: Path) -> None:
     results = [held_out(row) for row in ROWS]
     card = _card(tmp_path, results, scorers, run=_run(split="held-out"))
     assert (card.variants, card.totals.variants, card.totals.failures) == ((), 8, 1)
-    # The held-out group holds the totals' numbers, but for its rates over fewer than 3 items:
-    # term recall over i1 and i5, ID recall over i2, text from silence over i3. WER is over 3.
+    # The held-out group and the totals hold the same numbers, and leave out the same rates, each
+    # over fewer than 3 items: term recall over i1 and i5, ID recall over i2, text from silence
+    # over i3 (the owner's answer of 2026-11-01). WER is over 3, so it is shown.
     withheld = {"term_recall": None, "id_recall": None, "silence_share": None, "silence_chars": 0}
-    assert card.breakdowns["split"] == {"held-out": card.totals.model_copy(update=withheld)}
-    assert (card.totals.term_recall, card.totals.silence_chars) == (1.0, 2 * len(HELD_OUT_TEXT))
+    assert card.breakdowns["split"] == {"held-out": card.totals}
+    assert card.totals == card.totals.model_copy(update=withheld) and card.totals.wer is not None
     written = (tmp_path / SCORECARD_FILE).read_text(encoding="utf-8")
     assert HELD_OUT_TEXT not in written
     assert '"v1"' not in written and '"i1"' not in written  # no variant or item named

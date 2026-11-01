@@ -3,10 +3,11 @@
 renders, and `eval-compare`, every value that covers fewer than `HELD_OUT_MIN_ITEMS` answered
 items is pooled into one group, `OTHER`, itself left out when it too covers fewer, and a rate of
 a group shown that is taken over fewer items is left out. Items are counted, not variants, and an
-item whose every variant failed is not counted; the totals are whole; a dev run shows every group
-and every rate; a scorecard or history line holding a smaller held-out group is refused as it is
-read; and `eval-compare` shows a held-out group only over the same items with no failure, and
-refuses two held-out runs that cover different variants.
+item whose every variant failed is not counted; the totals cover every item, with the same rule
+for their rates; a dev run shows every group and every rate; a scorecard or history line
+holding a smaller held-out group is refused as it is read; and `eval-compare` shows a held-out
+group only over the same items with no failure, and refuses two held-out runs that cover
+different variants.
 
 The made-up held-out set has the committed split's held-out strata (`split.json` and `golden/`,
 read 2026-11-01): 13 items of 36 variants, `mixed`, `confirmation` and `short_request` one item
@@ -232,7 +233,8 @@ def test_a_held_out_groups_rate_over_fewer_than_3_items_is_left_out(tmp_path: Pa
     """English covers 3 items, but its WER rests on 2 of them, its term recall on e1 alone (as
     the committed split's s04_pdf is its only held-out item with a product term), its ID recall
     on e2 and its text from silence on e3: each is left out. Saudi's, over 3 items, are shown;
-    the totals are whole; a dev run shows every rate."""
+    the totals cover every item, but their ID recall and text from silence, each of one item,
+    are left out too (the owner's answer of 2026-11-01); a dev run shows every rate."""
     scorers = FakeScorers(rate=0.25, recall=Recall(expected=1, found=1), silence=5)
     held_out = _card(tmp_path / "h1", _rated("held-out"), scorers=scorers)
     dev = _card(tmp_path / "r1", _rated("dev"), split="dev", name="r1", scorers=scorers)
@@ -247,7 +249,8 @@ def test_a_held_out_groups_rate_over_fewer_than_3_items_is_left_out(tmp_path: Pa
     assert shown(held_out.breakdowns["language"]["saudi"])[:3] == (0.25, 0.25, 1.0)
     # The laptop's 6 items: WER over 5 and terms over 4 are shown, the ticket and silence not.
     assert shown(held_out.breakdowns["device"]["laptop"]) == (0.25, 0.25, 1.0, None, None, 0)
-    assert shown(held_out.totals) == shown(dev.totals) == (0.25, 0.25, 1.0, 1.0, 1.0, 10)
+    assert shown(held_out.totals) == (0.25, 0.25, 1.0, None, None, 0)
+    assert shown(dev.totals) == (0.25, 0.25, 1.0, 1.0, 1.0, 10)
     assert shown(dev.breakdowns["language"]["english"]) == (0.25, 0.25, 1.0, 1.0, 1.0, 10)
     # The one-word windows of English's group are e1's alone; Saudi's are of 3 items.
     found = {(w.language, w.one_word_clips, w.holds_word) for w in held_out.windows}
