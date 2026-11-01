@@ -106,7 +106,7 @@ twice; DOC-REF: every `D-NNN` cited anywhere is a heading here), so keep its sha
   version is pinned and an upgrade is a plan of its own. If the owner's host cannot open a UDP
   path to the backend, WebRTC needs a TURN service or another transport (the roadmap, M2).
 
-## D-003 · Layered architecture, enforced from one config · 2026-10-28 · Accepted (the owner, 2026-11-01)
+## D-003 · Layered architecture, enforced from one config · 2026-10-28 · Accepted (the owner, 2026-11-01; its layers amended by D-019)
 
 - **Context:** Agents replicate existing patterns, so drift has to be prevented structurally
   rather than by instruction. The prototype's failures came from its structure: the voice code
@@ -398,3 +398,70 @@ twice; DOC-REF: every `D-NNN` cited anywhere is a heading here), so keep its sha
     starts using the library. The owner renames the folder when no session runs inside it.
 - **Evidence:** the owner's answers on 2026-11-01, to questions and options the agent wrote; the
   three quoted above are the owner's own words.
+
+## D-019 · The library's `testing` layer · 2026-11-01 · Accepted (the owner, 2026-11-01, as the design's 12.2; one bullet Proposed)
+
+- **Context:** The package design (D-017, as amended by D-018) makes a testing kit part of the
+  contract: the fakes of every port, text-mode calls, the adversarial suite, simulated callers
+  and the evaluation scorers ([package-design.md](package-design.md), sections 9 and 12.2). Its
+  code must sit inside a layer, and a team's tests must not need the HTTP stack. Its first part,
+  the scorers `wer` and `cer` on jiwer, is built by plan 002, so the layer comes now. D-003 has
+  seven layers; this entry amends it.
+- **Decision** (as the design's 12.2 describes it):
+  - An eighth layer, `testing`, may import `core`, `domain`, `actions`, `agent` and `voice`; it
+    never imports `adapters`, so a test reaches a provider only through a port it passes in, nor
+    `api`. `api` may import it, as it imports every layer.
+  - `testing` is the only layer that may import `jiwer` (`[[owners]]`).
+  - `harness.toml` and [ARCHITECTURE.md](../../ARCHITECTURE.md) say so together (ARCH-DOC
+    compares them), and CLAUDE.md's code map has its line.
+  - Alternative considered (plan 002's decision log): our own edit distance in `domain`, like
+    the prototype's `lev`, with no new layer; set aside by the agent because GP-10 prefers a
+    well-known library, and the testing kit needs the layer anyway.
+  - **Proposed** (the agent's, beyond the design, for the owner to rule on): the layer joins
+    `[package] public` (its modules become public) in the plan that builds the testing kit's
+    fakes and `TextCall`. Until then it holds only the scorers, which an app reaches through the
+    `evals` facade at the package root, so none of its modules is public yet.
+- **Consequences:** The library has eight layers. jiwer stays out of the layers a call runs
+  through. When the testing kit lands, the parts that run Pipecat (`AudioCall`, the design's
+  12.2) stay in modules of their own inside `testing`, as `voice` keeps Pipecat's.
+- **Evidence:** the owner, 2026-11-01: "Approve all", for the package design as amended (plan
+  000); and, on whether that covers the entries recording what the design describes, "Yes, as
+  Accepted", with the agent's note that anything beyond the design is written as Proposed (plan
+  002, Q3).
+
+## D-020 · The harness checks ARCH-FACADE and ARCH-WORDS · 2026-11-01 · Accepted (the owner, 2026-11-01, as the design's 12.4; one bullet Proposed)
+
+- **Context:** The design puts the library's public modules at the package root as thin
+  facades that only re-export names (its 5.3), where the harness allowed only `__init__.py`.
+  Its 12.4 adds two checks with the first facade: ARCH-FACADE, each module listed in
+  `[package] facades` holds only imports and `__all__`; and ARCH-WORDS, the library's `src/`
+  holds no app name (`ole5`, `otrs`, `ds.t2.sa`), in any case, which answers the fear that the
+  library is shaped by one app underneath.
+- **Decision** (as the design's 12.4 describes it):
+  - `[package] facades` in `harness.toml` names the facades. `scripts/harness_config.py` checks
+    that each sits directly under the package root, is in `[package] public`, does not take a
+    layer's name, and has its module file. A facade is checked as the package root is: it may
+    import every layer, and ARCH-OWNER still applies to it. No layer imports a facade
+    (ARCH-LAYER), as no layer imports the package root.
+  - ARCH-FACADE (`scripts/arch_facade.py`): a facade holds its docstring, its imports and one
+    `__all__`, a list or tuple of string literals, and nothing else.
+  - ARCH-WORDS (`scripts/arch_words.py`): no word of `[package] banned_words` (`ole5`, `otrs`,
+    `ds.t2.sa`) in the library's `src/`, in any case, inside longer words too.
+  - ARCH-PUBLIC treats `from t2_agentic_voice import <facade>` as an import of that module, as
+    it already treated a layer's name; ARCH-PUBLIC itself moved into `scripts/arch_public.py`, so
+    `scripts/check_architecture.py` stays under ARCH-SIZE.
+  - Not built here: ARCH-BAN, one configuration per member, and one invariants register, which
+    the design's 12.4 also lists; each lands with the plan that needs it.
+  - **Proposed** (the agent's, beyond the design, for the owner to rule on): the key's name,
+    `banned_words` (the design names none); the files ARCH-WORDS reads (`*.py`, `*.md`, `*.toml`,
+    `*.json`, `*.txt`, `*.js`, `*.html`, `*.css`) and its reading of each file's path below
+    `[package] root` as well as its text, so a module named after an app is caught too; and what
+    it skips: `__pycache__/` and the folders above `[package] root`, since a bytecode file holds
+    its module's absolute path and the owner's checkout sits in a folder named
+    `OTRS-voice-agent`.
+- **Consequences:** A public name lives in the layer that owns it, under that layer's rules, and
+  a facade says only which names are public. A banned word that is not an app's name changes
+  `banned_words` with a decision. The facades themselves, and the names each holds, are recorded
+  with the first facades.
+- **Evidence:** as for D-019: the owner's "Approve all" and "Yes, as Accepted" (plan 002, Q3),
+  2026-11-01.

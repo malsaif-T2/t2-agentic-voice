@@ -417,6 +417,25 @@ run, [WORKING-RULES.md](../../../WORKING-RULES.md), "Measurement runs")
   `groq` and `httpx` loggers to DEBUG or INFO; its defaults are a 60 s timeout (5 s to connect)
   and 2 retries (`groq/_constants.py`, lines 9-10). The OpenTelemetry reading is in the decision
   log.
+- 2026-11-01: Block 0, steps 3 to 6, and step 7's first two entries. The `testing` layer:
+  `[layers]` (and `api`'s list), its `[[owners]]` row for jiwer,
+  `packages/t2-agentic-voice/src/t2_agentic_voice/testing/__init__.py`, its row, place in the
+  diagram and line in "Why these layers" in ARCHITECTURE.md, and its line in CLAUDE.md's code
+  map. `[package] facades`, read and checked by `scripts/harness_config.py` (directly under the
+  package root, in `public`, not a layer's name, its module file present), stays empty until
+  step 10 lists the five facades with their modules. `check_file` treats a listed facade as the
+  package root. ARCH-FACADE is in `scripts/arch_facade.py`; ARCH-PUBLIC moved into
+  `scripts/arch_public.py` and treats a facade's name as a module import, which leaves
+  `scripts/check_architecture.py` at 343 lines; ARCH-WORDS is in `scripts/arch_words.py`, with
+  `[package] banned_words`, and passes on the library from the start. Tests:
+  `tests/harness/test_arch_facade.py`, `tests/harness/test_arch_words.py` (a `.pyc` holding a
+  banned word under a checkout folder named with one, ignored) and three in
+  `tests/harness/test_harness_config.py`; `tests/harness/support.py`'s SYNTHETIC gains both keys,
+  empty. Step 6: `harness.toml`'s FIX text names `t2_agentic_voice.core.logging`;
+  `.gitattributes` marks the six audio types binary; `tests/**` ignores RUF001 to RUF003;
+  ARCHITECTURE.md's Enforcement list names ARCH-FACADE and ARCH-WORDS (its public-API paragraph
+  names the facades in step 10, with them). D-019 (the `testing` layer, amending D-003, whose
+  heading now points at it) and D-020 (the two checks), each Accepted with one bullet Proposed.
 
 ## Decision log
 
@@ -615,6 +634,14 @@ All entries are the agent's choices of 2026-11-01, with the agent's reasons.
 
   Track C keeps out each one of the second group it can, and reports the rest as debt rows; the
   agent proposes those rows in Block 0's report, for the integrator to number.
+- 2026-11-01: A facade's module file is checked when `harness.toml` is loaded, as a
+  HARNESS-CONFIG problem, like the rest of `[package]`; so every check, not only `poe arch`,
+  refuses a facade with no module. The agent's choice: the plan names `harness_config.py` as
+  the place. `[package] facades` holds full module names (`t2_agentic_voice.ports`), as
+  `public` does.
+- 2026-11-01: `t2_agentic_voice.testing` is not added to `[package] public` in M1: the plan's
+  facades are the five public modules M1 adds, and the scorers reach apps through `evals`. When
+  it becomes public is the Proposed bullet of D-019.
 
 ## The owner's decisions
 

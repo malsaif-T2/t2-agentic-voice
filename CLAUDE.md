@@ -72,6 +72,7 @@ packages/t2-agentic-voice/src/t2_agentic_voice/   the library; __init__.py is it
   actions/    the backend, the only part that acts: tools, the action record, outcomes
   agent/      the talker: prompts, tool definitions, one turn, the output guard
   voice/      one call's real-time pipeline: WebRTC, end of turn, interruptions, cancel scope
+  testing/    what a team tests and measures with: the evaluation scorers; later, the fakes
   api/        HTTP and the composition root: the widget, call set-up, health
 apps/ole5-voice-agent/src/ole5_voice/   the Ole5 app: only the library's public API (ARCH-PUBLIC)
 examples/minimal/src/minimal_example/   the smallest app: the quickstart, a test of the library

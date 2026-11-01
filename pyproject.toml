@@ -97,8 +97,11 @@ line-ending = "lf"
 select = ["E", "W", "F", "I", "B", "UP", "SIM", "C4", "N", "PTH", "RUF", "S"]
 
 [tool.ruff.lint.per-file-ignores]
-# Tests assert, use made-up secrets, and run this interpreter as a subprocess.
-"tests/**" = ["S101", "S105", "S106", "S603"]
+# Tests assert, use made-up secrets, and run this interpreter as a subprocess. They also hold
+# Arabic text and digits as written (RUF001 to RUF003 flag Arabic letters and digits as
+# confusable with Latin ones); the library writes its tables with `\u` escapes instead, each
+# character named in a comment.
+"tests/**" = ["S101", "S105", "S106", "S603", "RUF001", "RUF002", "RUF003"]
 # ast.NodeVisitor requires visit_CamelCase method names.
 "scripts/**" = ["N802"]
 

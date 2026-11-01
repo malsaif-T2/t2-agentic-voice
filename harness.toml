@@ -14,13 +14,23 @@ root = "packages/t2-agentic-voice/src"
 # names apps use; a public subpackage (such as a future "<name>.testing") makes its modules
 # public too. Everything else is internal, free to change without a major version.
 public = ["t2_agentic_voice"]
+# The public modules that sit directly under the package root as thin facades, beside its
+# __init__.py (the design's 5.3): each is also in `public`, and holds only a docstring, imports
+# and `__all__` (ARCH-FACADE). Like the package root, a facade may import every layer, while
+# ARCH-OWNER still applies to it.
+facades = []
+# Words the library's src/ never holds, in any case: the names of the apps built on it and of
+# their own services, so the library stays free of any one app (ARCH-WORDS). Read in the source
+# and text files under [package] root, never in __pycache__/.
+banned_words = ["ole5", "otrs", "ds.t2.sa"]
 
 # Each layer of the package (a folder directly under src/<name>/) and the other layers it may
 # import. A layer always may import itself. The graph may not have a cycle. Code must sit inside
 # a layer: a module directly in src/<name>/ (other than __init__.py) is a violation.
 # The layers of a voice support call (D-003, ARCHITECTURE.md): rules without IO at the bottom,
 # the outside services beside the backend, the real-time pipeline above the talker, and the
-# HTTP surface on top as the composition root.
+# HTTP surface on top as the composition root. The testing kit sits beside the HTTP surface: it
+# may import the pipeline and everything below it, but never a provider's adapter (D-019).
 [layers]
 core = []
 domain = ["core"]
@@ -28,14 +38,15 @@ adapters = ["core", "domain"]
 actions = ["core", "domain"]
 agent = ["core", "domain", "actions"]
 voice = ["core", "domain", "agent"]
-api = ["core", "domain", "adapters", "actions", "agent", "voice"]
+testing = ["core", "domain", "actions", "agent", "voice"]
+api = ["core", "domain", "adapters", "actions", "agent", "voice", "testing"]
 
 # Libraries that only some layers may import (ARCH-OWNER), one table per group. The fix text is
 # printed with every violation, so it says what to do instead.
 [[owners]]
 modules = ["logging", "structlog"]
 layers = ["core"]
-fix = "Log via `from ole5_voice.core.logging import get_logger`; `log = get_logger(__name__)`; `log.info('event_name', key=value)`."
+fix = "Log via `from t2_agentic_voice.core.logging import get_logger`; `log = get_logger(__name__)`; `log.info('event_name', key=value)`."
 
 [[owners]]
 modules = ["pydantic_settings"]
@@ -61,6 +72,11 @@ fix = "Keep the voice framework inside voice/; other layers take plain text, aud
 modules = ["fastapi", "starlette", "uvicorn"]
 layers = ["api"]
 fix = "HTTP lives in api/; a lower layer returns a typed model or raises an AppError, and api maps it to a response."
+
+[[owners]]
+modules = ["jiwer"]
+layers = ["testing"]
+fix = "Score through the evaluation helpers in testing/scorers.py (`wer`, `cer`, re-exported by the `evals` facade); never import jiwer elsewhere."
 
 # Classes that only some layers may construct (ARCH-CONSTRUCT): calls, `.model_validate`, and
 # `.model_construct` all count. Use it for an object that only a validator may issue. Example:

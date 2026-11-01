@@ -63,10 +63,10 @@ web widget         microphone, speaker, captions, Stop; static files the api lay
 ## Layers
 
 ```
-               api
-    ┌───────────┼────────────┐
-  voice         │         adapters
-    │           │            │
+               api ─────────────► testing
+    ┌───────────┼────────────┐       │
+  voice ◄───────┼────────────┼───────┘
+    │           │         adapters
   agent         │            │
     │           │            │
   actions ◄─────┘            │
@@ -76,7 +76,8 @@ web widget         microphone, speaker, captions, Stop; static files the api lay
   core
 ```
 
-An arrow or a line down means "may import"; `api` may import every layer.
+An arrow or a line down means "may import"; `api` may import every layer, `testing` included.
+`testing` may import `voice` and every layer below it, never `adapters` or `api`.
 
 | Layer | Responsibility | May import | Owns (only it may import) |
 | --- | --- | --- | --- |
@@ -86,7 +87,8 @@ An arrow or a line down means "may import"; `api` may import every layer.
 | `actions` | The backend that acts: runs the talker's tools through the ports, keeps each call's record of completed actions, words every outcome from a real result | core, domain | — |
 | `agent` | The talker: prompts, the few tool definitions, the reply language, one turn from the user's words to a reply and tool calls; the output guard on every sentence | core, domain, actions | — |
 | `voice` | One call's real-time pipeline: answers the WebRTC offer (Pipecat's peer connection), audio in and out, speech detection, end of turn, interruptions, each turn's cancel scope, speech-to-text and text-to-speech wired to the talker | core, domain, agent | `pipecat` |
-| `api` | The HTTP surface and composition root: serves the widget, starts calls, reports health, builds the adapters from the settings and injects them, maps every error to one shape | core, domain, adapters, actions, agent, voice | `fastapi`, `starlette`, `uvicorn` |
+| `testing` | What a team tests and measures its agent with: the evaluation scorers (word and character error rates) today; later the fakes of every port, text-mode calls, the adversarial suite and simulated callers (D-019) | core, domain, actions, agent, voice | `jiwer` |
+| `api` | The HTTP surface and composition root: serves the widget, starts calls, reports health, builds the adapters from the settings and injects them, maps every error to one shape | core, domain, adapters, actions, agent, voice, testing | `fastapi`, `starlette`, `uvicorn` |
 
 `harness.toml` holds the same rules in `[layers]` (who may import whom) and `[[owners]]` (which
 layer owns which library), and `poe arch` compares them with this table row by row (ARCH-DOC):
@@ -113,6 +115,10 @@ The agent's reasoning, from the questions the kit asks (D-003 records the altern
   pipeline cannot act, only the talker's tool calls can, through `actions`.
 - **What is the outermost surface?** `api`, the HTTP routes and the composition root that
   builds every adapter from the settings.
+- **Where do a team's tests and measurements get their tools?** From `testing` (D-019), beside
+  `api` and above `voice`: the scorers now, and the testing kit later, which runs the real
+  pipeline's session code with fakes. It never imports `adapters`, so a test reaches a provider
+  only through a port it passes in, and never `api`, so a team's tests need no HTTP stack.
 - **What may only one layer create?** A confirmed ticket draft, issued only by `domain`'s yes
   rule; its two inputs, the caller's heard words and the read-back receipt, built only by
   `voice`; and a completed action, recorded only by `actions`. Each goes into `[[restricted]]`
@@ -174,7 +180,14 @@ The rules live in [harness.toml](harness.toml), the source of truth;
   the package root;
 - ARCH-PUBLIC: an app in `[[apps]]` imports the library only through `[package] public`, and
   no other app; the library never imports an app (an app's modules also follow the module
-  rules below; the layer and owner rules are the library's);
+  rules below; the layer and owner rules are the library's)
+  ([scripts/arch_public.py](scripts/arch_public.py));
+- ARCH-FACADE: a public facade (`[package] facades`) holds only its docstring, its imports and
+  `__all__`, so every public name lives in the layer that owns it
+  ([scripts/arch_facade.py](scripts/arch_facade.py));
+- ARCH-WORDS: the library's `src/` never holds a word of `[package] banned_words` (the apps'
+  names and their own services), in any case, in a file or a file's path
+  ([scripts/arch_words.py](scripts/arch_words.py));
 - ARCH-OWNER: a library in `[[owners]]` is imported only by its layers;
 - ARCH-CONSTRUCT: a class in `[[restricted]]` is constructed only by its layers;
 - ARCH-PRINT: no `print` or direct writes to standard output outside the files `[rules]`
