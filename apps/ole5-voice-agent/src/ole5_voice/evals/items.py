@@ -1,17 +1,200 @@
-"""The golden set's items: read from their TOML files under `evals/golden/`.
+"""The golden set's items: read from their TOML files under `evals/golden/`, with the other
+files of `evals/` they are checked against.
 
-Built by plan 002's Track D; until then a stub.
+`evals/` holds, besides `golden/` (one item a file, named by its ID): `manifests/` (one
+`Manifest` a file: `talkover.json`, and `<root>-<session>.json` for each recording session),
+`frozen.json` (the expected answers `poe golden` freezes), `split.json`, `strata.toml` (the
+registered counts), `terms.toml` (the product terms), `script.toml` (the new recordings'
+script), `spelling.toml` (the spelling guide) and `allowed_in_source.toml`. Every file is
+parsed strictly as it is read, and a file that cannot be read is a `GoldenSetError` naming it,
+never echoing what it holds.
 """
 
 from __future__ import annotations
 
+import tomllib
+from collections import Counter
+from collections.abc import Iterable, Sequence
 from pathlib import Path
+from typing import Final, Literal
 
-from ole5_voice.evals.models import Item
+from pydantic import BaseModel, Field, ValidationError
 
-_STUB = "items.py is built by plan 002's Track D"
+from ole5_voice.evals.models import Confirmation, Item, Manifest, Model, Variant
+from ole5_voice.evals.takes import Review, Script
+
+# The app's golden-set data, beside its `src/`.
+EVALS: Final = Path(__file__).resolve().parents[3] / "evals"
+GOLDEN_DIR: Final = "golden"
+MANIFESTS_DIR: Final = "manifests"
+FROZEN_FILE: Final = "frozen.json"
+SPLIT_FILE: Final = "split.json"
+STRATA_FILE: Final = "strata.toml"
+TERMS_FILE: Final = "terms.toml"
+SCRIPT_FILE: Final = "script.toml"
+SPELLING_FILE: Final = "spelling.toml"
+
+Source = Literal["script", "typed", "none"]
+
+
+class GoldenSetError(ValueError):
+    """A golden-set file that cannot be read as written, or a set that breaks a rule."""
+
+
+def read_toml[M: BaseModel](path: Path, model: type[M]) -> M:
+    """`path`'s TOML as `model`; GoldenSetError naming the file when it is missing, is not
+    TOML, or does not fit (a model's error never echoes the value it refused)."""
+    try:
+        with path.open("rb") as file:
+            return model.model_validate(tomllib.load(file))
+    except (OSError, tomllib.TOMLDecodeError, ValidationError) as error:
+        raise GoldenSetError(f"{path.name}: {error}") from None
+
+
+def read_json[M: BaseModel](path: Path, model: type[M]) -> M:
+    """`path`'s JSON as `model`, failing as `read_toml` does."""
+    try:
+        return model.model_validate_json(path.read_bytes())
+    except (OSError, ValidationError) as error:
+        raise GoldenSetError(f"{path.name}: {error}") from None
+
+
+def write_text(path: Path, text: str) -> None:
+    """`text` as UTF-8 with LF endings, the folders above it made."""
+    path.parent.mkdir(parents=True, exist_ok=True)
+    path.write_text(text, encoding="utf-8", newline="\n")
 
 
 def load_items(folder: Path) -> tuple[Item, ...]:
-    """Every item under `folder`, one TOML file each, in the order of their IDs."""
-    raise NotImplementedError(_STUB)
+    """Every item under `folder`, one TOML file each, in the order of their IDs. Each file is
+    named by its item's ID, and no two variants share an ID."""
+    if not folder.is_dir():
+        raise GoldenSetError(f"{folder.name}: no such folder of items")
+    items = []
+    for path in sorted(folder.glob("*.toml")):
+        item = read_toml(path, Item)
+        if item.id != path.stem:
+            raise GoldenSetError(f"{path.name}: holds the item '{item.id}', not '{path.stem}'")
+        items.append(item)
+    twice = [v for v, n in Counter(v.id for i in items for v in i.variants).items() if n > 1]
+    if twice:
+        raise GoldenSetError(f"variants with the same ID in two places: {', '.join(twice)}")
+    return tuple(sorted(items, key=lambda item: item.id))
+
+
+def load_manifests(folder: Path) -> tuple[Manifest, ...]:
+    """Every manifest under `folder`, in the order of their file names; no file named twice
+    below one root."""
+    manifests = tuple(read_json(path, Manifest) for path in sorted(folder.glob("*.json")))
+    named = Counter((m.root, f.path) for m in manifests for f in m.files)
+    twice = sorted(f"{root}:{path}" for (root, path), n in named.items() if n > 1)
+    if twice:
+        raise GoldenSetError(f"files in two manifests: {', '.join(twice)}")
+    return manifests
+
+
+class Terms(Model):
+    """`terms.toml`: the product terms term recall is scored on, as the product writes them."""
+
+    terms: tuple[str, ...] = Field(min_length=1)
+
+
+def load_terms(path: Path) -> tuple[str, ...]:
+    terms = read_toml(path, Terms).terms
+    if len(set(terms)) != len(terms) or not all(t.strip() == t and t for t in terms):
+        raise GoldenSetError(f"{path.name}: each term once, with no space around it")
+    return terms
+
+
+def unchecked(variant: Variant) -> str | None:
+    """Why `variant` is not yet checked, or None when it is: its reference and an independent
+    check agree once the owner has listened and confirmed it (Q9). A typed reference's first
+    act is the typing; its confirmation, in a later review pass, is its second."""
+    if variant.confirmations:
+        return None
+    if variant.reference_source == "typed":
+        return "typed by the owner, waiting on its second confirmation in a later review pass"
+    return "not yet confirmed by the owner's listen"
+
+
+def accepted(items: Iterable[Item]) -> tuple[Item, ...]:
+    """The items with only their checked variants, and only those with one left: what a run
+    is scored on once the owner has checked the set."""
+    kept = []
+    for item in items:
+        variants = tuple(v for v in item.variants if unchecked(v) is None)
+        if variants:
+            kept.append(Item.model_validate(item.model_dump() | {"variants": variants}))
+    return tuple(kept)
+
+
+def reviewed(
+    reference: str, source: Source, reviews: Sequence[Review]
+) -> tuple[str, Source, tuple[Confirmation, ...]]:
+    """A variant's reference, its source and its confirmations after the owner's reviews, in
+    the order of their passes. A typed review makes its text the reference and drops every
+    earlier confirmation, which confirmed another text; only a confirmation in a later pass
+    counts for it, so a reference and its check are never made in one act."""
+    passes = [r.review_pass for r in reviews]
+    if len(set(passes)) != len(passes):
+        raise GoldenSetError("a take has one review in each pass")
+    confirmations: list[Confirmation] = []
+    for review in sorted(reviews, key=lambda r: r.review_pass):
+        if review.verdict == "typed":
+            text = " ".join(review.text.split())
+            if not text:
+                raise GoldenSetError(f"the review {review.review_pass} of {review.take} is empty")
+            reference, source, confirmations = text, "typed", []
+        else:
+            confirmations.append(Confirmation(at=review.at, review_pass=review.review_pass))
+    return reference, source, tuple(confirmations)
+
+
+class Counts(Model):
+    """How many items, variants or script lines a stratum holds, by each of its labels."""
+
+    total: int = Field(ge=0)
+    source: dict[str, int] = Field(default_factory=dict)
+    language: dict[str, int] = Field(default_factory=dict)
+    kind: dict[str, int] = Field(default_factory=dict)
+    device: dict[str, int] = Field(default_factory=dict)
+    tag: dict[str, int] = Field(default_factory=dict)
+
+
+class Strata(Model):
+    """`strata.toml`: the registered counts of the items, their variants and the script's lines,
+    which the committed set must hold (evaluation.md, "Writing items": strata in fixed
+    proportions, which a test enforces)."""
+
+    items: Counts
+    variants: Counts
+    script: Counts
+
+
+def count_strata(items: Sequence[Item], script: Script) -> Strata:
+    """The strata the items and the script hold, counted."""
+    variants = [(item, variant) for item in items for variant in item.variants]
+    return Strata(
+        items=Counts(
+            total=len(items),
+            source=_count(i.source for i in items),
+            language=_count(i.language for i in items),
+            kind=_count(i.kind for i in items),
+        ),
+        variants=Counts(
+            total=len(variants),
+            language=_count(i.language for i, _ in variants),
+            kind=_count(i.kind for i, _ in variants),
+            device=_count(v.device for _, v in variants),
+            tag=_count(tag for _, v in variants for tag in v.tags),
+        ),
+        script=Counts(
+            total=len(script.lines),
+            language=_count(line.language for line in script.lines),
+            kind=_count(line.kind for line in script.lines),
+        ),
+    )
+
+
+def _count(labels: Iterable[str]) -> dict[str, int]:
+    return dict(sorted(Counter(labels).items()))

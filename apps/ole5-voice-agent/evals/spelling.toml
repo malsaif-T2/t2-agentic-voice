@@ -1,0 +1,112 @@
+# Ole5's spelling guide: how the golden set's references are written, and how the matcher
+# compares an output with them (evaluation.md, "The golden set"; plan 002, Q8).
+#
+# On 2026-11-01 the owner answered "Use these rules" to the rules below, as the agent put them
+# (plan 002, "The owner's decisions"). Each [[rulings]] entry holds one of those rules in the
+# agent's words the owner approved (`ruling`), the owner's own words (`said`) and the day
+# (`on`). The comparison rulings are the matcher's (apps/ole5-voice-agent/src/ole5_voice/evals/
+# matcher.py), which refuses this file without any one of them; `poe golden` names every
+# reference that holds a spelling listed under [[spellings]], and every listening sound that is
+# not in the script's fixed list. A team writes its own guide the same way.
+
+[[rulings]]
+id = "letter-forms"
+part = "comparison"
+ruling = "Before comparing, both texts are normalized: the Arabic letter forms folded as the prototype did (أ إ آ to ا, ة to ه, ى to ي, ؤ to و, ئ to ي); no diacritics and no tatweel"
+said = "Use these rules"
+on = 2026-11-01
+
+[[rulings]]
+id = "digits"
+part = "comparison"
+ruling = "Arabic-Indic digits read as 0 to 9; digits said one by one («خمسة سبعة») count as those digits"
+said = "Use these rules"
+on = 2026-11-01
+
+[[rulings]]
+id = "english-case"
+part = "comparison"
+ruling = "English lowercase"
+said = "Use these rules"
+on = 2026-11-01
+
+[[rulings]]
+id = "punctuation"
+part = "comparison"
+ruling = "punctuation ignored"
+said = "Use these rules"
+on = 2026-11-01
+
+[[rulings]]
+id = "spaces"
+part = "comparison"
+ruling = "spaces ignored in the verdict, so two words written as one still count"
+said = "Use these rules"
+on = 2026-11-01
+
+[[rulings]]
+id = "product-terms"
+part = "references"
+ruling = "References are written with product terms in Latin script, as the product writes them (Outlook, PDF, Word)"
+said = "Use these rules"
+on = 2026-11-01
+
+[[rulings]]
+id = "numbers"
+part = "references"
+ruling = "numbers as digits"
+said = "Use these rules"
+on = 2026-11-01
+
+[[rulings]]
+id = "contractions"
+part = "references"
+ruling = "English contractions as said (\"don't\" stays \"don't\")"
+said = "Use these rules"
+on = 2026-11-01
+
+[[rulings]]
+id = "listening-sounds"
+part = "references"
+ruling = "listening sounds from a fixed list that comes with the script (such as «اها», «امم», \"mm-hmm\")"
+said = "Use these rules"
+on = 2026-11-01
+
+# The spellings each ruling on references rules out. These lists are the agent's reading of the
+# rulings above, not rulings of their own: the Arabic-script spellings of the three product
+# terms the ruling names, and, for the ticket-number items only, digits written as words (in
+# another item, a word such as "one" is seldom a number). A reference that holds one fails
+# `poe golden`. The contractions ruling has no list: what was said cannot be checked from the
+# text alone.
+
+[[spellings]]
+id = "product-term-outlook"
+ruling = "product-terms"
+avoid = ["اوتلوك", "أوتلوك", "الاوتلوك", "الأوتلوك"]
+write = "Outlook"
+
+[[spellings]]
+id = "product-term-pdf"
+ruling = "product-terms"
+avoid = ["بي دي اف", "بي دي إف", "بي دي أف", "بيدياف"]
+write = "PDF"
+
+[[spellings]]
+id = "product-term-word"
+ruling = "product-terms"
+avoid = ["وورد", "الوورد"]
+write = "Word"
+
+[[spellings]]
+id = "numbers-arabic"
+ruling = "numbers"
+avoid = ["صفر", "واحد", "اثنين", "ثلاثة", "أربعة", "خمسة", "ستة", "سبعة", "ثمانية", "تسعة"]
+write = "each digit as 0 to 9"
+kinds = ["ticket_number"]
+
+[[spellings]]
+id = "numbers-english"
+ruling = "numbers"
+avoid = ["zero", "one", "two", "three", "four", "five", "six", "seven", "eight", "nine"]
+write = "each digit as 0 to 9"
+kinds = ["ticket_number"]
