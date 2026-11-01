@@ -329,12 +329,9 @@ def test_the_librarys_sign_test_judges_a_run(
     tmp_path: Path, capsys: pytest.CaptureFixture[str]
 ) -> None:
     """The default sign test, the library's `evals.sign_test`: six items better and none worse
-    give 2/64. Skipped while Track A's sign test is a stub."""
+    give 2/64."""
     first = _write(_card([_result(f"i{n}", "v1", False) for n in range(6)]), tmp_path / "r1")
     better = _card([_result(f"i{n}", "v1", True) for n in range(6)], name="r2")
     second = _write(better, tmp_path / "r2")
-    try:
-        assert compare.main([str(first), str(second)]) == 0
-    except NotImplementedError:
-        pytest.skip("the library's sign test is a stub until plan 002's Track A merges")
+    assert compare.main([str(first), str(second)]) == 0
     assert "p = 0.0312, beyond the noise" in capsys.readouterr().out

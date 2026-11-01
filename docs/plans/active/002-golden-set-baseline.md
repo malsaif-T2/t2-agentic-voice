@@ -999,6 +999,12 @@ run, [WORKING-RULES.md](../../../WORKING-RULES.md), "Measurement runs")
     line is Track E's (it calls `history.append_line`, and may use `line_of`).
   - After the merge `uv run --offline poe check` passes: 948 tests, none skipped, 100% coverage
     (2334 statements), mypy strict on 130 files, arch and docs (24 files) clean.
+- 2026-11-01: Review fixes, track F (`Plan 002: review fixes, track F`): the try and skip around the
+  two tests of the library's defaults (`test_the_librarys_scorers_score_a_case_worked_by_hand` in
+  `tests/ole5_voice/evals/test_scorecard.py` and `test_the_librarys_sign_test_judges_a_run` in
+  `test_compare.py`) are removed, with their docstrings' note, since both ran and passed at the
+  merge on Track A's scorers and sign test. `uv run --offline poe check` passes: 948 tests, none
+  skipped, 100% coverage, mypy strict on 130 files, arch and docs clean.
 
 ## Decision log
 

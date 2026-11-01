@@ -363,7 +363,7 @@ def test_the_quantile_interpolates_between_ranks() -> None:
 def test_the_librarys_scorers_score_a_case_worked_by_hand(tmp_path: Path) -> None:
     """The default scorers and normalizer, the library's `evals` and `languages`: WER 1 of 5
     words; CER, spaces removed, 3 of 22 characters ("the" for "a": one substitution and two
-    deletions); the one term heard. Skipped while Track A's scorers are stubs."""
+    deletions); the one term heard."""
     results = [
         _result(
             ("i1", "v1", "english", "laptop", "request", "send the file", "send a file", False, 300)
@@ -373,10 +373,7 @@ def test_the_librarys_scorers_score_a_case_worked_by_hand(tmp_path: Path) -> Non
             terms=["outlook"],
         ),
     ]
-    try:
-        card = write_scorecard(samples.run(), results, complete=True, out=tmp_path)
-    except NotImplementedError:
-        pytest.skip("the library's scorers are stubs until plan 002's Track A merges")
+    card = write_scorecard(samples.run(), results, complete=True, out=tmp_path)
     assert card.totals.wer == pytest.approx(1 / 5)
     assert card.totals.cer == pytest.approx(3 / 22)
     assert (card.totals.accuracy, card.totals.term_recall) == (0.5, 1.0)
