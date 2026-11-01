@@ -5,7 +5,7 @@ per `poe eval` run that called a provider, kept or not; never edited by hand
 ([generated docs](README.md), GP-11). Every number describes one speaker, the owner (D-006).
 Full scorecards stay out of git, in each run's `--out` folder.
 
-Spend so far: 12 run(s), 16259.9 billed seconds, $0.3521.
+Spend so far: 13 run(s), 17369.7 billed seconds, $0.3645.
 
 ## Runs
 
@@ -23,6 +23,7 @@ Spend so far: 12 run(s), 16259.9 billed seconds, $0.3521.
 | 10 | 2026-11-01T21:45:04+00:00 | w5-large-v3-1000 | 1c3c4dc53fc96664ebb2aa5b5f434ca028f5a0ce | groq | whisper-large-v3 | dev | 33 | 90 | — | 0 | 890.0 | $0.0274 | 227 | yes |
 | 11 | 2026-11-01T21:54:24+00:00 | w6-turbo-1000 | 1c3c4dc53fc96664ebb2aa5b5f434ca028f5a0ce | groq | whisper-large-v3-turbo | dev | 33 | 90 | — | 0 | 890.0 | $0.0099 | 204 | yes |
 | 12 | 2026-11-01T22:03:48+00:00 | h1-large-v3 | 1c3c4dc53fc96664ebb2aa5b5f434ca028f5a0ce | groq | whisper-large-v3 | held-out | 29 | 106 | 38.7% | 0 | 1109.8 | $0.0342 | 265 | yes |
+| 13 | 2026-11-01T22:15:00+00:00 | h2-turbo | 1c3c4dc53fc96664ebb2aa5b5f434ca028f5a0ce | groq | whisper-large-v3-turbo | held-out | 29 | 106 | 20.8% | 0 | 1109.8 | $0.0123 | 230 | yes |
 
 ## Each run
 
@@ -578,3 +579,48 @@ Spend so far: 12 run(s), 16259.9 billed seconds, $0.3521.
 | language | msa | 5 | 41.2% |
 | language | saudi | 13 | 36.5% |
 | split | held-out | 29 | 38.7% |
+
+### 13 · h2-turbo
+
+| Field | Value |
+| --- | --- |
+| Why | H2: A2 on held-out, aggregates for the report |
+| Data digest | `b068e4b58bcd31c68f62d7ab4367726cf93ab2420fb2d25278fde71f9eccff24` |
+| Scorecard | scorecard.json |
+| Price per hour of audio | $0.04 |
+| Setting env | dev |
+| Setting groq.api_key | set |
+| Setting groq.api_key_file | not set |
+| Setting groq.base_url | https://api.groq.com |
+| Setting log_format | console |
+| Setting log_level | INFO |
+| Setting run.cap_usd | 4.6488 |
+| Setting run.language_hint | label |
+| Setting run.max_attempts | 4 |
+| Setting run.max_rpm | 10 |
+| Setting run.smoke_only | false |
+| Setting run.variant_timeout_s | 120.0 |
+| Setting run.windows_ms | none |
+| Setting stt.model | whisper-large-v3-turbo |
+| Setting stt.provider | groq |
+| Setting stt.timeout_s | 6.0 |
+| Setting tracing.endpoint | none |
+| Setting tracing.include_transcripts | true |
+| Setting tracing.project | none |
+| Setting tracing.redact | 0 patterns |
+
+| Stratum | Value | Items | Accuracy |
+| --- | --- | --- | --- |
+| device | bluetooth | 19 | 4.8% |
+| device | laptop | 29 | 28.1% |
+| device | wired | 19 | 14.3% |
+| kind | listening_sound | 4 | 6.7% |
+| kind | other | 6 | 12.5% |
+| kind | paused_request | 4 | 18.8% |
+| kind | request | 11 | 25.6% |
+| kind | stop_word | 4 | 41.7% |
+| language | english | 5 | 50.0% |
+| language | mixed | 4 | 13.3% |
+| language | msa | 5 | 35.3% |
+| language | saudi | 13 | 11.5% |
+| split | held-out | 29 | 20.8% |

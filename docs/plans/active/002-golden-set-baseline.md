@@ -1717,6 +1717,14 @@ run, [WORKING-RULES.md](../../../WORKING-RULES.md), "Measurement runs")
   than 3 held-out items, as the owner's rule says), latency median 265 ms, 1,099.8 s billed,
   $0.034. Its kinds of fewer than 3 items are pooled as `other` (6 items). Scorecard in
   `var/runs/h1-large-v3`. Spend so far $0.3521 of the $5 cap.
+- 2026-11-02: Run H2 (A2, `whisper-large-v3-turbo`, held-out, untraced, aggregates only), at
+  the measurement commit, its smoke test passed: complete, 106 variants of 29 items, 107
+  requests, no retry, no failure, no per-variant line in its log; 22 right (0.208), WER 0.397,
+  CER 0.221, term recall 0.611, ID recall and text from silence left out as in H1, latency
+  median 230 ms, 1,099.8 s billed, $0.012. Held-out agrees with dev: large-v3 0.387 against
+  turbo 0.208 (dev 0.429 against 0.303). This was the last registered run (Q18: H1 and H2 only).
+  Scorecard in `var/runs/h2-turbo`. Spend in all $0.3645 of the $5 cap, against the
+  estimate of about $0.36.
 
 ## Decision log
 
