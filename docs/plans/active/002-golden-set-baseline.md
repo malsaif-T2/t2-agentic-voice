@@ -936,6 +936,69 @@ run, [WORKING-RULES.md](../../../WORKING-RULES.md), "Measurement runs")
   helper and the import only it used, since the characterization check ran and passed at the merge;
   it now runs on every gate. `uv run --offline poe check` passes: 912 tests, none skipped, 100%
   coverage, mypy strict on 130 files, arch and docs clean.
+- 2026-11-01: Track F, scorecards, comparison and history, is merged (`Plan 002: merge track F`),
+  before Track E as step 14 orders, from three commits on `plan-002-track-f`, cut from 44aa043:
+  489248a (the scorecard), 8aebf45 (the run history and its generated page) and 15296e2
+  (`eval-compare`), each gated before it was made. It replaces Block 0's stubs `scorecard.py`
+  (`write_scorecard`, a `ScorecardWriter`), `history.py` (`read_history`, `append_line`, `line_of`,
+  `render_history`, `poe eval-history`) and `compare.py` (`poe eval-compare`), with their tests in
+  `tests/ole5_voice/evals/test_scorecard.py`, `test_history.py` (the freshness test among them) and
+  `test_compare.py`, and adds an empty `apps/ole5-voice-agent/evals/history.jsonl`,
+  `docs/generated/eval-history.md` and its row in `docs/generated/README.md`. The scorecard holds
+  accuracy, WER and CER, term and ID recall, text from silence, requests and retries, latency
+  (median and 90th percentile), billed seconds and cost; breakdowns by language, device, kind and
+  split; the window measures as `WindowMetrics`; violations, always 0, with the reason; and "one
+  speaker". A held-out scorecard holds aggregates only. `eval-compare` reports fixed, broken and
+  net, variant by variant, the sign test by item, the registered stratum guard by language and by
+  device (a stratum that cannot reach p < 0.05 marked too small to guard), the smallest change one
+  run can detect, `--focus` items apart, and the infrastructure failures and variants found in one
+  run only, left out of both and listed; held-out runs are compared by aggregates only. It refuses
+  two runs whose commits, data digests or splits differ, naming each difference. From the track's
+  report:
+  - Its sources: its May read names no prototype file, so it followed the plan and evaluation.md
+    only: the registration's "The metrics" and evaluation.md's "Judging a change" for the scorecard;
+    "Judging a change" and the registration's "The noise" and "The stratum guard, exactly" for
+    `eval-compare`; evaluation.md's "Run history" for the history and its page.
+  - Its values: p < 0.05 is beyond the noise (evaluation.md). Latency's median and 90th percentile
+    are interpolated linearly between ranks (Hyndman and Fan type 7, numpy's default), so 0.5 gives
+    the median. A stratum is too small to guard when even all of its changed items on one side could
+    not reach p < 0.05 by the sign test, which with evaluation.md's formula is fewer than 6 changed
+    items, as the registration says. The smallest detectable change c is searched from 1 up to the
+    items the noise left unchanged: with no noise it is 6, as registered; with 3 items changed and
+    20 compared it is 9 (b = 10, w = 2 gives p = 0.0386, while c = 8 gives 0.0654). Report numbers:
+    rates to 4 decimals and counts as whole numbers; on the history page, accuracy as a percentage
+    with one decimal and cost to $0.0001.
+  - Its hand checks: `test_every_metric_is_recomputed_by_hand` recomputes all 15 numbers (cost from
+    the billed seconds) for the totals and all 12 stratum values of a made-up dev run of 8 results
+    across 4 languages, 3 devices and 3 kinds, one provider failure, two empty references and two
+    ticket numbers among them (for example 3 right of 7 judged, latency median 290 ms and p90 314
+    ms, 72.5 billed seconds). The pooled WER and CER arguments are checked call by call, the window
+    sums for 5 window groups, and the sign-test counts against an oracle written from
+    evaluation.md's formula (6 better and 0 worse gives 2/64; 5 and 0 gives 0.0625).
+  - Two tests run the library's own defaults on cases worked by hand: the scorers (WER 1/5 and CER
+    3/22, with spaces removed) and the sign test (six items better and none worse gives p = 0.0312).
+    They skipped on the track's branch while Track A's stubs raised NotImplementedError; Track A
+    merged first, so both run and pass at this merge, and their try and skip are removed in the
+    following commit. The debt row the track wrote for them is therefore not numbered: its own fix
+    ("the row goes with it") is done at this merge.
+  - Deviation: Track F created `apps/ole5-voice-agent/evals/history.jsonl` (empty, committed in
+    8aebf45), which its Goal names but no track's Owns line lists. Without it `poe eval-history` and
+    the freshness test would have no committed source, unless a missing file were read as an empty
+    history, which would let a mistyped `--history` render "No runs yet" silently.
+  - Deviation: `eval-compare` also refuses two runs whose splits differ, beyond the commits and data
+    digests the track names: a run covers one split (the decision log), and a dev run and a held-out
+    run share no variant, so their comparison would be empty or misleading.
+  - Its debt row is TD-018 (`docs/generated/eval-history.md` read as a living doc). It changed no
+    row and left no question for the owner. Its request for a change to Block 0 (`harness.toml`'s
+    `[docs] historical` to list `docs/generated/eval-history.md`) is not applied at this merge (the
+    decision log).
+  - Not done: `poe eval-history`, a refused `poe eval-compare` and both commands' `--help` were run
+    through poe, and the comparison report was rendered with an exact sign test in a scratch script;
+    no real history line or scorecard exists yet, so `docs/generated/eval-history.md` shows "No runs
+    yet", and the page with runs was seen only as rendered from made-up lines. Appending each run's
+    line is Track E's (it calls `history.append_line`, and may use `line_of`).
+  - After the merge `uv run --offline poe check` passes: 948 tests, none skipped, 100% coverage
+    (2334 statements), mypy strict on 130 files, arch and docs (24 files) clean.
 
 ## Decision log
 
@@ -1613,6 +1676,91 @@ All entries are the agent's choices of 2026-11-01, with the agent's reasons.
   for tests; by default it uses the library's normalizers. `golden.validate` takes the spelling
   check and the audio reader as arguments, and `main` passes the library's `spelling_issues` and
   `audio.read_wav`, so the tests ran on the track's branch with Block 0's fakes.
+- 2026-11-01: Track F: latency is taken over answered requests only (`outcome` `ok`), because a
+  refused or timed-out request's time measures the refusal or the timeout, not an answer. Requests,
+  retries (attempt above 1) and billed seconds count every request, so the spend adds up. The
+  agent's choice.
+- 2026-11-01: Track F: a reference counts as empty when it holds no word after
+  `normalize_digits(normalize_arabic(...))`, the normalization the scorers use, so WER and CER never
+  receive a reference that Track A's `wer` would refuse with a ValueError, and such a variant is
+  scored for text from silence instead. The agent's choice.
+- 2026-11-01: Track F: WER and CER are taken against each variant's reference only, never its
+  alternatives, as the registration's pooled rates say; only the verdict uses the alternatives. The
+  agent's reading.
+- 2026-11-01: Track F: a run's unjudged variants (a run that sent only the windows) and its
+  infrastructure failures are left out of every rate, but their requests and billed seconds still
+  count. A failed variant's windows are also left out of the window measures. The agent's choice.
+- 2026-11-01: Track F: in `WindowMetrics`, `one_word_clips` and `holds_word` are counted from each
+  `Window`'s `holds_word`, which Track E's `windows.py` sets only for a one-word reference, so the
+  counts match Track E's measures; `reference_words` comes from the normalized reference. The
+  agent's choice.
+- 2026-11-01: Track F: the scorecard breaks its numbers down only by the four strata the track
+  names: language, device, kind and split. Tags such as duck, pause and over-assistant are not
+  broken down: a dev scorecard keeps each variant's tags, and a held-out breakdown by a tag that
+  only three segments carry would read close to item by item. The agent's choice; a tag breakdown
+  may be added later.
+- 2026-11-01: Track F: how `write_scorecard` writes, the agent's choices:
+  - it checks the run and every result again through JSON before scoring, because pydantic does not
+    re-check nested model instances;
+  - it refuses results of another split and a variant scored twice;
+  - it creates `out` if needed and replaces an earlier `scorecard.json` of the same run atomically
+    (written to a partial file, then moved), as `FakeScorecardWriter` does, so a Track E built
+    against the fake keeps working.
+- 2026-11-01: Track F: the scorers and the normalizer are passed in as `scorers=` and `normalize=`.
+  The defaults are the `evals` facade module itself (which mypy accepts as the `Scorers` protocol)
+  and `normalize_digits(normalize_arabic(text))`; tests pass `FakeScorers`. `compare.main` takes
+  `sign_test=`, defaulting to `evals.sign_test`. These extra keyword arguments still fit the
+  `ScorecardWriter` protocol. The agent's choice.
+- 2026-11-01: Track F: what `eval-compare` refuses and shows, the agent's choices:
+  - A is the baseline and B the candidate: fixed means wrong in A and right in B;
+  - it refuses runs whose splits differ, as well as commits and data digests: a run covers one
+    split, and two splits share no variant;
+  - settings may differ, since the registered baseline compares two models at one commit; every
+    setting that differs is named in the report;
+  - commits are compared as the strings recorded, with no matching of prefixes.
+- 2026-11-01: Track F: `eval-compare` leaves a variant out of both runs, and lists it by ID with the
+  reason, when either run had an infrastructure failure on it ("a provider failure" or "stuck past
+  its time limit", in A or in B), when it was not judged, or when it appears in one run only. The
+  agent's choice.
+- 2026-11-01: Track F: the stratum guard's readings are "better in B beyond the noise", "worse in B
+  beyond the noise", "within the noise" and "too small to guard"; "too small to guard" is tested
+  with the sign test itself rather than a fixed 6. The smallest detectable change is printed in
+  every dev comparison, worded as applying when A and B ran the same code. The agent's choices.
+- 2026-11-01: Track F: `--focus FILE` takes one item ID per line; blank lines and `#` comments are
+  skipped. An ID found in neither run is refused, and `--focus` is refused for held-out runs, which
+  are compared by aggregates only. The agent's choice: evaluation.md names the flag but not its
+  form.
+- 2026-11-01: Track F: the commands write their report to standard output and refusals to standard
+  error, as `<command>: <message> [<code>]` with exit status 1. ARCH-PRINT covers only the library,
+  and a report is the command's output, not a log event; it holds identifiers and numbers only. The
+  app's two errors are `AppError` subclasses: `EvalDataError` (`eval_data_invalid`) and
+  `ComparisonError` (`comparison_refused`); their messages name fields, never values, and they are
+  raised outside the handler, so no exception chain holds the refused input. The agent's choice, for
+  the harness reviewer, against GP-03's "no print".
+- 2026-11-01: Track F: the history file is committed empty, so a mistyped `--history` fails instead
+  of rendering a page that says "No runs yet". The agent's choice:
+  - reading is strict: UTF-8, LF endings only, every line a valid `HistoryLine`;
+  - `append_line` checks the line and the existing file first, and creates the file when it is
+    missing (for Track E's copy beside the scorecard).
+- 2026-11-01: Track F: `line_of(scorecard, items=)` builds the history line: its time is the run's
+  `started_at` (no clock, GP-12), its breakdowns are each stratum's accuracy, and its scorecard is
+  `SCORECARD_FILE`. `items` is passed in because a held-out scorecard holds no variant. It is there
+  for Track E to use at its merge. The agent's choice.
+- 2026-11-01: Track F: the layout of `eval-history.md`, the agent's choice:
+  - the spend so far: runs, billed seconds and cost summed over every line, as step 20 needs;
+  - one row per run;
+  - for each run, tables of its reason, data digest, scorecard, price, settings and accuracy by
+    stratum;
+  - a run's own text has Markdown's characters (the backslash, the backtick, the asterisk, brackets,
+    parentheses, braces, angle brackets, the pipe, the tilde and the ampersand) escaped and its line
+    breaks removed, so a note never makes a link, HTML, a placeholder or an extra table cell;
+  - the `--history` and `--out` defaults are paths worked out from the module's place in the
+    repository.
+- 2026-11-01: Track F's request for a change to Block 0, adding `docs/generated/eval-history.md` to
+  `harness.toml`'s `[docs] historical`, is not applied at its merge: nothing fails while the history
+  is empty, and it changes which docs DOC-REF and DOC-MILESTONE read, a harness rule rather than an
+  integration fix. It stays as TD-018's fix, for the review of the merged code or the owner. The
+  integrator's choice.
 
 ## The owner's decisions
 
