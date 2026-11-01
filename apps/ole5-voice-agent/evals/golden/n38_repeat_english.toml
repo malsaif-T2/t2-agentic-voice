@@ -1,0 +1,81 @@
+# Written by `python -m ole5_voice.evals.import_recordings` from the recorder's files:
+# import again rather than edit.
+id = "n38_repeat_english"
+source = "script"
+kind = "repeat_request"
+language = "english"
+text = "Sorry, can you say that again?"
+alternatives = []
+terms = []
+
+[[variants]]
+id = "n38_repeat_english-bluetooth-1-1"
+device = "bluetooth"
+session = "bluetooth-1"
+reference = "Sorry, can you say that again?"
+reference_source = "script"
+turn_ends_ms = []
+tags = []
+
+[[variants.segments]]
+root = "owner"
+path = "bluetooth-1/n38_repeat_english-bluetooth-1-1.wav"
+sha256 = "4a316c3ef30db92d471b379a19196849e011aa07197bbf366872fd219c387c94"
+
+[[variants.confirmations]]
+at = 2026-11-01T21:40:18.554639+03:00
+review_pass = 3
+
+[[variants]]
+id = "n38_repeat_english-laptop-1-1"
+device = "laptop"
+session = "laptop-1"
+reference = "Sorry, can you say that again?"
+reference_source = "script"
+turn_ends_ms = []
+tags = []
+
+[[variants.segments]]
+root = "owner"
+path = "laptop-1/n38_repeat_english-laptop-1-1.wav"
+sha256 = "c7da7fa316b26b3db79bad0d7e9bb76d065a0b5f549afe72ccd6e5c5a9c3a251"
+
+[[variants.confirmations]]
+at = 2026-11-01T21:46:42.339414+03:00
+review_pass = 3
+
+[[variants]]
+id = "n38_repeat_english-laptop-1-2"
+device = "laptop"
+session = "laptop-1"
+reference = "Sorry, can you say that again?"
+reference_source = "script"
+turn_ends_ms = []
+tags = []
+
+[[variants.segments]]
+root = "owner"
+path = "laptop-1/n38_repeat_english-laptop-1-2.wav"
+sha256 = "1df7cf4c0f391850f7c2667906e877c0f91c1728caf87d396730a85cb7767961"
+
+[[variants.confirmations]]
+at = 2026-11-01T21:46:45.677654+03:00
+review_pass = 3
+
+[[variants]]
+id = "n38_repeat_english-wired-1-1"
+device = "wired"
+session = "wired-1"
+reference = "Sorry, can you say that again?"
+reference_source = "script"
+turn_ends_ms = []
+tags = []
+
+[[variants.segments]]
+root = "owner"
+path = "wired-1/n38_repeat_english-wired-1-1.wav"
+sha256 = "e4f56f1ef9bfdf55d39f674d30fb6741f9f9b3733d2dc29c5edd37beca2b6c65"
+
+[[variants.confirmations]]
+at = 2026-11-01T21:51:29.332683+03:00
+review_pass = 3

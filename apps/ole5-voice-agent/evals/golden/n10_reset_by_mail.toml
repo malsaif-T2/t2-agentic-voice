@@ -1,0 +1,81 @@
+# Written by `python -m ole5_voice.evals.import_recordings` from the recorder's files:
+# import again rather than edit.
+id = "n10_reset_by_mail"
+source = "script"
+kind = "request"
+language = "msa"
+text = "هل يمكن استعادة كلمة المرور عبر البريد الإلكتروني؟"
+alternatives = []
+terms = []
+
+[[variants]]
+id = "n10_reset_by_mail-bluetooth-1-1"
+device = "bluetooth"
+session = "bluetooth-1"
+reference = "هل يمكن استعادة كلمة المرور عبر البريد الإلكتروني؟"
+reference_source = "script"
+turn_ends_ms = []
+tags = []
+
+[[variants.segments]]
+root = "owner"
+path = "bluetooth-1/n10_reset_by_mail-bluetooth-1-1.wav"
+sha256 = "9d883f0b1fcec30a97274dcec2d7ab0cb95b22bb7fb7925f80bbd47b7c2f3615"
+
+[[variants.confirmations]]
+at = 2026-11-01T21:38:24.910527+03:00
+review_pass = 3
+
+[[variants]]
+id = "n10_reset_by_mail-laptop-1-1"
+device = "laptop"
+session = "laptop-1"
+reference = "هل يمكن استعادة كلمة المرور عبر البريد الإلكتروني؟"
+reference_source = "script"
+turn_ends_ms = []
+tags = []
+
+[[variants.segments]]
+root = "owner"
+path = "laptop-1/n10_reset_by_mail-laptop-1-1.wav"
+sha256 = "ff9d3e355b6c91897c5b45ec41e45552c905fc20e02041fa911c7ef64faa9d9c"
+
+[[variants.confirmations]]
+at = 2026-11-01T21:43:27.872858+03:00
+review_pass = 3
+
+[[variants]]
+id = "n10_reset_by_mail-laptop-1-2"
+device = "laptop"
+session = "laptop-1"
+reference = "هل يمكن استعادة كلمة المرور عبر البريد الإلكتروني؟"
+reference_source = "script"
+turn_ends_ms = []
+tags = []
+
+[[variants.segments]]
+root = "owner"
+path = "laptop-1/n10_reset_by_mail-laptop-1-2.wav"
+sha256 = "8f1c4ae9f931959bf4097232633170a4daef5fc110bdb01ef5bcfa71cf09ea72"
+
+[[variants.confirmations]]
+at = 2026-11-01T21:43:32.603179+03:00
+review_pass = 3
+
+[[variants]]
+id = "n10_reset_by_mail-wired-1-1"
+device = "wired"
+session = "wired-1"
+reference = "هل يمكن استعادة كلمة المرور عبر البريد الإلكتروني؟"
+reference_source = "script"
+turn_ends_ms = []
+tags = []
+
+[[variants.segments]]
+root = "owner"
+path = "wired-1/n10_reset_by_mail-wired-1-1.wav"
+sha256 = "9f488e88185e49f3c850329ea1baaa425c070051fca1f9b328753314cc50c1a5"
+
+[[variants.confirmations]]
+at = 2026-11-01T21:49:42.403400+03:00
+review_pass = 3

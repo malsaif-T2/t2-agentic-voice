@@ -125,9 +125,13 @@ def test_the_committed_set_holds_its_registered_strata() -> None:
     registered = read_toml(EVALS / "strata.toml", Strata)
     counted = count_strata(load_items(EVALS / "golden"), load_script(EVALS / "script.toml"))
     assert counted == registered
-    # The talk-over as the registration describes it: 120 takes with segments, less the two the
-    # owner left out after the review (`import_talkover.LEFT_OUT`), all on the laptop's
-    # microphone array, 3 played on a headset.
-    assert (registered.items.source, registered.variants.total) == ({"talkover": 43}, 118)
-    assert registered.variants.device == {"laptop": 118}
+    # The set as the registration describes it: the talk-over's 120 takes with segments, less
+    # the two the owner left out after the review (`import_talkover.LEFT_OUT`), all on the
+    # laptop's microphone array, 3 played on a headset; and the script's 52 items with every
+    # take the owner kept, 97 on the laptop, 63 on the wired headset, 59 on the Bluetooth one.
+    assert (registered.items.source, registered.variants.total) == (
+        {"script": 52, "talkover": 43},
+        118 + 219,
+    )
+    assert registered.variants.device == {"bluetooth": 59, "laptop": 118 + 97, "wired": 63}
     assert registered.variants.tag["playback-headset"] == 3

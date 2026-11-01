@@ -1,0 +1,81 @@
+# Written by `python -m ole5_voice.evals.import_recordings` from the recorder's files:
+# import again rather than edit.
+id = "n24_login_msa"
+source = "script"
+kind = "paused_request"
+language = "msa"
+text = "لدي مشكلة في تسجيل الدخول منذ صباح اليوم"
+alternatives = []
+terms = []
+
+[[variants]]
+id = "n24_login_msa-bluetooth-1-1"
+device = "bluetooth"
+session = "bluetooth-1"
+reference = "لدي مشكلة في تسجيل الدخول منذ صباح اليوم"
+reference_source = "script"
+turn_ends_ms = [4300]
+tags = []
+
+[[variants.segments]]
+root = "owner"
+path = "bluetooth-1/n24_login_msa-bluetooth-1-1.wav"
+sha256 = "c8031b1b63e9b57ae265f9cdc9a932153f18b9d3f89cab9f2167fabcc1cc31af"
+
+[[variants.confirmations]]
+at = 2026-11-01T21:39:23.263712+03:00
+review_pass = 3
+
+[[variants]]
+id = "n24_login_msa-laptop-1-1"
+device = "laptop"
+session = "laptop-1"
+reference = "لدي مشكلة في تسجيل الدخول منذ صباح اليوم"
+reference_source = "script"
+turn_ends_ms = [4413]
+tags = []
+
+[[variants.segments]]
+root = "owner"
+path = "laptop-1/n24_login_msa-laptop-1-1.wav"
+sha256 = "1113f0311d401b378fc6df5de0860d56f0f9d883d8fa2b75b6562d7ee44a39eb"
+
+[[variants.confirmations]]
+at = 2026-11-01T21:45:19.173359+03:00
+review_pass = 3
+
+[[variants]]
+id = "n24_login_msa-laptop-1-2"
+device = "laptop"
+session = "laptop-1"
+reference = "لدي مشكلة في تسجيل الدخول منذ صباح اليوم"
+reference_source = "script"
+turn_ends_ms = [4150]
+tags = []
+
+[[variants.segments]]
+root = "owner"
+path = "laptop-1/n24_login_msa-laptop-1-2.wav"
+sha256 = "8f0b73c69e472855a952635789c9651381718bf473d0b9a144283caeccb63438"
+
+[[variants.confirmations]]
+at = 2026-11-01T21:45:24.421210+03:00
+review_pass = 3
+
+[[variants]]
+id = "n24_login_msa-wired-1-1"
+device = "wired"
+session = "wired-1"
+reference = "لدي مشكلة في تسجيل الدخول منذ صباح اليوم"
+reference_source = "script"
+turn_ends_ms = [3746]
+tags = []
+
+[[variants.segments]]
+root = "owner"
+path = "wired-1/n24_login_msa-wired-1-1.wav"
+sha256 = "713de31b0d4d90500dc49d51c51dc3b603d77d1a402d87c121b4520d15c9c0ff"
+
+[[variants.confirmations]]
+at = 2026-11-01T21:50:47.841825+03:00
+review_pass = 3

@@ -1,0 +1,81 @@
+# Written by `python -m ole5_voice.evals.import_recordings` from the recorder's files:
+# import again rather than edit.
+id = "n29_hold_saudi"
+source = "script"
+kind = "stop_word"
+language = "saudi"
+text = "استنى"
+alternatives = []
+terms = []
+
+[[variants]]
+id = "n29_hold_saudi-bluetooth-1-1"
+device = "bluetooth"
+session = "bluetooth-1"
+reference = "استنى"
+reference_source = "script"
+turn_ends_ms = []
+tags = []
+
+[[variants.segments]]
+root = "owner"
+path = "bluetooth-1/n29_hold_saudi-bluetooth-1-1.wav"
+sha256 = "6acd693be2bd6565a494c7624844caee683c70b46ab80f4bfd5b9b0388487b85"
+
+[[variants.confirmations]]
+at = 2026-11-01T21:39:53.113731+03:00
+review_pass = 3
+
+[[variants]]
+id = "n29_hold_saudi-laptop-1-1"
+device = "laptop"
+session = "laptop-1"
+reference = "استنى"
+reference_source = "script"
+turn_ends_ms = []
+tags = []
+
+[[variants.segments]]
+root = "owner"
+path = "laptop-1/n29_hold_saudi-laptop-1-1.wav"
+sha256 = "26946522d73716fe8e761424c8dfc6428c0eba85cbfa4c26e1f80fefd2e13b68"
+
+[[variants.confirmations]]
+at = 2026-11-01T21:46:07.325263+03:00
+review_pass = 3
+
+[[variants]]
+id = "n29_hold_saudi-laptop-1-2"
+device = "laptop"
+session = "laptop-1"
+reference = "استنى"
+reference_source = "script"
+turn_ends_ms = []
+tags = []
+
+[[variants.segments]]
+root = "owner"
+path = "laptop-1/n29_hold_saudi-laptop-1-2.wav"
+sha256 = "3191dbecb4b81b28b252d9c1ab20f1dab79e8e2064d87f080db8d9acf90369a2"
+
+[[variants.confirmations]]
+at = 2026-11-01T21:46:09.544253+03:00
+review_pass = 3
+
+[[variants]]
+id = "n29_hold_saudi-wired-1-1"
+device = "wired"
+session = "wired-1"
+reference = "استنى"
+reference_source = "script"
+turn_ends_ms = []
+tags = []
+
+[[variants.segments]]
+root = "owner"
+path = "wired-1/n29_hold_saudi-wired-1-1.wav"
+sha256 = "455c21814e24634f0984e78b6995f489c8c7257c2df0183ae90d549d8ba19290"
+
+[[variants.confirmations]]
+at = 2026-11-01T21:51:09.169794+03:00
+review_pass = 3

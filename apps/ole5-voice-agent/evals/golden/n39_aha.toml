@@ -1,0 +1,81 @@
+# Written by `python -m ole5_voice.evals.import_recordings` from the recorder's files:
+# import again rather than edit.
+id = "n39_aha"
+source = "script"
+kind = "listening_sound"
+language = "saudi"
+text = "اها"
+alternatives = []
+terms = []
+
+[[variants]]
+id = "n39_aha-bluetooth-1-1"
+device = "bluetooth"
+session = "bluetooth-1"
+reference = "اها"
+reference_source = "script"
+turn_ends_ms = []
+tags = []
+
+[[variants.segments]]
+root = "owner"
+path = "bluetooth-1/n39_aha-bluetooth-1-1.wav"
+sha256 = "e577736afac1611379ebb4b2fa504fdca246c01ad663dd47a9dd0791b6461ce0"
+
+[[variants.confirmations]]
+at = 2026-11-01T21:40:21.063192+03:00
+review_pass = 3
+
+[[variants]]
+id = "n39_aha-laptop-1-1"
+device = "laptop"
+session = "laptop-1"
+reference = "اها"
+reference_source = "script"
+turn_ends_ms = []
+tags = []
+
+[[variants.segments]]
+root = "owner"
+path = "laptop-1/n39_aha-laptop-1-1.wav"
+sha256 = "584ac47dcff833541fd482cd46b25bf201674d49adb87fca2b09906b0c1b8d57"
+
+[[variants.confirmations]]
+at = 2026-11-01T21:46:47.838839+03:00
+review_pass = 3
+
+[[variants]]
+id = "n39_aha-laptop-1-2"
+device = "laptop"
+session = "laptop-1"
+reference = "اها"
+reference_source = "script"
+turn_ends_ms = []
+tags = []
+
+[[variants.segments]]
+root = "owner"
+path = "laptop-1/n39_aha-laptop-1-2.wav"
+sha256 = "f2118953063f61cf834a1d41d8cc741cdc143c5e09ca37341124fc9ca7f7db32"
+
+[[variants.confirmations]]
+at = 2026-11-01T21:46:50.064185+03:00
+review_pass = 3
+
+[[variants]]
+id = "n39_aha-wired-1-1"
+device = "wired"
+session = "wired-1"
+reference = "اها"
+reference_source = "script"
+turn_ends_ms = []
+tags = []
+
+[[variants.segments]]
+root = "owner"
+path = "wired-1/n39_aha-wired-1-1.wav"
+sha256 = "845cce42101e8ec1af2aafbb87bfe137cba8e95fd8b2b398d8454fe05b0044b2"
+
+[[variants.confirmations]]
+at = 2026-11-01T21:51:30.954340+03:00
+review_pass = 3

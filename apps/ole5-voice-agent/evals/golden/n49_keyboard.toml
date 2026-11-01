@@ -1,0 +1,63 @@
+# Written by `python -m ole5_voice.evals.import_recordings` from the recorder's files:
+# import again rather than edit.
+id = "n49_keyboard"
+source = "script"
+kind = "noise"
+language = "none"
+text = ""
+alternatives = []
+terms = []
+
+[[variants]]
+id = "n49_keyboard-bluetooth-1-1"
+device = "bluetooth"
+session = "bluetooth-1"
+reference = ""
+reference_source = "none"
+turn_ends_ms = []
+tags = []
+
+[[variants.segments]]
+root = "owner"
+path = "bluetooth-1/n49_keyboard-bluetooth-1-1.wav"
+sha256 = "94f773d8a7ab26c176519bd3eed0a5a08d7a9ded85433c0374a85b59dea27cdf"
+
+[[variants.confirmations]]
+at = 2026-11-01T21:41:57.415948+03:00
+review_pass = 3
+
+[[variants]]
+id = "n49_keyboard-laptop-1-1"
+device = "laptop"
+session = "laptop-1"
+reference = ""
+reference_source = "none"
+turn_ends_ms = []
+tags = []
+
+[[variants.segments]]
+root = "owner"
+path = "laptop-1/n49_keyboard-laptop-1-1.wav"
+sha256 = "e521699326167d8b3b65cb9ce57cb46fa7def887e6b41517ddd0eaa134bbe3e0"
+
+[[variants.confirmations]]
+at = 2026-11-01T21:48:52.849742+03:00
+review_pass = 3
+
+[[variants]]
+id = "n49_keyboard-wired-1-1"
+device = "wired"
+session = "wired-1"
+reference = ""
+reference_source = "none"
+turn_ends_ms = []
+tags = []
+
+[[variants.segments]]
+root = "owner"
+path = "wired-1/n49_keyboard-wired-1-1.wav"
+sha256 = "de5661bdeef1ab93252e995da0cdd2788842c44e04dc90bfc626c1caad087fa9"
+
+[[variants.confirmations]]
+at = 2026-11-01T21:52:56.245340+03:00
+review_pass = 3

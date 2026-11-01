@@ -1,0 +1,483 @@
+{
+  "root": "owner",
+  "consent": {
+    "speaker": "The onwer",
+    "agreed": true,
+    "on": "2026-11-01",
+    "words": "I agree to these recordings being kept and used in any way or form"
+  },
+  "files": [
+    {
+      "path": "bluetooth-1/n01_mail_slow-bluetooth-1-1.wav",
+      "sha256": "b4005545534aafcf3b6fc0bd98a771c971c9a23260d8b348030054c6bc2b80d4",
+      "seconds": 3.264,
+      "sample_rate": 16000,
+      "device": "bluetooth",
+      "session": "bluetooth-1"
+    },
+    {
+      "path": "bluetooth-1/n02_not_received-bluetooth-1-1.wav",
+      "sha256": "88ed2e0ff9dc043059a13e18567d8541c9341d2d387cfb5cdcad9fed60ff1420",
+      "seconds": 3.088,
+      "sample_rate": 16000,
+      "device": "bluetooth",
+      "session": "bluetooth-1"
+    },
+    {
+      "path": "bluetooth-1/n03_print-bluetooth-1-1.wav",
+      "sha256": "ed4623109d9d8b4d483f7922be5d3ebf3680ec3d810f76d9a12d91e07aa908da",
+      "seconds": 3.44,
+      "sample_rate": 16000,
+      "device": "bluetooth",
+      "session": "bluetooth-1"
+    },
+    {
+      "path": "bluetooth-1/n04_screen_freezes-bluetooth-1-1.wav",
+      "sha256": "27d431cdef0e39d50a71a4deab4ca458a6bcdb7d0c5f1013e2b1cc8af267420d",
+      "seconds": 3.288,
+      "sample_rate": 16000,
+      "device": "bluetooth",
+      "session": "bluetooth-1"
+    },
+    {
+      "path": "bluetooth-1/n05_who_received-bluetooth-1-1.wav",
+      "sha256": "893ccaa559c4dd031a6870bc3235ef9baea017b4282d9b9cfd35c2092ee5fc3f",
+      "seconds": 2.832,
+      "sample_rate": 16000,
+      "device": "bluetooth",
+      "session": "bluetooth-1"
+    },
+    {
+      "path": "bluetooth-1/n06_change_password-bluetooth-1-1.wav",
+      "sha256": "2e3a345e402610911ef68aa6d7a56457f904f97dce9f9ada115d2d240890242c",
+      "seconds": 3.128,
+      "sample_rate": 16000,
+      "device": "bluetooth",
+      "session": "bluetooth-1"
+    },
+    {
+      "path": "bluetooth-1/n07_delegate-bluetooth-1-1.wav",
+      "sha256": "e10166b2117ba65323c9eb7eeeb7742013229ee3ddb661e7cbf1a49cd301adb5",
+      "seconds": 4.464,
+      "sample_rate": 16000,
+      "device": "bluetooth",
+      "session": "bluetooth-1"
+    },
+    {
+      "path": "bluetooth-1/n08_new_missing-bluetooth-1-1.wav",
+      "sha256": "75d120db724102a068fcfe52fc04f73cfc7b86e1072768a2f20b7decdf4de916",
+      "seconds": 4.024,
+      "sample_rate": 16000,
+      "device": "bluetooth",
+      "session": "bluetooth-1"
+    },
+    {
+      "path": "bluetooth-1/n09_add_attachment-bluetooth-1-1.wav",
+      "sha256": "d1b24ab5c3b90a16086d89628a14a79eb727ee450162e022d6f7f5e249e5ca61",
+      "seconds": 2.792,
+      "sample_rate": 16000,
+      "device": "bluetooth",
+      "session": "bluetooth-1"
+    },
+    {
+      "path": "bluetooth-1/n10_reset_by_mail-bluetooth-1-1.wav",
+      "sha256": "9d883f0b1fcec30a97274dcec2d7ab0cb95b22bb7fb7925f80bbd47b7c2f3615",
+      "seconds": 4.432,
+      "sample_rate": 16000,
+      "device": "bluetooth",
+      "session": "bluetooth-1"
+    },
+    {
+      "path": "bluetooth-1/n11_sent_last_week-bluetooth-1-1.wav",
+      "sha256": "4108a5f484841fd46d38156e0ad5d1c855acb764e2f9b8f129ed57381ee63940",
+      "seconds": 3.72,
+      "sample_rate": 16000,
+      "device": "bluetooth",
+      "session": "bluetooth-1"
+    },
+    {
+      "path": "bluetooth-1/n12_phone_notifications-bluetooth-1-1.wav",
+      "sha256": "b0983ed09520599c63d381274204ecd00a0031b381195b1764952aa67c40d173",
+      "seconds": 3.528,
+      "sample_rate": 16000,
+      "device": "bluetooth",
+      "session": "bluetooth-1"
+    },
+    {
+      "path": "bluetooth-1/n13_attach_pdf-bluetooth-1-2.wav",
+      "sha256": "d0120e0ab476ddf6546544ac93cd128e5f772a218c677df04ca0fd14eeaca2e6",
+      "seconds": 3.84,
+      "sample_rate": 16000,
+      "device": "bluetooth",
+      "session": "bluetooth-1"
+    },
+    {
+      "path": "bluetooth-1/n14_reset_password-bluetooth-1-1.wav",
+      "sha256": "af55680cb3767ade46057bb2b3a6a341e7aad9da3c6c059b753b56be48dfe16f",
+      "seconds": 2.672,
+      "sample_rate": 16000,
+      "device": "bluetooth",
+      "session": "bluetooth-1"
+    },
+    {
+      "path": "bluetooth-1/n15_outlook_mail-bluetooth-1-1.wav",
+      "sha256": "b81f69a2095e1b6e58d885daf580b2ea62f17d02338024fffde829bb1bd1935b",
+      "seconds": 3.368,
+      "sample_rate": 16000,
+      "device": "bluetooth",
+      "session": "bluetooth-1"
+    },
+    {
+      "path": "bluetooth-1/n16_convert_pdf-bluetooth-1-1.wav",
+      "sha256": "c9117b79e9e5701e776a6dcea5637c4509db3fabe5cdbeb48e0701a23a61c59c",
+      "seconds": 3.104,
+      "sample_rate": 16000,
+      "device": "bluetooth",
+      "session": "bluetooth-1"
+    },
+    {
+      "path": "bluetooth-1/n17_save_word-bluetooth-1-1.wav",
+      "sha256": "71594b7022ff2c72e82feb9377c5e9b84e84efda5b3a7644c43527fff54220fa",
+      "seconds": 3.344,
+      "sample_rate": 16000,
+      "device": "bluetooth",
+      "session": "bluetooth-1"
+    },
+    {
+      "path": "bluetooth-1/n18_archive_in_ole5-bluetooth-1-1.wav",
+      "sha256": "6c804d826694abb3ff517e9eaa99c1231ad8446cb2133f2b9be90ea44cc2d765",
+      "seconds": 2.904,
+      "sample_rate": 16000,
+      "device": "bluetooth",
+      "session": "bluetooth-1"
+    },
+    {
+      "path": "bluetooth-1/n19_refer_manager-bluetooth-1-1.wav",
+      "sha256": "e5c704d8cd2067de689f7216fd6d795d2d80c141471350aa98840897f07238bf",
+      "seconds": 4.12,
+      "sample_rate": 16000,
+      "device": "bluetooth",
+      "session": "bluetooth-1"
+    },
+    {
+      "path": "bluetooth-1/n20_error_suddenly-bluetooth-1-1.wav",
+      "sha256": "48f0e7b230db33338ef7169efd330e27264137617cd3f6f4d97fa71f2669a471",
+      "seconds": 4.928,
+      "sample_rate": 16000,
+      "device": "bluetooth",
+      "session": "bluetooth-1"
+    },
+    {
+      "path": "bluetooth-1/n21_archived_later-bluetooth-1-1.wav",
+      "sha256": "7c73f12099a0ed0420f7a9ef5a9c7185e3647851e47e0b566372f70944bc6ab7",
+      "seconds": 5.464,
+      "sample_rate": 16000,
+      "device": "bluetooth",
+      "session": "bluetooth-1"
+    },
+    {
+      "path": "bluetooth-1/n22_app_notifications-bluetooth-1-1.wav",
+      "sha256": "9ffc2173404dcea93647656ebebabd1ae4e47eeac398767b258a8cf7357bd433",
+      "seconds": 4.56,
+      "sample_rate": 16000,
+      "device": "bluetooth",
+      "session": "bluetooth-1"
+    },
+    {
+      "path": "bluetooth-1/n23_signature_msa-bluetooth-1-1.wav",
+      "sha256": "c5657878fb6cd5e5992b7d38edec6f652858c7f3276724de8e9e476b186ed015",
+      "seconds": 4.88,
+      "sample_rate": 16000,
+      "device": "bluetooth",
+      "session": "bluetooth-1"
+    },
+    {
+      "path": "bluetooth-1/n24_login_msa-bluetooth-1-1.wav",
+      "sha256": "c8031b1b63e9b57ae265f9cdc9a932153f18b9d3f89cab9f2167fabcc1cc31af",
+      "seconds": 4.76,
+      "sample_rate": 16000,
+      "device": "bluetooth",
+      "session": "bluetooth-1"
+    },
+    {
+      "path": "bluetooth-1/n25_archiving_question-bluetooth-1-1.wav",
+      "sha256": "f28feb13c08bac757a2eff106b4f9c2a4d697845b0bd30c9f3f7009f3e55399d",
+      "seconds": 4.864,
+      "sample_rate": 16000,
+      "device": "bluetooth",
+      "session": "bluetooth-1"
+    },
+    {
+      "path": "bluetooth-1/n26_inbox_loading-bluetooth-1-1.wav",
+      "sha256": "d837863149b51572347c9779d4c6f082b4d5e78dfe5330dc5cd62fbd738d9edb",
+      "seconds": 4.952,
+      "sample_rate": 16000,
+      "device": "bluetooth",
+      "session": "bluetooth-1"
+    },
+    {
+      "path": "bluetooth-1/n27_outlook_sync-bluetooth-1-1.wav",
+      "sha256": "f94b474b8650f1ef187c18d8ccc613a7d9f722e0b9b5e5e02404d762b39bb87c",
+      "seconds": 4.56,
+      "sample_rate": 16000,
+      "device": "bluetooth",
+      "session": "bluetooth-1"
+    },
+    {
+      "path": "bluetooth-1/n28_word_font-bluetooth-1-1.wav",
+      "sha256": "7faeb0c9902d8bc4c34e047fba709f78d64b08ebf71ae5d43e195d566ac8b85e",
+      "seconds": 4.888,
+      "sample_rate": 16000,
+      "device": "bluetooth",
+      "session": "bluetooth-1"
+    },
+    {
+      "path": "bluetooth-1/n29_hold_saudi-bluetooth-1-1.wav",
+      "sha256": "6acd693be2bd6565a494c7624844caee683c70b46ab80f4bfd5b9b0388487b85",
+      "seconds": 2.072,
+      "sample_rate": 16000,
+      "device": "bluetooth",
+      "session": "bluetooth-1"
+    },
+    {
+      "path": "bluetooth-1/n30_enough-bluetooth-1-3.wav",
+      "sha256": "5466c43551e3eab5a7f08c85fce017b91210c852e91b146c1186968b3f8618e9",
+      "seconds": 2.112,
+      "sample_rate": 16000,
+      "device": "bluetooth",
+      "session": "bluetooth-1"
+    },
+    {
+      "path": "bluetooth-1/n31_moment_please-bluetooth-1-1.wav",
+      "sha256": "31b55661c181bed39489f141924b10b39cb01b4afa52ab11be747bb8728ce2b0",
+      "seconds": 2.152,
+      "sample_rate": 16000,
+      "device": "bluetooth",
+      "session": "bluetooth-1"
+    },
+    {
+      "path": "bluetooth-1/n32_halt_msa-bluetooth-1-1.wav",
+      "sha256": "a441d8c6c4dcd7172e46aca95373a23a184f8f96083d88ef3de5af827914c9ca",
+      "seconds": 2.32,
+      "sample_rate": 16000,
+      "device": "bluetooth",
+      "session": "bluetooth-1"
+    },
+    {
+      "path": "bluetooth-1/n33_hold_on-bluetooth-1-1.wav",
+      "sha256": "07d7d1151bc6617cbc6050c2f04ad920510d9e5e1ac7cbd83c7a6bcbc1158d3c",
+      "seconds": 2.208,
+      "sample_rate": 16000,
+      "device": "bluetooth",
+      "session": "bluetooth-1"
+    },
+    {
+      "path": "bluetooth-1/n34_halt_please-bluetooth-1-1.wav",
+      "sha256": "2275885c7684bdcdbeb1e3d065487ad9b63c2bd0b7aee7f0f246abd80d525a85",
+      "seconds": 2.104,
+      "sample_rate": 16000,
+      "device": "bluetooth",
+      "session": "bluetooth-1"
+    },
+    {
+      "path": "bluetooth-1/n35_what_said-bluetooth-1-1.wav",
+      "sha256": "d1786246f8bde6f6908b7dc367e7827ec3078753e313804f1cd4321c46c17b7c",
+      "seconds": 1.736,
+      "sample_rate": 16000,
+      "device": "bluetooth",
+      "session": "bluetooth-1"
+    },
+    {
+      "path": "bluetooth-1/n36_say_again-bluetooth-1-1.wav",
+      "sha256": "f0c95d15d4fe0e5dc968450b8eaea302b9d04f0c3a9068e150ba1e1e33b8ebf3",
+      "seconds": 2.568,
+      "sample_rate": 16000,
+      "device": "bluetooth",
+      "session": "bluetooth-1"
+    },
+    {
+      "path": "bluetooth-1/n37_repeat_msa-bluetooth-1-1.wav",
+      "sha256": "f0c476597e672902252c163c28d8e60941e8f039458001cd0b86b4faf26a9853",
+      "seconds": 2.76,
+      "sample_rate": 16000,
+      "device": "bluetooth",
+      "session": "bluetooth-1"
+    },
+    {
+      "path": "bluetooth-1/n38_repeat_english-bluetooth-1-1.wav",
+      "sha256": "4a316c3ef30db92d471b379a19196849e011aa07197bbf366872fd219c387c94",
+      "seconds": 2.504,
+      "sample_rate": 16000,
+      "device": "bluetooth",
+      "session": "bluetooth-1"
+    },
+    {
+      "path": "bluetooth-1/n39_aha-bluetooth-1-1.wav",
+      "sha256": "e577736afac1611379ebb4b2fa504fdca246c01ad663dd47a9dd0791b6461ce0",
+      "seconds": 1.72,
+      "sample_rate": 16000,
+      "device": "bluetooth",
+      "session": "bluetooth-1"
+    },
+    {
+      "path": "bluetooth-1/n40_umm-bluetooth-1-1.wav",
+      "sha256": "2e49746832ce9f5c9d431ac9d1d6b07433800b1543cdff795a627509c222c8a0",
+      "seconds": 1.424,
+      "sample_rate": 16000,
+      "device": "bluetooth",
+      "session": "bluetooth-1"
+    },
+    {
+      "path": "bluetooth-1/n41_aywa-bluetooth-1-1.wav",
+      "sha256": "ba001a13670fa00c9066760e27f5493ca1e26293acb0499af290d53bcd929247",
+      "seconds": 2.0,
+      "sample_rate": 16000,
+      "device": "bluetooth",
+      "session": "bluetooth-1"
+    },
+    {
+      "path": "bluetooth-1/n41_aywa-bluetooth-1-2.wav",
+      "sha256": "f432217e83f9c97cf377805130ae4ada47b887a8971d541406b10e211fc55a90",
+      "seconds": 2.208,
+      "sample_rate": 16000,
+      "device": "bluetooth",
+      "session": "bluetooth-1"
+    },
+    {
+      "path": "bluetooth-1/n42_mm_hmm-bluetooth-1-1.wav",
+      "sha256": "138004e47ff6db50e202d734bb5feeb8cfc181d344da05ac5986b9ed1570e869",
+      "seconds": 1.888,
+      "sample_rate": 16000,
+      "device": "bluetooth",
+      "session": "bluetooth-1"
+    },
+    {
+      "path": "bluetooth-1/n43_uh_huh-bluetooth-1-1.wav",
+      "sha256": "21ffd70c488e627be72f8ce95afab9ff6dbd3ed937ad7ee1eb41d790e818f52f",
+      "seconds": 1.672,
+      "sample_rate": 16000,
+      "device": "bluetooth",
+      "session": "bluetooth-1"
+    },
+    {
+      "path": "bluetooth-1/n44_ticket_last_four-bluetooth-1-1.wav",
+      "sha256": "875e2cb5856394cbc544c325b3a323ab319915f7278f8e74d0d65d3b81b25d85",
+      "seconds": 4.672,
+      "sample_rate": 16000,
+      "device": "bluetooth",
+      "session": "bluetooth-1"
+    },
+    {
+      "path": "bluetooth-1/n44_ticket_last_four-bluetooth-1-3.wav",
+      "sha256": "08b66d254502be0c10c49ca3f382d72dac4a4162d680b4818c894adcddc3b227",
+      "seconds": 4.056,
+      "sample_rate": 16000,
+      "device": "bluetooth",
+      "session": "bluetooth-1"
+    },
+    {
+      "path": "bluetooth-1/n44_ticket_last_four-bluetooth-1-4.wav",
+      "sha256": "754a82e1c7cb6efaad64baf06284a154ebc6d4b80734a70e5ab3bae12b17eaf7",
+      "seconds": 4.024,
+      "sample_rate": 16000,
+      "device": "bluetooth",
+      "session": "bluetooth-1"
+    },
+    {
+      "path": "bluetooth-1/n45_ticket_full_saudi-bluetooth-1-1.wav",
+      "sha256": "8edb6b6d1c03b8807950f583f9a914380c1a082bd0136b3baa4b45777dae96c8",
+      "seconds": 12.504,
+      "sample_rate": 16000,
+      "device": "bluetooth",
+      "session": "bluetooth-1"
+    },
+    {
+      "path": "bluetooth-1/n45_ticket_full_saudi-bluetooth-1-2.wav",
+      "sha256": "92a958a6a6cf463bdab471fc1e22aeb55250070d5a6890bc7fc01d644f678600",
+      "seconds": 11.56,
+      "sample_rate": 16000,
+      "device": "bluetooth",
+      "session": "bluetooth-1"
+    },
+    {
+      "path": "bluetooth-1/n46_ticket_full_msa-bluetooth-1-2.wav",
+      "sha256": "43f54a8cfe20228418b0fbcd29c8bcec609495edac707b115f4ebbbbfd65f64f",
+      "seconds": 12.0,
+      "sample_rate": 16000,
+      "device": "bluetooth",
+      "session": "bluetooth-1"
+    },
+    {
+      "path": "bluetooth-1/n46_ticket_full_msa-bluetooth-1-3.wav",
+      "sha256": "083ec1e9b7fb0529bab4decb113a5dcb3cf8fd3b1be533bcafd82a426b270a79",
+      "seconds": 11.304,
+      "sample_rate": 16000,
+      "device": "bluetooth",
+      "session": "bluetooth-1"
+    },
+    {
+      "path": "bluetooth-1/n47_ticket_last_four_english-bluetooth-1-1.wav",
+      "sha256": "6a4482c702d2f51c5e19667ab146dd3205b8601308fffe1ee2ef14f4969a3671",
+      "seconds": 4.976,
+      "sample_rate": 16000,
+      "device": "bluetooth",
+      "session": "bluetooth-1"
+    },
+    {
+      "path": "bluetooth-1/n47_ticket_last_four_english-bluetooth-1-2.wav",
+      "sha256": "d2e2b2241432641da8eb75e9eed0c9c7b7108ff18298fb1110197f7892369f97",
+      "seconds": 4.312,
+      "sample_rate": 16000,
+      "device": "bluetooth",
+      "session": "bluetooth-1"
+    },
+    {
+      "path": "bluetooth-1/n47_ticket_last_four_english-bluetooth-1-3.wav",
+      "sha256": "c3a7708560da8af27346d5a9f89226c109a10760ced002fa532166eddac5c947",
+      "seconds": 4.504,
+      "sample_rate": 16000,
+      "device": "bluetooth",
+      "session": "bluetooth-1"
+    },
+    {
+      "path": "bluetooth-1/n48_silence-bluetooth-1-1.wav",
+      "sha256": "c6e935e4b79ce9783cb7965f1d17722d95b1d9a7523ea89ba66650088ffe0782",
+      "seconds": 5.008,
+      "sample_rate": 16000,
+      "device": "bluetooth",
+      "session": "bluetooth-1"
+    },
+    {
+      "path": "bluetooth-1/n49_keyboard-bluetooth-1-1.wav",
+      "sha256": "94f773d8a7ab26c176519bd3eed0a5a08d7a9ded85433c0374a85b59dea27cdf",
+      "seconds": 5.008,
+      "sample_rate": 16000,
+      "device": "bluetooth",
+      "session": "bluetooth-1"
+    },
+    {
+      "path": "bluetooth-1/n50_cough-bluetooth-1-1.wav",
+      "sha256": "589337bc4d9f35f77e764854134b8575d91ed89df24cc11e45740082a251f6c2",
+      "seconds": 5.024,
+      "sample_rate": 16000,
+      "device": "bluetooth",
+      "session": "bluetooth-1"
+    },
+    {
+      "path": "bluetooth-1/n51_echo_arabic-bluetooth-1-1.wav",
+      "sha256": "29ac2803bf3f1496b13c7d101789dcdc3fc31f4d8b2dc539835bb051755952cd",
+      "seconds": 23.264,
+      "sample_rate": 16000,
+      "device": "bluetooth",
+      "session": "bluetooth-1"
+    },
+    {
+      "path": "bluetooth-1/n52_echo_english-bluetooth-1-1.wav",
+      "sha256": "19e089655e77c0ee494fea42ed03e129bf3a25725e2232a9f5731db18bbb0e5d",
+      "seconds": 25.728,
+      "sample_rate": 16000,
+      "device": "bluetooth",
+      "session": "bluetooth-1"
+    }
+  ]
+}

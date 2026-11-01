@@ -1,0 +1,81 @@
+# Written by `python -m ole5_voice.evals.import_recordings` from the recorder's files:
+# import again rather than edit.
+id = "n15_outlook_mail"
+source = "script"
+kind = "request"
+language = "mixed"
+text = "الإيميل ما يوصل على Outlook"
+alternatives = []
+terms = ["Outlook"]
+
+[[variants]]
+id = "n15_outlook_mail-bluetooth-1-1"
+device = "bluetooth"
+session = "bluetooth-1"
+reference = "الإيميل ما يوصل على Outlook"
+reference_source = "script"
+turn_ends_ms = []
+tags = []
+
+[[variants.segments]]
+root = "owner"
+path = "bluetooth-1/n15_outlook_mail-bluetooth-1-1.wav"
+sha256 = "b81f69a2095e1b6e58d885daf580b2ea62f17d02338024fffde829bb1bd1935b"
+
+[[variants.confirmations]]
+at = 2026-11-01T21:38:42.326243+03:00
+review_pass = 3
+
+[[variants]]
+id = "n15_outlook_mail-laptop-1-1"
+device = "laptop"
+session = "laptop-1"
+reference = "الإيميل ما يوصل على Outlook"
+reference_source = "script"
+turn_ends_ms = []
+tags = []
+
+[[variants.segments]]
+root = "owner"
+path = "laptop-1/n15_outlook_mail-laptop-1-1.wav"
+sha256 = "50cf14ee46c3dca7f18c2151ac8c2897baa7e35811f9741526d787e43879daec"
+
+[[variants.confirmations]]
+at = 2026-11-01T21:44:04.467662+03:00
+review_pass = 3
+
+[[variants]]
+id = "n15_outlook_mail-laptop-1-2"
+device = "laptop"
+session = "laptop-1"
+reference = "الإيميل ما يوصل على Outlook"
+reference_source = "script"
+turn_ends_ms = []
+tags = []
+
+[[variants.segments]]
+root = "owner"
+path = "laptop-1/n15_outlook_mail-laptop-1-2.wav"
+sha256 = "54775c7bb6e31380861a7fba533887c04042713eb1362a2d8743b6c6158abd8b"
+
+[[variants.confirmations]]
+at = 2026-11-01T21:44:08.259597+03:00
+review_pass = 3
+
+[[variants]]
+id = "n15_outlook_mail-wired-1-1"
+device = "wired"
+session = "wired-1"
+reference = "الإيميل ما يوصل على Outlook"
+reference_source = "script"
+turn_ends_ms = []
+tags = []
+
+[[variants.segments]]
+root = "owner"
+path = "wired-1/n15_outlook_mail-wired-1-1.wav"
+sha256 = "b66e99755624e017bfa373e8e708d27c02c0a0268c4559268e29be204fd5798b"
+
+[[variants.confirmations]]
+at = 2026-11-01T21:50:08.349025+03:00
+review_pass = 3

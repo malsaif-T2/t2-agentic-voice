@@ -1,0 +1,81 @@
+# Written by `python -m ole5_voice.evals.import_recordings` from the recorder's files:
+# import again rather than edit.
+id = "n23_signature_msa"
+source = "script"
+kind = "paused_request"
+language = "msa"
+text = "أريد أن أسأل عن طريقة إضافة توقيع إلى رسائلي"
+alternatives = []
+terms = []
+
+[[variants]]
+id = "n23_signature_msa-bluetooth-1-1"
+device = "bluetooth"
+session = "bluetooth-1"
+reference = "أريد أن أسأل عن طريقة إضافة توقيع إلى رسائلي"
+reference_source = "script"
+turn_ends_ms = [4584]
+tags = []
+
+[[variants.segments]]
+root = "owner"
+path = "bluetooth-1/n23_signature_msa-bluetooth-1-1.wav"
+sha256 = "c5657878fb6cd5e5992b7d38edec6f652858c7f3276724de8e9e476b186ed015"
+
+[[variants.confirmations]]
+at = 2026-11-01T21:39:18.390031+03:00
+review_pass = 3
+
+[[variants]]
+id = "n23_signature_msa-laptop-1-3"
+device = "laptop"
+session = "laptop-1"
+reference = "أريد أن أسأل عن طريقة إضافة توقيع إلى رسائلي"
+reference_source = "script"
+turn_ends_ms = [4519]
+tags = []
+
+[[variants.segments]]
+root = "owner"
+path = "laptop-1/n23_signature_msa-laptop-1-3.wav"
+sha256 = "9928f90d64745a3b8d2ffa042dd633c1acb443d55d36f8163e16fb644656ef62"
+
+[[variants.confirmations]]
+at = 2026-11-01T21:45:08.493126+03:00
+review_pass = 3
+
+[[variants]]
+id = "n23_signature_msa-laptop-1-4"
+device = "laptop"
+session = "laptop-1"
+reference = "أريد أن أسأل عن طريقة إضافة توقيع إلى رسائلي"
+reference_source = "script"
+turn_ends_ms = [4457]
+tags = []
+
+[[variants.segments]]
+root = "owner"
+path = "laptop-1/n23_signature_msa-laptop-1-4.wav"
+sha256 = "28fbd4a7a427234b35130022bba128d9258f63ee4767d2777e05931b0946cf15"
+
+[[variants.confirmations]]
+at = 2026-11-01T21:45:13.963583+03:00
+review_pass = 3
+
+[[variants]]
+id = "n23_signature_msa-wired-1-1"
+device = "wired"
+session = "wired-1"
+reference = "أريد أن أسأل عن طريقة إضافة توقيع إلى رسائلي"
+reference_source = "script"
+turn_ends_ms = [4036]
+tags = []
+
+[[variants.segments]]
+root = "owner"
+path = "wired-1/n23_signature_msa-wired-1-1.wav"
+sha256 = "e61c2731265e380d7bf3386336363e6dab443875056b7aa9cac30497c358281c"
+
+[[variants.confirmations]]
+at = 2026-11-01T21:50:43.202834+03:00
+review_pass = 3

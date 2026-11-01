@@ -1,0 +1,117 @@
+# Written by `python -m ole5_voice.evals.import_recordings` from the recorder's files:
+# import again rather than edit.
+id = "n46_ticket_full_msa"
+source = "script"
+kind = "ticket_number"
+language = "msa"
+text = "رقم التذكرة هو 2026121482000853"
+alternatives = []
+terms = []
+
+[[variants]]
+id = "n46_ticket_full_msa-bluetooth-1-2"
+device = "bluetooth"
+session = "bluetooth-1"
+reference = "رقم التذكرة هو 2026121482000853"
+reference_source = "script"
+turn_ends_ms = []
+tags = []
+
+[[variants.segments]]
+root = "owner"
+path = "bluetooth-1/n46_ticket_full_msa-bluetooth-1-2.wav"
+sha256 = "43f54a8cfe20228418b0fbcd29c8bcec609495edac707b115f4ebbbbfd65f64f"
+
+[[variants.confirmations]]
+at = 2026-11-01T21:41:22.985470+03:00
+review_pass = 3
+
+[[variants]]
+id = "n46_ticket_full_msa-bluetooth-1-3"
+device = "bluetooth"
+session = "bluetooth-1"
+reference = "رقم التذكرة هو 2026121482000853"
+reference_source = "script"
+turn_ends_ms = []
+tags = []
+
+[[variants.segments]]
+root = "owner"
+path = "bluetooth-1/n46_ticket_full_msa-bluetooth-1-3.wav"
+sha256 = "083ec1e9b7fb0529bab4decb113a5dcb3cf8fd3b1be533bcafd82a426b270a79"
+
+[[variants.confirmations]]
+at = 2026-11-01T21:41:34.620381+03:00
+review_pass = 3
+
+[[variants]]
+id = "n46_ticket_full_msa-laptop-1-1"
+device = "laptop"
+session = "laptop-1"
+reference = "رقم التذكرة هو 2026121482000853"
+reference_source = "script"
+turn_ends_ms = []
+tags = []
+
+[[variants.segments]]
+root = "owner"
+path = "laptop-1/n46_ticket_full_msa-laptop-1-1.wav"
+sha256 = "c497c646d726b9f7bc081a11c56d664c03c1b5ec3a34be243cb67306cb4dcdff"
+
+[[variants.confirmations]]
+at = 2026-11-01T21:48:19.163776+03:00
+review_pass = 3
+
+[[variants]]
+id = "n46_ticket_full_msa-laptop-1-2"
+device = "laptop"
+session = "laptop-1"
+reference = "رقم التذكرة هو 2026121482000853"
+reference_source = "script"
+turn_ends_ms = []
+tags = []
+
+[[variants.segments]]
+root = "owner"
+path = "laptop-1/n46_ticket_full_msa-laptop-1-2.wav"
+sha256 = "e7e327aff747ad6e4abb30ae366dfe877de392b5fca2b80b7f3703e9e2aea135"
+
+[[variants.confirmations]]
+at = 2026-11-01T21:48:32.844744+03:00
+review_pass = 3
+
+[[variants]]
+id = "n46_ticket_full_msa-wired-1-1"
+device = "wired"
+session = "wired-1"
+reference = "رقم التذكرة هو 2026121482000853"
+reference_source = "script"
+turn_ends_ms = []
+tags = []
+
+[[variants.segments]]
+root = "owner"
+path = "wired-1/n46_ticket_full_msa-wired-1-1.wav"
+sha256 = "9c93241c983a43c7647daf83d8c9de5b1c70608c07664a57fbf9834a06edd2d9"
+
+[[variants.confirmations]]
+at = 2026-11-01T21:52:26.479098+03:00
+review_pass = 3
+
+[[variants]]
+id = "n46_ticket_full_msa-wired-1-2"
+device = "wired"
+session = "wired-1"
+reference = "رقم التذكرة هو 2026121482000853"
+reference_source = "script"
+turn_ends_ms = []
+tags = []
+
+[[variants.segments]]
+root = "owner"
+path = "wired-1/n46_ticket_full_msa-wired-1-2.wav"
+sha256 = "024e3df80bc9cd63b4b5a06ec6c17c51f9b10bf448b44172e34e534d4c9eca53"
+
+[[variants.confirmations]]
+at = 2026-11-01T21:52:37.600930+03:00
+review_pass = 3

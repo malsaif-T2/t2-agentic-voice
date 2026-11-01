@@ -1,0 +1,81 @@
+# Written by `python -m ole5_voice.evals.import_recordings` from the recorder's files:
+# import again rather than edit.
+id = "n42_mm_hmm"
+source = "script"
+kind = "listening_sound"
+language = "english"
+text = "mm-hmm"
+alternatives = []
+terms = []
+
+[[variants]]
+id = "n42_mm_hmm-bluetooth-1-1"
+device = "bluetooth"
+session = "bluetooth-1"
+reference = "mm-hmm"
+reference_source = "script"
+turn_ends_ms = []
+tags = []
+
+[[variants.segments]]
+root = "owner"
+path = "bluetooth-1/n42_mm_hmm-bluetooth-1-1.wav"
+sha256 = "138004e47ff6db50e202d734bb5feeb8cfc181d344da05ac5986b9ed1570e869"
+
+[[variants.confirmations]]
+at = 2026-11-01T21:40:30.431082+03:00
+review_pass = 3
+
+[[variants]]
+id = "n42_mm_hmm-laptop-1-1"
+device = "laptop"
+session = "laptop-1"
+reference = "mm-hmm"
+reference_source = "script"
+turn_ends_ms = []
+tags = []
+
+[[variants.segments]]
+root = "owner"
+path = "laptop-1/n42_mm_hmm-laptop-1-1.wav"
+sha256 = "a178781fe7bb8660c97661ec0d782cd77b233d0e0b6760b34d532f8b4cb6d7eb"
+
+[[variants.confirmations]]
+at = 2026-11-01T21:47:02.494244+03:00
+review_pass = 3
+
+[[variants]]
+id = "n42_mm_hmm-laptop-1-2"
+device = "laptop"
+session = "laptop-1"
+reference = "mm-hmm"
+reference_source = "script"
+turn_ends_ms = []
+tags = []
+
+[[variants.segments]]
+root = "owner"
+path = "laptop-1/n42_mm_hmm-laptop-1-2.wav"
+sha256 = "18add8b6304446194396aebb5416c8c3c0c452b8ac07b1bde6f8f61ab96860fe"
+
+[[variants.confirmations]]
+at = 2026-11-01T21:47:05.202999+03:00
+review_pass = 3
+
+[[variants]]
+id = "n42_mm_hmm-wired-1-1"
+device = "wired"
+session = "wired-1"
+reference = "mm-hmm"
+reference_source = "script"
+turn_ends_ms = []
+tags = []
+
+[[variants.segments]]
+root = "owner"
+path = "wired-1/n42_mm_hmm-wired-1-1.wav"
+sha256 = "5e54d7d2a5c781fe23251cd310c7b51f6cb9f267955668649245e280c1fa47bd"
+
+[[variants.confirmations]]
+at = 2026-11-01T21:51:36.121777+03:00
+review_pass = 3

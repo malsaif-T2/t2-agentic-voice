@@ -1,0 +1,81 @@
+# Written by `python -m ole5_voice.evals.import_recordings` from the recorder's files:
+# import again rather than edit.
+id = "n18_archive_in_ole5"
+source = "script"
+kind = "request"
+language = "mixed"
+text = "وين ألقى الأرشيف في Ole5؟"
+alternatives = []
+terms = ["Ole5"]
+
+[[variants]]
+id = "n18_archive_in_ole5-bluetooth-1-1"
+device = "bluetooth"
+session = "bluetooth-1"
+reference = "وين ألقى الأرشيف في Ole5؟"
+reference_source = "script"
+turn_ends_ms = []
+tags = []
+
+[[variants.segments]]
+root = "owner"
+path = "bluetooth-1/n18_archive_in_ole5-bluetooth-1-1.wav"
+sha256 = "6c804d826694abb3ff517e9eaa99c1231ad8446cb2133f2b9be90ea44cc2d765"
+
+[[variants.confirmations]]
+at = 2026-11-01T21:38:52.436674+03:00
+review_pass = 3
+
+[[variants]]
+id = "n18_archive_in_ole5-laptop-1-1"
+device = "laptop"
+session = "laptop-1"
+reference = "وين ألقى الأرشيف في Ole5؟"
+reference_source = "script"
+turn_ends_ms = []
+tags = []
+
+[[variants.segments]]
+root = "owner"
+path = "laptop-1/n18_archive_in_ole5-laptop-1-1.wav"
+sha256 = "df369295937e3c50dff69dabe843ab12707089ea6dfdf4524b7801a65f78db1e"
+
+[[variants.confirmations]]
+at = 2026-11-01T21:44:21.952596+03:00
+review_pass = 3
+
+[[variants]]
+id = "n18_archive_in_ole5-laptop-1-2"
+device = "laptop"
+session = "laptop-1"
+reference = "وين ألقى الأرشيف في Ole5؟"
+reference_source = "script"
+turn_ends_ms = []
+tags = []
+
+[[variants.segments]]
+root = "owner"
+path = "laptop-1/n18_archive_in_ole5-laptop-1-2.wav"
+sha256 = "0e66c11f859a1e166ec08f67d04f3c35cfe0cde8b47513ca912d367facc82576"
+
+[[variants.confirmations]]
+at = 2026-11-01T21:44:25.367269+03:00
+review_pass = 3
+
+[[variants]]
+id = "n18_archive_in_ole5-wired-1-1"
+device = "wired"
+session = "wired-1"
+reference = "وين ألقى الأرشيف في Ole5؟"
+reference_source = "script"
+turn_ends_ms = []
+tags = []
+
+[[variants.segments]]
+root = "owner"
+path = "wired-1/n18_archive_in_ole5-wired-1-1.wav"
+sha256 = "f9990542bdf8e22c37dcae502a59d112e161cacd443692f0ce54029d581e248c"
+
+[[variants.confirmations]]
+at = 2026-11-01T21:50:18.295359+03:00
+review_pass = 3

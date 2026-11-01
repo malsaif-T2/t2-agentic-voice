@@ -1,0 +1,81 @@
+# Written by `python -m ole5_voice.evals.import_recordings` from the recorder's files:
+# import again rather than edit.
+id = "n25_archiving_question"
+source = "script"
+kind = "paused_request"
+language = "english"
+text = "I have a question about archiving old correspondence"
+alternatives = []
+terms = []
+
+[[variants]]
+id = "n25_archiving_question-bluetooth-1-1"
+device = "bluetooth"
+session = "bluetooth-1"
+reference = "I have a question about archiving old correspondence"
+reference_source = "script"
+turn_ends_ms = [4511]
+tags = []
+
+[[variants.segments]]
+root = "owner"
+path = "bluetooth-1/n25_archiving_question-bluetooth-1-1.wav"
+sha256 = "f28feb13c08bac757a2eff106b4f9c2a4d697845b0bd30c9f3f7009f3e55399d"
+
+[[variants.confirmations]]
+at = 2026-11-01T21:39:35.169570+03:00
+review_pass = 3
+
+[[variants]]
+id = "n25_archiving_question-laptop-1-1"
+device = "laptop"
+session = "laptop-1"
+reference = "I have a question about archiving old correspondence"
+reference_source = "script"
+turn_ends_ms = [5040]
+tags = []
+
+[[variants.segments]]
+root = "owner"
+path = "laptop-1/n25_archiving_question-laptop-1-1.wav"
+sha256 = "7b7cb924df182c1cf8ecc604982d7860c8b5bbe338702e91159160061dcba118"
+
+[[variants.confirmations]]
+at = 2026-11-01T21:45:30.625012+03:00
+review_pass = 3
+
+[[variants]]
+id = "n25_archiving_question-laptop-1-2"
+device = "laptop"
+session = "laptop-1"
+reference = "I have a question about archiving old correspondence"
+reference_source = "script"
+turn_ends_ms = [3763]
+tags = []
+
+[[variants.segments]]
+root = "owner"
+path = "laptop-1/n25_archiving_question-laptop-1-2.wav"
+sha256 = "32e59579704def0128904a546ede9e3c7ee20556f798c72265178cb9076b78e5"
+
+[[variants.confirmations]]
+at = 2026-11-01T21:45:34.807482+03:00
+review_pass = 3
+
+[[variants]]
+id = "n25_archiving_question-wired-1-1"
+device = "wired"
+session = "wired-1"
+reference = "I have a question about archiving old correspondence"
+reference_source = "script"
+turn_ends_ms = [4081]
+tags = []
+
+[[variants.segments]]
+root = "owner"
+path = "wired-1/n25_archiving_question-wired-1-1.wav"
+sha256 = "83ce69484dd424c4f04543d1ae7fe9f676bea02d480cdb8ddf8893e1aa418eb1"
+
+[[variants.confirmations]]
+at = 2026-11-01T21:50:52.748842+03:00
+review_pass = 3

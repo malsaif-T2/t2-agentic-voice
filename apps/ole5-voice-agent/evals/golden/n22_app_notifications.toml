@@ -1,0 +1,63 @@
+# Written by `python -m ole5_voice.evals.import_recordings` from the recorder's files:
+# import again rather than edit.
+id = "n22_app_notifications"
+source = "script"
+kind = "paused_request"
+language = "saudi"
+text = "لو سمحت التطبيق في الجوال ما يرسل لي إشعارات"
+alternatives = []
+terms = []
+
+[[variants]]
+id = "n22_app_notifications-bluetooth-1-1"
+device = "bluetooth"
+session = "bluetooth-1"
+reference = "لو سمحت التطبيق في الجوال ما يرسل لي إشعارات"
+reference_source = "script"
+turn_ends_ms = [4205]
+tags = []
+
+[[variants.segments]]
+root = "owner"
+path = "bluetooth-1/n22_app_notifications-bluetooth-1-1.wav"
+sha256 = "9ffc2173404dcea93647656ebebabd1ae4e47eeac398767b258a8cf7357bd433"
+
+[[variants.confirmations]]
+at = 2026-11-01T21:39:13.091681+03:00
+review_pass = 3
+
+[[variants]]
+id = "n22_app_notifications-laptop-1-1"
+device = "laptop"
+session = "laptop-1"
+reference = "لو سمحت التطبيق في الجوال ما يرسل لي إشعارات"
+reference_source = "script"
+turn_ends_ms = [4273]
+tags = []
+
+[[variants.segments]]
+root = "owner"
+path = "laptop-1/n22_app_notifications-laptop-1-1.wav"
+sha256 = "b2d713bf0235754de66411a4e88eaba3fe8c58b142bc85476769e8a3124fcf3d"
+
+[[variants.confirmations]]
+at = 2026-11-01T21:45:03.302879+03:00
+review_pass = 3
+
+[[variants]]
+id = "n22_app_notifications-wired-1-1"
+device = "wired"
+session = "wired-1"
+reference = "لو سمحت التطبيق في الجوال ما يرسل لي إشعارات"
+reference_source = "script"
+turn_ends_ms = [3918]
+tags = []
+
+[[variants.segments]]
+root = "owner"
+path = "wired-1/n22_app_notifications-wired-1-1.wav"
+sha256 = "74c657feba25bd9499f9ebdaefd085e8064ded0e5b35b91e30065a50c8efb499"
+
+[[variants.confirmations]]
+at = 2026-11-01T21:50:38.540925+03:00
+review_pass = 3

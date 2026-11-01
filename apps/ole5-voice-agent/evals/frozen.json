@@ -1,8 +1,8 @@
 {
   "about": "The golden set's expected answers, frozen by `uv run poe golden` from the items in golden/: each accepted variant's references (its own and its item's alternatives), and the variants left out until the owner's check. Never edited by hand: a changed item shows as a diff of this file, reviewed like code.",
   "accepted": {
-    "items": 43,
-    "variants": 118
+    "items": 95,
+    "variants": 337
   },
   "items": [
     {
@@ -52,7 +52,7 @@
     },
     {
       "id": "b02_eh",
-      "split": "held-out",
+      "split": "dev",
       "kind": "listening_sound",
       "language": "saudi",
       "want": "listen",
@@ -227,7 +227,7 @@
     },
     {
       "id": "b09_okay",
-      "split": "held-out",
+      "split": "dev",
       "kind": "listening_sound",
       "language": "english",
       "want": "listen",
@@ -413,7 +413,7 @@
     },
     {
       "id": "k02_khalas",
-      "split": "held-out",
+      "split": "dev",
       "kind": "stop_word",
       "language": "saudi",
       "want": "stop",
@@ -437,7 +437,7 @@
     },
     {
       "id": "k03_tawaqqaf",
-      "split": "dev",
+      "split": "held-out",
       "kind": "stop_word",
       "language": "msa",
       "want": "stop",
@@ -534,6 +534,2073 @@
           "device": "laptop",
           "expected": [
             "wait"
+          ]
+        }
+      ]
+    },
+    {
+      "id": "n01_mail_slow",
+      "split": "held-out",
+      "kind": "request",
+      "language": "saudi",
+      "want": null,
+      "terms": [],
+      "variants": [
+        {
+          "id": "n01_mail_slow-bluetooth-1-1",
+          "device": "bluetooth",
+          "expected": [
+            "البريد عندي ثقيل مرة اليوم"
+          ]
+        },
+        {
+          "id": "n01_mail_slow-laptop-1-1",
+          "device": "laptop",
+          "expected": [
+            "البريد عندي ثقيل مرة اليوم"
+          ]
+        },
+        {
+          "id": "n01_mail_slow-laptop-1-2",
+          "device": "laptop",
+          "expected": [
+            "البريد عندي ثقيل مرة اليوم"
+          ]
+        },
+        {
+          "id": "n01_mail_slow-wired-1-1",
+          "device": "wired",
+          "expected": [
+            "البريد عندي ثقيل مرة اليوم"
+          ]
+        }
+      ]
+    },
+    {
+      "id": "n02_not_received",
+      "split": "dev",
+      "kind": "request",
+      "language": "saudi",
+      "want": null,
+      "terms": [],
+      "variants": [
+        {
+          "id": "n02_not_received-bluetooth-1-1",
+          "device": "bluetooth",
+          "expected": [
+            "ما وصلتني المراسلة اللي أرسلوها لي"
+          ]
+        },
+        {
+          "id": "n02_not_received-laptop-1-3",
+          "device": "laptop",
+          "expected": [
+            "ما وصلتني المراسلة اللي أرسلوها لي"
+          ]
+        },
+        {
+          "id": "n02_not_received-laptop-1-4",
+          "device": "laptop",
+          "expected": [
+            "ما وصلتني المراسلة اللي أرسلوها لي"
+          ]
+        },
+        {
+          "id": "n02_not_received-laptop-1-5",
+          "device": "laptop",
+          "expected": [
+            "ما وصلتني المراسلة اللي أرسلوها لي"
+          ]
+        },
+        {
+          "id": "n02_not_received-wired-1-1",
+          "device": "wired",
+          "expected": [
+            "ما وصلتني المراسلة اللي أرسلوها لي"
+          ]
+        },
+        {
+          "id": "n02_not_received-wired-1-2",
+          "device": "wired",
+          "expected": [
+            "ما وصلتني المراسلة اللي أرسلوها لي"
+          ]
+        }
+      ]
+    },
+    {
+      "id": "n03_print",
+      "split": "dev",
+      "kind": "request",
+      "language": "saudi",
+      "want": null,
+      "terms": [],
+      "variants": [
+        {
+          "id": "n03_print-bluetooth-1-1",
+          "device": "bluetooth",
+          "expected": [
+            "كيف أقدر أطبع المراسلة من النظام؟"
+          ]
+        },
+        {
+          "id": "n03_print-laptop-1-1",
+          "device": "laptop",
+          "expected": [
+            "كيف أقدر أطبع المراسلة من النظام؟"
+          ]
+        },
+        {
+          "id": "n03_print-laptop-1-2",
+          "device": "laptop",
+          "expected": [
+            "كيف أقدر أطبع المراسلة من النظام؟"
+          ]
+        },
+        {
+          "id": "n03_print-wired-1-1",
+          "device": "wired",
+          "expected": [
+            "كيف أقدر أطبع المراسلة من النظام؟"
+          ]
+        }
+      ]
+    },
+    {
+      "id": "n04_screen_freezes",
+      "split": "held-out",
+      "kind": "request",
+      "language": "saudi",
+      "want": null,
+      "terms": [],
+      "variants": [
+        {
+          "id": "n04_screen_freezes-bluetooth-1-1",
+          "device": "bluetooth",
+          "expected": [
+            "الشاشة تعلق لما أفتح صندوق الوارد"
+          ]
+        },
+        {
+          "id": "n04_screen_freezes-laptop-1-1",
+          "device": "laptop",
+          "expected": [
+            "الشاشة تعلق لما أفتح صندوق الوارد"
+          ]
+        },
+        {
+          "id": "n04_screen_freezes-laptop-1-2",
+          "device": "laptop",
+          "expected": [
+            "الشاشة تعلق لما أفتح صندوق الوارد"
+          ]
+        },
+        {
+          "id": "n04_screen_freezes-wired-1-1",
+          "device": "wired",
+          "expected": [
+            "الشاشة تعلق لما أفتح صندوق الوارد"
+          ]
+        }
+      ]
+    },
+    {
+      "id": "n05_who_received",
+      "split": "dev",
+      "kind": "request",
+      "language": "saudi",
+      "want": null,
+      "terms": [],
+      "variants": [
+        {
+          "id": "n05_who_received-bluetooth-1-1",
+          "device": "bluetooth",
+          "expected": [
+            "أبغى أعرف مين استلم المراسلة"
+          ]
+        },
+        {
+          "id": "n05_who_received-laptop-1-1",
+          "device": "laptop",
+          "expected": [
+            "أبغى أعرف مين استلم المراسلة"
+          ]
+        },
+        {
+          "id": "n05_who_received-laptop-1-3",
+          "device": "laptop",
+          "expected": [
+            "أبغى أعرف مين استلم المراسلة"
+          ]
+        },
+        {
+          "id": "n05_who_received-wired-1-1",
+          "device": "wired",
+          "expected": [
+            "أبغى أعرف مين استلم المراسلة"
+          ]
+        },
+        {
+          "id": "n05_who_received-wired-1-2",
+          "device": "wired",
+          "expected": [
+            "أبغى أعرف مين استلم المراسلة"
+          ]
+        }
+      ]
+    },
+    {
+      "id": "n06_change_password",
+      "split": "held-out",
+      "kind": "request",
+      "language": "saudi",
+      "want": null,
+      "terms": [],
+      "variants": [
+        {
+          "id": "n06_change_password-bluetooth-1-1",
+          "device": "bluetooth",
+          "expected": [
+            "أبي أغير كلمة المرور حقتي"
+          ]
+        },
+        {
+          "id": "n06_change_password-laptop-1-1",
+          "device": "laptop",
+          "expected": [
+            "أبي أغير كلمة المرور حقتي"
+          ]
+        },
+        {
+          "id": "n06_change_password-laptop-1-2",
+          "device": "laptop",
+          "expected": [
+            "أبي أغير كلمة المرور حقتي"
+          ]
+        },
+        {
+          "id": "n06_change_password-laptop-1-3",
+          "device": "laptop",
+          "expected": [
+            "أبي أغير كلمة المرور حقتي"
+          ]
+        },
+        {
+          "id": "n06_change_password-wired-1-2",
+          "device": "wired",
+          "expected": [
+            "أبي أغير كلمة المرور حقتي"
+          ]
+        }
+      ]
+    },
+    {
+      "id": "n07_delegate",
+      "split": "dev",
+      "kind": "request",
+      "language": "msa",
+      "want": null,
+      "terms": [],
+      "variants": [
+        {
+          "id": "n07_delegate-bluetooth-1-1",
+          "device": "bluetooth",
+          "expected": [
+            "كيف يمكنني تفويض صلاحياتي لزميل أثناء إجازتي؟"
+          ]
+        },
+        {
+          "id": "n07_delegate-laptop-1-1",
+          "device": "laptop",
+          "expected": [
+            "كيف يمكنني تفويض صلاحياتي لزميل أثناء إجازتي؟"
+          ]
+        },
+        {
+          "id": "n07_delegate-laptop-1-2",
+          "device": "laptop",
+          "expected": [
+            "كيف يمكنني تفويض صلاحياتي لزميل أثناء إجازتي؟"
+          ]
+        },
+        {
+          "id": "n07_delegate-wired-1-1",
+          "device": "wired",
+          "expected": [
+            "كيف يمكنني تفويض صلاحياتي لزميل أثناء إجازتي؟"
+          ]
+        },
+        {
+          "id": "n07_delegate-wired-1-2",
+          "device": "wired",
+          "expected": [
+            "كيف يمكنني تفويض صلاحياتي لزميل أثناء إجازتي؟"
+          ]
+        }
+      ]
+    },
+    {
+      "id": "n08_new_missing",
+      "split": "dev",
+      "kind": "request",
+      "language": "msa",
+      "want": null,
+      "terms": [],
+      "variants": [
+        {
+          "id": "n08_new_missing-bluetooth-1-1",
+          "device": "bluetooth",
+          "expected": [
+            "لا تظهر المراسلات الجديدة في صندوق الوارد"
+          ]
+        },
+        {
+          "id": "n08_new_missing-laptop-1-1",
+          "device": "laptop",
+          "expected": [
+            "لا تظهر المراسلات الجديدة في صندوق الوارد"
+          ]
+        },
+        {
+          "id": "n08_new_missing-laptop-1-2",
+          "device": "laptop",
+          "expected": [
+            "لا تظهر المراسلات الجديدة في صندوق الوارد"
+          ]
+        },
+        {
+          "id": "n08_new_missing-wired-1-1",
+          "device": "wired",
+          "expected": [
+            "لا تظهر المراسلات الجديدة في صندوق الوارد"
+          ]
+        }
+      ]
+    },
+    {
+      "id": "n09_add_attachment",
+      "split": "held-out",
+      "kind": "request",
+      "language": "msa",
+      "want": null,
+      "terms": [],
+      "variants": [
+        {
+          "id": "n09_add_attachment-bluetooth-1-1",
+          "device": "bluetooth",
+          "expected": [
+            "أريد إضافة مرفق إلى المراسلة"
+          ]
+        },
+        {
+          "id": "n09_add_attachment-laptop-1-1",
+          "device": "laptop",
+          "expected": [
+            "أريد إضافة مرفق إلى المراسلة"
+          ]
+        },
+        {
+          "id": "n09_add_attachment-laptop-1-2",
+          "device": "laptop",
+          "expected": [
+            "أريد إضافة مرفق إلى المراسلة"
+          ]
+        },
+        {
+          "id": "n09_add_attachment-wired-1-1",
+          "device": "wired",
+          "expected": [
+            "أريد إضافة مرفق إلى المراسلة"
+          ]
+        }
+      ]
+    },
+    {
+      "id": "n10_reset_by_mail",
+      "split": "dev",
+      "kind": "request",
+      "language": "msa",
+      "want": null,
+      "terms": [],
+      "variants": [
+        {
+          "id": "n10_reset_by_mail-bluetooth-1-1",
+          "device": "bluetooth",
+          "expected": [
+            "هل يمكن استعادة كلمة المرور عبر البريد الإلكتروني؟"
+          ]
+        },
+        {
+          "id": "n10_reset_by_mail-laptop-1-1",
+          "device": "laptop",
+          "expected": [
+            "هل يمكن استعادة كلمة المرور عبر البريد الإلكتروني؟"
+          ]
+        },
+        {
+          "id": "n10_reset_by_mail-laptop-1-2",
+          "device": "laptop",
+          "expected": [
+            "هل يمكن استعادة كلمة المرور عبر البريد الإلكتروني؟"
+          ]
+        },
+        {
+          "id": "n10_reset_by_mail-wired-1-1",
+          "device": "wired",
+          "expected": [
+            "هل يمكن استعادة كلمة المرور عبر البريد الإلكتروني؟"
+          ]
+        }
+      ]
+    },
+    {
+      "id": "n11_sent_last_week",
+      "split": "dev",
+      "kind": "request",
+      "language": "english",
+      "want": null,
+      "terms": [],
+      "variants": [
+        {
+          "id": "n11_sent_last_week-bluetooth-1-1",
+          "device": "bluetooth",
+          "expected": [
+            "Where can I find the correspondence I sent last week?"
+          ]
+        },
+        {
+          "id": "n11_sent_last_week-laptop-1-1",
+          "device": "laptop",
+          "expected": [
+            "Where can I find the correspondence I sent last week?"
+          ]
+        },
+        {
+          "id": "n11_sent_last_week-laptop-1-2",
+          "device": "laptop",
+          "expected": [
+            "Where can I find the correspondence I sent last week?"
+          ]
+        },
+        {
+          "id": "n11_sent_last_week-wired-1-1",
+          "device": "wired",
+          "expected": [
+            "Where can I find the correspondence I sent last week?"
+          ]
+        },
+        {
+          "id": "n11_sent_last_week-wired-1-2",
+          "device": "wired",
+          "expected": [
+            "Where can I find the correspondence I sent last week?"
+          ]
+        }
+      ]
+    },
+    {
+      "id": "n12_phone_notifications",
+      "split": "dev",
+      "kind": "request",
+      "language": "english",
+      "want": null,
+      "terms": [],
+      "variants": [
+        {
+          "id": "n12_phone_notifications-bluetooth-1-1",
+          "device": "bluetooth",
+          "expected": [
+            "My notifications don't show up on my phone."
+          ]
+        },
+        {
+          "id": "n12_phone_notifications-laptop-1-1",
+          "device": "laptop",
+          "expected": [
+            "My notifications don't show up on my phone."
+          ]
+        },
+        {
+          "id": "n12_phone_notifications-laptop-1-2",
+          "device": "laptop",
+          "expected": [
+            "My notifications don't show up on my phone."
+          ]
+        },
+        {
+          "id": "n12_phone_notifications-wired-1-1",
+          "device": "wired",
+          "expected": [
+            "My notifications don't show up on my phone."
+          ]
+        }
+      ]
+    },
+    {
+      "id": "n13_attach_pdf",
+      "split": "held-out",
+      "kind": "request",
+      "language": "english",
+      "want": null,
+      "terms": [
+        "PDF"
+      ],
+      "variants": [
+        {
+          "id": "n13_attach_pdf-bluetooth-1-2",
+          "device": "bluetooth",
+          "expected": [
+            "How do I attach a PDF to a correspondence?"
+          ]
+        },
+        {
+          "id": "n13_attach_pdf-laptop-1-2",
+          "device": "laptop",
+          "expected": [
+            "How do I attach a PDF to a correspondence?"
+          ]
+        },
+        {
+          "id": "n13_attach_pdf-wired-1-1",
+          "device": "wired",
+          "expected": [
+            "How do I attach a PDF to a correspondence?"
+          ]
+        }
+      ]
+    },
+    {
+      "id": "n14_reset_password",
+      "split": "dev",
+      "kind": "request",
+      "language": "english",
+      "want": null,
+      "terms": [],
+      "variants": [
+        {
+          "id": "n14_reset_password-bluetooth-1-1",
+          "device": "bluetooth",
+          "expected": [
+            "I need to reset my password."
+          ]
+        },
+        {
+          "id": "n14_reset_password-laptop-1-2",
+          "device": "laptop",
+          "expected": [
+            "I need to reset my password."
+          ]
+        },
+        {
+          "id": "n14_reset_password-laptop-1-3",
+          "device": "laptop",
+          "expected": [
+            "I need to reset my password."
+          ]
+        },
+        {
+          "id": "n14_reset_password-wired-1-1",
+          "device": "wired",
+          "expected": [
+            "I need to reset my password."
+          ]
+        },
+        {
+          "id": "n14_reset_password-wired-1-2",
+          "device": "wired",
+          "expected": [
+            "I need to reset my password."
+          ]
+        }
+      ]
+    },
+    {
+      "id": "n15_outlook_mail",
+      "split": "held-out",
+      "kind": "request",
+      "language": "mixed",
+      "want": null,
+      "terms": [
+        "Outlook"
+      ],
+      "variants": [
+        {
+          "id": "n15_outlook_mail-bluetooth-1-1",
+          "device": "bluetooth",
+          "expected": [
+            "الإيميل ما يوصل على Outlook"
+          ]
+        },
+        {
+          "id": "n15_outlook_mail-laptop-1-1",
+          "device": "laptop",
+          "expected": [
+            "الإيميل ما يوصل على Outlook"
+          ]
+        },
+        {
+          "id": "n15_outlook_mail-laptop-1-2",
+          "device": "laptop",
+          "expected": [
+            "الإيميل ما يوصل على Outlook"
+          ]
+        },
+        {
+          "id": "n15_outlook_mail-wired-1-1",
+          "device": "wired",
+          "expected": [
+            "الإيميل ما يوصل على Outlook"
+          ]
+        }
+      ]
+    },
+    {
+      "id": "n16_convert_pdf",
+      "split": "dev",
+      "kind": "request",
+      "language": "mixed",
+      "want": null,
+      "terms": [
+        "PDF"
+      ],
+      "variants": [
+        {
+          "id": "n16_convert_pdf-bluetooth-1-1",
+          "device": "bluetooth",
+          "expected": [
+            "أبغى أحول المراسلة إلى PDF"
+          ]
+        },
+        {
+          "id": "n16_convert_pdf-laptop-1-1",
+          "device": "laptop",
+          "expected": [
+            "أبغى أحول المراسلة إلى PDF"
+          ]
+        },
+        {
+          "id": "n16_convert_pdf-wired-1-1",
+          "device": "wired",
+          "expected": [
+            "أبغى أحول المراسلة إلى PDF"
+          ]
+        }
+      ]
+    },
+    {
+      "id": "n17_save_word",
+      "split": "dev",
+      "kind": "request",
+      "language": "mixed",
+      "want": null,
+      "terms": [
+        "Word"
+      ],
+      "variants": [
+        {
+          "id": "n17_save_word-bluetooth-1-1",
+          "device": "bluetooth",
+          "expected": [
+            "كيف أحفظ مرفق Word على جهازي؟"
+          ]
+        },
+        {
+          "id": "n17_save_word-laptop-1-1",
+          "device": "laptop",
+          "expected": [
+            "كيف أحفظ مرفق Word على جهازي؟"
+          ]
+        },
+        {
+          "id": "n17_save_word-laptop-1-2",
+          "device": "laptop",
+          "expected": [
+            "كيف أحفظ مرفق Word على جهازي؟"
+          ]
+        },
+        {
+          "id": "n17_save_word-wired-1-1",
+          "device": "wired",
+          "expected": [
+            "كيف أحفظ مرفق Word على جهازي؟"
+          ]
+        }
+      ]
+    },
+    {
+      "id": "n18_archive_in_ole5",
+      "split": "held-out",
+      "kind": "request",
+      "language": "mixed",
+      "want": null,
+      "terms": [
+        "Ole5"
+      ],
+      "variants": [
+        {
+          "id": "n18_archive_in_ole5-bluetooth-1-1",
+          "device": "bluetooth",
+          "expected": [
+            "وين ألقى الأرشيف في Ole5؟"
+          ]
+        },
+        {
+          "id": "n18_archive_in_ole5-laptop-1-1",
+          "device": "laptop",
+          "expected": [
+            "وين ألقى الأرشيف في Ole5؟"
+          ]
+        },
+        {
+          "id": "n18_archive_in_ole5-laptop-1-2",
+          "device": "laptop",
+          "expected": [
+            "وين ألقى الأرشيف في Ole5؟"
+          ]
+        },
+        {
+          "id": "n18_archive_in_ole5-wired-1-1",
+          "device": "wired",
+          "expected": [
+            "وين ألقى الأرشيف في Ole5؟"
+          ]
+        }
+      ]
+    },
+    {
+      "id": "n19_refer_manager",
+      "split": "held-out",
+      "kind": "paused_request",
+      "language": "saudi",
+      "want": null,
+      "terms": [],
+      "variants": [
+        {
+          "id": "n19_refer_manager-bluetooth-1-1",
+          "device": "bluetooth",
+          "expected": [
+            "عندي مراسلة أبغى أحيلها للمدير حقي"
+          ]
+        },
+        {
+          "id": "n19_refer_manager-laptop-1-1",
+          "device": "laptop",
+          "expected": [
+            "عندي مراسلة أبغى أحيلها للمدير حقي"
+          ]
+        },
+        {
+          "id": "n19_refer_manager-laptop-1-2",
+          "device": "laptop",
+          "expected": [
+            "عندي مراسلة أبغى أحيلها للمدير حقي"
+          ]
+        },
+        {
+          "id": "n19_refer_manager-wired-1-1",
+          "device": "wired",
+          "expected": [
+            "عندي مراسلة أبغى أحيلها للمدير حقي"
+          ]
+        }
+      ]
+    },
+    {
+      "id": "n20_error_suddenly",
+      "split": "dev",
+      "kind": "paused_request",
+      "language": "saudi",
+      "want": null,
+      "terms": [],
+      "variants": [
+        {
+          "id": "n20_error_suddenly-bluetooth-1-1",
+          "device": "bluetooth",
+          "expected": [
+            "أمس كنت أشتغل وفجأة طلع لي خطأ وما عاد يفتح البرنامج"
+          ]
+        },
+        {
+          "id": "n20_error_suddenly-laptop-1-1",
+          "device": "laptop",
+          "expected": [
+            "أمس كنت أشتغل وفجأة طلع لي خطأ وما عاد يفتح البرنامج"
+          ]
+        },
+        {
+          "id": "n20_error_suddenly-laptop-1-2",
+          "device": "laptop",
+          "expected": [
+            "أمس كنت أشتغل وفجأة طلع لي خطأ وما عاد يفتح البرنامج"
+          ]
+        },
+        {
+          "id": "n20_error_suddenly-wired-1-1",
+          "device": "wired",
+          "expected": [
+            "أمس كنت أشتغل وفجأة طلع لي خطأ وما عاد يفتح البرنامج"
+          ]
+        }
+      ]
+    },
+    {
+      "id": "n21_archived_later",
+      "split": "dev",
+      "kind": "paused_request",
+      "language": "saudi",
+      "want": null,
+      "terms": [],
+      "variants": [
+        {
+          "id": "n21_archived_later-bluetooth-1-1",
+          "device": "bluetooth",
+          "expected": [
+            "أبغى أسأل عن المراسلات المؤرشفة وين تروح بعد فترة"
+          ]
+        },
+        {
+          "id": "n21_archived_later-laptop-1-1",
+          "device": "laptop",
+          "expected": [
+            "أبغى أسأل عن المراسلات المؤرشفة وين تروح بعد فترة"
+          ]
+        },
+        {
+          "id": "n21_archived_later-laptop-1-2",
+          "device": "laptop",
+          "expected": [
+            "أبغى أسأل عن المراسلات المؤرشفة وين تروح بعد فترة"
+          ]
+        },
+        {
+          "id": "n21_archived_later-wired-1-1",
+          "device": "wired",
+          "expected": [
+            "أبغى أسأل عن المراسلات المؤرشفة وين تروح بعد فترة"
+          ]
+        }
+      ]
+    },
+    {
+      "id": "n22_app_notifications",
+      "split": "dev",
+      "kind": "paused_request",
+      "language": "saudi",
+      "want": null,
+      "terms": [],
+      "variants": [
+        {
+          "id": "n22_app_notifications-bluetooth-1-1",
+          "device": "bluetooth",
+          "expected": [
+            "لو سمحت التطبيق في الجوال ما يرسل لي إشعارات"
+          ]
+        },
+        {
+          "id": "n22_app_notifications-laptop-1-1",
+          "device": "laptop",
+          "expected": [
+            "لو سمحت التطبيق في الجوال ما يرسل لي إشعارات"
+          ]
+        },
+        {
+          "id": "n22_app_notifications-wired-1-1",
+          "device": "wired",
+          "expected": [
+            "لو سمحت التطبيق في الجوال ما يرسل لي إشعارات"
+          ]
+        }
+      ]
+    },
+    {
+      "id": "n23_signature_msa",
+      "split": "dev",
+      "kind": "paused_request",
+      "language": "msa",
+      "want": null,
+      "terms": [],
+      "variants": [
+        {
+          "id": "n23_signature_msa-bluetooth-1-1",
+          "device": "bluetooth",
+          "expected": [
+            "أريد أن أسأل عن طريقة إضافة توقيع إلى رسائلي"
+          ]
+        },
+        {
+          "id": "n23_signature_msa-laptop-1-3",
+          "device": "laptop",
+          "expected": [
+            "أريد أن أسأل عن طريقة إضافة توقيع إلى رسائلي"
+          ]
+        },
+        {
+          "id": "n23_signature_msa-laptop-1-4",
+          "device": "laptop",
+          "expected": [
+            "أريد أن أسأل عن طريقة إضافة توقيع إلى رسائلي"
+          ]
+        },
+        {
+          "id": "n23_signature_msa-wired-1-1",
+          "device": "wired",
+          "expected": [
+            "أريد أن أسأل عن طريقة إضافة توقيع إلى رسائلي"
+          ]
+        }
+      ]
+    },
+    {
+      "id": "n24_login_msa",
+      "split": "held-out",
+      "kind": "paused_request",
+      "language": "msa",
+      "want": null,
+      "terms": [],
+      "variants": [
+        {
+          "id": "n24_login_msa-bluetooth-1-1",
+          "device": "bluetooth",
+          "expected": [
+            "لدي مشكلة في تسجيل الدخول منذ صباح اليوم"
+          ]
+        },
+        {
+          "id": "n24_login_msa-laptop-1-1",
+          "device": "laptop",
+          "expected": [
+            "لدي مشكلة في تسجيل الدخول منذ صباح اليوم"
+          ]
+        },
+        {
+          "id": "n24_login_msa-laptop-1-2",
+          "device": "laptop",
+          "expected": [
+            "لدي مشكلة في تسجيل الدخول منذ صباح اليوم"
+          ]
+        },
+        {
+          "id": "n24_login_msa-wired-1-1",
+          "device": "wired",
+          "expected": [
+            "لدي مشكلة في تسجيل الدخول منذ صباح اليوم"
+          ]
+        }
+      ]
+    },
+    {
+      "id": "n25_archiving_question",
+      "split": "held-out",
+      "kind": "paused_request",
+      "language": "english",
+      "want": null,
+      "terms": [],
+      "variants": [
+        {
+          "id": "n25_archiving_question-bluetooth-1-1",
+          "device": "bluetooth",
+          "expected": [
+            "I have a question about archiving old correspondence"
+          ]
+        },
+        {
+          "id": "n25_archiving_question-laptop-1-1",
+          "device": "laptop",
+          "expected": [
+            "I have a question about archiving old correspondence"
+          ]
+        },
+        {
+          "id": "n25_archiving_question-laptop-1-2",
+          "device": "laptop",
+          "expected": [
+            "I have a question about archiving old correspondence"
+          ]
+        },
+        {
+          "id": "n25_archiving_question-wired-1-1",
+          "device": "wired",
+          "expected": [
+            "I have a question about archiving old correspondence"
+          ]
+        }
+      ]
+    },
+    {
+      "id": "n26_inbox_loading",
+      "split": "dev",
+      "kind": "paused_request",
+      "language": "english",
+      "want": null,
+      "terms": [],
+      "variants": [
+        {
+          "id": "n26_inbox_loading-bluetooth-1-1",
+          "device": "bluetooth",
+          "expected": [
+            "So the inbox it keeps loading and nothing shows up"
+          ]
+        },
+        {
+          "id": "n26_inbox_loading-laptop-1-2",
+          "device": "laptop",
+          "expected": [
+            "So the inbox it keeps loading and nothing shows up"
+          ]
+        },
+        {
+          "id": "n26_inbox_loading-laptop-1-3",
+          "device": "laptop",
+          "expected": [
+            "So the inbox it keeps loading and nothing shows up"
+          ]
+        },
+        {
+          "id": "n26_inbox_loading-wired-1-1",
+          "device": "wired",
+          "expected": [
+            "So the inbox it keeps loading and nothing shows up"
+          ]
+        }
+      ]
+    },
+    {
+      "id": "n27_outlook_sync",
+      "split": "held-out",
+      "kind": "paused_request",
+      "language": "mixed",
+      "want": null,
+      "terms": [
+        "Outlook"
+      ],
+      "variants": [
+        {
+          "id": "n27_outlook_sync-bluetooth-1-1",
+          "device": "bluetooth",
+          "expected": [
+            "عندي مشكلة في Outlook ما يتزامن مع البريد"
+          ]
+        },
+        {
+          "id": "n27_outlook_sync-laptop-1-1",
+          "device": "laptop",
+          "expected": [
+            "عندي مشكلة في Outlook ما يتزامن مع البريد"
+          ]
+        },
+        {
+          "id": "n27_outlook_sync-laptop-1-3",
+          "device": "laptop",
+          "expected": [
+            "عندي مشكلة في Outlook ما يتزامن مع البريد"
+          ]
+        },
+        {
+          "id": "n27_outlook_sync-wired-1-1",
+          "device": "wired",
+          "expected": [
+            "عندي مشكلة في Outlook ما يتزامن مع البريد"
+          ]
+        }
+      ]
+    },
+    {
+      "id": "n28_word_font",
+      "split": "dev",
+      "kind": "paused_request",
+      "language": "mixed",
+      "want": null,
+      "terms": [
+        "Word"
+      ],
+      "variants": [
+        {
+          "id": "n28_word_font-bluetooth-1-1",
+          "device": "bluetooth",
+          "expected": [
+            "لما أفتح المرفق يفتح في Word بس الخط يطلع غلط"
+          ]
+        },
+        {
+          "id": "n28_word_font-laptop-1-3",
+          "device": "laptop",
+          "expected": [
+            "لما أفتح المرفق يفتح في Word بس الخط يطلع غلط"
+          ]
+        },
+        {
+          "id": "n28_word_font-laptop-1-4",
+          "device": "laptop",
+          "expected": [
+            "لما أفتح المرفق يفتح في Word بس الخط يطلع غلط"
+          ]
+        },
+        {
+          "id": "n28_word_font-wired-1-1",
+          "device": "wired",
+          "expected": [
+            "لما أفتح المرفق يفتح في Word بس الخط يطلع غلط"
+          ]
+        }
+      ]
+    },
+    {
+      "id": "n29_hold_saudi",
+      "split": "held-out",
+      "kind": "stop_word",
+      "language": "saudi",
+      "want": null,
+      "terms": [],
+      "variants": [
+        {
+          "id": "n29_hold_saudi-bluetooth-1-1",
+          "device": "bluetooth",
+          "expected": [
+            "استنى"
+          ]
+        },
+        {
+          "id": "n29_hold_saudi-laptop-1-1",
+          "device": "laptop",
+          "expected": [
+            "استنى"
+          ]
+        },
+        {
+          "id": "n29_hold_saudi-laptop-1-2",
+          "device": "laptop",
+          "expected": [
+            "استنى"
+          ]
+        },
+        {
+          "id": "n29_hold_saudi-wired-1-1",
+          "device": "wired",
+          "expected": [
+            "استنى"
+          ]
+        }
+      ]
+    },
+    {
+      "id": "n30_enough",
+      "split": "dev",
+      "kind": "stop_word",
+      "language": "saudi",
+      "want": null,
+      "terms": [],
+      "variants": [
+        {
+          "id": "n30_enough-bluetooth-1-3",
+          "device": "bluetooth",
+          "expected": [
+            "خلاص يكفي"
+          ]
+        },
+        {
+          "id": "n30_enough-laptop-1-1",
+          "device": "laptop",
+          "expected": [
+            "خلاص يكفي"
+          ]
+        },
+        {
+          "id": "n30_enough-laptop-1-2",
+          "device": "laptop",
+          "expected": [
+            "خلاص يكفي"
+          ]
+        },
+        {
+          "id": "n30_enough-wired-1-1",
+          "device": "wired",
+          "expected": [
+            "خلاص يكفي"
+          ]
+        }
+      ]
+    },
+    {
+      "id": "n31_moment_please",
+      "split": "held-out",
+      "kind": "stop_word",
+      "language": "saudi",
+      "want": null,
+      "terms": [],
+      "variants": [
+        {
+          "id": "n31_moment_please-bluetooth-1-1",
+          "device": "bluetooth",
+          "expected": [
+            "لحظة لو سمحت"
+          ]
+        },
+        {
+          "id": "n31_moment_please-laptop-1-1",
+          "device": "laptop",
+          "expected": [
+            "لحظة لو سمحت"
+          ]
+        },
+        {
+          "id": "n31_moment_please-laptop-1-2",
+          "device": "laptop",
+          "expected": [
+            "لحظة لو سمحت"
+          ]
+        },
+        {
+          "id": "n31_moment_please-wired-1-1",
+          "device": "wired",
+          "expected": [
+            "لحظة لو سمحت"
+          ]
+        }
+      ]
+    },
+    {
+      "id": "n32_halt_msa",
+      "split": "dev",
+      "kind": "stop_word",
+      "language": "msa",
+      "want": null,
+      "terms": [],
+      "variants": [
+        {
+          "id": "n32_halt_msa-bluetooth-1-1",
+          "device": "bluetooth",
+          "expected": [
+            "توقف من فضلك"
+          ]
+        },
+        {
+          "id": "n32_halt_msa-laptop-1-1",
+          "device": "laptop",
+          "expected": [
+            "توقف من فضلك"
+          ]
+        },
+        {
+          "id": "n32_halt_msa-wired-1-1",
+          "device": "wired",
+          "expected": [
+            "توقف من فضلك"
+          ]
+        }
+      ]
+    },
+    {
+      "id": "n33_hold_on",
+      "split": "dev",
+      "kind": "stop_word",
+      "language": "english",
+      "want": null,
+      "terms": [],
+      "variants": [
+        {
+          "id": "n33_hold_on-bluetooth-1-1",
+          "device": "bluetooth",
+          "expected": [
+            "hold on"
+          ]
+        },
+        {
+          "id": "n33_hold_on-laptop-1-1",
+          "device": "laptop",
+          "expected": [
+            "hold on"
+          ]
+        },
+        {
+          "id": "n33_hold_on-laptop-1-2",
+          "device": "laptop",
+          "expected": [
+            "hold on"
+          ]
+        },
+        {
+          "id": "n33_hold_on-wired-1-1",
+          "device": "wired",
+          "expected": [
+            "hold on"
+          ]
+        }
+      ]
+    },
+    {
+      "id": "n34_halt_please",
+      "split": "dev",
+      "kind": "stop_word",
+      "language": "english",
+      "want": null,
+      "terms": [],
+      "variants": [
+        {
+          "id": "n34_halt_please-bluetooth-1-1",
+          "device": "bluetooth",
+          "expected": [
+            "stop, please"
+          ]
+        },
+        {
+          "id": "n34_halt_please-laptop-1-1",
+          "device": "laptop",
+          "expected": [
+            "stop, please"
+          ]
+        },
+        {
+          "id": "n34_halt_please-laptop-1-2",
+          "device": "laptop",
+          "expected": [
+            "stop, please"
+          ]
+        },
+        {
+          "id": "n34_halt_please-wired-1-1",
+          "device": "wired",
+          "expected": [
+            "stop, please"
+          ]
+        }
+      ]
+    },
+    {
+      "id": "n35_what_said",
+      "split": "dev",
+      "kind": "repeat_request",
+      "language": "saudi",
+      "want": null,
+      "terms": [],
+      "variants": [
+        {
+          "id": "n35_what_said-bluetooth-1-1",
+          "device": "bluetooth",
+          "expected": [
+            "وش قلت؟"
+          ]
+        },
+        {
+          "id": "n35_what_said-laptop-1-1",
+          "device": "laptop",
+          "expected": [
+            "وش قلت؟"
+          ]
+        },
+        {
+          "id": "n35_what_said-laptop-1-2",
+          "device": "laptop",
+          "expected": [
+            "وش قلت؟"
+          ]
+        },
+        {
+          "id": "n35_what_said-wired-1-1",
+          "device": "wired",
+          "expected": [
+            "وش قلت؟"
+          ]
+        }
+      ]
+    },
+    {
+      "id": "n36_say_again",
+      "split": "held-out",
+      "kind": "repeat_request",
+      "language": "saudi",
+      "want": null,
+      "terms": [],
+      "variants": [
+        {
+          "id": "n36_say_again-bluetooth-1-1",
+          "device": "bluetooth",
+          "expected": [
+            "عيد الكلام مرة ثانية"
+          ]
+        },
+        {
+          "id": "n36_say_again-laptop-1-1",
+          "device": "laptop",
+          "expected": [
+            "عيد الكلام مرة ثانية"
+          ]
+        },
+        {
+          "id": "n36_say_again-wired-1-1",
+          "device": "wired",
+          "expected": [
+            "عيد الكلام مرة ثانية"
+          ]
+        }
+      ]
+    },
+    {
+      "id": "n37_repeat_msa",
+      "split": "dev",
+      "kind": "repeat_request",
+      "language": "msa",
+      "want": null,
+      "terms": [],
+      "variants": [
+        {
+          "id": "n37_repeat_msa-bluetooth-1-1",
+          "device": "bluetooth",
+          "expected": [
+            "هل يمكنك إعادة ما قلت؟"
+          ]
+        },
+        {
+          "id": "n37_repeat_msa-laptop-1-1",
+          "device": "laptop",
+          "expected": [
+            "هل يمكنك إعادة ما قلت؟"
+          ]
+        },
+        {
+          "id": "n37_repeat_msa-wired-1-1",
+          "device": "wired",
+          "expected": [
+            "هل يمكنك إعادة ما قلت؟"
+          ]
+        }
+      ]
+    },
+    {
+      "id": "n38_repeat_english",
+      "split": "dev",
+      "kind": "repeat_request",
+      "language": "english",
+      "want": null,
+      "terms": [],
+      "variants": [
+        {
+          "id": "n38_repeat_english-bluetooth-1-1",
+          "device": "bluetooth",
+          "expected": [
+            "Sorry, can you say that again?"
+          ]
+        },
+        {
+          "id": "n38_repeat_english-laptop-1-1",
+          "device": "laptop",
+          "expected": [
+            "Sorry, can you say that again?"
+          ]
+        },
+        {
+          "id": "n38_repeat_english-laptop-1-2",
+          "device": "laptop",
+          "expected": [
+            "Sorry, can you say that again?"
+          ]
+        },
+        {
+          "id": "n38_repeat_english-wired-1-1",
+          "device": "wired",
+          "expected": [
+            "Sorry, can you say that again?"
+          ]
+        }
+      ]
+    },
+    {
+      "id": "n39_aha",
+      "split": "held-out",
+      "kind": "listening_sound",
+      "language": "saudi",
+      "want": null,
+      "terms": [],
+      "variants": [
+        {
+          "id": "n39_aha-bluetooth-1-1",
+          "device": "bluetooth",
+          "expected": [
+            "اها"
+          ]
+        },
+        {
+          "id": "n39_aha-laptop-1-1",
+          "device": "laptop",
+          "expected": [
+            "اها"
+          ]
+        },
+        {
+          "id": "n39_aha-laptop-1-2",
+          "device": "laptop",
+          "expected": [
+            "اها"
+          ]
+        },
+        {
+          "id": "n39_aha-wired-1-1",
+          "device": "wired",
+          "expected": [
+            "اها"
+          ]
+        }
+      ]
+    },
+    {
+      "id": "n40_umm",
+      "split": "dev",
+      "kind": "listening_sound",
+      "language": "saudi",
+      "want": null,
+      "terms": [],
+      "variants": [
+        {
+          "id": "n40_umm-bluetooth-1-1",
+          "device": "bluetooth",
+          "expected": [
+            "امم"
+          ]
+        },
+        {
+          "id": "n40_umm-laptop-1-1",
+          "device": "laptop",
+          "expected": [
+            "امم"
+          ]
+        },
+        {
+          "id": "n40_umm-laptop-1-2",
+          "device": "laptop",
+          "expected": [
+            "امم"
+          ]
+        },
+        {
+          "id": "n40_umm-wired-1-1",
+          "device": "wired",
+          "expected": [
+            "امم"
+          ]
+        }
+      ]
+    },
+    {
+      "id": "n41_aywa",
+      "split": "dev",
+      "kind": "listening_sound",
+      "language": "saudi",
+      "want": null,
+      "terms": [],
+      "variants": [
+        {
+          "id": "n41_aywa-bluetooth-1-1",
+          "device": "bluetooth",
+          "expected": [
+            "ايوه"
+          ]
+        },
+        {
+          "id": "n41_aywa-bluetooth-1-2",
+          "device": "bluetooth",
+          "expected": [
+            "ايوه"
+          ]
+        },
+        {
+          "id": "n41_aywa-laptop-1-1",
+          "device": "laptop",
+          "expected": [
+            "ايوه"
+          ]
+        },
+        {
+          "id": "n41_aywa-laptop-1-2",
+          "device": "laptop",
+          "expected": [
+            "ايوه"
+          ]
+        },
+        {
+          "id": "n41_aywa-wired-1-1",
+          "device": "wired",
+          "expected": [
+            "ايوه"
+          ]
+        }
+      ]
+    },
+    {
+      "id": "n42_mm_hmm",
+      "split": "held-out",
+      "kind": "listening_sound",
+      "language": "english",
+      "want": null,
+      "terms": [],
+      "variants": [
+        {
+          "id": "n42_mm_hmm-bluetooth-1-1",
+          "device": "bluetooth",
+          "expected": [
+            "mm-hmm"
+          ]
+        },
+        {
+          "id": "n42_mm_hmm-laptop-1-1",
+          "device": "laptop",
+          "expected": [
+            "mm-hmm"
+          ]
+        },
+        {
+          "id": "n42_mm_hmm-laptop-1-2",
+          "device": "laptop",
+          "expected": [
+            "mm-hmm"
+          ]
+        },
+        {
+          "id": "n42_mm_hmm-wired-1-1",
+          "device": "wired",
+          "expected": [
+            "mm-hmm"
+          ]
+        }
+      ]
+    },
+    {
+      "id": "n43_uh_huh",
+      "split": "dev",
+      "kind": "listening_sound",
+      "language": "english",
+      "want": null,
+      "terms": [],
+      "variants": [
+        {
+          "id": "n43_uh_huh-bluetooth-1-1",
+          "device": "bluetooth",
+          "expected": [
+            "uh-huh"
+          ]
+        },
+        {
+          "id": "n43_uh_huh-laptop-1-2",
+          "device": "laptop",
+          "expected": [
+            "uh-huh"
+          ]
+        },
+        {
+          "id": "n43_uh_huh-laptop-1-3",
+          "device": "laptop",
+          "expected": [
+            "uh-huh"
+          ]
+        },
+        {
+          "id": "n43_uh_huh-wired-1-1",
+          "device": "wired",
+          "expected": [
+            "uh-huh"
+          ]
+        }
+      ]
+    },
+    {
+      "id": "n44_ticket_last_four",
+      "split": "held-out",
+      "kind": "ticket_number",
+      "language": "saudi",
+      "want": null,
+      "terms": [],
+      "variants": [
+        {
+          "id": "n44_ticket_last_four-bluetooth-1-1",
+          "device": "bluetooth",
+          "expected": [
+            "التذكرة اللي آخرها 4821"
+          ]
+        },
+        {
+          "id": "n44_ticket_last_four-bluetooth-1-3",
+          "device": "bluetooth",
+          "expected": [
+            "التذكرة اللي آخرها 4821"
+          ]
+        },
+        {
+          "id": "n44_ticket_last_four-bluetooth-1-4",
+          "device": "bluetooth",
+          "expected": [
+            "التذكرة اللي آخرها 4821"
+          ]
+        },
+        {
+          "id": "n44_ticket_last_four-laptop-1-1",
+          "device": "laptop",
+          "expected": [
+            "التذكرة اللي آخرها 4821"
+          ]
+        },
+        {
+          "id": "n44_ticket_last_four-laptop-1-2",
+          "device": "laptop",
+          "expected": [
+            "التذكرة اللي آخرها 4221"
+          ]
+        },
+        {
+          "id": "n44_ticket_last_four-laptop-1-3",
+          "device": "laptop",
+          "expected": [
+            "التذكرة اللي آخرها 4821"
+          ]
+        },
+        {
+          "id": "n44_ticket_last_four-wired-1-2",
+          "device": "wired",
+          "expected": [
+            "التذكرة اللي آخرها 4821"
+          ]
+        },
+        {
+          "id": "n44_ticket_last_four-wired-1-3",
+          "device": "wired",
+          "expected": [
+            "التذكرة اللي آخرها 4821"
+          ]
+        },
+        {
+          "id": "n44_ticket_last_four-wired-1-5",
+          "device": "wired",
+          "expected": [
+            "التذكرة اللي آخرها 4821"
+          ]
+        }
+      ]
+    },
+    {
+      "id": "n45_ticket_full_saudi",
+      "split": "dev",
+      "kind": "ticket_number",
+      "language": "saudi",
+      "want": null,
+      "terms": [],
+      "variants": [
+        {
+          "id": "n45_ticket_full_saudi-bluetooth-1-1",
+          "device": "bluetooth",
+          "expected": [
+            "رقم التذكرة 2026111782000917"
+          ]
+        },
+        {
+          "id": "n45_ticket_full_saudi-bluetooth-1-2",
+          "device": "bluetooth",
+          "expected": [
+            "رقم التذكرة 2026111782000917"
+          ]
+        },
+        {
+          "id": "n45_ticket_full_saudi-laptop-1-1",
+          "device": "laptop",
+          "expected": [
+            "رقم التذكرة 2026111782000917"
+          ]
+        },
+        {
+          "id": "n45_ticket_full_saudi-laptop-1-2",
+          "device": "laptop",
+          "expected": [
+            "رقم التذكرة 2026111782000917"
+          ]
+        },
+        {
+          "id": "n45_ticket_full_saudi-wired-1-1",
+          "device": "wired",
+          "expected": [
+            "رقم التذكرة 2026111782000917"
+          ]
+        },
+        {
+          "id": "n45_ticket_full_saudi-wired-1-2",
+          "device": "wired",
+          "expected": [
+            "رقم التذكرة 2026111782000917"
+          ]
+        }
+      ]
+    },
+    {
+      "id": "n46_ticket_full_msa",
+      "split": "dev",
+      "kind": "ticket_number",
+      "language": "msa",
+      "want": null,
+      "terms": [],
+      "variants": [
+        {
+          "id": "n46_ticket_full_msa-bluetooth-1-2",
+          "device": "bluetooth",
+          "expected": [
+            "رقم التذكرة هو 2026121482000853"
+          ]
+        },
+        {
+          "id": "n46_ticket_full_msa-bluetooth-1-3",
+          "device": "bluetooth",
+          "expected": [
+            "رقم التذكرة هو 2026121482000853"
+          ]
+        },
+        {
+          "id": "n46_ticket_full_msa-laptop-1-1",
+          "device": "laptop",
+          "expected": [
+            "رقم التذكرة هو 2026121482000853"
+          ]
+        },
+        {
+          "id": "n46_ticket_full_msa-laptop-1-2",
+          "device": "laptop",
+          "expected": [
+            "رقم التذكرة هو 2026121482000853"
+          ]
+        },
+        {
+          "id": "n46_ticket_full_msa-wired-1-1",
+          "device": "wired",
+          "expected": [
+            "رقم التذكرة هو 2026121482000853"
+          ]
+        },
+        {
+          "id": "n46_ticket_full_msa-wired-1-2",
+          "device": "wired",
+          "expected": [
+            "رقم التذكرة هو 2026121482000853"
+          ]
+        }
+      ]
+    },
+    {
+      "id": "n47_ticket_last_four_english",
+      "split": "dev",
+      "kind": "ticket_number",
+      "language": "english",
+      "want": null,
+      "terms": [],
+      "variants": [
+        {
+          "id": "n47_ticket_last_four_english-bluetooth-1-1",
+          "device": "bluetooth",
+          "expected": [
+            "It's the ticket ending in 3906"
+          ]
+        },
+        {
+          "id": "n47_ticket_last_four_english-bluetooth-1-2",
+          "device": "bluetooth",
+          "expected": [
+            "It's the ticket ending in 3906"
+          ]
+        },
+        {
+          "id": "n47_ticket_last_four_english-bluetooth-1-3",
+          "device": "bluetooth",
+          "expected": [
+            "It's the ticket ending in 3906"
+          ]
+        },
+        {
+          "id": "n47_ticket_last_four_english-laptop-1-1",
+          "device": "laptop",
+          "expected": [
+            "It's the ticket ending in 3906"
+          ]
+        },
+        {
+          "id": "n47_ticket_last_four_english-laptop-1-2",
+          "device": "laptop",
+          "expected": [
+            "It's the ticket ending in 3906"
+          ]
+        },
+        {
+          "id": "n47_ticket_last_four_english-laptop-1-3",
+          "device": "laptop",
+          "expected": [
+            "It's the ticket ending in 3906"
+          ]
+        },
+        {
+          "id": "n47_ticket_last_four_english-wired-1-1",
+          "device": "wired",
+          "expected": [
+            "It's the ticket ending in 3906"
+          ]
+        },
+        {
+          "id": "n47_ticket_last_four_english-wired-1-2",
+          "device": "wired",
+          "expected": [
+            "It's the ticket ending in 3906"
+          ]
+        },
+        {
+          "id": "n47_ticket_last_four_english-wired-1-3",
+          "device": "wired",
+          "expected": [
+            "It's the ticket ending in 3906"
+          ]
+        }
+      ]
+    },
+    {
+      "id": "n48_silence",
+      "split": "dev",
+      "kind": "silence",
+      "language": "none",
+      "want": null,
+      "terms": [],
+      "variants": [
+        {
+          "id": "n48_silence-bluetooth-1-1",
+          "device": "bluetooth",
+          "expected": [
+            ""
+          ]
+        },
+        {
+          "id": "n48_silence-laptop-1-1",
+          "device": "laptop",
+          "expected": [
+            ""
+          ]
+        },
+        {
+          "id": "n48_silence-wired-1-1",
+          "device": "wired",
+          "expected": [
+            ""
+          ]
+        }
+      ]
+    },
+    {
+      "id": "n49_keyboard",
+      "split": "held-out",
+      "kind": "noise",
+      "language": "none",
+      "want": null,
+      "terms": [],
+      "variants": [
+        {
+          "id": "n49_keyboard-bluetooth-1-1",
+          "device": "bluetooth",
+          "expected": [
+            ""
+          ]
+        },
+        {
+          "id": "n49_keyboard-laptop-1-1",
+          "device": "laptop",
+          "expected": [
+            ""
+          ]
+        },
+        {
+          "id": "n49_keyboard-wired-1-1",
+          "device": "wired",
+          "expected": [
+            ""
+          ]
+        }
+      ]
+    },
+    {
+      "id": "n50_cough",
+      "split": "dev",
+      "kind": "noise",
+      "language": "none",
+      "want": null,
+      "terms": [],
+      "variants": [
+        {
+          "id": "n50_cough-bluetooth-1-1",
+          "device": "bluetooth",
+          "expected": [
+            ""
+          ]
+        },
+        {
+          "id": "n50_cough-laptop-1-1",
+          "device": "laptop",
+          "expected": [
+            ""
+          ]
+        },
+        {
+          "id": "n50_cough-wired-1-1",
+          "device": "wired",
+          "expected": [
+            ""
+          ]
+        }
+      ]
+    },
+    {
+      "id": "n51_echo_arabic",
+      "split": "held-out",
+      "kind": "echo_only",
+      "language": "none",
+      "want": null,
+      "terms": [],
+      "variants": [
+        {
+          "id": "n51_echo_arabic-bluetooth-1-1",
+          "device": "bluetooth",
+          "expected": [
+            ""
+          ]
+        },
+        {
+          "id": "n51_echo_arabic-laptop-1-1",
+          "device": "laptop",
+          "expected": [
+            ""
+          ]
+        },
+        {
+          "id": "n51_echo_arabic-wired-1-1",
+          "device": "wired",
+          "expected": [
+            ""
+          ]
+        }
+      ]
+    },
+    {
+      "id": "n52_echo_english",
+      "split": "dev",
+      "kind": "echo_only",
+      "language": "none",
+      "want": null,
+      "terms": [],
+      "variants": [
+        {
+          "id": "n52_echo_english-bluetooth-1-1",
+          "device": "bluetooth",
+          "expected": [
+            ""
+          ]
+        },
+        {
+          "id": "n52_echo_english-laptop-1-1",
+          "device": "laptop",
+          "expected": [
+            ""
+          ]
+        },
+        {
+          "id": "n52_echo_english-wired-1-1",
+          "device": "wired",
+          "expected": [
+            ""
           ]
         }
       ]
@@ -882,7 +2949,7 @@
     },
     {
       "id": "s07_refer",
-      "split": "held-out",
+      "split": "dev",
       "kind": "request",
       "language": "saudi",
       "want": "send",

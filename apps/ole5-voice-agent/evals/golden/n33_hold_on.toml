@@ -1,0 +1,81 @@
+# Written by `python -m ole5_voice.evals.import_recordings` from the recorder's files:
+# import again rather than edit.
+id = "n33_hold_on"
+source = "script"
+kind = "stop_word"
+language = "english"
+text = "hold on"
+alternatives = []
+terms = []
+
+[[variants]]
+id = "n33_hold_on-bluetooth-1-1"
+device = "bluetooth"
+session = "bluetooth-1"
+reference = "hold on"
+reference_source = "script"
+turn_ends_ms = []
+tags = []
+
+[[variants.segments]]
+root = "owner"
+path = "bluetooth-1/n33_hold_on-bluetooth-1-1.wav"
+sha256 = "07d7d1151bc6617cbc6050c2f04ad920510d9e5e1ac7cbd83c7a6bcbc1158d3c"
+
+[[variants.confirmations]]
+at = 2026-11-01T21:40:04.541525+03:00
+review_pass = 3
+
+[[variants]]
+id = "n33_hold_on-laptop-1-1"
+device = "laptop"
+session = "laptop-1"
+reference = "hold on"
+reference_source = "script"
+turn_ends_ms = []
+tags = []
+
+[[variants.segments]]
+root = "owner"
+path = "laptop-1/n33_hold_on-laptop-1-1.wav"
+sha256 = "4aa5ae62e269712216b2cf6cad880d75372fb025a7c4a4b8f32e8f13193ef0c6"
+
+[[variants.confirmations]]
+at = 2026-11-01T21:46:23.275005+03:00
+review_pass = 3
+
+[[variants]]
+id = "n33_hold_on-laptop-1-2"
+device = "laptop"
+session = "laptop-1"
+reference = "hold on"
+reference_source = "script"
+turn_ends_ms = []
+tags = []
+
+[[variants.segments]]
+root = "owner"
+path = "laptop-1/n33_hold_on-laptop-1-2.wav"
+sha256 = "3ffa6e1a089ed299df5bf365dc94573ffc4311968e518c5bbeb0ac69a11bff47"
+
+[[variants.confirmations]]
+at = 2026-11-01T21:46:25.433068+03:00
+review_pass = 3
+
+[[variants]]
+id = "n33_hold_on-wired-1-1"
+device = "wired"
+session = "wired-1"
+reference = "hold on"
+reference_source = "script"
+turn_ends_ms = []
+tags = []
+
+[[variants.segments]]
+root = "owner"
+path = "wired-1/n33_hold_on-wired-1-1.wav"
+sha256 = "49e8b71c5d400c93ffbf0628de969b20f7dc66b2a0ed5aca0765b661d57050f7"
+
+[[variants.confirmations]]
+at = 2026-11-01T21:51:17.332995+03:00
+review_pass = 3

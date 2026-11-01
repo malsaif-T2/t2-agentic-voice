@@ -1,0 +1,81 @@
+# Written by `python -m ole5_voice.evals.import_recordings` from the recorder's files:
+# import again rather than edit.
+id = "n01_mail_slow"
+source = "script"
+kind = "request"
+language = "saudi"
+text = "البريد عندي ثقيل مرة اليوم"
+alternatives = []
+terms = []
+
+[[variants]]
+id = "n01_mail_slow-bluetooth-1-1"
+device = "bluetooth"
+session = "bluetooth-1"
+reference = "البريد عندي ثقيل مرة اليوم"
+reference_source = "script"
+turn_ends_ms = []
+tags = []
+
+[[variants.segments]]
+root = "owner"
+path = "bluetooth-1/n01_mail_slow-bluetooth-1-1.wav"
+sha256 = "b4005545534aafcf3b6fc0bd98a771c971c9a23260d8b348030054c6bc2b80d4"
+
+[[variants.confirmations]]
+at = 2026-11-01T21:37:50.597529+03:00
+review_pass = 3
+
+[[variants]]
+id = "n01_mail_slow-laptop-1-1"
+device = "laptop"
+session = "laptop-1"
+reference = "البريد عندي ثقيل مرة اليوم"
+reference_source = "script"
+turn_ends_ms = []
+tags = []
+
+[[variants.segments]]
+root = "owner"
+path = "laptop-1/n01_mail_slow-laptop-1-1.wav"
+sha256 = "d8e2fd348a6a63d9a510ddee147a8ba230bc104c5e54049fe22ac28c1a8f4c23"
+
+[[variants.confirmations]]
+at = 2026-11-01T21:42:15.189286+03:00
+review_pass = 3
+
+[[variants]]
+id = "n01_mail_slow-laptop-1-2"
+device = "laptop"
+session = "laptop-1"
+reference = "البريد عندي ثقيل مرة اليوم"
+reference_source = "script"
+turn_ends_ms = []
+tags = []
+
+[[variants.segments]]
+root = "owner"
+path = "laptop-1/n01_mail_slow-laptop-1-2.wav"
+sha256 = "5cfa774ac076726f51dc6d87fb6999c389d840b7a1d117570ba93423059e66ce"
+
+[[variants.confirmations]]
+at = 2026-11-01T21:42:18.476608+03:00
+review_pass = 3
+
+[[variants]]
+id = "n01_mail_slow-wired-1-1"
+device = "wired"
+session = "wired-1"
+reference = "البريد عندي ثقيل مرة اليوم"
+reference_source = "script"
+turn_ends_ms = []
+tags = []
+
+[[variants.segments]]
+root = "owner"
+path = "wired-1/n01_mail_slow-wired-1-1.wav"
+sha256 = "8abe7d93d5bed7b16e3536114de3839df3c2656427e586eb3f4ca185dcba2418"
+
+[[variants.confirmations]]
+at = 2026-11-01T21:49:01.116698+03:00
+review_pass = 3

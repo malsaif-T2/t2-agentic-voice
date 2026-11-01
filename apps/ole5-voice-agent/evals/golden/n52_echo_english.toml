@@ -1,0 +1,63 @@
+# Written by `python -m ole5_voice.evals.import_recordings` from the recorder's files:
+# import again rather than edit.
+id = "n52_echo_english"
+source = "script"
+kind = "echo_only"
+language = "none"
+text = ""
+alternatives = []
+terms = []
+
+[[variants]]
+id = "n52_echo_english-bluetooth-1-1"
+device = "bluetooth"
+session = "bluetooth-1"
+reference = ""
+reference_source = "none"
+turn_ends_ms = []
+tags = []
+
+[[variants.segments]]
+root = "owner"
+path = "bluetooth-1/n52_echo_english-bluetooth-1-1.wav"
+sha256 = "19e089655e77c0ee494fea42ed03e129bf3a25725e2232a9f5731db18bbb0e5d"
+
+[[variants.confirmations]]
+at = 2026-11-01T21:42:06.571040+03:00
+review_pass = 3
+
+[[variants]]
+id = "n52_echo_english-laptop-1-1"
+device = "laptop"
+session = "laptop-1"
+reference = ""
+reference_source = "none"
+turn_ends_ms = []
+tags = []
+
+[[variants.segments]]
+root = "owner"
+path = "laptop-1/n52_echo_english-laptop-1-1.wav"
+sha256 = "d607dc12a383d7775c0b5f6a2111fb136a6378178ae9c594dd4efd5f0370fdae"
+
+[[variants.confirmations]]
+at = 2026-11-01T21:48:57.381798+03:00
+review_pass = 3
+
+[[variants]]
+id = "n52_echo_english-wired-1-1"
+device = "wired"
+session = "wired-1"
+reference = ""
+reference_source = "none"
+turn_ends_ms = []
+tags = []
+
+[[variants.segments]]
+root = "owner"
+path = "wired-1/n52_echo_english-wired-1-1.wav"
+sha256 = "99ee72a6c9bde0dd91214532ac3ee06c8555032d72dff671394de0ed29cbcb0a"
+
+[[variants.confirmations]]
+at = 2026-11-01T21:53:00.301102+03:00
+review_pass = 3

@@ -1,0 +1,81 @@
+# Written by `python -m ole5_voice.evals.import_recordings` from the recorder's files:
+# import again rather than edit.
+id = "n17_save_word"
+source = "script"
+kind = "request"
+language = "mixed"
+text = "كيف أحفظ مرفق Word على جهازي؟"
+alternatives = []
+terms = ["Word"]
+
+[[variants]]
+id = "n17_save_word-bluetooth-1-1"
+device = "bluetooth"
+session = "bluetooth-1"
+reference = "كيف أحفظ مرفق Word على جهازي؟"
+reference_source = "script"
+turn_ends_ms = []
+tags = []
+
+[[variants.segments]]
+root = "owner"
+path = "bluetooth-1/n17_save_word-bluetooth-1-1.wav"
+sha256 = "71594b7022ff2c72e82feb9377c5e9b84e84efda5b3a7644c43527fff54220fa"
+
+[[variants.confirmations]]
+at = 2026-11-01T21:38:49.018819+03:00
+review_pass = 3
+
+[[variants]]
+id = "n17_save_word-laptop-1-1"
+device = "laptop"
+session = "laptop-1"
+reference = "كيف أحفظ مرفق Word على جهازي؟"
+reference_source = "script"
+turn_ends_ms = []
+tags = []
+
+[[variants.segments]]
+root = "owner"
+path = "laptop-1/n17_save_word-laptop-1-1.wav"
+sha256 = "2c460da09d635f3e5f01c9f0af46a3bb7d31e18492a090d8a59569e38840c8e3"
+
+[[variants.confirmations]]
+at = 2026-11-01T21:44:15.289161+03:00
+review_pass = 3
+
+[[variants]]
+id = "n17_save_word-laptop-1-2"
+device = "laptop"
+session = "laptop-1"
+reference = "كيف أحفظ مرفق Word على جهازي؟"
+reference_source = "script"
+turn_ends_ms = []
+tags = []
+
+[[variants.segments]]
+root = "owner"
+path = "laptop-1/n17_save_word-laptop-1-2.wav"
+sha256 = "cb1c9bac268a029149b1ada165b3d26c8de4b807ba19c9b7bf3b283c8d8092b7"
+
+[[variants.confirmations]]
+at = 2026-11-01T21:44:18.848863+03:00
+review_pass = 3
+
+[[variants]]
+id = "n17_save_word-wired-1-1"
+device = "wired"
+session = "wired-1"
+reference = "كيف أحفظ مرفق Word على جهازي؟"
+reference_source = "script"
+turn_ends_ms = []
+tags = []
+
+[[variants.segments]]
+root = "owner"
+path = "wired-1/n17_save_word-wired-1-1.wav"
+sha256 = "e550204c1ad3082daad9580afb3963167831ddd3123f0bb1ce51047adb480a3e"
+
+[[variants.confirmations]]
+at = 2026-11-01T21:50:15.213109+03:00
+review_pass = 3

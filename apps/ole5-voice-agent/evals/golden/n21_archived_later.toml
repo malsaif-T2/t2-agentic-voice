@@ -1,0 +1,81 @@
+# Written by `python -m ole5_voice.evals.import_recordings` from the recorder's files:
+# import again rather than edit.
+id = "n21_archived_later"
+source = "script"
+kind = "paused_request"
+language = "saudi"
+text = "أبغى أسأل عن المراسلات المؤرشفة وين تروح بعد فترة"
+alternatives = []
+terms = []
+
+[[variants]]
+id = "n21_archived_later-bluetooth-1-1"
+device = "bluetooth"
+session = "bluetooth-1"
+reference = "أبغى أسأل عن المراسلات المؤرشفة وين تروح بعد فترة"
+reference_source = "script"
+turn_ends_ms = [4893]
+tags = []
+
+[[variants.segments]]
+root = "owner"
+path = "bluetooth-1/n21_archived_later-bluetooth-1-1.wav"
+sha256 = "7c73f12099a0ed0420f7a9ef5a9c7185e3647851e47e0b566372f70944bc6ab7"
+
+[[variants.confirmations]]
+at = 2026-11-01T21:39:08.023816+03:00
+review_pass = 3
+
+[[variants]]
+id = "n21_archived_later-laptop-1-1"
+device = "laptop"
+session = "laptop-1"
+reference = "أبغى أسأل عن المراسلات المؤرشفة وين تروح بعد فترة"
+reference_source = "script"
+turn_ends_ms = [4689]
+tags = []
+
+[[variants.segments]]
+root = "owner"
+path = "laptop-1/n21_archived_later-laptop-1-1.wav"
+sha256 = "83b536fa0218134363abc88682aa17e9bbd911c014b13983f25cfab1b1e40233"
+
+[[variants.confirmations]]
+at = 2026-11-01T21:44:52.567805+03:00
+review_pass = 3
+
+[[variants]]
+id = "n21_archived_later-laptop-1-2"
+device = "laptop"
+session = "laptop-1"
+reference = "أبغى أسأل عن المراسلات المؤرشفة وين تروح بعد فترة"
+reference_source = "script"
+turn_ends_ms = [4753]
+tags = []
+
+[[variants.segments]]
+root = "owner"
+path = "laptop-1/n21_archived_later-laptop-1-2.wav"
+sha256 = "2358431da9d5caec48fdc94d3528789ffc7fca00633c4dafa663162736e25cbc"
+
+[[variants.confirmations]]
+at = 2026-11-01T21:44:57.960836+03:00
+review_pass = 3
+
+[[variants]]
+id = "n21_archived_later-wired-1-1"
+device = "wired"
+session = "wired-1"
+reference = "أبغى أسأل عن المراسلات المؤرشفة وين تروح بعد فترة"
+reference_source = "script"
+turn_ends_ms = [4273]
+tags = []
+
+[[variants.segments]]
+root = "owner"
+path = "wired-1/n21_archived_later-wired-1-1.wav"
+sha256 = "55e14450c11220040df0e7b810e17f356c98779658278a498f88dfa0481da21a"
+
+[[variants.confirmations]]
+at = 2026-11-01T21:50:33.822767+03:00
+review_pass = 3

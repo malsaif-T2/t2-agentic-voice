@@ -1,0 +1,99 @@
+# Written by `python -m ole5_voice.evals.import_recordings` from the recorder's files:
+# import again rather than edit.
+id = "n07_delegate"
+source = "script"
+kind = "request"
+language = "msa"
+text = "كيف يمكنني تفويض صلاحياتي لزميل أثناء إجازتي؟"
+alternatives = []
+terms = []
+
+[[variants]]
+id = "n07_delegate-bluetooth-1-1"
+device = "bluetooth"
+session = "bluetooth-1"
+reference = "كيف يمكنني تفويض صلاحياتي لزميل أثناء إجازتي؟"
+reference_source = "script"
+turn_ends_ms = []
+tags = []
+
+[[variants.segments]]
+root = "owner"
+path = "bluetooth-1/n07_delegate-bluetooth-1-1.wav"
+sha256 = "e10166b2117ba65323c9eb7eeeb7742013229ee3ddb661e7cbf1a49cd301adb5"
+
+[[variants.confirmations]]
+at = 2026-11-01T21:38:12.241802+03:00
+review_pass = 3
+
+[[variants]]
+id = "n07_delegate-laptop-1-1"
+device = "laptop"
+session = "laptop-1"
+reference = "كيف يمكنني تفويض صلاحياتي لزميل أثناء إجازتي؟"
+reference_source = "script"
+turn_ends_ms = []
+tags = []
+
+[[variants.segments]]
+root = "owner"
+path = "laptop-1/n07_delegate-laptop-1-1.wav"
+sha256 = "e93942f0cff53adbfe1516c45c598e129af28926f73a7fde4bd10170d96c866a"
+
+[[variants.confirmations]]
+at = 2026-11-01T21:43:03.060817+03:00
+review_pass = 3
+
+[[variants]]
+id = "n07_delegate-laptop-1-2"
+device = "laptop"
+session = "laptop-1"
+reference = "كيف يمكنني تفويض صلاحياتي لزميل أثناء إجازتي؟"
+reference_source = "script"
+turn_ends_ms = []
+tags = []
+
+[[variants.segments]]
+root = "owner"
+path = "laptop-1/n07_delegate-laptop-1-2.wav"
+sha256 = "0207a32e5469f5d043273c0cfe3d88562e941e0720b6eb405a9f77d0c77626b2"
+
+[[variants.confirmations]]
+at = 2026-11-01T21:43:09.094509+03:00
+review_pass = 3
+
+[[variants]]
+id = "n07_delegate-wired-1-1"
+device = "wired"
+session = "wired-1"
+reference = "كيف يمكنني تفويض صلاحياتي لزميل أثناء إجازتي؟"
+reference_source = "script"
+turn_ends_ms = []
+tags = []
+
+[[variants.segments]]
+root = "owner"
+path = "wired-1/n07_delegate-wired-1-1.wav"
+sha256 = "0af0834acc8b9f45751a83e34ae136b5867d474d5ca43f1362a2f6599fac601a"
+
+[[variants.confirmations]]
+at = 2026-11-01T21:49:27.467038+03:00
+review_pass = 3
+
+[[variants]]
+id = "n07_delegate-wired-1-2"
+device = "wired"
+session = "wired-1"
+reference = "كيف يمكنني تفويض صلاحياتي لزميل أثناء إجازتي؟"
+reference_source = "script"
+turn_ends_ms = []
+tags = []
+
+[[variants.segments]]
+root = "owner"
+path = "wired-1/n07_delegate-wired-1-2.wav"
+sha256 = "63fcc0e8a6451c91d52f1b04fdecf0b796674c29e0aa160dc7bf3d5fd188e666"
+
+[[variants.confirmations]]
+at = 2026-11-01T21:49:32.007580+03:00
+review_pass = 3

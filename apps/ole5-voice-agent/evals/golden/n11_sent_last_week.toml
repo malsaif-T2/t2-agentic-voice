@@ -1,0 +1,99 @@
+# Written by `python -m ole5_voice.evals.import_recordings` from the recorder's files:
+# import again rather than edit.
+id = "n11_sent_last_week"
+source = "script"
+kind = "request"
+language = "english"
+text = "Where can I find the correspondence I sent last week?"
+alternatives = []
+terms = []
+
+[[variants]]
+id = "n11_sent_last_week-bluetooth-1-1"
+device = "bluetooth"
+session = "bluetooth-1"
+reference = "Where can I find the correspondence I sent last week?"
+reference_source = "script"
+turn_ends_ms = []
+tags = []
+
+[[variants.segments]]
+root = "owner"
+path = "bluetooth-1/n11_sent_last_week-bluetooth-1-1.wav"
+sha256 = "4108a5f484841fd46d38156e0ad5d1c855acb764e2f9b8f129ed57381ee63940"
+
+[[variants.confirmations]]
+at = 2026-11-01T21:38:28.559662+03:00
+review_pass = 3
+
+[[variants]]
+id = "n11_sent_last_week-laptop-1-1"
+device = "laptop"
+session = "laptop-1"
+reference = "Where can I find the correspondence I sent last week?"
+reference_source = "script"
+turn_ends_ms = []
+tags = []
+
+[[variants.segments]]
+root = "owner"
+path = "laptop-1/n11_sent_last_week-laptop-1-1.wav"
+sha256 = "0023f2c2700e2da00ea4d41cd2877008bb0bc032dde60a4eff8d63e0fd274c34"
+
+[[variants.confirmations]]
+at = 2026-11-01T21:43:36.962687+03:00
+review_pass = 3
+
+[[variants]]
+id = "n11_sent_last_week-laptop-1-2"
+device = "laptop"
+session = "laptop-1"
+reference = "Where can I find the correspondence I sent last week?"
+reference_source = "script"
+turn_ends_ms = []
+tags = []
+
+[[variants.segments]]
+root = "owner"
+path = "laptop-1/n11_sent_last_week-laptop-1-2.wav"
+sha256 = "d19b8f03816f3668042931b84665737ec2721c5a28a33fc52b0952019cbc4aee"
+
+[[variants.confirmations]]
+at = 2026-11-01T21:43:41.474644+03:00
+review_pass = 3
+
+[[variants]]
+id = "n11_sent_last_week-wired-1-1"
+device = "wired"
+session = "wired-1"
+reference = "Where can I find the correspondence I sent last week?"
+reference_source = "script"
+turn_ends_ms = []
+tags = []
+
+[[variants.segments]]
+root = "owner"
+path = "wired-1/n11_sent_last_week-wired-1-1.wav"
+sha256 = "fe0e752ea400fdf1ba2b2fdc636c80be3b4a0b8f3920f23695ac422941a3fa1e"
+
+[[variants.confirmations]]
+at = 2026-11-01T21:49:46.517282+03:00
+review_pass = 3
+
+[[variants]]
+id = "n11_sent_last_week-wired-1-2"
+device = "wired"
+session = "wired-1"
+reference = "Where can I find the correspondence I sent last week?"
+reference_source = "script"
+turn_ends_ms = []
+tags = []
+
+[[variants.segments]]
+root = "owner"
+path = "wired-1/n11_sent_last_week-wired-1-2.wav"
+sha256 = "656c2422fda55068ca1502c25f89268801bba1ceab500b59c1b93e05bfe445e3"
+
+[[variants.confirmations]]
+at = 2026-11-01T21:49:50.802647+03:00
+review_pass = 3
