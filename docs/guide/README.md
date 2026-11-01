@@ -49,7 +49,7 @@ the library leaves these unset:
 | `serving.md` | The sidecar or the mount, identity and join tokens, cross-origin pages, the browser protocol | M2 |
 | `browser-client.md` | The reference browser client: its events and states, tokens, consent, Stop and Esc | M2, M3 |
 | `testing.md` | Text calls, the fakes, the safety suite for your actions, live scenarios, audio replay | M5 |
-| [evaluation.md](evaluation.md) | The evaluation helpers; recording your own test set with consent and keeping audio out of git; writing your own spelling guide; noise and the sign test | M1 |
+| [evaluation.md](evaluation.md) | The evaluation helpers; recording your own test set with consent and keeping audio out of git; writing your own spelling guide; the golden-set commands, making a registered run and reading its scorecard; noise and the sign test; held-out and window runs; the run history | M1 |
 | `latency.md` | Where the time goes in a turn, and how to measure yours | M4 |
 | `tracing-and-logs.md` | Phoenix or your own tracing, redaction, what a trace holds, the logging policy | M2 |
 | `data-and-privacy.md` | What the library itself stores and sends: what a trace holds, the data folder, recording and consent | M2 |
