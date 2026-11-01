@@ -1,7 +1,6 @@
-"""The tracing helpers: OpenInference spans, redacted, never installed globally, never raising an
-exporter's failure into the caller, and deaf to the `OTEL_*` variables they can keep out (plan
-002's decision log; docs/SECURITY.md, invariants 5 and 8). Spans come from the SDK's in-memory
-exporter, or a collector on 127.0.0.1."""
+"""The tracing helpers: OpenInference spans, redacted, never global, never raising an exporter's
+failure into the caller, deaf to the `OTEL_*` variables they keep out (plan 002's decision log;
+docs/SECURITY.md, invariants 5 and 8). Spans come from the in-memory exporter or 127.0.0.1."""
 
 from __future__ import annotations
 
@@ -143,8 +142,7 @@ def test_off_with_neither_and_never_global(tmp_path: Path, settings: Settings) -
             assert turn.is_recording() is recording
             _one_turn(tracing)
         tracing.shutdown()
-    assert trace.get_tracer_provider() is before
-    assert isinstance(before, trace.ProxyTracerProvider)
+    assert trace.get_tracer_provider() is before and isinstance(before, trace.ProxyTracerProvider)
     with pytest.raises(ValueError, match="not both"):
         Tracing(tracer_provider=team, exporter=InMemorySpanExporter())
 
@@ -358,6 +356,8 @@ def test_otlp_over_http_sends_only_its_own_headers_and_trust(
         "OTEL_PYTHON_EXPORTER_OTLP_HTTP_CREDENTIAL_PROVIDER": "made_up_provider",
         "OTEL_PYTHON_EXPORTER_OTLP_HTTP_TRACES_CREDENTIAL_PROVIDER": "made_up_provider",
     }
+    (tmp_path / "netrc").write_text(f"machine 127.0.0.1 login made-up password {MADE_UP_KEY}")
+    shell["NETRC"] = str(tmp_path / "netrc")  # requests would send it as a login
     for kind in ("CERTIFICATE", "CLIENT_KEY", "CLIENT_CERTIFICATE"):
         for name in (f"OTEL_EXPORTER_OTLP_{kind}", f"OTEL_EXPORTER_OTLP_TRACES_{kind}"):
             shell[name] = str(tmp_path / f"made-up-{kind.lower()}.pem")
