@@ -14,6 +14,7 @@ To add one:
 
 | File | Command | Freshness test |
 | --- | --- | --- |
+| [eval-history.md](eval-history.md) | `uv run poe eval-history` | `tests/ole5_voice/evals/test_history.py` |
 
 Typical candidates as the project grows: an HTTP API's OpenAPI contract, a database schema, the
 catalog of test data, and a measurement history rendered from a committed JSONL file
