@@ -436,6 +436,11 @@ run, [WORKING-RULES.md](../../../WORKING-RULES.md), "Measurement runs")
   ARCHITECTURE.md's Enforcement list names ARCH-FACADE and ARCH-WORDS (its public-API paragraph
   names the facades in step 10, with them). D-019 (the `testing` layer, amending D-003, whose
   heading now points at it) and D-020 (the two checks), each Accepted with one bullet Proposed.
+- 2026-11-01: Block 0, step 7's other entries: D-021 (the first public facades and their
+  stability), D-022 (evaluation's split between the library and the app, following D-011) and
+  D-023 (tracing as plain OTLP through the OpenTelemetry SDK, amending D-002's tracing bullet;
+  D-002's heading now points at it). Each is Accepted as the design describes it, with one
+  bullet Proposed for what it adds (Q3).
 
 ## Decision log
 
@@ -642,6 +647,12 @@ All entries are the agent's choices of 2026-11-01, with the agent's reasons.
 - 2026-11-01: `t2_agentic_voice.testing` is not added to `[package] public` in M1: the plan's
   facades are the five public modules M1 adds, and the scorers reach apps through `evals`. When
   it becomes public is the Proposed bullet of D-019.
+- 2026-11-01: The tracing entry is a new one, D-023, rather than D-002's heading pointing at
+  D-018. The design's 16.3 says "The tracing path: done in D-018", and D-018 does settle the
+  design's question 7 (our own spans, in OpenInference's format, rather than an instrumentor);
+  but it names no package or exporter, and its consequences amend only D-002's Pipecat bullet,
+  so D-002's tracing bullet ("Arize Phoenix through `arize-phoenix-otel` and OpenInference")
+  still stood. The agent's reading.
 
 ## The owner's decisions
 
