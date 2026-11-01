@@ -7,7 +7,7 @@ and as strict: a scorecard read back, by `eval-compare` or a person, is checked 
 from __future__ import annotations
 
 import re
-from collections.abc import Sequence
+from collections.abc import Iterable, Sequence
 from datetime import datetime
 from pathlib import Path
 from typing import Annotated, Final, Literal, Protocol, Self
@@ -33,6 +33,15 @@ Outcome = Literal[
 ]
 # The scorecard's file name in a run's `--out` folder, which its history line names.
 SCORECARD_FILE: Final = "scorecard.json"
+# In a held-out run's scorecard, history line and comparison, a breakdown value or window group
+# that covers fewer items than this is pooled into one group, `OTHER`, itself left out when it
+# too covers fewer, so no held-out item's numbers are published alone (plan 002's registration,
+# "Amendments", 2026-11-01). The totals are whole.
+HELD_OUT_MIN_ITEMS: Final = 3
+# The pooled group's name: no stratum value can take it (a kind or a `want` label is a
+# lower-case name), so it never merges with a real value.
+Other = Literal["(other)"]
+OTHER: Final[Other] = "(other)"
 # A setting that holds a secret, by its dotted name (`groq.api_key`).
 _SECRET_SETTING = re.compile(r"(^|[._])(api_key|key|secret|token|password)$")
 # An install placeholder, an uppercase name between double braces, as the docs check finds one
@@ -161,6 +170,7 @@ class VariantResult(Model):
 class Metrics(Model):
     """The numbers of a run, or of one stratum of it; a rate is None where nothing counts."""
 
+    items: int = Field(ge=0)  # the items its variants are of
     variants: int = Field(ge=0)
     right: int = Field(ge=0)
     failures: int = Field(ge=0)  # infrastructure failures; an unjudged variant is not one
@@ -182,11 +192,13 @@ class Metrics(Model):
 class WindowMetrics(Model):
     """The window measures of one window length over the clips of one language and `want`
     label, as counts and sums, so every breakdown adds up. A held-out run keeps these, and no
-    variant."""
+    variant; its groups of one length that cover too few items are pooled as one, whose
+    `language` is `OTHER` and `want` None."""
 
     ms: int = Field(gt=0)
-    language: Language
+    language: Language | Other
     want: Name | None = None
+    items: int = Field(ge=0)  # the items its clips are of
     clips: int = Field(ge=0)
     empty: int = Field(ge=0)
     reused: int = Field(ge=0)
@@ -225,10 +237,16 @@ class RunInfo(Model):
         return self
 
 
+def _too_small(split: Split, counts: Iterable[int]) -> bool:
+    """Whether a held-out run's groups, given by the items each covers, hold one too small."""
+    return split == "held-out" and any(items < HELD_OUT_MIN_ITEMS for items in counts)
+
+
 class Scorecard(Model):
-    """A run's scorecard. A held-out run's holds aggregates only, no variant, and every variant
-    is of the run's split; both are refused as it is read. Built with the constructor or
-    `model_validate`, never `model_copy(update=...)`, which skips the checks."""
+    """A run's scorecard. A held-out run's holds aggregates only, no variant, and no group of
+    fewer than `HELD_OUT_MIN_ITEMS` items; every variant is of the run's split; all are refused
+    as it is read. Built with the constructor or `model_validate`, never
+    `model_copy(update=...)`, which skips the checks."""
 
     run: RunInfo
     speakers: Literal["one speaker"] = "one speaker"  # the owner alone (D-006)
@@ -244,6 +262,11 @@ class Scorecard(Model):
     def _held_out_aggregates_only(self) -> Self:
         if self.run.split == "held-out" and (self.variants or self.run.traced):
             raise ValueError("a held-out run's scorecard holds aggregates only, and is untraced")
+        groups = [m.items for values in self.breakdowns.values() for m in values.values()]
+        if _too_small(self.run.split, [*groups, *(window.items for window in self.windows)]):
+            raise ValueError(
+                f"a held-out run's groups each cover at least {HELD_OUT_MIN_ITEMS} items"
+            )
         if any(result.split != self.run.split for result in self.variants):
             raise ValueError("a scorecard holds only its own split's variants")
         keys = [(result.item, result.variant) for result in self.variants]
@@ -252,8 +275,16 @@ class Scorecard(Model):
         return self
 
 
+class StratumValue(Model):
+    """A stratum value's accuracy in a history line, and the items it covers."""
+
+    items: int = Field(ge=0)
+    accuracy: float | None
+
+
 class HistoryLine(Model):
-    """One line of `history.jsonl` (evaluation.md, "Run history")."""
+    """One line of `history.jsonl` (evaluation.md, "Run history"). A held-out run's holds no
+    stratum value of fewer than `HELD_OUT_MIN_ITEMS` items, refused as it is read."""
 
     time: datetime
     commit: Commit
@@ -270,11 +301,20 @@ class HistoryLine(Model):
     price_per_hour_usd: float = Field(ge=0, allow_inf_nan=False)  # so the spend adds up
     cost_usd: float = Field(ge=0)
     latency_median_ms: float | None
-    breakdowns: dict[str, dict[str, float | None]]  # each stratum's accuracy
+    breakdowns: dict[str, dict[str, StratumValue]]  # each stratum value's accuracy and items
     scorecard: str  # the scorecard's file name, `SCORECARD_FILE`
     data_digest: Sha256
     note: Note
     complete: bool
+
+    @model_validator(mode="after")
+    def _held_out_groups(self) -> Self:
+        counts = [value.items for values in self.breakdowns.values() for value in values.values()]
+        if _too_small(self.split, counts):
+            raise ValueError(
+                f"a held-out run's stratum values each cover at least {HELD_OUT_MIN_ITEMS} items"
+            )
+        return self
 
 
 class Answerer(Protocol):

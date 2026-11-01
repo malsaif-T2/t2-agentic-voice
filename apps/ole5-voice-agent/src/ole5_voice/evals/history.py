@@ -20,7 +20,7 @@ from typing import Final
 
 from pydantic import ValidationError
 
-from ole5_voice.evals.runs import SCORECARD_FILE, HistoryLine, Scorecard
+from ole5_voice.evals.runs import SCORECARD_FILE, HistoryLine, Scorecard, StratumValue
 from ole5_voice.evals.scorecard import EvalDataError, first_problem
 
 _ROOT = Path(__file__).resolve().parents[5]
@@ -84,12 +84,12 @@ def append_line(line: HistoryLine, history: Path) -> None:
 def line_of(
     scorecard: Scorecard, *, items: int, billed_seconds: float, cost_usd: float
 ) -> HistoryLine:
-    """The history line of a run's scorecard: its totals, each stratum's accuracy, the run's
-    price and the scorecard's file name; `items` is the run's item count, which a held-out
-    scorecard, holding no variant, cannot give. `billed_seconds` and `cost_usd` are the run's
-    spend, every request it sent (its budget's): the scorecard's own cover only the variants it
-    scores, without the smoke test's request, a variant cut off at the cap, or an unfinished
-    held-out run's results."""
+    """The history line of a run's scorecard: its totals, each stratum value's accuracy and
+    items (a held-out run's pooled as its scorecard's are), the run's price and the scorecard's
+    file name; `items` is the run's item count, which a held-out scorecard, holding no variant,
+    cannot give. `billed_seconds` and `cost_usd` are the run's spend, every request it sent (its
+    budget's): the scorecard's own cover only the variants it scores, without the smoke test's
+    request, a variant cut off at the cap, or an unfinished held-out run's results."""
     run, totals = scorecard.run, scorecard.totals
     return HistoryLine(
         time=run.started_at,
@@ -108,7 +108,10 @@ def line_of(
         cost_usd=cost_usd,
         latency_median_ms=totals.latency_median_ms,
         breakdowns={
-            stratum: {value: metrics.accuracy for value, metrics in values.items()}
+            stratum: {
+                value: StratumValue(items=metrics.items, accuracy=metrics.accuracy)
+                for value, metrics in values.items()
+            }
             for stratum, values in scorecard.breakdowns.items()
         },
         scorecard=SCORECARD_FILE,
@@ -120,7 +123,7 @@ def line_of(
 
 def render_history(lines: Sequence[HistoryLine]) -> str:
     """`docs/generated/eval-history.md` for `lines`: the spend so far, a row per run, and each
-    run's reason, data, settings and accuracy by stratum."""
+    run's reason, data, settings and accuracy by stratum value, with the items of each."""
     if not lines:
         return f"{_HEADER}\nNo runs yet.\n"
     billed = sum(line.billed_seconds for line in lines)
@@ -166,12 +169,13 @@ def render_history(lines: Sequence[HistoryLine]) -> str:
             for name, value in sorted(line.settings.items())
         ]
         accuracies = [
-            _row(_cell(stratum), _cell(value), _percent(accuracy))
+            _row(_cell(stratum), _cell(value), str(shown.items), _percent(shown.accuracy))
             for stratum, values in sorted(line.breakdowns.items())
-            for value, accuracy in sorted(values.items())
+            for value, shown in sorted(values.items())
         ]
         if accuracies:
-            parts += ["", "| Stratum | Value | Accuracy |\n| --- | --- | --- |", *accuracies]
+            header = "| Stratum | Value | Items | Accuracy |\n| --- | --- | --- | --- |"
+            parts += ["", header, *accuracies]
     return "\n".join(parts) + "\n"
 
 

@@ -44,7 +44,7 @@ LINE: dict[str, object] = {
     "price_per_hour_usd": 0.111,
     "cost_usd": 0.06,
     "latency_median_ms": 295.0,
-    "breakdowns": {"language": {"saudi": 0.3}},
+    "breakdowns": {"language": {"saudi": {"items": 20, "accuracy": 0.3}}},
     "scorecard": "scorecard.json",
     "data_digest": samples.SHA,
     "note": "the baseline, large-v3",
@@ -56,7 +56,7 @@ def _scorecard(**fields: object) -> dict[str, object]:
     card: dict[str, object] = {
         "run": samples.run().model_dump(mode="json"),
         "complete": True,
-        "totals": Metrics(variants=1, right=1, failures=0).model_dump(),
+        "totals": Metrics(items=1, variants=1, right=1, failures=0).model_dump(),
         "breakdowns": {},
     }
     return card | fields
@@ -117,6 +117,7 @@ def test_a_held_out_scorecard_holds_aggregates_only() -> None:
         WindowMetrics(
             ms=500,
             language="english",
+            items=3,
             clips=3,
             empty=1,
             reused=0,

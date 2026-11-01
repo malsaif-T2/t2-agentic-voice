@@ -13,7 +13,14 @@ from pathlib import Path
 import pytest
 from ole5_voice.evals import history
 from ole5_voice.evals.history import append_line, line_of, read_history, render_history
-from ole5_voice.evals.runs import SCORECARD_FILE, HistoryLine, Metrics, RunInfo, Scorecard
+from ole5_voice.evals.runs import (
+    SCORECARD_FILE,
+    HistoryLine,
+    Metrics,
+    RunInfo,
+    Scorecard,
+    StratumValue,
+)
 from ole5_voice.evals.scorecard import EvalDataError, write_scorecard
 from pydantic import ValidationError
 
@@ -26,6 +33,10 @@ _UNESCAPED_PIPE = re.compile(r"(?<!\\)\|")
 
 def _line(name: str = "r1", **fields: object) -> HistoryLine:
     return HistoryLine.model_validate(samples.history_line(name).model_dump() | fields)
+
+
+def _value(items: int, accuracy: float | None) -> StratumValue:
+    return StratumValue(items=items, accuracy=accuracy)
 
 
 def _json(line: HistoryLine) -> bytes:
@@ -152,6 +163,7 @@ def test_reading_names_the_bad_line_never_its_text(tmp_path: Path) -> None:
 
 def test_a_scorecard_gives_its_history_line() -> None:
     totals = Metrics(
+        items=3,
         variants=4,
         right=2,
         failures=1,
@@ -160,7 +172,7 @@ def test_a_scorecard_gives_its_history_line() -> None:
         billed_seconds=40.0,
         cost_usd=40 / 3600 * 0.111,
     )
-    english = Metrics(variants=4, right=2, failures=1, accuracy=2 / 3)
+    english = Metrics(items=3, variants=4, right=2, failures=1, accuracy=2 / 3)
     run = samples.run().model_copy(update={"model": "whisper-large-v3"})
     card = Scorecard(
         run=run, complete=False, totals=totals, breakdowns={"language": {"english": english}}
@@ -182,7 +194,7 @@ def test_a_scorecard_gives_its_history_line() -> None:
         "price_per_hour_usd": run.price_per_hour_usd,
         "cost_usd": 50 / 3600 * 0.111,
         "latency_median_ms": 290.0,
-        "breakdowns": {"language": {"english": 2 / 3}},
+        "breakdowns": {"language": {"english": {"items": 3, "accuracy": 2 / 3}}},
         "scorecard": SCORECARD_FILE,
         "data_digest": run.data_digest,
         "note": run.note,
@@ -208,7 +220,7 @@ def test_the_page_shows_the_spend_each_run_and_its_strata() -> None:
         price_per_hour_usd=0.111,
         cost_usd=1960 / 3600 * 0.111,
         latency_median_ms=295.4,
-        breakdowns={"language": {"saudi": 0.3, "english": None}},
+        breakdowns={"language": {"saudi": _value(5, 0.3), "english": _value(4, None)}},
     )
     held_out = _line("h1", split="held-out", complete=False, billed_seconds=840.0, cost_usd=0.04)
     page = render_history([dev, held_out])
@@ -222,8 +234,8 @@ def test_the_page_shows_the_spend_each_run_and_its_strata() -> None:
     assert "### 1 · r1\n\n| Field | Value |\n| --- | --- |\n| Why | a made-up run |" in page
     assert "| Setting groq.api_key | set |" in page and MADE_UP_KEY not in page
     assert "| Price per hour of audio | $0.111 |" in page
-    assert "| language | english | — |\n| language | saudi | 30.0% |" in page
-    assert page.count("| Stratum | Value | Accuracy |") == 1  # none for a run with none
+    assert "| language | english | 4 | — |\n| language | saudi | 5 | 30.0% |" in page
+    assert page.count("| Stratum | Value | Items | Accuracy |") == 1  # none for a run with none
     assert "\r" not in page and page.endswith("|\n")
 
 

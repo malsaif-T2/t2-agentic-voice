@@ -77,6 +77,8 @@ EXPECTED: dict[tuple[str, str], tuple[float | None, ...]] = {
     ("kind", "ticket_number"): (2, 1, 0, 1 / 2, 0.25, None, 1 / 2, None, 0, 2, 0, 300, 308, 20),
     ("split", "dev"): (8, 3, 1, 3 / 7, 0.25, 2 / 3, 1 / 2, 1 / 2, 8, 12, 4, 290, 314, 72.5),
 }
+# The items each covers, counted by hand, not its variants: i1 to i5 in all, English i2 and i4.
+ITEMS = dict(zip(EXPECTED, [5, 2, 1, 1, 1, 2, 4, 2, 3, 1, 1, 5], strict=True))
 
 
 class LookupScorers(FakeScorers):
@@ -161,7 +163,8 @@ def test_every_metric_is_recomputed_by_hand(tmp_path: Path) -> None:
     for key, numbers in EXPECTED.items():
         fields = dict(zip(FIELDS, numbers, strict=True))
         cost = (fields["billed_seconds"] or 0.0) / 3600 * PRICE
-        expected = Metrics.model_validate(fields | {"cer": fields["wer"], "cost_usd": cost})
+        more = {"cer": fields["wer"], "cost_usd": cost, "items": ITEMS[key]}
+        expected = Metrics.model_validate(fields | more)
         assert found[key].model_dump() == pytest.approx(expected.model_dump()), key
     assert (card.violations, card.speakers, card.complete) == (0, "one speaker", True)
     assert card.violations_reason == "no hard constraint applies to speech-to-text"
@@ -273,22 +276,23 @@ def test_a_run_of_windows_only_sums_each_windows_measures(tmp_path: Path) -> Non
     ]
     scorers = LookupScorers()
     card = _card(tmp_path, results, scorers)
-    names = ["clips", "empty", "reused", "words", "leading_words", "reference_words"]
+    names = ["items", "clips", "empty", "reused", "words", "leading_words", "reference_words"]
     names += ["one_word_clips", "holds_word"]
     assert card.windows == tuple(  # the stuck clip's window is left out
         WindowMetrics.model_validate(
             {"ms": ms, "language": language, "want": want} | dict(zip(names, counts, strict=True))
         )
         for ms, language, want, *counts in [
-            (500, "english", "greet", 1, 0, 0, 1, 1, 1, 1, 1),
-            (500, "msa", None, 1, 1, 0, 0, 0, 2, 0, 0),
-            (500, "saudi", "send", 2, 1, 0, 2, 1, 8, 0, 0),
-            (750, "english", "greet", 1, 0, 0, 1, 0, 1, 1, 0),
-            (750, "saudi", "send", 2, 0, 1, 7, 6, 8, 0, 0),
+            (500, "english", "greet", 1, 1, 0, 0, 1, 1, 1, 1, 1),
+            (500, "msa", None, 1, 1, 1, 0, 0, 0, 2, 0, 0),
+            (500, "saudi", "send", 2, 2, 1, 0, 2, 1, 8, 0, 0),
+            (750, "english", "greet", 1, 1, 0, 0, 1, 0, 1, 1, 0),
+            (750, "saudi", "send", 2, 2, 0, 1, 7, 6, 8, 0, 0),
         ]
     )
     # Nothing was judged: no verdict, no rate and no scorer called; the requests still count.
     assert card.totals == Metrics(
+        items=5,
         variants=5,
         right=0,
         failures=1,

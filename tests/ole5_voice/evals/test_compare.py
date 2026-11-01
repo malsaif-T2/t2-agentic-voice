@@ -77,12 +77,14 @@ def _card(
     name: str = "r1",
     split: str = "dev",
     accuracy: float | None = 0.5,
+    items: int | None = None,
     **run: object,
 ) -> Scorecard:
     info = RunInfo.model_validate(
         samples.run(name).model_dump() | {"split": split, "model": "whisper-large-v3"} | run
     )
-    totals = Metrics(variants=len(results), right=1, failures=0, accuracy=accuracy)
+    covered = len({result.item for result in results}) if items is None else items
+    totals = Metrics(items=covered, variants=len(results), right=1, failures=0, accuracy=accuracy)
     return Scorecard(
         run=info,
         complete=True,
@@ -242,20 +244,20 @@ def test_runs_that_differ_in_commit_data_or_split_are_refused() -> None:
     cases: list[tuple[dict[str, Any], str]] = [
         ({"commit": "1234567"}, "their commits differ (A 0f44056, B 1234567)"),
         ({"data_digest": "f" * 64}, "their data digests differ"),
-        ({"split": "held-out"}, "their splits differ (A dev, B held-out)"),
+        ({"split": "held-out", "items": 3}, "their splits differ (A dev, B held-out)"),
     ]
     for change, named in cases:
         b = _card([], name="r2", **change)
         with pytest.raises(ComparisonError, match=re.escape(named)):
             compare.compare(a, b, sign_test=FakeSignTest())
-    both = _card([], name="r2", commit="1234567", split="held-out")
+    both = _card([], name="r2", commit="1234567", split="held-out", items=3)
     with pytest.raises(ComparisonError, match=r"commits differ .*; their splits differ"):
         compare.compare(a, both, sign_test=FakeSignTest())
 
 
 def test_held_out_runs_are_compared_by_aggregates_only() -> None:
-    a = _card([], split="held-out")
-    b = _card([], name="h2", split="held-out", accuracy=0.75)
+    a = _card([], split="held-out", items=3)
+    b = _card([], name="h2", split="held-out", accuracy=0.75, items=3)
     report = compare.compare(a, b, sign_test=FakeSignTest())
     assert "compared by aggregates only: no variant, no item" in report
     assert "## Variant by variant" not in report and "sign test" not in report
@@ -294,7 +296,7 @@ def test_a_scorecard_is_read_strictly_from_its_folder_or_file(tmp_path: Path) ->
 def test_a_held_out_scorecard_holding_a_variant_is_refused_unread(tmp_path: Path) -> None:
     """A held-out scorecard holds aggregates only; one that holds a variant (written by hand, or
     by a `model_copy`) is refused as it is read, and nothing of the variant is shown."""
-    crafted = json.loads(_card([], split="held-out").model_dump_json())
+    crafted = json.loads(_card([], split="held-out", items=3).model_dump_json())
     variant = _result("i1", "v1", True).model_dump(mode="json") | {"split": "held-out"}
     (tmp_path / "card.json").write_text(json.dumps(crafted | {"variants": [variant]}), "utf-8")
     with pytest.raises(EvalDataError, match="aggregates only") as raised:

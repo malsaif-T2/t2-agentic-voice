@@ -272,7 +272,7 @@ def _card(world: World, *, model: str = "whisper-large-v3", commit: str = "ab" *
         Scorecard(
             run=run,
             complete=True,
-            totals=Metrics(variants=2, right=1, failures=0),
+            totals=Metrics(items=2, variants=2, right=1, failures=0),
             breakdowns={},
             variants=tuple(rows),
         ).model_dump_json(),

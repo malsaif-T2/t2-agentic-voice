@@ -11,7 +11,8 @@ the run's price per hour, over the requests of the variants scored (the run's wh
 smoke test's request included, is its history line's). Every rate leaves out the infrastructure
 failures (evaluation.md, "Judging a change") and a run's unjudged variants, and is None where
 nothing counts. No canary applies to speech-to-text, so violations are 0, with that reason. A
-held-out run's scorecard holds aggregates only.
+held-out run's scorecard holds aggregates only, and pools each breakdown value and window group
+that covers fewer than `HELD_OUT_MIN_ITEMS` items (plan 002's registration, "Amendments").
 """
 
 from __future__ import annotations
@@ -30,11 +31,15 @@ from t2_agentic_voice.languages import normalize_arabic, normalize_digits
 
 from ole5_voice.evals.models import TICKET_KIND, Language
 from ole5_voice.evals.runs import (
+    HELD_OUT_MIN_ITEMS,
+    OTHER,
     SCORECARD_FILE,
     Metrics,
+    Other,
     RunInfo,
     Scorecard,
     VariantResult,
+    Window,
     WindowMetrics,
 )
 
@@ -96,6 +101,10 @@ class _Scored:
     silence: int | None  # characters produced where nothing was said
 
 
+# One clip of a window group: a result and its window of the group's length.
+_Clip = tuple[_Scored, Window]
+
+
 def write_scorecard(
     run: RunInfo,
     results: Sequence[VariantResult],
@@ -112,6 +121,7 @@ def write_scorecard(
     run, checked = _checked(run, results)
     scored = [_score(result, scorers, normalize) for result in checked]
     price = run.price_per_hour_usd
+    held_out = run.split == "held-out"
     scorecard = Scorecard(
         run=run,
         complete=complete,
@@ -119,13 +129,13 @@ def write_scorecard(
         breakdowns={
             stratum: {
                 value: _metrics(group, price, scorers)
-                for value, group in sorted(_groups(scored, key).items())
+                for value, group in _groups(scored, key, held_out=held_out).items()
             }
             for stratum, key in STRATA.items()
         },
-        windows=_windows(scored),
+        windows=_windows(scored, held_out=held_out),
         violations=0,
-        variants=() if run.split == "held-out" else tuple(checked),
+        variants=() if held_out else tuple(checked),
     )
     _write(out, scorecard)
     return scorecard
@@ -167,12 +177,33 @@ def _score(result: VariantResult, scorers: Scorers, normalize: Normalize) -> _Sc
 
 
 def _groups(
-    scored: Sequence[_Scored], key: Callable[[VariantResult], str]
+    scored: Sequence[_Scored], key: Callable[[VariantResult], str], *, held_out: bool
 ) -> dict[str, list[_Scored]]:
+    """Each value's results, in order of value; in a held-out run, pooled by `_pool_small`."""
     groups: dict[str, list[_Scored]] = defaultdict(list)
     for one in scored:
         groups[key(one.result)].append(one)
-    return groups
+    ordered = dict(sorted(groups.items()))
+    return _pool_small(ordered, lambda one: one.result.item) if held_out else ordered
+
+
+def _pool_small[K, T](
+    groups: dict[K, list[T]], item: Callable[[T], str]
+) -> dict[K | Other, list[T]]:
+    """A held-out run's `groups`, `item` naming each member's item: the groups that cover fewer
+    than `HELD_OUT_MIN_ITEMS` items are pooled into one, `OTHER`, last, its numbers taken over
+    all their members as any group's are, and left out when it too covers fewer. Items are
+    counted, not variants (an item's devices and takes)."""
+    shown: dict[K | Other, list[T]] = {}
+    pooled: list[T] = []
+    for key, members in groups.items():
+        if len({item(one) for one in members}) < HELD_OUT_MIN_ITEMS:
+            pooled += members
+        else:
+            shown[key] = members
+    if len({item(one) for one in pooled}) >= HELD_OUT_MIN_ITEMS:
+        shown[OTHER] = pooled
+    return shown
 
 
 def _metrics(group: Sequence[_Scored], price_per_hour_usd: float, scorers: Scorers) -> Metrics:
@@ -185,6 +216,7 @@ def _metrics(group: Sequence[_Scored], price_per_hour_usd: float, scorers: Score
     latencies = sorted(request.latency_ms for request in requests if request.outcome == "ok")
     billed = math.fsum(request.billed_seconds for request in requests)
     return Metrics(
+        items=len({one.result.item for one in group}),
         variants=len(group),
         right=right,
         failures=sum(1 for one in group if one.result.answer.failure is not None),
@@ -222,45 +254,45 @@ def quantile(ordered: Sequence[float], q: float) -> float | None:
     return ordered[low] + (ordered[high] - ordered[low]) * (position - low)
 
 
-def _windows(scored: Sequence[_Scored]) -> tuple[WindowMetrics, ...]:
+def _windows(scored: Sequence[_Scored], *, held_out: bool) -> tuple[WindowMetrics, ...]:
     """Each window length's measures over the clips of one language and `want` label, summed
-    from each answered variant's windows (an infrastructure failure's are left out)."""
-    sums: dict[tuple[int, Language, str | None], list[int]] = defaultdict(lambda: [0] * 8)
+    from each answered variant's windows (an infrastructure failure's are left out); in a
+    held-out run, each length's groups pooled by `_pool_small`."""
+    lengths: dict[int, dict[tuple[Language, str | None], list[_Clip]]] = defaultdict(
+        lambda: defaultdict(list)
+    )
     for one in scored:
         if one.result.answer.failure is not None:
             continue
         for window in one.result.answer.windows:
-            counts = sums[(window.ms, one.result.language, one.result.want)]
-            for index, value in enumerate(
-                (
-                    1,
-                    window.empty,
-                    window.reused,
-                    window.words,
-                    window.leading_words,
-                    one.reference_words,
-                    window.holds_word is not None,
-                    window.holds_word is True,
-                )
-            ):
-                counts[index] += int(value)
-    return tuple(
-        WindowMetrics(
-            ms=ms,
-            language=language,
-            want=want,
-            clips=counts[0],
-            empty=counts[1],
-            reused=counts[2],
-            words=counts[3],
-            leading_words=counts[4],
-            reference_words=counts[5],
-            one_word_clips=counts[6],
-            holds_word=counts[7],
-        )
-        for (ms, language, want), counts in sorted(
-            sums.items(), key=lambda entry: (entry[0][0], entry[0][1], entry[0][2] or "")
-        )
+            lengths[window.ms][(one.result.language, one.result.want)].append((one, window))
+    found: list[WindowMetrics] = []
+    for ms, groups in sorted(lengths.items()):
+        ordered = dict(sorted(groups.items(), key=lambda entry: (entry[0][0], entry[0][1] or "")))
+        shown = _pool_small(ordered, lambda clip: clip[0].result.item) if held_out else ordered
+        for key, clips in shown.items():
+            # The pooled group's key is `OTHER`, every other group's a language and a label.
+            language, want = (key, None) if isinstance(key, str) else key
+            found.append(_window_metrics(ms, language, want, clips))
+    return tuple(found)
+
+
+def _window_metrics(
+    ms: int, language: Language | Other, want: str | None, clips: Sequence[_Clip]
+) -> WindowMetrics:
+    return WindowMetrics(
+        ms=ms,
+        language=language,
+        want=want,
+        items=len({one.result.item for one, _ in clips}),
+        clips=len(clips),
+        empty=sum(window.empty for _, window in clips),
+        reused=sum(window.reused for _, window in clips),
+        words=sum(window.words for _, window in clips),
+        leading_words=sum(window.leading_words for _, window in clips),
+        reference_words=sum(one.reference_words for one, _ in clips),
+        one_word_clips=sum(window.holds_word is not None for _, window in clips),
+        holds_word=sum(window.holds_word is True for _, window in clips),
     )
 
 
