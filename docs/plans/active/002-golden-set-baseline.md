@@ -386,6 +386,37 @@ run, [WORKING-RULES.md](../../../WORKING-RULES.md), "Measurement runs")
   strings. Next: Q1 to Q3 and Q8, then Block 0.
 - 2026-11-01: The owner settled Q1 to Q3 and Q8, each with the agent's recommended answer
   ("The owner's decisions"). Every call before Block 0 is settled; Block 0 starts.
+- 2026-11-01: Block 0, step 1's check done by the integrating session (every linked session
+  idle; `active/` holds 000 and 002, `completed/` 001; decisions.md ends at D-018), so Block 0's
+  entries take the numbers after D-018. Block 0 is built in a linked worktree cut from the main
+  branch at 0f44056.
+- 2026-11-01: Block 0, step 2. The `uv add` line of "Dependencies to install", as written, then
+  `uv lock` (no change). 26 packages are new to `uv.lock`, each with the licence its installed
+  metadata declares (`importlib.metadata`: `License-Expression`, else `License`):
+  - Apache-2.0: `groq` 1.7.0, `jiwer` 4.0.0, `openinference-semantic-conventions` 0.1.43,
+    `opentelemetry-api`, `-sdk`, `-proto`, `-exporter-otlp-proto-http` and
+    `-exporter-otlp-proto-common` 1.45.2, `opentelemetry-semantic-conventions`,
+    `-exporter-http-transport` and `-exporter-otlp-common` 0.66b2, `googleapis-common-protos`
+    1.76.0, `requests` 2.34.2, `distro` 1.9.0;
+  - BSD-3-Clause: `httpx` 0.28.1, `httpcore` 1.0.9, `idna` 3.20, `click` 8.5.0, `protobuf`
+    7.36.2 ("3-Clause BSD License");
+  - MIT: `anyio` 4.15.1, `h11` 0.16.0, `rapidfuzz` 3.14.6, `urllib3` 2.8.0,
+    `charset-normalizer` 3.5.2; MIT or Apache-2.0: `sniffio` 1.3.1;
+  - MPL-2.0: `certifi` 2026.10.23, accepted by the owner (Q1).
+
+  Every licence is in the section's tables; the two exporter packages the tables do not name,
+  `opentelemetry-exporter-http-transport` and `opentelemetry-exporter-otlp-common`, fall under
+  "the exporter's other `opentelemetry-*` packages". None pulls numpy. All six packages ship
+  `py.typed`: `poe types` passes, and so does a strict probe outside the repository that imports
+  each, so no `[[tool.mypy.overrides]]` entry is added. The installed groq 1.7.0, read as text:
+  its default base URL is `https://api.groq.com`; with no key it reads `GROQ_API_KEY`, with no
+  base URL `GROQ_BASE_URL` (`groq/_client.py`, lines 80-91 for `Groq`, 293-304 for `AsyncGroq`);
+  it also reads `GROQ_CUSTOM_HEADERS` whatever is passed and adds its headers under the ones
+  given (lines 93-100 and 306-313), and `GROQ_LOG` when `groq` is imported
+  (`groq/_utils/_logs.py`, line 17, called from `groq/__init__.py`, line 79), which sets the
+  `groq` and `httpx` loggers to DEBUG or INFO; its defaults are a 60 s timeout (5 s to connect)
+  and 2 retries (`groq/_constants.py`, lines 9-10). The OpenTelemetry reading is in the decision
+  log.
 
 ## Decision log
 
@@ -548,6 +579,42 @@ All entries are the agent's choices of 2026-11-01, with the agent's reasons.
   owner chose "No, one install" (D-018). D-018 leaves the owner free to choose extras for the
   exporter and the scorers later, which would change step 2's `uv add` line and make `tracing`
   and `testing` work without them (it was Q20).
+- 2026-11-01: Step 2 read the installed OpenTelemetry API and SDK 1.45.2 and the HTTP exporter
+  1.45.2 as text, for every `OTEL_*` variable on the tracing path; Track C works from this list.
+  - **Kept out by passing a value:** `OTEL_TRACES_SAMPLER` and `OTEL_TRACES_SAMPLER_ARG` (a
+    sampler); `OTEL_RESOURCE_ATTRIBUTES`, `OTEL_SERVICE_NAME` and
+    `OTEL_EXPERIMENTAL_RESOURCE_DETECTORS` (a `Resource` built directly, never
+    `Resource.create`, which `TracerProvider` also calls when given none); the eight span limits
+    `OTEL_ATTRIBUTE_COUNT_LIMIT`, `OTEL_ATTRIBUTE_VALUE_LENGTH_LIMIT`,
+    `OTEL_SPAN_ATTRIBUTE_COUNT_LIMIT`, `OTEL_SPAN_ATTRIBUTE_VALUE_LENGTH_LIMIT`,
+    `OTEL_SPAN_EVENT_COUNT_LIMIT`, `OTEL_SPAN_LINK_COUNT_LIMIT`,
+    `OTEL_EVENT_ATTRIBUTE_COUNT_LIMIT` and `OTEL_LINK_ATTRIBUTE_COUNT_LIMIT` (a `SpanLimits`
+    given all eight); `OTEL_BSP_SCHEDULE_DELAY`, `OTEL_BSP_MAX_QUEUE_SIZE`,
+    `OTEL_BSP_MAX_EXPORT_BATCH_SIZE` and `OTEL_BSP_EXPORT_TIMEOUT` (all four passed to the batch
+    processor); `OTEL_PYTHON_METER_PROVIDER` (read by the global `get_meter_provider`, which the
+    tracer, the batch processor and the exporter call when given no meter provider); the
+    exporter's `OTEL_EXPORTER_OTLP_TRACES_ENDPOINT` and `OTEL_EXPORTER_OTLP_ENDPOINT`, its
+    `_TIMEOUT` and `_COMPRESSION` pairs; and `OTEL_PYTHON_EXPORTER_OTLP_HTTP_CREDENTIAL_PROVIDER`
+    and its `_TRACES_` form, which load an entry point unless a `requests.Session` is passed.
+  - **Read whatever is passed:** `OTEL_SDK_DISABLED` (`TracerProvider.__init__`,
+    `opentelemetry/sdk/trace/__init__.py`, line 1278); `OTEL_PYTHON_SDK_INTERNAL_METRICS_ENABLED`
+    (the tracer, line 1094; the batch processor, `sdk/trace/export/__init__.py`, line 197; the
+    exporter, `exporter/otlp/proto/http/trace_exporter/__init__.py`, line 169), which turns on
+    the SDK's own metrics on the meter provider in use; `OTEL_PYTHON_CONTEXT`, read when
+    `opentelemetry.context` is imported (`opentelemetry/context/__init__.py`, line 25), which can
+    load an entry point; `OTEL_EXPORTER_OTLP_TRACES_HEADERS` or `OTEL_EXPORTER_OTLP_HEADERS`,
+    added under the headers passed (`_resolve_headers`,
+    `exporter/otlp/proto/http/_common/__init__.py`, lines 137-149, as in 1.45.1); and
+    `OTEL_EXPORTER_OTLP_TRACES_CERTIFICATE`, `OTEL_EXPORTER_OTLP_CERTIFICATE` and the client key
+    and client certificate pairs (`_build_transport`, lines 191-204 of the same file), which a
+    value keeps out only by naming a file: verifying against the default bundle cannot be passed.
+  - **Off the path unless called:** `OTEL_PYTHON_TRACER_PROVIDER` (only the global
+    `get_tracer_provider`), `OTEL_PROPAGATORS` (read when `opentelemetry.propagate` is imported,
+    which nothing on the path imports) and the auto-configuration's variables
+    (`opentelemetry/sdk/_configuration`).
+
+  Track C keeps out each one of the second group it can, and reports the rest as debt rows; the
+  agent proposes those rows in Block 0's report, for the integrator to number.
 
 ## The owner's decisions
 
@@ -620,10 +687,10 @@ no dependencies; jiwer 4.0.0 (uploaded 2025-06-19) needs click and rapidfuzz. Al
 Python 3.12. None of them pulls numpy.
 
 **Indirect packages** that come with them. No layer imports them, so they get no `[[owners]]`
-row. Their licences below are the agent's memory, UNVERIFIED until step 2 reads the installed
-metadata:
+row. Their licences below are the agent's memory, as written before step 2; the installed
+metadata, read in step 2, agrees with each (the progress log):
 
-| Package | Comes with | Licence (UNVERIFIED) |
+| Package | Comes with | Licence (checked in step 2) |
 | --- | --- | --- |
 | `httpx`, `httpcore`, `idna` | groq | BSD-3-Clause |
 | `anyio`, `h11`, `sniffio` | groq | MIT (`sniffio`: MIT or Apache-2.0) |
