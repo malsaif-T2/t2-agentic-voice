@@ -43,7 +43,7 @@ module's names.
 | `wer(references, outputs)` | `evals` | The word error rate, pair by pair and pooled: substitutions, deletions and insertions over all the references' words, both sides normalized |
 | `cer(references, outputs)` | `evals` | The character error rate, pooled as `wer` is, with every space removed first, so a word split differently is not counted twice |
 | `term_recall(reference, output, terms)` | `evals` | A `Recall`: of the `terms` (your product terms) that `reference` holds, how many `output` holds too, each as a whole word or phrase, both texts normalized |
-| `id_recall(reference, output)` | `evals` | A `Recall`: of the IDs `reference` holds (its runs of digits, after `normalize_digits`), how many `output` holds too |
+| `id_recall(reference, output)` | `evals` | A `Recall`: of the IDs `reference` holds (its runs of digits, after `normalize_digits`), how many `output` holds too, as a run of digits or as numbers next to each other, with no other word between them, whose digits joined in order are the ID (`48 21`, `48-21` and `4,821` all hold 4821; `21 48` does not); no digit of the output counts for two IDs, and at each point the longest ID that starts there is taken |
 | `silence_output(output)` | `evals` | How much text a provider produced where nothing was said (silence, a noise, or only the agent's own echo): the characters of `output` after `normalize_arabic`, spaces removed, so a digit's name counts its letters; 0 when it produced none |
 | `sign_test(better, worse)` | `evals` | The two-sided p-value of `better` items better and `worse` items worse, unchanged items left out (below) |
 
