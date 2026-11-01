@@ -1605,6 +1605,15 @@ run, [WORKING-RULES.md](../../../WORKING-RULES.md), "Measurement runs")
   - `uv run --offline poe check` passes: 1216 tests and 1 skipped (the symbolic-link case), 100%
     coverage (3598 statements), mypy strict on 144 files, arch and docs clean. The item set is
     fixed from here until the close.
+- 2026-11-01: Step 19's two reference runs on the command line, on the whole confirmed set, at
+  9bed934 with the tree clean, each with an empty `--env-file` and its `--out` in the agent's
+  scratch folder: `--split dev`, 231 of 231 variants of 66 items right (no unchecked variant
+  left out), accuracy 1, WER and CER 0, term recall 1, ID recall 1, no text from silence, 0
+  requests, cost 0, complete; `--split held-out`, 106 of 106 variants of 29 items right, the
+  same totals, no variant listed, its kinds of fewer than 3 items pooled into `other` and the
+  `none` language's two items left out, as the owner's rule says. Neither run appended a
+  history line. The optional `prototype-cache` dry run is not made: Track E did not build that
+  answerer (its report), and the runs below need no dry run.
 
 ## Decision log
 
