@@ -1068,7 +1068,7 @@ The defaults below are the agent's starting values, to be measured in the milest
 | --- | --- | --- |
 | top level | `env` (required) | — |
 | `groq` | `api_key` (required for Groq adapters), `api_key_file`, `base_url`, `timeout_s` | — |
-| `stt` | `provider` (groq), `model` (chosen by the M1 baseline: large-v3 or turbo), `timeout_s` (6) | M1 |
+| `stt` | `provider` (groq), `model` (`whisper-large-v3`, chosen by the M1 baseline: D-025), `timeout_s` (6) | M1 |
 | `llm` | `provider` (groq), `model` (openai/gpt-oss-120b), `reasoning_effort` (low), `max_output_tokens`, `timeout_s` (8) | M4 |
 | `tts` | `provider` (groq), `languages` (a map from language to `{model, voice}`; models `canopylabs/orpheus-arabic-saudi` and `canopylabs/orpheus-v1-english`; voices chosen in M2), `timeout_s`, `cache_phrases` (true) | M2 |
 | `turns` | `vad_confidence`, `vad_start_ms`, `vad_stop_ms` (200), `smart_turn` (true), `max_silence_ms` (fallback end of turn) | M2, M3 |

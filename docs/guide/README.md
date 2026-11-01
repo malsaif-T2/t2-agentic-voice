@@ -4,7 +4,7 @@ How to add a speech-first voice agent to your own product with T2 Agentic Voice:
 library, declare your use case, add your tools and the actions that need a spoken yes, test it
 without a microphone or a key, and run it.
 
-**Status: nothing to install yet.** The library's public API is designed, and M1 builds its
+**Status: nothing to install yet.** The library's public API is designed, and M1 built its
 first public modules (`ports`, `groq`, `languages`, `evals` and `tracing`): the design is
 [package-design.md](../design/package-design.md) (D-017, approved as amended by D-018), and its
 section 3 is the contract, what the library provides and what your app must provide. The first

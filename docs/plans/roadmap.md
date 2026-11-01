@@ -16,7 +16,7 @@ decisions (`D-NNN`), which are permanent. Living docs cite only milestones in th
 | # | Milestone | Status |
 | --- | --- | --- |
 | M0 | Scaffold and harness | in progress ([000](active/000-project-scaffold.md); [001](completed/001-library-and-app.md) done) |
-| M1 | The measurement first: the owner's voice as a golden set | in progress ([002](active/002-golden-set-baseline.md)) |
+| M1 | The measurement first: the owner's voice as a golden set | done ([002](completed/002-golden-set-baseline.md)) |
 | M2 | A call that listens and speaks, deployed | planned |
 | M3 | Interruptions and cancellation | planned |
 | M4 | The talker and knowledge answers | planned |
@@ -229,6 +229,10 @@ targets hold at the cap on live calls.
   keys (D-004).
 - Smart Turn fine-tuned on the owner's turns, then on more speakers if any become available.
 - Phone calls (SIP).
+- What M1 left for later, ordered by expected value:
+  [plan 002's Future improvements](completed/002-golden-set-baseline.md#future-improvements) (a
+  filter for text from silence and echo, how M3 hears short Saudi words and its first window, a
+  prompt arm for product terms, the language a live call sends, and the noise on another day).
 
 ## Decided
 

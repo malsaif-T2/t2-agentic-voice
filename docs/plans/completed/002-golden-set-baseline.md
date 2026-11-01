@@ -1,6 +1,6 @@
 # 002 · The measurement first: the owner's voice as a golden set
 
-Status: active · Milestone: M1 · Started: 2026-11-01
+Status: completed · Milestone: M1 · Started: 2026-11-01 · Completed: 2026-11-02
 
 ## Goal
 
@@ -21,7 +21,7 @@ number describes one speaker, the owner, and is never reported as Saudi speakers
 
 **The golden set**
 
-- [ ] Its items are committed under `apps/ole5-voice-agent/evals/`: the 124 talk-over segments
+- [x] Its items are committed under `apps/ole5-voice-agent/evals/`: the 124 talk-over segments
   recorded for the prototype, read in place from `voice-lab/recordings/talkover/` (D-010), one
   item per scripted phrase with its takes as variants; and the owner's new recordings on the
   laptop's speakers and microphone, a wired headset and a Bluetooth headset. Together they
@@ -29,16 +29,16 @@ number describes one speaker, the owner, and is never reported as Saudi speakers
   requests and listening sounds; requests of several clauses that pause mid-sentence, recorded
   as whole takes with every true turn end labelled; and silence and noise (plus ticket numbers
   and the agent's own echo, if the owner keeps them: Q4).
-- [ ] No audio file is in git. Manifests hold each audio file's path under a named root, its
+- [x] No audio file is in git. Manifests hold each audio file's path under a named root, its
   SHA-256, length, sample rate, device and session; a test fails when an audio file sits under
   `apps/`, `packages/`, `examples/`, `docs/` or `tests/`.
-- [ ] References follow Ole5's spelling guide, `apps/ole5-voice-agent/evals/spelling.toml`, each
+- [x] References follow Ole5's spelling guide, `apps/ole5-voice-agent/evals/spelling.toml`, each
   ruling with the owner's words and date (Q8); `poe golden` names every reference that breaks it.
   The guide's `docs/guide/evaluation.md` says how a team writes its own and links to Ole5's.
-- [ ] `uv run poe golden` validates every item (its reference and its independent check agree;
+- [x] `uv run poe golden` validates every item (its reference and its independent check agree;
   with `--audio` roots given, every file's hash and format match its manifest) and freezes the
   expected answers into one JSON file; a changed item shows as a diff of that file.
-- [ ] Tests in `tests/ole5_voice/evals/`, inside `poe check`: the `reference` answerer scores
+- [x] Tests in `tests/ole5_voice/evals/`, inside `poe check`: the `reference` answerer scores
   100% with zero violations; the committed split is fresh (`split --check`); the strata hold
   their registered counts; no item's reference appears in a package's source (evaluation.md,
   "No item in the product"), except an entry of the allow-list file, which starts empty and grows
@@ -46,7 +46,7 @@ number describes one speaker, the owner, and is never reported as Saudi speakers
 
 **The commands**
 
-- [ ] `uv run poe eval` runs an answerer (`reference`, `groq`) as evaluation.md's "Running"
+- [x] `uv run poe eval` runs an answerer (`reference`, `groq`) as evaluation.md's "Running"
   says: it refuses the main checkout and a dirty tree; takes every setting and data path on its
   command line and shows them resolved (the Groq base URL included), a secret only as set or not
   set, without printing `.env`; runs a one-item smoke test first; writes per-variant results as
@@ -55,35 +55,35 @@ number describes one speaker, the owner, and is never reported as Saudi speakers
   scorecard into `--out`, a new folder outside the worktree that git does not track (under the
   main checkout's git-ignored `var/`, or outside the repository). A held-out run writes
   aggregates only, shows only counts in its progress lines, and refuses tracing.
-- [ ] `uv run poe eval-compare A B` gives fixed, broken and net per variant, the two-sided sign
+- [x] `uv run poe eval-compare A B` gives fixed, broken and net per variant, the two-sided sign
   test by item, `--focus`, provider failures left out of both runs and listed, and held-out runs
   compared by aggregates only; it refuses two runs whose recorded commits or data digests differ.
-- [ ] Every `poe eval` run appends one line to `apps/ole5-voice-agent/evals/history.jsonl` (LF
+- [x] Every `poe eval` run appends one line to `apps/ole5-voice-agent/evals/history.jsonl` (LF
   endings), with a copy beside its scorecard; the line reaches the main branch as step 23 says;
   `uv run poe eval-history` renders the file into `docs/generated/eval-history.md`, with a
   freshness test and a row in [docs/generated/README.md](../../generated/README.md).
-- [ ] CLAUDE.md's command table lists `golden`, `eval`, `eval-compare`, `eval-history` and
+- [x] CLAUDE.md's command table lists `golden`, `eval`, `eval-compare`, `eval-history` and
   `record`.
 
 **The library** (the roadmap's *Library* line for M1, and the M1 row of the design's 16.1)
 
-- [ ] `t2_agentic_voice.ports` exports `SpeechToText`, `AudioClip`, `Transcript` and `DataFlow`
+- [x] `t2_agentic_voice.ports` exports `SpeechToText`, `AudioClip`, `Transcript` and `DataFlow`
   in the shape of the design's 6.1, and the package root exports
   `ProviderError(kind, retryable, retry_after_s)`.
-- [ ] `t2_agentic_voice.groq.GroqSTT` transcribes with `whisper-large-v3` or
+- [x] `t2_agentic_voice.groq.GroqSTT` transcribes with `whisper-large-v3` or
   `whisper-large-v3-turbo` (the `stt.model` setting). Its tests, against a fake transport, check
   the request's fields against Block 0's baseline, the result's shape, a cancel that stops within
   50 ms and leaves no task behind, each failure as a `ProviderError`, that the key appears in no
   repr, error or log line, and that `GROQ_API_KEY`, `GROQ_BASE_URL` and `GROQ_CUSTOM_HEADERS` in
   the environment change nothing in the request (the design's 7.3: "Other names are never
   read"). No public signature names a `groq` type (the design's 5.3).
-- [ ] `t2_agentic_voice.languages` exports `normalize_arabic`, `normalize_digits` (Arabic-Indic,
+- [x] `t2_agentic_voice.languages` exports `normalize_arabic`, `normalize_digits` (Arabic-Indic,
   Persian and spelled-out digits) and the spelling-guide check, which takes a team's rulings as
   data; each port's prototype source is named in the progress log (D-010).
-- [ ] `t2_agentic_voice.evals` exports `wer` and `cer` (after normalization, on jiwer in the
+- [x] `t2_agentic_voice.evals` exports `wer` and `cer` (after normalization, on jiwer in the
   `testing` layer), `term_recall`, `id_recall`, `silence_output`, and `sign_test`, which matches
   evaluation.md's formula on hand-computed cases.
-- [ ] `t2_agentic_voice.tracing` sets up tracing from settings: the team's `TracerProvider` if
+- [x] `t2_agentic_voice.tracing` sets up tracing from settings: the team's `TracerProvider` if
   given, otherwise a private one built from `tracing.endpoint`, never installed globally; span
   helpers that take the parent span as an argument; speech-to-text spans carrying audio seconds,
   billed seconds, model and language; the redaction hook on every text attribute; no audio
@@ -92,37 +92,37 @@ number describes one speaker, the owner, and is never reported as Saudi speakers
   as debt (the decision log). Tests prove that no secret value reaches any exported span, and
   that every secret setting is a `SecretStr` that appears in no repr and no log line
   ([SECURITY.md](../../SECURITY.md), invariant 5).
-- [ ] A traced request (run P in the registration) reaches a Phoenix the owner runs locally:
+- [x] A traced request (run P in the registration) reaches a Phoenix the owner runs locally:
   one trace for its variant, holding the speech-to-text span, with `session.id` set to the
   run's name.
-- [ ] `harness.toml` and [ARCHITECTURE.md](../../../ARCHITECTURE.md) agree on a new `testing`
+- [x] `harness.toml` and [ARCHITECTURE.md](../../../ARCHITECTURE.md) agree on a new `testing`
   layer that owns `jiwer`; the facades `ports`, `groq`, `languages`, `evals` and `tracing` are
   listed in `[package] facades` and `public`; ARCH-FACADE and ARCH-WORDS run in `poe arch`, with
   tests in `tests/harness/`.
-- [ ] Decision entries record the `testing` layer (amending D-003), ARCH-FACADE and ARCH-WORDS,
+- [x] Decision entries record the `testing` layer (amending D-003), ARCH-FACADE and ARCH-WORDS,
   the public facades, and evaluation's split between the library and the app (following D-011),
   as the design's 16.3 lists them; and an entry amends D-002's tracing bullet to plain OTLP
   through the OpenTelemetry SDK (the design's 10.1).
-- [ ] The library's settings gain the groups `groq`, `stt` and `tracing` under `T2V_`, nested
+- [x] The library's settings gain the groups `groq`, `stt` and `tracing` under `T2V_`, nested
   with `__`; `.env.example` lists every key, its test reads the groups, and a `.env` copied from
   it with only the key filled in leaves every other setting at its default.
-- [ ] The guide's `docs/guide/evaluation.md` is written and linked from the
+- [x] The guide's `docs/guide/evaluation.md` is written and linked from the
   [guide's index](../../guide/README.md).
 
 **The measurement** (the roadmap's *Done when* for M1)
 
-- [ ] The section "The measurement, registered before any result" below was complete, with
+- [x] The section "The measurement, registered before any result" below was complete, with
   every owner's call settled and dated, before the first run that spends; every departure is a
   `Deviation:` line in the progress log.
-- [ ] `poe eval` wrote a baseline scorecard for Groq Whisper (large-v3 and turbo) on the owner's
+- [x] `poe eval` wrote a baseline scorecard for Groq Whisper (large-v3 and turbo) on the owner's
   voice, by language and by device, labelled one speaker.
-- [ ] The noise (the same run twice, for each model) is recorded as a decision and as a
+- [x] The noise (the same run twice, for each model) is recorded as a decision and as a
   tech-debt row ("one run is one sample; repeated runs are the lasting fix", evaluation.md).
-- [ ] `stt.model`'s default is set by the registered rule (the design's 7.6: "chosen by the M1
+- [x] `stt.model`'s default is set by the registered rule (the design's 7.6: "chosen by the M1
   baseline").
-- [ ] Whisper is scored on the first 500, 750 and 1000 ms of each registered talk-over clip, and
+- [x] Whisper is scored on the first 500, 750 and 1000 ms of each registered talk-over clip, and
   every window's transcript is kept in the scorecards, so M3 chooses its window from data.
-- [ ] `uv run poe check` passes; the roadmap's M1 row, evaluation.md's paragraph on where the
+- [x] `uv run poe check` passes; the roadmap's M1 row, evaluation.md's paragraph on where the
   commands live, and this plan's logs are up to date.
 
 ## Plan
@@ -341,7 +341,8 @@ run, [WORKING-RULES.md](../../../WORKING-RULES.md), "Measurement runs")
     owner's Phoenix ("What the owner does", step 7); its trace is seen in Phoenix's page at
     `http://127.0.0.1:6006`, and Phoenix's listening socket is bound to 127.0.0.1 only
     (`Get-NetTCPConnection -LocalPort 6006 -State Listen`); its history line is carried over as in
-    step 23.
+    step 23. (Run P used ports 6016 and 4327, since another Phoenix held 6006 and 4317: the
+    progress log's `Deviation:` line.)
 23. Runs R1 to R4 on dev, in the order large-v3, turbo, large-v3, turbo, untraced, each with the
     command line registered under "The arms". After each run, before the next: its history line
     is carried to the main branch in its own commit (`Plan 002: history, run R1`), with
@@ -1725,6 +1726,153 @@ run, [WORKING-RULES.md](../../../WORKING-RULES.md), "Measurement runs")
   turbo 0.208 (dev 0.429 against 0.303). This was the last registered run (Q18: H1 and H2 only).
   Scorecard in `var/runs/h2-turbo`. Spend in all $0.3645 of the $5 cap, against the
   estimate of about $0.36.
+- 2026-11-02: Step 28, the acceptance criteria at the close, each checked against its evidence
+  (the boxes above are ticked in the same commit):
+  - **The golden set's items:** met. 95 items (43 talk-over, 52 from the script the owner
+    approved, Q4) and 337 variants (laptop 215, wired 63, Bluetooth 59), each confirmed by the
+    owner's listen (Q9), with ticket numbers and the agent's echo kept (Q4): step 19, 9bed934
+    (`strata.toml`, `frozen.json`, `manifests/`). Of the 124 talk-over segments, 122 files (118
+    variants) are in: two takes cut off at their start were left out at the owner's choice
+    ("Leave the two clips out", an amendment before any result).
+  - **No audio in git:** met. `git ls-files` lists no file with an audio extension (checked at
+    the close); each manifest holds every file's root, path, SHA-256, length, rate, device and
+    session; `tests/ole5_voice/evals/test_no_audio.py` fails on an audio file under `apps/`,
+    `packages/`, `examples/`, `docs/` or `tests/` (Track D, 9138478).
+  - **The spelling guide:** met, with one known gap. `apps/ole5-voice-agent/evals/spelling.toml`
+    quotes the owner's "Use these rules" (Q8, 2026-11-01) in each ruling, and `poe golden` names
+    a reference that breaks it, except an avoided spelling with an Arabic prefix written onto it
+    (TD-025); the guide's `docs/guide/evaluation.md` says how a team writes its own and links
+    Ole5's (Track H, dfd224b, and its review fixes).
+  - **`poe golden`:** met. At step 19 it read, hashed and checked all 341 files (122 talk-over,
+    219 new) against their manifests and froze 337 accepted variants, none left out, into
+    `frozen.json`; `--check` passes.
+  - **The tests inside `poe check`:** met. `test_reference_answerer.py` (the reference answerer
+    at 100% with no violation, on each split), `test_split.py` (`split --check`),
+    `test_strata.py` (the registered counts, 95 items and 337 variants) and
+    `test_no_item_in_source.py`, with its self-test and the allow-list `allowed_in_source.toml`,
+    still empty.
+  - **`poe eval`:** met. Track E (f89f43f) and the review of the merged tracks (cb8e87d); all 13
+    registered runs used it from the clean linked worktree `plan-002-measurement` at the
+    measurement commit 1c3c4dc, each `--out` a new folder under the main checkout's git-ignored
+    `var/runs/`, and H1 and H2 with aggregates only, counts-only progress lines and no tracing.
+  - **`poe eval-compare`:** met. Track F (ffaf45d); on 2026-11-02 it gave the noise (R1 with R3,
+    R2 with R4) and the baseline (R2 with R1, R4 with R3): D-024, D-025.
+  - **The run history:** met. 13 lines in `apps/ole5-voice-agent/evals/history.jsonl`, LF only,
+    each with its copy beside its scorecard and carried to the main branch in its own commit
+    (a058b63 to eefdeb6), with `docs/generated/eval-history.md` regenerated in the same commit;
+    the freshness test is in `test_history.py`, the row in `docs/generated/README.md`.
+  - **CLAUDE.md's command table:** met (Block 0, 25d4c65).
+  - **`ports` and `ProviderError`:** met (Block 0, 752a29a and fca70c7;
+    `tests/t2_agentic_voice/test_facades.py`).
+  - **`GroqSTT`:** met (Track B, dfaafd0, and its review fixes). Live, the runs sent 1,702
+    requests through it: one timed out at 6 s and was answered when asked again (R1), and none
+    was refused or rate limited.
+  - **`languages`:** met (Track A, 7a34cee; each port's prototype source is in Track A's entry).
+  - **`evals`:** met (Track A; `sign_test` against evaluation.md's formula in `test_sign_test.py`).
+  - **`tracing`:** met (Track C, 72128fe, and the review of the merged tracks); what the
+    OpenTelemetry SDK reads whatever is passed is TD-005.
+  - **The traced request (run P):** met, with one deviation. Its one trace reached a Phoenix on
+    127.0.0.1 (arize-phoenix 21.0.0), started by the agent as the owner chose ("You start it"),
+    on ports 6016 and 4327 rather than 6006 (the `Deviation:` line of steps 21 and 22). The root
+    span `golden_variant` carries `session.id` `p-trace`, the run's name, and holds the
+    `speech_to_text` span (`llm.model_name` `whisper-large-v3`, 0.96 audio seconds, 10 billed),
+    as the close read them from a copy of Phoenix's database (`var/phoenix`, left untouched).
+  - **The `testing` layer and the facades in `harness.toml` and ARCHITECTURE.md:** met (Block 0,
+    ed6124c and 752a29a; `tests/harness/test_arch_facade.py`, `test_arch_words.py`).
+  - **The decision entries:** met. D-019 (amends D-003), D-020, D-021, D-022 (follows D-011) and
+    D-023 (amends D-002's tracing bullet), each Accepted with one bullet Proposed (Q3).
+  - **The settings groups and `.env.example`:** met (Block 0, fca70c7;
+    `tests/t2_agentic_voice/core/test_config.py`).
+  - **The guide's `evaluation.md`:** met (Track H, dfd224b), linked from the guide's index.
+  - **The registration complete before the first run that spends:** met, with one gap. The
+    owner's calls are quoted and dated under "The owner's decisions" before run P, the
+    amendments are dated before the results they affect, and the departures are `Deviation:`
+    lines (Phoenix's ports; the talk-over part of step 19 done before the recordings). The gap:
+    for Q15's main choice (the windows on the dev talk-over clips only or on all 124, cut from
+    the file's start or from the detector's speech start) no answer of the owner's is quoted;
+    W1 to W6 followed the agent's recommendation (dev only, from the file's start), and step
+    20's entry counts Q15 as settled. Either the owner's words are found and quoted, or a
+    `Deviation:` line says so.
+  - **The baseline scorecard:** met. R1 (large-v3) and R2 (turbo) on dev, by language, device,
+    kind and split, each labelled "one speaker" (`var/runs/r1-large-v3/scorecard.json`,
+    `var/runs/r2-turbo/scorecard.json`), with their history lines.
+  - **The noise as a decision and a debt row:** met. D-024 and TD-032.
+  - **`stt.model` by the registered rule:** met. D-025: large-v3 is better beyond the noise in
+    both comparisons, so the default stays `whisper-large-v3`, which `core/config.py` and
+    `.env.example` already held; no commit of its own was needed.
+  - **The windows:** met. W1 to W6 scored the first 500, 750 and 1000 ms of the 90 dev
+    talk-over clips (33 items), each model at each length, and every window's transcript is in
+    their scorecards (`var/runs/w1-large-v3-500/` to `var/runs/w6-turbo-1000/`); at 1000 ms the
+    2 clips no longer than the window reused their R1 or R2 answer, marked so (Q15's record:
+    the gap above).
+  - **The gate and the docs:** met in the close commit: the final `uv run --offline poe check`,
+    the roadmap's M1 row (`done`, with a link), evaluation.md's "Where it is built" and this
+    plan's logs.
+- 2026-11-02: Two things the close found:
+  - Deviation: Q15's main choice, the windows on the dev talk-over clips only or on all 124, cut
+    from the file's start or from the detector's speech start, was never put to the owner on its
+    own: the owner's answer 5 of 2026-11-01 ("The owner's decisions") settled only a held-out
+    window as long as its clip, and step 20's "every call is settled" counted Q15 with it. W1 to
+    W6 ran as the agent recommended, on the dev clips only, cut from the file's start; so no
+    held-out clip's window was read. Windows on held-out clips, aggregates only, or cut from the
+    speech start remain open to the owner, as an amendment and new runs.
+  - The amendment of 2026-11-01 on the held-out totals said that with the committed split no
+    total of H1 or H2 would rest on fewer than 3 items. With the split of step 19 two did: ID
+    recall (one held-out ticket item) and text from silence (two held-out items with no speech),
+    and H1 and H2 left both out, as the rule says. TD-029's case is real too: both runs left out
+    the language `other` (the `none` language's two held-out items).
+  - The other Phoenix, on every interface since 2026-10-29 (the `Deviation:` line of steps 21
+    and 22), no longer ran on 2026-11-02: nothing listened on ports 6006, 4317, 6016 or 4327
+    (`Get-NetTCPConnection`), and its process was gone. It was stopped outside this session.
+  - R3 and R4 repeated R1 and R2 on every verdict, and large-v3's texts were identical too;
+    turbo's text differed on one variant (the cough on the laptop, wrong both times), so Groq's
+    Whisper is not repeatable byte for byte (TD-032). Billed seconds in the run entries above
+    come from the scorecards, which leave out the smoke request; spend and the totals below come
+    from the history lines, which include it.
+- 2026-11-02: Step 28, the close. M1's results, from the 13 history lines and their scorecards
+  (the main checkout's `var/runs/<run>/scorecard.json`); every number describes one speaker, the
+  owner:
+  - The set: 95 items (43 talk-over, 52 from the approved script) and 337 variants (laptop 215,
+    wired 63, Bluetooth 59), each confirmed by the owner's listen; 66 items (231 variants) dev,
+    29 items (106 variants) held out.
+  - The baseline on dev (R1, R2): large-v3 99 of 231 right (0.429), WER 0.250, CER 0.103, term
+    recall 0.333, ID recall 0.571; turbo 70 of 231 (0.303), WER 0.360, CER 0.173, term recall
+    0.167, ID recall 0.286. By language, large-v3 and turbo: English 0.847 and 0.763, Saudi 0.370
+    and 0.180, MSA 0.256 and 0.163, mixed 0.050 and 0.000. By device, large-v3: laptop 0.417,
+    wired 0.476, Bluetooth 0.421. Median latency: large-v3 323 and 271 ms (R1, R3), turbo 357
+    and 396 ms (R2, R4).
+  - The noise and the model: R3 repeated R1, and R4 repeated R2, on every verdict (0 of 231
+    variants), so one run detects a change of 6 items (D-024, TD-032). Turbo against large-v3: 2
+    items better and 18 worse, p = 0.0004, in both comparisons, and worse beyond the noise on
+    Saudi Arabic, the laptop and the wired headset, so `stt.model` stays `whisper-large-v3`
+    (D-025).
+  - Held-out (H1, H2), aggregates only: large-v3 41 of 106 (0.387), WER 0.266, CER 0.127, term
+    recall 0.722; turbo 22 of 106 (0.208), WER 0.397, CER 0.221, term recall 0.611; ID recall and
+    text from silence left out, each over fewer than 3 held-out items. Held-out agrees with dev.
+  - Text from silence: every empty-reference dev variant produced text in R1 to R4 (9 of 9, for
+    both models), Whisper's invented captions among it. large-v3's `no_speech_prob` reached 0.979
+    on them and at most 0.458 on speech; turbo's was 0.0 on all 9.
+  - The windows (W1 to W6, the 90 dev talk-over clips): no window came back empty. One-word clips
+    holding their word: large-v3 13, 18 and 16 of 28 at 500, 750 and 1000 ms, turbo 11, 12 and
+    13; Saudi stop words 0 of 4 at 500 ms for both models.
+  - Ticket numbers (TD-031): large-v3's 11 ticket misses are digit and word errors (an extra zero
+    in the counter, «التذكير» for «التذكرة», "in the" for "ending" on Bluetooth), none with the
+    number in words; 7 of turbo's 16 hold number words, 5 of them compound English words for
+    3906.
+  - For M2: large-v3 is the model, and Arabic is where its errors are (Saudi 0.370, MSA 0.256);
+    the arms sent the label's language, which a live call does not know; a prompt arm for product
+    terms is the first tuning to register. For M3: text from silence and echo needs a filter
+    before an interruption is decided on it, short Saudi words are often misheard even as whole
+    clips, and a first window of 500 ms held no Saudi stop word. Every later change is judged
+    against c = 6 items, measured on one evening (TD-032). `## Future improvements` orders these.
+  - The spend: 1,702 requests, one asked again after a 6 s timeout (R1), none rate limited, no
+    provider failure; 17,369.7 billed seconds and $0.3645 of the $5 cap (large-v3 $0.2681, turbo
+    $0.0964), against the amendment's estimate of about 17,070 s and $0.36.
+  - The close: no decision entry is owed beyond D-019 to D-025; `## Future improvements` is
+    written, with a pointer from the roadmap's "Planned later"; the roadmap's M1 row is `done`,
+    linking `completed/002-golden-set-baseline.md`; evaluation.md's "Where it is built" is in the
+    past tense; this plan moves to `completed/` with its Status line; the final gate, `uv run
+    --offline poe check`, passes.
 
 ## Decision log
 
@@ -3081,7 +3229,7 @@ uv add --package t2-agentic-voice "groq>=1.7.0" "opentelemetry-api>=1.45.2" "ope
 | `groq` | `>=1.7.0` | Apache-2.0 (the design's 13, checked on 1.7.0; PyPI, read 2026-11-01) | `t2-agentic-voice` | `adapters` (`groq`, already in `harness.toml`) | `GroqSTT` calls Whisper through it |
 | `opentelemetry-api` | `>=1.45.2` | Apache-2.0 (the design's 13; PyPI, read 2026-11-01) | `t2-agentic-voice` | `core` (`opentelemetry`, already listed) | The span helpers |
 | `opentelemetry-sdk` | `>=1.45.2` | Apache-2.0 (as above) | `t2-agentic-voice` | `core` (`opentelemetry`) | The private `TracerProvider` and its bounded batch processor; tests use its in-memory exporter |
-| `opentelemetry-exporter-otlp-proto-http` | `>=1.45.2` | Apache-2.0 (as above) | `t2-agentic-voice` | `core` (`opentelemetry`) | Plain OTLP over HTTP to Phoenix (`/v1/traces` on port 6006) |
+| `opentelemetry-exporter-otlp-proto-http` | `>=1.45.2` | Apache-2.0 (as above) | `t2-agentic-voice` | `core` (`opentelemetry`) | Plain OTLP over HTTP to Phoenix (`/v1/traces`, on port 6006 by default; 6016 in run P) |
 | `openinference-semantic-conventions` | `>=0.1.43` | Apache-2.0 (the design's 13; PyPI, read 2026-11-01) | `t2-agentic-voice` | `core` (`openinference`, already listed) | The attribute names of our own spans (D-018, question 7) |
 | `jiwer` | `>=4.0.0` | Apache-2.0 (the design's 13; PyPI, read 2026-11-01) | `t2-agentic-voice` | `testing` (a new `[[owners]]` row, step 3) | `wer` and `cer` |
 | `requests` | `>=2.34.2` | Apache-2.0 (installed metadata, step 2) | `t2-agentic-voice` | `core` (its own `[[owners]]` row, Block 0's review) | The exporter's `requests.Session`, which keeps the credential-provider variable out; locked with the exporter before it was declared (the decision log) |
@@ -3121,9 +3269,10 @@ Already locked and unchanged: pydantic, typing-extensions, colorama (`uv.lock`, 
   here so that the owner's answer covers it: `arize-phoenix` 21.0.0 (released 2026-10-30,
   Python 3.11 to 3.15; PyPI, read 2026-11-01), fetched by `uvx` into uv's own tool cache,
   outside the repository and its lock, so its heavy dependencies (numpy, pandas, pyarrow,
-  grpcio and sqlalchemy among them) never reach the library's install. The owner starts it
-  ("What the owner does", step 7). If it does not start natively on Windows (UNVERIFIED), the
-  fallback is Phoenix's Docker image `arizephoenix/phoenix`.
+  grpcio and sqlalchemy among them) never reach the library's install. The agent started it for
+  run P, as the owner chose ("You start it (Recommended)"), with the command of "What the owner
+  does", step 7: it ran natively on Windows (2026-11-01), so Phoenix's Docker image
+  `arizephoenix/phoenix`, the fallback, was not needed.
 - No dev tool (no pytest plugin), no audio package (the standard library's `wave` reads and
   writes the 16 kHz mono 16-bit WAV files), no num2words, no camel-tools.
 
@@ -3670,26 +3819,33 @@ The owner's call before the import (step 19), which fixes the split and the stra
   log); the owner may overrule either before the import.
 
 The owner's call before the run:
-- **Q13.** When neither model is better beyond the noise: keep `whisper-large-v3` (no default
-  moves without a gain beyond the noise, the agent's reading of GP-18), or take turbo for its
-  lower price ($0.04 against $0.111 an hour).
-- **Q14.** An auto-detect arm (`language` unset)? One more dev run per model is 392 requests,
-  196 × 10 s = 0.544 h per model: about $0.060 + $0.022 = $0.08 more at the 10 s minimum. The
-  agent recommends not in M1: M2 decides how a live call sets the language.
-- **Q15.** The windows on dev talk-over clips only (the agent's recommendation: M3 tunes on them,
-  and held-out stays unread), or on all 124, as the roadmap's "each talk-over clip" says, in
-  which case the held-out clips' windows are reported as aggregates only; and cut from the file's
-  start (the agent's proposal) or from the detector's speech start. Every segment file begins
-  with 300 ms of the detector's padding before speech (`meta.vad.preSpeechPadMs` is 300 for
-  every one of the 124 takes in `takes.json`, read 2026-11-01), so a 500 ms window cut from the
-  file's start holds only about 200 ms of speech.
-- **Q16.** The key's real limits (console.groq.com/settings/limits), or the 20-a-minute pacing;
-  and confirmation that nothing else uses the key during the runs: the prototype's runbook says
-  "No test or scoring runs on the Groq key during the trial" (`Ole5-chatbot/VOICE_LOG.md`,
-  line 96).
-- **Q17.** The budget cap, against the estimate above.
-- **Q18.** The cap on held-out runs: H1 and H2 only, at the close (the agent's proposal).
-- **Q19.** Attended or unattended runs; if unattended, a schedule the owner approves first.
+- **Q13.** *Settled on 2026-11-01: keep `whisper-large-v3`.* When neither model is better beyond
+  the noise: keep `whisper-large-v3` (no default moves without a gain beyond the noise, the
+  agent's reading of GP-18), or take turbo for its lower price ($0.04 against $0.111 an hour).
+- **Q14.** *Settled on 2026-11-01: no auto-detect arm in M1.* An auto-detect arm (`language`
+  unset)? One more dev run per model is 392 requests, 196 × 10 s = 0.544 h per model: about
+  $0.060 + $0.022 = $0.08 more at the 10 s minimum. The agent recommends not in M1: M2 decides
+  how a live call sets the language.
+- **Q15.** *Run as the agent recommended, with no words of the owner's quoted (the progress
+  log's close): the dev talk-over clips only, cut from the file's start; a held-out window as
+  long as its clip sent whole (the owner's answer 5, 2026-11-01).* The windows on dev talk-over
+  clips only (the agent's recommendation: M3 tunes on them, and held-out stays unread), or on
+  all 124, as the roadmap's "each talk-over clip" says, in which case the held-out clips'
+  windows are reported as aggregates only; and cut from the file's start (the agent's proposal)
+  or from the detector's speech start. Every segment file begins with 300 ms of the detector's
+  padding before speech (`meta.vad.preSpeechPadMs` is 300 for every one of the 124 takes in
+  `takes.json`, read 2026-11-01), so a 500 ms window cut from the file's start holds only about
+  200 ms of speech.
+- **Q16.** *Settled on 2026-11-01: 20 a minute; since something else might use the key, the runs
+  paced at 10.* The key's real limits (console.groq.com/settings/limits), or the 20-a-minute
+  pacing; and confirmation that nothing else uses the key during the runs: the prototype's
+  runbook says "No test or scoring runs on the Groq key during the trial"
+  (`Ole5-chatbot/VOICE_LOG.md`, line 96).
+- **Q17.** *Settled on 2026-11-01: $5.* The budget cap, against the estimate above.
+- **Q18.** *Settled on 2026-11-01: H1 and H2 only, once each, at the end.* The cap on held-out
+  runs: H1 and H2 only, at the close (the agent's proposal).
+- **Q19.** *Settled on 2026-11-01: attended, made by the agent in this session.* Attended or
+  unattended runs; if unattended, a schedule the owner approves first.
 
 Every question above gates the run as well as its own step, so each is also the owner's call
 before the run.
@@ -3788,11 +3944,12 @@ before the run.
    outside the repository and set `T2V_GROQ__API_KEY_FILE=<its full path>` there. The library
    reads only these names, never `GROQ_API_KEY` (the design's 7.3). The agent never opens `.env`:
    a run reads it through `Settings` when given `--env-file`, and `poe eval --show-settings` says
-   only whether the key is set.
+   only whether the key is set. Done: step 20 found it set (2026-11-01).
 3. **Before recording:** answer Q4, Q5, Q7 and Q9 and approve the script (all done on
    2026-11-01). The check of step 5 on the 120 talk-over variants is done (2026-11-01), with
    `--out var/golden-audio`, the folder step 4 then uses.
-4. **Recording**, one sitting per device, in a quiet room except for the noise items:
+4. **Recording** (done on 2026-11-01: `laptop-1`, `wired-1` and `bluetooth-1`), one sitting per
+   device, in a quiet room except for the noise items:
    - From the main checkout, `uv run poe record --out <a folder under var/, such as
      var/golden-audio> --session <a name> --device <laptop, wired or bluetooth> --replies
      ../voice-lab/assets/talkover` (the lab's six agent replies, read only: the script's
@@ -3813,17 +3970,128 @@ before the run.
    talkover=../voice-lab/recordings/talkover`, with no `--session`, reviews the new takes and
    the talk-over variants), listen to each variant beside its reference and confirm it, or type
    what was said; a variant you typed comes back in a later review pass (a later run of the same
-   command), to be confirmed against your text.
-6. **Before the import and the runs:** answer Q10 before the import (step 19; done on
-   2026-11-01) and Q13 to Q19 before the runs; read the key's limits in the Groq console, make sure nothing else uses
-   the key, and approve the estimate and a budget cap.
-7. **For the tracing check (step 22):** start Phoenix on this machine, in PowerShell:
+   command), to be confirmed against your text. Done on 2026-11-01: every variant confirmed, the
+   one take confirmed by mistake corrected in pass 5.
+6. **Before the import and the runs** (done on 2026-11-01): Q10 before the import (step 19),
+   and the calls before the runs (Q13, Q14, Q16 to Q19, "The owner's decisions"), with the
+   estimate and a $5 cap. The key's limits were not read in the console; since something else
+   might use the key, the runs paced at 10 requests a minute (Q16).
+7. **For the tracing check (step 22)** (done on 2026-11-01 by the agent, as the owner chose, on
+   127.0.0.1 ports 6016 and 4327, since another Phoenix held 6006 and 4317 on every interface:
+   the progress log's `Deviation:` line): start Phoenix on this machine, in PowerShell:
    `$env:PHOENIX_WORKING_DIR = "<a persistent folder, such as var\phoenix>"` and
    `$env:PHOENIX_HOST = "127.0.0.1"`, then `uvx --from "arize-phoenix==21.0.0" phoenix serve`;
    its page is at `http://127.0.0.1:6006`. Without `PHOENIX_HOST`, Phoenix listens on every
    network interface with no login (`HOST = "0.0.0.0"`, and `PHOENIX_ENABLE_AUTH` off by
    default, in arize-phoenix 20.26.0's `phoenix/config.py`, read 2026-11-01 in the old
-   repository's `venv`; 21.0.0 is UNVERIFIED), so anyone on the same network could read the
-   traced transcript. Phoenix holds call content, so it stays on this machine, never public
+   repository's `venv`; 21.0.0 with `PHOENIX_HOST=127.0.0.1` listened on 127.0.0.1 only in
+   step 22, and its default without it is UNVERIFIED), so anyone on the same network could read
+   the traced transcript. Phoenix holds call content, so it stays on this machine, never public
    ([SECURITY.md](../../SECURITY.md), trust boundaries). Stop it after the check, before the
    runs.
+
+## Future improvements
+
+Written at the close, 2026-11-02, ordered by expected value (the agent's ordering), from the runs
+of 2026-11-01. Every number describes one speaker, the owner (D-006), and comes from the dev
+split unless it says held-out; a rule fitted on these numbers is confirmed on a fresh run before
+it is believed (evaluation.md, "Fitted, then fresh").
+
+- **A filter for text from silence and from the agent's echo (M3; M2's echo mode shows it
+  first).** In R1 to R4 all 9 empty-reference variants (3 items: silence, a cough and an English
+  reply's echo, each on three devices) produced text, for both models. For large-v3, 7 of the 9
+  are Whisper's invented captions («موسيقى», «ترجمة نانسي قنقر», «اشتركوا في القناة», «شكرا
+  لكم») and 2 are «اه اه» for the cough, a listening sound's spelling. An echo-only clip that
+  comes back as three words is "two real words" in M3's rule, and would stop the agent.
+  large-v3's `no_speech_prob` runs from 0.117 to 0.979 on the 9 and reaches at most 0.458 on its
+  222 speech variants, so a threshold of 0.5 would blank 3 of the 9 and no speech variant; turbo
+  gives 0.0 on all 9, so this filter is large-v3's only. A list of the invented captions, the
+  prototype's other filter (`Ole5-chatbot/src/ole5_chat/voice/stt.py`, lines 36-54 and 68-72),
+  would catch 7 of the 9, though «شكرا لكم» is also what a caller says. Each lands behind a
+  setting and is measured (GP-18, as the decision log's entry on the adapter's raw text says).
+  The scorecards keep every variant's `no_speech_prob` (Q2), so a first scoring needs no
+  request; but 3 dev items are too few to fit a rule on, and held-out holds fewer than 3 such
+  items (H1 and H2 left their text from silence out), so new silence, noise and echo items are
+  recorded first.
+- **How M3's rule hears short Saudi words (M3).** On whole clips, large-v3 got Saudi listening
+  sounds right in 9 of 22 variants, Saudi repeat requests in 1 of 8 («وش قلت؟» came back as
+  «مشكلت؟» or «مشكلة؟» on all three devices), Saudi confirmations in 1 of 4 and Saudi stop words
+  in 9 of 11, against English stop words 10 of 10 and English listening sounds 9 of 9. A
+  misheard listening sound comes back as other words («هل تريد؟» and «أيها الوحيد» for «ايوه»),
+  which M3's "two real words" would read as an interruption. M3's plan registers its rule
+  against these error modes (for example: a short output that is no listed word goes on rather
+  than stops) and measures it on these clips and on M2's call recordings. Whether «اممم» counts
+  as «امم» (2 of large-v3's misses) is a spelling-guide ruling for the owner.
+- **A prompt arm for product terms (M2).** Term recall was 0.333 for large-v3 (8 of 24 term
+  variants) and 0.167 for turbo; mixed exact match 0.050 (1 of 20) and 0.000. Of large-v3's 16
+  term misses, 11 write the term in Arabic letters (Word as «وورد» or «ورد» 8 times, English as
+  «الانجليزي» or «الإنجليزي» 2, PDF as «بديئة» 1), 2 join Word onto the word before
+  («مرفقور»), 2 give another word for Ole5 ("Qualify", "Olifive"), and in 1 the words around
+  the term are misheard; none is TD-009's case. Whisper's `prompt`, naming the product terms as
+  the product writes them, is the registered way to try it ("A prompt arm is registered later as
+  an amendment, before its run"), in its own words and holding no item's text (evaluation.md,
+  "No item in the product"); the prototype's prompt hints with a forced language reached 32 of
+  35, against 23 of 35 with auto-detection (`Ole5-chatbot/VOICE_LOG.md`, line 33, D24, as the
+  registration cites it). The same arm shows whether a prompt keeps Saudi words as said: in 9
+  of large-v3's 82 Saudi and mixed misses the output holds «أريد», «أود» or «لدي» where the
+  reference has none («أريد أن أعرف» for «أبغى أعرف»). It needs a `--prompt` flag in `poe
+  eval`, whose `groq` answerer sends `prompt=None` today (`answerers.py` has 378 of its 400
+  lines: TD-019), and a comparison that allows the one setting it varies (TD-026); one dev run
+  of large-v3 costs about $0.075 (R1's history line). Counting an Arabic-letter spelling as the
+  term instead would change Q8's ruling, which is the owner's.
+- **The window M3 starts from (M3).** W1 to W6 cut the 90 dev talk-over clips (33 items) from
+  the file's start, so each window holds about 300 ms less speech than its length. No window
+  came back empty at any length for either model, so an empty window cannot mean "no words".
+  One-word clips holding their word: large-v3 13, 18 and 16 of 28 at 500, 750 and 1000 ms, turbo
+  11, 12 and 13; Saudi stop words 0 of 4 at 500 ms for both models, and 2 of 4 for large-v3 at
+  750 and 1000 ms; Saudi listening sounds 2, 4 and 3 of 12 for large-v3; English listening
+  sounds 5 of 5 at every length for both. So 500 ms is too short for a Saudi word, and large-v3
+  at 750 ms holds the most. M3 registers its first window from these numbers, cuts it where the
+  live speech detection fires (which the file's start, 300 ms of the lab detector's padding
+  before speech, only approximates), and confirms it on a fresh run and on M2's recordings.
+- **The language a live call sends (M2).** Every arm sent the item's label as the language (`ar`,
+  or `en` for English), which a live call does not know (the registration's "The arms"); the
+  owner left an auto-detect arm out of M1 (Q14), so M2 decides how a call sets it. An
+  auto-detect arm on dev, against R1, measures what a call without a label gets, and its smoke
+  step reads the form of Groq's `language` (TD-011); one dev run of large-v3 costs about $0.075.
+- **The noise on another day (TD-032), before the next comparison that matters.** R1 and R3, and
+  R2 and R4, gave the same verdict on every one of the 231 variants (D-024), on one evening and
+  one key; turbo's text still differed on one variant (the cough on the laptop), with the same
+  verdict, so Groq's Whisper is not repeatable byte for byte. One more identical pair of
+  large-v3 runs on another day, about $0.15, comes before the prompt arm or the silence filter is
+  judged, and the larger noise is kept.
+- **Ticket numbers read back, never taken as heard (M5).** large-v3 got 4 of the 12 full 16-digit
+  readings right (ID recall 0.571: 12 of the 21 numbers expected). Each of its 8 full-number
+  misses holds a digit error, not a scoring artifact: an extra zero in the counter in 7, 853
+  heard as 5853 in 2, and «التذكير» for «التذكرة» in 3 of them. The English last four was right
+  on the laptop and the wired headset (6 of 6) and wrong on Bluetooth (0 of 3: "in the M3906",
+  "39 or 6", "in the game 3906"). So M5 reads a heard number back before acting on it, as every
+  action is (invariant 1, D-018), and finds a ticket by the session's verified identity
+  (invariant 3), the last four as a check. Held-out holds one ticket item, too few for its ID
+  recall to be shown, so M5's own set adds ticket items.
+- **Compound number words (TD-031; low while large-v3 is the default).** None of large-v3's 11
+  ticket misses holds the number in words; 7 of turbo's 16 do: 5 compound English words for 3906
+  ("three thousand nine hundred and six" and near it), one the digit names "three nine zero
+  six", which `normalize_digits` already reads, and one a garbled Arabic reading of the digits.
+  Reading compound numbers would change no large-v3 verdict on this set; it comes with M2's
+  spoken numbers (num2words, the decision log) or with a model that writes numbers in words, as
+  TD-031 says.
+- **The 27 debt rows this plan opened that remain.** None blocks M2. With the next measurement:
+  TD-021 (the runs' billing against Groq's usage page, which needs the owner's console; the only
+  request not answered first time was one 6 s timeout in R1), TD-011, TD-019 and TD-026 (above)
+  and TD-032. With the plan that serves calls (M2): TD-003, TD-004, TD-005, TD-012 (run P's one
+  request, its process's first, took 1,258 ms against medians of 271 to 396 ms in R1 to R4,
+  though P was also traced), TD-014, TD-015, TD-020 and TD-027. When a scorecard shows the case:
+  TD-008, TD-009, TD-010, TD-025, TD-028 and TD-031 (the runs showed no case of TD-009 or TD-028
+  in large-v3's outputs). The library and the harness: TD-006, TD-007, TD-017, TD-018, TD-022,
+  TD-023 (with TD-001), TD-024 and TD-029, which H1 and H2 made real: both left out the language
+  `other`, the `none` language's held-out items, whose counts follow from the totals minus the
+  four languages shown.
+
+Left out, with the reason: a Bluetooth-specific change, since the gap the prototype saw did not
+show (large-v3's Arabic exact match on the new recordings: Bluetooth 8 of 24, the laptop 12 of 39,
+the wired headset 8 of 26; the device's stratum was too small to guard), so M3's warning for a
+Bluetooth hands-free microphone stays as the roadmap has it, measured on M2's recordings; and a
+turbo route for English, as the prototype's D52 had, since turbo was not better on English
+(0.763 against 0.847; 0 items better, 2 worse) and not faster (medians of 357 and 396 ms against
+323 and 271 ms).
