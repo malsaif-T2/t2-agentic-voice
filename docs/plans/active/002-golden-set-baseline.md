@@ -1623,6 +1623,22 @@ run, [WORKING-RULES.md](../../../WORKING-RULES.md), "Measurement runs")
   totals the groups' minimum, `test_held_out_groups.py` and `test_scorecard.py` pin it, and
   evaluation.md says so; the debt row it pays is removed and its citation here reworded. This
   commit is the measurement commit (step 21).
+- 2026-11-01: Steps 21 and 22. The run worktree `plan-002-measurement` at the measurement commit
+  1c3c4dc, clean; `poe eval --show-settings` with R1's command line resolved every setting as
+  registered (large-v3, timeout 6 s, 10 a minute, 4 attempts, 120 s, $5, key set, label hint),
+  the worktree ready, both audio roots found and the `--out` folder new.
+  - Deviation: Phoenix ran on 127.0.0.1 ports 6016 (page and OTLP over HTTP) and 4327 (gRPC),
+    not 6006. Port 6006 and 4317 were already taken by another Phoenix, started on 2026-10-29
+    from `Ole5-chatbot`'s environment, listening on every interface (0.0.0.0 and [::]): anyone on
+    the same network can read its traces, with no login. The agent did not stop it (D-010: the
+    chatbot is the owner's, read only) and told the owner. Its own Phoenix (arize-phoenix 21.0.0
+    through `uvx`, `PHOENIX_HOST=127.0.0.1`, data in the main checkout's `var/phoenix`) listened
+    on 127.0.0.1 only (`Get-NetTCPConnection -LocalPort 6016,4327 -State Listen`).
+  - Run P (`--smoke-only`, A1, traced to `http://127.0.0.1:6016/v1/traces`): the smoke test
+    passed with one request, no retry, the verdict right, 1,258 ms, 10 s billed, no span dropped;
+    its trace was seen in Phoenix's page (project `default`: one trace, root span
+    `golden_variant`, 1.2 s, status ok). Phoenix was stopped before the timed runs. Spend so far
+    $0.0003 of the $5 cap.
 
 ## Decision log
 

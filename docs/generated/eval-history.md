@@ -5,4 +5,48 @@ per `poe eval` run that called a provider, kept or not; never edited by hand
 ([generated docs](README.md), GP-11). Every number describes one speaker, the owner (D-006).
 Full scorecards stay out of git, in each run's `--out` folder.
 
-No runs yet.
+Spend so far: 1 run(s), 10.0 billed seconds, $0.0003.
+
+## Runs
+
+| # | Time | Run | Commit | Answerer | Model | Split | Items | Variants | Accuracy | Violations | Billed seconds | Cost | Median latency (ms) | Complete |
+| --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- |
+| 1 | 2026-11-01T19:26:25+00:00 | p-trace | 1c3c4dc53fc96664ebb2aa5b5f434ca028f5a0ce | groq | whisper-large-v3 | dev | 1 | 1 | 100.0% | 0 | 10.0 | $0.0003 | 1258 | yes |
+
+## Each run
+
+### 1 · p-trace
+
+| Field | Value |
+| --- | --- |
+| Why | P: the tracing check, one traced smoke request |
+| Data digest | `b07543f2e72f6288f2d9f2d0291516623375f3a6f1251615d308ceaa758c04cd` |
+| Scorecard | scorecard.json |
+| Price per hour of audio | $0.111 |
+| Setting env | dev |
+| Setting groq.api_key | set |
+| Setting groq.api_key_file | not set |
+| Setting groq.base_url | https://api.groq.com |
+| Setting log_format | console |
+| Setting log_level | INFO |
+| Setting run.cap_usd | 5.0 |
+| Setting run.language_hint | label |
+| Setting run.max_attempts | 4 |
+| Setting run.max_rpm | 10 |
+| Setting run.smoke_only | true |
+| Setting run.variant_timeout_s | 120.0 |
+| Setting run.windows_ms | none |
+| Setting stt.model | whisper-large-v3 |
+| Setting stt.provider | groq |
+| Setting stt.timeout_s | 6.0 |
+| Setting tracing.endpoint | http://127.0.0.1:6016/v1/traces |
+| Setting tracing.include_transcripts | true |
+| Setting tracing.project | none |
+| Setting tracing.redact | 0 patterns |
+
+| Stratum | Value | Items | Accuracy |
+| --- | --- | --- | --- |
+| device | laptop | 1 | 100.0% |
+| kind | listening_sound | 1 | 100.0% |
+| language | saudi | 1 | 100.0% |
+| split | dev | 1 | 100.0% |
