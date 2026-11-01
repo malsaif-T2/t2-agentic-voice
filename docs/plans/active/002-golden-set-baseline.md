@@ -1547,6 +1547,17 @@ run, [WORKING-RULES.md](../../../WORKING-RULES.md), "Measurement runs")
   no other answer from the owner. The owner reports the new recordings made on all three devices
   ("I have finished recording all three ways"), so step 18's recording is done and its check
   (Q9) follows.
+- 2026-11-01: The agent read what the owner's three sittings left below the main checkout's
+  `var/golden-audio` (read only, with `takes.py`'s models): `laptop-1`, `wired-1` and
+  `bluetooth-1`, each with its `session.json` (consent agreed, dated 2026-11-01, in the owner's
+  words), every one of the 52 lines with at least one kept take on every device, every kept
+  take of the ten several-clause lines with its turn ends marked, no take reporting echo
+  cancellation, noise suppression or gain control off, and no WAV without its sidecar or the
+  reverse. Kept and discarded: laptop 97 and 12, wired 63 and 3, Bluetooth 59 and 5; 41 lines
+  on the laptop, 9 on the wired headset and 5 on the Bluetooth one have two or three kept takes
+  (the ticket lines on every device), so 219 kept takes, where the registration counted 156. The
+  owner chose to keep every kept take ("The owner's decisions"), and the registration's counts
+  and estimate are amended. No review of the new takes exists yet: the owner's check (Q9) is next.
 
 ## Decision log
 
@@ -2766,6 +2777,11 @@ All entries are the agent's choices of 2026-11-01, with the agent's reasons.
   one device and holding one out would leave that device with no dev recording. Dev and held-out
   share the three sittings, so the held-out runs test unseen lines, not an unseen sitting. The
   owner's answer (Q10).
+- 2026-11-01: Every kept take of the new recordings is a variant (219), as `import_recordings`
+  already makes them, rather than only the last kept take of each line on each device (156, as
+  registered): the ticket lines get several readings each, which ID recall needs, and the cost
+  stays within the earlier estimate. A line kept twice weighs twice in the totals, which pool
+  variants; results by device stay apart, and the sign test is by item. The owner's answer.
 
 ## The owner's decisions
 
@@ -2844,6 +2860,9 @@ The same day, the owner's answers to the calls before recording:
   explanation (the exam holds whole lines, each with its three recordings, or whole sittings,
   each one device): "Yes, the line wins". So the item wins: every recording of a held-out line
   is held out, and no sitting is held out whole.
+- The new recordings: "Also I have finished recording all three ways". Asked whether the lines
+  with two or three kept takes on one device go in whole, or only the last kept take of each:
+  "Keep every kept take (Recommended)".
 
 Earlier words this plan rests on, all of 2026-10-28 (D-004, D-006, D-010):
 
@@ -3547,6 +3566,16 @@ before the run.
   counts are amended with them (saudi 62, listening_sound 25, laptop 118, over-assistant 106,
   pause 55, playback-speakers 115). Nine variants' references are the text the owner typed,
   each a clip cut off at its start, confirmed in a second review pass (Q9).
+- 2026-11-01, the owner's answer, before any result: "New recordings (N)" is every take the owner
+  kept, 219 clips of the 52 items (laptop 97, wired 63, Bluetooth 59): each line at least once on
+  each device, and some two or three times. The estimate, with T as 122 segments and N as 219
+  takes: 341 requests for the whole set, of which dev is about 239 and held-out about 102 (exact
+  once the split is committed); R1 to R4 956, W1 to W6 on the 83 dev talk-over clips 498, H1 and
+  H2 204, the smoke tests and the tracing check 13: 1,671 requests, about 835 per model. Billed
+  with each take's own length at the 10 s minimum (18 takes run past 10 s, 12 ticket numbers and
+  6 echo-only, the longest 25.75 s, from their sidecars): about 17,070 s, 2.37 h per model, so
+  large-v3 about $0.26 and turbo about $0.10, about $0.36 in all, the earlier estimate's upper
+  bound. The caveats stand: a refused request's billing is UNVERIFIED, and retries add requests.
 
 ## What the owner does
 
