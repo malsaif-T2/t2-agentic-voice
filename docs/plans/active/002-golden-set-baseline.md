@@ -738,6 +738,15 @@ run, [WORKING-RULES.md](../../../WORKING-RULES.md), "Measurement runs")
     request (step 21) is where these are seen.
   - After the merge `uv run --offline poe check` passes: 809 tests and 2 xfailed (the two `GROQ_LOG`
     cases), 100% coverage (1105 statements), mypy strict on 126 files, arch and docs clean.
+- 2026-11-01: Review fixes, track B (`Plan 002: review fixes, track B`). The track's one request for
+  a change to Block 0 is applied, since it is small, within the plan (TD-003's fix: undo the effect
+  after `import groq` if that fits the design's 10.2) and needed for invariant 8: `core/logging.py`
+  gains `logging_unchanged`, with two tests in `tests/t2_agentic_voice/core/test_logging.py` written
+  first (they failed on the missing helper); `adapters/groq_stt.py` imports `groq` inside it and its
+  docstring says so; the xfail mark of the two `GROQ_LOG` cases in
+  `tests/t2_agentic_voice/adapters/test_groq_stt.py` is removed, and both pass. TD-003 is narrowed
+  to what the helper cannot undo. `uv run --offline poe check` passes: 813 tests, 100% coverage,
+  mypy strict on 126 files, arch and docs clean.
 
 ## Decision log
 
@@ -1267,6 +1276,13 @@ All entries are the agent's choices of 2026-11-01, with the agent's reasons.
   `debug` and `info`. The last two are `xfail(strict=True)` naming TD-003, so they fail the run once
   the fix lands and their mark is removed. The fix is the track's request for a change to Block 0's
   `core/logging.py`.
+- 2026-11-01: Track B's request for Block 0, applied at its merge: `core/logging.py` gains
+  `logging_unchanged(*names)`, a context manager that removes and closes a handler added to the root
+  logger inside it and puts each named logger's level back, even when the block raises; the adapter
+  imports `groq` inside it, naming `groq` and `httpx`. It fits the design's 10.2: the library still
+  never adds a root handler or calls `basicConfig`, and only a handler added during the import is
+  removed. An app that imports `groq` before the library, or sets its root logger to DEBUG, still
+  gets the SDK's logging (TD-003). The integrator's choice, as the track proposed.
 
 ## The owner's decisions
 

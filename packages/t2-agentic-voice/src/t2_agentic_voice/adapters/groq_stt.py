@@ -18,8 +18,10 @@ reads groq 1.7.0:
 - Every exception the SDK raises becomes a `ProviderError`, raised after the handler and from
   None, so no exception chain leads to the SDK's error, which holds the request and its
   headers. A cancel is never caught: the request ends at once and its connection is closed.
-- `GROQ_LOG`, which `groq` reads when it is imported, is not undone here: only `core` may
-  import `logging` (ARCH-OWNER). It is TD-003.
+- `GROQ_LOG`, which `groq` reads when it is imported, is undone: `groq` is imported inside
+  `core.logging.logging_unchanged`, which removes the root handler the SDK adds and puts the
+  `groq` and `httpx` loggers' levels back (only `core` may import `logging`, ARCH-OWNER). An app
+  that imports `groq` before the library keeps the variable's effect (TD-003).
 
 The SDK's types stay inside this module; no public signature names one (the design's 5.3).
 Public through the `groq` facade (D-021).
@@ -36,13 +38,16 @@ from typing import get_args
 from urllib.parse import urlsplit
 
 import httpx
-from groq import APIConnectionError, APIStatusError, APITimeoutError, AsyncGroq, omit
-from groq import __version__ as groq_version
 from pydantic import BaseModel, ConfigDict, Field, JsonValue, SecretStr
 
 from t2_agentic_voice.core.config import PREFIX, Settings, SttModel
 from t2_agentic_voice.core.errors import ConfigurationError, ProviderError
+from t2_agentic_voice.core.logging import logging_unchanged
 from t2_agentic_voice.domain.ports.speech_to_text import AudioClip, DataFlow, Transcript
+
+with logging_unchanged("groq", "httpx"):  # groq reads GROQ_LOG on import (TD-003)
+    from groq import APIConnectionError, APIStatusError, APITimeoutError, AsyncGroq, omit
+    from groq import __version__ as groq_version
 
 # Groq bills every transcription request at least this long (its pricing, plan 002's
 # registration, read 2026-11-01; the design's 10.4).

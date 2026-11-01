@@ -21,7 +21,8 @@ from __future__ import annotations
 import json
 import logging
 import sys
-from collections.abc import Sequence
+from collections.abc import Iterator, Sequence
+from contextlib import contextmanager
 from functools import partial
 from typing import cast
 
@@ -107,6 +108,24 @@ def _logger_name(_logger: WrappedLogger, _method: str, event: EventDict) -> Even
     if (record := event.get("_record")) is not None:
         event.setdefault("logger_name", record.name)
     return event
+
+
+@contextmanager
+def logging_unchanged(*names: str) -> Iterator[None]:
+    """Undo what the block does to the standard library's logging: a handler it adds to the root
+    logger is removed and closed, and each named logger's level is put back. For a package that
+    sets up logging when it is imported: groq reads `GROQ_LOG` (TD-003)."""
+    root = logging.getLogger()
+    handlers = list(root.handlers)
+    levels = {name: logging.getLogger(name).level for name in names}
+    try:
+        yield
+    finally:
+        for handler in [h for h in root.handlers if h not in handlers]:
+            root.removeHandler(handler)
+            handler.close()
+        for name, level in levels.items():
+            logging.getLogger(name).setLevel(level)
 
 
 def get_logger(name: str) -> FilteringBoundLogger:

@@ -8,7 +8,7 @@ import sys
 from collections.abc import Iterator
 
 import pytest
-from t2_agentic_voice.core.logging import configure_logging, get_logger
+from t2_agentic_voice.core.logging import configure_logging, get_logger, logging_unchanged
 
 
 @pytest.fixture(autouse=True)
@@ -77,3 +77,39 @@ def test_a_failing_output_is_reported_not_raised(
     logging.getLogger("some.library").error("lost")
     monkeypatch.undo()
     assert "Logging error" in capsys.readouterr().err
+
+
+def test_what_a_block_does_to_logging_is_undone() -> None:
+    """A package that sets up logging on import (groq reads `GROQ_LOG`, TD-003): the root
+    handler it adds is removed and closed, and the named loggers' levels are put back, while a
+    handler already there stays."""
+    root = logging.getLogger()
+    there = logging.NullHandler()
+    root.addHandler(there)
+    named = logging.getLogger("tests.imported")
+    named.setLevel(logging.WARNING)
+    added = logging.StreamHandler()
+    try:
+        with logging_unchanged("tests.imported", "tests.untouched"):
+            root.addHandler(added)
+            named.setLevel(logging.DEBUG)
+            logging.getLogger("tests.untouched").setLevel(logging.INFO)
+        assert added not in root.handlers
+        assert there in root.handlers
+        assert named.level == logging.WARNING
+        assert logging.getLogger("tests.untouched").level == logging.NOTSET
+    finally:
+        root.removeHandler(there)
+        root.removeHandler(added)
+        named.setLevel(logging.NOTSET)
+
+
+def test_what_a_failing_block_does_to_logging_is_undone_too() -> None:
+    root = logging.getLogger()
+    added = logging.NullHandler()
+    with pytest.raises(ImportError), logging_unchanged("tests.failing"):
+        root.addHandler(added)
+        logging.getLogger("tests.failing").setLevel(logging.DEBUG)
+        raise ImportError("made up")
+    assert added not in root.handlers
+    assert logging.getLogger("tests.failing").level == logging.NOTSET

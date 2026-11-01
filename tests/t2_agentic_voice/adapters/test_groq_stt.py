@@ -299,8 +299,6 @@ print(json.dumps({{"imported": "groq" in sys.modules, "before": before, "after":
 Imported = dict[tuple[str, str | None], dict[str, Any]]
 ADAPTER = "t2_agentic_voice.groq"
 CASES = [("groq", "debug"), (ADAPTER, None), (ADAPTER, "debug"), (ADAPTER, "info")]
-TD_003 = "TD-003: groq sets up logging on import when GROQ_LOG is set, and only core may import "
-TD_003 += "logging (ARCH-OWNER), so the adapter cannot undo it yet"
 
 
 @pytest.fixture(scope="module")
@@ -334,7 +332,6 @@ def test_groq_log_is_read_and_the_adapter_alone_changes_nothing(imported: Import
     assert imported[ADAPTER, None]["after"] == imported[ADAPTER, None]["before"]
 
 
-@pytest.mark.xfail(strict=True, reason=TD_003)
 @pytest.mark.parametrize("level", ["debug", "info"])
 def test_groq_log_changes_nothing_on_the_adapters_import(level: str, imported: Imported) -> None:
     assert imported[ADAPTER, level]["after"] == imported[ADAPTER, level]["before"]
