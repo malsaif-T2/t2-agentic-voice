@@ -1,0 +1,52 @@
+# Written by `python -m ole5_voice.evals.import_talkover` from the lab's refs.json and
+# takes.json: import again rather than edit.
+id = "b09_okay"
+source = "talkover"
+kind = "listening_sound"
+language = "english"
+text = "okay"
+alternatives = []
+terms = []
+want = "listen"
+
+[[variants]]
+id = "b09_okay__duck__speakers__183613"
+device = "laptop"
+session = "talkover-2026-10-27"
+reference = "okay"
+reference_source = "script"
+turn_ends_ms = []
+tags = ["duck", "over-assistant", "playback-speakers"]
+
+[[variants.segments]]
+root = "talkover"
+path = "b09_okay__duck__speakers__183613__seg1.wav"
+sha256 = "4a0647488bc247fa3f88f7c0275c87a2235c700103a765f96a14c0c527591199"
+
+[[variants]]
+id = "b09_okay__duck__speakers__183624"
+device = "laptop"
+session = "talkover-2026-10-27"
+reference = "okay"
+reference_source = "script"
+turn_ends_ms = []
+tags = ["duck", "over-assistant", "playback-speakers"]
+
+[[variants.segments]]
+root = "talkover"
+path = "b09_okay__duck__speakers__183624__seg1.wav"
+sha256 = "0ce7bb987e8c13162544cfb3cd8bf2ff0d3e69feacd2356b633bacdb6df8fcf2"
+
+[[variants]]
+id = "b09_okay__pause__speakers__184949"
+device = "laptop"
+session = "talkover-2026-10-27"
+reference = "okay"
+reference_source = "script"
+turn_ends_ms = []
+tags = ["over-assistant", "pause", "playback-speakers"]
+
+[[variants.segments]]
+root = "talkover"
+path = "b09_okay__pause__speakers__184949__seg1.wav"
+sha256 = "7aa8eec474a06055ad3bece02c540a75dee69336b69657655fbbb9d35ea3f9c2"

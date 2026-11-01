@@ -1,0 +1,8 @@
+# The product terms term recall is scored on (evaluation.md, "In this project": "recall of
+# product terms"), each as the product writes it, which is how references write them (the
+# spelling guide's product-terms ruling). An item's `terms` are those its text holds as whole
+# words: the talk-over import finds them there, and the script names its lines' own. Outlook,
+# PDF and Word are the terms the spelling guide names; English is the fourth term in Latin
+# script the talk-over phrases hold (plan 002's registration, "The data"); Ole5, the product's
+# own name, is the agent's addition, for the owner to keep or drop with the script (Q4).
+terms = ["English", "Ole5", "Outlook", "PDF", "Word"]

@@ -1,0 +1,38 @@
+# Written by `python -m ole5_voice.evals.import_talkover` from the lab's refs.json and
+# takes.json: import again rather than edit.
+id = "b10_yeah"
+source = "talkover"
+kind = "listening_sound"
+language = "english"
+text = "yeah"
+alternatives = []
+terms = []
+want = "listen"
+
+[[variants]]
+id = "b10_yeah__duck__speakers__183733"
+device = "laptop"
+session = "talkover-2026-10-27"
+reference = "yeah"
+reference_source = "script"
+turn_ends_ms = []
+tags = ["duck", "over-assistant", "playback-speakers"]
+
+[[variants.segments]]
+root = "talkover"
+path = "b10_yeah__duck__speakers__183733__seg1.wav"
+sha256 = "d6e9504bded44b57619aa48d4f5ea3494ee4f5d45451bc0909b18abe110cc639"
+
+[[variants]]
+id = "b10_yeah__pause__speakers__185135"
+device = "laptop"
+session = "talkover-2026-10-27"
+reference = "yeah"
+reference_source = "script"
+turn_ends_ms = []
+tags = ["over-assistant", "pause", "playback-speakers"]
+
+[[variants.segments]]
+root = "talkover"
+path = "b10_yeah__pause__speakers__185135__seg1.wav"
+sha256 = "dd751fdeef71104780ccef03f3ad2d20c08257b40aedd81d9150e9b7034088ad"

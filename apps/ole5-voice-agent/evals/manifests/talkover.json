@@ -1,0 +1,998 @@
+{
+  "root": "talkover",
+  "consent": null,
+  "files": [
+    {
+      "path": "b01_tamam__duck__speakers__181917__seg1.wav",
+      "sha256": "4e4711f9cd45d3f0a2b74b618759160b4ae486151f336423aa1e3efec129e5cc",
+      "seconds": 0.992,
+      "sample_rate": 16000,
+      "device": "laptop",
+      "session": "talkover-2026-10-27"
+    },
+    {
+      "path": "b01_tamam__duck__speakers__181948__seg1.wav",
+      "sha256": "0dbd84552c4c779d673b967d58c6eda6aa407eb562941b02d40ace5fb67dacc9",
+      "seconds": 1.056,
+      "sample_rate": 16000,
+      "device": "laptop",
+      "session": "talkover-2026-10-27"
+    },
+    {
+      "path": "b01_tamam__duck__speakers__182001__seg1.wav",
+      "sha256": "0b618945391177460541169bb2714fdb581f1cb7b81e411ca7063d9601dd70c6",
+      "seconds": 1.184,
+      "sample_rate": 16000,
+      "device": "laptop",
+      "session": "talkover-2026-10-27"
+    },
+    {
+      "path": "b01_tamam__pause__headset__185354__seg1.wav",
+      "sha256": "c7d7584072390b4942f2a3e8e132277e946ab6237284fbb85da4b7bd9638a69f",
+      "seconds": 1.088,
+      "sample_rate": 16000,
+      "device": "laptop",
+      "session": "talkover-2026-10-27"
+    },
+    {
+      "path": "b01_tamam__pause__speakers__184025__seg1.wav",
+      "sha256": "16373c609413bae370ed9e5751b4b4d3b3ff30983fd94dd78d34f95a1e7205d1",
+      "seconds": 1.056,
+      "sample_rate": 16000,
+      "device": "laptop",
+      "session": "talkover-2026-10-27"
+    },
+    {
+      "path": "b01_tamam__pause__speakers__184038__seg1.wav",
+      "sha256": "296cfd41d93d698e9635fb2de7bafa267c5fc42891a2f4bc3ce11f9a5993d623",
+      "seconds": 1.184,
+      "sample_rate": 16000,
+      "device": "laptop",
+      "session": "talkover-2026-10-27"
+    },
+    {
+      "path": "b02_eh__duck__speakers__182054__seg1.wav",
+      "sha256": "6837a3ff7eef3aa74699fdedd37655aed8dcb5c207ef32702f5ddf7c4099977e",
+      "seconds": 0.96,
+      "sample_rate": 16000,
+      "device": "laptop",
+      "session": "talkover-2026-10-27"
+    },
+    {
+      "path": "b02_eh__pause__speakers__184112__seg1.wav",
+      "sha256": "f31d30c7f5f593a9789445edb5adfa0fc27bd7646c0279b057f974c3daf20d28",
+      "seconds": 0.96,
+      "sample_rate": 16000,
+      "device": "laptop",
+      "session": "talkover-2026-10-27"
+    },
+    {
+      "path": "b03_aha__duck__speakers__182307__seg1.wav",
+      "sha256": "361e35099f5ca8e0341edfdd1fed3552876809a3d9b89aa1d171e6fa695a1b0c",
+      "seconds": 1.152,
+      "sample_rate": 16000,
+      "device": "laptop",
+      "session": "talkover-2026-10-27"
+    },
+    {
+      "path": "b03_aha__pause__speakers__184219__seg1.wav",
+      "sha256": "e5cf6e7588f76d693b03b378173694cfc016ff3fe331ab54e62b264e0df7d620",
+      "seconds": 1.024,
+      "sample_rate": 16000,
+      "device": "laptop",
+      "session": "talkover-2026-10-27"
+    },
+    {
+      "path": "b04_tayyib__duck__speakers__182518__seg1.wav",
+      "sha256": "0d793481f4b220aa0a0bdcf7168431d0e021500adb0bb675d3f6bb855b186ad4",
+      "seconds": 1.344,
+      "sample_rate": 16000,
+      "device": "laptop",
+      "session": "talkover-2026-10-27"
+    },
+    {
+      "path": "b04_tayyib__pause__speakers__184343__seg1.wav",
+      "sha256": "95e11afa0f6a7667e545e2fae7174ec42866cc263cad87013eac4ef766c2e90b",
+      "seconds": 0.992,
+      "sample_rate": 16000,
+      "device": "laptop",
+      "session": "talkover-2026-10-27"
+    },
+    {
+      "path": "b05_aywa__duck__speakers__182630__seg1.wav",
+      "sha256": "d6c10c72d5433919fcbb165f6fd790996313960415763780e94c550615e18a27",
+      "seconds": 1.088,
+      "sample_rate": 16000,
+      "device": "laptop",
+      "session": "talkover-2026-10-27"
+    },
+    {
+      "path": "b05_aywa__duck__speakers__182642__seg1.wav",
+      "sha256": "d79fcdafeecc71c12229148e60f5aa516413429f02f92f8379e816c0bd9b8a65",
+      "seconds": 1.024,
+      "sample_rate": 16000,
+      "device": "laptop",
+      "session": "talkover-2026-10-27"
+    },
+    {
+      "path": "b05_aywa__pause__speakers__184451__seg1.wav",
+      "sha256": "c21b093ebe300bc9771dbab45dc34fa5bf3ffcbbcde0e553214727d76812af57",
+      "seconds": 1.216,
+      "sample_rate": 16000,
+      "device": "laptop",
+      "session": "talkover-2026-10-27"
+    },
+    {
+      "path": "b06_umm__duck__speakers__183015__seg1.wav",
+      "sha256": "be08df48bfc99486a424fddcf9412bf4b192b8de1d11fe68a18d17fc4e92a302",
+      "seconds": 1.376,
+      "sample_rate": 16000,
+      "device": "laptop",
+      "session": "talkover-2026-10-27"
+    },
+    {
+      "path": "b06_umm__pause__speakers__184634__seg1.wav",
+      "sha256": "73b408b9dd932dbe68b07f556286a6ead6ca15d7e6924eff5cdc0b61874644b7",
+      "seconds": 1.152,
+      "sample_rate": 16000,
+      "device": "laptop",
+      "session": "talkover-2026-10-27"
+    },
+    {
+      "path": "b07_tamam_tamam__duck__speakers__183133__seg1.wav",
+      "sha256": "235928f5eb9146f0485ee43f2a52df868f1f2c25657aa3213b41fe17feaf08e2",
+      "seconds": 1.344,
+      "sample_rate": 16000,
+      "device": "laptop",
+      "session": "talkover-2026-10-27"
+    },
+    {
+      "path": "b07_tamam_tamam__pause__speakers__184714__seg1.wav",
+      "sha256": "f74c4cc9f6f64a0527a245f1f098e20f7084b07801316505cd792dc02b2a5d15",
+      "seconds": 1.152,
+      "sample_rate": 16000,
+      "device": "laptop",
+      "session": "talkover-2026-10-27"
+    },
+    {
+      "path": "b08_kammil__duck__speakers__183355__seg1.wav",
+      "sha256": "2d6812c915430870fc5b59d9044665befd8c5cd1d474e0b96bc578d466ffff68",
+      "seconds": 1.376,
+      "sample_rate": 16000,
+      "device": "laptop",
+      "session": "talkover-2026-10-27"
+    },
+    {
+      "path": "b08_kammil__duck__speakers__183405__seg1.wav",
+      "sha256": "dc74a1ba16065bc68d69c0275face6971e1b1ef973adb29d6f6a1e19d523a7eb",
+      "seconds": 1.088,
+      "sample_rate": 16000,
+      "device": "laptop",
+      "session": "talkover-2026-10-27"
+    },
+    {
+      "path": "b08_kammil__pause__speakers__184848__seg1.wav",
+      "sha256": "c778712c10024edf6df962db0e26a4f057d10051d5b4a89dd1d6f683d66e6547",
+      "seconds": 1.184,
+      "sample_rate": 16000,
+      "device": "laptop",
+      "session": "talkover-2026-10-27"
+    },
+    {
+      "path": "b09_okay__duck__speakers__183613__seg1.wav",
+      "sha256": "4a0647488bc247fa3f88f7c0275c87a2235c700103a765f96a14c0c527591199",
+      "seconds": 1.216,
+      "sample_rate": 16000,
+      "device": "laptop",
+      "session": "talkover-2026-10-27"
+    },
+    {
+      "path": "b09_okay__duck__speakers__183624__seg1.wav",
+      "sha256": "0ce7bb987e8c13162544cfb3cd8bf2ff0d3e69feacd2356b633bacdb6df8fcf2",
+      "seconds": 1.344,
+      "sample_rate": 16000,
+      "device": "laptop",
+      "session": "talkover-2026-10-27"
+    },
+    {
+      "path": "b09_okay__pause__speakers__184949__seg1.wav",
+      "sha256": "7aa8eec474a06055ad3bece02c540a75dee69336b69657655fbbb9d35ea3f9c2",
+      "seconds": 1.12,
+      "sample_rate": 16000,
+      "device": "laptop",
+      "session": "talkover-2026-10-27"
+    },
+    {
+      "path": "b10_yeah__duck__speakers__183733__seg1.wav",
+      "sha256": "d6e9504bded44b57619aa48d4f5ea3494ee4f5d45451bc0909b18abe110cc639",
+      "seconds": 1.088,
+      "sample_rate": 16000,
+      "device": "laptop",
+      "session": "talkover-2026-10-27"
+    },
+    {
+      "path": "b10_yeah__pause__speakers__185135__seg1.wav",
+      "sha256": "dd751fdeef71104780ccef03f3ad2d20c08257b40aedd81d9150e9b7034088ad",
+      "seconds": 1.12,
+      "sample_rate": 16000,
+      "device": "laptop",
+      "session": "talkover-2026-10-27"
+    },
+    {
+      "path": "e01_archive__duck__speakers__182207__seg1.wav",
+      "sha256": "934625876ca0350a67df71b6d3f533daa1997ebbfdbc3966564ef8bfe9afc3fe",
+      "seconds": 3.904,
+      "sample_rate": 16000,
+      "device": "laptop",
+      "session": "talkover-2026-10-27"
+    },
+    {
+      "path": "e01_archive__pause__speakers__184205__seg1.wav",
+      "sha256": "d2b90b75212ee0b138c3fe46f0ec3252c9d8b05619f244f890eecbbc4c441330",
+      "seconds": 3.616,
+      "sample_rate": 16000,
+      "device": "laptop",
+      "session": "talkover-2026-10-27"
+    },
+    {
+      "path": "e02_inbox_error__duck__speakers__182946__seg1.wav",
+      "sha256": "b79204b612753be556b691f6f53ad49600f2abcd698a9d800bcdcf17f246cb0c",
+      "seconds": 4.064,
+      "sample_rate": 16000,
+      "device": "laptop",
+      "session": "talkover-2026-10-27"
+    },
+    {
+      "path": "e02_inbox_error__pause__speakers__184611__seg1.wav",
+      "sha256": "62bdada31f41f0bf536d4b00439fca5090830ccbac4d16081aa230df3c94af4b",
+      "seconds": 3.104,
+      "sample_rate": 16000,
+      "device": "laptop",
+      "session": "talkover-2026-10-27"
+    },
+    {
+      "path": "e02_inbox_error__pause__speakers__184624__seg1.wav",
+      "sha256": "a716c3b51f3c8adc85a294b7f290d45d0debc11f1d86cd9ceefde0ceedbb6049",
+      "seconds": 3.872,
+      "sample_rate": 16000,
+      "device": "laptop",
+      "session": "talkover-2026-10-27"
+    },
+    {
+      "path": "e03_signature__duck__speakers__183600__seg1.wav",
+      "sha256": "0fd38225468dcbd81cfc02fd0356366c0e982a9070c0d80fda954152824e9753",
+      "seconds": 2.912,
+      "sample_rate": 16000,
+      "device": "laptop",
+      "session": "talkover-2026-10-27"
+    },
+    {
+      "path": "e03_signature__pause__speakers__184937__seg1.wav",
+      "sha256": "5e598dd1ed4176c57e89a482f8884ea052d8e695dabd84f667e0e8c7a5ee7ad5",
+      "seconds": 2.912,
+      "sample_rate": 16000,
+      "device": "laptop",
+      "session": "talkover-2026-10-27"
+    },
+    {
+      "path": "e04_mobile_notifications__duck__speakers__183815__seg1.wav",
+      "sha256": "0ebf45ce1751742e5639144deb61349f89f7f16c5aed6b4055c5fb0ae49c4eda",
+      "seconds": 4.288,
+      "sample_rate": 16000,
+      "device": "laptop",
+      "session": "talkover-2026-10-27"
+    },
+    {
+      "path": "e04_mobile_notifications__pause__speakers__185201__seg1.wav",
+      "sha256": "c0c7b4ad137413cea705181b938a0a18e62c981ec7686966822ab521bdee688a",
+      "seconds": 4.0,
+      "sample_rate": 16000,
+      "device": "laptop",
+      "session": "talkover-2026-10-27"
+    },
+    {
+      "path": "k01_wagif__duck__speakers__182027__seg1.wav",
+      "sha256": "9edd259ef72d1ae0bfa5b8373dde4a09efe01526db3207213c63e8d06d2c840f",
+      "seconds": 1.216,
+      "sample_rate": 16000,
+      "device": "laptop",
+      "session": "talkover-2026-10-27"
+    },
+    {
+      "path": "k01_wagif__pause__speakers__184102__seg1.wav",
+      "sha256": "adad0da004f41d97a36d0fb95815ce105b20a4bedd429e13f1f291bcd06737e7",
+      "seconds": 1.088,
+      "sample_rate": 16000,
+      "device": "laptop",
+      "session": "talkover-2026-10-27"
+    },
+    {
+      "path": "k02_khalas__duck__speakers__182424__seg1.wav",
+      "sha256": "f9333ce56a8003abe17e905ae5dd8ab194ada2e572b8a84063ac8fe8472b6746",
+      "seconds": 1.152,
+      "sample_rate": 16000,
+      "device": "laptop",
+      "session": "talkover-2026-10-27"
+    },
+    {
+      "path": "k02_khalas__pause__speakers__184310__seg1.wav",
+      "sha256": "d64f4e567fc757c8e62b694dbd0d9e1f3ca3576913b21465891e9b0d0e6d52be",
+      "seconds": 1.12,
+      "sample_rate": 16000,
+      "device": "laptop",
+      "session": "talkover-2026-10-27"
+    },
+    {
+      "path": "k03_tawaqqaf__duck__speakers__182750__seg1.wav",
+      "sha256": "3301ec654cf219c1e6b04013d20c567cd2988490924ca76a063459d4a0fe9909",
+      "seconds": 1.024,
+      "sample_rate": 16000,
+      "device": "laptop",
+      "session": "talkover-2026-10-27"
+    },
+    {
+      "path": "k03_tawaqqaf__pause__speakers__184529__seg1.wav",
+      "sha256": "ae45f882eb7a402c5dbbe518bc5f8d24e2a41e9cb39995ef04883004c8d392ca",
+      "seconds": 1.152,
+      "sample_rate": 16000,
+      "device": "laptop",
+      "session": "talkover-2026-10-27"
+    },
+    {
+      "path": "k04_lahza__duck__speakers__183046__seg1.wav",
+      "sha256": "1cc22ee3007729a2321044a065c6c1f166ead759f552f24a56a4d062d9ca3657",
+      "seconds": 1.184,
+      "sample_rate": 16000,
+      "device": "laptop",
+      "session": "talkover-2026-10-27"
+    },
+    {
+      "path": "k04_lahza__duck__speakers__183112__seg1.wav",
+      "sha256": "957c93e4c9703b399ac0519bd2c4d31e1e2433941b0631ebd969db514e488cf0",
+      "seconds": 1.12,
+      "sample_rate": 16000,
+      "device": "laptop",
+      "session": "talkover-2026-10-27"
+    },
+    {
+      "path": "k04_lahza__pause__speakers__184658__seg1.wav",
+      "sha256": "d39ec67ad1abb6cf87e8662f16c9ab6fad8a2be1547e7fc845aef629d8223960",
+      "seconds": 1.12,
+      "sample_rate": 16000,
+      "device": "laptop",
+      "session": "talkover-2026-10-27"
+    },
+    {
+      "path": "k05_stop__duck__speakers__183523__seg1.wav",
+      "sha256": "240d2b38ec23a9375567be7cd54ea51f9d9770e776499b525cc1ca8463f6d3f7",
+      "seconds": 1.184,
+      "sample_rate": 16000,
+      "device": "laptop",
+      "session": "talkover-2026-10-27"
+    },
+    {
+      "path": "k05_stop__pause__speakers__184925__seg1.wav",
+      "sha256": "35237bb1e21d529e28ec18f4e1d8c5522b74f5681a33f85a691ba5ea40819113",
+      "seconds": 0.928,
+      "sample_rate": 16000,
+      "device": "laptop",
+      "session": "talkover-2026-10-27"
+    },
+    {
+      "path": "k06_wait__duck__speakers__183705__seg1.wav",
+      "sha256": "43290aeb67b5d310000215299af8280ff15ab08250dce93874669e1c62570038",
+      "seconds": 1.28,
+      "sample_rate": 16000,
+      "device": "laptop",
+      "session": "talkover-2026-10-27"
+    },
+    {
+      "path": "k06_wait__pause__speakers__185052__seg1.wav",
+      "sha256": "7ac2b193fb0bdadca62fe59934d046c2f4d6a53703a3f9f3d4cef74a71d17d12",
+      "seconds": 1.184,
+      "sample_rate": 16000,
+      "device": "laptop",
+      "session": "talkover-2026-10-27"
+    },
+    {
+      "path": "r01_muwazzaf__duck__speakers__182319__seg1.wav",
+      "sha256": "2181a15ef18249089586c7fc66af0f175a91e27de73bd7fe186be19d90b04f92",
+      "seconds": 1.44,
+      "sample_rate": 16000,
+      "device": "laptop",
+      "session": "talkover-2026-10-27"
+    },
+    {
+      "path": "r01_muwazzaf__duck__speakers__182332__seg1.wav",
+      "sha256": "b8929219004bcff8753035732c43163103ebe7f9fb174f8d89d4cb60609cea5f",
+      "seconds": 1.632,
+      "sample_rate": 16000,
+      "device": "laptop",
+      "session": "talkover-2026-10-27"
+    },
+    {
+      "path": "r01_muwazzaf__duck__speakers__182345__seg1.wav",
+      "sha256": "0f0a3d249c09bb828842d35c4e7fa1c2289a15d39f0ce33f820ecdd75be6b76b",
+      "seconds": 1.728,
+      "sample_rate": 16000,
+      "device": "laptop",
+      "session": "talkover-2026-10-27"
+    },
+    {
+      "path": "r01_muwazzaf__pause__speakers__184238__seg1.wav",
+      "sha256": "d19f518a9dd2b976d23ded61f70e41a7dd81ec805da4cf9b9a87c31a5f001561",
+      "seconds": 1.504,
+      "sample_rate": 16000,
+      "device": "laptop",
+      "session": "talkover-2026-10-27"
+    },
+    {
+      "path": "r02_ghalat__duck__speakers__182915__seg1.wav",
+      "sha256": "7717e41fef26c4770ada6bb8c3cc7ae2899eb3f0f38222a076ec61c14e947999",
+      "seconds": 1.376,
+      "sample_rate": 16000,
+      "device": "laptop",
+      "session": "talkover-2026-10-27"
+    },
+    {
+      "path": "r02_ghalat__duck__speakers__182932__seg1.wav",
+      "sha256": "a5a357b19a9d7d39c287c4767561bc6fe1ab250c6a8cb00ad1ad7cdefa637340",
+      "seconds": 1.408,
+      "sample_rate": 16000,
+      "device": "laptop",
+      "session": "talkover-2026-10-27"
+    },
+    {
+      "path": "r03_repeat__duck__speakers__183202__seg1.wav",
+      "sha256": "57d97b3e27eacc6070b9b07ee627eb178ec1db9067c1d9e4fb91c6cadbf9fabc",
+      "seconds": 1.28,
+      "sample_rate": 16000,
+      "device": "laptop",
+      "session": "talkover-2026-10-27"
+    },
+    {
+      "path": "r03_repeat__duck__speakers__183212__seg1.wav",
+      "sha256": "678712c1cf134b412cf50a322a1fad5b3f25d6d61e91ce072125ae06f7506cfe",
+      "seconds": 1.344,
+      "sample_rate": 16000,
+      "device": "laptop",
+      "session": "talkover-2026-10-27"
+    },
+    {
+      "path": "r03_repeat__pause__speakers__184749__seg1.wav",
+      "sha256": "6b5c3aa49bf5b008c4fb63fd2155f0a930f5f5220d3fe57120182ca238c14139",
+      "seconds": 1.28,
+      "sample_rate": 16000,
+      "device": "laptop",
+      "session": "talkover-2026-10-27"
+    },
+    {
+      "path": "r03_repeat__pause__speakers__184759__seg1.wav",
+      "sha256": "19390a36f18a94e802683d0df05613f9049387f494c0d1cad3ba97169c552a0c",
+      "seconds": 1.28,
+      "sample_rate": 16000,
+      "device": "laptop",
+      "session": "talkover-2026-10-27"
+    },
+    {
+      "path": "r04_how_send__duck__speakers__183648__seg1.wav",
+      "sha256": "ad17dbcadbdbdf440f00c860ad06d49cd99ba1425e8e4fbbbd36e123f171d331",
+      "seconds": 1.408,
+      "sample_rate": 16000,
+      "device": "laptop",
+      "session": "talkover-2026-10-27"
+    },
+    {
+      "path": "r04_how_send__pause__speakers__185028__seg1.wav",
+      "sha256": "f42465441c439fb61f7de5f83937c829082a4ac9d9fa12d2c14e95ae7840adcc",
+      "seconds": 1.344,
+      "sample_rate": 16000,
+      "device": "laptop",
+      "session": "talkover-2026-10-27"
+    },
+    {
+      "path": "r04_how_send__pause__speakers__185038__seg1.wav",
+      "sha256": "48f9bd0d469bf95f80cd1e540ece708a0e99ab1648cff2418a28a8223fbff6a6",
+      "seconds": 1.312,
+      "sample_rate": 16000,
+      "device": "laptop",
+      "session": "talkover-2026-10-27"
+    },
+    {
+      "path": "s01_archive__duck__speakers__181825__seg1.wav",
+      "sha256": "9a519d51baa7b07c4b7169f724c024e8b178a98314d21c76c3deb4b25c35602b",
+      "seconds": 2.112,
+      "sample_rate": 16000,
+      "device": "laptop",
+      "session": "talkover-2026-10-27"
+    },
+    {
+      "path": "s01_archive__duck__speakers__181841__seg1.wav",
+      "sha256": "03354223e71bcd079bb0d696fb37acf7a1eba5ab86eb175349953cff0c7e099f",
+      "seconds": 2.432,
+      "sample_rate": 16000,
+      "device": "laptop",
+      "session": "talkover-2026-10-27"
+    },
+    {
+      "path": "s01_archive__duck__speakers__181853__seg1.wav",
+      "sha256": "caa5aecfdf2e201b4cbf0ef45e8c20deee9cbf75925c0785c0bcd42382cff2b7",
+      "seconds": 2.528,
+      "sample_rate": 16000,
+      "device": "laptop",
+      "session": "talkover-2026-10-27"
+    },
+    {
+      "path": "s01_archive__pause__headset__185341__seg1.wav",
+      "sha256": "6876ed08aae195c0a80cc08b10e695a780a0b9ef906778444e2f7752675840c0",
+      "seconds": 2.176,
+      "sample_rate": 16000,
+      "device": "laptop",
+      "session": "talkover-2026-10-27"
+    },
+    {
+      "path": "s01_archive__pause__speakers__184003__seg1.wav",
+      "sha256": "c630ab889914abcf74ec7b983a029958c802bc8546063e3ca338f938fcd33446",
+      "seconds": 2.464,
+      "sample_rate": 16000,
+      "device": "laptop",
+      "session": "talkover-2026-10-27"
+    },
+    {
+      "path": "s02_inbox_morning__duck__speakers__182014__seg1.wav",
+      "sha256": "1f3761d2da947bc0458651f378a4bd8415685e91a3485cc424ff60e23b0edfe9",
+      "seconds": 3.296,
+      "sample_rate": 16000,
+      "device": "laptop",
+      "session": "talkover-2026-10-27"
+    },
+    {
+      "path": "s02_inbox_morning__pause__headset__185405__seg1.wav",
+      "sha256": "16f54806dc03a124cfdc6529a17735555b901225db467768a4c449080542aa3b",
+      "seconds": 2.72,
+      "sample_rate": 16000,
+      "device": "laptop",
+      "session": "talkover-2026-10-27"
+    },
+    {
+      "path": "s02_inbox_morning__pause__speakers__184050__seg1.wav",
+      "sha256": "480c5d4f818a2965b9c67d5467701b3ae79962a2a1696f7b04537352853d610a",
+      "seconds": 2.976,
+      "sample_rate": 16000,
+      "device": "laptop",
+      "session": "talkover-2026-10-27"
+    },
+    {
+      "path": "s03_signature_outlook__duck__speakers__182109__seg1.wav",
+      "sha256": "4641d861b4a2f1289dc174acc3faafb8c8c37e08e85f5d8a9adf57e588d6b086",
+      "seconds": 3.232,
+      "sample_rate": 16000,
+      "device": "laptop",
+      "session": "talkover-2026-10-27"
+    },
+    {
+      "path": "s03_signature_outlook__duck__speakers__182123__seg1.wav",
+      "sha256": "9f9ff78466d81e64a1b63af084947ca297b237ad6991721333a7dd1a451cf0eb",
+      "seconds": 2.88,
+      "sample_rate": 16000,
+      "device": "laptop",
+      "session": "talkover-2026-10-27"
+    },
+    {
+      "path": "s03_signature_outlook__pause__speakers__184123__seg1.wav",
+      "sha256": "4e79d980595991bebd2aea38ac35109737f00479ff375758749527bd801f2200",
+      "seconds": 2.464,
+      "sample_rate": 16000,
+      "device": "laptop",
+      "session": "talkover-2026-10-27"
+    },
+    {
+      "path": "s04_pdf__duck__speakers__182400__seg1.wav",
+      "sha256": "6d03543814151ae4fcc915a1156d0721ad824bc9bd0c81620e9f2c742ffb6c1b",
+      "seconds": 2.56,
+      "sample_rate": 16000,
+      "device": "laptop",
+      "session": "talkover-2026-10-27"
+    },
+    {
+      "path": "s04_pdf__duck__speakers__182414__seg1.wav",
+      "sha256": "aa36f5b866eb65e7902e1b583d30ccfc4aee4d1a5155a2f82500dca6f397f359",
+      "seconds": 2.592,
+      "sample_rate": 16000,
+      "device": "laptop",
+      "session": "talkover-2026-10-27"
+    },
+    {
+      "path": "s04_pdf__pause__speakers__184251__seg1.wav",
+      "sha256": "69e7ddef2c6b42d4ef148ed4a1bbe0c79382421524341982ea337c5ec1b141e6",
+      "seconds": 2.464,
+      "sample_rate": 16000,
+      "device": "laptop",
+      "session": "talkover-2026-10-27"
+    },
+    {
+      "path": "s05_password__duck__speakers__182538__seg1.wav",
+      "sha256": "a91d69f445e76797dea78c5b07060e0ea5e7427145bb044f9e3112a5e08793ae",
+      "seconds": 2.656,
+      "sample_rate": 16000,
+      "device": "laptop",
+      "session": "talkover-2026-10-27"
+    },
+    {
+      "path": "s05_password__pause__speakers__184354__seg1.wav",
+      "sha256": "3a70652fc6dff7cbed2cd65be39fc196c346c5ede56c1da3b1f508f301858a52",
+      "seconds": 2.4,
+      "sample_rate": 16000,
+      "device": "laptop",
+      "session": "talkover-2026-10-27"
+    },
+    {
+      "path": "s05_password__pause__speakers__184407__seg1.wav",
+      "sha256": "a279f3f3cf3ca46529351aacafd2bbeb9d7e238cfda82a24cc58aaa79997edce",
+      "seconds": 2.528,
+      "sample_rate": 16000,
+      "device": "laptop",
+      "session": "talkover-2026-10-27"
+    },
+    {
+      "path": "s06_pause_error__duck__speakers__182658__seg1.wav",
+      "sha256": "7d25360ad72b95cb3ce412f2cf315c08ff3cbc56131c2d29a460e3a78c3f159c",
+      "seconds": 1.92,
+      "sample_rate": 16000,
+      "device": "laptop",
+      "session": "talkover-2026-10-27"
+    },
+    {
+      "path": "s06_pause_error__duck__speakers__182658__seg2.wav",
+      "sha256": "c509ef2ce7e7ac2e8cc907c3f135e3961a4fe57f6dd9038682042fac27249dd1",
+      "seconds": 2.624,
+      "sample_rate": 16000,
+      "device": "laptop",
+      "session": "talkover-2026-10-27"
+    },
+    {
+      "path": "s06_pause_error__duck__speakers__182714__seg1.wav",
+      "sha256": "17a5a94c2621cf8352c9e0ecf473093b3f77593e3df3e32db74648f24579a0bf",
+      "seconds": 1.632,
+      "sample_rate": 16000,
+      "device": "laptop",
+      "session": "talkover-2026-10-27"
+    },
+    {
+      "path": "s06_pause_error__duck__speakers__182714__seg2.wav",
+      "sha256": "cc9dd13ccf6376ebc66d04dab03f050beb64861432bd3243618136df3025cd2b",
+      "seconds": 2.464,
+      "sample_rate": 16000,
+      "device": "laptop",
+      "session": "talkover-2026-10-27"
+    },
+    {
+      "path": "s06_pause_error__pause__speakers__184504__seg1.wav",
+      "sha256": "6e39519980857dc5861717b8db44f37301a1e5d5fe07687fcf902db0db66205a",
+      "seconds": 4.064,
+      "sample_rate": 16000,
+      "device": "laptop",
+      "session": "talkover-2026-10-27"
+    },
+    {
+      "path": "s06_pause_error__pause__speakers__184518__seg1.wav",
+      "sha256": "8ecc335d5306b28fe656ce618fdaca8d4bdb06bc7631b3cf66f93de587d5e108",
+      "seconds": 1.728,
+      "sample_rate": 16000,
+      "device": "laptop",
+      "session": "talkover-2026-10-27"
+    },
+    {
+      "path": "s06_pause_error__pause__speakers__184518__seg2.wav",
+      "sha256": "e0b5a3e4c46ca2f7efe2ec1f7b5fb776050cc167ab9c103a9b610b7af5193356",
+      "seconds": 2.688,
+      "sample_rate": 16000,
+      "device": "laptop",
+      "session": "talkover-2026-10-27"
+    },
+    {
+      "path": "s07_refer__duck__speakers__183032__seg1.wav",
+      "sha256": "7380cffe9c1a703f7c310aa9f940f568d685b290a69704899e7c68e42cb0353a",
+      "seconds": 3.488,
+      "sample_rate": 16000,
+      "device": "laptop",
+      "session": "talkover-2026-10-27"
+    },
+    {
+      "path": "s07_refer__pause__speakers__184646__seg1.wav",
+      "sha256": "87036c2ba0e1a3f79a376472c9c0710c27760f87bbdff045b2fd52339b0c88c1",
+      "seconds": 2.944,
+      "sample_rate": 16000,
+      "device": "laptop",
+      "session": "talkover-2026-10-27"
+    },
+    {
+      "path": "s08_archived_where__duck__speakers__183148__seg1.wav",
+      "sha256": "2a859d08949c574fa4ad1bbf3b689512e3bfae8b33ac59050827226b726a4e2a",
+      "seconds": 2.944,
+      "sample_rate": 16000,
+      "device": "laptop",
+      "session": "talkover-2026-10-27"
+    },
+    {
+      "path": "s08_archived_where__pause__speakers__184725__seg1.wav",
+      "sha256": "c9e317082484eba4e56b17348b6c6bcbb6fc329df028aed3d525b4423514db15",
+      "seconds": 2.24,
+      "sample_rate": 16000,
+      "device": "laptop",
+      "session": "talkover-2026-10-27"
+    },
+    {
+      "path": "s08_archived_where__pause__speakers__184738__seg1.wav",
+      "sha256": "5f5c494aafdeb0da9426585df00df7010664d063f1ed59e7f1543ee105044d75",
+      "seconds": 2.464,
+      "sample_rate": 16000,
+      "device": "laptop",
+      "session": "talkover-2026-10-27"
+    },
+    {
+      "path": "s09_restore_deleted__duck__speakers__183455__seg1.wav",
+      "sha256": "09858855cf2d633aaf3215b207f3b1e493face9b3d18721ebc2888b5dc7c4448",
+      "seconds": 2.72,
+      "sample_rate": 16000,
+      "device": "laptop",
+      "session": "talkover-2026-10-27"
+    },
+    {
+      "path": "s09_restore_deleted__duck__speakers__183509__seg1.wav",
+      "sha256": "7b9ab8b6794eff461a4be67594bb58e9d7e1b88ace013d7a9e00bbdc7144d586",
+      "seconds": 3.168,
+      "sample_rate": 16000,
+      "device": "laptop",
+      "session": "talkover-2026-10-27"
+    },
+    {
+      "path": "s09_restore_deleted__pause__speakers__184859__seg1.wav",
+      "sha256": "6e8cebc8c39658626464839a5db19f8a6ca93eb14962858767cb471e678a4b01",
+      "seconds": 1.152,
+      "sample_rate": 16000,
+      "device": "laptop",
+      "session": "talkover-2026-10-27"
+    },
+    {
+      "path": "s09_restore_deleted__pause__speakers__184859__seg2.wav",
+      "sha256": "7c4883a2c6240754797feb4a8b77b7873d6903e53fee653a7c15977f2bbbe5bd",
+      "seconds": 1.952,
+      "sample_rate": 16000,
+      "device": "laptop",
+      "session": "talkover-2026-10-27"
+    },
+    {
+      "path": "s09_restore_deleted__pause__speakers__184912__seg1.wav",
+      "sha256": "7e17a0773796c26c5ec5b2c3ce04ebcb07e8b94aeb0faae13c7e801907af3b3a",
+      "seconds": 2.848,
+      "sample_rate": 16000,
+      "device": "laptop",
+      "session": "talkover-2026-10-27"
+    },
+    {
+      "path": "s10_mobile_notifications__duck__speakers__183637__seg1.wav",
+      "sha256": "994c1cab6eb84b1cee7d7744c93fe914bdb5387e5d41655972b84b6ae6f1952f",
+      "seconds": 3.424,
+      "sample_rate": 16000,
+      "device": "laptop",
+      "session": "talkover-2026-10-27"
+    },
+    {
+      "path": "s10_mobile_notifications__pause__speakers__185001__seg1.wav",
+      "sha256": "4fccd98cdbe025069464af554689c1fb76045deb01440ba9398edb2e139b5a31",
+      "seconds": 3.136,
+      "sample_rate": 16000,
+      "device": "laptop",
+      "session": "talkover-2026-10-27"
+    },
+    {
+      "path": "s10_mobile_notifications__pause__speakers__185016__seg1.wav",
+      "sha256": "1e468171ee0d644e44edf51ebe478e0c7a5057a8432deed97034563ea0ca51a1",
+      "seconds": 3.52,
+      "sample_rate": 16000,
+      "device": "laptop",
+      "session": "talkover-2026-10-27"
+    },
+    {
+      "path": "s11_word_size__duck__speakers__183720__seg1.wav",
+      "sha256": "bfda560d6e71aba5285f533b3ba8a437660c544615e703b36d79fae4fd4f344c",
+      "seconds": 4.352,
+      "sample_rate": 16000,
+      "device": "laptop",
+      "session": "talkover-2026-10-27"
+    },
+    {
+      "path": "s11_word_size__pause__speakers__185111__seg1.wav",
+      "sha256": "b7d4575ebf18b29da148a9189813a53cc038acbe246a6b0845268ebc6ca39a0e",
+      "seconds": 3.744,
+      "sample_rate": 16000,
+      "device": "laptop",
+      "session": "talkover-2026-10-27"
+    },
+    {
+      "path": "s11_word_size__pause__speakers__185124__seg1.wav",
+      "sha256": "21042fe46517a83e20f29b729b63de3ccfa1b7365e62dd87e917e61928d2d931",
+      "seconds": 4.288,
+      "sample_rate": 16000,
+      "device": "laptop",
+      "session": "talkover-2026-10-27"
+    },
+    {
+      "path": "s12_language__duck__speakers__183829__seg1.wav",
+      "sha256": "9159a88f163ed76ff7c1ba52e575b4abf1b17c5f248b0a25fcd8d5fe43d059a6",
+      "seconds": 3.104,
+      "sample_rate": 16000,
+      "device": "laptop",
+      "session": "talkover-2026-10-27"
+    },
+    {
+      "path": "s12_language__pause__speakers__185215__seg1.wav",
+      "sha256": "894c80d5a2735fcff7ef4ce04524640e4fb8c5b4fc914a41363ad8de9dde38d3",
+      "seconds": 2.496,
+      "sample_rate": 16000,
+      "device": "laptop",
+      "session": "talkover-2026-10-27"
+    },
+    {
+      "path": "s12_language__pause__speakers__185228__seg1.wav",
+      "sha256": "8e5b37329f7407ea5e7ee5b1a7bfa6108e5aaea698130f1ccfb3785fb6cd3d1b",
+      "seconds": 3.072,
+      "sample_rate": 16000,
+      "device": "laptop",
+      "session": "talkover-2026-10-27"
+    },
+    {
+      "path": "u01_signature__duck__speakers__182558__seg1.wav",
+      "sha256": "4825650a7a3bf59d9cd79c29802a621795984848f844ea6d3ff5fab7b48834bb",
+      "seconds": 2.432,
+      "sample_rate": 16000,
+      "device": "laptop",
+      "session": "talkover-2026-10-27"
+    },
+    {
+      "path": "u01_signature__pause__speakers__184420__seg1.wav",
+      "sha256": "96a0a92dadaebf7226759e612960d42e50b03087a7377b9f89dc29055f38bb6c",
+      "seconds": 2.112,
+      "sample_rate": 16000,
+      "device": "laptop",
+      "session": "talkover-2026-10-27"
+    },
+    {
+      "path": "u02_attachment__duck__speakers__183307__seg1.wav",
+      "sha256": "b1f4600318ba755e58687a54d71d47ee6e2c532fce2c29893f9209ff6214bf87",
+      "seconds": 2.432,
+      "sample_rate": 16000,
+      "device": "laptop",
+      "session": "talkover-2026-10-27"
+    },
+    {
+      "path": "u02_attachment__pause__speakers__184828__seg1.wav",
+      "sha256": "a6464f1c005e6fec2306f23554c8d080110798e749b9400657fb52a11008b5f9",
+      "seconds": 2.016,
+      "sample_rate": 16000,
+      "device": "laptop",
+      "session": "talkover-2026-10-27"
+    },
+    {
+      "path": "u03_ticket__duck__speakers__183849__seg1.wav",
+      "sha256": "13255cc0417c0e168ddc6195ce407aaf409d2d6c2f8394b96a67e176d8296c1d",
+      "seconds": 2.208,
+      "sample_rate": 16000,
+      "device": "laptop",
+      "session": "talkover-2026-10-27"
+    },
+    {
+      "path": "u03_ticket__pause__speakers__185243__seg1.wav",
+      "sha256": "7205c2ca1d368b6cb88078a8f08512a00cfcb9117920c61b0cb5054537ecbd7d",
+      "seconds": 2.752,
+      "sample_rate": 16000,
+      "device": "laptop",
+      "session": "talkover-2026-10-27"
+    },
+    {
+      "path": "y01_naam_irsilha__duck__speakers__182134__seg1.wav",
+      "sha256": "2ad66c2ae610a490f6ebc0086ad8c2c947cd00893f0783d2d4b53e6f40a4bbeb",
+      "seconds": 1.504,
+      "sample_rate": 16000,
+      "device": "laptop",
+      "session": "talkover-2026-10-27"
+    },
+    {
+      "path": "y01_naam_irsilha__duck__speakers__182147__seg1.wav",
+      "sha256": "2019119c82e25127bea5217102b35b70ca09fccf19f7d64ae9e88158702159db",
+      "seconds": 1.664,
+      "sample_rate": 16000,
+      "device": "laptop",
+      "session": "talkover-2026-10-27"
+    },
+    {
+      "path": "y01_naam_irsilha__pause__speakers__184133__seg1.wav",
+      "sha256": "1cbf1a10feeab1c8c50b8f23eebb4621fcebd5a8bf011e8743199df0c3808bc9",
+      "seconds": 1.568,
+      "sample_rate": 16000,
+      "device": "laptop",
+      "session": "talkover-2026-10-27"
+    },
+    {
+      "path": "y01_naam_irsilha__pause__speakers__184153__seg1.wav",
+      "sha256": "e2d42c9ee919e1cb98b2d02655d6e908a2ca646fa132d60d7c4eb4af0a4a1a1a",
+      "seconds": 1.92,
+      "sample_rate": 16000,
+      "device": "laptop",
+      "session": "talkover-2026-10-27"
+    },
+    {
+      "path": "y02_eh_irsilha__duck__speakers__182804__seg1.wav",
+      "sha256": "ee077b7826b49f2ac80fbf3c987738c6f01b0f19aa388dbab8efeb9d85c5bf18",
+      "seconds": 1.952,
+      "sample_rate": 16000,
+      "device": "laptop",
+      "session": "talkover-2026-10-27"
+    },
+    {
+      "path": "y02_eh_irsilha__duck__speakers__182814__seg1.wav",
+      "sha256": "938b77dca52de810e2ecc898b0f12f1d2060fddb80f3b3993a6f9c612ac4501a",
+      "seconds": 1.984,
+      "sample_rate": 16000,
+      "device": "laptop",
+      "session": "talkover-2026-10-27"
+    },
+    {
+      "path": "y02_eh_irsilha__duck__speakers__182827__seg1.wav",
+      "sha256": "9d8a6c7a621e9550585f1bcde56924b7124b6f1b1b92b23eb2beb475a638ca52",
+      "seconds": 1.984,
+      "sample_rate": 16000,
+      "device": "laptop",
+      "session": "talkover-2026-10-27"
+    },
+    {
+      "path": "y02_eh_irsilha__pause__speakers__184541__seg1.wav",
+      "sha256": "59b187e4754c38c852f90907756541d68aae5d30308427ca7448869062c721d2",
+      "seconds": 1.024,
+      "sample_rate": 16000,
+      "device": "laptop",
+      "session": "talkover-2026-10-27"
+    },
+    {
+      "path": "y03_yes_submit__duck__speakers__183236__seg1.wav",
+      "sha256": "8c05907f7f5ac3a735a61d33c6f414b3fc6a1f87640164da63bf156eda55d937",
+      "seconds": 1.952,
+      "sample_rate": 16000,
+      "device": "laptop",
+      "session": "talkover-2026-10-27"
+    },
+    {
+      "path": "y03_yes_submit__duck__speakers__183246__seg1.wav",
+      "sha256": "83f51c2a13b1e0a013cf28f73fe8cd44bae1be3666854dfdb15c36b24b1149ca",
+      "seconds": 2.016,
+      "sample_rate": 16000,
+      "device": "laptop",
+      "session": "talkover-2026-10-27"
+    },
+    {
+      "path": "y03_yes_submit__pause__speakers__184811__seg1.wav",
+      "sha256": "ed94e25bc578aa8ed7cf84f2ddbbb254fb1cb2cb0e7155aa9dd14f6af940c96b",
+      "seconds": 1.888,
+      "sample_rate": 16000,
+      "device": "laptop",
+      "session": "talkover-2026-10-27"
+    },
+    {
+      "path": "y04_naam__duck__speakers__183750__seg1.wav",
+      "sha256": "310fc2396fe3e40a9d9f7b40069fded55ac83cd7d56ce0cf93802c47aca00817",
+      "seconds": 1.472,
+      "sample_rate": 16000,
+      "device": "laptop",
+      "session": "talkover-2026-10-27"
+    },
+    {
+      "path": "y04_naam__pause__speakers__185149__seg1.wav",
+      "sha256": "c5abc86f890e923bc4606044697645bab90ed7ecd75e6121e81d64cf6092b665",
+      "seconds": 1.408,
+      "sample_rate": 16000,
+      "device": "laptop",
+      "session": "talkover-2026-10-27"
+    }
+  ]
+}

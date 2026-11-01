@@ -1,0 +1,68 @@
+# Written by `python -m ole5_voice.evals.import_talkover` from the lab's refs.json and
+# takes.json: import again rather than edit.
+# DRAFT: its language is the agent's proposal from the text, until the owner confirms or
+# changes it (plan 002, Q7).
+id = "y02_eh_irsilha"
+source = "talkover"
+kind = "confirmation"
+language = "saudi"
+text = "ايه ارسلها"
+alternatives = []
+terms = []
+want = "submit"
+
+[[variants]]
+id = "y02_eh_irsilha__duck__speakers__182804"
+device = "laptop"
+session = "talkover-2026-10-27"
+reference = "ايه ارسلها"
+reference_source = "script"
+turn_ends_ms = []
+tags = ["duck", "playback-speakers"]
+
+[[variants.segments]]
+root = "talkover"
+path = "y02_eh_irsilha__duck__speakers__182804__seg1.wav"
+sha256 = "ee077b7826b49f2ac80fbf3c987738c6f01b0f19aa388dbab8efeb9d85c5bf18"
+
+[[variants]]
+id = "y02_eh_irsilha__duck__speakers__182814"
+device = "laptop"
+session = "talkover-2026-10-27"
+reference = "ايه ارسلها"
+reference_source = "script"
+turn_ends_ms = []
+tags = ["duck", "playback-speakers"]
+
+[[variants.segments]]
+root = "talkover"
+path = "y02_eh_irsilha__duck__speakers__182814__seg1.wav"
+sha256 = "938b77dca52de810e2ecc898b0f12f1d2060fddb80f3b3993a6f9c612ac4501a"
+
+[[variants]]
+id = "y02_eh_irsilha__duck__speakers__182827"
+device = "laptop"
+session = "talkover-2026-10-27"
+reference = "ايه ارسلها"
+reference_source = "script"
+turn_ends_ms = []
+tags = ["duck", "playback-speakers"]
+
+[[variants.segments]]
+root = "talkover"
+path = "y02_eh_irsilha__duck__speakers__182827__seg1.wav"
+sha256 = "9d8a6c7a621e9550585f1bcde56924b7124b6f1b1b92b23eb2beb475a638ca52"
+
+[[variants]]
+id = "y02_eh_irsilha__pause__speakers__184541"
+device = "laptop"
+session = "talkover-2026-10-27"
+reference = "ايه ارسلها"
+reference_source = "script"
+turn_ends_ms = []
+tags = ["over-assistant", "pause", "playback-speakers"]
+
+[[variants.segments]]
+root = "talkover"
+path = "y02_eh_irsilha__pause__speakers__184541__seg1.wav"
+sha256 = "59b187e4754c38c852f90907756541d68aae5d30308427ca7448869062c721d2"

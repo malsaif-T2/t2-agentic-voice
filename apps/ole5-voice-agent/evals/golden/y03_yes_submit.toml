@@ -1,0 +1,52 @@
+# Written by `python -m ole5_voice.evals.import_talkover` from the lab's refs.json and
+# takes.json: import again rather than edit.
+id = "y03_yes_submit"
+source = "talkover"
+kind = "confirmation"
+language = "english"
+text = "yes, submit"
+alternatives = []
+terms = []
+want = "submit"
+
+[[variants]]
+id = "y03_yes_submit__duck__speakers__183236"
+device = "laptop"
+session = "talkover-2026-10-27"
+reference = "yes, submit"
+reference_source = "script"
+turn_ends_ms = []
+tags = ["duck", "playback-speakers"]
+
+[[variants.segments]]
+root = "talkover"
+path = "y03_yes_submit__duck__speakers__183236__seg1.wav"
+sha256 = "8c05907f7f5ac3a735a61d33c6f414b3fc6a1f87640164da63bf156eda55d937"
+
+[[variants]]
+id = "y03_yes_submit__duck__speakers__183246"
+device = "laptop"
+session = "talkover-2026-10-27"
+reference = "yes, submit"
+reference_source = "script"
+turn_ends_ms = []
+tags = ["duck", "playback-speakers"]
+
+[[variants.segments]]
+root = "talkover"
+path = "y03_yes_submit__duck__speakers__183246__seg1.wav"
+sha256 = "83f51c2a13b1e0a013cf28f73fe8cd44bae1be3666854dfdb15c36b24b1149ca"
+
+[[variants]]
+id = "y03_yes_submit__pause__speakers__184811"
+device = "laptop"
+session = "talkover-2026-10-27"
+reference = "yes, submit"
+reference_source = "script"
+turn_ends_ms = []
+tags = ["pause", "playback-speakers"]
+
+[[variants.segments]]
+root = "talkover"
+path = "y03_yes_submit__pause__speakers__184811__seg1.wav"
+sha256 = "ed94e25bc578aa8ed7cf84f2ddbbb254fb1cb2cb0e7155aa9dd14f6af940c96b"
