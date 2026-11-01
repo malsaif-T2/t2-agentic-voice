@@ -441,6 +441,21 @@ run, [WORKING-RULES.md](../../../WORKING-RULES.md), "Measurement runs")
   D-023 (tracing as plain OTLP through the OpenTelemetry SDK, amending D-002's tracing bullet;
   D-002's heading now points at it). Each is Accepted as the design describes it, with one
   bullet Proposed for what it adds (Q3).
+- 2026-11-01: Block 0, steps 8 and 9. `core/config.py` gains `env_nested_delimiter="__"`,
+  `env_ignore_empty=True` and the groups `groq` (`api_key`, `api_key_file`, `base_url`), `stt`
+  (`provider`, `model`, `timeout_s`) and `tracing` (`endpoint`, `project`,
+  `include_transcripts`, `redact`), with the plan's defaults; `var_dir` stays at the top level.
+  `.env.example` lists all ten new keys. `tests/t2_agentic_voice/core/test_config.py` walks the
+  nested models against `.env.example`, loads `.env.example` as a `.env` (the defaults) and a
+  copy with only the key filled in (the key, and every other default), and holds the invariant
+  5 tests: the one secret setting, `groq.api_key`, is a `SecretStr`, and a made-up key, given
+  directly or in a key file, appears in no repr, dump or log line (structured and standard
+  library). `tests/conftest.py` removes every `GROQ_*`, `OTEL_*` and `PHOENIX_*` variable, and
+  `tests/harness/test_isolation.py` checks it, in this run and in a child run whose shell sets
+  some. `ProviderError(kind, retryable, retry_after_s)` in `core/errors.py`, code
+  `provider_error`, kinds `rate_limited`, `timeout`, `connection_lost`, `server_error` and
+  `rejected`; the package root exports it, and `tests/t2_agentic_voice/core/test_errors.py`'s
+  code list has it.
 
 ## Decision log
 
@@ -653,6 +668,25 @@ All entries are the agent's choices of 2026-11-01, with the agent's reasons.
   but it names no package or exporter, and its consequences amend only D-002's Pipecat bullet,
   so D-002's tracing bullet ("Arize Phoenix through `arize-phoenix-otel` and OpenInference")
   still stood. The agent's reading.
+- 2026-11-01: The settings' validation, the agent's choices in step 8, each for the security
+  reviewer: a group's misspelt key is an error (`extra="forbid"`; the top level still ignores
+  unknown keys, as before); no settings error echoes the value it rejected
+  (`hide_input_in_errors`, GP-19), so a key pasted into the wrong setting is never printed;
+  `groq.base_url` is HTTPS only, since the key travels with every request, and neither URL may
+  hold a user name or password; `stt.model` is one of the two Whisper models; `tracing.redact`
+  holds regular expressions, each compiled when the settings load; `tracing.endpoint` may be
+  plain HTTP, for a Phoenix on 127.0.0.1.
+- 2026-11-01: Reading the key file is a settings method, `GroqSettings.resolved_api_key()`: the
+  key, else the key file's contents, with the space around them removed, else none (a blank
+  value counts as unset); a file that cannot be read raises `ConfigurationError` naming
+  `T2V_GROQ__API_KEY_FILE`, with neither its path nor its contents. Track B's `from_settings`
+  calls it and raises the `ConfigurationError` naming `T2V_GROQ__API_KEY` when it returns none.
+  The agent's choice: the design's 7.3 gives every secret a `_FILE` form, so the reading belongs
+  with the settings, and `poe eval --show-settings` (Track E) shows set or not set from it.
+- 2026-11-01: `ProviderError` has one stable code, `provider_error`, and its `kind`; its
+  message is fixed per kind and never holds the provider's text, which may echo the request;
+  it refuses a retryable `rejected`, and a `retry_after_s` that is negative, not finite, or on
+  an error that is not retryable. The agent's choices.
 
 ## The owner's decisions
 

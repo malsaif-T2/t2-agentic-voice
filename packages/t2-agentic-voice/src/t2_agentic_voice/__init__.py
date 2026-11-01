@@ -12,6 +12,7 @@ from t2_agentic_voice.core.errors import (
     ConfigurationError,
     InvalidRequestError,
     NotFoundError,
+    ProviderError,
 )
 from t2_agentic_voice.core.logging import configure_logging, get_logger
 
@@ -20,6 +21,7 @@ __all__ = [
     "ConfigurationError",
     "InvalidRequestError",
     "NotFoundError",
+    "ProviderError",
     "Settings",
     "Status",
     "configure_logging",
