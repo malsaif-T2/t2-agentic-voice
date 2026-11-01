@@ -96,7 +96,7 @@ def test_id_recall_finds_a_ticket_number_however_its_digits_are_said_or_written(
         assert id_recall(reference, heard) == recall(1, 1), heard
 
 
-def test_an_id_is_compared_whole() -> None:
+def test_an_id_is_missed_when_altered_reordered_or_split_by_a_word() -> None:
     reference = "رقم التذكرة 4521"
     for heard in ["4512", "45210", "452", "21 45", "45 و 21", "", "رقم التذكرة"]:
         assert id_recall(reference, heard) == recall(1, 0), heard
@@ -173,9 +173,27 @@ def test_no_digit_of_the_output_counts_for_two_ids() -> None:
     assert id_recall(both, "2026 1105 8200 0731") == recall(2, 1)
     assert id_recall(both, "2026 1105 8200 0731 اللي آخرها 0731") == recall(2, 2)
     assert id_recall(both, "0731 يعني 2026 1105 8200 0731") == recall(2, 2)
-    # At each group the longest ID that starts there is taken, so the year is not taken out of
-    # the ticket number.
     assert id_recall(f"{TICKET} من 2026", "2026 1105 8200 0731 من 2026") == recall(2, 2)
+
+
+def test_found_is_the_most_ids_one_reading_of_the_output_finds() -> None:
+    # An output the same as its reference finds every ID, though its groups join into another.
+    for text in ["48 21 4821", "07 31 0731"]:
+        assert id_recall(text, text) == recall(3, 3), text
+    assert id_recall("0731 و 31", "07 31 0731") == recall(2, 2)
+    assert id_recall("48 و 21 و 4821", "48 21") == recall(3, 2)
+    assert id_recall("48 و 21 و 4821", "48 21 يعني 48 و 21") == recall(3, 3)
+    assert id_recall("0731 و 0731 و 31", "0731 07 31 31") == recall(3, 3)
+    # The grouped number gives the last four, and the whole number the ticket number.
+    both = f"رقم التذكرة {TICKET} اللي آخرها 0731"
+    assert id_recall(both, f"2026 1105 8200 0731 يعني {TICKET}") == recall(2, 2)
+    assert id_recall(f"{TICKET} و 2026 و 0731", "2026 1105 8200 0731") == recall(3, 2)
+
+
+def test_many_ids_held_twice_are_scored_without_trying_every_reading() -> None:
+    # Forty IDs the output holds twice: trying every way to read them would take 2**40 steps.
+    numbers = " ".join(str(number) for number in range(10, 50))
+    assert id_recall(numbers, f"{numbers} {numbers}") == recall(40, 40)
 
 
 def test_a_last_four_id_keeps_its_leading_zero() -> None:
@@ -205,6 +223,9 @@ def test_digits_inside_a_word_are_an_id_too() -> None:
 def test_digits_inside_a_word_join_no_neighbour() -> None:
     assert id_recall("4821", "t48 21") == recall(1, 0)
     assert id_recall("4821", "48 21t") == recall(1, 0)
+    # A letter written onto the first group, such as و, keeps it out of the join (a known limit).
+    assert id_recall(f"رقم التذكرة {TICKET}", "و2026 1105 8200 0731") == recall(1, 0)
+    assert id_recall(f"رقم التذكرة {TICKET}", f"و{TICKET}") == recall(1, 1)
 
 
 def test_a_reference_with_no_digit_expects_no_id() -> None:
