@@ -6,10 +6,15 @@ How a measurable quality of the product is measured, and how a change to it is j
 turn-taking, and the talker's answers vary from run to run (a hosted model, a network, timing),
 and some of them are tuned.
 
-**Nothing here is built yet.** The kit ships the method, not the tooling. The plan that builds
-the measurement (the roadmap's first product milestone) builds the commands named below
-(`golden`, `eval`, `eval-compare`), with their tests in `tests/evals/`, and adds them to
-`CLAUDE.md`. Until then, no rule here is enforced by a check.
+**Where it is built.** The kit ships the method, not the tooling. In this project, plan 002
+builds the tooling for speech-to-text (D-022): the scorers in the library, public through its
+`evals` and `languages` modules, and Ole5's golden set in the app, with its code in
+`apps/ole5-voice-agent/src/ole5_voice/evals/`, its data in `apps/ole5-voice-agent/evals/` (the
+`evals/` of the paths below) and its tests in `tests/ole5_voice/evals/`, inside `poe check`. Its
+commands, `golden`, `record`, `eval`, `eval-compare` and `eval-history`, are listed in
+[CLAUDE.md](../../CLAUDE.md), and the guide's [evaluation.md](../guide/evaluation.md) shows a
+team how to score its own set with the library. Turn-taking, the talker and latency have no
+tooling yet: until a plan builds theirs, no check enforces their rules here.
 
 ## In this project
 
@@ -54,8 +59,8 @@ stratum.
 ## The golden set [any]
 
 An **item** is one case the product must handle. Suggested layout: items as TOML files in
-`evals/golden/`, their frozen expected answers in one JSON file beside them, tooling in
-`scripts/eval/`. Each item says:
+`evals/golden/`, their frozen expected answers in one JSON file beside that folder, and the
+tooling in the app's own package (in this project, `ole5_voice.evals`). Each item says:
 
 - its id, its split (dev or held-out), and **tags**: the strata it belongs to (domain, outcome
   kind, difficulty), which validation checks are honest;
