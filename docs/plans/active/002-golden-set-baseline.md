@@ -1215,6 +1215,54 @@ run, [WORKING-RULES.md](../../../WORKING-RULES.md), "Measurement runs")
     playing back, the waveform's marks and saving through the page are still unchecked.
   - `uv run --offline poe check` passes: 1129 tests and 1 skipped (the symbolic-link case), 100%
     coverage, mypy strict on 136 files, arch and docs clean.
+- 2026-11-01: Track H, the docs, is merged (`Plan 002: merge track H`), the last track, from three
+  commits on `plan-002-track-h`, cut from 44aa043: 560a1c2 (the guide's evaluation page), 179634a
+  (the method doc's paths) and c7caa0c (the evaluation page's review fixes), each gated before it
+  was made. `docs/guide/evaluation.md` is new (219 lines): the evaluation helpers of
+  `t2_agentic_voice.languages` and `t2_agentic_voice.evals`, with what each takes and gives, pooling
+  and the inputs they refuse; recording a set with every speaker's consent; keeping audio out of
+  git; writing a team's own spelling guide, with Ole5's as the example; and noise and the sign test.
+  The guide's index links it (its `evaluation.md` row), and its status line says M1 builds the first
+  public modules instead of "designed but not built". In `docs/design/evaluation.md`, the paragraph
+  "Nothing here is built yet" becomes "Where it is built": the scorers in the library, and Ole5's
+  golden set in the app, with its code (`apps/ole5-voice-agent/src/ole5_voice/evals/`), data
+  (`apps/ole5-voice-agent/evals/`, the `evals/` of the doc's paths) and tests
+  (`tests/ole5_voice/evals/`), its commands in CLAUDE.md, and the guide's page; in the suggested
+  layout, `scripts/eval/` becomes the app's own package (`ole5_voice.evals`), as the decision log's
+  first entry asks. From the track's report:
+  - Its sources: the design's 9.7, 14 and 15; evaluation.md; D-006, D-021 and D-022; Track A's
+    signatures as Block 0's stubs and their docstrings give them (`domain/text/arabic.py`,
+    `digits.py`, `spelling.py`, `rulings.py`, `domain/scoring.py`, `domain/recall.py`,
+    `domain/sign_test.py`, `testing/scorers.py`, and the `languages` and `evals` facades);
+    `models.py` and `takes.py` for the manifest, the consent and the session record; this plan's
+    decision log (the verdict with spaces removed, the consent entry, one speaker), its registration
+    (the smallest detectable change, c = 6 with no noise) and Q8 (Ole5's spelling rules). No
+    prototype file was read: its May read names none.
+  - Its two code samples are copied word for word, with their indentation removed, from
+    `tests/ole5_voice/evals/test_models.py`, lines 119-139
+    (`test_a_manifest_holds_its_consent_and_files`, a manifest with its consent), and
+    `tests/t2_agentic_voice/domain/test_rulings.py`, lines 11-17 (`RULING`). A scratch script
+    outside the repository checked each block against its source file, with the line lengths (prose
+    at most 100 characters), LF endings, and the page's lines against the four one-word English
+    references: 0 problems. Values on the page: the sign test table (b = 6, w = 0: 2/64 = 0.03125; b
+    = 5, w = 0: 2/32 = 0.0625; b = w: 1), worked from evaluation.md's formula, which matches Track
+    A's tests; c = 6 with no noise, the registration's. At the merge both samples still match their
+    sources, at the same lines (a scratch check).
+  - Deviation: Track H's Goal asks for a link to Ole5's `spelling.toml`; on the track's branch the
+    page named it in backticks, since Track D creates the file and a link to it would have failed
+    DOC-LINK there. Track D merged first, so the link, and one to Track D's `test_no_audio.py`, is
+    made in the following commit, as the track's report gives it.
+  - Its debt row is TD-024 (code samples compared with their sources by review only), the row the
+    decision log's sample-check entry says is written at Track H's merge. It changed no row, asked
+    for no change to Block 0 and left no question for the owner.
+  - Not done: the page was not checked against Track A's built helpers (it describes Block 0's
+    contracts, the stubs' docstrings and the plan's Track A test cases), so the review of the merged
+    code compares its helper table and sign test values with Track A's code and tests; and its text
+    was not checked against every talk-over reference, since `refs.json` is outside the track's May
+    read (Track D's test does not read `docs/`).
+  - After the merge `uv run --offline poe check` passes: 1129 tests and 1 skipped (the symbolic-link
+    case), 100% coverage (3423 statements), mypy strict on 136 files, arch and docs (25 files)
+    clean.
 
 ## Decision log
 
@@ -2139,6 +2187,36 @@ All entries are the agent's choices of 2026-11-01, with the agent's reasons.
   named after a one-word talk-over reference, so the page looks it up by its parts, and no page text
   holds the word. Text from the script, the replies and the files is set as text, never as HTML. The
   agent's choices.
+- 2026-11-01: Track H: each code sample on the guide's `evaluation.md` is preceded by a Markdown
+  link to its source file, and names the test or constant it comes from, so DOC-LINK fails when a
+  source file is moved or renamed, and a later sample check can find each block's source. Blocks are
+  copied word for word, with only their indentation removed. No import line is copied: the tests
+  import from the library's layers, while an app imports only from the facades (ARCH-PUBLIC), so the
+  page names the facade in prose instead. The agent's choice.
+- 2026-11-01: Track H: the guide's samples come only from Block 0's tests (`test_models.py`,
+  `test_rulings.py`), since on the track's branch the evaluation helpers were Track A's stubs and no
+  tested file called them. The page therefore gives each helper's contract as a table taken from
+  Block 0's docstrings, which Track A keeps, rather than as a code sample; a sample that calls the
+  helpers can be copied from Track A's tests later. The agent's choice.
+- 2026-11-01: Track H did not read `refs.json`, which is not on its May read, so the guide's text
+  could not be checked against every talk-over reference. To stay clear of them, the page avoids the
+  four one-word English references (okay, stop, wait, yeah) as whole words, and quotes no utterance
+  except the product-term ruling of `test_rulings.py` (اوتلوك, Outlook), no listening sound, and
+  none of the references the plan quotes. Track D's test does not read `docs/`; a reviewer with
+  `refs.json` can run the matcher's normalization over `docs/guide/evaluation.md` to confirm. The
+  agent's choice.
+- 2026-11-01: Track H: the method doc keeps its paths `evals/golden/`, `evals/screens/<name>.txt`
+  and `evals/history.jsonl` as written; its opening paragraph now says that `evals/` there is the
+  app's data folder, `apps/ole5-voice-agent/evals/`, where this plan puts them. Only `scripts/eval/`
+  and `tests/evals/` changed. The paragraph says "plan 002 builds", in the present tense, so it
+  holds both during the plan and after it; step 28 may put it in the past tense at the close. The
+  agent's choice.
+- 2026-11-01: Track H: the guide index's status line said the public API was "designed but not
+  built"; it now says M1 builds its first public modules (`ports`, `groq`, `languages`, `evals`,
+  `tracing`), since Track H owns that file and the old line would be false after M1's merge. The
+  rest of the paragraph is only rewrapped to 100 columns, and text outside Track H's parts is left
+  as it was (the index's `browser-client.md` row and the method doc's "stop word" and "waits"). The
+  agent's choice.
 
 ## The owner's decisions
 
