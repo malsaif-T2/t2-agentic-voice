@@ -17,6 +17,9 @@ VAR_DIR_VARIABLE = f"{PREFIX}VAR_DIR"
 # The variables of the providers' SDKs and of the tracing tools, which the library never reads
 # (the design's 7.3) but their SDKs would: a real key, an exporter's headers, Phoenix's own.
 FOREIGN_PREFIXES = ("GROQ_", "OTEL_", "PHOENIX_")
+# Variables of the HTTP clients under the SDKs, which change what a request to 127.0.0.1 trusts:
+# requests replaces `verify=True` with either CA bundle (TD-004).
+FOREIGN_NAMES = ("REQUESTS_CA_BUNDLE", "CURL_CA_BUNDLE")
 # Every variable dropped from the shell; with no prefix, every variable would be a setting.
 _DROPPED = FOREIGN_PREFIXES + ((PREFIX.upper(),) if PREFIX else ())
 
@@ -41,6 +44,8 @@ def _isolated_settings(tmp_path_factory: pytest.TempPathFactory) -> Iterator[Non
     - no `GROQ_*`, `OTEL_*` or `PHOENIX_*` variable from the shell, so a real key or exporter
       setting never reaches a test (a test sets made-up ones with monkeypatch); both are also
       dropped before collection, by `pytest_configure` above;
+    - no CA bundle of requests' from the shell (`FOREIGN_NAMES`), and `NETRC` naming an empty
+      file, so requests never opens the developer's `~/.netrc`;
     - a scratch var_dir, so no test opens the developer's var/.
     Add here any other variable a test must never inherit."""
     with pytest.MonkeyPatch.context() as patch:
@@ -50,6 +55,11 @@ def _isolated_settings(tmp_path_factory: pytest.TempPathFactory) -> Iterator[Non
                 patch.delenv(name)
         for name in [n for n in os.environ if n.upper().startswith(FOREIGN_PREFIXES)]:
             patch.delenv(name)
+        for name in [n for n in os.environ if n.upper() in FOREIGN_NAMES]:
+            patch.delenv(name)
+        netrc = tmp_path_factory.mktemp("netrc") / "netrc"
+        netrc.write_text("", encoding="utf-8")
+        patch.setenv("NETRC", str(netrc))
         patch.setenv(VAR_DIR_VARIABLE, str(tmp_path_factory.mktemp("default-var")))
         get_settings.cache_clear()
         yield

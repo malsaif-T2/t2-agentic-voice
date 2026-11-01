@@ -7,13 +7,15 @@ from __future__ import annotations
 
 import json
 import re
+import warnings
 from pathlib import Path
 
 import pytest
 from ole5_voice.evals import history
 from ole5_voice.evals.history import append_line, line_of, read_history, render_history
-from ole5_voice.evals.runs import SCORECARD_FILE, HistoryLine, Metrics, Scorecard
-from ole5_voice.evals.scorecard import EvalDataError
+from ole5_voice.evals.runs import SCORECARD_FILE, HistoryLine, Metrics, RunInfo, Scorecard
+from ole5_voice.evals.scorecard import EvalDataError, write_scorecard
+from pydantic import ValidationError
 
 from scripts.check_docs import PLACEHOLDER, extract_links
 from tests.ole5_voice.evals import samples
@@ -76,6 +78,43 @@ def test_a_line_made_with_model_copy_is_checked_again_before_it_is_written(
     assert not path.exists()
 
 
+def test_a_wrongly_typed_value_made_with_model_copy_is_refused_unseen(
+    tmp_path: Path, capsys: pytest.CaptureFixture[str]
+) -> None:
+    """Serializing a field of the wrong type warns with the value (pydantic's
+    PydanticSerializationUnexpectedValue), which Python prints to stderr: the re-checks of the
+    history and of the scorecard serialize with the warning off, and still refuse the value."""
+    path, out = tmp_path / "history.jsonl", tmp_path / "run"
+    changes = ({"settings": {"groq.api_key": MADE_UP_KEY.encode()}}, {"cost_usd": MADE_UP_KEY})
+    run_changes = (changes[0], {"price_per_hour_usd": MADE_UP_KEY})
+    with warnings.catch_warnings(record=True) as caught:
+        warnings.simplefilter("always")
+        for change in changes:
+            with pytest.raises(EvalDataError):
+                append_line(_line().model_copy(update=change), path)
+        for change in run_changes:
+            with pytest.raises(EvalDataError):
+                write_scorecard(samples.run().model_copy(update=change), [], complete=True, out=out)
+    assert [str(w.message) for w in caught if MADE_UP_KEY in str(w.message)] == []
+    assert MADE_UP_KEY not in "".join(capsys.readouterr())
+    assert not path.exists() and not out.exists()
+
+
+def test_a_note_holding_an_install_placeholder_never_reaches_the_history(tmp_path: Path) -> None:
+    """The docs check reads `history.jsonl`, which is never edited: such a line would fail the
+    gate for good. A run refuses the note before it sends anything (`poe eval --note`)."""
+    placeholder = "{{" + "NAME" + "}}"  # written apart, or the docs check flags this file
+    with pytest.raises(ValidationError, match="install placeholder"):
+        _line(note=f"why {placeholder}")
+    with pytest.raises(ValidationError, match="install placeholder"):
+        RunInfo.model_validate(samples.run().model_dump() | {"note": placeholder})
+    path = tmp_path / "history.jsonl"
+    with pytest.raises(EvalDataError, match="install placeholder"):
+        append_line(_line().model_copy(update={"note": placeholder}), path)
+    assert not path.exists()
+    assert _line(note="{{ lower }} and {NAME}").note  # not a placeholder: kept
+
+
 def test_reading_names_the_bad_line_never_its_text(tmp_path: Path) -> None:
     path = tmp_path / "history.jsonl"
     leaked = samples.history_line().model_dump(mode="json") | {"settings": {"api_key": MADE_UP_KEY}}
@@ -103,7 +142,7 @@ def test_a_scorecard_gives_its_history_line() -> None:
     card = Scorecard(
         run=run, complete=False, totals=totals, breakdowns={"language": {"english": english}}
     )
-    line = line_of(card, items=3)
+    line = line_of(card, items=3, billed_seconds=50.0, cost_usd=50 / 3600 * 0.111)
     assert line.model_dump() == {
         "time": run.started_at,
         "commit": run.commit,
@@ -116,9 +155,9 @@ def test_a_scorecard_gives_its_history_line() -> None:
         "variants": 4,
         "accuracy": 2 / 3,
         "violations": 0,
-        "billed_seconds": 40.0,
+        "billed_seconds": 50.0,  # the run's spend, not its scored variants' 40 s
         "price_per_hour_usd": run.price_per_hour_usd,
-        "cost_usd": 40 / 3600 * 0.111,
+        "cost_usd": 50 / 3600 * 0.111,
         "latency_median_ms": 290.0,
         "breakdowns": {"language": {"english": 2 / 3}},
         "scorecard": SCORECARD_FILE,
@@ -167,11 +206,13 @@ def test_the_page_shows_the_spend_each_run_and_its_strata() -> None:
 
 def test_a_runs_own_text_is_escaped_so_it_renders_as_text(tmp_path: Path) -> None:
     """A note or setting holding Markdown never makes a link, an HTML tag, a placeholder the
-    docs check would flag, or a table cell of its own."""
+    docs check would flag, or a table cell of its own. (A note holding a placeholder is refused
+    before it is written: the test below.)"""
     placeholder = "{{" + "NAME" + "}}"  # written apart, or the docs check flags this file
-    note = f"see [the plan](missing.md) | <script>x</script> {placeholder} `c` *b*\nnext line"
-    assert PLACEHOLDER.search(note)  # unescaped, the docs check would flag it
-    line = _line(note=note, settings={"odd|name": "a [b](c.md)"}, model="m|odd")
+    note = "see [the plan](missing.md) | <script>x</script> `c` *b*\nnext line"
+    settings = {"odd|name": "a [b](c.md)", "other": placeholder}
+    assert PLACEHOLDER.search(placeholder)  # unescaped, the docs check would flag it
+    line = _line(note=note, settings=settings, model="m|odd")
     page = render_history([line])
     md = tmp_path / "docs" / "generated" / "eval-history.md"
     md.parent.mkdir(parents=True)

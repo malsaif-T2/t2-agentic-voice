@@ -12,7 +12,7 @@ from pathlib import Path
 import pytest
 from ole5_voice.evals import history, items, matcher, run_parts, scorecard, split
 from ole5_voice.evals.audio import sha256_of, write_wav
-from ole5_voice.evals.models import AudioRef, Item, Language, SplitFile, Variant
+from ole5_voice.evals.models import AudioRef, Confirmation, Item, Language, SplitFile, Variant
 from ole5_voice.evals.run_parts import (
     DATA,
     Choice,
@@ -78,6 +78,7 @@ class World:
         segments: int = 1,
         seconds: float = 1.0,
         alternatives: tuple[str, ...] = (),
+        confirmed: bool = True,  # each variant confirmed by the owner's listen, as a run needs
     ) -> Item:
         variants = tuple(
             Variant(
@@ -87,6 +88,7 @@ class World:
                 session="s1",
                 reference=text,
                 reference_source="script" if text else "none",
+                confirmations=(Confirmation(at=WHEN, review_pass=1),) if confirmed else (),
             )
             for n in range(1, takes + 1)
         )

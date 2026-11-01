@@ -1,6 +1,7 @@
 """Tests never touch the developer's machine state: their .env, this project's variables in
-their shell, a provider's or a tracing tool's variables (GROQ_*, OTEL_*, PHOENIX_*), and their
-var/ data. And no command writes to var/ when the var-dir setting names another folder."""
+their shell, a provider's or a tracing tool's variables (GROQ_*, OTEL_*, PHOENIX_*), requests'
+CA bundles and .netrc, and their var/ data. And no command writes to var/ when the var-dir
+setting names another folder."""
 
 from __future__ import annotations
 
@@ -17,6 +18,7 @@ ROOT = Path(__file__).resolve().parents[2]
 REPO_VAR = ROOT / "var"
 PREFIX = Settings.model_config.get("env_prefix", "")
 FOREIGN_PREFIXES = ("GROQ_", "OTEL_", "PHOENIX_")
+FOREIGN_NAMES = ("REQUESTS_CA_BUNDLE", "CURL_CA_BUNDLE")
 _HARD_CODED_VAR = re.compile(r"""ROOT\s*/\s*["']var["']""")
 FIX = "FIX: make the session fixture in tests/conftest.py isolate it again."
 
@@ -53,6 +55,14 @@ def test_no_provider_or_tracing_variable_comes_from_the_shell() -> None:
     assert inherited == [], f"Tests inherit {inherited}. {FIX}"
 
 
+def test_no_ca_bundle_or_netrc_of_the_developers_reaches_requests() -> None:
+    """requests would trust another CA bundle on a test's request to 127.0.0.1, and open
+    ~/.netrc for its login, whatever the exporter's session then drops."""
+    inherited = sorted(n for n in os.environ if n.upper() in FOREIGN_NAMES)
+    netrc = Path(os.environ["NETRC"])
+    assert (inherited, netrc.read_text(encoding="utf-8")) == ([], ""), f"Tests inherit. {FIX}"
+
+
 def test_a_shell_that_sets_this_projects_variables_changes_no_test() -> None:
     """The two checks above and the import-time one (test_import_isolation.py), in a child run
     whose shell sets a debug level, prod, a bad value, and a provider's, an exporter's and
@@ -68,6 +78,9 @@ def test_a_shell_that_sets_this_projects_variables_changes_no_test() -> None:
         "OTEL_EXPORTER_OTLP_HEADERS": "authorization=made-up",
         "OTEL_PYTHON_CONTEXT": "made_up_context",
         "PHOENIX_WORKING_DIR": "made-up-folder",
+        "REQUESTS_CA_BUNDLE": "made-up-ca-bundle.pem",
+        "CURL_CA_BUNDLE": "made-up-ca-bundle.pem",
+        "NETRC": "made-up-netrc",
     }
     here = Path(__file__).relative_to(ROOT).as_posix()
     targets = [
@@ -75,6 +88,7 @@ def test_a_shell_that_sets_this_projects_variables_changes_no_test() -> None:
         for test in (
             test_no_setting_comes_from_the_shell,
             test_no_provider_or_tracing_variable_comes_from_the_shell,
+            test_no_ca_bundle_or_netrc_of_the_developers_reaches_requests,
         )
     ] + [f"{Path(here).parent.as_posix()}/test_import_isolation.py"]
     done = subprocess.run(

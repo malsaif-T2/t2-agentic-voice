@@ -5,8 +5,10 @@ What counts as right lives here alone (evaluation.md, "The golden set"). The gui
 Q8). Its comparison rulings are the matcher's: both texts are normalized with the library's
 `normalize_arabic` and `normalize_digits`, and compared with every space removed, as the
 prototype's `norm` compared them (`Ole5-chatbot/scripts/stt_eval.py`, lines 1062-1066 and
-1085), so two words written as one still count. The matcher refuses a guide that lacks one of
-the rulings it applies. Its rulings on how references are written are the spellings
+1085), so two words written as one still count. Since a digit's name is read only as a whole
+word, the texts are also compared with their spaces removed before the digits are read: "some
+one" is "someone" there, as it was in the prototype's form. The matcher refuses a guide that
+lacks one of the rulings it applies. Its rulings on how references are written are the spellings
 `poe golden` checks every reference against.
 """
 
@@ -116,15 +118,28 @@ def normalize(text: str) -> str:
     return normalize_digits(normalize_arabic(text))
 
 
+def joined(text: str) -> str:
+    """`text` in its canonical Arabic form with every space removed, and only then its digits
+    read: the prototype's form (`stt_eval.py`, lines 1062-1066), but for a whole text that is
+    one digit's name. A digit name inside a word written in two ("some one", "five 7") or cut
+    by a format character stays part of the word, so spaces count for nothing (Q8)."""
+    return normalize_digits("".join(normalize_arabic(text).split()))
+
+
 class GuideMatcher:
     """The `Matcher` of a spelling guide: right when the output equals one reference after
-    normalization, both with every space removed."""
+    normalization, both with every space removed (`key`), or in their `joined` form."""
 
     def __init__(
-        self, rulings: Sequence[Ruling], *, normalize: Callable[[str], str] = normalize
+        self,
+        rulings: Sequence[Ruling],
+        *,
+        normalize: Callable[[str], str] = normalize,
+        joined: Callable[[str], str] | None = joined,
     ) -> None:
         self.rulings = tuple(rulings)
         self._normalize = normalize
+        self._joined = joined
 
     def key(self, text: str) -> str:
         """What the verdict compares: `text` normalized, with every space removed."""
@@ -134,17 +149,22 @@ class GuideMatcher:
         if isinstance(references, str):
             raise TypeError("references is a sequence of texts (the reference and alternatives)")
         heard = self.key(output)
-        return any(heard == self.key(reference) for reference in references)
+        if any(heard == self.key(reference) for reference in references):
+            return True
+        if self._joined is None:
+            return False
+        whole = self._joined(output)
+        return any(whole == self._joined(reference) for reference in references)
 
 
 def load_matcher(spelling: Path, *, normalize: Callable[[str], str] | None = None) -> GuideMatcher:
     """The matcher of the spelling guide in `spelling` (`evals/spelling.toml`); GuideError when
     the guide lacks one of `COMPARISON_RULINGS`. `normalize` stands in for the library's
-    normalizers, for a test."""
+    normalizers, for a test, which then compares by `key` alone."""
     guide = load_guide(spelling)
     rulings = [guide.ruling(ruling_id) for ruling_id in COMPARISON_RULINGS]
     if any(ruling.part != "comparison" for ruling in rulings):
         raise GuideError(f"{spelling.name}: {', '.join(COMPARISON_RULINGS)} rule on comparison")
     if normalize is None:
         return GuideMatcher(rulings)
-    return GuideMatcher(rulings, normalize=normalize)
+    return GuideMatcher(rulings, normalize=normalize, joined=None)

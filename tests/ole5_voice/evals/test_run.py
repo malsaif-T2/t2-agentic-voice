@@ -73,6 +73,7 @@ class Setup:
         argv += ["--note", "a made-up run", "--audio", f"owner={self.world.audio}"]
         if answerer == "groq":
             argv += ["--price-per-hour", "0.111", "--cap-usd", "1"]
+            argv += ["--model", "whisper-large-v3", "--timeout-s", "6"]
         return run.main([*argv, *extra], parts=self.parts())
 
     def results(self) -> tuple[VariantResult, ...]:

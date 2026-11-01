@@ -302,6 +302,16 @@ def test_a_held_out_scorecard_holding_a_variant_is_refused_unread(tmp_path: Path
     assert HEARD not in str(raised.value) and raised.value.__context__ is None
 
 
+def test_a_scorecard_listing_a_variant_twice_is_refused_as_it_is_read(tmp_path: Path) -> None:
+    """Pairing would keep the last copy silently, while the file's totals counted both."""
+    crafted = json.loads(_card([_result("i1", "v1", False)]).model_dump_json())
+    twice = [*crafted["variants"], _result("i1", "v1", True).model_dump(mode="json")]
+    (tmp_path / "card.json").write_text(json.dumps(crafted | {"variants": twice}), "utf-8")
+    with pytest.raises(EvalDataError, match="each variant once") as raised:
+        load_scorecard(tmp_path / "card.json")
+    assert HEARD not in str(raised.value)
+
+
 def test_eval_compare_prints_its_report_or_its_refusal(
     tmp_path: Path, capsys: pytest.CaptureFixture[str]
 ) -> None:

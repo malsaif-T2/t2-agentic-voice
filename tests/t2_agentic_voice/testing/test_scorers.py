@@ -65,6 +65,13 @@ def test_a_word_split_differently_costs_words_but_no_character() -> None:
     assert wer(["لو سمحت"], ["لوسمحت"]) == 1.0
 
 
+def test_a_format_character_inside_a_word_splits_it_for_wer_alone() -> None:
+    # Pinned as the prototype's normalizer has it (TD-008): a zero-width non-joiner reads as a
+    # space, so WER counts a substitution and an insertion where CER counts nothing.
+    split = "لو" + chr(0x200C) + "سمحت"
+    assert (wer(["لوسمحت"], [split]), cer(["لوسمحت"], [split])) == (2.0, 0.0)
+
+
 def test_cer_counts_no_space_as_a_character() -> None:
     assert cer(["a b"], ["ab"]) == 0.0
     assert cer(["ab"], ["a b c"]) == 1 / 2  # one inserted c over the 2 characters

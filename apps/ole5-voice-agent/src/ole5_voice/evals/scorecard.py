@@ -7,10 +7,11 @@ is not empty after normalization (errors over all their references' length, by t
 scorers); term recall pools each result's `terms`, ID recall the results of the ticket kind; text
 from silence is the share of the empty-reference variants with any output, and its characters;
 latency is per answered request (median and 90th percentile); the cost is the billed seconds at
-the run's price per hour. Every rate leaves out the infrastructure failures (evaluation.md,
-"Judging a change") and a run's unjudged variants, and is None where nothing counts. No canary
-applies to speech-to-text, so violations are 0, with that reason. A held-out run's scorecard
-holds aggregates only.
+the run's price per hour, over the requests of the variants scored (the run's whole spend, its
+smoke test's request included, is its history line's). Every rate leaves out the infrastructure
+failures (evaluation.md, "Judging a change") and a run's unjudged variants, and is None where
+nothing counts. No canary applies to speech-to-text, so violations are 0, with that reason. A
+held-out run's scorecard holds aggregates only.
 """
 
 from __future__ import annotations
@@ -106,7 +107,8 @@ def write_scorecard(
 ) -> Scorecard:
     """The scorecard of `results` (a `ScorecardWriter`), also written as `out / SCORECARD_FILE`,
     which replaces an earlier one of the same run whole. The run and every result are checked
-    again first, so one made with `model_copy` is refused as reading would refuse it."""
+    again first, so one made with `model_copy` is refused as reading would refuse it; they are
+    serialized for it with pydantic's warnings off, whose text would quote a refused value."""
     run, checked = _checked(run, results)
     scored = [_score(result, scorers, normalize) for result in checked]
     price = run.price_per_hour_usd
@@ -131,8 +133,10 @@ def write_scorecard(
 
 def _checked(run: RunInfo, results: Sequence[VariantResult]) -> tuple[RunInfo, list[VariantResult]]:
     try:
-        run = RunInfo.model_validate_json(run.model_dump_json())
-        checked = [VariantResult.model_validate_json(r.model_dump_json()) for r in results]
+        run = RunInfo.model_validate_json(run.model_dump_json(warnings=False))
+        checked = [
+            VariantResult.model_validate_json(r.model_dump_json(warnings=False)) for r in results
+        ]
     except ValidationError as error:
         problem = first_problem(error)
     else:

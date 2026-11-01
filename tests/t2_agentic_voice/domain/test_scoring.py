@@ -132,7 +132,9 @@ def test_a_reference_with_no_digit_expects_no_id() -> None:
         ("شكرا", 4),
         ("ش\u064fك\u0652ر\u064bا.", 4),  # diacritics and punctuation are not text
         ("Thank you.", 8),  # spaces are not text either
-        ("five", 1),  # a digit's name is its digit
+        ("five", 4),  # a digit's name counts its letters, as produced
+        ("one two three", 11),
+        ("واحد", 4),
         ("١٢٣", 3),
     ],
 )

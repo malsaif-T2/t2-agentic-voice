@@ -37,14 +37,14 @@ module's names.
 
 | Name | Module | What it gives |
 | --- | --- | --- |
-| `normalize_arabic(text)` | `languages` | `text` in one canonical form for comparison: no diacritics and no tatweel; the alef, hamza, teh marbuta and alef maksura forms folded; Latin letters in lower case; punctuation dropped; runs of space made one |
+| `normalize_arabic(text)` | `languages` | `text` in one canonical form for comparison: no diacritics and no tatweel; the alef, hamza, teh marbuta and alef maksura forms folded; Latin letters in lower case; punctuation, symbols, emoji and an underscore read as spaces (`Outlook.PDF` is two words); runs of space made one |
 | `normalize_digits(text)` | `languages` | `text` with every digit as 0 to 9: Arabic-Indic and Persian digits, and digits spelled out one word each, in Arabic or in English; a run of single digits with only spaces between them becomes one number (`4 5 2 1` reads `4521`) |
-| `spelling_issues(reference, rules)` | `languages` | A `SpellingIssue` (`rule`, `found`, `write`) for each place `reference` holds a spelling that one of your `SpellingRule`s avoids, as a whole word or phrase, both compared after `normalize_arabic`; empty when it follows them all |
+| `spelling_issues(reference, rules)` | `languages` | A `SpellingIssue` (`rule`, `found`, `write`) for each spelling one of your `SpellingRule`s avoids that `reference` holds, however often, as a whole word or phrase, both compared after `normalize_arabic` (so a spelling with an Arabic prefix written onto it, such as ال or و, is not found); empty when it follows them all |
 | `wer(references, outputs)` | `evals` | The word error rate, pair by pair and pooled: substitutions, deletions and insertions over all the references' words, both sides normalized |
 | `cer(references, outputs)` | `evals` | The character error rate, pooled as `wer` is, with every space removed first, so a word split differently is not counted twice |
 | `term_recall(reference, output, terms)` | `evals` | A `Recall`: of the `terms` (your product terms) that `reference` holds, how many `output` holds too, each as a whole word or phrase, both texts normalized |
 | `id_recall(reference, output)` | `evals` | A `Recall`: of the IDs `reference` holds (its runs of digits, after `normalize_digits`), how many `output` holds too |
-| `silence_output(output)` | `evals` | How much text a provider produced where nothing was said (silence, a noise, or only the agent's own echo): the characters of `output` after normalization, spaces removed; 0 when it produced none |
+| `silence_output(output)` | `evals` | How much text a provider produced where nothing was said (silence, a noise, or only the agent's own echo): the characters of `output` after `normalize_arabic`, spaces removed, so a digit's name counts its letters; 0 when it produced none |
 | `sign_test(better, worse)` | `evals` | The two-sided p-value of `better` items better and `worse` items worse, unchanged items left out (below) |
 
 Using them:
@@ -59,8 +59,8 @@ Using them:
   bare `str` where a sequence belongs, which would otherwise be scored letter by letter.
 - **What counts as right is yours.** The helpers measure; your matcher rules which outputs are
   right. Ole5's counts a variant right when its output, normalized and with every space
-  removed, equals its reference, normalized the same way (plan 002), and reports WER and CER
-  beside that verdict.
+  removed, equals its reference, normalized the same way, or does so with its spaces removed
+  before its digits are read (plan 002), and reports WER and CER beside that verdict.
 
 ## Recording your own set, with consent
 

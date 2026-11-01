@@ -50,7 +50,7 @@ RETRY_PAUSE_S = 3.0  # the pause after another failure that may pass (stt_eval.p
 
 log = get_logger(__name__)
 
-Clock = Callable[[], float]  # seconds, from any start: `time.monotonic`
+Clock = Callable[[], float]  # seconds, from any start: `time.perf_counter`, monotonic and fine
 Sleep = Callable[[float], Awaitable[None]]
 _Send = Callable[[AudioClip, str | None], Awaitable[Transcript]]
 
@@ -355,7 +355,7 @@ def make_answerer(
     reuse: Mapping[Variant, str] | None = None,
     tracing: Tracing | None = None,
     run_name: str = "run",
-    clock: Clock = time.monotonic,
+    clock: Clock = time.perf_counter,
     sleep: Sleep = asyncio.sleep,
 ) -> RunAnswerer:
     """The answerer called `name`, built from `settings`: `groq` asks `stt`, by default the

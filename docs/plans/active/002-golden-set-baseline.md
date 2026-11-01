@@ -292,7 +292,11 @@ branch, `plan-002-integration` ([plans README](../README.md), "Parallel tracks")
     reference --split dev` and `--split held-out` over the whole committed set each score 100%
     (a run covers one split: the decision log). The agent writes
     `tests/ole5_voice/evals/test_reference_answerer.py`, which does the same inside
-    `poe check`.
+    `poe check`. Since the review of the merged tracks a run scores only the variants the owner
+    has confirmed, as `poe golden` accepts them, and none is confirmed before step 18: the test
+    gives every committed variant a made-up confirmation, and the command-line run, refused until
+    the owner's confirmations are imported, is made again at step 19 (the progress log's
+    deviation).
 16. **The whole-plan review of the code**, by every reviewer, before the owner records. Then
     `plan-002-integration` merges into the main branch, with the full gate, so that the owner
     records from the main checkout ("What the owner does", step 4); from here, this plan's
@@ -308,7 +312,8 @@ branch, `plan-002-integration` ([plans README](../README.md), "Parallel tracks")
 19. With Q10 settled, the agent imports the new takes' manifests and hashes (no audio)
     into `apps/ole5-voice-agent/evals/`, labels the talk-over items' dialect as the owner ruled
     (Q7), runs `poe golden --audio talkover=<path> --audio owner=<path>` to validate and freeze,
-    commits the split (`split --check`) and the strata table, gates and commits. The item set is
+    commits the split (`split --check`) and the strata table, gates and commits, and runs step
+    15's two reference runs on the command line, now on the confirmed set. The item set is
     fixed from here until the close. Then, optionally (the agent's proposal), a dry run with no
     spend: a `prototype-cache` answerer replays the prototype's stored Groq answers
     (`voice-lab/eval/_cache/calls.jsonl`, looked up by the key that
@@ -536,7 +541,7 @@ run, [WORKING-RULES.md](../../../WORKING-RULES.md), "Measurement runs")
   decision's substance, the registered measurement or an owner's ruling. All 25 are fixed in one
   commit (`Plan 002: review fixes, Block 0`), each choice a fix makes in the decision log, and
   what belongs to a later track is in that track's lines under `## Tracks`, with the debt left
-  as TD-002 to TD-007:
+  as the `GROQ_CUSTOM_HEADERS` row (paid since) and TD-003 to TD-007:
   - Harness: `tests/conftest.py` drops the shell's `GROQ_*`, `OTEL_*`, `PHOENIX_*` and `T2V_*`
     variables before collection, since `groq` and `opentelemetry.context` read `GROQ_LOG` and
     `OTEL_PYTHON_CONTEXT` on import (`tests/harness/test_import_isolation.py`, also in the child
@@ -580,26 +585,27 @@ run, [WORKING-RULES.md](../../../WORKING-RULES.md), "Measurement runs")
   - `Settings.from_env` refuses an `env_file` that is no file, with a test of a missing file and
     of a folder (`tests/t2_agentic_voice/core/test_config.py`), since pydantic-settings skips a
     missing one silently.
-  - Track B's hook also sets `Authorization` to the settings' key after dropping the headers
-    outside its allow-list, and its test uses a lowercase `authorization` line: passing
-    `default_headers` alone left a lowercase line's value in the request beside the key (a probe
-    of groq 1.7.0, made-up keys). The groq entry of the decision log and TD-002 say so.
+  - Track B's hook also sets `Authorization` to the settings' key after dropping the headers outside
+    its allow-list, and its test uses a lowercase `authorization` line: passing `default_headers`
+    alone left a lowercase line's value in the request beside the key (a probe of groq 1.7.0,
+    made-up keys). The groq entry of the decision log and its debt row (paid since) say so.
   - D-023's Proposed bullet names `requests` and its `[[owners]]` row; D-020's says ARCH-WORDS
     reads the text of the listed types and the path of every file below `[package] root`
     (step 5 points to it).
   - TD-004 names no track; the OpenTelemetry entry of the decision log says the review wrote the
-    debt rows as TD-002 to TD-007; the reference answerer's held-out runs are outside Q18's cap
-    and append no history line; `## Tracks` lists Block 0's test files, which no track edits.
+    debt rows as the `GROQ_CUSTOM_HEADERS` row (paid since) and TD-003 to TD-007; the reference
+    answerer's held-out runs are outside Q18's cap and append no history line; `## Tracks` lists
+    Block 0's test files, which no track edits.
 
   `uv run poe check` passes: 349 tests, 100% coverage, mypy strict on 126 files, `uv lock
   --check` clean. Next, the merge into `plan-002-integration`, by the integrating session.
 - 2026-11-01: Block 0 is merged into `plan-002-integration` (`Plan 002: merge Block 0 into
-  plan-002-integration`). In all, 44 findings were raised: 38 held and are fixed, 6 were
-  refuted by the agent that checked them, and none goes to the owner; the debt they left is
-  TD-002 to TD-007. The second round's check found one slip, the entry above naming the first
-  round's commit as its own, corrected here. After the merge `uv run poe check` passes (349
-  tests, 100% coverage, mypy strict on 126 files) and `uv lock --check` is clean. Next, Tracks
-  A to H, each in its own worktree cut from `plan-002-integration`.
+  plan-002-integration`). In all, 44 findings were raised: 38 held and are fixed, 6 were refuted by
+  the agent that checked them, and none goes to the owner; the debt they left is the
+  `GROQ_CUSTOM_HEADERS` row (paid since) and TD-003 to TD-007. The second round's check found one
+  slip, the entry above naming the first round's commit as its own, corrected here. After the merge
+  `uv run poe check` passes (349 tests, 100% coverage, mypy strict on 126 files) and `uv lock
+  --check` is clean. Next, Tracks A to H, each in its own worktree cut from `plan-002-integration`.
 - 2026-11-01: Track A, text and scorers, is merged into `plan-002-integration` (`Plan 002: merge
   track A`), the first track to merge. It was built on `plan-002-track-a`, cut from 44aa043, in four
   commits, each gated on its own tree: 70a2490 (the Arabic normalizer and digit normalization),
@@ -648,11 +654,14 @@ run, [WORKING-RULES.md](../../../WORKING-RULES.md), "Measurement runs")
     reference refused (ValueError); a bare str for `references`, `outputs` or `terms` refused
     (TypeError); and the sign test at b = 6, w = 0 (2/64 = 0.03125), b = 5, w = 0 (0.0625) and b = w
     (1). Adversarial tests: invisible format characters (bidirectional marks, zero-width characters,
-    a byte-order mark) never change a verdict; an avoided spelling is text, never a pattern;
-    malformed counts and inputs are refused.
-  - The only Arabic string constants Track A adds to `packages/` are the eleven digit names in
-    `domain/text/digits.py`, as `\u` escapes; its docstrings and messages hold none of okay, stop,
-    wait or yeah, and no Arabic.
+    a byte-order mark) never change a verdict (one inside a word holding a digit's name did, until
+    the review of the merged tracks gave the matcher the texts' joined form); an avoided spelling is
+    text, never a pattern; malformed counts and inputs are refused.
+  - The Arabic string constants Track A adds to `packages/` are the eleven digit names in
+    `domain/text/digits.py`, and the marks class and the single letters of the fold table in
+    `domain/text/arabic.py`, all as `\u` escapes (Track D's test, merged after it, finds no
+    reference among them; corrected by the review of the merged tracks); its docstrings and messages
+    hold none of okay, stop, wait or yeah, and no Arabic.
   - Its debt rows are TD-008 to TD-010 (the normalizer's missing Unicode composition step, term
     recall on a Latin term with an Arabic prefix, and the digit names left out). It changed no row,
     asked for no change to Block 0 and left no question for the owner.
@@ -674,10 +683,11 @@ run, [WORKING-RULES.md](../../../WORKING-RULES.md), "Measurement runs")
   design's 6.1 `DataFlow`. `from_settings` raises the `ConfigurationError` naming
   `T2V_GROQ__API_KEY` when no key is set (a blank one included; `GROQ_API_KEY` is never read). The
   tests check the request against Block 0's baseline (not edited), the result, a cancel on a real
-  127.0.0.1 connection (under 50 ms, no task left, the connection closed), 30 failure cases each
+  127.0.0.1 connection (under 50 ms, no task left, the connection closed), 27 failure cases each
   asked once, the key in no repr, error, traceback, log or captured output while the fake server
-  echoes the request's headers, `GROQ_API_KEY`, `GROQ_BASE_URL` and five `GROQ_CUSTOM_HEADERS`
-  variants changing nothing, and no groq type in a public signature. From the track's report:
+  echoes the request's headers, `GROQ_API_KEY` and `GROQ_BASE_URL` together and four
+  `GROQ_CUSTOM_HEADERS` variants changing nothing (counts corrected by the review of the merged
+  tracks), and no groq type in a public signature. From the track's report:
   - Prototype sources, read as text, never run (D-010). `Ole5-chatbot/src/ole5_chat/voice/stt.py`,
     lines 221-252, the call: the file as ("speech.wav", wav); `language`; `response_format`
     `verbose_json`; `temperature` 0; `prompt` only when given; the text stripped; `_by_length`, the
@@ -728,10 +738,11 @@ run, [WORKING-RULES.md](../../../WORKING-RULES.md), "Measurement runs")
     refuses invalid values with a `ConfigurationError` naming each setting; the plan allowed one
     keyword argument for the fake transport and gave the constructor no checks.
   - Its debt rows are TD-011 (the form of Groq's `language` when none is named) and TD-012 (the
-    SDK's platform probe on a process's first request). It narrows TD-002 to the multipart boundary
-    a `content-type` line can still choose, rewrites TD-003 with what its child-process tests
-    confirm, and leaves TD-004 unchanged (the adapter's httpx client keeps `trust_env` on, as Block
-    0's second review ruled). It left no question for the owner.
+    SDK's platform probe on a process's first request). It narrows the `GROQ_CUSTOM_HEADERS` row
+    (paid since) to the multipart boundary a `content-type` line can still choose, rewrites TD-003
+    with what its child-process tests confirm, and leaves TD-004 unchanged (the adapter's httpx
+    client keeps `trust_env` on, as Block 0's second review ruled). It left no question for the
+    owner.
   - Not done: not checked against Groq itself (no network): the form of `verbose_json`'s `language`
     (a code or a name), whether Groq sends `retry-after` as seconds or as an HTTP date, and whether
     Groq accepts a request without the X-Stainless headers the hook drops. The first live smoke
@@ -751,17 +762,18 @@ run, [WORKING-RULES.md](../../../WORKING-RULES.md), "Measurement runs")
   on `plan-002-track-c`, cut from 44aa043: ddb84bf (the Redactor), 83b1a30 (the tracing helpers),
   b820fb6 (no header variable quoted in a log line) and bf1e5ef (a `.netrc` login reaches no export
   request). Block 0's stubs `core/redaction.py` and `core/tracing.py` are real code, and their stub
-  tests are replaced by 9 tests in `tests/t2_agentic_voice/core/test_redaction.py` and 13 in
-  `test_tracing.py` (parametrized cases counted once). The `Redactor` finds every match of every
-  pattern in the original text and turns each stretch any pattern matched into one marker; it
-  refuses a bare str, and its repr shows no pattern. `Tracing` uses the team's `TracerProvider` if
-  one is given, otherwise a private one built from `tracing.endpoint`, otherwise it is off, and
-  never sets a provider globally. `turn()` is a CHAIN root span carrying `session.id`;
-  `speech_to_text(parent, ...)` is an LLM span carrying `llm.model_name`, `stt.audio_seconds` and
-  `stt.language_sent`, and its `record()` adds `output.value` (only when `include_transcripts` is
-  on), `stt.language` and `stt.billed_seconds`. Every text value, what a team sets on the yielded
-  turn span included, goes through the `Redactor`; bytes and mappings are dropped; an exception is
-  recorded by its type only. From the track's report:
+  tests are replaced by 9 tests in `tests/t2_agentic_voice/core/test_redaction.py` and 11 in
+  `test_tracing.py` (13 with its parametrized cases; corrected by the review of the merged tracks).
+  The `Redactor` finds every match of every pattern in the original text and turns each stretch any
+  pattern matched into one marker; it refuses a bare str, and its repr shows no pattern. `Tracing`
+  uses the team's `TracerProvider` if one is given, otherwise a private one built from
+  `tracing.endpoint`, otherwise it is off, and never sets a provider globally. `turn()` is a CHAIN
+  root span carrying `session.id`; `speech_to_text(parent, ...)` is an LLM span carrying
+  `llm.model_name`, `stt.audio_seconds` and `stt.language_sent`, and its `record()` adds
+  `output.value` (only when `include_transcripts` is on), `stt.language` and `stt.billed_seconds`.
+  Every text value, what a team sets on the yielded turn span included, goes through the `Redactor`;
+  bytes and mappings are dropped; an exception is recorded by its type only. From the track's
+  report:
   - No prototype file was ported (its May read names none): it was built from the design's 10.1,
     SECURITY.md's invariants 5 and 8, and the installed packages read as text: OpenTelemetry 1.45.2
     (the API, the SDK and the HTTP exporter, with the indirect
@@ -821,7 +833,8 @@ run, [WORKING-RULES.md](../../../WORKING-RULES.md), "Measurement runs")
     processor counts no dropped span unless `OTEL_PYTHON_SDK_INTERNAL_METRICS_ENABLED` turns its
     metrics on, and its `shutdown` passes no timeout, so a hung exporter holds it for 30 s. The four
     `OTEL_BSP_*` variables are now never read, which the tests check.
-  - Its debt rows are TD-013 (`core/tracing.py` and its test file at the size cap), TD-014 (the
+  - Its debt rows are the size-cap row of `core/tracing.py` and its test file (paid by the
+    review of the merged tracks), TD-014 (the
     worker thread not restarted in a forked child) and TD-015 (no setting for a CA file, a client
     certificate or an export header). It narrows TD-005 to `OTEL_SDK_DISABLED` and
     `OTEL_PYTHON_CONTEXT`, and TD-004 by its `.netrc` part. It asked for no change to Block 0.
@@ -969,12 +982,13 @@ run, [WORKING-RULES.md](../../../WORKING-RULES.md), "Measurement runs")
     rates to 4 decimals and counts as whole numbers; on the history page, accuracy as a percentage
     with one decimal and cost to $0.0001.
   - Its hand checks: `test_every_metric_is_recomputed_by_hand` recomputes all 15 numbers (cost from
-    the billed seconds) for the totals and all 12 stratum values of a made-up dev run of 8 results
+    the billed seconds) for the totals and all 11 stratum values of a made-up dev run of 8 results
     across 4 languages, 3 devices and 3 kinds, one provider failure, two empty references and two
     ticket numbers among them (for example 3 right of 7 judged, latency median 290 ms and p90 314
-    ms, 72.5 billed seconds). The pooled WER and CER arguments are checked call by call, the window
-    sums for 5 window groups, and the sign-test counts against an oracle written from
-    evaluation.md's formula (6 better and 0 worse gives 2/64; 5 and 0 gives 0.0625).
+    ms, 72.5 billed seconds). The pooled WER and CER arguments are checked for the totals, English,
+    mixed and dev pools, and the rest by their call count (both corrected by the review of the
+    merged tracks), the window sums for 5 window groups, and the sign-test counts against an oracle
+    written from evaluation.md's formula (6 better and 0 worse gives 2/64; 5 and 0 gives 0.0625).
   - Two tests run the library's own defaults on cases worked by hand: the scorers (WER 1/5 and CER
     3/22, with spaces removed) and the sign test (six items better and none worse gives p = 0.0312).
     They skipped on the track's branch while Track A's stubs raised NotImplementedError; Track A
@@ -1159,7 +1173,8 @@ run, [WORKING-RULES.md](../../../WORKING-RULES.md), "Measurement runs")
     from every route. In the tree a made-up `.env` sits in the checkout above `--out`
     (`var/golden-audio/../../.env`), in the old repository's folder, in each served folder and in
     every folder above them; it is never read, through a folder link (a junction on Windows), a file
-    link (skipped on this account) or a hard link. 92 tests in all.
+    link (skipped on this account) or a hard link. 97 tests in all, 28 test functions (corrected
+    by the review of the merged tracks).
   - Its check in a browser, partial: the page was loaded once in the browser pane, with a scratch
     `script.toml` and `--out` in the agent's scratch folder and the lab's replies read only, nothing
     recorded or submitted. It rendered the script from `api/state` with no console error (the
@@ -1274,6 +1289,79 @@ run, [WORKING-RULES.md](../../../WORKING-RULES.md), "Measurement runs")
   clean. All eight tracks are merged into `plan-002-integration`. Next: the one review of the merged
   code by three concerns, its fix round and check (step 16, as the owner chose), and step 15's
   `test_reference_answerer.py`.
+- 2026-11-01: Review fixes, the merged tracks (`Plan 002: review fixes, the merged tracks`), the
+  one review of the merged code the owner chose ("Yes, go lighter"), which stands as step 16's
+  review of the code before the main branch. Three agents reviewed `plan-002-integration` at
+  5791767 by concern: security; measurement; harness and faithfulness. They raised 43 findings.
+  The 13 high and medium ones (3 high, 10 medium) and 4 low ones were checked by an agent told to
+  refute them: all 17 held, none was refuted. Three findings were raised by two or three reviewers
+  (the owner's commands, the unchecked variants, the multipart boundary), so the 17 come to 13
+  distinct defects. 16 are fixed here; one, on ID recall, goes to the owner (below). The other 26
+  low findings, unverified, were each checked against the code here: all 26 are real; 22 are
+  fixed, 2 in part with the rest as debt rows, 1 is a debt row only, and 1 goes to the owner. The
+  fixes, each with its tests (a failing test first for each bug, adversarial ones for the security
+  fixes) and each choice in the decision log:
+  - The owner's recording and review commands ("What the owner does", steps 4 and 5) held control
+    characters where Track G's fix wrote backslashes; they are written with forward slashes, and a
+    docs rule, DOC-CONTROL, now refuses a control character in a doc (the byte scan of the merged
+    plan gives its lines 2916, 2930 and 2931).
+  - `poe eval` scores only the variants the owner has checked, as `poe golden` accepts them, and
+    logs how many it left out as a count (`run_parts.load_plan`). Step 15's
+    `tests/ole5_voice/evals/test_reference_answerer.py` is written: the reference answerer over
+    each split of the committed set, with made-up confirmations, scores 84 of 84 dev and 36 of 36
+    held-out variants right, inside `poe check`.
+  - A `groq` run names `--model` and `--timeout-s`, and its base URL is `--base-url` or the SDK's
+    own, whatever the environment holds; the runner times requests with `time.perf_counter`, since
+    `time.monotonic` moves in 15.6 ms steps on this machine; a run's note may hold no install
+    placeholder; `history.line_of` is the one definition of a history line, with the run's spend.
+  - The matcher also counts a variant right on the texts' joined form (spaces removed before the
+    digits are read), so "some one" is "someone" again, as Q8 rules; text from silence counts the
+    letters of a digit's name; `normalize_digits` reads a vowelled digit name on its own.
+  - `GroqSTT` cuts every body with its own random boundary and refuses one cut by a
+    `GROQ_CUSTOM_HEADERS` content-type line, so audio can add no form field; its constructor
+    validates through core's `GroqSettings` and `SttSettings`, so it refuses what the settings
+    refuse, with their messages.
+  - The OTLP exporter's session replaces the headers before requests checks them, so a `%0A` in
+    `OTEL_EXPORTER_OTLP_HEADERS` no longer puts a token in an ERROR line and drops every batch; the
+    private provider moved to `core/tracing_export.py`, with its tests in `test_tracing_export.py`
+    (now also the 1 s delay, the 2 s export timeout, a turn's empty parent context and all eight
+    limit variables); attribute keys are redacted too.
+  - The re-checks of a scorecard and a history line serialize with pydantic's warnings off, whose
+    text quoted a refused value on stderr; a scorecard listing a variant twice is refused as it is
+    read; the suite drops requests' CA bundle variables and gives requests an empty `.netrc`.
+  - Corrected in place, each marked so: Track A's lines on format characters, its Arabic
+    constants and a lone digit name; Track B's counts (27 failure cases, four `GROQ_CUSTOM_HEADERS`
+    variants); Track C's (11 test functions); Track F's (11 stratum values, the WER and CER calls
+    checked) and its decision line on its errors; Track G's (97 tests, 28 functions); the guide's
+    rows for `normalize_arabic`, `spelling_issues` and `silence_output`; the citations of the two
+    rows paid.
+  - The registration gains its first three amendments, dated and before any run: the arms' command
+    lines name `--model` and `--timeout-s 6` (values unchanged); the verdict's joined form, the
+    characters of text from silence and the definition of latency; and that a run scores the
+    checked variants only.
+  - Deviation: step 15's command-line runs on the committed set are now refused ("the run has no
+    variant the owner has checked") until the owner's confirmations are imported, so they are made
+    again at step 19 (its text says so); the integrator's check after Track E's merge scored every
+    committed variant, unconfirmed ones included.
+  - Debt: the `GROQ_CUSTOM_HEADERS` row (the multipart boundary) and the size-cap row of
+    `core/tracing.py` and its test file are paid and removed; TD-004 gains the Windows registry
+    proxy, TD-005 the fork-time read of `OTEL_EXPERIMENTAL_RESOURCE_DETECTORS` and the corrected
+    header sentence, TD-008 the format characters that raise WER (pinned by a test), and TD-014 the
+    queue's new place. New rows: TD-025 (`spelling_issues` misses an avoided spelling with an Arabic
+    prefix; the guide says so), TD-026 (`eval-compare` refuses no other differing setting) and
+    TD-027 (httpx imported but not declared, which needs a `uv add` this round may not run).
+  - To the owner: (1) When the speech-to-text writes a ticket number in pairs, for example "48 21"
+    or "48-21" for 4821, should ID recall count the number as heard? The verdict already counts it
+    right, but Track A's rule treats "45 21" as two numbers, so ID recall counts it as missed. And
+    may the thousands-separator case ("4,821", «٤٬٨٢١»), which the checker proposed fixing now, be
+    fixed as proposed? (2) A held-out scorecard's breakdown value or window group of one item (the
+    committed split has held-out `mixed`, `confirmation` and `short_request` strata of one item
+    each, and the finding counts 7 of 9 held-out window groups so) publishes that item's accuracy in
+    the committed history: should such groups be pooled or left out below a registered size, say 3
+    items, in a dated amendment before H1?
+  - `uv run --offline poe check` passes: 1176 tests and 1 skipped (the symbolic-link case), 100%
+    coverage (3471 statements), mypy strict on 143 files, arch and docs (25 files) clean. Next:
+    the owner's answers above and step 16's merge into the main branch.
 
 ## Decision log
 
@@ -1475,19 +1563,19 @@ All entries are the agent's choices of 2026-11-01, with the agent's reasons.
     (`opentelemetry/sdk/_configuration`).
 
   Track C keeps out each one of the second group it can, and narrows TD-005 to the rest in its
-  report. Block 0's review wrote the debt rows it found as TD-002 to TD-007 (no other session
-  had taken a number: the main branch's `docs/plans/tech-debt.md` ends at TD-001); the
-  integrator keeps those numbers at the merge, or renumbers them and every citation in this plan
-  in the same commit (step 14).
+  report. Block 0's review wrote the debt rows it found as the `GROQ_CUSTOM_HEADERS` row (paid
+  since) and TD-003 to TD-007 (no other session had taken a number: the main branch's
+  `docs/plans/tech-debt.md` ends at TD-001); the integrator keeps those numbers at the merge, or
+  renumbers them and every citation in this plan in the same commit (step 14).
 - 2026-11-01: Step 2 read the installed groq 1.7.0 as text for every `GROQ_*` variable it reads,
   the counterpart of the list above; Track B works from it (added in Block 0's review).
   - **Kept out by passing a value:** `GROQ_API_KEY` and `GROQ_BASE_URL` (`groq/_client.py`,
     lines 80-91 and 293-304).
   - **Read whatever is passed:** `GROQ_CUSTOM_HEADERS`, on every client built (lines 93-100 and
     306-313), whose headers sit under any `default_headers` given but over the `Authorization`
-    header the SDK builds from the key (`groq/_base_client.py`, lines 672-680), so a value
-    naming `Authorization` replaces the key, and any other header it names goes with every
-    request (TD-002); and `GROQ_LOG`, read when `groq` is imported (`groq/_utils/_logs.py`,
+    header the SDK builds from the key (`groq/_base_client.py`, lines 672-680), so a value naming
+    `Authorization` replaces the key, and any other header it names goes with every request (its
+    debt row, paid since); and `GROQ_LOG`, read when `groq` is imported (`groq/_utils/_logs.py`,
     line 17, from `groq/__init__.py`, line 79), which calls `logging.basicConfig` and sets the
     `groq` and `httpx` loggers to DEBUG or INFO, and at DEBUG logs the request's options, audio
     included (`_base_client.py`, lines 483-496) (TD-003).
@@ -1503,7 +1591,7 @@ All entries are the agent's choices of 2026-11-01, with the agent's reasons.
   value, the key (the same probe). A hook keeps it out, so this is not left as debt. `GROQ_LOG`
   is read on import, so the tests drop it before collection (`tests/conftest.py`), and Track B
   tests it in a child process that imports `t2_agentic_voice.groq`; what it cannot keep out it
-  reports, narrowing TD-002 and TD-003.
+  reports, narrowing the `GROQ_CUSTOM_HEADERS` row (paid since) and TD-003.
 - 2026-11-01: A facade's module file is checked when `harness.toml` is loaded, as a
   HARNESS-CONFIG problem, like the rest of `[package]`; so every check, not only `poe arch`,
   refuses a facade with no module. The agent's choice: the plan names `harness_config.py` as
@@ -1681,9 +1769,9 @@ All entries are the agent's choices of 2026-11-01, with the agent's reasons.
     asks for `trust_env=False`, and turning off the proxy variables may break a run on a network
     that needs a proxy, so it comes with a proxy setting or not at all. The lines of Tracks B
     and C are unchanged.
-  - The debt rows keep the numbers the first fixes gave them, TD-002 to TD-007, since the main
-    branch's tracker ends at TD-001; step 14's rule, that the integrator numbers a track's rows,
-    still holds for the tracks.
+  - The debt rows keep the numbers the first fixes gave them, the `GROQ_CUSTOM_HEADERS` row (paid
+    since) and TD-003 to TD-007, since the main branch's tracker ends at TD-001; step 14's rule,
+    that the integrator numbers a track's rows, still holds for the tracks.
   - `## Tracks` names Block 0's test files one by one, the ones the first fixes added
     (`test_runs.py`, `test_takes.py`, `tests/harness/test_import_isolation.py`) with the rest,
     so a track that needs one changed asks the integrator, as for `models.py`.
@@ -1706,7 +1794,10 @@ All entries are the agent's choices of 2026-11-01, with the agent's reasons.
   is a number said as a number, not digit by digit. The agent's choice.
 - 2026-11-01: Track A: a digit name on its own becomes its digit too ("one moment" reads "1
   moment"), on both sides of every comparison, since the guide writes numbers as digits (Q8). The
-  verdict is unchanged by this. ID recall then counts such a digit as an ID, but it is reported over
+  verdict counts a lone name as its digit; that reading also made a word written in two another text
+  ("some one" against "someone"), against Q8's spaces ruling, which this line first said it left
+  unchanged, so the matcher now also compares the texts' joined form (the review of the merged
+  tracks, its decision entry). ID recall then counts such a digit as an ID, but it is reported over
   the ticket-number items only. The agent's choice.
 - 2026-11-01: Track A: `normalize_digits` changes only the digits and the digit names, leaving every
   other character, space and punctuation as written. The scorers call `normalize_arabic` first
@@ -2009,7 +2100,9 @@ All entries are the agent's choices of 2026-11-01, with the agent's reasons.
   error, as `<command>: <message> [<code>]` with exit status 1. ARCH-PRINT covers only the library,
   and a report is the command's output, not a log event; it holds identifiers and numbers only. The
   app's two errors are `AppError` subclasses: `EvalDataError` (`eval_data_invalid`) and
-  `ComparisonError` (`comparison_refused`); their messages name fields, never values, and they are
+  `ComparisonError` (`comparison_refused`); `EvalDataError` names the file and the failing field,
+  never a value read from it, `ComparisonError` the commits, data digests or splits that differ,
+  as the plan asks, never a transcript (corrected by the review of the merged tracks); they are
   raised outside the handler, so no exception chain holds the refused input. The agent's choice, for
   the harness reviewer, against GP-03's "no print".
 - 2026-11-01: Track F: the history file is committed empty, so a mistyped `--history` fails instead
@@ -2228,6 +2321,114 @@ All entries are the agent's choices of 2026-11-01, with the agent's reasons.
   rest of the paragraph is only rewrapped to 100 columns, and text outside Track H's parts is left
   as it was (the index's `browser-client.md` row and the method doc's "stop word" and "waits"). The
   agent's choice.
+- 2026-11-01: The review of the merged tracks: a run scores only the variants the owner has
+  checked, by the rule `poe golden` accepts a variant by (`items.unchecked` is None: a confirmation,
+  and for a typed reference one in a later pass), as the registration's independent check says.
+  `load_plan` keeps the split check on the whole set, applies `--questions` to the split's variants,
+  then drops the unchecked ones from the run's variants and from the dev variants the smoke test is
+  taken from, so the digest covers only what is scored. It logs `unchecked_left_out` as two counts,
+  never an ID, so a held-out run names nothing; a run left with no checked variant is refused,
+  naming the review and `poe golden`. No field is added to `RunInfo` or `Scorecard` (Block 0's
+  models): `frozen.json`'s `left_out` lists the variants, and `eval-compare`'s digest check already
+  keeps two compared runs on one checked set. Step 15's test gives each committed variant a made-up
+  confirmation, since none is confirmed before step 18. Alternative: a `--unchecked` flag for the
+  reference answerer, set aside as a second way to score a set nobody checked. The agent's choice.
+- 2026-11-01: The review of the merged tracks: the runner's clock is `time.perf_counter` (in
+  `Parts` and `make_answerer`), monotonic and finer than a microsecond here, since `time.monotonic`
+  is `GetTickCount64` on Windows, 15.6 ms steps, coarser than the 292 against 295 ms medians the
+  registration cites; the pacer and the progress lines share it. No doc fixed `time.monotonic`. The
+  agent's choice, registered as an amendment before R1.
+- 2026-11-01: The review of the merged tracks: a `groq` run needs `--model` and `--timeout-s` (a
+  finite number of seconds above 0) on its command line, and its `groq.base_url` is `--base-url` or
+  the SDK's own `https://api.groq.com`, whatever the environment holds, as `--tracing-endpoint`
+  already is for tracing, so no `T2V_` variable in the shell or `.env` changes a registered arm
+  (evaluation.md, "Running"). A bad `--base-url` is refused naming the flag, never its value. A
+  reference run keeps the loaded settings, which change nothing it measures. Alternative: refusing a
+  run whose resolved base URL is not the default unless a flag names it, set aside as one more
+  refusal for the same guarantee. The agent's choice; the registration's arms gain both flags as an
+  amendment, with their values unchanged.
+- 2026-11-01: The review of the merged tracks: the matcher also counts a variant right when the
+  output and a reference are equal in their joined form, `normalize_arabic` with every space
+  removed and only then `normalize_digits`: the prototype's `norm`, but for a whole text that is
+  one digit's name. Reading a lone digit name as its digit (Track A's decision) made a word written
+  in two another text ("some one" against "someone", "five 7" against "five7", or a zero-width
+  character inside a word), against Q8's "spaces ignored in the verdict"; the second form keeps
+  every verdict that was right ("one" against "1") and adds only the cases Q8 counts. A matcher
+  built with a test's normalizer compares by `key` alone. Alternative: reading digit names only in
+  runs of two or more, set aside since a provider's lone "one" against a reference's "1" would then
+  be wrong. The agent's choice, registered as an amendment before R1.
+- 2026-11-01: The review of the merged tracks: text from silence counts the characters of the
+  output after `normalize_arabic` alone, spaces removed, not its scored form, so a digit's name
+  ("one", «واحد») counts its letters as produced rather than one digit; an output is empty in one
+  form exactly when it is in the other, so the share and the empty-reference test of Track A's
+  `wer` entry are unchanged. It replaces the last sentence of Track A's `term_recall` entry above.
+  The agent's choice, registered as an amendment before R1.
+- 2026-11-01: The review of the merged tracks: `normalize_digits` reads a word with the marks
+  `normalize_arabic` removes inside it (its word pattern takes the marks class of
+  `domain/text/arabic.py`), so a vowelled digit name is read whole, as its docstring and the guide
+  say; the scorers call `normalize_arabic` first, so no score changes. The agent's choice.
+- 2026-11-01: The review of the merged tracks: each `GroqSTT` draws its own multipart boundary
+  (`secrets.token_hex(16)`) and passes it in every request's `Content-Type` through `extra_headers`;
+  the request hook refuses a body that does not open with it, which a `GROQ_CUSTOM_HEADERS`
+  content-type line in another case than the SDK's makes httpx cut, so such a line can only fail a
+  request, as a `rejected`, non-retryable `ProviderError` with the detail `foreign_boundary`, never
+  shape it, and audio holding a known boundary adds no form field. The hook's exception holds no
+  value, since the SDK logs it at DEBUG with its traceback. A `Content-Type` line in the SDK's own
+  case is replaced by the adapter's. Pays the `GROQ_CUSTOM_HEADERS` row as it proposed. The agent's
+  choice.
+- 2026-11-01: The review of the merged tracks: `GroqSTT`'s constructor validates its values
+  through core's own `GroqSettings` and `SttSettings` (plain models, which read no environment)
+  and takes the key as `resolved_api_key` gives it, the space around it removed (GP-20): it refuses
+  what the settings refuse (port 0, a space or a tab in the URL, which the copied rules missed), by
+  the same messages, the bad key's FIX line included, each naming the `T2V_` setting and never the
+  value, before any client is built. The copied `_KEY` and `_https` are gone. The agent's choice.
+- 2026-11-01: The review of the merged tracks: the private provider (`SpanQueue`,
+  `private_provider`, `ExportSession`, `otlp_exporter` and their constants) moves to
+  `core/tracing_export.py`, its tests to `tests/t2_agentic_voice/core/test_tracing_export.py`, and
+  what both test files share to `tracing_support.py`, as the size-cap row proposed (paid). The names
+  are public within `core`, which no facade re-exports. `ExportSession` also overrides `request`,
+  which the exporter's transport calls with its headers as a keyword, and replaces them with its own
+  before requests checks them: a `%0A` in `OTEL_EXPORTER_OTLP_HEADERS` decodes to a line break that
+  requests refused, quoting the header (a token) in an error the exporter logged at ERROR, every
+  batch lost. `prepare_request` still clears the `.netrc` login. The agent's choice.
+- 2026-11-01: The review of the merged tracks: the redaction hook runs on each attribute's key as
+  well as its value, on a span, an event and a link, since a team may name a key after what was
+  said. A redacted key is kept as redacted, not dropped. The agent's choice.
+- 2026-11-01: The review of the merged tracks: the re-checks of a run, a result and a history line
+  (`write_scorecard`, `append_line`) serialize with pydantic's warnings off, whose
+  `PydanticSerializationUnexpectedValue` text quotes a wrongly typed value (a bytes key put in by
+  `model_copy`) and is printed to stderr before the check refuses it. The agent's choice.
+- 2026-11-01: The review of the merged tracks: a run's note holding an install placeholder is
+  refused: `poe eval --note` by the parser, before anything is sent, and `RunInfo.note` and
+  `HistoryLine.note` (a `Note` type in `runs.py`) as the backstop, since the docs check reads the
+  committed `history.jsonl`, which is never edited, and would fail the gate for good. The pattern is
+  DOC-PLACEHOLDER's, written again in `runs.py` (an app does not import `scripts/`). Alternative:
+  `history.jsonl` in `[docs] placeholders_allowed_in`, set aside as an exemption where a refusal
+  costs nothing. TD-018 is left as it is. The agent's choice.
+- 2026-11-01: The review of the merged tracks: the `Scorecard` model refuses a variant listed
+  twice, as `write_scorecard` already did, so `eval-compare` never pairs a hand-edited file whose
+  later copy would silently replace the earlier. The agent's choice.
+- 2026-11-01: The review of the merged tracks: `history.line_of` is the one definition of a run's
+  history line, and the runner calls it with the run's spend from its budget (every request sent,
+  the smoke test's and a capped variant's included), as Track E's merge chose; a scorecard's billed
+  seconds and cost cover the requests of the variants it scores, and its docstring says so. The
+  agent's choice.
+- 2026-11-01: The review of the merged tracks: a docs rule, DOC-CONTROL, refuses a control
+  character other than a tab and the line ends in a doc, since the owner's recording commands
+  (steps 4 and 5 below) reached the plan with their backslashes read as escapes and `poe docs`
+  passed; the commands are written with forward slashes, as `.claude/launch.json` writes them. The
+  agent's choice.
+- 2026-11-01: The review of the merged tracks: the suite drops `REQUESTS_CA_BUNDLE` and
+  `CURL_CA_BUNDLE` from the shell and points `NETRC` at an empty file of its own
+  (`tests/conftest.py`, checked by `tests/harness/test_isolation.py`), so the OTLP tests pass on a
+  machine behind a TLS-inspecting proxy and requests never opens the developer's `~/.netrc`. The
+  agent's choice.
+- 2026-11-01: The review of the merged tracks: the finding that ID recall counts a ticket number
+  written in pairs ("48 21") or with a thousands separator ("4,821", «٤٬٨٢١») as missed goes to the
+  owner (its checker marked it for the owner): the pairs case is Track A's recorded decision ("45
+  21" stays two numbers). The checker's proposal for the separator case, a `,` or U+066C between
+  digits and followed by exactly three digits removed in `id_recall` alone, is put to the owner with
+  it rather than applied. The agent's choice.
 
 ## The owner's decisions
 
@@ -2394,7 +2595,7 @@ message, Track C's docstrings, Track E's progress lines, and Track G's control l
   `httpx.AsyncClient` passed as `http_client` drops every header outside an allow-list, then
   sets `request.headers["Authorization"]` to `Bearer` and the settings' key, which removes every
   case variant, so no `GROQ_CUSTOM_HEADERS` line, in any case, replaces the key or adds a second
-  one (the decision log's groq list; TD-002). Every exception the SDK raises, not only its
+  one (the decision log's groq list). Every exception the SDK raises, not only its
   `APIError`s, becomes a `ProviderError` raised `from None`, never `from error`: the SDK's
   exception chain can hold the request's headers.
 - Tests (a fake transport, no network): the request's fields equal Block 0's baseline; the
@@ -2898,7 +3099,26 @@ The owner's call before the run:
 Every question above gates the run as well as its own step, so each is also the owner's call
 before the run.
 
-**Amendments:** none yet.
+**Amendments** (each dated, and made before any run):
+
+- 2026-11-01, from the review of the merged tracks, before any result: every `groq` run names its
+  arm's model and timeout on its command line, `--model whisper-large-v3` (A1) or
+  `--model whisper-large-v3-turbo` (A2), and `--timeout-s 6`, and sends to `--base-url` or the
+  SDK's own `https://api.groq.com`, whatever the environment or the env file holds; the values
+  are those registered above, so no measurement changes.
+- 2026-11-01, the same review, "The metrics": the verdict is also right when the output equals
+  the reference (or an accepted alternative) with every space removed before the digits are read
+  (`normalize_arabic`, spaces removed, then `normalize_digits`), so that a digit's name inside a
+  word written in two ("some one") never makes it another text, as Q8's spaces ruling and the
+  prototype's `norm` have it. Text from silence counts the characters of the output after
+  `normalize_arabic` alone, spaces removed, so a digit's name counts its letters, as produced.
+  Latency per request is taken over the answered requests (outcome `ok`) only, its median and
+  90th percentile interpolated linearly between ranks (Hyndman and Fan's type 7), timed with a
+  monotonic clock finer than a millisecond (`time.perf_counter`); requests, attempts, billed
+  seconds and cost still count every request.
+- 2026-11-01, the same review, "The independent check of each reference": a run scores only the
+  variants `poe golden` accepts (confirmed by the owner's listen, a typed one in a later pass),
+  and logs how many it left out as a count; `frozen.json`'s `left_out` lists them.
 
 ## What the owner does
 
@@ -2913,7 +3133,7 @@ before the run.
 4. **Recording**, one sitting per device, in a quiet room except for the noise items:
    - From the main checkout, `uv run poe record --out <a folder under var/, such as
      var/golden-audio> --session <a name> --device <laptop, wired or bluetooth> --replies
-     ..oice-labssets	alkover` (the lab's six agent replies, read only: the script's
+     ../voice-lab/assets/talkover` (the lab's six agent replies, read only: the script's
      echo-only lines play two of them, and the recorder does not start without them); open the
      address it prints in Chrome (it holds a token for that session, so use it as printed).
    - Pick the microphone and the output for the device: the laptop's own microphone and
@@ -2927,9 +3147,8 @@ before the run.
    - Echo-only items: say nothing while the page plays the agent's reply. Silence: say nothing
      for the take's length. Noise: make the noise the item names and say nothing.
 5. **The check (Q9):** in the recorder's review mode (`uv run poe record --out <the same
-   folder> --replies ..oice-labssets	alkover --audio
-   talkover=..oice-lab
-ecordings	alkover`, with no `--session`, reviews the new takes and
+   folder> --replies ../voice-lab/assets/talkover --audio
+   talkover=../voice-lab/recordings/talkover`, with no `--session`, reviews the new takes and
    the talk-over variants), listen to each variant beside its reference and confirm it, or type
    what was said; a variant you typed comes back in a later review pass (a later run of the same
    command), to be confirmed against your text.

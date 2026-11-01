@@ -75,6 +75,14 @@ def test_a_name_written_with_diacritics_or_tatweel_is_read_after_the_normalizer(
     assert both("خ\u064eم\u0652س\u064eة سـبـعـة") == "57"
 
 
+def test_a_name_written_with_diacritics_or_tatweel_is_read_on_its_own_too() -> None:
+    """The docstring's promise, without `normalize_arabic` first: a mark does not cut the word."""
+    assert normalize_digits("خَمْسَة") == "5"
+    assert normalize_digits("خَمْسَة سـبعة") == "57"
+    vowelled = "كَتَب"  # another word: kept as written
+    assert normalize_digits(vowelled) == vowelled
+
+
 @pytest.mark.parametrize(
     ("said", "read"),
     [

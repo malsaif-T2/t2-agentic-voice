@@ -12,6 +12,7 @@ Rules
                    in any file of the repository, or in a file or folder name (hidden folders
                    other than .github/, and runtime output, are skipped)
   DOC-EOL          the docs, the code, and the root config files have LF line endings
+  DOC-CONTROL      no doc holds a control character other than a tab and the line ends
   DOC-PLAN         plans are named NNN-slug.md, hold the [plans] sections, and have a full
                    Status line that matches their folder; the roadmap links every active plan
                    (scripts/doc_plans.py)
@@ -47,6 +48,9 @@ ROOT_CONFIG = ("*.toml", ".env.example")
 # runtime output and installed or built files, which are not ours to fill.
 NOT_OURS = frozenset({"var", "node_modules", "build", "dist", "htmlcov", "__pycache__"})
 _LARGEST = 1_000_000  # bytes: a larger file is data, not a file the kit wrote
+# The C0 control characters and DEL, but the tab and the line ends: what a script makes of a
+# Windows path's backslashes when it reads them as escapes (\v, \a), which no editor shows.
+_CONTROL = re.compile("[\x00-\x08\x0b\x0c\x0e-\x1f\x7f]")
 
 _LINK = re.compile(r"!?\[[^\]]*\]\((<[^>]+>|[^)\s]+)(?:\s+\"[^\"]*\")?\)")
 _FENCE = re.compile(r"^\s*(```|~~~)")
@@ -160,6 +164,7 @@ def check_repo(root: Path, config: HarnessConfig) -> tuple[list[Violation], int]
     violations += check_registers(root, config)
     violations += check_placeholders(root, config)
     violations += check_line_endings(root, config, files)
+    violations += check_control_characters(root, files)
     violations += check_milestones(root, config, files)
     violations += check_references(root, config, files)
     return violations, len(files)
@@ -268,6 +273,27 @@ def check_line_endings(
                     "use the editor tool, or `write_text(..., newline='\\n')` in a script.",
                 )
             )
+    return violations
+
+
+def check_control_characters(root: Path, markdown: Sequence[Path]) -> list[Violation]:
+    """A control character in a doc: a path whose backslashes a script or a JSON string read as
+    escapes, so the command a reader copies is not the one written (plan 002's review)."""
+    violations: list[Violation] = []
+    for path in markdown:
+        text = path.read_text(encoding="utf-8")
+        for lineno, line in enumerate(text.split("\n"), start=1):
+            if found := _CONTROL.search(line):
+                violations.append(
+                    Violation(
+                        path.relative_to(root).as_posix(),
+                        lineno,
+                        "DOC-CONTROL",
+                        f"the line holds the control character U+{ord(found.group()):04X}",
+                        "Retype it with the editor tool, never through a string that reads "
+                        "escapes; write paths with forward slashes.",
+                    )
+                )
     return violations
 
 

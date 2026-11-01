@@ -12,9 +12,11 @@ reads groq 1.7.0:
   `Authorization` header the SDK builds from the key. So the HTTP client the adapter gives it
   has a request hook that replaces every header with the adapter's own: a fixed list, each with
   a value the adapter sets, `Authorization` the settings' key. No line of that variable, in any
-  case, adds a header, sends another key or a second one, or changes a header's value; the one
-  thing such a line still chooses is the multipart boundary, which httpx takes from a
-  `content-type` line, and the hook keeps the header matching the body.
+  case, adds a header, sends another key or a second one, or changes a header's value. The
+  multipart boundary is the adapter's own, random and passed with each request: httpx would take
+  a `content-type` line's instead, so the hook refuses a body that does not open with the
+  adapter's, and such a line can only fail a request (a `rejected` ProviderError), never shape
+  it, so audio that holds a known boundary cannot add a form field.
 - Every exception the SDK raises becomes a `ProviderError`, raised after the handler and from
   None, so no exception chain leads to the SDK's error, which holds the request and its
   headers. A cancel is never caught: the request ends at once and its connection is closed.
@@ -32,15 +34,13 @@ from __future__ import annotations
 import asyncio
 import io
 import math
-import re
+import secrets
 import wave
-from typing import get_args
-from urllib.parse import urlsplit
 
 import httpx
-from pydantic import BaseModel, ConfigDict, Field, JsonValue, SecretStr
+from pydantic import BaseModel, ConfigDict, Field, JsonValue, SecretStr, ValidationError
 
-from t2_agentic_voice.core.config import PREFIX, Settings, SttModel
+from t2_agentic_voice.core.config import PREFIX, GroqSettings, Settings, SttModel, SttSettings
 from t2_agentic_voice.core.errors import ConfigurationError, ProviderError
 from t2_agentic_voice.core.logging import logging_unchanged
 from t2_agentic_voice.domain.ports.speech_to_text import AudioClip, DataFlow, Transcript
@@ -57,8 +57,6 @@ _MIN_BILLED_S = 10.0
 _LIMITS = httpx.Limits(max_connections=20, max_keepalive_connections=10, keepalive_expiry=300.0)
 # What the SDK sends as its own user agent (`AsyncGroq/Python <version>`).
 _USER_AGENT = f"AsyncGroq/Python {groq_version}".encode("ascii")
-# A key is printable ASCII with no space, as `GroqSettings.resolved_api_key` checks it.
-_KEY = re.compile(r"[\x21-\x7e]+")
 _KEY_SETTING = f"{PREFIX}GROQ__API_KEY"
 # Groq's "Your Data" page, as the design's 6.1 gives it.
 _DATA_FLOW = DataFlow(
@@ -89,12 +87,13 @@ class GroqSTT:
         timeout_s: float,
         transport: httpx.AsyncBaseTransport | None = None,
     ) -> None:
-        key = api_key.get_secret_value()
-        _check(key, model, base_url, timeout_s)
-        self._api_key = api_key
+        self._api_key = _checked(api_key, model, base_url, timeout_s)
+        key = self._api_key.get_secret_value()
         self._model: SttModel = model
         self._base_url = base_url
         self._timeout_s = timeout_s
+        # The multipart boundary every request of this adapter carries (RFC 2046, 5.1.1).
+        self._boundary = secrets.token_hex(16).encode("ascii")
         http = httpx.AsyncClient(
             transport=transport,
             limits=_LIMITS,
@@ -153,6 +152,7 @@ class GroqSTT:
                     prompt=prompt or omit,
                     response_format="verbose_json",
                     temperature=0,
+                    extra_headers={"Content-Type": self._content_type().decode("ascii")},
                 )
             transcript = _Answer.model_validate(result.to_dict()).transcript(
                 language or None, billed_seconds=max(_MIN_BILLED_S, clip.seconds)
@@ -167,13 +167,17 @@ class GroqSTT:
         """Close the adapter's HTTP connections."""
         await self._groq.close()
 
+    def _content_type(self) -> bytes:
+        return b"multipart/form-data; boundary=" + self._boundary
+
     async def _own_headers(self, request: httpx.Request) -> None:
         """The request hook: every request carries these eight headers and no other, each with
-        the adapter's value, in whatever case the SDK or `GROQ_CUSTOM_HEADERS` named them. The
-        multipart body opens with its boundary line (`--<boundary>`, RFC 2046), so the body's
-        type and length are read from the body itself, and always match it."""
+        the adapter's value, in whatever case the SDK or `GROQ_CUSTOM_HEADERS` named them. A body
+        that does not open with the adapter's boundary line (`--<boundary>`, RFC 2046) was cut by
+        another boundary, a `content-type` line's, and is never sent; the length is the body's."""
         body = await request.aread()
-        boundary = body[2 : body.index(b"\r\n")]
+        if not body.startswith(b"--" + self._boundary + b"\r\n"):
+            raise _ForeignBoundaryError
         key = self._api_key.get_secret_value().encode("ascii")
         request.headers = httpx.Headers(
             {
@@ -182,11 +186,16 @@ class GroqSTT:
                 b"Accept-Encoding": b"gzip, deflate",
                 b"Connection": b"keep-alive",
                 b"User-Agent": _USER_AGENT,
-                b"Content-Type": b"multipart/form-data; boundary=" + boundary,
+                b"Content-Type": self._content_type(),
                 b"Content-Length": str(len(body)).encode("ascii"),
                 b"Authorization": b"Bearer " + key,
             }
         )
+
+
+class _ForeignBoundaryError(Exception):
+    """A body cut by a boundary other than the adapter's. It holds no value: the SDK logs it at
+    DEBUG, with its traceback, as it wraps it in an APIConnectionError."""
 
 
 class _Segment(BaseModel):
@@ -251,8 +260,12 @@ def _failure(error: Exception) -> ProviderError:
     """The ProviderError for one failure. Its details hold the failure's class name and the HTTP
     status, if any: never the SDK's message or body, which may echo the request. A status is
     retryable where the SDK's own retry rule would ask again (408, 409, 429 and 5xx); an answer
-    that cannot be read, or any other failure, is a server error not worth asking again for."""
+    that cannot be read, or any other failure, is a server error not worth asking again for; a
+    body the hook refused, never sent, is rejected."""
     details: dict[str, JsonValue] = {"error": type(error).__name__}
+    if isinstance(error, APIConnectionError) and isinstance(error.__cause__, _ForeignBoundaryError):
+        details["error"] = "foreign_boundary"  # never sent: asking again fails the same way
+        return ProviderError("rejected", False, details=details)
     if isinstance(error, APITimeoutError | TimeoutError):
         return ProviderError("timeout", True, details=details)
     if isinstance(error, APIConnectionError):
@@ -289,41 +302,29 @@ def _no_key() -> ConfigurationError:
     )
 
 
-def _check(key: str, model: str, base_url: str, timeout_s: float) -> None:
-    """Refuse, for a team that builds the adapter in code, what the settings refuse as they load:
-    each error names the setting and never the value."""
-    if not key.strip():
-        raise _no_key()
-    if not _KEY.fullmatch(key):
-        raise _refused(_KEY_SETTING, "holds a character no API key holds: give the key alone")
-    if model not in get_args(SttModel):
-        raise _refused(f"{PREFIX}STT__MODEL", f"is one of {', '.join(get_args(SttModel))}")
-    if not _https(base_url):
-        raise _refused(
-            f"{PREFIX}GROQ__BASE_URL",
-            "is an https:// URL with a host and no user name, password, query or fragment",
+def _checked(api_key: SecretStr, model: SttModel, base_url: str, timeout_s: float) -> SecretStr:
+    """The key, as `GroqSettings.resolved_api_key` gives it, once the settings' own models take
+    every value: for a team that builds the adapter in code, the constructor refuses what the
+    settings refuse as they load, by the same rules (GP-20). Each error names the setting and
+    never the value; it is raised outside the handler, so no exception chain leads to it."""
+    checks = (
+        (f"{PREFIX}GROQ__", lambda: GroqSettings(api_key=api_key, base_url=base_url)),
+        (f"{PREFIX}STT__", lambda: SttSettings(model=model, timeout_s=timeout_s)),
+    )
+    for prefix, check in checks:
+        try:
+            check()
+        except ValidationError as error:
+            problem = error.errors(include_input=False, include_url=False)[0]
+        else:
+            continue
+        setting = prefix + "__".join(str(part).upper() for part in problem["loc"])
+        raise ConfigurationError(
+            f"The Groq adapter refuses its {setting} ({problem['msg']}). FIX: give it a value "
+            "the settings take; .env.example lists every setting.",
+            details={"setting": setting},
         )
-    if not (math.isfinite(timeout_s) and timeout_s > 0):
-        raise _refused(f"{PREFIX}STT__TIMEOUT_S", "is a finite number of seconds above 0")
-
-
-def _https(url: str) -> bool:
-    try:
-        parts = urlsplit(url)
-        _ = parts.port  # urlsplit checks the port only when it is read
-    except ValueError:
-        return False
-    return (
-        parts.scheme == "https"
-        and bool(parts.hostname)
-        and parts.username is None
-        and parts.password is None
-        and not (parts.query or parts.fragment)
-    )
-
-
-def _refused(setting: str, rule: str) -> ConfigurationError:
-    return ConfigurationError(
-        f"The Groq adapter refuses its {setting}. FIX: give one that {rule}.",
-        details={"setting": setting},
-    )
+    key = GroqSettings(api_key=api_key).resolved_api_key()
+    if key is None:
+        raise _no_key()
+    return key

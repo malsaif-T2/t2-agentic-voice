@@ -3,9 +3,11 @@ evaluation.md's "Running" says.
 
 Before anything is sent, a run refuses the main checkout and a dirty tree, an `--out` that
 exists or that git would track (`worktree.py`), and audio that is not the file its manifest
-hashed. Its settings load with `Settings.from_env` (`--env-file`), the command line's on top,
-and `--show-settings` shows each resolved, a secret only as set or not set. A smoke test of one
-dev variant comes first and must pass with no failed, retried or refused request. Then each
+hashed. Its settings load with `Settings.from_env` (`--env-file`), the command line's on top: a
+`groq` run names its model and timeout, and its base URL is `--base-url` or the SDK's own,
+whatever the environment holds, so no `T2V_` variable changes a registered arm; `--show-settings`
+shows each resolved, a secret only as set or not set. A smoke test of one dev variant comes
+first and must pass with no failed, retried or refused request. Then each
 variant is answered, and its result written as it finishes (a dev run's `results.jsonl`), with
 a progress line of identifiers, verdicts and timings, never a transcript. The scorecard is
 written by Track F's writer and, for a run that calls a provider, its history line is appended
@@ -26,6 +28,7 @@ from pathlib import Path
 from pydantic import ValidationError
 from t2_agentic_voice import AppError, ConfigurationError, Settings, configure_logging, get_logger
 
+from ole5_voice.evals import history
 from ole5_voice.evals.answerers import (
     ANSWERERS,
     Budget,
@@ -45,13 +48,14 @@ from ole5_voice.evals.run_parts import (
     is_name,
     load_plan,
 )
-from ole5_voice.evals.runs import SCORECARD_FILE, HistoryLine, RunInfo
+from ole5_voice.evals.runs import RunInfo, holds_placeholder
 from ole5_voice.evals.windows import measurer
 from ole5_voice.evals.worktree import Checkout, check_out, inspect, refused
 
 RESULTS_FILE = "results.jsonl"  # a dev run's results, one line each as it finishes
 HISTORY_FILE = "history.jsonl"  # the committed history; a run's line is also copied beside it
 MODELS = ("whisper-large-v3", "whisper-large-v3-turbo")
+GROQ_BASE_URL = "https://api.groq.com"  # the SDK's own, `groq.base_url`'s default
 _DESCRIPTION = "Run an answerer over the golden set, writing its results and scorecard into --out."
 _HINT_HELP = "the language sent: the item's label's (ar, or en for English), or none (auto)"
 _AUDIO_HELP = "the folder of an audio root the manifests name, once per root"
@@ -74,12 +78,20 @@ def _amount(text: str) -> float:
     return value
 
 
+def _seconds(text: str) -> float:
+    if not math.isfinite(value := float(text)) or value <= 0:
+        raise argparse.ArgumentTypeError("must be a finite number of seconds above 0")
+    return value
+
+
 def _parser() -> argparse.ArgumentParser:
     parser = argparse.ArgumentParser(prog="poe eval", description=_DESCRIPTION)
     add = parser.add_argument
     add("--answerer", choices=ANSWERERS, help="reference (sends nothing) or groq (Whisper)")
     add("--split", choices=("dev", "held-out"), help="the split the run covers, all of it")
-    add("--model", choices=MODELS, help="stt.model for this run")
+    add("--model", choices=MODELS, help="stt.model for this run (groq needs it)")
+    add("--timeout-s", type=_seconds, help="stt.timeout_s for this run (groq needs it)")
+    add("--base-url", help=f"groq.base_url for this run ({GROQ_BASE_URL})")
     add("--language-hint", choices=("label", "auto"), default="label", help=_HINT_HELP)
     add("--env-file", type=Path, help="the .env file the settings load from (never printed)")
     add("--var-dir", type=Path, help="the settings' var_dir")
@@ -107,10 +119,13 @@ def _require(parser: argparse.ArgumentParser, args: argparse.Namespace) -> None:
     named = ("answerer", "split", "out", "note")
     missing = [f"--{name}" for name in named if not getattr(args, name)]
     if args.answerer == "groq":
-        paid = (("--price-per-hour", args.price_per_hour), ("--cap-usd", args.cap_usd))
-        missing += [flag for flag, value in paid if value is None]
+        pinned = {"--model": args.model, "--timeout-s": args.timeout_s}
+        pinned |= {"--price-per-hour": args.price_per_hour, "--cap-usd": args.cap_usd}
+        missing += [flag for flag, value in pinned.items() if value is None]
     if missing:
         parser.error(f"a run needs {', '.join(missing)}")
+    if holds_placeholder(args.note):
+        parser.error("--note holds an install placeholder, which the docs check refuses")
     if args.split == "held-out" and (args.questions or args.smoke_only or args.tracing_endpoint):
         parser.error(
             "a held-out run covers its whole split, untraced: no --questions, "
@@ -124,21 +139,36 @@ def _require(parser: argparse.ArgumentParser, args: argparse.Namespace) -> None:
         parser.error("--clips-from serves a windows run (--windows-ms)")
 
 
+_URL_FLAGS = {
+    "tracing": (
+        "--tracing-endpoint",
+        "an http:// or https:// URL with a host and no user name or password",
+        "the traces endpoint, such as http://127.0.0.1:6006/v1/traces",
+    ),
+    "groq": (
+        "--base-url",
+        "an https:// URL with a host, and no user name, password, query or fragment",
+        f"Groq's API, {GROQ_BASE_URL}, or leave it out",
+    ),
+}
+
+
 def _settings(args: argparse.Namespace) -> Settings:
     """The settings from the environment and `--env-file`, the command line's on top. The run is
-    traced only when `--tracing-endpoint` says so, whatever `tracing.endpoint` holds."""
+    traced only when `--tracing-endpoint` says so, whatever `tracing.endpoint` holds, and sends
+    to `--base-url` or the SDK's own address, whatever `groq.base_url` holds."""
     data = Settings.from_env(args.env_file).model_dump()
     data["tracing"]["endpoint"] = args.tracing_endpoint
+    data["groq"]["base_url"] = args.base_url or GROQ_BASE_URL
     data["stt"]["model"] = args.model or data["stt"]["model"]
+    data["stt"]["timeout_s"] = args.timeout_s or data["stt"]["timeout_s"]
     data["var_dir"] = args.var_dir or data["var_dir"]
     try:
         return Settings.model_validate(data)
-    except ValidationError:  # only the endpoint can fail: the rest loaded, or was chosen
-        raise ConfigurationError(
-            "--tracing-endpoint is not an http:// or https:// URL with a host and no user name "
-            "or password. FIX: give the traces endpoint, such as http://127.0.0.1:6006/v1/traces.",
-            details={"setting": "--tracing-endpoint"},
-        ) from None
+    except ValidationError as error:  # only a URL can fail: the rest loaded, or was checked
+        group = str(error.errors(include_input=False)[0]["loc"][0])
+    flag, rule, fix = _URL_FLAGS[group]
+    raise ConfigurationError(f"{flag} is not {rule}. FIX: give {fix}.", details={"setting": flag})
 
 
 def _shown(settings: Settings, args: argparse.Namespace) -> dict[str, str]:
@@ -309,29 +339,12 @@ def _close(
     # A held-out run that did not finish keeps no result: it is run again whole.
     kept = progress.results if complete or info.split == "dev" else []
     card = parts.write_scorecard(info, kept, complete=complete, out=out)
-    if spends:
-        strata = card.breakdowns.items()
-        line = HistoryLine(
-            time=info.started_at,
-            commit=info.commit,
-            run=info.name,
-            answerer=info.answerer,
-            model=info.model,
-            settings=info.settings,
-            split=info.split,
+    if spends:  # every request sent, the smoke test's and a capped variant's included
+        line = history.line_of(
+            card,
             items=len({r.item for r in kept}),
-            variants=len(kept),
-            accuracy=card.totals.accuracy,
-            violations=card.violations,
             billed_seconds=budget.billed_seconds,
-            price_per_hour_usd=info.price_per_hour_usd,
             cost_usd=budget.cost_usd,
-            latency_median_ms=card.totals.latency_median_ms,
-            breakdowns={by: {name: m.accuracy for name, m in s.items()} for by, s in strata},
-            scorecard=SCORECARD_FILE,
-            data_digest=info.data_digest,
-            note=info.note,
-            complete=complete,
         )
         parts.append_line(line, checkout.top / DATA / HISTORY_FILE)
         parts.append_line(line, out / HISTORY_FILE)

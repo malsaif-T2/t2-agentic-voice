@@ -11,7 +11,7 @@ from __future__ import annotations
 
 import re
 
-from t2_agentic_voice.domain.text.arabic import normalize_arabic
+from t2_agentic_voice.domain.text.arabic import _MARKS, normalize_arabic
 
 # Arabic-Indic digits (U+0660 to U+0669) and Persian, or Extended Arabic-Indic, digits (U+06F0
 # to U+06F9), each read as its ASCII digit.
@@ -49,7 +49,9 @@ _DIGIT_NAMES: dict[str, str] = {
 }
 
 _ASCII_DIGITS = frozenset("0123456789")
-_WORD = re.compile(r"\w+")
+# A word: its word characters, and the marks `normalize_arabic` removes (harakat, tatweel), which
+# are not word characters, so a digit's name written with its harakat is read whole.
+_WORD = re.compile(rf"(?:\w|{_MARKS.pattern})+")
 
 
 def _digit(word: str) -> str | None:

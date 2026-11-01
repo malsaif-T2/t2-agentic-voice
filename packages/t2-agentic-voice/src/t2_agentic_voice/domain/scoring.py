@@ -1,6 +1,6 @@
 """The evaluation scorers' pure parts: recall of product terms and IDs, and text from silence.
 
-Each scores one output against its reference, both in the form `scored_form` gives (the
+Each recall scores one output against its reference, both in the form `scored_form` gives (the
 canonical normalizer, then digit normalization: what the prototype's scorer compared, D-010,
 D-022, with the spelling guide's digits); a caller pools the counts over a stratum. Public
 through the `evals` facade (D-021).
@@ -65,6 +65,7 @@ def id_recall(reference: str, output: str) -> Recall:
 
 def silence_output(output: str) -> int:
     """How much text a provider produced where nothing was said (silence, a noise, or only the
-    agent's own echo): the characters of `output` in its scored form, spaces removed; 0 when
-    it produced none, or only punctuation."""
-    return len(scored_form(output).replace(" ", ""))
+    agent's own echo): the characters of `output` after `normalize_arabic`, spaces removed, so a
+    digit's name counts its letters as written, not one digit; 0 when it produced none, or only
+    punctuation (empty exactly when the scored form is)."""
+    return len(normalize_arabic(output).replace(" ", ""))

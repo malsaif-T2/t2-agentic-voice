@@ -4,8 +4,9 @@ which renders it into `docs/generated/eval-history.md` (GP-11).
 
 The file is read strictly: every line a valid history line with an LF ending, so a line is only
 ever appended to a well-formed history, and a line made with `model_copy` (a secret setting's
-value, say) is checked again before it is written. `render_history` is the pure renderer the
-command and the freshness test both call.
+value, say) is checked again before it is written, serialized with pydantic's warnings off, whose
+text would quote the value it refuses. `line_of` is the one definition of a run's line;
+`render_history` is the pure renderer the command and the freshness test both call.
 """
 
 from __future__ import annotations
@@ -68,7 +69,7 @@ def append_line(line: HistoryLine, history: Path) -> None:
     """Add `line` to the end of `history` (created if missing), as one line of JSON with an LF
     ending, once the line and every line already there pass their checks."""
     try:
-        checked = HistoryLine.model_validate_json(line.model_dump_json())
+        checked = HistoryLine.model_validate_json(line.model_dump_json(warnings=False))
     except ValidationError as error:
         problem = first_problem(error)
     else:
@@ -80,10 +81,15 @@ def append_line(line: HistoryLine, history: Path) -> None:
     raise EvalDataError(f"not a history line ({problem})")
 
 
-def line_of(scorecard: Scorecard, *, items: int) -> HistoryLine:
+def line_of(
+    scorecard: Scorecard, *, items: int, billed_seconds: float, cost_usd: float
+) -> HistoryLine:
     """The history line of a run's scorecard: its totals, each stratum's accuracy, the run's
     price and the scorecard's file name; `items` is the run's item count, which a held-out
-    scorecard, holding no variant, cannot give."""
+    scorecard, holding no variant, cannot give. `billed_seconds` and `cost_usd` are the run's
+    spend, every request it sent (its budget's): the scorecard's own cover only the variants it
+    scores, without the smoke test's request, a variant cut off at the cap, or an unfinished
+    held-out run's results."""
     run, totals = scorecard.run, scorecard.totals
     return HistoryLine(
         time=run.started_at,
@@ -97,9 +103,9 @@ def line_of(scorecard: Scorecard, *, items: int) -> HistoryLine:
         variants=totals.variants,
         accuracy=totals.accuracy,
         violations=scorecard.violations,
-        billed_seconds=totals.billed_seconds,
+        billed_seconds=billed_seconds,
         price_per_hour_usd=run.price_per_hour_usd,
-        cost_usd=totals.cost_usd,
+        cost_usd=cost_usd,
         latency_median_ms=totals.latency_median_ms,
         breakdowns={
             stratum: {value: metrics.accuracy for value, metrics in values.items()}

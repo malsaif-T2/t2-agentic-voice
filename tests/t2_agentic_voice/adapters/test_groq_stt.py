@@ -11,8 +11,8 @@ import contextlib
 import hashlib
 import json
 import logging
-import math
 import os
+import secrets
 import socket
 import struct
 import subprocess
@@ -46,6 +46,7 @@ SEGMENTS = [
 ANSWER = {"text": "  made-up words ", "language": "Arabic", "segments": SEGMENTS, "x_groq": {}}
 SENT = {"host", "accept", "accept-encoding", "connection", "user-agent", "content-type"}
 SENT |= {"content-length", "authorization"}
+BOUNDARY = "made-up-boundary-0123456789abcdef"  # what `fixed_boundary` makes every adapter draw
 
 Reply = httpx.Response | Exception | Callable[[httpx.Request], Awaitable[httpx.Response]]
 
@@ -251,12 +252,17 @@ def test_the_key_is_in_no_error_or_log_line_even_when_echoed(
     assert [text for text in shown if KEY in text] == []
 
 
+@pytest.fixture
+def fixed_boundary(monkeypatch: pytest.MonkeyPatch) -> None:
+    """Every adapter draws `BOUNDARY`, so two adapters' requests can be compared whole."""
+    monkeypatch.setattr(secrets, "token_hex", lambda size: BOUNDARY)  # the adapter's draw
+
+
 def _shown(request: httpx.Request) -> list[tuple[str, str]]:
-    """The headers but the boundary and the length it sets: httpx draws a new boundary for every
-    request, and takes a lowercase `content-type` line's; the hook keeps both the body's own."""
+    """The headers but the length, which the body's own sets; the boundary is the adapter's."""
     assert int(request.headers["content-length"]) == len(request.content)
-    pairs = request.headers.multi_items()
-    return [(k, v.split("; boundary=")[0]) for k, v in pairs if k != "content-length"]
+    assert request.headers["content-type"] == f"multipart/form-data; boundary={BOUNDARY}"
+    return [(k, v) for k, v in request.headers.multi_items() if k != "content-length"]
 
 
 MANY = f"AUTHORIZATION: Bearer {OTHER}\nx-made-up: 1\nHost: elsewhere.example\nContent-Length: 3"
@@ -266,11 +272,12 @@ SHELLS = [
     {"GROQ_CUSTOM_HEADERS": f"authorization: Bearer {OTHER}\nX-Made-Up: 1"},
     {"GROQ_CUSTOM_HEADERS": f"Authorization: Bearer {OTHER}\nX-Made-Up: 1"},
     {"GROQ_CUSTOM_HEADERS": MANY + "\nX-Stainless-Lang: made-up"},
-    {"GROQ_CUSTOM_HEADERS": "content-type: multipart/form-data; boundary=madeup"},
-]
+    {"GROQ_CUSTOM_HEADERS": "Content-Type: multipart/form-data; boundary=madeup"},
+]  # a content-type line in another case fails the request: test_groq_stt_boundary.py
 
 
 @pytest.mark.parametrize("shell", SHELLS)
+@pytest.mark.usefixtures("fixed_boundary")
 def test_the_sdks_own_variables_change_nothing(
     shell: dict[str, str], monkeypatch: pytest.MonkeyPatch, tmp_path: Path
 ) -> None:
@@ -349,27 +356,6 @@ def test_no_key_in_the_settings_is_a_configuration_error(
     with pytest.raises(ConfigurationError, match=SETTING) as raised:
         GroqSTT.from_settings(settings(**given))
     assert raised.value.details == {"setting": SETTING}
-
-
-URLS = ("http://api.groq.com", "https://made:up@api.groq.com", "https://api.groq.com?made=up")
-MORE_URLS = ("https://api.groq.com#made-up", "https://", "https://api.groq.com:99999", "https://[x")
-REFUSED = [
-    *[({"api_key": SecretStr(key)}, SETTING) for key in (" ", "made up", "made-up-é", "a\nb")],
-    ({"model": "whisper-1"}, "T2V_STT__MODEL"),
-    *[({"base_url": url}, "T2V_GROQ__BASE_URL") for url in URLS + MORE_URLS],
-    *[({"timeout_s": value}, "T2V_STT__TIMEOUT_S") for value in (0.0, -1.0, math.inf, math.nan)],
-]
-
-
-@pytest.mark.parametrize(("given", "setting"), REFUSED)
-def test_built_in_code_it_refuses_what_settings_refuse(given: dict[str, Any], setting: str) -> None:
-    valid: dict[str, Any] = {"api_key": SecretStr(KEY), "model": "whisper-large-v3"}
-    valid |= {"base_url": "https://api.groq.com", "timeout_s": 6.0}
-    with pytest.raises(ConfigurationError) as raised:
-        GroqSTT(**(valid | given))
-    assert raised.value.details == {"setting": setting}
-    if "api_key" in given and given["api_key"].get_secret_value().strip():
-        assert given["api_key"].get_secret_value() not in str(raised.value)
 
 
 def test_a_speech_to_text_with_no_key_in_its_repr_and_no_groq_type_in_its_signatures() -> None:

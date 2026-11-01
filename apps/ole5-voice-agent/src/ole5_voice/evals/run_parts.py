@@ -1,6 +1,7 @@
 """The pieces of a `poe eval` run (`run.py`): the `Parts` it is built from, each replaceable by
-a test's fake; its `Plan`, the golden set's variants of its split, each with the request its
-answerer is handed and its audio checked against its manifest's hash, the smoke test's variant,
+a test's fake; its `Plan`, the golden set's checked variants of its split (those the owner has
+confirmed, as `poe golden` accepts them), each with the request its answerer is handed and its
+audio checked against its manifest's hash, the smoke test's variant,
 and the digest of the data, so `eval-compare` refuses runs on other data; the clip answers a
 windows run takes from the same model's first dev run (`--clips-from`); and its `Progress`, the
 results kept as each variant finishes.
@@ -78,7 +79,7 @@ class Parts:
     tracing: Callable[[Settings], Tracing] = Tracing.from_settings
     normalize: Callable[[str], str] = canonical
     now: Callable[[], datetime] = _now
-    clock: Clock = time.monotonic
+    clock: Clock = time.perf_counter  # monotonic; 15.6 ms steps for time.monotonic on Windows
     sleep: Sleep = asyncio.sleep
 
 
@@ -164,9 +165,12 @@ class Plan:
 
 
 def load_plan(data: Path, choice: Choice, parts: Parts) -> Plan:
-    """The plan of a run on the golden set in `data`. The smoke test's variant is the run's
-    first, or for a held-out run the first dev variant, so it never reads a held-out answer. The
-    digest covers the run's variants, the committed split and the spelling guide."""
+    """The plan of a run on the golden set in `data`: only the variants the owner has checked
+    (`items.unchecked`, the rule `poe golden` accepts a variant by, so a run is scored on the set
+    `frozen.json` lists as accepted); the others are left out, logged as a count, and listed by
+    `frozen.json`. The smoke test's variant is the run's first, or for a held-out run the first
+    checked dev variant, so it never reads a held-out answer. The digest covers the run's
+    variants, the committed split and the spelling guide."""
     try:
         golden = parts.load_items(data / "golden")
         committed = parts.load_split(data / "split.json")
@@ -181,17 +185,28 @@ def load_plan(data: Path, choice: Choice, parts: Parts) -> Plan:
             "write the split again (`python -m ole5_voice.evals.split`) and commit it",
         )
     talkover_only = bool(choice.windows_ms)
-    pairs = [
+    named = [
         (item, variant)
         for item in golden
         if sides[item.id] == choice.split and (item.source == "talkover" or not talkover_only)
         for variant in item.variants
     ]
     if choice.questions is not None:
-        pairs = _screened(pairs, choice.questions)
+        named = _screened(named, choice.questions)
+    pairs = [(item, variant) for item, variant in named if items.unchecked(variant) is None]
     dev = [
-        (item, variant) for item in golden if sides[item.id] == "dev" for variant in item.variants
+        (item, variant)
+        for item in golden
+        if sides[item.id] == "dev"
+        for variant in item.variants
+        if items.unchecked(variant) is None
     ]
+    log.info("unchecked_left_out", variants=len(named) - len(pairs), of=len(named))
+    if named and not pairs:
+        raise refused(
+            "the run has no variant the owner has checked",
+            "confirm the takes in the recorder's review mode, import them, and run `poe golden`",
+        )
     first = pairs[:1] if choice.split == "dev" else dev[:1]
     if not pairs or not first:
         raise refused(

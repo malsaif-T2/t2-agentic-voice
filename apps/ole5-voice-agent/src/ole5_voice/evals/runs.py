@@ -179,6 +179,26 @@ class WindowMetrics(Model):
     holds_word: int = Field(ge=0)  # of those, the windows that hold it
 
 
+# An install placeholder, an uppercase name between double braces, as the docs check finds one
+# (`scripts/check_docs.py`, DOC-PLACEHOLDER) in every committed file, `history.jsonl` included.
+_PLACEHOLDER = re.compile(r"\{\{[A-Z][A-Z0-9_]*\}\}")
+
+
+def holds_placeholder(text: str) -> bool:
+    """Whether `text` holds an install placeholder, which a run's note may not."""
+    return _PLACEHOLDER.search(text) is not None
+
+
+def _no_placeholder(note: str) -> str:
+    if holds_placeholder(note):
+        raise ValueError("holds an install placeholder, which the docs check refuses in history")
+    return note
+
+
+# Why a run is made: written into the committed history, which is never edited.
+Note = Annotated[str, Field(min_length=1), AfterValidator(_no_placeholder)]
+
+
 class RunInfo(Model):
     """What a run was: when, at which commit, with which answerer, settings and data, and why.
     A held-out run is never traced."""
@@ -192,7 +212,7 @@ class RunInfo(Model):
     settings: Shown
     price_per_hour_usd: float = Field(ge=0, allow_inf_nan=False)  # `--price-per-hour`
     data_digest: Sha256
-    note: str = Field(min_length=1)
+    note: Note
     windows_ms: tuple[int, ...] = ()
     traced: bool = False
 
@@ -224,6 +244,9 @@ class Scorecard(Model):
             raise ValueError("a held-out run's scorecard holds aggregates only, and is untraced")
         if any(result.split != self.run.split for result in self.variants):
             raise ValueError("a scorecard holds only its own split's variants")
+        keys = [(result.item, result.variant) for result in self.variants]
+        if len(set(keys)) != len(keys):
+            raise ValueError("a scorecard scores each variant once")
         return self
 
 
@@ -248,7 +271,7 @@ class HistoryLine(Model):
     breakdowns: dict[str, dict[str, float | None]]  # each stratum's accuracy
     scorecard: str  # the scorecard's file name, `SCORECARD_FILE`
     data_digest: Sha256
-    note: str = Field(min_length=1)
+    note: Note
     complete: bool
 
 

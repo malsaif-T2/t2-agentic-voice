@@ -110,6 +110,33 @@ def test_a_word_split_in_two_is_counted_right() -> None:
     assert judge.key("لو  سمحت") == judge.key("لوسمحت") == "لوسمحت"
 
 
+SPLIT_AT_A_DIGIT_NAME = [
+    ("someone", "some one"),
+    ("no one", "noone"),
+    ("anyone", "any one"),
+    ("everyone", "every one"),
+    ("five7", "five 7"),
+    ("some​one", "someone"),  # a zero-width space reads as a space
+    ("some‍one", "some one"),  # and so does a zero-width joiner
+]
+
+
+@pytest.mark.parametrize(("one", "other"), SPLIT_AT_A_DIGIT_NAME)
+def test_spaces_count_for_nothing_even_at_a_digit_name(one: str, other: str) -> None:
+    """Q8, with the library's own normalizer: a digit's name, read only as a whole word, does
+    not make a word written in two another text (the prototype's form, spaces removed first)."""
+    judge = load_matcher(SPELLING)
+    assert judge.is_right(one, [other]) and judge.is_right(other, [one])
+
+
+def test_a_digit_name_still_reads_as_its_digit() -> None:
+    judge = load_matcher(SPELLING)
+    assert judge.is_right("one", ["1"]) and judge.is_right("one moment", ["1 moment"])
+    assert judge.is_right("five seven", ["57"]) and judge.is_right("خمسة سبعة", ["٥٧"])
+    assert not judge.is_right("someone", ["some 1 else"])
+    assert not judge.is_right("some one", ["some 2"])
+
+
 def test_an_alternative_reference_counts_too() -> None:
     judge = _fake()
     assert judge.is_right("ok", ["okay", "ok"])
