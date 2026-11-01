@@ -15,8 +15,8 @@ the change in the changelog. They land with M1 (plan 002).
 
 - **The library** holds the scorers (D-022): text normalization and the spelling-guide check in
   `t2_agentic_voice.languages`; the error rates, the recall counts, text from silence and the
-  sign test in `t2_agentic_voice.evals`. Each works on the texts it is given, with no key, no
-  file and no network.
+  sign test in `t2_agentic_voice.evals`. Each is a function of what it is given alone: no key,
+  no file and no network.
 - **Your repository** holds your golden set and the commands around it: the items and their
   references, the manifests of the recordings, the split, the runner and the run history (the
   design's 9.7). The library publishes no golden data, and a `t2v eval` command comes when a
@@ -180,9 +180,10 @@ A hosted model does not give the same answer twice, and a seed does not make it 
 change from that noise.
 
 **1. Measure the noise first.** Before judging any change, run the same code twice on the same
-set, compare the two runs variant by variant, and count the items whose verdicts changed. From
-that count comes the smallest change one run can detect. Record both as a decision and as a
-tech-debt row: "one run is one sample; repeated runs are the lasting fix" (evaluation.md).
+set, compare the two runs variant by variant, and count the verdicts that changed and the items
+they moved. From that count comes the smallest change one run can detect. Record both as a
+decision and as a tech-debt row: "one run is one sample; repeated runs are the lasting fix"
+(evaluation.md).
 
 **2. Judge by item, with the sign test.** Compare the candidate's run with the last kept run
 variant by variant (fixed, broken, net), then count each item, by its net over its variants,
@@ -205,9 +206,10 @@ With noise, it takes more: in Ole5's rule (plan 002's registration), the smalles
 run can detect is the smallest number c of items that, added on one side to the d items the
 noise changed, split evenly (b = c + ⌊d/2⌋, w = ⌈d/2⌉), gives p < 0.05.
 
-Ole5's `poe eval-compare A B` takes both steps: fixed, broken and net per variant, the sign test
-by item, provider failures left out of both runs and listed, and held-out runs compared by
-aggregates only.
+Ole5 takes both steps with `poe eval-compare A B`, on two runs of the same code for the noise
+and on a candidate against the last kept run for a change: fixed, broken and net per variant,
+the sign test by item, provider failures left out of both runs and listed, and held-out runs
+compared by aggregates only.
 
 ## The rest of the method
 
