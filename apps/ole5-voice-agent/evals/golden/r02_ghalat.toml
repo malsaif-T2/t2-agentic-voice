@@ -23,6 +23,10 @@ root = "talkover"
 path = "r02_ghalat__duck__speakers__182915__seg1.wav"
 sha256 = "7717e41fef26c4770ada6bb8c3cc7ae2899eb3f0f38222a076ec61c14e947999"
 
+[[variants.confirmations]]
+at = 2026-11-01T16:31:53.946693+03:00
+review_pass = 1
+
 [[variants]]
 id = "r02_ghalat__duck__speakers__182932"
 device = "laptop"
@@ -36,3 +40,7 @@ tags = ["duck", "over-assistant", "playback-speakers"]
 root = "talkover"
 path = "r02_ghalat__duck__speakers__182932__seg1.wav"
 sha256 = "a5a357b19a9d7d39c287c4767561bc6fe1ab250c6a8cb00ad1ad7cdefa637340"
+
+[[variants.confirmations]]
+at = 2026-11-01T16:31:56.345823+03:00
+review_pass = 1

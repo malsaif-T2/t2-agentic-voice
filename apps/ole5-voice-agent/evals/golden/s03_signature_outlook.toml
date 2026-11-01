@@ -23,6 +23,10 @@ root = "talkover"
 path = "s03_signature_outlook__duck__speakers__182109__seg1.wav"
 sha256 = "4641d861b4a2f1289dc174acc3faafb8c8c37e08e85f5d8a9adf57e588d6b086"
 
+[[variants.confirmations]]
+at = 2026-11-01T16:32:54.816400+03:00
+review_pass = 1
+
 [[variants]]
 id = "s03_signature_outlook__duck__speakers__182123"
 device = "laptop"
@@ -37,6 +41,10 @@ root = "talkover"
 path = "s03_signature_outlook__duck__speakers__182123__seg1.wav"
 sha256 = "9f9ff78466d81e64a1b63af084947ca297b237ad6991721333a7dd1a451cf0eb"
 
+[[variants.confirmations]]
+at = 2026-11-01T16:32:58.720885+03:00
+review_pass = 1
+
 [[variants]]
 id = "s03_signature_outlook__pause__speakers__184123"
 device = "laptop"
@@ -50,3 +58,7 @@ tags = ["over-assistant", "pause", "playback-speakers"]
 root = "talkover"
 path = "s03_signature_outlook__pause__speakers__184123__seg1.wav"
 sha256 = "4e79d980595991bebd2aea38ac35109737f00479ff375758749527bd801f2200"
+
+[[variants.confirmations]]
+at = 2026-11-01T16:33:01.556241+03:00
+review_pass = 1

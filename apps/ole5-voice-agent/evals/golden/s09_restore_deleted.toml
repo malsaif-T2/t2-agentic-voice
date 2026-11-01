@@ -23,6 +23,10 @@ root = "talkover"
 path = "s09_restore_deleted__duck__speakers__183455__seg1.wav"
 sha256 = "09858855cf2d633aaf3215b207f3b1e493face9b3d18721ebc2888b5dc7c4448"
 
+[[variants.confirmations]]
+at = 2026-11-01T16:34:21.072034+03:00
+review_pass = 1
+
 [[variants]]
 id = "s09_restore_deleted__duck__speakers__183509"
 device = "laptop"
@@ -37,12 +41,16 @@ root = "talkover"
 path = "s09_restore_deleted__duck__speakers__183509__seg1.wav"
 sha256 = "7b9ab8b6794eff461a4be67594bb58e9d7e1b88ace013d7a9e00bbdc7144d586"
 
+[[variants.confirmations]]
+at = 2026-11-01T16:34:24.564916+03:00
+review_pass = 1
+
 [[variants]]
 id = "s09_restore_deleted__pause__speakers__184859"
 device = "laptop"
 session = "talkover-2026-10-27"
-reference = "هل يمكنني استرجاع مراسلة حذفتها بالخطأ؟"
-reference_source = "script"
+reference = "هل يمكنني مراسلة حذفتها بالخطأ؟"
+reference_source = "typed"
 turn_ends_ms = []
 tags = ["over-assistant", "pause", "playback-speakers"]
 
@@ -55,6 +63,10 @@ sha256 = "6e8cebc8c39658626464839a5db19f8a6ca93eb14962858767cb471e678a4b01"
 root = "talkover"
 path = "s09_restore_deleted__pause__speakers__184859__seg2.wav"
 sha256 = "7c4883a2c6240754797feb4a8b77b7873d6903e53fee653a7c15977f2bbbe5bd"
+
+[[variants.confirmations]]
+at = 2026-11-01T16:38:36.501427+03:00
+review_pass = 2
 
 [[variants]]
 id = "s09_restore_deleted__pause__speakers__184912"
@@ -69,3 +81,7 @@ tags = ["over-assistant", "pause", "playback-speakers"]
 root = "talkover"
 path = "s09_restore_deleted__pause__speakers__184912__seg1.wav"
 sha256 = "7e17a0773796c26c5ec5b2c3ce04ebcb07e8b94aeb0faae13c7e801907af3b3a"
+
+[[variants.confirmations]]
+at = 2026-11-01T16:34:43.989096+03:00
+review_pass = 1

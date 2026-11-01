@@ -23,6 +23,10 @@ root = "talkover"
 path = "k04_lahza__duck__speakers__183046__seg1.wav"
 sha256 = "1cc22ee3007729a2321044a065c6c1f166ead759f552f24a56a4d062d9ca3657"
 
+[[variants.confirmations]]
+at = 2026-11-01T16:31:32.616683+03:00
+review_pass = 1
+
 [[variants]]
 id = "k04_lahza__duck__speakers__183112"
 device = "laptop"
@@ -37,6 +41,10 @@ root = "talkover"
 path = "k04_lahza__duck__speakers__183112__seg1.wav"
 sha256 = "957c93e4c9703b399ac0519bd2c4d31e1e2433941b0631ebd969db514e488cf0"
 
+[[variants.confirmations]]
+at = 2026-11-01T16:31:34.497006+03:00
+review_pass = 1
+
 [[variants]]
 id = "k04_lahza__pause__speakers__184658"
 device = "laptop"
@@ -50,3 +58,7 @@ tags = ["over-assistant", "pause", "playback-speakers"]
 root = "talkover"
 path = "k04_lahza__pause__speakers__184658__seg1.wav"
 sha256 = "d39ec67ad1abb6cf87e8662f16c9ab6fad8a2be1547e7fc845aef629d8223960"
+
+[[variants.confirmations]]
+at = 2026-11-01T16:31:36.206856+03:00
+review_pass = 1

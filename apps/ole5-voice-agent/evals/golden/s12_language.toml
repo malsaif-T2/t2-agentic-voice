@@ -23,12 +23,16 @@ root = "talkover"
 path = "s12_language__duck__speakers__183829__seg1.wav"
 sha256 = "9159a88f163ed76ff7c1ba52e575b4abf1b17c5f248b0a25fcd8d5fe43d059a6"
 
+[[variants.confirmations]]
+at = 2026-11-01T16:35:19.260636+03:00
+review_pass = 1
+
 [[variants]]
 id = "s12_language__pause__speakers__185215"
 device = "laptop"
 session = "talkover-2026-10-27"
-reference = "كيف أغير لغة الواجهة من English إلى العربي؟"
-reference_source = "script"
+reference = "لغة الواجهة من English إلى العربي؟"
+reference_source = "typed"
 turn_ends_ms = []
 tags = ["over-assistant", "pause", "playback-speakers"]
 
@@ -36,6 +40,10 @@ tags = ["over-assistant", "pause", "playback-speakers"]
 root = "talkover"
 path = "s12_language__pause__speakers__185215__seg1.wav"
 sha256 = "894c80d5a2735fcff7ef4ce04524640e4fb8c5b4fc914a41363ad8de9dde38d3"
+
+[[variants.confirmations]]
+at = 2026-11-01T16:38:42.167003+03:00
+review_pass = 2
 
 [[variants]]
 id = "s12_language__pause__speakers__185228"
@@ -50,3 +58,7 @@ tags = ["over-assistant", "pause", "playback-speakers"]
 root = "talkover"
 path = "s12_language__pause__speakers__185228__seg1.wav"
 sha256 = "8e5b37329f7407ea5e7ee5b1a7bfa6108e5aaea698130f1ccfb3785fb6cd3d1b"
+
+[[variants.confirmations]]
+at = 2026-11-01T16:35:29.948991+03:00
+review_pass = 1

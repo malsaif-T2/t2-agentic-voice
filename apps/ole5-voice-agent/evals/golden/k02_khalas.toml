@@ -23,6 +23,10 @@ root = "talkover"
 path = "k02_khalas__duck__speakers__182424__seg1.wav"
 sha256 = "f9333ce56a8003abe17e905ae5dd8ab194ada2e572b8a84063ac8fe8472b6746"
 
+[[variants.confirmations]]
+at = 2026-11-01T16:31:24.084789+03:00
+review_pass = 1
+
 [[variants]]
 id = "k02_khalas__pause__speakers__184310"
 device = "laptop"
@@ -36,3 +40,7 @@ tags = ["over-assistant", "pause", "playback-speakers"]
 root = "talkover"
 path = "k02_khalas__pause__speakers__184310__seg1.wav"
 sha256 = "d64f4e567fc757c8e62b694dbd0d9e1f3ca3576913b21465891e9b0d0e6d52be"
+
+[[variants.confirmations]]
+at = 2026-11-01T16:31:26.209285+03:00
+review_pass = 1

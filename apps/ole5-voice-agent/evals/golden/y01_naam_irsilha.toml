@@ -23,6 +23,10 @@ root = "talkover"
 path = "y01_naam_irsilha__duck__speakers__182134__seg1.wav"
 sha256 = "2ad66c2ae610a490f6ebc0086ad8c2c947cd00893f0783d2d4b53e6f40a4bbeb"
 
+[[variants.confirmations]]
+at = 2026-11-01T16:36:00.434935+03:00
+review_pass = 1
+
 [[variants]]
 id = "y01_naam_irsilha__duck__speakers__182147"
 device = "laptop"
@@ -36,6 +40,10 @@ tags = ["duck", "over-assistant", "playback-speakers"]
 root = "talkover"
 path = "y01_naam_irsilha__duck__speakers__182147__seg1.wav"
 sha256 = "2019119c82e25127bea5217102b35b70ca09fccf19f7d64ae9e88158702159db"
+
+[[variants.confirmations]]
+at = 2026-11-01T16:36:03.174498+03:00
+review_pass = 1
 
 [[variants]]
 id = "y01_naam_irsilha__pause__speakers__184133"
@@ -51,6 +59,10 @@ root = "talkover"
 path = "y01_naam_irsilha__pause__speakers__184133__seg1.wav"
 sha256 = "1cbf1a10feeab1c8c50b8f23eebb4621fcebd5a8bf011e8743199df0c3808bc9"
 
+[[variants.confirmations]]
+at = 2026-11-01T16:36:06.093819+03:00
+review_pass = 1
+
 [[variants]]
 id = "y01_naam_irsilha__pause__speakers__184153"
 device = "laptop"
@@ -64,3 +76,7 @@ tags = ["pause", "playback-speakers"]
 root = "talkover"
 path = "y01_naam_irsilha__pause__speakers__184153__seg1.wav"
 sha256 = "e2d42c9ee919e1cb98b2d02655d6e908a2ca646fa132d60d7c4eb4af0a4a1a1a"
+
+[[variants.confirmations]]
+at = 2026-11-01T16:36:09.001211+03:00
+review_pass = 1

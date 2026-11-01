@@ -5,10 +5,11 @@ data, and each segment's WAV file for its hash, length and format, and writes on
 repository: one item a phrase under `evals/golden/`, its takes as variants, and the manifest
 `evals/manifests/talkover.json`, never the audio. A take the lab's detector split in two is one
 variant, its segments in order (plan 002's decision log); a take with no segment is left out
-and listed. Every take was captured by the laptop's microphone array, so the device is the
-laptop's; the condition, whether the take began over the assistant, and the playback device
-are the variant's tags. Given the recorder's `--out` as `--reviews`, the owner's reviews of
-each variant become its confirmations, as for the new recordings.
+and listed, and so is a take the owner left out after the review (`LEFT_OUT`). Every take was
+captured by the laptop's microphone array, so the device is the laptop's; the condition,
+whether the take began over the assistant, and the playback device are the variant's tags.
+Given the recorder's `--out` as `--reviews`, the owner's reviews of each variant become its
+confirmations, as for the new recordings.
 """
 
 from __future__ import annotations
@@ -102,6 +103,12 @@ LANGUAGE: Final[Mapping[str, Language]] = {
     "y02_eh_irsilha": "saudi",
     "y04_naam": "msa",
 }
+# The takes the owner left out on 2026-11-01, after the review (plan 002): each clip was cut off
+# at its start, so what is left of its listening sound is on no list a reference may use.
+LEFT_OUT: Final[Mapping[str, str]] = {
+    "b01_tamam__pause__speakers__184025": "cut off at its start",
+    "b07_tamam_tamam__pause__speakers__184714": "cut off at its start",
+}
 HEADER: Final = (
     "Written by `python -m ole5_voice.evals.import_talkover` from the lab's refs.json and",
     "takes.json: import again rather than edit.",
@@ -180,18 +187,29 @@ def _terms(texts: Sequence[str], terms: Sequence[str]) -> tuple[str, ...]:
 
 
 def build(
-    lab: Path, *, terms: Sequence[str], describe: Describe, reviews: Path | None = None
+    lab: Path,
+    *,
+    terms: Sequence[str],
+    describe: Describe,
+    reviews: Path | None = None,
+    left_out: Mapping[str, str] | None = None,
 ) -> tuple[list[Item], Manifest, list[str]]:
-    """The talk-over items, their manifest, and the takes left out for having no segment."""
+    """The talk-over items, their manifest, and the takes left out for having no segment. A take
+    named in `left_out` (`LEFT_OUT`, from `main`) is left out whole, its files with it."""
     refs = _read(lab / "refs.json", TypeAdapter(dict[str, LabSegment]))
     takes = _read(lab / "takes.json", TypeAdapter(dict[str, LabTake]))
     if sorted(refs) != sorted(name for take in takes.values() for name in take.segments):
         raise GoldenSetError("refs.json and takes.json name different segment files")
+    skipped = left_out or {}
+    if missing := sorted(set(skipped) - {take.take for take in takes.values()}):
+        raise GoldenSetError(f"no take of the lab is named {', '.join(missing)}, left out")
     files: list[ManifestFile] = []
     phrases: dict[str, list[tuple[LabTake, Variant]]] = {}
     for key, take in sorted(takes.items()):
         if key != take.take:
             raise GoldenSetError(f"takes.json files the take {take.take} under another name")
+        if take.take in skipped:
+            continue
         segments, session = _segments(take, refs), f"{ROOT}-{take.recorded_at.date().isoformat()}"
         refs_of_take = []
         for name in take.segments:
@@ -279,7 +297,7 @@ def main(argv: Sequence[str] | None = None) -> int:
     try:
         terms = load_terms(args.evals / TERMS_FILE)
         items, manifest, left_out = build(
-            args.lab, terms=terms, describe=read_wav, reviews=args.reviews
+            args.lab, terms=terms, describe=read_wav, reviews=args.reviews, left_out=LEFT_OUT
         )
         write(args.evals, items, manifest)
     except GoldenSetError as error:
@@ -289,6 +307,8 @@ def main(argv: Sequence[str] | None = None) -> int:
     log.info("talkover_imported", items=len(items), variants=variants, files=len(manifest.files))
     if left_out:
         log.info("talkover_takes_left_out", reason="no segment", takes=left_out)
+    for take, why in LEFT_OUT.items():
+        log.info("talkover_take_left_out", take=take, reason=why, by="the owner, 2026-11-01")
     return 0
 
 

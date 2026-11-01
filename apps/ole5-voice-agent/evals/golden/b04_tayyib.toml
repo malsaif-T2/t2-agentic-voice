@@ -23,6 +23,10 @@ root = "talkover"
 path = "b04_tayyib__duck__speakers__182518__seg1.wav"
 sha256 = "0d793481f4b220aa0a0bdcf7168431d0e021500adb0bb675d3f6bb855b186ad4"
 
+[[variants.confirmations]]
+at = 2026-11-01T16:29:12.316467+03:00
+review_pass = 1
+
 [[variants]]
 id = "b04_tayyib__pause__speakers__184343"
 device = "laptop"
@@ -36,3 +40,7 @@ tags = ["over-assistant", "pause", "playback-speakers"]
 root = "talkover"
 path = "b04_tayyib__pause__speakers__184343__seg1.wav"
 sha256 = "95e11afa0f6a7667e545e2fae7174ec42866cc263cad87013eac4ef766c2e90b"
+
+[[variants.confirmations]]
+at = 2026-11-01T16:29:14.785565+03:00
+review_pass = 1

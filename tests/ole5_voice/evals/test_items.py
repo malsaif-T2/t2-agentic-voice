@@ -381,8 +381,15 @@ def test_the_talk_over_command_writes_only_the_items_and_manifest_it_owns(
     evals.mkdir()
     (evals / "terms.toml").write_text('terms = ["Outlook"]\n', encoding="utf-8")
     monkeypatch.setattr(import_talkover, "read_wav", _describe)
+    whole, _, _ = import_talkover.build(lab, terms=[], describe=_describe)
+    gone = {i.id: i for i in whole}["s06_pause_error"].variants[1].id  # the real ones: not here
+    monkeypatch.setattr(import_talkover, "LEFT_OUT", {gone: "cut off at its start"})
     assert import_talkover.main(["--lab", str(lab), "--evals", str(evals)]) == 0
     assert len(load_items(evals / "golden")) == 8
+    assert gone not in {v.id for i in load_items(evals / "golden") for v in i.variants}
+    assert len(load_manifests(evals / "manifests")[0].files) == 9  # its file left out with it
+    with pytest.raises(GoldenSetError, match="no take of the lab is named t9_gone"):
+        import_talkover.build(lab, terms=[], describe=_describe, left_out={"t9_gone": "why"})
     assert [m.root for m in load_manifests(evals / "manifests")] == ["talkover"]
     arabic = (evals / "golden" / "b01_tamam.toml").read_text(encoding="utf-8")
     english = (evals / "golden" / "e03_signature.toml").read_text(encoding="utf-8")

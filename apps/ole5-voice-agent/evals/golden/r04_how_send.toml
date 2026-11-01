@@ -23,6 +23,10 @@ root = "talkover"
 path = "r04_how_send__duck__speakers__183648__seg1.wav"
 sha256 = "ad17dbcadbdbdf440f00c860ad06d49cd99ba1425e8e4fbbbd36e123f171d331"
 
+[[variants.confirmations]]
+at = 2026-11-01T16:32:05.231768+03:00
+review_pass = 1
+
 [[variants]]
 id = "r04_how_send__pause__speakers__185028"
 device = "laptop"
@@ -37,6 +41,10 @@ root = "talkover"
 path = "r04_how_send__pause__speakers__185028__seg1.wav"
 sha256 = "f42465441c439fb61f7de5f83937c829082a4ac9d9fa12d2c14e95ae7840adcc"
 
+[[variants.confirmations]]
+at = 2026-11-01T16:32:07.069628+03:00
+review_pass = 1
+
 [[variants]]
 id = "r04_how_send__pause__speakers__185038"
 device = "laptop"
@@ -50,3 +58,7 @@ tags = ["over-assistant", "pause", "playback-speakers"]
 root = "talkover"
 path = "r04_how_send__pause__speakers__185038__seg1.wav"
 sha256 = "48f9bd0d469bf95f80cd1e540ece708a0e99ab1648cff2418a28a8223fbff6a6"
+
+[[variants.confirmations]]
+at = 2026-11-01T16:32:09.883443+03:00
+review_pass = 1

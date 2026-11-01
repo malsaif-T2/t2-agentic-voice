@@ -23,6 +23,10 @@ root = "talkover"
 path = "s11_word_size__duck__speakers__183720__seg1.wav"
 sha256 = "bfda560d6e71aba5285f533b3ba8a437660c544615e703b36d79fae4fd4f344c"
 
+[[variants.confirmations]]
+at = 2026-11-01T16:35:00.193921+03:00
+review_pass = 1
+
 [[variants]]
 id = "s11_word_size__pause__speakers__185111"
 device = "laptop"
@@ -37,6 +41,10 @@ root = "talkover"
 path = "s11_word_size__pause__speakers__185111__seg1.wav"
 sha256 = "b7d4575ebf18b29da148a9189813a53cc038acbe246a6b0845268ebc6ca39a0e"
 
+[[variants.confirmations]]
+at = 2026-11-01T16:35:04.160440+03:00
+review_pass = 1
+
 [[variants]]
 id = "s11_word_size__pause__speakers__185124"
 device = "laptop"
@@ -50,3 +58,7 @@ tags = ["over-assistant", "pause", "playback-speakers"]
 root = "talkover"
 path = "s11_word_size__pause__speakers__185124__seg1.wav"
 sha256 = "21042fe46517a83e20f29b729b63de3ccfa1b7365e62dd87e917e61928d2d931"
+
+[[variants.confirmations]]
+at = 2026-11-01T16:35:15.654589+03:00
+review_pass = 1

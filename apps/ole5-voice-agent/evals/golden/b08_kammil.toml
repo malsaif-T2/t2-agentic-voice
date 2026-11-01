@@ -23,6 +23,10 @@ root = "talkover"
 path = "b08_kammil__duck__speakers__183355__seg1.wav"
 sha256 = "2d6812c915430870fc5b59d9044665befd8c5cd1d474e0b96bc578d466ffff68"
 
+[[variants.confirmations]]
+at = 2026-11-01T16:29:46.157403+03:00
+review_pass = 1
+
 [[variants]]
 id = "b08_kammil__duck__speakers__183405"
 device = "laptop"
@@ -37,6 +41,10 @@ root = "talkover"
 path = "b08_kammil__duck__speakers__183405__seg1.wav"
 sha256 = "dc74a1ba16065bc68d69c0275face6971e1b1ef973adb29d6f6a1e19d523a7eb"
 
+[[variants.confirmations]]
+at = 2026-11-01T16:29:48.471933+03:00
+review_pass = 1
+
 [[variants]]
 id = "b08_kammil__pause__speakers__184848"
 device = "laptop"
@@ -50,3 +58,7 @@ tags = ["over-assistant", "pause", "playback-speakers"]
 root = "talkover"
 path = "b08_kammil__pause__speakers__184848__seg1.wav"
 sha256 = "c778712c10024edf6df962db0e26a4f057d10051d5b4a89dd1d6f683d66e6547"
+
+[[variants.confirmations]]
+at = 2026-11-01T16:29:50.765699+03:00
+review_pass = 1

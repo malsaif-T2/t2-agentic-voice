@@ -23,6 +23,10 @@ root = "talkover"
 path = "s02_inbox_morning__duck__speakers__182014__seg1.wav"
 sha256 = "1f3761d2da947bc0458651f378a4bd8415685e91a3485cc424ff60e23b0edfe9"
 
+[[variants.confirmations]]
+at = 2026-11-01T16:32:44.276700+03:00
+review_pass = 1
+
 [[variants]]
 id = "s02_inbox_morning__pause__headset__185405"
 device = "laptop"
@@ -37,6 +41,10 @@ root = "talkover"
 path = "s02_inbox_morning__pause__headset__185405__seg1.wav"
 sha256 = "16f54806dc03a124cfdc6529a17735555b901225db467768a4c449080542aa3b"
 
+[[variants.confirmations]]
+at = 2026-11-01T16:32:47.663625+03:00
+review_pass = 1
+
 [[variants]]
 id = "s02_inbox_morning__pause__speakers__184050"
 device = "laptop"
@@ -50,3 +58,7 @@ tags = ["over-assistant", "pause", "playback-speakers"]
 root = "talkover"
 path = "s02_inbox_morning__pause__speakers__184050__seg1.wav"
 sha256 = "480c5d4f818a2965b9c67d5467701b3ae79962a2a1696f7b04537352853d610a"
+
+[[variants.confirmations]]
+at = 2026-11-01T16:32:51.122615+03:00
+review_pass = 1
