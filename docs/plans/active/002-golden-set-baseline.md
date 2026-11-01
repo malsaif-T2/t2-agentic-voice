@@ -575,8 +575,8 @@ run, [WORKING-RULES.md](../../../WORKING-RULES.md), "Measurement runs")
 - 2026-11-01: Block 0's review, second round. After the five agents by concern (the harness,
   security, faithfulness, correctness and the tracks' readiness) and the first fixes, a check of
   those fixes raised 8 findings; each was checked by an agent told to refute it, and all 8 held
-  and are fixed in this commit (`Plan 002: review fixes, Block 0`); none was rejected, and none
-  goes to the owner. The fixes:
+  and are fixed in commit `Plan 002: review fixes, Block 0 (second round)`; none was rejected,
+  and none goes to the owner. The fixes:
   - `Settings.from_env` refuses an `env_file` that is no file, with a test of a missing file and
     of a folder (`tests/t2_agentic_voice/core/test_config.py`), since pydantic-settings skips a
     missing one silently.
@@ -593,6 +593,13 @@ run, [WORKING-RULES.md](../../../WORKING-RULES.md), "Measurement runs")
 
   `uv run poe check` passes: 349 tests, 100% coverage, mypy strict on 126 files, `uv lock
   --check` clean. Next, the merge into `plan-002-integration`, by the integrating session.
+- 2026-11-01: Block 0 is merged into `plan-002-integration` (`Plan 002: merge Block 0 into
+  plan-002-integration`). In all, 44 findings were raised: 38 held and are fixed, 6 were
+  refuted by the agent that checked them, and none goes to the owner; the debt they left is
+  TD-002 to TD-007. The second round's check found one slip, the entry above naming the first
+  round's commit as its own, corrected here. After the merge `uv run poe check` passes (349
+  tests, 100% coverage, mypy strict on 126 files) and `uv lock --check` is clean. Next, Tracks
+  A to H, each in its own worktree cut from `plan-002-integration`.
 
 ## Decision log
 
