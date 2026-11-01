@@ -1005,6 +1005,100 @@ run, [WORKING-RULES.md](../../../WORKING-RULES.md), "Measurement runs")
   `test_compare.py`) are removed, with their docstrings' note, since both ran and passed at the
   merge on Track A's scorers and sign test. `uv run --offline poe check` passes: 948 tests, none
   skipped, 100% coverage, mypy strict on 130 files, arch and docs clean.
+- 2026-11-01: Track E, the runner, is merged (`Plan 002: merge track E`), after Track F, from three
+  commits on `plan-002-track-e`, cut from 44aa043: 06ba75f (the window measures and the worktree
+  checks), 2b8d0fa (the answerers and the run's plan) and 45a6c60 (`poe eval`), each gated before it
+  was made. It replaces Block 0's stubs `run.py`, `answerers.py`, `windows.py` and `worktree.py`,
+  and adds `run_parts.py`, with their tests in `tests/ole5_voice/evals/` (`test_run.py`,
+  `test_run_parts.py`, `test_answerers.py`, `test_windows.py`, `test_worktree.py`). `poe eval` takes
+  every flag the plan lists, and `--clips-from`; `--split` is always required, and
+  `--price-per-hour` and `--cap-usd` when the answerer calls Groq. The settings load through
+  `Settings.from_env`, whose error is the only one reported, and `--show-settings` prints each
+  setting resolved (the Groq base URL included, the key only as set or not set), the worktree's
+  state and every path. Before any call it refuses the main checkout, a dirty tree (untracked files
+  count), an `--out` that exists, lies inside the run's own or another linked worktree, or inside
+  the main checkout where git would track it, and audio that is not the file its manifest hashed.
+  The smoke test sends one dev variant and must pass with no failed, retried or refused request.
+  Requests go one at a time, paced to `--max-rpm`; a request turned away is asked again after a
+  pause, up to `--max-attempts`, and then the variant is a provider failure; a variant still running
+  at `--variant-timeout-s` is stuck; the cap is checked before each request, and a request that
+  would pass it is never sent. A dev run writes each result to `results.jsonl` as it finishes, with
+  a progress line of identifiers, verdicts and timings, never a transcript; Track F's writer writes
+  the scorecard; a run that calls Groq appends its history line to the worktree's `history.jsonl`
+  and copies it beside the scorecard. A held-out run has no per-variant output, counts-only lines
+  and no tracing, and an interrupted one keeps no result; Ctrl+C or the cap leaves a run incomplete
+  (exit 1). From the track's report:
+  - Prototype sources, read as text, never run (D-010): the pause after a rate limit is the larger
+    of `retry-after` and 20 s, and 3 s after another failure that may pass
+    (`Ole5-chatbot/scripts/stt_eval.py`, lines 575-585, at lines 581 and 585); up to 4 attempts per
+    utterance, hence `--max-attempts 4` by default (the same file, lines 708-711); the mean of a
+    value over a take's segments is weighted by segment length, for the confidence and the no-speech
+    estimate of a variant of several segments (`Ole5-chatbot/src/ole5_chat/voice/stt.py`, lines
+    249-252).
+  - Its defaults are the registration's: `--max-rpm 20`, `--max-attempts 4`, `--variant-timeout-s
+    120`, and the language hint from the item's label (`ar` for Saudi, MSA, mixed and none; `en` for
+    English). Every request is charged the larger of Groq's 10 s minimum and the clip's length ("The
+    cost and the time"; the design's 10.4), and pacing keeps the starts of requests at least 60 /
+    `--max-rpm` seconds apart.
+  - It was built against Block 0's fakes only (`FakeSpeechToText`, `FakeMatcher`, `FakeGoldenSet`,
+    `FakeScorecardWriter`, `FakeHistory`, `FakeTracing`, `fake_normalize`); every other track's
+    piece is called by its Block 0 signature, through a `Parts` dataclass whose defaults are the
+    real functions: `items.load_items`, `split.load_split`, `matcher.load_matcher`,
+    `scorecard.write_scorecard`, `history.append_line`, `GroqSTT.from_settings` (picked through
+    `stt.provider`), `Tracing.from_settings`, and `normalize_digits(normalize_arabic(...))`. No
+    request was sent and nothing was spent.
+  - The worktree checks were tested with a fake `git`, and once with the real git 2.51 in a
+    temporary repository (a main checkout and a worktree added with `git worktree add`), with
+    `GIT_CONFIG_GLOBAL` pointing at an empty file and `GIT_CONFIG_NOSYSTEM` and
+    `GIT_CEILING_DIRECTORIES` set, so no user or system configuration is read. An interrupt is
+    tested as Ctrl+C delivers it, `signal.raise_signal(SIGINT)` inside the fake making asyncio's
+    runner cancel the run; a probe on this Windows machine showed both that and a raised
+    KeyboardInterrupt end in the runner's handler.
+  - No talk-over reference appears in its source strings: a scratch check outside the repository
+    compared every string constant of its five modules with the 46 normalized references and
+    alternates of `voice-lab/recordings/talkover/refs.json` (read as data), and none matched. The
+    verdict words in progress lines are `right`, `wrong`, `unjudged`, `provider` and `stuck`. Module
+    sizes: `run.py` 365, `run_parts.py` 327, `answerers.py` 378, `worktree.py` 152 and `windows.py`
+    78 lines.
+  - Deviation: Track E adds two files its Owns line does not name,
+    `apps/ole5-voice-agent/src/ole5_voice/evals/run_parts.py` (the run's `Parts`, its `Plan` with
+    the audio checks and the digest, the `--clips-from` clip answers, each variant's result and the
+    progress lines) and `tests/ole5_voice/evals/test_run_parts.py`: with all of that in `run.py`,
+    the file was 693 lines after `ruff format`, over ARCH-SIZE's 400. Only Track E owns the two
+    files. The test helpers its test files share are in `test_run_parts.py` (`World`, `FakeClock`,
+    `golden_set`) and `test_worktree.py` (`FakeGit`).
+  - Deviation: `poe eval` has a flag the plan's list does not name, `--clips-from <scorecard.json>`:
+    the same model's first dev run's scorecard, checked to be dev, of this model and at this commit.
+    The registration's "A window at least as long as its clip is not sent again; that clip's result
+    from the same model's first dev run is used and marked so" needs that run's answers, and no
+    listed flag supplies them. Without the flag, and always for held-out clips, such a window is
+    sent as the whole clip and marked not reused (the owner's question below).
+  - Its debt rows are TD-019 (`answerers.py` near the size cap), TD-020 (the port names no way to
+    close an adapter) and TD-021 (every request counted as billed). It changed no row and asked for
+    no change to Block 0.
+  - Its question for the owner, under Q15: if the windows are taken on all 124 talk-over clips, a
+    held-out window at least as long as its clip cannot reuse the clip's answer, since a held-out
+    scorecard holds no per-variant answer, so the runner sends the whole clip as that window, marked
+    not reused: at most a few requests (only clips under 1 s, at 1000 ms), within the estimate,
+    which counts every window as sent. Accept this, or should something else happen for those clips?
+  - Not done: the optional `prototype-cache` answerer is not built: it would read
+    `voice-lab/eval/_cache/calls.jsonl` by the key `Ole5-chatbot/scripts/stt_eval.py` builds at
+    lines 551-552 (the SHA-1 of the WAV bytes, plus the request's JSON with `sort_keys` and
+    `ensure_ascii` off, plus `|run<n>`), it does not fit beside the other two (TD-019), and the dry
+    run comes only at step 19, so it would go in a module of its own. Nothing was checked against
+    the real pieces of Tracks A to D and F, nor live: no request was sent and `poe eval` did not run
+    on the real golden set, which steps 15, 21 and 22 do first.
+  - At the merge, Track E's one request to the integrator is checked: `run.py` gives Track F's real
+    `write_scorecard` an empty sequence of results when the smoke test fails or a held-out run does
+    not finish, and the writer takes it, for a dev and a held-out run (a probe in the scratch
+    folder: a scorecard of no variant, every rate none, complete false). The history line takes its
+    billed seconds and cost from the run's budget, not from the scorecard, so a held-out run's spend
+    is counted. Left for step 15 and the review: the runner scores every committed variant
+    (`items.load_items`), not only the checked ones `items.accepted()` gives, while the registration
+    leaves out a variant the owner has not confirmed; with none confirmed yet, scoring only those
+    would leave step 15's reference runs with no variant.
+  - After the merge `uv run --offline poe check` passes: 1034 tests, 100% coverage (2959
+    statements), mypy strict on 132 files, arch and docs clean.
 
 ## Decision log
 
@@ -1767,6 +1861,94 @@ All entries are the agent's choices of 2026-11-01, with the agent's reasons.
   is empty, and it changes which docs DOC-REF and DOC-MILESTONE read, a harness rule rather than an
   integration fix. It stays as TD-018's fix, for the review of the merged code or the owner. The
   integrator's choice.
+- 2026-11-01: Track E: a run's name is the name of its `--out` folder, checked as a `models.Name`.
+  It is the run's `RunInfo.name`, its history line's `run` and its traces' `session.id`, so all
+  three come from one place and no `--name` flag is needed. The agent's choice.
+- 2026-11-01: Track E: a run is traced only when `--tracing-endpoint` is given. The runner sets
+  `tracing.endpoint` from the flag alone, so a `T2V_TRACING__ENDPOINT` in the shell or a `.env`
+  never traces a run. A held-out run refuses the flag, and a test checks that a held-out run with
+  that variable set opens no span. The agent's choice.
+- 2026-11-01: Track E: `--out` is a new folder outside every worktree that may be removed: refused
+  inside the run's own worktree, even where git ignores it (its `var/`), and inside another linked
+  worktree; inside the main checkout it is accepted only where `git check-ignore` says ignored;
+  outside the repository, any new folder. This follows the acceptance criterion's "a new folder
+  outside the worktree that git does not track". The agent's choice.
+- 2026-11-01: Track E: the tree counts as clean when `git status --porcelain` is empty, so an
+  untracked file that is not ignored (a new item not yet committed) is a change, and the run is
+  refused. The agent's choice.
+- 2026-11-01: Track E: retries. A rate limit pauses the larger of `retry_after_s` and 20 s;
+  `timeout`, `connection_lost` and `server_error` pause 3 s; `rejected` is never asked again. Pacing
+  is a minimum gap between request starts, stricter than a per-minute window. The agent's choice.
+- 2026-11-01: Track E: each request is charged the larger of 10 s and the clip's length before it is
+  sent, whatever its outcome, since whether a refused request is billed is UNVERIFIED (TD-021). So
+  the cap, the history line's `billed_seconds` and its `cost_usd` are upper bounds. Each `Request`
+  records the seconds charged. The history line counts every request of the run, the smoke test's
+  and a cut-off variant's included, so step 20's spend from the history covers them. The agent's
+  choice.
+- 2026-11-01: Track E: the smoke test sends the run's first variant (dev), or for a held-out run the
+  first dev variant, as a whole clip with no windows. It is answered again in the run, as the
+  registration's estimate counts smoke requests apart. It passes when every request ended `ok` on
+  its first attempt and the answer is no failure. If it fails, the run writes a scorecard of no
+  result (complete false) and, having spent, a history line. The agent's choice.
+- 2026-11-01: Track E: `--smoke-only` takes `--split dev` and no `--windows-ms`. Its scorecard holds
+  the smoke variant's result, and a run that spends appends its history line, as step 21 says. The
+  agent's choice.
+- 2026-11-01: Track E: Ctrl+C ends a run incomplete (exit 1). A dev run keeps `results.jsonl` and
+  writes a scorecard of the results so far, complete false. A held-out run writes a scorecard of no
+  result, complete false, and still appends its history line (0 variants, no accuracy) so its spend
+  is counted: "keeps nothing" is read as no result kept, and evaluation.md's "Every attempt is
+  recorded" still holds. The agent's choice.
+- 2026-11-01: Track E: `--cap-usd` is checked before each request. A run that reaches it ends
+  between requests, incomplete, and the variant in progress is dropped unanswered, its sent requests
+  still counted. The agent's choice.
+- 2026-11-01: Track E: the per-variant wall-clock limit lives in the `groq` answerer, which keeps
+  the variant's request log. A stuck variant's answer lists its requests, the one in flight as
+  `stuck`. A stuck or provider-failed variant is an infrastructure failure of a run that still
+  completes. The agent's choice.
+- 2026-11-01: Track E: `--windows-ms` sends only the windows, of the split's talk-over items (the
+  registration's "each registered talk-over clip"), so Q15's answer of dev only or all 124 needs no
+  other flag. Its results are unjudged (`judged` false). `--questions` narrows a dev run further.
+  The agent's choice.
+- 2026-11-01: Track E: a window's measures are taken against the variant's reference (the
+  registration says "the reference"), normalized with `normalize_digits(normalize_arabic(text))`.
+  Leading words are the words both texts begin with, in order. `holds_word` is set only for a
+  one-word reference: true when the matcher judges any run of the window's words to be it, so the
+  spelling guide's rulings and a word split in two count. The agent's choice.
+- 2026-11-01: Track E: the verdict is `Matcher.is_right(answer text, [variant.reference,
+  *item.alternatives])`. The agent's choice.
+- 2026-11-01: Track E: `--questions` is refused with `--split held-out`, since a held-out run covers
+  its whole split. Its lines are `item/variant`; blank lines are skipped, and an entry the split
+  does not hold is refused, the refusal giving a count. The agent's choice.
+- 2026-11-01: Track E: the data digest is the SHA-256 of canonical JSON over the run's (item without
+  its variants, variant) pairs, the committed split file and the SHA-256 of `spelling.toml`. The
+  model and settings are left out, so R1 and R2 at one commit share a digest, and a screen or
+  windows run gets its own. The agent's choice.
+- 2026-11-01: Track E: a run records (`RunInfo.settings` and the history line) every library setting
+  by dotted name except `var_dir`, a local path that changes no result (shown by `--show-settings`).
+  `groq.api_key` and `groq.api_key_file` are recorded as set or not set, and `tracing.redact` as a
+  count of patterns. The run's flags are recorded as `run.language_hint`, `run.max_rpm`,
+  `run.max_attempts`, `run.variant_timeout_s`, `run.cap_usd`, `run.windows_ms` and `run.smoke_only`.
+  Audio root folders are shown but not recorded. The agent's choice.
+- 2026-11-01: Track E: `--language-hint` takes `label` (the default: `en` for English, `ar`
+  otherwise, as arm A1) or `auto` (no language sent, for Q14's arm if the owner adds it). The
+  agent's choice.
+- 2026-11-01: Track E: `--price-per-hour` and `--cap-usd` are required with `--answerer groq`, so a
+  forgotten price is never a cost of 0 and no run that spends is uncapped; for `reference` they
+  default to 0 and none. The agent's choice.
+- 2026-11-01: Track E: every refusal names counts and audio roots, never a variant ID, in every run,
+  so a held-out run's refusal reveals nothing of its items; `poe golden --audio`, which the FIX line
+  names, lists the files. The agent's choice.
+- 2026-11-01: Track E: `poe eval` exits 0 when complete, 1 when incomplete (a failed smoke test, the
+  cap, an interrupt), and 2 when refused before anything is sent (argparse's usage errors also exit
+  2). The agent's choice.
+- 2026-11-01: Track E: `make_answerer(name, settings)` keeps Block 0's signature and adds
+  keyword-only options (`stt`, `policy`, `budget`, `measure`, `reuse`, `tracing`, `run_name`,
+  `clock`, `sleep`). It returns a `RunAnswerer`, an `Answerer` that also says whether it spends,
+  whether it reads audio, and how it closes. The `groq` answerer's default adapter is the one
+  `stt.provider` names (GP-22). The agent's choice.
+- 2026-11-01: Track E: `run.py` calls Track F's `write_scorecard` with an empty sequence of results
+  when the smoke test fails or a held-out run does not finish, which Track F's writer accepts
+  (checked at the merge, the progress log). The agent's choice.
 
 ## The owner's decisions
 
