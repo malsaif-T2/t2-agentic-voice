@@ -1,7 +1,5 @@
 # Written by `python -m ole5_voice.evals.import_talkover` from the lab's refs.json and
 # takes.json: import again rather than edit.
-# DRAFT: its language is the agent's proposal from the text, until the owner confirms or
-# changes it (plan 002, Q7).
 id = "b05_aywa"
 source = "talkover"
 kind = "listening_sound"

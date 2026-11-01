@@ -921,8 +921,8 @@ run, [WORKING-RULES.md](../../../WORKING-RULES.md), "Measurement runs")
   - Deviation: `test_matcher.py`'s check of the verdict against the characterization table skipped
     while Track A's normalizer raised NotImplementedError. Track A merged first, so it runs at this
     merge, and its skip is removed in the following commit.
-  - Its debt rows are TD-016 (the dialect labels as a table in code) and TD-017 (the
-    no-item-in-source test's own copy of the letter folding). It changed no row and asked for no
+  - Its debt rows are the dialect labels as a table in code (paid when the owner ruled Q7, on
+    2026-11-01) and TD-017 (the no-item-in-source test's own copy of the letter folding). It changed no row and asked for no
     change to Block 0.
   - Its questions for the owner: Q4, Q5, Q7 and Q9 are still open, and nothing in the files answers
     them (`script.toml` and the Arabic items' languages are drafts, the two full-number ticket lines
@@ -1428,6 +1428,14 @@ run, [WORKING-RULES.md](../../../WORKING-RULES.md), "Measurement runs")
   the ticket shape plus the guide's note on the variables to leave unset
   (`plan-002-answers-script`). The rest is recorded in the decision log. The owner's consent for
   the talk-over set waits on the owner's sentence.
+- 2026-11-01: The owner confirmed every dialect label of the talk-over phrases (Q7) and gave the
+  consent for the talk-over set in words ("The owner's decisions"). In this worktree: the
+  import's table is now the ruling (`LANGUAGE`, no longer `PROPOSED_LANGUAGE`), it writes no
+  DRAFT comment, and `python -m ole5_voice.evals.import_talkover --lab` the lab's talk-over
+  folder was run again (43 items, 120 variants, 124 files, the same four takes left out with no
+  segment): the only change to `evals/` is the two-line DRAFT comment gone from the 34 Arabic
+  items. The debt row for the labels as a table in code is paid and removed, and its two
+  citations here reworded.
 
 ## Decision log
 
@@ -2055,7 +2063,8 @@ All entries are the agent's choices of 2026-11-01, with the agent's reasons.
   option; Track G's review mode writes them there. `import_recordings` skips a folder that holds
   only reviews, and refuses one that holds takes or WAVs with no `session.json` (the consent).
 - 2026-11-01: Track D: each language of an Arabic talk-over phrase is the agent's proposal, written
-  as `PROPOSED_LANGUAGE` in `import_talkover.py` (TD-016): 23 saudi, 7 msa and 4 mixed. msa: s01,
+  as `PROPOSED_LANGUAGE` in `import_talkover.py` (a debt row until the owner's ruling, when it
+  became `LANGUAGE`): 23 saudi, 7 msa and 4 mixed. msa: s01,
   s05, s09, k03, r04, y01, y04; mixed (Arabic with a Latin product term): s03, s04, s11, s12. Each
   Arabic item file carries a DRAFT comment until the owner rules (Q7). English phrases are
   `english`, from the lab's label.
@@ -2516,6 +2525,13 @@ All entries are the agent's choices of 2026-11-01, with the agent's reasons.
 - 2026-11-01: No `--unchecked` flag for the reference answerer: a run scores the checked
   variants only, and step 15's command-line runs are made at step 19 on the confirmed set, with
   `test_reference_answerer.py` covering the check until then. The owner's answer.
+- 2026-11-01: Every Arabic talk-over phrase keeps the dialect the agent proposed from its text
+  (Q7): 23 saudi, 7 msa and 4 mixed; the table stays in `import_talkover.py` as the ruling,
+  rather than moving to a data file, since nothing else changes it. The owner's answer for the
+  labels; the agent's choice for where they stay.
+- 2026-11-01: The talk-over set's consent is the owner's sentence of 2026-11-01, quoted under
+  "The owner's decisions", recorded in this plan rather than as a `session.json`, since the
+  takes were made in the prototype's lab before the recorder existed. The owner's answer.
 
 ## The owner's decisions
 
@@ -2568,8 +2584,9 @@ them". So, in the agent's words of each recommendation:
    gain control off, with a warning on the page and in the take's sidecar; it does not refuse it.
 5. Q15 with `--clips-from`: a held-out window at least as long as its clip sends the whole clip,
    marked not reused. Accepted.
-6. The owner's consent for the talk-over set is recorded in words and dated; the owner's own
-   sentence is asked for, and written here when given.
+6. The owner's consent for the talk-over set is recorded in words and dated. On 2026-11-01,
+   asked to confirm the agent's sentence or write one: "Yes I agree that my own talk-over
+   recordings from 27 October 2026 are kept and used in the T2 Agentic Voice golden set."
 7. "Ole5" stays a product term in `terms.toml`.
 8. No `--unchecked` flag for the reference answerer: step 15's command-line runs are made at
    step 19, on the confirmed set.
@@ -2582,7 +2599,8 @@ The same day, the owner's answers to the calls before recording:
   copied here, since they may be real tickets). Their shape: 16 digits, the date as YYYYMMDD,
   then 82, then a 6-digit counter. The script's full numbers are made up in that shape.
 - Q7, the talk-over items' dialect: "I am not sure I understand the question correctly". The
-  agent put it again, as a list of the phrases with the label proposed for each; still open.
+  agent put it again, as a list of the phrases with the label proposed for each, saying the
+  short neutral ones were the least sure; the owner: "All the tags are correct."
 - Q9, the independent check: "I can listen and judge, just give the samples and I can do that",
   so (a): the owner listens to every variant and confirms it, in the recorder's review mode.
 
@@ -3166,8 +3184,7 @@ The owner's call before Block 0:
   the owner's "No, one install" (D-018); Q21, the downloads, by the owner's answer quoted in
   "The owner's decisions".
 
-The owner's call before recording (Q4, Q5 and Q9 settled on 2026-11-01: "The owner's
-decisions"; Q7 still open):
+The owner's call before recording (all settled on 2026-11-01: "The owner's decisions"):
 - **Q4.** *Settled: the script is approved, as proposed.* The script: the counts above; ticket-number and echo-only items; whether to add
   over-the-agent items on the two headsets (a reply plays while the owner speaks), which would
   give M3 overlap clips on every device.
@@ -3179,7 +3196,7 @@ decisions"; Q7 still open):
   says only a number's last four digits aloud (D12), so a customer may repeat those, or read the
   full number from the screen or an email. The agent proposes both: two items of four digits,
   and two of a full number in the shape the owner gives (the website team may know it).
-- **Q7.** The dialect of the talk-over Arabic items: the agent proposes Saudi, MSA or mixed for
+- **Q7.** *Settled: every label as proposed.* The dialect of the talk-over Arabic items: the agent proposes Saudi, MSA or mixed for
   each phrase from its text; the owner confirms or changes each.
 - **Q9.** *Settled: (a).* The independent check: (a) the owner listens to every variant and confirms it (the
   agent's recommendation); or (b) something lighter, such as only the unscripted variants, which
@@ -3250,7 +3267,7 @@ before the run.
    reads only these names, never `GROQ_API_KEY` (the design's 7.3). The agent never opens `.env`:
    a run reads it through `Settings` when given `--env-file`, and `poe eval --show-settings` says
    only whether the key is set.
-3. **Before recording:** answer Q4, Q5, Q7 and Q9 and approve the script (all but Q7 done on
+3. **Before recording:** answer Q4, Q5, Q7 and Q9 and approve the script (all done on
    2026-11-01). The check of step 5 can start now on the 120 talk-over variants, before any new
    recording: run step 5's command with `--out var/golden-audio`, the folder step 4 then uses.
 4. **Recording**, one sitting per device, in a quiet room except for the noise items:

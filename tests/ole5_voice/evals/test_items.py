@@ -349,7 +349,7 @@ def _broken(refs: dict[str, Any], takes: dict[str, Any], case: str) -> None:
         ("extra", "name different segment files"),
         ("phrases", "the takes of s06_pause_error disagree on their phrase"),
         ("key", "under another name"),
-        ("phrase", "no language is proposed for the Arabic phrase z99_unknown"),
+        ("phrase", "no language is given for the Arabic phrase z99_unknown"),
         ("folder", "disagree on the segment sub/"),
     ],
 )
@@ -386,8 +386,8 @@ def test_the_talk_over_command_writes_only_the_items_and_manifest_it_owns(
     assert [m.root for m in load_manifests(evals / "manifests")] == ["talkover"]
     arabic = (evals / "golden" / "b01_tamam.toml").read_text(encoding="utf-8")
     english = (evals / "golden" / "e03_signature.toml").read_text(encoding="utf-8")
-    assert arabic.startswith("# Written by") and "# DRAFT: its language" in arabic
-    assert "DRAFT" not in english
+    assert arabic.startswith("# Written by") and english.startswith("# Written by")
+    assert "DRAFT" not in arabic + english  # every dialect is the owner's ruling (Q7)
     assert sorted(p.name for p in evals.iterdir()) == ["golden", "manifests", "terms.toml"]
     (evals / "terms.toml").unlink()
     assert import_talkover.main(["--lab", str(lab), "--evals", str(evals)]) == 1

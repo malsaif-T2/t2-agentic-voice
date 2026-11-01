@@ -64,9 +64,9 @@ _KINDS: Final = {
     "command": "stop_word",
     "confirm": "confirmation",
 }
-# The dialect of each Arabic phrase: the agent's proposal from its text, a draft until the owner
-# confirms or changes each (plan 002, Q7). `mixed` is Arabic with an English product term.
-PROPOSED_LANGUAGE: Final[Mapping[str, Language]] = {
+# The dialect of each Arabic phrase: the agent's proposal from its text, each confirmed by the
+# owner on 2026-11-01 (plan 002, Q7). `mixed` is Arabic with an English product term.
+LANGUAGE: Final[Mapping[str, Language]] = {
     "b01_tamam": "saudi",
     "b02_eh": "saudi",
     "b03_aha": "saudi",
@@ -105,10 +105,6 @@ PROPOSED_LANGUAGE: Final[Mapping[str, Language]] = {
 HEADER: Final = (
     "Written by `python -m ole5_voice.evals.import_talkover` from the lab's refs.json and",
     "takes.json: import again rather than edit.",
-)
-DRAFT_LANGUAGE: Final = (
-    "DRAFT: its language is the agent's proposal from the text, until the owner confirms or",
-    "changes it (plan 002, Q7).",
 )
 
 Describe = Callable[[Path], Wav]
@@ -244,10 +240,10 @@ def _item(phrase: str, found: list[tuple[LabTake, Variant]], terms: Sequence[str
         raise GoldenSetError(f"the takes of {phrase} disagree on their phrase")
     if first.lang == "en":
         language: Language = "english"
-    elif phrase in PROPOSED_LANGUAGE:
-        language = PROPOSED_LANGUAGE[phrase]
+    elif phrase in LANGUAGE:
+        language = LANGUAGE[phrase]
     else:
-        raise GoldenSetError(f"no language is proposed for the Arabic phrase {phrase}")
+        raise GoldenSetError(f"no language is given for the Arabic phrase {phrase}")
     text = "" if first.kind == "unscripted" else " ".join(first.text.split())
     variants = tuple(v for _, v in found)
     return Item(
@@ -266,8 +262,7 @@ def write(evals: Path, items: Sequence[Item], manifest: Manifest) -> None:
     """Each item as `golden/<id>.toml`, and the manifest as `manifests/talkover.json`: only the
     files the import owns."""
     for item in items:
-        notes = HEADER + (DRAFT_LANGUAGE if item.language != "english" else ())
-        write_text(evals / GOLDEN_DIR / f"{item.id}.toml", dump_item(item, comments=notes))
+        write_text(evals / GOLDEN_DIR / f"{item.id}.toml", dump_item(item, comments=HEADER))
     text = json.dumps(manifest.model_dump(mode="json"), ensure_ascii=False, indent=2)
     write_text(evals / MANIFESTS_DIR / f"{ROOT}.json", text + "\n")
 
