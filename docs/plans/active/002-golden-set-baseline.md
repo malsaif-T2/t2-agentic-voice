@@ -747,6 +747,97 @@ run, [WORKING-RULES.md](../../../WORKING-RULES.md), "Measurement runs")
   `tests/t2_agentic_voice/adapters/test_groq_stt.py` is removed, and both pass. TD-003 is narrowed
   to what the helper cannot undo. `uv run --offline poe check` passes: 813 tests, 100% coverage,
   mypy strict on 126 files, arch and docs clean.
+- 2026-11-01: Track C, the tracing helpers, is merged (`Plan 002: merge track C`), from four commits
+  on `plan-002-track-c`, cut from 44aa043: ddb84bf (the Redactor), 83b1a30 (the tracing helpers),
+  b820fb6 (no header variable quoted in a log line) and bf1e5ef (a `.netrc` login reaches no export
+  request). Block 0's stubs `core/redaction.py` and `core/tracing.py` are real code, and their stub
+  tests are replaced by 9 tests in `tests/t2_agentic_voice/core/test_redaction.py` and 13 in
+  `test_tracing.py` (parametrized cases counted once). The `Redactor` finds every match of every
+  pattern in the original text and turns each stretch any pattern matched into one marker; it
+  refuses a bare str, and its repr shows no pattern. `Tracing` uses the team's `TracerProvider` if
+  one is given, otherwise a private one built from `tracing.endpoint`, otherwise it is off, and
+  never sets a provider globally. `turn()` is a CHAIN root span carrying `session.id`;
+  `speech_to_text(parent, ...)` is an LLM span carrying `llm.model_name`, `stt.audio_seconds` and
+  `stt.language_sent`, and its `record()` adds `output.value` (only when `include_transcripts` is
+  on), `stt.language` and `stt.billed_seconds`. Every text value, what a team sets on the yielded
+  turn span included, goes through the `Redactor`; bytes and mappings are dropped; an exception is
+  recorded by its type only. From the track's report:
+  - No prototype file was ported (its May read names none): it was built from the design's 10.1,
+    SECURITY.md's invariants 5 and 8, and the installed packages read as text: OpenTelemetry 1.45.2
+    (the API, the SDK and the HTTP exporter, with the indirect
+    `opentelemetry-exporter-http-transport` and `opentelemetry-exporter-otlp-common` 0.66b2) and
+    `openinference-semantic-conventions` 0.1.43.
+  - Its reading of OpenTelemetry 1.45.2, which differs from the 1.45.1 lines the decision log cites:
+    `TracerProvider.__init__` calls `Resource.create` when given no resource and reads the sampler
+    from the environment when given none (`opentelemetry/sdk/trace/__init__.py`, lines 1271 and
+    1275), and reads `OTEL_SDK_DISABLED` at line 1278; the Tracer reads the internal-metrics
+    variable at line 1094; the exporter resolves its endpoint, compression, session, timeout and
+    headers in `exporter/otlp/proto/http/trace_exporter/__init__.py`, lines 139-159, and reads the
+    internal-metrics variable at line 169; `_resolve_headers` and `_build_transport` are at
+    `exporter/otlp/proto/http/_common/__init__.py`, lines 137-149 and 182-211. The transport now
+    lives in `opentelemetry-exporter-http-transport` and sets `session.verify` and `session.cert`
+    from the certificate variables (`opentelemetry/exporter/http/transport/_requests.py`, lines
+    64-80). An export's retries end at the timeout's deadline (`exporter/otlp/common/http.py`, lines
+    185-187). `BatchSpanProcessor.shutdown` passes no timeout (`sdk/trace/export/__init__.py`, lines
+    217-218), so the shared `BatchProcessor.shutdown` waits 30000 ms
+    (`sdk/_shared_internal/__init__.py`, line 207), and its queue-full drop is counted only through
+    the metrics `OTEL_PYTHON_SDK_INTERNAL_METRICS_ENABLED` turns on (line 201). `parse_env_headers`
+    logs a malformed header entry with its text (`opentelemetry/util/re.py`, lines 68 and 83).
+  - Its values: the private provider's queue holds 512 spans (`_QUEUE_SPANS`; the SDK's default
+    is 2048) and sends batches of 128 (`_BATCH_SPANS`; SDK 512); a span sits at most 1 s in the
+    queue (`_DELAY_S`; SDK 5 s); one export may take 2 s, the exporter's own retries included
+    (`_EXPORT_TIMEOUT_S`, passed as the OTLP exporter's `timeout`; the exporter's default 10 s, the
+    SDK processor's 30 s); `shutdown` gives the last batch 3 s (`_CLOSE_S`) and then counts what is
+    still queued as dropped. Span limits: the SDK's own 128 for the six count limits, and 8192
+    characters for both value-length limits, all eight passed. The reasons: a turn or a golden-set
+    variant makes two spans, so 512 holds minutes of a slow backend at a bounded memory cost; a
+    local Phoenix answers in milliseconds, so 2 s is generous and still short; 1 s shows the traced
+    smoke request in Phoenix almost at once; 3 s is one export plus a second, so a hung exporter
+    delays an app's exit by at most 3 s.
+  - Its attribute names: the turn span has `openinference.span.kind` CHAIN and `session.id`; the
+    speech-to-text span has `openinference.span.kind` LLM, `llm.model_name`, `output.value` with
+    `output.mime_type` `text/plain` (only when `include_transcripts` is on), and four names of the
+    library's own, `stt.audio_seconds`, `stt.billed_seconds`, `stt.language_sent` and
+    `stt.language`, since OpenInference 0.1.43 has none for them (they mirror Block 0's
+    `FakeTracing` keys). On a failure the span gets `error.type` and status ERROR. The resource
+    holds `service.name` `t2-agentic-voice` and `openinference.project.name` from `tracing.project`;
+    the instrumentation scope is `t2_agentic_voice` with the library's version.
+  - Its probes, in the scratch folder with made-up values and a collector on 127.0.0.1: built on a
+    plain `requests.Session`, the exporter sent `authorization: Bearer <made-up>` and `x-made-up: 1`
+    from `OTEL_EXPORTER_OTLP_HEADERS`, and its `session.verify` was the made-up certificate path; a
+    plain session given a made-up `NETRC` also added `Authorization: Basic ...`. The library's
+    session sends only Content-Type, User-Agent (`t2-agentic-voice/0.1.0`) and Content-Length, plus
+    the Host and `Accept-Encoding: identity` the transport adds, with `verify` True and `cert` None.
+    The header test fails when the verify and cert reset, the header clearing or the log filter is
+    removed (each checked, then restored).
+  - The tests prove that `OTEL_EXPORTER_OTLP_HEADERS` (both forms, and a malformed entry the SDK
+    would log with its text) reaches no request and no log line, nor does a `.netrc` login; that the
+    certificate, client key, endpoint, timeout, compression and credential-provider variables change
+    nothing; and so do `OTEL_RESOURCE_ATTRIBUTES`, `OTEL_SERVICE_NAME`, `OTEL_BSP_*`, the sampler
+    and limit variables and `OTEL_PYTHON_METER_PROVIDER`.
+  - Deviation: the private provider's batch processor is the library's own (`_Queue` in
+    `core/tracing.py`), not the SDK's `BatchSpanProcessor`, which the decision log assumes ("passes
+    the batch processor's sizes and timeouts, which otherwise come from `OTEL_BSP_*`"): the SDK's
+    processor counts no dropped span unless `OTEL_PYTHON_SDK_INTERNAL_METRICS_ENABLED` turns its
+    metrics on, and its `shutdown` passes no timeout, so a hung exporter holds it for 30 s. The four
+    `OTEL_BSP_*` variables are now never read, which the tests check.
+  - Its debt rows are TD-013 (`core/tracing.py` and its test file at the size cap), TD-014 (the
+    worker thread not restarted in a forked child) and TD-015 (no setting for a CA file, a client
+    certificate or an export header). It narrows TD-005 to `OTEL_SDK_DISABLED` and
+    `OTEL_PYTHON_CONTEXT`, and TD-004 by its `.netrc` part. It asked for no change to Block 0.
+  - Its question for the owner: should the library override `OTEL_SDK_DISABLED` by setting the SDK's
+    private `_disabled` flag on its own provider (a test would guard it, but it can break without
+    warning on an SDK upgrade), or should it stay as debt (TD-005), with the guide saying to leave
+    the variable unset? The library now logs `tracing_disabled_by_sdk` when it happens, and nothing
+    leaves the process.
+  - Not done: the traced request to a real Phoenix (step 22), since the track's rules forbid every
+    outside call; the OTLP path was checked only against a collector on 127.0.0.1, which parsed the
+    protobuf body (one `turn` span and one `speech_to_text` span, the resource exact, `run-1`
+    present, no made-up key). The guide's text that `OTEL_SDK_DISABLED` and `OTEL_PYTHON_CONTEXT`
+    stay unset (TD-005's fix) and that `Tracing` is built after a fork (TD-014) is not written,
+    since `docs/guide/` is Track H's.
+  - After the merge `uv run --offline poe check` passes: 833 tests, 100% coverage (1345 statements),
+    mypy strict on 126 files, arch and docs clean.
 
 ## Decision log
 
@@ -1283,6 +1374,71 @@ All entries are the agent's choices of 2026-11-01, with the agent's reasons.
   never adds a root handler or calls `basicConfig`, and only a handler added during the import is
   removed. An app that imports `groq` before the library, or sets its root logger to DEBUG, still
   gets the SDK's logging (TD-003). The integrator's choice, as the track proposed.
+- 2026-11-01: Track C: the private provider's queue and timeouts (the plan left the values to the
+  track): a queue of 512 spans, batches of 128, at most 1 s in the queue, 2 s per export with the
+  exporter's retries included, and 3 s for `shutdown`. A span that cannot be queued (the queue is
+  full, or `shutdown` has run), a batch whose export fails or raises, and what is still queued when
+  `shutdown` gives up are all counted in `dropped_spans`, and never raised. The failure is logged
+  once per run of failures, as `span_export_failed`, by the failure's type only. The agent's choice;
+  the reasons are in the progress log.
+- 2026-11-01: Track C: the batch processor is the library's own (`_Queue` in `core/tracing.py`: a
+  bounded deque and one daemon worker thread), not the SDK's `BatchSpanProcessor`, since the SDK's
+  processor counts no dropped span unless `OTEL_PYTHON_SDK_INTERNAL_METRICS_ENABLED` turns its
+  metrics on, and its `shutdown` passes no timeout, so a hung exporter holds it for 30 s. The
+  library's processor reads no `OTEL_BSP_*` variable at all (GP-10: built for correctness and
+  observability). Alternative: the SDK's processor with its private
+  `_batch_processor.shutdown(timeout_millis=...)` and private queue length, set aside because both
+  are private. The agent's choice.
+- 2026-11-01: Track C: span kinds. The turn is CHAIN and speech-to-text is LLM: OpenInference 0.1.43
+  has no speech kind, and LLM carries `llm.model_name`, which Phoenix shows. The audio seconds,
+  billed seconds, language sent and language returned use the library's own `stt.*` names, mirroring
+  Block 0's `FakeTracing` keys. The agent's choice.
+- 2026-11-01: Track C: the span `turn` yields is a wrapper of the library's own (`_RedactedSpan`),
+  so the team's own attributes, event names and attributes, link attributes, name changes and status
+  descriptions on it pass through the `Redactor` too ("every text attribute", the design's 10.1). A
+  bytes value (audio, say), a mapping and a nested or mixed sequence are dropped. The agent's
+  choice.
+- 2026-11-01: Track C: an exception leaving a span sets status ERROR, described only by the
+  exception's type name, and sets `error.type`; `record_exception` on the yielded span adds an
+  `exception` event holding only `exception.type`. The exception's message and stack trace are never
+  exported, since they may hold a secret or what was said (invariants 5 and 8), and the exception
+  reaches the caller unchanged. The agent's choice.
+- 2026-11-01: Track C: the `Redactor` collects every match of every pattern in the original text and
+  replaces each stretch that any pattern matched with one marker, so overlapping patterns leave no
+  piece behind, the replacement is never matched again or expanded as a template, and an empty match
+  hides nothing; applying `re.sub` pattern by pattern would let a four-digit pattern leave two
+  digits of a ten-digit number. It refuses a bare str with a TypeError, a pattern that does not
+  compile raises `re.error`, and its repr shows no pattern. The agent's choices.
+- 2026-11-01: Track C: `Tracing` gains a keyword-only constructor, `Tracing(tracer_provider=None,
+  exporter=None, project=None, redactor=None, include_transcripts=True)`. `Tracing()` is off, as
+  Block 0's stub test and `FakeTracing` assume. An `exporter` gets the private provider and its
+  bounded queue, which is also how the tests reach that path with the in-memory exporter; giving
+  both a provider and an exporter is a ValueError. The signatures in Block 0's decision entry
+  (`from_settings`, `turn`, `speech_to_text`, `record`, `dropped_spans`, `shutdown`) are unchanged.
+  A team's own provider is used as given, never shut down, and given no resource or processor by the
+  library. The agent's choice.
+- 2026-11-01: Track C: the exporter's own `requests.Session` replaces every request's headers with
+  Content-Type `application/x-protobuf` and User-Agent `t2-agentic-voice/<version>`, then recomputes
+  Content-Length (in `prepare_request`), since the exporter adds `OTEL_EXPORTER_OTLP_HEADERS` (or
+  its `_TRACES_` form) under the headers it is given, and requests adds a `.netrc` login. After the
+  exporter is built, requests' defaults (`verify` True, `cert` None) are put back on the session,
+  because the exporter's transport sets them from the certificate and client key variables.
+  `trust_env` is left as it is (TD-004). The agent's choice.
+- 2026-11-01: Track C: while the library builds its OTLP exporter, a logging filter of that call's
+  own on the `opentelemetry.util.re` logger drops that logger's records, and is removed afterwards:
+  the SDK logs a malformed header-variable entry with its text, a token among them, and the session
+  sends none of those headers anyway. This is a filter on a third-party logger for the length of one
+  constructor call, not a handler, and no root logger is touched (the design's 10.2). The agent's
+  choice.
+- 2026-11-01: Track C: `OTEL_SDK_DISABLED` is not overridden, since only the SDK's private
+  `_disabled` flag could do it. When the private provider gives a no-op tracer, the library logs
+  `tracing_disabled_by_sdk` with `fix="unset OTEL_SDK_DISABLED"`, and the variable stays in TD-005.
+  Its effect fails safe: no span leaves the process. The agent's choice, for the owner to rule on
+  (the progress log's question).
+- 2026-11-01: Track C: the private provider passes `ParentBased(ALWAYS_ON)`, the SDK's own default,
+  explicitly, so a library span under a team's unsampled span is not sampled either. The turn span
+  is started on an empty `Context()`, so an app's current span never becomes its parent. The agent's
+  choice.
 
 ## The owner's decisions
 
