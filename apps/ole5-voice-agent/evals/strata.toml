@@ -31,31 +31,31 @@ short_request = 3
 stop_word = 6
 
 [variants]
-total = 120
+total = 118
 
 [variants.language]
 english = 21
 mixed = 12
 msa = 23
-saudi = 64
+saudi = 62
 
 [variants.kind]
 confirmation = 13
-listening_sound = 27
+listening_sound = 25
 repeat_request = 4
 request = 54
 short_request = 9
 stop_word = 13
 
 [variants.device]
-laptop = 120
+laptop = 118
 
 [variants.tag]
 duck = 63
-over-assistant = 108
-pause = 57
+over-assistant = 106
+pause = 55
 playback-headset = 3
-playback-speakers = 117
+playback-speakers = 115
 
 [script]
 total = 52

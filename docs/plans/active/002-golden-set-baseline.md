@@ -1504,6 +1504,44 @@ run, [WORKING-RULES.md](../../../WORKING-RULES.md), "Measurement runs")
   round and check, and the check of each answer's change by an agent told to refute it. The plan
   stays active: next are the owner's check of the 120 talk-over variants by ear (step 5 of "What
   the owner does"; Q9), the recordings (step 17), and Q10 before the import (step 19).
+- 2026-11-01: The owner's check of the talk-over set (Q9, answer a) is done: "I have finished the
+  review, I ran it twice to confirm the edits too." Every one of the 120 variants was reviewed in
+  the recorder's review mode (`--out var/golden-audio` in the main checkout): 111 confirmed in the
+  first pass, and 9 typed in the first pass and confirmed in the second. All 9 typed texts are
+  clips whose start was cut off ("pause" takes, each the lab detector's first segment), such as
+  «مام» for «تمام» and "token the inbox since this morning, it shows an error." for "I can't open
+  the inbox since this morning, it shows an error."
+  - Deviation: the talk-over part of step 19 is done now, before step 18's recordings, since the
+    review was complete and its results otherwise lived only in `var/`, which is not committed:
+    in the linked worktree `plan-002-talkover-review`, cut from the main branch at cbe55bd,
+    `python -m ole5_voice.evals.import_talkover --lab` the lab's talk-over folder `--reviews` the
+    main checkout's `var/golden-audio` (read only) wrote each variant's confirmation, and each
+    typed text as its reference (`reference_source = "typed"`). A script checked every variant
+    against the review files: 9 references are the typed texts, the other 111 are unchanged, and
+    each holds the confirmation of its last pass. Step 19 imports the new takes and freezes again.
+  - `poe golden --audio talkover=` the lab's folder then refused two typed references, «مام» and
+    «مام تمام», as listening sounds outside the script's list (Q8). The owner, asked to keep them
+    with the list check skipping typed references, to leave the two clips out, or to score them as
+    «تمام», chose "Leave the two clips out". `import_talkover.LEFT_OUT` names the two takes, the
+    import leaves each out with its files (118 variants, 122 files) and logs it, and a name it
+    does not find fails the import. `strata.toml`'s variant counts are amended with them (the
+    registration's amendment), and the tests pin 118.
+  - `poe golden --audio talkover=` the lab's folder: every one of the 122 files read, hashed and
+    checked for its format; `frozen.json` written with all 118 variants accepted and none left
+    out; `poe golden --check` passes. `uv run --offline poe check` passes: 1216 tests and 1
+    skipped (the symbolic-link case), 100% coverage (3598 statements), mypy strict on 144 files,
+    arch and docs clean.
+- 2026-11-01: Step 15's two reference runs on the command line, now on the confirmed set, as
+  step 19 says, at 7060bb0 in `plan-002-talkover-review` with the tree clean, each with an empty
+  `--env-file` and its `--out` in the agent's scratch folder, outside the repository:
+  `uv run --offline poe eval --answerer reference --split dev`: 83 of 83 variants of 30 items
+  right (no unchecked variant left out), accuracy 1, WER and CER 0, term recall 1, ID recall none
+  (no talk-over item is a ticket number), 0 failures, 0 requests, cost 0, complete. With `--split
+  held-out`: 35 of 35 variants of 13 items right, the same totals, its scorecard holding no
+  variant, and its groups by language (`english`, `saudi`, `other`) and by kind
+  (`listening_sound`, `request`, `other`) pooled as the owner's rule says. Neither run appended a
+  history line. The command-line check that step 15 left for step 19 passes on the talk-over
+  set; step 19 makes it again once the new takes are in.
 
 ## Decision log
 
@@ -2710,6 +2748,14 @@ All entries are the agent's choices of 2026-11-01, with the agent's reasons.
   risks separately. An app that imports `groq` before the library keeps the variable's effect.
   Separately, a root or `groq` logger at DEBUG gets the SDK's request options even with the variable
   unset, so the bullet says to keep both above DEBUG. The agent's choice.
+- 2026-11-01: Two talk-over takes are left out of the set, b01_tamam__pause__speakers__184025 and
+  b07_tamam_tamam__pause__speakers__184714: each was cut off at its start, so the owner's review
+  typed «مام» and «مام تمام», which no listening sound on the script's list (Q8) spells. Keeping
+  them with the list check skipping typed references, or scoring them as «تمام» against what the
+  owner heard, were the other options put. The owner's answer ("Leave the two clips out").
+- 2026-11-01: The left-out takes are a table in `import_talkover.py` (`LEFT_OUT`, take and
+  reason), beside `LANGUAGE`, since the import alone reads them; `build` takes the table as an
+  argument, so the tests pass their own, and `main` passes `LEFT_OUT`. The agent's choice.
 
 ## The owner's decisions
 
@@ -2781,6 +2827,9 @@ The same day, the owner's answers to the calls before recording:
   short neutral ones were the least sure; the owner: "All the tags are correct."
 - Q9, the independent check: "I can listen and judge, just give the samples and I can do that",
   so (a): the owner listens to every variant and confirms it, in the recorder's review mode.
+- The talk-over set's check, done: "I have finished the review, I ran it twice to confirm the
+  edits too." Then, asked what should happen to two clips cut off at their start whose typed
+  text the list of listening sounds refuses: "Leave the two clips out".
 
 Earlier words this plan rests on, all of 2026-10-28 (D-004, D-006, D-010):
 
@@ -3476,6 +3525,13 @@ before the run.
   last-four items are unchanged. One line's words changed in the agent's review: n03 gains «أقدر» to
   match its saudi label. Every variant's independent check is the owner's listen (Q9, answer a), as
   "The independent check of each reference" proposes. No count, stratum or metric changes.
+- 2026-11-01, the owner's answers, before any result: the talk-over set (T) is 118 of its 120
+  takes with segments, 122 of its 124 files: b01_tamam__pause__speakers__184025 and
+  b07_tamam_tamam__pause__speakers__184714 are left out, each cut off at its start (the owner's
+  check typed «مام» and «مام تمام», on no list a reference may use), and `strata.toml`'s variant
+  counts are amended with them (saudi 62, listening_sound 25, laptop 118, over-assistant 106,
+  pause 55, playback-speakers 115). Nine variants' references are the text the owner typed,
+  each a clip cut off at its start, confirmed in a second review pass (Q9).
 
 ## What the owner does
 
@@ -3487,8 +3543,8 @@ before the run.
    a run reads it through `Settings` when given `--env-file`, and `poe eval --show-settings` says
    only whether the key is set.
 3. **Before recording:** answer Q4, Q5, Q7 and Q9 and approve the script (all done on
-   2026-11-01). The check of step 5 can start now on the 120 talk-over variants, before any new
-   recording: run step 5's command with `--out var/golden-audio`, the folder step 4 then uses.
+   2026-11-01). The check of step 5 on the 120 talk-over variants is done (2026-11-01), with
+   `--out var/golden-audio`, the folder step 4 then uses.
 4. **Recording**, one sitting per device, in a quiet room except for the noise items:
    - From the main checkout, `uv run poe record --out <a folder under var/, such as
      var/golden-audio> --session <a name> --device <laptop, wired or bluetooth> --replies

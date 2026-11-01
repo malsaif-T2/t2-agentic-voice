@@ -23,6 +23,10 @@ root = "talkover"
 path = "y02_eh_irsilha__duck__speakers__182804__seg1.wav"
 sha256 = "ee077b7826b49f2ac80fbf3c987738c6f01b0f19aa388dbab8efeb9d85c5bf18"
 
+[[variants.confirmations]]
+at = 2026-11-01T16:36:11.266311+03:00
+review_pass = 1
+
 [[variants]]
 id = "y02_eh_irsilha__duck__speakers__182814"
 device = "laptop"
@@ -36,6 +40,10 @@ tags = ["duck", "playback-speakers"]
 root = "talkover"
 path = "y02_eh_irsilha__duck__speakers__182814__seg1.wav"
 sha256 = "938b77dca52de810e2ecc898b0f12f1d2060fddb80f3b3993a6f9c612ac4501a"
+
+[[variants.confirmations]]
+at = 2026-11-01T16:36:13.501769+03:00
+review_pass = 1
 
 [[variants]]
 id = "y02_eh_irsilha__duck__speakers__182827"
@@ -51,12 +59,16 @@ root = "talkover"
 path = "y02_eh_irsilha__duck__speakers__182827__seg1.wav"
 sha256 = "9d8a6c7a621e9550585f1bcde56924b7124b6f1b1b92b23eb2beb475a638ca52"
 
+[[variants.confirmations]]
+at = 2026-11-01T16:36:18.114142+03:00
+review_pass = 1
+
 [[variants]]
 id = "y02_eh_irsilha__pause__speakers__184541"
 device = "laptop"
 session = "talkover-2026-10-27"
-reference = "ايه ارسلها"
-reference_source = "script"
+reference = "ايه ارسله"
+reference_source = "typed"
 turn_ends_ms = []
 tags = ["over-assistant", "pause", "playback-speakers"]
 
@@ -64,3 +76,7 @@ tags = ["over-assistant", "pause", "playback-speakers"]
 root = "talkover"
 path = "y02_eh_irsilha__pause__speakers__184541__seg1.wav"
 sha256 = "59b187e4754c38c852f90907756541d68aae5d30308427ca7448869062c721d2"
+
+[[variants.confirmations]]
+at = 2026-11-01T16:38:45.158468+03:00
+review_pass = 2

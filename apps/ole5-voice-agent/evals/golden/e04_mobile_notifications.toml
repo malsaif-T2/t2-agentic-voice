@@ -23,12 +23,16 @@ root = "talkover"
 path = "e04_mobile_notifications__duck__speakers__183815__seg1.wav"
 sha256 = "0ebf45ce1751742e5639144deb61349f89f7f16c5aed6b4055c5fb0ae49c4eda"
 
+[[variants.confirmations]]
+at = 2026-11-01T16:31:11.133402+03:00
+review_pass = 1
+
 [[variants]]
 id = "e04_mobile_notifications__pause__speakers__185201"
 device = "laptop"
 session = "talkover-2026-10-27"
-reference = "The mobile app closes by itself when I open the notifications."
-reference_source = "script"
+reference = "mobile app closes by itself when I open the notifications."
+reference_source = "typed"
 turn_ends_ms = []
 tags = ["over-assistant", "pause", "playback-speakers"]
 
@@ -36,3 +40,7 @@ tags = ["over-assistant", "pause", "playback-speakers"]
 root = "talkover"
 path = "e04_mobile_notifications__pause__speakers__185201__seg1.wav"
 sha256 = "c0c7b4ad137413cea705181b938a0a18e62c981ec7686966822ab521bdee688a"
+
+[[variants.confirmations]]
+at = 2026-11-01T16:38:17.303608+03:00
+review_pass = 2

@@ -23,12 +23,16 @@ root = "talkover"
 path = "e02_inbox_error__duck__speakers__182946__seg1.wav"
 sha256 = "b79204b612753be556b691f6f53ad49600f2abcd698a9d800bcdcf17f246cb0c"
 
+[[variants.confirmations]]
+at = 2026-11-01T16:30:17.898943+03:00
+review_pass = 1
+
 [[variants]]
 id = "e02_inbox_error__pause__speakers__184611"
 device = "laptop"
 session = "talkover-2026-10-27"
-reference = "I can't open the inbox since this morning, it shows an error."
-reference_source = "script"
+reference = "token the inbox since this morning, it shows an error."
+reference_source = "typed"
 turn_ends_ms = []
 tags = ["over-assistant", "pause", "playback-speakers"]
 
@@ -36,6 +40,10 @@ tags = ["over-assistant", "pause", "playback-speakers"]
 root = "talkover"
 path = "e02_inbox_error__pause__speakers__184611__seg1.wav"
 sha256 = "62bdada31f41f0bf536d4b00439fca5090830ccbac4d16081aa230df3c94af4b"
+
+[[variants.confirmations]]
+at = 2026-11-01T16:38:08.899934+03:00
+review_pass = 2
 
 [[variants]]
 id = "e02_inbox_error__pause__speakers__184624"
@@ -50,3 +58,7 @@ tags = ["over-assistant", "pause", "playback-speakers"]
 root = "talkover"
 path = "e02_inbox_error__pause__speakers__184624__seg1.wav"
 sha256 = "a716c3b51f3c8adc85a294b7f290d45d0debc11f1d86cd9ceefde0ceedbb6049"
+
+[[variants.confirmations]]
+at = 2026-11-01T16:30:56.083173+03:00
+review_pass = 1

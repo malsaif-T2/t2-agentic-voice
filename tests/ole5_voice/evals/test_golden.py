@@ -16,7 +16,7 @@ from typing import Any
 import pytest
 from ole5_voice.evals import golden
 from ole5_voice.evals.audio import AudioFormatError, Wav
-from ole5_voice.evals.import_talkover import LANGUAGE
+from ole5_voice.evals.import_talkover import LANGUAGE, LEFT_OUT
 from ole5_voice.evals.items import EVALS, Counts, count_strata, load_items
 from ole5_voice.evals.models import Item, Manifest, Variant
 from ole5_voice.evals.split import split_items
@@ -372,6 +372,8 @@ def test_the_committed_set_is_valid_and_its_frozen_answers_are_fresh() -> None:
         i for i, item in items.items() if item.source == "talkover" and item.language != "english"
     }
     assert set(LANGUAGE) == arabic  # every Arabic phrase's ruling, and no other
+    variants = {v.id for item in items.values() for v in item.variants}
+    assert LEFT_OUT and not variants & set(LEFT_OUT)  # the owner's left-out takes stay out
     assert load_script(EVALS / "script.toml").lines
 
 

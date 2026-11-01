@@ -23,6 +23,10 @@ root = "talkover"
 path = "s07_refer__duck__speakers__183032__seg1.wav"
 sha256 = "7380cffe9c1a703f7c310aa9f940f568d685b290a69704899e7c68e42cb0353a"
 
+[[variants.confirmations]]
+at = 2026-11-01T16:33:46.675551+03:00
+review_pass = 1
+
 [[variants]]
 id = "s07_refer__pause__speakers__184646"
 device = "laptop"
@@ -36,3 +40,7 @@ tags = ["over-assistant", "pause", "playback-speakers"]
 root = "talkover"
 path = "s07_refer__pause__speakers__184646__seg1.wav"
 sha256 = "87036c2ba0e1a3f79a376472c9c0710c27760f87bbdff045b2fd52339b0c88c1"
+
+[[variants.confirmations]]
+at = 2026-11-01T16:33:49.551172+03:00
+review_pass = 1

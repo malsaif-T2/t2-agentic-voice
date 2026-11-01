@@ -23,12 +23,16 @@ root = "talkover"
 path = "s08_archived_where__duck__speakers__183148__seg1.wav"
 sha256 = "2a859d08949c574fa4ad1bbf3b689512e3bfae8b33ac59050827226b726a4e2a"
 
+[[variants.confirmations]]
+at = 2026-11-01T16:33:52.950386+03:00
+review_pass = 1
+
 [[variants]]
 id = "s08_archived_where__pause__speakers__184725"
 device = "laptop"
 session = "talkover-2026-10-27"
-reference = "وين ألقى المراسلات اللي أرشفتها قبل؟"
-reference_source = "script"
+reference = "فين ألقى المراسلات اللي أرشفتها قبل؟"
+reference_source = "typed"
 turn_ends_ms = []
 tags = ["over-assistant", "pause", "playback-speakers"]
 
@@ -36,6 +40,10 @@ tags = ["over-assistant", "pause", "playback-speakers"]
 root = "talkover"
 path = "s08_archived_where__pause__speakers__184725__seg1.wav"
 sha256 = "c9e317082484eba4e56b17348b6c6bcbb6fc329df028aed3d525b4423514db15"
+
+[[variants.confirmations]]
+at = 2026-11-01T16:38:31.952300+03:00
+review_pass = 2
 
 [[variants]]
 id = "s08_archived_where__pause__speakers__184738"
@@ -50,3 +58,7 @@ tags = ["over-assistant", "pause", "playback-speakers"]
 root = "talkover"
 path = "s08_archived_where__pause__speakers__184738__seg1.wav"
 sha256 = "5f5c494aafdeb0da9426585df00df7010664d063f1ed59e7f1543ee105044d75"
+
+[[variants.confirmations]]
+at = 2026-11-01T16:34:16.195332+03:00
+review_pass = 1

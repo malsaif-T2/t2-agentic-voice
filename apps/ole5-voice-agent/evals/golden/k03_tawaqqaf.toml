@@ -23,6 +23,10 @@ root = "talkover"
 path = "k03_tawaqqaf__duck__speakers__182750__seg1.wav"
 sha256 = "3301ec654cf219c1e6b04013d20c567cd2988490924ca76a063459d4a0fe9909"
 
+[[variants.confirmations]]
+at = 2026-11-01T16:31:28.042916+03:00
+review_pass = 1
+
 [[variants]]
 id = "k03_tawaqqaf__pause__speakers__184529"
 device = "laptop"
@@ -36,3 +40,7 @@ tags = ["over-assistant", "pause", "playback-speakers"]
 root = "talkover"
 path = "k03_tawaqqaf__pause__speakers__184529__seg1.wav"
 sha256 = "ae45f882eb7a402c5dbbe518bc5f8d24e2a41e9cb39995ef04883004c8d392ca"
+
+[[variants.confirmations]]
+at = 2026-11-01T16:31:30.302966+03:00
+review_pass = 1

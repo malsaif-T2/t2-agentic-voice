@@ -23,6 +23,10 @@ root = "talkover"
 path = "s01_archive__duck__speakers__181825__seg1.wav"
 sha256 = "9a519d51baa7b07c4b7169f724c024e8b178a98314d21c76c3deb4b25c35602b"
 
+[[variants.confirmations]]
+at = 2026-11-01T16:32:12.186354+03:00
+review_pass = 1
+
 [[variants]]
 id = "s01_archive__duck__speakers__181841"
 device = "laptop"
@@ -36,6 +40,10 @@ tags = ["duck", "over-assistant", "playback-speakers"]
 root = "talkover"
 path = "s01_archive__duck__speakers__181841__seg1.wav"
 sha256 = "03354223e71bcd079bb0d696fb37acf7a1eba5ab86eb175349953cff0c7e099f"
+
+[[variants.confirmations]]
+at = 2026-11-01T16:32:14.872464+03:00
+review_pass = 1
 
 [[variants]]
 id = "s01_archive__duck__speakers__181853"
@@ -51,12 +59,16 @@ root = "talkover"
 path = "s01_archive__duck__speakers__181853__seg1.wav"
 sha256 = "caa5aecfdf2e201b4cbf0ef45e8c20deee9cbf75925c0785c0bcd42382cff2b7"
 
+[[variants.confirmations]]
+at = 2026-11-01T16:32:17.624051+03:00
+review_pass = 1
+
 [[variants]]
 id = "s01_archive__pause__headset__185341"
 device = "laptop"
 session = "talkover-2026-10-27"
-reference = "كيف أؤرشف مراسلة في النظام؟"
-reference_source = "script"
+reference = "كيف أشرف مراسلة في النظام؟"
+reference_source = "typed"
 turn_ends_ms = []
 tags = ["over-assistant", "pause", "playback-headset"]
 
@@ -64,6 +76,10 @@ tags = ["over-assistant", "pause", "playback-headset"]
 root = "talkover"
 path = "s01_archive__pause__headset__185341__seg1.wav"
 sha256 = "6876ed08aae195c0a80cc08b10e695a780a0b9ef906778444e2f7752675840c0"
+
+[[variants.confirmations]]
+at = 2026-11-01T16:38:22.699766+03:00
+review_pass = 2
 
 [[variants]]
 id = "s01_archive__pause__speakers__184003"
@@ -78,3 +94,7 @@ tags = ["over-assistant", "pause", "playback-speakers"]
 root = "talkover"
 path = "s01_archive__pause__speakers__184003__seg1.wav"
 sha256 = "c630ab889914abcf74ec7b983a029958c802bc8546063e3ca338f938fcd33446"
+
+[[variants.confirmations]]
+at = 2026-11-01T16:32:39.865884+03:00
+review_pass = 1
