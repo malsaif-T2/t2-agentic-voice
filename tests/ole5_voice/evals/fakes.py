@@ -5,8 +5,11 @@ track's interface before that track merges (plans README, "Parallel tracks"):
 - `FakeSpeechToText`: the library's `SpeechToText` port;
 - `fake_normalize`: `normalize_arabic` and `normalize_digits` (Track A);
 - `FakeMatcher`: the `Matcher` (Track D);
+- `FakeGoldenSet`: `items.load_items` and `split.load_split` (Track D);
 - `FakeScorecardWriter`: the `ScorecardWriter` (Track F);
-- `FakeSignTest` and `FakeSpellingCheck`: `sign_test` and `spelling_issues` (Track A);
+- `FakeHistory`: `history.append_line` (Track F);
+- `FakeSignTest`, `FakeSpellingCheck` and `FakeScorers`: `sign_test`, `spelling_issues`, and
+  `wer`, `cer`, `term_recall`, `id_recall` and `silence_output` (Track A);
 - `FakeTracing`: the tracing span helpers (Track C).
 """
 
@@ -18,9 +21,18 @@ from collections.abc import Callable, Iterator, Sequence
 from contextlib import contextmanager
 from pathlib import Path
 
-from ole5_voice.evals.models import Metrics, RunInfo, Scorecard, VariantResult
+from ole5_voice.evals.models import Item, SplitFile
+from ole5_voice.evals.runs import (
+    SCORECARD_FILE,
+    HistoryLine,
+    Metrics,
+    RunInfo,
+    Scorecard,
+    VariantResult,
+)
 from opentelemetry.trace import INVALID_SPAN, Span
 from t2_agentic_voice import ProviderError
+from t2_agentic_voice.evals import Recall
 from t2_agentic_voice.languages import SpellingIssue, SpellingRule
 from t2_agentic_voice.ports import AudioClip, DataFlow, Transcript
 from t2_agentic_voice.tracing import SpeechToTextSpan, Tracing
@@ -81,9 +93,27 @@ class FakeMatcher:
         return any(heard == self.normalize(r).replace(" ", "") for r in references)
 
 
+class FakeGoldenSet:
+    """Stands in for `items.load_items` and `split.load_split`: the items and the split given,
+    whatever folder or file is asked for, each asked-for path recorded."""
+
+    def __init__(self, items: Sequence[Item], split: SplitFile) -> None:
+        self.items = tuple(items)
+        self.split = split
+        self.read: list[Path] = []
+
+    def load_items(self, folder: Path) -> tuple[Item, ...]:
+        self.read.append(folder)
+        return self.items
+
+    def load_split(self, path: Path) -> SplitFile:
+        self.read.append(path)
+        return self.split
+
+
 class FakeScorecardWriter:
     """A `ScorecardWriter` that counts only the right answers and the failures, writes the
-    scorecard as `scorecard.json` into `out`, and records each call."""
+    scorecard as `SCORECARD_FILE` into `out`, and records each call."""
 
     def __init__(self) -> None:
         self.calls: list[tuple[RunInfo, tuple[VariantResult, ...], bool, Path]] = []
@@ -97,7 +127,7 @@ class FakeScorecardWriter:
         totals = Metrics(
             variants=len(results),
             right=right,
-            failures=len(results) - len(scored),
+            failures=sum(1 for r in results if r.answer.failure is not None),
             accuracy=right / len(scored) if scored else None,
         )
         held_out = run.split == "held-out"
@@ -110,8 +140,21 @@ class FakeScorecardWriter:
         )
         out.mkdir(parents=True, exist_ok=True)
         text = scorecard.model_dump_json(indent=2) + "\n"
-        (out / "scorecard.json").write_text(text, encoding="utf-8", newline="\n")
+        (out / SCORECARD_FILE).write_text(text, encoding="utf-8", newline="\n")
         return scorecard
+
+
+class FakeHistory:
+    """Stands in for `history.append_line`: adds each line to the end of `history` as one line
+    of JSON with an LF ending, and keeps it in `lines`."""
+
+    def __init__(self) -> None:
+        self.lines: list[HistoryLine] = []
+
+    def __call__(self, line: HistoryLine, history: Path) -> None:
+        self.lines.append(line)
+        with history.open("a", encoding="utf-8", newline="\n") as file:
+            file.write(line.model_dump_json() + "\n")
 
 
 class FakeSignTest:
@@ -138,6 +181,43 @@ class FakeSpellingCheck:
             for spelling in rule.avoid
             if spelling.casefold() in folded
         ]
+
+
+class FakeScorers:
+    """Stand-ins for the `evals` scorers, with the real ones' signatures: each returns the value
+    set in advance, scores nothing itself, and records its arguments in `calls`."""
+
+    def __init__(
+        self,
+        *,
+        rate: float = 0.0,
+        recall: Recall | None = None,
+        silence: int = 0,
+    ) -> None:
+        self.rate = rate
+        self.recall = recall or Recall(expected=0, found=0)
+        self.silence = silence
+        self.calls: list[tuple[str, tuple[object, ...]]] = []
+
+    def wer(self, references: Sequence[str], outputs: Sequence[str]) -> float:
+        self.calls.append(("wer", (tuple(references), tuple(outputs))))
+        return self.rate
+
+    def cer(self, references: Sequence[str], outputs: Sequence[str]) -> float:
+        self.calls.append(("cer", (tuple(references), tuple(outputs))))
+        return self.rate
+
+    def term_recall(self, reference: str, output: str, terms: Sequence[str]) -> Recall:
+        self.calls.append(("term_recall", (reference, output, tuple(terms))))
+        return self.recall
+
+    def id_recall(self, reference: str, output: str) -> Recall:
+        self.calls.append(("id_recall", (reference, output)))
+        return self.recall
+
+    def silence_output(self, output: str) -> int:
+        self.calls.append(("silence_output", (output,)))
+        return self.silence
 
 
 class FakeSpeechToTextSpan(SpeechToTextSpan):

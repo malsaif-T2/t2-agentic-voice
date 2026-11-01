@@ -74,9 +74,9 @@ number describes one speaker, the owner, and is never reported as Saudi speakers
   `whisper-large-v3-turbo` (the `stt.model` setting). Its tests, against a fake transport, check
   the request's fields against Block 0's baseline, the result's shape, a cancel that stops within
   50 ms and leaves no task behind, each failure as a `ProviderError`, that the key appears in no
-  repr, error or log line, and that `GROQ_API_KEY` and `GROQ_BASE_URL` in the environment change
-  nothing (the design's 7.3: "Other names are never read"). No public signature names a `groq`
-  type (the design's 5.3).
+  repr, error or log line, and that `GROQ_API_KEY`, `GROQ_BASE_URL` and `GROQ_CUSTOM_HEADERS` in
+  the environment change nothing in the request (the design's 7.3: "Other names are never
+  read"). No public signature names a `groq` type (the design's 5.3).
 - [ ] `t2_agentic_voice.languages` exports `normalize_arabic`, `normalize_digits` (Arabic-Indic,
   Persian and spelled-out digits) and the spelling-guide check, which takes a team's rulings as
   data; each port's prototype source is named in the progress log (D-010).
@@ -240,14 +240,17 @@ branch, `plan-002-integration` ([plans README](../README.md), "Parallel tracks")
       a variant, an audio reference (root name, path, SHA-256), a manifest (and
       its consent record), a script line (`script.toml`'s format), the recorder's take
       sidecar (device label, session, track settings, turn ends, kept or discarded), an answer,
-      a variant's result, a scorecard, a history line, and the answerer protocol;
+      a variant's result, a scorecard, a history line, and the answerer protocol (split by the
+      review into `models.py`, `runs.py` and `takes.py`, each under ARCH-SIZE: the decision
+      log);
     - `ole5_voice/evals/audio.py`, written in full here because Tracks D, E and G all need it:
       reading a WAV with `wave`, checking 16 kHz mono 16-bit, its SHA-256 and length, and cutting
       a leading window, with its tests in `tests/ole5_voice/evals/test_audio.py`;
     - the fakes tests build against, in `tests/ole5_voice/evals/fakes.py`: a fake
       `SpeechToText`, a fake normalizer, and a fake, or a callable passed in, for each piece one
-      track calls in another: the matcher (D), the scorecard writer (F), `sign_test` and the
-      spelling check (A), and the tracing span helpers (C);
+      track calls in another: the matcher, the items and the split (D), the scorecard writer and
+      the history (F), `sign_test`, the spelling check and the scorers (A), and the tracing span
+      helpers (C);
     - the poe tasks `golden`, `eval`, `eval-compare`, `eval-history` and `record` in the root
       `pyproject.toml`, each running `python -m ole5_voice.evals.<module>`, whose `main` parses
       its arguments with argparse (GP-17); GP-17's test (`tests/harness/test_commands.py`, which
@@ -284,7 +287,8 @@ branch, `plan-002-integration` ([plans README](../README.md), "Parallel tracks")
     agent that merges) is the only writer of this plan and of `docs/plans/tech-debt.md`: it copies
     each track's report into them, numbering the debt rows, in the `merge track X` commit.
 15. **The integration check, with no spend.** In a linked worktree, `poe eval --answerer
-    reference` over the whole committed set scores 100%. The agent writes
+    reference --split dev` and `--split held-out` over the whole committed set each score 100%
+    (a run covers one split: the decision log). The agent writes
     `tests/ole5_voice/evals/test_reference_answerer.py`, which does the same inside
     `poe check`.
 16. **The whole-plan review of the code**, by every reviewer, before the owner records. Then
@@ -411,8 +415,10 @@ run, [WORKING-RULES.md](../../../WORKING-RULES.md), "Measurement runs")
   each, so no `[[tool.mypy.overrides]]` entry is added. The installed groq 1.7.0, read as text:
   its default base URL is `https://api.groq.com`; with no key it reads `GROQ_API_KEY`, with no
   base URL `GROQ_BASE_URL` (`groq/_client.py`, lines 80-91 for `Groq`, 293-304 for `AsyncGroq`);
-  it also reads `GROQ_CUSTOM_HEADERS` whatever is passed and adds its headers under the ones
-  given (lines 93-100 and 306-313), and `GROQ_LOG` when `groq` is imported
+  it also reads `GROQ_CUSTOM_HEADERS` whatever is passed (lines 93-100 and 306-313) and adds its
+  headers under any `default_headers` given but over the `Authorization` header it builds from
+  the key passed (`groq/_base_client.py`, lines 672-680; corrected in the review: so such a
+  variable naming `Authorization` replaces the key), and `GROQ_LOG` when `groq` is imported
   (`groq/_utils/_logs.py`, line 17, called from `groq/__init__.py`, line 79), which sets the
   `groq` and `httpx` loggers to DEBUG or INFO; its defaults are a 60 s timeout (5 s to connect)
   and 2 retries (`groq/_constants.py`, lines 9-10). The OpenTelemetry reading is in the decision
@@ -507,16 +513,63 @@ run, [WORKING-RULES.md](../../../WORKING-RULES.md), "Measurement runs")
     and `stt_eval.norm` (`Ole5-chatbot/scripts/stt_eval.py`, lines 1059-1066) make of it,
     written by reading the code, never by running it (D-010): each folded letter form, the
     diacritics, tatweel and annotation marks, Arabic and Latin punctuation, Arabic-Indic and
-    Persian digits, spaces, mixed text with product terms, and a word split in two. Five rows
-    carry a `gap` the spelling guide rules on (a lone hamza, alef wasla, Farsi yeh, keheh,
-    digits spelled out), where Track A's output is the guide's. Before it was written, each
-    hand-written row was checked against an independent reading of the two functions, in a
-    scratch script outside the repository; the check caught one wrong row.
+    Persian digits, spaces, mixed text with product terms, and a word split in two. Two rows
+    (digits said one by one, in Arabic and in English) carry a `gap`, where Q8 rules otherwise
+    than the prototype and Track A's output is the guide's (`57`). The forms the prototype leaves
+    unfolded (alef wasla, Farsi yeh, keheh, a lone hamza) are kept, since Q8 folds only the
+    prototype's letter forms; the first version marked these four as gaps too, which the review
+    found Q8 never ruled. Before it was written, each hand-written row was checked against an
+    independent reading of the two functions, in a scratch script outside the repository; the
+    check caught one wrong row.
 
   `tests/t2_agentic_voice/test_baselines.py` keeps both consistent: the clip rebuilds to its
   hash, and every row's `norm` is its `normalize` with the digits read and the spaces removed.
   `uv run poe arch` and `uv run poe docs` are clean. Block 0 is built; next, the review (step
   12) and the merge into `plan-002-integration`, by the integrating session.
+- 2026-11-01: Block 0 reviewed (step 12) by five agents that did not write it, one for each
+  concern: the harness, security, faithfulness to the plan and its sources, correctness, and the
+  tracks' readiness. Their 38 findings, 25 distinct issues (8 raised by more than one reviewer),
+  were each checked by an agent told to refute it: all 38 held, some at a lower severity or with
+  a corrected fix; none was rejected; none goes to the owner, since no fix changes the design, a
+  decision's substance, the registered measurement or an owner's ruling. All 25 are fixed in one
+  commit (`Plan 002: review fixes, Block 0`), each choice a fix makes in the decision log, and
+  what belongs to a later track is in that track's lines under `## Tracks`, with the debt left
+  as TD-002 to TD-007:
+  - Harness: `tests/conftest.py` drops the shell's `GROQ_*`, `OTEL_*`, `PHOENIX_*` and `T2V_*`
+    variables before collection, since `groq` and `opentelemetry.context` read `GROQ_LOG` and
+    `OTEL_PYTHON_CONTEXT` on import (`tests/harness/test_import_isolation.py`, also in the child
+    run, whose shell now sets both); ARCH-WORDS reads the path of every file below the library's
+    `src/`, whatever its type; CLAUDE.md, ARCHITECTURE.md, `harness.toml`'s comments, the
+    library's README and its `__init__.py` name the facades as public API.
+  - Security: a key holding a space, a line break, a control or a non-ASCII character is refused
+    as it is read, naming its setting, and a key file's byte-order mark is dropped; a URL setting
+    with a bad port or `[host]`, a base URL with a query, and an infinite timeout are refused,
+    with no error text from urllib; `Settings.from_env` loads the settings and reports every
+    failure as a `ConfigurationError` that names settings only; `parse_wav` raises only
+    `AudioFormatError` (a chunk that claims more bytes than the file holds, an empty file); a
+    path below a root refuses Windows device names, trailing dots and spaces, control
+    characters and `.`; the models refuse a traced held-out run, a held-out scorecard with a
+    variant, a variant of another split, and a secret setting shown as anything but set or not
+    set; the Groq SDK's `GROQ_CUSTOM_HEADERS` and `GROQ_LOG` reach Track B's lines.
+  - Faithfulness: the four letter-form rows Q8 never ruled are no longer gaps (step 11's entry
+    above is corrected); D-021's Proposed bullet adds `AudioClip.seconds` and the port types'
+    input checks.
+  - Correctness: `ProviderError` pickles and copies; the consent test changes only the flag;
+    the config tests cover a missing and an undecodable key file and every error's traceback;
+    `wer`, `cer` and `term_recall` say a bare str raises TypeError.
+  - The tracks' readiness: the library's strings no longer hold a talk-over reference ("stop",
+    "wait"); the models gain each window's measures and `WindowMetrics`, the `want` label, the
+    item's terms on each result, the ticket kind's name, a run's price per hour, the
+    scorecard's file name, the not-judged state of a window-only run, Whisper's confidence and
+    each segment's answer, the split file, the script with its listening sounds, the session
+    record that carries the consent, and the recorder's file names; the fakes gain the items and
+    the split, the history and the scorers; `requests` is declared and owned by `core`; a run
+    covers one split (step 15).
+
+  The models moved out of `models.py` into `runs.py` (what a run produces) and `takes.py` (the
+  recorder's files), so each stays under ARCH-SIZE. `uv run poe check` passes: 347 tests,
+  100% coverage, mypy strict on 126 files, `uv lock --check` clean. Next, the merge into
+  `plan-002-integration`, by the integrating session.
 
 ## Decision log
 
@@ -535,9 +588,13 @@ All entries are the agent's choices of 2026-11-01, with the agent's reasons.
   set aside because GP-10 prefers a well-known library, and the layer is needed for the testing
   kit later anyway (the design's 12.2).
 - 2026-11-01: The Arabic normalizer is ported from the prototype's `rules.normalize` and `norm`,
-  with the gaps the spelling guide rules on (ٱ, ی, ک, a lone ء, number words); camel-tools'
-  normalizers are not vendored in M1 (the design's 13 allows it), since the port covers what the
-  golden set needs and adds no notice file.
+  with the gap the spelling guide rules on (number words: digits said one by one count as those
+  digits, Q8); ٱ, ی, ک and a lone ء are kept, as the prototype keeps them, since Q8 folds only
+  the prototype's letter forms (this entry, written before Q8 was settled, named them as gaps
+  too; corrected in Block 0's review). camel-tools' normalizers are not vendored in M1 (the
+  design's 13 allows it), since the port covers what the golden set needs and adds no notice
+  file. Folding more forms (ی to ي, ک to ك, ٱ to ا) would be a new ruling for the owner, or a
+  measured change later (GP-18).
 - 2026-11-01: No num2words in M1. Spelled-out digits are read one digit word at a time; numbers
   said as number words follow the spelling guide; num2words comes with spoken numbers, in M2.
 - 2026-11-01: Items are TOML files read with the standard library's `tomllib`, and written by a
@@ -715,6 +772,24 @@ All entries are the agent's choices of 2026-11-01, with the agent's reasons.
 
   Track C keeps out each one of the second group it can, and reports the rest as debt rows; the
   agent proposes those rows in Block 0's report, for the integrator to number.
+- 2026-11-01: Step 2 read the installed groq 1.7.0 as text for every `GROQ_*` variable it reads,
+  the counterpart of the list above; Track B works from it (added in Block 0's review).
+  - **Kept out by passing a value:** `GROQ_API_KEY` and `GROQ_BASE_URL` (`groq/_client.py`,
+    lines 80-91 and 293-304).
+  - **Read whatever is passed:** `GROQ_CUSTOM_HEADERS`, on every client built (lines 93-100 and
+    306-313), whose headers sit under any `default_headers` given but over the `Authorization`
+    header the SDK builds from the key (`groq/_base_client.py`, lines 672-680), so a value
+    naming `Authorization` replaces the key, and any other header it names goes with every
+    request (TD-002); and `GROQ_LOG`, read when `groq` is imported (`groq/_utils/_logs.py`,
+    line 17, from `groq/__init__.py`, line 79), which calls `logging.basicConfig` and sets the
+    `groq` and `httpx` loggers to DEBUG or INFO, and at DEBUG logs the request's options, audio
+    included (`_base_client.py`, lines 483-496) (TD-003).
+
+  Track B passes `default_headers` naming `Authorization`, so no variable replaces the key (not
+  left as debt: a value keeps it out), and drops every other header outside an allow-list with a
+  request hook on the `httpx.AsyncClient` it passes. `GROQ_LOG` is read on import, so the tests
+  drop it before collection (`tests/conftest.py`), and Track B tests it in a child process that
+  imports `t2_agentic_voice.groq`; what it cannot keep out it reports, narrowing TD-002 and TD-003.
 - 2026-11-01: A facade's module file is checked when `harness.toml` is loaded, as a
   HARNESS-CONFIG problem, like the rest of `[package]`; so every check, not only `poe arch`,
   refuses a facade with no module. The agent's choice: the plan names `harness_config.py` as
@@ -772,7 +847,8 @@ All entries are the agent's choices of 2026-11-01, with the agent's reasons.
   `domain/text/rulings.py` and `domain/recall.py`, not in the tracks' files the plan names, so
   every file keeps one owner ("Parallel tracks": a file two tracks need goes into Block 0).
 - 2026-11-01: `models.py`'s choices, the agent's, which Tracks D to G build to (a change goes
-  through the integrator):
+  through the integrator; since the review, the models sit in `models.py`, `runs.py` and
+  `takes.py`, and the review's additions are its entry at the end of this log):
   - an item's `kind` is a snake_case name, not a closed list, since Track D maps the lab's
     kinds (`sentence`, `backchannel`, `command`, `confirm`, `request`, `unscripted`: `refs.json`,
     read 2026-11-01) and Q4 may change the script's; `strata.toml` and its test hold the kinds
@@ -797,6 +873,85 @@ All entries are the agent's choices of 2026-11-01, with the agent's reasons.
   command's `if __name__ == "__main__"` line is run by its `--help` test through `runpy`, so the
   coverage floor holds with no `pragma: no cover`. `FakeTracing` subclasses `Tracing`, so a
   runner typed with the library's class takes it.
+- 2026-11-01: Block 0's review fixes, the agent's choices, each from a finding checked by an
+  agent told to refute it (the progress log):
+  - The shell's variables are dropped in a `pytest_configure` hook of `tests/conftest.py`, which
+    runs before any test module is imported, as well as by the session fixture; a check placed
+    above the conftest's imports would trip ruff's E402, and the conftest's one import loads
+    neither SDK.
+  - ARCH-WORDS reads the path below `[package] root` of every file outside `__pycache__/`, and
+    the text of the listed types only (`.pyi` is not added), so a module, folder or asset named
+    after an app is caught whatever its type, as ARCHITECTURE.md says.
+  - Settings, adding to step 8's choices: a key, from the setting or its file, is printable
+    ASCII with no space, else a `ConfigurationError` naming the setting it came from, never the
+    value (a key with a line break fails in the HTTP client, whose error holds the whole header
+    and reads as a lost connection); a key file is read as `utf-8-sig`, so a byte-order mark is
+    dropped; a URL setting's port is checked at load (1 to 65535), and a bad port or `[host]`
+    gives fixed text, since urllib's repeats the value; `groq.base_url` holds no query or
+    fragment, since the SDK puts its path after it; `stt.timeout_s` is finite. A key file that
+    cannot be read, and a URL urllib refuses, fail after the handler, so no exception chain
+    holds the file's bytes (a decode error keeps them) or the value, even out of sight.
+  - `Settings.from_env(env_file=None)`, the name the design's 7.4 gives the loader: it loads the
+    settings, and any failure is a `ConfigurationError` naming each failing setting and why,
+    with a FIX line, raised after the handler, so no exception chain leads to the
+    ValidationError; `get_settings()` loads through it. This narrows step 8's entry above: a
+    ValidationError's text and repr never show the rejected value, but its `errors()` and
+    `json()` still do by default, so a command reports settings errors only through `from_env`
+    (Track E's `--env-file` included).
+  - `ProviderError` rebuilds through its constructor when pickled or copied, keeping every
+    attribute, notes included.
+  - `parse_wav` turns `wave`'s bare RuntimeError (a chunk past the RIFF chunk's end) into
+    `AudioFormatError`, and refuses a file with no samples, as the models' `seconds > 0` would
+    later.
+  - A path below a root also refuses an empty or dot-only part, a part ending in a dot or a
+    space, a control character, `*?"<>|`, and Windows' device names with any extension, from a
+    list kept by hand (`os.path.isreserved` needs Python 3.13).
+  - The app's models are split, so each module stays under ARCH-SIZE: `models.py` (the golden
+    set: items, variants, manifests, the split file, and the field types), `runs.py` (what a
+    run produces, and the answerer, matcher and scorecard-writer protocols) and `takes.py` (the
+    recorder's files). All three are Block 0's, as `models.py` was. Every model hides the input
+    it refuses (`hide_input_in_errors`).
+  - Held-out and secrets in the models: a held-out run is never traced (`RunInfo`), a held-out
+    scorecard holds no variant and every scorecard's variants are of its run's split
+    (`Scorecard`, which also catches a run made by `model_copy`, as reading does); a setting
+    whose dotted name ends in `key`, `api_key`, `secret`, `token` or `password` is shown only as
+    `set` or `not set`, in a run and in its history line, by a pattern kept private in
+    `runs.py`, since the app's code never imports the tests.
+  - What the tracks pass each other, named in the models: each `Window` carries its measures
+    (empty, words heard, leading words, whether a one-word reference is held), which Track E
+    takes with `windows.py`; `WindowMetrics`, one per window length, language and `want`, as
+    sums, on `Scorecard.windows` (a held-out run keeps these); `want` on `Item` and
+    `VariantResult` (a `Name`, never a list of its values, one of which is a one-word
+    reference); the item's terms on each `VariantResult`; `TICKET_KIND = "ticket_number"`; a
+    run's `price_per_hour_usd`, required on `RunInfo` and `HistoryLine`, so step 20's spend has
+    a named source and a forgotten price is an error, not a cost of 0; `SCORECARD_FILE`; a
+    window-only run's results have `judged` false and no verdict, `Answer.text` None, and are
+    not failures; `Answer` keeps Whisper's confidence and each segment's own answer (for a
+    variant of several segments, the top-level values are the segments', weighted by length,
+    as the prototype weights Whisper's segments, `stt.py`, `_by_length`), so the prototype's
+    silence rule can be scored again offline (Q2's purpose).
+  - The committed split's shape is `models.SplitFile`, read by `split.load_split` (Track D);
+    `script.toml` is `takes.Script` (`listening_sounds`, then `[[lines]]`), read by
+    `takes.load_script`; each recording session writes `session.json` (`takes.SessionRecord`,
+    the speaker's consent), which the import copies into the manifest; below `--out`, a
+    session's folder holds `session.json` and each take's `<take>.wav`, `<take>.json` and
+    `<take>.review-<pass>.json`, named by `takes.py`'s helpers, which refuse a name that is no
+    plain file.
+  - The fakes add `FakeGoldenSet` (the items and the split), `FakeHistory` and `FakeScorers`
+    (preset values, scoring nothing themselves, so they cannot drift from Track A's).
+  - A run covers one split: `poe eval` takes `--split dev` or `--split held-out`, as every
+    registered run does, and step 15 runs the reference answerer once on each, rather than adding
+    a whole-set scope no registered run uses.
+  - `requests` is a direct dependency of the library (`uv add --package t2-agentic-voice
+    "requests>=2.34.2"`, already locked at that version, Apache-2.0: no new package or licence)
+    with an `[[owners]]` row of its own for `core`, since only a `requests.Session` passed to
+    the exporter keeps the credential-provider variable out (the OpenTelemetry list above).
+  - The library's strings hold no talk-over reference as a whole word: `ProviderError`'s
+    messages say "delay", `Tracing.shutdown` says "close", and `domain`'s docstring describes
+    stop words in other words. The no-item-in-source test would otherwise fail on files Track D
+    does not own.
+  - `wer`, `cer` and `term_recall` keep their signatures and raise TypeError on a bare str
+    (Track A builds the guard and its test); so does a `Matcher`.
 
 ## The owner's decisions
 
@@ -859,6 +1014,7 @@ uv add --package t2-agentic-voice "groq>=1.7.0" "opentelemetry-api>=1.45.2" "ope
 | `opentelemetry-exporter-otlp-proto-http` | `>=1.45.2` | Apache-2.0 (as above) | `t2-agentic-voice` | `core` (`opentelemetry`) | Plain OTLP over HTTP to Phoenix (`/v1/traces` on port 6006) |
 | `openinference-semantic-conventions` | `>=0.1.43` | Apache-2.0 (the design's 13; PyPI, read 2026-11-01) | `t2-agentic-voice` | `core` (`openinference`, already listed) | The attribute names of our own spans (D-018, question 7) |
 | `jiwer` | `>=4.0.0` | Apache-2.0 (the design's 13; PyPI, read 2026-11-01) | `t2-agentic-voice` | `testing` (a new `[[owners]]` row, step 3) | `wer` and `cer` |
+| `requests` | `>=2.34.2` | Apache-2.0 (installed metadata, step 2) | `t2-agentic-voice` | `core` (its own `[[owners]]` row, Block 0's review) | The exporter's `requests.Session`, which keeps the credential-provider variable out; locked with the exporter before it was declared (the decision log) |
 
 Facts read on PyPI on 2026-11-01 by the research step: groq 1.7.0 (uploaded 2026-08-26) needs
 anyio, distro, httpx (below 1), pydantic (below 3), sniffio and typing-extensions; the three
@@ -882,7 +1038,7 @@ metadata, read in step 2, agrees with each (the progress log):
 | `rapidfuzz` | jiwer | MIT |
 | `opentelemetry-semantic-conventions`, `opentelemetry-proto`, `opentelemetry-exporter-otlp-proto-common` and the exporter's other `opentelemetry-*` packages | the OpenTelemetry packages | Apache-2.0 |
 | `protobuf` | opentelemetry-proto, googleapis-common-protos | BSD-3-Clause |
-| `googleapis-common-protos`, `requests` | the HTTP exporter | Apache-2.0 |
+| `googleapis-common-protos` | the HTTP exporter | Apache-2.0 |
 | `urllib3`, `charset-normalizer` | requests | MIT |
 
 Already locked and unchanged: pydantic, typing-extensions, colorama (`uv.lock`, read
@@ -905,11 +1061,17 @@ Already locked and unchanged: pydantic, typing-extensions, colorama (`uv.lock`, 
 
 Each track builds in its own worktree against Block 0's interfaces and the fakes in
 `tests/ole5_voice/evals/fakes.py`, never against another track's unfinished code. One owner per
-file; the files every track needs (settings, errors, ports, facades, `models.py`, `audio.py`,
-poe tasks, CLAUDE.md, `harness.toml`, ARCHITECTURE.md) belong to Block 0, and this plan and
-`docs/plans/tech-debt.md` to the integrator, which copies each track's report into them
-(step 14). Library paths below are under `packages/t2-agentic-voice/src/t2_agentic_voice/`; app
-paths under `apps/ole5-voice-agent/src/ole5_voice/evals/`.
+file; the files every track needs (settings, errors, ports, facades, `models.py`, `runs.py`,
+`takes.py`, `audio.py`, poe tasks, CLAUDE.md, `harness.toml`, ARCHITECTURE.md) belong to Block
+0, and this plan and `docs/plans/tech-debt.md` to the integrator, which copies each track's
+report into them (step 14). Library paths below are under
+`packages/t2-agentic-voice/src/t2_agentic_voice/`; app paths under
+`apps/ole5-voice-agent/src/ole5_voice/evals/`. In every track, no item's reference appears as a
+whole word in a source string or page text (Track D's test reads every string constant under
+`packages/`, `apps/*/src` and `examples/`): the one-word English ones are okay, stop, wait and
+yeah, and `refs.json` and Track D's test hold the rest. The likely places: Track B's rate-limit
+message, Track C's docstrings, Track E's progress lines, and Track G's control labels (no
+"Stop" button).
 
 **Track A · Text and scorers (library).**
 - Goal: `normalize_arabic`, `normalize_digits`, the spelling-guide check (`spelling_issues`,
@@ -927,7 +1089,8 @@ paths under `apps/ole5-voice-agent/src/ole5_voice/evals/`.
 - Tests: the characterization table; each gap the spelling guide rules on (Q8, settled before
   Block 0); Arabic-Indic and Persian digits; digits spelled one word each, in Arabic and in
   English; WER and CER against hand-computed cases, empty output included, and an empty
-  reference refused with a `ValueError` (with no reference words, jiwer 4.0.0 returns the
+  reference refused with a `ValueError`, and a bare str for `references`, `outputs` or `terms`
+  refused with a TypeError (with no reference words, jiwer 4.0.0 returns the
   insertion count as the WER: the feasibility review's reading of jiwer's `process.py`,
   UNVERIFIED in this repository, where jiwer is not installed yet); the sign test against
   evaluation.md's formula: b = 6, w = 0 gives 2/64 = 0.03125; b = 5, w = 0 gives 0.0625; b = w
@@ -944,13 +1107,23 @@ paths under `apps/ole5-voice-agent/src/ole5_voice/evals/`.
 - Behaviour: PCM16 wrapped as WAV with `wave`, sent with the media type `audio/wav`; the key,
   base URL (`groq.base_url`) and timeout always passed explicitly, never none; an empty key or
   key-file value treated as unset; SDK retries off; `billed_seconds` is the larger of 10 s and the
-  clip's length (Groq's documented minimum); the `DataFlow` values of the design's 6.1.
+  clip's length (Groq's documented minimum); the `DataFlow` values of the design's 6.1. The key
+  also goes in `default_headers` as `Authorization`, so `GROQ_CUSTOM_HEADERS` never replaces it,
+  and a request hook on the `httpx.AsyncClient` passed as `http_client` drops every header
+  outside an allow-list (the decision log's groq list; TD-002). Every exception the SDK raises,
+  not only its `APIError`s, becomes a `ProviderError` raised `from None`, never `from error`:
+  the SDK's exception chain can hold the request's headers.
 - Tests (a fake transport, no network): the request's fields equal Block 0's baseline; the
   result's shape; a cancel stops within 50 ms with no pending task and the client closed; a 429
   with `retry-after`, a 5xx, a timeout, a lost connection, a 401 and a 400 each become the right
   `ProviderError`; the key appears in no repr, error or log line, even when the fake server
   echoes the request's headers in its body; `GROQ_API_KEY` and `GROQ_BASE_URL`, set with
-  monkeypatch, change nothing in the request; an empty key raises the `ConfigurationError`.
+  monkeypatch, change nothing in the request; `GROQ_CUSTOM_HEADERS`, set with monkeypatch to an
+  `Authorization` line with a made-up key and an `X-Made-Up` line, changes no header (the
+  settings' key sent, no `X-Made-Up`); `GROQ_LOG=debug`, read on import, in a child process that
+  imports `t2_agentic_voice.groq`: no root handler added and the `groq` and `httpx` loggers'
+  levels unchanged, or the case reported against TD-003; an empty key raises the
+  `ConfigurationError`.
 
 **Track C · The tracing helpers (library, `core`).**
 - Goal: tracing set up from settings, the `Redactor`, and span helpers that take the parent span.
@@ -964,7 +1137,8 @@ paths under `apps/ole5-voice-agent/src/ole5_voice/evals/`.
   when `include_transcripts` is on; the redaction hook on every text attribute; a bounded queue
   and short export timeouts, whose values the track gives in its report for this plan's decision
   log; the `Resource` built directly, and every value the SDK and the exporter would otherwise
-  read from an `OTEL_*` variable passed explicitly (the decision log).
+  read from an `OTEL_*` variable passed explicitly (the decision log), the exporter given its own
+  `requests.Session` (`core` owns `requests`); what cannot be kept out narrows TD-005.
 - Tests (the SDK's in-memory exporter): no made-up secret in any span attribute, event, status or
   resource; redaction applied; transcripts dropped when the setting is off; the global provider
   unchanged; an exporter that raises or hangs never reaches the caller, and dropped spans are
@@ -987,9 +1161,14 @@ paths under `apps/ole5-voice-agent/src/ole5_voice/evals/`.
   `voice-lab/static/talkover.js` (the scripted phrases); evaluation.md's "The golden set",
   "Writing items" and "Splits".
 - Behaviour: one item per talk-over phrase (43 phrase IDs: 40 scripted, 3 unscripted recorded
-  twice each, `refs.json` read 2026-11-01), its takes as variants; the import reads the lab's
-  files and writes only into this repository; `import_recordings.py` reads the take sidecars of
-  `models.py`; the matcher's rulings each quote the owner's words and date (Q8), and its verdict
+  twice each, `refs.json` read 2026-11-01), its takes as variants, each phrase's `want` label in
+  `Item.want`; the import reads the lab's files and writes only into this repository;
+  `import_recordings.py` reads the files of `takes.py` (each session's `session.json`, whose
+  consent goes into the manifest, a session without one refused; the take sidecars; the
+  reviews); `script.toml` is `takes.Script`, with its listening sounds, read by
+  `takes.load_script`; `split.json` is `models.SplitFile`, read by `split.load_split`; the
+  script's ticket items have the kind `models.TICKET_KIND`; the matcher's rulings each quote the
+  owner's words and date (Q8), and its verdict
   compares the normalized strings with every space removed, as the prototype's `norm` does;
   a variant whose reference the owner typed counts as checked only after its second
   confirmation; `golden` hashes and checks audio with Block 0's `audio.py`, only when given
@@ -1003,8 +1182,9 @@ paths under `apps/ole5-voice-agent/src/ole5_voice/evals/`.
   `windows.py`, `worktree.py` (the linked-worktree and clean-tree checks, through `git`); tests
   `tests/ole5_voice/evals/` (`test_run.py`, `test_answerers.py`, `test_windows.py`,
   `test_worktree.py`).
-- May read: `models.py`, `audio.py`, the library's facades, the matcher's and the scorecard's
-  interfaces (through Block 0's fakes until their tracks merge).
+- May read: `models.py`, `runs.py`, `audio.py`, the library's facades, the matcher's, the
+  items', the split's, the scorecard's and the history's interfaces (through Block 0's fakes
+  until their tracks merge).
 - Behaviour: flags for the answerer, split, model, language hint, `--env-file`, `--var-dir`,
   `--audio`, `--out` (refused if it exists, or if it lies inside the repository and git would
   not ignore it), `--max-rpm`, `--max-attempts`, `--variant-timeout-s`, `--price-per-hour`,
@@ -1015,7 +1195,13 @@ paths under `apps/ole5-voice-agent/src/ole5_voice/evals/`.
   and timings, never a transcript (WORKING-RULES.md: "Never log secrets or user data beyond
   identifiers"), and in a held-out run only counts, with no item ID or verdict; a held-out run
   that is interrupted keeps nothing and is run again whole; the history line is appended to the
-  worktree's `history.jsonl` and copied beside the scorecard.
+  worktree's `history.jsonl` and copied beside the scorecard. `--split` is required (a run covers
+  one split); the settings load through `Settings.from_env` (`--env-file` included), whose
+  error is the only one reported, never a ValidationError's `errors()`; each `VariantResult`
+  carries its item's `terms` and `want`; each `Window` carries its measures, from `windows.py`;
+  a run that sends only the windows marks its results `judged` false, with no verdict;
+  `--price-per-hour` is the run's and the history line's `price_per_hour_usd`; the history
+  line's `scorecard` is `runs.SCORECARD_FILE`.
 - Tests: with the fake `SpeechToText`, a fake `git`, and temporary folders: refusal of the main
   checkout and of a dirty tree; the smoke gate; results kept after an interruption; a stuck
   variant scored as an infrastructure failure; retries and provider failures; a held-out run with
@@ -1030,21 +1216,26 @@ paths under `apps/ole5-voice-agent/src/ole5_voice/evals/`.
 - Owns: `scorecard.py`, `compare.py`, `history.py`; `docs/generated/eval-history.md` and its row
   in `docs/generated/README.md`; tests `test_scorecard.py`, `test_compare.py`, `test_history.py`
   (the freshness test).
-- May read: `models.py`, the library's `evals` facade, evaluation.md's "Judging a change" and
-  "Run history".
+- May read: `models.py`, `runs.py`, the library's `evals` facade (through Block 0's
+  `FakeScorers` until Track A merges), evaluation.md's "Judging a change" and "Run history".
 - Behaviour: accuracy, WER, CER (over variants with a non-empty reference only), term and ID
   recall, text from silence, cost, latency (median and 90th percentile), violations (always 0: no
   canary applies to speech-to-text), breakdowns by language, device, kind and split, the window
   metrics, and "one speaker" on every scorecard; `eval-compare` refuses two runs whose recorded
-  commits or data digests differ, naming the difference.
+  commits or data digests differ, naming the difference. Term recall from each result's
+  `terms`, ID recall over the `models.TICKET_KIND` results, the cost from the run's
+  `price_per_hour_usd`, the window metrics as `Scorecard.windows` (`WindowMetrics`, summed from
+  each `Window`'s measures); the scorecard written as `out / runs.SCORECARD_FILE`, built with
+  the constructor or `model_validate`, never `model_copy(update=...)`; a held-out run's
+  scorecard holds aggregates only, which `runs.py` refuses otherwise.
 
 **Track G · The recorder (app).**
 - Goal: `poe record`, the page the owner records and listens with.
 - Owns: `recorder.py`, `recorder_page/index.html`, `recorder_page/recorder.js`; tests
   `test_recorder.py`.
-- May read: `script.toml`'s format, `models.py` (the script line and the take sidecar),
-  `audio.py`; `voice-lab/assets/talkover/` (the six agent replies and `replies.json`, served read
-  only for over-the-agent and echo-only items).
+- May read: `takes.py` (the script, the session record, the take sidecar, the review, and the
+  files' names below `--out`), `models.py`, `audio.py`; `voice-lab/assets/talkover/` (the six
+  agent replies and `replies.json`, served read only for over-the-agent and echo-only items).
 - Behaviour: serves on 127.0.0.1 only, answers only a `Host` of `127.0.0.1:<port>` and requests
   carrying the session's token, which `poe record` prints in the address, and refuses a POST from
   another `Origin`; serves only an allow-list (the replies `replies.json` names, the variants the
@@ -1055,7 +1246,8 @@ paths under `apps/ole5-voice-agent/src/ole5_voice/evals/`.
   several-clause take, the owner marks each true turn end on its waveform; a review mode plays
   any variant beside its reference for the owner's check (Q9), and a variant whose text the owner
   typed comes back in a later pass for its second confirmation; writes new files only, under
-  `--out`, never replacing one.
+  `--out`, never replacing one, each named by `takes.py`'s helpers; at a session's start, asks
+  for the speaker's consent in their words and writes it as the session's `session.json`.
 - Tests: a real server on a free port in a thread: a take saved with its sidecar; path
   traversal, an existing name, an oversized body and a file that is not 16 kHz mono 16-bit WAV
   refused; a GET for anything off the allow-list refused, and traversal from each served folder

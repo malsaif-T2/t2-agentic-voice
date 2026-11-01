@@ -7,7 +7,7 @@ from __future__ import annotations
 
 from pathlib import Path
 
-from ole5_voice.evals.models import Matcher
+from ole5_voice.evals.runs import Matcher
 
 _STUB = "matcher.py is built by plan 002's Track D"
 

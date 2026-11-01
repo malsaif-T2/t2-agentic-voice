@@ -14,7 +14,9 @@ from t2_agentic_voice.domain.recall import Recall
 
 def term_recall(reference: str, output: str, terms: Sequence[str]) -> Recall:
     """Of `terms` that `reference` holds, how many `output` holds too: each a whole word or
-    phrase, both texts normalized (`normalize_arabic`, `normalize_digits`). Not built yet."""
+    phrase, both texts normalized (`normalize_arabic`, `normalize_digits`). TypeError when
+    `terms` is a str rather than a sequence of terms, which would count its letters. Not built
+    yet."""
     raise NotImplementedError("term_recall is built by plan 002's Track A")
 
 

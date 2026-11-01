@@ -17,6 +17,18 @@ VAR_DIR_VARIABLE = f"{PREFIX}VAR_DIR"
 # The variables of the providers' SDKs and of the tracing tools, which the library never reads
 # (the design's 7.3) but their SDKs would: a real key, an exporter's headers, Phoenix's own.
 FOREIGN_PREFIXES = ("GROQ_", "OTEL_", "PHOENIX_")
+# Every variable dropped from the shell; with no prefix, every variable would be a setting.
+_DROPPED = FOREIGN_PREFIXES + ((PREFIX.upper(),) if PREFIX else ())
+
+
+def pytest_configure(config: pytest.Config) -> None:
+    """Drop the shell's variables before any test module is imported. The session fixture below
+    runs only after collection, and some are read when a package is imported: `GROQ_LOG` by
+    `groq` (it then sets the `groq` and `httpx` loggers to DEBUG and adds a root handler) and
+    `OTEL_PYTHON_CONTEXT` by `opentelemetry.context` (it loads an entry point by that name), as
+    plan 002's step 2 read them (tests/harness/test_import_isolation.py checks it)."""
+    for name in [n for n in os.environ if n.upper().startswith(_DROPPED)]:
+        del os.environ[name]
 
 
 @pytest.fixture(scope="session", autouse=True)
@@ -27,7 +39,8 @@ def _isolated_settings(tmp_path_factory: pytest.TempPathFactory) -> Iterator[Non
       test of `.env` parsing passes its own file as `_env_file=`);
     - no variable with this project's prefix from the shell (a debug level, `prod`);
     - no `GROQ_*`, `OTEL_*` or `PHOENIX_*` variable from the shell, so a real key or exporter
-      setting never reaches a test (a test sets made-up ones with monkeypatch);
+      setting never reaches a test (a test sets made-up ones with monkeypatch); both are also
+      dropped before collection, by `pytest_configure` above;
     - a scratch var_dir, so no test opens the developer's var/.
     Add here any other variable a test must never inherit."""
     with pytest.MonkeyPatch.context() as patch:

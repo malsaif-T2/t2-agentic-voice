@@ -8,7 +8,7 @@ from __future__ import annotations
 from collections.abc import Sequence
 from pathlib import Path
 
-from ole5_voice.evals.models import RunInfo, Scorecard, VariantResult
+from ole5_voice.evals.runs import RunInfo, Scorecard, VariantResult
 
 _STUB = "scorecard.py is built by plan 002's Track F"
 
@@ -16,5 +16,6 @@ _STUB = "scorecard.py is built by plan 002's Track F"
 def write_scorecard(
     run: RunInfo, results: Sequence[VariantResult], *, complete: bool, out: Path
 ) -> Scorecard:
-    """The scorecard of `results` (a `ScorecardWriter`), also written below `out`."""
+    """The scorecard of `results` (a `ScorecardWriter`), also written as
+    `out / SCORECARD_FILE`."""
     raise NotImplementedError(_STUB)

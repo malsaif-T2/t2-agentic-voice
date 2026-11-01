@@ -7,7 +7,7 @@ from __future__ import annotations
 
 from t2_agentic_voice import Settings
 
-from ole5_voice.evals.models import Answerer
+from ole5_voice.evals.runs import Answerer
 
 _STUB = "answerers.py is built by plan 002's Track E"
 

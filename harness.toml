@@ -10,9 +10,10 @@
 # The library's import package, at <root>/<name>/ (D-013).
 name = "t2_agentic_voice"
 root = "packages/t2-agentic-voice/src"
-# Its public API: the modules an app may import (ARCH-PUBLIC). The package root re-exports the
-# names apps use; a public subpackage (such as a future "<name>.testing") makes its modules
-# public too. Everything else is internal, free to change without a major version.
+# Its public API: the modules an app may import (ARCH-PUBLIC). The package root and the facades
+# below re-export the names apps use; a public subpackage (such as a future "<name>.testing")
+# makes its modules public too. Everything else is internal, free to change without a major
+# version.
 public = [
     "t2_agentic_voice",
     "t2_agentic_voice.ports",
@@ -33,13 +34,15 @@ facades = [
     "t2_agentic_voice.tracing",
 ]
 # Words the library's src/ never holds, in any case: the names of the apps built on it and of
-# their own services, so the library stays free of any one app (ARCH-WORDS). Read in the source
-# and text files under [package] root, never in __pycache__/.
+# their own services, so the library stays free of any one app (ARCH-WORDS). Read in the path
+# below [package] root of every file, and in the text of its source and text files, never in
+# __pycache__/.
 banned_words = ["ole5", "otrs", "ds.t2.sa"]
 
 # Each layer of the package (a folder directly under src/<name>/) and the other layers it may
 # import. A layer always may import itself. The graph may not have a cycle. Code must sit inside
-# a layer: a module directly in src/<name>/ (other than __init__.py) is a violation.
+# a layer: a module directly in src/<name>/ (other than __init__.py and the [package] facades)
+# is a violation.
 # The layers of a voice support call (D-003, ARCHITECTURE.md): rules without IO at the bottom,
 # the outside services beside the backend, the real-time pipeline above the talker, and the
 # HTTP surface on top as the composition root. The testing kit sits beside the HTTP surface: it
@@ -70,6 +73,11 @@ fix = "Add a field to Settings in core/config.py (and to .env.example), then rea
 modules = ["opentelemetry", "openinference", "phoenix"]
 layers = ["core"]
 fix = "Trace through core's tracing helpers (one span per step, Phoenix behind them); never import the tracing libraries elsewhere."
+
+[[owners]]
+modules = ["requests"]
+layers = ["core"]
+fix = "Only core's tracing uses requests, as the OTLP exporter's session; reach an outside service through its port in domain/ports."
 
 [[owners]]
 modules = ["groq", "httpx", "qdrant_client"]

@@ -58,6 +58,6 @@ class Tracing:
         raise NotImplementedError(_STUB)
 
     def shutdown(self) -> None:
-        """Flush and stop a private provider, within its short timeouts; a team's own provider
+        """Flush and close a private provider, within its short timeouts; a team's own provider
         is left as it is."""
         raise NotImplementedError(_STUB)

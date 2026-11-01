@@ -63,5 +63,7 @@ def test_each_characterization_row_agrees_with_itself() -> None:
         assert set(row) <= {"input", "normalize", "norm", "note", "gap"}, row
         assert row["norm"] == row["normalize"].translate(DIGITS).replace(" ", ""), row
         assert row["normalize"] == " ".join(row["normalize"].split()), row
-    gaps = {row["gap"] for row in rows if "gap" in row}
-    assert gaps == {"a lone hamza", "alef wasla", "Farsi yeh", "keheh", "digits spelled out"}
+    # Q8 rules otherwise than the prototype only on digits said one by one; it folds only the
+    # prototype's letter forms, so no other row is a gap.
+    gaps = [row["gap"] for row in rows if "gap" in row]
+    assert gaps == ["digits spelled out", "digits spelled out"]

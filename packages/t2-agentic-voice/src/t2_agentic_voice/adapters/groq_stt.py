@@ -2,9 +2,11 @@
 
 Built by plan 002's Track B; until then a stub. It transcribes with the model `stt.model`
 names, always passes the key, `groq.base_url` and the timeout to the SDK (so the SDK never falls
-back to its own environment variables), turns the SDK's own retries off, raises `ProviderError`
-on every failure, and names no `groq` type in a public signature (the design's 5.3). Public
-through the `groq` facade (D-021).
+back to `GROQ_API_KEY` or `GROQ_BASE_URL`), turns the SDK's own retries off, raises
+`ProviderError` on every failure, and names no `groq` type in a public signature (the design's
+5.3). The SDK's variables that no passed value keeps out (`GROQ_CUSTOM_HEADERS`, `GROQ_LOG`) are
+in plan 002's decision log, with what Track B does about each. Public through the `groq` facade
+(D-021).
 """
 
 from __future__ import annotations

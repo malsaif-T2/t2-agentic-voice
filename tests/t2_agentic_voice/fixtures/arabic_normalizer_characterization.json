@@ -8,9 +8,11 @@
     "scorer compared: normalize, then Arabic-Indic and Persian digits as ASCII, then every",
     "space removed. Track A's normalize_arabic matches the `normalize` column, and its",
     "verdict's comparison (normalize_arabic, normalize_digits, spaces removed) the `norm`",
-    "column, except on a row with a `gap`: there the prototype left a form the spelling",
-    "guide rules on (plan 002, Q8 and the decision log), and Track A's output is the",
-    "guide's, with the row's departure named in the plan's progress log."
+    "column, except on a row with a `gap`: there the spelling guide rules otherwise than the",
+    "prototype (plan 002, Q8: digits said one by one count as those digits), its note gives",
+    "the guide's verdict string, and Track A's output is the guide's, with the row's",
+    "departure named in the plan's progress log. Q8 folds only the prototype's letter forms,",
+    "so every other form (alef wasla, Farsi yeh, keheh, a lone hamza) is kept, as here."
   ],
   "rows": [
     {
@@ -23,8 +25,7 @@
       "input": "إلغاء",
       "normalize": "الغاء",
       "norm": "الغاء",
-      "note": "alef with hamza below folded to alef; the lone hamza at the end kept",
-      "gap": "a lone hamza"
+      "note": "alef with hamza below folded to alef; the lone hamza at the end kept: Q8 folds only the prototype's forms"
     },
     {
       "input": "آسف",
@@ -210,35 +211,32 @@
       "input": "ٱلحمد",
       "normalize": "ٱلحمد",
       "norm": "ٱلحمد",
-      "note": "alef wasla (U+0671) is not folded",
-      "gap": "alef wasla"
+      "note": "alef wasla (U+0671) is not folded: Q8 folds only the prototype's forms"
     },
     {
       "input": "علی",
       "normalize": "علی",
       "norm": "علی",
-      "note": "Farsi yeh (U+06CC) is not folded",
-      "gap": "Farsi yeh"
+      "note": "Farsi yeh (U+06CC) is not folded: Q8 folds only the prototype's forms"
     },
     {
       "input": "کتاب",
       "normalize": "کتاب",
       "norm": "کتاب",
-      "note": "keheh (U+06A9) is not folded",
-      "gap": "keheh"
+      "note": "keheh (U+06A9) is not folded: Q8 folds only the prototype's forms"
     },
     {
       "input": "خمسة سبعة",
       "normalize": "خمسه سبعه",
       "norm": "خمسهسبعه",
-      "note": "digits said one word each, in Arabic: words, never digits",
+      "note": "digits said one word each, in Arabic: words, never digits, in the prototype; the guide's verdict string is 57 (Q8)",
       "gap": "digits spelled out"
     },
     {
       "input": "five seven",
       "normalize": "five seven",
       "norm": "fiveseven",
-      "note": "digits said one word each, in English: words, never digits",
+      "note": "digits said one word each, in English: words, never digits, in the prototype; the guide's verdict string is 57 (Q8)",
       "gap": "digits spelled out"
     }
   ]

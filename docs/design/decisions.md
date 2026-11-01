@@ -494,7 +494,13 @@ twice; DOC-REF: every `D-NNN` cited anywhere is a heading here), so keep its sha
     the design does not name, each the type or entry point of a function it does name: in
     `languages`, `spelling_issues`, `SpellingRule` and `SpellingIssue` (the spelling-guide check
     and its data); in `evals`, `Recall` (what `term_recall` and `id_recall` return); in
-    `tracing`, `Tracing` (the set-up, holding the span helpers) and `SpeechToTextSpan`.
+    `tracing`, `Tracing` (the set-up, holding the span helpers) and `SpeechToTextSpan`. And, on
+    the stable `ports` types, beyond the design's 6.1: `AudioClip.seconds`, a read-only property
+    giving the clip's length (`len(pcm16) / 2 / sample_rate`); and their input checks, each
+    refusing a value as it is built: no unknown field on `DataFlow`, `AudioClip` or
+    `Transcript`, `pcm16` holding whole 16-bit samples (an even number of bytes), `sample_rate`
+    above 0, `billed_seconds` 0 or more, and `no_speech_prob` from 0 to 1 (GP-06: relaxing a
+    check later breaks no caller, while adding one later might).
 - **Consequences:** An app imports these modules by name (`from t2_agentic_voice.ports import
   Transcript`), as ARCH-PUBLIC allows; the package root keeps the stable names of 5.1 that
   exist so far. Moving a name from provisional to stable is a decision of its own, once a

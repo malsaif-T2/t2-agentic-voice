@@ -6,7 +6,11 @@ nests with `__`: `T2V_GROQ__API_KEY` is `settings.groq.api_key`. A blank value c
 so a `.env` copied from `.env.example` with only the key filled in keeps every other default.
 Other modules call `get_settings()` or receive a `Settings` instance; they never touch
 `os.environ`. No provider's own variable (`GROQ_API_KEY`, `OTEL_*`) is ever read here, and the
-adapters pass every value their SDKs would otherwise read from one (the design's 7.3).
+adapters pass every value that keeps their SDKs from reading one (the design's 7.3). The few an
+SDK reads whatever is passed (`GROQ_CUSTOM_HEADERS`, `GROQ_LOG`, some `OTEL_*`) are listed in
+plan 002's decision log, each kept out by the track that builds its adapter or left as debt.
+A command loads the settings with `Settings.from_env`, whose ConfigurationError names each
+setting that cannot load and never the value it rejected (the design's 7.4).
 
 When you add a field, add it to `.env.example` too (tests/t2_agentic_voice/core/test_config.py
 fails otherwise).
@@ -20,10 +24,10 @@ import re
 from functools import lru_cache
 from pathlib import Path
 from typing import Literal
-from urllib.parse import urlsplit
+from urllib.parse import SplitResult, urlsplit
 
-from pydantic import BaseModel, ConfigDict, Field, SecretStr, field_validator
-from pydantic_settings import BaseSettings, SettingsConfigDict
+from pydantic import BaseModel, ConfigDict, Field, SecretStr, ValidationError, field_validator
+from pydantic_settings import BaseSettings, SettingsConfigDict, SettingsError
 
 from t2_agentic_voice.core.errors import ConfigurationError
 
@@ -33,21 +37,58 @@ LogLevel = Literal["DEBUG", "INFO", "WARNING", "ERROR"]
 LogFormat = Literal["console", "json"]
 SttProvider = Literal["groq"]
 SttModel = Literal["whisper-large-v3", "whisper-large-v3-turbo"]
+# What an API key may hold: printable ASCII with no space, as an HTTP header carries it.
+_KEY = re.compile(r"[\x21-\x7e]+")
 
 
 def _url(value: str, schemes: frozenset[str]) -> str:
-    """A URL of one of `schemes`, with a host and no user name or password in it."""
-    parts = urlsplit(value)
-    if parts.scheme not in schemes or not parts.hostname or any(c.isspace() for c in value):
+    """A URL of one of `schemes`, with a host, a port from 1 to 65535 if any, and no user name or
+    password in it. Every error is fixed text: urllib's own repeats the value, which may be a
+    key pasted into the wrong setting."""
+    parts = _split(value)
+    if (
+        parts is None
+        or parts.scheme not in schemes
+        or not parts.hostname
+        or parts.port == 0
+        or any(c.isspace() for c in value)
+    ):
         raise ValueError(f"must be a URL starting with {' or '.join(sorted(schemes))}://")
     if parts.username is not None or parts.password is not None:
         raise ValueError("must not hold a user name or password; secrets go in their own setting")
     return value
 
 
+def _split(value: str) -> SplitResult | None:
+    """`value`'s parts, or None when urllib refuses it, so its error, which repeats the value,
+    is in no exception chain either."""
+    try:
+        parts = urlsplit(value)  # refuses an invalid [host]
+        _ = parts.port  # urlsplit checks the port only when it is read
+    except ValueError:
+        return None
+    return parts
+
+
+def _key(value: str, setting: str) -> SecretStr:
+    """`value` as a key, or ConfigurationError naming `setting`, never the value: a key with a
+    line break, a space, a control or a non-ASCII character inside it fails in the HTTP client,
+    whose error holds the whole header (the key with it) and reads as a lost connection."""
+    if not _KEY.fullmatch(value):
+        raise ConfigurationError(
+            f"{setting} holds a character no API key holds: a space or a line break inside it, "
+            "or a control or non-ASCII character. FIX: give the key alone, on one line.",
+            details={"setting": setting},
+        )
+    return SecretStr(value)
+
+
 class _Group(BaseModel):
     """A group of settings: read-only once loaded, and a misspelt key in it is an error. An
-    error names the setting, never the value it rejected, which may be a key (GP-19)."""
+    error's text and repr name the setting, never the value it rejected, which may be a key
+    (GP-19). A ValidationError's `errors()` and `json()` still return that value unless given
+    `include_input=False`, so a command reports settings errors only through `Settings.from_env`,
+    never from a ValidationError itself."""
 
     model_config = ConfigDict(frozen=True, extra="forbid", hide_input_in_errors=True)
 
@@ -66,25 +107,32 @@ class GroqSettings(_Group):
     @field_validator("base_url")
     @classmethod
     def _https(cls, value: str) -> str:
-        return _url(value, frozenset({"https"}))
+        parts = urlsplit(_url(value, frozenset({"https"})))
+        if parts.query or parts.fragment:
+            raise ValueError("must hold no query or fragment: the SDK adds its own path after it")
+        return value
 
     def resolved_api_key(self) -> SecretStr | None:
-        """The key: `api_key` when set, otherwise the contents of `api_key_file`, with the space
-        around them removed; None when neither holds one (a blank value counts as unset). A key
-        file that cannot be read raises ConfigurationError, which never shows its contents."""
+        """The key: `api_key` when set, otherwise the contents of `api_key_file` (a byte-order
+        mark dropped, as Notepad and Windows PowerShell 5.1 may write one), with the space around
+        them removed; None when neither holds one (a blank value counts as unset). A key file
+        that cannot be read, or a key holding a character no key holds, raises
+        ConfigurationError naming the setting it came from, never its value or the file's path."""
         if self.api_key is not None and self.api_key.get_secret_value().strip():
-            return SecretStr(self.api_key.get_secret_value().strip())
+            return _key(self.api_key.get_secret_value().strip(), f"{PREFIX}GROQ__API_KEY")
         if self.api_key_file is None:
             return None
+        setting = f"{PREFIX}GROQ__API_KEY_FILE"
         try:
-            text = self.api_key_file.read_text(encoding="utf-8").strip()
+            text = self.api_key_file.read_text(encoding="utf-8-sig").strip()
         except (OSError, UnicodeDecodeError) as error:
-            raise ConfigurationError(
-                f"{PREFIX}GROQ__API_KEY_FILE is set, but the file cannot be read "
-                f"({type(error).__name__}).",
-                details={"setting": f"{PREFIX}GROQ__API_KEY_FILE"},
-            ) from None
-        return SecretStr(text) if text else None
+            failure = type(error).__name__  # a decode error holds the file's bytes: not chained
+        else:
+            return _key(text, setting) if text else None
+        raise ConfigurationError(
+            f"{setting} is set, but the file cannot be read ({failure}).",
+            details={"setting": setting},
+        )
 
 
 class SttSettings(_Group):
@@ -95,7 +143,7 @@ class SttSettings(_Group):
     # The Whisper model. The default is set by plan 002's registered baseline (the design's 7.6).
     model: SttModel = "whisper-large-v3"
     # The longest one transcription request may take, in seconds, before it is a timeout.
-    timeout_s: float = Field(default=6.0, gt=0)
+    timeout_s: float = Field(default=6.0, gt=0, allow_inf_nan=False)
 
 
 class TracingSettings(_Group):
@@ -152,8 +200,33 @@ class Settings(BaseSettings):
     stt: SttSettings = Field(default_factory=SttSettings)
     tracing: TracingSettings = Field(default_factory=TracingSettings)
 
+    @classmethod
+    def from_env(cls, env_file: Path | None = None) -> Settings:
+        """The settings from the environment and a `.env`: `env_file`, or `Settings`' own
+        default when None. Any setting that cannot load is a ConfigurationError naming each one
+        (`T2V_GROQ__BASE_URL`) and why, with a FIX line, never the value it rejected (the
+        design's 7.4). It is raised after the handler, so no exception chain leads back to the
+        ValidationError, whose `errors()` would still return that value."""
+        problems: list[tuple[str, str]] = []
+        try:
+            return cls() if env_file is None else cls(_env_file=env_file)
+        except ValidationError as error:
+            for problem in error.errors(include_input=False, include_url=False):
+                parts = [str(p).upper() for p in problem["loc"] if isinstance(p, str)]
+                problems.append((PREFIX + "__".join(parts), problem["msg"]))
+        except SettingsError as error:  # a JSON value that does not parse
+            problems.append((f"{PREFIX}*", str(error)))
+        raise ConfigurationError(
+            "These settings cannot load: "
+            + "; ".join(f"{name} ({why})" for name, why in problems)
+            + ". FIX: correct each one in the environment or the .env file; .env.example lists "
+            "every setting.",
+            details={"settings": [{"setting": name, "problem": why} for name, why in problems]},
+        )
+
 
 @lru_cache
 def get_settings() -> Settings:
-    """Process-wide settings, loaded once. Tests construct `Settings` directly instead."""
-    return Settings()
+    """Process-wide settings, loaded once with `Settings.from_env`. Tests construct `Settings`
+    directly instead."""
+    return Settings.from_env()

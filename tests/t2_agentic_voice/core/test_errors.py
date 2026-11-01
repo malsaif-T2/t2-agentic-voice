@@ -2,7 +2,9 @@
 
 from __future__ import annotations
 
+import copy
 import math
+import pickle
 
 import pytest
 import t2_agentic_voice
@@ -67,6 +69,31 @@ def test_a_provider_error_refuses_an_impossible_shape(
 ) -> None:
     with pytest.raises(ValueError, match=r"kind|retryable|retry_after_s"):
         ProviderError(kind, retryable, retry_after_s)  # type: ignore[arg-type]
+
+
+@pytest.mark.parametrize("retry_after_s", [2.5, None])
+def test_a_provider_error_pickles_and_copies_whole(retry_after_s: float | None) -> None:
+    error = ProviderError("rate_limited", True, retry_after_s, details={"status": 429})
+    error.add_note("attempt 3")
+    for again in (pickle.loads(pickle.dumps(error)), copy.copy(error), copy.deepcopy(error)):  # noqa: S301
+        assert type(again) is ProviderError
+        assert (again.kind, again.retryable, again.retry_after_s) == (
+            "rate_limited",
+            True,
+            retry_after_s,
+        )
+        assert (again.message, again.args, again.code) == (error.message, error.args, error.code)
+        assert (again.details, again.__notes__) == ({"status": 429}, ["attempt 3"])
+
+
+def test_the_other_errors_pickle_and_copy_too() -> None:
+    error = ConfigurationError("Set T2V_GROQ__API_KEY.", details={"setting": "T2V_GROQ__API_KEY"})
+    for again in (pickle.loads(pickle.dumps(error)), copy.copy(error), copy.deepcopy(error)):  # noqa: S301
+        assert (type(again), again.message, again.details) == (
+            ConfigurationError,
+            error.message,
+            error.details,
+        )
 
 
 def test_the_package_root_exports_provider_error() -> None:

@@ -8,8 +8,9 @@ from __future__ import annotations
 import argparse
 import sys
 from collections.abc import Sequence
+from pathlib import Path
 
-from ole5_voice.evals.models import Item, Split
+from ole5_voice.evals.models import Item, Split, SplitFile
 
 _STUB = "split.py is built by plan 002's Track D"
 _DESCRIPTION = "Write the golden set's split, or check that the committed one is fresh."
@@ -17,6 +18,12 @@ _DESCRIPTION = "Write the golden set's split, or check that the committed one is
 
 def split_items(items: Sequence[Item], salt: str) -> dict[str, Split]:
     """Each item's split, by its ID, about 30% held out, stratified by language and kind."""
+    raise NotImplementedError(_STUB)
+
+
+def load_split(path: Path) -> SplitFile:
+    """The committed `split.json`, checked as it is read: what the runner reads each item's
+    split from."""
     raise NotImplementedError(_STUB)
 
 

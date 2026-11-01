@@ -10,7 +10,7 @@ import sys
 from collections.abc import Sequence
 from pathlib import Path
 
-from ole5_voice.evals.models import HistoryLine
+from ole5_voice.evals.runs import HistoryLine
 
 _STUB = "history.py is built by plan 002's Track F"
 _DESCRIPTION = "Render the golden set's run history into docs/generated/eval-history.md."

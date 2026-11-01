@@ -3,22 +3,19 @@ hash or a count that cannot be right is refused as it is read."""
 
 from __future__ import annotations
 
-from typing import get_args
+import re
 
 import pytest
 from ole5_voice.evals.models import (
+    TICKET_KIND,
     AudioRef,
-    HistoryLine,
     Item,
+    Kind,
     Manifest,
-    Outcome,
-    Review,
-    ScriptLine,
-    TakeSidecar,
+    SplitFile,
     Variant,
 )
-from pydantic import ValidationError
-from t2_agentic_voice.core.errors import PROVIDER_ERROR_KINDS
+from pydantic import TypeAdapter, ValidationError
 
 SHA = "0123456789abcdef" * 4
 SEGMENT = {"root": "talkover", "path": "s01_archive__duck__speakers__181825__seg1.wav"}
@@ -38,27 +35,46 @@ ITEM: dict[str, object] = {
     "kind": "request",
     "language": "saudi",
     "text": "كيف أؤرشف مراسلة في النظام؟",
+    "want": "send",
     "variants": [VARIANT],
 }
 
 
 def test_an_item_reads_from_data_and_round_trips() -> None:
     item = Item.model_validate(ITEM)
-    assert item.variants[0].segments[0].root == "talkover"
+    assert (item.variants[0].segments[0].root, item.want) == ("talkover", "send")
     assert Item.model_validate_json(item.model_dump_json()) == item
+    assert Item.model_validate(ITEM | {"want": None}).want is None
 
 
 @pytest.mark.parametrize(
-    "path", ["", "/etc/passwd", "../.env", "a/../../b", "a\\b", "C:/x", "./a", "a//b"]
+    "path",
+    [
+        *["", "/etc/passwd", "../.env", "a/../../b", "a\\b", "C:/x", "./a", "a//b", "a/./b"],
+        *["//host/share", "a:b", ".", "...", ".. /x"],  # a UNC path, a stream, the root itself
+        # Windows device names, with any extension: reading gives nothing, writing loses it.
+        *["nul", "NUL.", "nul ", "a/nul", "nul.wav", "a/con.wav", "CON.txt", "com1", "lpt¹"],
+        *["a.wav.", "a.wav ", "a/b.", "a/b "],  # Windows drops the end: another file's alias
+        *["a\x00b", "a\tb", "a*b", 'a"b', "a<b", "a|b"],
+    ],
 )
 def test_an_audio_path_stays_below_its_root(path: str) -> None:
     with pytest.raises(ValidationError, match="relative path below its root"):
         AudioRef.model_validate({"root": "owner", "path": path, "sha256": SHA})
 
 
-def test_a_path_below_its_root_is_kept_as_written() -> None:
-    ref = AudioRef.model_validate({"root": "owner", "path": "wired/take-01.wav", "sha256": SHA})
-    assert ref.path == "wired/take-01.wav"
+@pytest.mark.parametrize("path", ["wired/take-01.wav", "nulled.wav", "con-call/aux_1.wav", "a.b/c"])
+def test_a_path_below_its_root_is_kept_as_written(path: str) -> None:
+    ref = AudioRef.model_validate({"root": "owner", "path": path, "sha256": SHA})
+    assert ref.path == path
+
+
+def test_a_refused_value_is_never_echoed() -> None:
+    """A model's error names the field, never what it refused: a transcript, a key."""
+    made_up = "gsk_made-up-key-for-tests-0123456789"
+    with pytest.raises(ValidationError) as raised:
+        AudioRef.model_validate({"root": "owner", "path": f"/{made_up}", "sha256": made_up})
+    assert made_up not in str(raised.value) and made_up not in repr(raised.value)
 
 
 @pytest.mark.parametrize(
@@ -86,11 +102,17 @@ def test_a_variant_that_cannot_be_right_is_refused(change: dict[str, object]) ->
 
 
 @pytest.mark.parametrize(
-    "change", [{"kind": "Stop Word"}, {"language": "arabic"}, {"variants": []}]
+    "change",
+    [{"kind": "Stop Word"}, {"language": "arabic"}, {"variants": []}, {"want": "Send It"}],
 )
 def test_an_item_that_cannot_be_right_is_refused(change: dict[str, object]) -> None:
     with pytest.raises(ValidationError):
         Item.model_validate(ITEM | change)
+
+
+def test_the_ticket_kind_is_a_kind() -> None:
+    """Tracks D and F agree on it: D's ticket items carry it, F scores ID recall over them."""
+    assert TypeAdapter(Kind).validate_python(TICKET_KIND) == "ticket_number"
 
 
 def test_a_manifest_holds_its_consent_and_files() -> None:
@@ -116,68 +138,22 @@ def test_a_manifest_holds_its_consent_and_files() -> None:
         }
     )
     assert manifest.consent is not None and manifest.consent.agreed
-    with pytest.raises(ValidationError):
-        Manifest.model_validate(manifest.model_dump() | {"consent": {"agreed": False}})
+    refused = manifest.model_dump()
+    refused["consent"]["agreed"] = False  # only the flag: the rest of the record stays whole
+    with pytest.raises(ValidationError) as raised:
+        Manifest.model_validate(refused)
+    assert [(e["type"], e["loc"]) for e in raised.value.errors()] == [
+        ("literal_error", ("consent", "agreed"))
+    ]
 
 
-def test_a_script_line_joins_its_clauses() -> None:
-    line = ScriptLine.model_validate(
-        {"id": "n01", "kind": "multi_clause_request", "language": "english", "say": ["a", "b"]}
+def test_the_split_file_maps_each_item_to_its_split() -> None:
+    split = SplitFile.model_validate_json(
+        '{"salt": "m1", "items": {"s01": "dev", "k05": "held-out"}}'
     )
-    assert line.text == "a b"
-    silence = {"id": "n02", "kind": "silence", "language": "none", "seconds": 4}
-    assert ScriptLine.model_validate(silence).text == ""
-
-
-def test_a_take_and_its_review_parse() -> None:
-    take = TakeSidecar.model_validate(
-        {
-            "take": "n01-laptop-1",
-            "line": "n01",
-            "session": "laptop-1",
-            "device": "laptop",
-            "microphone": "Microphone Array",
-            "track": {"echo_cancellation": True, "sample_rate": 16000},
-            "recorded_at": "2026-11-02T10:00:00Z",
-            "file": "n01-laptop-1.wav",
-            "sha256": SHA,
-            "seconds": 3.2,
-            "turn_ends_ms": [3100],
-            "status": "kept",
-        }
-    )
-    review = Review.model_validate(
-        {"take": take.take, "review_pass": 1, "at": "2026-11-02T11:00:00Z", "verdict": "typed"}
-    )
-    assert (take.track.noise_suppression, review.text) == (None, "")
-
-
-def test_an_outcome_is_ok_stuck_or_a_provider_error_kind() -> None:
-    assert set(get_args(Outcome)) == {"ok", "stuck", *PROVIDER_ERROR_KINDS}
-
-
-def test_a_history_line_names_its_commit() -> None:
-    line: dict[str, object] = {
-        "time": "2026-11-03T09:00:00Z",
-        "commit": "0f44056+",
-        "run": "r1",
-        "answerer": "groq",
-        "model": "whisper-large-v3",
-        "settings": {"stt.model": "whisper-large-v3", "groq.api_key": "set"},
-        "split": "dev",
-        "items": 60,
-        "variants": 196,
-        "accuracy": 0.41,
-        "violations": 0,
-        "billed_seconds": 1960.0,
-        "cost_usd": 0.06,
-        "latency_median_ms": 295.0,
-        "breakdowns": {"language": {"saudi": 0.3}},
-        "scorecard": "scorecard.json",
-        "data_digest": SHA,
-        "note": "the baseline, large-v3",
-        "complete": True,
-    }
-    assert HistoryLine.model_validate(line).commit == "0f44056+"
-    with pytest.raises(ValidationError):
-        HistoryLine.model_validate(line | {"commit": "main"})
+    assert split.items == {"s01": "dev", "k05": "held-out"}
+    for bad in ('{"salt": "m1", "items": {}}', '{"salt": "", "items": {"s01": "dev"}}'):
+        with pytest.raises(ValidationError):
+            SplitFile.model_validate_json(bad)
+    with pytest.raises(ValidationError, match=re.escape("items.s01")):
+        SplitFile.model_validate({"salt": "m1", "items": {"s01": "test"}})

@@ -3,6 +3,7 @@ with the standard library's `wave`. Every clip here is made up, in memory or in 
 
 from __future__ import annotations
 
+import contextlib
 import hashlib
 import io
 import struct
@@ -66,6 +67,47 @@ def test_a_file_cut_short_is_refused() -> None:
     data = write_wav(_pcm(1_600))
     with pytest.raises(AudioFormatError, match="cut short"):
         parse_wav(data[:-100])
+
+
+def _chunk(name: bytes, body: bytes, size: int | None = None) -> bytes:
+    return name + struct.pack("<I", len(body) if size is None else size) + body
+
+
+def _riff(*chunks: bytes) -> bytes:
+    body = b"WAVE" + b"".join(chunks)
+    return b"RIFF" + struct.pack("<I", len(body)) + body
+
+
+FMT = struct.pack("<HHIIHH", 1, 1, 16_000, 32_000, 2, 16)  # PCM, mono, 16 kHz, 16-bit
+
+
+@pytest.mark.parametrize(
+    ("data", "problem"),
+    [
+        # A chunk whose size runs past the RIFF chunk's end: `wave` raises a bare RuntimeError.
+        (_riff(_chunk(b"LIST", b"INFO", 0x7FFF_FFFF), _chunk(b"fmt ", FMT)), "claims more"),
+        (_riff(_chunk(b"fmt ", FMT, 0x7FFF_FFFF), _chunk(b"data", b"\x00\x00")), "claims more"),
+        (_riff(_chunk(b"fmt ", FMT), _chunk(b"data", b"\x00\x00", 0xFFFF_FFFF)), "cut short"),
+        (_riff(_chunk(b"fmt ", FMT), _chunk(b"data", b"")), "no samples"),
+        (write_wav(b""), "no samples"),
+    ],
+    ids=["LIST past the end", "fmt past the end", "data of 4 GB", "data of 0", "written empty"],
+)
+def test_a_hostile_or_empty_header_is_refused(data: bytes, problem: str) -> None:
+    """The recorder refuses a posted take with `parse_wav`: nothing but AudioFormatError comes
+    out of it, whatever the header claims."""
+    with pytest.raises(AudioFormatError, match=problem):
+        parse_wav(data)
+
+
+def test_random_damage_to_a_header_raises_nothing_but_a_format_error() -> None:
+    """A fixed sample of single-byte changes to the header and first chunk sizes."""
+    good = write_wav(_pcm(160))
+    for offset in range(44):
+        for value in (0x00, 0x7F, 0xFF):
+            damaged = good[:offset] + bytes([value]) + good[offset + 1 :]
+            with contextlib.suppress(AudioFormatError):
+                parse_wav(damaged)
 
 
 def test_a_leading_window_is_cut_from_the_start() -> None:

@@ -21,7 +21,8 @@ SAMPLE_WIDTH = 2  # bytes a sample: 16-bit
 
 
 class AudioFormatError(ValueError):
-    """A file that is not a 16 kHz mono 16-bit PCM WAV, or one that is cut short."""
+    """A file that is not a 16 kHz mono 16-bit PCM WAV, one that is cut short or whose header
+    lies about a chunk's size, or one that holds no samples."""
 
 
 class Wav(BaseModel):
@@ -58,8 +59,10 @@ def sha256_file(path: Path) -> str:
 
 
 def parse_wav(data: bytes) -> Wav:
-    """The samples of a WAV file's bytes; AudioFormatError when it is not 16 kHz mono 16-bit
-    PCM, or holds fewer samples than its header says."""
+    """The samples of a WAV file's bytes; AudioFormatError, and no other exception, when it is
+    not 16 kHz mono 16-bit PCM, holds fewer samples than its header says, has a chunk that
+    claims more bytes than the file holds, or holds no samples at all. The recorder refuses a
+    take with it, so a crafted or corrupt file is refused, never raised past it."""
     try:
         with wave.open(io.BytesIO(data), "rb") as reader:
             channels, width = reader.getnchannels(), reader.getsampwidth()
@@ -67,6 +70,10 @@ def parse_wav(data: bytes) -> Wav:
             pcm = reader.readframes(frames)
     except (wave.Error, EOFError) as error:
         raise AudioFormatError(f"not a PCM WAV file ({error})") from None
+    except RuntimeError:  # `wave` seeking past the RIFF chunk's end, raised with no message
+        raise AudioFormatError(
+            "not a PCM WAV file (a chunk claims more bytes than the file holds)"
+        ) from None
     if (rate, channels, width) != (SAMPLE_RATE, CHANNELS, SAMPLE_WIDTH):
         raise AudioFormatError(
             f"{rate} Hz, {channels} channel(s), {8 * width}-bit: the golden set's audio is "
@@ -76,6 +83,8 @@ def parse_wav(data: bytes) -> Wav:
         raise AudioFormatError(
             f"cut short: {len(pcm)} bytes of samples where the header says {frames * SAMPLE_WIDTH}"
         )
+    if not frames:
+        raise AudioFormatError("holds no samples")
     return Wav(pcm16=pcm, sample_rate=rate, sha256=sha256_of(data))
 
 

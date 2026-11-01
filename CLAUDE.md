@@ -92,9 +92,9 @@ docs/generated/  produced by commands, never edited by hand (a test fails when s
 ## Non-negotiables
 
 1. **Respect layer boundaries and the public API.** `uv run poe arch` explains each violation
-   and its fix. An app uses only what the library's package root exports. A rule changes in
-   `harness.toml` and ARCHITECTURE.md together (ARCH-DOC checks the layer table), with the
-   reason in a decision (review).
+   and its fix. An app uses only the library's public modules (`[package] public`): the package
+   root and its facades. A rule changes in `harness.toml` and ARCHITECTURE.md together (ARCH-DOC
+   checks the layer table), with the reason in a decision (review).
 2. **Parse at the boundaries.** Input from outside (requests, env, files, model output, database
    rows) becomes typed pydantic models. Never build on guessed shapes.
 3. **Structured logs only**, via `core.logging.get_logger`. No `print`, and never log secrets.

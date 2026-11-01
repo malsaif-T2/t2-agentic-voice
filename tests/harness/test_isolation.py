@@ -54,8 +54,9 @@ def test_no_provider_or_tracing_variable_comes_from_the_shell() -> None:
 
 
 def test_a_shell_that_sets_this_projects_variables_changes_no_test() -> None:
-    """The two checks above, in a child run whose shell sets a debug level, prod, a bad value,
-    and a provider's, an exporter's and Phoenix's own variables."""
+    """The two checks above and the import-time one (test_import_isolation.py), in a child run
+    whose shell sets a debug level, prod, a bad value, and a provider's, an exporter's and
+    Phoenix's own variables, two of them read when their package is imported."""
     shell = {
         **os.environ,
         f"{PREFIX}ENV": "prod",
@@ -63,7 +64,9 @@ def test_a_shell_that_sets_this_projects_variables_changes_no_test() -> None:
         f"{PREFIX}LOG_FORMAT": "json",
         f"{PREFIX}GROQ__API_KEY": "made-up-key-from-the-shell",
         "GROQ_API_KEY": "made-up-key-from-the-shell",
+        "GROQ_LOG": "debug",
         "OTEL_EXPORTER_OTLP_HEADERS": "authorization=made-up",
+        "OTEL_PYTHON_CONTEXT": "made_up_context",
         "PHOENIX_WORKING_DIR": "made-up-folder",
     }
     here = Path(__file__).relative_to(ROOT).as_posix()
@@ -73,7 +76,7 @@ def test_a_shell_that_sets_this_projects_variables_changes_no_test() -> None:
             test_no_setting_comes_from_the_shell,
             test_no_provider_or_tracing_variable_comes_from_the_shell,
         )
-    ]
+    ] + [f"{Path(here).parent.as_posix()}/test_import_isolation.py"]
     done = subprocess.run(
         [sys.executable, "-m", "pytest", "-q", "-p", "no:cacheprovider", *targets],
         cwd=ROOT,

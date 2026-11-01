@@ -46,6 +46,22 @@ def test_a_path_below_src_is_read_too(tmp_path: Path) -> None:
     assert found == [("src/app/adapters/shop_tickets.py", 1)]
 
 
+def test_the_path_of_a_file_of_any_type_is_read(tmp_path: Path) -> None:
+    """A file whose text is not read (an image, a stub, a data file) is still named in its path,
+    or in a folder's name."""
+    files = {
+        "src/app/api/static/shop.svg": "<svg/>",
+        "src/app/shop/data.bin": "",
+        "src/app/agent/prompts/SHOP_helpdesk.yaml": "",
+        "src/app/core/ok.svg": "<svg>shop</svg>",  # an unread type's text is not read
+    }
+    assert _found(tmp_path, files) == [
+        ("src/app/agent/prompts/SHOP_helpdesk.yaml", 1),
+        ("src/app/api/static/shop.svg", 1),
+        ("src/app/shop/data.bin", 1),
+    ]
+
+
 def test_bytecode_other_files_and_the_folders_above_src_are_skipped(tmp_path: Path) -> None:
     root = tmp_path / "shop-checkout"  # the checkout's own folder holds a banned word
     root.mkdir()

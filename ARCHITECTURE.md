@@ -84,7 +84,7 @@ An arrow or a line down means "may import"; `api` may import every layer, `testi
 
 | Layer | Responsibility | May import | Owns (only it may import) |
 | --- | --- | --- | --- |
-| `core` | Settings (`core/config.py`, the only module that reads the environment), structured logging (`core/logging.py`), the error types (`core/errors.py`: `AppError` and its subclasses, each with a stable `code`), tracing to Phoenix, and the types every layer shares | none | `logging`, `structlog`, `pydantic_settings`, `opentelemetry`, `openinference`, `phoenix` |
+| `core` | Settings (`core/config.py`, the only module that reads the environment), structured logging (`core/logging.py`), the error types (`core/errors.py`: `AppError` and its subclasses, each with a stable `code`), tracing to Phoenix, and the types every layer shares | none | `logging`, `structlog`, `pydantic_settings`, `opentelemetry`, `openinference`, `phoenix`, `requests` |
 | `domain` | The rules of a support call, with no IO: what counts as a clear yes, the ticket flow's states, what an interruption is, Arabic text normalization, how numbers and ticket IDs are spoken, and the ports (protocols) every outside service is reached through | core | — |
 | `adapters` | One adapter per port: speech-to-text, the chat model and text-to-speech (Groq), the knowledge base, the ticket system; each chosen by a setting | core, domain | `groq`, `httpx`, `qdrant_client` |
 | `actions` | The backend that acts: runs the talker's tools through the ports, keeps each call's record of completed actions, words every outcome from a real result | core, domain | — |
@@ -179,8 +179,8 @@ The rules live in [harness.toml](harness.toml), the source of truth;
 
 - ARCH-LAYER: internal imports follow `[layers]` (an `importlib.import_module` or `__import__`
   of a literal name counts; a computed name cannot be checked, so avoid one), code sits inside
-  a layer, a subpackage's narrower rules (`[[subpackages]]`) hold, and no layer imports from
-  the package root;
+  a layer (a listed facade excepted), a subpackage's narrower rules (`[[subpackages]]`) hold,
+  and no layer imports from the package root or a facade;
 - ARCH-PUBLIC: an app in `[[apps]]` imports the library only through `[package] public`, and
   no other app; the library never imports an app (an app's modules also follow the module
   rules below; the layer and owner rules are the library's)

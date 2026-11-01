@@ -58,10 +58,11 @@ class ProviderError(AppError):
 
     `kind` says how, from a closed list: `rate_limited`, `timeout`, `connection_lost`,
     `server_error`, or `rejected` (an authentication or request error). `retryable` says whether
-    asking again may succeed, and is never true for `rejected`. `retry_after_s` is how long the
-    provider asked to wait, when it said, and only on a retryable error. Every port raises this
-    on a provider's failure (the design's 6.1). The message is fixed per kind and never holds the
-    provider's own text, which may echo the request.
+    asking again may succeed, and is never true for `rejected`. `retry_after_s` is the delay, in
+    seconds, the provider asked for, when it said, and only on a retryable error. Every port
+    raises this on a provider's failure (the design's 6.1). The message is fixed per kind and
+    never holds the provider's own text, which may echo the request. It pickles and copies, as a
+    result that holds it may be.
     """
 
     code = "provider_error"
@@ -79,10 +80,16 @@ class ProviderError(AppError):
         if kind == "rejected" and retryable:
             raise ValueError("a rejected request is never retryable")
         if retry_after_s is not None and not (retryable and math.isfinite(retry_after_s)):
-            raise ValueError("retry_after_s is a finite wait, given only on a retryable error")
+            raise ValueError("retry_after_s is a finite delay, given only on a retryable error")
         if retry_after_s is not None and retry_after_s < 0:
-            raise ValueError("retry_after_s is a wait, never negative")
+            raise ValueError("retry_after_s is a delay, never negative")
         super().__init__(_PROVIDER_MESSAGES[kind], details=details)
         self.kind: ProviderErrorKind = kind
         self.retryable = retryable
         self.retry_after_s = retry_after_s
+
+    def __reduce__(self) -> tuple[object, ...]:
+        """Rebuilt through the constructor, whose checks run again, with every attribute kept
+        (its details, and any note added to it): an exception otherwise rebuilds from its
+        message alone, which this constructor does not take."""
+        return (type(self), (self.kind, self.retryable, self.retry_after_s), self.__dict__)
