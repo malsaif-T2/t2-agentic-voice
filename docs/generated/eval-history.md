@@ -5,13 +5,14 @@ per `poe eval` run that called a provider, kept or not; never edited by hand
 ([generated docs](README.md), GP-11). Every number describes one speaker, the owner (D-006).
 Full scorecards stay out of git, in each run's `--out` folder.
 
-Spend so far: 1 run(s), 10.0 billed seconds, $0.0003.
+Spend so far: 2 run(s), 2447.5 billed seconds, $0.0755.
 
 ## Runs
 
 | # | Time | Run | Commit | Answerer | Model | Split | Items | Variants | Accuracy | Violations | Billed seconds | Cost | Median latency (ms) | Complete |
 | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- |
 | 1 | 2026-11-01T19:26:25+00:00 | p-trace | 1c3c4dc53fc96664ebb2aa5b5f434ca028f5a0ce | groq | whisper-large-v3 | dev | 1 | 1 | 100.0% | 0 | 10.0 | $0.0003 | 1258 | yes |
+| 2 | 2026-11-01T19:28:02+00:00 | r1-large-v3 | 1c3c4dc53fc96664ebb2aa5b5f434ca028f5a0ce | groq | whisper-large-v3 | dev | 66 | 231 | 42.9% | 0 | 2437.5 | $0.0752 | 323 | yes |
 
 ## Each run
 
@@ -50,3 +51,55 @@ Spend so far: 1 run(s), 10.0 billed seconds, $0.0003.
 | kind | listening_sound | 1 | 100.0% |
 | language | saudi | 1 | 100.0% |
 | split | dev | 1 | 100.0% |
+
+### 2 · r1-large-v3
+
+| Field | Value |
+| --- | --- |
+| Why | R1: A1 on dev, the baseline |
+| Data digest | `b07543f2e72f6288f2d9f2d0291516623375f3a6f1251615d308ceaa758c04cd` |
+| Scorecard | scorecard.json |
+| Price per hour of audio | $0.111 |
+| Setting env | dev |
+| Setting groq.api_key | set |
+| Setting groq.api_key_file | not set |
+| Setting groq.base_url | https://api.groq.com |
+| Setting log_format | console |
+| Setting log_level | INFO |
+| Setting run.cap_usd | 4.9996 |
+| Setting run.language_hint | label |
+| Setting run.max_attempts | 4 |
+| Setting run.max_rpm | 10 |
+| Setting run.smoke_only | false |
+| Setting run.variant_timeout_s | 120.0 |
+| Setting run.windows_ms | none |
+| Setting stt.model | whisper-large-v3 |
+| Setting stt.provider | groq |
+| Setting stt.timeout_s | 6.0 |
+| Setting tracing.endpoint | none |
+| Setting tracing.include_transcripts | true |
+| Setting tracing.project | none |
+| Setting tracing.redact | 0 patterns |
+
+| Stratum | Value | Items | Accuracy |
+| --- | --- | --- | --- |
+| device | bluetooth | 33 | 42.1% |
+| device | laptop | 66 | 41.7% |
+| device | wired | 33 | 47.6% |
+| kind | confirmation | 3 | 66.7% |
+| kind | echo_only | 1 | 0.0% |
+| kind | listening_sound | 11 | 58.1% |
+| kind | noise | 1 | 0.0% |
+| kind | paused_request | 6 | 26.1% |
+| kind | repeat_request | 4 | 40.0% |
+| kind | request | 26 | 32.6% |
+| kind | short_request | 2 | 42.9% |
+| kind | silence | 1 | 0.0% |
+| kind | stop_word | 8 | 83.3% |
+| kind | ticket_number | 3 | 47.6% |
+| language | english | 16 | 84.7% |
+| language | mixed | 6 | 5.0% |
+| language | msa | 11 | 25.6% |
+| language | none | 3 | 0.0% |
+| language | saudi | 30 | 37.0% |
+| split | dev | 66 | 42.9% |

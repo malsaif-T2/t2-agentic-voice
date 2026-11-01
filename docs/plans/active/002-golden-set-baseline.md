@@ -1639,6 +1639,13 @@ run, [WORKING-RULES.md](../../../WORKING-RULES.md), "Measurement runs")
     its trace was seen in Phoenix's page (project `default`: one trace, root span
     `golden_variant`, 1.2 s, status ok). Phoenix was stopped before the timed runs. Spend so far
     $0.0003 of the $5 cap.
+- 2026-11-01: Run R1 (A1, `whisper-large-v3`, dev, untraced), at the measurement commit, its
+  smoke test passed with no failed, retried or refused call: complete, 231 variants of 66 items,
+  237 requests (one variant retried once), no provider failure; 99 right (0.429), WER 0.250,
+  CER 0.103, term recall 0.333, ID recall 0.571, every one of the 9 empty-reference variants
+  with text (silence share 1.0), latency median 323 ms, 2,427.5 s billed, $0.075. By language:
+  English 0.847, Saudi 0.370, MSA 0.256, mixed 0.050. Its scorecard is in the main checkout's
+  `var/runs/r1-large-v3`. Spend so far $0.0755 of the $5 cap.
 
 ## Decision log
 
