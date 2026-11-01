@@ -387,18 +387,21 @@ function recorderPage() {
     await load();
   }
 
-  function entryItem(e) {
+  // A confirmed entry offers no second confirmation, only the text that corrects it.
+  function entryItem(e, confirmed = false) {
     const item = el("li");
     const typed = el("input", null, { type: "text", dir: "auto", placeholder: "What it says, if not this" });
     item.append(
       el("p", e.reference || "(no speech: nothing is said in it)", { className: "reference", dir: "auto" }),
       el("p", `${e.id} · ${e.of} · ${e.kind} · ${e.language} · its text: ${e.source}`, { className: "muted" }),
       el("button", "Play", { type: "button", onclick: () => play(segments(e)).catch(fail) }),
-      el("button", "It says this", {
-        type: "button",
-        className: "primary",
-        onclick: () => check(e, "confirmed", "").catch(fail),
-      }),
+      ...(confirmed
+        ? []
+        : [el("button", "It says this", {
+            type: "button",
+            className: "primary",
+            onclick: () => check(e, "confirmed", "").catch(fail),
+          })]),
       typed,
       el("button", "Save what it says", { type: "button", onclick: () => check(e, "typed", typed.value).catch(fail) }),
     );
@@ -414,7 +417,12 @@ function recorderPage() {
       `Review pass ${d.review_pass}: ${due.length} to check, ${confirmed.length} confirmed, ` +
       `${later} typed in this pass, which come back for their own check in the next pass ` +
       "(the next run of poe record).";
-    $("queue").replaceChildren(...due.map(entryItem));
+    $("queue").replaceChildren(...due.map((e) => entryItem(e)));
+    // Each pass holds one review per take, so one confirmed in this pass waits for the next run.
+    const correctable = confirmed.filter((e) => e.reviews.every((r) => r.review_pass !== d.review_pass));
+    $("checked-summary").textContent =
+      `Confirmed (${correctable.length}): open to correct one confirmed by mistake`;
+    $("checked").replaceChildren(...correctable.map((e) => entryItem(e, true)));
   }
 
   // ---------------------------------------------------------------- the page

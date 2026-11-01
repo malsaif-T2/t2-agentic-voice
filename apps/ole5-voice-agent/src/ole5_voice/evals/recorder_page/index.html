@@ -63,8 +63,8 @@
     width: 100%; height: 140px; border: 1px solid var(--line); border-radius: 6px;
     background: var(--paper); cursor: crosshair; display: block; margin: 8px 0;
   }
-  #queue { list-style: none; padding: 0; }
-  #queue li { border-top: 1px solid var(--line); padding: 12px 0; }
+  #queue, #checked { list-style: none; padding: 0; }
+  #queue li, #checked li { border-top: 1px solid var(--line); padding: 12px 0; }
   .reference { font-size: 1.4rem; margin: 4px 0; }
 </style>
 <script src="recorder.js" defer></script>
@@ -129,6 +129,13 @@
   <section id="review" class="panel" hidden>
     <p id="review-summary"></p>
     <ol id="queue"></ol>
+    <details>
+      <summary id="checked-summary"></summary>
+      <p class="muted">One confirmed by mistake: type what it says. Its confirmation then no longer
+        counts, and it comes back for its own check in the next pass. One confirmed in this pass
+        is listed here after the next run of poe record.</p>
+      <ol id="checked"></ol>
+    </details>
   </section>
 </main>
 </body>
