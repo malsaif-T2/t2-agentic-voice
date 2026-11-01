@@ -108,12 +108,16 @@ def test_the_scripts_ticket_numbers_are_made_up_in_the_owners_shape() -> None:
     assert all(len(found) == 1 for found in numbers.values()), numbers  # one number, in digits
     full = {name: number for name, [number] in numbers.items() if len(number) != 4}
     assert len(full) == 2 and len(set(full.values())) == 2, numbers  # and two of a last four
+    cues = {line.id: line.cue for line in script.lines}
     for name, number in full.items():
         shaped = TICKET_NUMBER.fullmatch(number)
         assert shaped is not None, name
-        # Dated after the day the owner gave the shape, so never one of the owner's examples.
+        # Dated after the day the owner gave the shape, so never one of the owner's examples,
+        # on a day of two digits, so only the counter starts with zeros a reading may drop.
         day = datetime.strptime(shaped["date"], "%Y%m%d").date()
-        assert date(2026, 11, 1) < day <= date(2026, 12, 31), name
+        assert date(2026, 11, 1) < day <= date(2026, 12, 31) and day.day >= 10, name
+        # The reference keeps the counter's zeros, so the cue asks for each, on this counter.
+        assert "every zero" in cues[name] and number[-6:] in cues[name], name
     assert not [line.id for line in script.lines if "DRAFT" in line.cue]
 
 

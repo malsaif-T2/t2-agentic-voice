@@ -4,12 +4,11 @@
 # variants or the script's lines do not hold these counts. A count changes only with the set it
 # counts, in the same commit, reviewed like the items.
 #
-# DRAFT: the set holds only the talk-over items so far, and their languages are the agent's
-# proposal until the owner rules on each (Q7). The [script] tables count the lines of the script
-# the owner approved on 2026-11-01 (Q4); its recordings join the items and variants as they are
-# imported. Variants are counted by the device of their microphone and by their tags: the
-# talk-over's condition (duck, pause), whether the take began over the assistant, and its
-# playback device.
+# The set holds only the talk-over items so far, with the languages `import_talkover.py` gives
+# them (Q7). The [script] tables count the lines of the script the owner approved on 2026-11-01
+# (Q4); its recordings join the items and variants as they are imported. Variants are counted
+# by the device of their microphone and by their tags: the talk-over's condition (duck, pause),
+# whether the take began over the assistant, and its playback device.
 
 [items]
 total = 43

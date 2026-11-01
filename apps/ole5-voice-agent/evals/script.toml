@@ -47,7 +47,7 @@ say = ["ما وصلتني المراسلة اللي أرسلوها لي"]
 id = "n03_print"
 kind = "request"
 language = "saudi"
-say = ["كيف أطبع المراسلة من النظام؟"]
+say = ["كيف أقدر أطبع المراسلة من النظام؟"]
 
 [[lines]]
 id = "n04_screen_freezes"
@@ -309,7 +309,9 @@ say = ["uh-huh"]
 # agent read out, and two of a full number, in the shape the owner gave (Q5): 16 digits, the date
 # as YYYYMMDD, then 82, then a 6-digit counter. Every number here is made up. The full ones are
 # dated after 2026-11-01, the day the owner gave the shape, so neither is one of the owner's
-# examples, which may be real tickets; their cue says how to read them.
+# examples, which may be real tickets. Their months and days have two digits, so only the
+# counter starts with zeros. A reading in groups may drop them while the reference keeps each
+# one, so the cue says how to read the number and asks for every zero.
 
 [[lines]]
 id = "n44_ticket_last_four"
@@ -321,15 +323,15 @@ say = ["التذكرة اللي آخرها 4821"]
 id = "n45_ticket_full_saudi"
 kind = "ticket_number"
 language = "saudi"
-say = ["رقم التذكرة 2026111782000538"]
-cue = "Read the number in Saudi Arabic, as a customer reads one from an email: digit by digit or in groups, whichever comes naturally."
+say = ["رقم التذكرة 2026111782000917"]
+cue = "Read the number in Saudi Arabic, as a customer reads one from an email: digit by digit or in groups, whichever comes naturally, but say every zero of the counter (000917 is zero, zero, zero, then 917, never 917 alone). If a zero is left out, record the take again, or type what was said in review."
 
 [[lines]]
 id = "n46_ticket_full_msa"
 kind = "ticket_number"
 language = "msa"
-say = ["رقم التذكرة هو 2026120982000264"]
-cue = "Read the number in MSA, as a customer reads one from an email: digit by digit or in groups, whichever comes naturally."
+say = ["رقم التذكرة هو 2026121482000853"]
+cue = "Read the number in MSA, as a customer reads one from an email: digit by digit or in groups, whichever comes naturally, but say every zero of the counter (000853 is zero, zero, zero, then 853, never 853 alone). If a zero is left out, record the take again, or type what was said in review."
 
 [[lines]]
 id = "n47_ticket_last_four_english"

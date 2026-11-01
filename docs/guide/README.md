@@ -23,7 +23,8 @@ the library leaves these unset:
 - `GROQ_LOG`, read when `groq` is imported: `debug` or `info` adds a handler to the root logger
   and sets the `groq` and `httpx` loggers' levels, and at DEBUG the SDK logs each request's
   options, the audio and the prompt included. The library undoes this only when it is the first
-  to import `groq`, so also keep the root logger and the `groq` logger above DEBUG (TD-003).
+  to import `groq`. Even with `GROQ_LOG` unset, a root or `groq` logger at DEBUG gets those
+  request options, so keep both above DEBUG (TD-003).
 - `OTEL_SDK_DISABLED` turns the library's own tracer provider off: no span is exported, and the
   library logs `tracing_disabled_by_sdk` (TD-005).
 - `OTEL_PYTHON_CONTEXT`, read when `opentelemetry.context` is imported, before any of the
