@@ -1673,6 +1673,14 @@ run, [WORKING-RULES.md](../../../WORKING-RULES.md), "Measurement runs")
     and the wired headset (1 and 8, p = 0.0391). By the registered rule, large-v3 is better in
     both comparisons, so `stt.model` stays `whisper-large-v3` (D-025); it already is in
     `core/config.py` and `.env.example`, so no file changes and no commit of its own is needed.
+- 2026-11-02: Run W1 (A1, `whisper-large-v3`, 500 ms windows of the 90 dev talk-over clips of 33
+  items, `--clips-from` R1's scorecard, untraced), at the measurement commit, its smoke test
+  passed: complete, 91 requests, no retry, no provider failure, no window reused (every clip
+  is longer than 500 ms), 900 s billed, $0.028. A first try named R1's folder rather than its
+  `scorecard.json` and was refused before anything was sent. At 500 ms, English listening
+  sounds and "wait" were held in every window, Saudi stop words in none of 4 and Saudi
+  listening sounds in 2 of 12. Scorecard in `var/runs/w1-large-v3-500`. Spend so far
+  $0.2323 of the $5 cap.
 
 ## Decision log
 
