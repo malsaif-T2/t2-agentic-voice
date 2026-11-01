@@ -1698,6 +1698,12 @@ run, [WORKING-RULES.md](../../../WORKING-RULES.md), "Measurement runs")
   no retry, no failure, no window reused, 900 s billed, $0.010. One-word clips held at 750 ms:
   English 7 of 7, Saudi listening sounds 0 of 12, Saudi stop words 1 of 4, Saudi "wait" 2 of 3.
   Scorecard in `var/runs/w4-turbo-750`. Spend so far $0.2806 of the $5 cap.
+- 2026-11-02: Run W5 (A1, `whisper-large-v3`, 1000 ms windows, `--clips-from` R1's scorecard,
+  untraced), at the measurement commit, its smoke test passed: complete, 89 requests, no retry,
+  no failure; 2 clips no longer than 1000 ms took R1's answer, marked reused (Q15), so 880 s
+  billed, $0.027. One-word clips held at 1000 ms: English 7 of 7, Saudi listening sounds 3 of
+  12, Saudi stop words 2 of 4, Saudi "wait" 2 of 3, fewer than at 750 ms for two of them. Scorecard
+  in `var/runs/w5-large-v3-1000`. Spend so far $0.3080 of the $5 cap.
 
 ## Decision log
 
