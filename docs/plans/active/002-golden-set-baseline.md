@@ -1362,6 +1362,31 @@ run, [WORKING-RULES.md](../../../WORKING-RULES.md), "Measurement runs")
   - `uv run --offline poe check` passes: 1176 tests and 1 skipped (the symbolic-link case), 100%
     coverage (3471 statements), mypy strict on 143 files, arch and docs (25 files) clean. Next:
     the owner's answers above and step 16's merge into the main branch.
+- 2026-11-01: Step 15, the integration check with no spend (`Plan 002: the integration check with
+  no spend (step 15)`), in this linked worktree at cb8e87d with the tree clean, each run with an
+  empty `--env-file` and its `--out` in the agent's scratch folder, outside the repository:
+  - `uv run --offline poe eval --answerer reference --split dev`, and the same with `--split
+    held-out`, are refused before any folder is made (exit 2, "the run has no variant the owner
+    has checked"), as step 15's deviation says: `unchecked_left_out` gives 84 of 84 dev and 36 of
+    36 held-out variants left out, since the owner has confirmed none yet (Q9).
+  - The same two runs through the runner's own `Parts`, as step 15's test makes them: a scratch
+    script outside the repository calls `run.main` with the same arguments and a `load_items` that
+    gives each committed variant a made-up confirmation in memory (no file written, no variant
+    accepted), with the real worktree checks, items, split, matcher and scorecard writer. Dev: 84
+    of 84 variants of 30 items right, accuracy 1, WER and CER 0, term recall 1, ID recall none (no
+    committed item is a ticket number), 0 failures, 0 requests, cost 0, no violation, "one
+    speaker", complete. Held-out: 36 of 36 variants of 13 items right, the same totals, its
+    scorecard holding no variant. Together they cover the 120 committed variants of the 43 items.
+    Neither run appended a history line (`history.jsonl` byte for byte as committed, as the plan
+    and `run.py`'s `spends` say), so there was nothing to restore.
+  - `tests/ole5_voice/evals/test_reference_answerer.py`, written by the review of the merged
+    tracks, now also fails when the run reads an audio file (`read_wav` replaced in `audio`,
+    `answerers` and `run_parts`; a scratch mutant of the reference answerer that reads one fails
+    it, reverted) and checks that no history line is written beside the scorecard either.
+  - No bug was found and no code changed. The command-line runs on the confirmed set are made at
+    step 19, as step 15 says.
+  - `uv run --offline poe check` passes: 1176 tests and 1 skipped (the symbolic-link case), 100%
+    coverage (3471 statements), mypy strict on 143 files, arch and docs (25 files) clean.
 
 ## Decision log
 
