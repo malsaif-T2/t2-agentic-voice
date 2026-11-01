@@ -13,6 +13,26 @@ lands in the library, with the milestone named in its row ([roadmap](../plans/ro
 samples on these pages are taken from tested files, so a page never shows code that does not
 run.
 
+## Variables to leave unset
+
+The library's settings are `T2V_*` environment variables or a `.env` file
+([.env.example](../../.env.example) lists them; `settings.md` below will describe each). The SDKs
+under it read a few variables of their own whatever the library passes, so a process that uses
+the library leaves these unset:
+
+- `GROQ_LOG`, read when `groq` is imported: `debug` or `info` adds a handler to the root logger
+  and sets the `groq` and `httpx` loggers' levels, and at DEBUG the SDK logs each request's
+  options, the audio and the prompt included. The library undoes this only when it is the first
+  to import `groq`. Even with `GROQ_LOG` unset, a root or `groq` logger at DEBUG gets those
+  request options, so keep both above DEBUG (TD-003).
+- `OTEL_SDK_DISABLED` turns the library's own tracer provider off: no span is exported, and the
+  library logs `tracing_disabled_by_sdk` (TD-005).
+- `OTEL_PYTHON_CONTEXT`, read when `opentelemetry.context` is imported, before any of the
+  library's code runs, loads the entry point it names, so a shell variable can load code
+  (TD-005).
+- `OTEL_EXPERIMENTAL_RESOURCE_DETECTORS`, read in a child process forked after the library's
+  tracer provider was built, loads the entry points it names (TD-005).
+
 ## Pages
 
 | Page | What it will cover | Lands with |

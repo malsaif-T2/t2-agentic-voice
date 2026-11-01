@@ -4,5 +4,6 @@
 # words: the talk-over import finds them there, and the script names its lines' own. Outlook,
 # PDF and Word are the terms the spelling guide names; English is the fourth term in Latin
 # script the talk-over phrases hold (plan 002's registration, "The data"); Ole5, the product's
-# own name, is the agent's addition, for the owner to keep or drop with the script (Q4).
+# own name, is the agent's addition, kept as a product term with the script the owner approved
+# on 2026-11-01 (plan 002, Q4).
 terms = ["English", "Ole5", "Outlook", "PDF", "Word"]

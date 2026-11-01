@@ -1,12 +1,16 @@
 # The script of the owner's new recordings (plan 002's registration, "New recordings (N)"), read
 # by `poe record` and by the recordings import (`takes.load_script`).
 #
-# DRAFT: the agent's proposal, which the owner approves or changes before recording: the lines,
-# their kinds and counts, and their dialect labels (Q4); the ticket numbers' shape (Q5); and the
-# independent check of each recording (Q9). Nothing here is recorded until then. Ticket-number
-# and echo-only items are the agent's additions (evaluation.md measures ticket-number recall and
-# text from the agent's own echo); over-the-agent items on the two headsets are not proposed
-# here, and are the owner's call (Q4).
+# Approved by the owner on 2026-11-01, after the agent's review of every line: "I Approve the
+# recording script, I haven't rally tried it but if you see it good then it is fine" (plan 002,
+# Q4). The lines, their kinds and counts, and their dialect labels are the agent's proposal.
+# Ticket-number and echo-only items are the agent's additions (evaluation.md measures
+# ticket-number recall and text from the agent's own echo); over-the-agent items on the two
+# headsets are not added, since the owner approved the script as proposed, without them. A full
+# ticket number has the shape the owner gave (Q5): 16 digits, the date as YYYYMMDD, then 82, then
+# a 6-digit counter. Each recording is checked independently (Q9, answer a): the owner listens to
+# every variant in `poe record`'s review mode and confirms it, or types what it says, and a typed
+# text is confirmed in a later review pass.
 #
 # Each line is said once on each of three devices: the laptop's speakers and microphone, a wired
 # headset, a Bluetooth headset. `say` holds the clauses, in order: a line of several pauses
@@ -43,7 +47,7 @@ say = ["ما وصلتني المراسلة اللي أرسلوها لي"]
 id = "n03_print"
 kind = "request"
 language = "saudi"
-say = ["كيف أطبع المراسلة من النظام؟"]
+say = ["كيف أقدر أطبع المراسلة من النظام؟"]
 
 [[lines]]
 id = "n04_screen_freezes"
@@ -301,10 +305,13 @@ kind = "listening_sound"
 language = "english"
 say = ["uh-huh"]
 
-# Ticket numbers read out, for ID recall. DRAFT (Q5): no source gives Ole5's ticket format; the
-# agent proposes two of the last four digits, which the prototype's agent read out, and two of a
-# full number. The two full-number lines hold no number yet: it is added in the shape the owner
-# gives, and until then they are not recorded. The four digits below are made up.
+# Ticket numbers read out, for ID recall: two of the last four digits, which the prototype's
+# agent read out, and two of a full number, in the shape the owner gave (Q5): 16 digits, the date
+# as YYYYMMDD, then 82, then a 6-digit counter. Every number here is made up. The full ones are
+# dated after 2026-11-01, the day the owner gave the shape, so neither is one of the owner's
+# examples, which may be real tickets. Their months and days have two digits, so only the
+# counter starts with zeros. A reading in groups may drop them while the reference keeps each
+# one, so the cue says how to read the number and asks for every zero.
 
 [[lines]]
 id = "n44_ticket_last_four"
@@ -316,15 +323,15 @@ say = ["التذكرة اللي آخرها 4821"]
 id = "n45_ticket_full_saudi"
 kind = "ticket_number"
 language = "saudi"
-say = ["رقم التذكرة"]
-cue = "DRAFT (Q5): then the full ticket number, in the shape the owner gives"
+say = ["رقم التذكرة 2026111782000917"]
+cue = "Read the number in Saudi Arabic, as a customer reads one from an email: digit by digit or in groups, whichever comes naturally, but say every zero of the counter (000917 is zero, zero, zero, then 917, never 917 alone). If a zero is left out, record the take again, or type what was said in review."
 
 [[lines]]
 id = "n46_ticket_full_msa"
 kind = "ticket_number"
 language = "msa"
-say = ["رقم التذكرة هو"]
-cue = "DRAFT (Q5): then the full ticket number, in the shape the owner gives"
+say = ["رقم التذكرة هو 2026121482000853"]
+cue = "Read the number in MSA, as a customer reads one from an email: digit by digit or in groups, whichever comes naturally, but say every zero of the counter (000853 is zero, zero, zero, then 853, never 853 alone). If a zero is left out, record the take again, or type what was said in review."
 
 [[lines]]
 id = "n47_ticket_last_four_english"

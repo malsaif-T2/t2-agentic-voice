@@ -1475,6 +1475,35 @@ run, [WORKING-RULES.md](../../../WORKING-RULES.md), "Measurement runs")
     before H1).
   - `uv run --offline poe check` passes at the merge: 1215 tests and 1 skipped (the symbolic-link
     case), 100% coverage (3590 statements), mypy strict on 144 files, arch and docs clean.
+- 2026-11-01: The owner's answers on the script and the guide are merged (`Plan 002: merge the
+  owner's answers, the script`), from `plan-002-answers-script`: d0ceb21 and its review fixes
+  daa2e1f.
+  - The agent reviewed the script before marking it approved (Q4, "if you see it good"): every
+    line's dialect and kind, the counts against `strata.toml`, the spelling guide, the pauses,
+    and copies of talk-over or source text. It changed one line's words, n03, which gains «أقدر»
+    so that its saudi label holds by the rule the owner confirmed in Q7; five matters of taste are
+    left unchanged (the three Saudi listening sounds share their text with talk-over items, as
+    the fixed list makes them; n45's words are neutral apart from its digits; n16's «إلى PDF»;
+    n25's pause inside a noun phrase; n13's countable "a correspondence").
+  - The header records the approval in the owner's words, Q5's shape and Q9's answer. n45 and n46
+    read made-up full numbers in the owner's shape, dated after the owner gave it, with a cue to
+    read them as from an email and to say every zero of the counter: the agent told to refute the
+    change found that a reading dropping those zeros would make a faithful transcript fail
+    against a reference that keeps them. `test_strata.py` checks the numbers' shape and cues.
+  - `strata.toml` no longer calls the set a draft. `terms.toml` says Ole5 is kept with the
+    approved script (Q4). The guide gains "Variables to leave unset" (`GROQ_LOG`,
+    `OTEL_SDK_DISABLED`, `OTEL_PYTHON_CONTEXT`, `OTEL_EXPERIMENTAL_RESOURCE_DETECTORS`), and
+    TD-005's row says the owner kept it as debt with that note.
+  - `uv run --offline poe check` passes at the merge: 1216 tests and 1 skipped (the symbolic-link
+    case), 100% coverage (3590 statements), mypy strict on 144 files, arch and docs clean; `uv
+    lock --check` is clean.
+- 2026-11-01: Step 16: `plan-002-integration` is merged into the main branch (`Plan 002: merge
+  plan-002-integration into main`), as the owner answered ("Go with the recommended with all of
+  them", the agent's recommendation being to merge once the answers were in). Its review of the
+  code is the one review of the merged tracks the owner chose ("Yes, go lighter"), with its fix
+  round and check, and the check of each answer's change by an agent told to refute it. The plan
+  stays active: next are the owner's check of the 120 talk-over variants by ear (step 5 of "What
+  the owner does"; Q9), the recordings (step 17), and Q10 before the import (step 19).
 
 ## Decision log
 
@@ -2635,6 +2664,52 @@ All entries are the agent's choices of 2026-11-01, with the agent's reasons.
   numbers of variants, rather than different numbers of items, because the item counts now leave out
   an item that failed in every variant, and refusing on them would block H1 against H2 over one
   outage. The totals are compared as before, with an `items` row. The agent's choice.
+- 2026-11-01: The script's two full ticket numbers, made up in the owner's shape (Q5): n45 (Saudi)
+  reads 2026111782000917 and n46 (MSA) 2026121482000853, each in digits inside the line's one
+  clause. Both are dated after 2026-11-01, the day the owner gave the shape, so neither is one of
+  the owner's three examples, which may be real tickets and are copied nowhere in the repository. Each date
+  is a working day (a Tuesday and a Monday) whose month and day have two digits, so only the counter
+  starts with zeros. The counters are above those in the owner's examples. A plausible number in
+  this shape may still become a real ticket's later on; nothing in the script refers to one.
+  Together the two numbers hold every digit from 0 to 9, and neither ends in the last-four lines'
+  4821 or 3906. `test_strata.py` checks their shape, their dates and their two-digit days, so the
+  test holds no example either. The agent's choice.
+- 2026-11-01: The two full-number lines carry a cue: 'Read the number in Saudi Arabic' (n46: 'in
+  MSA') 'as a customer reads one from an email: digit by digit or in groups, whichever comes
+  naturally, but say every zero of the counter (000917 is zero, zero, zero, then 917, never 917
+  alone). If a zero is left out, record the take again, or type what was said in review.' n46's cue
+  names its own counter. The page shows 16 digits as one run, which is hard to read cold. The cue
+  sets the case Q5 names, a customer reading the full number from an email, without fixing a
+  grouping, so the owner's own way of reading is what gets measured. The cue asks for every zero
+  because the reference keeps the counter's leading zeros. If 000917 is read as 917, the owner's
+  listen could still confirm the take, since it is the same number, and a faithful transcript would
+  then fail the verdict, WER and ID recall. It names the dialect because a ticket line's dialect
+  lies in how its digits are said, which the text cannot show. Digits said one by one read as one
+  number (`normalize_digits`). A grouped reading that keeps its zeros is right in the verdict, which
+  removes spaces, and in ID recall once that change merges from its own branch. A scratch check with
+  that branch's scorer gave 1 of 1 for '2026 11 17 82 000 917' and 0 of 1 for '2026 11 17 82 917'.
+  `test_strata.py` checks that each cue asks for every zero and names its own line's counter. The
+  last-four lines get no cue. The agent's choice.
+- 2026-11-01: The agent reviewed the script for the owner's approval (Q4, 'if you see it good then
+  it is fine'). It checked every line's dialect and kind, the header's counts against the lines and
+  `strata.toml`, the spelling guide, the pauses of several-clause lines, and copies of talk-over or
+  source text. Besides the two full ticket numbers, it changed one line's words: n03, for its
+  dialect. The matters of taste are left for the owner, unchanged. Among them, the three Saudi
+  listening sounds share their text with talk-over items b03, b05 and b06, as the fixed list makes
+  them. `test_strata.py` now also runs the spelling guide's checks on every script line. The agent's
+  choice.
+- 2026-11-01: n03 reads «كيف أقدر أطبع المراسلة من النظام؟», no longer «كيف أطبع المراسلة من
+  النظام؟». The line was labelled saudi but held no word that only Saudi speech uses, the pattern of
+  the talk-over's s01 «كيف أؤرشف مراسلة في النظام؟», whose msa label the owner confirmed (Q7).
+  «أقدر» marks it Saudi, as in s04. No count changes, and nothing had been recorded from the old
+  text. The agent's choice.
+- 2026-11-01: The guide's note on the variables to leave unset sits in docs/guide/README.md
+  ('Variables to leave unset'), because `settings.md` is not written yet. Besides GROQ_LOG,
+  OTEL_SDK_DISABLED and OTEL_PYTHON_CONTEXT, it names OTEL_EXPERIMENTAL_RESOURCE_DETECTORS, since
+  TD-005 counts it among the three the guide says stay unset. The GROQ_LOG bullet gives TD-003's two
+  risks separately. An app that imports `groq` before the library keeps the variable's effect.
+  Separately, a root or `groq` logger at DEBUG gets the SDK's request options even with the variable
+  unset, so the bullet says to keep both above DEBUG. The agent's choice.
 
 ## The owner's decisions
 
@@ -3394,6 +3469,13 @@ before the run.
   held-out windows run, which Q15's answer leaves out, would publish at each length
   `saudi`/`listen`, `saudi`/`send` and `other` (7 items). H1 and H2 are pooled by the same rule over
   the split committed before them. No metric's definition changes.
+- 2026-11-01, from the owner's answers, before any recording: "New recordings (N)" is the script as
+  proposed, approved by the owner (Q4), with no over-the-agent items on the headsets. Its two
+  full-number ticket items read made-up numbers in the owner's shape (Q5: 16 digits, the date as
+  YYYYMMDD, then 82, then a 6-digit counter), each with every zero of its counter said, and the two
+  last-four items are unchanged. One line's words changed in the agent's review: n03 gains «أقدر» to
+  match its saudi label. Every variant's independent check is the owner's listen (Q9, answer a), as
+  "The independent check of each reference" proposes. No count, stratum or metric changes.
 
 ## What the owner does
 
