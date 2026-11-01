@@ -661,6 +661,83 @@ run, [WORKING-RULES.md](../../../WORKING-RULES.md), "Measurement runs")
     D merges.
   - After the merge `uv run --offline poe check` passes: 740 tests, 100% coverage (990 statements),
     mypy strict on 126 files, arch and docs clean.
+- 2026-11-01: Track B, the Groq speech-to-text adapter, is merged (`Plan 002: merge track B`), from
+  one commit on `plan-002-track-b`, cut from 44aa043: 0a628d5 (`Plan 002: track B, the Groq
+  speech-to-text adapter`). `adapters/groq_stt.py` (324 lines) replaces Block 0's stub, and
+  `tests/t2_agentic_voice/adapters/test_groq_stt.py` (397 lines, 72 tests: 70 pass, 2 xfail strict)
+  its stub test. `GroqSTT` wraps the clip's PCM16 as WAV with `wave` and sends it as `audio/wav`;
+  always passes the key, `groq.base_url` and the timeout, with the SDK's retries off and redirects
+  not followed; replaces every header in a request hook with its own eight, `Authorization` the
+  settings' key; turns every failure into a `ProviderError` with no exception chain; bounds the
+  whole request by `stt.timeout_s`; bills the larger of 10 s and the clip's length; weights the
+  confidence and the no-speech estimate by segment length, as the prototype did; and gives the
+  design's 6.1 `DataFlow`. `from_settings` raises the `ConfigurationError` naming
+  `T2V_GROQ__API_KEY` when no key is set (a blank one included; `GROQ_API_KEY` is never read). The
+  tests check the request against Block 0's baseline (not edited), the result, a cancel on a real
+  127.0.0.1 connection (under 50 ms, no task left, the connection closed), 30 failure cases each
+  asked once, the key in no repr, error, traceback, log or captured output while the fake server
+  echoes the request's headers, `GROQ_API_KEY`, `GROQ_BASE_URL` and five `GROQ_CUSTOM_HEADERS`
+  variants changing nothing, and no groq type in a public signature. From the track's report:
+  - Prototype sources, read as text, never run (D-010). `Ole5-chatbot/src/ole5_chat/voice/stt.py`,
+    lines 221-252, the call: the file as ("speech.wav", wav); `language`; `response_format`
+    `verbose_json`; `temperature` 0; `prompt` only when given; the text stripped; `_by_length`, the
+    mean of each segment's `avg_logprob` and `no_speech_prob` weighted by `max(1e-3, end - start)`,
+    a missing time read as 0; lines 110-119, a short timeout and no retry.
+    `Ole5-chatbot/src/ole5_chat/voice/groqhttp.py`, lines 1-16: the pool of 20 connections, 10 kept
+    alive for 300 s. `Ole5-chatbot/tests/test_voice_stt_v2.py`, lines 21-30 (the WAV writer) and
+    324-337 (the timeout and no retry), as behaviour specs.
+  - The installed groq 1.7.0, read as text: `groq/_client.py`, lines 294-313 (`AsyncGroq` reads
+    `GROQ_API_KEY` and `GROQ_BASE_URL` only when none is passed, and always reads
+    `GROQ_CUSTOM_HEADERS`); `groq/_base_client.py`, lines 435-461 (the headers), line 522 (a
+    multipart Content-Type without a boundary is dropped), line 1556 (a platform probe on a client's
+    first request, in a worker thread), lines 1587-1655 (an httpx timeout becomes `APITimeoutError`
+    and any other send failure `APIConnectionError`, both `from err`) and lines 775-807
+    (`_should_retry`); `groq/resources/audio/transcriptions.py`, lines 448-462 (the path and
+    multipart); `groq/_utils/_logs.py` (`GROQ_LOG`). httpx 0.28.1: `httpx/_client.py`, lines
+    1679-1691 (request hooks run on every request of a redirect chain); `httpx/_models.py`, lines
+    413 and 441-446 (the multipart boundary is read from a content-type header, and passed headers
+    win over Host and Content-Length).
+  - Probes of groq 1.7.0 against `httpx.MockTransport` and a 127.0.0.1 socket, with made-up keys, in
+    the session's scratch folder: a `GROQ_CUSTOM_HEADERS` line naming Host or Content-Length reaches
+    the request before any hook, so the hook pins every header's value; a lowercase `content-type:
+    multipart/form-data; boundary=zzz` line makes httpx encode the body with that boundary;
+    `X-Stainless-Raw-Response: stream` changes nothing; a cancel during a request ended in 2.5 ms,
+    and httpcore closed the connection.
+  - Values chosen: 10.0 s billed at least; a pool of 20 connections, 10 kept alive for 300 s (the
+    prototype's); the SDK's own User-Agent, `AsyncGroq/Python 1.7.0`; Accept-Encoding `gzip,
+    deflate` and Connection `keep-alive`, httpx's defaults; `name` `groq`; the design's 6.1
+    `DataFlow` strings word for word; the cancel test's bound of 50 ms (the design's 6.1); a 0.2 s
+    timeout in the failure tests, so a hung reply exercises the adapter's own deadline. Measured
+    cold on the owner's laptop: `import groq` 3.2 s, `platform.system()` 0.38 s and
+    `platform.platform()` 0.15 s, so the four `GROQ_LOG` child processes run side by side from one
+    module fixture (about 6.6 s rather than 20 s).
+  - Deviation: `GROQ_LOG`'s effect is not undone in the adapter, which the track allows ("or the
+    case reported against TD-003"): ARCH-OWNER keeps `logging` in `core`, so two tests pin the case
+    as xfail strict, and the track asked for a `core/logging.py` helper that would undo it (applied
+    in the following commit, `Plan 002: review fixes, track B`).
+  - Deviation: the request hook does more than the plan's "drops every header outside an allow-list,
+    then sets Authorization": it rebuilds the eight headers it allows with its own values, since a
+    `GROQ_CUSTOM_HEADERS` line naming an allowed header (Host, Content-Length, User-Agent) would
+    otherwise change that header's value.
+  - Deviation: a `ProviderError` is raised after the except block as well as `from None`, so its
+    `__context__` is None too; the plan says only "raised from None", which still leaves
+    `__context__` pointing at the SDK's error.
+  - Deviation: `transcribe` adds a total deadline, `asyncio.timeout(stt.timeout_s)`, on top of the
+    explicit SDK and httpx timeout the plan names.
+  - Deviation: `__init__` and `from_settings` both take a `transport` keyword, and the constructor
+    refuses invalid values with a `ConfigurationError` naming each setting; the plan allowed one
+    keyword argument for the fake transport and gave the constructor no checks.
+  - Its debt rows are TD-011 (the form of Groq's `language` when none is named) and TD-012 (the
+    SDK's platform probe on a process's first request). It narrows TD-002 to the multipart boundary
+    a `content-type` line can still choose, rewrites TD-003 with what its child-process tests
+    confirm, and leaves TD-004 unchanged (the adapter's httpx client keeps `trust_env` on, as Block
+    0's second review ruled). It left no question for the owner.
+  - Not done: not checked against Groq itself (no network): the form of `verbose_json`'s `language`
+    (a code or a name), whether Groq sends `retry-after` as seconds or as an HTTP date, and whether
+    Groq accepts a request without the X-Stainless headers the hook drops. The first live smoke
+    request (step 21) is where these are seen.
+  - After the merge `uv run --offline poe check` passes: 809 tests and 2 xfailed (the two `GROQ_LOG`
+    cases), 100% coverage (1105 statements), mypy strict on 126 files, arch and docs clean.
 
 ## Decision log
 
@@ -1133,6 +1210,63 @@ All entries are the agent's choices of 2026-11-01, with the agent's reasons.
   characters read as spaces. The characterization table rules the port, and folding more would be a
   new ruling or a measured change (the decision log's normalizer entry). The cases are pinned by
   tests and listed as debt (TD-008).
+- 2026-11-01: Track B: the request hook rebuilds every request's headers from scratch, eight of
+  them, each with the adapter's own value: Host from the URL; Accept `application/json`;
+  Accept-Encoding `gzip, deflate`; Connection `keep-alive`; User-Agent the SDK's own; Content-Type
+  and Content-Length read from the multipart body itself (it opens with `--<boundary>`, RFC 2046);
+  and Authorization `Bearer` with the settings' key. The plan's version only dropped names outside
+  an allow-list and then set Authorization, which would leave a `GROQ_CUSTOM_HEADERS` line free to
+  change an allowed header's value: Host, Content-Length and User-Agent all reached the request in a
+  probe with made-up values. The SDK's X-Stainless-* telemetry headers (OS, architecture, Python
+  version, retry count, read timeout) are dropped as not needed. The agent's choice.
+- 2026-11-01: Track B: a `ProviderError` is raised after the except block, and `from None`, so it
+  has no `__cause__` and no `__context__` either (`from None` alone still leaves `__context__`
+  pointing at the SDK's error, which holds the request and its headers). Its details hold only the
+  failure's class name and the HTTP status, if any. The agent's choice, the same pattern as
+  `Settings.from_env`.
+- 2026-11-01: Track B: how failures map to kinds, following the SDK's own retry rule
+  (`_should_retry`): 429 is `rate_limited`; 408 is `timeout`; 409 and 5xx are `server_error`,
+  retryable; every other status is `rejected`, 3xx included, since redirects are not followed. An
+  httpx timeout, or the adapter's own deadline, is `timeout`; any other connection failure is
+  `connection_lost`. An answer the adapter cannot read is `server_error`, not retryable: one that is
+  not JSON, has no text, or gives a no-speech estimate outside 0 to 1 or a value that is not a
+  number. Any other exception is mapped the same way. `retry_after_s` is read from `retry-after`
+  only when it is a finite number of seconds, 0 or more; an HTTP date or anything else gives None,
+  and the runner's 20 s floor applies. The agent's choices.
+- 2026-11-01: Track B: the whole request is bounded by `asyncio.timeout(stt.timeout_s)`, on top of
+  httpx's timeout (the same value, passed to the SDK as the baseline requires): httpx's timeout is
+  per phase, and the setting is documented as the longest one transcription request may take. The
+  agent's reading.
+- 2026-11-01: Track B: `follow_redirects=False` on the adapter's httpx client, since httpx runs
+  request hooks on every request of a redirect chain, so the hook would put the key on a request to
+  another host.
+- 2026-11-01: Track B: the constructor refuses what the settings refuse, for a team that builds the
+  adapter in code, each as a `ConfigurationError` naming the setting, never the value: a blank key;
+  a key with a character no key holds; a model other than the two; a base URL that is not https with
+  a host, or that holds a user name, password, query, fragment or bad port; a timeout that is not
+  finite and above 0. The agent's choice: the key travels with every request, and settings
+  validation does not run on direct construction.
+- 2026-11-01: Track B: the fake-transport keyword the plan allowed is `transport:
+  httpx.AsyncBaseTransport | None = None`, on `__init__` and on `from_settings`. It names an httpx
+  type, not a groq one, so the design's 5.3 holds; a test checks that no public signature names a
+  groq type.
+- 2026-11-01: Track B: what the `Transcript` holds. `text` is Whisper's text with the space around
+  it removed (the prototype's `.strip()`). `language` is the language the request named, or else
+  Groq's `language` as it comes (TD-011). `confidence` and `no_speech_prob` are weighted over only
+  the segments that give each value, and are None when none does, where the prototype used -1.0 for
+  a missing confidence: the port asks for the provider's confidence "when it gives one".
+  `no_speech_prob` is not rounded, where the prototype rounded it to 3 places, so the silence rule
+  can be rescored (Q2). An empty `language` or `prompt` counts as none and is not sent. The agent's
+  choices.
+- 2026-11-01: Track B: `GroqSTT.__repr__` shows the model, the base URL and the timeout, never the
+  key.
+- 2026-11-01: Track B: `GROQ_LOG` is not undone in the adapter, since `harness.toml`'s `[[owners]]`
+  gives `logging` to `core` alone (ARCH-OWNER). Track B tests it in child processes instead: a
+  control (importing `groq` with `GROQ_LOG=debug` adds a root handler and sets both loggers to
+  DEBUG), the adapter imported without the variable (nothing changes), and the adapter imported with
+  `debug` and `info`. The last two are `xfail(strict=True)` naming TD-003, so they fail the run once
+  the fix lands and their mark is removed. The fix is the track's request for a change to Block 0's
+  `core/logging.py`.
 
 ## The owner's decisions
 
