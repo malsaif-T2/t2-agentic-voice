@@ -9,7 +9,7 @@ from pathlib import Path
 import pytest
 
 from scripts.harness_config import HarnessConfigError, load_config
-from tests.harness.support import SYNTHETIC, config
+from tests.harness.support import SYNTHETIC, config, write
 
 ROOT = Path(__file__).resolve().parents[2]
 
@@ -103,6 +103,32 @@ def test_apps_and_public_modules_are_checked(tmp_path: Path) -> None:
     assert "public module 'other.x' is not inside package 'app'" in found
     assert "'app' is already the library's or another app's name" in found
     assert "'My-Shop' is not a Python package name" in found
+
+
+def test_facades_sit_under_the_package_root_and_are_public(tmp_path: Path) -> None:
+    facades = 'facades = ["app.core", "other.x", "app.a.b", "app.ports"]'
+    text = SYNTHETIC.replace("facades = []", facades)
+    found = {problem for _, problem in _problems(tmp_path, text)}
+    assert "facade 'app.core' has the name of a layer" in found
+    assert "facade 'other.x' is not a module directly under 'app'" in found
+    assert "facade 'app.a.b' is not a module directly under 'app'" in found
+    assert "facade 'app.ports' is not in [package] public" in found
+
+
+def test_a_facade_needs_its_module(tmp_path: Path) -> None:
+    text = SYNTHETIC.replace("facades = []", 'facades = ["app.ports"]').replace(
+        'public = ["app", "app.testing"]', 'public = ["app", "app.ports"]'
+    )
+    missing = "facade 'app.ports' has no module: src/app/ports.py is missing"
+    assert _problems(tmp_path, text) == [(_line(text, 'facades = ["app.ports"]'), missing)]
+    write(tmp_path, {"src/app/ports.py": "__all__ = []\n"})
+    assert config(tmp_path, text).arch.facade_names == {"ports"}
+
+
+def test_banned_words_are_non_empty_strings(tmp_path: Path) -> None:
+    text = SYNTHETIC.replace("banned_words = []", 'banned_words = ["shop", ""]')
+    found = {problem for _, problem in _problems(tmp_path, text)}
+    assert found == {"[package] banned_words must be a list of non-empty strings"}
 
 
 def test_a_subpackage_rule_starts_with_a_layer(tmp_path: Path) -> None:

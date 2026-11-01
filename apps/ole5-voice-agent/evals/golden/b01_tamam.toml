@@ -1,0 +1,94 @@
+# Written by `python -m ole5_voice.evals.import_talkover` from the lab's refs.json and
+# takes.json: import again rather than edit.
+id = "b01_tamam"
+source = "talkover"
+kind = "listening_sound"
+language = "saudi"
+text = "تمام"
+alternatives = []
+terms = []
+want = "listen"
+
+[[variants]]
+id = "b01_tamam__duck__speakers__181917"
+device = "laptop"
+session = "talkover-2026-10-27"
+reference = "تمام"
+reference_source = "script"
+turn_ends_ms = []
+tags = ["duck", "over-assistant", "playback-speakers"]
+
+[[variants.segments]]
+root = "talkover"
+path = "b01_tamam__duck__speakers__181917__seg1.wav"
+sha256 = "4e4711f9cd45d3f0a2b74b618759160b4ae486151f336423aa1e3efec129e5cc"
+
+[[variants]]
+id = "b01_tamam__duck__speakers__181948"
+device = "laptop"
+session = "talkover-2026-10-27"
+reference = "تمام"
+reference_source = "script"
+turn_ends_ms = []
+tags = ["duck", "over-assistant", "playback-speakers"]
+
+[[variants.segments]]
+root = "talkover"
+path = "b01_tamam__duck__speakers__181948__seg1.wav"
+sha256 = "0dbd84552c4c779d673b967d58c6eda6aa407eb562941b02d40ace5fb67dacc9"
+
+[[variants]]
+id = "b01_tamam__duck__speakers__182001"
+device = "laptop"
+session = "talkover-2026-10-27"
+reference = "تمام"
+reference_source = "script"
+turn_ends_ms = []
+tags = ["duck", "over-assistant", "playback-speakers"]
+
+[[variants.segments]]
+root = "talkover"
+path = "b01_tamam__duck__speakers__182001__seg1.wav"
+sha256 = "0b618945391177460541169bb2714fdb581f1cb7b81e411ca7063d9601dd70c6"
+
+[[variants]]
+id = "b01_tamam__pause__headset__185354"
+device = "laptop"
+session = "talkover-2026-10-27"
+reference = "تمام"
+reference_source = "script"
+turn_ends_ms = []
+tags = ["over-assistant", "pause", "playback-headset"]
+
+[[variants.segments]]
+root = "talkover"
+path = "b01_tamam__pause__headset__185354__seg1.wav"
+sha256 = "c7d7584072390b4942f2a3e8e132277e946ab6237284fbb85da4b7bd9638a69f"
+
+[[variants]]
+id = "b01_tamam__pause__speakers__184025"
+device = "laptop"
+session = "talkover-2026-10-27"
+reference = "تمام"
+reference_source = "script"
+turn_ends_ms = []
+tags = ["over-assistant", "pause", "playback-speakers"]
+
+[[variants.segments]]
+root = "talkover"
+path = "b01_tamam__pause__speakers__184025__seg1.wav"
+sha256 = "16373c609413bae370ed9e5751b4b4d3b3ff30983fd94dd78d34f95a1e7205d1"
+
+[[variants]]
+id = "b01_tamam__pause__speakers__184038"
+device = "laptop"
+session = "talkover-2026-10-27"
+reference = "تمام"
+reference_source = "script"
+turn_ends_ms = []
+tags = ["over-assistant", "pause", "playback-speakers"]
+
+[[variants.segments]]
+root = "talkover"
+path = "b01_tamam__pause__speakers__184038__seg1.wav"
+sha256 = "296cfd41d93d698e9635fb2de7bafa267c5fc42891a2f4bc3ce11f9a5993d623"

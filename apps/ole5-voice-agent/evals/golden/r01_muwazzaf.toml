@@ -1,0 +1,66 @@
+# Written by `python -m ole5_voice.evals.import_talkover` from the lab's refs.json and
+# takes.json: import again rather than edit.
+id = "r01_muwazzaf"
+source = "talkover"
+kind = "short_request"
+language = "saudi"
+text = "أبغى موظف"
+alternatives = []
+terms = []
+want = "send"
+
+[[variants]]
+id = "r01_muwazzaf__duck__speakers__182319"
+device = "laptop"
+session = "talkover-2026-10-27"
+reference = "أبغى موظف"
+reference_source = "script"
+turn_ends_ms = []
+tags = ["duck", "over-assistant", "playback-speakers"]
+
+[[variants.segments]]
+root = "talkover"
+path = "r01_muwazzaf__duck__speakers__182319__seg1.wav"
+sha256 = "2181a15ef18249089586c7fc66af0f175a91e27de73bd7fe186be19d90b04f92"
+
+[[variants]]
+id = "r01_muwazzaf__duck__speakers__182332"
+device = "laptop"
+session = "talkover-2026-10-27"
+reference = "أبغى موظف"
+reference_source = "script"
+turn_ends_ms = []
+tags = ["duck", "over-assistant", "playback-speakers"]
+
+[[variants.segments]]
+root = "talkover"
+path = "r01_muwazzaf__duck__speakers__182332__seg1.wav"
+sha256 = "b8929219004bcff8753035732c43163103ebe7f9fb174f8d89d4cb60609cea5f"
+
+[[variants]]
+id = "r01_muwazzaf__duck__speakers__182345"
+device = "laptop"
+session = "talkover-2026-10-27"
+reference = "أبغى موظف"
+reference_source = "script"
+turn_ends_ms = []
+tags = ["duck", "over-assistant", "playback-speakers"]
+
+[[variants.segments]]
+root = "talkover"
+path = "r01_muwazzaf__duck__speakers__182345__seg1.wav"
+sha256 = "0f0a3d249c09bb828842d35c4e7fa1c2289a15d39f0ce33f820ecdd75be6b76b"
+
+[[variants]]
+id = "r01_muwazzaf__pause__speakers__184238"
+device = "laptop"
+session = "talkover-2026-10-27"
+reference = "أبغى موظف"
+reference_source = "script"
+turn_ends_ms = []
+tags = ["over-assistant", "pause", "playback-speakers"]
+
+[[variants.segments]]
+root = "talkover"
+path = "r01_muwazzaf__pause__speakers__184238__seg1.wav"
+sha256 = "d19f518a9dd2b976d23ded61f70e41a7dd81ec805da4cf9b9a87c31a5f001561"

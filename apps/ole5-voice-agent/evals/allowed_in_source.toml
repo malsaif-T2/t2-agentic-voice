@@ -1,0 +1,14 @@
+# Texts the source may hold although an item's reference holds them (evaluation.md, "No item in
+# the product"; plan 002's decision log). tests/ole5_voice/evals/test_no_item_in_source.py
+# searches every item's reference, and every line of the script, as whole words in every string
+# constant and text file under packages/, apps/*/src and examples/, and fails on each one found,
+# except a text listed here.
+#
+# The list starts empty. Each entry narrows a rule the owner approved (D-011), so one is added
+# only on the owner's ruling, with the owner's words and their date, in this shape:
+#
+# [[allowed]]
+# text = "the words, as the source holds them"
+# reason = "why the source needs them"
+# said = "the owner's words"
+# on = 2026-11-01

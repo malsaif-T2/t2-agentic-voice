@@ -1,0 +1,38 @@
+# Written by `python -m ole5_voice.evals.import_talkover` from the lab's refs.json and
+# takes.json: import again rather than edit.
+id = "b03_aha"
+source = "talkover"
+kind = "listening_sound"
+language = "saudi"
+text = "اها"
+alternatives = []
+terms = []
+want = "listen"
+
+[[variants]]
+id = "b03_aha__duck__speakers__182307"
+device = "laptop"
+session = "talkover-2026-10-27"
+reference = "اها"
+reference_source = "script"
+turn_ends_ms = []
+tags = ["duck", "over-assistant", "playback-speakers"]
+
+[[variants.segments]]
+root = "talkover"
+path = "b03_aha__duck__speakers__182307__seg1.wav"
+sha256 = "361e35099f5ca8e0341edfdd1fed3552876809a3d9b89aa1d171e6fa695a1b0c"
+
+[[variants]]
+id = "b03_aha__pause__speakers__184219"
+device = "laptop"
+session = "talkover-2026-10-27"
+reference = "اها"
+reference_source = "script"
+turn_ends_ms = []
+tags = ["over-assistant", "pause", "playback-speakers"]
+
+[[variants.segments]]
+root = "talkover"
+path = "b03_aha__pause__speakers__184219__seg1.wav"
+sha256 = "e5cf6e7588f76d693b03b378173694cfc016ff3fe331ab54e62b264e0df7d620"

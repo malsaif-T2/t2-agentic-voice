@@ -1,0 +1,52 @@
+# Written by `python -m ole5_voice.evals.import_talkover` from the lab's refs.json and
+# takes.json: import again rather than edit.
+id = "s12_language"
+source = "talkover"
+kind = "request"
+language = "mixed"
+text = "كيف أغير لغة الواجهة من English إلى العربي؟"
+alternatives = []
+terms = ["English"]
+want = "send"
+
+[[variants]]
+id = "s12_language__duck__speakers__183829"
+device = "laptop"
+session = "talkover-2026-10-27"
+reference = "كيف أغير لغة الواجهة من English إلى العربي؟"
+reference_source = "script"
+turn_ends_ms = []
+tags = ["duck", "over-assistant", "playback-speakers"]
+
+[[variants.segments]]
+root = "talkover"
+path = "s12_language__duck__speakers__183829__seg1.wav"
+sha256 = "9159a88f163ed76ff7c1ba52e575b4abf1b17c5f248b0a25fcd8d5fe43d059a6"
+
+[[variants]]
+id = "s12_language__pause__speakers__185215"
+device = "laptop"
+session = "talkover-2026-10-27"
+reference = "كيف أغير لغة الواجهة من English إلى العربي؟"
+reference_source = "script"
+turn_ends_ms = []
+tags = ["over-assistant", "pause", "playback-speakers"]
+
+[[variants.segments]]
+root = "talkover"
+path = "s12_language__pause__speakers__185215__seg1.wav"
+sha256 = "894c80d5a2735fcff7ef4ce04524640e4fb8c5b4fc914a41363ad8de9dde38d3"
+
+[[variants]]
+id = "s12_language__pause__speakers__185228"
+device = "laptop"
+session = "talkover-2026-10-27"
+reference = "كيف أغير لغة الواجهة من English إلى العربي؟"
+reference_source = "script"
+turn_ends_ms = []
+tags = ["over-assistant", "pause", "playback-speakers"]
+
+[[variants.segments]]
+root = "talkover"
+path = "s12_language__pause__speakers__185228__seg1.wav"
+sha256 = "8e5b37329f7407ea5e7ee5b1a7bfa6108e5aaea698130f1ccfb3785fb6cd3d1b"

@@ -1,0 +1,66 @@
+# Written by `python -m ole5_voice.evals.import_talkover` from the lab's refs.json and
+# takes.json: import again rather than edit.
+id = "y01_naam_irsilha"
+source = "talkover"
+kind = "confirmation"
+language = "msa"
+text = "نعم أرسلها"
+alternatives = []
+terms = []
+want = "submit"
+
+[[variants]]
+id = "y01_naam_irsilha__duck__speakers__182134"
+device = "laptop"
+session = "talkover-2026-10-27"
+reference = "نعم أرسلها"
+reference_source = "script"
+turn_ends_ms = []
+tags = ["duck", "playback-speakers"]
+
+[[variants.segments]]
+root = "talkover"
+path = "y01_naam_irsilha__duck__speakers__182134__seg1.wav"
+sha256 = "2ad66c2ae610a490f6ebc0086ad8c2c947cd00893f0783d2d4b53e6f40a4bbeb"
+
+[[variants]]
+id = "y01_naam_irsilha__duck__speakers__182147"
+device = "laptop"
+session = "talkover-2026-10-27"
+reference = "نعم أرسلها"
+reference_source = "script"
+turn_ends_ms = []
+tags = ["duck", "over-assistant", "playback-speakers"]
+
+[[variants.segments]]
+root = "talkover"
+path = "y01_naam_irsilha__duck__speakers__182147__seg1.wav"
+sha256 = "2019119c82e25127bea5217102b35b70ca09fccf19f7d64ae9e88158702159db"
+
+[[variants]]
+id = "y01_naam_irsilha__pause__speakers__184133"
+device = "laptop"
+session = "talkover-2026-10-27"
+reference = "نعم أرسلها"
+reference_source = "script"
+turn_ends_ms = []
+tags = ["pause", "playback-speakers"]
+
+[[variants.segments]]
+root = "talkover"
+path = "y01_naam_irsilha__pause__speakers__184133__seg1.wav"
+sha256 = "1cbf1a10feeab1c8c50b8f23eebb4621fcebd5a8bf011e8743199df0c3808bc9"
+
+[[variants]]
+id = "y01_naam_irsilha__pause__speakers__184153"
+device = "laptop"
+session = "talkover-2026-10-27"
+reference = "نعم أرسلها"
+reference_source = "script"
+turn_ends_ms = []
+tags = ["pause", "playback-speakers"]
+
+[[variants.segments]]
+root = "talkover"
+path = "y01_naam_irsilha__pause__speakers__184153__seg1.wav"
+sha256 = "e2d42c9ee919e1cb98b2d02655d6e908a2ca646fa132d60d7c4eb4af0a4a1a1a"

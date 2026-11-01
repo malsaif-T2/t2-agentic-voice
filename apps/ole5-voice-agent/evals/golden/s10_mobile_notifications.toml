@@ -1,0 +1,52 @@
+# Written by `python -m ole5_voice.evals.import_talkover` from the lab's refs.json and
+# takes.json: import again rather than edit.
+id = "s10_mobile_notifications"
+source = "talkover"
+kind = "request"
+language = "saudi"
+text = "التطبيق على الجوال يقفل لحاله لما أفتح الإشعارات"
+alternatives = []
+terms = []
+want = "send"
+
+[[variants]]
+id = "s10_mobile_notifications__duck__speakers__183637"
+device = "laptop"
+session = "talkover-2026-10-27"
+reference = "التطبيق على الجوال يقفل لحاله لما أفتح الإشعارات"
+reference_source = "script"
+turn_ends_ms = []
+tags = ["duck", "over-assistant", "playback-speakers"]
+
+[[variants.segments]]
+root = "talkover"
+path = "s10_mobile_notifications__duck__speakers__183637__seg1.wav"
+sha256 = "994c1cab6eb84b1cee7d7744c93fe914bdb5387e5d41655972b84b6ae6f1952f"
+
+[[variants]]
+id = "s10_mobile_notifications__pause__speakers__185001"
+device = "laptop"
+session = "talkover-2026-10-27"
+reference = "التطبيق على الجوال يقفل لحاله لما أفتح الإشعارات"
+reference_source = "script"
+turn_ends_ms = []
+tags = ["over-assistant", "pause", "playback-speakers"]
+
+[[variants.segments]]
+root = "talkover"
+path = "s10_mobile_notifications__pause__speakers__185001__seg1.wav"
+sha256 = "4fccd98cdbe025069464af554689c1fb76045deb01440ba9398edb2e139b5a31"
+
+[[variants]]
+id = "s10_mobile_notifications__pause__speakers__185016"
+device = "laptop"
+session = "talkover-2026-10-27"
+reference = "التطبيق على الجوال يقفل لحاله لما أفتح الإشعارات"
+reference_source = "script"
+turn_ends_ms = []
+tags = ["over-assistant", "pause", "playback-speakers"]
+
+[[variants.segments]]
+root = "talkover"
+path = "s10_mobile_notifications__pause__speakers__185016__seg1.wav"
+sha256 = "1e468171ee0d644e44edf51ebe478e0c7a5057a8432deed97034563ea0ca51a1"

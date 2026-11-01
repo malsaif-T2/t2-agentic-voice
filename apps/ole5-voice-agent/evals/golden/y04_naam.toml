@@ -1,0 +1,38 @@
+# Written by `python -m ole5_voice.evals.import_talkover` from the lab's refs.json and
+# takes.json: import again rather than edit.
+id = "y04_naam"
+source = "talkover"
+kind = "confirmation"
+language = "msa"
+text = "نعم"
+alternatives = []
+terms = []
+want = "submit"
+
+[[variants]]
+id = "y04_naam__duck__speakers__183750"
+device = "laptop"
+session = "talkover-2026-10-27"
+reference = "نعم"
+reference_source = "script"
+turn_ends_ms = []
+tags = ["duck", "playback-speakers"]
+
+[[variants.segments]]
+root = "talkover"
+path = "y04_naam__duck__speakers__183750__seg1.wav"
+sha256 = "310fc2396fe3e40a9d9f7b40069fded55ac83cd7d56ce0cf93802c47aca00817"
+
+[[variants]]
+id = "y04_naam__pause__speakers__185149"
+device = "laptop"
+session = "talkover-2026-10-27"
+reference = "نعم"
+reference_source = "script"
+turn_ends_ms = []
+tags = ["pause", "playback-speakers"]
+
+[[variants.segments]]
+root = "talkover"
+path = "y04_naam__pause__speakers__185149__seg1.wav"
+sha256 = "c5abc86f890e923bc4606044697645bab90ed7ecd75e6121e81d64cf6092b665"

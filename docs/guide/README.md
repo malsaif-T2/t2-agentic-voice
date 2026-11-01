@@ -4,13 +4,34 @@ How to add a speech-first voice agent to your own product with T2 Agentic Voice:
 library, declare your use case, add your tools and the actions that need a spoken yes, test it
 without a microphone or a key, and run it.
 
-**Status: nothing to install yet.** The library's public API is designed but not built: the
-design is [package-design.md](../design/package-design.md) (D-017, approved as amended by D-018), and its section 3
-is the contract, what the library provides and what your app must provide. The first version
-is used from Python only (D-014). Each page below is written when the part it describes lands
-in the library, with the milestone named in its row ([roadmap](../plans/roadmap.md)); code
+**Status: nothing to install yet.** The library's public API is designed, and M1 builds its
+first public modules (`ports`, `groq`, `languages`, `evals` and `tracing`): the design is
+[package-design.md](../design/package-design.md) (D-017, approved as amended by D-018), and its
+section 3 is the contract, what the library provides and what your app must provide. The first
+version is used from Python only (D-014). Each page below is written when the part it describes
+lands in the library, with the milestone named in its row ([roadmap](../plans/roadmap.md)); code
 samples on these pages are taken from tested files, so a page never shows code that does not
 run.
+
+## Variables to leave unset
+
+The library's settings are `T2V_*` environment variables or a `.env` file
+([.env.example](../../.env.example) lists them; `settings.md` below will describe each). The SDKs
+under it read a few variables of their own whatever the library passes, so a process that uses
+the library leaves these unset:
+
+- `GROQ_LOG`, read when `groq` is imported: `debug` or `info` adds a handler to the root logger
+  and sets the `groq` and `httpx` loggers' levels, and at DEBUG the SDK logs each request's
+  options, the audio and the prompt included. The library undoes this only when it is the first
+  to import `groq`. Even with `GROQ_LOG` unset, a root or `groq` logger at DEBUG gets those
+  request options, so keep both above DEBUG (TD-003).
+- `OTEL_SDK_DISABLED` turns the library's own tracer provider off: no span is exported, and the
+  library logs `tracing_disabled_by_sdk` (TD-005).
+- `OTEL_PYTHON_CONTEXT`, read when `opentelemetry.context` is imported, before any of the
+  library's code runs, loads the entry point it names, so a shell variable can load code
+  (TD-005).
+- `OTEL_EXPERIMENTAL_RESOURCE_DETECTORS`, read in a child process forked after the library's
+  tracer provider was built, loads the entry points it names (TD-005).
 
 ## Pages
 
@@ -28,7 +49,7 @@ run.
 | `serving.md` | The sidecar or the mount, identity and join tokens, cross-origin pages, the browser protocol | M2 |
 | `browser-client.md` | The reference browser client: its events and states, tokens, consent, Stop and Esc | M2, M3 |
 | `testing.md` | Text calls, the fakes, the safety suite for your actions, live scenarios, audio replay | M5 |
-| `evaluation.md` | Recording your own test set with consent and keeping audio out of git; scoring; noise | M1 |
+| [evaluation.md](evaluation.md) | The evaluation helpers; recording your own test set with consent and keeping audio out of git; writing your own spelling guide; noise and the sign test | M1 |
 | `latency.md` | Where the time goes in a turn, and how to measure yours | M4 |
 | `tracing-and-logs.md` | Phoenix or your own tracing, redaction, what a trace holds, the logging policy | M2 |
 | `data-and-privacy.md` | What the library itself stores and sends: what a trace holds, the data folder, recording and consent | M2 |

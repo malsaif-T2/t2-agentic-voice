@@ -69,6 +69,8 @@ class ArchConfig:
     package: str
     package_root: str  # the folder that holds the package, from the repository root
     public: frozenset[str]  # the modules an app may import: "app", "app.testing"
+    facades: frozenset[str]  # public modules at the package root, re-exports only: "app.ports"
+    banned_words: tuple[str, ...]  # never in the library's src/, in any case (ARCH-WORDS)
     apps: tuple[AppRule, ...]
     layers: Mapping[str, frozenset[str]]  # layer -> the other layers it may import
     owners: Mapping[str, Ownership]  # top-level module -> the layers that may import it
@@ -90,6 +92,11 @@ class ArchConfig:
         return module in self.public or any(
             p != self.package and module.startswith(f"{p}.") for p in self.public
         )
+
+    @property
+    def facade_names(self) -> frozenset[str]:
+        """The facades' own names, as their files are named under the package: "ports"."""
+        return frozenset(f.removeprefix(f"{self.package}.") for f in self.facades)
 
 
 @dataclass(frozen=True)
@@ -171,7 +178,23 @@ def load_config(root: Path) -> HarnessConfig:
     except tomllib.TOMLDecodeError as error:
         line = getattr(error, "lineno", 1)
         raise HarnessConfigError([Violation(CONFIG_FILE, line, RULE, str(error), FIX)]) from None
-    return parse_config(data, Lines(text))
+    lines = Lines(text)
+    config = parse_config(data, lines)
+    if missing := _missing_facades(root, config, lines):
+        raise HarnessConfigError(missing)
+    return config
+
+
+def _missing_facades(root: Path, config: HarnessConfig, lines: Lines) -> list[Violation]:
+    """A facade [package] facades names whose module file does not exist."""
+    found = []
+    for name in sorted(config.arch.facade_names):
+        path = f"{config.package_dir}/{name}.py"
+        if not (root / path).is_file():
+            problem = f"facade '{config.arch.package}.{name}' has no module: {path} is missing"
+            fix = f"Create {path} (a docstring, imports and `__all__`), or remove it from facades."
+            found.append(Violation(CONFIG_FILE, lines.of("package", "facades"), RULE, problem, fix))
+    return found
 
 
 def parse_config(data: dict[str, Any], lines: Lines) -> HarnessConfig:
@@ -236,9 +259,13 @@ def _arch(data: dict[str, Any], lines: Lines, problems: list[Violation]) -> Arch
     public = frozenset(package.strings("public"))
     for module in sorted(m for m in public if m.split(".")[0] != name):
         package.problem("public", f"public module '{module}' is not inside package '{name}'")
+    facades = frozenset(package.strings("facades"))
+    banned_words = package.strings("banned_words")
     apps = _apps(tables(data, "apps", lines, problems), name)
     layers_table = Table("layers", data.get("layers"), lines, problems)
     layers = {key: frozenset(layers_table.strings(key)) for key in layers_table.data}
+    for facade in sorted(facades):
+        _check_facade(package, facade, name, public, set(layers))
     if not layers:
         layers_table.problem(None, "[layers] names no layer")
     for layer, imports in layers.items():
@@ -265,6 +292,8 @@ def _arch(data: dict[str, Any], lines: Lines, problems: list[Violation]) -> Arch
         package=name,
         package_root=package.string("root"),
         public=public,
+        facades=facades,
+        banned_words=banned_words,
         apps=apps,
         layers=layers,
         owners=owners,
@@ -279,6 +308,19 @@ def _arch(data: dict[str, Any], lines: Lines, problems: list[Violation]) -> Arch
     for table in (package, rules, modules):
         table.finish()
     return arch
+
+
+def _check_facade(
+    package: Table, facade: str, name: str, public: frozenset[str], layers: set[str]
+) -> None:
+    """A facade sits directly under the package root, is public, and is not named as a layer."""
+    parts = facade.split(".")
+    if len(parts) != 2 or parts[0] != name or not _PACKAGE.match(parts[1]):
+        package.problem("facades", f"facade '{facade}' is not a module directly under '{name}'")
+    elif parts[1] in layers:
+        package.problem("facades", f"facade '{facade}' has the name of a layer")
+    if facade not in public:
+        package.problem("facades", f"facade '{facade}' is not in [package] public")
 
 
 def _apps(groups: list[Table], package: str) -> tuple[AppRule, ...]:

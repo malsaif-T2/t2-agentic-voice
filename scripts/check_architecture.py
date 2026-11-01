@@ -7,9 +7,14 @@ Rules
   ARCH-LAYER      internal imports follow the layer graph (an `importlib.import_module` or
                   `__import__` of a literal name counts as an import); code lives inside a
                   layer; a subpackage's narrower rules hold; a layer never imports from the
-                  package root, which only re-exports the public API
+                  package root or a facade, which only re-export the public API
   ARCH-PUBLIC     an app in [[apps]] imports the library only through [package] public, and no
-                  other app (its import statements); the library never imports an app
+                  other app (its import statements, scripts/arch_public.py); the library never
+                  imports an app
+  ARCH-FACADE     a facade ([package] facades) holds only a docstring, imports and `__all__`
+                  (scripts/arch_facade.py)
+  ARCH-WORDS      the library's src/ holds no word of [package] banned_words, in any case
+                  (scripts/arch_words.py)
   ARCH-OWNER      a library in [[owners]] is imported only by its layers
   ARCH-PRINT      no print() and no sys.stdout/sys.stderr writes, outside [rules]
                   output_allowed_files; use the structured logger
@@ -34,7 +39,10 @@ from pathlib import Path
 
 from scripts._common import Violation
 from scripts.arch_doc import check_layer_doc
-from scripts.harness_config import AppRule, ArchConfig, HarnessConfig, run_check
+from scripts.arch_facade import check_facade
+from scripts.arch_public import check_app
+from scripts.arch_words import check_words
+from scripts.harness_config import ArchConfig, HarnessConfig, run_check
 from scripts.module_rules import check_support, parse_module
 
 ROOT = Path(__file__).resolve().parents[1]
@@ -130,12 +138,13 @@ class _ModuleChecker(ast.NodeVisitor):
             return  # the package root is the public API: it may re-export every layer
         target = parts[1]
         if target not in self.arch.layers:
+            where = "a facade" if target in self.arch.facade_names else "the package root"
             self._add(
                 line,
                 "ARCH-LAYER",
-                f"layer '{self.layer}' imports '{'.'.join(parts)}' from the package root",
-                "Import it from the layer that defines it; the package root only re-exports the "
-                "public API for apps.",
+                f"layer '{self.layer}' imports '{'.'.join(parts)}' from {where}",
+                "Import it from the layer that defines it; the package root and the facades "
+                "only re-export the public API for apps.",
             )
             return
         if target == self.layer:
@@ -223,71 +232,6 @@ class _ModuleChecker(ast.NodeVisitor):
         )
 
 
-class _AppChecker(ast.NodeVisitor):
-    """An app's import statements (ARCH-PUBLIC): the library only through its public modules,
-    and no other app."""
-
-    def __init__(self, arch: ArchConfig, *, app: str, display: str) -> None:
-        self.arch = arch
-        self.app = app
-        self.display = display
-        self.violations: list[Violation] = []
-
-    def visit_Import(self, node: ast.Import) -> None:
-        for alias in node.names:
-            self._check(alias.name.split("."), node.lineno)
-        self.generic_visit(node)
-
-    def visit_ImportFrom(self, node: ast.ImportFrom) -> None:
-        if node.level == 0 and node.module:
-            base = node.module.split(".")
-            # `from <library> import core`: the name may be a layer, so check the module too.
-            if base == [self.arch.package]:
-                for alias in node.names:
-                    if alias.name in self.arch.layers:
-                        self._check([*base, alias.name], node.lineno)
-            self._check(base, node.lineno)
-        self.generic_visit(node)
-
-    def _check(self, parts: list[str], line: int) -> None:
-        module = ".".join(parts)
-        if parts[0] in self.arch.app_names and parts[0] != self.app:
-            problem = f"app '{self.app}' imports the app '{parts[0]}' ({module})"
-            fix = "Apps share code only through the library: move it into its public API."
-        elif parts[0] == self.arch.package and not self.arch.is_public(module):
-            allowed = ", ".join(sorted(self.arch.public)) or "nothing"
-            problem = f"'{module}' is not public; an app may import only: {allowed}"
-            fix = (
-                f"Import it from the library's public API (`from {self.arch.package} import "
-                "...`). If apps need it, export it from the package root, or add the module to "
-                "[package] public in harness.toml, and record why in docs/design/decisions.md."
-            )
-        else:
-            return
-        self.violations.append(Violation(self.display, line, "ARCH-PUBLIC", problem, fix))
-
-
-def check_app(root: Path, app: AppRule, arch: ArchConfig) -> tuple[list[Violation], int]:
-    """An app's modules: the module rules, and ARCH-PUBLIC."""
-    app_dir = root / app.dir
-    if not (app_dir / "__init__.py").is_file():
-        init = f"{app.dir}/__init__.py"
-        fix = f"Set this [[apps]] entry's name and root to the app's package, or create {init}."
-        return [Violation("harness.toml", 1, "HARNESS-CONFIG", f"{init} does not exist", fix)], 0
-    violations: list[Violation] = []
-    files = sorted(app_dir.rglob("*.py"))
-    for path in files:
-        display = path.relative_to(root).as_posix()
-        source = path.read_text(encoding="utf-8")
-        tree, found = parse_module(display, source, arch.max_module_lines)
-        if tree is not None:
-            checker = _AppChecker(arch, app=app.name, display=display)
-            checker.visit(tree)
-            found += checker.violations
-        violations += found
-    return violations, len(files)
-
-
 def _writes_output(func: ast.expr) -> bool:
     """`print(...)`, or `sys.stdout.write(...)` and the like."""
     if isinstance(func, ast.Name):
@@ -329,10 +273,15 @@ def check_file(
         return violations
     layers = ", ".join(arch.layers)
     if len(rel_parts) == 1:
-        layer = ROOT_LAYER
-        if rel != "__init__.py":
+        layer = ROOT_LAYER  # the package root's __init__.py, or a facade beside it
+        if Path(rel).stem in arch.facade_names:
+            violations += check_facade(display, tree)
+        elif rel != "__init__.py":
             problem = f"module '{rel}' sits outside every layer"
-            fix = f"Move it into one of: {layers}. {CHANGE_RULE_FIX}"
+            fix = (
+                f"Move it into one of: {layers}. A public facade is listed in [package] "
+                f"facades. {CHANGE_RULE_FIX}"
+            )
             violations.append(Violation(display, 1, "ARCH-LAYER", problem, fix))
     else:
         layer = rel_parts[0]
@@ -377,6 +326,7 @@ def check_repo(root: Path, config: HarnessConfig) -> tuple[list[Violation], int]
         )
         return [missing], 0
     violations, checked = check_tree(package_dir, root, arch)
+    violations += check_words(root, arch)[0]  # its Python files are counted above already
     for app in arch.apps:
         found, count = check_app(root, app, arch)
         violations, checked = violations + found, checked + count

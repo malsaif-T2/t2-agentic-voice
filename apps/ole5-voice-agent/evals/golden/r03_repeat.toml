@@ -1,0 +1,66 @@
+# Written by `python -m ole5_voice.evals.import_talkover` from the lab's refs.json and
+# takes.json: import again rather than edit.
+id = "r03_repeat"
+source = "talkover"
+kind = "repeat_request"
+language = "saudi"
+text = "ممكن تعيد؟"
+alternatives = []
+terms = []
+want = "repeat"
+
+[[variants]]
+id = "r03_repeat__duck__speakers__183202"
+device = "laptop"
+session = "talkover-2026-10-27"
+reference = "ممكن تعيد؟"
+reference_source = "script"
+turn_ends_ms = []
+tags = ["duck", "over-assistant", "playback-speakers"]
+
+[[variants.segments]]
+root = "talkover"
+path = "r03_repeat__duck__speakers__183202__seg1.wav"
+sha256 = "57d97b3e27eacc6070b9b07ee627eb178ec1db9067c1d9e4fb91c6cadbf9fabc"
+
+[[variants]]
+id = "r03_repeat__duck__speakers__183212"
+device = "laptop"
+session = "talkover-2026-10-27"
+reference = "ممكن تعيد؟"
+reference_source = "script"
+turn_ends_ms = []
+tags = ["duck", "over-assistant", "playback-speakers"]
+
+[[variants.segments]]
+root = "talkover"
+path = "r03_repeat__duck__speakers__183212__seg1.wav"
+sha256 = "678712c1cf134b412cf50a322a1fad5b3f25d6d61e91ce072125ae06f7506cfe"
+
+[[variants]]
+id = "r03_repeat__pause__speakers__184749"
+device = "laptop"
+session = "talkover-2026-10-27"
+reference = "ممكن تعيد؟"
+reference_source = "script"
+turn_ends_ms = []
+tags = ["over-assistant", "pause", "playback-speakers"]
+
+[[variants.segments]]
+root = "talkover"
+path = "r03_repeat__pause__speakers__184749__seg1.wav"
+sha256 = "6b5c3aa49bf5b008c4fb63fd2155f0a930f5f5220d3fe57120182ca238c14139"
+
+[[variants]]
+id = "r03_repeat__pause__speakers__184759"
+device = "laptop"
+session = "talkover-2026-10-27"
+reference = "ممكن تعيد؟"
+reference_source = "script"
+turn_ends_ms = []
+tags = ["over-assistant", "pause", "playback-speakers"]
+
+[[variants.segments]]
+root = "talkover"
+path = "r03_repeat__pause__speakers__184759__seg1.wav"
+sha256 = "19390a36f18a94e802683d0df05613f9049387f494c0d1cad3ba97169c552a0c"

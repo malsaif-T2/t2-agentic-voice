@@ -12,3 +12,10 @@
 *.zip binary
 *.db binary
 *.sqlite binary
+# Audio: the golden set's audio stays out of git, and a stray file is still never converted.
+*.wav binary
+*.webm binary
+*.ogg binary
+*.mp3 binary
+*.m4a binary
+*.flac binary

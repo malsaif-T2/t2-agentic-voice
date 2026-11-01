@@ -32,6 +32,8 @@ Run everything as `uv run poe <task>` (`uv run poe` lists tasks).
 | `fmt` | Auto-format and apply safe lint fixes. Run first when `lint` fails. |
 | `lint` · `types` · `arch` · `docs` · `test` | Individual gates (`arch` and `docs` print a FIX line for every violation). |
 | `gc` · `quality` | Say whether a garbage-collection round is due, then list its candidates · grade each layer after `check`; neither is a gate. |
+| `golden` · `record` | Validate the golden set and freeze its expected answers · record and review its takes (a page on 127.0.0.1). |
+| `eval` · `eval-compare` · `eval-history` | Run an answerer over the golden set (refuses the main checkout) · compare two runs (sign test by item) · render the run history. |
 
 Add a row for every task the project adds. Add dependencies with `uv add <pkg>` (`--dev` for
 tooling), in the member that needs them (`uv add --package t2-agentic-voice <pkg>`); never use
@@ -65,15 +67,18 @@ floor) live in [harness.toml](harness.toml).
 ## Code map
 
 ```
-packages/t2-agentic-voice/src/t2_agentic_voice/   the library; __init__.py is its public API
+packages/t2-agentic-voice/src/t2_agentic_voice/   the library; its public API is __init__.py
+  ports.py groq.py languages.py evals.py tracing.py   and these facades beside it (re-exports only)
   core/       settings, structured logging, error types (AppError), tracing, shared types
   domain/     the call's rules and the ports, no IO: the yes rule, interruptions, speech text
   adapters/   the outside services behind the ports: Groq, the knowledge base, the tickets
   actions/    the backend, the only part that acts: tools, the action record, outcomes
   agent/      the talker: prompts, tool definitions, one turn, the output guard
   voice/      one call's real-time pipeline: WebRTC, end of turn, interruptions, cancel scope
+  testing/    what a team tests and measures with: the evaluation scorers; later, the fakes
   api/        HTTP and the composition root: the widget, call set-up, health
 apps/ole5-voice-agent/src/ole5_voice/   the Ole5 app: only the library's public API (ARCH-PUBLIC)
+  evals/      the golden set's commands; its data in apps/ole5-voice-agent/evals/, no audio
 examples/minimal/src/minimal_example/   the smallest app: the quickstart, a test of the library
 apps/ole5-voice-agent/web/   Ole5's browser widget (plain HTML/JS/CSS; not built yet)
 scripts/      the harness: check_architecture.py (arch), check_docs.py (docs), gc_due.py and
@@ -87,9 +92,9 @@ docs/generated/  produced by commands, never edited by hand (a test fails when s
 ## Non-negotiables
 
 1. **Respect layer boundaries and the public API.** `uv run poe arch` explains each violation
-   and its fix. An app uses only what the library's package root exports. A rule changes in
-   `harness.toml` and ARCHITECTURE.md together (ARCH-DOC checks the layer table), with the
-   reason in a decision (review).
+   and its fix. An app uses only the library's public modules (`[package] public`): the package
+   root and its facades. A rule changes in `harness.toml` and ARCHITECTURE.md together (ARCH-DOC
+   checks the layer table), with the reason in a decision (review).
 2. **Parse at the boundaries.** Input from outside (requests, env, files, model output, database
    rows) becomes typed pydantic models. Never build on guessed shapes.
 3. **Structured logs only**, via `core.logging.get_logger`. No `print`, and never log secrets.

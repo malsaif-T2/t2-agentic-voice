@@ -1,0 +1,52 @@
+# Written by `python -m ole5_voice.evals.import_talkover` from the lab's refs.json and
+# takes.json: import again rather than edit.
+id = "s04_pdf"
+source = "talkover"
+kind = "request"
+language = "mixed"
+text = "ما أقدر أفتح المرفق PDF"
+alternatives = []
+terms = ["PDF"]
+want = "send"
+
+[[variants]]
+id = "s04_pdf__duck__speakers__182400"
+device = "laptop"
+session = "talkover-2026-10-27"
+reference = "ما أقدر أفتح المرفق PDF"
+reference_source = "script"
+turn_ends_ms = []
+tags = ["duck", "over-assistant", "playback-speakers"]
+
+[[variants.segments]]
+root = "talkover"
+path = "s04_pdf__duck__speakers__182400__seg1.wav"
+sha256 = "6d03543814151ae4fcc915a1156d0721ad824bc9bd0c81620e9f2c742ffb6c1b"
+
+[[variants]]
+id = "s04_pdf__duck__speakers__182414"
+device = "laptop"
+session = "talkover-2026-10-27"
+reference = "ما أقدر أفتح المرفق PDF"
+reference_source = "script"
+turn_ends_ms = []
+tags = ["duck", "over-assistant", "playback-speakers"]
+
+[[variants.segments]]
+root = "talkover"
+path = "s04_pdf__duck__speakers__182414__seg1.wav"
+sha256 = "aa36f5b866eb65e7902e1b583d30ccfc4aee4d1a5155a2f82500dca6f397f359"
+
+[[variants]]
+id = "s04_pdf__pause__speakers__184251"
+device = "laptop"
+session = "talkover-2026-10-27"
+reference = "ما أقدر أفتح المرفق PDF"
+reference_source = "script"
+turn_ends_ms = []
+tags = ["over-assistant", "pause", "playback-speakers"]
+
+[[variants.segments]]
+root = "talkover"
+path = "s04_pdf__pause__speakers__184251__seg1.wav"
+sha256 = "69e7ddef2c6b42d4ef148ed4a1bbe0c79382421524341982ea337c5ec1b141e6"

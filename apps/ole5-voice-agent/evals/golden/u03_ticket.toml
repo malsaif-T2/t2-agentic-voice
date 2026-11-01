@@ -1,0 +1,38 @@
+# Written by `python -m ole5_voice.evals.import_talkover` from the lab's refs.json and
+# takes.json: import again rather than edit.
+id = "u03_ticket"
+source = "talkover"
+kind = "request"
+language = "saudi"
+text = ""
+alternatives = []
+terms = []
+want = "send"
+
+[[variants]]
+id = "u03_ticket__duck__speakers__183849"
+device = "laptop"
+session = "talkover-2026-10-27"
+reference = "البريد خربان عندي, ما يشتغل"
+reference_source = "typed"
+turn_ends_ms = []
+tags = ["duck", "over-assistant", "playback-speakers"]
+
+[[variants.segments]]
+root = "talkover"
+path = "u03_ticket__duck__speakers__183849__seg1.wav"
+sha256 = "13255cc0417c0e168ddc6195ce407aaf409d2d6c2f8394b96a67e176d8296c1d"
+
+[[variants]]
+id = "u03_ticket__pause__speakers__185243"
+device = "laptop"
+session = "talkover-2026-10-27"
+reference = "البريد عندي خربان, ودي أطلب تذكرة"
+reference_source = "typed"
+turn_ends_ms = []
+tags = ["over-assistant", "pause", "playback-speakers"]
+
+[[variants.segments]]
+root = "talkover"
+path = "u03_ticket__pause__speakers__185243__seg1.wav"
+sha256 = "7205c2ca1d368b6cb88078a8f08512a00cfcb9117920c61b0cb5054537ecbd7d"

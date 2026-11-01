@@ -17,6 +17,8 @@ SYNTHETIC = """\
 name = "app"
 root = "src"
 public = ["app", "app.testing"]
+facades = []
+banned_words = []
 
 [layers]
 core = []

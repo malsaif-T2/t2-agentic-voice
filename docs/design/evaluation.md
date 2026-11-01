@@ -6,10 +6,15 @@ How a measurable quality of the product is measured, and how a change to it is j
 turn-taking, and the talker's answers vary from run to run (a hosted model, a network, timing),
 and some of them are tuned.
 
-**Nothing here is built yet.** The kit ships the method, not the tooling. The plan that builds
-the measurement (the roadmap's first product milestone) builds the commands named below
-(`golden`, `eval`, `eval-compare`), with their tests in `tests/evals/`, and adds them to
-`CLAUDE.md`. Until then, no rule here is enforced by a check.
+**Where it is built.** The kit ships the method, not the tooling. In this project, plan 002
+builds the tooling for speech-to-text (D-022): the scorers in the library, public through its
+`evals` and `languages` modules, and Ole5's golden set in the app, with its code in
+`apps/ole5-voice-agent/src/ole5_voice/evals/`, its data in `apps/ole5-voice-agent/evals/` (the
+`evals/` of the paths below) and its tests in `tests/ole5_voice/evals/`, inside `poe check`. Its
+commands, `golden`, `record`, `eval`, `eval-compare` and `eval-history`, are listed in
+[CLAUDE.md](../../CLAUDE.md), and the guide's [evaluation.md](../guide/evaluation.md) shows a
+team how to score its own set with the library. Turn-taking, the talker and latency have no
+tooling yet: until a plan builds theirs, no check enforces their rules here.
 
 ## In this project
 
@@ -54,8 +59,8 @@ stratum.
 ## The golden set [any]
 
 An **item** is one case the product must handle. Suggested layout: items as TOML files in
-`evals/golden/`, their frozen expected answers in one JSON file beside them, tooling in
-`scripts/eval/`. Each item says:
+`evals/golden/`, their frozen expected answers in one JSON file beside that folder, and the
+tooling in the app's own package (in this project, `ole5_voice.evals`). Each item says:
 
 - its id, its split (dev or held-out), and **tags**: the strata it belongs to (domain, outcome
   kind, difficulty), which validation checks are honest;
@@ -99,8 +104,17 @@ expected answer. A run with any violation fails.
 - **Tune on dev only.** Held-out measures; it is never used to choose a change.
 - **Held-out is read only as aggregates.** A run that includes held-out items writes a scorecard
   without per-item verdicts or outputs, and is never traced, so no one reads a held-out answer
-  item by item. It runs only at a milestone's checkpoints, and the plan caps how many times, so
-  the milestone does not pick changes by held-out noise.
+  item by item. Nor is a held-out group shown that covers too few items: wherever a held-out
+  run's numbers are broken down (by stratum, by window group, in the history and in a
+  comparison), every group of fewer answered items than the plan registers (3 in plan 002),
+  counted as items rather than variants and without an item whose every variant failed, is
+  pooled into one group, `other`, itself left out when it too is that small. Within a group
+  shown, a rate taken over fewer items (WER and CER, term and ID recall, text from silence, a
+  window group's one-word clips) is left out. The totals stay whole, whatever they rest on. A
+  comparison sets two runs' groups side by side only where both cover the same items with no
+  failure, and refuses two held-out runs that cover different variants. A held-out run is made
+  only at a milestone's checkpoints, and the plan caps how many times, so the milestone does not
+  pick changes by held-out noise.
 - **Learning on dev.** When something is learned or auto-tuned from dev results, cut dev into
   committed *learn* and *check* halves (by item, stratified), learn on one and measure on the
   other only. A screen rule scales down with the smaller set.

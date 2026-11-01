@@ -1,0 +1,55 @@
+{
+  "about": [
+    "The request GroqSTT sends for one fixed clip: plan 002, Block 0, step 11. Track B's tests",
+    "compare the request its fake transport receives with this, field by field. Its sources:",
+    "the prototype's call (Ole5-chatbot/src/ole5_chat/voice/stt.py, lines 221-246, read",
+    "2026-11-01), Groq's speech-to-text reference (read 2026-11-01, plan 002), and the",
+    "installed groq 1.7.0 (groq/resources/audio/transcriptions.py, lines 236 and 454: the path;",
+    "groq/_qs.py, lines 120-128: a form value is str(value), so temperature 0 is sent as 0).",
+    "The prototype sent no media type, so httpx guessed one from the file name, which differs",
+    "between machines (audio/wav on the owner's, audio/x-wav from Python's own table); here it",
+    "is passed explicitly."
+  ],
+  "call": {
+    "settings": {
+      "groq.base_url": "https://api.groq.com",
+      "stt.model": "whisper-large-v3",
+      "stt.timeout_s": 6.0
+    },
+    "language": "ar",
+    "prompt": null
+  },
+  "clip": {
+    "sample_rate": 16000,
+    "samples": 16000,
+    "sample_i": "(i * 97) % 4096 - 2048, as signed 16-bit little-endian",
+    "pcm16_sha256": "9778b8e07b63c93ff76b2a377aed50ade97d34450ae9b9092825bd270c2a1ba1",
+    "wav": "mono, 16-bit, 16000 Hz, written with the standard library's wave",
+    "wav_bytes": 32044,
+    "wav_sha256": "ba6ef3fc04e2bfb7f212793dc66747ca4241c5ef1c7b6088f3d9277d97be563c"
+  },
+  "client": {
+    "base_url": "https://api.groq.com",
+    "max_retries": 0,
+    "timeout_s": 6.0
+  },
+  "request": {
+    "method": "POST",
+    "url": "https://api.groq.com/openai/v1/audio/transcriptions",
+    "content_type": "multipart/form-data",
+    "fields": {
+      "model": "whisper-large-v3",
+      "language": "ar",
+      "response_format": "verbose_json",
+      "temperature": "0"
+    },
+    "absent_fields": ["prompt", "timestamp_granularities", "url"],
+    "file": {
+      "field": "file",
+      "filename": "speech.wav",
+      "content_type": "audio/wav",
+      "bytes": 32044,
+      "sha256": "ba6ef3fc04e2bfb7f212793dc66747ca4241c5ef1c7b6088f3d9277d97be563c"
+    }
+  }
+}
