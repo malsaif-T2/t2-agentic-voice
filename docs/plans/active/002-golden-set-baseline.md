@@ -1687,6 +1687,12 @@ run, [WORKING-RULES.md](../../../WORKING-RULES.md), "Measurement runs")
   clips held at 500 ms: English listening sounds 5 of 5, "wait" 1 of 2, Saudi listening sounds
   2 of 12, Saudi stop words 0 of 4. Scorecard in `var/runs/w2-turbo-500`. Spend so far
   $0.2424 of the $5 cap.
+- 2026-11-02: Run W3 (A1, `whisper-large-v3`, 750 ms windows, `--clips-from` R1's scorecard,
+  untraced), at the measurement commit, its smoke test passed: complete, 91 requests, no retry,
+  no failure, no window reused, 900 s billed, $0.028. One-word clips held at 750 ms: English
+  listening sounds 5 of 5 and "wait" 2 of 2, Saudi listening sounds 4 of 12, Saudi stop words 2
+  of 4, Saudi "wait" 3 of 3. Scorecard in `var/runs/w3-large-v3-750`. Spend so far
+  $0.2705 of the $5 cap.
 
 ## Decision log
 
