@@ -32,6 +32,8 @@ Run everything as `uv run poe <task>` (`uv run poe` lists tasks).
 | `fmt` | Auto-format and apply safe lint fixes. Run first when `lint` fails. |
 | `lint` · `types` · `arch` · `docs` · `test` | Individual gates (`arch` and `docs` print a FIX line for every violation). |
 | `gc` · `quality` | Say whether a garbage-collection round is due, then list its candidates · grade each layer after `check`; neither is a gate. |
+| `golden` · `record` | Validate the golden set and freeze its expected answers · record and review its takes (a page on 127.0.0.1). |
+| `eval` · `eval-compare` · `eval-history` | Run an answerer over the golden set (refuses the main checkout) · compare two runs (sign test by item) · render the run history. |
 
 Add a row for every task the project adds. Add dependencies with `uv add <pkg>` (`--dev` for
 tooling), in the member that needs them (`uv add --package t2-agentic-voice <pkg>`); never use
@@ -76,6 +78,7 @@ packages/t2-agentic-voice/src/t2_agentic_voice/   the library; its public API is
   testing/    what a team tests and measures with: the evaluation scorers; later, the fakes
   api/        HTTP and the composition root: the widget, call set-up, health
 apps/ole5-voice-agent/src/ole5_voice/   the Ole5 app: only the library's public API (ARCH-PUBLIC)
+  evals/      the golden set's commands; its data in apps/ole5-voice-agent/evals/, no audio
 examples/minimal/src/minimal_example/   the smallest app: the quickstart, a test of the library
 apps/ole5-voice-agent/web/   Ole5's browser widget (plain HTML/JS/CSS; not built yet)
 scripts/      the harness: check_architecture.py (arch), check_docs.py (docs), gc_due.py and

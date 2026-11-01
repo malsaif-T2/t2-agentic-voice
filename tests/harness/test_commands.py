@@ -3,11 +3,13 @@
   same in a console, a pipe, or a file. Piped, Python otherwise writes in the machine's legacy
   code page on Windows, or fails on a character it cannot encode;
 - every command parses its arguments, so `--help` only prints help. One that ignores them runs
-  instead, and some write files or start servers."""
+  instead, and some write files or start servers. "Every command" is each script under
+  scripts/ and each module a poe task runs with `python -m`, the apps' included."""
 
 from __future__ import annotations
 
 import ast
+import importlib.util
 import os
 import subprocess
 import sys
@@ -35,11 +37,34 @@ def test_every_command_writes_utf8_even_when_piped() -> None:
     assert printed.stdout.decode("utf-8").strip() == SAMPLE
 
 
+def _task_modules() -> dict[str, Path]:
+    """Every module a poe task runs with `python -m`, and its file."""
+    pyproject = tomllib.loads((ROOT / "pyproject.toml").read_text(encoding="utf-8"))
+    commands = []
+    for task in pyproject["tool"]["poe"]["tasks"].values():
+        steps = task.get("sequence", [task])
+        commands += [step["cmd"] for step in steps if isinstance(step, dict) and "cmd" in step]
+    modules = {c.split()[2] for c in commands if c.startswith("python -m ")}
+    found = {}
+    for module in sorted(modules):
+        spec = importlib.util.find_spec(module)
+        assert spec is not None and spec.origin, f"poe runs `python -m {module}`, not a module"
+        found[module] = Path(spec.origin)
+    return found
+
+
 def test_every_command_parses_its_arguments() -> None:
+    """The scripts, and every module a poe task runs with `python -m` (the apps' too)."""
+    tasks = _task_modules()
+    assert {"scripts.check_docs", "ole5_voice.evals.run"} <= tasks.keys()
     ignoring = []
-    for path in sorted((ROOT / "scripts").rglob("*.py")):
+    paths = sorted({*(ROOT / "scripts").rglob("*.py"), *tasks.values()})
+    for path in paths:
         tree = ast.parse(path.read_text(encoding="utf-8"))
-        for main in (n for n in tree.body if isinstance(n, ast.FunctionDef) and n.name == "main"):
+        mains = [n for n in tree.body if isinstance(n, ast.FunctionDef) and n.name == "main"]
+        if path in tasks.values() and not mains:
+            ignoring.append(path.as_posix())  # a poe task's module runs its `main`
+        for main in mains:
             parses = any(
                 isinstance(node, ast.Call)
                 and isinstance(node.func, ast.Attribute)
@@ -48,7 +73,7 @@ def test_every_command_parses_its_arguments() -> None:
                 for node in ast.walk(main)
             )
             if not parses:
-                ignoring.append(path.relative_to(ROOT).as_posix())
+                ignoring.append(path.as_posix())
     assert ignoring == [], (
         f"{ignoring}: `--help` would run these. FIX: give `main` an `argv` parameter and parse "
         "it with argparse (`ArgumentParser(description=...).parse_args(argv)`)."

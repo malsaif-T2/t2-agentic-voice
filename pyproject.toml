@@ -82,6 +82,29 @@ sequence = [{ cmd = "python -m scripts.gc_due" }, { cmd = "python -m scripts.gc_
 help = "Grade each layer after `poe check` (not a gate); grades and gaps go in docs/harness/quality.md"
 cmd = "python -m scripts.quality"
 
+# The golden set's commands (plan 002; evaluation.md): each runs a module of the Ole5 app's
+# evaluation package, and passes on the arguments given after the task's name.
+
+[tool.poe.tasks.golden]
+help = "Validate the golden set and freeze its expected answers (`--audio <root>=<folder>` also checks the audio)"
+cmd = "python -m ole5_voice.evals.golden"
+
+[tool.poe.tasks.eval]
+help = "Run an answerer over the golden set into a new folder, every setting and path on its command line"
+cmd = "python -m ole5_voice.evals.run"
+
+[tool.poe.tasks.eval-compare]
+help = "Compare two runs variant by variant: fixed, broken, net, and the sign test by item"
+cmd = "python -m ole5_voice.evals.compare"
+
+[tool.poe.tasks.eval-history]
+help = "Render the golden set's run history into docs/generated/eval-history.md"
+cmd = "python -m ole5_voice.evals.history"
+
+[tool.poe.tasks.record]
+help = "Record and review the golden set's new takes in Chrome, on a page served on 127.0.0.1"
+cmd = "python -m ole5_voice.evals.recorder"
+
 # --------------------------------------------------------------------------- ruff
 
 [tool.ruff]

@@ -469,6 +469,27 @@ run, [WORKING-RULES.md](../../../WORKING-RULES.md), "Measurement runs")
   `languages.py`, `evals.py` and `tracing.py`, now in `[package] facades` and `public`, with
   `tests/t2_agentic_voice/test_facades.py` holding each one's names; ARCHITECTURE.md's
   public-API paragraph and CLAUDE.md's code map name them.
+- 2026-11-01: Block 0, step 10, the app's part, in `apps/ole5-voice-agent/src/ole5_voice/evals/`.
+  `models.py`: the item, the variant, the audio reference, the manifest with its consent
+  record, the script line, the take sidecar (with the track's settings) and the review, the
+  request, the window, the answer and the answer request, the variant's result, the metrics,
+  the run, the scorecard, the history line, and the protocols `Answerer`, `Matcher` and
+  `ScorecardWriter`; tested in `tests/ole5_voice/evals/test_models.py`. `audio.py`, in full:
+  reading a WAV with `wave`, refusing all but 16 kHz mono 16-bit PCM and a file cut short, the
+  SHA-256 of the bytes and of a file read in chunks, the length, a leading window, and writing
+  a WAV; tested in `tests/ole5_voice/evals/test_audio.py` on made-up clips. The stubs: Track D's
+  `items.py`, `toml_write.py`, `import_talkover.py`, `import_recordings.py`, `matcher.py`,
+  `golden.py` and `split.py`; Track E's `run.py`, `answerers.py`, `windows.py` and
+  `worktree.py`; Track F's `scorecard.py`, `compare.py` and `history.py`; Track G's
+  `recorder.py`; each stub's test in its track's file. `tests/ole5_voice/evals/fakes.py` (a
+  fake `SpeechToText`, a fake normalizer, a fake matcher, scorecard writer, sign test, spelling
+  check and tracing helpers) with `test_fakes.py`, and `samples.py` (valid made-up models).
+  The poe tasks `golden`, `eval`, `eval-compare`, `eval-history` and `record`, each running
+  `python -m ole5_voice.evals.<module>`; GP-17's test (`tests/harness/test_commands.py`) now
+  reads every module a poe task runs with `python -m`, the apps' included, and fails a task's
+  module with no `main`; `tests/ole5_voice/evals/test_commands.py` runs each command's `--help`
+  as `python -m` would. CLAUDE.md gains two rows for the five tasks and a code-map line (112 of
+  its 120 lines).
 
 ## Decision log
 
@@ -723,6 +744,32 @@ All entries are the agent's choices of 2026-11-01, with the agent's reasons.
 - 2026-11-01: The types two tracks share live in modules of Block 0's own,
   `domain/text/rulings.py` and `domain/recall.py`, not in the tracks' files the plan names, so
   every file keeps one owner ("Parallel tracks": a file two tracks need goes into Block 0).
+- 2026-11-01: `models.py`'s choices, the agent's, which Tracks D to G build to (a change goes
+  through the integrator):
+  - an item's `kind` is a snake_case name, not a closed list, since Track D maps the lab's
+    kinds (`sentence`, `backchannel`, `command`, `confirm`, `request`, `unscripted`: `refs.json`,
+    read 2026-11-01) and Q4 may change the script's; `strata.toml` and its test hold the kinds
+    used. `language` is one of `saudi`, `msa`, `english`, `mixed` and `none`, `device` (the
+    microphone) one of `laptop`, `wired` and `bluetooth`, and `split` `dev` or `held-out`;
+  - a variant holds one or more segments (a take the detector split in two), its reference
+    and where it came from (`script`, `typed`, `none`), its confirmations (each with its
+    review pass), its turn ends and its tags;
+  - every path below a root is relative, with `/` and no `..`, refused otherwise as it is read,
+    so no manifest or request names a file outside its root (for the recorder's allow-list);
+  - a review is a model of its own, `Review`, written as a new file, since the recorder never
+    rewrites a file, and a take's sidecar cannot then take its confirmations;
+  - a request's `outcome` is `ok`, `stuck` or one of `ProviderError`'s kinds, which a test keeps
+    equal to the library's list;
+  - a scorecard says `one speaker` in a field that can hold nothing else (D-006), and a held-out
+    run's holds no variant;
+  - a history line holds the run's billed seconds as well as its cost, since step 20 adds up
+    the spend so far from the history.
+- 2026-11-01: The recorder's page files (`recorder_page/index.html`, `recorder.js`) get no stub:
+  they are not Python, and no other track reads them; Track G creates them.
+- 2026-11-01: A stub whose constructor raises is tested past it with `__new__`, and each
+  command's `if __name__ == "__main__"` line is run by its `--help` test through `runpy`, so the
+  coverage floor holds with no `pragma: no cover`. `FakeTracing` subclasses `Tracing`, so a
+  runner typed with the library's class takes it.
 
 ## The owner's decisions
 
