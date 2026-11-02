@@ -18,7 +18,7 @@ from t2_agentic_voice.adapters.groq_stt import GroqSTT
 from t2_agentic_voice.core.errors import ConfigurationError, ProviderError
 from t2_agentic_voice.domain.ports.speech_to_text import AudioClip
 
-from tests.t2_agentic_voice.adapters.test_groq_stt import CLIP, KEY, SETTING, FakeGroq, call, parts
+from tests.t2_agentic_voice.adapters.groq_support import CLIP, KEY, SETTING, FakeGroq, call, parts
 
 URLS = ("http://api.groq.com", "https://made:up@api.groq.com", "https://api.groq.com?made=up")
 MORE_URLS = ("https://api.groq.com#made-up", "https://", "https://api.groq.com:99999", "https://[x")
