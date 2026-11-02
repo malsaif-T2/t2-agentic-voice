@@ -102,7 +102,7 @@ def test_from_env_says_what_to_correct(monkeypatch: pytest.MonkeyPatch) -> None:
         VoiceSettings.from_env()
     assert raised.value.message == (
         f"These settings cannot load: {PREFIX}STT__TIMEOUT_S (Input should be greater than 0). "
-        "FIX: correct each one in the environment or the .env file."
+        "FIX: correct each one in the environment, the .env file or the code values given."
     )
 
 

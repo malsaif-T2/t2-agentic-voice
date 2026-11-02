@@ -27,10 +27,11 @@ _ICE_SCHEMES = ("stun:", "turn:", "turns:")
 _DEFAULT_PORTS = {"http": 80, "https": 443}
 # The widest network a trusted proxy entry may name, by IP version: a wider one trusts nearly
 # every peer's X-Forwarded-For, as "*" does. A dual-stack socket shows an IPv4 peer as an
-# IPv4-mapped IPv6 address, so those are held to IPv4's bound.
+# IPv4-mapped IPv6 address, and a NAT64 gateway as one of its well-known prefix (RFC 6052), so
+# both ranges are held to IPv4's bound.
 _WIDEST = {4: 8, 6: 32}
-_MAPPED = ipaddress.IPv6Network("::ffff:0:0/96")
-_MAPPED_WIDEST = 96 + _WIDEST[4]
+_EMBEDDED = (ipaddress.IPv6Network("::ffff:0:0/96"), ipaddress.IPv6Network("64:ff9b::/96"))
+_EMBEDDED_WIDEST = 96 + _WIDEST[4]
 Network = ipaddress.IPv4Network | ipaddress.IPv6Network
 
 
@@ -194,12 +195,13 @@ def _network(text: str) -> Network | str | None:
 
 
 def _too_wide(network: Network) -> bool:
-    """Whether `network` is wider than its version's bound, or holds more of the IPv4-mapped
-    addresses than IPv4's bound allows."""
+    """Whether `network` is wider than its version's bound, or holds more of a range of IPv6
+    addresses that embed IPv4 ones than IPv4's bound allows."""
     if network.prefixlen < _WIDEST[network.version]:
         return True
-    mapped = isinstance(network, ipaddress.IPv6Network) and network.overlaps(_MAPPED)
-    return mapped and network.prefixlen < _MAPPED_WIDEST
+    if not isinstance(network, ipaddress.IPv6Network) or network.prefixlen >= _EMBEDDED_WIDEST:
+        return False
+    return any(network.overlaps(embedded) for embedded in _EMBEDDED)
 
 
 def _plain(text: str) -> bool:

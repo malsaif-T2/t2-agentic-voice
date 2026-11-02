@@ -109,6 +109,7 @@ def test_a_check_names_the_setting_under_the_prefix_it_was_loaded_with(
         (ServerSettings, {"forwarded_allow_ips": ("2001:db8::/31",)}),  # wider than /32
         (ServerSettings, {"forwarded_allow_ips": ("::ffff:0:0/96",)}),  # every IPv4 peer, mapped
         (ServerSettings, {"forwarded_allow_ips": ("::/32",)}),  # holds the mapped ones too
+        (ServerSettings, {"forwarded_allow_ips": ("64:ff9b::/96",)}),  # every IPv4 peer, NAT64
         (ServerSettings, {"forwarded_allow_ips": ("10.0.0.5/24",)}),  # host bits: matches none
         (ServerSettings, {"turn_ttl_s": 86_401}),  # longer than a day
         (ServerSettings, {"turn_ttl_s": 0}),
@@ -162,6 +163,7 @@ def test_the_proxy_and_origin_refusals_say_what_to_write() -> None:
     [
         {"forwarded_allow_ips": ("127.0.0.1", "10.0.0.0/8", "::1", "2001:db8::/32")},
         {"forwarded_allow_ips": ("10.0.0.0/24", "::ffff:10.0.0.0/104", "::ffff:10.0.0.5")},
+        {"forwarded_allow_ips": ("64:ff9b::a00:0/104", "2001:db8::/48")},
         {"allowed_origins": ("https://www.example.com", "http://localhost:8000")},
         {"allowed_origins": ("https://example.com:8443", "http://[::1]:8000", "http://[::1]")},
         {"ice_servers": ("stun:stun.example:3478", "turns:turn.example:443?transport=tcp")},

@@ -94,7 +94,7 @@ _MOVED = {
 # What the validation context holds when `from_env` loads the settings, so a failure's FIX line
 # says where its values came from.
 _LOADED = "from_env"
-_FIX_LOADED = "FIX: correct each one in the environment or the .env file."
+_FIX_LOADED = "FIX: correct each one in the environment, the .env file or the code values given."
 _FIX_CODE = "FIX: correct each one in the code that builds the settings."
 
 log = get_logger(__name__)
