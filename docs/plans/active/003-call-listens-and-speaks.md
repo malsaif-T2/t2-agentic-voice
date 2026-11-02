@@ -700,6 +700,18 @@ criteria say)
     new lock, before the override: 'Total coverage: 100.00%', '1377 passed, 1 skipped in 92.66s'.
     Steps 4 and 5 run next, as a workflow of agents: five readers of the installed sources, each
     checked by an agent that re-opens every cited line, and the two spikes.
+- 2026-11-02: Steps 4 and 5, by a workflow of 13 agents in about 56 minutes: five readers of the
+  installed sources, each checked by an agent that re-opened every cited line, two spikes on this
+  machine with no request to Groq and no packet beyond it, and a write-up. The findings, with file
+  and line, are the appendix "Block 0's reading of the installed packages"; the counts per reader,
+  as the write-up printed them, head it, and no finding was judged wrong. What changes the plan is
+  in the decision log's entries of this date: one Whisper request per user turn works; the runner's
+  names stand (`PipelineWorker`, `WorkerRunner`); what "Pipecat's interruptions are off" means; the
+  end-of-candidates PATCH; aioice 0.11.0's hang on one offer, met by a guard in `voice` rather than
+  a constraint; the event loop on Windows; proxy headers while no proxy exists; and media on the LAN
+  addresses. The interface details are the appendix's "Changes to the plan's interfaces", which the
+  tracks read. Q2's `forward` cannot hold as it was worded, so Q19 goes to the owner; Block 0 builds
+  `logging.pipecat` with `off` only meanwhile. Next: steps 6 to 12.
 
 ## Decision log
 
@@ -898,6 +910,50 @@ any before the step it affects.
   billed Whisper seconds (the published 7.2K audio seconds an hour).
 - 2026-11-02: The measured requests per call minute go into a decision entry, as D-024 recorded the
   noise, so M6 cites them when it sets the cap on live calls.
+- 2026-11-02, after Block 0's read and spike (the appendix): Whisper's cut stays one request per
+  user turn. The spike's bridge, on Pipecat's `STTService` after `UserTurnProcessor`, held a turn
+  with a 0.88 s pause and sent it once (its run C), with `wait_for_transcript` off; with it on, the
+  turn ended only at the 5 s stop timeout (run D). The bridge subclasses `STTService`, not the
+  `SegmentedSTTService` the design's 13 names. Whether a paused request is one turn is Smart Turn's
+  verdict at the pause: a first clause that sounds complete ends the turn (run B: two turns, two
+  requests), so the registration's request counts keep their upper bounds.
+- 2026-11-02, amending the entry on the end-of-candidates PATCH: the PATCH reaches aioice 0.11.0,
+  but it makes a failure show sooner only when no candidate pair is still being checked (33 ms in
+  the spike's F8). A call whose candidates are unreachable ends at Pipecat's 60 s timeout either
+  way, as `closed` with no `failed`, since aioice gives up on a check only after about 63.5 s
+  (`aioice/stun.py`, lines 20-21). The client still sends the PATCH; a faster failure comes from
+  `voice`'s own deadline from offer to connected (Track E), which also meets the next entry.
+- 2026-11-02: aioice 0.11.0 hangs on one offer: with `a=end-of-candidates` and no candidate, the
+  server's peer drops its only component and stays `new`, with no event and no timeout
+  (`aioice/ice.py`, line 1101; the spike's F7). Q1 allowed a constraint below 0.11 if the spike
+  needed one. The agent adds none, since whether 0.10 differs is UNVERIFIED and a browser's trickled
+  offer carries no such mark; `voice` refuses that offer and closes any call not connected within
+  its deadline instead (Track E). The owner may still ask for the constraint.
+- 2026-11-02: On Windows the servers run uvicorn on a selector event loop, and every peer's close is
+  bounded by a timeout. On the default proactor loop, aioice's UDP sockets stopped receiving after a
+  WinError 10054, and 2 or 3 of 16 call closes hung, against 0 of 16 on a selector loop (the spike;
+  the standard library's `asyncio/proactor_events.py`, lines 541 and 108). Whether uvicorn takes
+  that loop in a running server is UNVERIFIED until Track F runs it. With all hosting on this
+  machine for now, this holds for every M2 call.
+- 2026-11-02: While no proxy is in front of the backend, `serve()` and the Ole5 app's server run
+  uvicorn with `proxy_headers=False`, and `server.forwarded_allow_ips` is empty by default (`*`
+  refused): uvicorn's defaults trust 127.0.0.1 and ::1, so any local client could set its address
+  through `X-Forwarded-For`. uvicorn also runs with one worker, no access log, no server header and
+  no `env_file`.
+- 2026-11-02: A browser and the backend on this machine meet over its private network addresses, not
+  loopback: aioice never offers 127.0.0.1 (`aioice/ice.py`, line 88), so `t2v dev` bound to
+  127.0.0.1 still opens UDP sockets on the LAN addresses, and a browser's `.local` candidates send
+  mDNS on the LAN. SECURITY.md's trust boundaries say so (step 12).
+- 2026-11-02: "Pipecat's interruptions are off" means: the turn start strategies are exactly
+  `VADUserTurnStartStrategy(enable_interruptions=False)` (its default broadcasts an interruption at
+  every turn start), RTVI is off (`enable_rtvi=False`), and no DTMF aggregator runs. Stop, Esc and
+  `hangup` use Pipecat's interruption path on purpose, through the session bridge's
+  `broadcast_interruption()`, which drops queued audio up to the output transport; up to about 40 ms
+  already in the WebRTC track still plays, so the capture test checks the output transport, not the
+  wire.
+- 2026-11-02: Importing onnxruntime took 8 to 12 s per process on this machine (the spike), so
+  `import t2_agentic_voice` and `t2v --help` import no module that loads it (GP-17), the lifespan
+  builds Silero and Smart Turn, and few tests import `voice` in a child process.
 
 ## The owner's decisions
 
@@ -1619,6 +1675,20 @@ call (step 18), since those calls spend the same money and limits:
 - **Q18. The call script.** The calls of "C" above, or fewer or more; with or without the Bluetooth
   headset. **The agent recommends the script as proposed**, the Bluetooth call included, so that M3
   has its recordings for the Bluetooth warning.
+- **Q19. Pipecat's log lines when a team asks for them (`logging.pipecat = "forward"`).** *Asked on
+  2026-11-02, after Block 0's read; needed before Track E.* Q2's (a) said that `forward` switches
+  Pipecat's namespace back on and forwards WARNING and above to `t2_agentic_voice.pipecat`, with no
+  sink added or removed. The read shows that cannot hold: a namespace switched off reaches no sink
+  at all (`loguru/_logger.py`, line 1995), so `forward` must switch it on and add a forwarding sink,
+  and loguru's default sink, which prints to the screen, then prints every Pipecat DEBUG line, call
+  content included, unless it is removed. Options: (a) `forward` switches the namespace on, adds a
+  sink that forwards WARNING and above with the record's level and module but never its text, and
+  removes loguru's default sink if it is still installed: a process-wide change a team makes only by
+  choosing `forward`, which the guide says; (b) M2 builds only `off`, the default, and `forward`
+  waits for a team that asks, built then as (a); (c) `forward` leaves the sinks alone, set aside
+  because the default sink would print call content (invariant 8). **The agent recommends (b):** M2
+  needs only `off`, a forwarded record carries no text and so says little, and adding the value
+  later breaks nothing. `off` behaves as Q2 settled it either way.
 
 Every question above gates the run as well as its own step, so each is also the owner's call before
 the run it touches.
@@ -1676,3 +1746,1148 @@ the run it touches.
    host (Q7).
 9. **Before the measurement runs:** answer Q14 to Q16 and Q18, and say again whether anything else
    uses the key during the runs.
+
+## Block 0's reading of the installed packages
+
+Written by Block 0's workflow on 2026-11-02 (steps 4 and 5) and kept here as it wrote it, for
+the agents that build steps 6 to 12 and the tracks; the decision log records what it changed.
+
+For the agents that build Block 0 (steps 6 to 12) and the tracks. Every path below is relative to
+the Block 0 worktree's `.venv/Lib/site-packages`,
+with a 1-based line in the installed file, unless it starts with `stdlib:` (CPython 3.12.13 at
+uv's CPython 3.12 for Windows, `Lib/`).
+Versions: pipecat-ai 1.15.0, aiortc 1.15.0, aioice 0.11.0, av 17.1.0, fastapi 0.162.0, starlette
+1.10.0, uvicorn 0.54.0, loguru 0.7.3, onnxruntime 1.31.1, numba 0.68.1, llvmlite 0.50.0, pyjwt
+2.15.1, num2words 0.5.14, openai 3.42.1, websockets 17.4.
+
+Marks: a plain line is a reader's finding a checker confirmed. **[corrected]** replaces a finding
+the checker judged partly right. **[from the check]** is a fact the checker found that the reader
+missed. **UNVERIFIED** means the source read does not show it.
+
+Counts (confirmed / corrected / wrong, then missed facts added): env 36 / 4 / 0, +6; logs 33 / 4 / 0,
++6; turns 42 / 3 / 0, +6; output 47 / 5 / 0, +6; web 35 / 2 / 0, +6.
+
+---
+
+### Step 4, bullet 1: environment variables, `load_dotenv`, SCTP, aiortc's default ICE servers
+
+#### Pipecat
+
+- `PIPECAT_SCTP_MAX_CHUNK_SIZE` is read at import, module level (default 1100), and written
+  process-wide to `aiortc.rtcsctptransport.USERDATA_MAX_LENGTH` (aiortc's own default 1200 at
+  `aiortc/rtcsctptransport.py:28`): `pipecat/transports/smallwebrtc/connection.py:77-79`. A non-int
+  raises ValueError at import; no parameter overrides it. conftest pops it at module top.
+- `PIPECAT_SMART_TURN_LOG_DATA` is read in `LocalSmartTurnAnalyzerV3.__init__` via `env_truthy`;
+  when true every analysed turn's caller audio is written as WAV under `./smart_turn_audio_log`
+  (`pipecat/audio/turn/smart_turn/local_smart_turn_v3.py:46`, dir at :97, write at :176-178). No
+  constructor override (only the private `_log_data`). Breaks invariant 8: conftest removes it,
+  `voice` refuses or clears it.
+- **[from the check]** `env_truthy` raises `InvalidEnvVarValueError` outside its true/false sets
+  (`pipecat/utils/env.py:49`), so a malformed `PIPECAT_SMART_TURN_LOG_DATA` makes the analyzer's
+  constructor raise; its WAV names use `%H:%M:%S` (`pipecat/audio/turn/smart_turn/local_smart_turn_v3.py:96`), Windows effect
+  UNVERIFIED.
+- `PIPECAT_SETUP_FILES` is read at each `PipelineWorker` set-up (`pipecat/pipeline/worker.py:1805`)
+  and `WorkerRunner` start (`pipecat/workers/runner.py:454`); each listed file is executed and its
+  `setup_pipeline_worker(worker)` / `setup_worker_runner(runner)` called (`pipecat/utils/startup.py:40`,
+  exec at :57). Code injection into every call: conftest removes it, `voice` refuses it.
+- `PIPECAT_LOG_LLM_CONTEXT` is read once at the first `LLMService` construction
+  (`pipecat/services/llm_service.py:429`) and cached (`pipecat/utils/log_config.py:71`). Only matters
+  if an LLMService is built (M2 builds none).
+- `PIPECAT_ALLOWED_ORIGINS` is the default factory of the WebSocket transports' `allowed_origins`
+  (`pipecat/utils/security/allowed_origins.py:18`; `pipecat/transports/websocket/fastapi.py:87`,
+  `pipecat/transports/websocket/server.py:65`); SmallWebRTC does not read it.
+- **[corrected]** `PIPECAT_ALLOWED_FILE_URL_NETWORKS` (`pipecat/utils/security/ssrf.py:40`) is read
+  at every `LLMService.__init__` through `self._file_resolver = file_resolver or FileResolver()`
+  (`pipecat/services/llm_service.py:433` -> `pipecat/utils/file_resolver.py:117-118`); override with
+  `file_resolver=FileResolver(allowed_url_networks=[])`. Off the M2 path.
+- `HOSTNAME` and `ENVIRONMENT` are read only by `pipecat.utils.tracing.setup.setup_tracing()`
+  (`pipecat/utils/tracing/setup.py:70`). **[from the check]** that function's `Resource.create` also
+  merges `OTEL_RESOURCE_ATTRIBUTES` and `OTEL_SERVICE_NAME` (`opentelemetry/sdk/resources/__init__.py:333`, `:350`).
+- The other env reads under `pipecat/` sit in `pipecat/runner/*.py` (DAILY_*, LIVEKIT_*, TWILIO_*,
+  `PIPECAT_ICE_SERVERS` at `pipecat/runner/run.py:2033`, ...), `pipecat/cli/hub_status.py`,
+  `pipecat/evals` (`pipecat/evals/suite.py:1252` setdefaults `OMP_NUM_THREADS`), Krisp and Tavus; `pipecat/services/stt_service.py`,
+  `pipecat/services/tts_service.py` and the other service base modules read none.
+- **[corrected]** `pipecat/__init__.py` reads no env var; the banner is gated only on `sys.argv[0]`
+  (`pipecat/__init__.py:24-25`, `:53-54`), but `LOGURU_AUTOINIT` and `LOGURU_LEVEL`
+  (`loguru/_defaults.py:30`, `:40`) decide whether it reaches the autoinit stderr sink;
+  `logger.disable("pipecat")` must run before the first pipecat import.
+
+#### `load_dotenv` through Pipecat imports
+
+- **[corrected]** `pipecat.runner.run` calls `load_dotenv(override=True)` at import, module level,
+  then sets `os.environ["ENV"] = "local"` (`pipecat/runner/run.py:171-172`). `find_dotenv` walks up
+  from the caller file, or from `os.getcwd()` in a REPL, a debugger or whenever `sys.gettrace()` is
+  set (coverage) (`dotenv/main.py:361-363`); both walks pass the worktree and the main checkout
+  root, so either can load the main checkout's `.env`. `voice` never imports it; a harness test
+  asserts `'pipecat.runner.run' not in sys.modules` after importing `voice`.
+- No other pipecat module imports `pipecat.runner.run` (self-references at :39 and :210 are
+  docstrings). A probe of 25 modules in fresh processes (pipeline worker/task/runner, STT/TTS/LLM
+  base, groq stt/tts/llm, smallwebrtc connection/transport/request_handler, silero, smart turn v3,
+  rtvi, numbers transform, runner.utils, runner.types, resampy resampler, fastapi, uvicorn, aiortc)
+  made no dotenv call; checker re-probed 8 of them. `request_handler` imports `pipecat.runner.utils`
+  lazily, only in esp32 mode (`pipecat/transports/smallwebrtc/request_handler.py:231`).
+- `pipecat.cli.commands.eval` calls `load_dotenv(find_dotenv(usecwd=True))` only in the `pipecat eval`
+  CLI callback (`pipecat/cli/commands/eval.py:117`).
+- **[corrected]** `PYTHON_DOTENV_DISABLED` (evidence at `dotenv/main.py:26`) gates only
+  `load_dotenv` (`dotenv/main.py:418-422`), not `dotenv_values` (:438) or `find_dotenv`;
+  pydantic-settings reads an `env_file` through `dotenv_values`
+  (`pydantic_settings/sources/providers/dotenv.py:92`), so the flag does not stop the library's own
+  settings from reading one. Usable only as an extra guard in conftest.
+- **[from the check]** Pipecat's JSON bus deserializer imports any module named in a message's
+  `__type__` (`pipecat/bus/serializers/json.py:209`), the default of the network buses
+  (`pipecat/bus/network/redis.py:63`, `pipecat/bus/network/pgmq.py:128`, `pipecat/workers/proxy/websocket/client.py:96`):
+  a data-driven path to `pipecat.runner.run`. Off the M2 path.
+
+#### uvicorn
+
+- `env_file=` loads a dotenv file (`uvicorn/config.py:356`); through the CLI it can also come from
+  `UVICORN_ENV_FILE` (`uvicorn/main.py:61`). Never pass `env_file`.
+- `FORWARDED_ALLOW_IPS` is read at `Config()` only when `forwarded_allow_ips` is None, default
+  `'127.0.0.1,::1'` (`uvicorn/config.py:363`); with `proxy_headers` on by default (:225) it becomes
+  `ProxyHeadersMiddleware`'s trusted hosts (:543-544). A value in code wins.
+- `WEB_CONCURRENCY` sets `workers` when `workers` is None (`uvicorn/config.py:359`).
+  **[from the check]** With it set, `uvicorn.run` with an app object (not an import string) exits
+  with STARTUP_FAILURE (`uvicorn/main.py:614-617`): pass `workers=1` explicitly.
+- The click CLI takes every option from `UVICORN_*` (`uvicorn/main.py:61`); `uvicorn.run()`/`Config`
+  do not.
+
+#### FastAPI and `OTEL_*`
+
+- `FASTAPI_OTEL_AUTO_CONFIGURE` is read at `FastAPI()` construction; an explicit
+  `telemetry={'auto_configure': False}` overrides it (`fastapi/applications.py:1019`, user dict
+  spread after the default at :1022). When true, lifespan start attaches OTLP exporters from the env
+  (`fastapi/telemetry/_runtime.py:217`, providers at :157-171). **[from the check]** It also adds its
+  OTLP exporter to an already configured global provider such as Phoenix's
+  (`fastapi/telemetry/_runtime.py:186-202`), and configures only the signals whose flag is True (:105-109).
+- With auto_configure on it reads `OTEL_{TRACES,METRICS,LOGS}_EXPORTER`, the per-signal and generic
+  `OTEL_EXPORTER_OTLP_*_ENDPOINT` and `*_PROTOCOL` (`fastapi/telemetry/_runtime.py:43-58`); only otlp
+  with http/protobuf (or exporter `none`) is accepted, validation runs only when an endpoint is set
+  (:49), and a failure is a logged warning that includes the exception text (:218-222).
+- `OTEL_SDK_DISABLED=true` skips FastAPI's auto-configuration (`fastapi/telemetry/_runtime.py:96`).
+  **[from the check]** The SDK `TracerProvider` reads it too (`opentelemetry/sdk/trace/__init__.py:1278`)
+  and would quietly disable `voice`'s own Phoenix provider: conftest removes it.
+- `OTEL_INSTRUMENTATION_HTTP_KNOWN_METHODS` is read at `FastAPI()` construction, no override
+  (`fastapi/telemetry/_asgi.py:160`).
+- Native telemetry (tracing, metrics, logs on by default, `fastapi/applications.py:1015-1017`) turns
+  on per request once any global OTel provider is configured (`fastapi/telemetry/_asgi.py:181`), each
+  signal decided at :251-273, no metrics for WebSocket scopes (:260). A provider can also come from
+  `OTEL_PYTHON_TRACER_PROVIDER` (`opentelemetry/trace/__init__.py:569`).
+- **[from the check]** Importing fastapi imports `opentelemetry.propagate` (`fastapi/applications.py:29`
+  -> `fastapi/telemetry/_asgi.py:17`), which reads `OTEL_PROPAGATORS` at import
+  (`opentelemetry/propagate/__init__.py:108`, run at :151) and loads the named entry points; an
+  unknown name raises ValueError at import.
+- `FASTAPI_ENV` is read only by `_resolve_frontend_check_dir` (`fastapi/routing.py:1953`), reached
+  **[corrected]** from both `FastAPI.frontend` (`fastapi/applications.py:1333`) and `APIRouter.frontend`
+  (`fastapi/routing.py:2773`). Irrelevant unless `.frontend()` is used.
+
+#### Starlette, loguru, onnxruntime, numba, llvmlite, PyJWT, num2words, av, websockets
+
+- Starlette reads `os.environ` only through `starlette.config.Config` built by app code
+  (`starlette/config.py:19`); pipecat, fastapi, uvicorn never import it.
+- loguru reads at import `LOGURU_AUTOINIT`, `_FORMAT`, `_FILTER`, `_LEVEL`, `_COLORIZE`, `_SERIALIZE`,
+  `_BACKTRACE`, `_DIAGNOSE`, `_ENQUEUE`, `_CONTEXT`, `_CATCH` and `LOGURU_{level}_{NO,COLOR,ICON}`
+  (`loguru/_defaults.py:30-75`); a bad bool/int raises at import (:17-26); defaults LEVEL=DEBUG,
+  DIAGNOSE=True. conftest pops `LOGURU_*` at module top.
+- Autoinit adds a stderr sink from those defaults (`loguru/__init__.py:31`); `logger.add()` kwargs
+  default to the env values (`loguru/_logger.py:247-256`), explicit kwargs win. `logger.level()`
+  refuses to change an existing level's severity (`loguru/_logger.py:1608`), so a `LOGURU_*_NO` set
+  at import cannot be undone in code.
+- With `colorize=None`, colour is decided from `CI`, `TRAVIS`, ..., `PYCHARM_HOSTED` and on Windows
+  `TERM` (`loguru/_colorama.py:32`), only for `sys.__stdout__`/`sys.__stderr__` sinks (:24). Pass
+  `colorize=False`.
+- `ORT_LOAD_CONFIG_FROM_MODEL=1` is read at `InferenceSession` construction
+  (`onnxruntime/capi/onnxruntime_inference_collection.py:677`); the kwarg override (:674-675) is never
+  passed by Silero (`pipecat/audio/vad/silero.py:70-74`) or Smart Turn
+  (`pipecat/audio/turn/smart_turn/local_smart_turn_v3.py:76`). conftest removes it.
+- onnxruntime reads `SystemRoot` at import on Windows only for a DLL warning
+  (`onnxruntime/capi/_pybind_state.py:23`); its other reads are in backend/quantization/tools/
+  transformers, off the path; `print_debug_info()` prints PATH (`onnxruntime/__init__.py:338`).
+- numba reads every `NUMBA_*` and a `.numba_config.yaml` in the cwd at import
+  (`numba/core/config.py:144`, yaml :28, :129-141) and before each compile
+  (`numba/core/compiler.py:394`). Only `pipecat/audio/resamplers/resampy_resampler.py:14`
+  (`import resampy`) pulls numba/llvmlite in; no other probed module does.
+- llvmlite reads `LLVMLITE_ENABLE_IR_LAYER_TYPED_POINTERS` at import (`llvmlite/__init__.py:20`).
+- PyJWT reads `SPHINX_BUILD` at import (`jwt/api_jwt.py:25`, `jwt/algorithms.py:104`), typing only;
+  num2words reads none; av's Python reads only `PYAV_TESTDATA_DIR` (`av/datasets.py:13`).
+- websockets reads `WEBSOCKETS_*` tunables at import (`websockets/http11.py:33-53`, `websockets/frames.py:143`,
+  `websockets/asyncio/messages.py:19`, `websockets/client.py:409-412`, `websockets/legacy/client.py:601-604`); pipecat's STT/TTS/LLM
+  base modules import websockets at import (`pipecat/services/stt_service.py:16`). conftest pops
+  `WEBSOCKETS_*` at module top.
+
+#### openai and groq (reached only through Pipecat's vendor services, which ARCH-BAN bans)
+
+- pipecat imports openai at module level only in `pipecat/adapters/llm/services/*_adapter.py`
+  (`pipecat/adapters/llm/services/open_ai_adapter.py:11`), under TYPE_CHECKING in `pipecat/processors/aggregators/llm_context.py:61-62`, and lazily from
+  `pipecat/services/llm_service.py:521`. Groq STT subclasses the Whisper base, which imports `AsyncOpenAI`
+  (`pipecat/services/whisper/base_stt.py:17`).
+- Importing openai reads `OPENAI_LOG` (`openai/_utils/_logs.py:38`, via `openai/__init__.py:164`),
+  `OPENAI_API_TYPE`, `OPENAI_API_VERSION`, `AZURE_OPENAI_ENDPOINT` (`openai/__init__.py:212-216`),
+  `DEFER_PYDANTIC_BUILD` (`openai/_models.py:150`).
+- Pipecat's Groq STT client (`pipecat/services/whisper/base_stt.py:244`) leaves `OPENAI_ORG_ID`, `OPENAI_PROJECT_ID`,
+  `OPENAI_ADMIN_KEY`, `OPENAI_WEBHOOK_SECRET` and `OPENAI_CUSTOM_HEADERS` to the env
+  (`openai/lib/_client_auth.py:654-676`, `:702-717`); org/project become request headers
+  (`openai/_client.py:1090-1091`).
+- **[from the check]** Pipecat's Groq TTS builds `AsyncGroq(api_key=...)` with no base_url
+  (`pipecat/services/groq/tts.py:171`, no base_url parameter at :95), so `GROQ_BASE_URL`
+  (`groq/_client.py:302`) redirects every request, key included; `GROQ_CUSTOM_HEADERS`
+  (`groq/_client.py:306`) adds headers.
+- **[from the check]** Importing groq runs `setup_logging` (`groq/__init__.py:79`), which reads
+  `GROQ_LOG` (`groq/_utils/_logs.py:17`); `debug`/`info` lowers the groq and httpx loggers at import.
+
+#### aiortc and aioice
+
+- aiortc falls back to `stun:stun.l.google.com:19302` in `RTCIceGatherer.getDefaultIceServers()`
+  (`aiortc/rtcicetransport.py:226`), called only at :193 when `iceServers is None`: no
+  configuration (`aiortc/rtcpeerconnection.py:297`) or `RTCConfiguration()` with its default None
+  (`aiortc/rtcconfiguration.py:62`). The gatherer is built at addTransceiver, createDataChannel or
+  setRemoteDescription (`aiortc/rtcpeerconnection.py:1130`, `:1135`). `iceServers=[]` never reaches it.
+- Fixture point (re-probed by the checker with non-loopback sockets blocked): monkeypatch
+  `aiortc.rtcicetransport.RTCIceGatherer.getDefaultIceServers` (same object as
+  `aiortc.RTCIceGatherer`) with a raising classmethod; `RTCPeerConnection().addTransceiver('audio')`
+  and `RTCPeerConnection(RTCConfiguration()).createDataChannel(...)` then raise synchronously,
+  `RTCConfiguration(iceServers=[])` does not (`aiortc/rtcicetransport.py:193`).
+- `SmallWebRTCConnection` turns a falsy `ice_servers` into `[]` (`pipecat/transports/smallwebrtc/connection.py:279-280`)
+  and builds `RTCConfiguration(iceServers=self.ice_servers, bundlePolicy=MAX_BUNDLE)` (:335-336).
+- aiortc and aioice read no env var. aioice resolves a remote `.local` mDNS candidate by multicast to
+  224.0.0.251:5353 (`aioice/ice.py:502`, `aioice/mdns.py:18-19`): LAN traffic the STUN patch does not
+  block; browsers commonly send such candidates.
+
+---
+
+### Step 4, bullet 2: Pipecat log lines with call content, or printed by default
+
+- The banner `ᓚᘏᗢ Pipecat {__version__} (Python ...)` is INFO under name `pipecat`, version only
+  (`pipecat/__init__.py:54`); it fires on the first import of any `pipecat.*` module, and a probe
+  with `logger.disable("pipecat")` first captured nothing (gate at :53). An ERROR fires at import if
+  `pipecat_flows` is installed (:45); it is not installed here.
+- loguru's default sink is DEBUG (`loguru/_defaults.py:40`): every Pipecat DEBUG+ line prints by
+  default unless the namespace is disabled; TRACE does not.
+- **[from the check]** A disabled name returns before any sink sees the record
+  (`loguru/_logger.py:1995`; emit at :2066): while `pipecat` is disabled no sink, a forwarder included,
+  gets any Pipecat record. Forwarding WARNING+ needs the namespace enabled and per-sink filtering, and
+  then the default stderr sink (`loguru/__init__.py:32`, DEBUG) prints every Pipecat DEBUG line unless
+  removed.
+- Name and disable coverage: the record name is the defining module's `__name__`
+  (`loguru/_logger.py:1974`); the check matches `name + "."` against `"pipecat."` (:1989-1991), so it
+  covers `pipecat` and `pipecat.*`, not `pipecat_flows`; a later disable updates cached names
+  (:1809-1811). Exception: `LLMService._log_llm_event` uses `opt(depth=2)`
+  (`pipecat/services/llm_service.py:576`), unused in M2.
+- TTS spoken text at DEBUG when not streamed: `Generating TTS [{text}]`
+  (`pipecat/services/tts_service.py:1971`); at TRACE per call when streamed (:1969).
+- **[corrected]** The DEBUG line with `self._streamed_text` (`pipecat/services/tts_service.py:1424`)
+  is in `_handle_llm_response_end`, run on `LLMFullResponseEndFrame` or `EndFrame` (:1184,
+  :1393-1394), not at a turn end. In TOKEN mode `TTSSpeakFrame` text builds up in `_streamed_text`
+  (:1744-1745), `_handle_tts_speak` (:1464) never flushes it, so it is logged at the next such frame
+  or at `EndFrame`, several utterances in one line; an interruption clears it unlogged (:1531). Call
+  text reaches DEBUG in both aggregation modes.
+- Unspoken text at WARNING when the TTS is unusable (`pipecat/services/tts_service.py:1982`); stale
+  word times at TRACE (:1016). Content-bearing "examples" at `pipecat/services/tts_service.py:155-167`, :2364,
+  `pipecat/services/stt_service.py:81-89` and the observers are docstrings that never run.
+- `STTService` logs no transcript (`pipecat/services/stt_service.py:456` is the content-free empty-audio
+  warning); neither does `SegmentedSTTService` (from :795).
+- Remote ICE candidates at DEBUG with IP, port, relatedAddress
+  (`pipecat/transports/smallwebrtc/connection.py:853`; repr from `aiortc/rtcicetransport.py:38`),
+  once per PATCHed candidate (`pipecat/transports/smallwebrtc/request_handler.py:260`). Signalling messages at DEBUG as raw dicts
+  (`pipecat/transports/smallwebrtc/connection.py:837`). Import-time DEBUG `[SCTP] USERDATA_MAX_LENGTH ...` (`pipecat/transports/smallwebrtc/connection.py:80`).
+- **[corrected]** `logger.error(f"Error parsing JSON message {message}, {e}")`
+  (`pipecat/transports/smallwebrtc/connection.py:389`) logs the raw data-channel message at ERROR on a
+  `json.loads` failure, a missing `"type"` (:380), a non-dict JSON value, or an error in
+  `_handle_signalling_message` incl. pydantic validation (:839); bytes messages appear as a bytes repr
+  (`aiortc/rtcsctptransport.py:1822`). App-message handler exceptions never reach it: they are logged
+  at ERROR by `pipecat/utils/base_object.py:285-290`. Holding loguru at INFO does not hide it.
+- `print("Warning: _queue does not exist or has changed in aiortc.")` goes to stdout outside loguru
+  (`pipecat/transports/smallwebrtc/connection.py:191`); no content.
+- On an offer error the request handler logs ERROR (`pipecat/transports/smallwebrtc/request_handler.py:239`) then the whole
+  `SmallWebRTCRequest` at DEBUG, SDP (IPs, ice-pwd, fingerprint) and `request_data` included
+  (`pipecat/transports/smallwebrtc/request_handler.py:240`; dataclass :37-41). Never put a token in
+  `request_data`.
+- INFO lines: pc_id on reuse (`pipecat/transports/smallwebrtc/request_handler.py:200`) and discard (:212); "Connecting/Disconnecting
+  to Small WebRTC" (`pipecat/transports/smallwebrtc/transport.py:544`, `:551`); inbound app messages
+  only at TRACE (`pipecat/transports/smallwebrtc/transport.py:811`).
+- RTVI is on by default (`pipecat/pipeline/worker.py:521-522`); its processor logs every inbound
+  non-RTVI message's full content at WARNING (`pipecat/processors/frameworks/rtvi/processor.py:293`),
+  validation errors at WARNING (:302, :385); the default RTVI observer sends user transcriptions and
+  bot text to the client (`pipecat/processors/frameworks/rtvi/observer.py:227`, `:234`). `system_logs_enabled` defaults False
+  (`pipecat/processors/frameworks/rtvi/observer.py:238`); when True it adds a loguru sink (:332).
+- Worker start lines are DEBUG and name-only (`pipecat/pipeline/worker.py:1327`, :1344;
+  `pipecat/workers/runner.py:230`, :273, :459).
+- **[corrected]** `pipecat/pipeline/worker.py:1642-1648` has three branches: fatal ErrorFrame at ERROR
+  with the frame (:1643); a no-longer-usable processor logged at ERROR with its name only (:1645-1646,
+  :1666); the rest at WARNING with the frame (:1648). `ErrorFrame.__str__` holds the error text
+  (`pipecat/frames/frames.py:1360`). `push_error` (:983/:985) goes through `push_error_frame`, which logs
+  `error.error` at ERROR (`pipecat/processors/frame_processor.py:1032`).
+- **[from the check]** Any exception a processor raises in `process_frame` becomes
+  `push_error("Error processing frame: {e}")` (`pipecat/processors/frame_processor.py:1346`), logged at
+  ERROR and again at WARNING by the worker; `push_frame` failures as "Uncaught exception: {e}" (:1250).
+  A bridge's unhandled SDK error text is logged even if it never calls `push_error`.
+- Event-handler exceptions (the app's own handlers included) are logged at ERROR with `str(e)`
+  (`pipecat/utils/base_object.py:288`).
+- **[from the check]** An exception from the app's `webrtc_connection_callback` is logged at ERROR
+  with `str(callback_error)` and swallowed; the SDP answer is still returned
+  (`pipecat/transports/smallwebrtc/request_handler.py:222`).
+- `FrameLogger` logs every frame at DEBUG (`pipecat/processors/logger.py:69`); `TranscriptionFrame`'s
+  str holds `user_id` and text (`pipecat/frames/frames.py:624`). `TranscriptionLogObserver`
+  (`pipecat/observers/loggers/transcription_log_observer.py:56`), `DebugLogObserver`
+  (`pipecat/observers/loggers/debug_log_observer.py:216`), `LLMLogObserver` (`pipecat/observers/loggers/llm_log_observer.py:64`, :76) log content; all
+  opt-in.
+- **[corrected]** Observers added by default without RTVI: `TurnTrackingObserver` (TRACE turn counts,
+  `pipecat/observers/turn_tracking_observer.py:186`; `pipecat/pipeline/worker.py:302`) and `IdleFrameObserver`, since `idle_timeout_secs`
+  defaults to 300 (`pipecat/pipeline/worker.py:105`, :313, :566-571); the worker then logs "Idle
+  timeout detected." at WARNING (:1781).
+- **[from the check]** OpenTelemetry is installed, so `is_tracing_available()` is True
+  (`pipecat/utils/tracing/setup.py:23`) and `@traced_tts/@traced_stt` are real
+  (`pipecat/utils/tracing/service_decorators.py:285-286`); `enable_tracing` defaults False (`pipecat/pipeline/worker.py:301`); turned on it
+  adds `UserBotLatencyObserver` and `TurnTraceObserver` (`pipecat/pipeline/worker.py:488-502`).
+- VAD/turn path: `VADProcessor` logs only "User started/stopped speaking" (`pipecat/processors/audio/vad_processor.py:73`, :81),
+  `UserTurnProcessor` only strategy names (`pipecat/turns/user_turn_processor.py:237`, :255, :279),
+  Smart Turn "End of Turn result: {state}" (`pipecat/audio/turn/smart_turn/base_smart_turn.py:167`): no transcript. Transcript lines
+  exist only in unused strategies (`pipecat/turns/user_stop/classifier_user_turn_stop_strategy.py:279`,
+  `pipecat/turns/user_stop/eager_user_turn_stop_strategy.py:191`, `pipecat/turns/eager_end_of_turn_mixin.py:132` TRACE).
+- Smart Turn's audio-to-disk (`pipecat/audio/turn/smart_turn/local_smart_turn_v3.py:46`, :97) is outside loguru: the namespace
+  disable does not stop it.
+- Pipecat's only stdlib logging: module-level `logging.warning/error` in
+  `pipecat/utils/tracing/service_decorators.py:303` (root logger), only inside the `@traced_*`
+  decorators, which the base classes do not apply; `stdlib: logging/__init__.py:2199-2200` calls
+  `basicConfig()` there when root has no handler.
+- No pipecat module calls `logger.enable`; `logger.remove/add` only in the CLI, evals, the RTVI log
+  sink, and `pipecat/runner/run.py:2211` (`logger.remove()`, then stderr at DEBUG, :2212).
+- aiortc: `logging.getLogger(__name__)` per module and a NullHandler on `aiortc`
+  (`aiortc/__init__.py:56`); prints nothing by default. Full local and remote SDP at DEBUG
+  (`aiortc/rtcpeerconnection.py:804-814`, `:886-890`); RTP and SCTP reprs carry no payload
+  (`aiortc/rtp.py:664-669`, `aiortc/rtcsctptransport.py:210-214`).
+- aioice: loggers `aioice.ice`, `aioice.turn`, NullHandler on `aioice` (`aioice/__init__.py:10`). INFO
+  already holds IPs: "Check %s %s -> %s" (`aioice/ice.py:988`, via :220), prflx (:833), mDNS (:510),
+  invalid host (:523), bind failure (:1028), TURN channel (`aioice/turn.py:105`); DEBUG logs every STUN
+  message (`aioice/ice.py:272`, :326; `aioice/stun.py:266`).
+- uvicorn loggers `uvicorn.error`, `uvicorn.access`, `uvicorn.asgi`, `uvicorn`; default
+  `LOGGING_CONFIG` sends `uvicorn` to stderr and `uvicorn.access` to stdout at INFO, propagate False,
+  `disable_existing_loggers` False (`uvicorn/config.py:85`, `:112`), applied when `log_config` is not
+  None (:398).
+- Access log: client `ip:port`, method, path with query, INFO (`uvicorn/protocols/http/h11_impl.py:477-484`,
+  `uvicorn/protocols/http/httptools_impl.py:484`), only if `uvicorn.access` has handlers (`uvicorn/protocols/http/h11_impl.py:57`).
+  **[from the check]** uvicorn 0.54's zttp protocol has its own access line
+  (`uvicorn/protocols/http/zttp_impl.py:464`, `uvicorn/protocols/http/zttp_h2_impl.py:477`); `access_log=False` covers all
+  (`uvicorn/config.py:427-429`).
+- WebSocket handshakes on `uvicorn.error` at INFO with client and path
+  (`uvicorn/protocols/websockets/websockets_impl.py:281`, `uvicorn/protocols/websockets/websockets_sansio_impl.py:440`, `uvicorn/protocols/websockets/wsproto_impl.py:385`); TRACE adds
+  connect/lose lines and `MessageLoggerMiddleware` (`uvicorn/protocols/http/h11_impl.py:103-105`, `uvicorn/config.py:541-542`). Never
+  run with `log_level="trace"`.
+
+---
+
+### Step 4, bullet 3: how `SegmentedSTTService` cuts, and one request per user turn
+
+- `STTService.process_frame` reacts to `InputAudioRawFrame`, VAD start/stop (TTFB), `UserStoppedSpeakingFrame`
+  (deferred reconnect), `STTUpdateSettingsFrame`, `STTMuteFrame`, `InterruptionFrame`,
+  `LLMContextAssistantTurnFrame`; all else pushed on unchanged (`pipecat/services/stt_service.py:487`).
+- **[corrected]** Base `process_audio_frame`: during a reconnect audio is buffered
+  (`pipecat/services/stt_service.py:434`) and replayed after (:717-718); dropped while muted (:437-438), not usable
+  (:442-443) or empty (:454-459); otherwise `run_stt` once per frame (:463).
+- `run_stt(self, audio: bytes)` is the only abstract method, an async generator of `Frame | None`
+  (`pipecat/services/stt_service.py:335`); the base calls it only from :463, so a bridge may call it once per turn.
+- `STTMuteFrame` is consumed and only sets `_muted` (`pipecat/services/stt_service.py:506`); a bridge overriding
+  `process_audio_frame` must check `self._muted` itself.
+- `SegmentedSTTService` keeps a rolling 1 s pre-roll before VAD start, unbounded during speech
+  (`pipecat/services/stt_service.py:1013`, size :864); on each `VADUserStoppedSpeakingFrame` it pads
+  `trailing_silence_secs` (0.5, :828), wraps WAV only when `wants_wav_segments` (:958-959), queues
+  `(audio, segment number)` (:965) to one in-order task (:967-978): one request per VAD segment;
+  if not usable it clears and queues nothing (:945-947). `finalized` = latest segment (:925).
+- `AIService.process_generator` pushes run_stt's frames downstream, `ErrorFrame` via
+  `push_error_frame`, which sends it UPSTREAM (`pipecat/services/ai_service.py:270`;
+  `pipecat/processors/frame_processor.py:1033`): a downstream session never sees a failed request as a frame.
+- **[corrected]** `validate_complete()` logs ONE ERROR line naming every field left NOT_GIVEN
+  (`pipecat/services/settings.py:249-251`); `model` (:97) and `STTSettings.language` (:403) both
+  default to NOT_GIVEN. Pass `STTSettings(model=None, language=None)`.
+- Without `ttfs_p99_latency` (and `supports_ttfs` True) a WARNING and `DEFAULT_TTFS_P99`
+  (`pipecat/services/stt_service.py:572`); the `STTMetadataFrame` is broadcast both ways right after StartFrame
+  (`pipecat/services/ai_service.py:104`, :234-236).
+- `TurnAnalyzerUserTurnStopStrategy(*, turn_analyzer, wait_for_transcript=True)`
+  (`pipecat/turns/user_stop/turn_analyzer_user_turn_stop_strategy.py:53`; setter :95-97); with False it
+  reports the stop as soon as the analyzer says COMPLETE (:336-342). Only the LLM aggregator's
+  realtime mode flips it (`pipecat/processors/aggregators/llm_response_universal.py:1101-1104`), never `UserTurnProcessor`.
+- It awaits `analyze_end_of_turn` on each VAD stop (`pipecat/turns/user_stop/turn_analyzer_user_turn_stop_strategy.py:232`,
+  COMPLETE at :269) and treats a COMPLETE from `append_audio` (silence fallback) as the end
+  (:206-210). It does not override `decision_scheduled` (base False,
+  `pipecat/turns/user_stop/base_user_turn_stop_strategy.py:167`), so the 5 s stop timeout stays armed.
+- `UserTurnStrategies` with no or empty lists uses start `[VADUserTurnStartStrategy(), TranscriptionUserTurnStartStrategy()]`
+  and stop `[TurnAnalyzerUserTurnStopStrategy(turn_analyzer=LocalSmartTurnAnalyzerV3())]`
+  (`pipecat/turns/user_turn_strategies.py:137`, :416, :427); defaults `start_mode FIRST`, `stop_mode ALL`
+  (:92-93; ALL ends when every stop strategy decided, `pipecat/turns/user_turn_controller.py:646`). Pass both lists.
+- Start strategies: Base, External, KrispVivaIP, MinWords, Transcription, VAD, WakePhrase;
+  `VADUserTurnStartStrategy` fires on every `VADUserStartedSpeakingFrame`
+  (`pipecat/turns/user_start/vad_user_turn_start_strategy.py:27`). `TranscriptionUserTurnStartStrategy`
+  fires on any `TranscriptionFrame` (`pipecat/turns/user_start/transcription_user_turn_start_strategy.py:36`), with no bot-state
+  check despite its docstring (:34-37).
+- **[corrected]** Stop strategies: Base, Classifier, Deferred, Eager, ExternalUserTurnCompletion,
+  External, LLMTurnCompletion, SpeechTimeout, TurnAnalyzer; the TurnAnalyzer import is at
+  `pipecat/turns/user_stop/__init__.py:16`; SpeechTimeout's `user_speech_timeout=0.6` and
+  `wait_for_transcript=True` at `pipecat/turns/user_stop/speech_timeout_user_turn_stop_strategy.py:51-52`.
+- Smart Turn defaults `STOP_SECS = 3`, `PRE_SPEECH_MS = 500`, `MAX_DURATION_SECONDS = 8`
+  (`pipecat/audio/turn/smart_turn/base_smart_turn.py:27`, params :41-43). The silence fallback returns
+  COMPLETE once silence reaches `stop_secs` and clears the buffer (:133); the analysed segment starts
+  `pre_speech_ms + start_secs` before speech, capped at 8 s (:215, :233-236): nothing caps the bridge's
+  held audio.
+- **[from the check]** After a fallback COMPLETE the buffer is already cleared (`pipecat/audio/turn/smart_turn/base_smart_turn.py:138`),
+  so the follow-up `analyze_end_of_turn` (`pipecat/turns/user_stop/turn_analyzer_user_turn_stop_strategy.py:207`) returns
+  `(INCOMPLETE, None)` (`pipecat/audio/turn/smart_turn/base_smart_turn.py:211-212`): fallback turns carry no MetricsFrame or probability.
+- **[from the check]** The fallback counts silence per arriving chunk from the strategy's VAD flag
+  (`pipecat/turns/user_stop/turn_analyzer_user_turn_stop_strategy.py:199`, `pipecat/audio/turn/smart_turn/base_smart_turn.py:130-131`): it resets on speech and
+  freezes if audio stops arriving; then only the 5 s stop timeout ends the turn
+  (`pipecat/turns/user_turn_controller.py:719-723`).
+- Smart Turn v3.2: `LocalSmartTurnAnalyzerV3(*, smart_turn_model_path=None, cpu_count=1, **kwargs)`
+  loads `smart-turn-v3.2-cpu.onnx` (8,679,182 bytes) from the wheel
+  (`pipecat/audio/turn/smart_turn/local_smart_turn_v3.py:50`), session built in `__init__` (:76); imports numpy, onnxruntime, soxr,
+  loguru (:15-18); features are vendored numpy (`pipecat/audio/turn/smart_turn/_whisper_features.py:26-27`); torch/transformers only
+  in `pipecat/audio/turn/smart_turn/local_smart_turn_v2.py:22-25`. Last 8 s kept, short audio zero-padded at the start (:151, :161),
+  COMPLETE when probability > 0.5 (:174).
+- Silero: `silero_vad.onnx` (2,327,524 bytes) from `pipecat.audio.vad.data`, CPU provider, 16000 or
+  8000 Hz only (`pipecat/audio/vad/silero.py:171`, rate check :209), loaded in `__init__` (:187).
+- `VADParams` defaults confidence 0.7, start 0.2, stop 0.2, min_volume 0.6
+  (`pipecat/audio/vad/vad_analyzer.py:25`): the plan's starting values.
+- **[from the check]** `UserTurnProcessor` passes frames of either direction to its controller
+  (`pipecat/turns/user_turn_processor.py:200`), so the bridge's upstream `STTMetadataFrame` reaches the stop strategy
+  as its STT timeout (`pipecat/turns/user_stop/turn_analyzer_user_turn_stop_strategy.py:170`); harmless with
+  `wait_for_transcript=False`.
+- **[from the check]** A permanent error marks a processor unusable (`pipecat/processors/frame_processor.py:1016-1017`);
+  the base then drops audio (`pipecat/services/stt_service.py:442`). A per-turn bridge needs its own unusable branch that
+  still emits one result per turn.
+- **[from the check]** `EndFrame`/`CancelFrame` only stop `UserTurnProcessor`'s controllers
+  (`pipecat/turns/user_turn_processor.py:204-214`): no `UserStoppedSpeakingFrame` for a turn open at hang-up. The
+  bridge flushes or drops held audio on EndFrame itself, as `SegmentedSTTService.stop` drains
+  (`pipecat/services/stt_service.py:875-885`).
+
+### Step 4, bullet 4: Stop, broadcasts, `UserTurnProcessor`, `pc_id`, `TranscriptionFrame`
+
+#### Stop path (the design's 13, **verify**)
+
+- 1.15.0 has no `StartInterruptionFrame`; the frame is `InterruptionFrame(SystemFrame)`, no fields
+  (`pipecat/frames/frames.py:1425`). `PipelineParams` has no `allow_interruptions`
+  (`pipecat/pipeline/worker.py:197`; no hit in `pipecat/`).
+- `UserTurnProcessor` broadcasts an interruption on turn start when the start strategy's
+  `enable_interruptions` is true (`pipecat/turns/user_turn_processor.py:244-245`), default True
+  (`pipecat/turns/user_start/base_user_turn_start_strategy.py:69`); `VADUserTurnStartStrategy` has no own `__init__`.
+  **[corrected]** Other sources also interrupt: `DTMFAggregator` on the first digit
+  (`pipecat/processors/aggregators/dtmf_aggregator.py:106`), `RTVIProcessor.interrupt_bot` on
+  `send-text`/`send-file` with `run_immediately` (`pipecat/processors/frameworks/rtvi/processor.py:481`, `:569`), voicemail and
+  speech-to-speech LLM services.
+- Any processor can call `broadcast_interruption()`: resets its own process queue, stops metrics,
+  pushes `InterruptionFrame` downstream and upstream (`pipecat/processors/frame_processor.py:1048`).
+- Every `FrameProcessor` handles `InterruptionFrame` unconditionally: cancels and recreates its
+  process task, keeping only `interruptible=False` frames (`pipecat/processors/frame_processor.py:868-869`, :1179-1180;
+  `pipecat/utils/frame_queue.py:74-83`). An overriding `process_frame` must call `super()` and push it on.
+- `TTSService` on `InterruptionFrame` resets its aggregators and drops every interruptible audio
+  context (`pipecat/services/tts_service.py:1179`); `run_tts` runs in the process task, which the
+  interruption cancels.
+- `BaseOutputTransport` pushes the frame on and calls the media sender's `handle_interruptions`
+  (`pipecat/transports/base_output.py:379`), which resets the audio queue, keeps only uninterruptible
+  audio, and emits `BotStoppedSpeakingFrame` if none is left (:621).
+- `InterruptionWorkerFrame`, pushed either way, makes the worker queue an `InterruptionFrame` at the
+  pipeline head (`pipecat/pipeline/worker.py:1637`): for a stopper downstream of the TTS.
+- `OutputTransportMessageFrame` (DataFrame) is queued in the audio queue behind audio
+  (`pipecat/transports/base_output.py:702`, sent at :914-915) and dropped by a Stop; `OutputTransportMessageUrgentFrame`
+  (SystemFrame) is sent at once (:382-383).
+- **[from the check]** `Frame.interruptible` is `field(default=True, init=False)`
+  (`pipecat/frames/frames.py:106`): set it on the instance after construction, as
+  `pipecat/transports/base_output.py:665` does.
+- SmallWebRTC's `write_audio_frame` awaits `add_audio_bytes` until `RawAudioTrack.recv()` consumed the
+  last 10 ms piece (`pipecat/transports/smallwebrtc/transport.py:503`); only the chunk being written
+  (`audio_out_10ms_chunks=4`, 40 ms) sits in the track, and an interruption does not clear it.
+
+#### Broadcast directions and frame order
+
+- `VADProcessor` pushes each frame first, then runs the VAD (`pipecat/processors/audio/vad_processor.py:126`,
+  :134); it emits `VADUserStartedSpeakingFrame(start_secs)`, `VADUserStoppedSpeakingFrame(stop_secs)`,
+  `UserSpeakingFrame` (at most every 0.2 s) and `SpeechControlParamsFrame` (`pipecat/audio/vad/vad_controller.py:142`).
+- `broadcast_frame` pushes a copy downstream then upstream (`pipecat/processors/frame_processor.py:1085`); same for
+  `UserTurnProcessor`'s user frames and `InterruptionFrame`. Both directions share one `__input_queue`
+  (`pipecat/processors/frame_processor.py:749`), so the upstream copy arrives after audio already passed.
+- With no audio for `audio_idle_timeout` (1.0 s) while SPEAKING, `VADController` forces QUIET and
+  fires `on_speech_stopped` (`pipecat/audio/vad/vad_controller.py:220`).
+- `UserTurnProcessor` pushes every frame but Start, End, Cancel and Proposed* in its own direction
+  first (`pipecat/turns/user_turn_processor.py:198`; Start/End :178, :183), then feeds the controllers (:200).
+- On turn start: `UserStartedSpeakingFrame` (when `enable_user_speaking_frames`), then
+  `InterruptionFrame` if enabled (`pipecat/turns/user_turn_processor.py:240`, :245); on stop
+  `UserStoppedSpeakingFrame` (:258), also after the 5 s `user_turn_stop_timeout` (:92;
+  `pipecat/turns/user_turn_controller.py:723`); a cancelled speculation broadcasts `UserTurnResponseCancelFrame` (:229).
+- Inside an open turn, new speech fires only `on_user_turn_resumed` (no frame)
+  (`pipecat/turns/user_turn_controller.py:453`, start guard :500); no stop while the user speaks (:685).
+  In ALL mode `on_user_turn_inference_triggered` fires before the stop (:638).
+- `UserTurnProcessor` events: `on_user_turn_started(proc, strategy)`, `_stopped(proc, strategy)`,
+  `_resumed(proc, UserTurnResumedParams)`, `_stop_timeout(proc)`, `_idle(proc)`,
+  `_inference_triggered(proc, strategy)` (`pipecat/turns/user_turn_processor.py:112`). **[from the check]** They are
+  registered without `sync=True` (:112-117), so each handler runs in its own task
+  (`pipecat/utils/base_object.py:261`), not ordered against frames: key turns on the frames.
+- Queue tiers: StartFrame, then SystemFrames, then data/control, arrival order within a tier
+  (`pipecat/processors/frame_processor.py:143-145`); SystemFrames on the input task, data on the process task (:1369-1372).
+  A turn's `TranscriptionFrame` (data) can be overtaken by the next turn's `UserStartedSpeakingFrame`.
+- A transcript waiting in the session's queue is dropped by an `InterruptionFrame` unless pushed with
+  `interruptible=False` (`pipecat/utils/frame_queue.py:75`); Whisper must run on the bridge's own task.
+- Order after `UserTurnProcessor` (source-derived, matched by spike run A): audio, `VADUserStartedSpeakingFrame`,
+  `UserStartedSpeakingFrame`, `InterruptionFrame` (if on), then `UserSpeakingFrame` (`pipecat/audio/vad/vad_controller.py:183-184`);
+  a pause judged INCOMPLETE gives VAD stop + MetricsFrame, audio, VAD start, no turn frame; turn end
+  gives VAD stop, `MetricsFrame` (SystemFrame, `pipecat/frames/frames.py:1671`), `UserStoppedSpeakingFrame`.
+- Bridge place: `transport.input() -> VADProcessor -> UserTurnProcessor -> STT bridge -> session`
+  (`pipecat/processors/audio/vad_processor.py:134`); the bridge's transcripts go downstream only, so they never reach
+  `UserTurnProcessor` and cannot open phantom turns.
+- Turn frames carry no ID; `Frame.metadata` is a free dict (`pipecat/frames/frames.py:103`), `TranscriptionFrame.result`
+  is `Any`. The bridge numbers turns and stamps the number. FIFO counting also works if exactly one
+  transcript per turn is pushed with `interruptible=False`.
+
+#### Frames
+
+- `VADUserStartedSpeakingFrame` carries `start_secs` and `timestamp = time.time()`
+  (`pipecat/frames/frames.py:1580-1581`); the stopped frame `stop_secs` and `timestamp` (:1595-1596).
+- `UserStartedSpeakingFrame` (:1437), `UserStoppedSpeakingFrame` (:1448), `UserSpeakingFrame` (:1518)
+  are field-less SystemFrames; `ProposedUserStoppedSpeakingFrame` is a ControlFrame (:1619).
+- `TranscriptionFrame(TextFrame)`: `text`, `user_id: str` and `timestamp: str` required,
+  `language: Language | None`, `result: Any | None`, `finalized: bool = False`, kw-only `perception`
+  (`pipecat/frames/frames.py:616`); TextFrame is a DataFrame (:349); Frame adds `id`, `metadata`,
+  `interruptible`.
+- `InputAudioRawFrame(SystemFrame, AudioRawFrame)`: `audio`, `sample_rate`, `num_channels`, computed
+  `num_frames` (`pipecat/frames/frames.py:1896`); SmallWebRTC sends plain `InputAudioRawFrame` (`pipecat/services/stt_service.py:451`).
+- `TTSAudioRawFrame(OutputAudioRawFrame)`: positional `audio`, `sample_rate`, `num_channels`, then
+  `context_id: str | None = None` (`pipecat/frames/frames.py:287`, :197-199).
+- `ErrorFrame(SystemFrame)`: `error: str` (secrets redacted in `__post_init__`), `fatal` (deprecated
+  since 1.8.0), `processor`, `exception`, `category` (`pipecat/frames/frames.py:1296`); `FatalErrorFrame` deprecated.
+
+#### `PipelineWorker`, `WorkerRunner`, the TTS base
+
+- `class PipelineWorker(BaseWorker)` (`pipecat/pipeline/worker.py:211`); `PipelineTask` is a deprecated
+  alias (decorator :1830), `pipecat/pipeline/task.py` only re-exports.
+- `WorkerRunner` in `pipecat/workers/runner.py`; `async def add_workers(self, *workers)` (:197);
+  `PipelineRunner` deprecated (`pipecat/pipeline/runner.py:27`). `run(worker=None, *, auto_end=True)`
+  (:235); passing a worker is deprecated; `auto_end=False` keeps a long-lived host up.
+- `handle_sigint=True` by default; on Windows it falls back to a process-wide `signal.signal(SIGINT)`
+  (`pipecat/workers/runner.py:545`). Pass `handle_sigint=False` (Pipecat's own server does,
+  `pipecat/runner/types.py:182`).
+- `WorkerRunner.__init__` uses `asyncio.get_running_loop()` (`pipecat/workers/runner.py:142`): build it
+  inside a running loop.
+- `PipelineParams`: `audio_in_sample_rate=16000`, `audio_out_sample_rate=24000`, `enable_metrics=False`,
+  ... (`pipecat/pipeline/worker.py:197`).
+- `idle_timeout_secs=300`, `cancel_on_idle_timeout=True`, `cancel_runner_on_idle_timeout=True`
+  (`pipecat/pipeline/worker.py:295`): one idle call would cancel a shared runner.
+- `enable_rtvi=None` means on unless bridged; an `RTVIProcessor` is prepended and an `RTVIObserver`
+  added (`pipecat/pipeline/worker.py:610`); RTVI accepts `disconnect-bot` (`pipecat/processors/frameworks/rtvi/processor.py:324-325`) and turns every
+  ErrorFrame into a message to the browser (:234). **[from the check]** It also lets the browser inject
+  `send-text` (:367), `raw-audio` (:373), `dtmf` (:375), `llm-function-call-result` (:364).
+- `pipecat/runner/` is the dev runner (`pipecat/runner/run.py:7`), not the pipeline runner.
+- `run_tts(self, text: str, context_id: str) -> AsyncGenerator[Frame | None, None]`
+  (`pipecat/services/tts_service.py:808`); yield `TTSAudioRawFrame(pcm, self.sample_rate, 1, context_id=context_id)`.
+- `TextAggregationMode` StrEnum `SENTENCE`/`TOKEN` (`pipecat/services/tts_service.py:96`), default SENTENCE (:326-327);
+  TOKEN yields each incoming text at once (`pipecat/utils/text/simple_text_aggregator.py:83-85`), so `run_tts` once per
+  TextFrame.
+- TTS sample rate = constructor `sample_rate` or `PipelineParams.audio_out_sample_rate`
+  (`pipecat/services/tts_service.py:601`); the output transport resamples a mismatched frame (`pipecat/transports/base_output.py:654`).
+- `push_start_frame` and `push_stop_frames` default False (`pipecat/services/tts_service.py:185`); stop frame on
+  completion for HTTP services (:911-914) or after `stop_frame_timeout_s=3.0` (:2256-2257); OpenAI TTS
+  sets both True (`pipecat/services/openai/tts.py:217-218`); `TTSStoppedFrame` ends BotSpeaking
+  (`pipecat/transports/base_output.py:918-923`).
+- **[corrected]** The docstring says `run_tts` must create its audio context (`pipecat/services/tts_service.py:867`),
+  but `append_to_audio_context` recreates a missing one when `context_id == self._turn_context_id`
+  (:1061, :1064), the turn id being reused by default (`reuse_context_id_within_turn=True`, :219, :845).
+  Without `push_start_frame` what is lost is `TTSStartedFrame` and the timeout `TTSStoppedFrame`
+  (:2236, :2256).
+- `max_consecutive_zero_audio_contexts=3` (`pipecat/services/tts_service.py:199`): three silent contexts in a row mark
+  the service unusable.
+
+#### SmallWebRTC transport, `pc_id`, PATCH, data channel, failures
+
+- `SmallWebRTCConnection(ice_servers=None, connection_timeout_secs: int = 60)`
+  (`pipecat/transports/smallwebrtc/connection.py:267`, :279).
+- The answer: setRemoteDescription, forced sendrecv, createAnswer, setLocalDescription, which awaits
+  gathering (`aiortc/rtcpeerconnection.py:859`); `get_answer` returns `{sdp, type, pc_id}`
+  (`pipecat/transports/smallwebrtc/connection.py:594`). The server never trickles.
+- `pc_id = f"{self.name}-{uuid.uuid4().hex}"`, name `SmallWebRTCConnection#N`
+  (`pipecat/transports/smallwebrtc/connection.py:341`; `pipecat/utils/base_object.py:72`): server-chosen, contains `#`.
+- `SmallWebRTCRequest` dataclass: `sdp`, `type`, `pc_id`, `restart_pc`, `request_data`;
+  `IceCandidate`: `candidate`, `sdp_mid`, `sdp_mline_index` (snake_case, required);
+  `SmallWebRTCPatchRequest`: `pc_id`, `candidates` (`pipecat/transports/smallwebrtc/request_handler.py:61`).
+- A known `pc_id` renegotiates that connection; an unknown or absent one (MULTIPLE, default) makes a new
+  connection keyed by the server's id (`pipecat/transports/smallwebrtc/request_handler.py:235`); SINGLE answers 400 on mismatch.
+- The connection callback runs before the answer returns; its exception is logged and swallowed
+  (`pipecat/transports/smallwebrtc/request_handler.py:221`).
+- PATCH for an unknown `pc_id` raises `HTTPException(404, "Peer connection not found")`
+  (`pipecat/transports/smallwebrtc/request_handler.py:248`); the map is filled only after the answer; the `closed` handler pops it
+  (:210-213).
+- Empty candidate becomes None (`pipecat/transports/smallwebrtc/request_handler.py:259`). **[corrected]** aiortc's condition at
+  `aiortc/rtcpeerconnection.py:420-422` sends None to every transceiver's transport, bundled or not,
+  and to SCTP (:427); `aiortc/rtcicetransport.py:305-308` passes it once per ICE transport; aioice
+  0.11.0 prunes components and sets `_remote_candidates_end` (`aioice/ice.py:491-499`).
+- A non-empty candidate goes through `candidate_from_sdp`, taking `bits[0]` as foundation without
+  stripping `candidate:` (`aiortc/sdp.py:104`). **[from the check]** A malformed one fails
+  `assert len(bits) >= 8` (`aiortc/sdp.py:100`), uncaught by `handle_patch_request`
+  (`pipecat/transports/smallwebrtc/request_handler.py:252`): a 500.
+- `renegotiate(restart_pc=True)` closes the peer and re-initialises with a new pc_id; the old key stays
+  in the map (`pipecat/transports/smallwebrtc/connection.py:484`).
+- `SmallWebRTCTransport(webrtc_connection, params: TransportParams, input_name=None, output_name=None)`;
+  `audio_in_enabled=False`, `audio_out_enabled=False` by default, `audio_out_10ms_chunks=4`,
+  `audio_out_write_timeout_secs=10.0`, no `vad_analyzer` field (`pipecat/transports/base_transport.py:113`);
+  rates fall back to `PipelineParams` (`pipecat/transports/smallwebrtc/transport.py:529-530`), input resampled by PyAV
+  (`pipecat/transports/smallwebrtc/transport.py:468-473`).
+- `RawAudioTrack.add_audio_bytes` raises unless whole 10 ms pieces (`pipecat/transports/smallwebrtc/transport.py:136`).
+- Inbound: a str starting with `"ping"` is a keepalive (`pipecat/transports/smallwebrtc/connection.py:376`); other messages must be
+  JSON with `"type"`; `type "signalling"` with a `message` is consumed (only `trackStatus`).
+- `is_connected()` trusts aiortc until the first ping, then needs one within 3 s
+  (`pipecat/transports/smallwebrtc/connection.py:708`); app messages arriving while false are parked, flushed only by `connect()`.
+  **[from the check]** Bot audio is also dropped then: `_can_send` is `is_connected and not is_closing`
+  (`pipecat/transports/smallwebrtc/transport.py:502`, `:629`).
+- Inbound app messages: `InputTransportMessageFrame` (SystemFrame) broadcast both ways, and transport
+  event `on_app_message(transport, message, sender)` (`pipecat/transports/smallwebrtc/transport.py:1078`); the docstring's
+  `on_client_message` does not exist.
+- Outbound: `send_app_message(json.dumps)` (`pipecat/transports/smallwebrtc/connection.py:795`) queues up to 50 until the channel
+  opens, drops after 10 s without one; nothing is sent while the client is closing
+  (`pipecat/transports/smallwebrtc/transport.py:568-575`). The server sends `{"type":"signalling","message":{"type":"peerLeft"}}` on
+  disconnect (`pipecat/transports/smallwebrtc/connection.py:566`) and `renegotiate` when video exists.
+- ICE `failed` -> `failed` handler, then `_close()` (`pipecat/transports/smallwebrtc/connection.py:685`); `SmallWebRTCClient`
+  subscribes only to connected/disconnected/closed/app-message/track-status (`pipecat/transports/smallwebrtc/transport.py:268-293`), so
+  a failure surfaces as `closed` -> `on_client_disconnected` (:620-621); no ErrorFrame.
+- **[corrected]** A peer stuck in `connecting` is closed after 60 s (`pipecat/transports/smallwebrtc/connection.py:611`); aiortc has no
+  `disconnected` state (`aiortc/rtcpeerconnection.py:1272`). After connect, a dropped path fails in
+  about 30 s: aioice's consent checks close after `CONSENT_FAILURES=6` failures about 5 s apart
+  (`aioice/ice.py:1124-1127`), aiortc maps that to `failed` (`aiortc/rtcicetransport.py:364-366`).
+- **[from the check]** aioice 0.11.0 never reports ICE failure before end-of-candidates
+  (`aioice/ice.py:877-878`); the marker comes as an empty PATCH or `a=end-of-candidates` in the offer
+  (`aiortc/rtcpeerconnection.py:179-180`).
+- An output write not returning within 10 s -> `push_error(..., force_treat_as_permanent=True)`
+  (`pipecat/transports/base_output.py:1074`); a write while not connected returns False silently (`pipecat/transports/smallwebrtc/transport.py:502-505`).
+  Input: a 2 s receive timeout only warns, a `MediaStreamError` clears the track (`pipecat/transports/smallwebrtc/transport.py:453`).
+- `push_error_frame` marks unusable on a permanent category, pushes upstream; at the source it fires
+  `on_pipeline_error` (`pipecat/pipeline/worker.py:1639`); `ProcessorUnusablePolicy` defaults to CONTINUE (`pipecat/pipeline/worker.py:316`).
+
+---
+
+### Step 4, bullet 5: FastAPI `telemetry=`, uvicorn proxy headers, PyJWT (and num2words)
+
+#### FastAPI 0.162.0
+
+- `telemetry=` defaults: `tracer_provider/meter_provider/logger_provider=None`, `tracing/metrics/logs=True`,
+  `operation_spans=True`, `auto_configure` from the env, `exclude=None`; caller keys merged over them
+  (`fastapi/applications.py:1019`); probe confirmed.
+- Server span attributes: `url.scheme`, `http.request.method`, `network.protocol.version`,
+  `server.address/port`, `url.path`, `url.query` (only X-Amz-*, `sig`, X-Goog-Signature redacted,
+  `fastapi/telemetry/_asgi.py:44-52`), `http.route`, status, `error.type`
+  (`fastapi/telemetry/_asgi.py:306`); also `http.request.method_original` for unknown methods (:320-321).
+  No client address or headers. Operation spans carry only `code.function.name` (`fastapi/telemetry/_api.py:213`).
+- WebSocket spans: `network.protocol.name='websocket'`, no `url.path`/`url.query` (`fastapi/telemetry/_asgi.py:303`).
+- A client's `traceparent`/baggage becomes the server span's parent
+  (`fastapi/telemetry/_asgi.py:299`).
+- With a logger provider, unhandled exceptions become OTel log records with the exception
+  (`fastapi/telemetry/_asgi.py:102`); validation failures log only a count and the route (`fastapi/telemetry/_api.py:162-173`).
+- `telemetry={'tracing': False, 'metrics': False, 'logs': False, 'auto_configure': False}` makes
+  `enabled()` False; a probe with a global SDK TracerProvider produced 0 spans
+  (`fastapi/applications.py:1192`). Alternatives: `exclude=lambda scope: True` (`fastapi/telemetry/_asgi.py:238`) or
+  explicit providers. fastapi always imports opentelemetry-api.
+- `APIRouter(lifespan=...)` is merged at `include_router`: parent entered first, exits reversed, parent
+  state wins (`fastapi/routing.py:3422`, :253; `fastapi/applications.py:1675`). **[from the check]** It
+  merges again on every include, and copies `on_startup/on_shutdown` (`fastapi/routing.py:3418-3425`):
+  including a router twice runs its lifespan twice.
+- Starlette's lifespan sends `startup.failed`/`shutdown.failed` with `traceback.format_exc()`
+  (`starlette/routing.py:661`, :669-675); uvicorn logs that message at ERROR on `uvicorn.error`
+  (`uvicorn/lifespan/on.py:121`): lifespan errors must hold no secret.
+
+#### uvicorn 0.54.0
+
+- `forwarded_allow_ips` in code wins over `FORWARDED_ALLOW_IPS` (`uvicorn/config.py:363`, probe).
+- `proxy_headers=True` by default wraps the app in `ProxyHeadersMiddleware(trusted_hosts=forwarded_allow_ips)`
+  (`uvicorn/config.py:544`).
+- XFF and X-Forwarded-Proto are honoured only from a trusted peer (`uvicorn/middleware/proxy_headers.py:35`);
+  then the client becomes the rightmost untrusted XFF entry (port 0); with `*` the leftmost
+  (:176-177; `*` at :109). Probe: peer 127.0.0.1 + XFF 1.2.3.4 -> client `('1.2.3.4', 0)`.
+- **[from the check]** Access and WS log lines print the rewritten client
+  (`uvicorn/protocols/utils.py:51-55`): a forged XFF from 127.0.0.1 lands in the logs.
+- `server_header=True` prepends `server: uvicorn` (`uvicorn/config.py:499`); `date_header` only switch
+  for Date (`uvicorn/server.py:257`).
+- **[corrected]** HTTP access lines hold the client and the raw path+query
+  (`uvicorn/protocols/http/h11_impl.py:476-481`; h11 is the default since httptools is not installed,
+  `uvicorn/protocols/http/auto.py:7-10`). The default WS protocol is `websockets_sansio_impl`
+  (`uvicorn/protocols/websockets/auto.py:19-21`), whose accepted/403 lines go to `uvicorn.error` at INFO
+  (`uvicorn/protocols/websockets/websockets_sansio_impl.py:70`, :440-443), with client and raw query, not gated by `uvicorn.access`.
+- **[corrected]** `access_log=False` empties `uvicorn.access` handlers and sets propagate False
+  (`uvicorn/config.py:428`): HTTP lines stop; WS handshake lines do not (`uvicorn.error` keeps its
+  handler via `uvicorn`, `uvicorn/config.py:110-111`).
+- `configure_logging` with the default `log_config` touches only the uvicorn loggers, not root (probe);
+  `log_config=None` lets them propagate to the app's root setup (`uvicorn/config.py:398`; levels :419-426).
+
+#### PyJWT 2.15.1
+
+- `enforce_minimum_key_length` (default False) exists in both PyJWS and PyJWT options; enforced, a short
+  key raises `InvalidKeyError`, otherwise `InsecureKeyLengthWarning` (`jwt/api_jws.py:206`; probe).
+- `encode` checks only the instance's options; module-level `jwt.encode` uses the global PyJWS with
+  defaults (`jwt/api_jwt.py:592`). `jwt.PyJWT(options={'enforce_minimum_key_length': True})` builds its
+  own PyJWS with it (:49, :67-73); probe: strict encode refuses a 14-byte key, a 32-byte key works.
+- `decode` takes the option from merged instance + call options (`jwt/api_jwt.py:263`).
+  **[from the check]** `verify_signature` is taken only from per-call options (`jwt/api_jwt.py:242-245`);
+  a future `iat` beyond leeway raises `ImmatureSignatureError` (:482-483).
+- HMAC minimum = digest size: 32 bytes HS256, 48 HS384, 64 HS512, on the key's UTF-8 bytes
+  (`jwt/algorithms.py:483`); empty key always refused (:349-350); PEM/SSH/DER refused as HMAC (:352-360).
+- `InsecureKeyLengthWarning(UserWarning)` (`jwt/warnings.py:7`); `InvalidKeyError` subclasses
+  `PyJWTError`, not `InvalidTokenError` (`jwt/exceptions.py:59`).
+- With verification on, decode raises `DecodeError` without `algorithms` (`jwt/api_jws.py:249`); a header
+  `alg` outside the list -> `InvalidAlgorithmError` (:415-416); only PyJWS takes an allowlist in its
+  constructor (:39-52).
+- `algorithm=None` means `none` (`jwt/api_jws.py:141-145`); `headers['alg']` overrides the argument
+  (:153).
+- `none` never verifies (`jwt/algorithms.py:303`, :290-297); `verify_signature=False` skips the check
+  and defaults the claim checks off (`jwt/api_jws.py:277`; `jwt/api_jwt.py:82-89`).
+- `kid` is only type-checked as str (`jwt/api_jws.py:460`); never chooses a key.
+- `require` lists claims that must be present and non-null (`jwt/api_jwt.py:432`); exp/iat/nbf/sub/jti
+  are checked only if present (:403-410).
+- `leeway` loosens iat/nbf/exp (`jwt/api_jwt.py:512`); a token with `aud` and no `audience` raises
+  `InvalidAudienceError` (:522-527); `iss` only when `issuer` passed (:568-569).
+
+#### num2words 0.5.14 (Track A)
+
+- `num2words(n, lang='ar')` works (`num2words/__init__.py:32`); `ar_SA` falls back to `ar` (:94-96); an
+  unknown language raises `NotImplementedError`; Arabic currency default SR.
+- `en` supports cardinal, ordinal, ordinal_num, year, currency (`num2words/__init__.py:40`, :89); English
+  ordinals raise `TypeError` for negatives/non-integers (`num2words/base.py:196-200`).
+- Arabic ordinals are a table for `number <= 19` (`num2words/lang_AR.py:385`): 0 gives `''`, negatives
+  index from the end, 20+ return cardinal-style text; no article, no gender. `ordinal_num` returns the
+  same words (:400-401).
+- Arabic `to_cardinal` sets `separator = ','` (`num2words/lang_AR.py:409`); 10**51+ raises
+  `OverflowError` (:48, :351-353). **[from the check]** The fraction is padded/truncated to 2 digits and
+  read as hundredths (:58, :137-149): 2.345 reads "thirty-four".
+- Converters are module-level instances mutated per call (`num2words/lang_AR.py:404`; English
+  `self.precision` at `num2words/base.py:125`): keep calls on one thread.
+- Import loads 56 language modules plus `lang_EU` indirectly and builds every converter
+  (`num2words/__init__.py:20`); no I/O or logging at import.
+
+---
+
+### Step 5: the spikes (no Groq request, no network beyond this machine)
+
+All scripts were in the agent's scratch folder (not kept in the repository),
+run with `.venv/Scripts/python.exe -I` and every `GROQ_*`/`T2V_*` variable unset (Python 3.12.13,
+isolated). Network guards refused 0 sends in every run.
+
+#### Pipeline spike (`spike-pipeline\`)
+
+- **(a) Runner API: confirmed.** 7-processor pipeline (head, VAD, turns, STT bridge, echo, fake TTS,
+  tail) ran in runs A, B, C sleep, C hybrid, D; `runner.run()` returned 3-8 ms after `EndFrame` was
+  queued, `has_finished()` True, `on_pipeline_finished` fired, no dangling-task line.
+- **(b) Input WAVs** from Windows System.Speech (Microsoft David Desktop, 22050 Hz), resampled to 16 kHz
+  mono 16-bit, 0.5 s lead and 3.0 s tail silence: `speech_two_16k.wav` (gap 0.88 s),
+  `speech_break_16k.wav` (AppendBreak(800 ms) gave 1.30 s), `speech_frag_16k.wav` (first part ends
+  mid-phrase, Smart Turn p=0.012; gap 0.86 s; 8.993 s).
+- **(b) Frames, run A** (frag file, default start strategy; times from frame 0, speech at 0.52 s):
+  VAD start 0.858; bridge gets `UserStartedSpeakingFrame` and `InterruptionFrame` 0.859; VAD stop 3.278
+  (INCOMPLETE); VAD start 4.176 -> `on_user_turn_resumed` only; VAD stop 6.177 (COMPLETE);
+  `UserStoppedSpeakingFrame` 6.251 (74 ms after the VAD stop); fake STT answers 6.558; TTS emits
+  `TTSStartedFrame`, 10 `TTSAudioRawFrame`, `TTSTextFrame`, `LLMAssistantPushAggregationFrame`,
+  `TTSStoppedFrame`. Bridge downstream counts: audio 449, VAD start/stop 2/2, `UserSpeakingFrame` 21,
+  user start/stop 1/1, `MetricsFrame` 2, `SpeechControlParamsFrame` 2, `InterruptionFrame` 1. Copies of
+  the VAD, user and interruption frames reach `head` upstream. With
+  `VADUserTurnStartStrategy(enable_interruptions=False)` (runs B, C, D) no `InterruptionFrame`.
+- **(c) One request per user turn: confirmed** with `wait_for_transcript=False`. Run A: 1 request,
+  file 0.38-6.22 s (5.84 s: both parts and the pause), answered in 306 ms. Run C (frag file looped,
+  62.86 s): 7 requests, one per turn; twice Smart Turn scored the whole utterance 0.441 and the turn
+  ended by the 3.0 s fallback (`pipecat/audio/turn/smart_turn/base_smart_turn.py:133`), adding about 3 s of trailing silence
+  (request 3: 8.88 s). Run B (two complete clauses, 0.88 s gap): Smart Turn said COMPLETE at the pause
+  (p=0.942), so 2 turns and 2 requests (2.58 s, 2.52 s); the turn itself ended, the bridge did not
+  cut. Run D (`wait_for_transcript=True`): COMPLETE at 6.286, turn ended only by
+  `on_user_turn_stop_timeout` at 11.191 (5.0 s, `pipecat/turns/user_turn_controller.py:154`), 1 request of 8.60 s.
+  `UserStartedSpeakingFrame` arrives about 0.34 s after speech onset, so a 0.5 s pre-roll is needed.
+- **(d) Clocks:** `time.monotonic`, `loop.time()` and `loop._clock_resolution` are `GetTickCount64()`
+  at 0.015625 s (64 steps/s, ProactorEventLoop); `perf_counter` is QPC at 1e-07 s; `time.time` 0.015625 s.
+  `asyncio.sleep(0.02)` median 30.9 ms (min 22.1, p99 35.8, max 41.1); `asyncio.sleep(0.001)` median
+  15.4 ms; `time.sleep(0.02)` median 20.37 ms (max 23.7). Relative sleeps: 32.27 frames/s, +5484 ms
+  drift in 10 s.
+- **(d) Absolute deadlines** (`t0 + n*0.02` on `perf_counter`, one `asyncio.sleep(deadline - now)`):
+  no pipeline, 60 s / 3000 frames: 49.9935 fps, end drift +7.8 ms, lateness median 8.3, p99 16.4,
+  max 61.9, min -5.1 ms, 0.59 s CPU. In the pipeline, 62.84 s / 3143 frames: 50.015 fps, end drift
+  -4.9 ms, lateness at `queue_frame` median -0.97, p99 19.1, max 28.0 ms, 1613 frames early (earliest
+  -30.2 ms); at the STT bridge median 1.8, p99 48.9, max 150.4 ms, peaks at VAD stops.
+  Hybrid (sleep to 16 ms before the deadline, then `asyncio.sleep(0)` until past): no pipeline
+  50.0000 fps, drift +0.001 ms, p99 0.148, max 1.8 ms but 26.0 s CPU in 60 s; in the pipeline 50.000
+  fps, drift +0.115 ms, queue p99 0.239, max 13.5 ms, 0 early; bridge p99 74.5, max 152 ms.
+  Early wake-ups come from the stdlib: `loop.time()` is `time.monotonic()`
+  (`stdlib: asyncio/base_events.py:745`) and a timer is due within one clock resolution (:1967).
+- **(e) Models on CPU, no torch:** `import torch` fails (not installed; never in `sys.modules`);
+  onnxruntime 1.31.1 device CPU, providers available `['AzureExecutionProvider', 'CPUExecutionProvider']`,
+  both sessions got only CPU. Silero load 62-130 ms (83-92 rerun, 105-242 in pipelines), first
+  `voice_confidence` (512 samples) 1.38 ms then median 0.263 ms, inline on the loop. Smart Turn load
+  119-147 ms (101-157 in pipelines), `_predict_endpoint` first 150 ms then 95-163 ms (cpu_count=1),
+  in-pipeline `e2e_processing_time_ms` 68.8-167.8, run in a thread pool (`pipecat/audio/turn/smart_turn/base_smart_turn.py:162`).
+  `import onnxruntime` alone took 8.2-12.3 s per process (8.6 s self time on
+  `onnxruntime.capi.onnxruntime_pybind11_state`); cause UNVERIFIED.
+- Other spike observations: Smart Turn's inference is awaited inline at each VAD stop
+  (`pipecat/turns/user_stop/turn_analyzer_user_turn_stop_strategy.py:232`), stalling audio downstream 100-163 ms; Pipecat's own
+  timestamps step at 15.625 ms (`pipecat/clocks/system_clock.py:37` monotonic_ns, `pipecat/frames/frames.py:1581`,
+  `:1596` time.time, `pipecat/turns/user_stop/turn_analyzer_user_turn_stop_strategy.py:239`); `STTSettings(model=None,
+  language=None)` and `TTSSettings(model=None, voice=None, language=None)` clear the
+  `pipecat/services/settings.py:251` ERROR; `TTSSpeakFrame.append_to_context` defaults True (`pipecat/frames/frames.py:1071`), so text
+  frames holding spoken text flow downstream of the TTS.
+
+**Exact API the pipeline spike used** (`pipeline_spike.py`):
+
+```python
+from pipecat.pipeline.pipeline import Pipeline
+from pipecat.pipeline.worker import PipelineParams, PipelineWorker
+from pipecat.workers.runner import WorkerRunner
+from pipecat.processors.audio.vad_processor import VADProcessor
+from pipecat.audio.vad.silero import SileroVADAnalyzer
+from pipecat.audio.vad.vad_analyzer import VADParams
+from pipecat.turns.user_turn_processor import UserTurnProcessor
+from pipecat.turns.user_start import VADUserTurnStartStrategy
+from pipecat.turns.user_stop import TurnAnalyzerUserTurnStopStrategy
+from pipecat.turns.user_turn_strategies import UserTurnStrategies, UserTurnStrategiesParams
+from pipecat.audio.turn.smart_turn.local_smart_turn_v3 import LocalSmartTurnAnalyzerV3
+from pipecat.audio.turn.smart_turn.base_smart_turn import SmartTurnParams
+from pipecat.services.stt_service import STTService
+from pipecat.services.settings import STTSettings, TTSSettings
+from pipecat.utils.time import time_now_iso8601
+from pipecat.frames.frames import (EndFrame, InputAudioRawFrame, MetricsFrame, TranscriptionFrame,
+    TTSAudioRawFrame, TTSSpeakFrame, UserStartedSpeakingFrame, UserStoppedSpeakingFrame)
+from pipecat.metrics.metrics import TurnMetricsData
+from pipecat.processors.frame_processor import FrameDirection, FrameProcessor
+
+vad = VADProcessor(vad_analyzer=SileroVADAnalyzer(params=VADParams(
+    confidence=0.7, start_secs=0.2, stop_secs=0.2, min_volume=0.6)))
+turns = UserTurnProcessor(
+    user_turn_strategies=UserTurnStrategies(
+        start=[VADUserTurnStartStrategy(enable_interruptions=False)],
+        stop=[TurnAnalyzerUserTurnStopStrategy(
+            turn_analyzer=LocalSmartTurnAnalyzerV3(params=SmartTurnParams(
+                stop_secs=3.0, pre_speech_ms=500, max_duration_secs=8)),
+            wait_for_transcript=False)]),
+    user_turn_strategies_params=UserTurnStrategiesParams())
+pipeline = Pipeline([vad, turns, stt_bridge, echo, tts])
+worker = PipelineWorker(pipeline, params=PipelineParams(audio_in_sample_rate=16000,
+    audio_out_sample_rate=24000), enable_rtvi=False, cancel_on_idle_timeout=False)
+# @worker.event_handler("on_pipeline_started") -> feed only after it fires; "on_pipeline_finished"
+runner = WorkerRunner(handle_sigint=False)
+await runner.add_workers(worker)
+await asyncio.gather(runner.run(), feeder())   # run(auto_end=True)
+# feeder: await worker.queue_frame(InputAudioRawFrame(audio=<640 bytes>, sample_rate=16000,
+#         num_channels=1)) at perf_counter deadlines t0 + n*0.02; then await worker.queue_frame(EndFrame())
+```
+
+- STT bridge: `class TurnSTTBridge(STTService)`, `super().__init__(audio_passthrough=True,
+  ttfs_p99_latency=0.3, settings=STTSettings(model=None, language=None))`; overrides
+  `process_audio_frame(frame, direction)` to buffer (0.5 s pre-roll ring, then the whole turn) and never
+  call `run_stt` per frame; in `process_frame`, `await super().process_frame(frame, direction)`, then on
+  a DOWNSTREAM `UserStartedSpeakingFrame` open, on `UserStoppedSpeakingFrame` close and
+  `self.create_task(self.process_generator(self.run_stt(audio)), name=...)`; `run_stt` yields
+  `TranscriptionFrame(text=..., user_id="", timestamp=time_now_iso8601(), finalized=True)`.
+- Fake TTS: `class FakeTTS(TTSService)`, `super().__init__(push_start_frame=True, push_stop_frames=True,
+  stop_frame_timeout_s=0.5, sample_rate=24000, settings=TTSSettings(model=None, voice=None,
+  language=None))` (default aggregation, SENTENCE); `run_tts(text, context_id)` yields
+  `TTSAudioRawFrame(audio=..., sample_rate=24000, num_channels=1, context_id=context_id)`; driven by a
+  downstream `TTSSpeakFrame(text=...)`.
+- Turn events used: `on_user_turn_started/stopped/resumed/inference_triggered/stop_timeout`; Smart
+  Turn's result read from `MetricsFrame` with `TurnMetricsData(is_complete, probability,
+  e2e_processing_time_ms)`.
+
+#### WebRTC spike (`spike-webrtc\`)
+
+- **(a) asyncio UDP on Windows: works, with stdlib flaws.** Default loop ProactorEventLoop; 200/200
+  echoes on 127.0.0.1, RTT min 0.106 / median 0.115 / max 1.213 ms. Two or more datagrams to a closed
+  port in one loop step: the endpoint gets WinError 10054 via `error_received` and never reads again,
+  5/5 (sends spaced 5 ms: 0/5; SelectorEventLoop kept reading in every case)
+  (`stdlib: asyncio/proactor_events.py:541`; `stdlib: asyncio/windows_events.py:477`). `transport.close()` never calls
+  `connection_lost` while a datagram is in flight or buffered (`stdlib: asyncio/proactor_events.py:108`).
+  uvicorn uses Proactor on win32 (`uvicorn/loops/asyncio.py:10`).
+- **(b) Answer to a local aiortc peer with `iceServers=[]`: 5/5 connected.** Offer and answer 2
+  m-lines, 4 host candidates on this machine's 2 private IPv4 addresses, `a=end-of-candidates` per
+  m-line (aiortc adds it, `aiortc/rtcpeerconnection.py:157`). `handle_web_request` 14.0-18.4 ms;
+  Pipecat `connected` 285/127/142/111/142 ms after the client pc was built (78-166 ms after the
+  answer); first audio 50-60 ms later; 97-100 frames in 2 s, each `s16`, **stereo**, 48000 Hz, 960
+  samples; tone peak 440.0 Hz; data-channel echo RTT median 0.76-2.03 ms over 20. Also connected on
+  SelectorEventLoop (196, 111 ms). `connected` and `app-message` fire only after `conn.connect()`
+  (`pipecat/transports/smallwebrtc/connection.py:680`).
+- **(c) Trickle: connects, and the empty candidate reaches aioice** (`_remote_candidates_end` False ->
+  True on that PATCH; `pipecat/transports/smallwebrtc/request_handler.py:259`). T2 (client blocked, only trickled candidates):
+  connected 43 ms after the candidate PATCH on host->host. T1/T5: connects through a prflx candidate
+  before any PATCH. T3: connects with no end-of-candidates. A second empty PATCH or a candidate after
+  the end returns None, adds nothing (`aiortc/rtcicetransport.py:305`): Pipecat never answers 409.
+  T4: candidates with `sdp_mid='1'` (bundled data m-line) dropped silently
+  (`aiortc/rtcpeerconnection.py:422`); the call failed 0 ms after the end PATCH.
+- **(c) Failure under aioice 0.11.0** (12 variants, candidates rewritten to a closed or silent port).
+  Through the request handler (F1-F6), with the end in the SDP, by an empty PATCH at 1 s, or never:
+  always ICE checking, then Pipecat's 60 s timeout closed the call 60.0 s after `connecting`
+  (`server_ice_closed=60425ms`), event `closed` with no `failed`, WARNING "Timeout establishing the
+  connection to the remote peer. Closing." (`pipecat/transports/smallwebrtc/connection.py:612`); no aioice "ICE failed". A direct
+  `SmallWebRTCConnection(connection_timeout_secs=120)` (F10-F12): aioice "ICE failed" 63.6 s after
+  checking began, end in SDP or via `add_ice_candidate(None)` at 1 s alike; order iceConnectionState
+  failed, connectionState failed, Pipecat `failed`, WARNING "Connection failed, closing peer
+  connection.", `closed`. 63.6 s = one STUN check's 7 sends at 0.5 s doubling (`aioice/stun.py:20`
+  `RETRY_MAX = 6`, :21 `RETRY_RTO = 0.5`). No candidates + empty PATCH (F8): failed 33 ms after the
+  PATCH; no candidates, no end (F9): only the 60 s close. The handler cannot change the timeout
+  (`pipecat/transports/smallwebrtc/request_handler.py:207`).
+- **(c) aioice 0.11.0 misbehaves (F7):** an offer with no candidates but `a=end-of-candidates` makes
+  aioice drop component 1 before gathering (`aioice/ice.py:1101`), gather over no components (:551),
+  answer with 0 candidates; aiortc never starts ICE (`aiortc/rtcpeerconnection.py:1077`); Pipecat's
+  monitor starts only on `connecting` (`pipecat/transports/smallwebrtc/connection.py:672`). At 62 s and 75 s: server pc `new`, no
+  Pipecat event, no warning, handler map size 1; the client failed at once. Whether aioice < 0.11
+  differs, and whether a browser sends such an offer: UNVERIFIED.
+- **(c) Sockets on Windows:** 8 calls with checks to closed ports: after WinError 10054, 2 of 32 and 4
+  of 32 aioice sockets stopped reading (Proactor). Closes hung: 2, 3 and 3 of 16 still pending after
+  4 s over 3 Proactor runs, one hung over 3 minutes, in `aioice/ice.py:293` `await self.__closed`
+  under `aiortc/rtcpeerconnection.py:532` from Pipecat's `disconnect()`; each hung socket had a
+  datagram buffered after WinError 1231, which appears on every call here (the pair across the 2
+  adapters). SelectorEventLoop: 0 of 16 in each of 3 runs. uvicorn accepts a custom loop import string
+  (`uvicorn/config.py:560`); a running uvicorn on Selector was not tested.
+- **(d) `pc_id`:** d1 client-chosen unknown id ignored, server id returned, callback once. d2 same id
+  again: renegotiated in place, INFO "Reusing existing connection" (`pipecat/transports/smallwebrtc/request_handler.py:200`), callback
+  not rerun. d3 a DIFFERENT peer with a live id: answered, no check; live call kept audio (551 frames
+  in 1 s); second peer stuck `connecting`. d4 `restart_pc=True`: original call closed, new pc under a
+  NEW id, both keys -> same object; d4b the old id still accepts PATCHes. d5 unknown id PATCH:
+  `HTTPException 404` (`pipecat/transports/smallwebrtc/request_handler.py:248`), no log. d5b malformed candidate: `AssertionError`
+  (`aiortc/sdp.py:100`). d7 SINGLE: 400 "Cannot create new connection with existing connection active"
+  or 400 "PC ID mismatch with existing connection", each WARNING + ERROR (`pipecat/transports/smallwebrtc/request_handler.py:142`,
+  :239). d8 `type='answer'`: `InvalidStateError`. d9 `SmallWebRTCRequest.from_dict` with an extra key:
+  `TypeError` (`pipecat/transports/smallwebrtc/request_handler.py:48`).
+- **(e) Reserved data-channel names:** raw text starting `ping` (`ping`, `ping 123`, `pingpong`) is
+  swallowed and sets `_last_received_time` (`pipecat/transports/smallwebrtc/connection.py:376`); JSON `{"type":"ping"}` is an ordinary
+  app-message. After one raw ping, an app-message more than 3 s later is queued, not delivered
+  (`pipecat/transports/smallwebrtc/connection.py:708`, :386), and stays queued when pings resume. `{"type":"signalling","message":
+  {"type":"trackStatus",...}}` raises `track-status`, not app-message; any other inner type is dropped
+  with an ERROR holding the raw message (`pipecat/transports/smallwebrtc/connection.py:380`, :389); `signalling` with no or empty
+  `message` is an app-message. Non-JSON text, JSON without `type`, a JSON array: dropped with that ERROR.
+  A bytes payload holding JSON is delivered. On `disconnect()` the client gets `peerLeft`
+  (`pipecat/transports/smallwebrtc/connection.py:566`).
+
+**Exact API the WebRTC spike used:**
+
+```python
+from pipecat.transports.smallwebrtc.request_handler import (SmallWebRTCRequestHandler,
+    SmallWebRTCRequest, SmallWebRTCPatchRequest, IceCandidate, ConnectionMode)
+from pipecat.transports.smallwebrtc.connection import SmallWebRTCConnection
+
+handler = SmallWebRTCRequestHandler()  # (ice_servers=None, esp32_mode=False, host=None,
+                                       #  connection_mode=ConnectionMode.MULTIPLE)
+answer = await handler.handle_web_request(
+    SmallWebRTCRequest(sdp=offer_sdp, type="offer", pc_id=None, restart_pc=None, request_data=None),
+    callback)  # -> {"sdp": str, "type": "answer", "pc_id": "SmallWebRTCConnection#<n>-<uuid4hex>"}
+# callback(conn) runs only for a NEW connection: register @conn.event_handler(name) for "connected",
+# "connecting", "failed", "closed", "disconnected", "new", "app-message" (conn, message),
+# "track-started", "track-ended", "track-status" (conn, receiver_index, enabled); then await conn.connect()
+await handler.handle_patch_request(SmallWebRTCPatchRequest(pc_id=answer["pc_id"], candidates=[
+    IceCandidate(candidate="candidate:<foundation> 1 udp <prio> <ip> <port> typ host",
+                 sdp_mid="0", sdp_mline_index=0)]))   # -> None; candidate="" is the end
+await handler.close()
+# conn.audio_input_track() -> SmallWebRTCTrack; await track.recv() -> av.AudioFrame (s16, stereo, 48000, 960)
+# conn.send_app_message(dict); conn.is_connected(); await conn.disconnect();
+# await conn.add_ice_candidate(None); conn.pc (aiortc RTCPeerConnection)
+# Shorter connect timeout, bypassing the handler:
+conn = SmallWebRTCConnection(ice_servers=None, connection_timeout_secs=120)
+await conn.initialize(sdp=..., type="offer"); await conn.connect(); conn.get_answer()
+```
+
+- Client (aiortc 1.15.0): `RTCPeerConnection(RTCConfiguration(iceServers=[],
+  bundlePolicy=RTCBundlePolicy.MAX_BUNDLE))`, `pc.addTrack(ToneTrack())` before
+  `dc = pc.createDataChannel("chat")`; `ToneTrack(aiortc.mediastreams.MediaStreamTrack)`, `kind="audio"`,
+  `recv()` returns `av.AudioFrame.from_ndarray(pcm.reshape(1, -1), format="s16", layout="mono")`,
+  `sample_rate=48000`, `pts=n*960`, `time_base=Fraction(1, 48000)`, paced on `perf_counter`;
+  `await pc.setLocalDescription(await pc.createOffer())`, offer = `pc.localDescription.sdp`;
+  `await pc.setRemoteDescription(RTCSessionDescription(sdp=answer["sdp"], type="answer"))`;
+  `dc.on("open")`, `dc.on("message")`, `dc.send(str)`.
+- Loop: `asyncio.run(main())` (Proactor); `asyncio.run(main(), loop_factory=asyncio.SelectorEventLoop)`.
+- Probe internals only (not API): `conn.pc.getTransceivers()[0].receiver.transport.transport._connection`
+  is the `aioice.Connection` (`_remote_candidates_end`, `_remote_candidates`, `_check_list`,
+  `_nominated`, `_protocols[i].transport._read_fut`).
+
+---
+
+### Changes to the plan's interfaces
+
+Each item contradicts or sharpens the text of steps 4 to 10 (and the criteria and tracks that rest on
+them). Owner-level items are repeated under "For the owner".
+
+1. **Runner names stand**: `PipelineWorker`, `WorkerRunner`, `await runner.add_workers(...)` (spike a).
+   Track E must also pass `PipelineWorker(..., enable_rtvi=False)`, turn Pipecat's idle cancel off
+   (`idle_timeout_secs=None` or `cancel_runner_on_idle_timeout=False`; `limits.idle_s` is the
+   library's), and register `on_pipeline_error` or set `processor_unusable_policy`; build
+   `WorkerRunner(handle_sigint=False)` inside the running loop; `run(auto_end=False)` if calls share a
+   runner. Never `PipelineTask`, `PipelineRunner` or `run(worker)`.
+2. **"Pipecat's interruptions are off"** means: start list exactly
+   `[VADUserTurnStartStrategy(enable_interruptions=False)]` (no `TranscriptionUserTurnStartStrategy`),
+   `enable_rtvi=False` (RTVI's `send-text` interrupts and injects input), no `DTMFAggregator`.
+   `PipelineParams` has no `allow_interruptions`; nothing named `StartInterruptionFrame` exists.
+3. **One request per user turn works** (spike c): the decision entry of step 12 says "per user turn".
+   The STT bridge subclasses `STTService` (not `SegmentedSTTService`, which the design's 13 still names)
+   and sits after `UserTurnProcessor`: `transport.input -> VADProcessor -> UserTurnProcessor -> STT
+   bridge -> session bridge -> TTS bridge -> transport.output`. `TurnAnalyzerUserTurnStopStrategy` gets
+   `wait_for_transcript=False` explicitly, else the turn ends only at the 5 s stop timeout (run D).
+4. **The STT bridge's contract** (Track E): pre-roll of at least 0.5 s; open on the downstream
+   `UserStartedSpeakingFrame`, close on `UserStoppedSpeakingFrame`; trim at the last VAD stop plus
+   padding (a fallback turn otherwise carries about 3 s of silence, billed); its own maximum turn length
+   (Pipecat caps none); check `self._muted`; Whisper on its own task; exactly one result per turn,
+   empty, failed and unusable included, stamped with the bridge's turn number, `finalized=True` and
+   `interruptible=False` (set after construction); flush or drop held audio on `EndFrame`/`CancelFrame`;
+   `STTSettings(model=None, language=None)` and `ttfs_p99_latency` set.
+5. **Registration effect:** whether a paused request is one request is Smart Turn's verdict at the
+   pause, not the bridge's: in run B a complete-sounding first clause and a 0.88 s pause gave 2 turns
+   and 2 requests. The paused items' request counts should be bounded with that in mind.
+6. **`voice/session/io.py`:** turns are keyed on the frames, never on `UserTurnProcessor`'s events
+   (unordered tasks). A turn ID is needed on turn start, turn end and transcript: the next turn's start
+   can reach the session before the previous turn's transcript. Track D adds that ordering to its
+   "turn end before transcript" test. Turn times come from the processors' own `perf_counter` stamps,
+   not from Pipecat's `timestamp` fields (time.time, 15.625 ms).
+7. **Stop path (design 13, verified):** the session bridge (upstream of the TTS) calls
+   `self.broadcast_interruption()`; every processor drops queued interruptible frames, `TTSService`
+   drops its contexts, `MediaSender` resets its audio queue. A stopper downstream of the TTS pushes
+   `InterruptionWorkerFrame`. Up to 40 ms already in `RawAudioTrack`, plus RTP in flight and the
+   browser's jitter buffer, still plays: "no audio frame of that turn is sent" holds at the output
+   transport (the capture test), not on the wire.
+8. **Outbound `t2v/1` messages** (`hello`, `state`, `caption`, `notice`) go as
+   `OutputTransportMessageUrgentFrame`, or with `interruptible=False` set on the instance; a plain
+   `OutputTransportMessageFrame` waits behind audio and a Stop drops it.
+9. **TTS bridge in `TextAggregationMode.TOKEN`** stands only if the session pushes whole clauses (one
+   text frame or `TTSSpeakFrame` per clause from Track A's splitter): TOKEN calls `run_tts` once per
+   incoming text. Pass `push_start_frame=True`, `push_stop_frames=True`,
+   `TTSSettings(model=None, voice=None, language=None)`; `TTSSpeakFrame.append_to_context` defaults True
+   and spoken-text frames flow to the output side. The fake TTS in `fakes.py` yields audio or passes
+   `max_consecutive_zero_audio_contexts=0`. TOKEN with `TTSSpeakFrame` was not run (UNVERIFIED).
+10. **`pc_id` and the router** (`voice/calls.py`, Track F): Pipecat's handler cannot give the plan's
+    answers: a holder of a `pc_id` renegotiates a live call (d3), `restart_pc=True` closes it and leaves
+    a stale key (d4), SINGLE mode answers 400 with an ERROR log, a PATCH after the end returns None (no
+    409), a malformed candidate is a 500, `type='answer'` raises. So `voice` keeps the `pc_id` behind
+    the call ID, always passes `pc_id=None`, `restart_pc=None` and `type="offer"`; `api` itself answers
+    409 to a second offer and to a late PATCH, maps the handler's 404, and parses each candidate before
+    Pipecat. The `pc_id` holds `#`: never in a URL. The handler swallows callback exceptions, so `voice`
+    checks the worker started. Option: build `SmallWebRTCConnection` directly
+    (`initialize`/`connect`/`get_answer`/`add_ice_candidate`), which owns the timeout and the map.
+11. **Decision-log entry on the end-of-candidates PATCH (aioice 0.11.0):** the PATCH does reach aioice,
+    but a call whose candidates are unreachable reports at about 60 s either way (Pipecat's timeout,
+    event `closed`, no `failed`), because aioice's check gives up at about 63.6 s; the PATCH speeds
+    failure only when no pair is pending (F8: 33 ms). The handler cannot shorten the 60 s. The client
+    still sends the PATCH; the entry's reason changes, and a faster failure needs `voice`'s own
+    deadline or a direct `SmallWebRTCConnection(connection_timeout_secs=...)`.
+12. **`TransportFailed`** comes from connection events (`failed`, and `closed` via
+    `on_client_disconnected`), not from error frames: ICE failure pushes no `ErrorFrame`. A path dropped
+    after connect fails in about 30 s (consent checks). `voice` also needs its own offer-to-connected
+    deadline for the F7 hang (item 21).
+13. **`voice/protocol.py`:** every data-channel message is a JSON object with a `"type"` key (Pipecat
+    drops anything else and logs it whole at ERROR), `type` never `signalling`; the client never sends
+    raw text starting with `ping` (else app messages queue and bot audio stops after 3 s). Inbound comes
+    through the transport event `on_app_message` (not `on_client_message`) or
+    `InputTransportMessageFrame`; the client ignores `{"type":"signalling"}` (`peerLeft` at hang-up).
+14. **Client PATCH body:** snake_case `sdp_mid` and `sdp_mline_index`, both required, `candidate: ""`
+    for the end; add the audio track before the data channel so the first bundled m-line is mid `"0"`;
+    a candidate on a bundled non-first mid is dropped silently (T4 failed).
+15. **Input audio:** the server's aiortc track yields stereo s16 48 kHz frames of 960 samples; the
+    transport resamples to `audio_in_sample_rate`, which must be 16000 (Silero takes only 16000 or
+    8000). The recorder's input tap is taken after the transport. `TransportParams` needs
+    `audio_in_enabled=True` and `audio_out_enabled=True` explicitly.
+16. **Logging (step 8, Q2):** `logger.disable("pipecat")` must run before the first import of any
+    `pipecat.*` module, transitive ones included. `logging.pipecat = "forward"` cannot work with "no
+    sink is added or removed" (owner item). Forwarded records must carry no message text
+    (content-bearing WARNING/ERROR lines: `pipecat/services/tts_service.py:1982`, `pipecat/transports/smallwebrtc/connection.py:389`,
+    `pipecat/processors/frameworks/rtvi/processor.py:293`, `pipecat/pipeline/worker.py:1648`, `pipecat/processors/frame_processor.py:1032`/`:1346`, `pipecat/utils/base_object.py:288`,
+    `pipecat/transports/smallwebrtc/request_handler.py:222`). The library's stdlib set-up keeps `aiortc` and `aioice` at WARNING or
+    above with no handler (aioice INFO holds IPs, aiortc DEBUG holds SDP).
+17. **`tests/conftest.py` (step 6)**, popped at module top before any import: `PIPECAT_SCTP_MAX_CHUNK_SIZE`,
+    `PIPECAT_SMART_TURN_LOG_DATA`, `PIPECAT_SETUP_FILES`, `PIPECAT_LOG_LLM_CONTEXT`,
+    `PIPECAT_ALLOWED_ORIGINS`, `PIPECAT_ALLOWED_FILE_URL_NETWORKS`, `LOGURU_*`, `WEBSOCKETS_*`,
+    `FORWARDED_ALLOW_IPS`, `WEB_CONCURRENCY`, `UVICORN_*`, `FASTAPI_OTEL_AUTO_CONFIGURE`, `FASTAPI_ENV`,
+    `OTEL_*` (exporters, endpoints, protocols, `SDK_DISABLED`, `PROPAGATORS`, `RESOURCE_ATTRIBUTES`,
+    `SERVICE_NAME`, `PYTHON_TRACER_PROVIDER`, `PYTHON_CONTEXT`, `INSTRUMENTATION_HTTP_KNOWN_METHODS`),
+    `ORT_LOAD_CONFIG_FROM_MODEL`, `NUMBA_*`, `LLVMLITE_*`, `OPENAI_*`, `GROQ_*`; optionally
+    `PYTHON_DOTENV_DISABLED=1` (guards `load_dotenv` only). `voice` refuses `PIPECAT_SETUP_FILES` and
+    `PIPECAT_SMART_TURN_LOG_DATA` at start. The aiortc fixture monkeypatches
+    `RTCIceGatherer.getDefaultIceServers` with a raising classmethod.
+18. **ARCH-BAN (step 6) gains:** `pipecat.runner` (`load_dotenv(override=True)`, `logger.remove()`),
+    `pipecat.cli`, `pipecat.evals`, `pipecat.bus`, `pipecat.audio.turn.smart_turn.local_smart_turn_v2`
+    (torch), `pipecat.audio.resamplers.resampy_resampler` (numba), `pipecat.processors.logger`,
+    `pipecat.observers.loggers`, `pipecat.processors.aggregators.dtmf_aggregator`; and a harness test
+    that `pipecat.runner.run` is not in `sys.modules` after importing `voice`.
+19. **Settings and serving (steps 7 and 10) for hosting on this machine:** with no proxy, uvicorn's
+    defaults (`proxy_headers=True`, trusting `127.0.0.1,::1`) let every local client forge its address,
+    into the access log too: `serve()` and the Ole5 server run with `proxy_headers=False` until a proxy
+    exists, `server.forwarded_allow_ips` empty by default (`*` refused). `uvicorn.run` gets
+    `workers=1`, `access_log=False`, `server_header=False`, no `env_file`; the app gets
+    `FastAPI(telemetry={'tracing': False, 'metrics': False, 'logs': False, 'auto_configure': False})`.
+    Tokens and secrets never in a query string (logged and traced).
+20. **Event loop on Windows (owner item):** on Proactor, aioice sockets go deaf after WinError 10054 and
+    2-3 of 16 call closes hang; Selector had 0 of 16. `serve()`, `t2v dev` and the Ole5 server should
+    run uvicorn on a Selector loop on Windows (UNVERIFIED in a running server), and every
+    `disconnect()`/`pc.close()` is bounded by a timeout so a hung close cannot leak the call.
+21. **F7 guard:** an offer with `a=end-of-candidates` and no usable candidate hangs the server pc in
+    `new` with no event; `voice` refuses such an offer or closes any call not `connected` within its own
+    deadline.
+22. **Media is not on loopback:** aioice never offers 127.0.0.1 (`aioice/ice.py:88`); a browser and the
+    server on this machine connect over its private LAN addresses, so `t2v dev` binding HTTP to
+    127.0.0.1 still opens UDP sockets on the LAN addresses. Browser `.local` candidates trigger mDNS
+    multicast on the LAN.
+23. **File-fed transport (Track E, step 10):** absolute `perf_counter` deadlines with one
+    `asyncio.sleep` hold 60 s within the 100 ms tolerance (end drift -4.9 ms) but send frames up to 30 ms
+    early and p99 19 ms late; the hybrid pacer is exact at about 43% of a core. Smart Turn stalls audio
+    100-163 ms at each VAD stop, which Track H's timings must allow for.
+24. **Warm-up and imports:** `import onnxruntime` costs 8.2-12.3 s per process; the lifespan warm-up
+    builds `SileroVADAnalyzer` and `LocalSmartTurnAnalyzerV3` (each loads its model in `__init__`), and
+    `import t2_agentic_voice` and `t2v --help` import neither (GP-17), or each child-process test pays
+    about 10 s.
+25. **Track C (PyJWT):** one module-level `jwt.PyJWT(options={'enforce_minimum_key_length': True})` for
+    encode and decode; `algorithm='HS256'` explicit, never `None`, no caller data in `headers`; decode
+    with `algorithms=['HS256']`, `require=['exp', 'iat', 'jti', ...]`, small `leeway`, `audience`/`issuer`
+    if used, `verify_signature` never passed False; catch `PyJWTError` (`InvalidKeyError` is not an
+    `InvalidTokenError`).
+26. **Track A (num2words):** cardinals only through num2words; Arabic ordinals outside 1-19 and every
+    decimal handled by the library itself; calls on one thread.
+
+### Unresolved
+
+- Env reads in native code (onnxruntime's C++ core, FFmpeg in PyAV, LLVM in llvmlite): UNVERIFIED.
+- httpx's proxy and TLS variables (`HTTP_PROXY`, `HTTPS_PROXY`, `ALL_PROXY`, `NO_PROXY`,
+  `SSL_CERT_FILE`, `SSL_CERT_DIR`) under `trust_env`: not read (TD-004).
+- Whether the library's own groq clients override `GROQ_CUSTOM_HEADERS` (`groq/_client.py:306`) when
+  they pass headers explicitly: UNVERIFIED; Track B's "GROQ_* change nothing" test must cover it.
+- OpenTelemetry exporter variables (headers, timeouts, certificates) beyond those cited: not read.
+  Whether `Resource(...)` built directly reads any variable: UNVERIFIED.
+- Whether the project's Phoenix/OTel set-up installs global tracer, meter or logger providers, and
+  whether any installed span processor copies inbound baggage onto spans: not in scope.
+- Whether a `.env` sits at the worktree or main checkout root: not checked (reading `.env` is forbidden).
+- Whether each `WEBSOCKETS_*` has a per-call override, and whether uvicorn's websockets protocol sends
+  `WEBSOCKETS_SERVER` as its Server header: UNVERIFIED.
+- Lazily imported modules (`pipecat/services/llm_service.py:521`, `pipecat/transports/smallwebrtc/request_handler.py:231`) checked by reading only.
+- Whether aiortc's SDP-candidate path always goes through aioice's mDNS resolution, and whether
+  aioice resolves a browser's `.local` candidates on Windows: UNVERIFIED (mDNS was not run; it leaves
+  the machine).
+- Whether pydantic's `ValidationError` text includes the input value (logged at `pipecat/processors/frameworks/rtvi/processor.py:302`,
+  :385; `pipecat/transports/smallwebrtc/connection.py:389`, :839): UNVERIFIED.
+- Whether aiortc's `setRemoteDescription` errors quote SDP fragments (logged at
+  `pipecat/transports/smallwebrtc/request_handler.py:239`): UNVERIFIED.
+- Whether `SmallWebRTCTransport`'s input resampler also downmixes stereo to mono: the spike read the raw
+  track only; UNVERIFIED.
+- TOKEN aggregation with `TTSSpeakFrame` (one `run_tts` per frame): the spike used SENTENCE; UNVERIFIED.
+- Whether an in-flight HTTP `run_tts` is cancelled at once by an `InterruptionFrame` (how the client's
+  streamed response closes on cancel): not traced.
+- How much audio plays after a Stop beyond the 40 ms in `RawAudioTrack` (RTP, jitter buffer): needs a
+  browser measurement.
+- `STTService`'s TTFB metrics with one request per turn (started at each VAD stop,
+  `pipecat/services/stt_service.py:644`, 2 s `stt_ttfb_timeout`): UNVERIFIED; the plan's timings should not rely on it.
+- Whether a `TranscriptionFrame` with empty text is mishandled by a Pipecat processor downstream: only
+  relevant if one is added later.
+- Smart Turn v3.2 on Saudi Arabic and MSA; why the same utterance scored 0.441 and 0.568 on different
+  repetitions (its buffer is time-stamped with `time.monotonic()`, `pipecat/audio/turn/smart_turn/base_smart_turn.py:118`): UNVERIFIED.
+- Why `import onnxruntime` takes 8.2-12.3 s (a socket watch saw none in 4 polls; native code is invisible
+  to the audit hook): UNVERIFIED.
+- A thread-based feeder with `time.sleep(0.02)` (median 20.37 ms) as a cheaper exact pacer: UNVERIFIED.
+- uvicorn on a Selector loop through `loop=` in a running server: UNVERIFIED.
+- Whether a call connects on this machine with no network adapter up (no loopback candidates):
+  UNVERIFIED, not tested (it would change system settings).
+- aioice below 0.11 on the F7 offer, and whether a browser can send such an offer (a plausible trigger:
+  only unresolvable `.local` candidates): UNVERIFIED.
+- Windows effect of the colons in Smart Turn's WAV log names: UNVERIFIED.
+- An `APIRouter` using `on_startup` included into an app without its own lifespan: whether handlers run
+  twice beyond the double-include case: UNVERIFIED.
+- Arabic num2words quality and gender agreement for TTS (needs a native speaker); thread safety inferred
+  from source only.
+- A child process with piped stderr encodes as cp1256 here; loguru wrote the banner's characters as
+  `\u` escapes (observed): tests decoding the child's stderr must allow for it.
+
+### For the owner
+
+- **aioice 0.11.0 hang (Q1's aioice clause):** an offer with no candidates but `a=end-of-candidates`
+  leaves the server peer in `new` with no event or timeout (`aioice/ice.py:1101`; seen for 75 s).
+  Whether aioice < 0.11 behaves better is UNVERIFIED, so the agent's view is no constraint and a guard in
+  `voice` (item 21); the owner may still ask for the `aioice<0.11` constraint Q1 allowed.
+- **Q2's "no sink is added or removed" vs `logging.pipecat = "forward"`:** a disabled `pipecat`
+  namespace reaches no sink (`loguru/_logger.py:1995`), so "forward" must enable it and add a forwarding
+  sink, and then loguru's default stderr sink prints every Pipecat DEBUG line (transcripts, spoken
+  text) unless the app removes it. "off", the default, is unaffected. Needs a re-decision on forward.
+- **Windows hosting:** with all hosting on this machine, uvicorn's default Windows loop (Proactor)
+  lets aioice sockets go deaf and 2-3 of 16 call closes hang (`stdlib: asyncio/proactor_events.py:541`,
+  :108); proposal: run on a Selector loop on Windows and bound every close.
+- No licence item: licences were not the subject of these reads and spikes, and none came up.
