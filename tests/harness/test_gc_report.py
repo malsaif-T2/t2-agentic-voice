@@ -1,20 +1,19 @@
-"""The garbage-collection report finds what it claims to find, and nothing it should ignore."""
+"""The garbage-collection report (scripts/gc_report.py, and its doc sections in gc_docs.py)
+finds what it claims to find, and nothing it should ignore."""
 
 from __future__ import annotations
 
 from pathlib import Path
 
+from scripts.gc_docs import comments_and_docstrings, unknown_names, unresolved_paths
 from scripts.gc_report import (
     ROOT,
     code_tokens,
-    comments_and_docstrings,
     duplicates,
     large_modules,
     report,
     suppressions,
-    unknown_names,
     unreferenced,
-    unresolved_paths,
 )
 from scripts.harness_config import load_config
 from tests.harness.support import config, write
