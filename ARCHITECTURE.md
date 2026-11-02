@@ -28,7 +28,8 @@ packages/t2-agentic-voice/   the library teammates install: src/t2_agentic_voice
 apps/ole5-voice-agent/       the Ole5 Voice Agent: src/ole5_voice/, Ole5's prompt, tools,
                              knowledge base and ticket system, and its web widget
 examples/minimal/            the smallest app: the guide's quickstart, and a test of the library
-tests/                       one subfolder per package, and harness/ for the checks' own tests
+tests/                       one subfolder per package, harness/ for the checks' own tests, and
+                             the helpers every package's tests share (leaks.py, isolation.py)
 ```
 
 The library's **public API is its package root and the facades beside it**: the root's
@@ -151,7 +152,10 @@ run").
   handlers is named in its `take_over`. Pipecat logs through loguru instead: the plan that
   installs Pipecat makes `configure_logging` remove loguru's default sink and forward its
   records at the configured level, so no framework debug line carries call content
-  ([SECURITY.md](docs/SECURITY.md), invariant 8).
+  ([SECURITY.md](docs/SECURITY.md), invariant 8). This is the code as built and D-002's plan for
+  loguru, not yet the design's logging contract (its 3.3 and 10.2: the standard library's
+  loggers under the package's name with a null handler, no handler on the root logger; its
+  12.2: loguru owned by `voice`), which M2's plan builds and settles (TD-033).
 - `voice` uses Pipecat for its pipeline, its WebRTC transport, speech detection, and the base
   classes of its speech-to-text and text-to-speech services (D-018). Its own subclasses of those
   call the speech-to-text and text-to-speech ports, and its own processor runs `agent`'s turn

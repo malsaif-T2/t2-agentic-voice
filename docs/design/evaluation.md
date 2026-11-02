@@ -36,9 +36,11 @@ What is measured, and on what:
 variants are its recordings on each device and in each session. The held-out split keeps every
 recording of an item on one side (by item, as under Splits) and, where the item set allows,
 also holds out whole recording sessions; if both cannot hold, which wins is the owner's call
-before the first run. For an audio clip the reference is its transcript under the spelling
-guide; for a simulated call, the expected tool calls and ticket fields. What serves as the
-independent check for each is fixed in the first measurement plan's registration.
+before the first run, and for speech-to-text the owner ruled that the item wins (plan 002, Q10).
+For an audio clip the reference is its transcript under the spelling guide; for a simulated
+call, the expected tool calls and ticket fields. What serves as the independent check for each
+is fixed in the first measurement plan's registration: for speech-to-text, the owner's listen to
+every variant in `poe record`'s review mode (plan 002, Q9).
 
 **One speaker, for Phase 0.** The only voice available is the owner's (D-006): new recordings on
 each device, plus the 124 talk-over segments recorded for the prototype in October 2026

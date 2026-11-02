@@ -100,7 +100,9 @@ on the first 0.5–1.0 s of the 90 dev talk-over clips only, not of each talk-ov
   Orpheus, an Arabic and an English voice), and `domain`'s rules for speaking numbers and ticket
   IDs. Pipecat's loguru routed through `core/logging.py`, given to `core` in `[[owners]]` with a
   decision, and a test that a debug line holding a transcript does not reach the output
-  (invariant 8).
+  (invariant 8). The design gives loguru to `voice` instead (its 12.2); M2's plan builds the
+  design's logging contract (its 3.3 and 10.2), which the library does not meet yet, and
+  settles this (TD-033).
 - No talker yet: the agent says back what it heard. One trace per turn in Phoenix, with the
   requests and audio seconds each Groq model uses per call minute.
 - Deployed on the owner's host behind HTTPS, the widget embedded in the website, and a call
@@ -117,11 +119,13 @@ on the first 0.5–1.0 s of the 90 dev talk-over clips only, not of each talk-ov
   and their generated reference; `examples/minimal` as an echo agent; the guide's
   quickstart, serving, browser-client, settings, tracing and data pages. The widget is
   Ole5's, built on the reference client.
-- *From M1* ([plan 002's Future improvements](completed/002-golden-set-baseline.md#future-improvements)), for M2's plan to weigh: a prompt arm that keeps product terms in Latin
-  script (term recall was 0.333 on dev for large-v3); how a live call sets the language Whisper is
-  sent, since M1's arms sent each item's label, which a call does not know; and, when numbers are
-  spoken, whether compound number words count as digits (TD-031). Each is measured on the golden
-  set (D-024's floor of 6 items) before it changes a default.
+- *From M1* ([plan 002's Future improvements](completed/002-golden-set-baseline.md#future-improvements)),
+  for M2's plan to weigh: a prompt arm that keeps product terms in Latin script (term recall
+  was 0.333 on dev for large-v3); how a live call sets the language Whisper is sent, since M1's
+  arms sent each item's label, which a call does not know (TD-011); and, when numbers are
+  spoken, whether compound number words and the short and dialect digit names count as digits
+  (TD-031). Each is measured on the golden set (D-024's floor of 6 items) before it changes a
+  default. Several debt rows name M2's plan as their trigger ([tech-debt.md](tech-debt.md)).
 
 *Done when* the owner holds a call in Chrome on laptop speakers and on a headset, locally and
 from another network to the deployed backend, and hears each turn back; end-of-turn cut-offs
@@ -146,12 +150,12 @@ Groq model are recorded.
   as library behaviour with Ole5's word additions as settings; audio replay for tests, and a
   test that text-mode calls follow the same path as audio calls; the guide's concepts and
   audio-troubleshooting pages.
-- *From M1* ([plan 002's Future improvements](completed/002-golden-set-baseline.md#future-improvements)), for M3's plan to weigh: a filter for text from silence and the agent's
-  echo (every silent, noise and echo clip came back with text, such as Whisper's invented
-  captions); how its rule hears short Saudi words (often misheard even as whole clips); its first
-  window (at 500 ms none of the 4 Saudi words asking the agent to halt was heard; large-v3 at
-  750 ms held the most); and the noise runs repeated on another day before its first comparison
-  (TD-032).
+- *From M1* ([plan 002's Future improvements](completed/002-golden-set-baseline.md#future-improvements)),
+  for M3's plan to weigh: a filter for text from silence and the agent's echo (every silent,
+  noise and echo clip came back with text, such as Whisper's invented captions); how its rule
+  hears short Saudi words (often misheard even as whole clips); its first window (at 500 ms none
+  of the 4 Saudi words asking the agent to halt was heard; large-v3 at 750 ms held the most);
+  and the noise runs repeated on another day before its first comparison (TD-032).
 
 *Done when* the targets registered in its plan hold on the golden set's overlap clips and on
 M2's call recordings: a normal-volume «وقف» stops the agent within its target, the agent's own
@@ -194,9 +198,10 @@ rehearsal's password, archiving, and English questions pass.
   the outbox and lookups, the record, the guard's claim rule, the caps, and the safety suite
   teams run on their own actions; the T2 Ticket API adapter and the ticket action stay Ole5's.
   The handoff takes consent like any action: a read-back, then a clear yes (D-018).
-- *From M1* ([plan 002's Future improvements](completed/002-golden-set-baseline.md#future-improvements)), for M5's plan to weigh: a ticket number heard is read back before it is
-  acted on, never taken as heard (large-v3 got 4 of the 12 full 16-digit readings right, each
-  miss a digit error), and the ticket is found by the session's verified identity.
+- *From M1* ([plan 002's Future improvements](completed/002-golden-set-baseline.md#future-improvements)),
+  for M5's plan to weigh: a ticket number heard is read back before it is acted on, never taken
+  as heard (large-v3 got 4 of the 12 full 16-digit readings right, each miss a digit error), and
+  the ticket is found by the session's verified identity.
 
 *Done when* simulated calls create the right tickets with zero false action claims; the
 rehearsal's ticket flow passes, where an eager «نعم أرسلها» over the closing question creates the
@@ -270,11 +275,23 @@ targets hold at the cap on live calls.
 - Approved by the owner on 2026-11-01: the stack (D-002), the layers (D-003), SECURITY.md
   (D-007), evaluation.md (D-011), the description, the milestones M1 to M7, and the package
   design as amended (D-017).
+- From M1 (plan 002): the library's `testing` layer (D-019), the checks ARCH-FACADE and
+  ARCH-WORDS (D-020), the first public facades and their stability (D-021), the scorers in the
+  library and the golden-set runner in the app (D-022), plain OTLP tracing to Phoenix (D-023),
+  the speech-to-text noise on the dev split (D-024), and `stt.model` stays `whisper-large-v3`
+  (D-025).
+- From garbage collection round 1 (plan 004): the library's base error is `T2VoiceError`
+  (D-026).
 
 ## Open questions (need a human decision)
 
 - WORKING-RULES.md: which of its rules to keep, change, or add (plan 000).
 - A remote repository, so that CI runs the gate on every push (plan 000, TD-001).
+- Where the contract is written: plan 000 writes the guide's `contract.md` from the design's
+  section 3 before M0 closes, as the guide's index and the design's 14 and 16.1 promise (D-018,
+  answer 23); or the design's section 3, accepted with D-017, stays the fixed contract and the
+  page is written with the guide's README in M2 (found in plan 004's read: neither plan 000's
+  criteria nor M0's lines here list the page).
 - Whether T2's package index exists and can host the library (the design's open question 9;
   the owner asks T2).
 - How teammates are supported: left until someone starts using the library (the design's

@@ -16,6 +16,9 @@ To add one:
 | --- | --- | --- |
 | [eval-history.md](eval-history.md) | `uv run poe eval-history` | `tests/ole5_voice/evals/test_history.py` |
 
+The run history renders records that are never edited, so `poe docs` reads it as history
+(`[docs] historical` in `harness.toml`): a run's note keeps the references of its time, a debt
+row since paid included ([evaluation.md](../design/evaluation.md) says what the history holds).
+
 Typical candidates as the project grows: an HTTP API's OpenAPI contract, a database schema, the
-catalog of test data, and a measurement history rendered from a committed JSONL file
-([evaluation.md](../design/evaluation.md)).
+catalog of test data, and the guide's settings and API reference (the design's 14).

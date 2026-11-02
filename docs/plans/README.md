@@ -44,8 +44,12 @@ and fails on each item below that does not hold:
 - **Required sections** (`##` headings, spelled as in the template): Goal, Acceptance
   criteria, Plan, Progress log, Decision log. DOC-PLAN fails a plan that misses one, and an
   active plan the roadmap does not link.
-- **References:** "plan NNN", `D-NNN`, `TD-NNN` and `GP-NN` must exist wherever they are cited
-  (DOC-REF), so never cite a plan number before its file exists.
+- **References:** "plan NNN", `D-NNN`, `TD-NNN`, `GP-NN` and "invariant N" must exist wherever
+  they are cited (DOC-REF), so never cite a plan number before its file exists.
+- **Code samples:** a fenced block that follows a link to a `.py` file, with no other fence
+  between them, is read as a copy of that file and must be a run of its lines, indentation
+  aside (DOC-SAMPLE). A block of new or changed code has no `.py` link between it and the
+  fence before it.
 
 ## Optional sections
 
@@ -71,10 +75,10 @@ A progress-log line that departs from a registered protocol starts with `Deviati
 
 ## How work moves
 
-- **Commits:** each commit belongs to one plan and names it in its subject
+- **Commits:** a commit of a plan belongs to that plan alone and names it in its subject
   (`Plan NNN: <what>`), with that plan's logs updated in the same commit, so every plan's
-  history reads on its own. Review fixes land as their own commits
-  (`Plan NNN: review fixes, block X`).
+  history reads on its own; a small change outside any plan says what it changes in its
+  subject. Review fixes land as their own commits (`Plan NNN: review fixes, block X`).
 - **Blocks:** a larger plan lands as small blocks, each gated by `uv run poe check`. The
   default for a plan of several blocks: each block is built in its own worktree
   (`.claude/worktrees/<name>`) and reviewed by an agent that did not write it before it is
