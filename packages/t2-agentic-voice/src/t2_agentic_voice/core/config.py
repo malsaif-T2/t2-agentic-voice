@@ -238,8 +238,7 @@ class Settings(BaseSettings):
         raise ConfigurationError(
             "These settings cannot load: "
             + "; ".join(f"{name} ({why})" for name, why in problems)
-            + ". FIX: correct each one in the environment or the .env file; .env.example lists "
-            "every setting.",
+            + ". FIX: correct each one in the environment or the .env file.",
             details={"settings": [{"setting": name, "problem": why} for name, why in problems]},
         )
 

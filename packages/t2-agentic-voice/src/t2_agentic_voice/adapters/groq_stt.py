@@ -328,7 +328,7 @@ def _checked(api_key: SecretStr, model: SttModel, base_url: str, timeout_s: floa
         setting = setting_name(group, *problem["loc"])
         raise ConfigurationError(
             f"The Groq adapter refuses its {setting} ({problem['msg']}). FIX: give it a value "
-            "the settings take; .env.example lists every setting.",
+            "the settings take.",
             details={"setting": setting},
         )
     key = GroqSettings(api_key=api_key).resolved_api_key()

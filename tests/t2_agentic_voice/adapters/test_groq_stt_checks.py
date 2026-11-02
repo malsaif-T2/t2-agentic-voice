@@ -52,6 +52,16 @@ def test_built_in_code_it_refuses_what_settings_refuse(given: dict[str, Any], se
         assert holding(given["base_url"], shown(raised.value)) == []
 
 
+def test_a_refused_value_is_named_and_no_file_of_the_repository() -> None:
+    """An installed library ships no `.env.example`, so the FIX line names only the setting."""
+    with pytest.raises(ConfigurationError) as raised:
+        GroqSTT(**(VALID | {"timeout_s": 0.0}))
+    assert raised.value.message == (
+        "The Groq adapter refuses its T2V_STT__TIMEOUT_S (Input should be greater than 0). "
+        "FIX: give it a value the settings take."
+    )
+
+
 def test_a_bad_key_is_refused_with_the_settings_own_fix_line() -> None:
     """Not "give one that holds a character no API key holds", which asked for the opposite."""
     with pytest.raises(ConfigurationError) as raised:

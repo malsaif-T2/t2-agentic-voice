@@ -176,6 +176,19 @@ def test_from_env_names_each_failing_setting_and_never_its_value(
     assert (error.__cause__, error.__context__) == (None, None)
 
 
+def test_from_env_says_what_to_correct_and_names_no_file_of_the_repository(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """An installed library ships no `.env.example`, so the FIX line names only the setting."""
+    monkeypatch.setenv(f"{PREFIX}STT__TIMEOUT_S", "0")
+    with pytest.raises(ConfigurationError) as raised:
+        Settings.from_env()
+    assert raised.value.message == (
+        f"These settings cannot load: {PREFIX}STT__TIMEOUT_S (Input should be greater than 0). "
+        "FIX: correct each one in the environment or the .env file."
+    )
+
+
 @pytest.mark.parametrize("name", sorted(_keys(Settings, PREFIX)))
 def test_no_setting_shows_a_value_it_refuses(name: str, monkeypatch: pytest.MonkeyPatch) -> None:
     """GP-19 for every setting, one added later included: given the made-up key (pasted into
