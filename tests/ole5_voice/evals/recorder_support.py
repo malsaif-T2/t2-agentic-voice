@@ -187,7 +187,10 @@ def recorder_of(tree: Tree, *, golden: Sequence[Item] | None = None, **given: An
 @contextmanager
 def serving(recorder: Recorder) -> Iterator[RecorderServer]:
     server = RecorderServer(recorder)
-    thread = threading.Thread(target=server.serve_forever, daemon=True)
+    # A short poll, so `shutdown` returns at once rather than after the default half second.
+    thread = threading.Thread(
+        target=server.serve_forever, kwargs={"poll_interval": 0.01}, daemon=True
+    )
     thread.start()
     try:
         yield server

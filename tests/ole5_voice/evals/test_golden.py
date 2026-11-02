@@ -8,7 +8,6 @@ from __future__ import annotations
 import json
 import re
 import shutil
-import sys
 from collections.abc import Callable, Mapping
 from pathlib import Path
 from typing import Any
@@ -25,6 +24,7 @@ from ole5_voice.evals.toml_write import dump_item
 
 from tests.ole5_voice.evals import samples
 from tests.ole5_voice.evals.fakes import FakeSpellingCheck
+from tests.ole5_voice.evals.recorder_support import link_folder
 
 SHA, WHEN = samples.SHA, samples.WHEN
 CONSENT = {"speaker": "the owner", "agreed": True, "on": "2026-11-02", "words": "I agree."}
@@ -301,15 +301,6 @@ def test_the_audio_of_a_root_given_is_checked_against_its_manifest(tmp_path: Pat
     assert _check(evals, read=_reader(changes)).problems == []  # no root given: no audio read
 
 
-def _link(link: Path, target: Path) -> None:
-    if sys.platform == "win32":  # a junction needs no privilege, where a symlink does
-        import _winapi
-
-        _winapi.CreateJunction(str(target), str(link))
-    else:
-        link.symlink_to(target, target_is_directory=True)
-
-
 def test_an_audio_file_reached_through_a_link_out_of_its_root_is_refused(tmp_path: Path) -> None:
     items = _change(
         _items(), "n01", 0, segments=[{"root": "owner", "path": "linked/n01-a.wav", "sha256": SHA}]
@@ -318,7 +309,7 @@ def test_an_audio_file_reached_through_a_link_out_of_its_root_is_refused(tmp_pat
     outside, folder = tmp_path / "outside", tmp_path / "owner"
     outside.mkdir()
     folder.mkdir()
-    _link(folder / "linked", outside)
+    link_folder(folder / "linked", outside)
     read: list[Path] = []
 
     def reader(path: Path) -> Wav:

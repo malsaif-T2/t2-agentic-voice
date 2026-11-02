@@ -9,10 +9,10 @@ from pathlib import Path
 
 import pytest
 from ole5_voice.evals import run
-from t2_agentic_voice import Settings, configure_logging
+from t2_agentic_voice import Settings
 from t2_agentic_voice.ports import SpeechToText
 
-from tests.ole5_voice.evals.test_run import DEV, Setup
+from tests.ole5_voice.evals.run_support import DEV, Setup
 
 SHELL = {
     "T2V_STT__TIMEOUT_S": "30",
@@ -22,9 +22,7 @@ SHELL = {
 }
 
 
-@pytest.fixture(autouse=True)
-def _plain_logs() -> None:
-    configure_logging("INFO", "console")
+pytestmark = pytest.mark.usefixtures("plain_logs")
 
 
 def _capturing(setup: Setup) -> list[Settings]:

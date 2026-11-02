@@ -7,93 +7,21 @@ from __future__ import annotations
 
 import asyncio
 import signal
-from collections.abc import Callable
 from pathlib import Path
 
 import pytest
 from ole5_voice.evals import run
 from ole5_voice.evals.models import Item
-from ole5_voice.evals.run_parts import Parts
 from ole5_voice.evals.runs import HistoryLine, VariantResult
-from t2_agentic_voice import ConfigurationError, ProviderError, Settings, configure_logging
+from t2_agentic_voice import ConfigurationError, ProviderError, Settings
 from t2_agentic_voice.ports import AudioClip, SpeechToText, Transcript
 
-from tests.ole5_voice.evals.fakes import (
-    FakeHistory,
-    FakeMatcher,
-    FakeScorecardWriter,
-    FakeSpeechToText,
-    FakeTracing,
-    fake_normalize,
-)
-from tests.ole5_voice.evals.test_run_parts import WHEN, FakeClock, World, golden_set, make_world
+from tests.ole5_voice.evals.fakes import FakeSpeechToText
+from tests.ole5_voice.evals.run_support import DEV, HELD_OUT, Setup, World
+from tests.ole5_voice.evals.samples import WHEN
 
 KEY = "gsk_made-up-key-0000"  # never a real key
-
-
-class Setup:
-    """A run's world and the fakes it is built from, to read back after `main`."""
-
-    def __init__(
-        self,
-        tmp_path: Path,
-        build: Callable[[World], tuple[Item, ...]] | None = None,
-        held_out: tuple[str, ...] = (),
-    ) -> None:
-        world = self.world = make_world(tmp_path)
-        found = build(world) if build else (world.item("a"), world.item("b", takes=2))
-        self.golden = golden_set(*found, held_out=held_out)
-        self.stt: SpeechToText = FakeSpeechToText()
-        self.writer, self.history = FakeScorecardWriter(), FakeHistory()
-        self.tracing, self.clock = FakeTracing(), FakeClock()
-        self.adapter: Callable[[Settings], SpeechToText] | None = None  # by default, `stt`
-
-    def parts(self) -> Parts:
-        return Parts(
-            folder=self.world.top,
-            git=self.world.git,
-            load_items=self.golden.load_items,
-            load_split=self.golden.load_split,
-            load_matcher=lambda path: FakeMatcher(),
-            write_scorecard=self.writer,
-            append_line=self.history,
-            speech_to_text=self.adapter or (lambda settings: self.stt),
-            tracing=lambda settings: self.tracing,
-            normalize=fake_normalize,
-            now=lambda: WHEN,
-            clock=self.clock,
-            sleep=self.clock.sleep,
-        )
-
-    def out(self, name: str = "r1") -> Path:
-        return self.world.main / "var" / "runs" / name
-
-    def main(self, *extra: str, answerer: str = "groq", split: str = "dev", out: str = "r1") -> int:
-        argv = ["--answerer", answerer, "--split", split, "--out", str(self.out(out))]
-        argv += ["--note", "a made-up run", "--audio", f"owner={self.world.audio}"]
-        if answerer == "groq":
-            argv += ["--price-per-hour", "0.111", "--cap-usd", "1"]
-            argv += ["--model", "whisper-large-v3", "--timeout-s", "6"]
-        return run.main([*argv, *extra], parts=self.parts())
-
-    def results(self) -> tuple[VariantResult, ...]:
-        ((_, results, _, _),) = self.writer.calls
-        return results
-
-
-@pytest.fixture(autouse=True)
-def _plain_logs() -> None:
-    configure_logging("INFO", "console")  # lines read as plain text, whatever ran before
-
-
-def _calls(setup: Setup) -> int:
-    stt = setup.stt
-    assert isinstance(stt, FakeSpeechToText)
-    return len(stt.calls)
-
-
-DEV = ["--answerer", "reference", "--split", "dev", "--out", "x", "--note", "n"]
-HELD_OUT = ["--answerer", "reference", "--split", "held-out", "--out", "x", "--note", "n"]
+pytestmark = pytest.mark.usefixtures("plain_logs")
 
 
 @pytest.mark.parametrize(
@@ -144,7 +72,7 @@ def test_show_settings_says_whether_the_key_is_set_never_the_key_or_the_env_file
     ):
         assert shown in out, shown
     assert KEY not in out and "private note" not in out and str(env) not in out
-    assert _calls(setup) == 0 and not setup.out().exists()
+    assert setup.calls() == 0 and not setup.out().exists()
     key_file = tmp_path / "key.txt"
     key_file.write_text(f"{KEY}\n", encoding="utf-8")
     env.write_text(f"T2V_GROQ__API_KEY_FILE={key_file}\n", encoding="utf-8")
@@ -179,7 +107,7 @@ def test_settings_that_do_not_load_are_reported_without_their_values(
     assert setup.main("--tracing-endpoint", "http://user:hunter2@127.0.0.1:6006/v1/traces") == 2
     out = capsys.readouterr().out
     assert "--tracing-endpoint is not" in out and "hunter2" not in out
-    assert _calls(setup) == 0
+    assert setup.calls() == 0
 
 
 @pytest.mark.parametrize(
@@ -212,7 +140,7 @@ def test_a_run_is_refused_before_any_call(
     setup.adapter = no_key if damage == "no key" else None
     assert setup.main(out=out) == 2
     assert message in capsys.readouterr().out
-    assert _calls(setup) == 0 and setup.writer.calls == [] and setup.history.lines == []
+    assert setup.calls() == 0 and setup.writer.calls == [] and setup.history.lines == []
     assert not setup.out("r1").exists() or damage == "out exists"
 
 
@@ -229,7 +157,7 @@ def test_the_reference_answerer_scores_every_variant_right_and_appends_no_histor
     assert out == setup.out().resolve()
     lines = (setup.out() / run.RESULTS_FILE).read_text(encoding="utf-8").splitlines()
     assert [VariantResult.model_validate_json(line) for line in lines] == list(results)
-    assert setup.history.lines == [] and _calls(setup) == 0
+    assert setup.history.lines == [] and setup.calls() == 0
 
 
 def test_a_groq_run_appends_its_history_line_to_the_worktree_and_beside_the_scorecard(
@@ -238,7 +166,7 @@ def test_a_groq_run_appends_its_history_line_to_the_worktree_and_beside_the_scor
     setup = Setup(tmp_path)
     setup.stt = FakeSpeechToText(["zebra quartz"] + ["open the inbox"] * 3)
     assert setup.main() == 0
-    assert _calls(setup) == 4  # the smoke test, then the three variants
+    assert setup.calls() == 4  # the smoke test, then the three variants
     assert [r.right for r in setup.results()] == [True, True, True]
     line, copy = setup.history.lines  # in the worktree's history, and beside the scorecard
     assert copy == line
@@ -269,7 +197,7 @@ def test_a_smoke_test_that_needed_a_retry_fails_the_run_before_any_variant(
     setup = Setup(tmp_path)
     setup.stt = FakeSpeechToText([ProviderError("rate_limited", True), "open the inbox"])
     assert setup.main() == 1
-    assert _calls(setup) == 2 and "smoke_failed" in capsys.readouterr().out
+    assert setup.calls() == 2 and "smoke_failed" in capsys.readouterr().out
     assert setup.results() == () and not (setup.out() / run.RESULTS_FILE).exists()
     line = setup.history.lines[0]  # it spent: the attempt is recorded
     assert (line.complete, line.variants, line.billed_seconds) == (False, 0, 20.0)
@@ -337,7 +265,7 @@ def test_the_cap_ends_a_run_between_requests(tmp_path: Path) -> None:
     setup.stt = FakeSpeechToText(["open the inbox"] * 4)
     # $10 a request: the smoke test and one more.
     assert setup.main("--price-per-hour", "3600", "--cap-usd", "25") == 1
-    assert _calls(setup) == 2 and [r.variant for r in setup.results()] == ["a-v1"]
+    assert setup.calls() == 2 and [r.variant for r in setup.results()] == ["a-v1"]
     assert setup.history.lines[0].cost_usd == pytest.approx(20.0)
 
 
