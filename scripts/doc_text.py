@@ -1,15 +1,22 @@
 """The docs as the docs check (scripts/check_docs.py, its rule modules) and `poe gc` read them:
-which Markdown files there are, their lines, and their prose, the lines outside code fences.
+which Markdown files there are, their lines, their prose (the lines outside code fences), and
+the local links in their prose.
 """
 
 from __future__ import annotations
 
+import os
 import re
 from collections.abc import Iterator
+from dataclasses import dataclass
 from pathlib import Path
+from urllib.parse import unquote
 
 # A line that opens or closes a code fence.
 FENCE = re.compile(r"^\s*(```|~~~)")
+_LINK = re.compile(r"!?\[[^\]]*\]\((<[^>]+>|[^)\s]+)(?:\s+\"[^\"]*\")?\)")
+_INLINE_CODE = re.compile(r"`[^`\n]*`")
+_EXTERNAL = ("http://", "https://", "mailto:")
 
 
 def markdown_files(root: Path) -> list[Path]:
@@ -34,3 +41,27 @@ def prose_lines(path: Path) -> Iterator[tuple[int, str]]:
             fenced = not fenced
         elif not fenced:
             yield number, line
+
+
+@dataclass(frozen=True)
+class Link:
+    line: int
+    raw: str
+    target: Path
+
+
+def extract_links(md: Path, root: Path) -> list[Link]:
+    """Local links in `md`, ignoring code blocks, inline code, external URLs and anchors."""
+    links: list[Link] = []
+    for lineno, line in prose_lines(md):
+        for match in _LINK.finditer(_INLINE_CODE.sub("", line)):
+            raw = match.group(1).removeprefix("<").removesuffix(">")
+            if raw.startswith(_EXTERNAL) or raw.startswith("#"):
+                continue
+            path_part = unquote(raw.split("#", 1)[0])
+            base = root if path_part.startswith("/") else md.parent
+            # normpath, not resolve(): resolve() adopts the on-disk case on Windows, which
+            # would hide exactly the case mismatches that break links on Linux CI.
+            target = Path(os.path.normpath(base / path_part.lstrip("/")))
+            links.append(Link(lineno, raw, target))
+    return links
