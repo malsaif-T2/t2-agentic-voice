@@ -8,7 +8,6 @@ from pathlib import Path
 from types import ModuleType
 
 import pytest
-from _pytest.capture import CaptureFixture
 
 from scripts import check_architecture, gc_due, gc_report, quality
 from scripts.harness_config import HarnessConfigError, load_config
@@ -52,7 +51,10 @@ def test_a_missing_or_unparsable_file_is_reported(tmp_path: Path) -> None:
 
 @pytest.mark.parametrize("module", [check_architecture, gc_due, gc_report, quality])
 def test_every_command_reports_a_broken_file_as_the_checks_do(
-    module: ModuleType, tmp_path: Path, monkeypatch: pytest.MonkeyPatch, capsys: CaptureFixture[str]
+    module: ModuleType,
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+    capsys: pytest.CaptureFixture[str],
 ) -> None:
     """Sorted, each with its FIX, then the count and what to do: `poe gc` and `poe quality` too."""
     text = SYNTHETIC.replace("min_tokens = 20", "min_token = 20") + "\n[weird]\nx = 1\n"

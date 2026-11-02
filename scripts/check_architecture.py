@@ -24,6 +24,8 @@ Rules
                   its layers
   ARCH-DOC        the architecture doc's layer table matches [layers] and [[owners]], row by
                   row (scripts/arch_doc.py)
+  ARCH-DEPS       every outside module is declared by the project of the code that imports
+                  it: a member's pyproject.toml, or the root's (scripts/arch_deps.py)
   ARCH-SIZE, ARCH-FMT, ARCH-PARSE   every module, in src/ and the support folders
                   (scripts/module_rules.py)
   HARNESS-CONFIG  harness.toml itself is valid (scripts/harness_config.py, harness_arch.py)
@@ -38,6 +40,7 @@ from collections.abc import Collection, Sequence
 from pathlib import Path
 
 from scripts._common import Violation
+from scripts.arch_deps import check_deps
 from scripts.arch_doc import check_layer_doc
 from scripts.arch_facade import check_facade
 from scripts.arch_public import check_app
@@ -343,6 +346,7 @@ def check_repo(root: Path, config: HarnessConfig) -> tuple[list[Violation], int]
         found, count = check_app(root, app, arch)
         violations, checked = violations + found, checked + count
     support, support_count = check_support(root, arch.support_dirs, arch.max_module_lines)
+    violations += check_deps(root, arch)
     return violations + support + check_layer_doc(root, arch), checked + support_count
 
 
