@@ -1,10 +1,10 @@
 # Texts the source may hold although an item's reference holds them (evaluation.md, "No item in
 # the product"; plan 002's decision log). tests/ole5_voice/evals/test_no_item_in_source.py
 # searches every item's reference, and every line of the script, as whole words in every string
-# constant and text file under packages/, apps/*/src and examples/, and fails on each one found,
-# except a text listed here.
+# constant and text file under packages/, apps/*/src, apps/*/web and examples/, and fails on each
+# one found, except a text listed here.
 #
-# The list starts empty. Each entry narrows a rule the owner approved (D-011), so one is added
+# The list started empty. Each entry narrows a rule the owner approved (D-011), so one is added
 # only on the owner's ruling, with the owner's words and their date, in this shape:
 #
 # [[allowed]]
@@ -12,3 +12,12 @@
 # reason = "why the source needs them"
 # said = "the owner's words"
 # on = 2026-11-01
+
+# Q6 of plan 003: the owner's answer of 2026-11-02 to Q1 to Q6, each put with the agent's
+# recommendation, here (a) (the plan's "The owner's decisions"). The entry exempts the whole
+# text "stop" only; a longer reference that holds the word stays searched.
+[[allowed]]
+text = "stop"
+reason = "The protocol's `stop` message and the client's `stop()` method (the design's 4.5 and 5.5): names that no model or caller hears."
+said = "Yes go with the recommended."
+on = 2026-11-02

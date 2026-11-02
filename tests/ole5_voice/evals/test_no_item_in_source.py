@@ -1,7 +1,8 @@
 """No item in the product (evaluation.md, "No item in the product"): no item's reference, and no
 line of the script, appears as whole words in a string constant or a text file under
-`packages/`, `apps/*/src` or `examples/`, except a text of `allowed_in_source.toml`, which grows
-only by the owner's ruling. A self-test shows the search finds pasted text.
+`packages/`, `apps/*/src`, `apps/*/web` (an app's browser widget) or `examples/`, except a text of
+`allowed_in_source.toml`, which grows only by the owner's ruling. A self-test shows the search
+finds pasted text.
 
 Both sides are folded before they are compared, into the form the scorers compare (the
 library's `scored_form`: `normalize_arabic`, then `normalize_digits`), so the search finds what a
@@ -27,13 +28,27 @@ from t2_agentic_voice.domain.scoring import scored_form
 from t2_agentic_voice.languages import normalize_digits
 
 ROOT = Path(__file__).resolve().parents[3]
-SCANNED = [ROOT / "packages", *sorted((ROOT / "apps").glob("*/src")), ROOT / "examples"]
 PYTHON = {".py", ".pyi"}
 TEXT = {".md", ".toml", ".json", ".txt", ".js", ".mjs", ".html", ".css", ".cfg", ".ini"}
 TEXT |= {".yaml", ".yml", ".rst", ".csv", ".jsonl", ".svg"}
 # The library's characterization table of its normalizer: each row's input, and what the
 # normalizer makes of it.
 TABLE = ROOT / "tests" / "t2_agentic_voice" / "fixtures" / "arabic_normalizer_characterization.json"
+
+
+def scanned(root: Path) -> list[Path]:
+    """The product under `root`: the library, each app's code and its browser widget's files,
+    and the examples."""
+    apps = root / "apps"
+    return [
+        root / "packages",
+        *sorted(apps.glob("*/src")),
+        *sorted(apps.glob("*/web")),
+        root / "examples",
+    ]
+
+
+SCANNED = scanned(ROOT)
 
 
 def fold(text: str) -> str:
@@ -119,8 +134,21 @@ def test_no_item_appears_in_the_source() -> None:
     assert find_pasted(ROOT, SCANNED, found, allowed(EVALS / "allowed_in_source.toml")) == []
 
 
-def test_the_allow_list_starts_empty_and_names_the_owners_ruling(tmp_path: Path) -> None:
-    assert allowed(EVALS / "allowed_in_source.toml") == set()
+def test_the_scan_takes_each_apps_widget_folder(tmp_path: Path) -> None:
+    """`apps/*/web` is scanned as `apps/*/src` is, the widget's labels included (Q6 of plan
+    003); shown on a made-up tree, whatever the real one holds yet."""
+    _tree(tmp_path, {"apps/a/web/index.html": "<button>Stop</button>", "apps/b/src/x.py": ""})
+    roots = scanned(tmp_path)
+    shown = [p.relative_to(tmp_path).as_posix() for p in roots]
+    assert shown == ["packages", "apps/b/src", "apps/a/web", "examples"]
+    found = {fold("stop"): "item k05"}
+    assert find_pasted(tmp_path, roots, found) == ["apps/a/web/index.html:1: item k05"]
+
+
+def test_the_allow_list_holds_only_the_owners_ruling(tmp_path: Path) -> None:
+    """One entry, the owner's answer to Q6 of plan 003: "stop", the protocol's message and the
+    client's method; every other text an item holds stays searched."""
+    assert allowed(EVALS / "allowed_in_source.toml") == {"stop"}
     path = tmp_path / "allowed.toml"
     path.write_text(
         '[[allowed]]\ntext = "Okay!"\nreason = "a made-up case"\nsaid = "made up"\n'
