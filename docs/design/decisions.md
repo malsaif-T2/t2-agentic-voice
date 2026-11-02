@@ -655,3 +655,39 @@ twice; DOC-REF: every `D-NNN` cited anywhere is a heading here), so keep its sha
   Proposed; on 2026-11-02 the owner, asked to approve plan 003 with the agent's message saying
   that approval would cover this entry: "Yes go with the recommended" (plan 003, "The owner's
   decisions").
+
+## D-050 · Voice for a team's existing agent: a second, agent-led mode, after the Ole5 Voice Agent · 2026-11-02 · Accepted (the owner, 2026-11-02, as the direction and the order; the mode's open choices are decided when its phase is planned)
+
+- **Context:** in a meeting the owner relayed on 2026-11-02, a manager set the library's
+  ultimate goal: teams install it, plug in their existing LangChain or LangGraph agent, and talk
+  to it live, without rebuilding it. D-012 chose a dedicated voice agent, "not a voice shell
+  around a chat agent", and D-014 left plugging in a teammate's agent for later. The agent's
+  studies that day found that lifting a team's tools into our talker loses what their agent
+  does; the owner: "we need to use the agent as is", and "if we can not reliably let their
+  agent execute actions with the user permission then we didn't do it as we should". Reading
+  LangGraph's source showed a way to do that for writes made through tool calls, without
+  changing their code.
+- **Decision:**
+  - Two modes on one voice layer. The native mode is the talker as designed, for Ole5 and
+    every new voice agent. In the agent-led mode a team's LangGraph graph runs as is, on one
+    thread per call, behind the same voice layer
+    ([agent-led-mode.md](agent-led-mode.md)).
+  - The order. The owner, 2026-11-02: "I have decided to finish the first mode (pure voice with
+    its tools) first and finish our use-case Ole5. The we can do the one where they can use
+    their text-based agents as a next phase to focus on later." On the design: "I think your
+    last idea is the most reasonable so record it to return to it later."
+  - The direction recorded with it. Their agent makes a write only through a pause before its
+    tool step that our yes rule releases, after a read-back of the exact arguments. Their own
+    permission design is never relied on alone. Read-only agents are the floor and come first.
+    The talker is not built on LangChain or LangGraph.
+- **Consequences:** M2 to M7 change by two notes: M5's consent core keeps a place for a second
+  executor, and M4's plan weighs keeping fixed spoken lines free of command, yes and listening
+  words and the talker's tool list small. The design's progress-line example in 4.4 used two
+  wait words and is fixed. D-012 holds for the native mode, and the agent-led mode is recorded
+  as a second mode beside it. D-015's thinker keeps "never acts": the agent-led mode is not the
+  thinker. The phase's plan settles the open choices in agent-led-mode.md and records the
+  amendments it needs (D-012 for this mode, the contract's rows, D-014's later options, the
+  thinker's place in D-018's answer 16), each in an entry of its own.
+- **Evidence:** [agent-led-mode.md](agent-led-mode.md): approach 2's record, LangGraph 1.2.19
+  and langchain 1.4.7 read in their source (nothing was run), and four studies by the agent on
+  2026-11-02, each checked by a red team and a fact-checker.

@@ -98,6 +98,9 @@ The Ole5 Voice Agent, on top of it:
 - For the first version of the library: a drop-in widget for teammates' pages, a server
   configured without Python, and plugging in a teammate's agent over HTTP (D-014, later
   options).
+- Until the Ole5 Voice Agent works: voice for a team's existing LangChain or LangGraph agent,
+  used as is. It is the next phase (D-050,
+  [agent-led-mode.md](../design/agent-led-mode.md)).
 - A live call center, or transferring the call to a person (a handoff is a ticket).
 - Phone calls (SIP or PSTN) and mobile apps, for now.
 - Any change to Joori's Ole5 chatbot or its repository.
