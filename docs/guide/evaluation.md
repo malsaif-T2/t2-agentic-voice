@@ -454,12 +454,12 @@ its window from.
   it (the matcher's call). The scorecard's `windows` sums them by length, language and the
   clip's `want` label: `clips`, `empty`, `reused`, `words`, `leading_words`, `reference_words`,
   `one_word_clips` and `holds_word`.
-- **`--clips-from`** takes the same model's first dev run's `scorecard.json`, the file itself,
-  not its folder. A window at least as long as its clip is then not sent again: the clip's
-  answer from that scorecard is used, marked `reused`. A scorecard that is not a dev run of the
-  same model at the same commit is refused; without `--clips-from`, such a window sends the
-  whole clip, marked not reused. M1's first try at W1 named R1's folder, and was refused before
-  anything was sent.
+- **`--clips-from`** takes the same model's first dev run's `scorecard.json`, or that run's
+  `--out` folder, as `eval-compare` takes a run. A window at least as long as its clip is then
+  not sent again: the clip's answer from that scorecard is used, marked `reused`. A scorecard
+  that is not a dev run of the same model at the same commit is refused; without
+  `--clips-from`, such a window sends the whole clip, marked not reused. (In M1 it took the file
+  only, and the first try at W1, naming R1's folder, was refused before anything was sent.)
 
 M1's window runs, W1 to W6: 500, 750 and 1000 ms of the 90 dev talk-over clips (33 items), each
 model at each length, the models alternating; at 1000 ms, 2 clips no longer than that reused
