@@ -35,14 +35,19 @@ the plan's interfaces"; what Track F builds:
   `GET /client/1/t2v-client.js`, and `GET /dev` only with `env` dev and only to loopback clients
   (the design's 4.5 and 5.5; the bodies are api/protocol.py's). `/join` compares the client's
   protocol version with the server's first, verifies the token once, refuses a consent version
-  other than `privacy.consent_version`, mints the call's ID and offer secret, and the call's
-  TURN credentials when `server.turn_secret` is set. A second offer gets 409; the offer secret
-  stops working when ICE completes or the call ends, and a PATCH after that gets a quiet 409,
-  logged at DEBUG with no value; a client's `pc_id` never reaches Pipecat (item 10). Every
-  route answers "runtime not started" while the lifespan has not run. The router carries the
-  lifespan, which FastAPI merges when the router is included (an app that includes it twice
-  runs it twice). In the mount, the app's own CORS middleware answers, and the router says so
-  at startup (the design's 5.5).
+  other than `privacy.consent_version`, fixes the call's language
+  (`agent.call_language(request.language, locale=caller.locale)`, kept to the call's end),
+  mints the call's ID and offer secret, and the call's TURN credentials when
+  `server.turn_secret` is set. The router keeps its own record of each call it joined, and
+  `POST /offer` hands voice the call's caller, consent and language with the offer
+  (`Calls.answer`). A second offer gets 409; the offer secret stops working when ICE completes
+  or the call ends, and a PATCH after that gets a quiet 409, logged at DEBUG with no value: a
+  call whose offer was answered and whose `phase` is `ended`, or None once voice has forgotten
+  it, gets `call_ended` (Track F's tests: both, through `FakeCalls`' `end` and `forget`); a
+  client's `pc_id` never reaches Pipecat (item 10). Every route answers "runtime not started"
+  while the lifespan has not run. The router carries the lifespan, which FastAPI merges when the
+  router is included (an app that includes it twice runs it twice). In the mount, the app's own
+  CORS middleware answers, and the router says so at startup (the design's 5.5).
 - **Bodies.** Each `t2v/1` route reads its raw body itself, never more than its route's cap
   (api/protocol.py's `BODIES`, `max_bytes`): a `Content-Length` over the cap is refused before
   a byte is read, and a body that streams past the cap (with no length, or a length that lies)

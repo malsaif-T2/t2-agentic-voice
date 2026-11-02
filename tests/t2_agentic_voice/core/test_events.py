@@ -71,6 +71,9 @@ def test_every_event_carries_its_call_its_turn_and_its_time() -> None:
     assert [type(e) for e in [started, *events]] == list(EVENTS)
     with pytest.raises(ValidationError):
         started.at = AT  # type: ignore[misc]
+    greeted = AgentSpeechEnded(call_id="c-1", at=AT, text="x", played_fraction=1.0)
+    stopped = Interrupted(call_id="c-1", at=AT, kind="stop")
+    assert (greeted.turn_id, stopped.turn_id) == (None, None)  # the greeting answers no turn
 
 
 @pytest.mark.parametrize(
@@ -124,6 +127,8 @@ def test_a_report_counts_each_models_requests_per_call_minute() -> None:
     ).requests_per_minute() == {"m": 0.0}
     assert report.turns[0].times == TurnTimes()
     assert CallReport.model_validate_json(report.model_dump_json()) == report
+    assert not report.turns[0].unfinished  # a turn the call ended in the middle of says so
+    assert TurnRecord(turn_id=1, heard="", unfinished=True).unfinished
 
 
 @pytest.mark.parametrize(

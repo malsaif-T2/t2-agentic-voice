@@ -241,7 +241,7 @@ fix = "Pipecat's DTMF aggregator turns key presses into transcriptions, as if th
 modules = ["pipecat"]
 allowed = []
 within = ["t2_agentic_voice.voice.session"]
-fix = "The session never imports Pipecat (the design's 12.2): exchange the commands and events of voice/session/io.py with voice's Pipecat modules instead."
+fix = "The session never imports Pipecat (the design's 12.2): exchange the events of voice/session/session_events.py and the commands of voice/session/commands.py with voice's Pipecat modules, through the protocols of voice/session/io.py, instead."
 
 # The apps and the examples build on the library's public API, never on its voice framework or
 # its WebRTC stack (the design's 12.5; ARCH-PUBLIC keeps them off its internals).

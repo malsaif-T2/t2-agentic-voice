@@ -7,8 +7,9 @@ the parts it calls; tests/t2_agentic_voice/test_fakes.py checks each against its
 - `FakeCalls`: voice's entry point as api uses it (voice/calls.py's `Calls`);
 - `capturing_output`: a Pipecat output transport that keeps every frame it is given and writes
   nowhere, for the end of a test's pipeline in place of SmallWebRTC's (`quiet_pipecat` first);
-- the session's I/O (voice/session/io.py) in session_fakes.py: the phrase cache, the commands,
-  a session, and the Pipecat side that hands a session every event.
+- the session's I/O (voice/session/io.py, with its events and commands) in session_fakes.py: the
+  phrase audio, the commands, a session, and the Pipecat side that hands a session every
+  event.
 
 This module and session_fakes.py import no Pipecat, as a team's testing kit runs with none
 (D-017): `capturing_output` imports it when it is called.
@@ -28,6 +29,7 @@ from typing import TYPE_CHECKING
 from t2_agentic_voice import ConfigurationError, InvalidRequestError, NotFoundError, ProviderError
 from t2_agentic_voice.core.events import CallId
 from t2_agentic_voice.core.identity import Caller, Consent
+from t2_agentic_voice.domain.declaration import Language
 from t2_agentic_voice.domain.ports.speech_to_text import AudioClip, DataFlow, Transcript
 from t2_agentic_voice.domain.ports.text_to_speech import AudioChunk
 from t2_agentic_voice.voice.calls import CallPhase, Candidate
@@ -216,12 +218,14 @@ class FakeCalls:
     pipeline: it answers an offer with a text that names the call, refusing one in `refused`
     (as the F7 offer, or one it cannot read) and a call ID it already holds, and refusing any
     offer before `start`. A call is `connecting` until the test calls `connect`, and `ended`
-    once ended. It keeps each call's offer, caller, consent and candidates, the calls ended, and
-    how often it was started and closed."""
+    once ended, until the test calls `forget` (as `VoiceCalls` forgets a call once its peer has
+    closed): its phase is then None, as for a call never held, and an ended call takes no
+    candidates. It keeps each call's offer, caller, consent, language and candidates, the calls
+    ended, and how often it was started and closed."""
 
     def __init__(self, *, refused: Collection[str] = ()) -> None:
         self.refused = refused
-        self.offers: dict[CallId, tuple[str, Caller, Consent]] = {}
+        self.offers: dict[CallId, tuple[str, Caller, Consent, Language]] = {}
         self.candidates: dict[CallId, list[Candidate]] = {}
         self.phases: dict[CallId, CallPhase] = {}
         self.ended: list[CallId] = []
@@ -230,18 +234,20 @@ class FakeCalls:
     async def start(self) -> None:
         self.started += 1
 
-    async def answer(self, call_id: CallId, offer: str, *, caller: Caller, consent: Consent) -> str:
+    async def answer(
+        self, call_id: CallId, offer: str, *, caller: Caller, consent: Consent, language: Language
+    ) -> str:
         if not self.started:
             raise RuntimeError("an offer came before start(). FIX: start the calls first.")
         if offer in self.refused or call_id in self.phases:
             raise InvalidRequestError("The offer was refused.")
-        self.offers[call_id] = (offer, caller, consent)
+        self.offers[call_id] = (offer, caller, consent, language)
         self.candidates[call_id] = []
         self.phases[call_id] = "connecting"
         return f"answer to {call_id}"
 
     async def add_candidates(self, call_id: CallId, candidates: Sequence[Candidate]) -> None:
-        if call_id not in self.phases:
+        if self.phases.get(call_id, "ended") == "ended":
             raise NotFoundError("No such call.")
         if any(c.candidate and not c.candidate.startswith("candidate:") for c in candidates):
             raise InvalidRequestError("A candidate could not be read.")
@@ -258,6 +264,12 @@ class FakeCalls:
         if self.phases.get(call_id, "ended") != "ended":
             self.phases[call_id] = "ended"
             self.ended.append(call_id)
+
+    def forget(self, call_id: CallId) -> None:
+        """Forget an ended call, as `VoiceCalls` does once its peer has closed (a test's step).
+        Its offer stays in `offers`."""
+        if self.phases.get(call_id) == "ended":
+            del self.phases[call_id]
 
     async def aclose(self) -> None:
         for call_id in list(self.phases):
@@ -277,12 +289,15 @@ def quiet_pipecat() -> None:
 @dataclass
 class Captured:
     """What a `capturing_output` transport was given: every frame that reached it going
-    downstream, in order; and each audio frame it wrote and each message it sent, with when it
-    did (on `time.perf_counter`)."""
+    downstream, in order; each audio frame it wrote and each message it sent, with when it did;
+    and when it had handled each interruption, its queued audio dropped (each time on
+    `time.perf_counter`). An audio frame written before an interruption's time was being
+    written or queued before it; none starts after it."""
 
     frames: list[Frame] = field(default_factory=list)
     audio: list[tuple[float, OutputAudioRawFrame]] = field(default_factory=list)
     messages: list[tuple[float, object]] = field(default_factory=list)
+    interruptions: list[float] = field(default_factory=list)
 
     def audio_s(self) -> float:
         """How long the audio written plays."""
@@ -302,6 +317,7 @@ def capturing_output(
     once. It calls `quiet_pipecat` before it imports Pipecat."""
     quiet_pipecat()
     from pipecat.frames.frames import (
+        InterruptionFrame,
         OutputTransportMessageFrame,
         OutputTransportMessageUrgentFrame,
         StartFrame,
@@ -319,6 +335,8 @@ def capturing_output(
             if direction == FrameDirection.DOWNSTREAM:
                 captured.frames.append(frame)
             await super().process_frame(frame, direction)
+            if isinstance(frame, InterruptionFrame):  # its queued audio dropped by now
+                captured.interruptions.append(time.perf_counter())
 
         async def write_audio_frame(self, frame: OutputAudioRawFrame) -> bool:
             captured.audio.append((time.perf_counter(), frame))

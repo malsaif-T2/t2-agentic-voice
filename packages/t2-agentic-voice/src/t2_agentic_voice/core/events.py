@@ -106,8 +106,9 @@ class ModelUsage(_Frozen):
 
 class TurnRecord(_Frozen):
     """One turn of a call: what was heard, in which language, and what the agent said back;
-    whether the turn was dropped (its speech began while the agent spoke, or just after) or its
-    reply stopped by the caller; and its times."""
+    whether the turn was dropped (its speech began while the agent spoke, the greeting included,
+    or just after), its reply stopped by the caller, or the turn left unfinished (the call ended
+    before its transcript came, so nothing was heard); and its times."""
 
     turn_id: TurnId
     language: LanguageTag | None = None
@@ -115,6 +116,7 @@ class TurnRecord(_Frozen):
     said: str = ""
     dropped: bool = False
     stopped: bool = False
+    unfinished: bool = False
     times: TurnTimes = Field(default_factory=TurnTimes)
 
 
@@ -185,15 +187,17 @@ class UserTurnEnded(_TurnEvent):
     heard: str
 
 
-class Interrupted(_TurnEvent):
-    """The agent's speech in this turn was cut off, and how."""
+class Interrupted(Event):
+    """The agent's reply was cut off, and how; its `turn_id` is the caller's turn the reply
+    answered, None for the greeting or a spoken notice, which answer none."""
 
     kind: InterruptionKind
 
 
-class AgentSpeechEnded(_TurnEvent):
-    """The agent's reply in this turn ended: `text` is what it was to say, `played_fraction` how
-    much of its audio played (1 when it played whole)."""
+class AgentSpeechEnded(Event):
+    """The agent's reply ended: `text` is what it was to say, `played_fraction` how much of its
+    audio played (1 when it played whole); its `turn_id` is the caller's turn the reply
+    answered, None for the greeting or a spoken notice, which answer none."""
 
     text: str
     played_fraction: float = Field(ge=0, le=1, allow_inf_nan=False)

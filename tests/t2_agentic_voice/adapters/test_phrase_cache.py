@@ -13,7 +13,7 @@ from t2_agentic_voice.adapters.phrase_cache import PhraseCache
 from t2_agentic_voice.core.config import VoiceSettings
 from t2_agentic_voice.core.settings.tts import TtsSettings
 from t2_agentic_voice.domain.ports.text_to_speech import TextToSpeech
-from t2_agentic_voice.voice.session.io import Phrases
+from t2_agentic_voice.voice.session.io import PhraseAudio
 
 
 def test_the_phrase_cache_is_a_stub_until_track_b(settings: VoiceSettings, tmp_path: Path) -> None:
@@ -27,7 +27,7 @@ def test_the_phrase_cache_is_a_stub_until_track_b(settings: VoiceSettings, tmp_p
         with pytest.raises(NotImplementedError, match="Track B"):
             build()
     stub = PhraseCache.__new__(PhraseCache)  # the methods' stubs, past the constructor's
-    phrases: Phrases = stub  # the session's view of it: mypy checks the protocol's shape
+    phrases: PhraseAudio = stub  # the session's view: mypy checks the protocol's shape
     with pytest.raises(NotImplementedError, match="Track B"):
         asyncio.run(stub.declare([("I heard:", "en")]))
     with pytest.raises(NotImplementedError, match="Track B"):

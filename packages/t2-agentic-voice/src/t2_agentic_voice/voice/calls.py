@@ -36,12 +36,21 @@
 - **Candidates** (`add_candidates`). Each one is checked before Pipecat sees it, since aiortc
   answers a malformed line with an AssertionError (item 10); an empty one marks their end, the
   client's end-of-candidates PATCH, which reaches aioice (item 11).
+- **Messages.** The session bridge hands the session each client message as `on_app_message`
+  gives it, the object Pipecat parsed (voice/protocol.py's object path), parsed with
+  `parse_client_message`. Track E's test: a message sent on a test peer's data channel reaches
+  `parse_client_message` as that object, and one over MAX_CLIENT_MESSAGE_BYTES is dropped.
 - **The end** (`end`, `aclose`). Each peer's close is bounded by a timeout, since on Windows'
   proactor loop 2 or 3 of 16 closes hung (item 20); a call's session always hangs up, with its
-  report written, before voice forgets the call.
+  report written, before voice forgets the call. Voice forgets a call once it has ended and its
+  peer has closed: `phase` says `ended` only until then, and None after, as for a call it never
+  held.
 
 api does the HTTP side: the offer secret, a second offer's 409, the quiet 409 for a PATCH after
-ICE completed (from `phase`), and mapping each error to its one shape.
+ICE completed or the call ended, and mapping each error to its one shape. It keeps its own
+record of the calls it joined (each one's offer secret, and the call's language and identity
+until its offer), so a PATCH for a call whose offer was answered and whose `phase` is `ended`
+or None gets the quiet 409 `call_ended`.
 """
 
 from __future__ import annotations
@@ -54,10 +63,10 @@ from t2_agentic_voice.core.config import VoiceSettings
 from t2_agentic_voice.core.events import CallId
 from t2_agentic_voice.core.identity import Caller, Consent
 from t2_agentic_voice.core.tracing import Tracing
-from t2_agentic_voice.domain.declaration import VoiceAgent
+from t2_agentic_voice.domain.declaration import Language, VoiceAgent
 from t2_agentic_voice.domain.ports.speech_to_text import SpeechToText
 from t2_agentic_voice.domain.ports.text_to_speech import TextToSpeech
-from t2_agentic_voice.voice.session.io import SYSTEM_CLOCK, Clock, EventSink, Phrases
+from t2_agentic_voice.voice.session.io import SYSTEM_CLOCK, Clock, EventSink, PhraseAudio
 
 if TYPE_CHECKING:  # named in annotations only: this module imports no Pipecat (above)
     from pipecat.audio.turn.base_turn_analyzer import BaseTurnAnalyzer
@@ -67,7 +76,7 @@ _STUB = "voice's entry point is built by plan 003's Track E"
 
 # Where a call stands, as api asks before it takes a PATCH: its offer answered and its
 # connection being set up; connected (ICE completed, so the offer secret stops working); or
-# ended.
+# ended, until voice forgets it (its peer closed).
 CallPhase = Literal["connecting", "connected", "ended"]
 
 
@@ -89,18 +98,23 @@ class Calls(Protocol):
         """Build what every call shares, the speech detector's and the turn analyzer's models
         among it; called once, at the runtime's start, before any offer."""
 
-    async def answer(self, call_id: CallId, offer: str, *, caller: Caller, consent: Consent) -> str:
+    async def answer(
+        self, call_id: CallId, offer: str, *, caller: Caller, consent: Consent, language: Language
+    ) -> str:
         """Answer the call's SDP offer with its SDP answer, the call's pipeline and session
-        started. InvalidRequestError for an offer it refuses (one it cannot read, or the F7
-        offer), or for a call ID it already holds; the call is then not started."""
+        started, for `caller` with `consent`, held in `language` (the agent's, which api
+        resolved at join with `VoiceAgent.call_language`). InvalidRequestError for an offer it
+        refuses (one it cannot read, or the F7 offer), or for a call ID it already holds; the
+        call is then not started."""
 
     async def add_candidates(self, call_id: CallId, candidates: Sequence[Candidate]) -> None:
         """Hand the call's peer its trickled candidates, in order. NotFoundError for a call it
-        does not hold; InvalidRequestError for a candidate line it cannot read, none of the
-        candidates then given."""
+        does not hold or that has ended; InvalidRequestError for a candidate line it cannot
+        read, none of the candidates then given."""
 
     def phase(self, call_id: CallId) -> CallPhase | None:
-        """Where the call stands; None for a call it does not hold."""
+        """Where the call stands; None for a call it does not hold, an ended call it has
+        forgotten included (once its peer closed)."""
 
     async def end(self, call_id: CallId) -> None:
         """End the call now (`server`), if it holds it; return once its peer is closed."""
@@ -121,7 +135,7 @@ class CallsFactory(Protocol):
         settings: VoiceSettings,
         stt: SpeechToText,
         tts: TextToSpeech,
-        phrases: Phrases,
+        phrases: PhraseAudio,
         tracing: Tracing,
         emit: EventSink,
         clock: Clock = SYSTEM_CLOCK,
@@ -144,7 +158,7 @@ class VoiceCalls:
         settings: VoiceSettings,
         stt: SpeechToText,
         tts: TextToSpeech,
-        phrases: Phrases,
+        phrases: PhraseAudio,
         tracing: Tracing,
         emit: EventSink,
         clock: Clock = SYSTEM_CLOCK,
@@ -157,7 +171,9 @@ class VoiceCalls:
         """Build Silero VAD and Smart Turn v3.2 (the `Calls` protocol's `start`)."""
         raise NotImplementedError(_STUB)
 
-    async def answer(self, call_id: CallId, offer: str, *, caller: Caller, consent: Consent) -> str:
+    async def answer(
+        self, call_id: CallId, offer: str, *, caller: Caller, consent: Consent, language: Language
+    ) -> str:
         """Answer the call's SDP offer (the `Calls` protocol's `answer`)."""
         raise NotImplementedError(_STUB)
 

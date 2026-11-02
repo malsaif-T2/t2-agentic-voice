@@ -1,14 +1,16 @@
-"""Fakes of the session's I/O (voice/session/io.py), with the port fakes in fakes.py, for the
-session's tests (Track D) and the Pipecat side's (Track E). Each implements one protocol of
-io.py, or plays one side of it; tests/t2_agentic_voice/test_session_fakes.py checks each. They
-live apart from fakes.py, which would otherwise pass the 400 lines a module may hold (ARCH-SIZE):
+"""Fakes of the session's I/O (voice/session/io.py, with its events in session_events.py and
+its commands in commands.py), with the port fakes in fakes.py, for the session's tests (Track D)
+and the Pipecat side's (Track E). Each implements one protocol of io.py, or plays one side of
+it; tests/t2_agentic_voice/test_session_fakes.py checks each. They live apart from fakes.py,
+which would otherwise pass the 400 lines a module may hold (ARCH-SIZE):
 
-- `FakePhrases`: the runtime's fixed phrases (`Phrases`), refusing any text not declared;
+- `FakePhrases`: the runtime's fixed phrases' audio (`PhraseAudio`), refusing any text not
+  declared;
 - `FakeCommands`: where the session's commands go (`Commands`), keeping each;
 - `FakeSession`: a session (`Session`) for the Pipecat side, built as `CallSession` is;
 - `FakeSessionIO`: the Pipecat side around a session under test: its `CallSetup`, built from
   the fakes, and every event, tap and client message, handed to the session at the fake
-  clock's time.
+  clock's time, none after the call's end (io.py's end).
 """
 
 from __future__ import annotations
@@ -25,20 +27,17 @@ from t2_agentic_voice.domain.declaration import Language, VoiceAgent
 from t2_agentic_voice.domain.ports.speech_to_text import Transcript
 from t2_agentic_voice.domain.ports.text_to_speech import AudioChunk
 from t2_agentic_voice.voice.protocol import ClientMessage, SessionMessage, parse_client_message
-from t2_agentic_voice.voice.session.io import (
+from t2_agentic_voice.voice.session.commands import Command, HangUp, Send
+from t2_agentic_voice.voice.session.io import CallSetup, Commands, Session
+from t2_agentic_voice.voice.session.session_events import (
     AgentAudio,
     CallerAudio,
-    CallSetup,
     ClauseFailed,
     ClausePlayed,
     ClauseQueued,
-    Command,
-    Commands,
     Connected,
     Ending,
     FromClient,
-    Send,
-    Session,
     SessionEvent,
     Transcribed,
     TransportFailure,
@@ -62,10 +61,10 @@ PLAIN_CONSENT = Consent(version=None, record_audio=False)
 
 
 class FakePhrases:
-    """The runtime's fixed phrases (`Phrases`): each text declared in its language, said as
-    `seconds` of the fakes' tone at `sample_rate`; LookupError for any other, as the phrase
-    cache refuses text not declared at the start. Every text asked for is kept, found or not
-    (`asked`), so a test can tell that no heard words reached the cache."""
+    """The runtime's fixed phrases' audio (`PhraseAudio`): each text declared in its language,
+    said as `seconds` of the fakes' tone at `sample_rate`; LookupError for any other, as the
+    phrase cache refuses text not declared at the start. Every text asked for is kept, found or
+    not (`asked`), so a test can tell that no heard words reached the cache."""
 
     def __init__(
         self,
@@ -144,11 +143,14 @@ class FakeSession:
 
 class FakeSessionIO:
     """The Pipecat side around a session under test. `setup` is the call's `CallSetup`, built
-    from the fakes: the `agent`, `caller` and `consent` given, `settings`, `phrases` (the
-    agent's own by default), `max_chars` for every language, tracing off, the public events
-    kept in `emitted`, and `clock`. `commands` keeps what the session gives. Once `attach`ed to
-    a session, each method below builds its event at the clock's time, keeps it in `events`,
-    hands it to the session, and returns it."""
+    from the fakes: the `agent`, `caller` and `consent` given, the call's language as join
+    fixes it from `language` (the caller's pick) and the caller's locale, `settings`, `phrases`
+    (the agent's own by default), `max_chars` for every language, tracing off, the public
+    events kept in `emitted`, and `clock`. `commands` keeps what the session gives. Once
+    `attach`ed to a session, each method below builds its event at the clock's time, keeps it
+    in `events`, hands it to the session, and returns it; none once the call has ended (an
+    `Ending` or a `TransportFailure` handed, or a `HangUp` given), which raises RuntimeError,
+    as no event follows the end (io.py)."""
 
     def __init__(
         self,
@@ -157,6 +159,7 @@ class FakeSessionIO:
         agent: VoiceAgent = AGENT,
         caller: Caller = CALLER,
         consent: Consent = PLAIN_CONSENT,
+        language: LanguageTag | None = None,
         phrases: FakePhrases | None = None,
         max_chars: int | None = 200,
         clock: FakeClock | None = None,
@@ -172,6 +175,7 @@ class FakeSessionIO:
             caller=caller,
             consent=consent,
             agent=agent,
+            language=agent.call_language(language, locale=caller.locale),
             settings=settings,
             phrases=self.phrases,
             max_chars=lambda language: max_chars,
@@ -185,9 +189,21 @@ class FakeSessionIO:
         """Hand every event from now on to `session`."""
         self._session = session
 
+    @property
+    def ended(self) -> bool:
+        """Whether the call has ended: an `Ending` or a `TransportFailure` was handed, or the
+        session gave its `HangUp`."""
+        last = (Ending, TransportFailure)
+        return any(isinstance(e, last) for e in self.events) or bool(self.commands.of(HangUp))
+
     async def _hand[E: SessionEvent](self, event: E) -> E:
         if self._session is None:
             raise RuntimeError("no session to hand the event to. FIX: attach one first.")
+        if self.ended:
+            raise RuntimeError(
+                "the call has ended, and no event follows its end (io.py). FIX: end the scene "
+                "at its Ending, its TransportFailure or the session's HangUp."
+            )
         self.events.append(event)
         await self._session.handle(event)
         return event
@@ -240,15 +256,15 @@ class FakeSessionIO:
         return await self._hand(event)
 
     async def clause_queued(
-        self, turn_id: int, clause: int, *, requested_at: float | None = None
+        self, reply_id: int, clause: int, *, requested_at: float | None = None
     ) -> ClauseQueued:
         now = self.clock.now()
-        event = ClauseQueued(turn_id=turn_id, clause=clause, at=now, requested_at=requested_at)
+        event = ClauseQueued(reply_id=reply_id, clause=clause, at=now, requested_at=requested_at)
         return await self._hand(event)
 
     async def clause_played(
         self,
-        turn_id: int,
+        reply_id: int,
         clause: int,
         *,
         audio_s: float = 1.0,
@@ -260,7 +276,7 @@ class FakeSessionIO:
         (requests, tokens: none for a cached phrase) and maybe cut short."""
         requests, tokens = remaining
         event = ClausePlayed(
-            turn_id=turn_id,
+            reply_id=reply_id,
             clause=clause,
             at=self.clock.now(),
             audio_s=audio_s,
@@ -272,12 +288,12 @@ class FakeSessionIO:
         return await self._hand(event)
 
     async def clause_failed(
-        self, turn_id: int, clause: int, *, failure: ProviderErrorKind = "timeout"
+        self, reply_id: int, clause: int, *, failure: ProviderErrorKind = "timeout"
     ) -> ClauseFailed:
         retryable = failure != "rejected"
         now = self.clock.now()
         event = ClauseFailed(
-            turn_id=turn_id, clause=clause, at=now, failure=failure, retryable=retryable
+            reply_id=reply_id, clause=clause, at=now, failure=failure, retryable=retryable
         )
         return await self._hand(event)
 

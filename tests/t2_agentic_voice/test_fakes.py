@@ -12,6 +12,7 @@ from datetime import timedelta
 import pytest
 from t2_agentic_voice import ConfigurationError, InvalidRequestError, NotFoundError, ProviderError
 from t2_agentic_voice.core.identity import Caller, Consent
+from t2_agentic_voice.domain.declaration import Language
 from t2_agentic_voice.ports import AudioChunk, AudioClip, SpeechToText, TextToSpeech, Transcript
 from t2_agentic_voice.voice.calls import Calls, Candidate
 from t2_agentic_voice.voice.session.io import SYSTEM_CLOCK, Clock
@@ -31,6 +32,7 @@ from tests.t2_agentic_voice.fakes import (
 CLIP = AudioClip(pcm16=tone(1.0, 16_000))
 CALLER = Caller(subject="caller-1")
 CONSENT = Consent(version=None, record_audio=False)
+ENGLISH = Language.english(greeting="Welcome to the test line")
 
 
 def test_the_tone_is_whole_samples_of_sound() -> None:
@@ -174,13 +176,18 @@ def test_the_fake_calls_answer_offers_as_voices_entry_point_does() -> None:
     good = [_candidate("candidate:1 1 udp 1 192.0.2.1 5000 typ host"), _candidate("")]
 
     async def scene() -> list[str | None]:
+        async def offered(call_id: str, offer: str) -> str:
+            return await calls.answer(
+                call_id, offer, caller=CALLER, consent=CONSENT, language=ENGLISH
+            )
+
         with pytest.raises(RuntimeError, match="FIX: "):
-            await calls.answer("c1", "an offer", caller=CALLER, consent=CONSENT)
+            await offered("c1", "an offer")
         await calls.start()
-        answer = await calls.answer("c1", "an offer", caller=CALLER, consent=CONSENT)
+        answer = await offered("c1", "an offer")
         for call_id, offer in (("c1", "again"), ("c2", "an offer it refuses")):
             with pytest.raises(InvalidRequestError):
-                await calls.answer(call_id, offer, caller=CALLER, consent=CONSENT)
+                await offered(call_id, offer)
         with pytest.raises(NotFoundError):
             await calls.add_candidates("c9", good)
         with pytest.raises(InvalidRequestError):
@@ -188,17 +195,31 @@ def test_the_fake_calls_answer_offers_as_voices_entry_point_does() -> None:
         await calls.add_candidates("c1", good)
         phases = [calls.phase("c1")]
         fake.connect("c1")
+        fake.forget("c1")  # a call not ended is never forgotten
         phases.append(calls.phase("c1"))
         await calls.end("c1")
         await calls.end("c1")
         await calls.end("c9")
         phases += [calls.phase("c1"), calls.phase("c9")]
-        await calls.answer("c3", "an offer", caller=CALLER, consent=CONSENT)
+        with pytest.raises(NotFoundError):  # an ended call takes no candidates
+            await calls.add_candidates("c1", good)
+        fake.forget("c1")  # as VoiceCalls, once the call's peer has closed
+        phases.append(calls.phase("c1"))
+        with pytest.raises(NotFoundError):
+            await calls.add_candidates("c1", good)
+        await offered("c3", "an offer")
         await calls.aclose()
         return [answer, *phases]
 
-    assert asyncio.run(scene()) == ["answer to c1", "connecting", "connected", "ended", None]
-    assert fake.offers["c1"] == ("an offer", CALLER, CONSENT) and "c2" not in fake.offers
+    assert asyncio.run(scene()) == [
+        "answer to c1",
+        "connecting",
+        "connected",
+        "ended",
+        None,
+        None,  # forgotten
+    ]
+    assert fake.offers["c1"] == ("an offer", CALLER, CONSENT, ENGLISH) and "c2" not in fake.offers
     assert fake.candidates["c1"] == good
     assert (fake.ended, fake.started, fake.closed) == (["c1", "c3"], 1, 1)
 
@@ -256,14 +277,19 @@ def test_the_capturing_output_writes_audio_and_messages_where_a_test_reads_them(
 
 
 def test_the_capturing_output_plays_in_real_time_and_drops_audio_on_an_interruption() -> None:
-    """A second of audio queued, then an interruption 0.3 s in: what was written stops there,
-    give or take a chunk and Windows' timer, and each write waited for the one before to play."""
+    """A second of audio queued, then an interruption 0.3 s in: some audio was written, every
+    write started before the interruption was handled and none after it, the rest of the second
+    dropped, and each write waited for the one before to play. Each check is of order, or of a
+    time a slow machine only lengthens, so load cannot fail it (how much was written by then
+    depends on the machine)."""
     quiet_pipecat()
     from pipecat.frames.frames import InterruptionFrame, OutputAudioRawFrame
 
     captured = Captured()
     audio = OutputAudioRawFrame(audio=tone(1.0, 24_000), sample_rate=24_000, num_channels=1)
     _run(captured, [audio, 0.3, InterruptionFrame()], realtime=True)
-    assert 0.2 <= captured.audio_s() <= 0.5
+    (interrupted,) = captured.interruptions
     times = [at for at, _ in captured.audio]
+    assert times and all(at < interrupted for at in times)
+    assert 0 < captured.audio_s() < 1.0
     assert times[-1] - times[0] >= captured.audio_s() - 0.04 - 0.05

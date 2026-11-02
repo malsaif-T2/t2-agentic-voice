@@ -47,7 +47,9 @@ CARRIED = {"errors", "errors json"}
 
 def test_each_request_takes_what_a_browser_sends() -> None:
     join = JoinRequest.model_validate({"token": TOKEN, "protocol": 1})
-    assert (join.token.get_secret_value(), join.protocol) == (TOKEN, 1)
+    assert (join.token.get_secret_value(), join.protocol, join.language) == (TOKEN, 1, None)
+    picked = JoinRequest.model_validate({"token": TOKEN, "protocol": 1, "language": "ar-SA"})
+    assert picked.language == "ar-SA"
     offer = OfferRequest.model_validate(
         {"call_id": "c-1", "sdp": "v=0\r\n", "type": "offer", "offer_secret": SECRET}
     )
@@ -88,6 +90,9 @@ def _refused(model: type[BaseModel], body: dict[str, Any]) -> ValidationError:
         (JoinRequest, {"token": MARK, "protocol": 0}),
         (JoinRequest, {"token": MARK, "protocol": MAX_INDEX + 1}),
         (JoinRequest, {"token": MARK, "protocol": 1, "consent": {"record_audio": True}}),
+        (JoinRequest, {"token": TOKEN, "protocol": 1, "language": MARK}),  # not a library tag
+        (JoinRequest, {"token": TOKEN, "protocol": 1, "language": "AR-SA"}),
+        (JoinRequest, {"token": TOKEN, "protocol": 1, "language": 7}),
         (OfferRequest, {"call_id": "c-1", "sdp": "v=0", "type": "answer"}),  # never an answer
         (OfferRequest, {"call_id": "c-1", "sdp": "v=0"}),
         (OfferRequest, {"call_id": "c-1", "sdp": "", "type": "offer"}),
@@ -165,7 +170,7 @@ def _largest(route: str) -> dict[str, Any]:
     quotes = '"' * MAX_OFFER_SECRET_CHARS
     call = {"call_id": "c" * 64, "offer_secret": quotes}
     if route == "POST /join":
-        return {"token": '"' * MAX_TOKEN_CHARS, "protocol": MAX_INDEX}
+        return {"token": '"' * MAX_TOKEN_CHARS, "protocol": MAX_INDEX, "language": "ar-SA"}
     if route == "POST /offer":
         return call | {"sdp": "\n" * MAX_SDP_CHARS, "type": "offer"}
     line = {"candidate": '"' * MAX_CANDIDATE_CHARS, "sdp_mid": '"' * 64}

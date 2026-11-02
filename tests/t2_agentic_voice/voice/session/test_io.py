@@ -1,8 +1,8 @@
-"""The session's I/O (voice/session/io.py, plan 003's step 10): the lists name every event and
-command once; each is frozen and keyword-only, every event carries its time and every turn's
-event its turn; a session and a Pipecat side written against the protocols talk through them
-alone; and the system clock is the performance counter, the aware UTC time and asyncio's
-sleep."""
+"""The session's I/O (voice/session/io.py, with session_events.py and commands.py; plan 003's
+step 10): the lists name every event and command once; each is frozen and keyword-only, every
+event carries its time, every turn's event its turn and every clause's its reply, never a turn;
+a session and a Pipecat side written against the protocols talk through them alone; and the
+system clock is the performance counter, the aware UTC time and asyncio's sleep."""
 
 from __future__ import annotations
 
@@ -22,28 +22,27 @@ from t2_agentic_voice.domain.declaration import Language, VoiceAgent
 from t2_agentic_voice.domain.ports.speech_to_text import Transcript
 from t2_agentic_voice.domain.ports.text_to_speech import AudioChunk
 from t2_agentic_voice.voice.protocol import State, parse_client_message
-from t2_agentic_voice.voice.session.io import (
+from t2_agentic_voice.voice.session.commands import (
     COMMANDS,
-    SESSION_EVENTS,
-    SYSTEM_CLOCK,
-    AgentAudio,
-    CallerAudio,
-    CallSetup,
-    ClauseFailed,
-    ClausePlayed,
-    ClauseQueued,
     Command,
-    Commands,
-    Connected,
-    Ending,
-    FromClient,
     HangUp,
     ListenIn,
     Send,
-    Session,
-    SessionEvent,
     Speak,
     StopSpeaking,
+)
+from t2_agentic_voice.voice.session.io import SYSTEM_CLOCK, CallSetup, Commands, Session
+from t2_agentic_voice.voice.session.session_events import (
+    SESSION_EVENTS,
+    AgentAudio,
+    CallerAudio,
+    ClauseFailed,
+    ClausePlayed,
+    ClauseQueued,
+    Connected,
+    Ending,
+    FromClient,
+    SessionEvent,
     Transcribed,
     TransportFailure,
     TurnClosed,
@@ -62,9 +61,9 @@ EVENTS: list[SessionEvent] = [
         sent_at=2.61,
         transcript=Transcript(text="made-up words", language="en"),
     ),
-    ClauseQueued(turn_id=0, clause=0, at=2.95, requested_at=None),
-    ClausePlayed(turn_id=0, clause=0, at=3.05, audio_s=0.1, chunks=1),
-    ClauseFailed(turn_id=0, clause=1, at=3.2, failure="timeout", retryable=True),
+    ClauseQueued(reply_id=1, clause=0, at=2.95, requested_at=None),
+    ClausePlayed(reply_id=1, clause=0, at=3.05, audio_s=0.1, chunks=1),
+    ClauseFailed(reply_id=1, clause=1, at=3.2, failure="timeout", retryable=True),
     CallerAudio(pcm16=b"\x00\x00" * 320, sample_rate=16_000, at=3.3),
     AgentAudio(pcm16=b"\x00\x00" * 480, sample_rate=24_000, at=3.3),
     FromClient(message=parse_client_message({"v": 1, "type": "hangup"}), at=3.4),
@@ -73,12 +72,13 @@ EVENTS: list[SessionEvent] = [
 ]
 COMMAND_EXAMPLES: list[Command] = [
     ListenIn(language="en"),
-    Speak(turn_id=0, clause=0, text="I heard:", language="en", audio=FRAME),
-    StopSpeaking(turn_id=0),
+    Speak(reply_id=1, clause=0, turn_id=0, text="I heard:", language="en", audio=FRAME),
+    StopSpeaking(reply_id=1),
     Send(message=State(state="listening")),
     HangUp(reason="hangup"),
 ]
-TURNS = {TurnOpened, TurnClosed, Transcribed, ClauseQueued, ClausePlayed, ClauseFailed}
+TURNS = {TurnOpened, TurnClosed, Transcribed}
+CLAUSES = {ClauseQueued, ClausePlayed, ClauseFailed}
 
 
 def test_each_event_and_command_is_listed_once_in_the_unions_order() -> None:
@@ -99,17 +99,25 @@ def test_each_is_frozen_and_keyword_only(example: SessionEvent | Command) -> Non
         kind(*values)
 
 
-def test_every_event_carries_its_time_and_every_turns_event_its_turn() -> None:
+def test_every_event_carries_its_time_a_turns_its_turn_and_a_clauses_its_reply() -> None:
+    """A clause is keyed on its reply, never on a turn, so the greeting (reply 0) and a turn's
+    echo never share a key; `Speak` names the turn a reply answers, and a command carries no
+    time."""
     for event in EVENTS:
         names = {field.name for field in dataclasses.fields(event)}
         assert "at" in names and isinstance(event.at, float), event
         assert ("turn_id" in names) == (type(event) in TURNS), event
+        assert ({"reply_id", "clause"} <= names) == (type(event) in CLAUSES), event
     for command in COMMAND_EXAMPLES:
-        assert "at" not in {field.name for field in dataclasses.fields(command)}
+        names = {field.name for field in dataclasses.fields(command)}
+        assert "at" not in names
+        assert ("reply_id" in names) == isinstance(command, Speak | StopSpeaking)
+    greeting = Speak(reply_id=0, clause=0, turn_id=None, text="Hello there.", language="en")
+    assert (greeting.turn_id, greeting.audio) == (None, None)
 
 
 class _Phrases:
-    """The one phrase declared: the English frame."""
+    """The one phrase declared (a `PhraseAudio`): the English frame."""
 
     def audio(self, text: str, *, language: str) -> AudioChunk:
         if (text, language) != ("I heard:", "en"):
@@ -128,23 +136,28 @@ class _PipecatSide:
 
 
 class _Echo:
-    """A session written against the protocols alone: it names its language, says the frame
-    from the cache once a turn's transcript is in, then the heard words, and hangs up when the
-    call ends from outside."""
+    """A session written against the protocols alone: it names the call's language, says the
+    frame from the cache once a turn's transcript is in, then the heard words, as the next
+    reply (the greeting left out), and hangs up when the call ends from outside."""
 
     def __init__(self, setup: CallSetup, commands: Commands) -> None:
         self.setup, self.commands = setup, commands
+        self.replies = 0
 
     async def handle(self, event: SessionEvent) -> None:
+        language = self.setup.language
         if isinstance(event, Connected):
-            await self.commands.run(ListenIn(language="en"))
+            await self.commands.run(ListenIn(language=language.primary))
         elif isinstance(event, Transcribed) and event.transcript is not None:
-            turn, heard = event.turn_id, event.transcript.text
-            frame = self.setup.phrases.audio("I heard:", language="en")
-            await self.commands.run(
-                Speak(turn_id=turn, clause=0, text="I heard:", language="en", audio=frame)
+            self.replies += 1
+            reply, turn, tag = self.replies, event.turn_id, language.tag
+            frame = self.setup.phrases.audio(language.echo_frame, language=tag)
+            first = Speak(
+                reply_id=reply, clause=0, turn_id=turn, text=language.echo_frame, language=tag
             )
-            await self.commands.run(Speak(turn_id=turn, clause=1, text=heard, language="en"))
+            await self.commands.run(dataclasses.replace(first, audio=frame))
+            heard = event.transcript.text
+            await self.commands.run(dataclasses.replace(first, clause=1, text=heard))
         elif isinstance(event, Ending):
             await self.commands.run(HangUp(reason=event.reason))
 
@@ -153,11 +166,13 @@ def test_a_session_and_a_pipecat_side_talk_through_the_protocols_alone(
     settings: VoiceSettings,
 ) -> None:
     emitted: list[Event] = []
+    english = Language.english(greeting="Hello there.")
     setup = CallSetup(
         call_id="call-1",
         caller=Caller(subject="made-up"),
         consent=Consent(version=None, record_audio=False),
-        agent=VoiceAgent(name="echo", languages=[Language.english(greeting="Hello there.")]),
+        agent=VoiceAgent(name="echo", languages=[english]),
+        language=english,
         settings=settings,
         phrases=_Phrases(),
         max_chars=lambda language: 200,
@@ -176,6 +191,8 @@ def test_a_session_and_a_pipecat_side_talk_through_the_protocols_alone(
     assert commands is side and setup.clock is SYSTEM_CLOCK and emitted == []
     assert [type(command) for command in side.commands] == [ListenIn, Speak, Speak, HangUp]
     assert side.commands[-1] == HangUp(reason="caller_left")
+    said = [(c.reply_id, c.clause, c.turn_id) for c in side.commands if isinstance(c, Speak)]
+    assert said == [(1, 0, 0), (1, 1, 0)]
     with pytest.raises(LookupError):
         setup.phrases.audio("made-up words", language="en")
 

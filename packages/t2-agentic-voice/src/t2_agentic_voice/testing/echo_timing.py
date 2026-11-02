@@ -65,6 +65,8 @@ def echo_timings(
     """Each clip's echo call, clip by clip: each clip fed as a fresh call of `agent` through the
     file-fed pipeline at real-time pace, held in its language (the session's, as
     `stt.live_language = "session"` sends it), with `lead_s` of digital silence before it and
-    `tail_s` after it, speech-to-text through `stt` and text-to-speech through `tts`, the frame
-    synthesized once before the first clip; the models loaded once for every clip."""
+    `tail_s` after it, speech-to-text through `stt` and text-to-speech through `tts`, the
+    greeting and the frame synthesized once before the first clip (each a request in run T's
+    budget); the models loaded once for every clip. Each clip's lead starts once the call's
+    greeting has played (voice/file_transport.py), so `lead_s` counts from there."""
     raise NotImplementedError(_STUB)

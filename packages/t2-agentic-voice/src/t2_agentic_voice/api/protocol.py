@@ -1,8 +1,9 @@
 """The HTTP bodies of `t2v/1` (the design's 5.5), after the router's prefix: `POST /join` takes a
-join token and the client's protocol version, and answers the call's ID, its offer secret, the
-ICE servers and the server's version; `POST /offer` takes the call's SDP offer and answers its
-SDP answer; `PATCH /offer` takes trickled ICE candidates, an empty one marking their end
-(plan 003's appendix, item 14). The data channel's messages are voice/protocol.py's.
+join token, the client's protocol version and the language the caller picked, and answers the
+call's ID, its offer secret, the ICE servers and the server's version; `POST /offer` takes the
+call's SDP offer and answers its SDP answer; `PATCH /offer` takes trickled ICE candidates, an
+empty one marking their end (plan 003's appendix, item 14). The data channel's messages are
+voice/protocol.py's.
 
 A request body comes from the browser, which is not trusted: it is parsed strictly, with
 exactly its fields, each of its JSON type, and every size bounded (the bounds are the agent's,
@@ -44,6 +45,7 @@ from pydantic import (
 )
 
 from t2_agentic_voice.core.events import MAX_INDEX, CallId
+from t2_agentic_voice.core.settings.tts import LanguageTag
 from t2_agentic_voice.voice.protocol import PROTOCOL
 
 # The header a client may carry the offer secret in, instead of the body.
@@ -125,12 +127,15 @@ class _Response(BaseModel):
 
 
 class JoinRequest(_Request):
-    """`POST /join`: the join token, used once, and the client's protocol version, which the
-    router compares with its own before it verifies the token, so a mismatch spends no token
-    and is answered with a clear notice (`protocol_mismatch`)."""
+    """`POST /join`: the join token, used once; the client's protocol version, which the router
+    compares with its own before it verifies the token, so a mismatch spends no token and is
+    answered with a clear notice (`protocol_mismatch`); and the language the caller picked in
+    the client, if any, one of the library's tags, from which with the token's locale the
+    router fixes the call's language (`VoiceAgent.call_language`)."""
 
     token: _Token
     protocol: int = Field(ge=1, le=MAX_INDEX)
+    language: LanguageTag | None = None
 
 
 class IceServer(_Response):

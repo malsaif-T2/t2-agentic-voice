@@ -42,7 +42,7 @@ Speech-to-text: the adapter, the Whisper model, and how long a request may take.
 | `T2V_STT__PROVIDER` | one of groq | `groq` | — | Which adapter turns speech into text; only Groq's exists for now (D-004). |
 | `T2V_STT__MODEL` | one of whisper-large-v3, whisper-large-v3-turbo | `whisper-large-v3` | — | The Whisper model: whisper-large-v3 or whisper-large-v3-turbo. The default stayed large-v3 on a registered measurement (D-025), and changes only on another (GP-18). |
 | `T2V_STT__TIMEOUT_S` | number | `6` | seconds | The longest one transcription request may take before it is a timeout. |
-| `T2V_STT__LIVE_LANGUAGE` | one of session, auto | `session` | — | The language a live call sends Whisper: session (the call's language, as the caller picked it) or auto (none, so Whisper detects it). A registered measurement sets the default (GP-18). |
+| `T2V_STT__LIVE_LANGUAGE` | one of session, auto | `session` | — | The language a live call sends Whisper: session (the call's language, fixed when it joins from the caller's pick or the join token's locale) or auto (none, so Whisper detects it). A registered measurement sets the default (GP-18). |
 
 ## `tts`
 

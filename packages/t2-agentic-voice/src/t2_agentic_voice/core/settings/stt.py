@@ -37,8 +37,8 @@ class SttSettings(Group):
     live_language: LiveLanguage = Field(
         default="session",
         description=(
-            "The language a live call sends Whisper: session (the call's language, as the "
-            "caller picked it) or auto (none, so Whisper detects it). A registered measurement "
-            "sets the default (GP-18)."
+            "The language a live call sends Whisper: session (the call's language, fixed when "
+            "it joins from the caller's pick or the join token's locale) or auto (none, so "
+            "Whisper detects it). A registered measurement sets the default (GP-18)."
         ),
     )

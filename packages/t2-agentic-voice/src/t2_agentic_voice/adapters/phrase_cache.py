@@ -6,8 +6,8 @@ request and a cache hit sends nothing. Built by plan 003's Track B; until then a
 Only declared phrases are kept: text built from heard words never reaches the cache, since
 caching it would keep call content by default (invariant 8; plan 003's decision log). A file is
 written whole, to a temporary name and then renamed, so a stopped write leaves no half phrase.
-The session reads a phrase's audio through voice's `Phrases` protocol (voice/session/io.py),
-which this class meets.
+The session reads a phrase's audio through voice's `PhraseAudio` protocol
+(voice/session/io.py), which this class meets.
 """
 
 from __future__ import annotations

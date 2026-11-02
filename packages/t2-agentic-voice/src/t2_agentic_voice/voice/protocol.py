@@ -6,8 +6,16 @@ but for the version check at join.
 The browser is not trusted (docs/SECURITY.md's trust boundaries), so `parse_client_message`
 parses a client's message strictly: one of the client's types, with exactly its fields, each of
 its JSON type (no "1" or 1.0 for an integer, no 1 for a boolean), every size bounded, and the
-whole message at most MAX_CLIENT_MESSAGE_BYTES; anything else is an InvalidRequestError that
-holds none of it. No client message can set the caller's identity or consent (the design's 5.5).
+whole message at most MAX_CLIENT_MESSAGE_BYTES of UTF-8; anything else is an
+InvalidRequestError that holds none of it. No client message can set the caller's identity or
+consent (the design's 5.5).
+
+The caller speaks in turns and the agent in replies, and neither shares the other's numbers: a
+caller's turn is numbered by the speech-to-text bridge (`TurnId`), and each reply of the
+agent's by the session, from 0, the greeting reply 0 and each echo and each spoken notice the
+next (`ReplyId`), spoken clause by clause (`ClauseIndex`). An agent's caption and a client's
+`playback` report name a clause by its reply and its index, so the greeting's first clause and
+a turn's echo never share a key.
 
 SmallWebRTC, which carries the messages, keeps two names for itself (Pipecat 1.15.0's
 `transports/smallwebrtc/connection.py`, lines 82 and 376-380; plan 003's appendix, item 13): a
@@ -21,6 +29,7 @@ event, outbound as urgent transport messages, so a stop never drops one (the app
 
 from __future__ import annotations
 
+import json
 from collections.abc import Iterable
 from typing import Annotated, Final, Literal
 
@@ -41,8 +50,9 @@ from t2_agentic_voice.core.settings.tts import LanguageTag
 
 # The protocol's version: every message carries it as "v", and /join checks the client's.
 PROTOCOL: Final = 1
-# The longest message a client sends, as JSON text (the agent's bound): the longest valid one,
-# a `client_stats` with every field at its longest, fits in it several times over (a test).
+# The longest message a client sends, in bytes of UTF-8 JSON (the agent's bound): the longest
+# valid one, a `client_stats` with every field at its longest, fits in it several times over (a
+# test).
 MAX_CLIENT_MESSAGE_BYTES = 1024
 # What SmallWebRTC keeps for itself on the data channel (above).
 RESERVED_TYPES = ("signalling",)
@@ -54,7 +64,9 @@ CallState = Literal["listening", "thinking", "speaking", "confirming"]
 # A notice's kind, each shown with text in the call's language: `busy` comes with admission
 # control.
 NoticeKind = Literal["busy", "error", "ended"]
-# A clause's index in its turn's reply, from 0.
+# A reply's number in its call, from 0, as the session counts them: the greeting is reply 0.
+ReplyId = Annotated[int, Field(ge=0, le=MAX_INDEX)]
+# A clause's index in its reply, from 0.
 ClauseIndex = Annotated[int, Field(ge=0, le=MAX_INDEX)]
 
 
@@ -103,10 +115,10 @@ class ClientStats(_ClientMessage, ClientConnection):
 
 class Playback(_ClientMessage):
     """The browser began or finished playing one clause of the agent's reply: the clause an
-    agent `caption` named by its turn and index."""
+    agent `caption` named by its reply and index."""
 
     type: Literal["playback"]
-    turn_id: TurnId
+    reply_id: ReplyId
     clause: ClauseIndex
     event: Literal["started", "ended"]
 
@@ -136,21 +148,26 @@ class State(_SessionMessage):
 
 
 class Caption(_SessionMessage):
-    """Text to show: the caller's turn once heard, or the agent's reply clause by clause as each
-    one plays (an agent caption names its clause; a caller's names none). `final` is false for
-    words that may still change."""
+    """Text to show: the caller's turn once heard (named by its `turn_id`), or the agent's reply
+    clause by clause as each one plays (named by its `reply_id` and `clause`, with the caller's
+    `turn_id` it answers; none for the greeting or a spoken notice). `final` is false for words
+    that may still change."""
 
     type: Literal["caption"] = "caption"
     speaker: Literal["caller", "agent"]
     text: str
     final: bool
-    turn_id: TurnId
+    turn_id: TurnId | None = None
+    reply_id: ReplyId | None = None
     clause: ClauseIndex | None = None
 
     @model_validator(mode="after")
-    def _clause_is_the_agents(self) -> Caption:
-        if (self.speaker == "agent") != (self.clause is not None):
-            raise ValueError("an agent caption names its clause, and a caller's names none")
+    def _keyed_by_its_speaker(self) -> Caption:
+        agent = self.speaker == "agent"
+        if agent != (self.reply_id is not None) or agent != (self.clause is not None):
+            raise ValueError("an agent caption names its reply and clause, a caller's neither")
+        if not agent and self.turn_id is None:
+            raise ValueError("a caller's caption names its turn")
         return self
 
 
@@ -188,20 +205,60 @@ _CLIENT: TypeAdapter[ClientMessage] = TypeAdapter(
 
 
 def parse_client_message(message: object) -> ClientMessage:
-    """The client's message, from its JSON text (a str or bytes, as the channel carried it) or
-    the object Pipecat's transport parsed from that text. InvalidRequestError for anything
-    else: text over MAX_CLIENT_MESSAGE_BYTES, text that is not JSON, or an object that is not
-    exactly one message of the client's. Its details name only the kinds of problem found
-    (pydantic's error types), never a value, a key or a type the client sent."""
+    """The client's message, from the object Pipecat's transport parsed from its text, or from
+    the text itself (a str or bytes). A call takes the object path: SmallWebRTC's connection
+    runs `json.loads` on each data-channel message before its `on_app_message` event hands it
+    on (Pipecat 1.15.0's `transports/smallwebrtc/connection.py`, lines 376-387), so the bound
+    is measured on the object written back as compact JSON (UTF-8, no space), and a key the
+    text held twice reaches it once, with its last value. The text path, for a transport that
+    hands on the text, measures the text's own bytes and refuses a key held twice.
+
+    InvalidRequestError for anything else: a message over MAX_CLIENT_MESSAGE_BYTES
+    (`too_large`), text that is not one JSON value in UTF-8 or an object JSON cannot write
+    (`json_invalid`), a key held twice (`duplicate_key`), or one that is not exactly one message
+    of the client's (pydantic's error types). Its details name only these kinds of problem,
+    never a value, a key or a type the client sent."""
+    value, problem = _read(message)
+    if problem is None:
+        try:
+            return _CLIENT.validate_python(value)
+        except ValidationError as error:
+            problems = {e["type"] for e in error.errors(include_input=False, include_url=False)}
+    else:
+        problems = {problem}
+    raise _refused(problems) from None
+
+
+class _KeyTwiceError(Exception):
+    """A JSON object of the client's holds one key twice."""
+
+
+def _once(pairs: list[tuple[str, object]]) -> dict[str, object]:
+    """A JSON object's members, refusing a key held twice: `json.loads` would keep its last
+    value, and a reader that took the first would see another message."""
+    members = dict(pairs)
+    if len(members) != len(pairs):
+        raise _KeyTwiceError
+    return members
+
+
+def _read(message: object) -> tuple[object, str | None]:
+    """`message`'s JSON value, or the kind of problem that refuses it before it is read as a
+    message: its size in bytes, JSON it is not, or a key held twice."""
     if isinstance(message, str | bytes) and len(message) > MAX_CLIENT_MESSAGE_BYTES:
-        raise _refused(["too_large"])  # a str holds at least one byte a character
+        return None, "too_large"  # a character is a byte or more, so its bytes are too
     try:
         if isinstance(message, str | bytes):
-            return _CLIENT.validate_json(message)
-        return _CLIENT.validate_python(message)
-    except ValidationError as error:
-        problems = {e["type"] for e in error.errors(include_input=False, include_url=False)}
-    raise _refused(problems) from None
+            text = message.encode() if isinstance(message, str) else message
+            if len(text) > MAX_CLIENT_MESSAGE_BYTES:
+                return None, "too_large"
+            return json.loads(text.decode(), object_pairs_hook=_once), None
+        written = json.dumps(message, ensure_ascii=False, separators=(",", ":")).encode()
+    except _KeyTwiceError:
+        return None, "duplicate_key"
+    except (TypeError, ValueError, RecursionError):  # not UTF-8, not JSON, or not writable
+        return None, "json_invalid"
+    return (None, "too_large") if len(written) > MAX_CLIENT_MESSAGE_BYTES else (message, None)
 
 
 def _refused(problems: Iterable[str]) -> InvalidRequestError:

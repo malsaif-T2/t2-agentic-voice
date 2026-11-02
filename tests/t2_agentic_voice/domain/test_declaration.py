@@ -8,6 +8,7 @@ from typing import Any
 import pytest
 from pydantic import ValidationError
 from t2_agentic_voice.core.errors import ConfigurationError
+from t2_agentic_voice.core.settings.tts import LanguageTag
 from t2_agentic_voice.domain.declaration import Language, VoiceAgent
 
 SAUDI = Language.saudi_arabic(greeting="هلا! وش أقدر أساعدك فيه؟")
@@ -40,7 +41,7 @@ def test_a_language_is_frozen_and_takes_no_other_field() -> None:
         Language.model_validate(ENGLISH.model_dump() | {"voice": "troy"})
 
 
-def test_an_agent_has_a_name_and_its_languages_the_first_a_calls_own() -> None:
+def test_an_agent_has_a_name_and_its_languages_the_first_a_calls_by_default() -> None:
     agent = VoiceAgent(name="branch-helper", languages=[SAUDI, ENGLISH])
     assert (agent.name, agent.languages) == ("branch-helper", (SAUDI, ENGLISH))
     assert agent.languages[0].tag == "ar-SA"
@@ -48,6 +49,34 @@ def test_an_agent_has_a_name_and_its_languages_the_first_a_calls_own() -> None:
         agent.name = "other"  # type: ignore[misc]
     with pytest.raises(ValidationError):
         VoiceAgent.model_validate({"name": "x", "languages": [ENGLISH], "tools": []})
+
+
+@pytest.mark.parametrize(
+    ("requested", "locale", "tag"),
+    [
+        (None, "ar-SA", "ar-SA"),  # the locale's exact tag
+        (None, "AR-sa", "ar-SA"),  # in any case
+        (None, "ar", "ar-SA"),  # its primary subtag: the agent has no `ar`
+        (None, "en-US", "en"),
+        (None, "fr", "ar-SA"),  # a language the agent does not speak: its first
+        (None, None, "ar-SA"),  # no locale (DevIdentity's caller): its first
+        ("en", "ar-SA", "en"),  # the caller's pick comes before the locale
+        ("ar", "en-US", "en"),  # a pick the agent does not speak: the locale
+    ],
+)
+def test_a_calls_language_is_the_callers_pick_then_the_locale_then_the_first(
+    requested: LanguageTag | None, locale: str | None, tag: str
+) -> None:
+    agent = VoiceAgent(name="branch-helper", languages=[SAUDI, ENGLISH])
+    assert agent.call_language(requested, locale=locale).tag == tag
+
+
+def test_a_locale_takes_its_exact_tag_before_another_of_its_language() -> None:
+    msa = Language.arabic(greeting="مرحبا بك")
+    agent = VoiceAgent(name="branch-helper", languages=[ENGLISH, msa, SAUDI])
+    picked = [agent.call_language(None, locale=locale) for locale in ("ar-SA", "ar-EG", "ar")]
+    assert picked == [SAUDI, msa, msa]
+    assert agent.call_language("ar-SA", locale="en") is SAUDI
 
 
 @pytest.mark.parametrize(
