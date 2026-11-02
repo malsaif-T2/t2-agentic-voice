@@ -10,7 +10,14 @@ from pathlib import Path
 
 import pytest
 from pydantic import BaseModel, SecretStr, ValidationError
-from t2_agentic_voice.core.config import GroqSettings, Settings, get_settings
+from t2_agentic_voice.core.config import (
+    KEY_FILE_SETTING,
+    KEY_SETTING,
+    GroqSettings,
+    Settings,
+    get_settings,
+    setting_name,
+)
 from t2_agentic_voice.core.errors import ConfigurationError
 from t2_agentic_voice.core.logging import configure_logging, get_logger
 
@@ -77,6 +84,18 @@ def test_reads_each_group_nested_with_two_underscores(monkeypatch: pytest.Monkey
     assert (settings.stt.model, settings.stt.timeout_s) == ("whisper-large-v3-turbo", 4.5)
     assert settings.tracing.endpoint == "http://127.0.0.1:6006/v1/traces"
     assert (settings.tracing.include_transcripts, settings.tracing.redact) == (False, (r"\d{10}",))
+
+
+def test_setting_name_is_the_variable_each_setting_is_read_from() -> None:
+    """The name `from_env` and the Groq adapter put in an error is the variable to set."""
+    assert {setting_name(*path.split(".")) for path, _ in _fields(Settings)} == _keys(
+        Settings, PREFIX
+    )
+    assert (
+        f"{PREFIX}GROQ__API_KEY",
+        f"{PREFIX}GROQ__API_KEY_FILE",
+    ) == (KEY_SETTING, KEY_FILE_SETTING)
+    assert setting_name("tracing", "redact", 0) == f"{PREFIX}TRACING__REDACT"  # the whole list
 
 
 @pytest.mark.parametrize(

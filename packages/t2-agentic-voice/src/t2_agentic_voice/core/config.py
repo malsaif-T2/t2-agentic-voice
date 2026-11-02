@@ -32,6 +32,8 @@ from pydantic_settings import BaseSettings, SettingsConfigDict, SettingsError
 from t2_agentic_voice.core.errors import ConfigurationError
 
 PREFIX = "T2V_"
+# What a group's fields nest with in a name: `T2V_GROQ__API_KEY` is `settings.groq.api_key`.
+_NESTED = "__"
 Environment = Literal["dev", "test", "prod"]
 LogLevel = Literal["DEBUG", "INFO", "WARNING", "ERROR"]
 LogFormat = Literal["console", "json"]
@@ -39,6 +41,17 @@ SttProvider = Literal["groq"]
 SttModel = Literal["whisper-large-v3", "whisper-large-v3-turbo"]
 # What an API key may hold: printable ASCII with no space, as an HTTP header carries it.
 _KEY = re.compile(r"[\x21-\x7e]+")
+
+
+def setting_name(*location: str | int) -> str:
+    """The environment name of the setting at `location`, a group's name then its field's, as
+    a pydantic error's `loc` gives it: `T2V_GROQ__API_KEY` for ("groq", "api_key"). An item's
+    index in a list setting is left out, since the name is the whole setting's."""
+    return PREFIX + _NESTED.join(str(part).upper() for part in location if isinstance(part, str))
+
+
+KEY_SETTING = setting_name("groq", "api_key")
+KEY_FILE_SETTING = setting_name("groq", "api_key_file")
 
 
 def _url(value: str, schemes: frozenset[str]) -> str:
@@ -119,10 +132,10 @@ class GroqSettings(_Group):
         that cannot be read, or a key holding a character no key holds, raises
         ConfigurationError naming the setting it came from, never its value or the file's path."""
         if self.api_key is not None and self.api_key.get_secret_value().strip():
-            return _key(self.api_key.get_secret_value().strip(), f"{PREFIX}GROQ__API_KEY")
+            return _key(self.api_key.get_secret_value().strip(), KEY_SETTING)
         if self.api_key_file is None:
             return None
-        setting = f"{PREFIX}GROQ__API_KEY_FILE"
+        setting = KEY_FILE_SETTING
         try:
             text = self.api_key_file.read_text(encoding="utf-8-sig").strip()
         except (OSError, UnicodeDecodeError) as error:
@@ -183,7 +196,7 @@ class Settings(BaseSettings):
         env_prefix=PREFIX,
         env_file=".env",
         env_file_encoding="utf-8",
-        env_nested_delimiter="__",
+        env_nested_delimiter=_NESTED,
         env_ignore_empty=True,
         extra="ignore",
         hide_input_in_errors=True,
@@ -219,8 +232,7 @@ class Settings(BaseSettings):
             return cls() if env_file is None else cls(_env_file=env_file)
         except ValidationError as error:
             for problem in error.errors(include_input=False, include_url=False):
-                parts = [str(p).upper() for p in problem["loc"] if isinstance(p, str)]
-                problems.append((PREFIX + "__".join(parts), problem["msg"]))
+                problems.append((setting_name(*problem["loc"]), problem["msg"]))
         except SettingsError as error:  # a JSON value that does not parse
             problems.append((f"{PREFIX}*", str(error)))
         raise ConfigurationError(
