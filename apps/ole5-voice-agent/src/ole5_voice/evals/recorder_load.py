@@ -186,7 +186,7 @@ def load_recorder(
         raise RecorderError(f"--out {out} is in the repository, outside its git-ignored var/")
     try:
         lines = golden_items.read_toml(script, Script)
-    except golden_items.GoldenSetError:
+    except GoldenSetError:
         lines = None
     if lines is None:  # raised outside the handler, so no exception chain leads to the file
         raise RecorderError(f"{script} is no valid script.toml: give --script")
