@@ -648,6 +648,58 @@ criteria say)
   decisions.md ends at D-027; of the other sessions, the one at work answered that it holds no plan,
   decision or debt number and claims none, so Block 0 takes the next numbers after D-027 and
   TD-040. Next: this plan merges into the main branch, then Block 0.
+- 2026-11-02: The plan merged into the main branch (69353de); `plan-003-integration` was cut there,
+  and Block 0 is built in the worktree `plan-003-block-0`, cut from it. Step 3, the dependencies, as
+  Q1 allows:
+  - The two commands of "Dependencies to install", exactly as written. `uv lock` added 53 packages
+    and moved protobuf from 7.36.2 to 6.33.6, a later 6.33 release than the 6.33.5 the plan read.
+    Each new package, with the licence its installed metadata declares (its License-Expression, else
+    its License field, else its classifier): aiofiles 25.1.0 (Apache-2.0); aiohappyeyeballs 2.7.1
+    (PSF-2.0); aiohttp 3.14.5 (Apache-2.0 AND MIT); aioice 0.11.0 (BSD-3-Clause); aiortc 1.15.0
+    (BSD-3-Clause); aiosignal 1.4.0 (Apache 2.0); annotated-doc 0.0.5 (MIT); attrs 26.1.0 (MIT); av
+    17.1.0 (BSD-3-Clause); cffi 2.1.1 (MIT-0); cryptography 50.0.2 (Apache-2.0 OR BSD-3-Clause);
+    dnspython 2.9.1 (ISC); docopt 0.6.2 (MIT); docstring-parser 0.18.0 (MIT); fastapi 0.162.0 (MIT);
+    flatbuffers 25.12.19 (Apache 2.0); frozenlist 1.8.0 (Apache-2.0); google-crc32c 1.9.0
+    (Apache-2.0); httpcore2 2.16.0 (BSD-3-Clause); httpx2 2.16.0 (BSD-3-Clause); ifaddr 0.2.0 (MIT);
+    jiter 0.18.0 (MIT); llvmlite 0.50.0 (BSD-2-Clause AND Apache-2.0 WITH LLVM-exception); loguru
+    0.7.3 (MIT License); loudness 0.2.0 (MIT); markdown 3.11.2 (BSD-3-Clause); multidict 7.2.1
+    (Apache-2.0); num2words 0.5.14 (LGPL); numba 0.68.1 (BSD); numpy 2.5.4 (BSD-3-Clause AND 0BSD
+    AND MIT AND Zlib AND CC0-1.0); onnxruntime 1.31.1 (MIT License); openai 3.42.1 (Apache-2.0);
+    opencv-python-headless 4.14.0.94 (Apache 2.0); pillow 13.0.0 (MIT-CMU); pipecat-ai 1.15.0
+    (BSD-2-Clause); propcache 0.5.4 (Apache-2.0); pycparser 3.12 (BSD-3-Clause); pyee 16.0.1 (MIT);
+    pyjwt 2.15.1 (MIT); pylibsrtp 1.0.0 (BSD-3-Clause); pyopenssl 26.4.0 (Apache License, Version
+    2.0); resampy 0.4.3 (ISC); sentencex 1.0.32 (MIT); soundfile 0.13.1 (BSD 3-Clause License); soxr
+    1.0.0 (LGPL-2.1-or-later); starlette 1.10.0 (BSD-3-Clause); truststore 0.10.5 (MIT); uvicorn
+    0.54.0 (BSD-3-Clause); websockets 17.4 (BSD-3-Clause); win32-setctime 1.2.1 (MIT license); yarl
+    1.25.1 (Apache-2.0). audioop-lts 0.2.2 (for Python 3.13 and later) and httpx2-jsfetch 1.0 (for
+    emscripten) are in the lock but not installed on Python 3.12 or on Windows; their licences are
+    UNVERIFIED.
+  - Against the plan's tables: httpx2 and httpcore2 (BSD-3-Clause) and truststore (MIT) were not
+    listed; openai 3.42.1 requires httpx2, which requires the other two (`uv.lock`). tqdm did not
+    come. The declared licences outside the tables' words are permissive (D-016): numpy's 0BSD, Zlib
+    and CC0-1.0 parts, cffi's MIT-0 and aiohappyeyeballs's PSF-2.0. No licence stops the block.
+  - What the wheels bundle (each `*.dist-info/licenses/` and `LICENSE*` file, each `*.libs/`
+    folder): PyAV's `av.libs/` holds FFmpeg's libraries (avcodec-62, avformat-62 and the rest) with
+    libx264 and libx265 (GPL), libmp3lame and libiconv (LGPL), libvpx, libdav1d, libopus, SVT-AV1,
+    libwebp, opencore-amr, zlib and the MinGW runtime (libgcc_s, libstdc++, libwinpthread); the
+    wheel's only licence files are PyAV's own (`LICENSE.txt`, BSD-3-Clause, and its authors' lists),
+    which name none of them. soundfile bundles `_soundfile_data/libsndfile_x64.dll` with its
+    `COPYING` (the LGPL). OpenCV bundles `cv2/opencv_videoio_ffmpeg4140_64.dll`, and its
+    `LICENSE-3RD-PARTY.txt` says FFmpeg is redistributed within all opencv-python packages. soxr's
+    licence files are `COPYING.LGPL`, `LICENSE-libsoxr.txt` and `LICENSE-PFFFT.txt`. numpy's
+    `numpy.libs/` holds OpenBLAS (scipy-openblas) and the MSVC runtime, and llvmlite's
+    `llvmlite.libs/` the MSVC runtime. Every copyleft library here is one Q1 lists, or sits inside
+    PyAV's FFmpeg bundle, which Q1 accepts whole; each is used unmodified.
+  - Types: pipecat-ai, loguru and PyJWT ship `py.typed`; num2words does not, so `pyproject.toml`
+    gains its `[[tool.mypy.overrides]]` entry. `uv run --offline poe types`: 'Success: no issues
+    found in 172 source files'.
+  - Size, for `is-this-for-you.md`: the 51 new packages installed on Windows take 483.8 MB (llvmlite
+    121.5, OpenCV 115.9, PyAV 68.6, onnxruntime 43.7, numpy 42.0, pipecat-ai 20.6), summed from each
+    distribution's file list; the worktree's whole `.venv` is 505 MB (`du -sm`).
+  - `uv lock --check --offline`: 'Resolved 107 packages in 3ms'. `uv run --offline poe check` on the
+    new lock, before the override: 'Total coverage: 100.00%', '1377 passed, 1 skipped in 92.66s'.
+    Steps 4 and 5 run next, as a workflow of agents: five readers of the installed sources, each
+    checked by an agent that re-opens every cited line, and the two spikes.
 
 ## Decision log
 

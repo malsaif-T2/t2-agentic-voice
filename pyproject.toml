@@ -142,6 +142,12 @@ plugins = ["pydantic.mypy"]
 mypy_path = ["packages/t2-agentic-voice/src", "apps/ole5-voice-agent/src", "examples/minimal/src"]
 explicit_package_bases = true
 
+# num2words 0.5.14 ships no types (no py.typed in its wheel: plan 003, step 3); pipecat-ai,
+# loguru and PyJWT do.
+[[tool.mypy.overrides]]
+module = ["num2words", "num2words.*"]
+ignore_missing_imports = true
+
 [tool.pydantic-mypy]
 init_forbid_extra = true
 init_typed = true
