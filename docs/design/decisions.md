@@ -614,3 +614,41 @@ twice; DOC-REF: every `D-NNN` cited anywhere is a heading here), so keep its sha
   judged against large-v3 on this set, by the same rule.
 - **Evidence:** R1 to R4's history lines and `eval-compare` (plan 002's progress log,
   2026-11-02).
+
+## D-026 · The library's base error is `T2VoiceError` · 2026-11-02 · Accepted (the owner, 2026-11-02)
+
+- **Context:** the design's 5.1 names `T2VoiceError` among the package root's errors (D-017), but
+  Block 0 of plan 002 built the base error as `AppError`, the kit's name, and TD-007 recorded the
+  gap. Nothing has been tagged or installed outside this repository, so renaming costs least now.
+- **Decision:** the base error is `T2VoiceError` (`core/errors.py`), and every subclass and use
+  follows. The package root exports it in place of `AppError`, which still works until the next
+  minor release: reading `t2_agentic_voice.AppError` raises a `DeprecationWarning` and returns
+  `T2VoiceError`, as the design's 5.4 asks of a name changed before 1.0 where it is cheap.
+- **Consequences:** an app catches `T2VoiceError`; `AppError` is removed in the release after the
+  first one a teammate installs, with a "Removed" changelog entry. TD-007 is paid.
+- **Evidence:** the owner's answer in garbage collection round 1 (plan 004's decision log,
+  2026-11-02): "Rename it now (Recommended)".
+
+## D-027 · The harness checks ARCH-DEPS and DOC-SAMPLE · 2026-11-02 · Proposed (the agent's, plan 004, for the owner to rule on)
+
+- **Context:** code imported a library that only another package brought, four times (requests
+  and httpx in the library, pydantic in the app, coverage in `scripts/`; plan 004's deb6 and
+  lib18). The guide promises that its samples come from tested files, and nothing checked it
+  (plan 004's deb3). garbage-collection.md's step 5 makes a mistake seen twice into a check;
+  this entry records why the round added these two, which it built before the owner ruled.
+- **Decision:**
+  - ARCH-DEPS (`scripts/arch_deps.py`, from `poe arch`): every outside module the code imports
+    is declared by the code's own project: for a member's `src/`, the member's
+    `pyproject.toml`; for `scripts/` and `tests/`, the root's dependencies or `dev` group, or a
+    member's. A module maps to its distributions through the installed environment, on its
+    top-level name, so a namespace package is covered by any one of its distributions. A module
+    that does not parse is left to ARCH-PARSE.
+  - DOC-SAMPLE (`scripts/doc_samples.py`, from `poe docs`): a fenced block that follows a link
+    to a `.py` file, with no other fence between them, is a run of that file's lines,
+    indentation aside and blank lines left out, with nothing elided. History is not read.
+- **Consequences:** a dependency is added with `uv add` in the member whose code imports it. A
+  guide's sample is copied again when its source changes. The other distributions of a
+  namespace package are not checked (TD-036). ARCHITECTURE.md's enforcement list names both,
+  and GP-24 and GP-09 cite them.
+- **Evidence:** plan 004's inventory (deb3, deb6, lib18) and its decision log. The rules' tests
+  are `tests/harness/test_arch_deps.py` and `tests/harness/test_doc_samples.py`.

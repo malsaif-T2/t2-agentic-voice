@@ -21,23 +21,24 @@ Rules
   DOC-MILESTONE    living docs cite only roadmap milestones; code never cites milestones
   DOC-REF          every cited D-NNN, TD-NNN, GP-NN, plan NNN, and invariant N exists
                    (scripts/doc_refs.py, both)
+  DOC-SAMPLE       a code block after a link to a .py file is a run of that file's lines,
+                   indentation and blank lines aside (scripts/doc_samples.py)
 """
 
 from __future__ import annotations
 
 import argparse
-import os
 import re
 import sys
 from collections.abc import Iterator, Sequence
-from dataclasses import dataclass
 from pathlib import Path
-from urllib.parse import unquote
 
 from scripts._common import Violation
 from scripts.doc_plans import check_plans
-from scripts.doc_refs import check_milestones, check_references, lines_of
+from scripts.doc_refs import check_milestones, check_references
 from scripts.doc_registers import check_registers
+from scripts.doc_samples import check_samples
+from scripts.doc_text import extract_links, markdown_files
 from scripts.harness_config import HarnessConfig, run_check
 
 ROOT = Path(__file__).resolve().parents[1]
@@ -52,49 +53,6 @@ _LARGEST = 1_000_000  # bytes: a larger file is data, not a file the kit wrote
 # Windows path's backslashes when it reads them as escapes (\v, \a), which no editor shows.
 # A carriage return counts: `\r` in a path read as an escape leaves a lone one (CRLF is DOC-EOL's).
 _CONTROL = re.compile("[\x00-\x08\x0b-\x1f\x7f]")
-
-_LINK = re.compile(r"!?\[[^\]]*\]\((<[^>]+>|[^)\s]+)(?:\s+\"[^\"]*\")?\)")
-_FENCE = re.compile(r"^\s*(```|~~~)")
-_INLINE_CODE = re.compile(r"`[^`\n]*`")
-_EXTERNAL = ("http://", "https://", "mailto:")
-
-
-@dataclass(frozen=True)
-class Link:
-    line: int
-    raw: str
-    target: Path
-
-
-def markdown_files(root: Path) -> list[Path]:
-    files = list(root.glob("*.md"))
-    docs = root / "docs"
-    if docs.is_dir():
-        files.extend(docs.rglob("*.md"))
-    return sorted(files)
-
-
-def extract_links(md: Path, root: Path) -> list[Link]:
-    """Local links in `md`, ignoring code blocks, inline code, external URLs and anchors."""
-    links: list[Link] = []
-    in_fence = False
-    for lineno, line in lines_of(md):
-        if _FENCE.match(line):
-            in_fence = not in_fence
-            continue
-        if in_fence:
-            continue
-        for match in _LINK.finditer(_INLINE_CODE.sub("", line)):
-            raw = match.group(1).removeprefix("<").removesuffix(">")
-            if raw.startswith(_EXTERNAL) or raw.startswith("#"):
-                continue
-            path_part = unquote(raw.split("#", 1)[0])
-            base = root if path_part.startswith("/") else md.parent
-            # normpath, not resolve(): resolve() adopts the on-disk case on Windows, which
-            # would hide exactly the case mismatches that break links on Linux CI.
-            target = Path(os.path.normpath(base / path_part.lstrip("/")))
-            links.append(Link(lineno, raw, target))
-    return links
 
 
 def exists_exact_case(path: Path, root: Path) -> bool:
@@ -168,6 +126,7 @@ def check_repo(root: Path, config: HarnessConfig) -> tuple[list[Violation], int]
     violations += check_control_characters(root, files)
     violations += check_milestones(root, config, files)
     violations += check_references(root, config, files)
+    violations += check_samples(root, config, files)
     return violations, len(files)
 
 

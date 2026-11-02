@@ -27,7 +27,7 @@ def test_a_command_prints_its_help_and_runs_nothing(
 ) -> None:
     monkeypatch.setattr(sys, "argv", [module, "--help"])
     with warnings.catch_warnings(), pytest.raises(SystemExit) as done:
-        # runpy warns that the module was imported already, by the tests of its stubs.
+        # runpy warns that the module was imported already, by the other tests.
         warnings.simplefilter("ignore", RuntimeWarning)
         runpy.run_module(module, run_name="__main__", alter_sys=True)
     assert done.value.code == 0

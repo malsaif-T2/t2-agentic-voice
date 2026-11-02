@@ -31,7 +31,7 @@ Run everything as `uv run poe <task>` (`uv run poe` lists tasks).
 | `check` | Full gate: lint, types, arch, docs, test. **Must pass before a task is done.** |
 | `fmt` | Auto-format and apply safe lint fixes. Run first when `lint` fails. |
 | `lint` · `types` · `arch` · `docs` · `test` | Individual gates (`arch` and `docs` print a FIX line for every violation). |
-| `gc` · `quality` | Say whether a garbage-collection round is due, then list its candidates · grade each layer after `check`; neither is a gate. |
+| `gc` · `quality` | Say whether a garbage-collection round is due, then list its candidates · grade each layer, each app and `scripts/` after `check`; neither is a gate. |
 | `golden` · `record` | Validate the golden set and freeze its expected answers · record and review its takes (a page on 127.0.0.1). |
 | `eval` · `eval-compare` · `eval-history` | Run an answerer over the golden set (refuses the main checkout) · compare two runs (sign test by item) · render the run history. |
 
@@ -61,7 +61,7 @@ floor) live in [harness.toml](harness.toml).
 | Known debt | [docs/plans/tech-debt.md](docs/plans/tech-debt.md) |
 | Golden principles and which check enforces each | [docs/harness/golden-principles.md](docs/harness/golden-principles.md) |
 | Garbage collection: when and how to run a cleanup round | [docs/harness/garbage-collection.md](docs/harness/garbage-collection.md) |
-| Quality grades per layer, and each layer's gaps | [docs/harness/quality.md](docs/harness/quality.md) |
+| Quality grades per layer and app, and each one's gaps | [docs/harness/quality.md](docs/harness/quality.md) |
 | Generated docs (never edited by hand) | [docs/generated/README.md](docs/generated/README.md) |
 
 ## Code map
@@ -69,13 +69,15 @@ floor) live in [harness.toml](harness.toml).
 ```
 packages/t2-agentic-voice/src/t2_agentic_voice/   the library; its public API is __init__.py
   ports.py groq.py languages.py evals.py tracing.py   and these facades beside it (re-exports only)
-  core/       settings, structured logging, error types (AppError), tracing, shared types
-  domain/     the call's rules and the ports, no IO: the yes rule, interruptions, speech text
+  core/       settings, structured logging, error types (T2VoiceError), tracing and redaction
+  domain/     the call's rules and the ports, no IO: so far the speech-to-text port, text
+              normalization, the spelling check and the scorers' pure parts (D-022); later the
+              yes rule and interruptions
   adapters/   the outside services behind the ports: Groq, the knowledge base, the tickets
   actions/    the backend, the only part that acts: tools, the action record, outcomes
   agent/      the talker: prompts, tool definitions, one turn, the output guard
   voice/      one call's real-time pipeline: WebRTC, end of turn, interruptions, cancel scope
-  testing/    what a team tests and measures with: the evaluation scorers; later, the fakes
+  testing/    what a team tests and measures with: wer and cer so far; later, the fakes
   api/        HTTP and the composition root: the widget, call set-up, health
 apps/ole5-voice-agent/src/ole5_voice/   the Ole5 app: only the library's public API (ARCH-PUBLIC)
   evals/      the golden set's commands; its data in apps/ole5-voice-agent/evals/, no audio
@@ -85,7 +87,8 @@ scripts/      the harness: check_architecture.py (arch), check_docs.py (docs), g
               gc_report.py (gc), quality.py, and their helpers; all read harness.toml
               through harness_config.py
 tests/        one folder per package (t2_agentic_voice/, ole5_voice/, minimal_example/);
-              harness/ tests the checks themselves
+              harness/ tests the checks themselves; leaks.py (what an error, a log line or an
+              output may show, GP-19) and isolation.py are shared by every package's tests
 docs/generated/  produced by commands, never edited by hand (a test fails when stale)
 ```
 

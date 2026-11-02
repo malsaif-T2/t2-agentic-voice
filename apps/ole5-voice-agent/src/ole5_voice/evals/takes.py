@@ -1,7 +1,8 @@
 """The recorder's files: the script it shows, and what it writes under `--out`, which the import
-reads back (Tracks G and D).
+reads back (`import_recordings.py`).
 
-`script.toml` holds the script's lines and its fixed list of listening sounds (`load_script`).
+`script.toml` holds the script's lines and its fixed list of listening sounds (`Script`, read
+with `items.read_toml` by the recorder, the import and `poe golden` alike).
 Below `--out`, each session has its own folder, holding its `session.json` (the session's device
 and the speaker's consent), and for each take its WAV file, its sidecar and one file for each
 review: `session_file`, `take_audio`, `take_sidecar` and `review_file` name them. Each file is
@@ -10,9 +11,8 @@ written new, never rewritten. Every model parses strictly, as `models.py`'s do.
 
 from __future__ import annotations
 
-import tomllib
+import re
 from datetime import datetime
-from pathlib import Path
 from typing import Final, Literal
 
 from pydantic import Field, TypeAdapter
@@ -24,12 +24,18 @@ from ole5_voice.evals.models import (
     Language,
     Model,
     Name,
+    ReferenceSource,
     RelativePath,
     Sha256,
     TurnEnds,
+    is_name,
 )
 
 SESSION_FILE: Final = "session.json"
+# The highest review pass: a review's file name gives its pass in at most six digits.
+MAX_REVIEW_PASS: Final = 999_999
+# A review's file name: its take, a `Name` (`is_name` checks it), then its pass.
+_REVIEW_FILE: Final = re.compile(r"^(?P<take>.+)\.review-(?P<number>[1-9][0-9]{0,5})\.json$")
 _BELOW_OUT: TypeAdapter[str] = TypeAdapter(RelativePath)
 
 
@@ -50,6 +56,11 @@ class ScriptLine(Model):
         """The words the line asks for, as one reference."""
         return " ".join(self.say)
 
+    @property
+    def source(self) -> ReferenceSource:
+        """Its takes' reference source: the script's, or none for a line of no words."""
+        return "script" if self.text else "none"
+
 
 class Script(Model):
     """`script.toml`: `listening_sounds = [...]`, the fixed list that comes with the script (the
@@ -57,12 +68,6 @@ class Script(Model):
 
     listening_sounds: tuple[str, ...] = ()
     lines: tuple[ScriptLine, ...] = Field(min_length=1)
-
-
-def load_script(path: Path) -> Script:
-    """`script.toml`, read and checked, so the recorder and the import read it alike."""
-    with path.open("rb") as file:
-        return Script.model_validate(tomllib.load(file))
 
 
 class SessionRecord(Model):
@@ -108,7 +113,7 @@ class Review(Model):
     confirmed that it says its reference, or typed what it says instead."""
 
     take: Name
-    review_pass: int = Field(ge=1)
+    review_pass: int = Field(ge=1, le=MAX_REVIEW_PASS)
     at: datetime
     verdict: Literal["confirmed", "typed"]
     text: str = ""  # what the owner typed
@@ -132,6 +137,15 @@ def take_sidecar(session: str, take: str) -> str:
 def review_file(session: str, take: str, review_pass: int) -> str:
     """`<session>/<take>.review-<pass>.json`, below `--out`: one `Review`."""
     return _below_out(f"{session}/{take}.review-{review_pass}.json")
+
+
+def parse_review_file(name: str) -> tuple[str, int] | None:
+    """The take and the pass a review's file name gives (the last part of `review_file`'s), or
+    None for any other file's name: the one reading of it, the recorder's and the import's."""
+    found = _REVIEW_FILE.match(name)
+    if found is None or not is_name(found["take"]):
+        return None
+    return found["take"], int(found["number"])
 
 
 def _below_out(path: str) -> str:

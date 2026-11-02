@@ -3,8 +3,8 @@ a held-out run's aggregates only, and a run or a result made with `model_copy` r
 anything is written (docs/SECURITY.md, invariant 5).
 
 The scorers are stand-ins (`fakes.FakeScorers`, with a value per output), so these tests check
-what the scorecard pools and passes, not Track A's scoring; the last test runs the library's own
-scorers on a case worked by hand.
+what the scorecard pools and passes, not the library's scoring; the last test runs the library's
+own scorers on a case worked by hand.
 """
 
 from __future__ import annotations

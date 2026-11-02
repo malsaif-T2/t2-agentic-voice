@@ -16,15 +16,19 @@ placed as docs/plans/README.md says, since other checks and commands read them.
 from __future__ import annotations
 
 import re
+from dataclasses import dataclass
 from pathlib import Path
 
 from scripts._common import Violation
 from scripts.harness_config import PlansConfig
 
 FILE_NAME = re.compile(r"^\d{3}-[a-z0-9]+(?:-[a-z0-9]+)*\.md$")
+# A garbage-collection round's file name (docs/harness/garbage-collection.md), as `poe gc` finds
+# the last round.
+ROUND = re.compile(r"^\d{3}-garbage-collection-\d+\.md$")
 _STATUS = re.compile(r"^Status: (\w+)(.*)$", re.MULTILINE)
 _MILESTONE = r"Milestone: (M\d+|none \([^)\n]+\))"
-_DATE = r"\d{4}-\d{2}-\d{2}"
+_DATE = r"(\d{4}-\d{2}-\d{2})"
 SHAPES = {
     "active": re.compile(rf"^ · {_MILESTONE} · Started: {_DATE}$"),
     "completed": re.compile(rf"^ · {_MILESTONE} · Started: {_DATE} · Completed: {_DATE}$"),
@@ -35,6 +39,28 @@ SHOWN_SHAPES = {
 }
 # The plan template, which holds every section; tests/harness/test_check_docs.py checks it does.
 TEMPLATE = "docs/plans/TEMPLATE.md"
+
+
+@dataclass(frozen=True)
+class PlanStatus:
+    """A plan's Status line, read: the one parser of the shape, for DOC-PLAN and `poe gc`."""
+
+    status: str  # "active" or "completed"
+    milestone: str  # "Mx", or "none (maintenance)"
+    started: str
+    completed: str | None  # None for an active plan
+
+
+def plan_status(text: str) -> PlanStatus | None:
+    """The plan's first Status line, when it has the full shape of the status it names."""
+    stated = _STATUS.search(text)
+    if stated is None or stated.group(1) not in SHAPES:
+        return None
+    found = SHAPES[stated.group(1)].match(stated.group(2).rstrip())
+    if found is None:
+        return None
+    milestone, started, *completed = found.groups()
+    return PlanStatus(stated.group(1), milestone, started, completed[0] if completed else None)
 
 
 def check_plans(root: Path, plans: PlansConfig, roadmap_links: set[Path] | None) -> list[Violation]:
@@ -76,7 +102,7 @@ def _check_plan(
                 f"({TEMPLATE}) spells them.",
             )
         )
-    stated = _STATUS.search(text)
+    stated, parsed = _STATUS.search(text), plan_status(text)
     milestone = None
     if stated is None or stated.group(1) != status:
         found.append(
@@ -86,7 +112,7 @@ def _check_plan(
                 "(docs/plans/README.md).",
             )
         )
-    elif (shape := SHAPES[status].match(stated.group(2).rstrip())) is None:
+    elif parsed is None:
         found.append(
             (
                 "the Status line is not in the shape the checks read",
@@ -95,7 +121,7 @@ def _check_plan(
             )
         )
     else:
-        milestone = shape.group(1)
+        milestone = parsed.milestone
     if status == "active" and not linked:
         where = (
             f"{milestone}'s row"

@@ -1,5 +1,5 @@
 """The public facades (D-021): each module of [package] facades imports, exports exactly the
-names plan 002 gives it, and defines none of them itself (ARCH-FACADE checks the source)."""
+names listed here, and defines none of them itself (ARCH-FACADE checks the source)."""
 
 from __future__ import annotations
 

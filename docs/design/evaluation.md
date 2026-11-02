@@ -36,9 +36,11 @@ What is measured, and on what:
 variants are its recordings on each device and in each session. The held-out split keeps every
 recording of an item on one side (by item, as under Splits) and, where the item set allows,
 also holds out whole recording sessions; if both cannot hold, which wins is the owner's call
-before the first run. For an audio clip the reference is its transcript under the spelling
-guide; for a simulated call, the expected tool calls and ticket fields. What serves as the
-independent check for each is fixed in the first measurement plan's registration.
+before the first run, and for speech-to-text the owner ruled that the item wins (plan 002, Q10).
+For an audio clip the reference is its transcript under the spelling guide; for a simulated
+call, the expected tool calls and ticket fields. What serves as the independent check for each
+is fixed in the first measurement plan's registration: for speech-to-text, the owner's listen to
+every variant in `poe record`'s review mode (plan 002, Q9).
 
 **One speaker, for Phase 0.** The only voice available is the owner's (D-006): new recordings on
 each device, plus the 124 talk-over segments recorded for the prototype in October 2026
@@ -177,8 +179,8 @@ logged as a `Deviation:` line in the progress log.
 When a full run is expensive, screen ideas first:
 - **The screen set:** the stable failures (wrong in two runs of the same code; a failure in one
   run is noise), plus an equal number of stable-right controls drawn in proportion to the
-  strata, committed as a file (`evals/screens/<name>.txt`, one `item/variant` per line) that
-  `poe eval --questions FILE` reads.
+  strata, committed as a file (`evals/screens/<name>.txt`, one `item/variant` per line, blank
+  lines and `#` comments skipped) that `poe eval --questions FILE` reads.
 - **A plain rerun** at the same commit on the screen set measures how many failures recover by
   chance.
 - **The rule, fixed before any screen runs:** a net of at least +k against the rerun, with at

@@ -7,52 +7,25 @@ from __future__ import annotations
 import shutil
 import subprocess
 from collections.abc import Sequence
-from dataclasses import dataclass, field
 from pathlib import Path
 
 import pytest
-from ole5_voice.evals.worktree import Checkout, GitResult, check_out, inspect, run_commit, run_git
+from ole5_voice.evals import recorder_load
+from ole5_voice.evals.recorder_state import RecorderError
+from ole5_voice.evals.worktree import (
+    Checkout,
+    GitResult,
+    check_out,
+    inspect,
+    run_checkout,
+    run_git,
+    worktree_tops,
+)
 from t2_agentic_voice import InvalidRequestError
 
-COMMIT = "ab" * 20
+from tests.ole5_voice.evals.run_support import COMMIT, FakeGit
+
 GIT = shutil.which("git") or "git"
-
-
-@dataclass
-class FakeGit:
-    """A `Git` that answers the commands `worktree.py` asks, for a run worktree `top` linked to
-    the checkout `main` (or the main checkout itself, when `top` is `main`)."""
-
-    top: Path
-    main: Path
-    dirty: bool = False
-    ignored: tuple[Path, ...] = ()  # folders whose paths git ignores, in the main checkout
-    commit: str = COMMIT
-    failing: tuple[str, ...] = ()  # commands that fail, by their first word after options
-    calls: list[tuple[tuple[str, ...], Path]] = field(default_factory=list)
-
-    def __call__(self, args: Sequence[str], cwd: Path) -> GitResult:
-        command = tuple(args)
-        self.calls.append((command, cwd))
-        verb = next(word for word in command if not word.startswith("-"))
-        if verb in self.failing:
-            return GitResult(128, "")
-        if command[:2] == ("rev-parse", "--path-format=absolute"):
-            return GitResult(0, f"{self.top.as_posix()}\n")
-        if command[:2] == ("worktree", "list"):
-            trees = [self.main] + ([self.top] if self.top != self.main else [])
-            return GitResult(
-                0, "".join(f"worktree {t.as_posix()}\0HEAD {COMMIT}\0\0" for t in trees)
-            )
-        if command[:2] == ("rev-parse", "--verify"):
-            return GitResult(0, f"{self.commit}\n")
-        if verb == "status":
-            return GitResult(0, " M apps/x.py\0" if self.dirty else "")
-        if verb == "check-ignore":
-            path = Path(command[-1])
-            inside = any(path.is_relative_to(i.resolve()) for i in self.ignored)
-            return GitResult(0 if inside else 1, "")
-        raise AssertionError(f"git {command} is not faked")
 
 
 def _trees(tmp_path: Path) -> tuple[Path, Path]:
@@ -65,7 +38,7 @@ def _trees(tmp_path: Path) -> tuple[Path, Path]:
 def test_a_clean_linked_worktree_runs_at_its_commit(tmp_path: Path) -> None:
     main, top = _trees(tmp_path)
     git = FakeGit(top, main)
-    assert run_commit(top / "apps", git) == COMMIT
+    assert run_checkout(top / "apps", git).commit == COMMIT
     assert [cwd for _, cwd in git.calls] == [top / "apps"] + [top] * 3  # then at the top
     checkout = inspect(top, git)
     assert (checkout.linked, checkout.clean, checkout.refusal()) == (True, True, None)
@@ -75,13 +48,13 @@ def test_a_clean_linked_worktree_runs_at_its_commit(tmp_path: Path) -> None:
 def test_the_main_checkout_is_refused(tmp_path: Path) -> None:
     main, _ = _trees(tmp_path)
     with pytest.raises(InvalidRequestError, match=r"the main checkout\. FIX: run from a linked"):
-        run_commit(main, FakeGit(main, main))
+        run_checkout(main, FakeGit(main, main))
 
 
 def test_a_dirty_tree_is_refused(tmp_path: Path) -> None:
     main, top = _trees(tmp_path)
     with pytest.raises(InvalidRequestError, match="has changes"):
-        run_commit(top, FakeGit(top, main, dirty=True))
+        run_checkout(top, FakeGit(top, main, dirty=True))
 
 
 @pytest.mark.parametrize(
@@ -106,6 +79,17 @@ def test_a_checkout_git_lists_no_worktree_of_is_its_own_main(tmp_path: Path) -> 
 
     checkout = inspect(tmp_path, git)
     assert (checkout.main, checkout.worktrees, checkout.linked) == (tmp_path, (tmp_path,), False)
+
+
+def test_the_worktrees_are_none_where_git_names_no_checkout(tmp_path: Path) -> None:
+    main, top = _trees(tmp_path)
+    assert worktree_tops(top, FakeGit(top, main)) == (main, top)
+    assert worktree_tops(top, FakeGit(top, main, failing=("worktree",))) == ()
+
+    def no_git(args: Sequence[str], cwd: Path) -> GitResult:
+        raise InvalidRequestError("The run is refused: git is not on PATH. FIX: install git.")
+
+    assert worktree_tops(top, no_git) == ()
 
 
 def _checkout(tmp_path: Path) -> tuple[Checkout, FakeGit]:
@@ -183,7 +167,7 @@ def real_git(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> Path:
 def test_the_real_git_answers_as_the_checks_expect(real_git: Path, tmp_path: Path) -> None:
     main = real_git
     with pytest.raises(InvalidRequestError, match="the main checkout"):
-        run_commit(main)
+        run_checkout(main)
     top = tmp_path / "run"
     subprocess.run(
         [GIT, "worktree", "add", "-q", "--detach", str(top)],
@@ -191,7 +175,7 @@ def test_the_real_git_answers_as_the_checks_expect(real_git: Path, tmp_path: Pat
         check=True,
         capture_output=True,
     )
-    commit = run_commit(top / ".")
+    commit = run_checkout(top / ".").commit
     assert len(commit) == 40
     checkout = inspect(top)
     assert check_out(main / "var" / "r1", checkout).name == "r1"
@@ -199,8 +183,67 @@ def test_the_real_git_answers_as_the_checks_expect(real_git: Path, tmp_path: Pat
         check_out(main / "apps" / "r1", checkout)
     (top / "new.txt").write_text("x", encoding="utf-8")  # untracked counts as a change
     with pytest.raises(InvalidRequestError, match="has changes"):
-        run_commit(top)
+        run_checkout(top)
     loose = tmp_path / "loose"
     loose.mkdir()
     with pytest.raises(InvalidRequestError, match="not inside a git checkout"):
         inspect(loose)
+
+
+def test_the_recorder_run_from_a_linked_worktree_refuses_the_main_checkouts_tree(
+    real_git: Path, tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    """`poe record --out` is refused in the repository outside its git-ignored var/: in the
+    main checkout too when the recorder's code is a linked worktree's, so no take lands where
+    git tracks it (plan 004, app8)."""
+    main, linked = real_git, tmp_path / "linked"
+    subprocess.run(
+        [GIT, "worktree", "add", "-q", "--detach", str(linked)],
+        cwd=main,
+        check=True,
+        capture_output=True,
+    )
+    monkeypatch.setattr(recorder_load, "_REPO", linked)  # the recorder's code is the worktree's
+    script = tmp_path / "script.toml"
+    script.write_text(
+        '[[lines]]\nid = "n01"\nkind = "request"\nlanguage = "english"\nsay = ["a b"]\n',
+        encoding="utf-8",
+    )
+    for out in (main / "apps" / "takes", linked / "docs" / "takes"):
+        with pytest.raises(RecorderError, match="outside its git-ignored var/"):
+            recorder_load.load_recorder(out=out, script=script)
+    for out in (main / "var" / "takes", linked / "var" / "takes", tmp_path / "takes"):
+        assert recorder_load.load_recorder(out=out, script=script).out == out.resolve()
+
+
+@pytest.mark.parametrize("runs_from", ["main", "a"])
+def test_the_recorder_takes_a_folder_in_the_repository_only_under_its_own_or_the_mains_var(
+    real_git: Path, tmp_path: Path, monkeypatch: pytest.MonkeyPatch, runs_from: str
+) -> None:
+    """With the worktrees nested in the main checkout, as `.claude/worktrees/<name>` are, an
+    `--out` under another worktree's var/ is refused from the main checkout as before plan 004,
+    and from a linked worktree too: a take there is lost when that worktree is removed."""
+    main = real_git
+    nested = {name: main / ".claude" / "worktrees" / name for name in ("a", "b")}
+    for top in nested.values():
+        subprocess.run(
+            [GIT, "worktree", "add", "-q", "--detach", str(top)],
+            cwd=main,
+            check=True,
+            capture_output=True,
+        )
+    own = main if runs_from == "main" else nested[runs_from]
+    monkeypatch.setattr(recorder_load, "_REPO", own)
+    script = tmp_path / "script.toml"
+    script.write_text(
+        '[[lines]]\nid = "n01"\nkind = "request"\nlanguage = "english"\nsay = ["a b"]\n',
+        encoding="utf-8",
+    )
+    refused = [main / "apps" / "takes", own / "docs" / "takes", nested["b"] / "var" / "takes"]
+    if own != main:
+        refused.append(main / ".claude" / "takes")
+    for out in refused:
+        with pytest.raises(RecorderError, match="outside its git-ignored var/"):
+            recorder_load.load_recorder(out=out, script=script)
+    for out in (own / "var" / "takes", main / "var" / "takes", tmp_path / "takes"):
+        assert recorder_load.load_recorder(out=out, script=script).out == out.resolve()

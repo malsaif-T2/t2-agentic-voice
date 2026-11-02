@@ -92,7 +92,7 @@ fix = "Keep the voice framework inside voice/; other layers take plain text, aud
 [[owners]]
 modules = ["fastapi", "starlette", "uvicorn"]
 layers = ["api"]
-fix = "HTTP lives in api/; a lower layer returns a typed model or raises an AppError, and api maps it to a response."
+fix = "HTTP lives in api/; a lower layer returns a typed model or raises a T2VoiceError, and api maps it to a response."
 
 [[owners]]
 modules = ["jiwer"]
@@ -167,11 +167,20 @@ required = [
     "docs/project/DESCRIPTION.md",
 ]
 # History keeps the milestone numbers of its time, and may cite retired debt and principles.
-historical = ["docs/plans/completed/", "docs/design/decisions.md"]
+# The run history is generated from records that are never edited, so it is history too.
+historical = [
+    "docs/plans/completed/",
+    "docs/design/decisions.md",
+    "docs/generated/eval-history.md",
+]
 # Code that may not cite milestones, and whose citations must exist (DOC-MILESTONE, DOC-REF).
 code_dirs = ["packages", "apps", "examples", "scripts", "tests"]
 # Code exempt from those two rules: the harness tests whose fixtures cite made-up entries.
-code_exempt = ["tests/harness/test_check_docs.py", "tests/harness/test_gc_due.py"]
+code_exempt = [
+    "tests/harness/test_check_docs.py",
+    "tests/harness/test_doc_refs.py",
+    "tests/harness/test_gc_due.py",
+]
 # Files (or folders, ending in /) that may keep install placeholders on purpose: an uppercase
 # name between double braces (DOC-PLACEHOLDER).
 placeholders_allowed_in = []
@@ -192,29 +201,69 @@ golden_principles = "docs/harness/golden-principles.md"
 invariants = "docs/SECURITY.md"
 
 # `uv run poe gc`: whether a garbage-collection round is due, and its candidates. Not a gate.
-# The numbers are starting values: recalibrate them in the first round and record why.
+# Calibrated by the first round against what its read found to be noise (plan 004, decision log).
 [gc]
+# Commits, merges left out, that make a round due.
 due_after_commits = 40
-min_tokens = 35
+# The shortest repeated token run reported (and counted by `poe quality`): this code's real
+# copies run 25 to 34 tokens.
+min_tokens = 25
+# Modules above this many lines are listed: 100 lines under [modules] max_lines is about one
+# large change (plan 004 measured the growth per commit).
 size_watch = 300
 # Where a path named in a doc or a comment may be relative to (the library's and each app's
-# package folder are always added).
-path_bases = ["", "docs", "docs/design", "docs/plans"]
-# Path prefixes that are not ours to resolve: runtime output, other libraries.
-path_ignored = ["var/"]
-# Methods a library calls on our subclasses, so they are never "unreferenced".
-hooks = ["emit"]
-# Names a doc may cite in backticks that are not in our code (other libraries' names; the two
-# below are Claude Code's tools for messaging other sessions, cited in WORKING-RULES.md).
-foreign_names = ["ListAgents", "SendMessage"]
-# Non-Python files whose text counts as code when docs cite names (globs from the root).
-name_files = ["pyproject.toml", "harness.toml", ".env.example"]
+# package folder are always added): the root, the docs' folders, and the app's member folder,
+# whose data folder (`evals/`) docs and code name.
+path_bases = ["", "docs", "docs/design", "docs/plans", "apps/ole5-voice-agent"]
+# Path prefixes that are not ours to resolve: runtime output, the prototype beside the
+# repository that code cites as a spec (D-010), and installed libraries' files.
+path_ignored = ["var/", "Ole5-chatbot/", "groq/", "httpx/", "requests/", "opentelemetry/"]
+# Methods a library calls on our subclasses, so they are never "unreferenced": logging's and
+# http.server's handlers (emit; do_GET, do_POST, log_message), OpenTelemetry's span processor
+# (on_end).
+hooks = ["emit", "do_GET", "do_POST", "log_message", "on_end"]
+# Names a doc may cite in backticks that are not in our code: another library's last part, whole
+# name, or dotted prefix (`pipecat` for `pipecat.services.x`). ListAgents and SendMessage are
+# Claude Code's tools for messaging other sessions (WORKING-RULES.md); the others are Pipecat's,
+# the standard library's, OpenTelemetry's, the Groq SDK's, httpx's and requests', FastAPI's, and
+# the environment variables those libraries read.
+foreign_names = [
+    "ListAgents",
+    "SendMessage",
+    "pipecat",
+    "FrameProcessor",
+    "LLMService",
+    "TTSService",
+    "SegmentedSTTService",
+    "GroqSTTService",
+    "basicConfig",
+    "register_at_fork",
+    "set_tracer_provider",
+    "_handle_fork",
+    "_platform",
+    "trust_env",
+    "include_router",
+    "HTTP_PROXY",
+    "HTTPS_PROXY",
+    "ALL_PROXY",
+    "SSL_CERT_FILE",
+    "SSL_CERT_DIR",
+]
+# Non-Python files whose text counts as code when docs cite names (globs from the root): the
+# config files, and the apps' own scripts (never a node_modules/ beside them).
+name_files = ["pyproject.toml", "harness.toml", ".env.example", "apps/*/src/**/*.js"]
+# Docs that describe planned code, so most names and paths they cite do not exist yet: each is
+# counted, not listed. The design names the API of the milestones to come.
+planned_docs = ["docs/design/package-design.md"]
 
-# `uv run poe quality`: a grade per layer, after `uv run poe check`. Not a gate.
+# `uv run poe quality`: a grade per layer, per app, and for scripts/, after `uv run poe check`.
+# Not a gate.
 [quality]
 doc = "docs/harness/quality.md"
 suppressions_floor = 10.0
-duplication_floor = 5
+# The duplicate runs ([gc] min_tokens) that score a unit's duplication zero. At 25 tokens the
+# look-alike runs the first round kept would cost a unit a letter at 5 (plan 004).
+duplication_floor = 10
 
 [quality.weights]
 coverage = 40

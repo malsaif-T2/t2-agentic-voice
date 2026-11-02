@@ -40,10 +40,10 @@ module's names.
 | --- | --- | --- |
 | `normalize_arabic(text)` | `languages` | `text` in one canonical form for comparison: no diacritics and no tatweel; the alef, hamza, teh marbuta and alef maksura forms folded; Latin letters in lower case; punctuation, symbols, emoji and an underscore read as spaces (`Outlook.PDF` is two words); runs of space made one |
 | `normalize_digits(text)` | `languages` | `text` with every digit as 0 to 9: Arabic-Indic and Persian digits, and digits spelled out one word each, in Arabic or in English; a run of single digits with only spaces between them becomes one number (`4 5 2 1` reads `4521`) |
-| `spelling_issues(reference, rules)` | `languages` | A `SpellingIssue` (`rule`, `found`, `write`) for each spelling one of your `SpellingRule`s avoids that `reference` holds, however often, as a whole word or phrase, both compared after `normalize_arabic` (so a spelling with an Arabic prefix written onto it, such as ال or و, is not found); empty when it follows them all |
+| `spelling_issues(reference, rules)` | `languages` | A `SpellingIssue` (`rule`, `found`, `write`) for each spelling one of your `SpellingRule`s avoids that `reference` holds, however often, as a whole word or phrase, bare or with an Arabic prefix written onto its first word (ال، و، ف، ب، ل، ك, or two or three of them in order, such as وال، بال، لل or وبال), both compared after `normalize_arabic`; empty when it follows them all. A word counts once per rule, for the spelling it holds with the shortest prefix: a rule that avoids both اوتلوك and الاوتلوك names الاوتلوك once, as itself. The check reads letters, not meaning, so a word that is a prefix and an avoided spelling is named too (الاثنين, Monday, where a rule avoids اثنين) |
 | `wer(references, outputs)` | `evals` | The word error rate, pair by pair and pooled: substitutions, deletions and insertions over all the references' words, both sides normalized |
 | `cer(references, outputs)` | `evals` | The character error rate, pooled as `wer` is, with every space removed first, so a word split differently is not counted twice |
-| `term_recall(reference, output, terms)` | `evals` | A `Recall`: of the `terms` (your product terms) that `reference` holds, how many `output` holds too, each as a whole word or phrase, both texts normalized |
+| `term_recall(reference, output, terms)` | `evals` | A `Recall`: of the `terms` (your product terms) that `reference` holds, how many `output` holds too, each as a whole word or phrase, both texts normalized. A Latin term with an Arabic prefix written onto it (الoutlook, بالPDF) is not found (TD-009) |
 | `id_recall(reference, output)` | `evals` | A `Recall`: of the IDs `reference` holds (its runs of digits in the scored form: `normalize_arabic`, then `normalize_digits`), how many `output` holds too, as a run of digits or as words made only of digits next to each other, with no other word between them, whose digits joined in order are the ID. Every punctuation mark reads as a space, so `48 21`, `48-21`, `4,821`, `48.21` and `48/21` all hold 4821, while `21 48` does not, and neither does `t48 21` or `و48 21`, since a group with a letter written onto it joins no neighbour. An ID the reference holds twice is found as often as the output holds it, up to that; found is the most IDs one reading of the output finds, no digit of the output counting for two, so never fewer than comparing whole runs gives |
 | `silence_output(output)` | `evals` | How much text a provider produced where nothing was said (silence, a noise, or only the agent's own echo): the characters of `output` after `normalize_arabic`, spaces removed, so a digit's name counts its letters; 0 when it produced none |
 | `sign_test(better, worse)` | `evals` | The two-sided p-value of `better` items better and `worse` items worse, unchanged items left out (below) |
@@ -243,7 +243,7 @@ run (evaluation.md, "Registering a measurement"). Then:
    | `--max-rpm`, `--max-attempts`, `--variant-timeout-s` | requests a minute, the attempts of each request, and each variant's limit in seconds: 20, 4 and 120 unless given |
    | `--audio <root>=<folder>` | the folder of each audio root the manifests name, once per root |
    | `--env-file` | the `.env` the settings load from, the key among them; never printed |
-   | `--out` | a new folder outside the worktree that git ignores (under the main checkout's `var/`, or outside the repository); its name, lowercase letters, digits, `.`, `_` or `-`, is the run's |
+   | `--out` | a new folder outside the worktree that git ignores (under the main checkout's `var/`, or outside the repository); its name, a lowercase letter or digit, then up to 127 lowercase letters, digits, `_`, `.` or `-`, is the run's |
    | `--note` | why the run is made, kept in its history line |
 
    M1's runs gave `--timeout-s 6`, `--price-per-hour 0.111` for large-v3 and `0.04` for turbo,
@@ -393,6 +393,10 @@ compared by aggregates only.
 - **`--focus FILE`:** the items a change aims at, one item ID a line, written before B ran, are
   shown apart; the verdict is still every item's.
 
+A refusal is a log line, `comparison_not_made`, and exit code 1. The library logs to standard
+output, the stream the report is printed to, so `poe eval-compare A B > report.md` writes a
+refusal into the file and shows nothing on the terminal: check the exit code before reading it.
+
 M1's baseline, R2 (turbo) judged against R1 (large-v3): 231 variants compared, 6 fixed and 35
 broken (net -29); 2 items better, 18 worse and 46 unchanged, p = 0.0004, beyond the noise. The
 guard read turbo worse beyond the noise on Saudi Arabic (2 better, 12 worse, p = 0.0129), the
@@ -454,12 +458,12 @@ its window from.
   it (the matcher's call). The scorecard's `windows` sums them by length, language and the
   clip's `want` label: `clips`, `empty`, `reused`, `words`, `leading_words`, `reference_words`,
   `one_word_clips` and `holds_word`.
-- **`--clips-from`** takes the same model's first dev run's `scorecard.json`, the file itself,
-  not its folder. A window at least as long as its clip is then not sent again: the clip's
-  answer from that scorecard is used, marked `reused`. A scorecard that is not a dev run of the
-  same model at the same commit is refused; without `--clips-from`, such a window sends the
-  whole clip, marked not reused. M1's first try at W1 named R1's folder, and was refused before
-  anything was sent.
+- **`--clips-from`** takes the same model's first dev run's `scorecard.json`, or that run's
+  `--out` folder, as `eval-compare` takes a run. A window at least as long as its clip is then
+  not sent again: the clip's answer from that scorecard is used, marked `reused`. A scorecard
+  that is not a dev run of the same model at the same commit is refused; without
+  `--clips-from`, such a window sends the whole clip, marked not reused. (In M1 it took the file
+  only, and the first try at W1, naming R1's folder, was refused before anything was sent.)
 
 M1's window runs, W1 to W6: 500, 750 and 1000 ms of the 90 dev talk-over clips (33 items), each
 model at each length, the models alternating; at 1000 ms, 2 clips no longer than that reused

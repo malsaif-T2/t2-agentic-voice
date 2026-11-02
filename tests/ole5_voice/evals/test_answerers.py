@@ -20,7 +20,7 @@ from ole5_voice.evals.answerers import (
 from ole5_voice.evals.models import Variant
 from ole5_voice.evals.runs import Answer, AnswerRequest
 from ole5_voice.evals.windows import measurer
-from t2_agentic_voice import ProviderError, Settings, configure_logging
+from t2_agentic_voice import ProviderError, Settings
 from t2_agentic_voice.ports import Transcript
 
 from tests.ole5_voice.evals.fakes import (
@@ -29,19 +29,9 @@ from tests.ole5_voice.evals.fakes import (
     FakeTracing,
     fake_normalize,
 )
-from tests.ole5_voice.evals.test_run_parts import FakeClock, World, make_world
+from tests.ole5_voice.evals.run_support import FakeClock, World
 
 MEASURE = measurer(fake_normalize, FakeMatcher().is_right)
-
-
-@pytest.fixture(autouse=True)
-def _plain_logs() -> None:
-    configure_logging("INFO", "console")  # lines read as plain text, whatever ran before
-
-
-@pytest.fixture
-def world(tmp_path: Path) -> World:
-    return make_world(tmp_path)
 
 
 def _groq(
@@ -321,4 +311,3 @@ def test_the_budget_counts_billed_seconds_at_the_price(settings: Settings) -> No
     budget.charge(7200.0)
     assert (budget.requests, budget.billed_seconds) == (2, 7210.0)
     assert budget.cost_usd == pytest.approx(7210 / 3600 * 0.111)
-    assert answerers.GROQ_MINIMUM_S == 10.0

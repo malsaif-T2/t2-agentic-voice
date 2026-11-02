@@ -11,6 +11,7 @@ from pathlib import Path
 
 import pytest
 
+from scripts.doc_plans import check_plans
 from scripts.gc_due import (
     ROOT,
     Round,
@@ -18,13 +19,12 @@ from scripts.gc_due import (
     compare,
     git,
     reasons,
-    recorded_grades,
     render,
     section,
 )
 from scripts.harness_config import HarnessConfig, load_config
-from scripts.quality import Grade
-from tests.harness.support import config, write
+from scripts.quality import Grade, recorded_grades
+from tests.harness.support import PLAN_BODY, config, write
 
 QUALITY = """\
 | Layer | Grade | Score | Coverage | Modules within 300 lines |
@@ -92,10 +92,10 @@ def repo(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> tuple[Path, Harness
 
 
 def _plan(root: Path, name: str, milestone: str, folder: str = "completed") -> None:
-    header = (
-        f"Status: completed · Milestone: {milestone} · Started: 2026-01-12 · Completed: 2026-01-15"
-    )
-    write(root, {f"docs/plans/{folder}/{name}": f"# {name}\n\n{header}\n"})
+    """A plan in the shape DOC-PLAN enforces: its Status line for its folder, and its sections."""
+    header = f"Status: {folder} · Milestone: {milestone} · Started: 2026-01-12"
+    header += " · Completed: 2026-01-15" if folder == "completed" else ""
+    write(root, {f"docs/plans/{folder}/{name}": f"# {name}\n\n{header}\n\n{PLAN_BODY}\n"})
 
 
 def _commit(root: Path) -> None:
@@ -103,9 +103,10 @@ def _commit(root: Path) -> None:
     assert git(root, "commit", "-q", "--allow-empty", "-m", "change") is not None
 
 
-def test_before_the_first_round_the_count_starts_at_the_first_commit(
+def test_before_the_first_round_the_count_starts_after_the_first_commit(
     repo: tuple[Path, HarnessConfig],
 ) -> None:
+    """The first commit is where the count starts, as the round's commit is after a round."""
     root, loaded = repo
     empty = section(root, loaded, now=[])  # no commit yet
     assert "Since the first commit (no round has completed yet):" in empty
@@ -113,10 +114,39 @@ def test_before_the_first_round_the_count_starts_at_the_first_commit(
     assert "Due: no." in empty
     _plan(root, "001-scaffold.md", milestone(1))
     _commit(root)
+    _commit(root)
     done = f"{milestone(1)} (plan 001)"
     found = section(root, loaded, now=[])
     assert f"- milestones completed: {done}\n- commits: 1 " in found
     assert f"Due: yes ({done} completed)." in found
+    assert check_plans(root, loaded.plans, None) == []  # the made-up plan has DOC-PLAN's shape
+
+
+def test_a_milestone_completes_with_its_last_active_plan(repo: tuple[Path, HarnessConfig]) -> None:
+    root, loaded = repo
+    _plan(root, "000-scaffold.md", milestone(1), folder="active")
+    _plan(root, "001-harness.md", milestone(1))
+    _plan(root, "002-api.md", milestone(2))
+    _commit(root)
+    found = section(root, loaded, now=[])
+    assert f"- milestones completed: {milestone(2)} (plan 002)\n" in found  # plan 000 is open
+    (root / "docs/plans/active/000-scaffold.md").unlink()
+    _plan(root, "000-scaffold.md", milestone(1))
+    found = section(root, loaded, now=[])
+    done = f"{milestone(1)} (plans 000, 001), {milestone(2)} (plan 002)"
+    assert f"- milestones completed: {done}\n" in found
+
+
+def test_merge_commits_are_not_counted(repo: tuple[Path, HarnessConfig]) -> None:
+    """A merge repeats the commits of its branch, which are counted already."""
+    root, loaded = repo
+    _commit(root)
+    assert git(root, "checkout", "-q", "-b", "side") is not None
+    _commit(root)
+    _commit(root)
+    assert git(root, "checkout", "-q", "-") is not None
+    assert git(root, "merge", "-q", "--no-ff", "-m", "merge", "side") is not None
+    assert "- commits: 2 " in section(root, loaded, now=[])
 
 
 def test_a_round_counts_from_the_commit_that_completed_it(repo: tuple[Path, HarnessConfig]) -> None:
@@ -127,6 +157,7 @@ def test_a_round_counts_from_the_commit_that_completed_it(repo: tuple[Path, Harn
     _commit(root)
     round_plan = "docs/plans/{}/004-garbage-collection-1.md"
     git(root, "mv", round_plan.format("active"), round_plan.format("completed"))
+    _plan(root, "004-garbage-collection-1.md", "none (maintenance)")  # and its Status line
     assert "not committed yet" in section(root, loaded, now=[])
 
     _commit(root)  # the round completes: the count starts here, not where it was written

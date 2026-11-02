@@ -1,6 +1,6 @@
 """What the tracing tests share (test_tracing.py, test_tracing_export.py): made-up values, a turn
 with its speech-to-text span, a private provider on the in-memory exporter, and an OTLP/HTTP
-collector on 127.0.0.1."""
+collector on 127.0.0.1 with one turn exported to it."""
 
 from __future__ import annotations
 
@@ -90,3 +90,13 @@ def collector(status: int, hold: threading.Event | None = None) -> Iterator[tupl
             hold.set()
         server.shutdown()
         server.server_close()
+
+
+def export_one_turn(tmp_path: Path, status: int = 200) -> tuple[Tracing, Received]:
+    """One turn through the private provider the settings build, to a collector on 127.0.0.1
+    answering `status`, then shut down: the tracing (its dropped spans) and what was received."""
+    with collector(status) as (endpoint, received):
+        tracing = Tracing.from_settings(settings_with(tmp_path, endpoint=endpoint))
+        one_turn(tracing)
+        tracing.shutdown()
+    return tracing, received

@@ -9,28 +9,27 @@ cite must exist.
   says it is recorded. History may cite retired debt, principles, and invariants, but never a
   missing decision or plan: those are superseded or completed, never removed.
 
-The formats parsed here are a contract with the docs: a decision is a heading `## D-NNN ...`,
-a debt item a table row `| TD-NNN | ...`, a principle a row `| GP-NN | ...`, a plan a file
-`NNN-slug.md`, and an invariant a line `N. **Title.** ...` under `## Invariants`.
+The entries are read by scripts/doc_registers.py, which DOC-REGISTER uses too: a decision is a
+heading `## D-NNN ...`, a debt item a table row `| TD-NNN | ...`, a principle a row
+`| GP-NN | ...`, and an invariant a line `N. **Title.** ...` under `## Invariants`, each outside
+code fences; a plan is a file `NNN-slug.md`.
 """
 
 from __future__ import annotations
 
 import re
-from collections.abc import Callable, Iterator, Sequence
+from collections.abc import Callable, Sequence
 from dataclasses import dataclass
 from pathlib import Path
 
 from scripts._common import Violation
+from scripts.doc_registers import entries as recorded_entries
+from scripts.doc_text import lines_of, living_docs
 from scripts.harness_config import DocsConfig, HarnessConfig
 
 # A code with a decimal part (M2.5, a clothing size, a diagnosis code) is not a milestone.
 _MILESTONE = re.compile(r"\bM(\d{1,2})\b(?!\.\d)")
 _ROADMAP_ROW = re.compile(r"^\|\s*M(\d{1,2})\s*\|", re.MULTILINE)
-
-
-def lines_of(path: Path) -> Iterator[tuple[int, str]]:
-    yield from enumerate(path.read_text(encoding="utf-8").splitlines(), start=1)
 
 
 def code_files(root: Path, docs: DocsConfig) -> list[Path]:
@@ -50,10 +49,7 @@ def check_milestones(
     text = roadmap.read_text(encoding="utf-8") if roadmap.is_file() else ""
     known = set(_ROADMAP_ROW.findall(text))
     violations: list[Violation] = []
-    for md in markdown:
-        rel = md.relative_to(root).as_posix()
-        if rel.startswith(config.docs.historical):
-            continue
+    for md, rel in living_docs(root, markdown, config.docs.historical):
         for lineno, line in lines_of(md):
             for match in _MILESTONE.finditer(line):
                 if match.group(1) not in known:
@@ -95,18 +91,8 @@ class Registry:
     retired_in_history: bool  # entries can be removed, so history may cite retired ones
 
 
-def _matches(home: str, pattern: str) -> Callable[[Path], set[str]]:
-    regex = re.compile(pattern, re.MULTILINE)
-    return lambda root: set(regex.findall((root / home).read_text(encoding="utf-8")))
-
-
-def _invariants(home: str) -> Callable[[Path], set[str]]:
-    def entries(root: Path) -> set[str]:
-        text = (root / home).read_text(encoding="utf-8")
-        section = text.split("\n## Invariants\n", 1)[-1].split("\n## ", 1)[0]
-        return set(re.findall(r"^(\d+)\. \*\*", section, re.MULTILINE))
-
-    return entries
+def _recorded(home: str, kind: str) -> Callable[[Path], set[str]]:
+    return lambda root: {number for _, number in recorded_entries(root / home, kind)}
 
 
 def registries(config: HarnessConfig) -> list[Registry]:
@@ -128,7 +114,7 @@ def registries(config: HarnessConfig) -> list[Registry]:
                 "decision",
                 re.compile(r"\bD-(\d{3})\b"),
                 (refs.decisions,),
-                _matches(refs.decisions, r"^## D-(\d{3}) "),
+                _recorded(refs.decisions, "decision"),
                 retired_in_history=False,  # decisions are superseded, never removed
             )
         )
@@ -138,7 +124,7 @@ def registries(config: HarnessConfig) -> list[Registry]:
                 "tech-debt item",
                 re.compile(r"\bTD-(\d{3})\b"),
                 (refs.tech_debt,),
-                _matches(refs.tech_debt, r"^\| TD-(\d{3}) \|"),
+                _recorded(refs.tech_debt, "tech-debt item"),
                 retired_in_history=True,
             )
         )
@@ -148,7 +134,7 @@ def registries(config: HarnessConfig) -> list[Registry]:
                 "golden principle",
                 re.compile(r"\bGP-(\d{2})\b"),
                 (refs.golden_principles,),
-                _matches(refs.golden_principles, r"^\| GP-(\d{2}) \|"),
+                _recorded(refs.golden_principles, "golden principle"),
                 retired_in_history=True,
             )
         )
@@ -158,7 +144,7 @@ def registries(config: HarnessConfig) -> list[Registry]:
                 "invariant",
                 re.compile(r"\b(?:[Ii]nvariants?|inv\.) (\d+(?:(?:, | and )\d+)*)"),
                 (refs.invariants,),
-                _invariants(refs.invariants),
+                _recorded(refs.invariants, "invariant"),
                 retired_in_history=True,
             )
         )

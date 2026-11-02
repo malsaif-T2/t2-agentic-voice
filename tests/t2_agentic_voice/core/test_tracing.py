@@ -16,6 +16,7 @@ from t2_agentic_voice.core.config import Settings
 from t2_agentic_voice.core.redaction import Redactor
 from t2_agentic_voice.core.tracing import Tracing
 
+from tests.leaks import holding, shown
 from tests.t2_agentic_voice.core.tracing_support import (
     MADE_UP_KEY,
     NOBODY,
@@ -175,6 +176,7 @@ def test_no_secret_reaches_a_span_or_a_log_line(
     for span in spans.values():
         assert (span.status.status_code.name, span.status.description) == ("ERROR", "RuntimeError")
         assert (span.attributes or {})["error.type"] == "RuntimeError"
-    shown = exported_text(list(spans.values())) + capsys.readouterr().out + caplog.text
-    assert MADE_UP_KEY not in shown and "[redacted]" in shown
+    surfaces = shown(caplog=caplog, capsys=capsys)
+    surfaces["spans"] = exported_text(list(spans.values()))
+    assert holding(MADE_UP_KEY, surfaces) == [] and "[redacted]" in surfaces["spans"]
     assert settings.groq.api_key is not None and MADE_UP_KEY not in repr(settings)

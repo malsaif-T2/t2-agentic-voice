@@ -1,5 +1,6 @@
 # The script of the owner's new recordings (plan 002's registration, "New recordings (N)"), read
-# by `poe record` and by the recordings import (`takes.load_script`).
+# by `poe record`, the recordings import and `poe golden` alike (`takes.Script`, through
+# `items.read_toml`).
 #
 # Approved by the owner on 2026-11-01, after the agent's review of every line: "I Approve the
 # recording script, I haven't rally tried it but if you see it good then it is fine" (plan 002,

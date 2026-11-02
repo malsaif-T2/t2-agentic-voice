@@ -1,6 +1,7 @@
 """Fixtures for the whole suite. No test reads the developer's `.env`, inherits this project's
 settings or a provider's variables from their shell, or writes their `var/`
-(tests/harness/test_isolation.py checks each)."""
+(tests/harness/test_isolation.py checks each); and every test starts with the default logging.
+The variables dropped are listed in tests/isolation.py."""
 
 from __future__ import annotations
 
@@ -10,18 +11,9 @@ from pathlib import Path
 
 import pytest
 from t2_agentic_voice.core.config import Settings, get_settings
+from t2_agentic_voice.core.logging import configure_logging
 
-# This project's environment variables, and the one that moves every runtime path.
-PREFIX = Settings.model_config.get("env_prefix", "")
-VAR_DIR_VARIABLE = f"{PREFIX}VAR_DIR"
-# The variables of the providers' SDKs and of the tracing tools, which the library never reads
-# (the design's 7.3) but their SDKs would: a real key, an exporter's headers, Phoenix's own.
-FOREIGN_PREFIXES = ("GROQ_", "OTEL_", "PHOENIX_")
-# Variables of the HTTP clients under the SDKs, which change what a request to 127.0.0.1 trusts:
-# requests replaces `verify=True` with either CA bundle (TD-004).
-FOREIGN_NAMES = ("REQUESTS_CA_BUNDLE", "CURL_CA_BUNDLE")
-# Every variable dropped from the shell; with no prefix, every variable would be a setting.
-_DROPPED = FOREIGN_PREFIXES + ((PREFIX.upper(),) if PREFIX else ())
+from tests.isolation import VAR_DIR_VARIABLE, dropped
 
 
 def pytest_configure(config: pytest.Config) -> None:
@@ -30,7 +22,7 @@ def pytest_configure(config: pytest.Config) -> None:
     `groq` (it then sets the `groq` and `httpx` loggers to DEBUG and adds a root handler) and
     `OTEL_PYTHON_CONTEXT` by `opentelemetry.context` (it loads an entry point by that name), as
     plan 002's step 2 read them (tests/harness/test_import_isolation.py checks it)."""
-    for name in [n for n in os.environ if n.upper().startswith(_DROPPED)]:
+    for name in [n for n in os.environ if dropped(n)]:
         del os.environ[name]
 
 
@@ -42,20 +34,15 @@ def _isolated_settings(tmp_path_factory: pytest.TempPathFactory) -> Iterator[Non
       test of `.env` parsing passes its own file as `_env_file=`);
     - no variable with this project's prefix from the shell (a debug level, `prod`);
     - no `GROQ_*`, `OTEL_*` or `PHOENIX_*` variable from the shell, so a real key or exporter
-      setting never reaches a test (a test sets made-up ones with monkeypatch); both are also
-      dropped before collection, by `pytest_configure` above;
-    - no CA bundle of requests' from the shell (`FOREIGN_NAMES`), and `NETRC` naming an empty
-      file, so requests never opens the developer's `~/.netrc`;
+      setting never reaches a test (a test sets made-up ones with monkeypatch);
+    - no CA bundle of requests' from the shell, and `NETRC` naming an empty file, so requests
+      never opens the developer's `~/.netrc`;
     - a scratch var_dir, so no test opens the developer's var/.
-    Add here any other variable a test must never inherit."""
+    `pytest_configure` above drops the same variables before collection; one set after it is
+    dropped here. Add any other variable a test must never inherit to tests/isolation.py."""
     with pytest.MonkeyPatch.context() as patch:
         patch.setitem(Settings.model_config, "env_file", None)
-        if PREFIX:  # with no prefix, every variable would be a setting
-            for name in [n for n in os.environ if n.upper().startswith(PREFIX.upper())]:
-                patch.delenv(name)
-        for name in [n for n in os.environ if n.upper().startswith(FOREIGN_PREFIXES)]:
-            patch.delenv(name)
-        for name in [n for n in os.environ if n.upper() in FOREIGN_NAMES]:
+        for name in [n for n in os.environ if dropped(n)]:
             patch.delenv(name)
         netrc = tmp_path_factory.mktemp("netrc") / "netrc"
         netrc.write_text("", encoding="utf-8")
@@ -64,6 +51,13 @@ def _isolated_settings(tmp_path_factory: pytest.TempPathFactory) -> Iterator[Non
         get_settings.cache_clear()
         yield
         get_settings.cache_clear()
+
+
+@pytest.fixture(autouse=True)
+def _default_logging() -> None:
+    """structlog's configuration is process-wide: each test starts from `configure_logging()`'s
+    defaults (INFO, plain console lines), whatever an earlier test or command configured."""
+    configure_logging()
 
 
 @pytest.fixture

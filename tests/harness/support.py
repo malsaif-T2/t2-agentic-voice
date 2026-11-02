@@ -7,9 +7,11 @@ true whatever this project's own harness.toml says.
 
 from __future__ import annotations
 
-from collections.abc import Mapping
+from collections.abc import Mapping, Sequence
+from dataclasses import replace
 from pathlib import Path
 
+from scripts.check_docs import check_repo
 from scripts.harness_config import HarnessConfig, load_config
 
 SYNTHETIC = """\
@@ -91,6 +93,7 @@ path_ignored = ["var/"]
 hooks = ["emit"]
 foreign_names = ["AsyncClient"]
 name_files = ["pyproject.toml"]
+planned_docs = ["docs/design/plan.md"]
 
 [quality]
 doc = "docs/harness/quality.md"
@@ -120,6 +123,32 @@ ARCHITECTURE = """\
 
 After the table.
 """
+
+
+# The synthetic config's [plans] sections, and plans that hold them all, active and completed.
+SECTIONS = ("## Goal", "## Acceptance criteria", "## Plan", "## Progress log", "## Decision log")
+PLAN_BODY = "\n\n".join(f"{heading}\n\ntext" for heading in SECTIONS)
+MAINTENANCE = "Milestone: none (maintenance)"
+ACTIVE = f"Status: active · {MAINTENANCE} · Started: 2026-01-12\n\n" + PLAN_BODY
+DONE = f"Status: completed · {MAINTENANCE} · Started: 2026-01-12 · Completed: 2026-01-15\n\n"
+DONE += PLAN_BODY
+
+
+def doc_rules(
+    root: Path,
+    files: dict[str, str],
+    required: tuple[str, ...] = (),
+    historical: Sequence[str] = (),
+) -> list[tuple[str, int, str]]:
+    """(path, line, rule) of each violation `poe docs` finds in a project holding `files`, with
+    the synthetic config, its required docs replaced by `required` (and its history extended by
+    `historical`)."""
+    loaded = config(root)
+    docs = replace(
+        loaded.docs, required=tuple(required), historical=(*loaded.docs.historical, *historical)
+    )
+    violations, _ = check_repo(write(root, files), replace(loaded, docs=docs))
+    return sorted((v.path, v.line, v.rule) for v in violations)
 
 
 def write(root: Path, files: Mapping[str, str]) -> Path:

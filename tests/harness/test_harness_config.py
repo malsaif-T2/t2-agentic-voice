@@ -5,9 +5,11 @@ from __future__ import annotations
 
 import tomllib
 from pathlib import Path
+from types import ModuleType
 
 import pytest
 
+from scripts import check_architecture, gc_due, gc_report, quality
 from scripts.harness_config import HarnessConfigError, load_config
 from tests.harness.support import SYNTHETIC, config, write
 
@@ -45,6 +47,26 @@ def test_a_missing_or_unparsable_file_is_reported(tmp_path: Path) -> None:
     with pytest.raises(HarnessConfigError, match=r"harness\.toml is missing"):
         load_config(tmp_path)
     assert _problems(tmp_path, "[package\n")[0][0] == 1
+
+
+@pytest.mark.parametrize("module", [check_architecture, gc_due, gc_report, quality])
+def test_every_command_reports_a_broken_file_as_the_checks_do(
+    module: ModuleType,
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+    capsys: pytest.CaptureFixture[str],
+) -> None:
+    """Sorted, each with its FIX, then the count and what to do: `poe gc` and `poe quality` too."""
+    text = SYNTHETIC.replace("min_tokens = 20", "min_token = 20") + "\n[weird]\nx = 1\n"
+    write(tmp_path, {"harness.toml": text})
+    monkeypatch.setattr(module, "ROOT", tmp_path)
+    assert module.main([]) == 1
+    printed = capsys.readouterr().out.splitlines()
+    lines = [_line(text, needle) for needle in ("[gc]", "min_token = 20", "[weird]")]
+    assert [line.split(": [")[0] for line in printed[:-1:2]] == [f"harness.toml:{n}" for n in lines]
+    assert all(line.startswith("    FIX: ") for line in printed[1::2])
+    name = module.__name__.rsplit(".", 1)[1]
+    assert printed[-1] == f"{name}: 3 violation(s). Fix every item above, then re-run."
 
 
 def test_an_unknown_layer_and_a_cycle_are_rejected(tmp_path: Path) -> None:

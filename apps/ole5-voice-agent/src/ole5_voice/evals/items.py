@@ -5,22 +5,32 @@ files of `evals/` they are checked against.
 `Manifest` a file: `talkover.json`, and `<root>-<session>.json` for each recording session),
 `frozen.json` (the expected answers `poe golden` freezes), `split.json`, `strata.toml` (the
 registered counts), `terms.toml` (the product terms), `script.toml` (the new recordings'
-script), `spelling.toml` (the spelling guide) and `allowed_in_source.toml`. Every file is
+script), `spelling.toml` (the spelling guide), `allowed_in_source.toml` and `history.jsonl` (the
+run history, `history.py`). Every file is
 parsed strictly as it is read, and a file that cannot be read is a `GoldenSetError` naming it,
 never echoing what it holds.
 """
 
 from __future__ import annotations
 
-import tomllib
+import json
+import re
 from collections import Counter
 from collections.abc import Iterable, Sequence
 from pathlib import Path
-from typing import Final, Literal
+from typing import Final
 
-from pydantic import BaseModel, Field, ValidationError
+from pydantic import BaseModel, Field
 
-from ole5_voice.evals.models import Confirmation, Item, Manifest, Model, Variant
+from ole5_voice.evals.files import read_model
+from ole5_voice.evals.models import (
+    Confirmation,
+    Item,
+    Manifest,
+    Model,
+    ReferenceSource,
+    Variant,
+)
 from ole5_voice.evals.takes import Review, Script
 
 # The app's golden-set data, beside its `src/`.
@@ -33,8 +43,7 @@ STRATA_FILE: Final = "strata.toml"
 TERMS_FILE: Final = "terms.toml"
 SCRIPT_FILE: Final = "script.toml"
 SPELLING_FILE: Final = "spelling.toml"
-
-Source = Literal["script", "typed", "none"]
+HISTORY_FILE: Final = "history.jsonl"  # a run's line is also copied beside its scorecard
 
 
 class GoldenSetError(ValueError):
@@ -42,27 +51,40 @@ class GoldenSetError(ValueError):
 
 
 def read_toml[M: BaseModel](path: Path, model: type[M]) -> M:
-    """`path`'s TOML as `model`; GoldenSetError naming the file when it is missing, is not
-    TOML, or does not fit (a model's error never echoes the value it refused)."""
-    try:
-        with path.open("rb") as file:
-            return model.model_validate(tomllib.load(file))
-    except (OSError, tomllib.TOMLDecodeError, ValidationError) as error:
-        raise GoldenSetError(f"{path.name}: {error}") from None
+    """`path`'s TOML as `model`; GoldenSetError naming the file, and the fields only, when it
+    cannot be read as UTF-8 text, is not TOML, or does not fit (`files.read_model`)."""
+    return read_model(
+        path, model, lambda problem: GoldenSetError(f"{path.name}: {problem}"), toml=True
+    )
 
 
 def read_json[M: BaseModel](path: Path, model: type[M]) -> M:
     """`path`'s JSON as `model`, failing as `read_toml` does."""
-    try:
-        return model.model_validate_json(path.read_bytes())
-    except (OSError, ValidationError) as error:
-        raise GoldenSetError(f"{path.name}: {error}") from None
+    return read_model(path, model, lambda problem: GoldenSetError(f"{path.name}: {problem}"))
 
 
 def write_text(path: Path, text: str) -> None:
     """`text` as UTF-8 with LF endings, the folders above it made."""
     path.parent.mkdir(parents=True, exist_ok=True)
     path.write_text(text, encoding="utf-8", newline="\n")
+
+
+def dump_manifest(manifest: Manifest) -> str:
+    """A manifest's committed text, whichever import writes it: JSON, its non-ASCII text as
+    written, indented by two, with an LF at the end."""
+    return json.dumps(manifest.model_dump(mode="json"), ensure_ascii=False, indent=2) + "\n"
+
+
+def holds_term(text: str, term: str) -> bool:
+    """Whether `text` holds the product term `term` as a whole word, as the product writes it:
+    how the talk-over import picks an item's terms, and `poe golden` checks them."""
+    return re.search(rf"(?<!\w){re.escape(term)}(?!\w)", text) is not None
+
+
+def references(item: Item, variant: Variant) -> tuple[str, ...]:
+    """What counts as right for `variant`: its reference, then its item's alternatives (the
+    expected answers `frozen.json` lists, and a run's verdict takes)."""
+    return (variant.reference, *item.alternatives)
 
 
 def load_items(folder: Path) -> tuple[Item, ...]:
@@ -117,20 +139,9 @@ def unchecked(variant: Variant) -> str | None:
     return "not yet confirmed by the owner's listen"
 
 
-def accepted(items: Iterable[Item]) -> tuple[Item, ...]:
-    """The items with only their checked variants, and only those with one left: what a run
-    is scored on once the owner has checked the set."""
-    kept = []
-    for item in items:
-        variants = tuple(v for v in item.variants if unchecked(v) is None)
-        if variants:
-            kept.append(Item.model_validate(item.model_dump() | {"variants": variants}))
-    return tuple(kept)
-
-
 def reviewed(
-    reference: str, source: Source, reviews: Sequence[Review]
-) -> tuple[str, Source, tuple[Confirmation, ...]]:
+    reference: str, source: ReferenceSource, reviews: Sequence[Review]
+) -> tuple[str, ReferenceSource, tuple[Confirmation, ...]]:
     """A variant's reference, its source and its confirmations after the owner's reviews, in
     the order of their passes. A typed review makes its text the reference and drops every
     earlier confirmation, which confirmed another text; only a confirmation in a later pass

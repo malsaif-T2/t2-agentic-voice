@@ -22,7 +22,7 @@ from pathlib import Path
 
 import pytest
 from ole5_voice.evals import compare
-from ole5_voice.evals.compare import ComparisonError, load_scorecard
+from ole5_voice.evals.compare import ComparisonError
 from ole5_voice.evals.history import append_line, line_of, read_history, render_history
 from ole5_voice.evals.models import OTHER, TICKET_KIND
 from ole5_voice.evals.runs import (
@@ -35,7 +35,7 @@ from ole5_voice.evals.runs import (
     StratumValue,
     VariantResult,
 )
-from ole5_voice.evals.scorecard import EvalDataError, write_scorecard
+from ole5_voice.evals.scorecard import EvalDataError, load_scorecard, write_scorecard
 from t2_agentic_voice.evals import Recall
 
 from tests.ole5_voice.evals import samples

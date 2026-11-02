@@ -28,7 +28,8 @@ packages/t2-agentic-voice/   the library teammates install: src/t2_agentic_voice
 apps/ole5-voice-agent/       the Ole5 Voice Agent: src/ole5_voice/, Ole5's prompt, tools,
                              knowledge base and ticket system, and its web widget
 examples/minimal/            the smallest app: the guide's quickstart, and a test of the library
-tests/                       one subfolder per package, and harness/ for the checks' own tests
+tests/                       one subfolder per package, harness/ for the checks' own tests, and
+                             the helpers every package's tests share (leaks.py, isolation.py)
 ```
 
 The library's **public API is its package root and the facades beside it**: the root's
@@ -84,8 +85,8 @@ An arrow or a line down means "may import"; `api` may import every layer, `testi
 
 | Layer | Responsibility | May import | Owns (only it may import) |
 | --- | --- | --- | --- |
-| `core` | Settings (`core/config.py`, the only module that reads the environment), structured logging (`core/logging.py`), the error types (`core/errors.py`: `AppError` and its subclasses, each with a stable `code`), tracing to Phoenix, and the types every layer shares | none | `logging`, `structlog`, `pydantic_settings`, `opentelemetry`, `openinference`, `phoenix`, `requests` |
-| `domain` | The rules of a support call, with no IO: what counts as a clear yes, the ticket flow's states, what an interruption is, Arabic text normalization, how numbers and ticket IDs are spoken, and the ports (protocols) every outside service is reached through | core | — |
+| `core` | Settings (`core/config.py`, the only module that reads the environment), structured logging (`core/logging.py`), the error types (`core/errors.py`: `T2VoiceError` and its subclasses, each with a stable `code`), tracing to Phoenix, and the types every layer shares | none | `logging`, `structlog`, `pydantic_settings`, `opentelemetry`, `openinference`, `phoenix`, `requests` |
+| `domain` | The rules of a support call, with no IO: what counts as a clear yes, the ticket flow's states, what an interruption is, Arabic text normalization, how numbers and ticket IDs are spoken, the evaluation scorers' pure parts (term recall, ID recall, text from silence, the sign test), and the ports (protocols) every outside service is reached through | core | — |
 | `adapters` | One adapter per port: speech-to-text, the chat model and text-to-speech (Groq), the knowledge base, the ticket system; each chosen by a setting | core, domain | `groq`, `httpx`, `qdrant_client` |
 | `actions` | The backend that acts: runs the talker's tools through the ports, keeps each call's record of completed actions, words every outcome from a real result | core, domain | — |
 | `agent` | The talker: prompts, the few tool definitions, the reply language, one turn from the user's words to a reply and tool calls; the output guard on every sentence | core, domain, actions | — |
@@ -141,7 +142,7 @@ run").
 - Types shared across layers live in `core`; the ports and the call's rules live in `domain`.
 - `pydantic` is allowed everywhere: it is how data is parsed at boundaries, model output and
   tool arguments included.
-- Lower layers raise `core.errors.AppError` subclasses with stable codes and user-safe
+- Lower layers raise `core.errors.T2VoiceError` subclasses with stable codes and user-safe
   messages; only `api` maps them to its transport.
 - Configuration comes only from `Settings` in `core/config.py`, and `.env.example` lists every
   setting. A provider is chosen by a setting, never by an import in a layer above `api`.
@@ -151,7 +152,10 @@ run").
   handlers is named in its `take_over`. Pipecat logs through loguru instead: the plan that
   installs Pipecat makes `configure_logging` remove loguru's default sink and forward its
   records at the configured level, so no framework debug line carries call content
-  ([SECURITY.md](docs/SECURITY.md), invariant 8).
+  ([SECURITY.md](docs/SECURITY.md), invariant 8). This is the code as built and D-002's plan for
+  loguru, not yet the design's logging contract (its 3.3 and 10.2: the standard library's
+  loggers under the package's name with a null handler, no handler on the root logger; its
+  12.2: loguru owned by `voice`), which M2's plan builds and settles (TD-033).
 - `voice` uses Pipecat for its pipeline, its WebRTC transport, speech detection, and the base
   classes of its speech-to-text and text-to-speech services (D-018). Its own subclasses of those
   call the speech-to-text and text-to-speech ports, and its own processor runs `agent`'s turn
@@ -196,6 +200,11 @@ The rules live in [harness.toml](harness.toml), the source of truth;
 - ARCH-PRINT: no `print` or direct writes to standard output outside the files `[rules]`
   allows;
 - ARCH-ENV: the environment is read only in the files `[rules]` allows;
+- ARCH-DEPS: every outside library the code imports is declared by the code's own project: a
+  member's `pyproject.toml` for its `src/`; for `scripts/` and `tests/`, the root's
+  dependencies or `dev` group, or a member's. A namespace package that several distributions
+  install, such as `opentelemetry`, is matched on its top-level name
+  ([scripts/arch_deps.py](scripts/arch_deps.py));
 - ARCH-DOC: this doc's layer table matches `[layers]` and `[[owners]]`, row by row
   ([scripts/arch_doc.py](scripts/arch_doc.py)).
 

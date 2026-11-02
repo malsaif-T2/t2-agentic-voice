@@ -13,10 +13,11 @@ mistakes into checks. Each round is an execution plan, not a milestone
 ## When
 
 The owner asks for a round when they see fit. `uv run poe gc` opens by saying whether one is due,
-and why (`scripts/gc_due.py`). Counted from the commit that moved the last round's plan into
-`completed/` (before the first round, from the repository's first commit):
-- a milestone completed (a completed plan's Status line names it);
-- a set number of commits landed (`[gc] due_after_commits` in `harness.toml`; 40 to start);
+and why (`scripts/gc_due.py`). Counted after the commit that moved the last round's plan into
+`completed/` (before the first round, after the repository's first commit):
+- a milestone completed (a completed plan's Status line names it, and no active plan's does);
+- a set number of commits landed, merges left out, since a merge repeats its branch's commits
+  (`[gc] due_after_commits` in `harness.toml`; 40);
 - a layer grades below what [quality.md](quality.md) records (compared only when coverage was
   measured alike).
 
@@ -28,15 +29,21 @@ crossing the size watch in the candidates below the signal.
 
 1. **Measure.** `uv run poe gc` lists candidates after its signal (not a gate: each one needs
    judgment):
-   - duplicated code (runs of `[gc] min_tokens` tokens or more; imports ignored);
-   - unreferenced top-level definitions (framework hooks listed in `[gc] hooks` excepted);
+   - duplicated code outside `tests/` (runs of `[gc] min_tokens` tokens or more; imports,
+     dunder methods, comments and layout ignored);
+   - unreferenced top-level definitions and methods (decorated ones, `main`, tests, and the
+     framework hooks listed in `[gc] hooks` excepted);
    - suppressions per file, and every `noqa` without a reason;
    - modules above `[gc] size_watch` lines (below the hard limit `poe arch` enforces,
      `[modules] max_lines`);
-   - file paths named in docs and code that do not resolve;
+   - file paths named in the living docs and the code that do not resolve (in `tests/`, read
+     from comments and docstrings only);
    - code names the living docs cite in backticks that the code no longer has.
-2. **Read.** Walk every layer, the scripts, the tests' shared helpers, and the living docs,
-   looking for:
+
+   History (`[docs] historical`) is not read; a doc of planned code (`[gc] planned_docs`) gets a
+   count instead of a list.
+2. **Read.** Walk every layer, every app (`[[apps]]` in `harness.toml`), the scripts, the
+   tests' shared helpers, and the living docs, looking for:
    - the same logic or message in two places (the report finds copies; only a reader finds
      re-implementations);
    - models and helpers that restate a core definition instead of reusing it;
@@ -76,4 +83,11 @@ read found to be noise, and records the values it chose in its decision log.
 
 ## Rounds
 
-- (None yet. Each round adds a line here: its plan, what prompted it, and what it found.)
+Each round adds a line here: its plan, what prompted it, and what it found.
+
+- [Round 1](../plans/completed/004-garbage-collection-1.md), 2026-11-02, after M1: `poe gc`
+  said one was due (M1 completed; 'commits: 101' with no round yet). The read of five areas
+  found 143 things, 8 of them bugs, each fixed with a failing test first. Four blocks and the
+  close renamed the base error (D-026), made copies one, fixed drift and stale docs, promoted
+  8 mistakes seen twice to a check, a test or a doc (ARCH-DEPS and DOC-SAMPLE new, D-027), paid
+  7 debt rows and merged 3, and calibrated `[gc]`.
