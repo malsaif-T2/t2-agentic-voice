@@ -7,7 +7,11 @@ to the plan's interfaces"; what Track F builds:
   which turns it off in FastAPI 0.162.0 (the appendix, step 4, bullet 5): by default FastAPI
   traces, measures and logs every request through OpenTelemetry's global providers, and the
   library instruments no other library (D-023). It includes the runtime's router under
-  `prefix`, with CORS for `server.allowed_origins` only, POST and PATCH listed.
+  `prefix`, with CORS for `server.allowed_origins` only: POST and PATCH listed as its methods,
+  and as its headers `content-type` and api/protocol.py's `OFFER_SECRET_HEADER`, each of which
+  makes a browser ask first (a preflight) before a JSON body or the offer secret's header goes
+  to another origin. Track F's test: a preflight for `POST /offer` asking for both headers is
+  answered for a listed origin, and gets no CORS header for any other.
 - **uvicorn** runs with one worker, no access log, no server header, no `env_file`, and
   `log_config=None`, so its loggers get no handler of their own (an app names `uvicorn` to
   `configure_logging` for its lines). Proxy headers are off (`proxy_headers=False`) while

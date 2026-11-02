@@ -1,6 +1,7 @@
 """The `t2v/1` message list (plan 003, Block 0, step 11): the models of voice/protocol.py and
 api/protocol.py match the committed fixture exactly, every message by direction, type and field,
-so a track that changes the protocol changes the fixture with it, in plain view.
+and every route by its bodies, its success status and its error codes by status, with the one
+error body, so a track that changes the protocol changes the fixture with it, in plain view.
 
 Each field is written as the fixture's `about` says, from the model's own annotation; a client's
 field is `(optional)` when it has a default, and every inbound model is the strict kind."""
@@ -14,7 +15,7 @@ from typing import Annotated, Any, Literal, Union, get_args, get_origin
 
 from pydantic import BaseModel, SecretStr
 from pydantic.fields import FieldInfo
-from t2_agentic_voice.api.protocol import BODIES, OFFER_SECRET_HEADER
+from t2_agentic_voice.api.protocol import BODIES, OFFER_SECRET_HEADER, ErrorBody, ErrorCode
 from t2_agentic_voice.voice.protocol import (
     CLIENT_MESSAGES,
     PROTOCOL,
@@ -97,17 +98,27 @@ def test_the_http_bodies_and_their_objects_are_the_lists() -> None:
     fixture, objects = _fixture(), dict[str, type[BaseModel]]()
     assert fixture["offer_secret_header"] == OFFER_SECRET_HEADER
     built = {
-        route: {
-            "request": _fields(request, objects),
-            "response": None if response is None else _fields(response, objects),
+        path: {
+            "request": _fields(route.request, objects),
+            "status": route.status,
+            "response": None if route.response is None else _fields(route.response, objects),
+            "errors": {str(status): list(codes) for status, codes in route.errors.items()},
         }
-        for route, (request, response) in BODIES.items()
+        for path, route in BODIES.items()
     }
     assert list(built) == list(fixture["http"])
     assert built == fixture["http"]
     nested = {name: _fields(model, {}) for name, model in objects.items()}
     assert nested == fixture["objects"]
-    assert {r.model_config.get("strict") for r, _ in BODIES.values()} == {True}
+    assert {route.request.model_config.get("strict") for route in BODIES.values()} == {True}
+
+
+def test_the_one_error_body_and_its_codes_are_the_lists() -> None:
+    """Every route answers each error in the one body; each code is some route's answer."""
+    assert _fields(ErrorBody, {}) == _fixture()["error_body"]
+    statuses = [status for route in BODIES.values() for status in route.errors]
+    codes = {code for route in BODIES.values() for each in route.errors.values() for code in each}
+    assert codes == set(get_args(ErrorCode)) and all(400 <= s < 600 for s in statuses)
 
 
 def test_the_fixture_spells_each_kind_of_field() -> None:

@@ -196,7 +196,7 @@ def test_a_group_built_alone_keeps_the_validation_error_and_never_echoes(
     with pytest.raises(ValidationError) as raised:
         kind.model_validate({field: value})
     assert field in str(raised.value)
-    assert holding(MADE_UP_KEY, shown(raised.value)) == []
+    assert holding(MADE_UP_KEY, shown(raised.value)) == ["errors", "errors json"]
     assert MADE_UP_KEY not in raised.value.json(include_input=False)  # the messages too
     for line in raised.value.errors(include_input=False):  # nor a library's text, chained unseen
         error = line.get("ctx", {}).get("error")

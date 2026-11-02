@@ -1,7 +1,8 @@
 """The Groq client every Groq adapter builds (adapters/groq_client.py, plan 003's Block 0), shown
 on a JSON request, the kind `GroqTTS` sends: every request carries the adapter's own eight
 headers whatever `GROQ_CUSTOM_HEADERS` says, and a `content-type` line that makes the SDK build a
-form instead of the adapter's JSON fails the request, unsent, with no key in anything shown.
+form instead of the adapter's JSON fails the request, unsent, with no key in anything shown; and
+on a GET of the model list through the same client and hook, which carries six, with no body.
 `GroqSTT`'s use of it is tested in test_groq_stt.py and test_groq_stt_checks.py. A fake transport
 only: nothing leaves the machine."""
 
@@ -16,6 +17,8 @@ import pytest
 from pydantic import SecretStr
 from t2_agentic_voice.adapters.groq_client import (
     APIConnectionError,
+    AsyncGroq,
+    ForeignBodyError,
     failure,
     groq_client,
     own_headers,
@@ -24,8 +27,10 @@ from t2_agentic_voice.adapters.groq_client import (
 from tests.leaks import holding, shown
 from tests.t2_agentic_voice.adapters.groq_support import KEY, OTHER, FakeGroq
 
-SENT = {"host", "accept", "accept-encoding", "connection", "user-agent", "content-type"}
-SENT |= {"content-length", "authorization"}
+LISTED = {"host", "accept", "accept-encoding", "connection", "user-agent", "authorization"}
+SENT = LISTED | {"content-type", "content-length"}
+MODEL_ID = "canopylabs/orpheus-v1-english"
+MODEL = {"id": MODEL_ID, "object": "model", "created": 0, "owned_by": "made-up"}
 FIELDS = {"model": "canopylabs/orpheus-v1-english", "voice": "troy", "input": "made-up words"}
 SHELLS = [
     {},
@@ -38,8 +43,8 @@ SHELLS = [
 FORM_LINES = ["Content-Type: multipart/form-data", "Content-Type: multipart/form-data; boundary=x"]
 
 
-async def _speak(fake: httpx.AsyncBaseTransport) -> None:
-    """One speech request with `FIELDS`, as a JSON adapter's client sends it on `fake`."""
+def _client(fake: httpx.AsyncBaseTransport) -> AsyncGroq:
+    """A JSON adapter's client on `fake`, as `GroqTTS` builds it."""
     hook = own_headers(
         SecretStr(KEY),
         accept=b"audio/wav",
@@ -47,13 +52,18 @@ async def _speak(fake: httpx.AsyncBaseTransport) -> None:
         opens_with=b"{",
         refusal="foreign_body",
     )
-    client = groq_client(
+    return groq_client(
         api_key=SecretStr(KEY),
         base_url="https://api.groq.com",
         timeout_s=6.0,
         hook=hook,
         transport=fake,
     )
+
+
+async def _speak(fake: httpx.AsyncBaseTransport) -> None:
+    """One speech request with `FIELDS`, as a JSON adapter's client sends it on `fake`."""
+    client = _client(fake)
     try:
         await client.audio.speech.create(
             model=FIELDS["model"],
@@ -107,3 +117,53 @@ def test_a_content_type_line_that_makes_a_form_fails_the_request_unsent(
     )
     assert fake.requests == []
     assert holding(KEY, shown(error, caplog=caplog, capsys=capsys)) == []
+
+
+@pytest.mark.parametrize("shell", SHELLS)
+def test_a_get_through_the_same_client_carries_only_the_adapters_headers(
+    shell: dict[str, str], monkeypatch: pytest.MonkeyPatch
+) -> None:
+    """The model list and one model (Track B's `check_language`, `t2v doctor`): the hook takes a
+    request with no body, sends JSON as its `Accept`, and no `Content-Type` or length."""
+    for name, value in shell.items():
+        monkeypatch.setenv(name, value)
+    listing = httpx.Response(200, json={"object": "list", "data": [MODEL]})
+    fake = FakeGroq(listing, httpx.Response(200, json=MODEL))
+
+    async def ask() -> None:
+        client = _client(fake)
+        try:
+            await client.models.list()
+            await client.models.retrieve(MODEL_ID)
+        finally:
+            await client.close()
+
+    asyncio.run(ask())
+    assert [(r.method, r.url.path) for r in fake.requests] == [
+        ("GET", "/openai/v1/models"),
+        ("GET", f"/openai/v1/models/{MODEL_ID}"),
+    ]
+    for request in fake.requests:
+        assert set(request.headers) == LISTED
+        assert request.headers["accept"] == "application/json"
+        assert request.headers.get_list("authorization") == [f"Bearer {KEY}"]
+        assert request.content == b""
+
+
+def test_a_request_with_no_body_that_carries_one_is_never_sent() -> None:
+    hook = own_headers(
+        SecretStr(KEY),
+        accept=b"audio/wav",
+        content_type=b"application/json",
+        opens_with=b"{",
+        refusal="foreign_body",
+    )
+    request = httpx.Request("GET", "https://api.groq.com/openai/v1/models", content=b"{}")
+
+    async def send() -> None:
+        await hook(request)
+
+    with pytest.raises(ForeignBodyError) as raised:
+        asyncio.run(send())
+    assert raised.value.reason == "foreign_body"
+    assert request.headers.get("authorization") is None  # left as it was: never sent

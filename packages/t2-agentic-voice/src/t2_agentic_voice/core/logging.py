@@ -42,6 +42,13 @@ FIELDS = "fields"
 # The WebRTC stack's loggers, whose lines below WARNING hold what a call carries: aioice's INFO
 # lines its IP addresses, aiortc's DEBUG lines its SDP (plan 003, the reading of step 4).
 TRANSPORT_LOGGERS = ("aiortc", "aioice")
+# The keys a line's own processors write or act on, which no field takes as it is named: the
+# line's event, level, time and logger; structlog's traceback and stack directives, which the
+# console renderer writes raw on lines of their own; and the formatter's own record keys.
+_LINE_KEYS = frozenset(
+    {"event", "level", "timestamp", "logger", "logger_name"}
+    | {"exc_info", "exception", "stack", "stack_info", "_record", "_from_structlog"}
+)
 
 logging.getLogger(LIBRARY).addHandler(logging.NullHandler())
 
@@ -172,13 +179,22 @@ def _formatter(fmt: LogFormat) -> logging.Formatter:
 
 
 def _fields(_logger: WrappedLogger, _method: str, event: EventDict) -> EventDict:
-    """A record's fields, which never replace its event, level, time or logger, and its logger's
-    name under the key the lines have always had."""
+    """A record's fields, and its logger's name under the key the lines have always had. A field
+    named like one of `_LINE_KEYS` is written as `field_<name>` (one more `field_` while that
+    name is taken), so no field replaces the line's event, level, time or logger, adds a
+    traceback, or writes raw text on lines of its own, and none is lost or makes a log call
+    raise."""
     record: logging.LogRecord = event["_record"]
     fields = getattr(record, FIELDS, None)
     if isinstance(fields, dict):
+        named = [(key, value) for key, value in fields.items() if key not in _LINE_KEYS]
+        event.update(named)
         for key, value in fields.items():
-            event.setdefault(key, value)
+            if key in _LINE_KEYS:
+                renamed = f"field_{key}"
+                while renamed in event:
+                    renamed = f"field_{renamed}"
+                event[renamed] = value
     event["logger_name"] = record.name
     return event
 

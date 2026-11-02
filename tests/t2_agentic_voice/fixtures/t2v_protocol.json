@@ -1,7 +1,7 @@
 {
   "about": [
     "Every t2v/1 message (the design's 5.5), the baseline plan 003's Tracks D, E, F and G are compared with (Block 0, step 11). tests/t2_agentic_voice/test_protocol_list.py checks that the models in voice/protocol.py and api/protocol.py match it exactly; a change to t2v/1 changes this file in the same commit.",
-    "data_channel: each message is a JSON object with \"v\": 1 and its \"type\" (the key under its direction), and the fields listed. http: each route after the router's prefix, its request body and its answer (null: none). objects: the bodies' nested objects.",
+    "data_channel: each message is a JSON object with \"v\": 1 and its \"type\" (the key under its direction), and the fields listed. http: each route after the router's prefix, its request body, its status on success and its answer then (null: no body), and the codes it answers by error status, each in error_body, the one error shape (GP-19). objects: the bodies' nested objects.",
     "A field's type: string, integer, number or boolean; a list of values is the field's closed list; [x] is a list of x; a name is an object of objects. A client's field marked (optional) may be left out; every field of a message the server sends is always there, null when it has no value."
   ],
   "protocol": 1,
@@ -39,11 +39,19 @@
   "http": {
     "POST /join": {
       "request": {"token": "string", "protocol": "integer"},
+      "status": 200,
       "response": {
         "call_id": "string",
         "offer_secret": "string",
         "ice_servers": "[IceServer]",
         "protocol": "1"
+      },
+      "errors": {
+        "400": ["invalid_request", "protocol_mismatch"],
+        "403": ["join_rejected"],
+        "413": ["too_large"],
+        "500": ["internal_error"],
+        "503": ["not_started"]
       }
     },
     "POST /offer": {
@@ -53,7 +61,16 @@
         "type": "offer",
         "offer_secret": "string | null (optional)"
       },
-      "response": {"sdp": "string", "type": "answer"}
+      "status": 200,
+      "response": {"sdp": "string", "type": "answer"},
+      "errors": {
+        "400": ["invalid_request"],
+        "403": ["forbidden"],
+        "409": ["already_offered"],
+        "413": ["too_large"],
+        "500": ["internal_error"],
+        "503": ["not_started"]
+      }
     },
     "PATCH /offer": {
       "request": {
@@ -61,8 +78,23 @@
         "candidates": "[IceCandidate]",
         "offer_secret": "string | null (optional)"
       },
-      "response": null
+      "status": 204,
+      "response": null,
+      "errors": {
+        "400": ["invalid_request"],
+        "403": ["forbidden"],
+        "409": ["ice_completed", "call_ended"],
+        "413": ["too_large"],
+        "500": ["internal_error"],
+        "503": ["not_started"]
+      }
     }
+  },
+  "error_body": {
+    "code": "invalid_request | too_large | protocol_mismatch | join_rejected | forbidden | already_offered | ice_completed | call_ended | not_started | internal_error",
+    "message": "string",
+    "notice": "string | null",
+    "reference": "string"
   },
   "objects": {
     "IceServer": {"urls": "[string]", "username": "string | null", "credential": "string | null"},

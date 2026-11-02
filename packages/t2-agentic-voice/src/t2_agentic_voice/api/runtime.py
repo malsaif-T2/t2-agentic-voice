@@ -13,7 +13,11 @@ the plan's interfaces"; what Track F builds:
   content or DEBUG would otherwise be served, and `voice` holds the transport loggers only
   while `logging.content` is off. Track F's test: a `staging` and a `prod` copy with each value
   `CHECKS` in tests/t2_agentic_voice/core/test_settings_checks.py refuses, each a
-  ConfigurationError at construction.
+  ConfigurationError at construction. A test gives voice's entry point through `_calls`, a
+  private parameter (no facade names its type): the runtime builds its calls with it in the
+  lifespan, `VoiceCalls` unless given. Track F's tests give one that returns a
+  `FakeCalls` (tests/t2_agentic_voice/fakes.py); step 16's gives one that builds `VoiceCalls`
+  with a fake speech detector.
 - **The lifespan** does the IO. It takes an exclusive lock file under `storage.var_dir`, so a
   second process on the same folder is refused with a FIX line that points to the sidecar, on
   Windows and on Linux; resolves every secret the settings name in a file, so a short one stops
@@ -29,15 +33,36 @@ the plan's interfaces"; what Track F builds:
   the call's offer secret, in the `X-T2V-Offer-Secret` header or the body, never in a URL),
   `GET /health` (only what the design's 10.5 lists), `GET /ready`,
   `GET /client/1/t2v-client.js`, and `GET /dev` only with `env` dev and only to loopback clients
-  (the design's 4.5 and 5.5; the bodies are api/protocol.py's). `/join` verifies the token once,
-  refuses a consent version other than `privacy.consent_version`, mints the call's ID and offer
-  secret, and the call's TURN credentials when `server.turn_secret` is set. A second offer gets
-  409; the offer secret stops working when ICE completes or the call ends, and a PATCH after
-  that gets a quiet 409, logged at DEBUG with no value; a client's `pc_id` never reaches
-  Pipecat (item 10). Every route answers "runtime not started" while the lifespan has not run,
-  and every error has one shape (GP-19). The router carries the lifespan, which FastAPI merges
-  when the router is included (an app that includes it twice runs it twice). In the mount, the
-  app's own CORS middleware answers, and the router says so at startup (the design's 5.5).
+  (the design's 4.5 and 5.5; the bodies are api/protocol.py's). `/join` compares the client's
+  protocol version with the server's first, verifies the token once, refuses a consent version
+  other than `privacy.consent_version`, mints the call's ID and offer secret, and the call's
+  TURN credentials when `server.turn_secret` is set. A second offer gets 409; the offer secret
+  stops working when ICE completes or the call ends, and a PATCH after that gets a quiet 409,
+  logged at DEBUG with no value; a client's `pc_id` never reaches Pipecat (item 10). Every
+  route answers "runtime not started" while the lifespan has not run. The router carries the
+  lifespan, which FastAPI merges when the router is included (an app that includes it twice
+  runs it twice). In the mount, the app's own CORS middleware answers, and the router says so
+  at startup (the design's 5.5).
+- **Bodies.** Each `t2v/1` route reads its raw body itself, never more than its route's cap
+  (api/protocol.py's `BODIES`, `max_bytes`): a `Content-Length` over the cap is refused before
+  a byte is read, and a body that streams past the cap (with no length, or a length that lies)
+  is refused at the cap, each 413 `too_large`, so no body is buffered or parsed whole on the
+  event loop that paces every call's audio. It then parses the body with the model's
+  `model_validate_json` and answers a ValidationError with `refusal(error, reference=...)`,
+  which holds pydantic's error types only. No route declares a model as a FastAPI body
+  parameter: FastAPI answers that with its own 422, whose `errors()` carry the token, the offer
+  secret or a candidate's address back to the client, and in the mount the app's handler
+  answers it, since a router can install none.
+- **Errors.** Every error of every route, a crash included, answers api/protocol.py's
+  `ErrorBody`, and each `t2v/1` route with a status and a code its `BODIES` entry lists
+  (GP-19). Its reference is random, made for the request, and logged with the refusal's event;
+  its message never holds a value the request sent.
+- **Track F's tests** for the bodies and errors: on each `t2v/1` route, a body over the cap sent
+  with its true length, with none (chunked), and with a `Content-Length` that lies (under the
+  cap, then a longer body) each answers 413 in the one shape; each adversarial body of
+  tests/t2_agentic_voice/api/test_protocol.py, posted through the router included in a plain
+  FastAPI app, answers 400 with no value or key it sent anywhere in the response; and each
+  route's errors match its `BODIES` entry, status and code.
 - **Observers** (`on`) run off the call's path: queued, with a timeout; one that raises is logged
   and the call goes on; none can change a call (the design's 6.6).
 """
@@ -57,6 +82,7 @@ from t2_agentic_voice.domain.declaration import VoiceAgent
 from t2_agentic_voice.domain.ports.identity import IdentityVerifier
 from t2_agentic_voice.domain.ports.speech_to_text import SpeechToText
 from t2_agentic_voice.domain.ports.text_to_speech import TextToSpeech
+from t2_agentic_voice.voice.calls import CallsFactory, VoiceCalls
 
 _STUB = "the runtime is built by plan 003's Track F"
 
@@ -98,6 +124,7 @@ class VoiceRuntime:
         identity: IdentityVerifier | None = None,
         providers: Providers | None = None,
         tracer_provider: TracerProvider | None = None,
+        _calls: CallsFactory = VoiceCalls,
     ) -> None:
         raise NotImplementedError(_STUB)
 

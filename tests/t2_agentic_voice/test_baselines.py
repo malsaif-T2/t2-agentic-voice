@@ -98,20 +98,27 @@ def test_the_speech_baseline_sends_what_the_plan_registers() -> None:
 
 def test_the_installed_sdk_sends_the_speech_baseline() -> None:
     """The baseline is what groq 1.7.0 sends for its fields, through the shared client with a
-    JSON adapter's hook, as GroqTTS builds it: the method, the URL, the SDK's Accept header and
-    the body, byte for byte."""
+    JSON adapter's hook, as GroqTTS builds it: the method, the URL and the body, byte for byte;
+    the Accept and Content-Type headers the SDK sets itself, read before the adapter's hook
+    replaces them; and those the hook then sends."""
     baseline = _load("groq_tts_request.json")
     client, request = baseline["client"], baseline["request"]
     fake = FakeGroq(httpx.Response(200, content=b"RIFF"))
+    built: list[httpx.Headers] = []  # the SDK's own headers, before the adapter's hook
 
     async def speak() -> None:
-        hook = own_headers(
+        own = own_headers(
             SecretStr(KEY),
             accept=request["accept"].encode(),
             content_type=request["content_type"].encode(),
             opens_with=b"{",
             refusal="foreign_body",
         )
+
+        async def hook(sent: httpx.Request) -> None:
+            built.append(httpx.Headers(sent.headers))
+            await own(sent)
+
         api = groq_client(
             api_key=SecretStr(KEY),
             base_url=client["base_url"],
@@ -131,9 +138,10 @@ def test_the_installed_sdk_sends_the_speech_baseline() -> None:
             await api.close()
 
     asyncio.run(speak())
-    (sent,) = fake.requests
+    (sdk,), (sent,) = built, fake.requests
     assert (sent.method, str(sent.url)) == (request["method"], request["url"])
     assert sent.content == request["body"].encode("utf-8")
+    assert (sdk["accept"], sdk["content-type"]) == (request["accept"], request["content_type"])
     assert (sent.headers["accept"], sent.headers["content-type"]) == (
         request["accept"],
         request["content_type"],

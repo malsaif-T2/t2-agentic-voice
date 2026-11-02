@@ -13,6 +13,12 @@
   ConfigurationError, never its value. voice reads no variable itself (ARCH-ENV): it asks
   `core.config.foreign_set`, which answers by name however the settings were built. Track E's
   test: each one set (monkeypatch) makes `start` refuse, naming it.
+- **The detectors.** Each call gets its own speech detector and turn analyzer, since each of
+  Pipecat's keeps one stream's state (a `VADAnalyzer`'s buffer, Smart Turn's audio):
+  `VoiceCalls` makes them with the factories it is given, and with none builds Silero and Smart
+  Turn v3.2 from the settings' `turns` group. A test gives fakes (step 16's sends a generated
+  signal through a fake speech detector), through the runtime's private `_calls`
+  (api/runtime.py).
 - **The offer** (`answer`). One Pipecat pipeline per call, its session a `CallSession`
   (`voice/session/`). Pipecat's request handler keys its connections on a `pc_id` it chooses,
   which holds `#`; it renegotiates a live call for whoever names that ID, and leaves a stale key
@@ -40,9 +46,9 @@ ICE completed (from `phase`), and mapping each error to its one shape.
 
 from __future__ import annotations
 
-from collections.abc import Sequence
+from collections.abc import Callable, Sequence
 from dataclasses import dataclass
-from typing import Literal, Protocol
+from typing import TYPE_CHECKING, Literal, Protocol
 
 from t2_agentic_voice.core.config import VoiceSettings
 from t2_agentic_voice.core.events import CallId
@@ -52,6 +58,10 @@ from t2_agentic_voice.domain.declaration import VoiceAgent
 from t2_agentic_voice.domain.ports.speech_to_text import SpeechToText
 from t2_agentic_voice.domain.ports.text_to_speech import TextToSpeech
 from t2_agentic_voice.voice.session.io import SYSTEM_CLOCK, Clock, EventSink, Phrases
+
+if TYPE_CHECKING:  # named in annotations only: this module imports no Pipecat (above)
+    from pipecat.audio.turn.base_turn_analyzer import BaseTurnAnalyzer
+    from pipecat.audio.vad.vad_analyzer import VADAnalyzer
 
 _STUB = "voice's entry point is built by plan 003's Track E"
 
@@ -100,11 +110,32 @@ class Calls(Protocol):
         stop."""
 
 
+class CallsFactory(Protocol):
+    """How the runtime builds voice's entry point in its lifespan: `VoiceCalls` itself, or a
+    test's function that returns a fake (the runtime's private `_calls`)."""
+
+    def __call__(
+        self,
+        *,
+        agent: VoiceAgent,
+        settings: VoiceSettings,
+        stt: SpeechToText,
+        tts: TextToSpeech,
+        phrases: Phrases,
+        tracing: Tracing,
+        emit: EventSink,
+        clock: Clock = SYSTEM_CLOCK,
+    ) -> Calls:
+        """voice's entry point for the runtime's calls, built with no IO."""
+
+
 class VoiceCalls:
     """Every call of one runtime over SmallWebRTC, each its own Pipecat pipeline and session, for
     `agent` with `settings`: speech-to-text through `stt`, text-to-speech through `tts`, the
     fixed phrases from `phrases`, its turns traced on `tracing`, its public events sent to
-    `emit`, its times on `clock`. Built cheaply, with no IO; `start` loads the models."""
+    `emit`, its times on `clock`. Each call's speech detector comes from `speech_detector` and
+    its turn analyzer from `turn_analyzer`, called once per call; None builds Silero VAD and
+    Smart Turn v3.2. Built cheaply, with no IO; `start` loads the models."""
 
     def __init__(
         self,
@@ -117,6 +148,8 @@ class VoiceCalls:
         tracing: Tracing,
         emit: EventSink,
         clock: Clock = SYSTEM_CLOCK,
+        speech_detector: Callable[[], VADAnalyzer] | None = None,
+        turn_analyzer: Callable[[], BaseTurnAnalyzer] | None = None,
     ) -> None:
         raise NotImplementedError(_STUB)
 

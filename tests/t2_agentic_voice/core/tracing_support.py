@@ -6,7 +6,7 @@ from __future__ import annotations
 
 import http.server
 import threading
-from collections.abc import Iterator, Sequence
+from collections.abc import Iterator, Mapping, Sequence
 from contextlib import contextmanager
 from pathlib import Path
 from typing import Any
@@ -17,6 +17,8 @@ from t2_agentic_voice.core.config import VoiceSettings
 from t2_agentic_voice.core.tracing import Tracing
 
 MADE_UP_KEY = "gsk_made-up-key-for-tests-0123456789"
+JOIN_KEY = "made-up-join-key-for-tracing-tests-0123"  # 32 bytes or more, as the settings ask
+TURN_SECRET = "made-up-turn-secret-for-tracing-tests-45"
 TOKEN = f"Bearer {MADE_UP_KEY}"
 PHONE = "0512345678"
 RESOURCE = {"service.name": "t2-agentic-voice", "openinference.project.name": "golden-set"}
@@ -25,9 +27,15 @@ SENT_HEADERS = {"host", "user-agent", "content-type", "content-length", "accept-
 Received = list[tuple[str, dict[str, str], bytes]]  # each request's path, headers and body
 
 
-def settings_with(tmp_path: Path, **tracing: object) -> VoiceSettings:
-    values = {"env": "test", "storage": {"var_dir": tmp_path}, "groq": {"api_key": MADE_UP_KEY}}
-    return VoiceSettings.model_validate(values | {"tracing": {"project": "golden-set"} | tracing})
+def settings_with(
+    tmp_path: Path, *, groups: Mapping[str, object] | None = None, **tracing: object
+) -> VoiceSettings:
+    """Test settings holding the made-up Groq key and the `tracing` values, and `groups`, any
+    other group's values."""
+    values: dict[str, object] = {"env": "test", "storage": {"var_dir": tmp_path}}
+    values |= {"groq": {"api_key": MADE_UP_KEY}, "tracing": {"project": "golden-set"} | tracing}
+    values |= groups or {}
+    return VoiceSettings.model_validate(values)
 
 
 def one_turn(tracing: Tracing, text: str = "hello there") -> None:

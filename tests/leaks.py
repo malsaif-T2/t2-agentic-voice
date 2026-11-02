@@ -15,6 +15,7 @@ import traceback
 from collections.abc import Mapping
 
 import pytest
+from pydantic import ValidationError
 
 
 def _chain(error: BaseException) -> list[BaseException]:
@@ -35,6 +36,13 @@ def _attributes(error: BaseException) -> str:
     return repr(getattr(error, "__dict__", {}))
 
 
+def _carried(error: BaseException) -> str:
+    """What `error` holds beside its text: its attributes, and a ValidationError's `errors()`."""
+    if isinstance(error, ValidationError):
+        return repr(error.errors())
+    return _attributes(error)
+
+
 def shown(
     error: BaseException | None = None,
     *,
@@ -45,10 +53,13 @@ def shown(
     """Every surface that may show a value, by name:
     - of `error`: its text, its repr, its traceback as Python prints it (the chain it shows and
       any note added), its attributes (a `T2VoiceError`'s message and details) and its details
-      as JSON; and the text, repr and attributes of each exception chained to it, a context
-      `raise ... from None` suppressed included, since a debugger or a crash reporter still
-      reaches it;
-    - of `caplog`: every log record's formatted text and message, a third party's included;
+      as JSON; for a pydantic ValidationError, its `errors()` and its `json()`, which carry the
+      input that its text and repr leave out under `hide_input_in_errors` (FastAPI's own 422
+      sends `errors()` to the client); and the text, repr and attributes (a ValidationError's
+      `errors()`) of each exception chained to it, a context `raise ... from None` suppressed
+      included, since a debugger or a crash reporter still reaches it;
+    - of `caplog`: every log record's formatted text and message, a third party's included, and
+      the fields of each of the library's (`record.fields`), which neither of those holds;
     - of `capsys`: what was written to stdout (`configure_logging`'s lines) and to stderr, read
       here, so a test reads them from the result rather than from `capsys` again;
     - of `recwarn`: every Python warning's category and message (pydantic's serializer warnings
@@ -62,11 +73,16 @@ def shown(
         details = getattr(error, "details", None)
         if details is not None:
             surfaces["details"] = json.dumps(details, ensure_ascii=False, default=repr)
+        if isinstance(error, ValidationError):
+            surfaces["errors"] = repr(error.errors())
+            surfaces["errors json"] = error.json()
         chained = _chain(error)[1:]
-        surfaces["chain"] = "\n".join(f"{c}\n{c!r}\n{_attributes(c)}" for c in chained)
+        surfaces["chain"] = "\n".join(f"{c}\n{c!r}\n{_carried(c)}" for c in chained)
     if caplog is not None:
         messages = [record.getMessage() for record in caplog.records]
-        surfaces["log records"] = "\n".join([caplog.text, *messages])
+        held = [vars(record) for record in caplog.records]
+        fields = [repr(each["fields"]) for each in held if "fields" in each]
+        surfaces["log records"] = "\n".join([caplog.text, *messages, *fields])
     if capsys is not None:
         surfaces["stdout"], surfaces["stderr"] = capsys.readouterr()
     if recwarn is not None:

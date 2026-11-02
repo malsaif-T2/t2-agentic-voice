@@ -3,6 +3,7 @@ with its own, against the fake voice entry point; `Providers.replace` is built a
 
 from __future__ import annotations
 
+import inspect
 from collections.abc import Callable
 from typing import cast
 
@@ -13,6 +14,9 @@ from t2_agentic_voice.core.events import CallEnded
 from t2_agentic_voice.domain.declaration import Language, VoiceAgent
 from t2_agentic_voice.domain.ports.speech_to_text import SpeechToText
 from t2_agentic_voice.domain.ports.text_to_speech import TextToSpeech
+from t2_agentic_voice.voice.calls import Calls, VoiceCalls
+
+from tests.t2_agentic_voice.fakes import FakeCalls
 
 AGENT = VoiceAgent(name="echo", languages=[Language.english(greeting="Hello there.")])
 
@@ -31,6 +35,20 @@ def test_the_runtime_is_a_stub_until_track_f(settings: VoiceSettings) -> None:
     for call in calls:
         with pytest.raises(NotImplementedError, match="Track F"):
             call()
+
+
+def test_a_test_gives_the_runtime_its_calls(settings: VoiceSettings) -> None:
+    """Track F's tests give the fake entry point through `_calls` (mypy checks that a function
+    returning `FakeCalls` fits it); the runtime's own default is `VoiceCalls`."""
+    fake = FakeCalls()
+
+    def calls(**_: object) -> Calls:
+        return fake
+
+    with pytest.raises(NotImplementedError, match="Track F"):
+        VoiceRuntime(AGENT, settings=settings, _calls=calls)
+    default = inspect.signature(VoiceRuntime).parameters["_calls"]
+    assert (default.kind, default.default) == (inspect.Parameter.KEYWORD_ONLY, VoiceCalls)
 
 
 def test_providers_replace_only_what_is_given() -> None:

@@ -16,7 +16,8 @@ everything but the request, as plan 002's decision log reads groq 1.7.0
   value. A `content-type` line can change how the SDK and httpx build the body (a multipart
   boundary, or a form instead of JSON), so the hook refuses a body that does not open as the
   adapter's own does: such a line can only fail a request (a `rejected` ProviderError), never
-  shape it.
+  shape it. A request with no body (a GET: the model list, one model) goes through the same
+  client and hook, with JSON as its `Accept`, no `Content-Type`, and no body at all.
 - Every exception the SDK raises becomes a `ProviderError` (`failure`), raised after the
   handler and from None, so no exception chain leads to the SDK's error, which holds the request
   and its headers. A cancel is never caught: the request ends at once and its connection is
@@ -59,6 +60,9 @@ with logging_unchanged("groq", "httpx"):  # groq reads GROQ_LOG on import (TD-00
 LIMITS = httpx.Limits(max_connections=20, max_keepalive_connections=10, keepalive_expiry=300.0)
 # What the SDK sends as its own user agent (`AsyncGroq/Python <version>`).
 USER_AGENT = f"AsyncGroq/Python {groq_version}".encode("ascii")
+# The methods whose requests send a body; Groq answers every other (a GET) in JSON.
+_SENDS_BODY = frozenset({"POST", "PUT", "PATCH"})
+_JSON = b"application/json"
 # Groq's "Your Data" page, as the design's 6.1 gives it.
 DATA_FLOW = DataFlow(
     provider="Groq",
@@ -89,29 +93,34 @@ class ForeignBodyError(Exception):
 def own_headers(
     api_key: SecretStr, *, accept: bytes, content_type: bytes, opens_with: bytes, refusal: str
 ) -> RequestHook:
-    """An adapter's request hook: every request carries these eight headers and no other, each
-    with the adapter's value, in whatever case the SDK or `GROQ_CUSTOM_HEADERS` named them,
-    `Accept` and `Content-Type` the ones given here. A body that does not open with `opens_with`
-    was built some other way than the adapter's (a `content-type` line's boundary, or a form
-    instead of JSON), and is never sent: ForeignBodyError(`refusal`). The length is the body's."""
+    """An adapter's request hook: every request carries the adapter's headers and no other, each
+    with the adapter's value, in whatever case the SDK or `GROQ_CUSTOM_HEADERS` named them. A
+    request that sends a body (POST, PUT, PATCH) carries eight, `Accept` and `Content-Type` the
+    ones given here and the length the body's; a body that does not open with `opens_with` was
+    built some other way than the adapter's (a `content-type` line's boundary, or a form
+    instead of JSON), and is never sent: ForeignBodyError(`refusal`). Any other request (a GET
+    of the model list) carries six, JSON its `Accept`, with no `Content-Type` or length, and
+    one with a body is never sent either."""
 
     async def hook(request: httpx.Request) -> None:
         body = await request.aread()
-        if not body.startswith(opens_with):
+        sends_body = request.method in _SENDS_BODY
+        foreign = not body.startswith(opens_with) if sends_body else body != b""
+        if foreign:
             raise ForeignBodyError(refusal)
         key = api_key.get_secret_value().encode("ascii")
-        request.headers = httpx.Headers(
-            {
-                b"Host": request.url.netloc,
-                b"Accept": accept,
-                b"Accept-Encoding": b"gzip, deflate",
-                b"Connection": b"keep-alive",
-                b"User-Agent": USER_AGENT,
-                b"Content-Type": content_type,
-                b"Content-Length": str(len(body)).encode("ascii"),
-                b"Authorization": b"Bearer " + key,
-            }
-        )
+        headers = {
+            b"Host": request.url.netloc,
+            b"Accept": accept if sends_body else _JSON,
+            b"Accept-Encoding": b"gzip, deflate",
+            b"Connection": b"keep-alive",
+            b"User-Agent": USER_AGENT,
+        }
+        if sends_body:
+            headers[b"Content-Type"] = content_type
+            headers[b"Content-Length"] = str(len(body)).encode("ascii")
+        headers[b"Authorization"] = b"Bearer " + key
+        request.headers = httpx.Headers(headers)
 
     return hook
 

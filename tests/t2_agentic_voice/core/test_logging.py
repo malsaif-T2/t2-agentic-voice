@@ -24,7 +24,7 @@ from t2_agentic_voice.core.logging import (
     logging_unchanged,
 )
 from t2_agentic_voice.core.settings.join import JoinSettings
-from t2_agentic_voice.core.settings.logs import LoggingSettings
+from t2_agentic_voice.core.settings.logs import LogFormat, LoggingSettings
 
 from tests.leaks import holding, shown
 from tests.t2_agentic_voice.core.settings_support import LONG_SECRET, MADE_UP_KEY
@@ -179,8 +179,8 @@ def test_no_address_or_sdp_reaches_an_apps_root_handler_unless_content_is_on(
 
 def test_fields_never_replace_what_the_line_says(capsys: pytest.CaptureFixture[str]) -> None:
     """Adversarial: fields named as a record's own attributes or as the line's keys break
-    nothing and change neither the event, its level, its time nor its logger; an event holding
-    `%s` is written as it is."""
+    nothing and change neither the event, its level, its time nor its logger, each kept under
+    another name; an event holding `%s` is written as it is."""
     configure_logging("INFO", "json")
     get_logger(MODULE).warning(
         "real_event %s",
@@ -192,6 +192,8 @@ def test_fields_never_replace_what_the_line_says(capsys: pytest.CaptureFixture[s
         level="critical",
         timestamp="forged",
         logger_name="forged",
+        logger="forged",
+        field_level="kept",
     )
     out, err = capsys.readouterr()
     event = json.loads(out)
@@ -201,7 +203,33 @@ def test_fields_never_replace_what_the_line_says(capsys: pytest.CaptureFixture[s
         MODULE,
     )
     assert event["timestamp"] != "forged" and event["name"] == event["message"] == "forged"
-    assert err == ""
+    assert (event["field_level"], event["field_field_level"]) == ("kept", "critical")
+    assert event["field_timestamp"] == event["field_logger_name"] == event["field_logger"]
+    assert "logger" not in event and err == ""
+
+
+@pytest.mark.parametrize("fmt", ["console", "json"])
+def test_a_field_named_as_a_formatters_directive_stays_a_field_on_one_line(
+    fmt: LogFormat, capsys: pytest.CaptureFixture[str]
+) -> None:
+    """Adversarial: a field named `exception`, `stack` or `exc_info` is a field like another,
+    renamed: the console renderer would write its text raw on lines of its own (a forged line),
+    and `exc_info` would add the traceback the library never logs (plan 003's step 8)."""
+    forged = f"x\n2026-11-02T00:00:00.000000Z [info     ] join_accepted [{LIBRARY}] subject=admin"
+    configure_logging("INFO", fmt)
+    try:
+        raise RuntimeError(f"held {MADE_UP_KEY}")
+    except RuntimeError:
+        get_logger(MODULE).warning(
+            "refused", exception=forged, stack=forged, exc_info=True, stack_info=True
+        )
+    out = capsys.readouterr().out
+    assert out.count("\n") == 1 and out.endswith("\n")
+    assert "join_accepted" in out and MADE_UP_KEY not in out and "Traceback" not in out
+    if fmt == "json":
+        event = json.loads(out)
+        assert event["field_exception"] == event["field_stack"] == forged
+        assert event["field_exc_info"] is event["field_stack_info"] is True
 
 
 def test_no_secret_reaches_a_line_or_a_record(
@@ -217,8 +245,7 @@ def test_no_secret_reaches_a_line_or_a_record(
     log = get_logger(MODULE)
     log.debug("key_read", key=SecretStr(MADE_UP_KEY))
     log.error("settings_read", settings=settings, join=settings.join)
-    surfaces = shown(caplog=caplog, capsys=capsys)
-    surfaces["fields"] = "\n".join(repr(getattr(r, FIELDS)) for r in caplog.records)
+    surfaces = shown(caplog=caplog, capsys=capsys)  # each record's fields too
     assert "key_read" in surfaces["stdout"] and "settings_read" in surfaces["stdout"]
     assert holding(MADE_UP_KEY, surfaces) == [] and holding(LONG_SECRET, surfaces) == []
 

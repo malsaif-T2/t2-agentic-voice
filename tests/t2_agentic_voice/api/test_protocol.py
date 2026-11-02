@@ -1,9 +1,11 @@
-"""The HTTP bodies of `t2v/1` (the design's 5.5): each request parsed strictly and bounded, refused
-without echoing a value (GP-19); every secret out of a body's repr, and a response's own sent as
-it is; no `pc_id` in any body (plan 003's appendix, item 10)."""
+"""The HTTP bodies of `t2v/1` (the design's 5.5): each request parsed strictly and bounded, and a
+refusal answered by `refusal` echoing no value (GP-19); each route's cap over the largest body it
+takes; every secret out of a body's repr and python-mode dump, and a response's own sent as it is;
+the one error body; no `pc_id` in any body (plan 003's appendix, item 10)."""
 
 from __future__ import annotations
 
+import json
 import logging
 from typing import Any
 
@@ -18,14 +20,17 @@ from t2_agentic_voice.api.protocol import (
     MAX_TOKEN_CHARS,
     OFFER_SECRET_HEADER,
     CandidatesRequest,
+    ErrorBody,
     IceCandidate,
     IceServer,
     JoinRequest,
     JoinResponse,
     OfferAnswer,
     OfferRequest,
+    refusal,
 )
 from t2_agentic_voice.core.events import MAX_INDEX
+from t2_agentic_voice.core.logging import configure_logging, get_logger
 from t2_agentic_voice.voice.protocol import PROTOCOL
 
 from tests.leaks import holding, shown
@@ -35,6 +40,9 @@ TOKEN = "eyJhbGciOiJIUzI1NiJ9.eyJzdWIiOiJlLTEifQ.zx-made-up-signature"
 SECRET = "zx-made-up-offer-secret-0123456789"
 END = {"candidate": "", "sdp_mid": "0", "sdp_mline_index": 0}  # the end of candidates
 LINE = "candidate:1 1 udp 2122260223 192.0.2.10 50000 typ host generation 0"
+REFERENCE = "made-up-ref-0123"
+# Where a model's own refusal carries the input it refused (FastAPI's 422 sends `errors()`).
+CARRIED = {"errors", "errors json"}
 
 
 def test_each_request_takes_what_a_browser_sends() -> None:
@@ -115,11 +123,61 @@ def _refused(model: type[BaseModel], body: dict[str, Any]) -> ValidationError:
         ),
     ],
 )
-def test_a_request_that_is_not_exactly_its_body_is_refused_echoing_none_of_it(
+def test_a_request_that_is_not_exactly_its_body_is_refused_and_answered_echoing_none_of_it(
     model: type[BaseModel], body: dict[str, Any]
 ) -> None:
+    """The model's refusal keeps the value out of its text, repr and traceback, but its
+    `errors()` and `json()` may carry it: the route answers with `refusal`, which holds none."""
     assert len(MARK * 500) > MAX_TOKEN_CHARS and len(MARK * 8) > MAX_OFFER_SECRET_CHARS
-    assert holding(MARK, shown(_refused(model, body))) == []
+    error = _refused(model, body)
+    assert set(holding(MARK, shown(error))) <= CARRIED
+    answer = refusal(error, reference=REFERENCE)
+    assert (answer.code, answer.notice) == ("invalid_request", None)
+    assert MARK not in answer.model_dump_json() and MARK not in repr(answer)
+
+
+@pytest.mark.parametrize(
+    "text",
+    [
+        f'{{"token": "{MARK} x", "protocol": 1}}',
+        f'{{"token": "{TOKEN}", "protocol": 1, "{MARK}": 1}}',  # the client's own key
+        f'{{"token": "{TOKEN}", "protocol": "{MARK}"}}',
+        f'{{"token": "{MARK}"',  # not JSON
+        f'["{MARK}"]',
+    ],
+)
+def test_a_body_as_the_route_reads_it_is_answered_echoing_none_of_it(text: str) -> None:
+    """As a route parses it (`model_validate_json`): the value, or a key the client sent, is in
+    the error's `errors()` (a key in its text too), never in the answer, which names pydantic's
+    error types alone."""
+    with pytest.raises(ValidationError) as raised:
+        JoinRequest.model_validate_json(text)
+    assert set(holding(MARK, shown(raised.value))) >= CARRIED
+    answer = refusal(raised.value, reference=REFERENCE).model_dump(mode="json")
+    assert MARK not in json.dumps(answer) and answer["reference"] == REFERENCE
+    problems = ", ".join(sorted({each["type"] for each in raised.value.errors()}))
+    assert answer["message"] == f"The request's body is not one t2v/1 takes ({problems})."
+
+
+def _largest(route: str) -> dict[str, Any]:
+    """The largest body `route` takes: every value at its bound, each character one that JSON
+    writes in two bytes where the field allows it (a quote; a line break in the SDP)."""
+    quotes = '"' * MAX_OFFER_SECRET_CHARS
+    call = {"call_id": "c" * 64, "offer_secret": quotes}
+    if route == "POST /join":
+        return {"token": '"' * MAX_TOKEN_CHARS, "protocol": MAX_INDEX}
+    if route == "POST /offer":
+        return call | {"sdp": "\n" * MAX_SDP_CHARS, "type": "offer"}
+    line = {"candidate": '"' * MAX_CANDIDATE_CHARS, "sdp_mid": '"' * 64}
+    return call | {"candidates": [line | {"sdp_mline_index": MAX_INDEX}] * MAX_CANDIDATES}
+
+
+@pytest.mark.parametrize("route", list(BODIES))
+def test_each_routes_cap_holds_the_largest_body_it_takes(route: str) -> None:
+    body = _largest(route)
+    text = json.dumps(body, separators=(",", ":"))  # as a browser's JSON.stringify writes it
+    BODIES[route].request.model_validate_json(text)
+    assert len(text.encode("utf-8")) <= BODIES[route].max_bytes < 4 * len(text)
 
 
 def test_no_secret_shows_in_a_bodys_repr_or_a_log_line(caplog: pytest.LogCaptureFixture) -> None:
@@ -144,9 +202,32 @@ def test_no_secret_shows_in_a_bodys_repr_or_a_log_line(caplog: pytest.LogCapture
         assert holding(value, shown(caplog=caplog)) == []
 
 
+def test_no_secret_shows_in_a_python_mode_dump_or_a_line_built_from_it(
+    caplog: pytest.LogCaptureFixture, capsys: pytest.CaptureFixture[str]
+) -> None:
+    """A python-mode dump keeps each SecretStr: a line that logs a body's dump, in either format,
+    holds neither the offer secret nor the TURN password."""
+    caplog.set_level(logging.DEBUG)
+    credential = SecretStr(MARK)
+    answer = JoinResponse(
+        call_id="c-1",
+        offer_secret=SecretStr(SECRET),
+        ice_servers=(IceServer(urls=("turn:turn.example:3478",), credential=credential),),
+    )
+    dumped = answer.model_dump()
+    assert dumped["offer_secret"] == SecretStr(SECRET)
+    assert dumped["ice_servers"][0]["credential"] == credential
+    for fmt in ("json", "console"):
+        configure_logging("DEBUG", fmt)
+        get_logger("t2_agentic_voice.tests").debug("join_answered", body=dumped)
+    surfaces = shown(caplog=caplog, capsys=capsys)
+    assert "join_answered" in surfaces["stdout"]
+    assert holding(SECRET, surfaces) == holding(MARK, surfaces) == []
+
+
 def test_a_response_sends_its_own_secrets_as_they_are() -> None:
     """The join's answer carries the call's offer secret and the TURN password to the one client
-    that joined: revealed only when the body is sent."""
+    that joined: revealed only when the body is serialized to JSON, as it is sent."""
     answer = JoinResponse(
         call_id="c-1",
         offer_secret=SecretStr(SECRET),
@@ -172,11 +253,40 @@ def test_a_response_sends_its_own_secrets_as_they_are() -> None:
         ],
         "protocol": PROTOCOL,
     }
+    assert json.loads(answer.model_dump_json()) == answer.model_dump(mode="json")
     assert OfferAnswer(sdp="v=0").model_dump() == {"sdp": "v=0", "type": "answer"}
 
 
 def test_each_route_names_its_bodies_and_none_carries_a_pc_id() -> None:
     assert list(BODIES) == ["POST /join", "POST /offer", "PATCH /offer"]
-    models = [m for pair in BODIES.values() for m in pair if m is not None]
+    routes = BODIES.values()
+    models = [m for r in routes for m in (r.request, r.response) if m is not None]
     assert all("pc_id" not in m.model_fields for m in [*models, IceCandidate, IceServer])
-    assert all(m.model_config.get("extra") == "forbid" for m in models)
+    assert all(m.model_config.get("extra") == "forbid" for m in [*models, ErrorBody])
+    assert all(set(r.errors).isdisjoint({r.status}) for r in routes)
+
+
+def test_the_error_body_carries_a_notice_only_with_a_protocol_mismatch() -> None:
+    mismatch = ErrorBody(
+        code="protocol_mismatch",
+        message="This page speaks another version of the protocol.",
+        notice="Reload the page to call again.",
+        reference=REFERENCE,
+    )
+    assert mismatch.model_dump(mode="json") == {
+        "code": "protocol_mismatch",
+        "message": "This page speaks another version of the protocol.",
+        "notice": "Reload the page to call again.",
+        "reference": REFERENCE,
+    }
+    refused = [
+        {"code": "protocol_mismatch"},  # with no notice
+        {"code": "join_rejected", "notice": "Reload the page."},
+        {"code": "join_rejected", "reference": "short"},
+        {"code": "join_rejected", "reference": f"{REFERENCE}/x"},
+        {"code": "made_up"},
+        {"code": "join_rejected", "message": ""},
+    ]
+    for changed in refused:
+        with pytest.raises(ValidationError):
+            ErrorBody.model_validate({"message": "Refused.", "reference": REFERENCE} | changed)
