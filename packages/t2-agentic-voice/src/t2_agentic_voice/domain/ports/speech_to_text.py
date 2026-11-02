@@ -66,8 +66,10 @@ class Transcript(BaseModel):
     # The headroom the provider reported for its key with this answer (Groq's
     # `x-ratelimit-remaining-requests` and `-tokens`), for the call's usage; None when the
     # adapter reads none. GroqSTT reads none yet: adapters/groq_client.py's request hook drops
-    # the SDK's raw-response marker, so the SDK hands back no headers. The track that makes
-    # the hook keep it for GroqTTS's headers (plan 003's Track B) fills these in GroqSTT too.
+    # the SDK's raw-response marker, and without it the SDK hands a JSON answer back parsed,
+    # with no headers, even through its streaming response (a streamed audio answer, which
+    # GroqTTS reads, keeps them). Plan 003's Track B, which reads the same headers for
+    # GroqTTS, is named to keep the marker in the hook and fill these in GroqSTT.
     remaining_requests: int | None = Field(default=None, ge=0)
     remaining_tokens: int | None = Field(default=None, ge=0)
 
