@@ -58,7 +58,7 @@ twice; DOC-REF: every `D-NNN` cited anywhere is a heading here), so keep its sha
 - **Evidence:** the owner, 2026-10-28: "in the new folder I have put some files to define how
   the Harness should Go and the dynamic of building this project."
 
-## D-002 · Technology stack · 2026-10-28 · Accepted (the owner, 2026-11-01; its Pipecat bullet amended by D-018, its tracing bullet by D-023)
+## D-002 · Technology stack · 2026-10-28 · Accepted (the owner, 2026-11-01; its Pipecat bullet amended by D-018, its tracing bullet by D-023, its loguru bullet by D-031)
 
 - **Context:** The kit's default tooling is Python 3.12 with uv, poethepoet, ruff, mypy
   (strict), and pytest with coverage. The product needs real-time voice in a browser, from Groq
@@ -106,7 +106,7 @@ twice; DOC-REF: every `D-NNN` cited anywhere is a heading here), so keep its sha
   version is pinned and an upgrade is a plan of its own. If the owner's host cannot open a UDP
   path to the backend, WebRTC needs a TURN service or another transport (the roadmap, M2).
 
-## D-003 · Layered architecture, enforced from one config · 2026-10-28 · Accepted (the owner, 2026-11-01; its layers amended by D-019)
+## D-003 · Layered architecture, enforced from one config · 2026-10-28 · Accepted (the owner, 2026-11-01; its layers amended by D-019, how a provider is chosen by D-030)
 
 - **Context:** Agents replicate existing patterns, so drift has to be prevented structurally
   rather than by instruction. The prototype's failures came from its structure: the voice code
@@ -173,7 +173,7 @@ twice; DOC-REF: every `D-NNN` cited anywhere is a heading here), so keep its sha
 - **Evidence:** the owner, 2026-10-28: "For Phase 0, I do not have the ability to gather data
   other than my own. I am the only one working in this repo."
 
-## D-007 · SECURITY.md: threat model and invariants · 2026-10-28 · Accepted (the owner, 2026-11-01)
+## D-007 · SECURITY.md: threat model and invariants · 2026-10-28 · Accepted (the owner, 2026-11-01; its invariants 7 and 8 amended by D-035)
 
 - **Context:** The product has trust boundaries: callers who must not reach each other's
   tickets, a model whose output is untrusted, a ticket system it writes to, and secrets in the
@@ -655,3 +655,451 @@ twice; DOC-REF: every `D-NNN` cited anywhere is a heading here), so keep its sha
   Proposed; on 2026-11-02 the owner, asked to approve plan 003 with the agent's message saying
   that approval would cover this entry: "Yes go with the recommended" (plan 003, "The owner's
   decisions").
+
+## D-028 · Settings: precedence, the prefix and a required `env` · 2026-11-02 · Accepted (the owner, 2026-11-01, as the design's 7.2 to 7.5; one bullet Proposed)
+
+- **Context:** the package design (D-017) makes the library's settings one `VoiceSettings`,
+  layered with a fixed precedence, read from the environment only inside `from_env()`, under a
+  prefix that belongs to the library alone, with a required `env` (its 7.2 to 7.5); its 16.3
+  lists this entry. M1 built `Settings` on pydantic-settings, read through a `get_settings()`
+  singleton, with no `env`. Plan 003's step 7 rebuilt it for M2.
+- **Decision** (as the design's 7.2 to 7.5 describe it):
+  - **Precedence**, from lowest to highest: the defaults; a `.env` file, only when
+    `from_env(env_file=...)` names one; the environment variables under the prefix, read only
+    inside `VoiceSettings.from_env()`; code arguments. `VoiceSettings(env=..., ...)` built in
+    code takes its defaults and its arguments and reads nothing. There is no settings
+    singleton: `Settings` and `get_settings` are gone, with no alias, and a module receives a
+    `VoiceSettings`. The design's TOML file (its 7.2, layer 2) and per-call options (layer 6)
+    are not built in M2.
+  - **The prefix** is `T2V_` (D-018, question 4); a team picks its own with
+    `from_env(prefix=...)`. Groups nest with `__` (`T2V_GROQ__API_KEY`). A variable that carries
+    the prefix but names no setting is a `ConfigurationError` naming it, never its value, since
+    the prefix belongs to the library's settings alone; `from_env(unknown="warn")` logs it and
+    leaves it out. No other name is read: a provider's own variable (`GROQ_API_KEY`) is noted
+    by its name only, so the error can say which name to set instead.
+  - **`env` is required:** `dev`, `test`, `staging` or `prod`, with no default. Outside `dev`,
+    `server.dev_page` and `logging.content` are refused, and `router()` and `serve()` refuse
+    `test`, so typed consent never reaches a served runtime.
+  - Each secret is a `SecretStr` with a `_file` form (`groq.api_key_file`, `join.keys_file`,
+    `server.turn_secret_file`). Every failure is a `ConfigurationError` naming each setting
+    under its prefix, with a FIX line, and never the value it refused. Each group is a module
+    of its own under `core/settings/` (ARCH-SIZE), and `uv run poe settings-ref` writes
+    `docs/generated/settings.md` and `.env.example` from the model, each with a freshness test
+    (the design's 7.7, at the path plan 003's decision log gives).
+  - **Proposed** (the agent's, beyond the design, for the owner to rule on; plan 003's decision
+    log has the reasons):
+    - `from_env(prefix=, env_file=, unknown=, **values)`: code values ride in `**values`, above
+      the environment and the file as the design's 7.2 orders its layers, though its signature
+      lists only the first three; the Ole5 eval commands pass `env="dev"` so. `VoiceSettings`
+      is a frozen pydantic `BaseModel` that refuses extra keys, not a `BaseSettings`, so
+      settings built in code cannot read anything; `from_env` reads `os.environ` itself, only
+      the names under the prefix, in any case, and refuses two names in one source that differ
+      only in case (GP-06). Set aside: `BaseSettings` with a loader subclass, under which an
+      unknown name inside a group still fails with `unknown="warn"`.
+    - A blank value counts as unset under any name, so a `.env` copied from M1's
+      `.env.example`, which left every key blank, keeps every default. M1's names
+      (`T2V_VAR_DIR`, `T2V_LOG_LEVEL`, `T2V_LOG_FORMAT`) set to a value are refused, each with
+      the name to use now.
+    - `staging` holds every check `prod` holds, and both refuse `logging.level` DEBUG, which
+      the design's 7.4 gives only Ole5's own status check; the checks run at every load and
+      again in `status()`.
+    - A join key and the TURN secret hold at least 32 bytes of printable ASCII with no space
+      (for the join keys, RFC 7518's 3.2 on HS256): refused at load when given inline, and when
+      resolved when given in a file, since loading the settings reads no file. The join key
+      file is one JSON object from key ID to secret, and a key ID matches
+      `^[A-Za-z0-9._-]{1,64}$`.
+    - The keys beyond the design's 7.6: `stt.live_language` (`session`, the call's language,
+      until plan 003's runs R5 to R7 set it by their registered rule, GP-18; or `auto`); the
+      `session` group, whose one key, `mode` (`echo`, its only value), is the owner's answer to
+      plan 003's Q3 (D-033), so only its place outside 7.6's table is the agent's;
+      `tts.trim_silence` (false: Orpheus's audio is kept as it comes);
+      `server.forwarded_allow_ips` (empty, `*` refused: D-029); `server.turn_secret_file` (the
+      `_file` form the design's 7.3 asks of each secret); the `turns` keys `vad_min_volume`,
+      `smart_turn_stop_ms`, `smart_turn_pre_speech_ms` and `smart_turn_max_duration_s`, at
+      Pipecat's own defaults, the starting values of plan 003's decision log, none tuned in M2;
+      and `logging.level` and `logging.format`, M1's top-level `log_level` and `log_format`
+      moved into the group.
+    - The values nobody gave, the agent's: `tts.timeout_s` 6, as `stt.timeout_s`; the limits
+      in seconds as numbers; a voice name matching `^[a-z][a-z0-9_-]{0,31}$`;
+      `server.ice_servers` as `stun:`, `turn:` or `turns:` URLs with no credentials; each of
+      `server.allowed_origins` a scheme, a host and a port only; and `server.turn_ttl_s` 3600,
+      refused above 86400 (plan 003's criterion).
+- **Consequences:** a teammate's process keeps its own variables: the library reads only the
+  names under its prefix, and a `.env` only when given one. A `.env` written for M1 says which
+  names to change. Comparing an M1 run with a new one lists `logging.level` and
+  `logging.format` (TD-026). `limits.max_call_s` (600) and `limits.idle_s` (120) come before
+  M6 by the owner's answer to plan 003's Q4, and the voices `abdullah` and `troy` by its Q5.
+  What `from_env` learned, its prefix among it, lives in private attributes that a dump drops
+  (TD-041). The design's 7.6 notes the keys built beyond its table.
+- **Evidence:** the owner's "Approve all" and "Yes, as Accepted" (plan 002, Q3), 2026-11-01;
+  for plan 003's Q3 to Q5, the owner's answer of 2026-11-02, "Yes go with the recommended."
+  (plan 003, "The owner's decisions"). The tests: `tests/t2_agentic_voice/core/test_config.py`,
+  `test_settings_checks.py`, `test_settings_secrets.py` and `test_settings_ref.py`, and
+  `tests/harness/test_isolation.py`.
+
+## D-029 · Serving and identity: the sidecar and the mount, one process per `var_dir`, signed join tokens, the offer secret · 2026-11-02 · Accepted (the owner, 2026-11-01, as the design's 4.5, 5.2, 5.5, 6.5, 7.4 and 11; one bullet Proposed)
+
+- **Context:** the design gives a team two ways to serve calls, the sidecar by default and the
+  mount for one-worker apps (its 4.5; D-018, question 22); one process per `var_dir`
+  (question 5); a caller's identity and consent from a signed, single-use join token (its 6.5;
+  question 18); and the call's set-up over HTTP (its 5.5). Its 16.3 lists this entry, with
+  Ole5's identity answer (its open question 19), which the owner has not given yet. Plan 003's
+  Block 0 laid down the signatures, the identity port and the HTTP bodies; its Tracks C and F
+  build them.
+- **Decision** (as the design's 4.5, 5.2, 5.5, 6.5, 7.4 and 11 describe it):
+  - **The sidecar and the mount.** `serve(factory)` (and `t2v serve`) runs one runtime in a
+    process of its own, with one worker. `app.include_router(runtime.router(), prefix=...)`
+    mounts it in a one-worker app: the router carries the runtime's lifespan, which FastAPI
+    merges, and `combine_lifespans` serves a mount as a sub-application. Every route answers
+    "runtime not started" while the lifespan has not run. CORS answers only
+    `server.allowed_origins`; in the mount, the app's own CORS middleware answers, and the
+    router says so at startup.
+  - **One process per `var_dir`.** The runtime's lifespan takes an exclusive lock file under
+    `storage.var_dir`, so a second process on the same folder is refused with a FIX line: the
+    used-token store is a local SQLite file there, which a second process would break
+    (invariant 7).
+  - **One identity source.** `VoiceRuntime(identity=...)` takes exactly one `IdentityVerifier`:
+    `SignedJoinTokens`, or `DevIdentity`, which serves only `env` dev and loopback clients
+    (`Authenticate` waits on the design's open question 19). `router()` and `serve()` refuse a
+    runtime with none, and `env` test, each with a FIX line; `t2v dev` alone falls back to
+    `DevIdentity`, with a warning.
+  - **The join token** is a compact JWT, HS256 only, with no algorithm negotiation. Its claims
+    are `sub`, `name`, `locale`, `attrs`, `consent` (`version`, `record_audio`), `jti`, `iat`
+    and `exp`, with a `kid` header; any key of the `join.keys` map verifies, and
+    `join.current_kid`'s signs; it lives `join.ttl_s` (60 s by default, 120 s at most) within
+    `join.max_clock_skew_s`, and the `UsedTokens` store refuses its `jti` a second time. It is
+    signed, not encrypted, so its claims hold no secret.
+  - **The offer secret.** `/join` consumes the token once and answers the call's ID, an offer
+    secret (random, for this call only), the ICE servers (with per-call TURN credentials when
+    configured) and the protocol version. `POST /offer` and `PATCH /offer` both need the
+    call's offer secret, which stops working when the call ends or ICE completes; a second
+    offer gets 409; no client's `pc_id` reaches Pipecat. The call ID is no credential. The
+    offer secret is never logged, traced or put in an event, and goes only to the browser that
+    joined.
+  - **Consent in the token.** The caller's consent (`version`, `record_audio`) is carried only
+    in the signed join token: no client message sets it, or the caller's identity. With
+    `privacy.consent_version` set, `/join` refuses a token whose consent version differs, and
+    the version is stamped on the call's report and traces.
+  - **Proposed** (the agent's, beyond the design, for the owner to rule on; plan 003's decision
+    log and its appendix, "Block 0's reading of the installed packages", have the reasons):
+    - The identity port's method is `verify(token, *, join: JoinContext) -> (Caller, Consent)`,
+      `JoinContext` holding `env`, the client's address and the runtime's used-token store: a
+      verifier is built in the team's code with no IO, while the store is opened in the
+      lifespan under `var_dir`. The design's 6.5 has `verify(token)`. `UsedTokens` is async,
+      `use(token_id, *, expires_at) -> bool` giving exactly one True to two joins of one token,
+      with `aclose()`. `DevIdentity` refuses any `env` but dev before it reads the client's
+      address, and always returns `Consent(version=None, record_audio=False)`.
+    - Every join key holds at least 32 bytes, refused at verify too, with PyJWT's
+      `enforce_minimum_key_length` on for encode and decode (RFC 7518's 3.2). The claims are
+      parsed strictly: `record_audio` a JSON boolean, the consent version
+      `privacy.consent_version`'s own pattern; a `Caller`'s subject, name and attribute values
+      are printable text of at most 256 characters, its locale a BCP 47 tag of at most 35, and
+      it holds at most 16 attributes.
+    - The offer secret rides in the `X-T2V-Offer-Secret` header or the body's `offer_secret`,
+      never in a URL, which logs and traces keep. A `PATCH` after ICE completed or after the
+      call ended gets a quiet 409, logged at DEBUG with no value, which the client ignores once
+      connected. `voice` keeps Pipecat's `pc_id` behind the call ID and never passes a
+      client's. Every HTTP body is parsed strictly, each size bounded.
+    - FastAPI's own telemetry is off in both shapes: `serve()` builds its app with `telemetry`
+      tracing, metrics and logs off and `auto_configure` false, and an app that mounts the
+      router does the same itself (the Ole5 app's server does; `serving.md` tells a team), since
+      a mounted router cannot reach the app's object and the library instruments no other
+      library (D-023). uvicorn runs with one worker, no access log, no server header, no
+      `env_file` and `log_config=None`, and with proxy headers off while
+      `server.forwarded_allow_ips` is empty, trusting them from those addresses alone otherwise
+      (`*` refused): uvicorn's own defaults trust 127.0.0.1 and ::1, so any local client could
+      set its address. `t2v dev` binds 127.0.0.1. On Windows, uvicorn runs on a selector event
+      loop (whether a running server takes it is UNVERIFIED until Track F runs one), and each
+      peer's close is bounded by a timeout.
+    - In M2 the Ole5 app mounts the router in its own FastAPI app, beside its token route
+      (behind the owner's access code: plan 003's Q4) and its widget's files, rather than run
+      the sidecar, which is its shape once its website mints the tokens (the design's open
+      question 19); `examples/minimal` uses `serve()`.
+- **Consequences:** a team that runs several workers or replicas runs the sidecar, and a second
+  process on one `var_dir` fails at its start rather than share single-use tokens. A team's
+  website mints tokens with any JWT library from the documented claims (`serving.md`).
+  Until the design's open question 19 is answered, Ole5's callers get their tokens from the
+  app's own access-code route. The media path (UDP, TURN or another transport) is decided by
+  plan 003's network test, in an entry of its own.
+- **Evidence:** as for D-019 (plan 002, Q3), 2026-11-01; D-018, questions 5, 18 and 22; for
+  plan 003's Q4, the owner's answer of 2026-11-02, "Yes go with the recommended." (plan 003,
+  "The owner's decisions"). The spike on this machine (plan 003's appendix, step 5): on the
+  proactor event loop, 2 or 3 of 16 call closes hung, against 0 of 16 on a selector loop.
+
+## D-030 · GP-22: a provider is swapped by a setting, or by passing an adapter object in code · 2026-11-02 · Accepted (the owner, 2026-11-01, as the design's 6.1 and 16.3)
+
+- **Context:** GP-22 says every outside service is reached through a port and an adapter,
+  "chosen by a setting, so a provider is swapped by configuration" (D-004; the mechanism is
+  D-003's). The design's 6.1 lets a team pass any other adapter as an object in code, with no
+  registry and no discovery through entry points, and says that goes beyond GP-22's "by
+  configuration", so it needs an entry (its 16.3). M2 builds the first place it happens:
+  `Providers` and `VoiceRuntime(providers=...)`, through which `examples/minimal` and plan
+  003's integration test pass fake providers.
+- **Decision:** GP-22 reads "swapped by a setting, or by passing an adapter object in code". A
+  setting (`stt.provider`, `tts.provider`) picks among the library's own adapters
+  (`Providers.from_settings`); any other adapter is an object that implements the port, passed
+  in code (`Providers.from_settings(settings).replace(stt=...)`). There is no registry and no
+  discovery. The ports stay in `domain` and the library's own adapters in `adapters`, where
+  ARCH-OWNER keeps each service's client.
+- **Consequences:** GP-22's row says so, and this entry amends D-003's bullet on how a provider
+  is chosen. A team's own adapter lives in the team's code, outside the library's layers,
+  where only review sees it (D-013); the guide's `providers.md`, planned for M4, says how to
+  write one. An adapter passed in code is still the port's, so the design's rules for every
+  port (cancellation, failures as `ProviderError`) apply to it.
+- **Evidence:** as for D-019 (plan 002, Q3), 2026-11-01.
+
+## D-031 · The library's logging, and Pipecat's loguru · 2026-11-02 · Accepted (the owner, 2026-11-02; `logging.pipecat = "forward"` waits for plan 003's Q19; one bullet Proposed)
+
+- **Context:** the design's 3.3 and 10.2 have the library log on the standard library under
+  `t2_agentic_voice`, with a `NullHandler`, configuring nothing until an app does, and with no
+  call content at INFO and above; M1's logging did not meet that (plan 004's read). D-002's
+  bullet on loguru said the plan that installs Pipecat routes loguru through `core/logging.py`
+  and gives it to `core`, while the design's 12.2 (its change 3) gives it to `voice`, which
+  switches one namespace off; plan 003 asked the owner which (its Q2). Pipecat logs through
+  loguru, one logger for the whole process, and its debug lines hold what the caller said
+  (plan 003's appendix, step 4, bullet 2).
+- **Decision** (the owner's answers, and the design's 10.2):
+  - The library's own logging is the design's: its loggers sit under `t2_agentic_voice` on the
+    standard library, with a `NullHandler`, never touching the root logger, `basicConfig` or
+    `propagate`; `get_logger` keeps its structured call shape
+    (`log.info("event_name", key=value)`); and `configure_logging(level, fmt, *, stream=None,
+    loggers=(), content=False)` is a helper an app calls, putting one handler on
+    `t2_agentic_voice` and the loggers it names, writing to the stream it is given, and,
+    unless `content` is on, holding aiortc's and aioice's loggers at WARNING, since their
+    lower lines hold SDP and IP addresses. INFO and above carry no call content.
+  - `voice` owns loguru (`[[owners]]`), as Q2's (a) settled it: it switches Pipecat's namespace
+    off with `logger.disable("pipecat")` before it first imports any Pipecat module, transitive
+    ones included, so Pipecat's import banner never prints, and again at runtime start; `off`
+    is `logging.pipecat`'s default, and no sink is added or removed. Pipecat's error frames and
+    its transport and ICE failures become library log lines with no call content, and
+    `TransportFailed` or `ProviderFailed` events. Plan 003's Track E builds it.
+  - `logging.pipecat = "forward"` is not built: plan 003's Q19, asked of the owner on
+    2026-11-02, is open. Q2's (a) also said that `forward` re-enables the namespace and
+    forwards Pipecat's WARNING and above to `t2_agentic_voice.pipecat`, no sink added or
+    removed, which cannot hold: a namespace switched off reaches no sink
+    (`loguru/_logger.py`, line 1995), so `forward` must add a forwarding sink, and loguru's
+    default sink, which prints to the screen, would then print every Pipecat DEBUG line unless
+    it is removed. Q19's options: (a) `forward` adds a sink that forwards WARNING and above with
+    the record's level and module but never its text, and removes loguru's default sink if it
+    is still installed; (b) M2 builds only `off`, and `forward` waits for a team that asks,
+    built then as (a), the agent's recommendation; (c) `forward` leaves the sinks alone, set
+    aside because the default sink would print call content (invariant 8). Until the owner
+    answers, `logging.pipecat` takes `off` alone, any other value refused at load; `off`
+    behaves as Q2 settled it whatever the answer.
+  - This amends D-002's loguru bullet: loguru is `voice`'s, not `core`'s, and Pipecat's lines
+    are switched off, not routed through `core/logging.py`.
+  - **Proposed** (the agent's, beyond the design, for the owner to rule on; plan 003's decision
+    log has the reasons): the design's 10.2 key-value `extra` fields travel in one `extra` key,
+    `fields` (`record.fields`), since a `LogRecord` refuses an extra key named like one of its
+    own attributes and the Ole5 app's events use `name` and `message`. `get_logger` returns the
+    library's own `StructuredLogger` (`debug`, `info`, `warning`, `error`, each taking an event
+    and its fields), with no `exception`, `critical` or `bind`, since a traceback is
+    content-shaped; structlog only formats the handler `configure_logging` installs, so a
+    console line reads as M1's did; `serve()` runs uvicorn with `log_config=None`; and a command
+    run with `python -m` logs as `__main__`, so the Ole5 app names `ole5_voice` and `__main__`
+    to `configure_logging`.
+- **Consequences:** importing the library prints nothing and configures nothing, and a
+  teammate's process keeps its own loguru sinks. D-002's heading points here; ARCHITECTURE.md's
+  conventions and the roadmap's M2 line say the same, and GP-03, which names the standard
+  library and the `NullHandler`, is unchanged. The guide's "Variables to leave unset" names
+  `LOGURU_*`, and its `tracing-and-logs.md` (plan 003's Track I) gives the policy. If the owner
+  picks Q19's (a), `forward` is added in an entry of its own.
+- **Evidence:** the owner, 2026-11-02, in plan 004's read, on the library's logging: "Fix it in
+  M2 (Recommended)"; and to plan 003's Q1 to Q6, each put with the agent's recommendation, Q2's
+  (a) among them: "Yes go with the recommended." (plan 003, "The owner's decisions"). Q19 is
+  among plan 003's open questions, not answered. The tests:
+  `tests/t2_agentic_voice/core/test_logging.py` and `test_logging_import.py`; plan 003's Track E
+  adds invariant 8's tests in a child process.
+
+## D-032 · ARCH-BAN, the owners M2 adds, and the facades `identity`, `server`, `stores` and `events` · 2026-11-02 · Accepted (the owner, 2026-11-01, as the design's 5.1, 5.3, 12.2 and 12.4; one bullet Proposed)
+
+- **Context:** the design's 12.4 adds ARCH-BAN, banned module prefixes with exceptions, since
+  ARCH-OWNER gives a whole library to its layers and cannot keep Pipecat's provider services
+  out of `voice`, nor Pipecat and aiortc out of the apps; D-020 left it for the plan that needs
+  it. The design's 5.1 lists the public modules M2 first fills (`identity`, `server`,
+  `stores`, `events`), its 5.3 the test that keeps framework types out of public signatures,
+  and its 12.2 the layers that own the libraries M2 installs. This entry follows up D-020 and
+  D-021.
+- **Decision** (as the design's 5.1, 5.3, 12.2 and 12.4 describe it):
+  - ARCH-BAN (`scripts/arch_ban.py`, from `poe arch`), read from `harness.toml`'s `[[bans]]`:
+    each table names its `modules` (each with every module under it), the `allowed` ones
+    inside them, the code it covers (`within`: the library, a part of it, or an app's
+    package) and a fix. In the library, Pipecat's provider and model services
+    (`pipecat.services`, the speech base classes' modules allowed) and its LLM adapters and
+    context aggregators are banned; in `voice/session/`, all of Pipecat; in the apps and the
+    examples, Pipecat and aiortc.
+  - `[[owners]]`: `loguru` to `voice` (D-031), `jwt` and `sqlite3` to `adapters`, and
+    `num2words` to `domain`.
+  - The torch check (no `torch` in `uv.lock`), and an import of every public module alone in a
+    fresh process, which must print nothing (the design's 5.3, point 2, and 12.4).
+  - Four facades join `[package] public` and `facades`, each re-exporting the names of the
+    design's 5.1 that M2 builds: `identity` (`SignedJoinTokens`, `DevIdentity`) and `server`
+    (`serve`, `combine_lifespans`), stable; `stores` (`SqliteUsedTokens`, `MemoryUsedTokens`)
+    and `events` (the eight event classes M2 emits, and `CallReport`), provisional. The
+    package root gains `VoiceAgent`, `Language`, `Caller`, `Consent`, `Providers` and
+    `VoiceRuntime`; `ports` gains `TextToSpeech`, `AudioChunk`, `IdentityVerifier` and
+    `UsedTokens` (provisional); `groq` gains `GroqTTS`; `languages` gains `speak_number` and
+    `speak_id`.
+  - The design's 5.3, point 1: `tests/t2_agentic_voice/test_public_types.py` fails when a
+    public signature names a type from `pipecat`, `aiortc`, `onnxruntime` or `groq`, resolving
+    the annotations with `typing.get_type_hints` and reading only the members the library
+    defines.
+  - **Proposed** (the agent's, beyond the design, for the owner to rule on; plan 003's decision
+    log and appendix have the reasons):
+    - ARCH-BAN allows six modules of `pipecat.services`: the design's `ai_service`,
+      `stt_service` and `tts_service`, and `settings`, `stt_latency` and `websocket_service`,
+      which the speech base classes import in Pipecat 1.15.0 (`tests/harness/test_arch_ban.py`
+      recomputes the list from the installed source). It also bans, from plan 003's reading of
+      the installed Pipecat (its appendix, item 18): Pipecat's runner, command line, evals and
+      buses (importing `pipecat.runner.run` loads a `.env` with override and removes loguru's
+      sinks, and a test finds it out of `sys.modules` after `voice` is imported); Smart Turn v2
+      (torch) and the resampy resampler (numba); its frame logger and logging observers, which
+      write call content; and its DTMF aggregator. ARCH-BAN reads only the library's own
+      imports (TD-043).
+    - The torch check and the fresh-process imports run inside `poe check`
+      (`tests/harness/test_install.py`), not in CI, while CI waits for a remote (TD-001).
+    - A name the design's 5.1 does not list is public only where a public signature names its
+      type: `ports.JoinContext` (`IdentityVerifier.verify`'s `join`); `events.Event` (what
+      `runtime.on` takes), `ModelUsage`, `TurnRecord`, `TurnTimes` and `ClientConnection`
+      (`CallReport`'s parts); and, in `evals`, `turn_ends` and `echo_timings`, which plan 003's
+      decision log puts there while `testing` is not public (D-019), with what they yield,
+      `TurnEnd`, `TurnTiming` and `EchoTiming`. Set aside: the 5.1 names alone, which would
+      leave public signatures typed by names an app cannot import. Held back: `speak_digits`,
+      `split_clauses`, `pronounce` and `Pronunciations`, which no public signature names and no
+      app imports in M2, since adding a public name later breaks nothing and removing one does.
+    - The package root imports `api.runtime` at once, as it imports every name it re-exports,
+      so `import t2_agentic_voice` loads FastAPI (2.94 s and 2.91 s for `fastapi` alone on the
+      owner's machine, `python -I`, as plan 003's Block 0 timed it). Set aside, for the owner to
+      weigh: a lazy module `__getattr__` for `VoiceRuntime` and `Providers`, which would keep
+      FastAPI out of the commands that serve nothing.
+- **Consequences:** ARCHITECTURE.md's enforcement list and conventions name ARCH-BAN and the
+  owners. `tests/t2_agentic_voice/test_facades.py` pins each facade's names and the package
+  root's `__all__`, so adding a public name is deliberate. Neither ARCH-BAN nor ARCH-OWNER sees
+  an import made inside Pipecat. The `[[restricted]]` row M2 adds is D-035's. Of the design's
+  16.3 harness entry, one configuration per member and one invariants register are still to
+  write, each with the plan that needs it.
+- **Evidence:** as for D-019 (plan 002, Q3), 2026-11-01. The rules' tests:
+  `tests/harness/test_arch_ban.py`, `tests/harness/test_install.py`,
+  `tests/t2_agentic_voice/test_facades.py` and `tests/t2_agentic_voice/test_public_types.py`.
+
+## D-033 · The echo's shape: an agent with a name and its languages, `session.mode`, a fixed frame · 2026-11-02 · Accepted (the owner, 2026-11-02, plan 003, Q3; one bullet Proposed)
+
+- **Context:** M2 has no talker: the voice session says back what it heard (the design's 16.1:
+  "the voice session in echo mode", and `examples/minimal` "as an echo use case"). The design
+  gives neither a public form, which is a design choice, so plan 003 asked the owner (its Q3):
+  the agent's declaration with only a name and its languages and a setting for the session's
+  mode, a runtime argument that M4 would have to deprecate, or an internal stand-in; and
+  whether a fixed frame comes before the heard words.
+- **Decision** (the owner's answer to Q3, (a) and (i)):
+  - `VoiceAgent(name, languages=[Language.saudi_arabic(greeting=...), ...])`, built in M2 with
+    only these fields, and the setting `session.mode`, with `echo` its only value in M2. M4
+    adds the talker, and the talker's fields arrive as optional arguments, so an echo agent
+    stays a team's first audio check.
+  - Each reply starts with a fixed frame in the turn's language, «سمعتك تقول: …» or
+    "I heard: …", then the heard words. The frame says the words are the caller's, so the echo
+    never sounds like the agent answering or claiming an action (invariant 2). It is a cached
+    phrase (the design's 10.4), so it plays as soon as the turn's transcript is in, while
+    Orpheus synthesizes the heard words. M2's fixed phrases are in Saudi dialect (plan 003's
+    Q5).
+  - **Proposed** (the agent's, beyond the design and Q3, for the owner to rule on; plan 003's
+    decision log has the reasons):
+    - `VoiceAgent` is `@final` and frozen, and not yet generic (the design's 5.2 has
+      `VoiceAgent[Deps]`; `Deps` comes with the talker). Its name matches
+      `[a-z][a-z0-9-]{0,63}`, since it names the agent's folder under `storage.var_dir`; its
+      languages are one or more presets with distinct tags, the first a call's language until
+      the caller picks another. `Language` holds a tag, a greeting and the echo's frame; its
+      presets `saudi_arabic` (`ar-SA`), `arabic` (`ar`, MSA) and `english` (`en`) each take
+      `greeting=` only and set the frame, the Arabic one for both Arabic presets. The greeting
+      is the team's text: it holds a character, and no line break or control character. A
+      failure is a `ConfigurationError` with a FIX line naming the field (the design's 4.2).
+    - The echo: one voice speaks each reply, the language's (the prototype's D35); an empty
+      transcript is said back as nothing and kept on the timeline; speech that starts while the
+      echo plays, or within 300 ms after it ends, from the speech detector's onset, is not said
+      back, the turn kept on the recording and the timeline for M3, so on laptop speakers the
+      agent never echoes its own voice (as the prototype's D23 was half-duplex); and only Stop,
+      Esc and `hangup` interrupt in M2, the interruption rules being M3's.
+    - Text built from heard words never reaches the phrase cache, which holds only the phrases
+      declared at lifespan start, so the cache keeps no call content (invariant 8). Caching
+      talker clauses that repeat exactly (the design's 10.4) is M4's to decide.
+- **Consequences:** `examples/minimal` is an echo agent (`make_runtime()`) whose tests need no
+  key and no network. M4 adds the talker to the same declaration, with no deprecation. The
+  call's language picks Whisper's language (`stt.live_language`, D-028) and the voice.
+- **Evidence:** the owner, 2026-11-02, to plan 003's Q1 to Q6, each put with the agent's
+  recommendation, (a) and (i) for Q3: "Yes go with the recommended." (plan 003, "The owner's
+  decisions").
+
+## D-034 · Whisper gets one request per user turn · 2026-11-02 · Proposed (the agent's, plan 003; the design's 13 names a bridge on `SegmentedSTTService`)
+
+- **Context:** Groq's Whisper transcribes a finished clip, with no partial transcripts (D-004),
+  and bills each request at least 10 s (the design's 10.4); M1's baseline measured whole clips
+  (D-025). The design's 13 puts the speech-to-text bridge on Pipecat's `SegmentedSTTService`,
+  which sends one request per VAD segment (`pipecat/services/stt_service.py`, read at 1.15.0 by
+  plan 003's step 4): with a 200 ms VAD stop and the owner's pauses of about 0.83 s, a paused
+  request would become two requests or more, each billed at least 10 s, of fragments Whisper
+  hears without their context. Plan 003's spike asked whether one request per user turn can be
+  had.
+- **Decision:** the speech-to-text bridge holds a user turn's audio from its start to its end
+  and sends it whole, one request per turn. It subclasses Pipecat's `STTService`, not
+  `SegmentedSTTService`, and sits after `UserTurnProcessor`: the transport's input, the VAD,
+  the turn processor, the bridge, the session bridge, the text-to-speech bridge, the
+  transport's output. It opens on the downstream `UserStartedSpeakingFrame` with at least
+  0.5 s of the audio before it, closes on `UserStoppedSpeakingFrame`, trims at the last VAD
+  stop plus padding, caps a turn's length itself, and gives exactly one result per turn, an
+  empty, failed or unusable one included. Smart Turn's stop strategy is given
+  `wait_for_transcript=False` explicitly, so a turn's end is the analyzer's alone and the
+  session waits for the transcript itself. Set aside: one request per VAD segment, which bills
+  every fragment, hides the earlier segments' time inside the caller's speech, and spends the
+  published 20 requests a minute of `whisper-large-v3` sooner.
+- **Consequences:** whether a paused request is one request is Smart Turn's verdict at the
+  pause, not the bridge's: a first clause that sounds complete ends the turn, so plan 003's
+  registered request counts keep their upper bounds. A turn that only the silence fallback ends
+  carries about 3 s of trailing silence, billed, unless the bridge trims it.
+- **Evidence:** plan 003's pipeline spike on the owner's machine, with fake speech services and
+  no request to Groq (its appendix, step 5): with `wait_for_transcript` off, run A sent one
+  request for an utterance with a 0.86 s pause, 5.84 s of audio holding both parts and the
+  pause; run C, that utterance looped for 62.86 s, sent 7 requests, one per turn, two of the
+  turns ended by the 3.0 s fallback (request 3: 8.88 s); run B, two complete-sounding clauses
+  0.88 s apart, gave 2 turns and 2 requests, Smart Turn calling the pause complete
+  (p = 0.942). With `wait_for_transcript` on (run D), Smart Turn said complete at 6.286 s and
+  the turn ended only at the stop timeout, at 11.191 s. `UserStartedSpeakingFrame` came about
+  0.34 s after the speech began, hence the pre-roll.
+
+## D-035 · SECURITY.md's invariants 7 and 8 brought to the design's 8.1 · 2026-11-02 · Accepted (the owner, 2026-11-01, as the design's 8.1; one bullet Proposed)
+
+- **Context:** the design's 8.1 (D-017) says what the library enforces for each invariant. For
+  invariant 7 it adds to the token's own checks a per-call offer secret, so the call ID is
+  never a credential, and a lock file, so a second process cannot share the used-token store;
+  for invariant 8 it adds a second condition for keeping audio, beside `privacy.record_audio`:
+  the recording consent a verified signed join token carries; and it switches Pipecat's loguru
+  namespace off by default. SECURITY.md's invariants 7 and 8 predate the design (D-007),
+  and plan 003 builds both. Generalizing SECURITY.md to actions and moving it into the library
+  as the one register stays with the plan that builds actions (the design's 16.3).
+- **Decision** (as the design's 8.1 describes it): invariant 7 holds the token's checks
+  (HS256 only, a key of at least 32 bytes, `join.ttl_s` of at most 120 s within a clock-skew
+  allowance, one use of each `jti`), the offer secret (random, one call's, needed by the offer
+  and each ICE update, never in a URL, stopping when ICE completes or the call ends) and the
+  lock file (one process per `storage.var_dir`). Invariant 8 holds the two conditions for
+  keeping audio (`privacy.record_audio` on, and the recording consent of a verified signed join
+  token), audio never exported to traces, call content logged only with `logging.content`,
+  which only `dev` allows, and Pipecat's loguru namespace off by default. Each names what
+  enforces it now, and the tracks of plan 003 whose adversarial tests will (C, D, E and F), as
+  SECURITY.md words a check not built yet. This amends D-007 for these two invariants.
+  - **Proposed** (the agent's, beyond the design, for the owner to rule on): only a
+    `SignedConsent` counts as the token's consent: a subclass of `Consent` in
+    `core/identity.py` that only `adapters` constructs (`[[restricted]]`, ARCH-CONSTRUCT), and
+    there only `SignedJoinTokens`, from a token whose signature it verified. A consent that
+    `DevIdentity` or a team's own verifier returns never turns recording on, and a
+    `SignedConsent` never equals a plain `Consent` with the same choices. Set aside: a private
+    flag on `Consent`, which any layer could set and the architecture check cannot see. This
+    is the `[[restricted]]` change `harness.toml` asks a decision for; ARCHITECTURE.md's
+    conventions name it.
+- **Consequences:** D-007's heading points here. The recorder writes audio only when both
+  conditions hold, and no client message can set either. What stays the app's is the design's
+  8.1: minting tokens only for signed-in callers, a rate limit on its minting route and one
+  process per `var_dir`; the consent wording and its version, the retention in its own Phoenix,
+  and deletion requests. SECURITY.md's trust boundaries now also name the variables the call's
+  packages read, and say that a browser and the backend on one machine meet over its private
+  network addresses, not loopback (plan 003's decision log); the owner has not reviewed those
+  rows yet.
+- **Evidence:** as for D-019 (plan 002, Q3), 2026-11-01. The tests SECURITY.md's invariants 7
+  and 8 name.
