@@ -1566,7 +1566,7 @@ All docs are Markdown in `docs/guide/` of this repository for now, where the har
 | `serving.md` | Sidecar or mount; identity sources; the join-token format and its readable claims; the offer secret; cross-origin pages; the `t2v/1` protocol | M2 |
 | `browser-client.md` | The client API, events and states, tokens and `getToken`, consent, Stop and Esc, voice lowering, browser support | M2, M3 |
 | `testing.md` | Cookbook for `TextCall`, the fakes, `ScriptedLLM`'s one-entry-per-request rule, the safety suite, the `t2v_live` marker snippet, live scenarios and audio replay; why `TextCall` is not a chat channel | M5 |
-| `evaluation.md` | The evaluation helpers; recording your own golden set with consent and keeping audio out of git; the spelling guide; noise and the sign test | M1 |
+| `evaluation.md` | The evaluation helpers; recording your own golden set with consent and keeping audio out of git; the spelling guide; the golden-set commands, making a registered run and reading its scorecard; noise and the sign test; held-out and window runs; the run history | M1 |
 | `latency.md` | The per-stage budget measured on Groq from the end of speech, with progress lines apart; how to measure your own | M4 |
 | `tracing-and-logs.md` | Phoenix, your own `TracerProvider`, redaction, what a trace holds, the logging policy and the loguru default sink | M2 |
 | `data-and-privacy.md` | What the library itself stores and sends: what a trace holds and its redaction, the `var_dir` stores, audio never stored unless both the setting and the caller's consent allow it, the consent claim and its version. Groq's own terms are not covered here: the owner explains them to each team (open question 10) | M2 |

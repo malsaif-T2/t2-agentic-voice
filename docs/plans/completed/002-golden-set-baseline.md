@@ -113,7 +113,9 @@ number describes one speaker, the owner, and is never reported as Saudi speakers
 
 - [x] The section "The measurement, registered before any result" below was complete, with
   every owner's call settled and dated, before the first run that spends; every departure is a
-  `Deviation:` line in the progress log.
+  `Deviation:` line in the progress log. Not met as written: Q15's main choice was never put to
+  the owner before the runs (the close's `Deviation:` line); the owner accepted the windows as
+  run on 2026-11-02 ("Accept as run (Recommended)"), so it is met with that Deviation.
 - [x] `poe eval` wrote a baseline scorecard for Groq Whisper (large-v3 and turbo) on the owner's
   voice, by language and by device, labelled one speaker.
 - [x] The noise (the same run twice, for each model) is recorded as a decision and as a
@@ -332,7 +334,8 @@ run, [WORKING-RULES.md](../../../WORKING-RULES.md), "Measurement runs")
     it does not start; the run is also given what is left of the cap as `--cap-usd`; the running
     total goes into the progress log after each run ([WORKING-RULES.md](../../../WORKING-RULES.md),
     "Unattended sessions": "the session stops a step that would cross it").
-21. A clean run worktree at the measurement commit (the commit of step 19), where every run of
+21. A clean run worktree at the measurement commit (the commit of step 19; in the event 1c3c4dc,
+    step 20's: the close's `Deviation:` line), where every run of
     steps 22 to 27 starts, whatever the main branch gains meanwhile. `poe eval --show-settings`
     checks the resolved settings and paths; the smoke test passes with no failed, retried or
     refused call. A `--smoke-only` run calls the provider, so its history line is carried over as
@@ -1784,15 +1787,16 @@ run, [WORKING-RULES.md](../../../WORKING-RULES.md), "Measurement runs")
   - **The settings groups and `.env.example`:** met (Block 0, fca70c7;
     `tests/t2_agentic_voice/core/test_config.py`).
   - **The guide's `evaluation.md`:** met (Track H, dfd224b), linked from the guide's index.
-  - **The registration complete before the first run that spends:** met, with one gap. The
-    owner's calls are quoted and dated under "The owner's decisions" before run P, the
-    amendments are dated before the results they affect, and the departures are `Deviation:`
-    lines (Phoenix's ports; the talk-over part of step 19 done before the recordings). The gap:
-    for Q15's main choice (the windows on the dev talk-over clips only or on all 124, cut from
-    the file's start or from the detector's speech start) no answer of the owner's is quoted;
-    W1 to W6 followed the agent's recommendation (dev only, from the file's start), and step
-    20's entry counts Q15 as settled. Either the owner's words are found and quoted, or a
-    `Deviation:` line says so.
+  - **The registration complete before the first run that spends:** met with the owner's acceptance
+    of a Deviation. The owner's calls are quoted and dated under "The owner's decisions" before run
+    P, the amendments are dated before the results they affect, and the departures are `Deviation:`
+    lines (Phoenix's ports; the talk-over part of step 19 done before the recordings). The gap: for
+    Q15's main choice (the windows on the dev talk-over clips only or on all 124, cut from the
+    file's start or from the detector's speech start) no answer of the owner's is quoted; W1 to W6
+    followed the agent's recommendation (dev only, from the file's start), and step 20's entry
+    counts Q15 as settled. No words of the owner's were found, so the next entry's `Deviation:` line
+    records it, and the owner accepted the windows as run on 2026-11-02 ("Accept as run
+    (Recommended)").
   - **The baseline scorecard:** met. R1 (large-v3) and R2 (turbo) on dev, by language, device,
     kind and split, each labelled "one speaker" (`var/runs/r1-large-v3/scorecard.json`,
     `var/runs/r2-turbo/scorecard.json`), with their history lines.
@@ -1805,17 +1809,23 @@ run, [WORKING-RULES.md](../../../WORKING-RULES.md), "Measurement runs")
     their scorecards (`var/runs/w1-large-v3-500/` to `var/runs/w6-turbo-1000/`); at 1000 ms the
     2 clips no longer than the window reused their R1 or R2 answer, marked so (Q15's record:
     the gap above).
-  - **The gate and the docs:** met in the close commit: the final `uv run --offline poe check`,
-    the roadmap's M1 row (`done`, with a link), evaluation.md's "Where it is built" and this
-    plan's logs.
-- 2026-11-02: Two things the close found:
+  - **The gate and the docs:** met in the close's two commits (bbcd5c7 and this one): the final `uv
+    run --offline poe check`, the roadmap's M1 row (`done`, with a link), evaluation.md's "Where it
+    is built" and its "Where the commands live, in this project" under "Running", and this plan's
+    logs.
+- 2026-11-02: Five things the close found:
+  - Deviation: the measurement commit was 1c3c4dc, step 20's commit, not step 19's 9bed934 as
+    step 21 says: it added the owner's rule for the held-out totals (TD-030's answer) after step
+    19 and before any run that spends, and every run of steps 22 to 27 started there.
   - Deviation: Q15's main choice, the windows on the dev talk-over clips only or on all 124, cut
     from the file's start or from the detector's speech start, was never put to the owner on its
-    own: the owner's answer 5 of 2026-11-01 ("The owner's decisions") settled only a held-out
-    window as long as its clip, and step 20's "every call is settled" counted Q15 with it. W1 to
-    W6 ran as the agent recommended, on the dev clips only, cut from the file's start; so no
-    held-out clip's window was read. Windows on held-out clips, aggregates only, or cut from the
-    speech start remain open to the owner, as an amendment and new runs.
+    own: the owner's answer 5 of 2026-11-01 ("The owner's decisions") settled only that a held-out
+    window at least as long as its clip sends the whole clip, marked not reused; step 20's "every
+    call is settled" counted Q15 with it, as the held-out pooling amendment of 2026-11-01 did ("A
+    held-out windows run, which Q15's answer leaves out"). W1 to W6 ran as the agent recommended, on
+    the dev clips only, cut from the file's start; so no held-out clip's window was read. Windows on
+    held-out clips, aggregates only, or cut from the speech start remain open to the owner, as an
+    amendment and new runs.
   - The amendment of 2026-11-01 on the held-out totals said that with the committed split no
     total of H1 or H2 would rest on fewer than 3 items. With the split of step 19 two did: ID
     recall (one held-out ticket item) and text from silence (two held-out items with no speech),
@@ -1853,18 +1863,20 @@ run, [WORKING-RULES.md](../../../WORKING-RULES.md), "Measurement runs")
     both models), Whisper's invented captions among it. large-v3's `no_speech_prob` reached 0.979
     on them and at most 0.458 on speech; turbo's was 0.0 on all 9.
   - The windows (W1 to W6, the 90 dev talk-over clips): no window came back empty. One-word clips
-    holding their word: large-v3 13, 18 and 16 of 28 at 500, 750 and 1000 ms, turbo 11, 12 and
-    13; Saudi stop words 0 of 4 at 500 ms for both models.
+    holding their word: large-v3 13, 18 and 16 of 28 at 500, 750 and 1000 ms, turbo 11, 12 and 13;
+    Saudi words asking the agent to halt 0 of 4 at 500 ms for both models (those asking it to pause:
+    large-v3 2 of 3, turbo 1 of 3).
   - Ticket numbers (TD-031): large-v3's 11 ticket misses are digit and word errors (an extra zero
     in the counter, «التذكير» for «التذكرة», "in the" for "ending" on Bluetooth), none with the
     number in words; 7 of turbo's 16 hold number words, 5 of them compound English words for
     3906.
-  - For M2: large-v3 is the model, and Arabic is where its errors are (Saudi 0.370, MSA 0.256);
-    the arms sent the label's language, which a live call does not know; a prompt arm for product
-    terms is the first tuning to register. For M3: text from silence and echo needs a filter
-    before an interruption is decided on it, short Saudi words are often misheard even as whole
-    clips, and a first window of 500 ms held no Saudi stop word. Every later change is judged
-    against c = 6 items, measured on one evening (TD-032). `## Future improvements` orders these.
+  - For M2: large-v3 is the model, and Arabic is where its errors are (Saudi 0.370, MSA 0.256); the
+    arms sent the label's language, which a live call does not know; a prompt arm for product terms
+    is the first tuning to register. For M3: text from silence and echo needs a filter before an
+    interruption is decided on it, short Saudi words are often misheard even as whole clips, and a
+    first window of 500 ms held none of the 4 Saudi words asking the agent to halt (and 2 of the 3
+    asking it to pause, for large-v3). Every later change is judged against c = 6 items, measured on
+    one evening (TD-032). `## Future improvements` orders these.
   - The spend: 1,702 requests, one asked again after a 6 s timeout (R1), none rate limited, no
     provider failure; 17,369.7 billed seconds and $0.3645 of the $5 cap (large-v3 $0.2681, turbo
     $0.0964), against the amendment's estimate of about 17,070 s and $0.36.
@@ -1873,6 +1885,21 @@ run, [WORKING-RULES.md](../../../WORKING-RULES.md), "Measurement runs")
     linking `completed/002-golden-set-baseline.md`; evaluation.md's "Where it is built" is in the
     past tense; this plan moves to `completed/` with its Status line; the final gate, `uv run
     --offline poe check`, passes.
+- 2026-11-02: Step 28's whole-plan review of the close, by two agents that had not written it, read
+  only: one checked every number against the history lines, the scorecards and `eval-compare`; the
+  other every living statement, the owner's words, the deviations and the guide's commands. 27
+  findings, 2 high, 12 medium and 13 low, fixed in `Plan 002: the whole-plan review's fixes`, with
+  one left: D-025's context paraphrases the rule's stratum condition without "beyond the noise",
+  but decisions.md is append-only and the registration's rule, which D-025 followed, governs. The
+  high ones: the prototype's caption list would catch 4 of the 9 texts from silence, not 7 (now
+  said in `## Future improvements`); and the registration criterion was ticked although Q15's
+  main choice had never been put to the owner, which the owner then accepted as run ("The owner's
+  decisions"). The others: "Saudi stop words" named two different counts (now the words asking
+  the agent to halt and those asking it to pause), Bluetooth's English last four heard in 2 of 3
+  though its sentence was wrong, the owner's answer 5 quoted exactly, the step 6 and Q15 marks,
+  the measurement commit's `Deviation:` line, the run dates of W1 to H2 (2026-11-02), TD-032's
+  identical runs (verdicts, not turbo's texts), the roadmap's M1 windows and pointer, the
+  guide's `--env-file`, and the design's row for the guide page.
 
 ## Decision log
 
@@ -3195,6 +3222,10 @@ The same day, the owner's answers to the calls before recording:
 - The new recordings: "Also I have finished recording all three ways". Asked whether the lines
   with two or three kept takes on one device go in whole, or only the last kept take of each:
   "Keep every kept take (Recommended)".
+- Q15, put to the owner at the close, 2026-11-02, since its main choice had never been put on its
+  own: whether to accept the window runs as made (the 90 dev talk-over clips only, cut from each
+  file's start), to add held-out windows, or to re-cut from the speech start: "Accept as run
+  (Recommended)".
 - The calls before the runs, 2026-11-01, after "lets finish what is left of M1": the budget cap
   (Q17), asked with $2 recommended: "$5". Q13, Q14, Q16, Q18, Q19, the held-out totals and
   TD-031, asked
@@ -3271,7 +3302,8 @@ Already locked and unchanged: pydantic, typing-extensions, colorama (`uv.lock`, 
   outside the repository and its lock, so its heavy dependencies (numpy, pandas, pyarrow,
   grpcio and sqlalchemy among them) never reach the library's install. The agent started it for
   run P, as the owner chose ("You start it (Recommended)"), with the command of "What the owner
-  does", step 7: it ran natively on Windows (2026-11-01), so Phoenix's Docker image
+  does", step 7, and `PHOENIX_PORT=6016` and `PHOENIX_GRPC_PORT=4327` added (the `Deviation:`
+  line of steps 21 and 22): it ran natively on Windows (2026-11-01), so Phoenix's Docker image
   `arizephoenix/phoenix`, the fallback, was not needed.
 - No dev tool (no pytest plugin), no audio package (the standard library's `wave` reads and
   writes the 16 kHz mono 16-bit WAV files), no num2words, no camel-tools.
@@ -3826,16 +3858,17 @@ The owner's call before the run:
   unset)? One more dev run per model is 392 requests, 196 × 10 s = 0.544 h per model: about
   $0.060 + $0.022 = $0.08 more at the 10 s minimum. The agent recommends not in M1: M2 decides
   how a live call sets the language.
-- **Q15.** *Run as the agent recommended, with no words of the owner's quoted (the progress
-  log's close): the dev talk-over clips only, cut from the file's start; a held-out window as
-  long as its clip sent whole (the owner's answer 5, 2026-11-01).* The windows on dev talk-over
-  clips only (the agent's recommendation: M3 tunes on them, and held-out stays unread), or on
-  all 124, as the roadmap's "each talk-over clip" says, in which case the held-out clips'
-  windows are reported as aggregates only; and cut from the file's start (the agent's proposal)
-  or from the detector's speech start. Every segment file begins with 300 ms of the detector's
-  padding before speech (`meta.vad.preSpeechPadMs` is 300 for every one of the 124 takes in
-  `takes.json`, read 2026-11-01), so a 500 ms window cut from the file's start holds only about
-  200 ms of speech.
+- **Q15.** *Accepted as run by the owner on 2026-11-02 ("Accept as run (Recommended)"), after the
+  runs; run as the agent recommended, with no words of the owner's quoted before them (the
+  progress log's close): the dev talk-over clips only, cut from the file's start. Settled by the owner only for
+  held-out windows, of which none was run: a held-out window at least as long as its clip sends the
+  whole clip, marked not reused (the owner's answer 5, 2026-11-01).* The windows on dev talk-over
+  clips only (the agent's recommendation: M3 tunes on them, and held-out stays unread), or on all
+  124, as the roadmap's "each talk-over clip" says, in which case the held-out clips' windows are
+  reported as aggregates only; and cut from the file's start (the agent's proposal) or from the
+  detector's speech start. Every segment file begins with 300 ms of the detector's padding before
+  speech (`meta.vad.preSpeechPadMs` is 300 for every one of the 124 takes in `takes.json`, read
+  2026-11-01), so a 500 ms window cut from the file's start holds only about 200 ms of speech.
 - **Q16.** *Settled on 2026-11-01: 20 a minute; since something else might use the key, the runs
   paced at 10.* The key's real limits (console.groq.com/settings/limits), or the 20-a-minute
   pacing; and confirmation that nothing else uses the key during the runs: the prototype's
@@ -3972,10 +4005,11 @@ before the run.
    what was said; a variant you typed comes back in a later review pass (a later run of the same
    command), to be confirmed against your text. Done on 2026-11-01: every variant confirmed, the
    one take confirmed by mistake corrected in pass 5.
-6. **Before the import and the runs** (done on 2026-11-01): Q10 before the import (step 19),
-   and the calls before the runs (Q13, Q14, Q16 to Q19, "The owner's decisions"), with the
-   estimate and a $5 cap. The key's limits were not read in the console; since something else
-   might use the key, the runs paced at 10 requests a minute (Q16).
+6. **Before the import and the runs** (done on 2026-11-01): Q10 before the import (step 19), and the
+   calls before the runs (Q13, Q14, Q16 to Q19, "The owner's decisions"), with a $5 cap against the
+   estimate of about $0.36 put to the owner; Q15's main choice was not put to the owner (the close's
+   `Deviation:` line). The key's limits were not read in the console; since something else might use
+   the key, the runs paced at 10 requests a minute (Q16).
 7. **For the tracing check (step 22)** (done on 2026-11-01 by the agent, as the owner chose, on
    127.0.0.1 ports 6016 and 4327, since another Phoenix held 6006 and 4317 on every interface:
    the progress log's `Deviation:` line): start Phoenix on this machine, in PowerShell:
@@ -3992,27 +4026,30 @@ before the run.
 
 ## Future improvements
 
-Written at the close, 2026-11-02, ordered by expected value (the agent's ordering), from the runs
-of 2026-11-01. Every number describes one speaker, the owner (D-006), and comes from the dev
-split unless it says held-out; a rule fitted on these numbers is confirmed on a fresh run before
-it is believed (evaluation.md, "Fitted, then fresh").
+Written at the close, 2026-11-02, ordered by expected value (the agent's ordering), from the runs of
+2026-11-01 and 2026-11-02; an item that must come first in time says so. Every number describes one
+speaker, the owner (D-006), and comes from the dev split unless it says held-out; a rule fitted on
+these numbers is confirmed on a fresh run before it is believed (evaluation.md, "Fitted, then
+fresh").
 
-- **A filter for text from silence and from the agent's echo (M3; M2's echo mode shows it
-  first).** In R1 to R4 all 9 empty-reference variants (3 items: silence, a cough and an English
-  reply's echo, each on three devices) produced text, for both models. For large-v3, 7 of the 9
-  are Whisper's invented captions («موسيقى», «ترجمة نانسي قنقر», «اشتركوا في القناة», «شكرا
-  لكم») and 2 are «اه اه» for the cough, a listening sound's spelling. An echo-only clip that
-  comes back as three words is "two real words" in M3's rule, and would stop the agent.
-  large-v3's `no_speech_prob` runs from 0.117 to 0.979 on the 9 and reaches at most 0.458 on its
-  222 speech variants, so a threshold of 0.5 would blank 3 of the 9 and no speech variant; turbo
-  gives 0.0 on all 9, so this filter is large-v3's only. A list of the invented captions, the
-  prototype's other filter (`Ole5-chatbot/src/ole5_chat/voice/stt.py`, lines 36-54 and 68-72),
-  would catch 7 of the 9, though «شكرا لكم» is also what a caller says. Each lands behind a
-  setting and is measured (GP-18, as the decision log's entry on the adapter's raw text says).
-  The scorecards keep every variant's `no_speech_prob` (Q2), so a first scoring needs no
-  request; but 3 dev items are too few to fit a rule on, and held-out holds fewer than 3 such
-  items (H1 and H2 left their text from silence out), so new silence, noise and echo items are
-  recorded first.
+- **A filter for text from silence and from the agent's echo (M3; M2's echo mode shows it first).**
+  In R1 to R4 all 9 empty-reference variants (3 items: silence, a cough and an English reply's echo,
+  each on three devices) produced text, for both models. For large-v3, 7 of the 9 are Whisper's
+  invented captions («موسيقى», «ترجمة نانسي قنقر», «اشتركوا في القناة», «شكرا لكم») and 2 are «اه اه
+  اه» and «اه اه» for the cough, a listening sound's spelling. An echo-only clip that comes back as
+  three words is "two real words" in M3's rule, and would stop the agent. large-v3's
+  `no_speech_prob` runs from 0.117 to 0.979 on the 9 and reaches at most 0.458 on its 222 speech
+  variants, so a threshold of 0.5 would blank 3 of the 9 and no speech variant; turbo gives 0.0 on
+  all 9, so this filter is large-v3's only. A list of the invented captions would catch 7 of the 9,
+  though «شكرا لكم» is also what a caller says. The prototype's own list
+  (`Ole5-chatbot/src/ole5_chat/voice/stt.py`, lines 35-54) catches 4 of them («ترجمة نانسي قنقر»
+  three times, «اشتركوا في القناة» once); its noise rule (lines 74-75 and 341) holds «شكرا لكم» for
+  short clips only; and neither has «موسيقى», so that caption is added to the list. (Lines 68-72 are
+  its no-speech rule, the threshold above.) Each lands behind a setting and is measured (GP-18, as
+  the decision log's entry on the adapter's raw text says). The scorecards keep every variant's
+  `no_speech_prob` (Q2), so a first scoring needs no request; but 3 dev items are too few to fit a
+  rule on, and held-out holds fewer than 3 such items (H1 and H2 left their text from silence out),
+  so new silence, noise and echo items are recorded first.
 - **How M3's rule hears short Saudi words (M3).** On whole clips, large-v3 got Saudi listening
   sounds right in 9 of 22 variants, Saudi repeat requests in 1 of 8 («وش قلت؟» came back as
   «مشكلت؟» or «مشكلة؟» on all three devices), Saudi confirmations in 1 of 4 and Saudi stop words
@@ -4039,36 +4076,38 @@ it is believed (evaluation.md, "Fitted, then fresh").
   lines: TD-019), and a comparison that allows the one setting it varies (TD-026); one dev run
   of large-v3 costs about $0.075 (R1's history line). Counting an Arabic-letter spelling as the
   term instead would change Q8's ruling, which is the owner's.
-- **The window M3 starts from (M3).** W1 to W6 cut the 90 dev talk-over clips (33 items) from
-  the file's start, so each window holds about 300 ms less speech than its length. No window
-  came back empty at any length for either model, so an empty window cannot mean "no words".
-  One-word clips holding their word: large-v3 13, 18 and 16 of 28 at 500, 750 and 1000 ms, turbo
-  11, 12 and 13; Saudi stop words 0 of 4 at 500 ms for both models, and 2 of 4 for large-v3 at
-  750 and 1000 ms; Saudi listening sounds 2, 4 and 3 of 12 for large-v3; English listening
-  sounds 5 of 5 at every length for both. So 500 ms is too short for a Saudi word, and large-v3
-  at 750 ms holds the most. M3 registers its first window from these numbers, cuts it where the
-  live speech detection fires (which the file's start, 300 ms of the lab detector's padding
+- **The window M3 starts from (M3).** W1 to W6 cut the 90 dev talk-over clips (33 items) from the
+  file's start, so each window holds about 300 ms less speech than its length. No window came back
+  empty at any length for either model, so an empty window cannot mean "no words". One-word clips
+  holding their word: large-v3 13, 18 and 16 of 28 at 500, 750 and 1000 ms, turbo 11, 12 and 13;
+  Saudi words asking the agent to halt 0 of 4 at 500 ms for both models, and 2 of 4 for large-v3 at
+  750 and 1000 ms; Saudi words asking it to pause 2, 3 and 2 of 3 for large-v3; Saudi listening
+  sounds 2, 4 and 3 of 12 for large-v3; English listening sounds 5 of 5 at every length for both. So
+  at 500 ms large-v3 held only 4 of the 19 Saudi one-word clips, and none asking it to halt;
+  large-v3 at 750 ms holds the most. M3 registers its first window from these numbers, cuts it where
+  the live speech detection fires (which the file's start, 300 ms of the lab detector's padding
   before speech, only approximates), and confirms it on a fresh run and on M2's recordings.
 - **The language a live call sends (M2).** Every arm sent the item's label as the language (`ar`,
   or `en` for English), which a live call does not know (the registration's "The arms"); the
   owner left an auto-detect arm out of M1 (Q14), so M2 decides how a call sets it. An
   auto-detect arm on dev, against R1, measures what a call without a label gets, and its smoke
   step reads the form of Groq's `language` (TD-011); one dev run of large-v3 costs about $0.075.
-- **The noise on another day (TD-032), before the next comparison that matters.** R1 and R3, and
+- **The noise on another day (TD-032; first in time, before M3's first measured comparison).** R1 and R3, and
   R2 and R4, gave the same verdict on every one of the 231 variants (D-024), on one evening and
   one key; turbo's text still differed on one variant (the cough on the laptop), with the same
   verdict, so Groq's Whisper is not repeatable byte for byte. One more identical pair of
   large-v3 runs on another day, about $0.15, comes before the prompt arm or the silence filter is
   judged, and the larger noise is kept.
 - **Ticket numbers read back, never taken as heard (M5).** large-v3 got 4 of the 12 full 16-digit
-  readings right (ID recall 0.571: 12 of the 21 numbers expected). Each of its 8 full-number
-  misses holds a digit error, not a scoring artifact: an extra zero in the counter in 7, 853
-  heard as 5853 in 2, and «التذكير» for «التذكرة» in 3 of them. The English last four was right
-  on the laptop and the wired headset (6 of 6) and wrong on Bluetooth (0 of 3: "in the M3906",
-  "39 or 6", "in the game 3906"). So M5 reads a heard number back before acting on it, as every
-  action is (invariant 1, D-018), and finds a ticket by the session's verified identity
-  (invariant 3), the last four as a check. Held-out holds one ticket item, too few for its ID
-  recall to be shown, so M5's own set adds ticket items.
+  readings right (ID recall 0.571: 12 of the 21 numbers expected). Each of its 8 full-number misses
+  holds a digit error, not a scoring artifact: an extra zero in the counter in 7, 853 heard as 5853
+  in 2, and «التذكير» for «التذكرة» in 3 of them. The English sentence with the last four was right
+  on the laptop and the wired headset (6 of 6) and wrong on Bluetooth (0 of 3: "in the M3906", "39
+  or 6", "in the game 3906"), where the number itself was heard in 2 of the 3 and "ending" was
+  misheard in those 2. So M5 reads a heard number back before acting on it, as every action is
+  (invariant 1, D-018), and finds a ticket by the session's verified identity (invariant 3), the
+  last four as a check. Held-out holds one ticket item, too few for its ID recall to be shown, so
+  M5's own set adds ticket items.
 - **Compound number words (TD-031; low while large-v3 is the default).** None of large-v3's 11
   ticket misses holds the number in words; 7 of turbo's 16 do: 5 compound English words for 3906
   ("three thousand nine hundred and six" and near it), one the digit names "three nine zero

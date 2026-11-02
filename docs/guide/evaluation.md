@@ -249,7 +249,9 @@ run (evaluation.md, "Registering a measurement"). Then:
    M1's runs gave `--timeout-s 6`, `--price-per-hour 0.111` for large-v3 and `0.04` for turbo,
    `--max-rpm 10` (the owner's call: something else might use the key), `--max-attempts 4`,
    `--variant-timeout-s 120`, the `label` hint, both audio roots (`talkover` and `owner`), and
-   an `--out` under the main checkout's `var/runs/` named after the run, such as `r1-large-v3`.
+   an `--out` under the main checkout's `var/runs/` named after the run, such as `r1-large-v3`,
+   and `--env-file` naming the main checkout's `.env`, which holds the key: a linked worktree has
+   none, and the settings otherwise read `.env` from the current folder.
 4. **`--show-settings` first.** The run's whole command line with `--show-settings` added sends
    nothing: it logs each setting as the run would use it (a secret only as `set` or `not set`),
    the worktree (`ready`, or why it is refused), each data and audio path (`exists` or

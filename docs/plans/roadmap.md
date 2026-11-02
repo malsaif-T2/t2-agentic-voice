@@ -87,7 +87,9 @@ milestones after this one.
 
 *Done when* `poe eval` writes a baseline scorecard for Groq Whisper on the owner's voice, by
 language and by device; the noise (the same run twice) is recorded as a decision; and the gate
-passes.
+passes. *Done* on 2026-11-02 ([002](completed/002-golden-set-baseline.md)): Whisper was scored
+on the first 0.5–1.0 s of the 90 dev talk-over clips only, not of each talk-over clip (plan
+002's `Deviation:` line on Q15).
 
 **M2 · A call that listens and speaks, deployed.**
 - The web widget: start and end a call, the microphone, playback, captions, the Stop button
@@ -230,9 +232,10 @@ targets hold at the cap on live calls.
 - Smart Turn fine-tuned on the owner's turns, then on more speakers if any become available.
 - Phone calls (SIP).
 - What M1 left for later, ordered by expected value:
-  [plan 002's Future improvements](completed/002-golden-set-baseline.md#future-improvements) (a
-  filter for text from silence and echo, how M3 hears short Saudi words and its first window, a
-  prompt arm for product terms, the language a live call sends, and the noise on another day).
+  [plan 002's Future improvements](completed/002-golden-set-baseline.md#future-improvements)
+  (first a filter for text from silence and echo, how M3 hears short Saudi words, a prompt arm
+  for product terms, M3's first window, the language a live call sends and the noise on another
+  day; then ticket numbers read back and compound number words).
 
 ## Decided
 
