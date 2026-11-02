@@ -20,17 +20,24 @@ from __future__ import annotations
 
 import argparse
 import ast
+import re
 import sys
 from collections.abc import Mapping, Sequence
 from dataclasses import dataclass
 from pathlib import Path
 
-from scripts.gc_report import Duplicate, duplicates, python_files, suppressions
-from scripts.harness_config import HarnessConfig, HarnessConfigError, load_config
+from scripts.gc_report import Duplicate, duplicates, python_sources, suppressions
+from scripts.harness_config import HarnessConfig, load_or_report
 
 ROOT = Path(__file__).resolve().parents[1]
 COUNTED = ("# noqa", "# type: ignore", "# pragma: no cover")
 LETTERS = ((90, "A"), (80, "B"), (70, "C"), (0, "D"))
+NOT_MEASURED = "not measured"
+# A row of the grade table: layer, letter, score, coverage (render writes it).
+_RECORDED = re.compile(
+    rf"^\| (\w+) \| \*\*([{''.join(g for _, g in LETTERS)}])\*\* \| \d+ \| ([^|]+) \|",
+    re.MULTILINE,
+)
 
 
 @dataclass(frozen=True)
@@ -140,10 +147,7 @@ def grades(
 
 def read_sources(root: Path, config: HarnessConfig) -> dict[str, str]:
     """path -> text, for every module of the library and of scripts/."""
-    return {
-        p.relative_to(root).as_posix(): p.read_text(encoding="utf-8")
-        for p in python_files(root, (config.package_dir, "scripts"))
-    }
+    return python_sources(root, (config.package_dir, "scripts"))
 
 
 def measured_coverage(root: Path) -> dict[str, tuple[int, int]]:
@@ -165,13 +169,14 @@ def measured_coverage(root: Path) -> dict[str, tuple[int, int]]:
 
 
 def render(grades: Sequence[Grade], size_watch: int) -> str:
+    """The grade table that docs/harness/quality.md keeps, and recorded_grades reads back."""
     lines = [
         f"| Layer | Grade | Score | Coverage | Modules within {size_watch} lines | Largest "
         "| Suppressions per 1,000 lines | Duplicate runs | Docstrings |",
         "| --- | --- | --- | --- | --- | --- | --- | --- | --- |",
     ]
     for g in grades:
-        coverage = f"{g.coverage:.0%}" if g.coverage is not None else "not measured"
+        coverage = f"{g.coverage:.0%}" if g.coverage is not None else NOT_MEASURED
         lines.append(
             f"| {g.layer} | **{g.letter}** | {g.score:.0f} | {coverage} | {g.small:.0%} "
             f"| {g.largest[0]} `{g.largest[1].split('/')[-1]}` | {g.suppressions_per_kloc:.1f} "
@@ -180,12 +185,19 @@ def render(grades: Sequence[Grade], size_watch: int) -> str:
     return "\n".join(lines) + "\n"
 
 
+def recorded_grades(text: str) -> dict[str, tuple[str, bool]]:
+    """Each layer's letter in a table `render` wrote, and whether its coverage was measured
+    (`poe gc` compares them with the grades now)."""
+    return {
+        layer: (letter, coverage.strip() != NOT_MEASURED)
+        for layer, letter, coverage in _RECORDED.findall(text)
+    }
+
+
 def main(argv: Sequence[str] | None = None) -> int:
     argparse.ArgumentParser(description="Grade each layer's quality.").parse_args(argv)
-    try:
-        config = load_config(ROOT)
-    except HarnessConfigError as error:
-        print(error)
+    config = load_or_report("quality", ROOT)
+    if config is None:
         return 1
     coverage = measured_coverage(ROOT)
     if not coverage:

@@ -8,7 +8,16 @@ from pathlib import Path
 
 import pytest
 
-from scripts.quality import Signals, grade, grades, layer_of, letter, render, score
+from scripts.quality import (
+    Signals,
+    grade,
+    grades,
+    layer_of,
+    letter,
+    recorded_grades,
+    render,
+    score,
+)
 from tests.harness.support import config
 
 DOC = '"""What this module is for."""\n'
@@ -71,3 +80,13 @@ def test_a_layer_is_measured_from_its_modules(tmp_path: Path) -> None:
     table = render(every, loaded.gc.size_watch)
     assert "| Modules within 30 lines |" in table
     assert f"| adapters | **{found.letter}** |" in table
+
+
+def test_the_table_reads_back_as_poe_gc_reads_it(tmp_path: Path) -> None:
+    """What `render` writes into quality.md, `recorded_grades` reads: each layer's letter, and
+    whether its coverage was measured, so the 'graded lower' signal never goes quiet."""
+    loaded = config(tmp_path)
+    sources = {"src/app/core/a.py": DOC + "x = 1\n", "src/app/api/b.py": DOC + "y = 2\n"}
+    every = grades(sources, {"src/app/core/a.py": (1, 0)}, loaded)
+    table = render(every, loaded.gc.size_watch)
+    assert recorded_grades(table) == {g.layer: (g.letter, g.coverage is not None) for g in every}

@@ -27,7 +27,8 @@ from collections.abc import Iterable, Sequence
 from dataclasses import dataclass
 from pathlib import Path
 
-from scripts.harness_config import GcConfig, HarnessConfig, HarnessConfigError, load_config
+from scripts.doc_text import markdown_files
+from scripts.harness_config import GcConfig, HarnessConfig, load_or_report
 
 ROOT = Path(__file__).resolve().parents[1]
 SUPPRESSIONS = ("# noqa", "# type: ignore", "# pragma: no cover", "# fmt: skip")
@@ -65,6 +66,14 @@ class Duplicate:
 
 def python_files(root: Path, dirs: Sequence[str]) -> list[Path]:
     return sorted(p for d in dirs for p in (root / d).rglob("*.py") if "__pycache__" not in p.parts)
+
+
+def python_sources(root: Path, dirs: Sequence[str]) -> dict[str, str]:
+    """path from the root -> text, for every Python module under `dirs`."""
+    return {
+        p.relative_to(root).as_posix(): p.read_text(encoding="utf-8")
+        for p in python_files(root, dirs)
+    }
 
 
 def code_tokens(source: str) -> list[Token]:
@@ -235,14 +244,10 @@ def unknown_names(
 def report(root: Path, config: HarnessConfig) -> str:
     gc: GcConfig = config.gc
     dirs = (*config.product_dirs, *config.arch.support_dirs)
-    code = {
-        p.relative_to(root).as_posix(): p.read_text(encoding="utf-8")
-        for p in python_files(root, dirs)
-    }
+    code = python_sources(root, dirs)
     product = {n: t for n, t in code.items() if not n.startswith("tests/")}
     docs = {
-        p.relative_to(root).as_posix(): p.read_text(encoding="utf-8")
-        for p in [*root.glob("*.md"), *(root / "docs").rglob("*.md")]
+        p.relative_to(root).as_posix(): p.read_text(encoding="utf-8") for p in markdown_files(root)
     }
     lines = ["# Garbage-collection candidates", ""]
     found = duplicates(product, gc.min_tokens)
@@ -273,10 +278,8 @@ def report(root: Path, config: HarnessConfig) -> str:
 def main(argv: Sequence[str] | None = None) -> int:
     parser = argparse.ArgumentParser(description="Report garbage-collection candidates.")
     parser.parse_args(argv)
-    try:
-        config = load_config(ROOT)
-    except HarnessConfigError as error:
-        print(error)
+    config = load_or_report("gc_report", ROOT)
+    if config is None:
         return 1
     print(report(ROOT, config), end="")
     return 0

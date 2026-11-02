@@ -44,6 +44,7 @@ from scripts.arch_public import check_app
 from scripts.arch_words import check_words
 from scripts.harness_arch import ArchConfig
 from scripts.harness_config import HarnessConfig, run_check
+from scripts.harness_toml import CONFIG_FILE, RULE
 from scripts.module_rules import check_support, parse_module
 
 ROOT = Path(__file__).resolve().parents[1]
@@ -51,6 +52,10 @@ ROOT_LAYER = "<package root>"
 CHANGE_RULE_FIX = (
     "If the rule itself is wrong, change it in harness.toml and ARCHITECTURE.md together, and "
     "record why in docs/design/decisions.md."
+)
+# ARCH-PRINT's fix when harness.toml gives `logging` no owner whose fix says how to log.
+PRINT_FIX = (
+    "Use the structured logger: `log = get_logger(__name__)`; `log.info('event_name', key=value)`."
 )
 ENV_ATTRS = frozenset({"environ", "environb", "getenv", "getenvb", "putenv", "unsetenv"})
 _STREAMS = frozenset({"stdout", "stderr"})
@@ -182,8 +187,7 @@ class _ModuleChecker(ast.NodeVisitor):
                 node.lineno,
                 "ARCH-PRINT",
                 "print() or a direct sys.stdout/sys.stderr write in application code",
-                "Use the structured logger: `log = get_logger(__name__)`; "
-                "`log.info('event_name', key=value)`.",
+                _owners_fix(self.arch, "logging", PRINT_FIX),
             )
         name = _constructed_class(node.func, self.arch.restricted.keys())
         restriction = self.arch.restricted.get(name) if name else None
@@ -224,13 +228,20 @@ class _ModuleChecker(ast.NodeVisitor):
         if self.rel in self.arch.env_allowed_files:
             return
         allowed = ", ".join(sorted(self.arch.env_allowed_files)) or "no module"
+        fix = f"Read the setting in {allowed}, and pass its value in."
         self._add(
             line,
             "ARCH-ENV",
             f"{what} used outside {allowed}",
-            "Add a field to Settings in core/config.py (and .env.example), then read it via "
-            "`get_settings()` or an injected Settings instance.",
+            _owners_fix(self.arch, "pydantic_settings", fix),
         )
+
+
+def _owners_fix(arch: ArchConfig, module: str, fallback: str) -> str:
+    """The fix harness.toml gives for importing `module` outside its owner: it already says how
+    to log, or how to add a setting, so ARCH-PRINT and ARCH-ENV say it in the same words."""
+    owner = arch.owners.get(module)
+    return owner.fix if owner is not None else fallback
 
 
 def _writes_output(func: ast.expr) -> bool:
@@ -318,9 +329,9 @@ def check_repo(root: Path, config: HarnessConfig) -> tuple[list[Violation], int]
     package_dir = root / config.package_dir
     if not (package_dir / "__init__.py").is_file():
         missing = Violation(
-            "harness.toml",
+            CONFIG_FILE,
             1,
-            "HARNESS-CONFIG",
+            RULE,
             f"{config.package_dir}/__init__.py does not exist",
             "Set [package] name and root in harness.toml to the library's package, or create "
             f"{config.package_dir}/__init__.py.",

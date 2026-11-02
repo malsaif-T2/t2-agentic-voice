@@ -36,8 +36,9 @@ from urllib.parse import unquote
 
 from scripts._common import Violation
 from scripts.doc_plans import check_plans
-from scripts.doc_refs import check_milestones, check_references, lines_of
+from scripts.doc_refs import check_milestones, check_references
 from scripts.doc_registers import check_registers
+from scripts.doc_text import markdown_files, prose_lines
 from scripts.harness_config import HarnessConfig, run_check
 
 ROOT = Path(__file__).resolve().parents[1]
@@ -54,7 +55,6 @@ _LARGEST = 1_000_000  # bytes: a larger file is data, not a file the kit wrote
 _CONTROL = re.compile("[\x00-\x08\x0b-\x1f\x7f]")
 
 _LINK = re.compile(r"!?\[[^\]]*\]\((<[^>]+>|[^)\s]+)(?:\s+\"[^\"]*\")?\)")
-_FENCE = re.compile(r"^\s*(```|~~~)")
 _INLINE_CODE = re.compile(r"`[^`\n]*`")
 _EXTERNAL = ("http://", "https://", "mailto:")
 
@@ -66,24 +66,10 @@ class Link:
     target: Path
 
 
-def markdown_files(root: Path) -> list[Path]:
-    files = list(root.glob("*.md"))
-    docs = root / "docs"
-    if docs.is_dir():
-        files.extend(docs.rglob("*.md"))
-    return sorted(files)
-
-
 def extract_links(md: Path, root: Path) -> list[Link]:
     """Local links in `md`, ignoring code blocks, inline code, external URLs and anchors."""
     links: list[Link] = []
-    in_fence = False
-    for lineno, line in lines_of(md):
-        if _FENCE.match(line):
-            in_fence = not in_fence
-            continue
-        if in_fence:
-            continue
+    for lineno, line in prose_lines(md):
         for match in _LINK.finditer(_INLINE_CODE.sub("", line)):
             raw = match.group(1).removeprefix("<").removesuffix(">")
             if raw.startswith(_EXTERNAL) or raw.startswith("#"):

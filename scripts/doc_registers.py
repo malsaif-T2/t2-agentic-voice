@@ -18,15 +18,19 @@ from collections.abc import Iterable, Iterator
 from pathlib import Path
 
 from scripts._common import Violation
+from scripts.doc_text import prose_lines
 from scripts.harness_config import HarnessConfig
 
-_FENCE = re.compile(r"^\s*(```|~~~)")
 DECISION_HEADING = re.compile(
     r"^## D-(\d{3}) · [^·]+ · \d{4}-\d{2}-\d{2} · "
     r"(?:Proposed|Accepted|Rejected|Amended by D-\d{3}|Superseded by D-\d{3})\b.*$"
 )
 _DECISION = re.compile(r"^## D-(\d+)")
-_ROWS = {
+# How each register records an entry, on a line outside code fences: a decision heading, a debt
+# row, a principle row (and an invariant, a numbered line under `## Invariants`). The one
+# reading of the registers, for this rule and for DOC-REF (scripts/doc_refs.py).
+ENTRIES = {
+    "decision": (_DECISION, "D-"),
     "tech-debt item": (re.compile(r"^\| TD-(\d{3}) \|"), "TD-"),
     "golden principle": (re.compile(r"^\| GP-(\d{2}) \|"), "GP-"),
 }
@@ -42,29 +46,23 @@ def check_registers(root: Path, config: HarnessConfig) -> list[Violation]:
     violations = _plans(root, config)
     refs = config.references
     if refs.decisions and (root / refs.decisions).is_file():
-        violations += _decisions(refs.decisions, _lines(root / refs.decisions))
+        violations += _decisions(refs.decisions, list(prose_lines(root / refs.decisions)))
     for kind, home in (
         ("tech-debt item", refs.tech_debt),
         ("golden principle", refs.golden_principles),
+        ("invariant", refs.invariants),
     ):
         if home and (root / home).is_file():
-            pattern, prefix = _ROWS[kind]
-            numbered = _numbered(_lines(root / home), pattern)
-            violations += _reused(home, kind, prefix, numbered)
-    if refs.invariants and (root / refs.invariants).is_file():
-        violations += _reused(refs.invariants, "invariant", "", _invariants(root / refs.invariants))
+            prefix = ENTRIES[kind][1] if kind in ENTRIES else ""
+            violations += _reused(home, kind, prefix, entries(root / home, kind))
     return violations
 
 
-def _lines(path: Path) -> list[tuple[int, str]]:
-    """The file's lines outside code fences, numbered from 1."""
-    found, fenced = [], False
-    for number, line in enumerate(path.read_text(encoding="utf-8").splitlines(), start=1):
-        if _FENCE.match(line):
-            fenced = not fenced
-        elif not fenced:
-            found.append((number, line))
-    return found
+def entries(path: Path, kind: str) -> list[tuple[int, str]]:
+    """(line, number) of each entry of `kind` (a key of ENTRIES, or "invariant") in `path`."""
+    if kind == "invariant":
+        return _invariants(path)
+    return list(_numbered(prose_lines(path), ENTRIES[kind][0]))
 
 
 def _numbered(
@@ -111,7 +109,7 @@ def _decisions(home: str, lines: list[tuple[int, str]]) -> list[Violation]:
 def _invariants(path: Path) -> list[tuple[int, str]]:
     """The numbered invariants under `## Invariants`, with their lines."""
     found, inside = [], False
-    for line, text in _lines(path):
+    for line, text in prose_lines(path):
         if text.startswith("## "):
             inside = text.rstrip() == "## Invariants"
         elif inside and (match := _INVARIANT.match(text)):

@@ -19,12 +19,11 @@ from scripts.gc_due import (
     compare,
     git,
     reasons,
-    recorded_grades,
     render,
     section,
 )
 from scripts.harness_config import HarnessConfig, load_config
-from scripts.quality import Grade
+from scripts.quality import Grade, recorded_grades
 from tests.harness.support import PLAN_BODY, config, write
 
 QUALITY = """\

@@ -87,6 +87,23 @@ def test_the_generated_run_history_keeps_the_references_of_its_runs(tmp_path: Pa
     assert doc_rules(tmp_path, files, historical=(history,)) == [(history, 4, "DOC-REF")]
 
 
+def test_references_and_registers_read_the_entries_alike(tmp_path: Path) -> None:
+    """One parser per register for both rules: an invariant heading with a trailing space still
+    opens the section, and an entry inside a code fence is an example, not an entry."""
+    security = "## Threats\n\n3. **Not one.** x\n\n## Invariants \n\n1. **One.** a\n"
+    debt = "| ID | Debt |\n| --- | --- |\n| TD-002 | a |\n\n```\n| TD-005 | an example |\n```\n"
+    code = "# invariant 1 holds; TD-002 is owed.\n# invariant 3 is none.\n# Nor TD-005.\n"
+    files = {
+        **REGISTRY_DOCS,
+        "docs/SECURITY.md": security,
+        "docs/plans/tech-debt.md": debt,
+        "src/app/mod.py": code,
+    }
+    found = [("src/app/mod.py", n, "DOC-REF") for n in (2, 3)]
+    # The example is still read as a citation, as every fenced line is.
+    assert doc_rules(tmp_path, files) == [("docs/plans/tech-debt.md", 6, "DOC-REF"), *found]
+
+
 def test_a_registry_turned_off_is_not_checked(tmp_path: Path) -> None:
     loaded = config(tmp_path)
     loaded = replace(loaded, references=replace(loaded.references, decisions=""))

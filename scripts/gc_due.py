@@ -19,7 +19,6 @@ It informs and blocks nothing: the owner asks for a round when they see fit
 from __future__ import annotations
 
 import argparse
-import re
 import shutil
 import subprocess
 import sys
@@ -28,12 +27,10 @@ from dataclasses import dataclass
 from pathlib import Path
 
 from scripts.doc_plans import ROUND, plan_status
-from scripts.harness_config import HarnessConfig, HarnessConfigError, PlansConfig, load_config
-from scripts.quality import Grade, grades, measured_coverage, read_sources
+from scripts.harness_config import HarnessConfig, PlansConfig, load_or_report
+from scripts.quality import Grade, grades, measured_coverage, read_sources, recorded_grades
 
 ROOT = Path(__file__).resolve().parents[1]
-# A row of quality.md's grades: layer, letter, score, coverage.
-_RECORDED = re.compile(r"^\| (\w+) \| \*\*([A-D])\*\* \| \d+ \| ([^|]+) \|", re.MULTILINE)
 
 
 @dataclass(frozen=True)
@@ -113,14 +110,6 @@ def commits_since(root: Path, start: str | None) -> int:
     return int(git(root, "rev-list", "--count", "--no-merges", "HEAD", *excluded) or 0)
 
 
-def recorded_grades(text: str) -> dict[str, tuple[str, bool]]:
-    """Each layer's letter in quality.md, and whether its coverage was measured."""
-    return {
-        layer: (letter, coverage.strip() != "not measured")
-        for layer, letter, coverage in _RECORDED.findall(text)
-    }
-
-
 def compare(
     recorded: dict[str, tuple[str, bool]], now: Sequence[Grade]
 ) -> tuple[list[str], list[str]]:
@@ -198,10 +187,8 @@ def main(argv: Sequence[str] | None = None) -> int:
     argparse.ArgumentParser(
         description="Say whether a garbage-collection round is due."
     ).parse_args(argv)
-    try:
-        config = load_config(ROOT)
-    except HarnessConfigError as error:
-        print(error)
+    config = load_or_report("gc_due", ROOT)
+    if config is None:
         return 1
     print(section(ROOT, config), end="")
     return 0

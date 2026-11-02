@@ -178,11 +178,20 @@ def parse_config(data: dict[str, Any], lines: Lines) -> HarnessConfig:
 Check = Callable[[Path, HarnessConfig], tuple[list[Violation], int]]
 
 
+def load_or_report(name: str, root: Path) -> HarnessConfig | None:
+    """The config, for a command's `main`; None once its violations are printed as every check
+    prints them, so the command returns 1."""
+    try:
+        return load_config(root)
+    except HarnessConfigError as error:
+        report(name, error.violations, 1)
+        return None
+
+
 def run_check(name: str, root: Path, check: Check) -> int:
     """A check's `main`: load the config, run the check, print the outcome, return the code."""
-    try:
-        config = load_config(root)
-    except HarnessConfigError as error:
-        return report(name, error.violations, 1)
+    config = load_or_report(name, root)
+    if config is None:
+        return 1
     violations, checked = check(root, config)
     return report(name, violations, checked)

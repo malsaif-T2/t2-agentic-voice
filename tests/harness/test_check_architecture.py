@@ -143,6 +143,21 @@ def test_environment_access_only_in_config(tmp_path: Path) -> None:
     ]
 
 
+def test_the_print_and_environment_fixes_say_what_harness_toml_says(tmp_path: Path) -> None:
+    """The logging owner's fix says how to log; the settings library's owner, when it has one,
+    says how to add a setting; otherwise the fix names [rules] env_allowed_files."""
+    settings = '\n[[owners]]\nmodules = ["pydantic_settings"]\nlayers = ["core"]\nfix = "Add it."\n'
+    files = {"src/app/__init__.py": "", "src/app/api/x.py": "import os\nprint(os.getenv('A'))\n"}
+    fixes = []
+    for text in (SYNTHETIC, SYNTHETIC + settings):
+        loaded = config(tmp_path, text)
+        found = check_repo(write(tmp_path, files), loaded)[0]
+        fixes.append({v.rule: v.fix for v in found if v.rule in ("ARCH-PRINT", "ARCH-ENV")})
+    assert fixes[0]["ARCH-PRINT"] == "Log via app.core.logging.get_logger."
+    assert fixes[0]["ARCH-ENV"] == "Read the setting in core/config.py, and pass its value in."
+    assert fixes[1]["ARCH-ENV"] == "Add it."
+
+
 def test_restricted_classes_are_constructed_only_by_their_layer(tmp_path: Path) -> None:
     files = {
         "domain/approve.py": "Approved(id=1)\n",
