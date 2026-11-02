@@ -10,13 +10,16 @@ from pathlib import Path
 import pytest
 
 from scripts.gc_due import compare
+from scripts.harness_config import load_config
 from scripts.quality import (
     EMPTY,
+    ROOT,
     Signals,
     grade,
     grades,
     layer_of,
     letter,
+    read_sources,
     recorded_grades,
     render,
     score,
@@ -114,6 +117,14 @@ def test_each_app_is_one_unit_between_the_layers_and_the_scripts(tmp_path: Path)
     shop = every[len(LAYERS)]
     assert (shop.modules, shop.small) == (2, 0.5)
     assert shop.largest[1] == "apps/shop/src/shop/orders/b.py"
+
+
+def test_this_repository_grades_its_apps_from_their_modules() -> None:
+    """`poe quality` and `poe gc` read every unit's modules, the apps' too, or an app would be
+    graded empty and never compared."""
+    loaded = load_config(ROOT)
+    read = {layer_of(path, loaded) for path in read_sources(ROOT, loaded)}
+    assert {"core", "scripts", *(app.name for app in loaded.arch.apps)} <= read
 
 
 def test_a_layer_with_no_code_is_graded_empty_and_never_compared(tmp_path: Path) -> None:
