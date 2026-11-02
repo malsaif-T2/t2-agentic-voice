@@ -97,6 +97,47 @@ def test_a_prefixed_spelling_counts_once_beside_the_bare_one() -> None:
     assert spelling_issues("على الإيميل وأوتلوك ثم أوتلوك", [OUTLOOK]) == [issue(OUTLOOK, "اوتلوك")]
 
 
+# A rule that lists a spelling both bare and with the article, as Ole5's guide does.
+WITH_ARTICLE = rule("outlook-with-article", ["اوتلوك", "أوتلوك", "الاوتلوك", "الأوتلوك"], "Outlook")
+
+
+@pytest.mark.parametrize(
+    ("reference", "found"),
+    [
+        ("على الأوتلوك", ["الاوتلوك"]),  # not also اوتلوك with ال
+        ("على والأوتلوك", ["الاوتلوك"]),  # و onto الاوتلوك, not وال onto اوتلوك
+        ("على بالأوتلوك", ["الاوتلوك"]),
+        ("على للأوتلوك", ["اوتلوك"]),  # لل is how ل is written onto the article
+        ("على أوتلوك ثم الأوتلوك", ["اوتلوك", "الاوتلوك"]),  # two words, one issue each
+    ],
+)
+def test_a_word_counts_once_for_the_rules_spelling_it_holds_with_the_shortest_prefix(
+    reference: str, found: list[str]
+) -> None:
+    assert spelling_issues(reference, [WITH_ARTICLE]) == [issue(WITH_ARTICLE, f) for f in found]
+
+
+def test_a_spelling_listed_with_the_article_takes_a_prefix_before_it_and_keeps_its_article() -> (
+    None
+):
+    """After `normalize_arabic` the article cannot be told from a word's own first letters
+    (ألف and إله become الف and اله, and ل before اله would read as لله), so a listed spelling
+    is never taken apart: لل before the bare spelling is found when the rule lists that one."""
+    article_only = rule("outlook-article-only", ["الاوتلوك"], "Outlook")
+    assert spelling_issues("بالأوتلوك", [article_only]) == [issue(article_only, "الاوتلوك")]
+    assert spelling_issues("للأوتلوك", [article_only]) == []
+
+
+def test_a_word_that_reads_as_a_prefix_and_an_avoided_spelling_is_named_whatever_it_means() -> None:
+    """The check reads letters, not meaning: الاثنين (Monday) is اثنين (two) with the article,
+    and لستة (a list, in dialect) is ستة (six) with ل. A guide that avoids those spellings, as
+    Ole5's for ticket numbers does, names both, and a reference that means the day or the list
+    is worded without them; a rule has no way to let one word through."""
+    digits = rule("numbers-arabic", ["اثنين", "ستة"], "each digit as 0 to 9")
+    assert spelling_issues("يوم الاثنين", [digits]) == [issue(digits, "اثنين")]
+    assert spelling_issues("هذي لستة التذاكر", [digits]) == [issue(digits, "ستة")]
+
+
 def test_a_phrase_matches_only_whole_and_in_order() -> None:
     assert spelling_issues("بي دي", [PDF]) == []
     assert spelling_issues("اف دي بي", [PDF]) == []

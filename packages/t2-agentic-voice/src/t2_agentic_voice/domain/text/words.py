@@ -4,8 +4,6 @@ the Arabic prefixes a word may be written with."""
 
 from __future__ import annotations
 
-from collections.abc import Sequence
-
 _CONJUNCTIONS = ("", "\u0648", "\u0641")  # none, waw, feh
 _PREPOSITIONS = ("", "\u0628", "\u0644", "\u0643")  # none, beh, lam, kaf
 _ARTICLE = ("", "\u0627\u0644")  # none, alef lam
@@ -25,9 +23,7 @@ def _arabic_prefixes() -> tuple[str, ...]:
 ARABIC_PREFIXES = _arabic_prefixes()
 
 
-def holds_words(text: str, phrase: str, *, prefixes: Sequence[str] = ()) -> bool:
+def holds_words(text: str, phrase: str) -> bool:
     """Whether `text` holds `phrase` as whole words, both already normalized (words separated by
-    one space, none at the ends): a word or a phrase, never a part of a longer word; with
-    `prefixes`, also with one of them written onto the phrase's first word."""
-    padded = f" {text} "
-    return any(f" {prefix}{phrase} " in padded for prefix in ("", *prefixes))
+    one space, none at the ends): a word or a phrase, never a part of a longer word."""
+    return f" {phrase} " in f" {text} "
