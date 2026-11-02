@@ -14,7 +14,8 @@ the name guards checks it again at run time.
 from __future__ import annotations
 
 import ast
-from collections.abc import Collection
+import importlib.util
+from collections.abc import Collection, Mapping
 from pathlib import Path
 
 from scripts._common import Violation
@@ -30,6 +31,7 @@ PRINT_FIX = (
     "Use the structured logger: `log = get_logger(__name__)`; `log.info('event_name', key=value)`."
 )
 ENV_ATTRS = frozenset({"environ", "environb", "getenv", "getenvb", "putenv", "unsetenv"})
+LOADERS = ("import_module", "__import__")  # importlib's functions that load a named module
 _STREAMS = frozenset({"stdout", "stderr"})
 
 
@@ -45,7 +47,8 @@ class ModuleChecker(ast.NodeVisitor):
         self.is_package = stem == "__init__"
         self.os_names = {"os"}  # names bound to the os module here
         self.importlib_names = {"importlib"}  # ... and to the importlib module
-        self.import_functions = {"__import__"}  # names that import a module named by a string
+        # names that import a module named by a string, each with the LOADERS function it is
+        self.import_functions = {"__import__": "__import__"}
         self.defined: set[str] = set()  # names the module defines at its top level
         self.violations: list[Violation] = []
 
@@ -81,8 +84,8 @@ class ModuleChecker(ast.NodeVisitor):
                         self._env_violation(node.lineno, f"os.{alias.name}")
             if base == ["importlib"]:
                 for alias in node.names:
-                    if alias.name == "import_module":
-                        self.import_functions.add(alias.asname or alias.name)
+                    if alias.name in LOADERS:
+                        self.import_functions[alias.asname or alias.name] = alias.name
         else:
             package = self.module_parts if self.is_package else self.module_parts[:-1]
             if node.level - 1 > len(package):
@@ -181,7 +184,8 @@ class ModuleChecker(ast.NodeVisitor):
 
     def _imported_by_name(self, node: ast.Call) -> list[str] | None:
         """The module the call loads by a literal name, split on dots (`literal_import`)."""
-        name = literal_import(node, self.import_functions, self.importlib_names)
+        package = self.module_parts if self.is_package else self.module_parts[:-1]
+        name = literal_import(node, self.import_functions, self.importlib_names, ".".join(package))
         return name.split(".") if name is not None else None
 
     def visit_Attribute(self, node: ast.Attribute) -> None:
@@ -223,23 +227,56 @@ class ModuleChecker(ast.NodeVisitor):
 
 
 def literal_import(
-    node: ast.Call, functions: Collection[str], importlibs: Collection[str]
+    node: ast.Call,
+    functions: Mapping[str, str],
+    importlibs: Collection[str],
+    package: str | None = None,
 ) -> str | None:
-    """The module `importlib.import_module("a.b")` or `__import__("a.b")` loads, when its name
-    is a literal; a computed name cannot be checked statically, and a relative one stays in its
-    package. `functions`: the names bound to such a function here (`__import__`, an imported
-    `import_module`); `importlibs`: the names bound to the importlib module."""
+    """The module a call loads by a literal name, given by position or as `name=`:
+    `importlib.import_module("a.b")`, or a relative `import_module(".b", "a")` resolved against
+    its literal anchor; `__import__("a.b")` or `importlib.__import__("a.b")`, and one with a
+    literal `level` above 0 resolved against `package`, the calling module's own package. A
+    computed name, or a relative one with no literal anchor, cannot be checked statically.
+    `functions`: each name bound here to one of LOADERS, with the one it is (`__import__`
+    itself; `load` after `from importlib import import_module as load`); `importlibs`: the names
+    bound to the importlib module."""
     func = node.func
-    loads = (isinstance(func, ast.Name) and func.id in functions) or (
-        isinstance(func, ast.Attribute)
-        and func.attr == "import_module"
-        and isinstance(func.value, ast.Name)
-        and func.value.id in importlibs
-    )
-    name = node.args[0] if loads and node.args else None
-    if not isinstance(name, ast.Constant) or not isinstance(name.value, str):
+    if isinstance(func, ast.Name):
+        loader = functions.get(func.id)
+    elif isinstance(func, ast.Attribute) and isinstance(func.value, ast.Name):
+        loader = func.attr if func.value.id in importlibs and func.attr in LOADERS else None
+    else:
+        loader = None
+    name = _literal(_argument(node, 0, "name"))
+    if loader is None or not isinstance(name, str) or not name:
         return None
-    return name.value if name.value[:1] not in ("", ".") else None
+    anchor: object = package
+    if loader == "__import__":
+        given = _argument(node, 4, "level")
+        level = 0 if given is None else _literal(given)
+        if name.startswith(".") or type(level) is not int or level < 0:
+            return None
+        name = "." * level + name
+    else:
+        anchor = _literal(_argument(node, 1, "package"))
+    if not name.startswith("."):
+        return name
+    try:
+        return importlib.util.resolve_name(name, anchor) if isinstance(anchor, str) else None
+    except ImportError:
+        return None  # an empty anchor, or more dots than it has parts
+
+
+def _argument(node: ast.Call, position: int, keyword: str) -> ast.expr | None:
+    """The call's argument at `position`, or given as `keyword=`; None when it has none."""
+    if len(node.args) > position:
+        return node.args[position]
+    return next((k.value for k in node.keywords if k.arg == keyword), None)
+
+
+def _literal(node: ast.expr | None) -> object:
+    """A literal argument's value; None when it is missing or computed."""
+    return node.value if isinstance(node, ast.Constant) else None
 
 
 def _owners_fix(arch: ArchConfig, module: str, fallback: str) -> str:

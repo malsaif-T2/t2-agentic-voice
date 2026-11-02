@@ -179,6 +179,7 @@ def test_bans_name_modules_and_the_code_they_cover(tmp_path: Path) -> None:
         '\n[[bans]]\nmodules = ["vendor.services"]\nallowed = ["vendor.services.base"]\n'
         'within = ["app", "app.services.reports", "shop.calls"]\nfix = "Use the base."\n'
     )
+    write(tmp_path, dict.fromkeys(_WITHIN, ""))
     loaded = config(tmp_path, SYNTHETIC + apps + good)
     (ban,) = loaded.arch.bans
     assert (ban.modules, ban.allowed, ban.within) == (
@@ -210,6 +211,38 @@ def test_bans_name_modules_and_the_code_they_cover(tmp_path: Path) -> None:
     }
     assert (lines['fix = ""'], "[bans] fix must be a non-empty string") in found
     assert (lines['scope = ["api"]'], "[bans] has an unknown key `scope`") in found
+
+
+# What the `within` of the bans in these tests names: a package's `__init__`, or a module.
+_WITHIN = (
+    "src/app/__init__.py",
+    "src/app/services/reports/__init__.py",
+    "apps/shop/src/shop/calls.py",
+)
+
+
+def test_a_ban_covers_code_that_exists(tmp_path: Path) -> None:
+    """A `within` whose code was renamed or moved would leave its ban guarding nothing: it names
+    a package with its `__init__`, or a module."""
+    within = (
+        'within = ["app", "app.services.reports", "app.services.report", "shop.calls", "shop.call"]'
+    )
+    text = (
+        f'{SYNTHETIC}\n[[apps]]\nname = "shop"\nroot = "apps/shop/src"\n\n'
+        f'[[bans]]\nmodules = ["vendor"]\nallowed = []\n{within}\nfix = "No vendor."\n'
+    )
+    write(tmp_path, dict.fromkeys(_WITHIN, "") | {"src/app/services/report/x.py": ""})
+    missing = "[[bans]] within '{}' names no package or module: neither {}/__init__.py nor {}.py"
+    assert _problems(tmp_path, text) == [
+        (_line(text, within), missing.format(name, path, path) + " exists")
+        for name, path in [
+            ("app.services.report", "src/app/services/report"),
+            ("shop.call", "apps/shop/src/shop/call"),
+        ]
+    ]
+    write(tmp_path, {"src/app/services/report/__init__.py": "", "apps/shop/src/shop/call.py": ""})
+    (ban,) = config(tmp_path, text).arch.bans
+    assert len(ban.within) == 5
 
 
 def test_an_unknown_table_is_rejected_but_tool_tables_are_not(tmp_path: Path) -> None:

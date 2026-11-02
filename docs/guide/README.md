@@ -71,8 +71,7 @@ point here rather than list them, and the debt rows named say why each is still 
 - Read only by parts of Pipecat the library does not use: `PIPECAT_LOG_LLM_CONTEXT` and
   `PIPECAT_ALLOWED_FILE_URL_NETWORKS` (its model services), `PIPECAT_ALLOWED_ORIGINS` (its
   WebSocket transports), `NUMBA_*` and `LLVMLITE_*` (its resampy resampler), and `OPENAI_*`
-  (its provider services); `poe arch` keeps all but the transports out of the library's
-  imports (ARCH-BAN).
+  (its provider services); `poe arch` keeps them all out of the library's imports (ARCH-BAN).
 - The proxy variables (`HTTP_PROXY`, `HTTPS_PROXY`, `ALL_PROXY`, `NO_PROXY`; on Windows, the
   Internet Options proxy when none of them is set) and the CA variables (`SSL_CERT_FILE` and
   `SSL_CERT_DIR` for httpx, under `groq`; `REQUESTS_CA_BUNDLE` and `CURL_CA_BUNDLE` for

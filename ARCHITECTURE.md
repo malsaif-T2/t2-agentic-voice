@@ -215,9 +215,12 @@ The rules live in [harness.toml](harness.toml), the source of truth;
 - ARCH-BAN: a module a `[[bans]]` table names is never imported by the code it covers (the
   library, a part of it, or an app), its `allowed` modules aside. ARCH-OWNER gives a library to
   a layer whole; a ban narrows it by module: the library uses no Pipecat provider or model
-  service, LLM adapter or context aggregator, nor its runner, its frame loggers, its torch or
-  numba modules, or its DTMF aggregator; `voice/session/` imports no Pipecat; and the apps and
-  the examples import neither Pipecat nor aiortc ([scripts/arch_ban.py](scripts/arch_ban.py));
+  service, none of its LLM machinery (adapters, context aggregators, flows, LLM workers), none
+  of its modules that reach an outside host (classifiers, the HTTP Smart Turn, serializers,
+  every transport but Small WebRTC), nor its runner, its frame loggers, its torch or numba
+  modules, its DTMF aggregator or RTVI; `voice/session/` imports no Pipecat, not even through
+  another of the library's modules; and the apps and the examples import neither Pipecat nor
+  aiortc ([scripts/arch_ban.py](scripts/arch_ban.py));
 - ARCH-CONSTRUCT: a class in `[[restricted]]` is constructed only by its layers, and a name
   in `[[restricted]]` is referred to only there (an import under any alias, an attribute, a
   name, a string that is the name), the module that defines it aside;

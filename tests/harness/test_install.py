@@ -17,8 +17,16 @@ from tests.isolation import child_shell
 
 ROOT = Path(__file__).resolve().parents[2]
 PUBLIC = sorted(load_config(ROOT).arch.public)
-# The child: import the one module named on its command line, and nothing else.
-_IMPORT = "import importlib, sys; importlib.import_module(sys.argv[1])"
+# The child: import the one module named on its command line, and nothing else; a test's
+# stand-in module is found in the folders named after it.
+_IMPORT = "import importlib, sys; sys.path[:0] = sys.argv[2:]; importlib.import_module(sys.argv[1])"
+
+
+def importing(module: str, *path: str) -> list[str]:
+    """The command that imports `module` alone in a new process: isolated from the shell's
+    Python settings, and showing every warning, which Python's default filters hide outside
+    `__main__` (a DeprecationWarning, an ImportWarning, a ResourceWarning)."""
+    return [sys.executable, "-I", "-X", "utf8", "-W", "default", "-c", _IMPORT, module, *path]
 
 
 def locked(text: str) -> list[str]:
@@ -59,7 +67,7 @@ def imports() -> dict[str, tuple[int | None, bytes, bytes]]:
     shell, side by side: (its exit code, its standard output, its standard error)."""
     children = {
         module: subprocess.Popen(
-            [sys.executable, "-I", "-X", "utf8", "-c", _IMPORT, module],
+            importing(module),
             cwd=ROOT,
             env=child_shell(),
             stdout=subprocess.PIPE,
@@ -91,3 +99,25 @@ def test_a_public_module_imports_alone_and_prints_nothing(
     either output, so an import neither warns nor logs (invariant 8)."""
     code, out, err = imports[module]
     assert (code, out, err) == (0, b"", b""), err.decode("utf-8", errors="replace")
+
+
+def test_a_warning_on_import_shows_in_the_child(tmp_path: Path) -> None:
+    """A module's DeprecationWarning at import, which Python's default filters would hide."""
+    (tmp_path / "stand_in_old.py").write_text(
+        "import warnings\nwarnings.warn('stand_in_old is old', DeprecationWarning)\n",
+        encoding="utf-8",
+    )
+    (tmp_path / "stand_in_quiet.py").write_text("QUIET = True\n", encoding="utf-8")
+    done = {
+        name: subprocess.run(
+            importing(name, str(tmp_path)),
+            cwd=tmp_path,
+            env=child_shell(),
+            capture_output=True,
+            timeout=60,
+            check=False,
+        )
+        for name in ("stand_in_old", "stand_in_quiet")
+    }
+    assert b"DeprecationWarning: stand_in_old is old" in done["stand_in_old"].stderr
+    assert (done["stand_in_quiet"].returncode, done["stand_in_quiet"].stderr) == (0, b"")

@@ -133,6 +133,29 @@ def missing_facades(root: Path, arch: ArchConfig, lines: Lines) -> list[Violatio
     return found
 
 
+def missing_scopes(root: Path, arch: ArchConfig, lines: Lines) -> list[Violation]:
+    """A [[bans]] `within` that names no package (a folder with `__init__.py`) or module of the
+    library or an app: renamed or moved, it would leave its ban guarding nothing."""
+    folders = {arch.package: arch.package_root} | {app.name: app.root for app in arch.apps}
+    found = []
+    for index, ban in enumerate(arch.bans):
+        for name in (w for w in ban.within if w.split(".")[0] in folders):
+            path = Path(folders[name.split(".")[0]], *name.split("."))
+            if not ((root / path / "__init__.py").is_file() or (root / f"{path}.py").is_file()):
+                shown = path.as_posix()
+                problem = (
+                    f"[[bans]] within '{name}' names no package or module: neither "
+                    f"{shown}/__init__.py nor {shown}.py exists"
+                )
+                fix = (
+                    "Name the package or module the ban covers as it is now (was it renamed or "
+                    "moved?), or remove the entry from `within`."
+                )
+                line = lines.of("bans", "within", index)
+                found.append(Violation(CONFIG_FILE, line, RULE, problem, fix))
+    return found
+
+
 def parse_arch(data: dict[str, Any], lines: Lines, problems: list[Violation]) -> ArchConfig:
     package = Table("package", data.get("package"), lines, problems)
     name = _package_name(package)

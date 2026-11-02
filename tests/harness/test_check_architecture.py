@@ -75,15 +75,24 @@ def test_imports_of_a_literal_name_are_imports_too(tmp_path: Path) -> None:
         "core/b.py": "from importlib import import_module as load\nload('app.services')\n",
         "domain/c.py": "__import__('app.adapters.store')\n__import__('sqlite3')\n",
         "domain/d.py": (
-            "import importlib as il\nil.import_module(name)\nil.import_module('.x', 'app')\n"
+            "import importlib as il\nil.import_module(name)\nil.import_module('.x')\n"
             "il.import_module('app.core.types')\nother.import_module('app.api')\n"
         ),
+        # a relative name with its literal anchor, a keyword, importlib's __import__, a level
+        "domain/e.py": "import importlib as il\nil.import_module('.api', 'app')\n",
+        "domain/f.py": "import importlib\nimportlib.import_module(name='sqlite3')\n",
+        "domain/g.py": "from importlib import __import__ as imp\nimp('app.services')\n",
+        "domain/sub/h.py": "__import__('adapters', globals(), None, (), 3)\n",
     }
     assert sorted(_check(tmp_path, files)) == [
         ("core/a.py", "ARCH-LAYER"),
         ("core/b.py", "ARCH-LAYER"),
         ("domain/c.py", "ARCH-LAYER"),
         ("domain/c.py", "ARCH-OWNER"),
+        ("domain/e.py", "ARCH-LAYER"),
+        ("domain/f.py", "ARCH-OWNER"),
+        ("domain/g.py", "ARCH-LAYER"),
+        ("domain/sub/h.py", "ARCH-LAYER"),
     ]
 
 
