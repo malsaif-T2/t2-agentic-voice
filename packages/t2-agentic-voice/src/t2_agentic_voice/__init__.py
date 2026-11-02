@@ -13,6 +13,7 @@ from t2_agentic_voice.core.config import VoiceSettings
 from t2_agentic_voice.core.errors import (
     ConfigurationError,
     InvalidRequestError,
+    JoinRejected,
     NotFoundError,
     ProviderError,
     T2VoiceError,
@@ -22,6 +23,7 @@ from t2_agentic_voice.core.logging import configure_logging, get_logger
 __all__ = [
     "ConfigurationError",
     "InvalidRequestError",
+    "JoinRejected",
     "NotFoundError",
     "ProviderError",
     "Status",

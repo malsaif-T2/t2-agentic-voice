@@ -55,6 +55,16 @@ class NotFoundError(T2VoiceError):
     code = "not_found"
 
 
+class JoinRejected(T2VoiceError):  # noqa: N818 - the design's 5.1 names it so
+    """A call's join was refused (the design's 6.5): its token is not one the identity source
+    verifies (malformed, expired, used, signed with a key the settings do not list), or what it
+    holds cannot start a call (a consent version the settings refuse). The message is safe to
+    show the caller and never holds the token or a claim's value (GP-19); the api layer maps it
+    to its transport's one error shape."""
+
+    code = "join_rejected"
+
+
 class ProviderError(T2VoiceError):
     """An outside service (speech-to-text, the model, text-to-speech) failed a request.
 
