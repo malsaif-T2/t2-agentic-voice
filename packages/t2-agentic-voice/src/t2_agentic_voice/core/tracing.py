@@ -7,9 +7,8 @@ tasks (ARCHITECTURE.md). Every text, an attribute's key included, passes through
 `Redactor`; no bytes (audio) and no exception's message are exported (the design's 10.1).
 Public through the `tracing` facade (D-021). A private provider's spans go through a bounded
 queue to a worker thread, so a failing or hung exporter never reaches the caller, and every
-value the SDK and its exporter would read from an `OTEL_*` variable is passed
-(`core/tracing_export.py`, plan 002's decision log); `OTEL_SDK_DISABLED` and
-`OTEL_PYTHON_CONTEXT` are read whatever is passed (TD-005).
+value the SDK and its exporter would read from an `OTEL_*` variable is passed, but the three the
+SDK reads whatever is passed (`core/tracing_export.py` names them; TD-005).
 """
 
 from __future__ import annotations

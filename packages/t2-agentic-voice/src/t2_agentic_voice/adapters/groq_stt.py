@@ -145,9 +145,10 @@ class GroqSTT:
         self, clip: AudioClip, *, language: str | None, prompt: str | None
     ) -> Transcript:
         """What was said in `clip` (the port's `transcribe`): Whisper's text with the space around
-        it removed, the language named (else the one Groq reports), the confidence and the
-        no-speech estimate over Whisper's segments weighted by their length, as the prototype
-        weighted them, and the billed seconds, never under Groq's minimum of 10 s. An empty
+        it removed, the language named (else the one Groq reports), the confidence (Whisper's
+        `avg_logprob`, a log-probability of 0 or below) and the no-speech estimate, each the
+        mean over Whisper's segments weighted by their length, as the prototype weighted them,
+        and the billed seconds, never under Groq's minimum of 10 s. An empty
         `language` or `prompt` counts as none. The whole request, sent once, takes at most
         `timeout_s`. Raises ProviderError on every failure, an answer it cannot read included."""
         try:

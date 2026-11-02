@@ -53,7 +53,8 @@ class Transcript(BaseModel):
     text: str
     # The language heard, or the one the request named, in the provider's code ("ar", "en").
     language: str | None
-    # The provider's own confidence, when it gives one.
+    # The provider's own confidence, when it gives one, on the provider's own scale (Whisper's:
+    # the mean log-probability of its segments, 0 or below, not a share from 0 to 1).
     confidence: float | None = None
     # What the provider bills for the request, for usage metering.
     billed_seconds: float | None = Field(default=None, ge=0)

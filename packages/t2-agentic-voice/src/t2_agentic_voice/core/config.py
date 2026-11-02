@@ -7,8 +7,9 @@ so a `.env` copied from `.env.example` with only the key filled in keeps every o
 Other modules call `get_settings()` or receive a `Settings` instance; they never touch
 `os.environ`. No provider's own variable (`GROQ_API_KEY`, `OTEL_*`) is ever read here, and the
 adapters pass every value that keeps their SDKs from reading one (the design's 7.3). The few an
-SDK reads whatever is passed (`GROQ_CUSTOM_HEADERS`, `GROQ_LOG`, some `OTEL_*`) are listed in
-plan 002's decision log, each kept out by the track that builds its adapter or left as debt.
+SDK reads whatever is passed are kept out or recorded as debt: `GROQ_CUSTOM_HEADERS` by the
+Groq adapter's request hook, `GROQ_LOG` by how the adapter imports the SDK (TD-003), and three
+`OTEL_*` ones (TD-005, `core/tracing_export.py`).
 A command loads the settings with `Settings.from_env`, whose ConfigurationError names each
 setting that cannot load and never the value it rejected (the design's 7.4).
 
@@ -153,7 +154,8 @@ class SttSettings(_Group):
 
     # Which adapter turns speech into text; only Groq's exists for now (D-004).
     provider: SttProvider = "groq"
-    # The Whisper model. The default is set by plan 002's registered baseline (the design's 7.6).
+    # The Whisper model. The default stayed large-v3 on a registered measurement (D-025; the
+    # design's 7.6), and changes only on another (GP-18).
     model: SttModel = "whisper-large-v3"
     # The longest one transcription request may take, in seconds, before it is a timeout.
     timeout_s: float = Field(default=6.0, gt=0, allow_inf_nan=False)
