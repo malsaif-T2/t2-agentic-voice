@@ -256,11 +256,14 @@ name_files = ["pyproject.toml", "harness.toml", ".env.example", "apps/*/src/**/*
 # counted, not listed. The design names the API of the milestones to come.
 planned_docs = ["docs/design/package-design.md"]
 
-# `uv run poe quality`: a grade per layer, after `uv run poe check`. Not a gate.
+# `uv run poe quality`: a grade per layer, per app, and for scripts/, after `uv run poe check`.
+# Not a gate.
 [quality]
 doc = "docs/harness/quality.md"
 suppressions_floor = 10.0
-duplication_floor = 5
+# The duplicate runs ([gc] min_tokens) that score a unit's duplication zero. At 25 tokens the
+# look-alike runs the first round kept would cost a unit a letter at 5 (plan 004).
+duplication_floor = 10
 
 [quality.weights]
 coverage = 40

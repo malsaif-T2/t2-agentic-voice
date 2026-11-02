@@ -28,7 +28,14 @@ from pathlib import Path
 
 from scripts.doc_plans import ROUND, plan_status
 from scripts.harness_config import HarnessConfig, PlansConfig, load_or_report
-from scripts.quality import Grade, grades, measured_coverage, read_sources, recorded_grades
+from scripts.quality import (
+    EMPTY,
+    Grade,
+    grades,
+    measured_coverage,
+    read_sources,
+    recorded_grades,
+)
 
 ROOT = Path(__file__).resolve().parents[1]
 
@@ -116,8 +123,8 @@ def compare(
     """(layers graded lower now, layers not compared because coverage is measured differently)."""
     drops, not_compared = [], []
     for g in now:
-        if g.layer not in recorded:
-            continue
+        if g.layer not in recorded or g.letter == EMPTY:
+            continue  # not graded before, or no code left to grade
         letter, measured = recorded[g.layer]
         if measured != (g.coverage is not None):
             not_compared.append(g.layer)

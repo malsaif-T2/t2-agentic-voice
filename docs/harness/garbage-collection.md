@@ -42,8 +42,8 @@ crossing the size watch in the candidates below the signal.
 
    History (`[docs] historical`) is not read; a doc of planned code (`[gc] planned_docs`) gets a
    count instead of a list.
-2. **Read.** Walk every layer, the scripts, the tests' shared helpers, and the living docs,
-   looking for:
+2. **Read.** Walk every layer, every app (`[[apps]]` in `harness.toml`), the scripts, the
+   tests' shared helpers, and the living docs, looking for:
    - the same logic or message in two places (the report finds copies; only a reader finds
      re-implementations);
    - models and helpers that restate a core definition instead of reusing it;
