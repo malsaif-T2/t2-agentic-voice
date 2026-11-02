@@ -26,7 +26,7 @@ Rules
                   row (scripts/arch_doc.py)
   ARCH-SIZE, ARCH-FMT, ARCH-PARSE   every module, in src/ and the support folders
                   (scripts/module_rules.py)
-  HARNESS-CONFIG  harness.toml itself is valid (scripts/harness_config.py)
+  HARNESS-CONFIG  harness.toml itself is valid (scripts/harness_config.py, harness_arch.py)
 """
 
 from __future__ import annotations
@@ -42,7 +42,8 @@ from scripts.arch_doc import check_layer_doc
 from scripts.arch_facade import check_facade
 from scripts.arch_public import check_app
 from scripts.arch_words import check_words
-from scripts.harness_config import ArchConfig, HarnessConfig, run_check
+from scripts.harness_arch import ArchConfig
+from scripts.harness_config import HarnessConfig, run_check
 from scripts.module_rules import check_support, parse_module
 
 ROOT = Path(__file__).resolve().parents[1]

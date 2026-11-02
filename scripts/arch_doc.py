@@ -19,7 +19,7 @@ from dataclasses import dataclass
 from pathlib import Path
 
 from scripts._common import Violation
-from scripts.harness_config import ArchConfig
+from scripts.harness_arch import ArchConfig
 
 _TICKED = re.compile(r"`([^`]+)`")
 _NONE = frozenset({"", "none", "—", "-"})

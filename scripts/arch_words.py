@@ -16,7 +16,7 @@ from __future__ import annotations
 from pathlib import Path
 
 from scripts._common import Violation
-from scripts.harness_config import ArchConfig
+from scripts.harness_arch import ArchConfig
 
 # The files whose text is read: Python, and the text a package ships (docs, data, web
 # assets). Every other file's path is still read.

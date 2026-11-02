@@ -13,7 +13,7 @@ import ast
 from pathlib import Path
 
 from scripts._common import Violation
-from scripts.harness_config import AppRule, ArchConfig
+from scripts.harness_arch import AppRule, ArchConfig
 from scripts.module_rules import parse_module
 
 
