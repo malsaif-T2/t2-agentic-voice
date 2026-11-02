@@ -84,7 +84,7 @@ An arrow or a line down means "may import"; `api` may import every layer, `testi
 
 | Layer | Responsibility | May import | Owns (only it may import) |
 | --- | --- | --- | --- |
-| `core` | Settings (`core/config.py`, the only module that reads the environment), structured logging (`core/logging.py`), the error types (`core/errors.py`: `AppError` and its subclasses, each with a stable `code`), tracing to Phoenix, and the types every layer shares | none | `logging`, `structlog`, `pydantic_settings`, `opentelemetry`, `openinference`, `phoenix`, `requests` |
+| `core` | Settings (`core/config.py`, the only module that reads the environment), structured logging (`core/logging.py`), the error types (`core/errors.py`: `T2VoiceError` and its subclasses, each with a stable `code`), tracing to Phoenix, and the types every layer shares | none | `logging`, `structlog`, `pydantic_settings`, `opentelemetry`, `openinference`, `phoenix`, `requests` |
 | `domain` | The rules of a support call, with no IO: what counts as a clear yes, the ticket flow's states, what an interruption is, Arabic text normalization, how numbers and ticket IDs are spoken, and the ports (protocols) every outside service is reached through | core | — |
 | `adapters` | One adapter per port: speech-to-text, the chat model and text-to-speech (Groq), the knowledge base, the ticket system; each chosen by a setting | core, domain | `groq`, `httpx`, `qdrant_client` |
 | `actions` | The backend that acts: runs the talker's tools through the ports, keeps each call's record of completed actions, words every outcome from a real result | core, domain | — |
@@ -141,7 +141,7 @@ run").
 - Types shared across layers live in `core`; the ports and the call's rules live in `domain`.
 - `pydantic` is allowed everywhere: it is how data is parsed at boundaries, model output and
   tool arguments included.
-- Lower layers raise `core.errors.AppError` subclasses with stable codes and user-safe
+- Lower layers raise `core.errors.T2VoiceError` subclasses with stable codes and user-safe
   messages; only `api` maps them to its transport.
 - Configuration comes only from `Settings` in `core/config.py`, and `.env.example` lists every
   setting. A provider is chosen by a setting, never by an import in a layer above `api`.

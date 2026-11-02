@@ -1,6 +1,6 @@
 """The application's error types.
 
-Application code raises `AppError` subclasses, each with a stable machine-readable `code`, so a
+Application code raises `T2VoiceError` subclasses, each with a stable machine-readable `code`, so a
 caller (an HTTP layer, a CLI, a test) can act on the kind of failure without parsing messages.
 A message must be safe to show to the end user: no internals, secrets, or other users' data.
 """
@@ -26,7 +26,9 @@ _PROVIDER_MESSAGES: dict[ProviderErrorKind, str] = {
 }
 
 
-class AppError(Exception):
+class T2VoiceError(Exception):
+    """The library's base error (the design's 5.1, D-026)."""
+
     code: ClassVar[str] = "internal_error"
 
     def __init__(self, message: str, *, details: dict[str, JsonValue] | None = None) -> None:
@@ -35,25 +37,25 @@ class AppError(Exception):
         self.details: dict[str, JsonValue] = dict(details or {})
 
 
-class ConfigurationError(AppError):
+class ConfigurationError(T2VoiceError):
     """The application is configured in a way it cannot run with."""
 
     code = "configuration_error"
 
 
-class InvalidRequestError(AppError):
+class InvalidRequestError(T2VoiceError):
     """A well-formed request with invalid content."""
 
     code = "invalid_request"
 
 
-class NotFoundError(AppError):
+class NotFoundError(T2VoiceError):
     """A lookup for something that does not exist."""
 
     code = "not_found"
 
 
-class ProviderError(AppError):
+class ProviderError(T2VoiceError):
     """An outside service (speech-to-text, the model, text-to-speech) failed a request.
 
     `kind` says how, from a closed list: `rate_limited`, `timeout`, `connection_lost`,

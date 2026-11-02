@@ -614,3 +614,17 @@ twice; DOC-REF: every `D-NNN` cited anywhere is a heading here), so keep its sha
   judged against large-v3 on this set, by the same rule.
 - **Evidence:** R1 to R4's history lines and `eval-compare` (plan 002's progress log,
   2026-11-02).
+
+## D-026 · The library's base error is `T2VoiceError` · 2026-11-02 · Accepted (the owner, 2026-11-02)
+
+- **Context:** the design's 5.1 names `T2VoiceError` among the package root's errors (D-017), but
+  Block 0 of plan 002 built the base error as `AppError`, the kit's name, and TD-007 recorded the
+  gap. Nothing has been tagged or installed outside this repository, so renaming costs least now.
+- **Decision:** the base error is `T2VoiceError` (`core/errors.py`), and every subclass and use
+  follows. The package root exports it in place of `AppError`, which still works until the next
+  minor release: reading `t2_agentic_voice.AppError` raises a `DeprecationWarning` and returns
+  `T2VoiceError`, as the design's 5.4 asks of a name changed before 1.0 where it is cheap.
+- **Consequences:** an app catches `T2VoiceError`; `AppError` is removed in the release after the
+  first one a teammate installs, with a "Removed" changelog entry. TD-007 is paid.
+- **Evidence:** the owner's answer in garbage collection round 1 (plan 004's decision log,
+  2026-11-02): "Rename it now (Recommended)".

@@ -69,7 +69,7 @@ floor) live in [harness.toml](harness.toml).
 ```
 packages/t2-agentic-voice/src/t2_agentic_voice/   the library; its public API is __init__.py
   ports.py groq.py languages.py evals.py tracing.py   and these facades beside it (re-exports only)
-  core/       settings, structured logging, error types (AppError), tracing, shared types
+  core/       settings, structured logging, error types (T2VoiceError), tracing, shared types
   domain/     the call's rules and the ports, no IO: the yes rule, interruptions, speech text
   adapters/   the outside services behind the ports: Groq, the knowledge base, the tickets
   actions/    the backend, the only part that acts: tools, the action record, outcomes

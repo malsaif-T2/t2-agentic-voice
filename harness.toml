@@ -92,7 +92,7 @@ fix = "Keep the voice framework inside voice/; other layers take plain text, aud
 [[owners]]
 modules = ["fastapi", "starlette", "uvicorn"]
 layers = ["api"]
-fix = "HTTP lives in api/; a lower layer returns a typed model or raises an AppError, and api maps it to a response."
+fix = "HTTP lives in api/; a lower layer returns a typed model or raises an T2VoiceError, and api maps it to a response."
 
 [[owners]]
 modules = ["jiwer"]

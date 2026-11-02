@@ -26,7 +26,7 @@ from pathlib import Path
 from typing import Final
 
 from pydantic import ValidationError
-from t2_agentic_voice import AppError, evals
+from t2_agentic_voice import T2VoiceError, evals
 
 from ole5_voice.evals.runs import (
     HELD_OUT_MIN_ITEMS,
@@ -43,7 +43,7 @@ _DESCRIPTION = "Compare two runs: fixed, broken and net per variant, and the sig
 _FAILURES: Final = {"provider": "a provider failure", "stuck": "stuck past its time limit"}
 
 
-class ComparisonError(AppError):
+class ComparisonError(T2VoiceError):
     """Two runs that cannot be judged against each other, or a focus file that names no item of
     theirs."""
 
@@ -381,7 +381,7 @@ def main(argv: Sequence[str] | None = None, *, sign_test: SignTest = evals.sign_
             sign_test=sign_test,
             focus=read_focus(args.focus) if args.focus else (),
         )
-    except AppError as error:
+    except T2VoiceError as error:
         sys.stderr.write(f"eval-compare: {error.message} [{error.code}]\n")
         return 1
     sys.stdout.write(report)

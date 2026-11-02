@@ -27,7 +27,7 @@ from pathlib import Path
 from typing import Final, Protocol
 
 from pydantic import ValidationError
-from t2_agentic_voice import AppError, evals
+from t2_agentic_voice import T2VoiceError, evals
 from t2_agentic_voice.evals import Recall
 from t2_agentic_voice.languages import normalize_arabic, normalize_digits
 
@@ -54,7 +54,7 @@ _SECONDS_PER_HOUR: Final = 3600.0
 Normalize = Callable[[str], str]
 
 
-class EvalDataError(AppError):
+class EvalDataError(T2VoiceError):
     """A run's data (its run, a result, a scorecard, a history line) fails its model's checks.
     The message names fields only, never a value, which may be a transcript or a key."""
 

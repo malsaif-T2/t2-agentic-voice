@@ -26,7 +26,13 @@ from collections.abc import Sequence
 from pathlib import Path
 
 from pydantic import ValidationError
-from t2_agentic_voice import AppError, ConfigurationError, Settings, configure_logging, get_logger
+from t2_agentic_voice import (
+    ConfigurationError,
+    Settings,
+    T2VoiceError,
+    configure_logging,
+    get_logger,
+)
 
 from ole5_voice.evals import history
 from ole5_voice.evals.answerers import (
@@ -205,7 +211,7 @@ def _show(args: argparse.Namespace, settings: Settings, parts: Parts) -> None:
         log.info("setting", name=name, value=value)
     try:
         checkout = inspect(parts.folder, parts.git)
-    except AppError as error:
+    except T2VoiceError as error:
         log.info("worktree", state=error.message)
         return
     problem = checkout.refusal()
@@ -220,7 +226,7 @@ def _show(args: argparse.Namespace, settings: Settings, parts: Parts) -> None:
     if args.out is not None:
         try:
             state, out = "new", check_out(args.out, checkout, parts.git)
-        except AppError as error:
+        except T2VoiceError as error:
             state, out = error.message, args.out
         log.info("path", name="out", path=str(out), state=state)
 
@@ -378,7 +384,7 @@ def main(argv: Sequence[str] | None = None, *, parts: Parts | None = None) -> in
             _show(args, settings, parts)
             return 0
         return _run(args, settings, parts)
-    except AppError as error:
+    except T2VoiceError as error:
         log.error("eval_refused", code=error.code, message=error.message)
         return 2
 

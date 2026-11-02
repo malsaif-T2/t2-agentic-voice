@@ -45,10 +45,10 @@ thing, one decision covers both. Each block below is built in its own worktree, 
 agent that did not write it, gated and merged; Block R comes first since it touches every
 layer, and Block D last since the docs describe the code the other blocks leave.
 
-**Block R, first: the rename of `AppError` to `T2VoiceError` (TD-007), every use, with the alias** (1)
+**Block R, first: the rename of `AppError` to `T2VoiceError` (the debt row on it, paid by D-026), every use, with the alias** (1)
 
 - deb17 (payable debt, small, a change a caller could notice),
-  `packages/t2-agentic-voice/src/t2_agentic_voice/core/errors.py:29`: TD-007 (AppError where the
+  `packages/t2-agentic-voice/src/t2_agentic_voice/core/errors.py:29`: The debt row on `AppError` (AppError where the
   design names T2VoiceError) is cheaper now than it will ever be again: nothing has been tagged or
   installed, and only the repository uses the name. Decision: the owner's answer: rename it now.
 
@@ -674,13 +674,20 @@ layer, and Block D last since the docs describe the code the other blocks leave.
   things considered and kept. Step 3: the inventory below, each finding with its block or the
   plan it is left for, and the owner's answers to the four calls it raised (the decision log).
   Next: Block R, then Blocks L, A and H in parallel, then Block D.
+- 2026-11-02: Block R, the rename (`Plan 004: Block R, AppError becomes T2VoiceError`): the base
+  error is `T2VoiceError` in `core/errors.py` and every use (the app's `compare.py`, `run.py` and
+  `scorecard.py`, `harness.toml`'s FIX text, ARCHITECTURE.md, CLAUDE.md, GP-07); the package root
+  exports it, and `t2_agentic_voice.AppError` still works with a `DeprecationWarning` until the
+  next minor release (the design's 5.4), pinned by a new test in `test_errors.py`. D-026 records
+  it, and the debt row is removed. `uv run --offline poe check` passes: 1217 tests and 1 skipped,
+  100% coverage (3604 statements), mypy strict on 144 files, arch and docs clean.
 
 ## Decision log
 
 - 2026-11-02: The owner's answers to the four calls the read raised ("The owner's decisions"
   is not a section of a maintenance plan, so they are quoted here): the library's logging, which
   does not meet the accepted design's contract (the design's 3.3 and 10.2): "Fix it in M2
-  (Recommended)", with a debt row now; `AppError` against the design's `T2VoiceError` (TD-007):
+  (Recommended)", with a debt row now; `AppError` against the design's `T2VoiceError` (the debt row on it, paid by D-026):
   "Rename it now (Recommended)", keeping `AppError` as a deprecated alias; the library values the
   app copies because no facade exports them: "Tie them with tests (Recommended)", the public API
   unchanged; the architecture docs and `harness.toml` that still give the library the knowledge
