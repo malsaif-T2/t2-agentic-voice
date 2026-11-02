@@ -167,11 +167,20 @@ required = [
     "docs/project/DESCRIPTION.md",
 ]
 # History keeps the milestone numbers of its time, and may cite retired debt and principles.
-historical = ["docs/plans/completed/", "docs/design/decisions.md"]
+# The run history is generated from records that are never edited, so it is history too.
+historical = [
+    "docs/plans/completed/",
+    "docs/design/decisions.md",
+    "docs/generated/eval-history.md",
+]
 # Code that may not cite milestones, and whose citations must exist (DOC-MILESTONE, DOC-REF).
 code_dirs = ["packages", "apps", "examples", "scripts", "tests"]
 # Code exempt from those two rules: the harness tests whose fixtures cite made-up entries.
-code_exempt = ["tests/harness/test_check_docs.py", "tests/harness/test_gc_due.py"]
+code_exempt = [
+    "tests/harness/test_check_docs.py",
+    "tests/harness/test_doc_refs.py",
+    "tests/harness/test_gc_due.py",
+]
 # Files (or folders, ending in /) that may keep install placeholders on purpose: an uppercase
 # name between double braces (DOC-PLACEHOLDER).
 placeholders_allowed_in = []

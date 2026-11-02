@@ -25,7 +25,7 @@ from scripts.gc_due import (
 )
 from scripts.harness_config import HarnessConfig, load_config
 from scripts.quality import Grade
-from tests.harness.support import config, write
+from tests.harness.support import PLAN_BODY, config, write
 
 QUALITY = """\
 | Layer | Grade | Score | Coverage | Modules within 300 lines |
@@ -35,7 +35,6 @@ QUALITY = """\
 | scripts | **D** | 68 | not measured | 81% |
 """
 DUE_AFTER = 5  # the synthetic config's [gc] due_after_commits
-SECTIONS = ("## Goal", "## Acceptance criteria", "## Plan", "## Progress log", "## Decision log")
 
 
 def milestone(number: int) -> str:
@@ -97,8 +96,7 @@ def _plan(root: Path, name: str, milestone: str, folder: str = "completed") -> N
     """A plan in the shape DOC-PLAN enforces: its Status line for its folder, and its sections."""
     header = f"Status: {folder} · Milestone: {milestone} · Started: 2026-01-12"
     header += " · Completed: 2026-01-15" if folder == "completed" else ""
-    body = "\n\n".join(f"{heading}\n\ntext" for heading in SECTIONS)
-    write(root, {f"docs/plans/{folder}/{name}": f"# {name}\n\n{header}\n\n{body}\n"})
+    write(root, {f"docs/plans/{folder}/{name}": f"# {name}\n\n{header}\n\n{PLAN_BODY}\n"})
 
 
 def _commit(root: Path) -> None:
