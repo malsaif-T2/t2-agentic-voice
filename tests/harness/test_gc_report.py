@@ -59,6 +59,19 @@ def test_unreferenced_definitions_skip_what_frameworks_call() -> None:
     ]
 
 
+def test_async_definitions_are_read_as_the_others_are() -> None:
+    """An unused async method is reported, and an async dunder is boilerplate, not duplication."""
+    sources = {
+        "lib.py": "class Client:\n    async def fetch(self): ...\n    async def gone(self): ...\n",
+        "app.py": "from lib import Client\nClient().fetch()\n",
+    }
+    assert unreferenced(sources, ["lib.py"]) == ["lib.py:3 gone"]
+    dunder = (
+        "class C:\n    async def __aexit__(self, exc_type, exc, traceback) -> None:\n        pass\n"
+    )
+    assert [t.text for t in code_tokens(dunder)] == ["class", "C", ":"]
+
+
 def test_suppressions_are_counted_and_noqa_needs_a_reason() -> None:
     source = (
         "a = 1  # noqa: S105 - a documented dev value\nb = 2  # noqa: S105\nc = 3  # fmt: skip\n"
@@ -92,6 +105,24 @@ def test_paths_that_do_not_resolve_are_reported(tmp_path: Path) -> None:
     }
     found = unresolved_paths(tmp_path, texts, bases=("",), ignored=("var/",))
     assert found == ["notes.md:1 docs/gone.md"]
+
+
+def test_paths_of_every_text_kind_and_in_a_dot_folder_are_checked(tmp_path: Path) -> None:
+    write(tmp_path, {".github/workflows/ci.yml": "", "web/app.js": ""})
+    named = (
+        ".github/workflows/ci.yml .github/workflows/gone.yml web/app.js web/gone.js web/index.html "
+        "web/site.css evals/history.jsonl conf/settings.yaml notes/todo.txt ../up/a.md"
+    )
+    found = unresolved_paths(tmp_path, {"notes.md": named}, bases=("",), ignored=())
+    assert [f.split(" ", 1)[1] for f in found] == [
+        ".github/workflows/gone.yml",
+        "web/gone.js",
+        "web/index.html",
+        "web/site.css",
+        "evals/history.jsonl",
+        "conf/settings.yaml",
+        "notes/todo.txt",
+    ]  # a path that climbs out with ../ is a link, which `poe docs` checks
 
 
 def test_names_the_docs_cite_must_be_in_the_code() -> None:

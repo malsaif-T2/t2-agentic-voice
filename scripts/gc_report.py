@@ -36,10 +36,18 @@ _SKIPPED_TOKENS = frozenset(
     {tokenize.COMMENT, tokenize.NL, tokenize.NEWLINE, tokenize.INDENT, tokenize.DEDENT}
     | {tokenize.ENCODING, tokenize.ENDMARKER}
 )
-_PATH = re.compile(r"(?<![\w./{-])((?:[A-Za-z_][\w.-]*/)+[\w-]+\.(?:py|md|toml|json|yml))\b")
+# A relative path: folders, then a file of a text kind. A folder may be hidden (`.github/`);
+# a path that climbs out (`../`) is a link, which `poe docs` resolves.
+_PATH = re.compile(
+    r"(?<![\w./{-])((?:\.?[A-Za-z_][\w.-]*/)+[\w-]+"
+    r"\.(?:py|md|toml|jsonl|json|yaml|yml|js|html|css|txt))\b"
+)
 _PLACEHOLDER = "NNN"  # a template's placeholder (`active/NNN-short-slug.md`), not a path
 _FIXTURE_FILES = ("tests/harness/",)  # the harness's tests name imaginary files
 _NAME = re.compile(r"`([A-Za-z_]\w*(?:\.[A-Za-z_]\w*)*)(?:\(\))?`")
+# A function is a `def` or an `async def`: every rule here reads both (an async one was missed
+# twice in this file, plan 004).
+_FUNCTIONS = (ast.FunctionDef, ast.AsyncFunctionDef)
 
 
 @dataclass(frozen=True)
@@ -67,7 +75,7 @@ def code_tokens(source: str) -> list[Token]:
         line
         for node in ast.walk(tree)
         if isinstance(node, ast.Import | ast.ImportFrom)
-        or (isinstance(node, ast.FunctionDef) and node.name.startswith("__"))
+        or (isinstance(node, _FUNCTIONS) and node.name.startswith("__"))
         for line in range(node.lineno, (node.end_lineno or node.lineno) + 1)
     }
     return [
@@ -139,9 +147,9 @@ def _definitions(
     for node in tree.body:
         if isinstance(node, ast.ClassDef):
             yield node, node.lineno
-            members = [n for n in node.body if isinstance(n, ast.FunctionDef)]
+            members = [n for n in node.body if isinstance(n, _FUNCTIONS)]
             yield from ((n, n.lineno) for n in members if _plain(n, hooks))
-        elif isinstance(node, ast.FunctionDef | ast.AsyncFunctionDef) and _plain(node, hooks):
+        elif isinstance(node, _FUNCTIONS) and _plain(node, hooks):
             yield node, node.lineno
 
 
