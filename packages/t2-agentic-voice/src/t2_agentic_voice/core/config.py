@@ -10,7 +10,8 @@ Other modules call `get_settings()` or receive a `Settings` instance; they never
 adapters pass every value that keeps their SDKs from reading one (the design's 7.3). The few an
 SDK reads whatever is passed are kept out or recorded as debt: `GROQ_CUSTOM_HEADERS` by the
 Groq adapter's request hook, `GROQ_LOG` by how the adapter imports the SDK (TD-003), and three
-`OTEL_*` ones (TD-005, `core/tracing_export.py`).
+`OTEL_*` ones (TD-005, `core/tracing_export.py`); the proxy and CA variables both clients
+trust are debt too (TD-004, TD-015). The guide's "Variables to leave unset" lists them all.
 A command loads the settings with `Settings.from_env`, whose ConfigurationError names each
 setting that cannot load and never the value it rejected (the design's 7.4).
 

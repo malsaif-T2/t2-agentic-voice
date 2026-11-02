@@ -38,11 +38,7 @@ from scripts.doc_plans import check_plans
 from scripts.doc_refs import check_milestones, check_references
 from scripts.doc_registers import check_registers
 from scripts.doc_samples import check_samples
-
-# extract_links is re-exported: tests/ole5_voice/evals/test_history.py reads links as this
-# check does.
-from scripts.doc_text import extract_links as extract_links
-from scripts.doc_text import markdown_files
+from scripts.doc_text import extract_links, markdown_files
 from scripts.harness_config import HarnessConfig, run_check
 
 ROOT = Path(__file__).resolve().parents[1]

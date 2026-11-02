@@ -276,8 +276,8 @@ def _item(phrase: str, found: list[tuple[LabTake, Variant]], terms: Sequence[str
 
 
 def write(evals: Path, items: Sequence[Item], manifest: Manifest) -> None:
-    """Each item as `golden/<id>.toml`, and the manifest as `manifests/talkover.json`: only the
-    files the import owns."""
+    """Each item as `golden/<id>.toml`, and the manifest as `evals/manifests/talkover.json`: only
+    the files the import owns."""
     for item in items:
         write_text(evals / GOLDEN_DIR / f"{item.id}.toml", dump_item(item, comments=HEADER))
     write_text(evals / MANIFESTS_DIR / f"{ROOT}.json", dump_manifest(manifest))

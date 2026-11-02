@@ -22,8 +22,8 @@ _DIGITS = re.compile(r"[0-9]+")
 
 def scored_form(text: str) -> str:
     """`text` as every scorer compares it: `normalize_arabic`, then `normalize_digits`. Words
-    are separated by one space, with none at the ends; the verdict and the character error rate
-    also remove those spaces."""
+    are separated by one space, with none at the ends; the character error rate also removes
+    those spaces."""
     return normalize_digits(normalize_arabic(text))
 
 

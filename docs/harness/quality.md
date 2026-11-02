@@ -37,7 +37,7 @@ share within `[gc] size_watch` (300).
 
 | Layer | Grade | Score | Coverage | Modules within 300 lines | Largest | Suppressions per 1,000 lines | Duplicate runs | Docstrings |
 | --- | --- | --- | --- | --- | --- | --- | --- | --- |
-| core | **A** | 98 | 100% | 100% | 253 `config.py` | 1.0 | 0 | 100% |
+| core | **A** | 98 | 100% | 100% | 254 `config.py` | 1.0 | 0 | 100% |
 | domain | **A** | 98 | 100% | 100% | 134 `scoring.py` | 0.0 | 1 | 100% |
 | adapters | **C** | 76 | 100% | 0% | 338 `groq_stt.py` | 0.0 | 3 | 100% |
 | actions | empty | - | - | - | - | - | - | - |
@@ -47,7 +47,7 @@ share within `[gc] size_watch` (300).
 | api | **A** | 100 | 100% | 100% | 34 `status.py` | 0.0 | 0 | 100% |
 | ole5_voice | **B** | 80 | 100% | 70% | 380 `answerers.py` | 0.2 | 9 | 100% |
 | minimal_example | **A** | 100 | 100% | 100% | 15 `__init__.py` | 0.0 | 0 | 100% |
-| scripts | **A** | 94 | 97% | 100% | 271 `check_docs.py` | 0.3 | 3 | 100% |
+| scripts | **A** | 94 | 97% | 100% | 267 `check_docs.py` | 0.3 | 3 | 100% |
 
 ## Gaps
 

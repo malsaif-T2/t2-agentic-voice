@@ -83,4 +83,11 @@ read found to be noise, and records the values it chose in its decision log.
 
 ## Rounds
 
-- (None yet. Each round adds a line here: its plan, what prompted it, and what it found.)
+Each round adds a line here: its plan, what prompted it, and what it found.
+
+- [Round 1](../plans/completed/004-garbage-collection-1.md), 2026-11-02, after M1: `poe gc`
+  said one was due (M1 completed; 'commits: 101' with no round yet). The read of five areas
+  found 143 things, 8 of them bugs, each fixed with a failing test first. Four blocks and the
+  close renamed the base error (D-026), made copies one, fixed drift and stale docs, promoted
+  8 mistakes seen twice to a check, a test or a doc (ARCH-DEPS and DOC-SAMPLE new, D-027), paid
+  7 debt rows and merged 3, and calibrated `[gc]`.

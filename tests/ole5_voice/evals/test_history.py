@@ -25,7 +25,8 @@ from ole5_voice.evals.runs import (
 from ole5_voice.evals.scorecard import EvalDataError, write_scorecard
 from pydantic import ValidationError
 
-from scripts.check_docs import PLACEHOLDER, extract_links
+from scripts.check_docs import PLACEHOLDER
+from scripts.doc_text import extract_links
 from tests.ole5_voice.evals import samples
 
 MADE_UP_KEY = "gsk_made-up-key-for-tests-0123456789"

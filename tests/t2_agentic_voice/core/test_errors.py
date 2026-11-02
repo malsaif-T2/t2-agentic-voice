@@ -75,7 +75,7 @@ def test_a_provider_error_refuses_an_impossible_shape(
 def test_a_provider_error_pickles_and_copies_whole(retry_after_s: float | None) -> None:
     error = ProviderError("rate_limited", True, retry_after_s, details={"status": 429})
     error.add_note("attempt 3")
-    for again in (pickle.loads(pickle.dumps(error)), copy.copy(error), copy.deepcopy(error)):  # noqa: S301
+    for again in (pickle.loads(pickle.dumps(error)), copy.copy(error), copy.deepcopy(error)):  # noqa: S301 - loads only bytes it dumped
         assert type(again) is ProviderError
         assert (again.kind, again.retryable, again.retry_after_s) == (
             "rate_limited",
@@ -88,7 +88,7 @@ def test_a_provider_error_pickles_and_copies_whole(retry_after_s: float | None) 
 
 def test_the_other_errors_pickle_and_copy_too() -> None:
     error = ConfigurationError("Set T2V_GROQ__API_KEY.", details={"setting": "T2V_GROQ__API_KEY"})
-    for again in (pickle.loads(pickle.dumps(error)), copy.copy(error), copy.deepcopy(error)):  # noqa: S301
+    for again in (pickle.loads(pickle.dumps(error)), copy.copy(error), copy.deepcopy(error)):  # noqa: S301 - loads only bytes it dumped
         assert (type(again), again.message, again.details) == (
             ConfigurationError,
             error.message,

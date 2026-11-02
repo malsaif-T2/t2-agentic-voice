@@ -1,6 +1,6 @@
 # 004 · Garbage collection, round 1
 
-Status: active · Milestone: none (maintenance) · Started: 2026-11-02
+Status: completed · Milestone: none (maintenance) · Started: 2026-11-02 · Completed: 2026-11-02
 
 ## Goal
 
@@ -11,17 +11,17 @@ thresholds against what its read finds to be noise ([garbage-collection.md](../.
 
 ## Acceptance criteria
 
-- [ ] The inventory below is written before anything changes: duplications, drift, recurring
+- [x] The inventory below is written before anything changes: duplications, drift, recurring
   mistakes, bugs, what was considered and kept (with why), and the debt payable now.
-- [ ] Every fix preserves behavior; a bug found on the way gets a failing test first and is
+- [x] Every fix preserves behavior; a bug found on the way gets a failing test first and is
   listed here, and a change a caller could notice is listed and covered by a test.
-- [ ] A mistake seen twice becomes a check, a test or a doc, and golden-principles.md says which.
-- [ ] The payable rows of [tech-debt.md](../tech-debt.md) are paid, and the others brought up to
+- [x] A mistake seen twice becomes a check, a test or a doc, and golden-principles.md says which.
+- [x] The payable rows of [tech-debt.md](../tech-debt.md) are paid, and the others brought up to
   date.
-- [ ] `harness.toml`'s `[gc]` values are calibrated, each choice in the decision log.
-- [ ] After the gate, `uv run poe quality` is run and [quality.md](../../harness/quality.md)'s table
+- [x] `harness.toml`'s `[gc]` values are calibrated, each choice in the decision log.
+- [x] After the gate, `uv run poe quality` is run and [quality.md](../../harness/quality.md)'s table
   and each layer's gaps are updated.
-- [ ] garbage-collection.md's "Rounds" lists this round; `uv run poe check` passes, and the docs
+- [x] garbage-collection.md's "Rounds" lists this round; `uv run poe check` passes, and the docs
   this plan touched are updated.
 
 ## Plan
@@ -681,17 +681,305 @@ layer, and Block D last since the docs describe the code the other blocks leave.
   next minor release (the design's 5.4), pinned by a new test in `test_errors.py`. D-026 records
   it, and the debt row is removed. `uv run --offline poe check` passes: 1217 tests and 1 skipped,
   100% coverage (3604 statements), mypy strict on 144 files, arch and docs clean.
+- 2026-11-02: Blocks L, A and H, in parallel, each in its own worktree cut from the round's
+  branch after Block R, each checked by an agent that did not write it and then fixed once more:
+  - Block L, the library (13 commits, 0e085fe to 86b578f). Bugs, each with a failing test
+    first: doc8 (`.env.example` pinned every default, so a `.env` copied from it kept a default
+    that later moves; 9 keys), deb4 (`spelling_issues` missed an avoided spelling written with
+    an Arabic prefix, the old TD-025; a test per prefix, 23, and a rule that breaks itself), and
+    the check's medium finding (the prefix fix named one word twice when a rule lists a spelling
+    both bare and with ال; three tests, fixed in 7c6fe63). Also one list of the variables the
+    suite drops and one logging reset for every test (`tests/conftest.py`), `tests/leaks.py`
+    for what an error may show, `holds_words` once in `domain/text/words.py`, `setting_name()`
+    once in `core/config.py`, the adapter tests' helpers in `groq_support.py`, and docstrings
+    that say what the code does. Its gate at 86b578f: 1292 passed, 1 skipped, coverage 100%.
+  - Block A, the app (18 commits, 6ff8303 to e31db20). Bugs, each with a failing test first:
+    app0 (the talk-over import's refusal quoted the lab record and its transcript), app1 (9 of
+    the 13 reader refusals kept an exception chain to the input), a TOML file not in UTF-8
+    raised an uncaught `UnicodeDecodeError`, app7 (a settings refusal was logged with
+    structlog's unconfigured defaults), app14 (a failing setting outside the URL groups raised a
+    `KeyError`), app8 (run from a linked worktree, the recorder took an `--out` inside the main
+    checkout's tracked tree), and the block's own regression from its first app8 fix, which the
+    check found. Also one reader for every file the app reads, refusing by fields only; the
+    copied library values tied by `test_library_copies.py` (the owner's answer); `compare.py`
+    and `test_items.py` split; shared test support (`tests/ole5_voice/evals/conftest.py`,
+    `run_support.py`); the old TD-017 paid. The whole suite ran in about 45 s in its worktree,
+    down from 92 s at its base.
+    Its gate at e31db20: 1270 passed, 1 skipped, coverage 100% (3648 statements).
+  - Block H, the harness (18 commits, 2726287 to b143d80). Bugs, each with a failing test
+    first: har20 (`poe gc` skipped async methods and counted async dunders as duplication),
+    har21 (its path rule never saw `.js`, `.html`, `.css`, `.jsonl`, `.yaml` or `.txt` files,
+    or hidden folders), doc1 with deb18 (it called M0 completed while plan 000 is active, and
+    its commit count differed by one between branches), har14 (DOC-REF's invariants reader read
+    the whole of SECURITY.md when the heading had a trailing space, and counted fenced rows),
+    and the block's own ARCH-DEPS crash on a module that does not parse, which the check found
+    (90f4951). Also the `[gc]` calibration (the decision log), ARCH-DEPS and DOC-SAMPLE
+    (D-027), the three undeclared dependencies declared, `harness_config.py` split, `poe
+    quality` grading the apps, and `docs/generated/eval-history.md` read as history: the old
+    TD-006, TD-018, TD-024 and TD-027 paid. Its gate at b143d80: 1249 passed, 1 skipped,
+    coverage 100%.
+- 2026-11-02: The three blocks merged onto the round's branch in the order L, H, A (b3d598e,
+  1438fda, 5cbf520). L and A clashed in four run tests, where both had removed the same logging
+  setup in different ways: A's files were kept, and the `plain_logs` fixture and its uses were
+  dropped, since L's reset already runs before every test. `uv run --offline poe check` at
+  5cbf520: 'Success: no issues found in 172 source files', 'TOTAL 3674 0 100%', '1377 passed,
+  1 skipped'.
+- 2026-11-02: Block D, the living docs and the debt list, in 10 commits (d49a551 to ca4f7f7) in
+  the worktree `gc-round-1-D` cut at 5cbf520. No code changed: `git diff 5cbf520 HEAD --
+  packages apps examples scripts tests harness.toml pyproject.toml uv.lock .claude` is empty.
+  - The debt rows the round keeps are brought up to date. TD-004 and TD-015 cite each other for
+    M2's plan; TD-005's fork part, TD-011, TD-012, TD-014, TD-020 and TD-022 name M2's plan;
+    TD-021 is the owner's reading of Groq's usage page; TD-019 is at 380 lines. Three merges
+    are written over the rows that stay: TD-028 into TD-009, TD-010 into TD-031, TD-023 into
+    TD-001. Six new rows: TD-033 (the logging, the owner's answer), TD-034 to TD-036 (from
+    Blocks L and H), TD-037 (the guide's helper table) and TD-038 (no test records the
+    variables the SDKs read).
+  - The map and ARCHITECTURE.md say what the code holds. SECURITY.md names invariant 5's tests
+    and gains two trust boundaries and the Phoenix binding, marked for the owner's review. The
+    guide's "Variables to leave unset" holds every variable the SDKs read whatever is passed,
+    the proxy and CA ones included. The roadmap lists D-019 to D-026, and contract.md is an
+    open question there. The design docs say what M1 built and decided, with a note at each
+    difference the round's read found (3.3, 5.1, 6.1, 7.6, 9.7, 10.2).
+  - WORKING-RULES.md and the plans README gain the rule for counts (a count is copied from the
+    output of the command that printed it), commits outside a plan, what `.claude/launch.json`
+    assumes, DOC-REF's invariants and DOC-SAMPLE. golden-principles.md records the round's
+    promotions (the decision log), and quality.md holds the first grades and each unit's gaps.
+  - The check of the first 6 commits found 2 medium and 5 low issues, all fixed in 879b7ab to
+    ca4f7f7: the guide did not list the proxy and CA variables SECURITY.md said it listed; the
+    design's Status line claimed notes that 3.3 and 5.1 lacked; 16.3 called the Python floor
+    unwritten (D-018 wrote it); a commit count was written by hand; the merged rows lost
+    details; the loguru owner's citation (the design's 12.2); quality.md's count of unread
+    duplicate runs. The fixes also found 10.1's tracing path still called an open question.
+  - Each commit was gated alone. `uv run --offline poe check` at ca4f7f7: '1377 passed, 1
+    skipped', 'Total coverage: 100.00%'. One earlier run hung for over 10 minutes inside
+    `test_recorder.py` and was stopped; its rerun and ten other full runs passed (TD-040).
+- Correction to the first entry of this log (Block H's doc1): `poe gc` printed 'M0 (plan 001),
+  M1 (plan 002)' and 'commits: 101', not 100. As `poe gc` now counts, only M1 (plan 002) had
+  completed, since plan 000 of M0 is still active, and merges and the start commit are left
+  out.
+- 2026-11-02: The round's behavior changes, each covered by a test, for the changelog the design
+  starts at the first tag a teammate installs (its "Docs and versioning" row):
+  - Library (t2_agentic_voice):
+    - Changed: the base error is `T2VoiceError`, and the package root exports it.
+      `t2_agentic_voice.AppError` still works, with a DeprecationWarning, until the next minor
+      release (D-026, Block R).
+    - Changed: `spelling_issues` also names an avoided spelling written with an Arabic prefix (ال،
+      و، ف، ب، ل، ك, or two or three of them in order, 23 in all). It names it once per word and
+      rule, as the rule's spelling the word holds with the shortest prefix. It refuses a
+      SpellingRule whose `write` holds one that way (ValueError). It reads letters, not meaning: a
+      word that is a prefix and an avoided spelling, such as الاثنين (Monday) under a rule avoiding
+      اثنين, is named too (TD-035).
+    - Changed: settings errors no longer point at `.env.example`. Settings.from_env ends 'FIX:
+      correct each one in the environment or the .env file.', and the Groq adapter's constructor
+      ends 'FIX: give it a value the settings take.'
+    - Changed: `.env.example` leaves every key blank, with its default on a '# Default: <value>'
+      line above it. Resolved settings are unchanged.
+    - Dependencies: the library declares httpx>=0.28.1,<1, the Ole5 app pydantic>=2.13.5, and the
+      root dev group coverage>=7.17.0. No version in uv.lock moved.
+  - Ole5 app (poe commands):
+    - Reader refusals reworded:
+      - A file that does not fit reads '<file>: N problem(s), the first at <dotted field>: <msg>'
+        (no pydantic text, no quoted record or transcript).
+      - A missing or unreadable file, or a TOML file not in UTF-8, reads '<file>: cannot be read as
+        UTF-8 text'. It used to be an Errno text or an uncaught UnicodeDecodeError.
+      - A TOML syntax error reads '<file>: not TOML (<message>)'.
+      - A lab file that is not JSON reads '<file>: 1 problem(s), the first at the top level: Invalid
+        JSON: ...'.
+      - No reader leaves an exception chain to the input.
+    - poe eval --clips-from also takes a run's --out folder; --questions skips # comment lines.
+    - Name refusals state the whole rule: 'a lowercase letter or digit, then up to 127 lowercase
+      letters, digits, '_', '.' or '-'' (poe record --session, import_recordings --root, poe eval
+      --out, an --audio root's name).
+    - --audio messages:
+      - golden and record read 'give a root as ROOT=FOLDER, such as talkover=<its folder>'.
+      - poe eval's refusal reads 'The run is refused: --audio: <the rule broken>. FIX: give each
+        root once, as --audio ROOT=FOLDER.'
+      - golden and record expand ~ in an --audio folder.
+    - poe eval:
+      - --variant-timeout-s 0 gets argparse's 'must be a finite number of seconds above 0'.
+      - A refusal while the settings load is logged with the library's defaults (UTC ISO times).
+      - A failing setting outside the URL groups is a ConfigurationError (exit 2), not a KeyError
+        traceback.
+    - poe record's --out guard: an --out inside any worktree git lists is refused unless it is under
+      the recorder's own checkout's var/ or the main checkout's var/ (message unchanged).
+    - poe record:
+      - shows a typed review's reference with its whitespace collapsed;
+      - refuses to start on a review the import would refuse;
+      - reads a review file with a pass of 7 or more digits as a sidecar (Review.review_pass is at
+        most 999999);
+      - shows the source 'none' for a script line whose say is [""].
+    - eval-history and eval-compare log their errors and status as log lines on stdout
+      (history_not_rendered, history_rendered, comparison_not_made), instead of 'eval-history: ...'
+      or 'eval-compare: ...' on stderr. A redirected compare report then holds a refusal, so the
+      guide says to check the exit code.
+    - App-internal names removed or moved (no caller outside the repository): takes.load_script,
+      items.accepted, items.Source, worktree.run_commit, run_parts.canonical and is_name,
+      scorecard.normalize_text and first_problem, compare.load_scorecard (now in scorecard.py),
+      recorder_load.EVALS and is_name, import_recordings.root_name, run.MODELS, GROQ_BASE_URL and
+      HISTORY_FILE, run._settings, _shown and _show (now in run_settings.py).
+  - Harness:
+    - poe gc:
+      - 'milestones completed' leaves out a milestone that an active plan still names ('Mx (plans
+        NNN, NNN)').
+      - The commit count leaves out merges and the start commit.
+      - Duplicates are found at 25 tokens, and async methods are read.
+      - New hooks: do_GET, do_POST, log_message, on_end.
+      - Paths of .js, .html, .css, .jsonl, .yaml and .txt files, and in hidden folders, are read.
+      - In tests/, only comments and docstrings are read.
+      - History comes from [docs] historical.
+      - Planned docs are counted per doc.
+    - poe gc and poe quality report a broken harness.toml as poe arch does: sorted violations with
+      FIX lines and a count line.
+    - harness.toml: the required [gc] planned_docs is new; [docs] historical gains
+      docs/generated/eval-history.md; [docs] code_exempt gains tests/harness/test_doc_refs.py;
+      [quality] duplication_floor goes from 5 to 10.
+    - poe arch: new rule ARCH-DEPS. An unparsable module is ARCH-PARSE only. ARCH-PRINT's and
+      ARCH-ENV's FIX lines are the owners' text.
+    - poe docs: new rule DOC-SAMPLE. DOC-REF reads entries through doc_registers: fenced entries no
+      longer count, an '## Invariants ' heading with trailing spaces opens the section, and decision
+      entries match '^## D-(\d+)'. eval-history.md is history for DOC-REF and DOC-MILESTONE.
+    - poe quality: rows for ole5_voice and minimal_example. A layer with no code prints 'empty'.
+      __init__.py files that hold only a docstring are left out of the size and docstring shares.
+      The duplication zero point is 10 runs.
+- 2026-11-02: The close, on the round's branch after Block D's merge (47c1e3d). The line-each
+  leftovers are fixed and TD-039 and TD-040 added (the decision log); `pyproject.toml` sets
+  pytest's `faulthandler_timeout` to 120 s; D-027 is written, Proposed. Nine rows leave
+  tech-debt.md: the paid TD-006, TD-017, TD-018, TD-024, TD-025 and TD-027, and TD-028, TD-010
+  and TD-023, whose text Block D wrote into TD-009, TD-031 and TD-001 (TD-007 left with Block
+  R). The roadmap links no active plan outside the milestones, and garbage-collection.md's
+  "Rounds" lists this one. `uv run --offline poe check`: '199 files already formatted', 'All
+  checks passed!', 'Success: no issues found in 172 source files', 'check_architecture: OK (172
+  files checked)', 'check_docs: OK (26 files checked)', 'TOTAL 3674 0 100%', '1377 passed, 1
+  skipped in 51.26s' (the skip is the file-link case, TD-001); `uv lock --check --offline`:
+  'Resolved 54 packages'. `uv run --offline poe quality` gives the grades quality.md holds, its
+  two moved sizes copied in (`config.py` 254, `check_docs.py` 267). `uv run --offline poe gc`:
+  'Duplicates (13 runs of 25+ tokens outside tests/)', 'Unreferenced definitions (0)', 'Modules
+  above 300 lines (19)', 'Unresolved paths (2)' (the guide's two planned pages), no `noqa`
+  without a reason.
 
 ## Decision log
 
-- 2026-11-02: The owner's answers to the four calls the read raised ("The owner's decisions"
-  is not a section of a maintenance plan, so they are quoted here): the library's logging, which
-  does not meet the accepted design's contract (the design's 3.3 and 10.2): "Fix it in M2
-  (Recommended)", with a debt row now; `AppError` against the design's `T2VoiceError` (the debt row on it, paid by D-026):
-  "Rename it now (Recommended)", keeping `AppError` as a deprecated alias; the library values the
-  app copies because no facade exports them: "Tie them with tests (Recommended)", the public API
-  unchanged; the architecture docs and `harness.toml` that still give the library the knowledge
-  base and ticket adapters, which D-017 placed in the app: "Leave for M4".
+- 2026-11-02: The owner's answers to the four calls the read raised ("The owner's decisions" is not
+  a section of a maintenance plan, so they are quoted here): the library's logging, which does not
+  meet the accepted design's contract (the design's 3.3 and 10.2): "Fix it in M2 (Recommended)",
+  with a debt row now; `AppError` against the design's `T2VoiceError` (the debt row on it, paid by
+  D-026): "Rename it now (Recommended)", keeping `AppError` as a deprecated alias; the library
+  values the app copies because no facade exports them: "Tie them with tests (Recommended)", the
+  public API unchanged; the architecture docs and `harness.toml` that still give the library the
+  knowledge base and ticket adapters, which D-017 placed in the app: "Leave for M4".
 - 2026-11-02: This round takes 004, not the next free number: M2's execution plan, being drafted
   on its own branch for the owner's approval, already holds 003 there and keeps it. The agent's
   choice.
+- 2026-11-02: [gc] min_tokens 35 -> 25. At 35 no run showed, while this code's real copies run 25 to
+  34 tokens: runs.py:108=121, golden.py:310=recorder.py:233,
+  import_recordings.py:180=import_talkover.py:284, and in scripts/ the config-error handling and
+  package-name checks this round merged. At 25 the report listed 14 runs: 10 in the app, 1 library
+  port signature restated by its adapter, and 3 look-alikes in scripts/ that the round keeps. At
+  ca4f7f7, poe gc prints 'Duplicates (13 runs of 25+ tokens outside tests/)'.
+- 2026-11-02: [gc] size_watch stays 300. A module grows by a median of 28 lines per commit, and by
+  114 at the 75th percentile, so 100 lines under the cap is about one large change. 23 modules were
+  above the watch after Block H (was 27), none of them in scripts/. At ca4f7f7, poe gc prints
+  'Modules above 300 lines (19)'.
+- 2026-11-02: [gc] due_after_commits stays 40. It now counts commits other than merges (a merge
+  repeats its branch's commits) after the start commit (before the first round, the repository's
+  first commit). It reads 84 at 2e8f15a, where it printed 103, and 82 at 5f1c60a, where it printed
+  101.
+- 2026-11-02: [gc] hooks += do_GET, do_POST, log_message (http.server's BaseHTTPRequestHandler) and
+  on_end (OpenTelemetry's SpanProcessor). Unreferenced definitions go from 4 to 0. Pipecat's
+  process_frame is not added until voice/ uses it.
+- 2026-11-02: [gc] path_ignored += Ole5-chatbot/ (the prototype that code cites as a spec, D-010),
+  groq/, httpx/, requests/, opentelemetry/ (installed libraries' files cited in debt rows). This
+  silences 14 paths.
+- 2026-11-02: [gc] path_bases += apps/ole5-voice-agent (the app's member folder, whose evals/ the
+  docs and code name). This silences 8 paths.
+- 2026-11-02: [gc] foreign_names += pipecat (as a dotted prefix: the report now matches a whole name
+  or a dotted prefix as well as the last part), FrameProcessor, LLMService, TTSService,
+  SegmentedSTTService, GroqSTTService, basicConfig, register_at_fork, set_tracer_provider,
+  _handle_fork, _platform, trust_env, include_router, HTTP_PROXY, HTTPS_PROXY, ALL_PROXY,
+  SSL_CERT_FILE, SSL_CERT_DIR. Each one silences at least one name. MAJOR.MINOR.PATCH and HELPDESK_
+  were not added: only the planned design cites them, and the design is now counted, not listed.
+- 2026-11-02: [gc] name_files += apps/*/src/**/*.js (recorder.js holds setSinkId and
+  echoCancellation). The glob is narrow, so a future node_modules/ is never read.
+- 2026-11-02: new [gc] planned_docs = ["docs/design/package-design.md"]. The design names the API of
+  M2 to M7, so 269 of its names and 12 of its paths are not in the code yet. They are counted in one
+  line per doc rather than listed. Names go from 304 to 6, and unresolved paths from 68 to 10 (after
+  har21 widened the path rule from 59 to 68). At ca4f7f7, poe gc prints 'Unresolved paths (12)': 9
+  in plan 004, the guide's two planned pages (reference/settings.md, reference/api.md), and
+  import_talkover.py:279.
+- 2026-11-02: [quality] duplication_floor 5 -> 10. At 25 tokens, the 3 look-alikes the round keeps
+  in scripts/ would cost scripts a letter at 5 (A 91 -> B 87).
+- 2026-11-02: dependencies, all offline from the lock, nothing downloaded: httpx>=0.28.1,<1 in the
+  library (TD-027; httpx 0.28.1, BSD-3-Clause), pydantic>=2.13.5 in the Ole5 app (the library's own
+  bound; pydantic 2.14.1, MIT), coverage>=7.17.0 in the root dev group (the locked version;
+  Apache-2.0).
+- 2026-11-02: ARCH-DEPS promotes deb6's recurring mistake: code imported a library that another
+  package brings, 4 times (requests and httpx in the library, pydantic in the app, coverage in
+  scripts/). It matches a module on its top-level name, so a namespace package's other distributions
+  are not checked (TD-036). A module that does not parse is left to ARCH-PARSE.
+- 2026-11-02: DOC-SAMPLE pays TD-024: a block after a `.py` link is a run of that file's lines. It
+  reads the same code blocks as the prose rules (doc_text.code_blocks), and on today's docs it
+  checks the guide's two samples with no false positive.
+- 2026-11-02: har29 was a proposal for the owner. The block's task directed it, and poe quality now
+  grades each [[apps]] entry as one unit.
+- 2026-11-02: GP-19, a value leaked through an error, a chain, a log line or a warning (fixed at
+  least six times in M1, lib3/doc13). It is enforced by tests/leaks.py (shown, holding) and checked
+  by tests/t2_agentic_voice/test_leaks.py, by test_config.py's sweep of every setting, and in the
+  app by test_readers.py (every reader refuses naming fields only, with no chain to the input).
+- 2026-11-02: GP-20, a core rule copied instead of reused (at least three times, lib2/doc14). A
+  library value an app restates is tied by tests/ole5_voice/evals/test_library_copies.py (the
+  owner's ruling: tie, not export), and by the Outcome literal in test_runs.py.
+- 2026-11-02: GP-16, hand-counted numbers corrected again and again (doc12). A new WORKING-RULES
+  rule: a count or a measured number is copied from the output of the command that printed it, with
+  the command named. GP-16 names it.
+- 2026-11-02: GP-24 (new), an undeclared import (4 times, deb6): ARCH-DEPS.
+- 2026-11-02: GP-09, the guide's samples compared by review only (TD-024): DOC-SAMPLE.
+- 2026-11-02: GP-05, splits that land just under the cap and split again (har25). The plans README's
+  size rule: a split leaves each module at or under [gc] size_watch, and a plan that grows one above
+  it names its split.
+- 2026-11-02: GP-04, .env.example pinning defaults (doc8):
+  tests/t2_agentic_voice/core/test_env_example.py (each key blank, its default in a comment).
+- 2026-11-02: GP-23 (new, har23): the public-API rules that CLAUDE.md's first non-negotiable rests
+  on had no principle. They now do: ARCH-PUBLIC, ARCH-FACADE, ARCH-WORDS. GP-02 gains
+  ARCH-CONSTRUCT.
+- 2026-11-02: deb8 merges TD-028 into TD-009, not the reverse, because words.py's docstring cites
+  TD-009 and Block D may change no code. The row keeps all three ways proposed. deb9 merges TD-010
+  into TD-031 (the roadmap's M2 line cites TD-031) and keeps each part's own trigger and ruling.
+  deb10 merges TD-023 into TD-001. The merged text is written over the rows that stay (d49a551,
+  026ff97), and the absorbed rows are removed at the close.
+- 2026-11-02: doc4 (contract.md promised for M0, listed nowhere in plan 000) is the owner's call,
+  put as an open question in the roadmap. The guide's row and the design's 14 say the page is not
+  written yet.
+- 2026-11-02: doc5: the two new trust-boundary rows (the recorder's browser, the environment the
+  SDKs read) and the Phoenix row's 127.0.0.1 clause are added from what M1 built and tested.
+  SECURITY.md marks them as plan 004's, for the owner's review (D-007). The environment row points
+  to the guide's list rather than restating it.
+- 2026-11-02: doc9/deb13: the guide's 'Variables to leave unset' is the list the other docs point
+  to, and it holds every variable the SDKs read whatever is passed, the proxy and CA variables
+  included (set only for a proxy and a CA you trust, TD-004, TD-015). config.py's module docstring
+  still restates the GROQ_* and OTEL_* names (leftovers).
+- 2026-11-02: the design's Status line says where plan 004's read found a difference, a note says so
+  (3.3, 5.1, 6.1, 7.6, 9.7, 10.2). It does not claim every difference across a design that runs to
+  M7.
+- 2026-11-02: doc27: the settings page takes the path in the design's 14,
+  docs/guide/reference/settings.md, and 7.7 and the guide's index follow it. GP-11 places generated
+  docs in docs/generated/, while the design's 14 places the generated reference pages in the guide.
+  TD-037 leaves that choice to M2's plan, which writes the first of them.
+- 2026-11-02: doc15 and deb22 need code (a generated API page; a test that records the variables the
+  SDKs read), so they become TD-037 and TD-038 for M2's plan. doc29's optional DOC-WRAP rule is not
+  proposed; the lines are rewrapped by hand.
+- 2026-11-02: GP-03 keeps its enforcement column. Block A's text needs ARCH-PRINT over the [[apps]],
+  which harness.toml and arch_module.py do not have yet, so the row points to TD-033 instead.
+- 2026-11-02: quality.md's table is poe quality's output as printed, header included ('Modules
+  within 300 lines'), per the new rule for counts.
+- 2026-11-02: The close's choices, the agent's. The leftovers that were a line each are fixed
+  here: `harness.toml`'s FIX text ("a T2VoiceError"), `scored_form`'s docstring (the verdict is
+  the app's matcher, not the library's), `import_talkover.py`'s docstring path, `check_docs.py`'s
+  re-export of `extract_links`, a reason on both `noqa: S301` lines, and `core/config.py`'s
+  pointer to the guide's list. Two that need a rule or a cause become rows: TD-039 (ARCH-PRINT
+  over the apps, Block A's app21, a rule change for the owner) and TD-040 (the one hang, its
+  cause unknown; pytest's own `faulthandler_timeout` is set to 120 s so the next one prints every
+  thread's stack). D-027 records ARCH-DEPS and DOC-SAMPLE as Proposed: decisions.md says a rule
+  change records its reason there, and the owner has not ruled on the two checks. Left for the
+  next round or M2's plan: the 7 duplicate runs in the app that the calibration showed after
+  Block A's read (quality.md's gaps), and the guide's two planned pages, which `poe gc` lists as
+  unresolved until M2 writes them.
