@@ -13,9 +13,8 @@ from pathlib import Path
 
 import pytest
 from ole5_voice.evals import answerers, audio, items, run, run_parts
-from ole5_voice.evals.items import EVALS
+from ole5_voice.evals.items import EVALS, HISTORY_FILE
 from ole5_voice.evals.models import Item, Split
-from ole5_voice.evals.run import HISTORY_FILE
 from ole5_voice.evals.run_parts import Parts
 from ole5_voice.evals.runs import SCORECARD_FILE, Scorecard
 from ole5_voice.evals.split import load_split

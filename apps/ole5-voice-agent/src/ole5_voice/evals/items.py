@@ -5,7 +5,8 @@ files of `evals/` they are checked against.
 `Manifest` a file: `talkover.json`, and `<root>-<session>.json` for each recording session),
 `frozen.json` (the expected answers `poe golden` freezes), `split.json`, `strata.toml` (the
 registered counts), `terms.toml` (the product terms), `script.toml` (the new recordings'
-script), `spelling.toml` (the spelling guide) and `allowed_in_source.toml`. Every file is
+script), `spelling.toml` (the spelling guide), `allowed_in_source.toml` and `history.jsonl` (the
+run history, `history.py`). Every file is
 parsed strictly as it is read, and a file that cannot be read is a `GoldenSetError` naming it,
 never echoing what it holds.
 """
@@ -33,6 +34,7 @@ STRATA_FILE: Final = "strata.toml"
 TERMS_FILE: Final = "terms.toml"
 SCRIPT_FILE: Final = "script.toml"
 SPELLING_FILE: Final = "spelling.toml"
+HISTORY_FILE: Final = "history.jsonl"  # a run's line is also copied beside its scorecard
 
 Source = Literal["script", "typed", "none"]
 
