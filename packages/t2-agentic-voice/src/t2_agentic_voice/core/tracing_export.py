@@ -2,10 +2,9 @@
 bounded export queue, the provider itself, and the OTLP exporter with its own session.
 
 Nothing here blocks or raises into the thread that ends a span, and every value the SDK and its
-exporter would read from an `OTEL_*` variable is passed (plan 002's decision log);
-`OTEL_SDK_DISABLED` and `OTEL_PYTHON_CONTEXT` are read whatever is passed (TD-005). Moved out
-of `core/tracing.py`, which had reached ARCH-SIZE's cap, in plan 002's review of the merged
-tracks.
+exporter would read from an `OTEL_*` variable is passed (plan 002's decision log). Three are
+read whatever is passed (TD-005): `OTEL_SDK_DISABLED`, `OTEL_PYTHON_CONTEXT`, and, in a child
+process forked after the provider was built, `OTEL_EXPERIMENTAL_RESOURCE_DETECTORS`.
 """
 
 from __future__ import annotations
@@ -41,7 +40,8 @@ CLOSE_S = 3.0  # the longest `shutdown` gives the last batch before counting it 
 # All eight, so none comes from an OTEL_*_LIMIT variable: the SDK's own 128 for the attributes,
 # events, links, a span's, an event's and a link's attributes; and a cap on a value's length.
 _LIMITS = SpanLimits(128, 128, 128, 128, 128, 128, 8192, 8192)
-# All an export request carries, beside Content-Length and Host: no OTEL_* header, no .netrc login.
+# All an export request carries, beside the Content-Length, the Host and the
+# `Accept-Encoding: identity` that the transport adds: no OTEL_* header, no .netrc login.
 EXPORT_HEADERS = {
     "Content-Type": "application/x-protobuf",
     "User-Agent": f"t2-agentic-voice/{VERSION}",
@@ -138,9 +138,10 @@ def private_provider(queue: SpanQueue, project: str | None) -> SdkTracerProvider
 
 
 class ExportSession(requests.Session):
-    """The OTLP exporter's own session. Every request carries `EXPORT_HEADERS` alone: the
-    exporter adds `OTEL_EXPORTER_OTLP_HEADERS` (or its `_TRACES_` form) under any headers it is
-    given (plan 002's decision log), and requests a `.netrc` login."""
+    """The OTLP exporter's own session. Every request carries `EXPORT_HEADERS` and only what
+    the transport adds (the Content-Length, the Host, `Accept-Encoding: identity`): the exporter
+    adds `OTEL_EXPORTER_OTLP_HEADERS` (or its `_TRACES_` form) under any headers it is given
+    (plan 002's decision log), and requests a `.netrc` login."""
 
     def request(  # type: ignore[override]
         self, method: str, url: str | bytes, **kwargs: Any

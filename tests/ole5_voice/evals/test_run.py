@@ -15,7 +15,7 @@ from ole5_voice.evals import run
 from ole5_voice.evals.models import Item
 from ole5_voice.evals.run_parts import Parts
 from ole5_voice.evals.runs import HistoryLine, VariantResult
-from t2_agentic_voice import ConfigurationError, ProviderError, Settings, configure_logging
+from t2_agentic_voice import ConfigurationError, ProviderError, Settings
 from t2_agentic_voice.ports import AudioClip, SpeechToText, Transcript
 
 from tests.ole5_voice.evals.fakes import (
@@ -79,11 +79,6 @@ class Setup:
     def results(self) -> tuple[VariantResult, ...]:
         ((_, results, _, _),) = self.writer.calls
         return results
-
-
-@pytest.fixture(autouse=True)
-def _plain_logs() -> None:
-    configure_logging("INFO", "console")  # lines read as plain text, whatever ran before
 
 
 def _calls(setup: Setup) -> int:

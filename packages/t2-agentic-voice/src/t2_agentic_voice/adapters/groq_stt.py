@@ -3,7 +3,7 @@
 `GroqSTT` sends one clip, wrapped as WAV, to Groq's transcription endpoint with the model
 `stt.model` names, and returns its `Transcript`. How it keeps to the design's 7.3 ("Other names
 are never read") and keeps the key out of everything but the request, as plan 002's decision log
-reads groq 1.7.0:
+reads groq 1.7.0 (tests/t2_agentic_voice/test_read_versions.py fails on another version):
 
 - The key, `groq.base_url` and the timeout are always passed to the SDK, so it never falls back
   to `GROQ_API_KEY` or `GROQ_BASE_URL`. Its own retries are off: the caller asks again, and
@@ -40,7 +40,15 @@ import wave
 import httpx
 from pydantic import BaseModel, ConfigDict, Field, JsonValue, SecretStr, ValidationError
 
-from t2_agentic_voice.core.config import PREFIX, GroqSettings, Settings, SttModel, SttSettings
+from t2_agentic_voice.core.config import (
+    KEY_FILE_SETTING,
+    KEY_SETTING,
+    GroqSettings,
+    Settings,
+    SttModel,
+    SttSettings,
+    setting_name,
+)
 from t2_agentic_voice.core.errors import ConfigurationError, ProviderError
 from t2_agentic_voice.core.logging import logging_unchanged
 from t2_agentic_voice.domain.ports.speech_to_text import AudioClip, DataFlow, Transcript
@@ -57,7 +65,6 @@ _MIN_BILLED_S = 10.0
 _LIMITS = httpx.Limits(max_connections=20, max_keepalive_connections=10, keepalive_expiry=300.0)
 # What the SDK sends as its own user agent (`AsyncGroq/Python <version>`).
 _USER_AGENT = f"AsyncGroq/Python {groq_version}".encode("ascii")
-_KEY_SETTING = f"{PREFIX}GROQ__API_KEY"
 # Groq's "Your Data" page, as the design's 6.1 gives it.
 _DATA_FLOW = DataFlow(
     provider="Groq",
@@ -138,9 +145,10 @@ class GroqSTT:
         self, clip: AudioClip, *, language: str | None, prompt: str | None
     ) -> Transcript:
         """What was said in `clip` (the port's `transcribe`): Whisper's text with the space around
-        it removed, the language named (else the one Groq reports), the confidence and the
-        no-speech estimate over Whisper's segments weighted by their length, as the prototype
-        weighted them, and the billed seconds, never under Groq's minimum of 10 s. An empty
+        it removed, the language named (else the one Groq reports), the confidence (Whisper's
+        `avg_logprob`, a log-probability of 0 or below) and the no-speech estimate, each the
+        mean over Whisper's segments weighted by their length, as the prototype weighted them,
+        and the billed seconds, never under Groq's minimum of 10 s. An empty
         `language` or `prompt` counts as none. The whole request, sent once, takes at most
         `timeout_s`. Raises ProviderError on every failure, an answer it cannot read included."""
         try:
@@ -296,9 +304,9 @@ def _retry_after(value: str | None) -> float | None:
 
 def _no_key() -> ConfigurationError:
     return ConfigurationError(
-        f"No Groq API key is set. FIX: set {_KEY_SETTING}, or {_KEY_SETTING}_FILE to a file "
+        f"No Groq API key is set. FIX: set {KEY_SETTING}, or {KEY_FILE_SETTING} to a file "
         "that holds the key.",
-        details={"setting": _KEY_SETTING},
+        details={"setting": KEY_SETTING},
     )
 
 
@@ -308,20 +316,20 @@ def _checked(api_key: SecretStr, model: SttModel, base_url: str, timeout_s: floa
     settings refuse as they load, by the same rules (GP-20). Each error names the setting and
     never the value; it is raised outside the handler, so no exception chain leads to it."""
     checks = (
-        (f"{PREFIX}GROQ__", lambda: GroqSettings(api_key=api_key, base_url=base_url)),
-        (f"{PREFIX}STT__", lambda: SttSettings(model=model, timeout_s=timeout_s)),
+        ("groq", lambda: GroqSettings(api_key=api_key, base_url=base_url)),
+        ("stt", lambda: SttSettings(model=model, timeout_s=timeout_s)),
     )
-    for prefix, check in checks:
+    for group, check in checks:
         try:
             check()
         except ValidationError as error:
             problem = error.errors(include_input=False, include_url=False)[0]
         else:
             continue
-        setting = prefix + "__".join(str(part).upper() for part in problem["loc"])
+        setting = setting_name(group, *problem["loc"])
         raise ConfigurationError(
             f"The Groq adapter refuses its {setting} ({problem['msg']}). FIX: give it a value "
-            "the settings take; .env.example lists every setting.",
+            "the settings take.",
             details={"setting": setting},
         )
     key = GroqSettings(api_key=api_key).resolved_api_key()

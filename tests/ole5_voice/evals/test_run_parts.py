@@ -24,7 +24,7 @@ from ole5_voice.evals.run_parts import (
     load_plan,
 )
 from ole5_voice.evals.runs import Answer, Metrics, Request, Scorecard, SegmentAnswer
-from t2_agentic_voice import InvalidRequestError, configure_logging
+from t2_agentic_voice import InvalidRequestError
 
 from tests.ole5_voice.evals import samples
 from tests.ole5_voice.evals.fakes import FakeGoldenSet, FakeMatcher
@@ -125,11 +125,6 @@ def _parts(golden: FakeGoldenSet) -> Parts:
         load_split=golden.load_split,
         load_matcher=lambda path: FakeMatcher(),
     )
-
-
-@pytest.fixture(autouse=True)
-def _plain_logs() -> None:
-    configure_logging("INFO", "console")  # lines read as plain text, whatever ran before
 
 
 @pytest.fixture

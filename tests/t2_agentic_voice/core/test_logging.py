@@ -5,16 +5,9 @@ from __future__ import annotations
 import json
 import logging
 import sys
-from collections.abc import Iterator
 
 import pytest
 from t2_agentic_voice.core.logging import configure_logging, get_logger, logging_unchanged
-
-
-@pytest.fixture(autouse=True)
-def _reset() -> Iterator[None]:
-    yield
-    configure_logging()
 
 
 def test_json_events_carry_their_context(capsys: pytest.CaptureFixture[str]) -> None:

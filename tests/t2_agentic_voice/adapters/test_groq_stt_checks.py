@@ -18,7 +18,8 @@ from t2_agentic_voice.adapters.groq_stt import GroqSTT
 from t2_agentic_voice.core.errors import ConfigurationError, ProviderError
 from t2_agentic_voice.domain.ports.speech_to_text import AudioClip
 
-from tests.t2_agentic_voice.adapters.test_groq_stt import CLIP, KEY, SETTING, FakeGroq, call, parts
+from tests.leaks import holding, shown
+from tests.t2_agentic_voice.adapters.groq_support import CLIP, KEY, SETTING, FakeGroq, call, parts
 
 URLS = ("http://api.groq.com", "https://made:up@api.groq.com", "https://api.groq.com?made=up")
 MORE_URLS = ("https://api.groq.com#made-up", "https://", "https://api.groq.com:99999", "https://[x")
@@ -46,9 +47,19 @@ def test_built_in_code_it_refuses_what_settings_refuse(given: dict[str, Any], se
     assert raised.value.details == {"setting": setting}
     assert setting in raised.value.message and "FIX: " in raised.value.message
     if "api_key" in given and given["api_key"].get_secret_value().strip():
-        assert given["api_key"].get_secret_value() not in str(raised.value)
+        assert holding(given["api_key"].get_secret_value(), shown(raised.value)) == []
     if given.get("base_url", "https://") != "https://":  # the rule names the scheme itself
-        assert given["base_url"] not in str(raised.value)
+        assert holding(given["base_url"], shown(raised.value)) == []
+
+
+def test_a_refused_value_is_named_and_no_file_of_the_repository() -> None:
+    """An installed library ships no `.env.example`, so the FIX line names only the setting."""
+    with pytest.raises(ConfigurationError) as raised:
+        GroqSTT(**(VALID | {"timeout_s": 0.0}))
+    assert raised.value.message == (
+        "The Groq adapter refuses its T2V_STT__TIMEOUT_S (Input should be greater than 0). "
+        "FIX: give it a value the settings take."
+    )
 
 
 def test_a_bad_key_is_refused_with_the_settings_own_fix_line() -> None:
@@ -106,8 +117,8 @@ def test_a_content_type_line_in_another_case_fails_the_request_and_sends_nothing
     assert (error.kind, error.retryable, error.retry_after_s) == ("rejected", False, None)
     assert (fake.requests, error.details) == ([], {"error": "foreign_boundary"})
     assert (error.__cause__, error.__suppress_context__) == (None, True)
-    shown = caplog.text + "".join(capsys.readouterr()) + str(error)
-    assert KEY not in shown and "madeup" not in shown
+    surfaces = shown(error, caplog=caplog, capsys=capsys)
+    assert (holding(KEY, surfaces), holding("madeup", surfaces)) == ([], [])
 
 
 def test_audio_that_holds_a_boundary_line_adds_no_form_field() -> None:

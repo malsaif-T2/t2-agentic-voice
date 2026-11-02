@@ -1,10 +1,11 @@
-"""The redaction hook: what a team does not want exported is replaced before a span leaves.
+r"""The redaction hook: what a team does not want exported is replaced before a span leaves.
 
 The patterns are the team's (`tracing.redact`), applied by the tracing helpers to every text
 attribute of every span they make (the design's 10.1). Every match of every pattern is found in
-the original text, and each stretch any of them matched becomes one replacement, so patterns
-that overlap leave no piece of a match behind, and a replacement is never matched again. Public
-through the `tracing` facade (D-021).
+the original text, and matches that overlap become one replacement, so patterns that overlap
+leave no piece of a match behind, and a replacement is never matched again. Matches that only
+touch are replaced one by one, as `re.sub` replaces them: `\d` turns `123` into three
+replacements. Public through the `tracing` facade (D-021).
 """
 
 from __future__ import annotations

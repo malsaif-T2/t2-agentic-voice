@@ -14,13 +14,10 @@ import logging
 import os
 import secrets
 import socket
-import struct
 import subprocess
 import sys
 import threading
 import time
-import traceback
-from collections.abc import Awaitable, Callable
 from pathlib import Path
 from typing import Any, get_args, get_type_hints
 
@@ -28,70 +25,29 @@ import httpx
 import pytest
 from pydantic import SecretStr
 from t2_agentic_voice.adapters.groq_stt import GroqSTT
-from t2_agentic_voice.core.config import GroqSettings, Settings, SttSettings
+from t2_agentic_voice.core.config import GroqSettings, SttSettings
 from t2_agentic_voice.core.errors import ConfigurationError, ProviderError
-from t2_agentic_voice.domain.ports.speech_to_text import AudioClip, SpeechToText, Transcript
+from t2_agentic_voice.domain.ports.speech_to_text import AudioClip, SpeechToText
 
-FIXTURE = Path(__file__).parents[1] / "fixtures" / "groq_stt_request.json"
-BASELINE = json.loads(FIXTURE.read_text(encoding="utf-8"))
-KEY, OTHER = "made-up-settings-key-0123", "made-up-shell-key-4567"
-SETTING = "T2V_GROQ__API_KEY"
-# Block 0's fixed clip: 1 s at 16 kHz, sample i = (i * 97) % 4096 - 2048.
-CLIP = AudioClip(pcm16=b"".join(struct.pack("<h", (i * 97) % 4096 - 2048) for i in range(16_000)))
-SEGMENTS = [
-    {"id": 0, "start": 0.0, "end": 0.6, "avg_logprob": -0.2, "no_speech_prob": 0.1},
-    {"id": 1, "start": 0.6, "end": 1.0, "avg_logprob": -0.5, "no_speech_prob": 0.3},
-    {"id": 2, "start": 1.0, "end": 2.0},  # gives neither value: weighs in neither
-]
-ANSWER = {"text": "  made-up words ", "language": "Arabic", "segments": SEGMENTS, "x_groq": {}}
+from tests.isolation import dropped
+from tests.leaks import holding, shown
+from tests.t2_agentic_voice.adapters.groq_support import (
+    ANSWER,
+    BASELINE,
+    CLIP,
+    KEY,
+    OTHER,
+    SETTING,
+    FakeGroq,
+    Reply,
+    call,
+    groq_settings,
+    parts,
+)
+
 SENT = {"host", "accept", "accept-encoding", "connection", "user-agent", "content-type"}
 SENT |= {"content-length", "authorization"}
 BOUNDARY = "made-up-boundary-0123456789abcdef"  # what `fixed_boundary` makes every adapter draw
-
-Reply = httpx.Response | Exception | Callable[[httpx.Request], Awaitable[httpx.Response]]
-
-
-class FakeGroq(httpx.AsyncBaseTransport):
-    """Answers each request with its next reply, keeping every request it receives."""
-
-    def __init__(self, *replies: Reply) -> None:
-        self.replies = list(replies) or [httpx.Response(200, json=ANSWER)]
-        self.requests: list[httpx.Request] = []
-
-    async def handle_async_request(self, request: httpx.Request) -> httpx.Response:
-        self.requests.append(request)
-        reply = self.replies.pop(0)
-        if isinstance(reply, Exception):
-            raise reply
-        return reply if isinstance(reply, httpx.Response) else await reply(request)
-
-
-def settings(timeout_s: float = 6.0, **groq: Any) -> Settings:
-    given = GroqSettings(**({"api_key": SecretStr(KEY)} | groq))
-    return Settings(_env_file=None, env="test", groq=given, stt=SttSettings(timeout_s=timeout_s))
-
-
-async def call(fake: httpx.AsyncBaseTransport, clip: AudioClip = CLIP, **given: Any) -> Transcript:
-    language, prompt = given.pop("language", "ar"), given.pop("prompt", None)
-    adapter = GroqSTT.from_settings(settings(**given), transport=fake)
-    try:
-        return await adapter.transcribe(clip, language=language, prompt=prompt)
-    finally:
-        await adapter.aclose()
-
-
-def parts(request: httpx.Request) -> dict[str, tuple[dict[str, str], bytes]]:
-    """The multipart body's parts by field name: each one's headers (lowercase names) and bytes."""
-    kind, _, boundary = request.headers["content-type"].partition("; boundary=")
-    chunks = request.content.split(b"--" + boundary.encode())
-    assert (kind, chunks[0], chunks[-1]) == ("multipart/form-data", b"", b"--\r\n")
-    found = {}
-    for chunk in chunks[1:-1]:
-        head, _, data = chunk.removeprefix(b"\r\n").removesuffix(b"\r\n").partition(b"\r\n\r\n")
-        lines = [line.decode().split(": ", 1) for line in head.split(b"\r\n")]
-        headers = {name.lower(): value for name, value in lines}
-        found[headers["content-disposition"].split('"')[1]] = (headers, data)
-    return found
 
 
 def test_the_request_is_block_0s_baseline() -> None:
@@ -163,7 +119,7 @@ def test_a_cancel_ends_the_request_at_once_and_closes_its_connection() -> None:
             hung_up.set()
 
     async def scenario(transport: Local) -> tuple[float, bool, set[asyncio.Task[Any]], bool]:
-        adapter = GroqSTT.from_settings(settings(), transport=transport)
+        adapter = GroqSTT.from_settings(groq_settings(), transport=transport)
         task = asyncio.create_task(adapter.transcribe(CLIP, language="ar", prompt=None))
         async with asyncio.timeout(5):
             while not accepted.is_set():
@@ -247,9 +203,7 @@ def test_the_key_is_in_no_error_or_log_line_even_when_echoed(
         asyncio.run(call(FakeGroq(echo)))
     error = raised.value
     assert any(record.name.startswith("groq") for record in caplog.records)  # the SDK's debug
-    shown = [str(error), repr(error), json.dumps(error.details), caplog.text, *capsys.readouterr()]
-    shown += ["".join(traceback.format_exception(error)), *(r.getMessage() for r in caplog.records)]
-    assert [text for text in shown if KEY in text] == []
+    assert holding(KEY, shown(error, caplog=caplog, capsys=capsys)) == []
 
 
 @pytest.fixture
@@ -258,7 +212,7 @@ def fixed_boundary(monkeypatch: pytest.MonkeyPatch) -> None:
     monkeypatch.setattr(secrets, "token_hex", lambda size: BOUNDARY)  # the adapter's draw
 
 
-def _shown(request: httpx.Request) -> list[tuple[str, str]]:
+def _headers(request: httpx.Request) -> list[tuple[str, str]]:
     """The headers but the length, which the body's own sets; the boundary is the adapter's."""
     assert int(request.headers["content-length"]) == len(request.content)
     assert request.headers["content-type"] == f"multipart/form-data; boundary={BOUNDARY}"
@@ -290,7 +244,7 @@ def test_the_sdks_own_variables_change_nothing(
     (want,), (got,) = plain.requests, shelled.requests
     assert got.headers.get_list("authorization") == [f"Bearer {KEY}"]
     assert "x-made-up" not in got.headers and str(got.url) == BASELINE["request"]["url"]
-    assert _shown(got) == _shown(want)
+    assert _headers(got) == _headers(want)
     assert [data for _, data in parts(got).values()] == [data for _, data in parts(want).values()]
 
 
@@ -311,9 +265,9 @@ CASES = [("groq", "debug"), (ADAPTER, None), (ADAPTER, "debug"), (ADAPTER, "info
 @pytest.fixture(scope="module")
 def imported() -> Imported:
     """What importing each module does to logging, each in a child whose shell sets `GROQ_LOG`
-    alone of what tests/conftest.py drops; side by side, since importing groq takes seconds."""
-    dropped = ("GROQ_", "OTEL_", "PHOENIX_", "T2V_")
-    shell = {k: v for k, v in os.environ.items() if not k.upper().startswith(dropped)}
+    alone of what the suite drops (tests/isolation.py); side by side, since importing groq takes
+    seconds."""
+    shell = {k: v for k, v in os.environ.items() if not dropped(k)}
     running = {
         (module, level): subprocess.Popen(
             [sys.executable, "-c", _CHILD.format(module=module)],
@@ -354,13 +308,13 @@ def test_no_key_in_the_settings_is_a_configuration_error(
     given: dict[str, Any] = {"api_key": None if key is None else SecretStr(key)}
     given |= {"api_key_file": None if file_text is None else path}
     with pytest.raises(ConfigurationError, match=SETTING) as raised:
-        GroqSTT.from_settings(settings(**given))
+        GroqSTT.from_settings(groq_settings(**given))
     assert raised.value.details == {"setting": SETTING}
 
 
 def test_a_speech_to_text_with_no_key_in_its_repr_and_no_groq_type_in_its_signatures() -> None:
     """The design's 5.3 (no public signature names a `groq` type) and 6.1 (the data flow)."""
-    adapter = GroqSTT.from_settings(settings())
+    adapter = GroqSTT.from_settings(groq_settings())
     port: SpeechToText = adapter  # mypy checks the port's shape
     assert [text for text in (repr(adapter), repr(vars(adapter))) if KEY in text] == []
     want = "GroqSTT(model='whisper-large-v3', base_url='https://api.groq.com', timeout_s=6.0)"

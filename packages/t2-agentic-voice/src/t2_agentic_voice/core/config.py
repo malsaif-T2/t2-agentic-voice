@@ -3,17 +3,19 @@
 Every configurable value is a field on `Settings`, loaded from environment variables with this
 project's prefix, or from a local `.env` file (environment variables win). A group of settings
 nests with `__`: `T2V_GROQ__API_KEY` is `settings.groq.api_key`. A blank value counts as unset,
-so a `.env` copied from `.env.example` with only the key filled in keeps every other default.
+and `.env.example` leaves every key blank with its default in a comment, so a `.env` copied
+from it with only the key filled in keeps every other default, one changed later included.
 Other modules call `get_settings()` or receive a `Settings` instance; they never touch
 `os.environ`. No provider's own variable (`GROQ_API_KEY`, `OTEL_*`) is ever read here, and the
 adapters pass every value that keeps their SDKs from reading one (the design's 7.3). The few an
-SDK reads whatever is passed (`GROQ_CUSTOM_HEADERS`, `GROQ_LOG`, some `OTEL_*`) are listed in
-plan 002's decision log, each kept out by the track that builds its adapter or left as debt.
+SDK reads whatever is passed are kept out or recorded as debt: `GROQ_CUSTOM_HEADERS` by the
+Groq adapter's request hook, `GROQ_LOG` by how the adapter imports the SDK (TD-003), and three
+`OTEL_*` ones (TD-005, `core/tracing_export.py`).
 A command loads the settings with `Settings.from_env`, whose ConfigurationError names each
 setting that cannot load and never the value it rejected (the design's 7.4).
 
-When you add a field, add it to `.env.example` too (tests/t2_agentic_voice/core/test_config.py
-fails otherwise).
+When you add a field, add it to `.env.example` too, blank, with a `# Default:` line above it
+when it has a default (tests/t2_agentic_voice/core/test_env_example.py fails otherwise).
 A secret is a `SecretStr` field, so it never shows in a repr or a log; one may also be given as
 a file whose contents are the value (`api_key_file`).
 """
@@ -32,6 +34,8 @@ from pydantic_settings import BaseSettings, SettingsConfigDict, SettingsError
 from t2_agentic_voice.core.errors import ConfigurationError
 
 PREFIX = "T2V_"
+# What a group's fields nest with in a name: `T2V_GROQ__API_KEY` is `settings.groq.api_key`.
+_NESTED = "__"
 Environment = Literal["dev", "test", "prod"]
 LogLevel = Literal["DEBUG", "INFO", "WARNING", "ERROR"]
 LogFormat = Literal["console", "json"]
@@ -39,6 +43,17 @@ SttProvider = Literal["groq"]
 SttModel = Literal["whisper-large-v3", "whisper-large-v3-turbo"]
 # What an API key may hold: printable ASCII with no space, as an HTTP header carries it.
 _KEY = re.compile(r"[\x21-\x7e]+")
+
+
+def setting_name(*location: str | int) -> str:
+    """The environment name of the setting at `location`, a group's name then its field's, as
+    a pydantic error's `loc` gives it: `T2V_GROQ__API_KEY` for ("groq", "api_key"). An item's
+    index in a list setting is left out, since the name is the whole setting's."""
+    return PREFIX + _NESTED.join(str(part).upper() for part in location if isinstance(part, str))
+
+
+KEY_SETTING = setting_name("groq", "api_key")
+KEY_FILE_SETTING = setting_name("groq", "api_key_file")
 
 
 def _url(value: str, schemes: frozenset[str]) -> str:
@@ -119,10 +134,10 @@ class GroqSettings(_Group):
         that cannot be read, or a key holding a character no key holds, raises
         ConfigurationError naming the setting it came from, never its value or the file's path."""
         if self.api_key is not None and self.api_key.get_secret_value().strip():
-            return _key(self.api_key.get_secret_value().strip(), f"{PREFIX}GROQ__API_KEY")
+            return _key(self.api_key.get_secret_value().strip(), KEY_SETTING)
         if self.api_key_file is None:
             return None
-        setting = f"{PREFIX}GROQ__API_KEY_FILE"
+        setting = KEY_FILE_SETTING
         try:
             text = self.api_key_file.read_text(encoding="utf-8-sig").strip()
         except (OSError, UnicodeDecodeError) as error:
@@ -140,7 +155,8 @@ class SttSettings(_Group):
 
     # Which adapter turns speech into text; only Groq's exists for now (D-004).
     provider: SttProvider = "groq"
-    # The Whisper model. The default is set by plan 002's registered baseline (the design's 7.6).
+    # The Whisper model. The default stayed large-v3 on a registered measurement (D-025; the
+    # design's 7.6), and changes only on another (GP-18).
     model: SttModel = "whisper-large-v3"
     # The longest one transcription request may take, in seconds, before it is a timeout.
     timeout_s: float = Field(default=6.0, gt=0, allow_inf_nan=False)
@@ -183,7 +199,7 @@ class Settings(BaseSettings):
         env_prefix=PREFIX,
         env_file=".env",
         env_file_encoding="utf-8",
-        env_nested_delimiter="__",
+        env_nested_delimiter=_NESTED,
         env_ignore_empty=True,
         extra="ignore",
         hide_input_in_errors=True,
@@ -219,15 +235,13 @@ class Settings(BaseSettings):
             return cls() if env_file is None else cls(_env_file=env_file)
         except ValidationError as error:
             for problem in error.errors(include_input=False, include_url=False):
-                parts = [str(p).upper() for p in problem["loc"] if isinstance(p, str)]
-                problems.append((PREFIX + "__".join(parts), problem["msg"]))
+                problems.append((setting_name(*problem["loc"]), problem["msg"]))
         except SettingsError as error:  # a JSON value that does not parse
             problems.append((f"{PREFIX}*", str(error)))
         raise ConfigurationError(
             "These settings cannot load: "
             + "; ".join(f"{name} ({why})" for name, why in problems)
-            + ". FIX: correct each one in the environment or the .env file; .env.example lists "
-            "every setting.",
+            + ". FIX: correct each one in the environment or the .env file.",
             details={"settings": [{"setting": name, "problem": why} for name, why in problems]},
         )
 
