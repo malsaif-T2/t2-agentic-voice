@@ -48,7 +48,9 @@ One call, top to bottom, naming the library's layer that does each step; the app
 prompt, its tools and its backends (the knowledge base and the ticket system, for Ole5):
 
 ```
-web widget         microphone, speaker, captions, Stop; static files the api layer serves
+web widget         microphone, speaker, captions, Stop; static files the app serves (Ole5's
+                   from apps/ole5-voice-agent/web/); the api layer serves only the
+                   reference client, t2v-client.js, and the dev page
   ▼ api        checks the join token, hands the WebRTC offer to voice, builds the call's session
   ▼ voice      answers the offer; audio in; speech detection; end of turn; the two-step
                interruption; the turn's cancel scope
@@ -86,11 +88,11 @@ An arrow or a line down means "may import"; `api` may import every layer, `testi
 | Layer | Responsibility | May import | Owns (only it may import) |
 | --- | --- | --- | --- |
 | `core` | Settings (`VoiceSettings` in `core/config.py`, the only module that reads the environment, and its groups in `core/settings/`), structured logging (`core/logging.py`), the error types (`core/errors.py`: `T2VoiceError` and its subclasses, each with a stable `code`), tracing to Phoenix, and the types every layer shares | none | `logging`, `structlog`, `pydantic_settings`, `opentelemetry`, `openinference`, `phoenix`, `requests` |
-| `domain` | The rules of a support call, with no IO: what counts as a clear yes, the ticket flow's states, what an interruption is, Arabic text normalization, how numbers and ticket IDs are spoken, the evaluation scorers' pure parts (term recall, ID recall, text from silence, the sign test), and the ports (protocols) every outside service is reached through | core | — |
-| `adapters` | One adapter per port: speech-to-text, the chat model and text-to-speech (Groq), the knowledge base, the ticket system; each chosen by a setting | core, domain | `groq`, `httpx`, `qdrant_client` |
+| `domain` | The rules of a support call, with no IO: what counts as a clear yes, the ticket flow's states, what an interruption is, Arabic text normalization, how numbers (through num2words) and ticket IDs are spoken, the evaluation scorers' pure parts (term recall, ID recall, text from silence, the sign test), and the ports (protocols) every outside service is reached through | core | `num2words` |
+| `adapters` | One adapter per port: speech-to-text, the chat model and text-to-speech (Groq), the knowledge base, the ticket system, each chosen by a setting; the signed join tokens and the SQLite stores (the used tokens) | core, domain | `groq`, `httpx`, `qdrant_client`, `jwt`, `sqlite3` |
 | `actions` | The backend that acts: runs the talker's tools through the ports, keeps each call's record of completed actions, words every outcome from a real result | core, domain | — |
 | `agent` | The talker: prompts, the few tool definitions, the reply language, one turn from the user's words to a reply and tool calls; the output guard on every sentence | core, domain, actions | — |
-| `voice` | One call's real-time pipeline: answers the WebRTC offer (Pipecat's peer connection), audio in and out, speech detection, end of turn, interruptions, each turn's cancel scope, speech-to-text and text-to-speech wired to the talker | core, domain, agent | `pipecat` |
+| `voice` | One call's real-time pipeline: answers the WebRTC offer (Pipecat's peer connection), audio in and out, speech detection, end of turn, interruptions, each turn's cancel scope, speech-to-text and text-to-speech wired to the talker; Pipecat's logger (loguru), kept off | core, domain, agent | `pipecat`, `loguru` |
 | `testing` | What a team tests and measures its agent with: the evaluation scorers (word and character error rates) today; later the fakes of every port, text-mode calls, the adversarial suite and simulated callers (D-019) | core, domain, actions, agent, voice | `jiwer` |
 | `api` | The HTTP surface and composition root: serves the widget, starts calls, reports health, builds the adapters from the settings and injects them, maps every error to one shape | core, domain, adapters, actions, agent, voice, testing | `fastapi`, `starlette`, `uvicorn` |
 
@@ -131,10 +133,12 @@ The agent's reasoning, from the questions the kit asks (D-003 records the altern
 
 ## The web widget
 
-The widget is plain HTML, JavaScript and CSS, with no build step; the backend serves it. It is
-built for the Ole5 app first, in `apps/ole5-voice-agent/web/`; making it a drop-in for
-teammates' pages is a later option (D-014). It is not Python, so `poe arch` does not read it;
-it is checked by running it in a browser ([WORKING-RULES.md](WORKING-RULES.md), "Seeing it
+The widget is plain HTML, JavaScript and CSS, with no build step; the app's backend serves it,
+not the library's `api` layer. It is built for the Ole5 app first, in
+`apps/ole5-voice-agent/web/`; making it a drop-in for teammates' pages is a later option
+(D-014). It is not Python, so `poe arch` does not read it; the golden set's test that no item
+sits in the product reads its text (`tests/ole5_voice/evals/test_no_item_in_source.py`), and it
+is checked by running it in a browser ([WORKING-RULES.md](WORKING-RULES.md), "Seeing it
 run").
 
 ## Conventions
@@ -167,8 +171,9 @@ run").
   call the speech-to-text and text-to-speech ports, and its own processor runs `agent`'s turn
   inside the turn's cancel scope. Pipecat's ready-made provider services (its Groq
   speech-to-text, model, and text-to-speech services), its model services, and its own
-  interruptions are never used: a provider service would reach Groq without a port (GP-22), and
-  ARCH-OWNER cannot see an import made inside Pipecat.
+  interruptions are never used: a provider service would reach Groq without a port (GP-22).
+  ARCH-BAN keeps those services out of the library's imports; neither it nor ARCH-OWNER can see
+  an import made inside Pipecat.
 - Every turn runs inside a cancel scope owned by `voice`: a stop, a correction, or new words
   cancel the model, the speech, and read-only lookups. Writes to the ticket system run as jobs
   of `actions`, outside any turn, so a cancel never cuts one in half.
@@ -202,6 +207,12 @@ The rules live in [harness.toml](harness.toml), the source of truth;
   names and their own services), in any case, in a file or a file's path
   ([scripts/arch_words.py](scripts/arch_words.py));
 - ARCH-OWNER: a library in `[[owners]]` is imported only by its layers;
+- ARCH-BAN: a module a `[[bans]]` table names is never imported by the code it covers (the
+  library, a part of it, or an app), its `allowed` modules aside. ARCH-OWNER gives a library to
+  a layer whole; a ban narrows it by module: the library uses no Pipecat provider or model
+  service, LLM adapter or context aggregator, nor its runner, its frame loggers, its torch or
+  numba modules, or its DTMF aggregator; `voice/session/` imports no Pipecat; and the apps and
+  the examples import neither Pipecat nor aiortc ([scripts/arch_ban.py](scripts/arch_ban.py));
 - ARCH-CONSTRUCT: a class in `[[restricted]]` is constructed only by its layers;
 - ARCH-PRINT: no `print` or direct writes to standard output outside the files `[rules]`
   allows;

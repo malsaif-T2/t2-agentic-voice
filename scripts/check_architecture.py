@@ -1,9 +1,9 @@
 """Mechanically enforce the architecture that ARCHITECTURE.md describes: `uv run poe arch`.
 
 The rules' settings live in harness.toml ([package], [layers], [[owners]], [[restricted]],
-[[subpackages]], [[apps]], [rules], [modules]); this module only applies them. The rules read
-inside one module of the library (ARCH-LAYER's imports, ARCH-OWNER, ARCH-PRINT, ARCH-ENV,
-ARCH-CONSTRUCT) are scripts/arch_module.py's; the others name their helper below.
+[[bans]], [[subpackages]], [[apps]], [rules], [modules]); this module only applies them. The
+rules read inside one module of the library (ARCH-LAYER's imports, ARCH-OWNER, ARCH-PRINT,
+ARCH-ENV, ARCH-CONSTRUCT) are scripts/arch_module.py's; the others name their helper below.
 
 Rules
   ARCH-LAYER      internal imports follow the layer graph (an `importlib.import_module` or
@@ -18,6 +18,9 @@ Rules
   ARCH-WORDS      the library's src/ holds no word of [package] banned_words, in any case
                   (scripts/arch_words.py)
   ARCH-OWNER      a library in [[owners]] is imported only by its layers
+  ARCH-BAN        a module a [[bans]] table names is never imported by the code it covers (a
+                  part of the library or an app), its `allowed` modules aside
+                  (scripts/arch_ban.py)
   ARCH-PRINT      no print() and no sys.stdout/sys.stderr writes, outside [rules]
                   output_allowed_files; use the structured logger
   ARCH-ENV        the environment (os.environ, os.getenv, ...) is read only in [rules]
@@ -41,6 +44,7 @@ from collections.abc import Sequence
 from pathlib import Path
 
 from scripts._common import Violation
+from scripts.arch_ban import check_bans
 from scripts.arch_deps import check_deps
 from scripts.arch_doc import check_layer_doc
 from scripts.arch_facade import check_facade
@@ -125,7 +129,7 @@ def check_repo(root: Path, config: HarnessConfig) -> tuple[list[Violation], int]
         found, count = check_app(root, app, arch)
         violations, checked = violations + found, checked + count
     support, support_count = check_support(root, arch.support_dirs, arch.max_module_lines)
-    violations += check_deps(root, arch)
+    violations += check_bans(root, arch) + check_deps(root, arch)
     return violations + support + check_layer_doc(root, arch), checked + support_count
 
 

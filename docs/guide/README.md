@@ -20,7 +20,7 @@ The library's settings are one `VoiceSettings`: built in code, or loaded by
 `VoiceSettings.from_env()` from the `T2V_*` environment variables, and from a `.env` file only
 when `env_file=` names one; `env` (dev, test, staging or prod) has no default
 ([.env.example](../../.env.example) lists them, and the generated
-[settings.md](../generated/settings.md) describes each). The SDKs under it read a few
+[settings.md](../generated/settings.md) describes each). The packages under it read some
 variables of their own whatever the library passes, so a process that uses the library leaves
 these unset, or, for the proxy and CA variables, sets only values it trusts (the other docs
 point here rather than list them, and the debt rows named say why each is still read):
@@ -40,6 +40,39 @@ point here rather than list them, and the debt rows named say why each is still 
   (TD-005).
 - `OTEL_EXPERIMENTAL_RESOURCE_DETECTORS`, read in a child process forked after the library's
   tracer provider was built, loads the entry points it names (TD-005).
+- `OTEL_PROPAGATORS`, read when `fastapi` is imported, loads the entry points it names, and a
+  name it does not know makes the import fail.
+- `FASTAPI_OTEL_AUTO_CONFIGURE`, read when a FastAPI app is built: true adds OpenTelemetry
+  exporters, from the `OTEL_*` variables, when the app starts, to a provider already set up
+  too, unless the app is built with `telemetry={"auto_configure": False}`.
+- `PIPECAT_SETUP_FILES`, read each time Pipecat sets up a call's pipeline and starts its
+  runner: each file it names is run inside every call, so a shell variable can load code.
+- `PIPECAT_SMART_TURN_LOG_DATA`, read when Smart Turn's analyzer is built: true writes the
+  caller's audio of every turn it analyses as WAV files under `smart_turn_audio_log` in the
+  working folder, whatever the caller consented to, and a value Pipecat reads as neither true
+  nor false makes the analyzer fail.
+- `PIPECAT_SCTP_MAX_CHUNK_SIZE`, read when Pipecat's WebRTC connection module is imported,
+  sets the data channel's chunk size for the whole process, and a value that is not a whole
+  number makes the import fail.
+- `LOGURU_*`, read when loguru is imported (Pipecat imports it): they set loguru's default
+  output and a level's number for the whole process, which no code can change back, and a
+  value of the wrong kind makes the import fail.
+- `WEBSOCKETS_*`, read when websockets is imported (Pipecat's speech-service base classes
+  import it), set its limits and the headers it sends for the whole process, and a limit that
+  is not a number makes the import fail.
+- `ORT_LOAD_CONFIG_FROM_MODEL`, read when onnxruntime builds a session: `1` takes the
+  session's options from the model's file, for Silero's and Smart Turn's sessions too, which
+  pass no override.
+- `FORWARDED_ALLOW_IPS` and `WEB_CONCURRENCY`, read by uvicorn only when the code passes no
+  `forwarded_allow_ips` or `workers`: by default it trusts `X-Forwarded-For` from 127.0.0.1
+  and ::1, so any local client can set its own address, and `WEB_CONCURRENCY` with an app
+  object makes `uvicorn.run` exit. A process that runs uvicorn itself passes both. uvicorn's
+  command line also takes every option from `UVICORN_*` (`UVICORN_ENV_FILE` loads a `.env`).
+- Read only by parts of Pipecat the library does not use: `PIPECAT_LOG_LLM_CONTEXT` and
+  `PIPECAT_ALLOWED_FILE_URL_NETWORKS` (its model services), `PIPECAT_ALLOWED_ORIGINS` (its
+  WebSocket transports), `NUMBA_*` and `LLVMLITE_*` (its resampy resampler), and `OPENAI_*`
+  (its provider services); `poe arch` keeps all but the transports out of the library's
+  imports (ARCH-BAN).
 - The proxy variables (`HTTP_PROXY`, `HTTPS_PROXY`, `ALL_PROXY`, `NO_PROXY`; on Windows, the
   Internet Options proxy when none of them is set) and the CA variables (`SSL_CERT_FILE` and
   `SSL_CERT_DIR` for httpx, under `groq`; `REQUESTS_CA_BUNDLE` and `CURL_CA_BUNDLE` for

@@ -1,6 +1,6 @@
 """harness.toml's architecture tables, for scripts/harness_config.py: [package], [layers],
-[[owners]], [[restricted]], [[apps]], [[subpackages]], [rules], and [modules], read into an
-ArchConfig that the architecture check and its helpers apply.
+[[owners]], [[restricted]], [[bans]], [[apps]], [[subpackages]], [rules], and [modules], read
+into an ArchConfig that the architecture check and its helpers apply.
 
 Each problem is a HARNESS-CONFIG violation with its line (scripts/harness_toml.py), so a layer
 that imports an unknown layer, a cycle in the layer graph, or a facade outside the public API is
@@ -20,6 +20,13 @@ from scripts._common import Violation
 from scripts.harness_toml import CONFIG_FILE, RULE, Lines, Table, tables
 
 _PACKAGE = re.compile(r"^[a-z_][a-z0-9_]*$")
+_MODULE = re.compile(r"^[A-Za-z_][A-Za-z0-9_]*(\.[A-Za-z_][A-Za-z0-9_]*)*$")
+
+
+def under(name: str, prefix: str) -> bool:
+    """Whether the dotted `name` is `prefix` or a module inside it: `a.b.c` is under `a.b`,
+    `a.bc` is not."""
+    return name == prefix or name.startswith(f"{prefix}.")
 
 
 @dataclass(frozen=True)
@@ -28,6 +35,27 @@ class Ownership:
 
     layers: frozenset[str]
     fix: str
+
+
+@dataclass(frozen=True)
+class Ban:
+    """Modules the code `within` covers never imports (ARCH-BAN): each of `modules` with every
+    module under it, but each of `allowed` with every module under it."""
+
+    modules: tuple[str, ...]  # "pipecat.services"
+    allowed: tuple[str, ...]  # "pipecat.services.stt_service"
+    within: tuple[str, ...]  # module prefixes of the library or an app: "app.voice.session"
+    fix: str
+
+    def scope(self, module: str) -> str | None:
+        """The entry of `within` that covers the importing `module`, if one does."""
+        return next((w for w in self.within if under(module, w)), None)
+
+    def banned(self, name: str) -> str | None:
+        """The banned module that the imported `name` falls under, unless it is allowed."""
+        if any(under(name, a) for a in self.allowed):
+            return None
+        return next((m for m in self.modules if under(name, m)), None)
 
 
 @dataclass(frozen=True)
@@ -61,6 +89,7 @@ class ArchConfig:
     layers: Mapping[str, frozenset[str]]  # layer -> the other layers it may import
     owners: Mapping[str, Ownership]  # top-level module -> the layers that may import it
     restricted: Mapping[str, Ownership]  # class name -> the layers that may construct it
+    bans: tuple[Ban, ...]
     subpackages: tuple[SubpackageRule, ...]
     env_allowed_files: frozenset[str]
     output_allowed_files: frozenset[str]
@@ -126,6 +155,9 @@ def parse_arch(data: dict[str, Any], lines: Lines, problems: list[Violation]) ->
         layers_table.problem(cycle[0], f"the layer graph has a cycle: {' -> '.join(cycle)}")
     owners = _owned(tables(data, "owners", lines, problems), "modules", set(layers))
     restricted = _owned(tables(data, "restricted", lines, problems), "classes", set(layers))
+    places = {name: set(layers) | {f.removeprefix(f"{name}.") for f in facades}}
+    places |= {app.name: set() for app in apps if app.name}
+    bans = tuple(_ban(table, places) for table in tables(data, "bans", lines, problems))
     subpackages = []
     for table in tables(data, "subpackages", lines, problems):
         path, forbidden = table.string("path"), frozenset(table.strings("may_not_import"))
@@ -147,6 +179,7 @@ def parse_arch(data: dict[str, Any], lines: Lines, problems: list[Violation]) ->
         layers=layers,
         owners=owners,
         restricted=restricted,
+        bans=bans,
         subpackages=tuple(subpackages),
         env_allowed_files=frozenset(rules.strings("env_allowed_files")),
         output_allowed_files=frozenset(rules.strings("output_allowed_files")),
@@ -209,6 +242,31 @@ def _owned(groups: list[Table], key: str, layers: set[str]) -> dict[str, Ownersh
             found[name] = ownership
         table.finish()
     return found
+
+
+def _ban(table: Table, places: Mapping[str, set[str]]) -> Ban:
+    """One [[bans]] table. `places`: the library's package and each app's, each with the names
+    a module directly under it may have in `within` (the library's layers and facades; any for
+    an app)."""
+    modules, allowed = table.strings("modules", non_empty=True), table.strings("allowed")
+    within = table.strings("within", non_empty=True)
+    for key, names in (("modules", modules), ("allowed", allowed), ("within", within)):
+        for name in (n for n in names if not _MODULE.match(n)):
+            table.problem(key, f"[[bans]] {key}: '{name}' is not a dotted module name")
+    for name in (a for a in allowed if not any(under(a, m) and a != m for m in modules)):
+        table.problem("allowed", f"[[bans]] allows '{name}', which is inside no banned module")
+    for name in within:
+        parts = name.split(".")
+        if parts[0] not in places:
+            known = ", ".join(sorted(places))
+            problem = f"[[bans]] within '{name}': not the library or an app (one of: {known})"
+            table.problem("within", problem)
+        elif len(parts) > 1 and places[parts[0]] and parts[1] not in places[parts[0]]:
+            problem = f"[[bans]] within '{name}': '{parts[1]}' is no layer or facade of the library"
+            table.problem("within", problem)
+    ban = Ban(modules, allowed, within, table.string("fix"))
+    table.finish()
+    return ban
 
 
 def _cycle(graph: Mapping[str, frozenset[str]]) -> list[str]:

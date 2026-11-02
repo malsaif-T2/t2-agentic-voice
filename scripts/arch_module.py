@@ -166,19 +166,9 @@ class ModuleChecker(ast.NodeVisitor):
         self.generic_visit(node)
 
     def _imported_by_name(self, node: ast.Call) -> list[str] | None:
-        """The module `importlib.import_module("a.b")` or `__import__("a.b")` loads, split on
-        dots, when its name is a literal; a computed name cannot be checked statically."""
-        func = node.func
-        loads = (isinstance(func, ast.Name) and func.id in self.import_functions) or (
-            isinstance(func, ast.Attribute)
-            and func.attr == "import_module"
-            and isinstance(func.value, ast.Name)
-            and func.value.id in self.importlib_names
-        )
-        name = node.args[0] if loads and node.args else None
-        if not isinstance(name, ast.Constant) or not isinstance(name.value, str):
-            return None
-        return name.value.split(".") if name.value[:1] not in ("", ".") else None
+        """The module the call loads by a literal name, split on dots (`literal_import`)."""
+        name = literal_import(node, self.import_functions, self.importlib_names)
+        return name.split(".") if name is not None else None
 
     def visit_Attribute(self, node: ast.Attribute) -> None:
         if (
@@ -200,6 +190,26 @@ class ModuleChecker(ast.NodeVisitor):
             f"{what} used outside {allowed}",
             _owners_fix(self.arch, "pydantic_settings", fix),
         )
+
+
+def literal_import(
+    node: ast.Call, functions: Collection[str], importlibs: Collection[str]
+) -> str | None:
+    """The module `importlib.import_module("a.b")` or `__import__("a.b")` loads, when its name
+    is a literal; a computed name cannot be checked statically, and a relative one stays in its
+    package. `functions`: the names bound to such a function here (`__import__`, an imported
+    `import_module`); `importlibs`: the names bound to the importlib module."""
+    func = node.func
+    loads = (isinstance(func, ast.Name) and func.id in functions) or (
+        isinstance(func, ast.Attribute)
+        and func.attr == "import_module"
+        and isinstance(func.value, ast.Name)
+        and func.value.id in importlibs
+    )
+    name = node.args[0] if loads and node.args else None
+    if not isinstance(name, ast.Constant) or not isinstance(name.value, str):
+        return None
+    return name.value if name.value[:1] not in ("", ".") else None
 
 
 def _owners_fix(arch: ArchConfig, module: str, fallback: str) -> str:

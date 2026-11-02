@@ -21,8 +21,8 @@ from scripts.harness_toml import CONFIG_FILE, FIX, RULE, Lines, Table
 
 # The tables harness.toml may hold; [tool.*] holds other tools' settings (coverage.py's).
 _TABLES = frozenset(
-    {"package", "layers", "owners", "restricted", "subpackages", "apps", "rules", "modules"}
-    | {"docs", "plans", "references", "gc", "quality", "tool"}
+    {"package", "layers", "owners", "restricted", "bans", "subpackages", "apps", "rules"}
+    | {"modules", "docs", "plans", "references", "gc", "quality", "tool"}
 )
 WEIGHTS = ("coverage", "size", "suppressions", "duplication", "docstrings")
 

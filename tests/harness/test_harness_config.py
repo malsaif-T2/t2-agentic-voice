@@ -159,6 +159,47 @@ def test_a_subpackage_rule_starts_with_a_layer(tmp_path: Path) -> None:
     assert "subpackage 'reports' does not start with a layer's folder" in found
 
 
+def test_bans_name_modules_and_the_code_they_cover(tmp_path: Path) -> None:
+    """ARCH-BAN's tables: dotted names, allowed modules inside a banned one, `within` the
+    library (its layers and facades) or an app, a fix, and no other key."""
+    apps = '\n[[apps]]\nname = "shop"\nroot = "apps/shop/src"\n'
+    good = (
+        '\n[[bans]]\nmodules = ["vendor.services"]\nallowed = ["vendor.services.base"]\n'
+        'within = ["app", "app.services.reports", "shop.calls"]\nfix = "Use the base."\n'
+    )
+    loaded = config(tmp_path, SYNTHETIC + apps + good)
+    (ban,) = loaded.arch.bans
+    assert (ban.modules, ban.allowed, ban.within) == (
+        ("vendor.services",),
+        ("vendor.services.base",),
+        ("app", "app.services.reports", "shop.calls"),
+    )
+    bad = (
+        '\n[[bans]]\nmodules = ["vendor.services", "not a module"]\n'
+        'allowed = ["vendor.services", "other.x", "vendor.services-x"]\n'
+        'within = ["elsewhere", "app.web", "app.services."]\nfix = ""\nscope = ["api"]\n'
+        '\n[[bans]]\nmodules = []\nwithin = []\nfix = "x"\n'
+    )
+    text = SYNTHETIC + apps + bad
+    found = _problems(tmp_path, text)
+    lines = {needle: _line(text, needle) for needle in ('fix = ""', 'scope = ["api"]')}
+    problems = {problem for _, problem in found}
+    assert problems >= {
+        "[[bans]] modules: 'not a module' is not a dotted module name",
+        "[[bans]] allowed: 'vendor.services-x' is not a dotted module name",
+        "[[bans]] within: 'app.services.' is not a dotted module name",
+        "[[bans]] allows 'vendor.services', which is inside no banned module",
+        "[[bans]] allows 'other.x', which is inside no banned module",
+        "[[bans]] within 'elsewhere': not the library or an app (one of: app, shop)",
+        "[[bans]] within 'app.web': 'web' is no layer or facade of the library",
+        "[bans] modules must be a non-empty list of non-empty strings",
+        "[bans] within must be a non-empty list of non-empty strings",
+        "[bans] needs `allowed`",
+    }
+    assert (lines['fix = ""'], "[bans] fix must be a non-empty string") in found
+    assert (lines['scope = ["api"]'], "[bans] has an unknown key `scope`") in found
+
+
 def test_an_unknown_table_is_rejected_but_tool_tables_are_not(tmp_path: Path) -> None:
     text = SYNTHETIC + "\n[tool.coverage.report]\nfail_under = 1\n\n[extras]\nx = 1\n"
     assert [p for _, p in _problems(tmp_path, text)] == ["unknown table [extras]"]
