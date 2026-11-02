@@ -31,9 +31,12 @@ from opentelemetry.trace import (
     Status,
     StatusCode,
     Tracer,
-    TracerProvider,
     set_span_in_context,
 )
+
+# Re-exported (`as`) for api, whose runtime takes a team's tracer provider: only core imports
+# OpenTelemetry (ARCH-OWNER).
+from opentelemetry.trace import TracerProvider as TracerProvider
 from opentelemetry.util.types import AnyValue, Attributes
 
 from t2_agentic_voice.core.config import VoiceSettings
