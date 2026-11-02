@@ -26,7 +26,7 @@ describes one speaker, the owner (D-006).
 
 - [ ] `t2_agentic_voice.ports` exports `TextToSpeech` and `AudioChunk` in the shape of the
   design's 6.1, and `IdentityVerifier` and `UsedTokens` as its 6.5 has them; each port that holds
-  connections has `aclose()` (TD-020).
+  connections has `aclose()`.
 - [ ] `t2_agentic_voice.groq.GroqTTS` speaks through `canopylabs/orpheus-arabic-saudi` and
   `canopylabs/orpheus-v1-english`, a model and a voice per language from `tts.languages`, and
   refuses text over the model's `max_chars` (200 for both). It reads the sample rate from each
@@ -409,7 +409,7 @@ interfaces and fakes, reviewed by concern (`## Tracks`), and merged through an i
     of the track that owns it, as plan 002 did):
     - the ports: `domain/ports/text_to_speech.py` (`TextToSpeech`, `AudioChunk`) and
       `domain/ports/identity.py` (`IdentityVerifier`, `UsedTokens`), and `aclose()` on
-      `SpeechToText` (TD-020, the decision log);
+      `SpeechToText` (the decision log);
     - `Caller` and `Consent` in `core/identity.py`; the events and `CallReport` in `core/events.py`
       (types every layer shares: ARCHITECTURE.md, "Conventions");
     - the declaration types Q3 settles (`VoiceAgent`, `Language` with its three presets and their
@@ -737,6 +737,34 @@ criteria say)
   debt they found is TD-041 to TD-043, and TD-026's row names the keys an M1 run lacks. Left for
   step 10: step 6's facades (identity, server, stores, events), their tests and CLAUDE.md's lines
   for them. Next: steps 10 to 12.
+- 2026-11-02: Steps 10, 11 and 12, by a workflow of four builders, one after another, each gated
+  before its commits. The types (b44a575, e1e2f1d): the ports `TextToSpeech` with `AudioChunk`, and
+  `IdentityVerifier` with `UsedTokens` and `JoinContext`; `aclose()` on every port that holds
+  connections, which pays the close debt plan 002 found, so its row is removed; `Caller`, `Consent`
+  and `SignedConsent` in `core/identity.py`; the events and `CallReport` in `core/events.py`;
+  `VoiceAgent` and `Language` with Q3's presets in `domain/declaration.py`; the `t2v/1` models in
+  `voice/protocol.py` and `api/protocol.py`; and step 11's message list,
+  `tests/t2_agentic_voice/fixtures/t2v_protocol.json`, which a test holds the models to. The
+  signatures (c6d8c73, 7eae285, 8b1bd40): `adapters/groq_client.py`, with GroqSTT's 93 tests passing
+  unchanged; step 11's GroqTTS baseline, `tests/t2_agentic_voice/fixtures/groq_tts_request.json`,
+  which the installed SDK reproduces byte for byte; `voice/session/io.py`; the stubs of
+  `voice/calls.py`, `voice/file_transport.py`, `voice/session/call.py`, `api/runtime.py` and
+  `api/server.py`, whose docstrings state each track's contract; and every other module a track
+  fills, as a stub with its test in that track's file. The facades (ae9d849, b3ccca1, 4d00a15):
+  `identity`, `server`, `stores` and `events` join the five, the root gains `VoiceAgent`,
+  `Language`, `Caller`, `Consent`, `VoiceRuntime` and `Providers`, a test checks the design's 5.3
+  point 1 over every public annotation (`tests/t2_agentic_voice/test_public_types.py`), and the
+  fakes are `tests/t2_agentic_voice/fakes.py` and `session_fakes.py`, two modules under ARCH-SIZE;
+  the child shells, `join.keys` in the eval history's secret pattern and aiortc's plain import in
+  the tests were tidied. The decision entries (3ccdfe8): D-028 to D-035, with D-002, D-003 and D-007
+  pointing at the entries that amend them, GP-22 widened, and SECURITY.md's invariants 7 and 8
+  brought to the design's 8.1 with the tests that enforce them today. The integrator recorded the
+  reports, wrote TD-044 to TD-047, and corrected the design's status line, 5.1's note and 16.3's
+  lists as fact; `uv run --offline poe check` on 3ccdfe8 printed 'Success: no issues found in 257
+  source files', '1936 passed, 1 skipped in 107.10s (0:01:47)' and 'Total coverage: 100.00%'. The
+  builders' gate runs took 316 to 382 s while other sessions ran on this machine, against 89 to 105
+  s otherwise, and one took 5676 s (TD-040's hang, or the machine; no stacks were kept). Next: step
+  13, the review, then the fixes the integrator listed in the decision log of this date.
 
 ## Decision log
 
@@ -832,16 +860,16 @@ any before the step it affects.
   yet.
 - 2026-11-02: `contract.md` and the app's five layers stay with M0, as plan 002 left them: no M2 code
   depends on either, and the app's new code (its settings, token route and server) is small.
-- 2026-11-02: `aclose()` joins `SpeechToText` and `TextToSpeech` now (TD-020), since M2's runtime
+- 2026-11-02: `aclose()` joins `SpeechToText` and `TextToSpeech` now, since M2's runtime
   owns the adapters' lifetimes; a change to stable ports beyond the design's 6.1, written as
   Proposed in its decision entry.
-- 2026-11-02: Debt paid in M2: TD-012, TD-014, TD-020, TD-026 (before R7, so the comparison refuses
-  any setting but the language hint), TD-011 (read in R7's smoke step), TD-032 (R5 and R6), and the
-  logging debt (step 8). TD-015 stays whole: the owner's Phoenix runs on this machine with no
-  authentication ("The owner's decisions"), so no trace needs an API key in M2. TD-004 follows Q8:
-  with no proxy on the host, the clients turn `trust_env` off; with one, a proxy setting is added.
-  TD-003 and TD-005 stay: `GroqTTS` imports groq inside `logging_unchanged` as `GroqSTT` does, and
-  the owner kept TD-005 as debt (2026-11-01).
+- 2026-11-02: Debt paid in M2: TD-012, TD-014, TD-026 (before R7, so the comparison refuses any
+  setting but the language hint), TD-011 (read in R7's smoke step), TD-032 (R5 and R6), the logging
+  debt (step 8) and the ports' close (step 10). TD-015 stays whole: the owner's Phoenix runs on this
+  machine with no authentication ("The owner's decisions"), so no trace needs an API key in M2.
+  TD-004 follows Q8: with no proxy on the host, the clients turn `trust_env` off; with one, a proxy
+  setting is added. TD-003 and TD-005 stay: `GroqTTS` imports groq inside `logging_unchanged` as
+  `GroqSTT` does, and the owner kept TD-005 as debt (2026-11-01).
 - 2026-11-02: The rows plan 004 left for M2's plan, beyond those above. TD-038's test, which records
   the variables groq and OpenTelemetry read in a child process against a committed list, lands where
   TD-004 changes the clients, so the change and a later version move show in the gate; step 4's
@@ -1038,6 +1066,71 @@ any before the step it affects.
   fixture makes every aiortc peer built without its own ICE list raise, so a test builds one with
   `RTCConfiguration(iceServers=[])` (0.46 s more for a one-file session, as the builder measured
   it).
+- 2026-11-02, step 10 (the types builder's choices, recorded in D-029 and D-035 or, for the ports,
+  in the entry the fixes add after D-035): one close for every port that holds connections
+  (`aclose()` on `SpeechToText`, `TextToSpeech` and `UsedTokens`). `AudioChunk` is mono 16-bit PCM
+  and carries a response's usage, the rate-limit remainders on its first chunk and `cut_short` on
+  its last, since one adapter serves every call at once; `check_language` sends no request, so a
+  model whose terms are not accepted shows only at the first synthesis, which `t2v doctor
+  --synthesize` checks. `IdentityVerifier.verify(token, *, join: JoinContext)`: the context carries
+  `env`, the client's host and the runtime's used-token store, since the verifier is built with no
+  IO before the runtime opens the store; `UsedTokens.use` is async and gives one True for two joins
+  at once. `SignedConsent`, which only adapters may build (harness.toml's first `[[restricted]]`
+  row), is the only consent that can let audio be kept. `UserTurnEnded.heard` is the transcript as
+  text, since `core` cannot import `voice`.
+- 2026-11-02, step 10: `t2v/1` follows the design's 5.5 where the step's list was shorter: the
+  client's `hello` and the session's `ended` are added, duck, unduck and card wait for their
+  milestones, the playback reports are one `playback` message, and an agent caption carries its
+  `clause`. Inbound messages are parsed strictly (exact fields and JSON types, `v` the integer 1,
+  client text at most 1024 bytes), and a refusal lists only pydantic's error types, never the
+  client's text. The HTTP bodies are strict and bounded, carry no `pc_id`, and take the offer secret
+  in the body or the `X-T2V-Offer-Secret` header; a secret is a `SecretStr`, revealed only when a
+  response is serialized. A change to `t2v/1` changes the message list in the same commit.
+- 2026-11-02, step 10 (the signatures builder's choices): `adapters/groq_client.py` holds all the
+  set-up the Groq adapters share (the import inside `logging_unchanged` with the SDK's names
+  re-exported, the limits, the user agent, the data flow, the request hook, the client, the failure
+  mapping, the missing-key error and the settings' checks), so Track B copies none of it. The
+  GroqTTS baseline is one Arabic text in ar-SA, pinning UTF-8 JSON with nothing escaped.
+  `voice/session/io.py`'s events and commands are frozen dataclasses (internal, about 50 a second
+  each way), and go beyond the step's list where Tracks D and E need it to build apart: `ListenIn`,
+  `Connected`, `Ending`, `ClauseFailed`, a `Clock` with `SystemClock`, the phrase protocol,
+  `EventSink` and `CallSetup`; `TurnOpened` carries the speech onset, so the 300 ms rule measures
+  from speech, not from the turn's opening about 0.34 s later. `VoiceCalls` takes the agent, the
+  settings and the services once and answers each call; `serve()` defaults to 127.0.0.1:7860 under
+  `/voice`, and proxy headers are off while `server.forwarded_allow_ips` is empty and trusted only
+  from those addresses otherwise. No deadline from offer to connected is written: Track E sets it
+  and records it.
+- 2026-11-02, step 10 (the facades builder's choices, in D-032): a name beyond the design's 5.1 is
+  public only where a public signature names its type (`JoinContext`, `Event`, `ModelUsage`,
+  `TurnRecord`, `TurnTimes`, `ClientConnection`, `TurnEnd`, `TurnTiming`, `EchoTiming`);
+  `speak_digits`, `split_clauses`, `Pronunciations` and `pronounce` stay private until a public type
+  takes them, since adding a name later breaks nothing. `test_facades.py` pins the root's names too.
+  The fakes import no Pipecat at their top, and `capturing_output` subclasses Pipecat's
+  `BaseOutputTransport`, so the stop test sees what a real transport sends; Pipecat 1.15.0's
+  `audioop` DeprecationWarning is ignored for `pipecat.audio.utils` only.
+- 2026-11-02, step 12: the entries are D-028 to D-035 (settings; serving and identity; GP-22, which
+  also amends D-003's bullet on how a provider is chosen; the logging and loguru, with Q19 written
+  as open; ARCH-BAN, the owners and the facades; the echo's shape; Whisper per user turn, Proposed
+  whole, since the design's 13 names `SegmentedSTTService`; invariants 7 and 8 with
+  `SignedConsent`'s row), each with one Proposed bullet. This plan holds the decision numbers 028 to
+  049: another session's entry on the agent-led mode took the next number after that range on the
+  main branch on 2026-11-02 (c83747b), so when this plan merges into the main branch, decisions.md
+  keeps this plan's entries before it, and past 049 this plan takes numbers after it.
+- 2026-11-02, the integrator's calls on the builders' open points, before the review: the `/join`
+  consent-version check is Track F's: after `verify`, a `SignedConsent` whose version differs from
+  `privacy.consent_version`, when that is set, is refused with `JoinRejected`; a plain `Consent`
+  never records, so its version is not compared, and DevIdentity joins still work in dev; Track C's
+  case "a consent version other than `privacy.consent_version`" is tested at `/join`.
+  `core/tracing.py` is Track D's, with `core/tracing_tts.py`: it sets the design's 10.1 resource
+  attributes. `api/static/` (`t2v-client.js` and the dev page) is Track G's: Track F's router serves
+  it from a path its tests point at a folder of their own, and Track G tests that the built wheel
+  ships the files. The FastAPI import at the package root (TD-046) is Track F's to remove. Track H's
+  task rows share one line of CLAUDE.md, which holds 119 of 120. Before any track starts, Block 0's
+  fixes split `voice/session/io.py` (375 lines) into its events, its commands and the rest, rename
+  its phrase protocol so it is never taken for the design's root `Phrases`, give the declaration
+  what Tracks A, D and F need from it (the design's 4.3 pronunciation map on `VoiceAgent`, and each
+  preset's notice texts in Q5's register), and write the entry after D-035 for the ports' Proposed
+  shapes, which step 12 left out.
 
 ## The owner's decisions
 
@@ -1183,19 +1276,20 @@ step 3 measures the installed size for `is-this-for-you.md`.
 ## Tracks
 
 Each track builds in its own worktree against Block 0's interfaces and the fakes in
-`tests/t2_agentic_voice/fakes.py`, never against another track's unfinished code. One owner per
-file; the files every track needs (the `pyproject.toml` files, `uv.lock`, `harness.toml`,
-ARCHITECTURE.md, CLAUDE.md, SECURITY.md, the settings, logging, errors, ports, `core/identity.py`,
-`core/events.py`, `domain/declaration.py`, `api/protocol.py`, `voice/protocol.py`,
-`voice/session/io.py`, the stubs' signatures (`voice/calls.py`, `voice/file_transport.py`),
-`adapters/groq_client.py`, the facades, `scripts/`, `.env.example`, `docs/generated/settings.md`,
-`tests/conftest.py`, `tests/harness/`, `tests/ole5_voice/evals/test_no_item_in_source.py` and the
-fakes) belong to Block 0, and this plan and `docs/plans/tech-debt.md` to the integrator, who also
-writes and owns step 16's loopback test. A track that needs one changed asks the integrator.
-Library paths are under `packages/t2-agentic-voice/src/t2_agentic_voice/`; library tests under
-`tests/t2_agentic_voice/`. In every track, no source string and no JS or HTML text under `packages/`,
-`apps/*/src`, `apps/*/web` or `examples/` holds a golden reference as whole words (Q6 rules on
-`stop` and on the widget's labels), and no test text copies an item's.
+`tests/t2_agentic_voice/fakes.py` and `session_fakes.py`, never against another track's unfinished
+code. One owner per file; the files every track needs (the `pyproject.toml` files, `uv.lock`,
+`harness.toml`, ARCHITECTURE.md, CLAUDE.md, SECURITY.md, the settings, logging, errors, ports,
+`core/identity.py`, `core/events.py`, `domain/declaration.py`, `api/protocol.py`,
+`voice/protocol.py`, `voice/session/io.py`, the stubs' signatures (`voice/calls.py`,
+`voice/file_transport.py`), `adapters/groq_client.py`, the facades, `scripts/`, `.env.example`,
+`docs/generated/settings.md`, `tests/conftest.py`, `tests/harness/`,
+`tests/ole5_voice/evals/test_no_item_in_source.py`, the fakes and the fixtures) belong to Block 0,
+and this plan and `docs/plans/tech-debt.md` to the integrator, who also writes and owns step 16's
+loopback test. A track that needs one changed asks the integrator. Library paths are under
+`packages/t2-agentic-voice/src/t2_agentic_voice/`; library tests under `tests/t2_agentic_voice/`. In
+every track, no source string and no JS or HTML text under `packages/`, `apps/*/src`, `apps/*/web`
+or `examples/` holds a golden reference as whole words (Q6 rules on `stop` and on the widget's
+labels), and no test text copies an item's.
 
 **Track A · Speech text (library, `domain`).**
 - Goal: `speak_number`, `speak_id`, the clause splitter and the pronunciation map.
