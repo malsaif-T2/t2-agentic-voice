@@ -1068,7 +1068,7 @@ The defaults below are the agent's starting values, to be measured in the milest
 | --- | --- | --- |
 | top level | `env` (required) | — |
 | `groq` | `api_key` (required for Groq adapters), `api_key_file`, `base_url`, `timeout_s` | — |
-| `stt` | `provider` (groq), `model` (chosen by the M1 baseline: large-v3 or turbo), `timeout_s` (6) | M1 |
+| `stt` | `provider` (groq), `model` (`whisper-large-v3`, chosen by the M1 baseline: D-025), `timeout_s` (6) | M1 |
 | `llm` | `provider` (groq), `model` (openai/gpt-oss-120b), `reasoning_effort` (low), `max_output_tokens`, `timeout_s` (8) | M4 |
 | `tts` | `provider` (groq), `languages` (a map from language to `{model, voice}`; models `canopylabs/orpheus-arabic-saudi` and `canopylabs/orpheus-v1-english`; voices chosen in M2), `timeout_s`, `cache_phrases` (true) | M2 |
 | `turns` | `vad_confidence`, `vad_start_ms`, `vad_stop_ms` (200), `smart_turn` (true), `max_silence_ms` (fallback end of turn) | M2, M3 |
@@ -1566,7 +1566,7 @@ All docs are Markdown in `docs/guide/` of this repository for now, where the har
 | `serving.md` | Sidecar or mount; identity sources; the join-token format and its readable claims; the offer secret; cross-origin pages; the `t2v/1` protocol | M2 |
 | `browser-client.md` | The client API, events and states, tokens and `getToken`, consent, Stop and Esc, voice lowering, browser support | M2, M3 |
 | `testing.md` | Cookbook for `TextCall`, the fakes, `ScriptedLLM`'s one-entry-per-request rule, the safety suite, the `t2v_live` marker snippet, live scenarios and audio replay; why `TextCall` is not a chat channel | M5 |
-| `evaluation.md` | The evaluation helpers; recording your own golden set with consent and keeping audio out of git; the spelling guide; noise and the sign test | M1 |
+| `evaluation.md` | The evaluation helpers; recording your own golden set with consent and keeping audio out of git; the spelling guide; the golden-set commands, making a registered run and reading its scorecard; noise and the sign test; held-out and window runs; the run history | M1 |
 | `latency.md` | The per-stage budget measured on Groq from the end of speech, with progress lines apart; how to measure your own | M4 |
 | `tracing-and-logs.md` | Phoenix, your own `TracerProvider`, redaction, what a trace holds, the logging policy and the loguru default sink | M2 |
 | `data-and-privacy.md` | What the library itself stores and sends: what a trace holds and its redaction, the `var_dir` stores, audio never stored unless both the setting and the caller's consent allow it, the consent claim and its version. Groq's own terms are not covered here: the owner explains them to each team (open question 10) | M2 |

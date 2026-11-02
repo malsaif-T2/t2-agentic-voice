@@ -7,14 +7,14 @@ turn-taking, and the talker's answers vary from run to run (a hosted model, a ne
 and some of them are tuned.
 
 **Where it is built.** The kit ships the method, not the tooling. In this project, plan 002
-builds the tooling for speech-to-text (D-022): the scorers in the library, public through its
+built the tooling for speech-to-text (D-022): the scorers in the library, public through its
 `evals` and `languages` modules, and Ole5's golden set in the app, with its code in
 `apps/ole5-voice-agent/src/ole5_voice/evals/`, its data in `apps/ole5-voice-agent/evals/` (the
-`evals/` of the paths below) and its tests in `tests/ole5_voice/evals/`, inside `poe check`. Its
-commands, `golden`, `record`, `eval`, `eval-compare` and `eval-history`, are listed in
-[CLAUDE.md](../../CLAUDE.md), and the guide's [evaluation.md](../guide/evaluation.md) shows a
-team how to score its own set with the library. Turn-taking, the talker and latency have no
-tooling yet: until a plan builds theirs, no check enforces their rules here.
+`evals/` of the paths below) and its tests in `tests/ole5_voice/evals/`, inside `poe check`.
+Its commands are listed under "Running" below, and the guide's
+[evaluation.md](../guide/evaluation.md) shows a team how to score its own set with the library
+and measure a change with the commands. Turn-taking, the talker and latency have no tooling
+yet: until a plan builds theirs, no check enforces their rules here.
 
 ## In this project
 
@@ -233,6 +233,33 @@ A measurement run is a script, not a sequence typed by hand:
 
 The [working rules](../../WORKING-RULES.md) cover the machine: runs alone, history lines
 committed apart from candidate code.
+
+**Where the commands live, in this project.** The commands are this repository's poe tasks,
+defined in the root `pyproject.toml` and listed in [CLAUDE.md](../../CLAUDE.md). Each runs a
+module of the Ole5 app's evaluation package, `ole5_voice.evals`
+(`apps/ole5-voice-agent/src/ole5_voice/evals/`), with `python -m`, and passes on the arguments
+given after the task's name:
+- `uv run poe golden` (`golden.py`) validates every item and freezes the expected answers into
+  `evals/frozen.json`; with `--audio <root>=<folder>` it also checks every audio file's hash and
+  format against its manifest, and `--check` fails when the frozen answers are stale;
+- `uv run poe record` (`recorder.py`) records the new takes, each speaker's consent first, on a
+  page served on 127.0.0.1, and its review mode is where the owner confirms each variant, the
+  independent check;
+- `uv run poe eval` (`run.py`) is the run this section describes: it refuses the main checkout
+  and a dirty tree, writes its scorecard into a new `--out` folder outside the worktree, which
+  git ignores, so no copy is needed, and, when it called a provider, appends its line to
+  `evals/history.jsonl` (a `reference` run, which sends nothing, appends none);
+- `uv run poe eval-compare A B` (`compare.py`) judges run B against run A, as "Judging a change"
+  says;
+- `uv run poe eval-history` (`history.py`) renders `evals/history.jsonl` into the generated
+  [eval-history.md](../generated/eval-history.md).
+
+The split has no task: `python -m ole5_voice.evals.split` writes it, and a test inside
+`poe check` fails when the committed split is stale. The scores these commands give come from
+the library's scorers, imported from its public `t2_agentic_voice.evals` facade (and the
+normalizers from `t2_agentic_voice.languages`), never from its layers (ARCH-PUBLIC, D-021,
+D-022). A team with its own golden set writes its own commands around the same scorers, as the
+guide's [evaluation.md](../guide/evaluation.md) shows.
 
 ## Closing at a plateau [tuned]
 
