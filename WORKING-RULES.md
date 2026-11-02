@@ -35,6 +35,15 @@ mistake costs real time, the lesson goes **here**, in the same session, in this 
   (`## The owner's decisions`) or a decision's Evidence. Mark the agent's own reasoning as its
   own. Never write a reason, a policy, or a number nobody gave (GP-16). Documents the owner
   gives or reads (meeting notes, reports) follow [docs/project/README.md](docs/project/README.md).
+- **A count or a measured number is copied from the output of the command that printed it,**
+  with that command named beside it; never counted by hand.
+  - Why: 2026-11-02, plan 004's read found hand counts corrected again and again in plan 002
+    (Track B's failure cases, Track C's test functions, Track F's stratum values, Track G's
+    tests, the prototype's caption list, two counts of the Saudi stop words), and plan 004's
+    own first progress line wrote 100 commits where `poe gc` had printed 101.
+  - How to apply: run the command that counts (`poe gc`, `pytest`, a probe) and copy its
+    number, naming the command. A number no command printed and nobody gave is not written
+    (GP-16).
 - **Human time is the scarce resource.** Ask the owner only for judgment calls (scope, design,
   spending, accepting a licence) or when truly blocked. Everything else, fix and verify.
 - **No delivery dates or durations for milestones or plans.** Order milestones and plan steps
@@ -60,8 +69,9 @@ mistake costs real time, the lesson goes **here**, in the same session, in this 
 
 ## Commits and parallel sessions
 
-- One commit belongs to one plan, named in its subject (`Plan NNN: <what>`), with the plan's
-  logs updated in the same commit ([plans](docs/plans/README.md)).
+- A commit of a plan belongs to that plan alone and names it in its subject
+  (`Plan NNN: <what>`), with the plan's logs updated in the same commit; a small change outside
+  any plan says what it changes in its subject ([plans](docs/plans/README.md)).
 - Several sessions may share one checkout. **Stage only the explicit paths this session
   wrote** (`git add path/to/file`), never `git add -A`, `git add .`, or a whole directory.
   - Why: two sessions each took the next free plan number, and one commit staged the other
@@ -171,8 +181,10 @@ Only for projects that measure something ([evaluation.md](docs/design/evaluation
 
 A change to something a person looks at (a page, a report, a command's output) is checked by
 running it, not only by its tests. For a server or a UI, `.claude/launch.json` tells Claude
-Code how to start it and preview it (a name, the command, the port); add one when the first
-such surface exists, with no machine-specific paths in it (or keep it uncommitted).
+Code how to start it and preview it (a name, the command, the port). It holds the recorder's
+entry (`poe record` on port 8765, its takes under `var/recorder-preview`), whose `--replies`
+assumes the prototype's talk-over lab beside the repository (`../voice-lab/assets/talkover`,
+read only: D-010). A new surface adds its entry there, with no machine-specific path.
 
 ## Machine notes (Windows)
 
@@ -188,8 +200,8 @@ The owner develops on Windows with Git Bash and PowerShell; CI runs on Linux.
 - **Filename case:** Windows ignores case and Linux CI does not; `poe docs` checks links' exact
   case, and imports need the same care.
 - **Temp folders are volatile:** with Storage Sense on, files under `%TEMP%` (an agent's
-  scratchpad included) that are not read for 7 days are deleted, including empty files in a
-  `.venv`. Keep worktrees and anything worth keeping out of it.
+  scratchpad included) may be deleted, including empty files in a `.venv`. Keep worktrees and
+  anything worth keeping out of it.
 - **Long paths:** a worktree with a `.venv` may refuse `git worktree remove` ("Filename too
   long"). Delete it with PowerShell `Remove-Item -LiteralPath "\\?\<full path>" -Recurse
   -Force`, then `git worktree prune`.
