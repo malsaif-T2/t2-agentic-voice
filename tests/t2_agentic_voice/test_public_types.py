@@ -3,7 +3,8 @@ point 1), so a team's code is written against the library's own types and the fr
 it can move without breaking the team. Every name in a public module's `__all__` is read: a
 function's parameters and return; a class's fields and annotated attributes, and the parameters
 and return of its constructor and of each public method and property the library defines on it
-or on a base of its own; each annotation resolved and followed to every class it names."""
+or on a base of its own; a type alias's value (`type Pronunciations = ...`); each annotation
+resolved and followed to every class it names, through any alias it names."""
 
 from __future__ import annotations
 
@@ -32,7 +33,11 @@ def _params(obj: object) -> dict[str, object]:
 
 def annotations_of(obj: object, *, library: str = LIBRARY) -> Iterator[object]:
     """Every annotation of `obj`'s public signature, resolved; a class's members are read on
-    each of its bases that sits in `library`, where the library defines them."""
+    each of its bases that sits in `library`, where the library defines them. A type alias has
+    no signature: its value is what it names."""
+    if isinstance(obj, typing.TypeAliasType):
+        yield obj.__value__
+        return
     params = _params(obj)
     yield from typing.get_type_hints(obj, localns=params or None).values()
     if not inspect.isclass(obj):
@@ -54,7 +59,11 @@ def annotations_of(obj: object, *, library: str = LIBRARY) -> Iterator[object]:
 
 def named(annotation: object) -> Iterator[type]:
     """Every class `annotation` names: itself, its origin and arguments (a union's members, a
-    generic's parameters, a callable's), a type variable's bound and constraints."""
+    generic's parameters, a callable's), a type variable's bound and constraints, and what a
+    type alias stands for."""
+    if isinstance(annotation, typing.TypeAliasType):
+        yield from named(annotation.__value__)
+        return
     if isinstance(annotation, typing.TypeVar):
         for each in (annotation.__bound__, *annotation.__constraints__):
             yield from named(each)
@@ -124,10 +133,20 @@ def _plain(text: Literal["a"], count: int, *rest: str) -> tuple[str, ...] | None
     return None
 
 
+type _Clients = dict[str, list[AsyncGroq]]
+type _Words = dict[str, list[str]]
+
+
+def _aliased(clients: _Clients) -> None:
+    return None
+
+
 def test_the_check_finds_a_frameworks_type_wherever_a_signature_names_it() -> None:
-    """In a protocol's parameter, inside a property's generic return, and in a type variable's
-    bound; the stand-ins sit in this module, which the check reads as it reads the library."""
+    """In a protocol's parameter, inside a property's generic return, in a type variable's
+    bound, in a type alias and behind one a parameter names; the stand-ins sit in this module,
+    which the check reads as it reads the library."""
     here = __name__.split(".")[0]
-    for found in (_Port, _Holder, _made):
+    for found in (_Port, _Holder, _made, _Clients, _aliased):
         assert frameworks(found, library=here) == {"groq._client.AsyncGroq"}, found
-    assert frameworks(_plain, library=here) == set()
+    for plain in (_plain, _Words):
+        assert frameworks(plain, library=here) == set(), plain

@@ -47,13 +47,16 @@ NAMES = {
         "UserTurnEnded",
     },
     "t2_agentic_voice.languages": {
+        "Pronunciations",
         "SpellingIssue",
         "SpellingRule",
         "normalize_arabic",
         "normalize_digits",
+        "pronounce",
         "speak_id",
         "speak_number",
         "spelling_issues",
+        "split_clauses",
     },
     "t2_agentic_voice.evals": {
         "EchoTiming",

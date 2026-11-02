@@ -1,7 +1,8 @@
 """The clause splitter (the design's 13): the library's only one, so a reply is cut the same way
 whether it is spoken or shown, and Pipecat's text-to-speech aggregation passes each clause
-through whole (TOKEN), one request a clause. Built by plan 003's Track A; until then a stub.
-Public through the `languages` facade.
+through whole (TOKEN), one request a clause. The phrase cache cuts a fixed phrase longer than
+`max_chars` with it too (adapters/phrase_cache.py). Built by plan 003's Track A; until then a
+stub. Public through the `languages` facade.
 """
 
 from __future__ import annotations

@@ -66,7 +66,9 @@ def echo_timings(
     file-fed pipeline at real-time pace, held in its language (the session's, as
     `stt.live_language = "session"` sends it), with `lead_s` of digital silence before it and
     `tail_s` after it, speech-to-text through `stt` and text-to-speech through `tts`, the
-    greeting and the frame synthesized once before the first clip (each a request in run T's
-    budget); the models loaded once for every clip. Each clip's lead starts once the call's
+    agent's fixed phrases (domain/declaration.py's `fixed_phrases`: the greeting, the frame
+    and the notices a call speaks, so a failed turn's notice plays as in a call) synthesized
+    once before the first clip (each a request in run T's budget, unless the phrase cache holds
+    it already); the models loaded once for every clip. Each clip's lead starts once the call's
     greeting has played (voice/file_transport.py), so `lead_s` counts from there."""
     raise NotImplementedError(_STUB)

@@ -22,13 +22,15 @@ the plan's interfaces"; what Track F builds:
   second process on the same folder is refused with a FIX line that points to the sidecar, on
   Windows and on Linux; resolves every secret the settings name in a file, so a short one stops
   the server at its start rather than at the first join; builds the providers and tracing;
-  warms the adapters with no request (TD-012); declares the agent's fixed phrases to the phrase
-  cache, which synthesizes those it lacks; opens the used-token store under `storage.var_dir`;
-  and starts voice's entry point (`VoiceCalls.start`), which builds Silero and Smart Turn there,
-  never at import (item 24). On its way out it ends every call, each peer's close bounded by a
-  timeout (item 20), closes each adapter (`aclose`), the store and tracing, and releases the
-  lock. No error it raises holds a secret: Starlette sends its traceback's text to uvicorn's
-  error log (the appendix, step 4, bullet 5).
+  warms the adapters with no request (TD-012); declares the agent's fixed phrases
+  (domain/declaration.py's `fixed_phrases`) to the phrase cache, which synthesizes those it
+  lacks, one longer than the text-to-speech's `max_chars` clause by clause, so the runtime
+  refuses none at its start (adapters/phrase_cache.py); opens the used-token store under
+  `storage.var_dir`; and starts voice's entry point (`VoiceCalls.start`), which builds Silero
+  and Smart Turn there, never at import (item 24). On its way out it ends every call, each
+  peer's close bounded by a timeout (item 20), closes each adapter (`aclose`), the store and
+  tracing, and releases the lock. No error it raises holds a secret: Starlette sends its
+  traceback's text to uvicorn's error log (the appendix, step 4, bullet 5).
 - **The router** serves, after its prefix, `POST /join`, `POST` and `PATCH /offer` (each with
   the call's offer secret, in the `X-T2V-Offer-Secret` header or the body, never in a URL),
   `GET /health` (only what the design's 10.5 lists), `GET /ready`,

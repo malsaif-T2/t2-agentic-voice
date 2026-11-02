@@ -47,6 +47,7 @@ from pydantic import (
 from t2_agentic_voice.core.errors import InvalidRequestError
 from t2_agentic_voice.core.events import MAX_INDEX, CallId, ClientConnection, EndReason, TurnId
 from t2_agentic_voice.core.settings.tts import LanguageTag
+from t2_agentic_voice.domain.declaration import NoticeKind
 
 # The protocol's version: every message carries it as "v", and /join checks the client's.
 PROTOCOL: Final = 1
@@ -61,9 +62,6 @@ RESERVED_PREFIX = "ping"
 # What the agent is doing, for the client to show (the design's 5.5): the echo session uses
 # the first three; `confirming` comes with confirmed actions.
 CallState = Literal["listening", "thinking", "speaking", "confirming"]
-# A notice's kind, each shown with text in the call's language: `busy` comes with admission
-# control.
-NoticeKind = Literal["busy", "error", "ended"]
 # A reply's number in its call, from 0, as the session counts them: the greeting is reply 0.
 ReplyId = Annotated[int, Field(ge=0, le=MAX_INDEX)]
 # A clause's index in its reply, from 0.
@@ -172,7 +170,8 @@ class Caption(_SessionMessage):
 
 
 class Notice(_SessionMessage):
-    """Something the caller is told, as text in the call's language."""
+    """Something the caller is told, as text in the call's language: its `Language`'s notice of
+    `kind` (domain/declaration.py's `NoticeKind` says when each is told)."""
 
     type: Literal["notice"] = "notice"
     kind: NoticeKind

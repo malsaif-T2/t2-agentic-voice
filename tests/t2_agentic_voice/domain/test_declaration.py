@@ -1,18 +1,48 @@
-"""The declaration of a use case (the design's 4.3 and 5.2; plan 003, Q3): an agent with a name and
-its languages, each built from its preset with the team's greeting and the echo's frame."""
+"""The declaration of a use case (the design's 4.3 and 5.2; plan 003, Q3 and Q5): an agent with a
+name, its languages, each built from its preset with the team's greeting, the echo's frame and
+the notices, and its pronunciation map; anything it cannot run with a ConfigurationError naming
+the field, with a FIX line (the design's 4.2)."""
 
 from __future__ import annotations
 
+import copy
+import pickle
+from collections.abc import Callable
 from typing import Any
 
 import pytest
 from pydantic import ValidationError
 from t2_agentic_voice.core.errors import ConfigurationError
 from t2_agentic_voice.core.settings.tts import LanguageTag
-from t2_agentic_voice.domain.declaration import Language, VoiceAgent
+from t2_agentic_voice.domain.declaration import (
+    NOTICE_KINDS,
+    SPOKEN_NOTICES,
+    Language,
+    VoiceAgent,
+    fixed_phrases,
+)
 
 SAUDI = Language.saudi_arabic(greeting="هلا! وش أقدر أساعدك فيه؟")
 ENGLISH = Language.english(greeting="Hi! Which branch can I help you with?")
+# Each preset's notices, as the owner's register for the fixed phrases has them (Q5): Saudi for
+# ar-SA, Modern Standard Arabic for ar, and English.
+NOTICES = {
+    "ar-SA": {
+        "busy": "الخطوط مشغولة الحين، حاول مرة ثانية بعد شوي.",
+        "error": "صار عندنا خلل بسيط، تكلم مرة ثانية لو سمحت.",
+        "ended": "انتهت المكالمة، يعطيك العافية.",
+    },
+    "ar": {
+        "busy": "الخطوط مشغولة الآن، يرجى المحاولة مرة أخرى بعد قليل.",
+        "error": "حدث خلل لدينا، هل يمكنك إعادة ما قلته؟",
+        "ended": "انتهت المكالمة، شكرا لاتصالك.",
+    },
+    "en": {
+        "busy": "All our lines are busy right now. Please try again in a little while.",
+        "error": "Something went wrong on our side. Could you say that again?",
+        "ended": "The call has ended. Thank you for calling.",
+    },
+}
 
 
 def test_each_preset_has_its_tag_and_the_frame_the_owner_chose() -> None:
@@ -26,29 +56,103 @@ def test_each_preset_has_its_tag_and_the_frame_the_owner_chose() -> None:
     assert ENGLISH.greeting == "Hi! Which branch can I help you with?"
 
 
-@pytest.mark.parametrize("greeting", ["", "   ", "Hi\nthere", "Hi\x00"])
-def test_a_greeting_says_something_on_one_line(greeting: str) -> None:
-    with pytest.raises(ValidationError):
+def test_each_preset_has_a_text_for_every_notice_in_its_register() -> None:
+    msa = Language.arabic(greeting="مرحبا بك")
+    for language in (SAUDI, msa, ENGLISH):
+        assert dict(language.notices) == NOTICES[language.tag], language.tag
+        assert tuple(language.notices) == NOTICE_KINDS == ("busy", "error", "ended")
+    assert all(len(text) <= 200 for texts in NOTICES.values() for text in texts.values())
+
+
+def test_a_teams_notices_replace_the_kinds_they_name() -> None:
+    english = Language.english(greeting="Hello there.", notices={"ended": "Bye for now."})
+    assert dict(english.notices) == NOTICES["en"] | {"ended": "Bye for now."}
+    saudi = Language.saudi_arabic(greeting="هلا", notices={"error": "صار خلل"})
+    assert saudi.notices["error"] == "صار خلل"
+    assert saudi.notices["busy"] == NOTICES["ar-SA"]["busy"]
+    assert Language.english(greeting="Hello there.", notices={}) == ENGLISH.model_copy(
+        update={"greeting": "Hello there."}
+    )
+
+
+def test_a_languages_notices_are_read_only_and_dump_as_a_plain_object() -> None:
+    with pytest.raises(TypeError):
+        ENGLISH.notices["busy"] = "changed"  # type: ignore[index]
+    dumped = ENGLISH.model_dump()
+    assert dumped["notices"] == NOTICES["en"] and isinstance(dumped["notices"], dict)
+    assert Language.model_validate(dumped) == ENGLISH
+    again = pickle.loads(pickle.dumps(ENGLISH))  # noqa: S301 - loads only bytes it dumped
+    assert copy.deepcopy(ENGLISH) == ENGLISH == again
+
+
+@pytest.mark.parametrize("greeting", ["", "   ", "Hi\nthere", "Hi\x00", 3])
+def test_a_greeting_says_something_on_one_line(greeting: Any) -> None:
+    with pytest.raises(ConfigurationError, match="FIX: ") as raised:
         Language.english(greeting=greeting)
+    assert raised.value.details == {"field": "greeting"}
+
+
+@pytest.mark.parametrize(
+    "notices",
+    [
+        {"error": ""},
+        {"ended": "Bye\nnow"},
+        {"farewell": "Bye now."},  # not a kind of notice
+        {"busy": 3},
+        [("error", "Bye now.")],  # not a map
+    ],
+)
+def test_a_teams_notice_says_something_on_one_line_for_a_kind_there_is(notices: Any) -> None:
+    with pytest.raises(ConfigurationError, match="FIX: ") as raised:
+        Language.english(greeting="Hello there.", notices=notices)
+    assert raised.value.details == {"field": "notices"}
+
+
+def test_a_language_built_without_its_preset_still_needs_every_notice() -> None:
+    fields = ENGLISH.model_dump() | {"notices": {"busy": "Busy now."}}
+    with pytest.raises(ConfigurationError, match="error or ended") as raised:
+        Language.model_validate(fields)
+    assert raised.value.details == {"field": "notices"}
 
 
 def test_a_language_is_frozen_and_takes_no_other_field() -> None:
     with pytest.raises(ValidationError):
         ENGLISH.greeting = "Hello"  # type: ignore[misc]
-    with pytest.raises(ValidationError):
-        Language.model_validate({"tag": "fr", "greeting": "Bonjour", "echo_frame": "J'ai entendu:"})
-    with pytest.raises(ValidationError):
-        Language.model_validate(ENGLISH.model_dump() | {"voice": "troy"})
+    refused: list[tuple[object, str | None]] = [
+        (ENGLISH.model_dump() | {"tag": "fr"}, "tag"),
+        ({"tag": "en", "greeting": "Hello"}, "echo_frame"),
+        (ENGLISH.model_dump() | {"voice": "troy"}, "voice"),
+        ("en", None),  # not a language at all
+    ]
+    for value, field in refused:
+        with pytest.raises(ConfigurationError, match="FIX: ") as raised:
+            Language.model_validate(value)
+        assert raised.value.details == {"field": field}, value
 
 
 def test_an_agent_has_a_name_and_its_languages_the_first_a_calls_by_default() -> None:
     agent = VoiceAgent(name="branch-helper", languages=[SAUDI, ENGLISH])
-    assert (agent.name, agent.languages) == ("branch-helper", (SAUDI, ENGLISH))
+    assert (agent.name, agent.languages, dict(agent.pronounce)) == (
+        "branch-helper",
+        (SAUDI, ENGLISH),
+        {},
+    )
     assert agent.languages[0].tag == "ar-SA"
     with pytest.raises(ValidationError):
         agent.name = "other"  # type: ignore[misc]
-    with pytest.raises(ValidationError):
-        VoiceAgent.model_validate({"name": "x", "languages": [ENGLISH], "tools": []})
+
+
+def test_an_agent_keeps_its_pronunciations_read_only() -> None:
+    """The design's 4.3 map: each written form to how `ar` and `en` say it."""
+    said = {"LT-": {"ar": "إل تي", "en": "L T"}}
+    agent = VoiceAgent(name="helpdesk", languages=[SAUDI, ENGLISH], pronounce=said)
+    assert {form: dict(each) for form, each in agent.pronounce.items()} == said
+    with pytest.raises(TypeError):
+        agent.pronounce["LT-"]["en"] = "changed"  # type: ignore[index]
+    said["LT-"]["en"] = "changed later"
+    assert agent.pronounce["LT-"]["en"] == "L T"  # a copy, not the team's dict
+    assert VoiceAgent.model_validate(agent.model_dump()) == agent
+    assert agent.model_dump()["pronounce"] == {"LT-": {"ar": "إل تي", "en": "L T"}}
 
 
 @pytest.mark.parametrize(
@@ -79,6 +183,22 @@ def test_a_locale_takes_its_exact_tag_before_another_of_its_language() -> None:
     assert agent.call_language("ar-SA", locale="en") is SAUDI
 
 
+def test_the_fixed_phrases_are_each_languages_greeting_frame_and_spoken_notices() -> None:
+    """What the runtime declares to the phrase cache: `busy` comes at join, before a call."""
+    agent = VoiceAgent(name="branch-helper", languages=[SAUDI, ENGLISH])
+    assert SPOKEN_NOTICES == ("error", "ended")
+    assert fixed_phrases(agent) == (
+        (SAUDI.greeting, "ar-SA"),
+        ("سمعتك تقول:", "ar-SA"),
+        (NOTICES["ar-SA"]["error"], "ar-SA"),
+        (NOTICES["ar-SA"]["ended"], "ar-SA"),
+        (ENGLISH.greeting, "en"),
+        ("I heard:", "en"),
+        (NOTICES["en"]["error"], "en"),
+        (NOTICES["en"]["ended"], "en"),
+    )
+
+
 @pytest.mark.parametrize(
     ("values", "field"),
     [
@@ -86,11 +206,19 @@ def test_a_locale_takes_its_exact_tag_before_another_of_its_language() -> None:
         ({"name": "../var", "languages": [ENGLISH]}, "name"),
         ({"name": "9lives", "languages": [ENGLISH]}, "name"),
         ({"name": "a" * 65, "languages": [ENGLISH]}, "name"),
+        ({"name": 3, "languages": [ENGLISH]}, "name"),
+        ({"languages": [ENGLISH]}, "name"),
         ({"name": "helper", "languages": []}, "languages"),
         (
             {"name": "helper", "languages": [ENGLISH, Language.english(greeting="Hello")]},
             "languages",
         ),
+        ({"name": "helper"}, "languages"),
+        ({"name": "helper", "languages": "en"}, "languages"),
+        ({"name": "helper", "languages": ["en"]}, "languages"),  # not a preset
+        ({"name": "helper", "languages": [{"tag": "en"}]}, "greeting"),  # its own field
+        ({"name": "helper", "languages": [ENGLISH], "tools": []}, "tools"),
+        ({"name": "helper", "languages": [ENGLISH], "pronounce": ["LT-"]}, "pronounce"),
     ],
 )
 def test_an_agent_it_cannot_run_is_a_configuration_error_with_a_fix(
@@ -100,3 +228,49 @@ def test_an_agent_it_cannot_run_is_a_configuration_error_with_a_fix(
     with pytest.raises(ConfigurationError, match="FIX: ") as raised:
         VoiceAgent.model_validate(values)
     assert raised.value.details == {"field": field}
+
+
+@pytest.mark.parametrize("name", ["nul", "con", "prn", "aux", "com1", "com9", "lpt1", "lpt9"])
+def test_an_agent_is_not_named_like_a_windows_device(name: str) -> None:
+    """Windows keeps these names for its devices: on this machine, a file under a folder named
+    `nul` cannot be written (plan 003's review)."""
+    with pytest.raises(ConfigurationError, match="Windows keeps") as raised:
+        VoiceAgent(name=name, languages=[ENGLISH])
+    assert raised.value.details == {"field": "name"}
+    assert VoiceAgent(name=f"{name}-helper", languages=[ENGLISH]).name == f"{name}-helper"
+
+
+@pytest.mark.parametrize(
+    "pronounce",
+    [
+        {"LT-": {"ar-SA": "إل تي"}},  # a tag, not the primary code
+        {"LT-": {"fr": "L T"}},
+        {"LT-": {}},  # says how no language says it
+        {"LT-": {"en": ""}},
+        {"LT-": {"en": "L\nT"}},
+        {"": {"en": "L T"}},
+        {" LT-": {"en": "L T"}},  # never stands as whole words
+        {"LT-\n": {"en": "L T"}},
+        {"LT-": "L T"},
+    ],
+)
+def test_a_pronunciation_names_ar_or_en_and_says_something(pronounce: Any) -> None:
+    with pytest.raises(ConfigurationError, match="FIX: ") as raised:
+        VoiceAgent(name="helpdesk", languages=[ENGLISH], pronounce=pronounce)
+    assert raised.value.details == {"field": "pronounce"}
+
+
+@pytest.mark.parametrize(
+    "build",
+    [
+        lambda: Language.english(greeting="Secret greeting\nline"),
+        lambda: Language.english(greeting="Hi", notices={"error": "Secret notice\x00"}),
+        lambda: VoiceAgent(name="Secret Name", languages=[ENGLISH]),
+        lambda: VoiceAgent(name="x", languages=[ENGLISH], pronounce={"x": {"en": "Secret\n"}}),
+    ],
+)
+def test_an_error_never_repeats_the_value_it_refused(build: Callable[[], object]) -> None:
+    with pytest.raises(ConfigurationError) as raised:
+        build()
+    assert "Secret" not in str(raised.value)
+    assert raised.value.__context__ is None and raised.value.__cause__ is None

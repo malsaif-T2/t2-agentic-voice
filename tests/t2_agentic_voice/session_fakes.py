@@ -23,7 +23,7 @@ from t2_agentic_voice.core.events import EndReason, Event, TransportStage
 from t2_agentic_voice.core.identity import Caller, Consent
 from t2_agentic_voice.core.settings.tts import LanguageTag
 from t2_agentic_voice.core.tracing import Tracing
-from t2_agentic_voice.domain.declaration import Language, VoiceAgent
+from t2_agentic_voice.domain.declaration import Language, VoiceAgent, fixed_phrases
 from t2_agentic_voice.domain.ports.speech_to_text import Transcript
 from t2_agentic_voice.domain.ports.text_to_speech import AudioChunk
 from t2_agentic_voice.voice.protocol import ClientMessage, SessionMessage, parse_client_message
@@ -80,12 +80,9 @@ class FakePhrases:
 
     @classmethod
     def of(cls, agent: VoiceAgent) -> FakePhrases:
-        """The phrases `agent` declares: each language's greeting and echo frame."""
-        return cls(
-            (text, language.tag)
-            for language in agent.languages
-            for text in (language.greeting, language.echo_frame)
-        )
+        """The phrases the runtime declares for `agent` (`fixed_phrases`): each language's
+        greeting, echo frame and spoken notices."""
+        return cls(fixed_phrases(agent))
 
     def audio(self, text: str, *, language: LanguageTag) -> AudioChunk:
         self.asked.append((text, language))

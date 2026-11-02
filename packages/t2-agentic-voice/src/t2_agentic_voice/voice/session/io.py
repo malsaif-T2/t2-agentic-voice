@@ -26,9 +26,10 @@ items cited are plan 003's appendix, "Changes to the plan's interfaces".
   reply clause by clause (`Speak`), each clause keyed on its reply and its index there, and
   naming the caller's turn the reply answers (none for the greeting or a notice), so a turn
   and a reply never share a key. Each clause is within the provider's `max_chars`, so the
-  text-to-speech bridge's TOKEN aggregation sends one request per clause (item 9). Each reports
-  `ClauseQueued` when its first audio is queued for the output, then `ClausePlayed` or
-  `ClauseFailed`, unless a `StopSpeaking` drops it first.
+  text-to-speech bridge's TOKEN aggregation sends one request per clause (item 9); a fixed
+  phrase (the greeting, the frame, a notice) is one clause whatever its length, played from the
+  phrase cache with no request. Each reports `ClauseQueued` when its first audio is queued for
+  the output, then `ClausePlayed` or `ClauseFailed`, unless a `StopSpeaking` drops it first.
 - **The drop rule** (plan 003's decision log). A turn whose speech began (`speech_at`) while any
   reply played, the greeting included, or within 300 ms after a reply's last clause played, is
   not answered, so the agent never answers its own voice leaking past the browser's echo

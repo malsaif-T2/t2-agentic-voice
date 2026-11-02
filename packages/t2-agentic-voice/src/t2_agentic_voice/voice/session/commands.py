@@ -33,8 +33,9 @@ class Speak:
     """Say one clause of a reply in the voice of `language`: clause `clause` of reply
     `reply_id`, which answers the caller's turn `turn_id` (None for the greeting or a spoken
     notice); `text`, at most the provider's `max_chars`, in one text-to-speech request; or, for a
-    fixed phrase, `audio` from the phrase cache, played with no request (`text` kept for its
-    caption and its span). Clauses play in the order they were asked for."""
+    fixed phrase, `audio` from the phrase cache, played with no request (`text`, the whole
+    phrase whatever its length, kept for its caption and its span: one clause). Clauses play in
+    the order they were asked for."""
 
     reply_id: ReplyId
     clause: ClauseIndex
