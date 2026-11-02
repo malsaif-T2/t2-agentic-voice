@@ -13,10 +13,11 @@ mistakes into checks. Each round is an execution plan, not a milestone
 ## When
 
 The owner asks for a round when they see fit. `uv run poe gc` opens by saying whether one is due,
-and why (`scripts/gc_due.py`). Counted from the commit that moved the last round's plan into
-`completed/` (before the first round, from the repository's first commit):
-- a milestone completed (a completed plan's Status line names it);
-- a set number of commits landed (`[gc] due_after_commits` in `harness.toml`; 40 to start);
+and why (`scripts/gc_due.py`). Counted after the commit that moved the last round's plan into
+`completed/` (before the first round, after the repository's first commit):
+- a milestone completed (a completed plan's Status line names it, and no active plan's does);
+- a set number of commits landed, merges left out, since a merge repeats its branch's commits
+  (`[gc] due_after_commits` in `harness.toml`; 40);
 - a layer grades below what [quality.md](quality.md) records (compared only when coverage was
   measured alike).
 
