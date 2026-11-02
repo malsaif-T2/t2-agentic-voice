@@ -10,11 +10,7 @@ from collections.abc import Sequence
 
 from t2_agentic_voice.domain.text.arabic import normalize_arabic
 from t2_agentic_voice.domain.text.rulings import SpellingIssue, SpellingRule
-
-
-def _holds(text: str, phrase: str) -> bool:
-    """Whether the normalized `text` holds the normalized `phrase` as whole words."""
-    return f" {phrase} " in f" {text} "
+from t2_agentic_voice.domain.text.words import holds_words
 
 
 def _avoided(rule: SpellingRule) -> list[tuple[str, str]]:
@@ -30,7 +26,7 @@ def _avoided(rule: SpellingRule) -> list[tuple[str, str]]:
                 f"spelling rule {rule.id!r} avoids a spelling that is empty after "
                 "normalization, so no reference could hold it"
             )
-        if _holds(write, form):
+        if holds_words(write, form):
             raise ValueError(
                 f"spelling rule {rule.id!r} avoids a spelling that what it says to write "
                 "holds after normalization, so a reference that follows it would break it"
@@ -51,5 +47,5 @@ def spelling_issues(reference: str, rules: Sequence[SpellingRule]) -> list[Spell
         SpellingIssue(rule=rule.id, found=spelling, write=rule.write)
         for rule in rules
         for spelling, form in _avoided(rule)
-        if _holds(held, form)
+        if holds_words(held, form)
     ]

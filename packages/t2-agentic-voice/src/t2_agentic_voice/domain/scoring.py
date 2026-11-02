@@ -15,6 +15,7 @@ from collections.abc import Collection, Sequence
 from t2_agentic_voice.domain.recall import Recall
 from t2_agentic_voice.domain.text.arabic import normalize_arabic
 from t2_agentic_voice.domain.text.digits import normalize_digits
+from t2_agentic_voice.domain.text.words import holds_words
 
 _DIGITS = re.compile(r"[0-9]+")
 
@@ -24,11 +25,6 @@ def scored_form(text: str) -> str:
     are separated by one space, with none at the ends; the verdict and the character error rate
     also remove those spaces."""
     return normalize_digits(normalize_arabic(text))
-
-
-def _holds(text: str, phrase: str) -> bool:
-    """Whether `text` holds `phrase` as whole words, both in their scored form."""
-    return f" {phrase} " in f" {text} "
 
 
 def term_recall(reference: str, output: str, terms: Sequence[str]) -> Recall:
@@ -49,8 +45,9 @@ def term_recall(reference: str, output: str, terms: Sequence[str]) -> Recall:
             raise ValueError("a term is empty after normalization, so no text could hold it")
         wanted[form] = None
     held, heard = scored_form(reference), scored_form(output)
-    expected = [form for form in wanted if _holds(held, form)]
-    return Recall(expected=len(expected), found=sum(_holds(heard, form) for form in expected))
+    expected = [form for form in wanted if holds_words(held, form)]
+    found = sum(holds_words(heard, form) for form in expected)
+    return Recall(expected=len(expected), found=found)
 
 
 def _stretches(text: str) -> list[list[str]]:
