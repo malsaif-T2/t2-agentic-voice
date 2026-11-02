@@ -1,5 +1,5 @@
-"""Importing the library configures nothing and prints nothing (the design's 3.3 and 10.2;
-TD-033): in a child process with a clean environment, as a teammate's process first meets it,
+"""Importing the library configures nothing and prints nothing (the design's 3.3 and
+10.2): in a child process with a clean environment, as a teammate's process first meets it,
 every public module is imported, and a library line reaches an output only once the app adds a
 handler or calls `configure_logging`."""
 

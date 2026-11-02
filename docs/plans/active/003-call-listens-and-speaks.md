@@ -285,7 +285,7 @@ interfaces and fakes, reviewed by concern (`## Tracks`), and merged through an i
    fixes: the base error is `T2VoiceError`, with `AppError` a deprecated alias (D-026); the library
    declares httpx, `scripts/harness_config.py` is split, and ARCH-DEPS refuses an import its project
    does not declare and DOC-SAMPLE a guide sample that is not its source's lines (D-027, Accepted
-   2026-11-02); the library's logging is TD-033. This plan's text was brought up to date at that
+   2026-11-02); the library's logging is step 8. This plan's text was brought up to date at that
    merge: no removed row is cited, the round's work is dropped from the steps below, and the rows it
    left for M2's plan are in the decision log. This plan's decision numbers start after D-027.
 2. The owner settles Q1 to Q6 ("The measurement, registered before any result"). The agent lists
@@ -401,7 +401,7 @@ interfaces and fakes, reviewed by concern (`## Tracks`), and merged through an i
    (Recommended)", in plan 004's read): its loggers sit under
    `t2_agentic_voice` on the standard library, with a `NullHandler`, never touching the root
    logger, while `get_logger` keeps its structured call shape and `configure_logging` stays a
-   helper an app calls, writing to a stream it can choose; this step pays TD-033. `voice` owns
+   helper an app calls, writing to a stream it can choose; this step pays that debt. `voice` owns
    loguru (Q2).
 9. **Errors.** `JoinRejected`, on the base error `T2VoiceError` (D-026); the
    code list in `tests/t2_agentic_voice/core/test_errors.py` grows with it.
@@ -633,12 +633,12 @@ criteria say)
   `voice/protocol.py`; and citations of the round's plan and decision by number, which DOC-REF
   refuses until that round merges (step 1 adds them then).
 - 2026-11-02: Rebased onto the main branch after plan 004 merged (750d90a), and brought up to date
-  as step 1 says: no row the round removed is cited (ten were); httpx leaves the first `uv add`
-  and the dependency table, since the library declares it; step 6 no longer splits `harness_config.py`;
-  steps 8 and 9 cite TD-033 and D-026; the guide's samples are checked by DOC-SAMPLE; the rows the
-  round left for M2's plan are in the decision log, and TD-037's row follows this plan's choice for
-  `reference/api.md`. `uv run --offline poe docs`: 'check_docs: OK (27 files checked)'. Next: the
-  owner's calls before Block 0 (Q1 to Q6), then Block 0.
+  as step 1 says: no row the round removed is cited (ten were); httpx leaves the first `uv add` and
+  the dependency table, since the library declares it; step 6 no longer splits `harness_config.py`;
+  steps 8 and 9 cite the logging debt and D-026; the guide's samples are checked by DOC-SAMPLE; the
+  rows the round left for M2's plan are in the decision log, and TD-037's row follows this plan's
+  choice for `reference/api.md`. `uv run --offline poe docs`: 'check_docs: OK (27 files checked)'.
+  Next: the owner's calls before Block 0 (Q1 to Q6), then Block 0.
 - 2026-11-02: The owner's answer to Q1 to Q6 is recorded ("The owner's decisions"), each question
   marked settled, with Q8 settled in part: all hosting is on this machine for now, and Phoenix is
   M1's with no SSH tunnel and no authentication, so `tracing.api_key` leaves Block 0's settings and
@@ -712,6 +712,31 @@ criteria say)
   addresses. The interface details are the appendix's "Changes to the plan's interfaces", which the
   tracks read. Q2's `forward` cannot hold as it was worded, so Q19 goes to the owner; Block 0 builds
   `logging.pipecat` with `off` only meanwhile. Next: steps 6 to 12.
+- 2026-11-02: Steps 7, 8 and 9, and step 6 but for its facades, by a workflow of three builders, one
+  after another, each gated before its commits: the settings (41057da `VoiceSettings`, 2c659b3
+  `JoinRejected`), the library's logging (a271648) and the harness (8d2ce05, 2abcf31, db8001a,
+  bc25c8b). `Settings` and `get_settings` are gone, with no alias: `VoiceSettings` built in code
+  reads nothing, and `VoiceSettings.from_env()` is the only reader of the environment, and of a
+  `.env` only when it is passed one. Its 12 groups are one module each under `core/settings/`, and
+  `uv run poe settings-ref` writes docs/generated/settings.md and `.env.example` from them (`grep -c
+  "^T2V_" .env.example`: '49'). The library logs through the standard library under
+  `t2_agentic_voice`, with a `NullHandler`, which pays the logging debt plan 004 found: its row is
+  removed, and the design's notes, quality.md and the roadmap's M2 line no longer cite it. ARCH-BAN
+  (`scripts/arch_ban.py`, harness.toml's `[[bans]]`) keeps Pipecat's provider services, LLM context,
+  runner, torch and numba modules, loggers and DTMF out of the library, all of Pipecat out of
+  `voice/session`, and Pipecat and aiortc out of the apps; `[[owners]]` gives jwt and sqlite3 to
+  `adapters`, num2words to `domain` and loguru to `voice`. A test refuses any torch package in the
+  lock and imports each public module alone in a fresh process, which must print nothing; the tests
+  drop the new packages' variables before any import and make an aiortc peer without its own ICE
+  list raise; the no-item scan reads `apps/*/web`, and `allowed_in_source.toml` holds Q6's "stop".
+  Every commit's gate failed on one file alone, this plan, whose appendix's Python samples `ruff
+  format` reflows; the integrator committed that formatting, and with it `uv run --offline poe
+  check` printed '1614 passed, 1 skipped in 87.72s (0:01:27)' and 'Total coverage: 100.00%'. The
+  integrator also declared aiortc in the root's dev group, which the tests reach (it was locked as
+  pipecat-ai[webrtc]'s; nothing was downloaded). What the builders chose is in the decision log; the
+  debt they found is TD-041 to TD-043, and TD-026's row names the keys an M1 run lacks. Left for
+  step 10: step 6's facades (identity, server, stores, events), their tests and CLAUDE.md's lines
+  for them. Next: steps 10 to 12.
 
 ## Decision log
 
@@ -812,7 +837,7 @@ any before the step it affects.
   Proposed in its decision entry.
 - 2026-11-02: Debt paid in M2: TD-012, TD-014, TD-020, TD-026 (before R7, so the comparison refuses
   any setting but the language hint), TD-011 (read in R7's smoke step), TD-032 (R5 and R6), and the
-  logging (TD-033, step 8). TD-015 stays whole: the owner's Phoenix runs on this machine with no
+  logging debt (step 8). TD-015 stays whole: the owner's Phoenix runs on this machine with no
   authentication ("The owner's decisions"), so no trace needs an API key in M2. TD-004 follows Q8:
   with no proxy on the host, the clients turn `trust_env` off; with one, a proxy setting is added.
   TD-003 and TD-005 stay: `GroqTTS` imports groq inside `logging_unchanged` as `GroqSTT` does, and
@@ -954,6 +979,65 @@ any before the step it affects.
 - 2026-11-02: Importing onnxruntime took 8 to 12 s per process on this machine (the spike), so
   `import t2_agentic_voice` and `t2v --help` import no module that loads it (GP-17), the lifespan
   builds Silero and Smart Turn, and few tests import `voice` in a child process.
+- 2026-11-02, step 7 (the settings builder's choices; step 13's review reads them): `VoiceSettings`
+  is a frozen pydantic `BaseModel` that refuses extra keys, not a `BaseSettings`, so settings built
+  in code cannot read anything. `from_env` reads `os.environ` itself, only the names under the
+  prefix, matched in any case (two names in one source that differ only in case are refused, GP-06),
+  and a `.env` through pydantic-settings' `DotEnvSettingsSource`. It also takes code values
+  (`**values`), above the environment and the file, as the design's 7.2 orders its layers, though
+  the design's signature lists only `prefix`, `env_file` and `unknown`: the Ole5 eval commands pass
+  `env="dev"` that way. A blank value counts as unset under any name, since a `.env` copied from the
+  old `.env.example` holds blank keys; M1's names (`T2V_VAR_DIR`, `T2V_LOG_LEVEL`, `T2V_LOG_FORMAT`)
+  set to a value are refused with the name to use now. Set aside: `BaseSettings` with a loader
+  subclass, under which an unknown name inside a group still fails with `unknown="warn"`.
+- 2026-11-02, step 7: The environment checks follow the design's 7.4 to the letter:
+  `server.dev_page` and `logging.content` are refused in test as in staging and prod, and DEBUG in
+  staging and prod; they run at every load and again in `status()`. A join key and the TURN secret
+  hold at least 32 bytes of printable ASCII with no space. An inline one is refused at load, one in
+  a file (`join.keys_file`, `server.turn_secret_file`, as `groq.api_key_file`) when it is resolved,
+  since loading settings reads no file: so Track F's lifespan resolves every configured secret at
+  start, and a short secret in a file stops the server there, not at the first join. The join key
+  file is one JSON object from key ID to secret, the form `T2V_JOIN__KEYS` takes, and a key ID
+  matches `^[A-Za-z0-9._-]{1,64}$`. The values nobody gave are the builder's: `tts.timeout_s` 6.0,
+  as `stt.timeout_s`; the limits in float seconds; a voice name `^[a-z][a-z0-9_-]{0,31}$`;
+  `ice_servers` as stun:, turn: or turns: URLs with no credentials; each of `allowed_origins` a
+  scheme, a host and a port only; and `*` refused in `forwarded_allow_ips`.
+- 2026-11-02, step 7: The Ole5 eval commands pass the working folder's `.env` to `from_env` when
+  `--env-file` names none, as M1's settings read it, so the owner's M1 command lines still work, and
+  a run is always `env="dev"`, given in code, since it serves no caller. A run's history records
+  every library setting (a secret or a file as set or not set), and `logging.level` and
+  `logging.format` replace `log_level` and `log_format`, so comparing an M1 run with a new one lists
+  those keys (TD-026, paid before R7). `JoinRejected` carries the code `join_rejected` and no HTTP
+  status, as every error below the outermost layer (GP-07); Track F's `api` maps it. The settings
+  reference is docs/generated/settings.md, not the design's 7.7 path, as an earlier entry here says.
+- 2026-11-02, step 8 (the logging builder's choices): `get_logger` returns a small
+  `StructuredLogger` of the library's own on the standard library (`debug`, `info`, `warning`,
+  `error`, each taking an event and its fields), and structlog is only the formatter of the handler
+  `configure_logging` installs, so the console line is M1's byte for byte. The fields travel in one
+  `extra` key, `record.fields`: a `LogRecord` refuses an extra key named like one of its own
+  attributes, and the Ole5 app's events use `name` and `message` (the design's 10.2 now says so).
+  `configure_logging(level, fmt, *, stream=None, loggers=(), content=False)` puts one handler on
+  `t2_agentic_voice` and on each logger named, replaces the one an earlier call put, writes to the
+  standard output of the moment unless given a stream, and unless `content` is on holds aiortc and
+  aioice at WARNING through `hold_transport_loggers()`, which `voice` calls at start too, since it
+  may not import `logging`. It never touches the root logger or `propagate`. `take_over` is removed:
+  nothing called it. A command run with `python -m` logs as `__main__`, so the Ole5 app's loggers
+  are `ole5_voice.LOGGERS = ("ole5_voice", "__main__")`; the guide's logging page (Track G) tells a
+  team to pass its package and `__main__`, and `examples/minimal` shows it. `serve()` runs uvicorn
+  with `log_config=None`. No `exception`, `critical` or `bind`: a traceback is content-shaped.
+- 2026-11-02, step 6 (the harness builder's choices): a `[[bans]]` entry names its scope by module
+  prefixes in `within` (the library, a part of it, or an app), and ARCH-BAN reads `from a import b`
+  as the module `a.b`, reporting every ban an import breaks, each with its own FIX; the library's
+  bans are six tables, one per thing to do instead. From `pipecat.services` the library may import
+  only `ai_service`, `settings`, `stt_latency`, `stt_service`, `tts_service` and
+  `websocket_service`, what `stt_service` and `tts_service` themselves import in 1.15.0, which a
+  test recomputes from the installed source. ARCH-BAN sees only the library's own imports (TD-043).
+  The tests drop the new packages' variables by prefix where a package owns one (`PIPECAT_`,
+  `LOGURU_`, `WEBSOCKETS_`, `UVICORN_`, `NUMBA_`, `LLVMLITE_`, `OPENAI_`) and by name otherwise, set
+  `PYTHON_DOTENV_DISABLED=1`, and import nothing of the library before they drop them. A session
+  fixture makes every aiortc peer built without its own ICE list raise, so a test builds one with
+  `RTCConfiguration(iceServers=[])` (0.46 s more for a one-file session, as the builder measured
+  it).
 
 ## The owner's decisions
 
@@ -2536,28 +2620,49 @@ from pipecat.audio.turn.smart_turn.base_smart_turn import SmartTurnParams
 from pipecat.services.stt_service import STTService
 from pipecat.services.settings import STTSettings, TTSSettings
 from pipecat.utils.time import time_now_iso8601
-from pipecat.frames.frames import (EndFrame, InputAudioRawFrame, MetricsFrame, TranscriptionFrame,
-    TTSAudioRawFrame, TTSSpeakFrame, UserStartedSpeakingFrame, UserStoppedSpeakingFrame)
+from pipecat.frames.frames import (
+    EndFrame,
+    InputAudioRawFrame,
+    MetricsFrame,
+    TranscriptionFrame,
+    TTSAudioRawFrame,
+    TTSSpeakFrame,
+    UserStartedSpeakingFrame,
+    UserStoppedSpeakingFrame,
+)
 from pipecat.metrics.metrics import TurnMetricsData
 from pipecat.processors.frame_processor import FrameDirection, FrameProcessor
 
-vad = VADProcessor(vad_analyzer=SileroVADAnalyzer(params=VADParams(
-    confidence=0.7, start_secs=0.2, stop_secs=0.2, min_volume=0.6)))
+vad = VADProcessor(
+    vad_analyzer=SileroVADAnalyzer(
+        params=VADParams(confidence=0.7, start_secs=0.2, stop_secs=0.2, min_volume=0.6)
+    )
+)
 turns = UserTurnProcessor(
     user_turn_strategies=UserTurnStrategies(
         start=[VADUserTurnStartStrategy(enable_interruptions=False)],
-        stop=[TurnAnalyzerUserTurnStopStrategy(
-            turn_analyzer=LocalSmartTurnAnalyzerV3(params=SmartTurnParams(
-                stop_secs=3.0, pre_speech_ms=500, max_duration_secs=8)),
-            wait_for_transcript=False)]),
-    user_turn_strategies_params=UserTurnStrategiesParams())
+        stop=[
+            TurnAnalyzerUserTurnStopStrategy(
+                turn_analyzer=LocalSmartTurnAnalyzerV3(
+                    params=SmartTurnParams(stop_secs=3.0, pre_speech_ms=500, max_duration_secs=8)
+                ),
+                wait_for_transcript=False,
+            )
+        ],
+    ),
+    user_turn_strategies_params=UserTurnStrategiesParams(),
+)
 pipeline = Pipeline([vad, turns, stt_bridge, echo, tts])
-worker = PipelineWorker(pipeline, params=PipelineParams(audio_in_sample_rate=16000,
-    audio_out_sample_rate=24000), enable_rtvi=False, cancel_on_idle_timeout=False)
+worker = PipelineWorker(
+    pipeline,
+    params=PipelineParams(audio_in_sample_rate=16000, audio_out_sample_rate=24000),
+    enable_rtvi=False,
+    cancel_on_idle_timeout=False,
+)
 # @worker.event_handler("on_pipeline_started") -> feed only after it fires; "on_pipeline_finished"
 runner = WorkerRunner(handle_sigint=False)
 await runner.add_workers(worker)
-await asyncio.gather(runner.run(), feeder())   # run(auto_end=True)
+await asyncio.gather(runner.run(), feeder())  # run(auto_end=True)
 # feeder: await worker.queue_frame(InputAudioRawFrame(audio=<640 bytes>, sample_rate=16000,
 #         num_channels=1)) at perf_counter deadlines t0 + n*0.02; then await worker.queue_frame(EndFrame())
 ```
@@ -2650,28 +2755,45 @@ await asyncio.gather(runner.run(), feeder())   # run(auto_end=True)
 **Exact API the WebRTC spike used:**
 
 ```python
-from pipecat.transports.smallwebrtc.request_handler import (SmallWebRTCRequestHandler,
-    SmallWebRTCRequest, SmallWebRTCPatchRequest, IceCandidate, ConnectionMode)
+from pipecat.transports.smallwebrtc.request_handler import (
+    SmallWebRTCRequestHandler,
+    SmallWebRTCRequest,
+    SmallWebRTCPatchRequest,
+    IceCandidate,
+    ConnectionMode,
+)
 from pipecat.transports.smallwebrtc.connection import SmallWebRTCConnection
 
 handler = SmallWebRTCRequestHandler()  # (ice_servers=None, esp32_mode=False, host=None,
-                                       #  connection_mode=ConnectionMode.MULTIPLE)
+#  connection_mode=ConnectionMode.MULTIPLE)
 answer = await handler.handle_web_request(
     SmallWebRTCRequest(sdp=offer_sdp, type="offer", pc_id=None, restart_pc=None, request_data=None),
-    callback)  # -> {"sdp": str, "type": "answer", "pc_id": "SmallWebRTCConnection#<n>-<uuid4hex>"}
+    callback,
+)  # -> {"sdp": str, "type": "answer", "pc_id": "SmallWebRTCConnection#<n>-<uuid4hex>"}
 # callback(conn) runs only for a NEW connection: register @conn.event_handler(name) for "connected",
 # "connecting", "failed", "closed", "disconnected", "new", "app-message" (conn, message),
 # "track-started", "track-ended", "track-status" (conn, receiver_index, enabled); then await conn.connect()
-await handler.handle_patch_request(SmallWebRTCPatchRequest(pc_id=answer["pc_id"], candidates=[
-    IceCandidate(candidate="candidate:<foundation> 1 udp <prio> <ip> <port> typ host",
-                 sdp_mid="0", sdp_mline_index=0)]))   # -> None; candidate="" is the end
+await handler.handle_patch_request(
+    SmallWebRTCPatchRequest(
+        pc_id=answer["pc_id"],
+        candidates=[
+            IceCandidate(
+                candidate="candidate:<foundation> 1 udp <prio> <ip> <port> typ host",
+                sdp_mid="0",
+                sdp_mline_index=0,
+            )
+        ],
+    )
+)  # -> None; candidate="" is the end
 await handler.close()
 # conn.audio_input_track() -> SmallWebRTCTrack; await track.recv() -> av.AudioFrame (s16, stereo, 48000, 960)
 # conn.send_app_message(dict); conn.is_connected(); await conn.disconnect();
 # await conn.add_ice_candidate(None); conn.pc (aiortc RTCPeerConnection)
 # Shorter connect timeout, bypassing the handler:
 conn = SmallWebRTCConnection(ice_servers=None, connection_timeout_secs=120)
-await conn.initialize(sdp=..., type="offer"); await conn.connect(); conn.get_answer()
+await conn.initialize(sdp=..., type="offer")
+await conn.connect()
+conn.get_answer()
 ```
 
 - Client (aiortc 1.15.0): `RTCPeerConnection(RTCConfiguration(iceServers=[],

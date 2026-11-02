@@ -55,11 +55,10 @@ Each unit's gaps in words, as garbage collection round 1 read them (plan 004); t
 refreshes them. A gap the grade cannot see is named by its debt row.
 
 - **core** (A): the one suppression is the `type: ignore[override]` on the exporter session's
-  `request` (`core/tracing_export.py`). What the grade does not see: the logging is not yet the
-  design's contract (TD-033, for M2); a few variables the SDKs read whatever is passed (TD-003,
-  TD-005), with no test recording them (TD-038); the clients trust the environment's proxy and
-  CA (TD-004 with TD-015, for M2); and the private provider's worker is not restarted in a
-  forked child (TD-014).
+  `request` (`core/tracing_export.py`). What the grade does not see: a few variables the SDKs read
+  whatever is passed (TD-003, TD-005), with no test recording them (TD-038); the clients trust the
+  environment's proxy and CA (TD-004 with TD-015, for M2); and the private provider's worker is not
+  restarted in a forked child (TD-014).
 - **domain** (A): its one duplicate run is the speech-to-text port's `transcribe` signature,
   which `GroqSTT` restates as a protocol's implementation must (`adapters/groq_stt.py`, line
   144, and `domain/ports/speech_to_text.py`, line 73). The text rules' known limits are debt:

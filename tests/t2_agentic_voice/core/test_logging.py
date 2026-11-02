@@ -107,7 +107,7 @@ def test_events_below_the_level_are_dropped(capsys: pytest.CaptureFixture[str]) 
 def test_the_root_logger_and_another_librarys_are_left_alone(
     capsys: pytest.CaptureFixture[str],
 ) -> None:
-    """TD-033: no handler on the root logger, its level kept, another library's lines left to
+    """No handler on the root logger, its level kept, another library's lines left to
     the app."""
     root, other = logging.getLogger(), logging.getLogger("some.library")
     before = (list(root.handlers), root.level, other.level, other.propagate)

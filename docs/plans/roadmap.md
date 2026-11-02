@@ -99,11 +99,10 @@ on the first 0.5–1.0 s of the 90 dev talk-over clips only, not of each talk-ov
 - `voice`: the Pipecat pipeline over its peer-to-peer WebRTC transport, Silero VAD, and Smart
   Turn, with our own processors calling the speech-to-text and text-to-speech ports (Groq
   Orpheus, an Arabic and an English voice), and `domain`'s rules for speaking numbers and ticket
-  IDs. Pipecat's loguru routed through `core/logging.py`, given to `core` in `[[owners]]` with a
-  decision, and a test that a debug line holding a transcript does not reach the output
-  (invariant 8). The design gives loguru to `voice` instead (its 12.2); M2's plan builds the
-  design's logging contract (its 3.3 and 10.2), which the library does not meet yet, and
-  settles this (TD-033).
+  IDs. Pipecat's loguru switched off by `voice`, which owns it in `[[owners]]` (the design's
+  12.2; plan 003's Q2), and a test that a debug line holding a transcript does not reach the
+  output (invariant 8); the library's own logging is the design's contract (its 3.3 and 10.2)
+  since plan 003's step 8.
 - No talker yet: the agent says back what it heard. One trace per turn in Phoenix, with the
   requests and audio seconds each Groq model uses per call minute.
 - Deployed on the owner's host behind HTTPS, the widget embedded in the website, and a call

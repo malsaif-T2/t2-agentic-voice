@@ -215,8 +215,6 @@ All the personas need the same things, and this design is built around them:
 | Audio recording | Never stored. Storing audio needs both the `privacy.record_audio` setting and the caller's recording consent in the signed join token (invariant 8) |
 | A thinker (after M7) | Off. While it is off, no delegate tool is offered and no prompt section exists |
 
-*Not built yet:* the logging row. The library still logs through the scaffold's structlog, configured process-wide, so its lines print to standard output before an app configures logging; the owner chose on 2026-11-02 to build this row, with section 10.2, in M2 (TD-033).
-
 ---
 
 ## 4. The developer journey
@@ -698,7 +696,7 @@ Stability levels are defined in section 5.4. "Provisional" covers everything tha
 | `t2v` command | Subcommand names and flags | stable (output text and `--json` shapes: provisional) |
 | Wire protocol `t2v/1` and `t2v-client.js` | Section 5.5 | provisional, apart from the version check at join |
 
-*Built so far (M1, plan 002; plan 004):* the five facades hold the names D-021 lists, a part of each row above. The package root exports `T2VoiceError`, `ConfigurationError` and `ProviderError` from its row; `Settings` and `get_settings`, the settings model as M1 built it (section 7.6); `get_logger` and `configure_logging`, the scaffold's logging (TD-033); and `Status`, `status`, `NotFoundError` and `InvalidRequestError`, which are in no row (TD-034).
+*Built so far (M1, plan 002; plan 004; plan 003's Block 0):* the five facades hold the names D-021 lists, a part of each row above. The package root exports `T2VoiceError`, `ConfigurationError`, `ProviderError` and `JoinRejected` from its row; `VoiceSettings` (section 7); `get_logger` and `configure_logging` (section 10.2); and `Status`, `status`, `NotFoundError` and `InvalidRequestError`, which are in no row (TD-034).
 
 The settings keys (section 7) are public too. Renaming or removing one follows the deprecation policy.
 
@@ -1089,7 +1087,7 @@ The defaults below are the agent's starting values, to be measured in the milest
 | `logging` | `content` (false), `pipecat` (`off`; or `forward`) | M2 |
 | `storage` | `var_dir` (var) | — |
 
-*Built so far (M1, plan 002):* the `groq` group without `timeout_s` (the timeout is `stt.timeout_s`), and `stt` and `tracing` as above. At the top level, `env` has the default `dev` until M2 makes it required, `log_level` and `log_format` sit there rather than in a group, and `var_dir` is `T2V_VAR_DIR` rather than `storage.var_dir` (plan 002's step 8). Settings keys are public (5.1), so which of the two `var_dir` keeps is open, and a key moved after a teammate installs the library takes the deprecation of 5.4.
+*Built so far (M1, plan 002; plan 003's step 7):* `env`, required, and the groups `groq`, `stt`, `tts`, `turns`, `server`, `join`, `tracing`, `privacy`, `logging` and `storage`, with `limits`' `max_call_s` and `idle_s`; `llm`, `interruptions`, `words`, `guard`, the rest of `limits` and `server.drain_timeout_s` come in the milestones their rows name. `groq` has no `timeout_s` (the timeouts are `stt.timeout_s` and `tts.timeout_s`). M2 adds keys this table does not list: `stt.live_language`, `tts.trim_silence`, `turns.vad_min_volume` and the Smart Turn keys, a `session` group (`mode`, `echo` until the talker), `server.turn_secret_file` and `server.forwarded_allow_ips`, and `logging.level` and `logging.format`, top-level keys in M1; M1's `T2V_VAR_DIR` is `storage.var_dir`, refused under its old name with the new one. Every key, its default and its unit are in [the settings reference](../generated/settings.md).
 
 ### 7.7 The generated reference
 
@@ -1291,7 +1289,7 @@ Ole5's golden-set machinery stays in the app, under `apps/ole5-voice-agent/evals
 
 ### 10.2 Logs
 
-*Not built yet:* the library still logs as the scaffold set it up, through structlog configured process-wide: its events print to standard output whether or not the app configures logging, and `configure_logging` adds a handler to the root logger. The owner chose on 2026-11-02 to build this section, with 3.3's row, in M2 (TD-033).
+*Built in plan 003's step 8, with one reading:* a message's key-value fields travel in one `extra` key, `fields` (`record.fields`), since the standard library refuses an `extra` key named like one of a record's own attributes, and the Ole5 app's events use `name` and `message`. Pipecat's lines (section 12.2) come with plan 003's Track E.
 
 - The library logs through the standard library, under `t2_agentic_voice.*`, with a `NullHandler`. Messages are snake_case event names with key-value `extra` fields.
 - It never calls `basicConfig` and never adds handlers to the root logger.
