@@ -11,20 +11,25 @@ section 3 is the contract, what the library provides and what your app must prov
 version is used from Python only (D-014). Each page below is written when the part it describes
 lands in the library, with the milestone named in its row ([roadmap](../plans/roadmap.md)); code
 samples on these pages are taken from tested files, so a page never shows code that does not
-run.
+run (`poe docs` checks it, DOC-SAMPLE: a block after a link to a `.py` file must be a run of
+that file's lines).
 
 ## Variables to leave unset
 
 The library's settings are `T2V_*` environment variables or a `.env` file
-([.env.example](../../.env.example) lists them; `settings.md` below will describe each). The SDKs
-under it read a few variables of their own whatever the library passes, so a process that uses
-the library leaves these unset:
+([.env.example](../../.env.example) lists them; the generated settings reference below will
+describe each). The SDKs under it read a few variables of their own whatever the library
+passes, so a process that uses the library leaves these unset (this is the repository's one
+list of them):
 
 - `GROQ_LOG`, read when `groq` is imported: `debug` or `info` adds a handler to the root logger
   and sets the `groq` and `httpx` loggers' levels, and at DEBUG the SDK logs each request's
   options, the audio and the prompt included. The library undoes this only when it is the first
   to import `groq`. Even with `GROQ_LOG` unset, a root or `groq` logger at DEBUG gets those
   request options, so keep both above DEBUG (TD-003).
+- `GROQ_CUSTOM_HEADERS`, read by the Groq SDK when the adapter builds its client: the adapter
+  replaces every header with its own on each request, so no line of it adds a header or changes
+  one, but a `content-type` line makes every request fail, as a `rejected` provider error.
 - `OTEL_SDK_DISABLED` turns the library's own tracer provider off: no span is exported, and the
   library logs `tracing_disabled_by_sdk` (TD-005).
 - `OTEL_PYTHON_CONTEXT`, read when `opentelemetry.context` is imported, before any of the
@@ -37,7 +42,7 @@ the library leaves these unset:
 
 | Page | What it will cover | Lands with |
 | --- | --- | --- |
-| `contract.md` | What the library provides, what you must provide, and what you may provide, with the default for each | M0 (fixed then, D-018) |
+| `contract.md` | What the library provides, what you must provide, and what you may provide, with the default for each | M0 (fixed then, D-018); not written yet, and when it is written is an open question in the roadmap |
 | `is-this-for-you.md` | The fit check: Python version, operating system, the heavy dependencies, one process per data folder and the sidecar, network needs (UDP or TURN), Groq's published limits, the licences | M2 |
 | `quickstart.md` | `examples/minimal` end to end, English first, then Saudi Arabic; a checklist for a first call that does not work | M2 (an echo agent), M5 (the final quickstart) |
 | `concepts.md` | The talker, tools, actions, turns, the two-step interruption, the cancel scope, the history of what the caller heard; one turn in a diagram | M3 |
@@ -45,7 +50,7 @@ the library leaves these unset:
 | `tools-and-actions.md` | Writing each kind, wrapping existing functions, the action lifecycle, consent, the error table, idempotency and lookups | M5 |
 | `safety.md` | How the yes rule and the output guard work; what the library guarantees and what stays yours | M5 |
 | `languages.md` | Language presets, the reply language, normalization, speaking numbers and IDs, spoken labels, vocabulary, pronunciation | M4 |
-| `settings.md` (generated) | Every setting, with its default, unit and environment name | M2 |
+| `reference/settings.md` (generated) | Every setting, with its default, unit and environment name | M2 |
 | `serving.md` | The sidecar or the mount, identity and join tokens, cross-origin pages, the browser protocol | M2 |
 | `browser-client.md` | The reference browser client: its events and states, tokens, consent, Stop and Esc | M2, M3 |
 | `testing.md` | Text calls, the fakes, the safety suite for your actions, live scenarios, audio replay | M5 |
@@ -58,4 +63,5 @@ the library leaves these unset:
 | `runbook.md` | Rate limits and outages, a stuck write, key rotation, a deletion request | M6 |
 | `providers.md` | Writing an adapter for another speech, model or voice provider | M4 |
 | `cookbook/` | Worked use cases with no Ole5 code: an IT helpdesk, HR leave | M5, M7 |
+| `reference/api.md` (generated) | The public modules, from their docstrings, with each module's stability | M2 onward |
 | `upgrading.md` | Versions, stability levels, deprecations, behaviour changes | The first version a teammate installs |

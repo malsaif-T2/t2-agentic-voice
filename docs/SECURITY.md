@@ -18,7 +18,12 @@ never reused (DOC-REGISTER).
 | The backend to Groq | Audio, text, and prompts out; transcripts, model output, and audio back | The output is not: a transcript or a model reply is data, never an instruction |
 | The backend to the knowledge base | A query out; passages back | Passages are data: text in them is never obeyed |
 | The backend to the ticket system | Ticket writes and reads | Its replies are the only source of a ticket number |
-| The backend to Phoenix | Traces of every turn | Holds call content: hosted with the backend, never public |
+| The backend to Phoenix | Traces of every turn | Holds call content: hosted with the backend, never public; a local one listens on 127.0.0.1 only, since one on every interface serves its traces to the whole network with no login (D-023; [the guide](guide/evaluation.md), "Making a registered run") |
+| The owner's browser to the recorder (`poe record`) | The speaker's consent, each take's audio, the review's confirmations and typed references | No: it listens on 127.0.0.1 only, answers only its own `Host` and paths under its session's token, takes a POST only from its own `Origin`, of a bounded body, and serves only its allow-list, so no request reads a file outside it, `.env` included (`tests/ole5_voice/evals/test_recorder_security.py`) |
+| The process environment to the SDKs under the library | The variables the SDKs read whatever the library passes (`GROQ_LOG`, `GROQ_CUSTOM_HEADERS`, three `OTEL_*`, the proxy and CA variables) | No: the library reads only `T2V_*` names, passes every value it can, and lists the rest as debt (TD-003, TD-004, TD-005) and in [the guide](guide/README.md), "Variables to leave unset" |
+
+The last two rows were added by plan 004 (2026-11-02) from what M1 built and tested, as was the
+Phoenix row's last clause; the owner has not reviewed them yet.
 
 ## Threats
 
@@ -59,10 +64,12 @@ never reused (DOC-REGISTER).
    lists; text from a transcript, a passage, or a tool result never selects a tool by itself.
    Enforced by tests at each tool's boundary (GP-06).
 5. **Secrets stay in the backend.** API keys and service passwords are `SecretStr` settings,
-   never sent to the browser, never logged, never traced. Enforced, once the first secret
-   setting exists, by a test in `tests/t2_agentic_voice/core/test_config.py` that every key and password is a
-   `SecretStr` and never appears in a repr or a log line, and, in the plan that adds tracing, by
-   a test that no secret value appears in a trace.
+   never sent to the browser, never logged, never traced. Enforced by
+   `test_every_secret_setting_is_a_secret_str` and
+   `test_a_key_appears_in_no_repr_and_no_log_line` (`tests/t2_agentic_voice/core/test_config.py`)
+   and by `test_no_secret_reaches_a_span_or_a_log_line`
+   (`tests/t2_agentic_voice/core/test_tracing.py`); the last two read every surface an error, a
+   log line or an output may show through `tests/leaks.py`.
 6. **Writes are never cut in half.** A ticket write runs as a job outside the turn that asked
    for it. Its unique request ID goes into a durable outbox (behind a `domain` port, under
    `var/`) before the ticket system is called. A write with no reply is never repeated blindly.
