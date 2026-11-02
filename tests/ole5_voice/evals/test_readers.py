@@ -6,6 +6,7 @@ holds the input it refused even where its text hides it (plan 004, app0 and app1
 from __future__ import annotations
 
 import json
+import re
 from collections.abc import Callable
 from pathlib import Path
 
@@ -123,6 +124,30 @@ def test_a_broken_file_is_refused_without_echoing_it(tmp_path: Path, reader: str
         read(tmp_path)
     assert PLANTED not in str(refused.value) and PLANTED not in repr(refused.value)
     assert refused.value.__cause__ is None and refused.value.__context__ is None
+
+
+def _missing(tmp: Path) -> object:
+    return items.read_json(tmp / "m.json", Manifest)
+
+
+@pytest.mark.parametrize(
+    ("read", "message"),
+    [
+        (_missing, r"m\.json: cannot be read as UTF-8 text"),
+        (_not_utf8, r"m\.json: cannot be read as UTF-8 text"),
+        (_toml_not_utf8, r"i1\.toml: cannot be read as UTF-8 text"),
+        (_not_toml, r"i1\.toml: not TOML \(.+ \(at line 1, column \d+\)\)"),
+        (_manifest, r"m\.json: 2 problem\(s\), the first at root: String should match pattern .+"),
+    ],
+)
+def test_a_refusal_says_which_rule_the_file_breaks(
+    tmp_path: Path, read: Callable[[Path], object], message: str
+) -> None:
+    """The wording of a refusal (plan 004, app2): a file that cannot be read, is not TOML, or
+    does not fit, as `poe golden` and the imports show it."""
+    with pytest.raises(items.GoldenSetError) as refused:
+        read(tmp_path)
+    assert re.fullmatch(message, str(refused.value)), str(refused.value)
 
 
 def test_a_problem_is_told_by_its_fields() -> None:

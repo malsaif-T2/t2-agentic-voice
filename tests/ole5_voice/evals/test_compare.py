@@ -9,6 +9,7 @@ from __future__ import annotations
 import json
 import math
 import re
+from collections.abc import Callable
 from pathlib import Path
 from typing import Any
 
@@ -336,6 +337,14 @@ def test_eval_compare_prints_its_report_or_its_refusal(
     assert "# " not in captured.out and captured.err == ""  # a log line, and no report
     assert compare.main([str(first), str(second), "--focus", str(tmp_path / "none")]) == 1
     assert "not a readable focus file" in capsys.readouterr().out
+
+
+def test_eval_compare_logs_as_the_library_logs_in_a_new_process(
+    tmp_path: Path, capsys: pytest.CaptureFixture[str], new_process_logs: Callable[[str, str], str]
+) -> None:
+    """eval-compare configures logging before it logs, as `poe eval` does (plan 004, app21)."""
+    assert compare.main([str(tmp_path / "r1"), str(tmp_path / "r2")]) == 1
+    assert "[error" in new_process_logs(capsys.readouterr().out, "comparison_not_made")
 
 
 def test_the_librarys_sign_test_judges_a_run(

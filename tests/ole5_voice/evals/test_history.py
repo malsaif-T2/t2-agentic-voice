@@ -8,6 +8,7 @@ from __future__ import annotations
 import json
 import re
 import warnings
+from collections.abc import Callable
 from pathlib import Path
 
 import pytest
@@ -288,6 +289,16 @@ def test_eval_history_refuses_a_bad_history_and_writes_nothing(
     assert "history_not_rendered" in captured.out and "code=eval_data_invalid" in captured.out
     assert "line 1: not a history line" in captured.out and captured.err == ""
     assert not page.exists()
+
+
+def test_eval_history_logs_as_the_library_logs_in_a_new_process(
+    tmp_path: Path, capsys: pytest.CaptureFixture[str], new_process_logs: Callable[[str, str], str]
+) -> None:
+    """eval-history configures logging before it logs, as `poe eval` does (plan 004, app21)."""
+    source = tmp_path / "history.jsonl"
+    source.write_bytes(b"{}\n")
+    assert history.main(["--history", str(source), "--out", str(tmp_path / "page.md")]) == 1
+    assert "[error" in new_process_logs(capsys.readouterr().out, "history_not_rendered")
 
 
 def test_the_committed_history_page_is_fresh() -> None:

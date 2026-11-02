@@ -6,18 +6,17 @@ line shows a key or a transcript."""
 from __future__ import annotations
 
 import asyncio
-import re
 import signal
+from collections.abc import Callable
 from pathlib import Path
 
 import pytest
-import structlog
 from ole5_voice.evals import run, run_settings
 from ole5_voice.evals.answerers import Policy
 from ole5_voice.evals.items import HISTORY_FILE
 from ole5_voice.evals.models import Item
 from ole5_voice.evals.runs import HistoryLine, VariantResult
-from t2_agentic_voice import ConfigurationError, ProviderError, Settings, configure_logging
+from t2_agentic_voice import ConfigurationError, ProviderError, Settings
 from t2_agentic_voice.ports import AudioClip, SpeechToText, Transcript
 
 from tests.ole5_voice.evals.fakes import FakeSpeechToText
@@ -129,20 +128,15 @@ def test_settings_that_do_not_load_are_reported_without_their_values(
 
 
 def test_a_refusal_while_the_settings_load_is_logged_as_the_library_logs(
-    tmp_path: Path, capsys: pytest.CaptureFixture[str]
+    tmp_path: Path, capsys: pytest.CaptureFixture[str], new_process_logs: Callable[[str, str], str]
 ) -> None:
     """Before the settings load, `poe eval` logs with the library's defaults (UTC, ISO 8601),
     never with structlog's own, unconfigured (local time), as a new process would (app7)."""
     empty = tmp_path / "empty.env"
     empty.write_text("", encoding="utf-8")
-    structlog.reset_defaults()  # nothing has configured logging yet, as in a new process
-    try:
-        argv = ["--show-settings", "--env-file", str(empty), "--base-url", "http://x.example"]
-        assert run.main(argv, parts=Setup(tmp_path).parts()) == 2
-    finally:
-        configure_logging("INFO", "console")
-    (line,) = [line for line in capsys.readouterr().out.splitlines() if "eval_refused" in line]
-    assert re.match(r"\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}\.\d+Z \[error", line), line
+    argv = ["--show-settings", "--env-file", str(empty), "--base-url", "http://x.example"]
+    assert run.main(argv, parts=Setup(tmp_path).parts()) == 2
+    assert "[error" in new_process_logs(capsys.readouterr().out, "eval_refused")
 
 
 def test_a_setting_other_than_a_url_that_fails_is_refused_not_raised(

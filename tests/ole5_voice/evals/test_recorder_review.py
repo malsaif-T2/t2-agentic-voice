@@ -1,7 +1,7 @@
 """`poe record`'s review mode, against a real server on 127.0.0.1: a typed text comes back for
 its own check in a later pass, the golden-set variants play beside their references, a recorder
 with no session only reviews, and the page shows each entry's reference and check by the
-import's rule (`items.reviewed`, Q9 of plan 002)."""
+import's rule (`items.reviewed`, Q9 of plan 002), and a take's source as the import gives it."""
 
 from __future__ import annotations
 
@@ -14,6 +14,7 @@ from ole5_voice.evals.takes import Review
 from tests.ole5_voice.evals.recorder_support import (
     CONSENT,
     LONG,
+    SCRIPT,
     WHEN,
     Tree,
     get,
@@ -140,3 +141,16 @@ def test_the_page_shows_a_reference_and_its_check_as_the_import_reads_them(tree:
     review(3, "typed", "   ")
     with pytest.raises(RecorderError, match="the review 3 of t01-1 is empty, below --out"):
         recorder_of(tree)
+
+
+def test_a_takes_source_is_its_lines_none_for_a_line_whose_words_are_empty(tree: Tree) -> None:
+    """The page gives a take its script line's source (`ScriptLine.source`), as the import does:
+    none for a line whose say is [""], whose text is empty (plan 004, app17)."""
+    empty = '[[lines]]\nid = "n04"\nkind = "echo_only"\nlanguage = "none"\nsay = [""]\n'
+    tree.script.write_text(f"{SCRIPT}\n{empty}", encoding="utf-8")
+    with serving(recorder_of(tree)) as server:
+        post(server, "api/consent", CONSENT)
+        statuses = [post(server, "api/take", take(line)).status for line in ("n01", "n04")]
+    assert statuses == [200, 200]
+    shown = {entry["of"]: entry["source"] for entry in recorder_of(tree).state()["review"]}
+    assert shown == {"n01": "script", "n04": "none", "t01": "script"}

@@ -11,7 +11,7 @@ from pathlib import Path
 import pytest
 from ole5_voice.evals import history, items, matcher, run_parts, scorecard, split
 from ole5_voice.evals.audio import write_wav
-from ole5_voice.evals.models import Item, SplitFile, is_name
+from ole5_voice.evals.models import NAME_RULE, Item, SplitFile, is_name
 from ole5_voice.evals.run_parts import (
     Choice,
     Parts,
@@ -146,9 +146,19 @@ def test_audio_roots_are_named_once(tmp_path: Path) -> None:
         "talkover": tmp_path,
         "owner": Path("~/x").expanduser(),
     }
-    for bad in (["owner"], ["owner="], ["=x"], ["Owner=x"], ["owner=a", "owner=b"]):
-        with pytest.raises(InvalidRequestError, match="ROOT=FOLDER"):
+    form = "give a root as ROOT=FOLDER, such as talkover=<its folder>"
+    rules = {
+        ("owner",): form,
+        ("owner=",): form,
+        ("=x",): f"a root's name is {NAME_RULE}",
+        ("Owner=x",): f"a root's name is {NAME_RULE}",
+        ("owner=a", "owner=b"): "each --audio root is given once",
+    }
+    for bad, rule in rules.items():
+        with pytest.raises(InvalidRequestError) as refused:
             audio_roots(bad)
+        fix = "FIX: give each root once, as --audio ROOT=FOLDER."
+        assert str(refused.value) == f"The run is refused: --audio: {rule}. {fix}"
     assert (is_name("r1-large-v3"), is_name("R1"), is_name("")) == (True, False, False)
 
 
