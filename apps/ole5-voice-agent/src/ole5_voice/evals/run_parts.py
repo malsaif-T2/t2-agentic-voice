@@ -22,16 +22,15 @@ from dataclasses import dataclass, field
 from datetime import UTC, datetime
 from pathlib import Path
 
-from pydantic import TypeAdapter, ValidationError
 from t2_agentic_voice import Settings, get_logger
 from t2_agentic_voice.ports import SpeechToText
 from t2_agentic_voice.tracing import Tracing
 
-from ole5_voice.evals import history, items, matcher, scorecard, split
+from ole5_voice.evals import cli, history, items, matcher, scorecard, split
 from ole5_voice.evals.answerers import Clock, Sleep, adapter
 from ole5_voice.evals.audio import AudioFormatError, read_wav, sha256_file
 from ole5_voice.evals.files import read_lines
-from ole5_voice.evals.models import Item, Name, Split, SplitFile, Variant
+from ole5_voice.evals.models import Item, Split, SplitFile, Variant
 from ole5_voice.evals.runs import (
     Answer,
     AnswerRequest,
@@ -44,8 +43,6 @@ from ole5_voice.evals.runs import (
 from ole5_voice.evals.worktree import Git, refused, run_git
 
 DATA = Path("apps", "ole5-voice-agent", "evals")  # the golden set's files, below a worktree's top
-_NAME: TypeAdapter[str] = TypeAdapter(Name)
-
 log = get_logger(__name__)
 
 
@@ -79,27 +76,15 @@ class Parts:
     sleep: Sleep = asyncio.sleep
 
 
-def is_name(text: str) -> bool:
-    """Whether `text` is a name the golden set's models take (an item's, a root's, a run's)."""
-    try:
-        _NAME.validate_python(text)
-    except ValidationError:
-        return False
-    return True
-
-
 def audio_roots(values: Sequence[str]) -> dict[str, Path]:
-    """`--audio ROOT=FOLDER`, each root named once."""
-    roots: dict[str, Path] = {}
-    for value in values:
-        root, _, folder = value.partition("=")
-        if not folder or root in roots or not is_name(root):
-            raise refused(
-                f"--audio {value!r} is not ROOT=FOLDER, a root named once",
-                "give each root once, as --audio talkover=<folder>",
-            )
-        roots[root] = Path(folder).expanduser()
-    return roots
+    """`--audio ROOT=FOLDER`, each root once (`cli.audio_roots`), or the run's refusal."""
+    try:
+        roots = cli.audio_roots(cli.audio_root(value) for value in values)
+    except ValueError as error:
+        problem = str(error)
+    else:
+        return roots
+    raise refused(f"--audio: {problem}", "give each root once, as --audio ROOT=FOLDER")
 
 
 @dataclass(frozen=True)
@@ -168,10 +153,10 @@ def load_plan(data: Path, choice: Choice, parts: Parts) -> Plan:
     checked dev variant, so it never reads a held-out answer. The digest covers the run's
     variants, the committed split and the spelling guide."""
     try:
-        golden = parts.load_items(data / "golden")
-        committed = parts.load_split(data / "split.json")
-        judge = parts.load_matcher(data / "spelling.toml")
-        spelling = sha256_file(data / "spelling.toml")
+        golden = parts.load_items(data / items.GOLDEN_DIR)
+        committed = parts.load_split(data / items.SPLIT_FILE)
+        judge = parts.load_matcher(data / items.SPELLING_FILE)
+        spelling = sha256_file(data / items.SPELLING_FILE)
     except (OSError, ValueError):  # a pydantic ValidationError is a ValueError
         raise refused("the golden set's files do not load", "run `poe golden`") from None
     sides = committed.items

@@ -16,6 +16,7 @@ from __future__ import annotations
 
 import base64
 import binascii
+import contextlib
 import threading
 from collections.abc import Callable
 from dataclasses import dataclass, field
@@ -24,10 +25,10 @@ from http import HTTPStatus
 from pathlib import Path
 from typing import Annotated, Any, Final, Literal
 
-from pydantic import AfterValidator, ConfigDict, Field, TypeAdapter, ValidationError
+from pydantic import AfterValidator, ConfigDict, Field, ValidationError
 
 from ole5_voice.evals.audio import AudioFormatError, parse_wav, sha256_of
-from ole5_voice.evals.models import Consent, Device, Model, Name, RelativePath, TurnEnds
+from ole5_voice.evals.models import Consent, Device, Model, Name, RelativePath, TurnEnds, is_name
 from ole5_voice.evals.takes import (
     Review,
     Script,
@@ -42,7 +43,6 @@ from ole5_voice.evals.takes import (
 )
 
 MAX_BODY: Final = 16 * 1024 * 1024  # a take of about six minutes, as base64 in JSON
-_NAME: TypeAdapter[str] = TypeAdapter(Name)
 
 
 class RecorderError(Exception):
@@ -301,15 +301,13 @@ class Recorder:
         while True:
             n += 1
             take = f"{line}-{session}-{n}"
-            try:
-                names = (
-                    take_audio(session, _NAME.validate_python(take)),
-                    take_sidecar(session, take),
-                )
-            except ValidationError:
+            names: tuple[str, ...] = ()
+            with contextlib.suppress(ValidationError):  # a take named as a device is, on Windows
+                names = (take_audio(session, take), take_sidecar(session, take))
+            if not names or not is_name(take):
                 raise RefusedError(
                     HTTPStatus.BAD_REQUEST, "the line's and session's names are too long"
-                ) from None
+                )
             if take not in self.takes and not any((self.out / name).exists() for name in names):
                 return take
 

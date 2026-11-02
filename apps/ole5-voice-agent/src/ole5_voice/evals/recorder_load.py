@@ -15,11 +15,12 @@ from datetime import datetime
 from pathlib import Path
 from typing import Final
 
-from pydantic import TypeAdapter, ValidationError
+from pydantic import TypeAdapter
 
 from ole5_voice.evals import items as golden_items
 from ole5_voice.evals.files import read_model
-from ole5_voice.evals.models import Device, Item, Manifest, ManifestFile, Model, Name
+from ole5_voice.evals.items import EVALS, GOLDEN_DIR, MANIFESTS_DIR
+from ole5_voice.evals.models import Device, Item, Manifest, ManifestFile, Model, is_name
 from ole5_voice.evals.recorder_state import (
     Audio,
     Entry,
@@ -32,21 +33,11 @@ from ole5_voice.evals.recorder_state import (
 from ole5_voice.evals.takes import SESSION_FILE, Review, Script, SessionRecord, TakeSidecar
 from ole5_voice.evals.worktree import Git, run_git, worktree_tops
 
-EVALS: Final = Path(__file__).resolve().parents[3] / "evals"  # apps/ole5-voice-agent/evals
-_REPO: Final = EVALS.parents[2]
+_REPO: Final = EVALS.parents[2]  # the checkout the recorder's code is in
 _REVIEW_FILE: Final = re.compile(
     r"^(?P<take>[a-z0-9][a-z0-9_.-]*)\.review-(?P<n>[1-9][0-9]*)\.json$"
 )
-_NAME: TypeAdapter[str] = TypeAdapter(Name)
 _REPLIES: Final = TypeAdapter(list[Reply])
-
-
-def is_name(value: str) -> bool:
-    try:
-        _NAME.validate_python(value)
-    except ValidationError:
-        return False
-    return True
 
 
 def _tracked(out: Path, git: Git) -> bool:
@@ -158,8 +149,8 @@ def load_recorder(
     device: Device | None = None,
     replies: Path | None = None,
     audio: dict[str, Path] | None = None,
-    golden: Path = EVALS / "golden",
-    manifests: Path = EVALS / "manifests",
+    golden: Path = EVALS / GOLDEN_DIR,
+    manifests: Path = EVALS / MANIFESTS_DIR,
     load_items: Callable[[Path], Sequence[Item]] | None = None,
     clock: Callable[[], datetime] = local_now,
     git: Git = run_git,

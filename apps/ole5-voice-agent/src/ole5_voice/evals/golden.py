@@ -29,8 +29,8 @@ from typing import Final
 from t2_agentic_voice import configure_logging, get_logger
 from t2_agentic_voice.languages import SpellingIssue, SpellingRule, spelling_issues
 
+from ole5_voice.evals import cli
 from ole5_voice.evals.audio import AudioFormatError, Wav, read_wav
-from ole5_voice.evals.import_recordings import root_name
 from ole5_voice.evals.items import (
     EVALS,
     FROZEN_FILE,
@@ -287,20 +287,13 @@ def validate(
     return report
 
 
-def _audio_root(value: str) -> tuple[str, Path]:
-    name, sep, folder = value.partition("=")
-    if not sep or not folder:
-        raise argparse.ArgumentTypeError("give a root as NAME=FOLDER")
-    return root_name(name), Path(folder)
-
-
 def main(argv: Sequence[str] | None = None) -> int:
     """`uv run poe golden`: validate the golden set and freeze its expected answers."""
     parser = argparse.ArgumentParser(prog="poe golden", description=_DESCRIPTION)
     parser.add_argument("--evals", type=Path, default=EVALS, help="the golden set's folder")
     parser.add_argument(
         "--audio",
-        type=_audio_root,
+        type=cli.audio_root_type,
         action="append",
         default=[],
         metavar="ROOT=FOLDER",
@@ -308,9 +301,10 @@ def main(argv: Sequence[str] | None = None) -> int:
     )
     parser.add_argument("--check", action="store_true", help="fail if frozen.json is stale")
     args = parser.parse_args(argv)
-    audio = dict(args.audio)
-    if len(audio) != len(args.audio):
-        parser.error("each --audio root is given once")
+    try:
+        audio = cli.audio_roots(args.audio)
+    except ValueError as error:
+        parser.error(str(error))
     configure_logging()
     report = validate(args.evals, check=spelling_issues, audio=audio, read=read_wav)
     for item, variant, why in report.left_out:

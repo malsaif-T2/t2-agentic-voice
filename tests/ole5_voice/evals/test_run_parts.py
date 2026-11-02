@@ -11,14 +11,13 @@ from pathlib import Path
 import pytest
 from ole5_voice.evals import history, items, matcher, run_parts, scorecard, split
 from ole5_voice.evals.audio import write_wav
-from ole5_voice.evals.models import Item, SplitFile
+from ole5_voice.evals.models import Item, SplitFile, is_name
 from ole5_voice.evals.run_parts import (
     Choice,
     Parts,
     Progress,
     audio_roots,
     clip_answers,
-    is_name,
     load_plan,
 )
 from ole5_voice.evals.runs import Answer, Metrics, Request, Scorecard, SegmentAnswer

@@ -11,7 +11,7 @@ from pathlib import Path
 from typing import Any
 
 import pytest
-from ole5_voice.evals import recorder, recorder_load, recorder_state
+from ole5_voice.evals import items, recorder, recorder_state
 from ole5_voice.evals.audio import sha256_of
 from ole5_voice.evals.models import Item
 from ole5_voice.evals.recorder import RecorderServer
@@ -382,4 +382,4 @@ def test_poe_record_says_why_it_does_not_start(
 
 def test_the_clock_is_local_time_with_its_offset() -> None:
     assert recorder_state.local_now().utcoffset() is not None
-    assert recorder_load.EVALS == ROOT / "apps" / "ole5-voice-agent" / "evals"
+    assert items.EVALS == ROOT / "apps" / "ole5-voice-agent" / "evals"

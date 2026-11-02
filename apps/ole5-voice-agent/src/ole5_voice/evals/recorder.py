@@ -34,8 +34,10 @@ from typing import Any, Final, cast, get_args
 from pydantic import ValidationError
 from t2_agentic_voice import configure_logging, get_logger
 
+from ole5_voice.evals import cli
+from ole5_voice.evals.items import EVALS, GOLDEN_DIR, MANIFESTS_DIR, SCRIPT_FILE
 from ole5_voice.evals.models import Device
-from ole5_voice.evals.recorder_load import EVALS, is_name, load_recorder
+from ole5_voice.evals.recorder_load import load_recorder
 from ole5_voice.evals.recorder_state import (
     MAX_BODY,
     ConsentUpload,
@@ -184,19 +186,6 @@ class RecorderServer(ThreadingHTTPServer):
         self.address = f"{self.origin}/{self.token}/"
 
 
-def _name(value: str) -> str:
-    if not is_name(value):
-        raise argparse.ArgumentTypeError("a name of lowercase letters, digits, '_', '.' and '-'")
-    return value
-
-
-def _root(value: str) -> tuple[str, Path]:
-    root, equals, folder = value.partition("=")
-    if not equals or not folder:
-        raise argparse.ArgumentTypeError("ROOT=FOLDER, such as talkover=<its folder>")
-    return _name(root), Path(folder)
-
-
 def _port(value: str) -> int:
     if not value.isascii() or not value.isdigit() or int(value) > 65535:
         raise argparse.ArgumentTypeError("a port from 0 (a free one) to 65535")
@@ -207,20 +196,20 @@ def _parser() -> argparse.ArgumentParser:
     parser = argparse.ArgumentParser(prog="poe record", description=_DESCRIPTION)
     add = parser.add_argument
     add("--out", type=Path, required=True, help="the folder the sessions are written into")
-    add("--session", type=_name, help="this sitting's name, such as laptop-1")
+    add("--session", type=cli.name, help="this sitting's name, such as laptop-1")
     add("--device", choices=get_args(Device), help="the microphone this sitting uses")
-    add("--script", type=Path, default=EVALS / "script.toml", help="the script's lines")
+    add("--script", type=Path, default=EVALS / SCRIPT_FILE, help="the script's lines")
     add("--replies", type=Path, help="the folder of replies.json and the replies it names")
     add(
         "--audio",
-        type=_root,
+        type=cli.audio_root_type,
         action="append",
         default=[],
         metavar="ROOT=FOLDER",
         help="a golden-set audio root, so its variants are checked too",
     )
-    add("--golden", type=Path, default=EVALS / "golden", help="the golden set's items")
-    add("--manifests", type=Path, default=EVALS / "manifests", help="the audio's manifests")
+    add("--golden", type=Path, default=EVALS / GOLDEN_DIR, help="the golden set's items")
+    add("--manifests", type=Path, default=EVALS / MANIFESTS_DIR, help="the audio's manifests")
     add("--port", type=_port, default=0, help="its port on 127.0.0.1 (default: a free one)")
     return parser
 
@@ -231,9 +220,10 @@ def main(argv: Sequence[str] | None = None) -> int:
     args = parser.parse_args(argv)
     if (args.session is None) != (args.device is None):
         parser.error("--session and --device go together; give neither to review only")
-    audio = dict(args.audio)
-    if len(audio) != len(args.audio):
-        parser.error("each --audio root is given once")
+    try:
+        audio = cli.audio_roots(args.audio)
+    except ValueError as error:
+        parser.error(str(error))
     configure_logging()
     try:
         recorder = load_recorder(

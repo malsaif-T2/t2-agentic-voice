@@ -148,7 +148,7 @@ def test_a_setting_other_than_a_url_that_fails_is_refused_not_raised(
         ("dirty", "has changes"),
         ("out exists", "exists"),
         ("out tracked", "git would track it"),
-        ("out name", "is not lowercase letters"),
+        ("out name", "is not a name, which is a lowercase letter"),
         ("no key", "T2V_GROQ__API_KEY"),
     ],
 )

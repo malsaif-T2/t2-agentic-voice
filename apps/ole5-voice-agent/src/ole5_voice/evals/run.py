@@ -44,7 +44,7 @@ from ole5_voice.evals.answerers import (
     make_answerer,
 )
 from ole5_voice.evals.items import HISTORY_FILE
-from ole5_voice.evals.models import Split
+from ole5_voice.evals.models import NAME_RULE, Split, is_name
 from ole5_voice.evals.run_parts import (
     DATA,
     Choice,
@@ -53,7 +53,6 @@ from ole5_voice.evals.run_parts import (
     Progress,
     audio_roots,
     clip_answers,
-    is_name,
     load_plan,
 )
 from ole5_voice.evals.run_settings import GROQ_BASE_URL, MODELS, load_settings, show, shown
@@ -186,7 +185,7 @@ def _run(args: argparse.Namespace, settings: Settings, parts: Parts) -> int:
     out = check_out(args.out, checkout, parts.git)
     if not is_name(out.name):
         raise refused(
-            "the --out folder's name, the run's, is not lowercase letters, digits, '.', '_' or '-'",
+            f"the --out folder's name, the run's, is not a name, which is {NAME_RULE}",
             "name the folder like r1-large-v3",
         )
     spends = args.answerer == "groq"

@@ -20,9 +20,9 @@ from collections.abc import Sequence
 from pathlib import Path
 from typing import Final
 
-from pydantic import TypeAdapter, ValidationError
 from t2_agentic_voice import configure_logging, get_logger
 
+from ole5_voice.evals import cli
 from ole5_voice.evals.audio import SAMPLE_RATE
 from ole5_voice.evals.items import (
     EVALS,
@@ -35,7 +35,7 @@ from ole5_voice.evals.items import (
     reviewed,
     write_text,
 )
-from ole5_voice.evals.models import AudioRef, Item, Manifest, ManifestFile, Name, Variant
+from ole5_voice.evals.models import AudioRef, Item, Manifest, ManifestFile, Variant
 from ole5_voice.evals.takes import (
     SESSION_FILE,
     Review,
@@ -57,15 +57,6 @@ HEADER: Final = (
     "Written by `python -m ole5_voice.evals.import_recordings` from the recorder's files:",
     "import again rather than edit.",
 )
-
-
-def root_name(value: str) -> str:
-    """An audio root's name, as `--root` and `--audio` take it."""
-    try:
-        return TypeAdapter(Name).validate_python(value)
-    except ValidationError:
-        message = "a root's name is lowercase letters, digits and _ . -"
-        raise argparse.ArgumentTypeError(message) from None
 
 
 def read_reviews(out: Path, session: str, take: str) -> list[Review]:
@@ -188,7 +179,7 @@ def main(argv: Sequence[str] | None = None) -> int:
     parser.add_argument("--takes", type=Path, required=True, help="the recorder's --out folder")
     parser.add_argument("--evals", type=Path, default=EVALS, help="the golden set's folder")
     parser.add_argument(
-        "--root", type=root_name, default=ROOT, help="the audio root's name (--audio NAME=...)"
+        "--root", type=cli.name, default=ROOT, help="the audio root's name (--audio NAME=...)"
     )
     args = parser.parse_args(argv)
     configure_logging()

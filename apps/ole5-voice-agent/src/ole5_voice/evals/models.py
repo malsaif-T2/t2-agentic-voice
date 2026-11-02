@@ -12,11 +12,27 @@ from datetime import date, datetime
 from pathlib import PurePosixPath
 from typing import Annotated, Final, Literal
 
-from pydantic import AfterValidator, BaseModel, ConfigDict, Field, StringConstraints
+from pydantic import AfterValidator, BaseModel, ConfigDict, Field, StringConstraints, TypeAdapter
 
 Sha256 = Annotated[str, StringConstraints(pattern=r"^[0-9a-f]{64}$")]
-# An item's, a variant's, a take's, a root's or a session's name.
+# An item's, a variant's, a take's, a root's, a session's or a run's name.
 Name = Annotated[str, StringConstraints(pattern=r"^[a-z0-9][a-z0-9_.-]{0,127}$")]
+# The rule a `Name` keeps, as every refusal of one states it.
+NAME_RULE: Final = (
+    "a lowercase letter or digit, then up to 127 lowercase letters, digits, '_', '.' or '-'"
+)
+_NAME: Final = TypeAdapter(Name)
+
+
+def is_name(text: str) -> bool:
+    """Whether `text` is a `Name`."""
+    try:
+        _NAME.validate_python(text)
+    except ValueError:  # a pydantic ValidationError
+        return False
+    return True
+
+
 # The name of a held-out run's pooled group (`runs.HELD_OUT_MIN_ITEMS`). No language, device or
 # split is named so, and no kind may be, so it never merges with a real value.
 Other = Literal["other"]

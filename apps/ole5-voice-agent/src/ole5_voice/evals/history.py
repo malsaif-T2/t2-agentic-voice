@@ -21,12 +21,12 @@ from typing import Final
 from pydantic import TypeAdapter
 
 from ole5_voice.evals.files import parse_json, read_text
+from ole5_voice.evals.items import EVALS, HISTORY_FILE
 from ole5_voice.evals.runs import SCORECARD_FILE, HistoryLine, Scorecard, StratumValue
 from ole5_voice.evals.scorecard import EvalDataError
 
-_ROOT = Path(__file__).resolve().parents[5]
-HISTORY: Final = _ROOT / "apps" / "ole5-voice-agent" / "evals" / "history.jsonl"
-DOC: Final = _ROOT / "docs" / "generated" / "eval-history.md"
+HISTORY: Final = EVALS / HISTORY_FILE
+DOC: Final = EVALS.parents[2] / "docs" / "generated" / "eval-history.md"  # the repository's
 _DESCRIPTION = "Render the golden set's run history into docs/generated/eval-history.md."
 _LINE: Final = TypeAdapter(HistoryLine)
 # Markdown's own characters, escaped in a cell so a note renders as the text it is: no link, no
