@@ -331,11 +331,11 @@ def test_eval_compare_prints_its_report_or_its_refusal(
     other = _write(_card([], name="r3", commit="1234567"), tmp_path / "r3")
     assert compare.main([str(first), str(other)], sign_test=sign_test) == 1
     captured = capsys.readouterr()
-    assert captured.out == ""
-    assert captured.err.startswith("eval-compare: the runs cannot be compared: their commits")
-    assert captured.err.endswith("[comparison_refused]\n")
+    assert "comparison_not_made" in captured.out and "code=comparison_refused" in captured.out
+    assert "the runs cannot be compared: their commits" in captured.out
+    assert "# " not in captured.out and captured.err == ""  # a log line, and no report
     assert compare.main([str(first), str(second), "--focus", str(tmp_path / "none")]) == 1
-    assert "not a readable focus file" in capsys.readouterr().err
+    assert "not a readable focus file" in capsys.readouterr().out
 
 
 def test_the_librarys_sign_test_judges_a_run(

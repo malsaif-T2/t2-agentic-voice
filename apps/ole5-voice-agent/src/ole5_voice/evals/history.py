@@ -19,6 +19,7 @@ from pathlib import Path
 from typing import Final
 
 from pydantic import TypeAdapter
+from t2_agentic_voice import configure_logging, get_logger
 
 from ole5_voice.evals.files import parse_json, read_text
 from ole5_voice.evals.items import EVALS, HISTORY_FILE
@@ -28,6 +29,7 @@ from ole5_voice.evals.scorecard import EvalDataError
 HISTORY: Final = EVALS / HISTORY_FILE
 DOC: Final = EVALS.parents[2] / "docs" / "generated" / "eval-history.md"  # the repository's
 _DESCRIPTION = "Render the golden set's run history into docs/generated/eval-history.md."
+log = get_logger(__name__)
 _LINE: Final = TypeAdapter(HistoryLine)
 # Markdown's own characters, escaped in a cell so a note renders as the text it is: no link, no
 # HTML, no table cell of its own.
@@ -195,13 +197,14 @@ def main(argv: Sequence[str] | None = None) -> int:
         "--out", type=Path, default=DOC, help="the page to write (default: %(default)s)"
     )
     args = parser.parse_args(argv)
+    configure_logging()
     try:
         lines = read_history(args.history)
     except EvalDataError as error:
-        sys.stderr.write(f"eval-history: {error.message} [{error.code}]\n")
+        log.error("history_not_rendered", code=error.code, message=error.message)
         return 1
     args.out.write_bytes(render_history(lines).encode("utf-8"))
-    sys.stdout.write(f"eval-history: wrote {args.out} ({len(lines)} run(s))\n")
+    log.info("history_rendered", out=str(args.out), runs=len(lines))
     return 0
 
 

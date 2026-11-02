@@ -273,7 +273,9 @@ def test_eval_history_renders_the_given_history(
     append_line(_line(), source)
     assert history.main(["--history", str(source), "--out", str(page)]) == 0
     assert page.read_bytes() == render_history(read_history(source)).encode("utf-8")
-    assert capsys.readouterr().out == f"eval-history: wrote {page} (1 run(s))\n"
+    captured = capsys.readouterr()
+    assert "history_rendered" in captured.out and "runs=1" in captured.out
+    assert captured.err == ""
 
 
 def test_eval_history_refuses_a_bad_history_and_writes_nothing(
@@ -282,7 +284,9 @@ def test_eval_history_refuses_a_bad_history_and_writes_nothing(
     source, page = tmp_path / "history.jsonl", tmp_path / "eval-history.md"
     source.write_bytes(b"{}\n")
     assert history.main(["--history", str(source), "--out", str(page)]) == 1
-    assert "line 1: not a history line" in capsys.readouterr().err
+    captured = capsys.readouterr()
+    assert "history_not_rendered" in captured.out and "code=eval_data_invalid" in captured.out
+    assert "line 1: not a history line" in captured.out and captured.err == ""
     assert not page.exists()
 
 

@@ -25,7 +25,7 @@ from dataclasses import dataclass
 from pathlib import Path
 from typing import Final
 
-from t2_agentic_voice import T2VoiceError, evals
+from t2_agentic_voice import T2VoiceError, configure_logging, evals, get_logger
 
 from ole5_voice.evals.files import read_lines
 from ole5_voice.evals.runs import HELD_OUT_MIN_ITEMS, Metrics, Scorecard, VariantResult
@@ -35,6 +35,7 @@ ALPHA: Final = 0.05  # a p-value below it is beyond the noise
 SignTest = Callable[[int, int], float]
 _DESCRIPTION = "Compare two runs: fixed, broken and net per variant, and the sign test by item."
 _FAILURES: Final = {"provider": "a provider failure", "stuck": "stuck past its time limit"}
+log = get_logger(__name__)
 
 
 class ComparisonError(T2VoiceError):
@@ -346,6 +347,7 @@ def main(argv: Sequence[str] | None = None, *, sign_test: SignTest = evals.sign_
         "ran; shown apart",
     )
     args = parser.parse_args(argv)
+    configure_logging()
     try:
         report = compare(
             load_scorecard(args.baseline),
@@ -354,9 +356,9 @@ def main(argv: Sequence[str] | None = None, *, sign_test: SignTest = evals.sign_
             focus=read_focus(args.focus) if args.focus else (),
         )
     except T2VoiceError as error:
-        sys.stderr.write(f"eval-compare: {error.message} [{error.code}]\n")
+        log.error("comparison_not_made", code=error.code, message=error.message)
         return 1
-    sys.stdout.write(report)
+    sys.stdout.write(report)  # the command's product, Markdown on stdout, not a log line
     return 0
 
 
