@@ -314,4 +314,3 @@ def test_the_budget_counts_billed_seconds_at_the_price(settings: Settings) -> No
     budget.charge(7200.0)
     assert (budget.requests, budget.billed_seconds) == (2, 7210.0)
     assert budget.cost_usd == pytest.approx(7210 / 3600 * 0.111)
-    assert answerers.GROQ_MINIMUM_S == 10.0

@@ -24,6 +24,7 @@ import math
 import sys
 from collections.abc import Sequence
 from pathlib import Path
+from typing import get_args
 
 from t2_agentic_voice import (
     ConfigurationError,
@@ -43,6 +44,7 @@ from ole5_voice.evals.answerers import (
     make_answerer,
 )
 from ole5_voice.evals.items import HISTORY_FILE
+from ole5_voice.evals.models import Split
 from ole5_voice.evals.run_parts import (
     DATA,
     Choice,
@@ -92,7 +94,7 @@ def _parser() -> argparse.ArgumentParser:
     parser = argparse.ArgumentParser(prog="poe eval", description=_DESCRIPTION)
     add = parser.add_argument
     add("--answerer", choices=ANSWERERS, help="reference (sends nothing) or groq (Whisper)")
-    add("--split", choices=("dev", "held-out"), help="the split the run covers, all of it")
+    add("--split", choices=get_args(Split), help="the split the run covers, all of it")
     add("--model", choices=MODELS, help="stt.model for this run (groq needs it)")
     add("--timeout-s", type=_seconds, help="stt.timeout_s for this run (groq needs it)")
     add("--base-url", help=f"groq.base_url for this run ({GROQ_BASE_URL})")

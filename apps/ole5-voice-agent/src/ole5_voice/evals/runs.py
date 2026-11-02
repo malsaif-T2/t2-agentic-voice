@@ -47,6 +47,12 @@ _SECRET_SETTING = re.compile(r"(^|[._])(api_key|key|secret|token|password)$")
 _PLACEHOLDER = re.compile(r"\{\{[A-Z][A-Z0-9_]*\}\}")
 
 
+def cost_usd(billed_seconds: float, price_per_hour_usd: float) -> float:
+    """What `billed_seconds` of audio cost at a price per hour: the one formula a run's budget
+    (`answerers.Budget`, which its history line takes) and its scorecard take a cost by."""
+    return billed_seconds / 3600 * price_per_hour_usd
+
+
 def holds_placeholder(text: str) -> bool:
     """Whether `text` holds an install placeholder, which nothing in a run's history may."""
     return _PLACEHOLDER.search(text) is not None

@@ -275,6 +275,4 @@ def test_the_parts_default_to_the_real_pieces(monkeypatch: pytest.MonkeyPatch) -
     )
     assert parts.folder == Path(run_parts.__file__).resolve().parent
     assert parts.now().tzinfo is UTC
-    monkeypatch.setattr(run_parts, "normalize_arabic", lambda text: f"arabic({text})")
-    monkeypatch.setattr(run_parts, "normalize_digits", lambda text: f"digits({text})")
-    assert run_parts.canonical("x") == "digits(arabic(x))"  # the digits after the letters
+    assert parts.normalize is matcher.normalize  # the scorers' form (test_library_copies.py)

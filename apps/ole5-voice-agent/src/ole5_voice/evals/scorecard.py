@@ -28,8 +28,8 @@ from typing import Final, Protocol
 
 from t2_agentic_voice import T2VoiceError, evals
 from t2_agentic_voice.evals import Recall
-from t2_agentic_voice.languages import normalize_arabic, normalize_digits
 
+from ole5_voice.evals import matcher
 from ole5_voice.evals.files import parse_json, read_text
 from ole5_voice.evals.models import OTHER, TICKET_KIND, Language, Other
 from ole5_voice.evals.runs import (
@@ -41,6 +41,7 @@ from ole5_voice.evals.runs import (
     VariantResult,
     Window,
     WindowMetrics,
+    cost_usd,
 )
 
 # The strata a scorecard breaks its numbers down by, each read from a variant's result.
@@ -50,7 +51,6 @@ STRATA: Final[dict[str, Callable[[VariantResult], str]]] = {
     "kind": lambda result: result.kind,
     "split": lambda result: result.split,
 }
-_SECONDS_PER_HOUR: Final = 3600.0
 Normalize = Callable[[str], str]
 
 
@@ -74,11 +74,6 @@ class Scorers(Protocol):
     def id_recall(self, reference: str, output: str) -> Recall: ...
 
     def silence_output(self, output: str) -> int: ...
-
-
-def normalize_text(text: str) -> str:
-    """The canonical form a reference is read in: `normalize_arabic`, then `normalize_digits`."""
-    return normalize_digits(normalize_arabic(text))
 
 
 def load_scorecard(path: Path) -> Scorecard:
@@ -120,7 +115,7 @@ def write_scorecard(
     complete: bool,
     out: Path,
     scorers: Scorers = evals,
-    normalize: Normalize = normalize_text,
+    normalize: Normalize = matcher.normalize,
 ) -> Scorecard:
     """The scorecard of `results` (a `ScorecardWriter`), also written as `out / SCORECARD_FILE`,
     which replaces an earlier one of the same run whole. The run and every result are checked
@@ -253,7 +248,7 @@ def _metrics(
         latency_median_ms=quantile(latencies, 0.5),
         latency_p90_ms=quantile(latencies, 0.9),
         billed_seconds=billed,
-        cost_usd=billed / _SECONDS_PER_HOUR * price_per_hour_usd,
+        cost_usd=cost_usd(billed, price_per_hour_usd),
     )
 
 

@@ -24,7 +24,6 @@ from pathlib import Path
 
 from pydantic import TypeAdapter, ValidationError
 from t2_agentic_voice import Settings, get_logger
-from t2_agentic_voice.languages import normalize_arabic, normalize_digits
 from t2_agentic_voice.ports import SpeechToText
 from t2_agentic_voice.tracing import Tracing
 
@@ -50,11 +49,6 @@ _NAME: TypeAdapter[str] = TypeAdapter(Name)
 log = get_logger(__name__)
 
 
-def canonical(text: str) -> str:
-    """The normalization a window's words are counted after: Arabic's, then the digits'."""
-    return normalize_digits(normalize_arabic(text))
-
-
 def _now() -> datetime:
     return datetime.now(UTC)
 
@@ -66,8 +60,9 @@ def _here() -> Path:
 @dataclass(frozen=True)
 class Parts:
     """What a run is built from, each replaceable by a test's fake: the folder whose checkout
-    runs, `git`, the golden set's loaders (Track D), the scorecard writer and the history (Track
-    F), the speech-to-text adapter, tracing, the normalizer and the clocks."""
+    runs, `git`, the golden set's loaders (`items.py`, `split.py`, `matcher.py`), the scorecard
+    writer and the history, the speech-to-text adapter, tracing, the normalizer a window's words
+    are counted after (the scorers' form, `matcher.normalize`) and the clocks."""
 
     folder: Path = field(default_factory=_here)
     git: Git = run_git
@@ -78,7 +73,7 @@ class Parts:
     append_line: Callable[[HistoryLine, Path], None] = history.append_line
     speech_to_text: Callable[[Settings], SpeechToText] = adapter
     tracing: Callable[[Settings], Tracing] = Tracing.from_settings
-    normalize: Callable[[str], str] = canonical
+    normalize: Callable[[str], str] = matcher.normalize
     now: Callable[[], datetime] = _now
     clock: Clock = time.perf_counter  # monotonic; 15.6 ms steps for time.monotonic on Windows
     sleep: Sleep = asyncio.sleep

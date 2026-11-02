@@ -111,8 +111,11 @@ def load_guide(path: Path) -> SpellingGuide:
 
 
 def normalize(text: str) -> str:
-    """The library's normalizers, in the prototype's order: the text's canonical Arabic form,
-    then its digits read as 0 to 9 (`stt_eval.py`, lines 1062-1066)."""
+    """The form every scorer compares, the app's one copy of it: the library's normalizers in
+    the prototype's order, the text's canonical Arabic form, then its digits read as 0 to 9
+    (`stt_eval.py`, lines 1062-1066). The verdict, a window's words (`run_parts.Parts`) and a
+    reference's words (`scorecard.write_scorecard`) are all counted in it. The library's own,
+    `scored_form`, is in no facade (the owner's ruling, plan 004): a test ties the two."""
     return normalize_digits(normalize_arabic(text))
 
 
