@@ -330,15 +330,12 @@ def test_a_key_appears_in_no_repr_and_no_log_line(
     key_file.write_text(MADE_UP_KEY, encoding="utf-8")
     settings = Settings(_env_file=None, groq=GroqSettings(api_key=SecretStr(MADE_UP_KEY)))
     from_file = Settings(_env_file=None, groq=GroqSettings(api_key_file=key_file))
-    try:
-        configure_logging("DEBUG", "json")
-        log = get_logger("tests.config")
-        for each in (settings, from_file):
-            log.info("settings_read", settings=each, groq=each.groq)
-            log.info("key_read", key=each.groq.resolved_api_key())
-            logging.getLogger("some.library").warning("settings %s %r", each, each.groq)
-    finally:
-        configure_logging()
+    configure_logging("DEBUG", "json")  # tests/conftest.py puts the defaults back
+    log = get_logger("tests.config")
+    for each in (settings, from_file):
+        log.info("settings_read", settings=each, groq=each.groq)
+        log.info("key_read", key=each.groq.resolved_api_key())
+        logging.getLogger("some.library").warning("settings %s %r", each, each.groq)
     shown = [capsys.readouterr().out]
     for each in (settings, from_file):
         shown += [repr(each), str(each), each.model_dump_json(), repr(each.model_dump())]

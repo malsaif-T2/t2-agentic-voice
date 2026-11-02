@@ -32,6 +32,8 @@ from t2_agentic_voice.core.config import GroqSettings, Settings, SttSettings
 from t2_agentic_voice.core.errors import ConfigurationError, ProviderError
 from t2_agentic_voice.domain.ports.speech_to_text import AudioClip, SpeechToText, Transcript
 
+from tests.isolation import dropped
+
 FIXTURE = Path(__file__).parents[1] / "fixtures" / "groq_stt_request.json"
 BASELINE = json.loads(FIXTURE.read_text(encoding="utf-8"))
 KEY, OTHER = "made-up-settings-key-0123", "made-up-shell-key-4567"
@@ -311,9 +313,9 @@ CASES = [("groq", "debug"), (ADAPTER, None), (ADAPTER, "debug"), (ADAPTER, "info
 @pytest.fixture(scope="module")
 def imported() -> Imported:
     """What importing each module does to logging, each in a child whose shell sets `GROQ_LOG`
-    alone of what tests/conftest.py drops; side by side, since importing groq takes seconds."""
-    dropped = ("GROQ_", "OTEL_", "PHOENIX_", "T2V_")
-    shell = {k: v for k, v in os.environ.items() if not k.upper().startswith(dropped)}
+    alone of what the suite drops (tests/isolation.py); side by side, since importing groq takes
+    seconds."""
+    shell = {k: v for k, v in os.environ.items() if not dropped(k)}
     running = {
         (module, level): subprocess.Popen(
             [sys.executable, "-c", _CHILD.format(module=module)],

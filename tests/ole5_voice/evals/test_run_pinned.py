@@ -9,7 +9,7 @@ from pathlib import Path
 
 import pytest
 from ole5_voice.evals import run
-from t2_agentic_voice import Settings, configure_logging
+from t2_agentic_voice import Settings
 from t2_agentic_voice.ports import SpeechToText
 
 from tests.ole5_voice.evals.test_run import DEV, Setup
@@ -20,11 +20,6 @@ SHELL = {
     "T2V_GROQ__BASE_URL": "https://elsewhere.example",
     "T2V_GROQ__API_KEY": "gsk_made-up-key-0000",
 }
-
-
-@pytest.fixture(autouse=True)
-def _plain_logs() -> None:
-    configure_logging("INFO", "console")
 
 
 def _capturing(setup: Setup) -> list[Settings]:

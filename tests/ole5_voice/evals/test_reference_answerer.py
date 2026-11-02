@@ -19,7 +19,6 @@ from ole5_voice.evals.run import HISTORY_FILE
 from ole5_voice.evals.run_parts import Parts
 from ole5_voice.evals.runs import SCORECARD_FILE, Scorecard
 from ole5_voice.evals.split import load_split
-from t2_agentic_voice import configure_logging
 
 from tests.ole5_voice.evals.test_run_parts import make_world
 
@@ -50,7 +49,6 @@ def _no_audio(path: Path) -> audio.Wav:
 def test_the_reference_answerer_scores_every_committed_variant_right(
     side: Split, tmp_path: Path, capsys: pytest.CaptureFixture[str], monkeypatch: pytest.MonkeyPatch
 ) -> None:
-    configure_logging("INFO", "console")
     for module in (audio, answerers, run_parts):
         monkeypatch.setattr(module, "read_wav", _no_audio)
     world = make_world(tmp_path)
