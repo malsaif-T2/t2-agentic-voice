@@ -10,7 +10,7 @@ app may use is exported from the package root or one of its public facades
 (`t2_agentic_voice.ports`, `.groq`, `.languages`, `.evals` and `.tracing`):
 
 ```python
-from t2_agentic_voice import Settings, status
+from t2_agentic_voice import VoiceSettings, status
 
-print(status(Settings()))
+print(status(VoiceSettings(env="dev")))
 ```

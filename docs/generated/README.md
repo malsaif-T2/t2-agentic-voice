@@ -15,10 +15,15 @@ To add one:
 | File | Command | Freshness test |
 | --- | --- | --- |
 | [eval-history.md](eval-history.md) | `uv run poe eval-history` | `tests/ole5_voice/evals/test_history.py` |
+| [settings.md](settings.md), and [.env.example](../../.env.example) beside it | `uv run poe settings-ref` | `tests/t2_agentic_voice/core/test_settings_ref.py` |
 
 The run history renders records that are never edited, so `poe docs` reads it as history
 (`[docs] historical` in `harness.toml`): a run's note keeps the references of its time, a debt
 row since paid included ([evaluation.md](../design/evaluation.md) says what the history holds).
 
+The settings reference is the guide's (the design's 7.7 and 14 put it under the guide; plan
+003's decision log keeps it here, where generated docs live), and `.env.example` sits at the
+repository's root, where a developer copies it from.
+
 Typical candidates as the project grows: an HTTP API's OpenAPI contract, a database schema, the
-catalog of test data, and the guide's settings and API reference (the design's 14).
+catalog of test data, and the guide's API reference (the design's 14).

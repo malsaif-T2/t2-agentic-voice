@@ -1,0 +1,153 @@
+# Settings reference
+
+Written by `uv run poe settings-ref` from the library's `VoiceSettings`
+(`packages/t2-agentic-voice/src/t2_agentic_voice/core/config.py`), each description the field's
+own; never edit it by hand (`tests/t2_agentic_voice/core/test_settings_ref.py` fails when it is
+stale). The same command writes [.env.example](../../.env.example).
+
+`VoiceSettings(env=..., ...)` built in code takes its defaults and the arguments given, and
+nothing else. `VoiceSettings.from_env()` reads the environment variables below, under the prefix
+`T2V_` unless `prefix=` gives another, and a `.env` file only when `env_file=` names one; the
+environment wins over the file. A group's settings nest with `__`, a list or a map is given as
+JSON, and a blank value counts as unset. A variable under the prefix that names no setting is
+an error, so the prefix belongs to the library's settings alone. Each secret also takes a
+`_FILE` setting naming a file that holds it, and never shows in a repr, a log line or an error.
+A unit is read from the name: `_ms` is milliseconds, `_s` seconds.
+
+## The top level
+
+| Variable | Type | Default | Unit | Description |
+| --- | --- | --- | --- | --- |
+| `T2V_ENV` | one of dev, test, staging, prod | required | — | Where the library runs: dev, test, staging or prod; required, with no default. Outside dev the dev page and logged call content are refused, and staging and prod refuse DEBUG. |
+
+## `groq`
+
+Groq, the provider of every model for now (D-004). The library reads only these names, never GROQ_API_KEY or GROQ_BASE_URL. The SDKs under it read a few variables of their own whatever is passed: leave unset those the guide lists (docs/guide/README.md, "Variables to leave unset").
+
+| Variable | Type | Default | Unit | Description |
+| --- | --- | --- | --- | --- |
+| `T2V_GROQ__API_KEY` | secret, or unset | unset | — | The API key, required by the Groq adapters; or give api_key_file instead. |
+| `T2V_GROQ__API_KEY_FILE` | path, or unset | unset | — | Or the full path of a file outside the repository that holds only the key, so the key can live outside .env. |
+| `T2V_GROQ__BASE_URL` | text | `https://api.groq.com` | — | Groq's API address, always passed to the SDK so it never falls back to GROQ_BASE_URL. HTTPS only, since the key travels with every request. |
+
+## `stt`
+
+Speech-to-text: the adapter, the Whisper model, and how long a request may take.
+
+| Variable | Type | Default | Unit | Description |
+| --- | --- | --- | --- | --- |
+| `T2V_STT__PROVIDER` | one of groq | `groq` | — | Which adapter turns speech into text; only Groq's exists for now (D-004). |
+| `T2V_STT__MODEL` | one of whisper-large-v3, whisper-large-v3-turbo | `whisper-large-v3` | — | The Whisper model: whisper-large-v3 or whisper-large-v3-turbo. The default stayed large-v3 on a registered measurement (D-025), and changes only on another (GP-18). |
+| `T2V_STT__TIMEOUT_S` | number | `6` | seconds | The longest one transcription request may take before it is a timeout. |
+| `T2V_STT__LIVE_LANGUAGE` | one of session, auto | `session` | — | The language a live call sends Whisper: session (the call's language, as the caller picked it) or auto (none, so Whisper detects it). A registered measurement sets the default (GP-18). |
+
+## `tts`
+
+Text-to-speech: the adapter, a model and a voice for each language, and what is done with the audio.
+
+| Variable | Type | Default | Unit | Description |
+| --- | --- | --- | --- | --- |
+| `T2V_TTS__PROVIDER` | one of groq | `groq` | — | Which adapter turns text into speech; only Groq's exists for now (D-004). |
+| `T2V_TTS__LANGUAGES` | JSON object from one of ar-SA, ar, en to {model, voice} | `{"ar-SA": {"model": "canopylabs/orpheus-arabic-saudi", "voice": "abdullah"}, "ar": {"model": "canopylabs/orpheus-arabic-saudi", "voice": "abdullah"}, "en": {"model": "canopylabs/orpheus-v1-english", "voice": "troy"}}` | — | The model and voice of each language preset (ar-SA, ar, en), as a JSON object: {"en": {"model": "canopylabs/orpheus-v1-english", "voice": "troy"}}. A value replaces the whole map. |
+| `T2V_TTS__TIMEOUT_S` | number | `6` | seconds | The longest one synthesis request may take before it is a timeout. |
+| `T2V_TTS__CACHE_PHRASES` | true or false | `true` | — | Whether the fixed phrases declared at start (greetings, notices) are synthesized once and cached under the storage folder. |
+| `T2V_TTS__TRIM_SILENCE` | true or false | `false` | — | Whether the silence the model puts before its speech is trimmed; off, the audio plays as it comes. |
+
+## `turns`
+
+Turn-taking: the speech detector (Silero VAD) and the end-of-turn model (Smart Turn).
+
+| Variable | Type | Default | Unit | Description |
+| --- | --- | --- | --- | --- |
+| `T2V_TURNS__VAD_CONFIDENCE` | number | `0.7` | — | How sure the speech detector must be that a frame is speech, from 0 to 1. |
+| `T2V_TURNS__VAD_START_MS` | integer | `200` | milliseconds | How long speech must last before the detector says the caller started. |
+| `T2V_TURNS__VAD_STOP_MS` | integer | `200` | milliseconds | How long a silence must last before the detector says the caller paused. |
+| `T2V_TURNS__VAD_MIN_VOLUME` | number | `0.6` | — | The quietest a frame may be and still count as speech, from 0 to 1. |
+| `T2V_TURNS__SMART_TURN` | true or false | `true` | — | Whether Smart Turn decides, at each pause, if the caller has finished; off, every pause the detector hears ends the turn. |
+| `T2V_TURNS__SMART_TURN_STOP_MS` | integer | `3000` | milliseconds | The silence after which Smart Turn ends the turn whatever it heard. |
+| `T2V_TURNS__SMART_TURN_PRE_SPEECH_MS` | integer | `500` | milliseconds | How much audio before the speech started Smart Turn hears with it. |
+| `T2V_TURNS__SMART_TURN_MAX_DURATION_S` | number | `8` | seconds | The most audio of a turn Smart Turn hears, its latest part. |
+| `T2V_TURNS__MAX_SILENCE_MS` | integer | `3000` | milliseconds | The fallback end of a turn: a silence this long ends it, whatever decides. |
+
+## `session`
+
+The voice session: what answers the caller.
+
+| Variable | Type | Default | Unit | Description |
+| --- | --- | --- | --- | --- |
+| `T2V_SESSION__MODE` | one of echo | `echo` | — | What answers each turn: echo, which says back what it heard, the only one. |
+
+## `server`
+
+Serving: the backend's address, the pages that may call it, how media finds a path, and the dev page.
+
+| Variable | Type | Default | Unit | Description |
+| --- | --- | --- | --- | --- |
+| `T2V_SERVER__PUBLIC_URL` | text, or unset | unset | — | The address callers reach the backend at, such as https://voice.example. |
+| `T2V_SERVER__ALLOWED_ORIGINS` | JSON list of text | `[]` | — | The pages allowed to call the backend from a browser, as a JSON list of origins (scheme, host and port only), such as ["https://www.example.com"]. Unset: none. |
+| `T2V_SERVER__ICE_SERVERS` | JSON list of text | `[]` | — | The STUN and TURN servers a call is given, as a JSON list of stun:, turn: or turns: URLs with no credentials (TURN's are minted per call from turn_secret). |
+| `T2V_SERVER__TURN_SECRET` | secret, or unset | unset | — | The secret shared with the TURN server, which signs each call's credentials: at least 32 bytes. Or give turn_secret_file instead. |
+| `T2V_SERVER__TURN_SECRET_FILE` | path, or unset | unset | — | Or the full path of a file that holds only the TURN secret. |
+| `T2V_SERVER__TURN_TTL_S` | integer | `3600` | seconds | How long each call's TURN credentials last, at most 86400 (a day). |
+| `T2V_SERVER__DEV_PAGE` | true or false | `false` | — | Whether the router serves its /dev page, to loopback clients; dev only. |
+| `T2V_SERVER__FORWARDED_ALLOW_IPS` | JSON list of text | `[]` | — | The proxies whose X-Forwarded-For headers are trusted, as a JSON list of IP addresses or networks, such as ["127.0.0.1"]; "*" is refused. Unset: none. |
+
+## `join`
+
+Join tokens: the keys that sign and verify them, and how long one lives.
+
+| Variable | Type | Default | Unit | Description |
+| --- | --- | --- | --- | --- |
+| `T2V_JOIN__KEYS` | JSON object from text to secret | `{}` | — | The keys that verify join tokens, as a JSON object from key ID to secret, each secret at least 32 bytes. Or give keys_file instead. |
+| `T2V_JOIN__KEYS_FILE` | path, or unset | unset | — | Or the full path of a file that holds the key map, the same JSON object as keys. |
+| `T2V_JOIN__CURRENT_KID` | text, or unset | unset | — | The ID of the key that signs new tokens; one of the map's. |
+| `T2V_JOIN__TTL_S` | integer | `60` | seconds | How long a join token lives, at most 120. |
+| `T2V_JOIN__MAX_CLOCK_SKEW_S` | integer | `30` | seconds | How far a token's times may be off this machine's clock and still verify. |
+
+## `privacy`
+
+Privacy: whether a call's audio may be recorded, and the consent version callers agree to (docs/SECURITY.md, invariant 8).
+
+| Variable | Type | Default | Unit | Description |
+| --- | --- | --- | --- | --- |
+| `T2V_PRIVACY__RECORD_AUDIO` | true or false | `false` | — | Whether a call's audio may be recorded under the storage folder: only when this is on and the caller's signed join token says they consented. |
+| `T2V_PRIVACY__CONSENT_VERSION` | text, or unset | unset | — | The version of the consent text callers agree to (1 to 64 printable characters, no space); when set, a join token holding another version is refused. Unset: any. |
+
+## `logging`
+
+Logging: the level and format of the library's lines, and what they may hold.
+
+| Variable | Type | Default | Unit | Description |
+| --- | --- | --- | --- | --- |
+| `T2V_LOGGING__LEVEL` | one of DEBUG, INFO, WARNING, ERROR | `INFO` | — | DEBUG, INFO, WARNING or ERROR; staging and prod refuse DEBUG. |
+| `T2V_LOGGING__FORMAT` | one of console, json | `console` | — | console (human-readable) or json (machine-queryable). |
+| `T2V_LOGGING__CONTENT` | true or false | `false` | — | Whether log lines may hold what was said in a call; refused outside dev (docs/SECURITY.md, invariant 8). |
+| `T2V_LOGGING__PIPECAT` | one of off | `off` | — | What becomes of the voice framework's own log lines: off, the only value. |
+
+## `tracing`
+
+Tracing, as plain OTLP over HTTP to Phoenix or any OpenTelemetry backend (D-023).
+
+| Variable | Type | Default | Unit | Description |
+| --- | --- | --- | --- | --- |
+| `T2V_TRACING__ENDPOINT` | text, or unset | unset | — | Where spans are sent: an OTLP/HTTP traces endpoint, such as a local Phoenix's http://127.0.0.1:6006/v1/traces. Unset: no span leaves the process, unless the app passes its own tracer provider. |
+| `T2V_TRACING__PROJECT` | text, or unset | unset | — | The project the spans are filed under in Phoenix. Unset: the default one. |
+| `T2V_TRACING__INCLUDE_TRANSCRIPTS` | true or false | `true` | — | Whether spans carry what was said: transcripts are the only call content a trace holds (docs/SECURITY.md, invariant 8). |
+| `T2V_TRACING__REDACT` | JSON list of text | `[]` | — | Regular expressions; every match is replaced in each text attribute before it is exported. A JSON list, such as ["\\d{10}"]. Unset: none. |
+
+## `limits`
+
+Limits on one call.
+
+| Variable | Type | Default | Unit | Description |
+| --- | --- | --- | --- | --- |
+| `T2V_LIMITS__MAX_CALL_S` | number | `600` | seconds | The longest a call may last; the library ends it then. |
+| `T2V_LIMITS__IDLE_S` | number | `120` | seconds | The longest a call may go with nothing heard from the caller; then it ends. |
+
+## `storage`
+
+Storage: one folder for everything the library keeps.
+
+| Variable | Type | Default | Unit | Description |
+| --- | --- | --- | --- | --- |
+| `T2V_STORAGE__VAR_DIR` | path | `var` | — | Local runtime data (git-ignored): databases, run outputs, caches. Every path under it comes from here, so one setting moves a whole run, a test session included. |

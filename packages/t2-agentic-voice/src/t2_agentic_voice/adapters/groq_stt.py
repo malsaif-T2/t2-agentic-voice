@@ -40,17 +40,12 @@ import wave
 import httpx
 from pydantic import BaseModel, ConfigDict, Field, JsonValue, SecretStr, ValidationError
 
-from t2_agentic_voice.core.config import (
-    KEY_FILE_SETTING,
-    KEY_SETTING,
-    GroqSettings,
-    Settings,
-    SttModel,
-    SttSettings,
-    setting_name,
-)
+from t2_agentic_voice.core.config import VoiceSettings
 from t2_agentic_voice.core.errors import ConfigurationError, ProviderError
 from t2_agentic_voice.core.logging import logging_unchanged
+from t2_agentic_voice.core.settings.base import setting_name
+from t2_agentic_voice.core.settings.groq import KEY_FILE_SETTING, KEY_SETTING, GroqSettings
+from t2_agentic_voice.core.settings.stt import SttModel, SttSettings
 from t2_agentic_voice.domain.ports.speech_to_text import AudioClip, DataFlow, Transcript
 
 with logging_unchanged("groq", "httpx"):  # groq reads GROQ_LOG on import (TD-003)
@@ -119,14 +114,19 @@ class GroqSTT:
 
     @classmethod
     def from_settings(
-        cls, settings: Settings, *, transport: httpx.AsyncBaseTransport | None = None
+        cls, settings: VoiceSettings, *, transport: httpx.AsyncBaseTransport | None = None
     ) -> GroqSTT:
         """The adapter the settings describe: `groq.resolved_api_key()`, `groq.base_url`,
-        `stt.model` and `stt.timeout_s`. ConfigurationError naming `T2V_GROQ__API_KEY` when no
-        key is set, a blank one included; `GROQ_API_KEY` is never read (the design's 7.3)."""
-        key = settings.groq.resolved_api_key()
+        `stt.model` and `stt.timeout_s`. ConfigurationError naming `T2V_GROQ__API_KEY` (under
+        the settings' prefix) when no key is set, a blank one included, and saying so when
+        `GROQ_API_KEY` is set instead: the library never reads it (the design's 7.3)."""
+        key = settings.groq.resolved_api_key(settings.prefix)
         if key is None:
-            raise _no_key()
+            raise _no_key(
+                settings.env_name("groq", "api_key"),
+                settings.env_name("groq", "api_key_file"),
+                settings.saw("GROQ_API_KEY"),
+            )
         return cls(
             api_key=key,
             model=settings.stt.model,
@@ -302,11 +302,16 @@ def _retry_after(value: str | None) -> float | None:
     return seconds if math.isfinite(seconds) and seconds >= 0 else None
 
 
-def _no_key() -> ConfigurationError:
+def _no_key(
+    setting: str = KEY_SETTING, file_setting: str = KEY_FILE_SETTING, other_set: bool = False
+) -> ConfigurationError:
+    """The error for a missing key, naming the variable to set; when GROQ_API_KEY is set, it
+    says the library never reads that one (the design's 7.3)."""
+    unread = " GROQ_API_KEY is set, but the library never reads it." if other_set else ""
     return ConfigurationError(
-        f"No Groq API key is set. FIX: set {KEY_SETTING}, or {KEY_FILE_SETTING} to a file "
-        "that holds the key.",
-        details={"setting": KEY_SETTING},
+        f"No Groq API key is set.{unread} FIX: set {setting}, or {file_setting} to a file that "
+        "holds the key.",
+        details={"setting": setting},
     )
 
 

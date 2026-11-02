@@ -34,11 +34,13 @@ Run everything as `uv run poe <task>` (`uv run poe` lists tasks).
 | `gc` · `quality` | Say whether a garbage-collection round is due, then list its candidates · grade each layer, each app and `scripts/` after `check`; neither is a gate. |
 | `golden` · `record` | Validate the golden set and freeze its expected answers · record and review its takes (a page on 127.0.0.1). |
 | `eval` · `eval-compare` · `eval-history` | Run an answerer over the golden set (refuses the main checkout) · compare two runs (sign test by item) · render the run history. |
+| `settings-ref` | Write `docs/generated/settings.md` and `.env.example` from the library's settings model. |
 
 Add a row for every task the project adds. Add dependencies with `uv add <pkg>` (`--dev` for
 tooling), in the member that needs them (`uv add --package t2-agentic-voice <pkg>`); never use
-pip or edit `uv.lock`. The library's settings come from `T2V_*` environment
-variables or `.env`, and [.env.example](.env.example) lists them all. The harness's own rules
+pip or edit `uv.lock`. The library's settings are one `VoiceSettings`, built in code or loaded
+by `VoiceSettings.from_env()` from `T2V_*` variables (and a `.env` only when it is passed one);
+[.env.example](.env.example) lists them all. The harness's own rules
 (layers, the public API, the apps, owned libraries, required docs, size caps, the coverage
 floor) live in [harness.toml](harness.toml).
 

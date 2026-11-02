@@ -7,9 +7,9 @@ staying the shortest working example (one tool, a short prompt).
 
 from __future__ import annotations
 
-from t2_agentic_voice import Settings, Status, status
+from t2_agentic_voice import Status, VoiceSettings, status
 
 
-def run(settings: Settings) -> Status:
+def run(settings: VoiceSettings) -> Status:
     """Start the example with `settings`; for now, report what it runs with."""
     return status(settings)

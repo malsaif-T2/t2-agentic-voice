@@ -25,8 +25,10 @@ import httpx
 import pytest
 from pydantic import SecretStr
 from t2_agentic_voice.adapters.groq_stt import GroqSTT
-from t2_agentic_voice.core.config import GroqSettings, SttSettings
+from t2_agentic_voice.core.config import VoiceSettings
 from t2_agentic_voice.core.errors import ConfigurationError, ProviderError
+from t2_agentic_voice.core.settings.groq import GroqSettings
+from t2_agentic_voice.core.settings.stt import SttSettings
 from t2_agentic_voice.domain.ports.speech_to_text import AudioClip, SpeechToText
 
 from tests.isolation import dropped
@@ -310,6 +312,28 @@ def test_no_key_in_the_settings_is_a_configuration_error(
     with pytest.raises(ConfigurationError, match=SETTING) as raised:
         GroqSTT.from_settings(groq_settings(**given))
     assert raised.value.details == {"setting": SETTING}
+
+
+@pytest.mark.parametrize("prefix", ["T2V_", "HELPDESK_VOICE_"])
+def test_with_groq_api_key_set_instead_the_error_names_the_variable_to_set(
+    prefix: str, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    """The design's 7.3: the error names the variable to set, under the settings' prefix, and
+    says the other is never read; neither its value nor the key reaches anything shown."""
+    monkeypatch.setenv(f"{prefix}ENV", "test")
+    monkeypatch.setenv("GROQ_API_KEY", OTHER)
+    with pytest.raises(ConfigurationError) as raised:
+        GroqSTT.from_settings(VoiceSettings.from_env(prefix=prefix))
+    assert raised.value.message == (
+        "No Groq API key is set. GROQ_API_KEY is set, but the library never reads it. FIX: set "
+        f"{prefix}GROQ__API_KEY, or {prefix}GROQ__API_KEY_FILE to a file that holds the key."
+    )
+    assert raised.value.details == {"setting": f"{prefix}GROQ__API_KEY"}
+    assert holding(OTHER, shown(raised.value)) == []
+    monkeypatch.delenv("GROQ_API_KEY")
+    with pytest.raises(ConfigurationError) as raised:
+        GroqSTT.from_settings(VoiceSettings.from_env(prefix=prefix))
+    assert "GROQ_API_KEY is set" not in raised.value.message
 
 
 def test_a_speech_to_text_with_no_key_in_its_repr_and_no_groq_type_in_its_signatures() -> None:

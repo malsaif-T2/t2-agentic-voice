@@ -11,10 +11,9 @@ import os
 
 import groq  # noqa: F401  imported for what it reads on import
 import opentelemetry.context  # noqa: F401  as above
-from t2_agentic_voice.core.config import Settings
+from t2_agentic_voice.core.settings.base import PREFIX
 
-PREFIX = Settings.model_config.get("env_prefix", "")
-WATCHED = ("GROQ_", "OTEL_", "PHOENIX_") + ((PREFIX.upper(),) if PREFIX else ())
+WATCHED = ("GROQ_", "OTEL_", "PHOENIX_", PREFIX.upper())
 # As pytest imported this module: the variables still set, and the levels `GROQ_LOG` would set.
 SEEN_ON_IMPORT = sorted(n for n in os.environ if n.upper().startswith(WATCHED))
 LEVELS_ON_IMPORT = {name: logging.getLogger(name).level for name in ("groq", "httpx")}

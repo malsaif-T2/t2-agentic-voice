@@ -36,7 +36,7 @@ from opentelemetry.trace import (
 )
 from opentelemetry.util.types import AnyValue, Attributes
 
-from t2_agentic_voice.core.config import Settings
+from t2_agentic_voice.core.config import VoiceSettings
 from t2_agentic_voice.core.logging import get_logger
 from t2_agentic_voice.core.redaction import Redactor
 from t2_agentic_voice.core.tracing_export import (
@@ -178,7 +178,7 @@ class Tracing:
 
     @classmethod
     def from_settings(
-        cls, settings: Settings, *, tracer_provider: TracerProvider | None = None
+        cls, settings: VoiceSettings, *, tracer_provider: TracerProvider | None = None
     ) -> Tracing:
         """Tracing on `tracer_provider` (the team's own) when given; otherwise on a private
         provider sending to `tracing.endpoint`; otherwise off."""

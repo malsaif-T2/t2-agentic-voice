@@ -16,12 +16,14 @@ that file's lines).
 
 ## Variables to leave unset
 
-The library's settings are `T2V_*` environment variables or a `.env` file
-([.env.example](../../.env.example) lists them; the generated settings reference below will
-describe each). The SDKs under it read a few variables of their own whatever the library
-passes, so a process that uses the library leaves these unset, or, for the proxy and CA
-variables, sets only values it trusts (the other docs point here rather than list them, and the
-debt rows named say why each is still read):
+The library's settings are one `VoiceSettings`: built in code, or loaded by
+`VoiceSettings.from_env()` from the `T2V_*` environment variables, and from a `.env` file only
+when `env_file=` names one; `env` (dev, test, staging or prod) has no default
+([.env.example](../../.env.example) lists them, and the generated
+[settings.md](../generated/settings.md) describes each). The SDKs under it read a few
+variables of their own whatever the library passes, so a process that uses the library leaves
+these unset, or, for the proxy and CA variables, sets only values it trusts (the other docs
+point here rather than list them, and the debt rows named say why each is still read):
 
 - `GROQ_LOG`, read when `groq` is imported: `debug` or `info` adds a handler to the root logger
   and sets the `groq` and `httpx` loggers' levels, and at DEBUG the SDK logs each request's
@@ -58,7 +60,7 @@ debt rows named say why each is still read):
 | `tools-and-actions.md` | Writing each kind, wrapping existing functions, the action lifecycle, consent, the error table, idempotency and lookups | M5 |
 | `safety.md` | How the yes rule and the output guard work; what the library guarantees and what stays yours | M5 |
 | `languages.md` | Language presets, the reply language, normalization, speaking numbers and IDs, spoken labels, vocabulary, pronunciation | M4 |
-| `reference/settings.md` (generated) | Every setting, with its default, unit and environment name | M2 |
+| [settings.md](../generated/settings.md) (generated, `uv run poe settings-ref`) | Every setting, with its default, unit and environment name | M2 (written) |
 | `serving.md` | The sidecar or the mount, identity and join tokens, cross-origin pages, the browser protocol | M2 |
 | `browser-client.md` | The reference browser client: its events and states, tokens, consent, Stop and Esc | M2, M3 |
 | `testing.md` | Text calls, the fakes, the safety suite for your actions, live scenarios, audio replay | M5 |

@@ -102,9 +102,9 @@ mistake costs real time, the lesson goes **here**, in the same session, in this 
 ## Secrets, machine state, and the owner's data
 
 - Never read or print `.env` or any secrets file. To check what a setting resolves to, print
-  that setting from `Settings`, not the file.
+  that setting from `VoiceSettings`, not the file.
 - Tests never touch the developer's machine state: no `.env`, none of this project's variables
-  from the shell, no `var/`; every path comes from `Settings`, which the tests point at a
+  from the shell, no `var/`; every path comes from `VoiceSettings`, which the tests point at a
   scratch folder (GP-15, `tests/conftest.py`).
 - **The owner's data is read-only to commands and agents** (GP-21). What the owner put under
   `var/` (or any folder they name as theirs: source data, a store they curated, run results

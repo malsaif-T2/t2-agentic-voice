@@ -1,6 +1,6 @@
 """What the application is running with: a typed summary of its settings, without secrets.
 
-It takes core's Settings and returns a typed model; the health route the api layer serves
+It takes core's VoiceSettings and returns a typed model; the health route the api layer serves
 decides how to show it.
 """
 
@@ -10,9 +10,9 @@ from pathlib import Path
 
 from pydantic import BaseModel, ConfigDict
 
-from t2_agentic_voice.core.config import Environment, LogLevel, Settings
-from t2_agentic_voice.core.errors import ConfigurationError
+from t2_agentic_voice.core.config import Environment, VoiceSettings
 from t2_agentic_voice.core.logging import get_logger
+from t2_agentic_voice.core.settings.logs import LogLevel
 
 log = get_logger(__name__)
 
@@ -25,10 +25,13 @@ class Status(BaseModel):
     var_dir: Path
 
 
-def status(settings: Settings) -> Status:
-    """The running configuration. Production never runs with DEBUG logs, which may be verbose
-    enough to carry data that should not be kept."""
-    if settings.env == "prod" and settings.log_level == "DEBUG":
-        raise ConfigurationError("DEBUG logging is not allowed in production.")
+def status(settings: VoiceSettings) -> Status:
+    """The running configuration. Neither staging nor production runs with DEBUG logs, which
+    may be verbose enough to carry data that should not be kept, and nothing outside dev runs
+    the dev page or logs call content: the checks every load makes, made again here for
+    settings copied with a change (`VoiceSettings.check_environment`)."""
+    settings.check_environment()
     log.info("status_read", env=settings.env)
-    return Status(env=settings.env, log_level=settings.log_level, var_dir=settings.var_dir)
+    return Status(
+        env=settings.env, log_level=settings.logging.level, var_dir=settings.storage.var_dir
+    )

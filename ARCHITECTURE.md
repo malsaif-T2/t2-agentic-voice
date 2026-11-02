@@ -85,7 +85,7 @@ An arrow or a line down means "may import"; `api` may import every layer, `testi
 
 | Layer | Responsibility | May import | Owns (only it may import) |
 | --- | --- | --- | --- |
-| `core` | Settings (`core/config.py`, the only module that reads the environment), structured logging (`core/logging.py`), the error types (`core/errors.py`: `T2VoiceError` and its subclasses, each with a stable `code`), tracing to Phoenix, and the types every layer shares | none | `logging`, `structlog`, `pydantic_settings`, `opentelemetry`, `openinference`, `phoenix`, `requests` |
+| `core` | Settings (`VoiceSettings` in `core/config.py`, the only module that reads the environment, and its groups in `core/settings/`), structured logging (`core/logging.py`), the error types (`core/errors.py`: `T2VoiceError` and its subclasses, each with a stable `code`), tracing to Phoenix, and the types every layer shares | none | `logging`, `structlog`, `pydantic_settings`, `opentelemetry`, `openinference`, `phoenix`, `requests` |
 | `domain` | The rules of a support call, with no IO: what counts as a clear yes, the ticket flow's states, what an interruption is, Arabic text normalization, how numbers and ticket IDs are spoken, the evaluation scorers' pure parts (term recall, ID recall, text from silence, the sign test), and the ports (protocols) every outside service is reached through | core | — |
 | `adapters` | One adapter per port: speech-to-text, the chat model and text-to-speech (Groq), the knowledge base, the ticket system; each chosen by a setting | core, domain | `groq`, `httpx`, `qdrant_client` |
 | `actions` | The backend that acts: runs the talker's tools through the ports, keeps each call's record of completed actions, words every outcome from a real result | core, domain | — |
@@ -144,8 +144,11 @@ run").
   tool arguments included.
 - Lower layers raise `core.errors.T2VoiceError` subclasses with stable codes and user-safe
   messages; only `api` maps them to its transport.
-- Configuration comes only from `Settings` in `core/config.py`, and `.env.example` lists every
-  setting. A provider is chosen by a setting, never by an import in a layer above `api`.
+- Configuration comes only from `VoiceSettings` in `core/config.py`: built in code, or loaded by
+  `VoiceSettings.from_env()`, the only reader of the environment, with no singleton; a module
+  receives it. `.env.example` and `docs/generated/settings.md` list every setting
+  (`uv run poe settings-ref` writes both). A provider is chosen by a setting, never by an import
+  in a layer above `api`.
 - Logs are structured: `get_logger(__name__)`, snake_case event names, key/value context.
   The standard library's `logging` (a framework's, a library's) is routed through the same
   format by `configure_logging` in `core/logging.py`; a framework that installs its own

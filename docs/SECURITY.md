@@ -63,10 +63,13 @@ Phoenix row's last clause; the owner has not reviewed them yet.
    values with a fixed set (queue, type, priority) are taken only from the ticket system's own
    lists; text from a transcript, a passage, or a tool result never selects a tool by itself.
    Enforced by tests at each tool's boundary (GP-06).
-5. **Secrets stay in the backend.** API keys and service passwords are `SecretStr` settings,
-   never sent to the browser, never logged, never traced. Enforced by
-   `test_every_secret_setting_is_a_secret_str` and
-   `test_a_key_appears_in_no_repr_and_no_log_line` (`tests/t2_agentic_voice/core/test_config.py`)
+5. **Secrets stay in the backend.** API keys, service passwords, the join keys and the TURN
+   secret are `SecretStr` settings, each with a `_FILE` form, never sent to the browser, never
+   logged, never traced; a join key and the TURN secret hold at least 32 bytes. Enforced by
+   `test_every_secret_setting_is_a_secret_str_with_a_file_form`,
+   `test_a_secret_shorter_than_32_bytes_is_refused_as_the_settings_load` and
+   `test_no_secret_appears_in_a_repr_or_a_log_line`
+   (`tests/t2_agentic_voice/core/test_settings_secrets.py`)
    and by `test_no_secret_reaches_a_span_or_a_log_line`
    (`tests/t2_agentic_voice/core/test_tracing.py`); the last two read every surface an error, a
    log line or an output may show through `tests/leaks.py`.

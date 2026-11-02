@@ -83,6 +83,10 @@ sequence = [{ cmd = "python -m scripts.gc_due" }, { cmd = "python -m scripts.gc_
 help = "Grade each layer after `poe check` (not a gate); grades and gaps go in docs/harness/quality.md"
 cmd = "python -m scripts.quality"
 
+[tool.poe.tasks.settings-ref]
+help = "Write docs/generated/settings.md and .env.example from the library's settings model"
+cmd = "python -m scripts.settings_ref"
+
 # The golden set's commands (plan 002; evaluation.md): each runs a module of the Ole5 app's
 # evaluation package, and passes on the arguments given after the task's name.
 

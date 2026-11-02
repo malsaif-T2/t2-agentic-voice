@@ -13,7 +13,7 @@ from typing import Any
 
 from opentelemetry.sdk.trace import ReadableSpan
 from opentelemetry.sdk.trace.export.in_memory_span_exporter import InMemorySpanExporter
-from t2_agentic_voice.core.config import Settings
+from t2_agentic_voice.core.config import VoiceSettings
 from t2_agentic_voice.core.tracing import Tracing
 
 MADE_UP_KEY = "gsk_made-up-key-for-tests-0123456789"
@@ -25,9 +25,9 @@ SENT_HEADERS = {"host", "user-agent", "content-type", "content-length", "accept-
 Received = list[tuple[str, dict[str, str], bytes]]  # each request's path, headers and body
 
 
-def settings_with(tmp_path: Path, **tracing: object) -> Settings:
-    values = {"env": "test", "var_dir": tmp_path, "groq": {"api_key": MADE_UP_KEY}}
-    return Settings.model_validate(values | {"tracing": {"project": "golden-set"} | tracing})
+def settings_with(tmp_path: Path, **tracing: object) -> VoiceSettings:
+    values = {"env": "test", "storage": {"var_dir": tmp_path}, "groq": {"api_key": MADE_UP_KEY}}
+    return VoiceSettings.model_validate(values | {"tracing": {"project": "golden-set"} | tracing})
 
 
 def one_turn(tracing: Tracing, text: str = "hello there") -> None:

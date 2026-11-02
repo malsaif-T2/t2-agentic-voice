@@ -67,7 +67,7 @@ fix = "Log via `from t2_agentic_voice.core.logging import get_logger`; `log = ge
 [[owners]]
 modules = ["pydantic_settings"]
 layers = ["core"]
-fix = "Add a field to Settings in core/config.py (and to .env.example), then read it via `get_settings()` or an injected Settings."
+fix = "Add a field, with its description, to VoiceSettings or its group in core/settings/ and run `uv run poe settings-ref`; load the settings with `VoiceSettings.from_env()` or take an injected VoiceSettings."
 
 [[owners]]
 modules = ["opentelemetry", "openinference", "phoenix"]

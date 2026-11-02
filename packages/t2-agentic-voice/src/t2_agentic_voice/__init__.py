@@ -9,7 +9,7 @@ ARCHITECTURE.md.
 import warnings
 
 from t2_agentic_voice.api.status import Status, status
-from t2_agentic_voice.core.config import Settings, get_settings
+from t2_agentic_voice.core.config import VoiceSettings
 from t2_agentic_voice.core.errors import (
     ConfigurationError,
     InvalidRequestError,
@@ -24,12 +24,11 @@ __all__ = [
     "InvalidRequestError",
     "NotFoundError",
     "ProviderError",
-    "Settings",
     "Status",
     "T2VoiceError",
+    "VoiceSettings",
     "configure_logging",
     "get_logger",
-    "get_settings",
     "status",
 ]
 

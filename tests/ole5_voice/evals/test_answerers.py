@@ -20,7 +20,7 @@ from ole5_voice.evals.answerers import (
 from ole5_voice.evals.models import Variant
 from ole5_voice.evals.runs import Answer, AnswerRequest
 from ole5_voice.evals.windows import measurer
-from t2_agentic_voice import ProviderError, Settings
+from t2_agentic_voice import ProviderError, VoiceSettings
 from t2_agentic_voice.ports import Transcript
 
 from tests.ole5_voice.evals.fakes import (
@@ -35,7 +35,7 @@ MEASURE = measurer(fake_normalize, FakeMatcher().is_right)
 
 
 def _groq(
-    settings: Settings,
+    settings: VoiceSettings,
     script: list[str | Transcript | ProviderError],
     *,
     budget: Budget | None = None,
@@ -81,7 +81,7 @@ def _one(world: World, seconds: float = 1.0, segments: int = 1) -> tuple[Variant
 
 
 def test_the_reference_answerer_gives_each_variant_its_reference_and_sends_nothing(
-    world: World, settings: Settings
+    world: World, settings: VoiceSettings
 ) -> None:
     variant, paths = _one(world)
     answerer = make_answerer("reference", settings, measure=MEASURE)
@@ -97,7 +97,7 @@ def test_the_reference_answerer_gives_each_variant_its_reference_and_sends_nothi
 
 
 def test_groq_sends_each_clip_once_in_the_hinted_language_with_no_prompt(
-    world: World, settings: Settings
+    world: World, settings: VoiceSettings
 ) -> None:
     variant, paths = _one(world, seconds=12.5)
     heard = Transcript(text=" open the inbox ", language="en", confidence=-0.2, no_speech_prob=0.1)
@@ -116,7 +116,7 @@ def test_groq_sends_each_clip_once_in_the_hinted_language_with_no_prompt(
 
 
 def test_a_take_of_two_segments_is_one_answer_weighted_by_length(
-    world: World, settings: Settings
+    world: World, settings: VoiceSettings
 ) -> None:
     variant = world.item("t", segments=1, seconds=1.0).variants[0]
     long = world.item("u", segments=1, seconds=3.0).variants[0]
@@ -143,7 +143,7 @@ def test_a_take_of_two_segments_is_one_answer_weighted_by_length(
     ],
 )
 def test_a_request_turned_away_is_asked_again_after_a_pause(
-    world: World, settings: Settings, error: ProviderError, pause: float
+    world: World, settings: VoiceSettings, error: ProviderError, pause: float
 ) -> None:
     variant, paths = _one(world)
     answerer, stt, clock = _groq(settings, [error, "open the inbox"])
@@ -154,7 +154,7 @@ def test_a_request_turned_away_is_asked_again_after_a_pause(
 
 
 def test_a_refusal_no_retry_mends_and_the_last_attempt_are_provider_failures(
-    world: World, settings: Settings
+    world: World, settings: VoiceSettings
 ) -> None:
     variant, paths = _one(world)
     answerer, stt, _ = _groq(settings, [ProviderError("rejected", False)])
@@ -167,7 +167,9 @@ def test_a_refusal_no_retry_mends_and_the_last_attempt_are_provider_failures(
     assert clock.pauses.count(3.0) == 3 and len(stt.calls) == 4
 
 
-def test_a_variant_still_running_at_its_limit_is_stuck(world: World, settings: Settings) -> None:
+def test_a_variant_still_running_at_its_limit_is_stuck(
+    world: World, settings: VoiceSettings
+) -> None:
     variant, paths = _one(world)
     answerer, _, _ = _groq(settings, ["late"], policy=Policy(variant_timeout_s=0.05), delay_s=10.0)
     answer = _ask(answerer, variant, paths)
@@ -185,7 +187,9 @@ def test_a_variant_still_running_at_its_limit_is_stuck(world: World, settings: S
     assert [r.outcome for r in answer.requests] == ["rate_limited"]
 
 
-def test_a_request_that_would_pass_the_cap_is_never_sent(world: World, settings: Settings) -> None:
+def test_a_request_that_would_pass_the_cap_is_never_sent(
+    world: World, settings: VoiceSettings
+) -> None:
     variant, paths = _one(world)
     budget = Budget(price_per_hour_usd=3600.0, cap_usd=25.0)  # a request of 10 s costs $10
     answerer, stt, _ = _groq(settings, ["a", "b", "c"], budget=budget)
@@ -201,7 +205,9 @@ def test_a_request_that_would_pass_the_cap_is_never_sent(world: World, settings:
     )
 
 
-def test_requests_start_no_closer_than_max_rpm_allows(world: World, settings: Settings) -> None:
+def test_requests_start_no_closer_than_max_rpm_allows(
+    world: World, settings: VoiceSettings
+) -> None:
     variant, paths = _one(world)
     answerer, _, clock = _groq(settings, ["a", "b", "c"], policy=Policy(max_rpm=20))
     _ask(answerer, variant, paths)
@@ -214,7 +220,7 @@ def test_requests_start_no_closer_than_max_rpm_allows(world: World, settings: Se
 
 
 def test_windows_are_cut_from_the_first_segment_and_one_as_long_as_its_clip_reused(
-    world: World, settings: Settings
+    world: World, settings: VoiceSettings
 ) -> None:
     variant, paths = _one(world, seconds=1.0)
     answerer, stt, _ = _groq(settings, ["open", "open the"], reuse={variant: "open the inbox"})
@@ -247,7 +253,7 @@ def test_windows_are_cut_from_the_first_segment_and_one_as_long_as_its_clip_reus
 
 
 def test_a_traced_request_is_a_speech_to_text_span_under_the_variants_root(
-    world: World, settings: Settings
+    world: World, settings: VoiceSettings
 ) -> None:
     variant, paths = _one(world)
     tracing = FakeTracing()
@@ -264,7 +270,7 @@ def test_a_traced_request_is_a_speech_to_text_span_under_the_variants_root(
 
 
 def test_no_line_the_answerer_logs_holds_a_transcript_or_a_variant(
-    world: World, settings: Settings, capsys: pytest.CaptureFixture[str]
+    world: World, settings: VoiceSettings, capsys: pytest.CaptureFixture[str]
 ) -> None:
     variant, paths = _one(world)
     script: list[str | Transcript | ProviderError] = [
@@ -280,7 +286,9 @@ def test_no_line_the_answerer_logs_holds_a_transcript_or_a_variant(
     assert "zebra" not in out and "a-v1" not in out and "open the inbox" not in out
 
 
-def test_closing_the_groq_answerer_closes_an_adapter_that_can_close(settings: Settings) -> None:
+def test_closing_the_groq_answerer_closes_an_adapter_that_can_close(
+    settings: VoiceSettings,
+) -> None:
     class Closing(FakeSpeechToText):
         closed = False
 
@@ -294,7 +302,7 @@ def test_closing_the_groq_answerer_closes_an_adapter_that_can_close(settings: Se
 
 
 def test_the_adapter_is_the_one_stt_provider_names(
-    settings: Settings, monkeypatch: pytest.MonkeyPatch
+    settings: VoiceSettings, monkeypatch: pytest.MonkeyPatch
 ) -> None:
     fake = FakeSpeechToText()
     monkeypatch.setattr(answerers, "_ADAPTERS", {"groq": lambda given: fake})
@@ -305,7 +313,7 @@ def test_the_adapter_is_the_one_stt_provider_names(
         make_answerer("whisper", settings)
 
 
-def test_the_budget_counts_billed_seconds_at_the_price(settings: Settings) -> None:
+def test_the_budget_counts_billed_seconds_at_the_price(settings: VoiceSettings) -> None:
     budget = Budget(price_per_hour_usd=0.111)
     budget.charge(10.0)
     budget.charge(7200.0)

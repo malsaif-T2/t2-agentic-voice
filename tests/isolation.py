@@ -4,19 +4,18 @@ test_import_isolation.py keep lists of their own, as checks of these that do not
 
 from __future__ import annotations
 
-from t2_agentic_voice.core.config import Settings
+from t2_agentic_voice.core.settings.base import PREFIX, setting_name
 
-# This project's environment variables, and the one that moves every runtime path.
-PREFIX = Settings.model_config.get("env_prefix", "")
-VAR_DIR_VARIABLE = f"{PREFIX}VAR_DIR"
+# The variable that moves every runtime path, among this project's (`PREFIX`).
+VAR_DIR_VARIABLE = setting_name("storage", "var_dir")
 # The variables of the providers' SDKs and of the tracing tools, which the library never reads
 # (the design's 7.3) but their SDKs would: a real key, an exporter's headers, Phoenix's own.
 FOREIGN_PREFIXES = ("GROQ_", "OTEL_", "PHOENIX_")
 # Variables of the HTTP clients under the SDKs, which change what a request to 127.0.0.1 trusts:
 # requests replaces `verify=True` with either CA bundle (TD-004).
 FOREIGN_NAMES = ("REQUESTS_CA_BUNDLE", "CURL_CA_BUNDLE")
-# Every prefix dropped from the shell; with no prefix, every variable would be a setting.
-DROPPED_PREFIXES = FOREIGN_PREFIXES + ((PREFIX.upper(),) if PREFIX else ())
+# Every prefix dropped from the shell: the providers', the tracing tools' and this project's own.
+DROPPED_PREFIXES = (*FOREIGN_PREFIXES, PREFIX.upper())
 
 
 def dropped(name: str) -> bool:

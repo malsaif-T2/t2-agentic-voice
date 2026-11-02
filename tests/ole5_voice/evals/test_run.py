@@ -16,7 +16,7 @@ from ole5_voice.evals.answerers import Policy
 from ole5_voice.evals.items import HISTORY_FILE
 from ole5_voice.evals.models import Item
 from ole5_voice.evals.runs import HistoryLine, VariantResult
-from t2_agentic_voice import ConfigurationError, ProviderError, Settings
+from t2_agentic_voice import ConfigurationError, ProviderError, VoiceSettings
 from t2_agentic_voice.ports import AudioClip, SpeechToText, Transcript
 
 from tests.ole5_voice.evals.fakes import FakeSpeechToText
@@ -173,7 +173,7 @@ def test_a_run_is_refused_before_any_call(
     if damage == "out tracked":
         setup.world.git.ignored = ()
 
-    def no_key(settings: Settings) -> SpeechToText:
+    def no_key(settings: VoiceSettings) -> SpeechToText:
         raise ConfigurationError("T2V_GROQ__API_KEY is not set. FIX: set it.")
 
     setup.adapter = no_key if damage == "no key" else None

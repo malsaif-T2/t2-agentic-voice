@@ -1,244 +1,204 @@
-"""Application settings: the only module that reads the environment (ARCH-ENV).
+"""The library's settings, `VoiceSettings` (the design's 7): the only module that reads the
+environment (ARCH-ENV).
 
-Every configurable value is a field on `Settings`, loaded from environment variables with this
-project's prefix, or from a local `.env` file (environment variables win). A group of settings
-nests with `__`: `T2V_GROQ__API_KEY` is `settings.groq.api_key`. A blank value counts as unset,
-and `.env.example` leaves every key blank with its default in a comment, so a `.env` copied
-from it with only the key filled in keeps every other default, one changed later included.
-Other modules call `get_settings()` or receive a `Settings` instance; they never touch
-`os.environ`. No provider's own variable (`GROQ_API_KEY`, `OTEL_*`) is ever read here, and the
-adapters pass every value that keeps their SDKs from reading one (the design's 7.3). The few an
-SDK reads whatever is passed are kept out or recorded as debt: `GROQ_CUSTOM_HEADERS` by the
-Groq adapter's request hook, `GROQ_LOG` by how the adapter imports the SDK (TD-003), and three
-`OTEL_*` ones (TD-005, `core/tracing_export.py`); the proxy and CA variables both clients
-trust are debt too (TD-004, TD-015). The guide's "Variables to leave unset" lists them all.
-A command loads the settings with `Settings.from_env`, whose ConfigurationError names each
-setting that cannot load and never the value it rejected (the design's 7.4).
+Built in code, `VoiceSettings(env=..., ...)` takes its defaults and the arguments given, and
+nothing else: no environment variable and no `.env` (the design's 7.2). `VoiceSettings.from_env`
+reads the environment variables under a prefix (`T2V_` unless `prefix=` gives another), and a
+`.env` file only when `env_file=` names one; the environment wins over the file, and the code
+arguments given to `from_env` win over both. There is no settings singleton: a module receives
+a `VoiceSettings`, and never touches `os.environ`. A group's settings nest with `__`:
+`T2V_GROQ__API_KEY` is `settings.groq.api_key` (the groups are in core/settings/, one module
+each). A list or a map is given as JSON. A blank value counts as unset, and `.env.example`
+leaves every key blank with its default in a comment, so a `.env` copied from it with only the
+key filled in keeps every other default, one changed later included.
 
-When you add a field, add it to `.env.example` too, blank, with a `# Default:` line above it
-when it has a default (tests/t2_agentic_voice/core/test_env_example.py fails otherwise).
-A secret is a `SecretStr` field, so it never shows in a repr or a log; one may also be given as
-a file whose contents are the value (`api_key_file`).
+`env` has no default: dev, test, staging or prod. Outside dev the dev page and logged call
+content are refused, and staging and prod refuse DEBUG: staging holds every check prod holds
+(the design's 7.4). A variable that carries the prefix but names no setting is an error naming
+the variable, never its value, so a misspelt name never falls back to a default: the prefix
+must belong to the library's settings alone (`unknown="warn"` logs it instead).
+
+No provider's own variable (`GROQ_API_KEY`, `OTEL_*`) is ever read here: `from_env` notes only
+whether GROQ_API_KEY is set, its name and never its value, so the Groq adapter's error can say
+which name to set instead (the design's 7.3). The adapters pass every value that keeps their
+SDKs from reading one. The few an SDK reads whatever is passed are kept out or recorded as
+debt: `GROQ_CUSTOM_HEADERS` by the Groq adapter's request hook, `GROQ_LOG` by how the adapter
+imports the SDK (TD-003), and three `OTEL_*` ones (TD-005, `core/tracing_export.py`); the proxy
+and CA variables both clients trust are debt too (TD-004, TD-015). The guide's "Variables to
+leave unset" lists them all. Every failure is a ConfigurationError naming each setting that
+cannot load and never the value it rejected (the design's 7.4).
+
+When you add a field, give it a `description` and run `uv run poe settings-ref`, which writes
+docs/generated/settings.md and .env.example from the model (their freshness tests fail until
+you do). A secret is a `SecretStr` field, so it never shows in a repr or a log; each one also
+takes a `_file` setting whose file holds the value.
 """
 
 from __future__ import annotations
 
+import os
 import re
-from functools import lru_cache
 from pathlib import Path
 from typing import Literal
-from urllib.parse import SplitResult, urlsplit
 
-from pydantic import BaseModel, ConfigDict, Field, SecretStr, ValidationError, field_validator
-from pydantic_settings import BaseSettings, SettingsConfigDict, SettingsError
+from pydantic import (
+    BaseModel,
+    ConfigDict,
+    Field,
+    PrivateAttr,
+    ValidationError,
+    ValidationInfo,
+    model_validator,
+)
+from pydantic_settings import BaseSettings, DotEnvSettingsSource, SettingsConfigDict
 
 from t2_agentic_voice.core.errors import ConfigurationError
+from t2_agentic_voice.core.logging import get_logger
+from t2_agentic_voice.core.settings.base import PREFIX, prefix_of, setting_name
+from t2_agentic_voice.core.settings.groq import GroqSettings
+from t2_agentic_voice.core.settings.join import JoinSettings
+from t2_agentic_voice.core.settings.limits import LimitSettings
+from t2_agentic_voice.core.settings.logs import LoggingSettings
+from t2_agentic_voice.core.settings.names import gathered, leaf
+from t2_agentic_voice.core.settings.privacy import PrivacySettings
+from t2_agentic_voice.core.settings.server import ServerSettings
+from t2_agentic_voice.core.settings.session import SessionSettings
+from t2_agentic_voice.core.settings.storage import StorageSettings
+from t2_agentic_voice.core.settings.stt import SttSettings
+from t2_agentic_voice.core.settings.tracing import TracingSettings
+from t2_agentic_voice.core.settings.tts import TtsSettings
+from t2_agentic_voice.core.settings.turns import TurnSettings
 
-PREFIX = "T2V_"
-# What a group's fields nest with in a name: `T2V_GROQ__API_KEY` is `settings.groq.api_key`.
-_NESTED = "__"
-Environment = Literal["dev", "test", "prod"]
-LogLevel = Literal["DEBUG", "INFO", "WARNING", "ERROR"]
-LogFormat = Literal["console", "json"]
-SttProvider = Literal["groq"]
-SttModel = Literal["whisper-large-v3", "whisper-large-v3-turbo"]
-# What an API key may hold: printable ASCII with no space, as an HTTP header carries it.
-_KEY = re.compile(r"[\x21-\x7e]+")
+Environment = Literal["dev", "test", "staging", "prod"]
+Unknown = Literal["error", "warn"]
+# What a prefix is: letters, digits and `_`, from a letter to a final `_` (the design's 7.3).
+_PREFIX_RULE = re.compile(r"[A-Za-z][A-Za-z0-9_]*_")
+# A provider's variable the library never reads: `from_env` notes whether it is set, by its name
+# alone, so the error for the setting to set instead (`groq.api_key`) can say so.
+_UNREAD = ("GROQ_API_KEY",)
+# Names the settings had before the design's groups, under the prefix, by where each is now, so
+# a `.env` written for them says what to rename rather than only that the name is unknown.
+_MOVED = {
+    "VAR_DIR": ("storage", "var_dir"),
+    "LOG_LEVEL": ("logging", "level"),
+    "LOG_FORMAT": ("logging", "format"),
+}
 
-
-def setting_name(*location: str | int) -> str:
-    """The environment name of the setting at `location`, a group's name then its field's, as
-    a pydantic error's `loc` gives it: `T2V_GROQ__API_KEY` for ("groq", "api_key"). An item's
-    index in a list setting is left out, since the name is the whole setting's."""
-    return PREFIX + _NESTED.join(str(part).upper() for part in location if isinstance(part, str))
-
-
-KEY_SETTING = setting_name("groq", "api_key")
-KEY_FILE_SETTING = setting_name("groq", "api_key_file")
-
-
-def _url(value: str, schemes: frozenset[str]) -> str:
-    """A URL of one of `schemes`, with a host, a port from 1 to 65535 if any, and no user name or
-    password in it. Every error is fixed text: urllib's own repeats the value, which may be a
-    key pasted into the wrong setting."""
-    parts = _split(value)
-    if (
-        parts is None
-        or parts.scheme not in schemes
-        or not parts.hostname
-        or parts.port == 0
-        or any(c.isspace() for c in value)
-    ):
-        raise ValueError(f"must be a URL starting with {' or '.join(sorted(schemes))}://")
-    if parts.username is not None or parts.password is not None:
-        raise ValueError("must not hold a user name or password; secrets go in their own setting")
-    return value
+log = get_logger(__name__)
 
 
-def _split(value: str) -> SplitResult | None:
-    """`value`'s parts, or None when urllib refuses it, so its error, which repeats the value,
-    is in no exception chain either."""
-    try:
-        parts = urlsplit(value)  # refuses an invalid [host]
-        _ = parts.port  # urlsplit checks the port only when it is read
-    except ValueError:
-        return None
-    return parts
-
-
-def _key(value: str, setting: str) -> SecretStr:
-    """`value` as a key, or ConfigurationError naming `setting`, never the value: a key with a
-    line break, a space, a control or a non-ASCII character inside it fails in the HTTP client,
-    whose error holds the whole header (the key with it) and reads as a lost connection."""
-    if not _KEY.fullmatch(value):
-        raise ConfigurationError(
-            f"{setting} holds a character no API key holds: a space or a line break inside it, "
-            "or a control or non-ASCII character. FIX: give the key alone, on one line.",
-            details={"setting": setting},
-        )
-    return SecretStr(value)
-
-
-class _Group(BaseModel):
-    """A group of settings: read-only once loaded, and a misspelt key in it is an error. An
-    error's text and repr name the setting, never the value it rejected, which may be a key
-    (GP-19). A ValidationError's `errors()` and `json()` still return that value unless given
-    `include_input=False`, so a command reports settings errors only through `Settings.from_env`,
-    never from a ValidationError itself."""
+class VoiceSettings(BaseModel):
+    """All the library's tunable settings: how it runs in this deployment (the design's 7.1),
+    `env` and a group for each part."""
 
     model_config = ConfigDict(frozen=True, extra="forbid", hide_input_in_errors=True)
 
-
-class GroqSettings(_Group):
-    """Groq, the provider of every model for now (D-004): `T2V_GROQ__*`."""
-
-    # The API key, required by the Groq adapters; or give `api_key_file` instead.
-    api_key: SecretStr | None = None
-    # A file whose contents are the key, so the key can live outside `.env`.
-    api_key_file: Path | None = None
-    # The API's address: the SDK's own default, always passed to it, so the SDK never falls
-    # back to GROQ_BASE_URL. HTTPS only, since the key travels with every request.
-    base_url: str = "https://api.groq.com"
-
-    @field_validator("base_url")
-    @classmethod
-    def _https(cls, value: str) -> str:
-        parts = urlsplit(_url(value, frozenset({"https"})))
-        if parts.query or parts.fragment:
-            raise ValueError("must hold no query or fragment: the SDK adds its own path after it")
-        return value
-
-    def resolved_api_key(self) -> SecretStr | None:
-        """The key: `api_key` when set, otherwise the contents of `api_key_file` (a byte-order
-        mark dropped, as Notepad and Windows PowerShell 5.1 may write one), with the space around
-        them removed; None when neither holds one (a blank value counts as unset). A key file
-        that cannot be read, or a key holding a character no key holds, raises
-        ConfigurationError naming the setting it came from, never its value or the file's path."""
-        if self.api_key is not None and self.api_key.get_secret_value().strip():
-            return _key(self.api_key.get_secret_value().strip(), KEY_SETTING)
-        if self.api_key_file is None:
-            return None
-        setting = KEY_FILE_SETTING
-        try:
-            text = self.api_key_file.read_text(encoding="utf-8-sig").strip()
-        except (OSError, UnicodeDecodeError) as error:
-            failure = type(error).__name__  # a decode error holds the file's bytes: not chained
-        else:
-            return _key(text, setting) if text else None
-        raise ConfigurationError(
-            f"{setting} is set, but the file cannot be read ({failure}).",
-            details={"setting": setting},
-        )
-
-
-class SttSettings(_Group):
-    """Speech-to-text: `T2V_STT__*`."""
-
-    # Which adapter turns speech into text; only Groq's exists for now (D-004).
-    provider: SttProvider = "groq"
-    # The Whisper model. The default stayed large-v3 on a registered measurement (D-025; the
-    # design's 7.6), and changes only on another (GP-18).
-    model: SttModel = "whisper-large-v3"
-    # The longest one transcription request may take, in seconds, before it is a timeout.
-    timeout_s: float = Field(default=6.0, gt=0, allow_inf_nan=False)
-
-
-class TracingSettings(_Group):
-    """Tracing, as plain OTLP to Phoenix or any OpenTelemetry backend (D-023): `T2V_TRACING__*`."""
-
-    # Where spans are sent: an OTLP/HTTP traces endpoint, such as a local Phoenix's
-    # http://127.0.0.1:6006/v1/traces. Unset: no span leaves the process, unless the app passes
-    # its own tracer provider.
-    endpoint: str | None = None
-    # The project the spans are filed under in Phoenix. Unset: the backend's default.
-    project: str | None = None
-    # Whether spans carry what was said. Transcripts are the only call content a trace holds
-    # (docs/SECURITY.md, invariant 8).
-    include_transcripts: bool = True
-    # Regular expressions; every match is replaced in each text attribute before it is
-    # exported. A JSON list in the environment: T2V_TRACING__REDACT='["\\d{10}"]'.
-    redact: tuple[str, ...] = ()
-
-    @field_validator("endpoint")
-    @classmethod
-    def _http(cls, value: str | None) -> str | None:
-        return None if value is None else _url(value, frozenset({"http", "https"}))
-
-    @field_validator("redact")
-    @classmethod
-    def _patterns(cls, value: tuple[str, ...]) -> tuple[str, ...]:
-        for index, pattern in enumerate(value):
-            try:
-                re.compile(pattern)
-            except re.error as error:
-                raise ValueError(f"pattern {index} is not a regular expression: {error}") from None
-        return value
-
-
-class Settings(BaseSettings):
-    model_config = SettingsConfigDict(
-        env_prefix=PREFIX,
-        env_file=".env",
-        env_file_encoding="utf-8",
-        env_nested_delimiter=_NESTED,
-        env_ignore_empty=True,
-        extra="ignore",
-        hide_input_in_errors=True,
+    env: Environment = Field(
+        description=(
+            "Where the library runs: dev, test, staging or prod; required, with no default. "
+            "Outside dev the dev page and logged call content are refused, and staging and "
+            "prod refuse DEBUG."
+        ),
     )
-
-    env: Environment = "dev"
-    log_level: LogLevel = "INFO"
-    # console (human-readable) or json (machine-queryable)
-    log_format: LogFormat = "console"
-    # Local runtime data (git-ignored): databases, run outputs, caches. Every path under it
-    # comes from here, so one setting moves a whole run, a test session included.
-    var_dir: Path = Path("var")
     groq: GroqSettings = Field(default_factory=GroqSettings)
     stt: SttSettings = Field(default_factory=SttSettings)
+    tts: TtsSettings = Field(default_factory=TtsSettings)
+    turns: TurnSettings = Field(default_factory=TurnSettings)
+    session: SessionSettings = Field(default_factory=SessionSettings)
+    server: ServerSettings = Field(default_factory=ServerSettings)
+    join: JoinSettings = Field(default_factory=JoinSettings)
+    privacy: PrivacySettings = Field(default_factory=PrivacySettings)
+    logging: LoggingSettings = Field(default_factory=LoggingSettings)
     tracing: TracingSettings = Field(default_factory=TracingSettings)
+    limits: LimitSettings = Field(default_factory=LimitSettings)
+    storage: StorageSettings = Field(default_factory=StorageSettings)
+
+    # What `from_env` learned as it loaded: the prefix, and the provider variables it saw set.
+    # A copy (`model_copy`) keeps them; settings rebuilt from a dump take the defaults.
+    _prefix: str = PrivateAttr(default=PREFIX)
+    _seen: frozenset[str] = PrivateAttr(default=frozenset())
+
+    @model_validator(mode="after")
+    def _environment(self, info: ValidationInfo) -> VoiceSettings:
+        self.check_environment(prefix_of(info))
+        return self
+
+    @property
+    def prefix(self) -> str:
+        """The prefix of the environment names these settings were loaded under."""
+        return self._prefix
+
+    def env_name(self, *location: str | int) -> str:
+        """The variable the setting at `location` is read from, under these settings' prefix:
+        `T2V_GROQ__API_KEY` for ("groq", "api_key")."""
+        return setting_name(*location, prefix=self._prefix)
+
+    def saw(self, name: str) -> bool:
+        """Whether `from_env` found the variable `name` set, one the library never reads
+        (GROQ_API_KEY): its name only, never its value."""
+        return name in self._seen
+
+    def check_environment(self, prefix: str | None = None) -> None:
+        """ConfigurationError naming a setting `env` refuses, under `prefix` (these settings'
+        own by default): outside dev, the dev page and logged call content; in staging and
+        prod, DEBUG (the design's 7.4). Every load runs it; `status` runs it again, for
+        settings copied with a change."""
+        prefix = self._prefix if prefix is None else prefix
+        problem = _refused(self)
+        if problem is None:
+            return
+        location, why, fix = problem
+        name = setting_name(*location, prefix=prefix)
+        raise ConfigurationError(
+            f"{name} {why}, which env={self.env} refuses. FIX: {fix}",
+            details={"setting": name, "env": self.env},
+        )
 
     @classmethod
-    def from_env(cls, env_file: Path | None = None) -> Settings:
-        """The settings from the environment and a `.env`: `env_file`, or `Settings`' own
-        default when None. An `env_file` given that is no file is a ConfigurationError, since
-        pydantic-settings skips a missing one silently and a mistyped path would run on the
-        defaults (GP-06). Any setting that cannot load is a ConfigurationError naming each one
-        (`T2V_GROQ__BASE_URL`) and why, with a FIX line, never the value it rejected (the
-        design's 7.4). It is raised after the handler, so no exception chain leads back to the
-        ValidationError, whose `errors()` would still return that value."""
+    def from_env(
+        cls,
+        prefix: str = PREFIX,
+        env_file: Path | None = None,
+        unknown: Unknown = "error",
+        **values: object,
+    ) -> VoiceSettings:
+        """The settings from the environment variables under `prefix`, and from `env_file`, a
+        `.env`, only when one is given (the environment wins over it), with `values`, code
+        arguments, over both (a group given replaces the group). A variable under the prefix
+        that names no setting is a ConfigurationError naming it, never its value, or with
+        `unknown="warn"` a warning, the variable left out. An `env_file` given that is no file
+        is a ConfigurationError, so a mistyped path never runs on the defaults (GP-06). Any
+        setting that cannot load is a ConfigurationError naming each one (`T2V_GROQ__BASE_URL`)
+        and why, with a FIX line, never the value it rejected (the design's 7.4). It is raised
+        after the handler, so no exception chain leads back to the ValidationError, whose
+        `errors()` would still return that value."""
+        if not _PREFIX_RULE.fullmatch(prefix):
+            raise ConfigurationError(
+                "The prefix given cannot start an environment name. FIX: give letters, digits "
+                "and _, from a letter to a final _, such as HELPDESK_VOICE_.",
+                details={"setting": "prefix"},
+            )
         if env_file is not None and not env_file.expanduser().is_file():
             raise ConfigurationError(
                 "The env file given cannot be read. FIX: pass the path of an existing .env file.",
                 details={"setting": "env_file"},
             )
-        problems: list[tuple[str, str]] = []
-        try:
-            return cls() if env_file is None else cls(_env_file=env_file)
-        except ValidationError as error:
-            for problem in error.errors(include_input=False, include_url=False):
-                problems.append((setting_name(*problem["loc"]), problem["msg"]))
-        except SettingsError as error:  # a JSON value that does not parse
-            problems.append((f"{PREFIX}*", str(error)))
+        marked = prefix.upper()
+        sources = [] if env_file is None else [_dotenv(env_file.expanduser(), marked)]
+        sources.append({n: os.environ[n] for n in os.environ if n.upper().startswith(marked)})
+        data, strangers, problems = gathered(cls, sources, prefix)
+        _refuse_strangers(strangers, prefix, unknown)
+        if not problems:
+            try:
+                settings = cls.model_validate(data | values, context={"prefix": prefix})
+            except ValidationError as error:
+                for problem in error.errors(include_input=False, include_url=False):
+                    name = setting_name(*leaf(cls, problem["loc"]), prefix=prefix)
+                    problems.append((name, problem["msg"]))
+            else:
+                settings._prefix = prefix
+                settings._seen = frozenset(n for n in _UNREAD if _set(n))
+                return settings
         raise ConfigurationError(
             "These settings cannot load: "
             + "; ".join(f"{name} ({why})" for name, why in problems)
@@ -247,8 +207,60 @@ class Settings(BaseSettings):
         )
 
 
-@lru_cache
-def get_settings() -> Settings:
-    """Process-wide settings, loaded once with `Settings.from_env`. Tests construct `Settings`
-    directly instead."""
-    return Settings.from_env()
+def _refused(settings: VoiceSettings) -> tuple[tuple[str, str], str, str] | None:
+    """The first setting `settings.env` refuses: its location, what it holds, and the fix."""
+    if settings.env != "dev" and settings.server.dev_page:
+        fix = "turn it off; the dev page is for one machine, under env=dev."
+        return ("server", "dev_page"), "is on", fix
+    if settings.env != "dev" and settings.logging.content:
+        fix = "turn it off; log lines hold what was said only under env=dev."
+        return ("logging", "content"), "is on", fix
+    if settings.env in ("staging", "prod") and settings.logging.level == "DEBUG":
+        fix = "give INFO or above; DEBUG lines may carry data that should not be kept."
+        return ("logging", "level"), "is DEBUG", fix
+    return None
+
+
+def _set(name: str) -> bool:
+    """Whether the variable `name` is set, in any case; its value is never read."""
+    return any(each.upper() == name for each in os.environ)
+
+
+class _DotEnv(BaseSettings):
+    """No settings: only its `.env` reader is used, so a file is read as pydantic-settings
+    reads one (quotes, `export`, comments)."""
+
+    model_config = SettingsConfigDict(extra="ignore")
+
+
+def _dotenv(path: Path, marked: str) -> dict[str, str | None]:
+    """The variables of the `.env` file `path` whose names start with `marked`, in any case,
+    as written (a byte-order mark dropped, as Notepad may write one)."""
+    reader = DotEnvSettingsSource(
+        _DotEnv, env_file=path, env_file_encoding="utf-8-sig", case_sensitive=True
+    )
+    return {n: v for n, v in reader.env_vars.items() if n.upper().startswith(marked)}
+
+
+def _refuse_strangers(strangers: list[str], prefix: str, unknown: Unknown) -> None:
+    """Each variable under the prefix that names no setting: a ConfigurationError naming them
+    all, never a value, or with `unknown="warn"` a warning each (the design's 7.4)."""
+    if not strangers:
+        return
+    fix = (
+        f"FIX: correct each name, or unset it: every variable under {prefix} is the library's, "
+        "since the prefix belongs to its settings alone (a team's own settings take another; "
+        "from_env(prefix=...) picks the library's)."
+    )
+    if unknown == "warn":
+        for name in strangers:
+            log.warning("setting_unknown", variable=name, fix=fix)
+        return
+    moved = {name: _MOVED.get(name[len(prefix) :].upper()) for name in strangers}
+    hints = [f"; {n} is {setting_name(*to, prefix=prefix)} now" for n, to in moved.items() if to]
+    raise ConfigurationError(
+        f"{', '.join(sorted(strangers))} names no setting{''.join(sorted(hints))}. {fix}",
+        details={
+            "settings": [{"setting": n, "problem": "names no setting"} for n in sorted(strangers)]
+        },
+    )

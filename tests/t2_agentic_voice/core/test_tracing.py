@@ -12,7 +12,7 @@ from opentelemetry.sdk.trace import TracerProvider
 from opentelemetry.sdk.trace.export import SimpleSpanProcessor
 from opentelemetry.sdk.trace.export.in_memory_span_exporter import InMemorySpanExporter
 from opentelemetry.trace import Status, StatusCode
-from t2_agentic_voice.core.config import Settings
+from t2_agentic_voice.core.config import VoiceSettings
 from t2_agentic_voice.core.redaction import Redactor
 from t2_agentic_voice.core.tracing import Tracing
 
@@ -93,7 +93,7 @@ def test_a_turn_is_the_root_of_its_trace_even_inside_a_teams_current_span() -> N
     assert spans["speech_to_text"].parent == spans["turn"].context
 
 
-def test_off_with_neither_and_never_global(tmp_path: Path, settings: Settings) -> None:
+def test_off_with_neither_and_never_global(tmp_path: Path, settings: VoiceSettings) -> None:
     """With no provider and no endpoint, tracing is off; none installs a provider globally."""
     before = trace.get_tracer_provider()
     team = TracerProvider(shutdown_on_exit=False)

@@ -29,14 +29,15 @@ from typing import cast
 import structlog
 from structlog.typing import EventDict, FilteringBoundLogger, Processor, WrappedLogger
 
-from t2_agentic_voice.core.config import LogFormat, LogLevel
+from t2_agentic_voice.core.settings.logs import LogFormat, LogLevel
 
 
 def configure_logging(
     level: LogLevel = "INFO", fmt: LogFormat = "console", take_over: Sequence[str] = ()
 ) -> None:
     """Configure structlog, and the standard library's logging through it, process-wide; call
-    once at startup, with the Settings' values (again after a framework set up its loggers)."""
+    once at startup, with the settings' `logging` values (again after a framework set up its
+    loggers)."""
     renderer: Processor
     if fmt == "json":
         # ensure_ascii=False keeps non-ASCII text readable in the output.
