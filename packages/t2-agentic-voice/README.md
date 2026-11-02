@@ -7,7 +7,8 @@ ticket) taken only after a clear spoken yes, in Saudi Arabic, MSA and English.
 The library is at an early stage: its public API is designed in the repository's
 `docs/design/package-design.md`, and the guide for teammates is in `docs/guide/`. Everything an
 app may use is exported from the package root or one of its public facades
-(`t2_agentic_voice.ports`, `.groq`, `.languages`, `.evals` and `.tracing`):
+(`t2_agentic_voice.ports`, `.groq`, `.identity`, `.server`, `.stores`, `.events`, `.languages`,
+`.evals` and `.tracing`):
 
 ```python
 from t2_agentic_voice import VoiceSettings, status

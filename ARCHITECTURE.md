@@ -34,7 +34,7 @@ tests/                       one subfolder per package, harness/ for the checks'
 
 The library's **public API is its package root and the facades beside it**: the root's
 `__init__.py` re-exports the main names, and each public facade (`ports`, `groq`, `languages`,
-`evals` and `tracing`, D-021; `identity`, `server`, `stores` and `events`, the design's 5.1)
+`evals` and `tracing`, D-021; `identity`, `server`, `stores` and `events`, D-032)
 re-exports one area's names and holds nothing else (ARCH-FACADE);
 `[package] public` in harness.toml lists the modules an app may import, and `[package] facades`
 the facades among them. An app imports nothing else from the library and no other app, and the
@@ -90,12 +90,12 @@ An arrow or a line down means "may import"; `api` may import every layer, `testi
 | --- | --- | --- | --- |
 | `core` | Settings (`VoiceSettings` in `core/config.py`, the only module that reads the environment, and its groups in `core/settings/`), structured logging (`core/logging.py`), the error types (`core/errors.py`: `T2VoiceError` and its subclasses, each with a stable `code`), tracing to Phoenix, and the types every layer shares | none | `logging`, `structlog`, `pydantic_settings`, `opentelemetry`, `openinference`, `phoenix`, `requests` |
 | `domain` | The rules of a support call, with no IO: what counts as a clear yes, the ticket flow's states, what an interruption is, Arabic text normalization, how numbers (through num2words) and ticket IDs are spoken, the evaluation scorers' pure parts (term recall, ID recall, text from silence, the sign test), and the ports (protocols) every outside service is reached through | core | `num2words` |
-| `adapters` | One adapter per port: speech-to-text, the chat model and text-to-speech (Groq), the knowledge base, the ticket system, each chosen by a setting; the signed join tokens and the SQLite stores (the used tokens) | core, domain | `groq`, `httpx`, `qdrant_client`, `jwt`, `sqlite3` |
+| `adapters` | One adapter per port: speech-to-text, the chat model and text-to-speech (Groq), the knowledge base, the ticket system, each chosen by a setting; the signed join tokens, the SQLite stores (the used tokens), the TURN credentials and the phrase cache | core, domain | `groq`, `httpx`, `qdrant_client`, `jwt`, `sqlite3` |
 | `actions` | The backend that acts: runs the talker's tools through the ports, keeps each call's record of completed actions, words every outcome from a real result | core, domain | — |
 | `agent` | The talker: prompts, the few tool definitions, the reply language, one turn from the user's words to a reply and tool calls; the output guard on every sentence | core, domain, actions | — |
 | `voice` | One call's real-time pipeline: answers the WebRTC offer (Pipecat's peer connection), audio in and out, speech detection, end of turn, interruptions, each turn's cancel scope, speech-to-text and text-to-speech wired to the talker; Pipecat's logger (loguru), kept off | core, domain, agent | `pipecat`, `loguru` |
-| `testing` | What a team tests and measures its agent with: the evaluation scorers (word and character error rates) today; later the fakes of every port, text-mode calls, the adversarial suite and simulated callers (D-019) | core, domain, actions, agent, voice | `jiwer` |
-| `api` | The HTTP surface and composition root: serves the widget, starts calls, reports health, builds the adapters from the settings and injects them, maps every error to one shape | core, domain, adapters, actions, agent, voice, testing | `fastapi`, `starlette`, `uvicorn` |
+| `testing` | What a team tests and measures its agent with: the evaluation scorers (word and character error rates) and the turn-end and echo timings the measurements run on, today; later the fakes of every port, text-mode calls, the adversarial suite and simulated callers (D-019) | core, domain, actions, agent, voice | `jiwer` |
+| `api` | The HTTP surface and composition root: call set-up, health, the reference client (`t2v-client.js`) and the dev page (an app's widget is the app's to serve); builds the adapters from the settings and injects them, maps every error to one shape | core, domain, adapters, actions, agent, voice, testing | `fastapi`, `starlette`, `uvicorn` |
 
 `harness.toml` holds the same rules in `[layers]` (who may import whom) and `[[owners]]` (which
 layer owns which library), and `poe arch` compares them with this table row by row (ARCH-DOC):
@@ -186,9 +186,9 @@ run").
   tool, text-to-speech), recorded through `core`'s tracing helpers. The helpers take the turn's
   span as an argument, since Pipecat runs each processor in its own task and an implicit
   current span does not cross tasks.
-- The outermost layer turns every error, a crash included, into one shape for its transport,
-  with the error's stable code and the request's reference, and never echoes a rejected value
-  back (GP-19).
+- The outermost layer turns every error, a crash included, into one shape for its transport
+  (`ErrorBody` in `api/protocol.py`, for `t2v/1`'s routes: D-029), with the error's stable code
+  and the request's reference, and never echoes a rejected value back (GP-19).
 - Models at a boundary reuse core's field types and constraints, so invalid input is rejected
   as invalid input (a validation error, a usage error), never as a server error (GP-20).
 

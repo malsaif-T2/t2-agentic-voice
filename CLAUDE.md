@@ -72,15 +72,15 @@ floor) live in [harness.toml](harness.toml).
 packages/t2-agentic-voice/src/t2_agentic_voice/   the library; its public API is __init__.py
   and the facades beside it (re-exports only): ports.py groq.py identity.py server.py
   stores.py events.py languages.py evals.py tracing.py
-  core/       settings, structured logging, error types (T2VoiceError), tracing and redaction
-  domain/     the call's rules and the ports, no IO: so far the speech-to-text port, text
-              normalization, the spelling check and the scorers' pure parts (D-022); later the
-              yes rule and interruptions
-  adapters/   the outside services behind the ports: Groq, the knowledge base, the tickets
+  core/       settings, logging, errors (T2VoiceError), tracing, the shared types (identity, events)
+  domain/     the call's rules, no IO: the ports, the declaration (VoiceAgent), normalization,
+              the speaking rules (numbers, IDs, clauses, pronunciation), the spelling check and
+              the scorers' pure parts (D-022); later the yes rule and interruptions
+  adapters/   behind the ports: Groq, join tokens, the used-token stores, TURN credentials
   actions/    the backend, the only part that acts: tools, the action record, outcomes
   agent/      the talker: prompts, tool definitions, one turn, the output guard
   voice/      one call's real-time pipeline: WebRTC, end of turn, interruptions, cancel scope
-  testing/    what a team tests and measures with: wer and cer so far; later, the fakes
+  testing/    what a team tests and measures with: wer, cer, turn and echo timings; later the fakes
   api/        HTTP and the composition root: call set-up, health, the client and the dev page
 apps/ole5-voice-agent/src/ole5_voice/   the Ole5 app: only the library's public API (ARCH-PUBLIC)
   evals/      the golden set's commands; its data in apps/ole5-voice-agent/evals/, no audio
