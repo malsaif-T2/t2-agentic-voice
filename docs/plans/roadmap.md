@@ -117,6 +117,11 @@ on the first 0.5–1.0 s of the 90 dev talk-over clips only, not of each talk-ov
   and their generated reference; `examples/minimal` as an echo agent; the guide's
   quickstart, serving, browser-client, settings, tracing and data pages. The widget is
   Ole5's, built on the reference client.
+- *From M1* ([plan 002's Future improvements](completed/002-golden-set-baseline.md#future-improvements)), for M2's plan to weigh: a prompt arm that keeps product terms in Latin
+  script (term recall was 0.333 on dev for large-v3); how a live call sets the language Whisper is
+  sent, since M1's arms sent each item's label, which a call does not know; and, when numbers are
+  spoken, whether compound number words count as digits (TD-031). Each is measured on the golden
+  set (D-024's floor of 6 items) before it changes a default.
 
 *Done when* the owner holds a call in Chrome on laptop speakers and on a headset, locally and
 from another network to the deployed backend, and hears each turn back; end-of-turn cut-offs
@@ -141,6 +146,12 @@ Groq model are recorded.
   as library behaviour with Ole5's word additions as settings; audio replay for tests, and a
   test that text-mode calls follow the same path as audio calls; the guide's concepts and
   audio-troubleshooting pages.
+- *From M1* ([plan 002's Future improvements](completed/002-golden-set-baseline.md#future-improvements)), for M3's plan to weigh: a filter for text from silence and the agent's
+  echo (every silent, noise and echo clip came back with text, such as Whisper's invented
+  captions); how its rule hears short Saudi words (often misheard even as whole clips); its first
+  window (at 500 ms none of the 4 Saudi words asking the agent to halt was heard; large-v3 at
+  750 ms held the most); and the noise runs repeated on another day before its first comparison
+  (TD-032).
 
 *Done when* the targets registered in its plan hold on the golden set's overlap clips and on
 M2's call recordings: a normal-volume «وقف» stops the agent within its target, the agent's own
@@ -183,6 +194,9 @@ rehearsal's password, archiving, and English questions pass.
   the outbox and lookups, the record, the guard's claim rule, the caps, and the safety suite
   teams run on their own actions; the T2 Ticket API adapter and the ticket action stay Ole5's.
   The handoff takes consent like any action: a read-back, then a clear yes (D-018).
+- *From M1* ([plan 002's Future improvements](completed/002-golden-set-baseline.md#future-improvements)), for M5's plan to weigh: a ticket number heard is read back before it is
+  acted on, never taken as heard (large-v3 got 4 of the 12 full 16-digit readings right, each
+  miss a digit error), and the ticket is found by the session's verified identity.
 
 *Done when* simulated calls create the right tickets with zero false action claims; the
 rehearsal's ticket flow passes, where an eager «نعم أرسلها» over the closing question creates the
