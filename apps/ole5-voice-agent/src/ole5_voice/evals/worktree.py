@@ -118,12 +118,13 @@ def worktree_tops(folder: Path, git: Git = run_git) -> tuple[Path, ...]:
     )
 
 
-def run_commit(folder: Path, git: Git = run_git) -> str:
-    """The commit a run in `folder` measures; refuses the main checkout and a dirty tree."""
+def run_checkout(folder: Path, git: Git = run_git) -> Checkout:
+    """The checkout a run in `folder` measures, at its commit; refuses the main checkout and a
+    dirty tree."""
     checkout = inspect(folder, git)
     if (problem := checkout.refusal()) is not None:
         raise problem
-    return checkout.commit
+    return checkout
 
 
 def check_out(out: Path, checkout: Checkout, git: Git = run_git) -> Path:

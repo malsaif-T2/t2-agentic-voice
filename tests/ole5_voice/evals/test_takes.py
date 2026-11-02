@@ -14,6 +14,7 @@ from ole5_voice.evals.takes import (
     ScriptLine,
     SessionRecord,
     TakeSidecar,
+    parse_review_file,
     review_file,
     session_file,
     take_audio,
@@ -62,6 +63,27 @@ def test_the_script_reads_its_lines_and_listening_sounds(tmp_path: Path) -> None
         path.write_text(broken, encoding="utf-8")  # a misspelt table; no line at all
         with pytest.raises(GoldenSetError, match=r"script\.toml: \d problem\(s\), the first at "):
             read_toml(path, Script)
+
+
+def test_a_lines_takes_have_a_scripted_reference_only_when_it_has_words() -> None:
+    """The recorder and the import give a take of a line its reference source alike."""
+    line = {"id": "n01", "kind": "request", "language": "english"}
+    assert ScriptLine.model_validate(line | {"say": ["a b"]}).source == "script"
+    for silent in ({}, {"say": [""]}):
+        assert ScriptLine.model_validate(line | silent).source == "none", silent
+
+
+def test_a_reviews_file_name_is_read_one_way() -> None:
+    """The recorder and the import read a review's file name alike, as `review_file` builds it:
+    a take's name and a pass of at most six digits, the most a review records."""
+    assert parse_review_file("n01-laptop-1-2.review-3.json") == ("n01-laptop-1-2", 3)
+    assert parse_review_file("n01.review-999999.json") == ("n01", 999_999)
+    for name in ("n01.review-1000000.json", "n01.review-0.json", "N01.review-1.json", "n01.json"):
+        assert parse_review_file(name) is None, name
+    fields = {"take": "n01", "at": "2026-11-02T10:00:00Z", "verdict": "confirmed"}
+    assert Review.model_validate(fields | {"review_pass": 999_999}).review_pass == 999_999
+    with pytest.raises(ValidationError):
+        Review.model_validate(fields | {"review_pass": 1_000_000})
 
 
 def test_a_session_record_holds_its_speakers_consent() -> None:

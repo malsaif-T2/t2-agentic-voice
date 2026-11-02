@@ -18,7 +18,6 @@ from __future__ import annotations
 import argparse
 import json
 import math
-import re
 import sys
 from collections import Counter
 from collections.abc import Callable, Mapping, Sequence
@@ -44,10 +43,12 @@ from ole5_voice.evals.items import (
     GoldenSetError,
     Strata,
     count_strata,
+    holds_term,
     load_items,
     load_manifests,
     load_terms,
     read_toml,
+    references,
     unchecked,
     write_text,
 )
@@ -110,10 +111,6 @@ def _load(evals: Path) -> _Set:
     )
 
 
-def _holds(text: str, term: str) -> bool:
-    return re.search(rf"(?<!\w){re.escape(term)}(?!\w)", text) is not None
-
-
 def _check_item(item: Item, found: _Set, check: SpellingCheck) -> list[str]:
     """The item's problems: its references, terms and spellings."""
     problems = []
@@ -138,7 +135,7 @@ def _check_item(item: Item, found: _Set, check: SpellingCheck) -> list[str]:
             problems.append(f"{name}: a listening sound outside the script's list ({ruling})")
     texts = [item.text, *(v.reference for v in item.variants)]
     for term in item.terms:
-        if term not in found.terms or not any(_holds(text, term) for text in texts):
+        if term not in found.terms or not any(holds_term(text, term) for text in texts):
             problems.append(f"{item.id}: the term {term} is not in terms.toml or not in its text")
     rules = found.guide.rules_for(item.kind)
     spelled = {(v.id, text) for v in item.variants for text in (v.reference, *item.alternatives)}
@@ -237,7 +234,7 @@ def _frozen(
             "want": item.want,
             "terms": list(item.terms),
             "variants": [
-                {"id": v.id, "device": v.device, "expected": [v.reference, *item.alternatives]}
+                {"id": v.id, "device": v.device, "expected": list(references(item, v))}
                 for v in accepted[item.id]
             ],
         }

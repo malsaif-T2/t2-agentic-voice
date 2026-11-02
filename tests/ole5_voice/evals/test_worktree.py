@@ -17,7 +17,7 @@ from ole5_voice.evals.worktree import (
     GitResult,
     check_out,
     inspect,
-    run_commit,
+    run_checkout,
     run_git,
     worktree_tops,
 )
@@ -38,7 +38,7 @@ def _trees(tmp_path: Path) -> tuple[Path, Path]:
 def test_a_clean_linked_worktree_runs_at_its_commit(tmp_path: Path) -> None:
     main, top = _trees(tmp_path)
     git = FakeGit(top, main)
-    assert run_commit(top / "apps", git) == COMMIT
+    assert run_checkout(top / "apps", git).commit == COMMIT
     assert [cwd for _, cwd in git.calls] == [top / "apps"] + [top] * 3  # then at the top
     checkout = inspect(top, git)
     assert (checkout.linked, checkout.clean, checkout.refusal()) == (True, True, None)
@@ -48,13 +48,13 @@ def test_a_clean_linked_worktree_runs_at_its_commit(tmp_path: Path) -> None:
 def test_the_main_checkout_is_refused(tmp_path: Path) -> None:
     main, _ = _trees(tmp_path)
     with pytest.raises(InvalidRequestError, match=r"the main checkout\. FIX: run from a linked"):
-        run_commit(main, FakeGit(main, main))
+        run_checkout(main, FakeGit(main, main))
 
 
 def test_a_dirty_tree_is_refused(tmp_path: Path) -> None:
     main, top = _trees(tmp_path)
     with pytest.raises(InvalidRequestError, match="has changes"):
-        run_commit(top, FakeGit(top, main, dirty=True))
+        run_checkout(top, FakeGit(top, main, dirty=True))
 
 
 @pytest.mark.parametrize(
@@ -167,7 +167,7 @@ def real_git(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> Path:
 def test_the_real_git_answers_as_the_checks_expect(real_git: Path, tmp_path: Path) -> None:
     main = real_git
     with pytest.raises(InvalidRequestError, match="the main checkout"):
-        run_commit(main)
+        run_checkout(main)
     top = tmp_path / "run"
     subprocess.run(
         [GIT, "worktree", "add", "-q", "--detach", str(top)],
@@ -175,7 +175,7 @@ def test_the_real_git_answers_as_the_checks_expect(real_git: Path, tmp_path: Pat
         check=True,
         capture_output=True,
     )
-    commit = run_commit(top / ".")
+    commit = run_checkout(top / ".").commit
     assert len(commit) == 40
     checkout = inspect(top)
     assert check_out(main / "var" / "r1", checkout).name == "r1"
@@ -183,7 +183,7 @@ def test_the_real_git_answers_as_the_checks_expect(real_git: Path, tmp_path: Pat
         check_out(main / "apps" / "r1", checkout)
     (top / "new.txt").write_text("x", encoding="utf-8")  # untracked counts as a change
     with pytest.raises(InvalidRequestError, match="has changes"):
-        run_commit(top)
+        run_checkout(top)
     loose = tmp_path / "loose"
     loose.mkdir()
     with pytest.raises(InvalidRequestError, match="not inside a git checkout"):

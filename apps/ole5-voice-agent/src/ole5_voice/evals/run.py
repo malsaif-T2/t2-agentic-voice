@@ -58,7 +58,7 @@ from ole5_voice.evals.run_parts import (
 from ole5_voice.evals.run_settings import GROQ_BASE_URL, MODELS, load_settings, show, shown
 from ole5_voice.evals.runs import RunInfo, holds_placeholder
 from ole5_voice.evals.windows import measurer
-from ole5_voice.evals.worktree import Checkout, check_out, inspect, refused
+from ole5_voice.evals.worktree import Checkout, check_out, refused, run_checkout
 
 RESULTS_FILE = "results.jsonl"  # a dev run's results, one line each as it finishes
 _DESCRIPTION = "Run an answerer over the golden set, writing its results and scorecard into --out."
@@ -179,9 +179,7 @@ def _run(args: argparse.Namespace, settings: Settings, parts: Parts) -> int:
             "history. FIX: give the setting without one.",
             details={"setting": placed[0]},
         )
-    checkout = inspect(parts.folder, parts.git)
-    if (problem := checkout.refusal()) is not None:
-        raise problem
+    checkout = run_checkout(parts.folder, parts.git)
     out = check_out(args.out, checkout, parts.git)
     if not is_name(out.name):
         raise refused(

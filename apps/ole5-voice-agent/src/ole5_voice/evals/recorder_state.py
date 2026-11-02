@@ -28,7 +28,19 @@ from typing import Annotated, Any, Final, Literal
 from pydantic import AfterValidator, ConfigDict, Field, ValidationError
 
 from ole5_voice.evals.audio import AudioFormatError, parse_wav, sha256_of
-from ole5_voice.evals.models import Consent, Device, Model, Name, RelativePath, TurnEnds, is_name
+from ole5_voice.evals.items import reviewed
+from ole5_voice.evals.models import (
+    Consent,
+    Device,
+    Kind,
+    Language,
+    Model,
+    Name,
+    ReferenceSource,
+    RelativePath,
+    TurnEnds,
+    is_name,
+)
 from ole5_voice.evals.takes import (
     Review,
     Script,
@@ -120,10 +132,10 @@ class Entry:
     id: str
     session: str
     of: str  # its script line or its item
-    kind: str
-    language: str
+    kind: Kind
+    language: Language
     reference: str
-    source: str  # "script", "typed" or "none"
+    source: ReferenceSource
     audio: tuple[Audio, ...]
     reviews: list[Review] = field(default_factory=list)
 
@@ -175,21 +187,24 @@ class Recorder:
             }
 
     def _shown(self, entry: Entry) -> dict[str, Any]:
-        typed = [r for r in entry.reviews if r.verdict == "typed"]
-        last = max(entry.reviews, key=lambda r: r.review_pass, default=None)
+        """An entry as the page shows it: its reference, source and confirmations after the
+        owner's reviews, by the import's rule (`items.reviewed`, Q9), and due for a check this
+        pass when it has none yet and none was made this pass. `load_recorder` refused the
+        reviews that rule refuses, and `add_review` writes none."""
+        reference, source, confirmations = reviewed(entry.reference, entry.source, entry.reviews)
         this_pass = any(r.review_pass == self.review_pass for r in entry.reviews)
         return {
             "id": entry.id,
             "of": entry.of,
             "kind": entry.kind,
             "language": entry.language,
-            "reference": max(typed, key=lambda r: r.review_pass).text if typed else entry.reference,
-            "source": "typed" if typed else entry.source,
+            "reference": reference,
+            "source": source,
             "segments": len(entry.audio),
             "reviews": [
                 r.model_dump(mode="json", include={"review_pass", "verdict"}) for r in entry.reviews
             ],
-            "due": not this_pass and (last is None or last.verdict == "typed"),
+            "due": not this_pass and not confirmations,
         }
 
     def add_consent(self, upload: ConsentUpload) -> dict[str, Any]:
@@ -341,7 +356,7 @@ def take_entry(out: Path, take: TakeSidecar, line: ScriptLine) -> Entry:
         kind=line.kind,
         language=line.language,
         reference=line.text,
-        source="script" if line.say else "none",
+        source=line.source,
         audio=(Audio(out, take_audio(take.session, take.take), take.sha256),),
     )
 

@@ -11,11 +11,13 @@ from pathlib import Path
 import pytest
 from ole5_voice.evals.items import (
     GoldenSetError,
-    accepted,
+    dump_manifest,
+    holds_term,
     load_items,
     load_manifests,
     load_terms,
     read_json,
+    references,
     unchecked,
 )
 from ole5_voice.evals.models import AudioRef, Confirmation, Item, Manifest, Variant
@@ -190,11 +192,22 @@ def test_a_variant_is_checked_once_the_owner_confirmed_it() -> None:
     assert unchecked(_confirmed(_typed(plain), 2)) is None
 
 
-def test_only_checked_variants_are_accepted() -> None:
-    item = samples.item()
-    both = Item.model_validate(
-        item.model_dump()
-        | {"variants": (_confirmed(samples.variant("v1"), 1), samples.variant("v2"))}
-    )
-    assert [v.id for i in accepted([both]) for v in i.variants] == ["v1"]
-    assert accepted([item]) == ()
+def test_a_term_is_held_as_a_whole_word_as_the_product_writes_it() -> None:
+    """The talk-over import picks an item's terms by it, and `poe golden` checks them."""
+    assert holds_term("Open it in Outlook.", "Outlook") and holds_term("PDF", "PDF")
+    for text in ("outlook", "Outlooks", "MyOutlook", "Out look"):
+        assert not holds_term(text, "Outlook"), text
+    assert holds_term("in C++.", "C++") and not holds_term("in C++x", "C++")
+
+
+def test_what_counts_as_right_is_the_reference_then_the_items_alternatives() -> None:
+    item = Item.model_validate(samples.item().model_dump() | {"alternatives": ("stop it",)})
+    assert references(item, item.variants[0]) == ("stop now", "stop it")
+
+
+def test_a_manifest_is_written_as_its_committed_text() -> None:
+    file = {"path": "a.wav", "sha256": SHA, "seconds": 1.5, "sample_rate": 16000}
+    one = {"root": "owner", "files": [file | {"device": "laptop", "session": "s1"}]}
+    text = dump_manifest(Manifest.model_validate(one))
+    assert text.startswith('{\n  "root": "owner",') and text.endswith("}\n")
+    assert Manifest.model_validate_json(text) == Manifest.model_validate(one)

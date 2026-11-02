@@ -11,6 +11,7 @@ written new, never rewritten. Every model parses strictly, as `models.py`'s do.
 
 from __future__ import annotations
 
+import re
 from datetime import datetime
 from typing import Final, Literal
 
@@ -23,12 +24,18 @@ from ole5_voice.evals.models import (
     Language,
     Model,
     Name,
+    ReferenceSource,
     RelativePath,
     Sha256,
     TurnEnds,
 )
 
 SESSION_FILE: Final = "session.json"
+# The highest review pass: a review's file name gives its pass in at most six digits.
+MAX_REVIEW_PASS: Final = 999_999
+_REVIEW_FILE: Final = re.compile(
+    r"^(?P<take>[a-z0-9][a-z0-9_.-]{0,127})\.review-(?P<number>[1-9][0-9]{0,5})\.json$"
+)
 _BELOW_OUT: TypeAdapter[str] = TypeAdapter(RelativePath)
 
 
@@ -48,6 +55,11 @@ class ScriptLine(Model):
     def text(self) -> str:
         """The words the line asks for, as one reference."""
         return " ".join(self.say)
+
+    @property
+    def source(self) -> ReferenceSource:
+        """Its takes' reference source: the script's, or none for a line of no words."""
+        return "script" if self.text else "none"
 
 
 class Script(Model):
@@ -101,7 +113,7 @@ class Review(Model):
     confirmed that it says its reference, or typed what it says instead."""
 
     take: Name
-    review_pass: int = Field(ge=1)
+    review_pass: int = Field(ge=1, le=MAX_REVIEW_PASS)
     at: datetime
     verdict: Literal["confirmed", "typed"]
     text: str = ""  # what the owner typed
@@ -125,6 +137,13 @@ def take_sidecar(session: str, take: str) -> str:
 def review_file(session: str, take: str, review_pass: int) -> str:
     """`<session>/<take>.review-<pass>.json`, below `--out`: one `Review`."""
     return _below_out(f"{session}/{take}.review-{review_pass}.json")
+
+
+def parse_review_file(name: str) -> tuple[str, int] | None:
+    """The take and the pass a review's file name gives (the last part of `review_file`'s), or
+    None for any other file's name: the one reading of it, the recorder's and the import's."""
+    found = _REVIEW_FILE.match(name)
+    return (found["take"], int(found["number"])) if found else None
 
 
 def _below_out(path: str) -> str:

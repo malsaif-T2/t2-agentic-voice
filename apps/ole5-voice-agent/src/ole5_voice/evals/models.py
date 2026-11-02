@@ -53,6 +53,8 @@ Commit = Annotated[str, StringConstraints(pattern=r"^[0-9a-f]{7,40}\+?$")]
 Language = Literal["saudi", "msa", "english", "mixed", "none"]
 Device = Literal["laptop", "wired", "bluetooth"]  # the microphone used
 Split = Literal["dev", "held-out"]
+# Where a variant's reference came from: the script's line, the owner's typed words, or no speech.
+ReferenceSource = Literal["script", "typed", "none"]
 # The names Windows keeps for a device, whatever their extension: COM and LPT ports 0 to 9, and
 # 1 to 3 written as superscripts (U+00B9, U+00B2, U+00B3).
 _DEVICES = frozenset(
@@ -136,8 +138,7 @@ class Variant(Model):
     session: Name
     # What it says, under the spelling guide; empty when nothing is said.
     reference: str
-    # Where the reference came from: the script's line, the owner's typed words, or no speech.
-    reference_source: Literal["script", "typed", "none"]
+    reference_source: ReferenceSource
     confirmations: tuple[Confirmation, ...] = ()
     # The true turn ends of a take of several clauses, in ms from its start.
     turn_ends_ms: TurnEnds = ()

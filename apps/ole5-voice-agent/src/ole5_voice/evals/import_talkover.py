@@ -15,8 +15,6 @@ confirmations, as for the new recordings.
 from __future__ import annotations
 
 import argparse
-import json
-import re
 import sys
 from collections.abc import Callable, Mapping, Sequence
 from datetime import datetime
@@ -35,7 +33,8 @@ from ole5_voice.evals.items import (
     MANIFESTS_DIR,
     TERMS_FILE,
     GoldenSetError,
-    Source,
+    dump_manifest,
+    holds_term,
     load_terms,
     reviewed,
     write_text,
@@ -47,6 +46,7 @@ from ole5_voice.evals.models import (
     Manifest,
     ManifestFile,
     Name,
+    ReferenceSource,
     RelativePath,
     Variant,
 )
@@ -182,11 +182,7 @@ def _kind(take: LabTake) -> str:
 
 def _terms(texts: Sequence[str], terms: Sequence[str]) -> tuple[str, ...]:
     """The product terms the texts hold, each as a whole word and as the product writes it."""
-    return tuple(
-        term
-        for term in terms
-        if any(re.search(rf"(?<!\w){re.escape(term)}(?!\w)", text) for text in texts)
-    )
+    return tuple(term for term in terms if any(holds_term(text, term) for text in texts))
 
 
 def build(
@@ -233,7 +229,7 @@ def build(
             )
         if not segments:
             continue
-        source: Source = "typed" if take.kind == "unscripted" else "script"
+        source: ReferenceSource = "typed" if take.kind == "unscripted" else "script"
         heard = read_reviews(reviews, session, take.take) if reviews else []
         reference, source, confirmations = reviewed(" ".join(take.text.split()), source, heard)
         tags = {take.condition, f"playback-{take.device}"}
@@ -284,8 +280,7 @@ def write(evals: Path, items: Sequence[Item], manifest: Manifest) -> None:
     files the import owns."""
     for item in items:
         write_text(evals / GOLDEN_DIR / f"{item.id}.toml", dump_item(item, comments=HEADER))
-    text = json.dumps(manifest.model_dump(mode="json"), ensure_ascii=False, indent=2)
-    write_text(evals / MANIFESTS_DIR / f"{ROOT}.json", text + "\n")
+    write_text(evals / MANIFESTS_DIR / f"{ROOT}.json", dump_manifest(manifest))
 
 
 def main(argv: Sequence[str] | None = None) -> int:

@@ -28,7 +28,6 @@ from tests.ole5_voice.evals.recorder_support import (
     item,
     items,
     link_folder,
-    make_tree,
     post,
     raw,
     recorder_of,
@@ -38,11 +37,6 @@ from tests.ole5_voice.evals.recorder_support import (
     wav,
     write_manifest,
 )
-
-
-@pytest.fixture
-def tree(tmp_path: Path) -> Tree:
-    return make_tree(tmp_path)
 
 
 def _files(root: Path) -> set[Path]:

@@ -9,7 +9,6 @@ never starts on a guess. A folder below `--out` that is a link is not read.
 
 from __future__ import annotations
 
-import re
 from collections.abc import Callable, Sequence
 from datetime import datetime
 from pathlib import Path
@@ -19,8 +18,16 @@ from pydantic import TypeAdapter
 
 from ole5_voice.evals import items as golden_items
 from ole5_voice.evals.files import read_model
-from ole5_voice.evals.items import EVALS, GOLDEN_DIR, MANIFESTS_DIR
-from ole5_voice.evals.models import Device, Item, Manifest, ManifestFile, Model, is_name
+from ole5_voice.evals.items import EVALS, GOLDEN_DIR, MANIFESTS_DIR, GoldenSetError, reviewed
+from ole5_voice.evals.models import (
+    Device,
+    Item,
+    Manifest,
+    ManifestFile,
+    Model,
+    ReferenceSource,
+    is_name,
+)
 from ole5_voice.evals.recorder_state import (
     Audio,
     Entry,
@@ -30,13 +37,17 @@ from ole5_voice.evals.recorder_state import (
     local_now,
     take_entry,
 )
-from ole5_voice.evals.takes import SESSION_FILE, Review, Script, SessionRecord, TakeSidecar
+from ole5_voice.evals.takes import (
+    SESSION_FILE,
+    Review,
+    Script,
+    SessionRecord,
+    TakeSidecar,
+    parse_review_file,
+)
 from ole5_voice.evals.worktree import Git, run_git, worktree_tops
 
 _REPO: Final = EVALS.parents[2]  # the checkout the recorder's code is in
-_REVIEW_FILE: Final = re.compile(
-    r"^(?P<take>[a-z0-9][a-z0-9_.-]*)\.review-(?P<n>[1-9][0-9]*)\.json$"
-)
 _REPLIES: Final = TypeAdapter(list[Reply])
 
 
@@ -74,10 +85,10 @@ def _scan(out: Path) -> tuple[dict[str, SessionRecord], dict[str, TakeSidecar], 
             if path.name == SESSION_FILE:
                 records[folder.name] = record = _parse(SessionRecord, path)
                 placed = record.session == folder.name
-            elif found := _REVIEW_FILE.match(path.name):
+            elif named := parse_review_file(path.name):
                 review = _parse(Review, path)
                 reviews.setdefault((folder.name, review.take), []).append(review)
-                placed = (review.take, review.review_pass) == (found["take"], int(found["n"]))
+                placed = (review.take, review.review_pass) == named
             else:
                 take = _parse(TakeSidecar, path)
                 placed = (take.take, take.session, take.file) == (
@@ -141,6 +152,18 @@ def _add_variants(
             )
 
 
+def _check_reviews(reference: str, source: ReferenceSource, found: Sequence[Review]) -> None:
+    """RecorderError for reviews the import would refuse (`items.reviewed`): an empty typed one,
+    say, which the page never writes."""
+    try:
+        reviewed(reference, source, found)
+    except GoldenSetError as error:
+        problem = str(error)
+    else:
+        return
+    raise RecorderError(f"{problem}, below --out: fix the review's file, or move it")
+
+
 def load_recorder(
     *,
     out: Path,
@@ -197,6 +220,7 @@ def load_recorder(
         _add_variants(recorder, audio, manifests, items)
     for entry in recorder.entries.values():
         entry.reviews.extend(reviews.get((entry.session, entry.id), []))
+        _check_reviews(entry.reference, entry.source, entry.reviews)
     passes = [review.review_pass for found in reviews.values() for review in found]
     recorder.review_pass = 1 + max(passes, default=0)
     return recorder

@@ -13,8 +13,6 @@ elsewhere (the talk-over), which `import_talkover` reads.
 from __future__ import annotations
 
 import argparse
-import json
-import re
 import sys
 from collections.abc import Sequence
 from pathlib import Path
@@ -30,6 +28,7 @@ from ole5_voice.evals.items import (
     MANIFESTS_DIR,
     SCRIPT_FILE,
     GoldenSetError,
+    dump_manifest,
     read_json,
     read_toml,
     reviewed,
@@ -43,6 +42,7 @@ from ole5_voice.evals.takes import (
     ScriptLine,
     SessionRecord,
     TakeSidecar,
+    parse_review_file,
     review_file,
     take_audio,
     take_sidecar,
@@ -52,7 +52,6 @@ from ole5_voice.evals.toml_write import dump_item
 log = get_logger(__name__)
 ROOT: Final = "owner"
 _DESCRIPTION = "Import the recorder's takes as golden-set items and manifests (no audio)."
-_REVIEW = re.compile(r"^(?P<take>.+)\.review-(?P<number>[1-9][0-9]{0,5})\.json$")
 HEADER: Final = (
     "Written by `python -m ole5_voice.evals.import_recordings` from the recorder's files:",
     "import again rather than edit.",
@@ -65,9 +64,9 @@ def read_reviews(out: Path, session: str, take: str) -> list[Review]:
     found = []
     for path in sorted((out / session).glob(f"{take}.review-*.json")):
         review = read_json(path, Review)
-        match = _REVIEW.match(path.name)
+        named = parse_review_file(path.name)
         expected = review_file(session, take, review.review_pass)
-        if not match or path.relative_to(out).as_posix() != expected or review.take != take:
+        if not named or path.relative_to(out).as_posix() != expected or review.take != take:
             raise GoldenSetError(f"{path.name}: not the review its name says")
         found.append(review)
     return found
@@ -81,7 +80,7 @@ def _variant(
         raise GoldenSetError(f"{take}.json: its session, device or file is not its folder's")
     path = take_audio(session, take)
     reference, source, confirmations = reviewed(
-        line.text, "script" if line.text else "none", read_reviews(out, session, take)
+        line.text, line.source, read_reviews(out, session, take)
     )
     variant = Variant(
         id=take,
@@ -111,7 +110,7 @@ def build(out: Path, script: Script, *, root: str = ROOT) -> tuple[list[Item], d
     manifests: dict[str, Manifest] = {}
     for folder in sorted(p for p in out.iterdir() if p.is_dir()):
         sidecars = [p for p in sorted(folder.glob("*.json")) if p.name != SESSION_FILE]
-        takes = [p for p in sidecars if not _REVIEW.match(p.name)]
+        takes = [p for p in sidecars if not parse_review_file(p.name)]
         if not takes and not any(folder.glob("*.wav")):
             continue  # only reviews: of variants recorded elsewhere
         if not (folder / SESSION_FILE).is_file():
@@ -131,7 +130,8 @@ def build(out: Path, script: Script, *, root: str = ROOT) -> tuple[list[Item], d
                 variant, file = _variant(out, record, sidecar, lines[sidecar.line], root)
                 variants.setdefault(sidecar.line, []).append(variant)
                 files.append(file)
-        orphans = sorted({_take(p) for p in sidecars if _REVIEW.match(p.name)} - named)
+        reviewed_takes = {found[0] for p in sidecars if (found := parse_review_file(p.name))}
+        orphans = sorted(reviewed_takes - named)
         if orphans:
             raise GoldenSetError(f"{folder.name}: reviews of takes it does not hold: {orphans}")
         if files:
@@ -153,11 +153,6 @@ def build(out: Path, script: Script, *, root: str = ROOT) -> tuple[list[Item], d
     return items, manifests
 
 
-def _take(path: Path) -> str:
-    match = _REVIEW.match(path.name)
-    return match["take"] if match else path.stem
-
-
 def write(evals: Path, items: Sequence[Item], manifests: dict[str, Manifest]) -> None:
     """Each item as `golden/<id>.toml` and each manifest as `manifests/<name>.json`, never over
     an item another import wrote."""
@@ -168,8 +163,7 @@ def write(evals: Path, items: Sequence[Item], manifests: dict[str, Manifest]) ->
     for item in items:
         write_text(evals / GOLDEN_DIR / f"{item.id}.toml", dump_item(item, comments=HEADER))
     for name, manifest in manifests.items():
-        text = json.dumps(manifest.model_dump(mode="json"), ensure_ascii=False, indent=2)
-        write_text(evals / MANIFESTS_DIR / f"{name}.json", text + "\n")
+        write_text(evals / MANIFESTS_DIR / f"{name}.json", dump_manifest(manifest))
 
 
 def main(argv: Sequence[str] | None = None) -> int:

@@ -14,7 +14,6 @@ import pytest
 from ole5_voice.evals import import_recordings
 from ole5_voice.evals.items import (
     GoldenSetError,
-    accepted,
     load_items,
     load_manifests,
     reviewed,
@@ -131,10 +130,12 @@ def test_a_typed_reference_is_accepted_only_after_its_second_confirmation(
     items, _ = import_recordings.build(tmp_path, SCRIPT)
     ticket = next(i for i in items if i.id == "n02")
     assert "second confirmation" in (unchecked(ticket.variants[0]) or "")
-    assert [i.id for i in accepted(items)] == ["n01"]  # only n01's laptop take is confirmed
+    checked = [(i.id, v.id) for i in items for v in i.variants if unchecked(v) is None]
+    assert checked == [("n01", "n01-laptop-1")]  # only n01's laptop take is confirmed
     _review_file(tmp_path, "laptop-1", "n02-laptop-1", 2, "confirmed")
     items, _ = import_recordings.build(tmp_path, SCRIPT)
-    ticket = next(i for i in accepted(items) if i.id == "n02")
+    ticket = next(i for i in items if i.id == "n02")
+    assert unchecked(ticket.variants[0]) is None
     assert ticket.variants[0].reference == "ends in 4812"
     assert [c.review_pass for c in ticket.variants[0].confirmations] == [2]
 

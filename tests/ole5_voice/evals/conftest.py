@@ -7,6 +7,7 @@ from pathlib import Path
 import pytest
 from t2_agentic_voice import configure_logging
 
+from tests.ole5_voice.evals.recorder_support import Tree, make_tree
 from tests.ole5_voice.evals.run_support import World, make_world
 
 
@@ -15,6 +16,12 @@ def plain_logs() -> None:
     """Log lines read as plain text, whatever ran before: for a test that reads what is logged
     by code that does not configure logging itself (a module marks it with `usefixtures`)."""
     configure_logging("INFO", "console")
+
+
+@pytest.fixture
+def tree(tmp_path: Path) -> Tree:
+    """A made-up tree like the owner's, for the recorder (`recorder_support.make_tree`)."""
+    return make_tree(tmp_path)
 
 
 @pytest.fixture

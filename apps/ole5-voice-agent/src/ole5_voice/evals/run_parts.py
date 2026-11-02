@@ -116,7 +116,7 @@ class Todo:
         item, variant = self.item, self.variant
         right = None
         if judged and answer.failure is None:
-            right = judge.is_right(answer.text or "", [variant.reference, *item.alternatives])
+            right = judge.is_right(answer.text or "", items.references(item, variant))
         return VariantResult(
             item=item.id,
             variant=variant.id,
