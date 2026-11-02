@@ -75,10 +75,9 @@ describes one speaker, the owner (D-006).
 - [ ] One trace per turn, `session.id` set to the call ID, with the speech-to-text span and a
   text-to-speech span (characters, chunks, requests, time to first audio, cache hits) and the
   resource attributes of the design's 10.1, whose settings digest leaves out every secret and its
-  `_file` path (a test: changing a secret leaves the digest unchanged). With `tracing.api_key` set,
-  the exporter sends it as the header `authorization: Bearer <key>` and nowhere else. A test finds
-  no Groq key, Phoenix key, join token, offer secret, TURN secret or password, or access code in any
-  exported span, and no audio.
+  `_file` path (a test: changing a secret leaves the digest unchanged). A test finds no Groq key,
+  join token, offer secret, TURN secret or password, or access code in any exported span, and no
+  audio.
 - [ ] Each call's `CallReport` holds its usage per Groq model (requests, audio seconds sent and
   billed, TTS characters, cache hits, the last remaining requests and tokens Groq reported) and its
   requests per call minute. Its numbers, with no heard or spoken text, also go on the call's root
@@ -158,6 +157,11 @@ describes one speaker, the owner (D-006).
 
 **The deployment**
 
+*Amended 2026-11-02 ("The owner's decisions"): all hosting is on this machine for now, and Phoenix
+is M1's, on 127.0.0.1 with no authentication. These criteria, steps 19 to 22, Q9 to Q12 and Q7's
+host parts are re-planned for this machine before step 19, as a dated amendment the owner approves;
+until then they stand as drafted.*
+
 - [ ] The Ole5 app runs on the owner's host behind HTTPS (Q8): `env=staging`, one worker,
   `var_dir` on a persistent volume, its image built from `git archive` of the merged commit with an
   allow-list `.dockerignore` (a test that it lets in no `.env*`, `var/`, `.claude/` or `*.wav`).
@@ -197,7 +201,7 @@ describes one speaker, the owner (D-006).
   environment read only inside `from_env(prefix=, env_file=, unknown=)`, with no singleton and no
   `.env` unless one is passed; an unknown key under the prefix an error; a `*_FILE` form for every
   secret, each key and secret held to its minimum length; the groups `tts`, `turns`, `session`,
-  `server`, `join`, `privacy`, `logging`, `tracing` (with `api_key`) and `storage`, and the
+  `server`, `join`, `privacy`, `logging`, `tracing` and `storage`, and the
   `limits` keys Q4 brings forward; every check that holds in `prod` holds in `staging` too (a test
   per check). `docs/generated/settings.md` and `.env.example` are generated from it, each with a
   freshness test.
@@ -280,10 +284,10 @@ interfaces and fakes, reviewed by concern (`## Tracks`), and merged through an i
    the main branch on 2026-11-02 (750d90a), so Block 0 is cut from a main branch that holds its
    fixes: the base error is `T2VoiceError`, with `AppError` a deprecated alias (D-026); the library
    declares httpx, `scripts/harness_config.py` is split, and ARCH-DEPS refuses an import its project
-   does not declare and DOC-SAMPLE a guide sample that is not its source's lines (D-027, Proposed);
-   the library's logging is TD-033. This plan's text was brought up to date at that merge: no
-   removed row is cited, the round's work is dropped from the steps below, and the rows it left for
-   M2's plan are in the decision log. This plan's decision numbers start after D-027.
+   does not declare and DOC-SAMPLE a guide sample that is not its source's lines (D-027, Accepted
+   2026-11-02); the library's logging is TD-033. This plan's text was brought up to date at that
+   merge: no removed row is cited, the round's work is dropped from the steps below, and the rows it
+   left for M2's plan are in the decision log. This plan's decision numbers start after D-027.
 2. The owner settles Q1 to Q6 ("The measurement, registered before any result"). The agent lists
    `docs/plans/active/`, `docs/plans/completed/` and [decisions.md](../../design/decisions.md),
    and asks the other sessions, before it takes the decision and debt numbers Block 0 writes
@@ -359,7 +363,7 @@ interfaces and fakes, reviewed by concern (`## Tracks`), and merged through an i
    Findings go in the progress log; one that changes an interface below changes it before any
    track starts, never during one.
 6. **Harness.** `[[owners]]`: `jwt` and `sqlite3` to `adapters`, `num2words` to `domain`, and
-   `loguru` as Q2 rules. ARCH-BAN in a new helper, `scripts/arch_ban.py`, read from a new
+   `loguru` to `voice` (Q2). ARCH-BAN in a new helper, `scripts/arch_ban.py`, read from a new
    `[[bans]]` table: in the library, `pipecat.services.<vendor>` and Pipecat's LLM and
    context-aggregator modules, with `pipecat.services.stt_service`, `tts_service` and `ai_service`
    allowed in `voice`; in `voice/session/`, all of `pipecat`; in the apps and the examples,
@@ -367,7 +371,7 @@ interfaces and fakes, reviewed by concern (`## Tracks`), and merged through an i
    `server`, `stores` and `events`, and `tests/t2_agentic_voice/test_facades.py` their names.
    `[rules] output_allowed_files` gains `api/cli.py`.
    [ARCHITECTURE.md](../../../ARCHITECTURE.md) gains the owners' cells, ARCH-BAN in Enforcement,
-   the logging convention as Q2 rules, and the widget's line in the flow (the app, not the
+   the logging convention as Q2 settled it, and the widget's line in the flow (the app, not the
    library's `api`, serves its static files); CLAUDE.md gains the new facades, the widget's line and
    the new tasks, within its 120 lines. `tests/conftest.py` also removes every variable step 4
    finds that changes behaviour, and makes aiortc's default ICE-server list raise, so a peer built
@@ -378,16 +382,15 @@ interfaces and fakes, reviewed by concern (`## Tracks`), and merged through an i
    required, `staging` added, every check that holds in `prod` today (`api/status.py`'s refusal of
    DEBUG among them) holding in `staging` too, `from_env(prefix=, env_file=, unknown=)`, no
    `get_settings()` singleton, `extra` refused under the prefix, a `*_FILE` form for each secret
-   (the join keys, the TURN secret, Phoenix's API key), each join key and the TURN secret at least
+   (the join keys and the TURN secret), each join key and the TURN secret at least
    32 bytes (a shorter one a `ConfigurationError` whose FIX line gives the generator command),
    `storage.var_dir`, and the groups M2 needs: `tts` (`provider`, `languages`, each a model and a
    voice, from Q5; `timeout_s`; `cache_phrases` true; `trim_silence` false), `turns` (the starting
    values of the decision log), `stt.live_language` (`session` until R5 to R7 set it),
    `session.mode` (Q3), `server` (with `turn_ttl_s`, 3600, refused above 86400, and
    `forwarded_allow_ips`, `*` refused), `join`, `privacy` (`record_audio` false, `consent_version`
-   none), `logging` (`content` false, `pipecat` off), `tracing.api_key` (sent to the exporter as
-   the header `authorization: Bearer <key>`, the header part of TD-015) and the `limits` keys Q4
-   brings forward. The groups move into modules of their own to stay under ARCH-SIZE. A command,
+   none), `logging` (`content` false, `pipecat` off) and the `limits` keys Q4 brings
+   forward. The groups move into modules of their own to stay under ARCH-SIZE. A command,
    `uv run poe settings-ref`, writes `docs/generated/settings.md`
    and `.env.example` from the model, with a freshness test and a row in
    [docs/generated/README.md](../../generated/README.md). The change reaches `GroqSTT.from_settings`,
@@ -398,9 +401,8 @@ interfaces and fakes, reviewed by concern (`## Tracks`), and merged through an i
    (Recommended)", in plan 004's read): its loggers sit under
    `t2_agentic_voice` on the standard library, with a `NullHandler`, never touching the root
    logger, while `get_logger` keeps its structured call shape and `configure_logging` stays a
-   helper an app calls, writing to a stream it can choose; this step pays TD-033. Who owns
-   loguru follows Q2
-   (the agent's recommendation: `voice`).
+   helper an app calls, writing to a stream it can choose; this step pays TD-033. `voice` owns
+   loguru (Q2).
 9. **Errors.** `JoinRejected`, on the base error `T2VoiceError` (D-026); the
    code list in `tests/t2_agentic_voice/core/test_errors.py` grows with it.
 10. **Interfaces, with stubs that raise `NotImplementedError`** (a test per stub, in the test file
@@ -449,7 +451,7 @@ interfaces and fakes, reviewed by concern (`## Tracks`), and merged through an i
     logging and loguru (the owner's answer and Q2, amending D-002's bullet); ARCH-BAN and the new
     facades; the echo's shape (Q3); how Whisper is cut (per user turn, or per VAD segment if the
     spike shows the turn cannot be had); the settings keys beyond the design's 7.6
-    (`stt.live_language`, the `session` group, `tts.trim_silence`, `tracing.api_key`,
+    (`stt.live_language`, the `session` group, `tts.trim_silence`,
     `server.forwarded_allow_ips`), as Proposed; and invariants 7 and 8 brought to the design's 8.1
     (the offer secret and the lock file; the consent claim as the second condition for audio),
     which amends D-007. Each is written as Accepted where the approved design describes it, and
@@ -493,7 +495,8 @@ recorded only if Q4 and Q7 are settled)
     `DevIdentity`, which never records. The agent reads each call's trace and `CallReport`; a fix
     is a block of its own.
 
-**The deployment** (needs Q8 to Q12)
+**The deployment** (needs Q8 to Q12; re-planned for this machine before step 19, as the deployment's
+criteria say)
 
 19. **The deployment files**, written by the agent in `apps/ole5-voice-agent/deploy/` and reviewed
     by the security reviewer before the owner runs them on the host; the agent never logs into it:
@@ -636,6 +639,15 @@ recorded only if Q4 and Q7 are settled)
   round left for M2's plan are in the decision log, and TD-037's row follows this plan's choice for
   `reference/api.md`. `uv run --offline poe docs`: 'check_docs: OK (27 files checked)'. Next: the
   owner's calls before Block 0 (Q1 to Q6), then Block 0.
+- 2026-11-02: The owner's answer to Q1 to Q6 is recorded ("The owner's decisions"), each question
+  marked settled, with Q8 settled in part: all hosting is on this machine for now, and Phoenix is
+  M1's with no SSH tunnel and no authentication, so `tracing.api_key` leaves Block 0's settings and
+  the debt it would have paid, and the deployment is re-planned for this machine before step 19.
+  D-027 is marked Accepted, and the roadmap's open questions on the host and the voices are
+  answered. Step 2: `docs/plans/active/` holds 000 and 003, `completed/` 001, 002 and 004, and
+  decisions.md ends at D-027; of the other sessions, the one at work answered that it holds no plan,
+  decision or debt number and claims none, so Block 0 takes the next numbers after D-027 and
+  TD-040. Next: this plan merges into the main branch, then Block 0.
 
 ## Decision log
 
@@ -735,15 +747,12 @@ any before the step it affects.
   owns the adapters' lifetimes; a change to stable ports beyond the design's 6.1, written as
   Proposed in its decision entry.
 - 2026-11-02: Debt paid in M2: TD-012, TD-014, TD-020, TD-026 (before R7, so the comparison refuses
-  any setting but the language hint), TD-011 (read in R7's smoke step), TD-032 (R5 and R6), the
-  logging (TD-033, step 8), and the header part of TD-015 (`tracing.api_key`). TD-015's header
-  part is paid
-  because the deployed Phoenix runs with auth on and then needs an API key on every trace sent to
-  it (arize.com/docs/phoenix/self-hosting/features/authentication, read 2026-11-02), so with no
-  header every deployed span would be dropped; the CA file and the client certificate stay as its
-  debt. TD-004 follows Q8: with no proxy on the host, the clients turn `trust_env` off; with one, a
-  proxy setting is added. TD-003 and TD-005 stay: `GroqTTS` imports groq inside `logging_unchanged`
-  as `GroqSTT` does, and the owner kept TD-005 as debt (2026-11-01).
+  any setting but the language hint), TD-011 (read in R7's smoke step), TD-032 (R5 and R6), and the
+  logging (TD-033, step 8). TD-015 stays whole: the owner's Phoenix runs on this machine with no
+  authentication ("The owner's decisions"), so no trace needs an API key in M2. TD-004 follows Q8:
+  with no proxy on the host, the clients turn `trust_env` off; with one, a proxy setting is added.
+  TD-003 and TD-005 stay: `GroqTTS` imports groq inside `logging_unchanged` as `GroqSTT` does, and
+  the owner kept TD-005 as debt (2026-11-01).
 - 2026-11-02: The rows plan 004 left for M2's plan, beyond those above. TD-038's test, which records
   the variables groq and OpenTelemetry read in a child process against a committed list, lands where
   TD-004 changes the clients, so the change and a later version move show in the gate; step 4's
@@ -793,13 +802,12 @@ any before the step it affects.
   keep call content by default (invariant 8). The design's caching of talker clauses that repeat
   exactly (its 10.4) is M4's to decide, with its own note on invariant 8. Alternative: cache a
   repeated echo clause, set aside for that reason.
-- 2026-11-02: Each call's report numbers (usage per model, requests per call minute,
-  `client_stats` with the candidate type and relay protocol, the timings), with no heard or spoken
-  text, go on the call's root span and into a JSON file per call under `var_dir/reports/`, which
-  the owner copies from the host with the agent's command, as for the recordings; the agent reads
-  the deployed traces through the owner's SSH tunnel on another local port (16006), since the
-  laptop's own Phoenix holds 6006 (D-023). Alternative: log the `CallReport`, set aside because it
-  holds what was heard and said (the design's 6.6) and INFO carries no call content (its 10.2).
+- 2026-11-02: Each call's report numbers (usage per model, requests per call minute, `client_stats`
+  with the candidate type and relay protocol, the timings), with no heard or spoken text, go on the
+  call's root span and into a JSON file per call under `var_dir/reports/`, which the agent reads,
+  beside the call's traces in the Phoenix on this machine (D-023; "The owner's decisions").
+  Alternative: log the `CallReport`, set aside because it holds what was heard and said (the
+  design's 6.6) and INFO carries no call content (its 10.2).
 - 2026-11-02: The data-channel messages of `t2v/1` are modelled in `voice/protocol.py` and the HTTP
   bodies in `api/protocol.py`: the session parses and sends the data-channel messages, and `voice`
   cannot import `api` (`harness.toml`'s `[layers]`). Alternative: one module in `core`, set aside
@@ -845,6 +853,39 @@ What the owner has already said that binds M2, in the owner's words where they w
 
 - 2026-11-02, the request that starts this plan: "If everything is good, record the "Future
   improvements" and start implementing M2".
+- 2026-11-02, the owner's answer to Q1 to Q6, each put with the agent's recommendation: "Yes go with
+  the recommended. Except that phoenix needing an SSH tunnel, Phonies will be hosted locally so no
+  need for too much security. Also I have no access to the server during this stage, all hosting
+  should be in this machine meanwhile. If everything is set start implementing M2". So, in the
+  agent's words of each recommendation:
+  - Q1: every package of "Dependencies to install" is downloaded, and the copyleft licences that
+    come with them are accepted, each used unmodified: soxr, soundfile's libsndfile, the FFmpeg in
+    OpenCV's wheels, tqdm, and the FFmpeg in PyAV's wheels. The same answer covers the Ole5 app's
+    command and a constraint keeping `aioice` below 0.11 if the spike needs one (step 5). eot-bench
+    is not added.
+  - Q2: `voice` owns loguru. Pipecat's namespace is switched off before `voice` first imports
+    Pipecat, and again at runtime start; `logging.pipecat = "forward"` forwards its WARNING and
+    above to `t2_agentic_voice.pipecat`; no sink is added or removed.
+  - Q3: `VoiceAgent(name, languages=[...])` with the `Language` presets, and the setting
+    `session.mode`, `echo` its only value in M2; the cached frame «سمعتك تقول: …» or "I heard: …"
+    plays before the heard words.
+  - Q4: the Ole5 app's token route mints a join token only for a caller who types the owner's access
+    code (at least 16 characters, compared in constant time, repeated tries slowed, at most 20
+    failed tries an hour); the route mints at most 10 tokens a day; the library builds
+    `limits.max_call_s` (600) and `limits.idle_s` (120) early; the owner runs the backend only
+    during call sessions and rotates the code after run C; the risk left is a debt row for M6.
+  - Q5: `abdullah` and `troy`, as the library's defaults and Ole5's, and M2's fixed phrases in Saudi
+    dialect.
+  - Q6: one entry in `allowed_in_source.toml`, "stop", for the protocol's message and method names,
+    and the widget's labels «إيقاف» and «أوافق».
+  - D-027 (ARCH-DEPS and DOC-SAMPLE), Proposed since plan 004, which the agent's message said
+    approving this plan would cover: Accepted.
+  - The exception, and the host: Phoenix runs on this machine as M1's does (D-023), on 127.0.0.1,
+    with no SSH tunnel and no authentication, so M2 builds no `tracing.api_key` and TD-015 stays
+    whole. All hosting is on this machine while the owner has no access to the server, so Q8 is
+    answered as this machine for now. The deployment (steps 19 to 22, its criteria, Q9 to Q12, and
+    Q7's host parts) is re-planned for this machine before step 19, as a dated amendment the owner
+    approves; no step before 19 depends on it.
 - 2026-11-01: "Approve all", for the roadmap's M1 to M7 and the package design as amended (D-017),
   as plan 000 records it. So M2's goal and *Done when*, and the design's 16.1 M2 row, bind this plan.
 - 2026-11-01, the owner's answers to the design's open questions (D-018) that M2 builds on: our own
@@ -1106,8 +1147,7 @@ Library paths are under `packages/t2-agentic-voice/src/t2_agentic_voice/`; libra
   reference.
 - Content beyond the design's 14: `serving.md` tells a team that mounts the router to turn
   FastAPI's telemetry off and set CORS on its own app, and to trust proxy headers from its proxy
-  only; `data-and-privacy.md` says how long the host's Phoenix keeps transcripts (Q7);
-  `tracing-and-logs.md` gives `tracing.api_key` for a Phoenix with auth on.
+  only; `data-and-privacy.md` says how long Phoenix keeps transcripts (Q7).
 - Tests: `poe docs`, which also checks that a code sample after a link to a `.py` file is a run
   of that file's lines (DOC-SAMPLE, D-027).
 
@@ -1118,7 +1158,7 @@ agent told to refute it before it is acted on.
   access code, each held to its minimum length; CORS; the token route and the guard on the shared
   key; recordings gated by the setting and the token, never by `DevIdentity`; the phrase cache and
   the report file holding no call content; the widget page's headers and captions as text; Phoenix
-  never public and its API key; no `.env` read; FastAPI's telemetry off in both shapes; no aiortc
+  never public; no `.env` read; FastAPI's telemetry off in both shapes; no aiortc
   peer reaching a STUN server; and, at step 19, the image and its `.dockerignore`, the compose
   file's ports, and the coturn and proxy templates.
 - **Harness:** layers, owners, ARCH-BAN, facades, `[[restricted]]`, sizes, the coverage floor, the
@@ -1313,99 +1353,101 @@ is billed is UNVERIFIED (TD-021), and retries add requests.
 
 The owner's call before Block 0:
 
-- **Q1. The dependencies and their licences.** May the agent download and install "Dependencies to
-  install" (several hundred megabytes in all, the agent's estimate, UNVERIFIED), and accept the
-  copyleft licences that come with them, each used unmodified, as certifi's MPL-2.0 was (plan 002,
-  Q1)? They are: soxr (LGPL-2.1-or-later), soundfile's bundled libsndfile (LGPL-2.1), the FFmpeg that
-  OpenCV's wheels bundle (LGPLv2.1), tqdm (MPL-2.0 and MIT), and the FFmpeg inside PyAV's wheels,
-  likely GPL since x264 and x265 are built in (UNVERIFIED). Why: D-016 asks the owner's approval for a
-  copyleft licence, and the design's 13 list did not name these. Options: (a) accept them all, used
-  unmodified; aiortc needs PyAV, so there is no WebRTC in the backend without it; (b) accept all but
-  PyAV's wheel and build PyAV from source against an LGPL FFmpeg, which needs a compiler and FFmpeg's
-  development files on Windows and in the image, a large cost; (c) review each one. **The agent
-  recommends (a):** the library never ships these binaries itself, each team installs them from
-  PyPI, and the use is inside T2; if an image holding them is ever given outside T2, ask T2's legal
-  team first. The agent is not giving legal advice. The same approval covers the Ole5 app's own
-  command, which adds no package the library's does not; a constraint keeping `aioice` below 0.11,
-  if the spike finds 0.11.0 misbehaves (step 5); and, for the owner to confirm, that eot-bench is
-  not added (the decision log).
+- **Q1. The dependencies and their licences.** *Settled on 2026-11-02: (a), and eot-bench is not
+  added.* May the agent download and install "Dependencies to install" (several hundred megabytes in
+  all, the agent's estimate, UNVERIFIED), and accept the copyleft licences that come with them, each
+  used unmodified, as certifi's MPL-2.0 was (plan 002, Q1)? They are: soxr (LGPL-2.1-or-later),
+  soundfile's bundled libsndfile (LGPL-2.1), the FFmpeg that OpenCV's wheels bundle (LGPLv2.1), tqdm
+  (MPL-2.0 and MIT), and the FFmpeg inside PyAV's wheels, likely GPL since x264 and x265 are built
+  in (UNVERIFIED). Why: D-016 asks the owner's approval for a copyleft licence, and the design's 13
+  list did not name these. Options: (a) accept them all, used unmodified; aiortc needs PyAV, so
+  there is no WebRTC in the backend without it; (b) accept all but PyAV's wheel and build PyAV from
+  source against an LGPL FFmpeg, which needs a compiler and FFmpeg's development files on Windows
+  and in the image, a large cost; (c) review each one. **The agent recommends (a):** the library
+  never ships these binaries itself, each team installs them from PyPI, and the use is inside T2; if
+  an image holding them is ever given outside T2, ask T2's legal team first. The agent is not giving
+  legal advice. The same approval covers the Ole5 app's own command, which adds no package the
+  library's does not; a constraint keeping `aioice` below 0.11, if the spike finds 0.11.0 misbehaves
+  (step 5); and, for the owner to confirm, that eot-bench is not added (the decision log).
 - **Q2. Who switches Pipecat's own log messages off, and where they go when a team wants them.**
-  Pipecat writes its log through loguru, one logger shared by the whole process, and its debug
-  lines can hold what the caller said. The library's own logging is settled (the owner's answer of
-  2026-11-02, step 8): standard-library loggers under `t2_agentic_voice` with a `NullHandler`, so
-  nothing prints until an app configures logging. Still open, because the approved design and the
-  roadmap disagree on it: who owns loguru, and what it does by default. Options: (a) the design's
-  10.2 and 12.2 (change 3): `voice` owns it; Pipecat's namespace is switched off with
-  `logger.disable("pipecat")` when `voice` is first imported, before Pipecat prints its import
-  banner (a small step past the design's "at runtime start"), and again at runtime start;
-  `logging.pipecat = "forward"` re-enables it and forwards Pipecat's WARNING and above to
-  `t2_agentic_voice.pipecat`; no sink is added or removed; (b) the roadmap's M2 bullet, D-002 and
-  ARCHITECTURE.md's conventions: `core` owns it, and `configure_logging` removes loguru's default
-  sink and forwards its records, a change to a process-wide logger a team's own code may use.
-  Either way D-002's bullet, the roadmap's M2 bullet, ARCHITECTURE.md and GP-03's last clause
+  *Settled on 2026-11-02: (a).* Pipecat writes its log through loguru, one logger shared by the
+  whole process, and its debug lines can hold what the caller said. The library's own logging is
+  settled (the owner's answer of 2026-11-02, step 8): standard-library loggers under
+  `t2_agentic_voice` with a `NullHandler`, so nothing prints until an app configures logging. Still
+  open, because the approved design and the roadmap disagree on it: who owns loguru, and what it
+  does by default. Options: (a) the design's 10.2 and 12.2 (change 3): `voice` owns it; Pipecat's
+  namespace is switched off with `logger.disable("pipecat")` when `voice` is first imported, before
+  Pipecat prints its import banner (a small step past the design's "at runtime start"), and again at
+  runtime start; `logging.pipecat = "forward"` re-enables it and forwards Pipecat's WARNING and
+  above to `t2_agentic_voice.pipecat`; no sink is added or removed; (b) the roadmap's M2 bullet,
+  D-002 and ARCHITECTURE.md's conventions: `core` owns it, and `configure_logging` removes loguru's
+  default sink and forwards its records, a change to a process-wide logger a team's own code may
+  use. Either way D-002's bullet, the roadmap's M2 bullet, ARCHITECTURE.md and GP-03's last clause
   change with a decision entry. **The agent recommends (a):** a teammate's process keeps its own
-  loguru sinks, which the design's personas say would otherwise end an evaluation, and invariant
-  8's test holds either way.
-- **Q3. The echo's shape.** The design names "the voice session in echo mode" and `examples/minimal`
-  "as an echo use case" (its 16.1), but not their public form, which is a design choice. Options:
-  (a) `VoiceAgent(name, languages=[Language.saudi_arabic(greeting=...), ...])` built in M2 with only
-  these fields, and a setting `session.mode`, with `echo` its only value in M2; M4 adds `talker`, and
-  the talker's fields arrive as optional arguments, so echo stays a teammate's first audio check;
-  (b) a runtime argument, `VoiceRuntime(agent, echo=True)`, which M4 would have to deprecate; (c) an
-  internal stand-in with no public form, removed in M4, which leaves `examples/minimal` nothing to
-  show. And its words: (i) a frame before the heard words, «سمعتك تقول: …» and "I heard: …", or
-  (ii) the words alone. **The agent recommends (a) and (i):** the frame says the words are the
-  caller's, so the echo never sounds like the agent answering or claiming an action (invariant 2),
-  and as a cached phrase it plays as soon as the transcript is in. Speech heard while the echo
-  plays is not said back (the decision log), so on speakers the agent never echoes itself.
+  loguru sinks, which the design's personas say would otherwise end an evaluation, and invariant 8's
+  test holds either way.
+- **Q3. The echo's shape.** *Settled on 2026-11-02: (a) and (i).* The design names "the voice
+  session in echo mode" and `examples/minimal` "as an echo use case" (its 16.1), but not their
+  public form, which is a design choice. Options: (a) `VoiceAgent(name,
+  languages=[Language.saudi_arabic(greeting=...), ...])` built in M2 with only these fields, and a
+  setting `session.mode`, with `echo` its only value in M2; M4 adds `talker`, and the talker's
+  fields arrive as optional arguments, so echo stays a teammate's first audio check; (b) a runtime
+  argument, `VoiceRuntime(agent, echo=True)`, which M4 would have to deprecate; (c) an internal
+  stand-in with no public form, removed in M4, which leaves `examples/minimal` nothing to show. And
+  its words: (i) a frame before the heard words, «سمعتك تقول: …» and "I heard: …", or (ii) the words
+  alone. **The agent recommends (a) and (i):** the frame says the words are the caller's, so the
+  echo never sounds like the agent answering or claiming an action (invariant 2), and as a cached
+  phrase it plays as soon as the transcript is in. Speech heard while the echo plays is not said
+  back (the decision log), so on speakers the agent never echoes itself.
 - **Q4. Who reaches the deployed echo, how the owner's calls get a join token before open question
-  19 is answered, and what guards the shared key meanwhile.** `DevIdentity` serves only `dev` on
-  loopback, and the recording consent must ride in a signed token (invariant 8). Options: (a) the
-  Ole5 app's own token route mints a `SignedJoinTokens` token only for a caller who types an access
-  code the owner sets (a secret setting of at least 16 characters, generated with the agent's
-  command; compared in constant time; repeated tries from one address slowed, and at most 20 failed
-  tries an hour in all, after which the route refuses until it restarts), so only the owner calls,
-  from any network; (b) wait for open question 19, so the deployment waits on the website team;
-  (c) a token minted on the laptop and pasted into the page, which lives at most 120 s (the design's
-  6.5), too short to carry to a phone; (d) open to anyone, set aside: Groq spend and limits, and no
-  identity at all. And a guard, since M2 puts on the internet a backend that spends T2's one shared
-  key while the limits wait for M6, and an access code that leaks, or a tab left open, holds calls
-  (SECURITY.md's threats: "endless calls, very long calls"): (i) the token route mints at most 10
-  tokens a day; the library builds two keys of the design's 7.6 `limits` group early, `max_call_s`
-  (its default, 600) and `idle_s` (the agent's proposal, 120), so a call ends after 10 minutes or
-  after 2 minutes with no turn (an app cannot end a call itself: observers cannot change behaviour,
-  the design's 6.6); the owner runs the backend only during call sessions; the access code is
-  rotated after run C; and the risk left is a debt row for M6; (ii) only the last three, with no
-  limit in code. **The agent recommends (a) and (i)**, (a) replaced by 19's answer when it comes
-  (Q12).
-- **Q5. The voices and the register.** Which Saudi voice: `abdullah` (the default, as an "Apr 18"
-  entry of Groq's changelog says, with no year shown: console.groq.com/docs/changelog.md, read
-  2026-11-02 by the plan review; the prototype's pick), `fahad`, `sultan` (male), `lulwa`, `noura`,
-  `aisha` (female); which English voice: `troy` (the prototype's pick), `austin`, `daniel` (male),
-  `autumn`, `diana`, `hannah` (female) (Groq's Orpheus page,
-  console.groq.com/docs/text-to-speech/orpheus, which names both models' voices, read 2026-11-02 by
-  the research step and the plan review). Samples of `abdullah`, `fahad`,
-  `sultan`, `noura`, `troy`, `austin`, `autumn` and `daniel` are in `voice-lab/voices/`, so no new
-  request is needed to listen. And the register of M2's fixed phrases (the greeting, the frame, the
-  notices): (a) Saudi dialect; (b) plain MSA. Why: the voices are the library's documented defaults
-  and Ole5's settings (the design's 3.3, "chosen in M2"), and only the owner can judge them. **The
-  agent recommends `abdullah` and `troy`, as library defaults and for Ole5, and (a)**, the talker's
-  register being M4's with its prompts. Needed before Block 0 writes the defaults; it can wait until
-  the first live call if the owner wants to listen first.
-- **Q6. The word "stop" in the library's source.** The design names the protocol's `stop` message and
-  the client's `call.stop()` (its 4.5 and 5.5), and the golden set has "stop" as a stop-word item;
+  19 is answered, and what guards the shared key meanwhile.** *Settled on 2026-11-02: (a) and (i).*
+  `DevIdentity` serves only `dev` on loopback, and the recording consent must ride in a signed token
+  (invariant 8). Options: (a) the Ole5 app's own token route mints a `SignedJoinTokens` token only
+  for a caller who types an access code the owner sets (a secret setting of at least 16 characters,
+  generated with the agent's command; compared in constant time; repeated tries from one address
+  slowed, and at most 20 failed tries an hour in all, after which the route refuses until it
+  restarts), so only the owner calls, from any network; (b) wait for open question 19, so the
+  deployment waits on the website team; (c) a token minted on the laptop and pasted into the page,
+  which lives at most 120 s (the design's 6.5), too short to carry to a phone; (d) open to anyone,
+  set aside: Groq spend and limits, and no identity at all. And a guard, since M2 puts on the
+  internet a backend that spends T2's one shared key while the limits wait for M6, and an access
+  code that leaks, or a tab left open, holds calls (SECURITY.md's threats: "endless calls, very long
+  calls"): (i) the token route mints at most 10 tokens a day; the library builds two keys of the
+  design's 7.6 `limits` group early, `max_call_s` (its default, 600) and `idle_s` (the agent's
+  proposal, 120), so a call ends after 10 minutes or after 2 minutes with no turn (an app cannot end
+  a call itself: observers cannot change behaviour, the design's 6.6); the owner runs the backend
+  only during call sessions; the access code is rotated after run C; and the risk left is a debt row
+  for M6; (ii) only the last three, with no limit in code. **The agent recommends (a) and (i)**, (a)
+  replaced by 19's answer when it comes (Q12).
+- **Q5. The voices and the register.** *Settled on 2026-11-02: `abdullah` and `troy`, and (a).*
+  Which Saudi voice: `abdullah` (the default, as an "Apr 18" entry of Groq's changelog says, with no
+  year shown: console.groq.com/docs/changelog.md, read 2026-11-02 by the plan review; the
+  prototype's pick), `fahad`, `sultan` (male), `lulwa`, `noura`, `aisha` (female); which English
+  voice: `troy` (the prototype's pick), `austin`, `daniel` (male), `autumn`, `diana`, `hannah`
+  (female) (Groq's Orpheus page, console.groq.com/docs/text-to-speech/orpheus, which names both
+  models' voices, read 2026-11-02 by the research step and the plan review). Samples of `abdullah`,
+  `fahad`, `sultan`, `noura`, `troy`, `austin`, `autumn` and `daniel` are in `voice-lab/voices/`, so
+  no new request is needed to listen. And the register of M2's fixed phrases (the greeting, the
+  frame, the notices): (a) Saudi dialect; (b) plain MSA. Why: the voices are the library's
+  documented defaults and Ole5's settings (the design's 3.3, "chosen in M2"), and only the owner can
+  judge them. **The agent recommends `abdullah` and `troy`, as library defaults and for Ole5, and
+  (a)**, the talker's register being M4's with its prompts. Needed before Block 0 writes the
+  defaults; it can wait until the first live call if the owner wants to listen first.
+- **Q6. The word "stop" in the library's source.** *Settled on 2026-11-02: (a), with the labels
+  «إيقاف» and «أوافق».* The design names the protocol's `stop` message and the client's
+  `call.stop()` (its 4.5 and 5.5), and the golden set has "stop" as a stop-word item;
   `test_no_item_in_source.py` fails on it in any string or JS file under `packages/`, unless
   `allowed_in_source.toml` lists it, which only the owner's ruling adds. Options: (a) one entry,
   "stop", for the protocol's message and method names, which no model or caller hears; (b) rename
-  them (a `halt` message and `call.halt()`), so the list stays empty, the protocol departing from the
-  design's names. The item whose whole text is "stop" (`k05_stop`) is in the held-out split: the
+  them (a `halt` message and `call.halt()`), so the list stays empty, the protocol departing from
+  the design's names. The item whose whole text is "stop" (`k05_stop`) is in the held-out split: the
   entry exempts that one reference everywhere, while longer references holding the word, such as
   "stop, please" (`n34_halt_please`), stay searched. The widget's labels come under the same test,
-  its folder now scanned (step 6): the Stop button and the consent screen's yes would equal items
-  in Arabic («وقف», «نعم»), so the agent proposes labels that are no item («إيقاف» and «أوافق»), the
-  English "Stop" being covered by (a)'s entry. **The agent recommends (a)** and those labels,
-  noting that (a) also lets "stop" into M3's stop-word presets unflagged, so M3's plan rules on
-  those presets explicitly.
+  its folder now scanned (step 6): the Stop button and the consent screen's yes would equal items in
+  Arabic («وقف», «نعم»), so the agent proposes labels that are no item («إيقاف» and «أوافق»), the
+  English "Stop" being covered by (a)'s entry. **The agent recommends (a)** and those labels, noting
+  that (a) also lets "stop" into M3's stop-word presets unflagged, so M3's plan rules on those
+  presets explicitly.
 
 The owner's call before the deployment (and, for Q7, before the first recorded call):
 
@@ -1425,16 +1467,18 @@ The owner's call before the deployment (and, for Q7, before the first recorded c
   deletes the project. **The agent recommends (a), (i) and (iii):** the audio stays on the owner's
   machine, as invariant 8 and the golden set have it, and the transcripts stay in the host's Phoenix
   for 30 days; the value goes into step 19's compose file and `data-and-privacy.md`.
-- **Q8. The host.** Where the backend and Phoenix run, and its facts: the host and its operating
-  system; the backend's domain name; the reverse proxy that ends TLS (nginx, Caddy, Traefik or
-  another), and whether it can pass a TLS connection on by name (SNI) without ending it; Docker or
-  not; its public IP address, whether it has a second public IPv4 address, and which ports can be
-  opened; whether its outbound traffic must go through a proxy (TD-004); who runs commands on it (the
-  agent never logs in). The second address and the SNI pass-through decide Q9's (a). **The agent
-  recommends:** one container for the backend with `var_dir` on a volume, and Phoenix as a second
-  container on 127.0.0.1 only, with auth on, its API key given to the backend as a file, and a
-  persistent volume, viewed through an SSH tunnel, never public (the design's 11, SECURITY.md's
-  trust boundaries).
+- **Q8. The host.** *Settled in part on 2026-11-02: this machine for now, with Phoenix as M1's on
+  127.0.0.1, no SSH tunnel and no authentication ("The owner's decisions"); the rest is re-planned
+  with the deployment before step 19.* Where the backend and Phoenix run, and its facts: the host
+  and its operating system; the backend's domain name; the reverse proxy that ends TLS (nginx,
+  Caddy, Traefik or another), and whether it can pass a TLS connection on by name (SNI) without
+  ending it; Docker or not; its public IP address, whether it has a second public IPv4 address, and
+  which ports can be opened; whether its outbound traffic must go through a proxy (TD-004); who runs
+  commands on it (the agent never logs in). The second address and the SNI pass-through decide Q9's
+  (a). **The agent recommends:** one container for the backend with `var_dir` on a volume, and
+  Phoenix as a second container on 127.0.0.1 only, with auth on, its API key given to the backend as
+  a file, and a persistent volume, viewed through an SSH tunnel, never public (the design's 11,
+  SECURITY.md's trust boundaries).
 - **Q9. The media path for the network test.** Callers on networks that let through only web
   traffic need a relay server (TURN) that carries the call's audio over the same port as secure web
   pages (443): where should it run? aiortc's ports cannot be pinned and it offers no TCP candidates
@@ -1544,7 +1588,8 @@ the run it touches.
    speakers, then on the wired headset, pressing Stop and Esc during an echo; then the same in Edge.
    Say whether each turn came back, and whether the microphone, playback, Stop and Esc worked in each
    browser.
-4. **The host, before the deployment:** answer Q7 to Q12. Then, with the agent's deployment steps:
+4. **The host, before the deployment** (steps 4 to 8 are re-planned with it for this machine):
+   answer Q7 to Q12. Then, with the agent's deployment steps:
    - the backend's domain name in DNS and its certificate at the reverse proxy; if Q9 picks coturn,
      its own DNS name, its certificate and key as files on the host (and who renews them), and its
      second address or the proxy's SNI rule;
