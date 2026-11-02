@@ -168,10 +168,14 @@ addopts = ["-ra", "--strict-markers", "--strict-config", "--import-mode=importli
 # A test still running after this many seconds prints every thread's stack, so a hang shows
 # where it waits (the recorder's, plan 004's close, TD-040).
 faulthandler_timeout = 120
-# An exception escaping a thread or a finalizer is a bug, never only a warning.
+# An exception escaping a thread or a finalizer is a bug, never only a warning. Pipecat 1.15.0's
+# `pipecat/audio/utils.py` imports the standard library's `audioop`, which Python 3.12 marks
+# deprecated (3.13 removes it, and the lock brings `audioop-lts` there): a test that imports
+# Pipecat can do nothing about it.
 filterwarnings = [
     "error::pytest.PytestUnhandledThreadExceptionWarning",
     "error::pytest.PytestUnraisableExceptionWarning",
+    "ignore:'audioop' is deprecated:DeprecationWarning:pipecat.audio.utils",
 ]
 # Tests that need something outside the repository declare a marker here and skip themselves
 # when it is absent, so CI and a fresh clone stay green.
