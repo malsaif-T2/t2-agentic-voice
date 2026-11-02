@@ -5,7 +5,6 @@ from __future__ import annotations
 
 import logging
 import re
-import traceback
 from collections.abc import Iterator
 from pathlib import Path
 
@@ -14,6 +13,8 @@ from pydantic import BaseModel, SecretStr, ValidationError
 from t2_agentic_voice.core.config import GroqSettings, Settings, get_settings
 from t2_agentic_voice.core.errors import ConfigurationError
 from t2_agentic_voice.core.logging import configure_logging, get_logger
+
+from tests.leaks import holding, shown
 
 ROOT = Path(__file__).resolve().parents[3]
 PREFIX = Settings.model_config.get("env_prefix", "")
@@ -31,11 +32,6 @@ def _keys(model: type[BaseModel], prefix: str) -> set[str]:
         else:
             keys.add(f"{prefix}{name.upper()}")
     return keys
-
-
-def _shown(error: BaseException) -> str:
-    """Everything an error shows: its text, its repr and its traceback, chain included."""
-    return "\n".join([str(error), repr(error), *traceback.format_exception(error)])
 
 
 def _fields(model: type[BaseModel], path: str = "") -> Iterator[tuple[str, object]]:
@@ -130,7 +126,7 @@ def test_a_rejected_value_is_never_echoed(
     with pytest.raises(ValidationError) as raised:
         Settings(_env_file=None)
     assert name.lower().replace("__", ".") in str(raised.value)
-    assert MADE_UP_KEY not in _shown(raised.value)
+    assert holding(MADE_UP_KEY, shown(raised.value)) == []
     assert MADE_UP_KEY not in raised.value.json(include_input=False)  # the messages too
     for line in raised.value.errors(include_input=False):  # nor urllib's text, chained unseen
         error = line.get("ctx", {}).get("error")
@@ -157,8 +153,20 @@ def test_from_env_names_each_failing_setting_and_never_its_value(
     error = raised.value
     assert f"{PREFIX}{name}" in error.message and "FIX:" in error.message
     assert f"'setting': '{PREFIX}{name}'" in repr(error.details)
-    assert MADE_UP_KEY not in _shown(error) + repr(error.details)
+    assert holding(MADE_UP_KEY, shown(error)) == []
     assert (error.__cause__, error.__context__) == (None, None)
+
+
+@pytest.mark.parametrize("name", sorted(_keys(Settings, PREFIX)))
+def test_no_setting_shows_a_value_it_refuses(name: str, monkeypatch: pytest.MonkeyPatch) -> None:
+    """GP-19 for every setting, one added later included: given the made-up key (pasted into
+    the wrong setting), each setting takes it, or `from_env` refuses it without showing it."""
+    monkeypatch.setenv(name, MADE_UP_KEY)
+    try:
+        Settings.from_env()
+    except ConfigurationError as error:
+        assert holding(MADE_UP_KEY, shown(error)) == []
+        assert (error.__cause__, error.__context__) == (None, None)
 
 
 def test_from_env_refuses_a_value_that_does_not_parse(monkeypatch: pytest.MonkeyPatch) -> None:
@@ -166,7 +174,7 @@ def test_from_env_refuses_a_value_that_does_not_parse(monkeypatch: pytest.Monkey
     monkeypatch.setenv(f"{PREFIX}TRACING__REDACT", f'["{MADE_UP_KEY}"')
     with pytest.raises(ConfigurationError, match="cannot load") as raised:
         Settings.from_env()
-    assert MADE_UP_KEY not in _shown(raised.value)
+    assert holding(MADE_UP_KEY, shown(raised.value)) == []
     assert (raised.value.__cause__, raised.value.__context__) == (None, None)
 
 
@@ -189,7 +197,7 @@ def test_from_env_refuses_an_env_file_that_is_no_file(tmp_path: Path, kind: str)
     with pytest.raises(ConfigurationError, match="FIX:") as raised:
         Settings.from_env(env_file=path)
     assert raised.value.details == {"setting": "env_file"}
-    assert str(tmp_path) not in _shown(raised.value)
+    assert holding(str(tmp_path), shown(raised.value)) == []
 
 
 def test_a_blank_value_keeps_the_default(monkeypatch: pytest.MonkeyPatch) -> None:
@@ -280,8 +288,8 @@ def test_an_unreadable_key_file_names_the_setting_never_its_contents(
     with pytest.raises(ConfigurationError) as raised:
         GroqSettings(api_key_file=path).resolved_api_key()
     assert f"{PREFIX}GROQ__API_KEY_FILE" in raised.value.message
-    assert MADE_UP_KEY not in _shown(raised.value)
-    assert str(path) not in _shown(raised.value)
+    assert holding(MADE_UP_KEY, shown(raised.value)) == []
+    assert holding(str(path), shown(raised.value)) == []
     # Not even out of sight: a decode error holds the file's bytes, the key with them.
     assert (raised.value.__cause__, raised.value.__context__) == (None, None)
 
@@ -304,7 +312,7 @@ def test_a_key_file_holding_more_than_the_key_is_refused(tmp_path: Path, content
     with pytest.raises(ConfigurationError) as raised:
         GroqSettings(api_key_file=key_file).resolved_api_key()
     assert raised.value.details == {"setting": f"{PREFIX}GROQ__API_KEY_FILE"}
-    assert MADE_UP_KEY not in _shown(raised.value)
+    assert holding(MADE_UP_KEY, shown(raised.value)) == []
 
 
 @pytest.mark.parametrize(
@@ -314,7 +322,7 @@ def test_a_key_with_a_character_no_key_holds_is_refused(key: str) -> None:
     with pytest.raises(ConfigurationError) as raised:
         GroqSettings(api_key=SecretStr(key)).resolved_api_key()
     assert raised.value.details == {"setting": f"{PREFIX}GROQ__API_KEY"}
-    assert MADE_UP_KEY not in _shown(raised.value)
+    assert holding(MADE_UP_KEY, shown(raised.value)) == []
 
 
 def test_every_secret_setting_is_a_secret_str() -> None:
@@ -324,7 +332,7 @@ def test_every_secret_setting_is_a_secret_str() -> None:
 
 
 def test_a_key_appears_in_no_repr_and_no_log_line(
-    tmp_path: Path, capsys: pytest.CaptureFixture[str]
+    tmp_path: Path, caplog: pytest.LogCaptureFixture, capsys: pytest.CaptureFixture[str]
 ) -> None:
     key_file = tmp_path / "groq.key"
     key_file.write_text(MADE_UP_KEY, encoding="utf-8")
@@ -336,9 +344,10 @@ def test_a_key_appears_in_no_repr_and_no_log_line(
         log.info("settings_read", settings=each, groq=each.groq)
         log.info("key_read", key=each.groq.resolved_api_key())
         logging.getLogger("some.library").warning("settings %s %r", each, each.groq)
-    shown = [capsys.readouterr().out]
-    for each in (settings, from_file):
-        shown += [repr(each), str(each), each.model_dump_json(), repr(each.model_dump())]
-        shown += [repr(each.groq.resolved_api_key()), str(each.groq.resolved_api_key())]
-    assert shown[0].count("settings_read") == 2
-    assert [text for text in shown if MADE_UP_KEY in text] == []
+    surfaces = shown(caplog=caplog, capsys=capsys)
+    for index, each in enumerate((settings, from_file)):
+        key = each.groq.resolved_api_key()
+        texts = [repr(each), str(each), each.model_dump_json(), repr(each.model_dump())]
+        surfaces[f"settings {index}"] = "\n".join([*texts, repr(key), str(key)])
+    assert surfaces["stdout"].count("settings_read") == 2
+    assert holding(MADE_UP_KEY, surfaces) == []

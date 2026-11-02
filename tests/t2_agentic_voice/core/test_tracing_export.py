@@ -22,6 +22,7 @@ from requests.adapters import HTTPAdapter
 from t2_agentic_voice.core import tracing_export
 from t2_agentic_voice.core.tracing import Tracing
 
+from tests.leaks import holding, shown
 from tests.t2_agentic_voice.core.tracing_support import (
     MADE_UP_KEY,
     NOBODY,
@@ -76,9 +77,10 @@ def test_an_exporter_that_fails_never_reaches_the_caller(
     tracing.shutdown()
     tracing.shutdown()  # twice is harmless
     assert tracing.dropped_spans == 2
-    out = capsys.readouterr().out
+    surfaces = shown(capsys=capsys)
+    out = surfaces["stdout"]
     assert out.count("span_export_failed") == 1 and "span_exporter_close_failed" in out
-    assert ("ConnectionError" in out) is raises and MADE_UP_KEY not in out
+    assert ("ConnectionError" in out, holding(MADE_UP_KEY, surfaces)) == (raises, [])
 
 
 class _Hanging(SpanExporter):
@@ -246,7 +248,7 @@ def test_otlp_over_http_sends_only_its_own_headers_and_trust(
     assert (path, tracing.dropped_spans, set(headers) <= SENT_HEADERS) == ("/v1/traces", 0, True)
     assert headers["content-type"] == "application/x-protobuf"
     assert MADE_UP_KEY not in repr(headers) and MADE_UP_KEY.encode() not in body
-    assert MADE_UP_KEY not in caplog.text  # the SDK quotes a malformed header variable
+    assert holding(MADE_UP_KEY, shown(caplog=caplog)) == []  # the SDK quotes a malformed one
     assert logging.getLogger("opentelemetry.util.re").filters == []
     assert [(kwargs["verify"], kwargs["cert"]) for kwargs in sent] == [(True, None)]
     request = ExportTraceServiceRequest.FromString(body)
@@ -276,8 +278,8 @@ def test_a_header_variable_with_a_line_break_reaches_no_log_line_and_drops_no_sp
     [(_, headers, body)] = received
     assert (set(headers) <= SENT_HEADERS, tracing.dropped_spans) == (True, 0)
     assert MADE_UP_KEY not in repr(headers) and MADE_UP_KEY.encode() not in body
-    shown = caplog.text + "".join(capsys.readouterr())
-    assert MADE_UP_KEY not in shown and "Failed to export" not in shown
+    surfaces = shown(caplog=caplog, capsys=capsys)
+    assert (holding(MADE_UP_KEY, surfaces), holding("Failed to export", surfaces)) == ([], [])
 
 
 def test_a_backend_that_refuses_never_reaches_the_caller(tmp_path: Path) -> None:

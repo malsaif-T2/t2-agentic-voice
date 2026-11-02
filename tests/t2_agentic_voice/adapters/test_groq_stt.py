@@ -18,7 +18,6 @@ import subprocess
 import sys
 import threading
 import time
-import traceback
 from pathlib import Path
 from typing import Any, get_args, get_type_hints
 
@@ -31,6 +30,7 @@ from t2_agentic_voice.core.errors import ConfigurationError, ProviderError
 from t2_agentic_voice.domain.ports.speech_to_text import AudioClip, SpeechToText
 
 from tests.isolation import dropped
+from tests.leaks import holding, shown
 from tests.t2_agentic_voice.adapters.groq_support import (
     ANSWER,
     BASELINE,
@@ -203,9 +203,7 @@ def test_the_key_is_in_no_error_or_log_line_even_when_echoed(
         asyncio.run(call(FakeGroq(echo)))
     error = raised.value
     assert any(record.name.startswith("groq") for record in caplog.records)  # the SDK's debug
-    shown = [str(error), repr(error), json.dumps(error.details), caplog.text, *capsys.readouterr()]
-    shown += ["".join(traceback.format_exception(error)), *(r.getMessage() for r in caplog.records)]
-    assert [text for text in shown if KEY in text] == []
+    assert holding(KEY, shown(error, caplog=caplog, capsys=capsys)) == []
 
 
 @pytest.fixture
@@ -214,7 +212,7 @@ def fixed_boundary(monkeypatch: pytest.MonkeyPatch) -> None:
     monkeypatch.setattr(secrets, "token_hex", lambda size: BOUNDARY)  # the adapter's draw
 
 
-def _shown(request: httpx.Request) -> list[tuple[str, str]]:
+def _headers(request: httpx.Request) -> list[tuple[str, str]]:
     """The headers but the length, which the body's own sets; the boundary is the adapter's."""
     assert int(request.headers["content-length"]) == len(request.content)
     assert request.headers["content-type"] == f"multipart/form-data; boundary={BOUNDARY}"
@@ -246,7 +244,7 @@ def test_the_sdks_own_variables_change_nothing(
     (want,), (got,) = plain.requests, shelled.requests
     assert got.headers.get_list("authorization") == [f"Bearer {KEY}"]
     assert "x-made-up" not in got.headers and str(got.url) == BASELINE["request"]["url"]
-    assert _shown(got) == _shown(want)
+    assert _headers(got) == _headers(want)
     assert [data for _, data in parts(got).values()] == [data for _, data in parts(want).values()]
 
 
