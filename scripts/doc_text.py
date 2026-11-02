@@ -1,6 +1,6 @@
 """The docs as the docs check (scripts/check_docs.py, its rule modules) and `poe gc` read them:
-which Markdown files there are, their lines, their prose (the lines outside code fences), and
-the local links in their prose.
+which Markdown files there are, their lines, their code blocks, their prose (the lines outside
+those blocks), and the local links in their prose.
 """
 
 from __future__ import annotations
@@ -13,7 +13,7 @@ from pathlib import Path
 from urllib.parse import unquote
 
 # A line that opens or closes a code fence.
-FENCE = re.compile(r"^\s*(```|~~~)")
+_FENCE = re.compile(r"^\s*(```|~~~)")
 _LINK = re.compile(r"!?\[[^\]]*\]\((<[^>]+>|[^)\s]+)(?:\s+\"[^\"]*\")?\)")
 _INLINE_CODE = re.compile(r"`[^`\n]*`")
 _EXTERNAL = ("http://", "https://", "mailto:")
@@ -43,14 +43,38 @@ def lines_of(path: Path) -> Iterator[tuple[int, str]]:
     yield from enumerate(path.read_text(encoding="utf-8").splitlines(), start=1)
 
 
-def prose_lines(path: Path) -> Iterator[tuple[int, str]]:
-    """The file's lines outside code fences, numbered from 1; the fence lines are left out."""
-    fenced = False
+@dataclass(frozen=True)
+class Block:
+    """A fenced code block: the fence lines' numbers and the numbered lines between them."""
+
+    opened: int
+    lines: tuple[tuple[int, str], ...]
+    closed: int  # an unclosed block ends with the file
+
+
+def code_blocks(path: Path) -> list[Block]:
+    """The file's code blocks, in order: a fence line opens one, and the next fence line closes
+    it, whatever its marker."""
+    blocks: list[Block] = []
+    inside: list[tuple[int, str]] | None = None
+    opened = number = 0
     for number, line in lines_of(path):
-        if FENCE.match(line):
-            fenced = not fenced
-        elif not fenced:
-            yield number, line
+        if _FENCE.match(line) and inside is None:
+            opened, inside = number, []
+        elif _FENCE.match(line) and inside is not None:
+            blocks.append(Block(opened, tuple(inside), number))
+            inside = None
+        elif inside is not None:
+            inside.append((number, line))
+    if inside is not None:
+        blocks.append(Block(opened, tuple(inside), number))
+    return blocks
+
+
+def prose_lines(path: Path) -> Iterator[tuple[int, str]]:
+    """The file's lines outside code blocks, numbered from 1; the fence lines are left out."""
+    fenced = {n for block in code_blocks(path) for n in range(block.opened, block.closed + 1)}
+    yield from ((number, line) for number, line in lines_of(path) if number not in fenced)
 
 
 @dataclass(frozen=True)

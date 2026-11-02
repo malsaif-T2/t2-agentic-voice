@@ -7,6 +7,7 @@ from __future__ import annotations
 from pathlib import Path
 
 from scripts.check_docs import check_repo
+from scripts.doc_text import code_blocks, prose_lines
 from tests.harness.support import config, doc_rules, write
 
 SOURCE = '''\
@@ -83,3 +84,19 @@ def test_history_keeps_its_samples(tmp_path: Path) -> None:
         "docs/plans/completed/001-old.md": "[t](../../../tests/test_rulings.py)\n\n" + drifted,
     }
     assert [rule for _, _, rule in doc_rules(tmp_path, files) if rule == "DOC-SAMPLE"] == []
+
+
+def test_the_blocks_and_the_prose_split_a_doc_alike(tmp_path: Path) -> None:
+    """One fence rule (scripts/doc_text.py) for the samples and for the prose their links are in:
+    a fence line closes a block whatever its marker, and an unclosed block ends with the file."""
+    text = "prose\n```python\na = 1\n~~~\nmore prose\n~~~\n\nb = 2\n```\nlast prose\n```\nopen\n"
+    doc = write(tmp_path, {"doc.md": text}) / "doc.md"
+    blocks = code_blocks(doc)
+    assert [(b.opened, [n for n, _ in b.lines], b.closed) for b in blocks] == [
+        (2, [3], 4),
+        (6, [7, 8], 9),
+        (11, [12], 12),
+    ]
+    fenced = {n for b in blocks for n in range(b.opened, b.closed + 1)}
+    assert [n for n, _ in prose_lines(doc)] == [n for n in range(1, 13) if n not in fenced]
+    assert [line for _, line in prose_lines(doc)] == ["prose", "more prose", "last prose"]

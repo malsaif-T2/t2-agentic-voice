@@ -15,7 +15,7 @@ from collections.abc import Sequence
 from pathlib import Path
 
 from scripts._common import Violation
-from scripts.doc_text import FENCE, extract_links, lines_of, living_docs
+from scripts.doc_text import code_blocks, extract_links, living_docs
 from scripts.harness_config import HarnessConfig
 
 
@@ -24,9 +24,10 @@ def check_samples(root: Path, config: HarnessConfig, markdown: Sequence[Path]) -
     for md, rel in living_docs(root, markdown, config.docs.historical):
         links = [link for link in extract_links(md, root) if link.target.suffix == ".py"]
         closed = 0  # the line the previous block's fence closed on
-        for opened, sample, end in _blocks(md):
-            source = next((k for k in reversed(links) if closed < k.line < opened), None)
-            closed = end
+        for block in code_blocks(md):
+            sample = [(n, text) for n, line in block.lines if (text := line.strip())]
+            source = next((k for k in reversed(links) if closed < k.line < block.opened), None)
+            closed = block.closed
             if source is None or not source.target.is_file() or not sample:
                 continue
             if not source.target.is_relative_to(root):
@@ -43,25 +44,6 @@ def check_samples(root: Path, config: HarnessConfig, markdown: Sequence[Path]) -
                 )
                 violations.append(Violation(rel, line, "DOC-SAMPLE", problem, fix))
     return violations
-
-
-def _blocks(md: Path) -> list[tuple[int, list[tuple[int, str]], int]]:
-    """(the opening fence's line, the block's non-blank lines stripped and numbered, the
-    closing fence's line) of each block; an unclosed one ends with the file."""
-    found: list[tuple[int, list[tuple[int, str]], int]] = []
-    inside: list[tuple[int, str]] | None = None
-    opened = number = 0
-    for number, line in lines_of(md):
-        if FENCE.match(line) and inside is None:
-            opened, inside = number, []
-        elif FENCE.match(line) and inside is not None:
-            found.append((opened, inside, number))
-            inside = None
-        elif inside is not None and line.strip():
-            inside.append((number, line.strip()))
-    if inside is not None:
-        found.append((opened, inside, number))
-    return found
 
 
 def _found(sample: Sequence[tuple[int, str]], source: Path) -> int:
