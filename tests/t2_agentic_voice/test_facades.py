@@ -75,19 +75,35 @@ NAMES = {
     "t2_agentic_voice.tracing": {"Redactor", "SpeechToTextSpan", "Tracing"},
 }
 # The package root's names, the same way. Status, status, NotFoundError and InvalidRequestError
-# are in no row of the design's 5.1 (TD-034).
+# are in no row of the design's 5.1 (TD-034). VoiceSettings's groups (and TtsVoice, the value of
+# its `tts.languages`) and StructuredLogger, which `get_logger` returns, are public because public
+# signatures name them (D-032; test_public_types.py), beside VoiceSettings and get_logger.
 ROOT_NAMES = {
     "Caller",
     "ConfigurationError",
     "Consent",
+    "GroqSettings",
     "InvalidRequestError",
     "JoinRejected",
+    "JoinSettings",
     "Language",
+    "LimitSettings",
+    "LoggingSettings",
     "NotFoundError",
+    "PrivacySettings",
     "ProviderError",
     "Providers",
+    "ServerSettings",
+    "SessionSettings",
     "Status",
+    "StorageSettings",
+    "StructuredLogger",
+    "SttSettings",
     "T2VoiceError",
+    "TracingSettings",
+    "TtsSettings",
+    "TtsVoice",
+    "TurnSettings",
     "VoiceAgent",
     "VoiceRuntime",
     "VoiceSettings",
