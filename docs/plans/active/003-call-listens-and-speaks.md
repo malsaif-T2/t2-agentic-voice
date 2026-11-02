@@ -276,16 +276,14 @@ interfaces and fakes, reviewed by concern (`## Tracks`), and merged through an i
 
 **Before Block 0**
 
-1. The garbage-collection round that another session started on 2026-11-02 (worktree
-   `gc-round-1`, whose own plan took the next number) merges into the main branch first, so Block 0
-   is cut from a main branch that holds its fixes. Its branch already renames the base error to
-   `T2VoiceError`, with `AppError` a deprecated alias, and pays TD-007 in a decision entry of its
-   own; its inventory pays, or plans to pay, TD-006, TD-017, TD-018, TD-024, TD-025 and TD-027,
-   merges TD-009 into TD-028 and TD-010 into TD-031, adds a check for imports a member does not
-   declare, and adds a debt row for the library's logging. At that merge, before Block 0, the agent
-   brings this plan's text up to date: no row the round removed is cited any more (DOC-REF fails on
-   a removed row), work the round did is dropped from the steps below, the round's new rows and
-   decisions are cited by number, and this plan's decision numbers start after the round's.
+1. The garbage-collection round ([plan 004](../completed/004-garbage-collection-1.md)) merged into
+   the main branch on 2026-11-02 (750d90a), so Block 0 is cut from a main branch that holds its
+   fixes: the base error is `T2VoiceError`, with `AppError` a deprecated alias (D-026); the library
+   declares httpx, `scripts/harness_config.py` is split, and ARCH-DEPS refuses an import its project
+   does not declare and DOC-SAMPLE a guide sample that is not its source's lines (D-027, Proposed);
+   the library's logging is TD-033. This plan's text was brought up to date at that merge: no
+   removed row is cited, the round's work is dropped from the steps below, and the rows it left for
+   M2's plan are in the decision log. This plan's decision numbers start after D-027.
 2. The owner settles Q1 to Q6 ("The measurement, registered before any result"). The agent lists
    `docs/plans/active/`, `docs/plans/completed/` and [decisions.md](../../design/decisions.md),
    and asks the other sessions, before it takes the decision and debt numbers Block 0 writes
@@ -367,8 +365,7 @@ interfaces and fakes, reviewed by concern (`## Tracks`), and merged through an i
    allowed in `voice`; in `voice/session/`, all of `pipecat`; in the apps and the examples,
    `pipecat` and `aiortc` (the design's 12.4). `[package] public` and `facades` gain `identity`,
    `server`, `stores` and `events`, and `tests/t2_agentic_voice/test_facades.py` their names.
-   `[rules] output_allowed_files` gains `api/cli.py`. If TD-006 is still open, the `[package]`
-   loading moves out of `scripts/harness_config.py` (388 of 400 lines) first.
+   `[rules] output_allowed_files` gains `api/cli.py`.
    [ARCHITECTURE.md](../../../ARCHITECTURE.md) gains the owners' cells, ARCH-BAN in Enforcement,
    the logging convention as Q2 rules, and the widget's line in the flow (the app, not the
    library's `api`, serves its static files); CLAUDE.md gains the new facades, the widget's line and
@@ -398,12 +395,13 @@ interfaces and fakes, reviewed by concern (`## Tracks`), and merged through an i
    blank value still counts as unset, and every secret is a `SecretStr` in no repr or log line
    (invariant 5).
 8. **Logging.** The owner settled the library's own logging on 2026-11-02 ("Fix it in M2
-   (Recommended)", in the garbage-collection round's read): its loggers sit under
+   (Recommended)", in plan 004's read): its loggers sit under
    `t2_agentic_voice` on the standard library, with a `NullHandler`, never touching the root
    logger, while `get_logger` keeps its structured call shape and `configure_logging` stays a
-   helper an app calls; this step pays the round's logging debt row. Who owns loguru follows Q2
+   helper an app calls, writing to a stream it can choose; this step pays TD-033. Who owns
+   loguru follows Q2
    (the agent's recommendation: `voice`).
-9. **Errors.** `JoinRejected`, on the base error `T2VoiceError` the round brings (step 1); the
+9. **Errors.** `JoinRejected`, on the base error `T2VoiceError` (D-026); the
    code list in `tests/t2_agentic_voice/core/test_errors.py` grows with it.
 10. **Interfaces, with stubs that raise `NotImplementedError`** (a test per stub, in the test file
     of the track that owns it, as plan 002 did):
@@ -631,6 +629,13 @@ recorded only if Q4 and Q7 are settled)
   `api/protocol.py` models", since `voice` cannot import `api`, so the data-channel models sit in
   `voice/protocol.py`; and citations of the round's plan and decision by number, which DOC-REF
   refuses until that round merges (step 1 adds them then).
+- 2026-11-02: Rebased onto the main branch after plan 004 merged (750d90a), and brought up to date
+  as step 1 says: no row the round removed is cited (ten were); httpx leaves the first `uv add`
+  and the dependency table, since the library declares it; step 6 no longer splits `harness_config.py`;
+  steps 8 and 9 cite TD-033 and D-026; the guide's samples are checked by DOC-SAMPLE; the rows the
+  round left for M2's plan are in the decision log, and TD-037's row follows this plan's choice for
+  `reference/api.md`. `uv run --offline poe docs`: 'check_docs: OK (27 files checked)'. Next: the
+  owner's calls before Block 0 (Q1 to Q6), then Block 0.
 
 ## Decision log
 
@@ -731,14 +736,24 @@ any before the step it affects.
   Proposed in its decision entry.
 - 2026-11-02: Debt paid in M2: TD-012, TD-014, TD-020, TD-026 (before R7, so the comparison refuses
   any setting but the language hint), TD-011 (read in R7's smoke step), TD-032 (R5 and R6), the
-  round's logging row (step 8), the header part of TD-015 (`tracing.api_key`), and TD-006 and TD-027
-  (httpx declared) if the garbage-collection round left them open. TD-015's header part is paid
+  logging (TD-033, step 8), and the header part of TD-015 (`tracing.api_key`). TD-015's header
+  part is paid
   because the deployed Phoenix runs with auth on and then needs an API key on every trace sent to
   it (arize.com/docs/phoenix/self-hosting/features/authentication, read 2026-11-02), so with no
   header every deployed span would be dropped; the CA file and the client certificate stay as its
   debt. TD-004 follows Q8: with no proxy on the host, the clients turn `trust_env` off; with one, a
   proxy setting is added. TD-003 and TD-005 stay: `GroqTTS` imports groq inside `logging_unchanged`
   as `GroqSTT` does, and the owner kept TD-005 as debt (2026-11-01).
+- 2026-11-02: The rows plan 004 left for M2's plan, beyond those above. TD-038's test, which records
+  the variables groq and OpenTelemetry read in a child process against a committed list, lands where
+  TD-004 changes the clients, so the change and a later version move show in the gate; step 4's
+  reading of the new packages adds their variables to the guide's "Variables to leave unset", which
+  the test's list follows. TD-005's fork part goes with TD-014, as its row proposes: the track that
+  builds tracing inside the lifespan tests whether the SDK's fork hook still runs for a provider
+  built after a worker forks, and the row is narrowed or paid on what that test shows. TD-037 waits
+  with `reference/api.md` for the first tag a teammate installs (above), and its row says so. TD-034
+  (two exports nothing raises) and TD-039 (ARCH-PRINT over the apps) stay: neither is M2's work, and
+  TD-039 is a rule for the owner. TD-022 stays with the owner (above). The agent's.
 - 2026-11-02: FastAPI 0.162.0 requires `opentelemetry-api` (its metadata,
   pypi.org/pypi/fastapi/0.162.0/json, read 2026-11-02 by the reviews) and by default sends request
   traces, metrics and logs through OpenTelemetry's global providers, adding exporters when
@@ -842,8 +857,8 @@ What the owner has already said that binds M2, in the owner's words where they w
   "Do not worry about this, I will explain this to anyone that wants to use the package." On how
   Ole5's website proves who the customer is (19): not known yet; "M2 builds sign-in only after the
   answer" (the design's 17).
-- 2026-11-02, the garbage-collection round's read (quoted in its own plan's decision log, on
-  branch `gc-round-1`): on the library's logging, which does not meet the design's contract (its
+- 2026-11-02, the garbage-collection round's read (quoted in [plan
+  004](../completed/004-garbage-collection-1.md)'s decision log): on the library's logging, which does not meet the design's contract (its
   3.3 and 10.2), "Fix it in M2 (Recommended)", with a debt row now; on `AppError` against the
   design's `T2VoiceError`, "Rename it now (Recommended)", keeping `AppError` as a deprecated alias.
   So M2 builds the design's logging contract (step 8), and only who owns loguru is left (Q2).
@@ -869,15 +884,13 @@ the male voices `abdullah` for Arabic and `troy` for English, "User's choice fro
 Two commands from the repository root, with the lock in the same commit, once the owner allows
 them (Q1): the library's, to its one install (D-018, question 2), and the Ole5 app's, for the
 packages its own code imports (its server, its settings and its token route), so the app relies on
-no package another member brings (as TD-027 records for httpx). The app's three are the versions
+no package another member brings (ARCH-DEPS refuses it, D-027). The app's three are the versions
 the library's command locks or already locked, so the second command downloads nothing.
 
 ```
-uv add --package t2-agentic-voice "pipecat-ai[webrtc]~=1.15.0" "fastapi>=0.162.0" "uvicorn>=0.54.0" "PyJWT>=2.15.1" "num2words>=0.5.14" "loguru>=0.7.3" "httpx>=0.28.1,<1"
+uv add --package t2-agentic-voice "pipecat-ai[webrtc]~=1.15.0" "fastapi>=0.162.0" "uvicorn>=0.54.0" "PyJWT>=2.15.1" "num2words>=0.5.14" "loguru>=0.7.3"
 uv add --package ole5-voice-agent "fastapi>=0.162.0" "uvicorn>=0.54.0" "pydantic-settings>=2.15.0"
 ```
-
-httpx leaves the first command if the garbage-collection round has declared it (TD-027, step 1).
 
 | Package | Constraint | Version the lock should take | Licence | Owning layer (`[[owners]]`) | Why M2 needs it |
 | --- | --- | --- | --- | --- | --- |
@@ -887,7 +900,6 @@ httpx leaves the first command if the garbage-collection round has declared it (
 | `PyJWT` | `>=2.15.1` | 2.15.1, 2026-09-28; no dependency without its `crypto` extra | MIT (PyPI, read 2026-11-02) | `adapters` (`jwt`, a new row) | `SignedJoinTokens`, HS256 only |
 | `num2words` | `>=0.5.14` (Pipecat requires the same) | 0.5.14, 2024-12-17; needs `docopt` | LGPL (PyPI's classifier, read 2026-11-02); accepted as LGPL-2.1, unmodified, behind a `domain` function (D-018, question 20) | `domain` (a new row) | `speak_number` |
 | `loguru` | `>=0.7.3` (Pipecat requires `~=0.7.3`) | 0.7.3, 2024-12-06 | MIT (the research step, PyPI, read 2026-11-02) | `voice`, or `core` if Q2 says so (a new row) | `logger.disable("pipecat")` and the forward sink |
-| `httpx` | `>=0.28.1,<1` | 0.28.1, already locked | BSD-3-Clause (plan 002, step 2) | `adapters` (already listed) | TD-027: the adapters name it, and it arrived only through groq |
 | `fastapi`, `uvicorn`, `pydantic-settings` for `ole5-voice-agent` | as the library's; `>=2.15.0` for pydantic-settings, the library's own constraint | the library's versions; pydantic-settings 2.16.2, already locked | as above; MIT for pydantic-settings | none: the owner rules do not apply to an app (`harness.toml`, `[[apps]]`) | The Ole5 app's server (its own `FastAPI` object, uvicorn run with proxy headers), its `OLE5_VOICE_` settings and its token route |
 
 **Indirect packages** that come with them; no layer imports them, so they get no `[[owners]]` row.
@@ -1096,8 +1108,8 @@ Library paths are under `packages/t2-agentic-voice/src/t2_agentic_voice/`; libra
   FastAPI's telemetry off and set CORS on its own app, and to trust proxy headers from its proxy
   only; `data-and-privacy.md` says how long the host's Phoenix keeps transcripts (Q7);
   `tracing-and-logs.md` gives `tracing.api_key` for a Phoenix with auth on.
-- Tests: `poe docs`; each code sample compared with its source file by review (TD-024), or by
-  `poe docs` if the garbage-collection round's sample check has landed.
+- Tests: `poe docs`, which also checks that a code sample after a link to a `.py` file is a run
+  of that file's lines (DOC-SAMPLE, D-027).
 
 **Reviewers, by concern.** Each reviews every track for its concern; each finding is checked by an
 agent told to refute it before it is acted on.
