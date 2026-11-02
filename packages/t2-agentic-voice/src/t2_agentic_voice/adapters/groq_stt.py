@@ -3,7 +3,7 @@
 `GroqSTT` sends one clip, wrapped as WAV, to Groq's transcription endpoint with the model
 `stt.model` names, and returns its `Transcript`. How it keeps to the design's 7.3 ("Other names
 are never read") and keeps the key out of everything but the request, as plan 002's decision log
-reads groq 1.7.0:
+reads groq 1.7.0 (tests/t2_agentic_voice/test_read_versions.py fails on another version):
 
 - The key, `groq.base_url` and the timeout are always passed to the SDK, so it never falls back
   to `GROQ_API_KEY` or `GROQ_BASE_URL`. Its own retries are off: the caller asks again, and
