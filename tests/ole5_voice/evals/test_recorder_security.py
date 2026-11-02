@@ -12,7 +12,7 @@ from pathlib import Path
 from urllib.parse import quote
 
 import pytest
-from ole5_voice.evals import recorder, recorder_load, recorder_state
+from ole5_voice.evals import recorder
 from ole5_voice.evals.audio import sha256_of, write_wav
 from ole5_voice.evals.recorder import RecorderServer
 from ole5_voice.evals.recorder_state import MAX_BODY
@@ -38,8 +38,6 @@ from tests.ole5_voice.evals.recorder_support import (
     wav,
     write_manifest,
 )
-
-REFERENCES = {"okay", "stop", "wait", "yeah"}  # the one-word English references
 
 
 @pytest.fixture
@@ -67,19 +65,12 @@ def test_the_server_listens_on_127_0_0_1_with_a_new_token_each_run(tree: Tree) -
     assert b'src="recorder.js"' in page.body
 
 
-def test_the_page_loads_nothing_from_elsewhere_and_holds_no_reference() -> None:
-    """No script, font or stylesheet from another address; and none of the one-word English
-    references in the page or the recorder's code (the golden set's rule, until Track D's
-    test reads every file)."""
-    sources = [
-        *recorder.PAGE.iterdir(),
-        *(Path(m.__file__ or "") for m in (recorder, recorder_load, recorder_state)),
-    ]
-    for path in sources:
+def test_the_page_loads_nothing_from_elsewhere() -> None:
+    """No script, font or stylesheet from another address. (That no reference is in the page or
+    the recorder's code is the golden set's rule for every file: `test_no_item_in_source.py`.)"""
+    for path in recorder.PAGE.iterdir():
         text = path.read_text(encoding="utf-8")
-        if path.parent == recorder.PAGE:
-            assert not re.search(r"https?:|//[\w.-]+\.\w|url\(|@import", text), path.name
-        assert not REFERENCES & set(re.findall(r"[a-z]+", text.casefold())), path.name
+        assert not re.search(r"https?:|//[\w.-]+\.\w|url\(|@import", text), path.name
 
 
 @pytest.mark.parametrize(

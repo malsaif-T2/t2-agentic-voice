@@ -3,15 +3,17 @@ line of the script, appears as whole words in a string constant or a text file u
 `packages/`, `apps/*/src` or `examples/`, except a text of `allowed_in_source.toml`, which grows
 only by the owner's ruling. A self-test shows the search finds pasted text.
 
-Both sides are folded before they are compared: diacritics and tatweel dropped, the letter forms
-the spelling guide folds folded, Arabic-Indic digits read, case and punctuation ignored. An
-underscore stays part of a word, so a label such as `stop_word` never holds the word `stop`.
-Comments are not searched: a string is what a prompt, a message or a page is made of.
+Both sides are folded before they are compared, into the form the scorers compare (the
+library's `scored_form`: `normalize_arabic`, then `normalize_digits`), so the search finds what a
+verdict would match. An underscore stays part of a word, so a label such as `stop_word` never
+holds the word `stop`. Comments are not searched: a string is what a prompt, a message or a page
+is made of.
 """
 
 from __future__ import annotations
 
 import ast
+import json
 import re
 import tomllib
 from collections.abc import Collection, Iterator, Mapping, Sequence
@@ -21,25 +23,23 @@ from pathlib import Path
 from ole5_voice.evals.items import EVALS, load_items
 from ole5_voice.evals.takes import load_script
 from pydantic import BaseModel, ConfigDict, Field
+from t2_agentic_voice.domain.scoring import scored_form
+from t2_agentic_voice.languages import normalize_digits
 
 ROOT = Path(__file__).resolve().parents[3]
 SCANNED = [ROOT / "packages", *sorted((ROOT / "apps").glob("*/src")), ROOT / "examples"]
 PYTHON = {".py", ".pyi"}
 TEXT = {".md", ".toml", ".json", ".txt", ".js", ".mjs", ".html", ".css", ".cfg", ".ini"}
 TEXT |= {".yaml", ".yml", ".rst", ".csv", ".jsonl", ".svg"}
-_MARKS = re.compile("[ؐ-ًؚ-ٰٟۖ-ۭـ]")
-_FOLD = str.maketrans(
-    {"أ": "ا", "إ": "ا", "آ": "ا", "ة": "ه", "ى": "ي", "ؤ": "و", "ئ": "ي"}
-    | {a: str(n) for n, a in enumerate("٠١٢٣٤٥٦٧٨٩")}
-    | {p: str(n) for n, p in enumerate("۰۱۲۳۴۵۶۷۸۹")}
-)
-_NOT_WORD = re.compile(r"[^\w\s]")
+# The library's characterization table of its normalizer: each row's input, and what the
+# normalizer makes of it.
+TABLE = ROOT / "tests" / "t2_agentic_voice" / "fixtures" / "arabic_normalizer_characterization.json"
 
 
 def fold(text: str) -> str:
-    """`text` in the one form both sides are compared in; an underscore stays a word's part."""
-    folded = _MARKS.sub("", text).translate(_FOLD).casefold()
-    return " ".join(_NOT_WORD.sub(" ", folded).split())
+    """`text` in the one form both sides are compared in, the scorers' (`scored_form`), with an
+    underscore kept as a word's part: each stretch between two underscores folded on its own."""
+    return "_".join(scored_form(part) for part in text.split("_"))
 
 
 class Allowed(BaseModel):
@@ -175,3 +175,15 @@ def test_the_search_takes_only_whole_words_and_strings(tmp_path: Path) -> None:
     assert find_pasted(tmp_path, _tree(tmp_path, files), found, exempt) == []
     assert find_pasted(tmp_path, _tree(tmp_path, files), found) == ["packages/lib/f.py:1: item k05"]
     assert find_pasted(tmp_path, _tree(tmp_path, files), {}) == []
+
+
+def test_the_fold_reads_each_row_of_the_normalizers_table_as_the_scorers_do() -> None:
+    """Each row of the library's characterization table folds to what the table says the
+    normalizer makes of it, its digits then read; only an underscore is kept, inside a word."""
+    rows = json.loads(TABLE.read_text(encoding="utf-8"))["rows"]
+    assert len(rows) > 20
+    for row in rows:
+        if "_" not in row["input"]:
+            assert fold(row["input"]) == normalize_digits(row["normalize"]), row["note"]
+    assert (fold("stop_word"), fold("k05_واحد")) == ("stop_word", "k05_1")
+    assert fold("say STOP!_now") == "say stop_now"
