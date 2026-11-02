@@ -19,8 +19,9 @@ that file's lines).
 The library's settings are `T2V_*` environment variables or a `.env` file
 ([.env.example](../../.env.example) lists them; the generated settings reference below will
 describe each). The SDKs under it read a few variables of their own whatever the library
-passes, so a process that uses the library leaves these unset (this is the repository's one
-list of them):
+passes, so a process that uses the library leaves these unset, or, for the proxy and CA
+variables, sets only values it trusts (the other docs point here rather than list them, and the
+debt rows named say why each is still read):
 
 - `GROQ_LOG`, read when `groq` is imported: `debug` or `info` adds a handler to the root logger
   and sets the `groq` and `httpx` loggers' levels, and at DEBUG the SDK logs each request's
@@ -37,6 +38,13 @@ list of them):
   (TD-005).
 - `OTEL_EXPERIMENTAL_RESOURCE_DETECTORS`, read in a child process forked after the library's
   tracer provider was built, loads the entry points it names (TD-005).
+- The proxy variables (`HTTP_PROXY`, `HTTPS_PROXY`, `ALL_PROXY`, `NO_PROXY`; on Windows, the
+  Internet Options proxy when none of them is set) and the CA variables (`SSL_CERT_FILE` and
+  `SSL_CERT_DIR` for httpx, under `groq`; `REQUESTS_CA_BUNDLE` and `CURL_CA_BUNDLE` for
+  requests, under the trace exporter) are trusted by both HTTP clients: a proxy they name
+  carries the key, the audio and the transcripts, and a CA they name is trusted for Groq and
+  the trace backend. No `T2V_` setting turns them off yet, so set them only for a proxy and a
+  CA you trust (TD-004, TD-015).
 
 ## Pages
 
