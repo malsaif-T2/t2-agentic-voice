@@ -100,9 +100,9 @@ on the first 0.5–1.0 s of the 90 dev talk-over clips only, not of each talk-ov
   Orpheus, an Arabic and an English voice), and `domain`'s rules for speaking numbers and ticket
   IDs. Pipecat's loguru routed through `core/logging.py`, given to `core` in `[[owners]]` with a
   decision, and a test that a debug line holding a transcript does not reach the output
-  (invariant 8). The design's logging contract (its 3.3 and 10.2) gives loguru to `voice`
-  instead; M2's plan builds that contract, which the library does not meet yet, and settles
-  this (TD-033).
+  (invariant 8). The design gives loguru to `voice` instead (its 12.2); M2's plan builds the
+  design's logging contract (its 3.3 and 10.2), which the library does not meet yet, and
+  settles this (TD-033).
 - No talker yet: the agent says back what it heard. One trace per turn in Phoenix, with the
   requests and audio seconds each Groq model uses per call minute.
 - Deployed on the owner's host behind HTTPS, the widget embedded in the website, and a call
