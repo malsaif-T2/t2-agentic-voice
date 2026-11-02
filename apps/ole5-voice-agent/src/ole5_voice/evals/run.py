@@ -35,6 +35,7 @@ from t2_agentic_voice import (
     get_logger,
 )
 
+from ole5_voice import LOGGERS
 from ole5_voice.evals import history
 from ole5_voice.evals.answerers import (
     ANSWERERS,
@@ -299,10 +300,12 @@ def main(argv: Sequence[str] | None = None, *, parts: Parts | None = None) -> in
     args = parser.parse_args(argv)
     _require(parser, args)
     parts = Parts() if parts is None else parts
-    configure_logging()  # the library's defaults, until the settings name the level and format
+    # The library's defaults, until the settings name the level and format.
+    configure_logging(loggers=LOGGERS)
     try:
         settings = load_settings(args)
-        configure_logging(settings.logging.level, settings.logging.format)
+        logs = settings.logging
+        configure_logging(logs.level, logs.format, loggers=LOGGERS, content=logs.content)
         if args.show_settings:
             show(args, settings, parts)
             return 0

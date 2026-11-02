@@ -43,7 +43,7 @@ def test_a_log_record_and_each_output_show(
 ) -> None:
     logging.getLogger("some.library").warning("quoted %s", VALUE)
     assert holding(VALUE, shown(caplog=caplog)) == ["log records"]
-    get_logger("tests.leaks").info("event", value=VALUE)
+    get_logger("t2_agentic_voice.tests").info("event", value=VALUE)  # a library line
     sys.stderr.write(VALUE)
     assert holding(VALUE, shown(capsys=capsys)) == ["stdout", "stderr"]
     assert shown(capsys=capsys) == {"stdout": "", "stderr": ""}  # read once, by `shown`

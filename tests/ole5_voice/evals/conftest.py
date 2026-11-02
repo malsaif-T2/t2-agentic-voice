@@ -3,12 +3,10 @@
 from __future__ import annotations
 
 import re
-from collections.abc import Callable, Iterator
+from collections.abc import Callable
 from pathlib import Path
 
 import pytest
-import structlog
-from t2_agentic_voice import configure_logging
 
 from tests.ole5_voice.evals.recorder_support import Tree, make_tree
 from tests.ole5_voice.evals.run_support import World, make_world
@@ -24,16 +22,12 @@ def _library_line(out: str, event: str) -> str:
 
 
 @pytest.fixture
-def new_process_logs() -> Iterator[Callable[[str, str], str]]:
-    """Logging as a new process finds it, with nothing configured (structlog's own defaults, in
-    local time), for a test that a command configures logging before it logs (plan 004, app7).
-    It gives the check: the one line of an event in the output, which must be stamped as the
-    library stamps. The library's console defaults are set again after."""
-    structlog.reset_defaults()
-    try:
-        yield _library_line
-    finally:
-        configure_logging("INFO", "console")
+def new_process_logs(unconfigured_logging: None) -> Callable[[str, str], str]:
+    """Logging as a new process finds it, with nothing configured (a line logged before the
+    command configures logging reaches no output), for a test that a command configures logging
+    before it logs (plan 004, app7). It gives the check: the one line of an event in the output,
+    which must be stamped as the library stamps. tests/conftest.py undoes it after."""
+    return _library_line
 
 
 @pytest.fixture

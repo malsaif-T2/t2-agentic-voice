@@ -21,6 +21,7 @@ from typing import Final
 from pydantic import TypeAdapter
 from t2_agentic_voice import configure_logging, get_logger
 
+from ole5_voice import LOGGERS
 from ole5_voice.evals.files import parse_json, read_text
 from ole5_voice.evals.items import EVALS, HISTORY_FILE
 from ole5_voice.evals.runs import SCORECARD_FILE, HistoryLine, Scorecard, StratumValue
@@ -197,7 +198,7 @@ def main(argv: Sequence[str] | None = None) -> int:
         "--out", type=Path, default=DOC, help="the page to write (default: %(default)s)"
     )
     args = parser.parse_args(argv)
-    configure_logging()
+    configure_logging(loggers=LOGGERS)
     try:
         lines = read_history(args.history)
     except EvalDataError as error:

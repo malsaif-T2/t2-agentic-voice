@@ -20,6 +20,7 @@ from typing import Final
 
 from t2_agentic_voice import configure_logging, get_logger
 
+from ole5_voice import LOGGERS
 from ole5_voice.evals import cli
 from ole5_voice.evals.audio import SAMPLE_RATE
 from ole5_voice.evals.items import (
@@ -176,7 +177,7 @@ def main(argv: Sequence[str] | None = None) -> int:
         "--root", type=cli.name, default=ROOT, help="the audio root's name (--audio NAME=...)"
     )
     args = parser.parse_args(argv)
-    configure_logging()
+    configure_logging(loggers=LOGGERS)
     try:
         script = read_toml(args.evals / SCRIPT_FILE, Script)
         if not args.takes.is_dir():

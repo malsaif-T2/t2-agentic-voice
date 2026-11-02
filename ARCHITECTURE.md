@@ -149,16 +149,19 @@ run").
   receives it. `.env.example` and `docs/generated/settings.md` list every setting
   (`uv run poe settings-ref` writes both). A provider is chosen by a setting, never by an import
   in a layer above `api`.
-- Logs are structured: `get_logger(__name__)`, snake_case event names, key/value context.
-  The standard library's `logging` (a framework's, a library's) is routed through the same
-  format by `configure_logging` in `core/logging.py`; a framework that installs its own
-  handlers is named in its `take_over`. Pipecat logs through loguru instead: the plan that
-  installs Pipecat makes `configure_logging` remove loguru's default sink and forward its
-  records at the configured level, so no framework debug line carries call content
-  ([SECURITY.md](docs/SECURITY.md), invariant 8). This is the code as built and D-002's plan for
-  loguru, not yet the design's logging contract (its 3.3 and 10.2: the standard library's
-  loggers under the package's name with a null handler, no handler on the root logger; its
-  12.2: loguru owned by `voice`), which M2's plan builds and settles (TD-033).
+- Logs are structured: `get_logger(__name__)`, snake_case event names, key/value context
+  (`core/logging.py`; the design's 3.3 and 10.2). The library logs on the standard library's
+  `logging`, under `t2_agentic_voice`, whose logger has a `NullHandler`: importing the library
+  configures nothing and prints nothing, and it never adds a handler to the root logger or
+  touches another library's logger by itself. An event is a record whose message is the event
+  name and whose `fields` attribute holds its key/value context. The app configures logging:
+  its own way, or with `configure_logging`, which puts one handler, writing structured lines
+  to the stream it is given, on `t2_agentic_voice` and the loggers the app names (its own
+  package's), and holds aiortc's and aioice's loggers at WARNING unless `logging.content` is on
+  (their lower lines hold SDP and IP addresses). Pipecat logs through loguru, which `voice`
+  owns: it switches Pipecat's namespace off before it first imports Pipecat, and again at
+  runtime start, so no framework debug line carries call content
+  ([SECURITY.md](docs/SECURITY.md), invariant 8).
 - `voice` uses Pipecat for its pipeline, its WebRTC transport, speech detection, and the base
   classes of its speech-to-text and text-to-speech services (D-018). Its own subclasses of those
   call the speech-to-text and text-to-speech ports, and its own processor runs `agent`'s turn

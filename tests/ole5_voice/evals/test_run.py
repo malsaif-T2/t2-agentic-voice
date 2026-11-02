@@ -130,7 +130,7 @@ def test_a_refusal_while_the_settings_load_is_logged_as_the_library_logs(
     tmp_path: Path, capsys: pytest.CaptureFixture[str], new_process_logs: Callable[[str, str], str]
 ) -> None:
     """Before the settings load, `poe eval` logs with the library's defaults (UTC, ISO 8601),
-    never with structlog's own, unconfigured (local time), as a new process would (app7)."""
+    never unconfigured, where a new process would show no line at all (app7)."""
     empty = tmp_path / "empty.env"
     empty.write_text("", encoding="utf-8")
     argv = ["--show-settings", "--env-file", str(empty), "--base-url", "http://x.example"]

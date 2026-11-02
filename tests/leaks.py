@@ -49,8 +49,8 @@ def shown(
       `raise ... from None` suppressed included, since a debugger or a crash reporter still
       reaches it;
     - of `caplog`: every log record's formatted text and message, a third party's included;
-    - of `capsys`: what was written to stdout (structlog's events) and to stderr, read here, so
-      a test reads them from the result rather than from `capsys` again;
+    - of `capsys`: what was written to stdout (`configure_logging`'s lines) and to stderr, read
+      here, so a test reads them from the result rather than from `capsys` again;
     - of `recwarn`: every Python warning's category and message (pydantic's serializer warnings
       quoted a refused value), which under pytest reach neither stderr nor `capsys`."""
     surfaces: dict[str, str] = {}

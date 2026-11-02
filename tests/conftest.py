@@ -5,16 +5,22 @@ The variables dropped are listed in tests/isolation.py."""
 
 from __future__ import annotations
 
+import logging
 import os
-from collections.abc import Iterator
+from collections.abc import Callable, Iterator, Mapping
+from functools import partial
 from pathlib import Path
 
 import pytest
+from ole5_voice import LOGGERS as OLE5_LOGGERS
 from t2_agentic_voice.core.config import VoiceSettings
 from t2_agentic_voice.core.logging import configure_logging
 from t2_agentic_voice.core.settings.storage import StorageSettings
 
 from tests.isolation import VAR_DIR_VARIABLE, dropped
+
+# The apps' loggers, which their commands configure with the library's.
+APP_LOGGERS = OLE5_LOGGERS
 
 
 def pytest_configure(config: pytest.Config) -> None:
@@ -59,10 +65,52 @@ def _isolated_settings(tmp_path_factory: pytest.TempPathFactory) -> Iterator[Non
 
 
 @pytest.fixture(autouse=True)
-def _default_logging() -> None:
-    """structlog's configuration is process-wide: each test starts from `configure_logging()`'s
-    defaults (INFO, plain console lines), whatever an earlier test or command configured."""
-    configure_logging()
+def _default_logging() -> Iterator[Callable[[], None]]:
+    """Each test starts with the logging an app's `configure_logging` call gives (INFO, plain
+    console lines on standard output) for the library's loggers and each app's (`APP_LOGGERS`),
+    and what the test or a command it ran did to any logger is undone after: its handlers, its
+    level, whether it propagates. The root logger is pytest's and is left alone. It gives what
+    undoes the call itself (`unconfigured_logging`)."""
+    before = _logger_states()
+    configure_logging(loggers=APP_LOGGERS)
+    yield partial(_restore, before)
+    _restore(before)
+
+
+@pytest.fixture
+def unconfigured_logging(_default_logging: Callable[[], None]) -> None:
+    """Logging as a new process finds it, before any app configured it: nothing on the
+    library's or an app's loggers but the library's `NullHandler`, and no level of their own."""
+    _default_logging()
+
+
+_State = tuple[int, list[logging.Handler], bool, bool]
+
+
+def _logger_states() -> dict[str, _State]:
+    """Each logger made so far, the root logger aside, by name: its level, handlers, whether it
+    propagates and whether it is disabled."""
+    made = logging.Logger.manager.loggerDict.items()
+    return {
+        name: (one.level, list(one.handlers), one.propagate, one.disabled)
+        for name, one in list(made)
+        if isinstance(one, logging.Logger)
+    }
+
+
+def _restore(states: Mapping[str, _State]) -> None:
+    """Each logger as `states` holds it; one made since takes a new logger's state, keeping only
+    the `NullHandler` a library adds to its own when it is imported."""
+    for name, (level, handlers, propagate, disabled) in _logger_states().items():
+        if name not in states:
+            level, propagate, disabled = logging.NOTSET, True, False
+            handlers = [h for h in handlers if isinstance(h, logging.NullHandler)]
+        else:
+            level, handlers, propagate, disabled = states[name]
+        logger = logging.getLogger(name)
+        logger.setLevel(level)
+        logger.handlers[:] = handlers
+        logger.propagate, logger.disabled = propagate, disabled
 
 
 @pytest.fixture

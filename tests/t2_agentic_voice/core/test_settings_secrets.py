@@ -237,7 +237,7 @@ def test_no_secret_appears_in_a_repr_or_a_log_line(
             "join": {"keys_file": keys_file},
         }
     )
-    configure_logging("DEBUG", "json")  # tests/conftest.py puts the defaults back
+    configure_logging("DEBUG", "json", loggers=["tests"])  # tests/conftest.py undoes it
     log = get_logger("tests.settings")
     caplog.set_level(logging.DEBUG)
     resolved = []
