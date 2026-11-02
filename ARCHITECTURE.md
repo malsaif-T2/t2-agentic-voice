@@ -196,6 +196,11 @@ The rules live in [harness.toml](harness.toml), the source of truth;
 - ARCH-PRINT: no `print` or direct writes to standard output outside the files `[rules]`
   allows;
 - ARCH-ENV: the environment is read only in the files `[rules]` allows;
+- ARCH-DEPS: every outside library the code imports is declared by the code's own project: a
+  member's `pyproject.toml` for its `src/`; for `scripts/` and `tests/`, the root's
+  dependencies or `dev` group, or a member's. A namespace package that several distributions
+  install, such as `opentelemetry`, is matched on its top-level name
+  ([scripts/arch_deps.py](scripts/arch_deps.py));
 - ARCH-DOC: this doc's layer table matches `[layers]` and `[[owners]]`, row by row
   ([scripts/arch_doc.py](scripts/arch_doc.py)).
 

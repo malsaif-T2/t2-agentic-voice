@@ -9,12 +9,16 @@ package's dependencies (a library that arrives only under another can be dropped
   every member, so they import what the root's [project] dependencies or `dev` group declares,
   or what any member declares.
 
-A module maps to the distributions that install it through the installed environment
-(importlib.metadata.packages_distributions), and a member's package to the member's own
-[project] name. The standard library, `__future__`, relative imports, the support folders' own
-packages, and a member's own package need no declaration. A module that no installed
-distribution provides is reported too: nothing declares it. Import statements are read
-anywhere in a module (inside a function too); a module loaded by a computed name is not.
+A module maps to the distributions that install its top-level package, through the installed
+environment (importlib.metadata.packages_distributions), and a member's package to the member's
+own [project] name. So a namespace package that several distributions install (opentelemetry,
+google) is matched on its top-level name: any one of them declared covers the others, and
+`import opentelemetry.sdk` passes with only opentelemetry-api declared. The standard library,
+`__future__`, relative imports, the support folders' own packages, and a member's own package
+need no declaration. A module that no installed distribution provides is reported too: nothing
+declares it. Import statements are read anywhere in a module (inside a function too), each
+module reported once, at its first line; a module loaded by a computed name is not read, and a
+module that does not parse is left to ARCH-PARSE.
 """
 
 from __future__ import annotations
@@ -86,7 +90,11 @@ def _undeclared(
     files = sorted(p for d in folders for p in (root / d).rglob("*.py"))
     for path in (p for p in files if "__pycache__" not in p.parts):
         display = path.relative_to(root).as_posix()
-        for top, line in _imports(path.read_text(encoding="utf-8")):
+        try:
+            imports = _imports(path.read_text(encoding="utf-8"))
+        except SyntaxError:
+            continue  # ARCH-PARSE reports it: each folder read here is parsed by its rules too
+        for top, line in imports:
             if top in _STDLIB or (top in own and (not own[top] or own[top] in allowed)):
                 continue
             provided = [own[top]] if top in own else sorted(set(distributions.get(top, ())))
