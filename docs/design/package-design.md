@@ -1,6 +1,6 @@
 # T2 Agentic Voice: package design
 
-**Status: Accepted as amended.** The agent drafted this on 2026-10-31 for the owner and revised it the same day after two reviews. On 2026-11-01 the owner answered its open questions (section 17, D-018), the sections those answers touch were changed to match, and the owner approved the design as amended (D-017). Each part is built with its milestone (section 16). Built so far, by M1 (plan 002): the five facades (`ports`, `groq`, `languages`, `evals`, `tracing`, D-021), the speech-to-text port and its Groq adapter, the `groq`, `stt` and `tracing` settings groups, tracing, the scorers (D-022) and the checks ARCH-FACADE and ARCH-WORDS (D-020); and by plan 004, the base error's name, `T2VoiceError` (D-026). Where what was built differs from this design, the section says so. Where it would change a recorded decision or an architecture rule, it says so and names the decision entry to write (section 16.3). Where the agent disagrees with a decision, it says so in section 17 and does not change the decision.
+**Status: Accepted as amended.** The agent drafted this on 2026-10-31 for the owner and revised it the same day after two reviews. On 2026-11-01 the owner answered its open questions (section 17, D-018), the sections those answers touch were changed to match, and the owner approved the design as amended (D-017). Each part is built with its milestone (section 16). Built so far, by M1 (plan 002): the five facades (`ports`, `groq`, `languages`, `evals`, `tracing`, D-021), the speech-to-text port and its Groq adapter, the `groq`, `stt` and `tracing` settings groups, tracing, the scorers (D-022) and the checks ARCH-FACADE and ARCH-WORDS (D-020); and by plan 004, the base error's name, `T2VoiceError` (D-026). Where plan 004's read found that what was built differs from a section, a note in italics there says so (3.3, 5.1, 6.1, 7.6, 9.7 and 10.2). Where it would change a recorded decision or an architecture rule, it says so and names the decision entry to write (section 16.3). Where the agent disagrees with a decision, it says so in section 17 and does not change the decision.
 
 **Since the draft.** The design was written from commit `a0ca586`. The same day, plan 001 built its first step in a simpler form: one uv workspace with the library, the Ole5 app and `examples/minimal`; one `harness.toml` for the repository, with `[[apps]]` and the rule ARCH-PUBLIC (an app imports the library only through its public modules); and tests in one `tests/` folder at the root. Sections 12, 14 and 16 were aligned with that layout. The owner's decisions taken so far are D-012 to D-016, and D-018 for the answers to section 17; this design as a whole is D-017, accepted on 2026-11-01.
 
@@ -214,6 +214,8 @@ All the personas need the same things, and this design is built around them:
 | Limits | The documented defaults (section 7.6) |
 | Audio recording | Never stored. Storing audio needs both the `privacy.record_audio` setting and the caller's recording consent in the signed join token (invariant 8) |
 | A thinker (after M7) | Off. While it is off, no delegate tool is offered and no prompt section exists |
+
+*Not built yet:* the logging row. The library still logs through the scaffold's structlog, configured process-wide, so its lines print to standard output before an app configures logging; the owner chose on 2026-11-02 to build this row, with section 10.2, in M2 (TD-033).
 
 ---
 
@@ -695,6 +697,8 @@ Stability levels are defined in section 5.4. "Provisional" covers everything tha
 | `t2_agentic_voice.experimental` | Later: `Thinker`, `Deliver`, `ThinkerBackend`, `LLMThinker` | experimental |
 | `t2v` command | Subcommand names and flags | stable (output text and `--json` shapes: provisional) |
 | Wire protocol `t2v/1` and `t2v-client.js` | Section 5.5 | provisional, apart from the version check at join |
+
+*Built so far (M1, plan 002; plan 004):* the five facades hold the names D-021 lists, a part of each row above. The package root exports `T2VoiceError`, `ConfigurationError` and `ProviderError` from its row; `Settings` and `get_settings`, the settings model as M1 built it (section 7.6); `get_logger` and `configure_logging`, the scaffold's logging (TD-033); and `Status`, `status`, `NotFoundError` and `InvalidRequestError`, which are in no row (TD-034).
 
 The settings keys (section 7) are public too. Renaming or removing one follows the deprecation policy.
 
@@ -1246,6 +1250,8 @@ Ole5's golden-set machinery stays in the app, under `apps/ole5-voice-agent/evals
 
 **Golden data stays in each team's repository, and its audio stays out of git.** Ole5's golden set (the owner's voice, D-006) keeps only items, references, manifests and file hashes in `evals/`. The audio lives under the git-ignored `var/` or in a private store. A CI check fails if an audio file is committed under `apps/`. The library's published numbers say "one speaker" while D-006 holds.
 
+*Built in M1 (plan 002, D-022):* the scorers' pure parts and the sign test in `domain`, and `wer` and `cer` in `testing`, behind the `evals` facade; the normalizers and the spelling-guide check (`spelling_issues`) behind `languages`. Proposed in D-022, for the owner to rule on: the golden-set code in `apps/ole5-voice-agent/src/ole5_voice/evals/`, with its data in `apps/ole5-voice-agent/evals/`, and the check that no audio is committed as a test inside `poe check` (`tests/ole5_voice/evals/test_no_audio.py`, over `apps/`, `packages/`, `examples/`, `docs/` and `tests/`) until CI runs (TD-001).
+
 ### 9.8 `examples/minimal` as a test of the core
 
 `examples/minimal` is a workspace member with its own `pyproject.toml`. It depends only on `t2-agentic-voice` and is banned from importing internals (section 12.5). CI runs:
@@ -1281,7 +1287,7 @@ Ole5's golden-set machinery stays in the app, under `apps/ole5-voice-agent/evals
   - Audio and secrets, the offer secret included, are never exported.
 - **Exporter failures never touch a call.** The batch processor has a bounded queue and short timeouts, and dropped spans are counted.
 - **Explicit spans.** The span helpers take the turn's span as an argument, because an implicit current span does not cross Pipecat's tasks (ARCHITECTURE.md).
-- **The tracing path** (own spans or Pipecat's OpenInference instrumentor) is open question 7.
+- **The tracing path:** the library's own spans, in OpenInference's format, not Pipecat's OpenInference instrumentor (D-018, answer 7), sent as plain OTLP through the OpenTelemetry SDK (D-023).
 
 ### 10.2 Logs
 
@@ -1658,7 +1664,7 @@ Recorded already, on 2026-10-31: the library and the app in one workspace, with 
 - GP-22's "swapped by configuration" widened to "by a setting, or by passing an adapter object in code".
 - The library's `testing` layer (with no `media` layer, D-018) and the app's five layers. This amends D-003. The library's layer: done in D-019; the app's layers are still to write.
 - The harness: one configuration per member, ARCH-BAN, ARCH-FACADE, ARCH-WORDS, one invariants register. ARCH-FACADE and ARCH-WORDS: done in D-020; the others are still to write.
-- The public API, the stability levels, and the Python floor of 3.12. The first facades and the stability levels: done in D-021; the Python floor is still to write.
+- The public API, the stability levels, and the Python floor of 3.12. The first facades and the stability levels: done in D-021; the Python floor: done in D-018 (answer 3).
 - Settings precedence, the prefix, and a required `env`.
 - Serving and identity: the sidecar and the mount, one process per `var_dir` with the lock file, one `identity=` source, the join-token format, the offer secret, consent in the token, and Ole5's identity answer (open question 19).
 - SECURITY.md generalized to actions and moved to the library as the one register, which amends D-007. Invariant 1 itself stays: a handoff is confirmed like any action (D-018).
