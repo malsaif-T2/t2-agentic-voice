@@ -9,8 +9,12 @@ decision log), so the agent never echoes its own voice. A client's `stop` drops 
 at once and the session listens again; `hangup` ends the call. It counts each model's usage, keeps
 the call's `CallReport` and writes its numbers, with no text of the call, to a file under
 `storage.var_dir`; traces each turn; records the call only when `privacy.record_audio` is on and
-the call's consent is a `SignedConsent` that allows it (invariant 8); and builds `HeardWords`,
-which only `voice` may build (invariant 1). It meets Pipecat only through `io.py`.
+`allows_recording(setup.consent)` (core/identity.py) says the consent allows it (invariant 8);
+and builds `HeardWords`, which only `voice` may build (invariant 1). It meets Pipecat only through
+`io.py`. The recorder asks `allows_recording`, never the consent's class, and never copies or
+rebuilds a consent: only adapters holds `CONSENT_SEAL` (`[[restricted]]`), and a `SignedConsent`
+built or copied with a change anywhere else raises TypeError. Track D's test: with the setting
+on, a plain `Consent` that says `record_audio` true keeps nothing.
 """
 
 from __future__ import annotations

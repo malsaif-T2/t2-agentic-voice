@@ -132,7 +132,9 @@ The agent's reasoning, from the questions the kit asks (D-003 records the altern
   (ARCH-CONSTRUCT) in the commit that creates its class ([SECURITY.md](docs/SECURITY.md),
   invariants 1 and 2). The first there is `SignedConsent`, the consent a verified signed join
   token carried, built only by `adapters`' signed-token identity source, since only it lets a
-  call's audio be recorded (invariant 8).
+  call's audio be recorded (invariant 8). A call is not the only way to build an object, so the
+  class also checks at run time that its validation was given a seal, `CONSENT_SEAL`, and a
+  `[[restricted]]` table of `names` reports any reference to the seal outside `adapters`.
 
 ## The web widget
 
@@ -216,7 +218,9 @@ The rules live in [harness.toml](harness.toml), the source of truth;
   service, LLM adapter or context aggregator, nor its runner, its frame loggers, its torch or
   numba modules, or its DTMF aggregator; `voice/session/` imports no Pipecat; and the apps and
   the examples import neither Pipecat nor aiortc ([scripts/arch_ban.py](scripts/arch_ban.py));
-- ARCH-CONSTRUCT: a class in `[[restricted]]` is constructed only by its layers;
+- ARCH-CONSTRUCT: a class in `[[restricted]]` is constructed only by its layers, and a name
+  in `[[restricted]]` is referred to only there (an import under any alias, an attribute, a
+  name, a string that is the name), the module that defines it aside;
 - ARCH-PRINT: no `print` or direct writes to standard output outside the files `[rules]`
   allows;
 - ARCH-ENV: the environment is read only in the files `[rules]` allows;

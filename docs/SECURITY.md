@@ -110,10 +110,21 @@ row its second sentence (D-035); the owner has not reviewed those either.
    Call content is not logged at any level unless `logging.content` is on, which only `dev`
    allows, and no framework's debug log writes call content: Pipecat's loguru namespace is off
    by default, switched off before `voice` first imports Pipecat (D-031, D-035). Enforced by
-   `[[restricted]]` (ARCH-CONSTRUCT) on `SignedConsent`, with
-   `test_only_a_signed_consent_is_a_verified_tokens_and_only_adapters_build_one` and
+   two guards on who builds a `SignedConsent`. At run time, `core/identity.py` builds one only
+   in a validation given `CONSENT_SEAL` as its context, and refuses every other way: its
+   constructor, a validation without the seal, `model_construct`, `model_copy` with an update,
+   and a subclass; any layer asks `allows_recording(consent)`. Statically, `[[restricted]]`
+   (ARCH-CONSTRUCT) reports outside `adapters` a call that builds a `SignedConsent` and any
+   reference to `CONSENT_SEAL` (an import under any alias, an attribute, a name, a string that
+   is the name). Neither sees code that computes the seal's name at run time or writes a frozen
+   model's fields directly; review does. With
+   `test_only_a_signed_consent_is_a_verified_tokens_and_only_adapters_build_one`,
+   `test_a_signed_consent_is_built_no_other_way`, `test_a_signed_consent_takes_no_subclass`,
+   `test_poe_arch_reports_the_seal_and_the_class_outside_adapters` and
    `test_a_consent_is_a_bounded_version_and_a_real_boolean`
-   (`tests/t2_agentic_voice/core/test_identity.py`); by
+   (`tests/t2_agentic_voice/core/test_identity.py`), and
+   `test_a_restricted_name_is_referred_to_only_by_its_layers`
+   (`tests/harness/test_check_architecture.py`); by
    `test_the_turn_tts_and_limit_defaults_are_the_plans` (recording and Pipecat's lines off by
    default) and `test_each_check_holds_in_its_environments_as_the_settings_load`
    (`logging.content` refused outside `dev`), in

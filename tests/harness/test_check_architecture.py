@@ -21,9 +21,10 @@ APP_PACKAGES = {
 }
 
 
-def _check(tmp_path: Path, files: dict[str, str]) -> list[tuple[str, str]]:
-    """(path inside the package, rule) of each violation in a project holding `files`."""
-    loaded = config(tmp_path)
+def _check(tmp_path: Path, files: dict[str, str], text: str = SYNTHETIC) -> list[tuple[str, str]]:
+    """(path inside the package, rule) of each violation in a project holding `files`, with the
+    harness.toml `text`."""
+    loaded = config(tmp_path, text)
     package = {"src/app/__init__.py": ""} | {f"src/app/{k}": v for k, v in files.items()}
     write(tmp_path, {"ARCHITECTURE.md": ARCHITECTURE, **package})
     violations, _ = check_repo(tmp_path, loaded)
@@ -169,6 +170,34 @@ def test_restricted_classes_are_constructed_only_by_their_layer(tmp_path: Path) 
         ("api/c.py", "ARCH-CONSTRUCT"),
         ("services/a.py", "ARCH-CONSTRUCT"),
         ("services/b.py", "ARCH-CONSTRUCT"),
+    ]
+
+
+SEAL = '\n[[restricted]]\nnames = ["SEAL"]\nlayers = ["domain"]\nfix = "Only domain/ holds SEAL."\n'
+
+
+def test_a_restricted_name_is_referred_to_only_by_its_layers(tmp_path: Path) -> None:
+    """Every reference counts, not only a call: an import under any alias, an attribute (bound
+    to a name or not), a name read, a string that is the name, and a re-export. The module that
+    defines the name reads its own, and so does one that defines a name of its own."""
+    files = {
+        "__init__.py": "from app.core.seal import SEAL\n",
+        "core/seal.py": "SEAL = object()\n\n\ndef sealed(value):\n    return value is SEAL\n",
+        "domain/approve.py": "from app.core.seal import SEAL as S\n\nkept = S\n",
+        "services/alias.py": "from app.core.seal import SEAL as S\n",
+        "services/attribute.py": "from app.core import seal\n\nkind = seal.SEAL\n",
+        "services/string.py": "from app.core import seal\n\nkind = getattr(seal, 'SEAL')\n",
+        "services/read.py": "from app.core.seal import *\n\nkind = SEAL\n",
+        "services/own.py": "SEAL = object()\nkept = SEAL\n",
+        "api/relative.py": "from ..core.seal import SEAL\n",
+    }
+    assert sorted(_check(tmp_path, files, SYNTHETIC + SEAL)) == [
+        ("__init__.py", "ARCH-CONSTRUCT"),
+        ("api/relative.py", "ARCH-CONSTRUCT"),
+        ("services/alias.py", "ARCH-CONSTRUCT"),
+        ("services/attribute.py", "ARCH-CONSTRUCT"),
+        ("services/read.py", "ARCH-CONSTRUCT"),
+        ("services/string.py", "ARCH-CONSTRUCT"),
     ]
 
 

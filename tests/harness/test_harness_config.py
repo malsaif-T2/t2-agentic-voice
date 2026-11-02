@@ -106,6 +106,18 @@ def test_owners_must_name_real_layers_once(tmp_path: Path) -> None:
     assert "'httpx' is listed in two [[owners]] tables" in found
 
 
+def test_a_restricted_table_lists_classes_or_names(tmp_path: Path) -> None:
+    names = '\n[[restricted]]\nnames = ["SEAL"]\nlayers = ["domain"]\nfix = "Ask domain."\n'
+    loaded = config(tmp_path, SYNTHETIC + names)
+    assert loaded.arch.restricted_names["SEAL"].layers == {"domain"}
+    assert set(loaded.arch.restricted) == {"Approved"}
+    both = names.replace('names = ["SEAL"]', 'classes = ["Sealed"]\nnames = ["SEAL"]')
+    text = SYNTHETIC + both
+    assert _problems(tmp_path, text) == [
+        (_line(text, 'names = ["SEAL"]'), "[[restricted]] lists `classes` or `names`, not both")
+    ]
+
+
 def test_apps_and_the_public_api_are_read(tmp_path: Path) -> None:
     apps = '\n[[apps]]\nname = "shop"\nroot = "apps/shop/src"\n'
     loaded = config(tmp_path, SYNTHETIC + apps)

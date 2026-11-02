@@ -2,6 +2,13 @@
 (scripts/check_architecture.py, which says what each enforces): ARCH-LAYER's imports, the
 library's side of ARCH-PUBLIC (it never imports an app), ARCH-OWNER, ARCH-PRINT, ARCH-ENV, and
 ARCH-CONSTRUCT. ModuleChecker visits a module's tree once and collects every violation.
+
+ARCH-CONSTRUCT reads two kinds of [[restricted]] entry. A class counts where a call builds it
+(`C(...)`, `C.model_validate(...)`, `m.C(...)`). A name counts wherever it is referred to: an
+import of it under any alias, an attribute, a name read, or a string that is the name
+(`getattr(m, "NAME")`); only the module that defines it at its top level (an assignment, a def or
+a class) may read its own name. A name computed at run time cannot be checked statically: what
+the name guards checks it again at run time.
 """
 
 from __future__ import annotations
@@ -39,10 +46,15 @@ class ModuleChecker(ast.NodeVisitor):
         self.os_names = {"os"}  # names bound to the os module here
         self.importlib_names = {"importlib"}  # ... and to the importlib module
         self.import_functions = {"__import__"}  # names that import a module named by a string
+        self.defined: set[str] = set()  # names the module defines at its top level
         self.violations: list[Violation] = []
 
     def _add(self, line: int, rule: str, problem: str, fix: str) -> None:
         self.violations.append(Violation(self.display, line, rule, problem, fix))
+
+    def visit_Module(self, node: ast.Module) -> None:
+        self.defined = _defined(node)
+        self.generic_visit(node)
 
     # ---------------------------------------------------------------- imports
 
@@ -58,6 +70,8 @@ class ModuleChecker(ast.NodeVisitor):
         self.generic_visit(node)
 
     def visit_ImportFrom(self, node: ast.ImportFrom) -> None:
+        for alias in node.names:
+            self._check_name(alias.name, node.lineno)
         if node.level == 0:
             base = (node.module or "").split(".")
             self._check_owner(base[0], node.lineno)
@@ -177,7 +191,23 @@ class ModuleChecker(ast.NodeVisitor):
             and node.attr in ENV_ATTRS
         ):
             self._env_violation(node.lineno, f"os.{node.attr}")
+        self._check_name(node.attr, node.lineno)
         self.generic_visit(node)
+
+    def visit_Name(self, node: ast.Name) -> None:
+        if isinstance(node.ctx, ast.Load) and node.id not in self.defined:
+            self._check_name(node.id, node.lineno)
+
+    def visit_Constant(self, node: ast.Constant) -> None:
+        if isinstance(node.value, str):
+            self._check_name(node.value, node.lineno)
+
+    def _check_name(self, name: str, line: int) -> None:
+        """ARCH-CONSTRUCT for a name in [[restricted]]: any reference outside its layers."""
+        restriction = self.arch.restricted_names.get(name)
+        if restriction is not None and self.layer not in restriction.layers:
+            problem = f"'{name}' referred to in layer '{self.layer}'"
+            self._add(line, "ARCH-CONSTRUCT", problem, restriction.fix)
 
     def _env_violation(self, line: int, what: str) -> None:
         if self.rel in self.arch.env_allowed_files:
@@ -231,6 +261,19 @@ def _writes_output(func: ast.expr) -> bool:
         and isinstance(func.value.value, ast.Name)
         and func.value.value.id == "sys"
     )
+
+
+def _defined(module: ast.Module) -> set[str]:
+    """The names `module` defines at its top level: by an assignment, a def or a class (an import
+    only binds another module's)."""
+    names: set[str] = set()
+    for statement in module.body:
+        if isinstance(statement, ast.FunctionDef | ast.AsyncFunctionDef | ast.ClassDef):
+            names.add(statement.name)
+        elif isinstance(statement, ast.Assign | ast.AnnAssign):
+            targets = statement.targets if isinstance(statement, ast.Assign) else [statement.target]
+            names.update(n.id for t in targets for n in ast.walk(t) if isinstance(n, ast.Name))
+    return names
 
 
 def _constructed_class(func: ast.expr, names: Collection[str]) -> str | None:

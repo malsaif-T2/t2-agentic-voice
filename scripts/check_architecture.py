@@ -26,7 +26,7 @@ Rules
   ARCH-ENV        the environment (os.environ, os.getenv, ...) is read only in [rules]
                   env_allowed_files, however `os` is imported
   ARCH-CONSTRUCT  a class in [[restricted]] is constructed (or validated into being) only by
-                  its layers
+                  its layers, and a name in [[restricted]] is referred to only there
   ARCH-DOC        the architecture doc's layer table matches [layers] and [[owners]], row by
                   row (scripts/arch_doc.py)
   ARCH-DEPS       every outside module is declared by the project of the code that imports

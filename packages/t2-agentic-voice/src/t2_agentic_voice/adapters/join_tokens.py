@@ -11,8 +11,14 @@ also refused at verify; PyJWT's minimum key length is on for encode and decode, 
 "Changes to the plan's interfaces", item 25). A token lives `join.ttl_s` (120 s at most), is
 used once (the runtime's `UsedTokens`), and its claims are parsed strictly: `record_audio` a JSON
 boolean, the consent version a bounded string. Every refusal is a `JoinRejected` that holds no
-value of the token. Only this module builds a `SignedConsent` (`[[restricted]]`): the consent a
-verified token carried, the only one that can let a call be recorded (invariant 8).
+value of the token. Only this module builds a `SignedConsent`, the consent a verified token
+carried, the only one that can let a call be recorded (invariant 8): after the signature and
+every claim check pass, `verify` builds it from the token's `consent` claim as
+`SignedConsent.model_validate(claim, context=CONSENT_SEAL)` (core/identity.py), the only way one
+is built. Only this module refers to `CONSENT_SEAL` (`[[restricted]]`), and it never stores the
+seal, returns it or hands it on. Track C's tests: a verified token whose consent says
+`record_audio` true gives a consent that `allows_recording` accepts; one that says false gives a
+consent it refuses.
 """
 
 from __future__ import annotations

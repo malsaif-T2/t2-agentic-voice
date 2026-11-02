@@ -31,7 +31,8 @@ def under(name: str, prefix: str) -> bool:
 
 @dataclass(frozen=True)
 class Ownership:
-    """Who may import a library (ARCH-OWNER) or construct a class (ARCH-CONSTRUCT)."""
+    """Who may import a library (ARCH-OWNER), or construct a class or refer to a name
+    (ARCH-CONSTRUCT)."""
 
     layers: frozenset[str]
     fix: str
@@ -89,6 +90,7 @@ class ArchConfig:
     layers: Mapping[str, frozenset[str]]  # layer -> the other layers it may import
     owners: Mapping[str, Ownership]  # top-level module -> the layers that may import it
     restricted: Mapping[str, Ownership]  # class name -> the layers that may construct it
+    restricted_names: Mapping[str, Ownership]  # name -> the only layers that may refer to it
     bans: tuple[Ban, ...]
     subpackages: tuple[SubpackageRule, ...]
     env_allowed_files: frozenset[str]
@@ -154,7 +156,9 @@ def parse_arch(data: dict[str, Any], lines: Lines, problems: list[Violation]) ->
     if cycle := _cycle(layers):
         layers_table.problem(cycle[0], f"the layer graph has a cycle: {' -> '.join(cycle)}")
     owners = _owned(tables(data, "owners", lines, problems), "modules", set(layers))
-    restricted = _owned(tables(data, "restricted", lines, problems), "classes", set(layers))
+    restricted, restricted_names = _restricted(
+        tables(data, "restricted", lines, problems), set(layers)
+    )
     places = {name: set(layers) | {f.removeprefix(f"{name}.") for f in facades}}
     places |= {app.name: set() for app in apps if app.name}
     bans = tuple(_ban(table, places) for table in tables(data, "bans", lines, problems))
@@ -179,6 +183,7 @@ def parse_arch(data: dict[str, Any], lines: Lines, problems: list[Violation]) ->
         layers=layers,
         owners=owners,
         restricted=restricted,
+        restricted_names=restricted_names,
         bans=bans,
         subpackages=tuple(subpackages),
         env_allowed_files=frozenset(rules.strings("env_allowed_files")),
@@ -227,8 +232,21 @@ def _apps(groups: list[Table], package: str) -> tuple[AppRule, ...]:
     return tuple(found)
 
 
+def _restricted(
+    groups: list[Table], layers: set[str]
+) -> tuple[dict[str, Ownership], dict[str, Ownership]]:
+    """[[restricted]]'s classes (a call that builds one counts) and its names (every reference
+    counts): each table lists `classes` or `names`, not both."""
+    for table in (t for t in groups if {"classes", "names"} <= t.data.keys()):
+        table.problem("names", "[[restricted]] lists `classes` or `names`, not both")
+        table.seen.add("classes")
+    classes = _owned([t for t in groups if "names" not in t.data], "classes", layers)
+    return classes, _owned([t for t in groups if "names" in t.data], "names", layers)
+
+
 def _owned(groups: list[Table], key: str, layers: set[str]) -> dict[str, Ownership]:
-    """name -> Ownership, from [[owners]] (key "modules") or [[restricted]] (key "classes")."""
+    """name -> Ownership, from [[owners]] (key "modules") or [[restricted]] (key "classes" or
+    "names")."""
     found: dict[str, Ownership] = {}
     for table in groups:
         names = table.strings(key, non_empty=True)
