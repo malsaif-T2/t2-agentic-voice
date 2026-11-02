@@ -6,7 +6,6 @@ handler or calls `configure_logging`."""
 from __future__ import annotations
 
 import json
-import os
 import subprocess
 import sys
 from pathlib import Path
@@ -15,7 +14,7 @@ from typing import Any
 import pytest
 
 from scripts.harness_config import load_config
-from tests.isolation import dropped
+from tests.isolation import child_shell
 
 ROOT = Path(__file__).resolve().parents[3]
 # The child: what the root logger, the library's logger and structlog hold before and after the
@@ -63,16 +62,16 @@ with open(sys.argv[1], "w", encoding="utf-8") as out:
 
 @pytest.fixture(scope="module")
 def child(tmp_path_factory: pytest.TempPathFactory) -> tuple[bytes, bytes, dict[str, Any]]:
-    """The child's standard output, its standard error, and its report. Its shell drops what
-    the suite drops (tests/isolation.py) and every `PYTHON*` variable (a warnings filter, say),
-    and it runs isolated in UTF-8 mode, so its error stream is not this machine's code page."""
+    """The child's standard output, its standard error, and its report. Its shell is a
+    child's of the suite (tests/isolation.py's `child_shell`: what the suite drops and every
+    `PYTHON*` variable, a warnings filter say, left out), and it runs isolated in UTF-8 mode, so
+    its error stream is not this machine's code page."""
     report = tmp_path_factory.mktemp("logging-import") / "report.json"
     modules = json.dumps(sorted(load_config(ROOT).arch.public))
-    shell = {k: v for k, v in os.environ.items() if not dropped(k) and not k.startswith("PYTHON")}
     done = subprocess.run(
         [sys.executable, "-I", "-X", "utf8", "-c", _CHILD, str(report), modules],
         cwd=ROOT,
-        env=shell,
+        env=child_shell(),
         capture_output=True,
         timeout=120,
         check=False,

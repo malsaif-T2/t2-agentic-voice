@@ -84,9 +84,10 @@ def _no_default_ice_servers() -> Iterator[None]:
     """aiortc asks Google's STUN server when a peer is given no ICE servers of its own (plan
     003's reading of step 4), while the library contacts nothing beyond its outbound hosts (the
     design's 11). So for the whole session that default list raises, and a peer built without
-    `RTCConfiguration(iceServers=[])` fails its test instead of sending a packet. aiortc comes
-    with Pipecat's `webrtc` extra and no member declares it, so it is patched by name; importing
-    it, and PyAV under it, adds under a second to the session's start."""
+    `RTCConfiguration(iceServers=[])` fails its test instead of sending a packet. This module
+    imports nothing of aiortc at its top, which would come before the shell is dropped, so it is
+    patched by name; importing it, and PyAV under it, adds under a second to the session's
+    start."""
     with pytest.MonkeyPatch.context() as patch:
         patch.setattr(DEFAULT_ICE_SERVERS, classmethod(refuse_default_ice_servers))
         yield

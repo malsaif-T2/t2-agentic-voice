@@ -9,7 +9,6 @@ from __future__ import annotations
 
 import argparse
 import asyncio
-import importlib
 import os
 import re
 import subprocess
@@ -17,6 +16,7 @@ import sys
 from pathlib import Path
 
 import pytest
+from aiortc import RTCConfiguration, RTCPeerConnection
 from ole5_voice.evals import run_settings
 from t2_agentic_voice.core.config import VoiceSettings
 from t2_agentic_voice.core.settings.base import PREFIX, setting_name
@@ -130,19 +130,18 @@ def test_the_isolation_lists_name_the_librarys_variables() -> None:
 def test_a_peer_with_no_ice_servers_of_its_own_fails_its_test() -> None:
     """aiortc's default list is Google's STUN server; conftest makes it raise, so a peer built
     with no configuration, or with `RTCConfiguration()`, fails at once, and one given its own
-    empty list does not. aiortc comes with Pipecat's `webrtc` extra and no member declares it,
-    so it is reached by name, as conftest patches it."""
-    aiortc = importlib.import_module("aiortc")
+    empty list does not. This module imports aiortc at its top, after conftest's
+    `pytest_configure` dropped the shell's variables, as every test module is."""
 
     async def build() -> list[str]:
         outcomes = []
         for configuration, step in (
             (None, "addTransceiver"),
-            (aiortc.RTCConfiguration(), "createDataChannel"),
-            (aiortc.RTCConfiguration(iceServers=[]), "addTransceiver"),
-            (aiortc.RTCConfiguration(iceServers=[]), "createDataChannel"),
+            (RTCConfiguration(), "createDataChannel"),
+            (RTCConfiguration(iceServers=[]), "addTransceiver"),
+            (RTCConfiguration(iceServers=[]), "createDataChannel"),
         ):
-            peer = aiortc.RTCPeerConnection(configuration)
+            peer = RTCPeerConnection(configuration)
             try:
                 getattr(peer, step)("audio")
                 outcomes.append("built")

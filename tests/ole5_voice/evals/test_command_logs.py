@@ -6,7 +6,6 @@ own logger is `__main__` then, not one under the app's package, so the app names
 
 from __future__ import annotations
 
-import os
 import subprocess
 import sys
 from collections.abc import Callable
@@ -14,7 +13,7 @@ from pathlib import Path
 
 import pytest
 
-from tests.isolation import dropped
+from tests.isolation import child_shell
 
 
 def _broken_history(tmp_path: Path) -> list[str]:
@@ -36,13 +35,13 @@ def test_a_command_run_as_its_task_runs_it_logs_to_its_output(
     tmp_path: Path,
     new_process_logs: Callable[[str, str], str],
 ) -> None:
-    """Each refuses, and says so in its one log line; its shell drops what the suite drops and
-    every `PYTHON*` variable, and it runs isolated in UTF-8 mode."""
-    shell = {k: v for k, v in os.environ.items() if not dropped(k) and not k.startswith("PYTHON")}
+    """Each refuses, and says so in its one log line; its shell is a child's of the suite
+    (`child_shell`: what the suite drops and every `PYTHON*` variable left out), and it runs
+    isolated in UTF-8 mode."""
     done = subprocess.run(
         [sys.executable, "-I", "-X", "utf8", "-m", f"ole5_voice.evals.{module}", *argv(tmp_path)],
         cwd=tmp_path,
-        env=shell,
+        env=child_shell(),
         capture_output=True,
         timeout=120,
         check=False,
