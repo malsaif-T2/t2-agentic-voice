@@ -18,7 +18,7 @@ from collections import Counter
 from collections.abc import Iterable, Sequence
 from pathlib import Path
 
-from scripts.doc_text import markdown_files
+from scripts.doc_text import living_docs, markdown_files
 from scripts.harness_config import HarnessConfig
 
 # A relative path: folders, then a file of a text kind. A folder may be hidden (`.github/`);
@@ -103,10 +103,8 @@ def _planned(found: list[str]) -> list[str]:
 def doc_sections(root: Path, config: HarnessConfig, code: dict[str, str]) -> list[str]:
     """The report's last two sections, given the code (path -> text) it reads."""
     gc = config.gc
-    docs = {
-        p.relative_to(root).as_posix(): p.read_text(encoding="utf-8") for p in markdown_files(root)
-    }
-    living = {n: t for n, t in docs.items() if not n.startswith(config.docs.historical)}
+    found = living_docs(root, markdown_files(root), config.docs.historical)
+    living = {rel: md.read_text(encoding="utf-8") for md, rel in found}
     planned = {n: t for n, t in living.items() if n in gc.planned_docs}
     current = {n: t for n, t in living.items() if n not in gc.planned_docs}
     cited = {
