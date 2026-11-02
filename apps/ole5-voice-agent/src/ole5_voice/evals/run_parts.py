@@ -31,6 +31,7 @@ from t2_agentic_voice.tracing import Tracing
 from ole5_voice.evals import history, items, matcher, scorecard, split
 from ole5_voice.evals.answerers import Clock, Sleep, adapter
 from ole5_voice.evals.audio import AudioFormatError, read_wav, sha256_file
+from ole5_voice.evals.files import read_lines
 from ole5_voice.evals.models import Item, Name, Split, SplitFile, Variant
 from ole5_voice.evals.runs import (
     Answer,
@@ -228,13 +229,13 @@ def load_plan(data: Path, choice: Choice, parts: Parts) -> Plan:
 
 
 def _screened(pairs: list[tuple[Item, Variant]], path: Path) -> list[tuple[Item, Variant]]:
-    """Only the variants a screen file names, one `item/variant` a line (evaluation.md,
-    "Screens"); refused when it names one the run's split does not hold."""
-    try:
-        lines = path.read_text(encoding="utf-8").splitlines()
-    except (OSError, UnicodeDecodeError):
-        raise refused("--questions cannot be read", "give a UTF-8 file") from None
-    wanted = {line.strip() for line in lines if line.strip()}
+    """Only the variants a screen file names, one `item/variant` a line, blank lines and `#`
+    comments skipped (evaluation.md, "Screens"); refused when it names one the run's split does
+    not hold."""
+    lines = read_lines(path)
+    if lines is None:
+        raise refused("--questions cannot be read", "give a UTF-8 file")
+    wanted = set(lines)
     unknown = wanted - {f"{item.id}/{variant.id}" for item, variant in pairs}
     if unknown:
         raise refused(
@@ -277,17 +278,18 @@ def _request(
 def clip_answers(
     path: Path | None, todo: Sequence[Todo], *, commit: str, model: str
 ) -> dict[Variant, str]:
-    """`--clips-from`: the clip answers of the same model's first dev run at this commit, which
-    serve the windows as long as their clip, not sent again (the registration's "Windows"); for
-    a take of two segments, its first segment's, which the window is cut from."""
+    """`--clips-from` (a run's `--out` folder, or its scorecard): the clip answers of the same
+    model's first dev run at this commit, which serve the windows as long as their clip, not
+    sent again (the registration's "Windows"); for a take of two segments, its first segment's,
+    which the window is cut from."""
     if path is None:
         return {}
     try:
-        card = Scorecard.model_validate_json(path.read_bytes())
-    except (OSError, ValueError):
-        raise refused(
-            "--clips-from is not a scorecard", "give a dev run's scorecard.json"
-        ) from None
+        card: Scorecard | None = scorecard.load_scorecard(path)
+    except scorecard.EvalDataError:
+        card = None
+    if card is None:  # raised outside the handler, and naming no field of the file
+        raise refused("--clips-from is not a scorecard", "give a dev run's scorecard.json")
     if (card.run.split, card.run.model, card.run.commit) != ("dev", model, commit):
         raise refused(
             "--clips-from is not a dev run of this model at this commit",

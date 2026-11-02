@@ -1,7 +1,8 @@
 """The recorder's files: the script it shows, and what it writes under `--out`, which the import
-reads back (Tracks G and D).
+reads back (`import_recordings.py`).
 
-`script.toml` holds the script's lines and its fixed list of listening sounds (`load_script`).
+`script.toml` holds the script's lines and its fixed list of listening sounds (`Script`, read
+with `items.read_toml` by the recorder, the import and `poe golden` alike).
 Below `--out`, each session has its own folder, holding its `session.json` (the session's device
 and the speaker's consent), and for each take its WAV file, its sidecar and one file for each
 review: `session_file`, `take_audio`, `take_sidecar` and `review_file` name them. Each file is
@@ -10,9 +11,7 @@ written new, never rewritten. Every model parses strictly, as `models.py`'s do.
 
 from __future__ import annotations
 
-import tomllib
 from datetime import datetime
-from pathlib import Path
 from typing import Final, Literal
 
 from pydantic import Field, TypeAdapter
@@ -57,12 +56,6 @@ class Script(Model):
 
     listening_sounds: tuple[str, ...] = ()
     lines: tuple[ScriptLine, ...] = Field(min_length=1)
-
-
-def load_script(path: Path) -> Script:
-    """`script.toml`, read and checked, so the recorder and the import read it alike."""
-    with path.open("rb") as file:
-        return Script.model_validate(tomllib.load(file))
 
 
 class SessionRecord(Model):

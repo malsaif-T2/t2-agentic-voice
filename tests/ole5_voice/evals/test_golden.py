@@ -16,10 +16,10 @@ import pytest
 from ole5_voice.evals import golden
 from ole5_voice.evals.audio import AudioFormatError, Wav
 from ole5_voice.evals.import_talkover import LANGUAGE, LEFT_OUT
-from ole5_voice.evals.items import EVALS, Counts, count_strata, load_items
+from ole5_voice.evals.items import EVALS, Counts, count_strata, load_items, read_toml
 from ole5_voice.evals.models import Item, Manifest, Variant
 from ole5_voice.evals.split import split_items
-from ole5_voice.evals.takes import Script, load_script
+from ole5_voice.evals.takes import Script
 from ole5_voice.evals.toml_write import dump_item
 
 from tests.ole5_voice.evals import samples
@@ -365,7 +365,7 @@ def test_the_committed_set_is_valid_and_its_frozen_answers_are_fresh() -> None:
     assert set(LANGUAGE) == arabic  # every Arabic phrase's ruling, and no other
     variants = {v.id for item in items.values() for v in item.variants}
     assert LEFT_OUT and not variants & set(LEFT_OUT)  # the owner's left-out takes stay out
-    assert load_script(EVALS / "script.toml").lines
+    assert read_toml(EVALS / "script.toml", Script).lines
 
 
 def test_the_manifests_name_no_file_outside_a_plain_path() -> None:

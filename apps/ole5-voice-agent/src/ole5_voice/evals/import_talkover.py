@@ -23,10 +23,11 @@ from datetime import datetime
 from pathlib import Path
 from typing import Final, Literal
 
-from pydantic import BaseModel, ConfigDict, Field, TypeAdapter, ValidationError
+from pydantic import BaseModel, ConfigDict, Field, TypeAdapter
 from t2_agentic_voice import configure_logging, get_logger
 
 from ole5_voice.evals.audio import AudioFormatError, Wav, read_wav
+from ole5_voice.evals.files import read_model
 from ole5_voice.evals.import_recordings import read_reviews
 from ole5_voice.evals.items import (
     EVALS,
@@ -147,11 +148,13 @@ class LabTake(_Lab):
     segments: tuple[RelativePath, ...]
 
 
+_REFS: Final = TypeAdapter(dict[str, LabSegment])
+_TAKES: Final = TypeAdapter(dict[str, LabTake])
+
+
 def _read[T](path: Path, shape: TypeAdapter[T]) -> T:
-    try:
-        return shape.validate_python(json.loads(path.read_text(encoding="utf-8")))
-    except (OSError, ValueError, ValidationError) as error:
-        raise GoldenSetError(f"{path.name}: {error}") from None
+    """A lab file, whose records hold transcripts: its refusal names fields only."""
+    return read_model(path, shape, lambda problem: GoldenSetError(f"{path.name}: {problem}"))
 
 
 def _segments(take: LabTake, refs: Mapping[str, LabSegment]) -> list[LabSegment]:
@@ -196,8 +199,8 @@ def build(
 ) -> tuple[list[Item], Manifest, list[str]]:
     """The talk-over items, their manifest, and the takes left out for having no segment. A take
     named in `left_out` (`LEFT_OUT`, from `main`) is left out whole, its files with it."""
-    refs = _read(lab / "refs.json", TypeAdapter(dict[str, LabSegment]))
-    takes = _read(lab / "takes.json", TypeAdapter(dict[str, LabTake]))
+    refs = _read(lab / "refs.json", _REFS)
+    takes = _read(lab / "takes.json", _TAKES)
     if sorted(refs) != sorted(name for take in takes.values() for name in take.segments):
         raise GoldenSetError("refs.json and takes.json name different segment files")
     skipped = left_out or {}

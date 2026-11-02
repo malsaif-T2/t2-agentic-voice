@@ -12,14 +12,14 @@ never echoing what it holds.
 
 from __future__ import annotations
 
-import tomllib
 from collections import Counter
 from collections.abc import Iterable, Sequence
 from pathlib import Path
 from typing import Final, Literal
 
-from pydantic import BaseModel, Field, ValidationError
+from pydantic import BaseModel, Field
 
+from ole5_voice.evals.files import read_model
 from ole5_voice.evals.models import Confirmation, Item, Manifest, Model, Variant
 from ole5_voice.evals.takes import Review, Script
 
@@ -42,21 +42,16 @@ class GoldenSetError(ValueError):
 
 
 def read_toml[M: BaseModel](path: Path, model: type[M]) -> M:
-    """`path`'s TOML as `model`; GoldenSetError naming the file when it is missing, is not
-    TOML, or does not fit (a model's error never echoes the value it refused)."""
-    try:
-        with path.open("rb") as file:
-            return model.model_validate(tomllib.load(file))
-    except (OSError, tomllib.TOMLDecodeError, ValidationError) as error:
-        raise GoldenSetError(f"{path.name}: {error}") from None
+    """`path`'s TOML as `model`; GoldenSetError naming the file, and the fields only, when it
+    cannot be read as UTF-8 text, is not TOML, or does not fit (`files.read_model`)."""
+    return read_model(
+        path, model, lambda problem: GoldenSetError(f"{path.name}: {problem}"), toml=True
+    )
 
 
 def read_json[M: BaseModel](path: Path, model: type[M]) -> M:
     """`path`'s JSON as `model`, failing as `read_toml` does."""
-    try:
-        return model.model_validate_json(path.read_bytes())
-    except (OSError, ValidationError) as error:
-        raise GoldenSetError(f"{path.name}: {error}") from None
+    return read_model(path, model, lambda problem: GoldenSetError(f"{path.name}: {problem}"))
 
 
 def write_text(path: Path, text: str) -> None:

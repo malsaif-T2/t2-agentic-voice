@@ -7,12 +7,13 @@ from __future__ import annotations
 from pathlib import Path
 
 import pytest
+from ole5_voice.evals.items import GoldenSetError, read_toml
 from ole5_voice.evals.takes import (
     Review,
+    Script,
     ScriptLine,
     SessionRecord,
     TakeSidecar,
-    load_script,
     review_file,
     session_file,
     take_audio,
@@ -51,7 +52,7 @@ def test_a_script_line_joins_its_clauses() -> None:
 def test_the_script_reads_its_lines_and_listening_sounds(tmp_path: Path) -> None:
     path = tmp_path / "script.toml"
     path.write_text(SCRIPT, encoding="utf-8")
-    script = load_script(path)
+    script = read_toml(path, Script)
     assert script.listening_sounds == ("اها", "امم", "mm-hmm")
     assert [(line.id, line.text) for line in script.lines] == [
         ("n01", "open a ticket about my mail"),
@@ -59,8 +60,8 @@ def test_the_script_reads_its_lines_and_listening_sounds(tmp_path: Path) -> None
     ]
     for broken in (SCRIPT.replace("[[lines]]", "[[line]]"), 'listening_sounds = ["x"]\n'):
         path.write_text(broken, encoding="utf-8")  # a misspelt table; no line at all
-        with pytest.raises(ValidationError):
-            load_script(path)
+        with pytest.raises(GoldenSetError, match=r"script\.toml: \d problem\(s\), the first at "):
+            read_toml(path, Script)
 
 
 def test_a_session_record_holds_its_speakers_consent() -> None:

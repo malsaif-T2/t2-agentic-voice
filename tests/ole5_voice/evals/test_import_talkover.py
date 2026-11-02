@@ -209,3 +209,21 @@ def test_the_talk_over_command_writes_only_the_items_and_manifest_it_owns(
     assert sorted(p.name for p in evals.iterdir()) == ["golden", "manifests", "terms.toml"]
     (evals / "terms.toml").unlink()
     assert import_talkover.main(["--lab", str(lab), "--evals", str(evals)]) == 1
+
+
+@pytest.mark.parametrize("name", ["refs.json", "takes.json"])
+def test_a_lab_record_that_does_not_fit_is_refused_without_echoing_it(
+    tmp_path: Path, name: str
+) -> None:
+    """A lab record's text is a transcript: the refusal names the file and the field, never
+    the record, and no exception chain leads to it."""
+    refs, takes = _lab()
+    planted = "SECRET-1"  # short, and first in its record, so even a shortened echo shows it
+    records = refs if name == "refs.json" else takes
+    key = next(iter(records))
+    rest = {f: v for f, v in records[key].items() if f not in ("text", "want")}
+    records[key] = {"text": planted} | rest
+    with pytest.raises(GoldenSetError, match=re.escape(f"{name}: ")) as refused:
+        import_talkover.build(_save(tmp_path / "lab", refs, takes), terms=[], describe=_describe)
+    assert planted not in str(refused.value) and "want" in str(refused.value)
+    assert refused.value.__context__ is None and refused.value.__cause__ is None

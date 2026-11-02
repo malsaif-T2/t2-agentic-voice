@@ -18,15 +18,17 @@ from collections.abc import Sequence
 from pathlib import Path
 from typing import Final
 
-from pydantic import ValidationError
+from pydantic import TypeAdapter
 
+from ole5_voice.evals.files import parse_json, read_text
 from ole5_voice.evals.runs import SCORECARD_FILE, HistoryLine, Scorecard, StratumValue
-from ole5_voice.evals.scorecard import EvalDataError, first_problem
+from ole5_voice.evals.scorecard import EvalDataError
 
 _ROOT = Path(__file__).resolve().parents[5]
 HISTORY: Final = _ROOT / "apps" / "ole5-voice-agent" / "evals" / "history.jsonl"
 DOC: Final = _ROOT / "docs" / "generated" / "eval-history.md"
 _DESCRIPTION = "Render the golden set's run history into docs/generated/eval-history.md."
+_LINE: Final = TypeAdapter(HistoryLine)
 # Markdown's own characters, escaped in a cell so a note renders as the text it is: no link, no
 # HTML, no table cell of its own.
 _MARKDOWN = re.compile(r"([\\`*\[\](){}<>|~&])")
@@ -42,10 +44,7 @@ Full scorecards stay out of git, in each run's `--out` folder.
 def read_history(path: Path) -> tuple[HistoryLine, ...]:
     """Every line of the history at `path`, in order; `EvalDataError` naming the first line that
     is not a valid history line with an LF ending."""
-    try:
-        text: str | None = path.read_bytes().decode("utf-8")
-    except (OSError, UnicodeDecodeError):  # a decode error holds the file's bytes
-        text = None
+    text = read_text(path)
     if text is None:
         raise EvalDataError(f"{path} is not a readable UTF-8 file")
     if text and not text.endswith("\n"):
@@ -54,31 +53,25 @@ def read_history(path: Path) -> tuple[HistoryLine, ...]:
     for number, raw in enumerate(text.split("\n")[:-1], start=1):
         if "\r" in raw:
             raise EvalDataError(f"{path}, line {number}: a CR; the history has LF endings")
-        try:
-            lines.append(HistoryLine.model_validate_json(raw))
-        except ValidationError as error:
-            problem = first_problem(error)
-        else:
-            continue
-        # Raised here, outside the handler, so no exception chain leads to the line's text.
-        raise EvalDataError(f"{path}, line {number}: not a history line ({problem})")
+        lines.append(_history_line(raw, f"{path}, line {number}: "))
     return tuple(lines)
+
+
+def _history_line(text: str, where: str = "") -> HistoryLine:
+    """`text` as a history line; `EvalDataError` naming the fields only (`files.parse_json`)."""
+    return parse_json(
+        _LINE, text, lambda problem: EvalDataError(f"{where}not a history line ({problem})")
+    )
 
 
 def append_line(line: HistoryLine, history: Path) -> None:
     """Add `line` to the end of `history` (created if missing), as one line of JSON with an LF
     ending, once the line and every line already there pass their checks."""
-    try:
-        checked = HistoryLine.model_validate_json(line.model_dump_json(warnings=False))
-    except ValidationError as error:
-        problem = first_problem(error)
-    else:
-        if history.exists():
-            read_history(history)
-        with history.open("ab") as file:
-            file.write(checked.model_dump_json().encode("utf-8") + b"\n")
-        return
-    raise EvalDataError(f"not a history line ({problem})")
+    checked = _history_line(line.model_dump_json(warnings=False))
+    if history.exists():
+        read_history(history)
+    with history.open("ab") as file:
+        file.write(checked.model_dump_json().encode("utf-8") + b"\n")
 
 
 def line_of(

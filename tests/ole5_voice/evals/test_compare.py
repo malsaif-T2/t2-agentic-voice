@@ -19,13 +19,12 @@ from ole5_voice.evals.compare import (
     Change,
     ComparisonError,
     by_item,
-    load_scorecard,
     pair,
     smallest_change,
     stratum_guard,
 )
 from ole5_voice.evals.runs import SCORECARD_FILE, Metrics, RunInfo, Scorecard, VariantResult
-from ole5_voice.evals.scorecard import EvalDataError
+from ole5_voice.evals.scorecard import EvalDataError, load_scorecard
 
 from tests.ole5_voice.evals import samples
 from tests.ole5_voice.evals.fakes import FakeSignTest

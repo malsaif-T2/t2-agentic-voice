@@ -14,15 +14,15 @@ lacks one of the rulings it applies. Its rulings on how references are written a
 
 from __future__ import annotations
 
-import tomllib
 from collections.abc import Callable, Sequence
 from datetime import date
 from pathlib import Path
 from typing import Annotated, Final, Literal, Self
 
-from pydantic import Field, StringConstraints, ValidationError, model_validator
+from pydantic import Field, StringConstraints, model_validator
 from t2_agentic_voice.languages import SpellingRule, normalize_arabic, normalize_digits
 
+from ole5_voice.evals.files import read_model
 from ole5_voice.evals.models import Kind, Model
 
 RulingId = Annotated[str, StringConstraints(pattern=r"^[a-z0-9][a-z0-9_-]*$")]
@@ -103,13 +103,11 @@ class SpellingGuide(Model):
 
 
 def load_guide(path: Path) -> SpellingGuide:
-    """The spelling guide in `path`, checked as it is read; GuideError, naming the file, when it
-    cannot be read."""
-    try:
-        with path.open("rb") as file:
-            return SpellingGuide.model_validate(tomllib.load(file))
-    except (OSError, tomllib.TOMLDecodeError, ValidationError) as error:
-        raise GuideError(f"{path.name}: {error}") from None
+    """The spelling guide in `path`, checked as it is read; GuideError, naming the file and the
+    fields only, when it cannot be read (`files.read_model`)."""
+    return read_model(
+        path, SpellingGuide, lambda problem: GuideError(f"{path.name}: {problem}"), toml=True
+    )
 
 
 def normalize(text: str) -> str:

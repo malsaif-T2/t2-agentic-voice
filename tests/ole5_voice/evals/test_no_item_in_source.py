@@ -20,8 +20,8 @@ from collections.abc import Collection, Iterator, Mapping, Sequence
 from datetime import date
 from pathlib import Path
 
-from ole5_voice.evals.items import EVALS, load_items
-from ole5_voice.evals.takes import load_script
+from ole5_voice.evals.items import EVALS, load_items, read_toml
+from ole5_voice.evals.takes import Script
 from pydantic import BaseModel, ConfigDict, Field
 from t2_agentic_voice.domain.scoring import scored_form
 from t2_agentic_voice.languages import normalize_digits
@@ -73,7 +73,7 @@ def references(evals: Path) -> dict[str, str]:
             found.setdefault(fold(text), f"item {item.id}")
         for variant in item.variants:
             found.setdefault(fold(variant.reference), f"variant {variant.id}")
-    for line in load_script(evals / "script.toml").lines:
+    for line in read_toml(evals / "script.toml", Script).lines:
         found.setdefault(fold(line.text), f"script line {line.id}")
     found.pop("", None)
     return found

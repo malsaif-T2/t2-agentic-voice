@@ -79,7 +79,7 @@ def test_a_windows_plan_takes_the_talkover_clips_and_its_smoke_test_sends_the_cl
 def test_a_screen_file_narrows_a_dev_plan(world: World, tmp_path: Path) -> None:
     golden = golden_set(world.item("a", takes=2), world.item("b"))
     screen = tmp_path / "screen.txt"
-    screen.write_text("b/b-v1\n\n a/a-v2 \n", encoding="utf-8")
+    screen.write_text("# a screen of two\nb/b-v1\n\n a/a-v2 \n", encoding="utf-8")
     plan = load_plan(world.data, Choice("dev", questions=screen), plan_parts(golden))
     assert [t.variant.id for t in plan.todo] == ["a-v2", "b-v1"]
     screen.write_text("a/a-v9\nc/c-v1\n", encoding="utf-8")
@@ -184,6 +184,10 @@ def test_clips_from_gives_the_first_segments_answer_of_the_same_model_at_this_co
     todo = load_plan(world.data, Choice("dev"), plan_parts(golden)).todo
     found = clip_answers(_card(world), todo, commit="ab" * 20, model="whisper-large-v3")
     assert found == {todo[0].variant: "open", todo[1].variant: "x"}
+    run_folder = world.top.parent / "r1"
+    run_folder.mkdir()
+    _card(world).replace(run_folder / "scorecard.json")  # a run's --out folder serves as well
+    assert clip_answers(run_folder, todo, commit="ab" * 20, model="whisper-large-v3") == found
     assert clip_answers(None, todo, commit="ab" * 20, model="whisper-large-v3") == {}
     with pytest.raises(InvalidRequestError, match="not a dev run of this model at this commit"):
         clip_answers(_card(world), todo, commit="cd" * 20, model="whisper-large-v3")

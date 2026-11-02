@@ -26,11 +26,11 @@ from dataclasses import dataclass
 from pathlib import Path
 from typing import Final, Protocol
 
-from pydantic import ValidationError
 from t2_agentic_voice import T2VoiceError, evals
 from t2_agentic_voice.evals import Recall
 from t2_agentic_voice.languages import normalize_arabic, normalize_digits
 
+from ole5_voice.evals.files import parse_json, read_text
 from ole5_voice.evals.models import OTHER, TICKET_KIND, Language, Other
 from ole5_voice.evals.runs import (
     HELD_OUT_MIN_ITEMS,
@@ -81,11 +81,19 @@ def normalize_text(text: str) -> str:
     return normalize_digits(normalize_arabic(text))
 
 
-def first_problem(error: ValidationError) -> str:
-    """A validation error told by its fields and messages, never by the input it refused."""
-    problems = error.errors(include_input=False, include_url=False)
-    where = ".".join(str(part) for part in problems[0]["loc"]) or "the top level"
-    return f"{len(problems)} problem(s), the first at {where}: {problems[0]['msg']}"
+def load_scorecard(path: Path) -> Scorecard:
+    """The scorecard at `path` (a run's `--out` folder, or its scorecard file), read strictly,
+    so a held-out scorecard holding a variant is refused as it is read: `EvalDataError`, naming
+    the file and the fields only."""
+    file = path / SCORECARD_FILE if path.is_dir() else path
+    text = read_text(file)
+    if text is None:
+        raise EvalDataError(f"{file} is not a readable scorecard")
+    return parse_json(
+        Scorecard,
+        text,
+        lambda problem: EvalDataError(f"{file} is not a valid scorecard: {problem}"),
+    )
 
 
 @dataclass(frozen=True)
@@ -144,22 +152,19 @@ def write_scorecard(
 
 
 def _checked(run: RunInfo, results: Sequence[VariantResult]) -> tuple[RunInfo, list[VariantResult]]:
-    try:
-        run = RunInfo.model_validate_json(run.model_dump_json(warnings=False))
-        checked = [
-            VariantResult.model_validate_json(r.model_dump_json(warnings=False)) for r in results
-        ]
-    except ValidationError as error:
-        problem = first_problem(error)
-    else:
-        keys = [(result.item, result.variant) for result in checked]
-        if any(result.split != run.split for result in checked):
-            raise EvalDataError("a run's results are all of its own split")
-        if len(set(keys)) != len(keys):
-            raise EvalDataError("a run scores each variant once")
-        return run, checked
-    # Raised here, outside the handler, so no exception chain leads to the refused input.
-    raise EvalDataError(f"a run or a result fails its checks: {problem}")
+    def refuse(problem: str) -> EvalDataError:
+        return EvalDataError(f"a run or a result fails its checks: {problem}")
+
+    run = parse_json(RunInfo, run.model_dump_json(warnings=False), refuse)
+    checked = [
+        parse_json(VariantResult, r.model_dump_json(warnings=False), refuse) for r in results
+    ]
+    keys = [(result.item, result.variant) for result in checked]
+    if any(result.split != run.split for result in checked):
+        raise EvalDataError("a run's results are all of its own split")
+    if len(set(keys)) != len(keys):
+        raise EvalDataError("a run scores each variant once")
+    return run, checked
 
 
 def _score(result: VariantResult, scorers: Scorers, normalize: Normalize) -> _Scored:

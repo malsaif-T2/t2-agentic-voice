@@ -25,17 +25,11 @@ from dataclasses import dataclass
 from pathlib import Path
 from typing import Final
 
-from pydantic import ValidationError
 from t2_agentic_voice import T2VoiceError, evals
 
-from ole5_voice.evals.runs import (
-    HELD_OUT_MIN_ITEMS,
-    SCORECARD_FILE,
-    Metrics,
-    Scorecard,
-    VariantResult,
-)
-from ole5_voice.evals.scorecard import EvalDataError, first_problem
+from ole5_voice.evals.files import read_lines
+from ole5_voice.evals.runs import HELD_OUT_MIN_ITEMS, Metrics, Scorecard, VariantResult
+from ole5_voice.evals.scorecard import load_scorecard
 
 ALPHA: Final = 0.05  # a p-value below it is beyond the noise
 SignTest = Callable[[int, int], float]
@@ -71,34 +65,12 @@ class ByItem:
     p: float
 
 
-def load_scorecard(path: Path) -> Scorecard:
-    """The scorecard at `path` (a run's `--out` folder, or its scorecard file), read strictly,
-    so a held-out scorecard holding a variant is refused as it is read."""
-    file = path / SCORECARD_FILE if path.is_dir() else path
-    try:
-        text: str | None = file.read_text(encoding="utf-8")
-    except (OSError, UnicodeDecodeError):  # a decode error holds the file's bytes
-        text = None
-    if text is None:
-        raise EvalDataError(f"{file} is not a readable scorecard")
-    try:
-        return Scorecard.model_validate_json(text)
-    except ValidationError as error:
-        problem = first_problem(error)
-    # Raised here, outside the handler, so no exception chain leads to the file's text.
-    raise EvalDataError(f"{file} is not a valid scorecard: {problem}")
-
-
 def read_focus(path: Path) -> tuple[str, ...]:
     """The item IDs of a focus file: one per line; blank lines and `#` comments skipped."""
-    try:
-        text: str | None = path.read_text(encoding="utf-8")
-    except (OSError, UnicodeDecodeError):
-        text = None
-    if text is None:
+    found = read_lines(path)
+    if found is None:
         raise ComparisonError(f"{path} is not a readable focus file")
-    lines = [line.strip() for line in text.splitlines()]
-    return tuple(line for line in lines if line and not line.startswith("#"))
+    return found
 
 
 def pair(a: Scorecard, b: Scorecard) -> tuple[list[Change], list[tuple[str, str]]]:
