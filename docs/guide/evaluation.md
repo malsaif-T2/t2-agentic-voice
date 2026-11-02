@@ -393,6 +393,10 @@ compared by aggregates only.
 - **`--focus FILE`:** the items a change aims at, one item ID a line, written before B ran, are
   shown apart; the verdict is still every item's.
 
+A refusal is a log line, `comparison_not_made`, and exit code 1. The library logs to standard
+output, the stream the report is printed to, so `poe eval-compare A B > report.md` writes a
+refusal into the file and shows nothing on the terminal: check the exit code before reading it.
+
 M1's baseline, R2 (turbo) judged against R1 (large-v3): 231 variants compared, 6 fixed and 35
 broken (net -29); 2 items better, 18 worse and 46 unchanged, p = 0.0004, beyond the noise. The
 guard read turbo worse beyond the noise on Saudi Arabic (2 better, 12 worse, p = 0.0129), the
@@ -454,12 +458,12 @@ its window from.
   it (the matcher's call). The scorecard's `windows` sums them by length, language and the
   clip's `want` label: `clips`, `empty`, `reused`, `words`, `leading_words`, `reference_words`,
   `one_word_clips` and `holds_word`.
-- **`--clips-from`** takes the same model's first dev run's `scorecard.json`, the file itself,
-  not its folder. A window at least as long as its clip is then not sent again: the clip's
-  answer from that scorecard is used, marked `reused`. A scorecard that is not a dev run of the
-  same model at the same commit is refused; without `--clips-from`, such a window sends the
-  whole clip, marked not reused. M1's first try at W1 named R1's folder, and was refused before
-  anything was sent.
+- **`--clips-from`** takes the same model's first dev run's `scorecard.json`, or that run's
+  `--out` folder, as `eval-compare` takes a run. A window at least as long as its clip is then
+  not sent again: the clip's answer from that scorecard is used, marked `reused`. A scorecard
+  that is not a dev run of the same model at the same commit is refused; without
+  `--clips-from`, such a window sends the whole clip, marked not reused. (In M1 it took the file
+  only, and the first try at W1, naming R1's folder, was refused before anything was sent.)
 
 M1's window runs, W1 to W6: 500, 750 and 1000 ms of the 90 dev talk-over clips (33 items), each
 model at each length, the models alternating; at 1000 ms, 2 clips no longer than that reused

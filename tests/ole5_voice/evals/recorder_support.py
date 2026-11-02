@@ -26,6 +26,7 @@ from ole5_voice.evals.models import AudioRef, Item, Manifest, ManifestFile, Spli
 from ole5_voice.evals.recorder import RecorderServer
 from ole5_voice.evals.recorder_load import load_recorder
 from ole5_voice.evals.recorder_state import Recorder
+from ole5_voice.evals.worktree import GitResult
 
 from tests.ole5_voice.evals.fakes import FakeGoldenSet
 
@@ -180,14 +181,24 @@ def recorder_of(tree: Tree, *, golden: Sequence[Item] | None = None, **given: An
         "manifests": tree.manifests,
         "load_items": found.load_items,
         "clock": lambda: WHEN,
+        "git": _no_git,
     }
     return load_recorder(**(settings | given))
+
+
+def _no_git(args: Sequence[str], cwd: Path) -> GitResult:
+    """A `git` that names no worktree, so the recorder knows only its own checkout, and no
+    test of it runs git (`test_worktree.py` runs the real one)."""
+    return GitResult(128, "")
 
 
 @contextmanager
 def serving(recorder: Recorder) -> Iterator[RecorderServer]:
     server = RecorderServer(recorder)
-    thread = threading.Thread(target=server.serve_forever, daemon=True)
+    # A short poll, so `shutdown` returns at once rather than after the default half second.
+    thread = threading.Thread(
+        target=server.serve_forever, kwargs={"poll_interval": 0.01}, daemon=True
+    )
     thread.start()
     try:
         yield server

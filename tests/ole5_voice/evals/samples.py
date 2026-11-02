@@ -1,6 +1,5 @@
-"""Made-up, valid instances of the golden set's models (plan 002, Block 0), for any track's
-tests: an item with one variant, a variant's result, a run, and its history line. Fixed values,
-no clock (GP-12)."""
+"""Made-up, valid instances of the golden set's models, for any of its tests: an item with one
+variant, a variant's result, a run, and its history line. Fixed values, no clock (GP-12)."""
 
 from __future__ import annotations
 

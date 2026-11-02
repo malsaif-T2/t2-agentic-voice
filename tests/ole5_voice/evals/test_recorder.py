@@ -1,7 +1,8 @@
 """`poe record`, against a real server on a free port of 127.0.0.1 in a thread: the consent,
-takes saved with their sidecars and played back, the turn ends of a several-clause take, the
-review passes, the golden-set variants beside their references, and the command. The refusals
-are in `test_recorder_security.py`; the made-up tree and the client in `recorder_support.py`."""
+takes saved with their sidecars and played back, the turn ends of a several-clause take, what
+stops it from starting, and the command. The review mode is in `test_recorder_review.py`, the
+refusals in `test_recorder_security.py`, and the made-up tree and the client in
+`recorder_support.py` (the `tree` fixture in `conftest.py`)."""
 
 from __future__ import annotations
 
@@ -11,20 +12,18 @@ from pathlib import Path
 from typing import Any
 
 import pytest
-from ole5_voice.evals import recorder, recorder_load, recorder_state
+from ole5_voice.evals import items, recorder, recorder_state
 from ole5_voice.evals.audio import sha256_of
 from ole5_voice.evals.models import Item
 from ole5_voice.evals.recorder import RecorderServer
 from ole5_voice.evals.recorder_state import RecorderError
-from ole5_voice.evals.takes import Review, SessionRecord, TakeSidecar
+from ole5_voice.evals.takes import SessionRecord, TakeSidecar
 
 from tests.ole5_voice.evals.recorder_support import (
     CONSENT,
-    LONG,
     WHEN,
     Tree,
     get,
-    make_tree,
     post,
     recorder_of,
     serving,
@@ -34,11 +33,6 @@ from tests.ole5_voice.evals.recorder_support import (
 )
 
 ROOT = Path(__file__).resolve().parents[3]
-
-
-@pytest.fixture
-def tree(tmp_path: Path) -> Tree:
-    return make_tree(tmp_path)
 
 
 def test_a_take_is_saved_with_its_sidecar_and_plays_back(tree: Tree) -> None:
@@ -128,99 +122,6 @@ def test_a_take_of_several_clauses_keeps_its_true_turn_ends(
     assert [TakeSidecar.model_validate_json(p.read_bytes()).turn_ends_ms for p in written] == (
         [ends] if code == 200 else []
     )
-
-
-def test_a_typed_text_comes_back_for_its_own_check_in_a_later_pass(tree: Tree) -> None:
-    typed = {"id": "n01-laptop-1-1", "verdict": "typed", "text": " open a ticket about my email "}
-    with serving(recorder_of(tree)) as server:
-        post(server, "api/consent", CONSENT)
-        post(server, "api/take", take())
-        post(server, "api/take", take(status="discarded"))  # n01-laptop-1-2, never checked
-        confirmed = post(server, "api/review", {"id": "t01-1", "verdict": "confirmed"})
-        first = post(server, "api/review", typed)
-        again = post(server, "api/review", {"id": "n01-laptop-1-1", "verdict": "confirmed"})
-        assert (
-            post(server, "api/review", {"id": "n01-laptop-1-2", "verdict": "confirmed"}).status
-            == 404
-        )
-        assert post(server, "api/review", typed | {"text": "  "}).status == 400
-        assert (
-            post(server, "api/review", {"id": "t01-1", "verdict": "confirmed", "text": "x"}).status
-            == 400
-        )
-    assert (confirmed.status, confirmed.json()["due"]) == (200, False)
-    assert (first.status, first.json()["due"], first.json()["source"]) == (200, False, "typed")
-    assert first.json()["reference"] == "open a ticket about my email"
-    assert again.status == 409  # one review a pass: its second check waits for a later pass
-    later = recorder_of(tree)
-    shown = {e["id"]: e for e in later.state()["review"]}
-    assert later.review_pass == 2
-    assert (shown["n01-laptop-1-1"]["due"], shown["t01-1"]["due"]) == (True, False)
-    assert shown["n01-laptop-1-1"]["reference"] == "open a ticket about my email"
-    with serving(later) as server:
-        assert (
-            post(server, "api/review", {"id": "n01-laptop-1-1", "verdict": "confirmed"}).json()[
-                "due"
-            ]
-            is False
-        )
-    second = tree.out / "laptop-1" / "n01-laptop-1-1.review-2.json"
-    review = Review.model_validate_json(second.read_bytes())
-    assert (review.verdict, review.review_pass, review.at, review.text) == (
-        "confirmed",
-        2,
-        WHEN,
-        "",
-    )
-    assert (tree.out / "talkover-1" / "t01-1.review-1.json").is_file()
-
-
-def test_the_variants_the_manifests_name_play_beside_their_reference(tree: Tree) -> None:
-    checker = recorder_of(tree)
-    with serving(checker) as server:
-        played = get(server, "variant/t01-1/0")
-        reply = get(server, "reply/en_ticket")
-        state = get(server, "api/state").json()
-    assert (played.status, played.body) == (200, tree.segment)
-    assert (reply.status, reply.body) == (200, (tree.replies / "en_ticket.wav").read_bytes())
-    assert state["replies"] == [
-        {"id": "en_ticket", "lang": "en", "topic": "a ticket read-back", "ms": 300}
-    ]
-    shown = {e["id"]: e for e in state["review"]}
-    assert shown == {
-        "t01-1": {
-            "id": "t01-1",
-            "of": "t01",
-            "kind": "sentence",
-            "language": "saudi",
-            "reference": "افتح تذكرة",
-            "source": "script",
-            "segments": 1,
-            "reviews": [],
-            "due": True,
-        }
-    }  # t01-2's file is on no manifest, t01-3's root was not given
-    assert checker.skipped == ["variant t01-2: a segment is no file its manifest names"]
-    (tree.talkover / "seg" / "a.wav").write_bytes(wav(0.25))  # changed since its manifest
-    with serving(checker) as server:
-        assert get(server, "variant/t01-1/0").status == 409
-
-
-def test_a_recorder_without_a_session_only_reviews(tree: Tree) -> None:
-    with serving(recorder_of(tree, session=None, device=None)) as server:
-        refused = [
-            post(server, route, body).status
-            for route, body in [("api/consent", CONSENT), ("api/take", take())]
-        ]
-        state = get(server, "api/state").json()
-    assert refused == [409, 409]
-    assert (state["session"], state["device"], state["consent"], state["takes"]) == (
-        None,
-        None,
-        None,
-        [],
-    )
-    assert [line["id"] for line in state["lines"]] == ["n01", "n02", "n03", LONG]
 
 
 def _unreadable(folder: Path) -> tuple[Item, ...]:
@@ -382,4 +283,4 @@ def test_poe_record_says_why_it_does_not_start(
 
 def test_the_clock_is_local_time_with_its_offset() -> None:
     assert recorder_state.local_now().utcoffset() is not None
-    assert recorder_load.EVALS == ROOT / "apps" / "ole5-voice-agent" / "evals"
+    assert items.EVALS == ROOT / "apps" / "ole5-voice-agent" / "evals"

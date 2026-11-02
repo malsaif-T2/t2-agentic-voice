@@ -12,7 +12,7 @@ from ole5_voice.evals import run
 from t2_agentic_voice import Settings
 from t2_agentic_voice.ports import SpeechToText
 
-from tests.ole5_voice.evals.test_run import DEV, Setup
+from tests.ole5_voice.evals.run_support import DEV, Setup
 
 SHELL = {
     "T2V_STT__TIMEOUT_S": "30",

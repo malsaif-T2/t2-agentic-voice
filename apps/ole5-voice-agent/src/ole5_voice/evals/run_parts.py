@@ -22,16 +22,15 @@ from dataclasses import dataclass, field
 from datetime import UTC, datetime
 from pathlib import Path
 
-from pydantic import TypeAdapter, ValidationError
 from t2_agentic_voice import Settings, get_logger
-from t2_agentic_voice.languages import normalize_arabic, normalize_digits
 from t2_agentic_voice.ports import SpeechToText
 from t2_agentic_voice.tracing import Tracing
 
-from ole5_voice.evals import history, items, matcher, scorecard, split
+from ole5_voice.evals import cli, history, items, matcher, scorecard, split
 from ole5_voice.evals.answerers import Clock, Sleep, adapter
 from ole5_voice.evals.audio import AudioFormatError, read_wav, sha256_file
-from ole5_voice.evals.models import Item, Name, Split, SplitFile, Variant
+from ole5_voice.evals.files import read_lines
+from ole5_voice.evals.models import Item, Split, SplitFile, Variant
 from ole5_voice.evals.runs import (
     Answer,
     AnswerRequest,
@@ -44,14 +43,7 @@ from ole5_voice.evals.runs import (
 from ole5_voice.evals.worktree import Git, refused, run_git
 
 DATA = Path("apps", "ole5-voice-agent", "evals")  # the golden set's files, below a worktree's top
-_NAME: TypeAdapter[str] = TypeAdapter(Name)
-
 log = get_logger(__name__)
-
-
-def canonical(text: str) -> str:
-    """The normalization a window's words are counted after: Arabic's, then the digits'."""
-    return normalize_digits(normalize_arabic(text))
 
 
 def _now() -> datetime:
@@ -65,8 +57,9 @@ def _here() -> Path:
 @dataclass(frozen=True)
 class Parts:
     """What a run is built from, each replaceable by a test's fake: the folder whose checkout
-    runs, `git`, the golden set's loaders (Track D), the scorecard writer and the history (Track
-    F), the speech-to-text adapter, tracing, the normalizer and the clocks."""
+    runs, `git`, the golden set's loaders (`items.py`, `split.py`, `matcher.py`), the scorecard
+    writer and the history, the speech-to-text adapter, tracing, the normalizer a window's words
+    are counted after (the scorers' form, `matcher.normalize`) and the clocks."""
 
     folder: Path = field(default_factory=_here)
     git: Git = run_git
@@ -77,33 +70,21 @@ class Parts:
     append_line: Callable[[HistoryLine, Path], None] = history.append_line
     speech_to_text: Callable[[Settings], SpeechToText] = adapter
     tracing: Callable[[Settings], Tracing] = Tracing.from_settings
-    normalize: Callable[[str], str] = canonical
+    normalize: Callable[[str], str] = matcher.normalize
     now: Callable[[], datetime] = _now
     clock: Clock = time.perf_counter  # monotonic; 15.6 ms steps for time.monotonic on Windows
     sleep: Sleep = asyncio.sleep
 
 
-def is_name(text: str) -> bool:
-    """Whether `text` is a name the golden set's models take (an item's, a root's, a run's)."""
-    try:
-        _NAME.validate_python(text)
-    except ValidationError:
-        return False
-    return True
-
-
 def audio_roots(values: Sequence[str]) -> dict[str, Path]:
-    """`--audio ROOT=FOLDER`, each root named once."""
-    roots: dict[str, Path] = {}
-    for value in values:
-        root, _, folder = value.partition("=")
-        if not folder or root in roots or not is_name(root):
-            raise refused(
-                f"--audio {value!r} is not ROOT=FOLDER, a root named once",
-                "give each root once, as --audio talkover=<folder>",
-            )
-        roots[root] = Path(folder).expanduser()
-    return roots
+    """`--audio ROOT=FOLDER`, each root once (`cli.audio_roots`), or the run's refusal."""
+    try:
+        roots = cli.audio_roots(cli.audio_root(value) for value in values)
+    except ValueError as error:
+        problem = str(error)
+    else:
+        return roots
+    raise refused(f"--audio: {problem}", "give each root once, as --audio ROOT=FOLDER")
 
 
 @dataclass(frozen=True)
@@ -135,7 +116,7 @@ class Todo:
         item, variant = self.item, self.variant
         right = None
         if judged and answer.failure is None:
-            right = judge.is_right(answer.text or "", [variant.reference, *item.alternatives])
+            right = judge.is_right(answer.text or "", items.references(item, variant))
         return VariantResult(
             item=item.id,
             variant=variant.id,
@@ -172,10 +153,10 @@ def load_plan(data: Path, choice: Choice, parts: Parts) -> Plan:
     checked dev variant, so it never reads a held-out answer. The digest covers the run's
     variants, the committed split and the spelling guide."""
     try:
-        golden = parts.load_items(data / "golden")
-        committed = parts.load_split(data / "split.json")
-        judge = parts.load_matcher(data / "spelling.toml")
-        spelling = sha256_file(data / "spelling.toml")
+        golden = parts.load_items(data / items.GOLDEN_DIR)
+        committed = parts.load_split(data / items.SPLIT_FILE)
+        judge = parts.load_matcher(data / items.SPELLING_FILE)
+        spelling = sha256_file(data / items.SPELLING_FILE)
     except (OSError, ValueError):  # a pydantic ValidationError is a ValueError
         raise refused("the golden set's files do not load", "run `poe golden`") from None
     sides = committed.items
@@ -228,13 +209,13 @@ def load_plan(data: Path, choice: Choice, parts: Parts) -> Plan:
 
 
 def _screened(pairs: list[tuple[Item, Variant]], path: Path) -> list[tuple[Item, Variant]]:
-    """Only the variants a screen file names, one `item/variant` a line (evaluation.md,
-    "Screens"); refused when it names one the run's split does not hold."""
-    try:
-        lines = path.read_text(encoding="utf-8").splitlines()
-    except (OSError, UnicodeDecodeError):
-        raise refused("--questions cannot be read", "give a UTF-8 file") from None
-    wanted = {line.strip() for line in lines if line.strip()}
+    """Only the variants a screen file names, one `item/variant` a line, blank lines and `#`
+    comments skipped (evaluation.md, "Screens"); refused when it names one the run's split does
+    not hold."""
+    lines = read_lines(path)
+    if lines is None:
+        raise refused("--questions cannot be read", "give a UTF-8 file")
+    wanted = set(lines)
     unknown = wanted - {f"{item.id}/{variant.id}" for item, variant in pairs}
     if unknown:
         raise refused(
@@ -277,17 +258,18 @@ def _request(
 def clip_answers(
     path: Path | None, todo: Sequence[Todo], *, commit: str, model: str
 ) -> dict[Variant, str]:
-    """`--clips-from`: the clip answers of the same model's first dev run at this commit, which
-    serve the windows as long as their clip, not sent again (the registration's "Windows"); for
-    a take of two segments, its first segment's, which the window is cut from."""
+    """`--clips-from` (a run's `--out` folder, or its scorecard): the clip answers of the same
+    model's first dev run at this commit, which serve the windows as long as their clip, not
+    sent again (the registration's "Windows"); for a take of two segments, its first segment's,
+    which the window is cut from."""
     if path is None:
         return {}
     try:
-        card = Scorecard.model_validate_json(path.read_bytes())
-    except (OSError, ValueError):
-        raise refused(
-            "--clips-from is not a scorecard", "give a dev run's scorecard.json"
-        ) from None
+        card: Scorecard | None = scorecard.load_scorecard(path)
+    except scorecard.EvalDataError:
+        card = None
+    if card is None:  # raised outside the handler, and naming no field of the file
+        raise refused("--clips-from is not a scorecard", "give a dev run's scorecard.json")
     if (card.run.split, card.run.model, card.run.commit) != ("dev", model, commit):
         raise refused(
             "--clips-from is not a dev run of this model at this commit",

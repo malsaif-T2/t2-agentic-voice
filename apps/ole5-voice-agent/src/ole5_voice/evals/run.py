@@ -3,14 +3,14 @@ evaluation.md's "Running" says.
 
 Before anything is sent, a run refuses the main checkout and a dirty tree, an `--out` that
 exists or that git would track (`worktree.py`), and audio that is not the file its manifest
-hashed. Its settings load with `Settings.from_env` (`--env-file`), the command line's on top: a
-`groq` run names its model and timeout, and its base URL is `--base-url` or the SDK's own,
-whatever the environment holds, so no `T2V_` variable changes a registered arm; `--show-settings`
-shows each resolved, a secret only as set or not set. A smoke test of one dev variant comes
-first and must pass with no failed, retried or refused request. Then each
+hashed. Its settings load with `Settings.from_env` (`--env-file`), the command line's on top
+(`run_settings.py`): a `groq` run names its model and timeout, and its base URL is `--base-url`
+or the SDK's own, whatever the environment holds, so no `T2V_` variable changes a registered
+arm; `--show-settings` shows each resolved, a secret only as set or not set. A smoke test of one
+dev variant comes first and must pass with no failed, retried or refused request. Then each
 variant is answered, and its result written as it finishes (a dev run's `results.jsonl`), with
 a progress line of identifiers, verdicts and timings, never a transcript. The scorecard is
-written by Track F's writer and, for a run that calls a provider, its history line is appended
+written by `scorecard.py` and, for a run that calls a provider, its history line is appended
 to the worktree's `history.jsonl` and copied beside the scorecard. A held-out run writes no
 per-variant output, its lines hold counts only, it is never traced, and one that does not finish
 keeps no result. A run's name is its `--out` folder's name.
@@ -24,8 +24,8 @@ import math
 import sys
 from collections.abc import Sequence
 from pathlib import Path
+from typing import get_args
 
-from pydantic import ValidationError
 from t2_agentic_voice import (
     ConfigurationError,
     Settings,
@@ -43,6 +43,8 @@ from ole5_voice.evals.answerers import (
     RunAnswerer,
     make_answerer,
 )
+from ole5_voice.evals.items import HISTORY_FILE
+from ole5_voice.evals.models import NAME_RULE, Split, is_name
 from ole5_voice.evals.run_parts import (
     DATA,
     Choice,
@@ -51,17 +53,14 @@ from ole5_voice.evals.run_parts import (
     Progress,
     audio_roots,
     clip_answers,
-    is_name,
     load_plan,
 )
+from ole5_voice.evals.run_settings import GROQ_BASE_URL, MODELS, load_settings, show, shown
 from ole5_voice.evals.runs import RunInfo, holds_placeholder
 from ole5_voice.evals.windows import measurer
-from ole5_voice.evals.worktree import Checkout, check_out, inspect, refused
+from ole5_voice.evals.worktree import Checkout, check_out, refused, run_checkout
 
 RESULTS_FILE = "results.jsonl"  # a dev run's results, one line each as it finishes
-HISTORY_FILE = "history.jsonl"  # the committed history; a run's line is also copied beside it
-MODELS = ("whisper-large-v3", "whisper-large-v3-turbo")
-GROQ_BASE_URL = "https://api.groq.com"  # the SDK's own, `groq.base_url`'s default
 _DESCRIPTION = "Run an answerer over the golden set, writing its results and scorecard into --out."
 _HINT_HELP = "the language sent: the item's label's (ar, or en for English), or none (auto)"
 _AUDIO_HELP = "the folder of an audio root the manifests name, once per root"
@@ -93,8 +92,9 @@ def _seconds(text: str) -> float:
 def _parser() -> argparse.ArgumentParser:
     parser = argparse.ArgumentParser(prog="poe eval", description=_DESCRIPTION)
     add = parser.add_argument
+    policy = Policy()  # the run policy's defaults, which the flags below take
     add("--answerer", choices=ANSWERERS, help="reference (sends nothing) or groq (Whisper)")
-    add("--split", choices=("dev", "held-out"), help="the split the run covers, all of it")
+    add("--split", choices=get_args(Split), help="the split the run covers, all of it")
     add("--model", choices=MODELS, help="stt.model for this run (groq needs it)")
     add("--timeout-s", type=_seconds, help="stt.timeout_s for this run (groq needs it)")
     add("--base-url", help=f"groq.base_url for this run ({GROQ_BASE_URL})")
@@ -103,9 +103,20 @@ def _parser() -> argparse.ArgumentParser:
     add("--var-dir", type=Path, help="the settings' var_dir")
     add("--audio", action="append", default=[], metavar="ROOT=FOLDER", help=_AUDIO_HELP)
     add("--out", type=Path, help=_OUT_HELP)
-    add("--max-rpm", type=_count, default=20, help="requests a minute, at most (20)")
-    add("--max-attempts", type=_count, default=4, help="attempts of each request (4)")
-    add("--variant-timeout-s", type=_amount, default=120.0, help="each variant's limit (120)")
+    rpm, attempts, limit = policy.max_rpm, policy.max_attempts, policy.variant_timeout_s
+    add("--max-rpm", type=_count, default=rpm, help=f"requests a minute, at most ({rpm})")
+    add(
+        "--max-attempts",
+        type=_count,
+        default=attempts,
+        help=f"attempts of each request ({attempts})",
+    )
+    add(
+        "--variant-timeout-s",
+        type=_seconds,
+        default=limit,
+        help=f"each variant's limit ({limit:g})",
+    )
     add("--price-per-hour", type=_amount, help="USD an hour of billed audio (groq needs it)")
     add("--cap-usd", type=_amount, help="the most the run may spend (groq needs it)")
     add("--windows-ms", type=_count, nargs="+", default=[], help=_WINDOWS_HELP)
@@ -137,98 +148,10 @@ def _require(parser: argparse.ArgumentParser, args: argparse.Namespace) -> None:
             "a held-out run covers its whole split, untraced: no --questions, "
             "--smoke-only or --tracing-endpoint"
         )
-    if args.variant_timeout_s <= 0:
-        parser.error("--variant-timeout-s is more than 0")
     if args.smoke_only and args.windows_ms:
         parser.error("--smoke-only sends the smoke test's clip, and no windows")
     if args.clips_from and not args.windows_ms:
         parser.error("--clips-from serves a windows run (--windows-ms)")
-
-
-_URL_FLAGS = {
-    "tracing": (
-        "--tracing-endpoint",
-        "an http:// or https:// URL with a host and no user name or password",
-        "the traces endpoint, such as http://127.0.0.1:6006/v1/traces",
-    ),
-    "groq": (
-        "--base-url",
-        "an https:// URL with a host, and no user name, password, query or fragment",
-        f"Groq's API, {GROQ_BASE_URL}, or leave it out",
-    ),
-}
-
-
-def _settings(args: argparse.Namespace) -> Settings:
-    """The settings from the environment and `--env-file`, the command line's on top. The run is
-    traced only when `--tracing-endpoint` says so, whatever `tracing.endpoint` holds, and sends
-    to `--base-url` or the SDK's own address, whatever `groq.base_url` holds."""
-    data = Settings.from_env(args.env_file).model_dump()
-    data["tracing"]["endpoint"] = args.tracing_endpoint
-    data["groq"]["base_url"] = args.base_url or GROQ_BASE_URL
-    data["stt"]["model"] = args.model or data["stt"]["model"]
-    data["stt"]["timeout_s"] = args.timeout_s or data["stt"]["timeout_s"]
-    data["var_dir"] = args.var_dir or data["var_dir"]
-    try:
-        return Settings.model_validate(data)
-    except ValidationError as error:  # only a URL can fail: the rest loaded, or was checked
-        group = str(error.errors(include_input=False)[0]["loc"][0])
-    flag, rule, fix = _URL_FLAGS[group]
-    raise ConfigurationError(f"{flag} is not {rule}. FIX: give {fix}.", details={"setting": flag})
-
-
-def _shown(settings: Settings, args: argparse.Namespace) -> dict[str, str]:
-    """Every setting a run uses, by its dotted name, resolved; a secret only as set or not set.
-    (`var_dir`, a local path that changes no result, is shown by `--show-settings` alone.)"""
-    groq, stt, tracing = settings.groq, settings.stt, settings.tracing
-    return {
-        "env": settings.env,
-        "log_level": settings.log_level,
-        "log_format": settings.log_format,
-        "groq.api_key": "not set" if groq.resolved_api_key() is None else "set",
-        "groq.api_key_file": "not set" if groq.api_key_file is None else "set",
-        "groq.base_url": groq.base_url,
-        "stt.provider": stt.provider,
-        "stt.model": stt.model,
-        "stt.timeout_s": str(stt.timeout_s),
-        "tracing.endpoint": tracing.endpoint or "none",
-        "tracing.project": tracing.project or "none",
-        "tracing.include_transcripts": str(tracing.include_transcripts).lower(),
-        "tracing.redact": f"{len(tracing.redact)} patterns",
-        "run.language_hint": args.language_hint,
-        "run.max_rpm": str(args.max_rpm),
-        "run.max_attempts": str(args.max_attempts),
-        "run.variant_timeout_s": str(args.variant_timeout_s),
-        "run.cap_usd": "none" if args.cap_usd is None else str(args.cap_usd),
-        "run.windows_ms": ",".join(map(str, args.windows_ms)) or "none",
-        "run.smoke_only": str(args.smoke_only).lower(),
-    }
-
-
-def _show(args: argparse.Namespace, settings: Settings, parts: Parts) -> None:
-    """`--show-settings`: each setting, the worktree and each path, as a run would use them."""
-    for name, value in (_shown(settings, args) | {"var_dir": str(settings.var_dir)}).items():
-        log.info("setting", name=name, value=value)
-    try:
-        checkout = inspect(parts.folder, parts.git)
-    except T2VoiceError as error:
-        log.info("worktree", state=error.message)
-        return
-    problem = checkout.refusal()
-    state = "ready" if problem is None else problem.message
-    log.info("worktree", top=str(checkout.top), commit=checkout.commit, state=state)
-    data = checkout.top / DATA
-    paths = {"items": data / "golden", "split": data / "split.json"}
-    paths |= {"spelling": data / "spelling.toml", "history": data / HISTORY_FILE}
-    paths |= {f"audio.{root}": folder for root, folder in audio_roots(args.audio).items()}
-    for name, path in paths.items():
-        log.info("path", name=name, path=str(path), state="exists" if path.exists() else "missing")
-    if args.out is not None:
-        try:
-            state, out = "new", check_out(args.out, checkout, parts.git)
-        except T2VoiceError as error:
-            state, out = error.message, args.out
-        log.info("path", name="out", path=str(out), state=state)
 
 
 async def _answer_all(
@@ -259,20 +182,18 @@ async def _answer_all(
 def _run(args: argparse.Namespace, settings: Settings, parts: Parts) -> int:
     # The settings go into the committed history, as the note does (its check: `_parser`).
     if placed := [
-        name for name, value in _shown(settings, args).items() if holds_placeholder(value)
+        name for name, value in shown(settings, args).items() if holds_placeholder(value)
     ]:
         raise ConfigurationError(
             f"{placed[0]} holds an install placeholder, which the docs check refuses in the "
             "history. FIX: give the setting without one.",
             details={"setting": placed[0]},
         )
-    checkout = inspect(parts.folder, parts.git)
-    if (problem := checkout.refusal()) is not None:
-        raise problem
+    checkout = run_checkout(parts.folder, parts.git)
     out = check_out(args.out, checkout, parts.git)
     if not is_name(out.name):
         raise refused(
-            "the --out folder's name, the run's, is not lowercase letters, digits, '.', '_' or '-'",
+            f"the --out folder's name, the run's, is not a name, which is {NAME_RULE}",
             "name the folder like r1-large-v3",
         )
     spends = args.answerer == "groq"
@@ -311,7 +232,7 @@ def _run(args: argparse.Namespace, settings: Settings, parts: Parts) -> int:
             answerer=answerer.name,
             model=settings.stt.model if answerer.spends else None,
             split=args.split,
-            settings=_shown(settings, args),
+            settings=shown(settings, args),
             price_per_hour_usd=budget.price_per_hour_usd,
             data_digest=plan.digest,
             note=args.note,
@@ -377,11 +298,12 @@ def main(argv: Sequence[str] | None = None, *, parts: Parts | None = None) -> in
     args = parser.parse_args(argv)
     _require(parser, args)
     parts = Parts() if parts is None else parts
+    configure_logging()  # the library's defaults, until the settings name the level and format
     try:
-        settings = _settings(args)
+        settings = load_settings(args)
         configure_logging(settings.log_level, settings.log_format)
         if args.show_settings:
-            _show(args, settings, parts)
+            show(args, settings, parts)
             return 0
         return _run(args, settings, parts)
     except T2VoiceError as error:

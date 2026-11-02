@@ -2,10 +2,12 @@
 
 The allow-list: the replies `replies.json` names, every take below `--out`, and the golden-set
 variants whose files the manifests name below the `--audio` roots given. Each file is found by
-an ID, never by a path a request gives, and sent only when no link leads to it, its bytes are
-WAV, and they match the SHA-256 recorded for them, so no other file below a served folder (a
-`.env` among them) is ever sent. The recorder writes only new files below `--out`, each named by
-`takes.py`, never replacing one: the session's consent, each take and its sidecar, each review.
+an ID, never by a path a request gives, and sent only when no link leads to it and its bytes are
+WAV; a take's and a variant's must also match the SHA-256 their sidecar or manifest records (a
+reply has none recorded, so its WAV header and the no-link check stand for it), so no other file
+below a served folder (a `.env` among them) is ever sent. The recorder writes only new files
+below `--out`, each named by `takes.py`, never replacing one: the session's consent, each take
+and its sidecar, each review.
 
 A review pass is one run of `poe record`, numbered one past the highest pass below `--out`, and
 a take or a variant has at most one review a pass (its file's name says so), so a text the owner
@@ -16,6 +18,7 @@ from __future__ import annotations
 
 import base64
 import binascii
+import contextlib
 import threading
 from collections.abc import Callable
 from dataclasses import dataclass, field
@@ -24,10 +27,22 @@ from http import HTTPStatus
 from pathlib import Path
 from typing import Annotated, Any, Final, Literal
 
-from pydantic import AfterValidator, ConfigDict, Field, TypeAdapter, ValidationError
+from pydantic import AfterValidator, ConfigDict, Field, ValidationError
 
 from ole5_voice.evals.audio import AudioFormatError, parse_wav, sha256_of
-from ole5_voice.evals.models import Consent, Device, Model, Name, RelativePath, TurnEnds
+from ole5_voice.evals.items import reviewed
+from ole5_voice.evals.models import (
+    Consent,
+    Device,
+    Kind,
+    Language,
+    Model,
+    Name,
+    ReferenceSource,
+    RelativePath,
+    TurnEnds,
+    is_name,
+)
 from ole5_voice.evals.takes import (
     Review,
     Script,
@@ -42,7 +57,6 @@ from ole5_voice.evals.takes import (
 )
 
 MAX_BODY: Final = 16 * 1024 * 1024  # a take of about six minutes, as base64 in JSON
-_NAME: TypeAdapter[str] = TypeAdapter(Name)
 
 
 class RecorderError(Exception):
@@ -120,10 +134,10 @@ class Entry:
     id: str
     session: str
     of: str  # its script line or its item
-    kind: str
-    language: str
+    kind: Kind
+    language: Language
     reference: str
-    source: str  # "script", "typed" or "none"
+    source: ReferenceSource
     audio: tuple[Audio, ...]
     reviews: list[Review] = field(default_factory=list)
 
@@ -175,21 +189,24 @@ class Recorder:
             }
 
     def _shown(self, entry: Entry) -> dict[str, Any]:
-        typed = [r for r in entry.reviews if r.verdict == "typed"]
-        last = max(entry.reviews, key=lambda r: r.review_pass, default=None)
+        """An entry as the page shows it: its reference, source and confirmations after the
+        owner's reviews, by the import's rule (`items.reviewed`, Q9), and due for a check this
+        pass when it has none yet and none was made this pass. `load_recorder` refused the
+        reviews that rule refuses, and `add_review` writes none."""
+        reference, source, confirmations = reviewed(entry.reference, entry.source, entry.reviews)
         this_pass = any(r.review_pass == self.review_pass for r in entry.reviews)
         return {
             "id": entry.id,
             "of": entry.of,
             "kind": entry.kind,
             "language": entry.language,
-            "reference": max(typed, key=lambda r: r.review_pass).text if typed else entry.reference,
-            "source": "typed" if typed else entry.source,
+            "reference": reference,
+            "source": source,
             "segments": len(entry.audio),
             "reviews": [
                 r.model_dump(mode="json", include={"review_pass", "verdict"}) for r in entry.reviews
             ],
-            "due": not this_pass and (last is None or last.verdict == "typed"),
+            "due": not this_pass and not confirmations,
         }
 
     def add_consent(self, upload: ConsentUpload) -> dict[str, Any]:
@@ -301,15 +318,13 @@ class Recorder:
         while True:
             n += 1
             take = f"{line}-{session}-{n}"
-            try:
-                names = (
-                    take_audio(session, _NAME.validate_python(take)),
-                    take_sidecar(session, take),
-                )
-            except ValidationError:
+            names: tuple[str, ...] = ()
+            with contextlib.suppress(ValidationError):  # a take named as a device is, on Windows
+                names = (take_audio(session, take), take_sidecar(session, take))
+            if not names or not is_name(take):
                 raise RefusedError(
                     HTTPStatus.BAD_REQUEST, "the line's and session's names are too long"
-                ) from None
+                )
             if take not in self.takes and not any((self.out / name).exists() for name in names):
                 return take
 
@@ -343,7 +358,7 @@ def take_entry(out: Path, take: TakeSidecar, line: ScriptLine) -> Entry:
         kind=line.kind,
         language=line.language,
         reference=line.text,
-        source="script" if line.say else "none",
+        source=line.source,
         audio=(Audio(out, take_audio(take.session, take.take), take.sha256),),
     )
 

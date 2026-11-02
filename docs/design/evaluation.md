@@ -177,8 +177,8 @@ logged as a `Deviation:` line in the progress log.
 When a full run is expensive, screen ideas first:
 - **The screen set:** the stable failures (wrong in two runs of the same code; a failure in one
   run is noise), plus an equal number of stable-right controls drawn in proportion to the
-  strata, committed as a file (`evals/screens/<name>.txt`, one `item/variant` per line) that
-  `poe eval --questions FILE` reads.
+  strata, committed as a file (`evals/screens/<name>.txt`, one `item/variant` per line, blank
+  lines and `#` comments skipped) that `poe eval --questions FILE` reads.
 - **A plain rerun** at the same commit on the screen set measures how many failures recover by
   chance.
 - **The rule, fixed before any screen runs:** a net of at least +k against the rerun, with at

@@ -18,7 +18,6 @@ from __future__ import annotations
 import argparse
 import json
 import math
-import re
 import sys
 from collections import Counter
 from collections.abc import Callable, Mapping, Sequence
@@ -29,8 +28,8 @@ from typing import Final
 from t2_agentic_voice import configure_logging, get_logger
 from t2_agentic_voice.languages import SpellingIssue, SpellingRule, spelling_issues
 
+from ole5_voice.evals import cli
 from ole5_voice.evals.audio import AudioFormatError, Wav, read_wav
-from ole5_voice.evals.import_recordings import root_name
 from ole5_voice.evals.items import (
     EVALS,
     FROZEN_FILE,
@@ -44,10 +43,12 @@ from ole5_voice.evals.items import (
     GoldenSetError,
     Strata,
     count_strata,
+    holds_term,
     load_items,
     load_manifests,
     load_terms,
     read_toml,
+    references,
     unchecked,
     write_text,
 )
@@ -110,10 +111,6 @@ def _load(evals: Path) -> _Set:
     )
 
 
-def _holds(text: str, term: str) -> bool:
-    return re.search(rf"(?<!\w){re.escape(term)}(?!\w)", text) is not None
-
-
 def _check_item(item: Item, found: _Set, check: SpellingCheck) -> list[str]:
     """The item's problems: its references, terms and spellings."""
     problems = []
@@ -138,7 +135,7 @@ def _check_item(item: Item, found: _Set, check: SpellingCheck) -> list[str]:
             problems.append(f"{name}: a listening sound outside the script's list ({ruling})")
     texts = [item.text, *(v.reference for v in item.variants)]
     for term in item.terms:
-        if term not in found.terms or not any(_holds(text, term) for text in texts):
+        if term not in found.terms or not any(holds_term(text, term) for text in texts):
             problems.append(f"{item.id}: the term {term} is not in terms.toml or not in its text")
     rules = found.guide.rules_for(item.kind)
     spelled = {(v.id, text) for v in item.variants for text in (v.reference, *item.alternatives)}
@@ -237,7 +234,7 @@ def _frozen(
             "want": item.want,
             "terms": list(item.terms),
             "variants": [
-                {"id": v.id, "device": v.device, "expected": [v.reference, *item.alternatives]}
+                {"id": v.id, "device": v.device, "expected": list(references(item, v))}
                 for v in accepted[item.id]
             ],
         }
@@ -287,20 +284,13 @@ def validate(
     return report
 
 
-def _audio_root(value: str) -> tuple[str, Path]:
-    name, sep, folder = value.partition("=")
-    if not sep or not folder:
-        raise argparse.ArgumentTypeError("give a root as NAME=FOLDER")
-    return root_name(name), Path(folder)
-
-
 def main(argv: Sequence[str] | None = None) -> int:
     """`uv run poe golden`: validate the golden set and freeze its expected answers."""
     parser = argparse.ArgumentParser(prog="poe golden", description=_DESCRIPTION)
     parser.add_argument("--evals", type=Path, default=EVALS, help="the golden set's folder")
     parser.add_argument(
         "--audio",
-        type=_audio_root,
+        type=cli.audio_root_type,
         action="append",
         default=[],
         metavar="ROOT=FOLDER",
@@ -308,9 +298,10 @@ def main(argv: Sequence[str] | None = None) -> int:
     )
     parser.add_argument("--check", action="store_true", help="fail if frozen.json is stale")
     args = parser.parse_args(argv)
-    audio = dict(args.audio)
-    if len(audio) != len(args.audio):
-        parser.error("each --audio root is given once")
+    try:
+        audio = cli.audio_roots(args.audio)
+    except ValueError as error:
+        parser.error(str(error))
     configure_logging()
     report = validate(args.evals, check=spelling_issues, audio=audio, read=read_wav)
     for item, variant, why in report.left_out:

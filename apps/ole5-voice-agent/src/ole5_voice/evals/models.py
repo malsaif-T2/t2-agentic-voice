@@ -12,11 +12,27 @@ from datetime import date, datetime
 from pathlib import PurePosixPath
 from typing import Annotated, Final, Literal
 
-from pydantic import AfterValidator, BaseModel, ConfigDict, Field, StringConstraints
+from pydantic import AfterValidator, BaseModel, ConfigDict, Field, StringConstraints, TypeAdapter
 
 Sha256 = Annotated[str, StringConstraints(pattern=r"^[0-9a-f]{64}$")]
-# An item's, a variant's, a take's, a root's or a session's name.
+# An item's, a variant's, a take's, a root's, a session's or a run's name.
 Name = Annotated[str, StringConstraints(pattern=r"^[a-z0-9][a-z0-9_.-]{0,127}$")]
+# The rule a `Name` keeps, as every refusal of one states it.
+NAME_RULE: Final = (
+    "a lowercase letter or digit, then up to 127 lowercase letters, digits, '_', '.' or '-'"
+)
+_NAME: Final = TypeAdapter(Name)
+
+
+def is_name(text: str) -> bool:
+    """Whether `text` is a `Name`."""
+    try:
+        _NAME.validate_python(text)
+    except ValueError:  # a pydantic ValidationError
+        return False
+    return True
+
+
 # The name of a held-out run's pooled group (`runs.HELD_OUT_MIN_ITEMS`). No language, device or
 # split is named so, and no kind may be, so it never merges with a real value.
 Other = Literal["other"]
@@ -37,6 +53,8 @@ Commit = Annotated[str, StringConstraints(pattern=r"^[0-9a-f]{7,40}\+?$")]
 Language = Literal["saudi", "msa", "english", "mixed", "none"]
 Device = Literal["laptop", "wired", "bluetooth"]  # the microphone used
 Split = Literal["dev", "held-out"]
+# Where a variant's reference came from: the script's line, the owner's typed words, or no speech.
+ReferenceSource = Literal["script", "typed", "none"]
 # The names Windows keeps for a device, whatever their extension: COM and LPT ports 0 to 9, and
 # 1 to 3 written as superscripts (U+00B9, U+00B2, U+00B3).
 _DEVICES = frozenset(
@@ -120,8 +138,7 @@ class Variant(Model):
     session: Name
     # What it says, under the spelling guide; empty when nothing is said.
     reference: str
-    # Where the reference came from: the script's line, the owner's typed words, or no speech.
-    reference_source: Literal["script", "typed", "none"]
+    reference_source: ReferenceSource
     confirmations: tuple[Confirmation, ...] = ()
     # The true turn ends of a take of several clauses, in ms from its start.
     turn_ends_ms: TurnEnds = ()
@@ -173,7 +190,7 @@ class Manifest(Model):
 
 
 class SplitFile(Model):
-    """`split.json`, the committed split: its salt and each item's split, by item ID (Track D
+    """`split.json`, the committed split: its salt and each item's split, by item ID (`split.py`
     writes it, the runner reads it)."""
 
     salt: str = Field(min_length=1)

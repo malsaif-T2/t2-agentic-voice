@@ -25,22 +25,18 @@ from dataclasses import dataclass
 from pathlib import Path
 from typing import Final
 
-from pydantic import ValidationError
-from t2_agentic_voice import T2VoiceError, evals
+from t2_agentic_voice import T2VoiceError, configure_logging, evals, get_logger
 
-from ole5_voice.evals.runs import (
-    HELD_OUT_MIN_ITEMS,
-    SCORECARD_FILE,
-    Metrics,
-    Scorecard,
-    VariantResult,
-)
-from ole5_voice.evals.scorecard import EvalDataError, first_problem
+from ole5_voice.evals.compare_report import aggregates, header
+from ole5_voice.evals.files import read_lines
+from ole5_voice.evals.runs import HELD_OUT_MIN_ITEMS, Scorecard, VariantResult
+from ole5_voice.evals.scorecard import load_scorecard
 
 ALPHA: Final = 0.05  # a p-value below it is beyond the noise
 SignTest = Callable[[int, int], float]
 _DESCRIPTION = "Compare two runs: fixed, broken and net per variant, and the sign test by item."
 _FAILURES: Final = {"provider": "a provider failure", "stuck": "stuck past its time limit"}
+log = get_logger(__name__)
 
 
 class ComparisonError(T2VoiceError):
@@ -71,34 +67,12 @@ class ByItem:
     p: float
 
 
-def load_scorecard(path: Path) -> Scorecard:
-    """The scorecard at `path` (a run's `--out` folder, or its scorecard file), read strictly,
-    so a held-out scorecard holding a variant is refused as it is read."""
-    file = path / SCORECARD_FILE if path.is_dir() else path
-    try:
-        text: str | None = file.read_text(encoding="utf-8")
-    except (OSError, UnicodeDecodeError):  # a decode error holds the file's bytes
-        text = None
-    if text is None:
-        raise EvalDataError(f"{file} is not a readable scorecard")
-    try:
-        return Scorecard.model_validate_json(text)
-    except ValidationError as error:
-        problem = first_problem(error)
-    # Raised here, outside the handler, so no exception chain leads to the file's text.
-    raise EvalDataError(f"{file} is not a valid scorecard: {problem}")
-
-
 def read_focus(path: Path) -> tuple[str, ...]:
     """The item IDs of a focus file: one per line; blank lines and `#` comments skipped."""
-    try:
-        text: str | None = path.read_text(encoding="utf-8")
-    except (OSError, UnicodeDecodeError):
-        text = None
-    if text is None:
+    found = read_lines(path)
+    if found is None:
         raise ComparisonError(f"{path} is not a readable focus file")
-    lines = [line.strip() for line in text.splitlines()]
-    return tuple(line for line in lines if line and not line.startswith("#"))
+    return found
 
 
 def pair(a: Scorecard, b: Scorecard) -> tuple[list[Change], list[tuple[str, str]]]:
@@ -205,7 +179,7 @@ def compare(a: Scorecard, b: Scorecard, *, sign_test: SignTest, focus: Sequence[
     unknown = sorted(set(focus) - {result.item for result in (*a.variants, *b.variants)})
     if unknown:
         raise ComparisonError(f"--focus names {len(unknown)} item(s) in neither run")
-    lines = _header(a, b)
+    lines = header(a, b)
     if held_out:
         lines.append(
             "Held-out runs are compared by aggregates only: no variant, no item, and a stratum "
@@ -214,34 +188,7 @@ def compare(a: Scorecard, b: Scorecard, *, sign_test: SignTest, focus: Sequence[
         )
     else:
         lines += _paired(*pair(a, b), focus=focus, sign_test=sign_test)
-    return "\n".join(lines + _aggregates(a, b)) + "\n"
-
-
-def _header(a: Scorecard, b: Scorecard) -> list[str]:
-    rows = [
-        ("Run", a.run.name, b.run.name),
-        ("Answerer", a.run.answerer, b.run.answerer),
-        ("Model", a.run.model or "—", b.run.model or "—"),
-        ("Split", a.run.split, b.run.split),
-        ("Commit", a.run.commit, b.run.commit),
-        ("Complete", _yes(a.complete), _yes(b.complete)),
-    ]
-    names = sorted(a.run.settings.keys() | b.run.settings.keys())
-    differ = [
-        f"{name} ({a.run.settings.get(name, 'unset')} in A, {b.run.settings.get(name, 'unset')}"
-        " in B)"
-        for name in names
-        if a.run.settings.get(name) != b.run.settings.get(name)
-    ]
-    return [
-        f"# {b.run.name} judged against {a.run.name}\n",
-        "| | A, the baseline | B, the candidate |\n| --- | --- | --- |",
-        *(f"| {label} | {first} | {second} |" for label, first, second in rows),
-        "",
-        f"Same commit and data: {a.run.commit}, data digest {a.run.data_digest[:12]}.",
-        "Settings that differ: " + ("; ".join(differ) if differ else "none") + ".",
-        "Every number describes one speaker, the owner (D-006).\n",
-    ]
+    return "\n".join(lines + aggregates(a, b)) + "\n"
 
 
 def _paired(
@@ -309,59 +256,6 @@ def _verdict(result: ByItem) -> str:
     )
 
 
-def _aggregates(a: Scorecard, b: Scorecard) -> list[str]:
-    first, second = a.totals.model_dump(), b.totals.model_dump()
-    lines = [
-        "## Aggregates, each run's own scorecard\n",
-        "| Metric | A | B | B - A |\n| --- | --- | --- | --- |",
-        *(
-            _compared(name, first[name], second[name], whole=field.annotation is int)
-            for name, field in Metrics.model_fields.items()
-        ),
-        "",
-        "| Stratum | Value | A accuracy | B accuracy | B - A |",
-        "| --- | --- | --- | --- | --- |",
-    ]
-    strata = {(s, v) for card in (a, b) for s, values in card.breakdowns.items() for v in values}
-    for stratum, value in sorted(strata):
-        groups = [card.breakdowns.get(stratum, {}).get(value) for card in (a, b)]
-        if a.run.split == "held-out" and not _same_items(*groups):
-            continue
-        accuracies = [group.accuracy if group else None for group in groups]
-        lines.append(f"| {stratum} " + _compared(value, *accuracies))
-    return lines
-
-
-def _same_items(first: Metrics | None, second: Metrics | None) -> bool:
-    """Whether both held-out runs hold a group over the same number of items, at least
-    `HELD_OUT_MIN_ITEMS`, with no failure: at one data digest, the same items and variants, so
-    B - A is never taken between groups that pool other items or variants, which would tell
-    those between them apart (a failure moves an item's answered variants, and may pool it)."""
-    return (
-        first is not None
-        and second is not None
-        and first.items == second.items >= HELD_OUT_MIN_ITEMS
-        and first.failures == second.failures == 0
-    )
-
-
-def _compared(label: str, first: float | None, second: float | None, *, whole: bool = False) -> str:
-    """A table row of A's and B's value and B's change; `whole` for a count."""
-    shown = "{:+.0f}" if whole else "{:+.4f}"
-    change = "—" if first is None or second is None else shown.format(second - first)
-    return f"| {label} | {_number(first, whole)} | {_number(second, whole)} | {change} |"
-
-
-def _number(value: float | None, whole: bool) -> str:
-    if value is None:
-        return "—"
-    return f"{value:.0f}" if whole else f"{value:.4f}"
-
-
-def _yes(flag: bool) -> str:
-    return "yes" if flag else "no"
-
-
 def main(argv: Sequence[str] | None = None, *, sign_test: SignTest = evals.sign_test) -> int:
     """`uv run poe eval-compare`: compare two runs variant by variant."""
     parser = argparse.ArgumentParser(prog="poe eval-compare", description=_DESCRIPTION)
@@ -374,6 +268,7 @@ def main(argv: Sequence[str] | None = None, *, sign_test: SignTest = evals.sign_
         "ran; shown apart",
     )
     args = parser.parse_args(argv)
+    configure_logging()
     try:
         report = compare(
             load_scorecard(args.baseline),
@@ -382,9 +277,9 @@ def main(argv: Sequence[str] | None = None, *, sign_test: SignTest = evals.sign_
             focus=read_focus(args.focus) if args.focus else (),
         )
     except T2VoiceError as error:
-        sys.stderr.write(f"eval-compare: {error.message} [{error.code}]\n")
+        log.error("comparison_not_made", code=error.code, message=error.message)
         return 1
-    sys.stdout.write(report)
+    sys.stdout.write(report)  # the command's product, Markdown on stdout, not a log line
     return 0
 
 

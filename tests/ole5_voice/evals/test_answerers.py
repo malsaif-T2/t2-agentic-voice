@@ -29,14 +29,9 @@ from tests.ole5_voice.evals.fakes import (
     FakeTracing,
     fake_normalize,
 )
-from tests.ole5_voice.evals.test_run_parts import FakeClock, World, make_world
+from tests.ole5_voice.evals.run_support import FakeClock, World
 
 MEASURE = measurer(fake_normalize, FakeMatcher().is_right)
-
-
-@pytest.fixture
-def world(tmp_path: Path) -> World:
-    return make_world(tmp_path)
 
 
 def _groq(
@@ -316,4 +311,3 @@ def test_the_budget_counts_billed_seconds_at_the_price(settings: Settings) -> No
     budget.charge(7200.0)
     assert (budget.requests, budget.billed_seconds) == (2, 7210.0)
     assert budget.cost_usd == pytest.approx(7210 / 3600 * 0.111)
-    assert answerers.GROQ_MINIMUM_S == 10.0

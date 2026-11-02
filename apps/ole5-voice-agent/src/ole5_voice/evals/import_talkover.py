@@ -15,18 +15,17 @@ confirmations, as for the new recordings.
 from __future__ import annotations
 
 import argparse
-import json
-import re
 import sys
 from collections.abc import Callable, Mapping, Sequence
 from datetime import datetime
 from pathlib import Path
 from typing import Final, Literal
 
-from pydantic import BaseModel, ConfigDict, Field, TypeAdapter, ValidationError
+from pydantic import BaseModel, ConfigDict, Field, TypeAdapter
 from t2_agentic_voice import configure_logging, get_logger
 
 from ole5_voice.evals.audio import AudioFormatError, Wav, read_wav
+from ole5_voice.evals.files import read_model
 from ole5_voice.evals.import_recordings import read_reviews
 from ole5_voice.evals.items import (
     EVALS,
@@ -34,7 +33,8 @@ from ole5_voice.evals.items import (
     MANIFESTS_DIR,
     TERMS_FILE,
     GoldenSetError,
-    Source,
+    dump_manifest,
+    holds_term,
     load_terms,
     reviewed,
     write_text,
@@ -46,6 +46,7 @@ from ole5_voice.evals.models import (
     Manifest,
     ManifestFile,
     Name,
+    ReferenceSource,
     RelativePath,
     Variant,
 )
@@ -147,11 +148,13 @@ class LabTake(_Lab):
     segments: tuple[RelativePath, ...]
 
 
+_REFS: Final = TypeAdapter(dict[str, LabSegment])
+_TAKES: Final = TypeAdapter(dict[str, LabTake])
+
+
 def _read[T](path: Path, shape: TypeAdapter[T]) -> T:
-    try:
-        return shape.validate_python(json.loads(path.read_text(encoding="utf-8")))
-    except (OSError, ValueError, ValidationError) as error:
-        raise GoldenSetError(f"{path.name}: {error}") from None
+    """A lab file, whose records hold transcripts: its refusal names fields only."""
+    return read_model(path, shape, lambda problem: GoldenSetError(f"{path.name}: {problem}"))
 
 
 def _segments(take: LabTake, refs: Mapping[str, LabSegment]) -> list[LabSegment]:
@@ -179,11 +182,7 @@ def _kind(take: LabTake) -> str:
 
 def _terms(texts: Sequence[str], terms: Sequence[str]) -> tuple[str, ...]:
     """The product terms the texts hold, each as a whole word and as the product writes it."""
-    return tuple(
-        term
-        for term in terms
-        if any(re.search(rf"(?<!\w){re.escape(term)}(?!\w)", text) for text in texts)
-    )
+    return tuple(term for term in terms if any(holds_term(text, term) for text in texts))
 
 
 def build(
@@ -196,8 +195,8 @@ def build(
 ) -> tuple[list[Item], Manifest, list[str]]:
     """The talk-over items, their manifest, and the takes left out for having no segment. A take
     named in `left_out` (`LEFT_OUT`, from `main`) is left out whole, its files with it."""
-    refs = _read(lab / "refs.json", TypeAdapter(dict[str, LabSegment]))
-    takes = _read(lab / "takes.json", TypeAdapter(dict[str, LabTake]))
+    refs = _read(lab / "refs.json", _REFS)
+    takes = _read(lab / "takes.json", _TAKES)
     if sorted(refs) != sorted(name for take in takes.values() for name in take.segments):
         raise GoldenSetError("refs.json and takes.json name different segment files")
     skipped = left_out or {}
@@ -230,7 +229,7 @@ def build(
             )
         if not segments:
             continue
-        source: Source = "typed" if take.kind == "unscripted" else "script"
+        source: ReferenceSource = "typed" if take.kind == "unscripted" else "script"
         heard = read_reviews(reviews, session, take.take) if reviews else []
         reference, source, confirmations = reviewed(" ".join(take.text.split()), source, heard)
         tags = {take.condition, f"playback-{take.device}"}
@@ -281,8 +280,7 @@ def write(evals: Path, items: Sequence[Item], manifest: Manifest) -> None:
     files the import owns."""
     for item in items:
         write_text(evals / GOLDEN_DIR / f"{item.id}.toml", dump_item(item, comments=HEADER))
-    text = json.dumps(manifest.model_dump(mode="json"), ensure_ascii=False, indent=2)
-    write_text(evals / MANIFESTS_DIR / f"{ROOT}.json", text + "\n")
+    write_text(evals / MANIFESTS_DIR / f"{ROOT}.json", dump_manifest(manifest))
 
 
 def main(argv: Sequence[str] | None = None) -> int:

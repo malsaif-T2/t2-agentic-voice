@@ -112,7 +112,8 @@ def test_an_item_that_cannot_be_right_is_refused(change: dict[str, object]) -> N
 
 
 def test_the_ticket_kind_is_a_kind() -> None:
-    """Tracks D and F agree on it: D's ticket items carry it, F scores ID recall over them."""
+    """The golden set and the scorecard agree on it: the ticket items carry it, and the
+    scorecard scores ID recall over them."""
     assert TypeAdapter(Kind).validate_python(TICKET_KIND) == "ticket_number"
 
 

@@ -36,6 +36,7 @@ from ole5_voice.evals.runs import (
     Request,
     SegmentAnswer,
     Window,
+    cost_usd,
 )
 from ole5_voice.evals.windows import Measure
 
@@ -43,7 +44,8 @@ ANSWERERS = ("reference", "groq")
 # The speech-to-text adapter of each `stt.provider` (GP-22: a provider is swapped by a setting).
 _ADAPTERS: Mapping[str, Callable[[Settings], SpeechToText]] = {"groq": GroqSTT.from_settings}
 # Groq bills each request at least 10 s of audio (plan 002, "The cost and the time"; the
-# design's 10.4).
+# design's 10.4): the library adapter's own minimum, which a test ties it to. The answerer
+# charges a request before it is sent, so it cannot take the minimum from the transcript.
 GROQ_MINIMUM_S = 10.0
 RATE_LIMIT_PAUSE_S = 20.0  # the least pause after a rate limit (stt_eval.py, line 581)
 RETRY_PAUSE_S = 3.0  # the pause after another failure that may pass (stt_eval.py, line 585)
@@ -71,12 +73,12 @@ class Budget:
 
     @property
     def cost_usd(self) -> float:
-        return self.billed_seconds / 3600 * self.price_per_hour_usd
+        return cost_usd(self.billed_seconds, self.price_per_hour_usd)
 
     def charge(self, seconds: float) -> None:
         """Count one request billed `seconds`, before it is sent; CapReachedError, with nothing
         counted, when the run's cost would then pass the cap."""
-        cost = (self.billed_seconds + seconds) / 3600 * self.price_per_hour_usd
+        cost = cost_usd(self.billed_seconds + seconds, self.price_per_hour_usd)
         if self.cap_usd is not None and cost > self.cap_usd:
             raise CapReachedError
         self.billed_seconds += seconds

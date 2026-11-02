@@ -2,8 +2,9 @@
 standard library's `wave`, so no audio package is installed.
 
 `poe golden` hashes and checks the files it is given, the runner cuts its clips and windows
-from them, and the recorder writes its takes with them (Tracks D, E and G). The files stay out
-of git (D-022); a manifest holds each one's hash, length and format.
+from them (`run_parts.py`, `answerers.py`), and the recorder writes its takes with them
+(`recorder_state.py`). The files stay out of git (D-022); a manifest holds each one's hash,
+length and format.
 """
 
 from __future__ import annotations

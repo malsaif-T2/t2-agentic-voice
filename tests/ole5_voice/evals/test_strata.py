@@ -11,7 +11,7 @@ from datetime import date, datetime
 from ole5_voice.evals.items import EVALS, Strata, count_strata, load_items, load_terms, read_toml
 from ole5_voice.evals.matcher import load_guide
 from ole5_voice.evals.models import TICKET_KIND, Item, Variant
-from ole5_voice.evals.takes import Script, load_script
+from ole5_voice.evals.takes import Script
 from t2_agentic_voice.languages import spelling_issues
 
 from tests.ole5_voice.evals import samples
@@ -65,7 +65,7 @@ LANGUAGES = ("saudi", "msa", "english", "mixed", "none")
 
 
 def test_the_script_holds_the_approved_proposals_lines() -> None:
-    script = load_script(EVALS / "script.toml")
+    script = read_toml(EVALS / "script.toml", Script)
     found = Counter((line.kind, line.language) for line in script.lines)
     expected = {
         (kind, language): n
@@ -78,7 +78,7 @@ def test_the_script_holds_the_approved_proposals_lines() -> None:
 
 
 def test_the_scripts_lines_follow_the_spelling_guide() -> None:
-    script = load_script(EVALS / "script.toml")
+    script = read_toml(EVALS / "script.toml", Script)
     terms = set(load_terms(EVALS / "terms.toml"))
     guide = load_guide(EVALS / "spelling.toml")
     for line in script.lines:
@@ -99,7 +99,7 @@ TICKET_NUMBER = re.compile(r"(?P<date>[0-9]{8})82[0-9]{6}")
 
 
 def test_the_scripts_ticket_numbers_are_made_up_in_the_owners_shape() -> None:
-    script = load_script(EVALS / "script.toml")
+    script = read_toml(EVALS / "script.toml", Script)
     numbers = {
         line.id: re.findall(r"[0-9]+", line.text)
         for line in script.lines
@@ -123,7 +123,7 @@ def test_the_scripts_ticket_numbers_are_made_up_in_the_owners_shape() -> None:
 
 def test_the_committed_set_holds_its_registered_strata() -> None:
     registered = read_toml(EVALS / "strata.toml", Strata)
-    counted = count_strata(load_items(EVALS / "golden"), load_script(EVALS / "script.toml"))
+    counted = count_strata(load_items(EVALS / "golden"), read_toml(EVALS / "script.toml", Script))
     assert counted == registered
     # The set as the registration describes it: the talk-over's 120 takes with segments, less
     # the two the owner left out after the review (`import_talkover.LEFT_OUT`), all on the
