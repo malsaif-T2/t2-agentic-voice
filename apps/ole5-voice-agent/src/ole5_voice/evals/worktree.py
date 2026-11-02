@@ -84,12 +84,7 @@ def inspect(folder: Path, git: Git = run_git) -> Checkout:
     if found.returncode != 0 or not found.stdout.strip():
         raise refused(f"{folder} is not inside a git checkout", "run from the run's worktree")
     top = Path(found.stdout.strip())
-    listed = git(["worktree", "list", "--porcelain", "-z"], top)
-    trees = tuple(
-        Path(field.removeprefix("worktree "))
-        for field in listed.stdout.split("\0")
-        if field.startswith("worktree ")
-    )
+    trees = worktree_tops(top, git)
     head = git(["rev-parse", "--verify", "HEAD"], top)
     commit = head.stdout.strip()
     if head.returncode != 0 or not _COMMIT.fullmatch(commit):
@@ -103,6 +98,23 @@ def inspect(folder: Path, git: Git = run_git) -> Checkout:
         worktrees=trees or (top,),
         commit=commit,
         clean=not status.stdout,
+    )
+
+
+def worktree_tops(folder: Path, git: Git = run_git) -> tuple[Path, ...]:
+    """The top folder of every worktree of the repository `folder` is in, the main checkout's
+    first, as `git worktree list` gives them; none when git names no checkout there, or is not
+    on PATH."""
+    try:
+        listed = git(["worktree", "list", "--porcelain", "-z"], folder)
+    except (InvalidRequestError, OSError):  # no git on PATH, or no such folder
+        return ()
+    if listed.returncode != 0:
+        return ()
+    return tuple(
+        Path(field.removeprefix("worktree "))
+        for field in listed.stdout.split("\0")
+        if field.startswith("worktree ")
     )
 
 

@@ -10,7 +10,17 @@ from collections.abc import Sequence
 from pathlib import Path
 
 import pytest
-from ole5_voice.evals.worktree import Checkout, GitResult, check_out, inspect, run_commit, run_git
+from ole5_voice.evals import recorder_load
+from ole5_voice.evals.recorder_state import RecorderError
+from ole5_voice.evals.worktree import (
+    Checkout,
+    GitResult,
+    check_out,
+    inspect,
+    run_commit,
+    run_git,
+    worktree_tops,
+)
 from t2_agentic_voice import InvalidRequestError
 
 from tests.ole5_voice.evals.run_support import COMMIT, FakeGit
@@ -69,6 +79,17 @@ def test_a_checkout_git_lists_no_worktree_of_is_its_own_main(tmp_path: Path) -> 
 
     checkout = inspect(tmp_path, git)
     assert (checkout.main, checkout.worktrees, checkout.linked) == (tmp_path, (tmp_path,), False)
+
+
+def test_the_worktrees_are_none_where_git_names_no_checkout(tmp_path: Path) -> None:
+    main, top = _trees(tmp_path)
+    assert worktree_tops(top, FakeGit(top, main)) == (main, top)
+    assert worktree_tops(top, FakeGit(top, main, failing=("worktree",))) == ()
+
+    def no_git(args: Sequence[str], cwd: Path) -> GitResult:
+        raise InvalidRequestError("The run is refused: git is not on PATH. FIX: install git.")
+
+    assert worktree_tops(top, no_git) == ()
 
 
 def _checkout(tmp_path: Path) -> tuple[Checkout, FakeGit]:
@@ -167,3 +188,29 @@ def test_the_real_git_answers_as_the_checks_expect(real_git: Path, tmp_path: Pat
     loose.mkdir()
     with pytest.raises(InvalidRequestError, match="not inside a git checkout"):
         inspect(loose)
+
+
+def test_the_recorder_run_from_a_linked_worktree_refuses_the_main_checkouts_tree(
+    real_git: Path, tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    """`poe record --out` is refused in the repository outside its git-ignored var/: in the
+    main checkout too when the recorder's code is a linked worktree's, so no take lands where
+    git tracks it (plan 004, app8)."""
+    main, linked = real_git, tmp_path / "linked"
+    subprocess.run(
+        [GIT, "worktree", "add", "-q", "--detach", str(linked)],
+        cwd=main,
+        check=True,
+        capture_output=True,
+    )
+    monkeypatch.setattr(recorder_load, "_REPO", linked)  # the recorder's code is the worktree's
+    script = tmp_path / "script.toml"
+    script.write_text(
+        '[[lines]]\nid = "n01"\nkind = "request"\nlanguage = "english"\nsay = ["a b"]\n',
+        encoding="utf-8",
+    )
+    for out in (main / "apps" / "takes", linked / "docs" / "takes"):
+        with pytest.raises(RecorderError, match="outside its git-ignored var/"):
+            recorder_load.load_recorder(out=out, script=script)
+    for out in (main / "var" / "takes", linked / "var" / "takes", tmp_path / "takes"):
+        assert recorder_load.load_recorder(out=out, script=script).out == out.resolve()

@@ -30,6 +30,7 @@ from ole5_voice.evals.recorder_state import (
     take_entry,
 )
 from ole5_voice.evals.takes import SESSION_FILE, Review, Script, SessionRecord, TakeSidecar
+from ole5_voice.evals.worktree import Git, run_git, worktree_tops
 
 EVALS: Final = Path(__file__).resolve().parents[3] / "evals"  # apps/ole5-voice-agent/evals
 _REPO: Final = EVALS.parents[2]
@@ -46,6 +47,19 @@ def is_name(value: str) -> bool:
     except ValidationError:
         return False
     return True
+
+
+def _tracked(out: Path, git: Git) -> bool:
+    """Whether `out` (resolved) is in this repository outside its git-ignored var/: inside the
+    innermost of its worktrees that holds it, outside that worktree's `var/`. The main
+    checkout's tree counts too when the recorder runs from a linked worktree, as git lists them
+    (plan 004, app8); with no git, only the recorder's own checkout is known."""
+    tops = {top.resolve() for top in (_REPO, *worktree_tops(_REPO, git))}
+    holders = [top for top in tops if out.is_relative_to(top)]
+    if not holders:
+        return False
+    holder = max(holders, key=lambda top: len(top.parts))
+    return not out.is_relative_to(holder / "var")
 
 
 def _parse[M: Model](model: type[M], path: Path) -> M:
@@ -148,11 +162,13 @@ def load_recorder(
     manifests: Path = EVALS / "manifests",
     load_items: Callable[[Path], Sequence[Item]] | None = None,
     clock: Callable[[], datetime] = local_now,
+    git: Git = run_git,
 ) -> Recorder:
     """The recorder for one run, or RecorderError naming what to give instead. `load_items`
-    reads the golden set's items (`items.load_items` unless another is given)."""
+    reads the golden set's items (`items.load_items` unless another is given), and `git`
+    lists the repository's worktrees."""
     out = out.resolve()
-    if out.is_relative_to(_REPO) and not out.is_relative_to(_REPO / "var"):
+    if _tracked(out, git):
         raise RecorderError(f"--out {out} is in the repository, outside its git-ignored var/")
     try:
         lines = golden_items.read_toml(script, Script)
