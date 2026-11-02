@@ -393,6 +393,10 @@ compared by aggregates only.
 - **`--focus FILE`:** the items a change aims at, one item ID a line, written before B ran, are
   shown apart; the verdict is still every item's.
 
+A refusal is a log line, `comparison_not_made`, and exit code 1. The library logs to standard
+output, the stream the report is printed to, so `poe eval-compare A B > report.md` writes a
+refusal into the file and shows nothing on the terminal: check the exit code before reading it.
+
 M1's baseline, R2 (turbo) judged against R1 (large-v3): 231 variants compared, 6 fixed and 35
 broken (net -29); 2 items better, 18 worse and 46 unchanged, p = 0.0004, beyond the noise. The
 guard read turbo worse beyond the noise on Saudi Arabic (2 better, 12 worse, p = 0.0129), the
