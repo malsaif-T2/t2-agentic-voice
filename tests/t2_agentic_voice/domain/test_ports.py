@@ -19,7 +19,7 @@ FLOW = DataFlow(
 
 
 class _Length:
-    """A provider that hears only how long the clip is."""
+    """A provider that hears only how long the clip is, and holds nothing open."""
 
     name = "length"
     data_flow = FLOW
@@ -30,6 +30,9 @@ class _Length:
         return Transcript(
             text=f"{clip.seconds:.1f} s", language=language, billed_seconds=clip.seconds
         )
+
+    async def aclose(self) -> None:
+        return None
 
 
 def test_a_clip_knows_how_long_it_lasts() -> None:
@@ -60,3 +63,4 @@ def test_a_provider_implements_the_port() -> None:
     heard = asyncio.run(stt.transcribe(clip, language="ar", prompt=None))
     assert (heard.text, heard.language, heard.billed_seconds) == ("0.1 s", "ar", 0.1)
     assert (stt.name, stt.data_flow.provider) == ("length", "Example")
+    asyncio.run(stt.aclose())  # every port that may hold connections closes them one way

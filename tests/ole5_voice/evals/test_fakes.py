@@ -88,6 +88,9 @@ def test_the_fake_speech_to_text_answers_from_its_script() -> None:
 
     assert asyncio.run(three()) == ["stop", "hi", "", "10.0"]
     assert [(language, prompt) for _, language, prompt in fake.calls][-1] == (None, "p")
+    assert not fake.closed
+    asyncio.run(stt.aclose())
+    assert fake.closed
 
 
 def test_the_fake_speech_to_text_can_be_cancelled_mid_call() -> None:

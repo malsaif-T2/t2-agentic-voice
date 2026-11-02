@@ -70,8 +70,8 @@ refreshes them. A gap the grade cannot see is named by its debt row.
   3 duplicate runs are expected: the port's signature (above), and the segment's
   `no_speech_prob` bounds, which the app's `runs.py` copies twice (lines 115 and 129) and
   `tests/ole5_voice/evals/test_library_copies.py` ties to the library's (the owner's ruling of
-  2026-11-02). Also debt: the port names no close (TD-020), the language form Whisper returns
-  is unverified (TD-011), and the first request detects the platform (TD-012), all for M2.
+  2026-11-02). Also debt: the language form Whisper returns is unverified (TD-011), and the
+  first request detects the platform (TD-012), both for M2.
 - **actions**, **agent**, **voice**: empty, no module yet; the milestones that build them are
   in the roadmap.
 - **testing** (A): `wer` and `cer` only; the testing kit (the fakes, text calls) comes later

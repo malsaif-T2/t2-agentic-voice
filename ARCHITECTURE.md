@@ -129,7 +129,9 @@ The agent's reasoning, from the questions the kit asks (D-003 records the altern
   rule; its two inputs, the caller's heard words and the read-back receipt, built only by
   `voice`; and a completed action, recorded only by `actions`. Each goes into `[[restricted]]`
   (ARCH-CONSTRUCT) in the commit that creates its class ([SECURITY.md](docs/SECURITY.md),
-  invariants 1 and 2).
+  invariants 1 and 2). The first there is `SignedConsent`, the consent a verified signed join
+  token carried, built only by `adapters`' signed-token identity source, since only it lets a
+  call's audio be recorded (invariant 8).
 
 ## The web widget
 

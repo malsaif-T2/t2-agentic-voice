@@ -2,7 +2,9 @@
 
 Every speech-to-text adapter implements `SpeechToText`. It raises `ProviderError` on a
 provider's failure, and stops at once when its task is cancelled, leaving no task or connection
-behind. Public, and stable, through the `ports` facade (D-021).
+behind. Whoever builds an adapter closes it with `aclose()`, the one close every port that
+holds connections has (the text-to-speech port and the used-token store too), so no caller
+looks a close up by name. Public, and stable, through the `ports` facade (D-021).
 """
 
 from __future__ import annotations
@@ -76,3 +78,7 @@ class SpeechToText(Protocol):
         """What was said in `clip`. `language` is a hint in the provider's code (`None`: let
         it detect the language); `prompt` is text the provider may take as context (`None`:
         none). Raises `ProviderError` on the provider's failure; a cancel stops it at once."""
+
+    async def aclose(self) -> None:
+        """Close what the adapter holds open, its connections; an adapter that holds none
+        returns at once. Called once, when its owner (the runtime, a run) is done with it."""

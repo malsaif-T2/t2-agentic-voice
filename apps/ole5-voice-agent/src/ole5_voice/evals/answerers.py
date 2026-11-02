@@ -191,9 +191,8 @@ class GroqAnswerer:
             return Answer(variant=variant.id, requests=(*self._log, *stuck), failure="stuck")
 
     async def aclose(self) -> None:
-        close = getattr(self._stt, "aclose", None)  # GroqSTT's; the port names none
-        if close is not None:
-            await close()
+        """Close the speech-to-text adapter, through the port's own close."""
+        await self._stt.aclose()
 
     async def _answer(self, variant: Variant, request: AnswerRequest) -> Answer:
         async with self._sender() as send:

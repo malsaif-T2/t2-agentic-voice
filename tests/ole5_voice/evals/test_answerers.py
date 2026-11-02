@@ -286,18 +286,12 @@ def test_no_line_the_answerer_logs_holds_a_transcript_or_a_variant(
     assert "zebra" not in out and "a-v1" not in out and "open the inbox" not in out
 
 
-def test_closing_the_groq_answerer_closes_an_adapter_that_can_close(
+def test_closing_the_groq_answerer_closes_its_adapter_through_the_port(
     settings: VoiceSettings,
 ) -> None:
-    class Closing(FakeSpeechToText):
-        closed = False
-
-        async def aclose(self) -> None:
-            self.closed = True
-
-    stt = Closing()
+    stt = FakeSpeechToText()
+    assert not stt.closed
     asyncio.run(make_answerer("groq", settings, stt=stt).aclose())
-    asyncio.run(make_answerer("groq", settings, stt=FakeSpeechToText()).aclose())
     assert stt.closed
 
 

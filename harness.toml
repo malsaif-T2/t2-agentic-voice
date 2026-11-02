@@ -133,6 +133,14 @@ fix = "Score through the evaluation helpers in testing/scorers.py (`wer`, `cer`,
 # words and the read-back receipt, built only by voice; and a completed action, recorded only by
 # actions.
 
+# The consent a verified signed join token carried (core/identity.py): only it lets a call's
+# audio be recorded (docs/SECURITY.md, invariant 8), so only the identity source that checks a
+# token's signature builds one (plan 003, Track C).
+[[restricted]]
+classes = ["SignedConsent"]
+layers = ["adapters"]
+fix = "Only adapters/join_tokens.py's SignedJoinTokens builds a SignedConsent, from a token whose signature it verified; elsewhere, pass on the Consent the identity source returned, or build a plain Consent, which never turns recording on."
+
 # Modules that the code a ban covers never imports, whichever layer owns their library (ARCH-BAN,
 # scripts/arch_ban.py; the design's 12.4). ARCH-OWNER gives a whole library to its layers; a ban
 # names module prefixes instead. `modules` bans each module with every module under it;
