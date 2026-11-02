@@ -3,7 +3,8 @@
 Every configurable value is a field on `Settings`, loaded from environment variables with this
 project's prefix, or from a local `.env` file (environment variables win). A group of settings
 nests with `__`: `T2V_GROQ__API_KEY` is `settings.groq.api_key`. A blank value counts as unset,
-so a `.env` copied from `.env.example` with only the key filled in keeps every other default.
+and `.env.example` leaves every key blank with its default in a comment, so a `.env` copied
+from it with only the key filled in keeps every other default, one changed later included.
 Other modules call `get_settings()` or receive a `Settings` instance; they never touch
 `os.environ`. No provider's own variable (`GROQ_API_KEY`, `OTEL_*`) is ever read here, and the
 adapters pass every value that keeps their SDKs from reading one (the design's 7.3). The few an
@@ -13,8 +14,8 @@ Groq adapter's request hook, `GROQ_LOG` by how the adapter imports the SDK (TD-0
 A command loads the settings with `Settings.from_env`, whose ConfigurationError names each
 setting that cannot load and never the value it rejected (the design's 7.4).
 
-When you add a field, add it to `.env.example` too (tests/t2_agentic_voice/core/test_config.py
-fails otherwise).
+When you add a field, add it to `.env.example` too, blank, with a `# Default:` line above it
+when it has a default (tests/t2_agentic_voice/core/test_env_example.py fails otherwise).
 A secret is a `SecretStr` field, so it never shows in a repr or a log; one may also be given as
 a file whose contents are the value (`api_key_file`).
 """

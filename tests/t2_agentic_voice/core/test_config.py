@@ -1,15 +1,14 @@
-"""Settings: typed, prefixed, nested in groups, listed in .env.example, and every secret kept
-out of every repr and log line (docs/SECURITY.md, invariant 5)."""
+"""Settings: typed, prefixed, nested in groups, and every secret kept out of every repr and log
+line (docs/SECURITY.md, invariant 5). How .env.example lists them: test_env_example.py."""
 
 from __future__ import annotations
 
 import logging
 import re
-from collections.abc import Iterator
 from pathlib import Path
 
 import pytest
-from pydantic import BaseModel, SecretStr, ValidationError
+from pydantic import SecretStr, ValidationError
 from t2_agentic_voice.core.config import (
     KEY_FILE_SETTING,
     KEY_SETTING,
@@ -22,28 +21,9 @@ from t2_agentic_voice.core.errors import ConfigurationError
 from t2_agentic_voice.core.logging import configure_logging, get_logger
 
 from tests.leaks import holding, shown
+from tests.t2_agentic_voice.core.settings_support import MADE_UP_KEY, PREFIX, fields, names
 
-ROOT = Path(__file__).resolve().parents[3]
-PREFIX = Settings.model_config.get("env_prefix", "")
-MADE_UP_KEY = "gsk_made-up-key-for-tests-0123456789"
 SECRET_NAME = re.compile(r"(^|_)(key|secret|token|password)$")
-
-
-def _fields(
-    model: type[BaseModel] = Settings, location: tuple[str, ...] = ()
-) -> Iterator[tuple[tuple[str, ...], object]]:
-    """(location, annotation) of every leaf field, through the groups: ("groq", "api_key")."""
-    for name, field in model.model_fields.items():
-        kind = field.annotation
-        if isinstance(kind, type) and issubclass(kind, BaseModel):
-            yield from _fields(kind, (*location, name))
-        else:
-            yield (*location, name), kind
-
-
-def _keys() -> set[str]:
-    """Every environment name of the settings' fields, a group's nested with `__`."""
-    return {PREFIX + "__".join(part.upper() for part in location) for location, _ in _fields()}
 
 
 def test_defaults_boot_without_a_dotenv() -> None:
@@ -83,7 +63,7 @@ def test_reads_each_group_nested_with_two_underscores(monkeypatch: pytest.Monkey
 
 def test_setting_name_is_the_variable_each_setting_is_read_from() -> None:
     """The name `from_env` and the Groq adapter put in an error is the variable to set."""
-    assert {setting_name(*location) for location, _ in _fields()} == _keys()
+    assert {setting_name(*location) for location, _ in fields()} == set(names())
     assert (
         f"{PREFIX}GROQ__API_KEY",
         f"{PREFIX}GROQ__API_KEY_FILE",
@@ -182,7 +162,7 @@ def test_from_env_says_what_to_correct_and_names_no_file_of_the_repository(
     )
 
 
-@pytest.mark.parametrize("name", sorted(_keys()))
+@pytest.mark.parametrize("name", sorted(names()))
 def test_no_setting_shows_a_value_it_refuses(name: str, monkeypatch: pytest.MonkeyPatch) -> None:
     """GP-19 for every setting, one added later included: given the made-up key (pasted into
     the wrong setting), each setting takes it, or `from_env` refuses it without showing it."""
@@ -248,36 +228,6 @@ def test_the_providers_own_variables_change_nothing(monkeypatch: pytest.MonkeyPa
 def test_get_settings_is_loaded_once() -> None:
     """Under tests/conftest.py, it reads no `.env` and no variable from the shell."""
     assert get_settings() is get_settings()
-
-
-def test_env_example_lists_every_setting() -> None:
-    lines = (ROOT / ".env.example").read_text(encoding="utf-8").splitlines()
-    documented = {
-        line.split("=", 1)[0].strip()
-        for line in lines
-        if "=" in line and not line.lstrip().startswith("#")
-    }
-    expected = _keys()
-    assert documented == expected, (
-        "Keep .env.example in sync with Settings in core/config.py: "
-        f"missing={sorted(expected - documented)} unknown={sorted(documented - expected)}. "
-        "FIX: add each missing key with a comment saying what it is; remove each unknown one."
-    )
-
-
-def test_env_example_as_a_dotenv_holds_the_defaults(tmp_path: Path) -> None:
-    """`.env.example` says "Copy to `.env` and fill in": a copy with only the key filled in
-    keeps every other setting at its default."""
-    example = (ROOT / ".env.example").read_text(encoding="utf-8")
-    defaults = Settings(_env_file=None).model_dump()
-    assert Settings(_env_file=ROOT / ".env.example").model_dump() == defaults
-    copy = tmp_path / ".env"
-    key_line = f"{PREFIX}GROQ__API_KEY="
-    assert key_line + "\n" in example
-    copy.write_text(example.replace(key_line, key_line + MADE_UP_KEY), encoding="utf-8")
-    filled = Settings(_env_file=copy)
-    assert filled.groq.resolved_api_key() == SecretStr(MADE_UP_KEY)
-    assert filled.model_dump() | {"groq": defaults["groq"]} == defaults
 
 
 def test_the_key_comes_from_the_setting_or_its_file(tmp_path: Path) -> None:
@@ -351,7 +301,7 @@ def test_a_key_with_a_character_no_key_holds_is_refused(key: str) -> None:
 
 
 def test_every_secret_setting_is_a_secret_str() -> None:
-    secrets = [(location, kind) for location, kind in _fields() if SECRET_NAME.search(location[-1])]
+    secrets = [(location, kind) for location, kind in fields() if SECRET_NAME.search(location[-1])]
     assert [location for location, _ in secrets] == [("groq", "api_key")]
     assert all(kind in (SecretStr, SecretStr | None) for _, kind in secrets), secrets
 
