@@ -13,6 +13,7 @@ from pathlib import Path
 import pytest
 import structlog
 from ole5_voice.evals import run, run_settings
+from ole5_voice.evals.answerers import Policy
 from ole5_voice.evals.items import HISTORY_FILE
 from ole5_voice.evals.models import Item
 from ole5_voice.evals.runs import HistoryLine, VariantResult
@@ -35,7 +36,7 @@ pytestmark = pytest.mark.usefixtures("plain_logs")
         ([*HELD_OUT, "--questions", "q"], "held-out run"),
         ([*HELD_OUT, "--tracing-endpoint", "http://127.0.0.1:6006/v1/traces"], "untraced"),
         ([*DEV, "--smoke-only", "--windows-ms", "500"], "and no windows"),
-        ([*DEV, "--variant-timeout-s", "0"], "more than 0"),
+        ([*DEV, "--variant-timeout-s", "0"], "--variant-timeout-s: must be a finite number of"),
         ([*DEV, "--clips-from", "c"], "serves a windows run"),
         (["--max-rpm", "0", "--show-settings"], "must be 1 or more"),
         (["--cap-usd", "nan", "--show-settings"], "finite"),
@@ -47,6 +48,20 @@ def test_a_run_needs_its_flags_together(
     with pytest.raises(SystemExit) as done:
         run.main(argv)
     assert done.value.code == 2 and message in capsys.readouterr().err
+
+
+def test_a_runs_policy_defaults_are_the_answerers(capsys: pytest.CaptureFixture[str]) -> None:
+    """The flags take `answerers.Policy`'s defaults, and their help says them."""
+    args = run._parser().parse_args([])
+    given = (args.max_attempts, args.max_rpm, args.variant_timeout_s)
+    assert given == (Policy().max_attempts, Policy().max_rpm, Policy().variant_timeout_s)
+    with pytest.raises(SystemExit):
+        run.main(["--help"])
+    shown = " ".join(capsys.readouterr().out.split())
+    assert (
+        f"at most ({Policy().max_rpm})" in shown
+        and f"limit ({Policy().variant_timeout_s:g})" in shown
+    )
 
 
 def test_show_settings_says_whether_the_key_is_set_never_the_key_or_the_env_file(

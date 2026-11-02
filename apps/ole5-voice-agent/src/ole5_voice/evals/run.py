@@ -92,6 +92,7 @@ def _seconds(text: str) -> float:
 def _parser() -> argparse.ArgumentParser:
     parser = argparse.ArgumentParser(prog="poe eval", description=_DESCRIPTION)
     add = parser.add_argument
+    policy = Policy()  # the run policy's defaults, which the flags below take
     add("--answerer", choices=ANSWERERS, help="reference (sends nothing) or groq (Whisper)")
     add("--split", choices=get_args(Split), help="the split the run covers, all of it")
     add("--model", choices=MODELS, help="stt.model for this run (groq needs it)")
@@ -102,9 +103,20 @@ def _parser() -> argparse.ArgumentParser:
     add("--var-dir", type=Path, help="the settings' var_dir")
     add("--audio", action="append", default=[], metavar="ROOT=FOLDER", help=_AUDIO_HELP)
     add("--out", type=Path, help=_OUT_HELP)
-    add("--max-rpm", type=_count, default=20, help="requests a minute, at most (20)")
-    add("--max-attempts", type=_count, default=4, help="attempts of each request (4)")
-    add("--variant-timeout-s", type=_amount, default=120.0, help="each variant's limit (120)")
+    rpm, attempts, limit = policy.max_rpm, policy.max_attempts, policy.variant_timeout_s
+    add("--max-rpm", type=_count, default=rpm, help=f"requests a minute, at most ({rpm})")
+    add(
+        "--max-attempts",
+        type=_count,
+        default=attempts,
+        help=f"attempts of each request ({attempts})",
+    )
+    add(
+        "--variant-timeout-s",
+        type=_seconds,
+        default=limit,
+        help=f"each variant's limit ({limit:g})",
+    )
     add("--price-per-hour", type=_amount, help="USD an hour of billed audio (groq needs it)")
     add("--cap-usd", type=_amount, help="the most the run may spend (groq needs it)")
     add("--windows-ms", type=_count, nargs="+", default=[], help=_WINDOWS_HELP)
@@ -136,8 +148,6 @@ def _require(parser: argparse.ArgumentParser, args: argparse.Namespace) -> None:
             "a held-out run covers its whole split, untraced: no --questions, "
             "--smoke-only or --tracing-endpoint"
         )
-    if args.variant_timeout_s <= 0:
-        parser.error("--variant-timeout-s is more than 0")
     if args.smoke_only and args.windows_ms:
         parser.error("--smoke-only sends the smoke test's clip, and no windows")
     if args.clips_from and not args.windows_ms:
