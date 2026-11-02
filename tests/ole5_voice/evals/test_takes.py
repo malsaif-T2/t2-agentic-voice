@@ -75,10 +75,21 @@ def test_a_lines_takes_have_a_scripted_reference_only_when_it_has_words() -> Non
 
 def test_a_reviews_file_name_is_read_one_way() -> None:
     """The recorder and the import read a review's file name alike, as `review_file` builds it:
-    a take's name and a pass of at most six digits, the most a review records."""
+    a take's name (a `Name`, checked by `is_name`) and a pass of at most six digits, the most a
+    review records."""
     assert parse_review_file("n01-laptop-1-2.review-3.json") == ("n01-laptop-1-2", 3)
     assert parse_review_file("n01.review-999999.json") == ("n01", 999_999)
-    for name in ("n01.review-1000000.json", "n01.review-0.json", "N01.review-1.json", "n01.json"):
+    longest = "n" * 128
+    assert parse_review_file(f"{longest}.review-1.json") == (longest, 1)
+    for name in (
+        "n01.review-1000000.json",
+        "n01.review-0.json",
+        "N01.review-1.json",
+        "-n01.review-1.json",
+        f"{longest}n.review-1.json",
+        ".review-1.json",
+        "n01.json",
+    ):
         assert parse_review_file(name) is None, name
     fields = {"take": "n01", "at": "2026-11-02T10:00:00Z", "verdict": "confirmed"}
     assert Review.model_validate(fields | {"review_pass": 999_999}).review_pass == 999_999

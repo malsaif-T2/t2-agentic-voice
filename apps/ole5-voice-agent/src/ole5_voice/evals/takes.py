@@ -28,14 +28,14 @@ from ole5_voice.evals.models import (
     RelativePath,
     Sha256,
     TurnEnds,
+    is_name,
 )
 
 SESSION_FILE: Final = "session.json"
 # The highest review pass: a review's file name gives its pass in at most six digits.
 MAX_REVIEW_PASS: Final = 999_999
-_REVIEW_FILE: Final = re.compile(
-    r"^(?P<take>[a-z0-9][a-z0-9_.-]{0,127})\.review-(?P<number>[1-9][0-9]{0,5})\.json$"
-)
+# A review's file name: its take, a `Name` (`is_name` checks it), then its pass.
+_REVIEW_FILE: Final = re.compile(r"^(?P<take>.+)\.review-(?P<number>[1-9][0-9]{0,5})\.json$")
 _BELOW_OUT: TypeAdapter[str] = TypeAdapter(RelativePath)
 
 
@@ -143,7 +143,9 @@ def parse_review_file(name: str) -> tuple[str, int] | None:
     """The take and the pass a review's file name gives (the last part of `review_file`'s), or
     None for any other file's name: the one reading of it, the recorder's and the import's."""
     found = _REVIEW_FILE.match(name)
-    return (found["take"], int(found["number"])) if found else None
+    if found is None or not is_name(found["take"]):
+        return None
+    return found["take"], int(found["number"])
 
 
 def _below_out(path: str) -> str:
