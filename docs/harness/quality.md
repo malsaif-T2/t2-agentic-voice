@@ -83,11 +83,11 @@ refreshes them. A gap the grade cannot see is named by its debt row.
 - **ole5_voice** (B): 8 of its modules are above the watch: `answerers.py` 380 (TD-019, split
   with the next answerer), `recorder_state.py` 379, `runs.py` 367, `scorecard.py` 333,
   `golden.py` 331, `run_parts.py` 324, `run.py` 315 and `import_talkover.py` 314. Its 9
-  duplicate runs appeared when the round lowered `[gc] min_tokens` to 25, after the read, and
-  are not read yet: `Answer` and `SegmentAnswer`'s shared fields (`runs.py`, lines 114 and
-  127), three between `import_recordings.py` and `import_talkover.py`,
-  `golden.py` against `recorder.py` and against `split.py`, two in `answerers.py` (lines 206
-  and 224), and the two `no_speech_prob` copies tied by test (above). The one suppression is
+  duplicate runs appeared when the round lowered `[gc] min_tokens` to 25, after the read. Two
+  are the `no_speech_prob` copies tied by test (above); the other 7 are not read yet: `Answer`
+  and `SegmentAnswer`'s shared fields (`runs.py`, lines 114 and 127), three between
+  `import_recordings.py` and `import_talkover.py`, `golden.py` against `recorder.py` and
+  against `split.py`, and one within `answerers.py` (lines 206 and 224). The one suppression is
   the `noqa: S603` on the git call in `worktree.py`. Its tests near the hard limit are
   `test_scorecard.py` (389), `test_recorder_security.py` (384) and `test_held_out_groups.py`
   (381). Also debt: TD-021, TD-022, TD-026 and TD-029.
