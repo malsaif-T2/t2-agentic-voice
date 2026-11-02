@@ -34,7 +34,8 @@ tests/                       one subfolder per package, harness/ for the checks'
 
 The library's **public API is its package root and the facades beside it**: the root's
 `__init__.py` re-exports the main names, and each public facade (`ports`, `groq`, `languages`,
-`evals` and `tracing`, D-021) re-exports one area's names and holds nothing else (ARCH-FACADE);
+`evals` and `tracing`, D-021; `identity`, `server`, `stores` and `events`, the design's 5.1)
+re-exports one area's names and holds nothing else (ARCH-FACADE);
 `[package] public` in harness.toml lists the modules an app may import, and `[package] facades`
 the facades among them. An app imports nothing else from the library and no other app, and the
 library never imports an app (ARCH-PUBLIC). So the Ole5 app uses the library exactly as a

@@ -70,7 +70,8 @@ floor) live in [harness.toml](harness.toml).
 
 ```
 packages/t2-agentic-voice/src/t2_agentic_voice/   the library; its public API is __init__.py
-  ports.py groq.py languages.py evals.py tracing.py   and these facades beside it (re-exports only)
+  and the facades beside it (re-exports only): ports.py groq.py identity.py server.py
+  stores.py events.py languages.py evals.py tracing.py
   core/       settings, structured logging, error types (T2VoiceError), tracing and redaction
   domain/     the call's rules and the ports, no IO: so far the speech-to-text port, text
               normalization, the spelling check and the scorers' pure parts (D-022); later the
@@ -80,11 +81,11 @@ packages/t2-agentic-voice/src/t2_agentic_voice/   the library; its public API is
   agent/      the talker: prompts, tool definitions, one turn, the output guard
   voice/      one call's real-time pipeline: WebRTC, end of turn, interruptions, cancel scope
   testing/    what a team tests and measures with: wer and cer so far; later, the fakes
-  api/        HTTP and the composition root: the widget, call set-up, health
+  api/        HTTP and the composition root: call set-up, health, the client and the dev page
 apps/ole5-voice-agent/src/ole5_voice/   the Ole5 app: only the library's public API (ARCH-PUBLIC)
   evals/      the golden set's commands; its data in apps/ole5-voice-agent/evals/, no audio
 examples/minimal/src/minimal_example/   the smallest app: the quickstart, a test of the library
-apps/ole5-voice-agent/web/   Ole5's browser widget (plain HTML/JS/CSS; not built yet)
+apps/ole5-voice-agent/web/   Ole5's browser widget (plain HTML/JS/CSS), served by the Ole5 app
 scripts/      the harness: check_architecture.py (arch), check_docs.py (docs), gc_due.py and
               gc_report.py (gc), quality.py, and their helpers; all read harness.toml
               through harness_config.py

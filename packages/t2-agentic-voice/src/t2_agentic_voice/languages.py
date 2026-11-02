@@ -1,9 +1,11 @@
-"""The language parts: the canonical Arabic normalizer, digit normalization, and the check of a
-team's spelling guide. Provisional (D-021). A facade: it only re-exports (ARCH-FACADE)."""
+"""The language parts: the canonical Arabic normalizer, digit normalization, numbers and IDs said
+in words, and the check of a team's spelling guide. Provisional (D-021). A facade: it only
+re-exports (ARCH-FACADE)."""
 
 from t2_agentic_voice.domain.text.arabic import normalize_arabic
 from t2_agentic_voice.domain.text.digits import normalize_digits
 from t2_agentic_voice.domain.text.rulings import SpellingIssue, SpellingRule
+from t2_agentic_voice.domain.text.speaking import speak_id, speak_number
 from t2_agentic_voice.domain.text.spelling import spelling_issues
 
 __all__ = [
@@ -11,5 +13,7 @@ __all__ = [
     "SpellingRule",
     "normalize_arabic",
     "normalize_digits",
+    "speak_id",
+    "speak_number",
     "spelling_issues",
 ]
