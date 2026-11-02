@@ -1,6 +1,6 @@
 # T2 Agentic Voice: package design
 
-**Status: Accepted as amended.** The agent drafted this on 2026-10-31 for the owner and revised it the same day after two reviews. On 2026-11-01 the owner answered its open questions (section 17, D-018), the sections those answers touch were changed to match, and the owner approved the design as amended (D-017). Nothing in it is built yet: each part is built with its milestone (section 16). Where it would change a recorded decision or an architecture rule, it says so and names the decision entry to write (section 16.3). Where the agent disagrees with a decision, it says so in section 17 and does not change the decision.
+**Status: Accepted as amended.** The agent drafted this on 2026-10-31 for the owner and revised it the same day after two reviews. On 2026-11-01 the owner answered its open questions (section 17, D-018), the sections those answers touch were changed to match, and the owner approved the design as amended (D-017). Each part is built with its milestone (section 16). Built so far, by M1 (plan 002): the five facades (`ports`, `groq`, `languages`, `evals`, `tracing`, D-021), the speech-to-text port and its Groq adapter, the `groq`, `stt` and `tracing` settings groups, tracing, the scorers (D-022) and the checks ARCH-FACADE and ARCH-WORDS (D-020); and by plan 004, the base error's name, `T2VoiceError` (D-026). Where what was built differs from this design, the section says so. Where it would change a recorded decision or an architecture rule, it says so and names the decision entry to write (section 16.3). Where the agent disagrees with a decision, it says so in section 17 and does not change the decision.
 
 **Since the draft.** The design was written from commit `a0ca586`. The same day, plan 001 built its first step in a simpler form: one uv workspace with the library, the Ole5 app and `examples/minimal`; one `harness.toml` for the repository, with `[[apps]]` and the rule ARCH-PUBLIC (an app imports the library only through its public modules); and tests in one `tests/` folder at the root. Sections 12, 14 and 16 were aligned with that layout. The owner's decisions taken so far are D-012 to D-016, and D-018 for the answers to section 17; this design as a whole is D-017, accepted on 2026-11-01.
 
@@ -832,6 +832,8 @@ class TextToSpeech(Protocol):
 
 The Groq `DataFlow` values come from Groq's "Your Data" page (checked). That page does not say where requests are processed.
 
+*Built in M1 (plan 002), beyond this block:* `Transcript.no_speech_prob`, Whisper's own estimate that a clip holds no speech (the owner's ruling, D-021); and, proposed in D-021 for the owner to rule on, `AudioClip.seconds` and the input checks of `DataFlow`, `AudioClip` and `Transcript`.
+
 **Rules for every port:**
 - **Cancellation.** The runtime cancels a provider call by cancelling its task. The Groq adapters' tests check that a call stops within 50 ms and leaks no tasks or connections. Contract suites for other authors come on request (section 3.1).
 - **Failures** are raised as `ProviderError(kind, retryable, retry_after_s)`.
@@ -1083,9 +1085,11 @@ The defaults below are the agent's starting values, to be measured in the milest
 | `logging` | `content` (false), `pipecat` (`off`; or `forward`) | M2 |
 | `storage` | `var_dir` (var) | — |
 
+*Built so far (M1, plan 002):* the `groq` group without `timeout_s` (the timeout is `stt.timeout_s`), and `stt` and `tracing` as above. At the top level, `env` has the default `dev` until M2 makes it required, `log_level` and `log_format` sit there rather than in a group, and `var_dir` is `T2V_VAR_DIR` rather than `storage.var_dir` (plan 002's step 8). Settings keys are public (5.1), so which of the two `var_dir` keeps is open, and a key moved after a teammate installs the library takes the deprecation of 5.4.
+
 ### 7.7 The generated reference
 
-- A script generates `docs/reference/settings.md` and `.env.example` from the model. For each field they give the environment name, type, default, unit and description, and a test fails when either is stale.
+- A script generates `docs/guide/reference/settings.md` (section 14) and `.env.example` from the model. For each field they give the environment name, type, default, unit and description, and a test fails when either is stale.
 - `t2v settings show --redacted` prints every value and its source: default, file, `.env`, environment or code.
 - `t2v check` prints the defaults in force, so nothing differs silently between environments.
 
@@ -1281,6 +1285,8 @@ Ole5's golden-set machinery stays in the app, under `apps/ole5-voice-agent/evals
 
 ### 10.2 Logs
 
+*Not built yet:* the library still logs as the scaffold set it up, through structlog configured process-wide: its events print to standard output whether or not the app configures logging, and `configure_logging` adds a handler to the root logger. The owner chose on 2026-11-02 to build this section, with 3.3's row, in M2 (TD-033).
+
 - The library logs through the standard library, under `t2_agentic_voice.*`, with a `NullHandler`. Messages are snake_case event names with key-value `extra` fields.
 - It never calls `basicConfig` and never adds handlers to the root logger.
 - **INFO and above carry no call content:** only IDs, timings and outcomes. Content appears only with `logging.content=true`, at DEBUG, and only `dev` allows that setting.
@@ -1467,8 +1473,8 @@ The app shrinks to five layers:
 - **ARCH-BAN (new):** banned module prefixes, per member and per layer, with exceptions and a FIX line. It has two uses:
   - In the library, it bans Pipecat's vendor service modules (`pipecat.services.<vendor>`) and its LLM-service and context-aggregator modules. It allows `pipecat.services.stt_service`, `pipecat.services.tts_service` and `pipecat.services.ai_service` in `voice`. ARCH-OWNER cannot express this, because it matches top-level packages (survey).
   - In the app and the examples, it bans `pipecat` and `aiortc`. (The ban on non-public `t2_agentic_voice` modules exists already, as ARCH-PUBLIC.)
-- **ARCH-FACADE (new, with the first facade in M1):** each module listed in `[package] facades` contains only imports and `__all__`.
-- **ARCH-WORDS (new, small, M1):** the library's `src/` must not contain app names (`ole5`, `otrs`, `ds.t2.sa`), checked case-insensitively. This answers the fear that the library is "Ole5-shaped underneath".
+- **ARCH-FACADE (built in M1, D-020):** each module listed in `[package] facades` contains only imports and `__all__`.
+- **ARCH-WORDS (built in M1, D-020):** the library's `src/` must not contain app names (`ole5`, `otrs`, `ds.t2.sa`), checked case-insensitively. This answers the fear that the library is "Ole5-shaped underneath".
 - **`[[restricted]]` in the library:**
   - `HeardWords` and `ReadBackReceipt`, built only in `voice`;
   - `ConfirmedAction`, built only in `domain`;
@@ -1549,12 +1555,12 @@ Accepting each licence is the owner's call (WORKING-RULES.md): the owner accepte
 
 ## 14. Documentation plan
 
-All docs are Markdown in `docs/guide/` of this repository for now, where the harness checks their links and reachability; they move with the library if it is published from a mirror repository (open question 9). The guide's index lists these pages, and each page is written when it lands. Code samples are included from tested files under `examples/` and the tests. A doc check fails when a sample block no longer matches its source file. A docs site (mkdocs-material) can come later.
+All docs are Markdown in `docs/guide/` of this repository for now, where the harness checks their links and reachability; they move with the library if it is published from a mirror repository (open question 9). The guide's index lists these pages, and each page is written when it lands. Code samples are included from tested files under `examples/` and the tests. A doc check fails when a sample block no longer matches its source file (DOC-SAMPLE, built in plan 004). A docs site (mkdocs-material) can come later.
 
 | Page | Purpose | Lands with |
 | --- | --- | --- |
 | `README.md` | The first screen: what the library does, the contract in brief, the quickstart | M2 |
-| `contract.md` | PROVIDES, MUST and MAY (section 3), as a teammate reads them, with the "built when" labels. Fixed at M0 (open question 23); a later change is the owner's decision, with a changelog entry | M0 |
+| `contract.md` | PROVIDES, MUST and MAY (section 3), as a teammate reads them, with the "built when" labels. Fixed at M0 (open question 23); a later change is the owner's decision, with a changelog entry. Not written yet: when it is written is an open question in the roadmap | M0 |
 | `is-this-for-you.md` | The fit check: Python floor, OS and wheels, no torch, the heavy dependencies and known clashes (section 4.1), the one-process rule and the sidecar, network needs (UDP or TURN), Groq's low published limits, licences (Orpheus terms, Smart Turn, Silero), hosting limits | M2 |
 | `quickstart.md` | `examples/minimal` end to end: English first, then Saudi Arabic; ends with the "first call does not work" checklist driven by `t2v doctor` | M2 (echo version), M5 (final) |
 | `concepts.md` | Talker, tools, actions, turns, the two-step interruption, the cancel scope, heard history; a diagram of one turn | M3 |
@@ -1646,19 +1652,21 @@ No order is fixed among these; the owner chooses:
 
 ### 16.3 Decision entries to write
 
-Numbers are taken when each entry is written, after checking that no other session has claimed them. D-002, D-003, D-007 and D-011 are still Proposed, so the agent suggests the owner rules on them in their amended form in plan 000; that leaves fewer entries that supersede unaccepted ones.
+Numbers are taken when each entry is written, after checking that no other session has claimed them. The owner accepted D-002, D-003, D-007 and D-011 on 2026-11-01 (plan 000).
 Recorded already, on 2026-10-31: the library and the app in one workspace, with the public-API rule (D-013); the v1 usage mode (D-014; what ships for the browser is still open question 1); the thinker's owner-decided part (D-015; building it after M7, in the experimental module, is still open questions 16 and 17); open source allowed (D-016; the licences are still open question 20). This design as a whole is D-017, accepted on 2026-11-01; the owner's answers to section 17 are D-018. Still to write, each when the owner rules on it:
 - Pipecat 1.15.x, wrapping only its STT and TTS base classes, and its own interruptions off. This supersedes a bullet of D-002 and amends the conventions in ARCHITECTURE.md. Done in D-018.
 - GP-22's "swapped by configuration" widened to "by a setting, or by passing an adapter object in code".
-- The library's `testing` layer (with no `media` layer, D-018) and the app's five layers. This amends D-003.
-- The harness: one configuration per member, ARCH-BAN, ARCH-FACADE, ARCH-WORDS, one invariants register.
-- The public API, the stability levels, and the Python floor of 3.12.
+- The library's `testing` layer (with no `media` layer, D-018) and the app's five layers. This amends D-003. The library's layer: done in D-019; the app's layers are still to write.
+- The harness: one configuration per member, ARCH-BAN, ARCH-FACADE, ARCH-WORDS, one invariants register. ARCH-FACADE and ARCH-WORDS: done in D-020; the others are still to write.
+- The public API, the stability levels, and the Python floor of 3.12. The first facades and the stability levels: done in D-021; the Python floor is still to write.
 - Settings precedence, the prefix, and a required `env`.
 - Serving and identity: the sidecar and the mount, one process per `var_dir` with the lock file, one `identity=` source, the join-token format, the offer secret, consent in the token, and Ole5's identity answer (open question 19).
 - SECURITY.md generalized to actions and moved to the library as the one register, which amends D-007. Invariant 1 itself stays: a handoff is confirmed like any action (D-018).
-- Evaluation: scorer functions in the library, the golden-set runner in the app, and audio kept out of git. This follows up D-011.
-- The tracing path: done in D-018.
+- Evaluation: scorer functions in the library, the golden-set runner in the app, and audio kept out of git. This follows up D-011. Done in D-022.
+- The tracing path: done in D-018, and its packages (plain OTLP through the OpenTelemetry SDK) in D-023.
 - The licences accepted: done in D-018.
+
+Written since, beyond this list: D-024 and D-025 (M1's measurement: the noise, and `stt.model` stays `whisper-large-v3`) and D-026 (the base error is `T2VoiceError`, as 5.1 names it).
 
 ### 16.4 Risks carried
 
