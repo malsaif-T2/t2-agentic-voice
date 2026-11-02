@@ -8,11 +8,14 @@ stale). The same command writes [.env.example](../../.env.example).
 `VoiceSettings(env=..., ...)` built in code takes its defaults and the arguments given, and
 nothing else. `VoiceSettings.from_env()` reads the environment variables below, under the prefix
 `T2V_` unless `prefix=` gives another, and a `.env` file only when `env_file=` names one; the
-environment wins over the file. A group's settings nest with `__`, a list or a map is given as
-JSON, and a blank value counts as unset. A variable under the prefix that names no setting is
-an error, so the prefix belongs to the library's settings alone. Each secret also takes a
-`_FILE` setting naming a file that holds it, and never shows in a repr, a log line or an error.
-A unit is read from the name: `_ms` is milliseconds, `_s` seconds.
+environment wins over the file, and code values given to `from_env` win over both: a group given
+as a dict (`server={"dev_page": True}`) changes only the keys it names, keeping the others the
+environment and the file gave, while a group given as its object replaces the group whole. A
+group's settings nest with `__`, a list or a map is given as JSON, and a blank value counts as
+unset. A variable under the prefix that names no setting is an error, so the prefix belongs to
+the library's settings alone. Each secret also takes a `_FILE` setting naming a file that holds
+it, and never shows in a repr, a log line or an error. A unit is read from the name: `_ms` is
+milliseconds, `_s` seconds.
 
 ## The top level
 
@@ -84,13 +87,13 @@ Serving: the backend's address, the pages that may call it, how media finds a pa
 | Variable | Type | Default | Unit | Description |
 | --- | --- | --- | --- | --- |
 | `T2V_SERVER__PUBLIC_URL` | text, or unset | unset | — | The address callers reach the backend at, such as https://voice.example. |
-| `T2V_SERVER__ALLOWED_ORIGINS` | JSON list of text | `[]` | — | The pages allowed to call the backend from a browser, as a JSON list of origins (scheme, host and port only), such as ["https://www.example.com"]. Unset: none. |
+| `T2V_SERVER__ALLOWED_ORIGINS` | JSON list of text | `[]` | — | The pages allowed to call the backend from a browser, as a JSON list of origins (scheme, host and port only, written as a browser sends them: lowercase, with no default port), such as ["https://www.example.com"]. Unset: none. |
 | `T2V_SERVER__ICE_SERVERS` | JSON list of text | `[]` | — | The STUN and TURN servers a call is given, as a JSON list of stun:, turn: or turns: URLs with no credentials (TURN's are minted per call from turn_secret). |
 | `T2V_SERVER__TURN_SECRET` | secret, or unset | unset | — | The secret shared with the TURN server, which signs each call's credentials: at least 32 bytes. Or give turn_secret_file instead. |
 | `T2V_SERVER__TURN_SECRET_FILE` | path, or unset | unset | — | Or the full path of a file that holds only the TURN secret. |
 | `T2V_SERVER__TURN_TTL_S` | integer | `3600` | seconds | How long each call's TURN credentials last, at most 86400 (a day). |
 | `T2V_SERVER__DEV_PAGE` | true or false | `false` | — | Whether the router serves its /dev page, to loopback clients; dev only. |
-| `T2V_SERVER__FORWARDED_ALLOW_IPS` | JSON list of text | `[]` | — | The proxies whose X-Forwarded-For headers are trusted, as a JSON list of IP addresses or networks, such as ["127.0.0.1"]; "*" is refused. Unset: none. |
+| `T2V_SERVER__FORWARDED_ALLOW_IPS` | JSON list of text | `[]` | — | The proxies whose X-Forwarded-For headers are trusted, as a JSON list of IP addresses or networks, such as ["127.0.0.1"]: a network by its own address (10.0.0.0/24), no wider than /8 for IPv4 or /32 for IPv6; "*" is refused. Unset: none. |
 
 ## `join`
 
@@ -102,7 +105,7 @@ Join tokens: the keys that sign and verify them, and how long one lives.
 | `T2V_JOIN__KEYS_FILE` | path, or unset | unset | — | Or the full path of a file that holds the key map, the same JSON object as keys. |
 | `T2V_JOIN__CURRENT_KID` | text, or unset | unset | — | The ID of the key that signs new tokens; one of the map's. |
 | `T2V_JOIN__TTL_S` | integer | `60` | seconds | How long a join token lives, at most 120. |
-| `T2V_JOIN__MAX_CLOCK_SKEW_S` | integer | `30` | seconds | How far a token's times may be off this machine's clock and still verify. |
+| `T2V_JOIN__MAX_CLOCK_SKEW_S` | integer | `30` | seconds | How far a token's times may be off this machine's clock and still verify, at most 60: a token verifies until its expiry plus this. |
 
 ## `privacy`
 

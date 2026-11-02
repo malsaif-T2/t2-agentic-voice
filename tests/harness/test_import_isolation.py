@@ -14,7 +14,16 @@ import groq  # noqa: F401  imported for what it reads on import
 import opentelemetry.context  # noqa: F401  as above
 from t2_agentic_voice.core.settings.base import PREFIX
 
-WATCHED = ("GROQ_", "OTEL_", "PHOENIX_", PREFIX.upper(), "PIPECAT_", "LOGURU_", "WEBSOCKETS_")
+WATCHED = (
+    "GROQ_",
+    "OTEL_",
+    "PHOENIX_",
+    PREFIX.upper(),
+    "OLE5_VOICE_",  # the Ole5 app's own (the design's 7.3)
+    "PIPECAT_",
+    "LOGURU_",
+    "WEBSOCKETS_",
+)
 WATCHED_NAMES = ("FORWARDED_ALLOW_IPS", "WEB_CONCURRENCY", "FASTAPI_OTEL_AUTO_CONFIGURE")
 # As pytest imported this module: the variables still set, and the levels `GROQ_LOG` would set.
 SEEN_ON_IMPORT = sorted(

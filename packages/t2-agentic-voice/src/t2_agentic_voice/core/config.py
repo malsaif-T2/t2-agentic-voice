@@ -5,12 +5,13 @@ Built in code, `VoiceSettings(env=..., ...)` takes its defaults and the argument
 nothing else: no environment variable and no `.env` (the design's 7.2). `VoiceSettings.from_env`
 reads the environment variables under a prefix (`T2V_` unless `prefix=` gives another), and a
 `.env` file only when `env_file=` names one; the environment wins over the file, and the code
-arguments given to `from_env` win over both. There is no settings singleton: a module receives
-a `VoiceSettings`, and never touches `os.environ`. A group's settings nest with `__`:
-`T2V_GROQ__API_KEY` is `settings.groq.api_key` (the groups are in core/settings/, one module
-each). A list or a map is given as JSON. A blank value counts as unset, and `.env.example`
-leaves every key blank with its default in a comment, so a `.env` copied from it with only the
-key filled in keeps every other default, one changed later included.
+arguments given to `from_env` win over both, a group given as a dict key by key and a group
+object whole. There is no settings singleton: a module receives a `VoiceSettings`, and never
+touches `os.environ`. A group's settings nest with `__`: `T2V_GROQ__API_KEY` is
+`settings.groq.api_key` (the groups are in core/settings/, one module each). A list or a map is
+given as JSON. A blank value counts as unset, and `.env.example` leaves every key blank with its
+default in a comment, so a `.env` copied from it with only the key filled in keeps every other
+default, one changed later included.
 
 `env` has no default: dev, test, staging or prod. Outside dev the dev page and logged call
 content are refused, and staging and prod refuse DEBUG: staging holds every check prod holds
@@ -20,13 +21,18 @@ must belong to the library's settings alone (`unknown="warn"` logs it instead).
 
 No provider's own variable (`GROQ_API_KEY`, `OTEL_*`) is ever read here: `from_env` notes only
 whether GROQ_API_KEY is set, its name and never its value, so the Groq adapter's error can say
-which name to set instead (the design's 7.3). The adapters pass every value that keeps their
-SDKs from reading one. The few an SDK reads whatever is passed are kept out or recorded as
-debt: `GROQ_CUSTOM_HEADERS` by the Groq adapter's request hook, `GROQ_LOG` by how the adapter
-imports the SDK (TD-003), and three `OTEL_*` ones (TD-005, `core/tracing_export.py`); the proxy
-and CA variables both clients trust are debt too (TD-004, TD-015). The guide's "Variables to
-leave unset" lists them all. Every failure is a ConfigurationError naming each setting that
-cannot load and never the value it rejected (the design's 7.4).
+which name to set instead (the design's 7.3); and `foreign_set` tells `voice` which of the
+variables it refuses (`PIPECAT_SETUP_FILES`) are set, by name. The adapters pass every value
+that keeps their SDKs from reading one. The few an SDK reads whatever is passed are kept out or
+recorded as debt: `GROQ_CUSTOM_HEADERS` by the Groq adapter's request hook, `GROQ_LOG` by how
+the adapter imports the SDK (TD-003), and three `OTEL_*` ones (TD-005,
+`core/tracing_export.py`); the proxy and CA variables both clients trust are debt too (TD-004,
+TD-015). The guide's "Variables to leave unset" lists them all.
+
+Every failure is a ConfigurationError naming each setting that cannot load and never the value
+it rejected (the design's 7.4), whether the settings are built in code (their constructor,
+`model_validate` and `model_validate_json`) or loaded by `from_env`; a group built on its own
+raises pydantic's ValidationError instead (core/settings/base.py).
 
 When you add a field, give it a `description` and run `uv run poe settings-ref`, which writes
 docs/generated/settings.md and .env.example from the model (their freshness tests fail until
@@ -38,6 +44,7 @@ from __future__ import annotations
 
 import os
 import re
+from collections.abc import Iterable, Mapping
 from pathlib import Path
 from typing import Literal
 
@@ -45,6 +52,7 @@ from pydantic import (
     BaseModel,
     ConfigDict,
     Field,
+    ModelWrapValidatorHandler,
     PrivateAttr,
     ValidationError,
     ValidationInfo,
@@ -59,7 +67,7 @@ from t2_agentic_voice.core.settings.groq import GroqSettings
 from t2_agentic_voice.core.settings.join import JoinSettings
 from t2_agentic_voice.core.settings.limits import LimitSettings
 from t2_agentic_voice.core.settings.logs import LoggingSettings
-from t2_agentic_voice.core.settings.names import gathered, leaf
+from t2_agentic_voice.core.settings.names import Problem, gathered, leaf
 from t2_agentic_voice.core.settings.privacy import PrivacySettings
 from t2_agentic_voice.core.settings.server import ServerSettings
 from t2_agentic_voice.core.settings.session import SessionSettings
@@ -83,13 +91,21 @@ _MOVED = {
     "LOG_LEVEL": ("logging", "level"),
     "LOG_FORMAT": ("logging", "format"),
 }
+# What the validation context holds when `from_env` loads the settings, so a failure's FIX line
+# says where its values came from.
+_LOADED = "from_env"
+_FIX_LOADED = "FIX: correct each one in the environment or the .env file."
+_FIX_CODE = "FIX: correct each one in the code that builds the settings."
 
 log = get_logger(__name__)
 
 
 class VoiceSettings(BaseModel):
     """All the library's tunable settings: how it runs in this deployment (the design's 7.1),
-    `env` and a group for each part."""
+    `env` and a group for each part. Built in code or loaded by `from_env`, any setting that
+    cannot load is one ConfigurationError naming each one under the prefix (the library's
+    `T2V_` in code), with a FIX line and never the value it rejected; nothing chains it to the
+    ValidationError, whose `errors()` would still return that value."""
 
     model_config = ConfigDict(frozen=True, extra="forbid", hide_input_in_errors=True)
 
@@ -118,10 +134,27 @@ class VoiceSettings(BaseModel):
     _prefix: str = PrivateAttr(default=PREFIX)
     _seen: frozenset[str] = PrivateAttr(default=frozenset())
 
-    @model_validator(mode="after")
-    def _environment(self, info: ValidationInfo) -> VoiceSettings:
-        self.check_environment(prefix_of(info))
-        return self
+    @model_validator(mode="wrap")
+    @classmethod
+    def _loaded(
+        cls, data: object, handler: ModelWrapValidatorHandler[VoiceSettings], info: ValidationInfo
+    ) -> VoiceSettings:
+        """The settings `data` gives, then the checks `env` makes; or one ConfigurationError
+        naming every setting that cannot load, raised after the handler, so no exception chain
+        leads back to the ValidationError."""
+        prefix = prefix_of(info)
+        try:
+            settings = handler(data)
+        except ValidationError as error:
+            problems = [
+                (_named(leaf(cls, problem["loc"]), prefix), problem["msg"])
+                for problem in error.errors(include_input=False, include_url=False)
+            ]
+        else:
+            settings.check_environment(prefix)
+            return settings
+        loaded = isinstance(info.context, dict) and info.context.get(_LOADED) is True
+        raise _cannot_load(problems, _FIX_LOADED if loaded else _FIX_CODE)
 
     @property
     def prefix(self) -> str:
@@ -141,8 +174,8 @@ class VoiceSettings(BaseModel):
     def check_environment(self, prefix: str | None = None) -> None:
         """ConfigurationError naming a setting `env` refuses, under `prefix` (these settings'
         own by default): outside dev, the dev page and logged call content; in staging and
-        prod, DEBUG (the design's 7.4). Every load runs it; `status` runs it again, for
-        settings copied with a change."""
+        prod, DEBUG (the design's 7.4). Every load runs it; `status` and `VoiceRuntime`'s
+        construction run it again, for settings copied with a change, which skips validation."""
         prefix = self._prefix if prefix is None else prefix
         problem = _refused(self)
         if problem is None:
@@ -164,14 +197,17 @@ class VoiceSettings(BaseModel):
     ) -> VoiceSettings:
         """The settings from the environment variables under `prefix`, and from `env_file`, a
         `.env`, only when one is given (the environment wins over it), with `values`, code
-        arguments, over both (a group given replaces the group). A variable under the prefix
-        that names no setting is a ConfigurationError naming it, never its value, or with
-        `unknown="warn"` a warning, the variable left out. An `env_file` given that is no file
-        is a ConfigurationError, so a mistyped path never runs on the defaults (GP-06). Any
-        setting that cannot load is a ConfigurationError naming each one (`T2V_GROQ__BASE_URL`)
-        and why, with a FIX line, never the value it rejected (the design's 7.4). It is raised
-        after the handler, so no exception chain leads back to the ValidationError, whose
-        `errors()` would still return that value."""
+        arguments, over both. A group given as a dict merges into what the environment and the
+        file gave for that group, key by key (`server={"dev_page": True}` keeps
+        `T2V_SERVER__PUBLIC_URL`), while a group given as its object (`ServerSettings(...)`)
+        replaces the group whole, since an object holds every key; a map setting given inside
+        either replaces the whole map. A variable under the prefix that names no setting is a
+        ConfigurationError naming it, never its value, or with `unknown="warn"` a warning, the
+        variable left out. An `env_file` given that is no file, or that cannot be read as UTF-8
+        text, is a ConfigurationError, so a mistyped path never runs on the defaults (GP-06).
+        Any setting that cannot load is a ConfigurationError naming each one
+        (`T2V_GROQ__BASE_URL`) and why, with a FIX line, never the value it rejected (the
+        design's 7.4)."""
         if not _PREFIX_RULE.fullmatch(prefix):
             raise ConfigurationError(
                 "The prefix given cannot start an environment name. FIX: give letters, digits "
@@ -188,23 +224,44 @@ class VoiceSettings(BaseModel):
         sources.append({n: os.environ[n] for n in os.environ if n.upper().startswith(marked)})
         data, strangers, problems = gathered(cls, sources, prefix)
         _refuse_strangers(strangers, prefix, unknown)
-        if not problems:
-            try:
-                settings = cls.model_validate(data | values, context={"prefix": prefix})
-            except ValidationError as error:
-                for problem in error.errors(include_input=False, include_url=False):
-                    name = setting_name(*leaf(cls, problem["loc"]), prefix=prefix)
-                    problems.append((name, problem["msg"]))
-            else:
-                settings._prefix = prefix
-                settings._seen = frozenset(n for n in _UNREAD if _set(n))
-                return settings
-        raise ConfigurationError(
-            "These settings cannot load: "
-            + "; ".join(f"{name} ({why})" for name, why in problems)
-            + ". FIX: correct each one in the environment or the .env file.",
-            details={"settings": [{"setting": name, "problem": why} for name, why in problems]},
-        )
+        if problems:
+            raise _cannot_load(problems, _FIX_LOADED)
+        for name, value in values.items():
+            given = data.get(name)
+            if isinstance(value, Mapping) and isinstance(given, dict):
+                value = given | dict(value)  # a group's dict: key by key
+            data[name] = value
+        settings = cls.model_validate(data, context={"prefix": prefix, _LOADED: True})
+        settings._prefix = prefix
+        settings._seen = foreign_set(_UNREAD)
+        return settings
+
+
+def foreign_set(names: Iterable[str]) -> frozenset[str]:
+    """Which of `names`, variables the library never reads as settings (a provider's own, or one
+    a package reads whatever is passed, such as `PIPECAT_SETUP_FILES`), are set to a value in
+    this process's environment now, matched in any case; each as given, never its value. It
+    answers however the settings were built, so `voice`, which reads no variable (ARCH-ENV),
+    asks it which ones to refuse at start. An empty value counts as unset."""
+    wanted = {name.upper(): name for name in names}
+    found = [name.upper() for name, value in os.environ.items() if value]
+    return frozenset(wanted[name] for name in found if name in wanted)
+
+
+def _named(location: tuple[str, ...], prefix: str) -> str:
+    """The variable of the setting at `location`, or "the settings" for a failure of the whole
+    (data that is no mapping)."""
+    return setting_name(*location, prefix=prefix) if location else "the settings"
+
+
+def _cannot_load(problems: list[Problem], fix: str) -> ConfigurationError:
+    """The one error for the settings that cannot load, each named with why, never a value."""
+    return ConfigurationError(
+        "These settings cannot load: "
+        + "; ".join(f"{name} ({why})" for name, why in problems)
+        + f". {fix}",
+        details={"settings": [{"setting": name, "problem": why} for name, why in problems]},
+    )
 
 
 def _refused(settings: VoiceSettings) -> tuple[tuple[str, str], str, str] | None:
@@ -221,11 +278,6 @@ def _refused(settings: VoiceSettings) -> tuple[tuple[str, str], str, str] | None
     return None
 
 
-def _set(name: str) -> bool:
-    """Whether the variable `name` is set, in any case; its value is never read."""
-    return any(each.upper() == name for each in os.environ)
-
-
 class _DotEnv(BaseSettings):
     """No settings: only its `.env` reader is used, so a file is read as pydantic-settings
     reads one (quotes, `export`, comments)."""
@@ -235,11 +287,22 @@ class _DotEnv(BaseSettings):
 
 def _dotenv(path: Path, marked: str) -> dict[str, str | None]:
     """The variables of the `.env` file `path` whose names start with `marked`, in any case,
-    as written (a byte-order mark dropped, as Notepad may write one)."""
-    reader = DotEnvSettingsSource(
-        _DotEnv, env_file=path, env_file_encoding="utf-8-sig", case_sensitive=True
+    as written (a byte-order mark dropped, as Notepad may write one). A file that cannot be read
+    as UTF-8 text (Windows PowerShell 5.1's `>` writes UTF-16) is a ConfigurationError that holds
+    none of its bytes: a decode error holds the whole file, keys and all, so it is not
+    chained."""
+    try:
+        reader = DotEnvSettingsSource(
+            _DotEnv, env_file=path, env_file_encoding="utf-8-sig", case_sensitive=True
+        )
+    except (OSError, UnicodeDecodeError) as error:
+        failure = type(error).__name__
+    else:
+        return {n: v for n, v in reader.env_vars.items() if n.upper().startswith(marked)}
+    raise ConfigurationError(
+        f"The env file given cannot be read ({failure}). FIX: save it as UTF-8 text.",
+        details={"setting": "env_file"},
     )
-    return {n: v for n, v in reader.env_vars.items() if n.upper().startswith(marked)}
 
 
 def _refuse_strangers(strangers: list[str], prefix: str, unknown: Unknown) -> None:

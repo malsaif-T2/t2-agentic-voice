@@ -4,18 +4,22 @@ setting is named and described (the design's 7.3 and 7.7)."""
 
 from __future__ import annotations
 
+import copy
+import pickle
 from typing import Any
 
 import pytest
-from pydantic import BaseModel, ValidationError
+from pydantic import BaseModel, SecretStr, ValidationError
 from t2_agentic_voice.api.status import status
 from t2_agentic_voice.core.config import VoiceSettings
 from t2_agentic_voice.core.errors import ConfigurationError
+from t2_agentic_voice.core.settings.join import MAX_CLOCK_SKEW_S, MAX_TTL_S
 from t2_agentic_voice.core.settings.logs import LoggingSettings
 from t2_agentic_voice.core.settings.server import ServerSettings
 from t2_agentic_voice.core.settings.tts import TtsSettings
+from uvicorn.middleware.proxy_headers import _TrustedHosts
 
-from tests.t2_agentic_voice.core.settings_support import PREFIX, fields, nested
+from tests.t2_agentic_voice.core.settings_support import LONG_SECRET, PREFIX, fields, nested
 
 # Each check `env` makes: the setting, the value it refuses, and the environments that refuse it.
 CHECKS = [
@@ -98,12 +102,27 @@ def test_a_check_names_the_setting_under_the_prefix_it_was_loaded_with(
         (ServerSettings, {"forwarded_allow_ips": ("*",)}),  # every peer could forge its address
         (ServerSettings, {"forwarded_allow_ips": ("127.0.0.1", " * ")}),
         (ServerSettings, {"forwarded_allow_ips": ("not-an-address",)}),
+        (ServerSettings, {"forwarded_allow_ips": ("0.0.0.0/0",)}),  # "*" by another name
+        (ServerSettings, {"forwarded_allow_ips": ("::/0",)}),
+        (ServerSettings, {"forwarded_allow_ips": ("10.1.2.3/0",)}),
+        (ServerSettings, {"forwarded_allow_ips": ("10.0.0.0/7",)}),  # wider than /8
+        (ServerSettings, {"forwarded_allow_ips": ("2001:db8::/31",)}),  # wider than /32
+        (ServerSettings, {"forwarded_allow_ips": ("::ffff:0:0/96",)}),  # every IPv4 peer, mapped
+        (ServerSettings, {"forwarded_allow_ips": ("::/32",)}),  # holds the mapped ones too
+        (ServerSettings, {"forwarded_allow_ips": ("10.0.0.5/24",)}),  # host bits: matches none
         (ServerSettings, {"turn_ttl_s": 86_401}),  # longer than a day
         (ServerSettings, {"turn_ttl_s": 0}),
         (ServerSettings, {"public_url": "voice.example"}),
         (ServerSettings, {"allowed_origins": ("https://www.example.com/",)}),  # a path: no origin
         (ServerSettings, {"allowed_origins": ("https://www.example.com?x=1",)}),
         (ServerSettings, {"allowed_origins": ("ftp://www.example.com",)}),
+        # Not as a browser sends it, so CORS, which compares text, would refuse the real page.
+        (ServerSettings, {"allowed_origins": ("https://Example.com",)}),
+        (ServerSettings, {"allowed_origins": ("HTTPS://example.com",)}),
+        (ServerSettings, {"allowed_origins": ("https://example.com:443",)}),
+        (ServerSettings, {"allowed_origins": ("http://example.com:80",)}),
+        (ServerSettings, {"allowed_origins": ("https://example.com:0443",)}),
+        (ServerSettings, {"allowed_origins": ("https://bücher.example",)}),
         (ServerSettings, {"ice_servers": ("https://turn.example",)}),
         (ServerSettings, {"ice_servers": ("turn:",)}),
         (ServerSettings, {"ice_servers": ("turn:turn example",)}),
@@ -125,11 +144,26 @@ def test_a_group_refuses_a_value_out_of_its_bounds(
         group.model_validate(values)
 
 
+def test_the_proxy_and_origin_refusals_say_what_to_write() -> None:
+    """Each refusal names the entry by its index and says what to write, never the value."""
+    cases = [
+        ("forwarded_allow_ips", "0.0.0.0/0", "entry 0 is wider than /8 for IPv4 or /32 for IPv6"),
+        ("forwarded_allow_ips", "192.168.1.10/24", "give the network's own address, such as"),
+        ("allowed_origins", "https://Example.com:443", "write the scheme and the host in lower"),
+    ]
+    for field, value, why in cases:
+        with pytest.raises(ValidationError, match=why) as raised:
+            ServerSettings.model_validate({field: (value,)})
+        assert value not in str(raised.value)
+
+
 @pytest.mark.parametrize(
     "values",
     [
-        {"forwarded_allow_ips": ("127.0.0.1", "10.0.0.0/8", "::1")},
+        {"forwarded_allow_ips": ("127.0.0.1", "10.0.0.0/8", "::1", "2001:db8::/32")},
+        {"forwarded_allow_ips": ("10.0.0.0/24", "::ffff:10.0.0.0/104", "::ffff:10.0.0.5")},
         {"allowed_origins": ("https://www.example.com", "http://localhost:8000")},
+        {"allowed_origins": ("https://example.com:8443", "http://[::1]:8000", "http://[::1]")},
         {"ice_servers": ("stun:stun.example:3478", "turns:turn.example:443?transport=tcp")},
         {"public_url": "https://voice.example", "turn_ttl_s": 86_400},
     ],
@@ -138,12 +172,25 @@ def test_the_server_group_takes_what_it_documents(values: dict[str, Any]) -> Non
     assert ServerSettings.model_validate(values).model_dump(include=set(values)) == values
 
 
+def test_every_trusted_proxy_the_settings_take_is_one_uvicorn_matches() -> None:
+    """uvicorn reads each entry strictly and keeps one it cannot read as a name that matches no
+    peer; so every entry the settings take is a network or an address to uvicorn, and a
+    network's own peers are trusted, while a peer outside every entry is not."""
+    entries = ("127.0.0.1", "10.0.0.0/24", "::1", "2001:db8::/32", "::ffff:10.0.0.0/104")
+    trusted = _TrustedHosts(list(ServerSettings(forwarded_allow_ips=entries).forwarded_allow_ips))
+    assert trusted.trusted_literals == set() and not trusted.always_trust
+    assert all(peer in trusted for peer in ("10.0.0.7", "2001:db8::9", "::ffff:10.0.0.9"))
+    assert not any(peer in trusted for peer in ("203.0.113.9", "10.0.1.1", "::ffff:1.2.3.4"))
+
+
 @pytest.mark.parametrize(
     ("location", "value"),
     [
         (("join", "ttl_s"), 121),  # a join token lives 120 s at most (the design's 6.5)
         (("join", "ttl_s"), 0),
         (("join", "max_clock_skew_s"), -1),
+        (("join", "max_clock_skew_s"), 61),  # a token verifies until its expiry plus this
+        (("join", "max_clock_skew_s"), 86_400),
         (("join", "current_kid"), "a kid with spaces"),
         (("privacy", "consent_version"), ""),
         (("privacy", "consent_version"), "v" * 65),
@@ -156,8 +203,45 @@ def test_the_server_group_takes_what_it_documents(values: dict[str, Any]) -> Non
     ],
 )
 def test_a_value_out_of_its_bounds_is_refused(location: tuple[str, str], value: object) -> None:
-    with pytest.raises(ValidationError):
+    with pytest.raises(ConfigurationError, match=f"cannot load: {_name(location)} "):
         VoiceSettings.model_validate({"env": "test"} | nested(location, value))
+
+
+def test_the_join_bounds_hold_the_tokens_lifetime() -> None:
+    """A token verifies until its expiry plus the skew: both bounds, at their most, load."""
+    join = VoiceSettings.model_validate(
+        {"env": "prod", "join": {"ttl_s": MAX_TTL_S, "max_clock_skew_s": MAX_CLOCK_SKEW_S}}
+    ).join
+    assert (join.ttl_s, join.max_clock_skew_s) == (120, 60)
+
+
+def test_a_map_setting_cannot_change_once_loaded() -> None:
+    """A group is read-only, its maps too, so no join key under 32 bytes reaches
+    `resolved_keys` past the check and no call changes the voice every call shares; each map
+    still dumps as the plain object it was given as."""
+    loaded = VoiceSettings.model_validate(
+        {"env": "test", "join": {"keys": {"k1": LONG_SECRET}, "current_kid": "k1"}}
+    )
+    copies = (
+        loaded.model_copy(deep=True),
+        copy.deepcopy(loaded),
+        pickle.loads(pickle.dumps(loaded)),  # noqa: S301 - loads only bytes it dumped
+    )
+    for settings in (loaded, VoiceSettings(env="test"), *copies):
+        keys: Any = settings.join.keys
+        languages: Any = settings.tts.languages
+        with pytest.raises(TypeError):
+            keys["weak"] = SecretStr("short")
+        with pytest.raises(TypeError):
+            languages["en"] = languages["ar"]
+        with pytest.raises(TypeError):
+            keys._items["weak"] = SecretStr("short")
+        dumped = settings.model_dump()
+        assert type(dumped["join"]["keys"]) is dict and type(dumped["tts"]["languages"]) is dict
+    assert all(each == loaded for each in copies)
+    assert list(loaded.join.resolved_keys()) == ["k1"]
+    assert loaded.model_dump(mode="json")["join"]["keys"] == {"k1": "**********"}
+    assert LONG_SECRET not in repr(loaded.join.keys) and "k1" in repr(loaded.join.keys)
 
 
 def test_the_turn_tts_and_limit_defaults_are_the_plans() -> None:

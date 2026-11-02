@@ -14,9 +14,10 @@ from __future__ import annotations
 import argparse
 import json
 import re
+from collections.abc import Mapping
 from pathlib import Path
 
-from pydantic import BaseModel, ValidationError
+from pydantic import BaseModel
 from t2_agentic_voice import ConfigurationError, T2VoiceError, VoiceSettings, get_logger
 
 from ole5_voice.evals.items import GOLDEN_DIR, HISTORY_FILE, SPELLING_FILE, SPLIT_FILE
@@ -35,13 +36,14 @@ _SECRET = re.compile(r"(^|_)(key|keys|secret|token|password|file)$")
 
 log = get_logger(__name__)
 
+# The command line's URL flags, by the setting each one gives.
 _URL_FLAGS = {
-    "tracing": (
+    ("tracing", "endpoint"): (
         "--tracing-endpoint",
         "an http:// or https:// URL with a host and no user name or password",
         "the traces endpoint, such as http://127.0.0.1:6006/v1/traces",
     ),
-    "groq": (
+    ("groq", "base_url"): (
         "--base-url",
         "an https:// URL with a host, and no user name, password, query or fragment",
         f"Groq's API, {GROQ_BASE_URL}, or leave it out",
@@ -64,23 +66,32 @@ def load_settings(args: argparse.Namespace) -> VoiceSettings:
     data["stt"]["timeout_s"] = args.timeout_s or data["stt"]["timeout_s"]
     data["storage"]["var_dir"] = args.var_dir or data["storage"]["var_dir"]
     try:
-        checked = VoiceSettings.model_validate(data)
-    except ValidationError as error:  # a URL, or a choice the library's settings no longer take
-        where = error.errors(include_input=False)[0]["loc"]
+        checked = VoiceSettings.model_validate(data, context={"prefix": loaded.prefix})
+    except ConfigurationError as error:  # a URL, or a choice the library's settings no longer take
+        failed = _named(error)
     else:
         # A copy keeps what `from_env` noted (its prefix, and whether GROQ_API_KEY is set, for
         # the adapter's error), which settings validated from a dump would not.
         return loaded.model_copy(update=dict(checked))
-    if (group := str(where[0])) in _URL_FLAGS:
-        flag, rule, fix = _URL_FLAGS[group]
-        raise ConfigurationError(
-            f"{flag} is not {rule}. FIX: give {fix}.", details={"setting": flag}
-        )
-    setting = ".".join(map(str, where))
+    flags = {loaded.env_name(*location): words for location, words in _URL_FLAGS.items()}
+    for setting in failed:
+        if setting in flags:
+            flag, rule, fix = flags[setting]
+            raise ConfigurationError(
+                f"{flag} is not {rule}. FIX: give {fix}.", details={"setting": flag}
+            )
+    setting = ", ".join(failed)
     raise ConfigurationError(
         f"{setting} is not a value the library's settings take. FIX: give one they do.",
         details={"setting": setting},
     )
+
+
+def _named(error: ConfigurationError) -> list[str]:
+    """The settings a settings error names, in order, from its details."""
+    entries = error.details.get("settings")
+    named = entries if isinstance(entries, list) else []
+    return [str(entry["setting"]) for entry in named if isinstance(entry, dict)]
 
 
 def shown(settings: VoiceSettings, args: argparse.Namespace) -> dict[str, str]:
@@ -143,8 +154,9 @@ def _text(name: str, value: object) -> str:
         return "none" if value is None else str(value).lower()
     if isinstance(value, tuple):
         return f"{len(value)} entries"
-    if isinstance(value, dict):
-        return json.dumps(value, default=lambda each: each.model_dump(mode="json"), sort_keys=True)
+    if isinstance(value, Mapping):  # a read-only map: dumped as the plain object it holds
+        plain = dict(value)
+        return json.dumps(plain, default=lambda each: each.model_dump(mode="json"), sort_keys=True)
     return str(value)
 
 

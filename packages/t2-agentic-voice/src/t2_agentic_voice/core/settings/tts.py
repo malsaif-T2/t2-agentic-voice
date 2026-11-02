@@ -2,11 +2,12 @@
 
 from __future__ import annotations
 
-from typing import Literal
+from collections.abc import Mapping
+from typing import Annotated, Literal
 
 from pydantic import Field
 
-from t2_agentic_voice.core.settings.base import Group
+from t2_agentic_voice.core.settings.base import FROZEN, PLAIN, Group
 
 TtsProvider = Literal["groq"]
 # The declaration's language presets (the design's 5.2): Saudi Arabic, MSA and English.
@@ -43,8 +44,9 @@ class TtsSettings(Group):
         default="groq",
         description="Which adapter turns text into speech; only Groq's exists for now (D-004).",
     )
-    languages: dict[LanguageTag, TtsVoice] = Field(
+    languages: Annotated[Mapping[LanguageTag, TtsVoice], FROZEN, PLAIN] = Field(
         default_factory=_voices,
+        validate_default=True,
         description=(
             "The model and voice of each language preset (ar-SA, ar, en), as a JSON object: "
             '{"en": {"model": "canopylabs/orpheus-v1-english", "voice": "troy"}}. A value '

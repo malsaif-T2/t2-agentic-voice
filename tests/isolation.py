@@ -20,6 +20,10 @@ import pytest
 # among this project's (`setting_name("storage", "var_dir")`).
 PREFIX = "T2V_"
 VAR_DIR_VARIABLE = f"{PREFIX}STORAGE__VAR_DIR"
+# The Ole5 app's own prefix (the design's 7.3), under which its settings read its env and its
+# access code: plan 003's Track G ties the app's settings to it in its settings test, as
+# tests/harness/test_isolation.py ties PREFIX to the library's.
+APP_PREFIX = "OLE5_VOICE_"
 # The variables of the providers' SDKs and of the tracing tools, which the library never reads
 # (the design's 7.3) but their SDKs would: a real key, an exporter's headers, Phoenix's own.
 # FastAPI reads `OTEL_*` too: `OTEL_PROPAGATORS` when it is imported (it loads the entry points
@@ -59,8 +63,8 @@ CALL_NAMES = (
     "ORT_LOAD_CONFIG_FROM_MODEL",
 )
 # Every prefix and name dropped from the shell: the providers', the tracing tools', the call's
-# packages' and this project's own.
-DROPPED_PREFIXES = (*FOREIGN_PREFIXES, *CALL_PREFIXES, PREFIX)
+# packages' and this project's own, the library's and the app's.
+DROPPED_PREFIXES = (*FOREIGN_PREFIXES, *CALL_PREFIXES, PREFIX, APP_PREFIX)
 DROPPED_NAMES = (*FOREIGN_NAMES, *CALL_NAMES)
 # Set for the session, a second guard on Pipecat's runner, which the library never imports:
 # python-dotenv's `load_dotenv` loads nothing while it is set. `pipecat.runner.run` calls it
@@ -110,8 +114,14 @@ def drop_shell(environ: MutableMapping[str, str]) -> list[str]:
 
 def child_shell() -> dict[str, str]:
     """The shell of a child process: this one's, which the suite has cleaned, without any
-    `PYTHON*` variable (a warnings filter, say), and with `SET`."""
-    shell = {k: v for k, v in os.environ.items() if not dropped(k) and not k.startswith("PYTHON")}
+    `PYTHON*` variable (a warnings filter, say), and with `SET`. The session's scratch var dir
+    (`VAR_DIR_VARIABLE`, which tests/conftest.py sets) is carried, so a child that loads its
+    settings with `from_env` keeps its runtime files there, never under the developer's var/."""
+    shell = {
+        k: v
+        for k, v in os.environ.items()
+        if (k.upper() == VAR_DIR_VARIABLE or not dropped(k)) and not k.startswith("PYTHON")
+    }
     return shell | SET
 
 

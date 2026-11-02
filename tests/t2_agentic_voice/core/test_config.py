@@ -1,20 +1,20 @@
 """VoiceSettings: built in code from defaults and arguments alone, or loaded with `from_env` from
 the environment under a prefix and a `.env` only when given one; nested in groups, an unknown
-name under the prefix refused, and no refused value ever shown (GP-19). The checks each group's
-values take: test_settings_checks.py; the secrets: test_settings_secrets.py; how .env.example
-lists them: test_env_example.py."""
+name under the prefix refused, and no refused value ever shown (GP-19). How a setting that
+cannot load fails: test_settings_errors.py; the checks each group's values take:
+test_settings_checks.py; the secrets: test_settings_secrets.py; how .env.example lists them:
+test_env_example.py."""
 
 from __future__ import annotations
 
-import logging
 from pathlib import Path
 
 import pytest
-from pydantic import ValidationError
-from t2_agentic_voice.core.config import VoiceSettings
+from t2_agentic_voice.core.config import VoiceSettings, foreign_set
 from t2_agentic_voice.core.errors import ConfigurationError
 from t2_agentic_voice.core.settings.base import setting_name
 from t2_agentic_voice.core.settings.groq import KEY_FILE_SETTING, KEY_SETTING
+from t2_agentic_voice.core.settings.stt import SttSettings
 
 from tests.leaks import holding, shown
 from tests.t2_agentic_voice.core.settings_support import MADE_UP_KEY, PREFIX, fields, names
@@ -51,7 +51,7 @@ def test_built_in_code_takes_the_defaults_and_its_arguments_alone(
 
 
 def test_env_is_required_and_takes_staging() -> None:
-    with pytest.raises(ValidationError, match="env"):
+    with pytest.raises(ConfigurationError, match=f"{PREFIX}ENV \\(Field required\\)"):
         VoiceSettings()  # type: ignore[call-arg]
     assert {VoiceSettings(env=env).env for env in ("dev", "test", "staging", "prod")} == {
         "dev",
@@ -200,14 +200,30 @@ def test_a_blank_value_counts_as_unset_under_any_name(monkeypatch: pytest.Monkey
 
 
 def test_code_arguments_win_over_the_environment(monkeypatch: pytest.MonkeyPatch) -> None:
-    """The design's 7.2: code arguments sit above the environment; a group given replaces it."""
+    """The design's 7.2: code arguments sit above the environment, setting by setting. A group
+    given as a dict changes only the keys it names, so the environment's others (a TURN
+    secret, the public address) are kept; a group object holds every key, and replaces it."""
     monkeypatch.setenv(f"{PREFIX}STT__MODEL", "whisper-large-v3-turbo")
     monkeypatch.setenv(f"{PREFIX}STT__TIMEOUT_S", "4")
-    settings = VoiceSettings.from_env(env="dev", stt={"timeout_s": 9})
+    monkeypatch.setenv(f"{PREFIX}SERVER__PUBLIC_URL", "https://voice.example")
+    monkeypatch.setenv(f"{PREFIX}SERVER__TURN_TTL_S", "600")
+    settings = VoiceSettings.from_env(env="dev", stt={"timeout_s": 9}, server={"dev_page": True})
     assert (settings.env, settings.stt.model, settings.stt.timeout_s) == (
         "dev",
+        "whisper-large-v3-turbo",
+        9.0,
+    )
+    server = settings.server
+    assert (server.dev_page, server.public_url, server.turn_ttl_s) == (
+        True,
+        "https://voice.example",
+        600,
+    )
+    whole = VoiceSettings.from_env(env="dev", stt=SttSettings(timeout_s=9))
+    assert (whole.stt.model, whole.stt.timeout_s, whole.server.turn_ttl_s) == (
         "whisper-large-v3",
         9.0,
+        600,
     )
 
 
@@ -249,118 +265,16 @@ def test_a_setting_given_twice_in_one_source_is_refused(tmp_path: Path) -> None:
         VoiceSettings.from_env(env_file=dotenv)
 
 
-@pytest.mark.parametrize(
-    ("name", "value"),
-    [
-        ("GROQ__BASE_URL", f"https://user:{MADE_UP_KEY}@api.groq.com"),
-        ("GROQ__BASE_URL", f"https://api.groq.com:{MADE_UP_KEY}"),  # urllib's text repeats it
-        ("GROQ__BASE_URL", f"https://[{MADE_UP_KEY}]/"),
-        ("STT__MODEL", MADE_UP_KEY),  # the key pasted into the wrong setting
-        ("TRACING__ENDPOINT", f"https://user:{MADE_UP_KEY}@127.0.0.1:6006/v1/traces"),
-        ("TRACING__REDACT", f'["{MADE_UP_KEY}"'),  # JSON cut short: its decoder quotes it
-        ("JOIN__KEYS", f'{{"{MADE_UP_KEY}!": "{MADE_UP_KEY}"}}'),  # a key ID that is no ID
-        ("SERVER__FORWARDED_ALLOW_IPS", f'["{MADE_UP_KEY}"]'),  # ipaddress's text repeats it
-    ],
-)
-def test_from_env_names_each_failing_setting_and_never_its_value(
-    monkeypatch: pytest.MonkeyPatch, name: str, value: str
-) -> None:
-    """The design's 7.4: every failure is a ConfigurationError with a FIX line, naming the
-    setting whole (never a map's key below it); and it leads to no ValidationError, whose
-    `errors()` holds the value."""
-    monkeypatch.setenv(f"{PREFIX}{name}", value)
-    with pytest.raises(ConfigurationError) as raised:
-        VoiceSettings.from_env()
-    error = raised.value
-    assert f"{PREFIX}{name} (" in error.message and "FIX:" in error.message
-    assert f"'setting': '{PREFIX}{name}'" in repr(error.details)
-    assert holding(MADE_UP_KEY, shown(error)) == []
-    assert holding(MADE_UP_KEY.upper(), shown(error)) == []
-    assert (error.__cause__, error.__context__) == (None, None)
-
-
-def test_from_env_says_what_to_correct(monkeypatch: pytest.MonkeyPatch) -> None:
-    """An installed library ships no `.env.example`, so the FIX line names only the setting."""
-    monkeypatch.setenv(f"{PREFIX}STT__TIMEOUT_S", "0")
-    with pytest.raises(ConfigurationError) as raised:
-        VoiceSettings.from_env()
-    assert raised.value.message == (
-        f"These settings cannot load: {PREFIX}STT__TIMEOUT_S (Input should be greater than 0). "
-        "FIX: correct each one in the environment or the .env file."
-    )
-
-
-@pytest.mark.parametrize(
-    ("name", "value"),
-    [
-        ("LOGGING__LEVEL", "LOUD"),
-        ("STT__MODEL", "whisper-1"),
-        ("STT__TIMEOUT_S", "inf"),  # no limit at all
-        ("STT__LIVE_LANGUAGE", "ar"),
-        ("GROQ__BASE_URL", "http://api.groq.com"),  # the key would travel in clear text
-        ("GROQ__BASE_URL", "https://api.groq.com:notaport"),
-        ("GROQ__BASE_URL", "https://api.groq.com:99999"),
-        ("GROQ__BASE_URL", "https://api.groq.com:0"),
-        ("GROQ__BASE_URL", "https://api.groq.com?x=1"),  # the SDK's path would follow the query
-        ("GROQ__BASE_URL", "https://api.groq.com/#f"),
-        ("TRACING__ENDPOINT", "localhost:6006"),
-        ("TRACING__ENDPOINT", "http://127.0.0.1:6006x/v1/traces"),
-        ("TRACING__REDACT", '["("]'),
-        ("SESSION__MODE", "talker"),
-        ("LOGGING__PIPECAT", "forward"),  # off only, for now (plan 003, Q19)
-    ],
-)
-def test_rejects_invalid_values(monkeypatch: pytest.MonkeyPatch, name: str, value: str) -> None:
-    monkeypatch.setenv(f"{PREFIX}{name}", value)
-    with pytest.raises(ConfigurationError, match=f"{PREFIX}{name} "):
-        VoiceSettings.from_env()
-
-
-@pytest.mark.parametrize("name", sorted(names()))
-def test_no_setting_shows_a_value_it_refuses(
-    name: str,
+def test_foreign_set_names_the_variables_set_never_their_values(
     monkeypatch: pytest.MonkeyPatch,
-    caplog: pytest.LogCaptureFixture,
-    capsys: pytest.CaptureFixture[str],
-    recwarn: pytest.WarningsRecorder,
 ) -> None:
-    """GP-19 for every setting, one added later included: given the made-up key (pasted into
-    the wrong setting), each setting takes it, or `from_env` refuses it; either way nothing
-    shows it, in the error, a log line, an output or a warning."""
-    caplog.set_level(logging.DEBUG)
-    monkeypatch.setenv(name, MADE_UP_KEY)
-    refused: ConfigurationError | None = None
-    try:
-        VoiceSettings.from_env()
-    except ConfigurationError as error:
-        refused = error
-        assert (error.__cause__, error.__context__) == (None, None)
-    surfaces = shown(refused, caplog=caplog, capsys=capsys, recwarn=recwarn)
-    assert holding(MADE_UP_KEY, surfaces) == []
-
-
-@pytest.mark.parametrize(
-    ("location", "value"),
-    [
-        (("groq", "base_url"), f"https://user:{MADE_UP_KEY}@api.groq.com"),
-        (("stt", "model"), MADE_UP_KEY),
-        (("tracing", "endpoint"), f"https://user:{MADE_UP_KEY}@127.0.0.1:6006/v1/traces"),
-        (("server", "allowed_origins"), (f"https://{MADE_UP_KEY}.example/path",)),
-        (("server", "ice_servers"), (f"turn:user:{MADE_UP_KEY}@turn.example",)),
-        (("privacy", "consent_version"), f"{MADE_UP_KEY} with a space"),
-    ],
-)
-def test_a_value_refused_in_code_is_never_echoed(location: tuple[str, str], value: object) -> None:
-    """GP-19 when the settings are built in code: the ValidationError's text, repr and
-    traceback name the setting, never the value. Its `errors()` and `json()` still return it
-    unless given `include_input=False` (pydantic's default), so commands load through
-    `from_env`."""
-    group, field = location
-    with pytest.raises(ValidationError) as raised:
-        VoiceSettings.model_validate({"env": "test", group: {field: value}})
-    assert f"{group}.{field}" in str(raised.value)
-    assert holding(MADE_UP_KEY, shown(raised.value)) == []
-    assert MADE_UP_KEY not in raised.value.json(include_input=False)  # the messages too
-    for line in raised.value.errors(include_input=False):  # nor a library's text, chained unseen
-        error = line.get("ctx", {}).get("error")
-        assert error is None or error.__context__ is None
+    """What `voice` asks at start (voice/calls.py), whatever way the settings were built: by
+    name, in any case, an empty value counting as unset."""
+    names = ("PIPECAT_SETUP_FILES", "PIPECAT_SMART_TURN_LOG_DATA")
+    assert foreign_set(names) == frozenset()
+    monkeypatch.setenv("pipecat_setup_files", MADE_UP_KEY)
+    monkeypatch.setenv("PIPECAT_SMART_TURN_LOG_DATA", "")
+    found = foreign_set(names)
+    assert found == {"PIPECAT_SETUP_FILES"} and MADE_UP_KEY not in repr(found)
+    monkeypatch.setenv("PIPECAT_SMART_TURN_LOG_DATA", "1")
+    assert foreign_set(names) == set(names)

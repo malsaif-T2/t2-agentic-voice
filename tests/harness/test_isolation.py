@@ -1,9 +1,9 @@
 """Tests never touch the developer's machine state: their .env, this project's variables in
-their shell, a provider's or a tracing tool's variables (GROQ_*, OTEL_*, PHOENIX_*), the
-variables that change what a call's packages do (Pipecat's, loguru's, uvicorn's and the rest),
-requests' CA bundles and .netrc, and their var/ data; and no aiortc peer reaches a STUN server
-beyond this machine. And no command writes to var/ when the var-dir setting names another
-folder."""
+their shell (the library's and the Ole5 app's), a provider's or a tracing tool's variables
+(GROQ_*, OTEL_*, PHOENIX_*), the variables that change what a call's packages do (Pipecat's,
+loguru's, uvicorn's and the rest), requests' CA bundles and .netrc, and their var/ data; and no
+aiortc peer reaches a STUN server beyond this machine. And no command writes to var/ when the
+var-dir setting names another folder, a child process's included."""
 
 from __future__ import annotations
 
@@ -26,6 +26,8 @@ from tests import isolation
 ROOT = Path(__file__).resolve().parents[2]
 REPO_VAR = ROOT / "var"
 VAR_DIR_VARIABLE = setting_name("storage", "var_dir")
+# The Ole5 app's own prefix (the design's 7.3): its env and its access code.
+APP_PREFIX = "OLE5_VOICE_"
 FOREIGN_PREFIXES = ("GROQ_", "OTEL_", "PHOENIX_")
 FOREIGN_NAMES = ("REQUESTS_CA_BUNDLE", "CURL_CA_BUNDLE")
 # The variables plan 003's reading of the installed packages found that change what a call's
@@ -84,6 +86,12 @@ def test_no_setting_comes_from_the_shell() -> None:
     assert inherited == [VAR_DIR_VARIABLE], f"Tests inherit {inherited}. {FIX}"
 
 
+def test_no_app_setting_comes_from_the_shell() -> None:
+    """The Ole5 app's own settings (an access code, its env) never reach a test."""
+    inherited = sorted(n for n in os.environ if n.upper().startswith(APP_PREFIX))
+    assert inherited == [], f"Tests inherit {inherited}. {FIX}"
+
+
 def test_no_provider_or_tracing_variable_comes_from_the_shell() -> None:
     """A real Groq key, an exporter's headers or Phoenix's settings never reach a test."""
     inherited = sorted(n for n in os.environ if n.upper().startswith(FOREIGN_PREFIXES))
@@ -119,12 +127,26 @@ def test_the_shell_is_dropped_before_the_packages_that_read_it_are_imported(
 def test_the_isolation_lists_name_the_librarys_variables() -> None:
     """tests/isolation.py imports nothing of the library, so its names are checked here."""
     assert (isolation.PREFIX, isolation.VAR_DIR_VARIABLE) == (PREFIX, VAR_DIR_VARIABLE)
+    assert isolation.APP_PREFIX == APP_PREFIX
     names = {"T2V_ENV", "GROQ_LOG", "pipecat_setup_files", "WEB_CONCURRENCY", "LOGURU_LEVEL"}
+    names |= {"OLE5_VOICE_ACCESS_CODE", "ole5_voice_env"}
     assert {n for n in names if isolation.dropped(n)} == names
     assert not isolation.dropped("WEB_CONCURRENCY_X") and not isolation.dropped("PATH")
+
+
+def test_a_child_shell_carries_the_scratch_var_dir_and_no_other_dropped_name(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """A child that loads its settings keeps its runtime files in the session's scratch var
+    dir, never the developer's var/; and no other variable the suite drops, the app's access
+    code among them, reaches it."""
+    monkeypatch.setenv(f"{APP_PREFIX}ACCESS_CODE", "made-up-access-code-for-tests")
+    monkeypatch.setenv("GROQ_API_KEY", "made-up-key-for-tests")
     shell = isolation.child_shell()
     assert shell["PYTHON_DOTENV_DISABLED"] == "1"
-    assert not [n for n in shell if isolation.dropped(n) or n in {"PYTHONPATH", "PYTHONWARNINGS"}]
+    assert shell[VAR_DIR_VARIABLE] == os.environ[VAR_DIR_VARIABLE]
+    unwanted = {"PYTHONPATH", "PYTHONWARNINGS"}
+    assert [n for n in shell if isolation.dropped(n) or n in unwanted] == [VAR_DIR_VARIABLE]
 
 
 def test_a_peer_with_no_ice_servers_of_its_own_fails_its_test() -> None:
@@ -197,12 +219,15 @@ def test_a_shell_that_sets_this_projects_variables_changes_no_test() -> None:
         "LLVMLITE_ENABLE_IR_LAYER_TYPED_POINTERS": "1",
         "OPENAI_LOG": "debug",
         "PYTHON_DOTENV_DISABLED": "0",
+        f"{APP_PREFIX}ENV": "prod",
+        f"{APP_PREFIX}ACCESS_CODE": "made-up-access-code-from-the-shell",
     }
     here = Path(__file__).relative_to(ROOT).as_posix()
     targets = [
         f"{here}::{test.__name__}"
         for test in (
             test_no_setting_comes_from_the_shell,
+            test_no_app_setting_comes_from_the_shell,
             test_no_provider_or_tracing_variable_comes_from_the_shell,
             test_no_variable_a_calls_packages_read_comes_from_the_shell,
             test_dotenv_loading_is_off_for_the_session,

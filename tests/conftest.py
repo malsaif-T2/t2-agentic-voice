@@ -50,7 +50,8 @@ def _isolated_settings(tmp_path_factory: pytest.TempPathFactory) -> Iterator[Non
     - no `.env`: the library reads one only when `from_env(env_file=...)` names it, and the
       Ole5 app's eval commands, which read the working folder's when `--env-file` names none,
       read none here (a test of `.env` parsing passes its own file);
-    - no variable with this project's prefix from the shell (a debug level, `prod`);
+    - no variable with this project's prefixes from the shell, the library's or the Ole5
+      app's (a debug level, `prod`, an access code);
     - no `GROQ_*`, `OTEL_*` or `PHOENIX_*` variable from the shell, so a real key or exporter
       setting never reaches a test (a test sets made-up ones with monkeypatch), and none that
       changes what a call's packages do (Pipecat's, loguru's, uvicorn's, FastAPI's and the
@@ -59,7 +60,8 @@ def _isolated_settings(tmp_path_factory: pytest.TempPathFactory) -> Iterator[Non
     - no CA bundle of requests' from the shell, and `NETRC` naming an empty file, so requests
       never opens the developer's `~/.netrc`;
     - a scratch var_dir for `from_env`, so no test opens the developer's var/ (settings built
-      in code take the `settings` fixture's, or their own).
+      in code take the `settings` fixture's, or their own), which a child process given
+      `child_shell()` takes too.
     `pytest_configure` above drops the same variables before collection; one set after it is
     dropped here. Add any other variable a test must never inherit to tests/isolation.py."""
     # Imported here, after `pytest_configure`: it imports `groq` and OpenTelemetry, which read

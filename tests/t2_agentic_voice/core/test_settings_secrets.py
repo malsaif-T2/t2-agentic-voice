@@ -1,6 +1,7 @@
 """The settings' secrets (the design's 7.5; docs/SECURITY.md, invariant 5): each a `SecretStr`
 with a `_file` form whose file holds the value; a join key and the TURN secret at least 32 bytes,
-a shorter one refused with a FIX line that makes one; and none in any repr, log line or error."""
+a shorter one refused with the command that makes one; and none in any repr, log line or
+error."""
 
 from __future__ import annotations
 
@@ -10,9 +11,10 @@ import secrets
 from collections.abc import Callable
 from pathlib import Path
 from typing import get_args
+from unittest.mock import ANY
 
 import pytest
-from pydantic import SecretStr
+from pydantic import SecretStr, ValidationError
 from t2_agentic_voice.core.config import VoiceSettings
 from t2_agentic_voice.core.errors import ConfigurationError
 from t2_agentic_voice.core.logging import configure_logging, get_logger
@@ -41,8 +43,9 @@ def test_every_secret_setting_is_a_secret_str_with_a_file_form() -> None:
 def test_a_secret_shorter_than_32_bytes_is_refused_as_the_settings_load(
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
-    """RFC 7518, 3.2 for an HS256 key; the TURN secret is held to the same. The FIX line gives
-    a command that makes one, and the error never shows the secret."""
+    """RFC 7518, 3.2 for an HS256 key; the TURN secret is held to the same. The error names
+    the setting with the command that makes a new secret, and never shows the secret; a group
+    built on its own raises a ValidationError with the same words."""
     assert (len(SHORT.encode()), len(LONG_SECRET.encode())) == (MIN_SECRET_BYTES - 1, 40)
     monkeypatch.setenv(f"{PREFIX}ENV", "test")
     for name, value in (("JOIN__KEYS", f'{{"k1": "{SHORT}"}}'), ("SERVER__TURN_SECRET", SHORT)):
@@ -51,13 +54,15 @@ def test_a_secret_shorter_than_32_bytes_is_refused_as_the_settings_load(
             VoiceSettings.from_env()
         monkeypatch.delenv(f"{PREFIX}{name}")
         error = raised.value
-        assert error.message.startswith(f"{PREFIX}{name} holds a secret shorter than 32 bytes")
-        assert error.message.endswith(f"FIX: make a new one with {GENERATOR}")
-        assert error.details == {"setting": f"{PREFIX}{name}"}
+        why = f"holds a secret shorter than 32 bytes; make a new one with {GENERATOR}"
+        assert f"{PREFIX}{name} (Value error, {why})" in error.message
+        assert "FIX: correct each one" in error.message
+        assert error.details == {"settings": [{"setting": f"{PREFIX}{name}", "problem": ANY}]}
         assert holding(SHORT, shown(error)) == []
         assert (error.__cause__, error.__context__) == (None, None)
-    with pytest.raises(ConfigurationError, match=f"{PREFIX}SERVER__TURN_SECRET holds a secret"):
-        ServerSettings(turn_secret=SecretStr(SHORT))  # built in code too
+    with pytest.raises(ValidationError, match=r"turn_secret\n.*holds a secret shorter") as alone:
+        ServerSettings(turn_secret=SecretStr(SHORT))  # a group built on its own
+    assert holding(SHORT, shown(alone.value)) == []
 
 
 def test_the_generator_makes_a_secret_long_enough() -> None:
@@ -68,10 +73,12 @@ def test_the_generator_makes_a_secret_long_enough() -> None:
 
 @pytest.mark.parametrize("value", [f"{LONG_SECRET} x", f"{LONG_SECRET}\nx", f"{LONG_SECRET}é"])
 def test_a_secret_with_a_character_no_key_holds_is_refused(value: str) -> None:
-    with pytest.raises(ConfigurationError, match="holds a character no API key holds"):
+    with pytest.raises(ValidationError, match="holds a character no API key holds"):
         ServerSettings(turn_secret=SecretStr(value))
-    with pytest.raises(ConfigurationError, match=f"{PREFIX}JOIN__KEYS holds a character"):
+    with pytest.raises(ValidationError, match=r"keys\n.*holds a character"):
         JoinSettings(keys={"k1": SecretStr(value)})
+    with pytest.raises(ConfigurationError, match=f"{PREFIX}JOIN__KEYS \\(Value error, holds a"):
+        VoiceSettings.model_validate({"env": "test", "join": {"keys": {"k1": value}}})
 
 
 def test_the_turn_secret_comes_from_the_setting_or_its_file(tmp_path: Path) -> None:
@@ -150,9 +157,15 @@ def test_an_unreadable_secret_file_names_the_setting_never_its_contents(
 
 
 def test_a_current_kid_the_inline_map_does_not_list_is_refused_as_the_settings_load() -> None:
-    with pytest.raises(ConfigurationError, match=f"{PREFIX}JOIN__CURRENT_KID names no key"):
+    with pytest.raises(ValidationError, match=r"current_kid\n.*names no key"):
         JoinSettings(keys={"k1": SecretStr(LONG_SECRET)}, current_kid="k2")
+    data = {"env": "test", "join": {"keys": {"k1": LONG_SECRET}, "current_kid": "k2"}}
+    with pytest.raises(ConfigurationError, match=f"{PREFIX}JOIN__CURRENT_KID \\(Value error, n"):
+        VoiceSettings.model_validate(data)
     assert JoinSettings(keys={"k1": SecretStr(LONG_SECRET)}, current_kid="k1").current_kid == "k1"
+    with pytest.raises(ValidationError) as failed:  # a map that failed lists no key to check
+        JoinSettings(keys={"k1": SecretStr(SHORT)}, current_kid="k2")
+    assert [line["loc"] for line in failed.value.errors(include_input=False)] == [("keys",)]
 
 
 def test_a_secret_file_error_names_the_setting_under_its_prefix(tmp_path: Path) -> None:

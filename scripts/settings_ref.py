@@ -19,7 +19,7 @@ import inspect
 import json
 import sys
 import textwrap
-from collections.abc import Iterator, Sequence
+from collections.abc import Iterator, Mapping, Sequence
 from dataclasses import dataclass
 from pathlib import Path
 from types import NoneType, UnionType
@@ -71,11 +71,14 @@ stale). The same command writes [.env.example](../../.env.example).
 `VoiceSettings(env=..., ...)` built in code takes its defaults and the arguments given, and
 nothing else. `VoiceSettings.from_env()` reads the environment variables below, under the prefix
 `T2V_` unless `prefix=` gives another, and a `.env` file only when `env_file=` names one; the
-environment wins over the file. A group's settings nest with `__`, a list or a map is given as
-JSON, and a blank value counts as unset. A variable under the prefix that names no setting is
-an error, so the prefix belongs to the library's settings alone. Each secret also takes a
-`_FILE` setting naming a file that holds it, and never shows in a repr, a log line or an error.
-A unit is read from the name: `_ms` is milliseconds, `_s` seconds.
+environment wins over the file, and code values given to `from_env` win over both: a group given
+as a dict (`server={{"dev_page": True}}`) changes only the keys it names, keeping the others the
+environment and the file gave, while a group given as its object replaces the group whole. A
+group's settings nest with `__`, a list or a map is given as JSON, and a blank value counts as
+unset. A variable under the prefix that names no setting is an error, so the prefix belongs to
+the library's settings alone. Each secret also takes a `_FILE` setting naming a file that holds
+it, and never shows in a repr, a log line or an error. A unit is read from the name: `_ms` is
+milliseconds, `_s` seconds.
 """
 
 
@@ -134,7 +137,7 @@ def type_text(annotation: object) -> str:
         return "one of " + ", ".join(str(arg) for arg in args)
     if origin in (tuple, list):
         return f"JSON list of {type_text(args[0])}"
-    if origin is dict:
+    if origin in (dict, Mapping):
         return f"JSON object from {type_text(args[0])} to {type_text(args[1])}"
     if isinstance(annotation, type) and issubclass(annotation, BaseModel):
         return "{" + ", ".join(annotation.model_fields) + "}"
@@ -152,7 +155,7 @@ def default_text(value: object) -> str | None:
         return f"{value:g}"
     if isinstance(value, Path):
         return value.as_posix()
-    if isinstance(value, dict):
+    if isinstance(value, Mapping):
         jsonable = {k: v.model_dump() if isinstance(v, BaseModel) else v for k, v in value.items()}
         return json.dumps(jsonable)
     return str(value)

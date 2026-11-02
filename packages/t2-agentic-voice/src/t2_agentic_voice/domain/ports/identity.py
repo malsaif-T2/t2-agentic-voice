@@ -25,14 +25,18 @@ from t2_agentic_voice.core.identity import Caller, Consent
 
 
 class UsedTokens(Protocol):
-    """The join tokens already used, each by its ID (a JWT's `jti`), kept at least until the
-    token expires, and shared by every call of the runtime (one process per `storage.var_dir`,
-    which the runtime's lock file holds)."""
+    """The join tokens already used, each by its ID (a JWT's `jti`), each kept at least until
+    the last instant its verifier could still accept the token, and shared by every call of the
+    runtime (one process per `storage.var_dir`, which the runtime's lock file holds)."""
 
     async def use(self, token_id: str, *, expires_at: datetime) -> bool:
         """Record `token_id` as used, kept at least until `expires_at` (an aware time): True the
         first time, False when it was used before, the second use being refused. Safe when two
-        joins use the same token at once: exactly one gets True."""
+        joins use the same token at once: exactly one gets True. `expires_at` is the last
+        instant the verifier could still accept the token: its `exp` plus the verifier's
+        clock-skew allowance (`join.max_clock_skew_s`), never its `exp` alone, since a store
+        that forgot the token at `exp` would let it start a second call within the
+        allowance."""
 
     async def aclose(self) -> None:
         """Close what the store holds open (a database connection); a store that holds none

@@ -104,11 +104,11 @@ def _decoded(model: type[BaseModel], location: tuple[str, ...], value: str) -> o
         return value
     try:
         return json.loads(value)
-    except ValueError:
+    except (ValueError, RecursionError):  # or nested deeper than the decoder goes
         return _NOT_JSON  # the decoder's error quotes the text: not chained
 
 
 def is_json(annotation: object) -> bool:
     """Whether a setting of this annotation is given as JSON: a list, a tuple or a map."""
     kinds = get_args(annotation) if get_origin(annotation) in (Union, UnionType) else ()
-    return any(get_origin(kind) in (tuple, list, dict) for kind in kinds or (annotation,))
+    return any(get_origin(kind) in (tuple, list, dict, Mapping) for kind in kinds or (annotation,))

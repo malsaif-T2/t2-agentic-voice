@@ -8,12 +8,19 @@ Any listed key verifies, and `current_kid` signs. Each key is at least 32 bytes 
 also refused at verify; PyJWT's minimum key length is on for encode and decode, through one
 `jwt.PyJWT(options={"enforce_minimum_key_length": True})`, `algorithm="HS256"` given and
 `algorithms=["HS256"]` required, so a token cannot choose its own algorithm (plan 003's appendix,
-"Changes to the plan's interfaces", item 25). A token lives `join.ttl_s` (120 s at most), is
-used once (the runtime's `UsedTokens`), and its claims are parsed strictly: `record_audio` a JSON
-boolean, the consent version a bounded string. Every refusal is a `JoinRejected` that holds no
-value of the token. Only this module builds a `SignedConsent`, the consent a verified token
-carried, the only one that can let a call be recorded (invariant 8): after the signature and
-every claim check pass, `verify` builds it from the token's `consent` claim as
+"Changes to the plan's interfaces", item 25). A token lives `join.ttl_s` (120 s at most), its
+times allowed `max_clock_skew_s` off (60 s at most), is used once (the runtime's `UsedTokens`),
+and its claims are parsed strictly: `record_audio` a JSON boolean, the consent version a bounded
+string. A `ttl_s` above `MAX_TTL_S` or a `max_clock_skew_s` above `MAX_CLOCK_SKEW_S`
+(core/settings/join.py) is a ConfigurationError at construction, as the settings refuse them.
+`verify` records the token's `jti` with `expires_at` its `exp` plus `max_clock_skew_s`, the last
+instant it would still verify, so the store never forgets a token the verifier would take
+again. Track C's replay test: a token used once, the store then pruned at the token's `exp`,
+and the token presented again before its `exp` plus the skew, is refused as used before. Every
+refusal is a `JoinRejected` that holds no value of the token. Only this module builds a
+`SignedConsent`, the consent a verified token carried, the only one that can let a call be
+recorded (invariant 8): after the signature and every claim check pass, `verify` builds it
+from the token's `consent` claim as
 `SignedConsent.model_validate(claim, context=CONSENT_SEAL)` (core/identity.py), the only way one
 is built. Only this module refers to `CONSENT_SEAL` (`[[restricted]]`), and it never stores the
 seal, returns it or hands it on. Track C's tests: a verified token whose consent says

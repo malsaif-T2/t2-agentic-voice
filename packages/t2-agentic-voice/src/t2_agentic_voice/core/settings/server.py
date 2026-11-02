@@ -6,23 +6,32 @@ from __future__ import annotations
 
 import ipaddress
 from pathlib import Path
-from urllib.parse import urlsplit
+from urllib.parse import SplitResult, urlsplit
 
-from pydantic import Field, SecretStr, ValidationInfo, field_validator
+from pydantic import Field, SecretStr, field_validator
 
 from t2_agentic_voice.core.settings.base import (
     PREFIX,
     Group,
-    prefix_of,
     read_secret_file,
     secret,
     setting_name,
+    shared_secret,
     url,
 )
 
 # A TURN credential lasts at most a day (coturn's REST scheme: the secret signs an expiry).
 MAX_TURN_TTL_S = 86_400
 _ICE_SCHEMES = ("stun:", "turn:", "turns:")
+# The port a browser leaves out of an origin, by scheme.
+_DEFAULT_PORTS = {"http": 80, "https": 443}
+# The widest network a trusted proxy entry may name, by IP version: a wider one trusts nearly
+# every peer's X-Forwarded-For, as "*" does. A dual-stack socket shows an IPv4 peer as an
+# IPv4-mapped IPv6 address, so those are held to IPv4's bound.
+_WIDEST = {4: 8, 6: 32}
+_MAPPED = ipaddress.IPv6Network("::ffff:0:0/96")
+_MAPPED_WIDEST = 96 + _WIDEST[4]
+Network = ipaddress.IPv4Network | ipaddress.IPv6Network
 
 
 class ServerSettings(Group):
@@ -37,7 +46,8 @@ class ServerSettings(Group):
         default=(),
         description=(
             "The pages allowed to call the backend from a browser, as a JSON list of origins "
-            '(scheme, host and port only), such as ["https://www.example.com"]. Unset: none.'
+            "(scheme, host and port only, written as a browser sends them: lowercase, with no "
+            'default port), such as ["https://www.example.com"]. Unset: none.'
         ),
     )
     ice_servers: tuple[str, ...] = Field(
@@ -72,7 +82,9 @@ class ServerSettings(Group):
         default=(),
         description=(
             "The proxies whose X-Forwarded-For headers are trusted, as a JSON list of IP "
-            'addresses or networks, such as ["127.0.0.1"]; "*" is refused. Unset: none.'
+            'addresses or networks, such as ["127.0.0.1"]: a network by its own address '
+            '(10.0.0.0/24), no wider than /8 for IPv4 or /32 for IPv6; "*" is refused. Unset: '
+            "none."
         ),
     )
 
@@ -91,6 +103,13 @@ class ServerSettings(Group):
                 parts = None
             if parts is None or parts.path or parts.query or parts.fragment:
                 raise ValueError(f"origin {index} must be a scheme, a host and a port only")
+            if not _as_sent(origin, parts):
+                raise ValueError(
+                    f"origin {index} is not written as a browser sends it, and CORS compares "
+                    "the two as text; write the scheme and the host in lowercase, a host name "
+                    "in ASCII (its xn-- form), and no default port (:443 for https, :80 for "
+                    "http)"
+                )
         return value
 
     @field_validator("ice_servers")
@@ -106,11 +125,10 @@ class ServerSettings(Group):
 
     @field_validator("turn_secret")
     @classmethod
-    def _long_enough(cls, value: SecretStr | None, info: ValidationInfo) -> SecretStr | None:
+    def _long_enough(cls, value: SecretStr | None) -> SecretStr | None:
         if value is None or not value.get_secret_value().strip():
             return None  # a blank value counts as unset
-        setting = setting_name("server", "turn_secret", prefix=prefix_of(info))
-        return secret(value.get_secret_value().strip(), setting)
+        return shared_secret(value.get_secret_value().strip())
 
     @field_validator("forwarded_allow_ips")
     @classmethod
@@ -120,8 +138,16 @@ class ServerSettings(Group):
                 raise ValueError(
                     "must not hold *, which trusts every peer's X-Forwarded-For; name each proxy"
                 )
-            if not _network(entry):
+            network = _network(entry)
+            if network is None:
                 raise ValueError(f"entry {index} is not an IP address or network")
+            if isinstance(network, str):
+                raise ValueError(f"entry {index} {network}")
+            if _too_wide(network):
+                raise ValueError(
+                    f"entry {index} is wider than /8 for IPv4 or /32 for IPv6, which trusts "
+                    "nearly every peer's X-Forwarded-For, as * does; name each proxy"
+                )
         return value
 
     def resolved_turn_secret(self, prefix: str = PREFIX) -> SecretStr | None:
@@ -138,14 +164,42 @@ class ServerSettings(Group):
         return None if text is None else secret(text, setting)
 
 
-def _network(text: str) -> bool:
-    """Whether `text` is an IP address or network. Checked apart from the error it raises,
-    since ipaddress's own error repeats the value, and a chained one is still reachable."""
+def _as_sent(origin: str, parts: SplitResult) -> bool:
+    """Whether `origin` reads as a browser's `Origin` header does, which Starlette's CORS
+    compares as text: the scheme and the host in lowercase, a host name in ASCII, and no
+    default port."""
+    host = parts.hostname or ""  # `url` checked that there is one
+    port = "" if parts.port in (None, _DEFAULT_PORTS[parts.scheme]) else f":{parts.port}"
+    netloc = f"[{host}]" if ":" in host else host
+    return host.isascii() and origin == f"{parts.scheme}://{netloc}{port}"
+
+
+def _network(text: str) -> Network | str | None:
+    """`text` as the network uvicorn reads it (strictly, as it does); what is wrong with it, in
+    fixed words, when it holds host bits, which uvicorn would keep as a name that matches no
+    peer; None when it is no IP address or network. ipaddress's own error repeats the value, so
+    it is caught here and in no chain."""
+    try:
+        return ipaddress.ip_network(text)
+    except ValueError:
+        pass
     try:
         ipaddress.ip_network(text, strict=False)
     except ValueError:
-        return False
-    return True
+        return None
+    return (
+        "has host bits set, so uvicorn would match no peer with it; give the network's own "
+        "address, such as 10.0.0.0/24 for 10.0.0.5/24"
+    )
+
+
+def _too_wide(network: Network) -> bool:
+    """Whether `network` is wider than its version's bound, or holds more of the IPv4-mapped
+    addresses than IPv4's bound allows."""
+    if network.prefixlen < _WIDEST[network.version]:
+        return True
+    mapped = isinstance(network, ipaddress.IPv6Network) and network.overlaps(_MAPPED)
+    return mapped and network.prefixlen < _MAPPED_WIDEST
 
 
 def _plain(text: str) -> bool:

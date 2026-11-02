@@ -4,9 +4,12 @@ through the `stores` facade (provisional).
 
 `SqliteUsedTokens` keeps them in a SQLite file under `storage.var_dir`, across restarts, and
 gives exactly one of two joins that use one token at once its True, from two threads too; only
-`adapters` imports `sqlite3` (`[[owners]]`). A row is kept at least until its token expires. One
+`adapters` imports `sqlite3` (`[[owners]]`). A row is kept at least until its `expires_at`, the
+last instant the verifier could still accept its token (the token's `exp` plus
+`join.max_clock_skew_s`, as `SignedJoinTokens` passes it), and is pruned only after that. One
 process per `var_dir` holds the file (the runtime's lock file). `MemoryUsedTokens` keeps them in
-memory only, for tests and a dev machine.
+memory only, for tests and a dev machine. Track C's test of each store: a row pruned once its
+`expires_at` has passed, and kept while it has not.
 """
 
 from __future__ import annotations

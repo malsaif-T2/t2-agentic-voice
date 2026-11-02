@@ -1,20 +1,33 @@
 """What the settings groups share: the base of a group, how a setting's environment name is
-made, and the checks several groups' values take (a URL; a key's characters; a shared secret's
-least length; a secret given as a file).
+made, the checks several groups' values take (a URL; a key's characters; a shared secret's
+least length; a secret given as a file), and the read-only form of a map setting.
 
 Every error names the setting and never the value it rejected, which may be a key pasted into
-the wrong setting (GP-19). A group's checks name a setting under the prefix the settings were
-loaded with, which `VoiceSettings.from_env` passes down as the validation context
-(`{"prefix": ...}`); built in code, under the library's own, `T2V_`.
+the wrong setting (GP-19). A group's checks raise ValueError with fixed text, which pydantic
+collects with every other failure of the same load, and `VoiceSettings` turns them all into one
+ConfigurationError naming each setting under the prefix the settings were loaded with
+(`VoiceSettings.from_env` passes it down as the validation context, `{"prefix": ...}`; built
+in code, the library's own, `T2V_`). A check made outside validation, as a secret file is
+resolved, raises ConfigurationError itself.
 """
 
 from __future__ import annotations
 
 import re
+from collections.abc import Iterator, Mapping
 from pathlib import Path
+from types import MappingProxyType
 from urllib.parse import SplitResult, urlsplit
 
-from pydantic import BaseModel, ConfigDict, SecretStr, ValidationInfo
+from pydantic import (
+    AfterValidator,
+    BaseModel,
+    ConfigDict,
+    SecretStr,
+    SerializerFunctionWrapHandler,
+    ValidationInfo,
+    WrapSerializer,
+)
 
 from t2_agentic_voice.core.errors import ConfigurationError
 
@@ -48,13 +61,58 @@ def prefix_of(info: ValidationInfo) -> str:
 
 
 class Group(BaseModel):
-    """A group of settings: read-only once loaded, and a misspelt key in it is an error. An
-    error's text and repr name the setting, never the value it rejected, which may be a key
-    (GP-19). A ValidationError's `errors()` and `json()` still return that value unless given
-    `include_input=False`, so a command reports settings errors only through
-    `VoiceSettings.from_env`, never from a ValidationError itself."""
+    """A group of settings: read-only once loaded, a map setting included (`FROZEN`), and a
+    misspelt key in it is an error. Inside `VoiceSettings` its failures become the settings' one
+    ConfigurationError. A group built on its own (`JoinSettings(...)`) raises pydantic's
+    ValidationError instead, whose text and repr name the setting, never the value it rejected,
+    which may be a key (GP-19); its `errors()` and `json()` still return that value unless given
+    `include_input=False`, so a command reports settings errors only through `VoiceSettings`,
+    never from a group's ValidationError itself."""
 
     model_config = ConfigDict(frozen=True, extra="forbid", hide_input_in_errors=True)
+
+
+class ReadOnlyMap[K, V](Mapping[K, V]):
+    """A map nothing can change once built, its entries behind a `MappingProxyType`. It copies,
+    deep-copies and pickles through the plain map it holds, so settings that hold one still do,
+    which a `MappingProxyType` alone cannot."""
+
+    __slots__ = ("_items",)
+
+    def __init__(self, items: Mapping[K, V]) -> None:
+        self._items: Mapping[K, V] = MappingProxyType(dict(items))
+
+    def __getitem__(self, key: K) -> V:
+        return self._items[key]
+
+    def __iter__(self) -> Iterator[K]:
+        return iter(self._items)
+
+    def __len__(self) -> int:
+        return len(self._items)
+
+    def __repr__(self) -> str:
+        return f"{type(self).__name__}({dict(self._items)!r})"
+
+    def __reduce__(self) -> tuple[type[ReadOnlyMap[K, V]], tuple[dict[K, V]]]:
+        return type(self), (dict(self._items),)
+
+
+def read_only[K, V](value: Mapping[K, V]) -> Mapping[K, V]:
+    """`value` as a map nothing can change, so code that holds the settings cannot add an entry
+    no check saw (a join key under 32 bytes) or change one every call shares (a voice)."""
+    return ReadOnlyMap(value)
+
+
+def plain(value: Mapping[object, object], dump: SerializerFunctionWrapHandler) -> object:
+    """A read-only map dumped as the plain object it was given as."""
+    return dump(dict(value))
+
+
+# What a map setting's annotation adds, both together, with `validate_default=True` so its
+# default is read-only too: `Annotated[Mapping[K, V], FROZEN, PLAIN]`.
+FROZEN = AfterValidator(read_only)
+PLAIN = WrapSerializer(plain)
 
 
 def url(value: str, schemes: frozenset[str]) -> str:
@@ -90,27 +148,49 @@ def key(value: str, setting: str) -> SecretStr:
     """`value` as a key, or ConfigurationError naming `setting`, never the value: a key with a
     line break, a space, a control or a non-ASCII character inside it fails in the HTTP client,
     whose error holds the whole header (the key with it) and reads as a lost connection."""
-    if not _KEY.fullmatch(value):
-        raise ConfigurationError(
-            f"{setting} holds a character no API key holds: a space or a line break inside it, "
-            "or a control or non-ASCII character. FIX: give the key alone, on one line.",
-            details={"setting": setting},
-        )
-    return SecretStr(value)
+    return _checked(value, setting, least=0)
 
 
 def secret(value: str, setting: str) -> SecretStr:
     """`value` as a shared secret (a join key, the TURN secret): a key's characters, and at least
     `MIN_SECRET_BYTES` bytes; or ConfigurationError naming `setting`, never the value, whose FIX
     line gives a command that makes one."""
-    checked = key(value, setting)
-    if len(value.encode("utf-8")) < MIN_SECRET_BYTES:
-        raise ConfigurationError(
-            f"{setting} holds a secret shorter than {MIN_SECRET_BYTES} bytes. FIX: make a new "
-            f"one with {GENERATOR}",
-            details={"setting": setting},
+    return _checked(value, setting, least=MIN_SECRET_BYTES)
+
+
+def shared_secret(value: str) -> SecretStr:
+    """`value` as a shared secret, in a group's validator: what `secret` checks, failing with a
+    ValueError of fixed text, which pydantic collects with the load's other failures, so the
+    settings name them all; a ConfigurationError raised there would stop the load at the
+    first."""
+    problem = _problem(value, least=MIN_SECRET_BYTES)
+    if problem is not None:
+        why, fix = problem
+        raise ValueError(f"{why}; {fix.rstrip('.')}")
+    return SecretStr(value)
+
+
+def _checked(value: str, setting: str, *, least: int) -> SecretStr:
+    """`value` as a key of at least `least` bytes, or ConfigurationError naming `setting`."""
+    problem = _problem(value, least=least)
+    if problem is not None:
+        why, fix = problem
+        raise ConfigurationError(f"{setting} {why}. FIX: {fix}", details={"setting": setting})
+    return SecretStr(value)
+
+
+def _problem(value: str, *, least: int) -> tuple[str, str] | None:
+    """What is wrong with `value` as a key of at least `least` bytes, and its fix, in fixed text;
+    None when nothing is."""
+    if not _KEY.fullmatch(value):
+        why = (
+            "holds a character no API key holds: a space or a line break inside it, or a "
+            "control or non-ASCII character"
         )
-    return checked
+        return why, "give the key alone, on one line."
+    if len(value.encode("utf-8")) < least:
+        return f"holds a secret shorter than {least} bytes", f"make a new one with {GENERATOR}"
+    return None
 
 
 def read_secret_file(path: Path, setting: str) -> str | None:

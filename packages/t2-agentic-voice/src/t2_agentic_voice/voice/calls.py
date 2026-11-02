@@ -9,7 +9,10 @@
   `t2v --help` import no Pipecat (GP-17). Pipecat's loguru namespace is switched off before voice
   first imports Pipecat (Q2, item 16); the transport loggers are held at WARNING unless
   `logging.content` is on (`core.logging.hold_transport_loggers`); `PIPECAT_SETUP_FILES` and
-  `PIPECAT_SMART_TURN_LOG_DATA` set to a value are refused (item 17).
+  `PIPECAT_SMART_TURN_LOG_DATA` set to a value are refused (item 17), each named in a
+  ConfigurationError, never its value. voice reads no variable itself (ARCH-ENV): it asks
+  `core.config.foreign_set`, which answers by name however the settings were built. Track E's
+  test: each one set (monkeypatch) makes `start` refuse, naming it.
 - **The offer** (`answer`). One Pipecat pipeline per call, its session a `CallSession`
   (`voice/session/`). Pipecat's request handler keys its connections on a `pc_id` it chooses,
   which holds `#`; it renegotiates a live call for whoever names that ID, and leaves a stale key

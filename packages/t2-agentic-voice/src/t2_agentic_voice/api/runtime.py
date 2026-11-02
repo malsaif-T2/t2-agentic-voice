@@ -7,7 +7,13 @@ the plan's interfaces"; what Track F builds:
   providers (`providers`; by default the settings' own, built at start: the design's 6.1, an
   adapter passed in code beside one a setting picks), and the team's tracer provider
   (`tracer_provider`; by default a private one from `tracing.endpoint`, built inside the
-  lifespan, never before it, so a server's forked worker gets its own: TD-014).
+  lifespan, never before it, so a server's forked worker gets its own: TD-014). It calls
+  `settings.check_environment()` first: settings copied with a change
+  (`model_copy(update=...)`) skip validation, so a `prod` copy with the dev page, logged call
+  content or DEBUG would otherwise be served, and `voice` holds the transport loggers only
+  while `logging.content` is off. Track F's test: a `staging` and a `prod` copy with each value
+  `CHECKS` in tests/t2_agentic_voice/core/test_settings_checks.py refuses, each a
+  ConfigurationError at construction.
 - **The lifespan** does the IO. It takes an exclusive lock file under `storage.var_dir`, so a
   second process on the same folder is refused with a FIX line that points to the sidecar, on
   Windows and on Linux; resolves every secret the settings name in a file, so a short one stops
