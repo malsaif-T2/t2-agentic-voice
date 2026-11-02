@@ -7,7 +7,7 @@ from __future__ import annotations
 
 import os
 import re
-from collections.abc import Iterator
+from collections.abc import Iterator, Sequence
 from dataclasses import dataclass
 from pathlib import Path
 from urllib.parse import unquote
@@ -26,6 +26,16 @@ def markdown_files(root: Path) -> list[Path]:
     if docs.is_dir():
         files.extend(docs.rglob("*.md"))
     return sorted(files)
+
+
+def living_docs(
+    root: Path, markdown: Sequence[Path], historical: tuple[str, ...]
+) -> Iterator[tuple[Path, str]]:
+    """(doc, its path from the root) for each doc that is not history ([docs] historical)."""
+    for md in markdown:
+        rel = md.relative_to(root).as_posix()
+        if not rel.startswith(historical):
+            yield md, rel
 
 
 def lines_of(path: Path) -> Iterator[tuple[int, str]]:

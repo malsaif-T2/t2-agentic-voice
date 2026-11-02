@@ -15,16 +15,13 @@ from collections.abc import Sequence
 from pathlib import Path
 
 from scripts._common import Violation
-from scripts.doc_text import FENCE, extract_links, lines_of
+from scripts.doc_text import FENCE, extract_links, lines_of, living_docs
 from scripts.harness_config import HarnessConfig
 
 
 def check_samples(root: Path, config: HarnessConfig, markdown: Sequence[Path]) -> list[Violation]:
     violations = []
-    for md in markdown:
-        rel = md.relative_to(root).as_posix()
-        if rel.startswith(config.docs.historical):
-            continue
+    for md, rel in living_docs(root, markdown, config.docs.historical):
         links = [link for link in extract_links(md, root) if link.target.suffix == ".py"]
         closed = 0  # the line the previous block's fence closed on
         for opened, sample, end in _blocks(md):

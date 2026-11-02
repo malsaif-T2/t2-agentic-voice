@@ -24,7 +24,7 @@ from pathlib import Path
 
 from scripts._common import Violation
 from scripts.doc_registers import entries as recorded_entries
-from scripts.doc_text import lines_of
+from scripts.doc_text import lines_of, living_docs
 from scripts.harness_config import DocsConfig, HarnessConfig
 
 # A code with a decimal part (M2.5, a clothing size, a diagnosis code) is not a milestone.
@@ -49,10 +49,7 @@ def check_milestones(
     text = roadmap.read_text(encoding="utf-8") if roadmap.is_file() else ""
     known = set(_ROADMAP_ROW.findall(text))
     violations: list[Violation] = []
-    for md in markdown:
-        rel = md.relative_to(root).as_posix()
-        if rel.startswith(config.docs.historical):
-            continue
+    for md, rel in living_docs(root, markdown, config.docs.historical):
         for lineno, line in lines_of(md):
             for match in _MILESTONE.finditer(line):
                 if match.group(1) not in known:
