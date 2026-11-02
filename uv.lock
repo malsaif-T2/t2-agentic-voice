@@ -644,11 +644,15 @@ name = "ole5-voice-agent"
 version = "0.1.0"
 source = { editable = "apps/ole5-voice-agent" }
 dependencies = [
+    { name = "pydantic" },
     { name = "t2-agentic-voice" },
 ]
 
 [package.metadata]
-requires-dist = [{ name = "t2-agentic-voice", editable = "packages/t2-agentic-voice" }]
+requires-dist = [
+    { name = "pydantic", specifier = ">=2.13.5" },
+    { name = "t2-agentic-voice", editable = "packages/t2-agentic-voice" },
+]
 
 [[package]]
 name = "openinference-semantic-conventions"
@@ -1209,6 +1213,7 @@ version = "0.1.0"
 source = { editable = "packages/t2-agentic-voice" }
 dependencies = [
     { name = "groq" },
+    { name = "httpx" },
     { name = "jiwer" },
     { name = "openinference-semantic-conventions" },
     { name = "opentelemetry-api" },
@@ -1223,6 +1228,7 @@ dependencies = [
 [package.metadata]
 requires-dist = [
     { name = "groq", specifier = ">=1.7.0" },
+    { name = "httpx", specifier = ">=0.28.1,<1" },
     { name = "jiwer", specifier = ">=4.0.0" },
     { name = "openinference-semantic-conventions", specifier = ">=0.1.43" },
     { name = "opentelemetry-api", specifier = ">=1.45.2" },
@@ -1257,6 +1263,7 @@ dependencies = [
 
 [package.dev-dependencies]
 dev = [
+    { name = "coverage" },
     { name = "mypy" },
     { name = "poethepoet" },
     { name = "pytest" },
@@ -1273,6 +1280,7 @@ requires-dist = [
 
 [package.metadata.requires-dev]
 dev = [
+    { name = "coverage", specifier = ">=7.17.0" },
     { name = "mypy", specifier = ">=2.3.1" },
     { name = "poethepoet", specifier = ">=0.48.0" },
     { name = "pytest", specifier = ">=9.1.1" },

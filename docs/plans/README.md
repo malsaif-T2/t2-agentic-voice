@@ -16,6 +16,10 @@ holds what is known to be owed.
   is linked from the roadmap: from its milestone's row, or, for work outside the milestones
   (garbage collection, side work), from the roadmap's "Outside the milestones" line.
 - **Debt** discovered along the way goes into [tech-debt.md](tech-debt.md), not into chat.
+- **Size:** a plan that grows a module above `[gc] size_watch` lines (`harness.toml`) names the
+  split that brings it back, and a split leaves every module at or under the watch, not just
+  under the hard limit (`[modules] max_lines`). Splitting just under the limit made plan 002
+  split again and again.
 
 Folders: [active/](active/) holds plans in progress, and `completed/` the finished ones.
 

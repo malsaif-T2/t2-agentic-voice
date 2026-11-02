@@ -13,7 +13,8 @@ import ast
 from pathlib import Path
 
 from scripts._common import Violation
-from scripts.harness_config import AppRule, ArchConfig
+from scripts.harness_arch import AppRule, ArchConfig
+from scripts.harness_toml import CONFIG_FILE, RULE
 from scripts.module_rules import parse_module
 
 
@@ -70,7 +71,7 @@ def check_app(root: Path, app: AppRule, arch: ArchConfig) -> tuple[list[Violatio
     if not (app_dir / "__init__.py").is_file():
         init = f"{app.dir}/__init__.py"
         fix = f"Set this [[apps]] entry's name and root to the app's package, or create {init}."
-        return [Violation("harness.toml", 1, "HARNESS-CONFIG", f"{init} does not exist", fix)], 0
+        return [Violation(CONFIG_FILE, 1, RULE, f"{init} does not exist", fix)], 0
     violations: list[Violation] = []
     files = sorted(app_dir.rglob("*.py"))
     for path in files:
