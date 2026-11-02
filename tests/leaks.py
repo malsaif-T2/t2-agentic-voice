@@ -2,7 +2,8 @@
 invariant 5). A value that leaked through an error's text, its exception chain or a third-party
 log line was fixed again and again in plan 002, each test gathering "everything shown" by hand
 and each missing a different surface. A test that checks a secret, or a value a check refused,
-is never shown asks `holding(value, shown(error, caplog=caplog, capsys=capsys))` instead.
+is never shown asks `holding(value, shown(error, caplog=caplog, capsys=capsys, recwarn=recwarn))`
+instead, with the fixtures it has.
 
 Any package's tests may use it. The design's `testing.assert_no_secret_leaks` (5.1) is to grow
 from it."""
@@ -39,6 +40,7 @@ def shown(
     *,
     caplog: pytest.LogCaptureFixture | None = None,
     capsys: pytest.CaptureFixture[str] | None = None,
+    recwarn: pytest.WarningsRecorder | None = None,
 ) -> dict[str, str]:
     """Every surface that may show a value, by name:
     - of `error`: its text, its repr, its traceback as Python prints it (the chain it shows and
@@ -48,7 +50,9 @@ def shown(
       reaches it;
     - of `caplog`: every log record's formatted text and message, a third party's included;
     - of `capsys`: what was written to stdout (structlog's events) and to stderr, read here, so
-      a test reads them from the result rather than from `capsys` again."""
+      a test reads them from the result rather than from `capsys` again;
+    - of `recwarn`: every Python warning's category and message (pydantic's serializer warnings
+      quoted a refused value), which under pytest reach neither stderr nor `capsys`."""
     surfaces: dict[str, str] = {}
     if error is not None:
         surfaces["text"] = str(error)
@@ -65,6 +69,8 @@ def shown(
         surfaces["log records"] = "\n".join([caplog.text, *messages])
     if capsys is not None:
         surfaces["stdout"], surfaces["stderr"] = capsys.readouterr()
+    if recwarn is not None:
+        surfaces["warnings"] = "\n".join(f"{w.category.__name__}: {w.message}" for w in recwarn)
     return surfaces
 
 

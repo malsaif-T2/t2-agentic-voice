@@ -1,10 +1,12 @@
-"""tests/leaks.py, the shared check of what an error or a log line may show: it finds a value on
-every surface it names, so a test that relies on it is never blind to one."""
+"""tests/leaks.py, the shared check of what an error, a log line, an output or a warning may
+show: it finds a value on every surface it names, so a test that relies on it is never blind to
+one."""
 
 from __future__ import annotations
 
 import logging
 import sys
+import warnings
 
 import pytest
 from t2_agentic_voice.core.errors import ConfigurationError
@@ -45,3 +47,11 @@ def test_a_log_record_and_each_output_show(
     sys.stderr.write(VALUE)
     assert holding(VALUE, shown(capsys=capsys)) == ["stdout", "stderr"]
     assert shown(capsys=capsys) == {"stdout": "", "stderr": ""}  # read once, by `shown`
+
+
+def test_a_warning_shows(recwarn: pytest.WarningsRecorder) -> None:
+    """As pydantic's serializer warnings quoted a refused value: under pytest a warning reaches
+    neither stderr nor `capsys`, only the recorder."""
+    warnings.warn(f"serialized {VALUE}", UserWarning, stacklevel=1)
+    assert holding(VALUE, shown(recwarn=recwarn)) == ["warnings"]
+    assert shown(recwarn=recwarn)["warnings"].startswith("UserWarning: ")

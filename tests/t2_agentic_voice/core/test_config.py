@@ -163,15 +163,26 @@ def test_from_env_says_what_to_correct_and_names_no_file_of_the_repository(
 
 
 @pytest.mark.parametrize("name", sorted(names()))
-def test_no_setting_shows_a_value_it_refuses(name: str, monkeypatch: pytest.MonkeyPatch) -> None:
+def test_no_setting_shows_a_value_it_refuses(
+    name: str,
+    monkeypatch: pytest.MonkeyPatch,
+    caplog: pytest.LogCaptureFixture,
+    capsys: pytest.CaptureFixture[str],
+    recwarn: pytest.WarningsRecorder,
+) -> None:
     """GP-19 for every setting, one added later included: given the made-up key (pasted into
-    the wrong setting), each setting takes it, or `from_env` refuses it without showing it."""
+    the wrong setting), each setting takes it, or `from_env` refuses it; either way nothing
+    shows it, in the error, a log line, an output or a warning."""
+    caplog.set_level(logging.DEBUG)
     monkeypatch.setenv(name, MADE_UP_KEY)
+    refused: ConfigurationError | None = None
     try:
         Settings.from_env()
     except ConfigurationError as error:
-        assert holding(MADE_UP_KEY, shown(error)) == []
+        refused = error
         assert (error.__cause__, error.__context__) == (None, None)
+    surfaces = shown(refused, caplog=caplog, capsys=capsys, recwarn=recwarn)
+    assert holding(MADE_UP_KEY, surfaces) == []
 
 
 def test_from_env_refuses_a_value_that_does_not_parse(monkeypatch: pytest.MonkeyPatch) -> None:
