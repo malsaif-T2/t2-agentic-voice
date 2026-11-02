@@ -57,6 +57,17 @@ def test_a_transcript_keeps_the_no_speech_estimate_within_bounds() -> None:
         Transcript(text="", language=None, billed_seconds=-1)
 
 
+def test_a_transcript_carries_the_headroom_its_provider_reported_when_read() -> None:
+    """For the call's usage (the last remaining requests and tokens per model); None when the
+    adapter read none, as GroqSTT reads none yet."""
+    heard = Transcript(text="", language="ar", remaining_requests=1999, remaining_tokens=7000)
+    assert (heard.remaining_requests, heard.remaining_tokens) == (1999, 7000)
+    assert Transcript(text="", language=None).remaining_requests is None
+    for field in ("remaining_requests", "remaining_tokens"):
+        with pytest.raises(ValidationError):
+            Transcript.model_validate({"text": "", "language": None, field: -1})
+
+
 def test_a_provider_implements_the_port() -> None:
     stt: SpeechToText = _Length()
     clip = AudioClip(pcm16=b"\x00\x00" * 1600)
