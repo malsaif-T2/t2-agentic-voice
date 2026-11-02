@@ -52,16 +52,15 @@ _REPLIES: Final = TypeAdapter(list[Reply])
 
 
 def _tracked(out: Path, git: Git) -> bool:
-    """Whether `out` (resolved) is in this repository outside its git-ignored var/: inside the
-    innermost of its worktrees that holds it, outside that worktree's `var/`. The main
-    checkout's tree counts too when the recorder runs from a linked worktree, as git lists them
-    (plan 004, app8); with no git, only the recorder's own checkout is known."""
-    tops = {top.resolve() for top in (_REPO, *worktree_tops(_REPO, git))}
-    holders = [top for top in tops if out.is_relative_to(top)]
-    if not holders:
-        return False
-    holder = max(holders, key=lambda top: len(top.parts))
-    return not out.is_relative_to(holder / "var")
+    """Whether `out` (resolved) is in this repository outside its git-ignored var/: inside any
+    of its worktrees, as git lists them, but under neither the recorder's own checkout's `var/`
+    nor the main checkout's, so no take lands where git tracks it or in a worktree that may be
+    removed (plan 004, app8); with no git, only the recorder's own checkout is known."""
+    own = _REPO.resolve()
+    tops = [top.resolve() for top in worktree_tops(_REPO, git)] or [own]  # the main's first
+    kept = (own / "var", tops[0] / "var")
+    inside = any(out.is_relative_to(top) for top in (own, *tops))
+    return inside and not any(out.is_relative_to(folder) for folder in kept)
 
 
 def _parse[M: Model](model: type[M], path: Path) -> M:
