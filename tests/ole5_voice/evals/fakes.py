@@ -1,16 +1,16 @@
-"""Fakes for the golden set's tests (plan 002, Block 0). Each implements one protocol, or stands
-in for one function another track builds, and nothing else, so a track builds against another
-track's interface before that track merges (plans README, "Parallel tracks"):
+"""Fakes for the golden set's tests. Each implements one protocol, or stands in for one
+function, and nothing else, so a test of one part runs without the parts it calls:
 
 - `FakeSpeechToText`: the library's `SpeechToText` port;
-- `fake_normalize`: `normalize_arabic` and `normalize_digits` (Track A);
-- `FakeMatcher`: the `Matcher` (Track D);
-- `FakeGoldenSet`: `items.load_items` and `split.load_split` (Track D);
-- `FakeScorecardWriter`: the `ScorecardWriter` (Track F);
-- `FakeHistory`: `history.append_line` (Track F);
-- `FakeSignTest`, `FakeSpellingCheck` and `FakeScorers`: `sign_test`, `spelling_issues`, and
-  `wer`, `cer`, `term_recall`, `id_recall` and `silence_output` (Track A);
-- `FakeTracing`: the tracing span helpers (Track C).
+- `fake_normalize`: the scored form, `matcher.normalize` (the library's `normalize_arabic` and
+  `normalize_digits`);
+- `FakeMatcher`: the `Matcher`, `matcher.GuideMatcher`;
+- `FakeGoldenSet`: `items.load_items` and `split.load_split`;
+- `FakeScorecardWriter`: the `ScorecardWriter`, `scorecard.write_scorecard`;
+- `FakeHistory`: `history.append_line`;
+- `FakeSignTest`, `FakeSpellingCheck` and `FakeScorers`: the library's `sign_test`,
+  `spelling_issues`, and `wer`, `cer`, `term_recall`, `id_recall` and `silence_output`;
+- `FakeTracing`: the library's tracing span helpers (`Tracing`).
 """
 
 from __future__ import annotations

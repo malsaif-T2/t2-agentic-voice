@@ -190,7 +190,7 @@ class Manifest(Model):
 
 
 class SplitFile(Model):
-    """`split.json`, the committed split: its salt and each item's split, by item ID (Track D
+    """`split.json`, the committed split: its salt and each item's split, by item ID (`split.py`
     writes it, the runner reads it)."""
 
     salt: str = Field(min_length=1)

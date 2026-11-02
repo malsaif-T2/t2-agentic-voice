@@ -90,7 +90,7 @@ class Request(Model):
 
 class Window(Model):
     """What was heard in the first `ms` of a variant's first segment, with the registration's
-    measures of it, which the runner takes with Track E's `windows.py`."""
+    measures of it, which the runner takes with `windows.py`."""
 
     ms: int = Field(gt=0)
     text: str

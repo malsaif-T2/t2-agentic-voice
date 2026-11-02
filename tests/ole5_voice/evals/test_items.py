@@ -187,7 +187,7 @@ def test_a_variant_is_checked_once_the_owner_confirmed_it() -> None:
     plain = samples.variant()
     assert unchecked(plain) == "not yet confirmed by the owner's listen"
     assert unchecked(_confirmed(plain, 1)) is None
-    # A typed reference with no second confirmation is left out (the plan's Track D, Tests).
+    # A typed reference with no second confirmation is left out (Q9: a check in a later pass).
     assert "waiting on its second confirmation" in (unchecked(_typed(plain)) or "")
     assert unchecked(_confirmed(_typed(plain), 2)) is None
 

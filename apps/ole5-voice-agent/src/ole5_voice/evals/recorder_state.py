@@ -2,10 +2,12 @@
 
 The allow-list: the replies `replies.json` names, every take below `--out`, and the golden-set
 variants whose files the manifests name below the `--audio` roots given. Each file is found by
-an ID, never by a path a request gives, and sent only when no link leads to it, its bytes are
-WAV, and they match the SHA-256 recorded for them, so no other file below a served folder (a
-`.env` among them) is ever sent. The recorder writes only new files below `--out`, each named by
-`takes.py`, never replacing one: the session's consent, each take and its sidecar, each review.
+an ID, never by a path a request gives, and sent only when no link leads to it and its bytes are
+WAV; a take's and a variant's must also match the SHA-256 their sidecar or manifest records (a
+reply has none recorded, so its WAV header and the no-link check stand for it), so no other file
+below a served folder (a `.env` among them) is ever sent. The recorder writes only new files
+below `--out`, each named by `takes.py`, never replacing one: the session's consent, each take
+and its sidecar, each review.
 
 A review pass is one run of `poe record`, numbered one past the highest pass below `--out`, and
 a take or a variant has at most one review a pass (its file's name says so), so a text the owner
