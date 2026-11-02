@@ -17,7 +17,7 @@ decisions (`D-NNN`), which are permanent. Living docs cite only milestones in th
 | --- | --- | --- |
 | M0 | Scaffold and harness | in progress ([000](active/000-project-scaffold.md); [001](completed/001-library-and-app.md) done) |
 | M1 | The measurement first: the owner's voice as a golden set | done ([002](completed/002-golden-set-baseline.md)) |
-| M2 | A call that listens and speaks, deployed | planned |
+| M2 | A call that listens and speaks, deployed | in progress ([003](active/003-call-listens-and-speaks.md)) |
 | M3 | Interruptions and cancellation | planned |
 | M4 | The talker and knowledge answers | planned |
 | M5 | Tickets, ticket status, and handoff | planned |
@@ -282,7 +282,7 @@ targets hold at the cap on live calls.
   the speech-to-text noise on the dev split (D-024), and `stt.model` stays `whisper-large-v3`
   (D-025).
 - From garbage collection round 1 (plan 004): the library's base error is `T2VoiceError`
-  (D-026).
+  (D-026), and the checks ARCH-DEPS and DOC-SAMPLE (D-027).
 
 ## Open questions (need a human decision)
 
@@ -305,10 +305,12 @@ To decide before M2, which builds the call set-up and deploys it:
   sent to their email. An email typed in the widget is only a contact address: a ticket made
   with it is marked unverified for support staff, and it never unlocks ticket status. The
   owner is asking the website team whether customers log in (D-018).
-- Where the backend and Phoenix run, and how WebRTC media reaches the backend from customers'
-  networks (UDP ports, a TURN service, or another transport).
-- The voices: which Groq Orpheus Saudi Arabic voice and which English voice, and the register
-  (Saudi dialect or plain MSA).
+- Where the backend and Phoenix run: on the owner's machine for now, Phoenix as M1's (the owner,
+  2026-11-02, [plan 003](active/003-call-listens-and-speaks.md)). How WebRTC media reaches the
+  backend from customers' networks (UDP ports, a TURN service, or another transport) is
+  re-planned for that machine before M2's deployment.
+- The voices: `abdullah` (Saudi Arabic) and `troy` (English), with M2's fixed phrases in
+  Saudi dialect (the owner, 2026-11-02, plan 003's Q5).
 
 Later:
 
