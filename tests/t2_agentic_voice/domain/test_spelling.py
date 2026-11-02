@@ -10,6 +10,7 @@ from typing import Any
 import pytest
 from t2_agentic_voice.domain.text.rulings import SpellingIssue, SpellingRule
 from t2_agentic_voice.domain.text.spelling import spelling_issues
+from t2_agentic_voice.domain.text.words import ARABIC_PREFIXES
 
 SAID = {"said": "Use these rules", "on": "2026-11-01"}
 
@@ -65,8 +66,35 @@ def test_spellings_are_compared_after_the_normalizer() -> None:
 
 def test_a_spelling_inside_a_longer_word_is_not_an_issue() -> None:
     assert spelling_issues("fiver, fivefold, fives", [FIVE]) == []
-    assert spelling_issues("الخمسة", [FIVE]) == []
-    assert spelling_issues("على الإيميل وأوتلوك", [OUTLOOK]) == []  # with a prefix, one word
+    assert spelling_issues("الخمسةعشر", [FIVE]) == []  # a suffix
+    assert spelling_issues("مخمسة تخمسة", [FIVE]) == []  # a letter that is no prefix
+    assert spelling_issues("ووالخمسة", [FIVE]) == []  # more than the prefixes below
+    assert spelling_issues("بي ودي اف", [PDF]) == []  # a prefix inside a phrase
+
+
+# Every Arabic prefix a word may be written with: the article ال, the conjunctions و and
+# ف, the prepositions ب, ل and ك; و or ف before a preposition or the article, ب or ك before the
+# article, and ل with the article, written لل; and و or ف before those last three.
+PREFIXES = ["ال", "و", "ف", "ب", "ل", "ك", "وال", "فال", "بال", "كال", "لل"]
+PREFIXES += ["وب", "ول", "وك", "فب", "فل", "فك", "وبال", "وكال", "ولل", "فبال", "فكال", "فلل"]
+
+
+@pytest.mark.parametrize("prefix", PREFIXES)
+def test_an_avoided_spelling_with_an_arabic_prefix_written_onto_it_is_an_issue(
+    prefix: str,
+) -> None:
+    assert spelling_issues(f"على {prefix}أوتلوك", [OUTLOOK]) == [issue(OUTLOOK, "اوتلوك")]
+    assert spelling_issues(f"ابغى {prefix}خمسة", [FIVE]) == [issue(FIVE, "خمسة")]
+    assert spelling_issues(f"ملف {prefix}بي دي إف", [PDF]) == [issue(PDF, "بي دي اف")]
+    assert spelling_issues(f"{prefix}five", [FIVE]) == [issue(FIVE, "five")]  # onto Latin too
+
+
+def test_the_prefixes_are_these_and_no_other() -> None:
+    assert sorted(ARABIC_PREFIXES) == sorted(PREFIXES)
+
+
+def test_a_prefixed_spelling_counts_once_beside_the_bare_one() -> None:
+    assert spelling_issues("على الإيميل وأوتلوك ثم أوتلوك", [OUTLOOK]) == [issue(OUTLOOK, "اوتلوك")]
 
 
 def test_a_phrase_matches_only_whole_and_in_order() -> None:
@@ -136,6 +164,7 @@ def test_a_spelling_empty_after_normalization_is_refused_since_none_could_hold_i
         ("pdf", "PDF"),  # case is folded before comparing, so case cannot be ruled on
         ("التذكره", "التذكرة"),  # nor can the letter forms the normalizer folds
         ("word", "Word document"),  # what to write holds it
+        ("خمسة", "الخمسة"),  # with a prefix written onto it
     ],
 )
 def test_a_ruling_that_its_own_spelling_would_break_is_refused(avoid: str, write: str) -> None:
