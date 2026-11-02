@@ -93,6 +93,7 @@ path_ignored = ["var/"]
 hooks = ["emit"]
 foreign_names = ["AsyncClient"]
 name_files = ["pyproject.toml"]
+planned_docs = ["docs/design/plan.md"]
 
 [quality]
 doc = "docs/harness/quality.md"

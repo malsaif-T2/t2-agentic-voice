@@ -7,6 +7,7 @@ from pathlib import Path
 from scripts.gc_report import (
     ROOT,
     code_tokens,
+    comments_and_docstrings,
     duplicates,
     large_modules,
     report,
@@ -129,10 +130,26 @@ def test_names_the_docs_cite_must_be_in_the_code() -> None:
     code = "def load_orders(): ...\nclass OrderBook: ..."
     docs = {
         "docs/a.md": "Uses `load_orders()` and `OrderBook.add`, not `old_helper`.\n",
-        "docs/plans/completed/001.md": "Once used `old_helper`.\n",  # history keeps its names
         "docs/b.md": "Plain words in backticks: `poe`, `dev`, `AsyncClient`.\n",
+        # Another library's names: a last part, a whole name, or under a dotted prefix.
+        "docs/c.md": "`httpx.AsyncClient`, `vendor.FrameStats`, `vendor.sub.Frame_Out`.\n",
     }
-    assert unknown_names(code, docs, frozenset({"AsyncClient"})) == ["docs/a.md:1 old_helper"]
+    foreign = frozenset({"AsyncClient", "vendor.FrameStats", "vendor.sub"})
+    assert unknown_names(code, docs, foreign) == ["docs/a.md:1 old_helper"]
+    assert unknown_names(code, {"d.md": "`vendors.Frame_Out`"}, foreign) == [
+        "d.md:1 vendors.Frame_Out"
+    ]
+
+
+def test_in_tests_only_comments_and_docstrings_name_files() -> None:
+    source = (
+        '"""Reads docs/real.md."""\n\nFIXTURE = "made/up.md"  # see docs/notes.md\n\n'
+        'def test_x() -> None:\n    """Of src/x.py,\n    and src/y.py."""\n    open("a/b.md")\n'
+    )
+    kept = comments_and_docstrings(source).splitlines()
+    assert len(kept) == len(source.splitlines())
+    assert [n for n, line in enumerate(kept, start=1) if line] == [1, 3, 6, 7]
+    assert "made/up.md" not in kept[2] and "a/b.md" not in "".join(kept)
 
 
 def test_the_report_runs_on_a_small_project(tmp_path: Path) -> None:
@@ -144,13 +161,23 @@ def test_the_report_runs_on_a_small_project(tmp_path: Path) -> None:
             "src/app/core/a.py": SHARED,
             "src/app/domain/b.py": SHARED,
             "docs/a.md": "See `missing_name` in src/app/core/gone.py.\n",
+            # History keeps the names and paths of its time ([docs] historical).
+            "docs/plans/completed/001-old.md": "Once `old_helper` in src/app/old.py.\n",
+            # A planned doc's are counted ([gc] planned_docs).
+            "docs/design/plan.md": "`future_api` in src/app/api/next.py, `other_one`.\n",
+            "tests/test_a.py": '"""Of src/app/core/lost.py."""\nFIXTURE = "src/app/made_up.py"\n',
             "pyproject.toml": "",
         },
     )
     text = report(tmp_path, loaded)
     assert "## Duplicates (1 runs of 20+ tokens" in text
-    assert "- docs/a.md:1 src/app/core/gone.py" in text
-    assert "- docs/a.md:1 missing_name" in text
+    assert (
+        "## Unresolved paths (2)\n- tests/test_a.py:1 src/app/core/lost.py\n"
+        "- docs/a.md:1 src/app/core/gone.py\n"
+        "- docs/design/plan.md: 1 more, planned ([gc] planned_docs)\n"
+    ) in text
+    assert "## Names in docs that the code does not have (1)\n- docs/a.md:1 missing_name\n" in text
+    assert "- docs/design/plan.md: 2 more, planned ([gc] planned_docs)\n" in text
 
 
 def test_the_report_runs_on_this_repository() -> None:

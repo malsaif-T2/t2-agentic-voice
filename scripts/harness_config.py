@@ -72,6 +72,7 @@ class GcConfig:
     hooks: frozenset[str]
     foreign_names: frozenset[str]
     name_files: tuple[str, ...]
+    planned_docs: frozenset[str]
 
 
 @dataclass(frozen=True)
@@ -159,6 +160,7 @@ def parse_config(data: dict[str, Any], lines: Lines) -> HarnessConfig:
         hooks=frozenset(gc.strings("hooks")),
         foreign_names=frozenset(gc.strings("foreign_names")),
         name_files=gc.strings("name_files"),
+        planned_docs=frozenset(gc.strings("planned_docs")),
     )
     quality = Table("quality", data.get("quality"), lines, problems)
     weights = quality.table("weights")

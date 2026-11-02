@@ -4,14 +4,19 @@ whether a round is due (scripts/gc_due.py). Its settings are harness.toml's [gc]
 Not a gate: every section lists candidates that need judgment, and the procedure for acting on
 them is docs/harness/garbage-collection.md. Sections:
 
-- duplicates: token runs repeated across the code (imports, comments, and layout ignored);
-- unreferenced: top-level functions, classes, and methods that nothing references;
+- duplicates: runs of [gc] min_tokens tokens or more repeated in the code outside tests/
+  (imports, dunder methods, comments, and layout ignored);
+- unreferenced: top-level functions and classes, and the classes' methods, that nothing
+  references (decorated ones, dunders, `main`, tests, AST visitors, and [gc] hooks skipped);
 - suppressions: `noqa`, `type: ignore`, `pragma: no cover`, and `fmt: skip`, per file, and
   every `noqa` without a reason;
 - size: modules above [gc] size_watch lines (the limit is [modules] max_lines);
-- paths: file paths named in docs and code that do not resolve;
+- paths: file paths named in the living docs and the code that do not resolve (in tests/, only
+  comments and docstrings are read: a string there is a fixture's made-up file);
 - names: code names in backticks in the living docs that appear nowhere in the code (a cheap
   sign of a doc that no longer matches it).
+History ([docs] historical) keeps the paths and names of its time, so it is not read; a doc of
+planned code ([gc] planned_docs) gets one count per section instead of a list.
 """
 
 from __future__ import annotations
@@ -209,8 +214,8 @@ def unresolved_paths(
     the file that names it."""
     missing = []
     for name, text in texts.items():
-        if name.startswith(_FIXTURE_FILES) or "/completed/" in name:
-            continue  # test fixtures name imaginary files; history keeps its own paths
+        if name.startswith(_FIXTURE_FILES):
+            continue  # the harness's tests name imaginary files
         for number, line in enumerate(text.splitlines(), start=1):
             for match in _PATH.finditer(line):
                 ref = match.group(1)
@@ -226,19 +231,41 @@ def unknown_names(
     code: str, docs: dict[str, str], foreign: frozenset[str] = frozenset()
 ) -> list[str]:
     """`doc:line name` for each code-like name in backticks (an underscore or an inner capital,
-    four characters or more) that `code` never mentions. History is skipped (completed plans
-    and decisions keep the names of their time), and generated docs come from the code."""
+    four characters or more) that `code` never mentions. A `foreign` name is another library's:
+    its last part, or the whole name, or a dotted prefix of it (`pipecat` for `pipecat.x.y`)."""
     missing = []
     for name, text in docs.items():
-        if "/completed/" in name or "/generated/" in name or name.endswith("decisions.md"):
-            continue
         for number, line in enumerate(text.splitlines(), start=1):
             for match in _NAME.finditer(line):
-                last = match.group(1).split(".")[-1]
+                full = match.group(1)
+                last = full.split(".")[-1]
                 code_like = "_" in last or any(c.isupper() for c in last[1:])
-                if len(last) >= 4 and code_like and last not in foreign and last not in code:
-                    missing.append(f"{name}:{number} {match.group(1)}")
+                theirs = {full, last} & foreign or any(full.startswith(f"{f}.") for f in foreign)
+                if len(last) >= 4 and code_like and not theirs and last not in code:
+                    missing.append(f"{name}:{number} {full}")
     return missing
+
+
+def comments_and_docstrings(source: str) -> str:
+    """The module with only its comments and docstrings kept, each on its own line: in tests, a
+    path in a string is a fixture's made-up file."""
+    lines = source.splitlines()
+    kept = [""] * len(lines)
+    for number, comment in _comments(source):
+        kept[number - 1] = comment
+    for node in ast.walk(ast.parse(source)):
+        documented = ast.Module | ast.ClassDef | ast.FunctionDef | ast.AsyncFunctionDef
+        if isinstance(node, documented) and ast.get_docstring(node) is not None:
+            first = node.body[0]
+            for number in range(first.lineno, (first.end_lineno or first.lineno) + 1):
+                kept[number - 1] = lines[number - 1]
+    return "".join(f"{line}\n" for line in kept)
+
+
+def _planned(found: list[str]) -> list[str]:
+    """One line per planned doc ([gc] planned_docs): how many entries it has."""
+    counts = Counter(entry.split(":", 1)[0] for entry in found)
+    return [f"- {doc}: {n} more, planned ([gc] planned_docs)" for doc, n in sorted(counts.items())]
 
 
 def report(root: Path, config: HarnessConfig) -> str:
@@ -248,6 +275,12 @@ def report(root: Path, config: HarnessConfig) -> str:
     product = {n: t for n, t in code.items() if not n.startswith("tests/")}
     docs = {
         p.relative_to(root).as_posix(): p.read_text(encoding="utf-8") for p in markdown_files(root)
+    }
+    living = {n: t for n, t in docs.items() if not n.startswith(config.docs.historical)}
+    planned = {n: t for n, t in living.items() if n in gc.planned_docs}
+    current = {n: t for n, t in living.items() if n not in gc.planned_docs}
+    cited = {
+        n: comments_and_docstrings(t) if n.startswith("tests/") else t for n, t in code.items()
     }
     lines = ["# Garbage-collection candidates", ""]
     found = duplicates(product, gc.min_tokens)
@@ -264,14 +297,16 @@ def report(root: Path, config: HarnessConfig) -> str:
     lines += ["", f"## Modules above {gc.size_watch} lines ({len(big)})"]
     lines += [f"- {size} {name}" for size, name in big] or ["- none"]
     bases = (*gc.path_bases, *config.product_dirs)
-    paths = unresolved_paths(root, code | docs, bases, gc.path_ignored)
+    paths = unresolved_paths(root, cited | current, bases, gc.path_ignored)
     lines += ["", f"## Unresolved paths ({len(paths)})"]
     lines += [f"- {p}" for p in paths] or ["- none"]
+    lines += _planned(unresolved_paths(root, planned, bases, gc.path_ignored))
     named = [p for pattern in gc.name_files for p in sorted(root.glob(pattern)) if p.is_file()]
-    other = [p.read_text(encoding="utf-8") for p in named]
-    names = unknown_names("\n".join([*code.values(), *other]), docs, gc.foreign_names)
+    every = "\n".join([*code.values(), *(p.read_text(encoding="utf-8") for p in named)])
+    names = unknown_names(every, current, gc.foreign_names)
     lines += ["", f"## Names in docs that the code does not have ({len(names)})"]
     lines += [f"- {n}" for n in names] or ["- none"]
+    lines += _planned(unknown_names(every, planned, gc.foreign_names))
     return "\n".join(lines) + "\n"
 
 

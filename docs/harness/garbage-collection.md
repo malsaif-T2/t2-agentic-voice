@@ -29,13 +29,19 @@ crossing the size watch in the candidates below the signal.
 
 1. **Measure.** `uv run poe gc` lists candidates after its signal (not a gate: each one needs
    judgment):
-   - duplicated code (runs of `[gc] min_tokens` tokens or more; imports ignored);
-   - unreferenced top-level definitions (framework hooks listed in `[gc] hooks` excepted);
+   - duplicated code outside `tests/` (runs of `[gc] min_tokens` tokens or more; imports,
+     dunder methods, comments and layout ignored);
+   - unreferenced top-level definitions and methods (decorated ones, `main`, tests, and the
+     framework hooks listed in `[gc] hooks` excepted);
    - suppressions per file, and every `noqa` without a reason;
    - modules above `[gc] size_watch` lines (below the hard limit `poe arch` enforces,
      `[modules] max_lines`);
-   - file paths named in docs and code that do not resolve;
+   - file paths named in the living docs and the code that do not resolve (in `tests/`, read
+     from comments and docstrings only);
    - code names the living docs cite in backticks that the code no longer has.
+
+   History (`[docs] historical`) is not read; a doc of planned code (`[gc] planned_docs`) gets a
+   count instead of a list.
 2. **Read.** Walk every layer, the scripts, the tests' shared helpers, and the living docs,
    looking for:
    - the same logic or message in two places (the report finds copies; only a reader finds
