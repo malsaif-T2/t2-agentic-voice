@@ -27,9 +27,10 @@ from t2_agentic_voice.ports import SpeechToText
 from t2_agentic_voice.tracing import Tracing
 
 from ole5_voice.evals import cli, history, items, matcher, scorecard, split
-from ole5_voice.evals.answerers import Clock, Sleep, adapter
+from ole5_voice.evals.answerers import adapter
 from ole5_voice.evals.audio import AudioFormatError, read_wav, sha256_file
 from ole5_voice.evals.files import read_lines
+from ole5_voice.evals.groq_answerer import Clock, Sleep
 from ole5_voice.evals.models import Item, Split, SplitFile, Variant
 from ole5_voice.evals.runs import (
     Answer,

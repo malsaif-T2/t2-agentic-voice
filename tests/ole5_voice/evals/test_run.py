@@ -12,7 +12,7 @@ from pathlib import Path
 
 import pytest
 from ole5_voice.evals import run, run_settings
-from ole5_voice.evals.answerers import Policy
+from ole5_voice.evals.groq_answerer import Policy
 from ole5_voice.evals.items import HISTORY_FILE
 from ole5_voice.evals.models import Item
 from ole5_voice.evals.runs import HistoryLine, VariantResult
@@ -49,7 +49,7 @@ def test_a_run_needs_its_flags_together(
 
 
 def test_a_runs_policy_defaults_are_the_answerers(capsys: pytest.CaptureFixture[str]) -> None:
-    """The flags take `answerers.Policy`'s defaults, and their help says them."""
+    """The flags take `groq_answerer.Policy`'s defaults, and their help says them."""
     args = run._parser().parse_args([])
     given = (args.max_attempts, args.max_rpm, args.variant_timeout_s)
     assert given == (Policy().max_attempts, Policy().max_rpm, Policy().variant_timeout_s)

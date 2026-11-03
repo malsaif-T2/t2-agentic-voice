@@ -50,7 +50,7 @@ _PLACEHOLDER = re.compile(r"\{\{[A-Z][A-Z0-9_]*\}\}")
 
 def cost_usd(billed_seconds: float, price_per_hour_usd: float) -> float:
     """What `billed_seconds` of audio cost at a price per hour: the one formula a run's budget
-    (`answerers.Budget`, which its history line takes) and its scorecard take a cost by."""
+    (`groq_answerer.Budget`, which its history line takes) and its scorecard take a cost by."""
     return billed_seconds / 3600 * price_per_hour_usd
 
 
