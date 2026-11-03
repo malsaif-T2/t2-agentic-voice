@@ -385,10 +385,10 @@ reply = "en_signature"
 # second in; its stop and wait words' ends are marked in the review. The stop and wait words,
 # the listening sounds and the repeat requests are the words the presets list (Q1), «وقف»
 # three times at normal volume over three replies; the repeat requests are the rehearsal's
-# (DESCRIPTION.md, its step 2), «أعد» with a «لو سمحت» after it (the product's own reload notice
-# holds «أعد» alone, which no item may hold until an entry of allowed_in_source.toml lets it),
-# with one in English; a correction in Saudi Arabic and one in
-# English; and silence over a reply. Then 20 requests that pause mid-sentence, said alone, the
+# (DESCRIPTION.md, its step 2), «أعد» alone (which the product's own reload notice and the
+# presets' repeat list hold, an entry of allowed_in_source.toml under Q1's ruling), then «ممكن
+# تعيد؟», with one in English; a correction in Saudi Arabic and one in English; and silence over
+# a reply. Then 20 requests that pause mid-sentence, said alone, the
 # owner's style, written for E's turn defaults (Q6), never copied from an item: 8 Saudi, 4 MSA,
 # 4 English and 4 mixed, each true turn end marked in the review.
 
@@ -463,10 +463,10 @@ say = ["hold on"]
 reply = "en_signature"
 
 [[lines]]
-id = "m11_aid_please"
+id = "m11_aid"
 kind = "repeat_request"
 language = "saudi"
-say = ["أعد لو سمحت"]
+say = ["أعد"]
 reply = "ar_inbox"
 
 [[lines]]
