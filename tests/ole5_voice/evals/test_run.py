@@ -358,3 +358,18 @@ def test_a_traced_smoke_test_files_its_span_under_the_runs_name(
     info = setup.writer.calls[0][0]
     assert (info.traced, info.settings["tracing.endpoint"]) == (True, endpoint)
     assert setup.history.lines[0].variants == 1
+
+
+def test_the_smoke_test_says_the_form_of_the_language_the_provider_reported(
+    tmp_path: Path, capsys: pytest.CaptureFixture[str]
+) -> None:
+    """R7's smoke step reads whether Groq names the language it detected by a code or a name
+    (TD-011), from the smoke test's line: a label, never a transcript."""
+    setup = Setup(tmp_path)
+    heard = Transcript(text="zebra quartz", language="Arabic", billed_seconds=10.0)
+    setup.stt = FakeSpeechToText([heard])
+    assert setup.main("--language-hint", "auto", "--smoke-only") == 0
+    out = capsys.readouterr().out
+    (line,) = [line for line in out.splitlines() if "smoke_passed" in line]
+    assert "language=Arabic" in line and "zebra" not in out
+    assert setup.calls() == 1 and setup.stt.calls[0][1] is None

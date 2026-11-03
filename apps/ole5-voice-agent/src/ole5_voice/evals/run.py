@@ -161,7 +161,9 @@ async def _answer_all(
             log.error("smoke_failed", failure=smoke.failure, outcomes=outcomes)
             return
         progress.smoke_passed = True
-        log.info("smoke_passed", requests=len(smoke.requests))
+        # The language the provider reported, a code or a name: how R7's smoke step reads the
+        # form Groq gives when no language is sent (TD-011). A label, never a transcript.
+        log.info("smoke_passed", requests=len(smoke.requests), language=smoke.language)
         if args.smoke_only:
             progress.add(plan.smoke.result(smoke, plan.matcher, args.split, True))
             return
