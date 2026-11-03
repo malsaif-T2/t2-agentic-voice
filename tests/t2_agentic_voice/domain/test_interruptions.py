@@ -33,8 +33,7 @@ STOP = ("stop", "stop", "stop_word")
 REPEAT = ("repeat", "new_words", "repeat_word")
 NEW_WORDS = ("stop", "new_words", "enough_words")
 CORRECTION = ("stop", "correction", "enough_words")
-# A clause the agent said, for its own words heard back.
-CLAUSE = "The archive screen opens from the main menu."
+CLAUSE = "The archive screen opens from the main menu."  # the agent's, for its own words
 ARABIC_CLAUSE = "يمكنك فتح الأرشيف من القائمة الرئيسية."
 
 
@@ -42,7 +41,7 @@ def went_on(reason: VerdictReason) -> tuple[str, str, str]:
     return ("go_on", "false", reason)
 
 
-def verdict(
+def judged(
     text: str,
     language: LanguageCode = "en",
     *,
@@ -98,17 +97,17 @@ def test_a_verdicts_kind_and_reason_are_what_its_event_carries() -> None:
 
 @pytest.mark.parametrize("text", ["", "  ", "... !", "♪", "؟"])
 def test_no_words_goes_on(text: str) -> None:
-    assert verdict(text) == went_on("no_words")
-    assert verdict(text, "ar", played=(CLAUSE,)) == went_on("no_words")
+    assert judged(text) == went_on("no_words")
+    assert judged(text, "ar", played=(CLAUSE,)) == went_on("no_words")
 
 
 def test_text_from_silence_goes_on_and_only_with_the_filter_on() -> None:
     made_up = "some made up words here"
-    assert verdict(made_up, no_speech_prob=0.8, no_speech_max=0.5) == went_on("no_words")
-    assert verdict(made_up, no_speech_prob=0.8) == NEW_WORDS  # the threshold off
+    assert judged(made_up, no_speech_prob=0.8, no_speech_max=0.5) == went_on("no_words")
+    assert judged(made_up, no_speech_prob=0.8) == NEW_WORDS  # the threshold off
     caption = "Thanks for watching!"
-    assert verdict(caption, captions=CAPTIONS) == went_on("no_words")
-    assert verdict(caption) == NEW_WORDS  # the list off
+    assert judged(caption, captions=CAPTIONS) == went_on("no_words")
+    assert judged(caption) == NEW_WORDS  # the list off
 
 
 @pytest.mark.parametrize(
@@ -119,13 +118,13 @@ def test_every_stop_and_wait_word_stops_anywhere_in_what_was_said(
     language: LanguageCode, word: str
 ) -> None:
     text = f"right {word} there" if language == "en" else f"طيب {word} شوي"
-    assert verdict(text, language) == STOP
-    assert verdict(text, language, speech_s=0.4) == STOP
+    assert judged(text, language) == STOP
+    assert judged(text, language, speech_s=0.4) == STOP
 
 
 def test_a_stop_word_after_the_agents_own_words_still_stops() -> None:
-    assert verdict("the archive screen opens, stop it", played=(CLAUSE,)) == STOP
-    assert verdict("فتح الأرشيف من القائمة، وقف وقف", "ar", played=(ARABIC_CLAUSE,)) == STOP
+    assert judged("the archive screen opens, stop it", played=(CLAUSE,)) == STOP
+    assert judged("فتح الأرشيف من القائمة، وقف وقف", "ar", played=(ARABIC_CLAUSE,)) == STOP
 
 
 @pytest.mark.parametrize(
@@ -138,7 +137,7 @@ def test_a_stop_word_after_the_agents_own_words_still_stops() -> None:
     ],
 )
 def test_a_word_holding_a_stop_or_wait_word_is_not_one(text: str, language: LanguageCode) -> None:
-    assert verdict(text, language) == NEW_WORDS
+    assert judged(text, language) == NEW_WORDS
 
 
 @pytest.mark.parametrize(
@@ -158,7 +157,7 @@ def test_a_word_holding_a_stop_or_wait_word_is_not_one(text: str, language: Lang
     ],
 )
 def test_the_stop_word_as_whisper_mishears_it_stops(text: str, language: LanguageCode) -> None:
-    assert verdict(text, language, speech_s=0.7) == STOP
+    assert judged(text, language, speech_s=0.7) == STOP
 
 
 @pytest.mark.parametrize(
@@ -176,11 +175,11 @@ def test_the_stop_word_as_whisper_mishears_it_stops(text: str, language: Languag
 def test_what_only_looks_like_the_misheard_stop_word_is_not_it(
     text: str, expected: tuple[str, str, str]
 ) -> None:
-    assert verdict(text, "ar", speech_s=0.7) == expected
+    assert judged(text, "ar", speech_s=0.7) == expected
 
 
 def test_an_english_spelling_of_the_stop_word_in_a_sentence_is_not_it() -> None:
-    assert verdict("what gives me this error", speech_s=0.7) == NEW_WORDS
+    assert judged("what gives me this error", speech_s=0.7) == NEW_WORDS
 
 
 @pytest.mark.parametrize(
@@ -194,8 +193,8 @@ def test_an_english_spelling_of_the_stop_word_in_a_sentence_is_not_it() -> None:
     ],
 )
 def test_a_repeat_request_repeats(text: str, language: LanguageCode) -> None:
-    assert verdict(text, language) == REPEAT
-    assert verdict(text, language, speech_s=0.5) == REPEAT
+    assert judged(text, language) == REPEAT
+    assert judged(text, language, speech_s=0.5) == REPEAT
 
 
 @pytest.mark.parametrize(
@@ -204,7 +203,7 @@ def test_a_repeat_request_repeats(text: str, language: LanguageCode) -> None:
 )
 def test_every_repeat_word_with_a_polite_word_repeats(language: LanguageCode, word: str) -> None:
     text = f"{word}, please" if language == "en" else f"{word} لو سمحت"
-    assert verdict(text, language) == REPEAT
+    assert judged(text, language) == REPEAT
 
 
 @pytest.mark.parametrize(
@@ -216,7 +215,7 @@ def test_every_repeat_word_with_a_polite_word_repeats(language: LanguageCode, wo
     ],
 )
 def test_a_repeat_word_in_a_sentence_asks_nothing(text: str, language: LanguageCode) -> None:
-    assert verdict(text, language) == NEW_WORDS
+    assert judged(text, language) == NEW_WORDS
 
 
 @pytest.mark.parametrize(
@@ -232,15 +231,15 @@ def test_a_repeat_word_in_a_sentence_asks_nothing(text: str, language: LanguageC
 def test_the_agents_own_words_heard_back_go_on(
     text: str, language: LanguageCode, played: tuple[str, ...]
 ) -> None:
-    assert verdict(text, language, played=played) == went_on("own_words")
+    assert judged(text, language, played=played) == went_on("own_words")
 
 
 def test_own_words_are_every_word_short_ones_as_written() -> None:
-    assert verdict("the archive screen is broken", played=(CLAUSE,)) == NEW_WORDS
-    assert verdict("the archive screenshots", played=(CLAUSE,)) == NEW_WORDS
-    assert verdict("no no", played=("go to the menu",)) == CORRECTION  # "go" and "to" are not it
-    assert verdict("the archive screen") == NEW_WORDS  # nothing played
-    assert verdict("all right", played=("All right, the archive opens.",)) == went_on("own_words")
+    assert judged("the archive screen is broken", played=(CLAUSE,)) == NEW_WORDS
+    assert judged("the archive screenshots", played=(CLAUSE,)) == NEW_WORDS
+    assert judged("no no", played=("go to the menu",)) == CORRECTION  # "go" and "to" are not it
+    assert judged("the archive screen") == NEW_WORDS  # nothing played
+    assert judged("all right", played=("All right, the archive opens.",)) == went_on("own_words")
 
 
 @pytest.mark.parametrize(
@@ -250,7 +249,7 @@ def test_own_words_are_every_word_short_ones_as_written() -> None:
 def test_listening_sounds_only_go_on(language: LanguageCode, word: str) -> None:
     sounds = PRESET_WORDS[language].backchannel
     other = sounds[1] if word == sounds[0] else sounds[0]
-    assert verdict(f"{word}, {other}", language, speech_s=5.0) == went_on("listening")
+    assert judged(f"{word}, {other}", language, speech_s=5.0) == went_on("listening")
 
 
 @pytest.mark.parametrize(
@@ -274,16 +273,16 @@ def test_listening_sounds_only_go_on(language: LanguageCode, word: str) -> None:
 def test_a_short_output_goes_on_unless_it_holds_a_listed_word_or_asks(
     text: str, language: LanguageCode, speech_s: float, expected: tuple[str, str, str]
 ) -> None:
-    assert verdict(text, language, speech_s=speech_s) == expected
+    assert judged(text, language, speech_s=speech_s) == expected
 
 
 def test_enough_real_words_stop_a_correction_when_the_first_is_a_no_word() -> None:
-    assert verdict("I meant the other ticket") == NEW_WORDS
-    assert verdict("لا مو هذا اللي ابيه", "ar") == CORRECTION
-    assert verdict("اها لا مو هذا", "ar") == CORRECTION  # a listening sound is no real word
-    assert verdict("okay fine") == went_on("too_few_words")
-    assert verdict("very nice", min_words=3) == went_on("too_few_words")
-    assert verdict("nonsense", min_words=1) == NEW_WORDS
+    assert judged("I meant the other ticket") == NEW_WORDS
+    assert judged("لا مو هذا اللي ابيه", "ar") == CORRECTION
+    assert judged("اها لا مو هذا", "ar") == CORRECTION  # a listening sound is no real word
+    assert judged("okay fine") == went_on("too_few_words")
+    assert judged("very nice", min_words=3) == went_on("too_few_words")
+    assert judged("nonsense", min_words=1) == NEW_WORDS
 
 
 def test_a_teams_words_are_compared_in_the_rules_form() -> None:
@@ -295,7 +294,7 @@ def test_a_teams_words_are_compared_in_the_rules_form() -> None:
         wait={"en": ["   "]},
     )
     english, arabic = phrases.words("en"), phrases.words("ar")
-    assert verdict("please halt now", words=english) == STOP
-    assert verdict("طلبت ايقاف الرد", "ar", words=arabic) == STOP
-    assert verdict("some made up words", words=english) == NEW_WORDS
-    assert verdict("", words=english) == went_on("no_words")
+    assert judged("please halt now", words=english) == STOP
+    assert judged("طلبت ايقاف الرد", "ar", words=arabic) == STOP
+    assert judged("some made up words", words=english) == NEW_WORDS
+    assert judged("", words=english) == went_on("no_words")
