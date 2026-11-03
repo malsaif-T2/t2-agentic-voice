@@ -21,20 +21,19 @@ from __future__ import annotations
 
 import asyncio
 import json
-import time
+import math
+import struct
 from collections import Counter
 from collections.abc import AsyncIterator, Awaitable
-from fractions import Fraction
 from functools import partial
+from itertools import pairwise
 from pathlib import Path
-from typing import Any
+from typing import Any, Protocol, cast
 
-import av
 import httpx
-import numpy as np
 import pytest
 from aiortc import RTCBundlePolicy, RTCConfiguration, RTCPeerConnection, RTCSessionDescription
-from aiortc.mediastreams import MediaStreamError, MediaStreamTrack
+from aiortc.mediastreams import AudioStreamTrack, MediaStreamError, MediaStreamTrack
 from fastapi import FastAPI
 from minimal_example.app import agent
 from t2_agentic_voice.adapters.phrase_cache import PhraseCache
@@ -60,9 +59,9 @@ HEARD = "a loopback call said back"
 SECONDS_PER_CHAR = 0.03
 PHRASE_HZ, HEARD_HZ, SIGNAL_HZ = 400.0, 1000.0, 300.0
 AMPLITUDE = 8000
-# The browser's audio: 20 ms frames at 48 kHz, as Opus carries them; a frame of the agent's is
-# heard when a sample passes LOUD, at its strongest frequency, within a bin of its spectrum.
-RATE, PTIME, LOUD, BIN_HZ = 48_000, 0.02, 1000, 50.0
+# A frame of the agent's audio is heard when a sample passes LOUD, at the frequency its zero
+# crossings give, within BIN_HZ (two crossings in a 20 ms frame).
+LOUD, BIN_HZ = 1000, 50.0
 # How long the caller speaks, and waits after the greeting (past the session's 300 ms).
 SPEECH_S, AFTER_GREETING_S = 0.6, 0.5
 # How far each pitch's audio, as heard, may be from what was said: Opus's frame edges and the
@@ -73,10 +72,36 @@ WAIT_S, CLOSE_S, TEST_S = 10.0, 5.0, 30.0
 QUIET = ("not_offered", "ice_completed", "call_ended")
 
 
-def sine(hz: float, seconds: float, rate: int, start: int = 0) -> bytes:
-    """`seconds` of a sine at `hz` as mono PCM16 at `rate`, from sample `start`."""
-    n = np.arange(start, start + round(seconds * rate))
-    return (AMPLITUDE * np.sin(2 * np.pi * hz * n / rate)).astype("<i2").tobytes()
+class _Plane(Protocol):
+    def update(self, input: bytes) -> None: ...
+    def __bytes__(self) -> bytes: ...
+
+
+class _Format(Protocol):
+    is_planar: bool
+
+
+class _Layout(Protocol):
+    nb_channels: int
+
+
+class _Frame(Protocol):
+    """PyAV's audio frame, as this test uses it: PyAV comes with aiortc, and only the packages a
+    project declares are imported (ARCH-DEPS)."""
+
+    planes: tuple[_Plane, ...]
+    samples: int
+    sample_rate: int
+    format: _Format
+    layout: _Layout
+
+
+def sine(hz: float, samples: int, rate: int, start: int = 0) -> bytes:
+    """`samples` of a sine at `hz` as mono PCM16 at `rate`, from sample `start`."""
+    values = (
+        round(AMPLITUDE * math.sin(2 * math.pi * hz * (start + n) / rate)) for n in range(samples)
+    )
+    return struct.pack(f"<{samples}h", *values)
 
 
 class PitchedSpeech(FakeTextToSpeech):
@@ -89,55 +114,47 @@ class PitchedSpeech(FakeTextToSpeech):
     async def synthesize(self, text: str, *, language: str) -> AsyncIterator[AudioChunk]:
         self.calls.append((text, language))
         hz = HEARD_HZ if text == HEARD else PHRASE_HZ
-        pcm = sine(hz, len(text) * self.seconds_per_char, self.sample_rate)
-        step = round(self.chunk_s * self.sample_rate) * 2
+        rate = self.sample_rate
+        pcm = sine(hz, round(len(text) * self.seconds_per_char * rate), rate)
+        step = round(self.chunk_s * rate) * 2
         for i in range(0, len(pcm), step):
-            yield AudioChunk(pcm16=pcm[i : i + step], sample_rate=self.sample_rate)
+            yield AudioChunk(pcm16=pcm[i : i + step], sample_rate=rate)
 
 
-class Signal(MediaStreamTrack):
-    """The caller's microphone: 20 ms frames of mono PCM16 at 48 kHz, paced in real time,
-    silent but while `say` asks for the sine."""
-
-    kind = "audio"
+class Signal(AudioStreamTrack):
+    """The caller's microphone: aiortc's silent track (20 ms frames of mono PCM16, paced in
+    real time), the sine in place of its silence while `say` asks for it."""
 
     def __init__(self) -> None:
         super().__init__()
         self._sent = 0
-        self._start: float | None = None
-        self._loud = 0
+        self._loud_s = 0.0
 
     def say(self, seconds: float) -> None:
-        self._loud = round(seconds * RATE)
+        self._loud_s = seconds
 
-    async def recv(self) -> av.AudioFrame:
-        if self.readyState != "live":
-            raise MediaStreamError
-        if self._start is None:
-            self._start = time.perf_counter()
-        else:
-            await asyncio.sleep(self._start + self._sent / RATE - time.perf_counter())
-        samples = round(PTIME * RATE)
-        loud = min(self._loud, samples)
-        self._loud -= loud
-        pcm = sine(SIGNAL_HZ, loud / RATE, RATE, self._sent) + bytes(2 * (samples - loud))
-        frame = av.AudioFrame.from_ndarray(
-            np.frombuffer(pcm, dtype="<i2").reshape(1, -1), format="s16", layout="mono"
-        )
-        frame.sample_rate, frame.pts, frame.time_base = RATE, self._sent, Fraction(1, RATE)
-        self._sent += samples
+    async def recv(self) -> Any:  # a PyAV frame
+        frame = cast(_Frame, await super().recv())
+        loud = min(frame.samples, round(self._loud_s * frame.sample_rate))
+        if loud:
+            self._loud_s -= loud / frame.sample_rate
+            silence = bytes(2 * (frame.samples - loud))
+            frame.planes[0].update(sine(SIGNAL_HZ, loud, frame.sample_rate, self._sent) + silence)
+        self._sent += frame.samples
         return frame
 
 
-def pitch(frame: av.AudioFrame) -> float | None:
-    """The frame's strongest frequency in its first channel, in Hz; None for a quiet frame."""
-    data = frame.to_ndarray()
-    channels = len(frame.layout.channels)
-    first = data[0] if frame.format.is_planar else data.reshape(-1, channels)[:, 0]
-    samples = first.astype(np.float64)
-    if not len(samples) or np.max(np.abs(samples)) < LOUD:
+def pitch(frame: _Frame) -> float | None:
+    """The frequency of the frame's first channel, from its zero crossings, in Hz; None for a
+    quiet frame."""
+    channels = 1 if frame.format.is_planar else frame.layout.nb_channels
+    # A plane's buffer may run past its samples (FFmpeg pads it): the samples come first.
+    whole = memoryview(bytes(frame.planes[0])).cast("h")
+    first = whole[: frame.samples * channels : channels].tolist()
+    if not first or max(abs(sample) for sample in first) < LOUD:
         return None
-    return float(np.argmax(np.abs(np.fft.rfft(samples)))) * frame.sample_rate / len(samples)
+    crossings = sum((a < 0) != (b < 0) for a, b in pairwise(first))
+    return crossings / 2 * frame.sample_rate / len(first)
 
 
 async def bounded[T](step: Awaitable[T], seconds: float = WAIT_S) -> T:
@@ -172,8 +189,8 @@ class Browser:
                 frame = await track.recv()
             except MediaStreamError:
                 return
-            assert isinstance(frame, av.AudioFrame)
-            self.heard.append((pitch(frame), frame.samples / frame.sample_rate))
+            heard = cast(_Frame, frame)
+            self.heard.append((pitch(heard), heard.samples / heard.sample_rate))
 
     def of(self, kind: str) -> list[dict[str, Any]]:
         """The t2v/1 messages of `kind` the session sent, in order."""
