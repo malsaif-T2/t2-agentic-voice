@@ -238,9 +238,10 @@ class Recorder:
             raise RefusedError(HTTPStatus.BAD_REQUEST, f"the take is refused: {error}") from None
         if upload.turn_ends_ms and upload.turn_ends_ms[-1] > wav.milliseconds:
             raise RefusedError(HTTPStatus.BAD_REQUEST, "a turn end lies past the take's end")
-        if upload.status == "kept" and len(line.say) > 1 and not upload.turn_ends_ms:
+        if upload.status == "kept" and line.needs_marks and not upload.turn_ends_ms:
             raise RefusedError(
-                HTTPStatus.BAD_REQUEST, "a kept take of several clauses needs its turn ends"
+                HTTPStatus.BAD_REQUEST,
+                "a kept take of several clauses, or of a stop or pause word, needs its marks",
             )
         with self.lock:
             take = self._new_take(line.id, session)

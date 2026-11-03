@@ -61,6 +61,13 @@ class ScriptLine(Model):
         """Its takes' reference source: the script's, or none for a line of no words."""
         return "script" if self.text else "none"
 
+    @property
+    def needs_marks(self) -> bool:
+        """Whether a kept take of it needs its marks (`turn_ends_ms`): each true turn end of a
+        line of several clauses, or the end of a stop or pause word, from which the overlap run
+        times the stop (plan 005's registration). The recorder's page holds the same rule."""
+        return len(self.say) > 1 or (bool(self.say) and self.kind == "stop_word")
+
 
 class Script(Model):
     """`script.toml`: `listening_sounds = [...]`, the fixed list that comes with the script (the
