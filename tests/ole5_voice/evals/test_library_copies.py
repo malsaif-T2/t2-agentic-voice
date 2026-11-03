@@ -11,7 +11,7 @@ import json
 from pathlib import Path
 from typing import get_args
 
-from ole5_voice.evals import answerers, matcher, run, run_settings, scorecard
+from ole5_voice.evals import answerers, groq_answerer, matcher, run, run_settings, scorecard
 from ole5_voice.evals.run_parts import Parts
 from ole5_voice.evals.runs import Answer, SegmentAnswer
 from pydantic import BaseModel
@@ -50,7 +50,7 @@ def test_a_runs_default_address_is_the_librarys_default_base_url() -> None:
 
 
 def test_the_answerers_billing_minimum_is_the_adapters() -> None:
-    assert answerers.GROQ_MINIMUM_S == groq_stt._MIN_BILLED_S
+    assert groq_answerer.GROQ_MINIMUM_S == groq_stt._MIN_BILLED_S
 
 
 def test_an_answer_bounds_the_no_speech_estimate_as_a_transcript_does() -> None:

@@ -12,7 +12,7 @@ from pathlib import Path
 
 import pytest
 from ole5_voice.evals import run, run_settings
-from ole5_voice.evals.answerers import Policy
+from ole5_voice.evals.groq_answerer import Policy
 from ole5_voice.evals.items import HISTORY_FILE
 from ole5_voice.evals.models import Item
 from ole5_voice.evals.runs import HistoryLine, VariantResult
@@ -49,7 +49,7 @@ def test_a_run_needs_its_flags_together(
 
 
 def test_a_runs_policy_defaults_are_the_answerers(capsys: pytest.CaptureFixture[str]) -> None:
-    """The flags take `answerers.Policy`'s defaults, and their help says them."""
+    """The flags take `groq_answerer.Policy`'s defaults, and their help says them."""
     args = run._parser().parse_args([])
     given = (args.max_attempts, args.max_rpm, args.variant_timeout_s)
     assert given == (Policy().max_attempts, Policy().max_rpm, Policy().variant_timeout_s)
@@ -358,3 +358,18 @@ def test_a_traced_smoke_test_files_its_span_under_the_runs_name(
     info = setup.writer.calls[0][0]
     assert (info.traced, info.settings["tracing.endpoint"]) == (True, endpoint)
     assert setup.history.lines[0].variants == 1
+
+
+def test_the_smoke_test_says_the_form_of_the_language_the_provider_reported(
+    tmp_path: Path, capsys: pytest.CaptureFixture[str]
+) -> None:
+    """R7's smoke step reads whether Groq names the language it detected by a code or a name
+    (TD-011), from the smoke test's line: a label, never a transcript."""
+    setup = Setup(tmp_path)
+    heard = Transcript(text="zebra quartz", language="Arabic", billed_seconds=10.0)
+    setup.stt = FakeSpeechToText([heard])
+    assert setup.main("--language-hint", "auto", "--smoke-only") == 0
+    out = capsys.readouterr().out
+    (line,) = [line for line in out.splitlines() if "smoke_passed" in line]
+    assert "language=Arabic" in line and "zebra" not in out
+    assert setup.calls() == 1 and setup.stt.calls[0][1] is None
