@@ -25,7 +25,7 @@ line of the call's timeline, when it is recorded.
 A turn said while the agent was silent (no overlap) is read whole under `two_step`
 (domain/interruptions.py's `whole_command`): a repeat request says the last reply again, and a
 stop or pause request is never said back, each a command; any other is answered. Under `drop`
-every such turn is answered, as M2's.
+every such turn is answered, as plan 003's echo answers it.
 """
 
 from __future__ import annotations

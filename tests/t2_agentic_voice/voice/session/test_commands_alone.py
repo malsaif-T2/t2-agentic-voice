@@ -2,9 +2,9 @@
 Track B review), with Track A's rule and words, not a fake: under `interruptions.mode =
 "two_step"` a repeat request says the last reply the caller heard again and a stop or pause
 request is never said back, each a command, while a sentence holding one of their words is
-answered; under `drop` every one is said back, as M2's. The rehearsal's stop and repeat steps
-(docs/project/DESCRIPTION.md, steps 1 and 2) run whole. A lone word is built from the lists, so
-no test writes an item's text."""
+answered; under `drop` every one is said back, as plan 003's echo says it. The rehearsal's stop
+and repeat steps (docs/project/DESCRIPTION.md, steps 1 and 2) run whole. A lone word is built
+from the lists, so no test writes an item's text."""
 
 from __future__ import annotations
 
