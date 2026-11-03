@@ -2,8 +2,8 @@
 
 Status: active · Milestone: M3 · Started: 2026-11-03
 
-*Approved by the owner on 2026-11-03 in the answers to Q1 to Q7 ("The owner's decisions"); not
-started: the owner gives the start once M2 is finished, and nothing is built before then.*
+*Approved by the owner on 2026-11-03 in the answers to Q1 to Q7, and started the same day on
+what needs no recording of M2's session ("The owner's decisions"); what does waits for it.*
 
 ## Goal
 
@@ -125,8 +125,8 @@ decisions"): runs R5 to R7, the language a live call sends Whisper, with its ope
 (step 13). The timing runs T1 and T2 left M2 without coming to M3, and the prompt arm for
 product terms (plan 003's Q16) went to M4.
 
-**Order with plan 003.** M3 starts when the owner gives the start, once M2 is finished. Its
-Block 0 is cut from the main branch, which then holds `plan-003-integration` (merged after plan
+**Order with plan 003.** The owner gave the start on 2026-11-03, before M2's recorded session,
+for the work that needs none of it. Block 0 is cut from the main branch, which then holds `plan-003-integration` (merged after plan
 003's step 16); M3 builds on `plan-005-integration` and merges into the main branch only after
 plan 003's recorded session (its step 18, run C), whose calls run from the main checkout on M2's
 echo.
@@ -142,12 +142,12 @@ milestone a contract it cannot build on. Everything else becomes a row in
 
 **Before Block 0**
 
-1. M2 is finished and the owner has given the start. Before Block 0 takes a decision or debt
-   number, the agent lists `docs/plans/active/`, `docs/plans/completed/` and
+1. The owner has given the start (on 2026-11-03, for what needs no recording of M2's session).
+   Before Block 0 takes a decision or debt number, the agent lists `docs/plans/active/`, `docs/plans/completed/` and
    [decisions.md](../../design/decisions.md), and asks the other sessions
    ([WORKING-RULES.md](../../../WORKING-RULES.md)).
 2. `plan-005-integration` is cut from the main branch, and this plan, merged with it, cites the
-   agent-led mode by its decision number.
+   agent-led mode by its decision number, D-050.
 
 **Block 0 · interfaces, settings, splits** (one agent)
 
@@ -169,7 +169,7 @@ milestone a contract it cannot build on. Everything else becomes a row in
    (340) moves `Speaker` to `speaker.py`; `voice/tts_bridge.py` (303) moves `_OutputChunks` and
    `_Clause` to `tts_output.py`. Code moves only, the gate green before and after.
 5. **Baselines:** M2's session scenes unchanged under `mode = "drop"`; the `t2v/1` fixture; the
-   settings reference; `allowed_in_source.toml` gains the entries Q1 settles.
+   settings reference.
 6. Gate, review, fixes, merge into `plan-005-integration`.
 
 **The tracks** (in parallel after Block 0; `## Tracks` gives each one's files and tests)
@@ -272,6 +272,18 @@ milestone a contract it cannot build on. Everything else becomes a row in
   part of its step 18's session (four calls in Chrome, a listening sound in each Arabic call
   during an echo, no Bluetooth call); Q2's (b), a few «وقف» over an echo in that session, is the
   plan-003 session's to add. Nothing built; M3 starts on the owner's word once M2 is finished.
+- 2026-11-03: Started at the owner's word, before M2's recorded session ("The owner's
+  decisions"). `plan-005-integration` was cut from the main branch at 85a7a6c, which holds
+  `plan-003-integration`, and `plan-005-draft` merged into it (caa348a). Now: Block 0, then
+  Tracks A to E, step 9's check and step 10's review, none of which needs a recording. Waiting:
+  step 11's recordings (the owner's M3 session, once Track E has written its lines, and run C's
+  import), E and O on them, H3 and C3, the merge into the main branch and the live calls. L
+  (R5 to R7) spends and needs a quiet machine with no other Whisper use within the hour, so it
+  runs when no track is building and not around the owner's session. Track A, not Block 0, owns
+  the entries Q1's ruling adds to `allowed_in_source.toml`, since only its lists say which words
+  they are. The agent asked the plan-003 session before taking debt and decision numbers: this
+  plan proposes debt rows from number 100 and decision entries from number 60, apart from plan
+  003's.
 
 ## Decision log
 
@@ -304,8 +316,7 @@ affects.
   playing at a stop is `cut`, with the fraction of its audio played; a clause's words are never
   split, Orpheus giving no word times.
 - 2026-11-03: The cancel scope takes any awaitable work, not only the talker's, and the history
-  marks a turn whose reply was cut before any clause played: the agent-led mode (the main
-  branch's decision 50) cancels a team's agent mid-run behind this same voice layer and rolls
+  marks a turn whose reply was cut before any clause played: the agent-led mode (D-050) cancels a team's agent mid-run behind this same voice layer and rolls
   back a turn the caller stopped before hearing its answer.
 - 2026-11-03: The replay keeps the design's name, `AudioCall`, and is reached through the `evals`
   facade until M4 makes the testing kit public with `TextCall`.
@@ -317,6 +328,11 @@ affects.
 
 What the owner has already said that binds M3:
 
+- 2026-11-03, later: "M2 is not finished because I will have to provide the recording later this
+  day. Can you start implementing M3 on the the things that doesn't require it. I will notify you
+  once I do the recording." So M3 starts now on Block 0, the tracks, the integration check and
+  the review, and on the runs that need no recording; the imports and runs on recordings, the
+  merge into the main branch and the live calls wait for the owner's word.
 - 2026-11-03, the answers to this plan's questions: "Go with your recommendation for Q1, Q2, Q3,
   Q4, Q5 and Q7. But for Q6 do the tuning in M3, if you see the turn-ending tuning more suitable
   and better implemented in later milestones tell me. I will give the start permission for M3 once
@@ -324,8 +340,8 @@ What the owner has already said that binds M3:
   leaves it open, Q6 (b), Q7 $5; and M3 starts only on the owner's word, once M2 is finished.
 - 2026-11-03, on this draft: "Too not stretch the plan, make it focused on the fundamentals and
   quality, and not about extra unnecessary things."
-- 2026-11-03, to the agent's cuts of M2 in plan 003: "Yes, cut them" (plan 003 and the roadmap
-  on `plan-003-integration`, 818d27d, not yet on this branch). So R5 to R7
+- 2026-11-03, to the agent's cuts of M2 in plan 003: "Yes, cut them" (plan 003 and the
+  roadmap). So R5 to R7
   (the live language, with plan 003's Q15) and TD-032's noise runs moved to M3, T1 and T2 left M2,
   and the prompt arm for product terms (plan 003's Q16) went to M4.
 - 2026-11-03, in plan 003: "This is taking longer than I expected. Focus on things that matter
@@ -334,8 +350,8 @@ What the owner has already said that binds M3:
   need no new consent work.
 - 2026-11-02, plan 003's Q6, "(a)": "stop" may stand in the source for the protocol's names, with
   the agent's note that M3's plan rules on the presets' words (Q1).
-- 2026-11-02, recorded on the main branch with the agent-led mode: "I have decided to finish the
-  first mode (pure voice with its tools) first and finish our use-case Ole5."
+- 2026-11-02 (D-050): "I have decided to finish the first mode (pure voice with its tools) first
+  and finish our use-case Ole5."
 - 2026-11-01, "Approve all" (D-017): M3's goal, *Done when* and the design's 16.1 M3 row bind
   this plan, but for what "Scope" leaves out for the owner's yes.
 - 2026-11-01 (D-018, answer 8): Pipecat's interruptions stay off; only the session interrupts.
@@ -344,7 +360,7 @@ What the owner has already said that binds M3:
 
 Each track builds in its own worktree against Block 0's interfaces and fakes. One owner per
 file; Block 0 owns the files every track needs (the session's I/O, the protocol, the settings,
-the facades, the fakes and fixtures, `harness.toml`, `allowed_in_source.toml`), and the
+the facades, the fakes and fixtures, `harness.toml`), and the
 integrator this plan, `docs/plans/tech-debt.md` and step 9's test. Library paths are under
 `packages/t2-agentic-voice/src/t2_agentic_voice/`, its tests under `tests/t2_agentic_voice/`.
 
@@ -352,8 +368,10 @@ integrator this plan, `docs/plans/tech-debt.md` and step 9's test. Library paths
 `domain/interruptions.py`, `domain/silence.py` and their tests. May read the prototype's
 `src/ole5_chat/voice/rules.py` (its lists and the noisy «وقف» spellings, lines 11-116 and
 132-200) and `stt.py` (its caption list and no-speech rule, lines 35-75), read only (D-010).
-Tests: each step of the starting rule on texts written for the test, never an item's; the
-no-fixed-phrase test.
+Also owns the entries Q1's ruling adds to `apps/ole5-voice-agent/evals/allowed_in_source.toml`,
+one for each word its lists hold that an item's text holds, each quoting the ruling. Tests: each
+step of the starting rule on texts written for the test, never an item's; the no-fixed-phrase
+test.
 
 **Track B · The session (`voice/session/`, no Pipecat).** Owns `scope.py`, `overlap.py`,
 `history.py`, and the changes to `call.py`, `echo.py`, `speaker.py`, `playback.py`, `report.py`
@@ -568,7 +586,7 @@ Before the runs:
 
 ## What the owner does
 
-1. **The start:** once M2 is finished, give the start of M3.
+1. **The start:** given on 2026-11-03; after M2's recorded session, tell the agent it is done.
 2. **After Block 0:** record M3's lines and about 20 paused requests with `poe record` on the
    three devices (Q2, Q6, about 1.5 to 2 hours), then confirm each in the review, marking the end
    of each stop and wait word and each paused request's true turn end.
