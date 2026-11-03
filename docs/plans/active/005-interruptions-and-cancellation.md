@@ -376,6 +376,29 @@ milestone a contract it cannot build on. Everything else becomes a row in
   touch files no other track touched, and each track had passed its own gate. That gate:
   'TOTAL 12221 0 100%', '3732 passed, 1 skipped, 1 warning in 366.25s (0:06:06)'. Their debt is
   TD-108 and TD-109. Next: step 9's check and step 10's review, run in parallel.
+- 2026-11-04: Steps 9 and 10, and the code's close. **Step 9** (one agent, `plan-005-step-9`
+  from 61388c9; 1641edb to dcc450b): plan 003's loopback test split, its helpers in
+  `loopback_support.py`, `loopback_audio.py` and `loopback_watch.py` (TD-087's split; the rest of
+  that row stays), and `tests/t2_agentic_voice/test_loopback_interruptions.py` under `two_step`
+  with the real session, rule and bridges and fake providers: a stop word gives `duck`,
+  `HearOverlap`, `StopSpeaking`, `unduck`, then the cut caption, the stop reaching the output
+  within 30 ms (measured 2.7 to 13.5 ms) and at most four 10 ms frames of the reply leaving the
+  server's track after it (measured 1 to 4); a listening sound gives `duck` and `unduck` and the
+  reply plays to its end; only the session's interruption fires. At the client the last packet
+  came 15 to 74 ms after `StopSpeaking` (24 calls), bounded in the test at 105.6 ms (the decision
+  log). Script line m11 says the rehearsal's lone repeat request (`m11_aid`), with a 16th entry in
+  `allowed_in_source.toml` under Q1's ruling. Gate at dcc450b: 'TOTAL 12221 0 100%', '3735
+  passed, 1 skipped'. **Step 10**, the whole-plan review, one reviewer on the seams, each finding
+  checked by one skeptic: no hang, crash or leak; every `duck` gets its `unduck`; the client, the
+  replay and the scorer read what the session and the bridges send. Three findings stood, each
+  low, and were fixed as stopping and repeating are M3's core: a window that read a request's
+  first word as the stop word left the request unanswered; words that followed a stop or a repeat
+  in the same turn were dropped (the rehearsal's steps 1 and 2 as one turn); a whole stop said
+  just before a reply began stopped nothing. Fixed by one agent (`plan-005-final-fixes` from
+  910d29a; 7def82c, eb95067; the registration's amendment of 2026-11-04): gate at eb95067
+  'TOTAL 12288 0 100%', '3807 passed, 1 skipped'. Merged as bd22dec and 23f7f77; the gate on
+  23f7f77: 'TOTAL 12288 0 100%', '3810 passed, 1 skipped, 1 warning in 367.83s (0:06:07)'. Their debt is TD-110 and TD-111. The code of M3 is done: what is left needs
+  the owner's recordings, the paid runs and the live calls (steps 11 to 18), then the close.
 
 ## Decision log
 
@@ -439,6 +462,13 @@ affects.
   the audio element's volume, in one step. The replay plays its reply as the call's greeting and
   is scored by whether the agent stopped. Track E owned `voice/file_transport.py`; Track C put
   the threshold's subclass in `voice/smart_turn.py`.
+- 2026-11-04: Step 9's "no agent audio frame more than 40 ms after `StopSpeaking`" is read at the
+  output transport, as io.py's stop path states it and as the registered stop time is measured
+  (to the last agent audio frame the output transport sent): at most 40 ms of the reply leaves
+  the server's track after the stop. At the client the last packet comes later, by aiortc's 20 ms
+  Opus packet, the 15.6 ms step of Windows' timer and the stop path; the test bounds it at
+  105.6 ms, each part named. The browser's own jitter buffer adds to it (UNVERIFIED in Chrome);
+  the live calls show whether that tail is heard (TD-110).
 
 ## The owner's decisions
 
@@ -550,6 +580,22 @@ goes on after the overlap part sends its own request, as any turn does. The wind
 (4) The dev talk-over clips have no marked word end and no tool marks one there: their stops are
 timed from the speech detector's stop, reported apart; the registered stop times are read on the
 marked stops of M3's new recordings and of run C's imported overlaps.
+
+*Amended 2026-11-04, before any result (the whole-plan review):* (5) the rule is applied to the
+window's text, then to the whole overlap's, whatever the window decided; when the window stopped
+the agent, the whole overlap's verdict decides only what follows the stop: new words or a
+correction in it are answered from the turn's own transcript, since a window may hold only a
+request's first word, read as the stop word as Whisper mishears it. (6) When speech followed, in
+the same turn, the part whose stop or pause word or repeat request decided the overlap, the
+turn's own transcript is read with that request taken off (its leading stop, pause or repeat
+words, and the polite words and listening sounds among and after them): after a stop or pause
+word, a whole repeat request says the last reply again, a stop or nothing leaves the turn a
+command, and anything else is answered, the echo saying back only what followed; after a repeat
+request, what followed is answered only when it is no whole command and holds at least
+`min_words` words, else the repeat stands. No request is added. (7) Amendment (2)'s whole stop,
+pause or repeat request, said by a turn whose speech began before a reply to an earlier turn
+started, first stops the replies in progress to earlier turns, with one `Interrupted`; none is
+stopped while a reply to that turn or a later one is in progress.
 
 **The starting rule** (the agent's, from plan 002's Future improvements and the prototype's D30
 and D53), applied to the window's text, then to the overlap's when the window did not stop the
