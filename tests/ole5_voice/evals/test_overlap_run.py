@@ -1,7 +1,9 @@
-"""The measuring part of `poe overlap` (overlap_run.py, overlap_plan.py): the pacer holding the
-replay to 10 Whisper requests a minute, a clip that met a rate limit played again after a
-minute, the cap stopping the run before a clip it cannot afford, the text-to-speech whose reply
-outlasts the clip, the reference answerer's verdicts, each clip's reply, and a `--set`'s value."""
+"""The measuring part of `poe overlap` (overlap_run.py, overlap_plan.py): the smoke test that
+stops a run before any clip when it failed, the pacer holding the replay to 10 Whisper requests
+a minute, a clip that met a rate limit played again after a minute and one still limited
+stopping the run, a variant whose deciding request failed counted apart, the cap stopping the
+run before a clip it cannot afford, the text-to-speech whose reply outlasts the clip, the
+reference answerer's verdicts, each clip's reply, and a `--set`'s value."""
 
 from __future__ import annotations
 
@@ -13,7 +15,7 @@ import pytest
 from ole5_voice.evals import overlap
 from ole5_voice.evals.overlap_card import OverlapScorecard
 from ole5_voice.evals.overlap_plan import DEFAULT_REPLY, overlaps_of, setting
-from ole5_voice.evals.overlap_run import RATE_LIMIT_PAUSE_S, ReplySpeech, reference
+from ole5_voice.evals.overlap_run import MAX_ATTEMPTS, RATE_LIMIT_PAUSE_S, ReplySpeech, reference
 from ole5_voice.evals.run_lines import OverlapLine
 from ole5_voice.evals.run_parts import Choice, Todo, load_plan
 from ole5_voice.evals.runs import SCORECARD_FILE
@@ -21,6 +23,7 @@ from ole5_voice.evals.takes import ScriptLine
 from t2_agentic_voice.evals import OverlapReplay
 
 from tests.ole5_voice.evals.overlap_support import (
+    WENT_ON,
     FakeReplayer,
     Run,
     clip,
@@ -31,7 +34,7 @@ from tests.ole5_voice.evals.overlap_support import (
 from tests.ole5_voice.evals.run_support import FakeClock, golden_set, make_world
 
 
-def _run(tmp_path: Path, n: int, *script: OverlapReplay) -> Run:
+def _run(tmp_path: Path, n: int, *script: OverlapReplay | BaseException) -> Run:
     world = make_world(tmp_path)
     found = [clip(world, f"k{i}", "stop_word") for i in range(n)]
     (world.data / "script.toml").write_text(
@@ -41,8 +44,35 @@ def _run(tmp_path: Path, n: int, *script: OverlapReplay) -> Run:
     return Run(world, golden_set(*found), FakeReplayer(list(script), clock), clock=clock)
 
 
+def _card(run: Run) -> OverlapScorecard:
+    return OverlapScorecard.model_validate_json((run.out / SCORECARD_FILE).read_bytes())
+
+
+@pytest.mark.parametrize(
+    "smoke",
+    [
+        stop(failure="timeout"),
+        stop(failure="rate_limited"),  # passing would need the clip played again
+        stop(failure="rejected"),
+        WENT_ON,  # it sent no request, so it tested nothing
+        ValueError("the reply is no phrase a greeting may say"),
+    ],
+)
+def test_a_smoke_test_that_failed_stops_the_run_before_any_clip(
+    tmp_path: Path, smoke: OverlapReplay | BaseException
+) -> None:
+    run = _run(tmp_path, 2, smoke, stop(), stop())
+    assert overlap.main(pipeline(run), parts=run.parts()) == 1
+    card = _card(run)
+    assert (card.complete, card.stopped, card.variants) == (False, "smoke_failed", ())
+    assert len(run.replayer.asked) == 1 and run.replayer.closed == 1 and run.stt.closed
+    (line, _), _ = run.lines.appended  # every attempt is recorded, its spend counted
+    assert isinstance(line, OverlapLine) and not line.complete
+    assert line.requests == card.requests
+
+
 def test_the_pacer_holds_the_replay_to_10_whisper_requests_a_minute(tmp_path: Path) -> None:
-    run = _run(tmp_path, 8, *[stop()] * 8)
+    run = _run(tmp_path, 8, *[stop()] * 9)
     assert overlap.main(pipeline(run), parts=run.parts()) == 0
     times = [asked["at"] for asked in run.replayer.asked]
     assert requests_in_any_minute(times, [2] * len(times)) <= 10
@@ -50,23 +80,50 @@ def test_the_pacer_holds_the_replay_to_10_whisper_requests_a_minute(tmp_path: Pa
 
 
 def test_a_clip_that_met_a_rate_limit_is_played_again_after_a_minute(tmp_path: Path) -> None:
-    run = _run(tmp_path, 1, stop(failure="rate_limited"), stop())
+    run = _run(tmp_path, 1, stop(), stop(failure="rate_limited"), stop())
     assert overlap.main(pipeline(run), parts=run.parts()) == 0
-    card = OverlapScorecard.model_validate_json((run.out / SCORECARD_FILE).read_bytes())
+    card = _card(run)
     (result,) = card.variants
-    assert (result.attempts, card.requests, card.billed_seconds) == (2, 4, 40.0)
+    assert (result.attempts, card.requests, card.billed_seconds) == (2, 6, 60.0)
     assert RATE_LIMIT_PAUSE_S in run.clock.pauses
 
 
+def test_a_clip_still_rate_limited_on_its_last_call_stops_the_run(tmp_path: Path) -> None:
+    """Not scored as the rule's verdict on what Whisper never answered: the run stops as at
+    the cap, its scorecard and history line written."""
+    limited = [stop(failure="rate_limited")] * MAX_ATTEMPTS
+    run = _run(tmp_path, 3, stop(), stop(), *limited, stop())
+    assert overlap.main(pipeline(run), parts=run.parts()) == 1
+    card = _card(run)
+    assert (card.complete, card.stopped, len(card.variants)) == (False, "rate_limited", 1)
+    assert len(run.replayer.asked) == 2 + MAX_ATTEMPTS  # the third clip never played
+    assert run.clock.pauses.count(RATE_LIMIT_PAUSE_S) == MAX_ATTEMPTS - 1
+    (line, _), _ = run.lines.appended
+    assert isinstance(line, OverlapLine) and not line.complete
+    assert line.requests == 2 * (2 + MAX_ATTEMPTS)
+
+
+def test_a_variant_whose_deciding_request_failed_is_counted_apart(tmp_path: Path) -> None:
+    run = _run(tmp_path, 2, stop(), stop(failure="timeout"), stop())
+    assert overlap.main(pipeline(run), parts=run.parts()) == 0
+    card = _card(run)
+    assert [r.judged.failed for r in card.variants] == [True, False]
+    assert (card.totals.failed, card.totals.should_stop, card.totals.stopped) == (1, 1, 1)
+    (line, _), _ = run.lines.appended
+    assert isinstance(line, OverlapLine)
+    assert (line.variants, line.failed, line.right) == (2, 1, 1)
+
+
 def test_the_cap_stops_the_run_before_a_clip_it_cannot_afford(tmp_path: Path) -> None:
-    """A clip is budgeted 3 requests of 10 s: 0.000925 USD at 0.111 an hour. The first spent
-    2 requests (0.000617), so the second's budget would pass a cap of 0.0012."""
-    run = _run(tmp_path, 3, stop(), stop(), stop())
-    argv = [*pipeline(run)[:-2], "--cap-usd", "0.0012"]
+    """A clip is budgeted 3 requests of 10 s: 0.000925 USD at 0.111 an hour. The smoke test and
+    the first clip spent 2 requests each (0.001233), so the second's budget would pass a cap of
+    0.002."""
+    run = _run(tmp_path, 3, stop(), stop(), stop(), stop())
+    argv = [*pipeline(run)[:-2], "--cap-usd", "0.002"]
     assert overlap.main(argv, parts=run.parts()) == 1
-    card = OverlapScorecard.model_validate_json((run.out / SCORECARD_FILE).read_bytes())
+    card = _card(run)
     assert (card.complete, card.stopped, len(card.variants)) == (False, "cap", 1)
-    assert card.cost_usd == pytest.approx(20 / 3600 * 0.111)
+    assert card.cost_usd == pytest.approx(40 / 3600 * 0.111)
     (line, _), _ = run.lines.appended
     assert isinstance(line, OverlapLine) and not line.complete
     assert run.replayer.closed == 1 and run.stt.closed

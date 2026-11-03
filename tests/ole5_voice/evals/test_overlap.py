@@ -1,9 +1,10 @@
 """`poe overlap` (plan 005's registration, the arm O; its scorer is test_overlap_score.py's, its
 measuring test_overlap_run.py's): the `reference` answerer over each split of the committed
 golden set, every verdict right and 0 ms, reading no audio and appending no history line (inside
-`poe check`); a run of the replay through a fake `AudioCall`, each clip over its reply, its
-results, scorecard and history line; a held-out run's aggregates only; the settings on the
-command line; and the refusals before any clip is fed."""
+`poe check`); a run of the replay through a fake `AudioCall`, its smoke test first, then each
+clip over its reply, its results, scorecard and history line; a held-out run's aggregates only,
+its smoke test a dev variant; the settings on the command line; and the refusals before any
+clip is fed."""
 
 from __future__ import annotations
 
@@ -101,7 +102,7 @@ def _world(tmp_path: Path, *script: OverlapReplay | BaseException) -> Run:
 def test_a_run_of_the_replay_plays_each_clip_over_its_reply_and_writes_as_it_goes(
     tmp_path: Path, capsys: pytest.CaptureFixture[str]
 ) -> None:
-    run = _world(tmp_path, stop(), stop(last_ms=1300.0), stop(), WENT_ON, WENT_ON)
+    run = _world(tmp_path, stop(), stop(), stop(last_ms=1300.0), stop(), WENT_ON, WENT_ON)
     replies = str(run.world.top / "lab")
     argv = pipeline(run, "--replies", replies, "--set", "stt.no_speech_max=0.5", "--stt-rpm", "10")
     assert overlap.main(argv, parts=run.parts()) == 0
@@ -116,7 +117,8 @@ def test_a_run_of_the_replay_plays_each_clip_over_its_reply_and_writes_as_it_goe
     ]
     marks = [r.judged.from_mark_ms for r in card.variants]
     assert marks == [600.0, 300.0, None, None, None]
-    asked = run.replayer.asked
+    smoke, *asked = run.replayer.asked  # the plan's smoke variant, the run's first, then each
+    assert (smoke["reply"], smoke["word_end_ms"]) == (asked[0]["reply"], 1000.0)
     assert [a["language"] for a in asked] == ["ar-SA", "ar-SA", "ar-SA", "en", "en"]
     assert asked[4]["reply"] == ("A made-up reply, as said.",) and card.variants[4].reply_known
     assert asked[0]["reply"] == (DEFAULT_REPLY["ar-SA"],) and not card.variants[0].reply_known
@@ -127,7 +129,7 @@ def test_a_run_of_the_replay_plays_each_clip_over_its_reply_and_writes_as_it_goe
     built = run.replayer.built["settings"]
     assert (built.interruptions.mode, built.stt.no_speech_max) == ("two_step", 0.5)
     assert run.replayer.started == run.replayer.closed == 1 and run.stt.closed
-    assert (card.requests, card.billed_seconds) == (6, 60.0)
+    assert (card.requests, card.billed_seconds) == (8, 80.0)  # the smoke test's 2 too
     assert card.run.settings["stt.no_speech_max"] == "0.5"
     assert card.run.settings["run.replies"] == "given"
     assert (run.out / "results.jsonl").read_text("utf-8").count("\n") == 5
@@ -143,15 +145,16 @@ def test_a_run_of_the_replay_plays_each_clip_over_its_reply_and_writes_as_it_goe
 def test_a_held_out_run_writes_aggregates_only(tmp_path: Path) -> None:
     world = make_world(tmp_path)
     found = [clip(world, f"h{n}", "stop_word") for n in range(3)]
-    found.append(clip(world, "d1", "stop_word"))  # the dev side, which a held-out run needs
+    found.append(clip(world, "d1", "stop_word", seconds=2.0))  # dev's, for the smoke test
     clock = FakeClock()
     golden = golden_set(*found, held_out=("h0", "h1", "h2"))
-    run = Run(world, golden, FakeReplayer([stop(), stop(), stop()], clock), clock=clock)
+    run = Run(world, golden, FakeReplayer([stop()] * 4, clock), clock=clock)
     (world.data / "script.toml").write_text(SCRIPT, encoding="utf-8")
     assert overlap.main(pipeline(run, split="held-out"), parts=run.parts()) == 0
     card = OverlapScorecard.model_validate_json((run.out / SCORECARD_FILE).read_bytes())
     assert card.variants == () and card.totals.variants == 3 and "item" not in card.breakdowns
     assert not (run.out / "results.jsonl").exists()
+    assert [a["clip"].seconds for a in run.replayer.asked] == [2.0, 1.0, 1.0, 1.0]
     (line, _), _ = run.lines.appended
     assert isinstance(line, OverlapLine) and line.split == "held-out"
 
@@ -167,7 +170,7 @@ def test_a_held_out_run_writes_aggregates_only(tmp_path: Path) -> None:
 def test_a_run_stopped_early_keeps_what_it_measured(
     tmp_path: Path, failure: BaseException, stopped: str
 ) -> None:
-    run = _world(tmp_path, stop(), failure)
+    run = _world(tmp_path, stop(), stop(), failure)
     argv = pipeline(run, "--replies", str(run.world.top / "lab"))
     assert overlap.main(argv, parts=run.parts()) == 1
     card = OverlapScorecard.model_validate_json((run.out / SCORECARD_FILE).read_bytes())

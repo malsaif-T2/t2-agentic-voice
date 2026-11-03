@@ -3,7 +3,8 @@ clips of its split, each with the reply it is played over and the language its c
 and the settings it runs under, every one given on its command line.
 
 **The clips**: the checked variants of the split that overlap_score.py's `in_set` takes, each
-with what its kind should do and its labelled word end (the first of `turn_ends_ms`).
+with what its kind should do and its labelled word end (the first of `turn_ends_ms`); and the
+smoke test's, the plan's smoke variant, played over its reply as they are (`overlap_of`).
 
 **The reply** each is played over: the texts that played over it when it was recorded, where
 they are known (the registration's "where they are known"): a script line's reply, by its ID in
@@ -85,39 +86,47 @@ def overlaps_of(
     lab: Mapping[str, LabReply] | None,
     called: Mapping[str, tuple[str, ...]],
 ) -> list[Overlap]:
-    """The overlap clips among `todo`, each with its reply; `lab` None for the reference
-    answerer, which reads no reply. The run's refusal for a script line whose reply `lab` does
-    not hold, or holds with no text."""
-    found = []
-    for each in todo:
-        item, variant = each.item, each.variant
-        if not in_set(item.kind, variant.tags):
-            continue
-        reply: tuple[str, ...] = ()
-        reply_lang = ""
-        line = lines.get(item.id) if item.source == "script" else None
-        if line is not None and line.reply is not None and lab is not None:
-            known = lab.get(line.reply)
-            if known is None or not known.said:
-                raise refused(
-                    f"{REPLIES_JSON} holds no text of the reply {line.reply}",
-                    "give --replies the lab's folder whose replies.json names it",
-                )
-            reply, reply_lang = (known.said,), known.lang
-        elif called.get(variant.id):
-            reply = called[variant.id]
-        tag: Tag = TAGS.get(item.language) or ("en" if reply_lang == "en" else "ar-SA")
-        found.append(
-            Overlap(
-                todo=each,
-                expected=EXPECTED[item.kind],
-                reply=reply or (DEFAULT_REPLY[tag],),
-                reply_known=bool(reply),
-                tag=tag,
-                word_end_ms=float(variant.turn_ends_ms[0]) if variant.turn_ends_ms else None,
+    """The overlap clips among `todo`, each with its reply (`overlap_of`)."""
+    return [
+        overlap_of(each, lines, lab, called)
+        for each in todo
+        if in_set(each.item.kind, each.variant.tags)
+    ]
+
+
+def overlap_of(
+    each: Todo,
+    lines: Mapping[str, ScriptLine],
+    lab: Mapping[str, LabReply] | None,
+    called: Mapping[str, tuple[str, ...]],
+) -> Overlap:
+    """`each` as a clip over a reply, with its reply and its call's language; `lab` None for the
+    reference answerer, which reads no reply. A smoke variant of a kind outside the set, whose
+    verdict is never judged, is given `go_on`. The run's refusal for a script line whose reply
+    `lab` does not hold, or holds with no text."""
+    item, variant = each.item, each.variant
+    reply: tuple[str, ...] = ()
+    reply_lang = ""
+    line = lines.get(item.id) if item.source == "script" else None
+    if line is not None and line.reply is not None and lab is not None:
+        known = lab.get(line.reply)
+        if known is None or not known.said:
+            raise refused(
+                f"{REPLIES_JSON} holds no text of the reply {line.reply}",
+                "give --replies the lab's folder whose replies.json names it",
             )
-        )
-    return found
+        reply, reply_lang = (known.said,), known.lang
+    elif called.get(variant.id):
+        reply = called[variant.id]
+    tag: Tag = TAGS.get(item.language) or ("en" if reply_lang == "en" else "ar-SA")
+    return Overlap(
+        todo=each,
+        expected=EXPECTED.get(item.kind, "go_on"),
+        reply=reply or (DEFAULT_REPLY[tag],),
+        reply_known=bool(reply),
+        tag=tag,
+        word_end_ms=float(variant.turn_ends_ms[0]) if variant.turn_ends_ms else None,
+    )
 
 
 def setting(text: str) -> tuple[str, object]:

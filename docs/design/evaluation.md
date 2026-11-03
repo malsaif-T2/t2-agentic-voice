@@ -262,7 +262,13 @@ given after the task's name:
 - `uv run poe overlap` (`overlap.py`) replays the overlap clips over a reply (plan 005's arm O)
   with the reference answerer, which scores every verdict right and 0 ms inside `poe check`, or
   the file-fed pipeline's `AudioCall`, which spends, paced at 10 Whisper requests a minute and
-  held under its cap, appending an overlap line for a pipeline run.
+  held under its cap, appending an overlap line for a pipeline run. A run of the pipeline plays
+  its smoke test first (the plan's smoke variant over a reply, a dev variant even for held-out,
+  as `poe eval`'s) and stops before any further spend if it failed, was retried or refused; a
+  clip whose last attempt is still rate-limited stops the run as `rate_limited`, its scorecard
+  and history line written as at the cap, rather than being scored as the rule's verdict; and a
+  variant whose deciding request failed is an infrastructure failure, not an answer: counted
+  apart and left out of the rates, in dev and in held-out aggregates.
 
 The split has no task: `python -m ole5_voice.evals.split` writes it (with `--keep`, new items
 placed and every committed item keeping its side), and a test inside `poe check` fails when the

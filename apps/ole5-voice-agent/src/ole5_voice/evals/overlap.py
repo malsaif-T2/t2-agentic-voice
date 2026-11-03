@@ -6,7 +6,10 @@ Each clip of the split's overlap set, with the reply it is played over and its c
 reads no audio and sends nothing (the harness checking itself inside `poe check`), or by
 `pipeline`, the replay through the `evals` facade's `AudioCall` with the real speech-to-text,
 paced at `--stt-rpm` Whisper requests a minute and held under `--cap-usd` (overlap_run.py); then
-judged and scored against the registration's targets (overlap_score.py, overlap_card.py).
+judged and scored against the registration's targets (overlap_score.py, overlap_card.py). A run
+of the replay plays its smoke test first, the plan's smoke variant over a reply, and stops
+before any clip if it failed (`smoke_failed`); a clip still rate-limited on its last call stops
+it (`rate_limited`), as the cap does; each writes its scorecard and history line.
 
 As `poe eot`, a run refuses the main checkout and a dirty tree, an `--out` that exists or that
 git would track, and audio that is not the file its manifest hashed, all before any clip is fed.
@@ -49,7 +52,13 @@ from ole5_voice.evals.import_calls import load_replies
 from ole5_voice.evals.items import SCRIPT_FILE, GoldenSetError, read_toml
 from ole5_voice.evals.models import NAME_RULE, Split, is_name
 from ole5_voice.evals.overlap_card import AppendLine, OverlapRun, close_run
-from ole5_voice.evals.overlap_plan import overlaps_of, read_lab_replies, setting, with_set
+from ole5_voice.evals.overlap_plan import (
+    overlap_of,
+    overlaps_of,
+    read_lab_replies,
+    setting,
+    with_set,
+)
 from ole5_voice.evals.overlap_run import (
     AT_S,
     MAX_ATTEMPTS,
@@ -60,6 +69,7 @@ from ole5_voice.evals.overlap_run import (
     Measuring,
     Overlap,
     Progress,
+    RateLimitedError,
     Replayer,
     ReplySpeech,
     reference,
@@ -160,19 +170,32 @@ def shown(settings: VoiceSettings, args: argparse.Namespace) -> dict[str, str]:
 
 
 async def _replayed(
-    measuring: Measuring, todo: Sequence[Overlap], progress: Progress, side: Split
+    measuring: Measuring,
+    smoke: Overlap,
+    todo: Sequence[Overlap],
+    progress: Progress,
+    side: Split,
 ) -> None:
-    """Each clip through the replay, in order, until the last, the cap, or a clip the replay
-    could not play, which stops the run with what it measured kept."""
+    """The smoke test, then each clip through the replay, in order, until the last, the cap, a
+    clip still rate-limited on its last call, or one the replay could not play, which stops the
+    run with what it measured kept; a smoke test that failed, or that the replay could not
+    play, stops it before any clip."""
     try:
         await measuring.replayer.start()
+        if not await measuring.smoke(smoke):
+            progress.stopped = "smoke_failed"
+            return
+        progress.smoke_passed = True
         for each in todo:
             progress.add(await measuring.variant(each, side))
     except CapReachedError:
         progress.stopped = "cap"
         log.warning("cap_reached", done=len(progress.results), of=len(todo))
+    except RateLimitedError:
+        progress.stopped = "rate_limited"
+        log.error("variant_still_rate_limited", done=len(progress.results), of=len(todo))
     except (T2VoiceError, ValueError) as error:
-        progress.stopped = "failed"
+        progress.stopped = "failed" if progress.smoke_passed else "smoke_failed"
         log.error("replay_failed", done=len(progress.results), error=type(error).__name__)
     finally:
         await measuring.aclose()
@@ -208,6 +231,7 @@ def _run(args: argparse.Namespace, parts: OverlapParts) -> int:
     todo = overlaps_of(plan.todo, lines, lab, called)
     if not todo:
         raise refused("the split holds no overlap clip the owner has checked", "check --split")
+    smoke = overlap_of(plan.smoke, lines, lab, called)
     info = OverlapRun(
         name=out.name,
         started_at=parts.plan.now(),
@@ -242,7 +266,7 @@ def _run(args: argparse.Namespace, parts: OverlapParts) -> int:
         sleep=parts.plan.sleep,
     )
     try:
-        asyncio.run(_replayed(measuring, todo, progress, args.split))
+        asyncio.run(_replayed(measuring, smoke, todo, progress, args.split))
     except KeyboardInterrupt:
         progress.stopped = "interrupted"
         log.warning("run_interrupted", done=len(progress.results), of=len(todo))
@@ -252,8 +276,9 @@ def _run(args: argparse.Namespace, parts: OverlapParts) -> int:
 
 def main(argv: Sequence[str] | None = None, *, parts: OverlapParts | None = None) -> int:
     """`uv run poe overlap`: the overlap clips of one split, replayed over a reply. 0 when the
-    run is complete, 1 when it is not (the cap, an interrupt, a clip the replay could not play),
-    2 when it is refused before any clip is fed."""
+    run is complete, 1 when it is not (a failed smoke test, the cap, a clip still rate-limited,
+    an interrupt, a clip the replay could not play), 2 when it is refused before any clip is
+    fed."""
     parser = _parser()
     args = parser.parse_args(argv)
     _require(parser, args)

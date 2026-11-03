@@ -16,7 +16,15 @@ own), at the run's Whisper requests a minute (`--stt-rpm`, 10 by default, half t
 plan 003's Track H), and refuses to start one whose budgeted cost would take the run past
 `--cap-usd`. A clip one of whose requests met a rate limit is played again after
 `RATE_LIMIT_PAUSE_S`, up to `MAX_ATTEMPTS` calls in all, every call's requests counted on the
-pacer and in the spend, each billed as Groq bills Whisper, at least 10 s.
+pacer and in the spend, each billed as Groq bills Whisper, at least 10 s; a clip whose last call
+still met one stops the run (`RateLimitedError`), never scored as the rule's verdict on what
+Whisper did not answer.
+
+**The smoke test** (`Measuring.smoke`), before any clip of the run: the plan's smoke variant
+(`run_parts.load_plan`'s, a dev variant even for a held-out run), played once over its reply as
+any clip is, paced and held under the cap; it passes when it sent a request and every request
+was answered, none failed, rate-limited or refused (evaluation.md, "Running"), and its verdict
+is never judged.
 
 A run's results are kept as they come (`Progress`): a dev run's each written as it finishes, to
 `RESULTS_FILE`, with a progress line of identifiers and verdicts, never a transcript; a held-out
@@ -59,9 +67,10 @@ _FLOW: Final = DataFlow(
 )
 # The library's language tags a replayed call is held in.
 Tag = Literal["ar-SA", "ar", "en"]
-# Why a run stopped before its last clip: its cap, an interrupt, or a clip the replay could not
-# play (a reply no greeting may say, a call whose greeting never played).
-Stopped = Literal["cap", "interrupted", "failed"]
+# Why a run stopped before its last clip: its smoke test failed, its cap, a clip still
+# rate-limited on its last call, an interrupt, or a clip the replay could not play (a reply no
+# greeting may say, a call whose greeting never played).
+Stopped = Literal["smoke_failed", "cap", "rate_limited", "interrupted", "failed"]
 log = get_logger(__name__)
 
 
@@ -118,6 +127,10 @@ class CapReachedError(Exception):
     """The next clip's budgeted cost would take the run past `--cap-usd`."""
 
 
+class RateLimitedError(Exception):
+    """A clip's last call still met a rate limit: no verdict of the rule's to score."""
+
+
 @dataclass(frozen=True)
 class Overlap:
     """One overlap clip to answer: its variant, what its kind should do, the reply it is played
@@ -168,6 +181,7 @@ class Progress:
     def __init__(self, total: int, results_file: Path | None) -> None:
         self.total, self.results_file = total, results_file
         self.results: list[OverlapResult] = []
+        self.smoke_passed = False
         self.stopped: Stopped | None = None
 
     def add(self, result: OverlapResult) -> None:
@@ -191,6 +205,7 @@ class Progress:
             expected=result.expected,
             action=result.verdict.action,
             right=judged.right,
+            failed=judged.failed,
             requests=judged.overlap_requests,
             stop_ms=None if stop_ms is None else round(stop_ms),
         )
@@ -215,17 +230,29 @@ class Measuring:
     def spent_usd(self) -> float:
         return cost_usd(self.billed_seconds, self.price_per_hour_usd)
 
+    async def smoke(self, overlap: Overlap) -> bool:
+        """The smoke test: `overlap` played once; whether it sent a request and every request
+        was answered."""
+        verdict = await self._call(_clip(overlap), overlap)
+        failures = [r.failure for r in verdict.requests if r.failure is not None]
+        if failures or not verdict.requests:
+            log.error("smoke_failed", requests=len(verdict.requests), failures=failures)
+            return False
+        log.info("smoke_passed", requests=len(verdict.requests))
+        return True
+
     async def variant(self, overlap: Overlap, side: Split) -> OverlapResult:
-        """One clip's replay, played again while it meets a rate limit."""
-        segments = overlap.todo.request.segments
-        clip = AudioClip(pcm16=b"".join(read_wav(path).pcm16 for path in segments))
+        """One clip's replay, played again while it meets a rate limit; `RateLimitedError` when
+        its last call still met one."""
+        clip = _clip(overlap)
         attempts = 0
         while True:
             attempts += 1
             verdict = await self._call(clip, overlap)
-            limited = any(r.failure == "rate_limited" for r in verdict.requests)
-            if not limited or attempts >= MAX_ATTEMPTS:
+            if not any(r.failure == "rate_limited" for r in verdict.requests):
                 return overlap.result(side, verdict, attempts)
+            if attempts >= MAX_ATTEMPTS:
+                raise RateLimitedError
             log.warning("variant_rate_limited", attempt=attempts, pause_s=RATE_LIMIT_PAUSE_S)
             await self.sleep(RATE_LIMIT_PAUSE_S)
 
@@ -253,3 +280,9 @@ class Measuring:
     async def aclose(self) -> None:
         await self.replayer.aclose()
         await self.stt.aclose()
+
+
+def _clip(overlap: Overlap) -> AudioClip:
+    """The clip's audio, its segments joined."""
+    segments = overlap.todo.request.segments
+    return AudioClip(pcm16=b"".join(read_wav(path).pcm16 for path in segments))
