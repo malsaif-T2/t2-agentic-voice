@@ -253,11 +253,14 @@ class FakeSessionIO:
         billed as Groq bills it; or None, with `failure` when the request failed and with no
         request otherwise. A request that went is the turn's last `Transcribing` of `part`,
         which gives the result its audio and when it went, or for the `turn` part of an
-        overlap's turn with none of its own, the overlap's, whose transcript it reuses:
-        RuntimeError when none was handed."""
+        overlap's turn with none of its own, the overlap's, whose transcript it reuses; for an
+        `overlap` part with none of its own (its `HearOverlap` reached the bridge after the turn
+        closed), the turn's: RuntimeError when none was handed."""
         sent = self._sent(turn_id, part)
         if not sent and part == "turn":
             sent = self._sent(turn_id, "overlap")
+        elif not sent and part == "overlap":
+            sent = self._sent(turn_id, "turn")
         if (text is not None or failure) and not sent:
             raise RuntimeError(
                 "the turn's request went with no Transcribing (io.py's usage). FIX: hand it "

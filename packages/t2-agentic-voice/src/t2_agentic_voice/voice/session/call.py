@@ -7,10 +7,12 @@ the cached frame first, once the turn's transcript is in, then the heard words, 
 clause, while the text-to-speech request runs; an empty transcript is said back as nothing and
 kept on the timeline. Each reply is the next from 0, its clauses keyed on it (io.py's replies).
 A turn whose speech began while any reply played, the greeting included, or within 300 ms after
-a reply's last clause played, is not said back (io.py's drop rule; plan 003's decision log), so
-the agent never echoes its own voice. A client's `stop` drops at once every clause asked for so
-far, whatever its reply (`StopSpeaking` naming the newest reply: io.py's stop path), each reply
-it drops counted as done, and the session listens again; `hangup` ends the call. It tells the
+a reply's last clause played (none after the caller's own `stop`), is not said back under
+`interruptions.mode = "drop"` (io.py's drop rule; plan 003's decision log), so the agent never
+echoes its own voice; under `two_step` it is an overlap, which interrupter.py takes (io.py's
+overlaps). A client's `stop` drops at once every clause asked for so far, whatever its reply
+(`StopSpeaking` naming the newest reply: io.py's stop path), each reply it drops counted as done
+and its cancel scope cancelled, and the session listens again; `hangup` ends the call. It tells the
 caller of a failure, and of an end it chose, with the call language's notices
 (`setup.language.notices`; domain/declaration.py's `NoticeKind`): `error` after a turn it would
 say back whose transcript failed, or an echo one of whose clauses failed; `ended` when it ends
@@ -20,10 +22,9 @@ message, whose text the client shows, and is spoken from the phrase cache as the
 naming no turn; `busy` is admission control's, at join. Whatever ends the call, its `HangUp`
 leaves a turn still open, or with its transcript still to come, unfinished (io.py's end).
 
-It says the heard words as echo.py says them: the agent's pronunciation map applied, cut into
-clauses on the said form and packed into requests of at most `setup.max_chars`, at most
-`MAX_ECHO_REQUESTS` an echo, each sent as the provider's text and captioned as said; a fixed
-phrase is played from the phrase cache and captioned as written.
+It says the heard words as echo.py says them, a fixed phrase from the phrase cache; a
+transcript the filter for text from silence takes for no words (turn_book.py, off by default) is
+said back as nothing.
 
 It counts each model's usage from each request's report (io.py's usage), a request the call's
 end cancelled included, keeps the call's `CallReport` and writes its numbers, with no text of
@@ -31,11 +32,10 @@ the call, to a file under `storage.var_dir`, once the call's stream has ended (`
 traces each turn; records the call only when `privacy.record_audio` is on and
 `allows_recording(setup.consent)` (core/identity.py) says the consent allows it (invariant 8),
 asked by the recorder of `setup.consent` itself, never of a copy or of a consent rebuilt or
-built here (recording.py); and builds `HeardWords`, which only `voice` may build (invariant 1).
-It meets Pipecat only through io.py and its events and commands. Its turns are turn_book.py's,
-its limit timers limits.py's, and how it speaks speaker.py's.
-
-Its tests, the plan's list and those this contract named beyond it, are under
+built here (recording.py); builds `HeardWords`, which only `voice` may build (invariant 1); and
+keeps what the caller heard (history.py), all in its books (books.py). It meets Pipecat only
+through io.py and its events and commands. Its turns are turn_book.py's, its limit timers
+limits.py's, how it speaks speaker.py's, and its overlaps interrupter.py's. Its tests are under
 tests/t2_agentic_voice/voice/session/, each module's docstring saying which it holds.
 """
 
@@ -47,25 +47,24 @@ from functools import partial
 
 from t2_agentic_voice.core.events import ClientConnection, EndReason
 from t2_agentic_voice.core.logging import get_logger
-from t2_agentic_voice.core.tracing_tts import CallTrace, resource_attributes
 from t2_agentic_voice.voice import protocol as wire
 from t2_agentic_voice.voice.session import session_events as on
+from t2_agentic_voice.voice.session.books import CallBooks
 from t2_agentic_voice.voice.session.commands import HangUp, ListenIn
-from t2_agentic_voice.voice.session.echo import echo, fixed
+from t2_agentic_voice.voice.session.echo import echo
+from t2_agentic_voice.voice.session.heard import HeardWords
+from t2_agentic_voice.voice.session.interrupter import Interrupter
 from t2_agentic_voice.voice.session.io import CallSetup, Commands
 from t2_agentic_voice.voice.session.limits import CallLimits, Limit
 from t2_agentic_voice.voice.session.playback import Reply
-from t2_agentic_voice.voice.session.recording import CallRecorder
 from t2_agentic_voice.voice.session.report import (
-    CallEvents,
+    TurnLog,
     call_report,
+    file_report,
     merged,
-    span_attributes,
-    write_report,
 )
 from t2_agentic_voice.voice.session.speaker import Speaker
 from t2_agentic_voice.voice.session.turn_book import TurnBook
-from t2_agentic_voice.voice.session.usage import Usage
 
 _log = get_logger(__name__)
 
@@ -81,32 +80,20 @@ class CallSession:
         self._setup, self._commands, self._language = setup, commands, language
         self._listen = language.primary if settings.stt.live_language == "session" else None
         self._lock = asyncio.Lock()
-        self._usage = Usage(settings, language.tag)
-        self._recorder = CallRecorder(setup)
-        self._events = CallEvents(setup)
-        models = (settings.stt.model, self._usage.model(language.tag))
-        resource = resource_attributes(
-            settings, agent=setup.agent.name, models=models, consent_version=setup.consent.version
-        )
-        self._trace = CallTrace(setup.tracing, call_id=setup.call_id, resource=resource)
-        self._speaker = Speaker(
+        books = CallBooks.of(setup)
+        self._usage, self._recorder, self._events = books.usage, books.recorder, books.events
+        self._trace, self.history = books.trace, books.history  # what the caller heard
+        self._speaker = Speaker(setup, commands, books, ended=self._reply_ended)
+        self._playback = self._speaker.playback
+        self._turns = TurnBook(setup, books, listen=self._listen, playback=self._playback)
+        self._interrupter = Interrupter(
             setup,
             commands,
-            usage=self._usage,
-            trace=self._trace,
-            recorder=self._recorder,
-            events=self._events,
-            ended=self._reply_ended,
-        )
-        self._playback = self._speaker.playback
-        self._turns = TurnBook(
-            setup,
-            listen=self._listen,
-            usage=self._usage,
-            trace=self._trace,
-            recorder=self._recorder,
-            events=self._events,
-            playback=self._playback,
+            books,
+            speaker=self._speaker,
+            turns=self._turns,
+            over=self._over,
+            answer=self._answer,
         )
         self._limits = CallLimits(setup, over=self._over, reached=self._reached)
         self._started_at = self._ended_at = setup.clock.wall()
@@ -143,18 +130,26 @@ class CallSession:
             return
         self._recorder.take(event)
         match event:
-            case on.CallerAudio() | on.AgentAudio():
+            case on.AgentAudio():
+                self._speaker.heard_audio(event)
+                return
+            case on.CallerAudio():
                 return
             case on.Connected():
                 await self._connected_at(event.at)
             case on.TurnOpened():
                 self._limits.heard(event.at)
-                self._turns.opened(event)
+                over = self._turns.opened(event)
+                if over is not None:
+                    await self._interrupter.opened(event, over)
             case on.TurnClosed():
                 self._limits.heard(event.at)
                 self._turns.closed(event)
             case on.Transcribing():
                 self._turns.transcribing(event)
+                self._interrupter.requested(event)
+            case on.Transcribed() if event.part != "turn":
+                await self._interrupter.heard(event)
             case on.Transcribed():
                 await self._transcribed(event)
             case on.Synthesizing():
@@ -166,7 +161,7 @@ class CallSession:
             case on.ClausePlayed() | on.ClauseFailed():
                 await self._speaker.done(event, tell=self._ending is None)
             case on.FromClient(message=wire.Stop()):
-                await self._speaker.stop(event.at)
+                await self._speaker.stop(event.at, client=True)
             case on.FromClient(message=wire.Hangup()):
                 await self._end("hangup", event.at, tell=True)
             case on.FromClient(message=wire.ClientStats() as stats):
@@ -185,18 +180,22 @@ class CallSession:
         self._trace.started()
         self._recorder.started(at, self._started_at.isoformat())
         await self._commands.run(ListenIn(language=self._listen))
-        tags = [self._language.tag]
-        tags += [each.tag for each in self._setup.agent.languages if each.tag != tags[0]]
-        await self._speaker.send(wire.SessionHello(call_id=self._id, languages=tuple(tags)))
-        greeting = fixed(self._setup, self._language.greeting, reply_id=self._playback.next_id)
-        if greeting is not None:
-            await self._speaker.say("greeting", [greeting], at)
+        await self._speaker.greet(at)
         self._limits.start(at)
         _log.info("call_started", call_id=self._id, language=self._language.tag)
 
     async def _transcribed(self, event: on.Transcribed) -> None:
+        """A turn's own transcript: an overlap's taken by its overlap, any other's answered."""
         turn, heard = self._turns.transcribed(event)
-        if not turn.dropped:
+        if turn.overlap:
+            await self._interrupter.turn_heard(turn, heard, event)
+        else:
+            await self._answer(turn, heard, event)
+
+    async def _answer(self, turn: TurnLog, heard: HeardWords | None, event: on.Transcribed) -> None:
+        """Say the turn back, unless dropped or the call has ended: its caption, then the
+        `error` notice when its request failed, or its echo (nothing for nothing heard)."""
+        if self._ended is None and not turn.dropped:
             if heard is not None:
                 caption = wire.Caption(
                     speaker="caller", text=heard.text, final=True, turn_id=turn.turn_id
@@ -208,7 +207,9 @@ class CallSession:
                 lines = echo(self._setup, heard, reply_id=self._playback.next_id)
                 if lines:
                     reply = await self._speaker.say("echo", lines, event.at, turn_id=turn.turn_id)
-                    turn.reply_id, turn.said = reply.reply_id, reply.text
+                    turn.reply_id = reply.reply_id
+            if self._ending is None and turn.reply_id is None:
+                self._turns.ended(turn, "answered")
         self._turns.settle(turn)
 
     async def _reply_ended(self, reply: Reply) -> None:
@@ -278,12 +279,7 @@ class CallSession:
             usage=self._usage.report(),
             client=self._client,
         )
-        self._trace.close(span_attributes(report))
-        try:
-            await asyncio.to_thread(write_report, report, self._setup.settings.storage.var_dir)
-        except OSError as error:
-            _log.warning("report_not_written", call_id=self._id, failure=type(error).__qualname__)
-        self._events.ended(report)
+        await file_report(report, self._setup, trace=self._trace, events=self._events)
 
     @property
     def _id(self) -> str:
