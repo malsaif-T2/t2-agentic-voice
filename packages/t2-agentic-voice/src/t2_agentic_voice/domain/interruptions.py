@@ -7,14 +7,20 @@ domain reads no settings group.
 
 The rule reads a transcript in the form its words are compared in (domain/words.py's
 `rule_form`), as words, each listed phrase one word (the longest first, as the prototype read
-an utterance: its `voice/rules.py`, lines 119-129). Its steps, in order:
+an utterance: its `voice/rules.py`, lines 119-129), beside the fixed words of
+domain/interruption_words.py. Its steps, in order:
 
 1. no words, or text from silence: go on;
 2. a stop word or a word asking the agent to pause, anywhere, or the stop word as Whisper
-   mishears it over the agent's voice (`_noisy_stop`): stop;
+   mishears it over the agent's voice (`_noisy_stop`; a spelling only Whisper writes for it,
+   only as a whole short utterance): stop; but go on, as the agent's own words, when each stop
+   or wait word heard is, exactly, a word or listed phrase of the clauses that played (no edit
+   allowed), another word was heard beside them, and every word is the agent's own (step 4's
+   test): its echo of a reply that said them back;
 3. a repeat request, its repeat words with only polite words and listening sounds beside them
    (a repeat word in a sentence, "read" or a feast's name, asks nothing): stop, then say the
-   last reply again;
+   last reply again; unless each repeat word heard, or it after waw (and), is a word or listed
+   phrase of the clauses that played, when the steps after this one decide;
 4. the agent's own words, every word within one edit of a word of the clauses that played (a
    word of one or two letters only as written): go on;
 5. listening sounds only: go on;
@@ -23,6 +29,10 @@ an utterance: its `voice/rules.py`, lines 119-129). Its steps, in order:
    a listening sound Whisper misheard does not stop the agent (plan 005, Q4);
 7. at least `min_words` real words, a listening sound being none: stop, a correction when the
    first is a no word; fewer: go on.
+
+Step 2's echo and its whole spellings, and step 3's exception, changed the registered rule on
+2026-11-03, after Track A's review: the agent says back what it heard, so a reply can hold any
+word the caller said.
 """
 
 from __future__ import annotations
@@ -34,7 +44,19 @@ from pydantic import BaseModel, ConfigDict, Field
 
 from t2_agentic_voice.core.events import InterruptionKind, InterruptionReason
 from t2_agentic_voice.core.settings.words import LanguageCode
+from t2_agentic_voice.domain.interruption_words import (
+    NOISY_ENDS,
+    NOISY_LETTERS,
+    NOISY_SOUNDS,
+    NOISY_SPELLINGS,
+    NOISY_WORDS,
+    NOT_NOISY_START,
+    POLITE,
+    QUESTION_MARKS,
+    QUESTION_WORDS,
+)
 from t2_agentic_voice.domain.silence import from_silence
+from t2_agentic_voice.domain.text.words import holds_words
 from t2_agentic_voice.domain.words import WORD_KINDS, Words, rule_form
 
 # What the session does with the reply an overlap spoke over: stop it, stop it and say the last
@@ -44,75 +66,7 @@ OverlapAction = Literal["stop", "repeat", "go_on"]
 # (core/events.py), one list for both.
 VerdictReason = InterruptionReason
 
-# The words that make an output a question when it opens with one (or with one after waw, and),
-# for each language, in the rule's form: the prototype's (rules.py, lines 312-326). Not a kind
-# of `Words`: a team's lists stay the five kinds.
-_QUESTION_WORDS: Mapping[LanguageCode, frozenset[str]] = {
-    "ar": frozenset(
-        {
-            "\u0643\u064a\u0641",  # kaif, how: kaf, yeh, feh
-            "\u0645\u0627\u0630\u0627",  # matha, what: meem, alef, thal, alef
-            "\u0644\u0645\u0627\u0630\u0627",  # limatha, why: lam, then as above
-            "\u0644\u064a\u0634",  # laish, why (Saudi): lam, yeh, sheen
-            "\u0644\u064a\u0647",  # laih, why: lam, yeh, heh
-            "\u0645\u062a\u064a",  # mata, when: meem, teh, yeh
-            "\u0648\u064a\u0646",  # wain, where (Saudi): waw, yeh, noon
-            "\u0627\u064a\u0646",  # ain, where: alef, yeh, noon
-            "\u0641\u064a\u0646",  # fain, where: feh, yeh, noon
-            "\u0647\u0644",  # hal, is it: heh, lam
-            "\u0627\u064a\u0634",  # aish, what: alef, yeh, sheen
-            "\u0648\u0634",  # wish, what (Saudi): waw, sheen
-            "\u0634\u0648",  # shu, what: sheen, waw
-            "\u0634\u0644\u0648\u0646",  # shlon, how (Saudi): sheen, lam, waw, noon
-            "\u0643\u0645",  # kam, how many: kaf, meem
-            "\u0645\u064a\u0646",  # meen, who: meem, yeh, noon
-            "\u0645\u0645\u0643\u0646",  # mumkin, can (you): meem, meem, kaf, noon
-        }
-    ),
-    "en": frozenset(
-        {"how", "what", "why", "where", "when", "which", "who", "can", "could", "would"}
-        | {"is", "are", "do", "does", "did", "should", "will"}
-    ),
-}
-_QUESTION_MARKS = ("?", "\u061f")  # the question mark, and the Arabic one
 _AND = "\u0648"  # waw, and
-# Polite words, which may stand beside a repeat request or the stop word's English spellings
-# (below) without changing it: the prototype's (rules.py, line 75), but its listening sounds,
-# which the lists hold. Of both languages, in the rule's form.
-_POLITE = frozenset(
-    {
-        # law samaht, please: lam, waw; seen, meem, hah, teh
-        "\u0644\u0648 \u0633\u0645\u062d\u062a",
-        # min fadlak, please: meem, noon; feh, dad, lam, kaf
-        "\u0645\u0646 \u0641\u0636\u0644\u0643",
-        "\u064a\u0627",  # ya (calling someone): yeh, alef
-        "\u0627\u0644\u062d\u064a\u0646",  # al-heen, now (Saudi): alef, lam, hah, yeh, noon
-        "please",
-        "now",
-    }
-)
-# The stop word as Whisper wrote it over the agent's voice in the prototype's Arabic calls (its
-# rules.py, lines 49-62 and 154-168): one or two words of at most six letters, together, one of
-# them ending as the word does or one of the sounds below, the first letter of none meem (a noun
-# or a participle, never the verb), with no question or no word.
-_NOISY_ENDS = (
-    "\u0642\u0641",  # qaf, feh
-    "\u0643\u0641",  # kaf, feh
-    "\u063a\u0641",  # ghain, feh
-)
-_NOISY_SOUNDS = frozenset(
-    {
-        "\u0628\u0648\u062f\u0643\u064a\u0641",  # beh, waw, dal, kaf, yeh, feh
-        "\u0628\u0627\u0643\u064a\u0641",  # beh, alef, kaf, yeh, feh (also two words, joined)
-        "\u0642\u062f\u0641",  # qaf, dal, feh
-    }
-)
-_NOISY_LETTERS = 6
-_NOT_NOISY_START = "\u0645"  # meem
-# The stop word as Whisper wrote it in the prototype's English calls: a stop said with only
-# polite words and listening sounds beside it, at most three words in all.
-_NOISY_ENGLISH = frozenset({"what a gift", "what gives", "what give", "plug if", "waqif", "waqef"})
-_NOISY_ENGLISH_WORDS = 3
 # The shortest word the agent's own words match within one edit; a shorter one only as written.
 _FUZZY_LETTERS = 3
 
@@ -162,19 +116,26 @@ def judge(
     ):
         return _goes_on("no_words")
     heard = rule_form(overlap.text).split()
+    spoken = [rule_form(text) for text in overlap.played]
     lists = _lists(words)
     tokens = _tokens(heard, lists)
     kinds = [lists.get(token, frozenset()) for token in tokens]
-    questions = _QUESTION_WORDS[overlap.language]
-    if _held(kinds, "stop", "wait") or _noisy_stop(tokens, kinds, questions):
+    questions = QUESTION_WORDS[overlap.language]
+    stops = _of_kinds(tokens, kinds, "stop", "wait")
+    echo = 0 < len(stops) < len(tokens) and _said_back(stops, spoken)
+    if echo and _own_words(heard, spoken):
+        return _goes_on("own_words")
+    if stops or _noisy_stop(tokens, kinds, questions):
         return Verdict(action="stop", kind="stop", reason="stop_word")
-    if _held(kinds, "repeat") and all(kind & {"repeat", "polite", "backchannel"} for kind in kinds):
+    repeats = _of_kinds(tokens, kinds, "repeat")
+    asked = bool(repeats) and all(kind & {"repeat", "polite", "backchannel"} for kind in kinds)
+    if asked and not _said_back(repeats, spoken, after_and=True):
         return Verdict(action="repeat", kind="new_words", reason="repeat_word")
-    if _own_words(heard, overlap.played):
+    if _own_words(heard, spoken):
         return _goes_on("own_words")
     if all("backchannel" in kind for kind in kinds):
         return _goes_on("listening")
-    asks = any(mark in overlap.text for mark in _QUESTION_MARKS)
+    asks = any(mark in overlap.text for mark in QUESTION_MARKS)
     asks = asks or _opens_with_question(heard[0], questions)
     listed = _held(kinds, "stop", "wait", "repeat", "no")
     if len(tokens) <= short_words and overlap.speech_s < short_s and not (listed or asks):
@@ -193,14 +154,14 @@ def _goes_on(reason: VerdictReason) -> Verdict:
 
 def _lists(words: Words) -> dict[str, frozenset[str]]:
     """Each phrase the rule reads, in its form, with the kinds that hold it: the five kinds of
-    `words` (a word that says nothing in that form left out), `polite` and `noisy` (the stop
-    word's English spellings)."""
+    `words` (a word that says nothing in that form left out), `polite` and `noisy` (the
+    spellings only Whisper writes for the stop word)."""
     held: dict[str, set[str]] = {}
     for kind in WORD_KINDS:
         for word in getattr(words, kind):
             if form := rule_form(word):
                 held.setdefault(form, set()).add(kind)
-    for kind, forms in (("polite", _POLITE), ("noisy", _NOISY_ENGLISH)):
+    for kind, forms in (("polite", POLITE), ("noisy", NOISY_SPELLINGS)):
         for form in forms:
             held.setdefault(form, set()).add(kind)
     return {form: frozenset(kinds) for form, kinds in held.items()}
@@ -224,24 +185,40 @@ def _held(kinds: Iterable[frozenset[str]], *wanted: str) -> bool:
     return any(kind.intersection(wanted) for kind in kinds)
 
 
+def _of_kinds(tokens: Sequence[str], kinds: Sequence[frozenset[str]], *wanted: str) -> list[str]:
+    """The words of `tokens` of one of the `wanted` kinds, `kinds` holding each one's."""
+    return [token for token, kind in zip(tokens, kinds, strict=True) if kind.intersection(wanted)]
+
+
+def _said_back(listed: Iterable[str], spoken: Sequence[str], *, after_and: bool = False) -> bool:
+    """Whether each word or listed phrase of `listed` is, exactly, whole words of one of the
+    `spoken` clauses (in the rule's form), or with `after_and` is too when written after waw
+    (and): what the agent's echo of a reply that said it back holds."""
+    starts = ("", _AND) if after_and else ("",)
+    return all(
+        any(holds_words(text, start + word) for text in spoken for start in starts)
+        for word in listed
+    )
+
+
 def _noisy_stop(
     tokens: Sequence[str], kinds: Sequence[frozenset[str]], questions: Collection[str]
 ) -> bool:
-    """Whether the words are the stop word as Whisper mishears it over the agent's voice: an
-    English spelling of it, with polite words and listening sounds beside it; or one or two
-    short Arabic words that end as it does or sound as it did (`_NOISY_ENDS`, `_NOISY_SOUNDS`),
-    with no question or no word."""
+    """Whether the words are the stop word as Whisper mishears it over the agent's voice: a
+    spelling only Whisper writes for it (`NOISY_SPELLINGS`), with only polite words and
+    listening sounds beside it; or one or two short Arabic words that end as it does or sound as
+    it did (`NOISY_ENDS`, `NOISY_SOUNDS`), with no question or no word."""
     beside = all(kind & {"noisy", "polite", "backchannel"} for kind in kinds)
-    if len(tokens) <= _NOISY_ENGLISH_WORDS and beside and _held(kinds, "noisy"):
+    if len(tokens) <= NOISY_WORDS and beside and _held(kinds, "noisy"):
         return True
     joined = "".join(token.replace(" ", "") for token in tokens)
-    if len(tokens) > 2 or len(joined) > _NOISY_LETTERS:
+    if len(tokens) > 2 or len(joined) > NOISY_LETTERS:
         return False
     if any(token in questions or "no" in kind for token, kind in zip(tokens, kinds, strict=True)):
         return False
-    return joined in _NOISY_SOUNDS or any(
-        token in _NOISY_SOUNDS
-        or (token.endswith(_NOISY_ENDS) and not token.startswith(_NOT_NOISY_START))
+    return joined in NOISY_SOUNDS or any(
+        token in NOISY_SOUNDS
+        or (token.endswith(NOISY_ENDS) and not token.startswith(NOT_NOISY_START))
         for token in tokens
     )
 
@@ -251,10 +228,10 @@ def _opens_with_question(first: str, questions: Collection[str]) -> bool:
     return first in questions or (first.startswith(_AND) and first[1:] in questions)
 
 
-def _own_words(heard: Sequence[str], played: Iterable[str]) -> bool:
-    """Whether every word of `heard` is the agent's own: a word of the `played` clauses, or one
-    edit from one when it has at least `_FUZZY_LETTERS` letters."""
-    said = {word for text in played for word in rule_form(text).split()}
+def _own_words(heard: Sequence[str], spoken: Iterable[str]) -> bool:
+    """Whether every word of `heard` is the agent's own: a word of the `spoken` clauses (in the
+    rule's form), or one edit from one when it has at least `_FUZZY_LETTERS` letters."""
+    said = {word for text in spoken for word in text.split()}
     return bool(said) and all(
         word in said
         or (len(word) >= _FUZZY_LETTERS and any(_one_edit(word, other) for other in said))

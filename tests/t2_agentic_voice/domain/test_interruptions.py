@@ -3,7 +3,8 @@ transcript and the rule's verdict are frozen and bounded, the verdict's kind and
 `Interrupted` event's, and each step of the starting rule (plan 005), in its order: no words,
 a stop or wait word anywhere and the stop word as Whisper mishears it, a repeat request, the
 agent's own words, listening sounds, a short output, then enough real words, a correction when
-the first is a no word. Its tests are written on texts made for them, never an item's."""
+the first is a no word (the agent's echo of words it said back: test_interruptions_echo.py).
+Its tests are written on texts made for them, never an item's."""
 
 from __future__ import annotations
 
@@ -15,9 +16,18 @@ from pydantic import ValidationError
 from t2_agentic_voice import Phrases
 from t2_agentic_voice.core.events import Interrupted, InterruptionReason
 from t2_agentic_voice.core.settings.words import LanguageCode
-from t2_agentic_voice.domain.interruptions import Overlap, Verdict, VerdictReason, judge
+from t2_agentic_voice.domain.interruptions import Overlap, Verdict, VerdictReason
 from t2_agentic_voice.domain.silence import CAPTIONS
-from t2_agentic_voice.domain.words import PRESET_WORDS, Words
+from t2_agentic_voice.domain.words import PRESET_WORDS
+
+from tests.t2_agentic_voice.domain.rule_support import (
+    CORRECTION,
+    NEW_WORDS,
+    REPEAT,
+    STOP,
+    judged,
+    went_on,
+)
 
 AT = datetime(2026, 11, 3, 12, 0, tzinfo=UTC)
 
@@ -29,49 +39,8 @@ OVERLAP = Overlap(
     language="en",
 )
 
-STOP = ("stop", "stop", "stop_word")
-REPEAT = ("repeat", "new_words", "repeat_word")
-NEW_WORDS = ("stop", "new_words", "enough_words")
-CORRECTION = ("stop", "correction", "enough_words")
 CLAUSE = "The archive screen opens from the main menu."  # the agent's, for its own words
 ARABIC_CLAUSE = "يمكنك فتح الأرشيف من القائمة الرئيسية."
-
-
-def went_on(reason: VerdictReason) -> tuple[str, str, str]:
-    return ("go_on", "false", reason)
-
-
-def judged(
-    text: str,
-    language: LanguageCode = "en",
-    *,
-    speech_s: float = 2.0,
-    played: tuple[str, ...] = (),
-    words: Words | None = None,
-    no_speech_prob: float | None = None,
-    no_speech_max: float | None = None,
-    captions: tuple[str, ...] = (),
-    min_words: int = 2,
-) -> tuple[str, str, str]:
-    """The rule's verdict on `text`, as (action, kind, reason), with the preset's words of
-    `language` unless `words` are given, and the `interruptions` group's defaults."""
-    overlap = Overlap(
-        text=text,
-        no_speech_prob=no_speech_prob,
-        speech_s=speech_s,
-        played=played,
-        language=language,
-    )
-    found = judge(
-        overlap,
-        words=words or PRESET_WORDS[language],
-        no_speech_max=no_speech_max,
-        captions=captions,
-        min_words=min_words,
-        short_words=2,
-        short_s=1.6,
-    )
-    return (found.action, found.kind, found.reason)
 
 
 def test_an_overlap_and_a_verdict_are_frozen_and_bounded() -> None:
@@ -150,6 +119,7 @@ def test_a_word_holding_a_stop_or_wait_word_is_not_one(text: str, language: Lang
         ("بودكيف", "ar"),
         ("باك يف", "ar"),  # two words, joined
         ("قدف.", "ar"),
+        ("وقفت", "ar"),  # "I stopped", as Whisper wrote the stop word (plan 005's review)
         ("What a gift.", "en"),
         ("What gives?", "en"),
         ("Plug if, please.", "en"),
@@ -170,6 +140,7 @@ def test_the_stop_word_as_whisper_mishears_it_stops(text: str, language: Languag
         ("متوقف", went_on("short_output")),
         ("التطبيق انكف", went_on("short_output")),  # more than six letters in all
         ("طيب انكف الحين يا", NEW_WORDS),  # more than two words
+        ("وقفت الشاشة عند صفحة الدخول", NEW_WORDS),  # a sentence that opens with "I stopped"
     ],
 )
 def test_what_only_looks_like_the_misheard_stop_word_is_not_it(

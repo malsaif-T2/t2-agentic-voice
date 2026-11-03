@@ -18,8 +18,10 @@ The presets' lists are the prototype's (its `voice/rules.py`, lines 28-110, read
 under the owner's ruling on the words the golden set's items also hold (plan 005, Q1): the
 Arabic words in `ar`, the English ones and the Latin spellings Whisper writes for Arabic
 commands in an English call in `en`. Left out: its yes, send, thanks and greeting words (the yes
-rule's and the talker's), and the words a preset's fixed phrase holds, whose echo would stop the
-agent (the notices ask the caller to say a thing again).
+rule's and the talker's); the words a preset's fixed phrase holds, whose echo would stop the
+agent (the notices ask the caller to say a thing again); and the spellings only Whisper writes
+for the stop word, which the rule reads only as a whole short utterance, since a sentence may
+hold them as other words (domain/interruption_words.py, plan 005's review).
 """
 
 from __future__ import annotations
@@ -70,10 +72,6 @@ WORD_KINDS: tuple[str, ...] = tuple(Words.model_fields)
 _ARABIC = Words(
     stop=(
         "\u0648\u0642\u0641",  # wagif, stop (Saudi): waw, qaf, feh
-        "\u0648\u063a\u0641",  # wagif heard as wughf: waw, ghain, feh
-        "\u0648\u063a\u0641\u0648",  # wagif heard as wughfu: waw, ghain, feh, waw
-        "\u0648\u063a\u0641\u062a",  # wagif heard as wughfat: waw, ghain, feh, teh
-        "\u0644\u063a\u064a\u0631",  # wagif heard as lighair: lam, ghain, yeh, reh
         "\u0648\u0642\u0641\u064a",  # wagfi, stop (to a woman): waw, qaf, feh, yeh
         "\u0627\u0648\u0642\u0641",  # oqaf, stop: alef, waw, qaf, feh
         "\u062a\u0648\u0642\u0641",  # tawaqqaf, stop (MSA): teh, waw, qaf, feh
@@ -144,20 +142,9 @@ _ENGLISH = Words(
     stop=(
         "stop",
         "stopp",
-        # wagif (stop), as Whisper heard it
+        # wagif (stop), as Whisper wrote it in Latin letters
         "wagif",
         "waagif",
-        "waggir",
-        "one gift",
-        "what gift",
-        "one game",
-        "one again",
-        "one give",
-        "one gives",
-        "one get",
-        "one gif",
-        "what gif",
-        "blood gif",
     ),
     # lahza (a moment), as Whisper heard it, among them
     wait=("wait", "lahza", "lahzah", "lhzah", "one moment", "hold on", "a moment"),
