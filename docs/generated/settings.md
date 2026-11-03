@@ -15,7 +15,7 @@ group's settings nest with `__`, a list or a map is given as JSON, and a blank v
 unset. A variable under the prefix that names no setting is an error, so the prefix belongs to
 the library's settings alone. Each secret also takes a `_FILE` setting naming a file that holds
 it, and never shows in a repr, a log line or an error. A unit is read from the name: `_ms` is
-milliseconds, `_s` seconds.
+milliseconds, `_s` seconds, `_words` a count of words.
 
 ## The top level
 
@@ -43,6 +43,8 @@ Speech-to-text: the adapter, the Whisper model, and how long a request may take.
 | `T2V_STT__MODEL` | one of whisper-large-v3, whisper-large-v3-turbo | `whisper-large-v3` | — | The Whisper model: whisper-large-v3 or whisper-large-v3-turbo. The default stayed large-v3 on a registered measurement (D-025), and changes only on another (GP-18). |
 | `T2V_STT__TIMEOUT_S` | number | `6` | seconds | The longest one transcription request may take before it is a timeout. |
 | `T2V_STT__LIVE_LANGUAGE` | one of session, auto | `session` | — | The language a live call sends Whisper: session (the call's language, fixed when it joins from the caller's pick or the join token's locale) or auto (none, so Whisper detects it). A registered measurement sets the default (GP-18). |
+| `T2V_STT__NO_SPEECH_MAX` | number, or unset | unset | — | The no-speech probability Whisper reports above which a transcript counts as no words (text from silence), for a turn and for speech over a reply, from 0 to 1; unset, the filter is off until a registered measurement sets it (GP-18). |
+| `T2V_STT__CAPTION_FILTER` | true or false | `false` | — | Whether a transcript that is one of the captions Whisper invents for silence or noise counts as no words; off until a registered measurement turns it on (GP-18). |
 
 ## `tts`
 
@@ -67,10 +69,37 @@ Turn-taking: the speech detector (Silero VAD) and the end-of-turn model (Smart T
 | `T2V_TURNS__VAD_STOP_MS` | integer | `200` | milliseconds | How long a silence must last before the detector says the caller paused. |
 | `T2V_TURNS__VAD_MIN_VOLUME` | number | `0.6` | — | The quietest a frame may be and still count as speech, from 0 to 1. |
 | `T2V_TURNS__SMART_TURN` | true or false | `true` | — | Whether Smart Turn decides, at each pause, if the caller has finished; off, every pause the detector hears ends the turn. |
+| `T2V_TURNS__SMART_TURN_THRESHOLD` | number | `0.5` | — | How sure Smart Turn must be that the caller has finished, from 0 to 1: a pause ends the turn when its probability is above this. 0.5, Smart Turn's own, leaves a turn's end as it was. |
 | `T2V_TURNS__SMART_TURN_STOP_MS` | integer | `3000` | milliseconds | The silence after which Smart Turn ends the turn whatever it heard. |
 | `T2V_TURNS__SMART_TURN_PRE_SPEECH_MS` | integer | `500` | milliseconds | How much audio before the speech started Smart Turn hears with it. |
 | `T2V_TURNS__SMART_TURN_MAX_DURATION_S` | number | `8` | seconds | The most audio of a turn Smart Turn hears, its latest part. |
 | `T2V_TURNS__MAX_SILENCE_MS` | integer | `3000` | milliseconds | The fallback end of a turn: a silence this long ends it, whatever decides. |
+
+## `interruptions`
+
+Interruptions: how the caller's speech over the agent's reply is taken, and the bounds of the rule that decides whether it stops the agent.
+
+| Variable | Type | Default | Unit | Description |
+| --- | --- | --- | --- | --- |
+| `T2V_INTERRUPTIONS__MODE` | one of drop, two_step | `drop` | — | How the caller's speech over the agent's reply is taken: drop (the turn is not answered, so the agent never answers its own voice) or two_step (the agent's voice is lowered, the speech transcribed, and the agent stops only when the rule says so). A registered measurement moves the default (GP-18). |
+| `T2V_INTERRUPTIONS__DUCK_LEVEL` | number | `0.25` | — | How loud the agent's reply plays while the caller speaks over it, until the speech is judged, from 0 (silent) to 1 (unchanged). |
+| `T2V_INTERRUPTIONS__FIRST_WINDOW_MS` | integer | `750` | milliseconds | The first part of the speech over a reply sent to speech-to-text before the caller has finished, counted from 300 ms before the speech detector heard it begin. |
+| `T2V_INTERRUPTIONS__MIN_WORDS` | integer | `2` | words | The fewest words over a reply that stop the agent when none is a listed word. |
+| `T2V_INTERRUPTIONS__SHORT_WORDS` | integer | `2` | words | The most words a short output holds: at most this many, under short_s of speech, and none a stop, repeat or no word, the agent goes on (a listening sound misheard). |
+| `T2V_INTERRUPTIONS__SHORT_S` | number | `1.6` | seconds | The speech a short output stays under, for the agent to go on. |
+| `T2V_INTERRUPTIONS__OWN_WORDS_S` | number | `5` | seconds | How far back the agent's own words count: speech over a reply whose words are those of the clauses played this long before is its own voice, heard back. |
+
+## `words`
+
+Words: what a team adds to each language's lists, which the interruption rule reads.
+
+| Variable | Type | Default | Unit | Description |
+| --- | --- | --- | --- | --- |
+| `T2V_WORDS__STOP` | JSON object from one of ar, en to JSON list of text | `{}` | — | Words added to each language's stop words, which stop the agent at once, as a JSON object from a language's code (ar, en) to a list: {"ar": ["..."]}. A value replaces the map. |
+| `T2V_WORDS__WAIT` | JSON object from one of ar, en to JSON list of text | `{}` | — | Words added to each language's words asking the agent to pause, which stop it as a stop word, as a JSON object from a language's code (ar, en) to a list: {"ar": ["..."]}. A value replaces the map. |
+| `T2V_WORDS__REPEAT` | JSON object from one of ar, en to JSON list of text | `{}` | — | Words added to each language's repeat words, which stop the agent and say its last reply again, as a JSON object from a language's code (ar, en) to a list: {"ar": ["..."]}. A value replaces the map. |
+| `T2V_WORDS__BACKCHANNEL` | JSON object from one of ar, en to JSON list of text | `{}` | — | Words added to each language's listening sounds, after which the agent goes on, as a JSON object from a language's code (ar, en) to a list: {"ar": ["..."]}. A value replaces the map. |
+| `T2V_WORDS__NO` | JSON object from one of ar, en to JSON list of text | `{}` | — | Words added to each language's no words, which a short output never holds, as a JSON object from a language's code (ar, en) to a list: {"ar": ["..."]}. A value replaces the map. |
 
 ## `session`
 

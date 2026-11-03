@@ -1,8 +1,9 @@
-"""The fakes of the session's I/O (tests/t2_agentic_voice/session_fakes.py) implement their
-protocols of voice/session/io.py, so the session (Track D) and the Pipecat side (Track E) build
-against the real interfaces: each is assigned to its protocol, which mypy checks, and does what
-its docstring says, refusing what io.py says cannot come. The scenes the session builds on are
-test_session_scenes.py's."""
+"""The fakes of the session's I/O (tests/t2_agentic_voice/session_fakes.py, fake_session.py, and
+fakes.py's phrase audio) implement their protocols of voice/session/io.py, so the session and the
+Pipecat side build against the real interfaces: each is assigned to its protocol, which mypy
+checks, and does what its docstring says, refusing what io.py says cannot come. The fake
+session's lock and the slow responder are test_fake_session.py's; the scenes the session builds
+on are test_session_scenes.py's."""
 
 from __future__ import annotations
 
@@ -22,6 +23,7 @@ from t2_agentic_voice.voice.session.commands import (
     COMMANDS,
     Command,
     HangUp,
+    HearOverlap,
     ListenIn,
     Send,
     Speak,
@@ -42,14 +44,13 @@ from t2_agentic_voice.voice.session.session_events import (
     TurnOpened,
 )
 
-from tests.t2_agentic_voice.fakes import FakeClock
+from tests.t2_agentic_voice.fake_session import FakeSession
+from tests.t2_agentic_voice.fakes import FakeClock, FakePhrases
 from tests.t2_agentic_voice.session_fakes import (
     AGENT,
     CALLER,
     PLAIN_CONSENT,
     FakeCommands,
-    FakePhrases,
-    FakeSession,
     FakeSessionIO,
 )
 
@@ -58,6 +59,7 @@ PLAYED = '{"v": 1, "type": "playback", "reply_id": 1, "clause": 0, "event": "end
 # Every command of commands.py, one of each kind.
 ONE_OF_EACH: list[Command] = [
     ListenIn(language="en"),
+    HearOverlap(turn_id=0, window_ms=750),
     Speak(reply_id=1, clause=0, turn_id=0, text="a clause for the test", language="en"),
     StopSpeaking(reply_id=1),
     Send(message=State(state="listening")),
@@ -271,3 +273,40 @@ def test_after_a_transport_failure_only_a_requests_report_comes(
 
     assert asyncio.run(call()).stage == "connect" and io.ended and session.closed
     assert [type(e) for e in io.events][-3:] == [TransportFailure, Transcribing, Synthesizing]
+
+
+def test_the_fake_io_hands_an_overlaps_parts_only_for_a_turn_marked_an_overlap(
+    settings: VoiceSettings,
+) -> None:
+    """The window and the overlap name their part; the turn's own transcript reuses the
+    overlap's request when it has none of its own; a part of a turn no `HearOverlap` marked is
+    refused."""
+    io = FakeSessionIO(settings)
+
+    def replies(event: SessionEvent) -> list[Command]:
+        opened = isinstance(event, TurnOpened) and event.turn_id == 0
+        return [HearOverlap(turn_id=0, window_ms=750)] if opened else []
+
+    io.attach(FakeSession(io.setup, io.commands, replies=replies))
+
+    async def call() -> None:
+        await io.connected()
+        await io.turn_opened(0)
+        await io.clock.advance(0.75)
+        await io.transcribing(0, audio_s=0.75, part="window")
+        await io.transcribed(0, "made-up", language="en", part="window")
+        await io.clock.advance(0.5)
+        await io.transcribing(0, audio_s=1.2, part="overlap")
+        await io.transcribed(0, "made-up words", language="en", part="overlap")
+        await io.turn_closed(0)
+        await io.transcribed(0, "made-up words", language="en")  # reused: no request
+        await io.turn_opened(1)
+        with pytest.raises(RuntimeError, match="FIX: "):
+            await io.transcribing(1, part="window")
+
+    asyncio.run(call())
+    sent = [(e.part, e.at, e.audio_s) for e in io.events if isinstance(e, Transcribing)]
+    assert sent == [("window", 100.75, 0.75), ("overlap", 101.25, 1.2)]
+    heard = [(e.part, e.sent_at, e.audio_s) for e in io.events if isinstance(e, Transcribed)]
+    assert heard == [("window", 100.75, 0.75), ("overlap", 101.25, 1.2), ("turn", 101.25, 1.2)]
+    assert io.overlaps == {0} and io.commands.of(HearOverlap)[0].window_ms == 750

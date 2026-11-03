@@ -2,9 +2,9 @@
 
 The defaults are the starting values of plan 003's decision log, none tuned yet: Silero's
 `VADParams` defaults (confidence 0.7, start and end 200 ms, minimum volume 0.6) and Smart Turn
-v3.2's documented ones (3 s, 500 ms of speech before, 8 s at most), with the same 3 s as the
-fallback end of a turn. Each move of a default is a behaviour change, made only on a registered
-measurement (the design's 5.4; GP-18).
+v3.2's documented ones (3 s, 500 ms of speech before, 8 s at most, and its 0.5 threshold), with
+the same 3 s as the fallback end of a turn. Each move of a default is a behaviour change, made
+only on a registered measurement (the design's 5.4; GP-18).
 """
 
 from __future__ import annotations
@@ -44,6 +44,17 @@ class TurnSettings(Group):
         description=(
             "Whether Smart Turn decides, at each pause, if the caller has finished; off, every "
             "pause the detector hears ends the turn."
+        ),
+    )
+    smart_turn_threshold: float = Field(
+        default=0.5,
+        ge=0,
+        le=1,
+        allow_inf_nan=False,
+        description=(
+            "How sure Smart Turn must be that the caller has finished, from 0 to 1: a pause ends "
+            "the turn when its probability is above this. 0.5, Smart Turn's own, leaves a "
+            "turn's end as it was."
         ),
     )
     smart_turn_stop_ms: int = Field(

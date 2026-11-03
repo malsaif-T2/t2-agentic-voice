@@ -29,6 +29,7 @@ from t2_agentic_voice.core.errors import (
 from t2_agentic_voice.core.identity import Caller, Consent
 from t2_agentic_voice.core.logging import StructuredLogger, configure_logging, get_logger
 from t2_agentic_voice.core.settings.groq import GroqSettings
+from t2_agentic_voice.core.settings.interruptions import InterruptionSettings
 from t2_agentic_voice.core.settings.join import JoinSettings
 from t2_agentic_voice.core.settings.limits import LimitSettings
 from t2_agentic_voice.core.settings.logs import LoggingSettings
@@ -40,7 +41,9 @@ from t2_agentic_voice.core.settings.stt import SttSettings
 from t2_agentic_voice.core.settings.tracing import TracingSettings
 from t2_agentic_voice.core.settings.tts import TtsSettings, TtsVoice
 from t2_agentic_voice.core.settings.turns import TurnSettings
+from t2_agentic_voice.core.settings.words import WordSettings
 from t2_agentic_voice.domain.declaration import Language, VoiceAgent
+from t2_agentic_voice.domain.words import Phrases, Words
 
 if TYPE_CHECKING:
     from t2_agentic_voice.api.runtime import Providers, VoiceRuntime
@@ -56,6 +59,7 @@ __all__ = [
     "ConfigurationError",
     "Consent",
     "GroqSettings",
+    "InterruptionSettings",
     "InvalidRequestError",
     "JoinRejected",
     "JoinSettings",
@@ -63,6 +67,7 @@ __all__ = [
     "LimitSettings",
     "LoggingSettings",
     "NotFoundError",
+    "Phrases",
     "PrivacySettings",
     "ProviderError",
     "Providers",
@@ -80,6 +85,8 @@ __all__ = [
     "VoiceAgent",
     "VoiceRuntime",
     "VoiceSettings",
+    "WordSettings",
+    "Words",
     "configure_logging",
     "get_logger",
     "status",

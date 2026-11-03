@@ -14,11 +14,18 @@ the call's end cancelled included (io.py's usage).
 from __future__ import annotations
 
 from dataclasses import dataclass
+from typing import Literal
 
 from t2_agentic_voice.core.errors import ProviderErrorKind
 from t2_agentic_voice.core.events import EndReason, TransportStage, TurnId
 from t2_agentic_voice.domain.ports.speech_to_text import Transcript
 from t2_agentic_voice.voice.protocol import ClauseIndex, ClientMessage, ReplyId
+
+# Which of a turn's speech-to-text requests a `Transcribing` or a `Transcribed` is: the `turn`,
+# its whole speech at its end, which every turn has; or, for an overlap (`HearOverlap`), its
+# `window`, the first part of the speech over the agent's, or the `overlap`, all of it (io.py's
+# overlaps).
+TranscriptPart = Literal["window", "overlap", "turn"]
 
 
 @dataclass(frozen=True, kw_only=True)
@@ -55,12 +62,13 @@ class TurnClosed:
 @dataclass(frozen=True, kw_only=True)
 class Transcribing:
     """The speech-to-text bridge sent a turn's request, at `at`, with `audio_s` seconds of its
-    audio: handed as the request goes, before the turn's `Transcribed`, and whatever comes of
-    it, so a request the call's end cancels is still counted (io.py's usage)."""
+    audio: handed as the request goes, before the `Transcribed` of the same `part`, and whatever
+    comes of it, so a request the call's end cancels is still counted (io.py's usage)."""
 
     turn_id: TurnId
     at: float
     audio_s: float
+    part: TranscriptPart = "turn"
 
 
 @dataclass(frozen=True, kw_only=True)
@@ -69,7 +77,9 @@ class Transcribed:
     reported for its key, when the adapter reads it), None when the request failed (`failure`,
     a `ProviderError`'s kind, and whether asking again may succeed) or when no audio was sent;
     `audio_s`, the seconds of audio sent; `sent_at`, when the request went (its `Transcribing`'s
-    `at`; None when none went); and `at`, when the answer came."""
+    `at`; None when none went); `at`, when the answer came; and `part`, which of the turn's
+    requests it answers (an overlap's turn may reuse its `overlap` transcript as its `turn`'s,
+    with no request: io.py's overlaps)."""
 
     turn_id: TurnId
     at: float
@@ -78,6 +88,7 @@ class Transcribed:
     transcript: Transcript | None
     failure: ProviderErrorKind | None = None
     retryable: bool = False
+    part: TranscriptPart = "turn"
 
 
 @dataclass(frozen=True, kw_only=True)

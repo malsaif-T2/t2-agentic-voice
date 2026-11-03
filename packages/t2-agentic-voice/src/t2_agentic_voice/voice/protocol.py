@@ -30,6 +30,11 @@ message typed `signalling` is its own, and raw text starting with `ping` its kee
 Plain pydantic with no Pipecat: the session (`voice/session/`, which imports no Pipecat) parses
 and builds them, and Pipecat's transport only carries them, inbound through its `on_app_message`
 event, outbound as urgent transport messages, so a stop never drops one (the appendix, item 8).
+
+While the caller speaks over a reply, the session lowers the agent's voice in the browser
+(`Duck`) and brings it back once the overlap is decided, whether the reply goes on or was
+stopped (`Unduck`): the first step of the two-step interruption (the design's 5.5; plan 005).
+A clause a stop cut while it played is captioned again, marked `cut`.
 """
 
 from __future__ import annotations
@@ -155,7 +160,8 @@ class Caption(_SessionMessage):
     """Text to show: the caller's turn once heard (named by its `turn_id`), or the agent's reply
     clause by clause as each one plays (named by its `reply_id` and `clause`, with the caller's
     `turn_id` it answers; none for the greeting or a spoken notice). `final` is false for words
-    that may still change."""
+    that may still change; `cut` is true for an agent's clause a stop cut while it played, sent
+    again with the mark, which the client shows as cut (a caller's caption is never cut)."""
 
     type: Literal["caption"] = "caption"
     speaker: Literal["caller", "agent"]
@@ -164,6 +170,7 @@ class Caption(_SessionMessage):
     turn_id: TurnId | None = None
     reply_id: ReplyId | None = None
     clause: ClauseIndex | None = None
+    cut: bool = False
 
     @model_validator(mode="after")
     def _keyed_by_its_speaker(self) -> Caption:
@@ -172,7 +179,28 @@ class Caption(_SessionMessage):
             raise ValueError("an agent caption names its reply and clause, a caller's neither")
         if not agent and self.turn_id is None:
             raise ValueError("a caller's caption names its turn")
+        if not agent and self.cut:
+            raise ValueError("only an agent's caption is cut")
         return self
+
+
+class Duck(_SessionMessage):
+    """Lower the agent's playback to `level` of its volume, from 0 (silent) to 1 (as it was), at
+    once: the caller is speaking over a reply, and the session is deciding whether it is an
+    interruption (`interruptions.duck_level`). Every `duck` ends with exactly one `unduck` once
+    its overlap is decided, whatever the verdict; one the call's end cuts gets none, and the
+    client restores the volume when the call ends."""
+
+    type: Literal["duck"] = "duck"
+    level: float = Field(ge=0, le=1, allow_inf_nan=False)
+
+
+class Unduck(_SessionMessage):
+    """Bring the agent's playback back to its full volume: the overlap a `duck` lowered it for
+    was decided, whether the reply goes on or was stopped (then sent right after the stop), so
+    the next reply plays at full volume."""
+
+    type: Literal["unduck"] = "unduck"
 
 
 class Notice(_SessionMessage):
@@ -192,7 +220,7 @@ class Ended(_SessionMessage):
 
 
 ClientMessage = ClientHello | Stop | Hangup | ClientStats | Playback
-SessionMessage = SessionHello | State | Caption | Notice | Ended
+SessionMessage = SessionHello | State | Caption | Duck | Unduck | Notice | Ended
 # Every message of each direction, in the design's order.
 CLIENT_MESSAGES: tuple[type[_ClientMessage], ...] = (
     ClientHello,
@@ -201,7 +229,15 @@ CLIENT_MESSAGES: tuple[type[_ClientMessage], ...] = (
     ClientStats,
     Playback,
 )
-SESSION_MESSAGES: tuple[type[_SessionMessage], ...] = (SessionHello, State, Caption, Notice, Ended)
+SESSION_MESSAGES: tuple[type[_SessionMessage], ...] = (
+    SessionHello,
+    State,
+    Caption,
+    Duck,
+    Unduck,
+    Notice,
+    Ended,
+)
 
 _CLIENT: TypeAdapter[ClientMessage] = TypeAdapter(
     Annotated[ClientMessage, Field(discriminator="type")],

@@ -72,6 +72,7 @@ from t2_agentic_voice.core.settings.base import (
     setting_name,
 )
 from t2_agentic_voice.core.settings.groq import GroqSettings
+from t2_agentic_voice.core.settings.interruptions import InterruptionSettings
 from t2_agentic_voice.core.settings.join import JoinSettings
 from t2_agentic_voice.core.settings.limits import LimitSettings
 from t2_agentic_voice.core.settings.logs import LoggingSettings
@@ -84,6 +85,7 @@ from t2_agentic_voice.core.settings.stt import SttSettings
 from t2_agentic_voice.core.settings.tracing import TracingSettings
 from t2_agentic_voice.core.settings.tts import TtsSettings
 from t2_agentic_voice.core.settings.turns import TurnSettings
+from t2_agentic_voice.core.settings.words import WordSettings
 
 Environment = Literal["dev", "test", "staging", "prod"]
 Unknown = Literal["error", "warn"]
@@ -131,6 +133,8 @@ class VoiceSettings(ReadOnlyModel):
     stt: SttSettings = Field(default_factory=SttSettings)
     tts: TtsSettings = Field(default_factory=TtsSettings)
     turns: TurnSettings = Field(default_factory=TurnSettings)
+    interruptions: InterruptionSettings = Field(default_factory=InterruptionSettings)
+    words: WordSettings = Field(default_factory=WordSettings)
     session: SessionSettings = Field(default_factory=SessionSettings)
     server: ServerSettings = Field(default_factory=ServerSettings)
     join: JoinSettings = Field(default_factory=JoinSettings)

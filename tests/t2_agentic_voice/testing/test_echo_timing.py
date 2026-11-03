@@ -44,8 +44,7 @@ from t2_agentic_voice.voice.session.session_events import (
     TurnOpened,
 )
 
-from tests.t2_agentic_voice.fakes import FakeClock, FakeSpeechToText, FakeTextToSpeech
-from tests.t2_agentic_voice.session_fakes import FakePhrases
+from tests.t2_agentic_voice.fakes import FakeClock, FakePhrases, FakeSpeechToText, FakeTextToSpeech
 from tests.t2_agentic_voice.testing.feed_support import FakeFeed
 
 AGENT = VoiceAgent(name="echo", languages=[Language.english(greeting="Hello there.")])

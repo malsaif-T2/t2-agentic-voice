@@ -19,9 +19,10 @@ items cited are plan 003's appendix, "Changes to the plan's interfaces".
   numbers each turn from 0 when its `UserStartedSpeakingFrame` reaches it, and stamps the number
   on the turn's end and its transcript, since the next turn's start can reach the session before
   the last turn's transcript. Each `TurnOpened` is followed by one `TurnClosed` and exactly one
-  `Transcribed`, in either order, an empty, failed or unusable result included (item 4), the
-  `Transcribed` after the turn's `Transcribing` when a request went, unless the call ends first
-  (the end, below).
+  `Transcribed` of its `turn` part, in either order, an empty, failed or unusable result
+  included (item 4), the `Transcribed` after the turn's `Transcribing` when a request went,
+  unless the call ends first (the end, below); an overlap's turn has besides at most one
+  `Transcribed` of each of its `window` and `overlap` parts (overlaps, below).
 - **Replies** are the agent's, numbered by the session from 0: the greeting, said once
   connected, is reply 0, and each echo and each spoken notice the next. The session speaks a
   reply clause by clause (`Speak`), each clause keyed on its reply and its index there, and
@@ -38,7 +39,19 @@ items cited are plan 003's appendix, "Changes to the plan's interfaces".
 - **The drop rule** (plan 003's decision log). A turn whose speech began (`speech_at`) while any
   reply played, the greeting included, or within 300 ms after a reply's last clause played, is
   not answered, so the agent never answers its own voice leaking past the browser's echo
-  cancellation. The turn is still closed and transcribed, and kept on the timeline.
+  cancellation. The turn is still closed and transcribed, and kept on the timeline. It is the
+  rule under `interruptions.mode = "drop"`, the default, which gives no `HearOverlap`.
+- **Overlaps** (plan 005). Under `interruptions.mode = "two_step"`, such a turn is an overlap
+  instead: the session sends `duck` at once (`Send`) and gives `HearOverlap`, and the
+  speech-to-text bridge sends the overlap's `window` and `overlap` parts as that command says,
+  each a `Transcribing` and a `Transcribed` naming its part; a `HearOverlap` that reaches the
+  bridge after the detector heard the turn's speech stop gets its `overlap` part sent at once,
+  with no window. The session's rule judges each transcript as it comes: a stop (new words
+  included) or a repeat gives `StopSpeaking` (and cancels the reply's work), then `unduck` right
+  after it; anything else `unduck` once the overlap's own transcript has come, the turn not
+  answered. So every `duck` ends with exactly one `unduck` once its overlap is decided, whatever
+  the verdict, and no reply after it plays lowered; an overlap the call's end cuts gets none,
+  since the client restores the volume when the call ends.
 - **The stop path** (item 7). `StopSpeaking` drops the agent's speech at once: the session
   bridge, upstream of the text-to-speech bridge, calls `broadcast_interruption()`, and every
   processor drops its queued frames up to the output transport, so a stop drops every clause
@@ -176,7 +189,10 @@ class Commands(Protocol):
 
     async def run(self, command: Command) -> None:
         """Carry out `command`, after every command before it. Never raises: what fails comes
-        back as an event."""
+        back as an event. It returns once the command is queued: it never waits on the
+        pipeline, on playback or on the peer's close, and never calls the session's `handle` or
+        `aclose`, since the session awaits `run` while it holds the lock those take (TD-068);
+        what the command brings about comes back as events, handed later."""
 
 
 @dataclass(frozen=True, kw_only=True)

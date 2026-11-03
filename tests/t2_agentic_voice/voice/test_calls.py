@@ -51,11 +51,12 @@ from t2_agentic_voice.voice.session.session_events import (
 
 from tests.t2_agentic_voice.fakes import (
     Captured,
+    FakePhrases,
     FakeSpeechToText,
     FakeTextToSpeech,
     capturing_output,
 )
-from tests.t2_agentic_voice.session_fakes import AGENT, FakePhrases
+from tests.t2_agentic_voice.session_fakes import AGENT
 from tests.t2_agentic_voice.voice.kit import (
     Built,
     ToneVAD,

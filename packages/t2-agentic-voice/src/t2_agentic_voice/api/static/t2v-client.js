@@ -43,7 +43,7 @@ export const CLIENT = "t2v-client.js/1.0.0";
 // t2v/1's messages by direction (voice/protocol.py): the client sends only the first list's and
 // hands the page only the second's.
 const CLIENT_MESSAGES = ["hello", "stop", "hangup", "client_stats", "playback"];
-const SESSION_MESSAGES = ["hello", "state", "caption", "notice", "ended"];
+const SESSION_MESSAGES = ["hello", "state", "caption", "duck", "unduck", "notice", "ended"];
 // SmallWebRTC's own message type on the data channel.
 const RESERVED = "signalling";
 // The 409s a PATCH gets once the call has moved on, which the client ignores.
@@ -154,8 +154,8 @@ export class VoiceClient {
     return this.#closed;
   }
 
-  // Listen to an event: hello, state, caption, notice, ended, connection or error. Returns a
-  // function that removes the listener.
+  // Listen to an event: hello, state, caption, duck, unduck, notice, ended, connection or error.
+  // Returns a function that removes the listener.
   on(name, listener) {
     if (!this.#listeners.has(name)) this.#listeners.set(name, new Set());
     this.#listeners.get(name).add(listener);

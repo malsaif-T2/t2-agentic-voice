@@ -76,6 +76,12 @@ def test_every_event_carries_its_call_its_turn_and_its_time() -> None:
     assert (greeted.turn_id, stopped.turn_id) == (None, None)  # the greeting answers no turn
 
 
+def test_an_interruption_names_the_rules_step_only_when_the_rule_decided() -> None:
+    pressed = Interrupted(call_id="c-1", turn_id=0, at=AT, kind="stop")  # the Stop button
+    judged = Interrupted(call_id="c-1", turn_id=0, at=AT, kind="new_words", reason="enough_words")
+    assert (pressed.reason, judged.reason) == (None, "enough_words")
+
+
 @pytest.mark.parametrize(
     ("event", "values"),
     [
@@ -87,6 +93,7 @@ def test_every_event_carries_its_call_its_turn_and_its_time() -> None:
         (CallStarted, {"call_id": "c" * 65}),
         (CallStarted, {"note": "x"}),
         (Interrupted, {"turn_id": 0, "kind": "cough"}),
+        (Interrupted, {"turn_id": 0, "kind": "stop", "reason": "cough"}),
         (AgentSpeechEnded, {"turn_id": 0, "text": "", "played_fraction": 1.5}),
         (ProviderFailed, {"kind": "broken", "retryable": False}),
         (TransportFailed, {"stage": "dns"}),

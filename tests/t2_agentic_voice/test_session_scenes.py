@@ -32,7 +32,8 @@ from t2_agentic_voice.voice.session.session_events import (
     TurnOpened,
 )
 
-from tests.t2_agentic_voice.session_fakes import FakeSession, FakeSessionIO
+from tests.t2_agentic_voice.fake_session import FakeSession
+from tests.t2_agentic_voice.session_fakes import FakeSessionIO
 
 HEARD = "words of the test"  # what the caller said, in every scene
 LEAKED = "the agent's own greeting, leaked"  # what the caller's microphone caught of it
