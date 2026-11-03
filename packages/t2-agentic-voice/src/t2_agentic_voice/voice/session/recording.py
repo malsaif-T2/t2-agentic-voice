@@ -214,7 +214,9 @@ class CallRecorder:
                 self.line(event.at, "stop")
 
     async def aclose(self) -> None:
-        """Finish the recording: every file written and closed, its thread ended."""
+        """Finish the recording: every file written and closed, its thread ended; nothing is
+        kept after."""
+        self.on = False
         if self._writer is not None:
             self._jobs.put(None)
             await asyncio.to_thread(self._writer.join)
