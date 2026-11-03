@@ -17,21 +17,34 @@ It imports Pipecat at its top, after switching its loguru namespace off (`quiet_
 
 from __future__ import annotations
 
-from collections.abc import Callable, Sequence
+import asyncio
+from collections.abc import Awaitable, Callable, Sequence
 from dataclasses import dataclass, field
 
-from tests.t2_agentic_voice.fakes import FakeSpeechToText, FakeTextToSpeech, quiet_pipecat
+from tests.t2_agentic_voice.fakes import FakeSpeechToText, FakeTextToSpeech, quiet_pipecat, tone
 from tests.t2_agentic_voice.session_fakes import AGENT, FakePhrases, FakeSession
 
 quiet_pipecat()
 
+from aiortc import (  # noqa: E402
+    RTCConfiguration,
+    RTCDataChannel,
+    RTCPeerConnection,
+    RTCSessionDescription,
+)
+from aiortc.mediastreams import AudioStreamTrack  # noqa: E402
 from pipecat.audio.turn.base_turn_analyzer import (  # noqa: E402
     BaseTurnAnalyzer,
     BaseTurnParams,
     EndOfTurnState,
 )
 from pipecat.audio.vad.vad_analyzer import VADAnalyzer, VADParams  # noqa: E402
+from pipecat.frames.frames import Frame, InputAudioRawFrame  # noqa: E402
 from pipecat.metrics.metrics import MetricsData  # noqa: E402
+from pipecat.pipeline.pipeline import Pipeline  # noqa: E402
+from pipecat.pipeline.worker import PipelineWorker  # noqa: E402
+from pipecat.processors.frame_processor import FrameProcessor  # noqa: E402
+from pipecat.workers.runner import WorkerRunner  # noqa: E402
 from t2_agentic_voice.core.config import VoiceSettings  # noqa: E402
 from t2_agentic_voice.core.events import Event  # noqa: E402
 from t2_agentic_voice.core.tracing import Tracing  # noqa: E402
@@ -109,13 +122,13 @@ class PauseAnalyzer(BaseTurnAnalyzer):
 class Script:
     """A scripted session's replies: the greeting from `phrases` once connected (unless
     `greet` is off), each transcript said back as one clause in `language`, and `HangUp` at
-    an `Ending` or a `TransportFailure`. `extra` adds commands for an event (after these).
+    an `Ending` or a `TransportFailure`. `more` adds commands for an event (after these).
     `sessions` keeps every session built."""
 
     phrases: FakePhrases
     language: str = "en"
     greet: bool = True
-    extra: Callable[[SessionEvent], Sequence[Command]] = lambda event: ()
+    more: Callable[[SessionEvent], Sequence[Command]] = lambda event: ()
     sessions: list[FakeSession] = field(default_factory=list)
     _next_reply: int = 1
 
@@ -128,7 +141,11 @@ class Script:
                 audio = self.phrases.audio(greeting, language="en")
                 out.append(
                     Speak(
-                        reply_id=0, clause=0, turn_id=None, text=greeting, language="en",
+                        reply_id=0,
+                        clause=0,
+                        turn_id=None,
+                        text=greeting,
+                        language="en",
                         audio=audio,
                     )
                 )
@@ -136,14 +153,17 @@ class Script:
             reply, self._next_reply = self._next_reply, self._next_reply + 1
             out.append(
                 Speak(
-                    reply_id=reply, clause=0, turn_id=event.turn_id,
-                    text=event.transcript.text, language="en",
+                    reply_id=reply,
+                    clause=0,
+                    turn_id=event.turn_id,
+                    text=event.transcript.text,
+                    language="en",
                 )
             )
         elif isinstance(event, Ending | TransportFailure):
             reason = event.reason if isinstance(event, Ending) else "transport"
             out.append(HangUp(reason=reason))
-        return [*out, *self.extra(event)]
+        return [*out, *self.more(event)]
 
     def session(self, pipeline: CallPipeline) -> Session:
         built = FakeSession(pipeline.setup, pipeline.commands, replies=self.replies)
@@ -208,3 +228,89 @@ def voice_calls(
     )
     calls.script = script
     return Built(calls, stt, tts, phrases, script, emitted, analyzers)
+
+
+class Recorder:
+    """A session (`Session`) that keeps every event it is handed and gives no command; `closed`
+    says whether its stream ended. `block` holds `handle` until it is set (a busy session)."""
+
+    def __init__(self) -> None:
+        self.events: list[SessionEvent] = []
+        self.closed = False
+        self.block: asyncio.Event | None = None
+
+    async def handle(self, event: SessionEvent) -> None:
+        if self.block is not None:
+            await self.block.wait()
+        self.events.append(event)
+
+    async def aclose(self) -> None:
+        self.closed = True
+
+    def of[E](self, kind: type[E]) -> list[E]:
+        """The events of `kind` handed so far, in order."""
+        return [event for event in self.events if isinstance(event, kind)]
+
+
+async def until(check: Callable[[], bool], *, timeout: float = 10.0) -> None:
+    """Return once `check()` holds, looking every 10 ms; TimeoutError after `timeout`."""
+    async with asyncio.timeout(timeout):
+        while not check():
+            await asyncio.sleep(0.01)
+
+
+async def run_pipeline(
+    processors: Sequence[FrameProcessor],
+    feed: Callable[[PipelineWorker], Awaitable[None]],
+    *,
+    timeout: float = 30.0,
+) -> None:
+    """Run a test's pipeline of `processors`: `feed` once it has started, then its cancel."""
+    worker = PipelineWorker(
+        Pipeline(list(processors)),
+        enable_rtvi=False,
+        idle_timeout_secs=None,
+        cancel_on_idle_timeout=False,
+    )
+    started = asyncio.Event()
+
+    async def on_started(worker: PipelineWorker, frame: Frame) -> None:
+        started.set()
+
+    worker.add_event_handler("on_pipeline_started", on_started)
+    runner = WorkerRunner(handle_sigint=False)
+    await runner.add_workers(worker)
+
+    async def go() -> None:
+        await started.wait()
+        try:
+            await feed(worker)
+        finally:
+            await worker.cancel()
+
+    async with asyncio.timeout(timeout):
+        await asyncio.gather(runner.run(), go())
+
+
+def audio_frames(seconds: float, *, loud: bool = True) -> list[InputAudioRawFrame]:
+    """`seconds` of the caller's audio in 20 ms frames: the fakes' tone, or silence."""
+    pcm = tone(seconds, 16_000) if loud else bytes(round(seconds * 16_000) * 2)
+    return [
+        InputAudioRawFrame(audio=pcm[i : i + 640], sample_rate=16_000, num_channels=1)
+        for i in range(0, len(pcm), 640)
+    ]
+
+
+async def client_offer() -> tuple[RTCPeerConnection, RTCDataChannel, str]:
+    """A local aiortc peer with no ICE server (tests/conftest.py makes aiortc's default list
+    raise), sending a silent audio track, with a data channel: its peer, channel and offer."""
+    peer = RTCPeerConnection(RTCConfiguration(iceServers=[]))
+    peer.addTrack(AudioStreamTrack())
+    channel = peer.createDataChannel("t2v")
+    await peer.setLocalDescription(await peer.createOffer())
+    return peer, channel, peer.localDescription.sdp
+
+
+async def client_answered(peer: RTCPeerConnection, answer: str) -> None:
+    """Give the local peer the server's answer."""
+    await peer.setRemoteDescription(RTCSessionDescription(sdp=answer, type="answer"))

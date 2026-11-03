@@ -142,7 +142,9 @@ class CallPipeline:
         await runner.add_workers(self.worker)
         self._run = asyncio.create_task(runner.run(), name="t2v-call-pipeline")
         started = asyncio.create_task(self._started.wait())
-        await asyncio.wait({started, self._run}, timeout=START_TIMEOUT_S)
+        await asyncio.wait(
+            {started, self._run}, timeout=START_TIMEOUT_S, return_when=asyncio.FIRST_COMPLETED
+        )
         if not started.done():
             started.cancel()
             await asyncio.gather(started, return_exceptions=True)
