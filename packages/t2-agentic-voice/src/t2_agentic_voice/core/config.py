@@ -31,8 +31,9 @@ TD-015). The guide's "Variables to leave unset" lists them all.
 
 Every failure is a ConfigurationError naming each setting that cannot load and never the value
 it rejected (the design's 7.4), whether the settings are built in code (their constructor,
-`model_validate` and `model_validate_json`) or loaded by `from_env`; a group built on its own
-raises pydantic's ValidationError instead (core/settings/base.py).
+`model_validate` and `model_validate_json`, text that is not JSON included) or loaded by
+`from_env`; a group built on its own raises pydantic's ValidationError instead, and assigning
+to built settings a TypeError (core/settings/base.py).
 
 When you add a field, give it a `description` and run `uv run poe settings-ref`, which writes
 docs/generated/settings.md and .env.example from the model (their freshness tests fail until
@@ -46,10 +47,9 @@ import os
 import re
 from collections.abc import Iterable, Mapping
 from pathlib import Path
-from typing import Literal
+from typing import Any, Literal, Self
 
 from pydantic import (
-    BaseModel,
     ConfigDict,
     Field,
     ModelWrapValidatorHandler,
@@ -58,11 +58,19 @@ from pydantic import (
     ValidationInfo,
     model_validator,
 )
+from pydantic.config import ExtraValues
 from pydantic_settings import BaseSettings, DotEnvSettingsSource, SettingsConfigDict
 
 from t2_agentic_voice.core.errors import ConfigurationError
 from t2_agentic_voice.core.logging import get_logger
-from t2_agentic_voice.core.settings.base import PREFIX, prefix_of, setting_name
+from t2_agentic_voice.core.settings.base import (
+    NOT_UTF8,
+    PREFIX,
+    UNREADABLE,
+    ReadOnlyModel,
+    prefix_of,
+    setting_name,
+)
 from t2_agentic_voice.core.settings.groq import GroqSettings
 from t2_agentic_voice.core.settings.join import JoinSettings
 from t2_agentic_voice.core.settings.limits import LimitSettings
@@ -92,20 +100,23 @@ _MOVED = {
     "LOG_FORMAT": ("logging", "format"),
 }
 # What the validation context holds when `from_env` loads the settings, so a failure's FIX line
-# says where its values came from.
+# says where its values came from; and the settings it found it cannot load before validating
+# (a value that is not JSON, a name set twice), named with the rest.
 _LOADED = "from_env"
+_EARLIER = "from_env_problems"
 _FIX_LOADED = "FIX: correct each one in the environment, the .env file or the code values given."
 _FIX_CODE = "FIX: correct each one in the code that builds the settings."
 
 log = get_logger(__name__)
 
 
-class VoiceSettings(BaseModel):
+class VoiceSettings(ReadOnlyModel):
     """All the library's tunable settings: how it runs in this deployment (the design's 7.1),
     `env` and a group for each part. Built in code or loaded by `from_env`, any setting that
     cannot load is one ConfigurationError naming each one under the prefix (the library's
     `T2V_` in code), with a FIX line and never the value it rejected; nothing chains it to the
-    ValidationError, whose `errors()` would still return that value."""
+    ValidationError, whose `errors()` would still return that value. Once built, nothing in it
+    can change (`ReadOnlyModel`)."""
 
     model_config = ConfigDict(frozen=True, extra="forbid", hide_input_in_errors=True)
 
@@ -140,9 +151,13 @@ class VoiceSettings(BaseModel):
         cls, data: object, handler: ModelWrapValidatorHandler[VoiceSettings], info: ValidationInfo
     ) -> VoiceSettings:
         """The settings `data` gives, then the checks `env` makes; or one ConfigurationError
-        naming every setting that cannot load, raised after the handler, so no exception chain
-        leads back to the ValidationError."""
+        naming every setting that cannot load, those `from_env` found before validating among
+        them, raised after the handler, so no exception chain leads back to the
+        ValidationError."""
         prefix = prefix_of(info)
+        context = info.context if isinstance(info.context, dict) else {}
+        loaded = context.get(_LOADED) is True
+        earlier: list[Problem] = list(context.get(_EARLIER, ())) if loaded else []
         try:
             settings = handler(data)
         except ValidationError as error:
@@ -151,10 +166,39 @@ class VoiceSettings(BaseModel):
                 for problem in error.errors(include_input=False, include_url=False)
             ]
         else:
-            settings.check_environment(prefix)
-            return settings
-        loaded = isinstance(info.context, dict) and info.context.get(_LOADED) is True
-        raise _cannot_load(problems, _FIX_LOADED if loaded else _FIX_CODE)
+            if not earlier:
+                settings.check_environment(prefix)
+                return settings
+            problems = []
+        raise _cannot_load([*earlier, *problems], _FIX_LOADED if loaded else _FIX_CODE)
+
+    @classmethod
+    def model_validate_json(
+        cls,
+        json_data: str | bytes | bytearray,
+        *,
+        strict: bool | None = None,
+        extra: ExtraValues | None = None,
+        context: Any | None = None,
+        by_alias: bool | None = None,
+        by_name: bool | None = None,
+    ) -> Self:
+        """The settings the JSON text `json_data` gives, failing as every other load does: text
+        that is not JSON (cut short, nested past the parser's depth, or not UTF-8) is one
+        ConfigurationError naming "the settings", where pydantic's own error, raised before any
+        validator runs, would hold the whole text in its `errors()`, every key among it."""
+        try:
+            return super().model_validate_json(
+                json_data,
+                strict=strict,
+                extra=extra,
+                context=context,
+                by_alias=by_alias,
+                by_name=by_name,
+            )
+        except ValidationError:
+            pass  # its errors() hold the text: not chained
+        raise _cannot_load([("the settings", "is not valid JSON")], _FIX_CODE)
 
     @property
     def prefix(self) -> str:
@@ -203,11 +247,11 @@ class VoiceSettings(BaseModel):
         replaces the group whole, since an object holds every key; a map setting given inside
         either replaces the whole map. A variable under the prefix that names no setting is a
         ConfigurationError naming it, never its value, or with `unknown="warn"` a warning, the
-        variable left out. An `env_file` given that is no file, or that cannot be read as UTF-8
-        text, is a ConfigurationError, so a mistyped path never runs on the defaults (GP-06).
-        Any setting that cannot load is a ConfigurationError naming each one
-        (`T2V_GROQ__BASE_URL`) and why, with a FIX line, never the value it rejected (the
-        design's 7.4)."""
+        variable left out. An `env_file` given that is no file, that cannot be read, or whose
+        text is not UTF-8, is a ConfigurationError, so a mistyped path never runs on the
+        defaults (GP-06). Every setting that cannot load, a value that is not JSON and a name
+        set twice among them, is named in one ConfigurationError (`T2V_GROQ__BASE_URL`) with
+        why, and a FIX line, never the value it rejected (the design's 7.4)."""
         if not _PREFIX_RULE.fullmatch(prefix):
             raise ConfigurationError(
                 "The prefix given cannot start an environment name. FIX: give letters, digits "
@@ -224,14 +268,13 @@ class VoiceSettings(BaseModel):
         sources.append({n: os.environ[n] for n in os.environ if n.upper().startswith(marked)})
         data, strangers, problems = gathered(cls, sources, prefix)
         _refuse_strangers(strangers, prefix, unknown)
-        if problems:
-            raise _cannot_load(problems, _FIX_LOADED)
         for name, value in values.items():
             given = data.get(name)
             if isinstance(value, Mapping) and isinstance(given, dict):
                 value = given | dict(value)  # a group's dict: key by key
             data[name] = value
-        settings = cls.model_validate(data, context={"prefix": prefix, _LOADED: True})
+        context = {"prefix": prefix, _LOADED: True, _EARLIER: problems}
+        settings = cls.model_validate(data, context=context)
         settings._prefix = prefix
         settings._seen = foreign_set(_UNREAD)
         return settings
@@ -287,22 +330,34 @@ class _DotEnv(BaseSettings):
 
 def _dotenv(path: Path, marked: str) -> dict[str, str | None]:
     """The variables of the `.env` file `path` whose names start with `marked`, in any case,
-    as written (a byte-order mark dropped, as Notepad may write one). A file that cannot be read
-    as UTF-8 text (Windows PowerShell 5.1's `>` writes UTF-16) is a ConfigurationError that holds
-    none of its bytes: a decode error holds the whole file, keys and all, so it is not
-    chained."""
+    as written (a byte-order mark dropped, as Notepad may write one). A file whose text is not
+    UTF-8 (Windows PowerShell 5.1's `>` writes UTF-16), or that cannot be opened or read, is a
+    ConfigurationError with the FIX for which it is, holding none of its bytes: a decode error
+    holds the whole file, keys and all, so it is not chained."""
     try:
-        reader = DotEnvSettingsSource(
+        reader = _reader(path)
+    except OSError as error:
+        why, fix = f"cannot be read ({type(error).__name__})", UNREADABLE
+    else:
+        if reader is not None:
+            return {n: v for n, v in reader.env_vars.items() if n.upper().startswith(marked)}
+        why, fix = "is not UTF-8 text", NOT_UTF8
+    raise ConfigurationError(f"The env file given {why}. {fix}", details={"setting": "env_file"})
+
+
+def _reader(path: Path) -> DotEnvSettingsSource | None:
+    """pydantic-settings' reader of the `.env` file `path`; None when its text is not UTF-8,
+    a NUL in it included: UTF-16 written with no byte-order mark (by .NET's encoders) decodes
+    as UTF-8, a NUL after each character, and would give names that match no setting, every
+    line dropped unseen."""
+    if b"\x00" in path.read_bytes():
+        return None
+    try:
+        return DotEnvSettingsSource(
             _DotEnv, env_file=path, env_file_encoding="utf-8-sig", case_sensitive=True
         )
-    except (OSError, UnicodeDecodeError) as error:
-        failure = type(error).__name__
-    else:
-        return {n: v for n, v in reader.env_vars.items() if n.upper().startswith(marked)}
-    raise ConfigurationError(
-        f"The env file given cannot be read ({failure}). FIX: save it as UTF-8 text.",
-        details={"setting": "env_file"},
-    )
+    except UnicodeDecodeError:  # it holds the file's bytes: not chained
+        return None
 
 
 def _refuse_strangers(strangers: list[str], prefix: str, unknown: Unknown) -> None:

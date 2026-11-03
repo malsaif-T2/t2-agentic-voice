@@ -13,7 +13,7 @@ never reused (DOC-REGISTER).
 
 | Boundary | What crosses it | Trusted? |
 | --- | --- | --- |
-| The browser to the backend | The caller's audio, the join request, data-channel messages | No: anything a caller sends may be crafted, so it is parsed strictly and bounded: each HTTP body under its route's cap in bytes before it is parsed, each data-channel message at most 1024 bytes, and a refusal names only the kinds of problem, never a value it was sent (D-029, D-039). The client's address is the connection's peer, or the one in `X-Forwarded-For` only from a proxy `server.forwarded_allow_ips` lists, no entry wider than /8 for IPv4 or /32 for IPv6 (D-028). A browser and a backend on one machine still meet over its private network addresses, not loopback: aioice never offers 127.0.0.1 as a candidate, so a backend whose HTTP listens on 127.0.0.1 opens the call's UDP sockets on the LAN addresses, and a browser's `.local` candidates send mDNS on the LAN (plan 003's decision log) |
+| The browser to the backend | The caller's audio, the join request, data-channel messages | No: anything a caller sends may be crafted, so it is parsed strictly and bounded: each HTTP body under its route's cap in bytes before it is parsed, each data-channel message at most 1024 bytes, and a refusal names only the kinds of problem, never a value it was sent (D-029, D-039). The client's address is the connection's peer, or the one in `X-Forwarded-For` only from a proxy `server.forwarded_allow_ips` lists, no entry wider than /8 for IPv4 or /32 for IPv6, nor wider than /104 where it overlaps an IPv6 range that carries IPv4 addresses (`::ffff:0:0/96`, `::ffff:0:0:0/96`, `64:ff9b::/96`, `64:ff9b:1::/48`, `::/96`) or /24 where it overlaps 6to4's `2002::/16` (D-028). A browser and a backend on one machine still meet over its private network addresses, not loopback: aioice never offers 127.0.0.1 as a candidate, so a backend whose HTTP listens on 127.0.0.1 opens the call's UDP sockets on the LAN addresses, and a browser's `.local` candidates send mDNS on the LAN (plan 003's decision log) |
 | The website to the backend | Who the caller is, proved by the website's login or a one-time code (an open question in the roadmap) | Only as a join token the backend verifies; an email typed by the caller is never an identity |
 | The backend to Groq | Audio, text, and prompts out; transcripts, model output, and audio back | The output is not: a transcript or a model reply is data, never an instruction |
 | The backend to the knowledge base | A query out; passages back | Passages are data: text in them is never obeyed |
@@ -79,7 +79,8 @@ has not reviewed those either.
    (`tests/t2_agentic_voice/core/test_settings_secrets.py`);
    by `test_no_secret_reaches_a_span_or_a_log_line`
    (`tests/t2_agentic_voice/core/test_tracing.py`), whose settings carry the Groq key, a join
-   key and the TURN secret, inline and in their files; by
+   key and the TURN secret, inline in one run and in their files in the other, its log lines
+   read from DEBUG up; by
    `test_no_secret_shows_in_a_python_mode_dump_or_a_line_built_from_it` and
    `test_a_body_as_the_route_reads_it_is_answered_echoing_none_of_it`
    (`tests/t2_agentic_voice/api/test_protocol.py`), each test that looks for a value in an
@@ -99,8 +100,10 @@ has not reviewed those either.
    lifetime, and binds the caller's verified identity to it. It is a compact JWT, HS256 only,
    signed with a key of at least 32 bytes; it lives `join.ttl_s` (120 s at most) within a
    clock-skew allowance (`join.max_clock_skew_s`, 60 s at most), and the used-token store
-   refuses its `jti` a second time, keeping it until the token's expiry plus that allowance,
-   the last instant the token could still verify. The call ID is never a credential: the offer
+   refuses its `jti` a second time, keeping it until the token's expiry plus the allowance's
+   bound (60 s), the latest instant any allowance lets the token verify, so a restart with a
+   larger allowance forgets no token it could take again; and it never records as a first use
+   a `jti` whose instant has passed by its own clock. The call ID is never a credential: the offer
    and each ICE update need the call's offer secret, random and for that call alone, which
    stops working once ICE completes or the call ends, and rides in a header or the body, never
    in a URL; a second offer is refused. One process holds a
@@ -115,7 +118,10 @@ has not reviewed those either.
    the future beyond the skew, signed with another key, with an unknown `kid`, with `alg` none
    or any algorithm but HS256, with a changed claim, with no `jti`, or with a lifetime over
    120 s, each refused; a token used, the store then pruned at its expiry, and the token
-   presented again before its expiry plus the allowance, refused; `SignedJoinTokens` built with
+   presented again before its expiry plus the allowance, refused; a token used under a 30 s
+   allowance, the store reopened, and the token presented at its expiry plus 45 s to a verifier
+   allowed 60 s, refused; a use whose last instant has passed by the store's clock, and two
+   replays either side of that instant, each refused; `SignedJoinTokens` built with
    a lifetime over 120 s or an allowance over 60 s, refused; the used-token store under two
    threads and after a restart) and Track F's (an offer with no secret, with another call's
    secret, with the secret in the query string, a second offer, and a `PATCH` after ICE

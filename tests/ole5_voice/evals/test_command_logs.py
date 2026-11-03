@@ -36,8 +36,8 @@ def test_a_command_run_as_its_task_runs_it_logs_to_its_output(
     new_process_logs: Callable[[str, str], str],
 ) -> None:
     """Each refuses, and says so in its one log line; its shell is a child's of the suite
-    (`child_shell`: what the suite drops and every `PYTHON*` variable left out), and it runs
-    isolated in UTF-8 mode."""
+    (`child_shell`: what the suite drops, the session's scratch var dir aside, and every
+    `PYTHON*` variable left out), and it runs isolated in UTF-8 mode."""
     done = subprocess.run(
         [sys.executable, "-I", "-X", "utf8", "-m", f"ole5_voice.evals.{module}", *argv(tmp_path)],
         cwd=tmp_path,

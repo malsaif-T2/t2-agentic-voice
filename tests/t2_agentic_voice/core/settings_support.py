@@ -1,6 +1,7 @@
 """What the settings tests share (test_config.py, test_settings_errors.py, test_settings_checks.py,
-test_settings_secrets.py, test_env_example.py, test_settings_ref.py): the prefix, made-up keys,
-and one walk of the settings tree, so a new group shape changes one walker."""
+test_settings_read_only.py, test_settings_secrets.py, test_env_example.py, test_settings_ref.py):
+the prefix, made-up keys, and one walk of the settings tree, so a new group shape changes one
+walker."""
 
 from __future__ import annotations
 

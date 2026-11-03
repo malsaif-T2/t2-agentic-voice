@@ -13,17 +13,20 @@ from t2_agentic_voice.core.identity import Caller, Consent
 from t2_agentic_voice.domain.ports.identity import IdentityVerifier, JoinContext, UsedTokens
 
 EXPIRES = datetime(2026, 11, 2, 12, 0, tzinfo=UTC)
+NOW = EXPIRES - timedelta(seconds=90)  # the store's clock
 
 
 class _Used:
-    """A used-token store in a set."""
+    """A used-token store in a dict, on a clock of its own (`now`): as the port's `use` says, a
+    token whose last instant is not after it is never recorded."""
 
-    def __init__(self) -> None:
+    def __init__(self, now: datetime = NOW) -> None:
         self.used: dict[str, datetime] = {}
+        self.now = now
         self.closed = False
 
     async def use(self, token_id: str, *, expires_at: datetime) -> bool:
-        if token_id in self.used:
+        if expires_at <= self.now or token_id in self.used:
             return False
         self.used[token_id] = expires_at
         return True
@@ -57,6 +60,17 @@ def test_a_verifier_and_a_store_implement_the_port() -> None:
         asyncio.run(verifier.verify("e-2", join=dataclasses.replace(join, env="prod")))
     asyncio.run(used.aclose())
     assert store.closed
+
+
+def test_a_token_past_its_last_instant_is_never_a_first_use() -> None:
+    """The port's `use`: an `expires_at` that is not after the store's now gives False and
+    records nothing, so a join decoded just before the token's last instant, which reaches the
+    store just after it, starts no call."""
+    store = _Used()
+    for late in (NOW - timedelta(milliseconds=1), NOW):
+        assert not asyncio.run(store.use("late", expires_at=late))
+    assert store.used == {}
+    assert asyncio.run(store.use("late", expires_at=NOW + timedelta(milliseconds=1)))
 
 
 def test_a_join_context_is_frozen() -> None:

@@ -59,12 +59,14 @@ def gathered(
 ) -> tuple[dict[str, Any], list[str], list[Problem]]:
     """The values `sources` give, a later source winning, as `model`'s nested data, a JSON
     setting decoded; the names under the prefix that match no setting; and the settings that
-    cannot load (named, never their values). A blank value counts as unset, under a known name
-    or not, so a blank line left from an older `.env.example` changes nothing."""
+    cannot load (named, never their values), each left out of the data, so the settings name
+    them with whatever else fails as they are validated. A blank value counts as unset, under a
+    known name or not, so a blank line left from an older `.env.example` changes nothing."""
     found = locations(model)
     strangers: list[str] = []
     problems: list[Problem] = []
     given: dict[tuple[str, ...], str] = {}
+    twice: set[tuple[str, ...]] = set()
     for source in sources:
         named: set[tuple[str, ...]] = set()
         for name, value in source.items():
@@ -74,11 +76,15 @@ def gathered(
             if location is None:
                 strangers.append(name)
             elif location in named:
-                why = "is set twice, under names that differ only in case"
-                problems.append((setting_name(*location, prefix=prefix), why))
+                if location not in twice:
+                    why = "is set twice, under names that differ only in case"
+                    problems.append((setting_name(*location, prefix=prefix), why))
+                twice.add(location)
             else:
                 named.add(location)
                 given[location] = value
+    for location in twice:
+        del given[location]
     data: dict[str, Any] = {}
     for location, value in given.items():
         decoded = _decoded(model, location, value)

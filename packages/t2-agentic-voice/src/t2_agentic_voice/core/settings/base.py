@@ -1,6 +1,7 @@
-"""What the settings groups share: the base of a group, how a setting's environment name is
-made, the checks several groups' values take (a URL; a key's characters; a shared secret's
-least length; a secret given as a file), and the read-only form of a map setting.
+"""What the settings groups share: the base of a group and of the settings, how a setting's
+environment name is made, the checks several groups' values take (a URL; a key's characters; a
+shared secret's least length; a secret given as a file), and the read-only form of a map
+setting.
 
 Every error names the setting and never the value it rejected, which may be a key pasted into
 the wrong setting (GP-19). A group's checks raise ValueError with fixed text, which pydantic
@@ -8,7 +9,8 @@ collects with every other failure of the same load, and `VoiceSettings` turns th
 ConfigurationError naming each setting under the prefix the settings were loaded with
 (`VoiceSettings.from_env` passes it down as the validation context, `{"prefix": ...}`; built
 in code, the library's own, `T2V_`). A check made outside validation, as a secret file is
-resolved, raises ConfigurationError itself.
+resolved, raises ConfigurationError itself. Assigning to built settings, or deleting a field,
+raises a TypeError of fixed text.
 """
 
 from __future__ import annotations
@@ -44,6 +46,13 @@ _KEY = re.compile(r"[\x21-\x7e]+")
 MIN_SECRET_BYTES = 32
 # The command a FIX line gives for a new secret: 48 random bytes, 64 URL-safe characters.
 GENERATOR = 'python -c "import secrets; print(secrets.token_urlsafe(48))"'
+# The FIX lines for a file the settings read (a secret's, the `.env` given) that cannot be used:
+# its text is not UTF-8, or the file cannot be opened or read at all.
+NOT_UTF8 = "FIX: save it as UTF-8 text."
+UNREADABLE = (
+    "FIX: check that the file exists and that this process may read it: its permissions, or "
+    "another program holding it open."
+)
 
 
 def setting_name(*location: str | int, prefix: str = PREFIX) -> str:
@@ -60,22 +69,50 @@ def prefix_of(info: ValidationInfo) -> str:
     return prefix if isinstance(prefix, str) else PREFIX
 
 
-class Group(BaseModel):
-    """A group of settings: read-only once loaded, a map setting included (`FROZEN`), and a
-    misspelt key in it is an error. Inside `VoiceSettings` its failures become the settings' one
-    ConfigurationError. A group built on its own (`JoinSettings(...)`) raises pydantic's
-    ValidationError instead, whose text and repr name the setting, never the value it rejected,
-    which may be a key (GP-19); its `errors()` and `json()` still return that value unless given
-    `include_input=False`, so a command reports settings errors only through `VoiceSettings`,
-    never from a group's ValidationError itself."""
+class ReadOnlyModel(BaseModel):
+    """Settings nothing can change once built, `VoiceSettings` and each group: assigning to a
+    field, or deleting any attribute, raises a TypeError naming it, never the value, where
+    pydantic's own frozen error would show the value assigned, a key among them. A private
+    attribute (`VoiceSettings`' prefix, which `from_env` sets) is pydantic's to set."""
 
-    model_config = ConfigDict(frozen=True, extra="forbid", hide_input_in_errors=True)
+    def __setattr__(self, name: str, value: object) -> None:
+        if name not in self.__private_attributes__:
+            raise _read_only(self, name)
+        super().__setattr__(name, value)
+
+    def __delattr__(self, name: str) -> None:
+        raise _read_only(self, name)
+
+
+def _read_only(model: BaseModel, name: str) -> TypeError:
+    """The error for a change to the field `name` of built settings, in fixed words."""
+    return TypeError(
+        f"{type(model).__name__}.{name} cannot change: settings are read-only once built. FIX: "
+        "build new settings that hold the value, with VoiceSettings(...) or from_env(...)."
+    )
+
+
+class Group(ReadOnlyModel):
+    """A group of settings: read-only once loaded, a map setting included (`FROZEN`), and a
+    misspelt key in it is an error. A group object given to `VoiceSettings`, one made with
+    `model_copy(update=...)` included, is validated again (`revalidate_instances`), so every
+    check runs on it and its maps are read-only. Inside `VoiceSettings` its failures become the
+    settings' one ConfigurationError. A group built on its own (`JoinSettings(...)`) raises
+    pydantic's ValidationError instead, whose text and repr name the setting, never the value it
+    rejected, which may be a key (GP-19); its `errors()` and `json()` still return that value
+    unless given `include_input=False`, so a command reports settings errors only through
+    `VoiceSettings`, never from a group's ValidationError itself."""
+
+    model_config = ConfigDict(
+        frozen=True, extra="forbid", hide_input_in_errors=True, revalidate_instances="always"
+    )
 
 
 class ReadOnlyMap[K, V](Mapping[K, V]):
     """A map nothing can change once built, its entries behind a `MappingProxyType`. It copies,
     deep-copies and pickles through the plain map it holds, so settings that hold one still do,
-    which a `MappingProxyType` alone cannot."""
+    which a `MappingProxyType` alone cannot; and it hashes as its entries do when its values
+    hash, two equal maps alike, so a frozen group that holds one hashes too."""
 
     __slots__ = ("_items",)
 
@@ -93,6 +130,9 @@ class ReadOnlyMap[K, V](Mapping[K, V]):
 
     def __repr__(self) -> str:
         return f"{type(self).__name__}({dict(self._items)!r})"
+
+    def __hash__(self) -> int:
+        return hash(frozenset(self._items.items()))
 
     def __reduce__(self) -> tuple[type[ReadOnlyMap[K, V]], tuple[dict[K, V]]]:
         return type(self), (dict(self._items),)
@@ -196,15 +236,19 @@ def _problem(value: str, *, least: int) -> tuple[str, str] | None:
 def read_secret_file(path: Path, setting: str) -> str | None:
     """The contents of the secret file `path` (a byte-order mark dropped, as Notepad and Windows
     PowerShell 5.1 may write one), with the space around them removed; None when it holds
-    nothing. A file that cannot be read raises ConfigurationError naming `setting`, never the
-    file's path or its bytes."""
+    nothing. A file that cannot be opened or read, or whose text is not UTF-8 (a NUL in it, as
+    UTF-16 written with no byte-order mark holds), raises ConfigurationError naming `setting`,
+    never the file's path or its bytes, with the FIX for which it is."""
     try:
         text = path.read_text(encoding="utf-8-sig").strip()
-    except (OSError, UnicodeDecodeError) as error:
-        failure = type(error).__name__  # a decode error holds the file's bytes: not chained
+    except UnicodeDecodeError:  # it holds the file's bytes: not chained
+        why, fix = "is not UTF-8 text", NOT_UTF8
+    except OSError as error:
+        why, fix = f"cannot be read ({type(error).__name__})", UNREADABLE
     else:
-        return text or None
+        if "\x00" not in text:
+            return text or None
+        why, fix = "is not UTF-8 text", NOT_UTF8
     raise ConfigurationError(
-        f"{setting} is set, but the file cannot be read ({failure}).",
-        details={"setting": setting},
+        f"{setting} is set, but the file {why}. {fix}", details={"setting": setting}
     )

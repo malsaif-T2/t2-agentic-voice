@@ -87,13 +87,13 @@ Serving: the backend's address, the pages that may call it, how media finds a pa
 | Variable | Type | Default | Unit | Description |
 | --- | --- | --- | --- | --- |
 | `T2V_SERVER__PUBLIC_URL` | text, or unset | unset | — | The address callers reach the backend at, such as https://voice.example. |
-| `T2V_SERVER__ALLOWED_ORIGINS` | JSON list of text | `[]` | — | The pages allowed to call the backend from a browser, as a JSON list of origins (scheme, host and port only, written as a browser sends them: lowercase, with no default port), such as ["https://www.example.com"]. Unset: none. |
+| `T2V_SERVER__ALLOWED_ORIGINS` | JSON list of text | `[]` | — | The pages allowed to call the backend from a browser, as a JSON list of origins (scheme, host and port only, written as a browser sends them: lowercase; a host name of letters, digits and hyphens, in its xn-- form, or an IP address in its shortest form; no default port), such as ["https://www.example.com"]. Unset: none. |
 | `T2V_SERVER__ICE_SERVERS` | JSON list of text | `[]` | — | The STUN and TURN servers a call is given, as a JSON list of stun:, turn: or turns: URLs with no credentials (TURN's are minted per call from turn_secret). |
 | `T2V_SERVER__TURN_SECRET` | secret, or unset | unset | — | The secret shared with the TURN server, which signs each call's credentials: at least 32 bytes. Or give turn_secret_file instead. |
 | `T2V_SERVER__TURN_SECRET_FILE` | path, or unset | unset | — | Or the full path of a file that holds only the TURN secret. |
 | `T2V_SERVER__TURN_TTL_S` | integer | `3600` | seconds | How long each call's TURN credentials last, at most 86400 (a day). |
 | `T2V_SERVER__DEV_PAGE` | true or false | `false` | — | Whether the router serves its /dev page, to loopback clients; dev only. |
-| `T2V_SERVER__FORWARDED_ALLOW_IPS` | JSON list of text | `[]` | — | The proxies whose X-Forwarded-For headers are trusted, as a JSON list of IP addresses or networks, such as ["127.0.0.1"]: a network by its own address (10.0.0.0/24), no wider than /8 for IPv4 or /32 for IPv6; "*" is refused. Unset: none. |
+| `T2V_SERVER__FORWARDED_ALLOW_IPS` | JSON list of text | `[]` | — | The proxies whose X-Forwarded-For headers are trusted, as a JSON list of IP addresses or networks, such as ["127.0.0.1"], a network by its own address (10.0.0.0/24): an entry is no wider than /8 for IPv4 or /32 for IPv6, and no wider than /104 where it overlaps ::ffff:0:0/96, ::ffff:0:0:0/96, 64:ff9b::/96, 64:ff9b:1::/48 or ::/96, or /24 where it overlaps 2002::/16, the IPv6 ranges that carry IPv4 addresses; "*" is refused. Unset: none. |
 
 ## `join`
 

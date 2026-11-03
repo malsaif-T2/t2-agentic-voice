@@ -2,8 +2,8 @@
 the environment under a prefix and a `.env` only when given one; nested in groups, an unknown
 name under the prefix refused, and no refused value ever shown (GP-19). How a setting that
 cannot load fails: test_settings_errors.py; the checks each group's values take:
-test_settings_checks.py; the secrets: test_settings_secrets.py; how .env.example lists them:
-test_env_example.py."""
+test_settings_checks.py; that nothing changes them once built: test_settings_read_only.py; the
+secrets: test_settings_secrets.py; how .env.example lists them: test_env_example.py."""
 
 from __future__ import annotations
 
@@ -258,11 +258,19 @@ def test_from_env_refuses_an_env_file_that_is_no_file(tmp_path: Path, kind: str)
 
 
 def test_a_setting_given_twice_in_one_source_is_refused(tmp_path: Path) -> None:
-    """Names differ only in case in a file (or a Linux shell): which one wins is no guess."""
+    """Names differ only in case in a file (or a Linux shell): which one wins is no guess, so
+    neither value is validated, and the setting is named once, with the load's other failures."""
     dotenv = tmp_path / "twice.env"
-    dotenv.write_text(f"{PREFIX}STT__MODEL=a\n{PREFIX.lower()}stt__model=b\n", encoding="utf-8")
-    with pytest.raises(ConfigurationError, match="set twice"):
+    lines = [f"{PREFIX}STT__MODEL=a", f"{PREFIX.lower()}stt__model=b", f"{PREFIX}Stt__Model=c"]
+    dotenv.write_text(
+        "\n".join([*lines, f"{PREFIX}ENV=test", f"{PREFIX}STT__TIMEOUT_S=0"]), "utf-8"
+    )
+    with pytest.raises(ConfigurationError) as raised:
         VoiceSettings.from_env(env_file=dotenv)
+    assert raised.value.message.startswith(
+        f"These settings cannot load: {PREFIX}STT__MODEL (is set twice, under names that differ "
+        f"only in case); {PREFIX}STT__TIMEOUT_S (Input should be greater than 0). FIX:"
+    )
 
 
 def test_foreign_set_names_the_variables_set_never_their_values(

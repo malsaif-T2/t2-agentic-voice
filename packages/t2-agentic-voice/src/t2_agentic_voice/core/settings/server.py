@@ -5,6 +5,7 @@ proxy headers are trusted."""
 from __future__ import annotations
 
 import ipaddress
+import re
 from pathlib import Path
 from urllib.parse import SplitResult, urlsplit
 
@@ -25,13 +26,37 @@ MAX_TURN_TTL_S = 86_400
 _ICE_SCHEMES = ("stun:", "turn:", "turns:")
 # The port a browser leaves out of an origin, by scheme.
 _DEFAULT_PORTS = {"http": 80, "https": 443}
+# A host name's label as a browser writes it in an origin: lowercase ASCII letters, digits and
+# hyphens (a name in another script in its xn-- form); and a last label a browser reads as a
+# number, which makes the whole host an IPv4 address to it.
+_LABEL = re.compile(r"[a-z0-9-]+")
+_NUMBER = re.compile(r"[0-9]+|0x[0-9a-f]*")
+_IPV6_TEXT = frozenset("0123456789abcdef:")
 # The widest network a trusted proxy entry may name, by IP version: a wider one trusts nearly
-# every peer's X-Forwarded-For, as "*" does. A dual-stack socket shows an IPv4 peer as an
-# IPv4-mapped IPv6 address, and a NAT64 gateway as one of its well-known prefix (RFC 6052), so
-# both ranges are held to IPv4's bound.
+# every peer's X-Forwarded-For, as "*" does.
 _WIDEST = {4: 8, 6: 32}
-_EMBEDDED = (ipaddress.IPv6Network("::ffff:0:0/96"), ipaddress.IPv6Network("64:ff9b::/96"))
-_EMBEDDED_WIDEST = 96 + _WIDEST[4]
+# The IPv6 ranges that carry IPv4 addresses, each with the bit its IPv4 address starts at: an
+# entry that overlaps one is no wider than an IPv4 /8 past that bit, its widest. They are an
+# IPv4 peer of a dual-stack socket, IPv4-mapped; SIIT's translated range (RFC 2765); NAT64's
+# well-known prefix (RFC 6052) and its local-use one (RFC 8215), held to /104 whatever layout
+# its operator gives it; the IPv4-compatible range; and 6to4's (RFC 3056).
+_EMBEDDED = tuple(
+    (ipaddress.IPv6Network(network), start + _WIDEST[4])
+    for network, start in (
+        ("::ffff:0:0/96", 96),
+        ("::ffff:0:0:0/96", 96),
+        ("64:ff9b::/96", 96),
+        ("64:ff9b:1::/48", 96),
+        ("::/96", 96),
+        ("2002::/16", 16),
+    )
+)
+# The rule the refusals and the setting's description state, whole.
+_PROXY_RULE = (
+    "an entry is no wider than /8 for IPv4 or /32 for IPv6, and no wider than /104 where it "
+    "overlaps ::ffff:0:0/96, ::ffff:0:0:0/96, 64:ff9b::/96, 64:ff9b:1::/48 or ::/96, or /24 "
+    "where it overlaps 2002::/16, the IPv6 ranges that carry IPv4 addresses"
+)
 Network = ipaddress.IPv4Network | ipaddress.IPv6Network
 
 
@@ -47,8 +72,10 @@ class ServerSettings(Group):
         default=(),
         description=(
             "The pages allowed to call the backend from a browser, as a JSON list of origins "
-            "(scheme, host and port only, written as a browser sends them: lowercase, with no "
-            'default port), such as ["https://www.example.com"]. Unset: none.'
+            "(scheme, host and port only, written as a browser sends them: lowercase; a host "
+            "name of letters, digits and hyphens, in its xn-- form, or an IP address in its "
+            'shortest form; no default port), such as ["https://www.example.com"]. Unset: '
+            "none."
         ),
     )
     ice_servers: tuple[str, ...] = Field(
@@ -83,9 +110,8 @@ class ServerSettings(Group):
         default=(),
         description=(
             "The proxies whose X-Forwarded-For headers are trusted, as a JSON list of IP "
-            'addresses or networks, such as ["127.0.0.1"]: a network by its own address '
-            '(10.0.0.0/24), no wider than /8 for IPv4 or /32 for IPv6; "*" is refused. Unset: '
-            "none."
+            'addresses or networks, such as ["127.0.0.1"], a network by its own address '
+            f'(10.0.0.0/24): {_PROXY_RULE}; "*" is refused. Unset: none.'
         ),
     )
 
@@ -107,9 +133,11 @@ class ServerSettings(Group):
             if not _as_sent(origin, parts):
                 raise ValueError(
                     f"origin {index} is not written as a browser sends it, and CORS compares "
-                    "the two as text; write the scheme and the host in lowercase, a host name "
-                    "in ASCII (its xn-- form), and no default port (:443 for https, :80 for "
-                    "http)"
+                    "the two as text; write the scheme in lowercase; the host as a lowercase "
+                    "name of letters, digits and hyphens between dots (a name in another "
+                    "script in its xn-- form), an IPv4 address as four numbers from 0 to 255, "
+                    "or an IPv6 address in brackets, its zeros shortened as a browser does "
+                    "(::1); and no default port (:443 for https, :80 for http)"
                 )
         return value
 
@@ -144,11 +172,8 @@ class ServerSettings(Group):
                 raise ValueError(f"entry {index} is not an IP address or network")
             if isinstance(network, str):
                 raise ValueError(f"entry {index} {network}")
-            if _too_wide(network):
-                raise ValueError(
-                    f"entry {index} is wider than /8 for IPv4 or /32 for IPv6, which trusts "
-                    "nearly every peer's X-Forwarded-For, as * does; name each proxy"
-                )
+            if (wide := _too_wide(network)) is not None:
+                raise ValueError(f"entry {index} {wide}, as * does; name each proxy: {_PROXY_RULE}")
         return value
 
     def resolved_turn_secret(self, prefix: str = PREFIX) -> SecretStr | None:
@@ -167,12 +192,50 @@ class ServerSettings(Group):
 
 def _as_sent(origin: str, parts: SplitResult) -> bool:
     """Whether `origin` reads as a browser's `Origin` header does, which Starlette's CORS
-    compares as text: the scheme and the host in lowercase, a host name in ASCII, and no
-    default port."""
-    host = parts.hostname or ""  # `url` checked that there is one
+    compares as text: the scheme and the host in lowercase, the host as a browser writes it,
+    and no default port."""
+    host = parts.hostname or ""  # `url` checked that there is one; urllib lowercases it
     port = "" if parts.port in (None, _DEFAULT_PORTS[parts.scheme]) else f":{parts.port}"
     netloc = f"[{host}]" if ":" in host else host
-    return host.isascii() and origin == f"{parts.scheme}://{netloc}{port}"
+    return origin == f"{parts.scheme}://{netloc}{port}" and _host_as_sent(host)
+
+
+def _host_as_sent(host: str) -> bool:
+    """Whether `host` is one a browser's `Origin` can hold as written: a name of lowercase
+    letters, digits and hyphens between dots; an IPv4 address as four numbers from 0 to 255, as
+    a browser reads any host whose last label is a number (127.1, 0x7f.0.0.1 and 010.0.0.1 are
+    other addresses to it); or an IPv6 address as a browser writes one. A percent-escape, a
+    backslash, a control character or any other a browser would decode, cut at or refuse is
+    none of these, so CORS would never find such an origin in the header."""
+    if ":" in host:
+        return _ipv6_as_sent(host)
+    labels = host.split(".")
+    if _NUMBER.fullmatch(labels[-1]):
+        try:
+            return str(ipaddress.IPv4Address(host)) == host
+        except ValueError:
+            return False
+    return all(_LABEL.fullmatch(label) for label in labels)
+
+
+def _ipv6_as_sent(host: str) -> bool:
+    """Whether `host` is an IPv6 address as a browser writes it in an origin (the WHATWG URL
+    standard's serializer): its eight pieces in lowercase hexadecimal with no leading zero, and
+    the first longest run of two or more zero pieces written `::`; never a zone (`%eth0`) or a
+    dotted IPv4 part, which Python's own text gives an IPv4-mapped address."""
+    if not set(host) <= _IPV6_TEXT:
+        return False
+    number = int(ipaddress.IPv6Address(host))  # urllib refused a bracketed host that is none
+    pieces = [f"{number >> (16 * (7 - index)) & 0xFFFF:x}" for index in range(8)]
+    longest, run = (0, 0), 0  # the first longest run of zero pieces: its length and start
+    for index, piece in enumerate(pieces):
+        run = run + 1 if piece == "0" else 0
+        if run > longest[0]:
+            longest = (run, index - run + 1)
+    length, start = longest
+    if length < 2:
+        return host == ":".join(pieces)
+    return host == f"{':'.join(pieces[:start])}::{':'.join(pieces[start + length :])}"
 
 
 def _network(text: str) -> Network | str | None:
@@ -194,14 +257,23 @@ def _network(text: str) -> Network | str | None:
     )
 
 
-def _too_wide(network: Network) -> bool:
-    """Whether `network` is wider than its version's bound, or holds more of a range of IPv6
-    addresses that embed IPv4 ones than IPv4's bound allows."""
+def _too_wide(network: Network) -> str | None:
+    """Why `network` is too wide to trust, in fixed words: wider than its version's bound, or
+    holding more of an IPv6 range that carries IPv4 addresses than IPv4's bound allows; None
+    when it is neither."""
     if network.prefixlen < _WIDEST[network.version]:
-        return True
-    if not isinstance(network, ipaddress.IPv6Network) or network.prefixlen >= _EMBEDDED_WIDEST:
-        return False
-    return any(network.overlaps(embedded) for embedded in _EMBEDDED)
+        return (
+            "is wider than /8 for IPv4 or /32 for IPv6, which trusts nearly every peer's "
+            "X-Forwarded-For"
+        )
+    if isinstance(network, ipaddress.IPv6Network) and any(
+        network.prefixlen < widest and network.overlaps(carrier) for carrier, widest in _EMBEDDED
+    ):
+        return (
+            "holds more than an IPv4 /8 of an IPv6 range that carries IPv4 addresses, which "
+            "trusts nearly every IPv4 peer's X-Forwarded-For"
+        )
+    return None
 
 
 def _plain(text: str) -> bool:

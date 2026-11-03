@@ -139,14 +139,28 @@ def test_a_child_shell_carries_the_scratch_var_dir_and_no_other_dropped_name(
 ) -> None:
     """A child that loads its settings keeps its runtime files in the session's scratch var
     dir, never the developer's var/; and no other variable the suite drops, the app's access
-    code among them, reaches it."""
+    code among them, reaches it, nor any other of this project's that a test set (prod, a key),
+    so the var dir alone is carried, not its prefix."""
     monkeypatch.setenv(f"{APP_PREFIX}ACCESS_CODE", "made-up-access-code-for-tests")
     monkeypatch.setenv("GROQ_API_KEY", "made-up-key-for-tests")
+    monkeypatch.setenv(f"{PREFIX}ENV", "prod")
+    monkeypatch.setenv(f"{PREFIX}GROQ__API_KEY", "made-up-key-for-tests")
     shell = isolation.child_shell()
     assert shell["PYTHON_DOTENV_DISABLED"] == "1"
     assert shell[VAR_DIR_VARIABLE] == os.environ[VAR_DIR_VARIABLE]
+    assert [n for n in shell if n.upper().startswith(PREFIX)] == [VAR_DIR_VARIABLE]
     unwanted = {"PYTHONPATH", "PYTHONWARNINGS"}
     assert [n for n in shell if isolation.dropped(n) or n in unwanted] == [VAR_DIR_VARIABLE]
+
+
+def test_a_child_shell_built_before_the_session_set_its_var_dir_is_refused(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """Built at collection (a module's constant), a shell would send its child to the
+    developer's var/, with no NETRC of the session's; so it raises, saying where to build it."""
+    monkeypatch.delenv(VAR_DIR_VARIABLE)
+    with pytest.raises(RuntimeError, match="FIX: call it inside a test or a fixture"):
+        isolation.child_shell()
 
 
 def test_a_peer_with_no_ice_servers_of_its_own_fails_its_test() -> None:

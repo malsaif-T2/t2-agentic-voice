@@ -63,9 +63,10 @@ with open(sys.argv[1], "w", encoding="utf-8") as out:
 @pytest.fixture(scope="module")
 def child(tmp_path_factory: pytest.TempPathFactory) -> tuple[bytes, bytes, dict[str, Any]]:
     """The child's standard output, its standard error, and its report. Its shell is a
-    child's of the suite (tests/isolation.py's `child_shell`: what the suite drops and every
-    `PYTHON*` variable, a warnings filter say, left out), and it runs isolated in UTF-8 mode, so
-    its error stream is not this machine's code page."""
+    child's of the suite (tests/isolation.py's `child_shell`: what the suite drops, the
+    session's scratch var dir aside, and every `PYTHON*` variable, a warnings filter say, left
+    out), and it runs isolated in UTF-8 mode, so its error stream is not this machine's code
+    page."""
     report = tmp_path_factory.mktemp("logging-import") / "report.json"
     modules = json.dumps(sorted(load_config(ROOT).arch.public))
     done = subprocess.run(

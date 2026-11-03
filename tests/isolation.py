@@ -114,9 +114,19 @@ def drop_shell(environ: MutableMapping[str, str]) -> list[str]:
 
 def child_shell() -> dict[str, str]:
     """The shell of a child process: this one's, which the suite has cleaned, without any
-    `PYTHON*` variable (a warnings filter, say), and with `SET`. The session's scratch var dir
-    (`VAR_DIR_VARIABLE`, which tests/conftest.py sets) is carried, so a child that loads its
-    settings with `from_env` keeps its runtime files there, never under the developer's var/."""
+    `PYTHON*` variable (a warnings filter, say), and with `SET`. Of the variables the suite
+    drops, it carries only the session's scratch var dir (`VAR_DIR_VARIABLE`), so a child that
+    loads its settings with `from_env` keeps its runtime files there, never under the
+    developer's var/. tests/conftest.py sets that dir and an empty `NETRC` in its session
+    fixture, which runs after collection: so it is called inside a test or a fixture, and
+    raises before (a module's constant, a parametrize list), where its child would write var/
+    and open the developer's ~/.netrc."""
+    if VAR_DIR_VARIABLE not in os.environ:
+        raise RuntimeError(
+            "child_shell() was called before tests/conftest.py set the session's scratch var "
+            "dir. FIX: call it inside a test or a fixture, never at a module's top or in a "
+            "parametrize list."
+        )
     shell = {
         k: v
         for k, v in os.environ.items()

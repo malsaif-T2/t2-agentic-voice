@@ -8,8 +8,9 @@ secret is at least 32 bytes, checked as the settings load for an inline map and 
 read for a file's.
 
 A token verifies until its `exp` plus `max_clock_skew_s`, so its lifetime has a bound only while
-the skew has one: at most `MAX_CLOCK_SKEW_S`, and the used-token store keeps a token's ID until
-that later instant (domain/ports/identity.py).
+the skew has one: at most `MAX_CLOCK_SKEW_S`. The used-token store keeps a token's ID until its
+`exp` plus `MAX_CLOCK_SKEW_S`, the latest any allowance lets it verify, so a restart with a
+larger allowance finds every token it could take again (domain/ports/identity.py).
 """
 
 from __future__ import annotations
@@ -47,7 +48,8 @@ KeyId = Annotated[str, StringConstraints(pattern=r"^[A-Za-z0-9._-]{1,64}$")]
 # A join token lives 120 s at most (the design's 6.5).
 MAX_TTL_S = 120
 # How far a token's times may be off this machine's clock, at most: the verifier takes a token
-# until its `exp` plus the skew, so a 120 s token is usable for at most 120 + 2 x 60 s.
+# until its `exp` plus the skew, so a 120 s token is usable for at most 120 + 2 x 60 s; and the
+# used-token store keeps each token's ID until its `exp` plus this bound, whatever the skew.
 MAX_CLOCK_SKEW_S = 60
 _KEY_MAP = TypeAdapter(dict[KeyId, str], config=ConfigDict(hide_input_in_errors=True))
 

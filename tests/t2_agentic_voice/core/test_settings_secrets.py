@@ -132,15 +132,31 @@ def test_a_join_key_file_is_refused_never_showing_its_contents(
     assert (raised.value.__cause__, raised.value.__context__) == (None, None)
 
 
-@pytest.mark.parametrize("kind", ["a folder", "a missing file", "an undecodable file"])
+UNREADABLE = "Error). FIX: check that the file exists and that this process may read it"
+NOT_UTF8 = "is not UTF-8 text. FIX: save it as UTF-8 text."
+
+
+@pytest.mark.parametrize(
+    ("kind", "fix"),
+    [
+        ("a folder", UNREADABLE),
+        ("a missing file", UNREADABLE),
+        ("an undecodable file", NOT_UTF8),
+        ("UTF-16 with no BOM", NOT_UTF8),  # decodes as UTF-8, a NUL after each character
+    ],
+)
 def test_an_unreadable_secret_file_names_the_setting_never_its_contents(
-    tmp_path: Path, kind: str
+    tmp_path: Path, kind: str, fix: str
 ) -> None:
+    """Each with the FIX for which it is: a file that cannot be opened or read is to be
+    checked, its permissions among it, and one whose text is not UTF-8 saved as UTF-8."""
     path = {"a folder": tmp_path, "a missing file": tmp_path / "nope.key"}.get(
         kind, tmp_path / "bad.key"
     )
     if kind == "an undecodable file":
         path.write_bytes(b"\xff" + MADE_UP_KEY.encode())
+    if kind == "UTF-16 with no BOM":
+        path.write_bytes(f'{{"k1": "{MADE_UP_KEY}"}}'.encode("utf-16-le"))
     checks: list[tuple[Callable[[], object], str]] = [
         (lambda: GroqSettings(api_key_file=path).resolved_api_key(), "GROQ__API_KEY_FILE"),
         (lambda: JoinSettings(keys_file=path).resolved_keys(), "JOIN__KEYS_FILE"),
@@ -149,7 +165,10 @@ def test_an_unreadable_secret_file_names_the_setting_never_its_contents(
     for resolve, setting in checks:
         with pytest.raises(ConfigurationError) as raised:
             resolve()
-        assert f"{PREFIX}{setting}" in raised.value.message
+        assert raised.value.message.startswith(f"{PREFIX}{setting}")
+        assert " is set, but the file " in raised.value.message
+        assert fix in raised.value.message
+        assert ("UTF-8" in raised.value.message) is (fix == NOT_UTF8)  # never the wrong FIX
         assert holding(MADE_UP_KEY, shown(raised.value)) == []
         assert holding(str(path), shown(raised.value)) == []
         # Not even out of sight: a decode error holds the file's bytes, the key with them.

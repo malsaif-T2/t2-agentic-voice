@@ -1,25 +1,27 @@
 """The checks the settings make as they load: what each `env` refuses (staging holds every
 check prod holds: the design's 7.4), the bounds and shapes of the groups' values, and how every
-setting is named and described (the design's 7.3 and 7.7)."""
+setting is named and described (the design's 7.3 and 7.7). That nothing changes them once
+built: test_settings_read_only.py."""
 
 from __future__ import annotations
 
-import copy
-import pickle
+import ipaddress
+import re
 from typing import Any
 
 import pytest
-from pydantic import BaseModel, SecretStr, ValidationError
+from pydantic import BaseModel, ValidationError
 from t2_agentic_voice.api.status import status
 from t2_agentic_voice.core.config import VoiceSettings
 from t2_agentic_voice.core.errors import ConfigurationError
+from t2_agentic_voice.core.settings import server
 from t2_agentic_voice.core.settings.join import MAX_CLOCK_SKEW_S, MAX_TTL_S
 from t2_agentic_voice.core.settings.logs import LoggingSettings
 from t2_agentic_voice.core.settings.server import ServerSettings
 from t2_agentic_voice.core.settings.tts import TtsSettings
 from uvicorn.middleware.proxy_headers import _TrustedHosts
 
-from tests.t2_agentic_voice.core.settings_support import LONG_SECRET, PREFIX, fields, nested
+from tests.t2_agentic_voice.core.settings_support import PREFIX, fields, nested
 
 # Each check `env` makes: the setting, the value it refuses, and the environments that refuse it.
 CHECKS = [
@@ -107,9 +109,19 @@ def test_a_check_names_the_setting_under_the_prefix_it_was_loaded_with(
         (ServerSettings, {"forwarded_allow_ips": ("10.1.2.3/0",)}),
         (ServerSettings, {"forwarded_allow_ips": ("10.0.0.0/7",)}),  # wider than /8
         (ServerSettings, {"forwarded_allow_ips": ("2001:db8::/31",)}),  # wider than /32
-        (ServerSettings, {"forwarded_allow_ips": ("::ffff:0:0/96",)}),  # every IPv4 peer, mapped
+        # More than an IPv4 /8 of an IPv6 range that carries IPv4 addresses: nearly every IPv4
+        # peer, mapped, translated (SIIT), through NAT64 (both prefixes), IPv4-compatible.
+        (ServerSettings, {"forwarded_allow_ips": ("::ffff:0:0/96",)}),
+        (ServerSettings, {"forwarded_allow_ips": ("::ffff:0:0/100",)}),
         (ServerSettings, {"forwarded_allow_ips": ("::/32",)}),  # holds the mapped ones too
-        (ServerSettings, {"forwarded_allow_ips": ("64:ff9b::/96",)}),  # every IPv4 peer, NAT64
+        (ServerSettings, {"forwarded_allow_ips": ("::/64",)}),
+        (ServerSettings, {"forwarded_allow_ips": ("::/96",)}),
+        (ServerSettings, {"forwarded_allow_ips": ("::ffff:0:0:0/96",)}),
+        (ServerSettings, {"forwarded_allow_ips": ("64:ff9b::/96",)}),
+        (ServerSettings, {"forwarded_allow_ips": ("64:ff9b:1::/48",)}),
+        (ServerSettings, {"forwarded_allow_ips": ("64:ff9b:1::/96",)}),
+        (ServerSettings, {"forwarded_allow_ips": ("64:ff9b:1:ab00::/56",)}),  # another layout
+        (ServerSettings, {"forwarded_allow_ips": ("2002::/16",)}),  # 6to4: every IPv4 peer
         (ServerSettings, {"forwarded_allow_ips": ("10.0.0.5/24",)}),  # host bits: matches none
         (ServerSettings, {"turn_ttl_s": 86_401}),  # longer than a day
         (ServerSettings, {"turn_ttl_s": 0}),
@@ -124,6 +136,24 @@ def test_a_check_names_the_setting_under_the_prefix_it_was_loaded_with(
         (ServerSettings, {"allowed_origins": ("http://example.com:80",)}),
         (ServerSettings, {"allowed_origins": ("https://example.com:0443",)}),
         (ServerSettings, {"allowed_origins": ("https://bücher.example",)}),
+        # A host a browser decodes, cuts or refuses, or reads as another address.
+        (ServerSettings, {"allowed_origins": ("https://exa%6dple.com",)}),
+        (ServerSettings, {"allowed_origins": ("https://example.com\\",)}),
+        (ServerSettings, {"allowed_origins": ("https://example.com\\path",)}),
+        (ServerSettings, {"allowed_origins": ("https://example.com\x00",)}),
+        (ServerSettings, {"allowed_origins": ("https://ex\x00ample.com",)}),
+        (ServerSettings, {"allowed_origins": ("https://example.com\x7f",)}),
+        (ServerSettings, {"allowed_origins": ("https://my_host.example",)}),
+        (ServerSettings, {"allowed_origins": ("https://example.com.",)}),
+        (ServerSettings, {"allowed_origins": ("http://127.1",)}),
+        (ServerSettings, {"allowed_origins": ("http://010.0.0.1",)}),
+        (ServerSettings, {"allowed_origins": ("http://0x7f.0.0.1",)}),
+        (ServerSettings, {"allowed_origins": ("http://[fe80::1%25eth0]",)}),
+        (ServerSettings, {"allowed_origins": ("http://[0:0:0:0:0:0:0:1]",)}),
+        (ServerSettings, {"allowed_origins": ("http://[::ffff:1.2.3.4]",)}),
+        (ServerSettings, {"allowed_origins": ("http://[2001:db8:0:0:1::1]",)}),
+        (ServerSettings, {"allowed_origins": ("http://[2001:db8::1:2:3:4:5]",)}),  # one zero
+        (ServerSettings, {"allowed_origins": ("http://[v1.x]",)}),  # no IP address at all
         (ServerSettings, {"ice_servers": ("https://turn.example",)}),
         (ServerSettings, {"ice_servers": ("turn:",)}),
         (ServerSettings, {"ice_servers": ("turn:turn example",)}),
@@ -146,16 +176,40 @@ def test_a_group_refuses_a_value_out_of_its_bounds(
 
 
 def test_the_proxy_and_origin_refusals_say_what_to_write() -> None:
-    """Each refusal names the entry by its index and says what to write, never the value."""
+    """Each refusal names the entry by its index and says why, true of that entry, and what to
+    write, the whole rule for a proxy; never the value."""
+    wide = "entry 0 is wider than /8 for IPv4 or /32 for IPv6"
+    carried = "entry 0 holds more than an IPv4 /8 of an IPv6 range that carries IPv4 addresses"
     cases = [
-        ("forwarded_allow_ips", "0.0.0.0/0", "entry 0 is wider than /8 for IPv4 or /32 for IPv6"),
+        ("forwarded_allow_ips", "0.0.0.0/0", wide),
+        ("forwarded_allow_ips", "2001:db8::/31", wide),
+        ("forwarded_allow_ips", "::/32", carried),  # exactly /32, so not wider than it
+        ("forwarded_allow_ips", "::ffff:0:0/100", carried),
+        ("forwarded_allow_ips", "64:ff9b:1::/96", carried),
         ("forwarded_allow_ips", "192.168.1.10/24", "give the network's own address, such as"),
-        ("allowed_origins", "https://Example.com:443", "write the scheme and the host in lower"),
+        ("allowed_origins", "https://Example.com:443", "write the scheme in lowercase; the host"),
+        ("allowed_origins", "https://exa%6dple.com", "letters, digits and hyphens between dots"),
     ]
     for field, value, why in cases:
         with pytest.raises(ValidationError, match=why) as raised:
             ServerSettings.model_validate({field: (value,)})
         assert value not in str(raised.value)
+        if field == "forwarded_allow_ips" and "host bits" not in str(raised.value):
+            assert "name each proxy: an entry is no wider than /8 for IPv4" in str(raised.value)
+
+
+def test_the_proxy_rule_names_every_range_that_carries_ipv4_with_its_bound() -> None:
+    """The setting's description (and so the reference) and each refusal state the rule whole:
+    every range the check holds to IPv4's /8, with the widest entry it takes."""
+    described = ServerSettings.model_fields["forwarded_allow_ips"].description or ""
+    parts = re.split(r"/(\d+) where it overlaps ", described)
+    stated = {
+        ipaddress.ip_network(carrier): int(widest)
+        for widest, ranges in zip(parts[1::2], parts[2::2], strict=True)
+        for carrier in re.findall(r"[0-9a-f:]+/\d+", ranges)
+    }
+    assert stated == dict(server._EMBEDDED)
+    assert "no wider than /8 for IPv4 or /32 for IPv6" in parts[0]
 
 
 @pytest.mark.parametrize(
@@ -163,9 +217,14 @@ def test_the_proxy_and_origin_refusals_say_what_to_write() -> None:
     [
         {"forwarded_allow_ips": ("127.0.0.1", "10.0.0.0/8", "::1", "2001:db8::/32")},
         {"forwarded_allow_ips": ("10.0.0.0/24", "::ffff:10.0.0.0/104", "::ffff:10.0.0.5")},
-        {"forwarded_allow_ips": ("64:ff9b::a00:0/104", "2001:db8::/48")},
+        {"forwarded_allow_ips": ("64:ff9b::a00:0/104", "2001:db8::/48", "::1")},
+        {"forwarded_allow_ips": ("64:ff9b:1::a00:0/104", "::ffff:0:a00:0/104", "::a00:0/104")},
+        {"forwarded_allow_ips": ("2002:c000:204::/48",)},  # 6to4 of one IPv4 address
         {"allowed_origins": ("https://www.example.com", "http://localhost:8000")},
         {"allowed_origins": ("https://example.com:8443", "http://[::1]:8000", "http://[::1]")},
+        {"allowed_origins": ("https://xn--bcher-kva.example", "http://127.0.0.1:8000")},
+        {"allowed_origins": ("http://[::ffff:102:304]", "http://[2001:db8::1:0:0:1]:8443")},
+        {"allowed_origins": ("http://[2001:db8:0:1:2:3:4:5]", "http://[::]")},
         {"ice_servers": ("stun:stun.example:3478", "turns:turn.example:443?transport=tcp")},
         {"public_url": "https://voice.example", "turn_ttl_s": 86_400},
     ],
@@ -215,35 +274,6 @@ def test_the_join_bounds_hold_the_tokens_lifetime() -> None:
         {"env": "prod", "join": {"ttl_s": MAX_TTL_S, "max_clock_skew_s": MAX_CLOCK_SKEW_S}}
     ).join
     assert (join.ttl_s, join.max_clock_skew_s) == (120, 60)
-
-
-def test_a_map_setting_cannot_change_once_loaded() -> None:
-    """A group is read-only, its maps too, so no join key under 32 bytes reaches
-    `resolved_keys` past the check and no call changes the voice every call shares; each map
-    still dumps as the plain object it was given as."""
-    loaded = VoiceSettings.model_validate(
-        {"env": "test", "join": {"keys": {"k1": LONG_SECRET}, "current_kid": "k1"}}
-    )
-    copies = (
-        loaded.model_copy(deep=True),
-        copy.deepcopy(loaded),
-        pickle.loads(pickle.dumps(loaded)),  # noqa: S301 - loads only bytes it dumped
-    )
-    for settings in (loaded, VoiceSettings(env="test"), *copies):
-        keys: Any = settings.join.keys
-        languages: Any = settings.tts.languages
-        with pytest.raises(TypeError):
-            keys["weak"] = SecretStr("short")
-        with pytest.raises(TypeError):
-            languages["en"] = languages["ar"]
-        with pytest.raises(TypeError):
-            keys._items["weak"] = SecretStr("short")
-        dumped = settings.model_dump()
-        assert type(dumped["join"]["keys"]) is dict and type(dumped["tts"]["languages"]) is dict
-    assert all(each == loaded for each in copies)
-    assert list(loaded.join.resolved_keys()) == ["k1"]
-    assert loaded.model_dump(mode="json")["join"]["keys"] == {"k1": "**********"}
-    assert LONG_SECRET not in repr(loaded.join.keys) and "k1" in repr(loaded.join.keys)
 
 
 def test_the_turn_tts_and_limit_defaults_are_the_plans() -> None:

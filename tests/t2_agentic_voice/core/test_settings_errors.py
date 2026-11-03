@@ -5,6 +5,7 @@ ValidationError, its input hidden. Loading itself: test_config.py."""
 
 from __future__ import annotations
 
+import json
 import logging
 from collections.abc import Callable
 from pathlib import Path
@@ -33,24 +34,59 @@ def _env_set(monkeypatch: pytest.MonkeyPatch) -> None:
 
 
 @pytest.mark.parametrize(
-    ("encoding", "comment"), [("utf-16", "# the key\n"), ("cp1252", "# café\n")]
+    ("encoding", "comment"),
+    [("utf-16", "# the key\n"), ("utf-16-le", "# the key\n"), ("cp1252", "# café\n")],
 )
 def test_an_env_file_that_is_no_utf8_is_refused_never_showing_its_bytes(
     tmp_path: Path, encoding: str, comment: str
 ) -> None:
-    """Windows PowerShell 5.1's `>` writes UTF-16, and an old editor cp1252: the decoder's error
-    holds every byte of the file, the key among them, so it is neither raised nor chained."""
+    """Windows PowerShell 5.1's `>` writes UTF-16, .NET's encoders may write it with no
+    byte-order mark (every byte valid UTF-8, a NUL after each character, so every line would
+    be dropped unseen), and an old editor cp1252: the decoder's error holds every byte of the
+    file, the key among them, so it is neither raised nor chained; and the file is refused,
+    `env` given in code or not."""
     dotenv = tmp_path / "other.env"
     dotenv.write_bytes(f"{comment}{PREFIX}GROQ__API_KEY={MADE_UP_KEY}\n".encode(encoding))
+    loads: list[Callable[[], object]] = [
+        lambda: VoiceSettings.from_env(env_file=dotenv),
+        lambda: VoiceSettings.from_env(env_file=dotenv, env="test"),
+    ]
+    for load in loads:
+        with pytest.raises(ConfigurationError) as raised:
+            load()
+        error = raised.value
+        assert error.message == "The env file given is not UTF-8 text. FIX: save it as UTF-8 text."
+        assert error.details == {"setting": "env_file"}
+        assert (error.__cause__, error.__context__) == (None, None)
+        for shown_value in (MADE_UP_KEY, MADE_UP_KEY.encode(encoding).hex(), str(tmp_path)):
+            assert holding(shown_value, shown(error)) == []
+
+
+def test_an_env_file_that_cannot_be_opened_says_to_check_it_not_to_save_it(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    """A file another program holds open, or this user may not read, is an OSError, which no
+    saving as UTF-8 fixes."""
+    dotenv = tmp_path / "locked.env"
+    dotenv.write_text(f"{PREFIX}GROQ__API_KEY={MADE_UP_KEY}\n", encoding="utf-8")
+    read_bytes = Path.read_bytes
+
+    def locked(path: Path) -> bytes:
+        if path == dotenv:
+            raise PermissionError(13, "Permission denied", str(path))
+        return read_bytes(path)
+
+    monkeypatch.setattr(Path, "read_bytes", locked)
     with pytest.raises(ConfigurationError) as raised:
         VoiceSettings.from_env(env_file=dotenv)
     error = raised.value
-    assert error.message == (
-        "The env file given cannot be read (UnicodeDecodeError). FIX: save it as UTF-8 text."
+    assert error.message.startswith(
+        "The env file given cannot be read (PermissionError). FIX: check that the file exists "
+        "and that this process may read it"
     )
-    assert error.details == {"setting": "env_file"}
+    assert "UTF-8" not in error.message and error.details == {"setting": "env_file"}
     assert (error.__cause__, error.__context__) == (None, None)
-    for shown_value in (MADE_UP_KEY, MADE_UP_KEY.encode(encoding).hex(), str(tmp_path)):
+    for shown_value in (MADE_UP_KEY, str(tmp_path)):
         assert holding(shown_value, shown(error)) == []
 
 
@@ -93,6 +129,58 @@ def test_a_json_value_nested_past_the_decoders_depth_is_not_valid_json(
         VoiceSettings.from_env()
     assert f"{PREFIX}SERVER__ALLOWED_ORIGINS (is not valid JSON)" in raised.value.message
     assert (raised.value.__cause__, raised.value.__context__) == (None, None)
+
+
+def test_a_value_that_is_not_json_is_named_with_every_other_failing_setting(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """A list written as plain text, a common slip, no longer hides the load's other failures,
+    a short secret among them: one load names them all, the secret shown nowhere."""
+    short = "made-up-31-bytes-secret-0123456"
+    monkeypatch.setenv(f"{PREFIX}SERVER__ALLOWED_ORIGINS", "https://ole5.example")
+    monkeypatch.setenv(f"{PREFIX}SERVER__TURN_SECRET", short)
+    monkeypatch.setenv(f"{PREFIX}GROQ__BASE_URL", "http://api.groq.com")
+    with pytest.raises(ConfigurationError) as raised:
+        VoiceSettings.from_env()
+    suffixes = ["SERVER__ALLOWED_ORIGINS", "GROQ__BASE_URL", "SERVER__TURN_SECRET"]
+    assert _named(raised.value) == [f"{PREFIX}{each}" for each in suffixes]
+    assert f"{PREFIX}SERVER__ALLOWED_ORIGINS (is not valid JSON)" in raised.value.message
+    assert holding(short, shown(raised.value)) == []
+    assert (raised.value.__cause__, raised.value.__context__) == (None, None)
+
+
+@pytest.mark.parametrize(
+    "pattern",
+    [
+        "a{4294967296}",  # re raises OverflowError: past its repetition limit
+        "(" * 3_000 + "x" + ")" * 3_000,  # RecursionError: nested past the parser's depth
+        f"(?P<{MADE_UP_KEY}!>x)",  # re.error, whose text quotes the group's name
+        f"(?P={MADE_UP_KEY})",
+    ],
+)
+def test_a_redact_pattern_re_cannot_compile_is_named_with_the_rest_never_its_text(
+    monkeypatch: pytest.MonkeyPatch, pattern: str
+) -> None:
+    """Every error `re.compile` raises is the settings' one ConfigurationError, naming the
+    pattern by its place in the list with the load's other failures, never any of its text,
+    loaded or built in code; an OverflowError or a RecursionError would have stopped the load
+    raw, with no FIX line, and re.error's text would have shown part of the value."""
+    monkeypatch.setenv(f"{PREFIX}TRACING__REDACT", json.dumps(["x", pattern]))
+    monkeypatch.setenv(f"{PREFIX}GROQ__BASE_URL", "http://api.groq.com")
+    data = {"env": "test", "groq": {"base_url": "http://api.groq.com"}}
+    builds: list[Callable[[], object]] = [
+        VoiceSettings.from_env,
+        lambda: VoiceSettings.model_validate(data | {"tracing": {"redact": ("x", pattern)}}),
+    ]
+    for build in builds:
+        with pytest.raises(ConfigurationError) as raised:
+            build()
+        error = raised.value
+        assert _named(error) == [f"{PREFIX}GROQ__BASE_URL", f"{PREFIX}TRACING__REDACT"]
+        why = "(Value error, pattern 1 is not a regular expression Python's re module compiles)"
+        assert f"{PREFIX}TRACING__REDACT {why}" in error.message and "FIX:" in error.message
+        assert holding(MADE_UP_KEY, shown(error)) == []
+        assert (error.__cause__, error.__context__) == (None, None)
 
 
 def test_from_env_says_what_to_correct(monkeypatch: pytest.MonkeyPatch) -> None:
@@ -161,6 +249,8 @@ REFUSED_IN_CODE = [
     (("tracing", "endpoint"), f"https://user:{MADE_UP_KEY}@127.0.0.1:6006/v1/traces"),
     (("server", "allowed_origins"), (f"https://{MADE_UP_KEY}.example/path",)),
     (("server", "allowed_origins"), (f"https://{MADE_UP_KEY}.example:443",)),
+    (("server", "allowed_origins"), (f"https://example.com\\{MADE_UP_KEY}",)),  # a backslash
+    (("server", "forwarded_allow_ips"), ("::ffff:0:0/100", MADE_UP_KEY)),
     (("server", "ice_servers"), (f"turn:user:{MADE_UP_KEY}@turn.example",)),
     (("server", "forwarded_allow_ips"), (f"{MADE_UP_KEY}/24",)),
     (("privacy", "consent_version"), f"{MADE_UP_KEY} with a space"),
@@ -226,6 +316,33 @@ def test_settings_built_in_code_fail_as_from_env_does() -> None:
         )
     with pytest.raises(ConfigurationError, match=r"cannot load: the settings \(Input should"):
         VoiceSettings.model_validate(["not", "a", "mapping"])
+
+
+@pytest.mark.parametrize(
+    "text",
+    [
+        f'{{"env": "test", "groq": {{"api_key": "{MADE_UP_KEY}"}},}}',  # a trailing comma
+        f'{{"env": "test", "groq": {{"api_key": "{MADE_UP_KEY}"',  # cut short
+        f'{{"env": "test", "x": {"[" * 300}"{MADE_UP_KEY}"{"]" * 300}}}',  # past its depth
+        f'{{"env": "test", "groq": {{"api_key": "{MADE_UP_KEY}"}}}}'.encode() + b"\xff",
+        f'{{"env": "test", "groq": {{"api_key": "{MADE_UP_KEY}"}}}}'.encode("utf-16"),
+        "",
+    ],
+)
+def test_text_that_is_not_json_fails_as_every_other_load(text: str | bytes) -> None:
+    """pydantic parses the text before any validator runs, and its error's `errors()` hold the
+    whole text, the key among it; `model_validate_json` names "the settings" instead, in one
+    ConfigurationError chained to nothing."""
+    with pytest.raises(ConfigurationError) as raised:
+        VoiceSettings.model_validate_json(text)
+    error = raised.value
+    assert error.message == (
+        "These settings cannot load: the settings (is not valid JSON). FIX: correct each one in "
+        "the code that builds the settings."
+    )
+    assert holding(MADE_UP_KEY, shown(error)) == []
+    assert (error.__cause__, error.__context__) == (None, None)
+    assert VoiceSettings.model_validate_json('{"env": "test"}') == VoiceSettings(env="test")
 
 
 def test_from_env_names_every_failing_setting_a_short_secret_among_them(

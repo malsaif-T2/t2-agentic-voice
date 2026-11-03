@@ -49,8 +49,21 @@ class TracingSettings(Group):
     @classmethod
     def _patterns(cls, value: tuple[str, ...]) -> tuple[str, ...]:
         for index, pattern in enumerate(value):
-            try:
-                re.compile(pattern)
-            except re.error as error:
-                raise ValueError(f"pattern {index} is not a regular expression: {error}") from None
+            if not _compiles(pattern):
+                raise ValueError(
+                    f"pattern {index} is not a regular expression Python's re module compiles"
+                )
         return value
+
+
+def _compiles(pattern: str) -> bool:
+    """Whether `re` compiles `pattern`. Every error it may raise is caught here, and in no
+    chain: `re.error`, whose text may quote the pattern (a group's name); an OverflowError, for
+    a repetition count past the engine's limit; a RecursionError, for groups nested too deep;
+    and any other. Raised in the validator, any but a ValueError would stop the load at once,
+    uncollected, and a ValueError's text would reach the settings' error."""
+    try:
+        re.compile(pattern)
+    except Exception:  # re.error, OverflowError, RecursionError and the like
+        return False
+    return True
