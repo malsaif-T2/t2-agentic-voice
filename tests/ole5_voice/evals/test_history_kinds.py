@@ -142,7 +142,7 @@ def test_a_held_out_overlap_line_holds_no_small_group() -> None:
 def test_an_overlap_run_has_its_table_its_strata_and_its_targets() -> None:
     page = render_history([overlap_line(), overlap_line(requests_max=None, stop_median_ms=None)])
     assert "## Overlap runs" in page and "Spend so far: 2 run(s), 180.0 billed seconds" in page
-    first = "| 1 | 2026-11-03T09:00:00+00:00 | o1 | 0f44056 | pipeline | dev | 3 | 6 | 5 | 512 "
+    first = "| 1 | 2026-11-03T09:00:00+00:00 | o1 | 0f44056 | pipeline | dev | 3 | 6 | 0 | 5 | 512 "
     assert first in page
     assert "| 880 | 2 | 1 of 3 | 9 | 90.0 | $0.0028 | yes |" in page
     assert "| — | 880 | — | 1 of 3 |" in page

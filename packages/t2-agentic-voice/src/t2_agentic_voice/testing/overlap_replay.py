@@ -13,6 +13,9 @@ with the call's `Interrupted` events.
   when the session judged it after a go on. Each event's handing time is `FedCall.handed_at`,
   so a transcript that came while the session was deciding is not taken for the one that
   decided (a call made by hand, with none, is read by its events' own times).
+- **The overlaps**: the turns a `HearOverlap` named, in the order they were named; a long clip
+  can open several, each decided by its own window and overlap parts, so each request carries
+  its turn, and the turn whose transcript decided is named.
 - **The requests**: each `Transcribing` of the call with its answer, the `Transcribed` of the
   same turn and part.
 - **The speech's stop**: when the speech detector last heard the deciding turn's speech stop (its
@@ -34,7 +37,7 @@ from typing import TYPE_CHECKING, Literal
 from pydantic import BaseModel, ConfigDict
 
 from t2_agentic_voice.core.errors import ProviderErrorKind
-from t2_agentic_voice.core.events import Interrupted, InterruptionKind
+from t2_agentic_voice.core.events import Interrupted, InterruptionKind, TurnId
 from t2_agentic_voice.domain.interruptions import OverlapAction, VerdictReason
 from t2_agentic_voice.voice.protocol import Unduck
 from t2_agentic_voice.voice.session.commands import HearOverlap, Send, StopSpeaking
@@ -56,12 +59,13 @@ RequestPart = Literal["window", "overlap", "turn"]
 
 class OverlapRequest(BaseModel):
     """One speech-to-text request of the clip's call, in milliseconds from the clip's start: its
-    part, when it went and when its answer came (None when none did), the seconds of audio
-    sent, the text heard, the provider's probability that it held no speech, and the failure it
-    met, as `ProviderError` names it (None when it was answered)."""
+    turn and part, when it went and when its answer came (None when none did), the seconds of
+    audio sent, the text heard, the provider's probability that it held no speech, and the
+    failure it met, as `ProviderError` names it (None when it was answered)."""
 
     model_config = ConfigDict(frozen=True, extra="forbid")
 
+    turn_id: TurnId
     part: RequestPart
     sent_ms: float
     answered_ms: float | None = None
@@ -72,20 +76,23 @@ class OverlapRequest(BaseModel):
 
 
 class OverlapReplay(BaseModel):
-    """One clip played over a reply: whether its speech opened an overlap; the verdict that
-    decided it (its action, the `Interrupted` kind, the rule's step) and the part whose
-    transcript decided it, each None when none did; every speech-to-text request of its call;
-    and, in milliseconds from the clip's start, when the speech detector last heard its speech
-    stop, when the last agent audio frame was sent, and from the labelled word end to that last
-    frame (`stop_ms`, None with no label or no stop)."""
+    """One clip played over a reply: whether its speech opened an overlap, and the turns a
+    `HearOverlap` named (`overlap_turns`); the verdict that decided it (its action, the
+    `Interrupted` kind, the rule's step) and the part and turn whose transcript decided it, each
+    None when none did; every speech-to-text request of its call; and, in milliseconds from the
+    clip's start, when the speech detector last heard its speech stop, when the last agent audio
+    frame was sent, and from the labelled word end to that last frame (`stop_ms`, None with no
+    label or no stop)."""
 
     model_config = ConfigDict(frozen=True, extra="forbid")
 
     opened: bool
+    overlap_turns: tuple[TurnId, ...] = ()
     action: OverlapAction | None = None
     kind: InterruptionKind | None = None
     reason: VerdictReason | None = None
     decided_by: RequestPart | None = None
+    decided_turn: TurnId | None = None
     requests: tuple[OverlapRequest, ...] = ()
     speech_stop_ms: float | None = None
     last_audio_ms: float | None = None
@@ -103,7 +110,8 @@ def replay_of(
     def ms(at: float) -> float:
         return (at - start) * 1000
 
-    overlaps = {c.turn_id for _, c in fed.commands if isinstance(c, HearOverlap)}
+    named = (c.turn_id for _, c in fed.commands if isinstance(c, HearOverlap))
+    overlaps = tuple(dict.fromkeys(named))
     stops = [at for at, c in fed.commands if isinstance(c, StopSpeaking)]
     unducks = [
         at for at, c in fed.commands if isinstance(c, Send) and isinstance(c.message, Unduck)
@@ -136,10 +144,12 @@ def replay_of(
         action = "repeat" if verdict.reason == "repeat_word" else action
     return OverlapReplay(
         opened=bool(overlaps),
+        overlap_turns=overlaps,
         action=action,
         kind=None if verdict is None else verdict.kind,
         reason=None if verdict is None else verdict.reason,
         decided_by=None if decider is None else decider.part,
+        decided_turn=None if decider is None else decider.turn_id,
         requests=_requests(fed, ms),
         speech_stop_ms=None if closed is None else ms(closed.speech_ended_at),
         last_audio_ms=last_audio_ms,
@@ -159,6 +169,7 @@ def _requests(fed: FedCall, ms: Callable[[float], float]) -> tuple[OverlapReques
         transcript = None if answer is None else answer.transcript
         found.append(
             OverlapRequest(
+                turn_id=sent.turn_id,
                 part=sent.part,
                 sent_ms=ms(sent.at),
                 answered_ms=None if answer is None else ms(answer.at),

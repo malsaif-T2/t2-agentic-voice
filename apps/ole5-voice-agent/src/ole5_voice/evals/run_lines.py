@@ -103,11 +103,13 @@ class TimingLine(Model):
 
 
 class OverlapCount(Model):
-    """One stratum value of an overlap run: its items and variants, those right, those that
-    should stop and did, and those that should go on and stopped."""
+    """One stratum value of an overlap run: its items and variants, those whose deciding
+    request failed (counted apart), and of the others those right, those that should stop and
+    did, and those that should go on and stopped."""
 
     items: int = Field(ge=0)
     variants: int = Field(ge=0)
+    failed: int = Field(default=0, ge=0)
     right: int = Field(ge=0)
     should_stop: int = Field(ge=0)
     stopped: int = Field(ge=0)
@@ -117,8 +119,9 @@ class OverlapCount(Model):
 
 class OverlapLine(Model):
     """One line of `history.jsonl` for a `poe overlap` run of the replay (plan 005's
-    registration, the arm O): its variants and those right, the stop words' stop time from the
-    owner's mark (median and 90th percentile), the most requests that decided an overlap,
+    registration, the arm O): its variants, those whose deciding request failed (counted
+    apart) and of the others those right, the stop words' stop time from the owner's mark
+    (median and 90th percentile), the most requests that decided an overlap,
     whether each target held (None when nothing gave it), the numbers by stratum value, and its
     spend: every Whisper request it sent, their billed seconds, the price and the cost."""
 
@@ -131,6 +134,7 @@ class OverlapLine(Model):
     split: Split
     items: int = Field(ge=0)
     variants: int = Field(ge=0)
+    failed: int = Field(default=0, ge=0)
     right: int = Field(ge=0)
     stop_median_ms: _Ms | None
     stop_p90_ms: _Ms | None

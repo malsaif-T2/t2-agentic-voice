@@ -177,6 +177,7 @@ def line_of(card: OverlapScorecard) -> OverlapLine:
         split=run.split,
         items=totals.items,
         variants=totals.variants,
+        failed=totals.failed,
         right=totals.right,
         stop_median_ms=found["stop_word_median_ms"].value,
         stop_p90_ms=found["stop_word_p90_ms"].value,

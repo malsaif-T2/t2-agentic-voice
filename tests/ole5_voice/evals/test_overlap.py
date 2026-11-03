@@ -48,7 +48,7 @@ def test_the_reference_answerer_scores_every_committed_overlap_right_at_0_ms(
 ) -> None:
     """Plan 005's step 9: `poe overlap --answerer reference` over the committed golden set,
     each variant given a made-up confirmation, gives every overlap clip its kind's verdict: all
-    right, every stop 0 ms, no request, no target failing."""
+    right, every stop 0 ms, no request and so no overlap's count, no target failing."""
     monkeypatch.setattr(audio, "read_wav", _no_audio)
     world = make_world(tmp_path)
     shutil.copytree(EVALS / "golden", world.data / "golden")
@@ -73,7 +73,7 @@ def test_the_reference_answerer_scores_every_committed_overlap_right_at_0_ms(
     totals = card.totals
     assert (card.complete, totals.variants, totals.right) == (True, len(on_side), len(on_side))
     assert totals.variants > 10 and totals.should_stop and totals.should_go_on
-    assert (totals.false_stops, totals.requests_max, card.requests) == (0, 0, 0)
+    assert (totals.false_stops, totals.requests_max, card.requests) == (0, None, 0)
     assert {totals.detected_median_ms, totals.marked_median_ms} <= {0.0, None}
     assert all(target.holds is not False for target in card.targets)
     assert len(card.variants) == (len(on_side) if side == "dev" else 0)

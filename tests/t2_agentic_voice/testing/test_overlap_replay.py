@@ -3,7 +3,8 @@ hand-made calls as the file-fed transport hands them: a stop the window decided,
 labelled word end to the last agent frame before the echo's audio; a reply that went on once the
 whole overlap's transcript came; a transcript that came while the session was deciding, which did
 not decide; a repeat; speech after a go on that stopped the agent on the turn's own transcript;
-and a clip whose speech opened no overlap. The results are frozen."""
+a clip of two overlaps, each request carrying its turn; and a clip whose speech opened no
+overlap. The results are frozen."""
 
 from __future__ import annotations
 
@@ -100,11 +101,12 @@ def test_a_stop_the_window_decided_is_timed_to_the_last_frame_before_the_echo() 
         "enough_words",
         "window",
     )
+    assert (replay.overlap_turns, replay.decided_turn) == ((0,), 0)
     assert replay.last_audio_ms == pytest.approx(1140.0)
     assert replay.stop_ms == pytest.approx(140.0)
     assert replay.speech_stop_ms == pytest.approx(1200.0)
     window, whole = replay.requests
-    assert window.part == "window"
+    assert (window.turn_id, window.part, whole.turn_id) == (0, "window", 0)
     assert (window.sent_ms, window.answered_ms) == pytest.approx((900.0, 1100.0))
     assert (whole.part, whole.text, whole.no_speech_prob, whole.failure) == (
         "overlap",
@@ -180,6 +182,43 @@ def test_speech_after_a_go_on_stops_the_agent_on_the_turns_own_transcript() -> N
     assert replay.last_audio_ms == pytest.approx(3020.0)
 
 
+def test_a_clip_of_two_overlaps_names_each_requests_turn_and_the_one_that_decided() -> None:
+    """A long clip opens one overlap that goes on, then another that stops the agent: four
+    requests, two a turn, each carrying its turn, the second turn's whole overlap deciding."""
+    events = [
+        TurnOpened(turn_id=0, at=20.5, speech_at=20.2),
+        *_heard("window", 21.1, "made-up"),
+        *_heard("overlap", 21.4, "made-up"),
+        TurnClosed(turn_id=0, at=22.0, speech_ended_at=21.2),
+        TurnOpened(turn_id=1, at=23.5, speech_at=23.2),
+        *_heard("window", 24.1, "made-up", turn=1),
+        *_heard("overlap", 24.4, "made-up words here", turn=1),
+        TurnClosed(turn_id=1, at=25.0, speech_ended_at=24.2),
+    ]
+    commands = [
+        *_opened(),
+        (21.402, Send(message=Unduck())),
+        (23.5, Send(message=Duck(level=0.25))),
+        (23.5, HearOverlap(turn_id=1, window_ms=750)),
+        (24.402, StopSpeaking(reply_id=0)),
+    ]
+    heard = [_interrupted("false", "listening"), _interrupted("new_words", "enough_words")]
+    replay = replay_of(_fed(events, commands), heard)
+    assert (replay.overlap_turns, replay.action, replay.decided_by, replay.decided_turn) == (
+        (0, 1),
+        "stop",
+        "overlap",
+        1,
+    )
+    assert [(r.turn_id, r.part) for r in replay.requests] == [
+        (0, "window"),
+        (0, "overlap"),
+        (1, "window"),
+        (1, "overlap"),
+    ]
+    assert replay.speech_stop_ms == pytest.approx(4200.0)
+
+
 def test_a_clip_that_opened_no_overlap_has_no_verdict() -> None:
     """Under `interruptions.mode = "drop"` no `HearOverlap` comes: the turn's own request is
     listed, and nothing decided; a call made by hand, with no handing times, reads its events'
@@ -193,7 +232,7 @@ def test_a_clip_that_opened_no_overlap_has_no_verdict() -> None:
     replay = replay_of(fed, [])
     (request,) = replay.requests
     assert replay.model_copy(update={"requests": ()}) == OverlapReplay(opened=False)
-    assert (request.part, request.text, request.audio_s) == ("turn", "made-up", 0.75)
+    assert (request.turn_id, request.part, request.text) == (0, "turn", "made-up")
     assert (request.sent_ms, request.answered_ms) == pytest.approx((1600.0, 1800.0))
 
 
@@ -218,7 +257,7 @@ def test_a_request_with_no_answer_and_a_failed_one() -> None:
 
 
 def test_a_replays_results_are_frozen() -> None:
-    request = OverlapRequest(part="window", sent_ms=1750.0, audio_s=0.75, text="made-up")
+    request = OverlapRequest(turn_id=0, part="window", sent_ms=1750.0, audio_s=0.75, text="made-up")
     replay = OverlapReplay(opened=True, action="stop", kind="stop", requests=(request,))
     with pytest.raises(ValidationError):
         replay.action = "go_on"  # type: ignore[misc]

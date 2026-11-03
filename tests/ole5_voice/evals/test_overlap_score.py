@@ -1,7 +1,8 @@
 """The scorer of `poe overlap` (overlap_score.py, overlap_card.py) on hand-made verdicts: a stop
 missed, a false stop, a stop timed from a marked word end and one from the detector's stop, a
-repeat that only stopped, the overlap set's selection, the numbers by group, the registration's
-targets, and a held-out run's aggregates only."""
+repeat that only stopped, a clip of two overlaps counted by overlap, a variant whose deciding
+request failed counted apart, the overlap set's selection, the numbers by group, the
+registration's targets, and a held-out run's aggregates only."""
 
 from __future__ import annotations
 
@@ -24,21 +25,56 @@ from pydantic import ValidationError
 
 from tests.ole5_voice.evals import samples
 
+
+def _heard(turn: int, part: str, sent_ms: float, **fields: Any) -> Heard:
+    base = {"turn_id": turn, "part": part, "sent_ms": sent_ms, "audio_s": 0.75}
+    return Heard.model_validate(base | {"answered_ms": sent_ms + 300, "text": "made-up"} | fields)
+
+
 STOP = Verdict(
     opened=True,
+    overlap_turns=(0,),
     action="stop",
     kind="stop",
     reason="stop_word",
     decided_by="overlap",
+    decided_turn=0,
     requests=(
-        Heard(part="window", sent_ms=500.0, answered_ms=800.0, audio_s=0.75, text="made-up"),
-        Heard(part="overlap", sent_ms=900.0, answered_ms=1200.0, audio_s=1.1, text="made-up"),
-        Heard(part="turn", sent_ms=3000.0, audio_s=1.1),
+        _heard(0, "window", 500.0),
+        _heard(0, "overlap", 900.0, audio_s=1.1),
+        _heard(0, "turn", 3000.0, answered_ms=None, text=None, audio_s=1.1),
     ),
     speech_stop_ms=1100.0,
     last_audio_ms=1600.0,
 )
-WENT_ON = Verdict(opened=True, action="go_on", kind="false", reason="listening")
+WENT_ON = Verdict(
+    opened=True,
+    overlap_turns=(0,),
+    action="go_on",
+    kind="false",
+    reason="listening",
+    decided_by="overlap",
+    decided_turn=0,
+    requests=(_heard(0, "overlap", 400.0),),
+)
+# A long clip (the agent's echo) that opened two overlaps, each decided by its window and its
+# whole part, and went on: two requests an overlap, four in the clip.
+TWICE = Verdict(
+    opened=True,
+    overlap_turns=(0, 1),
+    action="go_on",
+    kind="false",
+    reason="own_words",
+    decided_by="overlap",
+    decided_turn=0,
+    requests=(
+        _heard(0, "window", 500.0),
+        _heard(0, "overlap", 900.0),
+        _heard(1, "window", 9000.0),
+        _heard(1, "overlap", 9400.0),
+        _heard(1, "turn", 12000.0),
+    ),
+)
 
 
 def _result(item: str, kind: str, verdict: Verdict, **fields: Any) -> OverlapResult:
@@ -67,7 +103,7 @@ def test_a_stop_missed_and_a_false_stop_are_wrong() -> None:
     false_stop = judge("go_on", STOP, None)
     assert (false_stop.right, false_stop.stopped) == (False, True)
     unopened = judge("go_on", Verdict(opened=False), None)
-    assert (unopened.right, unopened.stopped, unopened.overlap_requests) == (True, False, 0)
+    assert (unopened.right, unopened.stopped, unopened.overlap_requests) == (True, False, ())
     only_stopped = judge("repeat", STOP, None)
     assert (only_stopped.right, only_stopped.stopped) == (False, True)
 
@@ -75,7 +111,7 @@ def test_a_stop_missed_and_a_false_stop_are_wrong() -> None:
 def test_a_stop_is_timed_from_its_marked_end_or_else_from_the_detector() -> None:
     marked = judge("stop", STOP, 1000.0)
     assert (marked.right, marked.from_mark_ms, marked.from_detector_ms) == (True, 600.0, None)
-    assert marked.overlap_requests == 2  # the turn's own request decides no overlap
+    assert marked.overlap_requests == (2,)  # the turn's own request decides no overlap
     unmarked = judge("stop", STOP, None)
     assert (unmarked.from_mark_ms, unmarked.from_detector_ms) == (None, 500.0)
     at_zero = judge("stop", STOP, 0.0)
@@ -108,21 +144,23 @@ def _set() -> list[OverlapResult]:
         _result("b1", "listening_sound", WENT_ON),
         _result("b2", "listening_sound", STOP),  # a false stop
         _result("e1", "echo_only", Verdict(opened=False)),
+        _result("e2", "echo_only", TWICE),
     ]
 
 
 def test_the_numbers_of_a_set() -> None:
     found = metrics(_set())
     assert found.model_dump() == {
-        "items": 7,
-        "variants": 7,
-        "right": 5,
+        "items": 8,
+        "variants": 8,
+        "failed": 0,
+        "right": 6,
         "should_stop": 4,
         "stopped": 3,
-        "should_go_on": 3,
+        "should_go_on": 4,
         "false_stops": 1,
-        "requests_max": 2,
-        "requests_mean": pytest.approx(8 / 6),
+        "requests_max": 2,  # each of the echo's two overlaps, never the clip's four
+        "requests_mean": pytest.approx(14 / 8),  # over the 8 overlaps, not the 7 clips
         "marked": 2,
         "marked_median_ms": 450.0,
         "marked_p90_ms": pytest.approx(570.0),
@@ -133,6 +171,35 @@ def test_the_numbers_of_a_set() -> None:
     }
     empty = metrics([])
     assert (empty.requests_max, empty.requests_mean, empty.marked_median_ms) == (None, None, None)
+
+
+def test_a_clip_of_two_overlaps_is_counted_by_overlap() -> None:
+    judged = judge("go_on", TWICE, None)
+    assert (judged.right, judged.overlap_requests) == (True, (2, 2))
+    found = metrics([_result("e2", "echo_only", TWICE)])
+    assert (found.requests_max, found.requests_mean) == (2, 2.0)
+    (requests, *_) = targets([_result("e2", "echo_only", TWICE)], held_out=False)
+    assert (requests.name, requests.value, requests.holds) == ("requests_per_overlap", 2.0, True)
+
+
+def test_a_variant_whose_deciding_request_failed_is_counted_apart() -> None:
+    """The whole overlap's request timed out, so the rule heard no words and went on: no
+    answer of the rule's, left out of the rates and stop times, its requests still counted."""
+    timed_out = _heard(0, "overlap", 900.0, answered_ms=None, text=None, failure="timeout")
+    lost = WENT_ON.model_copy(update={"reason": "no_words", "requests": (timed_out,)})
+    assert judge("stop", lost, 1000.0).failed and not judge("stop", WENT_ON, 1000.0).failed
+    window_failed = STOP.model_copy(
+        update={"requests": (_heard(0, "window", 500.0, failure="timeout"), *STOP.requests[1:])}
+    )
+    assert not judge("stop", window_failed, None).failed  # the whole overlap decided
+    results = [*_set(), _result("k4", "stop_word", lost, word_end_ms=1000.0)]
+    found = metrics(results)
+    assert (found.variants, found.failed, found.right, found.should_stop) == (9, 1, 6, 4)
+    assert found.requests_max == 2 and found.requests_mean == pytest.approx(15 / 9)
+    words = {t.name: t for t in targets(results, held_out=False)}["stop_words_heard"]
+    assert words.items == 3 and words.value == pytest.approx(2 / 3)  # k4 left out
+    pooled = breakdowns(results, held_out=True)["kind"]["stop_word"]
+    assert (pooled.variants, pooled.failed, pooled.should_stop) == (4, 1, 3)
 
 
 def test_the_registrations_targets() -> None:
@@ -192,7 +259,7 @@ def test_a_held_out_run_writes_aggregates_only() -> None:
     assert set(pooled["kind"]) == {"stop_word", "other"} and set(pooled["device"]) == {"laptop"}
     assert breakdowns(results[:2], held_out=True)["kind"] == {}  # two items: nothing shown
     card = OverlapScorecard.model_validate(_card("held-out", results))
-    assert card.variants == () and card.totals.variants == 7
+    assert card.variants == () and card.totals.variants == 8
     with pytest.raises(ValidationError, match="aggregates only"):
         OverlapScorecard.model_validate(_card("held-out", results, variants=tuple(results)))
     dev = breakdowns(results, held_out=False)
@@ -202,4 +269,4 @@ def test_a_held_out_run_writes_aggregates_only() -> None:
     with pytest.raises(ValidationError, match="at least 3 items"):
         OverlapScorecard.model_validate(_card("held-out", results, breakdowns=small))
     shown = OverlapScorecard.model_validate(_card("dev", results, variants=tuple(results)))
-    assert len(shown.variants) == 7 and "item" in shown.breakdowns
+    assert len(shown.variants) == 8 and "item" in shown.breakdowns

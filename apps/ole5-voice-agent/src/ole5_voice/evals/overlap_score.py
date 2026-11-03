@@ -14,11 +14,14 @@ the echo).
 **The stop time**, for a variant that stopped the agent: from the owner's mark of its word's end
 (the first of `turn_ends_ms`) to the last agent audio frame sent; with no mark, from the speech
 detector's stop, reported apart. **The requests** that decide an overlap are its window's and its
-whole overlap's; the turn's own, when one went, is spent but decides none. Medians and 90th
-percentiles as plan 002 took them (type 7, `scorecard.quantile`), by kind, language and device,
-and in a dev run by item (overlap_card.py, the scorecard). A held-out run's numbers are
-aggregates only (`HELD_OUT_MIN_ITEMS`), as `poe eot`'s are, and a target over fewer items is
-withheld.
+whole overlap's, counted for each turn a `HearOverlap` named: a long clip (the agent's echo) can
+open several overlaps, each within its bound; the turn's own, when one went, is spent but decides
+none. **A failed variant**, whose deciding request met a failure, is an infrastructure failure,
+not the rule's answer: it is counted apart (`failed`) and left out of every rate and stop time,
+its requests still counted. Medians and 90th percentiles as plan 002 took them (type 7,
+`scorecard.quantile`), by kind, language and device, and in a dev run by item (overlap_card.py,
+the scorecard). A held-out run's numbers are aggregates only (`HELD_OUT_MIN_ITEMS`), as `poe
+eot`'s are, and a target over fewer items is withheld.
 
 **The targets** (the registration's, Q3; `targets`): at most 2 requests decide any overlap; on
 the marked stop words that stopped, a median of at most 700 ms, a 90th percentile of at most
@@ -79,9 +82,10 @@ def in_set(kind: str, tags: Collection[str]) -> bool:
 
 
 class Heard(Model):
-    """One speech-to-text request of a clip's call (the library's `OverlapRequest`), in ms from
-    the clip's start, kept so a revised rule is scored again offline."""
+    """One speech-to-text request of a clip's call (the library's `OverlapRequest`), its turn
+    and part, in ms from the clip's start, kept so a revised rule is scored again offline."""
 
+    turn_id: int = Field(ge=0)
     part: Part
     sent_ms: float
     answered_ms: float | None = None
@@ -93,27 +97,32 @@ class Heard(Model):
 
 class Verdict(Model):
     """What came of a clip over a reply, as its answerer gave it (the library's
-    `OverlapReplay`): whether an overlap opened, the verdict and the part that decided it, every
-    request, and when the speech stopped and the agent's last audio frame was sent."""
+    `OverlapReplay`): whether an overlap opened and the turns a `HearOverlap` named, the verdict
+    and the part and turn that decided it, every request, and when the speech stopped and the
+    agent's last audio frame was sent."""
 
     opened: bool
+    overlap_turns: tuple[int, ...] = ()
     action: Action | None = None
     kind: str | None = None  # the `Interrupted` event's kind
     reason: str | None = None  # the rule's step
     decided_by: Part | None = None
+    decided_turn: int | None = None
     requests: tuple[Heard, ...] = ()
     speech_stop_ms: float | None = None
     last_audio_ms: float | None = None
 
 
 class Judged(Model):
-    """A verdict judged: whether it is its kind's action, whether the agent stopped, how many
-    requests decided the overlap, and, for a stop, its time from the mark or, with none, from
+    """A verdict judged: whether it is its kind's action, whether the agent stopped, whether its
+    deciding request failed (an infrastructure failure, counted apart), the requests that
+    decided each of its overlaps, and, for a stop, its time from the mark or, with none, from
     the speech detector's stop."""
 
     right: bool
     stopped: bool
-    overlap_requests: int = Field(ge=0)
+    failed: bool = False
+    overlap_requests: tuple[int, ...] = ()  # each overlap's window and whole parts
     from_mark_ms: float | None = None
     from_detector_ms: float | None = None
 
@@ -128,10 +137,16 @@ def judge(expected: Action, verdict: Verdict, word_end_ms: float | None) -> Judg
             from_mark = last - word_end_ms
         elif speech_stop is not None:
             from_detector = last - speech_stop
+    requests = verdict.requests
+    deciding = (verdict.decided_turn, verdict.decided_by)
     return Judged(
         right=action == expected,
         stopped=stopped,
-        overlap_requests=sum(request.part != "turn" for request in verdict.requests),
+        failed=any((r.turn_id, r.part) == deciding and r.failure is not None for r in requests),
+        overlap_requests=tuple(
+            sum(r.turn_id == turn and r.part != "turn" for r in requests)
+            for turn in verdict.overlap_turns
+        ),
         from_mark_ms=from_mark,
         from_detector_ms=from_detector,
     )
@@ -158,14 +173,16 @@ class OverlapResult(Model):
 
 
 class OverlapMetrics(Model):
-    """The numbers of a set of clips: its items and variants, those right; those that should
-    stop and those that did, those that should go on and those that stopped; the most requests
-    that decided an overlap and their mean over the overlaps; and the stop times, from the mark
+    """The numbers of a set of clips: its items and variants, those failed (counted apart) and,
+    of the others, those right, those that should stop and those that did, those that should go
+    on and those that stopped; the most requests that decided an overlap and their mean over the
+    overlaps, every variant's; and, of the variants not failed, the stop times, from the mark
     and from the detector, each's count, median and 90th percentile (the mark's also its
     largest)."""
 
     items: int = Field(ge=0)
     variants: int = Field(ge=0)
+    failed: int = Field(default=0, ge=0)
     right: int = Field(ge=0)
     should_stop: int = Field(ge=0)
     stopped: int = Field(ge=0)
@@ -184,17 +201,19 @@ class OverlapMetrics(Model):
 
 def metrics(results: Sequence[OverlapResult]) -> OverlapMetrics:
     """The numbers of `results`."""
-    stop = [r for r in results if r.expected != "go_on"]
-    go_on = [r for r in results if r.expected == "go_on"]
-    counts = [r.judged.overlap_requests for r in results if r.verdict.opened]
-    marked = sorted(r.judged.from_mark_ms for r in results if r.judged.from_mark_ms is not None)
+    scored = [r for r in results if not r.judged.failed]
+    stop = [r for r in scored if r.expected != "go_on"]
+    go_on = [r for r in scored if r.expected == "go_on"]
+    counts = [n for r in results for n in r.judged.overlap_requests]
+    marked = sorted(r.judged.from_mark_ms for r in scored if r.judged.from_mark_ms is not None)
     detected = sorted(
-        r.judged.from_detector_ms for r in results if r.judged.from_detector_ms is not None
+        r.judged.from_detector_ms for r in scored if r.judged.from_detector_ms is not None
     )
     return OverlapMetrics(
         items=len({r.item for r in results}),
         variants=len(results),
-        right=sum(r.judged.right for r in results),
+        failed=len(results) - len(scored),
+        right=sum(r.judged.right for r in scored),
         should_stop=len(stop),
         stopped=sum(r.judged.stopped for r in stop),
         should_go_on=len(go_on),
@@ -224,17 +243,19 @@ class Target(Model):
 
 
 def targets(results: Sequence[OverlapResult], *, held_out: bool) -> tuple[Target, ...]:
-    """The registration's targets on `results`."""
+    """The registration's targets on `results`: the requests' over every overlap, the others
+    over the variants not failed."""
+    scored = [r for r in results if not r.judged.failed]
 
-    def of(kinds: Collection[str] | None) -> list[OverlapResult]:
-        return [r for r in results if kinds is None or r.kind in kinds]
+    def of(kinds: Collection[str]) -> list[OverlapResult]:
+        return [r for r in scored if r.kind in kinds]
 
     def share(group: Sequence[OverlapResult]) -> float | None:
         return sum(r.judged.stopped for r in group) / len(group) if group else None
 
     words = metrics(of(_STOP_WORDS))
     rows: list[tuple[str, list[OverlapResult], float | None, float, bool]] = [
-        ("requests_per_overlap", of(None), _float(metrics(of(None)).requests_max), 2, True),
+        ("requests_per_overlap", list(results), _float(metrics(results).requests_max), 2, True),
         ("stop_word_median_ms", of(_STOP_WORDS), words.marked_median_ms, 700, True),
         ("stop_word_p90_ms", of(_STOP_WORDS), words.marked_p90_ms, 1000, True),
         ("stop_word_max_ms", of(_STOP_WORDS), words.marked_max_ms, 1500, True),

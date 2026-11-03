@@ -139,11 +139,11 @@ def overlap_rows(lines: Sequence[tuple[int, OverlapLine]]) -> list[str]:
         return []
     return [
         "\n## Overlap runs\n",
-        "| # | Time | Run | Commit | Answerer | Split | Items | Variants | Right "
+        "| # | Time | Run | Commit | Answerer | Split | Items | Variants | Failed | Right "
         "| Stop median (ms) | 90th percentile (ms) | Most requests | Targets held | Requests "
         "| Billed seconds | Cost | Complete |\n"
         "| --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- "
-        "| --- | --- | --- |",
+        "| --- | --- | --- | --- |",
         *(
             row(
                 str(number),
@@ -154,6 +154,7 @@ def overlap_rows(lines: Sequence[tuple[int, OverlapLine]]) -> list[str]:
                 line.split,
                 str(line.items),
                 str(line.variants),
+                str(line.failed),
                 str(line.right),
                 ms(line.stop_median_ms),
                 ms(line.stop_p90_ms),

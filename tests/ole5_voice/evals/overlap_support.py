@@ -84,6 +84,7 @@ def stop(
     `last_ms`, each request failing with `failure` when given."""
     heard = tuple(
         OverlapRequest(
+            turn_id=0,
             part=part,
             sent_ms=500.0,
             answered_ms=800.0,
@@ -95,10 +96,12 @@ def stop(
     )
     return OverlapReplay(
         opened=True,
+        overlap_turns=(0,),
         action="stop",
         kind="stop",
         reason="stop_word",
         decided_by="window",
+        decided_turn=0,
         requests=heard,
         speech_stop_ms=1100.0,
         last_audio_ms=last_ms,
