@@ -82,7 +82,9 @@ def _run(built: Built, body: Callable[[VoiceCalls], Awaitable[None]]) -> None:
         finally:
             await built.calls.aclose()
 
-    asyncio.run(asyncio.wait_for(run(), timeout=60))
+    # The loop serve() gives uvicorn: on Windows' default Proactor loop an aiortc close can hang
+    # (plan 003's appendix, item 20), and this test then waited out its 60 s once in the gate.
+    asyncio.run(asyncio.wait_for(run(), timeout=60), loop_factory=asyncio.SelectorEventLoop)
 
 
 def test_voices_entry_point_meets_the_protocols_api_builds_it_with(settings: VoiceSettings) -> None:
@@ -259,7 +261,7 @@ def test_an_offer_before_start_twice_or_that_aioice_hangs_on_is_refused(
             await built.calls.aclose()
             await peer.close()
 
-    asyncio.run(asyncio.wait_for(run(), timeout=60))
+    asyncio.run(asyncio.wait_for(run(), timeout=60), loop_factory=asyncio.SelectorEventLoop)
 
 
 def test_a_call_whose_pipeline_does_not_start_is_refused_its_peer_closed(

@@ -317,7 +317,9 @@ def test_a_groq_that_stops_answering_is_a_timeout_after_timeout_s(answered: byte
         assert server.hung_up.wait(5)
     assert heard == (tone(0.1) if answered else b"")
     assert error is not None and (error.kind, error.retryable) == ("timeout", True)
-    assert 0.3 <= took < 2.0
+    # The timeout runs on the loop's clock (time.monotonic), which ticks every 15.6 ms on
+    # Windows, so it can end up to one tick before perf_counter's 0.3 s.
+    assert 0.3 - 0.016 <= took < 2.0
 
 
 @pytest.mark.parametrize("file_text", [None, " \n"])
