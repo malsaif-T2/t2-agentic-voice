@@ -527,7 +527,7 @@ run C, which was step 28, are this one session)
     which is transcribed and kept on the timeline but, by the drop rule, never said back, so M3's
     check that listening sounds do not interrupt the agent has M2's recordings to run on; and in
     each Arabic call «وقف» at normal volume during a third echo, never said back either, for M3's
-    stop targets (plan 005's Q2 (b), "The owner's decisions", 2026-11-03); the owner
+    stop targets (M3's plan, its Q2 (b): "The owner's decisions", 2026-11-03); the owner
     checks the microphone and playback and says whether each turn came back. The session is four
     calls, an Arabic and an English call on each device, each under `limits.max_call_s` (600 s);
     each joins through the Ole5 app's token route with the access code (Q4), the recording box
@@ -2011,7 +2011,7 @@ What the owner has already said that binds M2, in the owner's words where they w
     not read the key's limits. Kept: E (E1 and E2, offline with `poe eot`, no spend) and held-out E
     at the close (aggregates only, no spend); step 30's corrections of the design's factual slips,
     made by an agent while the owner holds the session.
-- 2026-11-03, in plan 005's session (M3), its Q2 settled as "(a) and (b)": (b) adds a few «وقف»
+- 2026-11-03, in the session drafting M3's plan, its Q2 settled as "(a) and (b)": (b) adds a few «وقف»
   over an echo to this plan's step 18 session, so M3's stop targets are also checked on M2's
   recordings. In M2's echo mode such a «وقف» is transcribed and kept on the timeline but, by the
   drop rule, never said back. Step 18 and "What the owner does", step 3, carry it.
@@ -2828,7 +2828,7 @@ the run it touches.
    - on the laptop's speakers, an Arabic call (`ar-SA`): three Saudi turns (one that pauses
      mid-sentence, one with a product term, one with a number or a ticket number), then three MSA
      turns; press Stop once during an echo, during another echo say a listening sound («اها» or
-     «ايوه») once, and during a third echo say «وقف» once at normal volume (plan 005's Q2 (b));
+     «ايوه») once, and during a third echo say «وقف» once at normal volume (M3's plan, its Q2 (b));
    - on the speakers, an English call: three turns, one with a product term;
    - on the wired headset, the Arabic call again, its listening sound and «وقف» included, pressing
      Esc once during an echo instead of Stop;
