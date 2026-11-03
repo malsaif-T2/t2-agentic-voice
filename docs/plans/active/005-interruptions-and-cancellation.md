@@ -357,6 +357,25 @@ milestone a contract it cannot build on. Everything else becomes a row in
   f3f328a (its tree 1f007ff's), B as 35daec6. The gate after B's merge: 2 failed, '3526 passed',
   two of B's tests expecting Block 0's empty caption list, which A filled (B's fix round, item 0).
   The tracks' debt is TD-103 to TD-107.
+- 2026-11-03: The fix rounds and the merges. **B's fix round** (one agent on the merged code,
+  `plan-005-b-fixes` from 35daec6; 24a9708 to 3c79c1c): the two tests the merge broke; whole
+  commands said while the agent is silent (`domain.interruptions.whole_command`; a repeat request
+  says the last reply again, an utterance of only stop or pause words is not said back; a test
+  plays the rehearsal's steps 1 and 2 end to end with Track A's rule); a window's repeat waits for
+  the whole overlap; a repeat-only transcript is the agent's own when a played clause holds any
+  repeat word; a decision that raises goes on, its `unduck` following; io.py's late overlap part.
+  Gate at 3c79c1c: 'TOTAL 11119 0 100%', '3634 passed, 1 skipped'. **E's fix round** (bbe224a to
+  a58cba6): requests counted per overlap (`OverlapRequest.turn_id`, `OverlapReplay.overlap_turns`
+  and `decided_turn`); the recorder shows the waveform and requires a mark for a one-clause stop
+  or pause line (and offers one for a line over a reply), the server checking the same rule;
+  the stale split's FIX lines name `--keep`; `poe overlap` plays a smoke clip first and stops a
+  run still rate-limited, a variant whose deciding request failed counted apart. Gate at a58cba6:
+  'TOTAL 11525 0 100%', '3340 passed, 1 skipped'. Merged into `plan-005-integration`: B's fixes as
+  a7455a9, C as 3bf7572, D as 3112415, E as 61388c9. Deviation: the four merges were made one
+  after another and the full gate run once, on 61388c9, rather than after each merge: C and D
+  touch files no other track touched, and each track had passed its own gate. That gate:
+  'TOTAL 12221 0 100%', '3732 passed, 1 skipped, 1 warning in 366.25s (0:06:06)'. Their debt is
+  TD-108 and TD-109. Next: step 9's check and step 10's review, run in parallel.
 
 ## Decision log
 
