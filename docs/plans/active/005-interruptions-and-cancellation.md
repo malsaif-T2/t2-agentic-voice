@@ -2,8 +2,8 @@
 
 Status: active · Milestone: M3 · Started: 2026-11-03
 
-*A draft for the owner's approval: nothing is built until the owner has answered Q1 to Q4 and
-plan 003 has merged into the main branch (step 2).*
+*Approved by the owner on 2026-11-03 in the answers to Q1 to Q7 ("The owner's decisions"); not
+started: the owner gives the start once M2 is finished, and nothing is built before then.*
 
 ## Goal
 
@@ -19,8 +19,8 @@ clause, which a repeat request uses and M4's talker reads. It is library behavio
 echo mode, with Ole5's word additions as settings. The plan registers its targets before any
 result and checks them on the golden set's overlap clips and on M2's call recordings; the
 rehearsal's stop and repeat steps then pass in a live call. It also settles, from M2, the
-language a live call sends Whisper and the speech-to-text noise on another day. Every number
-describes one speaker, the owner (D-006).
+language a live call sends Whisper and the speech-to-text noise on another day, and it tunes when
+a turn ends (the owner, Q6). Every number describes one speaker, the owner (D-006).
 
 ## Acceptance criteria
 
@@ -86,6 +86,9 @@ describes one speaker, the owner (D-006).
   log.
 - [ ] The language a live call sends Whisper is set by the registered rule (runs R5 to R7), and
   the noise on another day (TD-032) is recorded.
+- [ ] The turn defaults are tuned by the registered rule E, offline with `uv run poe eot`, on the
+  paused requests with Q2's new ones: a default moves only where E's keep rule holds on dev and
+  held-out confirms it.
 - [ ] `uv run poe overlap` measures the overlap clips through the replay; its `reference`
   answerer scores every verdict right and 0 ms inside `poe check`.
 - [ ] The targets hold on dev (O1, with O2 its noise), on held-out once (H3, aggregates only) and
@@ -106,7 +109,8 @@ calls, which needs `TextCall` and so moves to M4 with it; the Bluetooth hands-fr
 M1 found no Bluetooth gap (plan 002's Future improvements) and the live calls show whether one is
 needed; the guide's `audio-troubleshooting.md`, written with the Bluetooth warning. **Out:** the
 talker (M4), so the scope's model and lookup parts are tested with fakes; the pacing of
-text-to-speech across turns (TD-066, M6); the turn defaults, unless the owner says so (Q6).
+text-to-speech across turns (TD-066, M6); Smart Turn fine-tuned on the owner's turns (the
+roadmap's "Planned later"): E tunes its settings only.
 
 **From M1 and M2.** Plan 002's Future improvements give M3 the filter (F), the rule's handling of
 short Saudi words (Q4), the first window (750 ms from run W3) and the noise on another day
@@ -121,9 +125,11 @@ decisions"): runs R5 to R7, the language a live call sends Whisper, with its ope
 (step 13). The timing runs T1 and T2 left M2 without coming to M3, and the prompt arm for
 product terms (plan 003's Q16) went to M4.
 
-**Order with plan 003.** M3's Block 0 is cut from the main branch after plan 003's step 17 merges
-`plan-003-integration` there; M3 builds on `plan-005-integration` and merges into the main branch
-only after plan 003's run C, whose calls run from the main checkout on M2's echo.
+**Order with plan 003.** M3 starts when the owner gives the start, once M2 is finished. Its
+Block 0 is cut from the main branch, which then holds `plan-003-integration` (merged after plan
+003's step 16); M3 builds on `plan-005-integration` and merges into the main branch only after
+plan 003's recorded session (its step 18, run C), whose calls run from the main checkout on M2's
+echo.
 
 Each block is built in its own worktree under `.claude/worktrees/`, with commits named
 `Plan 005: <what>`. Under the owner's rule of 2026-11-03 ("The owner's decisions"), each block or
@@ -136,10 +142,12 @@ milestone a contract it cannot build on. Everything else becomes a row in
 
 **Before Block 0**
 
-1. The owner answers Q1 to Q4. Before Block 0 takes a decision or debt number, the agent lists
-   `docs/plans/active/`, `docs/plans/completed/` and [decisions.md](../../design/decisions.md),
-   and asks the other sessions ([WORKING-RULES.md](../../../WORKING-RULES.md)).
-2. Plan 003's step 17 has merged into the main branch; `plan-005-integration` is cut from it.
+1. M2 is finished and the owner has given the start. Before Block 0 takes a decision or debt
+   number, the agent lists `docs/plans/active/`, `docs/plans/completed/` and
+   [decisions.md](../../design/decisions.md), and asks the other sessions
+   ([WORKING-RULES.md](../../../WORKING-RULES.md)).
+2. `plan-005-integration` is cut from the main branch, and this plan, merged with it, cites the
+   agent-led mode by its decision number.
 
 **Block 0 · interfaces, settings, splits** (one agent)
 
@@ -150,8 +158,11 @@ milestone a contract it cannot build on. Everything else becomes a row in
    (TD-068); `domain/words.py`, `domain/interruptions.py` (an overlap's text, `no_speech_prob`,
    length, the clauses that played and the language's words in, a verdict out) and
    `domain/silence.py`; `voice/session/scope.py`, `history.py` and `overlap.py`; the protocol's
-   new messages; the settings groups, with the generated reference; `testing/audio_call.py`; the
-   fakes, with a slow responder and a lock in `FakeSession`.
+   new messages; the settings groups, with the generated reference, and the `turns` key E's arms
+   need, `smart_turn_threshold` (0.5, a turn's end unchanged at the default: Pipecat 1.15.0's
+   `LocalSmartTurnAnalyzerV3` fixes it at 0.5, line 174, so it needs a subclass reading the
+   probability the base class hands on, `base_smart_turn.py` line 258, which Block 0 confirms);
+   `testing/audio_call.py`; the fakes, with a slow responder and a lock in `FakeSession`.
 4. **Splits before the tracks grow the files** (`[gc] size_watch` 300): `domain/declaration.py`
    (374 lines) keeps only the `phrases=` field, the lists living in `domain/words.py`;
    `voice/session/call.py` (372) hands overlaps to `overlap.py`; `voice/session/playback.py`
@@ -179,10 +190,11 @@ milestone a contract it cannot build on. Everything else becomes a row in
 
 **The recordings**
 
-11. As Q2 settles: the owner records M3's lines with `poe record` on the three devices (the
-    recorder plays a reply while the owner speaks), confirms each in its review mode and marks the
-    end of each stop and wait word (`turn_ends_ms`), and those of the dev talk-over clips; `poe
-    golden` freezes; the new items are split, each existing item keeping its side (whether the
+11. As Q2 and Q6 settled: the owner records M3's lines with `poe record` on the three devices
+    (the recorder plays a reply while the owner speaks over it) and about 20 new paused requests,
+    confirms each in its review mode, and marks the end of each stop and wait word and each true
+    turn end (`turn_ends_ms`), and the stop words' ends on the dev talk-over clips; `poe golden`
+    freezes; the new items are split, each existing item keeping its side (whether the
     split script keeps them is read first: UNVERIFIED). After plan 003's run C: its alignment
     checked (TD-070), each turn that opened over a reply becomes a variant cut from the caller's
     track, carrying the text of the clauses that played over it, and the owner confirms each
@@ -198,27 +210,31 @@ milestone a contract it cannot build on. Everything else becomes a row in
     `stt.live_language`'s default in its own commit, or Q5 does.
 14. **F** (no spend): the filter scored on R1's and R3's stored scorecards; its defaults move in
     their own commit (GP-18).
-15. **O1 and O2:** `poe overlap` on dev, twice at one commit, at least an hour apart, history
+15. **E** (no spend): `poe eot` on dev's paused requests, the base twice, then each arm; a kept
+    arm's defaults move in their own commit, before O1, so O1 measures stops with the turn
+    defaults M3 keeps; held-out E once, at step 17.
+16. **O1 and O2:** `poe overlap` on dev, twice at one commit, at least an hour apart, history
     lines carried to the main branch in their own commits; at most one dated amendment of the
     rule, scored offline on their stored transcripts, before H3 and C3.
-16. **H3 and C3:** held-out once (aggregates only), and run C's overlaps with M3's new held-out
-    lines. If every target holds, `interruptions.mode` defaults to `two_step` in its own commit;
-    if one fails, it goes to the owner with its numbers.
+17. **H3 and C3:** held-out once (aggregates only), with held-out E, and run C's overlaps with
+    M3's new held-out lines. If every target holds, `interruptions.mode` defaults to `two_step`
+    in its own commit; if one fails, it goes to the owner with its numbers.
 
 **The live calls**
 
-17. From the main checkout after M3's merge, through the Ole5 app's dev server, in Chrome: the
+18. From the main checkout after M3's merge, through the Ole5 app's dev server, in Chrome: the
     rehearsal's steps 1 and 2 on the laptop's speakers, then on the wired headset; a call on the
     speakers with the owner silent through five replies; push-to-talk tried on the speakers. The
     agent reads each call's trace and `CallReport`.
 
 **Close**
 
-18. The guide's `concepts.md` (the two-step interruption, the cancel scope, the heard history, a
+19. The guide's `concepts.md` (the two-step interruption, the cancel scope, the heard history, a
     diagram of one turn) and `browser-client.md`'s M3 part (voice lowering, push-to-talk), each
     sample from a tested file; the decision entries (the cancel scope; the two-step interruption,
     its settings and rule; the presets' words and Q1's ruling; the filter; the heard history and
-    the repeat; `t2v/1`'s new messages; the registered results); `## Future improvements`, with a
+    the repeat; `t2v/1`'s new messages; the live language and the turn defaults; the registered
+    results); `## Future improvements`, with a
     pointer from the roadmap's "Planned later"; the roadmap's M3 row; this plan moved to
     `completed/`; the final gate.
 
@@ -242,8 +258,20 @@ milestone a contract it cannot build on. Everything else becomes a row in
 - 2026-11-03: At the plan-003 session's request, the draft moved to a worktree and branch of its
   own, `plan-005-draft`, cut from `plan-003-integration` at 128f152, with M3's roadmap row linking
   it, which DOC-PLAN needs of an active plan; the cut of M2 that session relayed (R5 to R7 and the
-  noise on another day moved here, T1 and T2 dropped, plan 003's Q16 to M4) is written in. Nothing
-  built. Next: the owner's answers to Q1 to Q4, and plan 003's step 17.
+  noise on another day moved here, T1 and T2 dropped, plan 003's Q16 to M4) is written in.
+- 2026-11-03: The owner answered Q1 to Q7 ("The owner's decisions"): the agent's recommendations
+  for Q1 to Q5 and Q7, and for Q6 the tuning in M3, asking the agent to say if it fits a later
+  milestone better. The agent's answer, given to the owner the same day: M3 fits it, for three
+  reasons. Silero's stop delay (`vad_stop_ms`) is one value per pipeline, which both a turn's end
+  and an overlap's second request wait on, so tuning it in a later milestone would move M3's
+  registered stop times; E therefore tunes only what ends a turn after that delay. `poe eot`
+  runs offline with no spend, on E1, M2's baseline. And Q2's recording session takes the new
+  paused requests too (plan 003's estimate for about 20 of them: about an hour on the three
+  devices). E's registration is added below. Plan 003's cut, read on `plan-003-integration`
+  (818d27d): `plan-003-integration` merges into the main branch after its step 16, and run C is
+  part of its step 18's session (four calls in Chrome, a listening sound in each Arabic call
+  during an echo, no Bluetooth call); Q2's (b), a few «وقف» over an echo in that session, is the
+  plan-003 session's to add. Nothing built; M3 starts on the owner's word once M2 is finished.
 
 ## Decision log
 
@@ -281,16 +309,25 @@ affects.
   back a turn the caller stopped before hearing its answer.
 - 2026-11-03: The replay keeps the design's name, `AudioCall`, and is reached through the `evals`
   facade until M4 makes the testing kit public with `TextCall`.
+- 2026-11-03: `turns.vad_stop_ms` stays 200 ms and is no arm of E: an overlap's second request
+  waits on it, so a longer stop would slow every stop by as much. E's arms act only after it:
+  Smart Turn's threshold and its fallback.
 
 ## The owner's decisions
 
 What the owner has already said that binds M3:
 
+- 2026-11-03, the answers to this plan's questions: "Go with your recommendation for Q1, Q2, Q3,
+  Q4, Q5 and Q7. But for Q6 do the tuning in M3, if you see the turn-ending tuning more suitable
+  and better implemented in later milestones tell me. I will give the start permission for M3 once
+  M2 finish." So Q1 (a), Q2 (a) and (b), Q3 the targets as written, Q4 (a), Q5 (a) if L's rule
+  leaves it open, Q6 (b), Q7 $5; and M3 starts only on the owner's word, once M2 is finished.
 - 2026-11-03, on this draft: "Too not stretch the plan, make it focused on the fundamentals and
   quality, and not about extra unnecessary things."
-- 2026-11-03, as the plan-003 session relayed it (the owner's words are in plan 003): M2 cut to
-  its fundamentals, R5 to R7 (the live language, with its Q15) and TD-032's noise runs moving to
-  M3, T1 and T2 dropped from M2, and the prompt arm for product terms (its Q16) going to M4.
+- 2026-11-03, to the agent's cuts of M2 in plan 003: "Yes, cut them" (plan 003 and the roadmap
+  on `plan-003-integration`, 818d27d, not yet on this branch). So R5 to R7
+  (the live language, with plan 003's Q15) and TD-032's noise runs moved to M3, T1 and T2 left M2,
+  and the prompt arm for product terms (plan 003's Q16) went to M4.
 - 2026-11-03, in plan 003: "This is taking longer than I expected. Focus on things that matter
   for the next milestones and that we will need to build the voice agent. A consent for my or my
   team recordings is not a concern." So the review rule above, and the owner's own recordings
@@ -325,8 +362,9 @@ commands and events; a stop cancelling the scope within 100 ms, no task left; a 
 history's marks; a turn in the tail; `mode = "drop"` unchanged; TD-055 and TD-060.
 
 **Track C · The Pipecat side (`voice`).** Owns `stt_bridge.py` (the window and the overlap),
-`session_bridge.py`, `tts_bridge.py` and `tts_output.py` (TD-064's stop part), and
-`file_transport.py` (a clip fed over a reply). Tests: at most two requests decide an overlap; the
+`session_bridge.py`, `tts_bridge.py` and `tts_output.py` (TD-064's stop part),
+`file_transport.py` (a clip fed over a reply) and `turns.py` (Smart Turn's threshold, a turn's
+end unchanged at its default). Tests: at most two requests decide an overlap; the
 second sent at the detector's stop; no window for an overlap whose speech stops first; the second
 transcript reused when no speech followed; a stop leaves no context of a clause never opened; no
 Pipecat interruption fires.
@@ -439,11 +477,39 @@ registration, moved here unchanged):
   auto-detection got 23 of 35 segments against 32 of 35 with a forced language:
   `Ole5-chatbot/VOICE_LOG.md`, D24); R5 and R6 identical or nearly so (D-024).
 
+**E, the turn defaults** (offline, no spend; Q6, settled):
+- **Data:** the paused requests, each true turn end marked by the owner: dev's 6 items (23
+  variants) with Q2's new ones (about 20 lines on the three devices, split by item), and
+  held-out's 4 items with the new held-out ones, once at step 17 (aggregates only); the secondary
+  set of plan 003's E (every other dev variant with speech) for cut-offs only.
+- **Arms,** each `poe eot` on the file-fed pipeline as plan 003's E1 runs it, every setting on the
+  command line: **E0**, the defaults (E1's: Silero's 200 ms stop; Smart Turn v3.2 at its 0.5
+  threshold, its 3.0 s fallback), run twice at one commit for the noise; **Ea**,
+  `smart_turn_threshold` 0.7; **Eb**, 0.8; **Ec**, 0.7 with the fallback (`smart_turn_stop_ms`)
+  at 2,000 ms, so a finished turn the higher threshold misses waits 2 s rather than 3. A floor of
+  silence is no arm: the owner's pauses run about 0.83 s (`Ole5-chatbot/VOICE_LOG.md`, the
+  prototype's D43), so a floor that bridges them would add about 0.7 s to every turn.
+- **Metrics,** as plan 003's E: cut-offs (a first turn end more than 300 ms before the marked
+  end), misses (none within 4 s after it), and the end-of-turn delay's median and 90th
+  percentile, by item, language and device.
+- **Keep rule:** an arm replaces the defaults if, against E0 on dev, more items have fewer
+  cut-offs than more beyond the noise (the sign test by item, p < 0.05, at least D-024's floor of
+  6 items more better than worse), no item gains a miss, and its median delay rises by at most
+  300 ms (the agent's bound: every turn waits it); of several, the one with the smaller median
+  delay. Held-out confirms it by its aggregates (no more cut-offs than E0's) before the default
+  moves; if it does not, the defaults stay and the numbers go to the owner.
+- **Expected (the agent's):** E0's cut-offs fall on Arabic paused requests (Smart Turn v3.2's
+  published accuracy is 89.76% for Arabic against 94.26% for English, plan 003's registration);
+  a higher threshold removes some of them, at the cost of finished turns that wait for the
+  fallback, which Ec shortens; whether Smart Turn's probabilities on the owner's pauses sit
+  between 0.5 and 0.8 is UNVERIFIED until E0. If E0 shows almost no cut-offs, no arm can pass the
+  floor and the defaults stay.
+
 **Cost and limits** (the agent's arithmetic, $0.111 an hour of billed audio, 10 s a request): L
 about $0.23 (plan 003's estimate) and about 100 minutes with its pauses; O on about 160 dev
 variants, at most 2 requests each, about $0.10 a run, $0.20 for O1 and O2; H3 about $0.04; C3
-about $0.02; the live calls, about 8 call minutes, about $0.14 with Orpheus's Arabic model. About
-$0.63 in all. An O run takes about 40 minutes at the pacer's 10 requests a minute; O1 and O2 run
+about $0.02; the live calls, about 8 call minutes, about $0.14 with Orpheus's Arabic model; E
+and F nothing. About $0.63 in all. An O run takes about 40 minutes at the pacer's 10 requests a minute; O1 and O2 run
 an hour apart with no other Whisper use around them, under the published 7,200 audio seconds an
 hour. Orpheus's published 100 requests a day bind only the live calls.
 
@@ -453,58 +519,62 @@ before the caller has finished. *Listening sound:* «اها», "mm-hmm": "I am l
 *Own echo:* the agent's voice coming back into the microphone from the speakers. *Text from
 silence:* words Whisper writes for audio that holds none.
 
-**Open questions, each settled before the step it gates**
+**The owner's questions, all settled on 2026-11-03** ("The owner's decisions")
 
 Before Block 0:
 
-- **Q1. The presets' words and "No item in the product."** The presets need words that are also
-  one-word items of the golden set («وقف», «تمام», "okay", "wait"), which the test that no item's
-  text is in the source refuses; plan 003's Q6 left this to M3. Options: (a) one ruling covers
-  the lists Track A writes from the prototype's, each word an entry of `allowed_in_source.toml`
-  quoting it; those items then measure how the rule meets Whisper's mishearings, not whether the
-  word is listed; (b) a ruling per word; (c) the held-out words left out of the presets, which
-  keeps held-out blind but leaves the agent deaf to them. **The agent recommends (a).**
-- **Q2. New recordings.** Dev holds «وقف» over a reply in 2 variants, every overlap clip is on the
-  laptop's microphone, and no word's end is marked. Options: (a) a recorder session of M3's
-  lines, the recorder playing a reply, on the laptop's speakers, the wired headset and the
-  Bluetooth headset: «وقف» three times at normal volume, the other stop and wait words, the
-  rehearsal's repeat requests, a few listening sounds and silence over a reply (about 30 to 45
-  minutes), then the review with each word's end marked (about 15 minutes); (b) only overlap
-  lines added to plan 003's run C (its Q18, in the plan-003 session); (c) the existing clips
-  only, timed from the detector's own stop. **The agent recommends (a), and (b) too,** so the
-  check on M2's recordings tests stops, not only the echo.
-- **Q3. The targets** as registered. **The agent recommends them as written;** "listening sounds
-  do not interrupt" is read as at most 10%, since a misheard listening sound can come back as two
-  words of a request.
-- **Q4. A short output that is no listed word** (Whisper heard «ايوه» as «هل تريد؟»). Options:
-  (a) at most two words under 1.6 s, with no stop, wait, repeat, no or question word: the agent
-  goes on (the prototype's D30), so a misheard listening sound does not stop it, and a misheard
-  short request is missed until the caller repeats it or presses Stop; (b) any two words stop
-  it. **The agent recommends (a).**
+- **Q1. The presets' words and "No item in the product."** *Settled: (a).* The presets need words
+  that are also one-word items of the golden set («وقف», «تمام», "okay", "wait"), which the test
+  that no item's text is in the source refuses; plan 003's Q6 left this to M3. Options: (a) one
+  ruling covers the lists Track A writes from the prototype's, each word an entry of
+  `allowed_in_source.toml` quoting it; those items then measure how the rule meets Whisper's
+  mishearings, not whether the word is listed; (b) a ruling per word; (c) the held-out words left
+  out of the presets, which keeps held-out blind but leaves the agent deaf to them. **The agent
+  recommended (a).**
+- **Q2. New recordings.** *Settled: (a) and (b); (a)'s session also takes Q6's paused requests,
+  and (b) is the plan-003 session's to add to its step 18.* Dev holds «وقف» over a reply in 2
+  variants, every overlap clip is on the laptop's microphone, and no word's end is marked.
+  Options: (a) a recorder session of M3's lines, the recorder playing a reply, on the laptop's
+  speakers, the wired headset and the Bluetooth headset: «وقف» three times at normal volume, the
+  other stop and wait words, the rehearsal's repeat requests, a few listening sounds and silence
+  over a reply (about 30 to 45 minutes), then the review with each word's end marked (about 15
+  minutes); (b) a few overlap lines added to plan 003's run C; (c) the existing clips only, timed
+  from the detector's own stop. **The agent recommended (a), and (b) too,** so the check on M2's
+  recordings tests stops, not only the echo.
+- **Q3. The targets** as registered. *Settled: as written.* "Listening sounds do not interrupt"
+  is read as at most 10%, since a misheard listening sound can come back as two words of a
+  request.
+- **Q4. A short output that is no listed word** (Whisper heard «ايوه» as «هل تريد؟»). *Settled:
+  (a).* Options: (a) at most two words under 1.6 s, with no stop, wait, repeat, no or question
+  word: the agent goes on (the prototype's D30), so a misheard listening sound does not stop it,
+  and a misheard short request is missed until the caller repeats it or presses Stop; (b) any two
+  words stop it. **The agent recommended (a).**
 
 Before the runs:
 
-- **Q5. The language a live call sends Whisper, when L's rule does not decide** (plan 003's
-  Q15, moved here). If A3 is not worse: (a) auto-detect for live calls, the widget's language
-  buttons kept only as a preference; (b) the session's language anyway; (c) the prototype's double
-  transcription, each turn sent as Arabic and as English (its D24), twice the requests at 10 s
-  each against Whisper's 20 a minute. **The agent recommends (a) in that case,** and (b)
-  otherwise, as the rule already gives.
-- **Q6. The turn defaults,** which plan 003's Q14 left to M3. Options: (a) not tuned in M3, E1's
-  baseline standing until M4's talker makes a cut-off costly; (b) about 20 more paused requests
-  recorded in Q2's session and tuned in M3. **The agent recommends (a),** unless E1 shows
-  cut-offs on at least 2 of its 6 dev items.
-- **Q7. The budget cap** for M3's paid runs and calls, against about $0.63. **The agent
-  recommends $5,** M1's cap.
+- **Q5. The language a live call sends Whisper, when L's rule does not decide** (plan 003's Q15,
+  moved here). *Settled: (a) if L's rule leaves it open.* If A3 is not worse: (a) auto-detect for
+  live calls, the widget's language buttons kept only as a preference; (b) the session's language
+  anyway; (c) the prototype's double transcription, each turn sent as Arabic and as English (its
+  D24), twice the requests at 10 s each against Whisper's 20 a minute. **The agent recommended
+  (a) in that case,** and (b) otherwise, as the rule already gives.
+- **Q6. The turn defaults,** which plan 003's Q14 left to M3. *Settled: (b), tuned in M3 by E's
+  registration; the agent's view that M3 fits it is in the progress log.* Options: (a) not tuned
+  in M3, E1's baseline standing until M4's talker makes a cut-off costly; (b) about 20 more paused
+  requests recorded in Q2's session and tuned in M3. The agent had recommended (a), unless E1
+  showed cut-offs on at least 2 of its 6 dev items.
+- **Q7. The budget cap** for M3's paid runs and calls, against about $0.63. *Settled: $5,* M1's
+  cap, as the agent recommended.
 
 ## What the owner does
 
-1. **Before Block 0:** answer Q1 to Q4.
-2. **After Block 0:** record M3's lines with `poe record` on the three devices (Q2), then confirm
-   each in the review, marking the end of each stop and wait word.
+1. **The start:** once M2 is finished, give the start of M3.
+2. **After Block 0:** record M3's lines and about 20 paused requests with `poe record` on the
+   three devices (Q2, Q6, about 1.5 to 2 hours), then confirm each in the review, marking the end
+   of each stop and wait word and each paused request's true turn end.
 3. **After plan 003's run C:** confirm the imported overlaps' references and stop words' ends.
-4. **Before the first paid run:** Q6 and Q7, and whether anything else uses the key during the
-   runs; Q5 only if L's rule leaves it open.
-5. **The live calls** (step 17): in Chrome, the rehearsal's steps 1 and 2 on the laptop's
+4. **Before the first paid run:** say whether anything else uses the key during the runs; Q5's
+   answer applies only if L's rule leaves it open.
+5. **The live calls** (step 18): in Chrome, the rehearsal's steps 1 and 2 on the laptop's
    speakers and on the wired headset, a call on the speakers staying silent through five replies,
    and push-to-talk on the speakers; say whether each stop and repeat worked.
