@@ -193,6 +193,11 @@ steps pass in a live call.
   its context and bound parameters, the output guard's ID rule, progress lines, a knowledge
   protocol and helper tool, the text-call testing kit and its fakes, `t2v check`, and the
   latency measurement; the Qdrant adapter and the prompts stay Ole5's.
+- *For M4's plan to weigh*, from the next phase's study
+  ([agent-led-mode.md](../design/agent-led-mode.md)): fixed spoken lines carry no stop, wait,
+  repeat, yes, send or listening word, since an echo through the speakers could be heard as
+  the caller's own; and the talker's tool list stays small (Groq advises 3-5 tools a request,
+  10-15 at most).
 - *From M2* (plan 003's Q16, the owner, 2026-11-03): the prompt arm that keeps product terms in
   Latin script (term recall was 0.333 on dev for large-v3), measured on the golden set (D-024's
   floor of 6 items) once the vocabulary that becomes the Whisper prompt lands.
@@ -222,6 +227,9 @@ rehearsal's password, archiving, and English questions pass.
   for M5's plan to weigh: a ticket number heard is read back before it is acted on, never taken
   as heard (large-v3 got 4 of the 12 full 16-digit readings right, each miss a digit error), and
   the ticket is found by the session's verified identity.
+- *For the next phase* (D-050): the consent core (read-back, receipt, yes rule, outbox, record)
+  is built so that a second executor can be added later, one that resumes a team's paused
+  agent instead of calling an `@action`. Nothing else in M5 changes.
 
 *Done when* simulated calls create the right tickets with zero false action claims; the
 rehearsal's ticket flow passes, where an eager «نعم أرسلها» over the closing question creates the
@@ -263,11 +271,21 @@ targets hold at the cap on live calls.
 
 *Done when* the script passes on every device and the owner accepts the report.
 
+## The next phase, after M7
+
+- **Voice for a team's existing agent: the agent-led mode** (D-050). A team plugs in its
+  existing LangChain or LangGraph agent, unchanged, and talks to it live. Its writes run only
+  through a pause our yes rule releases, after a read-back; read-only agents come first. The
+  owner chose to finish the native mode and the Ole5 Voice Agent first (2026-11-02). The
+  design agreed in direction, the decisions still to take, the experiments and the sample
+  agents it needs are in [agent-led-mode.md](../design/agent-led-mode.md). It gets a milestone
+  and a plan once M7 is done.
+
 ## Planned later (not yet scheduled)
 
 - The thinker: the talker hands a complex task to a slower reasoning agent in the background;
   optional and off by default (D-015), planned after M7 (the design's section 6.2 and open
-  question 16).
+  question 16). Once the agent-led mode exists, the owner decides whether it is still needed.
 - For teammates: the drop-in web widget, the server configured without Python, and an agent
   plugged in over HTTP (D-014, later options).
 - Typed chat in the widget (D-009: a bonus).
@@ -307,6 +325,8 @@ targets hold at the cap on live calls.
   (D-025).
 - From garbage collection round 1 (plan 004): the library's base error is `T2VoiceError`
   (D-026), and the checks ARCH-DEPS and DOC-SAMPLE (D-027).
+- The next phase: voice for a team's existing agent, as a second, agent-led mode after the
+  Ole5 Voice Agent, and the talker stays our own (D-050).
 
 ## Open questions (need a human decision)
 

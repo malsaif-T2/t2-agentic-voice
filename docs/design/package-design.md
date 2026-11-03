@@ -50,6 +50,8 @@ This is the "approach 3" design the manager approved: a dedicated voice agent, n
 - **Only the backend acts.** The talker asks. The library runs the action after the caller's heard consent, records it, and words the outcome from the real result.
 - **Every outside service is behind a port.** A provider (Groq today, D-004) is swapped by a setting that picks a built-in adapter, or by passing another adapter object in code, never by forking.
 
+*The next phase (D-050):* after the Ole5 Voice Agent, a second, agent-led mode lets a team's existing LangChain or LangGraph agent run as is behind the same voice layer, and its writes run only after the caller's heard yes ([agent-led-mode.md](agent-led-mode.md)). The native mode this document describes does not change.
+
 The first user is the Ole5 Voice Agent, rebuilt as `apps/ole5-voice-agent` on the public API only, exactly as a teammate would build it. `examples/minimal` is the quickstart, and it proves the core works without Ole5 code.
 
 ### 1.2 v1 scope
@@ -404,7 +406,7 @@ from t2_agentic_voice import (
     description="Find a laptop or phone assigned to the caller, by the asset tag on its sticker.",
     timeout_s=3,
     on_interrupt="cancel",
-    progress=Say(ar="لحظة، أشيك على الجهاز", en="One moment, checking that device."),
+    progress=Say(ar="أشيك لك على الجهاز", en="Checking that device for you."),
 )
 async def lookup_device(
     ctx: CallContext[HelpdeskDeps],
@@ -1639,7 +1641,9 @@ M4's bullet "deeper troubleshooting as a background job" is the thinker pattern.
 
 ### 16.2 After M7
 
-No order is fixed among these; the owner chooses:
+The owner chose the next phase: **the agent-led mode** (D-050, [agent-led-mode.md](agent-led-mode.md)), voice for a team's existing LangChain or LangGraph agent used as is. It takes in the "LangChain tool helpers" below.
+
+No order is fixed among the others; the owner chooses:
 - **The thinker**, first in `experimental`: `ThinkerBackend`, an LLM thinker on Groq, the delivery and stale rules, then a LangGraph adapter and an example with no Ole5 code. Once it is stable, it moves out of `experimental`.
 - The drop-in web widget, and with it a stable client and protocol message list.
 - Typed chat (it needs a consent decision first).
