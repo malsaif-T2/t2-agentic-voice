@@ -525,7 +525,9 @@ run C, which was step 28, are this one session)
     does", step 3): a few turns in each language (Saudi Arabic, MSA and English), Stop and Esc
     pressed once each during an echo, and in each Arabic call a listening sound during another echo,
     which is transcribed and kept on the timeline but, by the drop rule, never said back, so M3's
-    check that listening sounds do not interrupt the agent has M2's recordings to run on; the owner
+    check that listening sounds do not interrupt the agent has M2's recordings to run on; and in
+    each Arabic call «وقف» at normal volume during a third echo, never said back either, for M3's
+    stop targets (plan 005's Q2 (b), "The owner's decisions", 2026-11-03); the owner
     checks the microphone and playback and says whether each turn came back. The session is four
     calls, an Arabic and an English call on each device, each under `limits.max_call_s` (600 s);
     each joins through the Ole5 app's token route with the access code (Q4), the recording box
@@ -2009,6 +2011,10 @@ What the owner has already said that binds M2, in the owner's words where they w
     not read the key's limits. Kept: E (E1 and E2, offline with `poe eot`, no spend) and held-out E
     at the close (aggregates only, no spend); step 30's corrections of the design's factual slips,
     made by an agent while the owner holds the session.
+- 2026-11-03, in plan 005's session (M3), its Q2 settled as "(a) and (b)": (b) adds a few «وقف»
+  over an echo to this plan's step 18 session, so M3's stop targets are also checked on M2's
+  recordings. In M2's echo mode such a «وقف» is transcribed and kept on the timeline but, by the
+  drop rule, never said back. Step 18 and "What the owner does", step 3, carry it.
 - 2026-11-01: "Approve all", for the roadmap's M1 to M7 and the package design as amended (D-017),
   as plan 000 records it. So M2's goal and *Done when*, and the design's 16.1 M2 row, bind this
   plan, as the owner's rulings of 2026-11-03 (above) amend them: the deployment and the other
@@ -2821,11 +2827,11 @@ the run it touches.
    meanwhile. The script, about 20 to 30 minutes in four calls (a call ends at 10 minutes):
    - on the laptop's speakers, an Arabic call (`ar-SA`): three Saudi turns (one that pauses
      mid-sentence, one with a product term, one with a number or a ticket number), then three MSA
-     turns; press Stop once during an echo, and during another echo say a listening sound («اها» or
-     «ايوه») once;
+     turns; press Stop once during an echo, during another echo say a listening sound («اها» or
+     «ايوه») once, and during a third echo say «وقف» once at normal volume (plan 005's Q2 (b));
    - on the speakers, an English call: three turns, one with a product term;
-   - on the wired headset, the Arabic call again, its listening sound included, pressing Esc once
-     during an echo instead of Stop;
+   - on the wired headset, the Arabic call again, its listening sound and «وقف» included, pressing
+     Esc once during an echo instead of Stop;
    - on the headset, the English call again.
 
    After each call, say which turn, if any, did not come back, and whether the microphone, playback,
