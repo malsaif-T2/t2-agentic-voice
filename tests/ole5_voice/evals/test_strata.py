@@ -61,9 +61,9 @@ PROPOSAL = {
     "noise": (0, 0, 0, 0, 2),
     "echo_only": (0, 0, 0, 0, 2),
 }
-# M3's lines, the agent's proposal in plan 005 (Q2 and Q6, settled on 2026-11-03): said over a
+# Plan 005's lines, the agent's proposal there (Q2 and Q6, settled on 2026-11-03): said over a
 # reply, but for the paused requests, which are said alone.
-M3_PROPOSAL = {
+PLAN_005_PROPOSAL = {
     "stop_word": (6, 1, 3, 0, 0),
     "repeat_request": (2, 0, 1, 0, 0),
     "listening_sound": (3, 0, 2, 0, 0),
@@ -91,7 +91,7 @@ def test_the_script_holds_the_approved_proposals_lines() -> None:
     script = read_toml(EVALS / "script.toml", Script)
     plan_002, plan_005 = script.lines[:52], script.lines[52:]
     assert Counter((line.kind, line.language) for line in plan_002) == _counted(PROPOSAL)
-    assert Counter((line.kind, line.language) for line in plan_005) == _counted(M3_PROPOSAL)
+    assert Counter((line.kind, line.language) for line in plan_005) == _counted(PLAN_005_PROPOSAL)
     assert len(script.lines) == 93 and len({line.id for line in script.lines}) == 93
     over = [line for line in plan_005 if line.kind != "paused_request"]
     assert all(line.reply in REPLIES for line in over)
