@@ -142,9 +142,10 @@ def patch_stores(monkeypatch: pytest.MonkeyPatch) -> None:
 
 @dataclass
 class Harness:
-    """A runtime on the fakes, and the fakes it was given."""
+    """A runtime of `agent` on the fakes, and the fakes it was given."""
 
     settings: VoiceSettings
+    agent: VoiceAgent = AGENT
     identity: FakeIdentity = field(default_factory=FakeIdentity)
     calls: FakeCalls = field(default_factory=FakeCalls)
     clock: FakeClock = field(default_factory=FakeClock)
@@ -159,7 +160,7 @@ class Harness:
             return self.calls
 
         self.runtime = VoiceRuntime(
-            AGENT,
+            self.agent,
             settings=self.settings,
             identity=self.identity,
             providers=Providers(stt=self.stt, tts=self.tts),
