@@ -14,6 +14,7 @@ from t2_agentic_voice.core.settings.stt import SttSettings
 from t2_agentic_voice.core.settings.words import WordSettings
 from t2_agentic_voice.domain.declaration import Language, VoiceAgent
 from t2_agentic_voice.domain.ports.speech_to_text import Transcript
+from t2_agentic_voice.domain.silence import CAPTIONS
 from t2_agentic_voice.domain.words import PRESET_WORDS, Phrases
 from t2_agentic_voice.voice.protocol import Duck
 from t2_agentic_voice.voice.session.commands import HearOverlap, Send
@@ -117,10 +118,13 @@ def test_a_window_that_goes_on_waits_and_the_whole_overlap_decides(
     assert overlaps.settle() == 1 and overlaps.settle() == 0  # one unduck, once
 
 
+@pytest.mark.parametrize(
+    ("caption_filter", "captions"), [(True, CAPTIONS), (False, ())], ids=["on", "off"]
+)
 def test_a_window_that_stops_decides_and_the_rule_reads_the_calls_words_bounds_and_filter(
-    settings: VoiceSettings, rule: FakeRule
+    settings: VoiceSettings, rule: FakeRule, caption_filter: bool, captions: tuple[str, ...]
 ) -> None:
-    stt = SttSettings(no_speech_max=0.6, caption_filter=True)
+    stt = SttSettings(no_speech_max=0.6, caption_filter=caption_filter)
     custom = two_step(settings, min_words=3, short_words=1, short_s=1.2)
     setup = FakeSessionIO(custom.model_copy(update={"stt": stt})).setup
     overlaps = Overlaps(setup)
@@ -130,7 +134,7 @@ def test_a_window_that_stops_decides_and_the_rule_reads_the_calls_words_bounds_a
     assert overlaps.get(0).decided_by == "window"  # type: ignore[union-attr]
     (given,) = rule.given
     assert given["words"] == call_words(setup) and given["no_speech_max"] == 0.6
-    assert given["bounds"] == (3, 1, 1.2) and given["captions"] == ()  # the list is Track A's
+    assert given["bounds"] == (3, 1, 1.2) and given["captions"] == captions
     assert rule.judged[0].no_speech_prob == 0.1 and rule.judged[0].speech_s == pytest.approx(0.2)
 
 
