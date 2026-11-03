@@ -43,6 +43,7 @@ from t2_agentic_voice.core.settings.tts import TtsSettings, TtsVoice
 from t2_agentic_voice.core.settings.turns import TurnSettings
 from t2_agentic_voice.core.settings.words import WordSettings
 from t2_agentic_voice.domain.declaration import Language, VoiceAgent
+from t2_agentic_voice.domain.words import Phrases, Words
 
 if TYPE_CHECKING:
     from t2_agentic_voice.api.runtime import Providers, VoiceRuntime
@@ -66,6 +67,7 @@ __all__ = [
     "LimitSettings",
     "LoggingSettings",
     "NotFoundError",
+    "Phrases",
     "PrivacySettings",
     "ProviderError",
     "Providers",
@@ -84,6 +86,7 @@ __all__ = [
     "VoiceRuntime",
     "VoiceSettings",
     "WordSettings",
+    "Words",
     "configure_logging",
     "get_logger",
     "status",
