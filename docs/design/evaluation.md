@@ -258,12 +258,17 @@ given after the task's name:
 - `uv run poe eot` (`eot.py`) measures end of turn on the paused requests with the reference
   answerer or the file-fed pipeline, appending an end-of-turn line for a pipeline run;
 - `uv run poe eval-timing` (`timing.py`) times each step of an echo call and appends a timing
-  line.
+  line;
+- `uv run poe overlap` (`overlap.py`) replays the overlap clips over a reply (plan 005's arm O)
+  with the reference answerer, which scores every verdict right and 0 ms inside `poe check`, or
+  the file-fed pipeline's `AudioCall`, which spends, paced at 10 Whisper requests a minute and
+  held under its cap, appending an overlap line for a pipeline run.
 
 The split has no task: `python -m ole5_voice.evals.split` writes it, and a test inside
 `poe check` fails when the committed split is stale. Nor do the calls' manifests:
 `python -m ole5_voice.evals.call_manifests` writes each recorded call's manifest under
-`evals/calls/`. The scores these commands give come from
+`evals/calls/`, and `python -m ole5_voice.evals.import_calls` imports the overlaps of the
+recorded calls the owner labelled as items, checking each call's alignment first (TD-070). The scores these commands give come from
 the library's scorers, imported from its public `t2_agentic_voice.evals` facade (and the
 normalizers from `t2_agentic_voice.languages`), never from its layers (ARCH-PUBLIC, D-021,
 D-022). A team with its own golden set writes its own commands around the same scorers, as the

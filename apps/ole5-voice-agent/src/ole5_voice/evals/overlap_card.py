@@ -3,7 +3,8 @@ overlap_score.py's): what the run was, its totals, breakdowns and targets, its s
 variant, none for a held-out run, whose numbers are aggregates only (`HELD_OUT_MIN_ITEMS`), as
 `poe eot`'s are: no variant and no item named, and a stratum value covering fewer items pooled
 into `other`, itself left out when it too covers fewer. Strict, as every scorecard: one read back
-is checked as it is read.
+is checked as it is read. `close_run` writes it whole at a run's end, and for a run of the replay
+its history line (`line_of`).
 """
 
 from __future__ import annotations
@@ -11,13 +12,21 @@ from __future__ import annotations
 from collections import defaultdict
 from collections.abc import Callable, Iterable, Sequence
 from datetime import datetime
+from pathlib import Path
 from typing import Final, Literal, Self
 
 from pydantic import Field, model_validator
+from t2_agentic_voice import get_logger
 
+from ole5_voice.evals.items import HISTORY_FILE
 from ole5_voice.evals.models import OTHER, Commit, Model, Name, Sha256, Split
-from ole5_voice.evals.overlap_score import OverlapMetrics, OverlapResult, Target, metrics
-from ole5_voice.evals.runs import HELD_OUT_MIN_ITEMS, Note, Shown
+from ole5_voice.evals.overlap_run import Progress
+from ole5_voice.evals.overlap_score import OverlapMetrics, OverlapResult, Target, metrics, targets
+from ole5_voice.evals.run_lines import AnyLine, OverlapCount, OverlapLine
+from ole5_voice.evals.runs import HELD_OUT_MIN_ITEMS, SCORECARD_FILE, Note, Shown, cost_usd
+
+log = get_logger(__name__)
+AppendLine = Callable[[AnyLine, Path], None]  # `history.append_line`, or a test's
 
 
 class OverlapRun(Model):
@@ -107,3 +116,86 @@ def _pooled(groups: dict[str, list[OverlapResult]]) -> dict[str, list[OverlapRes
 
 def _items(results: Iterable[OverlapResult]) -> int:
     return len({result.item for result in results})
+
+
+def close_run(
+    info: OverlapRun,
+    progress: Progress,
+    total: int,
+    spent: tuple[int, float],
+    out: Path,
+    data: Path,
+    append_line: AppendLine,
+) -> int:
+    """The scorecard, and for a run of the replay its history line; 0 when complete."""
+    complete = progress.stopped is None and len(progress.results) == total
+    held_out = info.split == "held-out"
+    kept = progress.results if complete or not held_out else []
+    requests, billed = spent
+    card = OverlapScorecard(
+        run=info,
+        complete=complete,
+        stopped=progress.stopped,
+        totals=metrics(kept),
+        breakdowns=breakdowns(kept, held_out=held_out),
+        targets=targets(kept, held_out=held_out),
+        requests=requests,
+        billed_seconds=billed,
+        cost_usd=cost_usd(billed, info.price_per_hour_usd or 0.0),
+        variants=() if held_out else tuple(kept),
+    )
+    partial = out / f".{SCORECARD_FILE}.partial"
+    partial.write_bytes((card.model_dump_json(indent=2) + "\n").encode("utf-8"))
+    partial.replace(out / SCORECARD_FILE)
+    if info.answerer == "pipeline":
+        line = line_of(card)
+        append_line(line, data / HISTORY_FILE)
+        append_line(line, out / HISTORY_FILE)
+    totals = card.totals
+    held = sum(target.holds is True for target in card.targets)
+    log.info(
+        "run_finished",
+        complete=complete,
+        variants=totals.variants,
+        right=totals.right,
+        targets_held=f"{held} of {len(card.targets)}",
+        cost_usd=card.cost_usd,
+    )
+    return 0 if complete else 1
+
+
+def line_of(card: OverlapScorecard) -> OverlapLine:
+    """The history line of an overlap run's scorecard."""
+    run, totals = card.run, card.totals
+    found = {target.name: target for target in card.targets}
+    return OverlapLine(
+        time=run.started_at,
+        commit=run.commit,
+        run=run.name,
+        answerer=run.answerer,
+        settings=run.settings,
+        split=run.split,
+        items=totals.items,
+        variants=totals.variants,
+        right=totals.right,
+        stop_median_ms=found["stop_word_median_ms"].value,
+        stop_p90_ms=found["stop_word_p90_ms"].value,
+        requests_max=totals.requests_max,
+        targets={name: target.holds for name, target in found.items()},
+        breakdowns={
+            stratum: {
+                value: OverlapCount.model_validate(m, from_attributes=True)
+                for value, m in values.items()
+            }
+            for stratum, values in card.breakdowns.items()
+            if stratum != "item"
+        },
+        requests=card.requests,
+        billed_seconds=card.billed_seconds,
+        price_per_hour_usd=run.price_per_hour_usd or 0.0,
+        cost_usd=card.cost_usd,
+        scorecard=SCORECARD_FILE,
+        data_digest=run.data_digest,
+        note=run.note,
+        complete=card.complete,
+    )
