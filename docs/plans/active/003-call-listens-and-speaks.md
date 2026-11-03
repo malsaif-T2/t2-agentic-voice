@@ -1,4 +1,4 @@
-# 003 · A call that listens and speaks, deployed
+# 003 · A call that listens and speaks
 
 Status: active · Milestone: M2 · Started: 2026-11-02
 
@@ -6,8 +6,8 @@ Status: active · Milestone: M2 · Started: 2026-11-02
 
 Make the first real call ([roadmap](../roadmap.md), M2): the owner opens Ole5's widget in Chrome,
 starts a call, speaks Saudi Arabic, MSA or English, and hears each turn said back, on the laptop's
-speakers and on a headset, locally and from other networks to a backend deployed on the owner's
-host behind HTTPS, one of those networks blocking UDP. There is no talker yet: the agent says back
+speakers and on a headset, through the Ole5 app's dev server on this laptop (the deployment
+moved out of M2: the owner, 2026-11-03). There is no talker yet: the agent says back
 what it heard (echo mode). The call is built as a teammate would build one, on the library's public
 API (D-013): Pipecat inside `voice` (its peer-to-peer WebRTC transport, Silero VAD and Smart Turn,
 with our own speech bridges calling the ports), the `TextToSpeech` port and its Groq Orpheus
@@ -16,9 +16,8 @@ single-use join tokens, the router and `serve()`, the reference browser client a
 and the settings with a required `env` (the design's 16.1, M2 row). The plan measures what M2's
 *Done when* asks, registered before any result: end-of-turn cut-offs and the time of each step on
 the golden set, and requests per call minute for each Groq model; it settles the language a live
-call sends Whisper, records the media path as a decision, and records the owner's calls with
-consent, so that M3's targets are also checked on audio that came through WebRTC. Every number
-describes one speaker, the owner (D-006).
+call sends Whisper and records the owner's calls with consent, so that M3's targets are also
+checked on audio that came through WebRTC. Every number describes one speaker, the owner (D-006).
 
 ## Acceptance criteria
 
@@ -76,7 +75,7 @@ describes one speaker, the owner (D-006).
   text-to-speech span (characters, chunks, requests, time to first audio, cache hits) and the
   resource attributes of the design's 10.1, whose settings digest leaves out every secret and its
   `_file` path (a test: changing a secret leaves the digest unchanged). A test finds no Groq key,
-  join token, offer secret, TURN secret or password, or access code in any exported span, and no
+  join token, offer secret, TURN secret or access code in any exported span, and no
   audio.
 - [ ] Each call's `CallReport` holds its usage per Groq model (requests, audio seconds sent and
   billed, TTS characters, cache hits, the last remaining requests and tokens Groq reported) and its
@@ -121,8 +120,10 @@ describes one speaker, the owner (D-006).
   `server.forwarded_allow_ips` (`*` refused); `t2v dev` binds 127.0.0.1 with proxy headers off; a
   test shows that an `X-Forwarded-For` from an untrusted peer is ignored.
 - [ ] `VoiceRuntime`'s lifespan takes an exclusive lock file under `var_dir` (a second process is
-  refused with a FIX line, on Windows and on Linux), warms VAD, Smart Turn and the adapters without
-  a request (TD-012), builds tracing inside the lifespan (TD-014), and closes every adapter.
+  refused with a FIX line, on Windows and on Linux: M2 checks Windows, on this laptop, and the Linux
+  case runs in CI once TD-001 is paid, or else in "The deployment, moved out of M2"), warms VAD,
+  Smart Turn and the adapters without a request (TD-012), builds tracing inside the lifespan
+  (TD-014), and closes every adapter.
   `router()` and `serve()` refuse `env=test` and a runtime with no identity source.
 - [ ] `t2v serve`, `t2v dev`, `t2v doctor` (the key and the model list, with no synthesis; the
   ONNX files' SHA-256; the clock's skew; and, only with `--synthesize`, one short request per
@@ -137,17 +138,20 @@ describes one speaker, the owner (D-006).
   that the server parses strictly (invariant 4, GP-06), none named like Pipecat's reserved
   `signalling` messages or starting with "ping". The client sends the end-of-candidates PATCH, and
   `client_stats` (the selected candidate type and, for a relay, its `relayProtocol` and the TURN
-  URL's port; the time to connect; whether `echoCancellation` applied; when the first audio
-  played). Captions and notices are inserted as text only (`textContent`): a test reads the
-  client's, the dev page's and the widget's scripts and finds no `innerHTML`, `outerHTML`,
-  `insertAdjacentHTML` or `document.write`.
+  URL's port, which no M2 call shows, every call being local: the deployment's plan checks them;
+  the time to connect; whether `echoCancellation` applied; when the first audio played). Captions
+  and notices are inserted as text only (`textContent`): a test reads the client's, the dev page's
+  and the widget's scripts and finds no `innerHTML`, `outerHTML`, `insertAdjacentHTML` or
+  `document.write`.
 - [ ] Ole5's widget in `apps/ole5-voice-agent/web/`: a consent screen before the microphone opens
-  (Q7's wording and version), start and end, playback, captions, the Stop button and Esc, and a
-  message for a microphone that is missing, busy or refused. Its page is served with a
-  Content-Security-Policy (`script-src 'self'` with no inline script, and `frame-ancestors` only the
-  website's origin, from an `OLE5_VOICE_` setting), `X-Content-Type-Options: nosniff`,
-  `Referrer-Policy: no-referrer` and `Permissions-Policy: microphone=(self)`, and `/dev` with
-  `frame-ancestors 'none'`, each header tested. Checked in Chrome and in Edge, both supported
+  (Q7's wording and version: the agent's draft, `m2-owner-test-1`, with a one-line recording box),
+  start and end, playback, captions, the Stop button and Esc, and a message for a microphone that
+  is missing, busy or refused. Its page is served with a Content-Security-Policy
+  (`script-src 'self'` with no inline script, and `frame-ancestors` only the website's origin, from
+  an `OLE5_VOICE_` setting, and `'none'` while it is empty, as in M2, whose calls are local: the
+  embed moved out of M2), `X-Content-Type-Options: nosniff`, `Referrer-Policy: no-referrer` and
+  `Permissions-Policy: microphone=(self)`, and `/dev` with `frame-ancestors 'none'`, each header
+  tested. Checked in Chrome and in Edge, both supported
   (D-018, the design's open question 12): the agent checks in its browser pane what needs no
   microphone (the page, the consent screen, the missing-microphone and refused messages, the data
   channel), and the owner checks the microphone, playback, Stop and Esc in both browsers in
@@ -155,35 +159,9 @@ describes one speaker, the owner (D-006).
 - [ ] `.claude/launch.json` starts `t2v dev` on `examples/minimal` and the Ole5 app's dev server
   ([WORKING-RULES.md](../../../WORKING-RULES.md), "Seeing it run").
 
-**The deployment**
-
-*Amended 2026-11-02 ("The owner's decisions"): all hosting is on this machine for now, and Phoenix
-is M1's, on 127.0.0.1 with no authentication. These criteria, steps 19 to 22, Q9 to Q12 and Q7's
-host parts are re-planned for this machine before step 19, as a dated amendment the owner approves;
-until then they stand as drafted.*
-
-- [ ] The Ole5 app runs on the owner's host behind HTTPS (Q8): `env=staging`, one worker,
-  `var_dir` on a persistent volume, its image built from `git archive` of the merged commit with an
-  allow-list `.dockerignore` (a test that it lets in no `.env*`, `var/`, `.claude/` or `*.wav`).
-  Publicly open are only 443/tcp and the TURN ports Q9 keeps; the backend's HTTP port and Phoenix
-  sit on 127.0.0.1 or the compose network only, checked from the phone hotspot (step 20). Phoenix
-  runs beside it with auth on, its retention set by Q7, and never public; the backend sends
-  Phoenix's system API key from a host file (`tracing.api_key_file`), so a deployed call's turn
-  traces arrive there, and an exporter refusal (401) is counted and logged with no content. The
-  widget is embedded in the website (Q10).
-- [ ] The owner held a call from another network (a phone hotspot) and one from a network that
-  blocks UDP (Q11), and heard each turn back; each call's `client_stats` shows its candidate type,
-  and the call from the network that blocks UDP a relay over TLS on 443.
-- [ ] Before M2 closes, the media path is recorded as a decision entry with the network test's
-  outcome: UDP ports opened on the backend, a TURN service run as a small service, or another
-  transport (Q9).
-- [ ] If TURN is used, `/join` returns per-call TURN credentials minted from the shared secret
-  (coturn's REST scheme), the username `<expiry>:<call ID>` holding no claim of the token, valid
-  for `server.turn_ttl_s` (3600 by default, refused above 86400); the TURN secret, at least 32
-  bytes, is a `SecretStr` that reaches no log, trace, event or error, and so is each per-call
-  password. coturn runs as step 19 configures it, and step 20 shows that a minted credential
-  reaches no loopback, private or metadata address and gets no TCP relay.
-- [ ] The guard on the shared Groq key that Q4 settles is in place before the first deployed call.
+**The deployment** moved out of M2 on 2026-11-03 ("The owner's decisions"). Its five criteria, as
+drafted, are in "The deployment, moved out of M2", for the plan that deploys to the owner's server;
+every call of M2 is on this laptop.
 
 **The recordings**
 
@@ -217,12 +195,13 @@ until then they stand as drafted.*
   `quickstart.md` (the echo version), `serving.md`, `browser-client.md` (its M2 part),
   `tracing-and-logs.md` and `data-and-privacy.md` are written and linked from the
   [guide's index](../../guide/README.md), each code sample taken from a tested file.
-- [ ] Decision entries record what the design's 16.3 lists for M2 (settings; serving and identity;
+- [ ] Decision entries record what the design's 16.3 lists for M2 (settings; serving and identity,
+  but for Ole5's identity answer, open question 19, which moved with Q12 to the deployment's plan;
   GP-22 widened to an adapter object passed in code), the library's logging contract (the owner's
   answer of 2026-11-02) with Q2's loguru answer (amending D-002's loguru bullet), ARCH-BAN and the
   new facades, the echo's shape (Q3), how Whisper is cut, the settings keys beyond the design's 7.6
   (as Proposed), SECURITY.md's invariants 7 and 8 brought to the design's 8.1 (amending D-007), the
-  media path, the measured requests per call minute and the language a live call sends Whisper.
+  measured requests per call minute and the language a live call sends Whisper.
 
 **The measurement** (the roadmap's *Done when* for M2)
 
@@ -238,16 +217,16 @@ until then they stand as drafted.*
   limits (Q17) are recorded as a decision entry.
 - [ ] The language a live call sends Whisper is set by the registered rule (runs R5 to R7), and the
   noise on another day (TD-032) is recorded.
-- [ ] The owner held the calls of *Done when*: Chrome on the laptop's speakers and on a headset,
-  locally and from another network to the deployed backend, and one deployed call in Edge, each
-  turn heard back.
+- [ ] The owner held the calls of *Done when*: on the laptop's speakers and on a headset, in Chrome
+  and in Edge, through the Ole5 app's dev server on this laptop, each turn heard back.
 - [ ] `uv run poe check` passes; the roadmap's M2 row, CLAUDE.md, ARCHITECTURE.md, SECURITY.md and
   this plan's logs are up to date.
 
 ## Plan
 
-**Scope.** M2 is the roadmap's M2 and the design's 16.1 M2 row, with no talker: the voice session
-runs in echo mode. **Left for M3:** the two-step interruption, `duck` and `unduck`, cancel scopes,
+**Scope.** M2 is the roadmap's M2 and the design's 16.1 M2 row, without the deployment and with no
+talker: every call is on this laptop, and the voice session runs in echo mode.
+**Left for M3:** the two-step interruption, `duck` and `unduck`, cancel scopes,
 the history of what was heard, the stop, listening and echo rules and their presets, the filter
 for text from silence and echo, the first window, tuning the turn defaults (Q14), `AudioCall` and
 the parity test (the design's 9.5; M2 builds only an internal file-fed transport, the decision
@@ -255,8 +234,13 @@ log), and the push-to-talk fallback and the Bluetooth warning. **M4:** the talke
 port, the vocabulary and the Whisper prompt (Q16), `TextCall` and the fakes as a public kit, the
 latency target. **M5:** speaking dates, SECURITY.md generalized from tickets to actions (the
 design's 16.3), and the verified identity ticket status needs, if open question 19 is still
-unanswered (Q12). **M6:** the per-model limiter and the cool-off, admission control and the busy
-notice, drain, the full `t2v doctor`, the deployment guide and runbook, CPU per call. **M0** keeps
+unanswered (Q12, now in "The deployment, moved out of M2"). **M6:** the per-model limiter and the
+cool-off, admission control and the busy notice, drain, the full `t2v doctor`, the deployment guide
+and runbook, CPU per call. **The deployment** (the owner's host behind HTTPS, the calls from other
+networks and from one that blocks UDP, the media path, TURN credentials, Phoenix on the host and
+the website embed): a plan of its own as soon as the owner has access to the server, whichever
+milestone is then in progress, and at the latest in M6 (the owner, 2026-11-03); its text, as
+drafted, is in "The deployment, moved out of M2". **M0** keeps
 CI (TD-001), `contract.md` and the app's five layers (the decision log). The public-API snapshot
 (griffe) and the wheel job wait for the first teammate tag (the design's 3.1 and 13).
 
@@ -272,11 +256,18 @@ improvements](../completed/002-golden-set-baseline.md#future-improvements)):
   improvements).
 
 Blocks in the order they depend on each other. Each is built in its own worktree under
-`.claude/worktrees/`, reviewed by an agent that did not write it, fixed, gated with
-`uv run poe check`, and merged, with commits named `Plan 003: <what>`. Block 0 is built by one
-agent and merged before any track starts; the tracks are built in parallel against Block 0's
-interfaces and fakes, reviewed by concern (`## Tracks`), and merged through an integration branch,
-`plan-003-integration` ([plans README](../README.md), "Parallel tracks").
+`.claude/worktrees/`, reviewed by one agent that did not write it, each finding checked by one
+skeptic, fixed, gated with `uv run poe check`, and merged, with commits named
+`Plan 003: <what>`. Block 0 is built by one agent and merged before any track starts; the tracks
+are built in parallel against Block 0's interfaces and fakes, each reviewed the same way
+(`## Tracks`), and merged through an integration branch, `plan-003-integration`
+([plans README](../README.md), "Parallel tracks"). From 2026-11-03 ("The owner's decisions"), a
+review (Block 0's last round, each track's, and step 17's) reports only what would break, hang or
+crash a call; garble, cut, overlap or lose its audio; leak a task, connection or memory per call;
+send Groq more than the limits allow or fail on a 429 it could wait out; refuse valid Arabic or
+English text; or leave a later track or milestone a contract it cannot build on. Everything else
+becomes a row in `docs/plans/tech-debt.md`, and there is no second fix round unless a high finding
+stands.
 
 **Before Block 0**
 
@@ -457,11 +448,17 @@ interfaces and fakes, reviewed by concern (`## Tracks`), and merged through an i
     which amends D-007. Each is written as Accepted where the approved design describes it, and
     Proposed where it goes beyond, as the owner ruled for M1 (plan 002, Q3).
 13. Gate, review (the harness and security reviewers), fixes, merge into `plan-003-integration`.
+    The second fix round ran long, so the owner ruled on 2026-11-03 ("The owner's decisions"):
+    Block 0's round 2 drops the harness builder (more loader forms in the architecture checks) and
+    the full recheck, and what round 2 found for the harness builder is a row in
+    `docs/plans/tech-debt.md` (TD-049); Block 0's last round has one reviewer, each finding
+    checked by one skeptic, and reports only what the rule of "Blocks in the order they depend on
+    each other" names.
 
 **The tracks** (in parallel, after Block 0; each track's files, reads and tests are in `## Tracks`)
 
-14. Track A: speech text. Track B: the Orpheus adapter and the phrase cache. Track C: identity,
-    stores and TURN credentials. Track D: the voice session in echo mode, its usage, spans and
+14. Track A: speech text. Track B: the Orpheus adapter and the phrase cache. Track C: identity
+    and stores. Track D: the voice session in echo mode, its usage, spans and
     recording. Track E: the Pipecat modules. Track F: `api`, the CLI and `examples/minimal`. Track G:
     the browser client, the widget and the Ole5 app's server. Track H: the measurement's tooling.
     Track I: the guide. Each track ends with a report: its progress-log lines (prototype sources,
@@ -480,9 +477,10 @@ interfaces and fakes, reviewed by concern (`## Tracks`), and merged through an i
     localhost in its browser pane, which is not Chrome and may give no microphone: the page loads,
     ICE connects on whatever candidates the pane offers, the data channel opens and `hello`
     arrives; the microphone, playback and Stop wait for the owner's Chrome and Edge (step 18).
-17. **The whole-plan review of the code**, by every reviewer. Then `plan-003-integration` merges into
-    the main branch, with the full gate, so the owner's calls and the deployment run from it; from
-    here, this plan's blocks merge into the main branch.
+17. **The whole-plan review of the code**, by one reviewer, each finding checked by one skeptic,
+    reporting only what the 2026-11-03 rule names ("Blocks in the order they depend on each
+    other"). Then `plan-003-integration` merges into the main branch, with the full gate, so the
+    owner's calls run from it; from here, this plan's blocks merge into the main branch.
 
 **The first live calls** (local; needs Q5, Q13 and Q17, and "What the owner does", steps 2 and 3;
 recorded only if Q4 and Q7 are settled)
@@ -495,62 +493,18 @@ recorded only if Q4 and Q7 are settled)
     `DevIdentity`, which never records. The agent reads each call's trace and `CallReport`; a fix
     is a block of its own.
 
-**The deployment** (needs Q8 to Q12; re-planned for this machine before step 19, as the deployment's
-criteria say)
-
-19. **The deployment files**, written by the agent in `apps/ole5-voice-agent/deploy/` and reviewed
-    by the security reviewer before the owner runs them on the host; the agent never logs into it:
-    - the image, built from `git archive` of the merged commit (tracked files only, never a copy of
-      a checkout, whose `.env` and `var/` hold the key and the owner's voice), with an allow-list
-      `.dockerignore` (deny everything, then allow `packages/`, `apps/*/src`, `apps/*/web`,
-      `examples/`, the `pyproject.toml` files, `uv.lock` and `.python-version`) and a test that it
-      lets in no `.env*`, `var/`, `.claude/` or `*.wav`; the owner's steps end with a command that
-      finds no `.env` or WAV file in the built image;
-    - a compose file with the backend, Phoenix and, if Q9 picks it, coturn, and its port table:
-      publicly only 443/tcp and the TURN ports Q9 keeps; the backend's HTTP port published only on
-      127.0.0.1, or reached by the proxy over the compose network (Docker publishes on every
-      address by default and its published ports bypass ufw: docs.docker.com/engine/network/port-publishing/
-      and .../packet-filtering-firewalls/, read 2026-11-02 by the security review); Phoenix with
-      `PHOENIX_ENABLE_AUTH=true`, its secret and initial admin password from host files, its
-      retention from Q7, published on 127.0.0.1:6006 only and its gRPC port 4317 never;
-    - the reverse proxy's configuration as a template holding no secret: TLS, the widget's and the
-      router's routes, `X-Forwarded-For` overwritten rather than appended, and, if Q9 routes TURN
-      by SNI, the PROXY protocol, so the backend still sees each caller's address;
-    - coturn's configuration as a template holding no secret: `use-auth-secret` with the secret
-      read from a host file at start; a realm; no TCP relay; no multicast peers; every
-      special-purpose IPv4 and IPv6 range denied as a peer (loopback, private, link-local and
-      metadata, carrier-grade NAT, unique-local, IPv4-mapped); only the backend's own address
-      allowed, so the backend runs on a fixed non-loopback address and loopback peers are never
-      allowed; user and total quotas and a bandwidth cap; its CLI off; its own certificate and key
-      as host files. coturn 4.18.0 pinned by its image digest, or a host package no older than
-      4.16.0, which fixes a denied-peer bypass (CVE-2026-73213: fieldguide.lutrasecurity.com/CVE-2026-73213/,
-      read 2026-11-02 by the security review; UNVERIFIED against coturn's own advisory); each
-      option checked against 4.18.0's example configuration
-      (raw.githubusercontent.com/coturn/coturn/master/examples/etc/turnserver.conf, read 2026-11-02
-      by the security review), which turns TCP relays on and sets no quota by default;
-    - the settings: `T2V_PRIVACY__CONSENT_VERSION` set to Q7's version, and
-      `T2V_PRIVACY__RECORD_AUDIO` false except during run C's sessions; and the owner's steps.
-20. **The network spike on the host** (the design's 11, **verify**): what aiortc advertises behind
-    Docker's NAT; whether coturn relays to a backend on the same host; a call relayed over TLS on
-    443, and whether Chrome sends SNI on a `turns:` connection (UNVERIFIED); a call held past a
-    short TURN lifetime (120 s), to see whether coturn drops its allocation before
-    `server.turn_ttl_s`'s default is fixed; and two checks the owner runs with the agent's commands:
-    with a minted credential, a permission to 127.0.0.1, 169.254.169.254 and the Docker gateway is
-    refused, and so is a TCP allocation; from the phone hotspot, the backend's HTTP port, 6006 and
-    4317 are refused. Each outcome in the progress log, before the network test.
-21. **The website embed** (Q10) and the network test, under step 23's spending rule: a short call
-    (a few turns) from the phone hotspot and one from the network that blocks UDP (Q11), each on the
-    laptop's speakers and on the headset, not recorded, each call's report copied to the owner's
-    machine with the agent's command. They are not C's calls, which come after every open call of
-    the registration is settled.
-22. **The media path**, recorded as a decision entry from the network test's outcome (the roadmap's
-    M2: "Before M2 closes").
+**Steps 19 to 22, the deployment, moved out of M2** on 2026-11-03 ("The owner's decisions"): the
+owner has no access to the server yet, so the deployment files, the network spike on the host, the
+website embed with the network test, and the media path wait for a plan of their own, made as soon
+as the owner has access to the server and re-planned for it (its host facts, Q8 to Q12), and at the
+latest in M6. Their text, as drafted, is in "The deployment, moved out of M2". Steps 23 to 30 keep
+their numbers.
 
 **The registered runs** (the registration below; a quiet machine: nothing else runs beside a run,
 [WORKING-RULES.md](../../../WORKING-RULES.md), "Measurement runs")
 
 23. Every open call settled and dated; the estimate and the budget cap approved by the owner (Q13).
-    The spending rule, which also governs steps 18 and 21: before each run or call session that
+    The spending rule, which also governs step 18: before each run or call session that
     spends, the spend so far plus its own estimate is compared with the cap, and each model's
     requests, tokens and audio seconds that day with Q17's limits; one that would pass either does
     not start; the running total goes into the progress log after each, as plan 002's step 20 did.
@@ -565,9 +519,11 @@ criteria say)
     commit.
 27. **T1 and T2** (the time of each step), on a day with no call, since together they may take most
     of a day's published Orpheus requests and tokens for the Arabic model (Q17).
-28. **C** (the owner's calls of Q18), recorded; the recordings copied to the owner's machine and
-    their manifests committed; requests per call minute recorded as a decision entry, beside the
-    key's real limits.
+28. **C** (the owner's calls of Q18), recorded, on this laptop through the Ole5 app's dev server,
+    with `T2V_PRIVACY__CONSENT_VERSION` set to Q7's version (`m2-owner-test-1`) and
+    `T2V_PRIVACY__RECORD_AUDIO` on only during C's sessions; the recordings kept under `var/` on
+    this laptop (Q7's (i)) and their manifests committed; requests per call minute recorded as a
+    decision entry, beside the key's real limits.
 29. **Held-out:** E on held-out once, at the close, aggregates only. No held-out run spends in M2.
 
 **Close**
@@ -579,8 +535,17 @@ criteria say)
     third party quotes Groq's error asking the organisation's admin to accept a model's terms
     (github.com/langflow-ai/langflow/issues/11120, UNVERIFIED), and Groq's changelog says nothing of
     terms (read 2026-11-02 by the plan review), so it is corrected only from what the console shows
-    the owner ("What the owner does", step 2). Then `## Future improvements` in this plan, with a
-    pointer from the roadmap's "Planned later"; the whole-plan review; the roadmap's M2 row set to
+    the owner ("What the owner does", step 2). The design's lines that give M2 the deployment,
+    which moved out of M2 on 2026-11-03 ("The owner's decisions"), are corrected as facts too, each
+    to name the deployment's own plan (the roadmap's M6): its 1.2 serving bullet and 3.1's
+    TURN-credentials row ("only if Ole5's M2 network test needs TURN"); 3.1's and 6.5's
+    `Authenticate`, built in M2 if Ole5 picks the one-time email code (open question 19, which Q12
+    took to the deployment); 11's TURN-credentials, TURN-beside-the-backend, Docker, "For Ole5" and
+    small-services lines; 13's coturn row; 16.1's M2 row ("deployed" in its title, the deployment
+    to the owner's host, the network test and the media-path decision, the identity decision, and
+    TURN credentials in its library column); and 16.4's aiortc networking unknowns "until the M2
+    spike". Then `## Future improvements` in this plan, with a pointer from the roadmap's "Planned
+    later"; the whole-plan review, under the 2026-11-03 rule (step 17); the roadmap's M2 row set to
     `done` with a link; this plan moved to `completed/` with its Status line; the final gate.
 
 ## Progress log
@@ -765,11 +730,27 @@ criteria say)
   builders' gate runs took 316 to 382 s while other sessions ran on this machine, against 89 to 105
   s otherwise, and one took 5676 s (TD-040's hang, or the machine; no stacks were kept). Next: step
   13, the review, then the fixes the integrator listed in the decision log of this date.
+- 2026-11-03: The owner's two rulings of this date are recorded ("The owner's decisions"), with
+  the decision log's lines for them, and the plan is amended to them before any run. From Block 0's
+  last round on, a review reports only what would break a call or leave a later track or milestone
+  a contract it cannot build on, one reviewer per block or track and one skeptic per finding, the
+  rest becoming debt rows; Q7 is settled as (a), (i) and (iv), on this laptop. The deployment moved
+  out of M2: its criteria, steps 19 to 22 and the packages they run, Q7 and Q8 as drafted, Q9 to
+  Q12, the owner's steps 4 to 8 as drafted, and the registration's C and its budget as drafted are
+  in "The deployment, moved out of M2"; C is now five local calls and the budget about $0.80,
+  amended before any run. The title, the goal, the Scope, the criteria that named the host, TURN
+  or Linux, steps 13, 14, 17, 28 and 30, Tracks C, F and I, the review rule and Q4 changed with
+  them. The roadmap's M2 is "A call that listens and speaks", and its M6 names the deployment;
+  TD-004, TD-015 and TD-038 wait for the deployment's plan, and quality.md's line on them says so;
+  Block 0's unused TURN settings and stub are TD-048, and the harness findings Block 0's round 2
+  dropped are TD-049. The design is not edited: step 30 lists its lines. Next: Block 0's last
+  review round, under the new rule.
 
 ## Decision log
 
-All entries are the agent's choices of 2026-11-02, with the agent's reasons; the owner may overrule
-any before the step it affects.
+The entries are the agent's choices, each dated, with the agent's reasons; the owner may overrule
+any before the step it affects. An entry that records an owner's ruling says so, and the ruling
+itself, in the owner's words, is in "The owner's decisions".
 
 - 2026-11-02: One plan for M2, with Block 0 and nine tracks, as plan 002 was built: the tracks touch
   disjoint files once Block 0 holds the settings, the ports, the protocol and the session's I/O.
@@ -1131,6 +1112,41 @@ any before the step it affects.
   what Tracks A, D and F need from it (the design's 4.3 pronunciation map on `VoiceAgent`, and each
   preset's notice texts in Q5's register), and write the entry after D-035 for the ports' Proposed
   shapes, which step 12 left out.
+- 2026-11-03, the owner's ruling on what matters ("The owner's decisions"): from Block 0's last
+  round on, a review reports only what would break, hang or crash a call; garble, cut, overlap or
+  lose its audio; leak a task, connection or memory per call; send Groq more than the limits
+  allow or fail on a 429 it could wait out; refuse valid Arabic or English text; or leave a later
+  track or milestone a contract it cannot build on. One reviewer per block or track, each finding
+  checked by one skeptic; everything else is a row in `docs/plans/tech-debt.md`, and there is no
+  second fix round unless a high finding stands. Step 17's whole-plan review, neither a block nor
+  a track, also has one reviewer: the agent's reading. Block 0's round 2 drops the harness
+  builder (more loader forms in the architecture checks) and the full recheck, and the findings
+  the harness builder would have fixed are TD-049. The consent the join token carries,
+  `privacy.record_audio` and what Block 0 built for them stay as they are, and nothing more is
+  built for them; Q7 is settled as (a), (i) and (iv). The Proposed security rules beyond the
+  design (the 32-byte floor, the 60 s skew cap and the rest) stay Proposed in their decision
+  entries and are not put to the owner in M2.
+- 2026-11-03, the owner's ruling on the deployment ("The owner's decisions"), amending the entry on
+  one plan for M2: the deployment leaves M2, and its text, as drafted, is kept in "The deployment,
+  moved out of M2", a plan of its own once the owner has the server, and at the latest in M6.
+  Every M2 call is local, on this laptop, through the Ole5 app's dev server on localhost. Track C
+  builds identity and stores; `adapters/turn_credentials.py` stays a stub and Block 0's TURN
+  settings stay in the code, unused, both in TD-048. So Track F's `/join` mints no TURN
+  credentials and returns `server.ice_servers` as set, since a join that reached the stub would
+  fail. TD-004 followed Q8's host (the entry on the debt paid in M2), so it waits for the
+  deployment's plan, with TD-015, whole, and TD-038's test, which lands where TD-004 changes the
+  clients. The entries on the deployed backend's `env=staging` and on TURN for a network that
+  blocks UDP stand for that plan, as do two texts of D-029, which decisions.md, append-only, keeps
+  as written: `/join` answers the ICE servers "with per-call TURN credentials when a TURN secret
+  is set, inline or in its file", which M2's `/join` does not mint (TD-048), and plan 003's
+  network test decides the media path.
+  The agent's choices in applying the ruling: the registration's C is five local calls (the
+  Bluetooth headset in Chrome, as Q18 recommends, and the speakers and the wired headset in Chrome
+  and in Edge) and the budget about $0.80, both amended before any run; the widget page's
+  `frame-ancestors` is `'none'` while no website origin is set; Q4's access code and guard serve
+  the local calls; and three things wait for the deployment's plan: the decision entry on Ole5's
+  identity answer (Q12), `client_stats`'s relay fields, which no local call shows, and the lock
+  file's Linux case, unless CI (TD-001) runs it first.
 
 ## The owner's decisions
 
@@ -1170,9 +1186,50 @@ What the owner has already said that binds M2, in the owner's words where they w
     whole. All hosting is on this machine while the owner has no access to the server, so Q8 is
     answered as this machine for now. The deployment (steps 19 to 22, its criteria, Q9 to Q12, and
     Q7's host parts) is re-planned for this machine before step 19, as a dated amendment the owner
-    approves; no step before 19 depends on it.
+    approves; no step before 19 depends on it. The owner's ruling of 2026-11-03 (below) moved
+    it out of M2 instead.
+- 2026-11-03, after Block 0's second fix round had run long: "This is taking longer than I
+  expected. Focus on things that matter for the next milestones and that we will need to build
+  the voice agent. A consent for my or my team recordings is not a concern." So, in the agent's
+  reading:
+  - Reviews from now on (Block 0's last round, each track, the whole-plan review at step 17)
+    report only what would break, hang or crash a call; garble, cut, overlap or lose its audio;
+    leak a task, connection or memory per call; send Groq more than the limits allow or fail on a
+    429 it could wait out; refuse valid Arabic or English text; or leave a later track or
+    milestone a contract it cannot build on. One reviewer per block or track, each finding checked
+    by one skeptic; everything else becomes a row in `docs/plans/tech-debt.md`, and there is no
+    second fix round unless a high finding stands.
+  - Block 0's round 2 drops the harness builder (more loader forms in the architecture checks)
+    and the full recheck; what it found goes to a debt row (TD-049).
+  - Recording consent: the consent the join token carries, the `privacy.record_audio` setting and
+    what Block 0 built stay as they are, and nothing more is built for them. Q7 is settled as the
+    agent's (a), with a one-line recording box the agent drafts (version `m2-owner-test-1`); the
+    recordings kept under `var/` on this laptop, its (i), the laptop being the host now; and the
+    local Phoenix kept as M1's, with no retention setting, its (iv).
+  - The Proposed security rules beyond the design (the 32-byte floor, the 60 s skew cap and the
+    rest) are not put to the owner in M2: they stay Proposed in their decision entries.
+- 2026-11-03, the agent's question "Move the deployment and network tests to when the server is
+  available?", answered "Yes, move them". So, in the agent's reading:
+  - The deployment leaves M2: its criteria (all five, the TURN credentials and the guard on the
+    shared key before the first deployed call among them), steps 19 to 22, Q7's host parts, Q8's
+    remaining parts, Q9 to Q12, "What the owner does" steps 4 to 6 and 8 and the network parts of
+    step 7, and every registration or measurement text that needs a call from another network or
+    the host. Their text, as drafted, is kept in "The deployment, moved out of M2", which becomes
+    a plan of its own as soon as the owner has access to the server, re-planned for that server
+    (its host facts, Q8 to Q12), and at the latest in M6.
+  - TURN credentials leave Track C, since they depend on Q9: Track C is identity and stores.
+    Block 0's TURN settings stay in the code, unused until the deployment, as a debt row
+    (TD-048), which also names the stub `adapters/turn_credentials.py`.
+  - The calls stay local, on this laptop, through the Ole5 app's dev server on localhost: the
+    calls of step 18, and run C's recorded calls (Q18's script on each device, the laptop's
+    speakers and the wired headset, in Chrome and Edge), with no network variants.
+  - The roadmap's M2 is "A call that listens and speaks", its *Done when* without the deployment
+    and the other networks, and its M6 names the move. The design, approved, is not edited now:
+    step 30 corrects each of its lines that names M2's deployment, as a fact.
 - 2026-11-01: "Approve all", for the roadmap's M1 to M7 and the package design as amended (D-017),
-  as plan 000 records it. So M2's goal and *Done when*, and the design's 16.1 M2 row, bind this plan.
+  as plan 000 records it. So M2's goal and *Done when*, and the design's 16.1 M2 row, bind this
+  plan, as the owner's ruling of 2026-11-03 (above) amends them: the deployment and the other
+  networks left M2, and step 30 corrects the design's lines that name them, as facts.
 - 2026-11-01, the owner's answers to the design's open questions (D-018) that M2 builds on: our own
   thin client and protocol (1); one install, with no extras (2); Python 3.12 (3); `T2V_` (4); one
   process per `var_dir` (5); our own spans (7); Pipecat's STT and TTS base classes wrapped, its model
@@ -1264,10 +1321,9 @@ step 3 measures the installed size for `is-this-for-you.md`.
 
 **Not installed:**
 
-- **coturn** 4.18.0 (2026-09-08, BSD-3-Clause; github.com/coturn/coturn/releases, read 2026-11-02 by
-  the research step), if Q9 picks it: run on the host as a small service from its own image pinned
-  by digest, or from a host package no older than 4.16.0 (step 19), never added to a member.
-- **Arize Phoenix** 21.0.0, run as in M1 (D-023), on the host for the deployment.
+- **Arize Phoenix** 21.0.0, run as in M1 (D-023), on this laptop, on 127.0.0.1 with no
+  authentication ("The owner's decisions"); on the host only with the deployment ("The
+  deployment, moved out of M2").
 - Not used: Pipecat's `local-smart-turn` extra (torch and transformers), its `runner` extra, its
   client-js and small-webrtc-transport (which pull in daily-js), `openinference-instrumentation-pipecat`
   (D-018, question 7), a headless browser, griffe, eot-bench, and any download at runtime (the
@@ -1322,21 +1378,20 @@ labels), and no test text copies an item's.
 - Tests: as the acceptance criteria; the cache key changes with text, model and voice; a cache hit
   sends nothing; `GROQ_LOG=debug` in a child process, as `GroqSTT`'s test does (TD-003).
 
-**Track C · Identity, stores and TURN credentials (library, `adapters`).**
-- Goal: `SignedJoinTokens`, `DevIdentity`, `SqliteUsedTokens`, `MemoryUsedTokens`, coturn's REST
-  credentials.
-- Owns: `adapters/join_tokens.py`, `adapters/dev_identity.py`, `adapters/used_tokens.py`,
-  `adapters/turn_credentials.py`; tests under `adapters/`.
-- May read: the identity port, `core/identity.py`, the settings; PyJWT's and coturn's documentation.
+**Track C · Identity and stores (library, `adapters`).**
+- Goal: `SignedJoinTokens`, `DevIdentity`, `SqliteUsedTokens` and `MemoryUsedTokens`. TURN
+  credentials left M2 with the deployment (the owner, 2026-11-03), since they depend on Q9:
+  `adapters/turn_credentials.py` stays Block 0's stub and Block 0's TURN settings stay unused,
+  both named in one debt row (TD-048).
+- Owns: `adapters/join_tokens.py`, `adapters/dev_identity.py`, `adapters/used_tokens.py`; tests
+  `adapters/test_join_tokens.py`, `test_dev_identity.py`, `test_used_tokens.py`.
+- May read: the identity port, `core/identity.py`, the settings; PyJWT's documentation.
 - Behaviour: the claims parsed into a strict pydantic model (`StrictBool` for `record_audio`, a
   bounded `version`); PyJWT's minimum key length turned on for encode and decode if 2.15.1 has it
   (step 4); a consent marked as a verified signed token's only by `SignedJoinTokens`, so the
-  recorder can tell it apart; `DevIdentity` always `Consent(version=None, record_audio=False)`;
-  TURN usernames `<expiry>:<call ID>`, valid for `server.turn_ttl_s`.
+  recorder can tell it apart; `DevIdentity` always `Consent(version=None, record_audio=False)`.
 - Tests: invariant 7's adversarial cases (the acceptance criteria); the used-token store under two
-  threads and after a restart; the TURN password the HMAC of coturn's scheme on a fixed vector; the
-  TTL honoured; the username holding no `sub` or `name`; the secret and each per-call password in
-  no repr, log line, span or error.
+  threads and after a restart.
 
 **Track D · The voice session in echo mode (library, `voice/session/`, no Pipecat).**
 - Goal: one call's session: turn order, the echo, Stop and `hangup`, speech dropped while the echo
@@ -1382,6 +1437,11 @@ labels), and no test text copies an item's.
   `api/` and `tests/minimal_example/`.
 - May read: the protocol models, the ports, the adapters' signatures, `voice`'s entry point as
   Block 0 defines it, Pipecat's request handler as Block 0 read it.
+- Behaviour: `/join` mints no TURN credentials in M2 (the owner, 2026-11-03): Block 0's TURN
+  settings stay unused and `adapters/turn_credentials.py` a stub until the deployment (TD-048),
+  so `/join` returns `server.ice_servers` as set, with no username or credential, and
+  `api/runtime.py`'s docstring loses its TURN clause and its case with `server.turn_secret_file`
+  set, which wait with the deployment.
 - Tests, with the fake `voice` entry point (the real call is step 16's): the acceptance criteria's
   set-up cases (the offer secret in a header or the body only, a PATCH after ICE completed,
   `/health`'s fields, `/dev` and `DevIdentity` refusing any `env` but `dev` before the client's
@@ -1433,20 +1493,29 @@ labels), and no test text copies an item's.
   reference.
 - Content beyond the design's 14: `serving.md` tells a team that mounts the router to turn
   FastAPI's telemetry off and set CORS on its own app, and to trust proxy headers from its proxy
-  only; `data-and-privacy.md` says how long Phoenix keeps transcripts (Q7).
+  only; `data-and-privacy.md` says how long Phoenix keeps transcripts: forever unless a retention
+  is set (`PHOENIX_DEFAULT_RETENTION_POLICY_DAYS`, 0 by default), and for Ole5 in M2 Q7's (iv),
+  settled on 2026-11-03: the local Phoenix, M1's, with no retention setting.
 - Tests: `poe docs`, which also checks that a code sample after a link to a `.py` file is a run
   of that file's lines (DOC-SAMPLE, D-027).
 
-**Reviewers, by concern.** Each reviews every track for its concern; each finding is checked by an
-agent told to refute it before it is acted on.
+**Review** (the owner's rule of 2026-11-03, "The owner's decisions"). One reviewer per track, an
+agent that did not write it, reads the track for each concern below that it touches, and the
+whole-plan review at step 17 follows the same rule; for this plan, this replaces the plans README's
+reviewers named by concern ("Parallel tracks", item 4). A review reports only what would break,
+hang or crash a call; garble, cut, overlap or lose its audio; leak a task, connection or memory
+per call; send Groq more than the limits allow or fail on a 429 it could wait out; refuse valid
+Arabic or English text; or leave a later track or milestone a contract it cannot build on. Each
+finding is checked by one skeptic, an agent told to refute it, before it is acted on; everything
+else becomes a row in `docs/plans/tech-debt.md`, and there is no second fix round unless a high
+finding stands.
 - **Security:** invariants 1, 5, 7 and 8; data-channel input parsed strictly (the browser is not
   trusted, SECURITY.md's trust boundaries); the offer secret, the TURN secret, the join keys and the
   access code, each held to its minimum length; CORS; the token route and the guard on the shared
   key; recordings gated by the setting and the token, never by `DevIdentity`; the phrase cache and
   the report file holding no call content; the widget page's headers and captions as text; Phoenix
   never public; no `.env` read; FastAPI's telemetry off in both shapes; no aiortc
-  peer reaching a STUN server; and, at step 19, the image and its `.dockerignore`, the compose
-  file's ports, and the coturn and proxy templates.
+  peer reaching a STUN server.
 - **Harness:** layers, owners, ARCH-BAN, facades, `[[restricted]]`, sizes, the coverage floor, the
   generated docs' freshness, test isolation (GP-15), LF endings, CLAUDE.md's cap.
 - **Faithfulness:** each port beside its prototype source (`tts.py`, `speakable.py`, `fillers.py`,
@@ -1586,17 +1655,20 @@ gates. Facts are cited with their source; the agent's proposals and expectations
 
 **C · The owner's calls (spends)**
 
-- **The calls,** from the call script the owner approves (Q18): the agent's proposal is eight calls of
-  at least three minutes and about ten turns each: local, on the laptop's speakers, the wired headset
-  and a Bluetooth headset; deployed, from the phone hotspot on the speakers and on the headset, and
-  from the network that blocks UDP on the speakers and on the headset; plus one deployed call on the
-  speakers in Edge. The turns, in the owner's own words: requests that pause mid-sentence, one-clause
-  requests with product terms, a number and a ticket number, English sentences, listening sounds, and
-  the Stop button and Esc during the echo.
+*Amended 2026-11-03, before any run ("The owner's decisions"): the deployment left M2, so every
+call of C is local, on this laptop, through the Ole5 app's dev server on localhost, with no network
+variant. C and the budget as drafted are in "The deployment, moved out of M2".*
+
+- **The calls,** from the call script the owner approves (Q18): the agent's proposal is five calls
+  of at least three minutes and about ten turns each, all local: in Chrome on the laptop's speakers,
+  the wired headset and a Bluetooth headset, and in Edge on the speakers and the wired headset. The
+  turns, in the owner's own words: requests that pause mid-sentence, one-clause requests with
+  product terms, a number and a ticket number, English sentences, listening sounds, and the Stop
+  button and Esc during the echo.
 - **Metrics, per call:** per Groq model, the requests and the requests per call minute, the audio
   seconds sent and billed per minute, the TTS characters per minute; per turn, the server's time to
   first audio and, from `client_stats`, when it played (their difference is the network to the
-  browser); the candidate type, for a relay its protocol and port, and the time to connect; whether
+  browser); the candidate type and the time to connect; whether
   the owner heard the turn back (after each call, the owner names any turn that did not come back,
   and the agent checks it against the call's trace and timeline). Reported per call and as medians
   over the calls.
@@ -1606,16 +1678,16 @@ gates. Facts are cited with their source; the agent's proposals and expectations
   Whisper cut per turn, up to about 12 with cut-offs, and up to about 20 for a caller who pauses
   often if it is cut per segment, against the published 20 a minute; each is billed 10 s, so 60 to
   120 billed seconds a minute ≈ $0.002 to $0.004; and 6 Orpheus requests of about 60 characters
-  ≈ $0.014 a minute in Arabic; eight calls of three minutes ≈ $0.45. **The limits, not the money,
+  ≈ $0.014 a minute in Arabic; five calls of three minutes ≈ $0.28. **The limits, not the money,
   bind:** at the published 100 requests a day per Orpheus model, about 6 requests a minute leave
   roughly 16 call minutes of Arabic a day; at its published 3.6K tokens a day, if a token is one
   character (UNVERIFIED), about 360 characters a minute leave about 10. The lower holds until Q17's
-  reading says otherwise, so C's calls span about three days, none on T's day, unless Groq raises
+  reading says otherwise, so C's calls span about two days, none on T's day, unless Groq raises
   the limits (Q17).
 
-**The budget** (the agent's arithmetic): L $0.23, T $0.14, C about $0.45, the first local calls and
-the network-test calls about $0.05 each, and Q16's prompt arm $0.075 if it runs in M2: about $1.00 in
-all; `t2v doctor --synthesize` adds a fraction of a cent each time it runs. Whether a refused request
+**The budget** (the agent's arithmetic, amended 2026-11-03 with C): L $0.23, T $0.14, C about $0.28,
+the first local calls about $0.05, and Q16's prompt arm $0.075 if it runs in M2: about $0.80 in all;
+`t2v doctor --synthesize` adds a fraction of a cent each time it runs. Whether a refused request
 is billed is UNVERIFIED (TD-021), and retries add requests.
 
 **Words the questions use**
@@ -1626,10 +1698,7 @@ is billed is UNVERIFIED (TD-021), and retries add requests.
   it tries is a **candidate**: a *host* candidate is the machine's own address, *srflx* the address
   a home or office router shows the outside, *relay* an address on a TURN server.
 - **STUN:** a server that tells a machine its outside address. **TURN:** a relay server that
-  carries the call's audio when no direct path works. **TURN over TLS on 443** looks to a network
-  like ordinary secure web traffic, the one kind most closed networks let through.
-- **SNI routing:** a proxy reads the name a secure connection asks for and passes the connection,
-  still encrypted, to the server of that name, so two services can share port 443 on one address.
+  carries the call's audio when no direct path works.
 - **Sink** (loguru): where a logger writes; loguru's default sink prints to the screen.
   **`NullHandler`:** a standard-library handler that drops records until the app adds its own.
 - **D-024's floor** (c = 6): with the noise measured, a change counts only if at least 6 more items
@@ -1686,7 +1755,12 @@ The owner's call before Block 0:
   phrase it plays as soon as the transcript is in. Speech heard while the echo plays is not said
   back (the decision log), so on speakers the agent never echoes itself.
 - **Q4. Who reaches the deployed echo, how the owner's calls get a join token before open question
-  19 is answered, and what guards the shared key meanwhile.** *Settled on 2026-11-02: (a) and (i).*
+  19 is answered, and what guards the shared key meanwhile.** *Settled on 2026-11-02: (a) and (i).
+  Amended 2026-11-03 ("The owner's decisions"): no call of M2 is deployed, so the token route and
+  its access code serve the local calls (steps 18 and 28); the check that (i)'s guard is in place
+  before the first deployed call, (a)'s replacement by 19's answer (Q12), and the debt row for M6
+  that (i) leaves, for a backend on the internet, moved with the deployment ("The deployment,
+  moved out of M2").*
   `DevIdentity` serves only `dev` on loopback, and the recording consent must ride in a signed token
   (invariant 8). Options: (a) the Ole5 app's own token route mints a `SignedJoinTokens` token only
   for a caller who types an access code the owner sets (a secret setting of at least 16 characters,
@@ -1734,6 +1808,272 @@ The owner's call before Block 0:
   English "Stop" being covered by (a)'s entry. **The agent recommends (a)** and those labels, noting
   that (a) also lets "stop" into M3's stop-word presets unflagged, so M3's plan rules on those
   presets explicitly.
+
+The owner's call before the first recorded call, and the host:
+
+- **Q7. The consent screen, and keeping the recordings.** *Settled on 2026-11-03: (a), (i) and
+  (iv), on this laptop ("The owner's decisions"); its host parts, as drafted, moved with the
+  deployment ("The deployment, moved out of M2").* The widget shows a consent screen before the
+  microphone opens and passes its version and the recording choice to the token (the design's 3.2).
+  (a): the agent drafts it in Arabic and in English, with a one-line recording box, version
+  `m2-owner-test-1`, set as the dev server's `privacy.consent_version`, for the owner's own test
+  calls; the token's consent and `privacy.record_audio` stay as Block 0 built them, and nothing
+  more is built for them. The wording customers see comes from T2 before any customer uses the
+  widget. (i): the recordings are kept under `var/` on this laptop, the host now, until the owner
+  deletes them, as the golden set's audio is. (iv): the transcripts stay in the local Phoenix, M1's
+  on 127.0.0.1, with no retention setting, so until the owner deletes the project
+  (`PHOENIX_DEFAULT_RETENTION_POLICY_DAYS` defaults to 0, infinite:
+  arize.com/docs/phoenix/self-hosting/configuration.md, read 2026-11-02 by the security review).
+  `data-and-privacy.md` says both.
+- **Q8. The host.** *Settled on 2026-11-02: this machine for now, with Phoenix as M1's on
+  127.0.0.1, no SSH tunnel and no authentication ("The owner's decisions"). Its other parts moved
+  with the deployment on 2026-11-03, to be re-planned for the server ("The deployment, moved out of
+  M2").*
+- **Q9 to Q12** (the media path, the website embed, the network that blocks UDP, and open question
+  19 at the deployment) moved with the deployment on 2026-11-03; as drafted, they are in "The
+  deployment, moved out of M2".
+
+The owner's call before the measurement runs, except Q13 and Q17, which come before the first live
+call (step 18), since those calls spend the same money and limits:
+
+- **Q13. The budget cap** for M2's paid runs and calls together, against the estimate of about $0.80
+  ("The budget"). **The agent recommends $5**, the cap the owner set for M1 (the agent had
+  recommended $2 then).
+- **Q14. The turn defaults.** Should M2 change the settings that decide when the caller has
+  finished speaking? With only 6 paused requests in dev and D-024's floor of 6, a change could be
+  shown to help only if all 6 got better. Options: (a) measure only in M2 (E1 is the baseline), and
+  tune in M3 after more paused requests are recorded; (b) the owner records more paused requests now
+  (say 20 more lines, about an hour on the three devices), then M2 tunes on dev; (c) tune on the six
+  now. (b) and (c) would be registered as a dated amendment before E1. **The agent recommends
+  (a).**
+- **Q15. The language a live call sends Whisper, when the rule does not decide.** If A3 is not worse
+  (the rule above): (a) auto-detect for live calls, and the widget's language buttons kept only as a
+  preference; (b) the session's language anyway; (c) the prototype's double transcription, each clip
+  sent as Arabic and as English (its D24), twice the requests at the 10 s minimum each, against 20
+  Whisper requests a minute. **The agent recommends (a) in that case,** and (b) otherwise, as the rule
+  already gives.
+- **Q16. The prompt arm for product terms: in M2 or in M4.** Term recall was 0.333 for large-v3 on dev
+  (plan 002's Future improvements). In M2 it costs one dev run (about $0.075) plus a `--prompt` flag
+  in `poe eval` and TD-019's split, and it would change no default in M2, since the vocabulary that
+  becomes the prompt is declared with the agent (the design's 3.1 and 3.3). **The agent recommends
+  M4**, where the vocabulary lands and the result is used.
+- **Q17. The key**, before the first live call. Its real limits from the console
+  (console.groq.com/settings/limits): for each Orpheus model the requests and tokens a minute and a
+  day (published: 10, 100, 1.2K and 3.6K) and what a TTS token counts; for `whisper-large-v3` the
+  requests a minute and the audio seconds an hour and a day (published: 20, 7.2K and 28.8K); whether
+  Groq has been asked to raise Orpheus's limits (the owner's answer to the design's question 21);
+  whether anything else uses the key during M2's runs and calls; and Ole5's share of it (D-018,
+  question 11), which M6's limiter enforces. One live call may need about 6 to 12 Whisper requests
+  a minute, and up to about 20 if Whisper is cut per segment ("C" above). **The agent recommends**
+  pacing runs at half the key's per-minute limits while anything else might use it, as in M1, and
+  holding C's call days apart from T's day while the published limits hold.
+- **Q18. The call script.** The calls of "C" above, or fewer or more; with or without the Bluetooth
+  headset. **The agent recommends the script as proposed**, the Bluetooth call included, so that M3
+  has its recordings for the Bluetooth warning.
+- **Q19. Pipecat's log lines when a team asks for them (`logging.pipecat = "forward"`).** *Asked on
+  2026-11-02, after Block 0's read; needed before Track E.* Q2's (a) said that `forward` switches
+  Pipecat's namespace back on and forwards WARNING and above to `t2_agentic_voice.pipecat`, with no
+  sink added or removed. The read shows that cannot hold: a namespace switched off reaches no sink
+  at all (`loguru/_logger.py`, line 1995), so `forward` must switch it on and add a forwarding sink,
+  and loguru's default sink, which prints to the screen, then prints every Pipecat DEBUG line, call
+  content included, unless it is removed. Options: (a) `forward` switches the namespace on, adds a
+  sink that forwards WARNING and above with the record's level and module but never its text, and
+  removes loguru's default sink if it is still installed: a process-wide change a team makes only by
+  choosing `forward`, which the guide says; (b) M2 builds only `off`, the default, and `forward`
+  waits for a team that asks, built then as (a); (c) `forward` leaves the sinks alone, set aside
+  because the default sink would print call content (invariant 8). **The agent recommends (b):** M2
+  needs only `off`, a forwarded record carries no text and so says little, and adding the value
+  later breaks nothing. `off` behaves as Q2 settled it either way.
+
+Every question above gates the run as well as its own step, so each is also the owner's call before
+the run it touches.
+
+## What the owner does
+
+1. **Before Block 0:** answer Q1 to Q6 (Q5 may wait until the first live call).
+2. **In Groq's console, before the first live call:** accept the terms of `canopylabs/orpheus-arabic-saudi`
+   and `canopylabs/orpheus-v1-english` as the organisation's admin (the design's 3.2; the Arabic model
+   refuses a request until its terms are accepted, as a third party quotes Groq's error), and tell
+   the agent what the console showed, which is what step 30 corrects the design from; read the key's
+   real limits at console.groq.com/settings/limits (requests, tokens and audio seconds, Q17) and give
+   them to the agent; if they are as published, ask Groq to raise them (the design's question 21); a
+   spend limit in the console is the owner's choice. The key itself stays where M1 put it (`.env` in
+   the main checkout, or its file).
+3. **The first local calls** (step 18): first answer Q13 and Q17, and Q5 if it waited. Then, from the
+   main checkout, start the Ole5 app's dev server with the command the agent gives, open the address
+   it prints in Chrome on this laptop, allow the microphone, and say a few lines on the laptop's
+   speakers, then on the wired headset, pressing Stop and Esc during an echo; then the same in Edge.
+   Say whether each turn came back, and whether the microphone, playback, Stop and Esc worked in each
+   browser.
+
+**Steps 4 to 6, and the host's and the other networks' parts of steps 7 and 8, moved with the
+deployment** on 2026-11-03 ("The owner's decisions"); as drafted, they are in "The deployment,
+moved out of M2". Steps 7 to 9 keep their numbers.
+
+7. **The calls** (run C): with Q18's script, on each device and in each browser it names, from the
+   main checkout through the Ole5 app's dev server on localhost, as in step 3. Use the access code
+   on the page; switch recording on with the agent's command only for C's sessions, off after, and
+   tick the recording box only in C's calls; stop the backend between sessions, as Q4 says.
+8. **After each session:** nothing to copy: the call reports and, after a recorded session, the
+   recordings are already under `var/` on this laptop (Q7).
+9. **Before the measurement runs:** answer Q14 to Q16 and Q18, and say again whether anything else
+   uses the key during the runs.
+
+## The deployment, moved out of M2
+
+On 2026-11-03 the owner moved the deployment out of M2 ("The owner's decisions"): the owner has no
+access to the server yet, and every M2 call runs on this laptop, through the Ole5 app's dev server.
+The text below is the deployment as drafted on 2026-11-02, kept as it was written but for its
+checkboxes, made plain bullets: the acceptance criteria, steps 19 to 22 and the packages they run,
+the registration's C and its budget as drafted for the deployed calls, the words and the questions
+the deployment needs (Q7 and Q8 as drafted, Q9 to Q12), and "What the owner does", steps 4 to 8 as
+drafted. It becomes a plan of its own as soon as the owner has access to the server, whichever
+milestone is then in progress, re-planned for that server (its host facts, Q8 to Q12), and at the
+latest in M6. This replaces the note of 2026-11-02 below, which had it re-planned for this machine
+before step 19. That plan also re-reads what Block 0's reading found for this machine alone (the
+appendix's "Changes to the plan's interfaces", items 19, 20 and 22: proxy headers, the event loop,
+media on the LAN); checks what M2's local calls cannot show: `client_stats`'s relay fields on a
+relayed call, and the lock file's Linux case unless CI (TD-001) has run it; records Ole5's identity
+answer (Q12, the design's open question 19) in a decision entry; and pays TD-004, TD-015, TD-038
+and TD-048.
+
+### The acceptance criteria, as drafted
+
+**The deployment**
+
+*Amended 2026-11-02 ("The owner's decisions"): all hosting is on this machine for now, and Phoenix
+is M1's, on 127.0.0.1 with no authentication. These criteria, steps 19 to 22, Q9 to Q12 and Q7's
+host parts are re-planned for this machine before step 19, as a dated amendment the owner approves;
+until then they stand as drafted.*
+
+- The Ole5 app runs on the owner's host behind HTTPS (Q8): `env=staging`, one worker,
+  `var_dir` on a persistent volume, its image built from `git archive` of the merged commit with an
+  allow-list `.dockerignore` (a test that it lets in no `.env*`, `var/`, `.claude/` or `*.wav`).
+  Publicly open are only 443/tcp and the TURN ports Q9 keeps; the backend's HTTP port and Phoenix
+  sit on 127.0.0.1 or the compose network only, checked from the phone hotspot (step 20). Phoenix
+  runs beside it with auth on, its retention set by Q7, and never public; the backend sends
+  Phoenix's system API key from a host file (`tracing.api_key_file`), so a deployed call's turn
+  traces arrive there, and an exporter refusal (401) is counted and logged with no content. The
+  widget is embedded in the website (Q10).
+- The owner held a call from another network (a phone hotspot) and one from a network that
+  blocks UDP (Q11), and heard each turn back; each call's `client_stats` shows its candidate type,
+  and the call from the network that blocks UDP a relay over TLS on 443.
+- Before M2 closes, the media path is recorded as a decision entry with the network test's
+  outcome: UDP ports opened on the backend, a TURN service run as a small service, or another
+  transport (Q9).
+- If TURN is used, `/join` returns per-call TURN credentials minted from the shared secret
+  (coturn's REST scheme), the username `<expiry>:<call ID>` holding no claim of the token, valid
+  for `server.turn_ttl_s` (3600 by default, refused above 86400); the TURN secret, at least 32
+  bytes, is a `SecretStr` that reaches no log, trace, event or error, and so is each per-call
+  password. coturn runs as step 19 configures it, and step 20 shows that a minted credential
+  reaches no loopback, private or metadata address and gets no TCP relay.
+- The guard on the shared Groq key that Q4 settles is in place before the first deployed call.
+
+### Steps 19 to 22, as drafted
+
+**The deployment** (needs Q8 to Q12; re-planned for this machine before step 19, as the deployment's
+criteria say)
+
+19. **The deployment files**, written by the agent in `apps/ole5-voice-agent/deploy/` and reviewed
+    by the security reviewer before the owner runs them on the host; the agent never logs into it:
+    - the image, built from `git archive` of the merged commit (tracked files only, never a copy of
+      a checkout, whose `.env` and `var/` hold the key and the owner's voice), with an allow-list
+      `.dockerignore` (deny everything, then allow `packages/`, `apps/*/src`, `apps/*/web`,
+      `examples/`, the `pyproject.toml` files, `uv.lock` and `.python-version`) and a test that it
+      lets in no `.env*`, `var/`, `.claude/` or `*.wav`; the owner's steps end with a command that
+      finds no `.env` or WAV file in the built image;
+    - a compose file with the backend, Phoenix and, if Q9 picks it, coturn, and its port table:
+      publicly only 443/tcp and the TURN ports Q9 keeps; the backend's HTTP port published only on
+      127.0.0.1, or reached by the proxy over the compose network (Docker publishes on every
+      address by default and its published ports bypass ufw: docs.docker.com/engine/network/port-publishing/
+      and .../packet-filtering-firewalls/, read 2026-11-02 by the security review); Phoenix with
+      `PHOENIX_ENABLE_AUTH=true`, its secret and initial admin password from host files, its
+      retention from Q7, published on 127.0.0.1:6006 only and its gRPC port 4317 never;
+    - the reverse proxy's configuration as a template holding no secret: TLS, the widget's and the
+      router's routes, `X-Forwarded-For` overwritten rather than appended, and, if Q9 routes TURN
+      by SNI, the PROXY protocol, so the backend still sees each caller's address;
+    - coturn's configuration as a template holding no secret: `use-auth-secret` with the secret
+      read from a host file at start; a realm; no TCP relay; no multicast peers; every
+      special-purpose IPv4 and IPv6 range denied as a peer (loopback, private, link-local and
+      metadata, carrier-grade NAT, unique-local, IPv4-mapped); only the backend's own address
+      allowed, so the backend runs on a fixed non-loopback address and loopback peers are never
+      allowed; user and total quotas and a bandwidth cap; its CLI off; its own certificate and key
+      as host files. coturn 4.18.0 pinned by its image digest, or a host package no older than
+      4.16.0, which fixes a denied-peer bypass (CVE-2026-73213: fieldguide.lutrasecurity.com/CVE-2026-73213/,
+      read 2026-11-02 by the security review; UNVERIFIED against coturn's own advisory); each
+      option checked against 4.18.0's example configuration
+      (raw.githubusercontent.com/coturn/coturn/master/examples/etc/turnserver.conf, read 2026-11-02
+      by the security review), which turns TCP relays on and sets no quota by default;
+    - the settings: `T2V_PRIVACY__CONSENT_VERSION` set to Q7's version, and
+      `T2V_PRIVACY__RECORD_AUDIO` false except during run C's sessions; and the owner's steps.
+20. **The network spike on the host** (the design's 11, **verify**): what aiortc advertises behind
+    Docker's NAT; whether coturn relays to a backend on the same host; a call relayed over TLS on
+    443, and whether Chrome sends SNI on a `turns:` connection (UNVERIFIED); a call held past a
+    short TURN lifetime (120 s), to see whether coturn drops its allocation before
+    `server.turn_ttl_s`'s default is fixed; and two checks the owner runs with the agent's commands:
+    with a minted credential, a permission to 127.0.0.1, 169.254.169.254 and the Docker gateway is
+    refused, and so is a TCP allocation; from the phone hotspot, the backend's HTTP port, 6006 and
+    4317 are refused. Each outcome in the progress log, before the network test.
+21. **The website embed** (Q10) and the network test, under step 23's spending rule: a short call
+    (a few turns) from the phone hotspot and one from the network that blocks UDP (Q11), each on the
+    laptop's speakers and on the headset, not recorded, each call's report copied to the owner's
+    machine with the agent's command. They are not C's calls, which come after every open call of
+    the registration is settled.
+22. **The media path**, recorded as a decision entry from the network test's outcome (the roadmap's
+    M2: "Before M2 closes").
+
+### The packages they run, as drafted
+
+**Not installed:**
+
+- **coturn** 4.18.0 (2026-09-08, BSD-3-Clause; github.com/coturn/coturn/releases, read 2026-11-02 by
+  the research step), if Q9 picks it: run on the host as a small service from its own image pinned
+  by digest, or from a host package no older than 4.16.0 (step 19), never added to a member.
+- **Arize Phoenix** 21.0.0, run as in M1 (D-023), on the host for the deployment.
+
+### The owner's calls, the words and the questions, as drafted
+
+**C · The owner's calls (spends)**
+
+- **The calls,** from the call script the owner approves (Q18): the agent's proposal is eight calls of
+  at least three minutes and about ten turns each: local, on the laptop's speakers, the wired headset
+  and a Bluetooth headset; deployed, from the phone hotspot on the speakers and on the headset, and
+  from the network that blocks UDP on the speakers and on the headset; plus one deployed call on the
+  speakers in Edge. The turns, in the owner's own words: requests that pause mid-sentence, one-clause
+  requests with product terms, a number and a ticket number, English sentences, listening sounds, and
+  the Stop button and Esc during the echo.
+- **Metrics, per call:** per Groq model, the requests and the requests per call minute, the audio
+  seconds sent and billed per minute, the TTS characters per minute; per turn, the server's time to
+  first audio and, from `client_stats`, when it played (their difference is the network to the
+  browser); the candidate type, for a relay its protocol and port, and the time to connect; whether
+  the owner heard the turn back (after each call, the owner names any turn that did not come back,
+  and the agent checks it against the call's trace and timeline). Reported per call and as medians
+  over the calls.
+- **Recorded:** the requests per call minute per model, beside the key's real limits (Q17), as a
+  decision entry for M6.
+- **Cost (the agent's estimate):** a turn every 10 s or so is about 6 Whisper requests a minute with
+  Whisper cut per turn, up to about 12 with cut-offs, and up to about 20 for a caller who pauses
+  often if it is cut per segment, against the published 20 a minute; each is billed 10 s, so 60 to
+  120 billed seconds a minute ≈ $0.002 to $0.004; and 6 Orpheus requests of about 60 characters
+  ≈ $0.014 a minute in Arabic; eight calls of three minutes ≈ $0.45. **The limits, not the money,
+  bind:** at the published 100 requests a day per Orpheus model, about 6 requests a minute leave
+  roughly 16 call minutes of Arabic a day; at its published 3.6K tokens a day, if a token is one
+  character (UNVERIFIED), about 360 characters a minute leave about 10. The lower holds until Q17's
+  reading says otherwise, so C's calls span about three days, none on T's day, unless Groq raises
+  the limits (Q17).
+
+**The budget** (the agent's arithmetic): L $0.23, T $0.14, C about $0.45, the first local calls and
+the network-test calls about $0.05 each, and Q16's prompt arm $0.075 if it runs in M2: about $1.00 in
+all; `t2v doctor --synthesize` adds a fraction of a cent each time it runs. Whether a refused request
+is billed is UNVERIFIED (TD-021), and retries add requests.
+
+**Words the questions use**
+
+- **STUN:** a server that tells a machine its outside address. **TURN:** a relay server that
+  carries the call's audio when no direct path works. **TURN over TLS on 443** looks to a network
+  like ordinary secure web traffic, the one kind most closed networks let through.
+- **SNI routing:** a proxy reads the name a secure connection asks for and passes the connection,
+  still encrypted, to the server of that name, so two services can share port 443 on one address.
 
 The owner's call before the deployment (and, for Q7, before the first recorded call):
 
@@ -1816,78 +2156,8 @@ The owner's call before the deployment (and, for Q7, before the first recorded c
   identity (invariant 3); (b) hold the deployment until the answer. **The agent recommends (a)** when
   there is no answer.
 
-The owner's call before the measurement runs, except Q13 and Q17, which come before the first live
-call (step 18), since those calls spend the same money and limits:
+### What the owner does, steps 4 to 8, as drafted
 
-- **Q13. The budget cap** for M2's paid runs and calls together, against the estimate of about $1.00
-  ("The budget"). **The agent recommends $5**, the cap the owner set for M1 (the agent had
-  recommended $2 then).
-- **Q14. The turn defaults.** Should M2 change the settings that decide when the caller has
-  finished speaking? With only 6 paused requests in dev and D-024's floor of 6, a change could be
-  shown to help only if all 6 got better. Options: (a) measure only in M2 (E1 is the baseline), and
-  tune in M3 after more paused requests are recorded; (b) the owner records more paused requests now
-  (say 20 more lines, about an hour on the three devices), then M2 tunes on dev; (c) tune on the six
-  now. (b) and (c) would be registered as a dated amendment before E1. **The agent recommends
-  (a).**
-- **Q15. The language a live call sends Whisper, when the rule does not decide.** If A3 is not worse
-  (the rule above): (a) auto-detect for live calls, and the widget's language buttons kept only as a
-  preference; (b) the session's language anyway; (c) the prototype's double transcription, each clip
-  sent as Arabic and as English (its D24), twice the requests at the 10 s minimum each, against 20
-  Whisper requests a minute. **The agent recommends (a) in that case,** and (b) otherwise, as the rule
-  already gives.
-- **Q16. The prompt arm for product terms: in M2 or in M4.** Term recall was 0.333 for large-v3 on dev
-  (plan 002's Future improvements). In M2 it costs one dev run (about $0.075) plus a `--prompt` flag
-  in `poe eval` and TD-019's split, and it would change no default in M2, since the vocabulary that
-  becomes the prompt is declared with the agent (the design's 3.1 and 3.3). **The agent recommends
-  M4**, where the vocabulary lands and the result is used.
-- **Q17. The key**, before the first live call. Its real limits from the console
-  (console.groq.com/settings/limits): for each Orpheus model the requests and tokens a minute and a
-  day (published: 10, 100, 1.2K and 3.6K) and what a TTS token counts; for `whisper-large-v3` the
-  requests a minute and the audio seconds an hour and a day (published: 20, 7.2K and 28.8K); whether
-  Groq has been asked to raise Orpheus's limits (the owner's answer to the design's question 21);
-  whether anything else uses the key during M2's runs and calls; and Ole5's share of it (D-018,
-  question 11), which M6's limiter enforces. One live call may need about 6 to 12 Whisper requests
-  a minute, and up to about 20 if Whisper is cut per segment ("C" above). **The agent recommends**
-  pacing runs at half the key's per-minute limits while anything else might use it, as in M1, and
-  holding C's call days apart from T's day while the published limits hold.
-- **Q18. The call script.** The calls of "C" above, or fewer or more; with or without the Bluetooth
-  headset. **The agent recommends the script as proposed**, the Bluetooth call included, so that M3
-  has its recordings for the Bluetooth warning.
-- **Q19. Pipecat's log lines when a team asks for them (`logging.pipecat = "forward"`).** *Asked on
-  2026-11-02, after Block 0's read; needed before Track E.* Q2's (a) said that `forward` switches
-  Pipecat's namespace back on and forwards WARNING and above to `t2_agentic_voice.pipecat`, with no
-  sink added or removed. The read shows that cannot hold: a namespace switched off reaches no sink
-  at all (`loguru/_logger.py`, line 1995), so `forward` must switch it on and add a forwarding sink,
-  and loguru's default sink, which prints to the screen, then prints every Pipecat DEBUG line, call
-  content included, unless it is removed. Options: (a) `forward` switches the namespace on, adds a
-  sink that forwards WARNING and above with the record's level and module but never its text, and
-  removes loguru's default sink if it is still installed: a process-wide change a team makes only by
-  choosing `forward`, which the guide says; (b) M2 builds only `off`, the default, and `forward`
-  waits for a team that asks, built then as (a); (c) `forward` leaves the sinks alone, set aside
-  because the default sink would print call content (invariant 8). **The agent recommends (b):** M2
-  needs only `off`, a forwarded record carries no text and so says little, and adding the value
-  later breaks nothing. `off` behaves as Q2 settled it either way.
-
-Every question above gates the run as well as its own step, so each is also the owner's call before
-the run it touches.
-
-## What the owner does
-
-1. **Before Block 0:** answer Q1 to Q6 (Q5 may wait until the first live call).
-2. **In Groq's console, before the first live call:** accept the terms of `canopylabs/orpheus-arabic-saudi`
-   and `canopylabs/orpheus-v1-english` as the organisation's admin (the design's 3.2; the Arabic model
-   refuses a request until its terms are accepted, as a third party quotes Groq's error), and tell
-   the agent what the console showed, which is what step 30 corrects the design from; read the key's
-   real limits at console.groq.com/settings/limits (requests, tokens and audio seconds, Q17) and give
-   them to the agent; if they are as published, ask Groq to raise them (the design's question 21); a
-   spend limit in the console is the owner's choice. The key itself stays where M1 put it (`.env` in
-   the main checkout, or its file).
-3. **The first local calls** (step 18): first answer Q13 and Q17, and Q5 if it waited. Then, from the
-   main checkout, start the Ole5 app's dev server with the command the agent gives, open the address
-   it prints in Chrome on this laptop, allow the microphone, and say a few lines on the laptop's
-   speakers, then on the wired headset, pressing Stop and Esc during an echo; then the same in Edge.
-   Say whether each turn came back, and whether the microphone, playback, Stop and Esc worked in each
-   browser.
 4. **The host, before the deployment** (steps 4 to 8 are re-planned with it for this machine):
    answer Q7 to Q12. Then, with the agent's deployment steps:
    - the backend's domain name in DNS and its certificate at the reverse proxy; if Q9 picks coturn,
@@ -1922,8 +2192,6 @@ the run it touches.
 8. **After each session:** copy the call reports, and after a recorded session the recordings, from
    the host to `var/` on this laptop with the agent's command, then delete the recordings on the
    host (Q7).
-9. **Before the measurement runs:** answer Q14 to Q16 and Q18, and say again whether anything else
-   uses the key during the runs.
 
 ## Block 0's reading of the installed packages
 
