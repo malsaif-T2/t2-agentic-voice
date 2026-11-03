@@ -55,6 +55,9 @@ log = get_logger(__name__)
 # The speech detector's rate (Silero takes 16 or 8 kHz) and the pipeline's output rate.
 IN_RATE = 16_000
 OUT_RATE = 24_000
+# The output transport's chunk, in 10 ms (Pipecat's default, 40 ms): it plays only whole
+# chunks, and the text-to-speech bridge hands it nothing else (tts_bridge.py).
+OUT_CHUNK_10MS = 4
 # How long a peer's close may take before the call is forgotten without it (item 20; the
 # agent's bound, far over a close that does not hang).
 CLOSE_TIMEOUT_S = 5.0
@@ -68,7 +71,8 @@ _PROTOCOLS = frozenset({"udp", "tcp"})
 
 def transport_params() -> TransportParams:
     """A call's transport: audio in, mono at the speech detector's rate, and audio out at the
-    pipeline's rate, with no silence after the end (the call is cancelled, never drained)."""
+    pipeline's rate in chunks of `OUT_CHUNK_10MS`, with no silence after the end (the call is
+    cancelled, never drained)."""
     return TransportParams(
         audio_in_enabled=True,
         audio_in_sample_rate=IN_RATE,
@@ -76,6 +80,7 @@ def transport_params() -> TransportParams:
         audio_out_enabled=True,
         audio_out_sample_rate=OUT_RATE,
         audio_out_channels=1,
+        audio_out_10ms_chunks=OUT_CHUNK_10MS,
         audio_out_end_silence_secs=0,
     )
 

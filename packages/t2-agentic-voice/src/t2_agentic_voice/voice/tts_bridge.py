@@ -18,6 +18,13 @@ session_bridge.py's `SpeakFrame`) through the `TextToSpeech` port, one request a
   transport passes on once that audio has left it: the output tap then asks `played` for the
   clause's `ClausePlayed` (transport.py), with the seconds and chunks that came, the headroom on
   the response's first chunk and whether the take came back cut short.
+- The output transport is handed only whole chunks of its own (transport.py's
+  `OUT_CHUNK_10MS`, 40 ms) at the pipeline's rate: a take's audio, a cached phrase's too, is
+  resampled here when its rate differs, cut into whole chunks, each remainder carried into the
+  next and the last padded with silence. Pipecat 1.15.0's output holds what falls short of a
+  chunk, and its resampler's tail, until more comes, and discards both when a context's
+  `TTSStoppedFrame` is played (`_bot_stopped_speaking`): the next clause's audio, still
+  streaming when the clause before it ends, would lose up to a chunk from its middle.
 
 Clauses play in the order they were asked for: each is spoken on the processor's own task, one
 after another, and Pipecat plays the contexts in order. A clause a stop dropped, or one asked
@@ -30,6 +37,7 @@ from __future__ import annotations
 from collections.abc import AsyncGenerator
 from dataclasses import dataclass
 
+from pipecat.audio.utils import create_stream_resampler
 from pipecat.frames.frames import (
     Frame,
     InterruptionFrame,
@@ -60,8 +68,41 @@ from t2_agentic_voice.voice.session_bridge import (
     SpeakFrame,
 )
 from t2_agentic_voice.voice.session_bridge import context_id as clause_context
+from t2_agentic_voice.voice.transport import OUT_CHUNK_10MS
 
 log = get_logger(__name__)
+
+
+class _OutputChunks:
+    """One take's audio as the output transport plays it: at `sample_rate`, mono PCM16, in
+    whole chunks of `OUT_CHUNK_10MS` (the size Pipecat's output cuts, 1920 bytes at 24 kHz)."""
+
+    def __init__(self, sample_rate: int) -> None:
+        self._rate = sample_rate
+        self._size = sample_rate // 100 * 2 * OUT_CHUNK_10MS
+        self._held = bytearray()
+        # The take's own, its history kept however long the provider pauses.
+        self._resampler = create_stream_resampler(clear_after_secs=None)
+
+    async def whole(self, chunk: AudioChunk) -> bytes:
+        """The whole chunks the take's audio fills so far, the provider's `chunk` included;
+        what falls short of one is held for the next."""
+        audio = chunk.pcm16
+        if chunk.sample_rate != self._rate:
+            audio = await self._resampler.resample(audio, chunk.sample_rate, self._rate)
+        self._held.extend(audio)
+        cut = len(self._held) - len(self._held) % self._size
+        whole = bytes(self._held[:cut])
+        del self._held[:cut]
+        return whole
+
+    async def rest(self) -> bytes:
+        """The take's end: what is held, the resampler's tail with it, padded with silence to
+        a whole chunk; nothing when nothing is held."""
+        self._held.extend(await self._resampler.flush())
+        rest = bytes(self._held) + bytes(-len(self._held) % self._size)
+        self._held.clear()
+        return rest
 
 
 @dataclass
@@ -132,8 +173,8 @@ class ClauseTTSBridge(TTSService):
 
     async def run_tts(self, text: str, context_id: str) -> AsyncGenerator[Frame | None, None]:
         """The clause being spoken, through the port: its text as the session gave it (the
-        base passes it with leading spaces trimmed), its audio as frames of its context, which
-        is opened when its first audio comes."""
+        base passes it with leading spaces trimmed), its audio as frames of its context, in
+        whole output chunks, the context opened when its first chunk is whole."""
         if self._speaking is None:  # only a clause is ever spoken here
             return
         key, speak = self._speaking
@@ -141,21 +182,34 @@ class ClauseTTSBridge(TTSService):
         clock = self._events.clock
         clause.requested_at = clock.now()
         self._events.hand(Synthesizing(reply_id=key[0], clause=key[1], at=clause.requested_at))
+        chunks = _OutputChunks(self.sample_rate)
         try:
             async for chunk in self._tts.synthesize(speak.text, language=speak.language):
                 clause.took(chunk)
-                if not chunk.pcm16:
-                    continue
-                if not clause.queued:
-                    await self.create_audio_context(context_id)
-                    yield TTSStartedFrame(context_id=context_id)
-                    self._queued(key, clause)
-                yield TTSAudioRawFrame(chunk.pcm16, chunk.sample_rate, 1, context_id=context_id)
+                for frame in await self._audio(key, clause, context_id, await chunks.whole(chunk)):
+                    yield frame
+            for frame in await self._audio(key, clause, context_id, await chunks.rest()):
+                yield frame
         except ProviderError as error:
             self._failed(key, clause, error.kind, error.retryable)
         except Exception as error:  # an adapter's bug: the clause still fails, as it must
             log.error("tts_request_failed", reply_id=key[0], error=type(error).__name__)
             self._failed(key, clause, "server_error", False)
+
+    async def _audio(
+        self, key: ClauseKey, clause: _Clause, context_id: str, audio: bytes
+    ) -> list[Frame]:
+        """The frames of a take's whole chunks `audio`: none for none, its context's
+        `TTSStartedFrame` before its first, the context opened and `ClauseQueued` handed."""
+        if not audio:
+            return []
+        frames: list[Frame] = []
+        if not clause.queued:
+            await self.create_audio_context(context_id)
+            frames.append(TTSStartedFrame(context_id=context_id))
+            self._queued(key, clause)
+        frames.append(TTSAudioRawFrame(audio, self.sample_rate, 1, context_id=context_id))
+        return frames
 
     def played(self, key: ClauseKey) -> None:
         """The clause's last audio has left the output transport, or its place in the output
@@ -202,16 +256,19 @@ class ClauseTTSBridge(TTSService):
                 await self._mark(key)
 
     async def _play(self, key: ClauseKey, clause: _Clause, audio: AudioChunk) -> None:
-        """A fixed phrase's cached audio, in a context of its own, with no request."""
+        """A fixed phrase's cached audio, in a context of its own, with no request, in whole
+        output chunks."""
         if not audio.pcm16:
             await self._mark(key)
             return
+        chunks = _OutputChunks(self.sample_rate)
+        pcm16 = await chunks.whole(audio) + await chunks.rest()
         context = clause_context(key)
         await self.create_audio_context(context)
         await self.append_to_audio_context(context, TTSStartedFrame(context_id=context))
         clause.took(audio)
         self._queued(key, clause)
-        frame = TTSAudioRawFrame(audio.pcm16, audio.sample_rate, 1, context_id=context)
+        frame = TTSAudioRawFrame(pcm16, self.sample_rate, 1, context_id=context)
         await self.append_to_audio_context(context, frame)
         await self.append_to_audio_context(context, TTSStoppedFrame(context_id=context))
         await self.remove_audio_context(context)

@@ -6,6 +6,7 @@ from __future__ import annotations
 
 import asyncio
 import logging
+import struct
 import time
 from collections.abc import AsyncIterator, Awaitable, Callable
 from dataclasses import dataclass
@@ -266,6 +267,72 @@ def test_a_stop_drops_every_clause_asked_for_so_far_and_no_event_of_them_follows
     assert all(at < interrupted or at > marks["asked"] for at, _ in rig.captured.audio)
     assert rig.captured.audio_s() < 1.0 + 1.0 + 0.1  # the greeting cut, the next whole
     assert rig.keyed(ClausePlayed) == [(3, 0)]
+
+
+class _Numbered(FakeTextToSpeech):
+    """The fakes' text-to-speech, saying every text as `samples` numbered samples (1, 2, ...),
+    streamed in pieces of `piece` samples, `gap_s` apart: every sample that leaves the output
+    can be counted and placed."""
+
+    def __init__(self, *, samples: int, piece: int, gap_s: float) -> None:
+        super().__init__()
+        self.samples, self.piece, self.gap_s = samples, piece, gap_s
+
+    async def synthesize(self, text: str, *, language: str) -> AsyncIterator[AudioChunk]:
+        self.calls.append((text, language))
+        numbered = struct.pack(f"<{self.samples}h", *range(1, self.samples + 1))
+        for start in range(0, len(numbered), self.piece * 2):
+            await asyncio.sleep(self.gap_s)
+            piece = numbered[start : start + self.piece * 2]
+            yield AudioChunk(pcm16=piece, sample_rate=self.sample_rate)
+
+
+def test_a_clause_streamed_behind_a_cached_one_leaves_the_output_whole() -> None:
+    """The echo turn's two clauses: the cached frame (half a second, queued at once), then the
+    heard words, streamed in pieces that are not whole output chunks (40 ms), 100 ms apart, so
+    they are still coming when the frame's stop frame clears the audio the output holds short
+    of a chunk (Pipecat's `_bot_stopped_speaking`). Every sample of both leaves the output, in
+    order: the bridge hands the output whole chunks only."""
+    port = _Numbered(samples=25_000, piece=2_500, gap_s=0.1)
+    cached = AudioChunk(pcm16=struct.pack("<h", -5) * 12_000, sample_rate=24_000)
+
+    async def body(rig: Rig) -> None:
+        await rig.commands.run(_speak(0, "Welcome", audio=cached))
+        await rig.commands.run(_speak(0, "heard words", clause=1))
+        await until(lambda: len(rig.session.of(ClausePlayed)) == 2)
+
+    rig = _run(port, body, realtime=True)
+    sent = b"".join(frame.audio for _, frame in rig.captured.audio)
+    samples = struct.unpack(f"<{len(sent) // 2}h", sent)
+    assert samples.count(-5) == 12_000
+    assert [s for s in samples if s > 0] == list(range(1, 25_001))
+    assert max(i for i, s in enumerate(samples) if s < 0) < samples.index(1)
+    played = [e.audio_s for e in rig.session.of(ClausePlayed)]
+    assert played == pytest.approx([0.5, 25_000 / 24_000])
+
+
+def test_audio_at_another_rate_reaches_the_output_at_its_rate_in_whole_chunks() -> None:
+    """A provider's audio at 16 kHz, in pieces of 33 ms, and a cached phrase's at 48 kHz are
+    resampled in the bridge to the pipeline's 24 kHz, so the output's own resampler, whose held
+    audio a stop frame also discards, passes them through; every audio frame the bridge pushes
+    is whole output chunks (40 ms, 1920 bytes), the take's last padded with silence."""
+    from pipecat.frames.frames import TTSAudioRawFrame
+
+    port = FakeTextToSpeech(sample_rate=16_000, chunk_s=0.033)
+    cached = AudioChunk(pcm16=tone(0.25, 48_000), sample_rate=48_000)
+
+    async def body(rig: Rig) -> None:
+        await rig.commands.run(_speak(0, "Welcome", audio=cached))
+        await rig.commands.run(_speak(1, "Hello there"))
+        await until(lambda: len(rig.session.of(ClausePlayed)) == 2)
+
+    rig = _run(port, body)
+    frames = [f for f in rig.captured.frames if isinstance(f, TTSAudioRawFrame)]
+    assert len(frames) > 2
+    assert all(f.sample_rate == 24_000 and len(f.audio) % 1920 == 0 for f in frames)
+    assert rig.captured.audio_s() == pytest.approx(0.25 + 11 * 0.06, abs=0.08)
+    cached_played, spoken = rig.session.of(ClausePlayed)
+    assert (cached_played.audio_s, spoken.audio_s) == pytest.approx((0.25, 11 * 0.06), abs=0.01)
 
 
 def test_a_logger_records_no_spoken_text(caplog: pytest.LogCaptureFixture) -> None:
