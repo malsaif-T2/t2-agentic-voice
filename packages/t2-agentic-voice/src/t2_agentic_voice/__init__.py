@@ -6,11 +6,16 @@ an app imports from them, never from the layers inside, and ARCH-PUBLIC fails an
 The layers and their rules: ARCHITECTURE.md. Beside `VoiceSettings` sit its groups, so an app
 can build one in code (`VoiceSettings(env="dev", server=ServerSettings(...))`), and beside
 `get_logger` the logger it returns.
+
+`VoiceRuntime` and `Providers` are imported when first named (`__getattr__`): the runtime's
+module imports FastAPI, which costs seconds, so `import t2_agentic_voice` (an eval command, a
+child process, `t2v --help`) imports neither (TD-046).
 """
 
+import importlib
 import warnings
+from typing import TYPE_CHECKING, Any
 
-from t2_agentic_voice.api.runtime import Providers, VoiceRuntime
 from t2_agentic_voice.api.status import Status, status
 from t2_agentic_voice.core.config import VoiceSettings
 from t2_agentic_voice.core.errors import (
@@ -36,6 +41,15 @@ from t2_agentic_voice.core.settings.tracing import TracingSettings
 from t2_agentic_voice.core.settings.tts import TtsSettings, TtsVoice
 from t2_agentic_voice.core.settings.turns import TurnSettings
 from t2_agentic_voice.domain.declaration import Language, VoiceAgent
+
+if TYPE_CHECKING:
+    from t2_agentic_voice.api.runtime import Providers, VoiceRuntime
+
+# The names imported when first named, by the module that defines them.
+_LAZY = {
+    "Providers": "t2_agentic_voice.api.runtime",
+    "VoiceRuntime": "t2_agentic_voice.api.runtime",
+}
 
 __all__ = [
     "Caller",
@@ -72,9 +86,12 @@ __all__ = [
 ]
 
 
-def __getattr__(name: str) -> type[T2VoiceError]:
-    """`AppError`, the base error's old name, still works until the next minor release, with a
-    DeprecationWarning (the design's 5.4; D-026)."""
+def __getattr__(name: str) -> Any:
+    """`VoiceRuntime` and `Providers`, imported when first named; and `AppError`, the base
+    error's old name, which still works until the next minor release, with a DeprecationWarning
+    (the design's 5.4; D-026)."""
+    if name in _LAZY:
+        return getattr(importlib.import_module(_LAZY[name]), name)
     if name == "AppError":
         warnings.warn(
             "t2_agentic_voice.AppError is deprecated: use T2VoiceError",
