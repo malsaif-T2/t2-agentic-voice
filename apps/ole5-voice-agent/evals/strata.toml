@@ -8,7 +8,8 @@
 # and the items of the script the owner approved on 2026-11-01 (Q4), whose lines the [script]
 # tables count, with every take the owner kept on the three devices. Variants are counted
 # by the device of their microphone and by their tags: the talk-over's condition (duck, pause),
-# whether the take began over the assistant, and its playback device.
+# whether the take began over the assistant, and its playback device. The [script] tables also
+# count M3's 41 lines (plan 005, Q2 and Q6), which have no take yet.
 
 [items]
 total = 95
@@ -73,22 +74,23 @@ playback-headset = 3
 playback-speakers = 115
 
 [script]
-total = 52
+total = 93
 
 [script.language]
-english = 12
-mixed = 6
-msa = 9
-none = 5
-saudi = 20
+english = 23
+mixed = 10
+msa = 14
+none = 6
+saudi = 40
 
 [script.kind]
-echo_only = 2
-listening_sound = 5
+correction = 2
+echo_only = 3
+listening_sound = 10
 noise = 2
-paused_request = 10
-repeat_request = 4
+paused_request = 30
+repeat_request = 7
 request = 18
 silence = 1
-stop_word = 6
+stop_word = 16
 ticket_number = 4

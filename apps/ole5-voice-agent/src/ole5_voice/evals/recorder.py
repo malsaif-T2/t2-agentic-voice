@@ -5,7 +5,8 @@ variant with (Q9 of plan 002), served by the standard library's `http.server` on
 that holds the session's token; the owner opens it in Chrome. The page asks for the speaker's
 consent first, in their words (the session's `session.json`), records each line of the script as
 16 kHz mono 16-bit WAV with the browser's echo cancellation, noise suppression and gain control
-on, plays the take back, takes a several-clause take's true turn ends from its waveform, and
+on, plays the take back, takes a several-clause take's true turn ends from its waveform (and a
+stop or pause word's end, or the end of words said over a reply: `ScriptLine.needs_marks`), and
 saves it with its sidecar, kept or discarded (`takes.py`). Its review mode plays each kept take,
 and each golden-set variant the manifests name below the `--audio <root>=<folder>` roots given,
 beside its reference: the owner confirms it, or types what it says. Without `--session` and

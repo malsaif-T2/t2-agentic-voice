@@ -1,5 +1,6 @@
 """The held-out split: by item, about 30%, stratified by language and kind, from a salted order;
-the committed `split.json` is fresh (`split --check`), and a stale one fails."""
+new items placed with every committed item keeping its side (`--keep`); the committed
+`split.json` is fresh (`split --check`, or `--check --keep` once kept), and a stale one fails."""
 
 from __future__ import annotations
 
@@ -11,8 +12,8 @@ from pathlib import Path
 import pytest
 from ole5_voice.evals import split
 from ole5_voice.evals.items import EVALS, GoldenSetError, load_items
-from ole5_voice.evals.models import Item, Language
-from ole5_voice.evals.split import DEFAULT_SALT, load_split, split_items
+from ole5_voice.evals.models import Item, Language, SplitFile
+from ole5_voice.evals.split import DEFAULT_SALT, load_split, place_new, split_items
 from ole5_voice.evals.toml_write import dump_item
 
 from tests.ole5_voice.evals import samples
@@ -107,15 +108,47 @@ def test_the_command_writes_the_split_and_checks_it(tmp_path: Path) -> None:
     assert refused.value.code == 2
 
 
+def test_new_items_are_placed_and_every_committed_item_keeps_its_side(tmp_path: Path) -> None:
+    old = _items(("saudi", "request", 10))
+    committed = SplitFile(salt="made-up", items=split_items(old, "made-up"))
+    moved = Item.model_validate(old[0].model_dump() | {"kind": "noise"})  # its stratum changed
+    new = _items(("english", "stop_word", 4), ("msa", "request", 3))
+    gone = old[-1]  # an item no longer in the set
+    found = place_new([moved, *old[1:-1], *new], committed)
+    assert all(found[i.id] == committed.items[i.id] for i in old[:-1])
+    assert gone.id not in found and list(found) == sorted(found)
+    assert {i.id: found[i.id] for i in new} == split_items(new, "made-up")
+    assert len(_held({i.id: found[i.id] for i in new})) == 2  # 30% of the 7 new, by stratum
+
+    evals = _evals(tmp_path / "evals", old)
+    command = ["--evals", str(evals)]
+    assert split.main([*command, "--keep"]) == 1  # nothing committed yet to keep
+    assert split.main(command) == 0
+    sides = load_split(evals / "split.json").items
+    for item in new:
+        (evals / "golden" / f"{item.id}.toml").write_text(dump_item(item), encoding="utf-8")
+    (evals / "golden" / f"{moved.id}.toml").write_text(dump_item(moved), encoding="utf-8")
+    assert split.main([*command, "--check", "--keep"]) == 1  # the new items are not placed
+    assert split.main([*command, "--keep"]) == 0
+    kept = load_split(evals / "split.json").items
+    assert all(kept[i.id] == sides[i.id] for i in old) and len(kept) == 17
+    assert split.main([*command, "--check", "--keep"]) == 0
+    with pytest.raises(SystemExit) as refused:
+        split.main([*command, "--keep", "--salt", "x"])
+    assert refused.value.code == 2
+
+
 def test_the_command_refuses_a_set_with_no_item_or_no_folder(tmp_path: Path) -> None:
     assert split.main(["--evals", str(_evals(tmp_path / "evals", []))]) == 1
     assert split.main(["--evals", str(tmp_path / "absent")]) == 1
 
 
 def test_the_committed_split_is_fresh_and_covers_every_item() -> None:
-    assert split.main(["--check"]) == 0
+    """The committed split, written whole or with new items placed by `--keep`, names each item
+    once with its committed side, and about 30% of them are held out."""
+    assert split.main(["--check", "--keep"]) == 0
     committed = load_split(EVALS / "split.json")
     items = load_items(EVALS / "golden")
     assert set(committed.items) == {item.id for item in items}
     held_out = len(_held(committed.items))
-    assert held_out == (3 * len(items) + 5) // 10
+    assert 0.27 <= held_out / len(items) <= 0.33

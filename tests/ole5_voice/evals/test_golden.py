@@ -245,7 +245,8 @@ def test_a_split_or_strata_that_do_not_fit_the_items_fail_the_set(tmp_path: Path
     )
     (evals / "strata.toml").write_text(strata, encoding="utf-8")
     assert _check(evals).problems == [
-        "split.json does not name exactly the items: run the split again",
+        "split.json does not name exactly the items: "
+        "run `python -m ole5_voice.evals.split --keep`",  # never the plain split, which moves items
         "strata.toml: the items do not hold their registered counts",
     ]
 

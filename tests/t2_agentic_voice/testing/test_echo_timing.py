@@ -158,6 +158,27 @@ def test_each_turn_is_timed_from_the_clips_start() -> None:
     }
 
 
+def test_only_a_turn_part_is_the_turns_own_transcript() -> None:
+    """An overlap's `window` and `overlap` parts (plan 005) come before its `turn` part: the
+    turn is timed from its own part alone, while usage counts every request, each part's."""
+    window = Transcribing(turn_id=0, at=10.9, audio_s=0.75, part="window")
+    whole = Transcribing(turn_id=0, at=11.2, audio_s=1.1, part="overlap")
+    heard = [
+        Transcribed(turn_id=0, at=11.1, audio_s=0.75, sent_at=10.9, transcript=None, part="window"),
+        Transcribed(turn_id=0, at=11.4, audio_s=1.1, sent_at=11.2, transcript=None, part="overlap"),
+    ]
+    call = _call()
+    fed = FedCall(
+        started_at=call.started_at,
+        events=(*call.events[:2], window, heard[0], whole, heard[1], *call.events[2:]),
+        commands=call.commands,
+    )
+    (echoed, *_) = timing_of(fed, [])
+    assert (echoed.stt_sent_ms, echoed.stt_answered_ms) == pytest.approx((1500.0, 1800.0))
+    (whisper, _) = usage_of(fed, stt_model="whisper-large-v3", tts_models=MODELS)
+    assert whisper.requests == 5
+
+
 def test_a_take_is_claimed_once_and_only_by_its_own_words() -> None:
     other = Take(text="another text", language="en", first_sound_at=12.5, leading_silence_s=0.1)
     (echoed, *_) = timing_of(_call(), [other])

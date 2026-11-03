@@ -13,11 +13,12 @@ appendix, "Changes to the plan's interfaces", item 23). A turn's times come from
 Pipecat side handed its session and the commands the session gave (voice/file_transport.py's
 `FedCall`), and the heard words' first sound from their audio as the text-to-speech gave it,
 which `echo_timings` reads on its way to the pipeline, changing nothing of it
-(timed_speech.py).
+(timed_speech.py). A turn's own transcript is its `turn` part's `Transcribing` and
+`Transcribed` only: an overlap's `window` and `overlap` parts (plan 005) are not its request.
 
 A call's usage per model is counted from the same events, as voice/session/io.py's usage says:
-each `Transcribing` one speech-to-text request, its audio sent and billed at least
-`STT_MIN_BILLED_S`; each `Synthesizing` one text-to-speech request, its `Speak`'s text the
+each `Transcribing` one speech-to-text request, whatever its part, its audio sent and billed at
+least `STT_MIN_BILLED_S`; each `Synthesizing` one text-to-speech request, its `Speak`'s text the
 characters sent; each fixed phrase played from the phrase audio a cache hit; and the last
 headroom the provider reported, each model's.
 """
@@ -144,9 +145,9 @@ class _Call:
                 self.opened.append(event)
             elif isinstance(event, TurnClosed):
                 self.closed.setdefault(event.turn_id, event)
-            elif isinstance(event, Transcribing):
+            elif isinstance(event, Transcribing) and event.part == "turn":
                 self.sent.setdefault(event.turn_id, event)
-            elif isinstance(event, Transcribed):
+            elif isinstance(event, Transcribed) and event.part == "turn":
                 self.heard.setdefault(event.turn_id, event)
             elif isinstance(event, Synthesizing):
                 self.synthesizing.setdefault((event.reply_id, event.clause), event)

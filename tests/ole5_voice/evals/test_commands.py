@@ -21,6 +21,8 @@ COMMANDS = [
     "ole5_voice.evals.eot",
     "ole5_voice.evals.timing",
     "ole5_voice.evals.call_manifests",
+    "ole5_voice.evals.overlap",
+    "ole5_voice.evals.import_calls",
 ]
 
 
