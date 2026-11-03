@@ -252,8 +252,8 @@ def _run(args: argparse.Namespace, parts: OverlapParts) -> int:
 
 def main(argv: Sequence[str] | None = None, *, parts: OverlapParts | None = None) -> int:
     """`uv run poe overlap`: the overlap clips of one split, replayed over a reply. 0 when the
-    run is complete, 1 when it is not (the cap, an interrupt), 2 when it is refused before any
-    clip is fed."""
+    run is complete, 1 when it is not (the cap, an interrupt, a clip the replay could not play),
+    2 when it is refused before any clip is fed."""
     parser = _parser()
     args = parser.parse_args(argv)
     _require(parser, args)
