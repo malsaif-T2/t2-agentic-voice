@@ -11,10 +11,12 @@ can check without a call, each a `Check` that passes or says what to fix.
   another clock is not measured: no port reports a provider's time.
 - **`--synthesize`**: one short request per language, which checks its voice and the model's
   terms (Groq documents no other way to learn whether they are accepted), counted in the
-  key's budget.
+  key's budget. A model whose terms are not accepted fails with the adapter's FIX line, which
+  names the console's terms (adapters/groq_tts.py).
 
 No check prints a secret or a value it refused: each failure is the error's own message, which
-names the setting, never its value, and a FIX line.
+names the setting, never its value, and a FIX line; a provider's FIX line is the one its
+adapter put in the error's details (`fix`), since the message is fixed per kind.
 """
 
 from __future__ import annotations
@@ -150,10 +152,13 @@ def _clock(settings: VoiceSettings) -> Check:
 
 
 def _failure(error: ConfigurationError | ProviderError) -> str:
-    """A failure's own message, which holds no value; a provider's with its kind."""
-    if isinstance(error, ProviderError):
-        return f"{error.message} ({error.kind})"
-    return error.message
+    """A failure's own message, which holds no value; a provider's with its kind, then its
+    adapter's FIX line when its details hold one (`fix`)."""
+    if not isinstance(error, ProviderError):
+        return error.message
+    shown = f"{error.message} ({error.kind})"
+    fix = error.details.get("fix")
+    return f"{shown} {fix}" if isinstance(fix, str) else shown
 
 
 def _primary(tag: LanguageTag) -> str:

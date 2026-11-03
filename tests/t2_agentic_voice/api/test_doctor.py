@@ -22,6 +22,16 @@ from t2_agentic_voice.core.settings.groq import GroqSettings
 from tests.t2_agentic_voice.fakes import FakeSpeechToText, FakeTextToSpeech
 
 KEY = "gsk_made-up-key-0123456789abcdefghijklmnop"
+# The FIX line adapters/groq_tts.py gives a model whose terms are not accepted.
+TERMS_FIX = (
+    "FIX: accept the terms of canopylabs/orpheus-v1-english in Groq's console "
+    "(console.groq.com/playground, with the model chosen), signed in as the key's "
+    "organization's admin, then try again."
+)
+LANGUAGES = (
+    '{"ar": {"model": "canopylabs/orpheus-arabic-saudi", "voice": "abdullah"}, '
+    '"en": {"model": "canopylabs/orpheus-v1-english", "voice": "troy"}}'
+)
 
 
 def _settings(tmp_path: Path, **groups: Any) -> VoiceSettings:
@@ -63,6 +73,33 @@ def test_a_language_or_a_synthesis_the_provider_refuses_fails(tmp_path: Path) ->
     found = _by_name(_run(_settings(tmp_path), tts, synthesize=True))
     assert not found["model and voice ar-SA"].ok and "FIX:" in found["model and voice ar-SA"].detail
     assert not found["synthesis en"].ok and "(rejected)" in found["synthesis en"].detail
+
+
+def test_a_model_whose_terms_are_not_accepted_fails_with_its_fix_line(
+    monkeypatch: pytest.MonkeyPatch, capsys: pytest.CaptureFixture[str]
+) -> None:
+    """The adapter's rejected `ProviderError` for Groq's `model_terms_required` carries its FIX
+    line in its details (core/errors.py fixes the message per kind): `t2v doctor --synthesize`
+    prints it after the message and the kind; a `fix` that is not a string is left out."""
+    terms = ProviderError("rejected", False, details={"error": "model_terms_required"})
+    terms.details["fix"] = TERMS_FIX
+    odd = ProviderError("rejected", False, details={"fix": 7})
+    failures = {SAMPLES["en"]: terms, SAMPLES["ar"]: odd}
+
+    def fakes(cls: type[Providers], settings: VoiceSettings) -> Providers:
+        tts = FakeTextToSpeech(languages=("ar", "en"), failures=failures)
+        return Providers(stt=FakeSpeechToText(), tts=tts)
+
+    monkeypatch.setattr(Providers, "from_settings", classmethod(fakes))
+    monkeypatch.setenv("T2V_ENV", "dev")
+    monkeypatch.setenv("T2V_GROQ__API_KEY", KEY)
+    monkeypatch.setenv("T2V_TTS__LANGUAGES", LANGUAGES)
+    assert main(["doctor", "--synthesize"]) == 1
+    lines = capsys.readouterr().out.splitlines()
+    [english] = [line for line in lines if line.startswith("FAIL  synthesis en")]
+    assert english.endswith(f"(rejected) {TERMS_FIX}")
+    [arabic] = [line for line in lines if line.startswith("FAIL  synthesis ar")]
+    assert arabic.endswith("(rejected)")
 
 
 def test_a_synthesis_with_no_audio_fails(tmp_path: Path) -> None:
