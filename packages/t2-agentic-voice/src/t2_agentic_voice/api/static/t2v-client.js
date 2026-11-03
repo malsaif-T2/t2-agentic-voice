@@ -187,11 +187,13 @@ export class VoiceClient {
     if (typeof token !== "string" || token === "") {
       throw new VoiceClientError("no_token", "No join token was given.");
     }
+    this.#alive();
     const join = { token, protocol: PROTOCOL };
     if (this.#options.language) join.language = this.#options.language;
     const joined = await this.#request("POST", "join", join);
     this.callId = joined.call_id;
     this.#secret = joined.offer_secret;
+    this.#alive();
     this.#startedAt = performance.now();
     const pc = new RTCPeerConnection({
       iceServers: (joined.ice_servers ?? []).map(iceServer),
@@ -211,6 +213,10 @@ export class VoiceClient {
       this.#sendStats();
     });
     this.#channel.addEventListener("message", (event) => this.#receive(event.data));
+    // The session closes the channel as the call ends, its `ended` message sent before.
+    this.#channel.addEventListener("close", () => {
+      this.#finish(this.#hangupTimer === null ? "server" : "hangup");
+    });
     pc.addEventListener("icecandidate", (event) => this.#candidate(event.candidate));
     pc.addEventListener("track", (event) => this.#play(event));
     pc.addEventListener("connectionstatechange", () => this.#connection(pc.connectionState));
@@ -222,7 +228,7 @@ export class VoiceClient {
       type: "offer",
       offer_secret: this.#secret,
     });
-    if (this.#closed) return;
+    this.#alive();
     await pc.setRemoteDescription({ type: "answer", sdp: answer.sdp });
     this.#answered = true;
     this.#drain();
@@ -232,6 +238,12 @@ export class VoiceClient {
       };
       globalThis.addEventListener("keydown", this.#onKey);
     }
+  }
+
+  // Throws once the call has ended while it was starting (its microphone gone, say), so no
+  // peer is built for it.
+  #alive() {
+    if (this.#closed) throw new VoiceClientError("ended", "The call ended as it started.");
   }
 
   async #request(method, path, body) {
@@ -385,11 +397,12 @@ export class VoiceClient {
     this.#playback?.close();
     if (this.#onKey) globalThis.removeEventListener("keydown", this.#onKey);
     for (const track of this.#stream?.getTracks() ?? []) track.stop();
-    try {
-      this.#channel?.close();
-      this.#pc?.close();
-    } catch {
-      // closing what is closed already
+    for (const closing of [this.#channel, this.#pc]) {
+      try {
+        closing?.close();
+      } catch {
+        // closed already
+      }
     }
     this.#context?.close().catch(() => {});
     if (this.#audio) this.#audio.srcObject = null;
