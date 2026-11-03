@@ -21,8 +21,15 @@ import asyncio
 from collections.abc import Awaitable, Callable, Sequence
 from dataclasses import dataclass, field
 
-from tests.t2_agentic_voice.fakes import FakeSpeechToText, FakeTextToSpeech, quiet_pipecat, tone
-from tests.t2_agentic_voice.session_fakes import AGENT, FakePhrases, FakeSession
+from tests.t2_agentic_voice.fake_session import FakeSession
+from tests.t2_agentic_voice.fakes import (
+    FakePhrases,
+    FakeSpeechToText,
+    FakeTextToSpeech,
+    quiet_pipecat,
+    tone,
+)
+from tests.t2_agentic_voice.session_fakes import AGENT
 
 quiet_pipecat()
 

@@ -29,6 +29,21 @@ class ListenIn:
 
 
 @dataclass(frozen=True, kw_only=True)
+class HearOverlap:
+    """The caller's turn `turn_id` is an overlap: its speech began while a reply played, or
+    within 300 ms after one (io.py's overlaps). Besides the turn's own transcript, the
+    speech-to-text bridge sends the overlap's two parts, each reported with its `part`: its
+    `window`, the first `window_ms` of it counted from 300 ms before the speech detector heard
+    its speech begin, if the speech still goes on then; and the `overlap`, all of its speech,
+    once the detector hears it stop, never waiting for the turn's end. At most these two
+    requests decide an overlap: the turn's own `Transcribed` reuses the overlap's transcript,
+    with no request of its own, when no speech followed it."""
+
+    turn_id: TurnId
+    window_ms: int
+
+
+@dataclass(frozen=True, kw_only=True)
 class Speak:
     """Say one clause of a reply in the voice of `language`: clause `clause` of reply
     `reply_id`, which answers the caller's turn `turn_id` (None for the greeting or a spoken
@@ -60,7 +75,8 @@ class StopSpeaking:
 @dataclass(frozen=True, kw_only=True)
 class Send:
     """Send the client `message` at once, ahead of any queued audio: an urgent transport message,
-    which a stop never drops (item 8)."""
+    which a stop never drops (item 8). The agent's voice is lowered and brought back this way,
+    with `duck` and `unduck` (io.py's overlaps)."""
 
     message: SessionMessage
 
@@ -79,5 +95,5 @@ class HangUp:
     reason: EndReason
 
 
-Command = ListenIn | Speak | StopSpeaking | Send | HangUp
-COMMANDS: tuple[type[Command], ...] = (ListenIn, Speak, StopSpeaking, Send, HangUp)
+Command = ListenIn | HearOverlap | Speak | StopSpeaking | Send | HangUp
+COMMANDS: tuple[type[Command], ...] = (ListenIn, HearOverlap, Speak, StopSpeaking, Send, HangUp)

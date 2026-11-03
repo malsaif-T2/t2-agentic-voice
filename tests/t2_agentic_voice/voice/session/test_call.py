@@ -22,7 +22,8 @@ from t2_agentic_voice.voice.protocol import Ended, Notice, SessionHello, State
 from t2_agentic_voice.voice.session.commands import HangUp, ListenIn
 from t2_agentic_voice.voice.session.echo import MAX_ECHO_REQUESTS
 
-from tests.t2_agentic_voice.session_fakes import AGENT, FakePhrases
+from tests.t2_agentic_voice.fakes import FakePhrases
+from tests.t2_agentic_voice.session_fakes import AGENT
 from tests.t2_agentic_voice.voice.session.session_support import (
     HEARD,
     HEARD_AR,

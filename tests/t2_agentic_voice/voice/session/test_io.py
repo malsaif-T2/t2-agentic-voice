@@ -1,7 +1,8 @@
 """The session's I/O (voice/session/io.py, with session_events.py and commands.py; plan 003's
 step 10): the lists name every event and command once; each is frozen and keyword-only, every
 event carries its time, every turn's event its turn and every clause's its reply, never a turn;
-a session and a Pipecat side written against the protocols talk through them alone, the call's
+a turn's requests name their part, its whole speech's unless an overlap's names another; a
+session and a Pipecat side written against the protocols talk through them alone, the call's
 stream ending with the session's `aclose`; and the system clock is the performance counter, the
 aware UTC time and asyncio's sleep."""
 
@@ -27,6 +28,7 @@ from t2_agentic_voice.voice.session.commands import (
     COMMANDS,
     Command,
     HangUp,
+    HearOverlap,
     ListenIn,
     Send,
     Speak,
@@ -47,6 +49,7 @@ from t2_agentic_voice.voice.session.session_events import (
     Synthesizing,
     Transcribed,
     Transcribing,
+    TranscriptPart,
     TransportFailure,
     TurnClosed,
     TurnOpened,
@@ -77,6 +80,7 @@ EVENTS: list[SessionEvent] = [
 ]
 COMMAND_EXAMPLES: list[Command] = [
     ListenIn(language="en"),
+    HearOverlap(turn_id=0, window_ms=750),
     Speak(reply_id=1, clause=0, turn_id=0, text="I heard:", language="en", audio=FRAME),
     StopSpeaking(reply_id=1),
     Send(message=State(state="listening")),
@@ -121,6 +125,20 @@ def test_every_event_carries_its_time_a_turns_its_turn_and_a_clauses_its_reply()
         reply_id=0, clause=0, turn_id=None, text="Hello there.", language="en", audio=FRAME
     )
     assert (greeting.turn_id, greeting.audio) == (None, FRAME)
+
+
+def test_a_turns_requests_name_their_part_the_whole_turns_unless_another_is_named() -> None:
+    """A turn's request and transcript are its `turn` part unless the bridge names another, so a
+    call with no overlap reads as it did; an overlap's `window` and `overlap` name themselves."""
+    request, answer = EVENTS[3], EVENTS[4]
+    assert isinstance(request, Transcribing) and isinstance(answer, Transcribed)
+    assert (request.part, answer.part) == ("turn", "turn")
+    assert get_args(TranscriptPart) == ("window", "overlap", "turn")
+    window = Transcribing(turn_id=2, at=5.0, audio_s=0.75, part="window")
+    heard = Transcribed(
+        turn_id=2, at=5.3, audio_s=0.75, sent_at=5.0, transcript=None, part="overlap"
+    )
+    assert (window.part, heard.part) == ("window", "overlap")
 
 
 class _Phrases:
