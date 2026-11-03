@@ -31,13 +31,15 @@ line of the call's timeline, when it is recorded.
 
 A turn said while the agent was silent (no overlap) is read whole under `two_step`
 (domain/interruptions.py's `whole_command`): a repeat request says the last reply again, and a
-stop or pause request is never said back, each a command; any other is answered. Under `drop`
-every such turn is answered, as plan 003's echo answers it.
+stop or pause request is never said back, each a command, once the replies in progress to
+earlier turns are stopped (its speech began before they started, so no overlap of them), with
+one `Interrupted`; any other is answered. Under `drop` every such turn is answered, as plan
+003's echo answers it.
 """
 
 from __future__ import annotations
 
-from collections.abc import Awaitable, Callable
+from collections.abc import Awaitable, Callable, Mapping
 from dataclasses import replace
 
 from t2_agentic_voice.core.events import TurnId
@@ -61,6 +63,11 @@ from t2_agentic_voice.voice.session.turn_book import TurnBook
 
 # Answer the caller's turn: the session's echo of its own transcript (call.py).
 Answer = Callable[[TurnLog, HeardWords | None, Transcribed], Awaitable[None]]
+# What a whole command said as a reply began stops it as: an overlap's stop word or repeat.
+_STOPS: Mapping[WholeCommand, Verdict] = {
+    "stop": Verdict(action="stop", kind="stop", reason="stop_word"),
+    "repeat": Verdict(action="repeat", kind="new_words", reason="repeat_word"),
+}
 
 
 class Interrupter:
@@ -151,7 +158,8 @@ class Interrupter:
     async def alone(self, turn: TurnLog, heard: HeardWords | None, event: Transcribed) -> None:
         """A turn's own transcript that is no overlap's: under `two_step`, a whole repeat
         request says the last reply again, and a whole stop or pause request is not said back,
-        each a command; any other is answered, as under `drop`."""
+        each a command, the replies answering earlier turns stopped first (`_stop_earlier`);
+        any other is answered, as under `drop`."""
         command = None
         if self._two_step and heard is not None and not self._over():
             command = whole_command(heard.text, words=self._overlaps.words)
@@ -159,6 +167,7 @@ class Interrupter:
             await self._answer(turn, heard, event)
             return
         self._recorder.line(event.at, "command", turn_id=turn.turn_id, command=command)
+        await self._stop_earlier(turn, command, event.at)
         if command == "repeat":
             await self._repeat(turn, event.at)
         self._turns.ended(turn, "command")
@@ -217,6 +226,18 @@ class Interrupter:
         if turn.fate != "pending":
             self._turns.ended(turn, "pending")
         return turn
+
+    async def _stop_earlier(self, turn: TurnLog, command: WholeCommand, at: float) -> None:
+        """Before `turn`'s whole `command`: the replies in progress to earlier turns stopped,
+        with one `Interrupted` as an overlap's; none when one answers this turn or a later one,
+        which the stop would drop too."""
+        playback = self._speaker.playback
+        answering = [r.turn_id for r in playback.in_progress() if r.turn_id is not None]
+        if not answering or max(answering) >= turn.turn_id:
+            return
+        await self._speaker.stop(at, client=False)
+        verdict = _STOPS[command]
+        self._events.interrupted(max(answering), verdict.kind, verdict.reason)
 
     async def _act(self, state: OverlapState, verdict: Verdict, at: float) -> None:
         """Carry out `verdict` on the overlap `state`: its `Interrupted`, the turn's fate, and
