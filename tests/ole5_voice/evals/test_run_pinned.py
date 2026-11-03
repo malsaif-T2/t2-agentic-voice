@@ -8,8 +8,8 @@ from __future__ import annotations
 from pathlib import Path
 
 import pytest
-from ole5_voice.evals import run
-from t2_agentic_voice import Settings
+from ole5_voice.evals import run, run_settings
+from t2_agentic_voice import VoiceSettings
 from t2_agentic_voice.ports import SpeechToText
 
 from tests.ole5_voice.evals.run_support import DEV, Setup
@@ -22,10 +22,10 @@ SHELL = {
 }
 
 
-def _capturing(setup: Setup) -> list[Settings]:
-    built: list[Settings] = []
+def _capturing(setup: Setup) -> list[VoiceSettings]:
+    built: list[VoiceSettings] = []
 
-    def adapter(settings: Settings) -> SpeechToText:
+    def adapter(settings: VoiceSettings) -> SpeechToText:
         built.append(settings)
         return setup.stt
 
@@ -130,3 +130,47 @@ def test_a_setting_holding_an_install_placeholder_is_refused_before_anything_is_
         out = capsys.readouterr().out
         assert f"{setting} holds an install placeholder" in out
         assert built == [] and not setup.out().exists()
+
+
+def test_with_no_env_file_named_a_run_reads_the_working_folders(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    """The library reads no `.env` it is not given (the design's 7.2): the app gives it the
+    working folder's, as the golden set's first runs read it (tests/conftest.py switches this
+    off for every other test)."""
+    monkeypatch.setattr(run_settings, "DOTENV", Path(".env"))
+    folder = tmp_path / "working"
+    folder.mkdir()
+    monkeypatch.chdir(folder)
+    keys = []
+    for name in ("before", "after"):
+        setup = Setup(tmp_path / name)
+        built = _capturing(setup)
+        assert setup.main() == 0
+        keys.append(built[0].groq.resolved_api_key())
+        (folder / ".env").write_text("T2V_GROQ__API_KEY=gsk_made-up-key-0000\n", "utf-8")
+    assert keys[0] is None and keys[1] is not None
+
+
+def test_a_run_is_a_developers_whatever_the_environment_names(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    """A run serves no caller, so its settings run as `env=dev`, recorded so, whatever
+    `T2V_ENV` says; and every setting the library has is recorded, a secret as set or not."""
+    monkeypatch.setenv("T2V_ENV", "prod")
+    monkeypatch.setenv("T2V_SERVER__TURN_SECRET", "made-up-shared-secret-for-tests-01234567")
+    setup = Setup(tmp_path)
+    built = _capturing(setup)
+    assert setup.main("--env-file", _env(tmp_path)) == 0
+    assert built[0].env == "dev"
+    ((info, _, _, _),) = setup.writer.calls
+    assert (info.settings["env"], info.settings["server.turn_secret"]) == ("dev", "set")
+    assert (info.settings["join.keys"], info.settings["server.allowed_origins"]) == (
+        "not set",
+        "0 entries",
+    )
+    assert info.settings["tts.languages"].startswith('{"ar": {"model": "canopylabs/orpheus')
+    assert (info.settings["privacy.consent_version"], info.settings["turns.vad_stop_ms"]) == (
+        "none",
+        "200",
+    )

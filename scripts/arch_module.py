@@ -2,16 +2,27 @@
 (scripts/check_architecture.py, which says what each enforces): ARCH-LAYER's imports, the
 library's side of ARCH-PUBLIC (it never imports an app), ARCH-OWNER, ARCH-PRINT, ARCH-ENV, and
 ARCH-CONSTRUCT. ModuleChecker visits a module's tree once and collects every violation.
+
+ARCH-CONSTRUCT reads two kinds of [[restricted]] entry, each held by its `layers` and its
+`files`. A class counts where a call builds it (`C(...)`, `C.model_validate(...)`, `m.C(...)`).
+A name counts wherever the module's text mentions it (scripts/arch_names.py): any token that is
+the name, and any literal that holds it, a docstring included; and a star import from a module
+that may bind it (one of its files, or a module of its layers), which binds it unseen. No module
+outside its layers and files is exempt, not even one that binds a name of the same spelling. A
+name computed at run time cannot be checked statically: what the name guards checks it again at
+run time.
 """
 
 from __future__ import annotations
 
 import ast
-from collections.abc import Collection
+import importlib.util
+from collections.abc import Collection, Mapping
 from pathlib import Path
 
 from scripts._common import Violation
-from scripts.harness_arch import ArchConfig
+from scripts.arch_names import referred
+from scripts.harness_arch import ArchConfig, Ownership, under
 
 ROOT_LAYER = "<package root>"
 CHANGE_RULE_FIX = (
@@ -23,12 +34,16 @@ PRINT_FIX = (
     "Use the structured logger: `log = get_logger(__name__)`; `log.info('event_name', key=value)`."
 )
 ENV_ATTRS = frozenset({"environ", "environb", "getenv", "getenvb", "putenv", "unsetenv"})
+LOADERS = ("import_module", "__import__")  # importlib's functions that load a named module
 _STREAMS = frozenset({"stdout", "stderr"})
 
 
 class ModuleChecker(ast.NodeVisitor):
-    def __init__(self, arch: ArchConfig, *, layer: str, rel: str, display: str) -> None:
+    def __init__(
+        self, arch: ArchConfig, *, layer: str, rel: str, display: str, source: str
+    ) -> None:
         self.arch = arch
+        self.source = source  # the module's text, which the tree was parsed from
         self.layer = layer
         self.rel = rel  # inside the package: "core/config.py"
         self.display = display
@@ -38,11 +53,17 @@ class ModuleChecker(ast.NodeVisitor):
         self.is_package = stem == "__init__"
         self.os_names = {"os"}  # names bound to the os module here
         self.importlib_names = {"importlib"}  # ... and to the importlib module
-        self.import_functions = {"__import__"}  # names that import a module named by a string
+        # names that import a module named by a string, each with the LOADERS function it is
+        self.import_functions = {"__import__": "__import__"}
         self.violations: list[Violation] = []
 
     def _add(self, line: int, rule: str, problem: str, fix: str) -> None:
         self.violations.append(Violation(self.display, line, rule, problem, fix))
+
+    def visit_Module(self, node: ast.Module) -> None:
+        self.generic_visit(node)
+        found = referred(self.arch, self.source, node, self.display, layer=self.layer, rel=self.rel)
+        self.violations += found
 
     # ---------------------------------------------------------------- imports
 
@@ -67,8 +88,8 @@ class ModuleChecker(ast.NodeVisitor):
                         self._env_violation(node.lineno, f"os.{alias.name}")
             if base == ["importlib"]:
                 for alias in node.names:
-                    if alias.name == "import_module":
-                        self.import_functions.add(alias.asname or alias.name)
+                    if alias.name in LOADERS:
+                        self.import_functions[alias.asname or alias.name] = alias.name
         else:
             package = self.module_parts if self.is_package else self.module_parts[:-1]
             if node.level - 1 > len(package):
@@ -76,6 +97,8 @@ class ModuleChecker(ast.NodeVisitor):
             base = package[: len(package) - (node.level - 1)]
             if node.module:
                 base = [*base, *node.module.split(".")]
+        if any(alias.name == "*" for alias in node.names):
+            self._check_star(".".join(base), node.lineno)
         # `from <package> import services` / `from .. import services`: a name may be a layer.
         if base == [self.arch.package] or node.module is None:
             for alias in node.names:
@@ -156,7 +179,7 @@ class ModuleChecker(ast.NodeVisitor):
             )
         name = _constructed_class(node.func, self.arch.restricted.keys())
         restriction = self.arch.restricted.get(name) if name else None
-        if restriction is not None and self.layer not in restriction.layers:
+        if restriction is not None and not restriction.allows(self.layer, self.rel):
             self._add(
                 node.lineno,
                 "ARCH-CONSTRUCT",
@@ -166,19 +189,10 @@ class ModuleChecker(ast.NodeVisitor):
         self.generic_visit(node)
 
     def _imported_by_name(self, node: ast.Call) -> list[str] | None:
-        """The module `importlib.import_module("a.b")` or `__import__("a.b")` loads, split on
-        dots, when its name is a literal; a computed name cannot be checked statically."""
-        func = node.func
-        loads = (isinstance(func, ast.Name) and func.id in self.import_functions) or (
-            isinstance(func, ast.Attribute)
-            and func.attr == "import_module"
-            and isinstance(func.value, ast.Name)
-            and func.value.id in self.importlib_names
-        )
-        name = node.args[0] if loads and node.args else None
-        if not isinstance(name, ast.Constant) or not isinstance(name.value, str):
-            return None
-        return name.value.split(".") if name.value[:1] not in ("", ".") else None
+        """The module the call loads by a literal name, split on dots (`literal_import`)."""
+        package = self.module_parts if self.is_package else self.module_parts[:-1]
+        name = literal_import(node, self.import_functions, self.importlib_names, ".".join(package))
+        return name.split(".") if name is not None else None
 
     def visit_Attribute(self, node: ast.Attribute) -> None:
         if (
@@ -188,6 +202,21 @@ class ModuleChecker(ast.NodeVisitor):
         ):
             self._env_violation(node.lineno, f"os.{node.attr}")
         self.generic_visit(node)
+
+    def _check_star(self, module: str, line: int) -> None:
+        """ARCH-CONSTRUCT for `from <module> import *`, when `module` may bind a [[restricted]]
+        name this module may not mention: the import binds it with no mention."""
+        for name, restriction in self.arch.restricted_names.items():
+            if not restriction.allows(self.layer, self.rel) and self._binds(module, restriction):
+                problem = f"'*' imported from '{module}', which may bind '{name}', in layer "
+                self._add(line, "ARCH-CONSTRUCT", f"{problem}'{self.layer}'", restriction.fix)
+
+    def _binds(self, module: str, restriction: Ownership) -> bool:
+        """Whether `module` is one of the restriction's files, or a module of its layers."""
+        package = self.arch.package
+        if any(module == _module_name(package, path) for path in restriction.files):
+            return True
+        return any(under(module, f"{package}.{layer}") for layer in restriction.layers)
 
     def _env_violation(self, line: int, what: str) -> None:
         if self.rel in self.arch.env_allowed_files:
@@ -200,6 +229,59 @@ class ModuleChecker(ast.NodeVisitor):
             f"{what} used outside {allowed}",
             _owners_fix(self.arch, "pydantic_settings", fix),
         )
+
+
+def literal_import(
+    node: ast.Call,
+    functions: Mapping[str, str],
+    importlibs: Collection[str],
+    package: str | None = None,
+) -> str | None:
+    """The module a call loads by a literal name, given by position or as `name=`:
+    `importlib.import_module("a.b")`, or a relative `import_module(".b", "a")` resolved against
+    its literal anchor; `__import__("a.b")` or `importlib.__import__("a.b")`, and one with a
+    literal `level` above 0 resolved against `package`, the calling module's own package. A
+    computed name, or a relative one with no literal anchor, cannot be checked statically.
+    `functions`: each name bound here to one of LOADERS, with the one it is (`__import__`
+    itself; `load` after `from importlib import import_module as load`); `importlibs`: the names
+    bound to the importlib module."""
+    func = node.func
+    if isinstance(func, ast.Name):
+        loader = functions.get(func.id)
+    elif isinstance(func, ast.Attribute) and isinstance(func.value, ast.Name):
+        loader = func.attr if func.value.id in importlibs and func.attr in LOADERS else None
+    else:
+        loader = None
+    name = _literal(_argument(node, 0, "name"))
+    if loader is None or not isinstance(name, str) or not name:
+        return None
+    anchor: object = package
+    if loader == "__import__":
+        given = _argument(node, 4, "level")
+        level = 0 if given is None else _literal(given)
+        if name.startswith(".") or type(level) is not int or level < 0:
+            return None
+        name = "." * level + name
+    else:
+        anchor = _literal(_argument(node, 1, "package"))
+    if not name.startswith("."):
+        return name
+    try:
+        return importlib.util.resolve_name(name, anchor) if isinstance(anchor, str) else None
+    except ImportError:
+        return None  # an empty anchor, or more dots than it has parts
+
+
+def _argument(node: ast.Call, position: int, keyword: str) -> ast.expr | None:
+    """The call's argument at `position`, or given as `keyword=`; None when it has none."""
+    if len(node.args) > position:
+        return node.args[position]
+    return next((k.value for k in node.keywords if k.arg == keyword), None)
+
+
+def _literal(node: ast.expr | None) -> object:
+    """A literal argument's value; None when it is missing or computed."""
+    return node.value if isinstance(node, ast.Constant) else None
 
 
 def _owners_fix(arch: ArchConfig, module: str, fallback: str) -> str:
@@ -221,6 +303,13 @@ def _writes_output(func: ast.expr) -> bool:
         and isinstance(func.value.value, ast.Name)
         and func.value.value.id == "sys"
     )
+
+
+def _module_name(package: str, path: str) -> str:
+    """The dotted name of the module at `path` inside `package`: "core/identity.py" is
+    "<package>.core.identity", and "core/__init__.py" is "<package>.core"."""
+    parts = Path(path).with_suffix("").parts
+    return ".".join([package, *(parts[:-1] if parts[-1] == "__init__" else parts)])
 
 
 def _constructed_class(func: ast.expr, names: Collection[str]) -> str | None:

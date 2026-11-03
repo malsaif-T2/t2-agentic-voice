@@ -1,0 +1,53 @@
+{
+  "about": [
+    "The request GroqTTS sends for one fixed text: plan 003, Block 0, step 11. Track B's tests",
+    "compare the request its fake transport receives with this, field by field and byte for",
+    "byte. Its sources: Groq's Orpheus page as plan 003 quotes it",
+    "(console.groq.com/docs/text-to-speech/orpheus, read 2026-11-02 by the research step: wav",
+    "is the only format, at most 200 characters); the prototype's call",
+    "(Ole5-chatbot/src/ole5_chat/voice/tts.py, lines 201-202, read 2026-11-02, never run:",
+    "model, voice, input, and response_format wav); and the installed groq 1.7.0",
+    "(groq/resources/audio/speech.py, lines 175-189: the path, the Accept header and the",
+    "fields' order, sample_rate and speed left out unless given; groq/_utils/_json.py, lines",
+    "18-25: compact JSON in UTF-8, nothing escaped as ASCII). The prototype chose the model",
+    "and voice by the reply's language, else by the text's letters (its lines 141-148); here",
+    "the call's language names them (tts.languages). The text is the agent's own, no",
+    "golden-set item's."
+  ],
+  "call": {
+    "settings": {
+      "groq.base_url": "https://api.groq.com",
+      "tts.languages.ar-SA": {
+        "model": "canopylabs/orpheus-arabic-saudi",
+        "voice": "abdullah"
+      },
+      "tts.timeout_s": 6.0
+    },
+    "language": "ar-SA",
+    "text": "هذه جملة ثابتة لتجربة الصوت."
+  },
+  "client": {
+    "base_url": "https://api.groq.com",
+    "max_retries": 0,
+    "timeout_s": 6.0
+  },
+  "request": {
+    "method": "POST",
+    "url": "https://api.groq.com/openai/v1/audio/speech",
+    "accept": "audio/wav",
+    "content_type": "application/json",
+    "json": {
+      "input": "هذه جملة ثابتة لتجربة الصوت.",
+      "model": "canopylabs/orpheus-arabic-saudi",
+      "voice": "abdullah",
+      "response_format": "wav"
+    },
+    "absent_fields": [
+      "sample_rate",
+      "speed"
+    ],
+    "body": "{\"input\":\"هذه جملة ثابتة لتجربة الصوت.\",\"model\":\"canopylabs/orpheus-arabic-saudi\",\"voice\":\"abdullah\",\"response_format\":\"wav\"}",
+    "body_bytes": 148,
+    "body_sha256": "7cb9262f7fe67db74ad8b76f0fd7fe90cf0d555b9a05ea55eb5b2ffb26e86253"
+  }
+}

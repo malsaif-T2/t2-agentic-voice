@@ -219,8 +219,10 @@ run (evaluation.md, "Registering a measurement"). Then:
    records the settings it shows in the run's scorecard and history line. A change behind
    another setting is measured once `poe eval` takes that setting as a flag too, and shows it,
    at the measurement commit: until then a run's settings do not say which arm it was.
-   `eval-compare` refuses two runs whose commits, data digests or splits differ, and lists any
-   other setting that differs without refusing (TD-026).
+   `eval-compare` refuses two runs whose commits, data digests, splits or settings differ, a
+   setting one run records and the other lacks included; only the model, the cap and the
+   smoke-only switch may always differ, and a comparison that varies another setting names
+   it with `--allow-setting NAME`, once per setting.
 2. **The measurement commit and its worktree.** The commit that holds the code and data every
    arm runs on is the measurement commit. Make a linked worktree at it (`git worktree add`):
    every run of the measurement starts there, whatever the main branch gains meanwhile.
@@ -373,9 +375,14 @@ compared by aggregates only.
 `poe eval-compare A B` prints a Markdown report of B judged against A:
 
 - **The header:** both runs, their commit and data digest, and a line "Settings that differ".
-  Two runs whose commits, data digests or splits differ are refused, the difference named. Any
-  other setting that differs is only listed (TD-026), so that line says whether the runs differ
-  in their arm alone: in M1's model comparisons, only `stt.model` and `run.cap_usd` differed.
+  Two runs whose commits, data digests or splits differ are refused, the difference named, and
+  so are two whose settings differ, each setting named and never its value: a setting one run
+  records and the other lacks counts (an M1 run records only the keys it used). The model,
+  the cap and the smoke-only switch (`stt.model`, `run.cap_usd`, `run.smoke_only`) may always
+  differ, and `--allow-setting NAME` names another that the registered comparison varies,
+  once per setting (a comparison of language hints names `run.language_hint`). The line lists
+  every setting that differs, with both values: in M1's model comparisons, only `stt.model`
+  and `run.cap_usd` differed.
 - **Variant by variant:** fixed (wrong in A, right in B), broken (right in A, wrong in B), the
   net and the unchanged, each fixed and broken variant named by its ID, and the variants left
   out of both runs (a failure in either, or in one run only), listed.

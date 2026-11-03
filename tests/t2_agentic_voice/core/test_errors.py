@@ -12,12 +12,20 @@ from t2_agentic_voice.core.errors import (
     PROVIDER_ERROR_KINDS,
     ConfigurationError,
     InvalidRequestError,
+    JoinRejected,
     NotFoundError,
     ProviderError,
     T2VoiceError,
 )
 
-ERRORS = (T2VoiceError, ConfigurationError, InvalidRequestError, NotFoundError, ProviderError)
+ERRORS = (
+    T2VoiceError,
+    ConfigurationError,
+    InvalidRequestError,
+    NotFoundError,
+    ProviderError,
+    JoinRejected,
+)
 
 
 def test_each_error_has_a_stable_code() -> None:
@@ -28,6 +36,7 @@ def test_each_error_has_a_stable_code() -> None:
         "invalid_request",
         "not_found",
         "provider_error",
+        "join_rejected",
     ]
 
 
@@ -99,6 +108,20 @@ def test_the_other_errors_pickle_and_copy_too() -> None:
 def test_the_package_root_exports_provider_error() -> None:
     assert t2_agentic_voice.ProviderError is ProviderError
     assert "ProviderError" in t2_agentic_voice.__all__
+
+
+def test_the_package_root_exports_join_rejected_on_the_base_error() -> None:
+    """The design's 5.1 lists it among the root's errors; a caller catches it as any other."""
+    assert t2_agentic_voice.JoinRejected is JoinRejected
+    assert "JoinRejected" in t2_agentic_voice.__all__
+    error = JoinRejected("This call cannot start.", details={"setting": "join.keys"})
+    assert isinstance(error, T2VoiceError) and error.code == "join_rejected"
+    again = pickle.loads(pickle.dumps(error))  # noqa: S301 - loads only bytes it dumped
+    assert (type(again), again.message, again.details) == (
+        JoinRejected,
+        error.message,
+        error.details,
+    )
 
 
 def test_the_old_name_app_error_warns_and_is_the_base_error() -> None:

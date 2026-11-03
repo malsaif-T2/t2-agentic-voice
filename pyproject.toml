@@ -26,6 +26,7 @@ t2-agentic-voice-minimal-example = { workspace = true }
 
 [dependency-groups]
 dev = [
+    "aiortc>=1.15.0",
     "coverage>=7.17.0",
     "mypy>=2.3.1",
     "poethepoet>=0.48.0",
@@ -83,6 +84,10 @@ sequence = [{ cmd = "python -m scripts.gc_due" }, { cmd = "python -m scripts.gc_
 help = "Grade each layer after `poe check` (not a gate); grades and gaps go in docs/harness/quality.md"
 cmd = "python -m scripts.quality"
 
+[tool.poe.tasks.settings-ref]
+help = "Write docs/generated/settings.md and .env.example from the library's settings model"
+cmd = "python -m scripts.settings_ref"
+
 # The golden set's commands (plan 002; evaluation.md): each runs a module of the Ole5 app's
 # evaluation package, and passes on the arguments given after the task's name.
 
@@ -101,6 +106,14 @@ cmd = "python -m ole5_voice.evals.compare"
 [tool.poe.tasks.eval-history]
 help = "Render the golden set's run history into docs/generated/eval-history.md"
 cmd = "python -m ole5_voice.evals.history"
+
+[tool.poe.tasks.eot]
+help = "Measure where the turns end on the golden set's paused requests, offline and with no spend (`--answerer reference` or `pipeline`)"
+cmd = "python -m ole5_voice.evals.eot"
+
+[tool.poe.tasks.eval-timing]
+help = "Time each step of an echo call on the golden set's dev paused requests (spends: model, timeout, prices and cap on its command line)"
+cmd = "python -m ole5_voice.evals.timing"
 
 [tool.poe.tasks.record]
 help = "Record and review the golden set's new takes in Chrome, on a page served on 127.0.0.1"
@@ -142,6 +155,12 @@ plugins = ["pydantic.mypy"]
 mypy_path = ["packages/t2-agentic-voice/src", "apps/ole5-voice-agent/src", "examples/minimal/src"]
 explicit_package_bases = true
 
+# num2words 0.5.14 ships no types (no py.typed in its wheel: plan 003, step 3); pipecat-ai,
+# loguru and PyJWT do.
+[[tool.mypy.overrides]]
+module = ["num2words", "num2words.*"]
+ignore_missing_imports = true
+
 [tool.pydantic-mypy]
 init_forbid_extra = true
 init_typed = true
@@ -157,10 +176,14 @@ addopts = ["-ra", "--strict-markers", "--strict-config", "--import-mode=importli
 # A test still running after this many seconds prints every thread's stack, so a hang shows
 # where it waits (the recorder's, plan 004's close, TD-040).
 faulthandler_timeout = 120
-# An exception escaping a thread or a finalizer is a bug, never only a warning.
+# An exception escaping a thread or a finalizer is a bug, never only a warning. Pipecat 1.15.0's
+# `pipecat/audio/utils.py` imports the standard library's `audioop`, which Python 3.12 marks
+# deprecated (3.13 removes it, and the lock brings `audioop-lts` there): a test that imports
+# Pipecat can do nothing about it.
 filterwarnings = [
     "error::pytest.PytestUnhandledThreadExceptionWarning",
     "error::pytest.PytestUnraisableExceptionWarning",
+    "ignore:'audioop' is deprecated:DeprecationWarning:pipecat.audio.utils",
 ]
 # Tests that need something outside the repository declare a marker here and skip themselves
 # when it is absent, so CI and a fresh clone stay green.

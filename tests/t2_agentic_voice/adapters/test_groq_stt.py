@@ -1,5 +1,6 @@
-"""GroqSTT against a fake Groq (plan 002, Track B): Block 0's baseline request, the result, a
-cancel, each failure as a ProviderError, the key and the SDK's own variables kept out. Nothing
+"""GroqSTT against a fake Groq (plan 002, Track B): Block 0's baseline request, the result and
+its headroom, a cancel, each failure as a ProviderError, the key and the SDK's own variables kept
+out. Nothing
 leaves the machine: a fake transport, or a server on 127.0.0.1. The prototype's call and tests
 were read as specs, never run (Ole5-chatbot/src/ole5_chat/voice/stt.py, lines 221-252;
 Ole5-chatbot/tests/test_voice_stt_v2.py, lines 324-337)."""
@@ -25,8 +26,10 @@ import httpx
 import pytest
 from pydantic import SecretStr
 from t2_agentic_voice.adapters.groq_stt import GroqSTT
-from t2_agentic_voice.core.config import GroqSettings, SttSettings
+from t2_agentic_voice.core.config import VoiceSettings
 from t2_agentic_voice.core.errors import ConfigurationError, ProviderError
+from t2_agentic_voice.core.settings.groq import GroqSettings
+from t2_agentic_voice.core.settings.stt import SttSettings
 from t2_agentic_voice.domain.ports.speech_to_text import AudioClip, SpeechToText
 
 from tests.isolation import dropped
@@ -46,7 +49,8 @@ from tests.t2_agentic_voice.adapters.groq_support import (
 )
 
 SENT = {"host", "accept", "accept-encoding", "connection", "user-agent", "content-type"}
-SENT |= {"content-length", "authorization"}
+SENT |= {"content-length", "authorization", "x-stainless-raw-response"}  # the SDK's raw marker
+REMAINING = ("x-ratelimit-remaining-requests", "x-ratelimit-remaining-tokens")
 BOUNDARY = "made-up-boundary-0123456789abcdef"  # what `fixed_boundary` makes every adapter draw
 
 
@@ -70,7 +74,40 @@ def test_the_request_is_block_0s_baseline() -> None:
     assert request.extensions["timeout"] == dict.fromkeys(phases, client["timeout_s"])
     assert set(request.headers) == SENT
     assert request.headers.get_list("authorization") == [f"Bearer {KEY}"]
+    assert request.headers.get_list("x-stainless-raw-response") == ["raw"]
     assert int(request.headers["content-length"]) == len(request.content)
+
+
+@pytest.mark.parametrize(
+    ("sent", "headroom"),
+    [
+        ({REMAINING[0]: "13", REMAINING[1]: "5940"}, (13, 5940)),
+        ({REMAINING[0]: "0", REMAINING[1]: "007"}, (0, 7)),
+        ({}, (None, None)),  # absent
+        ({REMAINING[0]: "14"}, (14, None)),
+        ({REMAINING[0]: "-1", REMAINING[1]: "1.5"}, (None, None)),
+        ({REMAINING[0]: "", REMAINING[1]: "x"}, (None, None)),
+        ({REMAINING[0]: " 7", REMAINING[1]: "1_000"}, (None, None)),
+        # Arabic-Indic digits, sent as UTF-8; more digits than Python converts.
+        (
+            {
+                REMAINING[0].encode(): (chr(0x661) + chr(0x662)).encode(),
+                REMAINING[1].encode(): b"9" * 5000,
+            },
+            (None, None),
+        ),
+    ],
+)
+def test_the_answers_headroom_rides_on_its_transcript(
+    sent: dict[str, str] | dict[bytes, bytes], headroom: tuple[int | None, int | None]
+) -> None:
+    """Groq's rate-limit headers, read through the SDK's raw response: each a whole number in
+    ASCII digits, else None (one a malformed header leaves out, or one Python cannot convert);
+    the answer is parsed as before."""
+    fake = FakeGroq(httpx.Response(200, json=ANSWER, headers=sent))
+    result = asyncio.run(call(fake))
+    assert (result.remaining_requests, result.remaining_tokens) == headroom
+    assert (result.text, result.language) == ("made-up words", "ar")
 
 
 @pytest.mark.parametrize(("seconds", "billed"), [(0.5, 10.0), (10.0, 10.0), (12.5, 12.5)])
@@ -227,6 +264,7 @@ SHELLS = [
     {"GROQ_CUSTOM_HEADERS": f"Authorization: Bearer {OTHER}\nX-Made-Up: 1"},
     {"GROQ_CUSTOM_HEADERS": MANY + "\nX-Stainless-Lang: made-up"},
     {"GROQ_CUSTOM_HEADERS": "Content-Type: multipart/form-data; boundary=madeup"},
+    {"GROQ_CUSTOM_HEADERS": "X-Stainless-Raw-Response: stream"},  # the SDK's marker
 ]  # a content-type line in another case fails the request: test_groq_stt_checks.py
 
 
@@ -310,6 +348,28 @@ def test_no_key_in_the_settings_is_a_configuration_error(
     with pytest.raises(ConfigurationError, match=SETTING) as raised:
         GroqSTT.from_settings(groq_settings(**given))
     assert raised.value.details == {"setting": SETTING}
+
+
+@pytest.mark.parametrize("prefix", ["T2V_", "HELPDESK_VOICE_"])
+def test_with_groq_api_key_set_instead_the_error_names_the_variable_to_set(
+    prefix: str, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    """The design's 7.3: the error names the variable to set, under the settings' prefix, and
+    says the other is never read; neither its value nor the key reaches anything shown."""
+    monkeypatch.setenv(f"{prefix}ENV", "test")
+    monkeypatch.setenv("GROQ_API_KEY", OTHER)
+    with pytest.raises(ConfigurationError) as raised:
+        GroqSTT.from_settings(VoiceSettings.from_env(prefix=prefix))
+    assert raised.value.message == (
+        "No Groq API key is set. GROQ_API_KEY is set, but the library never reads it. FIX: set "
+        f"{prefix}GROQ__API_KEY, or {prefix}GROQ__API_KEY_FILE to a file that holds the key."
+    )
+    assert raised.value.details == {"setting": f"{prefix}GROQ__API_KEY"}
+    assert holding(OTHER, shown(raised.value)) == []
+    monkeypatch.delenv("GROQ_API_KEY")
+    with pytest.raises(ConfigurationError) as raised:
+        GroqSTT.from_settings(VoiceSettings.from_env(prefix=prefix))
+    assert "GROQ_API_KEY is set" not in raised.value.message
 
 
 def test_a_speech_to_text_with_no_key_in_its_repr_and_no_groq_type_in_its_signatures() -> None:

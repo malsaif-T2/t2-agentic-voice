@@ -16,13 +16,13 @@ from pathlib import Path
 from typing import Any
 
 from scripts._common import Violation, report
-from scripts.harness_arch import ArchConfig, missing_facades, parse_arch
+from scripts.harness_arch import ArchConfig, missing_facades, missing_scopes, parse_arch
 from scripts.harness_toml import CONFIG_FILE, FIX, RULE, Lines, Table
 
 # The tables harness.toml may hold; [tool.*] holds other tools' settings (coverage.py's).
 _TABLES = frozenset(
-    {"package", "layers", "owners", "restricted", "subpackages", "apps", "rules", "modules"}
-    | {"docs", "plans", "references", "gc", "quality", "tool"}
+    {"package", "layers", "owners", "restricted", "bans", "subpackages", "apps", "rules"}
+    | {"modules", "docs", "plans", "references", "gc", "quality", "tool"}
 )
 WEIGHTS = ("coverage", "size", "suppressions", "duplication", "docstrings")
 
@@ -117,7 +117,8 @@ def load_config(root: Path) -> HarnessConfig:
         raise HarnessConfigError([Violation(CONFIG_FILE, line, RULE, str(error), FIX)]) from None
     lines = Lines(text)
     config = parse_config(data, lines)
-    if missing := missing_facades(root, config.arch, lines):
+    missing = missing_facades(root, config.arch, lines) + missing_scopes(root, config.arch, lines)
+    if missing:
         raise HarnessConfigError(missing)
     return config
 

@@ -11,13 +11,14 @@ import json
 from pathlib import Path
 from typing import get_args
 
-from ole5_voice.evals import answerers, matcher, run, run_settings, scorecard
+from ole5_voice.evals import answerers, groq_answerer, matcher, run, run_settings, scorecard
 from ole5_voice.evals.run_parts import Parts
 from ole5_voice.evals.runs import Answer, SegmentAnswer
 from pydantic import BaseModel
-from t2_agentic_voice import Settings
+from t2_agentic_voice import VoiceSettings
 from t2_agentic_voice.adapters import groq_stt
-from t2_agentic_voice.core.config import GroqSettings, SttModel, SttProvider
+from t2_agentic_voice.core.settings.groq import GroqSettings
+from t2_agentic_voice.core.settings.stt import SttModel, SttProvider
 from t2_agentic_voice.domain.scoring import scored_form
 from t2_agentic_voice.ports import Transcript
 
@@ -49,7 +50,7 @@ def test_a_runs_default_address_is_the_librarys_default_base_url() -> None:
 
 
 def test_the_answerers_billing_minimum_is_the_adapters() -> None:
-    assert answerers.GROQ_MINIMUM_S == groq_stt._MIN_BILLED_S
+    assert groq_answerer.GROQ_MINIMUM_S == groq_stt._MIN_BILLED_S
 
 
 def test_an_answer_bounds_the_no_speech_estimate_as_a_transcript_does() -> None:
@@ -74,12 +75,12 @@ def _leaves(model: type[BaseModel], prefix: str = "") -> set[str]:
     return names
 
 
-def test_a_run_records_every_setting_the_library_has(settings: Settings) -> None:
+def test_a_run_records_every_setting_the_library_has(settings: VoiceSettings) -> None:
     """A run's scorecard and history line record each of its settings (`run_settings.shown`),
-    `var_dir` aside, a local path that changes no result: a setting the library gains is
+    `storage.var_dir` aside, a local path that changes no result: a setting the library gains is
     recorded too, or this fails."""
     args = run._parser().parse_args(["--show-settings"])
     shown = run_settings.shown(settings, args)
-    assert _leaves(Settings) - {"var_dir"} == {
+    assert _leaves(VoiceSettings) - {"storage.var_dir"} == {
         name for name in shown if not name.startswith("run.")
     }

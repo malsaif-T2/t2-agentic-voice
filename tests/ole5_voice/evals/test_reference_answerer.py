@@ -12,7 +12,7 @@ from datetime import UTC, datetime
 from pathlib import Path
 
 import pytest
-from ole5_voice.evals import answerers, audio, items, run, run_parts
+from ole5_voice.evals import audio, groq_answerer, items, run, run_parts
 from ole5_voice.evals.items import EVALS, HISTORY_FILE
 from ole5_voice.evals.models import Item, Split
 from ole5_voice.evals.run_parts import Parts
@@ -48,7 +48,7 @@ def _no_audio(path: Path) -> audio.Wav:
 def test_the_reference_answerer_scores_every_committed_variant_right(
     side: Split, tmp_path: Path, capsys: pytest.CaptureFixture[str], monkeypatch: pytest.MonkeyPatch
 ) -> None:
-    for module in (audio, answerers, run_parts):
+    for module in (audio, groq_answerer, run_parts):
         monkeypatch.setattr(module, "read_wav", _no_audio)
     world = make_world(tmp_path)
     shutil.copytree(EVALS / "golden", world.data / "golden")

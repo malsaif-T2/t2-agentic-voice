@@ -1,0 +1,39 @@
+<!doctype html>
+<!-- The dev page (GET <prefix>/dev, env dev and loopback clients only): a call to the runtime
+     through t2v-client.js, which builds this page (data-t2v-page="dev"). It holds no script and
+     no style of its own, so any Content-Security-Policy the router sends keeps it working. -->
+<html lang="en" data-t2v-page="dev">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>T2 Agentic Voice: dev call</title>
+<link rel="icon" href="data:,">
+<script type="module" src="client/1/t2v-client.js"></script>
+</head>
+<body>
+<h1>Dev call</h1>
+<p>Allow the microphone, talk, and press Stop or Esc to cut the agent short.</p>
+<p>
+  <label>Join token <input id="token" type="text" value="dev" autocomplete="off" spellcheck="false"></label>
+  <label>Language
+    <select id="language">
+      <option value="">The agent's first</option>
+      <option value="ar-SA">ar-SA</option>
+      <option value="ar">ar</option>
+      <option value="en">en</option>
+    </select>
+  </label>
+</p>
+<p>
+  <button type="button" id="start">Start</button>
+  <button type="button" id="stop" disabled>Stop</button>
+  <button type="button" id="hangup" disabled>Hang up</button>
+</p>
+<p>Status: <output id="status">Not started.</output></p>
+<p>Connection: <output id="connection">none</output> · Agent: <output id="state">none</output></p>
+<h2>Captions</h2>
+<ol id="captions" dir="auto"></ol>
+<h2>Notices</h2>
+<ul id="notices" dir="auto"></ul>
+</body>
+</html>

@@ -22,14 +22,15 @@ from dataclasses import dataclass, field
 from datetime import UTC, datetime
 from pathlib import Path
 
-from t2_agentic_voice import Settings, get_logger
+from t2_agentic_voice import VoiceSettings, get_logger
 from t2_agentic_voice.ports import SpeechToText
 from t2_agentic_voice.tracing import Tracing
 
 from ole5_voice.evals import cli, history, items, matcher, scorecard, split
-from ole5_voice.evals.answerers import Clock, Sleep, adapter
+from ole5_voice.evals.answerers import adapter
 from ole5_voice.evals.audio import AudioFormatError, read_wav, sha256_file
 from ole5_voice.evals.files import read_lines
+from ole5_voice.evals.groq_answerer import Clock, Sleep
 from ole5_voice.evals.models import Item, Split, SplitFile, Variant
 from ole5_voice.evals.runs import (
     Answer,
@@ -68,8 +69,8 @@ class Parts:
     load_matcher: Callable[[Path], Matcher] = matcher.load_matcher
     write_scorecard: ScorecardWriter = scorecard.write_scorecard
     append_line: Callable[[HistoryLine, Path], None] = history.append_line
-    speech_to_text: Callable[[Settings], SpeechToText] = adapter
-    tracing: Callable[[Settings], Tracing] = Tracing.from_settings
+    speech_to_text: Callable[[VoiceSettings], SpeechToText] = adapter
+    tracing: Callable[[VoiceSettings], Tracing] = Tracing.from_settings
     normalize: Callable[[str], str] = matcher.normalize
     now: Callable[[], datetime] = _now
     clock: Clock = time.perf_counter  # monotonic; 15.6 ms steps for time.monotonic on Windows

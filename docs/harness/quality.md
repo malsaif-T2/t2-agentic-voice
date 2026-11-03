@@ -55,11 +55,10 @@ Each unit's gaps in words, as garbage collection round 1 read them (plan 004); t
 refreshes them. A gap the grade cannot see is named by its debt row.
 
 - **core** (A): the one suppression is the `type: ignore[override]` on the exporter session's
-  `request` (`core/tracing_export.py`). What the grade does not see: the logging is not yet the
-  design's contract (TD-033, for M2); a few variables the SDKs read whatever is passed (TD-003,
-  TD-005), with no test recording them (TD-038); the clients trust the environment's proxy and
-  CA (TD-004 with TD-015, for M2); and the private provider's worker is not restarted in a
-  forked child (TD-014).
+  `request` (`core/tracing_export.py`). What the grade does not see: a few variables the SDKs read
+  whatever is passed (TD-003, TD-005), with no test recording them (TD-038); the clients trust the
+  environment's proxy and CA (TD-004 with TD-015, for the deployment's plan); and the private
+  provider's worker is not restarted in a forked child (TD-014).
 - **domain** (A): its one duplicate run is the speech-to-text port's `transcribe` signature,
   which `GroqSTT` restates as a protocol's implementation must (`adapters/groq_stt.py`, line
   144, and `domain/ports/speech_to_text.py`, line 73). The text rules' known limits are debt:
@@ -71,8 +70,8 @@ refreshes them. A gap the grade cannot see is named by its debt row.
   3 duplicate runs are expected: the port's signature (above), and the segment's
   `no_speech_prob` bounds, which the app's `runs.py` copies twice (lines 115 and 129) and
   `tests/ole5_voice/evals/test_library_copies.py` ties to the library's (the owner's ruling of
-  2026-11-02). Also debt: the port names no close (TD-020), the language form Whisper returns
-  is unverified (TD-011), and the first request detects the platform (TD-012), all for M2.
+  2026-11-02). Also debt: the language form Whisper returns is unverified (TD-011), and the
+  first request detects the platform (TD-012), both for M2.
 - **actions**, **agent**, **voice**: empty, no module yet; the milestones that build them are
   in the roadmap.
 - **testing** (A): `wer` and `cer` only; the testing kit (the fakes, text calls) comes later
@@ -80,17 +79,19 @@ refreshes them. A gap the grade cannot see is named by its debt row.
 - **api** (A): one module, `status.py`; the rule that production never runs with DEBUG logs is
   checked only when `status()` is called (plan 004's inventory leaves it to M2's plan), and the
   package root exports `Status` and `status` beyond the design's 5.1 (TD-034).
-- **ole5_voice** (B): 8 of its modules are above the watch: `answerers.py` 380 (TD-019, split
-  with the next answerer), `recorder_state.py` 379, `runs.py` 367, `scorecard.py` 333,
-  `golden.py` 331, `run_parts.py` 324, `run.py` 315 and `import_talkover.py` 314. Its 9
-  duplicate runs appeared when the round lowered `[gc] min_tokens` to 25, after the read. Two
-  are the `no_speech_prob` copies tied by test (above); the other 7 are not read yet: `Answer`
-  and `SegmentAnswer`'s shared fields (`runs.py`, lines 114 and 127), three between
+- **ole5_voice** (B): 8 of its modules are above the watch: `answerers.py` 380 (split since:
+  each answerer has its own module, and `answerers.py` is 80 lines, `groq_answerer.py` 291),
+  `recorder_state.py` 379, `runs.py` 367, `scorecard.py` 333, `golden.py` 331,
+  `run_parts.py` 324, `run.py` 315 and `import_talkover.py` 314. Its 9 duplicate runs
+  appeared when the round lowered `[gc] min_tokens` to 25, after the read. Two are the
+  `no_speech_prob` copies tied by test (above); the other 7 are not read yet: `Answer` and
+  `SegmentAnswer`'s shared fields (`runs.py`, lines 114 and 127), three between
   `import_recordings.py` and `import_talkover.py`, `golden.py` against `recorder.py` and
-  against `split.py`, and one within `answerers.py` (lines 206 and 224). The one suppression is
-  the `noqa: S603` on the git call in `worktree.py`. Its tests near the hard limit are
+  against `split.py`, and one within the `groq` answerer (`groq_answerer.py`, lines 157 and
+  175, since the split). The one suppression is the `noqa: S603` on the git call in
+  `worktree.py`. Its tests near the hard limit are
   `test_scorecard.py` (389), `test_recorder_security.py` (384) and `test_held_out_groups.py`
-  (381). Also debt: TD-021, TD-022, TD-026 and TD-029.
+  (381). Also debt: TD-021, TD-022 and TD-029.
 - **minimal_example** (A): 15 lines; it becomes the echo agent of the quickstart in M2.
 - **scripts** (A): the scripts are measured but outside the coverage floor (`[tool.coverage.report]
   omit`), at 97%. Its 3 duplicate runs are the look-alikes the round kept, whose inputs differ

@@ -77,7 +77,9 @@ def test_a_history_line_names_its_commit_and_its_price() -> None:
             HistoryLine.model_validate(LINE | change)
 
 
-@pytest.mark.parametrize("name", ["groq.api_key", "tracing.token", "other.secret", "password"])
+@pytest.mark.parametrize(
+    "name", ["groq.api_key", "join.keys", "tracing.token", "other.secret", "password"]
+)
 def test_a_secret_setting_is_shown_only_as_set_or_not_set(name: str) -> None:
     """A run's settings reach its scorecard and the committed history.jsonl."""
     for model, data in ((RunInfo, samples.run().model_dump()), (HistoryLine, LINE)):
@@ -86,7 +88,7 @@ def test_a_secret_setting_is_shown_only_as_set_or_not_set(name: str) -> None:
         assert MADE_UP_KEY not in str(raised.value) and MADE_UP_KEY not in repr(raised.value)
         for shown in ("set", "not set"):
             assert model.model_validate(data | {"settings": {name: shown}})
-    kept = {"groq.api_key_file": "set", "stt.model": "whisper-large-v3", "monkey": "x"}
+    kept = {"groq.api_key_file": "set", "stt.model": "whisper-large-v3", "monkeys": "x"}
     assert RunInfo.model_validate(samples.run().model_dump() | {"settings": kept}).settings == kept
 
 

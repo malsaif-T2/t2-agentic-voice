@@ -231,7 +231,7 @@ def test_settings_that_differ_are_named_and_a_missing_stratum_shows_a_dash() -> 
     a = _card([_result("i1", "v1", False)], settings={"stt.model": "whisper-large-v3"})
     turbo = {"stt.model": "whisper-large-v3-turbo", "groq.api_key": "set"}
     b = _card([_result("i1", "v1", True)], name="r2", settings=turbo, accuracy=None)
-    report = compare.compare(a, b, sign_test=FakeSignTest(1.0))
+    report = compare.compare(a, b, sign_test=FakeSignTest(1.0), allowed=["groq.api_key"])
     assert (
         "Settings that differ: groq.api_key (unset in A, set in B); "
         "stt.model (whisper-large-v3 in A, whisper-large-v3-turbo in B)."
@@ -255,6 +255,46 @@ def test_runs_that_differ_in_commit_data_or_split_are_refused() -> None:
     both = _card([], name="r2", commit="1234567", split="held-out", items=3)
     with pytest.raises(ComparisonError, match=r"commits differ .*; their splits differ"):
         compare.compare(a, both, sign_test=FakeSignTest())
+
+
+def test_runs_whose_settings_differ_are_refused_unless_the_comparison_varies_them() -> None:
+    """A setting that differs, or that one run records and the other lacks (a run made
+    before plan 003's step 7 records only the keys it used), refuses the comparison, naming each
+    setting and never its value; the model, the cap and the smoke-only switch may always
+    differ, and `allowed` names a registered comparison's own exception."""
+    shown = {"run.language_hint": "label", "stt.timeout_s": "6.0", "run.cap_usd": "1.0"}
+    a = _card([_result("i1", "v1", False)], settings=shown)
+    varied = shown | {"run.cap_usd": "2.0", "stt.model": "whisper-large-v3-turbo"}
+    assert "Settings that differ: run.cap_usd" in compare.compare(
+        a, _card([], name="r2", settings=varied), sign_test=FakeSignTest()
+    )
+    auto = shown | {"run.language_hint": "auto", "run.max_rpm": "10"}
+    b = _card([_result("i1", "v1", True)], name="r7", settings=auto)
+    with pytest.raises(ComparisonError) as refused:
+        compare.compare(a, b, sign_test=FakeSignTest())
+    message = str(refused.value)
+    assert "their settings differ (run.language_hint, run.max_rpm)" in message
+    assert "--allow-setting NAME" in message and "auto" not in message
+    with pytest.raises(ComparisonError, match=r"settings differ \(run.max_rpm\)"):
+        compare.compare(a, b, sign_test=FakeSignTest(), allowed=["run.language_hint"])
+    allowed = ["run.language_hint", "run.max_rpm"]
+    report = compare.compare(a, b, sign_test=FakeSignTest(), allowed=allowed)
+    assert "run.language_hint (label in A, auto in B); run.max_rpm (unset in A, 10 in B)" in report
+    assert compare.differing_settings(a, b) == ["run.language_hint", "run.max_rpm"]
+    assert compare.differing_settings(a, a) == []
+
+
+def test_eval_compare_takes_each_allowed_setting_on_its_command_line(
+    tmp_path: Path, capsys: pytest.CaptureFixture[str]
+) -> None:
+    first = _write(_card([], name="r5", settings={"run.language_hint": "label"}), tmp_path / "r5")
+    auto = {"run.language_hint": "auto"}
+    second = _write(_card([], name="r7", settings=auto), tmp_path / "r7")
+    assert compare.main([str(first), str(second)], sign_test=FakeSignTest()) == 1
+    assert "their settings differ (run.language_hint)" in capsys.readouterr().out
+    allowed = ["--allow-setting", "run.language_hint"]
+    assert compare.main([str(first), str(second), *allowed], sign_test=FakeSignTest()) == 0
+    assert capsys.readouterr().out.startswith("# r7 judged against r5\n")
 
 
 def test_held_out_runs_are_compared_by_aggregates_only() -> None:

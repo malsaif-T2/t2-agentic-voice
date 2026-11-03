@@ -34,6 +34,7 @@ from typing import Any, Final, cast, get_args
 from pydantic import ValidationError
 from t2_agentic_voice import configure_logging, get_logger
 
+from ole5_voice import LOGGERS
 from ole5_voice.evals import cli
 from ole5_voice.evals.items import EVALS, GOLDEN_DIR, MANIFESTS_DIR, SCRIPT_FILE
 from ole5_voice.evals.models import Device
@@ -224,7 +225,7 @@ def main(argv: Sequence[str] | None = None) -> int:
         audio = cli.audio_roots(args.audio)
     except ValueError as error:
         parser.error(str(error))
-    configure_logging()
+    configure_logging(loggers=LOGGERS)
     try:
         recorder = load_recorder(
             out=args.out,

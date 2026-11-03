@@ -4,6 +4,8 @@ queue and exporter are tested in test_tracing_export.py. Spans come from the in-
 
 from __future__ import annotations
 
+import json
+import logging
 from pathlib import Path
 
 import pytest
@@ -12,16 +14,20 @@ from opentelemetry.sdk.trace import TracerProvider
 from opentelemetry.sdk.trace.export import SimpleSpanProcessor
 from opentelemetry.sdk.trace.export.in_memory_span_exporter import InMemorySpanExporter
 from opentelemetry.trace import Status, StatusCode
-from t2_agentic_voice.core.config import Settings
+from pydantic import SecretStr
+from t2_agentic_voice.core.config import VoiceSettings
+from t2_agentic_voice.core.logging import configure_logging
 from t2_agentic_voice.core.redaction import Redactor
 from t2_agentic_voice.core.tracing import Tracing
 
 from tests.leaks import holding, shown
 from tests.t2_agentic_voice.core.tracing_support import (
+    JOIN_KEY,
     MADE_UP_KEY,
     NOBODY,
     PHONE,
     RESOURCE,
+    TURN_SECRET,
     exported_text,
     finished,
     one_turn,
@@ -93,7 +99,7 @@ def test_a_turn_is_the_root_of_its_trace_even_inside_a_teams_current_span() -> N
     assert spans["speech_to_text"].parent == spans["turn"].context
 
 
-def test_off_with_neither_and_never_global(tmp_path: Path, settings: Settings) -> None:
+def test_off_with_neither_and_never_global(tmp_path: Path, settings: VoiceSettings) -> None:
     """With no provider and no endpoint, tracing is off; none installs a provider globally."""
     before = trace.get_tracer_provider()
     team = TracerProvider(shutdown_on_exit=False)
@@ -150,19 +156,44 @@ def test_the_redaction_hook_runs_on_every_text_value() -> None:
     assert turn_span.resource.attributes["openinference.project.name"] == "golden [redacted]"
 
 
+def _secrets(tmp_path: Path, in_files: bool) -> dict[str, object]:
+    """The settings' join keys and TURN secret, made up, inline (the Groq key is inline in
+    `settings_with`'s settings already) or each in its file, the Groq key's too."""
+    if not in_files:
+        return {"join": {"keys": {"k1": JOIN_KEY}}, "server": {"turn_secret": TURN_SECRET}}
+    (groq := tmp_path / "groq.key").write_text(MADE_UP_KEY, encoding="utf-8")
+    (keys := tmp_path / "join.keys").write_text(json.dumps({"k1": JOIN_KEY}), encoding="utf-8")
+    (turn := tmp_path / "turn.secret").write_text(TURN_SECRET, encoding="utf-8")
+    files: dict[str, object] = {"join": {"keys_file": keys}, "server": {"turn_secret_file": turn}}
+    return files | {"groq": {"api_key_file": groq}}  # in place of the inline key
+
+
+@pytest.mark.parametrize("in_files", [False, True])
 def test_no_secret_reaches_a_span_or_a_log_line(
+    in_files: bool,
     tmp_path: Path,
     monkeypatch: pytest.MonkeyPatch,
     capsys: pytest.CaptureFixture[str],
     caplog: pytest.LogCaptureFixture,
 ) -> None:
-    """The made-up key in the settings, in the resource variables, in what was said (redacted)
-    and in an exception's message: no attribute, event, status, resource or log line holds it,
-    and the exception reaches the caller unchanged."""
+    """The made-up Groq key in the resource variables, in what was said (redacted) and in an
+    exception's message, and the settings' made-up Groq key, join key and TURN secret, inline
+    or in their files: no attribute, event, status, resource or log line of the private
+    provider the settings build holds one, at DEBUG too, and the exception reaches the caller
+    unchanged."""
     monkeypatch.setenv("OTEL_RESOURCE_ATTRIBUTES", f"leak={MADE_UP_KEY}")
     monkeypatch.setenv("OTEL_SERVICE_NAME", MADE_UP_KEY)
-    settings = settings_with(tmp_path, redact=[r"gsk_[\w-]+"])
-    tracing, exporter = private(redactor=Redactor(settings.tracing.redact))
+    exporter = InMemorySpanExporter()  # in place of the OTLP exporter the endpoint asks for
+    monkeypatch.setattr("t2_agentic_voice.core.tracing.otlp_exporter", lambda _: exporter)
+    settings = settings_with(
+        tmp_path,
+        groups=_secrets(tmp_path, in_files),
+        endpoint=f"{NOBODY}/v1/traces",
+        redact=[r"gsk_[\w-]+"],
+    )
+    configure_logging("DEBUG", "json")  # tests/conftest.py undoes it
+    caplog.set_level(logging.DEBUG)
+    tracing = Tracing.from_settings(settings)
     failure = RuntimeError(f"the key {MADE_UP_KEY} was refused")
     with (
         pytest.raises(RuntimeError) as raised,
@@ -178,5 +209,8 @@ def test_no_secret_reaches_a_span_or_a_log_line(
         assert (span.attributes or {})["error.type"] == "RuntimeError"
     surfaces = shown(caplog=caplog, capsys=capsys)
     surfaces["spans"] = exported_text(list(spans.values()))
-    assert holding(MADE_UP_KEY, surfaces) == [] and "[redacted]" in surfaces["spans"]
-    assert settings.groq.api_key is not None and MADE_UP_KEY not in repr(settings)
+    assert set(spans) == {"turn", "speech_to_text"} and "[redacted]" in surfaces["spans"]
+    for secret in (MADE_UP_KEY, JOIN_KEY, TURN_SECRET):
+        assert holding(secret, surfaces) == [], secret
+    assert (settings.groq.api_key is None) is in_files and MADE_UP_KEY not in repr(settings)
+    assert settings.groq.resolved_api_key() == SecretStr(MADE_UP_KEY)  # but it is there

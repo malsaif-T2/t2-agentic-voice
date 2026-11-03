@@ -1,6 +1,7 @@
 """The run history: `apps/ole5-voice-agent/evals/history.jsonl`, one `HistoryLine` per `poe eval`
-run that called a provider, kept or not (evaluation.md, "Run history"), and `poe eval-history`,
-which renders it into `docs/generated/eval-history.md` (GP-11).
+run that called a provider, kept or not (evaluation.md, "Run history"), one `EotLine` per
+`poe eot` run of the pipeline and one `TimingLine` per `poe eval-timing` run (run_lines.py), and
+`poe eval-history`, which renders it into `docs/generated/eval-history.md` (GP-11).
 
 The file is read strictly: every line a valid history line with an LF ending, so a line is only
 ever appended to a well-formed history, and a line made with `model_copy` (a secret setting's
@@ -21,8 +22,10 @@ from typing import Final
 from pydantic import TypeAdapter
 from t2_agentic_voice import configure_logging, get_logger
 
+from ole5_voice import LOGGERS
 from ole5_voice.evals.files import parse_json, read_text
 from ole5_voice.evals.items import EVALS, HISTORY_FILE
+from ole5_voice.evals.run_lines import AnyLine, EotLine, TimingLine
 from ole5_voice.evals.runs import SCORECARD_FILE, HistoryLine, Scorecard, StratumValue
 from ole5_voice.evals.scorecard import EvalDataError
 
@@ -30,7 +33,7 @@ HISTORY: Final = EVALS / HISTORY_FILE
 DOC: Final = EVALS.parents[2] / "docs" / "generated" / "eval-history.md"  # the repository's
 _DESCRIPTION = "Render the golden set's run history into docs/generated/eval-history.md."
 log = get_logger(__name__)
-_LINE: Final = TypeAdapter(HistoryLine)
+_LINE: Final[TypeAdapter[AnyLine]] = TypeAdapter(AnyLine)
 # Markdown's own characters, escaped in a cell so a note renders as the text it is: no link, no
 # HTML, no table cell of its own.
 _MARKDOWN = re.compile(r"([\\`*\[\](){}<>|~&])")
@@ -43,7 +46,7 @@ Full scorecards stay out of git, in each run's `--out` folder.
 """
 
 
-def read_history(path: Path) -> tuple[HistoryLine, ...]:
+def read_history(path: Path) -> tuple[AnyLine, ...]:
     """Every line of the history at `path`, in order; `EvalDataError` naming the first line that
     is not a valid history line with an LF ending."""
     text = read_text(path)
@@ -51,7 +54,7 @@ def read_history(path: Path) -> tuple[HistoryLine, ...]:
         raise EvalDataError(f"{path} is not a readable UTF-8 file")
     if text and not text.endswith("\n"):
         raise EvalDataError(f"{path}: its last line has no LF ending")
-    lines: list[HistoryLine] = []
+    lines: list[AnyLine] = []
     for number, raw in enumerate(text.split("\n")[:-1], start=1):
         if "\r" in raw:
             raise EvalDataError(f"{path}, line {number}: a CR; the history has LF endings")
@@ -59,14 +62,14 @@ def read_history(path: Path) -> tuple[HistoryLine, ...]:
     return tuple(lines)
 
 
-def _history_line(text: str, where: str = "") -> HistoryLine:
+def _history_line(text: str, where: str = "") -> AnyLine:
     """`text` as a history line; `EvalDataError` naming the fields only (`files.parse_json`)."""
     return parse_json(
         _LINE, text, lambda problem: EvalDataError(f"{where}not a history line ({problem})")
     )
 
 
-def append_line(line: HistoryLine, history: Path) -> None:
+def append_line(line: AnyLine, history: Path) -> None:
     """Add `line` to the end of `history` (created if missing), as one line of JSON with an LF
     ending, once the line and every line already there pass their checks."""
     checked = _history_line(line.model_dump_json(warnings=False))
@@ -116,13 +119,15 @@ def line_of(
     )
 
 
-def render_history(lines: Sequence[HistoryLine]) -> str:
-    """`docs/generated/eval-history.md` for `lines`: the spend so far, a row per run, and each
-    run's reason, data, settings and accuracy by stratum value, with the items of each."""
+def render_history(lines: Sequence[AnyLine]) -> str:
+    """`docs/generated/eval-history.md` for `lines`: the spend so far, a row per run in its
+    kind's table (`poe eval`'s, then the end-of-turn and timing runs', each shown only when it
+    has a run), and each run's reason, data, settings and numbers by stratum value."""
     if not lines:
         return f"{_HEADER}\nNo runs yet.\n"
-    billed = sum(line.billed_seconds for line in lines)
-    cost = sum(line.cost_usd for line in lines)
+    billed = sum(line.billed_seconds for line in lines if not isinstance(line, EotLine))
+    cost = sum(line.cost_usd for line in lines if not isinstance(line, EotLine))
+    numbered = list(enumerate(lines, start=1))
     parts = [
         _HEADER,
         f"Spend so far: {len(lines)} run(s), {billed:.1f} billed seconds, ${cost:.4f}.\n",
@@ -150,28 +155,122 @@ def render_history(lines: Sequence[HistoryLine]) -> str:
             "—" if line.latency_median_ms is None else f"{line.latency_median_ms:.0f}",
             "yes" if line.complete else "no",
         )
-        for number, line in enumerate(lines, start=1)
+        for number, line in numbered
+        if isinstance(line, HistoryLine)
     ]
+    parts += _eot_rows([(n, line) for n, line in numbered if isinstance(line, EotLine)])
+    parts += _timing_rows([(n, line) for n, line in numbered if isinstance(line, TimingLine)])
     parts.append("\n## Each run")
-    for number, line in enumerate(lines, start=1):
+    for number, line in numbered:
         parts += [f"\n### {number} · {line.run}\n", "| Field | Value |\n| --- | --- |"]
         parts.append(_row("Why", _cell(line.note)))
         parts.append(_row("Data digest", f"`{line.data_digest}`"))
         parts.append(_row("Scorecard", _cell(line.scorecard)))
-        parts.append(_row("Price per hour of audio", f"${line.price_per_hour_usd:g}"))
+        if not isinstance(line, EotLine):
+            parts.append(_row("Price per hour of audio", f"${line.price_per_hour_usd:g}"))
+        if isinstance(line, TimingLine):
+            parts += [
+                _row(f"Price per million characters, {_cell(model)}", f"${price:g}")
+                for model, price in sorted(line.tts_price_per_million_usd.items())
+            ]
         parts += [
             _row(f"Setting {_cell(name)}", _cell(value))
             for name, value in sorted(line.settings.items())
         ]
-        accuracies = [
+        parts += _strata(line)
+    return "\n".join(parts) + "\n"
+
+
+def _strata(line: AnyLine) -> list[str]:
+    """A run's numbers by stratum value: accuracy for `poe eval`'s, cut-offs and misses for an
+    end-of-turn run's, each with its items; each step's median for a timing run's."""
+    if isinstance(line, HistoryLine):
+        header = "| Stratum | Value | Items | Accuracy |\n| --- | --- | --- | --- |"
+        rows = [
             _row(_cell(stratum), _cell(value), str(shown.items), _percent(shown.accuracy))
             for stratum, values in sorted(line.breakdowns.items())
             for value, shown in sorted(values.items())
         ]
-        if accuracies:
-            header = "| Stratum | Value | Items | Accuracy |\n| --- | --- | --- | --- |"
-            parts += ["", header, *accuracies]
-    return "\n".join(parts) + "\n"
+    elif isinstance(line, EotLine):
+        header = (
+            "| Stratum | Value | Items | Variants | Cut-offs | Misses |\n"
+            "| --- | --- | --- | --- | --- | --- |"
+        )
+        rows = [
+            _row(
+                _cell(stratum), _cell(value), *map(str, (c.items, c.variants, c.cut_offs, c.misses))
+            )
+            for stratum, values in sorted(line.breakdowns.items())
+            for value, c in sorted(values.items())
+        ]
+    else:
+        header = "| Step | Median (ms) |\n| --- | --- |"
+        rows = [_row(_cell(step), _ms(ms)) for step, ms in line.medians_ms.items()]
+    return ["", header, *rows] if rows else []
+
+
+def _eot_rows(lines: Sequence[tuple[int, EotLine]]) -> list[str]:
+    if not lines:
+        return []
+    return [
+        "\n## End-of-turn runs\n",
+        "| # | Time | Run | Commit | Answerer | Split | Items | Variants | Cut-offs | Misses "
+        "| Median delay (ms) | 90th percentile (ms) | Secondary cut-offs | Complete |\n"
+        "| --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- |",
+        *(
+            _row(
+                str(number),
+                line.time.isoformat(timespec="seconds"),
+                line.run,
+                line.commit,
+                line.answerer,
+                line.split,
+                str(line.items),
+                str(line.variants),
+                str(line.cut_offs),
+                str(line.misses),
+                _ms(line.delay_median_ms),
+                _ms(line.delay_p90_ms),
+                "—"
+                if line.secondary is None
+                else f"{line.secondary.cut_offs} of {line.secondary.variants}",
+                "yes" if line.complete else "no",
+            )
+            for number, line in lines
+        ),
+    ]
+
+
+def _timing_rows(lines: Sequence[tuple[int, TimingLine]]) -> list[str]:
+    if not lines:
+        return []
+    return [
+        "\n## Timing runs\n",
+        "| # | Time | Run | Commit | Split | Variants | Cut into turns | Failures | Requests "
+        "| Billed seconds | Cost | Complete |\n"
+        "| --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- |",
+        *(
+            _row(
+                str(number),
+                line.time.isoformat(timespec="seconds"),
+                line.run,
+                line.commit,
+                line.split,
+                str(line.variants),
+                str(line.cut_variants),
+                str(line.failures),
+                _cell(", ".join(f"{m} {n}" for m, n in sorted(line.requests.items()))),
+                f"{line.billed_seconds:.1f}",
+                f"${line.cost_usd:.4f}",
+                "yes" if line.complete else "no",
+            )
+            for number, line in lines
+        ),
+    ]
+
+
+def _ms(value: float | None) -> str:
+    return "—" if value is None else f"{value:.0f}"
 
 
 def _row(*cells: str) -> str:
@@ -197,7 +296,7 @@ def main(argv: Sequence[str] | None = None) -> int:
         "--out", type=Path, default=DOC, help="the page to write (default: %(default)s)"
     )
     args = parser.parse_args(argv)
-    configure_logging()
+    configure_logging(loggers=LOGGERS)
     try:
         lines = read_history(args.history)
     except EvalDataError as error:

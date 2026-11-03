@@ -11,7 +11,11 @@ verdict is still every item's. A variant either run did not judge (an infrastruc
 in one run only) is left out of both and listed. Held-out runs are compared by aggregates only,
 a stratum value only where both hold it over the same number of items (`HELD_OUT_MIN_ITEMS` or
 more) with no failure, and two held-out runs that cover different variants are refused. Two runs
-whose recorded commits, data digests or splits differ are refused, the difference named. The
+whose recorded commits, data digests or splits differ are refused, the difference named, and so
+are two whose settings differ, a setting one run records and the other lacks included
+(a run before plan 003's step 7 records only the keys it used), unless the setting is one every
+registered comparison may vary (`VARIED`) or the command names it with `--allow-setting NAME`,
+the exception a registered comparison makes (R7 against R5 varies `run.language_hint`). The
 report names variants by their IDs, never by what was said.
 """
 
@@ -27,12 +31,16 @@ from typing import Final
 
 from t2_agentic_voice import T2VoiceError, configure_logging, evals, get_logger
 
+from ole5_voice import LOGGERS
 from ole5_voice.evals.compare_report import aggregates, header
 from ole5_voice.evals.files import read_lines
 from ole5_voice.evals.runs import HELD_OUT_MIN_ITEMS, Scorecard, VariantResult
 from ole5_voice.evals.scorecard import load_scorecard
 
 ALPHA: Final = 0.05  # a p-value below it is beyond the noise
+# The settings two compared runs may always differ in: the model a comparison of models
+# varies, and the cap and the smoke-only switch, which change no answer a run scores.
+VARIED: Final = ("stt.model", "run.cap_usd", "run.smoke_only")
 SignTest = Callable[[int, int], float]
 _DESCRIPTION = "Compare two runs: fixed, broken and net per variant, and the sign test by item."
 _FAILURES: Final = {"provider": "a provider failure", "stuck": "stuck past its time limit"}
@@ -152,10 +160,17 @@ def smallest_change(changed: int, items: int, sign_test: SignTest) -> int | None
     return None
 
 
-def compare(a: Scorecard, b: Scorecard, *, sign_test: SignTest, focus: Sequence[str] = ()) -> str:
+def compare(
+    a: Scorecard,
+    b: Scorecard,
+    *,
+    sign_test: SignTest,
+    focus: Sequence[str] = (),
+    allowed: Sequence[str] = (),
+) -> str:
     """The report of B judged against A; `ComparisonError` for two runs that differ in commit,
-    data or split, for held-out runs that cover different variants or with `focus`, and for a
-    focus item in neither run."""
+    data or split, or in a setting neither `VARIED` nor `allowed` names, for held-out runs that
+    cover different variants or with `focus`, and for a focus item in neither run."""
     differences = [
         f"their {what} differ (A {first}, B {second})"
         for what, first, second in (
@@ -165,6 +180,11 @@ def compare(a: Scorecard, b: Scorecard, *, sign_test: SignTest, focus: Sequence[
         )
         if first != second
     ]
+    if unallowed := differing_settings(a, b, allowed):
+        differences.append(
+            f"their settings differ ({', '.join(unallowed)}): name each that the registered "
+            "comparison varies with --allow-setting NAME"
+        )
     if differences:
         raise ComparisonError("the runs cannot be compared: " + "; ".join(differences))
     held_out = a.run.split == "held-out"
@@ -189,6 +209,17 @@ def compare(a: Scorecard, b: Scorecard, *, sign_test: SignTest, focus: Sequence[
     else:
         lines += _paired(*pair(a, b), focus=focus, sign_test=sign_test)
     return "\n".join(lines + aggregates(a, b)) + "\n"
+
+
+def differing_settings(a: Scorecard, b: Scorecard, allowed: Sequence[str] = ()) -> list[str]:
+    """The names of the settings A and B record differently, one that only one of them records
+    included, other than those in `VARIED` or `allowed`, in order."""
+    shown, names = (a.run.settings, b.run.settings), set(VARIED) | set(allowed)
+    return [
+        name
+        for name in sorted(shown[0].keys() | shown[1].keys())
+        if shown[0].get(name) != shown[1].get(name) and name not in names
+    ]
 
 
 def _paired(
@@ -267,14 +298,22 @@ def main(argv: Sequence[str] | None = None, *, sign_test: SignTest = evals.sign_
         help="a file of the items the change aims at, one item ID per line, written before B "
         "ran; shown apart",
     )
+    parser.add_argument(
+        "--allow-setting",
+        action="append",
+        default=[],
+        metavar="NAME",
+        help="a setting the registered comparison varies, by its dotted name; once per setting",
+    )
     args = parser.parse_args(argv)
-    configure_logging()
+    configure_logging(loggers=LOGGERS)
     try:
         report = compare(
             load_scorecard(args.baseline),
             load_scorecard(args.candidate),
             sign_test=sign_test,
             focus=read_focus(args.focus) if args.focus else (),
+            allowed=args.allow_setting,
         )
     except T2VoiceError as error:
         log.error("comparison_not_made", code=error.code, message=error.message)

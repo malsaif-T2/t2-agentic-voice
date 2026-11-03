@@ -1,27 +1,62 @@
 # T2 Agentic Voice: the guide for teammates
 
-How to add a speech-first voice agent to your own product with T2 Agentic Voice: install the
-library, declare your use case, add your tools and the actions that need a spoken yes, test it
-without a microphone or a key, and run it.
+T2 Agentic Voice is a Python library for speech-first voice agents: a caller talks to your
+agent in the browser, in Saudi Arabic, Modern Standard Arabic or English, and hears it answer.
+This guide shows how to add one to your own product.
 
-**Status: nothing to install yet.** The library's public API is designed, and M1 built its
-first public modules (`ports`, `groq`, `languages`, `evals` and `tracing`): the design is
-[package-design.md](../design/package-design.md) (D-017, approved as amended by D-018), and its
-section 3 is the contract, what the library provides and what your app must provide. The first
-version is used from Python only (D-014). Each page below is written when the part it describes
-lands in the library, with the milestone named in its row ([roadmap](../plans/roadmap.md)); code
-samples on these pages are taken from tested files, so a page never shows code that does not
-run (`poe docs` checks it, DOC-SAMPLE: a block after a link to a `.py` file must be a run of
-that file's lines).
+**Status: M2, a call that listens and speaks.** What works today is an **echo agent**: the
+browser opens a live call to your backend over WebRTC, the library hears when the caller has
+finished a turn (Silero VAD and Smart Turn v3.2, on the CPU), sends the turn to Groq's Whisper,
+and says the words back through Groq's Orpheus voices ("I heard: ..."), with captions, a Stop
+button and Esc. Around it: serving (a process of its own, or mounted in your FastAPI app), signed
+join tokens, the reference browser client, settings, logs and traces. Not built yet: the talker
+that answers (M4), tools and actions taken on a spoken yes (M5), interruptions beyond Stop (M3),
+and the deployment with TURN, which left M2 for a plan of its own once a server is available
+([roadmap](../plans/roadmap.md)). The library is used from Python only (D-014), and no tagged
+version exists to install yet: until the first one, run it from this repository's workspace
+([quickstart](quickstart.md)). The design is [package-design.md](../design/package-design.md)
+(D-017, as amended by D-018).
+
+Code samples on these pages are taken from tested files: a block after a link to a `.py` file is
+a run of that file's lines, which `poe docs` checks (DOC-SAMPLE).
+
+## The contract in brief
+
+The design's section 3 is the full contract; for the echo agent of M2 it comes to this.
+
+| The library provides | Your app provides |
+| --- | --- |
+| The call: WebRTC in your backend process, end of turn, Whisper, Orpheus, captions, Stop | A `VoiceAgent`: a name and its languages, each with a greeting |
+| `VoiceRuntime`, served by `serve()`, `t2v serve`, `t2v dev`, or mounted with `runtime.router()` | One process with one worker per data folder (`storage.var_dir`), and a serving shape ([serving.md](serving.md)) |
+| `SignedJoinTokens` to mint and verify join tokens; `DevIdentity` for `env` dev on your machine | An identity source: your website or app mints a join token for each caller, with their consent |
+| `t2v-client.js`, the reference browser client, and a dev page | A page with a consent screen, served over HTTPS or from localhost ([browser-client.md](browser-client.md)) |
+| `VoiceSettings`, loaded from `T2V_*` variables or built in code | `env` (dev, test, staging or prod; no default) and a Groq key, with each Orpheus model's terms accepted |
+| Structured logs and traces, with no call content in logs at INFO and above | A logging configuration, and a trace backend if you want traces ([tracing-and-logs.md](tracing-and-logs.md)) |
+
+What the library stores and sends is [data-and-privacy.md](data-and-privacy.md); whether it fits
+your product is [is-this-for-you.md](is-this-for-you.md).
+
+## The quickstart, in short
+
+From a checkout of this repository, with a Groq key in a file outside it
+([quickstart.md](quickstart.md) has the details and a checklist for a first call that fails):
+
+```bash
+uv sync
+T2V_ENV=dev T2V_GROQ__API_KEY_FILE=/path/to/groq_api_key uv run t2v dev minimal_example.app:make_runtime
+# then, in Chrome or Edge on the same machine: http://127.0.0.1:7860/voice/dev
+```
 
 ## Variables to leave unset
 
-The library's settings are `T2V_*` environment variables or a `.env` file
-([.env.example](../../.env.example) lists them; the generated settings reference below will
-describe each). The SDKs under it read a few variables of their own whatever the library
-passes, so a process that uses the library leaves these unset, or, for the proxy and CA
-variables, sets only values it trusts (the other docs point here rather than list them, and the
-debt rows named say why each is still read):
+The library's settings are one `VoiceSettings`: built in code, or loaded by
+`VoiceSettings.from_env()` from the `T2V_*` environment variables, and from a `.env` file only
+when `env_file=` names one; `env` (dev, test, staging or prod) has no default
+([.env.example](../../.env.example) lists them, and the generated
+[settings.md](../generated/settings.md) describes each). The packages under it read some
+variables of their own whatever the library passes, so a process that uses the library leaves
+these unset, or, for the proxy and CA variables, sets only values it trusts (the other docs
+point here rather than list them, and the debt rows named say why each is still read):
 
 - `GROQ_LOG`, read when `groq` is imported: `debug` or `info` adds a handler to the root logger
   and sets the `groq` and `httpx` loggers' levels, and at DEBUG the SDK logs each request's
@@ -30,7 +65,9 @@ debt rows named say why each is still read):
   request options, so keep both above DEBUG (TD-003).
 - `GROQ_CUSTOM_HEADERS`, read by the Groq SDK when the adapter builds its client: the adapter
   replaces every header with its own on each request, so no line of it adds a header or changes
-  one, but a `content-type` line makes every request fail, as a `rejected` provider error.
+  one, but a `content-type` line makes every request that sends a body (a synthesis, a
+  transcription) fail, as a `rejected` provider error, while the model list still answers, so
+  `t2v doctor` shows it only with `--synthesize`.
 - `OTEL_SDK_DISABLED` turns the library's own tracer provider off: no span is exported, and the
   library logs `tracing_disabled_by_sdk` (TD-005).
 - `OTEL_PYTHON_CONTEXT`, read when `opentelemetry.context` is imported, before any of the
@@ -38,6 +75,39 @@ debt rows named say why each is still read):
   (TD-005).
 - `OTEL_EXPERIMENTAL_RESOURCE_DETECTORS`, read in a child process forked after the library's
   tracer provider was built, loads the entry points it names (TD-005).
+- `OTEL_PROPAGATORS`, read when `fastapi` is imported, loads the entry points it names, and a
+  name it does not know makes the import fail.
+- `FASTAPI_OTEL_AUTO_CONFIGURE`, read when a FastAPI app is built: true adds OpenTelemetry
+  exporters, from the `OTEL_*` variables, when the app starts, to a provider already set up
+  too, unless the app is built with `telemetry={"auto_configure": False}`.
+- `PIPECAT_SETUP_FILES`, read each time Pipecat sets up a call's pipeline and starts its
+  runner: each file it names is run inside every call, so a shell variable can load code. The
+  runtime refuses to start while it holds any value, naming it.
+- `PIPECAT_SMART_TURN_LOG_DATA`, read when Smart Turn's analyzer is built: true writes the
+  caller's audio of every turn it analyses as WAV files under `smart_turn_audio_log` in the
+  working folder, whatever the caller consented to. The runtime refuses to start while it holds
+  any value, naming it.
+- `PIPECAT_SCTP_MAX_CHUNK_SIZE`, read when Pipecat's WebRTC connection module is imported,
+  sets the data channel's chunk size for the whole process, and a value that is not a whole
+  number makes the import fail.
+- `LOGURU_*`, read when loguru is imported (Pipecat imports it): they set loguru's default
+  output and a level's number for the whole process, which no code can change back, and a
+  value of the wrong kind makes the import fail.
+- `WEBSOCKETS_*`, read when websockets is imported (Pipecat's speech-service base classes
+  import it), set its limits and the headers it sends for the whole process, and a limit that
+  is not a number makes the import fail.
+- `ORT_LOAD_CONFIG_FROM_MODEL`, read when onnxruntime builds a session: `1` takes the
+  session's options from the model's file, for Silero's and Smart Turn's sessions too, which
+  pass no override.
+- `FORWARDED_ALLOW_IPS` and `WEB_CONCURRENCY`, read by uvicorn only when the code passes no
+  `forwarded_allow_ips` or `workers`: by default it trusts `X-Forwarded-For` from 127.0.0.1
+  and ::1, so any local client can set its own address, and `WEB_CONCURRENCY` with an app
+  object makes `uvicorn.run` exit. A process that runs uvicorn itself passes both. uvicorn's
+  command line also takes every option from `UVICORN_*` (`UVICORN_ENV_FILE` loads a `.env`).
+- Read only by parts of Pipecat the library does not use: `PIPECAT_LOG_LLM_CONTEXT` and
+  `PIPECAT_ALLOWED_FILE_URL_NETWORKS` (its model services), `PIPECAT_ALLOWED_ORIGINS` (its
+  WebSocket transports), `NUMBA_*` and `LLVMLITE_*` (its resampy resampler), and `OPENAI_*`
+  (its provider services); `poe arch` keeps them all out of the library's imports (ARCH-BAN).
 - The proxy variables (`HTTP_PROXY`, `HTTPS_PROXY`, `ALL_PROXY`, `NO_PROXY`; on Windows, the
   Internet Options proxy when none of them is set) and the CA variables (`SSL_CERT_FILE` and
   `SSL_CERT_DIR` for httpx, under `groq`; `REQUESTS_CA_BUNDLE` and `CURL_CA_BUNDLE` for
@@ -48,28 +118,31 @@ debt rows named say why each is still read):
 
 ## Pages
 
-| Page | What it will cover | Lands with |
+Each page is written when the part it describes lands in the library, in the milestone its row
+names. The pages written so far are linked.
+
+| Page | What it covers | Lands with |
 | --- | --- | --- |
+| [is-this-for-you.md](is-this-for-you.md) | The fit check: Python version, operating system, the install's size and its heavy dependencies, one process per data folder and the sidecar, network needs, Groq's published limits, the licences | M2 (written) |
+| [quickstart.md](quickstart.md) | `examples/minimal` end to end, in English, then in Saudi Arabic; a checklist for a first call that does not work | M2 (written: the echo agent), M5 (the final quickstart) |
+| [serving.md](serving.md) | The sidecar or the mount, one process per data folder, identity and join tokens, the routes, cross-origin pages, the browser protocol | M2 (written) |
+| [browser-client.md](browser-client.md) | The reference browser client: starting a call, its events and states, tokens and consent, Stop and Esc, errors, browser support | M2 (written: its M2 part), M3 |
+| [tracing-and-logs.md](tracing-and-logs.md) | The logging policy and `configure_logging`, Pipecat's own lines, Phoenix or your own tracer provider, what a trace holds, redaction | M2 (written) |
+| [data-and-privacy.md](data-and-privacy.md) | What the library itself stores and sends: the data folder, recordings and consent, what a trace holds, how long Phoenix keeps it | M2 (written) |
+| [settings.md](../generated/settings.md) (generated, `uv run poe settings-ref`) | Every setting, with its default, unit and environment name | M2 (written) |
+| [evaluation.md](evaluation.md) | The evaluation helpers; recording your own test set with consent and keeping audio out of git; writing your own spelling guide; the golden-set commands, making a registered run and reading its scorecard; noise and the sign test; held-out and window runs; the run history | M1 (written) |
 | `contract.md` | What the library provides, what you must provide, and what you may provide, with the default for each | M0 (fixed then, D-018); not written yet, and when it is written is an open question in the roadmap |
-| `is-this-for-you.md` | The fit check: Python version, operating system, the heavy dependencies, one process per data folder and the sidecar, network needs (UDP or TURN), Groq's published limits, the licences | M2 |
-| `quickstart.md` | `examples/minimal` end to end, English first, then Saudi Arabic; a checklist for a first call that does not work | M2 (an echo agent), M5 (the final quickstart) |
 | `concepts.md` | The talker, tools, actions, turns, the two-step interruption, the cancel scope, the history of what the caller heard; one turn in a diagram | M3 |
+| `audio-troubleshooting.md` | Echo on laptop speakers, Bluetooth headsets, microphone permissions, UDP and TURN failures | M3 |
 | `writing-for-voice.md` | Instructions written for speech, tool descriptions, read-backs, claim phrases, send words and spoken labels, each with a good and a bad example | M4 |
+| `languages.md` | Language presets, the reply language, normalization, speaking numbers and IDs, spoken labels, vocabulary, pronunciation | M4 |
+| `latency.md` | Where the time goes in a turn, and how to measure yours | M4 |
+| `providers.md` | Writing an adapter for another speech, model or voice provider | M4 |
 | `tools-and-actions.md` | Writing each kind, wrapping existing functions, the action lifecycle, consent, the error table, idempotency and lookups | M5 |
 | `safety.md` | How the yes rule and the output guard work; what the library guarantees and what stays yours | M5 |
-| `languages.md` | Language presets, the reply language, normalization, speaking numbers and IDs, spoken labels, vocabulary, pronunciation | M4 |
-| `reference/settings.md` (generated) | Every setting, with its default, unit and environment name | M2 |
-| `serving.md` | The sidecar or the mount, identity and join tokens, cross-origin pages, the browser protocol | M2 |
-| `browser-client.md` | The reference browser client: its events and states, tokens, consent, Stop and Esc | M2, M3 |
 | `testing.md` | Text calls, the fakes, the safety suite for your actions, live scenarios, audio replay | M5 |
-| [evaluation.md](evaluation.md) | The evaluation helpers; recording your own test set with consent and keeping audio out of git; writing your own spelling guide; the golden-set commands, making a registered run and reading its scorecard; noise and the sign test; held-out and window runs; the run history | M1 |
-| `latency.md` | Where the time goes in a turn, and how to measure yours | M4 |
-| `tracing-and-logs.md` | Phoenix or your own tracing, redaction, what a trace holds, the logging policy | M2 |
-| `data-and-privacy.md` | What the library itself stores and sends: what a trace holds, the data folder, recording and consent | M2 |
-| `audio-troubleshooting.md` | Echo on laptop speakers, Bluetooth headsets, microphone permissions, UDP and TURN failures | M3 |
 | `deployment.md` | The process model, containers, TURN, drain, health, capacity | M6 |
 | `runbook.md` | Rate limits and outages, a stuck write, key rotation, a deletion request | M6 |
-| `providers.md` | Writing an adapter for another speech, model or voice provider | M4 |
 | `cookbook/` | Worked use cases with no Ole5 code: an IT helpdesk, HR leave | M5, M7 |
-| `reference/api.md` (generated) | The public modules, from their docstrings, with each module's stability | M2 onward |
+| `reference/api.md` (generated) | The public modules, from their docstrings, with each module's stability | The first version a teammate installs |
 | `upgrading.md` | Versions, stability levels, deprecations, behaviour changes | The first version a teammate installs |

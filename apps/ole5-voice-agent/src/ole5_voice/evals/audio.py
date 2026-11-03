@@ -2,7 +2,7 @@
 standard library's `wave`, so no audio package is installed.
 
 `poe golden` hashes and checks the files it is given, the runner cuts its clips and windows
-from them (`run_parts.py`, `answerers.py`), and the recorder writes its takes with them
+from them (`run_parts.py`, `groq_answerer.py`), and the recorder writes its takes with them
 (`recorder_state.py`). The files stay out of git (D-022); a manifest holds each one's hash,
 length and format.
 """

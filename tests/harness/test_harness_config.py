@@ -106,6 +106,51 @@ def test_owners_must_name_real_layers_once(tmp_path: Path) -> None:
     assert "'httpx' is listed in two [[owners]] tables" in found
 
 
+def test_a_restricted_table_lists_classes_or_names(tmp_path: Path) -> None:
+    names = (
+        '\n[[restricted]]\nnames = ["SEAL"]\nlayers = ["domain"]\nfiles = ["core/seal.py"]\n'
+        'fix = "Ask domain."\n'
+    )
+    loaded = config(tmp_path, SYNTHETIC + names)
+    seal = loaded.arch.restricted_names["SEAL"]
+    assert seal.layers == {"domain"} and seal.files == {"core/seal.py"}
+    assert seal.allows("domain", "domain/x.py") and seal.allows("core", "core/seal.py")
+    assert not seal.allows("core", "core/other.py")
+    assert set(loaded.arch.restricted) == {"Approved"}
+    both = names.replace('names = ["SEAL"]', 'classes = ["Sealed"]\nnames = ["SEAL"]')
+    text = SYNTHETIC + both
+    assert _problems(tmp_path, text) == [
+        (_line(text, 'names = ["SEAL"]'), "[[restricted]] lists `classes` or `names`, not both")
+    ]
+
+
+def test_a_restricted_table_holds_a_layer_or_a_module_of_one(tmp_path: Path) -> None:
+    """`files` names modules of the library, each a path inside the package; `layers` may be
+    empty when `files` is not, and each table has both."""
+    only_files = '\n[[restricted]]\nnames = ["SEAL"]\nlayers = []\nfiles = ["core/seal.py"]\n'
+    loaded = config(tmp_path, SYNTHETIC + only_files + 'fix = "Ask core/seal.py."\n')
+    assert loaded.arch.restricted_names["SEAL"].layers == frozenset()
+    bad = only_files.replace(
+        '"core/seal.py"', '"core/seal", "web/x.py", "/core/x.py", "core/A-b.py"'
+    )
+    text = SYNTHETIC + bad + 'fix = "Ask."\n'
+    line = _line(text, 'files = ["core/seal", "web/x.py", "/core/x.py", "core/A-b.py"]')
+    expected = "is not a module of a layer ('<layer>/<name>.py', inside the package)"
+    assert _problems(tmp_path, text) == [
+        (line, f"[[restricted]] files: '{path}' {expected}")
+        for path in ("/core/x.py", "core/A-b.py", "core/seal", "web/x.py")
+    ]
+    empty = only_files.replace('files = ["core/seal.py"]', "files = []")
+    text = SYNTHETIC + empty + 'fix = "Ask."\n'
+    assert _problems(tmp_path, text) == [
+        (_line(text, "layers = []"), "[[restricted]] names no layer and no file")
+    ]
+    missing = SYNTHETIC.replace('layers = ["domain"]\nfiles = []\n', 'layers = ["domain"]\n')
+    assert _problems(tmp_path, missing) == [
+        (_line(missing, "[[restricted]]"), "[restricted] needs `files`")
+    ]
+
+
 def test_apps_and_the_public_api_are_read(tmp_path: Path) -> None:
     apps = '\n[[apps]]\nname = "shop"\nroot = "apps/shop/src"\n'
     loaded = config(tmp_path, SYNTHETIC + apps)
@@ -157,6 +202,80 @@ def test_a_subpackage_rule_starts_with_a_layer(tmp_path: Path) -> None:
     text = SYNTHETIC.replace('path = "services/reports"', 'path = "reports"')
     found = {problem for _, problem in _problems(tmp_path, text)}
     assert "subpackage 'reports' does not start with a layer's folder" in found
+
+
+def test_bans_name_modules_and_the_code_they_cover(tmp_path: Path) -> None:
+    """ARCH-BAN's tables: dotted names, allowed modules inside a banned one, `within` the
+    library (its layers and facades) or an app, a fix, and no other key."""
+    apps = '\n[[apps]]\nname = "shop"\nroot = "apps/shop/src"\n'
+    good = (
+        '\n[[bans]]\nmodules = ["vendor.services"]\nallowed = ["vendor.services.base"]\n'
+        'within = ["app", "app.services.reports", "shop.calls"]\nfix = "Use the base."\n'
+    )
+    write(tmp_path, dict.fromkeys(_WITHIN, ""))
+    loaded = config(tmp_path, SYNTHETIC + apps + good)
+    (ban,) = loaded.arch.bans
+    assert (ban.modules, ban.allowed, ban.within) == (
+        ("vendor.services",),
+        ("vendor.services.base",),
+        ("app", "app.services.reports", "shop.calls"),
+    )
+    bad = (
+        '\n[[bans]]\nmodules = ["vendor.services", "not a module"]\n'
+        'allowed = ["vendor.services", "other.x", "vendor.services-x"]\n'
+        'within = ["elsewhere", "app.web", "app.services."]\nfix = ""\nscope = ["api"]\n'
+        '\n[[bans]]\nmodules = []\nwithin = []\nfix = "x"\n'
+    )
+    text = SYNTHETIC + apps + bad
+    found = _problems(tmp_path, text)
+    lines = {needle: _line(text, needle) for needle in ('fix = ""', 'scope = ["api"]')}
+    problems = {problem for _, problem in found}
+    assert problems >= {
+        "[[bans]] modules: 'not a module' is not a dotted module name",
+        "[[bans]] allowed: 'vendor.services-x' is not a dotted module name",
+        "[[bans]] within: 'app.services.' is not a dotted module name",
+        "[[bans]] allows 'vendor.services', which is inside no banned module",
+        "[[bans]] allows 'other.x', which is inside no banned module",
+        "[[bans]] within 'elsewhere': not the library or an app (one of: app, shop)",
+        "[[bans]] within 'app.web': 'web' is no layer or facade of the library",
+        "[bans] modules must be a non-empty list of non-empty strings",
+        "[bans] within must be a non-empty list of non-empty strings",
+        "[bans] needs `allowed`",
+    }
+    assert (lines['fix = ""'], "[bans] fix must be a non-empty string") in found
+    assert (lines['scope = ["api"]'], "[bans] has an unknown key `scope`") in found
+
+
+# What the `within` of the bans in these tests names: a package's `__init__`, or a module.
+_WITHIN = (
+    "src/app/__init__.py",
+    "src/app/services/reports/__init__.py",
+    "apps/shop/src/shop/calls.py",
+)
+
+
+def test_a_ban_covers_code_that_exists(tmp_path: Path) -> None:
+    """A `within` whose code was renamed or moved would leave its ban guarding nothing: it names
+    a package with its `__init__`, or a module."""
+    within = (
+        'within = ["app", "app.services.reports", "app.services.report", "shop.calls", "shop.call"]'
+    )
+    text = (
+        f'{SYNTHETIC}\n[[apps]]\nname = "shop"\nroot = "apps/shop/src"\n\n'
+        f'[[bans]]\nmodules = ["vendor"]\nallowed = []\n{within}\nfix = "No vendor."\n'
+    )
+    write(tmp_path, dict.fromkeys(_WITHIN, "") | {"src/app/services/report/x.py": ""})
+    missing = "[[bans]] within '{}' names no package or module: neither {}/__init__.py nor {}.py"
+    assert _problems(tmp_path, text) == [
+        (_line(text, within), missing.format(name, path, path) + " exists")
+        for name, path in [
+            ("app.services.report", "src/app/services/report"),
+            ("shop.call", "apps/shop/src/shop/call"),
+        ]
+    ]
+    write(tmp_path, {"src/app/services/report/__init__.py": "", "apps/shop/src/shop/call.py": ""})
+    (ban,) = config(tmp_path, text).arch.bans
+    assert len(ban.within) == 5
 
 
 def test_an_unknown_table_is_rejected_but_tool_tables_are_not(tmp_path: Path) -> None:

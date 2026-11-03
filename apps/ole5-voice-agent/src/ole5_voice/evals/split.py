@@ -20,6 +20,7 @@ from typing import Final
 
 from t2_agentic_voice import configure_logging, get_logger
 
+from ole5_voice import LOGGERS
 from ole5_voice.evals.items import (
     EVALS,
     GOLDEN_DIR,
@@ -87,7 +88,7 @@ def main(argv: Sequence[str] | None = None) -> int:
     args = parser.parse_args(argv)
     if args.check and args.salt:
         parser.error("--check checks the committed split, with its own salt")
-    configure_logging()
+    configure_logging(loggers=LOGGERS)
     path = args.evals / SPLIT_FILE
     try:
         items = load_items(args.evals / GOLDEN_DIR)

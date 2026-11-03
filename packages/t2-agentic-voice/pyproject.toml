@@ -5,18 +5,29 @@ description = "A library for speech-first voice agents that talk naturally, answ
 readme = "README.md"
 requires-python = ">=3.12"
 dependencies = [
+    "fastapi>=0.162.0",
     "groq>=1.7.0",
     "httpx>=0.28.1,<1",
     "jiwer>=4.0.0",
+    "loguru>=0.7.3",
+    "num2words>=0.5.14",
     "openinference-semantic-conventions>=0.1.43",
     "opentelemetry-api>=1.45.2",
     "opentelemetry-exporter-otlp-proto-http>=1.45.2",
     "opentelemetry-sdk>=1.45.2",
+    "pipecat-ai[webrtc]~=1.15.0",
     "pydantic>=2.13.5",
     "pydantic-settings>=2.15.0",
+    "pyjwt>=2.15.1",
     "requests>=2.34.2",
     "structlog>=26.1.0",
+    "uvicorn>=0.54.0",
 ]
+
+[project.scripts]
+# The `t2v` command (the design's 10.6): `t2v serve APP`, `t2v dev APP`, `t2v doctor`,
+# `t2v settings show --redacted`.
+t2v = "t2_agentic_voice.api.cli:main"
 
 [build-system]
 requires = ["uv_build>=0.11.31,<0.12.0"]

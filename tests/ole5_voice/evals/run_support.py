@@ -16,7 +16,7 @@ from ole5_voice.evals.models import AudioRef, Confirmation, Item, Language, Spli
 from ole5_voice.evals.run_parts import DATA, Parts
 from ole5_voice.evals.runs import VariantResult
 from ole5_voice.evals.worktree import GitResult
-from t2_agentic_voice import Settings
+from t2_agentic_voice import VoiceSettings
 from t2_agentic_voice.ports import SpeechToText
 
 from tests.ole5_voice.evals.fakes import (
@@ -183,7 +183,7 @@ class Setup:
         self.stt: SpeechToText = FakeSpeechToText()
         self.writer, self.history = FakeScorecardWriter(), FakeHistory()
         self.tracing, self.clock = FakeTracing(), FakeClock()
-        self.adapter: Callable[[Settings], SpeechToText] | None = None  # by default, `stt`
+        self.adapter: Callable[[VoiceSettings], SpeechToText] | None = None  # by default, `stt`
 
     def parts(self) -> Parts:
         return Parts(

@@ -1,0 +1,48 @@
+<!doctype html>
+<!-- Ole5's voice widget, served by the Ole5 app's server (ole5_voice/server.py) with its
+     Content-Security-Policy: no inline script or style; every text is set by widget.js with
+     textContent, in the language the caller picks (Arabic first). -->
+<html lang="ar" dir="rtl">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Ole5</title>
+<link rel="icon" href="data:,">
+<link rel="stylesheet" href="widget.css">
+<script type="module" src="widget.js"></script>
+</head>
+<body>
+<header>
+  <h1 data-text="title"></h1>
+  <nav aria-label="Language">
+    <button type="button" class="language" data-language="ar-SA" lang="ar" aria-pressed="true">العربية</button>
+    <button type="button" class="language" data-language="en" lang="en" aria-pressed="false">English</button>
+  </nav>
+</header>
+
+<main>
+  <section id="consent" class="panel">
+    <h2 data-text="consentTitle"></h2>
+    <p data-text="consentBody"></p>
+    <p class="muted" data-text="consentVersion"></p>
+    <label class="box"><input type="checkbox" id="record"> <span data-text="record"></span></label>
+    <p><button type="button" id="agree" class="primary" data-text="agree"></button></p>
+  </section>
+
+  <section id="call" class="panel" hidden>
+    <p id="code-row">
+      <label><span data-text="code"></span>
+        <input type="password" id="code" autocomplete="off" spellcheck="false" dir="ltr"></label>
+    </p>
+    <p class="controls">
+      <button type="button" id="start" class="primary" data-text="start"></button>
+      <button type="button" id="stop" data-text="stop" disabled></button>
+      <button type="button" id="end" data-text="end" disabled></button>
+    </p>
+    <p id="state" class="state" role="status" aria-live="polite"></p>
+    <p id="message" class="message" role="alert"></p>
+    <ol id="captions" class="captions" aria-live="polite"></ol>
+  </section>
+</main>
+</body>
+</html>
