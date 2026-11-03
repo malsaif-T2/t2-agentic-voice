@@ -284,6 +284,37 @@ milestone a contract it cannot build on. Everything else becomes a row in
   they are. The agent asked the plan-003 session before taking debt and decision numbers: this
   plan proposes debt rows from number 100 and decision entries from number 60, apart from plan
   003's.
+- 2026-11-03: Block 0, by one agent in `plan-005-block-0`, in 9 commits (230a5ed to f1d6665) and
+  one of review fixes (53e3401), merged as 814c102 (its tree is 53e3401's, the integration branch
+  not having moved): the overlap's I/O (`HearOverlap`, a transcript's `part`, `duck` and `unduck`
+  as `Send`, `Commands.run`'s contract: TD-068), `t2v/1`'s `Duck`, `Unduck` and a caption's `cut`,
+  `domain/words.py` (`Words`, `Phrases`, the presets' lists empty) and `VoiceAgent.phrases`, the
+  rule's and the filter's signatures, `CancelScope`, `HeardHistory` and `Overlaps`, the
+  `interruptions` and `words` settings groups, `stt.no_speech_max`, `stt.caption_filter` and
+  `turns.smart_turn_threshold`, `AudioCall`'s signature in the `evals` facade, and the fakes (a
+  slow responder, a lock in `FakeSession`). Splits, each a pure move: `call.py` from 372 lines to
+  295 (`turn_book.py`, `limits.py`, two methods into `speaker.py`), `Speaker` into `speaker.py`,
+  `tts_bridge.py`'s two classes into `tts_output.py` (as `OutputChunks` and `ClauseTake`), and
+  `declaration.py`'s errors into `declaration_errors.py` (236 lines). Values: `duck_level` 0.25,
+  the prototype's (`Ole5-chatbot/web/voice.js`, line 174); `CANCEL_WAIT_S` 0.1 s and the fakes'
+  bounds, the agent's. Read for the tracks: a subclass of Pipecat 1.15.0's
+  `LocalSmartTurnAnalyzerV3` can apply its own threshold by overriding `_predict_endpoint`
+  (`local_smart_turn_v3.py` lines 138, 174 and 180-182; `base_smart_turn.py` lines 243-258), a
+  private method; and `ole5_voice.evals.split` recomputes every side when items are added (lines
+  47-67), so step 11 needs a split that keeps them. Gate at 53e3401: 'TOTAL 10537 0 100%',
+  '3264 passed, 1 skipped, 1 warning in 316.98s (0:05:16)'. Review, one reviewer under the owner's
+  rule, each finding checked by one skeptic: five findings; two stood: the agent's voice stayed
+  lowered after a stop, since `unduck` came only when a reply went on (high: every later reply,
+  the rehearsal's repeat among them, would play at a quarter of its volume; the prototype restored
+  it), fixed so that every `duck` ends with one `unduck` once its overlap is decided, and the
+  verdict's reason reached no event (low), fixed with `Interrupted.reason`. Refuted: a race that
+  would leave a short «وقف» unjudged (the overlap's command reaches the bridge about 160 ms before
+  the detector's stop), the agent's own words leaving out the clause playing (already in Track
+  B's brief; the docstrings now say so), the replay needing interfaces it lacks (Track E can build
+  it alone), and a cut clause's fraction having no source (the session's `AgentAudio` gives it).
+  Its debt is TD-100 to TD-102. Also this day: the plan-003 session added Q2's (b) to plan 003's
+  step 18 on the main branch (94ea2e5, 63bbe52), and agreed this plan's numbers: debt rows from
+  TD-100, decision entries from number 60.
 
 ## Decision log
 
@@ -323,6 +354,17 @@ affects.
 - 2026-11-03: `turns.vad_stop_ms` stays 200 ms and is no arm of E: an overlap's second request
   waits on it, so a longer stop would slow every stop by as much. E's arms act only after it:
   Smart Turn's threshold and its fallback.
+- 2026-11-03: The integrator's readings at Block 0's merge, for the tracks: Track E owns
+  `voice/file_transport.py` (the clip over a reply is the replay's), and its replay plays the
+  reply as the file-fed call's greeting, the clip starting during it, with no reach into the
+  session; Track C owns `voice/pipeline.py` and `voice/calls.py`, which its routing of
+  `HearOverlap` may touch; Track B owns the split's `turn_book.py` and `limits.py`; the rule's
+  question words are a short list inside `domain/interruptions.py` and a question mark, not a
+  `Words` kind; a window's go on waits for the overlap part, so the short-output step judges the
+  overlap part only, its speech timed from `speech_at` to the overlap part's request less the
+  detector's stop delay; when speech follows an overlap that went on, while a reply still plays,
+  the turn's own transcript is judged too, at no request; a second overlap's `unduck` waits
+  until no overlap of the call is undecided.
 
 ## The owner's decisions
 
@@ -374,14 +416,14 @@ step of the starting rule on texts written for the test, never an item's; the no
 test.
 
 **Track B · The session (`voice/session/`, no Pipecat).** Owns `scope.py`, `overlap.py`,
-`history.py`, and the changes to `call.py`, `echo.py`, `speaker.py`, `playback.py`, `report.py`
-and `usage.py`. Tests, with the fake I/O, the slow responder and the fake clock: each verdict's
+`history.py`, and the changes to `call.py`, `echo.py`, `speaker.py`, `playback.py`,
+`turn_book.py`, `limits.py`, `recording.py`, `report.py` and `usage.py`. Tests, with the fake I/O, the slow responder and the fake clock: each verdict's
 commands and events; a stop cancelling the scope within 100 ms, no task left; a repeat; the
 history's marks; a turn in the tail; `mode = "drop"` unchanged; TD-055 and TD-060.
 
 **Track C · The Pipecat side (`voice`).** Owns `stt_bridge.py` (the window and the overlap),
-`session_bridge.py`, `tts_bridge.py` and `tts_output.py` (TD-064's stop part),
-`file_transport.py` (a clip fed over a reply) and `turns.py` (Smart Turn's threshold, a turn's
+`session_bridge.py`, `tts_bridge.py` and `tts_output.py` (TD-064's stop part), `pipeline.py`,
+`calls.py` and `turns.py` (Smart Turn's threshold, a turn's
 end unchanged at its default). Tests: at most two requests decide an overlap; the
 second sent at the detector's stop; no window for an overlap whose speech stops first; the second
 transcript reused when no speech followed; a stop leaves no context of a clause never opened; no
@@ -391,7 +433,8 @@ Pipecat interruption fires.
 `apps/ole5-voice-agent/web/`. Tests: `duck` and `unduck` applied; a cut caption; push-to-talk
 enabling the microphone only while held; no `innerHTML` or its kin.
 
-**Track E · The measurement's tooling.** Owns `testing/audio_call.py`; in
+**Track E · The measurement's tooling.** Owns `testing/audio_call.py` and
+`voice/file_transport.py` (a clip fed over a reply); in
 `apps/ole5-voice-agent/src/ole5_voice/evals/`, `overlap.py`, `overlap_score.py`,
 `import_calls.py` and the history's new run kind; the new lines of `evals/script.toml` (Q2); the
 poe task `overlap` (asked of the integrator). Tests: the `reference` answerer; the scorer on
