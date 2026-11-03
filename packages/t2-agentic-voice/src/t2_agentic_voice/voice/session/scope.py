@@ -1,8 +1,8 @@
 """Each reply's cancel scope (the design's 6.4; plan 005): the work that answers one of the
 caller's turns starts inside it, whatever that work is (the echo's, the talker's model stream and
 read-only lookups, or a team's agent in the agent-led mode, D-050), so a stop cancels at once
-everything working for that reply: every task of the scope is cancelled and awaited, the wait
-bounded by `wait_s` on the call's clock, and none is left. Work started outside a scope (an
+everything working for that reply: every task of the scope is cancelled and awaited, for at
+most `wait_s` on the call's clock, and none is left. Work started outside a scope (an
 action's write, which runs as a job of `actions`, the design's 6.4) is never cancelled by one.
 
 Plan 005's Track B builds it; until then each method but the constructor raises.
