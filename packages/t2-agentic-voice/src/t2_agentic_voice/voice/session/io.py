@@ -19,45 +19,64 @@ items cited are plan 003's appendix, "Changes to the plan's interfaces".
   numbers each turn from 0 when its `UserStartedSpeakingFrame` reaches it, and stamps the number
   on the turn's end and its transcript, since the next turn's start can reach the session before
   the last turn's transcript. Each `TurnOpened` is followed by one `TurnClosed` and exactly one
-  `Transcribed`, in either order, an empty, failed or unusable result included (item 4), unless
-  the call ends first (the end, below).
+  `Transcribed`, in either order, an empty, failed or unusable result included (item 4), the
+  `Transcribed` after the turn's `Transcribing` when a request went, unless the call ends first
+  (the end, below).
 - **Replies** are the agent's, numbered by the session from 0: the greeting, said once
   connected, is reply 0, and each echo and each spoken notice the next. The session speaks a
   reply clause by clause (`Speak`), each clause keyed on its reply and its index there, and
   naming the caller's turn the reply answers (none for the greeting or a notice), so a turn
   and a reply never share a key. Each clause is within the provider's `max_chars`, so the
-  text-to-speech bridge's TOKEN aggregation sends one request per clause (item 9); a fixed
-  phrase (the greeting, the frame, a notice) is one clause whatever its length, played from the
-  phrase cache with no request. Each reports `ClauseQueued` when its first audio is queued for
-  the output, then `ClausePlayed` or `ClauseFailed`, unless a `StopSpeaking` drops it first.
+  text-to-speech bridge's TOKEN aggregation sends one request per clause (item 9), handing its
+  `Synthesizing` as it goes; a fixed phrase (the greeting, the frame, a notice) is one clause
+  whatever its length, played from the phrase cache with no request. Each reports `ClauseQueued`
+  when its first audio is queued for the output, then `ClausePlayed` or `ClauseFailed`, unless
+  a `StopSpeaking` drops it first or the call ends first (the end, below).
 - **The drop rule** (plan 003's decision log). A turn whose speech began (`speech_at`) while any
   reply played, the greeting included, or within 300 ms after a reply's last clause played, is
   not answered, so the agent never answers its own voice leaking past the browser's echo
   cancellation. The turn is still closed and transcribed, and kept on the timeline.
 - **The stop path** (item 7). `StopSpeaking` drops the agent's speech at once: the session
   bridge, upstream of the text-to-speech bridge, calls `broadcast_interruption()`, and every
-  processor drops its queued frames up to the output transport. Up to about 40 ms already in the
-  WebRTC track still plays, so "no audio frame of that reply is sent after a stop" holds at the
-  output transport. Pipecat's own interruptions stay off: only the session stops speech.
+  processor drops its queued frames up to the output transport, so a stop drops every clause
+  the session has asked for so far, whatever its reply, and the session names its newest reply
+  in it. Up to about 40 ms already in the WebRTC track still plays, so "no audio frame of that
+  reply is sent after a stop" holds at the output transport. No event of a dropped clause
+  follows, one the Pipecat side held for the session included: the session counts each reply
+  the stop dropped as done, waiting for no event of it, and if one was the `ended` notice it
+  gives `HangUp` at once. Pipecat's own interruptions stay off: only the session stops speech.
 - **Taps** (item 15). `CallerAudio` is the caller's audio as the pipeline hears it, taken after
   the transport, and `AgentAudio` the agent's as the output transport sends it: what the call's
   recorder writes, and only when the setting and a signed consent both allow it (invariant 8).
   The taps always flow; the recorder decides.
 - **Messages.** The client's messages reach the session parsed (`FromClient`, from
-  voice/protocol.py's object path: Pipecat parsed each message's text before handing it on),
-  and the session's go out as `Send`, an urgent transport message a stop never drops (item 8).
+  voice/protocol.py's object path: Pipecat parsed each message's text before handing it on,
+  with no bound of ours), and the session's go out as `Send`, an urgent transport message a
+  stop never drops (item 8).
 - **Failures** (item 12). A connection that fails, or is not connected within voice's own
   deadline from offer to connected, is a `TransportFailure`: ICE failure pushes no error frame,
   so it comes from the connection's events. A provider's failure comes on the turn's or the
   clause's own event.
-- **The end.** `Ending` and `TransportFailure` are the last events the Pipecat side hands the
-  session: it hands none after either, the taps included. A turn still open then, or closed with
-  its transcript still to come, ends there: the Pipecat side drops the turn's held audio and
-  sends no request for it, cancels a request in flight (which the report then does not count),
-  and no `TurnClosed` or `Transcribed` of it follows; the session keeps it in the report as
-  unfinished (`TurnRecord.unfinished`). The session's last command is always `HangUp`, whatever
-  ended the call: the caller's `hangup`, a limit, a `TransportFailure` or an `Ending`. No event
-  follows it.
+- **Usage.** The session counts each request from its report, handed as the request goes,
+  whatever comes of it: a `Transcribing` is one speech-to-text request, its `audio_s` sent, and
+  billed as Groq bills Whisper, at least 10 s a request (the design's 10.4); a `Synthesizing` is
+  one text-to-speech request, its `Speak`'s text the characters sent. A request the call's end
+  cancels is counted, never one that did not go; a phrase played from the cache is a cache hit.
+- **The end.** The call ends at the first of an `Ending` or a `TransportFailure` the Pipecat
+  side hands, or a `HangUp` the session gives, whatever ended it: the caller's `hangup` or their
+  side closing, a limit, an error, the runtime stopping, the connection failing. From then the
+  Pipecat side starts nothing and finishes nothing: it drops the held audio of a turn still
+  open, or closed with its transcript still to come, and sends no request for it; drops every
+  clause's audio still queued; and cancels any request in flight, speech-to-text's or
+  text-to-speech's. It hands no event after the end, the taps included, but the report of a
+  request that went before the end (its `Transcribing` or `Synthesizing`, which the session
+  still reads and counts): so no `TurnClosed` or `Transcribed` of such a turn follows, and no
+  `ClausePlayed` or `ClauseFailed` of such a clause. The session keeps the turn in the report
+  as unfinished (`TurnRecord.unfinished`) and counts each reply the end cut as done, as a stop's
+  (`AgentSpeechEnded` with how much of it played). The session's last command is always
+  `HangUp`, given at once when an `Ending` or a `TransportFailure` ends the call; no command
+  follows it. Once it has handed the last of those reports, the Pipecat side ends the call's
+  stream with `Session.aclose`, and no event follows.
 
 What else a session needs (the agent and the call's language, the settings, the phrase cache,
 tracing, where its public events go) comes in its `CallSetup`, from voice's entry point
@@ -132,11 +151,17 @@ class PhraseAudio(Protocol):
 
 
 class Session(Protocol):
-    """One call's session as the Pipecat side drives it (voice/session/call.py's `CallSession`)."""
+    """One call's session as the Pipecat side drives it (voice/session/call.py's `CallSession`):
+    each event of the call's stream through `handle`, then `aclose`, once, when it ends."""
 
     async def handle(self, event: SessionEvent) -> None:
         """Take one event, in the order they happened, and return soon: what takes longer (a
         timer, a report written to disk) runs on the session's own tasks. Never raises."""
+
+    async def aclose(self) -> None:
+        """The call's stream has ended (the end, above): no event follows, and the session
+        gives no command. Finish the call, its report counted from every event handed and
+        written, and return once it is. Never raises."""
 
 
 class Commands(Protocol):

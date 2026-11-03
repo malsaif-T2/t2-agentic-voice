@@ -43,7 +43,9 @@ def test_the_session_is_a_stub_until_track_d(settings: VoiceSettings) -> None:
     )
     with pytest.raises(NotImplementedError, match="Track D"):
         CallSession(setup, _NoSide())
-    stub = CallSession.__new__(CallSession)  # the method's stub, past the constructor's
+    stub = CallSession.__new__(CallSession)  # the methods' stubs, past the constructor's
     session: Session = stub  # mypy checks the protocol's shape
     with pytest.raises(NotImplementedError, match="Track D"):
         asyncio.run(session.handle(Connected(at=0.0)))
+    with pytest.raises(NotImplementedError, match="Track D"):
+        asyncio.run(session.aclose())

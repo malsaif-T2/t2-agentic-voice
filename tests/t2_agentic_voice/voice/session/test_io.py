@@ -1,8 +1,9 @@
 """The session's I/O (voice/session/io.py, with session_events.py and commands.py; plan 003's
 step 10): the lists name every event and command once; each is frozen and keyword-only, every
 event carries its time, every turn's event its turn and every clause's its reply, never a turn;
-a session and a Pipecat side written against the protocols talk through them alone; and the
-system clock is the performance counter, the aware UTC time and asyncio's sleep."""
+a session and a Pipecat side written against the protocols talk through them alone, the call's
+stream ending with the session's `aclose`; and the system clock is the performance counter, the
+aware UTC time and asyncio's sleep."""
 
 from __future__ import annotations
 
@@ -43,7 +44,9 @@ from t2_agentic_voice.voice.session.session_events import (
     Ending,
     FromClient,
     SessionEvent,
+    Synthesizing,
     Transcribed,
+    Transcribing,
     TransportFailure,
     TurnClosed,
     TurnOpened,
@@ -54,6 +57,7 @@ EVENTS: list[SessionEvent] = [
     Connected(at=0.0),
     TurnOpened(turn_id=0, at=1.34, speech_at=1.0),
     TurnClosed(turn_id=0, at=2.6, speech_ended_at=2.5),
+    Transcribing(turn_id=0, at=2.61, audio_s=2.1),
     Transcribed(
         turn_id=0,
         at=2.9,
@@ -61,6 +65,7 @@ EVENTS: list[SessionEvent] = [
         sent_at=2.61,
         transcript=Transcript(text="made-up words", language="en"),
     ),
+    Synthesizing(reply_id=1, clause=1, at=2.91),
     ClauseQueued(reply_id=1, clause=0, at=2.95, requested_at=None),
     ClausePlayed(reply_id=1, clause=0, at=3.05, audio_s=0.1, chunks=1),
     ClauseFailed(reply_id=1, clause=1, at=3.2, failure="timeout", retryable=True),
@@ -77,8 +82,8 @@ COMMAND_EXAMPLES: list[Command] = [
     Send(message=State(state="listening")),
     HangUp(reason="hangup"),
 ]
-TURNS = {TurnOpened, TurnClosed, Transcribed}
-CLAUSES = {ClauseQueued, ClausePlayed, ClauseFailed}
+TURNS = {TurnOpened, TurnClosed, Transcribing, Transcribed}
+CLAUSES = {Synthesizing, ClauseQueued, ClausePlayed, ClauseFailed}
 
 
 def test_each_event_and_command_is_listed_once_in_the_unions_order() -> None:
@@ -102,7 +107,7 @@ def test_each_is_frozen_and_keyword_only(example: SessionEvent | Command) -> Non
 def test_every_event_carries_its_time_a_turns_its_turn_and_a_clauses_its_reply() -> None:
     """A clause is keyed on its reply, never on a turn, so the greeting (reply 0) and a turn's
     echo never share a key; `Speak` names the turn a reply answers, and a command carries no
-    time."""
+    time. The greeting, a fixed phrase, names no turn and plays its cached audio."""
     for event in EVENTS:
         names = {field.name for field in dataclasses.fields(event)}
         assert "at" in names and isinstance(event.at, float), event
@@ -112,8 +117,10 @@ def test_every_event_carries_its_time_a_turns_its_turn_and_a_clauses_its_reply()
         names = {field.name for field in dataclasses.fields(command)}
         assert "at" not in names
         assert ("reply_id" in names) == isinstance(command, Speak | StopSpeaking)
-    greeting = Speak(reply_id=0, clause=0, turn_id=None, text="Hello there.", language="en")
-    assert (greeting.turn_id, greeting.audio) == (None, None)
+    greeting = Speak(
+        reply_id=0, clause=0, turn_id=None, text="Hello there.", language="en", audio=FRAME
+    )
+    assert (greeting.turn_id, greeting.audio) == (None, FRAME)
 
 
 class _Phrases:
@@ -138,16 +145,24 @@ class _PipecatSide:
 class _Echo:
     """A session written against the protocols alone: it names the call's language, says the
     frame from the cache once a turn's transcript is in, then the heard words, as the next
-    reply (the greeting left out), and hangs up when the call ends from outside."""
+    reply (the greeting left out), hangs up when the call ends from outside, and counts the
+    speech-to-text requests that went until its stream ends."""
 
     def __init__(self, setup: CallSetup, commands: Commands) -> None:
         self.setup, self.commands = setup, commands
         self.replies = 0
+        self.requests: list[float] = []
+        self.closed = False
+
+    async def aclose(self) -> None:
+        self.closed = True
 
     async def handle(self, event: SessionEvent) -> None:
         language = self.setup.language
         if isinstance(event, Connected):
             await self.commands.run(ListenIn(language=language.primary))
+        elif isinstance(event, Transcribing):
+            self.requests.append(event.audio_s)
         elif isinstance(event, Transcribed) and event.transcript is not None:
             self.replies += 1
             reply, turn, tag = self.replies, event.turn_id, language.tag
@@ -180,19 +195,23 @@ def test_a_session_and_a_pipecat_side_talk_through_the_protocols_alone(
         emit=emitted.append,
     )
     side = _PipecatSide()
-    session: Session = _Echo(setup, side)  # mypy checks both protocols' shapes
+    echo = _Echo(setup, side)
+    session: Session = echo  # mypy checks both protocols' shapes
     commands: Commands = side
 
     async def call() -> None:
         for event in EVENTS:
             await session.handle(event)
+        await session.aclose()
 
     asyncio.run(call())
     assert commands is side and setup.clock is SYSTEM_CLOCK and emitted == []
     assert [type(command) for command in side.commands] == [ListenIn, Speak, Speak, HangUp]
     assert side.commands[-1] == HangUp(reason="caller_left")
-    said = [(c.reply_id, c.clause, c.turn_id) for c in side.commands if isinstance(c, Speak)]
-    assert said == [(1, 0, 0), (1, 1, 0)]
+    speaks = [c for c in side.commands if isinstance(c, Speak)]
+    assert [(c.reply_id, c.clause, c.turn_id) for c in speaks] == [(1, 0, 0), (1, 1, 0)]
+    assert [c.audio for c in speaks] == [FRAME, None]  # the frame from the cache, no request
+    assert (echo.requests, echo.closed) == ([2.1], True)  # counted from its Transcribing
     with pytest.raises(LookupError):
         setup.phrases.audio("made-up words", language="en")
 

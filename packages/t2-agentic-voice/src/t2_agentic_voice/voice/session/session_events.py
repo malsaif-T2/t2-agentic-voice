@@ -6,7 +6,9 @@ type: they are internal, and the taps run at about 50 a second.
 
 Every event carries `at`, when it happened on the call's `Clock`. A turn's events carry the
 caller's `turn_id`, from the speech-to-text bridge; a clause's carry the agent's `reply_id` and
-the clause's index in it, from the session's `Speak`.
+the clause's index in it, from the session's `Speak`. A request to a provider is reported when
+it goes (`Transcribing`, `Synthesizing`), so the session counts every request that went, one
+the call's end cancelled included (io.py's usage).
 """
 
 from __future__ import annotations
@@ -51,12 +53,23 @@ class TurnClosed:
 
 
 @dataclass(frozen=True, kw_only=True)
+class Transcribing:
+    """The speech-to-text bridge sent a turn's request, at `at`, with `audio_s` seconds of its
+    audio: handed as the request goes, before the turn's `Transcribed`, and whatever comes of
+    it, so a request the call's end cancels is still counted (io.py's usage)."""
+
+    turn_id: TurnId
+    at: float
+    audio_s: float
+
+
+@dataclass(frozen=True, kw_only=True)
 class Transcribed:
     """A turn's one speech-to-text result: its `transcript` (with the headroom the provider
     reported for its key, when the adapter reads it), None when the request failed (`failure`,
     a `ProviderError`'s kind, and whether asking again may succeed) or when no audio was sent;
-    `audio_s`, the seconds of audio sent; `sent_at`, when the request went (None when none
-    did); and `at`, when the answer came."""
+    `audio_s`, the seconds of audio sent; `sent_at`, when the request went (its `Transcribing`'s
+    `at`; None when none went); and `at`, when the answer came."""
 
     turn_id: TurnId
     at: float
@@ -68,10 +81,23 @@ class Transcribed:
 
 
 @dataclass(frozen=True, kw_only=True)
+class Synthesizing:
+    """The text-to-speech bridge sent a clause's request, at `at`, its text the `Speak`'s:
+    handed as the request goes, before the clause's other events, and whatever comes of it, so
+    a request the call's end cancels is still counted (io.py's usage). A cached phrase sends
+    none."""
+
+    reply_id: ReplyId
+    clause: ClauseIndex
+    at: float
+
+
+@dataclass(frozen=True, kw_only=True)
 class ClauseQueued:
     """The first audio of a clause the session asked for came, from the provider or the phrase
     cache, and was queued for the output: `requested_at`, when its text-to-speech request went
-    (None for a cached phrase, which sends none), so the first audio took `at - requested_at`."""
+    (its `Synthesizing`'s `at`; None for a cached phrase, which sends none), so the first audio
+    took `at - requested_at`."""
 
     reply_id: ReplyId
     clause: ClauseIndex
@@ -143,7 +169,8 @@ class FromClient:
 class TransportFailure:
     """The call's connection failed at `stage`: `connect` when ICE failed or voice's own deadline
     from offer to connected passed (items 11 and 21), `media` when the path dropped after it
-    connected (aioice's consent checks give up in about 30 s). The last event of the call."""
+    connected (aioice's consent checks give up in about 30 s). It ends the call: only the
+    report of a request that went before it may follow (io.py's end)."""
 
     stage: TransportStage
     at: float
@@ -153,7 +180,8 @@ class TransportFailure:
 class Ending:
     """The call ends from outside the session, for `reason`: the caller's side closed the
     connection (`caller_left`), or voice's entry point was asked to end it (`server`: the
-    runtime is stopping). The last event of the call."""
+    runtime is stopping). It ends the call: only the report of a request that went before it
+    may follow (io.py's end)."""
 
     reason: EndReason
     at: float
@@ -163,7 +191,9 @@ SessionEvent = (
     Connected
     | TurnOpened
     | TurnClosed
+    | Transcribing
     | Transcribed
+    | Synthesizing
     | ClauseQueued
     | ClausePlayed
     | ClauseFailed
@@ -177,7 +207,9 @@ SESSION_EVENTS: tuple[type[SessionEvent], ...] = (
     Connected,
     TurnOpened,
     TurnClosed,
+    Transcribing,
     Transcribed,
+    Synthesizing,
     ClauseQueued,
     ClausePlayed,
     ClauseFailed,

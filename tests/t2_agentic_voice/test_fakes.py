@@ -1,7 +1,8 @@
 """The fakes of the ports, the clock and voice's entry point (tests/t2_agentic_voice/fakes.py)
 implement their protocols, so the tracks that build against them build against the real
 interfaces: each is assigned to its protocol, which mypy checks, and does what its docstring
-says. The session's I/O fakes are checked in test_session_fakes.py."""
+says. The session's I/O fakes are checked in test_session_fakes.py, and play the session's
+scenes in test_session_scenes.py."""
 
 from __future__ import annotations
 
@@ -293,3 +294,19 @@ def test_the_capturing_output_plays_in_real_time_and_drops_audio_on_an_interrupt
     assert times and all(at < interrupted for at in times)
     assert 0 < captured.audio_s() < 1.0
     assert times[-1] - times[0] >= captured.audio_s() - 0.04 - 0.05
+
+
+def test_an_interruption_overtakes_audio_queued_just_before_it_which_is_written_after() -> None:
+    """Pipecat 1.15.0 takes a system frame first from a processor's input queue, so audio and an
+    interruption queued back to back reach the transport in the other order: none of the audio
+    was dropped, and all of it was written after the interruption (`Captured`'s docstring)."""
+    quiet_pipecat()
+    from pipecat.frames.frames import InterruptionFrame, OutputAudioRawFrame
+
+    captured = Captured()
+    audio = OutputAudioRawFrame(audio=tone(0.4, 24_000), sample_rate=24_000, num_channels=1)
+    _run(captured, [audio, InterruptionFrame()], realtime=False)
+    (interrupted,) = captured.interruptions
+    times = [at for at, _ in captured.audio]
+    assert len(times) == 10 and all(at > interrupted for at in times)  # 40 ms chunks
+    assert captured.audio_s() == pytest.approx(0.4)

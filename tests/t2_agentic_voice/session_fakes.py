@@ -1,8 +1,9 @@
 """Fakes of the session's I/O (voice/session/io.py, with its events in session_events.py and
 its commands in commands.py), with the port fakes in fakes.py, for the session's tests (Track D)
 and the Pipecat side's (Track E). Each implements one protocol of io.py, or plays one side of
-it; tests/t2_agentic_voice/test_session_fakes.py checks each. They live apart from fakes.py,
-which would otherwise pass the 400 lines a module may hold (ARCH-SIZE):
+it; tests/t2_agentic_voice/test_session_fakes.py checks each, and test_session_scenes.py plays
+the scenes the session builds on. They live apart from fakes.py, which would otherwise pass the
+400 lines a module may hold (ARCH-SIZE):
 
 - `FakePhrases`: the runtime's fixed phrases' audio (`PhraseAudio`), refusing any text not
   declared;
@@ -10,11 +11,12 @@ which would otherwise pass the 400 lines a module may hold (ARCH-SIZE):
 - `FakeSession`: a session (`Session`) for the Pipecat side, built as `CallSession` is;
 - `FakeSessionIO`: the Pipecat side around a session under test: its `CallSetup`, built from
   the fakes, and every event, tap and client message, handed to the session at the fake
-  clock's time, none after the call's end (io.py's end).
+  clock's time, refusing one io.py says cannot come (after a stop, after the call's end).
 """
 
 from __future__ import annotations
 
+import json
 from collections.abc import Callable, Iterable, Sequence
 
 from t2_agentic_voice.core.config import VoiceSettings
@@ -28,7 +30,7 @@ from t2_agentic_voice.domain.fixed_phrases import fixed_phrases
 from t2_agentic_voice.domain.ports.speech_to_text import Transcript
 from t2_agentic_voice.domain.ports.text_to_speech import AudioChunk
 from t2_agentic_voice.voice.protocol import ClientMessage, SessionMessage, parse_client_message
-from t2_agentic_voice.voice.session.commands import Command, HangUp, Send
+from t2_agentic_voice.voice.session.commands import Command, HangUp, Send, Speak, StopSpeaking
 from t2_agentic_voice.voice.session.io import CallSetup, Commands, Session
 from t2_agentic_voice.voice.session.session_events import (
     AgentAudio,
@@ -40,7 +42,9 @@ from t2_agentic_voice.voice.session.session_events import (
     Ending,
     FromClient,
     SessionEvent,
+    Synthesizing,
     Transcribed,
+    Transcribing,
     TransportFailure,
     TurnClosed,
     TurnOpened,
@@ -59,6 +63,10 @@ AGENT = VoiceAgent(
 )
 CALLER = Caller(subject="caller-1")
 PLAIN_CONSENT = Consent(version=None, record_audio=False)
+# A clause's events, each keyed on its reply and its index there.
+CLAUSE_EVENTS = (Synthesizing, ClauseQueued, ClausePlayed, ClauseFailed)
+# What the Pipecat side may still hand once the call has ended: a request's report (io.py).
+REQUEST_REPORTS = (Transcribing, Synthesizing)
 
 
 class FakePhrases:
@@ -115,8 +123,8 @@ class FakeCommands:
 class FakeSession:
     """A session (`Session`) for the Pipecat side's tests, built as `CallSession` is, from a
     call's setup and where its commands go: it keeps every event handed to it, and for each
-    gives the commands `replies` returns for it, in order (none by default). A test gives a
-    command of its own with `give`."""
+    gives the commands `replies` returns for it, in order (none by default); `closed` says
+    whether its stream has ended (`aclose`). A test gives a command of its own with `give`."""
 
     def __init__(
         self,
@@ -129,11 +137,15 @@ class FakeSession:
         self.commands = commands
         self.replies = replies
         self.events: list[SessionEvent] = []
+        self.closed = False
 
     async def handle(self, event: SessionEvent) -> None:
         self.events.append(event)
         for command in self.replies(event):
             await self.commands.run(command)
+
+    async def aclose(self) -> None:
+        self.closed = True
 
     async def give(self, command: Command) -> None:
         await self.commands.run(command)
@@ -146,9 +158,11 @@ class FakeSessionIO:
     (the agent's own by default), `max_chars` for every language, tracing off, the public
     events kept in `emitted`, and `clock`. `commands` keeps what the session gives. Once
     `attach`ed to a session, each method below builds its event at the clock's time, keeps it
-    in `events`, hands it to the session, and returns it; none once the call has ended (an
-    `Ending` or a `TransportFailure` handed, or a `HangUp` given), which raises RuntimeError,
-    as no event follows the end (io.py)."""
+    in `events`, hands it to the session, and returns it. It refuses, with RuntimeError, what
+    io.py says cannot come: an event of a clause a `StopSpeaking` dropped; once the call has
+    ended (an `Ending` or a `TransportFailure` handed, or a `HangUp` given), any event but a
+    request's report (`Transcribing`, `Synthesizing`); and any event once `close` has ended
+    the call's stream."""
 
     def __init__(
         self,
@@ -168,6 +182,7 @@ class FakeSessionIO:
         self.commands = FakeCommands()
         self.emitted: list[Event] = []
         self.events: list[SessionEvent] = []
+        self.closed = False
         self.setup = CallSetup(
             call_id=call_id,
             caller=caller,
@@ -194,17 +209,52 @@ class FakeSessionIO:
         last = (Ending, TransportFailure)
         return any(isinstance(e, last) for e in self.events) or bool(self.commands.of(HangUp))
 
+    @property
+    def dropped(self) -> set[tuple[int, int]]:
+        """The clauses a `StopSpeaking` dropped, by reply and index: every one the session had
+        asked for before its last stop, whatever its reply."""
+        asked: list[tuple[int, int]] = []
+        dropped: set[tuple[int, int]] = set()
+        for command in self.commands.commands:
+            if isinstance(command, Speak):
+                asked.append((command.reply_id, command.clause))
+            elif isinstance(command, StopSpeaking):
+                dropped = set(asked)
+        return dropped
+
+    def _refusal(self, event: SessionEvent) -> str | None:
+        """Why io.py says `event` cannot come now, with its FIX; None when it can."""
+        if self.closed:
+            return "the call's stream has ended. FIX: end the scene at `close`."
+        if self.ended and not isinstance(event, REQUEST_REPORTS):
+            return (
+                "the call has ended, and only a request's report follows its end. FIX: end the "
+                "scene at its Ending, its TransportFailure or the session's HangUp."
+            )
+        if isinstance(event, CLAUSE_EVENTS) and (event.reply_id, event.clause) in self.dropped:
+            return "a stop dropped the clause. FIX: hand no event of a clause a stop dropped."
+        return None
+
     async def _hand[E: SessionEvent](self, event: E) -> E:
         if self._session is None:
             raise RuntimeError("no session to hand the event to. FIX: attach one first.")
-        if self.ended:
-            raise RuntimeError(
-                "the call has ended, and no event follows its end (io.py). FIX: end the scene "
-                "at its Ending, its TransportFailure or the session's HangUp."
-            )
+        refusal = self._refusal(event)
+        if refusal is not None:
+            raise RuntimeError(f"no such event can come (io.py): {refusal}")
         self.events.append(event)
         await self._session.handle(event)
         return event
+
+    async def close(self) -> None:
+        """End the call's stream, as the Pipecat side does once the call has ended and it has
+        handed the last request's report: the session's `aclose`; no event follows."""
+        if self._session is None or not self.ended:
+            raise RuntimeError(
+                "the stream ends only after the call. FIX: hand its Ending or its "
+                "TransportFailure, or let the session give its HangUp, first."
+            )
+        self.closed = True
+        await self._session.aclose()
 
     async def connected(self) -> Connected:
         return await self._hand(Connected(at=self.clock.now()))
@@ -223,40 +273,57 @@ class FakeSessionIO:
         ended = now if speech_ended_at is None else speech_ended_at
         return await self._hand(TurnClosed(turn_id=turn_id, at=now, speech_ended_at=ended))
 
+    async def transcribing(self, turn_id: int, *, audio_s: float = 1.0) -> Transcribing:
+        """The turn's request goes now, with `audio_s` of its audio, as the bridge sends it."""
+        now = self.clock.now()
+        return await self._hand(Transcribing(turn_id=turn_id, at=now, audio_s=audio_s))
+
     async def transcribed(
         self,
         turn_id: int,
         text: str | None,
         *,
         language: str | None = None,
-        audio_s: float = 1.0,
         failure: ProviderErrorKind | None = None,
         retryable: bool = False,
     ) -> Transcribed:
-        """The turn's transcript, `text` heard in `language`, its `audio_s` billed as Groq
-        bills; or None, with `failure` when the request failed and with no request otherwise.
-        A request went when the turn closed (as the bridge sends it), or now if it has not."""
-        now = self.clock.now()
+        """The turn's transcript, `text` heard in `language`, its request's audio billed as Groq
+        bills it; or None, with `failure` when the request failed and with no request
+        otherwise. A request that went is the turn's last `Transcribing`, which gives the
+        result its audio and when it went: RuntimeError when none was handed."""
+        sent = [e for e in self.events if isinstance(e, Transcribing) and e.turn_id == turn_id]
+        if (text is not None or failure) and not sent:
+            raise RuntimeError(
+                "the turn's request went with no Transcribing (io.py's usage). FIX: hand it "
+                "first, with `transcribing`."
+            )
+        audio_s = sent[-1].audio_s if sent else 0.0
         transcript = None
         if text is not None:
             billed = max(10.0, audio_s)
             transcript = Transcript(text=text, language=language, billed_seconds=billed)
-        closed = [e.at for e in self.events if isinstance(e, TurnClosed) and e.turn_id == turn_id]
         event = Transcribed(
             turn_id=turn_id,
-            at=now,
+            at=self.clock.now(),
             audio_s=audio_s,
-            sent_at=(closed or [now])[-1] if failure or transcript else None,
+            sent_at=sent[-1].at if sent else None,
             transcript=transcript,
             failure=failure,
             retryable=retryable,
         )
         return await self._hand(event)
 
-    async def clause_queued(
-        self, reply_id: int, clause: int, *, requested_at: float | None = None
-    ) -> ClauseQueued:
+    async def synthesizing(self, reply_id: int, clause: int) -> Synthesizing:
+        """The clause's text-to-speech request goes now."""
         now = self.clock.now()
+        return await self._hand(Synthesizing(reply_id=reply_id, clause=clause, at=now))
+
+    async def clause_queued(self, reply_id: int, clause: int) -> ClauseQueued:
+        """The clause's first audio is queued now: its request went at its `Synthesizing`, or
+        none did (a cached phrase)."""
+        asked = [e for e in self.events if isinstance(e, Synthesizing)]
+        sent = [e.at for e in asked if (e.reply_id, e.clause) == (reply_id, clause)]
+        requested_at, now = (sent[-1] if sent else None), self.clock.now()
         event = ClauseQueued(reply_id=reply_id, clause=clause, at=now, requested_at=requested_at)
         return await self._hand(event)
 
@@ -297,21 +364,22 @@ class FakeSessionIO:
 
     async def caller_audio(self, seconds: float, *, sample_rate: int = 16_000) -> CallerAudio:
         """The input tap: `seconds` of the caller's audio (the fakes' tone)."""
-        audio = tone(seconds, sample_rate)
-        return await self._hand(
-            CallerAudio(pcm16=audio, sample_rate=sample_rate, at=self.clock.now())
-        )
+        audio, now = tone(seconds, sample_rate), self.clock.now()
+        return await self._hand(CallerAudio(pcm16=audio, sample_rate=sample_rate, at=now))
 
     async def agent_audio(self, seconds: float, *, sample_rate: int = 24_000) -> AgentAudio:
         """The output tap: `seconds` of the agent's audio (the fakes' tone)."""
-        audio = tone(seconds, sample_rate)
-        return await self._hand(
-            AgentAudio(pcm16=audio, sample_rate=sample_rate, at=self.clock.now())
-        )
+        audio, now = tone(seconds, sample_rate), self.clock.now()
+        return await self._hand(AgentAudio(pcm16=audio, sample_rate=sample_rate, at=now))
 
     async def client(self, message: object) -> FromClient:
-        """A client's message: a `t2v/1` model, or the object or JSON text the transport
-        carried, parsed as the Pipecat side parses it (InvalidRequestError for anything else)."""
+        """A client's message: a `t2v/1` model, an object as Pipecat hands it on, or the text
+        the data channel carried, parsed as a call's path parses it: `json.loads`, as Pipecat
+        does (ValueError for text that is not JSON, which Pipecat drops), then the object path,
+        so a key the text held twice gives its last value. InvalidRequestError for anything
+        that is not exactly one of `t2v/1`'s, which the Pipecat side drops."""
+        if isinstance(message, str | bytes):
+            message = json.loads(message)
         parsed: ClientMessage = (
             message if isinstance(message, ClientMessage) else parse_client_message(message)
         )

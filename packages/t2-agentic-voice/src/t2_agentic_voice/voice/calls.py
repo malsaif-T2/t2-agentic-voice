@@ -2,11 +2,12 @@
 (plan 003, step 10). Built by plan 003's Track E; until then a stub. The items cited are plan
 003's appendix, "Changes to the plan's interfaces"; what Track E builds:
 
-- **Start.** The runtime's lifespan builds one `VoiceCalls` and starts it (`start`), which builds
-  Silero VAD and Smart Turn v3.2, each loading its ONNX model on the CPU there, never at import:
-  importing onnxruntime takes 8 to 12 s a process (item 24). This module imports no Pipecat at
-  its top, since api imports it when the library is imported, and `import t2_agentic_voice` and
-  `t2v --help` import no Pipecat (GP-17). Pipecat's loguru namespace is switched off before voice
+- **Start.** The runtime's lifespan builds one `VoiceCalls` and starts it (`start`), which
+  imports onnxruntime and warms one pair of models, a Silero VAD and a Smart Turn v3.2, each
+  loading its ONNX model on the CPU there, never at import: importing onnxruntime takes 8 to
+  12 s a process (item 24). This module imports no Pipecat at its top, since api imports it
+  when the library is imported, and `import t2_agentic_voice` and `t2v --help` import no
+  Pipecat (GP-17). Pipecat's loguru namespace is switched off before voice
   first imports Pipecat (Q2, item 16); the transport loggers are held at WARNING unless
   `logging.content` is on (`core.logging.hold_transport_loggers`); `PIPECAT_SETUP_FILES` and
   `PIPECAT_SMART_TURN_LOG_DATA` set to a value are refused (item 17), each named in a
@@ -14,11 +15,17 @@
   `core.config.foreign_set`, which answers by name however the settings were built. Track E's
   test: each one set (monkeypatch) makes `start` refuse, naming it.
 - **The detectors.** Each call gets its own speech detector and turn analyzer, since each of
-  Pipecat's keeps one stream's state (a `VADAnalyzer`'s buffer, Smart Turn's audio):
+  Pipecat's keeps one stream's state (a `VADAnalyzer`'s buffer, Silero's model state, Smart
+  Turn's audio) and its public constructor loads its own ONNX session, sharing none:
   `VoiceCalls` makes them with the factories it is given, and with none builds Silero and Smart
-  Turn v3.2 from the settings' `turns` group. A test gives fakes (step 16's sends a generated
-  signal through a fake speech detector), through the runtime's private `_calls`
-  (api/runtime.py).
+  Turn v3.2 from the settings' `turns` group, each loading its model again for the call (after
+  the warm-up, the review's probe on the owner's machine took 85.2 to 102.3 ms for Silero and
+  106.6 to 134.2 ms for Smart Turn). So `VoiceCalls` calls each factory off the event loop
+  (`await asyncio.to_thread(factory)`) before it answers the offer, and no live call's audio
+  waits on a join. Track E's test: while `answer` builds a call with a factory that blocks for
+  0.2 s (`time.sleep`), a 20 ms ticker on the same loop misses no deadline by more than a few ms
+  (a bound Track E sets and records). A test gives fakes (step 16's sends a generated signal
+  through a fake speech detector), through the runtime's private `_calls` (api/runtime.py).
 - **The offer** (`answer`). One Pipecat pipeline per call, its session a `CallSession`
   (`voice/session/`). Pipecat's request handler keys its connections on a `pc_id` it chooses,
   which holds `#`; it renegotiates a live call for whoever names that ID, and leaves a stale key
@@ -38,13 +45,17 @@
   client's end-of-candidates PATCH, which reaches aioice (item 11).
 - **Messages.** The session bridge hands the session each client message as `on_app_message`
   gives it, the object Pipecat parsed (voice/protocol.py's object path), parsed with
-  `parse_client_message`. Track E's test: a message sent on a test peer's data channel reaches
-  `parse_client_message` as that object, and one over MAX_CLIENT_MESSAGE_BYTES is dropped.
+  `parse_client_message`. Pipecat parsed the channel's text first, with no bound of ours (up to
+  the transport's message size), and holds the messages that come before the call connects, so
+  the bound is on the object written back as compact JSON. Track E's test: a message sent on a
+  test peer's data channel reaches `parse_client_message` as that object, and one whose compact
+  JSON is over MAX_CLIENT_MESSAGE_BYTES is dropped.
 - **The end** (`end`, `aclose`). Each peer's close is bounded by a timeout, since on Windows'
-  proactor loop 2 or 3 of 16 closes hung (item 20); a call's session always hangs up, with its
-  report written, before voice forgets the call. Voice forgets a call once it has ended and its
-  peer has closed: `phase` says `ended` only until then, and None after, as for a call it never
-  held.
+  proactor loop 2 or 3 of 16 closes hung (item 20). A call's session always hangs up, and voice
+  ends the call's stream with the session's `aclose`, which returns once its report is written
+  (voice/session/io.py's end), before it forgets the call. Voice forgets a call once it has
+  ended and its peer has closed: `phase` says `ended` only until then, and None after, as for a
+  call it never held.
 
 api does the HTTP side: the offer secret, a second offer's 409, the quiet 409 for a PATCH before
 voice answered the call's offer or after ICE completed or the call ended, and mapping each error
@@ -99,8 +110,8 @@ class Calls(Protocol):
     """voice's entry point as api uses it: `VoiceCalls`, or a test's fake."""
 
     async def start(self) -> None:
-        """Build what every call shares, the speech detector's and the turn analyzer's models
-        among it; called once, at the runtime's start, before any offer."""
+        """Prepare what every call needs (`VoiceCalls` imports onnxruntime and warms one pair of
+        models: above); called once, at the runtime's start, before any offer."""
 
     async def answer(
         self, call_id: CallId, offer: str, *, caller: Caller, consent: Consent, language: Language
@@ -152,8 +163,9 @@ class VoiceCalls:
     `agent` with `settings`: speech-to-text through `stt`, text-to-speech through `tts`, the
     fixed phrases from `phrases`, its turns traced on `tracing`, its public events sent to
     `emit`, its times on `clock`. Each call's speech detector comes from `speech_detector` and
-    its turn analyzer from `turn_analyzer`, called once per call; None builds Silero VAD and
-    Smart Turn v3.2. Built cheaply, with no IO; `start` loads the models."""
+    its turn analyzer from `turn_analyzer`, each called once per call, off the event loop; None
+    builds Silero VAD and Smart Turn v3.2, each loading its model for the call. Built cheaply,
+    with no IO; `start` imports onnxruntime and warms one pair of models."""
 
     def __init__(
         self,
@@ -172,7 +184,8 @@ class VoiceCalls:
         raise NotImplementedError(_STUB)
 
     async def start(self) -> None:
-        """Build Silero VAD and Smart Turn v3.2 (the `Calls` protocol's `start`)."""
+        """Import onnxruntime and warm one Silero VAD and one Smart Turn v3.2 (the `Calls`
+        protocol's `start`)."""
         raise NotImplementedError(_STUB)
 
     async def answer(

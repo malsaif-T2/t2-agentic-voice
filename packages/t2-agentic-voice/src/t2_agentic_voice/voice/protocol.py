@@ -6,9 +6,14 @@ but for the version check at join.
 The browser is not trusted (docs/SECURITY.md's trust boundaries), so `parse_client_message`
 parses a client's message strictly: one of the client's types, with exactly its fields, each of
 its JSON type (no "1" or 1.0 for an integer, no 1 for a boolean), every size bounded, and the
-whole message at most MAX_CLIENT_MESSAGE_BYTES of UTF-8; anything else is an
+message as the session gets it at most MAX_CLIENT_MESSAGE_BYTES of UTF-8; anything else is an
 InvalidRequestError that holds none of it. No client message can set the caller's identity or
-consent (the design's 5.5).
+consent (the design's 5.5). The bound is on what the session gets: on a call's path, the object
+Pipecat parsed, written back as compact UTF-8 JSON; on the text path, the text's own bytes.
+Pipecat parses the data channel's text before that, with no bound of ours (up to the
+transport's message size: aiortc advertises 64 KB), and holds the messages that come before the
+call connects; so a message padded with whitespace past the bound reaches a call within it, and
+a key the text held twice reaches a call with its last value.
 
 The caller speaks in turns and the agent in replies, and neither shares the other's numbers: a
 caller's turn is numbered by the speech-to-text bridge (`TurnId`), and each reply of the
@@ -51,9 +56,10 @@ from t2_agentic_voice.domain.declaration import NoticeKind
 
 # The protocol's version: every message carries it as "v", and /join checks the client's.
 PROTOCOL: Final = 1
-# The longest message a client sends, in bytes of UTF-8 JSON (the agent's bound): the longest
-# valid one, a `client_stats` with every field at its longest, fits in it several times over (a
-# test).
+# The most bytes of UTF-8 a client's message holds as the session gets it (the agent's bound):
+# Pipecat's object written back as compact JSON on a call's path, the text itself on the text
+# path, never the data channel's own text (above). The longest valid message, a `client_stats`
+# with every field at its longest, fits in it several times over (a test).
 MAX_CLIENT_MESSAGE_BYTES = 1024
 # What SmallWebRTC keeps for itself on the data channel (above).
 RESERVED_TYPES = ("signalling",)
@@ -214,9 +220,9 @@ def parse_client_message(message: object) -> ClientMessage:
 
     InvalidRequestError for anything else: a message over MAX_CLIENT_MESSAGE_BYTES
     (`too_large`), text that is not one JSON value in UTF-8 or an object JSON cannot write
-    (`json_invalid`), a key held twice (`duplicate_key`), or one that is not exactly one message
-    of the client's (pydantic's error types). Its details name only these kinds of problem,
-    never a value, a key or a type the client sent."""
+    (`json_invalid`), text holding a key twice (`duplicate_key`), or one that is not exactly one
+    message of the client's (pydantic's error types). Its details name only these kinds of
+    problem, never a value, a key or a type the client sent."""
     value, problem = _read(message)
     if problem is None:
         try:

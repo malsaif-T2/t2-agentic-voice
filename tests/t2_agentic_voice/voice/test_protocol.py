@@ -1,9 +1,9 @@
 """The `t2v/1` data-channel messages (the design's 5.5): a client's message parsed strictly and
 refused, holding none of it, when it is not exactly one of the client's (the browser is not
 trusted: docs/SECURITY.md's trust boundaries), its size counted in bytes on both paths and a key
-held twice refused in its text; the session's messages built with their version and type, an
-agent's caption keyed on its reply; and no message named as SmallWebRTC's own (plan 003's
-appendix, item 13)."""
+held twice refused in its text, the object path taking what Pipecat's parse left (no padding, a
+key's last value); the session's messages built with their version and type, an agent's caption
+keyed on its reply; and no message named as SmallWebRTC's own (plan 003's appendix, item 13)."""
 
 from __future__ import annotations
 
@@ -181,6 +181,26 @@ def test_a_key_held_twice_in_a_messages_text_is_refused(text: str) -> None:
         error = _refused(form)
         assert error.details == {"problems": ["duplicate_key"]}
         assert holding(MARK, shown(error)) == []
+
+
+def test_a_key_held_twice_reaches_a_call_with_its_last_value() -> None:
+    """A call's path: Pipecat's `json.loads` keeps a key's last value before the object reaches
+    `parse_client_message`, so the refusal above holds on the text path alone."""
+    for text in (
+        '{"v": 2, "type": "stop", "v": 1}',
+        '{"v": 1, "type": "signalling", "type": "stop"}',
+    ):
+        assert parse_client_message(json.loads(text)) == Stop(v=1, type="stop")
+
+
+def test_a_message_padded_past_the_bound_reaches_a_call_within_it() -> None:
+    """The bound is on the message as the session gets it: whitespace padding a stop to 60 KB
+    on the data channel is gone from the object Pipecat parsed, which is within the bound, while
+    the same text on the text path is refused."""
+    text = '{"v": 1, "type": "stop"' + " " * 60_000 + "}"
+    assert len(text.encode()) > 60_000
+    assert parse_client_message(json.loads(text)) == Stop(v=1, type="stop")
+    assert _refused(text).details == {"problems": ["too_large"]}
 
 
 def test_a_message_over_the_bound_is_refused_before_it_is_read() -> None:

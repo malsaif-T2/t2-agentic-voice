@@ -291,8 +291,11 @@ class Captured:
     """What a `capturing_output` transport was given: every frame that reached it going
     downstream, in order; each audio frame it wrote and each message it sent, with when it did;
     and when it had handled each interruption, its queued audio dropped (each time on
-    `time.perf_counter`). An audio frame written before an interruption's time was being
-    written or queued before it; none starts after it."""
+    `time.perf_counter`). No audio already in the transport's queue when an interruption is
+    handled starts after it. A frame still waiting in a processor's input queue when the
+    interruption reaches it is overtaken (Pipecat 1.15.0 takes a system frame first: its
+    `FrameProcessorQueue`) and written in full after it, so a stop test lets its audio start
+    writing before it stops."""
 
     frames: list[Frame] = field(default_factory=list)
     audio: list[tuple[float, OutputAudioRawFrame]] = field(default_factory=list)

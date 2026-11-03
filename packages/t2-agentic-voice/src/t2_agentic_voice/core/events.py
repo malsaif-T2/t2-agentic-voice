@@ -90,9 +90,11 @@ class TurnTimes(_Frozen):
 
 
 class ModelUsage(_Frozen):
-    """One provider model's use in one call: its requests; for speech-to-text, the audio
-    seconds sent and billed; for text-to-speech, the characters sent and the phrases played from
-    the cache, which sent nothing; and the last headroom the provider reported for its key."""
+    """One provider model's use in one call: its requests, each counted once it went, answered
+    or not (one the call's end cancelled included); for speech-to-text, the audio seconds sent
+    and billed (at least 10 s a request, as Groq bills Whisper); for text-to-speech, the
+    characters sent and the phrases played from the cache, which sent nothing; and the last
+    headroom the provider reported for its key."""
 
     model: str = Field(min_length=1)
     requests: int = Field(default=0, ge=0)
@@ -123,9 +125,10 @@ class TurnRecord(_Frozen):
 class CallReport(_Frozen):
     """What one call did, given to `CallEnded`'s observers: who answered it (the agent's name),
     when it started and ended and why, the consent version the caller agreed to, each turn
-    (what was heard and said, and its times), each model's usage, and the browser's view of the
-    connection. The tool calls, the actions and the agent's fingerprint come with the talker
-    and the actions."""
+    (what was heard and said, and its times), each model's usage (every request the call sent,
+    one its end cancelled included, so a cap set from `requests_per_minute` counts what the key
+    was asked), and the browser's view of the connection. The tool calls, the actions and the
+    agent's fingerprint come with the talker and the actions."""
 
     call_id: CallId
     agent: str = Field(min_length=1)

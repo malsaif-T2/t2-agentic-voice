@@ -32,10 +32,11 @@ class ListenIn:
 class Speak:
     """Say one clause of a reply in the voice of `language`: clause `clause` of reply
     `reply_id`, which answers the caller's turn `turn_id` (None for the greeting or a spoken
-    notice); `text`, at most the provider's `max_chars`, in one text-to-speech request; or, for a
-    fixed phrase, `audio` from the phrase cache, played with no request (`text`, the whole
-    phrase whatever its length, kept for its caption and its span: one clause). Clauses play in
-    the order they were asked for."""
+    notice); `text`, at most the provider's `max_chars`, in one text-to-speech request, sent as
+    it is (the session made it the provider's text: call.py); or, for a fixed phrase, `audio`
+    from the phrase cache, played with no request (`text`, the whole phrase as written whatever
+    its length, kept for its caption and its span: one clause). Clauses play in the order they
+    were asked for."""
 
     reply_id: ReplyId
     clause: ClauseIndex
@@ -47,9 +48,11 @@ class Speak:
 
 @dataclass(frozen=True, kw_only=True)
 class StopSpeaking:
-    """Drop the agent's speech at once, every clause queued or playing, of reply `reply_id` and
-    of any before it (io.py's stop path): no audio frame of them reaches the output transport
-    after it, and no event of a dropped clause follows."""
+    """Drop the agent's speech at once: every clause the session has asked for so far, queued or
+    playing, whatever its reply (io.py's stop path); `reply_id` names the session's newest
+    reply. No audio frame of them reaches the output transport after it, and no event of a
+    dropped clause follows: the session counts each reply it drops as done, waiting for no
+    event of it, and hangs up at once if one was the `ended` notice."""
 
     reply_id: ReplyId
 
@@ -64,9 +67,14 @@ class Send:
 
 @dataclass(frozen=True, kw_only=True)
 class HangUp:
-    """End the call, for `reason`: the session's last command, after its `ended` message. The
-    Pipecat side closes the peer, the close bounded by a timeout (item 20), and ends the
-    pipeline; no event follows."""
+    """End the call, for `reason`, whatever ended it (the caller's `hangup`, a limit, an error,
+    or an `Ending` or a `TransportFailure` it was handed): the session's last command, after its
+    `ended` message. The Pipecat side drops a turn's held audio and every clause's queued
+    audio, sends no request and cancels any in flight, so a turn still open, or closed with its
+    transcript still to come, gets no `TurnClosed` or `Transcribed` and stays unfinished in the
+    report; it closes the peer, the close bounded by a timeout (item 20), and ends the
+    pipeline. Only the report of a request that went before it may follow, then the call's
+    stream ends (io.py's end)."""
 
     reason: EndReason
 
