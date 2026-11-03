@@ -36,7 +36,10 @@ input[type="password"] {
   font: inherit; color: inherit; background: var(--paper); border: 1px solid var(--line);
   border-radius: 6px; padding: 4px 8px; margin-inline-start: 8px;
 }
-.controls { display: flex; flex-wrap: wrap; gap: 8px; }
+.controls { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; }
+/* Push-to-talk's button, held: the microphone is on. */
+button.talk { touch-action: none; user-select: none; }
+button.talk[aria-pressed="true"] { background: var(--accent); border-color: var(--accent); color: var(--paper); }
 .state { color: var(--muted); min-height: 1.6em; margin: 4px 0; }
 .message { color: var(--bad); min-height: 1.6em; margin: 4px 0; }
 .captions { list-style: none; margin: 0; padding: 0; }
@@ -44,3 +47,6 @@ input[type="password"] {
 .captions li.caller { background: var(--caller); }
 .captions li.agent { border: 1px solid var(--line); }
 .captions .who { display: block; font-size: 0.8rem; color: var(--muted); }
+/* A clause a stop cut while it played: muted, and ended by an ellipsis. */
+.captions .cut { color: var(--muted); }
+.captions .cut::after { content: "\2026"; }
