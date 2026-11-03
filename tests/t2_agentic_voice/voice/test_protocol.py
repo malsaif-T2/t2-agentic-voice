@@ -3,7 +3,8 @@ refused, holding none of it, when it is not exactly one of the client's (the bro
 trusted: docs/SECURITY.md's trust boundaries), its size counted in bytes on both paths and a key
 held twice refused in its text, the object path taking what Pipecat's parse left (no padding, a
 key's last value); the session's messages built with their version and type, an agent's caption
-keyed on its reply; and no message named as SmallWebRTC's own (plan 003's appendix, item 13)."""
+keyed on its reply and only an agent's marked cut, `duck`'s level from 0 to 1; and no message
+named as SmallWebRTC's own (plan 003's appendix, item 13)."""
 
 from __future__ import annotations
 
@@ -24,6 +25,7 @@ from t2_agentic_voice.voice.protocol import (
     Caption,
     ClientHello,
     ClientStats,
+    Duck,
     Ended,
     Hangup,
     Notice,
@@ -32,6 +34,7 @@ from t2_agentic_voice.voice.protocol import (
     SessionMessage,
     State,
     Stop,
+    Unduck,
     parse_client_message,
     wire,
 )
@@ -275,6 +278,8 @@ def test_each_session_message_goes_out_with_its_version_and_type() -> None:
         SessionHello(call_id="c-1", languages=("ar-SA", "en")),
         State(state="listening"),
         Caption(speaker="caller", text="x", final=True, turn_id=0),
+        Duck(level=0.25),
+        Unduck(),
         Notice(kind="ended", text="x"),
         Ended(reason="max_call"),
     ]
@@ -292,9 +297,16 @@ def test_each_session_message_goes_out_with_its_version_and_type() -> None:
         "turn_id": 4,
         "reply_id": 5,
         "clause": 2,
+        "cut": False,
     }
     greeting = Caption(speaker="agent", text="x", final=True, reply_id=0, clause=0)
     assert (wire(greeting)["turn_id"], sent[2]["reply_id"], sent[2]["clause"]) == (None,) * 3
+    cut = Caption(speaker="agent", text="x", final=True, reply_id=5, clause=2, cut=True)
+    assert wire(cut)["cut"] is True and sent[2]["cut"] is False
+    assert (sent[3], sent[4]) == (
+        {"v": 1, "type": "duck", "level": 0.25},
+        {"v": 1, "type": "unduck"},
+    )
 
 
 @pytest.mark.parametrize(
@@ -306,12 +318,17 @@ def test_each_session_message_goes_out_with_its_version_and_type() -> None:
         (Caption, {"speaker": "caller", "text": "x", "final": True, "turn_id": 0, "clause": 0}),
         (Caption, {"speaker": "caller", "text": "x", "final": True, "turn_id": 0, "reply_id": 0}),
         (Caption, {"speaker": "caller", "text": "x", "final": True}),  # no turn
+        (Caption, {"speaker": "caller", "text": "x", "final": True, "turn_id": 0, "cut": True}),
         (Caption, {"speaker": "agent", "text": "x", "final": True, "reply_id": -1, "clause": 0}),
         (SessionHello, {"call_id": "c-1", "languages": ()}),
         (SessionHello, {"call_id": "c-1", "languages": ("fr",)}),
         (SessionHello, {"call_id": "c 1", "languages": ("en",)}),
         (State, {"state": "napping"}),
         (Notice, {"kind": "ended", "text": ""}),
+        (Duck, {"level": 1.5}),
+        (Duck, {"level": -0.1}),
+        (Duck, {"level": float("nan")}),
+        (Duck, {}),
         (Ended, {"reason": "bored"}),
         (State, {"state": "listening", "v": 2}),
         (State, {"state": "listening", "extra": 1}),

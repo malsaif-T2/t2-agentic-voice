@@ -3,7 +3,7 @@
     "Every t2v/1 message (the design's 5.5), the baseline plan 003's Tracks D, E, F and G are compared with (Block 0, step 11). tests/t2_agentic_voice/test_protocol_list.py checks that the models in voice/protocol.py and api/protocol.py match it exactly; a change to t2v/1 changes this file in the same commit.",
     "data_channel: each message is a JSON object with \"v\": 1 and its \"type\" (the key under its direction), and the fields listed. http: each route after the router's prefix, its request body, its status on success and its answer then (null: no body), and the codes it answers by error status, each in error_body, the one error shape (GP-19). objects: the bodies' nested objects.",
     "A field's type: string, integer, number or boolean; a list of values is the field's closed list; [x] is a list of x; a name is an object of objects. A client's field marked (optional) may be left out; every field of a message the server sends is always there, null when it has no value.",
-    "turn_id names a caller's turn, as the speech-to-text bridge counts them, and reply_id an agent's reply, as the session counts them, each from 0: the greeting is reply 0, and each echo and each spoken notice the next. An agent's caption names its reply and clause, and the caller's turn it answers (null for the greeting or a notice); a caller's caption names its turn alone; a playback report names the agent's reply and clause."
+    "turn_id names a caller's turn, as the speech-to-text bridge counts them, and reply_id an agent's reply, as the session counts them, each from 0: the greeting is reply 0, and each echo and each spoken notice the next. An agent's caption names its reply and clause, and the caller's turn it answers (null for the greeting or a notice); a caller's caption names its turn alone; a playback report names the agent's reply and clause. duck lowers the agent's playback to its level (0 to 1) while the caller speaks over a reply, unduck brings it back, and an agent's caption marked cut is a clause a stop cut while it played (plan 005)."
   ],
   "protocol": 1,
   "reserved": {"types": ["signalling"], "text_prefix": "ping"},
@@ -32,8 +32,11 @@
         "final": "boolean",
         "turn_id": "integer | null",
         "reply_id": "integer | null",
-        "clause": "integer | null"
+        "clause": "integer | null",
+        "cut": "boolean"
       },
+      "duck": {"level": "number"},
+      "unduck": {},
       "notice": {"kind": "busy | error | ended", "text": "string"},
       "ended": {"reason": "hangup | caller_left | max_call | idle | transport | server"}
     }
