@@ -6,8 +6,10 @@
 // owner's access code and starts the call. The client opens the microphone first, so a missing,
 // busy or refused microphone is told before a token is asked for; the token route mints a join
 // token carrying the consent chosen here, which no later message changes. Stop and Esc cut the
-// agent short; End hangs up. Every text, the captions and notices included, is set with
-// textContent.
+// agent short; End hangs up. A clause a stop cut while it played is shown cut. Push-to-talk, a
+// switch the caller may turn on before or during the call, keeps the microphone off except while
+// Space or the talk button is held: the fallback when the agent's voice comes back through the
+// laptop's speakers. Every text, the captions and notices included, is set with textContent.
 
 import { VoiceClient } from "./voice/client/1/t2v-client.js";
 
@@ -28,6 +30,8 @@ const TEXT = {
     start: "ابدأ المكالمة",
     stop: "إيقاف",
     end: "أنهِ المكالمة",
+    pushToTalk: "التحدث بالضغط (اضغط مطولاً على المسافة أو على الزر)",
+    talk: "اضغط مطولاً للتحدث",
     states: { listening: "يسمعك الآن", thinking: "يفكر", speaking: "يتكلم", confirming: "يتأكد" },
     starting: "جارٍ الاتصال",
     you: "أنت",
@@ -58,6 +62,8 @@ const TEXT = {
     start: "Start the call",
     stop: "Stop",
     end: "End the call",
+    pushToTalk: "Push to talk (hold Space or the button)",
+    talk: "Hold to talk",
     states: { listening: "Listening", thinking: "Thinking", speaking: "Speaking", confirming: "Confirming" },
     starting: "Connecting",
     you: "You",
@@ -108,6 +114,27 @@ function running(on) {
   $("end").disabled = !on;
   $("code").disabled = on;
   for (const button of document.querySelectorAll("button.language")) button.disabled = on;
+  talkable();
+}
+
+// Push-to-talk's button: usable while a call runs with the switch on.
+function talkable() {
+  $("talk").disabled = $("end").disabled || !$("push-to-talk").checked;
+}
+
+// Push-to-talk's hold: the microphone on while Space or the talk button is held.
+function talk(held) {
+  $("talk").setAttribute("aria-pressed", String(held));
+  page.call?.talk(held);
+}
+
+// Space holds the microphone open while push-to-talk is on, and then neither clicks a focused
+// button nor flips the switch.
+function space(event) {
+  if (event.code !== "Space" || !page.call || !$("push-to-talk").checked) return;
+  event.preventDefault();
+  if (event.type === "keyup") talk(false);
+  else if (!event.repeat) talk(true);
 }
 
 function state(text) {
@@ -163,13 +190,21 @@ function caption(c) {
     $("captions").append(item);
     page.captions.set(key, { said, parts: [] });
   }
+  // Each clause in its own span, so a clause a stop cut is styled cut (widget.css).
   const shown = page.captions.get(key);
-  shown.parts[agent ? c.clause : 0] = c.text;
-  shown.said.textContent = shown.parts.filter(Boolean).join(" ");
+  const index = agent ? c.clause : 0;
+  if (!shown.parts[index]) {
+    shown.parts[index] = document.createElement("span");
+    const parts = shown.parts.filter(Boolean);
+    shown.said.replaceChildren(...parts.flatMap((part, at) => (at ? [" ", part] : [part])));
+  }
+  shown.parts[index].textContent = c.text;
+  shown.parts[index].classList.toggle("cut", c.cut === true);
 }
 
 function ended(e) {
   page.call = null;
+  talk(false);
   running(false);
   state(words().ended);
   if (e.reason === "transport") message(words().lost);
@@ -187,6 +222,7 @@ async function start() {
       base: "voice",
       language: page.language,
       getToken: token,
+      pushToTalk: $("push-to-talk").checked,
       on: {
         state: (s) => state(words().states[s.state] ?? ""),
         caption,
@@ -194,6 +230,7 @@ async function start() {
         ended,
       },
     });
+    call.pushToTalk = $("push-to-talk").checked; // switched while the call started
     page.call = call.closed ? null : call;
   } catch (error) {
     running(false);
@@ -216,4 +253,21 @@ $("agree").addEventListener("click", () => {
 $("start").addEventListener("click", start);
 $("stop").addEventListener("click", () => page.call?.stop());
 $("end").addEventListener("click", () => page.call?.hangup());
+$("push-to-talk").addEventListener("change", () => {
+  if (page.call) page.call.pushToTalk = $("push-to-talk").checked;
+  talk(false);
+  talkable();
+});
+// Held with the pointer: captured, so the hold ends wherever the button comes up.
+$("talk").addEventListener("pointerdown", (event) => {
+  if ($("talk").disabled) return;
+  $("talk").setPointerCapture?.(event.pointerId);
+  talk(true);
+});
+for (const name of ["pointerup", "pointercancel", "lostpointercapture"]) {
+  $("talk").addEventListener(name, () => talk(false));
+}
+document.addEventListener("keydown", space);
+document.addEventListener("keyup", space);
+globalThis.addEventListener("blur", () => talk(false)); // a key let go in another window
 render();
