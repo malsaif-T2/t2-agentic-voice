@@ -1,5 +1,5 @@
 """voice's entry point, which api calls: every call of one runtime, from its SDP offer to its end
-(plan 003, step 10). Built by plan 003's Track E; until then a stub. The items cited are plan
+(plan 003, step 10). Built by plan 003's Track E. The items cited are plan
 003's appendix, "Changes to the plan's interfaces"; what Track E builds:
 
 - **Start.** The runtime's lifespan builds one `VoiceCalls` and starts it (`start`), which
