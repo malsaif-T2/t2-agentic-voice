@@ -14,6 +14,7 @@ import pytest
 from t2_agentic_voice.core.config import VoiceSettings
 from t2_agentic_voice.core.events import TransportFailed
 from t2_agentic_voice.core.identity import Caller, Consent
+from t2_agentic_voice.core.logging import FIELDS
 from t2_agentic_voice.voice import pipeline as pipeline_module
 from t2_agentic_voice.voice.calls import Calls, CallsFactory, Candidate, VoiceCalls
 from t2_agentic_voice.voice.protocol import MAX_CLIENT_MESSAGE_BYTES, Stop
@@ -95,7 +96,7 @@ def test_a_call_connects_takes_its_clients_messages_and_ends(
 
     _run(built, body)
     dropped = [r for r in caplog.records if r.getMessage() == "client_message_dropped"]
-    assert [r.fields for r in dropped] == [{"problems": ["too_large"]}]  # type: ignore[attr-defined]
+    assert [getattr(r, FIELDS) for r in dropped] == [{"problems": ["too_large"]}]
     assert "xxxx" not in caplog.text
 
 
