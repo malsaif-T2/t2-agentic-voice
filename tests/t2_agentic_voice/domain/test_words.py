@@ -2,15 +2,25 @@
 lists, the agent's `phrases` start from the presets' and a team extends them, each kind by
 language code, after the words already there and none twice, read-only; one language's lists
 come whole; and what cannot be taken is a ConfigurationError naming the kind, or for the
-declaration the field, never a word (plan 005, Block 0; the lists themselves are Track A's)."""
+declaration the field, never a word (plan 005, Block 0). The presets' lists (Track A) are in the
+rule's form, each word once and of one kind, in its language's script; and no preset's fixed
+phrase holds a word of its stop, wait, repeat or listening list, nor makes the rule stop or
+repeat on any run of its words, since the agent's echo would."""
 
 from __future__ import annotations
 
+from itertools import combinations
 from typing import Any
 
 import pytest
 from t2_agentic_voice import ConfigurationError, Language, Phrases, VoiceAgent, Words
-from t2_agentic_voice.domain.words import PRESET_WORDS, WORD_KINDS
+from t2_agentic_voice.core.settings.tts import LanguageTag
+from t2_agentic_voice.domain.fixed_phrases import fixed_phrases
+from t2_agentic_voice.domain.interruptions import Overlap, judge
+from t2_agentic_voice.domain.presets import NOTICES
+from t2_agentic_voice.domain.silence import CAPTIONS
+from t2_agentic_voice.domain.text.words import holds_words
+from t2_agentic_voice.domain.words import PRESET_WORDS, WORD_KINDS, rule_form
 
 ENGLISH = Language.english(greeting="Welcome to the test line")
 SAUDI = Language.saudi_arabic(greeting="hello in a made-up register")
@@ -78,3 +88,59 @@ def test_a_declaration_with_phrases_it_cannot_run_names_the_field() -> None:
         )
     assert raised.value.details == {"field": "phrases"}
     assert "Phrases.defaults().extend" in raised.value.message
+
+
+def _arabic(word: str) -> bool:
+    return all(char == " " or chr(0x0600) <= char <= chr(0x06FF) for char in word)
+
+
+def test_the_presets_lists_are_in_the_rules_form_each_word_once_and_of_one_kind() -> None:
+    for code, words in PRESET_WORDS.items():
+        listed = [word for kind in WORD_KINDS for word in getattr(words, kind)]
+        assert listed and all(rule_form(word) == word for word in listed), code
+        assert len(listed) == len(set(listed)), code  # once, and in one kind only
+        written = _arabic if code == "ar" else str.isascii
+        assert all(written(word) for word in listed), code
+        assert all(getattr(words, kind) for kind in WORD_KINDS), code  # every kind has words
+
+
+# Each preset by its tag, built with a greeting made up for the test.
+PRESETS: dict[LanguageTag, Language] = {
+    "ar-SA": Language.saudi_arabic(greeting="ترحيب مكتوب للاختبار"),
+    "ar": Language.arabic(greeting="ترحيب مكتوب للاختبار"),
+    "en": Language.english(greeting="A greeting made up for the test."),
+}
+
+
+@pytest.mark.parametrize("tag", list(PRESETS))
+def test_no_presets_fixed_phrase_holds_a_word_its_echo_would_stop_the_agent_on(
+    tag: LanguageTag,
+) -> None:
+    """Each fixed phrase of a preset (its echo frame and spoken notices) and its busy notice:
+    no word of the stop, wait, repeat or listening lists as whole words, and no run of its words
+    that the rule, with nothing played, stops or repeats on."""
+    language = PRESETS[tag]
+    agent = VoiceAgent(name="words-test", languages=[language])
+    texts = [p.text for p in fixed_phrases(agent) if p.kind != "greeting"]
+    texts.append(NOTICES[tag]["busy"])
+    words = language.words
+    for text in texts:
+        form = rule_form(text)
+        for kind in ("stop", "wait", "repeat", "backchannel"):
+            held = [word for word in getattr(words, kind) if holds_words(form, word)]
+            assert held == [], (tag, kind)
+        said = form.split()
+        for start, end in combinations(range(len(said) + 1), 2):
+            overlap = Overlap(
+                text=" ".join(said[start:end]), speech_s=0.5, language=language.primary
+            )
+            found = judge(
+                overlap,
+                words=words,
+                no_speech_max=None,
+                captions=CAPTIONS,
+                min_words=2,
+                short_words=2,
+                short_s=1.6,
+            )
+            assert found.reason not in ("stop_word", "repeat_word"), (tag, start, end)
