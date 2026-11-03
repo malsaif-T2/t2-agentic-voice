@@ -88,7 +88,7 @@ def test_a_stop_word_over_the_echo_stops_it_at_once_and_is_never_said_back(
         await io.close()
 
     asyncio.run(drive())
-    assert rule.texts == [STOP_TEXT]  # once the window stopped it, nothing more is judged
+    assert rule.texts == [STOP_TEXT] * 2  # the whole overlap judged still, deciding nothing
     (stopped,) = emitted(io, Interrupted)
     assert (stopped.turn_id, stopped.kind, stopped.reason) == (0, "stop", "stop_word")
     assert speaks(io, 2) == [] and [c.turn_id for c in captions(io, "caller")] == [0]

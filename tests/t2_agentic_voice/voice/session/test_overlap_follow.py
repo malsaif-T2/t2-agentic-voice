@@ -151,16 +151,20 @@ def test_the_turns_own_transcript_waits_for_the_whole_overlap_after_a_windows_re
     assert session.history.turns()[1].fate == "command"
 
 
+@pytest.mark.parametrize("own", [True, False], ids=["own-request", "no-request"])
 def test_with_no_whole_overlap_the_turns_own_transcript_says_the_reply_again(
-    settings: VoiceSettings, rule: FakeRule
+    settings: VoiceSettings, rule: FakeRule, own: bool
 ) -> None:
+    """The turn's own transcript, whether its request went (it holds the repeat request again)
+    or none did (no words), says the reply again, the repeat its window heard."""
     io, session = call(two_step(settings))
 
     async def drive() -> None:
         await _window_asked_again(io)
         await io.turn_closed(1)
-        await io.transcribing(1, audio_s=1.4)
-        await io.transcribed(1, REPEAT_TEXT, language="en")
+        if own:
+            await io.transcribing(1, audio_s=1.4)
+        await io.transcribed(1, REPEAT_TEXT if own else None, language="en")
         await play(io, 2)
         await io.ending()
         await io.close()

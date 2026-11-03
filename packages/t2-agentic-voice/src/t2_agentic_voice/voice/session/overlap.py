@@ -14,12 +14,13 @@ still being judged; an overlap the call's end cuts gets none (the client restore
 the call ends). A rule that raises (a bug) decides the overlap at once as going on, logged by its
 kind with no text, so its `unduck` follows and no later one waits on it. At most two requests
 decide one overlap, its window's and its whole overlap's; once one stops the agent, the other's
-verdict changes nothing, but for a repeat request its window heard: the whole overlap is judged
-still (its verdict says what follows the stop, interrupter.py's). The turn's own transcript decides
-only an overlap whose whole-overlap request had not gone when it came (its `HearOverlap` reached
-the bridge after the turn closed: the whole overlap then reuses the turn's result, and changes
-nothing), and is judged again after a verdict to go on when speech followed it (`judge_after`),
-at no request.
+verdict changes nothing, but after a stop or a repeat request its window heard: the whole overlap
+is judged still (`asked_again`; its verdict says what follows the stop, interrupter.py's), since a
+window may hold only a request's first word. The turn's own transcript decides only an overlap
+whose whole-overlap request had not gone when it came (its `HearOverlap` reached the bridge after
+the turn closed: the whole overlap then reuses the turn's result, and changes nothing), and is
+judged again after a verdict to go on when speech followed it (`followed`, `judge_after`), at no
+request.
 
 The rule reads each transcript's speech time (`Overlap.speech_s`) from the turn's `speech_at`: a
 window's to its request, the speech still going on; the whole overlap's to its request less the
@@ -49,6 +50,12 @@ from t2_agentic_voice.voice.session.session_events import (
 _log = get_logger(__name__)
 # The verdict on a transcript the rule failed on (a bug): the reply goes on, as for no words.
 _FAILED = Verdict(action="go_on", kind="false", reason="no_words")
+
+
+def answers(verdict: Verdict) -> bool:
+    """Whether the turn behind `verdict` is answered: new words or a correction that stopped
+    the agent; a stop or pause word, a repeat request or a verdict to go on is not."""
+    return verdict.action == "stop" and verdict.kind in ("new_words", "correction")
 
 
 def call_words(setup: CallSetup) -> Words:
@@ -93,10 +100,42 @@ class OverlapState:
 
     @property
     def asked_again(self) -> bool:
-        """Whether its window's repeat request decided it: its whole overlap's transcript is
-        judged still (`overlap`), to say what follows the stop."""
+        """Whether its window's stop or repeat request decided it: its whole overlap's
+        transcript is judged still (`overlap`), to say what follows the stop."""
         decided = self.decided
-        return decided is not None and decided.action == "repeat" and self.decided_by == "window"
+        return decided is not None and decided.action != "go_on" and self.decided_by == "window"
+
+    @property
+    def followed(self) -> bool:
+        """Whether speech followed the transcript that decided it, in the same turn: the turn's
+        own request went, and the transcript that decided was a part with a request of its own,
+        not the turn's result reused."""
+        decided_by = self.decided_by
+        asked = self.asked
+        return "turn" in asked and decided_by not in (None, "turn") and decided_by in asked
+
+    @property
+    def reads_on(self) -> bool:
+        """Whether its turn's own transcript is read for what followed the stop word or the
+        repeat request that decided it (interrupter.py's what followed): speech followed that
+        transcript, and nothing it or the whole overlap holds is answered."""
+        decided = self.decided
+        stopped = decided is not None and decided.action != "go_on" and not answers(decided)
+        return stopped and self.followed and not self.instead
+
+    @property
+    def instead(self) -> bool:
+        """Whether its turn is answered after its window's stop word, or instead of its window's
+        repeat request: its whole overlap holds new words or a correction."""
+        return self.asked_again and self.overlap is not None and answers(self.overlap)
+
+    @property
+    def awaits(self) -> bool:
+        """Whether its turn's own transcript waits for its whole overlap's (`waiting`), which
+        says what the turn's does: it is undecided, or its window's stop or repeat request
+        asks what follows."""
+        decided = self.decided
+        return self.waiting and (decided is None or (self.asked_again and not answers(decided)))
 
 
 class Overlaps:
@@ -139,8 +178,8 @@ class Overlaps:
         the turn's own when no whole overlap's request went), with `played`, the texts of the
         clauses that played within `own_words_s` and the one playing now, and for the turn's own
         transcript `ended_at`, when its speech ended; None when the overlap was decided
-        already (its whole overlap's after its window's repeat request is judged still, and
-        decides nothing), or the transcript is not an overlap's. A window's verdict to go on
+        already (its whole overlap's after its window's stop or repeat request is judged still,
+        and decides nothing), or the transcript is not an overlap's. A window's verdict to go on
         leaves the overlap open, unless the rule failed on it; any other verdict decides it."""
         state = self._overlaps.get(event.turn_id)
         if state is None:
@@ -168,10 +207,7 @@ class Overlaps:
         state = self._overlaps.get(event.turn_id)
         if state is None or state.decided is None or state.decided.action != "go_on":
             return None
-        decided_by = state.decided_by
-        if "turn" not in state.asked or decided_by == "turn" or decided_by not in state.asked:
-            return None
-        return self._verdict(state, event, played, ended_at)[0]
+        return self._verdict(state, event, played, ended_at)[0] if state.followed else None
 
     def settle(self) -> int:
         """How many `unduck`s go now: one for each overlap decided whose `unduck` has not

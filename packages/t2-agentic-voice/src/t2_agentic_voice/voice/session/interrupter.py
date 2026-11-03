@@ -8,7 +8,8 @@ silent, for a command said whole (`alone`).
   `unduck` right after it, the clause playing marked cut (its caption sent again with the mark)
   and in the heard history; one `Interrupted` of the verdict's kind and reason. A stop or pause
   word's turn is taken as a command and never said back; new words or a correction are
-  answered (the echo) from the turn's own transcript.
+  answered (the echo) from the turn's own transcript, and so are those of the whole overlap,
+  judged still after a window's stop (it may hold only a request's first word).
 - **repeat:** stopped as above, then the last reply the caller heard is said again, as the reply
   answering the turn, a command; but once the whole overlap's transcript has come, so it never
   starts while the caller still speaks: after a window's repeat request, the whole overlap is
@@ -16,6 +17,12 @@ silent, for a command said whole (`alone`).
 - **go_on:** `unduck`, the turn not answered (it `went_on`), and an `Interrupted` of kind
   `false`. When speech followed in the same turn, its own transcript is judged again once it
   comes (no request), and may still stop the agent.
+- **what followed:** when speech followed, in the same turn, the transcript whose stop word or
+  repeat request decided the overlap, the turn's own transcript is read with that request taken
+  off (domain/interruptions.py's `after_command`), at no request: after a stop word, a whole
+  repeat request says the last reply again, a stop or nothing leaves a command, and anything
+  else is answered, the echo saying back what followed; after a repeat request, new words (no
+  whole command, at least `min_words` words) are answered so, and the repeat stands otherwise.
 
 Each `unduck` waits until no overlap of the call is undecided (`Overlaps.settle`). The turn's own
 transcript that comes while its overlap's whole transcript is still awaited is held, and taken
@@ -31,14 +38,21 @@ every such turn is answered, as plan 003's echo answers it.
 from __future__ import annotations
 
 from collections.abc import Awaitable, Callable
+from dataclasses import replace
 
 from t2_agentic_voice.core.events import TurnId
-from t2_agentic_voice.domain.interruptions import Verdict, whole_command
+from t2_agentic_voice.domain.interruptions import (
+    Verdict,
+    WholeCommand,
+    after_command,
+    whole_command,
+)
+from t2_agentic_voice.domain.words import rule_form
 from t2_agentic_voice.voice.protocol import Unduck
 from t2_agentic_voice.voice.session.books import CallBooks
 from t2_agentic_voice.voice.session.heard import HeardWords
 from t2_agentic_voice.voice.session.io import CallSetup, Commands
-from t2_agentic_voice.voice.session.overlap import Overlaps, OverlapState
+from t2_agentic_voice.voice.session.overlap import Overlaps, OverlapState, answers
 from t2_agentic_voice.voice.session.playback import Reply
 from t2_agentic_voice.voice.session.report import TurnLog
 from t2_agentic_voice.voice.session.session_events import Transcribed, Transcribing, TurnOpened
@@ -47,18 +61,6 @@ from t2_agentic_voice.voice.session.turn_book import TurnBook
 
 # Answer the caller's turn: the session's echo of its own transcript (call.py).
 Answer = Callable[[TurnLog, HeardWords | None, Transcribed], Awaitable[None]]
-
-
-def answers(verdict: Verdict) -> bool:
-    """Whether the turn behind `verdict` is answered: new words or a correction that stopped
-    the agent; a stop or pause word, a repeat request or a verdict to go on is not."""
-    return verdict.action == "stop" and verdict.kind in ("new_words", "correction")
-
-
-def instead(state: OverlapState) -> bool:
-    """Whether the overlap's turn is answered instead of its window's repeat request: its whole
-    overlap holds new words or a correction."""
-    return state.asked_again and state.overlap is not None and answers(state.overlap)
 
 
 class Interrupter:
@@ -81,6 +83,7 @@ class Interrupter:
         self._over, self._answer = over, answer
         self._two_step = setup.settings.interruptions.mode == "two_step"
         self._own_s = setup.settings.interruptions.own_words_s
+        self._min_words = setup.settings.interruptions.min_words
         self._overlaps = Overlaps(setup)
         self._held: dict[TurnId, tuple[TurnLog, HeardWords | None, Transcribed]] = {}
         self._repeats: set[TurnId] = set()  # each window's repeat request still to follow
@@ -131,11 +134,10 @@ class Interrupter:
 
     async def turn_heard(self, turn: TurnLog, heard: HeardWords | None, event: Transcribed) -> None:
         """The overlap's turn's own transcript came: held while its whole overlap's is still
-        awaited (to decide it, or to follow its window's repeat request); otherwise taken,
-        deciding the overlap when nothing else will."""
+        awaited (to decide it, or to say what follows its window's stop or repeat request);
+        otherwise taken, deciding the overlap when nothing else will."""
         state = self._overlaps.get(turn.turn_id)
-        following = turn.turn_id in self._repeats
-        if state is not None and state.waiting and (state.decided is None or following):
+        if state is not None and state.awaits:
             self._held[turn.turn_id] = (turn, heard, event)
             return
         if state is not None and state.decided is None:
@@ -164,11 +166,13 @@ class Interrupter:
 
     async def _take(self, turn: TurnLog, heard: HeardWords | None, event: Transcribed) -> None:
         """The turn's own transcript, its overlap decided: answered when the verdict says so
-        (its window's repeat request followed first, when no whole overlap will come); after a
-        verdict to go on, judged again when speech followed it."""
+        (its window's repeat request followed first, when no whole overlap came); after a
+        verdict to go on, judged again when speech followed it; after a stop word or a repeat
+        request that speech followed, what followed read (`_read_on`)."""
         state = self._overlaps.get(turn.turn_id)
-        if state is not None and turn.turn_id in self._repeats:
-            await self._follow(state, event.at)
+        if state is not None and state.reads_on:
+            await self._read_on(state, turn, heard, event)
+            return
         decided = None if state is None else state.decided
         if state is not None and decided is not None and decided.action == "go_on":
             played = self._played(state)
@@ -177,10 +181,42 @@ class Interrupter:
                 self._judged(event, again)
                 await self._act(state, again, event.at)
                 decided = again
-        if decided is None or answers(decided) or (state is not None and instead(state)):
-            await self._answer(turn, heard, event)
+        if state is not None and turn.turn_id in self._repeats:
+            await self._follow(state, event.at)
+        if decided is None or answers(decided) or (state is not None and state.instead):
+            await self._answer(self._pending(turn), heard, event)
         else:
             self._turns.settle(turn)
+
+    async def _read_on(
+        self, state: OverlapState, turn: TurnLog, heard: HeardWords | None, event: Transcribed
+    ) -> None:
+        """What followed, in the turn, the stop word or the repeat request that decided its
+        overlap (the module's what followed); a repeat its window's request still waits for is
+        said now, unless new words followed it, answered instead."""
+        words = self._overlaps.words
+        stopped = state.decided is not None and state.decided.action == "stop"
+        command: WholeCommand = "stop" if stopped else "repeat"
+        rest = "" if heard is None else after_command(heard.text, command, words=words)
+        found = whole_command(rest, words=words)
+        enough = len(rule_form(rest).split()) >= (1 if stopped else self._min_words)
+        if heard is not None and found is None and enough:
+            self._repeats.discard(turn.turn_id)
+            turn.reply_id = None  # a reply said again plays on before the answer
+            await self._answer(self._pending(turn), replace(heard, text=rest), event)
+            return
+        if turn.turn_id in self._repeats:
+            await self._follow(state, event.at)
+        elif stopped and found == "repeat":
+            await self._repeat(turn, event.at)
+            self._turns.ended(turn, "command")
+        self._turns.settle(turn)
+
+    def _pending(self, turn: TurnLog) -> TurnLog:
+        """`turn`, to be answered now: `pending` again, after a stop that made it a command."""
+        if turn.fate != "pending":
+            self._turns.ended(turn, "pending")
+        return turn
 
     async def _act(self, state: OverlapState, verdict: Verdict, at: float) -> None:
         """Carry out `verdict` on the overlap `state`: its `Interrupted`, the turn's fate, and
@@ -207,9 +243,9 @@ class Interrupter:
         """What follows the stop its window's repeat request gave, once its whole overlap's
         verdict came, or its turn's own transcript when none will: the last reply said again, a
         command; unless the whole overlap holds new words or a correction, which are answered
-        instead, from the turn's own transcript (`instead`)."""
+        instead, from the turn's own transcript (`OverlapState.instead`)."""
         self._repeats.discard(state.turn_id)
-        if not instead(state):
+        if not state.instead:
             turn = self._turns.turn(state.turn_id)
             await self._repeat(turn, at)
             self._turns.ended(turn, "command")

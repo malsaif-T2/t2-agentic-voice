@@ -4,7 +4,9 @@
 The rule is Track A's (domain/interruptions.py's `judge`), built in parallel, so these tests never
 run it: `FakeRule` stands in for it, patched where the session calls it (overlap.py), and gives
 each text the verdict a test scripts for it, so a test drives each verdict through the session.
-The texts are written for the tests, none a golden item's.
+The texts are written for the tests, none a golden item's; the repeat request is built from the
+English preset's lists, since the session reads what follows a repeat request in the same turn
+with them (interrupter.py's what followed), and takes it for one.
 """
 
 from __future__ import annotations
@@ -14,7 +16,7 @@ from typing import Any
 
 from t2_agentic_voice.core.config import VoiceSettings
 from t2_agentic_voice.domain.interruptions import Overlap, Verdict
-from t2_agentic_voice.domain.words import Words
+from t2_agentic_voice.domain.words import PRESET_WORDS, Words
 from t2_agentic_voice.voice.session.session_events import TranscriptPart
 
 from tests.t2_agentic_voice.session_fakes import FakeSessionIO
@@ -30,10 +32,11 @@ OWN_WORDS = Verdict(action="go_on", kind="false", reason="own_words")
 SHORT = Verdict(action="go_on", kind="false", reason="short_output")
 NO_WORDS = Verdict(action="go_on", kind="false", reason="no_words")
 
-# The caller's texts, written for these tests.
+# The caller's texts, written for these tests: made-up words, and a repeat request with a
+# polite word.
 STOP_TEXT = "made-up halting phrase"
 NEW_TEXT = "made-up fresh request of several words"
-REPEAT_TEXT = "made-up asking it again"
+REPEAT_TEXT = f"please, {PRESET_WORDS['en'].repeat[1]}"
 LISTENING_TEXT = "made-up listening sound"
 SHORT_TEXT = "made-up short"
 FAILING_TEXT = "made-up text the rule fails on"  # the fake raises on it, as a bug would

@@ -38,7 +38,8 @@ since Whisper may spell the one heard back otherwise.
 
 `whole_command` reads a turn said while the agent was silent, which `judge` never sees: a stop
 or pause request, or a repeat request, said whole, with only polite words and listening sounds
-beside it; a sentence that holds such a word asks nothing.
+beside it; a sentence that holds such a word asks nothing. `after_command` gives what a turn
+says after the stop or repeat request it opens with (plan 005's whole-plan review).
 """
 
 from __future__ import annotations
@@ -62,7 +63,7 @@ from t2_agentic_voice.domain.interruption_words import (
     QUESTION_WORDS,
 )
 from t2_agentic_voice.domain.silence import from_silence
-from t2_agentic_voice.domain.text.words import holds_words
+from t2_agentic_voice.domain.text.words import holds_words, one_edit
 from t2_agentic_voice.domain.words import WORD_KINDS, Words, rule_form
 
 # What the session does with the reply an overlap spoke over: stop it, stop it and say the last
@@ -173,6 +174,30 @@ def whole_command(text: str, *, words: Words) -> WholeCommand | None:
     return "repeat" if _only(kinds, "repeat") else None
 
 
+def after_command(text: str, command: WholeCommand, *, words: Words) -> str:
+    """What `text`, a turn's transcript, says after the request it opens with, as written but
+    its marks written apart: its leading `command` words (stop or pause words, or repeat
+    words) taken off, with the polite words and listening sounds among and after them (a word
+    written joined to them in the rule's form); all of it when it opens with none."""
+    wanted = {"stop", "wait"} if command == "stop" else {"repeat"}
+    lists = _lists(words)
+    written = [word for word in text.split() if rule_form(word)]
+    heard = [form for word in written for form in rule_form(word).split()]
+    lead, held = 0, False
+    for token in _tokens(heard, lists):
+        kind = lists.get(token, frozenset())
+        if not kind & {"polite", "backchannel", *wanted}:
+            break
+        lead, held = lead + len(token.split()), held or bool(kind & wanted)
+    if not held:
+        return text.strip()
+    count = at = 0
+    while count < lead:
+        count += len(rule_form(written[at]).split())
+        at += 1
+    return " ".join(written[at:]) if count == lead else " ".join(heard[lead:])
+
+
 def _goes_on(reason: VerdictReason) -> Verdict:
     """The verdict that lets the reply go on, for `reason`."""
     return Verdict(action="go_on", kind="false", reason=reason)
@@ -266,19 +291,6 @@ def _own_words(heard: Sequence[str], spoken: Iterable[str]) -> bool:
     said = {word for text in spoken for word in text.split()}
     return bool(said) and all(
         word in said
-        or (len(word) >= _FUZZY_LETTERS and any(_one_edit(word, other) for other in said))
+        or (len(word) >= _FUZZY_LETTERS and any(one_edit(word, other) for other in said))
         for word in heard
     )
-
-
-def _one_edit(first: str, second: str) -> bool:
-    """Whether `first` becomes `second` by one letter changed, added or removed, or none."""
-    if len(first) == len(second):
-        return sum(a != b for a, b in zip(first, second, strict=True)) <= 1
-    shorter, longer = sorted((first, second), key=len)
-    if len(longer) - len(shorter) != 1:
-        return False
-    at = 0
-    while at < len(shorter) and shorter[at] == longer[at]:
-        at += 1
-    return shorter[at:] == longer[at + 1 :]
