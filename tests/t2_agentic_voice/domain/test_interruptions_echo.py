@@ -1,9 +1,10 @@
 """The agent's echo of a reply that said the caller's words back (domain/interruptions.py, steps 2
-and 3 as plan 005's review changed them): a reply can hold any word the caller said, so a stop or
-wait word heard beside other words, each exactly a word or listed phrase of the clauses that
-played and every word the agent's own, goes on, and so does a repeat request the reply holds,
-also after waw (and); stop or wait words alone, or one the reply holds only within an edit,
-still stop, and a repeat request the reply does not hold still repeats. The spellings only
+and 3 as plan 005's reviews changed them): a reply can hold any word the caller said, so a stop
+or wait word heard beside other words, each exactly a word or listed phrase of the clauses that
+played and every word the agent's own, goes on, and so does a repeat request over a reply that
+holds any repeat word, also after waw (and), whatever the spelling heard; stop or wait words
+alone, or one the reply holds only within an edit, still stop, and a repeat request over a reply
+that holds no repeat word still repeats. The spellings only
 Whisper writes for the stop word stop as a whole short utterance, never inside a sentence.
 Its tests are written on texts made for them, never an item's."""
 
@@ -84,9 +85,25 @@ def test_the_echo_of_a_said_back_repeat_request_goes_on(
     assert judged(text, language) == REPEAT  # nothing played
 
 
-def test_a_said_back_repeat_request_with_other_words_is_left_to_the_steps_after() -> None:
-    """The reply holds the request but not the polite words beside it: enough real words."""
-    assert judged("ممكن تعيدها لو سمحت", "ar", played=("قلت: ممكن تعيدها",)) == NEW_WORDS
+@pytest.mark.parametrize(
+    ("played", "text", "language"),
+    [
+        ("قلت: ممكن تعيدها", "ممكن تعيدها لو سمحت", "ar"),  # polite words the reply lacks
+        ("قلت: تعيده من فضلك", "اعد لو سمحت", "ar"),  # spelled otherwise than the reply's
+        ("You said: repeat it now.", "come again, please", "en"),
+    ],
+)
+def test_a_repeat_request_over_a_reply_holding_any_repeat_word_goes_on(
+    played: str, text: str, language: LanguageCode
+) -> None:
+    """Whisper may spell the repeat word of the agent's echo otherwise than the reply did, and
+    the repeat would say it again and again (plan 005's Track B review): a repeat request over
+    a reply that holds any repeat word is the agent's own. A sentence is left to the steps
+    after, as any other."""
+    assert judged(text, language, played=(played,)) == went_on("own_words")
+    assert judged(text, language, played=(OTHER[language], played)) == went_on("own_words")
+    assert judged(text, language, played=(OTHER[language],)) == REPEAT
+    assert judged("تعيده الملف الثاني بكره", "ar", played=(played,)) == NEW_WORDS
 
 
 def _language(spelling: str) -> LanguageCode:

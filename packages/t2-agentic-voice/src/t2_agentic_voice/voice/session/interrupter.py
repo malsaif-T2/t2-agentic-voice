@@ -1,7 +1,8 @@
 """How one call's session takes the caller's speech over a reply under `interruptions.mode =
 "two_step"` (io.py's overlaps; plan 005), for voice/session/call.py: the `Interrupter` opens each
 overlap (`duck`, then `HearOverlap`), judges its transcripts as they come (overlap.py's
-`Overlaps`), and carries out each verdict.
+`Overlaps`), and carries out each verdict; and it reads each other turn, said while the agent was
+silent, for a command said whole (`alone`).
 
 - **stop:** every reply asked for is dropped (`StopSpeaking`), which cancels each one's scope,
   `unduck` right after it, the clause playing marked cut (its caption sent again with the mark)
@@ -9,15 +10,22 @@ overlap (`duck`, then `HearOverlap`), judges its transcripts as they come (overl
   word's turn is taken as a command and never said back; new words or a correction are
   answered (the echo) from the turn's own transcript.
 - **repeat:** stopped as above, then the last reply the caller heard is said again, as the reply
-  answering the turn, a command.
+  answering the turn, a command; but once the whole overlap's transcript has come, so it never
+  starts while the caller still speaks: after a window's repeat request, the whole overlap is
+  judged still, and new words (or a correction) in it are answered instead.
 - **go_on:** `unduck`, the turn not answered (it `went_on`), and an `Interrupted` of kind
   `false`. When speech followed in the same turn, its own transcript is judged again once it
   comes (no request), and may still stop the agent.
 
 Each `unduck` waits until no overlap of the call is undecided (`Overlaps.settle`). The turn's own
 transcript that comes while its overlap's whole transcript is still awaited is held, and taken
-once the overlap is decided. Every verdict judged is a line of the call's timeline, when it is
-recorded.
+once the overlap is decided (and its window's repeat request followed). Every verdict judged is a
+line of the call's timeline, when it is recorded.
+
+A turn said while the agent was silent (no overlap) is read whole under `two_step`
+(domain/interruptions.py's `whole_command`): a repeat request says the last reply again, and a
+stop or pause request is never said back, each a command; any other is answered. Under `drop`
+every such turn is answered, as plan 003's echo answers it.
 """
 
 from __future__ import annotations
@@ -25,7 +33,7 @@ from __future__ import annotations
 from collections.abc import Awaitable, Callable
 
 from t2_agentic_voice.core.events import TurnId
-from t2_agentic_voice.domain.interruptions import Verdict
+from t2_agentic_voice.domain.interruptions import Verdict, whole_command
 from t2_agentic_voice.voice.protocol import Unduck
 from t2_agentic_voice.voice.session.books import CallBooks
 from t2_agentic_voice.voice.session.heard import HeardWords
@@ -47,6 +55,12 @@ def answers(verdict: Verdict) -> bool:
     return verdict.action == "stop" and verdict.kind in ("new_words", "correction")
 
 
+def instead(state: OverlapState) -> bool:
+    """Whether the overlap's turn is answered instead of its window's repeat request: its whole
+    overlap holds new words or a correction."""
+    return state.asked_again and state.overlap is not None and answers(state.overlap)
+
+
 class Interrupter:
     """One call's overlaps as the session carries them out; `over` says whether the call has
     ended or is ending, and `answer` answers a turn."""
@@ -65,9 +79,11 @@ class Interrupter:
         self._commands, self._speaker, self._turns = commands, speaker, turns
         self._usage, self._recorder, self._events = books.usage, books.recorder, books.events
         self._over, self._answer = over, answer
+        self._two_step = setup.settings.interruptions.mode == "two_step"
         self._own_s = setup.settings.interruptions.own_words_s
         self._overlaps = Overlaps(setup)
         self._held: dict[TurnId, tuple[TurnLog, HeardWords | None, Transcribed]] = {}
+        self._repeats: set[TurnId] = set()  # each window's repeat request still to follow
 
     async def opened(self, event: TurnOpened, over: Reply) -> None:
         """The turn `event` opens is an overlap of `over`: the agent's voice lowered, and the
@@ -105,19 +121,24 @@ class Interrupter:
         self._judged(event, verdict)
         if state.decided is None:
             return
-        await self._act(state, verdict, event.at)
+        if event.turn_id in self._repeats:
+            await self._follow(state, event.at)
+        elif state.decided_by == event.part:
+            await self._act(state, verdict, event.at)
         held = self._held.pop(event.turn_id, None)
         if held is not None:
             await self._take(*held)
 
     async def turn_heard(self, turn: TurnLog, heard: HeardWords | None, event: Transcribed) -> None:
         """The overlap's turn's own transcript came: held while its whole overlap's is still
-        awaited; otherwise taken, deciding the overlap when nothing else will."""
+        awaited (to decide it, or to follow its window's repeat request); otherwise taken,
+        deciding the overlap when nothing else will."""
         state = self._overlaps.get(turn.turn_id)
+        following = turn.turn_id in self._repeats
+        if state is not None and state.waiting and (state.decided is None or following):
+            self._held[turn.turn_id] = (turn, heard, event)
+            return
         if state is not None and state.decided is None:
-            if state.waiting:
-                self._held[turn.turn_id] = (turn, heard, event)
-                return
             ended = turn.speech_ended_at
             verdict = self._overlaps.judge(event, played=self._played(state), ended_at=ended)
             if verdict is not None:
@@ -125,10 +146,29 @@ class Interrupter:
                 await self._act(state, verdict, event.at)
         await self._take(turn, heard, event)
 
+    async def alone(self, turn: TurnLog, heard: HeardWords | None, event: Transcribed) -> None:
+        """A turn's own transcript that is no overlap's: under `two_step`, a whole repeat
+        request says the last reply again, and a whole stop or pause request is not said back,
+        each a command; any other is answered, as under `drop`."""
+        command = None
+        if self._two_step and heard is not None and not self._over():
+            command = whole_command(heard.text, words=self._overlaps.words)
+        if command is None:
+            await self._answer(turn, heard, event)
+            return
+        self._recorder.line(event.at, "command", turn_id=turn.turn_id, command=command)
+        if command == "repeat":
+            await self._repeat(turn, event.at)
+        self._turns.ended(turn, "command")
+        self._turns.settle(turn)
+
     async def _take(self, turn: TurnLog, heard: HeardWords | None, event: Transcribed) -> None:
-        """The turn's own transcript, its overlap decided: answered when the verdict says so;
-        after a verdict to go on, judged again when speech followed it."""
+        """The turn's own transcript, its overlap decided: answered when the verdict says so
+        (its window's repeat request followed first, when no whole overlap will come); after a
+        verdict to go on, judged again when speech followed it."""
         state = self._overlaps.get(turn.turn_id)
+        if state is not None and turn.turn_id in self._repeats:
+            await self._follow(state, event.at)
         decided = None if state is None else state.decided
         if state is not None and decided is not None and decided.action == "go_on":
             played = self._played(state)
@@ -137,7 +177,7 @@ class Interrupter:
                 self._judged(event, again)
                 await self._act(state, again, event.at)
                 decided = again
-        if decided is None or answers(decided):
+        if decided is None or answers(decided) or (state is not None and instead(state)):
             await self._answer(turn, heard, event)
         else:
             self._turns.settle(turn)
@@ -153,13 +193,33 @@ class Interrupter:
                 await self._speaker.send(Unduck())
         else:
             await self._speaker.stop(at, client=False, unducks=unducks)
-            if verdict.action == "repeat" and not self._over():
-                reply = await self._speaker.repeat(at, turn_id=turn.turn_id)
-                turn.reply_id = None if reply is None else reply.reply_id
-            self._turns.ended(turn, "pending" if answers(verdict) else "command")
+            if verdict.action == "repeat" and state.decided_by == "window":
+                self._repeats.add(turn.turn_id)  # said again once the whole overlap is heard
+            else:
+                if verdict.action == "repeat":
+                    await self._repeat(turn, at)
+                self._turns.ended(turn, "pending" if answers(verdict) else "command")
         spoken = self._speaker.playback.reply(state.reply_id)
         turn_id = None if spoken is None else spoken.turn_id
         self._events.interrupted(turn_id, verdict.kind, verdict.reason)
+
+    async def _follow(self, state: OverlapState, at: float) -> None:
+        """What follows the stop its window's repeat request gave, once its whole overlap's
+        verdict came, or its turn's own transcript when none will: the last reply said again, a
+        command; unless the whole overlap holds new words or a correction, which are answered
+        instead, from the turn's own transcript (`instead`)."""
+        self._repeats.discard(state.turn_id)
+        if not instead(state):
+            turn = self._turns.turn(state.turn_id)
+            await self._repeat(turn, at)
+            self._turns.ended(turn, "command")
+
+    async def _repeat(self, turn: TurnLog, at: float) -> None:
+        """Say the last reply the caller heard again, as the reply answering `turn`, unless
+        the call has ended or is ending."""
+        if not self._over():
+            reply = await self._speaker.repeat(at, turn_id=turn.turn_id)
+            turn.reply_id = None if reply is None else reply.reply_id
 
     def _played(self, state: OverlapState) -> tuple[str, ...]:
         """What the agent's own voice heard back would say over the overlap: the clauses that

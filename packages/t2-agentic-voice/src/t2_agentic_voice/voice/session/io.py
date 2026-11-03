@@ -46,12 +46,14 @@ items cited are plan 003's appendix, "Changes to the plan's interfaces".
   speech-to-text bridge sends the overlap's `window` and `overlap` parts as that command says,
   each a `Transcribing` and a `Transcribed` naming its part; a `HearOverlap` that reaches the
   bridge after the detector heard the turn's speech stop gets its `overlap` part sent at once,
-  with no window. The session's rule judges each transcript as it comes: a stop (new words
-  included) or a repeat gives `StopSpeaking` (and cancels the reply's work), then `unduck` right
-  after it; anything else `unduck` once the overlap's own transcript has come, the turn not
-  answered. So every `duck` ends with exactly one `unduck` once its overlap is decided, whatever
-  the verdict, and no reply after it plays lowered; an overlap the call's end cuts gets none,
-  since the client restores the volume when the call ends.
+  with no window; one that reaches it after the turn closed gives the turn's own `Transcribed`,
+  then an `overlap` part reusing it, with no `Transcribing` of its own. The session's rule
+  judges each transcript as it comes: a stop (new words included) or a repeat gives
+  `StopSpeaking` (and cancels the reply's work), then `unduck` right after it; anything else
+  `unduck` once the overlap's own transcript has come, the turn not answered. So every `duck`
+  ends with exactly one `unduck` once its overlap is decided, whatever the verdict, and no
+  reply after it plays lowered; an overlap the call's end cuts gets none, since the client
+  restores the volume when the call ends.
 - **The stop path** (item 7). `StopSpeaking` drops the agent's speech at once: the session
   bridge, upstream of the text-to-speech bridge, calls `broadcast_interruption()`, and every
   processor drops its queued frames up to the output transport, so a stop drops every clause

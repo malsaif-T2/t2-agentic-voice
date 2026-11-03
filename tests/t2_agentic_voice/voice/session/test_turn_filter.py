@@ -14,6 +14,7 @@ from t2_agentic_voice.core.config import VoiceSettings
 from t2_agentic_voice.core.events import UserTurnEnded
 from t2_agentic_voice.core.settings.stt import SttSettings
 from t2_agentic_voice.domain.ports.speech_to_text import Transcript
+from t2_agentic_voice.domain.silence import CAPTIONS as CAPTION_LIST
 from t2_agentic_voice.voice.session import turn_book
 from t2_agentic_voice.voice.session.echo import said
 from t2_agentic_voice.voice.session.session_events import Transcribed
@@ -59,12 +60,12 @@ def silence(monkeypatch: pytest.MonkeyPatch) -> FakeFilter:
 
 
 @pytest.mark.parametrize(
-    "stt",
-    [SttSettings(no_speech_max=0.5), SttSettings(caption_filter=True)],
+    ("stt", "listed"),
+    [(SttSettings(no_speech_max=0.5), ()), (SttSettings(caption_filter=True), CAPTION_LIST)],
     ids=["no-speech-max", "caption-filter"],
 )
 def test_a_transcript_of_text_from_silence_is_said_back_as_nothing(
-    settings: VoiceSettings, silence: FakeFilter, stt: SttSettings
+    settings: VoiceSettings, silence: FakeFilter, stt: SttSettings, listed: tuple[str, ...]
 ) -> None:
     io, session = call(settings.model_copy(update={"stt": stt}))
 
@@ -85,8 +86,8 @@ def test_a_transcript_of_text_from_silence_is_said_back_as_nothing(
 
     asyncio.run(drive())
     assert silence.asked == [
-        (CAPTION, 0.7, stt.no_speech_max, ()),
-        (HEARD, None, stt.no_speech_max, ()),
+        (CAPTION, 0.7, stt.no_speech_max, listed),
+        (HEARD, None, stt.no_speech_max, listed),
     ]
     assert [s.turn_id for s in speaks(io) if s.clause == 0] == [None, 1]
     assert [c.turn_id for c in captions(io, "caller")] == [1]

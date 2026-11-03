@@ -10,7 +10,8 @@ A turn whose speech began while any reply played, the greeting included, or with
 a reply's last clause played (none after the caller's own `stop`), is not said back under
 `interruptions.mode = "drop"` (io.py's drop rule; plan 003's decision log), so the agent never
 echoes its own voice; under `two_step` it is an overlap, which interrupter.py takes (io.py's
-overlaps). A client's `stop` drops at once every clause asked for so far, whatever its reply
+overlaps), as it takes a stop, pause or repeat request said whole while the agent is silent,
+never said back. A client's `stop` drops at once every clause asked for so far, whatever its reply
 (`StopSpeaking` naming the newest reply: io.py's stop path), each reply it drops counted as done
 and its cancel scope cancelled, and the session listens again; `hangup` ends the call. It tells the
 caller of a failure, and of an end it chose, with the call language's notices
@@ -185,12 +186,13 @@ class CallSession:
         _log.info("call_started", call_id=self._id, language=self._language.tag)
 
     async def _transcribed(self, event: on.Transcribed) -> None:
-        """A turn's own transcript: an overlap's taken by its overlap, any other's answered."""
+        """A turn's own transcript: an overlap's taken by its overlap, any other's answered
+        unless, under `two_step`, it is a command said whole (interrupter.py's `alone`)."""
         turn, heard = self._turns.transcribed(event)
         if turn.overlap:
             await self._interrupter.turn_heard(turn, heard, event)
         else:
-            await self._answer(turn, heard, event)
+            await self._interrupter.alone(turn, heard, event)
 
     async def _answer(self, turn: TurnLog, heard: HeardWords | None, event: on.Transcribed) -> None:
         """Say the turn back, unless dropped or the call has ended: its caption, then the

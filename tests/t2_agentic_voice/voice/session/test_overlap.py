@@ -2,9 +2,10 @@
 `rule`): the call's words are the preset's, the agent's and the settings' additions; an overlap
 opens with `duck` then `HearOverlap`; a window's verdict to go on leaves it open and any other
 decides it, as the whole overlap's does whatever it says; each transcript's speech time, words,
-bounds and filter reach the rule; the `unduck`s wait until no overlap is undecided; and the turn's
-own transcript is judged again only after a verdict to go on that speech followed. The overlaps
-in a call are test_overlap_session.py's."""
+bounds and filter reach the rule; the `unduck`s wait until no overlap is undecided; the turn's
+own transcript is judged again only after a verdict to go on that speech followed; after a
+window's repeat request the whole overlap is judged still, deciding nothing; and a rule that
+raises decides its overlap as going on. The overlaps in a call are test_overlap_session.py's."""
 
 from __future__ import annotations
 
@@ -14,6 +15,7 @@ from t2_agentic_voice.core.settings.stt import SttSettings
 from t2_agentic_voice.core.settings.words import WordSettings
 from t2_agentic_voice.domain.declaration import Language, VoiceAgent
 from t2_agentic_voice.domain.ports.speech_to_text import Transcript
+from t2_agentic_voice.domain.silence import CAPTIONS
 from t2_agentic_voice.domain.words import PRESET_WORDS, Phrases
 from t2_agentic_voice.voice.protocol import Duck
 from t2_agentic_voice.voice.session.commands import HearOverlap, Send
@@ -26,9 +28,14 @@ from t2_agentic_voice.voice.session.session_events import (
 
 from tests.t2_agentic_voice.session_fakes import FakeSessionIO
 from tests.t2_agentic_voice.voice.session.overlap_support import (
+    FAILING_TEXT,
     LISTENING,
     LISTENING_TEXT,
     NEW_TEXT,
+    NEW_WORDS,
+    NO_WORDS,
+    REPEAT,
+    REPEAT_TEXT,
     STOP,
     STOP_TEXT,
     FakeRule,
@@ -117,10 +124,13 @@ def test_a_window_that_goes_on_waits_and_the_whole_overlap_decides(
     assert overlaps.settle() == 1 and overlaps.settle() == 0  # one unduck, once
 
 
+@pytest.mark.parametrize(
+    ("caption_filter", "captions"), [(True, CAPTIONS), (False, ())], ids=["on", "off"]
+)
 def test_a_window_that_stops_decides_and_the_rule_reads_the_calls_words_bounds_and_filter(
-    settings: VoiceSettings, rule: FakeRule
+    settings: VoiceSettings, rule: FakeRule, caption_filter: bool, captions: tuple[str, ...]
 ) -> None:
-    stt = SttSettings(no_speech_max=0.6, caption_filter=True)
+    stt = SttSettings(no_speech_max=0.6, caption_filter=caption_filter)
     custom = two_step(settings, min_words=3, short_words=1, short_s=1.2)
     setup = FakeSessionIO(custom.model_copy(update={"stt": stt})).setup
     overlaps = Overlaps(setup)
@@ -130,7 +140,7 @@ def test_a_window_that_stops_decides_and_the_rule_reads_the_calls_words_bounds_a
     assert overlaps.get(0).decided_by == "window"  # type: ignore[union-attr]
     (given,) = rule.given
     assert given["words"] == call_words(setup) and given["no_speech_max"] == 0.6
-    assert given["bounds"] == (3, 1, 1.2) and given["captions"] == ()  # the list is Track A's
+    assert given["bounds"] == (3, 1, 1.2) and given["captions"] == captions
     assert rule.judged[0].no_speech_prob == 0.1 and rule.judged[0].speech_s == pytest.approx(0.2)
 
 
@@ -207,3 +217,29 @@ def test_a_part_asked_for_sooner_than_the_stop_delay_has_no_speech_below_zero(
     overlaps.open(0, reply_id=1, speech_at=1.0, at=1.3)
     overlaps.judge(_heard(0, LISTENING_TEXT, part="overlap", sent_at=1.1), played=())
     assert rule.judged[0].speech_s == 0.0
+
+
+def test_after_a_windows_repeat_request_the_whole_overlap_is_judged_and_decides_nothing(
+    settings: VoiceSettings, rule: FakeRule
+) -> None:
+    overlaps = Overlaps(FakeSessionIO(two_step(settings)).setup)
+    overlaps.open(0, reply_id=1, speech_at=1.0, at=1.3)
+    assert overlaps.judge(_heard(0, REPEAT_TEXT, part="window", sent_at=1.8), played=()) == REPEAT
+    state = overlaps.get(0)
+    assert state is not None and state.asked_again
+    whole = overlaps.judge(_heard(0, NEW_TEXT, part="overlap", sent_at=2.6), played=())
+    assert whole == NEW_WORDS == state.overlap
+    assert (state.decided, state.decided_by) == (REPEAT, "window")
+    assert overlaps.judge(_heard(0, NEW_TEXT, part="turn", sent_at=3.0), played=()) is None
+
+
+def test_a_rule_that_raises_decides_its_overlap_as_going_on(
+    settings: VoiceSettings, rule: FakeRule
+) -> None:
+    """Even on a window, whose verdict to go on would leave the overlap open."""
+    overlaps = Overlaps(FakeSessionIO(two_step(settings)).setup)
+    overlaps.open(0, reply_id=1, speech_at=1.0, at=1.3)
+    window = _heard(0, FAILING_TEXT, part="window", sent_at=1.8)
+    assert overlaps.judge(window, played=()) == NO_WORDS
+    assert overlaps.open_turns == () and overlaps.settle() == 1
+    assert overlaps.get(0).decided_by == "window"  # type: ignore[union-attr]
