@@ -55,7 +55,7 @@ from ole5_voice.evals.items import (
 )
 from ole5_voice.evals.matcher import LISTENING_SOUNDS_RULING, GuideError, SpellingGuide, load_guide
 from ole5_voice.evals.models import Item, Manifest, ManifestFile, SplitFile, Variant
-from ole5_voice.evals.split import load_split
+from ole5_voice.evals.split import KEEP_COMMAND, load_split
 from ole5_voice.evals.takes import Script
 
 log = get_logger(__name__)
@@ -185,7 +185,7 @@ def _check_set(found: _Set) -> list[str]:
     problems = []
     ids = {item.id for item in found.items}
     if set(found.split.items) != ids:
-        problems.append("split.json does not name exactly the items: run the split again")
+        problems.append(f"split.json does not name exactly the items: run `{KEEP_COMMAND}`")
     counted = count_strata(found.items, found.script)
     for part in ("items", "variants", "script"):
         if getattr(counted, part) != getattr(found.strata, part):

@@ -116,8 +116,10 @@ def test_a_golden_set_that_does_not_load_or_a_stale_split_is_refused(world: Worl
     with pytest.raises(InvalidRequestError, match="do not load"):
         load_plan(world.data, Choice("dev"), Parts(load_items=broken, load_split=golden.load_split))
     stale = FakeGoldenSet(golden.items, SplitFile(salt="m1", items={"a": "dev", "gone": "dev"}))
-    with pytest.raises(InvalidRequestError, match="does not hold exactly"):
+    with pytest.raises(InvalidRequestError, match="does not hold exactly") as refused:
         load_plan(world.data, Choice("dev"), plan_parts(stale))
+    # The plain split moves committed items: the FIX names the one that keeps their sides.
+    assert "keeping its side (`python -m ole5_voice.evals.split --keep`)" in (refused.value.message)
     (world.data / "spelling.toml").unlink()
     with pytest.raises(InvalidRequestError, match="do not load"):
         load_plan(world.data, Choice("dev"), plan_parts(golden))

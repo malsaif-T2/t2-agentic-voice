@@ -45,6 +45,8 @@ _DESCRIPTION = "Write the golden set's split, or check that the committed one is
 HELD_OUT_TENTHS: Final = 3
 # The salt of a split written for the first time; afterwards the committed one is kept.
 DEFAULT_SALT: Final = "plan-002-2026-11-01"
+# The command a FIX names once the split is committed: new items placed, none moved.
+KEEP_COMMAND: Final = "python -m ole5_voice.evals.split --keep"
 
 
 def _order(salt: str, name: str) -> str:
