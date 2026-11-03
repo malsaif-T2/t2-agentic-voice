@@ -39,11 +39,11 @@ from pipecat.audio.turn.base_turn_analyzer import (  # noqa: E402
     EndOfTurnState,
 )
 from pipecat.audio.vad.vad_analyzer import VADAnalyzer, VADParams  # noqa: E402
-from pipecat.frames.frames import Frame, InputAudioRawFrame  # noqa: E402
+from pipecat.frames.frames import Frame, InputAudioRawFrame, StartFrame  # noqa: E402
 from pipecat.metrics.metrics import MetricsData  # noqa: E402
 from pipecat.pipeline.pipeline import Pipeline  # noqa: E402
 from pipecat.pipeline.worker import PipelineWorker  # noqa: E402
-from pipecat.processors.frame_processor import FrameProcessor  # noqa: E402
+from pipecat.processors.frame_processor import FrameDirection, FrameProcessor  # noqa: E402
 from pipecat.workers.runner import WorkerRunner  # noqa: E402
 from t2_agentic_voice.core.config import VoiceSettings  # noqa: E402
 from t2_agentic_voice.core.events import Event  # noqa: E402
@@ -314,3 +314,24 @@ async def client_offer() -> tuple[RTCPeerConnection, RTCDataChannel, str]:
 async def client_answered(peer: RTCPeerConnection, answer: str) -> None:
     """Give the local peer the server's answer."""
     await peer.setRemoteDescription(RTCSessionDescription(sdp=answer, type="answer"))
+
+
+class Tail(FrameProcessor):
+    """The end of a test's pipeline: keeps every frame that reaches it, each way, but the
+    start, and passes it on."""
+
+    def __init__(self) -> None:
+        super().__init__(name="tail")
+        self.frames: list[tuple[Frame, FrameDirection]] = []
+
+    async def process_frame(self, frame: Frame, direction: FrameDirection) -> None:
+        await super().process_frame(frame, direction)
+        if not isinstance(frame, StartFrame):
+            self.frames.append((frame, direction))
+        await self.push_frame(frame, direction)
+
+    def of[F](
+        self, kind: type[F], direction: FrameDirection = FrameDirection.DOWNSTREAM
+    ) -> list[F]:
+        """The frames of `kind` that came `direction`, in order."""
+        return [f for f, d in self.frames if isinstance(f, kind) and d == direction]

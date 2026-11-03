@@ -8,21 +8,14 @@ from __future__ import annotations
 import asyncio
 import json
 import logging
-import time
 from collections.abc import Awaitable, Callable
 
 import pytest
 from t2_agentic_voice.core.config import VoiceSettings
-from t2_agentic_voice.core.errors import ConfigurationError, InvalidRequestError, NotFoundError
 from t2_agentic_voice.core.events import TransportFailed
 from t2_agentic_voice.core.identity import Caller, Consent
-from t2_agentic_voice.core.settings.logs import LoggingSettings
-from t2_agentic_voice.core.settings.server import ServerSettings
-from t2_agentic_voice.core.settings.turns import TurnSettings
-from t2_agentic_voice.voice import calls as calls_module
 from t2_agentic_voice.voice import pipeline as pipeline_module
-from t2_agentic_voice.voice import transport as transport_module
-from t2_agentic_voice.voice.calls import TICKER_BOUND_S, Calls, CallsFactory, Candidate, VoiceCalls
+from t2_agentic_voice.voice.calls import Calls, CallsFactory, Candidate, VoiceCalls
 from t2_agentic_voice.voice.protocol import MAX_CLIENT_MESSAGE_BYTES, Stop
 from t2_agentic_voice.voice.session.session_events import (
     ClausePlayed,
@@ -35,7 +28,6 @@ from t2_agentic_voice.voice.session.session_events import (
 from tests.t2_agentic_voice.session_fakes import AGENT
 from tests.t2_agentic_voice.voice.kit import (
     Built,
-    ToneVAD,
     client_answered,
     client_offer,
     until,
@@ -123,7 +115,8 @@ def test_a_call_not_connected_by_the_deadline_fails_at_connect(
         finally:
             await peer.close()
         (session,) = built.script.sessions
-        assert [e for e in session.events if isinstance(e, TransportFailure)][0].stage == "connect"
+        (failure,) = [e for e in session.events if isinstance(e, TransportFailure)]
+        assert failure.stage == "connect"
 
     _run(built, body)
     assert [e.stage for e in built.emitted if isinstance(e, TransportFailed)] == ["connect"]
