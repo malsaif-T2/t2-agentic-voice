@@ -18,6 +18,8 @@ COMMANDS = [
     "ole5_voice.evals.split",
     "ole5_voice.evals.import_talkover",
     "ole5_voice.evals.import_recordings",
+    "ole5_voice.evals.eot",
+    "ole5_voice.evals.timing",
 ]
 
 
