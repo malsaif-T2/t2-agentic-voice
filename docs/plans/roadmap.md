@@ -60,6 +60,12 @@ available?" and the owner answered "Yes, move them"
 which changes M2's name, its deployment bullet and its *Done when* line, and the deployment
 becomes a plan of its own (M6's section).
 
+Later on 2026-11-03 the owner asked to finish M2 faster, on the package's fundamentals, and answered
+"Yes, cut them" to the agent's cuts (plan 003). So M2's *Done when* line reads the time of each step
+and requests per call minute from the owner's recorded call session in Chrome rather than from runs
+on the golden set, M3 takes the language a live call sends Whisper, and M4 the prompt arm for
+product terms.
+
 **M0 · Scaffold and harness.**
 - The project's idea in [DESCRIPTION.md](../project/DESCRIPTION.md), written with the owner.
 - The layers chosen for this domain, in `harness.toml` and [ARCHITECTURE.md](../../ARCHITECTURE.md).
@@ -114,9 +120,10 @@ on the first 0.5–1.0 s of the 90 dev talk-over clips only, not of each talk-ov
 - The calls held on the owner's laptop, through the Ole5 app's dev server on localhost, with
   Phoenix as M1's on 127.0.0.1 (the owner, 2026-11-02 and 2026-11-03, plan 003). The deployment,
   the calls from other networks and the media path moved out of M2 (M6's section).
-- The owner's calls through the widget recorded with the recording setting on (invariant 8),
-  each keeping the caller's track and the agent's playback timeline, so M3's targets are also
-  checked on audio that came through WebRTC.
+- The owner's call session through the widget, in Chrome, recorded with the recording setting on
+  (invariant 8), each call keeping the caller's track and the agent's playback timeline, so M3's
+  targets are also checked on audio that came through WebRTC (one session: the owner, 2026-11-03,
+  plan 003).
 - *Library:* everything above that is not Ole5's: Pipecat inside `voice` (the transport,
   VAD, Smart Turn, the speech bridges), the `TextToSpeech` port and the Orpheus
   adapter, the call session in echo mode, signed single-use join tokens, the router and
@@ -130,11 +137,13 @@ on the first 0.5–1.0 s of the 90 dev talk-over clips only, not of each talk-ov
   arms sent each item's label, which a call does not know (TD-011); and, when numbers are
   spoken, whether compound number words and the short and dialect digit names count as digits
   (TD-031). Each is measured on the golden set (D-024's floor of 6 items) before it changes a
-  default. Several debt rows name M2's plan as their trigger ([tech-debt.md](tech-debt.md)).
+  default. On 2026-11-03 the prompt arm moved to M4 and the live language to M3 (the owner,
+  plan 003). Several debt rows name M2's plan as their trigger ([tech-debt.md](tech-debt.md)).
 
-*Done when* the owner holds a call in Chrome on laptop speakers and on a headset, locally, and
-hears each turn back; end-of-turn cut-offs and the time of each step are measured on the golden
-set; and requests per call minute for each Groq model are recorded.
+*Done when* the owner holds a recorded call session in Chrome on laptop speakers and on a headset,
+locally, and hears each turn back; end-of-turn cut-offs are measured on the golden set, offline; and
+the time of each step and requests per call minute for each Groq model are recorded from that
+session's traces and call reports.
 
 **M3 · Interruptions and cancellation.**
 - The cancel scope of every turn: a stop, a correction, or new words cancel the model, the
@@ -160,6 +169,10 @@ set; and requests per call minute for each Groq model are recorded.
   hears short Saudi words (often misheard even as whole clips); its first window (at 500 ms none
   of the 4 Saudi words asking the agent to halt was heard; large-v3 at 750 ms held the most);
   and the noise runs repeated on another day before its first comparison (TD-032).
+- *From M2* (plan 003, moved by the owner on 2026-11-03): the language a live call sends Whisper, by
+  the rule plan 003 registered (its runs R5 to R7, after the noise runs above, and its Q15 when the
+  rule does not decide; TD-011), taken up or registered again in M3's plan; until then
+  `stt.live_language` stays `session`.
 
 *Done when* the targets registered in its plan hold on the golden set's overlap clips and on
 M2's call recordings: a normal-volume «وقف» stops the agent within its target, the agent's own
@@ -180,6 +193,9 @@ steps pass in a live call.
   its context and bound parameters, the output guard's ID rule, progress lines, a knowledge
   protocol and helper tool, the text-call testing kit and its fakes, `t2v check`, and the
   latency measurement; the Qdrant adapter and the prompts stay Ole5's.
+- *From M2* (plan 003's Q16, the owner, 2026-11-03): the prompt arm that keeps product terms in
+  Latin script (term recall was 0.333 on dev for large-v3), measured on the golden set (D-024's
+  floor of 6 items) once the vocabulary that becomes the Whisper prompt lands.
 
 *Done when* retrieval (the right passage in the top 5) and answer correctness are measured; the
 time to the first useful audio meets a target registered in its plan before any run; and the

@@ -14,10 +14,12 @@ with our own speech bridges calling the ports), the `TextToSpeech` port and its 
 adapter with an Arabic and an English voice, `domain`'s rules for speaking numbers and IDs, signed
 single-use join tokens, the router and `serve()`, the reference browser client and its protocol,
 and the settings with a required `env` (the design's 16.1, M2 row). The plan measures what M2's
-*Done when* asks, registered before any result: end-of-turn cut-offs and the time of each step on
-the golden set, and requests per call minute for each Groq model; it settles the language a live
-call sends Whisper and records the owner's calls with consent, so that M3's targets are also
-checked on audio that came through WebRTC. Every number describes one speaker, the owner (D-006).
+*Done when* asks, registered before any result and cut to the fundamentals on 2026-11-03 ("The
+owner's decisions"): end-of-turn cut-offs on the golden set, offline; and the time of each step and
+requests per call minute for each Groq model, from the traces and call reports of the owner's one
+recorded call session in Chrome. That session is recorded with consent, so that M3's targets are
+also checked on audio that came through WebRTC; the language a live call sends Whisper moved to M3.
+Every number describes one speaker, the owner (D-006).
 
 ## Acceptance criteria
 
@@ -153,11 +155,11 @@ checked on audio that came through WebRTC. Every number describes one speaker, t
   an `OLE5_VOICE_` setting, and `'none'` while it is empty, as in M2, whose calls are local: the
   embed moved out of M2), `X-Content-Type-Options: nosniff`, `Referrer-Policy: no-referrer` and
   `Permissions-Policy: microphone=(self)`, and `/dev` with `frame-ancestors 'none'`, each header
-  tested. Checked in Chrome and in Edge, both supported
-  (D-018, the design's open question 12): the agent checks in its browser pane what needs no
-  microphone (the page, the consent screen, the missing-microphone and refused messages, the data
-  channel), and the owner checks the microphone, playback, Stop and Esc in both browsers in
-  step 18, each result in the progress log.
+  tested. Checked in Chrome: the agent checks in its browser pane what needs no microphone (the
+  page, the consent screen, the missing-microphone and refused messages, the data channel), and the
+  owner checks the microphone, playback, Stop and Esc in step 18's recorded session, each result in
+  the progress log. *Amended 2026-11-03 ("The owner's decisions"): Edge, supported (D-018, the
+  design's open question 12), is not checked in M2, the roadmap's M2 naming Chrome only.*
 - [ ] `.claude/launch.json` starts `t2v dev` on `examples/minimal` and the Ole5 app's dev server
   ([WORKING-RULES.md](../../../WORKING-RULES.md), "Seeing it run").
 
@@ -167,9 +169,10 @@ every call of M2 is on this laptop.
 
 **The recordings**
 
-- [ ] The owner's calls through the widget are recorded with `privacy.record_audio` on and the
-  recording consent in the signed join token: per call, the caller's track, the agent's audio and
-  the playback timeline, under `var_dir`. Only a consent from a verified signed token counts.
+- [ ] The calls of the owner's recorded session (step 18) through the widget are recorded with
+  `privacy.record_audio` on and the recording consent in the signed join token: per call, the
+  caller's track, the agent's audio and the playback timeline, under `var_dir`. Only a consent from
+  a verified signed token counts.
   Adversarial tests: nothing is written with the setting off, with the token's consent false, with
   both, or under `DevIdentity` with the setting on, and no client message turns it on
   (invariant 8). No audio is in git; each recorded call's manifest (its consent, each file's
@@ -202,25 +205,41 @@ every call of M2 is on this laptop.
   GP-22 widened to an adapter object passed in code), the library's logging contract (the owner's
   answer of 2026-11-02) with Q2's loguru answer (amending D-002's loguru bullet), ARCH-BAN and the
   new facades, the echo's shape (Q3), how Whisper is cut, the settings keys beyond the design's 7.6
-  (as Proposed), SECURITY.md's invariants 7 and 8 brought to the design's 8.1 (amending D-007), the
-  measured requests per call minute and the language a live call sends Whisper.
+  (as Proposed), SECURITY.md's invariants 7 and 8 brought to the design's 8.1 (amending D-007), and
+  the measured requests per call minute; the language a live call sends Whisper moved to M3 on
+  2026-11-03 ("The owner's decisions").
 
 **The measurement** (the roadmap's *Done when* for M2)
 
 - [ ] "The measurement, registered before any result" was complete, every owner's call settled and
-  dated, before the run it affects; every departure is a `Deviation:` line in the progress log.
+  dated, before the run it affects: the runs left in M2, E1 and E2 and held-out E at the close, and
+  the owner's recorded session, C; every departure is a `Deviation:` line in the progress log.
+  *Amended 2026-11-03 ("The owner's decisions"): T and L left M2, their registered text kept, each
+  with its amendment.*
 - [ ] `uv run poe eot` measures end of turn offline, with no spend, on the golden set's paused
   requests: cut-offs and each step's delay, by language and device; its `reference` answerer scores
   0 cut-offs and 0 ms inside `poe check`.
-- [ ] The time of each step on the golden set (the VAD stop, Smart Turn's decision, Whisper, the
-  echo ready, Orpheus's first byte and first sound) is measured in runs T1 and T2, and the network
-  to the browser in the owner's calls.
-- [ ] Requests per call minute for each Groq model, from the owner's calls, and the key's real
-  limits (Q17) are recorded as a decision entry.
-- [ ] The language a live call sends Whisper is set by the registered rule (runs R5 to R7), and the
-  noise on another day (TD-032) is recorded.
-- [ ] The owner held the calls of *Done when*: on the laptop's speakers and on a headset, in Chrome
-  and in Edge, through the Ole5 app's dev server on this laptop, each turn heard back.
+- [ ] The time of each step is read from the owner's recorded session (step 18), whose calls'
+  reports and traces record each turn: from the end of the caller's speech (Silero's last stop) to
+  its transcript (`stt_ms`: Smart Turn's decision and Whisper's request together); Whisper's
+  request, sent to answered (its speech-to-text span, with the audio seconds sent and billed); to
+  the echo ready (`ttfa_ms`, the cached frame's first audio queued, not yet heard: TD-063); and the
+  echo's Orpheus request to its first audio queued (`tts_first_audio_ms`, the text-to-speech span's
+  `tts.first_audio_ms`). Per call, the report holds the time to connect and from connecting to the
+  first audio played (`client_stats`), and the recording's timeline holds when each clause played in
+  the browser (approximately: TD-070). The VAD stop delay and Smart Turn's decision alone are E1's,
+  offline. *Amended 2026-11-03 ("The owner's decisions"): runs T1 and T2, the time of each step on
+  the golden set, are dropped.*
+- [ ] Requests per call minute for each Groq model, from the owner's recorded session (each call's
+  report and root span hold them), are recorded as a decision entry, beside the published limits, or
+  beside the key's real limits if the owner reads them (Q17, optional since 2026-11-03).
+- *Moved to M3 on 2026-11-03 ("The owner's decisions"): the language a live call sends Whisper, set
+  by the registered rule (runs R5 to R7), and the noise on another day (TD-032), with Q15. M2 keeps
+  `stt.live_language`'s default, `session`.*
+- [ ] The owner held the calls of *Done when* in one recorded session (step 18): in Chrome, on the
+  laptop's speakers and then on the wired headset, through the Ole5 app's dev server on this laptop,
+  each turn heard back, Stop and Esc each pressed once during an echo. *Amended 2026-11-03 ("The
+  owner's decisions"): Edge dropped, the roadmap's M2 naming Chrome only.*
 - [ ] `uv run poe check` passes; the roadmap's M2 row, CLAUDE.md, ARCHITECTURE.md, SECURITY.md and
   this plan's logs are up to date.
 
@@ -232,9 +251,11 @@ talker: every call is on this laptop, and the voice session runs in echo mode.
 the history of what was heard, the stop, listening and echo rules and their presets, the filter
 for text from silence and echo, the first window, tuning the turn defaults (Q14), `AudioCall` and
 the parity test (the design's 9.5; M2 builds only an internal file-fed transport, the decision
-log), and the push-to-talk fallback and the Bluetooth warning. **M4:** the talker, the chat-model
-port, the vocabulary and the Whisper prompt (Q16), `TextCall` and the fakes as a public kit, the
-latency target. **M5:** speaking dates, SECURITY.md generalized from tickets to actions (the
+log), the push-to-talk fallback and the Bluetooth warning, and, since the owner's ruling of
+2026-11-03, the language a live call sends Whisper and the noise on another day (runs R5 to R7, Q15,
+TD-032). **M4:** the talker, the chat-model port, the vocabulary and the Whisper prompt (Q16,
+settled on 2026-11-03), `TextCall` and the fakes as a public kit, the latency target. **M5:**
+speaking dates, SECURITY.md generalized from tickets to actions (the
 design's 16.3), and the verified identity ticket status needs, if open question 19 is still
 unanswered (Q12, now in "The deployment, moved out of M2"). **M6:** the per-model limiter and the
 cool-off, admission control and the busy notice, drain, the full `t2v doctor`, the deployment guide
@@ -248,10 +269,11 @@ CI (TD-001), `contract.md` and the app's five layers (the decision log). The pub
 
 **From M1** (the roadmap's M2 bullet, from [plan 002's Future
 improvements](../completed/002-golden-set-baseline.md#future-improvements)):
-- **The prompt arm for product terms** is Q16: the agent recommends M4, where the vocabulary that
+- **The prompt arm for product terms** is Q16, settled on 2026-11-03: M4, where the vocabulary that
   becomes the prompt lands (the design's 3.1 and 3.3).
-- **The language a live call sends Whisper** is measured here (runs R5 to R7, after the noise on
-  another day), and the registered rule sets `stt.live_language`'s default (Q15).
+- **The language a live call sends Whisper** moved to M3 on 2026-11-03 ("The owner's decisions"),
+  with its runs R5 to R7, after the noise on another day (TD-032), and Q15; M2 keeps
+  `stt.live_language`'s default, `session`.
 - **Spoken numbers:** Track A speaks digits as words with num2words. TD-031, reading compound
   number words as digits when scoring, stays open: num2words turns digits into words, never words
   into digits, and none of large-v3's 11 ticket misses held a number in words (plan 002's Future
@@ -264,12 +286,12 @@ skeptic, fixed, gated with `uv run poe check`, and merged, with commits named
 are built in parallel against Block 0's interfaces and fakes, each reviewed the same way
 (`## Tracks`), and merged through an integration branch, `plan-003-integration`
 ([plans README](../README.md), "Parallel tracks"). From 2026-11-03 ("The owner's decisions"), a
-review (Block 0's last round, each track's, and step 17's) reports only what would break, hang or
-crash a call; garble, cut, overlap or lose its audio; leak a task, connection or memory per call;
-send Groq more than the limits allow or fail on a 429 it could wait out; refuse valid Arabic or
-English text; or leave a later track or milestone a contract it cannot build on. Everything else
-becomes a row in `docs/plans/tech-debt.md`, and there is no second fix round unless a high finding
-stands.
+review (Block 0's last round, each track's, and step 17's, dropped on 2026-11-03) reports only what
+would break, hang or crash a call; garble, cut, overlap or lose its audio; leak a task, connection
+or memory per call; send Groq more than the limits allow or fail on a 429 it could wait out; refuse
+valid Arabic or English text; or leave a later track or milestone a contract it cannot build on.
+Everything else becomes a row in `docs/plans/tech-debt.md`, and there is no second fix round unless
+a high finding stands.
 
 **Before Block 0**
 
@@ -484,26 +506,40 @@ stands.
     `navigator.mediaDevices.getUserMedia` there with a silent stream, since the client opens the
     microphone before it joins (Track G): the page loads, ICE connects on whatever candidates the
     pane offers, the data channel opens and `hello` arrives; the microphone, playback and Stop wait
-    for the owner's Chrome and Edge (step 18).
-17. **The whole-plan review of the code**, by one reviewer, each finding checked by one skeptic,
-    reporting only what the 2026-11-03 rule names ("Blocks in the order they depend on each
-    other"). Then `plan-003-integration` merges into the main branch, with the full gate, so the
-    owner's calls run from it; from here, this plan's blocks merge into the main branch.
+    for the owner's session in Chrome (step 18; Edge dropped on 2026-11-03).
 
-**The first live calls** (local; needs Q5, Q13 and Q17, and "What the owner does", steps 2 and 3;
-recorded only if Q4 and Q7 are settled)
+**Step 17, the whole-plan review of the code, dropped** on 2026-11-03 ("The owner's decisions"):
+each track had its review, and step 16's end-to-end test and the owner's session (step 18) check the
+whole; for this plan, this replaces the plans README's review of the whole plan before the
+integration branch merges ("Parallel tracks", item 5). After step 16, `plan-003-integration` merges
+into the main branch, with the full gate, so the owner's session runs from it; from here, this
+plan's blocks merge into the main branch.
 
-18. Step 23's spending rule applies first. The owner's first calls on the laptop, from the main
-    checkout, through the Ole5 app's dev server on localhost: the laptop's speakers, then the wired
-    headset, a few turns each, in the three languages, in Chrome and then in Edge, the owner
-    checking the microphone, playback, Stop and Esc in each browser. They join through the Ole5
-    app's token route with a local access code if Q4 is settled, and otherwise through
-    `DevIdentity`, which never records, on `t2v dev`'s `/dev`, since the Ole5 app's server has no
-    such fallback (Track G). Ole5's widget offers Arabic (`ar-SA`, whose call also hears MSA, said
-    back in the Saudi voice) and English, and its token route mints at most 10 tokens in a rolling
-    day, every start that got past the microphone counted, in the server's memory: a restart of the
-    server begins the count again. The agent reads each call's trace and `CallReport`; a fix is a
-    block of its own.
+**The owner's recorded session** (local; needs Q5, Q13 and Q18, settled, and "What the owner does",
+steps 2 and 3; Q4 and Q7 settled; since 2026-11-03, "The owner's decisions", the first calls and
+run C, which was step 28, are this one session)
+
+18. Step 23's spending rule applies first. Run C of the registration: one recorded session of about
+    20 to 30 minutes, from the main checkout, through the Ole5 app's dev server on localhost, in
+    Chrome, on the laptop's speakers, then on the wired headset, with Q18's script ("What the owner
+    does", step 3): a few turns in each language (Saudi Arabic, MSA and English), Stop and Esc
+    pressed once each during an echo, and in each Arabic call a listening sound during another echo,
+    which is transcribed and kept on the timeline but, by the drop rule, never said back, so M3's
+    check that listening sounds do not interrupt the agent has M2's recordings to run on; the owner
+    checks the microphone and playback and says whether each turn came back. The session is four
+    calls, an Arabic and an English call on each device, each under `limits.max_call_s` (600 s);
+    each joins through the Ole5 app's token route with the access code (Q4), the recording box
+    ticked, so its recording consent rides in a signed join token (Q7's (a));
+    `T2V_PRIVACY__CONSENT_VERSION` is Q7's version (`m2-owner-test-1`) and
+    `T2V_PRIVACY__RECORD_AUDIO` is on only for the session; the recordings stay under `var/` on this
+    laptop (Q7's (i)) and their manifests are committed. Ole5's widget offers Arabic (`ar-SA`, whose
+    call also hears MSA, said back in the Saudi voice) and English, and its token route mints at
+    most 10 tokens in a rolling day, every start that got past the microphone counted, in the
+    server's memory: a restart of the server begins the count again. The agent reads each call's
+    trace and `CallReport`: the time of each step, each reply's `tts.cut_short` (TD-063's ceilings),
+    and each model's requests per call minute (the measurement criteria), the latter recorded as a
+    decision entry beside the published limits, or the real ones if the owner read them (Q17). A fix
+    is a block of its own, and a call after it spends under step 23's rule.
 
 **Steps 19 to 22, the deployment, moved out of M2** on 2026-11-03 ("The owner's decisions"): the
 owner has no access to the server yet, so the deployment files, the network spike on the host, the
@@ -515,39 +551,47 @@ their numbers.
 **The registered runs** (the registration below; a quiet machine: nothing else runs beside a run,
 [WORKING-RULES.md](../../../WORKING-RULES.md), "Measurement runs")
 
-23. Every open call settled and dated; the estimate and the budget cap approved by the owner (Q13).
-    The spending rule, which also governs step 18: before each run or call session that
-    spends, the spend so far plus its own estimate is compared with the cap, and each model's
-    requests, tokens and audio seconds that day with Q17's limits; one that would pass either does
-    not start; the running total goes into the progress log after each, as plan 002's step 20 did.
-24. A clean run worktree at the measurement commit, where every run of steps 25 to 27 starts;
-    `poe eval --show-settings` checks the resolved settings; each run's smoke test passes with no
-    failed, retried or refused call.
+23. Every open call settled and dated (Q13 to Q18, on 2026-11-03); the estimate, about $0.34, and
+    the budget cap, $1, approved by the owner (Q13, "The budget"). The spending rule, which governs
+    step 18's session: before the session, a call after a fix, or any run that spends, the spend so
+    far plus its own estimate is compared with the cap, and each model's requests, tokens and audio
+    seconds that day with the published limits, or the real ones if the owner read them (Q17); one
+    that would pass either does not start; the running total goes into the progress log after each,
+    as plan 002's step 20 did.
+24. A clean run worktree at the measurement commit, where E1, E2 and held-out E start (steps 25 and
+    29; since 2026-11-03 no run of M2 spends); `poe eval --show-settings` checks the resolved
+    settings, the turn settings among them; `poe eot` refuses the main checkout and a dirty tree.
 25. **E1 and E2** (end of turn, offline, no spend): the dev paused requests and the secondary set,
     twice.
-26. **R5, R7, R6** (the noise on another day and the live language), each history line carried to
-    the main branch in its own commit before the next run, then the run worktree's file reset, as
-    plan 002's step 23 did; the comparisons; the rule sets `stt.live_language`'s default in its own
-    commit.
-27. **T1 and T2** (the time of each step), on a day with no call, since together they may take most
-    of a day's published Orpheus requests and tokens for the Arabic model (Q17).
-28. **C** (the owner's calls of Q18), recorded, on this laptop through the Ole5 app's dev server,
-    with `T2V_PRIVACY__CONSENT_VERSION` set to Q7's version (`m2-owner-test-1`) and
-    `T2V_PRIVACY__RECORD_AUDIO` on only during C's sessions; the recordings kept under `var/` on
-    this laptop (Q7's (i)) and their manifests committed; requests per call minute recorded as a
-    decision entry, beside the key's real limits.
+
+**Steps 26 and 27, moved or dropped** on 2026-11-03 ("The owner's decisions"): R5, R7 and R6 (the
+noise on another day, TD-032, and the language a live call sends Whisper, with Q15) move to M3,
+whose plan needs the noise runs anyway, and M2 keeps `stt.live_language`'s default, `session`; T1
+and T2 (the time of each step on the golden set) are dropped, the time of each step coming from
+step 18's session and, for the VAD stop and Smart Turn's decision, from E1. Their registered text
+stays in "The measurement, registered before any result", each with its amendment.
+
+**Step 28, run C, merged into step 18** on 2026-11-03 ("The owner's decisions"): the owner's
+recorded calls are step 18's one session, recorded as step 28 had them (Q7's version, and the
+recording setting on only for the session; the recordings under `var/` on this laptop and their
+manifests committed), and requests per call minute are recorded from it as a decision entry. Steps
+29 and 30 keep their numbers.
+
 29. **Held-out:** E on held-out once, at the close, aggregates only. No held-out run spends in M2.
 
 **Close**
 
-30. The decision entries not yet written; the guide's pages finished; the design's factual slips
+30. The decision entries not yet written; the guide's pages finished; and, by an agent while the
+    owner holds step 18's session (the owner, 2026-11-03), the design's factual slips
     that the research found (the design's 4.1 on Pipecat's `silero` extra, which exists with no
     requirements; its 10.3's "No number is known yet") listed for the owner and corrected as facts,
     not design changes. Its 3.2 on Groq's account team is listed as not confirmed either way: a
     third party quotes Groq's error asking the organisation's admin to accept a model's terms
     (github.com/langflow-ai/langflow/issues/11120, UNVERIFIED), and Groq's changelog says nothing of
     terms (read 2026-11-02 by the plan review), so it is corrected only from what the console shows
-    the owner ("What the owner does", step 2). The design's lines that give M2 the deployment, which
+    the owner ("What the owner does", step 2): on 2026-11-03 the owner reported accepting the
+    Orpheus terms, not who could accept them, so 3.2 stays listed as not confirmed. The design's
+    lines that give M2 the deployment, which
     moved out of M2 on 2026-11-03 ("The owner's decisions"), are corrected as facts too, each to
     name the deployment's own plan (the roadmap's M6): its 1.2 serving bullet and 3.1's
     TURN-credentials row ("only if Ole5's M2 network test needs TURN"); 3.1's and 6.5's
@@ -563,7 +607,7 @@ their numbers.
     built (step 6); and 16.3's "Written since" lacks D-036 to D-039 and the entries after them. The
     sections that Block 0's entries go beyond as Proposed get no note (the decision log,
     2026-11-03). Then `## Future improvements` in this plan, with a pointer from the roadmap's
-    "Planned later"; the whole-plan review, under the 2026-11-03 rule (step 17); the roadmap's M2
+    "Planned later" (the whole-plan review, step 17, was dropped on 2026-11-03); the roadmap's M2
     row set to `done` with a link; this plan moved to `completed/` with its Status line; the final
     gate.
 
@@ -997,6 +1041,23 @@ their numbers.
   their citations in the code, the tests, this plan and the docs, which DOC-REF reads. Next: that
   commit; `/dev`'s headers, Track G's policy sent by the router, with a test through it (Track G's
   ask); then Track I, and step 16.
+- 2026-11-03: The owner's ruling to finish M2 faster is recorded ("The owner's decisions"), with the
+  decision log's entry for its readings, and the plan, the roadmap and `docs/plans/tech-debt.md` are
+  amended to it before any run. T1 and T2 are dropped; R5 to R7, Q15 and the noise on another day
+  (TD-032) move to M3, and Q16 to M4; the first calls and run C are one recorded session in Chrome
+  (step 18, with Q18's script in "What the owner does", step 3), Edge dropped; step 17 is dropped,
+  so `plan-003-integration` merges into the main branch after step 16, with the full gate. Q13 is $1
+  against an estimate of about $0.34; Q14 keeps the defaults; Q17 is optional. The owner accepted
+  the Orpheus terms in Groq's console and has not read the key's limits. Amended with them: the
+  goal; the criteria on the widget, the recordings, the decision entries and the measurement; the
+  Scope and "From M1"; the two review rules and Track G's tests, each with a dated pointer where it
+  named step 17 or Edge; steps 16, 17, 18, 23, 24, 26 to 28 and 30; the registration's T, L and C
+  and the budget, each with a dated amendment, the registered text kept; Q13 to Q18; and the owner's
+  steps 2, 3 and 7 to 9. The roadmap's M2 reads its *Done when* from the session, its M3 takes the
+  live language and its M4 the prompt arm; the debt rows TD-011, TD-032, TD-063, TD-066, TD-070,
+  TD-071, TD-081 and TD-082 name their new triggers, and no row is removed. Next: Track I and
+  step 16, then the merge into the main branch and the owner's session, while an agent corrects the
+  design's factual slips (step 30); E1 and E2 at the measurement commit.
 
 ## Decision log
 
@@ -1760,6 +1821,42 @@ itself, in the owner's words, is in "The owner's decisions".
     (Track G; step 16).
   - Not a criterion: registration T's Orpheus count, one request a heard turn and 40 Arabic a run,
     holds since D-1's fix, a dev paused request being one packed request; it is not amended.
+- 2026-11-03, the owner's ruling to finish M2 faster ("The owner's decisions"): what replaces each
+  dropped measurement and where each moved item goes, the agent's reading, which the owner may
+  overrule:
+  - The time of each step: T1 and T2 are dropped. Each turn's report and trace in the owner's
+    session give `stt_ms` (the speech's end, Silero's last stop, to the transcript: Smart Turn's
+    decision and Whisper together), Whisper's request (its speech-to-text span, sent to answered),
+    `ttfa_ms` (to the echo ready, not heard: TD-063) and `tts_first_audio_ms` (the echo's Orpheus
+    request to its first audio); E1 gives the VAD stop delay and Smart Turn's decision, offline. No
+    M2 number is left for Orpheus's first sound or leading silence, which no report holds, or for
+    the timing's noise between two runs: M4's latency target is registered on its own plan's data.
+  - Requests per call minute: from the session's reports (`CallReport.requests_per_minute`, in each
+    report file and on each call's root span), recorded as a decision entry beside the published
+    limits, or the real ones if the owner reads them. D-018's answer 21, the key's real limits read
+    in M2, becomes the owner's option (Q17); M6 compares the rates with the key's limits when it
+    sets the cap on live calls (the roadmap's M6).
+  - The language a live call sends Whisper: R5 to R7 and Q15 go to M3, whose plan repeats the noise
+    on another day anyway (TD-032, the roadmap's M3), with TD-011's reading of Groq's `language`; M2
+    keeps `stt.live_language = "session"`, so a call sends Whisper the language its caller picked.
+    The prompt arm for product terms (Q16) goes to M4, with the vocabulary that becomes the prompt.
+  - The calls: the first calls and run C are one recorded session (step 18), in Chrome. Edge stays
+    supported (D-018), but M2 does not check it; the Bluetooth headset, which no criterion names,
+    goes with the five calls, so M3's plan records its own call if the Bluetooth warning needs one.
+    C's listening sounds stay, one in each Arabic call during an echo, so M3's check that listening
+    sounds do not interrupt the agent has M2's recordings to run on.
+  - The whole-plan review (step 17) is dropped for this plan, against the plans README's default of
+    a review of the whole plan before the integration branch merges ("Parallel tracks", item 5):
+    each track had its review, and step 16's end-to-end test and the owner's session check the
+    whole.
+  - The budget: about $0.34 against Q13's $1 ("The budget"). `poe eval-timing` and its pacers stay
+    in the code, unrun: TD-063's first byte and noise floor, TD-071 and TD-082 wait for a timing
+    run, if one is ever run, and TD-081 keeps its E1 part as its trigger. TD-063's cut-short
+    ceilings do not: `GroqTTS` flags live takes with them and the phrase cache keeps no flagged
+    take, so they are recalibrated when a take of the session, or of a later call, shows one wrong,
+    or in M4's plan.
+  - Step 30's corrections of the design run beside the session, by an agent. The design's 3.2 stays
+    listed as not confirmed: the owner reported accepting the terms, not who could accept them.
 
 ## The owner's decisions
 
@@ -1833,16 +1930,43 @@ What the owner has already said that binds M2, in the owner's words where they w
   - TURN credentials leave Track C, since they depend on Q9: Track C is identity and stores.
     Block 0's TURN settings stay in the code, unused until the deployment, as a debt row
     (TD-048), which also names the stub `adapters/turn_credentials.py`.
-  - The calls stay local, on this laptop, through the Ole5 app's dev server on localhost: the
-    calls of step 18, and run C's recorded calls (Q18's script on each device, the laptop's
-    speakers and the wired headset, in Chrome and Edge), with no network variants.
+  - The calls stay local, on this laptop, through the Ole5 app's dev server on localhost: the calls
+    of step 18, and run C's recorded calls (Q18's script on each device, the laptop's speakers and
+    the wired headset, in Chrome and Edge), with no network variants. The owner's ruling of
+    2026-11-03 (below) made them one recorded session in Chrome.
   - The roadmap's M2 is "A call that listens and speaks", its *Done when* without the deployment
     and the other networks, and its M6 names the move. The design, approved, is not edited now:
     step 30 corrects each of its lines that names M2's deployment, as a fact.
+- 2026-11-03, after the tracks' merges: "I do accept the Groq agreement, and I don't know about the
+  real key limits. But I want to finish with M2 Faster than you stated. Can we drop unnecessary
+  things in the plan and focus on the fundamentals for the package?" To the cuts the agent then
+  proposed, the owner answered "Yes, cut them". So, in the agent's reading:
+  - T1 and T2, the time of each step on the golden set, are dropped: the time of each step comes
+    from the traces and call reports of the owner's recorded session, which record each turn.
+  - R5 to R7 (the language a live call sends Whisper) and the noise on another day (TD-032) move to
+    M3, which needs the noise runs anyway, with Q15; M2 keeps `stt.live_language`'s default,
+    `session`. Q16's prompt arm for product terms moves to M4.
+  - The first calls (step 18) and run C become one recorded session of about 20 to 30 minutes:
+    Chrome, the laptop's speakers then the wired headset, a few turns in each language (Saudi
+    Arabic, MSA, English), Stop and Esc once each, recorded (`privacy.record_audio` on, a signed
+    join token with the consent, through the Ole5 app's dev server and its token route with the
+    access code, Q4 and Q7 as settled). Edge is dropped, the roadmap's M2 naming Chrome only.
+  - Step 17, the whole-plan review of the code, is dropped: each track had its review, and step 16's
+    end-to-end test and the owner's session check the whole. `plan-003-integration` merges into the
+    main branch after step 16, with the full gate.
+  - Q13: $1, the agent's proposal, approved with the cuts. Q14: the defaults stay. Q15 moves to M3
+    with R5 to R7, and Q16 to M4. Q17: optional, the published limits being enough for one session;
+    the real ones are recorded if the owner reads them. Q18: the agent's short script.
+  - The owner accepted the Orpheus terms in Groq's console ("What the owner does", step 2) and has
+    not read the key's limits. Kept: E (E1 and E2, offline with `poe eot`, no spend) and held-out E
+    at the close (aggregates only, no spend); step 30's corrections of the design's factual slips,
+    made by an agent while the owner holds the session.
 - 2026-11-01: "Approve all", for the roadmap's M1 to M7 and the package design as amended (D-017),
   as plan 000 records it. So M2's goal and *Done when*, and the design's 16.1 M2 row, bind this
-  plan, as the owner's ruling of 2026-11-03 (above) amends them: the deployment and the other
-  networks left M2, and step 30 corrects the design's lines that name them, as facts.
+  plan, as the owner's rulings of 2026-11-03 (above) amend them: the deployment and the other
+  networks left M2, and step 30 corrects the design's lines that name them, as facts; and the time
+  of each step and requests per call minute come from the owner's recorded session, the end-of-turn
+  cut-offs from the golden set, offline.
 - 2026-11-01, the owner's answers to the design's open questions (D-018) that M2 builds on: our own
   thin client and protocol (1); one install, with no extras (2); Python 3.12 (3); `T2V_` (4); one
   process per `var_dir` (5); our own spans (7); Pipecat's STT and TTS base classes wrapped, its model
@@ -2107,7 +2231,8 @@ rules on `stop` and on the widget's labels), and no test text copies an item's.
   passed through into the token, never taken from a later message); each header of the widget page
   and of `/dev`; no `innerHTML` or its kin in any script (the browser criteria); a global tracer,
   meter and logger provider receives nothing from the Ole5 app's FastAPI; the page checked by the
-  agent in its browser pane and by the owner in Chrome and in Edge (step 18).
+  agent in its browser pane and by the owner in Chrome and in Edge (step 18; Chrome only since
+  2026-11-03, "The owner's decisions").
 
 **Track H · The measurement's tooling (library `testing`, app `evals`).**
 - Goal: `poe eot`, the timing run, the recorded calls' manifests, and what runs R5 to R7 need.
@@ -2154,14 +2279,14 @@ rules on `stop` and on the widget's labels), and no test text copies an item's.
 
 **Review** (the owner's rule of 2026-11-03, "The owner's decisions"). One reviewer per track, an
 agent that did not write it, reads the track for each concern below that it touches, and the
-whole-plan review at step 17 follows the same rule; for this plan, this replaces the plans README's
-reviewers named by concern ("Parallel tracks", item 4). A review reports only what would break,
-hang or crash a call; garble, cut, overlap or lose its audio; leak a task, connection or memory
-per call; send Groq more than the limits allow or fail on a 429 it could wait out; refuse valid
-Arabic or English text; or leave a later track or milestone a contract it cannot build on. Each
-finding is checked by one skeptic, an agent told to refute it, before it is acted on; everything
-else becomes a row in `docs/plans/tech-debt.md`, and there is no second fix round unless a high
-finding stands.
+whole-plan review at step 17 (dropped on 2026-11-03) was to follow the same rule; for this plan,
+this replaces the plans README's reviewers named by concern ("Parallel tracks", item 4). A review
+reports only what would break, hang or crash a call; garble, cut, overlap or lose its audio; leak a
+task, connection or memory per call; send Groq more than the limits allow or fail on a 429 it could
+wait out; refuse valid Arabic or English text; or leave a later track or milestone a contract it
+cannot build on. Each finding is checked by one skeptic, an agent told to refute it, before it is
+acted on; everything else becomes a row in `docs/plans/tech-debt.md`, and there is no second fix
+round unless a high finding stands.
 - **Security:** invariants 1, 5, 7 and 8; data-channel input parsed strictly (the browser is not
   trusted, SECURITY.md's trust boundaries); the offer secret, the TURN secret, the join keys and the
   access code, each held to its minimum length; CORS; the token route and the guard on the shared
@@ -2237,6 +2362,13 @@ language's greeting, the echo's frame, and the `error` and `ended` notices), not
 and a file-fed call plays its greeting before the clip's lead (D-037); Arm T1, the cost and the
 limits below count them.*
 
+*Amended 2026-11-03, before any run ("The owner's decisions"): T1 and T2 are dropped, and nothing
+below runs in M2. The time of each step comes from the owner's recorded session (C), whose calls'
+reports and traces record each turn, and the VAD stop delay and Smart Turn's decision from E1,
+offline. The text below stays as registered; `poe eval-timing` stays in the code, unrun (TD-071,
+TD-082, TD-063's first byte and noise floor, and TD-081's timing part wait for a timing run, if one
+is ever run).*
+
 - **Data.** The 23 dev paused-request variants: 19 for the Arabic model (Saudi 11, MSA 4, mixed 4)
   and 4 for the English one.
 - **Arm T1.** The echo on the file-fed pipeline at real-time pace with the real `GroqSTT`
@@ -2293,6 +2425,11 @@ limits below count them.*
 
 **L · The live language, and the noise on another day (spends)**
 
+*Amended 2026-11-03, before any run ("The owner's decisions"): R5, R7 and R6 move to M3, whose plan
+needs the noise on another day (TD-032) anyway, with Q15; M2 keeps `stt.live_language`'s default,
+`session` (`core/settings/stt.py`). The text below stays as registered, for M3's plan to take up or
+register again.*
+
 - **Arms.** A1 as plan 002 registered it (`whisper-large-v3`, the item's label as the language, no
   prompt, temperature 0, `verbose_json`, `--timeout-s 6`); A3, the same with `--language-hint auto`,
   so no language is sent.
@@ -2328,12 +2465,23 @@ limits below count them.*
 call of C is local, on this laptop, through the Ole5 app's dev server on localhost, with no network
 variant. C and the budget as drafted are in "The deployment, moved out of M2".*
 
+*Amended 2026-11-03, before any run ("The owner's decisions"): C is one recorded session of about 20
+to 30 minutes, which also holds the first calls (step 18): Q18's script in Chrome, on the laptop's
+speakers, then the wired headset; Edge and the Bluetooth headset are dropped. Each bullet below
+keeps its registered text and ends with its amendment.*
+
 - **The calls,** from the call script the owner approves (Q18): the agent's proposal is five calls
   of at least three minutes and about ten turns each, all local: in Chrome on the laptop's speakers,
   the wired headset and a Bluetooth headset, and in Edge on the speakers and the wired headset. The
   turns, in the owner's own words: requests that pause mid-sentence, one-clause requests with
   product terms, a number and a ticket number, English sentences, listening sounds, and the Stop
   button and Esc during the echo.
+  *Amended 2026-11-03 (Q18): one session in four calls, none past `limits.max_call_s` (600 s): on
+  each device an Arabic call, three Saudi turns then three MSA turns, and an English call of three
+  turns, about 18 turns in all, with Stop pressed once on the speakers and Esc once on the headset,
+  and in each Arabic call one listening sound during an echo, transcribed but never said back (the
+  drop rule), for M3's check that listening sounds do not interrupt the agent ("What the owner
+  does", step 3).*
 - **Metrics, per call:** per Groq model, the requests and the requests per call minute, the audio
   seconds sent and billed per minute, the TTS characters per minute; per turn, the server's time to
   first audio and, from `client_stats`, when it played (their difference is the network to the
@@ -2341,8 +2489,12 @@ variant. C and the budget as drafted are in "The deployment, moved out of M2".*
   the owner heard the turn back (after each call, the owner names any turn that did not come back,
   and the agent checks it against the call's trace and timeline). Reported per call and as medians
   over the calls.
+  *Amended 2026-11-03: the server's steps per turn are those the call's report and trace hold (the
+  measurement criteria), and when a turn played comes from the recording's timeline (approximately,
+  TD-070); reported per call and over the session.*
 - **Recorded:** the requests per call minute per model, beside the key's real limits (Q17), as a
   decision entry for M6.
+  *Amended 2026-11-03 (Q17): beside the published limits, or the real ones if the owner reads them.*
 - **Cost (the agent's estimate):** a turn every 10 s or so is about 6 Whisper requests a minute with
   Whisper cut per turn, up to about 12 with cut-offs, and up to about 20 for a caller who pauses
   often if it is cut per segment, against the published 20 a minute; each is billed 10 s, so 60 to
@@ -2353,12 +2505,33 @@ variant. C and the budget as drafted are in "The deployment, moved out of M2".*
   character (UNVERIFIED), about 360 characters a minute leave about 10. The lower holds until Q17's
   reading says otherwise, so C's calls span about two days, none on T's day, unless Groq raises
   the limits (Q17).
+  *Amended 2026-11-03: the session keeps the estimate of C and the first calls ("The budget"),
+  $0.28 + $0.05 = $0.33, as a ceiling for its script: about 18 turns, 12 on the Arabic model and 6
+  on the English one, and 2 listening sounds, each up to 2 Whisper requests (a cut-off); each turn
+  one packed Orpheus request (up to 3 past 200 characters, D-1's fix), a listening sound none; at
+  C's 60 characters a turn they cost about $0.05. On the published limits, which hold while Q17 is
+  unread, the session fits one day: at most 40 Whisper requests, 400 billed seconds of the 7.2K an
+  hour; for the Arabic model, 12 requests and, on a cold cache, Ole5's four `ar-SA` phrases, 16 of
+  the 100 a day (40 if every turn passed 200 characters), and about 12 × 60 + 150 ≈ 870 characters
+  of its 3.6K tokens a day (2,550 if every turn took a full 200), if a token is a character
+  (UNVERIFIED); at a turn every 10 s or slower, no minute passes 20 Whisper or 10 Orpheus requests.
+  There is no T day to keep apart.*
 
 **The budget** (the agent's arithmetic, amended 2026-11-03 with C and with Block 0's fixed phrases):
 L $0.23, T $0.14 and up to $0.06 more once on a cold phrase cache (T's cost), C about $0.28, the
 first local calls about $0.05, and Q16's prompt arm $0.075 if it runs in M2: about $0.80 in all,
 $0.84 on a cold cache; `t2v doctor --synthesize` adds a fraction of a cent each time it runs.
 Whether a refused request is billed is UNVERIFIED (TD-021), and retries add requests.
+
+*Amended 2026-11-03, before any run, with the owner's ruling and Q13's cap ("The owner's
+decisions"): L, T and Q16's prompt arm leave M2, $0.23 + $0.14 + $0.075 = $0.445, so about $0.80
+less $0.445 leaves about $0.35: the session, which holds C ($0.28) and the first calls' share
+($0.05), $0.33, its estimate kept as a ceiling (C's cost). The cold phrase cache, which T's first
+run would have paid, falls on the session's first start: Ole5's four `ar-SA` phrases (its greeting
+with the name said out, the frame, the `error` and `ended` notices) hold about 150 characters and
+its four `en` ones about 190, so 150 × $40 + 190 × $22 a million ≈ $0.01 (T's cost had bounded it at
+$0.024 and $0.013). About $0.34 in all, against Q13's cap of $1; `t2v doctor --synthesize` adds a
+fraction of a cent each time it runs.*
 
 **Words the questions use**
 
@@ -2509,25 +2682,37 @@ call (step 18), since those calls spend the same money and limits:
 - **Q13. The budget cap** for M2's paid runs and calls together, against the estimate of about $0.80
   ("The budget"). **The agent recommends $5**, the cap the owner set for M1 (the agent had
   recommended $2 then).
-- **Q14. The turn defaults.** Should M2 change the settings that decide when the caller has
+  *Settled on 2026-11-03: $1, which the agent proposed with the cuts, against about $0.34 ("The
+  budget", amended; "The owner's decisions").*
+- **Q14. The turn defaults.** *Settled on 2026-11-03: (a), the defaults stay ("The owner's
+  decisions").*
+  Should M2 change the settings that decide when the caller has
   finished speaking? With only 6 paused requests in dev and D-024's floor of 6, a change could be
   shown to help only if all 6 got better. Options: (a) measure only in M2 (E1 is the baseline), and
   tune in M3 after more paused requests are recorded; (b) the owner records more paused requests now
   (say 20 more lines, about an hour on the three devices), then M2 tunes on dev; (c) tune on the six
   now. (b) and (c) would be registered as a dated amendment before E1. **The agent recommends
   (a).**
-- **Q15. The language a live call sends Whisper, when the rule does not decide.** If A3 is not worse
+- **Q15. The language a live call sends Whisper, when the rule does not decide.** *Moved to M3 on
+  2026-11-03, with runs R5 to R7 ("The owner's decisions"); M2 keeps `stt.live_language`'s default,
+  `session`.*
+  If A3 is not worse
   (the rule above): (a) auto-detect for live calls, and the widget's language buttons kept only as a
   preference; (b) the session's language anyway; (c) the prototype's double transcription, each clip
   sent as Arabic and as English (its D24), twice the requests at the 10 s minimum each, against 20
   Whisper requests a minute. **The agent recommends (a) in that case,** and (b) otherwise, as the rule
   already gives.
-- **Q16. The prompt arm for product terms: in M2 or in M4.** Term recall was 0.333 for large-v3 on dev
+- **Q16. The prompt arm for product terms: in M2 or in M4.** *Settled on 2026-11-03: M4 ("The
+  owner's decisions").*
+  Term recall was 0.333 for large-v3 on dev
   (plan 002's Future improvements). In M2 it costs one dev run (about $0.075) plus a `--prompt` flag
   in `poe eval` and the answerers' split, and it would change no default in M2, since the vocabulary that
   becomes the prompt is declared with the agent (the design's 3.1 and 3.3). **The agent recommends
   M4**, where the vocabulary lands and the result is used.
-- **Q17. The key**, before the first live call. Its real limits from the console
+- **Q17. The key**, before the first live call. *Settled on 2026-11-03: optional; the published
+  limits are enough for one session (C's cost, amended), and the real ones are recorded if the owner
+  reads them ("The owner's decisions").*
+  Its real limits from the console
   (console.groq.com/settings/limits): for each Orpheus model the requests and tokens a minute and a
   day (published: 10, 100, 1.2K and 3.6K) and what a TTS token counts; for `whisper-large-v3` the
   requests a minute and the audio seconds an hour and a day (published: 20, 7.2K and 28.8K); whether
@@ -2537,7 +2722,11 @@ call (step 18), since those calls spend the same money and limits:
   a minute, and up to about 20 if Whisper is cut per segment ("C" above). **The agent recommends**
   pacing runs at half the key's per-minute limits while anything else might use it, as in M1, and
   holding C's call days apart from T's day while the published limits hold.
-- **Q18. The call script.** The calls of "C" above, or fewer or more; with or without the Bluetooth
+- **Q18. The call script.** *Settled on 2026-11-03: the agent's short script, in "What the owner
+  does", step 3: one recorded session in Chrome, an Arabic and an English call on each device, three
+  turns a language, a listening sound in each Arabic call, Stop once and Esc once ("The owner's
+  decisions").*
+  The calls of "C" above, or fewer or more; with or without the Bluetooth
   headset. **The agent recommends the script as proposed**, the Bluetooth call included, so that M3
   has its recordings for the Bluetooth warning.
 - **Q19. Pipecat's log lines when a team asks for them (`logging.pipecat = "forward"`).** *Asked on
@@ -2571,25 +2760,38 @@ the run it touches.
    them to the agent; if they are as published, ask Groq to raise them (the design's question 21); a
    spend limit in the console is the owner's choice. The key itself stays where M1 put it (`.env` in
    the main checkout, or its file).
-3. **The first local calls** (step 18): first answer Q13 and Q17, and Q5 if it waited. Then, from the
-   main checkout, start the Ole5 app's dev server with the command the agent gives, open the address
-   it prints in Chrome on this laptop, allow the microphone, and say a few lines on the laptop's
-   speakers, then on the wired headset, pressing Stop and Esc during an echo; then the same in Edge.
-   Say whether each turn came back, and whether the microphone, playback, Stop and Esc worked in each
-   browser.
+   *Done on 2026-11-03 ("The owner's decisions"): the owner accepted the Orpheus terms in Groq's
+   console and reported the acceptance, not who could accept; the key's limits were not read, and
+   reading them is optional (Q17).*
+3. **The recorded session** (step 18, run C; amended 2026-11-03, "The owner's decisions"): Q5, Q13
+   and Q18 are answered. From the main checkout, start the Ole5 app's dev server with the agent's
+   command, which sets Q7's consent version and switches recording on; open the address it prints in
+   Chrome on this laptop; on the consent screen, tick the recording box and agree, then type the
+   access code; start each call with Start, its language picked at the top first, allow the
+   microphone if Chrome asks, and end the call with End. The box and the code stay set for the later
+   calls (the consent screen shows once per page load). Say whether anything else will use the key
+   meanwhile. The script, about 20 to 30 minutes in four calls (a call ends at 10 minutes):
+   - on the laptop's speakers, an Arabic call (`ar-SA`): three Saudi turns (one that pauses
+     mid-sentence, one with a product term, one with a number or a ticket number), then three MSA
+     turns; press Stop once during an echo, and during another echo say a listening sound («اها» or
+     «ايوه») once;
+   - on the speakers, an English call: three turns, one with a product term;
+   - on the wired headset, the Arabic call again, its listening sound included, pressing Esc once
+     during an echo instead of Stop;
+   - on the headset, the English call again.
+
+   After each call, say which turn, if any, did not come back, and whether the microphone, playback,
+   Stop and Esc worked; after the last, switch recording off with the agent's command and stop the
+   backend (Q4).
 
 **Steps 4 to 6, and the host's and the other networks' parts of steps 7 and 8, moved with the
 deployment** on 2026-11-03 ("The owner's decisions"); as drafted, they are in "The deployment,
 moved out of M2". Steps 7 to 9 keep their numbers.
 
-7. **The calls** (run C): with Q18's script, on each device and in each browser it names, from the
-   main checkout through the Ole5 app's dev server on localhost, as in step 3. Use the access code
-   on the page; switch recording on with the agent's command only for C's sessions, off after, and
-   tick the recording box only in C's calls; stop the backend between sessions, as Q4 says.
-8. **After each session:** nothing to copy: the call reports and, after a recorded session, the
-   recordings are already under `var/` on this laptop (Q7).
-9. **Before the measurement runs:** answer Q14 to Q16 and Q18, and say again whether anything else
-   uses the key during the runs.
+**Steps 7 to 9, folded into step 3** on 2026-11-03 ("The owner's decisions"): run C's calls are
+step 3's session (7); after it there is nothing to copy, its call reports and recordings being under
+`var/` on this laptop (8, Q7); and Q14 to Q16 and Q18 were answered that day, the question of the
+key's other users asked with step 3 (9).
 
 ## The deployment, moved out of M2
 
