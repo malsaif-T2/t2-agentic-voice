@@ -4,7 +4,9 @@ It serves `t2v/1`: it starts a call (checks the join token and hands the WebRTC 
 which answers it), reports health, and serves the reference client (`t2v-client.js`) and the dev
 page; an app's widget is the app's to serve. It builds the adapters from the settings and
 injects them into the layers below, and maps every error to one shape for its transport
-(GP-19). It may import every other layer. Built so far: the health report (`status.py`) and
-the `t2v/1` HTTP bodies, their caps and their one error body (`protocol.py`); the runtime
-(`runtime.py`) and serving (`server.py`) are signatures.
+(GP-19). It may import every other layer. Built: the health report (`status.py`); the `t2v/1`
+HTTP bodies, their caps and their one error body (`protocol.py`); the runtime and its lifespan
+(`runtime.py`, `lockfile.py`); the router, its records of the calls and its error shape
+(`router.py`, `offers.py`, `http_errors.py`); serving (`server.py`); and the `t2v` command
+(`cli.py`, `doctor.py`).
 """
