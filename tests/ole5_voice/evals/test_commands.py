@@ -20,6 +20,7 @@ COMMANDS = [
     "ole5_voice.evals.import_recordings",
     "ole5_voice.evals.eot",
     "ole5_voice.evals.timing",
+    "ole5_voice.evals.call_manifests",
 ]
 
 
