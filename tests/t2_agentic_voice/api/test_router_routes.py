@@ -180,9 +180,14 @@ def test_the_dev_page_serves_loopback_clients_in_dev(
             assert (answer.status_code, answer.json()) == (404, {"detail": "Not Found"})
             return
         assert answer.content == PAGE
-        assert answer.headers["content-security-policy"] == "frame-ancestors 'none'"
+        assert answer.headers["content-security-policy"] == (
+            "default-src 'none'; script-src 'self'; connect-src 'self'; img-src data:; "
+            "base-uri 'none'; form-action 'none'; frame-ancestors 'none'"
+        )
         assert answer.headers["x-content-type-options"] == "nosniff"
         assert answer.headers["referrer-policy"] == "no-referrer"
+        assert answer.headers["permissions-policy"] == "microphone=(self)"
+        assert answer.headers["cache-control"] == "no-store"
         assert answer.headers["content-type"] == "text/html; charset=utf-8"
 
     asyncio.run(scene())

@@ -53,10 +53,16 @@ STATIC: Final = Path(__file__).parent / "static"
 CLIENT_SCRIPT: Final = "t2v-client.js"
 DEV_PAGE: Final = "dev.html"
 _SCRIPT_HEADERS: Final = {"X-Content-Type-Options": "nosniff", "Cache-Control": "no-cache"}
-# The dev page's headers: never framed (the browser criterion), no referrer, the microphone for
-# the page itself.
+# The dev page's headers: Track G's policy, which loads the client script alone, talks only to
+# the page's own origin, takes only a data: image (the page's empty icon) and is never framed
+# (the browser criterion), since dev.html holds no script, style or handler of its own; no
+# referrer, the microphone for the page itself.
+_DEV_POLICY: Final = (
+    "default-src 'none'; script-src 'self'; connect-src 'self'; img-src data:; base-uri 'none'; "
+    "form-action 'none'; frame-ancestors 'none'"
+)
 _PAGE_HEADERS: Final = {
-    "Content-Security-Policy": "frame-ancestors 'none'",
+    "Content-Security-Policy": _DEV_POLICY,
     "X-Content-Type-Options": "nosniff",
     "Referrer-Policy": "no-referrer",
     "Permissions-Policy": "microphone=(self)",
