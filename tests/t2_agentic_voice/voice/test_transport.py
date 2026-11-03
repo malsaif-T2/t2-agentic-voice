@@ -5,20 +5,28 @@ from __future__ import annotations
 
 import asyncio
 import logging
+from typing import TYPE_CHECKING
 
 import pytest
 from t2_agentic_voice.core.errors import InvalidRequestError
 from t2_agentic_voice.voice import transport as transport_module
+from t2_agentic_voice.voice.session.io import SYSTEM_CLOCK
+from t2_agentic_voice.voice.session_bridge import CallEvents, ClauseEndFrame, context_id
 from t2_agentic_voice.voice.transport import (
     IN_RATE,
     OUT_RATE,
+    ClauseGate,
+    OutputTap,
     WebRTCPeer,
     check_candidate,
     check_offer,
     transport_params,
 )
 
-from tests.t2_agentic_voice.voice.kit import client_offer
+from tests.t2_agentic_voice.voice.kit import Tail, client_offer, run_pipeline, until
+
+if TYPE_CHECKING:
+    from pipecat.pipeline.worker import PipelineWorker
 
 HOST = "candidate:842163049 1 udp 1677729535 192.0.2.10 54400 typ host generation 0"
 RELAY = "candidate:3 1 udp 41885439 192.0.2.20 3478 typ relay raddr 192.0.2.30 rport 61000"
@@ -136,3 +144,42 @@ def test_a_close_that_hangs_or_fails_is_bounded_and_logged(
     lines = [r.getMessage() for r in caplog.records]
     assert "peer_close_timeout" in lines and "peer_close_failed" in lines
     assert "own text" not in caplog.text
+
+
+def test_the_output_tap_reports_only_the_clauses_contexts() -> None:
+    """A stop frame of a text-to-speech context that is no clause's is passed on, unreported."""
+    from pipecat.frames.frames import TTSStoppedFrame
+
+    events, played = CallEvents(SYSTEM_CLOCK), list[tuple[int, int]]()
+    tap, tail = OutputTap(events, played.append), Tail()
+
+    async def feed(worker: PipelineWorker) -> None:
+        await worker.queue_frame(TTSStoppedFrame(context_id="another-context"))
+        await worker.queue_frame(TTSStoppedFrame(context_id=context_id((1, 0))))
+        await until(lambda: len(tail.of(TTSStoppedFrame)) == 2)
+
+    asyncio.run(run_pipeline([tap, tail], feed))
+    assert played == [(1, 0)]
+
+
+def test_the_gate_drops_every_frame_of_a_clause_a_stop_dropped() -> None:
+    """A frame that slipped past the interruption (one waiting in an input queue is taken after
+    it) is dropped before the output: audio, a stop frame or a marker of a dropped clause."""
+    from pipecat.frames.frames import TTSAudioRawFrame, TTSStoppedFrame
+
+    events, tail = CallEvents(SYSTEM_CLOCK), Tail()
+    events.dropped.add((1, 0))
+    dropped, kept = context_id((1, 0)), context_id((2, 0))
+
+    async def feed(worker: PipelineWorker) -> None:
+        for context in (dropped, kept):
+            await worker.queue_frame(TTSAudioRawFrame(b"\x00\x00", 24_000, 1, context_id=context))
+            await worker.queue_frame(TTSStoppedFrame(context_id=context))
+        await worker.queue_frame(ClauseEndFrame(key=(1, 0)))
+        await worker.queue_frame(ClauseEndFrame(key=(3, 0)))
+        await until(lambda: len(tail.of(ClauseEndFrame)) == 1)
+
+    asyncio.run(run_pipeline([ClauseGate(events), tail], feed))
+    assert [f.context_id for f in tail.of(TTSAudioRawFrame)] == [kept]
+    assert [f.context_id for f in tail.of(TTSStoppedFrame)] == [kept]
+    assert [f.key for f in tail.of(ClauseEndFrame)] == [(3, 0)]
