@@ -18,8 +18,8 @@ Public through the `groq` facade (D-021).
 
 - **Streaming.** The answer is read as Groq streams it (the SDK's streamed response), each piece
   of audio a chunk as soon as it holds whole samples, so the first sound plays before the take
-  has ended (the prototype's `stream`, Ole5-chatbot/src/ole5_chat/voice/tts.py, lines 191-221,
-  read, never run). `tts.timeout_s` bounds each step of the request, the connection and each
+  has ended (the prototype's `stream`, its `voice/tts.py`, lines 191-221, read, never run).
+  `tts.timeout_s` bounds each step of the request, the connection and each
   read of the answer, as the SDK's client applies it, not the whole take, which streams for as
   long as Groq takes to make it.
 - **The last chunk.** A take's last chunk is known only once the stream has ended, so a take

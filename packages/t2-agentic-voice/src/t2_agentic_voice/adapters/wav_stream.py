@@ -7,8 +7,8 @@ never assumed (Groq does not state it; 24 kHz per Pipecat's Groq service and the
 UNVERIFIED). It skips the chunks before the audio (the prototype saw a `LIST` chunk there), and
 takes every byte after the `data` chunk's header as audio, whatever size that header gives, since
 a WAV streamed before its length is known cannot give it. So did the prototype's `WavStream`
-(Ole5-chatbot/src/ole5_chat/voice/tts.py, lines 43-78, read, never run), which also refused any
-format but mono 16-bit.
+(its `voice/tts.py`, lines 43-78, read, never run), which also refused any format but mono
+16-bit.
 
 It measures the silence before the speech, in 40 ms frames: the frames before the first whose
 loudness passes about -44 dBFS (the prototype's `SILENT_RMS`, its lines 101-107, where Orpheus's
@@ -17,7 +17,7 @@ silence but for its last 40 ms (the prototype's `KEEP_BEFORE`), holding the audi
 speech starts; with `trim` off (`tts.trim_silence`'s default) the audio passes as it comes. Only
 the silence before the speech is trimmed: the pauses inside it and the silence after it are
 kept, which the prototype also cut (plan 003's decision log: runs T1 and T2 measure the leading
-silence before M4 weighs it).
+silence before the latency target weighs it).
 """
 
 from __future__ import annotations
