@@ -388,7 +388,7 @@ async def _drained(queue: asyncio.Queue[Event], task: asyncio.Task[None]) -> Non
 
 
 async def _cancelled(task: asyncio.Task[None]) -> None:
-    """Cancel `task` and wait for it to end."""
+    """Cancel `task`, returning once it has ended."""
     task.cancel()
     with suppress(asyncio.CancelledError):
         await task

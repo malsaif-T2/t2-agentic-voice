@@ -161,6 +161,21 @@ def test_an_app_that_names_no_runtime_factory_is_refused(
     assert why in err and "FIX:" in err and ran == []
 
 
+def test_apps_are_imported_from_the_working_folder_too(
+    env: Path, monkeypatch: pytest.MonkeyPatch, ran: list[uvicorn.Config]
+) -> None:
+    folder = env / "team"
+    folder.mkdir()
+    (folder / "zx_team_voice.py").write_text(
+        "from minimal_example.app import make_runtime\n", encoding="utf-8"
+    )
+    monkeypatch.chdir(folder)
+    monkeypatch.setattr(sys, "path", [p for p in sys.path if p not in ("", str(folder))])
+    monkeypatch.delitem(sys.modules, "zx_team_voice", raising=False)
+    assert main(["serve", "zx_team_voice:make_runtime"]) == 0
+    assert sys.path[0] == str(folder) and len(ran) == 1
+
+
 def test_the_module_runs_as_t2v(env: Path, monkeypatch: pytest.MonkeyPatch) -> None:
     monkeypatch.setattr(sys, "argv", ["t2v", "settings", "show"])
     monkeypatch.delitem(sys.modules, "t2_agentic_voice.api.cli")  # run afresh, as `python -m`

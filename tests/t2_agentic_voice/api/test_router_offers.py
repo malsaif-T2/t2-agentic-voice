@@ -237,8 +237,21 @@ class _Crashing(FakeCalls):
         raise RuntimeError("the pipeline failed to start")
 
 
-def test_an_offer_that_fails_is_a_500_and_the_call_is_ended(tmp_path: Path) -> None:
-    harness = Harness(dev_settings(tmp_path), calls=_Crashing())
+class _Unending(_Crashing):
+    """voice's entry point failing the offer, and then its end too."""
+
+    async def end(self, call_id: CallId) -> None:
+        raise RuntimeError("the end failed")
+
+    async def aclose(self) -> None:
+        self.closed += 1
+
+
+@pytest.mark.parametrize("calls", [_Crashing(), _Unending()])
+def test_an_offer_that_fails_is_a_500_and_the_call_is_ended(
+    calls: FakeCalls, tmp_path: Path, caplog: pytest.LogCaptureFixture
+) -> None:
+    harness = Harness(dev_settings(tmp_path), calls=calls)
 
     async def scene() -> None:
         async with serving(harness.app()) as http:
@@ -246,7 +259,10 @@ def test_an_offer_that_fails_is_a_500_and_the_call_is_ended(tmp_path: Path) -> N
             answer = await offered(http, call_id, secret)
         assert answer.status_code == 500
         refused(answer, "POST /offer", "internal_error")
-        assert harness.calls.ended == [call_id]
+        if isinstance(calls, _Unending):
+            assert "call_end_failed" in [r.getMessage() for r in caplog.records]
+        else:
+            assert harness.calls.ended == [call_id]
 
     asyncio.run(scene())
 
