@@ -3,12 +3,14 @@
 library's side of ARCH-PUBLIC (it never imports an app), ARCH-OWNER, ARCH-PRINT, ARCH-ENV, and
 ARCH-CONSTRUCT. ModuleChecker visits a module's tree once and collects every violation.
 
-ARCH-CONSTRUCT reads two kinds of [[restricted]] entry. A class counts where a call builds it
-(`C(...)`, `C.model_validate(...)`, `m.C(...)`). A name counts wherever it is referred to: an
-import of it under any alias, an attribute, a name read, or a string that is the name
-(`getattr(m, "NAME")`); only the module that defines it at its top level (an assignment, a def or
-a class) may read its own name. A name computed at run time cannot be checked statically: what
-the name guards checks it again at run time.
+ARCH-CONSTRUCT reads two kinds of [[restricted]] entry, each held by its `layers` and its
+`files`. A class counts where a call builds it (`C(...)`, `C.model_validate(...)`, `m.C(...)`).
+A name counts wherever the module's text mentions it (scripts/arch_names.py): any token that is
+the name, and any literal that holds it, a docstring included; and a star import from a module
+that may bind it (one of its files, or a module of its layers), which binds it unseen. No module
+outside its layers and files is exempt, not even one that binds a name of the same spelling. A
+name computed at run time cannot be checked statically: what the name guards checks it again at
+run time.
 """
 
 from __future__ import annotations
@@ -19,7 +21,8 @@ from collections.abc import Collection, Mapping
 from pathlib import Path
 
 from scripts._common import Violation
-from scripts.harness_arch import ArchConfig
+from scripts.arch_names import referred
+from scripts.harness_arch import ArchConfig, Ownership, under
 
 ROOT_LAYER = "<package root>"
 CHANGE_RULE_FIX = (
@@ -36,8 +39,11 @@ _STREAMS = frozenset({"stdout", "stderr"})
 
 
 class ModuleChecker(ast.NodeVisitor):
-    def __init__(self, arch: ArchConfig, *, layer: str, rel: str, display: str) -> None:
+    def __init__(
+        self, arch: ArchConfig, *, layer: str, rel: str, display: str, source: str
+    ) -> None:
         self.arch = arch
+        self.source = source  # the module's text, which the tree was parsed from
         self.layer = layer
         self.rel = rel  # inside the package: "core/config.py"
         self.display = display
@@ -49,15 +55,15 @@ class ModuleChecker(ast.NodeVisitor):
         self.importlib_names = {"importlib"}  # ... and to the importlib module
         # names that import a module named by a string, each with the LOADERS function it is
         self.import_functions = {"__import__": "__import__"}
-        self.defined: set[str] = set()  # names the module defines at its top level
         self.violations: list[Violation] = []
 
     def _add(self, line: int, rule: str, problem: str, fix: str) -> None:
         self.violations.append(Violation(self.display, line, rule, problem, fix))
 
     def visit_Module(self, node: ast.Module) -> None:
-        self.defined = _defined(node)
         self.generic_visit(node)
+        found = referred(self.arch, self.source, node, self.display, layer=self.layer, rel=self.rel)
+        self.violations += found
 
     # ---------------------------------------------------------------- imports
 
@@ -73,8 +79,6 @@ class ModuleChecker(ast.NodeVisitor):
         self.generic_visit(node)
 
     def visit_ImportFrom(self, node: ast.ImportFrom) -> None:
-        for alias in node.names:
-            self._check_name(alias.name, node.lineno)
         if node.level == 0:
             base = (node.module or "").split(".")
             self._check_owner(base[0], node.lineno)
@@ -93,6 +97,8 @@ class ModuleChecker(ast.NodeVisitor):
             base = package[: len(package) - (node.level - 1)]
             if node.module:
                 base = [*base, *node.module.split(".")]
+        if any(alias.name == "*" for alias in node.names):
+            self._check_star(".".join(base), node.lineno)
         # `from <package> import services` / `from .. import services`: a name may be a layer.
         if base == [self.arch.package] or node.module is None:
             for alias in node.names:
@@ -173,7 +179,7 @@ class ModuleChecker(ast.NodeVisitor):
             )
         name = _constructed_class(node.func, self.arch.restricted.keys())
         restriction = self.arch.restricted.get(name) if name else None
-        if restriction is not None and self.layer not in restriction.layers:
+        if restriction is not None and not restriction.allows(self.layer, self.rel):
             self._add(
                 node.lineno,
                 "ARCH-CONSTRUCT",
@@ -195,23 +201,22 @@ class ModuleChecker(ast.NodeVisitor):
             and node.attr in ENV_ATTRS
         ):
             self._env_violation(node.lineno, f"os.{node.attr}")
-        self._check_name(node.attr, node.lineno)
         self.generic_visit(node)
 
-    def visit_Name(self, node: ast.Name) -> None:
-        if isinstance(node.ctx, ast.Load) and node.id not in self.defined:
-            self._check_name(node.id, node.lineno)
+    def _check_star(self, module: str, line: int) -> None:
+        """ARCH-CONSTRUCT for `from <module> import *`, when `module` may bind a [[restricted]]
+        name this module may not mention: the import binds it with no mention."""
+        for name, restriction in self.arch.restricted_names.items():
+            if not restriction.allows(self.layer, self.rel) and self._binds(module, restriction):
+                problem = f"'*' imported from '{module}', which may bind '{name}', in layer "
+                self._add(line, "ARCH-CONSTRUCT", f"{problem}'{self.layer}'", restriction.fix)
 
-    def visit_Constant(self, node: ast.Constant) -> None:
-        if isinstance(node.value, str):
-            self._check_name(node.value, node.lineno)
-
-    def _check_name(self, name: str, line: int) -> None:
-        """ARCH-CONSTRUCT for a name in [[restricted]]: any reference outside its layers."""
-        restriction = self.arch.restricted_names.get(name)
-        if restriction is not None and self.layer not in restriction.layers:
-            problem = f"'{name}' referred to in layer '{self.layer}'"
-            self._add(line, "ARCH-CONSTRUCT", problem, restriction.fix)
+    def _binds(self, module: str, restriction: Ownership) -> bool:
+        """Whether `module` is one of the restriction's files, or a module of its layers."""
+        package = self.arch.package
+        if any(module == _module_name(package, path) for path in restriction.files):
+            return True
+        return any(under(module, f"{package}.{layer}") for layer in restriction.layers)
 
     def _env_violation(self, line: int, what: str) -> None:
         if self.rel in self.arch.env_allowed_files:
@@ -300,17 +305,11 @@ def _writes_output(func: ast.expr) -> bool:
     )
 
 
-def _defined(module: ast.Module) -> set[str]:
-    """The names `module` defines at its top level: by an assignment, a def or a class (an import
-    only binds another module's)."""
-    names: set[str] = set()
-    for statement in module.body:
-        if isinstance(statement, ast.FunctionDef | ast.AsyncFunctionDef | ast.ClassDef):
-            names.add(statement.name)
-        elif isinstance(statement, ast.Assign | ast.AnnAssign):
-            targets = statement.targets if isinstance(statement, ast.Assign) else [statement.target]
-            names.update(n.id for t in targets for n in ast.walk(t) if isinstance(n, ast.Name))
-    return names
+def _module_name(package: str, path: str) -> str:
+    """The dotted name of the module at `path` inside `package`: "core/identity.py" is
+    "<package>.core.identity", and "core/__init__.py" is "<package>.core"."""
+    parts = Path(path).with_suffix("").parts
+    return ".".join([package, *(parts[:-1] if parts[-1] == "__init__" else parts)])
 
 
 def _constructed_class(func: ast.expr, names: Collection[str]) -> str | None:

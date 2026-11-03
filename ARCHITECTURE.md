@@ -133,8 +133,10 @@ The agent's reasoning, from the questions the kit asks (D-003 records the altern
   invariants 1 and 2). The first there is `SignedConsent`, the consent a verified signed join
   token carried, built only by `adapters`' signed-token identity source, since only it lets a
   call's audio be recorded (invariant 8). A call is not the only way to build an object, so the
-  class also checks at run time that its validation was given a seal, `CONSENT_SEAL`, and a
-  `[[restricted]]` table of `names` reports any reference to the seal outside `adapters`.
+  class also checks at run time that its validation was given a seal, `CONSENT_SEAL`, and only
+  the instance that validation built, unchanged, lets audio be kept; and a `[[restricted]]`
+  table of `names` reports any mention of the seal outside `adapters/join_tokens.py`, which
+  gives it, and `core/identity.py`, which defines it.
 
 ## The web widget
 
@@ -221,9 +223,12 @@ The rules live in [harness.toml](harness.toml), the source of truth;
   modules, its DTMF aggregator or RTVI; `voice/session/` imports no Pipecat, not even through
   another of the library's modules; and the apps and the examples import neither Pipecat nor
   aiortc ([scripts/arch_ban.py](scripts/arch_ban.py));
-- ARCH-CONSTRUCT: a class in `[[restricted]]` is constructed only by its layers, and a name
-  in `[[restricted]]` is referred to only there (an import under any alias, an attribute, a
-  name, a string that is the name), the module that defines it aside;
+- ARCH-CONSTRUCT: a class in `[[restricted]]` is constructed only by its layers and its
+  files, and a name in `[[restricted]]` is mentioned only there, in the library or an app:
+  no token that is the name (an import under any alias, an attribute, a read, an annotation,
+  a class pattern's keyword), no literal that holds it (a string, bytes, an f-string's part,
+  a docstring) and no star import from a module that may bind it, the defining module
+  exempt only when its row names it ([scripts/arch_names.py](scripts/arch_names.py));
 - ARCH-PRINT: no `print` or direct writes to standard output outside the files `[rules]`
   allows;
 - ARCH-ENV: the environment is read only in the files `[rules]` allows;

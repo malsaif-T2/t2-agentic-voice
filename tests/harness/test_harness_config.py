@@ -107,14 +107,47 @@ def test_owners_must_name_real_layers_once(tmp_path: Path) -> None:
 
 
 def test_a_restricted_table_lists_classes_or_names(tmp_path: Path) -> None:
-    names = '\n[[restricted]]\nnames = ["SEAL"]\nlayers = ["domain"]\nfix = "Ask domain."\n'
+    names = (
+        '\n[[restricted]]\nnames = ["SEAL"]\nlayers = ["domain"]\nfiles = ["core/seal.py"]\n'
+        'fix = "Ask domain."\n'
+    )
     loaded = config(tmp_path, SYNTHETIC + names)
-    assert loaded.arch.restricted_names["SEAL"].layers == {"domain"}
+    seal = loaded.arch.restricted_names["SEAL"]
+    assert seal.layers == {"domain"} and seal.files == {"core/seal.py"}
+    assert seal.allows("domain", "domain/x.py") and seal.allows("core", "core/seal.py")
+    assert not seal.allows("core", "core/other.py")
     assert set(loaded.arch.restricted) == {"Approved"}
     both = names.replace('names = ["SEAL"]', 'classes = ["Sealed"]\nnames = ["SEAL"]')
     text = SYNTHETIC + both
     assert _problems(tmp_path, text) == [
         (_line(text, 'names = ["SEAL"]'), "[[restricted]] lists `classes` or `names`, not both")
+    ]
+
+
+def test_a_restricted_table_holds_a_layer_or_a_module_of_one(tmp_path: Path) -> None:
+    """`files` names modules of the library, each a path inside the package; `layers` may be
+    empty when `files` is not, and each table has both."""
+    only_files = '\n[[restricted]]\nnames = ["SEAL"]\nlayers = []\nfiles = ["core/seal.py"]\n'
+    loaded = config(tmp_path, SYNTHETIC + only_files + 'fix = "Ask core/seal.py."\n')
+    assert loaded.arch.restricted_names["SEAL"].layers == frozenset()
+    bad = only_files.replace(
+        '"core/seal.py"', '"core/seal", "web/x.py", "/core/x.py", "core/A-b.py"'
+    )
+    text = SYNTHETIC + bad + 'fix = "Ask."\n'
+    line = _line(text, 'files = ["core/seal", "web/x.py", "/core/x.py", "core/A-b.py"]')
+    expected = "is not a module of a layer ('<layer>/<name>.py', inside the package)"
+    assert _problems(tmp_path, text) == [
+        (line, f"[[restricted]] files: '{path}' {expected}")
+        for path in ("/core/x.py", "core/A-b.py", "core/seal", "web/x.py")
+    ]
+    empty = only_files.replace('files = ["core/seal.py"]', "files = []")
+    text = SYNTHETIC + empty + 'fix = "Ask."\n'
+    assert _problems(tmp_path, text) == [
+        (_line(text, "layers = []"), "[[restricted]] names no layer and no file")
+    ]
+    missing = SYNTHETIC.replace('layers = ["domain"]\nfiles = []\n', 'layers = ["domain"]\n')
+    assert _problems(tmp_path, missing) == [
+        (_line(missing, "[[restricted]]"), "[restricted] needs `files`")
     ]
 
 

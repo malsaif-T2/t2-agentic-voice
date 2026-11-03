@@ -1,211 +1,56 @@
-"""Who is calling and what they consented to (the design's 5.2 and 6.5): parsed strictly, since a
-token's claims are outside input, bounded, read-only, and refused without echoing a value
-(GP-19); and only the consent a verified signed token carried, which only `adapters` builds,
-can let audio be recorded (docs/SECURITY.md, invariant 8): every other way to build one raises
-at run time, and `poe arch` reports the seal's name anywhere but in `adapters`."""
+"""Only the consent a verified signed token carried, which only `adapters` builds, can let audio
+be recorded (docs/SECURITY.md, invariant 8): only the very instance the seal validated,
+unchanged since, allows it; the common ways to build or change one raise at run time; and
+`poe arch` reports the seal's name anywhere but in the verifier and core/identity.py."""
 
 from __future__ import annotations
 
 import ast
 import copy
+import gc
 import pickle
+import weakref
 from collections.abc import Callable
 from pathlib import Path
-from typing import Any
 
 import pytest
-from pydantic import BaseModel, TypeAdapter, ValidationError, create_model
+from pydantic import TypeAdapter, create_model
 from t2_agentic_voice.core import identity
 from t2_agentic_voice.core.identity import (
     CONSENT_SEAL,
-    CONSENT_VERSION_PATTERN,
-    MAX_ATTRIBUTES,
-    MAX_TEXT,
-    Caller,
     Consent,
     SignedConsent,
     allows_recording,
 )
-from t2_agentic_voice.core.identity import SignedConsent as Verified
-from t2_agentic_voice.core.settings.privacy import PrivacySettings
 
 from scripts.arch_module import ModuleChecker
 from scripts.harness_config import load_config
-from tests.leaks import holding, shown
+from tests.t2_agentic_voice.core.consent_support import (
+    ALLOWS_NOTHING,
+    RECORD,
+    UNSEALED,
+    Holder,
+    MixedIn,
+    Unchecked,
+    deprecated,
+    verified,
+)
 
 ROOT = Path(__file__).resolve().parents[3]
-MARK = "zx-made-up-mark-41"  # a value no error may repeat
-LONG = MARK * 15  # over MAX_TEXT
-# Where a model's own refusal carries the input it refused, as pydantic's always do: Track C's
-# `verify` answers with a JoinRejected that holds no value, never with these.
-CARRIED = {"errors", "errors json"}
-RECORD: dict[str, Any] = {"version": "v1", "record_audio": True}
-RECORD_JSON = '{"version": "v1", "record_audio": true}'
-
-
-def _signed(*, record_audio: bool) -> SignedConsent:
-    """A consent as `SignedJoinTokens` builds one, from a token whose signature it verified."""
-    data = {"version": "v1", "record_audio": record_audio}
-    return SignedConsent.model_validate(data, context=CONSENT_SEAL)
-
-
-def _refused(model: type[Caller | Consent], data: dict[str, Any]) -> ValidationError:
-    with pytest.raises(ValidationError) as raised:
-        model.model_validate(data)
-    return raised.value
-
-
-def test_a_caller_holds_the_tokens_identity_read_only() -> None:
-    caller = Caller(
-        subject="e-1042", display_name="Sara", locale="ar-SA", attributes={"dept": "it"}
-    )
-    assert (caller.subject, caller.display_name, caller.locale) == ("e-1042", "Sara", "ar-SA")
-    assert Caller(subject="dev") == Caller(subject="dev", attributes={})
-    with pytest.raises(TypeError):
-        caller.attributes["dept"] = "finance"  # type: ignore[index]
-    with pytest.raises(ValidationError):
-        caller.subject = "e-1"  # type: ignore[misc]
-    assert caller.model_dump(mode="json")["attributes"] == {"dept": "it"}
-    assert Caller.model_validate_json(caller.model_dump_json()) == caller
-
-
-@pytest.mark.parametrize(
-    "bad",
-    [
-        {"subject": ""},
-        {"subject": "   "},
-        {"subject": f"e-1\n{MARK}"},
-        {"subject": f"e-1\x1b{MARK}"},
-        {"subject": LONG},
-        {"subject": 1042},
-        {"subject": "e-1", "display_name": f"{MARK}\r\n"},
-        {"subject": "e-1", "locale": f"{MARK} please"},
-        {"subject": "e-1", "locale": "ab" + "-abcdefgh" * 4},  # over 35 characters
-        {"subject": "e-1", "attributes": {f"{MARK} key": "v"}},
-        {"subject": "e-1", "attributes": {MARK: LONG}},
-        {"subject": "e-1", "attributes": {MARK: f"{MARK}\n"}},
-        {"subject": "e-1", "attributes": {MARK: 1}},
-        {"subject": "e-1", "attributes": {f"k{i}": MARK for i in range(MAX_ATTRIBUTES + 1)}},
-        {"subject": "e-1", "attributes": [MARK]},
-        {"subject": "e-1", "role": MARK},
-    ],
-)
-def test_a_caller_refuses_what_a_token_should_not_carry_and_echoes_none_of_it(
-    bad: dict[str, Any],
-) -> None:
-    """A key of `attributes` is outside input too: no error's text names it. Its `errors()`
-    and `json()` carry the input, as pydantic's always do."""
-    assert len(LONG) > MAX_TEXT
-    error = _refused(Caller, bad)
-    assert set(holding(MARK, shown(error))) <= CARRIED
-
-
-def test_a_caller_takes_names_in_any_script_up_to_the_bound() -> None:
-    caller = Caller(subject="x" * MAX_TEXT, display_name="سارة العتيبي", locale="en")
-    assert caller.display_name == "سارة العتيبي"
-    keys = {f"k{i}": "v" for i in range(MAX_ATTRIBUTES)}
-    assert len(Caller(subject="e-1", attributes=keys).attributes) == MAX_ATTRIBUTES
-
-
-@pytest.mark.parametrize(
-    "bad",
-    [
-        {"version": None, "record_audio": "true"},
-        {"version": None, "record_audio": "false"},
-        {"version": None, "record_audio": 1},
-        {"version": None, "record_audio": 0},
-        {"version": None, "record_audio": None},
-        {"version": None},
-        {"record_audio": False},
-        {"version": f"{MARK} 2", "record_audio": False},
-        {"version": MARK * 4, "record_audio": False},  # over 64 characters
-        {"version": "", "record_audio": False},
-        {"version": 2, "record_audio": False},
-        {"version": "v1", "record_audio": False, "scope": MARK},
-    ],
-)
-def test_a_consent_is_a_bounded_version_and_a_real_boolean(bad: dict[str, Any]) -> None:
-    """The plan's adversarial cases for `consent.record_audio` ("true", "false", 1, null) and
-    the bounded version, refused whether parsed from a token's claims or built in code, and by
-    a signed consent too: the seal skips none of the parsing."""
-    error = _refused(Consent, bad)
-    assert set(holding(MARK, shown(error))) <= CARRIED
-    with pytest.raises(ValidationError) as raised:
-        SignedConsent.model_validate(bad, context=CONSENT_SEAL)
-    assert set(holding(MARK, shown(raised.value))) <= CARRIED
-
-
-def test_a_consent_version_is_what_the_setting_takes() -> None:
-    """/join compares the two, so one pattern bounds both."""
-    pattern = next(
-        m.pattern
-        for m in PrivacySettings.model_fields["consent_version"].metadata
-        if hasattr(m, "pattern")
-    )
-    assert pattern == CONSENT_VERSION_PATTERN
-    assert Consent(version="m2-owner-test-1", record_audio=True).version == "m2-owner-test-1"
-    assert PrivacySettings(consent_version="m2-owner-test-1").consent_version == "m2-owner-test-1"
-
-
-class _Holder(BaseModel):
-    consent: SignedConsent
-
-
-_BOUND = identity.SignedConsent  # a name bound to the class
-
-
-def _replaced(consent: SignedConsent) -> object:
-    """What Python 3.13's `copy.replace(consent, record_audio=True)` calls: pydantic's
-    `__replace__`, which typeshed's 3.12 does not name."""
-    replace = consent.__replace__  # type: ignore[attr-defined]
-    return replace(record_audio=True)
-
-
-# The ways the review found to build a signed consent outside adapters, and their kin, each
-# refused at run time: `consent` is one the verifier built.
-UNSEALED: dict[str, Callable[[SignedConsent], object]] = {
-    "the constructor": lambda _: SignedConsent(version="v1", record_audio=True),
-    "an import alias": lambda _: Verified(version="v1", record_audio=True),
-    "a name bound to the class": lambda _: _BOUND(**RECORD),
-    "type(consent)(...)": lambda consent: type(consent)(**RECORD),
-    "consent.__class__(...)": lambda consent: consent.__class__(**RECORD),
-    "type(consent).model_validate": lambda consent: type(consent).model_validate(RECORD),
-    "model_validate": lambda _: SignedConsent.model_validate(RECORD),
-    "model_validate_json": lambda _: SignedConsent.model_validate_json(RECORD_JSON),
-    "model_validate_strings": lambda _: SignedConsent.model_validate_strings(
-        {"version": "v1", "record_audio": "true"}
-    ),
-    "from a plain consent's attributes": lambda _: SignedConsent.model_validate(
-        Consent(**RECORD), from_attributes=True
-    ),
-    "a seal of its own": lambda _: SignedConsent.model_validate(RECORD, context=object()),
-    "a copy of the seal": lambda _: SignedConsent.model_validate(
-        RECORD, context=copy.copy(CONSENT_SEAL)
-    ),
-    "the seal inside a context": lambda _: SignedConsent.model_validate(
-        RECORD, context={"seal": CONSENT_SEAL}
-    ),
-    "TypeAdapter.validate_python": lambda _: TypeAdapter(SignedConsent).validate_python(RECORD),
-    "TypeAdapter.validate_json": lambda _: TypeAdapter(SignedConsent).validate_json(RECORD_JSON),
-    "a model that holds one": lambda _: _Holder.model_validate({"consent": RECORD}),
-    "model_construct": lambda _: SignedConsent.model_construct(**RECORD),
-    "model_copy with an update": lambda consent: consent.model_copy(update={"record_audio": True}),
-    "a deep model_copy with an update": lambda consent: consent.model_copy(
-        update={"record_audio": True}, deep=True
-    ),
-    "__replace__": _replaced,
-}
+PACKAGE = ROOT / "packages/t2-agentic-voice/src/t2_agentic_voice"
 
 
 @pytest.mark.parametrize("build", UNSEALED.values(), ids=UNSEALED.keys())
 def test_a_signed_consent_is_built_no_other_way(build: Callable[[SignedConsent], object]) -> None:
-    """Whatever the code that tries, even with a declined verified consent in hand: no new
+    """The common mistakes fail loudly, even with a declined verified consent in hand: no new
     `SignedConsent` comes out, and the refusal says who builds one."""
     with pytest.raises(TypeError, match="Only adapters' SignedJoinTokens builds a SignedConsent"):
-        build(_signed(record_audio=False))
+        build(verified(record_audio=False))
 
 
 def test_a_signed_consent_takes_no_subclass() -> None:
+    """Refused as it is defined; past a mixin that skips the refusal, as it is validated, and
+    one that skips that too allows nothing."""
     with pytest.raises(TypeError, match="takes no subclass"):
 
         class Mine(SignedConsent):  # type: ignore[misc]
@@ -213,6 +58,21 @@ def test_a_signed_consent_takes_no_subclass() -> None:
 
     with pytest.raises(TypeError, match="takes no subclass"):
         create_model("Mine", __base__=SignedConsent)
+    with pytest.raises(TypeError, match="Only adapters' SignedJoinTokens"):
+        MixedIn.model_validate(RECORD, context=CONSENT_SEAL)
+    mine = Unchecked.model_validate(RECORD, context=CONSENT_SEAL)
+    assert isinstance(mine, SignedConsent) and allows_recording(mine) is False
+
+
+@pytest.mark.parametrize("record_audio", [True, False])
+@pytest.mark.parametrize("route", ALLOWS_NOTHING.values(), ids=ALLOWS_NOTHING.keys())
+def test_a_consent_allows_recording_only_as_the_seal_validated_it(
+    route: Callable[[SignedConsent], object], record_audio: bool
+) -> None:
+    """From a verified consent that allows recording or from one that does not, whatever the
+    route gives allows nothing; and `allows_recording` answers a real boolean."""
+    made = route(verified(record_audio=record_audio))
+    assert isinstance(made, Consent) and allows_recording(made) is False
 
 
 @pytest.mark.parametrize(
@@ -221,70 +81,141 @@ def test_a_signed_consent_takes_no_subclass() -> None:
         lambda c: c.model_copy(),
         lambda c: c.model_copy(update={}),
         lambda c: c.model_copy(deep=True),
+        lambda c: Consent.model_copy(c),
+        lambda c: deprecated(c.copy),
+        lambda c: deprecated(lambda: c.copy(deep=True)),
         copy.copy,
         copy.deepcopy,
         lambda c: pickle.loads(pickle.dumps(c)),  # noqa: S301 (the test's own consent)
     ],
-    ids=["model_copy", "an empty update", "deep", "copy", "deepcopy", "pickle"],
+    ids=[
+        "model_copy",
+        "an empty update",
+        "deep",
+        "Consent's",
+        "copy",
+        "deep copy",
+        "copy.copy",
+        "deepcopy",
+        "pickle",
+    ],
 )
-def test_a_copy_with_no_change_is_the_same_consent(
+def test_a_copy_reads_as_the_consent_and_allows_nothing(
     same: Callable[[SignedConsent], SignedConsent],
 ) -> None:
-    for signed in (_signed(record_audio=True), _signed(record_audio=False)):
-        copied = same(signed)
-        assert type(copied) is SignedConsent and copied == signed
-        assert allows_recording(copied) is allows_recording(signed)
+    """Only the instance the seal validated lets audio be kept: a copy with no change reads the
+    same, and allows nothing."""
+    signed = verified(record_audio=True)
+    copied = same(signed)
+    assert type(copied) is SignedConsent and copied == signed and copied is not signed
+    assert allows_recording(copied) is False and allows_recording(signed) is True
+
+
+def test_a_sealed_consent_allows_recording_while_its_fields_are_unchanged() -> None:
+    """Rewritten in place, even to the same text, it allows nothing."""
+    signed = verified(record_audio=True)
+    assert allows_recording(signed) is True
+    assert allows_recording(signed) is True  # asking changes nothing
+    signed.__dict__["version"] = "".join(["v", "1"])  # the same text, another object
+    assert signed.version == "v1" and allows_recording(signed) is False
+    declined = verified(record_audio=False)
+    object.__setattr__(declined, "record_audio", True)
+    assert allows_recording(declined) is False
+
+
+def test_a_collected_consent_leaves_the_registry() -> None:
+    """The registry holds a sealed consent only while it lives, so it never grows with calls."""
+    signed = verified(record_audio=True)
+    key, alive = id(signed), weakref.ref(signed)
+    assert identity._SEALED[key].consent() is signed
+    del signed
+    gc.collect()
+    assert alive() is None and key not in identity._SEALED
 
 
 def test_only_a_signed_consent_is_a_verified_tokens_and_only_adapters_build_one() -> None:
-    signed = _signed(record_audio=True)
+    signed = verified(record_audio=True)
     plain = Consent(version="v1", record_audio=True)
     assert isinstance(signed, Consent) and not isinstance(plain, SignedConsent)
     assert signed != plain  # the same choices, but not from a verified token
     assert type(Consent.model_validate(signed.model_dump())) is Consent
     assert allows_recording(signed) is True
-    assert allows_recording(_signed(record_audio=False)) is False
+    assert allows_recording(verified(record_audio=False)) is False
     assert allows_recording(plain) is False  # DevIdentity's, or a team's own verifier's
-    assert _Holder.model_validate({"consent": RECORD}, context=CONSENT_SEAL).consent == signed
+    for given in (  # the seal's holder may also build one through a model or a TypeAdapter
+        Holder.model_validate({"consent": RECORD}, context=CONSENT_SEAL).consent,
+        TypeAdapter(SignedConsent).validate_python(RECORD, context=CONSENT_SEAL),
+    ):
+        assert given == signed and allows_recording(given) is True
 
 
-# What a module outside adapters might write to reach the seal or build a signed consent, read
-# by `poe arch` with this repository's harness.toml as Track D's recorder and Track C's verifier.
-REACHES = {
+# What a module might write to reach the seal or build a signed consent, with the lines
+# `poe arch` reports, read with this repository's harness.toml as Track D's recorder.
+STAR = "from t2_agentic_voice.core.identity import *\n"
+MODULE = "from t2_agentic_voice.core import identity\n"
+REACHES: dict[str, tuple[str, list[int]]] = {
     "the seal imported under another name": (
-        "from t2_agentic_voice.core.identity import CONSENT_SEAL as S\n"
+        "from t2_agentic_voice.core.identity import CONSENT_SEAL as S\n",
+        [1],
     ),
-    "the seal imported relatively": "from ...core.identity import CONSENT_SEAL\n",
-    "a name bound to the seal": (
-        "from t2_agentic_voice.core import identity\nseal = identity.CONSENT_SEAL\n"
+    "the seal imported relatively": ("from ...core.identity import CONSENT_SEAL\n", [1]),
+    "a name bound to the seal": (MODULE + "seal = identity.CONSENT_SEAL\n", [2]),
+    "the seal by getattr": (MODULE + "seal = getattr(identity, 'CONSENT_SEAL')\n", [2]),
+    "a string that holds the name": (
+        MODULE + "seal = getattr(identity, ' CONSENT_SEAL'.strip())\n",
+        [2],
     ),
-    "the seal by getattr": (
-        "from t2_agentic_voice.core import identity\nseal = getattr(identity, 'CONSENT_SEAL')\n"
+    "an f-string's part": (MODULE + "seal = getattr(identity, f'{x}CONSENT_SEAL')\n", [2]),
+    "bytes": (MODULE + "seal = getattr(identity, b'CONSENT_SEAL'.decode())\n", [2]),
+    "an escape": (MODULE + "seal = getattr(identity, 'CONSENT\\x5fSEAL')\n", [2]),
+    "two literals joined": (MODULE + "seal = getattr(identity, 'CONSENT_' 'SEAL')\n", [2]),
+    "a docstring": ('"""Where CONSENT_SEAL is kept."""\n', [1]),
+    "a fullwidth spelling": (MODULE + "seal = identity.\uff23ONSENT_SEAL\n", [2]),
+    "a class pattern's keyword": (
+        MODULE + "match identity:\n    case object(CONSENT_SEAL=seal):\n        pass\n",
+        [3],
     ),
-    "the seal's name read": "from t2_agentic_voice.core.identity import *\nseal = CONSENT_SEAL\n",
-    "the class called": "SignedConsent(version=None, record_audio=True)\n",
-    "the class validated": "identity.SignedConsent.model_validate({})\n",
+    "a star import": (STAR, [1]),
+    "a star import, then the name read": (STAR + "seal = CONSENT_SEAL\n", [1, 2]),
+    "a star import, then an annotation": (
+        STAR + "CONSENT_SEAL: object\nkind = CONSENT_SEAL\n",
+        [1, 2, 3],
+    ),
+    "a star import, then a subscript's key": (STAR + "seen = {}\nseen[CONSENT_SEAL] = 1\n", [1, 3]),
+    "a star import, then the name assigned to itself": (
+        STAR + "CONSENT_SEAL = CONSENT_SEAL\n",
+        [1, 2],
+    ),
+    "a star import from the verifier": ("from ...adapters.join_tokens import *\n", [1]),
+    "the class called": ("SignedConsent(version=None, record_audio=True)\n", [1]),
+    "the class validated": ("identity.SignedConsent.model_validate({})\n", [1]),
 }
 
 
 def _construct_lines(source: str, *, rel: str) -> list[int]:
     """The lines ARCH-CONSTRUCT reports in `source`, as the library's module `rel`."""
-    checker = ModuleChecker(load_config(ROOT).arch, layer=rel.split("/")[0], rel=rel, display=rel)
+    arch = load_config(ROOT).arch
+    checker = ModuleChecker(arch, layer=rel.split("/")[0], rel=rel, display=rel, source=source)
     checker.visit(ast.parse(source))
-    return [v.line for v in checker.violations if v.rule == "ARCH-CONSTRUCT"]
+    return sorted(v.line for v in checker.violations if v.rule == "ARCH-CONSTRUCT")
 
 
-@pytest.mark.parametrize("source", REACHES.values(), ids=REACHES.keys())
-def test_poe_arch_reports_the_seal_and_the_class_outside_adapters(source: str) -> None:
-    assert _construct_lines(source, rel="voice/session/recording.py") == [len(source.splitlines())]
+@pytest.mark.parametrize(("source", "lines"), REACHES.values(), ids=REACHES.keys())
+def test_poe_arch_reports_the_seal_and_the_class_outside_the_verifier(
+    source: str, lines: list[int]
+) -> None:
+    """A TypeAdapter of the class, or a model with a field of it, is the seal's to guard: without
+    it, either fails at run time (test_a_signed_consent_is_built_no_other_way)."""
+    assert _construct_lines(source, rel="voice/session/recording.py") == lines
     assert _construct_lines(source, rel="adapters/join_tokens.py") == []
 
 
-def test_only_the_module_that_makes_the_seal_reads_it_unreported() -> None:
-    """core/identity.py checks the seal by its name; any other module of `core` is reported."""
-    source = (ROOT / "packages/t2-agentic-voice/src/t2_agentic_voice/core/identity.py").read_text(
-        encoding="utf-8"
-    )
-    assert "CONSENT_SEAL" in source
-    assert _construct_lines(source, rel="core/identity.py") == []
-    assert _construct_lines("seal = CONSENT_SEAL\n", rel="core/events.py") == [1]
+def test_only_the_verifier_and_the_module_that_makes_the_seal_mention_it() -> None:
+    """core/identity.py defines and checks the seal, and adapters/join_tokens.py gives it; any
+    other module is reported, of `adapters` or of `core` too."""
+    for rel in ("core/identity.py", "adapters/join_tokens.py"):
+        source = (PACKAGE / rel).read_text(encoding="utf-8")
+        assert "CONSENT_SEAL" in source
+        assert _construct_lines(source, rel=rel) == []
+    for rel in ("core/events.py", "adapters/dev_identity.py", "api/join.py"):
+        assert _construct_lines("seal = CONSENT_SEAL\n", rel=rel) == [1]

@@ -182,31 +182,69 @@ def test_restricted_classes_are_constructed_only_by_their_layer(tmp_path: Path) 
     ]
 
 
-SEAL = '\n[[restricted]]\nnames = ["SEAL"]\nlayers = ["domain"]\nfix = "Only domain/ holds SEAL."\n'
+SEAL = (
+    '\n[[restricted]]\nnames = ["SEAL"]\nlayers = ["domain"]\nfiles = ["core/seal.py"]\n'
+    'fix = "Only domain/ and core/seal.py hold SEAL."\n'
+)
 
 
-def test_a_restricted_name_is_referred_to_only_by_its_layers(tmp_path: Path) -> None:
-    """Every reference counts, not only a call: an import under any alias, an attribute (bound
-    to a name or not), a name read, a string that is the name, and a re-export. The module that
-    defines the name reads its own, and so does one that defines a name of its own."""
+def test_a_restricted_name_is_mentioned_only_by_its_layers_and_files(tmp_path: Path) -> None:
+    """Every mention counts, not only a call: an import under any alias, an attribute (bound to
+    a name or not), a name read, a re-export, a class pattern's keyword, an annotation, a
+    subscript's key, an assignment of the name to itself, a fullwidth spelling, and a literal
+    that holds it (a string, an f-string's part, bytes, an escape, two literals joined, a
+    docstring); and a star import from a module that may bind it, the row's file or a module of
+    its layers. Only the row's layers and files may: a module that defines a name of the same
+    spelling is no exception. A comment, and another word, are not mentions."""
+    star, module = "from app.core.seal import *\n", "from app.core import seal\n\n"
     files = {
         "__init__.py": "from app.core.seal import SEAL\n",
         "core/seal.py": "SEAL = object()\n\n\ndef sealed(value):\n    return value is SEAL\n",
+        "core/own.py": "SEAL = object()\nkept = SEAL\n",
         "domain/approve.py": "from app.core.seal import SEAL as S\n\nkept = S\n",
         "services/alias.py": "from app.core.seal import SEAL as S\n",
-        "services/attribute.py": "from app.core import seal\n\nkind = seal.SEAL\n",
-        "services/string.py": "from app.core import seal\n\nkind = getattr(seal, 'SEAL')\n",
-        "services/read.py": "from app.core.seal import *\n\nkind = SEAL\n",
-        "services/own.py": "SEAL = object()\nkept = SEAL\n",
+        "services/attribute.py": module + "kind = seal.SEAL\n",
+        "services/string.py": module + "kind = getattr(seal, 'SEAL')\n",
+        "services/padded.py": module + "kind = getattr(seal, ' SEAL'.strip())\n",
+        "services/fstring.py": module + "kind = getattr(seal, f'{x}SEAL')\n",
+        "services/bytes.py": module + "kind = getattr(seal, b'SEAL'.decode())\n",
+        "services/escaped.py": module + "kind = getattr(seal, 'S\\x45AL')\n",
+        "services/joined.py": module + "kind = getattr(seal, 'SE' 'AL')\n",
+        "services/doc.py": '"""Where SEAL is kept."""\n',
+        "services/match.py": module + "match seal:\n    case object(SEAL=kind):\n        pass\n",
+        "services/wide.py": module + "kind = seal.\uff33EAL\n",
+        "services/read.py": star + "\nkind = SEAL\n",
+        "services/star.py": star,
+        "services/relative.py": "from ..core.seal import *\n",
+        "services/layer.py": "from app.domain.approve import *\n",
+        "services/annotated.py": star + "SEAL: object\nkind = SEAL\n",
+        "services/keyed.py": star + "_seen = {}\n_seen[SEAL] = 1\n",
+        "services/itself.py": star + "SEAL = SEAL\n",
+        "services/clean.py": "# SEAL, in a comment\nfrom app.core import seal\n\nkind = 'seal'\n",
         "api/relative.py": "from ..core.seal import SEAL\n",
     }
-    assert sorted(_check(tmp_path, files, SYNTHETIC + SEAL)) == [
-        ("__init__.py", "ARCH-CONSTRUCT"),
-        ("api/relative.py", "ARCH-CONSTRUCT"),
-        ("services/alias.py", "ARCH-CONSTRUCT"),
-        ("services/attribute.py", "ARCH-CONSTRUCT"),
-        ("services/read.py", "ARCH-CONSTRUCT"),
-        ("services/string.py", "ARCH-CONSTRUCT"),
+    found = _check(tmp_path, files, SYNTHETIC + SEAL)
+    assert {path for path, _ in found} == {
+        *(f for f in files if f.startswith("services/") and f != "services/clean.py"),
+        "__init__.py",
+        "core/own.py",
+        "api/relative.py",
+    }
+    assert {rule for _, rule in found} == {"ARCH-CONSTRUCT"}
+
+
+def test_an_app_never_mentions_a_restricted_name(tmp_path: Path) -> None:
+    """Not even by an attribute path through the public package root, which ARCH-PUBLIC, reading
+    imports, lets pass."""
+    files = {
+        "apps/shop/src/shop/reach.py": "import app\n\nkind = app.core.seal.SEAL\n",
+        "apps/shop/src/shop/clean.py": "import app\n",
+    }
+    loaded = config(tmp_path, SYNTHETIC + SEAL + APPS)
+    write(tmp_path, {"ARCHITECTURE.md": ARCHITECTURE, **APP_PACKAGES, **files})
+    violations, _ = check_repo(tmp_path, loaded)
+    assert [(v.path, v.line, v.rule, v.problem) for v in violations] == [
+        ("apps/shop/src/shop/reach.py", 3, "ARCH-CONSTRUCT", "'SEAL' referred to in app 'shop'")
     ]
 
 

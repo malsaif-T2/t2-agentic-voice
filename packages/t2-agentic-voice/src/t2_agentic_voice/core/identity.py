@@ -13,17 +13,26 @@ stays well under a request's size.
 
 Only a `SignedConsent`, the consent a verified signed join token carried, can let a call's audio
 be recorded (invariant 8), so a consent built anywhere else, `DevIdentity`'s or a team's own
-verifier's, never turns recording on, whatever it says. Two guards keep it to `adapters`: at run
-time, a `SignedConsent` is built only by a validation given `CONSENT_SEAL` as its context, and
-every other way to build one raises TypeError; and `[[restricted]]` (ARCH-CONSTRUCT) reports a
-call that builds a `SignedConsent`, and any reference to `CONSENT_SEAL`, outside `adapters`. Any
-other layer asks `allows_recording(consent)`.
+verifier's, never turns recording on, whatever it says. Two guards keep it to the verifier. At
+run time, a `SignedConsent` is built only by a validation given `CONSENT_SEAL` as its context,
+which records that very instance as sealed, and the usual ways to build or change one raise
+TypeError; `allows_recording(consent)`, which every other layer asks, is true only for the
+instance the seal validated, alive and unchanged since, so a copy, a rebuilt or re-typed
+consent, or one whose fields were rewritten allows nothing. Statically, `[[restricted]]`
+(ARCH-CONSTRUCT) reports a call that builds a `SignedConsent` outside `adapters`, and any
+mention of the seal's name outside adapters/join_tokens.py and this module, in the library or
+an app; a `TypeAdapter` of the class, or a model with a field of it, the seal alone guards.
+What gets past both is deliberate, for review: the seal named or found at run time, memory
+rewritten through `ctypes`, a write to this module's registry (invariant 8 lists them).
 """
 
 from __future__ import annotations
 
 import re
+import weakref
 from collections.abc import Mapping
+from dataclasses import dataclass
+from functools import partial
 from types import MappingProxyType
 from typing import Annotated, Any, Final, Self, final
 
@@ -48,7 +57,8 @@ ATTRIBUTE_NAME_PATTERN = r"^[A-Za-z0-9._-]{1,64}$"
 MAX_TEXT = 256  # the longest subject, display name or attribute value, in characters
 MAX_ATTRIBUTES = 16  # the most attributes a caller carries
 # The seal a validation of a `SignedConsent` is given as its context; only adapters/join_tokens.py
-# refers to it (`[[restricted]]`, every reference counted). Compared by identity: a copy is no seal.
+# and this module name it (`[[restricted]]`, every mention counted). Compared by identity: a copy
+# is no seal.
 CONSENT_SEAL: Final[object] = object()
 _UNSEALED = (
     "Only adapters' SignedJoinTokens builds a SignedConsent, from a token whose signature it "
@@ -129,41 +139,105 @@ class Consent(BaseModel):
     record_audio: StrictBool
 
 
+@dataclass(frozen=True, slots=True)
+class _Sealed:
+    """A `SignedConsent` as the seal validated it: a weak reference to that very instance, the
+    `__dict__` that holds its fields (a re-called `__init__` gives it another), and each field's
+    value then."""
+
+    consent: weakref.ref[SignedConsent]
+    fields: dict[str, Any]
+    values: tuple[tuple[str, Any], ...]
+
+    def holds(self, consent: Consent) -> bool:
+        """Whether `consent` is that instance, alive, each field still the same object."""
+        fields = consent.__dict__
+        return (
+            self.consent() is consent
+            and fields is self.fields
+            and len(fields) == len(self.values)
+            and all(name in fields and fields[name] is value for name, value in self.values)
+        )
+
+
+# Each `SignedConsent` the seal validated, by its id(): only this module reads or writes it. An
+# entry goes when its consent is collected (the weak reference's callback runs before the id is
+# free again), so the registry never outgrows the consents alive.
+_SEALED: dict[int, _Sealed] = {}
+
+
+def _forget(key: int, _: object) -> None:
+    """Drops the entry of a collected consent."""
+    _SEALED.pop(key, None)
+
+
 @final
 class SignedConsent(Consent):
     """The consent a verified signed join token carried: built only by the identity source that
     verified the token's signature (`SignedJoinTokens`, in `adapters`; `[[restricted]]`), as
-    `SignedConsent.model_validate(data, context=CONSENT_SEAL)`. It never equals a plain `Consent`
-    that holds the same choices. The call's recorder keeps audio only when
-    `privacy.record_audio` is on and `allows_recording(consent)` (invariant 8).
+    `SignedConsent.model_validate(data, context=CONSENT_SEAL)`, a validation that records the
+    instance as sealed. It never equals a plain `Consent` that holds the same choices. The call's
+    recorder keeps audio only when `privacy.record_audio` is on and `allows_recording(consent)`
+    (invariant 8), true only for the very instance the seal validated, unchanged since: any other
+    `SignedConsent` allows nothing, however it came about.
 
-    Every other way to build one raises TypeError: its constructor, `type(c)(...)` included,
-    since pydantic's `__init__` passes no context; a validation without the seal
-    (`model_validate`, `model_validate_json`, a `TypeAdapter`, a model that holds one);
-    `model_construct`, which skips validation; and `model_copy` with an update (`__replace__`
-    calls it), which pydantic does not validate, so even the seal's holder builds a changed
-    consent anew. A subclass is refused as it is defined. A copy with no change is allowed: it is
-    the same consent."""
+    So that the common mistakes fail loudly, these raise TypeError: its constructor,
+    `type(c)(...)` included, since pydantic's `__init__` passes no context (re-called on an
+    instance, it rewrites that instance before it raises, which then allows nothing); a
+    validation without the seal (`model_validate`, `model_validate_json`, a `TypeAdapter`, a
+    model that holds one); `model_construct`, which skips validation; `model_copy` with an update
+    (`__replace__` calls it), and pydantic's deprecated `copy` given `update`, `include` or
+    `exclude`, neither of which validates, so even the seal's holder builds a changed consent
+    anew; and a subclass, as it is defined or, past a mixin that skips `__init_subclass__`, as
+    it is validated. What these refusals do not see allows nothing: a copy of any kind, even with
+    no change (pydantic's base `model_copy`, `copy.copy`, `copy.deepcopy`, a pickle), a plain
+    consent whose `__class__` is set to this class, and a field written in place."""
 
     def __init_subclass__(cls, **kwargs: Any) -> None:
         raise TypeError(f"SignedConsent takes no subclass. {_UNSEALED}")
 
     def model_post_init(self, context: Any, /) -> None:
-        """Refuses the consent unless its validation was given the seal as its context: pydantic
-        calls this after every validation, with its context, and after `model_construct`, with
-        none."""
-        if context is not CONSENT_SEAL:
+        """Refuses the consent unless its validation was given the seal as its context, and
+        records the instance as sealed: pydantic calls this after every validation, with its
+        context, and after `model_construct`, with none. A subclass's instance is refused."""
+        if context is not CONSENT_SEAL or type(self) is not SignedConsent:
             raise TypeError(_UNSEALED)
+        key, fields = id(self), self.__dict__
+        sealed = weakref.ref(self, partial(_forget, key))
+        _SEALED[key] = _Sealed(sealed, fields, tuple(fields.items()))
 
     def model_copy(self, *, update: Mapping[str, Any] | None = None, deep: bool = False) -> Self:
-        """A copy of this consent; never one with an `update`, which pydantic does not validate."""
+        """A copy of this consent, which allows nothing; never one with an `update`, which
+        pydantic does not validate."""
         if update:
             raise TypeError(_UNSEALED)
         return super().model_copy(deep=deep)
 
+    def copy(
+        self,
+        *,
+        include: object = None,
+        exclude: object = None,
+        update: Mapping[str, Any] | None = None,
+        deep: bool = False,
+    ) -> Self:
+        """Pydantic's deprecated copy, which allows nothing; never given `update`, `include` or
+        `exclude`, which it neither validates nor checks."""
+        if include is not None or exclude is not None or update is not None:
+            raise TypeError(_UNSEALED)
+        return super().copy(deep=deep)
+
 
 def allows_recording(consent: Consent) -> bool:
-    """Whether `consent` lets the call's audio be kept (invariant 8): only a `SignedConsent`, the
-    consent of a token whose signature was verified, that says `record_audio`. Every layer but
-    `adapters` asks this rather than naming the class."""
-    return type(consent) is SignedConsent and consent.record_audio
+    """Whether `consent` lets the call's audio be kept (invariant 8): only the very
+    `SignedConsent` the seal validated, the consent of a token whose signature was verified,
+    alive and unchanged since, that says `record_audio`. A copy of it, or a consent rebuilt,
+    re-typed or rewritten in place, allows nothing. Every layer but `adapters` asks this rather
+    than naming the class."""
+    sealed = _SEALED.get(id(consent))
+    return (
+        type(consent) is SignedConsent
+        and sealed is not None
+        and sealed.holds(consent)
+        and consent.record_audio is True
+    )

@@ -32,10 +32,16 @@ def under(name: str, prefix: str) -> bool:
 @dataclass(frozen=True)
 class Ownership:
     """Who may import a library (ARCH-OWNER), or construct a class or refer to a name
-    (ARCH-CONSTRUCT)."""
+    (ARCH-CONSTRUCT): every module of `layers`, and for [[restricted]] each module of `files`
+    too, a path inside the package ("core/identity.py")."""
 
     layers: frozenset[str]
     fix: str
+    files: frozenset[str] = frozenset()
+
+    def allows(self, layer: str, rel: str) -> bool:
+        """Whether the module `rel` ("voice/session/call.py"), in `layer`, is one of these."""
+        return layer in self.layers or rel in self.files
 
 
 @dataclass(frozen=True)
@@ -89,8 +95,8 @@ class ArchConfig:
     apps: tuple[AppRule, ...]
     layers: Mapping[str, frozenset[str]]  # layer -> the other layers it may import
     owners: Mapping[str, Ownership]  # top-level module -> the layers that may import it
-    restricted: Mapping[str, Ownership]  # class name -> the layers that may construct it
-    restricted_names: Mapping[str, Ownership]  # name -> the only layers that may refer to it
+    restricted: Mapping[str, Ownership]  # class name -> the modules that may construct it
+    restricted_names: Mapping[str, Ownership]  # name -> the only modules that may refer to it
     bans: tuple[Ban, ...]
     subpackages: tuple[SubpackageRule, ...]
     env_allowed_files: frozenset[str]
@@ -258,31 +264,52 @@ def _apps(groups: list[Table], package: str) -> tuple[AppRule, ...]:
 def _restricted(
     groups: list[Table], layers: set[str]
 ) -> tuple[dict[str, Ownership], dict[str, Ownership]]:
-    """[[restricted]]'s classes (a call that builds one counts) and its names (every reference
-    counts): each table lists `classes` or `names`, not both."""
+    """[[restricted]]'s classes (a call that builds one counts) and its names (every mention
+    counts): each table lists `classes` or `names`, not both, and the `layers` and the `files`
+    whose modules may, one of the two empty at most."""
     for table in (t for t in groups if {"classes", "names"} <= t.data.keys()):
         table.problem("names", "[[restricted]] lists `classes` or `names`, not both")
         table.seen.add("classes")
-    classes = _owned([t for t in groups if "names" not in t.data], "classes", layers)
-    return classes, _owned([t for t in groups if "names" in t.data], "names", layers)
+    classes = _owned([t for t in groups if "names" not in t.data], "classes", layers, files=True)
+    names = _owned([t for t in groups if "names" in t.data], "names", layers, files=True)
+    return classes, names
 
 
-def _owned(groups: list[Table], key: str, layers: set[str]) -> dict[str, Ownership]:
+def _owned(
+    groups: list[Table], key: str, layers: set[str], *, files: bool = False
+) -> dict[str, Ownership]:
     """name -> Ownership, from [[owners]] (key "modules") or [[restricted]] (key "classes" or
-    "names")."""
+    "names", with `files`: modules of the library, each a path inside the package)."""
     found: dict[str, Ownership] = {}
     for table in groups:
         names = table.strings(key, non_empty=True)
-        owners = frozenset(table.strings("layers", non_empty=True))
+        owners = frozenset(table.strings("layers", non_empty=not files))
+        modules = frozenset(table.strings("files")) if files else frozenset()
+        if files and not owners | modules and {"layers", "files"} <= table.data.keys():
+            table.problem("layers", f"[[{table.name}]] names no layer and no file")
         for unknown in sorted(owners - layers):
             table.problem("layers", f"[[{table.name}]] names '{unknown}', not a layer")
-        ownership = Ownership(owners, table.string("fix"))
+        for path in sorted(m for m in modules if not _module_path(m, layers)):
+            problem = f"[[{table.name}]] files: '{path}' is not a module of a layer"
+            table.problem("files", f"{problem} ('<layer>/<name>.py', inside the package)")
+        ownership = Ownership(owners, table.string("fix"), modules)
         for name in names:
             if name in found:
                 table.problem(key, f"'{name}' is listed in two [[{table.name}]] tables")
             found[name] = ownership
         table.finish()
     return found
+
+
+def _module_path(path: str, layers: set[str]) -> bool:
+    """Whether `path` names a module of one of `layers`, inside the package: "core/identity.py"."""
+    parts = path.split("/")
+    return (
+        len(parts) > 1
+        and parts[0] in layers
+        and path.endswith(".py")
+        and all(_PACKAGE.match(p) for p in [*parts[:-1], parts[-1].removesuffix(".py")])
+    )
 
 
 def _ban(table: Table, places: Mapping[str, set[str]]) -> Ban:

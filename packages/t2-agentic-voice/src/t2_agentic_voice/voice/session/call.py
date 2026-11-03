@@ -21,19 +21,24 @@ file under `storage.var_dir`; traces each turn; records the call only when
 `privacy.record_audio` is on and `allows_recording(setup.consent)` (core/identity.py) says the
 consent allows it (invariant 8); and builds `HeardWords`, which only `voice` may build
 (invariant 1). It meets Pipecat only through io.py and its events and commands. The recorder
-asks `allows_recording`, never the consent's class, and never copies or rebuilds a consent: only
-adapters holds `CONSENT_SEAL` (`[[restricted]]`), and a `SignedConsent` built or copied with a
-change anywhere else raises TypeError.
+asks `allows_recording` of `setup.consent` itself, the very object the identity source
+returned, never the consent's class, and never copies or rebuilds a consent: only the instance
+the seal validated, unchanged since, allows recording, so a copy of it (even with no change, and
+by any path: `copy.copy`, a pickle, `Consent.model_copy`), a consent rebuilt, re-typed or
+rewritten in place, or one built here keeps nothing; and only adapters/join_tokens.py gives the
+seal (`[[restricted]]`).
 
 Track D's tests, beyond the plan's list: with the setting on, a plain `Consent` that says
-`record_audio` true keeps nothing; a turn whose speech begins during the greeting is dropped,
-and every `Speak`, clause event and caption of the greeting (reply 0, no turn) and of the
-turn's echo (the next reply, naming the turn) has a key of its own (test_session_fakes.py's
-greeting scene shows the events); a turn still open, or with its transcript still to come, at
-an `Ending` or a `TransportFailure` ends the call with `HangUp` at once and is kept in the
-report as unfinished; a failed transcript and a failed echo clause each give the `error`
-notice, sent and spoken from the phrase cache with no request; and at `limits.idle_s` the
-`ended` notice plays, then `HangUp` with the reason `idle`.
+`record_audio` true keeps nothing, and so does a copy of a verified consent that says it
+(`copy.copy(consent)`, `Consent.model_copy(consent)`), while that consent itself keeps the
+audio; a turn whose speech begins during the greeting is dropped, and every `Speak`, clause
+event and caption of the greeting (reply 0, no turn) and of the turn's echo (the next reply,
+naming the turn) has a key of its own (test_session_fakes.py's greeting scene shows the
+events); a turn still open, or with its transcript still to come, at an `Ending` or a
+`TransportFailure` ends the call with `HangUp` at once and is kept in the report as
+unfinished; a failed transcript and a failed echo clause each give the `error` notice, sent and
+spoken from the phrase cache with no request; and at `limits.idle_s` the `ended` notice plays,
+then `HangUp` with the reason `idle`.
 """
 
 from __future__ import annotations

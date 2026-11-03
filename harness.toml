@@ -128,19 +128,27 @@ modules = ["jiwer"]
 layers = ["testing"]
 fix = "Score through the evaluation helpers in testing/scorers.py (`wer`, `cer`, re-exported by the `evals` facade); never import jiwer elsewhere."
 
-# Classes that only some layers may construct (ARCH-CONSTRUCT): calls, `.model_validate`, and
-# `.model_construct` all count. Use it for an object that only a validator may issue. Example:
+# Classes that only some modules may construct (ARCH-CONSTRUCT): calls, `.model_validate`, and
+# `.model_construct` all count. Use it for an object that only a validator may issue. `layers`
+# holds every module of those layers, and `files` the library's modules it names, each a path
+# inside the package; one of the two may be empty. Example:
 #
 # [[restricted]]
 # classes = ["ApprovedPayment"]
 # layers = ["domain"]
+# files = []
 # fix = "Only domain/approval.py issues an ApprovedPayment; call approve() instead of building one."
 #
-# A table lists `names` instead of `classes` for a name that only some layers may refer to at
-# all: an import of it under any alias, an attribute, a name read, and a string that is the name
-# all count, and only the module that defines it may read its own name. Use it for a seal that a
-# class checks at run time, so the class refuses everyone but the seal's holders, and the check
-# names who holds it (scripts/arch_module.py).
+# A table lists `names` instead of `classes` for a name that only some modules may mention at
+# all, the one that defines it included only if `files` names it: any token that is the name
+# (an import under any alias, an attribute, a read, an assignment, an annotation, a keyword, a
+# class pattern's keyword) and any literal that holds it (a string, bytes, an f-string's part, a
+# docstring) count, in the library and in an app, and so does a star import from a module that
+# may bind it (one of its files, or a module of its layers). A literal that merely contains the
+# name counts too, so the name is one no other word holds. Use it for a seal that a class checks
+# at run time, so the class refuses everyone but the seal's holders, and the check names who
+# holds it (scripts/arch_module.py and scripts/arch_names.py). A name computed at run time is
+# beyond it.
 #
 # Planned here, in the commit that creates each class (docs/SECURITY.md, invariants 1 and 2): a
 # confirmed ticket draft, issued only by domain's yes rule; its two inputs, the caller's heard
@@ -153,15 +161,18 @@ fix = "Score through the evaluation helpers in testing/scorers.py (`wer`, `cer`,
 [[restricted]]
 classes = ["SignedConsent"]
 layers = ["adapters"]
+files = []
 fix = "Only adapters/join_tokens.py's SignedJoinTokens builds a SignedConsent, from a token whose signature it verified; elsewhere, pass on the Consent the identity source returned, or build a plain Consent, which never turns recording on."
 
-# The seal a SignedConsent's validation must be given (core/identity.py, which refuses every other
-# way to build one at run time): only the identity source that checks a token's signature holds it
-# (docs/SECURITY.md, invariant 8).
+# The seal a SignedConsent's validation must be given: core/identity.py defines it and checks it at
+# run time, and only adapters/join_tokens.py, the identity source that checks a token's signature,
+# gives it (docs/SECURITY.md, invariant 8). A TypeAdapter of the class, or a model with a field of
+# it, the seal alone guards: without it, either fails at run time.
 [[restricted]]
 names = ["CONSENT_SEAL"]
-layers = ["adapters"]
-fix = "Only adapters/join_tokens.py's SignedJoinTokens gives CONSENT_SEAL, to build the SignedConsent of a token whose signature it verified; elsewhere, ask allows_recording(consent) (core/identity.py) whether a consent lets audio be kept."
+layers = []
+files = ["adapters/join_tokens.py", "core/identity.py"]
+fix = "Only adapters/join_tokens.py's SignedJoinTokens gives CONSENT_SEAL, to build the SignedConsent of a token whose signature it verified, and core/identity.py defines it; elsewhere, ask allows_recording(consent) (core/identity.py) whether a consent lets audio be kept, and name the seal in no code, string or docstring (write 'the seal'), and star-import neither module."
 
 # Modules that the code a ban covers never imports, whichever layer owns their library (ARCH-BAN,
 # scripts/arch_ban.py; the design's 12.4). ARCH-OWNER gives a whole library to its layers; a ban

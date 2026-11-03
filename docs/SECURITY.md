@@ -129,21 +129,41 @@ has not reviewed those either.
    Call content is not logged at any level unless `logging.content` is on, which only `dev`
    allows, and no framework's debug log writes call content: Pipecat's loguru namespace is off
    by default, switched off before `voice` first imports Pipecat (D-031, D-035). Enforced by
-   two guards on who builds a `SignedConsent`. At run time, `core/identity.py` builds one only
-   in a validation given `CONSENT_SEAL` as its context, and refuses every other way: its
-   constructor, a validation without the seal, `model_construct`, `model_copy` with an update,
-   and a subclass; any layer asks `allows_recording(consent)`. Statically, `[[restricted]]`
-   (ARCH-CONSTRUCT) reports outside `adapters` a call that builds a `SignedConsent` and any
-   reference to `CONSENT_SEAL` (an import under any alias, an attribute, a name, a string that
-   is the name). Both hold a layer, so that only `SignedJoinTokens` in `adapters` gives the seal
-   is a review. Neither sees code that computes the seal's name at run time, writes a frozen
-   model's fields directly, or loads a crafted pickle; review does. With
+   two guards on which `SignedConsent` counts. At run time, `allows_recording(consent)` in
+   `core/identity.py`, which every other layer asks, is true only for the very instance that a
+   validation given `CONSENT_SEAL` as its context built (the validation records it, by a weak
+   reference, with its fields as they were), alive and unchanged since. Any other consent
+   allows nothing: a copy of any kind (`copy`, `model_copy` by any path, `copy.copy`,
+   `copy.deepcopy`, a pickle, a crafted one included), a consent rebuilt (`__init__` called
+   again) or re-typed (`__class__` assigned), one whose fields were written in place, and a
+   subclass's. So that the common mistakes fail loudly, the class also refuses with TypeError
+   its constructor, a validation without the seal (a `TypeAdapter` of the class, and a model
+   with a field of it, which the seal alone guards, included), `model_construct`, `model_copy`
+   with an update, the deprecated `copy` given `update`, `include` or `exclude`, and a
+   subclass. Statically, `[[restricted]]` (ARCH-CONSTRUCT) reports a call that builds a
+   `SignedConsent` outside `adapters`, and any mention of `CONSENT_SEAL` outside
+   `adapters/join_tokens.py` and `core/identity.py`, in the library or an app: a token that is
+   the name (an import under any alias, an attribute, a read, an annotation, a keyword, a class
+   pattern's keyword), a literal that holds it (a string, bytes, an f-string's part, a
+   docstring), and a star import from either module. That only `SignedJoinTokens.verify` gives
+   the seal, inside that module, is a review. What gets past both is deliberate, and review
+   sees it: code that computes the seal's name at run time, or finds the seal without its name
+   (scanning a module's namespace, `vars(module)`, or the garbage collector's referents); memory
+   rewritten through `ctypes`; and writes to `core/identity.py`'s own state (its registry of
+   sealed consents, or `allows_recording` replaced). With
    `test_only_a_signed_consent_is_a_verified_tokens_and_only_adapters_build_one`,
-   `test_a_signed_consent_is_built_no_other_way`, `test_a_signed_consent_takes_no_subclass`,
-   `test_poe_arch_reports_the_seal_and_the_class_outside_adapters` and
+   `test_a_consent_allows_recording_only_as_the_seal_validated_it`,
+   `test_a_copy_reads_as_the_consent_and_allows_nothing`,
+   `test_a_sealed_consent_allows_recording_while_its_fields_are_unchanged`,
+   `test_a_collected_consent_leaves_the_registry`, `test_a_signed_consent_is_built_no_other_way`,
+   `test_a_signed_consent_takes_no_subclass`,
+   `test_poe_arch_reports_the_seal_and_the_class_outside_the_verifier` and
+   `test_only_the_verifier_and_the_module_that_makes_the_seal_mention_it`
+   (`tests/t2_agentic_voice/core/test_identity.py`),
    `test_a_consent_is_a_bounded_version_and_a_real_boolean`
-   (`tests/t2_agentic_voice/core/test_identity.py`), and
-   `test_a_restricted_name_is_referred_to_only_by_its_layers`
+   (`tests/t2_agentic_voice/core/test_identity_parsing.py`), and
+   `test_a_restricted_name_is_mentioned_only_by_its_layers_and_files` and
+   `test_an_app_never_mentions_a_restricted_name`
    (`tests/harness/test_check_architecture.py`); by
    `test_the_turn_tts_and_limit_defaults_are_the_plans` (recording and Pipecat's lines off by
    default) and `test_each_check_holds_in_its_environments_as_the_settings_load`
@@ -152,8 +172,9 @@ has not reviewed those either.
    003: Track C's (a verified token whose consent says `record_audio` gives a consent
    `allows_recording` accepts, and one that says false a consent it refuses); Track D's
    (nothing recorded with the setting off, with the token's consent false, with both, under
-   `DevIdentity` with the setting on, or with a plain `Consent` that says `record_audio` and the
-   setting on, whatever a client message says; no audio in an exported span); and Track E's
+   `DevIdentity` with the setting on, or with a plain `Consent`, or a copy of a verified one,
+   that says `record_audio` and the setting on, whatever a client message says; no audio in an
+   exported span); and Track E's
    (voice refusing to start while `PIPECAT_SMART_TURN_LOG_DATA`, which has Smart Turn write
    each turn's audio to disk, or `PIPECAT_SETUP_FILES` is set; and, in a child process, a
    voice-framework debug line holding a transcript reaching no output at the default settings,
