@@ -1058,6 +1058,46 @@ manifests committed), and requests per call minute are recorded from it as a dec
   TD-071, TD-081 and TD-082 name their new triggers, and no row is removed. Next: Track I and
   step 16, then the merge into the main branch and the owner's session, while an agent corrects the
   design's factual slips (step 30); E1 and E2 at the measurement commit.
+- 2026-11-03: Track I, the guide, in 2 commits (0ab8e1b, f38a4be), merged at 33c0644. The guide's
+  index is brought to M2 and the six pages the criteria name are written: is-this-for-you.md,
+  quickstart.md (the echo agent, ending with a checklist driven by `t2v doctor`'s lines),
+  serving.md, browser-client.md (its M2 part), tracing-and-logs.md and data-and-privacy.md;
+  `packages/t2-agentic-voice/README.md` is brought to M2. Its 9 Python samples are runs of their
+  files' lines (DOC-SAMPLE), the logging one `examples/minimal`'s `__main__.py`. The install's size,
+  on Windows 11 x64 with Python 3.12.13: 89 distributions, 509.1 MB (llvmlite 121.5 MB,
+  opencv-python-headless 115.9, av 68.6, onnxruntime 43.7, numpy 42.0, pipecat-ai 20.6; no torch or
+  transformers). Gate: 'check_docs: OK (34 files checked)', 'TOTAL 10174 0 100%', '3176 passed, 1
+  skipped'. Its review (one reviewer, one skeptic): one low finding, the join token's table leaving
+  out constraints the verifier holds, refuted under the 2026-11-03 rule and kept as debt with the
+  reviewer's notes on the guide (below).
+- 2026-11-03: Step 16's automated part, `tests/t2_agentic_voice/test_loopback_call.py` (15d2cbb,
+  54b374a), merged at 128f152. An aiortc peer (`iceServers=[]`, max-bundle) joins the minimal
+  example's echo agent through the runtime's router (`DevIdentity`, `env` dev, fake providers, the
+  tone detector), trickles its candidates after the answer, sends a 0.6 s sine and hears its words
+  said back once at their own pitch (0.74 to 0.76 s of 0.75 s), the phrases from the cache (1.46 to
+  1.54 s of 1.50 s); the call takes about 3.9 s. It checks what the tracks left to it: the phrase
+  cache, declared at the start (8 requests, 8 files), has no new file and was never asked for the
+  heard words; one of each public event and of each named session message; a report file with no
+  heard text; the peer closed and no task left. `uv run poe eot --answerer reference --split dev`
+  printed 'run_finished complete=True cut_offs=0 delay_median_ms=0.0 misses=0 variants=23'. Gate:
+  '3177 passed, 1 skipped', 100%. Its review: one low finding (the test's cleanup unbounded on a
+  failure path), refuted, kept as debt.
+- 2026-11-03: Step 16's part by hand, by the integrator. No factory serves `examples/minimal` with
+  fake providers for `t2v dev` (debt below), so a scratch script, never committed, served its agent
+  with the tests' fakes through `serve_dev` on 127.0.0.1:7870, its `var_dir` a temporary folder. In
+  the browser pane, `getUserMedia` replaced by a silent stream (the pane has no microphone, and the
+  client opens it before it joins): `/voice/dev` loaded under Track G's policy with no console
+  message; Start connected (call WIEYf8YnXNqCGt_H), the greeting's caption arrived and the agent was
+  listening; Hang up showed 'Ended: hangup'. After the end the page still showed 'Connection:
+  connected · Agent: listening' (debt below). The microphone, playback, Stop and Esc wait for the
+  owner's session.
+- 2026-11-03: The gate on 128f152, everything merged: 1 failed, 3176 passed, 1 skipped.
+  `test_calls.py`'s `test_a_peer_that_fails_or_closes_ends_its_call` waited out its 60 s; alone it
+  passed 5 times of 5 in 3 to 9 s. Its two runners with real peers ran on Windows' default Proactor
+  loop, where an aiortc close can hang (the appendix, item 20), while `serve()` and the loopback
+  test use the selector loop: 7491cfe runs them on the selector loop, and gives Track B's timeout
+  test one 15.6 ms tick of the loop's clock, after it measured 0.2919 s against 0.3 s once in step
+  16's gate.
 
 ## Decision log
 
@@ -1857,6 +1897,14 @@ itself, in the owner's words, is in "The owner's decisions".
     or in M4's plan.
   - Step 30's corrections of the design run beside the session, by an agent. The design's 3.2 stays
     listed as not confirmed: the owner reported accepting the terms, not who could accept them.
+- 2026-11-03, the integrator, after Track I and step 16:
+  - Step 16's by-hand check ran with the tests' fakes from a scratch script, since `t2v dev` takes a
+    factory and none builds fake providers; a dev factory is debt, not built now, the owner's
+    session being the check that counts.
+  - A test that runs real aiortc peers runs on the selector loop, as `serve()` does: the Proactor
+    loop's hanging closes are not the served path's.
+  - For step 30's list of the design's factual slips: its 4.2 says `t2v dev` reloads on a change and
+    prints a trace link per turn; `serve_dev` does neither (Track I's gap).
 
 ## The owner's decisions
 
