@@ -3,8 +3,10 @@ Track B review), with Track A's rule and words, not a fake: under `interruptions
 "two_step"` a repeat request says the last reply the caller heard again and a stop or pause
 request is never said back, each a command, while a sentence holding one of their words is
 answered; under `drop` every one is said back, as plan 003's echo says it. The rehearsal's stop
-and repeat steps (docs/project/DESCRIPTION.md, steps 1 and 2) run whole. A lone word is built
-from the lists, so no test writes an item's text."""
+and repeat steps (docs/project/DESCRIPTION.md, steps 1 and 2) run whole. A whole stop or repeat
+request said just before an answer began (no overlap of it) stops that answer first, never one to
+its own or a later turn (plan 005's whole-plan review). A lone word is built from the lists, so
+no test writes an item's text."""
 
 from __future__ import annotations
 
@@ -30,6 +32,7 @@ from tests.t2_agentic_voice.voice.session.session_support import (
     emitted,
     greeted,
     play,
+    sent,
     speaks,
     turn,
 )
@@ -170,3 +173,94 @@ def test_the_rehearsals_stop_then_repeat_requests_in_an_arabic_call(
         ("command", 3),
     ]
     assert [c.turn_id for c in captions(io, "caller")] == [0]
+
+
+async def _said_as_the_answer_began(io: FakeSessionIO, text: str) -> None:
+    """The caller's turn 0 is heard and its answer (reply 1) asked for; turn 1 begins before
+    the answer's first audio, so no overlap of it, and its transcript `text` comes as the
+    answer plays."""
+    await greeted(io)
+    await turn(io, 0, HEARD)
+    await io.turn_opened(1)
+    await io.clause_queued(1, 0)
+    await io.clock.advance(0.6)
+    await io.turn_closed(1)
+    await io.transcribing(1, audio_s=0.6)
+    await io.transcribed(1, text, language="en")
+
+
+@pytest.mark.parametrize(
+    ("text", "kind", "reason"),
+    [(STOPS[0], "stop", "stop_word"), (REPEAT, "new_words", "repeat_word")],
+    ids=["stop", "repeat"],
+)
+def test_a_whole_command_said_just_before_an_answer_began_stops_it(
+    settings: VoiceSettings, text: str, kind: str, reason: str
+) -> None:
+    """The stop stops the answer at once, as an overlap's would (its playing caption sent
+    again cut), with one `Interrupted`; the repeat request then says the cut answer again."""
+    io, session = call(two_step(settings))
+
+    async def drive() -> None:
+        await _said_as_the_answer_began(io, text)
+        await play(io, 2)
+        await io.ending()
+        await io.close()
+
+    asyncio.run(drive())
+    assert io.overlaps == set() and io.commands.of(StopSpeaking) == [StopSpeaking(reply_id=1)]
+    assert sent(io, Unduck) == [] and [c.cut for c in captions(io)][-1] is (kind == "stop")
+    (interrupted,) = emitted(io, Interrupted)
+    assert (interrupted.turn_id, interrupted.kind, interrupted.reason) == (0, kind, reason)
+    again = [s.text for s in speaks(io, 2)]
+    assert again == ([] if kind == "stop" else [s.text for s in speaks(io, 1)])
+    assert [(t.fate, t.reply_id) for t in session.history.turns()] == [
+        ("rolled_back", 1),
+        ("command", None if kind == "stop" else 2),
+    ]
+
+
+def test_a_whole_stop_never_stops_an_answer_to_its_own_or_a_later_turn(
+    settings: VoiceSettings,
+) -> None:
+    """Turn 1's transcript comes first, and its answer plays; turn 0's whole stop, come after
+    it, stops nothing, since the stop would drop that answer too."""
+    io, session = call(two_step(settings))
+
+    async def drive() -> None:
+        await greeted(io)
+        for turn_id in (0, 1):
+            await io.turn_opened(turn_id)
+            await io.clock.advance(0.5)
+            await io.turn_closed(turn_id)
+            await io.transcribing(turn_id, audio_s=0.5)
+        await io.transcribed(1, HEARD, language="en")
+        await io.clause_queued(1, 0)
+        await io.transcribed(0, STOPS[0], language="en")
+        await play(io, 1)
+        await io.ending()
+        await io.close()
+
+    asyncio.run(drive())
+    assert io.commands.of(StopSpeaking) == [] and emitted(io, Interrupted) == []
+    assert [(t.fate, t.reply_id) for t in session.history.turns()] == [
+        ("command", None),
+        ("answered", 1),
+    ]
+
+
+def test_under_drop_a_whole_stop_said_just_before_an_answer_began_is_said_back(
+    settings: VoiceSettings,
+) -> None:
+    io, session = call(settings)
+
+    async def drive() -> None:
+        await _said_as_the_answer_began(io, STOPS[0])
+        await play(io, 2)
+        await io.ending()
+        await io.close()
+
+    asyncio.run(drive())
+    assert io.commands.of(StopSpeaking) == [] and emitted(io, Interrupted) == []
+    assert {s.turn_id for s in speaks(io, 2)} == {1}
+    assert session.history.turns()[1].fate == "answered"

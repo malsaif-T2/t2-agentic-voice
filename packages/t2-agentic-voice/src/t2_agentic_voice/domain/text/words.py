@@ -1,6 +1,7 @@
 """Whole-word matching of normalized texts, which the scorers and the spelling-guide check share,
-so a change to what counts as a whole word reaches both (TD-009 asks one for term recall), and
-the Arabic prefixes a word may be written with."""
+so a change to what counts as a whole word reaches both (TD-009 asks one for term recall); the
+Arabic prefixes a word may be written with; and whether two words are one edit apart, which the
+interruption rule's test of the agent's own words reads (domain/interruptions.py)."""
 
 from __future__ import annotations
 
@@ -27,3 +28,16 @@ def holds_words(text: str, phrase: str) -> bool:
     """Whether `text` holds `phrase` as whole words, both already normalized (words separated by
     one space, none at the ends): a word or a phrase, never a part of a longer word."""
     return f" {phrase} " in f" {text} "
+
+
+def one_edit(first: str, second: str) -> bool:
+    """Whether `first` becomes `second` by one letter changed, added or removed, or none."""
+    if len(first) == len(second):
+        return sum(a != b for a, b in zip(first, second, strict=True)) <= 1
+    shorter, longer = sorted((first, second), key=len)
+    if len(longer) - len(shorter) != 1:
+        return False
+    at = 0
+    while at < len(shorter) and shorter[at] == longer[at]:
+        at += 1
+    return shorter[at:] == longer[at + 1 :]
