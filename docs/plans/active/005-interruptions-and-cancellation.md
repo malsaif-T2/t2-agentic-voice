@@ -315,6 +315,48 @@ milestone a contract it cannot build on. Everything else becomes a row in
   Its debt is TD-100 to TD-102. Also this day: the plan-003 session added Q2's (b) to plan 003's
   step 18 on the main branch (94ea2e5, 63bbe52), and agreed this plan's numbers: debt rows from
   TD-100, decision entries from number 60.
+- 2026-11-03: Tracks A to E, each built by one agent in a worktree of its own from c267c64,
+  gated before its last commit, then reviewed by one agent under the owner's rule, each finding
+  checked by one skeptic. **A** (the words and the rule; dedb2ed to 38c3812, then 1f007ff):
+  `PRESET_WORDS` for `ar` and `en` from the prototype's `rules.py` (lines 11-129, read only), in
+  the rule's form (`rule_form`); the filter, with the prototype's captions (`stt.py` lines 35-54)
+  and «موسيقى»; `judge` as registered; 15 entries in `allowed_in_source.toml` under Q1's ruling.
+  Review: the agent's echo of a reply that said back a stop, pause or repeat word stopped it or
+  made it repeat (stood, low in M3, medium for M4), and «وقفت», a spelling Whisper wrote for the
+  owner's stop word, went on (stood, low): fixed in 1f007ff (the registration's amendment of this
+  date, (1)). Gate at 1f007ff: 'TOTAL 10675 0 100%', '3491 passed, 1 skipped'. **B** (the
+  session; 8ae38fb to 6d2b808): `CancelScope`, `HeardHistory`, `Overlaps` with `interrupter.py`, a
+  scope per reply, the history's marks, the repeat, TD-055's and TD-060's parts, under `two_step`
+  only; `drop` unchanged. Gate: 'TOTAL 10921 0 100%', '3301 passed, 1 skipped'. Review: a repeat
+  could loop on the agent's own voice (refuted as medium once A's fix is in; a residual is debt),
+  and a repeat the window decided could start while the caller still spoke (stood, low); the
+  review's debt list also showed a gap against *Done when*: only overlaps were judged, so a repeat
+  request said while the agent is silent (the rehearsal's step 2) would be echoed, and a stop word
+  said in silence said back. Both go to B's fix round, on the merged code. **C** (the Pipecat
+  side; e161aba to 93b42a0): the window and overlap parts in the speech-to-text bridge
+  (`stt_turn.py` split out), `HearOverlap` routed, TD-064's stop part (the dropped clauses'
+  `_tts_contexts` entries deleted at the interruption), Smart Turn's threshold
+  (`voice/smart_turn.py`). Gate: 'TOTAL 10651 0 100%', '3276 passed, 1 skipped'. Review: an
+  overlap part arriving after the turn's own transcript, with no request of its own, was refuted
+  (the command reaches the bridge in milliseconds, and the contract allows it; a line in io.py).
+  **D** (the browser; d17fb68, dd0be4c, then 6422feb): `duck` and `unduck` on the audio element's
+  volume, restored on the client's stop, a new reply and the end; cut captions; push-to-talk.
+  Gate: 'TOTAL 10537 0 100%', '3272 passed, 1 skipped'. Review: a push-to-talk hold begun while the
+  call was starting was lost (stood, low; fixed in 6422feb, the talk button waiting for the call);
+  a spoken notice played lowered (refuted). **E** (the measurement's tooling; 5b16e9b to 52ba86d):
+  `AudioCall` (the reply played as the file-fed call's greeting, `FedCall.handed_at`), `poe
+  overlap` in five modules, `import_calls`, `split --keep`, 41 lines in `script.toml` for the
+  owner's session (the stop and pause words, «وقف» three times, the repeat requests, listening
+  sounds, two corrections, silence over a reply, 20 paused requests), the poe task. Gate:
+  'TOTAL 11488 0 100%', '3323 passed, 1 skipped'. Review: requests counted per clip, not per
+  overlap (stood, high: a long echo clip would fail the target falsely); the recorder could not
+  mark a one-clause line's word end (stood, high: the stop-time target would read none); the
+  plain split still moved committed items and a FIX line named it (stood, low); long clips past
+  the pacer's reservation (refuted: a 429 waited out); three lows kept as debt. Their fixes, with
+  evaluation.md's smoke step and a run stopped when rate-limited, are E's fix round. Merged: A as
+  f3f328a (its tree 1f007ff's), B as 35daec6. The gate after B's merge: 2 failed, '3526 passed',
+  two of B's tests expecting Block 0's empty caption list, which A filled (B's fix round, item 0).
+  The tracks' debt is TD-103 to TD-107.
 
 ## Decision log
 
@@ -365,6 +407,19 @@ affects.
   detector's stop delay; when speech follows an overlap that went on, while a reply still plays,
   the turn's own transcript is judged too, at no request; a second overlap's `unduck` waits
   until no overlap of the call is undecided.
+- 2026-11-03: From the tracks, as their builders decided and the reviews let stand: the
+  presets' lists are per script (`ar` Arabic letters, `en` Latin, the transliterations Whisper
+  writes in an English call among them); the words a preset's notice holds («ثانية», "say that
+  again") are left out of its lists, so a notice's echo stops nothing; a repeat word counts only
+  as a whole repeat request, a stop or pause word anywhere; listening sounds are no real words in
+  the rule's step 7; a team's added words are normalized when compared, never refused. Each
+  reply's cancel scope ends with the reply, whatever ends it, so M4's talker must keep a reply
+  open while its work runs; one `Interrupted` for each decided overlap; a stop verdict stops every
+  reply in progress. Both parts of an overlap start 300 ms before its onset; a reused result is a
+  copy, a failure included; every `HearOverlap` gets exactly one overlap part. The client lowers
+  the audio element's volume, in one step. The replay plays its reply as the call's greeting and
+  is scored by whether the agent stopped. Track E owned `voice/file_transport.py`; Track C put
+  the threshold's subclass in `voice/smart_turn.py`.
 
 ## The owner's decisions
 
@@ -460,6 +515,22 @@ reply outlasts the clip, the clip 1 s into the reply, a 4.5 s tail, a fresh call
 `interruptions.mode = "two_step"`, every setting on the command line. The reply's clauses are
 the texts that played over the clip where they are known (M3's new lines, run C's overlaps),
 otherwise a text no clip holds. O2 is O1 again at the same commit.
+
+*Amended 2026-11-03, before any result (the reviews of Tracks A, B, C and E):* (1) the rule's
+step 2 goes on, as the agent's own words, when each stop or pause word heard is exactly a word or
+listed phrase of the clauses that played, another word was heard beside them, and every word is
+the agent's own (step 4's test); step 3 is skipped when each repeat word heard, or it after «و»,
+is a word of those clauses, and when a repeat-only transcript meets a played clause holding any
+of the language's repeat words; «وقفت» joins the noisy spellings of step 2, and the spellings only
+Whisper writes for the stop word count only as a whole short utterance. (2) A turn said while the
+agent is silent is read for a whole command: a repeat request says the last reply again, and an
+utterance of only stop or pause words is not said back. (3) "Whisper requests per interruption"
+counts the requests that decide an overlap, its window and its overlap part; a turn whose speech
+goes on after the overlap part sends its own request, as any turn does. The window falls due
+450 ms after the onset, so most stop words cost both parts: the expected mean is near 2, not 1.4.
+(4) The dev talk-over clips have no marked word end and no tool marks one there: their stops are
+timed from the speech detector's stop, reported apart; the registered stop times are read on the
+marked stops of M3's new recordings and of run C's imported overlaps.
 
 **The starting rule** (the agent's, from plan 002's Future improvements and the prototype's D30
 and D53), applied to the window's text, then to the overlap's when the window did not stop the
