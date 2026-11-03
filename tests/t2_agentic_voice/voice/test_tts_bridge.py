@@ -74,7 +74,12 @@ def _rig(port: TextToSpeech, *, realtime: bool = False) -> tuple[Rig, list[Frame
     bridge = SessionBridge(events)
     tts = ClauseTTSBridge(tts=port, events=events, report=report, timeout_s=6.0)
     commands = SessionCommands(
-        bridge, events, listen=lambda language: None, send=_nowhere, hang_up=lambda reason: None
+        bridge,
+        events,
+        listen=lambda language: None,
+        hear=lambda turn_id, window_ms: None,
+        send=_nowhere,
+        hang_up=lambda reason: None,
     )
     captured = Captured()
     params = TransportParams(audio_out_enabled=True, audio_out_end_silence_secs=0)

@@ -105,6 +105,7 @@ class CallPipeline:
             bridge,
             events,
             listen=self.stt_bridge.listen_in,
+            hear=self.stt_bridge.hear_overlap,
             send=self._send,
             hang_up=self._hung_up,
             record=record,
