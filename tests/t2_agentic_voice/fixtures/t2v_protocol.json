@@ -56,6 +56,7 @@
         "400": ["invalid_request", "protocol_mismatch"],
         "403": ["join_rejected"],
         "413": ["too_large"],
+        "415": ["unsupported_media_type"],
         "500": ["internal_error"],
         "503": ["not_started"]
       }
@@ -74,6 +75,7 @@
         "403": ["forbidden"],
         "409": ["already_offered"],
         "413": ["too_large"],
+        "415": ["unsupported_media_type"],
         "500": ["internal_error"],
         "503": ["not_started"]
       }
@@ -89,15 +91,16 @@
       "errors": {
         "400": ["invalid_request"],
         "403": ["forbidden"],
-        "409": ["ice_completed", "call_ended"],
+        "409": ["not_offered", "ice_completed", "call_ended"],
         "413": ["too_large"],
+        "415": ["unsupported_media_type"],
         "500": ["internal_error"],
         "503": ["not_started"]
       }
     }
   },
   "error_body": {
-    "code": "invalid_request | too_large | protocol_mismatch | join_rejected | forbidden | already_offered | ice_completed | call_ended | not_started | internal_error",
+    "code": "invalid_request | too_large | unsupported_media_type | protocol_mismatch | join_rejected | forbidden | already_offered | not_offered | ice_completed | call_ended | not_started | internal_error",
     "message": "string",
     "notice": "string | null",
     "reference": "string"

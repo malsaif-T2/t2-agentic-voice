@@ -24,6 +24,7 @@ from __future__ import annotations
 import json
 import logging
 import sys
+import unicodedata
 from collections.abc import Iterator, Mapping, Sequence
 from contextlib import contextmanager
 from functools import partial
@@ -49,6 +50,12 @@ _LINE_KEYS = frozenset(
     {"event", "level", "timestamp", "logger", "logger_name"}
     | {"exc_info", "exception", "stack", "stack_info", "_record", "_from_structlog"}
 )
+# The keys the console line writes as its own (`_one_line` leaves them as they are).
+_OWN_KEYS = frozenset({"event", "level", "timestamp", "logger_name", "exception"})
+# The Unicode categories of a character that can end a console line or redraw it: a control
+# (an escape, a line feed, NEL among them), a format character (a direction mark), a line or
+# paragraph separator; and a lone surrogate, which no UTF-8 stream writes.
+_BREAKING = frozenset({"Cc", "Cf", "Zl", "Zp", "Cs"})
 
 logging.getLogger(LIBRARY).addHandler(logging.NullHandler())
 
@@ -155,14 +162,14 @@ class _Lines(logging.Handler):
 
 def _formatter(fmt: LogFormat) -> logging.Formatter:
     """A record as one structured line: its event, level, UTC time and logger, then its fields."""
-    renderer: Processor
+    renderers: list[Processor]
     if fmt == "json":
         # ensure_ascii=False keeps non-ASCII text readable in the output.
-        renderer = structlog.processors.JSONRenderer(
-            serializer=partial(json.dumps, ensure_ascii=False)
-        )
+        renderers = [
+            structlog.processors.JSONRenderer(serializer=partial(json.dumps, ensure_ascii=False))
+        ]
     else:
-        renderer = structlog.dev.ConsoleRenderer(colors=False)
+        renderers = [_one_line, structlog.dev.ConsoleRenderer(colors=False)]
     return structlog.stdlib.ProcessorFormatter(
         foreign_pre_chain=[
             _fields,
@@ -173,7 +180,7 @@ def _formatter(fmt: LogFormat) -> logging.Formatter:
         processors=[
             structlog.stdlib.ProcessorFormatter.remove_processors_meta,
             structlog.processors.format_exc_info,
-            renderer,
+            *renderers,
         ],
     )
 
@@ -197,6 +204,57 @@ def _fields(_logger: WrappedLogger, _method: str, event: EventDict) -> EventDict
                 event[renamed] = value
     event["logger_name"] = record.name
     return event
+
+
+class _Escaped:
+    """A field's text as the console writes it: its repr, on one line, every character that
+    could break the line escaped (structlog writes a value's repr)."""
+
+    __slots__ = ("_shown",)
+
+    def __init__(self, text: str) -> None:
+        self._shown = repr(text)
+
+    def __repr__(self) -> str:
+        return self._shown
+
+
+def _breaks(text: str) -> bool:
+    """Whether `text` holds a character that could end a console line or redraw it."""
+    return any(unicodedata.category(each) in _BREAKING for each in text)
+
+
+def _text(value: object) -> str:
+    """A field value's text: a str itself, else its str(), else (a str() that raises) its
+    repr."""
+    if isinstance(value, str):
+        return value
+    try:
+        return str(value)
+    except Exception:  # a log call never raises: the renderer writes the repr anyway
+        return repr(value)
+
+
+def _one_line(_logger: WrappedLogger, _method: str, event: EventDict) -> EventDict:
+    """A console line's fields, each kept on the line: a key, or a value whose text (a str's,
+    or the str() of any other object) or whose repr holds a character that could end the line
+    or redraw it (a control, an escape among them, a format character, a line or paragraph
+    separator), is written as that text's repr, escaped on one line, so no field can forge a
+    line or erase one in a terminal. A key so written takes one more `field_` while it is
+    taken, so no field is lost."""
+    kept: EventDict = {}
+    for key, value in event.items():
+        if key in _OWN_KEYS:
+            kept[key] = value
+            continue
+        text = _text(value)
+        if _breaks(text) or (not isinstance(value, str) and _breaks(repr(value))):
+            value = _Escaped(text)
+        name = repr(key) if _breaks(key) else key
+        while name in kept or (name != key and name in event):
+            name = f"field_{name}"
+        kept[name] = value
+    return kept
 
 
 def _loggers() -> list[logging.Logger]:

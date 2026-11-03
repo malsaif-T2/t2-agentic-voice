@@ -1,10 +1,11 @@
 """The Groq client every Groq adapter builds (adapters/groq_client.py, plan 003's Block 0), shown
 on a JSON request, the kind `GroqTTS` sends: every request carries the adapter's own eight
 headers whatever `GROQ_CUSTOM_HEADERS` says, and a `content-type` line that makes the SDK build a
-form instead of the adapter's JSON fails the request, unsent, with no key in anything shown; and
-on a GET of the model list through the same client and hook, which carries six, with no body.
-`GroqSTT`'s use of it is tested in test_groq_stt.py and test_groq_stt_checks.py. A fake transport
-only: nothing leaves the machine."""
+form instead of the adapter's JSON fails the request, unsent, with no key in anything shown; on
+a GET of the model list through the same client and hook, which carries six, with no body, and
+goes through under the line that fails a POST; and the SDK's raw-response marker, kept for the
+adapter's own raw call alone. `GroqSTT`'s use of it is tested in test_groq_stt.py and
+test_groq_stt_checks.py. A fake transport only: nothing leaves the machine."""
 
 from __future__ import annotations
 
@@ -14,14 +15,17 @@ import logging
 
 import httpx
 import pytest
+from groq._constants import RAW_RESPONSE_HEADER
 from pydantic import SecretStr
 from t2_agentic_voice.adapters.groq_client import (
+    RAW_MARKER,
     APIConnectionError,
     AsyncGroq,
     ForeignBodyError,
     failure,
     groq_client,
     own_headers,
+    raw_response,
 )
 
 from tests.leaks import holding, shown
@@ -41,6 +45,8 @@ SHELLS = [
 ]
 # The SDK's own case replaces its content type, and the SDK then builds a form.
 FORM_LINES = ["Content-Type: multipart/form-data", "Content-Type: multipart/form-data; boundary=x"]
+# A line naming the SDK's raw-response marker, which would have it hand every answer back raw.
+MARKER_LINE = {"GROQ_CUSTOM_HEADERS": f"{RAW_RESPONSE_HEADER}: raw"}
 
 
 def _client(fake: httpx.AsyncBaseTransport) -> AsyncGroq:
@@ -119,12 +125,15 @@ def test_a_content_type_line_that_makes_a_form_fails_the_request_unsent(
     assert holding(KEY, shown(error, caplog=caplog, capsys=capsys)) == []
 
 
-@pytest.mark.parametrize("shell", SHELLS)
+@pytest.mark.parametrize(
+    "shell", [*SHELLS, *({"GROQ_CUSTOM_HEADERS": line} for line in FORM_LINES), MARKER_LINE]
+)
 def test_a_get_through_the_same_client_carries_only_the_adapters_headers(
     shell: dict[str, str], monkeypatch: pytest.MonkeyPatch
 ) -> None:
     """The model list and one model (Track B's `check_language`, `t2v doctor`): the hook takes a
-    request with no body, sends JSON as its `Accept`, and no `Content-Type` or length."""
+    request with no body, sends JSON as its `Accept`, and no `Content-Type` or length, so it
+    goes through under the `content-type` line that fails a POST."""
     for name, value in shell.items():
         monkeypatch.setenv(name, value)
     listing = httpx.Response(200, json={"object": "list", "data": [MODEL]})
@@ -133,8 +142,9 @@ def test_a_get_through_the_same_client_carries_only_the_adapters_headers(
     async def ask() -> None:
         client = _client(fake)
         try:
-            await client.models.list()
-            await client.models.retrieve(MODEL_ID)
+            listed = await client.models.list()
+            assert [model.id for model in listed.data] == [MODEL_ID]  # parsed, never raw
+            assert (await client.models.retrieve(MODEL_ID)).id == MODEL_ID
         finally:
             await client.close()
 
@@ -167,3 +177,33 @@ def test_a_request_with_no_body_that_carries_one_is_never_sent() -> None:
         asyncio.run(send())
     assert raised.value.reason == "foreign_body"
     assert request.headers.get("authorization") is None  # left as it was: never sent
+
+
+def test_the_sdks_raw_marker_goes_only_with_the_adapters_own_raw_call(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """The marker makes the SDK hand an answer back raw, with its headers (`GroqSTT` reads the
+    headroom there): the hook keeps it, with the SDK's value, for a call through
+    `with_raw_response` inside `raw_response` alone, never from `GROQ_CUSTOM_HEADERS`, and
+    drops it from the same call outside, which the SDK then hands back parsed."""
+    assert RAW_MARKER == RAW_RESPONSE_HEADER  # the installed SDK's name for it
+    monkeypatch.setenv("GROQ_CUSTOM_HEADERS", MARKER_LINE["GROQ_CUSTOM_HEADERS"])
+    listing = httpx.Response(200, json={"object": "list", "data": [MODEL]}, headers={"x-a": "1"})
+    fake = FakeGroq(listing, listing, httpx.Response(200, content=b"RIFF"), listing)
+
+    async def ask() -> None:
+        client = _client(fake)
+        try:
+            with raw_response():
+                raw = await client.models.with_raw_response.list()
+            assert raw.headers["x-a"] == "1" and (await raw.parse()).data[0].id == MODEL_ID
+            dropped: object = await client.models.with_raw_response.list()
+            assert type(dropped).__name__ == "ModelListResponse"  # handed back parsed
+            await client.audio.speech.create(model=MODEL_ID, voice="troy", input="made-up")
+            assert (await client.models.list()).data[0].id == MODEL_ID
+        finally:
+            await client.close()
+
+    asyncio.run(ask())
+    marked = [request.headers.get_list(RAW_MARKER) for request in fake.requests]
+    assert marked == [["raw"], [], [], []]

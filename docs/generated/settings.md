@@ -114,7 +114,7 @@ Privacy: whether a call's audio may be recorded, and the consent version callers
 | Variable | Type | Default | Unit | Description |
 | --- | --- | --- | --- | --- |
 | `T2V_PRIVACY__RECORD_AUDIO` | true or false | `false` | — | Whether a call's audio may be recorded under the storage folder: only when this is on and the caller's signed join token says they consented. |
-| `T2V_PRIVACY__CONSENT_VERSION` | text, or unset | unset | — | The version of the consent text callers agree to (1 to 64 printable characters, no space); when set, a join token holding another version is refused. Unset: any. |
+| `T2V_PRIVACY__CONSENT_VERSION` | text, or unset | unset | — | The version of the consent text callers agree to (1 to 64 printable characters, no space); when set, a signed join token holding another version is refused (a consent no signed token gave, as the dev identity's, keeps no audio and is not compared). Unset: any. |
 
 ## `logging`
 

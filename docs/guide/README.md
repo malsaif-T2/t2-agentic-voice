@@ -32,7 +32,9 @@ point here rather than list them, and the debt rows named say why each is still 
   request options, so keep both above DEBUG (TD-003).
 - `GROQ_CUSTOM_HEADERS`, read by the Groq SDK when the adapter builds its client: the adapter
   replaces every header with its own on each request, so no line of it adds a header or changes
-  one, but a `content-type` line makes every request fail, as a `rejected` provider error.
+  one, but a `content-type` line makes every request that sends a body (a synthesis, a
+  transcription) fail, as a `rejected` provider error, while the model list still answers, so
+  `t2v doctor` shows it only with `--synthesize`.
 - `OTEL_SDK_DISABLED` turns the library's own tracer provider off: no span is exported, and the
   library logs `tracing_disabled_by_sdk` (TD-005).
 - `OTEL_PYTHON_CONTEXT`, read when `opentelemetry.context` is imported, before any of the

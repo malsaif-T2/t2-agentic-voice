@@ -7,19 +7,20 @@ voice/protocol.py's.
 
 A request body comes from the browser, which is not trusted: it is parsed strictly, with
 exactly its fields, each of its JSON type, and every size bounded (the bounds are the agent's,
-each well over what a browser sends). A route reads its body itself, refusing it past its
-route's cap in bytes before parsing it, and parses it with the model's `model_validate_json`,
-answering a refusal with `refusal`. A model's ValidationError keeps the input out of its text
-and repr (though they name a key the client added), but its `errors()` and `json()` carry it,
-and FastAPI answers a model declared as a body parameter with its own 422, which sends
-`errors()` back, input and all. The offer secret is
-the call's alone: it rides in the `OFFER_SECRET_HEADER` header or the body's `offer_secret`,
-never in a URL, which logs and traces keep. The call ID is no credential (the design's 5.5), and
-a client never sends Pipecat's `pc_id`, which `voice` keeps behind the call ID (the appendix,
-item 10).
+each well over what a browser sends). A route takes a body sent as JSON alone (`is_json`, else
+415 before a byte is read), reads it itself, refusing it past its route's cap in bytes before
+parsing it, and parses it with the model's `model_validate_json`, answering a refusal with
+`refusal`; `/join` reads the body's protocol version first, alone (`version_mismatch`). A
+model's ValidationError keeps the input out of its text and repr (though they name a key the
+client added), but its `errors()` and `json()` carry it, and FastAPI answers a model declared
+as a body parameter with its own 422, which sends `errors()` back, input and all. The offer
+secret is the call's alone: it rides in the `OFFER_SECRET_HEADER` header or the body's
+`offer_secret`, never in a URL, which logs and traces keep. The call ID is no credential (the
+design's 5.5), and a client never sends Pipecat's `pc_id`, which `voice` keeps behind the call
+ID (the appendix, item 10).
 
-Every refusal and failure, a crash included, answers `ErrorBody`, the one error shape (GP-19),
-with a status and a code `BODIES` lists for its route.
+Every refusal and failure of a `t2v/1` route, a crash included, answers `ErrorBody`, the one
+error shape (GP-19), with a status and a code `BODIES` lists for its route.
 
 A secret (the offer secret, the join token, a TURN password) is a `SecretStr` here, so no repr,
 log line or python-mode dump of a body shows it; a response reveals its own only as it is
@@ -38,6 +39,7 @@ from pydantic import (
     BaseModel,
     ConfigDict,
     Field,
+    JsonValue,
     SecretStr,
     ValidationError,
     field_serializer,
@@ -56,10 +58,14 @@ MAX_SDP_CHARS = 65_536  # a browser's offer is a few kilobytes
 MAX_CANDIDATE_CHARS = 1024  # one ICE candidate line
 MAX_CANDIDATES = 64  # in one PATCH
 _TOKEN = re.compile(r"[\x21-\x7e]+")  # printable ASCII with no space, as a header carries it
+# An SDP as a browser writes it: printable ASCII, tabs and line breaks.
+_SDP = r"^[\x09\x0a\x0d\x20-\x7e]+$"
 
 # Each route's cap on its body in bytes, enforced as the body streams in, before it is parsed
-# (over it: 413, `too_large`): twice the longest values the body holds, since JSON writes a
-# quote, a backslash or a line break in two bytes, and 4 KiB for its names and punctuation.
+# (over it: 413, `too_large`): twice the longest values the body holds, and 4 KiB for its names
+# and punctuation. Twice, since every field the caps count takes printable ASCII alone (the SDP
+# tabs and line breaks too), which a browser's JSON.stringify or Python's json.dumps writes in
+# two bytes a character at most (a quote, a backslash, a tab or a line break, each escaped).
 _SLACK = 4096
 MAX_JOIN_BYTES = 2 * MAX_TOKEN_CHARS + _SLACK
 MAX_OFFER_BYTES = 2 * (MAX_SDP_CHARS + MAX_OFFER_SECRET_CHARS) + _SLACK
@@ -69,20 +75,23 @@ MAX_CANDIDATES_BYTES = (
 )
 
 # What an error body's code says went wrong: the body is not one t2v/1 takes
-# (`invalid_request`) or is over its route's cap (`too_large`); the client speaks another
-# protocol version (`protocol_mismatch`); the join token is refused (`join_rejected`); the offer
-# secret is missing, wrong or not this call's (`forbidden`); the call's offer was answered
-# already (`already_offered`); a PATCH with the call's own secret came after ICE completed or
-# the call ended (`ice_completed`, `call_ended`: the quiet 409s, logged at DEBUG, which the
-# client ignores once connected); the runtime has not started (`not_started`); anything else,
-# a crash included (`internal_error`).
+# (`invalid_request`), is over its route's cap (`too_large`) or is not sent as JSON
+# (`unsupported_media_type`); the client speaks another protocol version (`protocol_mismatch`);
+# the join token is refused (`join_rejected`); the offer secret is missing, wrong or not this
+# call's (`forbidden`); the call's offer was answered already (`already_offered`); a PATCH with
+# the call's own secret came before voice answered its offer (`not_offered`: not yet, or
+# refused), after ICE completed, or after the call ended (`ice_completed`, `call_ended`): the
+# quiet 409s, logged at DEBUG, which the client ignores once connected; the runtime has not
+# started (`not_started`); anything else, a crash included (`internal_error`).
 ErrorCode = Literal[
     "invalid_request",
     "too_large",
+    "unsupported_media_type",
     "protocol_mismatch",
     "join_rejected",
     "forbidden",
     "already_offered",
+    "not_offered",
     "ice_completed",
     "call_ended",
     "not_started",
@@ -91,6 +100,16 @@ ErrorCode = Literal[
 # A request's reference: random, made by the router for each refusal (for example
 # `secrets.token_urlsafe(12)`), never taken from the request.
 REFERENCE_PATTERN = r"^[A-Za-z0-9_-]{8,64}$"
+# The one media type a route's body is sent as.
+JSON_TYPE = "application/json"
+# A join of another protocol version: what the client is told, and the notice its page shows
+# the caller, in Arabic and in English, since no language the caller picked is read from a body
+# of another version (the agent's words, for the owner to change).
+MISMATCH_MESSAGE = "The client speaks another version of the protocol than this server's, t2v/1."
+MISMATCH_NOTICE = (
+    "هذه الصفحة قديمة: أعد تحميلها لتتصل من جديد. "
+    "This page is out of date: reload it to call again."
+)
 
 
 def _token_characters(value: SecretStr) -> SecretStr:
@@ -128,10 +147,12 @@ class _Response(BaseModel):
 
 class JoinRequest(_Request):
     """`POST /join`: the join token, used once; the client's protocol version, which the router
-    compares with its own before it verifies the token, so a mismatch spends no token and is
-    answered with a clear notice (`protocol_mismatch`); and the language the caller picked in
-    the client, if any, one of the library's tags, from which with the token's locale the
-    router fixes the call's language (`VoiceAgent.call_language`)."""
+    reads first, from the body as any JSON with nothing else of it (`version_mismatch`), before
+    this strict parse and before it verifies the token, so a client of another version gets
+    its clear notice (`protocol_mismatch`) whatever else its body holds, and spends no token;
+    and the language the caller picked in the client, if any, one of the library's tags, from
+    which with the token's locale the router fixes the call's language
+    (`VoiceAgent.call_language`)."""
 
     token: _Token
     protocol: int = Field(ge=1, le=MAX_INDEX)
@@ -168,11 +189,12 @@ class JoinResponse(_Response):
 
 
 class OfferRequest(_Request):
-    """`POST /offer`: the call's SDP offer, once (a second gets 409), with the offer secret here
-    or in its header."""
+    """`POST /offer`: the call's SDP offer, printable ASCII with tabs and line breaks, as a
+    browser writes it, once (a second gets 409), with the offer secret here or in its
+    header."""
 
     call_id: CallId
-    sdp: str = Field(min_length=1, max_length=MAX_SDP_CHARS)
+    sdp: str = Field(min_length=1, max_length=MAX_SDP_CHARS, pattern=_SDP)
     type: Literal["offer"]
     offer_secret: _OfferSecret | None = None
 
@@ -196,7 +218,9 @@ class IceCandidate(_Request):
 
 class CandidatesRequest(_Request):
     """`PATCH /offer`: the call's trickled candidates, with the offer secret here or in its
-    header, until ICE completes (then a quiet 409)."""
+    header, until ICE completes (then a quiet 409). A client sends them only once `POST /offer`
+    has answered: before that, or after a refused offer, a PATCH gets the quiet 409
+    `not_offered`."""
 
     call_id: CallId
     candidates: list[IceCandidate] = Field(min_length=1, max_length=MAX_CANDIDATES)
@@ -220,6 +244,49 @@ class ErrorBody(_Response):
         if (self.notice is not None) != (self.code == "protocol_mismatch"):
             raise ValueError("a notice comes with protocol_mismatch, and only with it")
         return self
+
+
+class _Version(BaseModel):
+    """A `/join` body as the version check reads it: any JSON object, for its `protocol`
+    alone."""
+
+    model_config = ConfigDict(frozen=True, extra="ignore", hide_input_in_errors=True)
+
+    protocol: JsonValue = None
+
+
+def is_json(content_type: str | None) -> bool:
+    """Whether a request's `Content-Type` says its body is JSON, the one kind every `t2v/1`
+    route takes: `application/json` in any case, with any parameter (`charset=utf-8`). A route
+    answers a request with none, or with any other type, 415 (`unsupported_media_type`) before
+    it reads the body: a page on any origin may send a form or text/plain to another with no
+    CORS preflight, and a JSON body never goes without one."""
+    if content_type is None:
+        return False
+    essence, _, _ = content_type.partition(";")
+    return essence.strip(" \t").lower() == JSON_TYPE
+
+
+def version_mismatch(body: bytes, *, reference: str) -> ErrorBody | None:
+    """The answer to a `/join` body of another protocol version (400, `protocol_mismatch`,
+    with its notice), read before the strict parse so that a client of any version gets it,
+    whatever else its body holds: the body, within its cap, is read as any JSON for its
+    top-level `protocol` alone, and any value but the JSON integer `PROTOCOL` names another
+    version (a string, a float, a boolean or null among them). None when the body names this
+    version or none, or is not a JSON object: the strict parse answers it then."""
+    try:
+        found = _Version.model_validate_json(body)
+    except ValidationError:
+        return None
+    version = found.protocol
+    if "protocol" not in found.model_fields_set or (type(version) is int and version == PROTOCOL):
+        return None
+    return ErrorBody(
+        code="protocol_mismatch",
+        message=MISMATCH_MESSAGE,
+        notice=MISMATCH_NOTICE,
+        reference=reference,
+    )
 
 
 def refusal(error: ValidationError, *, reference: str) -> ErrorBody:
@@ -247,9 +314,11 @@ class Route:
     errors: Mapping[int, tuple[ErrorCode, ...]]
 
 
-# What any route may answer: a body over its cap, a crash, or a runtime not started.
+# What any route may answer: a body over its cap or not sent as JSON, a crash, or a runtime
+# not started.
 _ANY_ROUTE: dict[int, tuple[ErrorCode, ...]] = {
     413: ("too_large",),
+    415: ("unsupported_media_type",),
     500: ("internal_error",),
     503: ("not_started",),
 }
@@ -284,7 +353,11 @@ BODIES: dict[str, Route] = {
         status=204,
         response=None,
         errors=_answers(
-            {400: ("invalid_request",), 403: ("forbidden",), 409: ("ice_completed", "call_ended")}
+            {
+                400: ("invalid_request",),
+                403: ("forbidden",),
+                409: ("not_offered", "ice_completed", "call_ended"),
+            }
         ),
     ),
 }

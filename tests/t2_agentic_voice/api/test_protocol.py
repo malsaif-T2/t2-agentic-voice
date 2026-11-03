@@ -1,7 +1,8 @@
-"""The HTTP bodies of `t2v/1` (the design's 5.5): each request parsed strictly and bounded, and a
-refusal answered by `refusal` echoing no value (GP-19); each route's cap over the largest body it
-takes; every secret out of a body's repr and python-mode dump, and a response's own sent as it is;
-the one error body; no `pc_id` in any body (plan 003's appendix, item 10)."""
+"""The HTTP bodies of `t2v/1` (the design's 5.5): each request parsed strictly and bounded, as a
+route parses it, and a refusal answered by `refusal` echoing no value (GP-19); a join of another
+protocol version answered before the strict parse; a body sent as JSON alone; every secret out of
+a body's repr and python-mode dump, and a response's own sent as it is; the one error body; no
+`pc_id` in any body (plan 003's appendix, item 10). Each route's cap: test_protocol_caps.py."""
 
 from __future__ import annotations
 
@@ -18,6 +19,7 @@ from t2_agentic_voice.api.protocol import (
     MAX_OFFER_SECRET_CHARS,
     MAX_SDP_CHARS,
     MAX_TOKEN_CHARS,
+    MISMATCH_NOTICE,
     OFFER_SECRET_HEADER,
     CandidatesRequest,
     ErrorBody,
@@ -27,7 +29,9 @@ from t2_agentic_voice.api.protocol import (
     JoinResponse,
     OfferAnswer,
     OfferRequest,
+    is_json,
     refusal,
+    version_mismatch,
 )
 from t2_agentic_voice.core.events import MAX_INDEX
 from t2_agentic_voice.core.logging import configure_logging, get_logger
@@ -43,6 +47,54 @@ LINE = "candidate:1 1 udp 2122260223 192.0.2.10 50000 typ host generation 0"
 REFERENCE = "made-up-ref-0123"
 # Where a model's own refusal carries the input it refused (FastAPI's 422 sends `errors()`).
 CARRIED = {"errors", "errors json"}
+OFFER = {"call_id": "c-1", "type": "offer"}
+# Bodies no route takes, each refused as the route parses it (its JSON text): Track F's router
+# test posts each one (api/runtime.py).
+ADVERSARIAL: list[tuple[type[BaseModel], dict[str, Any]]] = [
+    (JoinRequest, {"token": TOKEN}),
+    (JoinRequest, {"protocol": 1}),
+    (JoinRequest, {"token": "", "protocol": 1}),
+    (JoinRequest, {"token": f"{MARK} x", "protocol": 1}),
+    (JoinRequest, {"token": f"{MARK}\n", "protocol": 1}),
+    (JoinRequest, {"token": MARK * 500, "protocol": 1}),  # over MAX_TOKEN_CHARS
+    (JoinRequest, {"token": 7, "protocol": 1}),
+    (JoinRequest, {"token": MARK, "protocol": "1"}),
+    (JoinRequest, {"token": MARK, "protocol": 1.0}),
+    (JoinRequest, {"token": MARK, "protocol": True}),
+    (JoinRequest, {"token": MARK, "protocol": 0}),
+    (JoinRequest, {"token": MARK, "protocol": MAX_INDEX + 1}),
+    (JoinRequest, {"token": MARK, "protocol": 1, "consent": {"record_audio": True}}),
+    (JoinRequest, {"token": TOKEN, "protocol": 1, "language": MARK}),  # not a library tag
+    (JoinRequest, {"token": TOKEN, "protocol": 1, "language": "AR-SA"}),
+    (JoinRequest, {"token": TOKEN, "protocol": 1, "language": 7}),
+    (OfferRequest, {"call_id": "c-1", "sdp": "v=0", "type": "answer"}),  # never an answer
+    (OfferRequest, {"call_id": "c-1", "sdp": "v=0"}),
+    (OfferRequest, OFFER | {"sdp": ""}),
+    (OfferRequest, OFFER | {"sdp": "v" * (MAX_SDP_CHARS + 1)}),
+    (OfferRequest, OFFER | {"sdp": f"v=0\r\n{MARK}\x01"}),  # a control character
+    (OfferRequest, OFFER | {"sdp": f"v=0\r\ns={MARK}{chr(0x20AC)}"}),  # a euro sign
+    (OfferRequest, OFFER | {"sdp": f"v=0\r\ns={MARK}{chr(0x1F600)}"}),  # outside the BMP
+    (OfferRequest, {"call_id": f"{MARK}/x", "sdp": "v=0", "type": "offer"}),
+    (OfferRequest, OFFER | {"sdp": "v=0", "pc_id": MARK}),
+    (OfferRequest, OFFER | {"sdp": "v=0", "offer_secret": ""}),
+    (OfferRequest, OFFER | {"sdp": "v=0", "offer_secret": f"{MARK} x"}),
+    (OfferRequest, OFFER | {"sdp": "v=0", "offer_secret": MARK * 8}),  # over its bound
+    (CandidatesRequest, {"call_id": "c-1", "candidates": []}),
+    (CandidatesRequest, {"call_id": "c-1", "candidates": [END] * (MAX_CANDIDATES + 1)}),
+    (CandidatesRequest, {"call_id": "c-1", "candidates": {"0": END}}),  # an object, no list
+    (CandidatesRequest, {"call_id": "c-1", "candidates": [END], "pc_id": MARK}),
+    (CandidatesRequest, {"call_id": "c-1", "candidates": [END | {"sdp_mid": None}]}),
+    (CandidatesRequest, {"call_id": "c-1", "candidates": [END | {"sdp_mid": ""}]}),
+    (CandidatesRequest, {"call_id": "c-1", "candidates": [END | {"sdpMid": "0"}]}),
+    (CandidatesRequest, {"call_id": "c-1", "candidates": [{"candidate": "", "sdp_mid": "0"}]}),
+    (CandidatesRequest, {"call_id": "c-1", "candidates": [END | {"sdp_mline_index": -1}]}),
+    (CandidatesRequest, {"call_id": "c-1", "candidates": [END | {"sdp_mline_index": "0"}]}),
+    (CandidatesRequest, {"call_id": "c-1", "candidates": [END | {"candidate": f"{MARK}\r\n"}]}),
+    (
+        CandidatesRequest,
+        {"call_id": "c-1", "candidates": [END | {"candidate": "c" * (MAX_CANDIDATE_CHARS + 1)}]},
+    ),
+]
 
 
 def test_each_request_takes_what_a_browser_sends() -> None:
@@ -50,14 +102,11 @@ def test_each_request_takes_what_a_browser_sends() -> None:
     assert (join.token.get_secret_value(), join.protocol, join.language) == (TOKEN, 1, None)
     picked = JoinRequest.model_validate({"token": TOKEN, "protocol": 1, "language": "ar-SA"})
     assert picked.language == "ar-SA"
-    offer = OfferRequest.model_validate(
-        {"call_id": "c-1", "sdp": "v=0\r\n", "type": "offer", "offer_secret": SECRET}
-    )
+    sdp = "v=0\r\no=- 1 2 IN IP4 127.0.0.1\r\ns=-\r\na=msid-semantic:\tWMS {made-up}\r\n"
+    offer = OfferRequest.model_validate(OFFER | {"sdp": sdp, "offer_secret": SECRET})
     assert offer.offer_secret is not None and offer.offer_secret.get_secret_value() == SECRET
-    assert (
-        OfferRequest.model_validate({"call_id": "c-1", "sdp": "v=0", "type": "offer"}).offer_secret
-        is None
-    )
+    assert offer.sdp == sdp
+    assert OfferRequest.model_validate(OFFER | {"sdp": "v=0"}).offer_secret is None
     trickled = CandidatesRequest.model_validate(
         {
             "call_id": "c-1",
@@ -68,77 +117,30 @@ def test_each_request_takes_what_a_browser_sends() -> None:
     assert OFFER_SECRET_HEADER == "X-T2V-Offer-Secret"
 
 
-def _refused(model: type[BaseModel], body: dict[str, Any]) -> ValidationError:
-    with pytest.raises(ValidationError) as raised:
-        model.model_validate(body)
-    return raised.value
-
-
-@pytest.mark.parametrize(
-    ("model", "body"),
-    [
-        (JoinRequest, {"token": TOKEN}),
-        (JoinRequest, {"protocol": 1}),
-        (JoinRequest, {"token": "", "protocol": 1}),
-        (JoinRequest, {"token": f"{MARK} x", "protocol": 1}),
-        (JoinRequest, {"token": f"{MARK}\n", "protocol": 1}),
-        (JoinRequest, {"token": MARK * 500, "protocol": 1}),  # over MAX_TOKEN_CHARS
-        (JoinRequest, {"token": 7, "protocol": 1}),
-        (JoinRequest, {"token": MARK, "protocol": "1"}),
-        (JoinRequest, {"token": MARK, "protocol": 1.0}),
-        (JoinRequest, {"token": MARK, "protocol": True}),
-        (JoinRequest, {"token": MARK, "protocol": 0}),
-        (JoinRequest, {"token": MARK, "protocol": MAX_INDEX + 1}),
-        (JoinRequest, {"token": MARK, "protocol": 1, "consent": {"record_audio": True}}),
-        (JoinRequest, {"token": TOKEN, "protocol": 1, "language": MARK}),  # not a library tag
-        (JoinRequest, {"token": TOKEN, "protocol": 1, "language": "AR-SA"}),
-        (JoinRequest, {"token": TOKEN, "protocol": 1, "language": 7}),
-        (OfferRequest, {"call_id": "c-1", "sdp": "v=0", "type": "answer"}),  # never an answer
-        (OfferRequest, {"call_id": "c-1", "sdp": "v=0"}),
-        (OfferRequest, {"call_id": "c-1", "sdp": "", "type": "offer"}),
-        (OfferRequest, {"call_id": "c-1", "sdp": "v" * (MAX_SDP_CHARS + 1), "type": "offer"}),
-        (OfferRequest, {"call_id": f"{MARK}/x", "sdp": "v=0", "type": "offer"}),
-        (OfferRequest, {"call_id": "c-1", "sdp": "v=0", "type": "offer", "pc_id": MARK}),
-        (OfferRequest, {"call_id": "c-1", "sdp": "v=0", "type": "offer", "offer_secret": ""}),
-        (
-            OfferRequest,
-            {"call_id": "c-1", "sdp": "v=0", "type": "offer", "offer_secret": f"{MARK} x"},
-        ),
-        (
-            OfferRequest,
-            {"call_id": "c-1", "sdp": "v=0", "type": "offer", "offer_secret": MARK * 8},
-        ),  # over MAX_OFFER_SECRET_CHARS
-        (CandidatesRequest, {"call_id": "c-1", "candidates": []}),
-        (CandidatesRequest, {"call_id": "c-1", "candidates": [END] * (MAX_CANDIDATES + 1)}),
-        (CandidatesRequest, {"call_id": "c-1", "candidates": (END,)}),
-        (CandidatesRequest, {"call_id": "c-1", "candidates": [END], "pc_id": MARK}),
-        (CandidatesRequest, {"call_id": "c-1", "candidates": [END | {"sdp_mid": None}]}),
-        (CandidatesRequest, {"call_id": "c-1", "candidates": [END | {"sdp_mid": ""}]}),
-        (CandidatesRequest, {"call_id": "c-1", "candidates": [END | {"sdpMid": "0"}]}),
-        (CandidatesRequest, {"call_id": "c-1", "candidates": [{"candidate": "", "sdp_mid": "0"}]}),
-        (CandidatesRequest, {"call_id": "c-1", "candidates": [END | {"sdp_mline_index": -1}]}),
-        (CandidatesRequest, {"call_id": "c-1", "candidates": [END | {"sdp_mline_index": "0"}]}),
-        (CandidatesRequest, {"call_id": "c-1", "candidates": [END | {"candidate": f"{MARK}\r\n"}]}),
-        (
-            CandidatesRequest,
-            {
-                "call_id": "c-1",
-                "candidates": [END | {"candidate": "c" * (MAX_CANDIDATE_CHARS + 1)}],
-            },
-        ),
-    ],
-)
+@pytest.mark.parametrize(("model", "body"), ADVERSARIAL)
 def test_a_request_that_is_not_exactly_its_body_is_refused_and_answered_echoing_none_of_it(
     model: type[BaseModel], body: dict[str, Any]
 ) -> None:
-    """The model's refusal keeps the value out of its text, repr and traceback, but its
-    `errors()` and `json()` may carry it: the route answers with `refusal`, which holds none."""
+    """As a route parses it (`model_validate_json` of the body's JSON text), and in python mode
+    too: the model's refusal keeps the value out of its text, repr and traceback, but its
+    `errors()` and `json()` may carry it, so the route answers with `refusal`, which holds none.
+    A `/join` body whose `protocol` is not the integer 1 is answered earlier, by
+    `version_mismatch`, which holds none either."""
     assert len(MARK * 500) > MAX_TOKEN_CHARS and len(MARK * 8) > MAX_OFFER_SECRET_CHARS
-    error = _refused(model, body)
-    assert set(holding(MARK, shown(error))) <= CARRIED
-    answer = refusal(error, reference=REFERENCE)
-    assert (answer.code, answer.notice) == ("invalid_request", None)
-    assert MARK not in answer.model_dump_json() and MARK not in repr(answer)
+    text = json.dumps(body)
+    with pytest.raises(ValidationError) as as_sent:
+        model.model_validate_json(text)
+    with pytest.raises(ValidationError) as as_given:
+        model.model_validate(body)
+    for error in (as_sent.value, as_given.value):
+        assert set(holding(MARK, shown(error))) <= CARRIED
+        answer = refusal(error, reference=REFERENCE)
+        assert (answer.code, answer.notice) == ("invalid_request", None)
+        assert MARK not in answer.model_dump_json() and MARK not in repr(answer)
+    mismatch = version_mismatch(text.encode(), reference=REFERENCE)
+    named = body.get("protocol", PROTOCOL)
+    assert (mismatch is None) == (model is not JoinRequest or (type(named) is int and named == 1))
+    assert mismatch is None or MARK not in mismatch.model_dump_json()
 
 
 @pytest.mark.parametrize(
@@ -146,7 +148,7 @@ def test_a_request_that_is_not_exactly_its_body_is_refused_and_answered_echoing_
     [
         f'{{"token": "{MARK} x", "protocol": 1}}',
         f'{{"token": "{TOKEN}", "protocol": 1, "{MARK}": 1}}',  # the client's own key
-        f'{{"token": "{TOKEN}", "protocol": "{MARK}"}}',
+        f'{{"token": "{TOKEN}", "protocol": 1, "language": "{MARK}"}}',
         f'{{"token": "{MARK}"',  # not JSON
         f'["{MARK}"]',
     ],
@@ -155,6 +157,7 @@ def test_a_body_as_the_route_reads_it_is_answered_echoing_none_of_it(text: str) 
     """As a route parses it (`model_validate_json`): the value, or a key the client sent, is in
     the error's `errors()` (a key in its text too), never in the answer, which names pydantic's
     error types alone."""
+    assert version_mismatch(text.encode(), reference=REFERENCE) is None  # the version is 1
     with pytest.raises(ValidationError) as raised:
         JoinRequest.model_validate_json(text)
     assert set(holding(MARK, shown(raised.value))) >= CARRIED
@@ -164,25 +167,82 @@ def test_a_body_as_the_route_reads_it_is_answered_echoing_none_of_it(text: str) 
     assert answer["message"] == f"The request's body is not one t2v/1 takes ({problems})."
 
 
-def _largest(route: str) -> dict[str, Any]:
-    """The largest body `route` takes: every value at its bound, each character one that JSON
-    writes in two bytes where the field allows it (a quote; a line break in the SDP)."""
-    quotes = '"' * MAX_OFFER_SECRET_CHARS
-    call = {"call_id": "c" * 64, "offer_secret": quotes}
-    if route == "POST /join":
-        return {"token": '"' * MAX_TOKEN_CHARS, "protocol": MAX_INDEX, "language": "ar-SA"}
-    if route == "POST /offer":
-        return call | {"sdp": "\n" * MAX_SDP_CHARS, "type": "offer"}
-    line = {"candidate": '"' * MAX_CANDIDATE_CHARS, "sdp_mid": '"' * 64}
-    return call | {"candidates": [line | {"sdp_mline_index": MAX_INDEX}] * MAX_CANDIDATES}
+@pytest.mark.parametrize(
+    "body",
+    [
+        {"token": "x", "protocol": 2, "capabilities": []},  # another version adds a field
+        {"join_token": MARK, "protocol": 2},  # renames one
+        {"token": MARK, "protocol": 2, "language": "fr"},  # adds a language
+        {"token": MARK, "protocol": 2},  # v1's own shape
+        {"token": MARK, "protocol": "1"},
+        {"token": MARK, "protocol": 1.0},
+        {"token": MARK, "protocol": True},
+        {"token": MARK, "protocol": None},
+        {"token": MARK, "protocol": [1]},
+    ],
+)
+def test_a_join_of_another_version_gets_the_notice_whatever_else_its_body_holds(
+    body: dict[str, Any],
+) -> None:
+    """The design's 5.4: the version check is stable, so it reads the body's top-level
+    `protocol` alone, before the strict parse; any value but the integer 1 is another version,
+    answered with the notice and echoing nothing."""
+    answer = version_mismatch(json.dumps(body).encode(), reference=REFERENCE)
+    assert answer is not None
+    assert (answer.code, answer.notice, answer.reference) == (
+        "protocol_mismatch",
+        MISMATCH_NOTICE,
+        REFERENCE,
+    )
+    assert MARK not in answer.model_dump_json()
+    assert BODIES["POST /join"].errors[400] == ("invalid_request", "protocol_mismatch")
 
 
-@pytest.mark.parametrize("route", list(BODIES))
-def test_each_routes_cap_holds_the_largest_body_it_takes(route: str) -> None:
-    body = _largest(route)
-    text = json.dumps(body, separators=(",", ":"))  # as a browser's JSON.stringify writes it
-    BODIES[route].request.model_validate_json(text)
-    assert len(text.encode("utf-8")) <= BODIES[route].max_bytes < 4 * len(text)
+@pytest.mark.parametrize(
+    "text",
+    [
+        b'{"token": "x", "protocol": 1}',  # this version
+        b'{"token": "x", "protocol": 1, "capabilities": []}',  # this version, refused later
+        b'{"token": "x"}',  # none named
+        b'{"protocol": 2',  # not JSON
+        b'{"protocol": 2} x',
+        b'\xef\xbb\xbf{"protocol": 2}',  # a byte-order mark, as the strict parse refuses it
+        b'[{"protocol": 2}]',  # a list
+        b'"protocol"',  # a string
+        b"",
+    ],
+)
+def test_a_body_that_names_this_version_or_none_goes_on_to_the_strict_parse(
+    text: bytes,
+) -> None:
+    assert version_mismatch(text, reference=REFERENCE) is None
+
+
+@pytest.mark.parametrize(
+    ("content_type", "taken"),
+    [
+        ("application/json", True),
+        ("application/json; charset=utf-8", True),
+        ("Application/JSON ;charset=UTF-8", True),
+        ("application/json\t", True),
+        (None, False),  # none at all
+        ("", False),
+        ("text/plain", False),  # a form or text/plain skips the CORS preflight
+        ("text/plain; charset=utf-8", False),
+        ("application/x-www-form-urlencoded", False),
+        ("multipart/form-data; boundary=x", False),
+        ("text/plain; application/json", False),
+        ("application/json, text/plain", False),
+        ("application/jsonp", False),
+        ("application/json-patch+json", False),
+        ('"application/json"', False),
+    ],
+)
+def test_a_route_takes_a_body_sent_as_json_alone(content_type: str | None, taken: bool) -> None:
+    """A page on any origin may send a form or text/plain to another with no preflight, so every
+    `t2v/1` route answers any other type 415 before it reads the body."""
+    assert is_json(content_type) is taken
+    assert all(route.errors[415] == ("unsupported_media_type",) for route in BODIES.values())
 
 
 def test_no_secret_shows_in_a_bodys_repr_or_a_log_line(caplog: pytest.LogCaptureFixture) -> None:

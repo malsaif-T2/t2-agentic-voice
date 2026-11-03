@@ -8,15 +8,16 @@ from collections.abc import Callable
 from typing import cast
 
 import pytest
-from t2_agentic_voice.api.runtime import Providers, VoiceRuntime
+from t2_agentic_voice.api.runtime import FORGOTTEN_KEPT_S, Providers, VoiceRuntime
 from t2_agentic_voice.core.config import VoiceSettings
 from t2_agentic_voice.core.events import CallEnded
 from t2_agentic_voice.domain.declaration import Language, VoiceAgent
 from t2_agentic_voice.domain.ports.speech_to_text import SpeechToText
 from t2_agentic_voice.domain.ports.text_to_speech import TextToSpeech
 from t2_agentic_voice.voice.calls import Calls, VoiceCalls
+from t2_agentic_voice.voice.session.io import SYSTEM_CLOCK
 
-from tests.t2_agentic_voice.fakes import FakeCalls
+from tests.t2_agentic_voice.fakes import FakeCalls, FakeClock
 
 AGENT = VoiceAgent(name="echo", languages=[Language.english(greeting="Hello there.")])
 
@@ -37,18 +38,23 @@ def test_the_runtime_is_a_stub_until_track_f(settings: VoiceSettings) -> None:
             call()
 
 
-def test_a_test_gives_the_runtime_its_calls(settings: VoiceSettings) -> None:
+def test_a_test_gives_the_runtime_its_calls_and_its_clock(settings: VoiceSettings) -> None:
     """Track F's tests give the fake entry point through `_calls` (mypy checks that a function
-    returning `FakeCalls` fits it); the runtime's own default is `VoiceCalls`."""
+    returning `FakeCalls` fits it) and a fake clock through `_clock`, on which the router keeps
+    each call's record (an answered call's 60 s past voice forgetting it); the runtime's own
+    defaults are `VoiceCalls` and the system's clock."""
     fake = FakeCalls()
 
     def calls(**_: object) -> Calls:
         return fake
 
     with pytest.raises(NotImplementedError, match="Track F"):
-        VoiceRuntime(AGENT, settings=settings, _calls=calls)
-    default = inspect.signature(VoiceRuntime).parameters["_calls"]
-    assert (default.kind, default.default) == (inspect.Parameter.KEYWORD_ONLY, VoiceCalls)
+        VoiceRuntime(AGENT, settings=settings, _calls=calls, _clock=FakeClock())
+    parameters = inspect.signature(VoiceRuntime).parameters
+    defaults = [(parameters[name].kind, parameters[name].default) for name in ("_calls", "_clock")]
+    keyword = inspect.Parameter.KEYWORD_ONLY
+    assert defaults == [(keyword, VoiceCalls), (keyword, SYSTEM_CLOCK)]
+    assert FORGOTTEN_KEPT_S == 60.0
 
 
 def test_providers_replace_only_what_is_given() -> None:

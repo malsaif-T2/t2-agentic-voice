@@ -10,6 +10,9 @@ with `GROQ_LOG` undone), and adds its own body's rule:
   take a `GROQ_CUSTOM_HEADERS` `content-type` line's instead, so the request hook refuses a body
   that does not open with the adapter's, and such a line can only fail a request (a `rejected`
   ProviderError), never shape it, so audio that holds a known boundary cannot add a form field.
+- Each answer's headroom, the requests and tokens Groq says the key has left, rides on its
+  `Transcript`: the adapter asks for the SDK's raw response (`raw_response`), whose headers it
+  reads (`headroom`) before it parses the answer as before.
 
 The SDK's types stay inside this module; no public signature names one (the design's 5.3).
 Public through the `groq` facade (D-021).
@@ -30,9 +33,11 @@ from t2_agentic_voice.adapters.groq_client import (
     checked,
     failure,
     groq_client,
+    headroom,
     no_key,
     omit,
     own_headers,
+    raw_response,
 )
 from t2_agentic_voice.core.config import VoiceSettings
 from t2_agentic_voice.core.settings.stt import SttModel, SttSettings
@@ -120,22 +125,27 @@ class GroqSTT:
         it removed, the language named (else the one Groq reports), the confidence (Whisper's
         `avg_logprob`, a log-probability of 0 or below) and the no-speech estimate, each the
         mean over Whisper's segments weighted by their length, as the prototype weighted them,
-        and the billed seconds, never under Groq's minimum of 10 s. An empty
+        the billed seconds, never under Groq's minimum of 10 s, and the headroom Groq reported
+        with the answer (each None when its header is absent or not a whole number). An empty
         `language` or `prompt` counts as none. The whole request, sent once, takes at most
         `timeout_s`. Raises ProviderError on every failure, an answer it cannot read included."""
         try:
             async with asyncio.timeout(self._timeout_s):
-                result = await self._groq.audio.transcriptions.create(
-                    model=self._model,
-                    file=("speech.wav", _wav(clip), "audio/wav"),
-                    language=language or omit,
-                    prompt=prompt or omit,
-                    response_format="verbose_json",
-                    temperature=0,
-                    extra_headers={"Content-Type": self._content_type.decode("ascii")},
-                )
+                with raw_response():
+                    answer = await self._groq.audio.transcriptions.with_raw_response.create(
+                        model=self._model,
+                        file=("speech.wav", _wav(clip), "audio/wav"),
+                        language=language or omit,
+                        prompt=prompt or omit,
+                        response_format="verbose_json",
+                        temperature=0,
+                        extra_headers={"Content-Type": self._content_type.decode("ascii")},
+                    )
+                result = await answer.parse()
             transcript = _Answer.model_validate(result.to_dict()).transcript(
-                language or None, billed_seconds=max(_MIN_BILLED_S, clip.seconds)
+                language or None,
+                billed_seconds=max(_MIN_BILLED_S, clip.seconds),
+                remaining=headroom(answer.headers),
             )
         except Exception as error:  # every failure, the SDK's and the answer's; never a cancel
             provider_error = failure(error)
@@ -174,7 +184,13 @@ class _Answer(BaseModel):
     language: str | None = None
     segments: list[_Segment] = Field(default_factory=list)
 
-    def transcript(self, language: str | None, *, billed_seconds: float) -> Transcript:
+    def transcript(
+        self,
+        language: str | None,
+        *,
+        billed_seconds: float,
+        remaining: tuple[int | None, int | None],
+    ) -> Transcript:
         confidence = [(s.length, s.avg_logprob) for s in self.segments if s.avg_logprob is not None]
         silence = [
             (s.length, s.no_speech_prob) for s in self.segments if s.no_speech_prob is not None
@@ -185,6 +201,8 @@ class _Answer(BaseModel):
             confidence=_by_length(confidence),
             billed_seconds=billed_seconds,
             no_speech_prob=_by_length(silence),
+            remaining_requests=remaining[0],
+            remaining_tokens=remaining[1],
         )
 
 

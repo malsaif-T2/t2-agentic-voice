@@ -74,6 +74,56 @@ def test_a_library_lines_field_shows_in_the_log_records(caplog: pytest.LogCaptur
     assert holding(VALUE, shown(caplog=caplog)) == ["log records"]
 
 
+ARABIC = "".join(map(chr, (0x645, 0x631, 0x62D, 0x628, 0x627)))  # a made-up word
+# Texts a field's repr writes otherwise than as they are, which a console line, a JSON line
+# with `ensure_ascii=False` or an app's handler writes as they are.
+ESCAPED = [
+    chr(92).join(["C:", "Users", VALUE, "join.keys"]),  # a Windows path
+    ARABIC + chr(0x200C) + VALUE,  # a zero-width non-joiner
+    VALUE + chr(0x200F) + ARABIC,  # a right-to-left mark
+    ARABIC + chr(0xA0) + VALUE,  # a no-break space
+    f"back{chr(92)}slash-{VALUE}",
+    f"v=0{chr(13)}{chr(10)}{VALUE}{chr(13)}{chr(10)}",  # CR LF, as an SDP holds them
+    VALUE + chr(9) + "candidate",  # a tab
+]
+
+
+@pytest.mark.parametrize("text", ESCAPED)
+def test_a_fields_text_shows_as_it_is_not_only_as_its_repr(
+    text: str, caplog: pytest.LogCaptureFixture
+) -> None:
+    """A field's repr doubles a backslash and escapes a line break, a tab, a direction mark or a
+    no-break space, so a test that looked in the repr alone would miss the text a line writes;
+    a text inside a field's dict, list, tuple or set, a key too, shows as well."""
+    caplog.set_level(logging.WARNING)
+    log = get_logger("t2_agentic_voice.tests")
+    log.warning("event", value=text)
+    assert text not in repr(vars(caplog.records[0])["fields"])
+    assert holding(text, shown(caplog=caplog)) == ["log records"]
+    caplog.clear()
+    log.warning("event", body={"sdp": [(text,)]}, seen={text: 1}, kinds={frozenset({text})})
+    assert holding(text, shown(caplog=caplog)) == ["log records"]
+    caplog.clear()
+    log.warning("event", count=3, path=None)
+    assert holding(text, shown(caplog=caplog)) == []
+
+
+def test_a_validation_error_over_bytes_that_are_not_utf_8_still_shows() -> None:
+    """Its `json()` cannot write such an input, so `shown` writes its `errors()` as JSON with
+    the input's repr, and never raises."""
+
+    class Body(BaseModel):
+        model_config = ConfigDict(hide_input_in_errors=True)
+        token: str
+
+    body = b'{"token": "' + VALUE.encode() + b'\xff"}'
+    with pytest.raises(ValidationError) as raised:
+        Body.model_validate_json(body)
+    with pytest.raises(ValueError, match="utf-8"):
+        raised.value.json()
+    assert holding(VALUE, shown(raised.value)) == ["errors", "errors json"]
+
+
 def test_a_warning_shows(recwarn: pytest.WarningsRecorder) -> None:
     """As pydantic's serializer warnings quoted a refused value: under pytest a warning reaches
     neither stderr nor `capsys`, only the recorder."""

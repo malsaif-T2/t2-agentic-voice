@@ -18,6 +18,11 @@ everything but the request, as plan 002's decision log reads groq 1.7.0
   adapter's own does: such a line can only fail a request (a `rejected` ProviderError), never
   shape it. A request with no body (a GET: the model list, one model) goes through the same
   client and hook, with JSON as its `Accept`, no `Content-Type`, and no body at all.
+- The SDK hands back an answer's headers (its rate-limit headroom) only in its raw response,
+  which it gives when the request it sent carries its raw-response marker. The hook keeps that
+  marker only for the adapter's own call that asks for it (`raw_response` around a call through
+  `with_raw_response`), never from `GROQ_CUSTOM_HEADERS` or the environment, so no line of that
+  variable changes what the SDK hands back.
 - Every exception the SDK raises becomes a `ProviderError` (`failure`), raised after the
   handler and from None, so no exception chain leads to the SDK's error, which holds the request
   and its headers. A cancel is never caught: the request ends at once and its connection is
@@ -35,7 +40,9 @@ The SDK's types stay inside the adapters; no public signature names one (the des
 from __future__ import annotations
 
 import math
-from collections.abc import Awaitable, Callable
+from collections.abc import Awaitable, Callable, Iterator
+from contextlib import contextmanager
+from contextvars import ContextVar
 
 import httpx
 from pydantic import JsonValue, SecretStr, ValidationError
@@ -63,6 +70,15 @@ USER_AGENT = f"AsyncGroq/Python {groq_version}".encode("ascii")
 # The methods whose requests send a body; Groq answers every other (a GET) in JSON.
 _SENDS_BODY = frozenset({"POST", "PUT", "PATCH"})
 _JSON = b"application/json"
+# The SDK's marker of a call that asks for its raw response, and the value its
+# `with_raw_response` gives it (groq 1.7.0: `RAW_RESPONSE_HEADER` in groq/_constants.py, and
+# groq/_response.py's wrappers); the SDK reads it back from the request as it was sent.
+RAW_MARKER = "X-Stainless-Raw-Response"
+_RAW = b"raw"
+# Whether the adapter's own call, now, asked for the raw response (`raw_response`).
+_ASKED_RAW: ContextVar[bool] = ContextVar("t2v_groq_raw_response", default=False)
+# The headroom Groq reports with an answer: the requests and the tokens left to the key.
+_REMAINING = ("x-ratelimit-remaining-requests", "x-ratelimit-remaining-tokens")
 # Groq's "Your Data" page, as the design's 6.1 gives it.
 DATA_FLOW = DataFlow(
     provider="Groq",
@@ -100,7 +116,9 @@ def own_headers(
     built some other way than the adapter's (a `content-type` line's boundary, or a form
     instead of JSON), and is never sent: ForeignBodyError(`refusal`). Any other request (a GET
     of the model list) carries six, JSON its `Accept`, with no `Content-Type` or length, and
-    one with a body is never sent either."""
+    one with a body is never sent either. The adapter's own call inside `raw_response` that
+    asks for the raw response carries one more, the SDK's marker (`RAW_MARKER`) with the SDK's
+    value; every other request goes without it, whatever the SDK was given."""
 
     async def hook(request: httpx.Request) -> None:
         body = await request.aread()
@@ -119,10 +137,43 @@ def own_headers(
         if sends_body:
             headers[b"Content-Type"] = content_type
             headers[b"Content-Length"] = str(len(body)).encode("ascii")
+        if _ASKED_RAW.get() and RAW_MARKER in request.headers:
+            headers[RAW_MARKER.encode("ascii")] = _RAW
         headers[b"Authorization"] = b"Bearer " + key
         request.headers = httpx.Headers(headers)
 
     return hook
+
+
+@contextmanager
+def raw_response() -> Iterator[None]:
+    """Inside it, the adapter's own call through the SDK's `with_raw_response` gets the raw
+    response, which holds the answer's headers (`headroom`): the request hook keeps the SDK's
+    marker that asks for it there alone. Elsewhere the hook drops the marker, so a
+    `GROQ_CUSTOM_HEADERS` line that names it never changes what the SDK hands back."""
+    asked = _ASKED_RAW.set(True)
+    try:
+        yield
+    finally:
+        _ASKED_RAW.reset(asked)
+
+
+def headroom(headers: httpx.Headers) -> tuple[int | None, int | None]:
+    """The rate-limit headroom an answer reports for the key, the requests and the tokens left
+    (Groq's `x-ratelimit-remaining-requests` and `-tokens`): each a whole number written in
+    ASCII digits, else None, as for a header that is absent."""
+    requests, tokens = (_count(headers.get(name)) for name in _REMAINING)
+    return requests, tokens
+
+
+def _count(value: str | None) -> int | None:
+    """`value` as a whole number when it is ASCII digits alone, else None."""
+    if value is None or not (value.isascii() and value.isdigit()):
+        return None
+    try:
+        return int(value)
+    except ValueError:  # more digits than Python converts (sys.get_int_max_str_digits)
+        return None
 
 
 def groq_client(

@@ -43,6 +43,28 @@ def _carried(error: BaseException) -> str:
     return _attributes(error)
 
 
+def _errors_json(error: ValidationError) -> str:
+    """A ValidationError's `json()`, or, when its input holds bytes that are not UTF-8, which
+    `json()` cannot write, its `errors()` as JSON with each such value's repr."""
+    try:
+        return error.json()
+    except ValueError:
+        return json.dumps(error.errors(), ensure_ascii=False, default=repr)
+
+
+def _texts(value: object) -> list[str]:
+    """Each text a field's value holds as it is, in it and in every dict (its keys too), list,
+    tuple or set inside it: the repr that holds it doubles a backslash and escapes a line break,
+    a tab or a direction mark, which a log line or an app's handler may write as they are."""
+    if isinstance(value, str):
+        return [value]
+    if isinstance(value, Mapping):
+        return [text for pair in value.items() for each in pair for text in _texts(each)]
+    if isinstance(value, list | tuple | set | frozenset):
+        return [text for each in value for text in _texts(each)]
+    return []
+
+
 def shown(
     error: BaseException | None = None,
     *,
@@ -55,11 +77,15 @@ def shown(
       any note added), its attributes (a `T2VoiceError`'s message and details) and its details
       as JSON; for a pydantic ValidationError, its `errors()` and its `json()`, which carry the
       input that its text and repr leave out under `hide_input_in_errors` (FastAPI's own 422
-      sends `errors()` to the client); and the text, repr and attributes (a ValidationError's
-      `errors()`) of each exception chained to it, a context `raise ... from None` suppressed
-      included, since a debugger or a crash reporter still reaches it;
+      sends `errors()` to the client), its `errors()` as JSON when its input is bytes that are
+      not UTF-8, which `json()` cannot write; and the text, repr and attributes (a
+      ValidationError's `errors()`) of each exception chained to it, a context
+      `raise ... from None` suppressed included, since a debugger or a crash reporter still
+      reaches it;
     - of `caplog`: every log record's formatted text and message, a third party's included, and
-      the fields of each of the library's (`record.fields`), which neither of those holds;
+      the fields of each of the library's (`record.fields`), which neither of those holds: each
+      field's repr, and each text it holds as it is (a Windows path, a line break, a direction
+      mark), which its repr escapes;
     - of `capsys`: what was written to stdout (`configure_logging`'s lines) and to stderr, read
       here, so a test reads them from the result rather than from `capsys` again;
     - of `recwarn`: every Python warning's category and message (pydantic's serializer warnings
@@ -75,13 +101,13 @@ def shown(
             surfaces["details"] = json.dumps(details, ensure_ascii=False, default=repr)
         if isinstance(error, ValidationError):
             surfaces["errors"] = repr(error.errors())
-            surfaces["errors json"] = error.json()
+            surfaces["errors json"] = _errors_json(error)
         chained = _chain(error)[1:]
         surfaces["chain"] = "\n".join(f"{c}\n{c!r}\n{_carried(c)}" for c in chained)
     if caplog is not None:
         messages = [record.getMessage() for record in caplog.records]
-        held = [vars(record) for record in caplog.records]
-        fields = [repr(each["fields"]) for each in held if "fields" in each]
+        held = [vars(record)["fields"] for record in caplog.records if "fields" in vars(record)]
+        fields = [text for each in held for text in [repr(each), *_texts(each)]]
         surfaces["log records"] = "\n".join([caplog.text, *messages, *fields])
     if capsys is not None:
         surfaces["stdout"], surfaces["stderr"] = capsys.readouterr()

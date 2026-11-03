@@ -24,6 +24,8 @@ class PrivacySettings(Group):
         pattern=r"^[\x21-\x7e]{1,64}$",
         description=(
             "The version of the consent text callers agree to (1 to 64 printable characters, no "
-            "space); when set, a join token holding another version is refused. Unset: any."
+            "space); when set, a signed join token holding another version is refused (a "
+            "consent no signed token gave, as the dev identity's, keeps no audio and is not "
+            "compared). Unset: any."
         ),
     )

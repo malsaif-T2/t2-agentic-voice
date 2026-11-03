@@ -114,11 +114,18 @@ def test_the_http_bodies_and_their_objects_are_the_lists() -> None:
 
 
 def test_the_one_error_body_and_its_codes_are_the_lists() -> None:
-    """Every route answers each error in the one body; each code is some route's answer."""
+    """Every route answers each error in the one body; each code is some route's answer. Every
+    route answers a body over its cap, one not sent as JSON, a crash and a runtime not started
+    alike, and a PATCH with the call's own secret before its offer was answered gets a quiet
+    409 of its own."""
     assert _fields(ErrorBody, {}) == _fixture()["error_body"]
     statuses = [status for route in BODIES.values() for status in route.errors]
     codes = {code for route in BODIES.values() for each in route.errors.values() for code in each}
     assert codes == set(get_args(ErrorCode)) and all(400 <= s < 600 for s in statuses)
+    shared = {413: ("too_large",), 415: ("unsupported_media_type",), 500: ("internal_error",)}
+    shared |= {503: ("not_started",)}
+    assert all(dict(route.errors).items() >= shared.items() for route in BODIES.values())
+    assert BODIES["PATCH /offer"].errors[409] == ("not_offered", "ice_completed", "call_ended")
 
 
 def test_the_fixture_spells_each_kind_of_field() -> None:

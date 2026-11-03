@@ -11,7 +11,10 @@ to the plan's interfaces"; what Track F builds:
   and as its headers `content-type` and api/protocol.py's `OFFER_SECRET_HEADER`, each of which
   makes a browser ask first (a preflight) before a JSON body or the offer secret's header goes
   to another origin. Track F's test: a preflight for `POST /offer` asking for both headers is
-  answered for a listed origin, and gets no CORS header for any other.
+  answered for a listed origin, its `Access-Control-Allow-Origin` that origin; for any other it
+  gets Starlette's 400 with no `Access-Control-Allow-Origin`, though it still carries the
+  `Access-Control-Allow-Methods`, `-Allow-Headers` and `-Max-Age` CORSMiddleware sends every
+  preflight, so a browser refuses the request.
 - **uvicorn** runs with one worker, no access log, no server header, no `env_file`, and
   `log_config=None`, so its loggers get no handler of their own (an app names `uvicorn` to
   `configure_logging` for its lines). Proxy headers are off (`proxy_headers=False`) while

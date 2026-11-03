@@ -46,11 +46,15 @@
   peer has closed: `phase` says `ended` only until then, and None after, as for a call it never
   held.
 
-api does the HTTP side: the offer secret, a second offer's 409, the quiet 409 for a PATCH after
-ICE completed or the call ended, and mapping each error to its one shape. It keeps its own
-record of the calls it joined (each one's offer secret, and the call's language and identity
-until its offer), so a PATCH for a call whose offer was answered and whose `phase` is `ended`
-or None gets the quiet 409 `call_ended`.
+api does the HTTP side: the offer secret, a second offer's 409, the quiet 409 for a PATCH before
+voice answered the call's offer or after ICE completed or the call ended, and mapping each error
+to its one shape; it never hands voice the candidates of a call whose offer voice has not
+answered. It keeps its own record of the calls it joined (each one's offer secret, and the
+call's language and identity until its offer), so a PATCH for a call whose offer was answered
+and whose `phase` is `ended` or None gets the quiet 409 `call_ended`. It drops a record a
+bounded time later (api/runtime.py): a join never offered once its join token's window has
+passed, and an answered call `FORGOTTEN_KEPT_S` (60 s) after voice forgets it; a request for
+the call then gets 403 `forbidden`, as for a call never joined.
 """
 
 from __future__ import annotations
