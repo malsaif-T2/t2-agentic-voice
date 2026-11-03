@@ -58,6 +58,12 @@ said = "Go with your recommendation for Q1, Q2, Q3, Q4, Q5 and Q7."
 on = 2026-11-03
 
 [[allowed]]
+text = "أعد"
+reason = "A repeat word of the Arabic presets' repeat list (domain/words.py's `PRESET_WORDS`), which the interruption rule reads, and a word of the protocol's mismatch notice (api/protocol.py's `MISMATCH_NOTICE`); the rehearsal's lone repeat request (DESCRIPTION.md, its step 2), a script line."
+said = "Go with your recommendation for Q1, Q2, Q3, Q4, Q5 and Q7."
+on = 2026-11-03
+
+[[allowed]]
 text = "كمل"
 reason = "A listening sound of the Arabic presets' backchannel list (domain/words.py's `PRESET_WORDS`), which the interruption rule reads."
 said = "Go with your recommendation for Q1, Q2, Q3, Q4, Q5 and Q7."

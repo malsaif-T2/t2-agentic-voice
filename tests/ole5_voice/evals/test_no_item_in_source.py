@@ -155,7 +155,7 @@ def test_the_allow_list_holds_only_the_owners_ruling(tmp_path: Path) -> None:
     q1 = [entry for entry in entries if entry.on == date(2026, 11, 3)]
     presets = {fold(entry.text) for entry in q1}
     assert allowed(EVALS / "allowed_in_source.toml") == {"stop"} | presets
-    assert len(presets) == len(q1) == 15
+    assert len(presets) == len(q1) == 16
     assert {entry.said for entry in q1} == {
         "Go with your recommendation for Q1, Q2, Q3, Q4, Q5 and Q7."
     }
