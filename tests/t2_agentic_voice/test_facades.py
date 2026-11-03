@@ -60,7 +60,10 @@ NAMES = {
         "split_clauses",
     },
     "t2_agentic_voice.evals": {
+        "AudioCall",
         "EchoTiming",
+        "OverlapReplay",
+        "OverlapRequest",
         "PhraseAudio",
         "Recall",
         "TurnEnd",
