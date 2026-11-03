@@ -633,7 +633,7 @@ function devPage(page) {
   const captions = new Map();
   let call = null;
   const talkable = () => {
-    $("talk").disabled = $("stop").disabled || !$("push-to-talk").checked;
+    $("talk").disabled = $("stop").disabled || !call || !$("push-to-talk").checked;
   };
   const running = (on) => {
     $("start").disabled = on;
@@ -689,6 +689,7 @@ function devPage(page) {
         },
       });
       call.pushToTalk = $("push-to-talk").checked; // switched while the call started
+      talkable(); // the button waits for the call, so no hold is lost while it starts
       $("status").textContent = `Joined call ${call.callId}.`;
     } catch (error) {
       $("status").textContent = `${error.code ?? "error"}: ${error.notice ?? error.message}`;

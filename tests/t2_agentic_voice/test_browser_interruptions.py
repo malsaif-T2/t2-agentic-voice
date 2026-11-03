@@ -113,3 +113,11 @@ def test_the_dev_page_shows_the_volume_and_the_cut_mark_and_offers_push_to_talk(
     assert 'for (const name of ["pointerup", "pointercancel", "lostpointercapture"]) {' in dev
     assert '$("talk").addEventListener(name, () => talk(false));' in dev
     assert "call?.talk(held);" in dev
+
+
+def test_the_dev_page_talk_button_waits_for_the_call() -> None:
+    # As the widget's: a hold begun while the call starts would reach no call (Track D's review).
+    source = _source()
+    talkable = _between(source, "  const talkable = () => {", "\n  };\n")
+    assert "!call" in talkable
+    assert "// switched while the call started\n      talkable();" in source

@@ -59,7 +59,10 @@ def test_push_to_talk_holds_the_microphone_open_only_while_held() -> None:
     assert 'globalThis.addEventListener("blur", () => talk(false));' in script
     # The button is usable only while a call runs with the switch on; the call's end lets go.
     talkable = _between(script, "function talkable() {", "\n}\n")
-    assert '$("talk").disabled = $("end").disabled || !$("push-to-talk").checked;' in talkable
+    assert (
+        '$("talk").disabled = $("end").disabled || !page.call || !$("push-to-talk").checked;'
+        in talkable
+    )
     assert "talk(false);" in _between(script, "function ended(e) {", "\n}\n")
 
 
@@ -73,3 +76,13 @@ def test_a_cut_clause_is_styled_cut() -> None:
     assert ".captions .cut { color: var(--muted); }" in style
     assert '.captions .cut::after { content: "\\2026"; }' in style
     assert 'button.talk[aria-pressed="true"]' in style
+
+
+def test_the_talk_button_waits_for_the_call_so_no_hold_is_lost_while_it_starts() -> None:
+    # Held while the call was starting, the button showed held and reached no call, and the hold
+    # was lost once the call came (Track D's review, 2026-11-03).
+    script = _text("widget.js")
+    talkable = _between(script, "function talkable() {", "\n}\n")
+    assert "!page.call" in talkable
+    start = _between(script, "async function start() {", "\n}\n")
+    assert "page.call = call.closed ? null : call;\n    talkable();" in start

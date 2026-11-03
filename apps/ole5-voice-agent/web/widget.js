@@ -117,9 +117,10 @@ function running(on) {
   talkable();
 }
 
-// Push-to-talk's button: usable while a call runs with the switch on.
+// Push-to-talk's button: usable once the call exists, with the switch on; held while the call is
+// still starting, it would show held and reach no call.
 function talkable() {
-  $("talk").disabled = $("end").disabled || !$("push-to-talk").checked;
+  $("talk").disabled = $("end").disabled || !page.call || !$("push-to-talk").checked;
 }
 
 // Push-to-talk's hold: the microphone on while Space or the talk button is held.
@@ -232,6 +233,7 @@ async function start() {
     });
     call.pushToTalk = $("push-to-talk").checked; // switched while the call started
     page.call = call.closed ? null : call;
+    talkable();
   } catch (error) {
     running(false);
     state("");
