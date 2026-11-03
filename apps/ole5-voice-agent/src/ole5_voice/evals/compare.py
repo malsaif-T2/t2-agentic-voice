@@ -12,7 +12,7 @@ in one run only) is left out of both and listed. Held-out runs are compared by a
 a stratum value only where both hold it over the same number of items (`HELD_OUT_MIN_ITEMS` or
 more) with no failure, and two held-out runs that cover different variants are refused. Two runs
 whose recorded commits, data digests or splits differ are refused, the difference named, and so
-are two whose settings differ (TD-026), a setting one run records and the other lacks included
+are two whose settings differ, a setting one run records and the other lacks included
 (a run before plan 003's step 7 records only the keys it used), unless the setting is one every
 registered comparison may vary (`VARIED`) or the command names it with `--allow-setting NAME`,
 the exception a registered comparison makes (R7 against R5 varies `run.language_hint`). The
@@ -38,7 +38,7 @@ from ole5_voice.evals.runs import HELD_OUT_MIN_ITEMS, Scorecard, VariantResult
 from ole5_voice.evals.scorecard import load_scorecard
 
 ALPHA: Final = 0.05  # a p-value below it is beyond the noise
-# The settings two compared runs may always differ in (TD-026): the model a comparison of models
+# The settings two compared runs may always differ in: the model a comparison of models
 # varies, and the cap and the smoke-only switch, which change no answer a run scores.
 VARIED: Final = ("stt.model", "run.cap_usd", "run.smoke_only")
 SignTest = Callable[[int, int], float]

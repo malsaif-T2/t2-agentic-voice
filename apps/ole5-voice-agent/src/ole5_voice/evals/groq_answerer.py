@@ -1,5 +1,5 @@
 """The `groq` answerer of `poe eval`: it asks Groq's Whisper through the library's speech-to-text
-port, with the run's pacer and budget (TD-019's split of `answerers.py`).
+port, with the run's pacer and budget, in a module of its own as each answerer is.
 
 It sends one request at a time, the starts paced to `--max-rpm`. A request the provider turns
 away is asked again, up to `--max-attempts` times in all, after a pause: the larger of the

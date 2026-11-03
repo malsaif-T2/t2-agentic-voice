@@ -1,6 +1,6 @@
 """The `reference` answerer of `poe eval`, which gives each variant its own reference and sends
-nothing: the harness checking itself (evaluation.md, "Proven twice"); TD-019's split of
-`answerers.py`.
+nothing: the harness checking itself (evaluation.md, "Proven twice"), in a module of its
+own as each answerer is.
 """
 
 from __future__ import annotations

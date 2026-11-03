@@ -14,7 +14,7 @@ plan's interfaces".
   lifespan, `VoiceCalls` unless given; and the runtime's clock through `_clock`, private too
   (`SYSTEM_CLOCK` unless given): the router's records run on it, and the runtime passes it to
   `_calls` as the calls' `clock`. This module imports FastAPI, so the package root imports it
-  only when `VoiceRuntime` or `Providers` is first named (TD-046).
+  only when `VoiceRuntime` or `Providers` is first named: FastAPI costs seconds at import.
 - **The lifespan** does the IO. It takes an exclusive lock file under `storage.var_dir`
   (api/lockfile.py), so a second process on the same folder is refused with a FIX line that
   points to the sidecar, on Windows and on Linux; resolves every secret the settings name in a

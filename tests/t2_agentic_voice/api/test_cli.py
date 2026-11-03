@@ -1,5 +1,5 @@
 """The `t2v` command (api/cli.py): `--help` for it and each command only prints help, importing no
-Pipecat and no FastAPI, as `import t2_agentic_voice` imports neither (GP-17; TD-046), checked in a
+Pipecat and no FastAPI, as `import t2_agentic_voice` imports neither (GP-17), checked in a
 child process; `settings show --redacted` shows no secret and no secret's file; `serve` and `dev`
 serve the runtime APP names, with logging configured from its settings; and every refusal names
 what to fix, never a value. `t2v doctor`: test_doctor.py."""

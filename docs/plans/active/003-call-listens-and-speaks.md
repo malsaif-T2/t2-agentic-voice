@@ -718,9 +718,9 @@ their numbers.
   check` printed '1614 passed, 1 skipped in 87.72s (0:01:27)' and 'Total coverage: 100.00%'. The
   integrator also declared aiortc in the root's dev group, which the tests reach (it was locked as
   pipecat-ai[webrtc]'s; nothing was downloaded). What the builders chose is in the decision log; the
-  debt they found is TD-041 to TD-043, and TD-026's row names the keys an M1 run lacks. Left for
-  step 10: step 6's facades (identity, server, stores, events), their tests and CLAUDE.md's lines
-  for them. Next: steps 10 to 12.
+  debt they found is TD-041 to TD-043, and the row on `eval-compare`'s settings (paid and
+  removed since) named the keys an M1 run lacks. Left for step 10: step 6's facades (identity,
+  server, stores, events), their tests and CLAUDE.md's lines for them. Next: steps 10 to 12.
 - 2026-11-02: Steps 10, 11 and 12, by a workflow of four builders, one after another, each gated
   before its commits. The types (b44a575, e1e2f1d): the ports `TextToSpeech` with `AudioChunk`, and
   `IdentityVerifier` with `UsedTokens` and `JoinContext`; `aclose()` on every port that holds
@@ -922,9 +922,10 @@ their numbers.
   `var_dir/runtime.lock`, the phrase cache under `var_dir/<agent>/phrases` and the used tokens in
   `var_dir/<agent>/used_tokens.sqlite3`. Shown: a running `serve()` takes the selector loop, in a
   child process (D-029's UNVERIFIED item); its app records no span, metric or log record with
-  `FASTAPI_OTEL_AUTO_CONFIGURE=true`; TD-046 is paid, `import t2_agentic_voice` loading no FastAPI,
-  Pipecat, onnxruntime, groq or uvicorn and taking 1.55 s with `python -I`, against 4.42 s before;
-  and TD-012's warm-up is built. Gate: 'TOTAL 6287 0 100%', '2590 passed, 1 skipped in 197.20s
+  `FASTAPI_OTEL_AUTO_CONFIGURE=true`; the debt on the package root's FastAPI import is paid (its
+  row removed since), `import t2_agentic_voice` loading no FastAPI, Pipecat, onnxruntime, groq
+  or uvicorn and taking 1.55 s with `python -I`, against 4.42 s before; and TD-012's warm-up is
+  built. Gate: 'TOTAL 6287 0 100%', '2590 passed, 1 skipped in 197.20s
   (0:03:17)'. Review: one low finding, F-1 (`t2v doctor` prints the clock without measuring its
   skew), refuted as outside the rule: a criterion reading of this date, and TD-067.
 - 2026-11-03: Track G, the browser client, the widget and the Ole5 app's server, in 6 commits
@@ -949,9 +950,10 @@ their numbers.
   `echo_timings` (`testing/echo_timing.py`, `timed_speech.py`) on the file-fed pipeline; `poe eot`
   (`evals/eot.py`, `eot_score.py`); `poe eval-timing` (`timing.py`, `timing_run.py`,
   `timing_score.py`, `pacers.py`); the recorded calls' manifests (`call_manifests.py`); the
-  history's end-of-turn and timing lines; TD-019 paid (each answerer in its own module) and TD-026
-  (`eval-compare` refuses runs whose settings differ, but for `stt.model`, `run.cap_usd` and
-  `run.smoke_only`, with `--allow-setting NAME`: R7 against R5 takes `run.language_hint`); and `poe
+  history's end-of-turn and timing lines; the debt on `answerers.py`'s size paid (each answerer
+  in its own module) and that on `eval-compare`'s settings (`eval-compare` refuses runs whose
+  settings differ, but for `stt.model`, `run.cap_usd` and `run.smoke_only`, with
+  `--allow-setting NAME`: R7 against R5 takes `run.language_hint`); and `poe
   eval`'s smoke line naming the language the provider reported (TD-011, R7's smoke step). No
   prototype source. Values: a cut-off is a first turn end more than 300 ms before the true end, else
   a miss when none comes within 4 s after it; `LEAD_S` 1.0 s and `TAIL_S` 4.5 s; `NOISE_FLOOR` 328
@@ -989,8 +991,9 @@ their numbers.
   log's reading of invariant 8); 8551a74, `t2v doctor --synthesize` printing a provider's FIX line
   from `details["fix"]` (Track B's ask); and 2e0cc54, the gate's uncovered line.
   `.claude/launch.json`'s `minimal-dev` line stands as Track G wrote it, Track F's factory being
-  `minimal_example.app:make_runtime`. TD-019, TD-026 and TD-046 are paid, and TD-012 for a call, its
-  row now naming a run's first request only; the three rows go in the integrator's next commit, with
+  `minimal_example.app:make_runtime`. The debts on `answerers.py`'s size, on `eval-compare`'s
+  settings and on the package root's FastAPI import are paid, and TD-012 for a call, its row now
+  naming a run's first request only; the three rows go in the integrator's next commit, with
   their citations in the code, the tests, this plan and the docs, which DOC-REF reads. Next: that
   commit; `/dev`'s headers, Track G's policy sent by the router, with a test through it (Track G's
   ask); then Track I, and step 16.
@@ -1093,9 +1096,9 @@ itself, in the owner's words, is in "The owner's decisions".
 - 2026-11-02: `aclose()` joins `SpeechToText` and `TextToSpeech` now, since M2's runtime
   owns the adapters' lifetimes; a change to stable ports beyond the design's 6.1, written as
   Proposed in its decision entry.
-- 2026-11-02: Debt paid in M2: TD-012, TD-014, TD-026 (before R7, so the comparison refuses any
-  setting but the language hint), TD-011 (read in R7's smoke step), TD-032 (R5 and R6), the logging
-  debt (step 8) and the ports' close (step 10). TD-015 stays whole: the owner's Phoenix runs on this
+- 2026-11-02: Debt paid in M2: TD-012, TD-014, the debt on `eval-compare`'s settings (before R7,
+  so the comparison refuses any setting but the language hint), TD-011 (read in R7's smoke
+  step), TD-032 (R5 and R6), the logging debt (step 8) and the ports' close (step 10). TD-015 stays whole: the owner's Phoenix runs on this
   machine with no authentication ("The owner's decisions"), so no trace needs an API key in M2.
   TD-004 follows Q8: with no proxy on the host, the clients turn `trust_env` off; with one, a proxy
   setting is added. TD-003 and TD-005 stay: `GroqTTS` imports groq inside `logging_unchanged` as
@@ -1266,7 +1269,7 @@ itself, in the owner's words, is in "The owner's decisions".
   a run is always `env="dev"`, given in code, since it serves no caller. A run's history records
   every library setting (a secret or a file as set or not set), and `logging.level` and
   `logging.format` replace `log_level` and `log_format`, so comparing an M1 run with a new one lists
-  those keys (TD-026, paid before R7). `JoinRejected` carries the code `join_rejected` and no HTTP
+  those keys (the debt on `eval-compare`'s settings, paid before R7). `JoinRejected` carries the code `join_rejected` and no HTTP
   status, as every error below the outermost layer (GP-07); Track F's `api` maps it. The settings
   reference is docs/generated/settings.md, not the design's 7.7 path, as an earlier entry here says.
 - 2026-11-02, step 8 (the logging builder's choices): `get_logger` returns a small
@@ -1356,7 +1359,7 @@ itself, in the owner's words, is in "The owner's decisions".
   `core/tracing.py` is Track D's, with `core/tracing_tts.py`: it sets the design's 10.1 resource
   attributes. `api/static/` (`t2v-client.js` and the dev page) is Track G's: Track F's router serves
   it from a path its tests point at a folder of their own, and Track G tests that the built wheel
-  ships the files. The FastAPI import at the package root (TD-046) is Track F's to remove. Track H's
+  ships the files. The FastAPI import at the package root is Track F's to remove. Track H's
   task rows share one line of CLAUDE.md, which holds 119 of 120. Before any track starts, Block 0's
   fixes split `voice/session/io.py` (375 lines) into its events, its commands and the rest, rename
   its phrase protocol so it is never taken for the design's root `Phrases`, give the declaration
@@ -1676,7 +1679,8 @@ itself, in the owner's words, is in "The owner's decisions".
   - `t2v APP` is `module:function`; `settings show` is always redacted, each `_file` path too.
   - `t2v doctor` takes no APP and checks each `tts.languages` tag; its clock line is unmeasured.
   - `examples/minimal`'s `make_runtime` passes `DevIdentity()`, since `serve()` needs a source.
-  - TD-046 is paid by lazy names in the package root: `test_public_types` reads `APIRouter`.
+  - The package root's FastAPI import is gone, by lazy names there: `test_public_types` reads
+    `APIRouter`.
 - 2026-11-03, Track G (the browser client, the widget and the Ole5 app's server), the builder's
   choices:
   - The dev page holds no script or style of its own, so any policy `/dev` sends keeps it working.
@@ -2108,8 +2112,9 @@ rules on `stop` and on the widget's labels), and no test text copies an item's.
 **Track H · The measurement's tooling (library `testing`, app `evals`).**
 - Goal: `poe eot`, the timing run, the recorded calls' manifests, and what runs R5 to R7 need.
 - Owns: `testing/turns.py`, `testing/echo_timing.py`; in `apps/ole5-voice-agent/src/ole5_voice/evals/`,
-  `eot.py`, `timing.py`, `call_manifests.py`, and the changes to `answerers.py` (split first,
-  TD-019), `compare.py` (`--allow-setting`, TD-026), `runs.py` and `history.py` (the new run kinds);
+  `eot.py`, `timing.py`, `call_manifests.py`, and the changes to `answerers.py` (split first, each
+  answerer in its own module), `compare.py` (`--allow-setting`, refusing runs whose settings
+  differ), `runs.py` and `history.py` (the new run kinds);
   the poe tasks `eot` and `eval-timing` (asked of the integrator); tests under `tests/ole5_voice/evals/`
   and `testing/`.
 - May read: the registration below, evaluation.md's "Running", the file-fed transport's interface as
@@ -2519,7 +2524,7 @@ call (step 18), since those calls spend the same money and limits:
   already gives.
 - **Q16. The prompt arm for product terms: in M2 or in M4.** Term recall was 0.333 for large-v3 on dev
   (plan 002's Future improvements). In M2 it costs one dev run (about $0.075) plus a `--prompt` flag
-  in `poe eval` and TD-019's split, and it would change no default in M2, since the vocabulary that
+  in `poe eval` and the answerers' split, and it would change no default in M2, since the vocabulary that
   becomes the prompt is declared with the agent (the design's 3.1 and 3.3). **The agent recommends
   M4**, where the vocabulary lands and the result is used.
 - **Q17. The key**, before the first live call. Its real limits from the console

@@ -258,7 +258,7 @@ def test_runs_that_differ_in_commit_data_or_split_are_refused() -> None:
 
 
 def test_runs_whose_settings_differ_are_refused_unless_the_comparison_varies_them() -> None:
-    """TD-026: a setting that differs, or that one run records and the other lacks (a run made
+    """A setting that differs, or that one run records and the other lacks (a run made
     before plan 003's step 7 records only the keys it used), refuses the comparison, naming each
     setting and never its value; the model, the cap and the smoke-only switch may always
     differ, and `allowed` names a registered comparison's own exception."""

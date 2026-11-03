@@ -1,7 +1,7 @@
 """The answerers `poe eval` runs, by name: `reference` (`reference_answerer.py`), which gives each
 variant its own reference and sends nothing, and `groq` (`groq_answerer.py`), which asks Groq's
 Whisper through the library's speech-to-text port, with its pacer and budget. Each answerer
-lives in its own module (TD-019); this one keeps what a run asks of any of them (`RunAnswerer`)
+lives in its own module; this one keeps what a run asks of any of them (`RunAnswerer`)
 and builds the one a run names (`make_answerer`). The optional `prototype-cache` answerer, a
 replay of the prototype's stored answers, is not built.
 """

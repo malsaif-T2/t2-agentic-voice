@@ -9,7 +9,7 @@ can build one in code (`VoiceSettings(env="dev", server=ServerSettings(...))`), 
 
 `VoiceRuntime` and `Providers` are imported when first named (`__getattr__`): the runtime's
 module imports FastAPI, which costs seconds, so `import t2_agentic_voice` (an eval command, a
-child process, `t2v --help`) imports neither (TD-046).
+child process, `t2v --help`) imports neither.
 """
 
 import importlib
