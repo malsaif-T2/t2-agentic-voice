@@ -93,6 +93,27 @@ def test_usage_is_counted_per_model(settings: VoiceSettings) -> None:
     assert rates[WHISPER] == pytest.approx(2 / (report(io).duration_s / 60))
 
 
+def test_a_whisper_request_the_end_cancelled_is_billed_at_its_minimum(
+    settings: VoiceSettings,
+) -> None:
+    """`TurnClosed`, its `Transcribing` with 4.0 s, then an `Ending`: one request, 4.0 s sent
+    and 10.0 s billed, the turn unfinished."""
+    io, _ = call(settings)
+
+    async def drive() -> None:
+        await io.connected()
+        await io.turn_opened(0)
+        await io.turn_closed(0)
+        await io.transcribing(0, audio_s=4.0)
+        await io.ending()
+        await io.close()
+
+    asyncio.run(drive())
+    whisper = report(io).usage[0]
+    assert (whisper.requests, whisper.audio_sent_s, whisper.billed_s) == (1, 4.0, 10.0)
+    assert report(io).turns[0].unfinished
+
+
 def test_every_request_that_went_is_counted_one_the_end_cancelled_included(
     settings: VoiceSettings,
 ) -> None:
