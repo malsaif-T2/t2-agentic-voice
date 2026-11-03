@@ -20,33 +20,24 @@ from typing import Literal
 
 from pydantic import BaseModel, ConfigDict, Field
 
-from t2_agentic_voice.core.events import InterruptionKind
+from t2_agentic_voice.core.events import InterruptionKind, InterruptionReason
 from t2_agentic_voice.core.settings.words import LanguageCode
 from t2_agentic_voice.domain.words import Words
 
 # What the session does with the reply an overlap spoke over: stop it, stop it and say the last
-# reply again, or let it go on (and bring the agent's voice back).
+# reply again, or let it go on; the agent's voice comes back after each (io.py's overlaps).
 OverlapAction = Literal["stop", "repeat", "go_on"]
-# Which step of the rule decided, in its order: for the trace and the scorecards, never the
-# words themselves.
-VerdictReason = Literal[
-    "no_words",
-    "stop_word",
-    "repeat_word",
-    "own_words",
-    "listening",
-    "short_output",
-    "enough_words",
-    "too_few_words",
-]
+# Which step of the rule decided, in its order: the `Interrupted` event's `reason`
+# (core/events.py), one list for both.
+VerdictReason = InterruptionReason
 
 
 class Overlap(BaseModel):
     """One transcript of an overlap, as the rule judges it: its `text`; the probability Whisper
     gave that the audio holds no speech (None when the provider gave none); `speech_s`, the
     seconds of speech it was taken from; `played`, the texts of the agent's clauses that played
-    in the last `interruptions.own_words_s`, which its own voice heard back would say; and
-    `language`, the call's primary code, whose words apply."""
+    within `interruptions.own_words_s` and the one playing now, which its own voice heard back
+    would say; and `language`, the call's primary code, whose words apply."""
 
     model_config = ConfigDict(frozen=True, extra="forbid")
 

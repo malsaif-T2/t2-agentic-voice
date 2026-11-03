@@ -32,9 +32,9 @@ and builds them, and Pipecat's transport only carries them, inbound through its 
 event, outbound as urgent transport messages, so a stop never drops one (the appendix, item 8).
 
 While the caller speaks over a reply, the session lowers the agent's voice in the browser
-(`Duck`) and, when the overlap was no interruption, brings it back (`Unduck`): the first step of
-the two-step interruption (the design's 5.5; plan 005). A clause a stop cut while it played is
-captioned again, marked `cut`.
+(`Duck`) and brings it back once the overlap is decided, whether the reply goes on or was
+stopped (`Unduck`): the first step of the two-step interruption (the design's 5.5; plan 005).
+A clause a stop cut while it played is captioned again, marked `cut`.
 """
 
 from __future__ import annotations
@@ -187,15 +187,18 @@ class Caption(_SessionMessage):
 class Duck(_SessionMessage):
     """Lower the agent's playback to `level` of its volume, from 0 (silent) to 1 (as it was), at
     once: the caller is speaking over a reply, and the session is deciding whether it is an
-    interruption (`interruptions.duck_level`)."""
+    interruption (`interruptions.duck_level`). Every `duck` ends with exactly one `unduck` once
+    its overlap is decided, whatever the verdict; one the call's end cuts gets none, and the
+    client restores the volume when the call ends."""
 
     type: Literal["duck"] = "duck"
     level: float = Field(ge=0, le=1, allow_inf_nan=False)
 
 
 class Unduck(_SessionMessage):
-    """Bring the agent's playback back to its volume: the speech over the reply was no
-    interruption, and the reply goes on."""
+    """Bring the agent's playback back to its full volume: the overlap a `duck` lowered it for
+    was decided, whether the reply goes on or was stopped (then sent right after the stop), so
+    the next reply plays at full volume."""
 
     type: Literal["unduck"] = "unduck"
 

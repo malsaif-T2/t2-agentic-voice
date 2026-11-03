@@ -3,10 +3,14 @@ a turn whose speech began while a reply played, or within 300 ms after one, is a
 reply. The session opens it at the turn's `TurnOpened` (`open`: `duck` at
 `interruptions.duck_level`, then `HearOverlap` with `interruptions.first_window_ms`), judges each
 of its transcripts with the rule as it comes (`judge`: domain/interruptions.py's `judge`, with the
-call language's words, `call_words`, and the texts of the clauses played in the last
-`interruptions.own_words_s`), and keeps what decided it: a stop, a repeat, or the reply going on
-(`unduck`, the turn not answered). At most two requests decide one overlap, its window's and its
-whole overlap's; once one stops the agent, the other's verdict changes nothing.
+call language's words, `call_words`, and the texts of the clauses that played within
+`interruptions.own_words_s` and the one playing now), and keeps what decided it: a stop or a
+repeat (`StopSpeaking`, then `unduck` right after it), or the reply going on (`unduck` once the
+whole overlap's transcript has come, the turn not answered). Every overlap's `duck` ends with
+exactly one `unduck` once it is decided, whatever the verdict; an overlap the call's end cuts gets
+none (the client restores the volume when the call ends). At most two requests decide one
+overlap, its window's and its whole overlap's; once one stops the agent, the other's verdict
+changes nothing.
 
 Plan 005's Track B builds it; until then each method but the constructor raises.
 """
@@ -62,8 +66,9 @@ class Overlaps:
 
     def judge(self, event: Transcribed, *, played: Sequence[str]) -> Verdict | None:
         """The rule's verdict on an overlap's transcript (its `window` or its `overlap` part),
-        with `played`, the texts of the clauses played in the last `own_words_s`; None when the
-        overlap was decided already, or the transcript is not an overlap's."""
+        with `played`, the texts of the clauses that played within `own_words_s` and the one
+        playing now; None when the overlap was decided already, or the transcript is not an
+        overlap's."""
         raise NotImplementedError("the session's overlaps are plan 005's Track B's to build")
 
     def get(self, turn_id: TurnId) -> OverlapState | None:

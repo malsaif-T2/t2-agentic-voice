@@ -44,9 +44,14 @@ items cited are plan 003's appendix, "Changes to the plan's interfaces".
 - **Overlaps** (plan 005). Under `interruptions.mode = "two_step"`, such a turn is an overlap
   instead: the session sends `duck` at once (`Send`) and gives `HearOverlap`, and the
   speech-to-text bridge sends the overlap's `window` and `overlap` parts as that command says,
-  each a `Transcribing` and a `Transcribed` naming its part. The session's rule judges each
-  transcript as it comes: a stop gives `StopSpeaking` (and cancels the reply's work), anything
-  else `unduck` once the overlap's own transcript has come, the turn not answered.
+  each a `Transcribing` and a `Transcribed` naming its part; a `HearOverlap` that reaches the
+  bridge after the detector heard the turn's speech stop gets its `overlap` part sent at once,
+  with no window. The session's rule judges each transcript as it comes: a stop (new words
+  included) or a repeat gives `StopSpeaking` (and cancels the reply's work), then `unduck` right
+  after it; anything else `unduck` once the overlap's own transcript has come, the turn not
+  answered. So every `duck` ends with exactly one `unduck` once its overlap is decided, whatever
+  the verdict, and no reply after it plays lowered; an overlap the call's end cuts gets none,
+  since the client restores the volume when the call ends.
 - **The stop path** (item 7). `StopSpeaking` drops the agent's speech at once: the session
   bridge, upstream of the text-to-speech bridge, calls `broadcast_interruption()`, and every
   processor drops its queued frames up to the output transport, so a stop drops every clause

@@ -35,9 +35,12 @@ class HearOverlap:
     speech-to-text bridge sends the overlap's two parts, each reported with its `part`: its
     `window`, the first `window_ms` of it counted from 300 ms before the speech detector heard
     its speech begin, if the speech still goes on then; and the `overlap`, all of its speech,
-    once the detector hears it stop, never waiting for the turn's end. At most these two
-    requests decide an overlap: the turn's own `Transcribed` reuses the overlap's transcript,
-    with no request of its own, when no speech followed it."""
+    once the detector hears it stop, never waiting for the turn's end. A `HearOverlap` that
+    reaches the bridge after the detector heard the turn's speech stop gets its `overlap` sent
+    at once, with no window. At most these two requests decide an overlap: the turn's own
+    `Transcribed` reuses the overlap's transcript, with no request of its own, when no speech
+    followed it. Once the overlap is decided, whatever the verdict, the session sends one
+    `unduck`, right after `StopSpeaking` on a stop or a repeat (io.py's overlaps)."""
 
     turn_id: TurnId
     window_ms: int
