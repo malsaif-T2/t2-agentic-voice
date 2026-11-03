@@ -37,7 +37,12 @@ ALLOWED = [
     if env not in envs
 ]
 # Settings with no unit: a ratio from 0 to 1.
-RATIOS = {("turns", "vad_confidence"), ("turns", "vad_min_volume")}
+RATIOS = {
+    ("turns", "vad_confidence"),
+    ("turns", "vad_min_volume"),
+    ("turns", "smart_turn_threshold"),
+    ("interruptions", "duck_level"),
+}
 
 
 def _name(location: tuple[str, ...]) -> str:
@@ -259,6 +264,15 @@ def test_every_trusted_proxy_the_settings_take_is_one_uvicorn_matches() -> None:
         (("turns", "vad_min_volume"), -0.1),
         (("turns", "vad_stop_ms"), 0),
         (("turns", "smart_turn_max_duration_s"), float("inf")),
+        (("turns", "smart_turn_threshold"), 1.5),
+        (("stt", "no_speech_max"), -0.1),
+        (("interruptions", "mode"), "pause"),
+        (("interruptions", "duck_level"), 1.5),
+        (("interruptions", "first_window_ms"), 0),
+        (("interruptions", "min_words"), 0),
+        (("interruptions", "short_s"), float("nan")),
+        (("words", "stop"), {"fr": ["x"]}),
+        (("words", "backchannel"), {"en": [""]}),
         (("limits", "max_call_s"), 0),
         (("limits", "idle_s"), float("nan")),
     ],
@@ -286,6 +300,7 @@ def test_the_turn_tts_and_limit_defaults_are_the_plans() -> None:
         "vad_stop_ms": 200,
         "vad_min_volume": 0.6,
         "smart_turn": True,
+        "smart_turn_threshold": 0.5,
         "smart_turn_stop_ms": 3000,
         "smart_turn_pre_speech_ms": 500,
         "smart_turn_max_duration_s": 8.0,
@@ -305,10 +320,35 @@ def test_the_turn_tts_and_limit_defaults_are_the_plans() -> None:
     assert (settings.join.ttl_s, settings.join.max_clock_skew_s) == (60, 30)
 
 
+def test_the_interruption_and_word_defaults_are_plan_005s() -> None:
+    """The drop rule until the registered runs move it, the prototype's duck level, run W3's
+    window and the starting rule's bounds; no word added; the filter for text from silence off
+    until rule F sets it."""
+    settings = VoiceSettings(env="test")
+    assert settings.interruptions.model_dump() == {
+        "mode": "drop",
+        "duck_level": 0.25,
+        "first_window_ms": 750,
+        "min_words": 2,
+        "short_words": 2,
+        "short_s": 1.6,
+        "own_words_s": 5.0,
+    }
+    kinds = ("stop", "wait", "repeat", "backchannel", "no")
+    assert settings.words.model_dump() == {kind: {} for kind in kinds}
+    assert (settings.stt.no_speech_max, settings.stt.caption_filter) == (None, False)
+    words = VoiceSettings.model_validate({"env": "test", "words": {"stop": {"en": ["x", "y"]}}})
+    assert words.words.stop == {"en": ("x", "y")} and words.words.no == {}
+    with pytest.raises(TypeError):
+        words.words.stop["ar"] = ("z",)  # type: ignore[index]
+
+
 def test_every_timing_or_size_setting_has_its_unit_in_its_name() -> None:
-    """The design's 7.3: `_ms` or `_s`; only a ratio from 0 to 1 has none."""
+    """The design's 7.3: `_ms` or `_s`, or `_words` for a count of words; only a ratio from 0
+    to 1 has none."""
     numbers = [loc for loc, kind in fields() if kind in (int, float)]
-    unnamed = [loc for loc in numbers if not loc[-1].endswith(("_ms", "_s")) and loc not in RATIOS]
+    units = ("_ms", "_s", "_words")
+    unnamed = [loc for loc in numbers if not loc[-1].endswith(units) and loc not in RATIOS]
     assert numbers and unnamed == []
 
 
