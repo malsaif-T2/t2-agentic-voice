@@ -2,10 +2,12 @@
 the caller speaks, and Smart Turn v3.2 decides at each pause whether the turn has ended, both on
 the CPU through onnxruntime, with no torch, from the settings' `turns` group.
 
-- `speech_detector` and `turn_analyzer` build the models; each loads its ONNX model when it is
-  built, and importing onnxruntime takes 8 to 12 s a process (plan 003's appendix, "Changes to
-  the plan's interfaces", item 24), so they import it only when called: by voice's entry point,
-  at the runtime's start and, off the event loop, for each call (voice/calls.py).
+- `speech_detector` and `turn_analyzer` build the models, Smart Turn with the settings'
+  threshold (smart_turn.py's `ThresholdSmartTurn`, which leaves a turn's end as it was at 0.5);
+  each loads its ONNX model when it is built, and importing onnxruntime takes 8 to 12 s a
+  process (plan 003's appendix, "Changes to the plan's interfaces", item 24), so they import it
+  only when called: by voice's entry point, at the runtime's start and, off the event loop, for
+  each call (voice/calls.py).
 - `turn_processors` builds a call's `VADProcessor` and `UserTurnProcessor` around them.
   Pipecat's interruptions stay off (item 2): the only start strategy is the speech detector's,
   with `enable_interruptions=False`, so a turn's start broadcasts no `InterruptionFrame` and
@@ -58,16 +60,18 @@ def speech_detector(turns: TurnSettings) -> VADAnalyzer:
 
 
 def turn_analyzer(turns: TurnSettings) -> BaseTurnAnalyzer:
-    """A Smart Turn v3.2 with the `turns` settings, its model loaded on the CPU for one call."""
+    """A Smart Turn v3.2 with the `turns` settings, its threshold among them, its model loaded
+    on the CPU for one call."""
     from pipecat.audio.turn.smart_turn.base_smart_turn import SmartTurnParams
-    from pipecat.audio.turn.smart_turn.local_smart_turn_v3 import LocalSmartTurnAnalyzerV3
+
+    from t2_agentic_voice.voice.smart_turn import ThresholdSmartTurn
 
     params = SmartTurnParams(
         stop_secs=turns.smart_turn_stop_ms / 1000,
         pre_speech_ms=turns.smart_turn_pre_speech_ms,
         max_duration_secs=turns.smart_turn_max_duration_s,
     )
-    return LocalSmartTurnAnalyzerV3(params=params, cpu_count=1)
+    return ThresholdSmartTurn(threshold=turns.smart_turn_threshold, params=params, cpu_count=1)
 
 
 def turn_processors(

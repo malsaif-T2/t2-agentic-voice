@@ -74,7 +74,12 @@ def _rig(port: TextToSpeech, *, realtime: bool = False) -> tuple[Rig, list[Frame
     bridge = SessionBridge(events)
     tts = ClauseTTSBridge(tts=port, events=events, report=report, timeout_s=6.0)
     commands = SessionCommands(
-        bridge, events, listen=lambda language: None, send=_nowhere, hang_up=lambda reason: None
+        bridge,
+        events,
+        listen=lambda language: None,
+        hear=lambda turn_id, window_ms: None,
+        send=_nowhere,
+        hang_up=lambda reason: None,
     )
     captured = Captured()
     params = TransportParams(audio_out_enabled=True, audio_out_end_silence_secs=0)
@@ -271,6 +276,28 @@ def test_a_stop_drops_every_clause_asked_for_so_far_and_no_event_of_them_follows
     assert all(at < interrupted or at > marks["asked"] for at, _ in rig.captured.audio)
     assert rig.captured.audio_s() < 1.0 + 1.0 + 0.1  # the greeting cut, the next whole
     assert rig.keyed(ClausePlayed) == [(3, 0)]
+
+
+def test_a_stop_before_a_clauses_first_audio_leaves_no_context_of_it() -> None:
+    """TD-064's stop part: a clause whose request is in flight when a stop comes has registered
+    its text-to-speech context but opened no audio context, so Pipecat's interruption leaves it;
+    the bridge drops it at the stop, and the next clause plays and leaves none either."""
+    port = FakeTextToSpeech(delay_s=0.5)
+    held: dict[str, list[str]] = {}
+
+    async def body(rig: Rig) -> None:
+        await rig.commands.run(_speak(0, "never heard"))
+        await until(lambda: bool(port.calls))
+        held["in flight"] = list(rig.tts._tts_contexts)
+        await rig.commands.run(StopSpeaking(reply_id=0))
+        await until(lambda: not rig.tts._tts_contexts, timeout=1.0)
+        await rig.commands.run(_speak(1, "Again", audio=SECOND))
+        await until(lambda: (1, 0) in rig.keyed(ClausePlayed))
+        held["after"] = list(rig.tts._tts_contexts)
+
+    rig = _run(port, body)
+    assert held == {"in flight": ["t2v-clause-0-0"], "after": []}
+    assert rig.keyed(ClauseQueued) == [(1, 0)]  # the stopped clause's audio never came
 
 
 class _Numbered(FakeTextToSpeech):

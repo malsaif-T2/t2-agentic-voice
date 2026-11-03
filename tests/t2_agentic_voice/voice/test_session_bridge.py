@@ -8,9 +8,12 @@ import logging
 
 import pytest
 from t2_agentic_voice.voice import session_bridge as bridge_module
-from t2_agentic_voice.voice.protocol import Hangup, State, wire
+from t2_agentic_voice.voice.protocol import Duck, Hangup, State, wire
 from t2_agentic_voice.voice.session.commands import (
+    COMMANDS,
+    Command,
     HangUp,
+    HearOverlap,
     ListenIn,
     Send,
     Speak,
@@ -173,10 +176,11 @@ def test_the_bridge_hands_the_client_messages_and_passes_every_other_frame(
 def test_the_commands_are_carried_out_in_order_and_never_raise(
     caplog: pytest.LogCaptureFixture,
 ) -> None:
-    """`ListenIn` names the language, `Speak` sends its clause downstream and counts it asked
-    for, `StopSpeaking` drops what was asked and broadcasts the interruption, `Send` hands the
-    message on, `HangUp` ends the stream and the call; after the end a `Speak` or a stop does
-    nothing, and a command that fails is logged, not raised; each is kept with its time."""
+    """`ListenIn` names the language, `HearOverlap` marks the bridge's turn an overlap, `Speak`
+    sends its clause downstream and counts it asked for, `StopSpeaking` drops what was asked and
+    broadcasts the interruption, `Send` hands the message on, `HangUp` ends the stream and the
+    call; after the end a mark, a `Speak` or a stop does nothing, and a command that fails is
+    logged, not raised; each is kept with its time."""
     from pipecat.frames.frames import InterruptionFrame
 
     caplog.set_level(logging.DEBUG, logger="t2_agentic_voice")
@@ -184,6 +188,7 @@ def test_the_commands_are_carried_out_in_order_and_never_raise(
     events, tail = CallEvents(clock), Tail()
     bridge = SessionBridge(events)
     heard: list[str | None] = []
+    marked: list[tuple[int, int]] = []
     sent: list[object] = []
     ended: list[str] = []
 
@@ -193,28 +198,78 @@ def test_the_commands_are_carried_out_in_order_and_never_raise(
         sent.append(message)
 
     commands = SessionCommands(
-        bridge, events, listen=heard.append, send=send, hang_up=ended.append, record=True
+        bridge,
+        events,
+        listen=heard.append,
+        hear=lambda turn_id, window_ms: marked.append((turn_id, window_ms)),
+        send=send,
+        hang_up=ended.append,
+        record=True,
     )
     speak = Speak(reply_id=0, clause=0, turn_id=None, text="Hello", language="en")
 
     async def feed(worker: object) -> None:
         await commands.run(ListenIn(language="en"))
+        await commands.run(HearOverlap(turn_id=2, window_ms=750))
         await commands.run(speak)
         await until(lambda: bool(tail.of(SpeakFrame)))
         await commands.run(StopSpeaking(reply_id=0))
         await commands.run(Send(message=State(state="listening")))
         await commands.run(Send(message=State(state="thinking")))
         await commands.run(HangUp(reason="hangup"))
+        await commands.run(HearOverlap(turn_id=3, window_ms=750))
         await commands.run(speak)
         await commands.run(StopSpeaking(reply_id=0))
         await until(lambda: bool(tail.of(InterruptionFrame)))
 
     asyncio.run(run_pipeline([bridge, tail], feed))
     assert heard == ["en"] and sent == [wire(State(state="listening"))] and ended == ["hangup"]
+    assert marked == [(2, 750)]
     assert events.asked == events.dropped == {(0, 0)} and events.ended
     assert [f.speak for f in tail.of(SpeakFrame)] == [speak]
-    assert commands.given is not None and len(commands.given) == 8
+    assert commands.given is not None and len(commands.given) == 10
     assert commands.given[0] == (clock.now(), ListenIn(language="en"))
     lines = [r.getMessage() for r in caplog.records]
-    assert lines.count("command_after_end") == 2 and "command_failed" in lines
+    assert lines.count("command_after_end") == 3 and "command_failed" in lines
     assert "own text" not in caplog.text
+
+
+def test_every_command_of_the_session_has_its_case(caplog: pytest.LogCaptureFixture) -> None:
+    """Each type of `COMMANDS`, given before the call's end, is carried out by a case of its
+    own: none falls to the line kept for a command after the end. A new command type fails
+    here until it has a sample below, and a case."""
+    caplog.set_level(logging.DEBUG, logger="t2_agentic_voice")
+    events = CallEvents(FakeClock())
+    bridge = SessionBridge(events)
+    done: list[str] = []
+    commands = SessionCommands(
+        bridge,
+        events,
+        listen=lambda language: done.append("ListenIn"),
+        hear=lambda turn_id, window_ms: done.append("HearOverlap"),
+        send=lambda message: _noted(done, "Send"),
+        hang_up=lambda reason: done.append("HangUp"),
+    )
+    samples: list[Command] = [
+        ListenIn(language="en"),
+        HearOverlap(turn_id=0, window_ms=750),
+        Speak(reply_id=0, clause=0, turn_id=None, text="Hello", language="en"),
+        StopSpeaking(reply_id=0),
+        Send(message=Duck(level=0.25)),
+        HangUp(reason="hangup"),
+    ]
+    assert {type(sample) for sample in samples} == set(COMMANDS)
+
+    async def feed(worker: object) -> None:
+        for sample in samples:
+            await commands.run(sample)
+
+    asyncio.run(run_pipeline([bridge, Tail()], feed))
+    assert done == ["ListenIn", "HearOverlap", "Send", "HangUp"]
+    assert events.asked == events.dropped == {(0, 0)}
+    lines = [r.getMessage() for r in caplog.records]
+    assert "command_after_end" not in lines and "command_failed" not in lines
+
+
+async def _noted(done: list[str], name: str) -> None:
+    done.append(name)

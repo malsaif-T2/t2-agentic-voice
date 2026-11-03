@@ -29,7 +29,11 @@ session_bridge.py's `SpeakFrame`) through the `TextToSpeech` port, one request a
 Clauses play in the order they were asked for: each is spoken on the processor's own task, one
 after another, and Pipecat plays the contexts in order. A clause a stop dropped, or one asked
 for after the call's end, is never spoken; Pipecat's interruption, which the session bridge
-broadcasts, cancels a request in flight and drops every context and queued frame.
+broadcasts, cancels a request in flight and drops every context and queued frame. It drops no
+context a stopped clause registered before its first audio opened its audio context (Pipecat
+1.15.0's `_tts_contexts`, which `_handle_tts_speak` fills before the request and empties after
+it, a step the interruption cancels), so the bridge drops those of the clauses the stop dropped
+(TD-064), and no context outlives its clause.
 """
 
 from __future__ import annotations
@@ -64,6 +68,7 @@ from t2_agentic_voice.voice.session_bridge import (
     ClauseEndFrame,
     ClauseKey,
     SpeakFrame,
+    clause_of,
 )
 from t2_agentic_voice.voice.session_bridge import context_id as clause_context
 from t2_agentic_voice.voice.tts_output import ClauseTake, OutputChunks
@@ -100,8 +105,11 @@ class ClauseTTSBridge(TTSService):
             return
         await super().process_frame(frame, direction)
         if isinstance(frame, InterruptionFrame):  # a stop: forget what it dropped
-            for key in [k for k in self._clauses if k in self._events.dropped]:
+            dropped = self._events.dropped
+            for key in [k for k in self._clauses if k in dropped]:
                 del self._clauses[key]
+            for context in [c for c in self._tts_contexts if clause_of(c) in dropped]:
+                del self._tts_contexts[context]
 
     def create_context_id(self) -> str:
         """The context of the clause being spoken, named from its key."""
