@@ -474,11 +474,17 @@ stands.
     routes: an aiortc client, built with `RTCConfiguration(iceServers=[])`, joins, offers, sends a
     generated signal through a fake speech detector (no audio file:
     `tests/ole5_voice/evals/test_no_audio.py`), and receives the echo's audio from the fake
-    `TextToSpeech`; `poe eot --answerer reference --split dev` scores 0 cut-offs and 0 ms. By hand:
-    the agent starts `t2v dev` on `examples/minimal` with fake providers and opens `/dev` on
-    localhost in its browser pane, which is not Chrome and may give no microphone: the page loads,
-    ICE connects on whatever candidates the pane offers, the data channel opens and `hello`
-    arrives; the microphone, playback and Stop wait for the owner's Chrome and Edge (step 18).
+    `TextToSpeech`; `poe eot --answerer reference --split dev` scores 0 cut-offs and 0 ms. It also
+    checks what no track could check alone (the decision log, 2026-11-03): the phrase cache's folder
+    holds no new file after an echo turn, no join token, offer secret or access code is in an
+    exported span, and a token the Ole5 app's `/token` mints is verified at `/join`, its consent
+    recording only with `privacy.record_audio` on. By hand: the agent starts `t2v dev` on
+    `examples/minimal` with fake providers and opens `/voice/dev` on localhost in its browser pane,
+    which is not Chrome and gives a page no microphone (plan 002), so it first replaces
+    `navigator.mediaDevices.getUserMedia` there with a silent stream, since the client opens the
+    microphone before it joins (Track G): the page loads, ICE connects on whatever candidates the
+    pane offers, the data channel opens and `hello` arrives; the microphone, playback and Stop wait
+    for the owner's Chrome and Edge (step 18).
 17. **The whole-plan review of the code**, by one reviewer, each finding checked by one skeptic,
     reporting only what the 2026-11-03 rule names ("Blocks in the order they depend on each
     other"). Then `plan-003-integration` merges into the main branch, with the full gate, so the
@@ -492,8 +498,12 @@ recorded only if Q4 and Q7 are settled)
     headset, a few turns each, in the three languages, in Chrome and then in Edge, the owner
     checking the microphone, playback, Stop and Esc in each browser. They join through the Ole5
     app's token route with a local access code if Q4 is settled, and otherwise through
-    `DevIdentity`, which never records. The agent reads each call's trace and `CallReport`; a fix
-    is a block of its own.
+    `DevIdentity`, which never records, on `t2v dev`'s `/dev`, since the Ole5 app's server has no
+    such fallback (Track G). Ole5's widget offers Arabic (`ar-SA`, whose call also hears MSA, said
+    back in the Saudi voice) and English, and its token route mints at most 10 tokens in a rolling
+    day, every start that got past the microphone counted, in the server's memory: a restart of the
+    server begins the count again. The agent reads each call's trace and `CallReport`; a fix is a
+    block of its own.
 
 **Steps 19 to 22, the deployment, moved out of M2** on 2026-11-03 ("The owner's decisions"): the
 owner has no access to the server yet, so the deployment files, the network spike on the host, the
@@ -824,6 +834,166 @@ their numbers.
   D-027, and this plan's D-028 to D-039 go before it, as the decision log's step-12 entry says;
   package-design.md and the roadmap merge cleanly. Next: the gate, then Block 0 merges into
   `plan-003-integration` (step 13), and the tracks start.
+- 2026-11-03: Track A, speech text, in 3 commits (c5909f5 to fc9c46d), merged as 491b7bc:
+  `speak_number`, `speak_id` and `speak_digits` (`domain/text/speaking.py`), the clause splitter
+  (`clauses.py`) and the pronunciation map (`pronounce.py`). Read: the prototype's `speakable.py`,
+  lines 7-41 and 109-157, and num2words 0.5.14's output (MSA Arabic, its waw a word of its own, an
+  OverflowError from 10**51; English thousands with a comma; 0.45 s to import). Values: an ID is a
+  run of 5 digits or more, a run with a leading zero, or a run after a cue ("ending in", «آخرها»,
+  «ينتهي بـ»); the digit names are the prototype's MSA table; a punctuation mark, Arabic or English,
+  ends a clause only where it ends a word. Gate: 'TOTAL 5595 0 100%', '2469 passed, 1 skipped in
+  371.47s (0:06:11)'. Review: one finding, A-1 (an Orpheus request for each clause the splitter
+  cuts), refuted as Track A's, its contract asking for the cuts; the same cost stood in Track D as
+  D-1.
+- 2026-11-03: Track C, identity and stores, in 3 commits (44384d2 to 43625aa), merged as ba8ff9c:
+  `SignedJoinTokens` (`adapters/join_tokens.py`), `DevIdentity` (`adapters/dev_identity.py`), and
+  `SqliteUsedTokens` with `MemoryUsedTokens` (`adapters/used_tokens.py`), tested on invariant 7's
+  adversarial cases, a replay after a prune and after a restart, and two threads on one store and on
+  two stores of one file. No prototype source (it has no join tokens); PyJWT 2.15.1 read: its claim
+  checks call `datetime.now` themselves, and its minimum key length (32 bytes for HS256) holds when
+  it signs and when it verifies, as the appendix's item 25 says. Values: a `jti` of 1 to 128
+  printable ASCII characters, minted as `secrets.token_urlsafe(16)`; `iat` and `exp` JSON integers;
+  one `BEGIN IMMEDIATE` transaction a `use`, in a worker thread; loopback as 127.0.0.0/8, ::1 and
+  IPv4 loopback mapped into IPv6. Gate: 'TOTAL 5669 0 100%', '2508 passed, 1 skipped in 388.67s
+  (0:06:28)'. Review: one low finding, C-1 (a failed COMMIT leaves the store's transaction open,
+  refusing every later join), refuted, as nothing in the system makes a COMMIT fail: TD-065.
+- 2026-11-03: Track B, the Orpheus adapter and the phrase cache, in 4 commits (1c29fa1 to 111d66f),
+  merged as 08c0ab6: the streamed WAV reader (`adapters/wav_stream.py`), `GroqTTS` on `groq_client`
+  (`adapters/groq_tts.py`) and `PhraseCache` (`adapters/phrase_cache.py`). Read as specs, never run:
+  the prototype's `tts.py` (its `WavStream`, cut-short check, trimmer and stream) and `fillers.py`
+  (the cache), and groq 1.7.0's streamed speech path, which decides to stream before the request
+  hook runs. Values: mono 16-bit PCM only, the rate read from the fmt chunk; the leading silence in
+  40 ms frames under an RMS of 0.006 (about -44 dBFS, the prototype's), its last 40 ms kept when
+  trimmed; the prototype's cut-short ceilings (24 characters a second in Arabic, 30 in English, a
+  text under 30 characters never flagged), read from the first sound; a phrase's file keyed on
+  sha256(format, model, voice, text sent)[:32]; a 429 waited out for at most 60 s and sent again at
+  most twice. Gate: 'TOTAL 5829 0 100%', '2556 passed, 1 skipped in 416.38s (0:06:56)'. Review: one
+  low finding, B-1 (a silent take of a short fixed phrase is written to the cache), refuted, as no
+  such take from Groq is known and an empty clause plays as nothing: TD-061.
+- 2026-11-03: Track D, the voice session in echo mode, in 6 commits (3fdb2a1 to 6560f6d, the review
+  fix last), merged as c052e64: `CallSession` (`voice/session/call.py`) with the echo (`echo.py`),
+  the heard words (`heard.py`), the replies as they play and the speaker (`playback.py`), usage per
+  model (`usage.py`), the report and its file (`report.py`) and `CallRecorder` (`recording.py`);
+  and, in `core/tracing_tts.py`, the settings digest, the resource attributes, the text-to-speech
+  span and `CallTrace`. Read: the prototype's `capture.py` (a record per utterance, audio only when
+  on, files written on a thread of their own, a failure logged and never raised) and `session.py`'s
+  clock (lines 234-253: its stages run from an utterance's arrival, the session's from the end of
+  the caller's speech). Values: `DROP_AFTER_S` 0.3 s; `WHISPER_MIN_BILLED_S` 10 s; the report at
+  `var_dir/reports/<call ID>.json`; the recording at `var_dir/recordings/<call ID>/` (`caller.wav`,
+  `agent.wav` and `timeline.jsonl`, whose first line holds the consent version), each track padded
+  with silence to its place on the call's clock. Gate after the fix: 'TOTAL 6438 0 100%', '2476
+  passed, 1 skipped in 128.25s (0:02:08)'. Review: two medium findings. D-2 (the session holds its
+  lock while `Commands.run` waits) was refuted, `Session.handle` having to return soon and Block 0's
+  `FakeSession.handle` awaiting `run`; the rule `run`'s contract leaves unsaid is in TD-068. D-1
+  stood: the echo asked for one Orpheus request a clause, all at once, so a punctuated turn could
+  pass Groq's published 10 a minute; fixed in 6560f6d, the echo packs its clauses into requests of
+  at most `max_chars`, at most 3 an echo (`MAX_ECHO_REQUESTS`), with five tests that fail on the old
+  `echo.py`.
+- 2026-11-03: Track E, the Pipecat modules, in 10 commits (ae69cf7 to ec58326, the review fix last),
+  merged as c159c62: Pipecat's loguru namespace off (`voice/loguru_policy.py`); Silero and Smart
+  Turn v3.2, built only when a call needs them (`turns.py`); the speech bridges (`stt_bridge.py`,
+  one request a user turn; `tts_bridge.py`, in TOKEN mode) and the session bridge
+  (`session_bridge.py`); the WebRTC peer through a request handler of each call's own, with the F7
+  refusal, bounded closes and the taps (`transport.py`); Pipecat's failures as the library's
+  (`pipecat_events.py`); one worker and one runner a call (`pipeline.py`); `VoiceCalls`
+  (`calls.py`); and `feed_file` (`file_transport.py`). Read: the appendix's items 1 to 26, and
+  Pipecat 1.15.0's speech services, transports, processors, worker, runner and turns. Values: a
+  pre-roll of the detector's start delay plus 0.5 s; 0.3 s kept after the last VAD stop; at most
+  30 s a request; 20 s from offer to connected; 5 s for a peer's close and for the pipeline's
+  cancel; 1 s for the session to hang up after an `Ending`, and 10 s for it to drain. Measured: a
+  local aiortc offer answered in 29 ms, a client's close ending its call in about 40 ms, onnxruntime
+  with both models built in 8.7 to 9.8 s, and 60 s of fed frames within 100 ms. Gate after the fix:
+  'TOTAL 6467 0 100%', '2480 passed, 1 skipped, 1 warning in 232.86s (0:03:52)', the warning
+  Pipecat's own for `AudioContextTTSService`. Review: E-1, high, judged medium, stood: each clause's
+  `TTSStoppedFrame` made Pipecat's output clear the part chunk it held of the next clause, still
+  streaming, losing up to 40 ms inside it; fixed in ec58326, the bridge resamples to the pipeline's
+  rate and hands the output whole 1920-byte chunks only, the take's last padded with silence (the
+  new test lost 400 samples before it). E-2 (a hung `pc.close()` keeps a call's tasks for the life
+  of the process) was refuted: Pipecat's own bound ends them in about 20 s.
+- 2026-11-03: Track F, `api`, the CLI and `examples/minimal`, in 6 commits (add8113 to bd2af48; two
+  are its asks, committed to Block 0's files: the package root's lazy names, add8113, and the `t2v`
+  console script, b1e724f), merged as 6100fe6: `VoiceRuntime`, its lifespan and
+  `Providers.from_settings` (`api/runtime.py`); the lock file (`lockfile.py`); the router, its
+  records of the calls and its one error shape (`router.py`, `offers.py`, `http_errors.py`);
+  `serve()` and `combine_lifespans` (`server.py`); `t2v serve`, `dev`, `doctor` and `settings show`
+  (`cli.py`, `doctor.py`); and `examples/minimal` as an echo agent in English and Saudi Arabic. No
+  prototype source. Values: the records swept every 5 s; at most 1000 events queued for the
+  observers, 10 s each; a call ID of 96 random bits and an offer secret of 256; the lock at
+  `var_dir/runtime.lock`, the phrase cache under `var_dir/<agent>/phrases` and the used tokens in
+  `var_dir/<agent>/used_tokens.sqlite3`. Shown: a running `serve()` takes the selector loop, in a
+  child process (D-029's UNVERIFIED item); its app records no span, metric or log record with
+  `FASTAPI_OTEL_AUTO_CONFIGURE=true`; TD-046 is paid, `import t2_agentic_voice` loading no FastAPI,
+  Pipecat, onnxruntime, groq or uvicorn and taking 1.55 s with `python -I`, against 4.42 s before;
+  and TD-012's warm-up is built. Gate: 'TOTAL 6287 0 100%', '2590 passed, 1 skipped in 197.20s
+  (0:03:17)'. Review: one low finding, F-1 (`t2v doctor` prints the clock without measuring its
+  skew), refuted as outside the rule: a criterion reading of this date, and TD-067.
+- 2026-11-03: Track G, the browser client, the widget and the Ole5 app's server, in 6 commits
+  (499ffda to cca13ed), merged as 120d39b: `t2v-client.js` and `dev.html` (`api/static/`); Ole5's
+  widget (`apps/ole5-voice-agent/web/`); the app's settings, token route and server
+  (`ole5_voice/settings.py`, `token_route.py`, `server.py`); and `.claude/launch.json`'s
+  `minimal-dev` (port 7860) and `ole5-dev` (port 7861). Read only: the prototype's `web/voice.js`,
+  lines 213-235 (audio started inside the click, the capture's constraints), and `web/t2-chat.js`'s
+  microphone error map, which the widget's messages adapt; the recorder's page; Pipecat 1.15.0's
+  Small WebRTC connection (only raw text starting with `ping` refreshes its keep-alive, so the
+  client sends none), uvicorn 0.54.0's config and FastAPI 0.162.0's `telemetry=`. Values: the Ole5
+  server on 127.0.0.1:7861; Q4's guard counted in memory, an address held back 1 s after its first
+  wrong code in the hour and doubling to 60 s, 20 wrong codes an hour, 10 tokens in a rolling day;
+  the client's playback watch every 50 ms, sound above an RMS of 0.01, a clause ended by 300 ms of
+  quiet; a hangup waiting at most 3 s for `ended`. Gate: 'TOTAL 5756 0 100%', '2473 passed, 1
+  skipped in 156.29s (0:02:36)'. Review: two findings, refuted as outside the rule: G-1 (the client
+  opens the microphone before it joins, so the agent's browser pane, which has none, never reaches
+  the data channel), which step 16 now meets with a silent stream, and G-2 (`/dev`'s headers, which
+  no track's section gave), a criterion reading of this date.
+- 2026-11-03: Track H, the measurement's tooling, in 8 commits (f4023f4 to 54d66fb; c868760 alone
+  fails ARCH-SIZE, which 73a099d fixes), merged as 8aa3417: `turn_ends` (`testing/turns.py`) and
+  `echo_timings` (`testing/echo_timing.py`, `timed_speech.py`) on the file-fed pipeline; `poe eot`
+  (`evals/eot.py`, `eot_score.py`); `poe eval-timing` (`timing.py`, `timing_run.py`,
+  `timing_score.py`, `pacers.py`); the recorded calls' manifests (`call_manifests.py`); the
+  history's end-of-turn and timing lines; TD-019 paid (each answerer in its own module) and TD-026
+  (`eval-compare` refuses runs whose settings differ, but for `stt.model`, `run.cap_usd` and
+  `run.smoke_only`, with `--allow-setting NAME`: R7 against R5 takes `run.language_hint`); and `poe
+  eval`'s smoke line naming the language the provider reported (TD-011, R7's smoke step). No
+  prototype source. Values: a cut-off is a first turn end more than 300 ms before the true end, else
+  a miss when none comes within 4 s after it; `LEAD_S` 1.0 s and `TAIL_S` 4.5 s; `NOISE_FLOOR` 328
+  of 32768 (about -40 dBFS, UNVERIFIED until T1); pacers of 10 Whisper and 5 Orpheus requests a
+  model in any minute, a variant budgeted 2 of each; a rate-limited call run again after 60 s, at
+  most 3 calls. The reference answerer scores the committed golden set at 0 cut-offs, 0 misses and
+  0 ms, on dev (23 variants) and held-out (16). Gate: 'TOTAL 6638 0 100%', '2476 passed, 1 skipped
+  in 187.57s (0:03:07)'. Review: one medium finding, H-1 (a timing run goes on after a 429 its three
+  calls could not wait out), refuted, as the pacers hold the minute and T runs on a day with no
+  call: its budget points are in TD-082.
+- 2026-11-03: Tracks A to H, by a workflow of 29 agents: 8 builders, each in a worktree of its own
+  (`plan-003-track-a` to `plan-003-track-h`, cut from `plan-003-integration` at Block 0's merge,
+  8271b54) and gated before its commits; 8 reviewers, one a track, under the owner's rule of
+  2026-11-03; 11 skeptics, one a finding; and 2 fixers, for Tracks D and E. Of the 11 findings (1
+  high, 6 medium and 4 low as reported), 2 stood, D-1 and E-1, each judged medium, and were fixed
+  (6560f6d, ec58326); no high finding stood, so no second round ran. Each gate's one skip is the
+  recorder's file-link case (TD-001). The integrator departed from step 15 twice: the eight merges,
+  in the order A, C, B, D, E, F, G, H (491b7bc to 8aa3417), were made within 4 s, the full gate
+  running once, on the merged branch, rather than after each merge; and, to keep the merges moving,
+  these records are written in one commit after the merges, rather than in each `merge track X`
+  commit. That gate passed: 'TOTAL 10172 1 99%', 'Total coverage: 99.99%', '3172 passed, 1 skipped,
+  1 warning in 294.49s (0:04:54)', the warning Pipecat's own for `AudioContextTTSService`; its one
+  uncovered line, `voice/session/echo.py` line 79, was the echo's check for a blank clause, which no
+  text reaches since Track A's splitter keeps only clauses with a letter, a digit or a symbol,
+  removed in 2e0cc54. The tracks' debt is TD-058 to TD-083; the criteria they met differently, or
+  could not meet alone, are read in the decision log of this date, and steps 16 and 18 and Track I's
+  section are brought to what the tracks built.
+- 2026-11-03: The integrator's commits after the merges, before these records: d4cadca,
+  `harness.toml`'s `[[restricted]]` row for `HeardWords` (Track D's ask; the decision log's reading
+  of this date); b99a0c3 and fb81f8b, `voice/__init__.py`'s and `api/__init__.py`'s docstrings
+  naming what is built (Track D's and Track F's asks), `voice/calls.py` no longer calling itself a
+  stub; 6838e97, the poe tasks `eot` and `eval-timing`, their row in CLAUDE.md's Commands table and
+  their bullets in evaluation.md's "Where the commands live" (Track H's asks), which the end-of-turn
+  criterion's `uv run poe eot` needs; d69bac8, one sender of the public failure events (the decision
+  log's reading of invariant 8); 8551a74, `t2v doctor --synthesize` printing a provider's FIX line
+  from `details["fix"]` (Track B's ask); and 2e0cc54, the gate's uncovered line.
+  `.claude/launch.json`'s `minimal-dev` line stands as Track G wrote it, Track F's factory being
+  `minimal_example.app:make_runtime`. TD-019, TD-026 and TD-046 are paid, and TD-012 for a call, its
+  row now naming a run's first request only; the three rows go in the integrator's next commit, with
+  their citations in the code, the tests, this plan and the docs, which DOC-REF reads. Next: that
+  commit; `/dev`'s headers, Track G's policy sent by the router, with a test through it (Track G's
+  ask); then Track I, and step 16.
 
 ## Decision log
 
@@ -1418,6 +1588,174 @@ itself, in the owner's words, is in "The owner's decisions".
   - Step 30 corrects only the design's factual slips: the sections D-028 to D-039 go beyond as
     Proposed get no note in italics, since the entries hold each departure until the owner rules
     ("The owner's decisions"), and 16.3 names the entries.
+- 2026-11-03, Track A (speech text), the builder's choices:
+  - A mark ends a clause only where it ends a word: "3.5", "12:30" and "t2.example" stay whole.
+  - A word is a run between any Unicode spaces, joined by one: a clause is measured as sent.
+  - A clause with no letter, number or symbol is dropped: its request would say nothing.
+  - The splitter only cuts; packing is the phrase cache's and, since D-1's fix, the echo's.
+  - `speak_number` drops English commas and joins Arabic's lone waw: a number stays one clause.
+  - The ID cues are whole words; the Arabic ones match with or without tatweel, after waw or feh.
+  - `speak_digits` spaces a letter its run touched ("T2" says "T two"); no M2 path calls it.
+  - The map's whole-word rule reads a form's ends, so the design's "LT-" is found in "LT-00423".
+  - The map matches case as written ("us" never takes "US"'s entry): a team lists each form.
+  - The map runs in one pass, longest form first, so a said form is never mapped again.
+- 2026-11-03, Track C (identity and stores), the builder's choices:
+  - A token's times are checked on the verifier's own clock, PyJWT's being one no test can set.
+  - A lifetime over the verifier's `join.ttl_s` is refused, so a website mints within it.
+  - Claims parse with `extra="forbid"`: `nbf`, `aud`, `iss` and a team's own claims are refused.
+  - The `kid` header is required: a token with none is `unknown_key`, never tried on every key.
+  - The claims are checked before the store is asked: a token they fail spends no `jti`.
+  - Each refusal has a fixed message and a `reason`, from `malformed` to `used`, chaining nothing.
+  - Each store prunes inside every `use`: no background task per call or per runtime.
+  - SQLite in a worker thread, one `BEGIN IMMEDIATE` a `use`: one True across threads and files.
+  - `mint` leaves out an unset `name`, `locale` and `attrs`.
+  - `DevIdentity`'s loopback is 127.0.0.0/8, ::1 and mapped IPv4; a name (`localhost`) is refused.
+- 2026-11-03, Track B (the Orpheus adapter and the phrase cache), the builder's choices:
+  - `tts.timeout_s` bounds each phase of a request, not the whole take, which a deadline could cut.
+  - Audio is yielded as it comes, an empty last chunk only to carry a flag or the headroom.
+  - The cut-short rate is read from the first sound: Orpheus's 0.4 to 0.7 s lead would hide cuts.
+  - Every byte after the WAV's data head is audio, as in the prototype: a stream has no size.
+  - The terms' FIX goes in `details["fix"]` and a note, a `ProviderError`'s message being fixed.
+  - A language with no voice fails `synthesize` as rejected, which a call sees as `ClauseFailed`.
+  - `PhraseCache` takes `keep_files`, set from `tts.cache_phrases`, which the stub could not say.
+  - A take cut short is kept in memory, never on disk, where it would cut that phrase in every call.
+  - `declare` counts every request sent, a refused one sent again included, as Groq's limits do.
+  - A phrase file that is not a readable WAV is synthesized again and replaced, rather than failing
+    the start.
+- 2026-11-03, Track D (the voice session in echo mode), the builder's choices and its fix's:
+  - The 10.1 resource attributes go on each trace's root span, a team's provider keeping its own.
+  - The settings digest leaves out each field whose type holds a `SecretStr`, and its `_file`.
+  - `CallTrace` lives in `core/tracing_tts.py`, so `voice` names no OpenTelemetry type.
+  - A turn's times run from the end of the caller's speech (the design's 10.3), clamped at 0.
+  - The echo starts once the transcript is in, whether `TurnClosed` came before it or after.
+  - The drop window runs from a reply's first `ClauseQueued` to its end plus 0.3 s.
+  - A dropped turn stays in the report and timeline, with no caption, `UserTurnEnded` or metrics.
+  - A notice shows only as its `notice` message; heard clauses are captioned as said.
+  - `played_fraction` counts characters: a clause not yet synthesized has no known length.
+  - An echo gives at most one `error` notice; with `ended` pending, no new turn is answered.
+  - `limits.idle_s` counts from the last `TurnOpened` or `TurnClosed`; an open turn holds it off.
+  - `ended` goes before `HangUp`, but not after `caller_left` or a transport failure: no channel.
+  - The `state` messages are worked out from what happens and sent only when they change.
+  - Usage reports both models, zeros when unused; a report after the end or a cut still counts.
+  - A fixed phrase the cache lacks is logged `phrase_not_declared` and unsaid, never requested.
+  - The report file is `var_dir/reports/<call ID>.json`, under no agent's folder.
+  - Under ARCH-SIZE, `Speaker` went to `playback.py`, and the docstring's test list to the tests.
+  - D-1's fix: the echo packs its clauses greedily into requests of at most `max_chars`.
+  - D-1's fix: at most `MAX_ECHO_REQUESTS` (3) an echo, about 40 s of English; the rest is unsaid.
+  - D-1's fix: `call.py`'s contract says so, one `Speak` and one caption for each packed request.
+- 2026-11-03, Track E (the Pipecat modules), the builder's choices and its fix's:
+  - Each call has its own `WorkerRunner` and `PipelineWorker`: no call's end reaches another.
+  - The peer is built through a request handler of each call's own, so `voice` imports no aiortc.
+  - The F7 guard refuses an offer with no UDP `a=candidate:` line; the 20 s deadline ends the rest.
+  - With `turns.smart_turn` off, every pause the detector hears ends the turn.
+  - `speech_ended_at` is the detector's last stop, so registration E's steps are read from it.
+  - An exception that is not a `ProviderError` fails its turn or clause as `server_error`.
+  - A clause's context opens at its first audio: Pipecat 1.15.0 errors on a context with none.
+  - `ClausePlayed` comes when the clause's stop frame leaves the output, seen by a tap after it.
+  - `Send` goes straight to the output's `send_message`, so Pipecat's CancelFrame at a hang-up never
+    discards `ended` (its SCTP stop still can: TD-075).
+  - After an `Ending` or a `TransportFailure`, the session has 1 s to hang up before teardown.
+  - Voice emitted `ProviderFailed` and `TransportFailed` for what its bridges and transport saw;
+    superseded by d69bac8, the session sending the events of what it is handed and voice only a
+    speech bridge's error frame's `ProviderFailed`.
+  - `VoiceCalls.start` warms the factories it is given, so a test's fakes load no ONNX model.
+  - The file-fed pacer keeps one `asyncio.sleep` a frame, not the spike's at 43% of a core.
+  - E-1's fix: the bridge, not Pipecat's output, cuts the audio into whole 40 ms chunks.
+- 2026-11-03, Track F (`api`, the CLI and `examples/minimal`), the builder's choices:
+  - A call takes one offer: a second `POST /offer` gets 409 even after voice refused the first.
+  - An offer that crashes `Calls.answer` gets 500, and the call is ended: none is half-started.
+  - `/dev` is served in `dev` only with `server.dev_page` on or under `t2v dev`; else a plain 404.
+  - `/dev` sends `frame-ancestors 'none'`, nosniff, no referrer, the microphone policy, no-store.
+  - `/health` answers `{env, calls}`, the calls counted from the router's records.
+  - The offer secret may be in the header and the body only if both agree, compared as bytes.
+  - `join_rejected`'s message is fixed, so a team's verifier never puts a value in a response.
+  - One lock per `var_dir`, a second runtime of the same process refused too (D-029).
+  - The lifespan resolves every secret at start, and imports the adapters only there.
+  - The observers run in order on one task, each event within 10 s, at most 1000 queued.
+  - `serve()` always adds CORS, runs `lifespan="on"` and passes `forwarded_allow_ips` as a list.
+  - `t2v APP` is `module:function`; `settings show` is always redacted, each `_file` path too.
+  - `t2v doctor` takes no APP and checks each `tts.languages` tag; its clock line is unmeasured.
+  - `examples/minimal`'s `make_runtime` passes `DevIdentity()`, since `serve()` needs a source.
+  - TD-046 is paid by lazy names in the package root: `test_public_types` reads `APIRouter`.
+- 2026-11-03, Track G (the browser client, the widget and the Ole5 app's server), the builder's
+  choices:
+  - The dev page holds no script or style of its own, so any policy `/dev` sends keeps it working.
+  - The client opens the microphone before it asks for a token: a missing one spends none.
+  - Candidates go by PATCH once `/offer` answered, the end marker last; the secret in the body.
+  - `playback` reports are read from the agent audio's level after each caption, approximately.
+  - The client ends the call when the session closes the channel, freeing the microphone at once.
+  - Q4's guard lives in the app's process, so a restart begins every count again.
+  - The token's caller is `Caller(subject="owner")`; the body takes only `code` and `consent`.
+  - The Ole5 server has no `DevIdentity` fallback: it refuses to start without the access code.
+  - The app's settings read `OLE5_VOICE_` with `extra="ignore"`, one `.env` holding both prefixes.
+  - uvicorn runs the app on `asyncio:SelectorEventLoop` (item 20), UNVERIFIED in a running server.
+  - Ole5's agent is declared in `server.py`: `ole5`, `ar-SA` then `en`, its map holding "Ole5".
+  - The consent screen is the agent's draft of Q7's (a), `m2-owner-test-1`, its box unchecked.
+- 2026-11-03, Track H (the measurement's tooling), the builder's choices:
+  - Orpheus's first sound is when the chunk with its first sample above the floor came.
+  - The noise floor is 328 of 32768 on one sample, the agent's value, UNVERIFIED until T1.
+  - The frame's first audio is the first output frame at or after its `ClauseQueued`.
+  - `echo_timings` counts usage from the call's events: `feed_file` may return before the report.
+  - The secondary set runs only with the pipeline on dev, its true end the last speech stop.
+  - A pipeline run of `poe eot` appends an end-of-turn line; a reference run appends none.
+  - A timing run calls `echo_timings` once a variant, so its pacers and retries act between them.
+  - The phrase cache's one request count goes on every Orpheus model's pacer, conservatively.
+  - A timing run is dev only, refusing `tts.trim_silence` on and a live language but `session`.
+  - Its agent is the app's `ole5-timing`: Saudi and mixed items held in `ar-SA`, MSA in `ar`.
+  - Compared runs may always differ in `stt.model`, `run.cap_usd` and `run.smoke_only`, no other.
+  - A manifest's consent version comes from the command line, the recorder's layout no contract.
+- 2026-11-03, the criteria a track could not meet alone, and who meets them (the rule of
+  "## Tracks"; the agent's reading, which the owner may overrule):
+  - "The fixed phrases declared at lifespan start": Track B tests that only `declare` writes and
+    that a heard text sends and writes nothing, Track D that the session asks the phrase audio for
+    fixed phrases only; that the cache's folder holds no new file after an echo turn is step 16's
+    test.
+  - "Invariant 8: Pipecat's loguru output is off": Track E tests `import t2_agentic_voice`, the
+    banner and the DEBUG line; `t2v --help` writing nothing to stderr is Track F's child-process
+    test of every command's help (`tests/t2_agentic_voice/api/test_cli.py`, an empty stderr
+    asserted), met with F's merge.
+  - "Ole5's widget in `apps/ole5-voice-agent/web/`": `/dev`'s headers are the router's (Track F),
+    and Track G asked for its policy; after the merges of F and G the integrator sends Track G's
+    `default-src 'none'; script-src 'self'; connect-src 'self'; img-src data:; base-uri 'none';
+    form-action 'none'; frame-ancestors 'none'` with Track F's other headers, and tests each through
+    the real router.
+  - "The owner's calls through the widget are recorded": the token's round trip, a token from the
+    Ole5 app's `/token` verified at `/join`, its consent recording only with `privacy.record_audio`
+    on, is step 16's (Track G tested `/token` against a fake minter, Track F `/join` against a fake
+    identity).
+  - "One trace per turn": no join token, offer secret or access code in an exported span is
+    step 16's, end to end; the session receives none of the three, so Track D tested the settings'
+    secrets.
+  - "`uv run poe eot` measures end of turn offline": `turn_ends` and `echo_timings` are tested
+    against a fake `VoiceCalls` and `feed_file`; one check through the real `feed_file`, possible
+    since E's merge, is TD-081.
+- 2026-11-03, criteria read as the tracks built them (the rule of "## Tracks"; the agent's reading,
+  which the owner may overrule):
+  - "`t2v serve`, `t2v dev`, `t2v doctor`": doctor prints this machine's UTC time and
+    `join.max_clock_skew_s` without measuring the skew while every join token is minted on this
+    laptop; the deployment's plan measures it (TD-067).
+  - "One trace per turn": the design's 10.1 resource attributes, on each trace's root span, carry
+    the agent's name in place of its fingerprint and version until the talker builds them (TD-069).
+  - "The router serves `POST /join`": `/dev` also needs `server.dev_page` on, the setting whose
+    description says the router serves it, or `t2v dev`, which turns it on; with the setting off,
+    `/dev` is a plain 404.
+  - "Invariant 8: Pipecat's loguru output is off": its failures become `TransportFailed` or
+    `ProviderFailed` events once each. Track E's `voice/pipecat_events.py` and Track D's session
+    both sent them, which d69bac8 settled: the session sends the event of every failure it is
+    handed, and voice's Pipecat side logs each failure and sends only a speech bridge's error
+    frame's `ProviderFailed`, which reaches no session event.
+  - "`HeardWords` is in `[[restricted]]`, built only in `voice`, from the commit that creates it":
+    Track D created it (b1187b1), but `harness.toml` is Block 0's file, so its row came with the
+    integrator's d4cadca, after the merges, where `poe arch` passes on all eight tracks' code; the
+    criterion is met from d4cadca.
+  - "The voice session in echo mode": each turn is said back in at most `MAX_ECHO_REQUESTS` (3)
+    requests of `max_chars`, about 40 s of English, the rest unsaid (D-1's fix, in
+    `voice/session/call.py`'s contract).
+  - "Ole5's widget in `apps/ole5-voice-agent/web/`": the pane's check of the data channel gives the
+    page a silent stream in place of the microphone, which the client opens before it joins
+    (Track G; step 16).
+  - Not a criterion: registration T's Orpheus count, one request a heard turn and 40 Arabic a run,
+    holds since D-1's fix, a dev paused request being one packed request; it is not amended.
 
 ## The owner's decisions
 
@@ -1797,7 +2135,15 @@ rules on `stop` and on the widget's labels), and no test text copies an item's.
   sample taken from `examples/minimal` (Track F); `data-and-privacy.md` says how long Phoenix keeps
   transcripts: forever unless a retention is set (`PHOENIX_DEFAULT_RETENTION_POLICY_DAYS`, 0 by
   default), and for Ole5 in M2 Q7's (iv), settled on 2026-11-03: the local Phoenix, M1's, with no
-  retention setting.
+  retention setting. From the tracks' reports of 2026-11-03: `serving.md` gives the join token's
+  claims as `SignedJoinTokens` verifies them (a `kid` header and HS256; `sub` required; `name`,
+  `locale` and `attrs` optional, each may be null; `consent` with both its keys, `version` null or 1
+  to 64 printable ASCII characters with no space, and `record_audio` a JSON boolean; a `jti` of 1 to
+  128 printable ASCII characters with no space; `iat` and `exp` JSON integers, `exp - iat` within
+  the runtime's `join.ttl_s`; no claim beyond these eight, so `nbf`, `aud` and `iss` are refused),
+  and tells a team that mounts the router on Windows to run uvicorn on the selector loop, as the
+  Ole5 app's server does (`loop="asyncio:SelectorEventLoop"`), since uvicorn's default there is the
+  Proactor loop (the appendix's item 20).
 - Tests: `poe docs`, which also checks that a code sample after a link to a `.py` file is a run
   of that file's lines (DOC-SAMPLE, D-027).
 
