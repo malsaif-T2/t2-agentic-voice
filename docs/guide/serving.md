@@ -1,0 +1,218 @@
+# Serving: the sidecar or the mount, and who may call
+
+How a runtime serves calls (D-029): in a process of its own, the sidecar, or mounted in your own
+FastAPI app; how it knows who is calling, through signed join tokens; and what crosses the wire,
+the protocol `t2v/1`. The deployment (a server, a reverse proxy, TURN, drain) is not built in M2:
+it has a plan of its own once a server is available.
+
+## Two shapes, one worker each
+
+A call's peer connection and session live in one process's memory, and the store of used join
+tokens is a SQLite file in the data folder, so **one process with one worker serves one data
+folder** (`storage.var_dir`). The runtime's lifespan locks the folder (`runtime.lock`); a second
+process on it stops at its start, with a FIX line.
+
+- **The sidecar**, the default for any service with more than one worker or replica: a process
+  that runs only the runtime and imports your agent and your backend clients; your app, with
+  any number of workers, mints the join tokens with the key the two share. Run it with
+  `serve(make_runtime)` from `t2_agentic_voice.server`, or with the command below.
+- **The mount**, for an app that runs one worker on one instance: your FastAPI app includes the
+  runtime's router, `app.include_router(runtime.router(), prefix="/voice")`, which carries the
+  runtime's lifespan (FastAPI merges it). An app that mounts the router's app as a
+  sub-application combines the lifespans itself with `combine_lifespans` (from `server`).
+
+### The sidecar
+
+```bash
+uv run t2v serve your_package.voice:make_runtime --host 127.0.0.1 --port 7860 --prefix /voice
+```
+
+`t2v serve APP` imports `APP` (`module:function`, a function that returns a `VoiceRuntime`),
+sets up logging from its settings ([tracing-and-logs.md](tracing-and-logs.md)), and runs
+`serve()`, which builds its own app: FastAPI's telemetry off and no docs pages; CORS for
+`server.allowed_origins` alone; uvicorn with one worker, no access log, no server header, no
+logging configuration of its own, and proxy headers trusted only from
+`server.forwarded_allow_ips` (none by default), on a selector event loop. It binds 127.0.0.1
+unless `--host` says otherwise. `examples/minimal` starts itself the same way, in
+[\_\_main\_\_.py](../../examples/minimal/src/minimal_example/__main__.py):
+
+```python
+    serve(partial(make_runtime, settings))
+```
+
+Both refuse `env` test, and a runtime with no identity source, with a FIX line. `t2v dev`
+serves `env` dev only, on 127.0.0.1, with the dev page, and gives a runtime with no identity
+source the dev caller.
+
+### The mount
+
+A mounted router cannot reach your app's object, so your app does three things `serve()` does
+for its own. The Ole5 app's server does each, in
+[server.py](../../apps/ole5-voice-agent/src/ole5_voice/server.py):
+
+```python
+TELEMETRY_OFF: Final[TelemetryConfig] = {
+    "tracing": False,
+    "metrics": False,
+    "logs": False,
+    "auto_configure": False,
+}
+```
+
+1. **Turn FastAPI's telemetry off.** FastAPI 0.162.0 traces, measures and logs every request
+   through OpenTelemetry's global providers unless the app is built with `telemetry` off, as
+   above; the library instruments no other library (D-023).
+2. **Set CORS on your app**, for the pages of other origins that call the runtime, with `POST`
+   and `PATCH`, and the headers `content-type` and `X-T2V-Offer-Secret`. In the mount the
+   router does not answer CORS, and `server.allowed_origins` applies under `serve()` alone; the
+   runtime logs `router_mounted` at its start to say so. From
+   [server.py](../../apps/ole5-voice-agent/src/ole5_voice/server.py)'s `build_app`:
+
+   ```python
+       app = FastAPI(telemetry=TELEMETRY_OFF, openapi_url=None)
+       app.add_middleware(
+           CORSMiddleware,
+           allow_origins=list(settings.voice.server.allowed_origins),
+           allow_methods=["POST", "PATCH"],
+           allow_headers=["content-type", OFFER_SECRET_HEADER],
+       )
+       app.include_router(token_router(settings.app.access_code, minter, guard=Guard(clock=clock)))
+       app.include_router(router, prefix=VOICE_PREFIX)
+   ```
+
+3. **Trust proxy headers from your proxy only.** uvicorn's defaults trust `X-Forwarded-For`
+   from 127.0.0.1 and ::1, so any local client could set its own address. Pass
+   `forwarded_allow_ips` yourself, with `proxy_headers` off when it is empty, and one worker,
+   as [server.py](../../apps/ole5-voice-agent/src/ole5_voice/server.py)'s `server_config` does:
+
+   ```python
+       trusted = list(voice.server.forwarded_allow_ips)
+       return uvicorn.Config(
+           app,
+           host=host,
+           port=port,
+           workers=1,
+           proxy_headers=bool(trusted),
+           forwarded_allow_ips=trusted,
+           access_log=False,
+           server_header=False,
+           log_config=None,
+           env_file=None,
+           loop=SELECTOR_LOOP,
+           lifespan="on",
+       )
+   ```
+
+   `SELECTOR_LOOP` is `"asyncio:SelectorEventLoop"`: on Windows' default event loop, the
+   WebRTC stack's sockets stopped receiving and some call closes hung.
+
+## Who is calling: one identity source
+
+A runtime takes exactly one identity source, `identity=`, from the `identity` facade. It gives
+each call its `Caller` and `Consent` once, at join, and nothing said or sent in the call changes
+either.
+
+- **`SignedJoinTokens`** verifies the join tokens your website or app mints for its signed-in
+  users. Build it from the `join` settings, as the Ole5 app's `make_app` does in
+  [server.py](../../apps/ole5-voice-agent/src/ole5_voice/server.py):
+
+  ```python
+      voice = settings.voice
+      tokens = SignedJoinTokens.from_settings(voice.join, prefix=voice.prefix)
+      runtime = VoiceRuntime(AGENT, settings=voice, identity=tokens)
+      return build_app(settings, router=runtime.router(), minter=tokens)
+  ```
+
+- **`DevIdentity()`** is the dev caller (`Caller(subject="dev")`, consent to nothing): it joins
+  only a server whose `env` is `dev`, and only from a loopback address. A dev call is never
+  recorded.
+
+A verifier of your own, written to the `IdentityVerifier` port (the `ports` facade), works too,
+but the consent it returns never lets a call be recorded: only a verified signed token's can. A
+runtime with no identity source is refused at serving, with a FIX line; `t2v dev` alone falls
+back to `DevIdentity`. A sign-in the runtime runs itself (`Authenticate`) is not built.
+
+### Join tokens
+
+A join token is a compact JWT, signed with HS256 and nothing else, read by the runtime once, at
+`POST /join`. It is signed, not encrypted: the caller can read every claim, so none holds a
+secret.
+
+| Part | What it holds |
+| --- | --- |
+| header `kid` | The ID of the key that signed it, one of `join.keys` |
+| `sub` | Required: the caller's stable ID in your system (`Caller.subject`), printable text of at most 256 characters |
+| `name` | Optional: how the caller is named (`display_name`) |
+| `locale` | Optional: a BCP 47 tag, such as `ar-SA`; it picks the call's language when the page sends none |
+| `attrs` | Optional: at most 16 short names to texts (a department, a role) |
+| `consent` | Required: `{"version": <text or null>, "record_audio": <true or false>}`, what the caller chose on your consent screen; `record_audio` a JSON boolean |
+| `jti` | Required: an ID used once, 1 to 128 printable ASCII characters with no space |
+| `iat`, `exp` | Required: whole seconds since 1970; `exp` minus `iat` at most `join.ttl_s` |
+
+No other claim is taken (`nbf`, `aud` and `iss` are refused), each key holds at least 32 bytes,
+and a token is used once: the used-token store refuses its `jti` again. Its times may be off
+the runtime's clock by `join.max_clock_skew_s` (30 s by default, 60 s at most); it lives
+`join.ttl_s` (60 s by default, 120 s at most), so mint it just before the call starts. With
+`privacy.consent_version` set, `/join` refuses a token whose consent names another version.
+
+The keys are settings: `T2V_JOIN__KEYS`, a JSON object from key ID to secret (or
+`T2V_JOIN__KEYS_FILE`, a file holding it), and `T2V_JOIN__CURRENT_KID`, the key that signs. Make
+a secret with `python -c "import secrets; print(secrets.token_urlsafe(48))"`. Any listed key
+verifies, so a new key can be added before it signs.
+
+**Minting.** In Python, `SignedJoinTokens.mint(caller, consent=...)` mints one with the key
+`current_kid` names; any JWT library that writes the claims above works as well. The Ole5 app's
+token route mints one for a caller who typed the owner's access code, carrying the consent its
+consent screen sent, in
+[token_route.py](../../apps/ole5-voice-agent/src/ole5_voice/token_route.py):
+
+```python
+        minted = minter.mint(Caller(subject=SUBJECT), consent=asked.consent)
+        held.minted()
+        log.info("token_minted", record_audio=asked.consent.record_audio)
+        return JSONResponse({"token": minted}, headers={"Cache-Control": "no-store"})
+```
+
+## The routes
+
+Under the prefix (`/voice` above), the runtime serves:
+
+| Route | What it does |
+| --- | --- |
+| `POST /join` | A join token, the client's protocol version and the language picked, if any, in; the call's ID, its offer secret, the ICE servers and the protocol version out. |
+| `POST /offer` | The call's SDP offer, with its offer secret; the SDP answer out. One offer a call. |
+| `PATCH /offer` | The browser's ICE candidates, with the offer secret; an empty one marks their end. |
+| `GET /health` | The environment and the calls held live. |
+| `GET /ready` | 200 once the runtime has started. |
+| `GET /client/1/t2v-client.js` | The reference browser client ([browser-client.md](browser-client.md)). |
+| `GET /dev` | The dev page: `env` dev, with the dev page on (`t2v dev`, or `server.dev_page`), to loopback clients only; any other client gets a plain 404. |
+
+- Every body is JSON, sent as `application/json` (anything else gets 415), under a size cap
+  (413).
+- The offer secret is random, for one call, and goes in the `X-T2V-Offer-Secret` header or the
+  body's `offer_secret`, never in a URL. It stops working when ICE completes or the call ends.
+- Every refusal answers one body, `{"code", "message", "notice", "reference"}`: a code from a
+  closed list (`join_rejected`, `forbidden`, `protocol_mismatch` and the rest), a message safe to
+  show, and a reference the server logs. A `PATCH` that comes once the call has moved on gets a
+  quiet 409 (`not_offered`, `ice_completed`, `call_ended`), which the client ignores.
+- Until the lifespan has run, every route answers 503 `not_started`.
+- `/join` answers `server.ice_servers` as they are set, with no credentials: TURN credentials
+  come with the deployment, not M2, so a call needs a direct UDP path between the browser and
+  the backend, as on one machine or one network.
+
+## Pages on another origin
+
+A page served from another origin than the runtime lists that origin, scheme, host and port, in
+`server.allowed_origins` under `serve()`, or in your own CORS middleware in the mount. The page
+itself is HTTPS, or on localhost, for the browser to open a microphone.
+
+## The protocol `t2v/1`
+
+`t2v/1` is the set-up over HTTP above, then JSON messages on the call's WebRTC data channel,
+each with `"v": 1` and a `type` from a closed list. The client sends `hello`, `stop`, `hangup`,
+`client_stats` (its connection's view: the candidate type, the time to connect, whether echo
+cancellation applied, when the first audio played) and `playback` (when each clause of the
+agent's reply started and ended playing); the session sends `hello` (the call's ID and
+languages), `state`, `caption`, `notice` and `ended`. The session parses every client message
+strictly, and no message can set the caller or their consent (D-039). The reference client
+speaks all of it: [browser-client.md](browser-client.md).
