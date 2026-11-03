@@ -170,7 +170,7 @@ def test_only_a_turn_part_is_the_turns_own_transcript() -> None:
     call = _call()
     fed = FedCall(
         started_at=call.started_at,
-        events=(call.events[0], call.events[1], window, heard[0], whole, heard[1], *call.events[2:]),
+        events=(*call.events[:2], window, heard[0], whole, heard[1], *call.events[2:]),
         commands=call.commands,
     )
     (echoed, *_) = timing_of(fed, [])

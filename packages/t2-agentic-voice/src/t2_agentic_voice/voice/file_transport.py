@@ -1,18 +1,23 @@
 """The file-fed transport: one call whose caller is a clip of audio instead of a browser, through
 the same voice modules as a call over WebRTC (the speech detector, the turn analyzer, the speech
 bridges, the session bridge and the session), its output captured, never sent. Internal, for the
-tests, `poe eot` and runs T1 and T2, which reach it through testing's `turn_ends` and
-`echo_timings` (plan 003's decision log); the public `AudioCall` and its parity test come later
-(the design's 9.5). Each call fed gets its own speech detector and turn analyzer, built off the
-event loop as voice/calls.py builds a call's, so no state passes from one clip to the next;
-`calls.start` warmed the models once before (its import of onnxruntime is the slow part).
+tests, `poe eot`, `poe overlap` and runs T1 and T2, which reach it through testing's
+`turn_ends`, `echo_timings` and `AudioCall` (plan 003's decision log; plan 005); the parity test
+comes later (the design's 9.5). Each call fed gets its own speech detector and turn analyzer,
+built off the event loop as voice/calls.py builds a call's, so no state passes from one clip to
+the next; `calls.start` warmed the models once before (its import of onnxruntime is the slow
+part).
 
 The session greets the caller once connected, and the drop rule covers any reply, the greeting
 included (session/io.py): a turn whose speech began while the greeting played, or within 300 ms
 after it, is not answered. So the transport feeds digital silence until the greeting's last
-clause has played (its `ClausePlayed`, or its `ClauseFailed`), and only then the clip's lead:
-the clip never overlaps the greeting, and a lead over the rule's 0.3 s (the registration's 1 s)
-keeps its first speech from being dropped. The greeting is a fixed phrase, played from the
+clause has played (its `ClausePlayed`, or its `ClauseFailed`), and only then the clip's lead,
+counted from that event's time: the clip never overlaps the greeting, and a lead over the
+rule's 0.3 s (the registration's 1 s) keeps its first speech from being dropped. A clip fed
+`over_reply` (testing's `AudioCall`, plan 005) is the other way round: its lead counts from the
+greeting's first audio queued for the output (its `ClauseQueued`), so the clip lies over the
+greeting as it plays, and the overlap rule (or the drop rule) judges its speech as it would a
+caller's over a reply (D-037). The greeting is a fixed phrase, played from the
 phrase audio `calls` was built with (voice's `PhraseAudio`), so a file-fed call sends no request
 for it: the requests that synthesized it are the phrase cache's, before the first call, and they
 count in run T's budget as `PhraseCache.declare` returns them (adapters/phrase_cache.py: one for
@@ -51,6 +56,7 @@ from t2_agentic_voice.voice.session.commands import Command
 from t2_agentic_voice.voice.session.session_events import (
     ClauseFailed,
     ClausePlayed,
+    ClauseQueued,
     SessionEvent,
 )
 
@@ -73,11 +79,14 @@ class FedCall:
     call's clock; the greeting and the lead's silence come first), every event the Pipecat side
     handed the session, in order, and every command the session gave, in order, each with when
     it reached `Commands.run` on the call's clock (the echo's `Speak` of the heard words is the
-    echo's text ready)."""
+    echo's text ready); and `handed_at`, when each event was handed to the session, on the same
+    clock and in the same order (empty for a call a test made by hand), so a command given while
+    the session took an event comes after that event's time and before the next one's."""
 
     started_at: float
     events: tuple[SessionEvent, ...]
     commands: tuple[tuple[float, Command], ...]
+    handed_at: tuple[float, ...] = ()
 
 
 async def pace(
@@ -100,19 +109,27 @@ async def pace(
 
 
 class _Feed:
-    """The caller's frames: silence until the greeting has played, then `lead_s` of silence,
-    the clip and `tail_s` of silence; `started_at` is when the clip's first frame was due, on
-    the call's clock (`clock_now`)."""
+    """The caller's frames: silence until the greeting has played (or, `over_reply`, until its
+    first audio was queued), then `lead_s` of silence from that event's time (`greeted_at`, on
+    the call's clock), the clip and `tail_s` of silence; `started_at` is when the clip's first
+    frame was due, on the call's clock (`clock_now`)."""
 
     def __init__(
-        self, clip: AudioClip, *, lead_s: float, tail_s: float, clock_now: Callable[[], float]
+        self,
+        clip: AudioClip,
+        *,
+        lead_s: float,
+        tail_s: float,
+        clock_now: Callable[[], float],
+        over_reply: bool = False,
     ) -> None:
         pcm = clip.pcm16 + bytes(-len(clip.pcm16) % _FRAME_BYTES)
         self._clip = [pcm[i : i + _FRAME_BYTES] for i in range(0, len(pcm), _FRAME_BYTES)]
         self._lead_s = lead_s
         self._tail = math.ceil(tail_s / FRAME_S)
         self._clock_now = clock_now
-        self.greeted = False
+        self._over_reply = over_reply
+        self.greeted_at: float | None = None
         self.ending = False
         self.gave_up = False
         self.started_at: float | None = None
@@ -120,16 +137,29 @@ class _Feed:
         self._clip_due: float | None = None
         self._sent = 0
 
+    def watch(self, event: SessionEvent) -> None:
+        """The session was handed `event`: the greeting's (reply 0) end, played or failed, or,
+        `over_reply`, its first audio queued, starts the lead at the event's time."""
+        if not isinstance(event, ClauseQueued | ClausePlayed | ClauseFailed) or event.reply_id:
+            return
+        starts = isinstance(event, ClauseFailed) or isinstance(event, ClauseQueued) == (
+            self._over_reply
+        )
+        if starts and self.greeted_at is None:
+            self.greeted_at = event.at
+
     def frame(self, due: float) -> bytes | None:
         now = time.perf_counter()
         first = self._first = due if self._first is None else self._first
         if self.ending:
             return None
         if self._clip_due is None:
-            if not self.greeted:
+            if self.greeted_at is None:
                 self.gave_up = due - first > GREETING_WAIT_S
                 return None if self.gave_up else _SILENCE
-            self._clip_due = now + self._lead_s
+            # The lead counts from the greeting's event, on the call's clock, moved onto
+            # `time.perf_counter`'s, which `due` is on.
+            self._clip_due = now + self._lead_s - max(0.0, self._clock_now() - self.greeted_at)
         if due < self._clip_due:
             return _SILENCE
         if self._sent == 0:
@@ -150,16 +180,20 @@ async def feed_file(
     language: Language,
     lead_s: float,
     tail_s: float,
+    over_reply: bool = False,
 ) -> FedCall:
     """Run one call of `calls` (started: each call fed gets its own detectors), held in
     `language`, whose caller is digital silence (zeros) until the greeting has played, then
     `lead_s` of silence, then `clip` (mono PCM16 at the speech detector's 16 kHz), then `tail_s`
-    of silence, fed at real-time pace. After the last frame the caller leaves (an `Ending`,
-    `caller_left`); what the call did is returned once its session has hung up. Every aiortc
-    peer it may build gets no ICE server (it builds none). InvalidRequestError for a clip at
-    another rate; T2VoiceError when the greeting has not played within `GREETING_WAIT_S`.
-    Track E's test: with a greeting that plays for a while, the clip's first frame is due after
-    the greeting's last `ClausePlayed` plus `lead_s`."""
+    of silence, fed at real-time pace; `over_reply`, the lead counts from the greeting's first
+    audio queued (its `ClauseQueued`) instead, so the clip plays over the greeting. After the
+    last frame the caller leaves (an `Ending`, `caller_left`); what the call did is returned
+    once its session has hung up. Every aiortc peer it may build gets no ICE server (it builds
+    none). InvalidRequestError for a clip at another rate; T2VoiceError when the greeting has
+    not played (or, `over_reply`, begun) within `GREETING_WAIT_S`. Track E's tests: with a
+    greeting that plays for a while, the clip's first frame is due after the greeting's last
+    `ClausePlayed` plus `lead_s`, or, `over_reply`, after its `ClauseQueued` plus `lead_s`,
+    while it still plays."""
     from pipecat.frames.frames import InputAudioRawFrame
 
     if clip.sample_rate != RATE:
@@ -174,11 +208,13 @@ async def feed_file(
         output=file_output(),
         record=True,
     )
-    feed = _Feed(clip, lead_s=lead_s, tail_s=tail_s, clock_now=pipeline.setup.clock.now)
+    clock = pipeline.setup.clock
+    feed = _Feed(clip, lead_s=lead_s, tail_s=tail_s, clock_now=clock.now, over_reply=over_reply)
+    handed_at: list[float] = []
 
     def watch(event: SessionEvent) -> None:
-        greeting = isinstance(event, ClausePlayed | ClauseFailed) and event.reply_id == 0
-        feed.greeted = feed.greeted or greeting
+        handed_at.append(clock.now())
+        feed.watch(event)
 
     pipeline.events.watch = watch
     await pipeline.start(calls._session(pipeline))
@@ -199,6 +235,7 @@ async def feed_file(
         started_at=feed.started_at,
         events=tuple(pipeline.events.handed or ()),
         commands=tuple(given),
+        handed_at=tuple(handed_at),
     )
 
 
