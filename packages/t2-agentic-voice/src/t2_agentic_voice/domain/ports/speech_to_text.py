@@ -2,7 +2,9 @@
 
 Every speech-to-text adapter implements `SpeechToText`. It raises `ProviderError` on a
 provider's failure, and stops at once when its task is cancelled, leaving no task or connection
-behind. Public, and stable, through the `ports` facade (D-021).
+behind. Whoever builds an adapter closes it with `aclose()`, the one close every port that
+holds connections has (the text-to-speech port and the used-token store too), so no caller
+looks a close up by name. Public, and stable, through the `ports` facade (D-021).
 """
 
 from __future__ import annotations
@@ -61,6 +63,12 @@ class Transcript(BaseModel):
     # The provider's own estimate that the clip holds no speech (Whisper gives one), kept so a
     # silence rule can be tried later on stored results (the owner's ruling, D-021).
     no_speech_prob: float | None = Field(default=None, ge=0, le=1)
+    # The headroom the provider reported for its key with this answer (Groq's
+    # `x-ratelimit-remaining-requests` and `-tokens`), for the call's usage; None when the
+    # adapter reads none, or the provider sent none it could read. GroqSTT reads them from the
+    # SDK's raw response (adapters/groq_client.py's `raw_response` and `headroom`).
+    remaining_requests: int | None = Field(default=None, ge=0)
+    remaining_tokens: int | None = Field(default=None, ge=0)
 
 
 class SpeechToText(Protocol):
@@ -76,3 +84,7 @@ class SpeechToText(Protocol):
         """What was said in `clip`. `language` is a hint in the provider's code (`None`: let
         it detect the language); `prompt` is text the provider may take as context (`None`:
         none). Raises `ProviderError` on the provider's failure; a cancel stops it at once."""
+
+    async def aclose(self) -> None:
+        """Close what the adapter holds open, its connections; an adapter that holds none
+        returns at once. Called once, when its owner (the runtime, a run) is done with it."""

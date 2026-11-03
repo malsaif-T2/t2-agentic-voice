@@ -34,7 +34,8 @@ tests/                       one subfolder per package, harness/ for the checks'
 
 The library's **public API is its package root and the facades beside it**: the root's
 `__init__.py` re-exports the main names, and each public facade (`ports`, `groq`, `languages`,
-`evals` and `tracing`, D-021) re-exports one area's names and holds nothing else (ARCH-FACADE);
+`evals` and `tracing`, D-021; `identity`, `server`, `stores` and `events`, D-032)
+re-exports one area's names and holds nothing else (ARCH-FACADE);
 `[package] public` in harness.toml lists the modules an app may import, and `[package] facades`
 the facades among them. An app imports nothing else from the library and no other app, and the
 library never imports an app (ARCH-PUBLIC). So the Ole5 app uses the library exactly as a
@@ -48,7 +49,9 @@ One call, top to bottom, naming the library's layer that does each step; the app
 prompt, its tools and its backends (the knowledge base and the ticket system, for Ole5):
 
 ```
-web widget         microphone, speaker, captions, Stop; static files the api layer serves
+web widget         microphone, speaker, captions, Stop; static files the app serves (Ole5's
+                   from apps/ole5-voice-agent/web/); the api layer serves only the
+                   reference client, t2v-client.js, and the dev page
   ▼ api        checks the join token, hands the WebRTC offer to voice, builds the call's session
   ▼ voice      answers the offer; audio in; speech detection; end of turn; the two-step
                interruption; the turn's cancel scope
@@ -85,14 +88,14 @@ An arrow or a line down means "may import"; `api` may import every layer, `testi
 
 | Layer | Responsibility | May import | Owns (only it may import) |
 | --- | --- | --- | --- |
-| `core` | Settings (`core/config.py`, the only module that reads the environment), structured logging (`core/logging.py`), the error types (`core/errors.py`: `T2VoiceError` and its subclasses, each with a stable `code`), tracing to Phoenix, and the types every layer shares | none | `logging`, `structlog`, `pydantic_settings`, `opentelemetry`, `openinference`, `phoenix`, `requests` |
-| `domain` | The rules of a support call, with no IO: what counts as a clear yes, the ticket flow's states, what an interruption is, Arabic text normalization, how numbers and ticket IDs are spoken, the evaluation scorers' pure parts (term recall, ID recall, text from silence, the sign test), and the ports (protocols) every outside service is reached through | core | — |
-| `adapters` | One adapter per port: speech-to-text, the chat model and text-to-speech (Groq), the knowledge base, the ticket system; each chosen by a setting | core, domain | `groq`, `httpx`, `qdrant_client` |
+| `core` | Settings (`VoiceSettings` in `core/config.py`, the only module that reads the environment, and its groups in `core/settings/`), structured logging (`core/logging.py`), the error types (`core/errors.py`: `T2VoiceError` and its subclasses, each with a stable `code`), tracing to Phoenix, and the types every layer shares | none | `logging`, `structlog`, `pydantic_settings`, `opentelemetry`, `openinference`, `phoenix`, `requests` |
+| `domain` | The rules of a support call, with no IO: what counts as a clear yes, the ticket flow's states, what an interruption is, Arabic text normalization, how numbers (through num2words) and ticket IDs are spoken, the evaluation scorers' pure parts (term recall, ID recall, text from silence, the sign test), and the ports (protocols) every outside service is reached through | core | `num2words` |
+| `adapters` | One adapter per port: speech-to-text, the chat model and text-to-speech (Groq), the knowledge base, the ticket system, each chosen by a setting; the signed join tokens, the SQLite stores (the used tokens), the TURN credentials and the phrase cache | core, domain | `groq`, `httpx`, `qdrant_client`, `jwt`, `sqlite3` |
 | `actions` | The backend that acts: runs the talker's tools through the ports, keeps each call's record of completed actions, words every outcome from a real result | core, domain | — |
 | `agent` | The talker: prompts, the few tool definitions, the reply language, one turn from the user's words to a reply and tool calls; the output guard on every sentence | core, domain, actions | — |
-| `voice` | One call's real-time pipeline: answers the WebRTC offer (Pipecat's peer connection), audio in and out, speech detection, end of turn, interruptions, each turn's cancel scope, speech-to-text and text-to-speech wired to the talker | core, domain, agent | `pipecat` |
-| `testing` | What a team tests and measures its agent with: the evaluation scorers (word and character error rates) today; later the fakes of every port, text-mode calls, the adversarial suite and simulated callers (D-019) | core, domain, actions, agent, voice | `jiwer` |
-| `api` | The HTTP surface and composition root: serves the widget, starts calls, reports health, builds the adapters from the settings and injects them, maps every error to one shape | core, domain, adapters, actions, agent, voice, testing | `fastapi`, `starlette`, `uvicorn` |
+| `voice` | One call's real-time pipeline: answers the WebRTC offer (Pipecat's peer connection), audio in and out, speech detection, end of turn, interruptions, each turn's cancel scope, speech-to-text and text-to-speech wired to the talker; Pipecat's logger (loguru), kept off | core, domain, agent | `pipecat`, `loguru` |
+| `testing` | What a team tests and measures its agent with: the evaluation scorers (word and character error rates) and the turn-end and echo timings the measurements run on, today; later the fakes of every port, text-mode calls, the adversarial suite and simulated callers (D-019) | core, domain, actions, agent, voice | `jiwer` |
+| `api` | The HTTP surface and composition root: call set-up, health, the reference client (`t2v-client.js`) and the dev page (an app's widget is the app's to serve); builds the adapters from the settings and injects them, maps every error to one shape | core, domain, adapters, actions, agent, voice, testing | `fastapi`, `starlette`, `uvicorn` |
 
 `harness.toml` holds the same rules in `[layers]` (who may import whom) and `[[owners]]` (which
 layer owns which library), and `poe arch` compares them with this table row by row (ARCH-DOC):
@@ -127,14 +130,22 @@ The agent's reasoning, from the questions the kit asks (D-003 records the altern
   rule; its two inputs, the caller's heard words and the read-back receipt, built only by
   `voice`; and a completed action, recorded only by `actions`. Each goes into `[[restricted]]`
   (ARCH-CONSTRUCT) in the commit that creates its class ([SECURITY.md](docs/SECURITY.md),
-  invariants 1 and 2).
+  invariants 1 and 2). The first there is `SignedConsent`, the consent a verified signed join
+  token carried, built only by `adapters`' signed-token identity source, since only it lets a
+  call's audio be recorded (invariant 8). A call is not the only way to build an object, so the
+  class also checks at run time that its validation was given a seal, `CONSENT_SEAL`, and only
+  the instance that validation built, unchanged, lets audio be kept; and a `[[restricted]]`
+  table of `names` reports any mention of the seal outside `adapters/join_tokens.py`, which
+  gives it, and `core/identity.py`, which defines it.
 
 ## The web widget
 
-The widget is plain HTML, JavaScript and CSS, with no build step; the backend serves it. It is
-built for the Ole5 app first, in `apps/ole5-voice-agent/web/`; making it a drop-in for
-teammates' pages is a later option (D-014). It is not Python, so `poe arch` does not read it;
-it is checked by running it in a browser ([WORKING-RULES.md](WORKING-RULES.md), "Seeing it
+The widget is plain HTML, JavaScript and CSS, with no build step; the app's backend serves it,
+not the library's `api` layer. It is built for the Ole5 app first, in
+`apps/ole5-voice-agent/web/`; making it a drop-in for teammates' pages is a later option
+(D-014). It is not Python, so `poe arch` does not read it; the golden set's test that no item
+sits in the product reads its text (`tests/ole5_voice/evals/test_no_item_in_source.py`), and it
+is checked by running it in a browser ([WORKING-RULES.md](WORKING-RULES.md), "Seeing it
 run").
 
 ## Conventions
@@ -144,25 +155,32 @@ run").
   tool arguments included.
 - Lower layers raise `core.errors.T2VoiceError` subclasses with stable codes and user-safe
   messages; only `api` maps them to its transport.
-- Configuration comes only from `Settings` in `core/config.py`, and `.env.example` lists every
-  setting. A provider is chosen by a setting, never by an import in a layer above `api`.
-- Logs are structured: `get_logger(__name__)`, snake_case event names, key/value context.
-  The standard library's `logging` (a framework's, a library's) is routed through the same
-  format by `configure_logging` in `core/logging.py`; a framework that installs its own
-  handlers is named in its `take_over`. Pipecat logs through loguru instead: the plan that
-  installs Pipecat makes `configure_logging` remove loguru's default sink and forward its
-  records at the configured level, so no framework debug line carries call content
-  ([SECURITY.md](docs/SECURITY.md), invariant 8). This is the code as built and D-002's plan for
-  loguru, not yet the design's logging contract (its 3.3 and 10.2: the standard library's
-  loggers under the package's name with a null handler, no handler on the root logger; its
-  12.2: loguru owned by `voice`), which M2's plan builds and settles (TD-033).
+- Configuration comes only from `VoiceSettings` in `core/config.py`: built in code, or loaded by
+  `VoiceSettings.from_env()`, the only reader of the environment, with no singleton; a module
+  receives it. `.env.example` and `docs/generated/settings.md` list every setting
+  (`uv run poe settings-ref` writes both). A provider is chosen by a setting, never by an import
+  in a layer above `api`.
+- Logs are structured: `get_logger(__name__)`, snake_case event names, key/value context
+  (`core/logging.py`; the design's 3.3 and 10.2). The library logs on the standard library's
+  `logging`, under `t2_agentic_voice`, whose logger has a `NullHandler`: importing the library
+  configures nothing and prints nothing, and it never adds a handler to the root logger or
+  touches another library's logger by itself. An event is a record whose message is the event
+  name and whose `fields` attribute holds its key/value context. The app configures logging:
+  its own way, or with `configure_logging`, which puts one handler, writing structured lines
+  to the stream it is given, on `t2_agentic_voice` and the loggers the app names (its own
+  package's), and holds aiortc's and aioice's loggers at WARNING unless `logging.content` is on
+  (their lower lines hold SDP and IP addresses). Pipecat logs through loguru, which `voice`
+  owns: it switches Pipecat's namespace off before it first imports Pipecat, and again at
+  runtime start, so no framework debug line carries call content
+  ([SECURITY.md](docs/SECURITY.md), invariant 8).
 - `voice` uses Pipecat for its pipeline, its WebRTC transport, speech detection, and the base
   classes of its speech-to-text and text-to-speech services (D-018). Its own subclasses of those
   call the speech-to-text and text-to-speech ports, and its own processor runs `agent`'s turn
   inside the turn's cancel scope. Pipecat's ready-made provider services (its Groq
   speech-to-text, model, and text-to-speech services), its model services, and its own
-  interruptions are never used: a provider service would reach Groq without a port (GP-22), and
-  ARCH-OWNER cannot see an import made inside Pipecat.
+  interruptions are never used: a provider service would reach Groq without a port (GP-22).
+  ARCH-BAN keeps those services out of the library's imports; neither it nor ARCH-OWNER can see
+  an import made inside Pipecat.
 - Every turn runs inside a cancel scope owned by `voice`: a stop, a correction, or new words
   cancel the model, the speech, and read-only lookups. Writes to the ticket system run as jobs
   of `actions`, outside any turn, so a cancel never cuts one in half.
@@ -170,9 +188,9 @@ run").
   tool, text-to-speech), recorded through `core`'s tracing helpers. The helpers take the turn's
   span as an argument, since Pipecat runs each processor in its own task and an implicit
   current span does not cross tasks.
-- The outermost layer turns every error, a crash included, into one shape for its transport,
-  with the error's stable code and the request's reference, and never echoes a rejected value
-  back (GP-19).
+- The outermost layer turns every error, a crash included, into one shape for its transport
+  (`ErrorBody` in `api/protocol.py`, for `t2v/1`'s routes: D-029), with the error's stable code
+  and the request's reference, and never echoes a rejected value back (GP-19).
 - Models at a boundary reuse core's field types and constraints, so invalid input is rejected
   as invalid input (a validation error, a usage error), never as a server error (GP-20).
 
@@ -196,7 +214,21 @@ The rules live in [harness.toml](harness.toml), the source of truth;
   names and their own services), in any case, in a file or a file's path
   ([scripts/arch_words.py](scripts/arch_words.py));
 - ARCH-OWNER: a library in `[[owners]]` is imported only by its layers;
-- ARCH-CONSTRUCT: a class in `[[restricted]]` is constructed only by its layers;
+- ARCH-BAN: a module a `[[bans]]` table names is never imported by the code it covers (the
+  library, a part of it, or an app), its `allowed` modules aside. ARCH-OWNER gives a library to
+  a layer whole; a ban narrows it by module: the library uses no Pipecat provider or model
+  service, none of its LLM machinery (adapters, context aggregators, flows, LLM workers), none
+  of its modules that reach an outside host (classifiers, the HTTP Smart Turn, serializers,
+  every transport but Small WebRTC), nor its runner, its frame loggers, its torch or numba
+  modules, its DTMF aggregator or RTVI; `voice/session/` imports no Pipecat, not even through
+  another of the library's modules; and the apps and the examples import neither Pipecat nor
+  aiortc ([scripts/arch_ban.py](scripts/arch_ban.py));
+- ARCH-CONSTRUCT: a class in `[[restricted]]` is constructed only by its layers and its
+  files, and a name in `[[restricted]]` is mentioned only there, in the library or an app:
+  no token that is the name (an import under any alias, an attribute, a read, an annotation,
+  a class pattern's keyword), no literal that holds it (a string, bytes, an f-string's part,
+  a docstring) and no star import from a module that may bind it, the defining module
+  exempt only when its row names it ([scripts/arch_names.py](scripts/arch_names.py));
 - ARCH-PRINT: no `print` or direct writes to standard output outside the files `[rules]`
   allows;
 - ARCH-ENV: the environment is read only in the files `[rules]` allows;

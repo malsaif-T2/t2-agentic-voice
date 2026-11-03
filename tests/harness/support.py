@@ -47,6 +47,7 @@ fix = "HTTP belongs in api/."
 [[restricted]]
 classes = ["Approved"]
 layers = ["domain"]
+files = []
 fix = "Only domain/ issues an Approved; call approve()."
 
 [[subpackages]]

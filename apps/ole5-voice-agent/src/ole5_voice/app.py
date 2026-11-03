@@ -6,9 +6,9 @@ ticket system are composed here as the library gains them.
 
 from __future__ import annotations
 
-from t2_agentic_voice import Settings, Status, status
+from t2_agentic_voice import Status, VoiceSettings, status
 
 
-def health(settings: Settings) -> Status:
+def health(settings: VoiceSettings) -> Status:
     """What the Ole5 app runs with."""
     return status(settings)

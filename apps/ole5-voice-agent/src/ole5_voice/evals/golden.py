@@ -28,6 +28,7 @@ from typing import Final
 from t2_agentic_voice import configure_logging, get_logger
 from t2_agentic_voice.languages import SpellingIssue, SpellingRule, spelling_issues
 
+from ole5_voice import LOGGERS
 from ole5_voice.evals import cli
 from ole5_voice.evals.audio import AudioFormatError, Wav, read_wav
 from ole5_voice.evals.items import (
@@ -302,7 +303,7 @@ def main(argv: Sequence[str] | None = None) -> int:
         audio = cli.audio_roots(args.audio)
     except ValueError as error:
         parser.error(str(error))
-    configure_logging()
+    configure_logging(loggers=LOGGERS)
     report = validate(args.evals, check=spelling_issues, audio=audio, read=read_wav)
     for item, variant, why in report.left_out:
         log.info("variant_left_out", item=item, variant=variant, why=why)

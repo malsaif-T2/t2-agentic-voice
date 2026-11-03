@@ -3,10 +3,11 @@ evaluation.md's "Running" says.
 
 Before anything is sent, a run refuses the main checkout and a dirty tree, an `--out` that
 exists or that git would track (`worktree.py`), and audio that is not the file its manifest
-hashed. Its settings load with `Settings.from_env` (`--env-file`), the command line's on top
-(`run_settings.py`): a `groq` run names its model and timeout, and its base URL is `--base-url`
-or the SDK's own, whatever the environment holds, so no `T2V_` variable changes a registered
-arm; `--show-settings` shows each resolved, a secret only as set or not set. A smoke test of one
+hashed. Its settings load with `VoiceSettings.from_env` (`--env-file`, or the working folder's
+`.env`), the command line's on top (`run_settings.py`): a `groq` run names its model and
+timeout, and its base URL is `--base-url` or the SDK's own, whatever the environment holds, so
+no `T2V_` variable changes a registered arm; `--show-settings` shows each resolved, a secret
+only as set or not set. A smoke test of one
 dev variant comes first and must pass with no failed, retried or refused request. Then each
 variant is answered, and its result written as it finishes (a dev run's `results.jsonl`), with
 a progress line of identifiers, verdicts and timings, never a transcript. The scorecard is
@@ -28,12 +29,13 @@ from typing import get_args
 
 from t2_agentic_voice import (
     ConfigurationError,
-    Settings,
     T2VoiceError,
+    VoiceSettings,
     configure_logging,
     get_logger,
 )
 
+from ole5_voice import LOGGERS
 from ole5_voice.evals import history
 from ole5_voice.evals.answerers import (
     ANSWERERS,
@@ -179,7 +181,7 @@ async def _answer_all(
         await answerer.aclose()
 
 
-def _run(args: argparse.Namespace, settings: Settings, parts: Parts) -> int:
+def _run(args: argparse.Namespace, settings: VoiceSettings, parts: Parts) -> int:
     # The settings go into the committed history, as the note does (its check: `_parser`).
     if placed := [
         name for name, value in shown(settings, args).items() if holds_placeholder(value)
@@ -298,10 +300,12 @@ def main(argv: Sequence[str] | None = None, *, parts: Parts | None = None) -> in
     args = parser.parse_args(argv)
     _require(parser, args)
     parts = Parts() if parts is None else parts
-    configure_logging()  # the library's defaults, until the settings name the level and format
+    # The library's defaults, until the settings name the level and format.
+    configure_logging(loggers=LOGGERS)
     try:
         settings = load_settings(args)
-        configure_logging(settings.log_level, settings.log_format)
+        logs = settings.logging
+        configure_logging(logs.level, logs.format, loggers=LOGGERS, content=logs.content)
         if args.show_settings:
             show(args, settings, parts)
             return 0

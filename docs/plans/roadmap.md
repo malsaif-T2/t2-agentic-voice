@@ -17,7 +17,7 @@ decisions (`D-NNN`), which are permanent. Living docs cite only milestones in th
 | --- | --- | --- |
 | M0 | Scaffold and harness | in progress ([000](active/000-project-scaffold.md); [001](completed/001-library-and-app.md) done) |
 | M1 | The measurement first: the owner's voice as a golden set | done ([002](completed/002-golden-set-baseline.md)) |
-| M2 | A call that listens and speaks, deployed | in progress ([003](active/003-call-listens-and-speaks.md)) |
+| M2 | A call that listens and speaks | in progress ([003](active/003-call-listens-and-speaks.md)) |
 | M3 | Interruptions and cancellation | planned |
 | M4 | The talker and knowledge answers | planned |
 | M5 | Tickets, ticket status, and handoff | planned |
@@ -53,6 +53,12 @@ for teammates is not a milestone: it is tagged when a real teammate is ready to 
 On 2026-11-01 the owner answered the design's open questions (D-018): M4's background
 troubleshooting moved to the thinker, after M7, and M5's handoff is read back and confirmed
 like any action, which changes M5's *Done when* line.
+
+On 2026-11-03 the agent asked "Move the deployment and network tests to when the server is
+available?" and the owner answered "Yes, move them"
+([plan 003](active/003-call-listens-and-speaks.md)). So M2's calls stay on the owner's laptop,
+which changes M2's name, its deployment bullet and its *Done when* line, and the deployment
+becomes a plan of its own (M6's section).
 
 **M0 · Scaffold and harness.**
 - The project's idea in [DESCRIPTION.md](../project/DESCRIPTION.md), written with the owner.
@@ -92,24 +98,22 @@ passes. *Done* on 2026-11-02 ([002](completed/002-golden-set-baseline.md)): Whis
 on the first 0.5–1.0 s of the 90 dev talk-over clips only, not of each talk-over clip (plan
 002's `Deviation:` line on Q15).
 
-**M2 · A call that listens and speaks, deployed.**
+**M2 · A call that listens and speaks.**
 - The web widget: start and end a call, the microphone, playback, captions, the Stop button
   and Esc.
 - `api`: the join token (invariant 7), the offer route (`voice` answers the offer), health.
 - `voice`: the Pipecat pipeline over its peer-to-peer WebRTC transport, Silero VAD, and Smart
   Turn, with our own processors calling the speech-to-text and text-to-speech ports (Groq
   Orpheus, an Arabic and an English voice), and `domain`'s rules for speaking numbers and ticket
-  IDs. Pipecat's loguru routed through `core/logging.py`, given to `core` in `[[owners]]` with a
-  decision, and a test that a debug line holding a transcript does not reach the output
-  (invariant 8). The design gives loguru to `voice` instead (its 12.2); M2's plan builds the
-  design's logging contract (its 3.3 and 10.2), which the library does not meet yet, and
-  settles this (TD-033).
+  IDs. Pipecat's loguru switched off by `voice`, which owns it in `[[owners]]` (the design's
+  12.2; plan 003's Q2), and a test that a debug line holding a transcript does not reach the
+  output (invariant 8); the library's own logging is the design's contract (its 3.3 and 10.2)
+  since plan 003's step 8.
 - No talker yet: the agent says back what it heard. One trace per turn in Phoenix, with the
   requests and audio seconds each Groq model uses per call minute.
-- Deployed on the owner's host behind HTTPS, the widget embedded in the website, and a call
-  held from another network (a phone hotspot) and from one that blocks UDP. Before M2 closes,
-  the media path is recorded as a decision: UDP ports opened on the backend, a TURN service run
-  as a small service, or another transport.
+- The calls held on the owner's laptop, through the Ole5 app's dev server on localhost, with
+  Phoenix as M1's on 127.0.0.1 (the owner, 2026-11-02 and 2026-11-03, plan 003). The deployment,
+  the calls from other networks and the media path moved out of M2 (M6's section).
 - The owner's calls through the widget recorded with the recording setting on (invariant 8),
   each keeping the caller's track and the agent's playback timeline, so M3's targets are also
   checked on audio that came through WebRTC.
@@ -128,10 +132,9 @@ on the first 0.5–1.0 s of the 90 dev talk-over clips only, not of each talk-ov
   (TD-031). Each is measured on the golden set (D-024's floor of 6 items) before it changes a
   default. Several debt rows name M2's plan as their trigger ([tech-debt.md](tech-debt.md)).
 
-*Done when* the owner holds a call in Chrome on laptop speakers and on a headset, locally and
-from another network to the deployed backend, and hears each turn back; end-of-turn cut-offs
-and the time of each step are measured on the golden set; and requests per call minute for each
-Groq model are recorded.
+*Done when* the owner holds a call in Chrome on laptop speakers and on a headset, locally, and
+hears each turn back; end-of-turn cut-offs and the time of each step are measured on the golden
+set; and requests per call minute for each Groq model are recorded.
 
 **M3 · Interruptions and cancellation.**
 - The cancel scope of every turn: a stop, a correction, or new words cancel the model, the
@@ -221,6 +224,11 @@ after a clear yes.
   model, counted in the traces since M2, compared with the key's limits (the prototype found the
   key on Groq's on-demand tier, 400 requests a minute: Ole5-chatbot VOICE_LOG.md, 2026-10-27).
   The cap on live calls is set below that limit. Then how many calls the backend's CPU holds.
+- The deployment, moved from M2 on 2026-11-03 (the owner, plan 003): the Ole5 app on the owner's
+  server behind HTTPS, the widget embedded in the website, calls from another network and from one
+  that blocks UDP, and the media path recorded as a decision. It becomes a plan of its own as soon
+  as the owner has access to the server, whichever milestone is then in progress, and at the latest
+  in M6 ([plan 003, "The deployment, moved out of M2"](active/003-call-listens-and-speaks.md#the-deployment-moved-out-of-m2)).
 - *Library:* timeouts and spoken fallbacks per provider, 429 handling with one limiter per
   model, admission control with a busy notice, drain, usage in each call's report; the guide's
   deployment and runbook pages.
@@ -298,17 +306,20 @@ targets hold at the cap on live calls.
 - How teammates are supported: left until someone starts using the library (the design's
   open question 14).
 
-To decide before M2, which builds the call set-up and deploys it:
+To decide before M2, which builds the call set-up:
 
 - How the website proves who the customer is: its server mints the join token for a logged-in
   customer, signed with a key the backend verifies, or the customer confirms a one-time code
   sent to their email. An email typed in the widget is only a contact address: a ticket made
   with it is marked unverified for support staff, and it never unlocks ticket status. The
-  owner is asking the website team whether customers log in (D-018).
+  owner is asking the website team whether customers log in (D-018). M2's calls do not wait
+  for the answer: they get their tokens from the Ole5 app's access-code route (plan 003's Q4), and
+  the answer is taken up with the deployment (plan 003's Q12, moved out of M2 on 2026-11-03).
 - Where the backend and Phoenix run: on the owner's machine for now, Phoenix as M1's (the owner,
-  2026-11-02, [plan 003](active/003-call-listens-and-speaks.md)). How WebRTC media reaches the
-  backend from customers' networks (UDP ports, a TURN service, or another transport) is
-  re-planned for that machine before M2's deployment.
+  2026-11-02, [plan 003](active/003-call-listens-and-speaks.md)). The deployment moved out
+  of M2 (the owner, 2026-11-03, plan 003): how WebRTC media reaches the backend from customers'
+  networks (UDP ports, a TURN service, or another transport) is decided in the deployment's own
+  plan, on the server, as soon as the owner has access to it (M6's section).
 - The voices: `abdullah` (Saudi Arabic) and `troy` (English), with M2's fixed phrases in
   Saudi dialect (the owner, 2026-11-02, plan 003's Q5).
 

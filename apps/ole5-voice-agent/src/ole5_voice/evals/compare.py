@@ -27,6 +27,7 @@ from typing import Final
 
 from t2_agentic_voice import T2VoiceError, configure_logging, evals, get_logger
 
+from ole5_voice import LOGGERS
 from ole5_voice.evals.compare_report import aggregates, header
 from ole5_voice.evals.files import read_lines
 from ole5_voice.evals.runs import HELD_OUT_MIN_ITEMS, Scorecard, VariantResult
@@ -268,7 +269,7 @@ def main(argv: Sequence[str] | None = None, *, sign_test: SignTest = evals.sign_
         "ran; shown apart",
     )
     args = parser.parse_args(argv)
-    configure_logging()
+    configure_logging(loggers=LOGGERS)
     try:
         report = compare(
             load_scorecard(args.baseline),

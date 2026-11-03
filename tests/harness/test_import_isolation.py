@@ -1,8 +1,9 @@
 """No variable from the shell is read when a package is imported during collection, before any
 fixture runs: `groq` reads `GROQ_LOG` on import and `opentelemetry.context` reads
-`OTEL_PYTHON_CONTEXT` (plan 002's step 2). This module imports both at its top, as Track B's
-adapter and core's tracing do, and records what it saw then; tests/harness/test_isolation.py
-runs it in a child whose shell sets both."""
+`OTEL_PYTHON_CONTEXT` (plan 002's step 2), and Pipecat, loguru, websockets and fastapi read
+their own (plan 003's reading of step 4). This module imports groq and the context at its top,
+as Track B's adapter and core's tracing do, and records what it saw then;
+tests/harness/test_isolation.py runs it in a child whose shell sets them all."""
 
 from __future__ import annotations
 
@@ -11,12 +12,23 @@ import os
 
 import groq  # noqa: F401  imported for what it reads on import
 import opentelemetry.context  # noqa: F401  as above
-from t2_agentic_voice.core.config import Settings
+from t2_agentic_voice.core.settings.base import PREFIX
 
-PREFIX = Settings.model_config.get("env_prefix", "")
-WATCHED = ("GROQ_", "OTEL_", "PHOENIX_") + ((PREFIX.upper(),) if PREFIX else ())
+WATCHED = (
+    "GROQ_",
+    "OTEL_",
+    "PHOENIX_",
+    PREFIX.upper(),
+    "OLE5_VOICE_",  # the Ole5 app's own (the design's 7.3)
+    "PIPECAT_",
+    "LOGURU_",
+    "WEBSOCKETS_",
+)
+WATCHED_NAMES = ("FORWARDED_ALLOW_IPS", "WEB_CONCURRENCY", "FASTAPI_OTEL_AUTO_CONFIGURE")
 # As pytest imported this module: the variables still set, and the levels `GROQ_LOG` would set.
-SEEN_ON_IMPORT = sorted(n for n in os.environ if n.upper().startswith(WATCHED))
+SEEN_ON_IMPORT = sorted(
+    n for n in os.environ if n.upper().startswith(WATCHED) or n.upper() in WATCHED_NAMES
+)
 LEVELS_ON_IMPORT = {name: logging.getLogger(name).level for name in ("groq", "httpx")}
 FIX = "FIX: make tests/conftest.py's pytest_configure drop them again, before collection."
 

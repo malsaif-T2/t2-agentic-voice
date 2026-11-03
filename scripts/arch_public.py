@@ -1,5 +1,7 @@
 """ARCH-PUBLIC for the apps, for the architecture check (scripts/check_architecture.py): an app in
-[[apps]] imports the library only through [package] public, and no other app.
+[[apps]] imports the library only through [package] public, and no other app. An app's module
+never mentions a [[restricted]] name either (ARCH-CONSTRUCT, scripts/arch_names.py), whatever
+path into the library it might take to reach it.
 
 It reads an app's import statements. `from <library> import <name>` imports a module when the
 name is a layer or a facade ([package] facades), so that module must be public too; any other
@@ -13,6 +15,7 @@ import ast
 from pathlib import Path
 
 from scripts._common import Violation
+from scripts.arch_names import referred
 from scripts.harness_arch import AppRule, ArchConfig
 from scripts.harness_toml import CONFIG_FILE, RULE
 from scripts.module_rules import parse_module
@@ -66,7 +69,7 @@ class _AppChecker(ast.NodeVisitor):
 
 
 def check_app(root: Path, app: AppRule, arch: ArchConfig) -> tuple[list[Violation], int]:
-    """An app's modules: the module rules, and ARCH-PUBLIC."""
+    """An app's modules: the module rules, ARCH-PUBLIC, and ARCH-CONSTRUCT's names."""
     app_dir = root / app.dir
     if not (app_dir / "__init__.py").is_file():
         init = f"{app.dir}/__init__.py"
@@ -81,6 +84,8 @@ def check_app(root: Path, app: AppRule, arch: ArchConfig) -> tuple[list[Violatio
         if tree is not None:
             checker = _AppChecker(arch, app=app.name, display=display)
             checker.visit(tree)
-            found += checker.violations
+            found += checker.violations + referred(
+                arch, source, tree, display, layer=app.name, rel=None
+            )
         violations += found
     return violations, len(files)

@@ -21,7 +21,7 @@ from contextlib import asynccontextmanager
 from dataclasses import dataclass
 from typing import Protocol
 
-from t2_agentic_voice import ProviderError, Settings, get_logger
+from t2_agentic_voice import ProviderError, VoiceSettings, get_logger
 from t2_agentic_voice.groq import GroqSTT
 from t2_agentic_voice.ports import AudioClip, SpeechToText, Transcript
 from t2_agentic_voice.tracing import Tracing
@@ -42,7 +42,7 @@ from ole5_voice.evals.windows import Measure
 
 ANSWERERS = ("reference", "groq")
 # The speech-to-text adapter of each `stt.provider` (GP-22: a provider is swapped by a setting).
-_ADAPTERS: Mapping[str, Callable[[Settings], SpeechToText]] = {"groq": GroqSTT.from_settings}
+_ADAPTERS: Mapping[str, Callable[[VoiceSettings], SpeechToText]] = {"groq": GroqSTT.from_settings}
 # Groq bills each request at least 10 s of audio (plan 002, "The cost and the time"; the
 # design's 10.4): the library adapter's own minimum, which a test ties it to. The answerer
 # charges a request before it is sent, so it cannot take the minimum from the transcript.
@@ -191,9 +191,8 @@ class GroqAnswerer:
             return Answer(variant=variant.id, requests=(*self._log, *stuck), failure="stuck")
 
     async def aclose(self) -> None:
-        close = getattr(self._stt, "aclose", None)  # GroqSTT's; the port names none
-        if close is not None:
-            await close()
+        """Close the speech-to-text adapter, through the port's own close."""
+        await self._stt.aclose()
 
     async def _answer(self, variant: Variant, request: AnswerRequest) -> Answer:
         async with self._sender() as send:
@@ -340,7 +339,7 @@ def _by_length(values: Sequence[tuple[float, float | None]]) -> float | None:
     return sum(seconds * value for seconds, value in known) / total if total else None
 
 
-def adapter(settings: Settings) -> SpeechToText:
+def adapter(settings: VoiceSettings) -> SpeechToText:
     """The speech-to-text adapter `stt.provider` names, built from the settings (Groq's:
     ConfigurationError when no key is set)."""
     return _ADAPTERS[settings.stt.provider](settings)
@@ -348,7 +347,7 @@ def adapter(settings: Settings) -> SpeechToText:
 
 def make_answerer(
     name: str,
-    settings: Settings,
+    settings: VoiceSettings,
     *,
     stt: SpeechToText | None = None,
     policy: Policy | None = None,

@@ -24,6 +24,7 @@ from typing import Final, Literal
 from pydantic import BaseModel, ConfigDict, Field, TypeAdapter
 from t2_agentic_voice import configure_logging, get_logger
 
+from ole5_voice import LOGGERS
 from ole5_voice.evals.audio import AudioFormatError, Wav, read_wav
 from ole5_voice.evals.files import read_model
 from ole5_voice.evals.import_recordings import read_reviews
@@ -291,7 +292,7 @@ def main(argv: Sequence[str] | None = None) -> int:
     parser.add_argument("--evals", type=Path, default=EVALS, help="the golden set's folder")
     parser.add_argument("--reviews", type=Path, help="the recorder's --out, for the reviews")
     args = parser.parse_args(argv)
-    configure_logging()
+    configure_logging(loggers=LOGGERS)
     try:
         terms = load_terms(args.evals / TERMS_FILE)
         items, manifest, left_out = build(

@@ -13,17 +13,21 @@ never reused (DOC-REGISTER).
 
 | Boundary | What crosses it | Trusted? |
 | --- | --- | --- |
-| The browser to the backend | The caller's audio, the join request, data-channel messages | No: anything a caller sends may be crafted |
+| The browser to the backend | The caller's audio, the join request, data-channel messages | No: anything a caller sends may be crafted, so it is parsed strictly and bounded: each HTTP body under its route's cap in bytes before it is parsed, each data-channel message at most 1024 bytes as the session gets it (the object Pipecat parsed, written back as compact UTF-8 JSON: Pipecat parses the channel's text first, with no bound of ours up to the transport's message size, and holds the messages that come before the call connects, so whitespace past the bound, and a key held twice with its last value, reach a call), and a refusal names only the kinds of problem, never a value it was sent (D-029, D-039). The client's address is the connection's peer, or the one in `X-Forwarded-For` only from a proxy `server.forwarded_allow_ips` lists, no entry wider than /8 for IPv4 or /32 for IPv6, nor wider than /104 where it overlaps an IPv6 range that carries IPv4 addresses (`::ffff:0:0/96`, `::ffff:0:0:0/96`, `64:ff9b::/96`, `64:ff9b:1::/48`, `::/96`) or /24 where it overlaps 6to4's `2002::/16` (D-028). A browser and a backend on one machine still meet over its private network addresses, not loopback: aioice never offers 127.0.0.1 as a candidate, so a backend whose HTTP listens on 127.0.0.1 opens the call's UDP sockets on the LAN addresses, and a browser's `.local` candidates send mDNS on the LAN (plan 003's decision log) |
 | The website to the backend | Who the caller is, proved by the website's login or a one-time code (an open question in the roadmap) | Only as a join token the backend verifies; an email typed by the caller is never an identity |
 | The backend to Groq | Audio, text, and prompts out; transcripts, model output, and audio back | The output is not: a transcript or a model reply is data, never an instruction |
 | The backend to the knowledge base | A query out; passages back | Passages are data: text in them is never obeyed |
 | The backend to the ticket system | Ticket writes and reads | Its replies are the only source of a ticket number |
 | The backend to Phoenix | Traces of every turn | Holds call content: hosted with the backend, never public; a local one listens on 127.0.0.1 only, since one on every interface serves its traces to the whole network with no login (D-023; [the guide](guide/evaluation.md), "Making a registered run") |
 | The owner's browser to the recorder (`poe record`) | The speaker's consent, each take's audio, the review's confirmations and typed references | No: it listens on 127.0.0.1 only, answers only its own `Host` and paths under its session's token, takes a POST only from its own `Origin`, of a bounded body, and serves only its allow-list, so no request reads a file outside it, `.env` included (`tests/ole5_voice/evals/test_recorder_security.py`) |
-| The process environment to the SDKs under the library | The variables the SDKs read whatever the library passes: `GROQ_*` and `OTEL_*` ones, and the proxy and CA variables, which can send the key, the audio and the transcripts through a proxy or trust another certificate authority | No: the library reads only `T2V_*` names and passes every value it can. [The guide](guide/README.md), "Variables to leave unset", lists each of the rest, and the debt rows TD-003, TD-004, TD-005 and TD-015 say why each is still read |
+| The process environment to the packages under the library | The variables they read whatever the library passes: `GROQ_*` and `OTEL_*` ones; Pipecat's `PIPECAT_*`, one of which runs files inside every call and another writes the caller's audio to disk; loguru's `LOGURU_*`; websockets' `WEBSOCKETS_*`; uvicorn's `FORWARDED_ALLOW_IPS`, `WEB_CONCURRENCY` and `UVICORN_*`; FastAPI's `FASTAPI_OTEL_AUTO_CONFIGURE`; onnxruntime's `ORT_LOAD_CONFIG_FROM_MODEL`; and the proxy and CA variables, which can send the key, the audio and the transcripts through a proxy or trust another certificate authority | No: the library reads only `T2V_*` names as settings and passes every value it can. Of the rest it asks only whether a variable is set, by name, never using its value: `from_env` notes `GROQ_API_KEY`, so its error can name the variable to set instead, and `voice` refuses to start calls while `PIPECAT_SETUP_FILES` or `PIPECAT_SMART_TURN_LOG_DATA` is set (`core.config.foreign_set`, D-028; built by plan 003's Track E). [The guide](guide/README.md), "Variables to leave unset", lists each of the rest and what it does, and the debt rows TD-003, TD-004, TD-005 and TD-015 say why the Groq, OpenTelemetry, proxy and CA ones are still read |
 
 The last two rows were added by plan 004 (2026-11-02) from what M1 built and tested, as was the
-Phoenix row's last clause; the owner has not reviewed them yet.
+Phoenix row's last clause; the owner has not reviewed them yet. Plan 003's Block 0 (2026-11-02)
+widened the last row to the packages a call brings, from its reading of them, and gave the first
+row its last sentence (D-035); after its review (2026-11-03), the first row gained its bounds
+and the client's address, and the last its refusals by name (D-028, D-029, D-039). The owner
+has not reviewed those either.
 
 ## Threats
 
@@ -63,13 +67,26 @@ Phoenix row's last clause; the owner has not reviewed them yet.
    values with a fixed set (queue, type, priority) are taken only from the ticket system's own
    lists; text from a transcript, a passage, or a tool result never selects a tool by itself.
    Enforced by tests at each tool's boundary (GP-06).
-5. **Secrets stay in the backend.** API keys and service passwords are `SecretStr` settings,
-   never sent to the browser, never logged, never traced. Enforced by
-   `test_every_secret_setting_is_a_secret_str` and
-   `test_a_key_appears_in_no_repr_and_no_log_line` (`tests/t2_agentic_voice/core/test_config.py`)
-   and by `test_no_secret_reaches_a_span_or_a_log_line`
-   (`tests/t2_agentic_voice/core/test_tracing.py`); the last two read every surface an error, a
-   log line or an output may show through `tests/leaks.py`.
+5. **Secrets stay in the backend.** API keys, service passwords, the join keys and the TURN
+   secret are `SecretStr` settings, each with a `_FILE` form, never sent to the browser, never
+   logged, never traced; a join key and the TURN secret hold at least 32 bytes. A call's offer
+   secret and its TURN password are `SecretStr` too, and go only to the browser that joined: the
+   join's answer reveals them only as it is serialized to JSON, never in a repr or a
+   python-mode dump; and no refusal of a request repeats a value it sent, the join token among
+   them (D-029). Enforced by `test_every_secret_setting_is_a_secret_str_with_a_file_form`,
+   `test_a_secret_shorter_than_32_bytes_is_refused_as_the_settings_load` and
+   `test_no_secret_appears_in_a_repr_or_a_log_line`
+   (`tests/t2_agentic_voice/core/test_settings_secrets.py`);
+   by `test_no_secret_reaches_a_span_or_a_log_line`
+   (`tests/t2_agentic_voice/core/test_tracing.py`), whose settings carry the Groq key, a join
+   key and the TURN secret, inline in one run and in their files in the other, its log lines
+   read from DEBUG up; by
+   `test_no_secret_shows_in_a_python_mode_dump_or_a_line_built_from_it` and
+   `test_a_body_as_the_route_reads_it_is_answered_echoing_none_of_it`
+   (`tests/t2_agentic_voice/api/test_protocol.py`), each test that looks for a value in an
+   error, a log line or a span reading every surface it may show through `tests/leaks.py`; and
+   by adversarial tests in the plan that builds call set-up, plan 003: Track F's (each
+   adversarial body posted through the router answers with no value or key it sent).
 6. **Writes are never cut in half.** A ticket write runs as a job outside the turn that asked
    for it. Its unique request ID goes into a durable outbox (behind a `domain` port, under
    `var/`) before the ticket system is called. A write with no reply is never repeated blindly.
@@ -80,10 +97,91 @@ Phoenix row's last clause; the owner has not reviewed them yet.
    outbox, never by creating the ticket again. Enforced by tests with a fake ticket system that
    times out, with and without the lookup.
 7. **Join tokens are single-use and short-lived.** A token starts one call, once, within its
-   lifetime, and binds the caller's verified identity to it. Enforced by adversarial tests in
-   the plan that builds call set-up.
-8. **Audio is kept only with consent.** Call audio is not stored unless a setting turns it on
-   for the owner's own recordings; transcripts in traces are the only call content kept by
-   default, and no framework's debug log writes call content. Enforced by a test of the default
-   settings, and by a test that a voice-framework debug line holding a transcript does not
-   reach the output at the default log level.
+   lifetime, and binds the caller's verified identity to it. It is a compact JWT, HS256 only,
+   signed with a key of at least 32 bytes; it lives `join.ttl_s` (120 s at most) within a
+   clock-skew allowance (`join.max_clock_skew_s`, 60 s at most), and the used-token store
+   refuses its `jti` a second time, keeping it until the token's expiry plus the allowance's
+   bound (60 s), the latest instant any allowance lets the token verify, so a restart with a
+   larger allowance forgets no token it could take again; and it never records as a first use
+   a `jti` whose instant has passed by its own clock. The call ID is never a credential: the offer
+   and each ICE update need the call's offer secret, random and for that call alone, which
+   stops working once ICE completes or the call ends, and rides in a header or the body, never
+   in a URL; a second offer is refused. One process holds a
+   `storage.var_dir`, through the lock file the runtime takes at start, so no second process
+   shares its used-token store (D-029, D-035). Enforced for the keys' length by
+   `test_a_secret_shorter_than_32_bytes_is_refused_as_the_settings_load`
+   (`tests/t2_agentic_voice/core/test_settings_secrets.py`), for the lifetime's and the
+   allowance's bounds by `test_a_value_out_of_its_bounds_is_refused` and
+   `test_the_join_bounds_hold_the_tokens_lifetime`
+   (`tests/t2_agentic_voice/core/test_settings_checks.py`), and by adversarial tests in the
+   plan that builds call set-up, plan 003: Track C's (a token used twice, expired, issued in
+   the future beyond the skew, signed with another key, with an unknown `kid`, with `alg` none
+   or any algorithm but HS256, with a changed claim, with no `jti`, or with a lifetime over
+   120 s, each refused; a token used, the store then pruned at its expiry, and the token
+   presented again before its expiry plus the allowance, refused; a token used under a 30 s
+   allowance, the store reopened, and the token presented at its expiry plus 45 s to a verifier
+   allowed 60 s, refused; a use whose last instant has passed by the store's clock, and two
+   replays either side of that instant, each refused; `SignedJoinTokens` built with
+   a lifetime over 120 s or an allowance over 60 s, refused; the used-token store under two
+   threads and after a restart) and Track F's (an offer with no secret, with another call's
+   secret, with the secret in the query string, a second offer, and a `PATCH` after ICE
+   completed and after the call ended, whether voice still holds the call or has forgotten it,
+   each refused at the router; a second process on one `storage.var_dir`, refused at start).
+8. **Audio is kept only with consent.** No call audio is written unless `privacy.record_audio`
+   is on and the call's signed join token carries the caller's recording consent: only the
+   consent `SignedJoinTokens` read from a token whose signature it verified counts (a
+   `SignedConsent`), so `DevIdentity`'s never does, and no client message sets either. Audio is
+   never exported to traces; transcripts in traces are the only call content kept by default.
+   Call content is not logged at any level unless `logging.content` is on, which only `dev`
+   allows, and no framework's debug log writes call content: Pipecat's loguru namespace is off
+   by default, switched off before `voice` first imports Pipecat (D-031, D-035). Enforced by
+   two guards on which `SignedConsent` counts. At run time, `allows_recording(consent)` in
+   `core/identity.py`, which every other layer asks, is true only for the very instance that a
+   validation given `CONSENT_SEAL` as its context built (the validation records it, by a weak
+   reference, with its fields as they were), alive and unchanged since. Any other consent
+   allows nothing: a copy of any kind (`copy`, `model_copy` by any path, `copy.copy`,
+   `copy.deepcopy`, a pickle, a crafted one included), a consent rebuilt (`__init__` called
+   again) or re-typed (`__class__` assigned), one whose fields were written in place, and a
+   subclass's. So that the common mistakes fail loudly, the class also refuses with TypeError
+   its constructor, a validation without the seal (a `TypeAdapter` of the class, and a model
+   with a field of it, which the seal alone guards, included), `model_construct`, `model_copy`
+   with an update, the deprecated `copy` given `update`, `include` or `exclude`, and a
+   subclass. Statically, `[[restricted]]` (ARCH-CONSTRUCT) reports a call that builds a
+   `SignedConsent` outside `adapters`, and any mention of `CONSENT_SEAL` outside
+   `adapters/join_tokens.py` and `core/identity.py`, in the library or an app: a token that is
+   the name (an import under any alias, an attribute, a read, an annotation, a keyword, a class
+   pattern's keyword), a literal that holds it (a string, bytes, an f-string's part, a
+   docstring), and a star import from either module. That only `SignedJoinTokens.verify` gives
+   the seal, inside that module, is a review. What gets past both is deliberate, and review
+   sees it: code that computes the seal's name at run time, or finds the seal without its name
+   (scanning a module's namespace, `vars(module)`, or the garbage collector's referents); memory
+   rewritten through `ctypes`; and writes to `core/identity.py`'s own state (its registry of
+   sealed consents, or `allows_recording` replaced). With
+   `test_only_a_signed_consent_is_a_verified_tokens_and_only_adapters_build_one`,
+   `test_a_consent_allows_recording_only_as_the_seal_validated_it`,
+   `test_a_copy_reads_as_the_consent_and_allows_nothing`,
+   `test_a_sealed_consent_allows_recording_while_its_fields_are_unchanged`,
+   `test_a_collected_consent_leaves_the_registry`, `test_a_signed_consent_is_built_no_other_way`,
+   `test_a_signed_consent_takes_no_subclass`,
+   `test_poe_arch_reports_the_seal_and_the_class_outside_the_verifier` and
+   `test_only_the_verifier_and_the_module_that_makes_the_seal_mention_it`
+   (`tests/t2_agentic_voice/core/test_identity.py`),
+   `test_a_consent_is_a_bounded_version_and_a_real_boolean`
+   (`tests/t2_agentic_voice/core/test_identity_parsing.py`), and
+   `test_a_restricted_name_is_mentioned_only_by_its_layers_and_files` and
+   `test_an_app_never_mentions_a_restricted_name`
+   (`tests/harness/test_check_architecture.py`); by
+   `test_the_turn_tts_and_limit_defaults_are_the_plans` (recording and Pipecat's lines off by
+   default) and `test_each_check_holds_in_its_environments_as_the_settings_load`
+   (`logging.content` refused outside `dev`), in
+   `tests/t2_agentic_voice/core/test_settings_checks.py`; and by adversarial tests in plan
+   003: Track C's (a verified token whose consent says `record_audio` gives a consent
+   `allows_recording` accepts, and one that says false a consent it refuses); Track D's
+   (nothing recorded with the setting off, with the token's consent false, with both, under
+   `DevIdentity` with the setting on, or with a plain `Consent`, or a copy of a verified one,
+   that says `record_audio` and the setting on, whatever a client message says; no audio in an
+   exported span); and Track E's
+   (voice refusing to start while `PIPECAT_SMART_TURN_LOG_DATA`, which has Smart Turn write
+   each turn's audio to disk, or `PIPECAT_SETUP_FILES` is set; and, in a child process, a
+   voice-framework debug line holding a transcript reaching no output at the default settings,
+   and importing the library printing no banner).

@@ -21,9 +21,10 @@ APP_PACKAGES = {
 }
 
 
-def _check(tmp_path: Path, files: dict[str, str]) -> list[tuple[str, str]]:
-    """(path inside the package, rule) of each violation in a project holding `files`."""
-    loaded = config(tmp_path)
+def _check(tmp_path: Path, files: dict[str, str], text: str = SYNTHETIC) -> list[tuple[str, str]]:
+    """(path inside the package, rule) of each violation in a project holding `files`, with the
+    harness.toml `text`."""
+    loaded = config(tmp_path, text)
     package = {"src/app/__init__.py": ""} | {f"src/app/{k}": v for k, v in files.items()}
     write(tmp_path, {"ARCHITECTURE.md": ARCHITECTURE, **package})
     violations, _ = check_repo(tmp_path, loaded)
@@ -74,15 +75,24 @@ def test_imports_of_a_literal_name_are_imports_too(tmp_path: Path) -> None:
         "core/b.py": "from importlib import import_module as load\nload('app.services')\n",
         "domain/c.py": "__import__('app.adapters.store')\n__import__('sqlite3')\n",
         "domain/d.py": (
-            "import importlib as il\nil.import_module(name)\nil.import_module('.x', 'app')\n"
+            "import importlib as il\nil.import_module(name)\nil.import_module('.x')\n"
             "il.import_module('app.core.types')\nother.import_module('app.api')\n"
         ),
+        # a relative name with its literal anchor, a keyword, importlib's __import__, a level
+        "domain/e.py": "import importlib as il\nil.import_module('.api', 'app')\n",
+        "domain/f.py": "import importlib\nimportlib.import_module(name='sqlite3')\n",
+        "domain/g.py": "from importlib import __import__ as imp\nimp('app.services')\n",
+        "domain/sub/h.py": "__import__('adapters', globals(), None, (), 3)\n",
     }
     assert sorted(_check(tmp_path, files)) == [
         ("core/a.py", "ARCH-LAYER"),
         ("core/b.py", "ARCH-LAYER"),
         ("domain/c.py", "ARCH-LAYER"),
         ("domain/c.py", "ARCH-OWNER"),
+        ("domain/e.py", "ARCH-LAYER"),
+        ("domain/f.py", "ARCH-OWNER"),
+        ("domain/g.py", "ARCH-LAYER"),
+        ("domain/sub/h.py", "ARCH-LAYER"),
     ]
 
 
@@ -169,6 +179,72 @@ def test_restricted_classes_are_constructed_only_by_their_layer(tmp_path: Path) 
         ("api/c.py", "ARCH-CONSTRUCT"),
         ("services/a.py", "ARCH-CONSTRUCT"),
         ("services/b.py", "ARCH-CONSTRUCT"),
+    ]
+
+
+SEAL = (
+    '\n[[restricted]]\nnames = ["SEAL"]\nlayers = ["domain"]\nfiles = ["core/seal.py"]\n'
+    'fix = "Only domain/ and core/seal.py hold SEAL."\n'
+)
+
+
+def test_a_restricted_name_is_mentioned_only_by_its_layers_and_files(tmp_path: Path) -> None:
+    """Every mention counts, not only a call: an import under any alias, an attribute (bound to
+    a name or not), a name read, a re-export, a class pattern's keyword, an annotation, a
+    subscript's key, an assignment of the name to itself, a fullwidth spelling, and a literal
+    that holds it (a string, an f-string's part, bytes, an escape, two literals joined, a
+    docstring); and a star import from a module that may bind it, the row's file or a module of
+    its layers. Only the row's layers and files may: a module that defines a name of the same
+    spelling is no exception. A comment, and another word, are not mentions."""
+    star, module = "from app.core.seal import *\n", "from app.core import seal\n\n"
+    files = {
+        "__init__.py": "from app.core.seal import SEAL\n",
+        "core/seal.py": "SEAL = object()\n\n\ndef sealed(value):\n    return value is SEAL\n",
+        "core/own.py": "SEAL = object()\nkept = SEAL\n",
+        "domain/approve.py": "from app.core.seal import SEAL as S\n\nkept = S\n",
+        "services/alias.py": "from app.core.seal import SEAL as S\n",
+        "services/attribute.py": module + "kind = seal.SEAL\n",
+        "services/string.py": module + "kind = getattr(seal, 'SEAL')\n",
+        "services/padded.py": module + "kind = getattr(seal, ' SEAL'.strip())\n",
+        "services/fstring.py": module + "kind = getattr(seal, f'{x}SEAL')\n",
+        "services/bytes.py": module + "kind = getattr(seal, b'SEAL'.decode())\n",
+        "services/escaped.py": module + "kind = getattr(seal, 'S\\x45AL')\n",
+        "services/joined.py": module + "kind = getattr(seal, 'SE' 'AL')\n",
+        "services/doc.py": '"""Where SEAL is kept."""\n',
+        "services/match.py": module + "match seal:\n    case object(SEAL=kind):\n        pass\n",
+        "services/wide.py": module + "kind = seal.\uff33EAL\n",
+        "services/read.py": star + "\nkind = SEAL\n",
+        "services/star.py": star,
+        "services/relative.py": "from ..core.seal import *\n",
+        "services/layer.py": "from app.domain.approve import *\n",
+        "services/annotated.py": star + "SEAL: object\nkind = SEAL\n",
+        "services/keyed.py": star + "_seen = {}\n_seen[SEAL] = 1\n",
+        "services/itself.py": star + "SEAL = SEAL\n",
+        "services/clean.py": "# SEAL, in a comment\nfrom app.core import seal\n\nkind = 'seal'\n",
+        "api/relative.py": "from ..core.seal import SEAL\n",
+    }
+    found = _check(tmp_path, files, SYNTHETIC + SEAL)
+    assert {path for path, _ in found} == {
+        *(f for f in files if f.startswith("services/") and f != "services/clean.py"),
+        "__init__.py",
+        "core/own.py",
+        "api/relative.py",
+    }
+    assert {rule for _, rule in found} == {"ARCH-CONSTRUCT"}
+
+
+def test_an_app_never_mentions_a_restricted_name(tmp_path: Path) -> None:
+    """Not even by an attribute path through the public package root, which ARCH-PUBLIC, reading
+    imports, lets pass."""
+    files = {
+        "apps/shop/src/shop/reach.py": "import app\n\nkind = app.core.seal.SEAL\n",
+        "apps/shop/src/shop/clean.py": "import app\n",
+    }
+    loaded = config(tmp_path, SYNTHETIC + SEAL + APPS)
+    write(tmp_path, {"ARCHITECTURE.md": ARCHITECTURE, **APP_PACKAGES, **files})
+    violations, _ = check_repo(tmp_path, loaded)
+    assert [(v.path, v.line, v.rule, v.problem) for v in violations] == [
+        ("apps/shop/src/shop/reach.py", 3, "ARCH-CONSTRUCT", "'SEAL' referred to in app 'shop'")
     ]
 
 

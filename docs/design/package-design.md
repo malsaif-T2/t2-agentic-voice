@@ -1,6 +1,6 @@
 # T2 Agentic Voice: package design
 
-**Status: Accepted as amended.** The agent drafted this on 2026-10-31 for the owner and revised it the same day after two reviews. On 2026-11-01 the owner answered its open questions (section 17, D-018), the sections those answers touch were changed to match, and the owner approved the design as amended (D-017). Each part is built with its milestone (section 16). Built so far, by M1 (plan 002): the five facades (`ports`, `groq`, `languages`, `evals`, `tracing`, D-021), the speech-to-text port and its Groq adapter, the `groq`, `stt` and `tracing` settings groups, tracing, the scorers (D-022) and the checks ARCH-FACADE and ARCH-WORDS (D-020); and by plan 004, the base error's name, `T2VoiceError` (D-026). Where plan 004's read found that what was built differs from a section, a note in italics there says so (3.3, 5.1, 6.1, 7.6, 9.7 and 10.2). Where it would change a recorded decision or an architecture rule, it says so and names the decision entry to write (section 16.3). Where the agent disagrees with a decision, it says so in section 17 and does not change the decision.
+**Status: Accepted as amended.** The agent drafted this on 2026-10-31 for the owner and revised it the same day after two reviews. On 2026-11-01 the owner answered its open questions (section 17, D-018), the sections those answers touch were changed to match, and the owner approved the design as amended (D-017). Each part is built with its milestone (section 16). Built so far, by M1 (plan 002): the five facades (`ports`, `groq`, `languages`, `evals`, `tracing`, D-021), the speech-to-text port and its Groq adapter, the `groq`, `stt` and `tracing` settings groups, tracing, the scorers (D-022) and the checks ARCH-FACADE and ARCH-WORDS (D-020); by plan 004, the base error's name, `T2VoiceError` (D-026); and by plan 003's Block 0, the settings (section 7), the library's logging (10.2), the ports, shared types and `t2v/1` models M2 builds on, and four more facades (`identity`, `server`, `stores` and `events`, D-032). Where plan 004's read found that what was built differs from a section, a note in italics there says so (3.3, 5.1, 6.1, 7.6, 9.7 and 10.2). Where it would change a recorded decision or an architecture rule, it says so and names the decision entry to write (section 16.3). Where the agent disagrees with a decision, it says so in section 17 and does not change the decision.
 
 **Since the draft.** The design was written from commit `a0ca586`. The same day, plan 001 built its first step in a simpler form: one uv workspace with the library, the Ole5 app and `examples/minimal`; one `harness.toml` for the repository, with `[[apps]]` and the rule ARCH-PUBLIC (an app imports the library only through its public modules); and tests in one `tests/` folder at the root. Sections 12, 14 and 16 were aligned with that layout. The owner's decisions taken so far are D-012 to D-016, and D-018 for the answers to section 17; this design as a whole is D-017, accepted on 2026-11-01.
 
@@ -214,8 +214,6 @@ All the personas need the same things, and this design is built around them:
 | Limits | The documented defaults (section 7.6) |
 | Audio recording | Never stored. Storing audio needs both the `privacy.record_audio` setting and the caller's recording consent in the signed join token (invariant 8) |
 | A thinker (after M7) | Off. While it is off, no delegate tool is offered and no prompt section exists |
-
-*Not built yet:* the logging row. The library still logs through the scaffold's structlog, configured process-wide, so its lines print to standard output before an app configures logging; the owner chose on 2026-11-02 to build this row, with section 10.2, in M2 (TD-033).
 
 ---
 
@@ -698,7 +696,7 @@ Stability levels are defined in section 5.4. "Provisional" covers everything tha
 | `t2v` command | Subcommand names and flags | stable (output text and `--json` shapes: provisional) |
 | Wire protocol `t2v/1` and `t2v-client.js` | Section 5.5 | provisional, apart from the version check at join |
 
-*Built so far (M1, plan 002; plan 004):* the five facades hold the names D-021 lists, a part of each row above. The package root exports `T2VoiceError`, `ConfigurationError` and `ProviderError` from its row; `Settings` and `get_settings`, the settings model as M1 built it (section 7.6); `get_logger` and `configure_logging`, the scaffold's logging (TD-033); and `Status`, `status`, `NotFoundError` and `InvalidRequestError`, which are in no row (TD-034).
+*Built so far (M1, plan 002; plan 004; plan 003's Block 0):* nine facades, the five D-021 lists and `identity`, `server`, `stores` and `events` (D-032), each holding the names of its row that are built, and the names beyond the rows that D-032 lists. The package root exports `T2VoiceError`, `ConfigurationError`, `ProviderError` and `JoinRejected` from its row; `VoiceSettings` (section 7); `VoiceAgent`, `Language`, `Caller` and `Consent`; `VoiceRuntime` and `Providers`, signatures until plan 003's Track F builds them; `get_logger` and `configure_logging` (section 10.2); and `Status`, `status`, `NotFoundError` and `InvalidRequestError`, which are in no row (TD-034).
 
 The settings keys (section 7) are public too. Renaming or removing one follows the deprecation policy.
 
@@ -1089,7 +1087,7 @@ The defaults below are the agent's starting values, to be measured in the milest
 | `logging` | `content` (false), `pipecat` (`off`; or `forward`) | M2 |
 | `storage` | `var_dir` (var) | — |
 
-*Built so far (M1, plan 002):* the `groq` group without `timeout_s` (the timeout is `stt.timeout_s`), and `stt` and `tracing` as above. At the top level, `env` has the default `dev` until M2 makes it required, `log_level` and `log_format` sit there rather than in a group, and `var_dir` is `T2V_VAR_DIR` rather than `storage.var_dir` (plan 002's step 8). Settings keys are public (5.1), so which of the two `var_dir` keeps is open, and a key moved after a teammate installs the library takes the deprecation of 5.4.
+*Built so far (M1, plan 002; plan 003's step 7):* `env`, required, and the groups `groq`, `stt`, `tts`, `turns`, `server`, `join`, `tracing`, `privacy`, `logging` and `storage`, with `limits`' `max_call_s` and `idle_s`; `llm`, `interruptions`, `words`, `guard`, the rest of `limits` and `server.drain_timeout_s` come in the milestones their rows name. `groq` has no `timeout_s` (the timeouts are `stt.timeout_s` and `tts.timeout_s`). M2 adds keys this table does not list: `stt.live_language`, `tts.trim_silence`, `turns.vad_min_volume` and the Smart Turn keys, a `session` group (`mode`, `echo` until the talker), `server.turn_secret_file` and `server.forwarded_allow_ips`, and `logging.level` and `logging.format`, top-level keys in M1; M1's `T2V_VAR_DIR` is `storage.var_dir`, refused under its old name with the new one. Every key, its default and its unit are in [the settings reference](../generated/settings.md).
 
 ### 7.7 The generated reference
 
@@ -1291,7 +1289,7 @@ Ole5's golden-set machinery stays in the app, under `apps/ole5-voice-agent/evals
 
 ### 10.2 Logs
 
-*Not built yet:* the library still logs as the scaffold set it up, through structlog configured process-wide: its events print to standard output whether or not the app configures logging, and `configure_logging` adds a handler to the root logger. The owner chose on 2026-11-02 to build this section, with 3.3's row, in M2 (TD-033).
+*Built in plan 003's step 8, with one reading:* a message's key-value fields travel in one `extra` key, `fields` (`record.fields`), since the standard library refuses an `extra` key named like one of a record's own attributes, and the Ole5 app's events use `name` and `message`. Pipecat's lines (section 12.2) come with plan 003's Track E.
 
 - The library logs through the standard library, under `t2_agentic_voice.*`, with a `NullHandler`. Messages are snake_case event names with key-value `extra` fields.
 - It never calls `basicConfig` and never adds handlers to the root logger.
@@ -1661,18 +1659,18 @@ No order is fixed among these; the owner chooses:
 Numbers are taken when each entry is written, after checking that no other session has claimed them. The owner accepted D-002, D-003, D-007 and D-011 on 2026-11-01 (plan 000).
 Recorded already, on 2026-10-31: the library and the app in one workspace, with the public-API rule (D-013); the v1 usage mode (D-014; what ships for the browser is still open question 1); the thinker's owner-decided part (D-015; building it after M7, in the experimental module, is still open questions 16 and 17); open source allowed (D-016; the licences are still open question 20). This design as a whole is D-017, accepted on 2026-11-01; the owner's answers to section 17 are D-018. Still to write, each when the owner rules on it:
 - Pipecat 1.15.x, wrapping only its STT and TTS base classes, and its own interruptions off. This supersedes a bullet of D-002 and amends the conventions in ARCHITECTURE.md. Done in D-018.
-- GP-22's "swapped by configuration" widened to "by a setting, or by passing an adapter object in code".
+- GP-22's "swapped by configuration" widened to "by a setting, or by passing an adapter object in code". Done in D-030.
 - The library's `testing` layer (with no `media` layer, D-018) and the app's five layers. This amends D-003. The library's layer: done in D-019; the app's layers are still to write.
-- The harness: one configuration per member, ARCH-BAN, ARCH-FACADE, ARCH-WORDS, one invariants register. ARCH-FACADE and ARCH-WORDS: done in D-020; the others are still to write.
+- The harness: one configuration per member, ARCH-BAN, ARCH-FACADE, ARCH-WORDS, one invariants register. ARCH-FACADE and ARCH-WORDS: done in D-020; ARCH-BAN: done in D-032; the others are still to write.
 - The public API, the stability levels, and the Python floor of 3.12. The first facades and the stability levels: done in D-021; the Python floor: done in D-018 (answer 3).
-- Settings precedence, the prefix, and a required `env`.
-- Serving and identity: the sidecar and the mount, one process per `var_dir` with the lock file, one `identity=` source, the join-token format, the offer secret, consent in the token, and Ole5's identity answer (open question 19).
+- Settings precedence, the prefix, and a required `env`. Done in D-028.
+- Serving and identity: the sidecar and the mount, one process per `var_dir` with the lock file, one `identity=` source, the join-token format, the offer secret, consent in the token, and Ole5's identity answer (open question 19). Done in D-029, but for Ole5's identity answer.
 - SECURITY.md generalized to actions and moved to the library as the one register, which amends D-007. Invariant 1 itself stays: a handoff is confirmed like any action (D-018).
 - Evaluation: scorer functions in the library, the golden-set runner in the app, and audio kept out of git. This follows up D-011. Done in D-022.
 - The tracing path: done in D-018, and its packages (plain OTLP through the OpenTelemetry SDK) in D-023.
 - The licences accepted: done in D-018.
 
-Written since, beyond this list: D-024 and D-025 (M1's measurement: the noise, and `stt.model` stays `whisper-large-v3`) and D-026 (the base error is `T2VoiceError`, as 5.1 names it).
+Written since, beyond this list: D-024 and D-025 (M1's measurement: the noise, and `stt.model` stays `whisper-large-v3`); D-026 (the base error is `T2VoiceError`, as 5.1 names it); D-027 (ARCH-DEPS and DOC-SAMPLE); and, in plan 003's Block 0, D-031 (the library's logging and Pipecat's loguru), D-033 (the echo's shape), D-034 (Whisper per user turn, Proposed) and D-035 (invariants 7 and 8 brought to 8.1).
 
 ### 16.4 Risks carried
 

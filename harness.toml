@@ -2,9 +2,10 @@
 # so a project changes its rules here, never in the check code. Each key is required; a key the
 # loader does not know, or a value of the wrong kind, is a HARNESS-CONFIG violation.
 #
-# Changing [layers], [[owners]], [[restricted]], or [[subpackages]] changes the architecture:
-# update ARCHITECTURE.md in the same commit (ARCH-DOC fails until its layer table matches
-# [layers] and [[owners]]) and record why in docs/design/decisions.md (review: no check reads it).
+# Changing [layers], [[owners]], [[restricted]], [[bans]], or [[subpackages]] changes the
+# architecture: update ARCHITECTURE.md in the same commit (ARCH-DOC fails until its layer table
+# matches [layers] and [[owners]]) and record why in docs/design/decisions.md (review: no check
+# reads it).
 
 [package]
 # The library's import package, at <root>/<name>/ (D-013).
@@ -18,6 +19,10 @@ public = [
     "t2_agentic_voice",
     "t2_agentic_voice.ports",
     "t2_agentic_voice.groq",
+    "t2_agentic_voice.identity",
+    "t2_agentic_voice.server",
+    "t2_agentic_voice.stores",
+    "t2_agentic_voice.events",
     "t2_agentic_voice.languages",
     "t2_agentic_voice.evals",
     "t2_agentic_voice.tracing",
@@ -29,6 +34,10 @@ public = [
 facades = [
     "t2_agentic_voice.ports",
     "t2_agentic_voice.groq",
+    "t2_agentic_voice.identity",
+    "t2_agentic_voice.server",
+    "t2_agentic_voice.stores",
+    "t2_agentic_voice.events",
     "t2_agentic_voice.languages",
     "t2_agentic_voice.evals",
     "t2_agentic_voice.tracing",
@@ -67,7 +76,7 @@ fix = "Log via `from t2_agentic_voice.core.logging import get_logger`; `log = ge
 [[owners]]
 modules = ["pydantic_settings"]
 layers = ["core"]
-fix = "Add a field to Settings in core/config.py (and to .env.example), then read it via `get_settings()` or an injected Settings."
+fix = "Add a field, with its description, to VoiceSettings or its group in core/settings/ and run `uv run poe settings-ref`; load the settings with `VoiceSettings.from_env()` or take an injected VoiceSettings."
 
 [[owners]]
 modules = ["opentelemetry", "openinference", "phoenix"]
@@ -85,9 +94,29 @@ layers = ["adapters"]
 fix = "Reach an outside service through its port in domain/ports; the adapter that implements it lives in adapters/ and the api layer injects it."
 
 [[owners]]
+modules = ["jwt"]
+layers = ["adapters"]
+fix = "Join tokens are minted and verified only by the signed-join-token adapter in adapters/, behind the `IdentityVerifier` port (the design's 6.5); take that port, injected, instead of decoding a token."
+
+[[owners]]
+modules = ["sqlite3"]
+layers = ["adapters"]
+fix = "The SQLite stores live in adapters/ behind their ports (`UsedTokens` so far); take the port, injected, instead of opening a database."
+
+[[owners]]
+modules = ["num2words"]
+layers = ["domain"]
+fix = "Speak numbers through domain's speaking rules (`speak_number`, re-exported by the `languages` facade); never call num2words elsewhere."
+
+[[owners]]
 modules = ["pipecat"]
 layers = ["voice"]
 fix = "Keep the voice framework inside voice/; other layers take plain text, audio bytes, or domain models from it."
+
+[[owners]]
+modules = ["loguru"]
+layers = ["voice"]
+fix = "Only voice/ touches loguru, Pipecat's logger: it switches Pipecat's namespace off before it first imports Pipecat (invariant 8). Log through `core.logging.get_logger`: `log = get_logger(__name__)`; `log.info('event_name', key=value)`."
 
 [[owners]]
 modules = ["fastapi", "starlette", "uvicorn"]
@@ -99,18 +128,184 @@ modules = ["jiwer"]
 layers = ["testing"]
 fix = "Score through the evaluation helpers in testing/scorers.py (`wer`, `cer`, re-exported by the `evals` facade); never import jiwer elsewhere."
 
-# Classes that only some layers may construct (ARCH-CONSTRUCT): calls, `.model_validate`, and
-# `.model_construct` all count. Use it for an object that only a validator may issue. Example:
+# Classes that only some modules may construct (ARCH-CONSTRUCT): calls, `.model_validate`, and
+# `.model_construct` all count. Use it for an object that only a validator may issue. `layers`
+# holds every module of those layers, and `files` the library's modules it names, each a path
+# inside the package; one of the two may be empty. Example:
 #
 # [[restricted]]
 # classes = ["ApprovedPayment"]
 # layers = ["domain"]
+# files = []
 # fix = "Only domain/approval.py issues an ApprovedPayment; call approve() instead of building one."
+#
+# A table lists `names` instead of `classes` for a name that only some modules may mention at
+# all, the one that defines it included only if `files` names it: any token that is the name
+# (an import under any alias, an attribute, a read, an assignment, an annotation, a keyword, a
+# class pattern's keyword) and any literal that holds it (a string, bytes, an f-string's part, a
+# docstring) count, in the library and in an app, and so does a star import from a module that
+# may bind it (one of its files, or a module of its layers). A literal that merely contains the
+# name counts too, so the name is one no other word holds. Use it for a seal that a class checks
+# at run time, so the class refuses everyone but the seal's holders, and the check names who
+# holds it (scripts/arch_module.py and scripts/arch_names.py). A name computed at run time is
+# beyond it.
 #
 # Planned here, in the commit that creates each class (docs/SECURITY.md, invariants 1 and 2): a
 # confirmed ticket draft, issued only by domain's yes rule; its two inputs, the caller's heard
 # words and the read-back receipt, built only by voice; and a completed action, recorded only by
 # actions.
+
+# The consent a verified signed join token carried (core/identity.py): only it lets a call's
+# audio be recorded (docs/SECURITY.md, invariant 8), so only the identity source that checks a
+# token's signature builds one (plan 003, Track C).
+[[restricted]]
+classes = ["SignedConsent"]
+layers = ["adapters"]
+files = []
+fix = "Only adapters/join_tokens.py's SignedJoinTokens builds a SignedConsent, from a token whose signature it verified; elsewhere, pass on the Consent the identity source returned, or build a plain Consent, which never turns recording on."
+
+# The seal a SignedConsent's validation must be given: core/identity.py defines it and checks it at
+# run time, and only adapters/join_tokens.py, the identity source that checks a token's signature,
+# gives it (docs/SECURITY.md, invariant 8). A TypeAdapter of the class, or a model with a field of
+# it, the seal alone guards: without it, either fails at run time.
+[[restricted]]
+names = ["CONSENT_SEAL"]
+layers = []
+files = ["adapters/join_tokens.py", "core/identity.py"]
+fix = "Only adapters/join_tokens.py's SignedJoinTokens gives CONSENT_SEAL, to build the SignedConsent of a token whose signature it verified, and core/identity.py defines it; elsewhere, ask allows_recording(consent) (core/identity.py) whether a consent lets audio be kept, and name the seal in no code, string or docstring (write 'the seal'), and star-import neither module."
+
+# Modules that the code a ban covers never imports, whichever layer owns their library (ARCH-BAN,
+# scripts/arch_ban.py; the design's 12.4). ARCH-OWNER gives a whole library to its layers; a ban
+# names module prefixes instead. `modules` bans each module with every module under it;
+# `allowed` keeps modules inside those allowed, with everything under each; `within` is the
+# code it covers: the library's package (all of it), a part of it, or an app's package. The fix
+# is printed with every violation.
+#
+# Pipecat's services: its provider and model services are banned in the whole library, which
+# keeps only the base classes voice's speech bridges subclass (`STTService`, `TTSService`) and the
+# modules of pipecat.services they import, read from the installed Pipecat 1.15.0
+# (tests/harness/test_installed_pipecat.py checks the list against it, and that every Pipecat
+# module that imports an HTTP or websocket client, or a banned module, is banned or reviewed).
+[[bans]]
+modules = ["pipecat.services"]
+allowed = [
+    "pipecat.services.ai_service",
+    "pipecat.services.settings",
+    "pipecat.services.stt_latency",
+    "pipecat.services.stt_service",
+    "pipecat.services.tts_service",
+    "pipecat.services.websocket_service",
+]
+within = ["t2_agentic_voice"]
+fix = "Pipecat's provider and model services reach a provider without a port (GP-22): voice's speech bridges subclass only `STTService` and `TTSService` (pipecat.services.stt_service and tts_service) and call the library's ports, whose adapters live in adapters/."
+
+# Pipecat's LLM machinery (the design's 13): its LLM adapters, function schemas and context
+# aggregators; Pipecat Flows, the LLM switchers and workers, the UI worker an LLM drives; the
+# LangChain and Strands processors; the IVR navigator and voicemail detector, which an LLM runs;
+# and the turn ends an LLM or a classifier decides.
+[[bans]]
+modules = [
+    "pipecat.adapters.base_llm_adapter",
+    "pipecat.adapters.llm",
+    "pipecat.adapters.schemas",
+    "pipecat.adapters.services",
+    "pipecat.extensions",
+    "pipecat.flows",
+    "pipecat.pipeline.llm_switcher",
+    "pipecat.pipeline.llm_with_backend",
+    "pipecat.processors.aggregators.async_tool_messages",
+    "pipecat.processors.aggregators.gated_llm_context",
+    "pipecat.processors.aggregators.llm_context",
+    "pipecat.processors.aggregators.llm_context_summarizer",
+    "pipecat.processors.aggregators.llm_response",
+    "pipecat.processors.aggregators.llm_response_universal",
+    "pipecat.processors.aggregators.llm_text_processor",
+    "pipecat.processors.frameworks.langchain",
+    "pipecat.processors.frameworks.strands_agents",
+    "pipecat.turns.user_stop.classifier_user_turn_stop_strategy",
+    "pipecat.turns.user_stop.llm_turn_completion_user_turn_stop_strategy",
+    "pipecat.utils.async_tool_cancellation",
+    "pipecat.utils.context.llm_context_summarization",
+    "pipecat.workers.base_ui_worker",
+    "pipecat.workers.llm",
+    "pipecat.workers.ui",
+]
+allowed = []
+within = ["t2_agentic_voice"]
+fix = "The talker, its context and its tool calls are the library's own (agent/ and actions/), never Pipecat's LLM adapters, function schemas, context aggregators, flows, LLM workers or switchers, or a turn end an LLM decides (the design's 13): the session bridge hands each turn to the session."
+
+# The Pipecat modules that send a call's audio or text to a host outside the design's 11, or
+# fetch what a call runs on from one, with no port: its classifiers (OpenAI, Cloudflare,
+# Typesafe), the HTTP Smart Turn, the serializers and the processor that streams a call's frames
+# through one, every transport but Small WebRTC (Daily, LiveKit, HeyGen, Tavus, WhatsApp,
+# websockets...), the worker proxy, the file resolver and the Tone models (downloaded from
+# Hugging Face). Small WebRTC keeps the base transports and the video sampler it imports
+# (tests/harness/test_installed_pipecat.py checks the list).
+[[bans]]
+modules = [
+    "pipecat.audio.turn.smart_turn.http_smart_turn",
+    "pipecat.classifiers",
+    "pipecat.processors.async_generator",
+    "pipecat.processors.tone",
+    "pipecat.serializers",
+    "pipecat.transports",
+    "pipecat.utils.file_resolver",
+    "pipecat.workers.proxy",
+]
+allowed = [
+    "pipecat.transports.base_input",
+    "pipecat.transports.base_output",
+    "pipecat.transports.base_transport",
+    "pipecat.transports.smallwebrtc",
+    "pipecat.transports.video_in_sampler",
+]
+within = ["t2_agentic_voice"]
+fix = "These modules send a call's audio or text to a host outside the design's 11, or fetch from one, with no port and no data flow (GP-22): a call runs on the Small WebRTC transport, ends its turns with the local Smart Turn v3 and VAD, and reaches an outside service only through a port in domain/ports, whose adapter lives in adapters/."
+
+# The modules plan 003's reading of the installed Pipecat found unsafe or unneeded for a call
+# (its "Changes to the plan's interfaces", item 18), in four groups by what to do instead.
+[[bans]]
+modules = ["pipecat.runner", "pipecat.cli", "pipecat.evals", "pipecat.bus"]
+allowed = []
+within = ["t2_agentic_voice"]
+fix = "Pipecat's runner, command line, evals and buses serve Pipecat's own apps: importing `pipecat.runner.run` loads a .env with override and removes loguru's sinks, and the bus's deserializer imports any module a message names. Run each call with `PipelineWorker` and `WorkerRunner` inside voice/, with its settings from VoiceSettings."
+
+[[bans]]
+modules = [
+    "pipecat.audio.turn.smart_turn.local_smart_turn_v2",
+    "pipecat.audio.resamplers.resampy_resampler",
+]
+allowed = []
+within = ["t2_agentic_voice"]
+fix = "Smart Turn v2 runs on torch, and the resampy resampler on numba and llvmlite, none of which the library installs (the torch check): use Smart Turn v3 (`pipecat.audio.turn.smart_turn.local_smart_turn_v3`, ONNX on the CPU) and the soxr resamplers."
+
+[[bans]]
+modules = ["pipecat.processors.logger", "pipecat.observers.loggers"]
+allowed = []
+within = ["t2_agentic_voice"]
+fix = "Pipecat's frame logger and logging observers write frames with what the caller said and what the agent says (invariant 8): log through `core.logging.get_logger` with no call content, and report a call through the library's events."
+
+[[bans]]
+modules = ["pipecat.processors.aggregators.dtmf_aggregator", "pipecat.processors.frameworks.rtvi"]
+allowed = []
+within = ["t2_agentic_voice"]
+fix = "Pipecat's DTMF aggregator turns key presses into transcriptions, as if the caller had said them, and RTVI lets the browser inject text, audio and key presses: the caller's words come only from speech-to-text, and a stop from the client's `stop`, Esc or `hangup`, through the session and `t2v/1`. Run each PipelineWorker with `enable_rtvi=False`."
+
+# The session's modules never import Pipecat (the design's 12.2), so a text-mode call runs the
+# same session code as a real one.
+[[bans]]
+modules = ["pipecat"]
+allowed = []
+within = ["t2_agentic_voice.voice.session"]
+fix = "The session never imports Pipecat (the design's 12.2): exchange the events of voice/session/session_events.py and the commands of voice/session/commands.py with voice's Pipecat modules, through the protocols of voice/session/io.py, instead."
+
+# The apps and the examples build on the library's public API, never on its voice framework or
+# its WebRTC stack (the design's 12.5; ARCH-PUBLIC keeps them off its internals).
+[[bans]]
+modules = ["pipecat", "aiortc"]
+allowed = []
+within = ["ole5_voice", "minimal_example"]
+fix = "An app builds on the library's public API, never on Pipecat or aiortc (the design's 12.5): run calls through what the library exports, and when something is missing, change the library rather than work around it in the app."
 
 # Packages built on the library, as a teammate's app would be (ARCH-PUBLIC, D-013): each imports
 # the library only through [package] public and no other app, and the library never imports
@@ -134,8 +329,9 @@ root = "examples/minimal/src"
 [rules]
 # The only modules (relative to the package folder) that read the environment (ARCH-ENV).
 env_allowed_files = ["core/config.py"]
-# Modules that may write to standard output directly (ARCH-PRINT); all others log.
-output_allowed_files = ["core/logging.py"]
+# Modules that may write to standard output directly (ARCH-PRINT); all others log. The `t2v`
+# command (api/cli.py) prints its help and its reports.
+output_allowed_files = ["core/logging.py", "api/cli.py"]
 # The doc that describes the layers: its layer table must match [layers] and [[owners]], row by
 # row (ARCH-DOC, scripts/arch_doc.py). "" turns it off.
 architecture_doc = "ARCHITECTURE.md"
@@ -248,6 +444,10 @@ foreign_names = [
     "ALL_PROXY",
     "SSL_CERT_FILE",
     "SSL_CERT_DIR",
+    "PIPECAT_LOG_LLM_CONTEXT",
+    "PIPECAT_ALLOWED_FILE_URL_NETWORKS",
+    "PIPECAT_ALLOWED_ORIGINS",
+    "smart_turn_audio_log",
 ]
 # Non-Python files whose text counts as code when docs cite names (globs from the root): the
 # config files, and the apps' own scripts (never a node_modules/ beside them).

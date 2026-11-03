@@ -47,7 +47,8 @@ class FakeSpeechToText:
     """A `SpeechToText` that answers from a script, one entry per call: a text (heard in the
     language asked for, billed as Groq bills, at least 10 s), a `Transcript`, or a
     `ProviderError` to raise. With the script used up, it hears nothing. It records each call,
-    and waits `delay_s` first, so a test can cancel it mid-call."""
+    and waits `delay_s` first, so a test can cancel it mid-call; `closed` says whether it was
+    closed."""
 
     name = "fake"
     data_flow = FAKE_FLOW
@@ -58,6 +59,10 @@ class FakeSpeechToText:
         self.script = list(script)
         self.delay_s = delay_s
         self.calls: list[tuple[AudioClip, str | None, str | None]] = []
+        self.closed = False
+
+    async def aclose(self) -> None:
+        self.closed = True
 
     async def transcribe(
         self, clip: AudioClip, *, language: str | None, prompt: str | None

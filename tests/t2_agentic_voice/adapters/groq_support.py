@@ -13,7 +13,9 @@ from typing import Any
 import httpx
 from pydantic import SecretStr
 from t2_agentic_voice.adapters.groq_stt import GroqSTT
-from t2_agentic_voice.core.config import GroqSettings, Settings, SttSettings
+from t2_agentic_voice.core.config import VoiceSettings
+from t2_agentic_voice.core.settings.groq import GroqSettings
+from t2_agentic_voice.core.settings.stt import SttSettings
 from t2_agentic_voice.domain.ports.speech_to_text import AudioClip, Transcript
 
 FIXTURE = Path(__file__).parents[1] / "fixtures" / "groq_stt_request.json"
@@ -47,10 +49,10 @@ class FakeGroq(httpx.AsyncBaseTransport):
         return reply if isinstance(reply, httpx.Response) else await reply(request)
 
 
-def groq_settings(timeout_s: float = 6.0, **groq: Any) -> Settings:
+def groq_settings(timeout_s: float = 6.0, **groq: Any) -> VoiceSettings:
     """Settings holding the made-up `KEY`, unless `groq` gives the group's values."""
     given = GroqSettings(**({"api_key": SecretStr(KEY)} | groq))
-    return Settings(_env_file=None, env="test", groq=given, stt=SttSettings(timeout_s=timeout_s))
+    return VoiceSettings(env="test", groq=given, stt=SttSettings(timeout_s=timeout_s))
 
 
 async def call(fake: httpx.AsyncBaseTransport, clip: AudioClip = CLIP, **given: Any) -> Transcript:

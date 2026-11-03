@@ -34,11 +34,13 @@ Run everything as `uv run poe <task>` (`uv run poe` lists tasks).
 | `gc` · `quality` | Say whether a garbage-collection round is due, then list its candidates · grade each layer, each app and `scripts/` after `check`; neither is a gate. |
 | `golden` · `record` | Validate the golden set and freeze its expected answers · record and review its takes (a page on 127.0.0.1). |
 | `eval` · `eval-compare` · `eval-history` | Run an answerer over the golden set (refuses the main checkout) · compare two runs (sign test by item) · render the run history. |
+| `settings-ref` | Write `docs/generated/settings.md` and `.env.example` from the library's settings model. |
 
 Add a row for every task the project adds. Add dependencies with `uv add <pkg>` (`--dev` for
 tooling), in the member that needs them (`uv add --package t2-agentic-voice <pkg>`); never use
-pip or edit `uv.lock`. The library's settings come from `T2V_*` environment
-variables or `.env`, and [.env.example](.env.example) lists them all. The harness's own rules
+pip or edit `uv.lock`. The library's settings are one `VoiceSettings`, built in code or loaded
+by `VoiceSettings.from_env()` from `T2V_*` variables (and a `.env` only when it is passed one);
+[.env.example](.env.example) lists them all. The harness's own rules
 (layers, the public API, the apps, owned libraries, required docs, size caps, the coverage
 floor) live in [harness.toml](harness.toml).
 
@@ -68,21 +70,22 @@ floor) live in [harness.toml](harness.toml).
 
 ```
 packages/t2-agentic-voice/src/t2_agentic_voice/   the library; its public API is __init__.py
-  ports.py groq.py languages.py evals.py tracing.py   and these facades beside it (re-exports only)
-  core/       settings, structured logging, error types (T2VoiceError), tracing and redaction
-  domain/     the call's rules and the ports, no IO: so far the speech-to-text port, text
-              normalization, the spelling check and the scorers' pure parts (D-022); later the
-              yes rule and interruptions
-  adapters/   the outside services behind the ports: Groq, the knowledge base, the tickets
+  and the facades beside it (re-exports only): ports.py groq.py identity.py server.py
+  stores.py events.py languages.py evals.py tracing.py
+  core/       settings, logging, errors (T2VoiceError), tracing, the shared types (identity, events)
+  domain/     the call's rules, no IO: the ports, the declaration (VoiceAgent), normalization,
+              the speaking rules (numbers, IDs, clauses, pronunciation), the spelling check and
+              the scorers' pure parts (D-022); later the yes rule and interruptions
+  adapters/   behind the ports: Groq, join tokens, the used-token stores, TURN credentials
   actions/    the backend, the only part that acts: tools, the action record, outcomes
   agent/      the talker: prompts, tool definitions, one turn, the output guard
   voice/      one call's real-time pipeline: WebRTC, end of turn, interruptions, cancel scope
-  testing/    what a team tests and measures with: wer and cer so far; later, the fakes
-  api/        HTTP and the composition root: the widget, call set-up, health
+  testing/    what a team tests and measures with: wer, cer, turn and echo timings; later the fakes
+  api/        HTTP and the composition root: call set-up, health, the client and the dev page
 apps/ole5-voice-agent/src/ole5_voice/   the Ole5 app: only the library's public API (ARCH-PUBLIC)
   evals/      the golden set's commands; its data in apps/ole5-voice-agent/evals/, no audio
 examples/minimal/src/minimal_example/   the smallest app: the quickstart, a test of the library
-apps/ole5-voice-agent/web/   Ole5's browser widget (plain HTML/JS/CSS; not built yet)
+apps/ole5-voice-agent/web/   Ole5's browser widget (plain HTML/JS/CSS), served by the Ole5 app
 scripts/      the harness: check_architecture.py (arch), check_docs.py (docs), gc_due.py and
               gc_report.py (gc), quality.py, and their helpers; all read harness.toml
               through harness_config.py
@@ -96,8 +99,9 @@ docs/generated/  produced by commands, never edited by hand (a test fails when s
 
 1. **Respect layer boundaries and the public API.** `uv run poe arch` explains each violation
    and its fix. An app uses only the library's public modules (`[package] public`): the package
-   root and its facades. A rule changes in `harness.toml` and ARCHITECTURE.md together (ARCH-DOC
-   checks the layer table), with the reason in a decision (review).
+   root and its facades. ARCH-BAN keeps Pipecat and aiortc out of the apps, and Pipecat's
+   provider services out of the library. A rule changes in `harness.toml` and ARCHITECTURE.md
+   together (ARCH-DOC checks the layer table), with the reason in a decision (review).
 2. **Parse at the boundaries.** Input from outside (requests, env, files, model output, database
    rows) becomes typed pydantic models. Never build on guessed shapes.
 3. **Structured logs only**, via `core.logging.get_logger`. No `print`, and never log secrets.

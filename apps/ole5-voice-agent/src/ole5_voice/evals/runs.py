@@ -40,8 +40,9 @@ SCORECARD_FILE: Final = "scorecard.json"
 # is left out, so no held-out item's numbers are published alone (plan 002's registration,
 # "Amendments", 2026-11-01). The totals are whole.
 HELD_OUT_MIN_ITEMS: Final = 3
-# A setting that holds a secret, by its dotted name (`groq.api_key`).
-_SECRET_SETTING = re.compile(r"(^|[._])(api_key|key|secret|token|password)$")
+# A setting that holds a secret, by its dotted name (`groq.api_key`), or a map of them
+# (`join.keys`).
+_SECRET_SETTING = re.compile(r"(^|[._])(api_key|key|keys|secret|token|password)$")
 # An install placeholder, an uppercase name between double braces, as the docs check finds one
 # (`scripts/check_docs.py`, DOC-PLACEHOLDER) in every committed file, `history.jsonl` included.
 _PLACEHOLDER = re.compile(r"\{\{[A-Z][A-Z0-9_]*\}\}")
