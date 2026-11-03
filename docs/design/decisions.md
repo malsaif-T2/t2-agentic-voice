@@ -664,7 +664,9 @@ twice; DOC-REF: every `D-NNN` cited anywhere is a heading here), so keep its sha
   lists this entry. M1 built `Settings` on pydantic-settings, read through a `get_settings()`
   singleton, with no `env`. Plan 003's step 7 rebuilt it for M2; the fixes after the review of
   plan 003's Block 0 (2026-11-03) changed how a failure reads, how a group given in code meets
-  the environment's, and several bounds, all written below.
+  the environment's, and several bounds; the check of those fixes (2026-11-03) made built
+  settings read-only, checked a group given in code again, and brought every file and JSON
+  failure into the one error, all written below.
 - **Decision** (as the design's 7.2 to 7.5 and 7.7 describe it):
   - **Precedence**, from lowest to highest: the defaults; a `.env` file, only when
     `from_env(env_file=...)` names one; the environment variables under the prefix, read only
@@ -683,9 +685,12 @@ twice; DOC-REF: every `D-NNN` cited anywhere is a heading here), so keep its sha
     `server.dev_page` and `logging.content` are refused, and `router()` and `serve()` refuse
     `test`, so typed consent never reaches a served runtime.
   - Each secret is a `SecretStr` with a `_file` form (`groq.api_key_file`, `join.keys_file`,
-    `server.turn_secret_file`). Every failure is a `ConfigurationError` with a FIX line, and
-    never holds the value it refused (GP-19). A command writes the settings reference and
-    `.env.example` from the model, each with a test that fails when it is stale.
+    `server.turn_secret_file`). Every failure is a `ConfigurationError` with a FIX line, a
+    secret file that cannot be read included (check the file and that this process may read
+    it, or save it as UTF-8 text), and never holds the value it refused (GP-19); a change to
+    built settings is no load, and raises a TypeError (the Proposed bullets). A command writes
+    the settings reference and `.env.example` from the model, each with a test that fails when
+    it is stale.
   - **Proposed** (the agent's, beyond the design, for the owner to rule on; plan 003's decision
     log has the reasons):
     - `from_env(prefix=, env_file=, unknown=, **values)`: code values ride in `**values`, above
@@ -706,12 +711,22 @@ twice; DOC-REF: every `D-NNN` cited anywhere is a heading here), so keep its sha
       `{"settings": [{"setting": ..., "problem": ...}]}`), with a FIX line that says where to
       correct them (the code that builds the settings; or the environment, the `.env` file or
       the code values given), and nothing chained, so no traceback leads back to a value. A
-      join key or TURN secret too short is named with the rest; a `.env` that is not UTF-8
-      text is refused with "save it as UTF-8 text", showing none of its bytes; an environment
-      check names its one setting. A group built on its own (`JoinSettings(...)`) raises
-      pydantic's `ValidationError`, its input hidden. Set aside: pydantic's `ValidationError`
-      for settings built in code, which a team catching `ConfigurationError` for its FIX line
-      would miss.
+      join key or TURN secret too short is named with the rest, and so are a value `from_env`
+      reads that is not JSON and a name set twice, each named once, its values left out; so is
+      a `tracing.redact` pattern Python's `re` cannot compile, whatever error `re` raises (an
+      overflow or a recursion among them), named by its place in the list, never with `re`'s
+      text, which may quote it. Text given to `model_validate_json` that is not JSON (cut
+      short, nested too deep, not UTF-8) is the same one error, naming "the settings" (not
+      valid JSON). A `.env` whose text is not UTF-8, one holding a NUL included (UTF-16 written
+      with no byte-order mark), is refused with "save it as UTF-8 text", and one that cannot be
+      opened or read with "check that the file exists and that this process may read it",
+      each showing none of its bytes; a secret file is refused the same way. An environment
+      check names its one setting, and runs only on a load nothing else failed. A group built
+      on its own (`JoinSettings(...)`) raises pydantic's `ValidationError`, its input hidden.
+      Set aside: pydantic's `ValidationError` for settings built in code, which a team
+      catching `ConfigurationError` for its FIX line would miss; `json.loads` before
+      validating, which would validate in Python mode, not JSON mode; and `from_env` raising
+      the problems it finds before validating, which dropped every other failing setting.
     - The reference is `docs/generated/settings.md`, where GP-11 puts generated docs with their
       freshness tests, not the design's 7.7 path (`docs/guide/reference/settings.md`);
       `uv run poe settings-ref` writes it and `.env.example`. Each group is a module of its own
@@ -747,21 +762,40 @@ twice; DOC-REF: every `D-NNN` cited anywhere is a heading here), so keep its sha
       moved into the group.
     - The map settings, `join.keys` and `tts.languages`, are read-only once loaded: a mapping
       nothing can change, dumped as a plain object, which a copy and a pickle keep, so no key
-      or voice reaches a call that no check saw.
+      or voice reaches a call that no check saw. A read-only map hashes as its entries do, so
+      a frozen group that holds one hashes. Built settings refuse every change: assigning to,
+      or deleting, a field of `VoiceSettings` or of any group raises a TypeError of fixed text
+      that names `<Class>.<field>` and says settings are read-only once built, never the value
+      (`core/settings/base.py`'s `ReadOnlyModel`), where pydantic's own frozen error shows the
+      value assigned, a key among them. A group object given to `VoiceSettings`, one made with
+      `model_copy(update=...)` included, is validated again (`revalidate_instances`), so its
+      checks run and its maps become read-only, and the settings hold a new object, not the
+      one given; `VoiceSettings` is not, so a copy of it made with an update still skips
+      validation, and the environment checks run again (above). Set aside: naming the
+      variable under the prefix, which a group cannot know, built alone or held in a map.
     - The values nobody gave, the agent's: `tts.timeout_s` 6, as `stt.timeout_s`; the limits
       in seconds as numbers; a voice name matching `^[a-z][a-z0-9_-]{0,31}$`;
       `server.ice_servers` as `stun:`, `turn:` or `turns:` URLs with no credentials; each of
       `server.allowed_origins` a scheme, a host and a port only, in the form a browser's
-      `Origin` header takes (the scheme and the host in lowercase, the host in ASCII, its
-      `xn--` form, no `:443` for https or `:80` for http), any other form refused with a FIX
-      that states the rule and never repeats the value; `server.turn_ttl_s` 3600, refused above
-      86400 (plan 003's criterion); `join.max_clock_skew_s` at most 60, since a token verifies
-      until its expiry plus the allowance (invariant 7); and each of
-      `server.forwarded_allow_ips` an address or a network in its network form (`10.0.0.0/24`;
-      `10.0.0.1/24`, which uvicorn would never match, is refused with a FIX naming that form),
-      no wider than /8 for IPv4 or /32 for IPv6, and within the IPv6 ranges that carry IPv4
-      addresses (`::ffff:0:0/96`, `64:ff9b::/96`) no wider than /104: a wider entry trusts
-      nearly every peer's `X-Forwarded-For`, as `*` does, which is refused too.
+      `Origin` header takes (the scheme in lowercase; the host a name of lowercase letters,
+      digits and hyphens between dots, a name in another script in its `xn--` form, a
+      dotted-quad IPv4 address with no shorthand, or a bracketed IPv6 address in the short
+      form a browser writes, never with a dotted part or a zone; no `:443` for https or `:80`
+      for http), any other form, a percent-escape, a backslash or a control character among
+      them, refused with a FIX that states the rule and never repeats the value (set aside:
+      any address Python parses, which CORS, comparing text, would never match);
+      `server.turn_ttl_s` 3600, refused above 86400 (plan 003's criterion);
+      `join.max_clock_skew_s` at most 60, since a token verifies until its expiry plus the
+      allowance (invariant 7); and each of `server.forwarded_allow_ips` an address or a network
+      in its network form (`10.0.0.0/24`; `10.0.0.1/24`, which uvicorn would never match, is
+      refused with a FIX naming that form), no wider than /8 for IPv4 or /32 for IPv6, no
+      wider than /104 where it overlaps an IPv6 range that carries IPv4 addresses
+      (`::ffff:0:0/96`; SIIT's `::ffff:0:0:0/96`; NAT64's `64:ff9b::/96` and its local-use
+      `64:ff9b:1::/48`, RFC 8215; and `::/96`), and no wider than /24 where it overlaps 6to4's
+      `2002::/16`: a wider entry trusts nearly every peer's `X-Forwarded-For`, as `*` does,
+      which is refused too. Each refusal says why, true of its entry, and states the whole
+      rule, as the setting's description does (one text, `_PROXY_RULE`, which a test reads
+      back against the ranges).
 - **Consequences:** a teammate's process keeps its own variables: the library reads only the
   names under its prefix, and a `.env` only when given one. A `.env` written for M1 says which
   names to change. An app sets one key of a group in code without losing the environment's
@@ -773,8 +807,9 @@ twice; DOC-REF: every `D-NNN` cited anywhere is a heading here), so keep its sha
 - **Evidence:** the owner's "Approve all" and "Yes, as Accepted" (plan 002, Q3), 2026-11-01;
   for plan 003's Q3 to Q5, the owner's answer of 2026-11-02, "Yes go with the recommended."
   (plan 003, "The owner's decisions"). The tests: `tests/t2_agentic_voice/core/test_config.py`,
-  `test_settings_errors.py`, `test_settings_checks.py`, `test_settings_secrets.py` and
-  `test_settings_ref.py`, and `tests/harness/test_isolation.py`.
+  `test_settings_errors.py`, `test_settings_checks.py`, `test_settings_secrets.py`,
+  `test_settings_read_only.py` and `test_settings_ref.py`, and
+  `tests/harness/test_isolation.py`.
 
 ## D-029 · Serving and identity: the sidecar and the mount, one process per `var_dir`, signed join tokens, the offer secret · 2026-11-02 · Accepted (the owner, 2026-11-01, as the design's 4.5, 5.2, 5.5, 6.5, 7.4 and 11; one bullet Proposed)
 
@@ -785,7 +820,10 @@ twice; DOC-REF: every `D-NNN` cited anywhere is a heading here), so keep its sha
   Ole5's identity answer (its open question 19), which the owner has not given yet. Plan 003's
   Block 0 laid down the signatures, the identity port and the HTTP bodies; its Tracks C and F
   build them. The fixes after Block 0's review (2026-11-03) gave the HTTP routes their one error
-  body and their byte caps, written below.
+  body and their byte caps; the check of those fixes (2026-11-03) added the one media type a
+  route takes, a version check that any client reaches, a code for a candidates `PATCH` before
+  the offer, a lifetime for the router's records of its calls, and the bound the used-token
+  store keeps a token by, all written below.
 - **Decision** (as the design's 4.5, 5.2, 5.5, 6.5, 7.4 and 11 describe it):
   - **The sidecar and the mount.** `serve(factory)` (and `t2v serve`) runs one runtime in a
     process of its own, with one worker. `app.include_router(runtime.router(), prefix=...)`
@@ -810,12 +848,12 @@ twice; DOC-REF: every `D-NNN` cited anywhere is a heading here), so keep its sha
     clock-skew allowance, `join.max_clock_skew_s`, and the `UsedTokens` store refuses its `jti`
     a second time. It is signed, not encrypted, so its claims hold no secret.
   - **The offer secret.** `/join` consumes the token once and answers the call's ID, an offer
-    secret (random, for this call only), the ICE servers (with per-call TURN credentials when
-    configured) and the protocol version. `POST /offer` and `PATCH /offer` both need the
-    call's offer secret, which stops working when the call ends or ICE completes; a second
-    offer gets 409; no client's `pc_id` reaches Pipecat. The call ID is no credential. The
-    offer secret is never logged, traced or put in an event, and goes only to the browser that
-    joined.
+    secret (random, for this call only), the ICE servers (with per-call TURN credentials when a
+    TURN secret is set, inline or in its file) and the protocol version. `POST /offer` and
+    `PATCH /offer` both need the call's offer secret, which stops working when the call ends or
+    ICE completes; a second offer gets 409; no client's `pc_id` reaches Pipecat. The call ID is
+    no credential. The offer secret is never logged, traced or put in an event, and goes only
+    to the browser that joined.
   - **Consent in the token.** The caller's consent (`version`, `record_audio`) is carried only
     in the signed join token: no client message sets it, or the caller's identity. With
     `privacy.consent_version` set, `/join` refuses a token whose consent version differs, and
@@ -827,13 +865,19 @@ twice; DOC-REF: every `D-NNN` cited anywhere is a heading here), so keep its sha
       verifier is built in the team's code with no IO, while the store is opened in the
       lifespan under `var_dir`. The design's 6.5 has `verify(token)`. `UsedTokens` is async,
       `use(token_id, *, expires_at) -> bool` giving exactly one True to two joins of one token,
-      with `aclose()` (D-036). Its `expires_at` is the last instant the verifier could still
-      accept the token, its `exp` plus `join.max_clock_skew_s`, never `exp` alone, so a store
-      that prunes at it never lets a token start a second call within the allowance (Track C's
-      test replays a token after the store pruned it at its `exp`). `SignedJoinTokens` refuses
-      at construction a `ttl_s` over 120 or a `max_clock_skew_s` over 60, as the settings do,
-      since it takes both directly. `DevIdentity` refuses any `env` but dev before it reads
-      the client's address, and always returns `Consent(version=None, record_audio=False)`.
+      with `aclose()` (D-036). Its `expires_at` is the last instant any verifier could still
+      accept the token, its `exp` plus `MAX_CLOCK_SKEW_S` (60 s, the bound on
+      `join.max_clock_skew_s`), never `exp` alone nor `exp` plus the allowance configured, so a
+      store that prunes at it never lets a token start a second call, after a restart with a
+      larger allowance included; and `use()` gives False, recording nothing, for an
+      `expires_at` that is not after the store's own now, since a token past its last instant
+      is never a first use. Track C's tests: a token replayed after the store pruned it at its
+      `exp`; one used under a 30 s allowance, the store reopened, and replayed at its `exp`
+      plus 45 s to a verifier allowed 60 s; a use 1 ms late; and two replays on either side of
+      the store's clock. `SignedJoinTokens` refuses at construction a `ttl_s` over 120 or a
+      `max_clock_skew_s` over 60, as the settings do, since it takes both directly.
+      `DevIdentity` refuses any `env` but dev before it reads the client's address, and always
+      returns `Consent(version=None, record_audio=False)`.
     - `/join` compares with `privacy.consent_version` only a `SignedConsent`'s version
       (D-035): a plain `Consent` never lets audio be kept, so its version is not compared, and
       `DevIdentity` joins still work in `dev` with the setting given. Plan 003's Track F builds
@@ -845,41 +889,77 @@ twice; DOC-REF: every `D-NNN` cited anywhere is a heading here), so keep its sha
       are printable text of at most 256 characters, its locale a BCP 47 tag of at most 35, and
       it holds at most 16 attributes.
     - The offer secret rides in the `X-T2V-Offer-Secret` header or the body's `offer_secret`,
-      never in a URL, which logs and traces keep. A `PATCH` with the call's own secret after
-      ICE completed or after the call ended gets a quiet 409 (`ice_completed`, `call_ended`),
-      logged at DEBUG with no value, which the client ignores once connected. `voice` forgets a
-      call once it has ended and its peer has closed, and `api` keeps its own record of the
-      calls it joined, so a call `voice` has forgotten still gets `call_ended`; set aside:
-      `voice` keeping ended calls for a fixed lifetime, a value nobody gave (GP-16). `voice`
-      keeps Pipecat's `pc_id` behind the call ID and never passes a client's.
-    - Each `t2v/1` route reads its own body, never past its route's cap in bytes (twice the
-      longest values its body holds, since JSON writes a quote or a line break in two bytes,
-      plus 4 KiB; `BODIES` in `api/protocol.py`): a `Content-Length` over the cap is refused
-      before a byte is read, and a body that streams past it is refused at the cap, each 413
-      `too_large`, so no body is buffered whole on the event loop that paces every call's
-      audio. It parses the body with the model's `model_validate_json`, strictly, and answers a
-      refusal with `refusal()`: 400 `invalid_request`, naming pydantic's error types only. No
-      route declares a model as a FastAPI body parameter, since FastAPI's own 422 sends the
-      error's `errors()` back, with the token, the offer secret or a candidate's address in it,
-      and in the mount the app's handler would answer it.
-    - Every refusal and failure, a crash included, answers one `ErrorBody` (`code`, `message`,
-      `notice`, `reference`): a code from a closed list of ten (`invalid_request`, `too_large`,
-      `protocol_mismatch`, `join_rejected`, `forbidden`, `already_offered`, `ice_completed`,
-      `call_ended`, `not_started`, `internal_error`), a message safe to show that holds no value
-      the request sent, a `notice` with `protocol_mismatch` alone (the design's 5.4), and a
-      random reference the router logs with the refusal (GP-19). The statuses: 400
+      never in a URL, which logs and traces keep. A `PATCH` with the call's own secret before
+      `voice` answered the call's offer (not yet, or refused), after ICE completed or after the
+      call ended gets a quiet 409 (`not_offered`, `ice_completed`, `call_ended`), logged at
+      DEBUG with no value, which the client ignores once connected; a client sends its
+      candidates only once `POST /offer` has answered. `voice` forgets a call once it has ended
+      and its peer has closed, and `api` keeps its own record of the calls it joined, so a call
+      `voice` has forgotten still gets `call_ended`. `api` drops a record a bounded time later,
+      on the runtime's clock (a private `_clock`, `SYSTEM_CLOCK` unless a test gives one, which
+      the runtime passes to its calls): a join never offered once its join token's window has
+      passed, `join.ttl_s` plus twice `join.max_clock_skew_s` after the join, the longest a
+      token valid at the join can still verify, since the router cannot read the token's
+      `exp`; and an answered call `FORGOTTEN_KEPT_S` (60 s, the integrator's ruling) after
+      `voice` forgets it, counted from the router's first sweep that finds its `phase` None,
+      the sweep's period Track F's to set and record, well under that. A request for a call
+      whose record was dropped gets 403 `forbidden`, as for a call never joined, so the
+      records stay bounded by one token window's joins and the calls `voice` holds. Set aside:
+      `voice` keeping ended calls for a fixed lifetime of its own; a callback from `voice` as
+      it forgets a call, which changes Track E's contract and `FakeCalls`; and sweeping only on
+      requests, under which a record outlives the 60 s when no request comes. `voice` keeps
+      Pipecat's `pc_id` behind the call ID and never passes a client's.
+    - Each `t2v/1` route first answers a `Content-Type` other than `application/json` with 415
+      `unsupported_media_type` before it reads a byte, a parameter such as `charset=utf-8`
+      allowed and none at all refused (`is_json` in `api/protocol.py`), since a page on any
+      origin may send a form or `text/plain` with no CORS preflight, and a JSON body never goes
+      without one. It reads its own body, never past its route's cap in bytes (twice the
+      longest values its body holds, plus 4 KiB; `BODIES` in `api/protocol.py`): twice, since
+      every field the caps count takes printable ASCII alone, the SDP tabs and line breaks too
+      (`OfferRequest.sdp`'s pattern), which JSON writes in two bytes a character at most. A
+      `Content-Length` over the cap is refused before a byte is read, and a body that streams
+      past it is refused at the cap, each 413 `too_large`, so no body is buffered whole on the
+      event loop that paces every call's audio. It parses the body with the model's
+      `model_validate_json`, strictly, and answers a refusal with `refusal()`: 400
+      `invalid_request`, naming pydantic's error types only. No route declares a model as a
+      FastAPI body parameter, since FastAPI's own 422 sends the error's `errors()` back, with
+      the token, the offer secret or a candidate's address in it, and in the mount the app's
+      handler would answer it.
+    - Every refusal and failure of a `t2v/1` route, a crash included, answers one `ErrorBody`
+      (`code`, `message`, `notice`, `reference`): a code from a closed list of twelve
+      (`invalid_request`, `too_large`, `unsupported_media_type`, `protocol_mismatch`,
+      `join_rejected`, `forbidden`, `already_offered`, `not_offered`, `ice_completed`,
+      `call_ended`, `not_started`, `internal_error`), a message safe to show that holds no
+      value the request sent, a `notice` with `protocol_mismatch` alone (the design's 5.4),
+      and a random reference the router logs with the refusal (GP-19). The statuses: 400
       (`invalid_request`, and on `/join` `protocol_mismatch`); 403 (`join_rejected` on
-      `/join`; `forbidden` on `/offer` for a secret that is missing, wrong or no longer
-      working); 409 (`already_offered` on `POST /offer`; the quiet `ice_completed` and
-      `call_ended` on `PATCH`); and on every route 413, 500 `internal_error` and 503
-      `not_started`. A success is 200, 200 and 204 (`PATCH` answers no body). No 404: the
-      secret is checked first, so an unknown call gets 403, and no answer shows whether a call
-      exists; 400, not 422, since the router parses, not FastAPI. `/join` compares the client's
-      protocol version before it verifies the token, so a mismatch spends no token. A
-      response's secrets (the offer secret, a TURN password) are revealed only as it is
-      serialized to JSON, as it is sent, never in a python-mode dump or a repr. Set aside:
-      FastAPI's `{"detail": ...}`, which carries no code or reference; a nested
-      `{"error": {...}}`.
+      `/join`; `forbidden` on `/offer` for a secret that is missing, wrong or not this call's,
+      a call whose record the router dropped included); 409 (`already_offered` on
+      `POST /offer`, which the call's own secret also gets after ICE completed or the call
+      ended; on `PATCH` the quiet `not_offered`, `ice_completed` and `call_ended`), so the
+      call's own secret never gets 403 while the router holds the call's record; and on every
+      route 413 `too_large`, 415 `unsupported_media_type`, 500 `internal_error` and 503
+      `not_started`. A success is 200, 200 and 204 (`PATCH` answers no body). No 404 on a
+      `t2v/1` route: the secret is checked first, so an unknown call gets 403, and no answer
+      shows whether a call exists; 400, not 422, since the router parses, not FastAPI.
+      `GET /dev` is no `t2v/1` route: mounted only with `env` dev, it answers a client that is
+      not loopback with the server's plain 404, as for a path it does not have. `/join` reads
+      the body's top-level `protocol` alone, leniently, before the strict parse and before it
+      verifies the token (`version_mismatch` in `api/protocol.py`, through the strict parse's
+      own JSON reader, so a key held twice, a byte-order mark or text after the object reads
+      the same both times): any value there but the JSON integer 1 (a string, a float, a
+      boolean or null among them) gets 400 `protocol_mismatch` with its notice, whatever else
+      the body holds, and spends no token, so the stable version check (the design's 5.4)
+      reaches a client of any version; a body with no `protocol`, or that is no JSON object,
+      goes on to the strict parse. The notice is `MISMATCH_NOTICE`, Modern Standard Arabic and
+      English in one text, since a body of another version is read for nothing that names the
+      caller's language: the agent's words, for the owner to change (GP-16). A response's
+      secrets (the offer secret, a TURN password) are revealed only as it is serialized to
+      JSON, as it is sent, never in a python-mode dump or a repr. Set aside: FastAPI's
+      `{"detail": ...}`, which carries no code or reference; a nested `{"error": {...}}`;
+      `json.loads` for the version check, which takes a body with a byte-order mark that the
+      strict parse refuses; and the notice in English alone, or as a new notice kind of the
+      declaration, which every preset would have to give.
     - FastAPI's own telemetry is off in both shapes: `serve()` builds its app with `telemetry`
       tracing, metrics and logs off and `auto_configure` false, and an app that mounts the
       router does the same itself (the Ole5 app's server does; `serving.md` tells a team), since
@@ -896,9 +976,14 @@ twice; DOC-REF: every `D-NNN` cited anywhere is a heading here), so keep its sha
     - For its tests, `VoiceRuntime` takes a private, keyword-only `_calls` factory (`VoiceCalls`
       unless given; in no facade), and `VoiceCalls` zero-argument factories for each call's
       speech detector and turn analyzer (Silero and Smart Turn v3.2 from `turns` unless given),
-      called once per call, since each of Pipecat's analyzers keeps one stream's state, and
-      typed with Pipecat's classes under `TYPE_CHECKING` only, so no Pipecat loads at import.
-      Track F's tests give `FakeCalls`, and step 16's test a fake speech detector.
+      called once per call, since each of Pipecat's analyzers keeps one stream's state and its
+      public constructor loads its own ONNX session, and typed with Pipecat's classes under
+      `TYPE_CHECKING` only, so no Pipecat loads at import. So `start` imports onnxruntime and
+      warms one pair, the default factories load each model again per call (the review's probe
+      on the owner's machine: 85.2 to 102.3 ms for Silero and 106.6 to 134.2 ms for Smart Turn
+      after the warm-up), and `VoiceCalls` calls each factory off the event loop
+      (`asyncio.to_thread`) before it answers the offer, so no live call's audio waits on a
+      join. Track F's tests give `FakeCalls`, and step 16's test a fake speech detector.
     - In M2 the Ole5 app mounts the router in its own FastAPI app, beside its token route
       (behind the owner's access code: plan 003's Q4) and its widget's files, rather than run
       the sidecar, which is its shape once its website mints the tokens (the design's open
@@ -906,16 +991,18 @@ twice; DOC-REF: every `D-NNN` cited anywhere is a heading here), so keep its sha
 - **Consequences:** a team that runs several workers or replicas runs the sidecar, and a second
   process on one `var_dir` fails at its start rather than share single-use tokens. A team's
   website mints tokens with any JWT library from the documented claims (`serving.md`), and a
-  browser client reads one error body on every route. Until the design's open question 19 is
-  answered, Ole5's callers get their tokens from the app's own access-code route. The media path
-  (UDP, TURN or another transport) is decided by plan 003's network test, in an entry of its
-  own.
+  browser client reads one error body on every `t2v/1` route. Until the design's open question
+  19 is answered, Ole5's callers get their tokens from the app's own access-code route. The
+  media path (UDP, TURN or another transport) is decided by plan 003's network test, in an
+  entry of its own.
 - **Evidence:** as for D-019 (plan 002, Q3), 2026-11-01; D-018, questions 5, 18 and 22; for
   plan 003's Q4, the owner's answer of 2026-11-02, "Yes go with the recommended." (plan 003,
   "The owner's decisions"). The spike on this machine (plan 003's appendix, step 5): on the
   proactor event loop, 2 or 3 of 16 call closes hung, against 0 of 16 on a selector loop. The
-  tests of the bodies and the error body: `tests/t2_agentic_voice/api/test_protocol.py` and
-  `tests/t2_agentic_voice/test_protocol_list.py`, against the `t2v/1` fixture.
+  tests of the bodies and the error body: `tests/t2_agentic_voice/api/test_protocol.py`,
+  `test_protocol_caps.py` and `tests/t2_agentic_voice/test_protocol_list.py`, against the
+  `t2v/1` fixture; of the used-token bound, `tests/t2_agentic_voice/domain/test_identity_port.py`;
+  of the runtime's private calls and clock, `tests/t2_agentic_voice/api/test_runtime.py`.
 
 ## D-030 · GP-22: a provider is swapped by a setting, or by passing an adapter object in code · 2026-11-02 · Accepted (the owner, 2026-11-01, as the design's 6.1 and 16.3)
 
@@ -990,9 +1077,15 @@ twice; DOC-REF: every `D-NNN` cited anywhere is a heading here), so keep its sha
     directive (`event`, `level`, `timestamp`, `logger`, `logger_name`, `exception`,
     `exc_info`, `stack`, `stack_info`, `_record`, `_from_structlog`) is written as
     `field_<name>`, with one more `field_` while that name is taken, so a log call never
-    raises, loses no value, and cannot forge a console line or add a traceback (set aside:
-    refusing the name, and dropping it). `get_logger` returns the library's own
-    `StructuredLogger` (`debug`, `info`, `warning`, `error`, each taking an event and its
+    raises, loses no value, and adds no traceback (set aside: refusing the name, and dropping
+    it). Nor can it forge a console line: on the console a field's key or value is written as
+    its text's repr, on the line, when that text (a str's, or another object's `str()`) or its
+    repr holds a control character (an escape among them), a format character, a line or
+    paragraph separator, or a lone surrogate, which no UTF-8 stream writes; an escaped key
+    that another field holds takes one more `field_`; the line's own keys are left alone, and
+    the JSON format is unchanged (set aside: escaping all that `str.isprintable` refuses,
+    which would escape a no-break space in printable text). `get_logger` returns the library's
+    own `StructuredLogger` (`debug`, `info`, `warning`, `error`, each taking an event and its
     fields), with no `exception`, `critical` or `bind`, since a traceback is content-shaped;
     structlog only formats the handler `configure_logging` installs, so a console line reads
     as M1's did; `serve()` runs uvicorn with `log_config=None`; and a command run with
@@ -1008,8 +1101,8 @@ twice; DOC-REF: every `D-NNN` cited anywhere is a heading here), so keep its sha
   M2 (Recommended)"; and to plan 003's Q1 to Q6, each put with the agent's recommendation, Q2's
   (a) among them: "Yes go with the recommended." (plan 003, "The owner's decisions"). Q19 is
   among plan 003's open questions, not answered. The tests:
-  `tests/t2_agentic_voice/core/test_logging.py` and `test_logging_import.py`; plan 003's Track E
-  adds invariant 8's tests in a child process.
+  `tests/t2_agentic_voice/core/test_logging.py`, `test_logging_console.py` and
+  `test_logging_import.py`; plan 003's Track E adds invariant 8's tests in a child process.
 
 ## D-032 · ARCH-BAN, the owners M2 adds, and the facades `identity`, `server`, `stores` and `events` · 2026-11-02 · Accepted (the owner, 2026-11-01, as the design's 5.1, 5.3, 12.2 and 12.4; one bullet Proposed)
 
@@ -1088,18 +1181,26 @@ twice; DOC-REF: every `D-NNN` cited anywhere is a heading here), so keep its sha
       `runtime.on` takes), `ModelUsage`, `TurnRecord`, `TurnTimes` and `ClientConnection`
       (`CallReport`'s parts); in `evals`, `turn_ends` and `echo_timings`, which plan 003's
       decision log puts there while `testing` is not public (D-019), with what they yield,
-      `TurnEnd`, `TurnTiming` and `EchoTiming`; at the package root, beside `VoiceSettings`
-      and `get_logger`, the classes of `VoiceSettings`'s twelve groups (`GroqSettings`,
+      `TurnEnd`, `TurnTiming` and `EchoTiming`, and `PhraseAudio`, the phrase audio
+      `echo_timings` takes (set aside: `ports`, whose protocols reach an outside service, and
+      `stores`, where no signature names it); at the package root, beside `VoiceSettings` and
+      `get_logger`, the classes of `VoiceSettings`'s twelve groups (`GroqSettings`,
       `ServerSettings` and the rest), `TtsVoice` (what `tts.languages` holds) and
-      `StructuredLogger` (what `get_logger`
-      returns), so a team builds a typed `VoiceSettings(env=..., server=ServerSettings(...))`
-      from one module; and in `languages`, `Pronunciations` (`VoiceAgent.pronounce`'s type,
-      D-033) with `pronounce` and `split_clauses`, the pronunciation map and the clause
-      splitter plan 003's criterion asks of that facade. `speak_digits` is held back, as no
-      public signature names it and no app imports it in M2. Set aside: the 5.1 names alone,
-      which would leave public signatures typed by names an app cannot import; spreading the
-      settings groups across the facades by topic, which leaves half of them with none; and a
-      `settings` facade, a change to 5.1 for the owner.
+      `StructuredLogger` (what `get_logger` returns), so a team builds a typed
+      `VoiceSettings(env=..., server=ServerSettings(...))` from one module; and in `languages`,
+      `Pronunciations` (`VoiceAgent.pronounce`'s type, D-033) with `pronounce` and
+      `split_clauses`, the pronunciation map and the clause splitter plan 003's criterion asks
+      of that facade, and, since the check of Block 0's fixes, `provider_text`, the text a
+      text-to-speech provider is sent for a phrase (D-033). One name is public that no public
+      signature names: `stores`' `PhraseCache`, the phrase cache (the design's 10.4; its 11
+      keeps it under `var_dir` beside the used tokens), so a timing run builds the phrase audio
+      `echo_timings` takes as the runtime does, since `testing` never imports `adapters` (the
+      integrator's ruling after that check; set aside: `groq`, the cache being no Groq
+      adapter, and a builder function in `api`, a second way to build the same thing).
+      `speak_digits` is held back, as no public signature names it and no app imports it in
+      M2. Set aside: the 5.1 names alone, which would leave public signatures typed by names an
+      app cannot import; spreading the settings groups across the facades by topic, which
+      leaves half of them with none; and a `settings` facade, a change to 5.1 for the owner.
     - The 5.3 test resolves each annotation with `typing.get_type_hints` and reads every name
       in a public module's `__all__`, then every library class its signature names, in turn: a
       function's parameters and return; a class's bases, fields and annotated attributes, the
@@ -1133,7 +1234,10 @@ twice; DOC-REF: every `D-NNN` cited anywhere is a heading here), so keep its sha
   mode, a runtime argument that M4 would have to deprecate, or an internal stand-in; and
   whether a fixed frame comes before the heard words. The fixes after the review of plan 003's
   Block 0 (2026-11-03) gave the declaration what plan 003's tracks need of it: the
-  pronunciation map, each preset's notice texts, and its errors, written below.
+  pronunciation map, each preset's notice texts, and its errors; the check of those fixes
+  (2026-11-03) had the session and the phrase cache say text through the map, the cache pack
+  and pace its requests, and a phrase hold the unseen characters pasted text carries, all
+  written below.
 - **Decision** (the owner's answer to Q3, (a) and (i), and the design's 4.3):
   - `VoiceAgent(name, languages=[Language.saudi_arabic(greeting=...), ...])`, built in M2 with
     these fields and the pronunciation map below, and the setting `session.mode`, with `echo`
@@ -1142,12 +1246,12 @@ twice; DOC-REF: every `D-NNN` cited anywhere is a heading here), so keep its sha
   - `VoiceAgent(pronounce=...)`, the design's 4.3 pronunciation map: each written form, as a
     text holds it, to how each language says it, keyed `ar` or `en`
     (`pronounce={"LT-": {"en": "L T"}}`); the design's 16.1 puts pronunciation in M2.
-  - Each reply starts with a fixed frame in the turn's language, «سمعتك تقول: …» or
-    "I heard: …", then the heard words. The frame says the words are the caller's, so the echo
-    never sounds like the agent answering or claiming an action (invariant 2). It is a cached
-    phrase (the design's 10.4), so it plays as soon as the turn's transcript is in, while
-    Orpheus synthesizes the heard words. M2's fixed phrases are in Saudi dialect (plan 003's
-    Q5).
+  - Each echo reply starts with the fixed frame, «سمعتك تقول: …» or "I heard: …", in the
+    call's language (D-038), then the heard words; the greeting and the notices, replies too
+    (D-037), take none. The frame says the words are the caller's, so the echo never sounds
+    like the agent answering or claiming an action (invariant 2). It is a cached phrase (the
+    design's 10.4), so it plays as soon as the turn's transcript is in, while Orpheus
+    synthesizes the heard words. M2's fixed phrases are in Saudi dialect (plan 003's Q5).
   - **Proposed** (the agent's, beyond the design and Q3, for the owner to rule on; plan 003's
     decision log has the reasons):
     - `VoiceAgent` is `@final` and frozen, and not yet generic (the design's 5.2 has
@@ -1162,18 +1266,33 @@ twice; DOC-REF: every `D-NNN` cited anywhere is a heading here), so keep its sha
       and may take `notices=`, and set the frame, the Arabic one for both Arabic presets, and
       each notice's text in the language's register: `ar-SA`'s in the Saudi register Q5 chose,
       `ar`'s in Modern Standard Arabic, `en`'s in English. A team's `notices` replace only the
-      kinds they name, and a `Language` built without its preset gives all three. A greeting, a
-      notice and a spoken form hold a character, and no line break or control character.
+      kinds they name, and a `Language` built without its preset gives all three, its notices'
+      FIX saying so, where a preset's says that a kind left out keeps the preset's text. The
+      presets return the class they are called on, so a team may subclass `Language`. A
+      greeting, the frame, a notice, and a written or spoken form of the pronunciation map say
+      something once a provider's text is made of them, and hold no control or format
+      character, line or paragraph separator, lone surrogate (which no UTF-8 request or file
+      hash can encode) or space other than U+0020, but the no-break spaces U+00A0 and U+202F,
+      the joiners U+200C and U+200D and the direction marks U+200E, U+200F and U+061C, which
+      pasted text often carries (`domain/text/invisible.py`); the refusal states that whole
+      rule, since the team cannot see the character. A caption shows a phrase as written; a
+      provider is sent `provider_text`'s form, the no-break spaces made spaces and the joiners
+      and marks dropped (below).
     - The pronunciation map's inner keys are checked at run time to be `ar` or `en` (a
       pronunciation names a language by its primary code, which both Arabic presets share),
       not typed as a `Literal`, so an app's map built in a plain `dict` type-checks; its type is
       the `languages` facade's `Pronunciations`, a `type` alias, and the map is read-only.
-    - Every failure to build a `Language` or a `VoiceAgent`, `model_validate` included, is a
+    - Every failure to build a `Language` or a `VoiceAgent`, `model_validate` and
+      `model_validate_json` included, and on a team's subclass of `Language` too, is a
       `ConfigurationError` with a FIX line (the design's 4.2) that names its first failing
-      field (its details `{"field": ...}`, None for an input that is no mapping at all) and
-      never the value; only assigning to a built one raises pydantic's `ValidationError`, as
-      for every frozen model. Set aside: the settings' collected shape (D-028), since a
-      declaration is code the team reruns at once.
+      field (its details `{"field": ...}`, None for an input that is no mapping at all, and for
+      a text given to `model_validate_json` that is not JSON, whose message is pydantic's,
+      which gives a position, never the text, and whose FIX asks for one JSON object of the
+      fields, as `model_dump_json()` writes) and never the value; a field a subclass adds is
+      named with a FIX to correct it. Only assigning to a built one raises pydantic's
+      `ValidationError`, as for every frozen model. Set aside: the settings' collected shape
+      (D-028), since a declaration is code the team reruns at once; and a fixed reason for a
+      text that is not JSON, as the settings give, which drops the position a team needs.
     - The echo: one voice speaks each reply, the language's (the prototype's D35); an empty
       transcript is said back as nothing and kept on the timeline; speech that starts while any
       reply plays, the greeting included, or within 300 ms after a reply's last clause played
@@ -1184,22 +1303,50 @@ twice; DOC-REF: every `D-NNN` cited anywhere is a heading here), so keep its sha
     - The notices: the session sends and speaks `error` after a turn it would say back whose
       transcript failed, or an echo one of whose clauses failed, and `ended` when it ends the
       call at `limits.max_call_s` or `limits.idle_s` (plan 003's Q4), hanging up once the
-      notice has played or failed. Each goes out as `t2v/1`'s `notice`, whose text the client
-      shows, and is spoken from the phrase cache as the next reply (D-037), so it plays even
-      when text-to-speech is rate-limited (the design's 10.4). `busy` is never spoken: admission
-      control answers it at join, before a call has audio (the design's 10.5). Set aside:
-      notices as text only, which would leave the cached notices unused.
-    - Text built from heard words never reaches the phrase cache, which holds only what
-      `fixed_phrases(agent)` declares at the runtime's start: each language's greeting, echo
-      frame and its `error` and `ended` notices (not `busy`, one request per language that no
-      call plays), so the cache keeps no call content (invariant 8). A fixed phrase longer than
-      the text-to-speech's `max_chars` is spoken whole: the cache cuts it with the clause
-      splitter, which cuts inside a word only a word longer than `max_chars`, at `max_chars`,
-      and joins the takes into one chunk, which the session plays as one clause; so the runtime
-      refuses no greeting or notice at its start. Set aside: refusing such a phrase at start,
-      and the session splitting fixed phrases, under which every greeting with a comma would
-      cost two requests. Caching talker clauses that repeat exactly (the design's 10.4) is M4's
-      to decide.
+      notice has played or failed, or at once when a stop drops it (D-037). Each goes out as
+      `t2v/1`'s `notice`, whose text the client shows, and is spoken from the phrase cache as
+      the next reply (D-037), so it plays even when text-to-speech is rate-limited (the
+      design's 10.4). `busy` is never spoken: admission control answers it at join, before a
+      call has audio (the design's 10.5). Set aside: notices as text only, which would leave
+      the cached notices unused.
+    - Text built from heard words never reaches the phrase cache, which holds only the fixed
+      phrases `PhraseCache.declare(agent)` reads from the agent at the runtime's start
+      (`domain/fixed_phrases.py`'s `fixed_phrases`, each a `FixedPhrase` of a text, its
+      language and its kind, `greeting`, `echo_frame`, `notices.error` or `notices.ended`):
+      each language's greeting, echo frame and its `error` and `ended` notices (not `busy`,
+      one request per language that no call plays), so the cache keeps no call content
+      (invariant 8). A fixed phrase longer than the text-to-speech's `max_chars` is spoken
+      whole: the cache cuts the text it sends with the clause splitter, which cuts inside a
+      word only a word longer than `max_chars`, at `max_chars`, and packs the clauses
+      greedily, in order, into requests of at most `max_chars`, the clauses of one request
+      joined by a space, so a phrase of n characters costs about n / `max_chars` requests; it
+      sends them one at a time and joins the takes into one chunk, which the session plays as
+      one clause; so the runtime refuses no greeting or notice at its start. A request refused
+      as rate-limited waits the delay the provider asked for, at most 60 s
+      (`MAX_RETRY_DELAY_S`, and that bound when it asked none), and is sent again at most
+      twice (`RETRIES`), the agent's bounds; its next refusal fails `declare` with a
+      `ProviderError` (`rate_limited`) whose details name the phrase's kind and language,
+      never its text. `declare` returns the requests it sent, none for a phrase its folder
+      held. Set aside: refusing such a phrase at start; the session splitting fixed phrases,
+      under which every greeting with a comma would cost two requests; one request a clause,
+      under which a long greeting of short sentences sent a burst at start that Groq's
+      published 10 requests a minute refuses (the check of Block 0's fixes); and a default
+      delay of the cache's own, a number nobody gave (GP-16). Caching talker clauses that
+      repeat exactly (the design's 10.4) is M4's to decide.
+    - The session and the phrase cache, not the text-to-speech adapter the design's 3.1 gives
+      them to, say text through the pronunciation map and cut it into clauses. The session
+      applies `pronounce` with `agent.pronounce`, in the call's language, to a reply's text
+      before it cuts the text with `split_clauses` at the provider's `max_chars`, so each
+      clause is measured on the said form; each clause's `Speak` carries the text the
+      provider is sent, `provider_text` of the clause, which is never longer and which the
+      Pipecat side sends unchanged, so the text-to-speech bridge's TOKEN aggregation sends one
+      request a clause (plan 003's appendix, item 9); and the agent's caption shows the said
+      form. The phrase cache says each fixed phrase through the map and sends only its
+      provider text, keys the phrase's file on that text, the model and the voice, and keeps
+      the phrase under its written form, which `audio` finds and captions show. Set aside: the
+      text-to-speech bridge making the provider's text, which would split one rule between two
+      tracks; and keying a phrase's file on the written phrase, which would play stale audio
+      after the map changed.
 - **Consequences:** `examples/minimal` is an echo agent (`make_runtime()`) whose tests need no
   key and no network, and may catch `ConfigurationError` around its declaration. M4 adds the
   talker to the same declaration, with no deprecation. The call's language picks Whisper's
@@ -1207,7 +1354,8 @@ twice; DOC-REF: every `D-NNN` cited anywhere is a heading here), so keep its sha
 - **Evidence:** the owner, 2026-11-02, to plan 003's Q1 to Q6, each put with the agent's
   recommendation, (a) and (i) for Q3: "Yes go with the recommended." (plan 003, "The owner's
   decisions"); for the design's 4.3, as for D-019 (plan 002, Q3), 2026-11-01. The tests:
-  `tests/t2_agentic_voice/domain/test_declaration.py`.
+  `tests/t2_agentic_voice/domain/test_declaration.py`, `test_declaration_paths.py`,
+  `test_invisible.py` and `test_fixed_phrases.py`.
 
 ## D-034 · Whisper gets one request per user turn · 2026-11-02 · Proposed (the agent's, plan 003; the design's 13 names a bridge on `SegmentedSTTService`)
 
@@ -1226,8 +1374,10 @@ twice; DOC-REF: every `D-NNN` cited anywhere is a heading here), so keep its sha
   transport's output. It opens on the downstream `UserStartedSpeakingFrame` with at least
   0.5 s of the audio before it, closes on `UserStoppedSpeakingFrame`, trims at the last VAD
   stop plus padding, caps a turn's length itself, and gives exactly one result per turn, an
-  empty, failed or unusable one included, unless the call ends first: then it drops the turn's
-  held audio and cancels a request in flight (D-037). Smart Turn's stop strategy is given
+  empty, failed or unusable one included, unless the call ends first, at an `Ending`, a
+  `TransportFailure` or the session's `HangUp`: then it drops the turn's held audio and cancels
+  a request in flight (D-037). It hands the session a `Transcribing` as each request goes, so
+  a request the end cancels is still counted. Smart Turn's stop strategy is given
   `wait_for_transcript=False` explicitly, so a turn's end is the analyzer's alone and the
   session waits for the transcript itself. Set aside: one request per VAD segment, which bills
   every fragment, hides the earlier segments' time inside the caller's speech, and spends the
@@ -1257,7 +1407,13 @@ twice; DOC-REF: every `D-NNN` cited anywhere is a heading here), so keep its sha
   and plan 003 builds both. Generalizing SECURITY.md to actions and moving it into the library
   as the one register stays with the plan that builds actions (the design's 16.3). The review
   of plan 003's Block 0 (2026-11-03) found that the static check alone let code outside
-  `adapters` copy, subclass or rebuild a `SignedConsent`; its fixes are written below.
+  `adapters` copy, subclass or rebuild a `SignedConsent`; its fixes are written below. Its
+  recheck (2026-11-03) found that pydantic's v1 `copy(update=...)`, an unbound base
+  `model_copy` (`Consent.model_copy`, `BaseModel.model_copy`, `super()`), a `__class__`
+  assignment and a re-called `__init__` still gave a `SignedConsent` that `allows_recording`
+  accepted, and that ARCH-CONSTRUCT's names check missed a class pattern's keyword, a star
+  import, and names its own-definition exemption let through; the second round's fixes are
+  written below too.
 - **Decision** (as the design's 8.1 describes it): invariant 7 holds the token's checks (mint
   and verify, HS256 only, a lifetime of `join.ttl_s`, at most 120 s, within a clock-skew
   allowance, one use of each `jti`, a key map), the offer secret (random, one call's, needed
@@ -1273,41 +1429,67 @@ twice; DOC-REF: every `D-NNN` cited anywhere is a heading here), so keep its sha
     log has the reasons):
     - Invariant 7 also holds rules beyond the design's 8.1: a join key of at least 32 bytes
       (D-028, D-029); a clock-skew allowance of at most 60 s, the used-token store keeping a
-      token's `jti` until its expiry plus that allowance (D-028, D-029); and the offer secret
-      never in a URL (D-029).
+      token's `jti` until its expiry plus that bound, whatever allowance is configured, and
+      never recording as a first use a `jti` whose last instant has passed by its own clock
+      (D-028, D-029); and the offer secret never in a URL (D-029).
     - Only a `SignedConsent` counts as the token's consent: a `@final` subclass of `Consent` in
       `core/identity.py`, built in `adapters` alone, and there by `SignedJoinTokens` alone, from
       a token whose signature it verified, as
       `SignedConsent.model_validate(claim, context=CONSENT_SEAL)`. The seal is a bare object
       compared by identity (a copy of it is no seal), given as the validation's context, which
-      the class checks after every validation (`model_post_init`). Every other way to build
-      one raises TypeError: its constructor, a validation without the seal (`model_validate`,
-      `model_validate_json`, a `TypeAdapter`, a model that holds one), `model_construct`,
-      `model_copy` with an update (pydantic validates neither, so even the seal's holder builds
-      a changed consent anew), and a subclass. A copy with no change is the same consent, and
-      allowed. Every other layer asks
-      `allows_recording(consent)`, true only for a `SignedConsent` (its exact type) that says
-      `record_audio`, and never names the class. A consent that `DevIdentity` or a team's own
-      verifier returns never turns recording on, and a `SignedConsent` never equals a plain
-      `Consent` with the same choices.
-    - `[[restricted]]` keeps it statically, in two tables (ARCH-CONSTRUCT): `SignedConsent`'s
-      `classes` row reports a call that builds one outside `adapters`; and a new kind of table,
-      which lists `names` instead of `classes`, reports any reference to `CONSENT_SEAL` outside
-      `adapters` (an import under any alias, an attribute, a name read, a string that is the
-      name, which catches `getattr`), the module that binds the name aside. Both hold a layer:
-      that only `SignedJoinTokens` in `adapters` gives the seal is a review. Neither guard sees
-      a seal's name computed at run time, a direct write to a frozen model's fields, or a
-      crafted pickle; review does (SECURITY.md, invariant 8). This is the `[[restricted]]`
-      change `harness.toml` asks a decision for; ARCHITECTURE.md's conventions and enforcement
-      list name it.
+      the class checks after every validation (`model_post_init`). The validation records that
+      very instance as sealed, in a module-private registry keyed by its id: each entry holds a
+      weak reference to the instance, its `__dict__` and its fields as they were, and goes when
+      the consent is collected. Every other layer asks `allows_recording(consent)` and never
+      names the class. It is true only for that instance, alive and unchanged since (its exact
+      type, its own `__dict__`, each field the same object), when it says `record_audio`. Any
+      other consent allows nothing: a copy of any kind, even with no change (pydantic's
+      `copy`, `model_copy` by any path, `copy.copy`, `copy.deepcopy`, a pickle), one rebuilt
+      by a re-called `__init__`, one re-typed by an assigned `__class__`, one whose fields were
+      written in place, and a subclass's. So that the common mistakes fail loudly, these raise
+      TypeError: its constructor; a validation without the seal (`model_validate`,
+      `model_validate_json`, a `TypeAdapter` of the class, a model with a field of it; the
+      seal alone guards those last two); `model_construct`; `model_copy` with an update, and
+      pydantic's deprecated `copy` given `update`, `include` or `exclude` (pydantic validates
+      none of them, so even the seal's holder builds a changed consent anew); and a subclass,
+      as it is defined or, past a mixin that skips `__init_subclass__`, as it is validated. A
+      consent that `DevIdentity` or a team's own verifier returns never turns recording on,
+      and a `SignedConsent` never equals a plain `Consent` with the same choices.
+    - `[[restricted]]` keeps it statically, in two tables (ARCH-CONSTRUCT), each held by its
+      `layers` and, new, its `files` (modules of the library, each a path inside the package
+      under a layer; every table has both keys, and one may be empty, not both).
+      `SignedConsent`'s `classes` row reports a call that builds one outside `adapters`. A
+      table that lists `names` instead of `classes`, a new kind, reports any mention of
+      `CONSENT_SEAL` outside `adapters/join_tokens.py` and `core/identity.py`, in the library
+      or an app. Mentions are read from the module's tokens and constants: any token that is
+      the name, read as Python reads an identifier (an import under any alias, an attribute,
+      a read, an annotation, a subscript's key, a keyword, a class pattern's keyword); any
+      literal that holds it (a string, bytes, an f-string's part, a docstring, escapes and
+      joined literals included); and a star import from a module of the row's files or
+      layers. The defining module is exempt only because the row names it; no module has an
+      own-definition exemption. That only `SignedJoinTokens.verify` gives the seal, inside
+      that module, is a review. What gets past both guards is deliberate, and review sees it:
+      the seal's name computed at run time, or the seal found without its name
+      (`vars(module)`, the garbage collector's referents); memory rewritten through `ctypes`;
+      and writes to `core/identity.py`'s own state, its registry or `allows_recording`
+      replaced (SECURITY.md, invariant 8). This is the `[[restricted]]` change `harness.toml`
+      asks a decision for; ARCHITECTURE.md's conventions and enforcement list name it.
     - Set aside: a private flag on `Consent`, which any layer could set and the check cannot
       see; a constructor that takes the seal, under which pydantic's `model_validate` calls
       `__init__` again without it; the seal as a key of the data, which would be a field held
-      on every consent; and `core` among the seal's layers, which would let any `core` module
-      validate a `SignedConsent`.
+      on every consent; `core` among the seal's layers, which would let any `core` module
+      validate a `SignedConsent`; a private attribute holding the sealed values, which every
+      copy carries over, so an unchanged copy would still allow recording, and which any
+      layer could set; a weak-keyed map, whose keys compare by equality, so a copy would find
+      its original's entry; overriding every copy entry point, which a call through the base
+      class skips; a static check of a `TypeAdapter` of the class or a model field of it,
+      which the seal guards at run time; an optional `files` key, against `harness.toml`'s
+      "Each key is required"; and an exemption for every module that defines a name of the
+      seal's spelling.
 - **Consequences:** D-007's heading points here. The recorder writes audio only when both
-  conditions hold, asking `allows_recording`, and never copies or rebuilds a consent; no client
-  message can set either condition. What stays the app's is the design's 8.1: minting tokens
+  conditions hold, asking `allows_recording` of the very consent the identity source returned
+  (a copy of it records nothing), and never copies or rebuilds a consent; no client message
+  can set either condition. What stays the app's is the design's 8.1: minting tokens
   only for signed-in callers, a rate limit on its minting route and one process per
   `var_dir`; the consent wording and its version, the retention in its own Phoenix, and
   deletion requests. SECURITY.md's trust boundaries now also name the variables the call's
@@ -1325,7 +1507,7 @@ twice; DOC-REF: every `D-NNN` cited anywhere is a heading here), so keep its sha
   003's criteria); the lifespan warms the adapters without speaking. Plan 003's decision log
   (2026-11-02) wrote these changes to the ports as Proposed, for an entry after D-035 that step
   12 left out; the review of plan 003's Block 0 (2026-11-03) added the speech-to-text
-  headroom.
+  headroom, and the check of its fixes (2026-11-03) had `GroqSTT` read it.
 - **Decision:**
   - One close for every port that holds connections: `aclose()` on `SpeechToText` and
     `TextToSpeech` (stable) and on `UsedTokens` (provisional), which closes what the adapter
@@ -1352,19 +1534,30 @@ twice; DOC-REF: every `D-NNN` cited anywhere is a heading here), so keep its sha
     design's "raises naming the missing model, voice, access or terms".
   - `Transcript` gains `remaining_requests` and `remaining_tokens`, optional and None by
     default, the headroom the provider reported with the answer, so the call's report can keep
-    Whisper's as it keeps Orpheus's. `GroqSTT` reads none yet: the request hook drops the SDK's
-    raw-response marker, and without it the SDK hands a JSON answer back parsed, with no
-    headers; plan 003's Track B, which reads the same headers for `GroqTTS`, is named to fill
-    them. An optional field breaks no caller of a stable port (the design's 5.4). Set aside:
-    fields on the session's `Transcribed`, which already carries the `Transcript`; and the
-    report's criterion narrowed to the text-to-speech models.
+    Whisper's as it keeps Orpheus's. `GroqSTT` fills them. The SDK hands back an answer's
+    headers only in its raw response, which it gives when the request carries its
+    raw-response marker; the Groq client's request hook keeps that marker only for the
+    adapter's own call that asks for the raw response (`groq_client.raw_response()` around a
+    call through `with_raw_response`, read from a context variable, since the hook runs in the
+    calling task), writing the SDK's own value, never one from `GROQ_CUSTOM_HEADERS` or the
+    environment, so a transcription request carries one header more, the marker. The adapter
+    reads `x-ratelimit-remaining-requests` and `-tokens` from the raw response
+    (`groq_client.headroom()`: each a whole number in ASCII digits, else None) and parses the
+    transcription as before; Track B can use `headroom()` for `GroqTTS`'s first chunk. An
+    optional field breaks no caller of a stable port (the design's 5.4). Set aside: fields on
+    the session's `Transcribed`, which already carries the `Transcript`; the report's
+    criterion narrowed to the text-to-speech models; a flag on the hook for each adapter,
+    which cannot tell the adapter's raw call from a `GROQ_CUSTOM_HEADERS` marker on its other
+    requests; and importing the SDK's private constant into library code (a test pins
+    `RAW_MARKER` to it).
 - **Consequences:** an adapter a team writes for these ports implements `aclose()`; no team has
   one yet, since no tag has been installed. The design's 6.1 does not show these fields, nor
   its 6.5 the store's `aclose()`.
 - **Evidence:** the types builder's choices in plan 003's decision log (step 10, 2026-11-02),
   and the review's finding on Whisper's headroom (2026-11-03). The tests:
   `tests/t2_agentic_voice/domain/test_ports.py`, `test_text_to_speech_port.py` and
-  `test_identity_port.py`.
+  `test_identity_port.py`; for Whisper's headroom,
+  `tests/t2_agentic_voice/adapters/test_groq_stt.py` and `test_groq_client.py`.
 
 ## D-037 · Agent speech is keyed on replies, and the drop rule covers every reply, the greeting included · 2026-11-03 · Proposed (the agent's, plan 003's Block 0 after its review; beyond the design's 5.5 and 6.6)
 
@@ -1376,20 +1569,29 @@ twice; DOC-REF: every `D-NNN` cited anywhere is a heading here), so keep its sha
   echo cancellation on laptop speakers would be said back; read as any speech, every file-fed
   call's clip, fed while the greeting played, would be dropped. And a turn still open when the
   call ends could not get both its transcript and no event after the last command. The review
-  of plan 003's Block 0 found the three (2026-11-03), and the integrator ruled on each.
+  of plan 003's Block 0 found the three (2026-11-03), and the integrator ruled on each. The
+  check of those fixes (2026-11-03) found that a stop naming one reply spared the replies
+  queued after it, which Pipecat's interruption cannot do; that the end's rule left out the
+  session's own `HangUp`; and that a request the end cancelled went uncounted; the integrator
+  ruled on each again.
 - **Decision:**
   - **Replies.** The caller speaks in turns and the agent in replies, numbered apart: the
     speech-to-text bridge numbers the caller's turns from 0 (`TurnId`), and the session the
     agent's replies from 0 (`ReplyId`, in `voice/protocol.py` beside `ClauseIndex`): the
     greeting is reply 0, and each echo and each spoken notice the next. `Speak` keys each
     clause on its reply and its index there, and names the caller's turn the reply answers,
-    None for the greeting or a notice; `StopSpeaking(reply_id)` drops that reply and any before
-    it; `ClauseQueued`, `ClausePlayed` and `ClauseFailed` carry the reply and the clause alone,
-    since the session knows which turn a reply answers. On `t2v/1`, a caller's caption names
-    its turn only, an agent's its reply and clause, with the turn it answers when there is one,
-    and a `playback` report a reply and a clause. `core`'s `AgentSpeechEnded` and `Interrupted`
-    take an optional `turn_id`, None for the greeting or a notice. Set aside: one numbering for
-    turns and replies, under which the greeting and turn 0's echo share a key.
+    None for the greeting or a notice. `StopSpeaking` drops every clause the session has asked
+    for so far, whatever its reply, its `reply_id` naming the newest, since Pipecat's
+    interruption drops every queued frame; no event of a dropped clause follows, one the
+    Pipecat side held included, the session counts each dropped reply as done, waiting for no
+    event of it, and it hangs up at once if one was the `ended` notice. `ClauseQueued`,
+    `ClausePlayed` and `ClauseFailed` carry the reply and the clause alone, since the session
+    knows which turn a reply answers. On `t2v/1`, a caller's caption names its turn only, an
+    agent's its reply and clause, with the turn it answers when there is one, and a `playback`
+    report a reply and a clause. `core`'s `AgentSpeechEnded` and `Interrupted` take an
+    optional `turn_id`, None for the greeting or a notice. Set aside: one numbering for turns
+    and replies, under which the greeting and turn 0's echo share a key; and a stop that
+    spares later replies, re-queuing them after the interruption.
   - **The drop rule covers every reply.** A turn whose speech began (the speech detector's
     onset) while any reply played, the greeting included, or within 300 ms after a reply's last
     clause played, is not answered; it is still closed, transcribed and kept on the timeline.
@@ -1398,26 +1600,57 @@ twice; DOC-REF: every `D-NNN` cited anywhere is a heading here), so keep its sha
     playback report, which comes a jitter buffer later and never in a file-fed call.
   - **The file-fed call** feeds silence until the greeting has played (its last `ClausePlayed`
     or `ClauseFailed`), then the clip's lead (`lead_s`; the registration's 1 s), so the clip
-    never overlaps the greeting. The greeting is a cached phrase like the frame, synthesized
-    once, and its request counts in run T's budget. Each command it records carries when it
-    reached `Commands.run`, so "the echo's text ready" is the time of the heard words' `Speak`.
-    Set aside: an option for a file-fed call with no greeting, which would make the measured
-    call differ from a live one.
-  - **A turn open when the call ends.** At an `Ending` or a `TransportFailure`, the Pipecat
-    side drops an open turn's held audio and sends no request for it, cancels a request in
-    flight, and hands the session no `TurnClosed` or `Transcribed` of it; the call's report
-    keeps the turn as unfinished (`TurnRecord.unfinished`, a field of the provisional
-    `CallReport`) and does not count the cancelled request. The session's last command is
-    `HangUp`, after which no event comes. Set aside: sending the turn to Whisper after the end,
-    which bills a request and hands an event after `HangUp`.
+    never overlaps the greeting. The greeting is a fixed phrase, played from the phrase audio
+    the calls were built with; the requests that synthesized it are the phrase cache's,
+    counted in run T's budget as `PhraseCache.declare` returns them (one for each request it
+    packed, none for a phrase its folder held), and `echo_timings` takes that phrase audio
+    (`phrases`), so no fixed phrase sends a request there. `turn_ends`' call plays no
+    greeting: its phrase audio is silence of no length, so its lead starts once the call is
+    connected, and `poe eot`, an offline run, synthesizes nothing. Each command it records
+    carries when it reached `Commands.run`, so "the echo's text ready" is the time of the
+    heard words' `Speak`. Set aside: an option for a file-fed call with no greeting, which
+    would make the measured call differ from a live one; and `turn_ends` taking the phrase
+    cache's audio, under which `poe eot` would synthesize the greeting, which moves no turn
+    end.
+  - **Every request counted.** The speech-to-text bridge hands `Transcribing(turn_id, at,
+    audio_s)` as each request goes, and the text-to-speech bridge `Synthesizing(reply_id,
+    clause, at)` as it sends a clause's request, each before that turn's or clause's other
+    events, whatever comes of the request; `Transcribed.sent_at` and
+    `ClauseQueued.requested_at` equal their report's `at`. The session counts each model's
+    usage from them alone: a speech-to-text request, its audio seconds, and at least 10 s
+    billed a request (the design's 10.4); a text-to-speech request and its `Speak`'s
+    characters; a phrase played from the cache is a cache hit. Set aside: counting from
+    `Speak`, which counts clauses queued behind at the end or dropped by a stop and never
+    sent; and dropping `sent_at` and `audio_s` from `Transcribed`.
+  - **The end.** The call ends at the first of an `Ending` or a `TransportFailure` the
+    Pipecat side hands, or the session's `HangUp`, whatever ended it. From then the Pipecat
+    side starts nothing and finishes nothing: it drops the held audio of a turn still open,
+    or closed with its transcript still to come, and sends no request for it, drops every
+    clause's queued audio, and cancels any request in flight; it hands the session no
+    `TurnClosed` or `Transcribed` of such a turn and no clause event after the end. The
+    call's report keeps the turn as unfinished (`TurnRecord.unfinished`, a field of the
+    provisional `CallReport`), counts a reply the end cut as done, and counts every request
+    that went, a cancelled one included, from the `Transcribing` or `Synthesizing` handed as
+    it went. The session's last command is `HangUp`, given at once at an `Ending` or a
+    `TransportFailure`; after the end only those request reports come, and the Pipecat side
+    then ends the call's stream with `Session.aclose`, once, where the session finishes and
+    writes its report, giving no command. Set aside: sending the turn to Whisper after the
+    end, which bills a request and hands an event after `HangUp`; not counting a cancelled
+    request, which leaves the report's `requests_per_minute` under what the key was asked;
+    handing every held event until the stream ends, which would need a rule for each kind
+    after the end; `Commands.run(HangUp)` returning once the stream has drained, which
+    deadlocks a session that awaits it inside `handle` while events come one at a time; and
+    a last event after `HangUp`, which blurs `Ending`'s meaning.
 - **Consequences:** plan 003's Tracks D, E and G key the agent's speech on its reply and clause
   (the session, the speech bridges, the widget's playback reports), and Track H counts the
-  lead from after the greeting. `voice/session/io.py` says the rules, and the `t2v/1` fixture
-  pins the fields. The design's 5.5 (a caption's turn ID) and 6.6 (every event's `turn_id`)
-  do not say so.
-- **Evidence:** the review of plan 003's Block 0 (2026-11-03). The tests:
-  `tests/t2_agentic_voice/test_session_fakes.py` (the greeting with a turn that opens while it
-  plays, and a call that ends with a turn open),
+  lead from after the greeting. Track E hands each request's report as it goes and ends each
+  call's stream with `aclose`, and Track D counts usage from those reports and writes the
+  report there. `voice/session/io.py` says the rules, and the `t2v/1` fixture pins the fields.
+  The design's 5.5 (a caption's turn ID) and 6.6 (every event's `turn_id`) do not say so.
+- **Evidence:** the review of plan 003's Block 0 and the check of its fixes (2026-11-03). The
+  tests: `tests/t2_agentic_voice/test_session_scenes.py` (the greeting with a turn that opens
+  while it plays, a call that ends with a turn open, and the stop, hang-up and usage scenes),
+  `tests/t2_agentic_voice/test_session_fakes.py`,
   `tests/t2_agentic_voice/voice/session/test_io.py` and
   `tests/t2_agentic_voice/test_protocol_list.py`.
 
@@ -1461,7 +1694,9 @@ twice; DOC-REF: every `D-NNN` cited anywhere is a heading here), so keep its sha
   for the version check at join (its 5.4). Plan 003's Block 0 modelled them in
   `voice/protocol.py` (step 10) and pinned them in a fixture (step 11); D-029 holds the HTTP
   side. The review of plan 003's Block 0 (2026-11-03) found the size bound counted characters,
-  and never applied on the path a call takes.
+  and never applied on the path a call takes; the check of its fixes (2026-11-03) found that
+  on that path Pipecat has parsed the channel's text before any bound of ours, so neither the
+  text's size nor a key held twice reaches the session as sent.
 - **Decision** (as the design's 5.5 describes it):
   - Server to client: `hello` (the protocol, in `v`, the call ID and its languages), `state`,
     `caption` (sent per clause as each plays), `notice` (`busy`, `error`, `ended`, with the
@@ -1478,16 +1713,22 @@ twice; DOC-REF: every `D-NNN` cited anywhere is a heading here), so keep its sha
       `ping`, the names Small WebRTC keeps for itself.
     - A client's message is parsed strictly: one of the client's types, exactly its fields,
       each of its JSON type (no "1" or 1.0 for an integer, no 1 for a boolean), `v` the integer
-      1, every size bounded, and a key held twice refused. The whole message is at most 1024
-      bytes of UTF-8, on both paths: text measured as it came, and the object Pipecat's Small
-      WebRTC parsed before handing it on, the path a call takes, written back as compact JSON
-      and measured. A refusal is an `InvalidRequestError` whose details name only its kinds
-      (`too_large`, `json_invalid`, `duplicate_key`, or pydantic's error types), never the
-      client's text. Set aside: having `voice` read each message's raw text before Pipecat
-      parses it; the object is what Pipecat's `on_app_message` hands on.
+      1, every size bounded, and, on the text path, a key held twice refused (on the object
+      path a call takes, Pipecat's `json.loads` has already kept its last value). The message
+      as the session gets it is at most 1024 bytes of UTF-8: on a call's path, the object
+      Pipecat's Small WebRTC parsed before handing it on, written back as compact JSON; on the
+      text path, the text's own bytes. Pipecat parses the channel's text first, with no bound
+      of ours (up to the transport's message size: aiortc advertises 64 KB), and holds the
+      messages that come before the call connects, so a message padded with whitespace past
+      the bound reaches a call within it. A refusal is an `InvalidRequestError` whose details
+      name only its kinds (`too_large`, `json_invalid`, `duplicate_key`, or pydantic's error
+      types), never the client's text. Set aside: having `voice` read each message's raw text
+      before Pipecat parses it; the object is what Pipecat's `on_app_message` hands on.
 - **Consequences:** the session and the widget build against one list, which the fixture
   `tests/t2_agentic_voice/fixtures/t2v_protocol.json` pins, and a change to `t2v/1` changes it
   in the same commit. The design's 5.5 lists neither `playback` nor a caption's reply.
 - **Evidence:** as for D-019 (plan 002, Q3), 2026-11-01. The tests:
-  `tests/t2_agentic_voice/voice/test_protocol.py` and
+  `tests/t2_agentic_voice/voice/test_protocol.py` (among them
+  `test_a_key_held_twice_reaches_a_call_with_its_last_value` and
+  `test_a_message_padded_past_the_bound_reaches_a_call_within_it`) and
   `tests/t2_agentic_voice/test_protocol_list.py`.
