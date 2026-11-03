@@ -14,16 +14,15 @@ import pytest
 from pydantic import ValidationError
 from t2_agentic_voice.core.errors import ConfigurationError
 from t2_agentic_voice.core.settings.tts import LanguageTag
-from t2_agentic_voice.domain.declaration import (
-    NOTICE_KINDS,
-    SPOKEN_NOTICES,
-    Language,
-    VoiceAgent,
-    fixed_phrases,
-)
+from t2_agentic_voice.domain.declaration import NOTICE_KINDS, Language, VoiceAgent
 
 SAUDI = Language.saudi_arabic(greeting="هلا! وش أقدر أساعدك فيه؟")
 ENGLISH = Language.english(greeting="Hi! Which branch can I help you with?")
+# What pasted text carries unseen, which a phrase may hold (written with `chr`, so this file
+# holds none of them): the no-break spaces, the joiners and the direction marks.
+NBSP, NARROW_NBSP = chr(0x00A0), chr(0x202F)
+ZWNJ, ZWJ = chr(0x200C), chr(0x200D)
+LRM, RLM, ALM = chr(0x200E), chr(0x200F), chr(0x061C)
 # Each preset's notices, as the owner's register for the fixed phrases has them (Q5): Saudi for
 # ar-SA, Modern Standard Arabic for ar, and English.
 NOTICES = {
@@ -85,11 +84,53 @@ def test_a_languages_notices_are_read_only_and_dump_as_a_plain_object() -> None:
     assert copy.deepcopy(ENGLISH) == ENGLISH == again
 
 
-@pytest.mark.parametrize("greeting", ["", "   ", "Hi\nthere", "Hi\x00", 3])
+@pytest.mark.parametrize(
+    "greeting",
+    [
+        "",
+        "   ",
+        NBSP * 3,  # spaces only, if no-break ones
+        RLM,  # a mark alone says nothing
+        "Hi\nthere",
+        "Hi\x00",
+        f"Hi{chr(0x3000)}there",  # IDEOGRAPHIC SPACE
+        f"Hi{chr(0x2028)}there",  # LINE SEPARATOR
+        f"{chr(0xFEFF)}Hi there",  # a byte order mark
+        f"Hi there{chr(0xD800)}",  # a lone surrogate
+        3,
+    ],
+)
 def test_a_greeting_says_something_on_one_line(greeting: Any) -> None:
     with pytest.raises(ConfigurationError, match="FIX: ") as raised:
         Language.english(greeting=greeting)
     assert raised.value.details == {"field": "greeting"}
+
+
+def test_a_phrase_pasted_with_no_break_spaces_and_marks_is_kept_as_written() -> None:
+    """A Saudi greeting, a notice and a spoken form pasted from a phone or a document: captions
+    show each as written; the provider is sent each without them (domain/text/invisible.py)."""
+    pasted = RLM + SAUDI.greeting.replace(" ", NBSP, 1)
+    saudi = Language.saudi_arabic(greeting=pasted, notices={"error": f"{LRM}صار خلل{ALM}"})
+    assert (saudi.greeting, saudi.notices["error"]) == (pasted, f"{LRM}صار خلل{ALM}")
+    said = {f"L{ZWNJ}T-": {"ar": f"إل{NARROW_NBSP}تي", "en": f"L{ZWJ}T"}}
+    agent = VoiceAgent(name="helpdesk", languages=[saudi], pronounce=said)
+    assert {form: dict(each) for form, each in agent.pronounce.items()} == said
+
+
+def test_a_refused_character_is_named_as_the_rule_says_never_as_a_line_break() -> None:
+    with pytest.raises(ConfigurationError) as raised:
+        Language.english(greeting=f"Hi{chr(0x3000)}there")
+    message = str(raised.value)
+    assert (
+        "holds a control or format character, a line or paragraph separator, a lone surrogate "
+        "or a space other than U+0020; of these, a phrase may hold only the no-break spaces "
+        "U+00A0 and U+202F, the joiners U+200C and U+200D and the direction marks U+200E, "
+        "U+200F and U+061C. FIX: give `greeting` the words the agent opens a call with, on one "
+        "line of plain text (type again a text pasted from a document or a chat)."
+    ) in message
+    assert "line break" not in message
+    with pytest.raises(ConfigurationError, match="says nothing"):
+        Language.english(greeting=RLM + NBSP)
 
 
 @pytest.mark.parametrize(
@@ -97,6 +138,7 @@ def test_a_greeting_says_something_on_one_line(greeting: Any) -> None:
     [
         {"error": ""},
         {"ended": "Bye\nnow"},
+        {"ended": f"Bye{chr(0x2029)}now"},  # PARAGRAPH SEPARATOR
         {"farewell": "Bye now."},  # not a kind of notice
         {"busy": 3},
         [("error", "Bye now.")],  # not a map
@@ -109,10 +151,22 @@ def test_a_teams_notice_says_something_on_one_line_for_a_kind_there_is(notices: 
 
 
 def test_a_language_built_without_its_preset_still_needs_every_notice() -> None:
+    """Its FIX asks for all three, which no preset fills in on this path."""
     fields = ENGLISH.model_dump() | {"notices": {"busy": "Busy now."}}
-    with pytest.raises(ConfigurationError, match="error or ended") as raised:
+    with pytest.raises(ConfigurationError, match="no text for error or ended") as raised:
         Language.model_validate(fields)
     assert raised.value.details == {"field": "notices"}
+    assert "a text for each of busy, error and ended" in str(raised.value)
+    assert "keeps the preset's text" not in str(raised.value)
+    with pytest.raises(ConfigurationError, match="no text for busy, error or ended"):
+        Language.model_validate(fields | {"notices": {}})
+
+
+def test_a_presets_notices_fix_says_a_kind_left_out_keeps_its_text() -> None:
+    with pytest.raises(ConfigurationError) as raised:
+        Language.english(greeting="Hello there.", notices={"error": ""})
+    assert raised.value.details == {"field": "notices"}
+    assert "with a preset, a kind it leaves out keeps the preset's text" in str(raised.value)
 
 
 def test_a_language_is_frozen_and_takes_no_other_field() -> None:
@@ -183,22 +237,6 @@ def test_a_locale_takes_its_exact_tag_before_another_of_its_language() -> None:
     assert agent.call_language("ar-SA", locale="en") is SAUDI
 
 
-def test_the_fixed_phrases_are_each_languages_greeting_frame_and_spoken_notices() -> None:
-    """What the runtime declares to the phrase cache: `busy` comes at join, before a call."""
-    agent = VoiceAgent(name="branch-helper", languages=[SAUDI, ENGLISH])
-    assert SPOKEN_NOTICES == ("error", "ended")
-    assert fixed_phrases(agent) == (
-        (SAUDI.greeting, "ar-SA"),
-        ("سمعتك تقول:", "ar-SA"),
-        (NOTICES["ar-SA"]["error"], "ar-SA"),
-        (NOTICES["ar-SA"]["ended"], "ar-SA"),
-        (ENGLISH.greeting, "en"),
-        ("I heard:", "en"),
-        (NOTICES["en"]["error"], "en"),
-        (NOTICES["en"]["ended"], "en"),
-    )
-
-
 @pytest.mark.parametrize(
     ("values", "field"),
     [
@@ -248,6 +286,8 @@ def test_an_agent_is_not_named_like_a_windows_device(name: str) -> None:
         {"LT-": {}},  # says how no language says it
         {"LT-": {"en": ""}},
         {"LT-": {"en": "L\nT"}},
+        {"LT-": {"en": f"L{chr(0x2003)}T"}},  # EM SPACE
+        {f"LT-{NBSP}": {"en": "L T"}},  # a no-break space at its end
         {"": {"en": "L T"}},
         {" LT-": {"en": "L T"}},  # never stands as whole words
         {"LT-\n": {"en": "L T"}},

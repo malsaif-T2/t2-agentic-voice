@@ -8,11 +8,17 @@ tools, the vocabulary) come with the talker as optional arguments, so an echo ag
 team's first audio check. Each language is built from its preset, which gives it its tag, its
 frame and a text for each notice the caller may be told; the team gives its greeting, the phrase
 that opens a call, and may give its own notices. The phrases a call speaks as written
-(`fixed_phrases`) are synthesized once, at the runtime's start, and played from the phrase cache.
+(domain/fixed_phrases.py) are synthesized once, at the runtime's start, and played from the
+phrase cache.
 
-A declaration the library cannot run with is a ConfigurationError naming the field, with a FIX
-line (the design's 4.2), and never the value it refused; only assigning to a built agent or
-language raises pydantic's ValidationError, as for every frozen model.
+A phrase (a greeting, the frame, a notice, a spoken form) says something, on one line, and holds
+no character a reader cannot see but the no-break spaces, the joiners and the direction marks
+that pasted text often carries (domain/text/invisible.py). A declaration the library cannot run
+with is a ConfigurationError naming the field, with a FIX line (the design's 4.2), and never the
+value it refused, however it is built: through a preset, the constructor, `model_validate` or
+`model_validate_json` (a text that is not JSON included), and on a subclass of `Language` too;
+only assigning to a built agent or language raises pydantic's ValidationError, as for every
+frozen model.
 """
 
 from __future__ import annotations
@@ -29,13 +35,17 @@ from pydantic import (
     Field,
     ModelWrapValidatorHandler,
     ValidationError,
+    ValidationInfo,
     field_validator,
     model_validator,
 )
+from pydantic.config import ExtraValues
 
 from t2_agentic_voice.core.errors import ConfigurationError
 from t2_agentic_voice.core.settings.base import FROZEN, PLAIN
 from t2_agentic_voice.core.settings.tts import LanguageTag
+from t2_agentic_voice.domain.presets import ECHO_FRAMES, NOTICES
+from t2_agentic_voice.domain.text.invisible import holds_refused_character, provider_text
 
 # A notice's kind (the design's 5.5), each told in the call's language: `busy`, a call that
 # cannot be taken, which admission control answers at join, before a call has audio (the
@@ -47,67 +57,6 @@ NOTICE_KINDS: tuple[NoticeKind, ...] = get_args(NoticeKind)
 # The notices a call speaks, so the phrase cache holds them: `busy` comes before any call.
 SPOKEN_NOTICES: tuple[NoticeKind, ...] = ("error", "ended")
 
-# The echo's frames (plan 003, Q3, in the Saudi register Q5 chose for the fixed phrases). The
-# Arabic one, said for both Arabic presets, is «سمعتك تقول:»: seen, meem, ain, teh, kaf; a space;
-# teh, qaf, waw, lam; a colon.
-_ARABIC_FRAME = "\u0633\u0645\u0639\u062a\u0643 \u062a\u0642\u0648\u0644:"
-_ECHO_FRAMES: dict[LanguageTag, str] = {
-    "ar-SA": _ARABIC_FRAME,
-    "ar": _ARABIC_FRAME,
-    "en": "I heard:",
-}
-# Each preset's notices: `ar-SA`'s in the Saudi register Q5 chose for the fixed phrases, `ar`'s
-# in Modern Standard Arabic. Each comment gives the text's sound, then its meaning.
-_NOTICES: dict[LanguageTag, dict[NoticeKind, str]] = {
-    "ar-SA": {
-        # al-khutoot mashghoola al-heen, haawil marra thaanya ba'd shway: the lines are busy
-        # now; try again in a little while.
-        "busy": (
-            "\u0627\u0644\u062e\u0637\u0648\u0637 \u0645\u0634\u063a\u0648\u0644\u0629 "
-            "\u0627\u0644\u062d\u064a\u0646\u060c \u062d\u0627\u0648\u0644 \u0645\u0631\u0629 "
-            "\u062b\u0627\u0646\u064a\u0629 \u0628\u0639\u062f \u0634\u0648\u064a."
-        ),
-        # saar 'indana khalal baseet, takallam marra thaanya law samaht: we had a small fault;
-        # speak once more, please.
-        "error": (
-            "\u0635\u0627\u0631 \u0639\u0646\u062f\u0646\u0627 \u062e\u0644\u0644 "
-            "\u0628\u0633\u064a\u0637\u060c \u062a\u0643\u0644\u0645 \u0645\u0631\u0629 "
-            "\u062b\u0627\u0646\u064a\u0629 \u0644\u0648 \u0633\u0645\u062d\u062a."
-        ),
-        # intahat al-mukaalama, ya'teek al-'aafya: the call has ended; may you be well.
-        "ended": (
-            "\u0627\u0646\u062a\u0647\u062a \u0627\u0644\u0645\u0643\u0627\u0644\u0645\u0629\u060c "
-            "\u064a\u0639\u0637\u064a\u0643 \u0627\u0644\u0639\u0627\u0641\u064a\u0629."
-        ),
-    },
-    "ar": {
-        # al-khutoot mashghoola al-aan, yurja al-muhaawala marra ukhra ba'd qaleel: the lines
-        # are busy now; please try again shortly.
-        "busy": (
-            "\u0627\u0644\u062e\u0637\u0648\u0637 \u0645\u0634\u063a\u0648\u0644\u0629 "
-            "\u0627\u0644\u0622\u0646\u060c \u064a\u0631\u062c\u0649 "
-            "\u0627\u0644\u0645\u062d\u0627\u0648\u0644\u0629 \u0645\u0631\u0629 "
-            "\u0623\u062e\u0631\u0649 \u0628\u0639\u062f \u0642\u0644\u064a\u0644."
-        ),
-        # hadath khalal ladayna, hal yumkinuka i'aadat ma qultah: a fault occurred on our side;
-        # can you repeat what you said?
-        "error": (
-            "\u062d\u062f\u062b \u062e\u0644\u0644 \u0644\u062f\u064a\u0646\u0627\u060c "
-            "\u0647\u0644 \u064a\u0645\u0643\u0646\u0643 \u0625\u0639\u0627\u062f\u0629 "
-            "\u0645\u0627 \u0642\u0644\u062a\u0647\u061f"
-        ),
-        # intahat al-mukaalama, shukran li-ittisaalik: the call has ended; thank you for calling.
-        "ended": (
-            "\u0627\u0646\u062a\u0647\u062a \u0627\u0644\u0645\u0643\u0627\u0644\u0645\u0629\u060c "
-            "\u0634\u0643\u0631\u0627 \u0644\u0627\u062a\u0635\u0627\u0644\u0643."
-        ),
-    },
-    "en": {
-        "busy": "All our lines are busy right now. Please try again in a little while.",
-        "error": "Something went wrong on our side. Could you say that again?",
-        "ended": "The call has ended. Thank you for calling.",
-    },
-}
 # An agent's name: it names the agent's folder under `storage.var_dir` and its traces, so it is
 # a lowercase word, with hyphens.
 AGENT_NAME = re.compile(r"[a-z][a-z0-9-]{0,63}")
@@ -124,15 +73,13 @@ _PRESET_FIX = (
     "build each language with its preset: Language.saudi_arabic(greeting=...), "
     "Language.arabic(...) or Language.english(...)."
 )
+# How every phrase is given, whatever its failure: a pasted text may hold a character unseen.
+_PLAIN = "on one line of plain text (type again a text pasted from a document or a chat)"
 _FIXES: dict[str, str] = {
     "Language": _PRESET_FIX,
     "tag": _PRESET_FIX,
     "echo_frame": _PRESET_FIX,
-    "greeting": "give `greeting` the words the agent opens a call with, on one line.",
-    "notices": (
-        "give `notices` a text for `busy`, `error` or `ended`, each on one line, as "
-        'notices={"ended": ...}; a kind it leaves out keeps the preset\'s text.'
-    ),
+    "greeting": f"give `greeting` the words the agent opens a call with, {_PLAIN}.",
     "VoiceAgent": "declare the agent as VoiceAgent(name=..., languages=[...]).",
     "name": (
         "name it with lowercase letters, digits and hyphens, starting with a letter, as "
@@ -142,20 +89,48 @@ _FIXES: dict[str, str] = {
         "give `languages` one preset per language, as [Language.saudi_arabic(greeting=...)]."
     ),
     "pronounce": (
-        "map each written form, as a text holds it, to how `ar` or `en` says it, on one line, "
+        f"map each written form, as a text holds it, to how `ar` or `en` says it, {_PLAIN}, "
         'as pronounce={"LT-": {"en": "L T"}}.'
     ),
 }
+# The notices' FIX, by the way the language was built: through its preset, which gives the text
+# of each kind it is not given, or without one (`model_validate`), which gives none.
+_NOTICES_FIX = {
+    True: (
+        f"give `notices` a text for `busy`, `error` or `ended`, each {_PLAIN}, as "
+        'notices={"ended": ...}; with a preset, a kind it leaves out keeps the preset\'s text.'
+    ),
+    False: (
+        f"give `notices` a text for each of busy, error and ended, each {_PLAIN}, as "
+        'notices={"busy": ..., "error": ..., "ended": ...}; or build the language with its '
+        "preset, which gives the text of each kind left out."
+    ),
+}
+# A text that is not JSON, given to `model_validate_json`.
+_JSON_FIX = (
+    "give `model_validate_json` one JSON object of its fields, as `model_dump_json()` writes."
+)
 _WHO = {"Language": "A language", "VoiceAgent": "The agent"}
+# What a phrase may not hold, said whole, since the team cannot see the character it means.
+_UNSEEN = (
+    "a text in it holds a control or format character, a line or paragraph separator, a lone "
+    "surrogate or a space other than U+0020; of these, a phrase may hold only the no-break "
+    "spaces U+00A0 and U+202F, the joiners U+200C and U+200D and the direction marks U+200E, "
+    "U+200F and U+061C"
+)
+# The validation context a preset builds its language in, so that a failure's FIX says what the
+# preset gives.
+_FROM_PRESET = object()
 
 
 def _phrase(value: str) -> str:
-    """`value`, when it says something and holds no line break or control character, which a
-    spoken phrase never needs; the error never repeats the value."""
-    if not value.strip():
-        raise ValueError("a text in it is empty or only spaces")
-    if not value.isprintable():
-        raise ValueError("a text in it holds a line break or a control character")
+    """`value`, when it holds no character a spoken phrase may not (domain/text/invisible.py)
+    and says something once a provider's text is made of it; the error never repeats the
+    value."""
+    if holds_refused_character(value):
+        raise ValueError(_UNSEEN)
+    if not provider_text(value).strip():
+        raise ValueError("a text in it says nothing: it is empty, or only spaces and marks")
     return value
 
 
@@ -181,7 +156,9 @@ def _every_kind[T](value: Mapping[NoticeKind, T]) -> Mapping[NoticeKind, T]:
     """`value` when it has a text for every kind of notice."""
     missing = [kind for kind in NOTICE_KINDS if kind not in value]
     if missing:
-        raise ValueError(f"it has no text for {' or '.join(missing)}; each kind needs one")
+        *rest, last = missing
+        listed = f"{', '.join(rest)} or {last}" if rest else last
+        raise ValueError(f"it has no text for {listed}; each of busy, error and ended needs one")
     return value
 
 
@@ -210,34 +187,87 @@ class _Declared(BaseModel):
 
     @model_validator(mode="wrap")
     @classmethod
-    def _configured(cls, data: Any, handler: ModelWrapValidatorHandler[Self]) -> Self:
+    def _configured(
+        cls, data: Any, handler: ModelWrapValidatorHandler[Self], info: ValidationInfo
+    ) -> Self:
         """The model `data` declares, or a ConfigurationError for its first failure, raised
         after the handler, so no exception chain leads back to the ValidationError."""
         try:
             return handler(data)
         except ValidationError as error:
             first = error.errors(include_input=False, include_url=False)[0]
-        raise _refused(cls, first["loc"], first["msg"])
+        raise _refused(cls, first["loc"], first["msg"], preset=info.context is _FROM_PRESET)
+
+    @classmethod
+    def model_validate_json(
+        cls,
+        json_data: str | bytes | bytearray,
+        *,
+        strict: bool | None = None,
+        extra: ExtraValues | None = None,
+        context: Any | None = None,
+        by_alias: bool | None = None,
+        by_name: bool | None = None,
+    ) -> Self:
+        """The model the JSON text `json_data` declares, failing as every other way to build
+        one does: a text that is not JSON (cut short, not UTF-8, with more after its object) is
+        a ConfigurationError naming no field, where pydantic's own error, raised before any
+        validator runs, would hold the whole text in its `errors()`."""
+        try:
+            return super().model_validate_json(
+                json_data,
+                strict=strict,
+                extra=extra,
+                context=context,
+                by_alias=by_alias,
+                by_name=by_name,
+            )
+        except ValidationError as error:
+            first = error.errors(include_input=False, include_url=False)[0]
+        raise _refused(cls, (), first["msg"], fix=_JSON_FIX)
 
 
-def _refused(model: type[BaseModel], loc: tuple[int | str, ...], msg: str) -> ConfigurationError:
+def _refused(
+    model: type[BaseModel],
+    loc: tuple[int | str, ...],
+    msg: str,
+    *,
+    preset: bool = False,
+    fix: str | None = None,
+) -> ConfigurationError:
     """The ConfigurationError for a failure of `model`'s field at `loc` (none when the value is
-    not one at all), from pydantic's message, which holds no value."""
-    who = _WHO[model.__name__]
+    not one at all), from pydantic's message, which holds no value, with `fix` or the field's
+    own FIX. `preset` says whether a preset built the language."""
+    who = _WHO[_library(model).__name__]
     field = str(loc[0]) if loc else None
     reason = msg.removeprefix("Value error, ")
     reason = reason[:1].lower() + reason[1:]
-    if field is None:
-        fix = _FIXES[model.__name__]
-    elif field in model.model_fields:
-        fix = _FIXES[field]
-    else:
-        *names, last = (f"`{name}`" for name in model.model_fields)
-        fix = f"remove `{field}`: {who.lower()} takes {', '.join(names)} and {last}."
     where = "" if field is None else f" with its `{field}`"
+    fix = fix or _fix(model, field, preset=preset)
     return ConfigurationError(
         f"{who} cannot run{where}: {reason}. FIX: {fix}", details={"field": field}
     )
+
+
+def _library(model: type[BaseModel]) -> type[_Declared]:
+    """The library's own class `model` is: itself, or the `Language` a team's subclass is
+    built on, which says who is at fault and how each of its fields is fixed."""
+    return Language if issubclass(model, Language) else VoiceAgent
+
+
+def _fix(model: type[BaseModel], field: str | None, *, preset: bool) -> str:
+    """How `field` of `model` is fixed: a field of the library's class by its own FIX (the
+    notices' by the way the language was built), a field a team's subclass adds by its type, and
+    a key no field has by removing it."""
+    base = _library(model)
+    if field is None:
+        return _FIXES[base.__name__]
+    if field in base.model_fields:
+        return _NOTICES_FIX[preset] if field == "notices" else _FIXES[field]
+    if field in model.model_fields:
+        return f"correct `{field}`, the field {model.__name__} adds to {base.__name__}."
+    *names, last = (f"`{name}`" for name in model.model_fields)
+    return f"remove `{field}`: {_WHO[base.__name__].lower()} takes {', '.join(names)} and {last}."
 
 
 class Language(_Declared):
@@ -258,30 +288,30 @@ class Language(_Declared):
     @classmethod
     def saudi_arabic(
         cls, *, greeting: str, notices: Mapping[NoticeKind, str] | None = None
-    ) -> Language:
+    ) -> Self:
         """Saudi Arabic (`ar-SA`), opening each call with `greeting`; `notices` replaces the
         preset's text of each kind it names."""
         return cls._preset("ar-SA", greeting, notices)
 
     @classmethod
-    def arabic(cls, *, greeting: str, notices: Mapping[NoticeKind, str] | None = None) -> Language:
+    def arabic(cls, *, greeting: str, notices: Mapping[NoticeKind, str] | None = None) -> Self:
         """Modern Standard Arabic (`ar`), opening each call with `greeting`; `notices` replaces
         the preset's text of each kind it names."""
         return cls._preset("ar", greeting, notices)
 
     @classmethod
-    def english(cls, *, greeting: str, notices: Mapping[NoticeKind, str] | None = None) -> Language:
+    def english(cls, *, greeting: str, notices: Mapping[NoticeKind, str] | None = None) -> Self:
         """English (`en`), opening each call with `greeting`; `notices` replaces the preset's
         text of each kind it names."""
         return cls._preset("en", greeting, notices)
 
     @classmethod
-    def _preset(cls, tag: LanguageTag, greeting: str, notices: object) -> Language:
-        texts: object = notices if notices is not None else _NOTICES[tag]
+    def _preset(cls, tag: LanguageTag, greeting: str, notices: object) -> Self:
+        texts: object = notices if notices is not None else NOTICES[tag]
         if isinstance(notices, Mapping):
-            texts = {**_NOTICES[tag], **notices}
-        fields = {"tag": tag, "greeting": greeting, "echo_frame": _ECHO_FRAMES[tag]}
-        return cls.model_validate(fields | {"notices": texts})
+            texts = {**NOTICES[tag], **notices}
+        fields = {"tag": tag, "greeting": greeting, "echo_frame": ECHO_FRAMES[tag]}
+        return cls.model_validate(fields | {"notices": texts}, context=_FROM_PRESET)
 
     @property
     def primary(self) -> Literal["ar", "en"]:
@@ -342,19 +372,3 @@ class VoiceAgent(_Declared):
         found = [language for language in self.languages if language.tag.casefold() == wanted]
         found += [language for language in self.languages if language.primary == primary]
         return (found or list(self.languages))[0]
-
-
-def fixed_phrases(agent: VoiceAgent) -> tuple[tuple[str, LanguageTag], ...]:
-    """Every phrase a call of `agent` speaks as written, each with its language: each language's
-    greeting, echo frame and spoken notices (`SPOKEN_NOTICES`). The runtime declares them to the
-    phrase cache at its start (the design's 10.4), so the session plays each with no request;
-    words heard in a call are never among them (invariant 8)."""
-    return tuple(
-        (text, language.tag)
-        for language in agent.languages
-        for text in (
-            language.greeting,
-            language.echo_frame,
-            *(language.notices[kind] for kind in SPOKEN_NOTICES),
-        )
-    )

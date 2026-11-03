@@ -10,8 +10,13 @@ included (session/io.py): a turn whose speech began while the greeting played, o
 after it, is not answered. So the transport feeds digital silence until the greeting's last
 clause has played (its `ClausePlayed`, or its `ClauseFailed`), and only then the clip's lead:
 the clip never overlaps the greeting, and a lead over the rule's 0.3 s (the registration's 1 s)
-keeps its first speech from being dropped. The greeting is a cached phrase, synthesized once
-before the first call like the echo's frame, so its one request counts in run T's budget.
+keeps its first speech from being dropped. The greeting is a fixed phrase, played from the
+phrase audio `calls` was built with (voice's `PhraseAudio`), so a file-fed call sends no request
+for it: the requests that synthesized it are the phrase cache's, before the first call, and they
+count in run T's budget as `PhraseCache.declare` returns them (adapters/phrase_cache.py: one for
+each request it packed, about n / `max_chars` for a phrase of n characters, none for a phrase its
+folder held). A call whose phrase audio is silence of no length, as testing's `turn_ends` gives
+its own, has played its greeting once connected, so its lead starts there.
 
 The clip is fed at real-time pace, so Pipecat's timers run as in a call: 20 ms frames, each due
 at an absolute deadline on `time.perf_counter` (the call's start plus n frames), since relative

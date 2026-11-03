@@ -2,8 +2,10 @@
 the text-to-speech provider says a term as the team wants it. The map is the team's data, given
 with its agent (`VoiceAgent(pronounce={"LT-": {"ar": ..., "en": "L T"}})`, the design's 4.3),
 which checks each entry when the agent is declared (domain/declaration.py); an app's own entries
-never sit in the library (ARCH-WORDS). Built by plan 003's Track A; until then a stub. Public
-through the `languages` facade, with its type.
+never sit in the library (ARCH-WORDS). The phrase cache applies it to each fixed phrase before
+it packs the phrase's requests, so no request passes `max_chars` once the map has run, and keeps
+the phrase under its written form, which captions show (adapters/phrase_cache.py). Built by
+plan 003's Track A; until then a stub. Public through the `languages` facade, with its type.
 """
 
 from __future__ import annotations

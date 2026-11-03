@@ -14,7 +14,7 @@ from t2_agentic_voice import InvalidRequestError
 from t2_agentic_voice.core.config import VoiceSettings
 from t2_agentic_voice.core.identity import Caller
 from t2_agentic_voice.core.settings.tts import LanguageTag
-from t2_agentic_voice.domain.declaration import fixed_phrases
+from t2_agentic_voice.domain.fixed_phrases import fixed_phrases
 from t2_agentic_voice.events import CallStarted
 from t2_agentic_voice.voice.protocol import Caption, Hangup, State
 from t2_agentic_voice.voice.session.call import CallSession
@@ -84,7 +84,7 @@ def test_the_fake_phrases_give_only_the_phrases_declared() -> None:
         with pytest.raises(LookupError):
             phrases.audio(text, language=language)
     assert fake.asked[-1] == ("words heard in a call", "en") and len(fake.asked) == 4
-    assert fake.declared == set(fixed_phrases(AGENT))
+    assert fake.declared == {(phrase.text, phrase.language) for phrase in fixed_phrases(AGENT)}
     assert phrases.audio(english.notices["ended"], language="en").pcm16 == chunk.pcm16
     with pytest.raises(LookupError):
         phrases.audio(english.notices["busy"], language="en")  # spoken by no call

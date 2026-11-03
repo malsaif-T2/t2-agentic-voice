@@ -9,9 +9,10 @@ from pathlib import Path
 from typing import cast
 
 import pytest
-from t2_agentic_voice.adapters.phrase_cache import PhraseCache
+from t2_agentic_voice.adapters.phrase_cache import MAX_RETRY_DELAY_S, RETRIES, PhraseCache
 from t2_agentic_voice.core.config import VoiceSettings
 from t2_agentic_voice.core.settings.tts import TtsSettings
+from t2_agentic_voice.domain.declaration import Language, VoiceAgent
 from t2_agentic_voice.domain.ports.text_to_speech import TextToSpeech
 from t2_agentic_voice.voice.session.io import PhraseAudio
 
@@ -28,7 +29,13 @@ def test_the_phrase_cache_is_a_stub_until_track_b(settings: VoiceSettings, tmp_p
             build()
     stub = PhraseCache.__new__(PhraseCache)  # the methods' stubs, past the constructor's
     phrases: PhraseAudio = stub  # the session's view: mypy checks the protocol's shape
+    agent = VoiceAgent(name="echo", languages=[Language.english(greeting="Hello there.")])
     with pytest.raises(NotImplementedError, match="Track B"):
-        asyncio.run(stub.declare([("I heard:", "en")]))
+        asyncio.run(stub.declare(agent))
     with pytest.raises(NotImplementedError, match="Track B"):
         phrases.audio("I heard:", language="en")
+
+
+def test_a_rate_limited_request_waits_at_most_a_minute_and_is_sent_again_twice() -> None:
+    """The bounds the integrator ruled for the phrases' requests at start (plan 003)."""
+    assert (MAX_RETRY_DELAY_S, RETRIES) == (60.0, 2)

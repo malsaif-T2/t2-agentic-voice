@@ -29,7 +29,7 @@ NAMES = {
     "t2_agentic_voice.groq": {"GroqSTT", "GroqTTS"},
     "t2_agentic_voice.identity": {"DevIdentity", "SignedJoinTokens"},
     "t2_agentic_voice.server": {"combine_lifespans", "serve"},
-    "t2_agentic_voice.stores": {"MemoryUsedTokens", "SqliteUsedTokens"},
+    "t2_agentic_voice.stores": {"MemoryUsedTokens", "PhraseCache", "SqliteUsedTokens"},
     "t2_agentic_voice.events": {
         "AgentSpeechEnded",
         "CallEnded",
@@ -53,6 +53,7 @@ NAMES = {
         "normalize_arabic",
         "normalize_digits",
         "pronounce",
+        "provider_text",
         "speak_id",
         "speak_number",
         "spelling_issues",
@@ -60,6 +61,7 @@ NAMES = {
     },
     "t2_agentic_voice.evals": {
         "EchoTiming",
+        "PhraseAudio",
         "Recall",
         "TurnEnd",
         "TurnTiming",

@@ -24,10 +24,11 @@ the plan's interfaces"; what Track F builds:
   second process on the same folder is refused with a FIX line that points to the sidecar, on
   Windows and on Linux; resolves every secret the settings name in a file, so a short one stops
   the server at its start rather than at the first join; builds the providers and tracing;
-  warms the adapters with no request (TD-012); declares the agent's fixed phrases
-  (domain/declaration.py's `fixed_phrases`) to the phrase cache, which synthesizes those it
-  lacks, one longer than the text-to-speech's `max_chars` clause by clause, so the runtime
-  refuses none at its start (adapters/phrase_cache.py); opens the used-token store under
+  warms the adapters with no request (TD-012); has the phrase cache declare the agent's fixed
+  phrases (`PhraseCache.declare(agent)`: domain/fixed_phrases.py, said through the agent's
+  pronunciation map), which synthesizes those it lacks one request at a time, one longer than
+  the text-to-speech's `max_chars` in requests packed up to it, so the runtime refuses none at
+  its start (adapters/phrase_cache.py); opens the used-token store under
   `storage.var_dir`; and starts voice's entry point (`VoiceCalls.start`), which builds Silero
   and Smart Turn there, never at import (item 24). On its way out it ends every call, each
   peer's close bounded by a timeout (item 20), closes each adapter (`aclose`), the store and
