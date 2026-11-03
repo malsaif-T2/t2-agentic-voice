@@ -1,7 +1,7 @@
-"""The run history's new kinds (run_lines.py): an end-of-turn run's line and a timing run's,
-appended and read back beside `poe eval`'s, which carry no `kind`; each rendered in its own
-table, with its strata and its prices, and counted in the spend; and the checks they are read
-with, a held-out run's groups and a kind no line has."""
+"""The run history's new kinds (run_lines.py): an end-of-turn run's line, a timing run's and an
+overlap run's, appended and read back beside `poe eval`'s, which carry no `kind`; each rendered
+in its own table, with its strata, its targets and its prices, and counted in the spend; and the
+checks they are read with, a held-out run's groups and a kind no line has."""
 
 from __future__ import annotations
 
@@ -12,7 +12,7 @@ from typing import Any
 import pytest
 from ole5_voice.evals.eot_score import EotMetrics, EotRun, EotScorecard, EotSetCard
 from ole5_voice.evals.history import append_line, read_history, render_history
-from ole5_voice.evals.run_lines import EotCount, EotLine, TimingLine
+from ole5_voice.evals.run_lines import EotCount, EotLine, OverlapCount, OverlapLine, TimingLine
 from ole5_voice.evals.scorecard import EvalDataError
 from pydantic import ValidationError
 
@@ -70,15 +70,46 @@ def timing_line(**fields: Any) -> TimingLine:
     return TimingLine.model_validate(base | fields)
 
 
+def overlap_line(**fields: Any) -> OverlapLine:
+    count = OverlapCount(
+        items=3, variants=6, right=5, should_stop=4, stopped=3, should_go_on=2, false_stops=0
+    )
+    base: dict[str, Any] = {
+        "time": samples.WHEN,
+        "commit": "0f44056",
+        "run": "o1",
+        "answerer": "pipeline",
+        "settings": {"interruptions.mode": "two_step"},
+        "split": "dev",
+        "items": 3,
+        "variants": 6,
+        "right": 5,
+        "stop_median_ms": 512.0,
+        "stop_p90_ms": 880.0,
+        "requests_max": 2,
+        "targets": {"requests_per_overlap": True, "stop_words_heard": False, "quiet": None},
+        "breakdowns": {"kind": {"stop_word": count}},
+        "requests": 9,
+        "billed_seconds": 90.0,
+        "price_per_hour_usd": 0.111,
+        "cost_usd": 0.0028,
+        "scorecard": "scorecard.json",
+        "data_digest": samples.SHA,
+        "note": "O1",
+        "complete": True,
+    }
+    return OverlapLine.model_validate(base | fields)
+
+
 def test_each_kind_is_appended_and_read_back_as_its_own(tmp_path: Path) -> None:
     path = tmp_path / "history.jsonl"
-    lines = (samples.history_line("r1"), eot_line(), timing_line())
+    lines = (samples.history_line("r1"), eot_line(), timing_line(), overlap_line())
     for line in lines:
         append_line(line, path)
     assert read_history(path) == lines
     written = [json.loads(raw) for raw in path.read_text("utf-8").splitlines()]
-    assert ["kind" in raw for raw in written] == [False, True, True]
-    assert [raw.get("kind") for raw in written[1:]] == ["eot", "timing"]
+    assert ["kind" in raw for raw in written] == [False, True, True, True]
+    assert [raw.get("kind") for raw in written[1:]] == ["eot", "timing", "overlap"]
 
 
 def test_a_line_of_no_known_kind_is_refused_by_its_fields(tmp_path: Path) -> None:
@@ -95,6 +126,32 @@ def test_a_held_out_end_of_turn_line_holds_no_small_group() -> None:
     wide = {"language": {"saudi": EotCount(items=9, variants=9, cut_offs=0, misses=0)}}
     with pytest.raises(ValidationError, match="no more items than the run"):
         eot_line(breakdowns=wide)
+
+
+def test_a_held_out_overlap_line_holds_no_small_group() -> None:
+    small = OverlapCount(
+        items=2, variants=2, right=2, should_stop=2, stopped=2, should_go_on=0, false_stops=0
+    )
+    with pytest.raises(ValidationError, match="at least 3 items"):
+        overlap_line(split="held-out", breakdowns={"language": {"english": small}})
+    wide = small.model_copy(update={"items": 9})
+    with pytest.raises(ValidationError, match="no more items than the run"):
+        overlap_line(breakdowns={"kind": {"stop_word": wide}})
+
+
+def test_an_overlap_run_has_its_table_its_strata_and_its_targets() -> None:
+    page = render_history([overlap_line(), overlap_line(requests_max=None, stop_median_ms=None)])
+    assert "## Overlap runs" in page and "Spend so far: 2 run(s), 180.0 billed seconds" in page
+    first = "| 1 | 2026-11-03T09:00:00+00:00 | o1 | 0f44056 | pipeline | dev | 3 | 6 | 5 | 512 "
+    assert first in page
+    assert "| 880 | 2 | 1 of 3 | 9 | 90.0 | $0.0028 | yes |" in page
+    assert "| — | 880 | — | 1 of 3 |" in page
+    assert "| kind | stop_word | 3 | 6 | 5 | 3 of 4 | 0 of 2 |" in page
+    assert "| requests_per_overlap | holds |" in page
+    assert "| stop_words_heard | fails |" in page and "| quiet | — |" in page
+    assert "| Price per hour of audio | $0.111 |" in page
+    bare = render_history([overlap_line(targets={}, breakdowns={})])
+    assert "| Target | Held |" not in bare and "| Stratum |" not in bare
 
 
 def test_each_kind_has_its_table_and_counts_in_the_spend() -> None:
