@@ -20,7 +20,7 @@ from t2_agentic_voice import get_logger
 
 from ole5_voice.evals.items import HISTORY_FILE
 from ole5_voice.evals.models import OTHER, Commit, Model, Name, Sha256, Split
-from ole5_voice.evals.overlap_run import Progress
+from ole5_voice.evals.overlap_run import Progress, Stopped
 from ole5_voice.evals.overlap_score import OverlapMetrics, OverlapResult, Target, metrics, targets
 from ole5_voice.evals.run_lines import AnyLine, OverlapCount, OverlapLine
 from ole5_voice.evals.runs import HELD_OUT_MIN_ITEMS, SCORECARD_FILE, Note, Shown, cost_usd
@@ -57,7 +57,7 @@ class OverlapScorecard(Model):
     run: OverlapRun
     speakers: Literal["one speaker"] = "one speaker"  # the owner alone (D-006)
     complete: bool
-    stopped: Literal["cap", "interrupted"] | None = None
+    stopped: Stopped | None = None
     totals: OverlapMetrics
     breakdowns: dict[str, dict[str, OverlapMetrics]]
     targets: tuple[Target, ...]

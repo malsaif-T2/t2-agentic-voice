@@ -162,7 +162,8 @@ def shown(settings: VoiceSettings, args: argparse.Namespace) -> dict[str, str]:
 async def _replayed(
     measuring: Measuring, todo: Sequence[Overlap], progress: Progress, side: Split
 ) -> None:
-    """Each clip through the replay, in order, until the last or the cap."""
+    """Each clip through the replay, in order, until the last, the cap, or a clip the replay
+    could not play, which stops the run with what it measured kept."""
     try:
         await measuring.replayer.start()
         for each in todo:
@@ -170,6 +171,9 @@ async def _replayed(
     except CapReachedError:
         progress.stopped = "cap"
         log.warning("cap_reached", done=len(progress.results), of=len(todo))
+    except (T2VoiceError, ValueError) as error:
+        progress.stopped = "failed"
+        log.error("replay_failed", done=len(progress.results), error=type(error).__name__)
     finally:
         await measuring.aclose()
 

@@ -59,8 +59,9 @@ _FLOW: Final = DataFlow(
 )
 # The library's language tags a replayed call is held in.
 Tag = Literal["ar-SA", "ar", "en"]
-# Why a run stopped before its last clip.
-Stopped = Literal["cap", "interrupted"]
+# Why a run stopped before its last clip: its cap, an interrupt, or a clip the replay could not
+# play (a reply no greeting may say, a call whose greeting never played).
+Stopped = Literal["cap", "interrupted", "failed"]
 log = get_logger(__name__)
 
 

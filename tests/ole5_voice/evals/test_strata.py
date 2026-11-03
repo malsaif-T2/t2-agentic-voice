@@ -6,6 +6,7 @@ from __future__ import annotations
 
 import re
 from collections import Counter
+from collections.abc import Mapping
 from datetime import date, datetime
 
 from ole5_voice.evals.items import EVALS, Strata, count_strata, load_items, load_terms, read_toml
@@ -76,7 +77,7 @@ LANGUAGES = ("saudi", "msa", "english", "mixed", "none")
 REPLIES = {"ar_archive", "ar_inbox", "ar_password", "ar_ticket", "en_signature", "en_ticket"}
 
 
-def _counted(proposal: dict[str, tuple[int, ...]]) -> Counter[tuple[str, str]]:
+def _counted(proposal: Mapping[str, tuple[int, ...]]) -> Counter[tuple[str, str]]:
     return Counter(
         {
             (kind, language): n

@@ -22,6 +22,7 @@ from ole5_voice.evals.run_lines import OverlapLine
 from ole5_voice.evals.run_parts import Parts
 from ole5_voice.evals.runs import SCORECARD_FILE
 from ole5_voice.evals.split import load_split
+from t2_agentic_voice import T2VoiceError
 from t2_agentic_voice.evals import OverlapReplay
 
 from tests.ole5_voice.evals.overlap_support import (
@@ -155,12 +156,22 @@ def test_a_held_out_run_writes_aggregates_only(tmp_path: Path) -> None:
     assert isinstance(line, OverlapLine) and line.split == "held-out"
 
 
-def test_an_interrupted_run_keeps_what_it_measured(tmp_path: Path) -> None:
-    run = _world(tmp_path, stop(), KeyboardInterrupt())
+@pytest.mark.parametrize(
+    ("failure", "stopped"),
+    [
+        (KeyboardInterrupt(), "interrupted"),
+        (T2VoiceError("The file-fed call's greeting never played."), "failed"),
+        (ValueError("the reply is no phrase a greeting may say"), "failed"),
+    ],
+)
+def test_a_run_stopped_early_keeps_what_it_measured(
+    tmp_path: Path, failure: BaseException, stopped: str
+) -> None:
+    run = _world(tmp_path, stop(), failure)
     argv = pipeline(run, "--replies", str(run.world.top / "lab"))
     assert overlap.main(argv, parts=run.parts()) == 1
     card = OverlapScorecard.model_validate_json((run.out / SCORECARD_FILE).read_bytes())
-    assert (card.complete, card.stopped, len(card.variants)) == (False, "interrupted", 1)
+    assert (card.complete, card.stopped, len(card.variants)) == (False, stopped, 1)
     assert run.replayer.closed == 1 and run.stt.closed
 
 
