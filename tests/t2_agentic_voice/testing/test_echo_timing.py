@@ -164,8 +164,8 @@ def test_only_a_turn_part_is_the_turns_own_transcript() -> None:
     window = Transcribing(turn_id=0, at=10.9, audio_s=0.75, part="window")
     whole = Transcribing(turn_id=0, at=11.2, audio_s=1.1, part="overlap")
     heard = [
-        Transcribed(turn_id=0, at=at, audio_s=s, sent_at=sent, transcript=None, part=part)
-        for at, s, sent, part in ((11.1, 0.75, 10.9, "window"), (11.4, 1.1, 11.2, "overlap"))
+        Transcribed(turn_id=0, at=11.1, audio_s=0.75, sent_at=10.9, transcript=None, part="window"),
+        Transcribed(turn_id=0, at=11.4, audio_s=1.1, sent_at=11.2, transcript=None, part="overlap"),
     ]
     call = _call()
     fed = FedCall(
