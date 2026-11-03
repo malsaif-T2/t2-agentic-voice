@@ -88,15 +88,18 @@ class Interrupter:
         """An overlap's window or whole transcript came, in whichever order: its request's
         failure told, then judged, and the verdict carried out once it decides; a turn's own
         transcript held for it is then taken. One that comes once the overlap is decided (a
-        window after the whole overlap, or an empty part after the turn's own transcript decided
-        it) changes nothing."""
+        window after the whole overlap, or a part after the turn's own transcript decided it)
+        changes nothing. A part with no request of its own (it reuses the turn's) is timed to
+        when the turn's speech ended."""
         self._usage.transcribed(event)
         state = self._overlaps.get(event.turn_id)
         if state is None:
             return
-        if event.failure is not None and event.part in state.asked:
+        asked = event.part in state.asked
+        if event.failure is not None and asked:
             self._events.failed(event.failure, event.retryable, event.turn_id)
-        verdict = self._overlaps.judge(event, played=self._played(state))
+        ended = None if asked else self._turns.turn(event.turn_id).speech_ended_at
+        verdict = self._overlaps.judge(event, played=self._played(state), ended_at=ended)
         if verdict is None:
             return
         self._judged(event, verdict)

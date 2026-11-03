@@ -196,3 +196,14 @@ def test_a_turn_that_decided_its_overlap_is_not_judged_again(
         )
         is None
     )
+
+
+def test_a_part_asked_for_sooner_than_the_stop_delay_has_no_speech_below_zero(
+    settings: VoiceSettings, rule: FakeRule
+) -> None:
+    """The whole overlap's request went 100 ms after its speech began, under the detector's
+    200 ms stop delay: its speech is 0 s, never below (the rule's `Overlap` refuses it)."""
+    overlaps = Overlaps(FakeSessionIO(two_step(settings)).setup)
+    overlaps.open(0, reply_id=1, speech_at=1.0, at=1.3)
+    overlaps.judge(_heard(0, LISTENING_TEXT, part="overlap", sent_at=1.1), played=())
+    assert rule.judged[0].speech_s == 0.0

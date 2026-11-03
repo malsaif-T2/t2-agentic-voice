@@ -13,8 +13,10 @@ the call is still undecided (`settle`), so one decision never raises the agent's
 still being judged; an overlap the call's end cuts gets none (the client restores the volume when
 the call ends). At most two requests decide one overlap, its window's and its whole overlap's;
 once one stops the agent, the other's verdict changes nothing. The turn's own transcript decides
-only an overlap whose whole-overlap request never went, and is judged again after a verdict to go
-on when speech followed it (`judge_after`), at no request.
+only an overlap whose whole-overlap request had not gone when it came (its `HearOverlap` reached
+the bridge after the turn closed: the whole overlap then reuses the turn's result, and changes
+nothing), and is judged again after a verdict to go on when speech followed it (`judge_after`),
+at no request.
 
 The rule reads each transcript's speech time (`Overlap.speech_s`) from the turn's `speech_at`: a
 window's to its request, the speech still going on; the whole overlap's to its request less the
@@ -143,13 +145,14 @@ class Overlaps:
         self, event: Transcribed, *, played: Sequence[str], ended_at: float | None
     ) -> Verdict | None:
         """The rule's verdict on the turn's own transcript of an overlap the rule let go on,
-        when speech followed the transcript that decided it (the turn's own request went): a
-        word asking the agent to stop after a listening sound, in one turn, still stops it.
-        None for any other turn."""
+        when speech followed the transcript that decided it (the turn's own request went, and
+        the transcript that decided was not the same result reused): a word asking the agent to
+        stop after a listening sound, in one turn, still stops it. None for any other turn."""
         state = self._overlaps.get(event.turn_id)
         if state is None or state.decided is None or state.decided.action != "go_on":
             return None
-        if "turn" not in state.asked or state.decided_by == "turn":
+        decided_by = state.decided_by
+        if "turn" not in state.asked or decided_by == "turn" or decided_by not in state.asked:
             return None
         return self._verdict(state, event, played, ended_at)
 

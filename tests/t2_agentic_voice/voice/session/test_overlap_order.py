@@ -19,7 +19,7 @@ from t2_agentic_voice.core.events import Interrupted, ProviderFailed
 from t2_agentic_voice.voice.protocol import Caption, Duck, Notice, Unduck
 from t2_agentic_voice.voice.session.commands import HearOverlap, Send, StopSpeaking
 from t2_agentic_voice.voice.session.playback import DROP_AFTER_S
-from t2_agentic_voice.voice.session.session_events import Transcribed
+from t2_agentic_voice.voice.session.session_events import Transcribed, TranscriptPart
 
 from tests.t2_agentic_voice.voice.session.overlap_support import (
     LISTENING_TEXT,
@@ -317,3 +317,34 @@ def test_a_failed_request_is_reported_once_and_the_turn_reusing_it_not_again(
     assert rule.texts == [""] and sent(io, Unduck) == [Unduck()]
     assert report(io).usage[0].requests == 2  # turn 0's and the overlap's
     assert speaks(io, 2) == [] and sent(io, Notice) == []
+
+
+@pytest.mark.parametrize("turn_first", [True, False], ids=["turn-first", "overlap-first"])
+def test_an_overlap_heard_after_its_turn_closed_is_decided_once_from_the_turns_result(
+    settings: VoiceSettings, rule: FakeRule, turn_first: bool
+) -> None:
+    """A short sound over the echo: the `HearOverlap` reached the bridge after the turn closed,
+    so the turn's own request went, and its whole overlap reuses that result, with no request
+    of its own, after the turn's transcript (as the bridge sends it) or before it. Either way
+    the overlap is decided once, its speech timed to when the turn's speech ended, the voice
+    comes back once, and the turn is not answered."""
+    io, session = call(two_step(settings))
+
+    async def drive() -> None:
+        await echo_playing(io)
+        await io.turn_opened(1)
+        await io.clock.advance(0.4)
+        await io.turn_closed(1)
+        await io.clock.advance(0.5)  # the turn analyzer's decision
+        await io.transcribing(1, audio_s=0.4)
+        parts: list[TranscriptPart] = ["turn", "overlap"] if turn_first else ["overlap", "turn"]
+        for part in parts:
+            await io.transcribed(1, SHORT_TEXT, language="en", part=part)
+        await io.ending()
+        await io.close()
+
+    asyncio.run(drive())
+    assert rule.texts == [SHORT_TEXT] and rule.judged[0].speech_s == pytest.approx(0.4)
+    assert sent(io, Unduck) == [Unduck()] and io.commands.of(StopSpeaking) == []
+    assert speaks(io, 2) == [] and session.history.turns()[1].fate == "went_on"
+    assert report(io).usage[0].requests == 2  # turn 0's and turn 1's own
