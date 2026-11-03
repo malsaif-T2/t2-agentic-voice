@@ -264,8 +264,9 @@ given after the task's name:
   the file-fed pipeline's `AudioCall`, which spends, paced at 10 Whisper requests a minute and
   held under its cap, appending an overlap line for a pipeline run.
 
-The split has no task: `python -m ole5_voice.evals.split` writes it, and a test inside
-`poe check` fails when the committed split is stale. Nor do the calls' manifests:
+The split has no task: `python -m ole5_voice.evals.split` writes it (with `--keep`, new items
+placed and every committed item keeping its side), and a test inside `poe check` fails when the
+committed split is stale. Nor do the calls' manifests:
 `python -m ole5_voice.evals.call_manifests` writes each recorded call's manifest under
 `evals/calls/`, and `python -m ole5_voice.evals.import_calls` imports the overlaps of the
 recorded calls the owner labelled as items, checking each call's alignment first (TD-070). The scores these commands give come from

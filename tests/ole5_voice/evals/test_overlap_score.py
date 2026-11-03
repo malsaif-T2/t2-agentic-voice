@@ -95,7 +95,7 @@ def test_a_stop_is_timed_from_its_marked_end_or_else_from_the_detector() -> None
 def test_the_overlap_set_holds_clips_over_a_reply_and_those_fed_over_one() -> None:
     assert in_set("request", ("over-assistant", "duck"))
     assert not in_set("request", ("duck",))  # a request recorded alone
-    assert in_set("stop_word", ()) and in_set("echo_only", ())
+    assert in_set("stop_word", ()) and in_set("echo_only", ()) and in_set("correction", ())
     assert not in_set("ticket_number", ()) and not in_set("made_up_kind", ("over-assistant",))
 
 

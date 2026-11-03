@@ -12,13 +12,13 @@ over it go into `overlap_replies.json`, by variant, which `poe overlap` plays th
 
 **The owner's labels** (`--labels`, `CallLabels`; Q2 and step 11's review): what each overlap
 is, by its call and turn: its kind, its language, its device, what was said (the owner's typed
-words, empty for no speech, with the language `none`) and, for a stop or wait word, its end in
-ms from the clip's start. An overlap with no label is listed by its call and turn and left out;
-a label of a read call's turn that is no overlap is refused. Each labelled overlap is an item of
-its own, `call-<call>-turn-<n>`, of the source `talkover` (said over the agent), its one variant
-tagged `over-assistant` and `call`; its typed reference waits for the owner's confirmation in a
-review (`--reviews`, the recorder's `--out`, session `calls`), as `items.unchecked` says, before
-any run takes it.
+words, empty for no speech, with the language `none`) and, for a stop word or a word asking the
+agent to pause, its end in ms from the clip's start. An overlap with no label is listed by its
+call and turn and left out; a label of a read call's turn that is no overlap is refused. Each
+labelled overlap is an item of its own, `call-<call>-turn-<n>`, of the source `talkover` (said
+over the agent), its one variant tagged `over-assistant` and `call`; its typed reference waits
+for the owner's confirmation in a review (`--reviews`, the recorder's `--out`, session `calls`),
+as `items.unchecked` says, before any run takes it.
 """
 
 from __future__ import annotations

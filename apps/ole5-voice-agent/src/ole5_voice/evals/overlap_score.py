@@ -1,14 +1,15 @@
 """The scorer of `poe overlap` (plan 005's registration, the arm O): each overlap clip's verdict
 judged against what its kind should do, its stop timed, and the run's numbers and targets.
 
-**What each should do** (the registration's Data): a stop or wait word (`stop_word`), a request
-of any kind, a confirmation or a correction over a reply stops the agent; a repeat request stops
-it and says the last reply again; a listening sound, silence, noise or the agent's own echo
-(`echo_only`) lets it go on (`EXPECTED`). A verdict is right when its action is that; a clip
-whose speech opened no overlap, or that nothing decided, went on. The set is every variant tagged
-`over-assistant` of a kind with an expected action, and every variant of a kind the replay feeds
-over a reply even when it was recorded alone (`FED_OVER_REPLY`: the script's stop, repeat and
-listening items, silence, noise and the echo).
+**What each should do** (the registration's Data): a stop word or a word asking the agent to
+pause (`stop_word`), a request of any kind, a confirmation or a correction over a reply stops
+the agent; a repeat request stops it and says the last reply again; a listening sound, silence,
+noise or the agent's own echo (`echo_only`) lets it go on (`EXPECTED`). A verdict is right when
+its action is that; a clip whose speech opened no overlap, or that nothing decided, went on. The
+set is every variant tagged `over-assistant` of a kind with an expected action, and every
+variant of a kind the script records over a reply, or alone and the replay feeds over one
+(`FED_OVER_REPLY`: its stop, repeat and listening items, its corrections, silence, noise and
+the echo).
 
 **The stop time**, for a variant that stopped the agent: from the owner's mark of its word's end
 (the first of `turn_ends_ms`) to the last agent audio frame sent; with no mark, from the speech
@@ -56,7 +57,15 @@ EXPECTED: Final[dict[str, Action]] = {
     "echo_only": "go_on",
 }
 FED_OVER_REPLY: Final = frozenset(
-    {"stop_word", "repeat_request", "listening_sound", "silence", "noise", "echo_only"}
+    {
+        "stop_word",
+        "repeat_request",
+        "listening_sound",
+        "correction",
+        "silence",
+        "noise",
+        "echo_only",
+    }
 )
 _STOP_WORDS: Final = frozenset({"stop_word"})
 _REQUESTS: Final = frozenset(k for k, a in EXPECTED.items() if a != "go_on") - _STOP_WORDS
