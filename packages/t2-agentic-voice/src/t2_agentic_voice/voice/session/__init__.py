@@ -8,6 +8,7 @@ The session is `call.py`'s `CallSession`; the echo's replies are `echo.py`'s, th
 `heard.py`'s, the replies as they play `playback.py`'s, the speaker `speaker.py`'s, the turns as
 the session keeps them `turn_book.py`'s, its limit timers `limits.py`'s, the usage `usage.py`'s,
 the turn records, public events and report `report.py`'s, and the recorder `recording.py`'s.
-Plan 005 adds, as signatures so far, each reply's cancel scope (`scope.py`), the heard history
-(`history.py`) and the overlaps (`overlap.py`).
+Plan 005 adds each reply's cancel scope (`scope.py`), the heard history (`history.py`), the
+overlaps under `interruptions.mode = "two_step"` (`overlap.py`, carried out by
+`interrupter.py`), and the call's books that its parts share (`books.py`).
 """

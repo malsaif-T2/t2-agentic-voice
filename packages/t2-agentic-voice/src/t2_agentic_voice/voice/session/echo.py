@@ -9,13 +9,17 @@ clauses packed greedily, in order, into requests of at most `max_chars`, as the 
 a fixed phrase: a turn of n characters costs about n / `max_chars` requests, not one a clause,
 which at Groq's published 10 requests a minute would burst past it. An echo sends at most
 `MAX_ECHO_REQUESTS`, its first; what is left goes unsaid, logged by number alone. Each request is
-sent as the provider's text (`provider_text`, never longer) and captioned as said. No text built
-from heard words is ever asked of the phrase audio (invariant 8).
+sent as the provider's text (`provider_text`, never longer) and captioned as said; a clause with
+no letter or digit says nothing and is never sent (TD-060). A reply said again at the caller's
+request (`again`) says each of its clauses as it did: a fixed phrase from the phrase audio, the
+rest through text-to-speech. No text built from heard words is ever asked of the phrase audio
+(invariant 8).
 """
 
 from __future__ import annotations
 
-from dataclasses import dataclass
+from collections.abc import Sequence
+from dataclasses import dataclass, replace
 
 from t2_agentic_voice.core.events import TurnId
 from t2_agentic_voice.core.logging import get_logger
@@ -70,13 +74,15 @@ def said(text: str, *, agent: VoiceAgent, language: Language, max_chars: int | N
     """`text` as the agent says it in `language`, one item a request: its pronunciation map
     applied, then cut into clauses of at most `max_chars` characters, and the clauses packed
     greedily, in order, joined by a space, a request ended only where its next clause would pass
-    `max_chars` (one request for no limit); none for a text with nothing to say. The splitter
-    keeps only the clauses that say something, each with a letter, a digit or a symbol, none of
-    which `provider_text` drops, so every request still says something as the provider's text:
-    a clause of joiners and direction marks alone is never one."""
+    `max_chars` (one request for no limit); none for a text with nothing to say. Only a clause
+    with a letter or a digit is kept, none of which `provider_text` drops, so every request
+    still says something as the provider's text: a clause of symbols alone ("♪", which
+    Whisper writes on noise), or of joiners and direction marks, is never one (TD-060)."""
     spoken = pronounce(text, agent.pronounce, language=language.tag)
     requests: list[str] = []
     for clause in split_clauses(spoken, max_chars=max_chars):
+        if not any(character.isalnum() for character in clause):
+            continue
         if requests and (max_chars is None or len(requests[-1]) + 1 + len(clause) <= max_chars):
             requests[-1] = f"{requests[-1]} {clause}"
         else:
@@ -108,4 +114,31 @@ def echo(setup: CallSetup, heard: HeardWords, *, reply_id: ReplyId) -> list[Line
             language=language.tag,
         )
         lines.append(Line(speak=speak, caption=request))
+    return lines
+
+
+def again(
+    setup: CallSetup,
+    clauses: Sequence[tuple[str, bool]],
+    *,
+    reply_id: ReplyId,
+    turn_id: TurnId | None,
+) -> list[Line]:
+    """A reply said again at the caller's request, as reply `reply_id` answering `turn_id`: each
+    of its `clauses` in order, given as its caption and whether it was a fixed phrase. A fixed
+    phrase plays from the phrase audio as `fixed` plays it (none, logged, when the phrase audio
+    lacks it); any other clause, its caption as said, goes through text-to-speech again as the
+    provider's text, so no heard words reach the phrase audio (invariant 8)."""
+    tag = setup.language.tag
+    lines: list[Line] = []
+    for caption, cached in clauses:
+        index = len(lines)
+        if cached:
+            line = fixed(setup, caption, reply_id=reply_id, turn_id=turn_id)
+            if line is not None:
+                lines.append(replace(line, speak=replace(line.speak, clause=index)))
+            continue
+        text = provider_text(caption)
+        speak = Speak(reply_id=reply_id, clause=index, turn_id=turn_id, text=text, language=tag)
+        lines.append(Line(speak=speak, caption=caption))
     return lines

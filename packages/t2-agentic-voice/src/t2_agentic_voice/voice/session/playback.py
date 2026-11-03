@@ -4,9 +4,12 @@ session has asked for, which are playing, how much of each played, and when each
 asks for each reply clause by clause and ends each, is speaker.py's.
 
 A reply plays from its first clause's first audio (`ClauseQueued`) to its end: its last clause
-played or failed, or a stop or the call's end that dropped what was left. The drop rule reads
-those times: a turn whose speech began while a reply played, or within `DROP_AFTER_S` after one
-ended, is not answered.
+played or failed, or a stop or the call's end that dropped what was left. The drop rule and the
+overlaps read those times: a turn whose speech began while a reply played, or within
+`DROP_AFTER_S` after one ended, is over it (`over`); a reply the caller's own `stop` ended has no
+such tail, since nothing of it plays on to echo (TD-060). Its clauses tell which one plays now
+(`playing`), and which played lately, whose words the agent's own voice heard back would say
+(`heard_since`).
 """
 
 from __future__ import annotations
@@ -29,14 +32,16 @@ from t2_agentic_voice.voice.session.session_events import (
 # How long after a reply ends a turn's speech still counts as the agent's own voice, leaked past
 # the browser's echo cancellation (plan 003's decision log): seconds.
 DROP_AFTER_S = 0.3
-# What a reply is: the greeting (reply 0), a turn's echo, or a spoken notice.
-ReplyKind = Literal["greeting", "echo", "notice"]
+# What a reply is: the greeting (reply 0), a turn's echo, a spoken notice, or the last reply said
+# again at the caller's request.
+ReplyKind = Literal["greeting", "echo", "notice", "repeat"]
 
 
 @dataclass(kw_only=True)
 class Clause:
     """One clause of a reply as it plays: its caption, the characters of the request it sent
-    (none for a cached phrase), and what came of it."""
+    (none for a cached phrase), and what came of it (`played_at`, when its `ClausePlayed`
+    came)."""
 
     caption: str
     characters: int
@@ -44,6 +49,7 @@ class Clause:
     requested_at: float | None = None
     queued_at: float | None = None
     played: bool = False
+    played_at: float | None = None
     done: bool = False
     chunks: int = 0
     cut_short: bool = False
@@ -54,7 +60,9 @@ class Reply:
     """One of the agent's replies: its number, what it is, the caller's turn it answers (None
     for the greeting or a notice), the notice it speaks, its clauses, when it began and ended
     playing (`ended_at` set however it ended), whether a clause failed and the caller was told
-    of it (`told`: one `error` notice a reply), and whether a stop dropped it."""
+    of it (`told`: one `error` notice a reply), whether a stop dropped it (`stopped`), or a stop
+    or the call's end (`cut`), and how long after its end speech still counts as over it
+    (`tail_s`: none after the caller's own `stop`)."""
 
     reply_id: ReplyId
     kind: ReplyKind
@@ -66,19 +74,13 @@ class Reply:
     failed: bool = False
     told: bool = False
     stopped: bool = False
+    cut: bool = False
+    tail_s: float = DROP_AFTER_S
 
     @property
     def text(self) -> str:
         """What the reply was to say: its clauses' captions, one after another."""
         return " ".join(clause.caption for clause in self.clauses)
-
-    @property
-    def played_fraction(self) -> float:
-        """How much of the reply played whole, by its clauses' captions' characters: 1 when every
-        clause played."""
-        total = sum(len(clause.caption) for clause in self.clauses)
-        played = sum(len(clause.caption) for clause in self.clauses if clause.played)
-        return played / total if total else 1.0
 
     @property
     def first_audio_s(self) -> float | None:
@@ -177,7 +179,8 @@ class Playback:
         reply, clause = found
         clause.done = True
         if isinstance(event, ClausePlayed):
-            clause.played, clause.chunks, clause.cut_short = True, event.chunks, event.cut_short
+            clause.played, clause.played_at = True, event.at
+            clause.chunks, clause.cut_short = event.chunks, event.cut_short
         else:
             reply.failed = True
         if all(each.done for each in reply.clauses):
@@ -188,13 +191,42 @@ class Playback:
         """The replies asked for that have not ended, oldest first."""
         return [reply for reply in self._replies.values() if reply.ended_at is None]
 
-    def drop(self, at: float) -> list[Reply]:
+    def drop(self, at: float, *, tail: bool = True) -> list[Reply]:
         """End at `at` every reply asked for that has not ended, as a stop or the call's end
-        drops them; the replies dropped, oldest first."""
+        drops them, with no tail after it unless `tail` (the caller's own `stop` leaves none);
+        the replies dropped, oldest first."""
         dropped = self.in_progress()
         for reply in dropped:
-            reply.ended_at = at
+            reply.ended_at, reply.cut = at, True
+            if not tail:
+                reply.tail_s = 0.0
         return dropped
+
+    def playing(self) -> tuple[Reply, ClauseIndex] | None:
+        """The clause playing now, and its reply: the first not yet done of the oldest reply
+        playing, once its first audio was queued; None when no clause plays (clauses play in
+        the order they were asked for)."""
+        for reply in self.in_progress():
+            for index, clause in enumerate(reply.clauses):
+                if not clause.done:
+                    return (reply, index) if clause.queued_at is not None else None
+        return None
+
+    def heard_since(self, since: float) -> tuple[str, ...]:
+        """The captions of the clauses that played at or after `since`, in order, then the one
+        playing now: what the agent's own voice, heard back through the caller's microphone,
+        would say."""
+        played = [
+            clause
+            for reply in self._replies.values()
+            for clause in reply.clauses
+            if clause.played_at is not None and clause.played_at >= since
+        ]
+        texts = [clause.caption for clause in sorted(played, key=lambda c: c.played_at or 0.0)]
+        now = self.playing()
+        if now is not None:
+            texts.append(now[0].clauses[now[1]].caption)
+        return tuple(texts)
 
     @property
     def speaking(self) -> bool:
@@ -206,12 +238,14 @@ class Playback:
         """Whether a reply asked for has no audio queued yet."""
         return any(reply.started_at is None for reply in self.in_progress())
 
-    def heard_over(self, speech_at: float) -> bool:
-        """Whether speech that began at `speech_at` began while a reply played, or within
-        `DROP_AFTER_S` after one ended (the drop rule)."""
+    def over(self, speech_at: float) -> Reply | None:
+        """The newest reply that speech begun at `speech_at` began over: one playing then, or
+        that had ended within its tail before it (`DROP_AFTER_S`, none after the caller's own
+        `stop`); None when it began over none (the drop rule and the overlaps)."""
+        found = None
         for reply in self._replies.values():
             if reply.started_at is None or reply.started_at > speech_at:
                 continue
-            if reply.ended_at is None or speech_at <= reply.ended_at + DROP_AFTER_S:
-                return True
-        return False
+            if reply.ended_at is None or speech_at <= reply.ended_at + reply.tail_s:
+                found = reply
+        return found
