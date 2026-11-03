@@ -109,7 +109,8 @@ def report(io: FakeSessionIO) -> CallReport:
 
 
 def said_back(io: FakeSessionIO, text: str) -> list[str]:
-    """The clauses the session says `text` back in, as captions show them (the said form)."""
+    """The requests the session says `text` back in, its clauses packed up to `max_chars`, as
+    captions show them (the said form), before an echo's bound on its requests."""
     setup = io.setup
     max_chars = setup.max_chars(setup.language.tag)
     return said(text, agent=setup.agent, language=setup.language, max_chars=max_chars)

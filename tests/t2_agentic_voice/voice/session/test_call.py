@@ -1,9 +1,10 @@
 """The voice session in echo mode (voice/session/call.py), driven by the fake session I/O: the
 call's start (the language named to speech-to-text, the `hello`, the greeting as reply 0), the
 echo per language (the cached frame, then the heard words in the language's voice, clause by
-clause, as the pronunciation map says them), every reply's and caption's key its own, a turn whose
-speech began during the greeting not said back, the phrase cache never asked for heard words, and
-a call whose phrase audio lacks a fixed phrase."""
+clause, as the pronunciation map says them), the heard clauses packed into as few requests as fit
+and an echo's requests bounded, every reply's and caption's key its own, a turn whose speech
+began during the greeting not said back, the phrase cache never asked for heard words, and a call
+whose phrase audio lacks a fixed phrase."""
 
 from __future__ import annotations
 
@@ -19,6 +20,7 @@ from t2_agentic_voice.domain.fixed_phrases import fixed_phrases
 from t2_agentic_voice.domain.text.invisible import provider_text
 from t2_agentic_voice.voice.protocol import Ended, Notice, SessionHello, State
 from t2_agentic_voice.voice.session.commands import HangUp, ListenIn
+from t2_agentic_voice.voice.session.echo import MAX_ECHO_REQUESTS
 
 from tests.t2_agentic_voice.session_fakes import AGENT, FakePhrases
 from tests.t2_agentic_voice.voice.session.session_support import (
@@ -82,6 +84,82 @@ def test_the_echo_says_each_turn_back_in_the_voice_of_its_language(
     assert (record.heard, record.said, record.language) == (heard, spoken[1].text, tag)
     states = [m.state for m in sent(io, State)]
     assert states[:2] == ["thinking", "speaking"] and "listening" in states
+
+
+_THANKS = " ".join(["Thank you."] * 15)  # a turn Whisper's hallucination might give
+
+
+@pytest.mark.parametrize(
+    ("tag", "heard", "max_chars", "requests"),
+    [
+        ("en", "Hi, I want to check my order. Can you help?", 200, None),
+        ("en", _THANKS, 200, None),
+        ("ar-SA", "ابغى اعرف حالة الطلب، وش صار عليه؟ ابي رد.", 200, None),
+        (
+            "en",
+            "One, two. Three, four. Five, six. Seven, eight.",
+            30,
+            ["One, two. Three, four. Five,", "six. Seven, eight."],
+        ),
+    ],
+)
+def test_the_heard_clauses_are_packed_into_as_few_requests_as_fit(
+    settings: VoiceSettings,
+    tag: LanguageTag,
+    heard: str,
+    max_chars: int,
+    requests: list[str] | None,
+) -> None:
+    """A clause the splitter cuts at a comma, a full stop or a question mark is not a request
+    of its own: the clauses go greedily, in order, into requests of at most `max_chars`, joined
+    by a space, each captioned as said, so a turn of n characters costs about n / `max_chars`
+    requests (one a clause would burst past Groq's published 10 a minute). None: the turn fits
+    one request."""
+    io, _ = call(settings, language=tag, max_chars=max_chars)
+
+    async def drive() -> None:
+        await greeted(io)
+        await turn(io, 0, heard, language=io.setup.language.primary)
+        await play(io, 1)
+        await io.ending()
+        await io.close()
+
+    asyncio.run(drive())
+    expected = [heard] if requests is None else requests
+    words = speaks(io, 1)[1:]
+    assert [w.text for w in words] == expected and all(len(w.text) <= max_chars for w in words)
+    assert [c.text for c in captions(io) if c.reply_id == 1][1:] == expected
+    _, orpheus = report(io).usage
+    assert orpheus.requests == len(expected)
+
+
+def test_an_echo_sends_at_most_its_bound_of_requests(
+    settings: VoiceSettings, caplog: pytest.LogCaptureFixture
+) -> None:
+    """A transcript a hallucination made long, four requests' worth at 200 characters, is said
+    back only as far as its first `MAX_ECHO_REQUESTS` requests, the cut logged by number alone,
+    so one turn cannot burst past Groq's published 10 a minute."""
+    heard = " ".join([_THANKS] * 4)
+    io, _ = call(settings)
+
+    async def drive() -> None:
+        await greeted(io)
+        await turn(io, 0, heard)
+        await play(io, 1)
+        await io.ending()
+        await io.close()
+
+    asyncio.run(drive())
+    full = said_back(io, heard)
+    assert len(full) > MAX_ECHO_REQUESTS
+    words = speaks(io, 1)[1:]
+    assert [w.text for w in words] == full[:MAX_ECHO_REQUESTS]
+    assert all(len(w.text) <= 200 for w in words)
+    _, orpheus = report(io).usage
+    assert orpheus.requests == MAX_ECHO_REQUESTS
+    (cut,) = [r for r in caplog.records if r.getMessage() == "echo_cut"]
+    fields = {"reply_id": 1, "requests": len(full), "sent": MAX_ECHO_REQUESTS}
+    assert getattr(cut, "fields", None) == fields
 
 
 def test_a_turn_begun_in_the_greeting_is_not_said_back_and_every_key_is_its_own(

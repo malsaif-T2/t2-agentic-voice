@@ -23,10 +23,12 @@ leaves a turn still open, or with its transcript still to come, unfinished (io.p
 It says the heard words as the agent's pronunciation map says them: it applies `pronounce`
 (domain/text/pronounce.py) with `agent.pronounce`, in the call's language, to a reply's text
 before it cuts it with `split_clauses` at `setup.max_chars`, so each clause is measured on the
-said form; it gives each clause's `Speak` the text the provider is sent, `provider_text` of the
-clause (domain/text/invisible.py), which is never longer; and the agent's caption shows the
-said form, clause by clause. A fixed phrase is played from the phrase cache, which applied
-the map itself, and captioned as written.
+said form, then packs the clauses greedily, in order, into requests of at most `setup.max_chars`,
+as the phrase cache packs a fixed phrase, at most `MAX_ECHO_REQUESTS` an echo (echo.py); it
+gives each request's `Speak` the text the provider is sent, `provider_text` of it
+(domain/text/invisible.py), which is never longer; and the agent's caption shows the said form,
+request by request. A fixed phrase is played from the phrase cache, which applied the map
+itself, and captioned as written.
 
 It counts each model's usage from each request's report (io.py's usage), a request the call's
 end cancelled included, keeps the call's `CallReport` and writes its numbers, with no text of
