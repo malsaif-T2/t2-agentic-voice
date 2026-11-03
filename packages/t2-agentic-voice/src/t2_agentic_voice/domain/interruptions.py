@@ -19,8 +19,9 @@ domain/interruption_words.py. Its steps, in order:
    test): its echo of a reply that said them back;
 3. a repeat request, its repeat words with only polite words and listening sounds beside them
    (a repeat word in a sentence, "read" or a feast's name, asks nothing): stop, then say the
-   last reply again; unless each repeat word heard, or it after waw (and), is a word or listed
-   phrase of the clauses that played, when the steps after this one decide;
+   last reply again; but go on, as the agent's own words, when a clause that played holds any
+   repeat word of the language, or one after waw (and), whatever the spelling heard: its echo
+   of a reply that said one back, which would otherwise ask for that reply again and again;
 4. the agent's own words, every word within one edit of a word of the clauses that played (a
    word of one or two letters only as written): go on;
 5. listening sounds only: go on;
@@ -32,7 +33,12 @@ domain/interruption_words.py. Its steps, in order:
 
 Step 2's echo and its whole spellings, and step 3's exception, changed the registered rule on
 2026-11-03, after Track A's review: the agent says back what it heard, so a reply can hold any
-word the caller said.
+word the caller said; Track B's review widened step 3's to any repeat word the reply holds,
+since Whisper may spell the one heard back otherwise.
+
+`whole_command` reads a turn said while the agent was silent, which `judge` never sees: a stop
+or pause request, or a repeat request, said whole, with only polite words and listening sounds
+beside it; a sentence that holds such a word asks nothing.
 """
 
 from __future__ import annotations
@@ -65,6 +71,9 @@ OverlapAction = Literal["stop", "repeat", "go_on"]
 # Which step of the rule decided, in its order: the `Interrupted` event's `reason`
 # (core/events.py), one list for both.
 VerdictReason = InterruptionReason
+# What a turn said while the agent was silent asks of it, said whole (`whole_command`): to stop
+# or pause (nothing to say back), or to say its last reply again.
+WholeCommand = Literal["stop", "repeat"]
 
 _AND = "\u0648"  # waw, and
 # The shortest word the agent's own words match within one edit; a shorter one only as written.
@@ -127,9 +136,10 @@ def judge(
         return _goes_on("own_words")
     if stops or _noisy_stop(tokens, kinds, questions):
         return Verdict(action="stop", kind="stop", reason="stop_word")
-    repeats = _of_kinds(tokens, kinds, "repeat")
-    asked = bool(repeats) and all(kind & {"repeat", "polite", "backchannel"} for kind in kinds)
-    if asked and not _said_back(repeats, spoken, after_and=True):
+    if _only(kinds, "repeat"):
+        forms = [form for form, held in lists.items() if "repeat" in held]
+        if any(_said_back((form,), spoken, after_and=True) for form in forms):
+            return _goes_on("own_words")
         return Verdict(action="repeat", kind="new_words", reason="repeat_word")
     if _own_words(heard, spoken):
         return _goes_on("own_words")
@@ -145,6 +155,22 @@ def judge(
         said: InterruptionKind = "correction" if "no" in real[0] else "new_words"
         return Verdict(action="stop", kind=said, reason="enough_words")
     return _goes_on("too_few_words")
+
+
+def whole_command(text: str, *, words: Words) -> WholeCommand | None:
+    """What `text`, a turn's transcript said while the agent was silent, asks of it as a whole,
+    read as `judge` reads an overlap's, with the call language's `words`: `stop` for stop or
+    pause words, or a spelling only Whisper writes for the stop word (at most `NOISY_WORDS`
+    words in all then); `repeat` for repeat words (step 3's request); each with only polite
+    words and listening sounds beside them. None for anything else, a sentence that holds one
+    of them included."""
+    lists = _lists(words)
+    kinds = [lists.get(token, frozenset()) for token in _tokens(rule_form(text).split(), lists)]
+    if _only(kinds, "stop", "wait") or (
+        _only(kinds, "stop", "wait", "noisy") and len(kinds) <= NOISY_WORDS
+    ):
+        return "stop"
+    return "repeat" if _only(kinds, "repeat") else None
 
 
 def _goes_on(reason: VerdictReason) -> Verdict:
@@ -185,6 +211,13 @@ def _held(kinds: Iterable[frozenset[str]], *wanted: str) -> bool:
     return any(kind.intersection(wanted) for kind in kinds)
 
 
+def _only(kinds: Sequence[frozenset[str]], *wanted: str) -> bool:
+    """Whether a word of `kinds` is of one of the `wanted` kinds, and each other a polite word
+    or a listening sound (or of the `wanted` kinds too)."""
+    beside = {"polite", "backchannel", *wanted}
+    return _held(kinds, *wanted) and all(kind & beside for kind in kinds)
+
+
 def _of_kinds(tokens: Sequence[str], kinds: Sequence[frozenset[str]], *wanted: str) -> list[str]:
     """The words of `tokens` of one of the `wanted` kinds, `kinds` holding each one's."""
     return [token for token, kind in zip(tokens, kinds, strict=True) if kind.intersection(wanted)]
@@ -208,8 +241,7 @@ def _noisy_stop(
     spelling only Whisper writes for it (`NOISY_SPELLINGS`), with only polite words and
     listening sounds beside it; or one or two short Arabic words that end as it does or sound as
     it did (`NOISY_ENDS`, `NOISY_SOUNDS`), with no question or no word."""
-    beside = all(kind & {"noisy", "polite", "backchannel"} for kind in kinds)
-    if len(tokens) <= NOISY_WORDS and beside and _held(kinds, "noisy"):
+    if len(tokens) <= NOISY_WORDS and _only(kinds, "noisy"):
         return True
     joined = "".join(token.replace(" ", "") for token in tokens)
     if len(tokens) > 2 or len(joined) > NOISY_LETTERS:
