@@ -36,6 +36,7 @@ NEW_TEXT = "made-up fresh request of several words"
 REPEAT_TEXT = "made-up asking it again"
 LISTENING_TEXT = "made-up listening sound"
 SHORT_TEXT = "made-up short"
+FAILING_TEXT = "made-up text the rule fails on"  # the fake raises on it, as a bug would
 SCRIPT: dict[str, Verdict] = {
     STOP_TEXT: STOP,
     NEW_TEXT: NEW_WORDS,
@@ -52,9 +53,10 @@ def two_step(settings: VoiceSettings, **interruptions: Any) -> VoiceSettings:
 
 
 class FakeRule:
-    """The starting rule as a test scripts it: the verdict `script` gives a text, or, for any
-    other, no words for an empty text and too few words otherwise; each overlap it judged is
-    kept (`judged`), with the rest of what it was given (`given`)."""
+    """The starting rule as a test scripts it: the verdict `script` gives a text, RuntimeError
+    for `FAILING_TEXT`, or, for any other, no words for an empty text and too few words
+    otherwise; each overlap it judged is kept (`judged`), with the rest of what it was given
+    (`given`)."""
 
     def __init__(self, script: Mapping[str, Verdict] = SCRIPT) -> None:
         self.script = dict(script)
@@ -81,6 +83,8 @@ class FakeRule:
                 "bounds": (min_words, short_words, short_s),
             }
         )
+        if overlap.text == FAILING_TEXT:
+            raise RuntimeError(FAILING_TEXT)
         if overlap.text in self.script:
             return self.script[overlap.text]
         return (

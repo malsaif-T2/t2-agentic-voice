@@ -11,8 +11,11 @@ it stops the agent; the whole overlap's decides whatever it says. Every overlap'
 exactly one `unduck` once it is decided, whatever the verdict, but none while another overlap of
 the call is still undecided (`settle`), so one decision never raises the agent's voice over speech
 still being judged; an overlap the call's end cuts gets none (the client restores the volume when
-the call ends). At most two requests decide one overlap, its window's and its whole overlap's;
-once one stops the agent, the other's verdict changes nothing. The turn's own transcript decides
+the call ends). A rule that raises (a bug) decides the overlap at once as going on, logged by its
+kind with no text, so its `unduck` follows and no later one waits on it. At most two requests
+decide one overlap, its window's and its whole overlap's; once one stops the agent, the other's
+verdict changes nothing, but for a repeat request its window heard: the whole overlap is judged
+still (its verdict says what follows the stop, interrupter.py's). The turn's own transcript decides
 only an overlap whose whole-overlap request had not gone when it came (its `HearOverlap` reached
 the bridge after the turn closed: the whole overlap then reuses the turn's result, and changes
 nothing), and is judged again after a verdict to go on when speech followed it (`judge_after`),
@@ -30,6 +33,7 @@ from collections.abc import Sequence
 from dataclasses import dataclass, field
 
 from t2_agentic_voice.core.events import TurnId
+from t2_agentic_voice.core.logging import get_logger
 from t2_agentic_voice.domain.interruptions import Overlap, Verdict, judge
 from t2_agentic_voice.domain.silence import CAPTIONS
 from t2_agentic_voice.domain.words import WORD_KINDS, Words
@@ -41,6 +45,10 @@ from t2_agentic_voice.voice.session.session_events import (
     Transcribing,
     TranscriptPart,
 )
+
+_log = get_logger(__name__)
+# The verdict on a transcript the rule failed on (a bug): the reply goes on, as for no words.
+_FAILED = Verdict(action="go_on", kind="false", reason="no_words")
 
 
 def call_words(setup: CallSetup) -> Words:
@@ -83,6 +91,13 @@ class OverlapState:
         """Whether its whole overlap's request went and its transcript has not come."""
         return "overlap" in self.asked and "overlap" not in self.heard
 
+    @property
+    def asked_again(self) -> bool:
+        """Whether its window's repeat request decided it: its whole overlap's transcript is
+        judged still (`overlap`), to say what follows the stop."""
+        decided = self.decided
+        return decided is not None and decided.action == "repeat" and self.decided_by == "window"
+
 
 class Overlaps:
     """One call's overlaps, by the caller's turn."""
@@ -124,20 +139,22 @@ class Overlaps:
         the turn's own when no whole overlap's request went), with `played`, the texts of the
         clauses that played within `own_words_s` and the one playing now, and for the turn's own
         transcript `ended_at`, when its speech ended; None when the overlap was decided
-        already, or the transcript is not an overlap's. A window's verdict to go on leaves the
-        overlap open; any other verdict decides it."""
+        already (its whole overlap's after its window's repeat request is judged still, and
+        decides nothing), or the transcript is not an overlap's. A window's verdict to go on
+        leaves the overlap open, unless the rule failed on it; any other verdict decides it."""
         state = self._overlaps.get(event.turn_id)
         if state is None:
             return None
         state.heard.add(event.part)
-        if state.decided is not None:
+        if state.decided is not None and not (state.asked_again and event.part == "overlap"):
             return None
-        verdict = self._verdict(state, event, played, ended_at)
+        verdict, failed = self._verdict(state, event, played, ended_at)
         if event.part == "window":
             state.window = verdict
         else:
             state.overlap = verdict
-        if verdict.action != "go_on" or event.part != "window":
+        opens = event.part == "window" and verdict.action == "go_on" and not failed
+        if state.decided is None and not opens:
             state.decided, state.decided_by = verdict, event.part
         return verdict
 
@@ -154,7 +171,7 @@ class Overlaps:
         decided_by = state.decided_by
         if "turn" not in state.asked or decided_by == "turn" or decided_by not in state.asked:
             return None
-        return self._verdict(state, event, played, ended_at)
+        return self._verdict(state, event, played, ended_at)[0]
 
     def settle(self) -> int:
         """How many `unduck`s go now: one for each overlap decided whose `unduck` has not
@@ -165,6 +182,11 @@ class Overlaps:
         for state in due:
             state.unducked = True
         return len(due)
+
+    @property
+    def words(self) -> Words:
+        """The words the call's rule reads (`call_words`)."""
+        return self._words
 
     def get(self, turn_id: TurnId) -> OverlapState | None:
         """The overlap of the caller's turn `turn_id`; None when it is none."""
@@ -177,6 +199,27 @@ class Overlaps:
         return tuple(sorted(found))
 
     def _verdict(
+        self,
+        state: OverlapState,
+        event: Transcribed,
+        played: Sequence[str],
+        ended_at: float | None,
+    ) -> tuple[Verdict, bool]:
+        """The rule's verdict on the transcript, and whether the rule failed on it: then going
+        on (`_FAILED`), the failure logged by its kind alone."""
+        try:
+            return self._judged(state, event, played, ended_at), False
+        except Exception as error:  # a bug: the reply goes on, so no overlap stays undecided
+            _log.error(
+                "overlap_judge_failed",
+                call_id=self._setup.call_id,
+                turn_id=state.turn_id,
+                part=event.part,
+                failure=type(error).__qualname__,
+            )
+            return _FAILED, True
+
+    def _judged(
         self,
         state: OverlapState,
         event: Transcribed,
