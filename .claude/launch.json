@@ -22,6 +22,36 @@
       ],
       "port": 8765,
       "url": "http://127.0.0.1:8765"
+    },
+    {
+      "name": "minimal-dev",
+      "runtimeExecutable": "uv",
+      "runtimeArgs": [
+        "run",
+        "--offline",
+        "t2v",
+        "dev",
+        "minimal_example.app:make_runtime"
+      ],
+      "port": 7860,
+      "url": "http://127.0.0.1:7860"
+    },
+    {
+      "name": "ole5-dev",
+      "runtimeExecutable": "uv",
+      "runtimeArgs": [
+        "run",
+        "--offline",
+        "python",
+        "-m",
+        "ole5_voice.server",
+        "--env-file",
+        ".env",
+        "--port",
+        "7861"
+      ],
+      "port": 7861,
+      "url": "http://127.0.0.1:7861"
     }
   ]
 }

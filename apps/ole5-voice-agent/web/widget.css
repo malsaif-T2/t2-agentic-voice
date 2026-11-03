@@ -1,0 +1,46 @@
+/* Ole5's voice widget (index.html). */
+:root {
+  --ink: #1e2a2c; --muted: #5f6d6b; --paper: #fbfcfb; --panel: #ffffff; --line: #dce3e0;
+  --accent: #1f6f5c; --bad: #b3261e; --caller: #eaf1ee;
+  color-scheme: light dark;
+}
+@media (prefers-color-scheme: dark) {
+  :root {
+    --ink: #e6ebe9; --muted: #a3b0ad; --paper: #141917; --panel: #1c2321; --line: #34403c;
+    --accent: #7fcfb8; --bad: #f08a80; --caller: #24302c;
+  }
+}
+* { box-sizing: border-box; }
+body {
+  margin: 0; padding: 16px; background: var(--paper); color: var(--ink);
+  font: 17px/1.6 system-ui, "Segoe UI", Tahoma, sans-serif;
+}
+header, main { max-width: 720px; margin: 0 auto; }
+header { display: flex; align-items: center; justify-content: space-between; gap: 12px; }
+h1 { font-size: 1.4rem; margin: 0; }
+h2 { font-size: 1.15rem; margin: 0 0 8px; }
+.panel {
+  background: var(--panel); border: 1px solid var(--line); border-radius: 10px;
+  padding: 16px; margin: 16px 0;
+}
+.muted { color: var(--muted); font-size: 0.9rem; }
+.box { display: flex; gap: 8px; align-items: flex-start; }
+button {
+  font: inherit; padding: 6px 16px; border-radius: 8px; border: 1px solid var(--line);
+  background: var(--panel); color: var(--ink); cursor: pointer;
+}
+button.primary { background: var(--accent); border-color: var(--accent); color: var(--paper); }
+button:disabled { opacity: 0.45; cursor: default; }
+button.language[aria-pressed="true"] { border-color: var(--accent); color: var(--accent); }
+input[type="password"] {
+  font: inherit; color: inherit; background: var(--paper); border: 1px solid var(--line);
+  border-radius: 6px; padding: 4px 8px; margin-inline-start: 8px;
+}
+.controls { display: flex; flex-wrap: wrap; gap: 8px; }
+.state { color: var(--muted); min-height: 1.6em; margin: 4px 0; }
+.message { color: var(--bad); min-height: 1.6em; margin: 4px 0; }
+.captions { list-style: none; margin: 0; padding: 0; }
+.captions li { padding: 8px 12px; border-radius: 8px; margin: 6px 0; }
+.captions li.caller { background: var(--caller); }
+.captions li.agent { border: 1px solid var(--line); }
+.captions .who { display: block; font-size: 0.8rem; color: var(--muted); }
