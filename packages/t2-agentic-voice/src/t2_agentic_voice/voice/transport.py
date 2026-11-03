@@ -151,12 +151,10 @@ class WebRTCPeer:
         request = SmallWebRTCRequest(
             sdp=offer, type="offer", pc_id=None, restart_pc=None, request_data=None
         )
-        try:  # a new peer comes through `keep`; one with no answer raises
+        try:  # the offer fails before `keep` is given the new peer, or not at all
             answer = await handler.handle_web_request(request, keep) or {}
         except Exception as error:
             log.info("offer_unreadable", error=type(error).__name__)
-            for connection in made:
-                await _close(connection)
             raise InvalidRequestError("The offer could not be read.") from None
         return cls(handler, made[0], answer["sdp"], answer["pc_id"])
 

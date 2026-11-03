@@ -201,6 +201,7 @@ def voice_calls(
     agent: VoiceAgent = AGENT,
     incomplete: int = 0,
     script: Script | None = None,
+    speech_detector: Callable[[], VADAnalyzer] = ToneVAD,
 ) -> Built:
     """voice's entry point of the fakes: the tone detector, a pause analyzer per call (each
     kept), and the script's sessions."""
@@ -223,7 +224,7 @@ def voice_calls(
         phrases=phrases,
         tracing=Tracing(),
         emit=emitted.append,
-        speech_detector=ToneVAD,
+        speech_detector=speech_detector,
         turn_analyzer=analyzer,
     )
     calls.script = script
