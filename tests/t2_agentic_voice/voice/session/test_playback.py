@@ -100,7 +100,8 @@ def test_heard_words_are_the_transcripts_text_without_its_spaces() -> None:
 
 
 def test_a_transcript_of_marks_alone_is_said_back_as_nothing(settings: VoiceSettings) -> None:
-    """Direction marks and joiners, which a provider is never sent, say nothing: no reply."""
+    """Direction marks and joiners, which a provider is never sent, say nothing: the splitter
+    keeps no clause of them, so there is no reply."""
     io, _ = call(settings)
 
     async def drive() -> None:

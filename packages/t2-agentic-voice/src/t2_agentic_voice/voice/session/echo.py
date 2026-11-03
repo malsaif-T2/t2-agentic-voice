@@ -68,15 +68,15 @@ def fixed(
 
 def said(text: str, *, agent: VoiceAgent, language: Language, max_chars: int | None) -> list[str]:
     """`text` as the agent says it in `language`, one item a request: its pronunciation map
-    applied, then cut into clauses of at most `max_chars` characters, each one that still says
-    something once it is the provider's text, and the clauses packed greedily, in order, joined
-    by a space, a request ended only where its next clause would pass `max_chars` (one request
-    for no limit); none for a text with nothing to say."""
+    applied, then cut into clauses of at most `max_chars` characters, and the clauses packed
+    greedily, in order, joined by a space, a request ended only where its next clause would pass
+    `max_chars` (one request for no limit); none for a text with nothing to say. The splitter
+    keeps only the clauses that say something, each with a letter, a digit or a symbol, none of
+    which `provider_text` drops, so every request still says something as the provider's text:
+    a clause of joiners and direction marks alone is never one."""
     spoken = pronounce(text, agent.pronounce, language=language.tag)
     requests: list[str] = []
     for clause in split_clauses(spoken, max_chars=max_chars):
-        if not provider_text(clause).strip():
-            continue
         if requests and (max_chars is None or len(requests[-1]) + 1 + len(clause) <= max_chars):
             requests[-1] = f"{requests[-1]} {clause}"
         else:
