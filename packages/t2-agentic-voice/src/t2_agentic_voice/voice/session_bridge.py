@@ -110,7 +110,7 @@ class CallEvents:
     `asked` holds every clause the session asked for, `dropped` those a stop dropped; `ended`
     says whether the call has ended. With `record`, `handed` keeps every event the session was
     given, in order, and `watch`, when set, sees each as it is given (the file-fed transport's
-    `FedCall`, and its wait for the greeting)."""
+    `FedCall`, and its watch for the greeting's end)."""
 
     def __init__(self, clock: Clock, *, record: bool = False) -> None:
         self.clock = clock
@@ -157,7 +157,7 @@ class CallEvents:
 
     async def close(self) -> None:
         """End the call's stream: once the events waiting are handed, the session's `aclose`,
-        then nothing more. Each wait is bounded (`CLOSE_WAIT_S`)."""
+        then nothing more. Each step is bounded (`CLOSE_WAIT_S`)."""
         self.ended = self._closing = True
         self._ready.set()
         if self._consumer is not None:

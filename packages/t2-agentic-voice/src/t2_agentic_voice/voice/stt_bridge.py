@@ -11,7 +11,7 @@ opened (the turn opens about 0.34 s after its speech began, so the pre-roll is t
 start delay plus `PREROLL_PAD_S`) to its close, at most `MAX_TURN_S`, and sends it whole, trimmed
 `TRAIL_S` after the speech detector last heard the speech stop, so a turn ended by the 3 s
 fallback is not billed its silence. The request runs on a task of its own, so the next turn's
-frames never wait on it. Each turn reports `TurnOpened`, `TurnClosed` and exactly one
+frames are never held up by it. Each turn reports `TurnOpened`, `TurnClosed` and exactly one
 `Transcribed`, an empty, failed or unusable result included, with its request's `Transcribing`
 handed as the request goes (voice/session/io.py's turns and usage). Its times are the call's
 clock read as each frame reaches it, never Pipecat's `timestamp` fields: `speech_at` is when the
@@ -109,7 +109,7 @@ class TurnSTTBridge(STTService):
     @property
     def supports_ttfs(self) -> bool:
         """No streaming time to a final transcript: a turn's one request is timed by its
-        events, so Pipecat's turn strategies wait on none of it."""
+        events, so Pipecat's turn strategies time none of it."""
         return False
 
     def listen_in(self, language: str | None) -> None:

@@ -11,7 +11,7 @@ the CPU through onnxruntime, with no torch, from the settings' `turns` group.
   with `enable_interruptions=False`, so a turn's start broadcasts no `InterruptionFrame` and
   only the session stops the agent's speech. The stop strategy is Smart Turn's, set
   explicitly with `wait_for_transcript=False` (Pipecat 1.15.0 defaults it on, and a turn's end
-  would then wait for the transcript, or for its 5 s stop timeout: the spike's run D), so a
+  would then come only with the transcript, or at its 5 s stop timeout: the spike's run D), so a
   turn's end is the analyzer's alone and the session waits for the transcript itself. With
   `turns.smart_turn` off, every pause the detector hears ends the turn. `turns.max_silence_ms`
   is Pipecat's stop timeout, the fallback that ends a turn whatever decides.
