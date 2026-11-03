@@ -107,6 +107,14 @@ cmd = "python -m ole5_voice.evals.compare"
 help = "Render the golden set's run history into docs/generated/eval-history.md"
 cmd = "python -m ole5_voice.evals.history"
 
+[tool.poe.tasks.eot]
+help = "Measure where the turns end on the golden set's paused requests, offline and with no spend (`--answerer reference` or `pipeline`)"
+cmd = "python -m ole5_voice.evals.eot"
+
+[tool.poe.tasks.eval-timing]
+help = "Time each step of an echo call on the golden set's dev paused requests (spends: model, timeout, prices and cap on its command line)"
+cmd = "python -m ole5_voice.evals.timing"
+
 [tool.poe.tasks.record]
 help = "Record and review the golden set's new takes in Chrome, on a page served on 127.0.0.1"
 cmd = "python -m ole5_voice.evals.recorder"

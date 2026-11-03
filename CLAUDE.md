@@ -34,6 +34,7 @@ Run everything as `uv run poe <task>` (`uv run poe` lists tasks).
 | `gc` · `quality` | Say whether a garbage-collection round is due, then list its candidates · grade each layer, each app and `scripts/` after `check`; neither is a gate. |
 | `golden` · `record` | Validate the golden set and freeze its expected answers · record and review its takes (a page on 127.0.0.1). |
 | `eval` · `eval-compare` · `eval-history` | Run an answerer over the golden set (refuses the main checkout) · compare two runs (sign test by item) · render the run history. |
+| `eot` · `eval-timing` | Where the turns end on the golden set, offline (refuses the main checkout) · the time of each step of an echo call (spends). |
 | `settings-ref` | Write `docs/generated/settings.md` and `.env.example` from the library's settings model. |
 
 Add a row for every task the project adds. Add dependencies with `uv add <pkg>` (`--dev` for

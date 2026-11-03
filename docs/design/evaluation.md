@@ -254,10 +254,16 @@ given after the task's name:
 - `uv run poe eval-compare A B` (`compare.py`) judges run B against run A, as "Judging a change"
   says;
 - `uv run poe eval-history` (`history.py`) renders `evals/history.jsonl` into the generated
-  [eval-history.md](../generated/eval-history.md).
+  [eval-history.md](../generated/eval-history.md);
+- `uv run poe eot` (`eot.py`) measures end of turn on the paused requests with the reference
+  answerer or the file-fed pipeline, appending an end-of-turn line for a pipeline run;
+- `uv run poe eval-timing` (`timing.py`) times each step of an echo call and appends a timing
+  line.
 
 The split has no task: `python -m ole5_voice.evals.split` writes it, and a test inside
-`poe check` fails when the committed split is stale. The scores these commands give come from
+`poe check` fails when the committed split is stale. Nor do the calls' manifests:
+`python -m ole5_voice.evals.call_manifests` writes each recorded call's manifest under
+`evals/calls/`. The scores these commands give come from
 the library's scorers, imported from its public `t2_agentic_voice.evals` facade (and the
 normalizers from `t2_agentic_voice.languages`), never from its layers (ARCH-PUBLIC, D-021,
 D-022). A team with its own golden set writes its own commands around the same scorers, as the
