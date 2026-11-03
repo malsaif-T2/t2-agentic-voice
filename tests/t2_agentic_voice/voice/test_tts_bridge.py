@@ -14,7 +14,8 @@ from typing import TYPE_CHECKING
 
 import pytest
 from t2_agentic_voice.core.errors import ProviderError
-from t2_agentic_voice.core.events import Event, ProviderFailed
+from t2_agentic_voice.core.events import Event
+from t2_agentic_voice.core.logging import FIELDS
 from t2_agentic_voice.domain.ports.text_to_speech import AudioChunk, TextToSpeech
 from t2_agentic_voice.voice.pipecat_events import FailureReport
 from t2_agentic_voice.voice.session.commands import Speak, StopSpeaking
@@ -174,14 +175,15 @@ class _OddSpeech(FakeTextToSpeech):
             yield chunk
 
 
-def test_a_failed_request_is_its_clauses_failure_and_the_calls_provider_failure(
+def test_a_failed_request_is_its_clauses_failure_and_a_line_naming_its_turn(
     caplog: pytest.LogCaptureFixture,
 ) -> None:
     """A `ProviderError` before any audio, or after some, is the clause's `ClauseFailed` with
     its kind, and no `ClausePlayed` follows; an adapter's own exception fails it as
     `server_error`, logged by its type alone; a request that gives no audio plays as a clause
-    of none; each failure is a `ProviderFailed` naming the turn the reply answers; the clauses
-    after play on."""
+    of none; each failure is a `provider_failed` line naming the turn the reply answers, and
+    no public event, which the session emits from the `ClauseFailed`; the clauses after play
+    on."""
     limited = ProviderError("rate_limited", True, 2.0)
     port = _OddSpeech(failures={"Busy": limited})
 
@@ -201,11 +203,13 @@ def test_a_failed_request_is_its_clauses_failure_and_the_calls_provider_failure(
     assert rig.keyed(ClausePlayed) == [(3, 0), (4, 0)] and (1, 0) in rig.keyed(ClauseQueued)
     none = rig.session.of(ClausePlayed)[0]
     assert (none.audio_s, none.chunks, none.cut_short) == (0.0, 0, True)
-    assert [(e.kind, e.turn_id) for e in rig.emitted if isinstance(e, ProviderFailed)] == [
-        ("rate_limited", 4),
-        ("connection_lost", 4),
-        ("server_error", 4),
+    lines = [getattr(r, FIELDS) for r in caplog.records if r.getMessage() == "provider_failed"]
+    assert [(line["service"], line["kind"], line["turn_id"]) for line in lines] == [
+        ("text_to_speech", "rate_limited", 4),
+        ("text_to_speech", "connection_lost", 4),
+        ("text_to_speech", "server_error", 4),
     ]
+    assert rig.emitted == []
     assert "tts_request_failed" in caplog.text and "own text" not in caplog.text
 
 

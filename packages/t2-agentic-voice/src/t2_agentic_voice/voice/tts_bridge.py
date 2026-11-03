@@ -9,8 +9,8 @@ session_bridge.py's `SpeakFrame`) through the `TextToSpeech` port, one request a
   when its first audio comes, so a request that fails or gives no audio opens none: Pipecat
   1.15.0 reports a context that ends with no audio as an error. `run_tts` sends the clause's
   text as the session gave it, handing `Synthesizing` as the request goes and `ClauseQueued`
-  when its first audio is queued; a `ProviderError` is its `ClauseFailed` and a
-  `ProviderFailed`.
+  when its first audio is queued; a `ProviderError` is its `ClauseFailed`, from which the
+  session emits the `ProviderFailed`, and the line `provider_failed`.
 - A fixed phrase plays its cached audio in a context of its own, with no request; a clause
   whose audio is empty, or whose request gave none, sends no frame and opens no context: a
   `ClauseEndFrame` marks its place behind the audio queued before it.

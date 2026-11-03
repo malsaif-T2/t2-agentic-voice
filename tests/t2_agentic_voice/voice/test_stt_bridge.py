@@ -14,8 +14,9 @@ from typing import TYPE_CHECKING
 import pytest
 from t2_agentic_voice.core.config import VoiceSettings
 from t2_agentic_voice.core.errors import ProviderError
-from t2_agentic_voice.core.events import Event, ProviderFailed
+from t2_agentic_voice.core.events import Event
 from t2_agentic_voice.core.identity import Caller, Consent
+from t2_agentic_voice.core.logging import FIELDS
 from t2_agentic_voice.core.settings.storage import StorageSettings
 from t2_agentic_voice.core.settings.turns import TurnSettings
 from t2_agentic_voice.domain.ports.speech_to_text import AudioClip, Transcript
@@ -151,10 +152,10 @@ def test_the_next_turn_can_open_before_the_last_ones_transcript() -> None:
 def test_each_turn_gets_exactly_one_result_when_its_request_fails_or_none_goes(
     caplog: pytest.LogCaptureFixture,
 ) -> None:
-    """A `ProviderError` is the turn's failed `Transcribed` and a `ProviderFailed` naming it; an
-    adapter's own exception fails it as `server_error`, logged by type alone; a muted bridge
-    holds no audio and an unusable one sends nothing, each turn's `Transcribed` then naming no
-    request."""
+    """A `ProviderError` is the turn's failed `Transcribed` and a `provider_failed` line naming
+    it, with no public event, which the session emits from the `Transcribed`; an adapter's own
+    exception fails it as `server_error`, logged by type alone; a muted bridge holds no audio
+    and an unusable one sends nothing, each turn's `Transcribed` then naming no request."""
 
     class Odd(FakeSpeechToText):
         async def transcribe(
@@ -191,8 +192,12 @@ def test_each_turn_gets_exactly_one_result_when_its_request_fails_or_none_goes(
         (None, False, True),
     ]
     assert len(port.calls) == 2 and len(rig.session.of(Transcribing)) == 2
-    failed = [(e.kind, e.turn_id) for e in rig.emitted if isinstance(e, ProviderFailed)]
-    assert failed == [("timeout", 0), ("server_error", 1)]
+    lines = [getattr(r, FIELDS) for r in caplog.records if r.getMessage() == "provider_failed"]
+    assert [(line["kind"], line["turn_id"]) for line in lines] == [
+        ("timeout", 0),
+        ("server_error", 1),
+    ]
+    assert rig.emitted == []
     assert "stt_request_failed" in caplog.text and "own text" not in caplog.text
 
 

@@ -138,7 +138,8 @@ def test_a_call_not_connected_by_the_deadline_fails_at_connect(
     settings: VoiceSettings, monkeypatch: pytest.MonkeyPatch
 ) -> None:
     """An offer answered whose peer never takes the answer ends as a `TransportFailure` at
-    `connect` once voice's deadline passes, with its `TransportFailed`, and is forgotten."""
+    `connect` once voice's deadline passes, and is forgotten; voice's Pipecat side emits no
+    `TransportFailed`, which the session sends (test_pipecat_events.py drives the real one)."""
     monkeypatch.setattr(pipeline_module, "CONNECT_DEADLINE_S", 0.3)
     built = voice_calls(settings)
 
@@ -154,7 +155,7 @@ def test_a_call_not_connected_by_the_deadline_fails_at_connect(
         assert failure.stage == "connect"
 
     _run(built, body)
-    assert [e.stage for e in built.emitted if isinstance(e, TransportFailed)] == ["connect"]
+    assert not [e for e in built.emitted if isinstance(e, TransportFailed)]
 
 
 @pytest.mark.parametrize("variable", REFUSED_VARIABLES)
@@ -383,5 +384,4 @@ def test_a_peer_that_fails_or_closes_ends_its_call(settings: VoiceSettings) -> N
         [("TransportFailure", "media")],
         [("Ending", "caller_left")],
     ]
-    failed = [e.stage for e in built.emitted if isinstance(e, TransportFailed)]
-    assert failed == ["connect", "media"]
+    assert not [e for e in built.emitted if isinstance(e, TransportFailed)]  # the session's

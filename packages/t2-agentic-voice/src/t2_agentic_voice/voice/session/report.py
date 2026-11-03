@@ -160,7 +160,10 @@ def merged(client: ClientConnection | None, stats: ClientStats) -> ClientConnect
 class CallEvents:
     """One call's public events (core/events.py), each stamped with the call's ID and the time
     of day on its clock, handed to where the runtime's observers take them (`CallSetup.emit`,
-    which returns at once and never raises)."""
+    which returns at once and never raises). It is the only sender of a `ProviderFailed` or a
+    `TransportFailed` for a failure the session is handed (a turn's failed `Transcribed`, a
+    clause's `ClauseFailed`, the call's `TransportFailure`: io.py's failures); voice's Pipecat
+    side sends only a speech bridge's error frame's (voice/pipecat_events.py)."""
 
     def __init__(self, setup: CallSetup) -> None:
         self._emit, self._id, self._clock = setup.emit, setup.call_id, setup.clock
@@ -194,12 +197,14 @@ class CallEvents:
         )
 
     def failed(self, kind: ProviderErrorKind, retryable: bool, turn_id: TurnId | None) -> None:
+        """A request failed, a turn's or a clause's: its `ProviderFailed`, naming `turn_id`."""
         at = self._clock.wall()
         self._emit(
             ProviderFailed(call_id=self._id, turn_id=turn_id, at=at, kind=kind, retryable=retryable)
         )
 
     def transport(self, stage: TransportStage) -> None:
+        """The call's connection failed at `stage`: its `TransportFailed`."""
         self._emit(TransportFailed(call_id=self._id, at=self._clock.wall(), stage=stage))
 
     def ended(self, report: CallReport) -> None:

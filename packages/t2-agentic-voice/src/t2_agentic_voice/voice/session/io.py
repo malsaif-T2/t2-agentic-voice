@@ -59,7 +59,10 @@ items cited are plan 003's appendix, "Changes to the plan's interfaces".
 - **Failures** (item 12). A connection that fails, or is not connected within voice's own
   deadline from offer to connected, is a `TransportFailure`: ICE failure pushes no error frame,
   so it comes from the connection's events. A provider's failure comes on the turn's or the
-  clause's own event.
+  clause's own event. The session emits the public `TransportFailed` and `ProviderFailed` of
+  what it is handed, in its order, and the Pipecat side only logs those failures: it emits
+  only the `ProviderFailed` of a speech bridge's error frame, which reaches no session event
+  (voice/pipecat_events.py), so each failure reaches the observers once.
 - **Usage.** The session counts each request from its report, handed as the request goes,
   whatever comes of it: a `Transcribing` is one speech-to-text request, its `audio_s` sent, and
   billed as Groq bills Whisper, at least 10 s a request (the design's 10.4); a `Synthesizing` is
