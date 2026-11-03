@@ -5,12 +5,14 @@
 //   import { VoiceClient } from "/voice/client/1/t2v-client.js";
 //   startButton.onclick = async () => {
 //     const call = await VoiceClient.start({ base: "/voice", getToken, language: "ar-SA" });
-//     call.on("caption", (c) => show(c.speaker, c.text, c.final));
+//     call.on("caption", (c) => show(c.speaker, c.text, c.final, c.cut));
 //     call.on("state", (s) => status(s.state));     // listening | thinking | speaking | confirming
 //     call.on("notice", (n) => tell(n.kind, n.text)); // busy | error | ended, in the call's language
 //     call.on("ended", (e) => done(e.reason));
 //     stopButton.onclick = () => call.stop();        // Esc is bound too
 //     endButton.onclick = () => call.hangup();
+//     talkButton.onpointerdown = () => call.talk(true); // with { pushToTalk: true }
+//     talkButton.onpointerup = () => call.talk(false);
 //   };
 //
 // `start` runs inside the click that starts the call, so the page may play the agent's audio. It
@@ -33,6 +35,16 @@
 // `playback` report as each clause of the agent's reply starts and ends, read from the level of
 // the agent's audio. Text from the session is handed to the page as it came: a page shows it
 // with `textContent`, never as HTML.
+//
+// While the caller speaks over a reply, the session lowers the agent's voice (`duck`, to its
+// level of the volume the call started at) and brings it back once that overlap is decided
+// (`unduck`). The volume also comes back to full on the client's own `stop()`, on a new reply's
+// first caption and when the call ends, so no reply plays lowered whatever reaches the client;
+// each change is a `volume` event. A clause a stop cut while it played comes again as a caption
+// marked `cut`, which the page shows as cut. Push-to-talk, off by default (`pushToTalk: true`, or
+// the property during the call), sends the microphone's sound only while the page holds it,
+// from `talk(true)` to `talk(false)`: the fallback when the agent's voice comes back through a
+// laptop's speakers.
 //
 // The dev page (`<prefix>/dev`) loads this module alone and holds no script of its own, so any
 // Content-Security-Policy the router sends it keeps it working: the module builds that page when
@@ -113,11 +125,19 @@ export class VoiceClient {
   #onKey = null;
   #hangupTimer = null;
   #closed = false;
+  // The agent's playback: the audio element's volume at the start (full), the level of it now,
+  // and the newest reply captioned.
+  #full = 1;
+  #level = 1;
+  #reply = -1;
+  // Push-to-talk: whether it is on, and whether the page holds the microphone open.
+  #pushToTalk = false;
+  #held = false;
 
   // Starts a call; see the module's notes. `options`: `base`, the router's address ("/voice");
   // `token` or `getToken`, an async function giving one; `language`, the caller's pick (a t2v/1
   // tag); `on`, listeners by event name; `audio`, an audio element to play the agent in;
-  // `escape: false` to leave Esc unbound.
+  // `escape: false` to leave Esc unbound; `pushToTalk: true` to start with push-to-talk on.
   static async start(options) {
     const call = new VoiceClient(options);
     try {
@@ -143,6 +163,8 @@ export class VoiceClient {
     // Made inside the click that starts the call, before any await: the page may play audio.
     this.#audio = options.audio ?? new Audio();
     this.#audio.autoplay = true;
+    this.#full = this.#audio.volume;
+    this.#pushToTalk = options.pushToTalk === true;
     if (typeof globalThis.AudioContext === "function") {
       this.#context = new AudioContext();
       this.#context.resume().catch(() => {});
@@ -154,18 +176,37 @@ export class VoiceClient {
     return this.#closed;
   }
 
-  // Listen to an event: hello, state, caption, duck, unduck, notice, ended, connection or error.
-  // Returns a function that removes the listener.
+  // Listen to an event: hello, state, caption, duck, unduck, volume, notice, ended, connection
+  // or error. Returns a function that removes the listener.
   on(name, listener) {
     if (!this.#listeners.has(name)) this.#listeners.set(name, new Set());
     this.#listeners.get(name).add(listener);
     return () => this.#listeners.get(name)?.delete(listener);
   }
 
-  // The Stop button or Esc: the agent drops what it was saying and listens again.
+  // The Stop button or Esc: the agent drops what it was saying and listens again, at full volume.
   stop() {
     this.#playback?.dropped();
+    this.#volume(1);
     return this.#send("stop");
+  }
+
+  // Whether push-to-talk is on: then the microphone sends sound only while the page holds it.
+  get pushToTalk() {
+    return this.#pushToTalk;
+  }
+
+  set pushToTalk(on) {
+    this.#pushToTalk = on === true;
+    this.#held = false;
+    this.#microphone();
+  }
+
+  // Push-to-talk's hold: `talk(true)` as the page's key or button goes down, `talk(false)` as it
+  // comes up. With push-to-talk off the microphone stays on whatever the page holds.
+  talk(held) {
+    this.#held = held === true;
+    this.#microphone();
   }
 
   // End the call: the session says so (`ended`), or the call closes after a grace period.
@@ -182,6 +223,7 @@ export class VoiceClient {
     this.#stream = await openMicrophone();
     [this.#track] = this.#stream.getAudioTracks();
     this.#track?.addEventListener("ended", () => this.hangup());
+    this.#microphone();
     const token =
       typeof this.#options.token === "string" ? this.#options.token : await this.#options.getToken();
     if (typeof token !== "string" || token === "") {
@@ -365,13 +407,49 @@ export class VoiceClient {
     if (!SESSION_MESSAGES.includes(message.type)) return;
     if (message.type === "hello") {
       this.languages = Array.isArray(message.languages) ? message.languages : [];
+    } else if (message.type === "duck") {
+      const level = message.level;
+      if (typeof level !== "number" || !(level >= 0 && level <= 1)) return;
+      this.#volume(level);
+    } else if (message.type === "unduck") {
+      this.#volume(1);
     } else if (message.type === "caption" && message.speaker === "agent") {
-      this.#playback?.captioned(message);
+      message.cut = message.cut === true;
+      this.#agentCaption(message);
     } else if (message.type === "ended") {
       this.#finish(message.reason);
       return;
     }
     this.#emit(message.type, message);
+  }
+
+  // A clause marked `cut` was cut by a stop as it played: its reply's playback is over. Any
+  // other is the clause the session has begun to send, and a new reply's first brings the
+  // volume back to full.
+  #agentCaption(caption) {
+    if (caption.cut) {
+      this.#playback?.dropped();
+      return;
+    }
+    if (Number.isInteger(caption.reply_id) && caption.reply_id > this.#reply) {
+      this.#reply = caption.reply_id;
+      this.#volume(1);
+    }
+    this.#playback?.captioned(caption);
+  }
+
+  // The agent's playback at `level` of the full volume, the page told by a `volume` event.
+  #volume(level) {
+    if (level === this.#level) return;
+    this.#level = level;
+    this.#audio.volume = this.#full * level;
+    this.#emit("volume", { level });
+  }
+
+  // The microphone's track sends sound unless push-to-talk is on and the page does not hold it;
+  // a track turned off sends silence, and the call goes on.
+  #microphone() {
+    if (this.#track) this.#track.enabled = !this.#pushToTalk || this.#held;
   }
 
   #send(type, fields = {}) {
@@ -406,6 +484,7 @@ export class VoiceClient {
     }
     this.#context?.close().catch(() => {});
     if (this.#audio) this.#audio.srcObject = null;
+    this.#volume(1); // the page's own element, if it gave one, is left as it came
     if (!quiet) this.#emit("ended", { reason: typeof reason === "string" ? reason : "server" });
   }
 }
@@ -546,15 +625,25 @@ function clauseOf(pending) {
 }
 
 // The dev page (dev.html): a token (any, for the dev caller), a language, Start, Stop and Hang
-// up, the call's state, its captions and its notices. Every text is set with textContent.
+// up, push-to-talk (a switch, and a button held to talk), the call's state, the agent's volume
+// (lowered while the caller speaks over a reply), its captions (a clause a stop cut marked so)
+// and its notices. Every text is set with textContent.
 function devPage(page) {
   const $ = (id) => page.getElementById(id);
   const captions = new Map();
   let call = null;
+  const talkable = () => {
+    $("talk").disabled = $("stop").disabled || !$("push-to-talk").checked;
+  };
   const running = (on) => {
     $("start").disabled = on;
     $("stop").disabled = !on;
     $("hangup").disabled = !on;
+    talkable();
+  };
+  const talk = (held) => {
+    $("talk").setAttribute("aria-pressed", String(held));
+    call?.talk(held);
   };
   const line = (list, text) => {
     const item = page.createElement("li");
@@ -566,34 +655,40 @@ function devPage(page) {
     const key = c.speaker === "agent" ? `agent ${c.reply_id}` : `caller ${c.turn_id}`;
     if (!captions.has(key)) captions.set(key, { item: line("captions", ""), parts: [] });
     const shown = captions.get(key);
-    shown.parts[c.speaker === "agent" ? c.clause : 0] = c.text;
+    shown.parts[c.speaker === "agent" ? c.clause : 0] = c.cut ? `${c.text} [cut]` : c.text;
     shown.item.textContent = `${c.speaker}: ${shown.parts.filter(Boolean).join(" ")}`;
   };
+  const volume = (v) => ($("volume").textContent = `${Math.round(v.level * 100)}%`);
   $("start").addEventListener("click", async () => {
     running(true);
     captions.clear();
     $("captions").replaceChildren();
     $("notices").replaceChildren();
     $("status").textContent = "Starting.";
+    volume({ level: 1 });
     try {
       call = await VoiceClient.start({
         base: ".",
         token: $("token").value || "dev",
         language: $("language").value || undefined,
+        pushToTalk: $("push-to-talk").checked,
         on: {
           hello: (h) => ($("status").textContent = `Connected: call ${h.call_id}.`),
           state: (s) => ($("state").textContent = s.state),
           caption,
+          volume,
           notice: (n) => line("notices", `${n.kind}: ${n.text}`),
           connection: (c) => ($("connection").textContent = c.state),
           error: (e) => line("notices", `${e.code}: ${e.message}`),
           ended: (e) => {
             $("status").textContent = `Ended: ${e.reason}.`;
             running(false);
+            talk(false);
             call = null;
           },
         },
       });
+      call.pushToTalk = $("push-to-talk").checked; // switched while the call started
       $("status").textContent = `Joined call ${call.callId}.`;
     } catch (error) {
       $("status").textContent = `${error.code ?? "error"}: ${error.notice ?? error.message}`;
@@ -602,6 +697,20 @@ function devPage(page) {
   });
   $("stop").addEventListener("click", () => call?.stop());
   $("hangup").addEventListener("click", () => call?.hangup());
+  $("push-to-talk").addEventListener("change", () => {
+    if (call) call.pushToTalk = $("push-to-talk").checked;
+    talk(false);
+    talkable();
+  });
+  // Held with the pointer: captured, so the hold ends wherever the button comes up.
+  $("talk").addEventListener("pointerdown", (event) => {
+    if ($("talk").disabled) return;
+    $("talk").setPointerCapture?.(event.pointerId);
+    talk(true);
+  });
+  for (const name of ["pointerup", "pointercancel", "lostpointercapture"]) {
+    $("talk").addEventListener(name, () => talk(false));
+  }
 }
 
 if (globalThis.document?.documentElement?.dataset?.t2vPage === "dev") devPage(globalThis.document);
