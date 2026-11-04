@@ -1,0 +1,45 @@
+# Written by `python -m ole5_voice.evals.import_recordings` from the recorder's files:
+# import again rather than edit.
+id = "m06_lahza"
+source = "script"
+kind = "stop_word"
+language = "saudi"
+text = "لحظة"
+alternatives = []
+terms = []
+
+[[variants]]
+id = "m06_lahza-laptop-m3-1"
+device = "laptop"
+session = "laptop-m3"
+reference = "لحظة"
+reference_source = "script"
+turn_ends_ms = [1444]
+tags = []
+
+[[variants.segments]]
+root = "owner"
+path = "laptop-m3/m06_lahza-laptop-m3-1.wav"
+sha256 = "b3bd0f135839c31116c4ca8f35c14be0c1efac264a440adf5e4380c633973867"
+
+[[variants.confirmations]]
+at = 2026-11-04T16:24:01.316188+03:00
+review_pass = 6
+
+[[variants]]
+id = "m06_lahza-wired-m3-1"
+device = "wired"
+session = "wired-m3"
+reference = "لحظة"
+reference_source = "script"
+turn_ends_ms = [1012]
+tags = []
+
+[[variants.segments]]
+root = "owner"
+path = "wired-m3/m06_lahza-wired-m3-1.wav"
+sha256 = "4be278440971e88c03711d1abe761c1d0bfe8cabc1830ff3fe515f5de1a51dda"
+
+[[variants.confirmations]]
+at = 2026-11-04T16:26:41.434101+03:00
+review_pass = 6

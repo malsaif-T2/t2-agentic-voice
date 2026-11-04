@@ -1,0 +1,45 @@
+# Written by `python -m ole5_voice.evals.import_recordings` from the recorder's files:
+# import again rather than edit.
+id = "m04_khalas"
+source = "script"
+kind = "stop_word"
+language = "saudi"
+text = "خلاص"
+alternatives = []
+terms = []
+
+[[variants]]
+id = "m04_khalas-laptop-m3-1"
+device = "laptop"
+session = "laptop-m3"
+reference = "خلاص"
+reference_source = "script"
+turn_ends_ms = [1384]
+tags = []
+
+[[variants.segments]]
+root = "owner"
+path = "laptop-m3/m04_khalas-laptop-m3-1.wav"
+sha256 = "c3cf29103e89b2ae3f175ca6dc17355b7237ce01179433697b68913b1a059a07"
+
+[[variants.confirmations]]
+at = 2026-11-04T16:23:56.842788+03:00
+review_pass = 6
+
+[[variants]]
+id = "m04_khalas-wired-m3-1"
+device = "wired"
+session = "wired-m3"
+reference = "خلاص"
+reference_source = "script"
+turn_ends_ms = [1272]
+tags = []
+
+[[variants.segments]]
+root = "owner"
+path = "wired-m3/m04_khalas-wired-m3-1.wav"
+sha256 = "f59867b5be2ab23cb8f4d0c8296a6881c94a36eec7c70a6d5ebbc9a30084f4d1"
+
+[[variants.confirmations]]
+at = 2026-11-04T16:26:37.578094+03:00
+review_pass = 6

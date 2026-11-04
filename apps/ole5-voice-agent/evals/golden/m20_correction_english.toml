@@ -1,0 +1,45 @@
+# Written by `python -m ole5_voice.evals.import_recordings` from the recorder's files:
+# import again rather than edit.
+id = "m20_correction_english"
+source = "script"
+kind = "correction"
+language = "english"
+text = "No, I meant the archive, not the inbox."
+alternatives = []
+terms = []
+
+[[variants]]
+id = "m20_correction_english-laptop-m3-1"
+device = "laptop"
+session = "laptop-m3"
+reference = "No, I meant the archive, not the inbox."
+reference_source = "script"
+turn_ends_ms = [3385]
+tags = []
+
+[[variants.segments]]
+root = "owner"
+path = "laptop-m3/m20_correction_english-laptop-m3-1.wav"
+sha256 = "64e06d8f6cdd5d60249cf520d64a3946ccd23dfec3c2bd7136b5d1e204f175ea"
+
+[[variants.confirmations]]
+at = 2026-11-04T16:24:41.316688+03:00
+review_pass = 6
+
+[[variants]]
+id = "m20_correction_english-wired-m3-1"
+device = "wired"
+session = "wired-m3"
+reference = "No, I meant the archive, not the inbox."
+reference_source = "script"
+turn_ends_ms = [3279]
+tags = []
+
+[[variants.segments]]
+root = "owner"
+path = "wired-m3/m20_correction_english-wired-m3-1.wav"
+sha256 = "5101651a8ee4d64847902c58988f3876ff1f77acc46a5d8c413267845cda135a"
+
+[[variants.confirmations]]
+at = 2026-11-04T16:27:24.826808+03:00
+review_pass = 6

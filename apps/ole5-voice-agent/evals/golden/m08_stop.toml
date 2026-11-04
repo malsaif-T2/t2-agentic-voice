@@ -1,0 +1,45 @@
+# Written by `python -m ole5_voice.evals.import_recordings` from the recorder's files:
+# import again rather than edit.
+id = "m08_stop"
+source = "script"
+kind = "stop_word"
+language = "english"
+text = "stop"
+alternatives = []
+terms = []
+
+[[variants]]
+id = "m08_stop-laptop-m3-2"
+device = "laptop"
+session = "laptop-m3"
+reference = "stop"
+reference_source = "script"
+turn_ends_ms = [1269]
+tags = []
+
+[[variants.segments]]
+root = "owner"
+path = "laptop-m3/m08_stop-laptop-m3-2.wav"
+sha256 = "39d3322df1bfed923c76936a44f15443b983ad1255c0e8716832ec09f85f60fb"
+
+[[variants.confirmations]]
+at = 2026-11-04T16:24:06.434723+03:00
+review_pass = 6
+
+[[variants]]
+id = "m08_stop-wired-m3-2"
+device = "wired"
+session = "wired-m3"
+reference = "stop"
+reference_source = "script"
+turn_ends_ms = [1428]
+tags = []
+
+[[variants.segments]]
+root = "owner"
+path = "wired-m3/m08_stop-wired-m3-2.wav"
+sha256 = "386a8f493240f4a3843cea68f2073e5d5946425186854258755051dea147446c"
+
+[[variants.confirmations]]
+at = 2026-11-04T16:26:45.548285+03:00
+review_pass = 6

@@ -1,0 +1,45 @@
+# Written by `python -m ole5_voice.evals.import_recordings` from the recorder's files:
+# import again rather than edit.
+id = "m19_correction_saudi"
+source = "script"
+kind = "correction"
+language = "saudi"
+text = "لا مو كذا، قصدي الأرشيف مو صندوق الوارد"
+alternatives = []
+terms = []
+
+[[variants]]
+id = "m19_correction_saudi-laptop-m3-1"
+device = "laptop"
+session = "laptop-m3"
+reference = "لا مو كذا، قصدي الأرشيف مو صندوق الوارد"
+reference_source = "script"
+turn_ends_ms = [3235]
+tags = []
+
+[[variants.segments]]
+root = "owner"
+path = "laptop-m3/m19_correction_saudi-laptop-m3-1.wav"
+sha256 = "edf987d689b193dd7a6ddd03821b2bb7cf38ebfffc6e6180c32455a082218ab5"
+
+[[variants.confirmations]]
+at = 2026-11-04T16:24:36.986724+03:00
+review_pass = 6
+
+[[variants]]
+id = "m19_correction_saudi-wired-m3-1"
+device = "wired"
+session = "wired-m3"
+reference = "لا مو كذا، قصدي الأرشيف مو صندوق الوارد"
+reference_source = "script"
+turn_ends_ms = [3131]
+tags = []
+
+[[variants.segments]]
+root = "owner"
+path = "wired-m3/m19_correction_saudi-wired-m3-1.wav"
+sha256 = "b8e234bd758e669e7e43629d09038df9d3610a7920499b62dae7e3a2d2af74cf"
+
+[[variants.confirmations]]
+at = 2026-11-04T16:27:20.983720+03:00
+review_pass = 6

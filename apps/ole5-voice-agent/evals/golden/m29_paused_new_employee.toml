@@ -1,0 +1,45 @@
+# Written by `python -m ole5_voice.evals.import_recordings` from the recorder's files:
+# import again rather than edit.
+id = "m29_paused_new_employee"
+source = "script"
+kind = "paused_request"
+language = "saudi"
+text = "عندنا موظف جديد ونبغى نضيفه على النظام"
+alternatives = []
+terms = []
+
+[[variants]]
+id = "m29_paused_new_employee-laptop-m3-1"
+device = "laptop"
+session = "laptop-m3"
+reference = "عندنا موظف جديد ونبغى نضيفه على النظام"
+reference_source = "script"
+turn_ends_ms = [3824]
+tags = []
+
+[[variants.segments]]
+root = "owner"
+path = "laptop-m3/m29_paused_new_employee-laptop-m3-1.wav"
+sha256 = "ba31e723c8c09c2ea115f2f48f29c6f797f597cb26f2ff26149f84be00d14a51"
+
+[[variants.confirmations]]
+at = 2026-11-04T16:25:26.420193+03:00
+review_pass = 6
+
+[[variants]]
+id = "m29_paused_new_employee-wired-m3-1"
+device = "wired"
+session = "wired-m3"
+reference = "عندنا موظف جديد ونبغى نضيفه على النظام"
+reference_source = "script"
+turn_ends_ms = [3324]
+tags = []
+
+[[variants.segments]]
+root = "owner"
+path = "wired-m3/m29_paused_new_employee-wired-m3-1.wav"
+sha256 = "5833e5686ee075619f4d2b494759ca8006e67ba8156cf89a72a8aec9714d6c6d"
+
+[[variants.confirmations]]
+at = 2026-11-04T16:28:08.985466+03:00
+review_pass = 6

@@ -1,0 +1,45 @@
+# Written by `python -m ole5_voice.evals.import_recordings` from the recorder's files:
+# import again rather than edit.
+id = "m41_paused_ole5_login"
+source = "script"
+kind = "paused_request"
+language = "mixed"
+text = "تطبيق Ole5 في الجوال يطلب مني أسجل دخول كل مرة أفتحه"
+alternatives = []
+terms = ["Ole5"]
+
+[[variants]]
+id = "m41_paused_ole5_login-laptop-m3-1"
+device = "laptop"
+session = "laptop-m3"
+reference = "تطبيق Ole5 في الجوال يطلب مني أسجل دخول كل مرة أفتحه"
+reference_source = "script"
+turn_ends_ms = [4728]
+tags = []
+
+[[variants.segments]]
+root = "owner"
+path = "laptop-m3/m41_paused_ole5_login-laptop-m3-1.wav"
+sha256 = "bd024598ba254208c567ff7d6cfb898c1d23bdd1cb8a4e90d6b5be8c33adc9d0"
+
+[[variants.confirmations]]
+at = 2026-11-04T16:26:29.144715+03:00
+review_pass = 6
+
+[[variants]]
+id = "m41_paused_ole5_login-wired-m3-1"
+device = "wired"
+session = "wired-m3"
+reference = "تطبيق Ole5 في الجوال يطلب مني أسجل دخول كل مرة أفتحه"
+reference_source = "script"
+turn_ends_ms = [5562]
+tags = []
+
+[[variants.segments]]
+root = "owner"
+path = "wired-m3/m41_paused_ole5_login-wired-m3-1.wav"
+sha256 = "cb6bd52c03afab8c0e588442657e602d43febde05e35af295d3ee5b6b5285114"
+
+[[variants.confirmations]]
+at = 2026-11-04T16:29:12.757345+03:00
+review_pass = 6

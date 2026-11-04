@@ -1,0 +1,45 @@
+# Written by `python -m ole5_voice.evals.import_recordings` from the recorder's files:
+# import again rather than edit.
+id = "m37_paused_attachment_order"
+source = "script"
+kind = "paused_request"
+language = "english"
+text = "When I attach several files they show up in the wrong order"
+alternatives = []
+terms = []
+
+[[variants]]
+id = "m37_paused_attachment_order-laptop-m3-1"
+device = "laptop"
+session = "laptop-m3"
+reference = "When I attach several files they show up in the wrong order"
+reference_source = "script"
+turn_ends_ms = [4537]
+tags = []
+
+[[variants.segments]]
+root = "owner"
+path = "laptop-m3/m37_paused_attachment_order-laptop-m3-1.wav"
+sha256 = "9bf21f0ac0607de8624b2d711ef6ce0218a86ab17b929fc0eb5e4f1b12c3bdda"
+
+[[variants.confirmations]]
+at = 2026-11-04T16:26:08.313046+03:00
+review_pass = 6
+
+[[variants]]
+id = "m37_paused_attachment_order-wired-m3-3"
+device = "wired"
+session = "wired-m3"
+reference = "When I attach several files they show up in the wrong order"
+reference_source = "script"
+turn_ends_ms = [4075]
+tags = []
+
+[[variants.segments]]
+root = "owner"
+path = "wired-m3/m37_paused_attachment_order-wired-m3-3.wav"
+sha256 = "54ba8969a5c5f161ff1ab071a9c292aa9a8f93ecf7e08ada3c334d9669cebb31"
+
+[[variants.confirmations]]
+at = 2026-11-04T16:28:47.880377+03:00
+review_pass = 6

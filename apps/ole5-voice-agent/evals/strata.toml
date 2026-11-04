@@ -9,62 +9,66 @@
 # tables count, with every take the owner kept on the three devices. Variants are counted
 # by the device of their microphone and by their tags: the talk-over's condition (duck, pause),
 # whether the take began over the assistant, and its playback device. The [script] tables also
-# count M3's 41 lines (plan 005, Q2 and Q6), which have no take yet.
+# count M3's 41 lines (plan 005, Q2 and Q6), whose items hold every take the owner kept on the
+# laptop and the wired headset on 2026-11-04 (its Bluetooth session left out, at the owner's
+# word: "lets skip Bluetooth").
 
 [items]
-total = 95
+total = 136
 
 [items.source]
-script = 52
+script = 93
 talkover = 43
 
 [items.language]
-english = 21
-mixed = 10
-msa = 16
-none = 5
-saudi = 43
+english = 32
+mixed = 14
+msa = 21
+none = 6
+saudi = 63
 
 [items.kind]
 confirmation = 4
-echo_only = 2
-listening_sound = 15
+correction = 2
+echo_only = 3
+listening_sound = 20
 noise = 2
-paused_request = 10
-repeat_request = 5
+paused_request = 30
+repeat_request = 8
 request = 37
 short_request = 3
 silence = 1
-stop_word = 12
+stop_word = 22
 ticket_number = 4
 
 [variants]
-total = 337
+total = 419
 
 [variants.language]
-english = 75
-mixed = 35
-msa = 60
-none = 15
-saudi = 152
+english = 97
+mixed = 43
+msa = 70
+none = 17
+saudi = 192
 
 [variants.kind]
 confirmation = 13
-echo_only = 6
-listening_sound = 46
+correction = 4
+echo_only = 8
+listening_sound = 56
 noise = 6
-paused_request = 39
-repeat_request = 18
+paused_request = 79
+repeat_request = 24
 request = 131
 short_request = 9
 silence = 3
-stop_word = 36
+stop_word = 56
 ticket_number = 30
 
 [variants.device]
 bluetooth = 59
-laptop = 215
-wired = 63
+laptop = 256
+wired = 104
 
 [variants.tag]
 duck = 63

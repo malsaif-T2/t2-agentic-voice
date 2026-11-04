@@ -1,0 +1,45 @@
+# Written by `python -m ole5_voice.evals.import_recordings` from the recorder's files:
+# import again rather than edit.
+id = "m32_paused_cannot_reply"
+source = "script"
+kind = "paused_request"
+language = "msa"
+text = "لا أستطيع الرد على المراسلة الواردة منذ يوم أمس"
+alternatives = []
+terms = []
+
+[[variants]]
+id = "m32_paused_cannot_reply-laptop-m3-1"
+device = "laptop"
+session = "laptop-m3"
+reference = "لا أستطيع الرد على المراسلة الواردة منذ يوم أمس"
+reference_source = "script"
+turn_ends_ms = [3785]
+tags = []
+
+[[variants.segments]]
+root = "owner"
+path = "laptop-m3/m32_paused_cannot_reply-laptop-m3-1.wav"
+sha256 = "e90c93f51ae42d2a46ba3b2a962c2f85974a3bae522240afffa156bf60cea098"
+
+[[variants.confirmations]]
+at = 2026-11-04T16:25:42.493506+03:00
+review_pass = 6
+
+[[variants]]
+id = "m32_paused_cannot_reply-wired-m3-1"
+device = "wired"
+session = "wired-m3"
+reference = "لا أستطيع الرد على المراسلة الواردة منذ يوم أمس"
+reference_source = "script"
+turn_ends_ms = [3596]
+tags = []
+
+[[variants.segments]]
+root = "owner"
+path = "wired-m3/m32_paused_cannot_reply-wired-m3-1.wav"
+sha256 = "fd09ebfdce9bdfbdb5b096eeb186631d9991950c3bf2ed6fdf6e27e15017f1ea"
+
+[[variants.confirmations]]
+at = 2026-11-04T16:28:22.366107+03:00
+review_pass = 6

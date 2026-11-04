@@ -1,0 +1,45 @@
+# Written by `python -m ole5_voice.evals.import_recordings` from the recorder's files:
+# import again rather than edit.
+id = "m30_paused_archive_period"
+source = "script"
+kind = "paused_request"
+language = "msa"
+text = "أود أن أعرف المدة التي تبقى فيها المراسلات في الأرشيف"
+alternatives = []
+terms = []
+
+[[variants]]
+id = "m30_paused_archive_period-laptop-m3-3"
+device = "laptop"
+session = "laptop-m3"
+reference = "أود أن أعرف المدة التي تبقى فيها المراسلات في الأرشيف"
+reference_source = "script"
+turn_ends_ms = [4707]
+tags = []
+
+[[variants.segments]]
+root = "owner"
+path = "laptop-m3/m30_paused_archive_period-laptop-m3-3.wav"
+sha256 = "45954919a7614d32460cd2a4e4324f48d757be4f722f2ad2f8ad29c5d073ed6d"
+
+[[variants.confirmations]]
+at = 2026-11-04T16:25:31.932750+03:00
+review_pass = 6
+
+[[variants]]
+id = "m30_paused_archive_period-wired-m3-1"
+device = "wired"
+session = "wired-m3"
+reference = "أود أن أعرف المدة التي تبقى فيها المراسلات في الأرشيف"
+reference_source = "script"
+turn_ends_ms = [4240]
+tags = []
+
+[[variants.segments]]
+root = "owner"
+path = "wired-m3/m30_paused_archive_period-wired-m3-1.wav"
+sha256 = "13d958774ed560204e48f31d68cf4bd8423ccf830cba6e60645705897cc4ea5d"
+
+[[variants.confirmations]]
+at = 2026-11-04T16:28:13.866219+03:00
+review_pass = 6

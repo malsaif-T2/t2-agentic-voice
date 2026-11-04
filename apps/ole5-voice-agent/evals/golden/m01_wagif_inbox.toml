@@ -1,0 +1,45 @@
+# Written by `python -m ole5_voice.evals.import_recordings` from the recorder's files:
+# import again rather than edit.
+id = "m01_wagif_inbox"
+source = "script"
+kind = "stop_word"
+language = "saudi"
+text = "وقف"
+alternatives = []
+terms = []
+
+[[variants]]
+id = "m01_wagif_inbox-laptop-m3-2"
+device = "laptop"
+session = "laptop-m3"
+reference = "وقف"
+reference_source = "script"
+turn_ends_ms = [1429]
+tags = []
+
+[[variants.segments]]
+root = "owner"
+path = "laptop-m3/m01_wagif_inbox-laptop-m3-2.wav"
+sha256 = "cf3bc2240b4c9a543abe1f2f47bf2e2ac506bfe1f0bfe66c0a645dcd4a1b68c8"
+
+[[variants.confirmations]]
+at = 2026-11-04T16:22:07.721493+03:00
+review_pass = 6
+
+[[variants]]
+id = "m01_wagif_inbox-wired-m3-1"
+device = "wired"
+session = "wired-m3"
+reference = "وقف"
+reference_source = "script"
+turn_ends_ms = [1195]
+tags = []
+
+[[variants.segments]]
+root = "owner"
+path = "wired-m3/m01_wagif_inbox-wired-m3-1.wav"
+sha256 = "a3f19fa8a9a831048c6273dee35e2050b5d7ccff83164be3c7acbf139504db04"
+
+[[variants.confirmations]]
+at = 2026-11-04T16:26:31.348911+03:00
+review_pass = 6

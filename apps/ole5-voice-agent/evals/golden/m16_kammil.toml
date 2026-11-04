@@ -1,0 +1,45 @@
+# Written by `python -m ole5_voice.evals.import_recordings` from the recorder's files:
+# import again rather than edit.
+id = "m16_kammil"
+source = "script"
+kind = "listening_sound"
+language = "saudi"
+text = "كمل"
+alternatives = []
+terms = []
+
+[[variants]]
+id = "m16_kammil-laptop-m3-1"
+device = "laptop"
+session = "laptop-m3"
+reference = "كمل"
+reference_source = "script"
+turn_ends_ms = [1736]
+tags = []
+
+[[variants.segments]]
+root = "owner"
+path = "laptop-m3/m16_kammil-laptop-m3-1.wav"
+sha256 = "b387173ba6f7e61ddc0e7cb2a1dde049cbc2852013a6e62b7472d175b524c998"
+
+[[variants.confirmations]]
+at = 2026-11-04T16:24:27.369668+03:00
+review_pass = 6
+
+[[variants]]
+id = "m16_kammil-wired-m3-1"
+device = "wired"
+session = "wired-m3"
+reference = "كمل"
+reference_source = "script"
+turn_ends_ms = [1394]
+tags = []
+
+[[variants.segments]]
+root = "owner"
+path = "wired-m3/m16_kammil-wired-m3-1.wav"
+sha256 = "06055c3067d8c0ef0db99e4cda779e35b32d821014432fad848643a16009dee1"
+
+[[variants.confirmations]]
+at = 2026-11-04T16:27:13.310117+03:00
+review_pass = 6

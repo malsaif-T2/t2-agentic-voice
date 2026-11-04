@@ -1,0 +1,45 @@
+# Written by `python -m ole5_voice.evals.import_recordings` from the recorder's files:
+# import again rather than edit.
+id = "m13_go_over_again"
+source = "script"
+kind = "repeat_request"
+language = "english"
+text = "Sorry, could you go over that last part again?"
+alternatives = []
+terms = []
+
+[[variants]]
+id = "m13_go_over_again-laptop-m3-3"
+device = "laptop"
+session = "laptop-m3"
+reference = "Sorry, could you go over that last part again?"
+reference_source = "script"
+turn_ends_ms = [2987]
+tags = []
+
+[[variants.segments]]
+root = "owner"
+path = "laptop-m3/m13_go_over_again-laptop-m3-3.wav"
+sha256 = "dcfac4724c7433ba633795c6eea51ee47a7777079e6ef1a5ddcc62d40a11281b"
+
+[[variants.confirmations]]
+at = 2026-11-04T16:24:17.936077+03:00
+review_pass = 6
+
+[[variants]]
+id = "m13_go_over_again-wired-m3-2"
+device = "wired"
+session = "wired-m3"
+reference = "Sorry, could you go over that last part again?"
+reference_source = "script"
+turn_ends_ms = [2701]
+tags = []
+
+[[variants.segments]]
+root = "owner"
+path = "wired-m3/m13_go_over_again-wired-m3-2.wav"
+sha256 = "58a3a1362c239bd869d799eee80231baaf638a4d907930fe62997550f962aca0"
+
+[[variants.confirmations]]
+at = 2026-11-04T16:26:58.336036+03:00
+review_pass = 6

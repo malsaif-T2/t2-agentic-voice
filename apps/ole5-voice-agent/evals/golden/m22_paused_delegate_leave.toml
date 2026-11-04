@@ -1,0 +1,45 @@
+# Written by `python -m ole5_voice.evals.import_recordings` from the recorder's files:
+# import again rather than edit.
+id = "m22_paused_delegate_leave"
+source = "script"
+kind = "paused_request"
+language = "saudi"
+text = "أبغى أسوي تفويض لزميلي في القسم لين أرجع من الإجازة"
+alternatives = []
+terms = []
+
+[[variants]]
+id = "m22_paused_delegate_leave-laptop-m3-1"
+device = "laptop"
+session = "laptop-m3"
+reference = "أبغى أسوي تفويض لزميلي في القسم لين أرجع من الإجازة"
+reference_source = "script"
+turn_ends_ms = [4897]
+tags = []
+
+[[variants.segments]]
+root = "owner"
+path = "laptop-m3/m22_paused_delegate_leave-laptop-m3-1.wav"
+sha256 = "58f3449b5a050ca8e82c6eb5d9accc99118c1c113db04446c1d696c343222276"
+
+[[variants.confirmations]]
+at = 2026-11-04T16:24:51.293105+03:00
+review_pass = 6
+
+[[variants]]
+id = "m22_paused_delegate_leave-wired-m3-1"
+device = "wired"
+session = "wired-m3"
+reference = "أبغى أسوي تفويض لزميلي في القسم لين أرجع من الإجازة"
+reference_source = "script"
+turn_ends_ms = [5327]
+tags = []
+
+[[variants.segments]]
+root = "owner"
+path = "wired-m3/m22_paused_delegate_leave-wired-m3-1.wav"
+sha256 = "b4511b2a2342f4587fc62cd3d4d7361f8504c17f158d3582563616c3ec0f07cf"
+
+[[variants.confirmations]]
+at = 2026-11-04T16:27:37.348138+03:00
+review_pass = 6

@@ -1,0 +1,45 @@
+# Written by `python -m ole5_voice.evals.import_recordings` from the recorder's files:
+# import again rather than edit.
+id = "m38_paused_outlook_calendar"
+source = "script"
+kind = "paused_request"
+language = "mixed"
+text = "الاجتماعات اللي في Outlook ما تظهر في التقويم حق النظام"
+alternatives = []
+terms = ["Outlook"]
+
+[[variants]]
+id = "m38_paused_outlook_calendar-laptop-m3-1"
+device = "laptop"
+session = "laptop-m3"
+reference = "الاجتماعات اللي في Outlook ما تظهر في التقويم حق النظام"
+reference_source = "script"
+turn_ends_ms = [4725]
+tags = []
+
+[[variants.segments]]
+root = "owner"
+path = "laptop-m3/m38_paused_outlook_calendar-laptop-m3-1.wav"
+sha256 = "3ea2198ba937cc0fb4a992ab8e1b9ea7771d92ef799f0533a42ab80309b43ddf"
+
+[[variants.confirmations]]
+at = 2026-11-04T16:26:13.738119+03:00
+review_pass = 6
+
+[[variants]]
+id = "m38_paused_outlook_calendar-wired-m3-1"
+device = "wired"
+session = "wired-m3"
+reference = "الاجتماعات اللي في Outlook ما تظهر في التقويم حق النظام"
+reference_source = "script"
+turn_ends_ms = [3970]
+tags = []
+
+[[variants.segments]]
+root = "owner"
+path = "wired-m3/m38_paused_outlook_calendar-wired-m3-1.wav"
+sha256 = "40858cbc2f4503c61a88ddac2c686b8603d295d2a01a429e7e336179aef598c8"
+
+[[variants.confirmations]]
+at = 2026-11-04T16:28:53.849038+03:00
+review_pass = 6

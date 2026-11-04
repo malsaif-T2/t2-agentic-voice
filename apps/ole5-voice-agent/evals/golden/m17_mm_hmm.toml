@@ -1,0 +1,45 @@
+# Written by `python -m ole5_voice.evals.import_recordings` from the recorder's files:
+# import again rather than edit.
+id = "m17_mm_hmm"
+source = "script"
+kind = "listening_sound"
+language = "english"
+text = "mm-hmm"
+alternatives = []
+terms = []
+
+[[variants]]
+id = "m17_mm_hmm-laptop-m3-1"
+device = "laptop"
+session = "laptop-m3"
+reference = "mm-hmm"
+reference_source = "script"
+turn_ends_ms = [1353]
+tags = []
+
+[[variants.segments]]
+root = "owner"
+path = "laptop-m3/m17_mm_hmm-laptop-m3-1.wav"
+sha256 = "6f25f4ca50e99278f1a34b83edd1e448807a8fb7251b5dbce794a83d7fdb5e8a"
+
+[[variants.confirmations]]
+at = 2026-11-04T16:24:29.766310+03:00
+review_pass = 6
+
+[[variants]]
+id = "m17_mm_hmm-wired-m3-1"
+device = "wired"
+session = "wired-m3"
+reference = "mm-hmm"
+reference_source = "script"
+turn_ends_ms = [1162]
+tags = []
+
+[[variants.segments]]
+root = "owner"
+path = "wired-m3/m17_mm_hmm-wired-m3-1.wav"
+sha256 = "938b8a38106c008a8d0954901dd0c8025b7ec8c330c81b1b5d862ad5e04a906b"
+
+[[variants.confirmations]]
+at = 2026-11-04T16:27:15.418484+03:00
+review_pass = 6
