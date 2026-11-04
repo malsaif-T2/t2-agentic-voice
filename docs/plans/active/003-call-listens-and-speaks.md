@@ -1138,20 +1138,21 @@ manifests committed), and requests per call minute are recorded from it as a dec
     to low by their skeptics (a short word lost at the VAD's start, TD-092; the client's playback
     reports, TD-070); the others are low or info: debt rows TD-089 to TD-093, and TD-070's row
     brought up to date.
-  - The time of each step, over the 26 transcribed turns, median / 90th percentile (the reports and
-    timelines; no trace, below): `stt_ms`, the end of speech to the transcript, ar-SA 542 / 646 ms
-    (16 turns) and en 568 / 607 ms (10; the first call's first turn 1,317 ms, a cold Smart Turn and
-    a cold connection to Groq, TD-089); its parts from the timeline, the end of speech to the turn
-    closed (Smart Turn's decision, the VAD stop included) 236 / 255 ms, and the turn closed to the
-    transcript (Whisper's request with the bridge's hand-off) 311 / 389 ms, 775 ms at most (the cold
-    first). `ttfa_ms`, the echo ready (its cached frame's first audio queued, TD-063): ar-SA 555 /
-    609 ms, en 553 / 612 ms. `tts_first_audio_ms`, the echo's Orpheus request to its first audio
-    queued: ar-SA 188 / 201 ms (442 ms on the longest echo), en 187 / 239 ms. By device the same
-    within 0.08 s. The caller hears the echo about 0.8 to 1.2 s after their speech ends, since the
-    frame and the takes lead with untrimmed silence that the report's fields count as audio
-    (TD-090). Per call (`client_stats`): connect 677 to 840 ms (median 820 ms) but 26.8 s for the
-    first call after the server started (TD-089); from connecting to the first audio played 256 to
-    428 ms (median 332 ms); a host candidate and echo cancellation on in every call.
+  - The time of each step, over the 26 transcribed turns, median / 90th percentile (Hyndman and
+    Fan's type 7, as E's; the reports and timelines; no trace, below): `stt_ms`, the end of speech
+    to the transcript, ar-SA 542 / 626 ms (16 turns) and en 568 / 678 ms (10; the first call's first
+    turn 1,317 ms, a cold Smart Turn and a cold connection to Groq, TD-089); its parts from the
+    timeline, the end of speech to the turn closed (Smart Turn's decision, the VAD stop included)
+    236 / 255 ms, and the turn closed to the transcript (Whisper's request with the bridge's
+    hand-off) 311 / 389 ms, 775 ms at most (the cold first). `ttfa_ms`, the echo ready (its cached
+    frame's first audio queued, TD-063): ar-SA 555 / 609 ms, en 553 / 754 ms (the cold first turn
+    again). `tts_first_audio_ms`, the echo's Orpheus request to its first audio queued: ar-SA 188 /
+    201 ms (442 ms on the longest echo), en 187 / 244 ms. By device the same within 0.08 s. The
+    caller hears the echo about 0.8 to 1.2 s after their speech ends, since the frame and the takes
+    lead with untrimmed silence that the report's fields count as audio (TD-090). Per call
+    (`client_stats`): connect 677 to 840 ms (median 820 ms) but 26.8 s for the first call after the
+    server started (TD-089); from connecting to the first audio played 256 to 428 ms (median 332
+    ms); a host candidate and echo cancellation on in every call.
   - Requests per call minute for each model, and the key's headroom from Groq's rate-limit headers:
     D-040 (the headers show daily limits about 1,000 times the published ones, so Q17's reading is
     in part answered).
@@ -1182,6 +1183,63 @@ manifests committed), and requests per call minute are recorded from it as a dec
   is on 2026-11-04 ("The owner's decisions"); M3's own recorded runs hold the live language, the
   listening sounds and «وقف». Next: step 30's corrections of the design, by an agent; then E1, E2
   and held-out E in a clean run worktree, on a quiet machine; then the close.
+- 2026-11-04: Steps 24, 25 and 29, E1, E2 and held-out E, offline with no spend, in a clean run
+  worktree at the measurement commit 504a657 (no `.env` in it, so the turn settings are the
+  defaults: confidence 0.7, start and stop 200 ms, minimum volume 0.6, Smart Turn on, its stop 3,000
+  ms), on a quiet machine, the audio roots and `var_dir` on the command line, the full scorecards in
+  the main checkout's `var/runs/e1-dev`, `e2-dev` and `e-held-out`; each run's history line carried
+  to the main branch before the next (4c598ac, 92ab331, 4bab6ef), the run worktree's file reset each
+  time.
+  - E1, the dev paused requests (23 variants of 6 items): 22 cut-offs and no miss. Every pause in a
+    request ended a turn: each cut variant holds 2 or 3 turn ends, each 65 to 140 ms after a VAD
+    stop, so Smart Turn judged the turn complete at the owner's mid-request pause, while each
+    variant's last turn end falls about 0.3 s after its labelled end, as the VAD stop puts it. By
+    language: Saudi 11 of 11, MSA 3 of 4, English 4 of 4, mixed 4 of 4; by device: Bluetooth 5 of 6,
+    the laptop 11 of 11, wired 6 of 6. The one variant timed (`n23_signature_msa`, Bluetooth): 315
+    ms from the labelled end to the turn end, the VAD stop 219 ms and Smart Turn's decision 96 ms.
+  - E1, the secondary set (199 variants of 57 items, its reference end Silero's own): 23 cut-offs
+    and 2 misses; Smart Turn's decision median 77 ms and 90th percentile 128 ms, English's 90th
+    percentile 2,992 ms and wired's 1,571 ms, where it said "incomplete" and the 3 s fallback ended
+    the turn.
+  - E2, E1 again: the paused requests 23 cut-offs and no miss; the secondary set 23 cut-offs, 2
+    misses, the decision median 72 ms and 90th percentile 142 ms. The noise: 1 verdict of the 23
+    paused variants differs (`n23_signature_msa-bluetooth-1-1`, timed in E1, cut in E2 with one more
+    turn end), none of the 199 secondary ones; a variant's first turn end moves by a median of 22 ms
+    between the runs (asyncio's clock ticks every 15.6 ms on Windows), by 96 ms at most on the
+    paused requests.
+  - Held-out E, aggregates only: 16 paused variants of 4 items, 16 cut-offs, no miss.
+  - Why, checked offline the same day by a workflow (a code-path audit, a direct experiment with
+    Pipecat's own Smart Turn, and a judge who replayed it, each on its own): no defect of ours. The
+    pipeline gives Smart Turn the whole turn so far, 16 kHz mono, with Pipecat's defaults, and plain
+    Pipecat with none of our code reproduces the same 22 cut-offs. Smart Turn v3.2 scores the
+    owner's mid-request pauses as complete (median probability 0.97 over the 45 pauses of the 23
+    variants, 37 above 0.5) as it scores the true ends (median 0.96), so no threshold on it
+    separates them; the pauses, as Silero hears them, last 220 to 720 ms (median 460 ms), and a VAD
+    stop of about 0.75 s would bridge all 45 at about 550 ms more on every turn's end. It says
+    "incomplete" for fillers and lone short words (0.006 to 0.47 for «اها», "umm", «نعم»), as the
+    live «وقف» held open showed. M2's echo calls change nothing; the lever is M3's (TD-094).
+  - Against the registration's expectation ("some cut-offs on the Arabic paused requests"), nearly
+    every paused request is cut, in every language and on every device. Under its rule no default
+    moves in M2 (Q14): E1 is the baseline M3 tunes against, and its numbers go to M3's session.
+- Deviation: the first start of the three runs was refused before any measurement, by the agent's
+  script, whose `--out` path ended in a literal `$name`; the second start ran E1, then E2 and
+  held-out E were refused because E1 had appended its history line to the run worktree's
+  `history.jsonl` (the worktree no longer clean); the line was carried to the main branch and the
+  file reset, as plan 002's runs did, and E2 and held-out E then ran at 504a657. No run was repeated
+  after seeing its result.
+- 2026-11-04: The criteria check before the close (a workflow, read-only: one checker per group of
+  criteria, a second look at each one not met) found five partly met (below, at the close), among
+  them the agent's check of Ole5's widget in its browser pane, not on record. That check, made the
+  same day: the Ole5 app's dev server on this laptop (recording off, a throwaway access code and
+  join key), its page in the browser pane: the consent screen in Arabic and in English (its text,
+  the consent version `m2-owner-test-1`, the recording box, «أوافق» and "I agree"), then the code
+  field and the call's buttons; with the browser's `getUserMedia` made to fail as a missing, a
+  refused and a busy microphone, Start showed "No microphone was found. Connect one and try again.",
+  "The browser blocked the microphone for this page. Allow it, then try again." and "Another program
+  is using the microphone. Close it and try again.", and the refused one in Arabic, each before any
+  request to the token route; with a silent stream and a wrong code, `POST /token` answered 403 and
+  the page showed «رمز الدخول غير صحيح.»; no console message. The data channel was checked in step
+  16's check of `/voice/dev`, and the microphone, playback, Stop and Esc in the owner's session.
 
 ## Decision log
 
