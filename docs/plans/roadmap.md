@@ -201,6 +201,15 @@ steps pass in a live call.
 - *From M2* (plan 003's Q16, the owner, 2026-11-03): the prompt arm that keeps product terms in
   Latin script (term recall was 0.333 on dev for large-v3), measured on the golden set (D-024's
   floor of 6 items) once the vocabulary that becomes the Whisper prompt lands.
+- *From M3* ([plan 005](active/005-interruptions-and-cancellation.md), the owner, 2026-11-04: "Ok
+  record that to be tried in M4"): the talker takes what an interruption means, while the
+  library keeps the fast stop. The library still stops at once on a clear stop word and never
+  for a listening sound, its own echo or silence; the talker reads the rest with the history of
+  what the caller heard (repeat, pause, say it slower or again in part, a correction, a request
+  after a stop), so most of M3's repeat and pause word handling can move to it. A small
+  classifier for the uncertain middle (a short utterance over the agent that is neither a listed
+  word nor clearly a request) is tried as a registered arm against M3's rule, scored offline on
+  the overlap runs' stored transcripts. Each moves a default only on a registered measurement.
 
 *Done when* retrieval (the right passage in the top 5) and answer correctness are measured; the
 time to the first useful audio meets a target registered in its plan before any run; and the

@@ -474,6 +474,12 @@ affects.
 
 What the owner has already said that binds M3:
 
+- 2026-11-04, after the code's close: the owner asked why the talker or a classifier should not
+  decide stop, repeat and pause rather than word lists; the agent proposed that the library keep
+  the fast stop (latency, a talker that cannot block its own interruption, Groq's limits) while
+  the talker takes the meaning with the heard history, and a classifier be tried as a registered
+  arm for the uncertain middle. The owner: "Ok record that to be tried in M4". Recorded in the
+  roadmap's M4 section; nothing in M3 changes.
 - 2026-11-03, later: "M2 is not finished because I will have to provide the recording later this
   day. Can you start implementing M3 on the the things that doesn't require it. I will notify you
   once I do the recording." So M3 starts now on Block 0, the tracks, the integration check and
