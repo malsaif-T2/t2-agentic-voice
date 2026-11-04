@@ -13,8 +13,10 @@ over it go into `overlap_replies.json`, by variant, which `poe overlap` plays th
 **The owner's labels** (`--labels`, `CallLabels`; Q2 and step 11's review): what each overlap
 is, by its call and turn: its kind, its language, its device, what was said (the owner's typed
 words, empty for no speech, with the language `none`) and, for a stop word or a word asking the
-agent to pause, its end in ms from the clip's start. An overlap with no label is listed by its
-call and turn and left out; a label of a read call's turn that is no overlap is refused. Each
+agent to pause, its end in ms from the clip's start; or that it is left out, and why (`left_out`,
+an overlap the owner heard as no one item). An overlap with no label is listed by its call and
+turn and left out, as one the owner left out is, with its reason; a label of a read call's turn
+that is no overlap is refused. Each
 labelled overlap is an item of its own, `call-<call>-turn-<n>`, of the source `talkover` (said
 over the agent), its one variant tagged `over-assistant` and `call`; its typed reference waits
 for the owner's confirmation in a review (`--reviews`, the recorder's `--out`, session `calls`),
@@ -90,10 +92,20 @@ class CallLabel(Model):
     word_end_ms: int | None = Field(default=None, ge=0)
 
 
+class LeftOut(Model):
+    """An overlap the owner listened to and left out of the set, and why, in a few words."""
+
+    call: str = Field(min_length=1, max_length=64)
+    turn: int = Field(ge=0)
+    reason: str = Field(min_length=1, max_length=200)
+
+
 class CallLabels(Model):
-    """`--labels`: one `[[overlaps]]` table for each overlap the owner labelled."""
+    """`--labels`: one `[[overlaps]]` table for each overlap the owner labelled, and one
+    `[[left_out]]` table for each the owner left out."""
 
     overlaps: tuple[CallLabel, ...] = ()
+    left_out: tuple[LeftOut, ...] = ()
 
 
 class OverlapReplies(Model):
@@ -105,13 +117,15 @@ class OverlapReplies(Model):
 @dataclass
 class Imported:
     """What an import found: the items, their manifest, the texts over each variant, each clip's
-    WAV file by its name, and the overlaps left with no label and the calls refused."""
+    WAV file by its name, the overlaps left with no label, those left out with their reasons,
+    and the calls refused."""
 
     items: list[Item] = field(default_factory=list)
     files: list[ManifestFile] = field(default_factory=list)
     replies: dict[str, tuple[str, ...]] = field(default_factory=dict)
     clips: dict[str, bytes] = field(default_factory=dict)
     unlabelled: list[tuple[str, int]] = field(default_factory=list)
+    left_out: list[tuple[str, int, str]] = field(default_factory=list)
     refused: list[str] = field(default_factory=list)
 
 
@@ -129,7 +143,8 @@ def build(
     """The labelled overlaps of every call folder in `recordings`, as items, each with its clip
     cut from its call's caller track and the texts that played over it."""
     named = {(label.call, label.turn): label for label in labels.overlaps}
-    if len(named) != len(labels.overlaps):
+    dropped = {(drop.call, drop.turn): drop.reason for drop in labels.left_out}
+    if len(named.keys() | dropped.keys()) != len(labels.overlaps) + len(labels.left_out):
         raise GoldenSetError("--labels names an overlap twice")
     found, calls, read = Imported(), set(), set()
     for folder in sorted(path for path in recordings.iterdir() if path.is_dir()):
@@ -143,12 +158,16 @@ def build(
         calls.add(folder.name)
         for overlap in overlaps(lines):
             read.add((folder.name, overlap.turn))
-            label = named.get((folder.name, overlap.turn))
+            key = (folder.name, overlap.turn)
+            if key in dropped:
+                found.left_out.append((*key, dropped[key]))
+                continue
+            label = named.get(key)
             if label is None:
                 found.unlabelled.append((folder.name, overlap.turn))
                 continue
             _add(found, label, overlap, pcm16, terms, reviews)
-    if stray := sorted(key for key in named if key[0] in calls and key not in read):
+    if stray := sorted(k for k in named.keys() | dropped.keys() if k[0] in calls and k not in read):
         raise GoldenSetError(f"--labels names turns that are no overlap: {stray}")
     return found
 
@@ -269,6 +288,8 @@ def main(argv: Sequence[str] | None = None) -> int:
         return 1
     for call, turn in found.unlabelled:
         log.info("overlap_left_out", call=call, turn=turn, reason="no label")
+    for call, turn, reason in found.left_out:
+        log.info("overlap_left_out", call=call, turn=turn, reason=reason)
     log.info("calls_imported", items=len(found.items), refused=len(found.refused))
     return 1 if found.refused else 0
 
