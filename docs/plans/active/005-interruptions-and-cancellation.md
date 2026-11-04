@@ -399,6 +399,25 @@ milestone a contract it cannot build on. Everything else becomes a row in
   'TOTAL 12288 0 100%', '3807 passed, 1 skipped'. Merged as bd22dec and 23f7f77; the gate on
   23f7f77: 'TOTAL 12288 0 100%', '3810 passed, 1 skipped, 1 warning in 367.83s (0:06:07)'. Their debt is TD-110 and TD-111. The code of M3 is done: what is left needs
   the owner's recordings, the paid runs and the live calls (steps 11 to 18), then the close.
+- 2026-11-04: M2's recorded session (plan 003's step 18, run C) is done, on the main branch at
+  95488e5, which merged into `plan-005-integration` (its code unchanged since 85a7a6c: docs and
+  the calls' manifests only). What it means for M3, as the plan-003 session reported it: six
+  calls, 3.45 minutes, in Chrome, three on the laptop's speakers and three on the wired headset;
+  «وقف» over an echo only in one headset call, twice and a little loud, so C3 holds few stops and
+  M3's own recordings (Q2's (a)) carry the targets; no listening sound over an echo opened a turn.
+  Smart Turn held a lone «وقف» open for at least 2 s once and closed another in 0.22 s, so the
+  rehearsal's stop and repeat can fall in one turn, which amendment (6) covers. TD-092: the speech
+  detector missed a short word of about 0.35 s, as short as a stop word: O1 counts the clips where
+  no overlap opened, by kind, and a stop word that opens none is a candidate for the rule's one
+  revision, the detector's start settings then measured as an arm, the owner's call before its
+  run. TD-091: a client's `stop` waits behind Smart Turn's inference (0.15 to 0.25 s), which the
+  Stop button's latency carries, not the spoken stop (the session's own transcripts reach it
+  directly). TD-070: the caller's track drifts up to 108 ms against the timeline, so C3's import
+  aligns on the server's clause events and `agent.wav`. TD-089: the first call after a server
+  start took 26.8 s to connect, so the live calls start after a warm-up call. D-040: the key's
+  daily limits are far above the published ones (100,000 Orpheus requests a day), so only the
+  per-minute limits bind the runs and the live calls. Next: the owner's M3 recording session,
+  and the merge into the main branch on the owner's word.
 
 ## Decision log
 

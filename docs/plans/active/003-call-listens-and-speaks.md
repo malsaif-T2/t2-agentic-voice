@@ -525,7 +525,9 @@ run C, which was step 28, are this one session)
     does", step 3): a few turns in each language (Saudi Arabic, MSA and English), Stop and Esc
     pressed once each during an echo, and in each Arabic call a listening sound during another echo,
     which is transcribed and kept on the timeline but, by the drop rule, never said back, so M3's
-    check that listening sounds do not interrupt the agent has M2's recordings to run on; the owner
+    check that listening sounds do not interrupt the agent has M2's recordings to run on; and in
+    each Arabic call «وقف» at normal volume during a third echo, never said back either, for M3's
+    stop targets (M3's plan, its Q2 (b): "The owner's decisions", 2026-11-03); the owner
     checks the microphone and playback and says whether each turn came back. The session is four
     calls, an Arabic and an English call on each device, each under `limits.max_call_s` (600 s);
     each joins through the Ole5 app's token route with the access code (Q4), the recording box
@@ -1098,6 +1100,88 @@ manifests committed), and requests per call minute are recorded from it as a dec
   test use the selector loop: 7491cfe runs them on the selector loop, and gives Track B's timeout
   test one 15.6 ms tick of the loop's clock, after it measured 0.2919 s against 0.3 s once in step
   16's gate.
+- 2026-11-03: `plan-003-integration` merged into the main branch at 85a7a6c, its tree that of
+  213b3f2, where the main branch was merged in first (its conflicts in `decisions.md` and the
+  roadmap resolved by order: the plan's entries, then D-050). Gate on it: 'check_docs: OK (35 files
+  checked)', 'TOTAL 10175 0 100%', '3177 passed, 1 skipped'. 94ea2e5 adds a few «وقف» over an echo
+  to step 18 (M3's plan, its Q2 (b)), and 63bbe52 names M3's plan by its milestone until its file
+  reaches the main branch, which DOC-REF requires.
+- 2026-11-04: Step 18, the owner's recorded session, in Chrome on this laptop through the Ole5 app's
+  dev server, recording on, consent `m2-owner-test-1`: six calls from 06:46 to 06:52 UTC, 3.45 call
+  minutes in all. The server first refused to start: the owner's `.env` held M1's names
+  (`T2V_LOG_FORMAT`, `T2V_LOG_LEVEL`, `T2V_VAR_DIR`), also set in the owner's shell window, which
+  `VoiceSettings.from_env` refuses with the name to use now; the owner renamed them. The calls (the
+  device from the owner, 2026-11-04, "The owner's decisions"):
+
+  | # | Call | Language | Device | Length | Turns | Said back | Dropped over an echo | Stop or Esc during an echo |
+  | --- | --- | --- | --- | --- | --- | --- | --- | --- |
+  | 1 | `ik_-d5zQWFccSIN4` | en | speakers | 28.7 s | 3 | 3 | 0 | none (5 presses after the echo ended) |
+  | 2 | `srJWnTuryBmF0QmJ` | ar-SA | speakers | 55.6 s | 9 | 6 | 3 | Stop, silent 0.11 s later |
+  | 3 | `c7eS2Sdh_Mq1Dvz7` | en | speakers | 23.8 s | 5 | 3 | 1 | none (1 press after the echo ended) |
+  | 4 | `nSBBJm9cRC3I3ZPX` | ar-SA | headset | 39.4 s | 4 | 4 | 0 | Stop, silent 0.12 s later |
+  | 5 | `ps_DGwHS88YZ1r5R` | en | headset | 37.1 s | 3 | 3 | 0 | Esc, silent 0.10 s later |
+  | 6 | `Bv5tsBXzFHyXBAXk` | ar-SA | headset | 22.2 s | 3 | 2 | 1 («وقف» twice) | none |
+
+  - The owner's report: the microphone, playback, Stop (calls 2 and 4) and Esc (call 5) worked, and
+    every echo sounded right "but for product words like Ole5, and sometimes it hears the true
+    meaning of Arabic phrase but not the exact words (it uses synonyms sometimes)" (TD-093).
+  - The agent's check of each call's report, timeline and audio (a workflow: one analyst per call,
+    one skeptic per finding rated high or medium, under the review rule of 2026-11-03): every turn
+    said while the agent was quiet was said back whole; each dropped turn was the owner's own speech
+    over an echo, its pitch the owner's and not the agent's, dropped by the drop rule (D-037), so no
+    turn was the agent hearing itself, on the speakers or the headset (with Chrome's echo
+    cancellation on, no agent audio is measurable in any caller track); the three stops during an
+    echo silenced the agent within 0.10 to 0.12 s of reaching the server; the six presses in calls 1
+    and 3 came after the echo had ended and did nothing, as `Speaker.stop` does with no reply in
+    progress; the «وقف» over call 6's echo was dropped and the agent spoke on, M2 having no spoken
+    stop (M3). No clipping and no gap in the agent's audio. Two findings rated medium were refuted
+    to low by their skeptics (a short word lost at the VAD's start, TD-092; the client's playback
+    reports, TD-070); the others are low or info: debt rows TD-089 to TD-093, and TD-070's row
+    brought up to date.
+  - The time of each step, over the 26 transcribed turns, median / 90th percentile (the reports and
+    timelines; no trace, below): `stt_ms`, the end of speech to the transcript, ar-SA 542 / 646 ms
+    (16 turns) and en 568 / 607 ms (10; the first call's first turn 1,317 ms, a cold Smart Turn and
+    a cold connection to Groq, TD-089); its parts from the timeline, the end of speech to the turn
+    closed (Smart Turn's decision, the VAD stop included) 236 / 255 ms, and the turn closed to the
+    transcript (Whisper's request with the bridge's hand-off) 311 / 389 ms, 775 ms at most (the cold
+    first). `ttfa_ms`, the echo ready (its cached frame's first audio queued, TD-063): ar-SA 555 /
+    609 ms, en 553 / 612 ms. `tts_first_audio_ms`, the echo's Orpheus request to its first audio
+    queued: ar-SA 188 / 201 ms (442 ms on the longest echo), en 187 / 239 ms. By device the same
+    within 0.08 s. The caller hears the echo about 0.8 to 1.2 s after their speech ends, since the
+    frame and the takes lead with untrimmed silence that the report's fields count as audio
+    (TD-090). Per call (`client_stats`): connect 677 to 840 ms (median 820 ms) but 26.8 s for the
+    first call after the server started (TD-089); from connecting to the first audio played 256 to
+    428 ms (median 332 ms); a host candidate and echo cancellation on in every call.
+  - Requests per call minute for each model, and the key's headroom from Groq's rate-limit headers:
+    D-040 (the headers show daily limits about 1,000 times the published ones, so Q17's reading is
+    in part answered).
+  - Spend: 26 Whisper requests, 58.6 s of audio sent and 260 s billed (10 s each), about $0.008;
+    Orpheus 296 characters in Arabic, about $0.012, and 211 in English, about $0.005; the phrase
+    cache's first start, 8 phrases of about 340 characters, about $0.01: about $0.035, M2's first
+    spend, so its running total, against Q13's $1 and the session's estimate of $0.34. On the
+    published limits the day's use stayed under 20 Whisper and 10 Orpheus requests in any minute.
+  - The six calls' manifests (`apps/ole5-voice-agent/evals/calls/`, each file's SHA-256 and length,
+    its consent `m2-owner-test-1`, written by `call_manifests`); the audio stays under the main
+    checkout's `var/recordings/`, out of git.
+  - For M3, sent to its session: TD-090, TD-091 and TD-092; Smart Turn split a spoken ticket number
+    at a 0.36 s pause (call 4) and "Yeah. / What did you hear?" at about 0.25 s (call 3), held a
+    lone «وقف» open at least 2 s once and closed another in 0.22 s (call 6); the owner's short
+    sounds over echoes opened no turn, so no listening sound was transcribed.
+- Deviation: the session's calls have no trace. The agent's start command set no
+  `T2V_TRACING__ENDPOINT`, and the Phoenix running on this laptop holds no span of the day, so the
+  speech-to-text span (Whisper's request alone, its audio seconds per request) and each reply's
+  `tts.cut_short` are not read: the time of each step comes from the reports and the timelines, as
+  above, and the audio seconds from the reports' usage. No take was cut short as far as the session
+  shows: the phrase cache kept all 8 phrases, and it keeps no flagged take, and every echo played
+  its words whole; TD-063's ceilings keep their trigger.
+- Deviation: the session ran 3.45 call minutes in six calls, not about 20 to 30 in four: an English
+  call first (call 1, a warm-up) and an extra Arabic call last (call 6, for «وقف»). Not done: two of
+  the three MSA turns (one clear, call 2's turn 6); a listening sound transcribed during an echo;
+  «وقف» on the speakers (said only on the headset, call 6, twice and a little loud); and Esc in the
+  headset's Arabic call (pressed in its English call, call 5). The owner accepted the session as it
+  is on 2026-11-04 ("The owner's decisions"); M3's own recorded runs hold the live language, the
+  listening sounds and «وقف». Next: step 30's corrections of the design, by an agent; then E1, E2
+  and held-out E in a clean run worktree, on a quiet machine; then the close.
 
 ## Decision log
 
@@ -2009,6 +2093,17 @@ What the owner has already said that binds M2, in the owner's words where they w
     not read the key's limits. Kept: E (E1 and E2, offline with `poe eot`, no spend) and held-out E
     at the close (aggregates only, no spend); step 30's corrections of the design's factual slips,
     made by an agent while the owner holds the session.
+- 2026-11-03, in the session drafting M3's plan, its Q2 settled as "(a) and (b)": (b) adds a few «وقف»
+  over an echo to this plan's step 18 session, so M3's stop targets are also checked on M2's
+  recordings. In M2's echo mode such a «وقف» is transcribed and kept on the timeline but, by the
+  drop rule, never said back. Step 18 and "What the owner does", step 3, carry it.
+- 2026-11-04, after step 18's session: asked whether calls 1 to 3 were on the laptop's speakers and
+  4 to 6 on the wired headset, "Yes, 1–3 speakers"; which stop during an echo was Esc, "Call 5";
+  whether every echo sounded right, "It seems good, but for product words like Ole5, and sometimes
+  it hears the true meaning of Arabic phrase but not the exact words (it uses synonyms sometimes).";
+  and whether to accept the session as it is to close M2 or hold a short top-up call, "Accept it
+  (Recommended)", with the agent's note that the gaps are recorded as deviations and that M3's own
+  recorded runs cover the live language, the listening sounds and «وقف».
 - 2026-11-01: "Approve all", for the roadmap's M1 to M7 and the package design as amended (D-017),
   as plan 000 records it. So M2's goal and *Done when*, and the design's 16.1 M2 row, bind this
   plan, as the owner's rulings of 2026-11-03 (above) amend them: the deployment and the other
@@ -2821,11 +2916,11 @@ the run it touches.
    meanwhile. The script, about 20 to 30 minutes in four calls (a call ends at 10 minutes):
    - on the laptop's speakers, an Arabic call (`ar-SA`): three Saudi turns (one that pauses
      mid-sentence, one with a product term, one with a number or a ticket number), then three MSA
-     turns; press Stop once during an echo, and during another echo say a listening sound («اها» or
-     «ايوه») once;
+     turns; press Stop once during an echo, during another echo say a listening sound («اها» or
+     «ايوه») once, and during a third echo say «وقف» once at normal volume (M3's plan, its Q2 (b));
    - on the speakers, an English call: three turns, one with a product term;
-   - on the wired headset, the Arabic call again, its listening sound included, pressing Esc once
-     during an echo instead of Stop;
+   - on the wired headset, the Arabic call again, its listening sound and «وقف» included, pressing
+     Esc once during an echo instead of Stop;
    - on the headset, the English call again.
 
    After each call, say which turn, if any, did not come back, and whether the microphone, playback,

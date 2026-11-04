@@ -1,0 +1,33 @@
+{
+  "call_id": "nSBBJm9cRC3I3ZPX",
+  "consent": {
+    "version": "m2-owner-test-1",
+    "record_audio": true
+  },
+  "files": [
+    {
+      "path": "agent.wav",
+      "sha256": "171b001056c90dd2951d9f7e9a3e66441fbe22d311ded44886df3b1b282b5eab",
+      "bytes": 1821428,
+      "sample_rate": 24000,
+      "channels": 1,
+      "seconds": 37.9455
+    },
+    {
+      "path": "caller.wav",
+      "sha256": "b60252db550d3c139b54a8b81edfa7ca7b65f30d4ed9ca6074aeed6d5ceef2a3",
+      "bytes": 1261758,
+      "sample_rate": 16000,
+      "channels": 1,
+      "seconds": 39.4285625
+    },
+    {
+      "path": "timeline.jsonl",
+      "sha256": "2db04266ac14980c658810637131055b9221ac40c2e361573ce8e83fa84132d6",
+      "bytes": 5520,
+      "sample_rate": null,
+      "channels": null,
+      "seconds": null
+    }
+  ]
+}
