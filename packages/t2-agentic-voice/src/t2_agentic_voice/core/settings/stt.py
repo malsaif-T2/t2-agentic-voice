@@ -1,5 +1,5 @@
-"""The `stt` group: speech-to-text, and the filter for text from silence (plan 005), off until the
-registered rule F turns it on (GP-18)."""
+"""The `stt` group: speech-to-text, and the filter for text from silence (plan 005), on by
+default since the registered rule F held on plan 002's runs R1 and R3 (GP-18)."""
 
 from __future__ import annotations
 
@@ -44,20 +44,22 @@ class SttSettings(Group):
         ),
     )
     no_speech_max: float | None = Field(
-        default=None,
+        default=0.5,
         ge=0,
         le=1,
         allow_inf_nan=False,
         description=(
             "The no-speech probability Whisper reports above which a transcript counts as no "
             "words (text from silence), for a turn and for speech over a reply, from 0 to 1; "
-            "unset, the filter is off until a registered measurement sets it (GP-18)."
+            "unset, the threshold is off. 0.5 by the registered rule F (plan 005), which changes "
+            "only on another registered measurement (GP-18)."
         ),
     )
     caption_filter: bool = Field(
-        default=False,
+        default=True,
         description=(
             "Whether a transcript that is one of the captions Whisper invents for silence or "
-            "noise counts as no words; off until a registered measurement turns it on (GP-18)."
+            "noise counts as no words; on by the registered rule F (plan 005), which changes "
+            "only on another registered measurement (GP-18)."
         ),
     )
