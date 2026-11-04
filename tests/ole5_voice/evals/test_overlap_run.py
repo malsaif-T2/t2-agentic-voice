@@ -15,7 +15,13 @@ import pytest
 from ole5_voice.evals import overlap
 from ole5_voice.evals.overlap_card import OverlapScorecard
 from ole5_voice.evals.overlap_plan import DEFAULT_REPLY, overlaps_of, setting
-from ole5_voice.evals.overlap_run import MAX_ATTEMPTS, RATE_LIMIT_PAUSE_S, ReplySpeech, reference
+from ole5_voice.evals.overlap_run import (
+    MAX_ATTEMPTS,
+    RATE_LIMIT_PAUSE_S,
+    ReplySpeech,
+    reference,
+    stt_budget,
+)
 from ole5_voice.evals.run_lines import OverlapLine
 from ole5_voice.evals.run_parts import Choice, Todo, load_plan
 from ole5_voice.evals.runs import SCORECARD_FILE
@@ -31,15 +37,19 @@ from tests.ole5_voice.evals.overlap_support import (
     requests_in_any_minute,
     stop,
 )
-from tests.ole5_voice.evals.run_support import FakeClock, golden_set, make_world
+from tests.ole5_voice.evals.run_support import FakeClock, World, golden_set, make_world
+
+
+def _script(world: World) -> None:
+    (world.data / "script.toml").write_text(
+        '[[lines]]\nid = "x"\nkind = "noise"\nlanguage = "none"\n', encoding="utf-8"
+    )
 
 
 def _run(tmp_path: Path, n: int, *script: OverlapReplay | BaseException) -> Run:
     world = make_world(tmp_path)
     found = [clip(world, f"k{i}", "stop_word") for i in range(n)]
-    (world.data / "script.toml").write_text(
-        '[[lines]]\nid = "x"\nkind = "noise"\nlanguage = "none"\n', encoding="utf-8"
-    )
+    _script(world)
     clock = FakeClock()
     return Run(world, golden_set(*found), FakeReplayer(list(script), clock), clock=clock)
 
@@ -79,6 +89,43 @@ def test_the_pacer_holds_the_replay_to_10_whisper_requests_a_minute(tmp_path: Pa
     assert max(run.clock.pauses) == pytest.approx(60.0, abs=0.01)  # the window's oldest left
 
 
+def test_a_clip_is_budgeted_3_requests_for_each_started_4_s_of_it_and_its_tail() -> None:
+    assert [stt_budget(s) for s in (0.5, 1.0, 3.5, 3.6, 7.5, 7.6)] == [6, 6, 6, 9, 9, 12]
+    assert stt_budget(23.0) == 21  # an echo item's clip: 27.5 s with its tail, 7 spans
+
+
+def _long_run(tmp_path: Path, *script: OverlapReplay) -> Run:
+    """Clips of 1, 24 and 1 s (items k0, k1, k2), the smoke test k0's."""
+    world = make_world(tmp_path)
+    found = [clip(world, f"k{i}", "stop_word", seconds=s) for i, s in enumerate((1.0, 24.0, 1.0))]
+    _script(world)
+    clock = FakeClock()
+    return Run(world, golden_set(*found), FakeReplayer(list(script), clock), clock=clock)
+
+
+def test_a_long_clip_starts_on_an_empty_minute(tmp_path: Path) -> None:
+    """A 24 s clip is budgeted 24 requests, more than the 10 a minute: it waits until no request
+    of the last minute is left, though 6 more would have fitted beside the 4 sent, so the
+    overlaps it may open join no other clip's requests in a minute."""
+    run = _long_run(tmp_path, stop(), stop(), stop(), stop())
+    assert overlap.main(pipeline(run), parts=run.parts()) == 0
+    times = [asked["at"] for asked in run.replayer.asked]
+    assert run.replayer.asked[2]["clip"].seconds == pytest.approx(24.0)
+    assert times[1] == times[0] and all(t <= times[2] - 60 for t in times[:2])
+    assert requests_in_any_minute(times, [2] * 4) <= 10
+
+
+def test_the_cap_budgets_a_long_clip_by_its_length(tmp_path: Path) -> None:
+    """The 24 s clip is budgeted 24 requests of 24 s each, 0.0178 USD: a cap of 0.015 refuses
+    it, though the smoke test and the first clip, 0.00185 each, fit."""
+    run = _long_run(tmp_path, stop(), stop(), stop(), stop())
+    argv = [*pipeline(run)[:-2], "--cap-usd", "0.015"]
+    assert overlap.main(argv, parts=run.parts()) == 1
+    card = _card(run)
+    assert (card.complete, card.stopped, len(card.variants)) == (False, "cap", 1)
+    assert len(run.replayer.asked) == 2
+
+
 def test_a_clip_that_met_a_rate_limit_is_played_again_after_a_minute(tmp_path: Path) -> None:
     run = _run(tmp_path, 1, stop(), stop(failure="rate_limited"), stop())
     assert overlap.main(pipeline(run), parts=run.parts()) == 0
@@ -115,11 +162,11 @@ def test_a_variant_whose_deciding_request_failed_is_counted_apart(tmp_path: Path
 
 
 def test_the_cap_stops_the_run_before_a_clip_it_cannot_afford(tmp_path: Path) -> None:
-    """A clip is budgeted 3 requests of 10 s: 0.000925 USD at 0.111 an hour. The smoke test and
-    the first clip spent 2 requests each (0.001233), so the second's budget would pass a cap of
-    0.002."""
+    """A clip of 1 s is budgeted 6 requests of 10 s (two started spans of it and its tail):
+    0.00185 USD at 0.111 an hour. The smoke test and the first clip spent 2 requests each
+    (0.001233), so the second's budget would pass a cap of 0.003."""
     run = _run(tmp_path, 3, stop(), stop(), stop(), stop())
-    argv = [*pipeline(run)[:-2], "--cap-usd", "0.002"]
+    argv = [*pipeline(run)[:-2], "--cap-usd", "0.003"]
     assert overlap.main(argv, parts=run.parts()) == 1
     card = _card(run)
     assert (card.complete, card.stopped, len(card.variants)) == (False, "cap", 1)

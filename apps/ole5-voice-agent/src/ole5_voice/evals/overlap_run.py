@@ -10,15 +10,18 @@ inside `poe check`, reading no audio and sending nothing.
 **The replay** plays each clip `AT_S` into a reply, as a fresh call, with `TAIL_S` of silence
 after it (the registration's 1 s and 4.5 s), at real-time pace, through the real speech-to-text
 and a text-to-speech that sends nothing (`ReplySpeech`), whose reply outlasts the clip and its
-tail by `REPLY_MARGIN_S`. Before each clip the run waits until its pacer has room for the most a
-clip is budgeted to send (`STT_PER_VARIANT`: an overlap's window and whole parts and its turn's
-own), at the run's Whisper requests a minute (`--stt-rpm`, 10 by default, half the published 20:
-plan 003's Track H), and refuses to start one whose budgeted cost would take the run past
-`--cap-usd`. A clip one of whose requests met a rate limit is played again after
-`RATE_LIMIT_PAUSE_S`, up to `MAX_ATTEMPTS` calls in all, every call's requests counted on the
-pacer and in the spend, each billed as Groq bills Whisper, at least 10 s; a clip whose last call
-still met one stops the run (`RateLimitedError`), never scored as the rule's verdict on what
-Whisper did not answer.
+tail by `REPLY_MARGIN_S`. A clip is budgeted the most it may send by its length
+(`stt_budget`): `STT_PER_SPAN` requests (an overlap's window and whole parts and its turn's own)
+for each started `SPAN_S` of the clip and its tail, since a long clip, such as an echo item's,
+may open an overlap in each (TD-108). Before each clip the run waits until its pacer has room
+for that budget, at the run's Whisper requests a minute (`--stt-rpm`, 10 by default, half the
+published 20: plan 003's Track H), or, for a budget above the limit, for a whole empty minute,
+so a long clip starts on one; and it refuses to start a clip whose budgeted cost, each request
+billed the clip's length and at least 10 s, would take the run past `--cap-usd`. A clip one of
+whose requests met a rate limit is played again after `RATE_LIMIT_PAUSE_S`, up to
+`MAX_ATTEMPTS` calls in all, every call's requests counted on the pacer and in the spend, each
+billed as Groq bills Whisper, at least 10 s; a clip whose last call still met one stops the run
+(`RateLimitedError`), never scored as the rule's verdict on what Whisper did not answer.
 
 **The smoke test** (`Measuring.smoke`), before any clip of the run: the plan's smoke variant
 (`run_parts.load_plan`'s, a dev variant even for a held-out run), played once over its reply as
@@ -33,6 +36,7 @@ run's counted only.
 
 from __future__ import annotations
 
+import math
 from collections.abc import AsyncIterator, Sequence
 from dataclasses import dataclass
 from pathlib import Path
@@ -54,7 +58,8 @@ AT_S: Final = 1.0  # how far into the reply each clip starts (the registration's
 TAIL_S: Final = 4.5  # the silence after it
 REPLY_MARGIN_S: Final = 2.0  # how long the reply plays on after the tail (the agent's value)
 RESULTS_FILE: Final = "results.jsonl"  # a dev run's results, each as it finishes
-STT_PER_VARIANT: Final = 3  # window, whole overlap and the turn's own request, at most
+STT_PER_SPAN: Final = 3  # an overlap's window, whole overlap and its turn's own, at most
+SPAN_S: Final = 4.0  # the clip and tail budgeted one overlap's requests (the agent's, TD-108)
 MAX_ATTEMPTS: Final = 3
 RATE_LIMIT_PAUSE_S: Final = 60.0  # a whole pacer window, the per-minute limit's own
 # The text-to-speech's audio: a quiet tone, never silence, which Pipecat would mark unusable
@@ -258,8 +263,9 @@ class Measuring:
 
     async def _call(self, clip: AudioClip, overlap: Overlap) -> Verdict:
         """One paced call, refused at the cap, its requests counted."""
-        await self.pacer.room_for(STT_PER_VARIANT)
-        budget = STT_PER_VARIANT * max(GROQ_MINIMUM_S, clip.seconds)
+        most = stt_budget(clip.seconds)
+        await self.pacer.room_for(min(most, self.pacer.limit))
+        budget = most * max(GROQ_MINIMUM_S, clip.seconds)
         if self.spent_usd + cost_usd(budget, self.price_per_hour_usd) > self.cap_usd:
             raise CapReachedError
         self.speech.seconds = AT_S + clip.seconds + TAIL_S + REPLY_MARGIN_S
@@ -280,6 +286,12 @@ class Measuring:
     async def aclose(self) -> None:
         await self.replayer.aclose()
         await self.stt.aclose()
+
+
+def stt_budget(clip_s: float) -> int:
+    """The most Whisper requests a clip of `clip_s` seconds is budgeted: `STT_PER_SPAN` for each
+    started `SPAN_S` of it and its tail."""
+    return STT_PER_SPAN * math.ceil((clip_s + TAIL_S) / SPAN_S)
 
 
 def _clip(overlap: Overlap) -> AudioClip:
