@@ -25,10 +25,12 @@ Every number describes one speaker, the owner (D-006).
 
 **The call** (the library)
 
-- [ ] `t2_agentic_voice.ports` exports `TextToSpeech` and `AudioChunk` in the shape of the
+- [x] `t2_agentic_voice.ports` exports `TextToSpeech` and `AudioChunk` in the shape of the
   design's 6.1, and `IdentityVerifier` and `UsedTokens` as its 6.5 has them; each port that holds
   connections has `aclose()`.
-- [ ] `t2_agentic_voice.groq.GroqTTS` speaks through `canopylabs/orpheus-arabic-saudi` and
+  *Amended 2026-11-04 (the owner, "The owner's decisions"): `IdentityVerifier.verify` takes the join
+  context as well, `verify(token, *, join=...)`, as D-029's bullet, accepted that day, records.*
+- [x] `t2_agentic_voice.groq.GroqTTS` speaks through `canopylabs/orpheus-arabic-saudi` and
   `canopylabs/orpheus-v1-english`, a model and a voice per language from `tts.languages`, and
   refuses text over the model's `max_chars` (200 for both). It reads the sample rate from each
   WAV's header, flags a take that came back cut short, keeps each response's
@@ -38,20 +40,20 @@ Every number describes one speaker, the owner (D-006).
   a cancel that stops within 50 ms and leaves no task or connection, each failure kind, that the
   key appears in no repr, error or log line, and that `GROQ_*` variables change nothing in the
   request (the design's 7.3).
-- [ ] No public signature names a type from `pipecat`, `aiortc`, `onnxruntime` or `groq` (the
+- [x] No public signature names a type from `pipecat`, `aiortc`, `onnxruntime` or `groq` (the
   design's 5.3, a test over every public module).
-- [ ] The fixed phrases declared at lifespan start (the greeting, the echo's frame, the notices)
+- [x] The fixed phrases declared at lifespan start (the greeting, the echo's frame, the notices)
   are synthesized once and cached under `var_dir`, keyed by a hash of text, model and voice (the
   design's 10.4); a cache hit sends no request. In M2 no text built from heard words reaches the
   cache: after an echo turn the cache folder holds no new file and the cache was never asked for
   the heard text (a test; invariant 8).
-- [ ] `t2_agentic_voice.languages` exports `speak_number` and `speak_id` in Arabic and English
+- [x] `t2_agentic_voice.languages` exports `speak_number` and `speak_id` in Arabic and English
   (numbers through num2words behind a `domain` function, IDs digit by digit from the library's own
   table), the clause splitter, which keeps every clause within the model's `max_chars`, cutting
   inside a word only a word longer than that, and the pronunciation map; Ole5's entries ("Ole5" said
   «أُولِي فايف» and "Oh-lee five", `Ole5-chatbot/VOICE_LOG.md`, lines 35 and 45, the prototype's D26
   and D37) are the app's data.
-- [ ] `voice` runs one Pipecat pipeline per call: SmallWebRTC, Silero VAD and Smart Turn v3.2 on
+- [x] `voice` runs one Pipecat pipeline per call: SmallWebRTC, Silero VAD and Smart Turn v3.2 on
   CPU with no torch, a speech-to-text bridge on Pipecat's STT base class that sends Whisper one
   request per user turn (the decision log; Block 0's read and spike confirm it can), Smart Turn's
   stop strategy with `wait_for_transcript` off so that a turn's end is the analyzer's alone, a
@@ -59,7 +61,7 @@ Every number describes one speaker, the owner (D-006).
   is a plain `FrameProcessor`. Pipecat's interruptions are off, and none of its LLM services,
   context aggregators or function calls is used (the design's 13). The session's modules import no
   Pipecat (ARCH-BAN).
-- [ ] The voice session in echo mode says back each turn in the voice of its language (one voice per
+- [x] The voice session in echo mode says back each turn in the voice of its language (one voice per
   reply): the cached frame (Q3) plays once the turn's transcript is in, while Orpheus synthesizes
   the heard words; an empty transcript is said back as nothing and kept on the timeline. Speech that
   starts while the echo plays, or within 300 ms after it, is not said back (a test), so the agent
@@ -67,21 +69,26 @@ Every number describes one speaker, the owner (D-006).
   audio frame of a reply it dropped is sent, a stop dropping every clause asked for so far, the
   greeting's and a queued notice's included (a test with a capturing output), and the session
   listens again.
-- [ ] `HeardWords` is in `[[restricted]]`, built only in `voice`, from the commit that creates it
+- [x] `HeardWords` is in `[[restricted]]`, built only in `voice`, from the commit that creates it
   ([SECURITY.md](../../SECURITY.md), invariant 1).
-- [ ] Invariant 8: Pipecat's loguru output is off by default (Q2), switched off before `voice`
+  *At the close, 2026-11-04: its row came with the integrator's asks (d4cadca), five commits after
+  the class (b1187b1) on the integration branch, where nothing built it outside `voice` meanwhile; a
+  deviation in the progress log.*
+- [x] Invariant 8: Pipecat's loguru output is off by default (Q2), switched off before `voice`
   first imports Pipecat, so its import banner never prints: in a child process,
   `import t2_agentic_voice` and `t2v --help` write nothing to stderr. A test, in a child process
   with loguru's default sink in place, shows that a Pipecat DEBUG line holding a transcript
   reaches no output. Pipecat's error frames and its transport and ICE failures become library log
   lines with no call content, and `TransportFailed` or `ProviderFailed` events.
-- [ ] One trace per turn, `session.id` set to the call ID, with the speech-to-text span and a
+- [x] One trace per turn, `session.id` set to the call ID, with the speech-to-text span and a
   text-to-speech span (characters, chunks, requests, time to first audio, cache hits) and the
   resource attributes of the design's 10.1, whose settings digest leaves out every secret and its
   `_file` path (a test: changing a secret leaves the digest unchanged). A test finds no Groq key,
   join token, offer secret, TURN secret or access code in any exported span, and no
   audio.
-- [ ] Each call's `CallReport` holds its usage per Groq model (requests, audio seconds sent and
+  *Amended 2026-11-04 (the owner, "The owner's decisions"): the test that no join token, offer
+  secret or access code reaches an exported span is debt, TD-095.*
+- [x] Each call's `CallReport` holds its usage per Groq model (requests, audio seconds sent and
   billed, TTS characters, cache hits, the last remaining requests and tokens Groq reported) and its
   requests per call minute. Its numbers, with no heard or spoken text, also go on the call's root
   span and into a JSON file per call under `var_dir/reports/` (a test that the file holds no text
@@ -90,7 +97,7 @@ Every number describes one speaker, the owner (D-006).
 
 **Call set-up** (the library)
 
-- [ ] `t2_agentic_voice.identity.SignedJoinTokens` mints and verifies compact JWTs, HS256 only,
+- [x] `t2_agentic_voice.identity.SignedJoinTokens` mints and verifies compact JWTs, HS256 only,
   with the claims, the key map and the lifetime of the design's 6.5, single use through
   `t2_agentic_voice.stores.SqliteUsedTokens`. Every join key is at least 32 bytes (RFC 7518's
   3.2 for HS256: rfc-editor.org/rfc/rfc7518#section-3.2, read 2026-11-02 by the security review),
@@ -103,7 +110,7 @@ Every number describes one speaker, the owner (D-006).
   over 120 s, with a consent version other than `privacy.consent_version`, and with `record_audio`
   given as "true", "false", 1 or null; each is refused at `/join` in the one error shape, echoing
   no value (GP-19). A key under 32 bytes is refused at settings load and at verify.
-- [ ] The router serves `POST /join`, `POST` and `PATCH /offer` (both needing the call's offer
+- [x] The router serves `POST /join`, `POST` and `PATCH /offer` (both needing the call's offer
   secret, carried in a request header or the JSON body, never in a URL), `GET /health` (only what
   the design's 10.5 lists, no path), `GET /ready`, `GET /client/1/t2v-client.js`, and `GET /dev`
   only with `env=dev` and only to loopback clients. A second offer gets 409; a client's `pc_id`
@@ -113,7 +120,7 @@ Every number describes one speaker, the owner (D-006).
   call's secret, with the secret in the query string, a second offer, and a PATCH after ICE
   completed and after the call ended (the design's 5.5). Every route answers "runtime not started"
   when the lifespan never ran.
-- [ ] With `serve()`, CORS answers only `server.allowed_origins`, with POST and PATCH listed; in
+- [x] With `serve()`, CORS answers only `server.allowed_origins`, with POST and PATCH listed; in
   the mount, the app's own CORS middleware answers and the router says so at startup (the design's
   5.5), as the Ole5 app's server does. FastAPI's own telemetry is off in both shapes: `serve()`
   builds its app with `telemetry` tracing, metrics and logs off and `auto_configure` false, and the
@@ -123,7 +130,7 @@ Every number describes one speaker, the owner (D-006).
   shape (D-023). `serve()` and the Ole5 app's server run uvicorn trusting proxy headers only from
   `server.forwarded_allow_ips` (`*` refused); `t2v dev` binds 127.0.0.1 with proxy headers off; a
   test shows that an `X-Forwarded-For` from an untrusted peer is ignored.
-- [ ] `VoiceRuntime`'s lifespan takes an exclusive lock file under `var_dir` (a second process is
+- [x] `VoiceRuntime`'s lifespan takes an exclusive lock file under `var_dir` (a second process is
   refused with a FIX line, on Windows and on Linux: M2 checks Windows, on this laptop, and the Linux
   case runs in CI once TD-001 is paid, or else in "The deployment, moved out of M2"), warms VAD,
   Smart Turn and the adapters without a request (TD-012), builds tracing inside the lifespan
@@ -137,7 +144,7 @@ Every number describes one speaker, the owner (D-006).
 
 **The browser**
 
-- [ ] `api/static/t2v-client.js` (one ES module, no dependency, no build step) and
+- [x] `api/static/t2v-client.js` (one ES module, no dependency, no build step) and
   `api/static/dev.html` speak `t2v/1`: every message carries `"v": 1` and comes from a closed list
   that the server parses strictly (invariant 4, GP-06), none named like Pipecat's reserved
   `signalling` messages or starting with "ping". The client sends the end-of-candidates PATCH, and
@@ -147,7 +154,7 @@ Every number describes one speaker, the owner (D-006).
   and notices are inserted as text only (`textContent`): a test reads the client's, the dev page's
   and the widget's scripts and finds no `innerHTML`, `outerHTML`, `insertAdjacentHTML` or
   `document.write`.
-- [ ] Ole5's widget in `apps/ole5-voice-agent/web/`: a consent screen before the microphone opens
+- [x] Ole5's widget in `apps/ole5-voice-agent/web/`: a consent screen before the microphone opens
   (Q7's wording and version: the agent's draft, `m2-owner-test-1`, with a one-line recording box),
   start and end, playback, captions, the Stop button and Esc, and a message for a microphone that
   is missing, busy or refused. Its page is served with a Content-Security-Policy
@@ -160,7 +167,7 @@ Every number describes one speaker, the owner (D-006).
   owner checks the microphone, playback, Stop and Esc in step 18's recorded session, each result in
   the progress log. *Amended 2026-11-03 ("The owner's decisions"): Edge, supported (D-018, the
   design's open question 12), is not checked in M2, the roadmap's M2 naming Chrome only.*
-- [ ] `.claude/launch.json` starts `t2v dev` on `examples/minimal` and the Ole5 app's dev server
+- [x] `.claude/launch.json` starts `t2v dev` on `examples/minimal` and the Ole5 app's dev server
   ([WORKING-RULES.md](../../../WORKING-RULES.md), "Seeing it run").
 
 **The deployment** moved out of M2 on 2026-11-03 ("The owner's decisions"). Its five criteria, as
@@ -169,7 +176,7 @@ every call of M2 is on this laptop.
 
 **The recordings**
 
-- [ ] The calls of the owner's recorded session (step 18) through the widget are recorded with
+- [x] The calls of the owner's recorded session (step 18) through the widget are recorded with
   `privacy.record_audio` on and the recording consent in the signed join token: per call, the
   caller's track, the agent's audio and the playback timeline, under `var_dir`. Only a consent from
   a verified signed token counts.
@@ -180,7 +187,7 @@ every call of M2 is on this laptop.
 
 **The library line**
 
-- [ ] `VoiceSettings` as the design's 7: `env` required (`dev`, `test`, `staging` or `prod`); the
+- [x] `VoiceSettings` as the design's 7: `env` required (`dev`, `test`, `staging` or `prod`); the
   environment read only inside `from_env(prefix=, env_file=, unknown=)`, with no singleton and no
   `.env` unless one is passed; an unknown key under the prefix an error; a `*_FILE` form for every
   secret, each key and secret held to its minimum length; the groups `tts`, `turns`, `session`,
@@ -188,19 +195,19 @@ every call of M2 is on this laptop.
   `limits` keys Q4 brings forward; every check that holds in `prod` holds in `staging` too (a test
   per check). `docs/generated/settings.md` and `.env.example` are generated from it, each with a
   freshness test.
-- [ ] `examples/minimal` is an echo agent (`make_runtime()`), and its tests need no key and no
+- [x] `examples/minimal` is an echo agent (`make_runtime()`), and its tests need no key and no
   network.
-- [ ] The package root holds the design's 5.1 names that M2 builds, on the base error
+- [x] The package root holds the design's 5.1 names that M2 builds, on the base error
   `T2VoiceError` that the garbage-collection round brings (step 1); `identity`, `server`, `stores`
   and `events` are facades in `[package] public` and `facades`.
-- [ ] ARCH-BAN runs in `poe arch` (the design's 12.4), with tests in `tests/harness/`. Inside
+- [x] ARCH-BAN runs in `poe arch` (the design's 12.4), with tests in `tests/harness/`. Inside
   `poe check`, while CI waits for a remote (TD-001): the torch check (no `torch` in `uv.lock`) and
   an import of every public module in a fresh subprocess (the design's 5.3 and 9.8).
-- [ ] The guide's `README.md`, `is-this-for-you.md` (with the install's size measured),
+- [x] The guide's `README.md`, `is-this-for-you.md` (with the install's size measured),
   `quickstart.md` (the echo version), `serving.md`, `browser-client.md` (its M2 part),
   `tracing-and-logs.md` and `data-and-privacy.md` are written and linked from the
   [guide's index](../../guide/README.md), each code sample taken from a tested file.
-- [ ] Decision entries record what the design's 16.3 lists for M2 (settings; serving and identity,
+- [x] Decision entries record what the design's 16.3 lists for M2 (settings; serving and identity,
   but for Ole5's identity answer, open question 19, which moved with Q12 to the deployment's plan;
   GP-22 widened to an adapter object passed in code), the library's logging contract (the owner's
   answer of 2026-11-02) with Q2's loguru answer (amending D-002's loguru bullet), ARCH-BAN and the
@@ -211,15 +218,15 @@ every call of M2 is on this laptop.
 
 **The measurement** (the roadmap's *Done when* for M2)
 
-- [ ] "The measurement, registered before any result" was complete, every owner's call settled and
+- [x] "The measurement, registered before any result" was complete, every owner's call settled and
   dated, before the run it affects: the runs left in M2, E1 and E2 and held-out E at the close, and
   the owner's recorded session, C; every departure is a `Deviation:` line in the progress log.
   *Amended 2026-11-03 ("The owner's decisions"): T and L left M2, their registered text kept, each
   with its amendment.*
-- [ ] `uv run poe eot` measures end of turn offline, with no spend, on the golden set's paused
+- [x] `uv run poe eot` measures end of turn offline, with no spend, on the golden set's paused
   requests: cut-offs and each step's delay, by language and device; its `reference` answerer scores
   0 cut-offs and 0 ms inside `poe check`.
-- [ ] The time of each step is read from the owner's recorded session (step 18), whose calls'
+- [x] The time of each step is read from the owner's recorded session (step 18), whose calls'
   reports and traces record each turn: from the end of the caller's speech (Silero's last stop) to
   its transcript (`stt_ms`: Smart Turn's decision and Whisper's request together); Whisper's
   request, sent to answered (its speech-to-text span, with the audio seconds sent and billed); to
@@ -230,13 +237,16 @@ every call of M2 is on this laptop.
   the browser (approximately: TD-070). The VAD stop delay and Smart Turn's decision alone are E1's,
   offline. *Amended 2026-11-03 ("The owner's decisions"): runs T1 and T2, the time of each step on
   the golden set, are dropped.*
-- [ ] Requests per call minute for each Groq model, from the owner's recorded session (each call's
+  *Amended 2026-11-04 (the owner, "The owner's decisions"): the session's calls have no trace (the
+  progress log's deviation), so the time of each step is read from their reports and timelines, and
+  Whisper's request alone and each reply's `tts.cut_short` are not read.*
+- [x] Requests per call minute for each Groq model, from the owner's recorded session (each call's
   report and root span hold them), are recorded as a decision entry, beside the published limits, or
   beside the key's real limits if the owner reads them (Q17, optional since 2026-11-03).
 - *Moved to M3 on 2026-11-03 ("The owner's decisions"): the language a live call sends Whisper, set
   by the registered rule (runs R5 to R7), and the noise on another day (TD-032), with Q15. M2 keeps
   `stt.live_language`'s default, `session`.*
-- [ ] The owner held the calls of *Done when* in one recorded session (step 18): in Chrome, on the
+- [x] The owner held the calls of *Done when* in one recorded session (step 18): in Chrome, on the
   laptop's speakers and then on the wired headset, through the Ole5 app's dev server on this laptop,
   each turn heard back, Stop and Esc each pressed once during an echo. *Amended 2026-11-03 ("The
   owner's decisions"): Edge dropped, the roadmap's M2 naming Chrome only.*
@@ -2162,6 +2172,12 @@ What the owner has already said that binds M2, in the owner's words where they w
   and whether to accept the session as it is to close M2 or hold a short top-up call, "Accept it
   (Recommended)", with the agent's note that the gaps are recorded as deviations and that M3's own
   recorded runs cover the live language, the listening sounds and «وقف».
+- 2026-11-04, at the close, on the criteria its check found partly met: on the session's missing
+  traces, the time of each step read from the reports and timelines instead, "Accept (Recommended)";
+  on D-029's Proposed bullet, `verify(token, *, join=...)` beyond the design's `verify(token)`,
+  "Accept D-029 (Recommended)"; on a test that no join token, offer secret or access code reaches an
+  exported span, "Debt for later" (TD-095); and on `t2v doctor` measuring the clock's skew (TD-067),
+  "Do it now".
 - 2026-11-01: "Approve all", for the roadmap's M1 to M7 and the package design as amended (D-017),
   as plan 000 records it. So M2's goal and *Done when*, and the design's 16.1 M2 row, bind this
   plan, as the owner's rulings of 2026-11-03 (above) amend them: the deployment and the other
@@ -4453,3 +4469,50 @@ them). Owner-level items are repeated under "For the owner".
   lets aioice sockets go deaf and 2-3 of 16 call closes hang (`stdlib: asyncio/proactor_events.py:541`,
   :108); proposal: run on a Selector loop on Windows and bound every close.
 - No licence item: licences were not the subject of these reads and spikes, and none came up.
+
+## Future improvements
+
+Written at the close, 2026-11-04, ordered by expected value (the agent's ordering), from the owner's
+recorded session (step 18) and E1, E2 and held-out E; every number describes one speaker, the owner
+(D-006).
+
+- **A caller who pauses mid-request is cut (M3, TD-094).** With the defaults E1 cut 22 of the 23 dev
+  paused requests and held-out E 16 of 16, in every language and on every device, and the live calls
+  split at 0.25 to 0.4 s pauses. It is Smart Turn v3.2's own judgement, not our wiring: it scores
+  the owner's pauses as complete (median 0.97) as it scores the true ends (0.96), so no threshold
+  separates them. The lever is time: the pauses last 220 to 720 ms as Silero hears them, and a VAD
+  stop of about 0.75 s bridges every one at about 550 ms more on each turn's end; a hold after Smart
+  Turn's "complete" that resumed speech cancels costs that only after a "complete". Smart Turn does
+  say "incomplete" for fillers and lone short words, which M3's listening sounds and «وقف» lean on.
+  M3 registers its arms against E1 (the noise: 1 verdict in 23, a turn end moving about 22 ms).
+- **What the caller waits for, and what the report says (M3, TD-090).** The echo is heard about 0.8
+  to 1.2 s after the caller stops, while `ttfa_ms` reads about 0.55 s: the cached frame leads with
+  0.40 s of silence and Orpheus takes with up to 1.46 s, untrimmed, and the report counts silent
+  chunks as audio. Trimming the takes when the phrase cache stores them and the first chunks of a
+  live take, and reporting the first audible audio, gives M3 and M4 a latency they can trust and
+  narrows the drop rule's window.
+- **The stop's own latency (M3, TD-091 and TD-092).** A client's `stop` waits behind Smart Turn's
+  inference, up to 0.25 s, since the session bridge sits after the turn processors; and a
+  one-syllable word of about 0.35 s can miss the VAD's start. «وقف», «اها» and «ايوه» are that
+  short. Stop and Esc silenced the agent within 0.10 to 0.12 s of reaching the server in all three
+  of the session's stops, so the path itself is fast.
+- **Product terms and paraphrase (M3's live language, M4's prompt arm, TD-093).** Whisper heard
+  "Ole5" wrong in all six calls ("OnlyFive", "Olifine", "ODI5", "Odify", «أوليفاي»), and the owner
+  reports Arabic said back in synonyms, as plan 002 measured («أريد» for «أبغى»). M3 measures the
+  language a live call sends, and M4 the prompt that names the product's terms.
+- **The first call after a start (TD-089).** It took 26.8 s to connect, against 0.7 to 0.8 s after:
+  `answer()` imports the pipeline and the transport at the first offer, on the event loop. Importing
+  them in `VoiceCalls.start` and opening Groq's connection there removes it; at M3's first live call
+  or the first demo.
+- **Traces on in every recorded run (M3).** The session lost its traces because the start command
+  set no `T2V_TRACING__ENDPOINT`; M3's recorded runs set it to the local Phoenix, and a dev server's
+  first log line could say whether spans go anywhere.
+- **The key's limits a minute (M6, D-040).** Groq's headers show daily limits far above the
+  published ones (100,000 Orpheus requests, 200,000 Whisper), fitting the prototype's on-demand
+  tier, but no limits a minute, which bind: one key holds about 2 echo calls at once at the
+  published 20 and 10 requests a minute, and about 40 at the prototype's 400. Reading them in the
+  console (Q17) comes before M6 sets the cap on live calls.
+- **Smaller, each with its row:** the client's playback lines (TD-070: align on the server's
+  `clause_queued` and `clause_played`); a `source` on the client's `stop`, so the server can tell
+  Stop from Esc; the span test for credentials (TD-095); and the deployment, with its network test
+  and media path, in its own plan (M6 at the latest).

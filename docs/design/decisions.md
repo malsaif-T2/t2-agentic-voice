@@ -811,7 +811,7 @@ twice; DOC-REF: every `D-NNN` cited anywhere is a heading here), so keep its sha
   `test_settings_read_only.py` and `test_settings_ref.py`, and
   `tests/harness/test_isolation.py`.
 
-## D-029 · Serving and identity: the sidecar and the mount, one process per `var_dir`, signed join tokens, the offer secret · 2026-11-02 · Accepted (the owner, 2026-11-01, as the design's 4.5, 5.2, 5.5, 6.5, 7.4 and 11; one bullet Proposed)
+## D-029 · Serving and identity: the sidecar and the mount, one process per `var_dir`, signed join tokens, the offer secret · 2026-11-02 · Accepted (the owner, 2026-11-01, as the design's 4.5, 5.2, 5.5, 6.5, 7.4 and 11; its Proposed bullet accepted by the owner on 2026-11-04, plan 003)
 
 - **Context:** the design gives a team two ways to serve calls, the sidecar by default and the
   mount for one-worker apps (its 4.5; D-018, question 22); one process per `var_dir`
@@ -1739,8 +1739,10 @@ twice; DOC-REF: every `D-NNN` cited anywhere is a heading here), so keep its sha
   model, beside the key's limits, so that M6 can set the cap on live calls. Groq publishes its
   developer plan's limits: Whisper large-v3 20 requests a minute, 2K a day, 7.2K audio seconds an
   hour and 28.8K a day; each Orpheus model 10 requests a minute, 100 a day, 1.2K tokens a minute and
-  3.6K a day (console.groq.com/docs/rate-limits, read 2026-11-04). The owner did not read the key's
-  own limits (plan 003's Q17, optional).
+  3.6K a day (console.groq.com/docs/rate-limits, read 2026-11-04). The prototype found the key on
+  Groq's on-demand tier, 400 requests a minute, not saying for which models
+  (`Ole5-chatbot/VOICE_LOG.md`, line 361, 2026-10-27). The owner did not read the key's own limits
+  (plan 003's Q17, optional).
 - **Decision** (the measurement, the owner's six echo calls of 2026-11-04, 3.45 call minutes):
   - Whisper: 26 requests, one per transcribed turn (D-034): 7.5 a call minute over the session, 4.9
     to 10.1 per call (median 7.2). Each is billed 10 s, for 2.3 s of audio on average (58.6 s sent,
@@ -1756,12 +1758,14 @@ twice; DOC-REF: every `D-NNN` cited anywhere is a heading here), so keep its sha
     give no requests per minute and no audio seconds, so the published 20 and 10 requests a minute
     and 7.2K audio seconds an hour stay the bound until the console is read.
 - **Consequences:** per day the key's limits are far from binding (the published 100 Orpheus
-  requests a day would have held about 16 call minutes); per minute they bind: at the peak of 10
-  Whisper requests a call minute, the published 20 hold about 2 echo calls at once on one key, and
-  Orpheus's 10 hold about 1.6 calls in one language. So M6's cap starts at about 2 live calls on one
-  key unless the console shows higher limits (Q17); a cut-off or a long pause adds a Whisper
-  request, and M4's talker adds its own model's. Plan 003's estimate (6 Whisper requests a minute,
-  up to 12 with cut-offs, and 6 Orpheus requests) holds.
+  requests a day would have held about 16 call minutes), and the headers' daily limits fit the
+  prototype's on-demand tier rather than the published table. Per minute they bind, and are not
+  known: at the peak of 10 Whisper requests a call minute, the published 20 hold about 2 echo calls
+  at once on one key and Orpheus's 10 about 1.6 in one language, while 400 a minute for each model
+  would hold about 40 and 60. So M6 reads the key's limits a minute in Groq's console (Q17) before
+  it sets the cap on live calls; a cut-off or a long pause adds a Whisper request, and M4's talker
+  adds its own model's. Plan 003's estimate (6 Whisper requests a minute, up to 12 with cut-offs,
+  and 6 Orpheus requests) holds.
 - **Evidence:** the six `CallReport`s under the main checkout's `var/reports/` (each `usage` row's
   requests, audio and billed seconds, characters, cache hits, and the headers' `remaining_requests`
   and `remaining_tokens`; `requests_per_minute`), and plan 003's progress log, 2026-11-04.
