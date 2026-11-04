@@ -5,7 +5,7 @@ per `poe eval` run that called a provider, kept or not; never edited by hand
 ([generated docs](README.md), GP-11). Every number describes one speaker, the owner (D-006).
 Full scorecards stay out of git, in each run's `--out` folder.
 
-Spend so far: 15 run(s), 17369.7 billed seconds, $0.3645.
+Spend so far: 16 run(s), 17369.7 billed seconds, $0.3645.
 
 ## Runs
 
@@ -31,6 +31,7 @@ Spend so far: 15 run(s), 17369.7 billed seconds, $0.3645.
 | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- |
 | 14 | 2026-11-04T07:48:10+00:00 | e1-dev | 504a657abc3c9b12b4b224060830c2a2a36cca34 | pipeline | dev | 6 | 23 | 22 | 0 | 315 | 315 | 23 of 199 | yes |
 | 15 | 2026-11-04T08:24:51+00:00 | e2-dev | 504a657abc3c9b12b4b224060830c2a2a36cca34 | pipeline | dev | 6 | 23 | 23 | 0 | — | — | 23 of 199 | yes |
+| 16 | 2026-11-04T08:59:20+00:00 | e-held-out | 504a657abc3c9b12b4b224060830c2a2a36cca34 | pipeline | held-out | 4 | 16 | 16 | 0 | — | — | — | yes |
 
 ## Each run
 
@@ -693,3 +694,31 @@ Spend so far: 15 run(s), 17369.7 billed seconds, $0.3645.
 | language | mixed | 1 | 4 | 4 | 0 |
 | language | msa | 1 | 4 | 4 | 0 |
 | language | saudi | 3 | 11 | 11 | 0 |
+
+### 16 · e-held-out
+
+| Field | Value |
+| --- | --- |
+| Why | plan 003 step 29, held-out E at the close, aggregates only |
+| Data digest | `b068e4b58bcd31c68f62d7ab4367726cf93ab2420fb2d25278fde71f9eccff24` |
+| Scorecard | scorecard.json |
+| Setting env | dev |
+| Setting run.lead_s | 1.0 |
+| Setting run.secondary | false |
+| Setting run.tail_s | 4.5 |
+| Setting turns.max_silence_ms | 3000 |
+| Setting turns.smart_turn | true |
+| Setting turns.smart_turn_max_duration_s | 8.0 |
+| Setting turns.smart_turn_pre_speech_ms | 500 |
+| Setting turns.smart_turn_stop_ms | 3000 |
+| Setting turns.vad_confidence | 0.7 |
+| Setting turns.vad_min_volume | 0.6 |
+| Setting turns.vad_start_ms | 200 |
+| Setting turns.vad_stop_ms | 200 |
+
+| Stratum | Value | Items | Variants | Cut-offs | Misses |
+| --- | --- | --- | --- | --- | --- |
+| device | bluetooth | 4 | 4 | 4 | 0 |
+| device | laptop | 4 | 8 | 8 | 0 |
+| device | wired | 4 | 4 | 4 | 0 |
+| language | other | 4 | 16 | 16 | 0 |
