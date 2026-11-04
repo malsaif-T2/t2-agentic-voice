@@ -1,4 +1,5 @@
-"""The `stt` group: speech-to-text."""
+"""The `stt` group: speech-to-text, and the filter for text from silence (plan 005), off until the
+registered rule F turns it on (GP-18)."""
 
 from __future__ import annotations
 
@@ -40,5 +41,23 @@ class SttSettings(Group):
             "The language a live call sends Whisper: session (the call's language, fixed when "
             "it joins from the caller's pick or the join token's locale) or auto (none, so "
             "Whisper detects it). A registered measurement sets the default (GP-18)."
+        ),
+    )
+    no_speech_max: float | None = Field(
+        default=None,
+        ge=0,
+        le=1,
+        allow_inf_nan=False,
+        description=(
+            "The no-speech probability Whisper reports above which a transcript counts as no "
+            "words (text from silence), for a turn and for speech over a reply, from 0 to 1; "
+            "unset, the filter is off until a registered measurement sets it (GP-18)."
+        ),
+    )
+    caption_filter: bool = Field(
+        default=False,
+        description=(
+            "Whether a transcript that is one of the captions Whisper invents for silence or "
+            "noise counts as no words; off until a registered measurement turns it on (GP-18)."
         ),
     )

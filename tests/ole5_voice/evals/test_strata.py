@@ -6,6 +6,7 @@ from __future__ import annotations
 
 import re
 from collections import Counter
+from collections.abc import Mapping
 from datetime import date, datetime
 
 from ole5_voice.evals.items import EVALS, Strata, count_strata, load_items, load_terms, read_toml
@@ -61,20 +62,42 @@ PROPOSAL = {
     "noise": (0, 0, 0, 0, 2),
     "echo_only": (0, 0, 0, 0, 2),
 }
+# Plan 005's lines, the agent's proposal there (Q2 and Q6, settled on 2026-11-03): said over a
+# reply, but for the paused requests, which are said alone.
+PLAN_005_PROPOSAL = {
+    "stop_word": (6, 1, 3, 0, 0),
+    "repeat_request": (2, 0, 1, 0, 0),
+    "listening_sound": (3, 0, 2, 0, 0),
+    "correction": (1, 0, 1, 0, 0),
+    "echo_only": (0, 0, 0, 0, 1),
+    "paused_request": (8, 4, 4, 4, 0),
+}
 LANGUAGES = ("saudi", "msa", "english", "mixed", "none")
+# The lab's replies a line may be said over (its replies.json, read only: D-010).
+REPLIES = {"ar_archive", "ar_inbox", "ar_password", "ar_ticket", "en_signature", "en_ticket"}
+
+
+def _counted(proposal: Mapping[str, tuple[int, ...]]) -> Counter[tuple[str, str]]:
+    return Counter(
+        {
+            (kind, language): n
+            for kind, counts in proposal.items()
+            for language, n in zip(LANGUAGES, counts, strict=True)
+            if n
+        }
+    )
 
 
 def test_the_script_holds_the_approved_proposals_lines() -> None:
     script = read_toml(EVALS / "script.toml", Script)
-    found = Counter((line.kind, line.language) for line in script.lines)
-    expected = {
-        (kind, language): n
-        for kind, counts in PROPOSAL.items()
-        for language, n in zip(LANGUAGES, counts, strict=True)
-        if n
-    }
-    assert dict(found) == expected
-    assert len(script.lines) == 52 and len({line.id for line in script.lines}) == 52
+    plan_002, plan_005 = script.lines[:52], script.lines[52:]
+    assert Counter((line.kind, line.language) for line in plan_002) == _counted(PROPOSAL)
+    assert Counter((line.kind, line.language) for line in plan_005) == _counted(PLAN_005_PROPOSAL)
+    assert len(script.lines) == 93 and len({line.id for line in script.lines}) == 93
+    over = [line for line in plan_005 if line.kind != "paused_request"]
+    assert all(line.reply in REPLIES for line in over)
+    assert not any(line.reply for line in plan_005 if line.kind == "paused_request")
+    assert [line.text for line in plan_005].count("وقف") == 3
 
 
 def test_the_scripts_lines_follow_the_spelling_guide() -> None:
@@ -90,7 +113,7 @@ def test_the_scripts_lines_follow_the_spelling_guide() -> None:
         if line.kind == "listening_sound":
             assert line.text in script.listening_sounds, line.id
         if line.kind == "echo_only":
-            assert line.reply in {"ar_inbox", "en_signature"}, line.id
+            assert line.reply in REPLIES, line.id
 
 
 # An Ole5 ticket number, in the shape the owner gave on 2026-11-01 (plan 002, Q5): 16 digits,

@@ -1,23 +1,24 @@
 """Fakes of the session's I/O (voice/session/io.py, with its events in session_events.py and
-its commands in commands.py), with the port fakes in fakes.py, for the session's tests (Track D)
-and the Pipecat side's (Track E). Each implements one protocol of io.py, or plays one side of
-it; tests/t2_agentic_voice/test_session_fakes.py checks each, and test_session_scenes.py plays
-the scenes the session builds on. They live apart from fakes.py, which would otherwise pass the
-400 lines a module may hold (ARCH-SIZE):
+its commands in commands.py), with the port fakes in fakes.py, for the session's tests and the
+Pipecat side's (plan 003's Tracks D and E; plan 005's B and C). Each implements one protocol of
+io.py, or plays one side of it; tests/t2_agentic_voice/test_session_fakes.py checks each, and
+test_session_scenes.py plays the scenes the session builds on. They live apart from fakes.py,
+which would otherwise pass the 400 lines a module may hold (ARCH-SIZE):
 
-- `FakePhrases`: the runtime's fixed phrases' audio (`PhraseAudio`), refusing any text not
-  declared;
 - `FakeCommands`: where the session's commands go (`Commands`), keeping each;
-- `FakeSession`: a session (`Session`) for the Pipecat side, built as `CallSession` is;
 - `FakeSessionIO`: the Pipecat side around a session under test: its `CallSetup`, built from
   the fakes, and every event, tap and client message, handed to the session at the fake
-  clock's time, refusing one io.py says cannot come (after a stop, after the call's end).
+  clock's time, refusing one io.py says cannot come (after a stop, after the call's end, an
+  overlap's part for a turn the session never marked an overlap).
+
+A session for the Pipecat side's tests, `FakeSession`, is fake_session.py's, the phrase audio,
+`FakePhrases`, fakes.py's, and the slow work that answers a turn, for the cancel scope's tests,
+responder_fakes.py's.
 """
 
 from __future__ import annotations
 
 import json
-from collections.abc import Callable, Iterable, Sequence
 
 from t2_agentic_voice.core.config import VoiceSettings
 from t2_agentic_voice.core.errors import ProviderErrorKind
@@ -26,12 +27,17 @@ from t2_agentic_voice.core.identity import Caller, Consent
 from t2_agentic_voice.core.settings.tts import LanguageTag
 from t2_agentic_voice.core.tracing import Tracing
 from t2_agentic_voice.domain.declaration import Language, VoiceAgent
-from t2_agentic_voice.domain.fixed_phrases import fixed_phrases
 from t2_agentic_voice.domain.ports.speech_to_text import Transcript
-from t2_agentic_voice.domain.ports.text_to_speech import AudioChunk
 from t2_agentic_voice.voice.protocol import ClientMessage, SessionMessage, parse_client_message
-from t2_agentic_voice.voice.session.commands import Command, HangUp, Send, Speak, StopSpeaking
-from t2_agentic_voice.voice.session.io import CallSetup, Commands, Session
+from t2_agentic_voice.voice.session.commands import (
+    Command,
+    HangUp,
+    HearOverlap,
+    Send,
+    Speak,
+    StopSpeaking,
+)
+from t2_agentic_voice.voice.session.io import CallSetup, Session
 from t2_agentic_voice.voice.session.session_events import (
     AgentAudio,
     CallerAudio,
@@ -45,12 +51,13 @@ from t2_agentic_voice.voice.session.session_events import (
     Synthesizing,
     Transcribed,
     Transcribing,
+    TranscriptPart,
     TransportFailure,
     TurnClosed,
     TurnOpened,
 )
 
-from tests.t2_agentic_voice.fakes import FakeClock, tone
+from tests.t2_agentic_voice.fakes import FakeClock, FakePhrases, tone
 
 # A call's defaults: an agent that speaks English and Saudi Arabic, a caller, and a plain
 # consent, which never lets a call be recorded.
@@ -67,37 +74,6 @@ PLAIN_CONSENT = Consent(version=None, record_audio=False)
 CLAUSE_EVENTS = (Synthesizing, ClauseQueued, ClausePlayed, ClauseFailed)
 # What the Pipecat side may still hand once the call has ended: a request's report (io.py).
 REQUEST_REPORTS = (Transcribing, Synthesizing)
-
-
-class FakePhrases:
-    """The runtime's fixed phrases' audio (`PhraseAudio`): each text declared in its language,
-    said as `seconds` of the fakes' tone at `sample_rate`; LookupError for any other, as the
-    phrase cache refuses text not declared at the start. Every text asked for is kept, found or
-    not (`asked`), so a test can tell that no heard words reached the cache."""
-
-    def __init__(
-        self,
-        declared: Iterable[tuple[str, LanguageTag]] = (),
-        *,
-        seconds: float = 0.5,
-        sample_rate: int = 24_000,
-    ) -> None:
-        self.declared = set(declared)
-        self.seconds = seconds
-        self.sample_rate = sample_rate
-        self.asked: list[tuple[str, LanguageTag]] = []
-
-    @classmethod
-    def of(cls, agent: VoiceAgent) -> FakePhrases:
-        """The phrases the runtime declares for `agent` (`fixed_phrases`): each language's
-        greeting, echo frame and spoken notices."""
-        return cls((phrase.text, phrase.language) for phrase in fixed_phrases(agent))
-
-    def audio(self, text: str, *, language: LanguageTag) -> AudioChunk:
-        self.asked.append((text, language))
-        if (text, language) not in self.declared:
-            raise LookupError("not a phrase declared at the start")
-        return AudioChunk(pcm16=tone(self.seconds, self.sample_rate), sample_rate=self.sample_rate)
 
 
 class FakeCommands:
@@ -120,37 +96,6 @@ class FakeCommands:
         return [command.message for command in self.of(Send)]
 
 
-class FakeSession:
-    """A session (`Session`) for the Pipecat side's tests, built as `CallSession` is, from a
-    call's setup and where its commands go: it keeps every event handed to it, and for each
-    gives the commands `replies` returns for it, in order (none by default); `closed` says
-    whether its stream has ended (`aclose`). A test gives a command of its own with `give`."""
-
-    def __init__(
-        self,
-        setup: CallSetup,
-        commands: Commands,
-        *,
-        replies: Callable[[SessionEvent], Sequence[Command]] = lambda event: (),
-    ) -> None:
-        self.setup = setup
-        self.commands = commands
-        self.replies = replies
-        self.events: list[SessionEvent] = []
-        self.closed = False
-
-    async def handle(self, event: SessionEvent) -> None:
-        self.events.append(event)
-        for command in self.replies(event):
-            await self.commands.run(command)
-
-    async def aclose(self) -> None:
-        self.closed = True
-
-    async def give(self, command: Command) -> None:
-        await self.commands.run(command)
-
-
 class FakeSessionIO:
     """The Pipecat side around a session under test. `setup` is the call's `CallSetup`, built
     from the fakes: the `agent`, `caller` and `consent` given, the call's language as join
@@ -159,9 +104,10 @@ class FakeSessionIO:
     events kept in `emitted`, and `clock`. `commands` keeps what the session gives. Once
     `attach`ed to a session, each method below builds its event at the clock's time, keeps it
     in `events`, hands it to the session, and returns it. It refuses, with RuntimeError, what
-    io.py says cannot come: an event of a clause a `StopSpeaking` dropped; once the call has
-    ended (an `Ending` or a `TransportFailure` handed, or a `HangUp` given), any event but a
-    request's report (`Transcribing`, `Synthesizing`); and any event once `close` has ended
+    io.py says cannot come: an event of a clause a `StopSpeaking` dropped; an overlap's
+    `window` or `overlap` part for a turn the session gave no `HearOverlap` for; once the call
+    has ended (an `Ending` or a `TransportFailure` handed, or a `HangUp` given), any event but
+    a request's report (`Transcribing`, `Synthesizing`); and any event once `close` has ended
     the call's stream."""
 
     def __init__(
@@ -210,6 +156,11 @@ class FakeSessionIO:
         return any(isinstance(e, last) for e in self.events) or bool(self.commands.of(HangUp))
 
     @property
+    def overlaps(self) -> set[int]:
+        """The turns the session marked an overlap (`HearOverlap`)."""
+        return {command.turn_id for command in self.commands.of(HearOverlap)}
+
+    @property
     def dropped(self) -> set[tuple[int, int]]:
         """The clauses a `StopSpeaking` dropped, by reply and index: every one the session had
         asked for before its last stop, whatever its reply."""
@@ -233,6 +184,12 @@ class FakeSessionIO:
             )
         if isinstance(event, CLAUSE_EVENTS) and (event.reply_id, event.clause) in self.dropped:
             return "a stop dropped the clause. FIX: hand no event of a clause a stop dropped."
+        if (
+            isinstance(event, Transcribing | Transcribed)
+            and event.part != "turn"
+            and event.turn_id not in self.overlaps
+        ):
+            return "no HearOverlap marked the turn an overlap. FIX: let the session give it first."
         return None
 
     async def _hand[E: SessionEvent](self, event: E) -> E:
@@ -273,10 +230,14 @@ class FakeSessionIO:
         ended = now if speech_ended_at is None else speech_ended_at
         return await self._hand(TurnClosed(turn_id=turn_id, at=now, speech_ended_at=ended))
 
-    async def transcribing(self, turn_id: int, *, audio_s: float = 1.0) -> Transcribing:
-        """The turn's request goes now, with `audio_s` of its audio, as the bridge sends it."""
+    async def transcribing(
+        self, turn_id: int, *, audio_s: float = 1.0, part: TranscriptPart = "turn"
+    ) -> Transcribing:
+        """The turn's request of `part` goes now, with `audio_s` of its audio, as the bridge
+        sends it."""
         now = self.clock.now()
-        return await self._hand(Transcribing(turn_id=turn_id, at=now, audio_s=audio_s))
+        event = Transcribing(turn_id=turn_id, at=now, audio_s=audio_s, part=part)
+        return await self._hand(event)
 
     async def transcribed(
         self,
@@ -286,12 +247,20 @@ class FakeSessionIO:
         language: str | None = None,
         failure: ProviderErrorKind | None = None,
         retryable: bool = False,
+        part: TranscriptPart = "turn",
     ) -> Transcribed:
-        """The turn's transcript, `text` heard in `language`, its request's audio billed as Groq
-        bills it; or None, with `failure` when the request failed and with no request
-        otherwise. A request that went is the turn's last `Transcribing`, which gives the
-        result its audio and when it went: RuntimeError when none was handed."""
-        sent = [e for e in self.events if isinstance(e, Transcribing) and e.turn_id == turn_id]
+        """The turn's transcript of `part`, `text` heard in `language`, its request's audio
+        billed as Groq bills it; or None, with `failure` when the request failed and with no
+        request otherwise. A request that went is the turn's last `Transcribing` of `part`,
+        which gives the result its audio and when it went, or for the `turn` part of an
+        overlap's turn with none of its own, the overlap's, whose transcript it reuses; for an
+        `overlap` part with none of its own (its `HearOverlap` reached the bridge after the turn
+        closed), the turn's: RuntimeError when none was handed."""
+        sent = self._sent(turn_id, part)
+        if not sent and part == "turn":
+            sent = self._sent(turn_id, "overlap")
+        elif not sent and part == "overlap":
+            sent = self._sent(turn_id, "turn")
         if (text is not None or failure) and not sent:
             raise RuntimeError(
                 "the turn's request went with no Transcribing (io.py's usage). FIX: hand it "
@@ -310,8 +279,14 @@ class FakeSessionIO:
             transcript=transcript,
             failure=failure,
             retryable=retryable,
+            part=part,
         )
         return await self._hand(event)
+
+    def _sent(self, turn_id: int, part: TranscriptPart) -> list[Transcribing]:
+        """The turn's requests of `part` handed so far, in order."""
+        found = (e for e in self.events if isinstance(e, Transcribing) and e.turn_id == turn_id)
+        return [e for e in found if e.part == part]
 
     async def synthesizing(self, reply_id: int, clause: int) -> Synthesizing:
         """The clause's text-to-speech request goes now."""

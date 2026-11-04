@@ -4,14 +4,16 @@ the parts it calls; tests/t2_agentic_voice/test_fakes.py checks each against its
 
 - `FakeSpeechToText` and `FakeTextToSpeech`: the ports (domain/ports/);
 - `FakeClock`: a call's `Clock` (voice/session/io.py), whose time moves only when a test moves it;
+- `FakePhrases`: the runtime's fixed phrases' audio (io.py's `PhraseAudio`), refusing any text
+  not declared;
 - `FakeCalls`: voice's entry point as api uses it (voice/calls.py's `Calls`);
 - `capturing_output`: a Pipecat output transport that keeps every frame it is given and writes
   nowhere, for the end of a test's pipeline in place of SmallWebRTC's (`quiet_pipecat` first);
 - the session's I/O (voice/session/io.py, with its events and commands) in session_fakes.py: the
-  phrase audio, the commands, a session, and the Pipecat side that hands a session every
-  event.
+  commands, and the Pipecat side that hands a session every event; a session in
+  fake_session.py; and the slow work that answers a turn in responder_fakes.py.
 
-This module and session_fakes.py import no Pipecat, as a team's testing kit runs with none
+This module and those import no Pipecat, as a team's testing kit runs with none
 (D-017): `capturing_output` imports it when it is called.
 """
 
@@ -21,7 +23,7 @@ import asyncio
 import heapq
 import itertools
 import time
-from collections.abc import AsyncIterator, Collection, Mapping, Sequence
+from collections.abc import AsyncIterator, Collection, Iterable, Mapping, Sequence
 from dataclasses import dataclass, field
 from datetime import UTC, datetime, timedelta
 from typing import TYPE_CHECKING
@@ -29,7 +31,9 @@ from typing import TYPE_CHECKING
 from t2_agentic_voice import ConfigurationError, InvalidRequestError, NotFoundError, ProviderError
 from t2_agentic_voice.core.events import CallId
 from t2_agentic_voice.core.identity import Caller, Consent
-from t2_agentic_voice.domain.declaration import Language
+from t2_agentic_voice.core.settings.tts import LanguageTag
+from t2_agentic_voice.domain.declaration import Language, VoiceAgent
+from t2_agentic_voice.domain.fixed_phrases import fixed_phrases
 from t2_agentic_voice.domain.ports.speech_to_text import AudioClip, DataFlow, Transcript
 from t2_agentic_voice.domain.ports.text_to_speech import AudioChunk
 from t2_agentic_voice.voice.calls import CallPhase, Candidate
@@ -168,6 +172,37 @@ class FakeTextToSpeech:
 
     async def aclose(self) -> None:
         self.closed = True
+
+
+class FakePhrases:
+    """The runtime's fixed phrases' audio (`PhraseAudio`): each text declared in its language,
+    said as `seconds` of the fakes' tone at `sample_rate`; LookupError for any other, as the
+    phrase cache refuses text not declared at the start. Every text asked for is kept, found or
+    not (`asked`), so a test can tell that no heard words reached the cache."""
+
+    def __init__(
+        self,
+        declared: Iterable[tuple[str, LanguageTag]] = (),
+        *,
+        seconds: float = 0.5,
+        sample_rate: int = 24_000,
+    ) -> None:
+        self.declared = set(declared)
+        self.seconds = seconds
+        self.sample_rate = sample_rate
+        self.asked: list[tuple[str, LanguageTag]] = []
+
+    @classmethod
+    def of(cls, agent: VoiceAgent) -> FakePhrases:
+        """The phrases the runtime declares for `agent` (`fixed_phrases`): each language's
+        greeting, echo frame and spoken notices."""
+        return cls((phrase.text, phrase.language) for phrase in fixed_phrases(agent))
+
+    def audio(self, text: str, *, language: LanguageTag) -> AudioChunk:
+        self.asked.append((text, language))
+        if (text, language) not in self.declared:
+            raise LookupError("not a phrase declared at the start")
+        return AudioChunk(pcm16=tone(self.seconds, self.sample_rate), sample_rate=self.sample_rate)
 
 
 class FakeClock:

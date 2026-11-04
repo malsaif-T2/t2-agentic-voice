@@ -376,3 +376,291 @@ id = "n52_echo_english"
 kind = "echo_only"
 language = "none"
 reply = "en_signature"
+
+# M3's lines (plan 005, Q2 and Q6, settled by the owner on 2026-11-03: "Go with your
+# recommendation for Q1, Q2, Q3, Q4, Q5 and Q7. But for Q6 do the tuning in M3"), the agent's
+# proposal, for the owner's recorder session on the same three devices. Each line with a `reply`
+# is said over the agent: the recorder plays that reply (its ID in the lab's replies.json, which
+# holds each reply's text, as written and as spoken) and the owner speaks over it, about a
+# second in; its stop and wait words' ends are marked in the review. The stop and wait words,
+# the listening sounds and the repeat requests are the words the presets list (Q1), «وقف»
+# three times at normal volume over three replies; the repeat requests are the rehearsal's
+# (DESCRIPTION.md, its step 2), «أعد» alone (which the product's own reload notice and the
+# presets' repeat list hold, an entry of allowed_in_source.toml under Q1's ruling), then «ممكن
+# تعيد؟», with one in English; a correction in Saudi Arabic and one in English; and silence over
+# a reply. Then 20 requests that pause mid-sentence, said alone, the
+# owner's style, written for E's turn defaults (Q6), never copied from an item: 8 Saudi, 4 MSA,
+# 4 English and 4 mixed, each true turn end marked in the review.
+
+[[lines]]
+id = "m01_wagif_inbox"
+kind = "stop_word"
+language = "saudi"
+say = ["وقف"]
+reply = "ar_inbox"
+
+[[lines]]
+id = "m02_wagif_archive"
+kind = "stop_word"
+language = "saudi"
+say = ["وقف"]
+reply = "ar_archive"
+
+[[lines]]
+id = "m03_wagif_password"
+kind = "stop_word"
+language = "saudi"
+say = ["وقف"]
+reply = "ar_password"
+
+[[lines]]
+id = "m04_khalas"
+kind = "stop_word"
+language = "saudi"
+say = ["خلاص"]
+reply = "ar_ticket"
+
+[[lines]]
+id = "m05_tawaqqaf"
+kind = "stop_word"
+language = "msa"
+say = ["توقف"]
+reply = "ar_password"
+
+[[lines]]
+id = "m06_lahza"
+kind = "stop_word"
+language = "saudi"
+say = ["لحظة"]
+reply = "ar_archive"
+
+[[lines]]
+id = "m07_istanna"
+kind = "stop_word"
+language = "saudi"
+say = ["استنى"]
+reply = "ar_inbox"
+
+[[lines]]
+id = "m08_stop"
+kind = "stop_word"
+language = "english"
+say = ["stop"]
+reply = "en_signature"
+
+[[lines]]
+id = "m09_wait"
+kind = "stop_word"
+language = "english"
+say = ["wait"]
+reply = "en_ticket"
+
+[[lines]]
+id = "m10_hold_on"
+kind = "stop_word"
+language = "english"
+say = ["hold on"]
+reply = "en_signature"
+
+[[lines]]
+id = "m11_aid"
+kind = "repeat_request"
+language = "saudi"
+say = ["أعد"]
+reply = "ar_inbox"
+
+[[lines]]
+id = "m12_mumkin_tiid"
+kind = "repeat_request"
+language = "saudi"
+say = ["ممكن تعيد؟"]
+reply = "ar_password"
+
+[[lines]]
+id = "m13_go_over_again"
+kind = "repeat_request"
+language = "english"
+say = ["Sorry, could you go over that last part again?"]
+reply = "en_ticket"
+
+[[lines]]
+id = "m14_aha"
+kind = "listening_sound"
+language = "saudi"
+say = ["اها"]
+reply = "ar_archive"
+
+[[lines]]
+id = "m15_aywa"
+kind = "listening_sound"
+language = "saudi"
+say = ["ايوه"]
+reply = "ar_inbox"
+
+[[lines]]
+id = "m16_kammil"
+kind = "listening_sound"
+language = "saudi"
+say = ["كمل"]
+reply = "ar_password"
+
+[[lines]]
+id = "m17_mm_hmm"
+kind = "listening_sound"
+language = "english"
+say = ["mm-hmm"]
+reply = "en_ticket"
+
+[[lines]]
+id = "m18_uh_huh"
+kind = "listening_sound"
+language = "english"
+say = ["uh-huh"]
+reply = "en_signature"
+
+[[lines]]
+id = "m19_correction_saudi"
+kind = "correction"
+language = "saudi"
+say = ["لا مو كذا، قصدي الأرشيف مو صندوق الوارد"]
+reply = "ar_inbox"
+
+[[lines]]
+id = "m20_correction_english"
+kind = "correction"
+language = "english"
+say = ["No, I meant the archive, not the inbox."]
+reply = "en_signature"
+
+[[lines]]
+id = "m21_silent_over_reply"
+kind = "echo_only"
+language = "none"
+cue = "Say nothing while the reply plays; keep the room quiet."
+reply = "ar_ticket"
+
+# Requests that pause mid-sentence, said alone, for E's turn defaults (Q6).
+
+[[lines]]
+id = "m22_paused_delegate_leave"
+kind = "paused_request"
+language = "saudi"
+say = ["أبغى أسوي تفويض", "لزميلي في القسم", "لين أرجع من الإجازة"]
+
+[[lines]]
+id = "m23_paused_attachment_big"
+kind = "paused_request"
+language = "saudi"
+say = ["المرفق اللي أبغى أرسله", "حجمه كبير شوي", "وما يرضى ينرفع"]
+
+[[lines]]
+id = "m24_paused_notifications_late"
+kind = "paused_request"
+language = "saudi"
+say = ["التنبيهات توصلني", "بس متأخرة", "بعد ساعة تقريبا"]
+
+[[lines]]
+id = "m25_paused_wrong_department"
+kind = "paused_request"
+language = "saudi"
+say = ["أرسلت المعاملة", "للإدارة الغلط", "كيف أرجعها؟"]
+
+[[lines]]
+id = "m26_paused_account_locked"
+kind = "paused_request"
+language = "saudi"
+say = ["حاولت أدخل كذا مرة", "والحين الحساب", "انقفل علي"]
+
+[[lines]]
+id = "m27_paused_old_search"
+kind = "paused_request"
+language = "saudi"
+say = ["أدور على مراسلة قديمة", "من السنة اللي فاتت", "وما طلعت لي في البحث"]
+
+[[lines]]
+id = "m28_paused_blank_print"
+kind = "paused_request"
+language = "saudi"
+say = ["لما أطبع الخطاب", "تطلع الورقة", "فاضية بدون شي"]
+
+[[lines]]
+id = "m29_paused_new_employee"
+kind = "paused_request"
+language = "saudi"
+say = ["عندنا موظف جديد", "ونبغى نضيفه", "على النظام"]
+
+[[lines]]
+id = "m30_paused_archive_period"
+kind = "paused_request"
+language = "msa"
+say = ["أود أن أعرف", "المدة التي تبقى فيها المراسلات", "في الأرشيف"]
+
+[[lines]]
+id = "m31_paused_signature_image"
+kind = "paused_request"
+language = "msa"
+say = ["كيف أضيف صورة", "إلى التوقيع", "في الرسائل الصادرة"]
+
+[[lines]]
+id = "m32_paused_cannot_reply"
+kind = "paused_request"
+language = "msa"
+say = ["لا أستطيع الرد", "على المراسلة الواردة", "منذ يوم أمس"]
+
+[[lines]]
+id = "m33_paused_follow_up"
+kind = "paused_request"
+language = "msa"
+say = ["أريد متابعة حالة", "المعاملة التي أرسلتها", "إلى المدير"]
+
+[[lines]]
+id = "m34_paused_shared_inbox"
+kind = "paused_request"
+language = "english"
+say = ["I'm trying to open", "the shared inbox", "but it says access denied"]
+
+[[lines]]
+id = "m35_paused_forward_outside"
+kind = "paused_request"
+language = "english"
+say = ["Can I forward", "a correspondence", "to someone outside the team?"]
+
+[[lines]]
+id = "m36_paused_draft_lost"
+kind = "paused_request"
+language = "english"
+say = ["I was writing a draft", "and then the page refreshed", "and now it's gone"]
+
+[[lines]]
+id = "m37_paused_attachment_order"
+kind = "paused_request"
+language = "english"
+say = ["When I attach several files", "they show up", "in the wrong order"]
+
+[[lines]]
+id = "m38_paused_outlook_calendar"
+kind = "paused_request"
+language = "mixed"
+say = ["الاجتماعات اللي في Outlook", "ما تظهر", "في التقويم حق النظام"]
+terms = ["Outlook"]
+
+[[lines]]
+id = "m39_paused_pdf_sign"
+kind = "paused_request"
+language = "mixed"
+say = ["أبغى أوقع على ملف PDF", "قبل ما أرسله", "للمدير"]
+terms = ["PDF"]
+
+[[lines]]
+id = "m40_paused_word_template"
+kind = "paused_request"
+language = "mixed"
+say = ["عندي قالب Word", "وأبغى أستخدمه", "للخطابات الرسمية"]
+terms = ["Word"]
+
+[[lines]]
+id = "m41_paused_ole5_login"
+kind = "paused_request"
+language = "mixed"
+say = ["تطبيق Ole5 في الجوال", "يطلب مني أسجل دخول", "كل مرة أفتحه"]
+terms = ["Ole5"]

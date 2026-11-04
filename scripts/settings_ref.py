@@ -3,10 +3,10 @@ library's settings model, `VoiceSettings` (core/config.py), so that neither is e
 and neither drifts from the code (the design's 7.7; GP-11).
 
 For each setting: its environment name, its type, its default, its unit (read from the unit
-its name ends in, `_ms` or `_s`) and its description, the field's own (`Field(description=...)`);
-a group's text is its class docstring. `.env.example` keeps its convention: every key blank,
-its default in a `# Default:` line just above it, written as the setting reads it back, so a
-copy pins no default (tests/t2_agentic_voice/core/test_env_example.py).
+its name ends in, `_ms`, `_s` or `_words`) and its description, the field's own
+(`Field(description=...)`); a group's text is its class docstring. `.env.example` keeps its
+convention: every key blank, its default in a `# Default:` line just above it, written as the
+setting reads it back, so a copy pins no default (tests/t2_agentic_voice/core/test_env_example.py).
 
 `render_reference()` and `render_env_example()` are the pure renderers that the command and
 the freshness tests (tests/t2_agentic_voice/core/test_settings_ref.py) both call.
@@ -36,7 +36,7 @@ ENV_EXAMPLE = ROOT / ".env.example"
 COMMAND = "uv run poe settings-ref"
 # The default of a setting that has none (`env`).
 REQUIRED = object()
-_UNITS = {"_ms": "milliseconds", "_s": "seconds"}
+_UNITS = {"_ms": "milliseconds", "_s": "seconds", "_words": "words"}
 _KINDS: dict[object, str] = {
     str: "text",
     int: "integer",
@@ -78,7 +78,7 @@ group's settings nest with `__`, a list or a map is given as JSON, and a blank v
 unset. A variable under the prefix that names no setting is an error, so the prefix belongs to
 the library's settings alone. Each secret also takes a `_FILE` setting naming a file that holds
 it, and never shows in a repr, a log line or an error. A unit is read from the name: `_ms` is
-milliseconds, `_s` seconds.
+milliseconds, `_s` seconds, `_words` a count of words.
 """
 
 

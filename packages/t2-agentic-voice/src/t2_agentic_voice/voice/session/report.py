@@ -10,6 +10,7 @@ span (`span_attributes`), never into a log line (the design's 10.2).
 
 from __future__ import annotations
 
+import asyncio
 import json
 from dataclasses import dataclass
 from datetime import datetime
@@ -26,6 +27,8 @@ from t2_agentic_voice.core.events import (
     ClientConnection,
     EndReason,
     Interrupted,
+    InterruptionKind,
+    InterruptionReason,
     ModelUsage,
     ProviderFailed,
     TransportFailed,
@@ -36,9 +39,14 @@ from t2_agentic_voice.core.events import (
     TurnTimes,
     UserTurnEnded,
 )
+from t2_agentic_voice.core.logging import get_logger
 from t2_agentic_voice.core.settings.tts import LanguageTag
+from t2_agentic_voice.core.tracing_tts import CallTrace
 from t2_agentic_voice.voice.protocol import ClientStats, ReplyId
+from t2_agentic_voice.voice.session.history import TurnFate
 from t2_agentic_voice.voice.session.io import CallSetup
+
+_log = get_logger(__name__)
 
 # The folder under `storage.var_dir` that holds each call's report file.
 REPORTS = "reports"
@@ -56,8 +64,10 @@ def _ms(later: float | None, earlier: float | None) -> float | None:
 @dataclass(kw_only=True)
 class TurnLog:
     """One of the caller's turns as the session keeps it: when it began, when its speech ended
-    and its transcript came, what was heard and said back, the reply that answers it, and how
-    it ended. `answered` turns are said back; a `dropped` one began over the agent's speech."""
+    and its transcript came, what was heard and what the caller heard said back (the heard
+    history's), the reply that answers it, and how it ended (`fate`, the heard history's). A
+    `dropped` one began over the agent's speech under `interruptions.mode = "drop"`, an
+    `overlap` under `two_step` (overlap.py)."""
 
     turn_id: TurnId
     speech_at: float | None = None
@@ -68,8 +78,10 @@ class TurnLog:
     heard: str = ""
     said: str = ""
     dropped: bool = False
+    overlap: bool = False
     stopped: bool = False
     unfinished: bool = False
+    fate: TurnFate = "pending"
     reply_id: ReplyId | None = None
     first_audio_at: float | None = None
     tts_first_audio_s: float | None = None
@@ -81,8 +93,10 @@ class TurnLog:
 
     @property
     def awaited(self) -> bool:
-        """Whether the turn has closed, is to be answered, and its transcript has not come."""
-        return self.closed and not self.dropped and not self.transcribed
+        """Whether the turn has closed, is to be answered (not dropped, nor taken by an
+        overlap's verdict as a command or let go on), and its transcript has not come."""
+        answered = not self.dropped and self.fate == "pending"
+        return self.closed and answered and not self.transcribed
 
     def times(self) -> TurnTimes:
         """How long its steps took, from the end of the caller's speech: to the transcript (when
@@ -191,10 +205,16 @@ class CallEvents:
         )
         self._emit(ended)
 
-    def stopped(self, turn_id: TurnId | None) -> None:
-        self._emit(
-            Interrupted(call_id=self._id, turn_id=turn_id, at=self._clock.wall(), kind="stop")
-        )
+    def interrupted(
+        self,
+        turn_id: TurnId | None,
+        kind: InterruptionKind = "stop",
+        reason: InterruptionReason | None = None,
+    ) -> None:
+        """The reply answering `turn_id` was interrupted, of `kind`, as the rule decided
+        (`reason`; none for the caller's `stop`): its `Interrupted`."""
+        at = self._clock.wall()
+        self._emit(Interrupted(call_id=self._id, turn_id=turn_id, at=at, kind=kind, reason=reason))
 
     def failed(self, kind: ProviderErrorKind, retryable: bool, turn_id: TurnId | None) -> None:
         """A request failed, a turn's or a clause's: its `ProviderFailed`, naming `turn_id`."""
@@ -259,3 +279,18 @@ def write_report(report: CallReport, var_dir: Path) -> Path:
     temporary.write_text(text, encoding="utf-8")
     temporary.replace(path)
     return path
+
+
+async def file_report(
+    report: CallReport, setup: CallSetup, *, trace: CallTrace, events: CallEvents
+) -> None:
+    """The call's report filed once its stream ended: its numbers on the call's root span and in
+    its file (a file that cannot be written is logged by the failure's kind alone), then
+    `CallEnded` to the observers."""
+    trace.close(span_attributes(report))
+    try:
+        await asyncio.to_thread(write_report, report, setup.settings.storage.var_dir)
+    except OSError as error:
+        failure = type(error).__qualname__
+        _log.warning("report_not_written", call_id=setup.call_id, failure=failure)
+    events.ended(report)

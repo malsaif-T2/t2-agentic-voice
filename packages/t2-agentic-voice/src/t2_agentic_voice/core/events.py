@@ -45,6 +45,18 @@ EndReason = Literal["hangup", "caller_left", "max_call", "idle", "transport", "s
 # How an interruption ended the agent's speech (the design's 6.6); the echo session has only
 # `stop`, the Stop button or Esc, and the others come with the interruption rules.
 InterruptionKind = Literal["stop", "correction", "new_words", "false"]
+# Which step of the interruption rule decided (domain/interruptions.py's `VerdictReason` is this
+# list), in the rule's order: for the trace and the scorecards, never the words themselves.
+InterruptionReason = Literal[
+    "no_words",
+    "stop_word",
+    "repeat_word",
+    "own_words",
+    "listening",
+    "short_output",
+    "enough_words",
+    "too_few_words",
+]
 # Where a call's connection failed: its offer could not be answered; it never connected (ICE
 # failed, or the offer-to-connected deadline passed); or it dropped after it connected.
 TransportStage = Literal["offer", "connect", "media"]
@@ -192,9 +204,12 @@ class UserTurnEnded(_TurnEvent):
 
 class Interrupted(Event):
     """The agent's reply was cut off, and how; its `turn_id` is the caller's turn the reply
-    answered, None for the greeting or a spoken notice, which answer none."""
+    answered, None for the greeting or a spoken notice, which answer none; and `reason`, the
+    step of the interruption rule that decided it, None when no rule did (the Stop button or
+    Esc, the only interruption under `interruptions.mode = "drop"`)."""
 
     kind: InterruptionKind
+    reason: InterruptionReason | None = None
 
 
 class AgentSpeechEnded(Event):

@@ -308,8 +308,23 @@ function recorderPage() {
     for (const ms of t.marks) g.fillRect(Math.round((ms / msOf(t)) * width) - 1, 0, 3, height);
     const sorted = [...t.marks].sort((a, b) => a - b);
     $("marks").textContent = sorted.length
-      ? `Turn ends: ${sorted.map((ms) => `${(ms / 1000).toFixed(2)} s`).join(", ")}.`
-      : "No turn end is marked yet.";
+      ? `Marked at ${sorted.map((ms) => `${(ms / 1000).toFixed(2)} s`).join(", ")}.`
+      : "Nothing is marked yet.";
+  }
+
+  // What a take of a line is marked with, on its waveform: each true turn end of a line of
+  // several clauses (plan 003's end of turn); the end of a stop or pause word (`stop_word`),
+  // from which the overlap run times the stop (plan 005's registration), which a kept take needs
+  // as it needs its turn ends; and the end of what is said over a reply, which may be marked.
+  // The server holds the same rule for a kept take (`ScriptLine.needs_marks`).
+  function marking(l) {
+    const several = l.say.length > 1;
+    const word = l.say.length > 0 && l.kind === "stop_word";
+    if (several) return { shown: true, needed: true, hint: "Click the waveform at each true turn end: the end of the request, not a pause." };
+    if (word) return { shown: true, needed: true, hint: "Click the waveform at the end of the word: where your voice ends, not the reply." };
+    if (l.reply && l.say.length) return { shown: true, needed: false, hint: "Click the waveform at the end of what you said over the reply." };
+    if (l.reply) return { shown: true, needed: false, hint: "Nothing is said in this line, so it needs no mark." };
+    return { shown: false, needed: false, hint: "" };
   }
 
   function cueOf(l) {
@@ -355,15 +370,16 @@ function recorderPage() {
     $("line-meta").textContent = [l.kind, l.language, terms].filter(Boolean).join(" · ");
     $("say").replaceChildren(...l.say.map((clause) => el("li", clause, { dir: "auto" })));
     $("cue").textContent = cueOf(l);
-    const several = l.say.length > 1;
+    const marks = marking(l);
     $("rec").disabled = !d.consent || busy;
     $("finish").disabled = !page.recording;
     $("play").disabled = !page.take;
-    $("keep").disabled = !page.take || (several && !page.take.marks.length);
+    $("keep").disabled = !page.take || (marks.needed && !page.take.marks.length);
     $("discard").disabled = !page.take;
     $("next").disabled = busy || page.line + 1 >= d.lines.length;
-    $("ends").hidden = !(page.take && several);
-    if (page.take && several) drawWave();
+    $("ends").hidden = !(page.take && marks.shown);
+    $("ends-hint").textContent = marks.hint;
+    if (page.take && marks.shown) drawWave();
     $("takes").replaceChildren(
       ...takesOf(l.id).map((t) => {
         const item = el("li", `${t.take} · ${t.status} · ${t.seconds.toFixed(1)} s `);

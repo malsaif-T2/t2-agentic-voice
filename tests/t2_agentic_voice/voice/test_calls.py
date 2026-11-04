@@ -51,11 +51,12 @@ from t2_agentic_voice.voice.session.session_events import (
 
 from tests.t2_agentic_voice.fakes import (
     Captured,
+    FakePhrases,
     FakeSpeechToText,
     FakeTextToSpeech,
     capturing_output,
 )
-from tests.t2_agentic_voice.session_fakes import AGENT, FakePhrases
+from tests.t2_agentic_voice.session_fakes import AGENT
 from tests.t2_agentic_voice.voice.kit import (
     Built,
     ToneVAD,
@@ -190,8 +191,12 @@ def test_start_holds_the_transport_loggers_unless_a_call_may_log_its_content(
 def test_start_warms_silero_and_smart_turn_when_given_no_detectors(
     settings: VoiceSettings, tmp_path: Path
 ) -> None:
-    """With no factories voice builds Silero VAD and Smart Turn v3.2 from the settings, on the
-    CPU, with no torch; with Smart Turn off, it builds no turn analyzer."""
+    """With no factories voice builds Silero VAD and Smart Turn v3.2 from the settings, its
+    threshold among them, on the CPU, with no torch; with Smart Turn off, it builds no turn
+    analyzer."""
+    from pipecat.audio.turn.smart_turn.local_smart_turn_v3 import LocalSmartTurnAnalyzerV3
+    from t2_agentic_voice.voice.smart_turn import ThresholdSmartTurn
+
     calls = VoiceCalls(
         agent=AGENT,
         settings=settings,
@@ -204,7 +209,8 @@ def test_start_warms_silero_and_smart_turn_when_given_no_detectors(
     asyncio.run(calls.start())
     detector, analyzer = calls._detectors()
     assert type(detector).__name__ == "SileroVADAnalyzer"
-    assert type(analyzer).__name__ == "LocalSmartTurnAnalyzerV3"
+    assert isinstance(analyzer, ThresholdSmartTurn)
+    assert isinstance(analyzer, LocalSmartTurnAnalyzerV3) and analyzer.threshold == 0.5
     assert "torch" not in sys.modules
     off = VoiceSettings(
         env="test",

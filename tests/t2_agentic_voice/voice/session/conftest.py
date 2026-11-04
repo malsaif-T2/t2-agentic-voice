@@ -1,4 +1,4 @@
-"""Fixtures for the session's tests (Track D).
+"""Fixtures for the session's tests (plan 003's Track D, plan 005's Track B).
 
 The session cuts and says the heard words with Track A's clause splitter and pronunciation map
 (`domain/text/clauses.py`, `pronounce.py`). Until Track A merges they are Block 0's stubs, so
@@ -6,6 +6,10 @@ these tests build against stand-ins of the same contract (every track builds aga
 interfaces, never another track's unfinished code): each is used only while the real function
 is a stub, and the tests compute what they expect through the session's own `echo.said`, so
 they hold with Track A's functions too.
+
+The interruption rule (domain/interruptions.py's `judge`) is plan 005's Track A's, built in
+parallel: a test that judges an overlap takes `rule`, a fake the test scripts, patched where the
+session calls it, and never runs Track A's code.
 
 Every step the session takes is guarded (it logs a failure by its kind and goes on, as the
 `Session` protocol asks), so a test would not see a bug that raised inside it: every test here
@@ -21,7 +25,9 @@ from collections.abc import Iterator, Mapping
 import pytest
 from t2_agentic_voice.core.settings.tts import LanguageTag
 from t2_agentic_voice.domain.text import clauses, pronounce
-from t2_agentic_voice.voice.session import echo
+from t2_agentic_voice.voice.session import echo, overlap
+
+from tests.t2_agentic_voice.voice.session.overlap_support import FakeRule
 
 # Where a clause may end: the Arabic comma and question mark, and the Latin punctuation.
 _ENDS = re.compile(r"(?<=[،؟.,!?;:])\s+")
@@ -78,6 +84,15 @@ def _speech_text(monkeypatch: pytest.MonkeyPatch) -> None:
         monkeypatch.setattr(echo, "split_clauses", _split)
     if _stub(lambda: pronounce.pronounce("a", {}, language="en")):
         monkeypatch.setattr(echo, "pronounce", _pronounce)
+
+
+@pytest.fixture
+def rule(monkeypatch: pytest.MonkeyPatch) -> FakeRule:
+    """The starting rule as the test scripts it (overlap_support.py's `FakeRule`), standing in
+    for Track A's `judge` where the session calls it: these tests never run Track A's code."""
+    fake = FakeRule()
+    monkeypatch.setattr(overlap, "judge", fake)
+    return fake
 
 
 @pytest.fixture

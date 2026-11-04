@@ -18,7 +18,7 @@ decisions (`D-NNN`), which are permanent. Living docs cite only milestones in th
 | M0 | Scaffold and harness | in progress ([000](active/000-project-scaffold.md); [001](completed/001-library-and-app.md) done) |
 | M1 | The measurement first: the owner's voice as a golden set | done ([002](completed/002-golden-set-baseline.md)) |
 | M2 | A call that listens and speaks | done ([003](completed/003-call-listens-and-speaks.md)) |
-| M3 | Interruptions and cancellation | planned |
+| M3 | Interruptions and cancellation | in progress ([005](active/005-interruptions-and-cancellation.md)) |
 | M4 | The talker and knowledge answers | planned |
 | M5 | Tickets, ticket status, and handoff | planned |
 | M6 | Reliability and operations | planned |
@@ -201,6 +201,15 @@ steps pass in a live call.
 - *From M2* (plan 003's Q16, the owner, 2026-11-03): the prompt arm that keeps product terms in
   Latin script (term recall was 0.333 on dev for large-v3), measured on the golden set (D-024's
   floor of 6 items) once the vocabulary that becomes the Whisper prompt lands.
+- *From M3* ([plan 005](active/005-interruptions-and-cancellation.md), the owner, 2026-11-04: "Ok
+  record that to be tried in M4"): the talker takes what an interruption means, while the
+  library keeps the fast stop. The library still stops at once on a clear stop word and never
+  for a listening sound, its own echo or silence; the talker reads the rest with the history of
+  what the caller heard (repeat, pause, say it slower or again in part, a correction, a request
+  after a stop), so most of M3's repeat and pause word handling can move to it. A small
+  classifier for the uncertain middle (a short utterance over the agent that is neither a listed
+  word nor clearly a request) is tried as a registered arm against M3's rule, scored offline on
+  the overlap runs' stored transcripts. Each moves a default only on a registered measurement.
 
 *Done when* retrieval (the right passage in the top 5) and answer correctness are measured; the
 time to the first useful audio meets a target registered in its plan before any run; and the

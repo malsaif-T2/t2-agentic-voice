@@ -25,6 +25,7 @@ from ole5_voice.evals.items import EVALS, load_items, read_toml
 from ole5_voice.evals.takes import Script
 from pydantic import BaseModel, ConfigDict, Field
 from t2_agentic_voice.domain.scoring import scored_form
+from t2_agentic_voice.domain.words import PRESET_WORDS, WORD_KINDS
 from t2_agentic_voice.languages import normalize_digits
 
 ROOT = Path(__file__).resolve().parents[3]
@@ -146,9 +147,25 @@ def test_the_scan_takes_each_apps_widget_folder(tmp_path: Path) -> None:
 
 
 def test_the_allow_list_holds_only_the_owners_ruling(tmp_path: Path) -> None:
-    """One entry, the owner's answer to Q6 of plan 003: "stop", the protocol's message and the
-    client's method; every other text an item holds stays searched."""
-    assert allowed(EVALS / "allowed_in_source.toml") == {"stop"}
+    """The owner's answer to Q6 of plan 003: "stop", the protocol's message and the client's
+    method; and to Q1 of plan 005: each word of the language presets' lists that an item's text
+    is, quoting it. Every other text an item holds stays searched."""
+    with (EVALS / "allowed_in_source.toml").open("rb") as file:
+        entries = AllowList.model_validate(tomllib.load(file)).allowed
+    q1 = [entry for entry in entries if entry.on == date(2026, 11, 3)]
+    presets = {fold(entry.text) for entry in q1}
+    assert allowed(EVALS / "allowed_in_source.toml") == {"stop"} | presets
+    assert len(presets) == len(q1) == 16
+    assert {entry.said for entry in q1} == {
+        "Go with your recommendation for Q1, Q2, Q3, Q4, Q5 and Q7."
+    }
+    listed = {
+        fold(word)
+        for words in PRESET_WORDS.values()
+        for kind in WORD_KINDS
+        for word in getattr(words, kind)
+    }
+    assert presets <= listed  # the ruling covers the presets' words only
     path = tmp_path / "allowed.toml"
     path.write_text(
         '[[allowed]]\ntext = "Okay!"\nreason = "a made-up case"\nsaid = "made up"\n'

@@ -39,12 +39,13 @@ from t2_agentic_voice.voice.tts_bridge import ClauseTTSBridge
 from tests.t2_agentic_voice.fakes import (
     Captured,
     FakeClock,
+    FakePhrases,
     FakeSpeechToText,
     FakeTextToSpeech,
     capturing_output,
     tone,
 )
-from tests.t2_agentic_voice.session_fakes import AGENT, FakePhrases
+from tests.t2_agentic_voice.session_fakes import AGENT
 from tests.t2_agentic_voice.voice.kit import PauseAnalyzer, Tail, ToneVAD, voice_calls
 
 SECRET = "the caller said a private phrase"

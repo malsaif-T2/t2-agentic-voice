@@ -164,7 +164,8 @@ def load_plan(data: Path, choice: Choice, parts: Parts) -> Plan:
     if {item.id for item in golden} != set(sides):
         raise refused(
             "the committed split does not hold exactly the golden set's items",
-            "write the split again (`python -m ole5_voice.evals.split`) and commit it",
+            "write the split again, each committed item keeping its side "
+            f"(`{split.KEEP_COMMAND}`), and commit it",
         )
     talkover_only = bool(choice.windows_ms)
     named = [

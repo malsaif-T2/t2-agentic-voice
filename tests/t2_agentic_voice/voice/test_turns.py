@@ -5,12 +5,14 @@ from __future__ import annotations
 
 import asyncio
 import sys
+from collections.abc import Awaitable, Callable
 from typing import TYPE_CHECKING
 
 import pytest
 from t2_agentic_voice.core.settings.turns import TurnSettings
 from t2_agentic_voice.voice.turns import speech_detector, turn_analyzer, turn_processors, vad_params
 
+from tests.t2_agentic_voice.fakes import tone
 from tests.t2_agentic_voice.voice.kit import (
     PauseAnalyzer,
     Tail,
@@ -21,6 +23,7 @@ from tests.t2_agentic_voice.voice.kit import (
 )
 
 if TYPE_CHECKING:
+    from pipecat.audio.turn.base_turn_analyzer import BaseTurnAnalyzer
     from pipecat.pipeline.worker import PipelineWorker
 
 
@@ -69,6 +72,67 @@ def test_silero_and_smart_turn_load_on_the_cpu_with_no_torch() -> None:
     turns = TurnSettings(smart_turn_stop_ms=2500, smart_turn_pre_speech_ms=400)
     detector, analyzer = speech_detector(turns), turn_analyzer(turns)
     assert type(detector).__name__ == "SileroVADAnalyzer" and detector.params.stop_secs == 0.2
-    assert type(analyzer).__name__ == "LocalSmartTurnAnalyzerV3"
+    assert type(analyzer).__name__ == "ThresholdSmartTurn"
+    assert type(analyzer).__mro__[1].__name__ == "LocalSmartTurnAnalyzerV3"
     assert analyzer.params.model_dump()["stop_secs"] == 2.5
     assert "onnxruntime" in sys.modules and "torch" not in sys.modules
+
+
+class _Said:
+    """One of the model's outputs, as its ONNX session gives it (`item()`)."""
+
+    def __init__(self, probability: float) -> None:
+        self.probability = probability
+
+    def item(self) -> float:
+        return self.probability
+
+
+class _Model:
+    """In place of Smart Turn's ONNX session: the model is `probability` sure, whatever it
+    hears."""
+
+    def __init__(self, probability: float) -> None:
+        self.probability = probability
+
+    def run(self, names: object, inputs: object) -> list[list[_Said]]:
+        return [[_Said(self.probability)]]
+
+
+async def _decide(analyzer: BaseTurnAnalyzer, model: _Model | None = None) -> tuple[str, float]:
+    """The analyzer's decision at a pause after a second of the fakes' tone: its state and the
+    model's probability, from `model` when given."""
+    if model is not None:
+        analyzer._session = model  # type: ignore[attr-defined]
+    analyzer.set_sample_rate(16_000)
+    analyzer.append_audio(tone(1.0, 16_000), True)
+    state, metrics = await analyzer.analyze_end_of_turn()
+    return state.name, getattr(metrics, "probability", -1.0)
+
+
+def test_smart_turns_threshold_is_pipecats_own_at_its_default_and_moves_the_end_above_it() -> None:
+    """`turns.smart_turn_threshold` (smart_turn.py's `ThresholdSmartTurn`, on Pipecat 1.15.0's
+    private `_predict_endpoint`): at 0.5, each decision is Pipecat's own, on the model and at
+    probabilities around it; at 0.7, a pause the model is 0.6 sure of leaves the turn open,
+    which Pipecat's own would end, and one it is 0.71 sure of ends it."""
+    from pipecat.audio.turn.smart_turn.local_smart_turn_v3 import LocalSmartTurnAnalyzerV3
+
+    pipecats = LocalSmartTurnAnalyzerV3(cpu_count=1)
+    ours, higher = (
+        turn_analyzer(TurnSettings()),
+        turn_analyzer(TurnSettings(smart_turn_threshold=0.7)),
+    )
+
+    async def run() -> None:
+        assert await _decide(ours) == await _decide(pipecats)
+        for probability in (0.2, 0.5, 0.5001, 0.6, 0.9):
+            heard = await _decide(ours, _Model(probability))
+            assert heard == await _decide(pipecats, _Model(probability))
+            assert heard[0] == ("COMPLETE" if probability > 0.5 else "INCOMPLETE")
+        assert await _decide(higher, _Model(0.6)) == ("INCOMPLETE", 0.6)
+        assert await _decide(higher, _Model(0.71)) == ("COMPLETE", 0.71)
+        for analyzer in (pipecats, ours, higher):  # each one's model thread
+            cleanup: Callable[[], Awaitable[None]] = analyzer.cleanup
+            await cleanup()
+
+    asyncio.run(run())

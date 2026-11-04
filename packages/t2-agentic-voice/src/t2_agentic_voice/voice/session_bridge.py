@@ -13,11 +13,13 @@ design's 13; plan 003's appendix, "Changes to the plan's interfaces", items 3 an
   `InputTransportMessageFrame`, the object Pipecat's `on_app_message` gives, voice/protocol.py's
   object path), dropping, with a log line that holds none of it, one that is not `t2v/1`'s.
 - `SessionCommands` carries out the session's commands, in order: `ListenIn` names the
-  speech-to-text bridge's language; `Speak` sends the clause downstream to the text-to-speech
-  bridge (`SpeakFrame`); `StopSpeaking` drops every clause asked for so far and broadcasts
-  Pipecat's interruption from here, upstream of the text-to-speech bridge, so every processor
-  drops its queued frames; `Send` hands the message to the output transport at once, ahead of
-  any queued audio and never dropped by a stop; and `HangUp` ends the call.
+  speech-to-text bridge's language; `HearOverlap` marks the bridge's turn an overlap, whose
+  parts the bridge sends as the speech goes (stt_bridge.py); `Speak` sends the clause
+  downstream to the text-to-speech bridge (`SpeakFrame`); `StopSpeaking` drops every clause
+  asked for so far and broadcasts Pipecat's interruption from here, upstream of the
+  text-to-speech bridge, so every processor drops its queued frames; `Send` hands the message
+  to the output transport at once, ahead of any queued audio and never dropped by a stop; and
+  `HangUp` ends the call.
 
 A clause is keyed on its reply and its index (`ClauseKey`), and its text-to-speech context is
 named from that key (`context_id`), so the output's frames say whose audio they carry.
@@ -40,6 +42,7 @@ from t2_agentic_voice.voice.protocol import parse_client_message, wire
 from t2_agentic_voice.voice.session.commands import (
     Command,
     HangUp,
+    HearOverlap,
     ListenIn,
     Send,
     Speak,
@@ -220,10 +223,11 @@ class SessionBridge(FrameProcessor):
 
 class SessionCommands:
     """Where the session's commands go (io.py's `Commands`): each carried out after every one
-    before it, never raising. `listen` names the speech-to-text bridge's language, `send` hands
-    a message to the output transport, and `hang_up` ends the call. With `record`, `given`
-    keeps every command with when it came, on the call's clock (the file-fed transport's
-    `FedCall`)."""
+    before it, never raising, and none waiting on what it brings about. `listen` names the
+    speech-to-text bridge's language, `hear` marks one of its turns an overlap (its turn and
+    window), `send` hands a message to the output transport, and `hang_up` ends the call. With
+    `record`, `given` keeps every command with when it came, on the call's clock (the file-fed
+    transport's `FedCall`)."""
 
     def __init__(
         self,
@@ -231,6 +235,7 @@ class SessionCommands:
         events: CallEvents,
         *,
         listen: Callable[[str | None], None],
+        hear: Callable[[int, int], None],
         send: Callable[[object], Awaitable[None]],
         hang_up: Callable[[EndReason], None],
         record: bool = False,
@@ -238,6 +243,7 @@ class SessionCommands:
         self._bridge = bridge
         self._events = events
         self._listen = listen
+        self._hear = hear
         self._send = send
         self._hang_up = hang_up
         self._lock = asyncio.Lock()
@@ -259,6 +265,8 @@ class SessionCommands:
         match command:
             case ListenIn(language=language):
                 self._listen(language)
+            case HearOverlap(turn_id=turn_id, window_ms=window_ms) if not events.ended:
+                self._hear(turn_id, window_ms)
             case Speak(reply_id=reply, clause=clause) if not events.ended:
                 events.asked.add((reply, clause))
                 await self._bridge.push_frame(SpeakFrame(speak=command))

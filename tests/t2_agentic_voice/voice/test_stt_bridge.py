@@ -129,6 +129,35 @@ def test_a_turn_is_one_request_of_its_held_audio_trimmed_after_its_last_stop() -
     assert heard.transcript is not None and heard.transcript.text == "heard"
 
 
+def test_a_turn_that_closes_with_no_stop_of_the_detectors_sends_all_it_held() -> None:
+    """With no stop of the detector's in the turn, nothing trims its request: it holds the
+    pre-roll and all the speech held."""
+    from pipecat.frames.frames import (
+        UserStartedSpeakingFrame,
+        UserStoppedSpeakingFrame,
+        VADUserStartedSpeakingFrame,
+    )
+
+    port = FakeSpeechToText(["all of it"])
+
+    async def body(rig: Rig, worker: PipelineWorker) -> None:
+        frames: list[Frame] = [
+            *audio_frames(1.0, loud=False),
+            *audio_frames(START_S),
+            VADUserStartedSpeakingFrame(start_secs=START_S),
+            UserStartedSpeakingFrame(),
+            *audio_frames(0.4),
+            UserStoppedSpeakingFrame(),
+        ]
+        for frame in frames:
+            await worker.queue_frame(frame)
+        await until(lambda: bool(rig.session.of(Transcribed)))
+
+    _run(port, body)
+    ((clip, _, _),) = port.calls
+    assert clip.seconds == pytest.approx(START_S + PREROLL_PAD_S + 0.4, abs=0.021)
+
+
 def test_the_next_turn_can_open_before_the_last_ones_transcript() -> None:
     """The request runs on a task of its own: turn 1 opens while turn 0's is in flight, each
     keyed on its turn."""

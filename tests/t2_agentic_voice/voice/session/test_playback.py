@@ -60,12 +60,34 @@ def test_an_event_of_no_clause_asked_for_changes_nothing() -> None:
     assert reply.first_audio_s == 0.5 and [reply.ended_at] == [None] and _speaking(playback)
     playback.done(ClauseFailed(reply_id=0, clause=1, at=2.5, failure="timeout", retryable=True))
     assert reply.ended_at == 2.5 and reply.failed and not _speaking(playback)
-    assert reply.played_fraction == len("one two") / len("one twothree")
+    assert reply.clauses[0].played_at == 2.0 and reply.clauses[1].played_at is None
     failed = ClauseFailed(reply_id=0, clause=1, at=3.0, failure="timeout", retryable=True)
     assert playback.done(failed) is None  # its reply has ended
-    assert (
-        playback.heard_over(2.7) and not playback.heard_over(2.9) and not playback.heard_over(0.5)
-    )
+    assert playback.over(2.7) is reply and playback.over(2.9) is None
+    assert playback.over(0.5) is None
+
+
+def test_the_clause_playing_and_the_texts_played_since_a_time() -> None:
+    """The clause playing is the first not done of the oldest reply playing, once its first
+    audio was queued; the texts played since a time are those clauses', then the one playing."""
+    playback = Playback()
+    first = playback.ask("echo", [_line(0, 0, "one two"), _line(0, 1, "three")], turn_id=0)
+    second = playback.ask("echo", [_line(1, 0, "four")], turn_id=1)
+    assert playback.playing() is None and playback.heard_since(0.0) == ()
+    playback.queued(ClauseQueued(reply_id=0, clause=0, at=1.0, requested_at=None))
+    assert playback.playing() == (first, 0)
+    playback.done(ClausePlayed(reply_id=0, clause=0, at=2.0, audio_s=1.0, chunks=1))
+    assert playback.playing() is None  # its next clause has no audio yet
+    playback.queued(ClauseQueued(reply_id=0, clause=1, at=2.1, requested_at=None))
+    playback.queued(ClauseQueued(reply_id=1, clause=0, at=2.2, requested_at=None))
+    assert playback.playing() == (first, 1)
+    assert playback.heard_since(1.5) == ("one two", "three")
+    assert playback.heard_since(2.5) == ("three",)
+    playback.done(ClausePlayed(reply_id=0, clause=1, at=3.0, audio_s=1.0, chunks=1))
+    assert playback.playing() == (second, 0)
+    dropped = playback.drop(3.5, tail=False)
+    assert dropped == [second] and second.cut and second.tail_s == 0.0 and not first.cut
+    assert playback.over(3.6) is None and playback.over(3.5) is second  # no tail after it
 
 
 def test_the_session_reads_no_event_of_a_clause_it_did_not_ask_for(

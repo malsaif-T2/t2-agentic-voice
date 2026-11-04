@@ -12,7 +12,9 @@
 </head>
 <body>
 <h1>Dev call</h1>
-<p>Allow the microphone, talk, and press Stop or Esc to cut the agent short.</p>
+<p>Allow the microphone, talk, and press Stop or Esc to cut the agent short. Speaking over the
+  agent lowers its volume until the session decides; a clause a stop cut is captioned [cut].
+  With push to talk on, the agent hears you only while you hold the Talk button.</p>
 <p>
   <label>Join token <input id="token" type="text" value="dev" autocomplete="off" spellcheck="false"></label>
   <label>Language
@@ -29,8 +31,13 @@
   <button type="button" id="stop" disabled>Stop</button>
   <button type="button" id="hangup" disabled>Hang up</button>
 </p>
+<p>
+  <label><input type="checkbox" id="push-to-talk"> Push to talk</label>
+  <button type="button" id="talk" aria-pressed="false" disabled>Talk (hold)</button>
+</p>
 <p>Status: <output id="status">Not started.</output></p>
-<p>Connection: <output id="connection">none</output> · Agent: <output id="state">none</output></p>
+<p>Connection: <output id="connection">none</output> · Agent: <output id="state">none</output>
+  · Volume: <output id="volume">100%</output></p>
 <h2>Captions</h2>
 <ol id="captions" dir="auto"></ol>
 <h2>Notices</h2>

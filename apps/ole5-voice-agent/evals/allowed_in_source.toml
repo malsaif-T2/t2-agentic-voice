@@ -21,3 +21,104 @@ text = "stop"
 reason = "The protocol's `stop` message and the client's `stop()` method (the design's 4.5 and 5.5): names that no model or caller hears."
 said = "Yes go with the recommended."
 on = 2026-11-02
+
+# Q1 of plan 005: the owner's answer of 2026-11-03 to Q1 to Q7, Q1 settled as (a), the agent's
+# recommendation: one ruling covers the language presets' word lists, written from the
+# prototype's (the plan's "The owner's decisions"). One entry for each word of the lists that
+# an item's reference or a script line holds as its whole text, each exempting that whole text
+# only; a longer reference that holds the word stays searched.
+[[allowed]]
+text = "وقف"
+reason = "A stop word of the Arabic presets' stop list (domain/words.py's `PRESET_WORDS`), which the interruption rule reads."
+said = "Go with your recommendation for Q1, Q2, Q3, Q4, Q5 and Q7."
+on = 2026-11-03
+
+[[allowed]]
+text = "توقف"
+reason = "A stop word of the Arabic presets' stop list (domain/words.py's `PRESET_WORDS`), which the interruption rule reads."
+said = "Go with your recommendation for Q1, Q2, Q3, Q4, Q5 and Q7."
+on = 2026-11-03
+
+[[allowed]]
+text = "خلاص"
+reason = "A stop word of the Arabic presets' stop list (domain/words.py's `PRESET_WORDS`), which the interruption rule reads."
+said = "Go with your recommendation for Q1, Q2, Q3, Q4, Q5 and Q7."
+on = 2026-11-03
+
+[[allowed]]
+text = "لحظه"
+reason = "A word asking the agent to pause, of the Arabic presets' wait list (domain/words.py's `PRESET_WORDS`), which the interruption rule reads."
+said = "Go with your recommendation for Q1, Q2, Q3, Q4, Q5 and Q7."
+on = 2026-11-03
+
+[[allowed]]
+text = "ممكن تعيد"
+reason = "A repeat request of the Arabic presets' repeat list (domain/words.py's `PRESET_WORDS`), which the interruption rule reads."
+said = "Go with your recommendation for Q1, Q2, Q3, Q4, Q5 and Q7."
+on = 2026-11-03
+
+[[allowed]]
+text = "أعد"
+reason = "A repeat word of the Arabic presets' repeat list (domain/words.py's `PRESET_WORDS`), which the interruption rule reads, and a word of the protocol's mismatch notice (api/protocol.py's `MISMATCH_NOTICE`); the rehearsal's lone repeat request (DESCRIPTION.md, its step 2), a script line."
+said = "Go with your recommendation for Q1, Q2, Q3, Q4, Q5 and Q7."
+on = 2026-11-03
+
+[[allowed]]
+text = "كمل"
+reason = "A listening sound of the Arabic presets' backchannel list (domain/words.py's `PRESET_WORDS`), which the interruption rule reads."
+said = "Go with your recommendation for Q1, Q2, Q3, Q4, Q5 and Q7."
+on = 2026-11-03
+
+[[allowed]]
+text = "تمام"
+reason = "A listening sound of the Arabic presets' backchannel list (domain/words.py's `PRESET_WORDS`), which the interruption rule reads."
+said = "Go with your recommendation for Q1, Q2, Q3, Q4, Q5 and Q7."
+on = 2026-11-03
+
+[[allowed]]
+text = "طيب"
+reason = "A listening sound of the Arabic presets' backchannel list (domain/words.py's `PRESET_WORDS`), which the interruption rule reads."
+said = "Go with your recommendation for Q1, Q2, Q3, Q4, Q5 and Q7."
+on = 2026-11-03
+
+[[allowed]]
+text = "اها"
+reason = "A listening sound of the Arabic presets' backchannel list (domain/words.py's `PRESET_WORDS`), which the interruption rule reads."
+said = "Go with your recommendation for Q1, Q2, Q3, Q4, Q5 and Q7."
+on = 2026-11-03
+
+[[allowed]]
+text = "امم"
+reason = "A listening sound of the Arabic presets' backchannel list (domain/words.py's `PRESET_WORDS`), which the interruption rule reads."
+said = "Go with your recommendation for Q1, Q2, Q3, Q4, Q5 and Q7."
+on = 2026-11-03
+
+[[allowed]]
+text = "wait"
+reason = "A word asking the agent to pause, of the English preset's wait list (domain/words.py's `PRESET_WORDS`), which the interruption rule reads; also that list's name in the rule's code (domain/interruptions.py)."
+said = "Go with your recommendation for Q1, Q2, Q3, Q4, Q5 and Q7."
+on = 2026-11-03
+
+[[allowed]]
+text = "hold on"
+reason = "A word asking the agent to pause, of the English preset's wait list (domain/words.py's `PRESET_WORDS`), which the interruption rule reads."
+said = "Go with your recommendation for Q1, Q2, Q3, Q4, Q5 and Q7."
+on = 2026-11-03
+
+[[allowed]]
+text = "okay"
+reason = "A listening sound of the English preset's backchannel list (domain/words.py's `PRESET_WORDS`), which the interruption rule reads."
+said = "Go with your recommendation for Q1, Q2, Q3, Q4, Q5 and Q7."
+on = 2026-11-03
+
+[[allowed]]
+text = "mm hmm"
+reason = "A listening sound of the English preset's backchannel list (domain/words.py's `PRESET_WORDS`), which the interruption rule reads."
+said = "Go with your recommendation for Q1, Q2, Q3, Q4, Q5 and Q7."
+on = 2026-11-03
+
+[[allowed]]
+text = "uh huh"
+reason = "A listening sound of the English preset's backchannel list (domain/words.py's `PRESET_WORDS`), which the interruption rule reads."
+said = "Go with your recommendation for Q1, Q2, Q3, Q4, Q5 and Q7."
+on = 2026-11-03

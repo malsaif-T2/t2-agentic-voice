@@ -5,6 +5,10 @@ report and its recording. It meets voice's Pipecat modules only through its even
 (`session_events.py`) and commands (`commands.py`), and the protocols, the clock and the set-up
 of `io.py`, so a call fed from text or a file runs the same session code as a call over WebRTC.
 The session is `call.py`'s `CallSession`; the echo's replies are `echo.py`'s, the heard words
-`heard.py`'s, the replies as they play and the speaker `playback.py`'s, the usage `usage.py`'s,
-the turns, public events and report `report.py`'s, and the recorder `recording.py`'s.
+`heard.py`'s, the replies as they play `playback.py`'s, the speaker `speaker.py`'s, the turns as
+the session keeps them `turn_book.py`'s, its limit timers `limits.py`'s, the usage `usage.py`'s,
+the turn records, public events and report `report.py`'s, and the recorder `recording.py`'s.
+Plan 005 adds each reply's cancel scope (`scope.py`), the heard history (`history.py`), the
+overlaps under `interruptions.mode = "two_step"` (`overlap.py`, carried out by
+`interrupter.py`), and the call's books that its parts share (`books.py`).
 """
