@@ -435,6 +435,12 @@ milestone a contract it cannot build on. Everything else becomes a row in
   does call fillers and lone short words incomplete. E's arms and keep rule are replaced below
   (amendment (8)), its delay bound the owner's call (Q8); the hold is a new `turns` key, built
   after Q8.
+- 2026-11-04: The owner answered Q8, (a): up to 600 ms more at the median ("The owner's
+  decisions"), and, M2 being complete, asked that M3 merge into the main branch and that the
+  owner be told how to record M3's lines. `plan-005-integration` holds the main branch at
+  87c54f6 (M2 closed; 8a47aeb, its merge, gated: 'TOTAL 12337 0 100%', '3847 passed, 1
+  skipped'). Still to build before E runs: the hold after Smart Turn's "complete" (amendment
+  (8)), a `turns` key off by default, and TD-108's pacer before O1.
 
 ## Decision log
 
@@ -523,6 +529,11 @@ affects.
 
 What the owner has already said that binds M3:
 
+- 2026-11-04, to Q8 and on M2's close: "Make it up to 600ms, it might change later if we found
+  that its not a good choice. M2 is completed so merge to main then tell me how to start the
+  recordings for M3. Once I am finished I will tell you." So Q8 is (a): E's keep rule accepts up
+  to 600 ms more at the median, the owner leaving it open to change; M3 merges into the main
+  branch now, M2 being complete; the owner records M3's lines next and says when done.
 - 2026-11-04, to the agent's question "Add the backchannel detector to plan 005 as an offline
   trial arm?" (after the agent read Pipecat's backchannel detector and a barge-in classifier
   for the owner): "Yes, add it". So B is registered below, offline and with no spend; it changes
@@ -737,8 +748,8 @@ registration, moved here unchanged):
 the owner's pauses from the ends of the owner's turns):* (8) E's arms become **Ea**, a hold of 300 ms after
 Smart Turn's "complete", and **Eb**, a hold of 500 ms, each cancelled when the speech resumes
 (a `turns` key, 0 by default, which leaves a turn's end unchanged); the threshold stays 0.5. Its
-keep rule's bound on the median delay becomes the owner's call (Q8), in place of 300 ms; the rest
-of the rule stands.
+keep rule's bound on the median delay becomes the owner's call (Q8), in place of 300 ms: 600 ms,
+settled 2026-11-04; the rest of the rule stands.
 
 **E, the turn defaults** (offline, no spend; Q6, settled):
 - **Data:** the paused requests, each true turn end marked by the owner: dev's 6 items (23
@@ -867,8 +878,8 @@ Before B (open):
   repository like the golden set's audio, and `pipecat-ai/pipecat-vap`'s code read for its
   decision procedure; no package is added to the library for B. **The agent recommends allowing
   it**, asked again with the file's name and size just before the step.
-- **Q8. How much later every turn may end, to stop cutting the owner's paused requests** (open,
-  asked 2026-11-04). E1 cut 22 of 23 dev paused requests; a hold after Smart Turn's "complete" of
+- **Q8. How much later every turn may end, to stop cutting the owner's paused requests**
+  (asked 2026-11-04). *Settled 2026-11-04: (a), up to 600 ms, open to change later.* E1 cut 22 of 23 dev paused requests; a hold after Smart Turn's "complete" of
   about 500 ms bridges every pause measured, so each turn's end, and the echo (and M4's answer)
   after it, comes about half a second later. Options: (a) accept up to 600 ms more at the median,
   so Eb can pass if it removes the cut-offs; (b) accept up to 300 ms, so only Ea can pass, keeping
