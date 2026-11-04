@@ -11,68 +11,72 @@
 # whether the take began over the assistant, and its playback device. The [script] tables also
 # count M3's 41 lines (plan 005, Q2 and Q6), whose items hold every take the owner kept on the
 # laptop and the wired headset on 2026-11-04 (its Bluetooth session left out, at the owner's
-# word: "lets skip Bluetooth").
+# word: "lets skip Bluetooth"). The talk-over items also hold four overlaps of the owner's
+# recorded calls (plan 003's run C, plan 005's C3), each its own item, as the owner labelled
+# them on 2026-11-04 (`import_calls.py`, `calls/labels.toml`), tagged `call` and
+# `over-assistant`.
 
 [items]
-total = 136
+total = 140
 
 [items.source]
 script = 93
-talkover = 43
+talkover = 47
 
 [items.language]
 english = 32
 mixed = 14
 msa = 21
-none = 6
-saudi = 63
+none = 8
+saudi = 65
 
 [items.kind]
 confirmation = 4
 correction = 2
 echo_only = 3
-listening_sound = 20
-noise = 2
+listening_sound = 21
+noise = 4
 paused_request = 30
 repeat_request = 8
 request = 37
 short_request = 3
 silence = 1
-stop_word = 22
+stop_word = 23
 ticket_number = 4
 
 [variants]
-total = 419
+total = 423
 
 [variants.language]
 english = 97
 mixed = 43
 msa = 70
-none = 17
-saudi = 192
+none = 19
+saudi = 194
 
 [variants.kind]
 confirmation = 13
 correction = 4
 echo_only = 8
-listening_sound = 56
-noise = 6
+listening_sound = 57
+noise = 8
 paused_request = 79
 repeat_request = 24
 request = 131
 short_request = 9
 silence = 3
-stop_word = 56
+stop_word = 57
 ticket_number = 30
 
 [variants.device]
 bluetooth = 59
-laptop = 256
-wired = 104
+laptop = 259
+wired = 105
 
 [variants.tag]
+call = 4
 duck = 63
-over-assistant = 106
+over-assistant = 110
 pause = 55
 playback-headset = 3
 playback-speakers = 115

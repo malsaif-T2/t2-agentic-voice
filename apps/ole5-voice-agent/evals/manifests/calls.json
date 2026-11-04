@@ -1,0 +1,38 @@
+{
+  "root": "calls",
+  "consent": null,
+  "files": [
+    {
+      "path": "call-bv5tsbxzfhyxbaxk-turn-1.wav",
+      "sha256": "873aacd69dc50d6c826526d7fd3a276b667a49cfe9efeb710831389a6808237d",
+      "seconds": 3.52,
+      "sample_rate": 16000,
+      "device": "wired",
+      "session": "calls"
+    },
+    {
+      "path": "call-c7es2sdh_mq1dvz7-turn-0.wav",
+      "sha256": "4a2b6d0cfaff5b2ea7d9a2c526295de6254064ec37095c0807183c1d4bd87c4a",
+      "seconds": 1.239125,
+      "sample_rate": 16000,
+      "device": "laptop",
+      "session": "calls"
+    },
+    {
+      "path": "call-srjwnturybmf0qmj-turn-2.wav",
+      "sha256": "04be38477664a6cd5b0deff7794e738188b222db838b963e7d05fb7020179175",
+      "seconds": 1.06,
+      "sample_rate": 16000,
+      "device": "laptop",
+      "session": "calls"
+    },
+    {
+      "path": "call-srjwnturybmf0qmj-turn-7.wav",
+      "sha256": "8ec3d3c934d72866a5796493ea502442f312e30f3e5813d2e889ea997133a4a1",
+      "seconds": 1.0876875,
+      "sample_rate": 16000,
+      "device": "laptop",
+      "session": "calls"
+    }
+  ]
+}

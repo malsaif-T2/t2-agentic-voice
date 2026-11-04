@@ -1,0 +1,23 @@
+# Written by `python -m ole5_voice.evals.import_calls` from the recorded calls and the
+# owner's labels: import again rather than edit.
+id = "call-bv5tsbxzfhyxbaxk-turn-1"
+source = "talkover"
+kind = "stop_word"
+language = "saudi"
+text = ""
+alternatives = []
+terms = []
+
+[[variants]]
+id = "call-bv5tsbxzfhyxbaxk-turn-1"
+device = "wired"
+session = "calls"
+reference = "وقف وقف"
+reference_source = "typed"
+turn_ends_ms = []
+tags = ["call", "over-assistant"]
+
+[[variants.segments]]
+root = "calls"
+path = "call-bv5tsbxzfhyxbaxk-turn-1.wav"
+sha256 = "873aacd69dc50d6c826526d7fd3a276b667a49cfe9efeb710831389a6808237d"

@@ -360,9 +360,12 @@ def test_the_committed_set_is_valid_and_its_frozen_answers_are_fresh() -> None:
     assert report.problems == []
     assert report.frozen == (EVALS / "frozen.json").read_text(encoding="utf-8")
     items = {item.id: item for item in load_items(EVALS / "golden")}
-    arabic = {
-        i for i, item in items.items() if item.source == "talkover" and item.language != "english"
+    lab = {  # the lab's talk-over phrases, not the recorded calls' overlaps (import_calls.py)
+        i: item
+        for i, item in items.items()
+        if item.source == "talkover" and "call" not in item.variants[0].tags
     }
+    arabic = {i for i, item in lab.items() if item.language != "english"}
     assert set(LANGUAGE) == arabic  # every Arabic phrase's ruling, and no other
     variants = {v.id for item in items.values() for v in item.variants}
     assert LEFT_OUT and not variants & set(LEFT_OUT)  # the owner's left-out takes stay out

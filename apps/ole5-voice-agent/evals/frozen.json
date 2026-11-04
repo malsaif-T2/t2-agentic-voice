@@ -4333,5 +4333,26 @@
       ]
     }
   ],
-  "left_out": []
+  "left_out": [
+    {
+      "item": "call-bv5tsbxzfhyxbaxk-turn-1",
+      "variant": "call-bv5tsbxzfhyxbaxk-turn-1",
+      "why": "typed by the owner, waiting on its second confirmation in a later review pass"
+    },
+    {
+      "item": "call-c7es2sdh_mq1dvz7-turn-0",
+      "variant": "call-c7es2sdh_mq1dvz7-turn-0",
+      "why": "not yet confirmed by the owner's listen"
+    },
+    {
+      "item": "call-srjwnturybmf0qmj-turn-2",
+      "variant": "call-srjwnturybmf0qmj-turn-2",
+      "why": "not yet confirmed by the owner's listen"
+    },
+    {
+      "item": "call-srjwnturybmf0qmj-turn-7",
+      "variant": "call-srjwnturybmf0qmj-turn-7",
+      "why": "typed by the owner, waiting on its second confirmation in a later review pass"
+    }
+  ]
 }
