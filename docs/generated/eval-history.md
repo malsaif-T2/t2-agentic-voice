@@ -5,7 +5,7 @@ per `poe eval` run that called a provider, kept or not; never edited by hand
 ([generated docs](README.md), GP-11). Every number describes one speaker, the owner (D-006).
 Full scorecards stay out of git, in each run's `--out` folder.
 
-Spend so far: 13 run(s), 17369.7 billed seconds, $0.3645.
+Spend so far: 14 run(s), 17369.7 billed seconds, $0.3645.
 
 ## Runs
 
@@ -24,6 +24,12 @@ Spend so far: 13 run(s), 17369.7 billed seconds, $0.3645.
 | 11 | 2026-11-01T21:54:24+00:00 | w6-turbo-1000 | 1c3c4dc53fc96664ebb2aa5b5f434ca028f5a0ce | groq | whisper-large-v3-turbo | dev | 33 | 90 | — | 0 | 890.0 | $0.0099 | 204 | yes |
 | 12 | 2026-11-01T22:03:48+00:00 | h1-large-v3 | 1c3c4dc53fc96664ebb2aa5b5f434ca028f5a0ce | groq | whisper-large-v3 | held-out | 29 | 106 | 38.7% | 0 | 1109.8 | $0.0342 | 265 | yes |
 | 13 | 2026-11-01T22:15:00+00:00 | h2-turbo | 1c3c4dc53fc96664ebb2aa5b5f434ca028f5a0ce | groq | whisper-large-v3-turbo | held-out | 29 | 106 | 20.8% | 0 | 1109.8 | $0.0123 | 230 | yes |
+
+## End-of-turn runs
+
+| # | Time | Run | Commit | Answerer | Split | Items | Variants | Cut-offs | Misses | Median delay (ms) | 90th percentile (ms) | Secondary cut-offs | Complete |
+| --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- |
+| 14 | 2026-11-04T07:48:10+00:00 | e1-dev | 504a657abc3c9b12b4b224060830c2a2a36cca34 | pipeline | dev | 6 | 23 | 22 | 0 | 315 | 315 | 23 of 199 | yes |
 
 ## Each run
 
@@ -624,3 +630,34 @@ Spend so far: 13 run(s), 17369.7 billed seconds, $0.3645.
 | language | msa | 5 | 35.3% |
 | language | saudi | 13 | 11.5% |
 | split | held-out | 29 | 20.8% |
+
+### 14 · e1-dev
+
+| Field | Value |
+| --- | --- |
+| Why | plan 003 step 25, E1: dev paused requests and the secondary set |
+| Data digest | `b07543f2e72f6288f2d9f2d0291516623375f3a6f1251615d308ceaa758c04cd` |
+| Scorecard | scorecard.json |
+| Setting env | dev |
+| Setting run.lead_s | 1.0 |
+| Setting run.secondary | true |
+| Setting run.tail_s | 4.5 |
+| Setting turns.max_silence_ms | 3000 |
+| Setting turns.smart_turn | true |
+| Setting turns.smart_turn_max_duration_s | 8.0 |
+| Setting turns.smart_turn_pre_speech_ms | 500 |
+| Setting turns.smart_turn_stop_ms | 3000 |
+| Setting turns.vad_confidence | 0.7 |
+| Setting turns.vad_min_volume | 0.6 |
+| Setting turns.vad_start_ms | 200 |
+| Setting turns.vad_stop_ms | 200 |
+
+| Stratum | Value | Items | Variants | Cut-offs | Misses |
+| --- | --- | --- | --- | --- | --- |
+| device | bluetooth | 6 | 6 | 5 | 0 |
+| device | laptop | 6 | 11 | 11 | 0 |
+| device | wired | 6 | 6 | 6 | 0 |
+| language | english | 1 | 4 | 4 | 0 |
+| language | mixed | 1 | 4 | 4 | 0 |
+| language | msa | 1 | 4 | 3 | 0 |
+| language | saudi | 3 | 11 | 11 | 0 |
