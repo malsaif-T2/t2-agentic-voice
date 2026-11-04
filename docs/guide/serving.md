@@ -151,7 +151,8 @@ secret.
 
 No other claim is taken (`nbf`, `aud` and `iss` are refused), each key holds at least 32 bytes,
 and a token is used once: the used-token store refuses its `jti` again. Its times may be off
-the runtime's clock by `join.max_clock_skew_s` (30 s by default, 60 s at most); it lives
+the runtime's clock by `join.max_clock_skew_s` (30 s by default, 60 s at most), and
+`t2v doctor` measures the runtime's machine's clock against Groq's; it lives
 `join.ttl_s` (60 s by default, 120 s at most), so mint it just before the call starts. With
 `privacy.consent_version` set, `/join` refuses a token whose consent names another version.
 

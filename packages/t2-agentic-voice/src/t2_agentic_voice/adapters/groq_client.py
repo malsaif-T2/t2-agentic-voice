@@ -18,11 +18,11 @@ everything but the request, as plan 002's decision log reads groq 1.7.0
   adapter's own does: such a line can only fail a request (a `rejected` ProviderError), never
   shape it. A request with no body (a GET: the model list, one model) goes through the same
   client and hook, with JSON as its `Accept`, no `Content-Type`, and no body at all.
-- The SDK hands back an answer's headers (its rate-limit headroom) only in its raw response,
-  which it gives when the request it sent carries its raw-response marker. The hook keeps that
-  marker only for the adapter's own call that asks for it (`raw_response` around a call through
-  `with_raw_response`), never from `GROQ_CUSTOM_HEADERS` or the environment, so no line of that
-  variable changes what the SDK hands back.
+- The SDK hands back an answer's headers (its rate-limit headroom, its `Date`) only in its raw
+  response, which it gives when the request it sent carries its raw-response marker. The hook
+  keeps that marker only for the adapter's own call that asks for it (`raw_response` around a
+  call through `with_raw_response`), never from `GROQ_CUSTOM_HEADERS` or the environment, so no
+  line of that variable changes what the SDK hands back.
 - Every exception the SDK raises becomes a `ProviderError` (`failure`), raised after the
   handler and from None, so no exception chain leads to the SDK's error, which holds the request
   and its headers. A cancel is never caught: the request ends at once and its connection is
@@ -43,6 +43,8 @@ import math
 from collections.abc import Awaitable, Callable, Iterator
 from contextlib import contextmanager
 from contextvars import ContextVar
+from datetime import datetime, timedelta
+from email.utils import parsedate_to_datetime
 
 import httpx
 from pydantic import JsonValue, SecretStr, ValidationError
@@ -164,6 +166,22 @@ def headroom(headers: httpx.Headers) -> tuple[int | None, int | None]:
     ASCII digits, else None, as for a header that is absent."""
     requests, tokens = (_count(headers.get(name)) for name in _REMAINING)
     return requests, tokens
+
+
+def server_time(headers: httpx.Headers) -> datetime | None:
+    """When Groq sent an answer, from its one `Date` header (RFC 9110's HTTP-date: whole
+    seconds, in GMT), aware in UTC. None, never an error, for no `Date`, more than one, or one
+    `email.utils.parsedate_to_datetime` does not read as a time in GMT: a value outside ASCII,
+    one it refuses, and one it reads with no zone or another zone (two values joined by a comma,
+    `-0000`, an asctime date), since an HTTP date is always GMT."""
+    values = headers.get_list("date")
+    if len(values) != 1 or not values[0].isascii():
+        return None
+    try:
+        sent = parsedate_to_datetime(values[0])
+    except (ValueError, OverflowError):  # a date it cannot read, or a year past a C long
+        return None
+    return sent if sent.utcoffset() == timedelta(0) else None
 
 
 def _count(value: str | None) -> int | None:

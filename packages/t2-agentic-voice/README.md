@@ -43,8 +43,8 @@ T2V_ENV=dev T2V_GROQ__API_KEY_FILE=/path/to/groq_api_key uv run t2v dev minimal_
 ```
 
 The `t2v` command also runs `serve APP` (a runtime in a process of its own), `doctor` (what a
-first call needs: the key, each language's model and voice, the turn models' files) and
-`settings show --redacted`.
+first call needs: the key, each language's model and voice, the turn models' files, the
+clock's skew against Groq's) and `settings show --redacted`.
 
 Everything an app may use is exported from the package root or one of its public facades:
 `t2_agentic_voice.ports`, `.groq`, `.identity`, `.server`, `.stores`, `.events`, `.languages`,
