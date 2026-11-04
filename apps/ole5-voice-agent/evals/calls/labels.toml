@@ -1,0 +1,46 @@
+# The owner's labels of run C's overlaps (plan 003's step 18, M2's recorded session), read by
+# `python -m ole5_voice.evals.import_calls --labels` (its `CallLabels`). The owner listened to
+# each overlap the import listed and labelled them on 2026-11-04: "1-call6-headset: "وقف وقف" /
+# 2-english-call: That was background noise / 3-arabic-call: That was background noise /
+# 4-arabic-call: That was background noise, then I said "كيف" at the end / 5-arabic-call:
+# "طيب"". Each call's language and device are plan 003's table of the session's calls (speakers:
+# the laptop's microphone; headset: the wired one). No word's end is marked: their stops are timed
+# from the speech detector's stop (plan 005's amendment (4)). Call ik_-d5zQWFccSIN4 is refused by
+# the import (its caller's track runs 0.11 s past the call, TD-070), so none of its turns is here.
+
+[[overlaps]]
+call = "Bv5tsBXzFHyXBAXk"
+turn = 1
+kind = "stop_word"
+language = "saudi"
+device = "wired"
+reference = "وقف وقف"
+
+[[overlaps]]
+call = "c7eS2Sdh_Mq1Dvz7"
+turn = 0
+kind = "noise"
+language = "none"
+device = "laptop"
+reference = ""
+
+[[overlaps]]
+call = "srJWnTuryBmF0QmJ"
+turn = 2
+kind = "noise"
+language = "none"
+device = "laptop"
+reference = ""
+
+[[overlaps]]
+call = "srJWnTuryBmF0QmJ"
+turn = 7
+kind = "listening_sound"
+language = "saudi"
+device = "laptop"
+reference = "طيب"
+
+[[left_out]]
+call = "srJWnTuryBmF0QmJ"
+turn = 3
+reason = "noise, then a lone question word at its end: neither noise nor a request, and an item must be unambiguous (evaluation.md, Writing items)"

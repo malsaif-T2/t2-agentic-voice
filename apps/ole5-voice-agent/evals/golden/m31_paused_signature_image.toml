@@ -1,0 +1,45 @@
+# Written by `python -m ole5_voice.evals.import_recordings` from the recorder's files:
+# import again rather than edit.
+id = "m31_paused_signature_image"
+source = "script"
+kind = "paused_request"
+language = "msa"
+text = "كيف أضيف صورة إلى التوقيع في الرسائل الصادرة"
+alternatives = []
+terms = []
+
+[[variants]]
+id = "m31_paused_signature_image-laptop-m3-1"
+device = "laptop"
+session = "laptop-m3"
+reference = "كيف أضيف صورة إلى التوقيع في الرسائل الصادرة"
+reference_source = "script"
+turn_ends_ms = [4262]
+tags = []
+
+[[variants.segments]]
+root = "owner"
+path = "laptop-m3/m31_paused_signature_image-laptop-m3-1.wav"
+sha256 = "b180dafcf4082eefc59ff7a0c1d7ec0948a632403f91f11eb0a380bb8e8dd944"
+
+[[variants.confirmations]]
+at = 2026-11-04T16:25:37.815926+03:00
+review_pass = 6
+
+[[variants]]
+id = "m31_paused_signature_image-wired-m3-1"
+device = "wired"
+session = "wired-m3"
+reference = "كيف أضيف صورة إلى التوقيع في الرسائل الصادرة"
+reference_source = "script"
+turn_ends_ms = [3739]
+tags = []
+
+[[variants.segments]]
+root = "owner"
+path = "wired-m3/m31_paused_signature_image-wired-m3-1.wav"
+sha256 = "ed9d8989cba97f8e87f58ea7e15c3ba591e2a7a25cb2883bcfee0577e182665e"
+
+[[variants.confirmations]]
+at = 2026-11-04T16:28:18.057683+03:00
+review_pass = 6

@@ -150,11 +150,19 @@ def test_the_committed_set_holds_its_registered_strata() -> None:
     assert counted == registered
     # The set as the registration describes it: the talk-over's 120 takes with segments, less
     # the two the owner left out after the review (`import_talkover.LEFT_OUT`), all on the
-    # laptop's microphone array, 3 played on a headset; and the script's 52 items with every
-    # take the owner kept, 97 on the laptop, 63 on the wired headset, 59 on the Bluetooth one.
+    # laptop's microphone array, 3 played on a headset; the script's 52 items with every take
+    # the owner kept, 97 on the laptop, 63 on the wired headset, 59 on the Bluetooth one; and
+    # plan 005's 41 with every take the owner kept, 41 on the laptop and 41 on the wired
+    # headset, the Bluetooth session left out (2026-11-04); and four overlaps of run C's calls,
+    # three on the laptop and one on the wired headset (`calls/labels.toml`).
     assert (registered.items.source, registered.variants.total) == (
-        {"script": 52, "talkover": 43},
-        118 + 219,
+        {"script": 52 + 41, "talkover": 43 + 4},
+        118 + 219 + 82 + 4,
     )
-    assert registered.variants.device == {"bluetooth": 59, "laptop": 118 + 97, "wired": 63}
+    assert registered.variants.device == {
+        "bluetooth": 59,
+        "laptop": 118 + 97 + 41 + 3,
+        "wired": 63 + 41 + 1,
+    }
     assert registered.variants.tag["playback-headset"] == 3
+    assert registered.variants.tag["call"] == 4

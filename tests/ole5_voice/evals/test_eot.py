@@ -280,3 +280,21 @@ def test_the_settings_load_as_poe_evals_with_the_var_dir_on_top(
     )
     monkeypatch.setattr(run_settings, "DOTENV", env)
     assert eot._settings(eot._parser().parse_args([])).turns.vad_stop_ms == 300
+
+
+def test_the_hold_after_smart_turns_complete_is_set_and_shown_as_every_turn_setting(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    """E's arms (plan 005's amendment (8)) set `turns.complete_hold_ms` on the command line, as
+    `T2V_TURNS__COMPLETE_HOLD_MS=500 uv run poe eot ...`, over the `.env`; the run's settings,
+    which its scorecard and history line keep, name it."""
+    env = tmp_path / "made-up.env"
+    env.write_text("T2V_TURNS__COMPLETE_HOLD_MS=300\n", encoding="utf-8")
+    args = eot._parser().parse_args(["--env-file", str(env)])
+    assert eot.shown(eot._settings(args), args)["turns.complete_hold_ms"] == "300"
+    monkeypatch.setenv("T2V_TURNS__COMPLETE_HOLD_MS", "500")
+    loaded = eot._settings(args)
+    assert (loaded.turns.complete_hold_ms, eot.shown(loaded, args)["turns.complete_hold_ms"]) == (
+        500,
+        "500",
+    )

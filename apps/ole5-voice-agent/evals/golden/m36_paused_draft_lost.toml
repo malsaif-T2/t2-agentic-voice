@@ -1,0 +1,45 @@
+# Written by `python -m ole5_voice.evals.import_recordings` from the recorder's files:
+# import again rather than edit.
+id = "m36_paused_draft_lost"
+source = "script"
+kind = "paused_request"
+language = "english"
+text = "I was writing a draft and then the page refreshed and now it's gone"
+alternatives = []
+terms = []
+
+[[variants]]
+id = "m36_paused_draft_lost-laptop-m3-1"
+device = "laptop"
+session = "laptop-m3"
+reference = "I was writing a draft and then the page refreshed and now it's gone"
+reference_source = "script"
+turn_ends_ms = [4458]
+tags = []
+
+[[variants.segments]]
+root = "owner"
+path = "laptop-m3/m36_paused_draft_lost-laptop-m3-1.wav"
+sha256 = "7085ff85ad7404910ef05eb7c00327843ae5366341a08bf1d99e0e48d36c3c90"
+
+[[variants.confirmations]]
+at = 2026-11-04T16:26:03.074127+03:00
+review_pass = 6
+
+[[variants]]
+id = "m36_paused_draft_lost-wired-m3-1"
+device = "wired"
+session = "wired-m3"
+reference = "I was writing a draft and then the page refreshed and now it's gone"
+reference_source = "script"
+turn_ends_ms = [4870]
+tags = []
+
+[[variants.segments]]
+root = "owner"
+path = "wired-m3/m36_paused_draft_lost-wired-m3-1.wav"
+sha256 = "9cbe932a26ae3dfc98f0846eea2fe9b79a53b732e2ebfb4cd4b18b96932155a4"
+
+[[variants.confirmations]]
+at = 2026-11-04T16:28:42.708151+03:00
+review_pass = 6

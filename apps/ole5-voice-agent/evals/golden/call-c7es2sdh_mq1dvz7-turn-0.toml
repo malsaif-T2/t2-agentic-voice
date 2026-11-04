@@ -1,0 +1,23 @@
+# Written by `python -m ole5_voice.evals.import_calls` from the recorded calls and the
+# owner's labels: import again rather than edit.
+id = "call-c7es2sdh_mq1dvz7-turn-0"
+source = "talkover"
+kind = "noise"
+language = "none"
+text = ""
+alternatives = []
+terms = []
+
+[[variants]]
+id = "call-c7es2sdh_mq1dvz7-turn-0"
+device = "laptop"
+session = "calls"
+reference = ""
+reference_source = "none"
+turn_ends_ms = []
+tags = ["call", "over-assistant"]
+
+[[variants.segments]]
+root = "calls"
+path = "call-c7es2sdh_mq1dvz7-turn-0.wav"
+sha256 = "4a2b6d0cfaff5b2ea7d9a2c526295de6254064ec37095c0807183c1d4bd87c4a"

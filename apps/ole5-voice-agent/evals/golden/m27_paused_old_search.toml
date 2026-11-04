@@ -1,0 +1,45 @@
+# Written by `python -m ole5_voice.evals.import_recordings` from the recorder's files:
+# import again rather than edit.
+id = "m27_paused_old_search"
+source = "script"
+kind = "paused_request"
+language = "saudi"
+text = "أدور على مراسلة قديمة من السنة اللي فاتت وما طلعت لي في البحث"
+alternatives = []
+terms = []
+
+[[variants]]
+id = "m27_paused_old_search-laptop-m3-1"
+device = "laptop"
+session = "laptop-m3"
+reference = "أدور على مراسلة قديمة من السنة اللي فاتت وما طلعت لي في البحث"
+reference_source = "script"
+turn_ends_ms = [4798]
+tags = []
+
+[[variants.segments]]
+root = "owner"
+path = "laptop-m3/m27_paused_old_search-laptop-m3-1.wav"
+sha256 = "b873352e30acb23c67e23b5eb5269b8c36a497d82b206bfc4a4f2904162ab908"
+
+[[variants.confirmations]]
+at = 2026-11-04T16:25:16.541250+03:00
+review_pass = 6
+
+[[variants]]
+id = "m27_paused_old_search-wired-m3-1"
+device = "wired"
+session = "wired-m3"
+reference = "أدور على مراسلة قديمة من السنة اللي فاتت وما طلعت لي في البحث"
+reference_source = "script"
+turn_ends_ms = [4328]
+tags = []
+
+[[variants.segments]]
+root = "owner"
+path = "wired-m3/m27_paused_old_search-wired-m3-1.wav"
+sha256 = "a0342662b66406aa35d627c7556617a3263bc3bc7ea90bc62fd3f9a90205e1cf"
+
+[[variants.confirmations]]
+at = 2026-11-04T16:28:00.172321+03:00
+review_pass = 6

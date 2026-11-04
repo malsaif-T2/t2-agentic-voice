@@ -1,0 +1,45 @@
+# Written by `python -m ole5_voice.evals.import_recordings` from the recorder's files:
+# import again rather than edit.
+id = "m28_paused_blank_print"
+source = "script"
+kind = "paused_request"
+language = "saudi"
+text = "لما أطبع الخطاب تطلع الورقة فاضية بدون شي"
+alternatives = []
+terms = []
+
+[[variants]]
+id = "m28_paused_blank_print-laptop-m3-1"
+device = "laptop"
+session = "laptop-m3"
+reference = "لما أطبع الخطاب تطلع الورقة فاضية بدون شي"
+reference_source = "script"
+turn_ends_ms = [4111]
+tags = []
+
+[[variants.segments]]
+root = "owner"
+path = "laptop-m3/m28_paused_blank_print-laptop-m3-1.wav"
+sha256 = "24b435615191591b1b628cb5f7f9dc78bb13bb0b1f5ab12b470bf3cfb538cef7"
+
+[[variants.confirmations]]
+at = 2026-11-04T16:25:21.920013+03:00
+review_pass = 6
+
+[[variants]]
+id = "m28_paused_blank_print-wired-m3-1"
+device = "wired"
+session = "wired-m3"
+reference = "لما أطبع الخطاب تطلع الورقة فاضية بدون شي"
+reference_source = "script"
+turn_ends_ms = [3719]
+tags = []
+
+[[variants.segments]]
+root = "owner"
+path = "wired-m3/m28_paused_blank_print-wired-m3-1.wav"
+sha256 = "00db7ec20e616a74bd96aa671d0ec22b5443c86ce50b2af294897f797c7b7931"
+
+[[variants.confirmations]]
+at = 2026-11-04T16:28:04.627422+03:00
+review_pass = 6

@@ -1,0 +1,45 @@
+# Written by `python -m ole5_voice.evals.import_recordings` from the recorder's files:
+# import again rather than edit.
+id = "m09_wait"
+source = "script"
+kind = "stop_word"
+language = "english"
+text = "wait"
+alternatives = []
+terms = []
+
+[[variants]]
+id = "m09_wait-laptop-m3-1"
+device = "laptop"
+session = "laptop-m3"
+reference = "wait"
+reference_source = "script"
+turn_ends_ms = [1317]
+tags = []
+
+[[variants.segments]]
+root = "owner"
+path = "laptop-m3/m09_wait-laptop-m3-1.wav"
+sha256 = "c1a7e1c7bde55e2c73c071f8ebf257b999321a45e5513ae259f5fa687513aec5"
+
+[[variants.confirmations]]
+at = 2026-11-04T16:24:09.103520+03:00
+review_pass = 6
+
+[[variants]]
+id = "m09_wait-wired-m3-1"
+device = "wired"
+session = "wired-m3"
+reference = "wait"
+reference_source = "script"
+turn_ends_ms = [1417]
+tags = []
+
+[[variants.segments]]
+root = "owner"
+path = "wired-m3/m09_wait-wired-m3-1.wav"
+sha256 = "4e2847c44262e7379e830389e5bbb48337011ec35484a1f81b428dcff90ef3c2"
+
+[[variants.confirmations]]
+at = 2026-11-04T16:26:47.707807+03:00
+review_pass = 6

@@ -1,0 +1,45 @@
+# Written by `python -m ole5_voice.evals.import_recordings` from the recorder's files:
+# import again rather than edit.
+id = "m14_aha"
+source = "script"
+kind = "listening_sound"
+language = "saudi"
+text = "اها"
+alternatives = []
+terms = []
+
+[[variants]]
+id = "m14_aha-laptop-m3-1"
+device = "laptop"
+session = "laptop-m3"
+reference = "اها"
+reference_source = "script"
+turn_ends_ms = [1473]
+tags = []
+
+[[variants.segments]]
+root = "owner"
+path = "laptop-m3/m14_aha-laptop-m3-1.wav"
+sha256 = "93e5566f8d2eaeca7ead3a6c8dc7cdace8cdaa529a444abec0d1aa4d7b66e6ef"
+
+[[variants.confirmations]]
+at = 2026-11-04T16:24:22.249149+03:00
+review_pass = 6
+
+[[variants]]
+id = "m14_aha-wired-m3-1"
+device = "wired"
+session = "wired-m3"
+reference = "اها"
+reference_source = "script"
+turn_ends_ms = [1086]
+tags = []
+
+[[variants.segments]]
+root = "owner"
+path = "wired-m3/m14_aha-wired-m3-1.wav"
+sha256 = "6a0ae46d6873c6cb76e95795ae1087927f0426302de83dc92b188e3322dbb8bc"
+
+[[variants.confirmations]]
+at = 2026-11-04T16:27:09.285919+03:00
+review_pass = 6

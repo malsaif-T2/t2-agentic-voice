@@ -275,7 +275,8 @@ placed and every committed item keeping its side), and a test inside `poe check`
 committed split is stale. Nor do the calls' manifests:
 `python -m ole5_voice.evals.call_manifests` writes each recorded call's manifest under
 `evals/calls/`, and `python -m ole5_voice.evals.import_calls` imports the overlaps of the
-recorded calls the owner labelled as items, checking each call's alignment first (TD-070). The scores these commands give come from
+recorded calls the owner labelled as items (the labels in `evals/calls/labels.toml`, an overlap
+the owner left out named there with why), checking each call's alignment first (TD-070). The scores these commands give come from
 the library's scorers, imported from its public `t2_agentic_voice.evals` facade (and the
 normalizers from `t2_agentic_voice.languages`), never from its layers (ARCH-PUBLIC, D-021,
 D-022). A team with its own golden set writes its own commands around the same scorers, as the

@@ -1,0 +1,45 @@
+# Written by `python -m ole5_voice.evals.import_recordings` from the recorder's files:
+# import again rather than edit.
+id = "m34_paused_shared_inbox"
+source = "script"
+kind = "paused_request"
+language = "english"
+text = "I'm trying to open the shared inbox but it says access denied"
+alternatives = []
+terms = []
+
+[[variants]]
+id = "m34_paused_shared_inbox-laptop-m3-1"
+device = "laptop"
+session = "laptop-m3"
+reference = "I'm trying to open the shared inbox but it says access denied"
+reference_source = "script"
+turn_ends_ms = [4515]
+tags = []
+
+[[variants.segments]]
+root = "owner"
+path = "laptop-m3/m34_paused_shared_inbox-laptop-m3-1.wav"
+sha256 = "5ff1b2bb48565e6939faccb786fac7ac1d0ddb2d5e3d71c95206f4d9d0ce64ee"
+
+[[variants.confirmations]]
+at = 2026-11-04T16:25:53.055043+03:00
+review_pass = 6
+
+[[variants]]
+id = "m34_paused_shared_inbox-wired-m3-1"
+device = "wired"
+session = "wired-m3"
+reference = "I'm trying to open the shared inbox but it says access denied"
+reference_source = "script"
+turn_ends_ms = [4535]
+tags = []
+
+[[variants.segments]]
+root = "owner"
+path = "wired-m3/m34_paused_shared_inbox-wired-m3-1.wav"
+sha256 = "b4741734805134ef577d85ea2272633ba6dad74bcf841e3892c0869808432e92"
+
+[[variants.confirmations]]
+at = 2026-11-04T16:28:32.329343+03:00
+review_pass = 6

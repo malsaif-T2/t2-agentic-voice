@@ -265,6 +265,8 @@ def test_every_trusted_proxy_the_settings_take_is_one_uvicorn_matches() -> None:
         (("turns", "vad_stop_ms"), 0),
         (("turns", "smart_turn_max_duration_s"), float("inf")),
         (("turns", "smart_turn_threshold"), 1.5),
+        (("turns", "complete_hold_ms"), -1),
+        (("turns", "complete_hold_ms"), 1001),  # above the hold's bound (MAX_COMPLETE_HOLD_MS)
         (("stt", "no_speech_max"), -0.1),
         (("interruptions", "mode"), "pause"),
         (("interruptions", "duck_level"), 1.5),
@@ -301,6 +303,7 @@ def test_the_turn_tts_and_limit_defaults_are_the_plans() -> None:
         "vad_min_volume": 0.6,
         "smart_turn": True,
         "smart_turn_threshold": 0.5,
+        "complete_hold_ms": 0,
         "smart_turn_stop_ms": 3000,
         "smart_turn_pre_speech_ms": 500,
         "smart_turn_max_duration_s": 8.0,

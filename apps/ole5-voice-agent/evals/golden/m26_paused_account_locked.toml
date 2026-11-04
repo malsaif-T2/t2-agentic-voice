@@ -1,0 +1,45 @@
+# Written by `python -m ole5_voice.evals.import_recordings` from the recorder's files:
+# import again rather than edit.
+id = "m26_paused_account_locked"
+source = "script"
+kind = "paused_request"
+language = "saudi"
+text = "حاولت أدخل كذا مرة والحين الحساب انقفل علي"
+alternatives = []
+terms = []
+
+[[variants]]
+id = "m26_paused_account_locked-laptop-m3-1"
+device = "laptop"
+session = "laptop-m3"
+reference = "حاولت أدخل كذا مرة والحين الحساب انقفل علي"
+reference_source = "script"
+turn_ends_ms = [4051]
+tags = []
+
+[[variants.segments]]
+root = "owner"
+path = "laptop-m3/m26_paused_account_locked-laptop-m3-1.wav"
+sha256 = "116be76bfbca9d7c59ea07c0053646d65e7cc8e6e1c19e076ee2e46a610410eb"
+
+[[variants.confirmations]]
+at = 2026-11-04T16:25:11.017524+03:00
+review_pass = 6
+
+[[variants]]
+id = "m26_paused_account_locked-wired-m3-2"
+device = "wired"
+session = "wired-m3"
+reference = "حاولت أدخل كذا مرة والحين الحساب انقفل علي"
+reference_source = "script"
+turn_ends_ms = [4191]
+tags = []
+
+[[variants.segments]]
+root = "owner"
+path = "wired-m3/m26_paused_account_locked-wired-m3-2.wav"
+sha256 = "ed16a04cd3eaf94a5e0601458e327b59c17d719bb6da672359ca4ce7229be69f"
+
+[[variants.confirmations]]
+at = 2026-11-04T16:27:55.133757+03:00
+review_pass = 6

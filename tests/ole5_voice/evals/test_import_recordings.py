@@ -217,6 +217,55 @@ def test_the_recordings_command_writes_items_and_manifests_beside_the_talk_over(
     assert refused.value.code == 2
 
 
+def test_a_skipped_session_is_left_out_whole_and_unread(tmp_path: Path) -> None:
+    _recorded(tmp_path)
+    kept, _ = import_recordings.build(tmp_path, SCRIPT)
+    # A session with no consent and a sidecar no model reads: skipped, it is never opened.
+    _put(tmp_path / take_sidecar("bluetooth-2", "n01-bluetooth-2"), {"take": "not a sidecar"})
+    _review_file(tmp_path, "bluetooth-2", "n09-bluetooth-2", 1, "typed", "unclear")
+    _refused(tmp_path, "bluetooth-2: a session without its session.json (consent)")
+    items, manifests = import_recordings.build(tmp_path, SCRIPT, skip={"bluetooth-2"})
+    assert (items, sorted(manifests)) == (kept, ["owner-laptop-1", "owner-wired-1"])
+    items, manifests = import_recordings.build(tmp_path, SCRIPT, skip={"bluetooth-2", "wired-1"})
+    assert [v.session for i in items for v in i.variants] == ["laptop-1"] * 3
+    assert sorted(manifests) == ["owner-laptop-1"]
+    assert import_recordings.skipped(tmp_path, "laptop-1") == 4  # a discarded take counts too
+    assert import_recordings.skipped(tmp_path, "bluetooth-2") == 1
+
+
+def test_a_skip_that_names_no_session_is_refused(tmp_path: Path) -> None:
+    _recorded(tmp_path)
+    with pytest.raises(GoldenSetError, match=re.escape("no such session to skip: ['wired-2']")):
+        import_recordings.build(tmp_path, SCRIPT, skip={"wired-1", "wired-2"})
+
+
+def test_the_recordings_command_says_which_sessions_it_skipped(
+    tmp_path: Path, capsys: pytest.CaptureFixture[str]
+) -> None:
+    out, evals = tmp_path / "out", tmp_path / "evals"
+    _recorded(out)
+    (evals / "golden").mkdir(parents=True)
+    (evals / "script.toml").write_text(
+        '[[lines]]\nid = "n01"\nkind = "request"\nlanguage = "saudi"\nsay = ["عندي مراسلة"]\n'
+        '[[lines]]\nid = "n02"\nkind = "ticket_number"\nlanguage = "english"\nsay = ["x"]\n'
+        '[[lines]]\nid = "n03"\nkind = "silence"\nlanguage = "none"\n',
+        encoding="utf-8",
+    )
+    argv = ["--takes", str(out), "--evals", str(evals), "--skip-session", "wired-1"]
+    assert import_recordings.main([*argv, "--skip-session", "laptop-1"]) == 0
+    said = capsys.readouterr().out
+    assert "session_skipped" in said and "session=laptop-1" in said and "takes=4" in said
+    assert "session=wired-1" in said and "takes=1" in said
+    assert "items=0" in said and not (evals / "manifests").exists()
+    assert import_recordings.main(argv) == 0
+    assert [m.files[0].session for m in load_manifests(evals / "manifests")] == ["laptop-1"]
+    assert import_recordings.main([*argv, "--skip-session", "laptop-2"]) == 1
+    assert "no such session to skip" in capsys.readouterr().out
+    with pytest.raises(SystemExit) as refused:
+        import_recordings.main([*argv, "--skip-session", "Not A Name"])
+    assert refused.value.code == 2
+
+
 def _review(review_pass: int, verdict: str = "confirmed", text: str = "") -> Review:
     return Review.model_validate(
         {

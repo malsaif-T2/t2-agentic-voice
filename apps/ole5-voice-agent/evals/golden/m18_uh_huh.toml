@@ -1,0 +1,45 @@
+# Written by `python -m ole5_voice.evals.import_recordings` from the recorder's files:
+# import again rather than edit.
+id = "m18_uh_huh"
+source = "script"
+kind = "listening_sound"
+language = "english"
+text = "uh-huh"
+alternatives = []
+terms = []
+
+[[variants]]
+id = "m18_uh_huh-laptop-m3-1"
+device = "laptop"
+session = "laptop-m3"
+reference = "uh-huh"
+reference_source = "script"
+turn_ends_ms = [1396]
+tags = []
+
+[[variants.segments]]
+root = "owner"
+path = "laptop-m3/m18_uh_huh-laptop-m3-1.wav"
+sha256 = "412f18d98325934251e25747a794e8b78f1186dc0ad57ed6529757a957067568"
+
+[[variants.confirmations]]
+at = 2026-11-04T16:24:32.174252+03:00
+review_pass = 6
+
+[[variants]]
+id = "m18_uh_huh-wired-m3-1"
+device = "wired"
+session = "wired-m3"
+reference = "uh-huh"
+reference_source = "script"
+turn_ends_ms = []
+tags = []
+
+[[variants.segments]]
+root = "owner"
+path = "wired-m3/m18_uh_huh-wired-m3-1.wav"
+sha256 = "ab61186cedb16c53781b00e11692aee31e53b836f40fe7ca727aec3ec02642be"
+
+[[variants.confirmations]]
+at = 2026-11-04T16:27:17.311907+03:00
+review_pass = 6

@@ -1,0 +1,45 @@
+# Written by `python -m ole5_voice.evals.import_recordings` from the recorder's files:
+# import again rather than edit.
+id = "m11_aid"
+source = "script"
+kind = "repeat_request"
+language = "saudi"
+text = "أعد"
+alternatives = []
+terms = []
+
+[[variants]]
+id = "m11_aid-laptop-m3-1"
+device = "laptop"
+session = "laptop-m3"
+reference = "أعد"
+reference_source = "script"
+turn_ends_ms = [1339]
+tags = []
+
+[[variants.segments]]
+root = "owner"
+path = "laptop-m3/m11_aid-laptop-m3-1.wav"
+sha256 = "cd38cb5d2bc1b7df37fff81ec90b4c5709881ace391244b8f796a16e2c59cf54"
+
+[[variants.confirmations]]
+at = 2026-11-04T16:24:13.670522+03:00
+review_pass = 6
+
+[[variants]]
+id = "m11_aid-wired-m3-1"
+device = "wired"
+session = "wired-m3"
+reference = "أعد"
+reference_source = "script"
+turn_ends_ms = [1140]
+tags = []
+
+[[variants.segments]]
+root = "owner"
+path = "wired-m3/m11_aid-wired-m3-1.wav"
+sha256 = "647174df683fa2fb5f86da343d5c5b5d09564feec082e24d55e4de622b27b077"
+
+[[variants.confirmations]]
+at = 2026-11-04T16:26:52.283842+03:00
+review_pass = 6

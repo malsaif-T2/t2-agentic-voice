@@ -9,66 +9,74 @@
 # tables count, with every take the owner kept on the three devices. Variants are counted
 # by the device of their microphone and by their tags: the talk-over's condition (duck, pause),
 # whether the take began over the assistant, and its playback device. The [script] tables also
-# count M3's 41 lines (plan 005, Q2 and Q6), which have no take yet.
+# count M3's 41 lines (plan 005, Q2 and Q6), whose items hold every take the owner kept on the
+# laptop and the wired headset on 2026-11-04 (its Bluetooth session left out, at the owner's
+# word: "lets skip Bluetooth"). The talk-over items also hold four overlaps of the owner's
+# recorded calls (plan 003's run C, plan 005's C3), each its own item, as the owner labelled
+# them on 2026-11-04 (`import_calls.py`, `calls/labels.toml`), tagged `call` and
+# `over-assistant`.
 
 [items]
-total = 95
+total = 140
 
 [items.source]
-script = 52
-talkover = 43
+script = 93
+talkover = 47
 
 [items.language]
-english = 21
-mixed = 10
-msa = 16
-none = 5
-saudi = 43
+english = 32
+mixed = 14
+msa = 21
+none = 8
+saudi = 65
 
 [items.kind]
 confirmation = 4
-echo_only = 2
-listening_sound = 15
-noise = 2
-paused_request = 10
-repeat_request = 5
+correction = 2
+echo_only = 3
+listening_sound = 21
+noise = 4
+paused_request = 30
+repeat_request = 8
 request = 37
 short_request = 3
 silence = 1
-stop_word = 12
+stop_word = 23
 ticket_number = 4
 
 [variants]
-total = 337
+total = 423
 
 [variants.language]
-english = 75
-mixed = 35
-msa = 60
-none = 15
-saudi = 152
+english = 97
+mixed = 43
+msa = 70
+none = 19
+saudi = 194
 
 [variants.kind]
 confirmation = 13
-echo_only = 6
-listening_sound = 46
-noise = 6
-paused_request = 39
-repeat_request = 18
+correction = 4
+echo_only = 8
+listening_sound = 57
+noise = 8
+paused_request = 79
+repeat_request = 24
 request = 131
 short_request = 9
 silence = 3
-stop_word = 36
+stop_word = 57
 ticket_number = 30
 
 [variants.device]
 bluetooth = 59
-laptop = 215
-wired = 63
+laptop = 259
+wired = 105
 
 [variants.tag]
+call = 4
 duck = 63
-over-assistant = 106
+over-assistant = 110
 pause = 55
 playback-headset = 3
 playback-speakers = 115

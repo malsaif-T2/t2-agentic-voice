@@ -60,12 +60,13 @@ def _call(recordings: Path, name: str, lines: list[dict[str, Any]], seconds: flo
     return folder
 
 
-def _labels(*overlaps: dict[str, Any]) -> CallLabels:
-    return CallLabels.model_validate({"overlaps": list(overlaps)})
+def _labels(*overlaps: dict[str, Any], left_out: tuple[dict[str, Any], ...] = ()) -> CallLabels:
+    return CallLabels.model_validate({"overlaps": list(overlaps), "left_out": list(left_out)})
 
 
 STOP = {"call": CALL, "turn": 0, "kind": "stop_word", "language": "saudi", "reference": "x  y"}
 QUIET = {"call": CALL, "turn": 3, "kind": "echo_only", "language": "none", "device": "wired"}
+UNCLEAR = {"call": CALL, "turn": 1, "reason": "a noise, then a word: no one item"}
 
 
 def test_each_turn_over_a_reply_or_in_its_tail_carries_the_texts_played_over_it(
@@ -140,20 +141,34 @@ def test_the_owners_reviews_confirm_a_variant(tmp_path: Path) -> None:
     assert len(item.variants[0].confirmations) == 1 and item.terms == ("y",)
 
 
+def test_an_overlap_the_owner_left_out_is_no_item_and_keeps_its_reason(tmp_path: Path) -> None:
+    _call(tmp_path / "recordings", CALL, TIMELINE)
+    found = build(tmp_path / "recordings", _labels(STOP, QUIET, left_out=(UNCLEAR,)), terms=())
+    assert [item.id for item in found.items] == ["call-calla_1-turn-0", "call-calla_1-turn-3"]
+    assert (found.unlabelled, found.left_out) == ([], [(CALL, 1, UNCLEAR["reason"])])
+    assert sorted(found.replies) == ["call-calla_1-turn-0", "call-calla_1-turn-3"]
+
+
 @pytest.mark.parametrize(
-    ("labels", "problem"),
+    ("labels", "left_out", "problem"),
     [
-        ([STOP, STOP], "twice"),
-        ([STOP | {"turn": 4}], "no overlap"),
-        ([STOP | {"language": "none"}], "no language is exactly one with no speech"),
+        ([STOP, STOP], (), "twice"),
+        ([STOP | {"turn": 1}], (UNCLEAR,), "twice"),  # labelled and left out
+        ([], (UNCLEAR, UNCLEAR), "twice"),
+        ([STOP | {"turn": 4}], (), "no overlap"),
+        ([], (UNCLEAR | {"turn": 4},), "no overlap"),
+        ([STOP | {"language": "none"}], (), "no language is exactly one with no speech"),
     ],
 )
 def test_labels_the_import_refuses(
-    tmp_path: Path, labels: list[dict[str, Any]], problem: str
+    tmp_path: Path,
+    labels: list[dict[str, Any]],
+    left_out: tuple[dict[str, Any], ...],
+    problem: str,
 ) -> None:
     _call(tmp_path / "recordings", CALL, TIMELINE)
     with pytest.raises(GoldenSetError, match=problem):
-        build(tmp_path / "recordings", _labels(*labels), terms=())
+        build(tmp_path / "recordings", _labels(*labels, left_out=left_out), terms=())
 
 
 def test_a_clip_past_its_track_and_a_call_it_cannot_name_are_refused(tmp_path: Path) -> None:
@@ -182,7 +197,7 @@ def test_the_import_never_writes_over_another_file(tmp_path: Path) -> None:
         write(evals, audio, found)
 
 
-def test_the_command(tmp_path: Path) -> None:
+def test_the_command(tmp_path: Path, capsys: pytest.CaptureFixture[str]) -> None:
     recordings, evals, audio = tmp_path / "recordings", tmp_path / "evals", tmp_path / "audio"
     _call(recordings, CALL, TIMELINE)
     audio.mkdir()
@@ -191,12 +206,16 @@ def test_the_command(tmp_path: Path) -> None:
     labels = tmp_path / "labels.toml"
     labels.write_text(
         '[[overlaps]]\ncall = "CallA_1"\nturn = 0\nkind = "stop_word"\nlanguage = "saudi"\n'
-        'reference = "made-up"\n',
+        'reference = "made-up"\n'
+        '[[left_out]]\ncall = "CallA_1"\nturn = 1\nreason = "a noise, then a word"\n',
         encoding="utf-8",
     )
     argv = ["--recordings", str(recordings), "--labels", str(labels), "--audio", str(audio)]
     assert import_calls.main([*argv, "--evals", str(evals)]) == 0
     assert [i.id for i in load_items(evals / "golden")] == ["call-calla_1-turn-0"]
+    said = capsys.readouterr().out
+    assert "reason='a noise, then a word'" in said and "turn=1" in said
+    assert "reason='no label'" in said and "turn=3" in said
     _call(recordings, "shifted", TIMELINE, seconds=10.2)
     assert import_calls.main([*argv, "--evals", str(evals)]) == 1  # a call refused
     labels.write_text("[[overlaps]]\nturn = 0\n", encoding="utf-8")

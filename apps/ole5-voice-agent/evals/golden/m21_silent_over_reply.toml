@@ -1,0 +1,45 @@
+# Written by `python -m ole5_voice.evals.import_recordings` from the recorder's files:
+# import again rather than edit.
+id = "m21_silent_over_reply"
+source = "script"
+kind = "echo_only"
+language = "none"
+text = ""
+alternatives = []
+terms = []
+
+[[variants]]
+id = "m21_silent_over_reply-laptop-m3-1"
+device = "laptop"
+session = "laptop-m3"
+reference = ""
+reference_source = "none"
+turn_ends_ms = []
+tags = []
+
+[[variants.segments]]
+root = "owner"
+path = "laptop-m3/m21_silent_over_reply-laptop-m3-1.wav"
+sha256 = "b81bad8b9f7133a0f09ea5a70cb2d51c8c90985113a6420bebff73869659de28"
+
+[[variants.confirmations]]
+at = 2026-11-04T16:24:45.086758+03:00
+review_pass = 6
+
+[[variants]]
+id = "m21_silent_over_reply-wired-m3-1"
+device = "wired"
+session = "wired-m3"
+reference = ""
+reference_source = "none"
+turn_ends_ms = []
+tags = []
+
+[[variants.segments]]
+root = "owner"
+path = "wired-m3/m21_silent_over_reply-wired-m3-1.wav"
+sha256 = "0df20ae83489b9a9bbe4fb553b8950ecff1cf0f93ebf1a8b9170094b09addf92"
+
+[[variants.confirmations]]
+at = 2026-11-04T16:27:31.364121+03:00
+review_pass = 6

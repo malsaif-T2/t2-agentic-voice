@@ -1,0 +1,45 @@
+# Written by `python -m ole5_voice.evals.import_recordings` from the recorder's files:
+# import again rather than edit.
+id = "m12_mumkin_tiid"
+source = "script"
+kind = "repeat_request"
+language = "saudi"
+text = "ممكن تعيد؟"
+alternatives = []
+terms = []
+
+[[variants]]
+id = "m12_mumkin_tiid-laptop-m3-1"
+device = "laptop"
+session = "laptop-m3"
+reference = "ممكن تعيد؟"
+reference_source = "script"
+turn_ends_ms = [1797]
+tags = []
+
+[[variants.segments]]
+root = "owner"
+path = "laptop-m3/m12_mumkin_tiid-laptop-m3-1.wav"
+sha256 = "5cdab4f5c3351d6977b4f80012ee8dcbda18cf247130441769987026851cdc78"
+
+[[variants.confirmations]]
+at = 2026-11-04T16:24:15.969152+03:00
+review_pass = 6
+
+[[variants]]
+id = "m12_mumkin_tiid-wired-m3-1"
+device = "wired"
+session = "wired-m3"
+reference = "ممكن تعيد؟"
+reference_source = "script"
+turn_ends_ms = [1465]
+tags = []
+
+[[variants.segments]]
+root = "owner"
+path = "wired-m3/m12_mumkin_tiid-wired-m3-1.wav"
+sha256 = "544a0783589be6b86c8d377bc7e696fa47d8459b3b4959007d4a9bd8d75762fc"
+
+[[variants.confirmations]]
+at = 2026-11-04T16:26:54.746273+03:00
+review_pass = 6

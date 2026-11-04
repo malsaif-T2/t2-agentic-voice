@@ -1,0 +1,45 @@
+# Written by `python -m ole5_voice.evals.import_recordings` from the recorder's files:
+# import again rather than edit.
+id = "m10_hold_on"
+source = "script"
+kind = "stop_word"
+language = "english"
+text = "hold on"
+alternatives = []
+terms = []
+
+[[variants]]
+id = "m10_hold_on-laptop-m3-1"
+device = "laptop"
+session = "laptop-m3"
+reference = "hold on"
+reference_source = "script"
+turn_ends_ms = [1562]
+tags = []
+
+[[variants.segments]]
+root = "owner"
+path = "laptop-m3/m10_hold_on-laptop-m3-1.wav"
+sha256 = "b61c4d6814dc9a874e518898e580633d941d34d8cd446062cc81e1e937343590"
+
+[[variants.confirmations]]
+at = 2026-11-04T16:24:11.389984+03:00
+review_pass = 6
+
+[[variants]]
+id = "m10_hold_on-wired-m3-1"
+device = "wired"
+session = "wired-m3"
+reference = "hold on"
+reference_source = "script"
+turn_ends_ms = [1618]
+tags = []
+
+[[variants.segments]]
+root = "owner"
+path = "wired-m3/m10_hold_on-wired-m3-1.wav"
+sha256 = "257fae2f51daac6e27732c435d3c4d1ba82f0fddcfe2a5c19f5466bb2c7028d9"
+
+[[variants.confirmations]]
+at = 2026-11-04T16:26:50.235879+03:00
+review_pass = 6

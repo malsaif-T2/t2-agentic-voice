@@ -1,0 +1,339 @@
+{
+  "root": "owner",
+  "consent": {
+    "speaker": "The owner",
+    "agreed": true,
+    "on": "2026-11-04",
+    "words": "I agree to these recordings being kept and used in this golden set or any form or shape."
+  },
+  "files": [
+    {
+      "path": "laptop-m3/m01_wagif_inbox-laptop-m3-2.wav",
+      "sha256": "cf3bc2240b4c9a543abe1f2f47bf2e2ac506bfe1f0bfe66c0a645dcd4a1b68c8",
+      "seconds": 2.248,
+      "sample_rate": 16000,
+      "device": "laptop",
+      "session": "laptop-m3"
+    },
+    {
+      "path": "laptop-m3/m02_wagif_archive-laptop-m3-1.wav",
+      "sha256": "50495da0792057265f256ed5b3a8657e55dcd49fd29b1385960eec8846e31f0b",
+      "seconds": 2.632,
+      "sample_rate": 16000,
+      "device": "laptop",
+      "session": "laptop-m3"
+    },
+    {
+      "path": "laptop-m3/m03_wagif_password-laptop-m3-1.wav",
+      "sha256": "9b0d3219959accb6d665133b60edf1735a81ec5bce1fe2190751dcaadf638de7",
+      "seconds": 2.104,
+      "sample_rate": 16000,
+      "device": "laptop",
+      "session": "laptop-m3"
+    },
+    {
+      "path": "laptop-m3/m04_khalas-laptop-m3-1.wav",
+      "sha256": "c3cf29103e89b2ae3f175ca6dc17355b7237ce01179433697b68913b1a059a07",
+      "seconds": 2.264,
+      "sample_rate": 16000,
+      "device": "laptop",
+      "session": "laptop-m3"
+    },
+    {
+      "path": "laptop-m3/m05_tawaqqaf-laptop-m3-1.wav",
+      "sha256": "aef7adbabada61f99e9d69333c77e1f765f95becede40b9cb8d931881f986e49",
+      "seconds": 2.144,
+      "sample_rate": 16000,
+      "device": "laptop",
+      "session": "laptop-m3"
+    },
+    {
+      "path": "laptop-m3/m06_lahza-laptop-m3-1.wav",
+      "sha256": "b3bd0f135839c31116c4ca8f35c14be0c1efac264a440adf5e4380c633973867",
+      "seconds": 2.208,
+      "sample_rate": 16000,
+      "device": "laptop",
+      "session": "laptop-m3"
+    },
+    {
+      "path": "laptop-m3/m07_istanna-laptop-m3-1.wav",
+      "sha256": "c11e3dddfbaee158900434e7c0473aa0278107a791c154c5d7c0f8d9106b4862",
+      "seconds": 2.224,
+      "sample_rate": 16000,
+      "device": "laptop",
+      "session": "laptop-m3"
+    },
+    {
+      "path": "laptop-m3/m08_stop-laptop-m3-2.wav",
+      "sha256": "39d3322df1bfed923c76936a44f15443b983ad1255c0e8716832ec09f85f60fb",
+      "seconds": 2.04,
+      "sample_rate": 16000,
+      "device": "laptop",
+      "session": "laptop-m3"
+    },
+    {
+      "path": "laptop-m3/m09_wait-laptop-m3-1.wav",
+      "sha256": "c1a7e1c7bde55e2c73c071f8ebf257b999321a45e5513ae259f5fa687513aec5",
+      "seconds": 2.216,
+      "sample_rate": 16000,
+      "device": "laptop",
+      "session": "laptop-m3"
+    },
+    {
+      "path": "laptop-m3/m10_hold_on-laptop-m3-1.wav",
+      "sha256": "b61c4d6814dc9a874e518898e580633d941d34d8cd446062cc81e1e937343590",
+      "seconds": 2.576,
+      "sample_rate": 16000,
+      "device": "laptop",
+      "session": "laptop-m3"
+    },
+    {
+      "path": "laptop-m3/m11_aid-laptop-m3-1.wav",
+      "sha256": "cd38cb5d2bc1b7df37fff81ec90b4c5709881ace391244b8f796a16e2c59cf54",
+      "seconds": 2.416,
+      "sample_rate": 16000,
+      "device": "laptop",
+      "session": "laptop-m3"
+    },
+    {
+      "path": "laptop-m3/m12_mumkin_tiid-laptop-m3-1.wav",
+      "sha256": "5cdab4f5c3351d6977b4f80012ee8dcbda18cf247130441769987026851cdc78",
+      "seconds": 2.984,
+      "sample_rate": 16000,
+      "device": "laptop",
+      "session": "laptop-m3"
+    },
+    {
+      "path": "laptop-m3/m13_go_over_again-laptop-m3-3.wav",
+      "sha256": "dcfac4724c7433ba633795c6eea51ee47a7777079e6ef1a5ddcc62d40a11281b",
+      "seconds": 4.04,
+      "sample_rate": 16000,
+      "device": "laptop",
+      "session": "laptop-m3"
+    },
+    {
+      "path": "laptop-m3/m14_aha-laptop-m3-1.wav",
+      "sha256": "93e5566f8d2eaeca7ead3a6c8dc7cdace8cdaa529a444abec0d1aa4d7b66e6ef",
+      "seconds": 2.424,
+      "sample_rate": 16000,
+      "device": "laptop",
+      "session": "laptop-m3"
+    },
+    {
+      "path": "laptop-m3/m15_aywa-laptop-m3-1.wav",
+      "sha256": "b930f45d41ee5dfcc7329345177a2e9946ee148e1ca20d0bfa17195904e36430",
+      "seconds": 2.704,
+      "sample_rate": 16000,
+      "device": "laptop",
+      "session": "laptop-m3"
+    },
+    {
+      "path": "laptop-m3/m16_kammil-laptop-m3-1.wav",
+      "sha256": "b387173ba6f7e61ddc0e7cb2a1dde049cbc2852013a6e62b7472d175b524c998",
+      "seconds": 2.56,
+      "sample_rate": 16000,
+      "device": "laptop",
+      "session": "laptop-m3"
+    },
+    {
+      "path": "laptop-m3/m17_mm_hmm-laptop-m3-1.wav",
+      "sha256": "6f25f4ca50e99278f1a34b83edd1e448807a8fb7251b5dbce794a83d7fdb5e8a",
+      "seconds": 2.112,
+      "sample_rate": 16000,
+      "device": "laptop",
+      "session": "laptop-m3"
+    },
+    {
+      "path": "laptop-m3/m18_uh_huh-laptop-m3-1.wav",
+      "sha256": "412f18d98325934251e25747a794e8b78f1186dc0ad57ed6529757a957067568",
+      "seconds": 2.376,
+      "sample_rate": 16000,
+      "device": "laptop",
+      "session": "laptop-m3"
+    },
+    {
+      "path": "laptop-m3/m19_correction_saudi-laptop-m3-1.wav",
+      "sha256": "edf987d689b193dd7a6ddd03821b2bb7cf38ebfffc6e6180c32455a082218ab5",
+      "seconds": 4.04,
+      "sample_rate": 16000,
+      "device": "laptop",
+      "session": "laptop-m3"
+    },
+    {
+      "path": "laptop-m3/m20_correction_english-laptop-m3-1.wav",
+      "sha256": "64e06d8f6cdd5d60249cf520d64a3946ccd23dfec3c2bd7136b5d1e204f175ea",
+      "seconds": 4.32,
+      "sample_rate": 16000,
+      "device": "laptop",
+      "session": "laptop-m3"
+    },
+    {
+      "path": "laptop-m3/m21_silent_over_reply-laptop-m3-1.wav",
+      "sha256": "b81bad8b9f7133a0f09ea5a70cb2d51c8c90985113a6420bebff73869659de28",
+      "seconds": 22.608,
+      "sample_rate": 16000,
+      "device": "laptop",
+      "session": "laptop-m3"
+    },
+    {
+      "path": "laptop-m3/m22_paused_delegate_leave-laptop-m3-1.wav",
+      "sha256": "58f3449b5a050ca8e82c6eb5d9accc99118c1c113db04446c1d696c343222276",
+      "seconds": 5.56,
+      "sample_rate": 16000,
+      "device": "laptop",
+      "session": "laptop-m3"
+    },
+    {
+      "path": "laptop-m3/m23_paused_attachment_big-laptop-m3-1.wav",
+      "sha256": "f2e18074dc534e2717be6206a6e132315c614c7531fdf1f41d5c4c540c8cdb58",
+      "seconds": 5.344,
+      "sample_rate": 16000,
+      "device": "laptop",
+      "session": "laptop-m3"
+    },
+    {
+      "path": "laptop-m3/m24_paused_notifications_late-laptop-m3-1.wav",
+      "sha256": "4e89418f7244c6efed73a4307d328d1f8e1830e8ffe8e1c0eed4cebbf2d78a4c",
+      "seconds": 4.496,
+      "sample_rate": 16000,
+      "device": "laptop",
+      "session": "laptop-m3"
+    },
+    {
+      "path": "laptop-m3/m25_paused_wrong_department-laptop-m3-1.wav",
+      "sha256": "c82a27f76408fca69035b9762fdd197fa191e2345c6c3ab232a42d49397f57d9",
+      "seconds": 4.456,
+      "sample_rate": 16000,
+      "device": "laptop",
+      "session": "laptop-m3"
+    },
+    {
+      "path": "laptop-m3/m26_paused_account_locked-laptop-m3-1.wav",
+      "sha256": "116be76bfbca9d7c59ea07c0053646d65e7cc8e6e1c19e076ee2e46a610410eb",
+      "seconds": 4.904,
+      "sample_rate": 16000,
+      "device": "laptop",
+      "session": "laptop-m3"
+    },
+    {
+      "path": "laptop-m3/m27_paused_old_search-laptop-m3-1.wav",
+      "sha256": "b873352e30acb23c67e23b5eb5269b8c36a497d82b206bfc4a4f2904162ab908",
+      "seconds": 5.144,
+      "sample_rate": 16000,
+      "device": "laptop",
+      "session": "laptop-m3"
+    },
+    {
+      "path": "laptop-m3/m28_paused_blank_print-laptop-m3-1.wav",
+      "sha256": "24b435615191591b1b628cb5f7f9dc78bb13bb0b1f5ab12b470bf3cfb538cef7",
+      "seconds": 4.544,
+      "sample_rate": 16000,
+      "device": "laptop",
+      "session": "laptop-m3"
+    },
+    {
+      "path": "laptop-m3/m29_paused_new_employee-laptop-m3-1.wav",
+      "sha256": "ba31e723c8c09c2ea115f2f48f29c6f797f597cb26f2ff26149f84be00d14a51",
+      "seconds": 4.592,
+      "sample_rate": 16000,
+      "device": "laptop",
+      "session": "laptop-m3"
+    },
+    {
+      "path": "laptop-m3/m30_paused_archive_period-laptop-m3-3.wav",
+      "sha256": "45954919a7614d32460cd2a4e4324f48d757be4f722f2ad2f8ad29c5d073ed6d",
+      "seconds": 5.32,
+      "sample_rate": 16000,
+      "device": "laptop",
+      "session": "laptop-m3"
+    },
+    {
+      "path": "laptop-m3/m31_paused_signature_image-laptop-m3-1.wav",
+      "sha256": "b180dafcf4082eefc59ff7a0c1d7ec0948a632403f91f11eb0a380bb8e8dd944",
+      "seconds": 4.704,
+      "sample_rate": 16000,
+      "device": "laptop",
+      "session": "laptop-m3"
+    },
+    {
+      "path": "laptop-m3/m32_paused_cannot_reply-laptop-m3-1.wav",
+      "sha256": "e90c93f51ae42d2a46ba3b2a962c2f85974a3bae522240afffa156bf60cea098",
+      "seconds": 4.432,
+      "sample_rate": 16000,
+      "device": "laptop",
+      "session": "laptop-m3"
+    },
+    {
+      "path": "laptop-m3/m33_paused_follow_up-laptop-m3-1.wav",
+      "sha256": "a405071ba28b730a71d55a290be443f8f97dfecf8052829123d1704d3f17b41e",
+      "seconds": 5.424,
+      "sample_rate": 16000,
+      "device": "laptop",
+      "session": "laptop-m3"
+    },
+    {
+      "path": "laptop-m3/m34_paused_shared_inbox-laptop-m3-1.wav",
+      "sha256": "5ff1b2bb48565e6939faccb786fac7ac1d0ddb2d5e3d71c95206f4d9d0ce64ee",
+      "seconds": 5.32,
+      "sample_rate": 16000,
+      "device": "laptop",
+      "session": "laptop-m3"
+    },
+    {
+      "path": "laptop-m3/m35_paused_forward_outside-laptop-m3-1.wav",
+      "sha256": "b47fa397405ebde1d53f5db8a4a2ad8391bb86b1a8f81b3d3b9924b010c8df87",
+      "seconds": 4.96,
+      "sample_rate": 16000,
+      "device": "laptop",
+      "session": "laptop-m3"
+    },
+    {
+      "path": "laptop-m3/m36_paused_draft_lost-laptop-m3-1.wav",
+      "sha256": "7085ff85ad7404910ef05eb7c00327843ae5366341a08bf1d99e0e48d36c3c90",
+      "seconds": 5.336,
+      "sample_rate": 16000,
+      "device": "laptop",
+      "session": "laptop-m3"
+    },
+    {
+      "path": "laptop-m3/m37_paused_attachment_order-laptop-m3-1.wav",
+      "sha256": "9bf21f0ac0607de8624b2d711ef6ce0218a86ab17b929fc0eb5e4f1b12c3bdda",
+      "seconds": 5.0,
+      "sample_rate": 16000,
+      "device": "laptop",
+      "session": "laptop-m3"
+    },
+    {
+      "path": "laptop-m3/m38_paused_outlook_calendar-laptop-m3-1.wav",
+      "sha256": "3ea2198ba937cc0fb4a992ab8e1b9ea7771d92ef799f0533a42ab80309b43ddf",
+      "seconds": 5.2,
+      "sample_rate": 16000,
+      "device": "laptop",
+      "session": "laptop-m3"
+    },
+    {
+      "path": "laptop-m3/m39_paused_pdf_sign-laptop-m3-1.wav",
+      "sha256": "bb97326bb8c02da8ca20b41ccc1ae377fd3933c9cf1f16dc6109eb49d2312e1f",
+      "seconds": 4.424,
+      "sample_rate": 16000,
+      "device": "laptop",
+      "session": "laptop-m3"
+    },
+    {
+      "path": "laptop-m3/m40_paused_word_template-laptop-m3-2.wav",
+      "sha256": "2e8d208cbbac205f6e5707af3afa0384281e7bbb0d4731f7c16675feb7dffb7e",
+      "seconds": 4.752,
+      "sample_rate": 16000,
+      "device": "laptop",
+      "session": "laptop-m3"
+    },
+    {
+      "path": "laptop-m3/m41_paused_ole5_login-laptop-m3-1.wav",
+      "sha256": "bd024598ba254208c567ff7d6cfb898c1d23bdd1cb8a4e90d6b5be8c33adc9d0",
+      "seconds": 5.76,
+      "sample_rate": 16000,
+      "device": "laptop",
+      "session": "laptop-m3"
+    }
+  ]
+}

@@ -1,0 +1,45 @@
+# Written by `python -m ole5_voice.evals.import_recordings` from the recorder's files:
+# import again rather than edit.
+id = "m05_tawaqqaf"
+source = "script"
+kind = "stop_word"
+language = "msa"
+text = "توقف"
+alternatives = []
+terms = []
+
+[[variants]]
+id = "m05_tawaqqaf-laptop-m3-1"
+device = "laptop"
+session = "laptop-m3"
+reference = "توقف"
+reference_source = "script"
+turn_ends_ms = [1517]
+tags = []
+
+[[variants.segments]]
+root = "owner"
+path = "laptop-m3/m05_tawaqqaf-laptop-m3-1.wav"
+sha256 = "aef7adbabada61f99e9d69333c77e1f765f95becede40b9cb8d931881f986e49"
+
+[[variants.confirmations]]
+at = 2026-11-04T16:23:59.155129+03:00
+review_pass = 6
+
+[[variants]]
+id = "m05_tawaqqaf-wired-m3-1"
+device = "wired"
+session = "wired-m3"
+reference = "توقف"
+reference_source = "script"
+turn_ends_ms = [1266]
+tags = []
+
+[[variants.segments]]
+root = "owner"
+path = "wired-m3/m05_tawaqqaf-wired-m3-1.wav"
+sha256 = "39211d410572f10e843c5df6c0cce13e87ab7380895f0f185d0a5d8dccda33fa"
+
+[[variants.confirmations]]
+at = 2026-11-04T16:26:39.607772+03:00
+review_pass = 6

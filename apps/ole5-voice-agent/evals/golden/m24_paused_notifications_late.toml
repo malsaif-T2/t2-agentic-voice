@@ -1,0 +1,45 @@
+# Written by `python -m ole5_voice.evals.import_recordings` from the recorder's files:
+# import again rather than edit.
+id = "m24_paused_notifications_late"
+source = "script"
+kind = "paused_request"
+language = "saudi"
+text = "التنبيهات توصلني بس متأخرة بعد ساعة تقريبا"
+alternatives = []
+terms = []
+
+[[variants]]
+id = "m24_paused_notifications_late-laptop-m3-1"
+device = "laptop"
+session = "laptop-m3"
+reference = "التنبيهات توصلني بس متأخرة بعد ساعة تقريبا"
+reference_source = "script"
+turn_ends_ms = [3672]
+tags = []
+
+[[variants.segments]]
+root = "owner"
+path = "laptop-m3/m24_paused_notifications_late-laptop-m3-1.wav"
+sha256 = "4e89418f7244c6efed73a4307d328d1f8e1830e8ffe8e1c0eed4cebbf2d78a4c"
+
+[[variants.confirmations]]
+at = 2026-11-04T16:25:01.686233+03:00
+review_pass = 6
+
+[[variants]]
+id = "m24_paused_notifications_late-wired-m3-1"
+device = "wired"
+session = "wired-m3"
+reference = "التنبيهات توصلني بس متأخرة بعد ساعة تقريبا"
+reference_source = "script"
+turn_ends_ms = [3679]
+tags = []
+
+[[variants.segments]]
+root = "owner"
+path = "wired-m3/m24_paused_notifications_late-wired-m3-1.wav"
+sha256 = "72ea7bf2813102ea1d55bbda44966f992665f94cd24263d6c4d9b36d35f4d90b"
+
+[[variants.confirmations]]
+at = 2026-11-04T16:27:46.493176+03:00
+review_pass = 6

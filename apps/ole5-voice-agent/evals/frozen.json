@@ -1,8 +1,8 @@
 {
   "about": "The golden set's expected answers, frozen by `uv run poe golden` from the items in golden/: each accepted variant's references (its own and its item's alternatives), and the variants left out until the owner's check. Never edited by hand: a changed item shows as a diff of this file, reviewed like code.",
   "accepted": {
-    "items": 95,
-    "variants": 337
+    "items": 136,
+    "variants": 419
   },
   "items": [
     {
@@ -534,6 +534,998 @@
           "device": "laptop",
           "expected": [
             "wait"
+          ]
+        }
+      ]
+    },
+    {
+      "id": "m01_wagif_inbox",
+      "split": "dev",
+      "kind": "stop_word",
+      "language": "saudi",
+      "want": null,
+      "terms": [],
+      "variants": [
+        {
+          "id": "m01_wagif_inbox-laptop-m3-2",
+          "device": "laptop",
+          "expected": [
+            "وقف"
+          ]
+        },
+        {
+          "id": "m01_wagif_inbox-wired-m3-1",
+          "device": "wired",
+          "expected": [
+            "وقف"
+          ]
+        }
+      ]
+    },
+    {
+      "id": "m02_wagif_archive",
+      "split": "dev",
+      "kind": "stop_word",
+      "language": "saudi",
+      "want": null,
+      "terms": [],
+      "variants": [
+        {
+          "id": "m02_wagif_archive-laptop-m3-1",
+          "device": "laptop",
+          "expected": [
+            "وقف"
+          ]
+        },
+        {
+          "id": "m02_wagif_archive-wired-m3-1",
+          "device": "wired",
+          "expected": [
+            "وقف"
+          ]
+        }
+      ]
+    },
+    {
+      "id": "m03_wagif_password",
+      "split": "dev",
+      "kind": "stop_word",
+      "language": "saudi",
+      "want": null,
+      "terms": [],
+      "variants": [
+        {
+          "id": "m03_wagif_password-laptop-m3-1",
+          "device": "laptop",
+          "expected": [
+            "وقف"
+          ]
+        },
+        {
+          "id": "m03_wagif_password-wired-m3-1",
+          "device": "wired",
+          "expected": [
+            "وقف"
+          ]
+        }
+      ]
+    },
+    {
+      "id": "m04_khalas",
+      "split": "held-out",
+      "kind": "stop_word",
+      "language": "saudi",
+      "want": null,
+      "terms": [],
+      "variants": [
+        {
+          "id": "m04_khalas-laptop-m3-1",
+          "device": "laptop",
+          "expected": [
+            "خلاص"
+          ]
+        },
+        {
+          "id": "m04_khalas-wired-m3-1",
+          "device": "wired",
+          "expected": [
+            "خلاص"
+          ]
+        }
+      ]
+    },
+    {
+      "id": "m05_tawaqqaf",
+      "split": "dev",
+      "kind": "stop_word",
+      "language": "msa",
+      "want": null,
+      "terms": [],
+      "variants": [
+        {
+          "id": "m05_tawaqqaf-laptop-m3-1",
+          "device": "laptop",
+          "expected": [
+            "توقف"
+          ]
+        },
+        {
+          "id": "m05_tawaqqaf-wired-m3-1",
+          "device": "wired",
+          "expected": [
+            "توقف"
+          ]
+        }
+      ]
+    },
+    {
+      "id": "m06_lahza",
+      "split": "dev",
+      "kind": "stop_word",
+      "language": "saudi",
+      "want": null,
+      "terms": [],
+      "variants": [
+        {
+          "id": "m06_lahza-laptop-m3-1",
+          "device": "laptop",
+          "expected": [
+            "لحظة"
+          ]
+        },
+        {
+          "id": "m06_lahza-wired-m3-1",
+          "device": "wired",
+          "expected": [
+            "لحظة"
+          ]
+        }
+      ]
+    },
+    {
+      "id": "m07_istanna",
+      "split": "held-out",
+      "kind": "stop_word",
+      "language": "saudi",
+      "want": null,
+      "terms": [],
+      "variants": [
+        {
+          "id": "m07_istanna-laptop-m3-1",
+          "device": "laptop",
+          "expected": [
+            "استنى"
+          ]
+        },
+        {
+          "id": "m07_istanna-wired-m3-1",
+          "device": "wired",
+          "expected": [
+            "استنى"
+          ]
+        }
+      ]
+    },
+    {
+      "id": "m08_stop",
+      "split": "dev",
+      "kind": "stop_word",
+      "language": "english",
+      "want": null,
+      "terms": [],
+      "variants": [
+        {
+          "id": "m08_stop-laptop-m3-2",
+          "device": "laptop",
+          "expected": [
+            "stop"
+          ]
+        },
+        {
+          "id": "m08_stop-wired-m3-2",
+          "device": "wired",
+          "expected": [
+            "stop"
+          ]
+        }
+      ]
+    },
+    {
+      "id": "m09_wait",
+      "split": "held-out",
+      "kind": "stop_word",
+      "language": "english",
+      "want": null,
+      "terms": [],
+      "variants": [
+        {
+          "id": "m09_wait-laptop-m3-1",
+          "device": "laptop",
+          "expected": [
+            "wait"
+          ]
+        },
+        {
+          "id": "m09_wait-wired-m3-1",
+          "device": "wired",
+          "expected": [
+            "wait"
+          ]
+        }
+      ]
+    },
+    {
+      "id": "m10_hold_on",
+      "split": "dev",
+      "kind": "stop_word",
+      "language": "english",
+      "want": null,
+      "terms": [],
+      "variants": [
+        {
+          "id": "m10_hold_on-laptop-m3-1",
+          "device": "laptop",
+          "expected": [
+            "hold on"
+          ]
+        },
+        {
+          "id": "m10_hold_on-wired-m3-1",
+          "device": "wired",
+          "expected": [
+            "hold on"
+          ]
+        }
+      ]
+    },
+    {
+      "id": "m11_aid",
+      "split": "dev",
+      "kind": "repeat_request",
+      "language": "saudi",
+      "want": null,
+      "terms": [],
+      "variants": [
+        {
+          "id": "m11_aid-laptop-m3-1",
+          "device": "laptop",
+          "expected": [
+            "أعد"
+          ]
+        },
+        {
+          "id": "m11_aid-wired-m3-1",
+          "device": "wired",
+          "expected": [
+            "أعد"
+          ]
+        }
+      ]
+    },
+    {
+      "id": "m12_mumkin_tiid",
+      "split": "held-out",
+      "kind": "repeat_request",
+      "language": "saudi",
+      "want": null,
+      "terms": [],
+      "variants": [
+        {
+          "id": "m12_mumkin_tiid-laptop-m3-1",
+          "device": "laptop",
+          "expected": [
+            "ممكن تعيد؟"
+          ]
+        },
+        {
+          "id": "m12_mumkin_tiid-wired-m3-1",
+          "device": "wired",
+          "expected": [
+            "ممكن تعيد؟"
+          ]
+        }
+      ]
+    },
+    {
+      "id": "m13_go_over_again",
+      "split": "dev",
+      "kind": "repeat_request",
+      "language": "english",
+      "want": null,
+      "terms": [],
+      "variants": [
+        {
+          "id": "m13_go_over_again-laptop-m3-3",
+          "device": "laptop",
+          "expected": [
+            "Sorry, could you go over that last part again?"
+          ]
+        },
+        {
+          "id": "m13_go_over_again-wired-m3-2",
+          "device": "wired",
+          "expected": [
+            "Sorry, could you go over that last part again?"
+          ]
+        }
+      ]
+    },
+    {
+      "id": "m14_aha",
+      "split": "dev",
+      "kind": "listening_sound",
+      "language": "saudi",
+      "want": null,
+      "terms": [],
+      "variants": [
+        {
+          "id": "m14_aha-laptop-m3-1",
+          "device": "laptop",
+          "expected": [
+            "اها"
+          ]
+        },
+        {
+          "id": "m14_aha-wired-m3-1",
+          "device": "wired",
+          "expected": [
+            "اها"
+          ]
+        }
+      ]
+    },
+    {
+      "id": "m15_aywa",
+      "split": "held-out",
+      "kind": "listening_sound",
+      "language": "saudi",
+      "want": null,
+      "terms": [],
+      "variants": [
+        {
+          "id": "m15_aywa-laptop-m3-1",
+          "device": "laptop",
+          "expected": [
+            "ايوه"
+          ]
+        },
+        {
+          "id": "m15_aywa-wired-m3-1",
+          "device": "wired",
+          "expected": [
+            "ايوه"
+          ]
+        }
+      ]
+    },
+    {
+      "id": "m16_kammil",
+      "split": "dev",
+      "kind": "listening_sound",
+      "language": "saudi",
+      "want": null,
+      "terms": [],
+      "variants": [
+        {
+          "id": "m16_kammil-laptop-m3-1",
+          "device": "laptop",
+          "expected": [
+            "كمل"
+          ]
+        },
+        {
+          "id": "m16_kammil-wired-m3-1",
+          "device": "wired",
+          "expected": [
+            "كمل"
+          ]
+        }
+      ]
+    },
+    {
+      "id": "m17_mm_hmm",
+      "split": "dev",
+      "kind": "listening_sound",
+      "language": "english",
+      "want": null,
+      "terms": [],
+      "variants": [
+        {
+          "id": "m17_mm_hmm-laptop-m3-1",
+          "device": "laptop",
+          "expected": [
+            "mm-hmm"
+          ]
+        },
+        {
+          "id": "m17_mm_hmm-wired-m3-1",
+          "device": "wired",
+          "expected": [
+            "mm-hmm"
+          ]
+        }
+      ]
+    },
+    {
+      "id": "m18_uh_huh",
+      "split": "held-out",
+      "kind": "listening_sound",
+      "language": "english",
+      "want": null,
+      "terms": [],
+      "variants": [
+        {
+          "id": "m18_uh_huh-laptop-m3-1",
+          "device": "laptop",
+          "expected": [
+            "uh-huh"
+          ]
+        },
+        {
+          "id": "m18_uh_huh-wired-m3-1",
+          "device": "wired",
+          "expected": [
+            "uh-huh"
+          ]
+        }
+      ]
+    },
+    {
+      "id": "m19_correction_saudi",
+      "split": "dev",
+      "kind": "correction",
+      "language": "saudi",
+      "want": null,
+      "terms": [],
+      "variants": [
+        {
+          "id": "m19_correction_saudi-laptop-m3-1",
+          "device": "laptop",
+          "expected": [
+            "لا مو كذا، قصدي الأرشيف مو صندوق الوارد"
+          ]
+        },
+        {
+          "id": "m19_correction_saudi-wired-m3-1",
+          "device": "wired",
+          "expected": [
+            "لا مو كذا، قصدي الأرشيف مو صندوق الوارد"
+          ]
+        }
+      ]
+    },
+    {
+      "id": "m20_correction_english",
+      "split": "dev",
+      "kind": "correction",
+      "language": "english",
+      "want": null,
+      "terms": [],
+      "variants": [
+        {
+          "id": "m20_correction_english-laptop-m3-1",
+          "device": "laptop",
+          "expected": [
+            "No, I meant the archive, not the inbox."
+          ]
+        },
+        {
+          "id": "m20_correction_english-wired-m3-1",
+          "device": "wired",
+          "expected": [
+            "No, I meant the archive, not the inbox."
+          ]
+        }
+      ]
+    },
+    {
+      "id": "m21_silent_over_reply",
+      "split": "dev",
+      "kind": "echo_only",
+      "language": "none",
+      "want": null,
+      "terms": [],
+      "variants": [
+        {
+          "id": "m21_silent_over_reply-laptop-m3-1",
+          "device": "laptop",
+          "expected": [
+            ""
+          ]
+        },
+        {
+          "id": "m21_silent_over_reply-wired-m3-1",
+          "device": "wired",
+          "expected": [
+            ""
+          ]
+        }
+      ]
+    },
+    {
+      "id": "m22_paused_delegate_leave",
+      "split": "dev",
+      "kind": "paused_request",
+      "language": "saudi",
+      "want": null,
+      "terms": [],
+      "variants": [
+        {
+          "id": "m22_paused_delegate_leave-laptop-m3-1",
+          "device": "laptop",
+          "expected": [
+            "أبغى أسوي تفويض لزميلي في القسم لين أرجع من الإجازة"
+          ]
+        },
+        {
+          "id": "m22_paused_delegate_leave-wired-m3-1",
+          "device": "wired",
+          "expected": [
+            "أبغى أسوي تفويض لزميلي في القسم لين أرجع من الإجازة"
+          ]
+        }
+      ]
+    },
+    {
+      "id": "m23_paused_attachment_big",
+      "split": "dev",
+      "kind": "paused_request",
+      "language": "saudi",
+      "want": null,
+      "terms": [],
+      "variants": [
+        {
+          "id": "m23_paused_attachment_big-laptop-m3-1",
+          "device": "laptop",
+          "expected": [
+            "المرفق اللي أبغى أرسله حجمه كبير شوي وما يرضى ينرفع"
+          ]
+        },
+        {
+          "id": "m23_paused_attachment_big-wired-m3-2",
+          "device": "wired",
+          "expected": [
+            "المرفق اللي أبغى أرسله حجمه كبير شوي وما يرضى ينرفع"
+          ]
+        }
+      ]
+    },
+    {
+      "id": "m24_paused_notifications_late",
+      "split": "dev",
+      "kind": "paused_request",
+      "language": "saudi",
+      "want": null,
+      "terms": [],
+      "variants": [
+        {
+          "id": "m24_paused_notifications_late-laptop-m3-1",
+          "device": "laptop",
+          "expected": [
+            "التنبيهات توصلني بس متأخرة بعد ساعة تقريبا"
+          ]
+        },
+        {
+          "id": "m24_paused_notifications_late-wired-m3-1",
+          "device": "wired",
+          "expected": [
+            "التنبيهات توصلني بس متأخرة بعد ساعة تقريبا"
+          ]
+        }
+      ]
+    },
+    {
+      "id": "m25_paused_wrong_department",
+      "split": "held-out",
+      "kind": "paused_request",
+      "language": "saudi",
+      "want": null,
+      "terms": [],
+      "variants": [
+        {
+          "id": "m25_paused_wrong_department-laptop-m3-1",
+          "device": "laptop",
+          "expected": [
+            "أرسلت المعاملة للإدارة الغلط كيف أرجعها؟"
+          ]
+        },
+        {
+          "id": "m25_paused_wrong_department-wired-m3-1",
+          "device": "wired",
+          "expected": [
+            "أرسلت المعاملة للإدارة الغلط كيف أرجعها؟"
+          ]
+        }
+      ]
+    },
+    {
+      "id": "m26_paused_account_locked",
+      "split": "dev",
+      "kind": "paused_request",
+      "language": "saudi",
+      "want": null,
+      "terms": [],
+      "variants": [
+        {
+          "id": "m26_paused_account_locked-laptop-m3-1",
+          "device": "laptop",
+          "expected": [
+            "حاولت أدخل كذا مرة والحين الحساب انقفل علي"
+          ]
+        },
+        {
+          "id": "m26_paused_account_locked-wired-m3-2",
+          "device": "wired",
+          "expected": [
+            "حاولت أدخل كذا مرة والحين الحساب انقفل علي"
+          ]
+        }
+      ]
+    },
+    {
+      "id": "m27_paused_old_search",
+      "split": "held-out",
+      "kind": "paused_request",
+      "language": "saudi",
+      "want": null,
+      "terms": [],
+      "variants": [
+        {
+          "id": "m27_paused_old_search-laptop-m3-1",
+          "device": "laptop",
+          "expected": [
+            "أدور على مراسلة قديمة من السنة اللي فاتت وما طلعت لي في البحث"
+          ]
+        },
+        {
+          "id": "m27_paused_old_search-wired-m3-1",
+          "device": "wired",
+          "expected": [
+            "أدور على مراسلة قديمة من السنة اللي فاتت وما طلعت لي في البحث"
+          ]
+        }
+      ]
+    },
+    {
+      "id": "m28_paused_blank_print",
+      "split": "held-out",
+      "kind": "paused_request",
+      "language": "saudi",
+      "want": null,
+      "terms": [],
+      "variants": [
+        {
+          "id": "m28_paused_blank_print-laptop-m3-1",
+          "device": "laptop",
+          "expected": [
+            "لما أطبع الخطاب تطلع الورقة فاضية بدون شي"
+          ]
+        },
+        {
+          "id": "m28_paused_blank_print-wired-m3-1",
+          "device": "wired",
+          "expected": [
+            "لما أطبع الخطاب تطلع الورقة فاضية بدون شي"
+          ]
+        }
+      ]
+    },
+    {
+      "id": "m29_paused_new_employee",
+      "split": "dev",
+      "kind": "paused_request",
+      "language": "saudi",
+      "want": null,
+      "terms": [],
+      "variants": [
+        {
+          "id": "m29_paused_new_employee-laptop-m3-1",
+          "device": "laptop",
+          "expected": [
+            "عندنا موظف جديد ونبغى نضيفه على النظام"
+          ]
+        },
+        {
+          "id": "m29_paused_new_employee-wired-m3-1",
+          "device": "wired",
+          "expected": [
+            "عندنا موظف جديد ونبغى نضيفه على النظام"
+          ]
+        }
+      ]
+    },
+    {
+      "id": "m30_paused_archive_period",
+      "split": "dev",
+      "kind": "paused_request",
+      "language": "msa",
+      "want": null,
+      "terms": [],
+      "variants": [
+        {
+          "id": "m30_paused_archive_period-laptop-m3-3",
+          "device": "laptop",
+          "expected": [
+            "أود أن أعرف المدة التي تبقى فيها المراسلات في الأرشيف"
+          ]
+        },
+        {
+          "id": "m30_paused_archive_period-wired-m3-1",
+          "device": "wired",
+          "expected": [
+            "أود أن أعرف المدة التي تبقى فيها المراسلات في الأرشيف"
+          ]
+        }
+      ]
+    },
+    {
+      "id": "m31_paused_signature_image",
+      "split": "dev",
+      "kind": "paused_request",
+      "language": "msa",
+      "want": null,
+      "terms": [],
+      "variants": [
+        {
+          "id": "m31_paused_signature_image-laptop-m3-1",
+          "device": "laptop",
+          "expected": [
+            "كيف أضيف صورة إلى التوقيع في الرسائل الصادرة"
+          ]
+        },
+        {
+          "id": "m31_paused_signature_image-wired-m3-1",
+          "device": "wired",
+          "expected": [
+            "كيف أضيف صورة إلى التوقيع في الرسائل الصادرة"
+          ]
+        }
+      ]
+    },
+    {
+      "id": "m32_paused_cannot_reply",
+      "split": "dev",
+      "kind": "paused_request",
+      "language": "msa",
+      "want": null,
+      "terms": [],
+      "variants": [
+        {
+          "id": "m32_paused_cannot_reply-laptop-m3-1",
+          "device": "laptop",
+          "expected": [
+            "لا أستطيع الرد على المراسلة الواردة منذ يوم أمس"
+          ]
+        },
+        {
+          "id": "m32_paused_cannot_reply-wired-m3-1",
+          "device": "wired",
+          "expected": [
+            "لا أستطيع الرد على المراسلة الواردة منذ يوم أمس"
+          ]
+        }
+      ]
+    },
+    {
+      "id": "m33_paused_follow_up",
+      "split": "held-out",
+      "kind": "paused_request",
+      "language": "msa",
+      "want": null,
+      "terms": [],
+      "variants": [
+        {
+          "id": "m33_paused_follow_up-laptop-m3-1",
+          "device": "laptop",
+          "expected": [
+            "أريد متابعة حالة المعاملة التي أرسلتها إلى المدير"
+          ]
+        },
+        {
+          "id": "m33_paused_follow_up-wired-m3-1",
+          "device": "wired",
+          "expected": [
+            "أريد متابعة حالة المعاملة التي أرسلتها إلى المدير"
+          ]
+        }
+      ]
+    },
+    {
+      "id": "m34_paused_shared_inbox",
+      "split": "dev",
+      "kind": "paused_request",
+      "language": "english",
+      "want": null,
+      "terms": [],
+      "variants": [
+        {
+          "id": "m34_paused_shared_inbox-laptop-m3-1",
+          "device": "laptop",
+          "expected": [
+            "I'm trying to open the shared inbox but it says access denied"
+          ]
+        },
+        {
+          "id": "m34_paused_shared_inbox-wired-m3-1",
+          "device": "wired",
+          "expected": [
+            "I'm trying to open the shared inbox but it says access denied"
+          ]
+        }
+      ]
+    },
+    {
+      "id": "m35_paused_forward_outside",
+      "split": "held-out",
+      "kind": "paused_request",
+      "language": "english",
+      "want": null,
+      "terms": [],
+      "variants": [
+        {
+          "id": "m35_paused_forward_outside-laptop-m3-1",
+          "device": "laptop",
+          "expected": [
+            "Can I forward a correspondence to someone outside the team?"
+          ]
+        },
+        {
+          "id": "m35_paused_forward_outside-wired-m3-1",
+          "device": "wired",
+          "expected": [
+            "Can I forward a correspondence to someone outside the team?"
+          ]
+        }
+      ]
+    },
+    {
+      "id": "m36_paused_draft_lost",
+      "split": "dev",
+      "kind": "paused_request",
+      "language": "english",
+      "want": null,
+      "terms": [],
+      "variants": [
+        {
+          "id": "m36_paused_draft_lost-laptop-m3-1",
+          "device": "laptop",
+          "expected": [
+            "I was writing a draft and then the page refreshed and now it's gone"
+          ]
+        },
+        {
+          "id": "m36_paused_draft_lost-wired-m3-1",
+          "device": "wired",
+          "expected": [
+            "I was writing a draft and then the page refreshed and now it's gone"
+          ]
+        }
+      ]
+    },
+    {
+      "id": "m37_paused_attachment_order",
+      "split": "dev",
+      "kind": "paused_request",
+      "language": "english",
+      "want": null,
+      "terms": [],
+      "variants": [
+        {
+          "id": "m37_paused_attachment_order-laptop-m3-1",
+          "device": "laptop",
+          "expected": [
+            "When I attach several files they show up in the wrong order"
+          ]
+        },
+        {
+          "id": "m37_paused_attachment_order-wired-m3-3",
+          "device": "wired",
+          "expected": [
+            "When I attach several files they show up in the wrong order"
+          ]
+        }
+      ]
+    },
+    {
+      "id": "m38_paused_outlook_calendar",
+      "split": "held-out",
+      "kind": "paused_request",
+      "language": "mixed",
+      "want": null,
+      "terms": [
+        "Outlook"
+      ],
+      "variants": [
+        {
+          "id": "m38_paused_outlook_calendar-laptop-m3-1",
+          "device": "laptop",
+          "expected": [
+            "الاجتماعات اللي في Outlook ما تظهر في التقويم حق النظام"
+          ]
+        },
+        {
+          "id": "m38_paused_outlook_calendar-wired-m3-1",
+          "device": "wired",
+          "expected": [
+            "الاجتماعات اللي في Outlook ما تظهر في التقويم حق النظام"
+          ]
+        }
+      ]
+    },
+    {
+      "id": "m39_paused_pdf_sign",
+      "split": "dev",
+      "kind": "paused_request",
+      "language": "mixed",
+      "want": null,
+      "terms": [
+        "PDF"
+      ],
+      "variants": [
+        {
+          "id": "m39_paused_pdf_sign-laptop-m3-1",
+          "device": "laptop",
+          "expected": [
+            "أبغى أوقع على ملف PDF قبل ما أرسله للمدير"
+          ]
+        },
+        {
+          "id": "m39_paused_pdf_sign-wired-m3-1",
+          "device": "wired",
+          "expected": [
+            "أبغى أوقع على ملف PDF قبل ما أرسله للمدير"
+          ]
+        }
+      ]
+    },
+    {
+      "id": "m40_paused_word_template",
+      "split": "dev",
+      "kind": "paused_request",
+      "language": "mixed",
+      "want": null,
+      "terms": [
+        "Word"
+      ],
+      "variants": [
+        {
+          "id": "m40_paused_word_template-laptop-m3-2",
+          "device": "laptop",
+          "expected": [
+            "عندي قالب Word وأبغى أستخدمه للخطابات الرسمية"
+          ]
+        },
+        {
+          "id": "m40_paused_word_template-wired-m3-1",
+          "device": "wired",
+          "expected": [
+            "عندي قالب Word وأبغى أستخدمه للخطابات الرسمية"
+          ]
+        }
+      ]
+    },
+    {
+      "id": "m41_paused_ole5_login",
+      "split": "dev",
+      "kind": "paused_request",
+      "language": "mixed",
+      "want": null,
+      "terms": [
+        "Ole5"
+      ],
+      "variants": [
+        {
+          "id": "m41_paused_ole5_login-laptop-m3-1",
+          "device": "laptop",
+          "expected": [
+            "تطبيق Ole5 في الجوال يطلب مني أسجل دخول كل مرة أفتحه"
+          ]
+        },
+        {
+          "id": "m41_paused_ole5_login-wired-m3-1",
+          "device": "wired",
+          "expected": [
+            "تطبيق Ole5 في الجوال يطلب مني أسجل دخول كل مرة أفتحه"
           ]
         }
       ]
@@ -3341,5 +4333,26 @@
       ]
     }
   ],
-  "left_out": []
+  "left_out": [
+    {
+      "item": "call-bv5tsbxzfhyxbaxk-turn-1",
+      "variant": "call-bv5tsbxzfhyxbaxk-turn-1",
+      "why": "typed by the owner, waiting on its second confirmation in a later review pass"
+    },
+    {
+      "item": "call-c7es2sdh_mq1dvz7-turn-0",
+      "variant": "call-c7es2sdh_mq1dvz7-turn-0",
+      "why": "not yet confirmed by the owner's listen"
+    },
+    {
+      "item": "call-srjwnturybmf0qmj-turn-2",
+      "variant": "call-srjwnturybmf0qmj-turn-2",
+      "why": "not yet confirmed by the owner's listen"
+    },
+    {
+      "item": "call-srjwnturybmf0qmj-turn-7",
+      "variant": "call-srjwnturybmf0qmj-turn-7",
+      "why": "typed by the owner, waiting on its second confirmation in a later review pass"
+    }
+  ]
 }

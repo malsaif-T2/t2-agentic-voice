@@ -136,3 +136,37 @@ def test_smart_turns_threshold_is_pipecats_own_at_its_default_and_moves_the_end_
             await cleanup()
 
     asyncio.run(run())
+
+
+def test_smart_turn_keeps_the_turns_audio_through_a_hold_and_drops_it_at_the_turns_end() -> None:
+    """With a hold (`turns.complete_hold_ms`), a pause judged complete keeps the turn's audio
+    (smart_turn.py's `keep_turn`, on Pipecat 1.15.0's private `_clear`), so the next judgement
+    hears the whole turn; without one it is cleared, as Pipecat's own does. The turn's end
+    (`clear`) and the silence fallback drop it either way."""
+    from pipecat.audio.turn.base_turn_analyzer import EndOfTurnState
+
+    plain = turn_analyzer(TurnSettings())
+    held = turn_analyzer(TurnSettings(complete_hold_ms=300))
+
+    def buffered(analyzer: BaseTurnAnalyzer) -> int:
+        return len(analyzer._audio_buffer)  # type: ignore[attr-defined]
+
+    async def run() -> None:
+        assert await _decide(plain, _Model(0.9)) == ("COMPLETE", 0.9)
+        assert (plain.speech_triggered, buffered(plain)) == (False, 0)
+        assert await _decide(held, _Model(0.9)) == ("COMPLETE", 0.9)
+        assert (held.speech_triggered, buffered(held)) == (True, 1)
+        assert await _decide(held, _Model(0.9)) == ("COMPLETE", 0.9)  # the turn went on
+        assert buffered(held) == 2  # judged on both seconds
+        held.clear()  # type: ignore[no-untyped-call]
+        assert (held.speech_triggered, buffered(held)) == (False, 0)
+        await _decide(held, _Model(0.2))
+        silence = bytes(16_000 * 2)  # a second of it, three times: past the 3 s fallback
+        states = [held.append_audio(silence, False) for _ in range(3)]
+        assert states[-1] == EndOfTurnState.COMPLETE
+        assert (held.speech_triggered, buffered(held)) == (False, 0)
+        for analyzer in (plain, held):
+            cleanup: Callable[[], Awaitable[None]] = analyzer.cleanup
+            await cleanup()
+
+    asyncio.run(run())

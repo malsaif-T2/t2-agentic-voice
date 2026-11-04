@@ -70,6 +70,7 @@ Turn-taking: the speech detector (Silero VAD) and the end-of-turn model (Smart T
 | `T2V_TURNS__VAD_MIN_VOLUME` | number | `0.6` | — | The quietest a frame may be and still count as speech, from 0 to 1. |
 | `T2V_TURNS__SMART_TURN` | true or false | `true` | — | Whether Smart Turn decides, at each pause, if the caller has finished; off, every pause the detector hears ends the turn. |
 | `T2V_TURNS__SMART_TURN_THRESHOLD` | number | `0.5` | — | How sure Smart Turn must be that the caller has finished, from 0 to 1: a pause ends the turn when its probability is above this. 0.5, Smart Turn's own, leaves a turn's end as it was. |
+| `T2V_TURNS__COMPLETE_HOLD_MS` | integer | `0` | milliseconds | How long a turn Smart Turn judged finished waits before it ends: speech that resumes within it cancels the end, and the turn goes on. 0 leaves a turn's end as it was; the speech detector's pause, which an interruption waits on, is never delayed. |
 | `T2V_TURNS__SMART_TURN_STOP_MS` | integer | `3000` | milliseconds | The silence after which Smart Turn ends the turn whatever it heard. |
 | `T2V_TURNS__SMART_TURN_PRE_SPEECH_MS` | integer | `500` | milliseconds | How much audio before the speech started Smart Turn hears with it. |
 | `T2V_TURNS__SMART_TURN_MAX_DURATION_S` | number | `8` | seconds | The most audio of a turn Smart Turn hears, its latest part. |

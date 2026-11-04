@@ -3,7 +3,8 @@
 The defaults are the starting values of plan 003's decision log, none tuned yet: Silero's
 `VADParams` defaults (confidence 0.7, start and end 200 ms, minimum volume 0.6) and Smart Turn
 v3.2's documented ones (3 s, 500 ms of speech before, 8 s at most, and its 0.5 threshold), with
-the same 3 s as the fallback end of a turn. Each move of a default is a behaviour change, made
+the same 3 s as the fallback end of a turn, and no hold after Smart Turn's "complete" (plan 005's
+amendment (8), voice/turn_hold.py). Each move of a default is a behaviour change, made
 only on a registered measurement (the design's 5.4; GP-18).
 """
 
@@ -12,6 +13,10 @@ from __future__ import annotations
 from pydantic import Field
 
 from t2_agentic_voice.core.settings.base import Group
+
+# The longest hold after Smart Turn's "complete" (`complete_hold_ms`): above the owner's bound on
+# how much later a turn may end (plan 005's Q8, 600 ms) and well under the 3 s fallbacks.
+MAX_COMPLETE_HOLD_MS = 1000
 
 
 class TurnSettings(Group):
@@ -55,6 +60,17 @@ class TurnSettings(Group):
             "How sure Smart Turn must be that the caller has finished, from 0 to 1: a pause ends "
             "the turn when its probability is above this. 0.5, Smart Turn's own, leaves a "
             "turn's end as it was."
+        ),
+    )
+    complete_hold_ms: int = Field(
+        default=0,
+        ge=0,
+        le=MAX_COMPLETE_HOLD_MS,
+        description=(
+            "How long a turn Smart Turn judged finished waits before it ends: speech that "
+            "resumes within it cancels the end, and the turn goes on. 0 leaves a turn's end as "
+            "it was; the speech detector's pause, which an interruption waits on, is never "
+            "delayed."
         ),
     )
     smart_turn_stop_ms: int = Field(

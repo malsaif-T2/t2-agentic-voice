@@ -1,0 +1,45 @@
+# Written by `python -m ole5_voice.evals.import_recordings` from the recorder's files:
+# import again rather than edit.
+id = "m23_paused_attachment_big"
+source = "script"
+kind = "paused_request"
+language = "saudi"
+text = "المرفق اللي أبغى أرسله حجمه كبير شوي وما يرضى ينرفع"
+alternatives = []
+terms = []
+
+[[variants]]
+id = "m23_paused_attachment_big-laptop-m3-1"
+device = "laptop"
+session = "laptop-m3"
+reference = "المرفق اللي أبغى أرسله حجمه كبير شوي وما يرضى ينرفع"
+reference_source = "script"
+turn_ends_ms = [4735]
+tags = []
+
+[[variants.segments]]
+root = "owner"
+path = "laptop-m3/m23_paused_attachment_big-laptop-m3-1.wav"
+sha256 = "f2e18074dc534e2717be6206a6e132315c614c7531fdf1f41d5c4c540c8cdb58"
+
+[[variants.confirmations]]
+at = 2026-11-04T16:24:56.752026+03:00
+review_pass = 6
+
+[[variants]]
+id = "m23_paused_attachment_big-wired-m3-2"
+device = "wired"
+session = "wired-m3"
+reference = "المرفق اللي أبغى أرسله حجمه كبير شوي وما يرضى ينرفع"
+reference_source = "script"
+turn_ends_ms = [3942]
+tags = []
+
+[[variants.segments]]
+root = "owner"
+path = "wired-m3/m23_paused_attachment_big-wired-m3-2.wav"
+sha256 = "3285c291887829c3e06f356309e1a5db2e88bd1b090d3c64affe3cdf00714925"
+
+[[variants.confirmations]]
+at = 2026-11-04T16:27:42.119984+03:00
+review_pass = 6
