@@ -7,8 +7,15 @@ can check without a call, each a `Check` that passes or says what to fix.
   shows only with `--synthesize`.
 - **The ONNX files** Silero VAD and Smart Turn run on, each file's SHA-256 against the one the
   installed Pipecat wheel's record holds, read from its metadata: Pipecat is not imported.
-- **The clock**: this machine's UTC time and the join tokens' skew allowance. Its skew against
-  another clock is not measured: no port reports a provider's time.
+- **The clock**: this machine's UTC time and its skew against the text-to-speech provider's
+  clock, with no request of its own: `check_language` returns the time the provider's answer
+  gave (Groq's `Date` header, whole seconds), and the skew is this machine's time at the middle
+  of that request minus it, rounded down to the second, from the last language check that gave
+  one. Rounded so, it is within 1 s of the true skew; so the check passes while the skew plus
+  1 s stays within the join tokens' allowance (`join.max_clock_skew_s`), and past it fails
+  with a FIX line that says how to set the clock, since tokens minted on a machine whose clock
+  is right would be refused. With no language check passed, or no time in their answers, the
+  line says the skew was not measured and why, and does not fail.
 - **`--synthesize`**: one short request per language, which checks its voice and the model's
   terms (Groq documents no other way to learn whether they are accepted), counted in the
   key's budget. A model whose terms are not accepted fails with the adapter's FIX line, which
@@ -23,6 +30,8 @@ from __future__ import annotations
 
 import base64
 import hashlib
+import math
+from collections.abc import Callable
 from dataclasses import dataclass
 from datetime import UTC, datetime
 from importlib import metadata
@@ -42,6 +51,15 @@ SAMPLES: Final[dict[str, str]] = {
     "en": "Voice check.",
 }
 _REINSTALL = "FIX: reinstall it (uv sync --reinstall-package pipecat-ai)."
+# The resolution of the provider's time: an HTTP Date holds whole seconds.
+RESOLUTION_S: Final = 1
+_SET_CLOCK = (
+    "FIX: set this machine's clock: on Windows, Settings > Time & language > Date & time > "
+    "Sync now, or w32tm /resync in an administrator's terminal; elsewhere, sync it with NTP "
+    "(on Linux, timedatectl set-ntp true)."
+)
+# This machine's UTC time, aware.
+Wall = Callable[[], datetime]
 
 
 @dataclass(frozen=True)
@@ -53,22 +71,56 @@ class Check:
     detail: str
 
 
+@dataclass(frozen=True)
+class _Reading:
+    """The time `provider`'s answer to a language check gave (`sent`), and this machine's at
+    the middle of that request (`local`)."""
+
+    provider: str
+    local: datetime
+    sent: datetime
+
+    @property
+    def skew_s(self) -> int:
+        """This machine's clock minus the provider's, rounded down to the whole second."""
+        return math.floor((self.local - self.sent).total_seconds())
+
+
+def _utc_now() -> datetime:
+    return datetime.now(UTC)
+
+
 async def checks(
-    settings: VoiceSettings, *, synthesize: bool, providers: Providers | None = None
+    settings: VoiceSettings,
+    *,
+    synthesize: bool,
+    providers: Providers | None = None,
+    wall: Wall = _utc_now,
 ) -> list[Check]:
     """Every check, in order; `providers` are the settings' own unless given (a test's fakes),
-    and are closed after when built here."""
+    and are closed after when built here; `wall` is this machine's UTC time unless given (a
+    test's)."""
     found = [_key(settings)]
     built = providers is None
     if providers is None:
         try:
             providers = Providers.from_settings(settings)
         except ConfigurationError as error:
-            return [*found, Check("providers", False, error.message), *onnx(), _clock(settings)]
+            clock = _clock(settings, wall(), "no language check ran")
+            return [*found, Check("providers", False, error.message), *onnx(), clock]
     try:
+        measured: _Reading | None = None
+        passed = False
         for tag in settings.tts.languages:
-            found.append(await _language(providers, tag))
-        found += [*onnx(), _clock(settings)]
+            check, reading = await _language(providers, tag, wall)
+            found.append(check)
+            passed, measured = passed or check.ok, reading or measured
+        why = (
+            f"no answer of {providers.tts.name}'s gave its time (an HTTP Date header)"
+            if passed
+            else "no language check passed"
+        )
+        found += [*onnx(), _clock(settings, wall(), measured or why)]
         if synthesize:
             for tag in settings.tts.languages:
                 found.append(await _synthesis(providers, tag))
@@ -90,13 +142,20 @@ def _key(settings: VoiceSettings) -> Check:
     return Check("key", True, "set")
 
 
-async def _language(providers: Providers, tag: LanguageTag) -> Check:
+async def _language(
+    providers: Providers, tag: LanguageTag, wall: Wall
+) -> tuple[Check, _Reading | None]:
+    """`tag`'s check, and the provider's time its answer gave, if any, against this machine's
+    at the middle of the request."""
     name = f"model and voice {tag}"
+    before = wall()
     try:
-        await providers.tts.check_language(tag)
+        sent = await providers.tts.check_language(tag)
     except (ConfigurationError, ProviderError) as error:
-        return Check(name, False, _failure(error))
-    return Check(name, True, "listed")
+        return Check(name, False, _failure(error)), None
+    local = before + (wall() - before) / 2
+    reading = None if sent is None else _Reading(providers.tts.name, local, sent)
+    return Check(name, True, "listed"), reading
 
 
 async def _synthesis(providers: Providers, tag: LanguageTag) -> Check:
@@ -140,15 +199,35 @@ def _model(file: metadata.PackagePath) -> Check:
     return Check(name, True, shown)
 
 
-def _clock(settings: VoiceSettings) -> Check:
-    now = datetime.now(UTC).strftime("%Y-%m-%dT%H:%M:%SZ")
-    skew = settings.join.max_clock_skew_s
+def _clock(settings: VoiceSettings, now: datetime, measured: _Reading | str) -> Check:
+    """The clock's line: its skew against the provider's (`measured`), or why it was not
+    measured, beside this machine's time (`now` when not measured)."""
+    allowed = settings.join.max_clock_skew_s
+    if isinstance(measured, str):
+        return Check(
+            "clock",
+            True,
+            f"this machine's UTC time is {_shown(now)}; join tokens are taken up to {allowed} s "
+            f"off it (join.max_clock_skew_s); its skew was not measured: {measured}",
+        )
+    skew, provider = measured.skew_s, measured.provider
+    said = (
+        f"this machine's UTC time is {_shown(measured.local)}; its skew against {provider}'s "
+        f"clock is {skew:+d} s (this machine's minus {provider}'s, read to the second)"
+    )
+    allowance = f"the {allowed} s join tokens allow (join.max_clock_skew_s)"
+    if abs(skew) + RESOLUTION_S <= allowed:
+        return Check("clock", True, f"{said}, within {allowance} with 1 s for the reading")
     return Check(
         "clock",
-        True,
-        f"this machine's UTC time is {now}; join tokens are taken up to {skew} s off it "
-        "(join.max_clock_skew_s); its skew against another clock is not measured",
+        False,
+        f"{said}, past {allowance} with 1 s for the reading, so join tokens minted on a "
+        f"machine whose clock is right may be refused. {_SET_CLOCK}",
     )
+
+
+def _shown(when: datetime) -> str:
+    return when.astimezone(UTC).strftime("%Y-%m-%dT%H:%M:%SZ")
 
 
 def _failure(error: ConfigurationError | ProviderError) -> str:

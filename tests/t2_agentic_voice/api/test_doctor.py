@@ -1,24 +1,33 @@
 """`t2v doctor` (api/doctor.py), against a fake text-to-speech: the key; each language's model and
-voice with no synthesis; the ONNX files against the installed Pipecat's record; the clock; and,
-only with `--synthesize`, one short request per language. Each failure says what to fix, never a
-value, and the command fails."""
+voice with no synthesis; the ONNX files against the installed Pipecat's record; the clock and its
+skew against the provider's, read from the language checks' answers; and, only with
+`--synthesize`, one short request per language. Each failure says what to fix, never a value,
+and the command fails."""
 
 from __future__ import annotations
 
 import asyncio
+import itertools
+from datetime import UTC, datetime, timedelta
+from email.utils import format_datetime
 from importlib import metadata
 from pathlib import Path
 from typing import Any
 
+import httpx
 import pytest
 from pydantic import SecretStr
+from t2_agentic_voice.adapters.groq_tts import GroqTTS
 from t2_agentic_voice.api.cli import main
-from t2_agentic_voice.api.doctor import SAMPLES, Check, checks, onnx
+from t2_agentic_voice.api.doctor import SAMPLES, Check, Wall, checks, onnx
 from t2_agentic_voice.api.runtime import Providers
 from t2_agentic_voice.core.config import VoiceSettings
 from t2_agentic_voice.core.errors import ProviderError
 from t2_agentic_voice.core.settings.groq import GroqSettings
+from t2_agentic_voice.core.settings.join import JoinSettings
+from t2_agentic_voice.core.settings.tts import TtsSettings
 
+from tests.t2_agentic_voice.adapters.groq_support import FakeGroq
 from tests.t2_agentic_voice.fakes import FakeSpeechToText, FakeTextToSpeech
 
 KEY = "gsk_made-up-key-0123456789abcdefghijklmnop"
@@ -32,6 +41,10 @@ LANGUAGES = (
     '{"ar": {"model": "canopylabs/orpheus-arabic-saudi", "voice": "abdullah"}, '
     '"en": {"model": "canopylabs/orpheus-v1-english", "voice": "troy"}}'
 )
+# This machine's time in the clock's tests: 0.4 s past a whole second, which Groq's Date lacks.
+NOW = datetime(2026, 11, 4, 9, 15, 2, 400_000, tzinfo=UTC)
+SET_CLOCK = "FIX: set this machine's clock: on Windows, Settings > Time & language"
+UNMEASURED = "its skew was not measured: "
 
 
 def _settings(tmp_path: Path, **groups: Any) -> VoiceSettings:
@@ -39,9 +52,11 @@ def _settings(tmp_path: Path, **groups: Any) -> VoiceSettings:
     return VoiceSettings(env="dev", groq=groq, **groups)
 
 
-def _run(settings: VoiceSettings, tts: FakeTextToSpeech, *, synthesize: bool) -> list[Check]:
+def _run(
+    settings: VoiceSettings, tts: Any, *, synthesize: bool, wall: Wall = lambda: NOW
+) -> list[Check]:
     providers = Providers(stt=FakeSpeechToText(), tts=tts)
-    return asyncio.run(checks(settings, synthesize=synthesize, providers=providers))
+    return asyncio.run(checks(settings, synthesize=synthesize, providers=providers, wall=wall))
 
 
 def _by_name(found: list[Check]) -> dict[str, Check]:
@@ -115,6 +130,7 @@ def test_no_key_fails_and_the_rest_is_still_checked(tmp_path: Path) -> None:
     assert not named["key"].ok and "T2V_GROQ__API_KEY" in named["key"].detail
     assert not named["providers"].ok and "FIX:" in named["providers"].detail
     assert named["clock"].ok and any(name.startswith("onnx ") for name in named)
+    assert named["clock"].detail.endswith(f"{UNMEASURED}no language check ran")
 
 
 def test_a_key_file_that_cannot_be_read_fails_naming_its_setting(tmp_path: Path) -> None:
@@ -190,3 +206,137 @@ def test_t2v_doctor_prints_each_check_and_fails_when_one_does(
         "T2V_TTS__LANGUAGES", '{"en": {"model": "canopylabs/orpheus-v1-english", "voice": "troy"}}'
     )
     assert main(["doctor"]) == 0
+
+
+@pytest.mark.parametrize(
+    ("allowed", "skew", "ok"),
+    [
+        (30, 0, True),
+        (30, 12, True),
+        (30, -12, True),
+        (30, 29, True),  # at the allowance: 29 s and 1 s for the reading
+        (30, -29, True),
+        (30, 30, False),  # past it, since the reading may be 1 s short
+        (30, -30, False),
+        (30, 3600, False),
+        (5, 4, True),
+        (5, 5, False),
+    ],
+)
+def test_the_clock_passes_while_its_skew_and_1_s_stay_within_the_allowance(
+    tmp_path: Path, allowed: int, skew: int, ok: bool
+) -> None:
+    """The provider's time a whole second, as Groq's Date is, and this machine's 0.4 s past
+    one: the skew is this machine's minus the provider's, signed and read to the second, and
+    the check asks for no answer beyond the language checks'."""
+    tts = FakeTextToSpeech(sent_at=NOW.replace(microsecond=0) - timedelta(seconds=skew))
+    settings = _settings(tmp_path, join=JoinSettings(max_clock_skew_s=allowed))
+    clock = _by_name(_run(settings, tts, synthesize=False))["clock"]
+    assert clock.ok is ok
+    assert clock.detail.startswith(
+        "this machine's UTC time is 2026-11-04T09:15:02Z; its skew against fake's clock is "
+        f"{skew:+d} s (this machine's minus fake's, read to the second), "
+        f"{'within' if ok else 'past'} the {allowed} s join tokens allow (join.max_clock_skew_s)"
+    )
+    assert (SET_CLOCK in clock.detail) is not ok
+    assert ("w32tm /resync" in clock.detail) is not ok
+    assert tts.checked == ["ar-SA", "ar", "en"] and tts.calls == []
+
+
+def test_the_skew_is_read_at_the_middle_of_the_last_check_that_gave_a_time(
+    tmp_path: Path,
+) -> None:
+    """Each check's request takes 2 s on this machine's clock: en's, the last, runs from 8 s to
+    10 s past NOW, so the skew is read 9.4 s past the provider's time."""
+    ticks = itertools.count()
+
+    def wall() -> datetime:
+        return NOW + timedelta(seconds=2 * next(ticks))
+
+    tts = FakeTextToSpeech(sent_at=NOW.replace(microsecond=0))
+    clock = _by_name(_run(_settings(tmp_path), tts, synthesize=False, wall=wall))["clock"]
+    assert clock.ok and clock.detail.startswith(
+        "this machine's UTC time is 2026-11-04T09:15:11Z; its skew against fake's clock is +9 s"
+    )
+
+
+def test_with_no_time_given_or_no_check_passed_the_skew_is_not_measured(tmp_path: Path) -> None:
+    timeless = _by_name(_run(_settings(tmp_path), FakeTextToSpeech(), synthesize=False))
+    assert timeless["clock"].ok and timeless["clock"].detail.endswith(
+        f"{UNMEASURED}no answer of fake's gave its time (an HTTP Date header)"
+    )
+    refused = FakeTextToSpeech(languages=(), sent_at=NOW - timedelta(hours=1))
+    found = _by_name(_run(_settings(tmp_path), refused, synthesize=False))
+    assert not found["model and voice en"].ok and found["clock"].ok
+    assert found["clock"].detail == (
+        "this machine's UTC time is 2026-11-04T09:15:02Z; join tokens are taken up to 30 s off "
+        f"it (join.max_clock_skew_s); {UNMEASURED}no language check passed"
+    )
+
+
+LISTED = {
+    "object": "list",
+    "data": [
+        {"object": "model", "created": 0, "owned_by": "made-up", "id": voice.model}
+        for voice in TtsSettings().languages.values()
+    ],
+}
+
+
+@pytest.mark.parametrize(
+    ("date", "shown"),
+    [
+        (format_datetime(datetime(2026, 11, 4, 9, 15, 5, tzinfo=UTC), usegmt=True), "is -3 s"),
+        (None, f"{UNMEASURED}no answer of groq's gave its time"),
+        ("Wed, 32 Nov 2026 09:15:02 GMT", f"{UNMEASURED}no answer of groq's gave its time"),
+        ("made-up", f"{UNMEASURED}no answer of groq's gave its time"),
+    ],
+)
+def test_groqs_date_header_gives_the_skew_with_no_request_of_its_own(
+    tmp_path: Path, date: str | None, shown: str
+) -> None:
+    """Through the Groq adapter on a fake transport: its Date is read from each model list the
+    language checks ask for; a missing or malformed one leaves the skew unmeasured, never a
+    failure; and no request is sent beyond one model list per language."""
+    headers = {} if date is None else {"date": date}
+    fake = FakeGroq(*(httpx.Response(200, json=LISTED, headers=headers) for _ in range(3)))
+    settings = _settings(tmp_path)
+
+    async def run() -> list[Check]:
+        tts = GroqTTS.from_settings(settings, transport=fake)
+        providers = Providers(stt=FakeSpeechToText(), tts=tts)
+        try:
+            return await checks(settings, synthesize=False, providers=providers, wall=lambda: NOW)
+        finally:
+            await tts.aclose()
+
+    found = asyncio.run(run())
+    clock = _by_name(found)["clock"]
+    assert clock.ok and shown in clock.detail
+    assert [(r.method, r.url.path) for r in fake.requests] == [("GET", "/openai/v1/models")] * 3
+    assert all(KEY not in check.detail for check in found)
+
+
+def test_t2v_doctor_prints_the_clocks_skew_and_fails_past_the_allowance(
+    monkeypatch: pytest.MonkeyPatch, capsys: pytest.CaptureFixture[str]
+) -> None:
+    sent: list[datetime] = []
+
+    def fakes(cls: type[Providers], settings: VoiceSettings) -> Providers:
+        tts = FakeTextToSpeech(sent_at=sent[-1])
+        return Providers(stt=FakeSpeechToText(), tts=tts)
+
+    monkeypatch.setattr(Providers, "from_settings", classmethod(fakes))
+    monkeypatch.setenv("T2V_ENV", "dev")
+    monkeypatch.setenv("T2V_GROQ__API_KEY", KEY)
+    sent.append(datetime.now(UTC) - timedelta(hours=1))
+    assert main(["doctor"]) == 1
+    out = capsys.readouterr().out
+    [clock] = [line for line in out.splitlines() if line.startswith("FAIL  clock")]
+    assert "its skew against fake's clock is +3600 s" in clock and SET_CLOCK in clock
+    assert KEY not in out
+    sent.append(datetime.now(UTC))
+    assert main(["doctor"]) == 0
+    out = capsys.readouterr().out
+    [clock] = [line for line in out.splitlines() if line.startswith("ok    clock")]
+    assert "within the 30 s join tokens allow" in clock and KEY not in out

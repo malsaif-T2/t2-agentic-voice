@@ -9,6 +9,7 @@ from __future__ import annotations
 import struct
 from collections.abc import AsyncIterator
 from dataclasses import dataclass
+from datetime import datetime
 
 from t2_agentic_voice.domain.ports.text_to_speech import AudioChunk, TextToSpeech
 from t2_agentic_voice.voice.session.io import SYSTEM_CLOCK, Clock
@@ -69,8 +70,8 @@ class TimedSpeech:
             if close is not None:
                 await close()
 
-    async def check_language(self, language: str) -> None:
-        await self.inner.check_language(language)
+    async def check_language(self, language: str) -> datetime | None:
+        return await self.inner.check_language(language)
 
     async def aclose(self) -> None:
         await self.inner.aclose()

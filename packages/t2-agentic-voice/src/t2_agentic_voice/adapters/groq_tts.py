@@ -12,9 +12,10 @@ header, never assumes it (adapters/wav_stream.py); trims the silence before the 
 `tts.trim_silence` on; flags a take that came back cut short on its last chunk; puts each
 response's `x-ratelimit-remaining-requests` and `x-ratelimit-remaining-tokens` on its first
 chunk; and raises `ProviderError` for every failure, a model whose terms are not accepted
-`rejected` with a FIX line that names the console's terms. A cancel stops it within 50 ms,
-leaving no task or connection. No public signature names a `groq` type (the design's 5.3).
-Public through the `groq` facade (D-021).
+`rejected` with a FIX line that names the console's terms. Its `check_language` reads Groq's model
+list raw, so it returns the time Groq sent it from its `Date` header, which `t2v doctor` measures
+this machine's clock against. A cancel stops it within 50 ms, leaving no task or connection. No
+public signature names a `groq` type (the design's 5.3). Public through the `groq` facade (D-021).
 
 - **Streaming.** The answer is read as Groq streams it (the SDK's streamed response), each piece
   of audio a chunk as soon as it holds whole samples, so the first sound plays before the take
@@ -42,6 +43,7 @@ Public through the `groq` facade (D-021).
 from __future__ import annotations
 
 from collections.abc import AsyncIterator, Mapping
+from datetime import datetime
 
 import httpx
 from pydantic import BaseModel, ConfigDict, JsonValue, SecretStr, ValidationError
@@ -55,6 +57,8 @@ from t2_agentic_voice.adapters.groq_client import (
     headroom,
     no_key,
     own_headers,
+    raw_response,
+    server_time,
 )
 from t2_agentic_voice.adapters.wav_stream import WavStream
 from t2_agentic_voice.core.config import VoiceSettings
@@ -201,9 +205,11 @@ class GroqTTS:
         if tail or short or not sent:
             yield _chunk(tail, wav.sample_rate, remaining if not sent else None, cut=short)
 
-    async def check_language(self, language: str) -> None:
+    async def check_language(self, language: str) -> datetime | None:
         """Return when `language` has a model and a voice and Groq lists the model, with no
-        synthesis (the port's `check_language`): one GET of Groq's model list.
+        synthesis (the port's `check_language`): one GET of Groq's model list, asked for raw so
+        its headers are read. It returns when Groq sent the list, from its `Date` header
+        (`groq_client.server_time`), None when the answer has none it can read.
         ConfigurationError for a language with no model or voice; ProviderError (`rejected`)
         for a model the list leaves out, and for every failure of the request."""
         voice = self._languages.get(language)
@@ -216,8 +222,10 @@ class GroqTTS:
             )
         problem: ProviderError | None = None
         try:
-            listed = await self._groq.models.list()
-            models = _Listing.model_validate(listed.to_dict()).ids()
+            with raw_response():
+                answer = await self._groq.models.with_raw_response.list()
+            models = _Listing.model_validate((await answer.parse()).to_dict()).ids()
+            sent_at = server_time(answer.headers)
         except Exception as error:  # every failure, the SDK's and the answer's; never a cancel
             problem = failure(error)
         if problem is not None:
@@ -229,6 +237,7 @@ class GroqTTS:
             )
             details: dict[str, JsonValue] = {"error": "model_not_listed", "model": voice.model}
             raise _with_fix(ProviderError("rejected", False, details=details), fix)
+        return sent_at
 
     async def aclose(self) -> None:
         """Close the adapter's HTTP connections."""

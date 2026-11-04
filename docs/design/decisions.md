@@ -811,7 +811,7 @@ twice; DOC-REF: every `D-NNN` cited anywhere is a heading here), so keep its sha
   `test_settings_read_only.py` and `test_settings_ref.py`, and
   `tests/harness/test_isolation.py`.
 
-## D-029 · Serving and identity: the sidecar and the mount, one process per `var_dir`, signed join tokens, the offer secret · 2026-11-02 · Accepted (the owner, 2026-11-01, as the design's 4.5, 5.2, 5.5, 6.5, 7.4 and 11; one bullet Proposed)
+## D-029 · Serving and identity: the sidecar and the mount, one process per `var_dir`, signed join tokens, the offer secret · 2026-11-02 · Accepted (the owner, 2026-11-01, as the design's 4.5, 5.2, 5.5, 6.5, 7.4 and 11; its Proposed bullet accepted by the owner on 2026-11-04, plan 003)
 
 - **Context:** the design gives a team two ways to serve calls, the sidecar by default and the
   mount for one-worker apps (its 4.5; D-018, question 22); one process per `var_dir`
@@ -1532,6 +1532,16 @@ twice; DOC-REF: every `D-NNN` cited anywhere is a heading here), so keep its sha
     A model whose terms are not accepted may show only at its first synthesis, which
     `t2v doctor --synthesize` checks: Groq documents no other way to learn it. This narrows the
     design's "raises naming the missing model, voice, access or terms".
+  - `check_language` returns the provider's time as its answer gave it, aware (UTC), or None
+    when it gave none (2026-11-04: plan 003's criterion names the clock's skew for
+    `t2v doctor`, and the owner ruled "Do it now" on TD-067's fix). `GroqTTS` asks for the
+    model list raw (`groq_client.raw_response()`), so that GET carries the raw-response marker
+    too, and returns its `Date` (`groq_client.server_time()`: one HTTP-date in GMT, read by
+    `email.utils.parsedate_to_datetime`, else None, never an error). `t2v doctor` measures this
+    machine's clock against it with no request of its own (api/doctor.py). The wider return
+    breaks no adapter that returns None and no caller (the design's 5.4). Set aside: an
+    attribute on the adapter, which checks run at once would race on and which doctor could
+    read only by naming the adapter's class; and a request of its own for the time.
   - `Transcript` gains `remaining_requests` and `remaining_tokens`, optional and None by
     default, the headroom the provider reported with the answer, so the call's report can keep
     Whisper's as it keeps Orpheus's. `GroqSTT` fills them. The SDK hands back an answer's
@@ -1552,12 +1562,14 @@ twice; DOC-REF: every `D-NNN` cited anywhere is a heading here), so keep its sha
     `RAW_MARKER` to it).
 - **Consequences:** an adapter a team writes for these ports implements `aclose()`; no team has
   one yet, since no tag has been installed. The design's 6.1 does not show these fields, nor
-  its 6.5 the store's `aclose()`.
+  `check_language`'s return, nor its 6.5 the store's `aclose()`.
 - **Evidence:** the types builder's choices in plan 003's decision log (step 10, 2026-11-02),
   and the review's finding on Whisper's headroom (2026-11-03). The tests:
   `tests/t2_agentic_voice/domain/test_ports.py`, `test_text_to_speech_port.py` and
   `test_identity_port.py`; for Whisper's headroom,
-  `tests/t2_agentic_voice/adapters/test_groq_stt.py` and `test_groq_client.py`.
+  `tests/t2_agentic_voice/adapters/test_groq_stt.py` and `test_groq_client.py`; for the
+  provider's time, `test_groq_client.py`, `test_groq_tts.py` and
+  `tests/t2_agentic_voice/api/test_doctor.py`.
 
 ## D-037 · Agent speech is keyed on replies, and the drop rule covers every reply, the greeting included · 2026-11-03 · Proposed (the agent's, plan 003's Block 0 after its review; beyond the design's 5.5 and 6.6)
 
@@ -1739,8 +1751,10 @@ twice; DOC-REF: every `D-NNN` cited anywhere is a heading here), so keep its sha
   model, beside the key's limits, so that M6 can set the cap on live calls. Groq publishes its
   developer plan's limits: Whisper large-v3 20 requests a minute, 2K a day, 7.2K audio seconds an
   hour and 28.8K a day; each Orpheus model 10 requests a minute, 100 a day, 1.2K tokens a minute and
-  3.6K a day (console.groq.com/docs/rate-limits, read 2026-11-04). The owner did not read the key's
-  own limits (plan 003's Q17, optional).
+  3.6K a day (console.groq.com/docs/rate-limits, read 2026-11-04). The prototype found the key on
+  Groq's on-demand tier, 400 requests a minute, not saying for which models
+  (`Ole5-chatbot/VOICE_LOG.md`, line 361, 2026-10-27). The owner did not read the key's own limits
+  (plan 003's Q17, optional).
 - **Decision** (the measurement, the owner's six echo calls of 2026-11-04, 3.45 call minutes):
   - Whisper: 26 requests, one per transcribed turn (D-034): 7.5 a call minute over the session, 4.9
     to 10.1 per call (median 7.2). Each is billed 10 s, for 2.3 s of audio on average (58.6 s sent,
@@ -1756,12 +1770,14 @@ twice; DOC-REF: every `D-NNN` cited anywhere is a heading here), so keep its sha
     give no requests per minute and no audio seconds, so the published 20 and 10 requests a minute
     and 7.2K audio seconds an hour stay the bound until the console is read.
 - **Consequences:** per day the key's limits are far from binding (the published 100 Orpheus
-  requests a day would have held about 16 call minutes); per minute they bind: at the peak of 10
-  Whisper requests a call minute, the published 20 hold about 2 echo calls at once on one key, and
-  Orpheus's 10 hold about 1.6 calls in one language. So M6's cap starts at about 2 live calls on one
-  key unless the console shows higher limits (Q17); a cut-off or a long pause adds a Whisper
-  request, and M4's talker adds its own model's. Plan 003's estimate (6 Whisper requests a minute,
-  up to 12 with cut-offs, and 6 Orpheus requests) holds.
+  requests a day would have held about 16 call minutes), and the headers' daily limits fit the
+  prototype's on-demand tier rather than the published table. Per minute they bind, and are not
+  known: at the peak of 10 Whisper requests a call minute, the published 20 hold about 2 echo calls
+  at once on one key and Orpheus's 10 about 1.6 in one language, while 400 a minute for each model
+  would hold about 40 and 60. So M6 reads the key's limits a minute in Groq's console (Q17) before
+  it sets the cap on live calls; a cut-off or a long pause adds a Whisper request, and M4's talker
+  adds its own model's. Plan 003's estimate (6 Whisper requests a minute, up to 12 with cut-offs,
+  and 6 Orpheus requests) holds.
 - **Evidence:** the six `CallReport`s under the main checkout's `var/reports/` (each `usage` row's
   requests, audio and billed seconds, characters, cache hits, and the headers' `remaining_requests`
   and `remaining_tokens`; `requests_per_minute`), and plan 003's progress log, 2026-11-04.

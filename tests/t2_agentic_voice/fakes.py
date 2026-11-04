@@ -101,7 +101,8 @@ class FakeTextToSpeech:
     9). It speaks `languages`, each text up to `limit` characters (a longer one is a rejected
     `ProviderError`, as the port says); the first chunk of each take carries `remaining`
     (requests, tokens), the last `cut_short` for a text in `cut_short`, and a text in `failures`
-    raises its error before any audio. It records each request and each language checked, waits
+    raises its error before any audio. It records each request and each language checked, each
+    check of a language it speaks giving `sent_at` as the provider's time (None: none), waits
     `delay_s` before the first chunk, so a test can cancel it mid-take, and says whether it was
     closed."""
 
@@ -120,6 +121,7 @@ class FakeTextToSpeech:
         cut_short: Collection[str] = (),
         failures: Mapping[str, ProviderError] | None = None,
         delay_s: float = 0.0,
+        sent_at: datetime | None = None,
     ) -> None:
         self.languages = languages
         self.limit = limit
@@ -130,6 +132,7 @@ class FakeTextToSpeech:
         self.cut_short = cut_short
         self.failures = dict(failures or {})
         self.delay_s = delay_s
+        self.sent_at = sent_at
         self.calls: list[tuple[str, str]] = []
         self.checked: list[str] = []
         self.closed = False
@@ -159,12 +162,13 @@ class FakeTextToSpeech:
                 cut_short=last and text in self.cut_short,
             )
 
-    async def check_language(self, language: str) -> None:
+    async def check_language(self, language: str) -> datetime | None:
         self.checked.append(language)
         if language not in self.languages:
             raise ConfigurationError(
                 f"The fake speaks no {language!r}. FIX: pass it in the fake's `languages`."
             )
+        return self.sent_at
 
     async def aclose(self) -> None:
         self.closed = True

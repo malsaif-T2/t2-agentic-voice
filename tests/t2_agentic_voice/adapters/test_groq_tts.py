@@ -3,7 +3,8 @@ streams (its sample rate read, its headroom on the first chunk, a take cut short
 last, the silence trimmed only when asked), the text refused over `max_chars`, and each failure
 as a ProviderError, a model whose terms are not accepted with its FIX. The prototype's call was
 read as a spec, never run (Ole5-chatbot/src/ole5_chat/voice/tts.py, lines 191-221). A fake
-transport only: nothing leaves the machine. And `check_language`, with no synthesis.
+transport only: nothing leaves the machine. And `check_language`, with no synthesis, giving the
+time Groq sent the model list from its `Date`.
 test_groq_tts_checks.py holds the rest: the key, the SDK's own variables, a stop and a timeout,
 and the settings' checks."""
 
@@ -12,6 +13,7 @@ from __future__ import annotations
 import asyncio
 import hashlib
 import json
+from datetime import UTC, datetime
 from pathlib import Path
 from typing import Any
 
@@ -268,10 +270,10 @@ LISTED = {
 }
 
 
-async def _check(fake: FakeGroq, language: str, **tts: Any) -> None:
+async def _check(fake: FakeGroq, language: str, **tts: Any) -> datetime | None:
     adapter = GroqTTS.from_settings(tts_settings(**tts), transport=fake)
     try:
-        await adapter.check_language(language)
+        return await adapter.check_language(language)
     finally:
         await adapter.aclose()
 
@@ -279,10 +281,26 @@ async def _check(fake: FakeGroq, language: str, **tts: Any) -> None:
 @pytest.mark.parametrize("language", ["ar-SA", "ar", "en"])
 def test_check_language_asks_only_for_the_model_list(language: str) -> None:
     fake = FakeGroq(httpx.Response(200, json=LISTED))
-    asyncio.run(_check(fake, language))
+    assert asyncio.run(_check(fake, language)) is None  # no Date: no time
     (request,) = fake.requests
     assert (request.method, request.url.path, request.content) == ("GET", "/openai/v1/models", b"")
     assert request.headers.get_list("authorization") == [f"Bearer {KEY}"]
+
+
+@pytest.mark.parametrize(
+    ("date", "sent"),
+    [
+        ("Wed, 04 Nov 2026 09:15:02 GMT", datetime(2026, 11, 4, 9, 15, 2, tzinfo=UTC)),
+        ("Wed, 04 Nov 2026 25:15:02 GMT", None),
+        ("made-up", None),
+    ],
+)
+def test_check_language_gives_the_time_groq_sent_the_list_in_its_one_request(
+    date: str, sent: datetime | None
+) -> None:
+    fake = FakeGroq(httpx.Response(200, json=LISTED, headers={"date": date}))
+    assert asyncio.run(_check(fake, "en")) == sent
+    assert [(r.method, r.url.path) for r in fake.requests] == [("GET", "/openai/v1/models")]
 
 
 def test_check_language_refuses_a_model_groq_does_not_list() -> None:

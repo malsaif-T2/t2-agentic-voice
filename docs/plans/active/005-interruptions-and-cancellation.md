@@ -121,9 +121,9 @@ TD-060 and TD-068, are paid, and TD-070 is checked when run C's recordings are i
 **Moved from M2** when the owner cut M2 to its fundamentals (2026-11-03, "The owner's
 decisions"): runs R5 to R7, the language a live call sends Whisper, with its open choice (plan
 003's Q15, Q5 here) and TD-011's reading; and the noise on another day (TD-032). They keep
-[plan 003](003-call-listens-and-speaks.md)'s registration, restated below as L, and run first
-(step 13). The timing runs T1 and T2 left M2 without coming to M3, and the prompt arm for
-product terms (plan 003's Q16) went to M4.
+[plan 003](../completed/003-call-listens-and-speaks.md)'s registration, restated below as L,
+and run first (step 13). The timing runs T1 and T2 left M2 without coming to M3, and the
+prompt arm for product terms (plan 003's Q16) went to M4.
 
 **Order with plan 003.** The owner gave the start on 2026-11-03, before M2's recorded session,
 for the work that needs none of it. Block 0 is cut from the main branch, which then holds `plan-003-integration` (merged after plan
