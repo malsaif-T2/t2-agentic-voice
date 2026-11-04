@@ -1,6 +1,6 @@
 # 003 · A call that listens and speaks
 
-Status: active · Milestone: M2 · Started: 2026-11-02
+Status: completed · Milestone: M2 · Started: 2026-11-02 · Completed: 2026-11-04
 
 ## Goal
 
@@ -136,7 +136,7 @@ Every number describes one speaker, the owner (D-006).
   Smart Turn and the adapters without a request (TD-012), builds tracing inside the lifespan
   (TD-014), and closes every adapter.
   `router()` and `serve()` refuse `env=test` and a runtime with no identity source.
-- [ ] `t2v serve`, `t2v dev`, `t2v doctor` (the key and the model list, with no synthesis; the
+- [x] `t2v serve`, `t2v dev`, `t2v doctor` (the key and the model list, with no synthesis; the
   ONNX files' SHA-256; the clock's skew; and, only with `--synthesize`, one short request per
   language that checks its voice and terms, counted in the budget, since Groq documents no other
   way to learn whether terms are accepted) and `t2v settings show --redacted` run, and `--help`
@@ -250,7 +250,7 @@ every call of M2 is on this laptop.
   laptop's speakers and then on the wired headset, through the Ole5 app's dev server on this laptop,
   each turn heard back, Stop and Esc each pressed once during an echo. *Amended 2026-11-03 ("The
   owner's decisions"): Edge dropped, the roadmap's M2 naming Chrome only.*
-- [ ] `uv run poe check` passes; the roadmap's M2 row, CLAUDE.md, ARCHITECTURE.md, SECURITY.md and
+- [x] `uv run poe check` passes; the roadmap's M2 row, CLAUDE.md, ARCHITECTURE.md, SECURITY.md and
   this plan's logs are up to date.
 
 ## Plan
@@ -1250,6 +1250,21 @@ manifests committed), and requests per call minute are recorded from it as a dec
   request to the token route; with a silent stream and a wrong code, `POST /token` answered 403 and
   the page showed «رمز الدخول غير صحيح.»; no console message. The data channel was checked in step
   16's check of `/voice/dev`, and the microphone, playback, Stop and Esc in the owner's session.
+- Deviation: `HeardWords`'s `[[restricted]]` row came with the integrator's asks (d4cadca), five
+  commits after the class (b1187b1) on the integration branch, not in the commit that created it, as
+  its criterion and SECURITY.md's invariant 1 say; nothing built it outside `voice` meanwhile.
+- 2026-11-04: Step 30, the close. The design's factual slips corrected as facts by an agent
+  (1f4c900, 924971e, merged at 504a657), its checkers' fixes among them. The criteria check found
+  five partly met: the agent's check of the widget was made (above); on the others the owner ruled
+  ("The owner's decisions"): the traces' gap and D-029's bullet accepted, the span test as debt
+  (TD-095), and the clock's skew built now: `t2v doctor` reads Groq's `Date` from the model list
+  `check_language` already asks for, no request added, `check_language` now returning the time it
+  was sent (a bullet in D-036, Proposed), and passes while the skew and 1 s of its reading stay
+  within `join.max_clock_skew_s` (2f4e739, merged at 8c8713d; its gate '3214 passed, 1 skipped',
+  100%; its review: one reviewer, one skeptic per finding, two low findings standing, put in
+  TD-067). Future improvements written; the roadmap's M2 row set to done, with a pointer from
+  "Planned later"; this plan moved to `completed/`. Final gate: 'check_architecture: OK (361 files
+  checked)', 'check_docs: OK (35 files checked)', 'TOTAL 10224 0 100%', '3214 passed, 1 skipped'.
 
 ## Decision log
 

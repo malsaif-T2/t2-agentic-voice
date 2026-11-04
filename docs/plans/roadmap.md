@@ -17,7 +17,7 @@ decisions (`D-NNN`), which are permanent. Living docs cite only milestones in th
 | --- | --- | --- |
 | M0 | Scaffold and harness | in progress ([000](active/000-project-scaffold.md); [001](completed/001-library-and-app.md) done) |
 | M1 | The measurement first: the owner's voice as a golden set | done ([002](completed/002-golden-set-baseline.md)) |
-| M2 | A call that listens and speaks | in progress ([003](active/003-call-listens-and-speaks.md)) |
+| M2 | A call that listens and speaks | done ([003](completed/003-call-listens-and-speaks.md)) |
 | M3 | Interruptions and cancellation | planned |
 | M4 | The talker and knowledge answers | planned |
 | M5 | Tickets, ticket status, and handoff | planned |
@@ -56,7 +56,7 @@ like any action, which changes M5's *Done when* line.
 
 On 2026-11-03 the agent asked "Move the deployment and network tests to when the server is
 available?" and the owner answered "Yes, move them"
-([plan 003](active/003-call-listens-and-speaks.md)). So M2's calls stay on the owner's laptop,
+([plan 003](completed/003-call-listens-and-speaks.md)). So M2's calls stay on the owner's laptop,
 which changes M2's name, its deployment bullet and its *Done when* line, and the deployment
 becomes a plan of its own (M6's section).
 
@@ -252,7 +252,7 @@ after a clear yes.
   server behind HTTPS, the widget embedded in the website, calls from another network and from one
   that blocks UDP, and the media path recorded as a decision. It becomes a plan of its own as soon
   as the owner has access to the server, whichever milestone is then in progress, and at the latest
-  in M6 ([plan 003, "The deployment, moved out of M2"](active/003-call-listens-and-speaks.md#the-deployment-moved-out-of-m2)).
+  in M6 ([plan 003, "The deployment, moved out of M2"](completed/003-call-listens-and-speaks.md#the-deployment-moved-out-of-m2)).
 - *Library:* timeouts and spoken fallbacks per provider, 429 handling with one limiter per
   model, admission control with a busy notice, drain, usage in each call's report; the guide's
   deployment and runbook pages.
@@ -298,6 +298,11 @@ targets hold at the cap on live calls.
   (first a filter for text from silence and echo, how M3 hears short Saudi words, a prompt arm
   for product terms, M3's first window, the language a live call sends and the noise on another
   day; then ticket numbers read back and compound number words).
+- What M2 left for later, ordered by expected value: [plan 003's Future
+  improvements](completed/003-call-listens-and-speaks.md#future-improvements) (first a caller who
+  pauses mid-request, cut by Smart Turn, and what the caller waits for against what the report says,
+  both M3's; then the stop's own latency, product terms and paraphrase, the first call after a
+  start, traces in every recorded run, and the key's limits a minute before M6 sets its cap).
 
 ## Decided
 
@@ -352,7 +357,7 @@ To decide before M2, which builds the call set-up:
   for the answer: they get their tokens from the Ole5 app's access-code route (plan 003's Q4), and
   the answer is taken up with the deployment (plan 003's Q12, moved out of M2 on 2026-11-03).
 - Where the backend and Phoenix run: on the owner's machine for now, Phoenix as M1's (the owner,
-  2026-11-02, [plan 003](active/003-call-listens-and-speaks.md)). The deployment moved out
+  2026-11-02, [plan 003](completed/003-call-listens-and-speaks.md)). The deployment moved out
   of M2 (the owner, 2026-11-03, plan 003): how WebRTC media reaches the backend from customers'
   networks (UDP ports, a TURN service, or another transport) is decided in the deployment's own
   plan, on the server, as soon as the owner has access to it (M6's section).
