@@ -21,3 +21,7 @@ tags = ["call", "over-assistant"]
 root = "calls"
 path = "call-srjwnturybmf0qmj-turn-7.wav"
 sha256 = "8ec3d3c934d72866a5796493ea502442f312e30f3e5813d2e889ea997133a4a1"
+
+[[variants.confirmations]]
+at = 2026-11-04T17:35:50.366770+03:00
+review_pass = 7

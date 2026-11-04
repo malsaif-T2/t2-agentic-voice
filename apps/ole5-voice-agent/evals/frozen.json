@@ -1,8 +1,8 @@
 {
   "about": "The golden set's expected answers, frozen by `uv run poe golden` from the items in golden/: each accepted variant's references (its own and its item's alternatives), and the variants left out until the owner's check. Never edited by hand: a changed item shows as a diff of this file, reviewed like code.",
   "accepted": {
-    "items": 136,
-    "variants": 419
+    "items": 140,
+    "variants": 423
   },
   "items": [
     {
@@ -276,6 +276,74 @@
           "device": "laptop",
           "expected": [
             "yeah"
+          ]
+        }
+      ]
+    },
+    {
+      "id": "call-bv5tsbxzfhyxbaxk-turn-1",
+      "split": "dev",
+      "kind": "stop_word",
+      "language": "saudi",
+      "want": null,
+      "terms": [],
+      "variants": [
+        {
+          "id": "call-bv5tsbxzfhyxbaxk-turn-1",
+          "device": "wired",
+          "expected": [
+            "وقف وقف"
+          ]
+        }
+      ]
+    },
+    {
+      "id": "call-c7es2sdh_mq1dvz7-turn-0",
+      "split": "held-out",
+      "kind": "noise",
+      "language": "none",
+      "want": null,
+      "terms": [],
+      "variants": [
+        {
+          "id": "call-c7es2sdh_mq1dvz7-turn-0",
+          "device": "laptop",
+          "expected": [
+            ""
+          ]
+        }
+      ]
+    },
+    {
+      "id": "call-srjwnturybmf0qmj-turn-2",
+      "split": "dev",
+      "kind": "noise",
+      "language": "none",
+      "want": null,
+      "terms": [],
+      "variants": [
+        {
+          "id": "call-srjwnturybmf0qmj-turn-2",
+          "device": "laptop",
+          "expected": [
+            ""
+          ]
+        }
+      ]
+    },
+    {
+      "id": "call-srjwnturybmf0qmj-turn-7",
+      "split": "dev",
+      "kind": "listening_sound",
+      "language": "saudi",
+      "want": null,
+      "terms": [],
+      "variants": [
+        {
+          "id": "call-srjwnturybmf0qmj-turn-7",
+          "device": "laptop",
+          "expected": [
+            "طيب"
           ]
         }
       ]
@@ -4333,26 +4401,5 @@
       ]
     }
   ],
-  "left_out": [
-    {
-      "item": "call-bv5tsbxzfhyxbaxk-turn-1",
-      "variant": "call-bv5tsbxzfhyxbaxk-turn-1",
-      "why": "typed by the owner, waiting on its second confirmation in a later review pass"
-    },
-    {
-      "item": "call-c7es2sdh_mq1dvz7-turn-0",
-      "variant": "call-c7es2sdh_mq1dvz7-turn-0",
-      "why": "not yet confirmed by the owner's listen"
-    },
-    {
-      "item": "call-srjwnturybmf0qmj-turn-2",
-      "variant": "call-srjwnturybmf0qmj-turn-2",
-      "why": "not yet confirmed by the owner's listen"
-    },
-    {
-      "item": "call-srjwnturybmf0qmj-turn-7",
-      "variant": "call-srjwnturybmf0qmj-turn-7",
-      "why": "typed by the owner, waiting on its second confirmation in a later review pass"
-    }
-  ]
+  "left_out": []
 }
