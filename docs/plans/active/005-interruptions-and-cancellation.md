@@ -421,6 +421,20 @@ milestone a contract it cannot build on. Everything else becomes a row in
   daily limits are far above the published ones (100,000 Orpheus requests a day), so only the
   per-minute limits bind the runs and the live calls. Next: the owner's M3 recording session,
   and the merge into the main branch on the owner's word.
+- 2026-11-04: M2's end-of-turn baseline, E1, as the plan-003 session reported it (on the main
+  branch at dec21c2, not yet merged here): with the default turn settings, Smart Turn cut 22 of
+  the 23 dev paused requests, with no miss (E2: 23 of 23; held-out 16 of 16), each cut 65 to
+  140 ms after a speech-detector stop; on the secondary set, 23 cut-offs and 2 misses in 199
+  variants; Smart Turn's decision a median of 77 ms. Smart Turn scores the owner's mid-request
+  pauses as complete (a median probability of 0.97 over 45 pauses) as it scores the true ends
+  (0.96), so no threshold separates them (0.985 holds 34 of the 45 pauses but accepts 1 of the 23
+  ends): E's registered arms, a threshold of 0.7 or 0.8, cannot pass. The pauses, as the detector
+  hears them, last 220 to 720 ms (a median of 460): a hold after Smart Turn's "complete", cancelled
+  when the speech resumes, of about 500 ms bridges all 45, at about that much more on every turn's
+  end; the detector's 200 ms stop, which an overlap's decision waits on, is unchanged. Smart Turn
+  does call fillers and lone short words incomplete. E's arms and keep rule are replaced below
+  (amendment (8)), its delay bound the owner's call (Q8); the hold is a new `turns` key, built
+  after Q8.
 
 ## Decision log
 
@@ -719,6 +733,13 @@ registration, moved here unchanged):
   auto-detection got 23 of 35 segments against 32 of 35 with a forced language:
   `Ole5-chatbot/VOICE_LOG.md`, D24); R5 and R6 identical or nearly so (D-024).
 
+*Amended 2026-11-04, before any arm of E ran (E1, M2's baseline, showed no threshold separates
+the owner's pauses from the ends of the owner's turns):* (8) E's arms become **Ea**, a hold of 300 ms after
+Smart Turn's "complete", and **Eb**, a hold of 500 ms, each cancelled when the speech resumes
+(a `turns` key, 0 by default, which leaves a turn's end unchanged); the threshold stays 0.5. Its
+keep rule's bound on the median delay becomes the owner's call (Q8), in place of 300 ms; the rest
+of the rule stands.
+
 **E, the turn defaults** (offline, no spend; Q6, settled):
 - **Data:** the paused requests, each true turn end marked by the owner: dev's 6 items (23
   variants) with Q2's new ones (about 20 lines on the three devices, split by item), and
@@ -846,6 +867,15 @@ Before B (open):
   repository like the golden set's audio, and `pipecat-ai/pipecat-vap`'s code read for its
   decision procedure; no package is added to the library for B. **The agent recommends allowing
   it**, asked again with the file's name and size just before the step.
+- **Q8. How much later every turn may end, to stop cutting the owner's paused requests** (open,
+  asked 2026-11-04). E1 cut 22 of 23 dev paused requests; a hold after Smart Turn's "complete" of
+  about 500 ms bridges every pause measured, so each turn's end, and the echo (and M4's answer)
+  after it, comes about half a second later. Options: (a) accept up to 600 ms more at the median,
+  so Eb can pass if it removes the cut-offs; (b) accept up to 300 ms, so only Ea can pass, keeping
+  some cut-offs; (c) no hold in M3, the cut-offs left for Smart Turn fine-tuned on the owner's
+  turns (the roadmap's "Planned later"). **The agent recommends (a):** a talker that answers half
+  a request costs more than half a second, and a stop over the agent is not slowed (the hold acts
+  after the detector's stop, which an overlap's decision waits on).
 
 ## What the owner does
 
