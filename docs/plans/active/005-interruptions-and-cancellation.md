@@ -441,6 +441,26 @@ milestone a contract it cannot build on. Everything else becomes a row in
   87c54f6 (M2 closed; 8a47aeb, its merge, gated: 'TOTAL 12337 0 100%', '3847 passed, 1
   skipped'). Still to build before E runs: the hold after Smart Turn's "complete" (amendment
   (8)), a `turns` key off by default, and TD-108's pacer before O1.
+- 2026-11-04: Step 11. The owner recorded M3's 41 lines in the sittings `laptop-m3` and `wired-m3`
+  and confirmed every kept take in review pass 6. Deviation: no Bluetooth sitting is imported
+  (the owner's words, "The owner's decisions"): `bluetooth-m3` was recorded in part, many of its
+  takes not clear, and is skipped whole. Built by one agent (`plan-005-step-11` from 4b31a24;
+  53fddc4 to ae9b864): `import_recordings --skip-session`; the hold after Smart Turn's
+  "complete", `turns.complete_hold_ms` (0 by default; `voice/turn_hold.py`'s `HeldTurnStop`, and
+  `ThresholdSmartTurn.keep_turn`, so a turn that resumes is judged whole), resting on Pipecat
+  1.15.0's private paths as their docstrings say; TD-108's pacer, a clip's room and budget sized
+  by its length; `import_calls`'s `[[left_out]]`. Imported: 41 items and 82 variants (41 on the
+  laptop, 41 on the wired headset; 20 paused requests, 10 stop and pause words, 5 listening
+  sounds, 3 repeat requests, 2 corrections, 1 silence over a reply); `split --keep` kept every
+  committed item's side and held out 12 new items (24 variants); dev is 95 items, 289 variants;
+  `poe golden --check` passes. Run C's overlaps: five listed; the owner's labels made four items
+  (a stop word said twice, on the headset; two of background noise; a listening sound), one left
+  out (noise, then a lone question word: not unambiguous), and one call refused (its caller's track
+  0.11 s past the call); their clips saved, after the owner's OK, in `var/golden-audio/calls/clips`;
+  they wait for the owner's confirming listen before any run uses them. Gate at ae9b864:
+  'TOTAL 12425 0 100%', '3869 passed, 1 skipped'. Review (one reviewer under the owner's rule):
+  nothing under the rule. L runs on M1's 231 dev variants, as registered, the set having grown.
+  Its debt is TD-112.
 
 ## Decision log
 
@@ -529,6 +549,13 @@ affects.
 
 What the owner has already said that binds M3:
 
+- 2026-11-04, on the recording session: "I have finished the first two and reviewed them. The
+  Bluetooth one i skipped it because the voice was not clear at all in many recordings, I have
+  noted "Not clear!" in them, so lets skip Bluetooth. Now, what is left of M3? and finish it
+  off." So the `bluetooth-m3` sitting is left out whole, and M3 goes on to its close. Then, on the
+  overlaps of M2's calls, each labelled after a listen (`apps/ole5-voice-agent/evals/calls/labels.toml`
+  quotes the owner's words), and to the agent's question whether their clips may be saved under
+  `var/golden-audio/calls/clips`: "Yes, save them".
 - 2026-11-04, to Q8 and on M2's close: "Make it up to 600ms, it might change later if we found
   that its not a good choice. M2 is completed so merge to main then tell me how to start the
   recordings for M3. Once I am finished I will tell you." So Q8 is (a): E's keep rule accepts up
@@ -750,6 +777,10 @@ Smart Turn's "complete", and **Eb**, a hold of 500 ms, each cancelled when the s
 (a `turns` key, 0 by default, which leaves a turn's end unchanged); the threshold stays 0.5. Its
 keep rule's bound on the median delay becomes the owner's call (Q8), in place of 300 ms: 600 ms,
 settled 2026-11-04; the rest of the rule stands.
+
+*Amended 2026-11-04, before any arm of E ran (step 11's review):* (9) E gains **Ec**, a hold of
+600 ms, the most Q8's bound allows: the 500 ms hold bridges a pause of about the hold and Smart
+Turn's inference, so it may not bridge the owner's longest measured pause (720 ms).
 
 **E, the turn defaults** (offline, no spend; Q6, settled):
 - **Data:** the paused requests, each true turn end marked by the owner: dev's 6 items (23
