@@ -212,7 +212,10 @@ milestone a contract it cannot build on. Everything else becomes a row in
     their own commit (GP-18).
 15. **E** (no spend): `poe eot` on dev's paused requests, the base twice, then each arm; a kept
     arm's defaults move in their own commit, before O1, so O1 measures stops with the turn
-    defaults M3 keeps; held-out E once, at step 17.
+    defaults M3 keeps; held-out E once, at step 17. **B** (no spend, once Q8 allows the download):
+    the backchannel detector scored offline on the overlap set, with a small evals command beside
+    `poe overlap` that feeds each clip's caller audio to the model and keeps its frames' outputs;
+    held-out B once, at step 17, aggregates only.
 16. **O1 and O2:** `poe overlap` on dev, twice at one commit, at least an hour apart, history
     lines carried to the main branch in their own commits; at most one dated amendment of the
     rule, scored offline on their stored transcripts, before H3 and C3.
@@ -488,11 +491,28 @@ affects.
   Opus packet, the 15.6 ms step of Windows' timer and the stop path; the test bounds it at
   105.6 ms, each part named. The browser's own jitter buffer adds to it (UNVERIFIED in Chrome);
   the live calls show whether that tail is heard (TD-110).
+- 2026-11-04: Pipecat's backchannel detector (`pipecat-ai/backchannel-detector` on Hugging
+  Face: a streaming audio model of about 734k parameters, a causal convolution and a GRU, 40 ms
+  chunks of the caller's audio after echo cancellation, about 0.3 ms of CPU a chunk, BSD-2-Clause;
+  its card, read 2026-11-04) is tried offline first, as arm B, and never behind a call in M3: it
+  is English-only and trained on conversations between people, with its echo simulated, so how
+  it hears Saudi listening sounds and the residue of Chrome's echo cancellation is unknown. If it
+  passes B's rule, using it in a call (as an early signal: no Whisper request for a clear
+  backchannel, an earlier stop for a clear floor-take, the word rule still deciding «وقف») lands
+  behind a setting, off, with a registered comparison of its own, put to the owner then. The
+  barge-in classifiers on Hugging Face (`ozonetg/bargein-classifier-*`, text encoders on English
+  bases, their cards gated) are not tried in M3: they read Whisper's text as M3's rule does, so
+  they save no time, and their language and licence are unknown; their inputs (what the agent
+  said, what it was still to say, the caller's words) are noted for M4's classifier.
 
 ## The owner's decisions
 
 What the owner has already said that binds M3:
 
+- 2026-11-04, to the agent's question "Add the backchannel detector to plan 005 as an offline
+  trial arm?" (after the agent read Pipecat's backchannel detector and a barge-in classifier
+  for the owner): "Yes, add it". So B is registered below, offline and with no spend; it changes
+  no call's behaviour in M3, and the download it needs is asked of the owner first (Q8).
 - 2026-11-04, after the code's close: the owner asked why the talker or a classifier should not
   decide stop, repeat and pause rather than word lists; the agent proposed that the library keep
   the fast stop (latency, a talker that cannot block its own interruption, Groq's limits) while
@@ -727,6 +747,36 @@ registration, moved here unchanged):
   between 0.5 and 0.8 is UNVERIFIED until E0. If E0 shows almost no cut-offs, no arm can pass the
   floor and the defaults stay.
 
+**B, the backchannel detector** (offline, no spend; added 2026-11-04, before any result, at the
+owner's word):
+- **Data:** O's overlap set (the clips tagged `over-assistant`, the script's stop, repeat and
+  listening items fed over a reply, the silence, noise and echo items), with M3's new lines once
+  recorded; held-out once at step 17, aggregates only. Each clip's caller audio is fed at 16 kHz
+  in the model's 40 ms chunks, the bot's state given as speaking from the clip's start, as the
+  replay plays the clip over a reply.
+- **The arm:** the model's own decision procedure, as `pipecat-ai/pipecat-vap` applies it to its
+  outputs (p(backchannel), continuer and assessment; p(floor), negative and floor-take), read
+  from that code before the run (UNVERIFIED until read); no threshold tuned on dev before B1's
+  result, at most one dated amendment after it, scored offline on the kept frame outputs.
+- **Metrics, per variant:** the decision (backchannel, floor or none) and when, from the onset;
+  by kind, language and device. Floor-takes caught: the stop and pause words, the repeat requests
+  and the requests over a reply read as floor within 700 ms of the onset (the card's own
+  measure). Backchannels talked through: the listening sounds read as backchannel or none. The
+  echo, silence and noise read as backchannel or none.
+- **The rule, for a later use in calls** (not a default move: B moves none): B passes if, on dev,
+  no stop or pause word and at most 10% of the requests over a reply read as backchannel (it must
+  never cost a real stop), at least 70% of the listening sounds read as backchannel or none, at
+  most 10% of the echo, silence and noise read as floor, and its median decision comes at least
+  200 ms before the overlap part's request would; held-out then confirms it by its aggregates.
+  Passing it, the owner is asked whether its use in calls is built in M3 or in M4.
+- **Expected (the agent's):** the sounds with no words («امم», «اها», "mm-hmm") read as
+  backchannel as in English; the Saudi listening words («تمام», «ايوه») more often as floor; the
+  stop words as floor; the echo on the laptop's speakers unknown. Its card reports, in English,
+  81 to 83% of interruptions caught within 700 ms, 2.6 to 4.1% lost as backchannels, and a median
+  catch 280 to 300 ms after the user began.
+- **Cost:** no money and no request; the model's ONNX file downloaded once (Q8), and a run of
+  about a minute on this laptop's CPU.
+
 **Cost and limits** (the agent's arithmetic, $0.111 an hour of billed audio, 10 s a request): L
 about $0.23 (plan 003's estimate) and about 100 minutes with its pauses; O on about 160 dev
 variants, at most 2 requests each, about $0.10 a run, $0.20 for O1 and O2; H3 about $0.04; C3
@@ -788,6 +838,15 @@ Before the runs:
 - **Q7. The budget cap** for M3's paid runs and calls, against about $0.63. *Settled: $5,* M1's
   cap, as the agent recommended.
 
+Before B (open):
+
+- **Q8. The download B needs.** The model's ONNX file from `pipecat-ai/backchannel-detector` on
+  Hugging Face (BSD-2-Clause; its size, a few megabytes for 734k parameters, is the agent's
+  estimate, UNVERIFIED until the download is asked with its exact size), kept outside the
+  repository like the golden set's audio, and `pipecat-ai/pipecat-vap`'s code read for its
+  decision procedure; no package is added to the library for B. **The agent recommends allowing
+  it**, asked again with the file's name and size just before the step.
+
 ## What the owner does
 
 1. **The start:** given on 2026-11-03; after M2's recorded session, tell the agent it is done.
@@ -796,7 +855,7 @@ Before the runs:
    of each stop and wait word and each paused request's true turn end.
 3. **After plan 003's run C:** confirm the imported overlaps' references and stop words' ends.
 4. **Before the first paid run:** say whether anything else uses the key during the runs; Q5's
-   answer applies only if L's rule leaves it open.
+   answer applies only if L's rule leaves it open. **Before B:** Q8, the model's download.
 5. **The live calls** (step 18): in Chrome, the rehearsal's steps 1 and 2 on the laptop's
    speakers and on the wired headset, a call on the speakers staying silent through five replies,
    and push-to-talk on the speakers; say whether each stop and repeat worked.
