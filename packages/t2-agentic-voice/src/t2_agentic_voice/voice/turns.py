@@ -15,8 +15,12 @@ the CPU through onnxruntime, with no torch, from the settings' `turns` group.
   explicitly with `wait_for_transcript=False` (Pipecat 1.15.0 defaults it on, and a turn's end
   would then come only with the transcript, or at its 5 s stop timeout: the spike's run D), so a
   turn's end is the analyzer's alone and the session waits for the transcript itself. With
-  `turns.smart_turn` off, every pause the detector hears ends the turn. `turns.max_silence_ms`
-  is Pipecat's stop timeout, the fallback that ends a turn whatever decides.
+  `turns.complete_hold_ms` above 0 it is turn_hold.py's `HeldTurnStop`, the analyzer's verdict
+  held that long and dropped when the speech resumes, Smart Turn keeping the turn's audio
+  through it; at 0 it is Pipecat's own strategy, so a turn's end is as it was. With
+  `turns.smart_turn` off, every pause the detector hears ends the turn, with no hold.
+  `turns.max_silence_ms` is Pipecat's stop timeout, the fallback that ends a turn whatever
+  decides.
 """
 
 from __future__ import annotations
@@ -36,6 +40,7 @@ from pipecat.turns.user_turn_processor import UserTurnProcessor
 from pipecat.turns.user_turn_strategies import UserTurnStrategies, UserTurnStrategiesParams
 
 from t2_agentic_voice.core.settings.turns import TurnSettings
+from t2_agentic_voice.voice.turn_hold import HeldTurnStop
 
 if TYPE_CHECKING:  # their modules import onnxruntime: imported when a model is built
     from pipecat.audio.turn.base_turn_analyzer import BaseTurnAnalyzer
@@ -60,8 +65,8 @@ def speech_detector(turns: TurnSettings) -> VADAnalyzer:
 
 
 def turn_analyzer(turns: TurnSettings) -> BaseTurnAnalyzer:
-    """A Smart Turn v3.2 with the `turns` settings, its threshold among them, its model loaded
-    on the CPU for one call."""
+    """A Smart Turn v3.2 with the `turns` settings, its threshold among them, keeping a turn's
+    audio through a hold (`complete_hold_ms`), its model loaded on the CPU for one call."""
     from pipecat.audio.turn.smart_turn.base_smart_turn import SmartTurnParams
 
     from t2_agentic_voice.voice.smart_turn import ThresholdSmartTurn
@@ -71,7 +76,12 @@ def turn_analyzer(turns: TurnSettings) -> BaseTurnAnalyzer:
         pre_speech_ms=turns.smart_turn_pre_speech_ms,
         max_duration_secs=turns.smart_turn_max_duration_s,
     )
-    return ThresholdSmartTurn(threshold=turns.smart_turn_threshold, params=params, cpu_count=1)
+    return ThresholdSmartTurn(
+        threshold=turns.smart_turn_threshold,
+        keep_turn=turns.complete_hold_ms > 0,
+        params=params,
+        cpu_count=1,
+    )
 
 
 def turn_processors(
@@ -79,10 +89,14 @@ def turn_processors(
 ) -> tuple[FrameProcessor, FrameProcessor]:
     """A call's speech detection and turn decision, in pipeline order: `detector` in a
     `VADProcessor`, then a `UserTurnProcessor` whose turns `analyzer` ends (every pause, with
-    none)."""
+    none), after the `complete_hold_ms` hold."""
     stop: BaseUserTurnStopStrategy
     if analyzer is None:
         stop = SpeechTimeoutUserTurnStopStrategy(user_speech_timeout=0.0, wait_for_transcript=False)
+    elif turns.complete_hold_ms > 0:
+        stop = HeldTurnStop(
+            hold_s=turns.complete_hold_ms / 1000, turn_analyzer=analyzer, wait_for_transcript=False
+        )
     else:
         stop = TurnAnalyzerUserTurnStopStrategy(turn_analyzer=analyzer, wait_for_transcript=False)
     strategies = UserTurnStrategies(
