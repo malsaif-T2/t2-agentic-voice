@@ -43,8 +43,8 @@ Speech-to-text: the adapter, the Whisper model, and how long a request may take.
 | `T2V_STT__MODEL` | one of whisper-large-v3, whisper-large-v3-turbo | `whisper-large-v3` | — | The Whisper model: whisper-large-v3 or whisper-large-v3-turbo. The default stayed large-v3 on a registered measurement (D-025), and changes only on another (GP-18). |
 | `T2V_STT__TIMEOUT_S` | number | `6` | seconds | The longest one transcription request may take before it is a timeout. |
 | `T2V_STT__LIVE_LANGUAGE` | one of session, auto | `session` | — | The language a live call sends Whisper: session (the call's language, fixed when it joins from the caller's pick or the join token's locale) or auto (none, so Whisper detects it). A registered measurement sets the default (GP-18). |
-| `T2V_STT__NO_SPEECH_MAX` | number, or unset | unset | — | The no-speech probability Whisper reports above which a transcript counts as no words (text from silence), for a turn and for speech over a reply, from 0 to 1; unset, the filter is off until a registered measurement sets it (GP-18). |
-| `T2V_STT__CAPTION_FILTER` | true or false | `false` | — | Whether a transcript that is one of the captions Whisper invents for silence or noise counts as no words; off until a registered measurement turns it on (GP-18). |
+| `T2V_STT__NO_SPEECH_MAX` | number, or unset | `0.5` | — | The no-speech probability Whisper reports above which a transcript counts as no words (text from silence), for a turn and for speech over a reply, from 0 to 1; unset, the threshold is off. 0.5 by the registered rule F (plan 005), which changes only on another registered measurement (GP-18). |
+| `T2V_STT__CAPTION_FILTER` | true or false | `true` | — | Whether a transcript that is one of the captions Whisper invents for silence or noise counts as no words; on by the registered rule F (plan 005), which changes only on another registered measurement (GP-18). |
 
 ## `tts`
 

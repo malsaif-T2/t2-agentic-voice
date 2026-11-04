@@ -12,7 +12,7 @@ here, as every request is, and judged by the overlaps (overlap.py). A turn's tra
 reuses its overlap's (no request of its own) is counted and told failed only as that request
 was, so one request is never counted or reported twice. A transcript the filter for
 text from silence takes for no words (domain/silence.py, under `stt.no_speech_max` and
-`stt.caption_filter`, both off by default) is heard as nothing, so it is said back as nothing.
+`stt.caption_filter`, both on by default) is heard as nothing, so it is said back as nothing.
 """
 
 from __future__ import annotations

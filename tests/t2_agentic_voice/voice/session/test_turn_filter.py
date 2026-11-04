@@ -1,8 +1,9 @@
 """What a turn says that is no words (voice/session/turn_book.py, echo.py): a transcript the
 filter for text from silence takes for no words (domain/silence.py's `from_silence`, Track A's,
 here a fake) is said back as nothing, the filter asked only when `stt.no_speech_max` or
-`stt.caption_filter` turns it on; and a clause with no letter or digit (a symbol Whisper writes
-on noise) is never sent to text-to-speech (TD-060)."""
+`stt.caption_filter` turns it on (both on by default, by the registered rule F, so each test
+here sets them); and a clause with no letter or digit (a symbol Whisper writes on noise) is
+never sent to text-to-speech (TD-060)."""
 
 from __future__ import annotations
 
@@ -31,6 +32,7 @@ from tests.t2_agentic_voice.voice.session.session_support import (
 )
 
 CAPTION = "made-up caption of the noise"  # what the fake filter takes for text from silence
+OFF = SttSettings(no_speech_max=None, caption_filter=False)  # the filter off, both its parts
 
 
 class FakeFilter:
@@ -61,7 +63,10 @@ def silence(monkeypatch: pytest.MonkeyPatch) -> FakeFilter:
 
 @pytest.mark.parametrize(
     ("stt", "listed"),
-    [(SttSettings(no_speech_max=0.5), ()), (SttSettings(caption_filter=True), CAPTION_LIST)],
+    [
+        (SttSettings(no_speech_max=0.5, caption_filter=False), ()),
+        (SttSettings(no_speech_max=None, caption_filter=True), CAPTION_LIST),
+    ],
     ids=["no-speech-max", "caption-filter"],
 )
 def test_a_transcript_of_text_from_silence_is_said_back_as_nothing(
@@ -98,7 +103,7 @@ def test_a_transcript_of_text_from_silence_is_said_back_as_nothing(
 def test_with_the_filter_off_it_is_never_asked(
     settings: VoiceSettings, silence: FakeFilter
 ) -> None:
-    io, _ = call(settings)
+    io, _ = call(settings.model_copy(update={"stt": OFF}))
 
     async def drive() -> None:
         await greeted(io)
@@ -111,7 +116,8 @@ def test_with_the_filter_off_it_is_never_asked(
 
 
 def test_a_clause_with_no_letter_or_digit_is_never_sent(settings: VoiceSettings) -> None:
-    io, _ = call(settings)
+    """With the filter off, so the symbol reaches the echo as the turn's words."""
+    io, _ = call(settings.model_copy(update={"stt": OFF}))
     setup = io.setup
     language, agent, max_chars = setup.language, setup.agent, setup.max_chars("en")
     assert said("♪ ♪", agent=agent, language=language, max_chars=max_chars) == []
