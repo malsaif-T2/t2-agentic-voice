@@ -1733,6 +1733,39 @@ twice; DOC-REF: every `D-NNN` cited anywhere is a heading here), so keep its sha
   `test_a_message_padded_past_the_bound_reaches_a_call_within_it`) and
   `tests/t2_agentic_voice/test_protocol_list.py`.
 
+## D-040 · Requests per call minute for each Groq model, measured, and the key's headroom · 2026-11-04 · Proposed (the agent's reading of plan 003's step 18 session, for M6's cap on live calls)
+
+- **Context:** the design's 16.3 asks M2 for the requests a call makes in a minute for each Groq
+  model, beside the key's limits, so that M6 can set the cap on live calls. Groq publishes its
+  developer plan's limits: Whisper large-v3 20 requests a minute, 2K a day, 7.2K audio seconds an
+  hour and 28.8K a day; each Orpheus model 10 requests a minute, 100 a day, 1.2K tokens a minute and
+  3.6K a day (console.groq.com/docs/rate-limits, read 2026-11-04). The owner did not read the key's
+  own limits (plan 003's Q17, optional).
+- **Decision** (the measurement, the owner's six echo calls of 2026-11-04, 3.45 call minutes):
+  - Whisper: 26 requests, one per transcribed turn (D-034): 7.5 a call minute over the session, 4.9
+    to 10.1 per call (median 7.2). Each is billed 10 s, for 2.3 s of audio on average (58.6 s sent,
+    260 s billed), so about 75 billed seconds a call minute.
+  - Orpheus, each model in its own language's calls: 12 Arabic requests in 1.95 call minutes (6.2 a
+    minute; 6.1 to 6.5 per call) and 9 English ones in 1.49 (6.0; 4.9 to 7.6 per call), one per
+    echo, the frame and the notices from the phrase cache (27 cache hits); about 150 characters an
+    Arabic call minute and 140 an English one.
+  - The key's headroom, from Groq's rate-limit headers on every answer, which the same page says
+    give requests per day and tokens per minute: Whisper 199,999 requests left after each request,
+    so a daily limit of at least 200,000; each Orpheus model 99,999 left, so at least 100,000 a day,
+    and 49,944 to 49,997 tokens left in the minute, so about 50,000 tokens a minute. The headers
+    give no requests per minute and no audio seconds, so the published 20 and 10 requests a minute
+    and 7.2K audio seconds an hour stay the bound until the console is read.
+- **Consequences:** per day the key's limits are far from binding (the published 100 Orpheus
+  requests a day would have held about 16 call minutes); per minute they bind: at the peak of 10
+  Whisper requests a call minute, the published 20 hold about 2 echo calls at once on one key, and
+  Orpheus's 10 hold about 1.6 calls in one language. So M6's cap starts at about 2 live calls on one
+  key unless the console shows higher limits (Q17); a cut-off or a long pause adds a Whisper
+  request, and M4's talker adds its own model's. Plan 003's estimate (6 Whisper requests a minute,
+  up to 12 with cut-offs, and 6 Orpheus requests) holds.
+- **Evidence:** the six `CallReport`s under the main checkout's `var/reports/` (each `usage` row's
+  requests, audio and billed seconds, characters, cache hits, and the headers' `remaining_requests`
+  and `remaining_tokens`; `requests_per_minute`), and plan 003's progress log, 2026-11-04.
+
 ## D-050 · Voice for a team's existing agent: a second, agent-led mode, after the Ole5 Voice Agent · 2026-11-02 · Accepted (the owner, 2026-11-02, as the direction and the order; the mode's open choices are decided when its phase is planned)
 
 - **Context:** in a meeting the owner relayed on 2026-11-02, a manager set the library's
