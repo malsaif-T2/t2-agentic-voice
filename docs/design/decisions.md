@@ -1532,6 +1532,16 @@ twice; DOC-REF: every `D-NNN` cited anywhere is a heading here), so keep its sha
     A model whose terms are not accepted may show only at its first synthesis, which
     `t2v doctor --synthesize` checks: Groq documents no other way to learn it. This narrows the
     design's "raises naming the missing model, voice, access or terms".
+  - `check_language` returns the provider's time as its answer gave it, aware (UTC), or None
+    when it gave none (2026-11-04: plan 003's criterion names the clock's skew for
+    `t2v doctor`, and the owner ruled "Do it now" on TD-067's fix). `GroqTTS` asks for the
+    model list raw (`groq_client.raw_response()`), so that GET carries the raw-response marker
+    too, and returns its `Date` (`groq_client.server_time()`: one HTTP-date in GMT, read by
+    `email.utils.parsedate_to_datetime`, else None, never an error). `t2v doctor` measures this
+    machine's clock against it with no request of its own (api/doctor.py). The wider return
+    breaks no adapter that returns None and no caller (the design's 5.4). Set aside: an
+    attribute on the adapter, which checks run at once would race on and which doctor could
+    read only by naming the adapter's class; and a request of its own for the time.
   - `Transcript` gains `remaining_requests` and `remaining_tokens`, optional and None by
     default, the headroom the provider reported with the answer, so the call's report can keep
     Whisper's as it keeps Orpheus's. `GroqSTT` fills them. The SDK hands back an answer's
@@ -1552,12 +1562,14 @@ twice; DOC-REF: every `D-NNN` cited anywhere is a heading here), so keep its sha
     `RAW_MARKER` to it).
 - **Consequences:** an adapter a team writes for these ports implements `aclose()`; no team has
   one yet, since no tag has been installed. The design's 6.1 does not show these fields, nor
-  its 6.5 the store's `aclose()`.
+  `check_language`'s return, nor its 6.5 the store's `aclose()`.
 - **Evidence:** the types builder's choices in plan 003's decision log (step 10, 2026-11-02),
   and the review's finding on Whisper's headroom (2026-11-03). The tests:
   `tests/t2_agentic_voice/domain/test_ports.py`, `test_text_to_speech_port.py` and
   `test_identity_port.py`; for Whisper's headroom,
-  `tests/t2_agentic_voice/adapters/test_groq_stt.py` and `test_groq_client.py`.
+  `tests/t2_agentic_voice/adapters/test_groq_stt.py` and `test_groq_client.py`; for the
+  provider's time, `test_groq_client.py`, `test_groq_tts.py` and
+  `tests/t2_agentic_voice/api/test_doctor.py`.
 
 ## D-037 · Agent speech is keyed on replies, and the drop rule covers every reply, the greeting included · 2026-11-03 · Proposed (the agent's, plan 003's Block 0 after its review; beyond the design's 5.5 and 6.6)
 

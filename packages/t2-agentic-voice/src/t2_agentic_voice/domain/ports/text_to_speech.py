@@ -14,6 +14,7 @@ and a take that came back cut short, on its last.
 from __future__ import annotations
 
 from collections.abc import AsyncIterator
+from datetime import datetime
 from typing import Protocol
 
 from pydantic import BaseModel, ConfigDict, Field, field_validator
@@ -70,12 +71,14 @@ class TextToSpeech(Protocol):
         it. Raises `ProviderError` on the provider's failure, a text over `max_chars` included;
         a cancel stops it at once and closes its response."""
 
-    async def check_language(self, language: str) -> None:
+    async def check_language(self, language: str) -> datetime | None:
         """Return when `language` can be spoken as far as the provider shows without speaking;
         otherwise raise naming what is missing, with a FIX line: ConfigurationError for a
         language the settings give no model or voice, ProviderError when the provider refuses
         the model or the voice (no access). It sends no synthesis request, so a model whose
-        terms are not accepted may show only at its first synthesis."""
+        terms are not accepted may show only at its first synthesis. It returns the provider's
+        time as its answer gave it, aware (UTC), which `t2v doctor` measures this machine's
+        clock against (Groq's `Date` header, whole seconds), or None when it gave none."""
 
     async def aclose(self) -> None:
         """Close what the adapter holds open, its connections; an adapter that holds none

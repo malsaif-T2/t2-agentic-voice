@@ -3,15 +3,17 @@ on a JSON request, the kind `GroqTTS` sends: every request carries the adapter's
 headers whatever `GROQ_CUSTOM_HEADERS` says, and a `content-type` line that makes the SDK build a
 form instead of the adapter's JSON fails the request, unsent, with no key in anything shown; on
 a GET of the model list through the same client and hook, which carries six, with no body, and
-goes through under the line that fails a POST; and the SDK's raw-response marker, kept for the
-adapter's own raw call alone. `GroqSTT`'s use of it is tested in test_groq_stt.py and
-test_groq_stt_checks.py. A fake transport only: nothing leaves the machine."""
+goes through under the line that fails a POST; the SDK's raw-response marker, kept for the
+adapter's own raw call alone; and an answer's `Date`, read strictly. `GroqSTT`'s use of it is
+tested in test_groq_stt.py and test_groq_stt_checks.py. A fake transport only: nothing leaves the
+machine."""
 
 from __future__ import annotations
 
 import asyncio
 import json
 import logging
+from datetime import UTC, datetime
 
 import httpx
 import pytest
@@ -26,6 +28,7 @@ from t2_agentic_voice.adapters.groq_client import (
     groq_client,
     own_headers,
     raw_response,
+    server_time,
 )
 
 from tests.leaks import holding, shown
@@ -207,3 +210,44 @@ def test_the_sdks_raw_marker_goes_only_with_the_adapters_own_raw_call(
     asyncio.run(ask())
     marked = [request.headers.get_list(RAW_MARKER) for request in fake.requests]
     assert marked == [["raw"], [], [], []]
+
+
+SENT_AT = datetime(2026, 11, 4, 9, 15, 2, tzinfo=UTC)
+
+
+@pytest.mark.parametrize(
+    "value",
+    [
+        "Wed, 04 Nov 2026 09:15:02 GMT",  # RFC 9110's IMF-fixdate, as Groq sends it
+        "Wednesday, 04-Nov-26 09:15:02 GMT",  # its obsolete RFC 850 form
+        "Wed, 04 Nov 2026 09:15:02 +0000",
+    ],
+)
+def test_an_answers_date_in_gmt_is_when_groq_sent_it(value: str) -> None:
+    sent = server_time(httpx.Headers({"date": value}))
+    assert sent == SENT_AT and sent is not None and sent.utcoffset() is not None
+
+
+@pytest.mark.parametrize(
+    "headers",
+    [
+        [],
+        [("date", "")],
+        [("date", "made-up")],
+        [("date", "Wed, 32 Nov 2026 09:15:02 GMT")],
+        [("date", "Wed, 04 Nov 2026 24:15:02 GMT")],
+        [("date", "Wed, 04 Nov 2026 09:15:02.5 GMT")],
+        [("date", "Wed, 04 Nov 99999999999999999999 09:15:02 GMT")],  # past a C long
+        [("date", "Wed, 04 Nov 2026 09:15:02 +9999")],  # an offset past a day
+        [("date", "Wed, 04 Nov 2026 09:15:02 +0300")],  # not GMT
+        [("date", "Wed, 04 Nov 2026 09:15:02 -0000")],  # read with no zone
+        [("date", "Wed Nov  4 09:15:02 2026")],  # asctime: no zone
+        [("date", "Wed, 04 Nov 2026 09:15:02 GMT, Wed, 04 Nov 2026 09:15:03 GMT")],
+        [("date", "Wed, 04 Nov 2026 09:15:02 GMT"), ("date", "Wed, 04 Nov 2026 09:15:03 GMT")],
+        [(b"date", "٤ Nov 2026 09:15:02 GMT".encode())],  # an Arabic-Indic digit
+    ],
+)
+def test_no_date_or_one_that_is_not_an_http_date_in_gmt_is_none(
+    headers: list[tuple[str, str]] | list[tuple[bytes, bytes]],
+) -> None:
+    assert server_time(httpx.Headers(headers)) is None
