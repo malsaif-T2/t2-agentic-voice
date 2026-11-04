@@ -7,14 +7,16 @@ and length come from its sidecar, and `poe golden --audio` checks them against t
 take is a variant of its script line's item; a discarded one is left out. A session folder that
 holds takes but no `session.json` is refused, so no recording enters the set without its
 speaker's consent. A folder that holds only reviews is the reviews of variants recorded
-elsewhere (the talk-over), which `import_talkover` reads.
+elsewhere (the talk-over), which `import_talkover` reads. A session named with
+`--skip-session` is left out whole, unread, and the command says so; naming a session the folder
+does not hold is refused, so a misspelt name never imports what it meant to leave out.
 """
 
 from __future__ import annotations
 
 import argparse
 import sys
-from collections.abc import Sequence
+from collections.abc import Collection, Sequence
 from pathlib import Path
 from typing import Final
 
@@ -104,12 +106,22 @@ def _variant(
     return variant, file
 
 
-def build(out: Path, script: Script, *, root: str = ROOT) -> tuple[list[Item], dict[str, Manifest]]:
-    """The new recordings' items, and each session's manifest by its file's name."""
+def build(
+    out: Path, script: Script, *, root: str = ROOT, skip: Collection[str] = ()
+) -> tuple[list[Item], dict[str, Manifest]]:
+    """The new recordings' items, and each session's manifest by its file's name; the sessions
+    in `skip` are left out whole, unread; a name in `skip` that `out` holds no session of is
+    refused."""
     lines = {line.id: line for line in script.lines}
     variants: dict[str, list[Variant]] = {}
     manifests: dict[str, Manifest] = {}
-    for folder in sorted(p for p in out.iterdir() if p.is_dir()):
+    folders = sorted(p for p in out.iterdir() if p.is_dir())
+    absent = sorted(set(skip) - {folder.name for folder in folders})
+    if absent:
+        raise GoldenSetError(f"no such session to skip: {absent}")
+    for folder in folders:
+        if folder.name in skip:
+            continue
         sidecars = [p for p in sorted(folder.glob("*.json")) if p.name != SESSION_FILE]
         takes = [p for p in sidecars if not parse_review_file(p.name)]
         if not takes and not any(folder.glob("*.wav")):
@@ -154,6 +166,12 @@ def build(out: Path, script: Script, *, root: str = ROOT) -> tuple[list[Item], d
     return items, manifests
 
 
+def skipped(out: Path, session: str) -> int:
+    """How many takes a skipped session holds: its take sidecars, which are never read."""
+    named = (p.name for p in (out / session).glob("*.json"))
+    return sum(1 for name in named if name != SESSION_FILE and not parse_review_file(name))
+
+
 def write(evals: Path, items: Sequence[Item], manifests: dict[str, Manifest]) -> None:
     """Each item as `golden/<id>.toml` and each manifest as `manifests/<name>.json`, never over
     an item another import wrote."""
@@ -176,17 +194,28 @@ def main(argv: Sequence[str] | None = None) -> int:
     parser.add_argument(
         "--root", type=cli.name, default=ROOT, help="the audio root's name (--audio NAME=...)"
     )
+    parser.add_argument(
+        "--skip-session",
+        type=cli.name,
+        action="append",
+        default=[],
+        metavar="NAME",
+        help="leave out every take of this session (repeatable)",
+    )
     args = parser.parse_args(argv)
+    skip = frozenset(args.skip_session)
     configure_logging(loggers=LOGGERS)
     try:
         script = read_toml(args.evals / SCRIPT_FILE, Script)
         if not args.takes.is_dir():
             raise GoldenSetError(f"{args.takes.name}: no such folder of takes")
-        items, manifests = build(args.takes, script, root=args.root)
+        items, manifests = build(args.takes, script, root=args.root, skip=skip)
         write(args.evals, items, manifests)
     except GoldenSetError as error:
         log.error("recordings_not_imported", problem=str(error))
         return 1
+    for session in sorted(skip):
+        log.info("session_skipped", session=session, takes=skipped(args.takes, session))
     variants = sum(len(item.variants) for item in items)
     log.info("recordings_imported", items=len(items), variants=variants, sessions=len(manifests))
     return 0

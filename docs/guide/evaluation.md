@@ -201,7 +201,8 @@ with `python -m`, passes on the arguments after the task's name, and prints its 
 
 Two steps have no task: `python -m ole5_voice.evals.split` writes the held-out split (`--check`
 only checks it), and `python -m ole5_voice.evals.import_recordings --takes <folder>` turns the
-recorder's takes into items and manifests, reading no audio. Inside `poe check`, tests fail when
+recorder's takes into items and manifests, reading no audio (`--skip-session <name>`, repeatable,
+leaves out a session's takes, and says so). Inside `poe check`, tests fail when
 the committed split or the frozen answers are stale, and the `reference` answerer must score
 100%.
 
