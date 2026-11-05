@@ -461,6 +461,27 @@ milestone a contract it cannot build on. Everything else becomes a row in
   'TOTAL 12425 0 100%', '3869 passed, 1 skipped'. Review (one reviewer under the owner's rule):
   nothing under the rule. L runs on M1's 231 dev variants, as registered, the set having grown.
   Its debt is TD-112.
+- 2026-11-04 and 05: The runs L, F and E, by one agent alone on the machine, at 089fae9 (M1's 231
+  dev variants as a screen file, `evals/screens/m1-dev.txt`); history lines bb8791f to 8434640;
+  scorecards under the main checkout's `var/runs/`. **L:** R5 (A1) 99 of 231 right, R7 (A3, no
+  language sent) 83, R6 (A1) 99; each $0.0748, 236 requests, no retry. The noise first: R5
+  against R6, b 0, w 0, p = 1.0 (d = 0 again, on another day: TD-032 measured). R7 against R5 and
+  against R6: b 0, w 11, p = 0.0010, worse beyond the noise (Saudi and the laptop worst; listening
+  sounds and confirmations most). The rule: `stt.live_language` stays `session`; Q5 is not reached.
+  R7's smoke read Groq's `language` as a name ("Spanish" for a Saudi listening sound), not a code
+  (TD-011). Deviation: R7 began 50 minutes after R5 ended, the laptop having slept, against the
+  registered "at least 15 minutes" (which it meets). **F:** on R1's and R3's scorecards, the
+  threshold and the caption list blank 6 of the 9 empty-reference variants and none of the 222
+  speech variants, on both: the keep rule holds; the defaults moved (`stt.no_speech_max` 0.5,
+  `stt.caption_filter` on) in 2b901fd, merged as b933df7; gate on main: 'TOTAL 12425 0 100%',
+  '3869 passed, 1 skipped'. **E:** dev's paused requests (51 variants, 20 items) and the secondary
+  set (223 variants), no miss in any run. Paused cut-offs: E0 51 and 50 (its noise: 1 verdict of
+  51, 1 of 223), Ea 39, Eb 22, Ec 9; against E0 by item, Ea 10 better and 0 worse (p = 0.0020),
+  Eb 16 and 0, Ec 19 and 0; the median delay over timed variants: E0 none and 290 ms (one
+  variant), Ea 640, Eb 851, Ec 942 ms. The registered tie-break keeps Ea against E0's second run;
+  E0's first run has no timed variant, so the rise reads against nothing. The owner ruled for Ec
+  (600 ms) on 2026-11-05 ("The owner's decisions"). E0's first run's Smart Turn decisions took
+  about 220 ms against about 60 in the second, cause unknown. Spend so far: $0.2245 of $5.
 
 ## Decision log
 
@@ -549,6 +570,14 @@ affects.
 
 What the owner has already said that binds M3:
 
+- 2026-11-05, to the agent's question which hold after Smart Turn's "complete" should become the
+  default, the registered tie-break keeping 300 ms while 39 of 51 paused requests stayed cut:
+  "600 ms". So Ec is the arm kept, by the owner's ruling over E's tie-break and over its 600 ms
+  bound as read against E0's second run (+652 ms on one timed variant; +466 to +600 ms read on
+  every variant's first turn end at or after the owner's mark); held-out E confirms it before the
+  default moves.
+- 2026-11-04, when M2's recorded session's clips were imported: "Done, reviewing" (the four call
+  items confirmed, review pass 7).
 - 2026-11-04, on the recording session: "I have finished the first two and reviewed them. The
   Bluetooth one i skipped it because the voice was not clear at all in many recordings, I have
   noted "Not clear!" in them, so lets skip Bluetooth. Now, what is left of M3? and finish it
@@ -910,7 +939,7 @@ Before B (open):
   decision procedure; no package is added to the library for B. **The agent recommends allowing
   it**, asked again with the file's name and size just before the step.
 - **Q8. How much later every turn may end, to stop cutting the owner's paused requests**
-  (asked 2026-11-04). *Settled 2026-11-04: (a), up to 600 ms, open to change later.* E1 cut 22 of 23 dev paused requests; a hold after Smart Turn's "complete" of
+  (asked 2026-11-04). *Settled 2026-11-04: (a), up to 600 ms, open to change later.* *The arm, after E: 600 ms (Ec), the owner's ruling of 2026-11-05.* E1 cut 22 of 23 dev paused requests; a hold after Smart Turn's "complete" of
   about 500 ms bridges every pause measured, so each turn's end, and the echo (and M4's answer)
   after it, comes about half a second later. Options: (a) accept up to 600 ms more at the median,
   so Eb can pass if it removes the cut-offs; (b) accept up to 300 ms, so only Ea can pass, keeping
