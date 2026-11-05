@@ -100,7 +100,7 @@ first that applies deciding:
 | Step | The caller's words | The agent |
 | --- | --- | --- |
 | 1 | Nothing, or text from silence | goes on |
-| 2 | A stop or wait word, anywhere ("stop", «وقف», "wait"), or the stop word as Whisper mishears it over the agent's voice | stops |
+| 2 | A stop or wait word, anywhere ("stop", «وقف», "wait"), or the stop word as Whisper mishears it over the agent's voice | stops (goes on when the words are all the agent's own reply, which said that word, heard back) |
 | 3 | A repeat request, with at most polite words and listening sounds beside it ("can you repeat that") | stops, then says its last reply again |
 | 4 | Its own words coming back through the speakers: every word a word, or one letter off a word, of the clauses played in the last `interruptions.own_words_s` (5 s) or playing now | goes on |
 | 5 | Only listening sounds ("mm-hmm", «اها», "okay") | goes on |
