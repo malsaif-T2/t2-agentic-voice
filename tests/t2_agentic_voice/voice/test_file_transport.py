@@ -56,8 +56,11 @@ def _feed(built: Built, clip: AudioClip, *, lead_s: float = 0.4, tail_s: float =
 
 
 def test_a_file_fed_call_greets_hears_a_turn_and_says_it_back(settings: VoiceSettings) -> None:
+    """The tail waits out the hold after Smart Turn's "complete" (`turns.complete_hold_ms`) as
+    well, so the turn ends and its reply plays before the clip's call ends."""
     built = voice_calls(settings, stt=FakeSpeechToText(["hello there"]))
-    fed = _feed(built, AudioClip(pcm16=tone(0.8, 16_000)))
+    hold_s = settings.turns.complete_hold_ms / 1000
+    fed = _feed(built, AudioClip(pcm16=tone(0.8, 16_000)), tail_s=1.5 + hold_s)
     kinds = [type(e) for e in fed.events if type(e).__name__ not in ("CallerAudio", "AgentAudio")]
     assert kinds[0] is Connected and kinds[-1] is Ending
     played = [e for e in fed.events if isinstance(e, ClausePlayed)]

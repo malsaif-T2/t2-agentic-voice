@@ -229,7 +229,9 @@ def test_no_pipecat_interruption_fires_but_the_sessions(
 ) -> None:
     """The caller speaks over the reply twice, a listening sound, then a stop word: each turn's
     start broadcasts no interruption, and the session's one stop broadcasts Pipecat's one,
-    from the session bridge (session_bridge.py), its two frames made once it was given."""
+    from the session bridge (session_bridge.py), its two frames made once it was given. The
+    stop word waits for the listening sound's turn to end, past the hold after Smart Turn's
+    "complete" (`turns.complete_hold_ms`), so each is a turn and an overlap of its own."""
     stt, tts, watched = Hears(), PitchedSpeech([LONG]), watch(monkeypatch)
     app, emitted = echo_runtime(two_step(tmp_path), stt, tts)
 
@@ -237,6 +239,7 @@ def test_no_pipecat_interruption_fires_but_the_sessions(
         await browser.connect(http)
         await over_the_reply(browser, stt, LISTENING)
         await until(lambda: bool(browser.of("unduck")), timeout=WAIT_S)
+        await until(turns_ended(emitted, 2), timeout=WAIT_S)
         stt.now = STOP
         browser.signal.say(SPEECH_S)
         await until(lambda: len(browser.of("unduck")) == 2, timeout=WAIT_S)

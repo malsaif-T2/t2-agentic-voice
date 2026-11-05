@@ -145,7 +145,7 @@ def test_smart_turn_keeps_the_turns_audio_through_a_hold_and_drops_it_at_the_tur
     (`clear`) and the silence fallback drop it either way."""
     from pipecat.audio.turn.base_turn_analyzer import EndOfTurnState
 
-    plain = turn_analyzer(TurnSettings())
+    plain = turn_analyzer(TurnSettings(complete_hold_ms=0))
     held = turn_analyzer(TurnSettings(complete_hold_ms=300))
 
     def buffered(analyzer: BaseTurnAnalyzer) -> int:
