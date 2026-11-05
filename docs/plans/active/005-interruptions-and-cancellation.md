@@ -502,6 +502,28 @@ milestone a contract it cannot build on. Everything else becomes a row in
   listening sounds that stopped it: failed, 5 of 38 (13.2%). No stop word or listening sound
   failed to open an overlap (TD-092 not seen); the three dev call items right. Spend so far:
   $0.4240 of $5. The rule's one revision, amendment (10), is registered before its offline score.
+- 2026-11-05: The rule's revision and H3. The revision (amendment (10); 8c44503, merged as
+  1d1cc97; gate 'TOTAL 12425 0 100%', '3874 passed, 1 skipped'): F's keep rule still holds at 0.55
+  (6 of 9 empty-reference variants blanked, none of 222 speech variants, on R1 and R3), so the
+  threshold moved; «وكيف» and «كامل» joined their lists; `short_s` moved to 1.2 s. Scored offline
+  on O1's and O2's stored transcripts (the script reproduced all 163 stored verdicts on the code
+  before the revision): two verdicts change in each run, both from wrong to right (a stop word
+  heard as «وكيف», and «توقف» blanked at 0.523); right verdicts 128 to 130 of 163; stop and pause
+  words heard 34 of 39 to 36 of 39 (92.3%: held on dev); every «وقف» at normal volume 5 of 6;
+  requests over a reply 60 of 74 and listening sounds 5 of 38 unchanged. Deviation: amendment
+  (10)'s third part changes nothing: the 1.3 to 1.5 s it read for «أبغى موظف» were the overlap
+  request's audio (300 ms of lead and the detector's 200 ms stop included), while the rule judges
+  the session's speech time, 0.79 to 0.97 s; no short-output verdict in O1 or O2 has more than
+  0.97 s, so neither bound decides one. **H3** (held-out, once, aggregates only; at 1d1cc97;
+  history line dc27b79; $0.0330): 62 variants of 24 items, 47 right, none failed; requests per
+  overlap at most 2 (mean 1.926): held; the marked stops' median 486 ms, 90th percentile 542, at
+  most 556: held; listening sounds that stopped the agent 0 of 19: held; echo, silence and noise
+  0: held; stop and pause words heard 10 of 18 (55.6%): failed; requests over a reply heard 15 of
+  18 (83.3%): failed; every «وقف» at normal volume: not readable from aggregates. No variant that
+  should go on stopped the agent (0 of 26); 25 of the 36 that should stop did. C3: the three dev
+  call items were right in O1 and O2; the held-out one is read only in its group's aggregate.
+  Spend so far: $0.4570 of $5. Two targets still fail on held-out, so the result goes to the owner
+  with its numbers (the registration's "The rule's revision").
 
 ## Decision log
 
