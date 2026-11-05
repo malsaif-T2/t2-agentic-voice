@@ -293,7 +293,8 @@ def test_the_join_bounds_hold_the_tokens_lifetime() -> None:
 
 
 def test_the_turn_tts_and_limit_defaults_are_the_plans() -> None:
-    """The decision log's starting values (plan 003), Q4's limits and Q5's voices."""
+    """The decision log's starting values (plan 003), with plan 005's hold after Smart Turn's
+    "complete" (E's arm Ec, 600 ms), Q4's limits and Q5's voices."""
     settings = VoiceSettings(env="test")
     turns = settings.turns.model_dump()
     assert turns == {
@@ -303,7 +304,7 @@ def test_the_turn_tts_and_limit_defaults_are_the_plans() -> None:
         "vad_min_volume": 0.6,
         "smart_turn": True,
         "smart_turn_threshold": 0.5,
-        "complete_hold_ms": 0,
+        "complete_hold_ms": 600,
         "smart_turn_stop_ms": 3000,
         "smart_turn_pre_speech_ms": 500,
         "smart_turn_max_duration_s": 8.0,

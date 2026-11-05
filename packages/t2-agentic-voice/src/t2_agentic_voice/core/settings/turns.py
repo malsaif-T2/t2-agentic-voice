@@ -1,11 +1,12 @@
 """The `turns` group: when the caller has started and finished speaking.
 
-The defaults are the starting values of plan 003's decision log, none tuned yet: Silero's
-`VADParams` defaults (confidence 0.7, start and end 200 ms, minimum volume 0.6) and Smart Turn
-v3.2's documented ones (3 s, 500 ms of speech before, 8 s at most, and its 0.5 threshold), with
-the same 3 s as the fallback end of a turn, and no hold after Smart Turn's "complete" (plan 005's
-amendment (8), voice/turn_hold.py). Each move of a default is a behaviour change, made
-only on a registered measurement (the design's 5.4; GP-18).
+The defaults are the starting values of plan 003's decision log: Silero's `VADParams` defaults
+(confidence 0.7, start and end 200 ms, minimum volume 0.6) and Smart Turn v3.2's documented ones
+(3 s, 500 ms of speech before, 8 s at most, and its 0.5 threshold), with the same 3 s as the
+fallback end of a turn; and one tuned, a hold of 600 ms after Smart Turn's "complete" (plan
+005's E, its arm Ec, kept by the owner's ruling and confirmed on held-out; voice/turn_hold.py).
+Each move of a default is a behaviour change, made only on a registered measurement (the
+design's 5.4; GP-18).
 """
 
 from __future__ import annotations
@@ -63,14 +64,15 @@ class TurnSettings(Group):
         ),
     )
     complete_hold_ms: int = Field(
-        default=0,
+        default=600,
         ge=0,
         le=MAX_COMPLETE_HOLD_MS,
         description=(
             "How long a turn Smart Turn judged finished waits before it ends: speech that "
-            "resumes within it cancels the end, and the turn goes on. 0 leaves a turn's end as "
-            "it was; the speech detector's pause, which an interruption waits on, is never "
-            "delayed."
+            "resumes within it cancels the end, and the turn goes on. 600 by plan 005's "
+            "registered E (its arm Ec, the owner's ruling), which changes only on another "
+            "registered measurement (GP-18); 0 ends the turn at Smart Turn's verdict. The "
+            "speech detector's pause, which an interruption waits on, is never delayed."
         ),
     )
     smart_turn_stop_ms: int = Field(
