@@ -129,7 +129,7 @@ names. The pages written so far are linked.
 | [is-this-for-you.md](is-this-for-you.md) | The fit check: Python version, operating system, the install's size and its heavy dependencies, one process per data folder and the sidecar, network needs, Groq's published limits, the licences | M2 (written) |
 | [quickstart.md](quickstart.md) | `examples/minimal` end to end, in English, then in Saudi Arabic; a checklist for a first call that does not work | M2 (written: the echo agent), M5 (the final quickstart) |
 | [serving.md](serving.md) | The sidecar or the mount, one process per data folder, identity and join tokens, the routes, cross-origin pages, the browser protocol | M2 (written) |
-| [browser-client.md](browser-client.md) | The reference browser client: starting a call, its events and states, tokens and consent, Stop and Esc, errors, browser support | M2 (written: its M2 part), M3 |
+| [browser-client.md](browser-client.md) | The reference browser client: starting a call, its events and states, tokens and consent, Stop and Esc, the agent's voice lowered, cut captions, push-to-talk, errors, browser support | M2 and M3 (written) |
 | [tracing-and-logs.md](tracing-and-logs.md) | The logging policy and `configure_logging`, Pipecat's own lines, Phoenix or your own tracer provider, what a trace holds, redaction | M2 (written) |
 | [data-and-privacy.md](data-and-privacy.md) | What the library itself stores and sends: the data folder, recordings and consent, what a trace holds, how long Phoenix keeps it | M2 (written) |
 | [settings.md](../generated/settings.md) (generated, `uv run poe settings-ref`) | Every setting, with its default, unit and environment name | M2 (written) |
