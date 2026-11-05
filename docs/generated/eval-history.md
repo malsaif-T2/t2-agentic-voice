@@ -5,7 +5,7 @@ per `poe eval` run that called a provider, kept or not; never edited by hand
 ([generated docs](README.md), GP-11). Every number describes one speaker, the owner (D-006).
 Full scorecards stay out of git, in each run's `--out` folder.
 
-Spend so far: 24 run(s), 24652.4 billed seconds, $0.5890.
+Spend so far: 25 run(s), 24652.4 billed seconds, $0.5890.
 
 ## Runs
 
@@ -40,6 +40,7 @@ Spend so far: 24 run(s), 24652.4 billed seconds, $0.5890.
 | 22 | 2026-11-04T18:45:45+00:00 | ea-dev | 089fae9481a47c29e4fb65c8cea69e8364dcb568 | pipeline | dev | 20 | 51 | 39 | 0 | 640 | 719 | 18 of 223 | yes |
 | 23 | 2026-11-04T19:28:06+00:00 | eb-dev | 089fae9481a47c29e4fb65c8cea69e8364dcb568 | pipeline | dev | 20 | 51 | 22 | 0 | 851 | 1013 | 4 of 223 | yes |
 | 24 | 2026-11-04T20:10:26+00:00 | ec-dev | 089fae9481a47c29e4fb65c8cea69e8364dcb568 | pipeline | dev | 20 | 51 | 9 | 0 | 942 | 1098 | 2 of 223 | yes |
+| 25 | 2026-11-05T12:28:15+00:00 | e0-held-out | 089fae9481a47c29e4fb65c8cea69e8364dcb568 | pipeline | held-out | 10 | 28 | 27 | 0 | 330 | 330 | — | yes |
 
 ## Each run
 
@@ -1204,3 +1205,34 @@ Spend so far: 24 run(s), 24652.4 billed seconds, $0.5890.
 | language | mixed | 4 | 10 | 1 | 0 |
 | language | msa | 4 | 10 | 2 | 0 |
 | language | saudi | 8 | 21 | 5 | 0 |
+
+### 25 · e0-held-out
+
+| Field | Value |
+| --- | --- |
+| Why | E0 held-out \(hold 0 ms, the defaults\): plan 005's E, held-out's one run, aggregates only |
+| Data digest | `12d5ec2525f1bc0b8c21f235de8314b7bcdd8a9ac2098d3d10905426cec9c402` |
+| Scorecard | scorecard.json |
+| Setting env | dev |
+| Setting run.lead_s | 1.0 |
+| Setting run.secondary | false |
+| Setting run.tail_s | 4.5 |
+| Setting turns.complete_hold_ms | 0 |
+| Setting turns.max_silence_ms | 3000 |
+| Setting turns.smart_turn | true |
+| Setting turns.smart_turn_max_duration_s | 8.0 |
+| Setting turns.smart_turn_pre_speech_ms | 500 |
+| Setting turns.smart_turn_stop_ms | 3000 |
+| Setting turns.smart_turn_threshold | 0.5 |
+| Setting turns.vad_confidence | 0.7 |
+| Setting turns.vad_min_volume | 0.6 |
+| Setting turns.vad_start_ms | 200 |
+| Setting turns.vad_stop_ms | 200 |
+
+| Stratum | Value | Items | Variants | Cut-offs | Misses |
+| --- | --- | --- | --- | --- | --- |
+| device | bluetooth | 4 | 4 | 4 | 0 |
+| device | laptop | 10 | 14 | 13 | 0 |
+| device | wired | 10 | 10 | 10 | 0 |
+| language | other | 6 | 18 | 17 | 0 |
+| language | saudi | 4 | 10 | 10 | 0 |
