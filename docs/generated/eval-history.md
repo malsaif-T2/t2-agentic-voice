@@ -5,7 +5,7 @@ per `poe eval` run that called a provider, kept or not; never edited by hand
 ([generated docs](README.md), GP-11). Every number describes one speaker, the owner (D-006).
 Full scorecards stay out of git, in each run's `--out` folder.
 
-Spend so far: 28 run(s), 31122.4 billed seconds, $0.7885.
+Spend so far: 29 run(s), 32192.4 billed seconds, $0.8215.
 
 ## Runs
 
@@ -49,6 +49,7 @@ Spend so far: 28 run(s), 31122.4 billed seconds, $0.7885.
 | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- |
 | 27 | 2026-11-05T12:57:18+00:00 | o1-dev | 35a82a073792a3b6939c15d47245a0998ee11c29 | pipeline | dev | 62 | 163 | 0 | 128 | 393 | 425 | 2 | 5 of 8 | 324 | 3240.0 | $0.0999 | yes |
 | 28 | 2026-11-05T15:19:42+00:00 | o2-dev | 35a82a073792a3b6939c15d47245a0998ee11c29 | pipeline | dev | 62 | 163 | 0 | 128 | 435 | 639 | 2 | 5 of 8 | 323 | 3230.0 | $0.0996 | yes |
+| 29 | 2026-11-05T17:04:26+00:00 | h3-held-out | 1d1cc9794b6f05cfb1e9eeba39d1293a6cda5f32 | pipeline | held-out | 24 | 62 | 0 | 47 | 486 | 542 | 2 | 6 of 8 | 107 | 1070.0 | $0.0330 | yes |
 
 ## Each run
 
@@ -1498,4 +1499,109 @@ Spend so far: 28 run(s), 31122.4 billed seconds, $0.7885.
 | stop_words_heard | fails |
 | requests_heard | fails |
 | listening_false_stops | fails |
+| quiet_false_stops | holds |
+
+### 29 · h3-held-out
+
+| Field | Value |
+| --- | --- |
+| Why | H3: plan 005's arm O on held-out, its one run, aggregates only, at the rule's one revision \(amendment \(10\): no_speech_max 0.55, short_s 1.2, the two spellings\) |
+| Data digest | `18a75644c35289daa027bac569b8ad879f2263b958eeea8f649275afbf1a86fd` |
+| Scorecard | scorecard.json |
+| Price per hour of audio | $0.111 |
+| Setting env | dev |
+| Setting groq.api_key | set |
+| Setting groq.api_key_file | not set |
+| Setting groq.base_url | https://api.groq.com |
+| Setting interruptions.duck_level | 0.25 |
+| Setting interruptions.first_window_ms | 750 |
+| Setting interruptions.min_words | 2 |
+| Setting interruptions.mode | two_step |
+| Setting interruptions.own_words_s | 5.0 |
+| Setting interruptions.short_s | 1.2 |
+| Setting interruptions.short_words | 2 |
+| Setting join.current_kid | none |
+| Setting join.keys | not set |
+| Setting join.keys_file | not set |
+| Setting join.max_clock_skew_s | 30 |
+| Setting join.ttl_s | 60 |
+| Setting limits.idle_s | 120.0 |
+| Setting limits.max_call_s | 600.0 |
+| Setting logging.content | false |
+| Setting logging.format | console |
+| Setting logging.level | INFO |
+| Setting logging.pipecat | off |
+| Setting privacy.consent_version | none |
+| Setting privacy.record_audio | false |
+| Setting run.at_s | 1.0 |
+| Setting run.cap_usd | 4.576 |
+| Setting run.max_attempts | 3 |
+| Setting run.replies | given |
+| Setting run.reply_margin_s | 2.0 |
+| Setting run.stt_rpm | 10 |
+| Setting run.tail_s | 4.5 |
+| Setting server.allowed_origins | 0 entries |
+| Setting server.dev_page | false |
+| Setting server.forwarded_allow_ips | 0 entries |
+| Setting server.ice_servers | 0 entries |
+| Setting server.public_url | none |
+| Setting server.turn_secret | not set |
+| Setting server.turn_secret_file | not set |
+| Setting server.turn_ttl_s | 3600 |
+| Setting session.mode | echo |
+| Setting stt.caption_filter | true |
+| Setting stt.live_language | session |
+| Setting stt.model | whisper-large-v3 |
+| Setting stt.no_speech_max | 0.55 |
+| Setting stt.provider | groq |
+| Setting stt.timeout_s | 6.0 |
+| Setting tracing.endpoint | none |
+| Setting tracing.include_transcripts | true |
+| Setting tracing.project | none |
+| Setting tracing.redact | 0 patterns |
+| Setting tts.cache_phrases | true |
+| Setting tts.languages | \{"ar": \{"model": "canopylabs/orpheus-arabic-saudi", "voice": "abdullah"\}, "ar-SA": \{"model": "canopylabs/orpheus-arabic-saudi", "voice": "abdullah"\}, "en": \{"model": "canopylabs/orpheus-v1-english", "voice": "troy"\}\} |
+| Setting tts.provider | groq |
+| Setting tts.timeout_s | 6.0 |
+| Setting tts.trim_silence | false |
+| Setting turns.complete_hold_ms | 600 |
+| Setting turns.max_silence_ms | 3000 |
+| Setting turns.smart_turn | true |
+| Setting turns.smart_turn_max_duration_s | 8.0 |
+| Setting turns.smart_turn_pre_speech_ms | 500 |
+| Setting turns.smart_turn_stop_ms | 3000 |
+| Setting turns.smart_turn_threshold | 0.5 |
+| Setting turns.vad_confidence | 0.7 |
+| Setting turns.vad_min_volume | 0.6 |
+| Setting turns.vad_start_ms | 200 |
+| Setting turns.vad_stop_ms | 200 |
+| Setting words.backchannel | \{\} |
+| Setting words.no | \{\} |
+| Setting words.repeat | \{\} |
+| Setting words.stop | \{\} |
+| Setting words.wait | \{\} |
+
+| Stratum | Value | Items | Variants | Right | Stopped of those that should | False stops |
+| --- | --- | --- | --- | --- | --- | --- |
+| device | bluetooth | 7 | 7 | 5 | 2 of 3 | 0 of 4 |
+| device | laptop | 24 | 42 | 33 | 18 of 26 | 0 of 16 |
+| device | wired | 13 | 13 | 9 | 5 of 7 | 0 of 6 |
+| kind | listening_sound | 6 | 19 | 19 | 0 of 0 | 0 of 19 |
+| kind | other | 7 | 14 | 7 | 4 of 7 | 0 of 7 |
+| kind | request | 4 | 11 | 11 | 11 of 11 | 0 of 0 |
+| kind | stop_word | 7 | 18 | 10 | 10 of 18 | 0 of 0 |
+| language | english | 5 | 13 | 12 | 6 of 7 | 0 of 6 |
+| language | msa | 3 | 6 | 4 | 4 of 6 | 0 of 0 |
+| language | none | 3 | 7 | 7 | 0 of 0 | 0 of 7 |
+| language | saudi | 12 | 33 | 21 | 12 of 20 | 0 of 13 |
+
+| Target | Held |
+| --- | --- |
+| requests_per_overlap | holds |
+| stop_word_median_ms | holds |
+| stop_word_p90_ms | holds |
+| stop_word_max_ms | holds |
+| stop_words_heard | fails |
+| requests_heard | fails |
+| listening_false_stops | holds |
 | quiet_false_stops | holds |
