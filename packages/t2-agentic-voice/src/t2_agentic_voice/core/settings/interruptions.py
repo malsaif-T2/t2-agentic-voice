@@ -7,7 +7,8 @@ reply is not answered, as before. Under `two_step`, the agent's voice is lowered
 and the session's rule decides from each transcript whether to stop: the bounds below are the
 rule's (plan 005's "The starting rule"). The duck level is the prototype's (its `web/voice.js`,
 line 174, `duck(level = 0.25)`, read 2026-11-03); the window is plan 002's run W3; the other
-bounds are the prototype's (its D30) and the starting rule's, none measured on the library yet.
+bounds are the prototype's (its D30) and the starting rule's, but `short_s`: 1.6 s in both, it is
+1.2 s since the rule's one revision (plan 005's amendment (10), after its runs O1 and O2).
 """
 
 from __future__ import annotations
@@ -67,10 +68,13 @@ class InterruptionSettings(Group):
         ),
     )
     short_s: float = Field(
-        default=1.6,
+        default=1.2,
         gt=0,
         allow_inf_nan=False,
-        description="The speech a short output stays under, for the agent to go on.",
+        description=(
+            "The speech a short output stays under, for the agent to go on; 1.2 by the rule's "
+            "one revision (plan 005)."
+        ),
     )
     own_words_s: float = Field(
         default=5.0,

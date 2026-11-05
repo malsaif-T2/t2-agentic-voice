@@ -3,9 +3,10 @@ speech, which count as no words, for an overlap (domain/interruptions.py) and fo
 transcript is text from silence when Whisper's probability that the audio holds no speech is
 above `stt.no_speech_max` (unset: never), or when it is one of the captions Whisper invents for
 silence or noise (`CAPTIONS`, used only under `stt.caption_filter`). Both are on by default
-(0.5 and the list), as the registered rule F set them (GP-18); a transcript with no word at all
-(empty, or only punctuation and symbols) is no words whatever they are. The scorers' own measure
-of text from silence is domain/scoring.py's. Pure, with no IO.
+(0.55 and the list), as the registered rule F and its one revision set them (GP-18); a
+transcript with no word at all (empty, or only punctuation and symbols) is no words whatever
+they are. The scorers' own measure of text from silence is domain/scoring.py's. Pure, with no
+IO.
 
 The captions are the prototype's (its `voice/stt.py`, lines 35-54, read only: D-010), each of
 its patterns written out as the texts it matches, with the caption for music that plan 002's

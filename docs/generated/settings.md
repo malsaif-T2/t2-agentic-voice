@@ -43,7 +43,7 @@ Speech-to-text: the adapter, the Whisper model, and how long a request may take.
 | `T2V_STT__MODEL` | one of whisper-large-v3, whisper-large-v3-turbo | `whisper-large-v3` | — | The Whisper model: whisper-large-v3 or whisper-large-v3-turbo. The default stayed large-v3 on a registered measurement (D-025), and changes only on another (GP-18). |
 | `T2V_STT__TIMEOUT_S` | number | `6` | seconds | The longest one transcription request may take before it is a timeout. |
 | `T2V_STT__LIVE_LANGUAGE` | one of session, auto | `session` | — | The language a live call sends Whisper: session (the call's language, fixed when it joins from the caller's pick or the join token's locale) or auto (none, so Whisper detects it). A registered measurement sets the default (GP-18). |
-| `T2V_STT__NO_SPEECH_MAX` | number, or unset | `0.5` | — | The no-speech probability Whisper reports above which a transcript counts as no words (text from silence), for a turn and for speech over a reply, from 0 to 1; unset, the threshold is off. 0.5 by the registered rule F (plan 005), which changes only on another registered measurement (GP-18). |
+| `T2V_STT__NO_SPEECH_MAX` | number, or unset | `0.55` | — | The no-speech probability Whisper reports above which a transcript counts as no words (text from silence), for a turn and for speech over a reply, from 0 to 1; unset, the threshold is off. 0.55 by the registered rule F and its one revision (plan 005), which changes only on another registered measurement (GP-18). |
 | `T2V_STT__CAPTION_FILTER` | true or false | `true` | — | Whether a transcript that is one of the captions Whisper invents for silence or noise counts as no words; on by the registered rule F (plan 005), which changes only on another registered measurement (GP-18). |
 
 ## `tts`
@@ -87,7 +87,7 @@ Interruptions: how the caller's speech over the agent's reply is taken, and the 
 | `T2V_INTERRUPTIONS__FIRST_WINDOW_MS` | integer | `750` | milliseconds | The first part of the speech over a reply sent to speech-to-text before the caller has finished, counted from 300 ms before the speech detector heard it begin. |
 | `T2V_INTERRUPTIONS__MIN_WORDS` | integer | `2` | words | The fewest words over a reply that stop the agent when none is a listed word. |
 | `T2V_INTERRUPTIONS__SHORT_WORDS` | integer | `2` | words | The most words a short output holds: at most this many, under short_s of speech, and none a stop, repeat or no word, the agent goes on (a listening sound misheard). |
-| `T2V_INTERRUPTIONS__SHORT_S` | number | `1.6` | seconds | The speech a short output stays under, for the agent to go on. |
+| `T2V_INTERRUPTIONS__SHORT_S` | number | `1.2` | seconds | The speech a short output stays under, for the agent to go on; 1.2 by the rule's one revision (plan 005). |
 | `T2V_INTERRUPTIONS__OWN_WORDS_S` | number | `5` | seconds | How far back the agent's own words count: speech over a reply whose words are those of the clauses played this long before is its own voice, heard back. |
 
 ## `words`

@@ -153,6 +153,26 @@ def test_an_english_spelling_of_the_stop_word_in_a_sentence_is_not_it() -> None:
     assert judged("what gives me this error", speech_s=0.7) == NEW_WORDS
 
 
+def test_wakaif_stops_only_as_a_whole_short_utterance() -> None:
+    """«وكيف» ("and how"), a spelling Whisper wrote for the stop word over the agent's voice
+    (plan 005's amendment (10)): a stop said alone, or beside polite words and listening sounds;
+    a question when it opens a sentence."""
+    assert judged("وكيف", "ar", speech_s=0.6) == STOP
+    assert judged("طيب وكيف لو سمحت", "ar", speech_s=0.9) == STOP
+    assert judged("وكيف ذا", "ar", speech_s=0.8) == NEW_WORDS  # a question, not a short output
+    assert judged("وكيف اغير رقم الجوال", "ar") == NEW_WORDS
+    assert judged("كيف", "ar", speech_s=0.6) == went_on("too_few_words")  # without waw, as before
+
+
+def test_kaamil_is_a_listening_sound() -> None:
+    """«كامل», a spelling Whisper wrote for «كمّل» (go on) over the agent's voice (plan 005's
+    amendment (10)): alone or beside other listening sounds the agent goes on; in a sentence it
+    is no real word, and two others still stop the agent."""
+    assert judged("كامل", "ar", speech_s=0.8) == went_on("listening")
+    assert judged("كامل، تمام كامل", "ar", speech_s=2.5) == went_on("listening")
+    assert judged("ابي الكشف كامل", "ar") == NEW_WORDS
+
+
 @pytest.mark.parametrize(
     ("text", "language"),
     [
@@ -227,9 +247,9 @@ def test_listening_sounds_only_go_on(language: LanguageCode, word: str) -> None:
     ("text", "language", "speech_s", "expected"),
     [
         ("very nice", "en", 1.0, went_on("short_output")),
-        ("حلو مره", "ar", 1.5, went_on("short_output")),
+        ("حلو مره", "ar", 1.1, went_on("short_output")),
         ("طيب حلو", "ar", 1.0, went_on("short_output")),  # a listening sound beside
-        ("very nice", "en", 1.6, NEW_WORDS),  # not under 1.6 s
+        ("very nice", "en", 1.2, NEW_WORDS),  # not under 1.2 s
         ("very nice indeed", "en", 1.0, NEW_WORDS),  # three words
         ("very nice?", "en", 1.0, NEW_WORDS),  # a question
         ("حلو مره؟", "ar", 1.0, NEW_WORDS),

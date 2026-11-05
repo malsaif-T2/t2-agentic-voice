@@ -158,6 +158,6 @@ def test_no_presets_fixed_phrase_holds_a_word_its_echo_would_stop_the_agent_on(
                     captions=CAPTIONS,
                     min_words=2,
                     short_words=2,
-                    short_s=1.6,
+                    short_s=1.2,
                 )
                 assert found.reason not in ("stop_word", "repeat_word"), (tag, text, start, end)
