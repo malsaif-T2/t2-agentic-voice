@@ -482,6 +482,26 @@ milestone a contract it cannot build on. Everything else becomes a row in
   E0's first run has no timed variant, so the rise reads against nothing. The owner ruled for Ec
   (600 ms) on 2026-11-05 ("The owner's decisions"). E0's first run's Smart Turn decisions took
   about 220 ms against about 60 in the second, cause unknown. Spend so far: $0.2245 of $5.
+- 2026-11-05: Held-out E, the hold's default, O1 and O2, by one agent alone on the machine.
+  **Held-out E** (at 089fae9, aggregates only; history lines b87e6e0, 7c13e18): 28 paused variants
+  of 10 items; E0 cut 27, Ec (600 ms) cut 5, no miss in either; Ec's delay 933 ms at the median
+  (1,005 at the 90th percentile): held-out confirms Ec. The default moved to 600 ms (8f1d762,
+  merged as 35a82a0; gate 'TOTAL 12425 0 100%', '3869 passed, 1 skipped'); two tests had to wait
+  for a turn's end, since a stop word said within 600 ms after a listening sound now joins its
+  turn. **O1 and O2** (at 35a82a0; history lines 3dbab64, 614ef41): 163 dev variants of 62 items
+  each, 128 right, no failed request, every variant on its first attempt; 324 and 323 requests,
+  $0.0999 and $0.0996; O2 began 62 minutes after O1 ended. The noise: 0 of 163 verdicts differ;
+  the marked stops' median 393 ms in O1 and 435 in O2. Against the targets, the same in both:
+  requests per overlap at most 2 (mean 1.955): held; from the end of the stop word to silence, on
+  the 11 marked stops, a median of 393 and 435 ms, a 90th percentile of 425 and 639, at most 494
+  and 751: held; no echo, silence or noise variant stopped the agent (0 of 12): held; the agent's
+  own words: held, untested (no such variant opened an overlap); every «وقف» at normal volume
+  stops: failed, 4 of 6 (Whisper wrote «وانجح» and «وكيف» on the laptop); stop and pause words
+  that stopped it: failed, 34 of 39 (87.2%); requests over a reply: failed, 60 of 74 (81.1%: every
+  request and correction, 2 of 7 short requests, 11 of 19 repeat requests, none of them repeated);
+  listening sounds that stopped it: failed, 5 of 38 (13.2%). No stop word or listening sound
+  failed to open an overlap (TD-092 not seen); the three dev call items right. Spend so far:
+  $0.4240 of $5. The rule's one revision, amendment (10), is registered before its offline score.
 
 ## Decision log
 
@@ -722,6 +742,16 @@ request, what followed is answered only when it is no whole command and holds at
 pause or repeat request, said by a turn whose speech began before a reply to an earlier turn
 started, first stops the replies in progress to earlier turns, with one `Interrupted`; none is
 stopped while a reply to that turn or a later one is in progress.
+
+*Amended 2026-11-05, after O1 and O2 and before the revision's offline score and H3 (the
+registration's "The rule's revision"):* (10) the one revision: F's threshold `stt.no_speech_max`
+0.5 to 0.55, if F's keep rule still holds there (a window holding «توقف» was blanked at 0.523);
+«وكيف» joins the noisy spellings of the stop word, and «كامل» the Arabic listening sounds (each a
+spelling Whisper wrote for the owner's word); `interruptions.short_s` 1.6 to 1.2 s (a two-word
+request of 1.3 to 1.5 s, «أبغى موظف», went on as a short output; `short_words` stays 2). Scored
+offline on O1's and O2's stored transcripts, then H3 at the revised commit. Not revised, as no list
+or bound reads them without fitting a single take: «وانجح» and «حلو» for stop words, «اه» and
+«مشكلت» for repeat requests, «كم من» for «كمّل».
 
 **The starting rule** (the agent's, from plan 002's Future improvements and the prototype's D30
 and D53), applied to the window's text, then to the overlap's when the window did not stop the
