@@ -80,16 +80,18 @@ NOT_NOISY_START = "م"  # meem
 
 # The spellings only Whisper writes for the stop word, a stop only as a whole short utterance:
 # with polite words and listening sounds beside it, at most `NOISY_WORDS` words in all. Inside a
-# sentence each is a word like any other (lighair is "for other than"; "one game" is English).
-# The prototype's: in an Arabic call, its spellings of the owner's wagif (its VOICE_LOG.md, CP0
-# and CP1); in an English call, those and the full model's over the agent (its rules.py, lines
-# 28-32 and 54-62).
+# sentence each is a word like any other (lighair is "for other than", wakaif "and how"; "one
+# game" is English). The prototype's: in an Arabic call, its spellings of the owner's wagif (its
+# VOICE_LOG.md, CP0 and CP1), with the one plan 005's run O1 heard (the registration's amendment
+# (10)); in an English call, those and the full model's over the agent (its rules.py, lines 28-32
+# and 54-62).
 NOISY_SPELLINGS = frozenset(
     {
         "وغف",  # wagif heard as wughf: waw, ghain, feh
         "وغفو",  # wagif heard as wughfu: waw, ghain, feh, waw
         "وغفت",  # wagif heard as wughfat: waw, ghain, feh, teh
         "لغير",  # wagif heard as lighair: lam, ghain, yeh, reh
+        "وكيف",  # wagif heard as wakaif (plan 005's O1): waw, kaf, yeh, feh
     }
     | {"waggir", "one gift", "what gift", "one game", "one again", "one give", "one gives"}
     | {"one get", "one gif", "what gif", "blood gif"}

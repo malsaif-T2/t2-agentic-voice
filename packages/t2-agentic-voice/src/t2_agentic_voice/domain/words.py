@@ -68,7 +68,8 @@ WORD_KINDS: tuple[str, ...] = tuple(Words.model_fields)
 # The Arabic lists, both Arabic presets', in the rule's form (teh marbuta written heh, every alef
 # bare), with `\u` escapes as the library's tables are; each comment gives the word's sound and
 # meaning, then its letters. The prototype's spellings of what Whisper wrote for the owner's
-# words (its VOICE_LOG.md, CP0 and CP1) are marked "heard as".
+# words (its VOICE_LOG.md, CP0 and CP1) are marked "heard as", as is the one plan 005's run O1
+# heard (the registration's amendment (10)).
 _ARABIC = Words(
     stop=(
         "\u0648\u0642\u0641",  # wagif, stop (Saudi): waw, qaf, feh
@@ -105,6 +106,7 @@ _ARABIC = Words(
     backchannel=(
         "\u0643\u0645\u0644",  # kammil, go on: kaf, meem, lam
         "\u0643\u0645\u0644\u064a",  # kammili, go on (to a woman): kaf, meem, lam, yeh
+        "\u0643\u0627\u0645\u0644",  # kammil heard as kaamil (plan 005's O1): kaf, alef, meem, lam
         "\u062a\u0627\u0628\u0639",  # taabi', continue (MSA): teh, alef, beh, ain
         "\u0627\u0633\u062a\u0645\u0631",  # istamirr, carry on: alef, seen, teh, meem, reh
         "\u062a\u0645\u0627\u0645",  # tamaam, all right: teh, meem, alef, meem

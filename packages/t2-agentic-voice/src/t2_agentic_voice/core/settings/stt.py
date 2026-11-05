@@ -44,15 +44,15 @@ class SttSettings(Group):
         ),
     )
     no_speech_max: float | None = Field(
-        default=0.5,
+        default=0.55,
         ge=0,
         le=1,
         allow_inf_nan=False,
         description=(
             "The no-speech probability Whisper reports above which a transcript counts as no "
             "words (text from silence), for a turn and for speech over a reply, from 0 to 1; "
-            "unset, the threshold is off. 0.5 by the registered rule F (plan 005), which changes "
-            "only on another registered measurement (GP-18)."
+            "unset, the threshold is off. 0.55 by the registered rule F and its one revision "
+            "(plan 005), which changes only on another registered measurement (GP-18)."
         ),
     )
     caption_filter: bool = Field(

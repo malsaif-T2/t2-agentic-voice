@@ -47,6 +47,6 @@ def judged(
         captions=captions,
         min_words=min_words,
         short_words=2,
-        short_s=1.6,
+        short_s=1.2,
     )
     return (found.action, found.kind, found.reason)

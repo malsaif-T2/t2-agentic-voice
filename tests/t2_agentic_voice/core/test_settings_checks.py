@@ -326,8 +326,9 @@ def test_the_turn_tts_and_limit_defaults_are_the_plans() -> None:
 
 def test_the_interruption_and_word_defaults_are_plan_005s() -> None:
     """The drop rule until the registered runs move it, the prototype's duck level, run W3's
-    window and the starting rule's bounds; no word added; the filter for text from silence on,
-    as the registered rule F set it (0.5 and the caption list)."""
+    window and the starting rule's bounds, the short output's as the rule's one revision set it
+    (1.2 s); no word added; the filter for text from silence on, as the registered rule F and
+    its one revision set it (0.55 and the caption list)."""
     settings = VoiceSettings(env="test")
     assert settings.interruptions.model_dump() == {
         "mode": "drop",
@@ -335,12 +336,12 @@ def test_the_interruption_and_word_defaults_are_plan_005s() -> None:
         "first_window_ms": 750,
         "min_words": 2,
         "short_words": 2,
-        "short_s": 1.6,
+        "short_s": 1.2,
         "own_words_s": 5.0,
     }
     kinds = ("stop", "wait", "repeat", "backchannel", "no")
     assert settings.words.model_dump() == {kind: {} for kind in kinds}
-    assert (settings.stt.no_speech_max, settings.stt.caption_filter) == (0.5, True)
+    assert (settings.stt.no_speech_max, settings.stt.caption_filter) == (0.55, True)
     words = VoiceSettings.model_validate({"env": "test", "words": {"stop": {"en": ["x", "y"]}}})
     assert words.words.stop == {"en": ("x", "y")} and words.words.no == {}
     with pytest.raises(TypeError):
