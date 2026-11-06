@@ -351,6 +351,54 @@ runs"; in this order, each with its smoke first)
   - **Retrieval, as a smoke only** (run K measures it from the talker's own query): an expected
     point in the top 5 for 8 of the 10. The scores sit close together, 0.50 to 0.74, so no cutoff
     by score is proposed.
+- 2026-11-07: Tracks A to D built in parallel worktrees, each reviewed once with one skeptic a
+  finding, and merged into `plan-006-integration` one at a time with the gate after each merge.
+  - **Track A, the model** (576b104; 18393b9 to 6499f66).
+    - `GroqChat` streams text and tool calls and ends with `Usage` and `Done`.
+    - It sends `reasoning_effort` only to the gpt-oss models, and maps every failure to a
+      `ProviderError`; an in-stream error such as `tool_use_failed` becomes `rejected`.
+    - `llm.timeout_s` bounds the whole request. A cancel ends the stream within 50 ms and closes
+      its connection, and an idle connection is kept five minutes.
+    - `ScriptedLLM` and `FunctionLLM` are built.
+    - The review's three findings were refuted: the deadline, the warm-up, and usage on the span.
+    - Gate: `4181 passed`, `TOTAL 13537 0 100%`.
+  - **Track B, the talker and its tools** (f4a3864; 53d8ef2 to d620ceb).
+    - **The loop:** at most three requests, the last with no tools, and tool results framed as
+      data.
+    - **The history:** the heard history with a cut clause marked `[cut: about N% heard]`, and the
+      tool exchanges of the last 4 turns kept, so "only the second step" can be answered.
+    - **The reply language** is set per turn.
+    - **The prompt and the tools:** the prompt and `render_prompt`; `@tool` and the runner, which
+      checks a tool's arguments and refuses a bound one the model sends.
+    - **Knowledge:** `knowledge_tool` (`search_knowledge`), and one progress line a reply.
+    - **The guard and numbers:** the guard's rule B, and TD-058's five number cases.
+    - The review found nothing that breaks. Gate: `4371 passed`, `TOTAL 14241 3 99%`.
+  - **Track C, the session** (7909643; b5c8c63 to d637359).
+    - **Interruptions:** the talker plays in the call, and real words over a reply reach it whole,
+      the stop word included (TD-103). A whole stop or pause stays a command.
+    - **The early start** runs through two new hold frames.
+    - **Speech:** clauses are streamed to speech, one reply in one scope.
+    - **The time to first audio** runs to the first audible frame (TD-090), with progress lines
+      timed apart.
+    - **Public events:** `ToolStarted`, `ToolFinished` and `GuardBlocked`, and token counts on
+      `ModelUsage`.
+    - **The test kit:** `TextCall` on the virtual clock, and the parity test (echo mode).
+    - **The composition:** `Providers.chat`, and a talker for every call.
+    - **The review.** One finding stood and was fixed in d637359: speech begun in a reply's tail
+      reported a reply heard whole as cut. One was refuted: the chat model is not warmed at start,
+      and no port method exists for it.
+    - Gate: `4432 passed`, `TOTAL 15336 45 99%`, in 16 minutes under Track E's load.
+  - **Track D, the browser** (b254e59; 819b03b and dd396ba).
+    - The client, the dev page and Ole5's widget show `card` and `thinking`, as text only, with
+      direction set per step.
+    - Seen in the browser pane at 375 px.
+    - The review found nothing that breaks. Gate: `4440 passed`, `TOTAL 15336 45 99%`.
+  - **Still open:**
+    - The chat model's connection is not warmed at start.
+    - A model request's usage and first token reach the call report but no span.
+    - The parity test covers echo mode only.
+    - Ten items of the tracks' debt that can break a call or miscount a run go to the integration
+      round; the rest are TD-115 to TD-118.
 
 ## Decision log
 
@@ -373,6 +421,17 @@ runs"; in this order, each with its smoke first)
 - 2026-11-07: The knowledge base adapter stays in the Ole5 app (Q14, the owner's (b)); the
   library gives every team the general way, the `KnowledgeBase` protocol and `knowledge_tool`, so
   no `knowledge` facade or decision entry is added for an adapter.
+- 2026-11-07: With a talker, every stop or repeat verdict hands the turn's own words to the
+  talker, and only a stop or pause said whole stays a command: a bare «وقف» stays silent while
+  «النظام توقف» said over a reply is answered (Track C).
+- 2026-11-07: The reply's language follows the turn's heard language. The reply's script overrides
+  it only with at least 3 words in the other script and more than twice their count, so English
+  product terms keep a Saudi sentence Arabic (Track B).
+- 2026-11-07: One progress line a reply, however many tools or requests, so the caller never hears
+  "let me check" twice (Track B).
+- 2026-11-07: The session, not the talker, makes a clause speakable after the guard: digits
+  spoken, then the pronunciation map, then the voice's length; a clause said in one piece is
+  captioned as written (Track C).
 - 2026-11-06: The Whisper prompt from the vocabulary reaches the live session only if run W keeps
   W1 (GP-18), so no track wires `voice/stt_bridge.py` before then.
 
