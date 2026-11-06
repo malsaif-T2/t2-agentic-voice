@@ -41,6 +41,26 @@ input[type="password"] {
 button.talk { touch-action: none; user-select: none; }
 button.talk[aria-pressed="true"] { background: var(--accent); border-color: var(--accent); color: var(--paper); }
 .state { color: var(--muted); min-height: 1.6em; margin: 4px 0; }
+/* The agent thinking: a dot that pulses before the state's word, in the line's own height. */
+.state[data-state="thinking"]::before {
+  content: ""; display: inline-block; width: 0.55em; height: 0.55em; border-radius: 50%;
+  background: var(--accent); margin-inline-end: 0.5em; vertical-align: 0.05em;
+  animation: thinking 0.9s ease-in-out infinite alternate;
+}
+@keyframes thinking { from { opacity: 0.2; } to { opacity: 1; } }
+@media (prefers-reduced-motion: reduce) {
+  .state[data-state="thinking"]::before { animation: none; }
+}
+/* A reply's card, above the captions: each step's number in its own margin, on the side its
+   direction starts, so Arabic and English steps sit in one list; long words wrap on a phone. */
+.card {
+  border: 1px solid var(--line); border-inline-start: 4px solid var(--accent);
+  border-radius: 8px; padding: 10px 14px; margin: 8px 0; overflow-wrap: anywhere;
+}
+.card h2 { font-size: 1.05rem; margin: 0 0 6px; }
+.card .steps { margin: 0; padding: 0; }
+.card .steps li { margin-block: 4px; margin-inline-start: 1.8em; }
+.card .muted { margin: 6px 0 0; }
 .message { color: var(--bad); min-height: 1.6em; margin: 4px 0; }
 .captions { list-style: none; margin: 0; padding: 0; }
 .captions li { padding: 8px 12px; border-radius: 8px; margin: 6px 0; }
