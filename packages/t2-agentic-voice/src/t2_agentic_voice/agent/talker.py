@@ -23,6 +23,14 @@ cancels the model's request, the search and the speech at once. Work the talker 
 stream (a tool) starts in the same scope, but for a tool whose barge-in is `finish`. A cancel
 ends the stream at once, with no `ReplyDone`.
 
+**The clock.** The talker keeps its times on the call's clock (core/clock.py's `Clock`, the one
+the session runs on: `SYSTEM_CLOCK` in a call, `TextCall`'s virtual clock in a test), never on
+asyncio's own time or the system's: a tool's progress time (`ProgressDue` once
+`progress_after_s` has passed on it), the tool's timeout (the runner's `run` takes the clock), a
+tool's `ms`, a request's `first_token_s`, and the prompt's date (`compose_prompt`'s `today`, the
+date of `clock.wall()`). So a test that moves its clock on brings what is due by then, and only
+that.
+
 What `ChatTalker` does is plan 006's Track B (the loop: at most three model requests a turn,
 tool results framed as data, the guard on every clause, the reply in the caller's language);
 this module holds its shapes.
@@ -37,6 +45,7 @@ from typing import Any, Protocol
 from pydantic import BaseModel, ConfigDict, Field
 
 from t2_agentic_voice.actions.runner import ToolRunner
+from t2_agentic_voice.core.clock import Clock
 from t2_agentic_voice.core.config import VoiceSettings
 from t2_agentic_voice.core.conversation import TalkerTurn
 from t2_agentic_voice.core.events import CallId
@@ -167,8 +176,9 @@ class Talker(Protocol):
 
 class ChatTalker:
     """The library's talker for one call (`call`): `agent`'s instructions and tools, the chat
-    `model` and the tool `runner` the api layer injects, and the `settings` (`llm`, `guard`,
-    `words.vocabulary`). A `Talker`."""
+    `model` and the tool `runner` the api layer injects, the `settings` (`llm`, `guard`,
+    `words.vocabulary`), and the call's `clock`, the session's, that it keeps its times on (the
+    module's docstring). A `Talker`."""
 
     def __init__(
         self,
@@ -178,9 +188,10 @@ class ChatTalker:
         runner: ToolRunner,
         settings: VoiceSettings,
         call: TalkerCall,
+        clock: Clock,
     ) -> None:
         self.agent, self.model, self.runner = agent, model, runner
-        self.settings, self.call = settings, call
+        self.settings, self.call, self.clock = settings, call, clock
 
     def reply(self, turn: TalkerTurn, *, scope: ReplyScope) -> AsyncIterator[TalkerEvent]:
         """The reply to `turn` (the module's docstring)."""

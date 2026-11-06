@@ -2,8 +2,8 @@
 loads with the design's fields and refuses what it cannot run with; a bound parameter names a
 field of the verified caller and is never one the talker fills; `CallContext` holds the caller
 read-only; `ToolError` has its stable code; and every behaviour Track B builds is a stub that
-raises: `@tool`, `Tool.from_function`, `tool_schema`, `FromCaller.value`, the runner and
-`knowledge_tool`."""
+raises: `@tool`, `Tool.from_function`, `tool_schema`, `FromCaller.value`, the runner, which
+runs a call on the call's clock, and `knowledge_tool`."""
 
 from __future__ import annotations
 
@@ -28,6 +28,8 @@ from t2_agentic_voice.domain.cards import Card
 from t2_agentic_voice.domain.ports.chat_model import ToolCallRequest
 from t2_agentic_voice.domain.talker_declaration import DeclaredTool
 from t2_agentic_voice.testing.knowledge_fake import FakeKnowledgeBase
+
+from tests.t2_agentic_voice.fakes import FakeClock
 
 CALLER = Caller(subject="made-up-subject", attributes={"department": "it"})
 
@@ -120,6 +122,6 @@ def test_every_behaviour_track_b_builds_is_a_stub_that_raises() -> None:
     request = ToolCallRequest(id="c-1", name="lookup_device", arguments="{}")
     ctx = CallContext(caller=CALLER, call_id="call-1", language="en")
     with pytest.raises(NotImplementedError):
-        asyncio.run(runner.run(request, ctx))
+        asyncio.run(runner.run(request, ctx, clock=FakeClock()))
     with pytest.raises(NotImplementedError):
         knowledge_tool(FakeKnowledgeBase(), description="Search the help articles.")

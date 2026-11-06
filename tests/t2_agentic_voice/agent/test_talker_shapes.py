@@ -1,6 +1,7 @@
 """The talker as the session sees it (agent/talker.py, prompt.py; plan 006, Block 0): the events
 it streams load and refuse a wrong value; the session's cancel scope is the scope it starts its
-work in; and the loop and the prompt, Track B's, are stubs that raise."""
+work in, and the call's clock the one it times its work on; and the loop and the prompt, Track
+B's, are stubs that raise."""
 
 from __future__ import annotations
 
@@ -33,8 +34,9 @@ from t2_agentic_voice.domain.cards import Card
 from t2_agentic_voice.domain.declaration import Language, VoiceAgent
 from t2_agentic_voice.domain.ports.chat_model import Usage
 from t2_agentic_voice.testing.llm_fakes import ScriptedLLM
-from t2_agentic_voice.voice.session.io import SYSTEM_CLOCK
 from t2_agentic_voice.voice.session.scope import CancelScope
+
+from tests.t2_agentic_voice.fakes import FakeClock
 
 AGENT = VoiceAgent(
     name="helper", languages=[Language.english(greeting="Hi")], instructions="Answer briefly."
@@ -76,12 +78,20 @@ def test_a_wrong_value_is_refused(model: type[Any], values: dict[str, Any]) -> N
         model.model_validate(values)
 
 
-def test_the_reply_runs_in_the_sessions_cancel_scope_and_its_loop_is_a_stub() -> None:
-    scope: ReplyScope = CancelScope(name="reply-1", clock=SYSTEM_CLOCK)
+def test_the_reply_runs_in_the_sessions_cancel_scope_on_the_calls_clock_and_is_a_stub() -> None:
+    clock = FakeClock()
+    scope: ReplyScope = CancelScope(name="reply-1", clock=clock)
     settings = VoiceSettings(env="test")
-    talker: Talker = ChatTalker(
-        AGENT, model=ScriptedLLM([]), runner=ToolRunner([]), settings=settings, call=CALL
+    chat = ChatTalker(
+        AGENT,
+        model=ScriptedLLM([]),
+        runner=ToolRunner([]),
+        settings=settings,
+        call=CALL,
+        clock=clock,
     )
+    talker: Talker = chat
+    assert chat.clock is clock
     with pytest.raises(NotImplementedError):
         talker.reply(TalkerTurn(turn_id=0, words="hello"), scope=scope)
     assert not scope.cancelled
