@@ -188,6 +188,8 @@ def test_the_fake_io_hands_a_session_every_event_at_the_clocks_time(
         await io.clock.advance(0.5)
         await io.transcribed(0, "words of the test", language="en")
         await io.turn_opened(1)
+        await io.turn_held(1)
+        await io.hold_resumed(1)
         with pytest.raises(RuntimeError, match="FIX: "):  # a failure, yet no request went
             await io.transcribed(1, None, failure="timeout", retryable=True)
         await io.transcribing(1)

@@ -25,20 +25,40 @@ the turn's audio through the hold (smart_turn.py's `keep_turn`), so its next jud
 whole turn, not only the speech after the pause. An upgrade of Pipecat must check those paths
 (the tests drive the real strategy through the turn processor).
 
-The early start (plan 006, Q2) adds two signals, which nothing gives yet: the hold began
-(`hold_began`), so the session starts the turn's transcription and the talker's first request
-at once, playing nothing before the hold ends; and the caller resumed within it
-(`hold_resumed`), so the session cancels that work and joins what follows to the turn. Each is
-to reach the session as its event (session_events.py's `TurnHeld` and `HoldResumed`).
+The early start (plan 006, Q2) adds two signals, each pushed downstream from the turn processor
+as a frame of its own, behind the detector's frame that caused it: the hold began (`hold_began`,
+a `TurnHeldFrame`), so the speech-to-text bridge sends the turn's speech so far at once and the
+session starts the talker on it, playing nothing before the hold ends; and the caller resumed
+within it (`hold_resumed`, a `HoldResumedFrame`, given only when speech dropped a hold), so that
+work is cancelled and what follows joins the turn. The bridge hands each to the session as its
+event (session_events.py's `TurnHeld` and `HoldResumed`), in a call with a talker only
+(stt_bridge.py's `early`). A hold the turn's end dropped otherwise (the stop timeout) or the
+cleanup signals nothing.
 """
 
 from __future__ import annotations
 
 import asyncio
+from dataclasses import dataclass
 from typing import Any
 
-from pipecat.frames.frames import Frame, VADUserStartedSpeakingFrame, VADUserStoppedSpeakingFrame
+from pipecat.frames.frames import (
+    Frame,
+    SystemFrame,
+    VADUserStartedSpeakingFrame,
+    VADUserStoppedSpeakingFrame,
+)
 from pipecat.turns.user_stop import TurnAnalyzerUserTurnStopStrategy
+
+
+@dataclass
+class TurnHeldFrame(SystemFrame):
+    """Smart Turn called the open turn complete, and its hold began."""
+
+
+@dataclass
+class HoldResumedFrame(SystemFrame):
+    """The caller spoke again within the open turn's hold, which was dropped."""
 
 
 # Pipecat 1.15.0 leaves the base's `__init_subclass__`, `handle_user_turn_stopped` and `cleanup`
@@ -61,8 +81,9 @@ class HeldTurnStop(TurnAnalyzerUserTurnStopStrategy):  # type: ignore[no-untyped
 
     async def process_frame(self, frame: Frame) -> None:
         """Pipecat's handling of `frame`; speech that starts again drops a held end first."""
-        if isinstance(frame, VADUserStartedSpeakingFrame):
+        if isinstance(frame, VADUserStartedSpeakingFrame) and self._hold is not None:
             await self._drop_hold()
+            await self.hold_resumed()
         self._at_stop = isinstance(frame, VADUserStoppedSpeakingFrame)
         try:
             await super().process_frame(frame)
@@ -83,16 +104,19 @@ class HeldTurnStop(TurnAnalyzerUserTurnStopStrategy):  # type: ignore[no-untyped
                 self._end_after_hold(enable_user_speaking_frames, confirms_speculation),
                 f"{self}::complete_hold",
             )
+            await self.hold_began()
 
     async def hold_began(self) -> None:
-        """Smart Turn called the turn complete and the hold began: signal it, so the session
-        starts the turn's transcription and the talker early (the module's docstring)."""
-        raise NotImplementedError("the early start is plan 006's Track C")
+        """Smart Turn called the turn complete and the hold began: signal it downstream (a
+        `TurnHeldFrame`), so the session starts the turn's transcription and the talker early
+        (the module's docstring)."""
+        await self.push_frame(TurnHeldFrame())
 
     async def hold_resumed(self) -> None:
-        """The caller spoke again within the hold, which is dropped: signal it, so the session
-        cancels the early work and the turn goes on (the module's docstring)."""
-        raise NotImplementedError("the early start is plan 006's Track C")
+        """The caller spoke again within the hold, which is dropped: signal it downstream (a
+        `HoldResumedFrame`), so the early work is cancelled and the turn goes on (the module's
+        docstring)."""
+        await self.push_frame(HoldResumedFrame())
 
     async def handle_user_turn_stopped(self) -> None:
         """A turn ended otherwise (the stop timeout, say) holds no end of its own any more."""

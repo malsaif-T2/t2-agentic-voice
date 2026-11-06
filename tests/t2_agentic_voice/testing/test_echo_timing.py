@@ -194,6 +194,9 @@ def test_each_models_usage_is_counted_from_the_calls_reports() -> None:
         "billed_s": 32.5,  # 10 + 12.5 + 10
         "characters": 0,
         "cache_hits": 0,
+        "input_tokens": 0,
+        "output_tokens": 0,
+        "cached_tokens": 0,
         "remaining_requests": 19,
         "remaining_tokens": None,
     }
@@ -204,6 +207,9 @@ def test_each_models_usage_is_counted_from_the_calls_reports() -> None:
         "billed_s": 0.0,
         "characters": len("open the inbox") + len("two"),
         "cache_hits": 4,
+        "input_tokens": 0,
+        "output_tokens": 0,
+        "cached_tokens": 0,
         "remaining_requests": 7,
         "remaining_tokens": None,
     }

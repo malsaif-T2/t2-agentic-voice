@@ -94,7 +94,11 @@ class CallPipeline:
         self.report = FailureReport(call_id=setup.call_id, emit=setup.emit, clock=setup.clock)
         self.events = events = CallEvents(setup.clock, record=record)
         self.stt_bridge = TurnSTTBridge(
-            stt=stt, events=events, report=self.report, start_s=detector.params.start_secs
+            stt=stt,
+            events=events,
+            report=self.report,
+            start_s=detector.params.start_secs,
+            early=setup.talker is not None,  # the early start is the talker's (plan 006, Q2)
         )
         bridge = SessionBridge(events)
         timeout_s = setup.settings.tts.timeout_s

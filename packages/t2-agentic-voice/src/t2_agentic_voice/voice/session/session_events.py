@@ -22,10 +22,11 @@ from t2_agentic_voice.domain.ports.speech_to_text import Transcript
 from t2_agentic_voice.voice.protocol import ClauseIndex, ClientMessage, ReplyId
 
 # Which of a turn's speech-to-text requests a `Transcribing` or a `Transcribed` is: the `turn`,
-# its whole speech at its end, which every turn has; or, for an overlap (`HearOverlap`), its
+# its whole speech at its end, which every turn has; for an overlap (`HearOverlap`), its
 # `window`, the first part of the speech over the agent's, or the `overlap`, all of it (io.py's
-# overlaps).
-TranscriptPart = Literal["window", "overlap", "turn"]
+# overlaps); or, in a call with a talker, the `held` request of a turn said while the agent was
+# silent, its speech so far sent when its hold began (`TurnHeld`, plan 006's early start).
+TranscriptPart = Literal["window", "overlap", "turn", "held"]
 
 
 @dataclass(frozen=True, kw_only=True)
@@ -61,10 +62,11 @@ class TurnClosed:
 
 @dataclass(frozen=True, kw_only=True)
 class TurnHeld:
-    """Smart Turn called the caller's turn complete, and its hold began (voice/turn_hold.py): the
-    session may start the turn's transcription and the talker now (plan 006, Q2), and plays
-    nothing before the hold ends with the turn's `TurnClosed`. Not yet a `SessionEvent`: the
-    Pipecat side gives none until the early start is built."""
+    """Smart Turn called the caller's turn complete, and its hold began (voice/turn_hold.py): in
+    a call with a talker, the speech-to-text bridge sends the turn's speech so far as its `held`
+    request now, and the session starts the talker on its transcript (plan 006, Q2), playing
+    nothing before the hold ends with the turn's `TurnClosed`. Given only for a turn that is no
+    overlap, and only in a call with a talker."""
 
     turn_id: TurnId
     at: float
@@ -73,8 +75,9 @@ class TurnHeld:
 @dataclass(frozen=True, kw_only=True)
 class HoldResumed:
     """The caller spoke again within the hold of the turn `turn_id`: what the session started
-    early for it is cancelled, and the turn goes on, what follows joined to it (plan 006, Q2).
-    Not yet a `SessionEvent`, as `TurnHeld` is not."""
+    early for it is cancelled (the `held` request too, its `Transcribed` never handed after
+    this), and the turn goes on, what follows joined to it, its own request holding all of it
+    (plan 006, Q2). It follows a `TurnHeld` of the turn, once."""
 
     turn_id: TurnId
     at: float
@@ -222,6 +225,8 @@ class Ending:
 SessionEvent = (
     Connected
     | TurnOpened
+    | TurnHeld
+    | HoldResumed
     | TurnClosed
     | Transcribing
     | Transcribed
@@ -238,6 +243,8 @@ SessionEvent = (
 SESSION_EVENTS: tuple[type[SessionEvent], ...] = (
     Connected,
     TurnOpened,
+    TurnHeld,
+    HoldResumed,
     TurnClosed,
     Transcribing,
     Transcribed,

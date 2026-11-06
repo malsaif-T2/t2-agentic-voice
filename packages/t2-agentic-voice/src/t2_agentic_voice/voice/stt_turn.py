@@ -30,7 +30,9 @@ class HeldTurn:
     """One open turn: `turn_id`, its `audio` so far, and `speech`, the byte where the detector
     heard its speech begin; `cut_at`, the bytes held when the detector last heard the speech
     stop, and `cut_starts`, the detector's starts heard by then (`starts`, since the turn
-    opened); `full` once `MAX_TURN_S` was reached; and its `overlap`, once marked one."""
+    opened); `full` once `MAX_TURN_S` was reached; its `overlap`, once marked one; and its
+    `held` request, sent when its hold began (the early start), with the detector's starts
+    heard by then (`held_starts`)."""
 
     turn_id: int
     audio: bytearray
@@ -40,6 +42,8 @@ class HeldTurn:
     cut_starts: int = 0
     full: bool = False
     overlap: HeldOverlap | None = None
+    held: asyncio.Task[Transcribed] | None = None
+    held_starts: int = 0
 
     def stopped(self) -> None:
         """The detector heard the speech stop: the turn's audio is cut here."""
@@ -72,12 +76,15 @@ class HeldTurn:
         return bytes(self.audio[overlap.lead : self.cut_at])
 
     def reused(self) -> asyncio.Task[Transcribed] | None:
-        """The overlap part's request whose result is the turn's own: when it went and no speech
-        followed its audio. None when the turn needs a request of its own."""
+        """The request whose result is the turn's own: its overlap part's, or its `held` one,
+        when it went and no speech followed its audio. None when the turn needs a request of
+        its own."""
         overlap = self.overlap
-        if overlap is None or overlap.part is None or overlap.starts != self.starts:
-            return None
-        return overlap.part
+        if overlap is not None and overlap.part is not None and overlap.starts == self.starts:
+            return overlap.part
+        if self.held is not None and self.held_starts == self.starts:
+            return self.held
+        return None
 
     def request(self, trail: int) -> bytes:
         """The turn's own request's audio: all of it, trimmed `trail` bytes after the detector's

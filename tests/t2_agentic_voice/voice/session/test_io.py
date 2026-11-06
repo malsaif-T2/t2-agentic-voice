@@ -45,6 +45,7 @@ from t2_agentic_voice.voice.session.session_events import (
     Connected,
     Ending,
     FromClient,
+    HoldResumed,
     SessionEvent,
     Synthesizing,
     Transcribed,
@@ -52,6 +53,7 @@ from t2_agentic_voice.voice.session.session_events import (
     TranscriptPart,
     TransportFailure,
     TurnClosed,
+    TurnHeld,
     TurnOpened,
 )
 
@@ -59,6 +61,8 @@ FRAME = AudioChunk(pcm16=b"\x00\x00" * 2400, sample_rate=24_000)  # a cached phr
 EVENTS: list[SessionEvent] = [
     Connected(at=0.0),
     TurnOpened(turn_id=0, at=1.34, speech_at=1.0),
+    TurnHeld(turn_id=0, at=1.9),  # the early start's signals (plan 006)
+    HoldResumed(turn_id=0, at=2.1),
     TurnClosed(turn_id=0, at=2.6, speech_ended_at=2.5),
     Transcribing(turn_id=0, at=2.61, audio_s=2.1),
     Transcribed(
@@ -86,7 +90,7 @@ COMMAND_EXAMPLES: list[Command] = [
     Send(message=State(state="listening")),
     HangUp(reason="hangup"),
 ]
-TURNS = {TurnOpened, TurnClosed, Transcribing, Transcribed}
+TURNS = {TurnOpened, TurnHeld, HoldResumed, TurnClosed, Transcribing, Transcribed}
 CLAUSES = {Synthesizing, ClauseQueued, ClausePlayed, ClauseFailed}
 
 
@@ -130,10 +134,10 @@ def test_every_event_carries_its_time_a_turns_its_turn_and_a_clauses_its_reply()
 def test_a_turns_requests_name_their_part_the_whole_turns_unless_another_is_named() -> None:
     """A turn's request and transcript are its `turn` part unless the bridge names another, so a
     call with no overlap reads as it did; an overlap's `window` and `overlap` name themselves."""
-    request, answer = EVENTS[3], EVENTS[4]
+    request, answer = EVENTS[5], EVENTS[6]
     assert isinstance(request, Transcribing) and isinstance(answer, Transcribed)
     assert (request.part, answer.part) == ("turn", "turn")
-    assert get_args(TranscriptPart) == ("window", "overlap", "turn")
+    assert get_args(TranscriptPart) == ("window", "overlap", "turn", "held")
     window = Transcribing(turn_id=2, at=5.0, audio_s=0.75, part="window")
     heard = Transcribed(
         turn_id=2, at=5.3, audio_s=0.75, sent_at=5.0, transcript=None, part="overlap"

@@ -10,6 +10,11 @@ overlaps read those times: a turn whose speech began while a reply played, or wi
 such tail, since nothing of it plays on to echo (TD-060). Its clauses tell which one plays now
 (`playing`), and which played lately, whose words the agent's own voice heard back would say
 (`heard_since`).
+
+The talker's reply is written while it plays (plan 006): it is opened with no clause (`open`),
+each clause added as it comes (`add`), and closed once its work is done (`close`); until then it
+does not end when its clauses have all played, and while it has nothing left to play it is
+thinking, not speaking.
 """
 
 from __future__ import annotations
@@ -18,6 +23,7 @@ from dataclasses import dataclass, field
 from typing import Literal
 
 from t2_agentic_voice.core.events import TurnId
+from t2_agentic_voice.core.settings.tts import LanguageTag
 from t2_agentic_voice.core.tracing_tts import ReplyNumbers
 from t2_agentic_voice.domain.declaration import NoticeKind
 from t2_agentic_voice.voice.protocol import ClauseIndex, ReplyId
@@ -40,12 +46,15 @@ ReplyKind = Literal["greeting", "echo", "notice", "repeat", "answer"]
 @dataclass(kw_only=True)
 class Clause:
     """One clause of a reply as it plays: its caption, the characters of the request it sent
-    (none for a cached phrase), and what came of it (`played_at`, when its `ClausePlayed`
-    came)."""
+    (none for a cached phrase), whether it is a progress line (`progress`, timed apart), the
+    language it is spoken in when not the call's (a talker's clause), and what came of it
+    (`played_at`, when its `ClausePlayed` came)."""
 
     caption: str
     characters: int
     cached: bool
+    progress: bool = False
+    language: LanguageTag | None = None
     requested_at: float | None = None
     queued_at: float | None = None
     played: bool = False
@@ -61,8 +70,9 @@ class Reply:
     for the greeting or a notice), the notice it speaks, its clauses, when it began and ended
     playing (`ended_at` set however it ended), whether a clause failed and the caller was told
     of it (`told`: one `error` notice a reply), whether a stop dropped it (`stopped`), or a stop
-    or the call's end (`cut`), and how long after its end speech still counts as over it
-    (`tail_s`: none after the caller's own `stop`)."""
+    or the call's end (`cut`), how long after its end speech still counts as over it (`tail_s`:
+    none after the caller's own `stop`), and whether it is still being written (`open`: the
+    talker's, until closed)."""
 
     reply_id: ReplyId
     kind: ReplyKind
@@ -76,6 +86,15 @@ class Reply:
     stopped: bool = False
     cut: bool = False
     tail_s: float = DROP_AFTER_S
+    open: bool = False
+
+    @property
+    def sounding(self) -> bool:
+        """Whether it plays now: its first audio queued, and a clause asked for still to play
+        or it is closed (a reply still being written with nothing left to play is thinking)."""
+        if self.started_at is None:
+            return False
+        return not self.open or any(not clause.done for clause in self.clauses)
 
     @property
     def text(self) -> str:
@@ -141,6 +160,35 @@ class Playback:
         self._replies[reply.reply_id] = reply
         return reply
 
+    def open(self, kind: ReplyKind, *, turn_id: TurnId | None) -> Reply:
+        """Keep a reply still being written, numbered `next_id`, with no clause yet."""
+        reply = Reply(reply_id=self.next_id, kind=kind, turn_id=turn_id, open=True)
+        self._replies[reply.reply_id] = reply
+        return reply
+
+    def add(self, reply: Reply, line: Line, *, progress: bool = False) -> Clause:
+        """Add the clause `line` says to the open `reply`, at its next index."""
+        cached = line.speak.audio is not None
+        characters = 0 if cached else len(line.speak.text)
+        clause = Clause(
+            caption=line.caption,
+            characters=characters,
+            cached=cached,
+            progress=progress,
+            language=line.speak.language,
+        )
+        reply.clauses.append(clause)
+        return clause
+
+    def close(self, reply: Reply, at: float) -> bool:
+        """`reply` is written whole: whether it ends at `at`, every clause of it done (or none
+        asked for)."""
+        reply.open = False
+        if reply.ended_at is None and all(clause.done for clause in reply.clauses):
+            reply.ended_at = at
+            return True
+        return False
+
     def reply(self, reply_id: ReplyId) -> Reply | None:
         return self._replies.get(reply_id)
 
@@ -183,7 +231,7 @@ class Playback:
             clause.chunks, clause.cut_short = event.chunks, event.cut_short
         else:
             reply.failed = True
-        if all(each.done for each in reply.clauses):
+        if not reply.open and all(each.done for each in reply.clauses):
             reply.ended_at = event.at
         return found
 
@@ -230,13 +278,14 @@ class Playback:
 
     @property
     def speaking(self) -> bool:
-        """Whether a reply is playing: its first audio queued, and not ended."""
-        return any(reply.started_at is not None for reply in self.in_progress())
+        """Whether a reply is playing (`Reply.sounding`)."""
+        return any(reply.sounding for reply in self.in_progress())
 
     @property
     def waiting(self) -> bool:
-        """Whether a reply asked for has no audio queued yet."""
-        return any(reply.started_at is None for reply in self.in_progress())
+        """Whether a reply asked for has no audio queued yet, or is still being written with
+        nothing left to play."""
+        return any(not reply.sounding for reply in self.in_progress())
 
     def over(self, speech_at: float) -> Reply | None:
         """The newest reply that speech begun at `speech_at` began over: one playing then, or

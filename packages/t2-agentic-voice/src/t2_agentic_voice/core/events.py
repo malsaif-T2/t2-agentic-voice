@@ -5,8 +5,9 @@ facade. Provisional.
 
 Every event is frozen, from a closed list (`EVENTS`), and carries the call's ID, its turn's
 (None for an event of the whole call) and when it happened. Observers run off the call's path
-and cannot change it. These are the events the echo session emits; the design's others (`Busy`,
-the tools' and the actions' events, `GuardBlocked`) come with what they report.
+and cannot change it. These are the events the session emits, the talker's among them (a tool
+call begun and ended, a clause the output guard blocked: plan 006); the design's others
+(`Busy`, the actions' events) come with what they report.
 
 An event and the report hold what was heard and said, so neither is ever logged (call content
 is logged at no level, docs/SECURITY.md, invariant 8); the report's numbers are written apart,
@@ -61,6 +62,9 @@ InterruptionReason = Literal[
     "enough_words",
     "too_few_words",
 ]
+# Why the output guard blocked a clause (the design's 8.2): an ID-shaped token with no evidence
+# (rule B); the claims (rule A) and the text after an action call (rule C) come with the actions.
+GuardReason = Literal["unsupported_id"]
 # Where a call's connection failed: its offer could not be answered; it never connected (ICE
 # failed, or the offer-to-connected deadline passed); or it dropped after it connected.
 TransportStage = Literal["offer", "connect", "media"]
@@ -95,22 +99,32 @@ class ClientConnection(_Frozen):
 
 
 class TurnTimes(_Frozen):
-    """How long a turn's steps took, in milliseconds, each None when it did not happen: from the
-    turn's end to its first audio (`ttfa_ms`), to the transcript (`stt_ms`), to the chat model's
-    first token (none before the talker), and from a text-to-speech request to its first audio."""
+    """How long a turn's steps took, in milliseconds, each None when it did not happen. From the
+    end of the caller's speech (the speech detector's stop less its stop delay): to the first
+    audible frame of the reply sent (`ttfa_ms`; a silent first chunk is not audible, TD-090; a
+    call whose output taps no audio, a test's or `TextCall`'s, times its first audio queued), a
+    progress line counted apart (`progress_ms`, the first audible frame of one); to the
+    browser's playback of the reply (`played_ms`, from its `playback` report, when it sends
+    one); and to the chat model's first token (`llm_first_token_ms`, the talker's). From the
+    detector's stop as it came, to the transcript (`stt_ms`); and from a text-to-speech request
+    to its first audio (`tts_first_audio_ms`)."""
 
     ttfa_ms: float | None = Field(default=None, ge=0, allow_inf_nan=False)
     stt_ms: float | None = Field(default=None, ge=0, allow_inf_nan=False)
     llm_first_token_ms: float | None = Field(default=None, ge=0, allow_inf_nan=False)
     tts_first_audio_ms: float | None = Field(default=None, ge=0, allow_inf_nan=False)
+    progress_ms: float | None = Field(default=None, ge=0, allow_inf_nan=False)
+    played_ms: float | None = Field(default=None, ge=0, allow_inf_nan=False)
 
 
 class ModelUsage(_Frozen):
     """One provider model's use in one call: its requests, each counted once it went, answered
     or not (one the call's end cancelled included); for speech-to-text, the audio seconds sent
     and billed (at least 10 s a request, as Groq bills Whisper); for text-to-speech, the
-    characters sent and the phrases played from the cache, which sent nothing; and the last
-    headroom the provider reported for its key."""
+    characters sent and the phrases played from the cache, which sent nothing; for the chat
+    model, the tokens read (the cached ones among them counted again in `cached_tokens`) and
+    written, as each request's provider reported them; and the last headroom the provider
+    reported for its key."""
 
     model: str = Field(min_length=1)
     requests: int = Field(default=0, ge=0)
@@ -118,6 +132,9 @@ class ModelUsage(_Frozen):
     billed_s: float = Field(default=0.0, ge=0, allow_inf_nan=False)
     characters: int = Field(default=0, ge=0)
     cache_hits: int = Field(default=0, ge=0)
+    input_tokens: int = Field(default=0, ge=0)
+    output_tokens: int = Field(default=0, ge=0)
+    cached_tokens: int = Field(default=0, ge=0)
     remaining_requests: int | None = Field(default=None, ge=0)
     remaining_tokens: int | None = Field(default=None, ge=0)
 
@@ -239,6 +256,29 @@ class TransportFailed(Event):
     stage: TransportStage
 
 
+class ToolStarted(_TurnEvent):
+    """The talker called the tool `tool` in its reply to the turn; `tool_call_id` is the
+    model's id for the call."""
+
+    tool: str = Field(min_length=1)
+    tool_call_id: str = Field(min_length=1)
+
+
+class ToolFinished(ToolStarted):
+    """The tool call ended: whether it succeeded (`ok`: a `ToolError`, any other failure or its
+    timeout is not), and how long it ran, in milliseconds on the call's clock."""
+
+    ok: bool
+    ms: float = Field(ge=0, allow_inf_nan=False)
+
+
+class GuardBlocked(_TurnEvent):
+    """The output guard blocked a clause of the reply to the turn, never spoken, for `reason`
+    (the design's 8.2); a fixed phrase was said in its place."""
+
+    reason: GuardReason
+
+
 class TurnMetrics(TurnTimes, _TurnEvent):
     """How long a turn's steps took (its `TurnTimes`)."""
 
@@ -250,6 +290,9 @@ EVENTS: tuple[type[Event], ...] = (
     UserTurnEnded,
     Interrupted,
     AgentSpeechEnded,
+    ToolStarted,
+    ToolFinished,
+    GuardBlocked,
     ProviderFailed,
     TransportFailed,
     TurnMetrics,

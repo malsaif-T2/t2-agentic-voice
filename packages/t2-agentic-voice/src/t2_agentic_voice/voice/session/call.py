@@ -38,6 +38,13 @@ keeps what the caller heard (history.py), all in its books (books.py). It meets 
 through io.py and its events and commands. Its turns are turn_book.py's, its limit timers
 limits.py's, how it speaks speaker.py's, and its overlaps interrupter.py's. Its tests are under
 tests/t2_agentic_voice/voice/session/, each module's docstring saying which it holds.
+
+With a talker (`setup.talker`, plan 006) it answers each turn with the talker instead of the
+echo (talking.py): the turn's caption, then the talker's reply, spoken clause by clause as it is
+written; the interruptions are handed to it (interrupter.py); and a turn said while the agent
+was silent starts it early, at Smart Turn's "complete", playing nothing before the hold ends
+(io.py's early start). Every turn's time to first audio is timed to the reply's first audible
+frame sent, and to the browser's playback of it (turn_book.py).
 """
 
 from __future__ import annotations
@@ -65,6 +72,7 @@ from t2_agentic_voice.voice.session.report import (
     merged,
 )
 from t2_agentic_voice.voice.session.speaker import Speaker
+from t2_agentic_voice.voice.session.talking import Talking
 from t2_agentic_voice.voice.session.turn_book import TurnBook
 
 _log = get_logger(__name__)
@@ -96,6 +104,17 @@ class CallSession:
             over=self._over,
             answer=self._answer,
         )
+        self._talking: Talking | None = None
+        if setup.talker is not None:
+            self._talking = Talking(
+                setup,
+                books,
+                talker=setup.talker,
+                speaker=self._speaker,
+                turns=self._turns,
+                guarded=self._guarded,
+                sync=self._sync_state,
+            )
         self._limits = CallLimits(setup, over=self._over, reached=self._reached)
         self._started_at = self._ended_at = setup.clock.wall()
         self._connected = self._closed = False
@@ -133,6 +152,7 @@ class CallSession:
         match event:
             case on.AgentAudio():
                 self._speaker.heard_audio(event)
+                self._turns.heard_audio(self._playback.playing(), event)
                 return
             case on.CallerAudio():
                 return
@@ -143,12 +163,18 @@ class CallSession:
                 over = self._turns.opened(event)
                 if over is not None:
                     await self._interrupter.opened(event, over)
+            case on.TurnHeld() | on.HoldResumed():
+                await self._hold(event)
             case on.TurnClosed():
                 self._limits.heard(event.at)
                 self._turns.closed(event)
+                if self._talking is not None:
+                    await self._talking.release(self._turns.turn(event.turn_id), event.at)
             case on.Transcribing():
                 self._turns.transcribing(event)
                 self._interrupter.requested(event)
+            case on.Transcribed() if event.part == "held":
+                await self._held(event)
             case on.Transcribed() if event.part != "turn":
                 await self._interrupter.heard(event)
             case on.Transcribed():
@@ -158,7 +184,7 @@ class CallSession:
             case on.ClauseQueued():
                 reply = await self._speaker.queued(event)
                 if reply is not None:
-                    self._turns.first_audio(reply, event.at)
+                    self._turns.first_audio(reply, event.clause, event.at)
             case on.ClausePlayed() | on.ClauseFailed():
                 await self._speaker.done(event, tell=self._ending is None)
             case on.FromClient(message=wire.Stop()):
@@ -167,6 +193,9 @@ class CallSession:
                 await self._end("hangup", event.at, tell=True)
             case on.FromClient(message=wire.ClientStats() as stats):
                 self._client = merged(self._client, stats)
+            case on.FromClient(message=wire.Playback(event="started") as played):
+                reply = self._playback.reply(played.reply_id)
+                self._turns.browser_played(reply, played.clause, event.at)
             case on.TransportFailure():
                 self._events.transport(event.stage)
                 await self._end("transport", event.at, tell=False)
@@ -194,9 +223,36 @@ class CallSession:
         else:
             await self._interrupter.alone(turn, heard, event)
 
+    async def _hold(self, event: on.TurnHeld | on.HoldResumed) -> None:
+        """The turn's hold began, or the caller resumed within it (io.py's early start)."""
+        held = isinstance(event, on.TurnHeld)
+        self._recorder.line(
+            event.at, "turn_held" if held else "hold_resumed", turn_id=event.turn_id
+        )
+        if self._talking is None:
+            return
+        if held:
+            self._talking.hold_began(event.turn_id)
+        else:
+            await self._talking.resumed(event.turn_id)
+
+    async def _held(self, event: on.Transcribed) -> None:
+        """A turn's `held` transcript, its speech so far when its hold began: with a talker,
+        the talker starts on it for a turn said while the agent was silent, unless it is a stop
+        or pause request said whole (io.py's early start)."""
+        heard = self._turns.held(event)
+        turn = self._turns.turn(event.turn_id)
+        if self._talking is None or heard is None or self._over():
+            return
+        if turn.overlap or turn.dropped or turn.closed:
+            return
+        if self._interrupter.command(heard) != "stop":
+            await self._talking.held(turn, heard)
+
     async def _answer(self, turn: TurnLog, heard: HeardWords | None, event: on.Transcribed) -> None:
         """Say the turn back, unless dropped or the call has ended: its caption, then the
-        `error` notice when its request failed, or its echo (nothing for nothing heard)."""
+        `error` notice when its request failed, or its echo (nothing for nothing heard); with a
+        talker, the talker's reply instead of the echo."""
         if self._ended is None and not turn.dropped:
             if heard is not None:
                 caption = wire.Caption(
@@ -205,6 +261,8 @@ class CallSession:
                 await self._speaker.send(caption)
             if self._ending is None and event.failure is not None:
                 await self._speaker.notice("error", event.at)
+            elif self._ending is None and heard is not None and self._talking is not None:
+                await self._talking.answer(turn, heard, event.at)
             elif self._ending is None and heard is not None:
                 lines = echo(self._setup, heard, reply_id=self._playback.next_id)
                 if lines:
@@ -236,6 +294,8 @@ class CallSession:
         self._ended, self._ended_at = reason, self._setup.clock.wall()
         self._limits.stop()
         await self._speaker.cut(at)
+        if self._talking is not None:
+            await self._talking.end()
         self._turns.end()
         self._recorder.line(at, "ended", reason=reason)
         _log.info("call_ended", call_id=self._id, reason=reason)

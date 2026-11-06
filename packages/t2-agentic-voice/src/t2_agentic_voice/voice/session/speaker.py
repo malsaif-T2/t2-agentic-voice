@@ -13,8 +13,10 @@ counts by characters.
 
 A reply's scope is cancelled once the reply ends, however, so a reply that will ask for more
 clauses while its work runs (the talker's) must not end before that work is done: such a reply
-is opened before its first clause and closed once its work is done (`open_reply`,
-open_reply.py's `OpenReply`).
+is opened before its first clause, written clause by clause (`write`, each clause in the
+language the talker wrote it in, counted under that language's model) and closed once its work
+is done (`open_reply`, open_reply.py's `OpenReply`). Its scope may be one its work began in
+before it was opened (the early start's, plan 006).
 """
 
 from __future__ import annotations
@@ -22,18 +24,23 @@ from __future__ import annotations
 from collections.abc import Awaitable, Callable
 
 from t2_agentic_voice.core.events import TurnId
+from t2_agentic_voice.core.settings.tts import LanguageTag
+from t2_agentic_voice.domain.cards import Card
 from t2_agentic_voice.domain.declaration import NoticeKind
+from t2_agentic_voice.domain.ports.text_to_speech import AudioChunk
 from t2_agentic_voice.voice.protocol import (
     CallState,
     Caption,
     Notice,
+    ReplyId,
     SessionHello,
     SessionMessage,
+    ShowCard,
     State,
     Unduck,
 )
 from t2_agentic_voice.voice.session.books import CallBooks
-from t2_agentic_voice.voice.session.commands import Send, StopSpeaking
+from t2_agentic_voice.voice.session.commands import Send, Speak, StopSpeaking
 from t2_agentic_voice.voice.session.echo import Line, again, fixed
 from t2_agentic_voice.voice.session.io import CallSetup, Commands
 from t2_agentic_voice.voice.session.open_reply import OpenReply
@@ -102,7 +109,7 @@ class Speaker:
         counted."""
         clause = self.playback.requested(event)
         if clause is not None:
-            self._usage.synthesizing(self._tag, clause.characters)
+            self._usage.synthesizing(clause.language or self._tag, clause.characters)
 
     def scope(self, reply_id: int) -> CancelScope:
         """The cancel scope of reply `reply_id`, which the work that answers its turn starts
@@ -135,11 +142,74 @@ class Speaker:
             await self._commands.run(line.speak)
         return reply
 
-    async def open_reply(self, at: float, *, turn_id: TurnId) -> OpenReply:
-        """Open the talker's reply to `turn_id` at `at`, before its first clause: its scope and
-        its span opened, its clauses added as they come, closed once its work is done
-        (open_reply.py)."""
-        raise NotImplementedError("the streamed reply is plan 006's Track C")
+    async def open_reply(
+        self, at: float, *, turn_id: TurnId, scope: CancelScope | None = None
+    ) -> OpenReply:
+        """Open the talker's reply to `turn_id` at `at`, before its first clause: its scope (a
+        new one, or `scope`, which its work began in) and its span opened, its clauses added as
+        they come, closed once its work is done (open_reply.py)."""
+        reply = self.playback.open("answer", turn_id=turn_id)
+        reply_id = reply.reply_id
+        name = f"reply-{reply_id}"
+        self._scopes[reply_id] = scope or CancelScope(name=name, clock=self._setup.clock)
+        self._history.asked(reply_id, turn_id, ())
+        voice = self._voice
+        self._trace.tts_started(
+            reply_id, turn_id, model=voice.model, voice=voice.voice, language=self._tag
+        )
+        return OpenReply(
+            reply_id=reply_id, scope=self._scopes[reply_id], writer=self, setup=self._setup
+        )
+
+    async def write(
+        self,
+        reply_id: ReplyId,
+        *,
+        text: str,
+        caption: str,
+        language: LanguageTag,
+        at: float,
+        audio: AudioChunk | None = None,
+        progress: bool = False,
+    ) -> bool:
+        """Ask for the next clause of the open reply `reply_id`: `text` in `language`'s voice
+        (or `audio`, a fixed phrase's, with no request), captioned `caption`; whether it was
+        asked for (not once the reply has ended or was closed)."""
+        reply = self.playback.reply(reply_id)
+        if reply is None or reply.ended_at is not None or not reply.open:
+            return False
+        speak = Speak(
+            reply_id=reply_id,
+            clause=len(reply.clauses),
+            turn_id=reply.turn_id,
+            text=text,
+            language=language,
+            audio=audio,
+        )
+        line = Line(speak=speak, caption=caption)
+        self.playback.add(reply, line, progress=progress)
+        self._history.added(reply_id, caption)
+        if audio is not None:
+            self._usage.cached(language)
+        self._recorder.asked(at, speak, caption)
+        await self._commands.run(speak)
+        return True
+
+    async def show_card(self, reply_id: ReplyId, card: Card) -> bool:
+        """Show the caller `card` for the open reply `reply_id`, as `t2v/1`'s `card`; whether it
+        was (not once the reply has ended)."""
+        reply = self.playback.reply(reply_id)
+        if reply is None or reply.ended_at is not None:
+            return False
+        await self.send(ShowCard(title=card.title, steps=card.steps, source=card.source))
+        return True
+
+    async def close(self, reply_id: ReplyId, at: float) -> None:
+        """The open reply `reply_id` is written whole at `at`: it ends now when every clause of
+        it is done, or with its last."""
+        reply = self.playback.reply(reply_id)
+        if reply is not None and reply.open and self.playback.close(reply, at):
+            await self._end(reply)
 
     async def greet(self, at: float) -> None:
         """The call connected at `at`: the `hello`, naming the call's language first and the
@@ -199,14 +269,14 @@ class Speaker:
         reply, clause = found
         self._since_s = 0.0
         if isinstance(event, ClausePlayed):
-            self._usage.played(self._tag, event)
+            self._usage.played(clause.language or self._tag, event)
             self._history.played(reply.reply_id, event.clause)
             if event.audio_s > 0:
                 self._played_s += event.audio_s
                 self._played_chars += len(clause.caption)
         else:
             self._events.failed(event.failure, event.retryable, reply.turn_id)
-            if reply.kind in ("echo", "repeat") and not reply.told and tell:
+            if reply.kind in ("echo", "repeat", "answer") and not reply.told and tell:
                 reply.told = True
                 await self.notice("error", event.at)
         if reply.ended_at is not None:

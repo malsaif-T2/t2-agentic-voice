@@ -2,8 +2,10 @@
 as it goes (voice/session/io.py's usage): a `Transcribing` is one speech-to-text request, its
 audio sent and billed as Groq bills Whisper, at least `WHISPER_MIN_BILLED_S` a request; a
 `Synthesizing` is one text-to-speech request, its clause's text the characters sent; a phrase
-played from the cache is a cache hit, which sends nothing. A request the call's end cancelled is
-counted, since it went; the last headroom the provider reported for its key is kept per model.
+played from the cache is a cache hit, which sends nothing; a chat model's request is counted as
+the talker reports it going (`ModelRequested`), and its tokens as its provider reported them
+when it ended (`ModelReplied`). A request the call's end cancelled is counted, since it went;
+the last headroom the provider reported for its key is kept per model.
 """
 
 from __future__ import annotations
@@ -13,6 +15,7 @@ from dataclasses import dataclass
 from t2_agentic_voice.core.config import VoiceSettings
 from t2_agentic_voice.core.events import ModelUsage
 from t2_agentic_voice.core.settings.tts import LanguageTag
+from t2_agentic_voice.domain.ports.chat_model import Usage as ChatUsage
 from t2_agentic_voice.voice.session.session_events import ClausePlayed, Transcribed, Transcribing
 
 # The least Groq bills a transcription request, in seconds (the design's 10.4, checked).
@@ -28,6 +31,9 @@ class _Counts:
     billed_s: float = 0.0
     characters: int = 0
     cache_hits: int = 0
+    input_tokens: int = 0
+    output_tokens: int = 0
+    cached_tokens: int = 0
     remaining_requests: int | None = None
     remaining_tokens: int | None = None
 
@@ -40,9 +46,9 @@ class _Counts:
 
 
 class Usage:
-    """Each model's usage in one call: the speech-to-text model, and each language's
-    text-to-speech model as `tts.languages` gives it; the call's own language's is reported even
-    when it sent nothing."""
+    """Each model's usage in one call: the speech-to-text model, each language's
+    text-to-speech model as `tts.languages` gives it, and each chat model the talker asked; the
+    call's own language's is reported even when it sent nothing."""
 
     def __init__(self, settings: VoiceSettings, language: LanguageTag) -> None:
         self._stt_model = settings.stt.model
@@ -85,6 +91,18 @@ class Usage:
         """The headroom a clause's response reported."""
         self._tts(language).headroom(event.remaining_requests, event.remaining_tokens)
 
+    def chat_requested(self, model: str) -> None:
+        """One request to the chat model `model` went."""
+        self._models.setdefault(model, _Counts()).requests += 1
+
+    def chat_replied(self, model: str, usage: ChatUsage | None) -> None:
+        """A request to the chat model `model` ended, using `usage` (None: not reported)."""
+        counts = self._models.setdefault(model, _Counts())
+        if usage is not None:
+            counts.input_tokens += usage.input_tokens
+            counts.output_tokens += usage.output_tokens
+            counts.cached_tokens += usage.cached_tokens
+
     def report(self) -> tuple[ModelUsage, ...]:
         """Each model's usage, the speech-to-text model's first."""
         return tuple(
@@ -95,6 +113,9 @@ class Usage:
                 billed_s=counts.billed_s,
                 characters=counts.characters,
                 cache_hits=counts.cache_hits,
+                input_tokens=counts.input_tokens,
+                output_tokens=counts.output_tokens,
+                cached_tokens=counts.cached_tokens,
                 remaining_requests=counts.remaining_requests,
                 remaining_tokens=counts.remaining_tokens,
             )

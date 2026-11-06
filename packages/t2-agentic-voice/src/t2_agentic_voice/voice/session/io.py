@@ -101,9 +101,19 @@ items cited are plan 003's appendix, "Changes to the plan's interfaces".
   follows it. Once it has handed the last of those reports, the Pipecat side ends the call's
   stream with `Session.aclose`, and no event follows.
 
+- **The early start** (plan 006, Q2). In a call with a talker, a turn said while the agent was
+  silent (no overlap) whose end Smart Turn calls complete has its hold signalled (`TurnHeld`):
+  the speech-to-text bridge sends its speech so far at once as the turn's `held` request (a
+  `Transcribing` and a `Transcribed` of that part), and the session starts the talker on it,
+  playing nothing before the hold ends with the turn's `TurnClosed`. Speech that resumes in the
+  hold gives `HoldResumed`: the bridge cancels the `held` request (no `Transcribed` of it
+  follows the `HoldResumed`), the session cancels what it started, and the turn goes on, its
+  own request holding all of it. When no speech followed it, the turn's own `Transcribed`
+  reuses the `held` result, with no request of its own.
+
 What else a session needs (the agent and the call's language, the settings, the phrase cache,
-tracing, where its public events go) comes in its `CallSetup`, from voice's entry point
-(`voice/calls.py`).
+tracing, where its public events go, the call's talker) comes in its `CallSetup`, from voice's
+entry point (`voice/calls.py`).
 """
 
 from __future__ import annotations
@@ -111,6 +121,8 @@ from __future__ import annotations
 from collections.abc import Callable
 from dataclasses import dataclass
 from typing import Protocol
+
+from t2_agentic_voice.agent.talker import Talker
 
 # The call's clock is core's, which the talker and the tool runner read too; these names are
 # given here as well, where the session's I/O has always held them.
@@ -176,8 +188,9 @@ class CallSetup:
     and the call's language, one of the agent's, fixed at join (`VoiceAgent.call_language`) and
     kept for the whole call; the settings; the runtime's phrase audio; the most characters
     one text-to-speech request of a language takes (the provider's `max_chars`, which the clause
-    splitter honours); the runtime's tracing; where the session's public events go; and the
-    call's clock."""
+    splitter honours); the runtime's tracing; where the session's public events go; the call's
+    clock; and the call's talker, built for it when the agent runs the talker (`session.mode`,
+    `SessionSettings.mode_for`), None for the echo."""
 
     call_id: CallId
     caller: Caller
@@ -190,3 +203,4 @@ class CallSetup:
     tracing: Tracing
     emit: EventSink
     clock: Clock = SYSTEM_CLOCK
+    talker: Talker | None = None
