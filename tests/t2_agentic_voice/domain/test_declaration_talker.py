@@ -3,7 +3,7 @@ Block 0): `instructions`, `tools`, `vocabulary` and `version` on `VoiceAgent`, a
 lines on `Language`, all optional, so an agent declared before the talker loads unchanged and
 runs the echo; an agent with instructions runs the talker. Each refusal a ConfigurationError
 naming the field, with a FIX line, never the value. And a card (domain/cards.py), and the
-output guard's ID rule's shape (domain/guard.py), whose stub raises."""
+output guard's ID rule's shape (domain/guard.py)."""
 
 from __future__ import annotations
 
@@ -118,7 +118,8 @@ def test_a_card_holds_a_title_its_steps_and_its_source() -> None:
             Card.model_validate(values)
 
 
-def test_the_id_rules_verdict_loads_and_its_stub_raises() -> None:
+def test_the_id_rules_verdict_loads_and_is_given() -> None:
+    """Its behaviour: tests/t2_agentic_voice/domain/test_guard.py."""
     assert IdVerdict(passed=False, unsupported=("4521",)).unsupported == ("4521",)
-    with pytest.raises(NotImplementedError):
-        check_ids("Your number is 4521.", evidence=(), settings=GuardSettings(), year=2026)
+    verdict = check_ids("Your number is 4521.", evidence=(), settings=GuardSettings(), year=2026)
+    assert verdict == IdVerdict(passed=False, unsupported=("4521",))
