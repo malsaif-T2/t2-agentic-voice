@@ -5,17 +5,26 @@ transcript, reusing it, starts nothing more; speech that resumes in the hold can
 and the turn, joined, reaches the talker as one; a stop request said whole starts nothing; an
 overlap's turn and a call with no talker are as they were. What the hold kept plays event by
 event, one that fails logged and the rest still played, the reply closed; and nothing it kept
-plays after a client's stop in the hold, which cancels its work, or over the `ended` notice."""
+plays after a client's stop in the hold, which cancels its work, or over the `ended` notice.
+The model requests of an early start dropped are counted in the call's usage."""
 
 from __future__ import annotations
 
 import asyncio
 
-from t2_agentic_voice.agent.talker import ProgressDue, ReplyDone, SpokenClause
+import pytest
+from t2_agentic_voice.agent.talker import (
+    ModelReplied,
+    ModelRequested,
+    ProgressDue,
+    ReplyDone,
+    SpokenClause,
+)
 from t2_agentic_voice.core.config import VoiceSettings
 from t2_agentic_voice.core.conversation import TalkerTurn
 from t2_agentic_voice.core.settings.limits import LimitSettings
 from t2_agentic_voice.core.settings.tts import LanguageTag
+from t2_agentic_voice.domain.ports.chat_model import Usage
 from t2_agentic_voice.domain.ports.text_to_speech import AudioChunk
 from t2_agentic_voice.domain.words import PRESET_WORDS
 from t2_agentic_voice.voice.protocol import Notice
@@ -28,10 +37,12 @@ from tests.t2_agentic_voice.voice.session.session_support import (
     call,
     greeted,
     play,
+    report,
     sent,
     speaks,
 )
 from tests.t2_agentic_voice.voice.session.talker_support import (
+    MODEL,
     PROGRESS,
     Step,
     Work,
@@ -223,3 +234,44 @@ def test_a_held_reply_never_plays_over_the_ended_notice(settings: VoiceSettings)
 
     asyncio.run(drive())
     assert [s.reply_id for s in speaks(io)] == [0, 1]  # the greeting and the notice alone
+
+
+@pytest.mark.parametrize("by", ["resumed", "end"])
+def test_the_model_requests_of_a_dropped_early_start_are_counted(
+    settings: VoiceSettings, by: str
+) -> None:
+    """An early start whose model request went and ended, dropped while its work runs (speech
+    resumed in the hold, or the call ended): that request went, so the call's usage counts it
+    and its tokens (usage.py), beside the turn's own request after it."""
+
+    def script(turn: TalkerTurn) -> list[Step]:
+        used = Usage(input_tokens=120, output_tokens=30)
+        return [
+            ModelRequested(model=MODEL),
+            ModelReplied(model=MODEL, usage=used, first_token_s=0.3),
+            Work(1.0),
+            SpokenClause(text="Made-up answer.", language="en"),
+            ReplyDone(),
+        ]
+
+    io, _, talker = talker_call(two_step(settings), script)
+
+    async def drive() -> None:
+        await greeted(io)
+        await _held(io, 0, FIRST)
+        if by == "resumed":
+            await io.hold_resumed(0)
+            await settle()
+            await io.turn_held(0)
+            await _closed(io, 0, f"{FIRST} {REST}", reused=False)
+            await io.clock.advance(1.0)
+            await settle()
+            await play(io, 1)
+        await io.ending()
+        await io.close()
+
+    asyncio.run(drive())
+    assert talker.cancelled[0] == 0
+    chat = {u.model: (u.requests, u.input_tokens, u.output_tokens) for u in report(io).usage}
+    runs = 2 if by == "resumed" else 1
+    assert chat.get(MODEL) == (runs, 120 * runs, 30 * runs)

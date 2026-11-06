@@ -19,8 +19,8 @@ voice/session/call.py.
   never said (`ClauseBlocked`): the call language's preset `error` notice is said in its place,
   once a reply, and `GuardBlocked` goes out (the talker keeps its developer note: the history
   holds only what the caller heard); each model request is counted in the call's usage as it
-  goes and its tokens as it ends (`ModelRequested`, `ModelReplied`), the first one's first token
-  the turn's; and the reply is closed once it is done (`ReplyDone`). A talker that fails is
+  goes and its tokens as it ends (`ModelRequested`, `ModelReplied`; an early start's, dropped
+  unplayed, once it is let go), the first one's first token the turn's; and the reply is closed once it is done (`ReplyDone`). A talker that fails is
   logged by its failure's kind alone, a provider's failure told (`ProviderFailed`), and the
   caller hears the `error` notice, once a reply, after any clause already said too, in the
   turn's reply language (its last clause's, else the turn's as agent/language.py reads it);
@@ -197,7 +197,7 @@ class Talking:
         """The client's `stop`: the work of every early start still held is cancelled, so
         nothing it kept plays, and its turn is answered by nothing (`answer`)."""
         for talk in [talk for talk in self._talks.values() if talk.reply is None]:
-            await talk.scope.cancel()
+            await self._cancel(talk)
 
     async def end(self) -> None:
         """The call ended: every early start still held is cancelled (a reply's own scope is
@@ -231,7 +231,18 @@ class Talking:
         dropped it)."""
         if self._talks.get(talk.turn_id) is talk:
             del self._talks[talk.turn_id]
+        await self._cancel(talk)
+
+    async def _cancel(self, talk: _Talk) -> None:
+        """`talk`'s work cancelled; the model requests it made while held, which went though
+        none of it will play, counted in the call's usage (usage.py) as they would have been."""
         await talk.scope.cancel()
+        for event, _ in talk.pending:
+            if isinstance(event, ModelRequested):
+                self._usage.chat_requested(event.model)
+            elif isinstance(event, ModelReplied):
+                self._usage.chat_replied(event.model, event.usage)
+        talk.pending.clear()
 
     async def _stop_earlier(self, turn: TurnLog, at: float) -> None:
         """Before `turn` is answered: the replies in progress to earlier turns stopped, their
