@@ -123,6 +123,18 @@ cmd = "python -m ole5_voice.evals.timing"
 help = "Record and review the golden set's new takes in Chrome, on a page served on 127.0.0.1"
 cmd = "python -m ole5_voice.evals.recorder"
 
+[tool.poe.tasks.uncertain]
+help = "Run U: a model's verdict on a stored overlap run's uncertain overlaps (spends: model, prices, cap and the day's requests on its command line)"
+cmd = "python -m ole5_voice.evals.uncertain"
+
+[tool.poe.tasks.first-audio]
+help = "Run T: the time to first audio of the agent's replies to the recorded requests (spends: the agent's factory, models, prices and cap on its command line)"
+cmd = "python -m ole5_voice.evals.first_audio"
+
+[tool.poe.tasks.first-audio-listen]
+help = "Write ten of run T1's reply openings and a sheet for the owner's listen, or read the marked sheet back"
+cmd = "python -m ole5_voice.evals.first_audio_listen"
+
 # --------------------------------------------------------------------------- ruff
 
 [tool.ruff]
