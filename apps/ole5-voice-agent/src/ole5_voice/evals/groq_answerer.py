@@ -81,6 +81,12 @@ class Budget:
         self.requests += 1
 
 
+def least_billed(requests: Sequence[AnswerRequest]) -> float:
+    """The fewest seconds Groq bills for `requests`, each segment sent once: the cap's check
+    before a run starts (a retry, or a request over the cap, comes on top)."""
+    return sum(max(GROQ_MINIMUM_S, read_wav(path).seconds) for r in requests for path in r.segments)
+
+
 @dataclass(frozen=True)
 class Policy:
     """How the `groq` answerer asks: `--max-attempts`, `--max-rpm`, `--variant-timeout-s`; the

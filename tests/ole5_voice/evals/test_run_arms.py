@@ -132,3 +132,16 @@ def test_the_shown_settings_hold_the_prompt(
     assert run.main(argv, parts=setup.parts()) == 0
     out = capsys.readouterr().out
     assert "run.prompt" in out and "terms.toml, sha256" in out
+
+
+def test_a_run_whose_least_cost_passes_the_cap_is_refused_before_anything_is_sent(
+    tmp_path: Path, capsys: pytest.CaptureFixture[str]
+) -> None:
+    """Each request is billed at least 10 s: three (the smoke test's and two) cost $0.000925 at
+    $0.111 an hour, past a $0.0005 cap; the smoke test's alone, $0.000308, is within it."""
+    setup = Setup(tmp_path / "whole", _two_languages)
+    assert setup.main("--cap-usd", "0.0005") == 2
+    assert "least cost, $0.0009, passes --cap-usd" in capsys.readouterr().out
+    assert setup.calls() == 0 and not setup.out().exists()
+    smoke = Setup(tmp_path / "smoke", _two_languages)
+    assert smoke.main("--cap-usd", "0.0005", "--smoke-only") == 0 and smoke.calls() == 1

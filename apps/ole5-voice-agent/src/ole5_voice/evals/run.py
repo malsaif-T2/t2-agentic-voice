@@ -2,8 +2,9 @@
 evaluation.md's "Running" says.
 
 Before anything is sent, a run refuses the main checkout and a dirty tree, an `--out` that
-exists or that git would track (`worktree.py`), and audio that is not the file its manifest
-hashed. Its settings load with `VoiceSettings.from_env` (`--env-file`, or the working folder's
+exists or that git would track (`worktree.py`), audio that is not the file its manifest
+hashed, and a `groq` run whose least cost (each request once, billed as Groq bills it; a windows
+run's aside) would pass `--cap-usd`. Its settings load with `VoiceSettings.from_env` (`--env-file`, or the working folder's
 `.env`), the command line's on top (`run_settings.py`): a `groq` run names its model and
 timeout, and its base URL is `--base-url` or the SDK's own, whatever the environment holds, so
 no `T2V_` variable changes a registered arm; `--show-settings` shows each resolved, a secret
@@ -40,7 +41,7 @@ from t2_agentic_voice import (
 from ole5_voice import LOGGERS
 from ole5_voice.evals import history
 from ole5_voice.evals.answerers import ANSWERERS, RunAnswerer, make_answerer
-from ole5_voice.evals.groq_answerer import Budget, CapReachedError, Policy
+from ole5_voice.evals.groq_answerer import Budget, CapReachedError, Policy, least_billed
 from ole5_voice.evals.items import HISTORY_FILE
 from ole5_voice.evals.models import NAME_RULE, Split, is_name
 from ole5_voice.evals.run_parts import (
@@ -62,7 +63,7 @@ from ole5_voice.evals.run_settings import (
     show,
     shown,
 )
-from ole5_voice.evals.runs import RunInfo, holds_placeholder
+from ole5_voice.evals.runs import RunInfo, cost_usd, holds_placeholder
 from ole5_voice.evals.windows import measurer
 from ole5_voice.evals.worktree import Checkout, check_out, refused, run_checkout
 
@@ -225,6 +226,13 @@ def _run(
     model = settings.stt.model
     reuse = clip_answers(args.clips_from, plan.todo, commit=checkout.commit, model=model)
     budget = Budget(price_per_hour_usd=args.price_per_hour or 0.0, cap_usd=args.cap_usd)
+    if spends and not args.windows_ms:  # the cap, before anything is sent
+        sent = [plan.smoke.request, *(() if args.smoke_only else (t.request for t in plan.todo))]
+        if (least := cost_usd(least_billed(sent), budget.price_per_hour_usd)) > args.cap_usd:
+            raise refused(
+                f"the run's least cost, ${least:.4f}, passes --cap-usd",
+                "raise --cap-usd, or check --price-per-hour",
+            )
     policy = Policy(
         args.max_attempts,
         args.max_rpm,
