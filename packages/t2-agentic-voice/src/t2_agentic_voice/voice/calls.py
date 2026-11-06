@@ -97,6 +97,7 @@ from t2_agentic_voice.voice.session.io import (
     PhraseAudio,
     Session,
 )
+from t2_agentic_voice.voice.talkers import TalkerFactory, talker_for, talks
 
 if TYPE_CHECKING:  # named in annotations only: this module imports no Pipecat (above)
     from pipecat.audio.turn.base_turn_analyzer import BaseTurnAnalyzer
@@ -183,6 +184,7 @@ class CallsFactory(Protocol):
         tracing: Tracing,
         emit: EventSink,
         clock: Clock = SYSTEM_CLOCK,
+        talker: TalkerFactory | None = None,
     ) -> Calls:
         """voice's entry point for the runtime's calls, built with no IO."""
 
@@ -193,7 +195,8 @@ class VoiceCalls:
     fixed phrases from `phrases`, its turns traced on `tracing`, its public events sent to
     `emit`, its times on `clock`. Each call's speech detector comes from `speech_detector` and
     its turn analyzer from `turn_analyzer`, each called once per call, off the event loop; None
-    builds Silero VAD and Smart Turn v3.2, each loading its model for the call. Built cheaply,
+    builds Silero VAD and Smart Turn v3.2, each loading its model for the call. A call of an
+    agent that runs the talker gets its own, built by `talker` (voice/talkers.py). Built cheaply,
     with no IO; `start` imports onnxruntime and warms one pair of models."""
 
     def __init__(
@@ -207,9 +210,11 @@ class VoiceCalls:
         tracing: Tracing,
         emit: EventSink,
         clock: Clock = SYSTEM_CLOCK,
+        talker: TalkerFactory | None = None,
         speech_detector: Callable[[], VADAnalyzer] | None = None,
         turn_analyzer: Callable[[], BaseTurnAnalyzer] | None = None,
     ) -> None:
+        self._talker = talker if talks(agent, settings, talker) else None
         self._agent = agent
         self._settings = settings
         self._stt = stt
@@ -356,6 +361,9 @@ class VoiceCalls:
             tracing=self._tracing,
             emit=self._emit,
             clock=self._clock,
+            talker=talker_for(
+                self._talker, call_id=call_id, caller=caller, language=language, clock=self._clock
+            ),
         )
         detector, analyzer = detectors
         return CallPipeline(

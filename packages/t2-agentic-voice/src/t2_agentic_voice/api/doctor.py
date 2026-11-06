@@ -128,6 +128,8 @@ async def checks(
         if built:
             await providers.stt.aclose()
             await providers.tts.aclose()
+            if providers.chat is not None:
+                await providers.chat.aclose()
     return found
 
 

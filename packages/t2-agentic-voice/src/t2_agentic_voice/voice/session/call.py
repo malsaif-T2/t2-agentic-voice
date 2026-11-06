@@ -64,7 +64,7 @@ from t2_agentic_voice.voice.session.heard import HeardWords
 from t2_agentic_voice.voice.session.interrupter import Interrupter
 from t2_agentic_voice.voice.session.io import CallSetup, Commands
 from t2_agentic_voice.voice.session.limits import CallLimits, Limit
-from t2_agentic_voice.voice.session.playback import Reply
+from t2_agentic_voice.voice.session.playback import Playback, Reply
 from t2_agentic_voice.voice.session.report import (
     TurnLog,
     call_report,
@@ -342,6 +342,16 @@ class CallSession:
             client=self._client,
         )
         await file_report(report, self._setup, trace=self._trace, events=self._events)
+
+    @property
+    def setup(self) -> CallSetup:
+        """What the call started with."""
+        return self._setup
+
+    @property
+    def playback(self) -> Playback:
+        """The agent's replies as they play (playback.py), read-only for a test's reads."""
+        return self._playback
 
     @property
     def _id(self) -> str:
