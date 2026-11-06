@@ -343,7 +343,8 @@ turbo: in each pair no variant of the 231 changed its verdict and none of the 66
 (p = 1.0), and the transcripts were the same for every variant under large-v3 and for 230 of
 231 under turbo.
 So the noise moved d = 0 items, and one run detects a change of 6 items (D-024). Those pairs were
-made on one evening with one key, and another day may differ (TD-032).
+made on one evening with one key; M3 ran large-v3's pair again on another day, R5 and R6, and
+again no item moved (D-066).
 
 **2. Judge by item, with the sign test.** Compare the candidate's run with the last kept run
 variant by variant (fixed, broken, net), then count each item, by its net over its variants,

@@ -18,7 +18,7 @@ decisions (`D-NNN`), which are permanent. Living docs cite only milestones in th
 | M0 | Scaffold and harness | in progress ([000](active/000-project-scaffold.md); [001](completed/001-library-and-app.md) done) |
 | M1 | The measurement first: the owner's voice as a golden set | done ([002](completed/002-golden-set-baseline.md)) |
 | M2 | A call that listens and speaks | done ([003](completed/003-call-listens-and-speaks.md)) |
-| M3 | Interruptions and cancellation | in progress ([005](active/005-interruptions-and-cancellation.md)) |
+| M3 | Interruptions and cancellation | done ([005](completed/005-interruptions-and-cancellation.md)) |
 | M4 | The talker and knowledge answers | planned |
 | M5 | Tickets, ticket status, and handoff | planned |
 | M6 | Reliability and operations | planned |
@@ -168,7 +168,7 @@ session's traces and call reports.
   noise and echo clip came back with text, such as Whisper's invented captions); how its rule
   hears short Saudi words (often misheard even as whole clips); its first window (at 500 ms none
   of the 4 Saudi words asking the agent to halt was heard; large-v3 at 750 ms held the most);
-  and the noise runs repeated on another day before its first comparison (TD-032).
+  and the noise runs repeated on another day before its first comparison (done: D-066).
 - *From M2* (plan 003, moved by the owner on 2026-11-03): the language a live call sends Whisper, by
   the rule plan 003 registered (its runs R5 to R7, after the noise runs above, and its Q15 when the
   rule does not decide; TD-011), taken up or registered again in M3's plan; until then
@@ -177,7 +177,15 @@ session's traces and call reports.
 *Done when* the targets registered in its plan hold on the golden set's overlap clips and on
 M2's call recordings: a normal-volume «وقف» stops the agent within its target, the agent's own
 voice does not interrupt it, and listening sounds do not; and the rehearsal's stop and repeat
-steps pass in a live call.
+steps pass in a live call. *Done* on 2026-11-06 ([005](completed/005-interruptions-and-cancellation.md)),
+at a plateau (evaluation.md, "Closing at a plateau"): the owner made the two-step interruption the
+default with targets still failing (D-068). The stop time, the requests per interruption and no
+stop for echo, silence or noise held; stop and pause words held on dev and failed on held-out (10
+of 18), listening sounds the reverse (5 of 38 on dev), requests over a reply failed on both (15 of
+18 on held-out), a normal-volume «وقف» stopped the agent in 5 of 6 dev variants, and the agent's
+own words went unmeasured; the live calls passed the rehearsal's stop and repeat steps. The cancel
+scope is one per reply (D-060), the parity test moved to M4, the Bluetooth warning and its page
+were left out, and Ole5 needed no word additions (plan 005).
 
 **M4 · The talker and knowledge answers.**
 - The chat-model port and its Groq adapter; the talker's prompt, its few tools, and its reply
@@ -191,7 +199,8 @@ steps pass in a live call.
 - Simulated calls for knowledge questions in Arabic and English, each scenario repeated.
 - *Library:* the `ChatModel` port and the Groq chat adapter, the talker loop, `@tool` with
   its context and bound parameters, the output guard's ID rule, progress lines, a knowledge
-  protocol and helper tool, the text-call testing kit and its fakes, `t2v check`, and the
+  protocol and helper tool, the text-call testing kit and its fakes, with the test that text-mode
+  calls follow the same path as audio calls (moved from M3, plan 005), `t2v check`, and the
   latency measurement; the Qdrant adapter and the prompts stay Ole5's.
 - *For M4's plan to weigh*, from the next phase's study
   ([agent-led-mode.md](../design/agent-led-mode.md)): fixed spoken lines carry no stop, wait,
@@ -201,7 +210,7 @@ steps pass in a live call.
 - *From M2* (plan 003's Q16, the owner, 2026-11-03): the prompt arm that keeps product terms in
   Latin script (term recall was 0.333 on dev for large-v3), measured on the golden set (D-024's
   floor of 6 items) once the vocabulary that becomes the Whisper prompt lands.
-- *From M3* ([plan 005](active/005-interruptions-and-cancellation.md), the owner, 2026-11-04: "Ok
+- *From M3* ([plan 005](completed/005-interruptions-and-cancellation.md), the owner, 2026-11-04: "Ok
   record that to be tried in M4"): the talker takes what an interruption means, while the
   library keeps the fast stop. The library still stops at once on a clear stop word and never
   for a listening sound, its own echo or silence; the talker reads the rest with the history of
@@ -210,6 +219,10 @@ steps pass in a live call.
   classifier for the uncertain middle (a short utterance over the agent that is neither a listed
   word nor clearly a request) is tried as a registered arm against M3's rule, scored offline on
   the overlap runs' stored transcripts. Each moves a default only on a registered measurement.
+  On 2026-11-06 the owner added that the system should not rely on "five or six command words":
+  understanding the caller's request in any wording is the next step, first in [plan 005's
+  Future improvements](completed/005-interruptions-and-cancellation.md#future-improvements), and
+  how much the talker may add to the time a stop takes is M4's plan's question.
 
 *Done when* retrieval (the right passage in the top 5) and answer correctness are measured; the
 time to the first useful audio meets a target registered in its plan before any run; and the
@@ -312,6 +325,12 @@ targets hold at the cap on live calls.
   pauses mid-request, cut by Smart Turn, and what the caller waits for against what the report says,
   both M3's; then the stop's own latency, product terms and paraphrase, the first call after a
   start, traces in every recorded run, and the key's limits a minute before M6 sets its cap).
+- What M3 left for later, ordered by expected value: [plan 005's Future
+  improvements](completed/005-interruptions-and-cancellation.md#future-improvements) (first
+  understanding the caller's request in any wording, M4's, by the owner's word; then hearing short
+  command words on the fast path, by a Whisper prompt, a keyword detector, another provider or a
+  better microphone; requests and repeats over a reply, the turn hold, a Bluetooth sitting, the
+  agent's own words, and requests per overlap against Groq's limits a minute).
 
 ## Decided
 
@@ -341,6 +360,12 @@ targets hold at the cap on live calls.
   (D-026), and the checks ARCH-DEPS and DOC-SAMPLE (D-027).
 - The next phase: voice for a team's existing agent, as a second, agent-led mode after the
   Ole5 Voice Agent, and the talker stays our own (D-050).
+- From M3 (plan 005): one cancel scope per reply (D-060), the two-step interruption, its settings
+  and rule (D-061), the presets' words (D-062), the filter for text from silence (D-063), the
+  history of what the caller heard and the repeat (D-064), `duck`, `unduck`, a caption's `cut` and
+  push-to-talk (D-065), `stt.live_language` stays `session` (D-066), the hold after Smart Turn's
+  "complete" (D-067), and the registered results with `two_step` the default at a plateau
+  (D-068).
 
 ## Open questions (need a human decision)
 

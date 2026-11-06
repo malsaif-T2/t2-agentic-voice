@@ -75,13 +75,13 @@ packages/t2-agentic-voice/src/t2_agentic_voice/   the library; its public API is
   stores.py events.py languages.py evals.py tracing.py
   core/       settings, logging, errors (T2VoiceError), tracing, the shared types (identity, events)
   domain/     the call's rules, no IO: the ports, the declaration (VoiceAgent), normalization,
-              the speaking rules (numbers, IDs, clauses, pronunciation), the spelling check and
-              the scorers' pure parts (D-022); later the yes rule and interruptions
+              the speaking rules, the interruption rule and the presets' words (D-061, D-062),
+              the filter for text from silence, the scorers' pure parts (D-022); later the yes rule
   adapters/   behind the ports: Groq, join tokens, the used-token stores, TURN credentials
   actions/    the backend, the only part that acts: tools, the action record, outcomes
   agent/      the talker: prompts, tool definitions, one turn, the output guard
-  voice/      one call's real-time pipeline: WebRTC, end of turn, interruptions, cancel scope
-  testing/    what a team tests and measures with: wer, cer, turn and echo timings; later the fakes
+  voice/      one call's real-time pipeline: WebRTC, end of turn, interruptions, cancel scopes
+  testing/    what a team measures with: wer, cer, turn and echo timings, AudioCall; later the fakes
   api/        HTTP and the composition root: call set-up, health, the client and the dev page
 apps/ole5-voice-agent/src/ole5_voice/   the Ole5 app: only the library's public API (ARCH-PUBLIC)
   evals/      the golden set's commands; its data in apps/ole5-voice-agent/evals/, no audio
