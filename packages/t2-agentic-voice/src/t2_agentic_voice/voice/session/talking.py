@@ -22,7 +22,9 @@ voice/session/call.py.
   goes and its tokens as it ends (`ModelRequested`, `ModelReplied`), the first one's first token
   the turn's; and the reply is closed once it is done (`ReplyDone`). A talker that fails is
   logged by its failure's kind alone, a provider's failure told (`ProviderFailed`), and the
-  caller hears the `error` notice when nothing of the reply was said; the reply is closed.
+  caller hears the `error` notice, once a reply, after any clause already said too, in the
+  turn's reply language (its last clause's, else the turn's as agent/language.py reads it);
+  the reply is closed.
 - **The early start** (plan 006, Q2; io.py's early start). A turn's `held` transcript starts the
   talker at once, in a scope of its own, while the hold runs: what it gives is kept, and nothing
   is asked for. Speech that resumes in the hold cancels it (`resumed`). When the hold ends (the
@@ -46,6 +48,7 @@ from collections.abc import Awaitable, Callable
 from dataclasses import dataclass, field
 from functools import partial
 
+from t2_agentic_voice.agent.language import reply_language
 from t2_agentic_voice.agent.talker import (
     ClauseBlocked,
     ModelReplied,
@@ -63,6 +66,7 @@ from t2_agentic_voice.core.conversation import TalkerTurn
 from t2_agentic_voice.core.errors import ProviderError
 from t2_agentic_voice.core.events import GuardBlocked, ToolFinished, ToolStarted, TurnId
 from t2_agentic_voice.core.logging import get_logger
+from t2_agentic_voice.core.settings.tts import LanguageTag
 from t2_agentic_voice.voice.session.books import CallBooks
 from t2_agentic_voice.voice.session.heard import HeardWords
 from t2_agentic_voice.voice.session.io import CallSetup
@@ -84,8 +88,9 @@ class _Talk:
     """One reply of the talker's as the session plays it: the turn and words it answers, its
     scope, its reply once opened (None while the early start holds it), what was given while
     held, whether the talker's stream ended and how (`written`, `failure`), the clauses said,
-    whether the guard's line was said, when its last model request went, and whether the
-    early start began it (`early`)."""
+    whether the guard's line was said, when its last model request went, whether the early
+    start began it (`early`), and the language it is said in (its last clause's, else its
+    turn's)."""
 
     turn_id: TurnId
     words: str
@@ -98,6 +103,7 @@ class _Talk:
     said: int = 0
     told: bool = False
     request_at: float | None = None
+    language: LanguageTag | None = None
     task: asyncio.Task[None] | None = None
 
 
@@ -215,6 +221,8 @@ class Talking:
         )
 
     def _start(self, talk: _Talk, turn: TalkerTurn) -> None:
+        spoken = [language.tag for language in self._setup.agent.languages]
+        talk.language = reply_language(turn, call=self._setup.language.tag, spoken=spoken)
         self._talks[talk.turn_id] = talk
         talk.task = talk.scope.start(self._run(talk, turn), name=f"talker-{talk.turn_id}")
 
@@ -283,11 +291,10 @@ class Talking:
             _log.warning("talker_failed", call_id=self._setup.call_id, failure=kind)
             if isinstance(failure, ProviderError):
                 self._events.failed(failure.kind, failure.retryable, talk.turn_id)
-            if not talk.said and not talk.told:
+            if not talk.told:  # in the reply's language, after its clauses too
                 talk.told = True
-                await reply.add_phrase(
-                    self._setup.language.notices["error"], language=self._setup.language.tag, at=now
-                )
+                language = language_of(self._setup, talk.language or self._setup.language.tag)
+                await reply.add_phrase(language.notices["error"], language=language.tag, at=now)
         await reply.finish(now)
         await self._sync()
 
@@ -300,7 +307,7 @@ class Talking:
         call_id, emit = self._setup.call_id, self._setup.emit
         match event:
             case SpokenClause(text=text, language=tag):
-                talk.said += 1
+                talk.said, talk.language = talk.said + 1, tag
                 await reply.add_clause(text, language=tag, at=at)
             case ShownCard(card=card):
                 await reply.card(card)

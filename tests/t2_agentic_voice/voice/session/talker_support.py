@@ -9,7 +9,8 @@ sleeps that long on the call's clock, as a tool or a model request would, the st
 it. It keeps each turn it was handed, how many commands the session had given when it began
 (`began_after`), each turn whose reply it was cancelled in (`cancelled`), and, by turn, the
 name of the task its stream was closed in (`closed_in`): the reply's own, or the event loop's
-finalizer when nobody closed it."""
+finalizer when nobody closed it. A `Fail(error)` of the script raises `error` from the stream
+where it stands, as a model's failure mid-reply."""
 
 from __future__ import annotations
 
@@ -60,7 +61,14 @@ class Work:
     seconds: float
 
 
-Step = TalkerEvent | Work
+@dataclass(frozen=True)
+class Fail:
+    """A step of a fake reply that raises `error` from the stream where it stands."""
+
+    error: Exception
+
+
+Step = TalkerEvent | Work | Fail
 Script = Callable[[TalkerTurn], Sequence[Step]]
 
 
@@ -97,6 +105,8 @@ class FakeTalker:
             for step in self.script(turn):
                 if isinstance(step, Work):
                     await scope.start(self.clock.sleep(step.seconds), name="fake-work")
+                elif isinstance(step, Fail):
+                    raise step.error
                 else:
                     yield step
         except asyncio.CancelledError:
