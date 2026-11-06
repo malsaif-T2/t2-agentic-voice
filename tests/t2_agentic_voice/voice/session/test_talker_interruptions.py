@@ -2,7 +2,8 @@
 voice-first means here", items 2 and 7): real words over a reply stop it at once, as with no
 talker, the stop going out before any model request, and reach the talker whole, the stop word
 included (TD-103), beside the cut reply, which the history holds as the caller heard it, and
-when its own transcript fails the `error` notice is said, as with no talker; a stop or pause
+when its own transcript fails the `error` notice is said, as with no talker, and so after a
+window's stop word or repeat request whose whole overlap holds new words; a stop or pause
 request said whole is a command; a repeat request, over a reply or alone, is the
 talker's; a listening sound lets the reply go on; words said while a search runs cancel it, and
 the talker starts again with both turns; and a stop or the call's end cancels the talker's work,
@@ -28,6 +29,7 @@ from tests.t2_agentic_voice.voice.session.overlap_support import (
     NEW_TEXT,
     REPEAT_TEXT,
     STOP,
+    STOP_TEXT,
     FakeRule,
     echo_playing,
     overlap_part,
@@ -129,11 +131,15 @@ def test_words_begun_in_a_played_replys_tail_reach_the_talker_with_no_cut_reply(
     assert heard.reply_id == 1 and [c.fate for c in heard.clauses] == ["played", "played"]
 
 
+@pytest.mark.parametrize(
+    "window", [None, STOP_TEXT, REPEAT_TEXT], ids=["whole", "window_stop", "window_repeat"]
+)
 @pytest.mark.parametrize("talker", [True, False], ids=["talker", "echo"])
 def test_words_that_stopped_a_reply_whose_own_transcript_failed_hear_the_error_notice(
-    settings: VoiceSettings, rule: FakeRule, talker: bool
+    settings: VoiceSettings, rule: FakeRule, talker: bool, window: str | None
 ) -> None:
-    """Real words over a reply stop it; the caller goes on, and the turn's own request, its
+    """Real words over a reply stop it, or its window's stop word or repeat request stops it
+    and the whole overlap holds new words; the caller goes on, and the turn's own request, its
     own, fails: the `error` notice is said, with a talker as with none, never a silent
     command."""
     io = talker_call(two_step(settings), _two)[0] if talker else call(two_step(settings))[0]
@@ -148,6 +154,8 @@ def test_words_that_stopped_a_reply_whose_own_transcript_failed_hear_the_error_n
         else:
             await echo_playing(io)
         await io.turn_opened(1)
+        if window is not None:
+            await overlap_part(io, 1, window, part="window", audio_s=0.75)
         await overlap_part(io, 1, NEW_TEXT)
         await io.clock.advance(0.5)
         await io.turn_closed(1)
