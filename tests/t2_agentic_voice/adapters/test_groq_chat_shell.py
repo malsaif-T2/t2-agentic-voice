@@ -1,7 +1,8 @@
 """GroqChat's shell (adapters/groq_chat.py; plan 006, Block 0): built from the settings or in
 code on the client every Groq adapter shares, refusing what the settings refuse (GP-20); Groq's
-data flow; the key in no repr; no `groq` type in its signatures (the design's 5.3); and its
-`stream`, Track A's, a stub that raises. Nothing leaves the machine: no request is sent."""
+data flow; the key in no repr; and no `groq` type in its signatures (the design's 5.3). Its
+stream is tested in test_groq_chat.py and test_groq_chat_checks.py. Nothing leaves the machine:
+no request is sent."""
 
 from __future__ import annotations
 
@@ -15,7 +16,7 @@ from t2_agentic_voice.adapters.groq_client import DATA_FLOW
 from t2_agentic_voice.core.config import VoiceSettings
 from t2_agentic_voice.core.errors import ConfigurationError
 from t2_agentic_voice.core.settings.llm import LlmSettings
-from t2_agentic_voice.domain.ports.chat_model import ChatMessage, ChatModel, ChatRequest
+from t2_agentic_voice.domain.ports.chat_model import ChatModel
 
 from tests.leaks import holding, shown
 from tests.t2_agentic_voice.adapters.groq_support import KEY, SETTING, FakeGroq, groq_settings
@@ -31,9 +32,6 @@ def test_the_adapter_is_built_from_the_settings_on_the_shared_client() -> None:
     assert (port.name, port.data_flow) == ("groq", DATA_FLOW)
     assert repr(adapter) == "GroqChat(base_url='https://api.groq.com', timeout_s=5.0)"
     assert [text for text in (repr(adapter), repr(vars(adapter))) if KEY in text] == []
-    request = ChatRequest(messages=(ChatMessage.user("hello"),), model="openai/gpt-oss-120b")
-    with pytest.raises(NotImplementedError):
-        adapter.stream(request)
     asyncio.run(adapter.aclose())
 
     def modules(hint: object) -> set[str]:  # of a type, and of every type inside it
