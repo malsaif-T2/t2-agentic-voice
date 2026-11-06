@@ -2,7 +2,8 @@
 whether it is spoken or shown, and Pipecat's text-to-speech aggregation passes each clause
 through whole (TOKEN), one request a clause. The phrase cache cuts a fixed phrase longer than
 `max_chars` with it too, and packs the clauses into as few requests as fit
-(adapters/phrase_cache.py). Public through the `languages` facade.
+(adapters/phrase_cache.py), and the talker cuts the model's text with it as the text streams
+(`ClauseStream`, agent/talker.py). Public through the `languages` facade (`split_clauses`).
 
 A word is a run of characters between spaces (any Unicode space), and a clause ends after a
 word whose last character, closing quotes and brackets aside, is a clause's mark: the Arabic
@@ -79,3 +80,44 @@ def split_clauses(text: str, *, max_chars: int | None) -> tuple[str, ...]:
             words = []
     clauses += _fitted(words, max_chars)
     return tuple(clause for clause in clauses if _says_something(clause))
+
+
+class ClauseStream:
+    """`split_clauses` on a text that comes in pieces, as a model writes its reply (plan 006,
+    "What voice-first means here", item 4): `feed` each piece as it comes, and it gives each
+    clause as soon as it is whole, once a space follows the word that ends it; `close`, at the
+    text's end, gives what is left. The clauses it gives, in order, are `split_clauses` of the
+    whole text, however the text was cut into pieces."""
+
+    def __init__(self, *, max_chars: int | None) -> None:
+        if max_chars is not None and max_chars < 1:
+            raise ValueError("max_chars is at least 1, or None for no limit")
+        self._max_chars = max_chars
+        self._tail = ""  # the text after the last space: a word that may go on
+        self._words: list[str] = []  # the words of the clause not yet ended
+
+    def feed(self, piece: str) -> tuple[str, ...]:
+        """The clauses `piece` ends, with the text fed before it."""
+        text = self._tail + piece
+        cut = len(text)
+        while cut > 0 and not text[cut - 1].isspace():
+            cut -= 1
+        self._tail = text[cut:]
+        return self._clauses(text[:cut].split(), closing=False)
+
+    def close(self) -> tuple[str, ...]:
+        """The clauses left at the text's end; the stream is empty after it."""
+        words, self._tail = self._tail.split(), ""
+        return self._clauses(words, closing=True)
+
+    def _clauses(self, words: list[str], *, closing: bool) -> tuple[str, ...]:
+        clauses: list[str] = []
+        for word in words:
+            self._words.append(word)
+            if _ends_clause(word):
+                clauses += _fitted(self._words, self._max_chars)
+                self._words = []
+        if closing:
+            clauses += _fitted(self._words, self._max_chars)
+            self._words = []
+        return tuple(clause for clause in clauses if _says_something(clause))

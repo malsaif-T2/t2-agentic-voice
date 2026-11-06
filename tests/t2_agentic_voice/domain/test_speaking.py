@@ -48,9 +48,19 @@ def test_the_arabic_and_is_joined_to_the_word_after_it() -> None:
     assert "و " not in f" {said} "
 
 
-def test_only_a_whole_number_is_said() -> None:
-    with pytest.raises(TypeError, match="whole number"):
-        speak_number(2.5, language="en")  # type: ignore[arg-type]
+def test_only_a_whole_number_is_said_and_never_a_bool() -> None:
+    """TD-058: a bool is an int to Python, and was said as one or zero."""
+    for value in (2.5, True, False):
+        with pytest.raises(TypeError, match="whole number"):
+            speak_number(value, language="en")  # type: ignore[arg-type]
+
+
+def test_a_number_past_num2words_range_is_read_digit_by_digit() -> None:
+    """TD-058: num2words' Arabic raises from 10**51 (and fails its own assertion below zero)."""
+    assert speak_number(10**51, language="ar") == " ".join(["واحد", *["صفر"] * 51])
+    assert speak_number(-(10**51), language="ar-SA").startswith("سالب واحد صفر صفر")
+    assert speak_number(10**51 - 1, language="ar").startswith("تسعمائة")  # still in range
+    assert speak_number(10**51, language="en").startswith("one ")  # English says it in words
 
 
 def test_an_id_is_read_digit_by_digit_from_the_library_table() -> None:
@@ -138,7 +148,7 @@ def test_a_short_run_with_no_cue_is_a_number() -> None:
 
 def test_arabic_indic_digits_are_read_in_a_text() -> None:
     assert speak_digits("عندي ٣ أجهزة و٢١ كابل", language="ar") == (
-        "عندي ثلاثة أجهزة و واحد وعشرون كابل"
+        "عندي ثلاثة أجهزة وواحد وعشرون كابل"
     )
     assert speak_digits("رقم ٠٥٥١٢", language="ar") == "رقم صفر خمسة خمسة واحد اثنان"
 
@@ -152,3 +162,81 @@ def test_a_text_with_no_digits_is_left_as_it_was() -> None:
     text = "Made-up words, with no digits at all."
     assert speak_digits(text, language="en") == text
     assert speak_digits("", language="ar") == ""
+
+
+@pytest.mark.parametrize(
+    ("text", "language", "said"),
+    [
+        ("It takes 3.5 minutes.", "en", "It takes three point five minutes."),
+        ("It costs 12.75 now.", "en", "It costs twelve point seven five now."),
+        ("version 2.0.", "en", "version two point zero."),
+        ("يستغرق ٣٫٥ دقيقة", "ar", "يستغرق ثلاثة فاصلة خمسة دقيقة"),
+        ("يستغرق 3.5 دقيقة", "ar-SA", "يستغرق ثلاثة فاصلة خمسة دقيقة"),
+    ],
+)
+def test_a_decimal_is_said_with_its_point_and_fraction(text: str, language: str, said: str) -> None:
+    """TD-058: "3.5" said "three.five"."""
+    assert speak_digits(text, language=language) == said  # type: ignore[arg-type]
+
+
+@pytest.mark.parametrize(
+    ("text", "language", "said"),
+    [
+        ("We have 1,234 users.", "en", "We have one thousand two hundred and thirty-four users."),
+        ("Over 10,000 calls.", "en", "Over ten thousand calls."),  # five digits, still a number
+        (
+            "It is 1,234.5 in all.",
+            "en",
+            "It is one thousand two hundred and thirty-four point five in all.",
+        ),
+        ("لدينا ١٬٢٣٤ مستخدم", "ar", "لدينا ألف ومئتان وأربعة وثلاثون مستخدم"),
+    ],
+)
+def test_a_number_with_thousands_separators_is_one_number(
+    text: str, language: str, said: str
+) -> None:
+    """TD-058: "1,234" said "one,two hundred and thirty-four"."""
+    assert speak_digits(text, language=language) == said  # type: ignore[arg-type]
+
+
+def test_digits_and_marks_that_are_no_number_are_read_run_by_run() -> None:
+    assert speak_digits("192.168.1.1", language="en") == (
+        "one hundred and ninety-two.one hundred and sixty-eight.one.one"
+    )
+    assert speak_digits("Press 1,2,3.", language="en") == "Press one,two,three."
+    assert speak_digits("I have 3.", language="en") == "I have three."
+
+
+@pytest.mark.parametrize(
+    ("text", "said"),
+    [
+        ("و٢١ كابل", "وواحد وعشرون كابل"),
+        ("ب٣ خطوات", "بثلاثة خطوات"),
+        ("بـ٣ خطوات", "بـثلاثة خطوات"),
+        ("لل٣ أجهزة", "للثلاثة أجهزة"),
+        ("وب٠٥٥١٢", "وبصفر خمسة خمسة واحد اثنان"),
+        ("كتاب٣", "كتاب ثلاثة"),  # a word, not a prefix: set apart
+    ],
+)
+def test_an_arabic_prefix_written_onto_a_number_stays_on_its_first_word(
+    text: str, said: str
+) -> None:
+    """TD-058: «و٢١» left a lone waw before the number's words."""
+    assert speak_digits(text, language="ar") == said
+
+
+def test_a_long_word_written_onto_a_number_is_set_apart() -> None:
+    """Only letters that are all an Arabic prefix stay on the number; a longer word does not."""
+    assert speak_digits("للمستخدمين٣", language="ar") == "للمستخدمين ثلاثة"
+
+
+def test_an_overflow_num2words_raises_is_read_digit_by_digit(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    from t2_agentic_voice.domain.text import speaking
+
+    def refused(number: int, *, lang: str) -> str:
+        raise OverflowError("past its range")
+
+    monkeypatch.setattr(speaking, "num2words", refused)
+    assert speak_number(-42, language="en") == "minus four two"

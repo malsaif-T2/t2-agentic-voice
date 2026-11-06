@@ -1,9 +1,9 @@
 """The tools' shapes (actions/tools.py, runner.py, knowledge.py; plan 006, Block 0): a `Tool`
 loads with the design's fields and refuses what it cannot run with; a bound parameter names a
 field of the verified caller and is never one the talker fills; `CallContext` holds the caller
-read-only; `ToolError` has its stable code; and every behaviour Track B builds is a stub that
-raises: `@tool`, `Tool.from_function`, `tool_schema`, `FromCaller.value`, the runner, which
-runs a call on the call's clock, and `knowledge_tool`."""
+read-only; `ToolError` has its stable code; and every behaviour the shapes name is given:
+`@tool`, `Tool.from_function`, `tool_schema`, `FromCaller.value`, the runner, which runs a call
+on the call's clock, and `knowledge_tool`."""
 
 from __future__ import annotations
 
@@ -105,23 +105,18 @@ def test_a_tool_sees_the_caller_read_only_and_returns_a_result() -> None:
     assert isinstance(error, T2VoiceError) and error.code == "tool_error"
 
 
-def test_every_behaviour_track_b_builds_is_a_stub_that_raises() -> None:
+def test_every_behaviour_the_shapes_name_is_given() -> None:
+    """Their behaviour: test_tools.py, test_runner.py and test_knowledge.py beside this file."""
     found = _tool()
-    with pytest.raises(NotImplementedError):
-        tool(description="Find a device.")
-    with pytest.raises(NotImplementedError):
-        Tool.from_function(lookup, description="Find a device.")
-    with pytest.raises(NotImplementedError):
-        found.tool_schema()
-    with pytest.raises(NotImplementedError):
-        from_caller("subject").value(CALLER)
+    assert isinstance(tool(description="Find a device.")(lookup), Tool)
+    assert Tool.from_function(lookup, description="Find a device.").name == "lookup"
+    assert found.tool_schema().name == "lookup_device"
+    assert from_caller("subject").value(CALLER) == "made-up-subject"
     runner = ToolRunner([found])
     assert runner.tools == (found,)
-    with pytest.raises(NotImplementedError):
-        runner.schemas()
-    request = ToolCallRequest(id="c-1", name="lookup_device", arguments="{}")
+    assert runner.schemas() == (found.tool_schema(),)
+    request = ToolCallRequest(id="c-1", name="lookup_device", arguments='{"asset_tag": "LT-1"}')
     ctx = CallContext(caller=CALLER, call_id="call-1", language="en")
-    with pytest.raises(NotImplementedError):
-        asyncio.run(runner.run(request, ctx, clock=FakeClock()))
-    with pytest.raises(NotImplementedError):
-        knowledge_tool(FakeKnowledgeBase(), description="Search the help articles.")
+    result = asyncio.run(runner.run(request, ctx, clock=FakeClock()))
+    assert result.data == {"asset_tag": "LT-1", "owner": "made-up-subject"}
+    assert knowledge_tool(FakeKnowledgeBase(), description="Search the help articles.").name

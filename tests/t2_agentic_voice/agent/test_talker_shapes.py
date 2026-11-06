@@ -1,10 +1,11 @@
 """The talker as the session sees it (agent/talker.py, prompt.py; plan 006, Block 0): the events
 it streams load and refuse a wrong value; the session's cancel scope is the scope it starts its
-work in, and the call's clock the one it times its work on; and the loop and the prompt, Track
-B's, are stubs that raise."""
+work in, and the call's clock the one it times its work on; and the loop and the prompt are
+given."""
 
 from __future__ import annotations
 
+from collections.abc import AsyncIterator
 from datetime import date
 from typing import Any
 
@@ -78,7 +79,8 @@ def test_a_wrong_value_is_refused(model: type[Any], values: dict[str, Any]) -> N
         model.model_validate(values)
 
 
-def test_the_reply_runs_in_the_sessions_cancel_scope_on_the_calls_clock_and_is_a_stub() -> None:
+def test_the_reply_runs_in_the_sessions_cancel_scope_on_the_calls_clock() -> None:
+    """The loop's behaviour: test_talker.py and test_talker_tools.py beside this file."""
     clock = FakeClock()
     scope: ReplyScope = CancelScope(name="reply-1", clock=clock)
     settings = VoiceSettings(env="test")
@@ -92,13 +94,12 @@ def test_the_reply_runs_in_the_sessions_cancel_scope_on_the_calls_clock_and_is_a
     )
     talker: Talker = chat
     assert chat.clock is clock
-    with pytest.raises(NotImplementedError):
-        talker.reply(TalkerTurn(turn_id=0, words="hello"), scope=scope)
+    stream = talker.reply(TalkerTurn(turn_id=0, words="hello"), scope=scope)
+    assert isinstance(stream, AsyncIterator)  # nothing runs before it is iterated
     assert not scope.cancelled
 
 
-def test_the_prompt_is_a_stub() -> None:
-    with pytest.raises(NotImplementedError):
-        render_prompt(AGENT, "en")
-    with pytest.raises(NotImplementedError):
-        compose_prompt(AGENT, language="en", today=date(2026, 11, 6))
+def test_the_prompt_is_composed() -> None:
+    """Its behaviour: test_prompt.py beside this file."""
+    assert "Answer briefly." in render_prompt(AGENT, "en")
+    assert "Today is 2026-11-06." in compose_prompt(AGENT, language="en", today=date(2026, 11, 6))
