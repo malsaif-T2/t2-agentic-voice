@@ -19,7 +19,7 @@ decisions (`D-NNN`), which are permanent. Living docs cite only milestones in th
 | M1 | The measurement first: the owner's voice as a golden set | done ([002](completed/002-golden-set-baseline.md)) |
 | M2 | A call that listens and speaks | done ([003](completed/003-call-listens-and-speaks.md)) |
 | M3 | Interruptions and cancellation | done ([005](completed/005-interruptions-and-cancellation.md)) |
-| M4 | The talker and knowledge answers | planned |
+| M4 | The talker and knowledge answers | in progress ([006](active/006-talker-and-knowledge-answers.md)) |
 | M5 | Tickets, ticket status, and handoff | planned |
 | M6 | Reliability and operations | planned |
 | M7 | The rehearsal: the owner's script passes | planned |
