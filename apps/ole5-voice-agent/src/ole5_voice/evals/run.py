@@ -2,22 +2,22 @@
 evaluation.md's "Running" says.
 
 Before anything is sent, a run refuses the main checkout and a dirty tree, an `--out` that
-exists or that git would track (`worktree.py`), audio that is not the file its manifest
-hashed, and a `groq` run whose least cost (each request once, billed as Groq bills it; a windows
-run's aside) would pass `--cap-usd`. Its settings load with `VoiceSettings.from_env` (`--env-file`, or the working folder's
-`.env`), the command line's on top (`run_settings.py`): a `groq` run names its model and
-timeout, and its base URL is `--base-url` or the SDK's own, whatever the environment holds, so
-no `T2V_` variable changes a registered arm; `--show-settings` shows each resolved, a secret
-only as set or not set. Run W's arms are its options too (`run_settings.answer_options`): a
-Whisper prompt from `--prompt-vocabulary`, and every variant sent as Arabic with
-`--language-hint ar`. A smoke test of one
-dev variant comes first and must pass with no failed, retried or refused request. Then each
-variant is answered, and its result written as it finishes (a dev run's `results.jsonl`), with
-a progress line of identifiers, verdicts and timings, never a transcript. The scorecard is
-written by `scorecard.py` and, for a run that calls a provider, its history line is appended
-to the worktree's `history.jsonl` and copied beside the scorecard. A held-out run writes no
-per-variant output, its lines hold counts only, it is never traced, and one that does not finish
-keeps no result. A run's name is its `--out` folder's name.
+exists or that git would track (`worktree.py`), audio that is not the file its manifest hashed,
+and a `groq` run whose least cost (each request once, billed as Groq bills it; a windows run's
+aside) would pass `--cap-usd`. Its settings load with `VoiceSettings.from_env` (`--env-file`, or
+the working folder's `.env`), the command line's on top (`run_settings.py`): a `groq` run names
+its model and timeout, and its base URL is `--base-url` or the SDK's own, whatever the
+environment holds, so no `T2V_` variable changes a registered arm; `--show-settings` shows each
+resolved, a secret only as set or not set. Run W's arms are its options too
+(`run_settings.answer_options`): a Whisper prompt from `--prompt-vocabulary`, and every variant
+sent as Arabic with `--language-hint ar`. A smoke test of one dev variant comes first and must
+pass with no failed, retried or refused request. Then each variant is answered, and its result
+written as it finishes (a dev run's `results.jsonl`), with a progress line of identifiers,
+verdicts and timings, never a transcript. The scorecard is written by `scorecard.py` and, for a
+run that calls a provider, its history line is appended to the worktree's `history.jsonl` and
+copied beside the scorecard. A held-out run writes no per-variant output, its lines hold counts
+only, it is never traced, and one that does not finish keeps no result. A run's name is its
+`--out` folder's name.
 """
 
 from __future__ import annotations

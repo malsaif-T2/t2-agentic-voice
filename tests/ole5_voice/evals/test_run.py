@@ -303,7 +303,7 @@ def test_the_cap_ends_a_run_between_requests(tmp_path: Path) -> None:
     """The run's least cost is within the cap, so it starts; a retry it did not count takes it
     to the cap, which ends it before the next request."""
     setup = Setup(tmp_path)
-    retried = ["open the inbox", ProviderError("server_error", True)]
+    retried: list[str | ProviderError] = ["open the inbox", ProviderError("server_error", True)]
     setup.stt = FakeSpeechToText([*retried, *["open the inbox"] * 4])
     # $10 a request: four at the least (the smoke test and three), and the retry.
     assert setup.main("--price-per-hour", "3600", "--cap-usd", "45") == 1
