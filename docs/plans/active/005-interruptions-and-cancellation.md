@@ -622,6 +622,12 @@ affects.
 
 What the owner has already said that binds M3:
 
+- 2026-11-06, on the close: "The thing is that we don't really want to rely on "five or six
+  command words" to interact with the system, our next step should be understanding the user
+  request flexibly, but I think this is out of M3 scope." So understanding the caller's request
+  in any wording is the next step, out of M3's scope: it comes first in the Future improvements,
+  with a pointer from the roadmap's M4, and M3's word rule stays the fast path that stops the
+  agent's voice at once.
 - 2026-11-06, after the live calls: "It is good, Everything works as intended. I would only
   complain about it mishearing Arabic including "وقف" and "ممكن تعيد" (especially on my cheap
   headset) which I believe is the STT model weakness and we can't do much about it (correct me if
@@ -1036,3 +1042,73 @@ Before B (open):
 5. **The live calls** (step 18): in Chrome, the rehearsal's steps 1 and 2 on the laptop's
    speakers and on the wired headset, a call on the speakers staying silent through five replies,
    and push-to-talk on the speakers; say whether each stop and repeat worked.
+
+## Future improvements
+
+Written at the close, 2026-11-06, ordered by expected value (the agent's ordering, the first item
+by the owner's word), from O1, O2, the rule's revision, H3, E and held-out E (D-067, D-068) and the
+owner's live calls; every number describes one speaker, the owner (D-006).
+
+- **Understanding the caller's request in any wording (M4; the owner, 2026-11-06).** The owner:
+  "we don't really want to rely on "five or six command words" to interact with the system, our
+  next step should be understanding the user request flexibly, but I think this is out of M3
+  scope." So it is the next step, and out of M3's scope. For M4's plan: the talker reads what the
+  caller said over a reply or after it (a stop, a repeat, a correction or a new request, however
+  worded), with the history of what the caller heard (D-064), while M3's word rule stays the fast
+  path that stops the agent's voice at once; how much the talker may add to the time a stop takes
+  is M4's plan's question (M3's stop: a median of 393 to 486 ms from the end of the word to
+  silence, on dev and held-out). It takes up what the word rule misses most: on dev, 11 of 19
+  repeat requests over a reply stopped the agent and none was said again, and only 2 of 7 short
+  requests stopped it. The roadmap's M4 already holds the owner's word of 2026-11-04 on the talker
+  taking what an interruption means, and a small classifier for the uncertain middle, tried as a
+  registered arm on the overlap runs' stored transcripts.
+- **Hearing short command words better, on the fast path (H3: 10 of 18 stop and pause words; dev:
+  every «وقف» at normal volume 5 of 6 after the revision; the owner's live calls).** Whisper writes
+  short Saudi and MSA command words as other words: «وانجح» and «وكيف» for «وقف» on the laptop in
+  O1, «حلو» for a stop word, «اه» and «مشكلت» for repeat requests (amendment (10) could list none
+  of these without fitting a single take); in M1, large-v3 heard Saudi stop words in 9 of 11 whole
+  clips and Saudi repeat requests in 1 of 8 (plan 002's Future improvements). In the order to try:
+  - A Whisper prompt naming the command words («وقف», «خلاص», «لحظة», «أعد», «ممكن تعيد») on the
+    overlap's requests: cheap, with no new model. Measured on the golden set first, as a registered
+    arm on the overlap clips with held-out once, since Whisper can write a prompt's words into
+    silence (in M1 every silent, noise and echo clip came back with text), so the echo, silence and
+    noise targets and F's 9 empty-reference variants are scored with it; together with M4's
+    vocabulary prompt and plan 002's prompt arm for product terms, so the two prompts are measured
+    as one.
+  - A small keyword detector for the few command words, run beside Whisper on the overlap's audio:
+    more reliable for a fixed handful of words, but it needs training recordings of each word, a
+    dependency and CPU on every call. After the prompt, since the owner does not want the system to
+    rest on a fixed handful of words (the item above).
+  - Another speech-to-text provider, a new adapter behind the `SpeechToText` port (D-004): the
+    owner, 2026-11-06, "for another time and not in this milestone".
+  - A better microphone than a cheap headset: in the owner's live calls Whisper misheard «وقف» and
+    «ممكن تعيد» most on the cheap headset.
+- **Requests and repeat requests said over a reply (dev 60 of 74, held-out 15 of 18; TD-103).**
+  Every request and correction stopped the agent, but only 2 of 7 short requests and 11 of 19
+  repeat requests did, and none of those was said again: repeat requests seldom read as repeats,
+  since the common repeat phrases are left out of the lists while the error notices hold them
+  (TD-103), and a misheard short request goes on as a short output (Q4). Rewording the notices,
+  then listing the phrases, scored on O1's and O2's stored transcripts, is the word rule's share;
+  the rest is the first item's.
+- **The turn hold (D-067, TD-094).** At 600 ms the hold still cut 9 of 51 dev and 5 of 28 held-out
+  paused requests (from 50 or 51 and 27 with none), each turn then ending about 0.9 s after the
+  caller's own end at the median (942 ms on dev, 933 on held-out). A longer hold costs every turn;
+  Smart Turn fine-tuned on the owner's turns (the roadmap's "Planned later") and M4's talker,
+  which can ask when a request sounds cut, are the levers, each measured with `poe eot`.
+- **A Bluetooth sitting and its warning.** The `bluetooth-m3` sitting was left out whole (many
+  takes not clear: the owner, 2026-11-04), so no M3 number covers a Bluetooth headset, and the
+  Bluetooth hands-free warning and the guide's `audio-troubleshooting.md` were left out of M3. M7's
+  rehearsal runs on a Bluetooth headset: a sitting recorded before it shows whether the warning is
+  needed.
+- **The agent's own words, untested by the runs.** No variant of O1, O2 or H3 whose words the agent
+  had just played opened an overlap, so the rule's step 4 and amendment (1)'s echo of a command
+  word have tests but no measurement. Recordings of a reply coming back through the laptop's
+  speakers, with the reply's text, would measure them (TD-109's repeat-word residue among them).
+- **The requests per overlap against Groq's limits a minute (M6).** An overlap costs near 2 Whisper
+  requests (a mean of 1.955 on dev and 1.926 on held-out), each billed 10 s, against the published
+  20 a minute (D-040), and an echo-heavy `two_step` call on the laptop's speakers can pass them
+  (TD-105). The live calls' requests a call minute were not recorded. M6's limiter and its cap on
+  live calls read them, with a bound per call.
+- **The debt rows that name M3's work,** each with its trigger: TD-100 to TD-112, from Block 0, the
+  tracks, step 9's check (TD-110: the last packet after a stop reaches the client up to 74 ms
+  later, unchecked in Chrome) and step 11's code.
