@@ -11,7 +11,9 @@ is every tool's backend (`FakeKnowledgeBase` for the knowledge tool). An agent t
 instructions runs the echo, as in a call.
 
 **The clock.** The session, the talker and the tool runner all run on the call's one clock
-(core/clock.py), so `advance` brings a tool's progress line, its timeout and the words said
+(core/clock.py), and so does a `ScriptedLLM` or `FunctionLLM` given as the model (its `clock`,
+set as each call starts, so a fake reused across calls never waits on an earlier call's), so
+`advance` brings a model's pause, a tool's progress line, its timeout and the words said
 `at="tool_running"` when they are due and not before. A measurement with a real model runs on
 the system clock instead (`clock="system"`), so its turns' times are real ones, and `advance`
 then waits that long.
@@ -64,6 +66,7 @@ from t2_agentic_voice.domain.declaration import VoiceAgent
 from t2_agentic_voice.domain.guard import check_ids
 from t2_agentic_voice.domain.ports.chat_model import ChatModel
 from t2_agentic_voice.domain.ports.speech_to_text import Transcript
+from t2_agentic_voice.testing.llm_fakes import FunctionLLM, ScriptedLLM
 from t2_agentic_voice.testing.text_side import TextPhrases, TextSide, VirtualClock, settle
 from t2_agentic_voice.testing.text_turn import TextReads, TextTurn, TurnExpectations, TurnSaid
 from t2_agentic_voice.testing.text_watch import RecordingRunner, WatchedTalker, tools_of
@@ -156,6 +159,8 @@ class TextCall:
         settings = settings.model_copy(update={"storage": storage})
         clock: Clock = VirtualClock() if self.clock == "virtual" else SYSTEM_CLOCK
         self._time = clock
+        if isinstance(self.llm, ScriptedLLM | FunctionLLM):
+            self.llm.clock = clock  # this call's, whatever an earlier call set
         caller = self.caller or Caller(subject="text-call")
         language = self.agent.call_language(self.language, locale=caller.locale)
         talker: Talker | None = None
