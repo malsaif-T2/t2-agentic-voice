@@ -96,12 +96,35 @@ def test_a_point_or_a_slash_never_joins_two_numbers() -> None:
     assert _check("It costs 1,234.50.", "price 1234.50").passed  # its thousands still join
 
 
+# The hyphens a model writes in a date besides '-': the hyphen, the non-breaking hyphen (which
+# the OpenAI family writes), the figure dash, the en dash and the minus sign.
+_HYPHENS = ("‐", "‑", "‒", "–", "−")
+
+
 @pytest.mark.parametrize(
-    "clause", ["It came on 7/11/2026.", "It is due 07-11-2026.", "Today is 2026-11-07."]
+    "clause",
+    [
+        "It came on 7/11/2026.",
+        "It is due 07-11-2026.",
+        "Today is 2026-11-07.",
+        *(f"It is due 07{hyphen}11{hyphen}2026." for hyphen in _HYPHENS),
+        *(f"Today is 2026{hyphen}11{hyphen}07." for hyphen in _HYPHENS),
+    ],
 )
 def test_a_date_around_a_year_is_never_one_id(clause: str) -> None:
-    """The prompt's own date ("2026-11-07") among them: the talker may say it back."""
+    """The prompt's own date ("2026-11-07") among them: the talker may say it back, with any
+    hyphen."""
     assert _check(clause) == IdVerdict(passed=True)
+
+
+@pytest.mark.parametrize("evidence_hyphen", ["-", "‑"])
+@pytest.mark.parametrize("hyphen", ["-", *_HYPHENS])
+def test_a_tool_results_date_said_back_with_any_hyphen_passes(
+    hyphen: str, evidence_hyphen: str
+) -> None:
+    evidence = '{"created": "2025-10-15", "due": "2026-11-20"}'.replace("-", evidence_hyphen)
+    clause = f"It was opened 2025{hyphen}10{hyphen}15 and is due 2026{hyphen}11{hyphen}20."
+    assert _check(clause, evidence) == IdVerdict(passed=True)
 
 
 def test_a_date_in_another_year_still_needs_evidence_for_its_year() -> None:
@@ -115,6 +138,8 @@ def test_a_date_in_another_year_still_needs_evidence_for_its_year() -> None:
         ("Your ticket is 11-07-33.", "110733"),  # no year among them
         ("Your ticket is 4521 3390.", "45213390"),
         ("Your ticket is 45-21-2026.", "4521"),  # no day and month: the year only ends it
+        ("Your ticket is 45‑21‑33.", "452133"),  # a non-breaking hyphen
+        ("Your ticket is 45‑21‑2026.", "4521"),
     ],
 )
 def test_a_ticket_number_read_in_groups_still_joins(clause: str, token: str) -> None:

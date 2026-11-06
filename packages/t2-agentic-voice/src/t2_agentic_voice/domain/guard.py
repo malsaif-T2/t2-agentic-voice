@@ -16,9 +16,10 @@ What `check_ids` does:
   "4521 3390", "45-21-33" and "1,234" are each one token, a ticket number read in groups. But
   numbers joined by a colon, a point or a slash (a time, "16:00"; a decimal, "12.75"; "24/7";
   "7/11/2026"), or by the hyphens of a date around a year ("7-11-2026", or the prompt's own
-  date, "2026-11-07"), are each read alone, joined to no number beside them. The current year
-  and the next (`year`, `year + 1`) pass with no evidence, since the prompt holds the current
-  date, and each ends a group, so "6 2026" is a day and a year, not a number of five digits.
+  date, "2026-11-07"; the non-breaking hyphen, the en dash or the minus a model writes for '-'
+  alike), are each read alone, joined to no number beside them. The current year and the next
+  (`year`, `year + 1`) pass with no evidence, since the prompt holds the current date, and each
+  ends a group, so "6 2026" is a day and a year, not a number of five digits.
 - **ID-shaped** is a group of `guard.min_id_digits` digits or more, a run of digits that long
   inside a word ("lt00423"), or a match of one of `guard.id_patterns`, read on the clause as
   written with its digits made ASCII.
@@ -56,13 +57,17 @@ _NUMBER = re.compile("[0-9]+")
 # The forms whose numbers are each read alone, in a text with its digits made ASCII (the module's
 # docstring): numbers joined by a colon, a point (the Arabic decimal one too) or a slash, the
 # first one's thousands kept whole ("1,234.50"), and a date with hyphens around a year, the day
-# and the month either way round, or the year first. `_APART_MARK` is what cuts each form.
+# and the month either way round, or the year first. A hyphen is '-' or one a model writes for
+# it: the hyphen, the non-breaking hyphen (the OpenAI family's), the figure dash, the en dash
+# (U+2010 to U+2013) and the minus sign. `_APART_MARK` is what cuts each form.
 _DAY, _MONTH, _YEAR = "(?:0?[1-9]|[12][0-9]|3[01])", "(?:0?[1-9]|1[0-2])", "(?:19|20)[0-9]{2}"
+_HYPHEN = "[-\u2010-\u2013\u2212]"
 _APART = re.compile(
     "[0-9]+(?:[,\u066c][0-9]{3})*(?:[:./\u066b][0-9]+)+"
-    f"|(?<![0-9])(?:(?:{_DAY}-{_MONTH}|{_MONTH}-{_DAY})-{_YEAR}|{_YEAR}-{_MONTH}-{_DAY})(?![0-9])"
+    f"|(?<![0-9])(?:(?:{_DAY}{_HYPHEN}{_MONTH}|{_MONTH}{_HYPHEN}{_DAY}){_HYPHEN}{_YEAR}"
+    f"|{_YEAR}{_HYPHEN}{_MONTH}{_HYPHEN}{_DAY})(?![0-9])"
 )
-_APART_MARK = re.compile("[-:./\u066b]")
+_APART_MARK = re.compile("[-\u2010-\u2013\u2212:./\u066b]")
 
 
 class IdVerdict(BaseModel):
