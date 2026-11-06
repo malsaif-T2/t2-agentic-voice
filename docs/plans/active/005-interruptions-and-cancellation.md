@@ -524,6 +524,16 @@ milestone a contract it cannot build on. Everything else becomes a row in
   call items were right in O1 and O2; the held-out one is read only in its group's aggregate.
   Spend so far: $0.4570 of $5. Two targets still fail on held-out, so the result goes to the owner
   with its numbers (the registration's "The rule's revision").
+- 2026-11-06: Step 18, the live calls, by the owner in Chrome through the Ole5 app's dev server
+  (main at f9500be, `interruptions.mode` defaulting to `two_step` since that commit, by the owner's
+  ruling: afb6864, gate 'TOTAL 12425 0 100%', '3874 passed, 1 skipped'). The server needed a join
+  key the owner's `.env` does not hold: the agent made one for the session and passed it in the
+  server's environment, `T2V_JOIN__KEYS` and `T2V_JOIN__CURRENT_KID`, printing neither, the owner
+  setting `OLE5_VOICE_ACCESS_CODE`. The owner's verdict ("The owner's decisions"): everything works
+  as intended, the rehearsal's stop and repeat steps among it; Whisper mishears short Arabic words,
+  «وقف» and «ممكن تعيد» most, on the cheap headset most. M3's *Done when* is met at a plateau: the
+  targets on the golden set held but two (stop and pause words, requests over a reply, on held-out),
+  which the owner accepted, and the live calls pass. Next: the close (step 19).
 
 ## Decision log
 
@@ -612,6 +622,13 @@ affects.
 
 What the owner has already said that binds M3:
 
+- 2026-11-06, after the live calls: "It is good, Everything works as intended. I would only
+  complain about it mishearing Arabic including "وقف" and "ممكن تعيد" (especially on my cheap
+  headset) which I believe is the STT model weakness and we can't do much about it (correct me if
+  I am wrong and if we can do something reliable about it other than changing the model/provide).
+  Other than that it seems good. Are we finished with M3?" So the live calls of step 18 pass: the
+  rehearsal's stop and repeat steps work, with Whisper's mishearing of short Arabic words as the
+  only complaint, which the close's Future improvements take up.
 - 2026-11-06, to the agent's question after H3 (make the two-step interruption the default and
   close M3 at a plateau after the live calls, or keep it off and revise again on fresh
   recordings): "Yes make it the default and close. We might test other STT providers later and see
