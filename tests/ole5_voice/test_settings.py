@@ -12,7 +12,7 @@ from ole5_voice.settings import MIN_ACCESS_CODE_CHARS, PREFIX, AppSettings, load
 from pydantic import SecretStr
 from t2_agentic_voice import ConfigurationError
 
-from tests.isolation import APP_PREFIX
+from tests.isolation import APP_PREFIX, dropped
 from tests.leaks import holding, shown
 
 CODE = "made-up-access-code-0123"  # 24 characters
@@ -123,3 +123,88 @@ def test_settings_built_in_code_keep_their_checks() -> None:
     with pytest.raises(ValueError, match="fewer than 16"):
         AppSettings(access_code=SecretStr("x"))
     assert app_settings.GENERATOR.startswith("python -c")
+
+
+def test_the_knowledge_bases_settings_have_t2s_defaults_and_none_is_needed(
+    environment: pytest.MonkeyPatch,
+) -> None:
+    """Plan 006, Q4: with none of them set the app still loads (its agent the echo)."""
+    app = load().app
+    assert (app.qdrant_url, app.qdrant_login_email, app.qdrant_login_password) == (None,) * 3
+    assert (app.qdrant_login_url, app.embedding_url, app.kb_tenant) == (
+        "https://ds.t2.sa/ole5_agent/api/login",
+        "https://ds.t2.sa/text_embed",
+        "ole5",
+    )
+
+
+def test_the_knowledge_bases_access_is_read_under_the_owners_general_names() -> None:
+    """The owner set them so (2026-11-06): T2's service is every team's, so no Ole5 prefix; only
+    the tenant, Ole5's own, keeps it."""
+    aliases = {
+        name: field.validation_alias
+        for name, field in AppSettings.model_fields.items()
+        if field.validation_alias is not None
+    }
+    assert aliases == {
+        "qdrant_url": "QDRANT_URL",
+        "qdrant_login_email": "QDRANT_LOGIN_EMAIL",
+        "qdrant_login_password": "QDRANT_LOGIN_PASSWORD",
+        "qdrant_login_url": "QDRANT_LOGIN_URL",
+        "embedding_url": "EMBEDDING_URL",
+    }
+    assert set(app_settings.UNPREFIXED) == set(aliases.values())
+    assert all(dropped(name) for name in app_settings.UNPREFIXED)  # never from a test's shell
+
+
+def test_the_knowledge_bases_access_loads_from_the_environment_kept_secret(
+    environment: pytest.MonkeyPatch, tmp_path: Path
+) -> None:
+    password = "made-up-kb-password-0123"
+    environment.setenv("QDRANT_URL", "https://made-up.example/team/qdrant")
+    environment.setenv("QDRANT_LOGIN_EMAIL", " someone@example.com ")
+    environment.setenv("OLE5_VOICE_KB_TENANT", "ole5-test")
+    dotenv = tmp_path / "made-up.env"
+    dotenv.write_text(f"QDRANT_LOGIN_PASSWORD={password}\n", encoding="utf-8")
+    app = load(dotenv).app
+    assert (app.qdrant_url, app.qdrant_login_email, app.kb_tenant) == (
+        "https://made-up.example/team/qdrant",
+        "someone@example.com",
+        "ole5-test",
+    )
+    assert app.qdrant_login_password is not None
+    assert app.qdrant_login_password.get_secret_value() == password
+    surfaces = {"repr": repr(app), "dump": repr(app.model_dump())}
+    assert holding(password, surfaces) == []
+
+
+def test_the_prefixed_names_of_the_general_ones_are_not_read(
+    environment: pytest.MonkeyPatch,
+) -> None:
+    environment.setenv("OLE5_VOICE_QDRANT_URL", "https://made-up.example/qdrant")
+    environment.setenv("OLE5_VOICE_KB_LOGIN_EMAIL", "someone@example.com")
+    app = load().app
+    assert (app.qdrant_url, app.qdrant_login_email) == (None, None)
+
+
+@pytest.mark.parametrize(
+    ("name", "value"),
+    [
+        ("QDRANT_LOGIN_EMAIL", "not-an-email"),
+        ("QDRANT_LOGIN_EMAIL", "some one@example.com"),
+        ("QDRANT_URL", "http://made-up.example/qdrant"),  # the cookie would travel in clear text
+        ("QDRANT_LOGIN_URL", "https://user:made-up@made-up.example/login"),
+        ("EMBEDDING_URL", "https://made-up.example:0/embed"),
+        ("EMBEDDING_URL", "https://made-up.example:notaport/embed"),
+        ("EMBEDDING_URL", "made-up.example/embed"),
+        ("OLE5_VOICE_KB_TENANT", "two words"),
+    ],
+)
+def test_a_wrong_knowledge_base_setting_is_refused_never_shown(
+    environment: pytest.MonkeyPatch, name: str, value: str, caplog: pytest.LogCaptureFixture
+) -> None:
+    environment.setenv(name, value)
+    with pytest.raises(ConfigurationError, match=f"{name} ") as caught:
+        load()
+    assert caught.value.details == {"settings": [name]}
+    assert holding(value, shown(caught.value, caplog=caplog)) == []

@@ -46,6 +46,18 @@ Speech-to-text: the adapter, the Whisper model, and how long a request may take.
 | `T2V_STT__NO_SPEECH_MAX` | number, or unset | `0.55` | — | The no-speech probability Whisper reports above which a transcript counts as no words (text from silence), for a turn and for speech over a reply, from 0 to 1; unset, the threshold is off. 0.55 by the registered rule F and its one revision (plan 005), which changes only on another registered measurement (GP-18). |
 | `T2V_STT__CAPTION_FILTER` | true or false | `true` | — | Whether a transcript that is one of the captions Whisper invents for silence or noise counts as no words; on by the registered rule F (plan 005), which changes only on another registered measurement (GP-18). |
 
+## `llm`
+
+The chat model the talker writes its replies with: the adapter, the model, how much it reasons, the most it may write, and how long a request may take.
+
+| Variable | Type | Default | Unit | Description |
+| --- | --- | --- | --- | --- |
+| `T2V_LLM__PROVIDER` | one of groq | `groq` | — | Which adapter reaches the chat model; only Groq's exists for now (D-004). |
+| `T2V_LLM__MODEL` | one of openai/gpt-oss-120b, openai/gpt-oss-20b, llama-3.3-70b-versatile, llama-3.1-8b-instant | `openai/gpt-oss-120b` | — | The chat model: openai/gpt-oss-120b, openai/gpt-oss-20b, llama-3.3-70b-versatile or llama-3.1-8b-instant. The default changes only on a registered measurement (GP-18). |
+| `T2V_LLM__REASONING_EFFORT` | one of low, medium, high | `low` | — | How much a reasoning model thinks before it answers: low, medium or high. Sent only to a model that takes it (the gpt-oss models); low keeps the first clause soon. |
+| `T2V_LLM__MAX_OUTPUT_TOKENS` | integer | `1024` | — | The most tokens one model request may write, its reasoning included: a spoken reply is one to three short sentences, and the steps go to the screen. |
+| `T2V_LLM__TIMEOUT_S` | number | `8` | seconds | The longest one model request may take before it is a timeout. |
+
 ## `tts`
 
 Text-to-speech: the adapter, a model and a voice for each language, and what is done with the audio.
@@ -101,6 +113,17 @@ Words: what a team adds to each language's lists, which the interruption rule re
 | `T2V_WORDS__REPEAT` | JSON object from one of ar, en to JSON list of text | `{}` | — | Words added to each language's repeat words, which stop the agent and say its last reply again, as a JSON object from a language's code (ar, en) to a list: {"ar": ["..."]}. A value replaces the map. |
 | `T2V_WORDS__BACKCHANNEL` | JSON object from one of ar, en to JSON list of text | `{}` | — | Words added to each language's listening sounds, after which the agent goes on, as a JSON object from a language's code (ar, en) to a list: {"ar": ["..."]}. A value replaces the map. |
 | `T2V_WORDS__NO` | JSON object from one of ar, en to JSON list of text | `{}` | — | Words added to each language's no words, which a short output never holds, as a JSON object from a language's code (ar, en) to a list: {"ar": ["..."]}. A value replaces the map. |
+| `T2V_WORDS__VOCABULARY` | JSON list of text | `[]` | — | Product terms added to the declaration's vocabulary, which becomes the Whisper prompt, as a JSON list: ["VPN", "Outlook"]. A value replaces the list. |
+
+## `guard`
+
+The output guard: what counts as an ID, and what a clause that speaks one with no evidence drops.
+
+| Variable | Type | Default | Unit | Description |
+| --- | --- | --- | --- | --- |
+| `T2V_GUARD__ID_PATTERNS` | JSON list of text | `[]` | — | More ID shapes, beside runs of min_id_digits digits, as a JSON list of regular expressions, such as ["LT-\\d{5}"]. A pattern that matches no text at all (the empty text) is refused. Unset: none. |
+| `T2V_GUARD__MIN_ID_DIGITS` | integer | `3` | — | The fewest digits in a row, after digit words and Arabic-Indic digits are made digits, that count as an ID, which passes only with evidence from this call. |
+| `T2V_GUARD__ON_BLOCK` | one of drop_rest, drop_clause | `drop_rest` | — | What a blocked clause drops: drop_rest, it and the rest of the reply, or drop_clause, only it. A fixed phrase is spoken in its place either way. |
 
 ## `session`
 
@@ -108,7 +131,7 @@ The voice session: what answers the caller.
 
 | Variable | Type | Default | Unit | Description |
 | --- | --- | --- | --- | --- |
-| `T2V_SESSION__MODE` | one of echo | `echo` | — | What answers each turn: echo, which says back what it heard, the only one. |
+| `T2V_SESSION__MODE` | one of echo, talker, or unset | unset | — | What answers each turn: echo, which says back what it heard, or talker, which answers with the chat model and the agent's tools. Unset: the declaration's, talker for an agent that declares instructions and echo for one that does not. |
 
 ## `server`
 

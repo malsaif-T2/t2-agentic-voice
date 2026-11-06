@@ -30,6 +30,9 @@ VAR_DIR_VARIABLE = setting_name("storage", "var_dir")
 APP_PREFIX = "OLE5_VOICE_"
 FOREIGN_PREFIXES = ("GROQ_", "OTEL_", "PHOENIX_")
 FOREIGN_NAMES = ("REQUESTS_CA_BUNDLE", "CURL_CA_BUNDLE")
+# T2's knowledge-base service's general names, which the Ole5 app reads with no prefix.
+KB_PREFIXES = ("QDRANT_",)
+KB_NAMES = ("EMBEDDING_URL",)
 # The variables plan 003's reading of the installed packages found that change what a call's
 # packages do whatever the code passes (item 17 of its changes).
 CALL_PREFIXES = ("PIPECAT_", "LOGURU_", "WEBSOCKETS_", "UVICORN_", "NUMBA_", "LLVMLITE_", "OPENAI_")
@@ -92,6 +95,15 @@ def test_no_app_setting_comes_from_the_shell() -> None:
     assert inherited == [], f"Tests inherit {inherited}. {FIX}"
 
 
+def test_no_knowledge_base_access_comes_from_the_shell() -> None:
+    """The owner's account for T2's knowledge base (its Qdrant's address, email and password)
+    never reaches a test."""
+    inherited = sorted(
+        n for n in os.environ if n.upper().startswith(KB_PREFIXES) or n.upper() in KB_NAMES
+    )
+    assert inherited == [], f"Tests inherit {inherited}. {FIX}"
+
+
 def test_no_provider_or_tracing_variable_comes_from_the_shell() -> None:
     """A real Groq key, an exporter's headers or Phoenix's settings never reach a test."""
     inherited = sorted(n for n in os.environ if n.upper().startswith(FOREIGN_PREFIXES))
@@ -130,8 +142,11 @@ def test_the_isolation_lists_name_the_librarys_variables() -> None:
     assert isolation.APP_PREFIX == APP_PREFIX
     names = {"T2V_ENV", "GROQ_LOG", "pipecat_setup_files", "WEB_CONCURRENCY", "LOGURU_LEVEL"}
     names |= {"OLE5_VOICE_ACCESS_CODE", "ole5_voice_env"}
+    names |= {"QDRANT_URL", "qdrant_login_password", "EMBEDDING_URL"}
+    assert (isolation.KB_PREFIXES, isolation.KB_NAMES) == (KB_PREFIXES, KB_NAMES)
     assert {n for n in names if isolation.dropped(n)} == names
     assert not isolation.dropped("WEB_CONCURRENCY_X") and not isolation.dropped("PATH")
+    assert not isolation.dropped("EMBEDDING_URL_X")
 
 
 def test_a_child_shell_carries_the_scratch_var_dir_and_no_other_dropped_name(
@@ -235,6 +250,9 @@ def test_a_shell_that_sets_this_projects_variables_changes_no_test() -> None:
         "PYTHON_DOTENV_DISABLED": "0",
         f"{APP_PREFIX}ENV": "prod",
         f"{APP_PREFIX}ACCESS_CODE": "made-up-access-code-from-the-shell",
+        "QDRANT_URL": "https://made-up.example/qdrant",
+        "QDRANT_LOGIN_PASSWORD": "made-up-password-from-the-shell",
+        "EMBEDDING_URL": "https://made-up.example/embed",
     }
     here = Path(__file__).relative_to(ROOT).as_posix()
     targets = [
@@ -242,6 +260,7 @@ def test_a_shell_that_sets_this_projects_variables_changes_no_test() -> None:
         for test in (
             test_no_setting_comes_from_the_shell,
             test_no_app_setting_comes_from_the_shell,
+            test_no_knowledge_base_access_comes_from_the_shell,
             test_no_provider_or_tracing_variable_comes_from_the_shell,
             test_no_variable_a_calls_packages_read_comes_from_the_shell,
             test_dotenv_loading_is_off_for_the_session,

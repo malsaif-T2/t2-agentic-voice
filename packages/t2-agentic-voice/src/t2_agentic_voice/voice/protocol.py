@@ -34,13 +34,12 @@ event, outbound as urgent transport messages, so a stop never drops one (the app
 While the caller speaks over a reply, the session lowers the agent's voice in the browser
 (`Duck`) and brings it back once the overlap is decided, whether the reply goes on or was
 stopped (`Unduck`): the first step of the two-step interruption (the design's 5.5; plan 005).
-A clause a stop cut while it played is captioned again, marked `cut`.
+A clause a stop cut while it played is captioned again, marked `cut`. What a reply says short
+aloud, a passage's whole steps, goes to the screen as a `card` (plan 006).
 """
 
 from __future__ import annotations
 
-import json
-from collections.abc import Iterable
 from typing import Annotated, Final, Literal
 
 from pydantic import (
@@ -54,10 +53,12 @@ from pydantic import (
     model_validator,
 )
 
-from t2_agentic_voice.core.errors import InvalidRequestError
-from t2_agentic_voice.core.events import MAX_INDEX, CallId, ClientConnection, EndReason, TurnId
+from t2_agentic_voice.core.events import CallId, ClientConnection, EndReason, TurnId
+from t2_agentic_voice.core.events import ClauseIndex as ClauseIndex
+from t2_agentic_voice.core.events import ReplyId as ReplyId
 from t2_agentic_voice.core.settings.tts import LanguageTag
 from t2_agentic_voice.domain.declaration import NoticeKind
+from t2_agentic_voice.voice.protocol_read import read_json, refused
 
 # The protocol's version: every message carries it as "v", and /join checks the client's.
 PROTOCOL: Final = 1
@@ -71,12 +72,11 @@ RESERVED_TYPES = ("signalling",)
 RESERVED_PREFIX = "ping"
 
 # What the agent is doing, for the client to show (the design's 5.5): the echo session uses
-# the first three; `confirming` comes with confirmed actions.
+# the first three, `thinking` while a reply asked for has no audio yet, which a talker's reply
+# is while the talker or a tool works (plan 006); `confirming` comes with confirmed actions.
 CallState = Literal["listening", "thinking", "speaking", "confirming"]
-# A reply's number in its call, from 0, as the session counts them: the greeting is reply 0.
-ReplyId = Annotated[int, Field(ge=0, le=MAX_INDEX)]
-# A clause's index in its reply, from 0.
-ClauseIndex = Annotated[int, Field(ge=0, le=MAX_INDEX)]
+# A reply's number (`ReplyId`) and a clause's index in it (`ClauseIndex`) are core's
+# (core/events.py), which the talker's view of the call (core/conversation.py) shares.
 
 
 def _version(value: object) -> object:
@@ -184,6 +184,18 @@ class Caption(_SessionMessage):
         return self
 
 
+class ShowCard(_SessionMessage):
+    """Show the caller a card: a `title` and its `steps`, in order, with the `source` they come
+    from when there is one (a knowledge passage's document). A reply says the short answer
+    aloud, and the card holds the whole, which the client shows beside the captions (plan
+    006). Its text passed the output guard, as a clause's does."""
+
+    type: Literal["card"] = "card"
+    title: str = Field(min_length=1)
+    steps: tuple[str, ...] = ()
+    source: str | None = None
+
+
 class Duck(_SessionMessage):
     """Lower the agent's playback to `level` of its volume, from 0 (silent) to 1 (as it was), at
     once: the caller is speaking over a reply, and the session is deciding whether it is an
@@ -220,7 +232,7 @@ class Ended(_SessionMessage):
 
 
 ClientMessage = ClientHello | Stop | Hangup | ClientStats | Playback
-SessionMessage = SessionHello | State | Caption | Duck | Unduck | Notice | Ended
+SessionMessage = SessionHello | State | Caption | ShowCard | Duck | Unduck | Notice | Ended
 # Every message of each direction, in the design's order.
 CLIENT_MESSAGES: tuple[type[_ClientMessage], ...] = (
     ClientHello,
@@ -233,6 +245,7 @@ SESSION_MESSAGES: tuple[type[_SessionMessage], ...] = (
     SessionHello,
     State,
     Caption,
+    ShowCard,
     Duck,
     Unduck,
     Notice,
@@ -259,7 +272,7 @@ def parse_client_message(message: object) -> ClientMessage:
     (`json_invalid`), text holding a key twice (`duplicate_key`), or one that is not exactly one
     message of the client's (pydantic's error types). Its details name only these kinds of
     problem, never a value, a key or a type the client sent."""
-    value, problem = _read(message)
+    value, problem = read_json(message, limit=MAX_CLIENT_MESSAGE_BYTES)
     if problem is None:
         try:
             return _CLIENT.validate_python(value)
@@ -267,47 +280,7 @@ def parse_client_message(message: object) -> ClientMessage:
             problems = {e["type"] for e in error.errors(include_input=False, include_url=False)}
     else:
         problems = {problem}
-    raise _refused(problems) from None
-
-
-class _KeyTwiceError(Exception):
-    """A JSON object of the client's holds one key twice."""
-
-
-def _once(pairs: list[tuple[str, object]]) -> dict[str, object]:
-    """A JSON object's members, refusing a key held twice: `json.loads` would keep its last
-    value, and a reader that took the first would see another message."""
-    members = dict(pairs)
-    if len(members) != len(pairs):
-        raise _KeyTwiceError
-    return members
-
-
-def _read(message: object) -> tuple[object, str | None]:
-    """`message`'s JSON value, or the kind of problem that refuses it before it is read as a
-    message: its size in bytes, JSON it is not, or a key held twice."""
-    if isinstance(message, str | bytes) and len(message) > MAX_CLIENT_MESSAGE_BYTES:
-        return None, "too_large"  # a character is a byte or more, so its bytes are too
-    try:
-        if isinstance(message, str | bytes):
-            text = message.encode() if isinstance(message, str) else message
-            if len(text) > MAX_CLIENT_MESSAGE_BYTES:
-                return None, "too_large"
-            return json.loads(text.decode(), object_pairs_hook=_once), None
-        written = json.dumps(message, ensure_ascii=False, separators=(",", ":")).encode()
-    except _KeyTwiceError:
-        return None, "duplicate_key"
-    except (TypeError, ValueError, RecursionError):  # not UTF-8, not JSON, or not writable
-        return None, "json_invalid"
-    return (None, "too_large") if len(written) > MAX_CLIENT_MESSAGE_BYTES else (message, None)
-
-
-def _refused(problems: Iterable[str]) -> InvalidRequestError:
-    found: list[JsonValue] = []
-    found.extend(sorted(problems))
-    return InvalidRequestError(
-        "The client sent a message that is not one of t2v/1's.", details={"problems": found}
-    )
+    raise refused(problems) from None
 
 
 def wire(message: SessionMessage) -> dict[str, JsonValue]:

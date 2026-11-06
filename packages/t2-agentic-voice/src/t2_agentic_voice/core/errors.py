@@ -65,6 +65,15 @@ class JoinRejected(T2VoiceError):  # noqa: N818 - the design's 5.1 names it so
     code = "join_rejected"
 
 
+class ToolError(T2VoiceError):
+    """An expected failure a team's tool raises (the design's 6.4): its message goes to the
+    talker as the tool's answer, so it is written for the model to read, and holds nothing the
+    caller may not hear. Any other exception a tool raises, or its timeout, gives the talker a
+    generic "the tool failed" instead."""
+
+    code = "tool_error"
+
+
 class ProviderError(T2VoiceError):
     """An outside service (speech-to-text, the model, text-to-speech) failed a request.
 

@@ -17,11 +17,11 @@ text from silence takes for no words (domain/silence.py, under `stt.no_speech_ma
 
 from __future__ import annotations
 
+from t2_agentic_voice.core.conversation import TurnFate
 from t2_agentic_voice.core.events import TurnId
 from t2_agentic_voice.domain.silence import CAPTIONS, from_silence
 from t2_agentic_voice.voice.session.books import CallBooks
 from t2_agentic_voice.voice.session.heard import HeardWords, heard_words
-from t2_agentic_voice.voice.session.history import TurnFate
 from t2_agentic_voice.voice.session.io import CallSetup
 from t2_agentic_voice.voice.session.playback import Playback, Reply
 from t2_agentic_voice.voice.session.report import TurnLog

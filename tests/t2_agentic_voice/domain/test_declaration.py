@@ -255,7 +255,7 @@ def test_a_locale_takes_its_exact_tag_before_another_of_its_language() -> None:
         ({"name": "helper", "languages": "en"}, "languages"),
         ({"name": "helper", "languages": ["en"]}, "languages"),  # not a preset
         ({"name": "helper", "languages": [{"tag": "en"}]}, "greeting"),  # its own field
-        ({"name": "helper", "languages": [ENGLISH], "tools": []}, "tools"),
+        ({"name": "helper", "languages": [ENGLISH], "actions": []}, "actions"),
         ({"name": "helper", "languages": [ENGLISH], "pronounce": ["LT-"]}, "pronounce"),
     ],
 )

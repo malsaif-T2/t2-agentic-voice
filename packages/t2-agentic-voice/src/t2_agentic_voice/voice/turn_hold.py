@@ -24,6 +24,12 @@ fallback from `_handle_input_audio` (line 210). The controller's stop timeout
 the turn's audio through the hold (smart_turn.py's `keep_turn`), so its next judgement hears the
 whole turn, not only the speech after the pause. An upgrade of Pipecat must check those paths
 (the tests drive the real strategy through the turn processor).
+
+The early start (plan 006, Q2) adds two signals, which nothing gives yet: the hold began
+(`hold_began`), so the session starts the turn's transcription and the talker's first request
+at once, playing nothing before the hold ends; and the caller resumed within it
+(`hold_resumed`), so the session cancels that work and joins what follows to the turn. Each is
+to reach the session as its event (session_events.py's `TurnHeld` and `HoldResumed`).
 """
 
 from __future__ import annotations
@@ -77,6 +83,16 @@ class HeldTurnStop(TurnAnalyzerUserTurnStopStrategy):  # type: ignore[no-untyped
                 self._end_after_hold(enable_user_speaking_frames, confirms_speculation),
                 f"{self}::complete_hold",
             )
+
+    async def hold_began(self) -> None:
+        """Smart Turn called the turn complete and the hold began: signal it, so the session
+        starts the turn's transcription and the talker early (the module's docstring)."""
+        raise NotImplementedError("the early start is plan 006's Track C")
+
+    async def hold_resumed(self) -> None:
+        """The caller spoke again within the hold, which is dropped: signal it, so the session
+        cancels the early work and the turn goes on (the module's docstring)."""
+        raise NotImplementedError("the early start is plan 006's Track C")
 
     async def handle_user_turn_stopped(self) -> None:
         """A turn ended otherwise (the stop timeout, say) holds no end of its own any more."""

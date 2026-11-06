@@ -56,7 +56,7 @@ def test_a_field_a_subclass_adds_or_a_key_none_has_is_named() -> None:
     with pytest.raises(ConfigurationError) as raised:
         Extended.model_validate(ENGLISH.model_dump() | {"voice": "troy"})
     assert raised.value.details == {"field": "voice"}
-    assert "`notices` and `brand`." in str(raised.value)
+    assert "`notices`, `progress` and `brand`." in str(raised.value)
 
 
 def test_a_declaration_round_trips_through_json() -> None:

@@ -1,8 +1,8 @@
 """The session's I/O: how one call's session (`voice/session/`, which imports no Pipecat:
 ARCH-BAN) and voice's Pipecat modules meet, so each side builds against these modules alone
 (plan 003, step 10; Track D builds the session, Track E the Pipecat side). This module holds the
-protocols each side meets, the call's clock and what a session starts with; the events are
-session_events.py's, the commands commands.py's.
+protocols each side meets, the call's clock (core/clock.py's, given here too) and what a session
+starts with; the events are session_events.py's, the commands commands.py's.
 
 The Pipecat side (the transport, the speech detector and the turn analyzer, the speech bridges,
 the session bridge) tells the session what happened: each `SessionEvent` goes to
@@ -108,13 +108,15 @@ tracing, where its public events go) comes in its `CallSetup`, from voice's entr
 
 from __future__ import annotations
 
-import asyncio
-import time
 from collections.abc import Callable
 from dataclasses import dataclass
-from datetime import UTC, datetime
 from typing import Protocol
 
+# The call's clock is core's, which the talker and the tool runner read too; these names are
+# given here as well, where the session's I/O has always held them.
+from t2_agentic_voice.core.clock import SYSTEM_CLOCK as SYSTEM_CLOCK
+from t2_agentic_voice.core.clock import Clock as Clock
+from t2_agentic_voice.core.clock import SystemClock as SystemClock
 from t2_agentic_voice.core.config import VoiceSettings
 from t2_agentic_voice.core.events import CallId, Event
 from t2_agentic_voice.core.identity import Caller, Consent
@@ -128,38 +130,6 @@ from t2_agentic_voice.voice.session.session_events import SessionEvent
 # Where the session's public events go (core/events.py): the runtime's observers, queued off the
 # call's path (the design's 6.6). It returns at once and never raises.
 EventSink = Callable[[Event], None]
-
-
-class Clock(Protocol):
-    """A call's time: `now`, on the scale every event's `at` is on; `wall`, the time of day the
-    public events and the report carry; and `sleep`, for the session's timers."""
-
-    def now(self) -> float:
-        """Seconds on a monotonic scale with no fixed start."""
-
-    def wall(self) -> datetime:
-        """The time of day now, aware (UTC)."""
-
-    async def sleep(self, seconds: float) -> None:
-        """Return once `seconds` have passed on this clock."""
-
-
-class SystemClock:
-    """The clock of a real call: `time.perf_counter`, whose resolution is far finer than
-    `time.monotonic`'s 15.6 ms on Windows (plan 003's decision log), the system's UTC time, and
-    asyncio's sleep."""
-
-    def now(self) -> float:
-        return time.perf_counter()
-
-    def wall(self) -> datetime:
-        return datetime.now(UTC)
-
-    async def sleep(self, seconds: float) -> None:
-        await asyncio.sleep(seconds)
-
-
-SYSTEM_CLOCK = SystemClock()
 
 
 class PhraseAudio(Protocol):

@@ -32,9 +32,9 @@ from t2_agentic_voice.voice.session.session_events import (
 # How long after a reply ends a turn's speech still counts as the agent's own voice, leaked past
 # the browser's echo cancellation (plan 003's decision log): seconds.
 DROP_AFTER_S = 0.3
-# What a reply is: the greeting (reply 0), a turn's echo, a spoken notice, or the last reply said
-# again at the caller's request.
-ReplyKind = Literal["greeting", "echo", "notice", "repeat"]
+# What a reply is: the greeting (reply 0), a turn's echo, a spoken notice, the last reply said
+# again at the caller's request, or the talker's answer, spoken while it is written (plan 006).
+ReplyKind = Literal["greeting", "echo", "notice", "repeat", "answer"]
 
 
 @dataclass(kw_only=True)

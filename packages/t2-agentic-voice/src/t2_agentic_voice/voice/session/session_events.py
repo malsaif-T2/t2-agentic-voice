@@ -60,6 +60,27 @@ class TurnClosed:
 
 
 @dataclass(frozen=True, kw_only=True)
+class TurnHeld:
+    """Smart Turn called the caller's turn complete, and its hold began (voice/turn_hold.py): the
+    session may start the turn's transcription and the talker now (plan 006, Q2), and plays
+    nothing before the hold ends with the turn's `TurnClosed`. Not yet a `SessionEvent`: the
+    Pipecat side gives none until the early start is built."""
+
+    turn_id: TurnId
+    at: float
+
+
+@dataclass(frozen=True, kw_only=True)
+class HoldResumed:
+    """The caller spoke again within the hold of the turn `turn_id`: what the session started
+    early for it is cancelled, and the turn goes on, what follows joined to it (plan 006, Q2).
+    Not yet a `SessionEvent`, as `TurnHeld` is not."""
+
+    turn_id: TurnId
+    at: float
+
+
+@dataclass(frozen=True, kw_only=True)
 class Transcribing:
     """The speech-to-text bridge sent a turn's request, at `at`, with `audio_s` seconds of its
     audio: handed as the request goes, before the `Transcribed` of the same `part`, and whatever

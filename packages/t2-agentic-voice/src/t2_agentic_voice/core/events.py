@@ -36,6 +36,10 @@ MAX_MS = 86_400_000.0
 CallId = Annotated[str, Field(pattern=CALL_ID_PATTERN)]
 # A turn's number in its call, from 0, as the speech-to-text bridge stamps it.
 TurnId = Annotated[int, Field(ge=0, le=MAX_INDEX)]
+# A reply's number in its call, from 0, as the session counts them: the greeting is reply 0.
+ReplyId = Annotated[int, Field(ge=0, le=MAX_INDEX)]
+# A clause's index in its reply, from 0.
+ClauseIndex = Annotated[int, Field(ge=0, le=MAX_INDEX)]
 _Ms = Annotated[float, Field(ge=0, le=MAX_MS, allow_inf_nan=False)]
 
 # Why a call ended: the caller hung up; the caller's side closed the connection; the call

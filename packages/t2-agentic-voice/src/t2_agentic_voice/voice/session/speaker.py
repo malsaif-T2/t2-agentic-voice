@@ -12,7 +12,9 @@ per caption character (`SECONDS_PER_CHARACTER` before any played), as a reply's 
 counts by characters.
 
 A reply's scope is cancelled once the reply ends, however, so a reply that will ask for more
-clauses while its work runs (the talker's) must not end before that work is done.
+clauses while its work runs (the talker's) must not end before that work is done: such a reply
+is opened before its first clause and closed once its work is done (`open_reply`,
+open_reply.py's `OpenReply`).
 """
 
 from __future__ import annotations
@@ -34,6 +36,7 @@ from t2_agentic_voice.voice.session.books import CallBooks
 from t2_agentic_voice.voice.session.commands import Send, StopSpeaking
 from t2_agentic_voice.voice.session.echo import Line, again, fixed
 from t2_agentic_voice.voice.session.io import CallSetup, Commands
+from t2_agentic_voice.voice.session.open_reply import OpenReply
 from t2_agentic_voice.voice.session.playback import Clause, Playback, Reply, ReplyKind
 from t2_agentic_voice.voice.session.scope import CancelScope
 from t2_agentic_voice.voice.session.session_events import (
@@ -131,6 +134,12 @@ class Speaker:
             self._recorder.asked(at, line.speak, line.caption)
             await self._commands.run(line.speak)
         return reply
+
+    async def open_reply(self, at: float, *, turn_id: TurnId) -> OpenReply:
+        """Open the talker's reply to `turn_id` at `at`, before its first clause: its scope and
+        its span opened, its clauses added as they come, closed once its work is done
+        (open_reply.py)."""
+        raise NotImplementedError("the streamed reply is plan 006's Track C")
 
     async def greet(self, at: float) -> None:
         """The call connected at `at`: the `hello`, naming the call's language first and the

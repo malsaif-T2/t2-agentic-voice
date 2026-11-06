@@ -1,0 +1,97 @@
+"""The call so far as the talker reads it (plan 006, "What voice-first means here", item 1): what
+the caller heard, never what the agent meant to say. The voice session builds these plain models
+from its heard history (voice/session/history.py) for each turn it hands the talker; the talker
+(agent/) turns them into the model's messages. They live in core, the lowest layer both `voice`
+and `agent` import (harness.toml [layers]).
+
+Each of the caller's turns keeps its heard words and what became of it (`TurnFate`); each of the
+agent's replies keeps its clauses, each `played` (all of its audio), `cut` (a stop or the call's
+end cut it while it played, with the share of its audio that played; a clause's words are never
+split, Orpheus giving no word times) or `unplayed`. The turn handed to the talker carries its own
+heard words, the language its transcript was heard in, the reply its speech began over, if any,
+and the reply it cut, if any. Frozen, a misspelt key an error.
+"""
+
+from __future__ import annotations
+
+from typing import Annotated, Literal, Self
+
+from pydantic import BaseModel, ConfigDict, Field, model_validator
+
+from t2_agentic_voice.core.events import ReplyId, TurnId
+
+# What became of a clause of a reply: it played whole, a stop cut it while it played, or it
+# never played.
+ClauseFate = Literal["played", "cut", "unplayed"]
+# What became of one of the caller's turns: still being answered (`pending`); answered, its
+# reply played whole; its reply `cut` after a clause played, or `rolled_back`, cut before any
+# did; taken as a command (a stop, a pause, a repeat), not answered; an overlap after which the
+# reply `went_on`; `dropped` by the drop rule; or `unfinished`, the call ended first.
+TurnFate = Literal[
+    "pending", "answered", "cut", "rolled_back", "command", "went_on", "dropped", "unfinished"
+]
+# A language as a transcript names it, in the provider's code ("ar", "en").
+_Heard = Annotated[str, Field(min_length=2, max_length=16)]
+
+
+class _Plain(BaseModel):
+    model_config = ConfigDict(frozen=True, extra="forbid")
+
+
+class SaidClause(_Plain):
+    """One clause of a reply as the caller heard it: its text, what became of it, and the share
+    of its audio that played: 1 for one played, 0 for one unplayed, the share for one cut."""
+
+    text: str
+    fate: ClauseFate
+    played_fraction: float = Field(ge=0, le=1, allow_inf_nan=False)
+
+    @model_validator(mode="after")
+    def _share_of_its_fate(self) -> Self:
+        whole = {"played": 1.0, "unplayed": 0.0}.get(self.fate)
+        if whole is not None and self.played_fraction != whole:
+            raise ValueError("a played clause played 1 of its audio, an unplayed one 0")
+        return self
+
+
+class SaidReply(_Plain):
+    """One of the agent's replies as the caller heard it: its number, the caller's turn it
+    answers (None for the greeting or a notice), and its clauses in order."""
+
+    reply_id: ReplyId
+    turn_id: TurnId | None = None
+    clauses: tuple[SaidClause, ...] = ()
+
+
+class PastTurn(_Plain):
+    """One of the caller's turns: its heard words ("" when nothing was heard), what became of
+    it, and the reply that answers it, if any."""
+
+    turn_id: TurnId
+    words: str
+    fate: TurnFate
+    reply_id: ReplyId | None = None
+
+
+class Conversation(_Plain):
+    """The call's heard history before the turn the talker answers: each turn and each reply,
+    in order."""
+
+    turns: tuple[PastTurn, ...] = ()
+    replies: tuple[SaidReply, ...] = ()
+
+
+class TalkerTurn(_Plain):
+    """One turn of the caller's, as the session hands it to the talker: its number; its heard
+    words, whole (a turn the caller went on with after a pause, within the hold, is one turn);
+    the language its transcript was heard in (None when the provider named none); the reply its
+    speech began over (`over_reply`, None when it was said while the agent was silent) and the
+    reply it stopped (`cut_reply`, None when it stopped none; a turn said alone may stop a
+    reply to an earlier turn before it played); and the call so far."""
+
+    turn_id: TurnId
+    words: str = Field(min_length=1)
+    language: _Heard | None = None
+    over_reply: ReplyId | None = None
+    cut_reply: ReplyId | None = None
+    conversation: Conversation = Field(default_factory=Conversation)

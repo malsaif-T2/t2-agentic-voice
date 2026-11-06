@@ -210,7 +210,7 @@ def test_from_env_says_what_to_correct(monkeypatch: pytest.MonkeyPatch) -> None:
         ("TRACING__ENDPOINT", "localhost:6006"),
         ("TRACING__ENDPOINT", "http://127.0.0.1:6006x/v1/traces"),
         ("TRACING__REDACT", '["("]'),
-        ("SESSION__MODE", "talker"),
+        ("SESSION__MODE", "chat"),
         ("LOGGING__PIPECAT", "forward"),  # off only, for now (plan 003, Q19)
     ],
 )
