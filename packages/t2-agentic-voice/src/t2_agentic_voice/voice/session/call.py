@@ -24,8 +24,8 @@ naming no turn; `busy` is admission control's, at join. Whatever ends the call, 
 leaves a turn still open, or with its transcript still to come, unfinished (io.py's end).
 
 It says the heard words as echo.py says them, a fixed phrase from the phrase cache; a
-transcript the filter for text from silence takes for no words (turn_book.py, off by default) is
-said back as nothing.
+transcript the filter for text from silence takes for no words (turn_book.py; on by default
+since the registered rule F, D-063) is said back as nothing.
 
 It counts each model's usage from each request's report (io.py's usage), a request the call's
 end cancelled included, keeps the call's `CallReport` and writes its numbers, with no text of
