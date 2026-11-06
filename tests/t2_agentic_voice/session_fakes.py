@@ -47,6 +47,7 @@ from t2_agentic_voice.voice.session.session_events import (
     Connected,
     Ending,
     FromClient,
+    HoldResumed,
     SessionEvent,
     Synthesizing,
     Transcribed,
@@ -54,6 +55,7 @@ from t2_agentic_voice.voice.session.session_events import (
     TranscriptPart,
     TransportFailure,
     TurnClosed,
+    TurnHeld,
     TurnOpened,
 )
 
@@ -186,7 +188,7 @@ class FakeSessionIO:
             return "a stop dropped the clause. FIX: hand no event of a clause a stop dropped."
         if (
             isinstance(event, Transcribing | Transcribed)
-            and event.part != "turn"
+            and event.part in ("window", "overlap")
             and event.turn_id not in self.overlaps
         ):
             return "no HearOverlap marked the turn an overlap. FIX: let the session give it first."
@@ -221,6 +223,14 @@ class FakeSessionIO:
         now = self.clock.now()
         began = now if speech_at is None else speech_at
         return await self._hand(TurnOpened(turn_id=turn_id, at=now, speech_at=began))
+
+    async def turn_held(self, turn_id: int) -> TurnHeld:
+        """The turn's hold began now (the early start's)."""
+        return await self._hand(TurnHeld(turn_id=turn_id, at=self.clock.now()))
+
+    async def hold_resumed(self, turn_id: int) -> HoldResumed:
+        """The caller spoke again within the turn's hold, now."""
+        return await self._hand(HoldResumed(turn_id=turn_id, at=self.clock.now()))
 
     async def turn_closed(
         self, turn_id: int, *, speech_ended_at: float | None = None
@@ -258,7 +268,7 @@ class FakeSessionIO:
         closed), the turn's: RuntimeError when none was handed."""
         sent = self._sent(turn_id, part)
         if not sent and part == "turn":
-            sent = self._sent(turn_id, "overlap")
+            sent = self._sent(turn_id, "overlap") or self._sent(turn_id, "held")
         elif not sent and part == "overlap":
             sent = self._sent(turn_id, "turn")
         if (text is not None or failure) and not sent:

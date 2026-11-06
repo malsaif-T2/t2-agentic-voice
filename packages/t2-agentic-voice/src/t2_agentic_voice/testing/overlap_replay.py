@@ -54,7 +54,7 @@ if TYPE_CHECKING:  # named in annotations only: this module imports no Pipecat
 
 # Which of a turn's speech-to-text requests one was (voice/session/session_events.py's
 # `TranscriptPart`, spelt out for the public signature).
-RequestPart = Literal["window", "overlap", "turn"]
+RequestPart = Literal["window", "overlap", "turn", "held"]
 
 
 class OverlapRequest(BaseModel):

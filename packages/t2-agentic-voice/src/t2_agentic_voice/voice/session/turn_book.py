@@ -13,24 +13,46 @@ reuses its overlap's (no request of its own) is counted and told failed only as 
 was, so one request is never counted or reported twice. A transcript the filter for
 text from silence takes for no words (domain/silence.py, under `stt.no_speech_max` and
 `stt.caption_filter`, both on by default) is heard as nothing, so it is said back as nothing.
+
+A turn's time to first audio (plan 006) ends at its reply's first audible frame sent: a piece of
+the agent's audio the output tapped (`AgentAudio`) while a clause of the reply played, with a
+sample louder than `AUDIBLE_FLOOR`, so a silent first chunk is not audible (TD-090); a progress
+line's is kept apart. A call whose output taps no audio (a test's, `TextCall`'s) times the
+reply's first audio queued instead. The browser's `playback` report of the reply's first clause
+other than a progress line ends the time to its playback there.
 """
 
 from __future__ import annotations
 
+import struct
+
 from t2_agentic_voice.core.conversation import TurnFate
 from t2_agentic_voice.core.events import TurnId
 from t2_agentic_voice.domain.silence import CAPTIONS, from_silence
+from t2_agentic_voice.voice.protocol import ClauseIndex
 from t2_agentic_voice.voice.session.books import CallBooks
 from t2_agentic_voice.voice.session.heard import HeardWords, heard_words
 from t2_agentic_voice.voice.session.io import CallSetup
 from t2_agentic_voice.voice.session.playback import Playback, Reply
 from t2_agentic_voice.voice.session.report import TurnLog
 from t2_agentic_voice.voice.session.session_events import (
+    AgentAudio,
     Transcribed,
     Transcribing,
     TurnClosed,
     TurnOpened,
 )
+
+# The loudest a 16-bit sample of the agent's audio may be and still be silence: about -40 dBFS
+# (328 of 32768), the agent's value, testing/timed_speech.py's `NOISE_FLOOR` for a take's first
+# sound, below the quietest speech and above a model's dither.
+AUDIBLE_FLOOR = 328
+
+
+def audible(pcm16: bytes) -> bool:
+    """Whether `pcm16` (mono, 16-bit little-endian) holds a sample louder than AUDIBLE_FLOOR."""
+    whole = pcm16[: len(pcm16) - len(pcm16) % 2]
+    return any(abs(value) > AUDIBLE_FLOOR for (value,) in struct.iter_unpack("<h", whole))
 
 
 class TurnBook:
@@ -50,10 +72,14 @@ class TurnBook:
         self._no_speech_max = settings.stt.no_speech_max
         self._captions = CAPTIONS if settings.stt.caption_filter else ()
         self._filter = self._no_speech_max is not None or settings.stt.caption_filter
+        self._stop_s = settings.turns.vad_stop_ms / 1000
         self._turns: dict[TurnId, TurnLog] = {}
 
     def turn(self, turn_id: TurnId) -> TurnLog:
-        return self._turns.setdefault(turn_id, TurnLog(turn_id=turn_id))
+        known = self._turns.get(turn_id)
+        if known is None:
+            known = self._turns[turn_id] = TurnLog(turn_id=turn_id, stop_delay_s=self._stop_s)
+        return known
 
     def opened(self, event: TurnOpened) -> Reply | None:
         """The turn opened: when its speech began, and whether that was over the agent's
@@ -110,6 +136,14 @@ class TurnBook:
             self._events.heard(turn.turn_id, turn.heard)
         return turn, heard
 
+    def held(self, event: Transcribed) -> HeardWords | None:
+        """A turn's `held` transcript came (io.py's early start): counted, its request's
+        failure told; its heard words, as `transcribed` would give them, kept nowhere."""
+        self._usage.transcribed(event)
+        if event.failure is not None:
+            self._events.failed(event.failure, event.retryable, event.turn_id)
+        return self._unless_silence(heard_words(event), event)
+
     def _unless_silence(self, heard: HeardWords | None, event: Transcribed) -> HeardWords | None:
         """`heard`, or None when the filter is on and takes the transcript for text from
         silence (it is asked only when on, so a call with it off never reads the rule)."""
@@ -129,11 +163,42 @@ class TurnBook:
         turn.fate = fate
         self._history.turn_ended(turn.turn_id, fate, reply_id=turn.reply_id)
 
-    def first_audio(self, reply: Reply, at: float) -> None:
-        """A clause of `reply` began playing at `at`: its turn's first audio, the first time."""
-        if reply.turn_id is not None:
-            turn = self.turn(reply.turn_id)
+    def first_audio(self, reply: Reply, index: ClauseIndex, at: float) -> None:
+        """Clause `index` of `reply` began playing at `at`: its turn's first audio, the first
+        time, a progress line's apart."""
+        if reply.turn_id is None or index >= len(reply.clauses):
+            return
+        turn = self.turn(reply.turn_id)
+        if reply.clauses[index].progress:
+            turn.progress_at = turn.progress_at or at
+        else:
             turn.first_audio_at = turn.first_audio_at or at
+
+    def heard_audio(self, playing: tuple[Reply, ClauseIndex] | None, event: AgentAudio) -> None:
+        """The output sent `event`'s audio while `playing` played: the reply's turn's first
+        audible frame, the first time, a progress line's apart."""
+        reply, index = (None, 0) if playing is None else playing
+        if reply is None or reply.turn_id is None:
+            return
+        turn = self.turn(reply.turn_id)
+        turn.audio_seen = True
+        progress = reply.clauses[index].progress
+        if (turn.progress_audible_at if progress else turn.first_audible_at) is not None:
+            return
+        if audible(event.pcm16):
+            if progress:
+                turn.progress_audible_at = event.at
+            else:
+                turn.first_audible_at = event.at
+
+    def browser_played(self, reply: Reply | None, index: ClauseIndex, at: float) -> None:
+        """The browser began playing clause `index` of `reply` at `at` (its `playback`
+        report): the reply's turn's playback, the first time, a progress line not counted."""
+        if reply is None or reply.turn_id is None or index >= len(reply.clauses):
+            return
+        if not reply.clauses[index].progress:
+            turn = self.turn(reply.turn_id)
+            turn.played_at = turn.played_at or at
 
     def reply_ended(self, reply: Reply) -> None:
         """`reply` ended, however: the turn it answers settles, said back as the caller heard

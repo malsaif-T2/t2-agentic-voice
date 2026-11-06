@@ -17,9 +17,12 @@ from t2_agentic_voice.core.events import (
     CallStarted,
     ClientConnection,
     Event,
+    GuardBlocked,
     Interrupted,
     ModelUsage,
     ProviderFailed,
+    ToolFinished,
+    ToolStarted,
     TransportFailed,
     TurnMetrics,
     TurnRecord,
@@ -41,13 +44,16 @@ def _report(**changes: Any) -> CallReport:
     return CallReport.model_validate(values | changes)
 
 
-def test_the_events_are_the_closed_list_m2_emits() -> None:
+def test_the_events_are_the_closed_list_the_session_emits() -> None:
     assert [e.__name__ for e in EVENTS] == [
         "CallStarted",
         "CallEnded",
         "UserTurnEnded",
         "Interrupted",
         "AgentSpeechEnded",
+        "ToolStarted",
+        "ToolFinished",
+        "GuardBlocked",
         "ProviderFailed",
         "TransportFailed",
         "TurnMetrics",
@@ -64,6 +70,11 @@ def test_every_event_carries_its_call_its_turn_and_its_time() -> None:
         UserTurnEnded(call_id="c-1", turn_id=0, at=AT, heard=""),
         Interrupted(call_id="c-1", turn_id=1, at=AT, kind="stop"),
         AgentSpeechEnded(call_id="c-1", turn_id=1, at=AT, text="x", played_fraction=0.5),
+        ToolStarted(call_id="c-1", turn_id=1, at=AT, tool="search_help", tool_call_id="t-1"),
+        ToolFinished(
+            call_id="c-1", turn_id=1, at=AT, tool="search_help", tool_call_id="t-1", ok=True, ms=8
+        ),
+        GuardBlocked(call_id="c-1", turn_id=1, at=AT, reason="unsupported_id"),
         ProviderFailed(call_id="c-1", at=AT, kind="rate_limited", retryable=True),
         TransportFailed(call_id="c-1", at=AT, stage="connect"),
         TurnMetrics(call_id="c-1", turn_id=2, at=AT, stt_ms=310.0, ttfa_ms=900.0),
@@ -98,6 +109,11 @@ def test_an_interruption_names_the_rules_step_only_when_the_rule_decided() -> No
         (ProviderFailed, {"kind": "broken", "retryable": False}),
         (TransportFailed, {"stage": "dns"}),
         (TurnMetrics, {"turn_id": 0, "stt_ms": -1.0}),
+        (TurnMetrics, {"turn_id": 0, "played_ms": -1.0}),
+        (ToolStarted, {"tool": "search_help", "tool_call_id": "t-1"}),  # a turn's event
+        (ToolStarted, {"turn_id": 0, "tool": "", "tool_call_id": "t-1"}),
+        (ToolFinished, {"turn_id": 0, "tool": "t", "tool_call_id": "t-1", "ok": True, "ms": -1}),
+        (GuardBlocked, {"turn_id": 0, "reason": "claim"}),  # rule A comes with the actions
     ],
 )
 def test_an_event_refuses_what_is_not_in_its_list(
@@ -111,7 +127,7 @@ def test_turn_metrics_are_a_turns_times() -> None:
     metrics = TurnMetrics(call_id="c-1", turn_id=2, at=AT, tts_first_audio_ms=250.0)
     times = TurnTimes.model_validate(metrics.model_dump(include=set(TurnTimes.model_fields)))
     assert times == TurnTimes(tts_first_audio_ms=250.0)
-    assert times.llm_first_token_ms is None  # no talker yet
+    assert (times.llm_first_token_ms, times.progress_ms, times.played_ms) == (None, None, None)
 
 
 def test_a_report_counts_each_models_requests_per_call_minute() -> None:
@@ -119,6 +135,13 @@ def test_a_report_counts_each_models_requests_per_call_minute() -> None:
         usage=[
             ModelUsage(model="whisper-large-v3", requests=18, audio_sent_s=41.5, billed_s=180.0),
             ModelUsage(model="canopylabs/orpheus-arabic-saudi", requests=9, characters=480),
+            ModelUsage(
+                model="openai/gpt-oss-120b",
+                requests=6,
+                input_tokens=9000,
+                output_tokens=600,
+                cached_tokens=4000,
+            ),
         ],
         turns=[TurnRecord(turn_id=0, language="ar-SA", heard="x", said="x")],
         client=ClientConnection(candidate_type="relay", relay_protocol="tls", turn_port=443),
@@ -128,7 +151,9 @@ def test_a_report_counts_each_models_requests_per_call_minute() -> None:
     assert report.requests_per_minute() == {
         "whisper-large-v3": 6.0,
         "canopylabs/orpheus-arabic-saudi": 3.0,
+        "openai/gpt-oss-120b": 2.0,
     }
+    assert report.usage[2].input_tokens == 9000  # the chat model's tokens, as reported
     assert _report(
         ended_at=AT, usage=[ModelUsage(model="m", requests=1)]
     ).requests_per_minute() == {"m": 0.0}

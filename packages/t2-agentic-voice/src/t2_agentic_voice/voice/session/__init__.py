@@ -10,5 +10,7 @@ the session keeps them `turn_book.py`'s, its limit timers `limits.py`'s, the usa
 the turn records, public events and report `report.py`'s, and the recorder `recording.py`'s.
 Plan 005 adds each reply's cancel scope (`scope.py`), the heard history (`history.py`), the
 overlaps under `interruptions.mode = "two_step"` (`overlap.py`, carried out by
-`interrupter.py`), and the call's books that its parts share (`books.py`).
+`interrupter.py`), and the call's books that its parts share (`books.py`). Plan 006 adds the
+talker in the call (`talking.py`), its replies spoken while they are written (`open_reply.py`),
+and the early start in Smart Turn's hold.
 """

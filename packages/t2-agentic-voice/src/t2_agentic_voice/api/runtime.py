@@ -19,8 +19,10 @@ plan's interfaces".
   (api/lockfile.py), so a second process on the same folder is refused with a FIX line that
   points to the sidecar, on Windows and on Linux; resolves every secret the settings name in a
   file (the Groq key, the join keys, the TURN secret), so a short one stops the server at its
-  start rather than at the first join; builds the providers and tracing; warms the adapters
-  with no request (the platform detection the Groq SDK runs before its first request, TD-012);
+  start rather than at the first join; builds the providers (the chat model among them, whose
+  connection pool it keeps open for every call's requests and closes on its way out) and
+  tracing; warms the adapters with no request (the platform detection the Groq SDK runs before
+  its first request, TD-012, the chat adapter's included);
   has the phrase cache declare the agent's fixed phrases (`PhraseCache.declare(agent)`, under
   `storage.var_dir/<agent name>/phrases`), which synthesizes those it lacks one request at a
   time; opens the used-token store (`storage.var_dir/<agent name>/used_tokens.sqlite3`); and
@@ -89,7 +91,6 @@ from contextlib import (
     asynccontextmanager,
     suppress,
 )
-from dataclasses import dataclass
 from typing import Any, Final
 
 from fastapi import APIRouter
@@ -97,6 +98,7 @@ from fastapi import APIRouter
 from t2_agentic_voice.api import router as routing
 from t2_agentic_voice.api.lockfile import LockFile
 from t2_agentic_voice.api.offers import FORGOTTEN_KEPT_S, CallRecords
+from t2_agentic_voice.api.providers import Providers, talkers
 from t2_agentic_voice.api.router import Running
 from t2_agentic_voice.core.config import VoiceSettings
 from t2_agentic_voice.core.errors import ConfigurationError
@@ -105,8 +107,6 @@ from t2_agentic_voice.core.logging import get_logger
 from t2_agentic_voice.core.tracing import TracerProvider, Tracing
 from t2_agentic_voice.domain.declaration import VoiceAgent
 from t2_agentic_voice.domain.ports.identity import IdentityVerifier
-from t2_agentic_voice.domain.ports.speech_to_text import SpeechToText
-from t2_agentic_voice.domain.ports.text_to_speech import TextToSpeech
 from t2_agentic_voice.voice.calls import Calls, CallsFactory, VoiceCalls
 from t2_agentic_voice.voice.session.io import SYSTEM_CLOCK, Clock
 
@@ -126,32 +126,6 @@ _FIX_IDENTITY = (
 Observer = Callable[[Any], Awaitable[None]]
 
 log = get_logger(__name__)
-
-
-@dataclass(frozen=True, kw_only=True)
-class Providers:
-    """The providers a runtime's calls go through (the design's 5.2): speech-to-text and
-    text-to-speech, each an adapter object; the chat model comes with the talker. A setting
-    picks a built-in adapter (`from_settings`), and any other is passed in code (the design's
-    6.1): `Providers.from_settings(settings).replace(stt=...)`."""
-
-    stt: SpeechToText
-    tts: TextToSpeech
-
-    @classmethod
-    def from_settings(cls, settings: VoiceSettings) -> Providers:
-        """The built-in adapters the settings pick (`stt.provider`, `tts.provider`: Groq's),
-        built from the settings; built in the runtime's lifespan when none are given."""
-        from t2_agentic_voice.adapters.groq_stt import GroqSTT
-        from t2_agentic_voice.adapters.groq_tts import GroqTTS
-
-        return cls(stt=GroqSTT.from_settings(settings), tts=GroqTTS.from_settings(settings))
-
-    def replace(
-        self, *, stt: SpeechToText | None = None, tts: TextToSpeech | None = None
-    ) -> Providers:
-        """These providers with each one given in place of its own."""
-        return Providers(stt=self.stt if stt is None else stt, tts=self.tts if tts is None else tts)
 
 
 class VoiceRuntime:
@@ -277,6 +251,8 @@ class VoiceRuntime:
         providers = self._providers or Providers.from_settings(settings)
         stack.push_async_callback(providers.stt.aclose)
         stack.push_async_callback(providers.tts.aclose)
+        if providers.chat is not None:
+            stack.push_async_callback(providers.chat.aclose)
         tracing = Tracing.from_settings(settings, tracer_provider=self._tracer_provider)
         stack.push_async_callback(asyncio.to_thread, tracing.shutdown)
         await asyncio.to_thread(_warm)
@@ -288,6 +264,7 @@ class VoiceRuntime:
         self._events = asyncio.Queue(OBSERVER_QUEUE)
         observing = asyncio.create_task(self._observe(self._events))
         stack.push_async_callback(_drained, self._events, observing)
+        talker = talkers(agent, settings, providers.chat)  # each call's, for the talker
         calls = self._calls(
             agent=agent,
             settings=settings,
@@ -297,6 +274,7 @@ class VoiceRuntime:
             tracing=tracing,
             emit=self._emit,
             clock=self._clock,
+            **({} if talker is None else {"talker": talker}),
         )
         stack.push_async_callback(calls.aclose)
         await calls.start()
