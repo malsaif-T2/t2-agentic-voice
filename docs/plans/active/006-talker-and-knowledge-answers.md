@@ -2,8 +2,8 @@
 
 Status: active · Milestone: M4 · Started: 2026-11-06
 
-*Drafted on 2026-11-06 at the owner's word ("The owner's decisions"). It waits for the owner's
-approval and the answers to Q1 to Q10 ("The owner's questions"); nothing is built before them.*
+*Drafted on 2026-11-06 at the owner's word, and approved by the owner the same day with every
+recommendation, Q1 to Q10 ("The owner's decisions").*
 
 ## Goal
 
@@ -244,6 +244,8 @@ runs"; in this order, each with its smoke first)
   and the prototype's VOICE_LOG.md. Groq's production chat models, read on 2026-11-06 from
   console.groq.com/docs/models: `openai/gpt-oss-120b`, `openai/gpt-oss-20b`,
   `llama-3.3-70b-versatile` and `llama-3.1-8b-instant`. Waits for the owner.
+- 2026-11-06: The owner approved the plan with every recommendation ("Approve all"). Next: the
+  knowledge base's setting names for the owner's `.env`, the spike's Groq part, and Block 0.
 
 ## Decision log
 
@@ -263,6 +265,8 @@ runs"; in this order, each with its smoke first)
   request flexibly, but I think this is out of M3 scope."
 - 2026-11-06: "Ok, now lets start with M4. Our goal is to make a voice oriented agent, so it needs
   to be seamless and flexible a true implementation of approach 3."
+- 2026-11-06, to "Approve plan 006 with the recommended answers to Q1–Q10?": "Approve all". So
+  Q1 to Q9 are settled as (a) and Q10's cap of $5 holds.
 
 ## Tracks
 
@@ -387,44 +391,46 @@ embedding, the search and a second request, about 0.8 to 1.2 s. The prototype me
 
 ## The owner's questions
 
-- **Q1. What voice-first means here.** The eight choices above. Options: (a) approve them; (b)
+All settled on 2026-11-06 ("Approve all").
+
+- **Q1. What voice-first means here.** *Settled: (a).* The eight choices above. Options: (a) approve them; (b)
   change some. **The agent recommends (a).**
-- **Q2. Starting during the hold.** The 600 ms hold after Smart Turn's "complete" (D-067) adds
+- **Q2. Starting during the hold.** *Settled: (a).* The 600 ms hold after Smart Turn's "complete" (D-067) adds
   600 ms to every reply. Options: (a) the transcription and the talker's first request start at
   "complete", nothing plays before the hold ends, and the work is cancelled if the caller goes on
   (about 0.4 to 0.6 s sooner a reply; a model request wasted on each resumed turn); (b) the
   transcription only (about 0.3 s sooner); (c) neither. **The agent recommends (a).**
-- **Q3. What M4 leaves out.** `simulate` (scripted scenarios instead), `t2v check` (M7, with the
+- **Q3. What M4 leaves out.** *Settled: (a).* `simulate` (scripted scenarios instead), `t2v check` (M7, with the
   guide), `reports_on` (M5, with ticket status), `providers.md` (M7). Options: (a) leave them out;
   (b) build some of them. **The agent recommends (a).**
-- **Q4. The knowledge base.** Options: (a) T2's Qdrant and embedding gateway directly, by plain
+- **Q4. The knowledge base.** *Settled: (a).* Options: (a) T2's Qdrant and embedding gateway directly, by plain
   HTTP, one embedding and one search per question, connections kept open, no new package; (b) the
   same with the `qdrant-client` package (one install); (c) ragent2. Either (a) or (b) needs the
   Qdrant address, its key, Ole5's collection and filter, and the gateway's address, key and
   model, copied by the owner into this repository's `.env` under the names Block 0 gives. A
   snapshot of the points is kept under `var/kb/`, outside git, for drafting the knowledge set.
   **The agent recommends (a).**
-- **Q5. The knowledge set.** Options: (a) the agent drafts about 60 items from the knowledge base,
+- **Q5. The knowledge set.** *Settled: (a).* Options: (a) the agent drafts about 60 items from the knowledge base,
   the 28 recorded requests among them, and the owner reviews them (about 40 minutes); (b) the
   owner writes them; (c) the 28 recorded requests alone (too few for answers by language).
   **The agent recommends (a).** No new recording is needed.
-- **Q6. Who judges an answer.** Options: (a) a judge model other than the talker's reads each
+- **Q6. Who judges an answer.** *Settled: (a).* Options: (a) a judge model other than the talker's reads each
   answer beside its item's points and key facts, and the owner checks 24 judged answers drawn at
   random; if they disagree on more than 3, the owner judges that run's answers; (b) the owner
   judges every answer; (c) the key facts by their words alone (misses paraphrase). **The agent
   recommends (a).**
-- **Q7. The targets.** The list under "The targets", set for Q2's (a): without the early start,
+- **Q7. The targets.** *Settled: (a).* The list under "The targets", set for Q2's (a): without the early start,
   the 1.6 s median for a reply with no search is not expected to hold. Options: (a) accept them;
   (b) change some. **The agent recommends (a).**
-- **Q8. The models compared.** K1 `openai/gpt-oss-120b`, K2 `llama-3.3-70b-versatile`, K3
+- **Q8. The models compared.** *Settled: (a).* K1 `openai/gpt-oss-120b`, K2 `llama-3.3-70b-versatile`, K3
   `openai/gpt-oss-20b`, and for run U `llama-3.1-8b-instant`. Options: (a) these; (b) others the
   key can call. **The agent recommends (a).**
-- **Q9. English inside an Arabic call.** A call sends Whisper its language (D-066), so an English
+- **Q9. English inside an Arabic call.** *Settled: (a).* A call sends Whisper its language (D-066), so an English
   question in an Arabic call is transcribed as Arabic. Options: (a) run X decides: if English
   holds under the Arabic language, the talker answers it in English; if not, the widget's
   language is switched before an English question, and the rehearsal's step 7 is an English call;
   (b) English calls only, from the start. **The agent recommends (a).**
-- **Q10. The spend.** A cap of $5 for M4's runs (about $3 expected; M3 spent $0.46 of its $5).
+- **Q10. The spend.** *Settled: yes.* A cap of $5 for M4's runs (about $3 expected; M3 spent $0.46 of its $5).
   **The agent recommends it.**
 
 ## What the owner does
