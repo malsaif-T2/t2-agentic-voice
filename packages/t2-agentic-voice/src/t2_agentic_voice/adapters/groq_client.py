@@ -1,5 +1,6 @@
-"""The Groq SDK's client as every Groq adapter builds it (D-004): `GroqSTT` (Whisper) and
-`GroqTTS` (Orpheus) share it, each with its own request body and headers' values.
+"""The Groq SDK's client as every Groq adapter builds it (D-004): `GroqSTT` (Whisper), `GroqChat`
+(the chat models) and `GroqTTS` (Orpheus) share it, each with its own request body and headers'
+values.
 
 How it keeps to the design's 7.3 ("Other names are never read") and keeps the key out of
 everything but the request, as plan 002's decision log reads groq 1.7.0
@@ -58,11 +59,18 @@ from t2_agentic_voice.domain.ports.speech_to_text import DataFlow
 with logging_unchanged("groq", "httpx"):  # groq reads GROQ_LOG on import (TD-003)
     # Re-exported (`as`) for the adapters, which import the SDK only through this module.
     from groq import APIConnectionError as APIConnectionError
+    from groq import APIError as APIError
     from groq import APIStatusError as APIStatusError
     from groq import APITimeoutError as APITimeoutError
     from groq import AsyncGroq as AsyncGroq
+    from groq import Omit as Omit
     from groq import __version__ as groq_version
     from groq import omit as omit
+    from groq.types.chat import (
+        ChatCompletionAssistantMessageParam as ChatCompletionAssistantMessageParam,
+    )
+    from groq.types.chat import ChatCompletionMessageParam as ChatCompletionMessageParam
+    from groq.types.chat import ChatCompletionToolParam as ChatCompletionToolParam
 
 # The prototype's connection pool (its `groqhttp.py`, read 2026-11-01): a connection is kept open
 # five minutes, since httpx's 5 s left every utterance paying a new TLS handshake.

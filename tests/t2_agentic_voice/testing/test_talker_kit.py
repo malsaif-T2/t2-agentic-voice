@@ -49,7 +49,8 @@ def test_the_fake_knowledge_base_answers_from_its_passages_and_keeps_each_search
         asyncio.run(kb.search("x", language="en", caller=CALLER, limit=0))
 
 
-def test_the_fake_chat_models_send_nothing_and_their_streams_are_stubs() -> None:
+def test_the_fake_chat_models_send_nothing_and_keep_each_request() -> None:
+    """Their behaviour, Track A's, is tested in test_llm_fakes.py."""
     scripted, function = ScriptedLLM([[]]), FunctionLLM(lambda request: [])
     models: list[ChatModel] = [scripted, function]  # mypy checks the port's shape
     assert [(m.name, m.data_flow) for m in models] == [
@@ -57,14 +58,15 @@ def test_the_fake_chat_models_send_nothing_and_their_streams_are_stubs() -> None
         ("function", FAKE_DATA_FLOW),
     ]
     assert (scripted.script, scripted.requests, function.requests) == (((),), [], [])
+
+    async def ask(model: ChatModel) -> list[object]:
+        return [event async for event in model.stream(REQUEST)]
+
     for model in models:
-        with pytest.raises(NotImplementedError):
-            model.stream(REQUEST)
+        assert [type(event).__name__ for event in asyncio.run(ask(model))] == ["Done"]
         asyncio.run(model.aclose())
-    with pytest.raises(NotImplementedError):
-        ScriptedLLM.reply("Open Settings.")
-    with pytest.raises(NotImplementedError):
-        ScriptedLLM.call_tool("search_help", query="password")
+    assert (scripted.requests, function.requests) == ([REQUEST], [REQUEST])
+    assert ScriptedLLM.reply("Open Settings.")[-1] != ScriptedLLM.call_tool("search_help")[-1]
 
 
 def test_a_text_call_holds_its_injections_and_expectations_as_stubs() -> None:
