@@ -42,11 +42,11 @@ once; a stop at once on a stop or pause word, a repeat request or real words ove
 verdicts above, `StopSpeaking` before any model request); and the reply going on for a listening
 sound, the agent's own echo or silence. Once a stop or a repeat request stopped the agent, the
 turn's own transcript reaches the talker whole, its stop word included (TD-103), with the reply
-it cut (`TurnLog.cut_reply`), unless it is a stop or pause request said whole, which is a
-command and answered by nothing; what followed is not read apart, and the reply is never said
-again by the session. A repeat request said while the agent was silent is answered by the
-talker too; a stop or pause request said whole stays a command. The fixed repeat (D-064) stays
-only for a session with no talker.
+it cut (`TurnLog.cut_reply`; none when the reply had ended and the speech began in its tail),
+unless it is a stop or pause request said whole, which is a command and answered by nothing;
+what followed is not read apart, and the reply is never said again by the session. A repeat
+request said while the agent was silent is answered by the talker too; a stop or pause request
+said whole stays a command. The fixed repeat (D-064) stays only for a session with no talker.
 """
 
 from __future__ import annotations
@@ -300,8 +300,10 @@ class Interrupter:
             for _ in range(unducks):
                 await self._speaker.send(Unduck())
         else:
+            over = self._speaker.playback.reply(state.reply_id)
+            if over is not None and over.ended_at is None:  # not one heard whole, in its tail
+                turn.cut_reply = state.reply_id
             await self._speaker.stop(at, client=False, unducks=unducks)
-            turn.cut_reply = state.reply_id
             if self._talker:
                 self._turns.ended(turn, "pending")  # the talker reads it whole
             elif verdict.action == "repeat" and state.decided_by == "window":

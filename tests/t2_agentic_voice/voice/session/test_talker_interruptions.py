@@ -90,6 +90,35 @@ def test_real_words_over_a_reply_stop_it_and_reach_the_talker_whole(
     assert [(e.kind, e.reason) for e in emitted(io, Interrupted)] == [("new_words", "enough_words")]
 
 
+def test_words_begun_in_a_played_replys_tail_reach_the_talker_with_no_cut_reply(
+    settings: VoiceSettings, rule: FakeRule
+) -> None:
+    """Speech that begins within a reply's tail counts as over it, but a reply the caller heard
+    whole was cut by nothing: the talker reads `over_reply` and no `cut_reply`."""
+    io, session, talker = talker_call(two_step(settings), _two)
+
+    async def drive() -> None:
+        await greeted(io)
+        await talked(io, 0, "How do I reset my password?")
+        for speak in speaks(io, 1):
+            await io.clause_queued(1, speak.clause)
+            await io.clause_played(1, speak.clause, audio_s=0.4)
+        assert ended(session, 1)
+        await io.clock.advance(0.1)  # within the reply's tail
+        await io.turn_opened(1)
+        await overlap_part(io, 1, NEW_TEXT)
+        await io.turn_closed(1)
+        await io.transcribed(1, NEW_TEXT, language="en")
+        await settle()
+
+    asyncio.run(drive())
+    assert io.commands.of(StopSpeaking) == []  # nothing was in progress to stop
+    handed = talker.turns[1]
+    assert (handed.words, handed.over_reply, handed.cut_reply) == (NEW_TEXT, 1, None)
+    heard = handed.conversation.replies[-1]
+    assert heard.reply_id == 1 and [c.fate for c in heard.clauses] == ["played", "played"]
+
+
 def test_a_stop_word_said_whole_over_a_reply_is_a_command_answered_by_nothing(
     settings: VoiceSettings, stop_word: FakeRule
 ) -> None:
