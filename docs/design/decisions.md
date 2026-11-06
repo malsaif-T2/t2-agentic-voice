@@ -2252,8 +2252,9 @@ twice; DOC-REF: every `D-NNN` cited anywhere is a heading here), so keep its sha
       having opened an overlap in any run.
     - C3: the three dev call items were right in O1 and O2; the held-out one is read only in
       its group's aggregate.
-  - Every stop word and listening sound opened an overlap, so the speech detector's miss of a
-    short word (TD-092) was not seen. The paid runs spent $0.4570 by H3, of the $5 cap (Q7).
+  - In O1 and O2 every stop word and listening sound opened an overlap, so the speech detector's
+    miss of a short word (TD-092) was not seen. The paid runs spent $0.4570 by H3, of the $5
+    cap (Q7).
   - **The owner's ruling,** asked after H3 whether to make the two-step interruption the default
     and close at a plateau after the live calls, or keep it off and revise again on fresh
     recordings, 2026-11-06: "Yes make it the default and close. We might test other STT

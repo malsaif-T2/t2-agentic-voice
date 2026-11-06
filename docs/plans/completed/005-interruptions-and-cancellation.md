@@ -1,6 +1,6 @@
 # 005 · Interruptions and cancellation
 
-Status: active · Milestone: M3 · Started: 2026-11-03
+Status: completed · Milestone: M3 · Started: 2026-11-03 · Completed: 2026-11-06
 
 *Approved by the owner on 2026-11-03 in the answers to Q1 to Q7, and started the same day on
 what needs no recording of M2's session ("The owner's decisions"); what does waits for it.*
@@ -26,13 +26,14 @@ a turn ends (the owner, Q6). Every number describes one speaker, the owner (D-00
 
 **The library**
 
-- [ ] **The cancel scope** (`voice/session/scope.py`): each reply opens one scope, and the work
+- [x] **The cancel scope** (`voice/session/scope.py`): each reply opens one scope, and the work
   that answers a turn starts inside it. A stop cancels the scope at once: `StopSpeaking`, every
   task of the scope cancelled and awaited, one `Interrupted` event, and the widget told (`state`
   and the cut caption). A test with a fake responder holding a slow model stream and a slow
   lookup: after a stop both are cancelled within 100 ms on the fake clock and no task of the call
   is left; work started outside the scope (M5's writes, the design's 6.4) is not cancelled.
-- [ ] **The two-step interruption**, behind `interruptions.mode`: a turn that opens while a
+  *Met (D-060).*
+- [x] **The two-step interruption**, behind `interruptions.mode`: a turn that opens while a
   reply plays, or within 300 ms after its last clause played (D-037), is an overlap. The session
   sends `duck` at once. The speech-to-text bridge sends a window, the first `first_window_ms`
   (750) of the overlap counted from 300 ms before the speech detector's onset, if the speech is
@@ -42,64 +43,88 @@ a turn ends (the owner, Q6). Every number describes one speaker, the owner (D-00
   starting rule" below) stops on a stop or wait word or on `min_words` (2) real words, and goes
   on (`unduck`, the turn not answered) for listening sounds, the agent's own words, no words or
   text from silence. A stop or wait word is never said back; new words are answered; a repeat
-  request stops the reply and says the last reply again.
-- [ ] **The words:** each `Language` preset (`ar-SA`, `ar`, `en`) carries stop, wait, repeat,
+  request stops the reply and says the last reply again. *Met (D-061), with the registration's
+  amendments (1) to (7) and (10).*
+- [x] **The words:** each `Language` preset (`ar-SA`, `ar`, `en`) carries stop, wait, repeat,
   listening and no words (the design's 3.1), as the owner rules (Q1); a team adds its own through
   the declaration (`phrases=`, the design's 4.3) or the `words` settings group, and Ole5 sets its
   additions as settings. A test: no preset's fixed phrase (greeting, echo frame, notices) holds a
   word of its stop, wait, repeat or listening list, since the agent's echo would stop it.
-- [ ] **The filter for text from silence:** a transcript whose `no_speech_prob` is above
+  *Met (D-062), but for one part changed: Ole5 sets no additions as settings, the presets holding
+  the prototype's words.*
+- [x] **The filter for text from silence:** a transcript whose `no_speech_prob` is above
   `stt.no_speech_max`, or that is one of Whisper's invented captions (`stt.caption_filter`),
   counts as no words, for an overlap and for a turn, with the defaults the registered rule F
-  sets. A clause with no letter or digit is never sent to text-to-speech (TD-060).
-- [ ] **The heard history** (`voice/session/history.py`): each turn's heard words and what became
+  sets. A clause with no letter or digit is never sent to text-to-speech (TD-060). *Met (D-063):
+  on by default since F, its threshold 0.55 since the rule's revision (D-068).*
+- [x] **The heard history** (`voice/session/history.py`): each turn's heard words and what became
   of it, and each reply's clauses as `played` (its `ClausePlayed` came), `cut` (playing at the
   stop, with the fraction played) or `unplayed`. The repeat, the `CallReport` and
-  `AgentSpeechEnded(played_fraction)` read it.
-- [ ] **`t2v/1`** gains `duck` (with its level) and `unduck` (the design's 5.5) and a caption's
-  `cut` mark (Proposed); the protocol's fixture changes in the same commit (D-039).
-- [ ] **Settings:** the `interruptions` group (`mode`: `drop`, M2's rule and the default until
+  `AgentSpeechEnded(played_fraction)` read it. *Met (D-064).*
+- [x] **`t2v/1`** gains `duck` (with its level) and `unduck` (the design's 5.5) and a caption's
+  `cut` mark (Proposed); the protocol's fixture changes in the same commit (D-039). *Met (D-065).*
+- [x] **Settings:** the `interruptions` group (`mode`: `drop`, M2's rule and the default until
   the registered runs move it, or `two_step`; `duck_level`; `first_window_ms`; `min_words`), the
   `words` group, `stt.no_speech_max` and `stt.caption_filter`; the generated reference
-  regenerated. With `mode = "drop"`, M2's session scenes give the same commands (GP-18).
-- [ ] **The replay** the measurement needs (`testing/audio_call.py`, the design's 9.5
+  regenerated. With `mode = "drop"`, M2's session scenes give the same commands (GP-18). *Met;
+  changed: `mode` defaults to `two_step` by the owner's ruling of 2026-11-06, with H3's two
+  failing targets accepted (afb6864; D-068), not because every target held.*
+- [x] **The replay** the measurement needs (`testing/audio_call.py`, the design's 9.5
   `AudioCall`, provisional): it plays a golden WAV file over a reply on the file-fed transport
   and records each overlap's verdict, its Whisper requests and the time from a labelled word end
   to the last agent audio frame sent; the app reaches it through the `evals` facade, as it
-  reaches `turn_ends` (D-019's Proposed bullet).
-- [ ] **Debt M3's stops would turn into failures, paid:** TD-060; TD-064's stop part (a clause's
+  reaches `turn_ends` (D-019's Proposed bullet). *Met (`AudioCall`, `OverlapReplay`).*
+- [x] **Debt M3's stops would turn into failures, paid:** TD-060; TD-064's stop part (a clause's
   context never opened, dropped at a stop); TD-068's rule on `Commands.run` and the lock in
-  `FakeSession`; TD-055 (a request's report still counted after a stop).
+  `FakeSession`; TD-055 (a request's report still counted after a stop). *Met for what a stop
+  needs; each row says what is left (TD-060's dropped-turn event and TD-055's wording are
+  TD-104's).*
 
 **The browser**
 
-- [ ] `t2v-client.js` lowers the agent's playback to the `duck` level as the message arrives,
+- [x] `t2v-client.js` lowers the agent's playback to the `duck` level as the message arrives,
   restores it on `unduck`, and shows a cut caption as cut; Ole5's widget has a push-to-talk switch
   (the microphone on only while a key or the button is held), the fallback when the echo on the
   laptop's speakers stays high. Checked in the agent's browser pane with a silent stream, and by
-  the owner in the live calls.
+  the owner in the live calls. *Met by the owner's live calls ("Everything works as intended")
+  and the tests that read the client and the widget (D-065); the agent's own check in its browser
+  pane is not on record.*
 
 **The measurement** (the roadmap's *Done when* for M3)
 
-- [ ] "The measurement, registered before any result" was complete, every owner's call settled
+- [x] "The measurement, registered before any result" was complete, every owner's call settled
   and dated, before the run it affects; every departure is a `Deviation:` line in the progress
   log.
-- [ ] The language a live call sends Whisper is set by the registered rule (runs R5 to R7), and
-  the noise on another day (TD-032) is recorded.
-- [ ] The turn defaults are tuned by the registered rule E, offline with `uv run poe eot`, on the
+- [x] The language a live call sends Whisper is set by the registered rule (runs R5 to R7), and
+  the noise on another day (TD-032) is recorded. *Met (D-066): `session` stays; d = 0 again.*
+- [x] The turn defaults are tuned by the registered rule E, offline with `uv run poe eot`, on the
   paused requests with Q2's new ones: a default moves only where E's keep rule holds on dev and
-  held-out confirms it.
-- [ ] `uv run poe overlap` measures the overlap clips through the replay; its `reference`
-  answerer scores every verdict right and 0 ms inside `poe check`.
+  held-out confirms it. *Met, changed: E's arms became holds after Smart Turn's "complete"
+  (amendments (8) and (9)), and the owner kept Ec, 600 ms, over E's tie-break, which kept Ea;
+  held-out confirmed Ec (D-067).*
+- [x] `uv run poe overlap` measures the overlap clips through the replay; its `reference`
+  answerer scores every verdict right and 0 ms inside `poe check`. *Met.*
 - [ ] The targets hold on dev (O1, with O2 its noise), on held-out once (H3, aggregates only) and
-  on M2's call recordings imported as golden items (C3).
-- [ ] In live calls in Chrome, on the laptop's speakers and on the wired headset: the
+  on M2's call recordings imported as golden items (C3). *Not met, and accepted by the owner on
+  2026-11-06, M3 closing at a plateau (evaluation.md, "Closing at a plateau"): after the rule's
+  one revision, the requests per interruption, the stop time and no stop for echo, silence or
+  noise held on dev and held-out; stop and pause words held on dev (36 of 39) and failed on
+  held-out (10 of 18); requests over a reply failed on both (60 of 74, 15 of 18); listening sounds
+  failed on dev (5 of 38) and held on held-out (0 of 19); every «وقف» at normal volume failed on
+  dev (5 of 6); the agent's own words were not measured; C3's three dev items were right (D-068).*
+- [x] In live calls in Chrome, on the laptop's speakers and on the wired headset: the
   rehearsal's stop and repeat steps (DESCRIPTION.md, steps 1 and 2) pass; on the speakers, with
   the owner silent through five replies, the agent is never interrupted; Whisper's requests stay
-  at or under 10 a call minute.
-- [ ] `uv run poe check` passes; the guide's `concepts.md` and `browser-client.md`'s M3 part are
+  at or under 10 a call minute. *Met by the owner's verdict of 2026-11-06 ("Everything works as
+  intended", the rehearsal's stop and repeat steps among it); the requests a call minute were not
+  recorded.*
+- [x] `uv run poe check` passes; the guide's `concepts.md` and `browser-client.md`'s M3 part are
   written; the decision entries, the roadmap's M3 row, CLAUDE.md, ARCHITECTURE.md and this plan's
-  logs are up to date.
+  logs are up to date. *Met at the close (the progress log's last line).*
+
+**Left out, for the owner's yes with this plan** ("Scope"): the parity test between text and
+audio calls, moved to M4 with `TextCall`; the Bluetooth hands-free warning and the guide's
+`audio-troubleshooting.md`, the `bluetooth-m3` sitting having been skipped (2026-11-04).
 
 ## Plan
 
@@ -534,6 +559,23 @@ milestone a contract it cannot build on. Everything else becomes a row in
   «وقف» and «ممكن تعيد» most, on the cheap headset most. M3's *Done when* is met at a plateau: the
   targets on the golden set held but two (stop and pause words, requests over a reply, on held-out),
   which the owner accepted, and the live calls pass. Next: the close (step 19).
+- 2026-11-06: Step 19, the close, by one agent in `plan-005-close` from e7f5bb8. The drafted docs
+  merged (`plan-005-close-docs`, cut from ee77b8c: the guide's `concepts.md`, `browser-client.md`'s
+  M3 part, the guide's README rows and D-060 to D-067; a55af19) and brought to the defaults now
+  decided: `two_step`, the 600 ms hold, the threshold 0.55, the short output 1.2 s, D-067's default
+  decided (9b814b9, e9b5a28). D-068 records the registered results, target by target, and the
+  owner's ruling (9b814b9). The design's lines the code contradicted corrected as facts, no design
+  changed: its 1.2, 3.1, 3.3, 4.3, 5.1, 5.5, 6.6, 7.6, 9.5, 12.2, 13's session bridge (the
+  integrator's "12.2" for `duck` and `unduck`), 14, 16.1 and 16.3, with `voice/session/call.py`'s
+  docstring on the filter (9555e0c). The owner's word of 2026-11-06 on understanding requests
+  recorded, and Future improvements written (b3c8268); CLAUDE.md and ARCHITECTURE.md brought to
+  M3 (0cbcda6). In this commit: the criteria ticked, each unmet or changed one said so; the debt
+  rows that named M3's plan brought up to date, TD-032 removed as paid (R5 and R6, D-066); the
+  roadmap's M3 row done, its section closed, "Planned later", "Decided" and M4's pointer; this
+  plan moved to `completed/`. Not on record: the agent's check of the client in its browser pane,
+  and the live calls' requests a call minute. Final gate: 'check_architecture: OK (427 files
+  checked)', 'check_docs: OK (37 files checked)', 'TOTAL 12425 0 100%', '3874 passed, 1 skipped,
+  1 warning in 550.42s (0:09:10)'.
 
 ## Decision log
 
