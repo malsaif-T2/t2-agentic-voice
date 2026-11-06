@@ -1,0 +1,12 @@
+# Run S's scenarios (plan 006's registration, "Data"; ole5_voice/evals/scenarios.py): a question
+# the knowledge base cannot answer.
+id = "s08_not_in_knowledge"
+rehearsal = false
+language = "ar-SA"
+notes = "A question the knowledge base holds no answer to is searched, then answered with an honest not in my knowledge."
+
+[[turns]]
+says = "فيه طريقة أشارك فيها المراسلة على الواتساب؟"
+search = true
+language = "ar-SA"
+item = "q22_whatsapp"

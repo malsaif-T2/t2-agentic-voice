@@ -1,0 +1,21 @@
+# Run S's scenarios (plan 006's registration, "Data"; ole5_voice/evals/scenarios.py): a follow-up
+# that needs the last answer.
+id = "s06_follow_up"
+rehearsal = false
+language = "ar-SA"
+notes = "A short follow-up is read with the last answer, so it needs no restating of the subject."
+
+[[turns]]
+says = "كيف أطبع المراسلة؟"
+search = true
+language = "ar-SA"
+item = "n03_print"
+
+[[turns]]
+says = "وإذا ما لقيت الزر؟"
+language = "ar-SA"
+item = "n03_print"
+facts = [
+  "Keeps to printing, the subject of the earlier answer.",
+  "Says that printing needs its permission, so a missing print button may mean the permission is missing.",
+]

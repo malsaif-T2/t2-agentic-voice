@@ -1,0 +1,25 @@
+# Run S's scenarios (plan 006's registration, "Data"; ole5_voice/evals/scenarios.py): the
+# rehearsal's step 3, a request for a person said over the reply. No transfer exists yet, so the
+# reply says so plainly. The archiving items are held-out, so the first answer is run K's to judge.
+id = "s09_person_over_reply"
+rehearsal = true
+language = "ar-SA"
+notes = "A request for a person said over a reply stops it, and is answered plainly, with no promise."
+
+[[turns]]
+says = "كيف أؤرشف مراسلة في النظام؟"
+search = true
+language = "ar-SA"
+
+[[turns]]
+says = "أبغى موظف"
+when = "agent_speaking"
+after_s = 1.0
+cuts_reply = true
+search = false
+language = "ar-SA"
+facts = [
+  "Says plainly that it cannot put the caller through to a person for now.",
+  "Promises no transfer, no call back and no ticket.",
+  "Offers to go on helping with the question.",
+]

@@ -1,0 +1,21 @@
+# Run S's scenarios (plan 006's registration, "Data"; ole5_voice/evals/scenarios.py): a new
+# request said over a reply.
+id = "s10_new_request_over_reply"
+rehearsal = false
+language = "ar-SA"
+notes = "A new request said over a reply stops it, and the new request is answered, not the old one."
+
+[[turns]]
+says = "كيف أسوي مجموعة مفضلة للإرسال؟"
+search = true
+language = "ar-SA"
+item = "q06_favorite_group"
+
+[[turns]]
+says = "طيب خلها، كيف أطبع المراسلة؟"
+when = "agent_speaking"
+after_s = 1.0
+cuts_reply = true
+search = true
+language = "ar-SA"
+item = "n03_print"

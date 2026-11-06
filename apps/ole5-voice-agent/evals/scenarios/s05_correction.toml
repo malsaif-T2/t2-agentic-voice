@@ -1,0 +1,19 @@
+# Run S's scenarios (plan 006's registration, "Data"; ole5_voice/evals/scenarios.py): the
+# rehearsal's step 5. The first turn's words are the transcript of a misheard verb; the caller
+# reads it in the captions and corrects it while the search runs.
+id = "s05_correction"
+rehearsal = true
+language = "ar-SA"
+notes = "A correction said while a search runs cancels it, and the talker answers both turns together, as corrected."
+
+[[turns]]
+says = "كيف أصور مراسلة لجهة خارجية؟"
+search = true
+
+[[turns]]
+says = "لا لا، قصدي أصدّر مو أصور، أبي أرسلها لجهة برا"
+when = "tool_running"
+cancels_search = true
+search = true
+language = "ar-SA"
+item = "q04_send_external"
