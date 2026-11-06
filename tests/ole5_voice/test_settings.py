@@ -1,6 +1,7 @@
 """The Ole5 app's settings (ole5_voice/settings.py): its own under `OLE5_VOICE_`, the library's
 under `T2V_`, from the environment and a `.env` given; an access code under 16 characters is
-refused as the settings load, and no error shows a value it refused."""
+refused as the settings load, and so is the knowledge base's access set only in part; no error
+shows a value it refused."""
 
 from __future__ import annotations
 
@@ -8,7 +9,15 @@ from pathlib import Path
 
 import pytest
 from ole5_voice import settings as app_settings
-from ole5_voice.settings import MIN_ACCESS_CODE_CHARS, PREFIX, AppSettings, load
+from ole5_voice.settings import (
+    ACCESS,
+    MIN_ACCESS_CODE_CHARS,
+    PREFIX,
+    AppSettings,
+    KnowledgeAccess,
+    knowledge_access,
+    load,
+)
 from pydantic import SecretStr
 from t2_agentic_voice import ConfigurationError
 
@@ -208,3 +217,65 @@ def test_a_wrong_knowledge_base_setting_is_refused_never_shown(
         load()
     assert caught.value.details == {"settings": [name]}
     assert holding(value, shown(caught.value, caplog=caplog)) == []
+
+
+# The knowledge base's access, made up.
+ACCESS_VALUES = {
+    "QDRANT_URL": "https://made-up.example/team/qdrant",
+    "QDRANT_LOGIN_EMAIL": "someone@example.com",
+    "QDRANT_LOGIN_PASSWORD": "made-up-kb-password-0123",
+}
+
+
+def test_the_knowledge_bases_access_is_all_three_or_none(environment: pytest.MonkeyPatch) -> None:
+    assert tuple(ACCESS_VALUES) == ACCESS
+    assert knowledge_access(load().app) is None  # none set: the echo
+    for name, value in ACCESS_VALUES.items():
+        environment.setenv(name, value)
+    access = knowledge_access(load().app)
+    assert access == KnowledgeAccess(
+        qdrant_url="https://made-up.example/team/qdrant",
+        login_url="https://ds.t2.sa/ole5_agent/api/login",
+        login_email="someone@example.com",
+        login_password=SecretStr("made-up-kb-password-0123"),
+        embedding_url="https://ds.t2.sa/text_embed",
+        tenant="ole5",
+    )
+    assert "made-up-kb-password-0123" not in repr(access)
+
+
+@pytest.mark.parametrize(
+    "given",
+    [
+        ("QDRANT_URL",),
+        ("QDRANT_LOGIN_EMAIL",),
+        ("QDRANT_LOGIN_PASSWORD",),
+        ("QDRANT_URL", "QDRANT_LOGIN_EMAIL"),
+        ("QDRANT_LOGIN_EMAIL", "QDRANT_LOGIN_PASSWORD"),
+    ],
+)
+def test_the_knowledge_bases_access_set_in_part_is_refused_naming_the_missing(
+    environment: pytest.MonkeyPatch, given: tuple[str, ...], caplog: pytest.LogCaptureFixture
+) -> None:
+    for name in given:
+        environment.setenv(name, ACCESS_VALUES[name])
+    missing = [name for name in ACCESS if name not in given]
+    with pytest.raises(ConfigurationError) as caught:
+        load()
+    assert caught.value.details == {"settings": missing}
+    message = caught.value.message
+    assert all(f"{name} " in message for name in missing)
+    assert ("are not set" if len(missing) > 1 else "is not set") in message
+    assert (
+        "FIX: set all three of QDRANT_URL, QDRANT_LOGIN_EMAIL and QDRANT_LOGIN_PASSWORD" in message
+    )
+    surfaces = shown(caught.value, caplog=caplog)
+    assert all(holding(ACCESS_VALUES[name], surfaces) == [] for name in given)
+
+
+def test_settings_built_in_code_are_held_to_all_three_or_none() -> None:
+    built = AppSettings(access_code=SecretStr(CODE))
+    assert knowledge_access(built) is None
+    built = built.model_copy(update={"qdrant_url": "https://made-up.example/qdrant"})
+    with pytest.raises(ConfigurationError, match="QDRANT_LOGIN_EMAIL and QDRANT_LOGIN_PASSWORD"):
+        knowledge_access(built)

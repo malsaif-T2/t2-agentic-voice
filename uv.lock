@@ -1754,6 +1754,7 @@ version = "0.1.0"
 source = { editable = "apps/ole5-voice-agent" }
 dependencies = [
     { name = "fastapi" },
+    { name = "httpx" },
     { name = "pydantic" },
     { name = "pydantic-settings" },
     { name = "t2-agentic-voice" },
@@ -1763,6 +1764,7 @@ dependencies = [
 [package.metadata]
 requires-dist = [
     { name = "fastapi", specifier = ">=0.162.0" },
+    { name = "httpx", specifier = ">=0.28.1,<1" },
     { name = "pydantic", specifier = ">=2.13.5" },
     { name = "pydantic-settings", specifier = ">=2.15.0" },
     { name = "t2-agentic-voice", editable = "packages/t2-agentic-voice" },
