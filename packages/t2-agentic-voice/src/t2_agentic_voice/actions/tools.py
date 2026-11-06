@@ -16,15 +16,17 @@ to have its result discarded (the design's 3.2).
 - **`CallContext`** is what a tool sees of the call: the verified `caller`, read-only, which
   nothing said in the call changes (invariant 3); the call's id; and the reply language.
 - **What comes back:** a `ToolResult`, the data the talker reads (framed as data, never as
-  instructions: invariant 4), a card for the screen, and the evidence the output guard's ID
-  rule reads (domain/guard.py). A function may return one itself; the runner makes one of any
-  other return.
+  instructions: invariant 4), a card for the screen, the evidence the output guard's ID rule
+  reads beside the data (domain/guard.py), and whether the call succeeded (`ok`). A function may
+  return one itself; the runner makes one of any other return, its value as JSON.
 - **Failures** (the design's 6.4): `ToolError(message)` (core/errors.py) is an expected failure
   whose message the talker gets; any other exception, or the timeout, gives the talker a generic
-  "the tool failed", its type and stack logged at ERROR with no argument values.
+  "the tool failed", its type and stack logged at ERROR with no argument values (the runner,
+  actions/runner.py).
 
-The decorator, `from_function`, `tool_schema` and `FromCaller.value` are plan 006's Track B,
-with the runner (actions/runner.py); this module holds their shapes.
+A function `from_function` cannot call by its parameters' names (a `*args`, a parameter with no
+annotation, a `bind=` for a parameter it lacks), or a field `Tool` refuses, is a
+ConfigurationError naming the field, with a FIX line, never the value (actions/signature.py).
 """
 
 from __future__ import annotations
@@ -32,8 +34,18 @@ from __future__ import annotations
 from collections.abc import Callable, Mapping
 from typing import Annotated, Any, Literal, Self
 
-from pydantic import BaseModel, ConfigDict, Field, JsonValue, field_validator, model_validator
+from pydantic import (
+    BaseModel,
+    ConfigDict,
+    Field,
+    JsonValue,
+    ValidationError,
+    field_validator,
+    model_validator,
+)
 
+from t2_agentic_voice.actions.signature import arguments_model
+from t2_agentic_voice.core.errors import ConfigurationError
 from t2_agentic_voice.core.events import CallId
 from t2_agentic_voice.core.identity import Caller
 from t2_agentic_voice.core.settings.base import FROZEN, PLAIN
@@ -48,6 +60,17 @@ OnInterrupt = Literal["cancel", "finish"]
 # The fields of a `Caller` a bound parameter may take: its subject, its name, its locale, or
 # one of its attributes, as `attributes.<key>`.
 _CALLER_FIELD = r"^(subject|display_name|locale|attributes\.[A-Za-z0-9_.-]{1,64})$"
+_ATTRIBUTES = "attributes."
+# What fixes each field of a tool that `from_function` cannot build.
+_FIXES = {
+    "name": 'name the tool with letters, digits, underscores and hyphens, as name="lookup_device"',
+    "description": "describe, in English, when the talker calls it",
+    "timeout_s": "give timeout_s a number of seconds above 0",
+    "progress": 'name the progress line by its key, a lowercase word, as progress="searching"',
+    "progress_after_s": "give progress_after_s a number of seconds above 0, under timeout_s",
+    "on_interrupt": 'give on_interrupt "cancel" or "finish"',
+    "bind": 'bind each parameter with from_caller("subject") or another field of the caller',
+}
 
 
 class _Frozen(BaseModel):
@@ -62,7 +85,10 @@ class FromCaller(_Frozen):
 
     def value(self, caller: Caller) -> str | None:
         """The value `caller` holds for `field`, None when it holds none."""
-        raise NotImplementedError("bound parameters are plan 006's Track B")
+        if self.field.startswith(_ATTRIBUTES):
+            return caller.attributes.get(self.field.removeprefix(_ATTRIBUTES))
+        value: str | None = getattr(caller, self.field)
+        return value
 
 
 def from_caller(field: str) -> FromCaller:
@@ -82,12 +108,15 @@ class CallContext(_Frozen):
 
 class ToolResult(_Frozen):
     """What a tool call gave: `data`, which the talker reads as data, never as instructions;
-    a `card` to show the caller, if any; and `evidence`, the texts whose ID-shaped tokens the
-    output guard may let the talker say (a passage's text, a record's number)."""
+    a `card` to show the caller, if any; `evidence`, the texts beside `data` whose ID-shaped
+    tokens the output guard may let the talker say (a passage's whole text, a record's number);
+    and `ok`, False when the call failed (a `ToolError`, any other failure, the timeout, an
+    argument the talker got wrong), its `data` then saying why."""
 
     data: JsonValue = None
     card: Card | None = None
     evidence: tuple[str, ...] = ()
+    ok: bool = True
 
 
 class Tool(_Frozen):
@@ -136,13 +165,41 @@ class Tool(_Frozen):
     ) -> Tool:
         """`function`, async or sync, as a tool named `name` (the function's own by default):
         its parameters' model read from its signature, a `CallContext` parameter and those
-        `bind` fills left out."""
-        raise NotImplementedError("Tool.from_function is plan 006's Track B")
+        `bind` fills left out. ConfigurationError, naming the field, for a function it cannot
+        call by its parameters' names or a value `Tool` refuses."""
+        bound = dict(bind or {})
+        parameters = arguments_model(function, bound=bound, context=CallContext)
+        values = {
+            "name": name if name is not None else getattr(function, "__name__", ""),
+            "description": description,
+            "parameters": parameters,
+            "function": function,
+            "timeout_s": timeout_s,
+            "progress": progress,
+            "progress_after_s": progress_after_s,
+            "on_interrupt": on_interrupt,
+            "bind": bound,
+        }
+        try:
+            return cls.model_validate(values)
+        except ValidationError as error:
+            first = error.errors(include_input=False, include_url=False)[0]
+        # A check of the whole tool names no field: its message says which it is.
+        whole = "progress_after_s" if "progress" in first["msg"] else "bind"
+        field = str(first["loc"][0]) if first["loc"] else whole
+        raise ConfigurationError(
+            f"A tool cannot take its `{field}`: {first['msg']}. "
+            f"FIX: {_FIXES.get(field, _FIXES['bind'])}.",
+            details={"field": field},
+        )
 
     def tool_schema(self) -> ToolSchema:
         """The tool as the talker is told of it: its name, its description and the JSON schema
-        of `parameters`, no bound parameter in it."""
-        raise NotImplementedError("a tool's schema is plan 006's Track B")
+        of `parameters`, no bound parameter in it (`from_function` leaves them out, and a
+        `parameters` model given whole may not hold one), the schema's titles left out, which
+        the model reads at every request and needs none of."""
+        schema = _untitled(self.parameters.model_json_schema())
+        return ToolSchema(name=self.name, description=self.description, parameters=schema)
 
 
 def tool(
@@ -157,4 +214,36 @@ def tool(
 ) -> Callable[[Callable[..., Any]], Tool]:
     """The decorator that makes an async or a sync function a `Tool` (`Tool.from_function`'s
     arguments): `@tool(description="...", timeout_s=3)`."""
-    raise NotImplementedError("@tool is plan 006's Track B")
+
+    def made(function: Callable[..., Any]) -> Tool:
+        return Tool.from_function(
+            function,
+            description=description,
+            name=name,
+            timeout_s=timeout_s,
+            progress=progress,
+            progress_after_s=progress_after_s,
+            on_interrupt=on_interrupt,
+            bind=bind,
+        )
+
+    return made
+
+
+# The keys of a JSON schema whose value maps names to schemas, not keywords to values.
+_SCHEMA_MAPS = frozenset({"properties", "$defs", "definitions", "patternProperties"})
+
+
+def _untitled(node: Any) -> Any:
+    """A JSON schema with its `title` keywords left out (a property named "title" kept)."""
+    if isinstance(node, list):
+        return [_untitled(item) for item in node]
+    if not isinstance(node, dict):
+        return node
+    kept: dict[str, Any] = {}
+    for key, value in node.items():
+        if key in _SCHEMA_MAPS and isinstance(value, dict):
+            kept[key] = {name: _untitled(schema) for name, schema in value.items()}
+        elif not (key == "title" and isinstance(value, str)):
+            kept[key] = _untitled(value)
+    return kept
