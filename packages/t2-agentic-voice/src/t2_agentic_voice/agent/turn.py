@@ -7,7 +7,8 @@ turn and the call as it was heard to the events the session plays, within the re
   offers the agent's tools, the last none, so the turn ends in words; a tool call the last one
   makes anyway is not run.
 - **Speech as it is written.** The model's text goes through the clause splitter as it streams
-  (`ClauseStream`), and each whole clause, once the output guard's rule B passed it against the
+  (`ClauseStream`), any note of the history's it copied taken out first (agent/context.py's
+  `Unnoted`), and each whole clause, once the output guard's rule B passed it against the
   evidence seen this call (its tools' results, the caller's heard words), is yielded at once.
   A blocked one is `ClauseBlocked`, and by `guard.on_block` the rest of the reply goes with it
   (`drop_rest`: no more clause, request or tool) or only it; the next turn's history holds a
@@ -18,23 +19,25 @@ turn and the call as it was heard to the events the session plays, within the re
   result's card is shown once the guard passed its text, and the calls and results are kept
   for the call's next `KEPT_TURNS` turns, which the heard history does not hold.
 - **Failure and cancel.** A `ProviderError` from the model ends the reply: it is raised from the
-  stream after any clause already given, for the session to say the `error` notice. A cancel of
-  the reply's scope cancels the task that iterates the stream, so the model's request (its
-  stream closed) and every tool of the scope stop at once, and no `ReplyDone` comes.
+  stream after any clause already given, for the session to say the `error` notice; any other
+  error comes out as it is (a fake's `ScriptExhaustedError`, an AssertionError, fails its test).
+  A cancel of the reply's scope cancels the task that iterates the stream, so the model's
+  request and every tool of the scope stop at once, and no `ReplyDone` comes. The model's stream
+  is closed as the reply leaves it, whatever ends it (`contextlib.aclosing`).
 - **Time** is the call's clock's alone: the progress time, a tool's `ms`, a request's
   `first_token_s` and the prompt's date (the runner times each tool's timeout on it too).
 """
 
 from __future__ import annotations
 
+import contextlib
 import itertools
 from collections.abc import AsyncGenerator, AsyncIterator, Iterable, Sequence
 from dataclasses import dataclass, field
-from typing import Any
 
 from t2_agentic_voice.actions.runner import ToolRunner
 from t2_agentic_voice.actions.tools import CallContext, ToolResult
-from t2_agentic_voice.agent.context import BLOCKED, history, turn_message
+from t2_agentic_voice.agent.context import BLOCKED, Unnoted, history, turn_message
 from t2_agentic_voice.agent.events import (
     ClauseBlocked,
     ModelReplied,
@@ -58,6 +61,7 @@ from t2_agentic_voice.domain.cards import Card
 from t2_agentic_voice.domain.declaration import VoiceAgent
 from t2_agentic_voice.domain.guard import check_ids
 from t2_agentic_voice.domain.ports.chat_model import (
+    ChatEvent,
     ChatMessage,
     ChatModel,
     ChatRequest,
@@ -86,11 +90,15 @@ class _Answer:
     first_token_s: float | None = None
 
 
-async def _closed(stream: AsyncIterator[Any]) -> None:
-    """Close the model's `stream`, as an async generator closes."""
-    aclose = getattr(stream, "aclose", None)
-    if aclose is not None:
-        await aclose()
+def _closing(
+    stream: AsyncIterator[ChatEvent],
+) -> contextlib.AbstractAsyncContextManager[AsyncIterator[ChatEvent]]:
+    """The model's `stream`, closed on leaving by `contextlib.aclosing`, as an async generator
+    closes, so its response closes within the reply's scope (D-060), never when the stream is
+    collected; a stream that is no generator has nothing to close."""
+    if isinstance(stream, AsyncGenerator):
+        return contextlib.aclosing(stream)
+    return contextlib.nullcontext(stream)
 
 
 class Turn:
@@ -207,23 +215,25 @@ class Turn:
         """The clauses of the model's answer to `request`, as it streams; `answer` gathers the
         rest."""
         started = self.clock.now()
-        splitter = ClauseStream(max_chars=None)
-        stream = self.model.stream(request)
+        splitter, unnoted = ClauseStream(max_chars=None), Unnoted()
         try:
-            async for event in stream:
-                if answer.first_token_s is None and isinstance(event, TextDelta | ToolCallRequest):
-                    answer.first_token_s = max(0.0, self.clock.now() - started)
-                if isinstance(event, TextDelta):
-                    answer.text += event.text
-                    for said in self._said(splitter.feed(event.text)):
-                        yield said
-                    if self.stopped:
-                        return
-                elif isinstance(event, ToolCallRequest):
-                    if all(event.id != known.id for known in answer.calls):  # each id once
-                        answer.calls.append(event)
-                elif isinstance(event, Usage):
-                    answer.usage = event
+            async with _closing(self.model.stream(request)) as stream:
+                async for event in stream:
+                    if answer.first_token_s is None and isinstance(
+                        event, TextDelta | ToolCallRequest
+                    ):
+                        answer.first_token_s = max(0.0, self.clock.now() - started)
+                    if isinstance(event, TextDelta):
+                        answer.text += event.text
+                        for said in self._said(splitter.feed(unnoted.feed(event.text))):
+                            yield said
+                        if self.stopped:
+                            return
+                    elif isinstance(event, ToolCallRequest):
+                        if all(event.id != known.id for known in answer.calls):  # each id once
+                            answer.calls.append(event)
+                    elif isinstance(event, Usage):
+                        answer.usage = event
         except ProviderError as error:
             _log.warning(
                 "talker_model_failed",
@@ -233,9 +243,7 @@ class Turn:
                 retryable=error.retryable,
             )
             raise
-        finally:
-            await _closed(stream)
-        for said in self._said(splitter.close()):
+        for said in self._said((*splitter.feed(unnoted.close()), *splitter.close())):
             yield said
 
     def _evidence(self) -> Iterable[str]:

@@ -6,7 +6,10 @@ Every chat model adapter implements `ChatModel`, and keeps to the rules of every
 
 - **Cancellation.** The talker cancels a request by cancelling the task that iterates its
   stream (the reply's cancel scope, D-060). The adapter stops within 50 ms and leaves no task
-  or connection behind; the response is closed, the connection kept for the next request.
+  or connection behind: the response is closed. Over HTTP/1.1 a half-read answer closes its
+  connection too, since the connection carries no other request until its answer is read whole,
+  so the request after a cancel mid-answer opens a new one (its TCP and TLS set-up paid again);
+  only an answer read to its end leaves its connection for the next request.
 - **Failures** are raised as `ProviderError` (its kind, `retryable` and `retry_after_s`), from
   the stream, never as the SDK's own error, which may hold the request.
 - **Tool calls** come whole: a `ToolCallRequest` holds the call's id, the tool's name and the
