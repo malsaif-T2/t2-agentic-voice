@@ -54,7 +54,7 @@ web widget         microphone, speaker, captions, Stop; static files the app ser
                    reference client, t2v-client.js, and the dev page
   ▼ api        checks the join token, hands the WebRTC offer to voice, builds the call's session
   ▼ voice      answers the offer; audio in; speech detection; end of turn; the two-step
-               interruption; the turn's cancel scope
+               interruption; each reply's cancel scope
   ▼ adapters   speech-to-text turns each stretch of speech into text (through a domain port;
                Groq's Whisper gives no partial transcripts)
   ▼ agent      the talker: the user's words in, a reply and tool calls out
@@ -93,8 +93,8 @@ An arrow or a line down means "may import"; `api` may import every layer, `testi
 | `adapters` | One adapter per port: speech-to-text, the chat model and text-to-speech (Groq), the knowledge base, the ticket system, each chosen by a setting; the signed join tokens, the SQLite stores (the used tokens), the TURN credentials and the phrase cache | core, domain | `groq`, `httpx`, `qdrant_client`, `jwt`, `sqlite3` |
 | `actions` | The backend that acts: runs the talker's tools through the ports, keeps each call's record of completed actions, words every outcome from a real result | core, domain | — |
 | `agent` | The talker: prompts, the few tool definitions, the reply language, one turn from the user's words to a reply and tool calls; the output guard on every sentence | core, domain, actions | — |
-| `voice` | One call's real-time pipeline: answers the WebRTC offer (Pipecat's peer connection), audio in and out, speech detection, end of turn, interruptions, each turn's cancel scope, speech-to-text and text-to-speech wired to the talker; Pipecat's logger (loguru), kept off | core, domain, agent | `pipecat`, `loguru` |
-| `testing` | What a team tests and measures its agent with: the evaluation scorers (word and character error rates) and the turn-end and echo timings the measurements run on, today; later the fakes of every port, text-mode calls, the adversarial suite and simulated callers (D-019) | core, domain, actions, agent, voice | `jiwer` |
+| `voice` | One call's real-time pipeline: answers the WebRTC offer (Pipecat's peer connection), audio in and out, speech detection, end of turn, interruptions, each reply's cancel scope, speech-to-text and text-to-speech wired to the talker; Pipecat's logger (loguru), kept off | core, domain, agent | `pipecat`, `loguru` |
+| `testing` | What a team tests and measures its agent with: the evaluation scorers (word and character error rates), the turn-end and echo timings and the replay of a clip over a reply (`AudioCall`) the measurements run on, today; later the fakes of every port, text-mode calls, the adversarial suite and simulated callers (D-019) | core, domain, actions, agent, voice | `jiwer` |
 | `api` | The HTTP surface and composition root: call set-up, health, the reference client (`t2v-client.js`) and the dev page (an app's widget is the app's to serve); builds the adapters from the settings and injects them, maps every error to one shape | core, domain, adapters, actions, agent, voice, testing | `fastapi`, `starlette`, `uvicorn` |
 
 `harness.toml` holds the same rules in `[layers]` (who may import whom) and `[[owners]]` (which
@@ -175,15 +175,16 @@ run").
   ([SECURITY.md](docs/SECURITY.md), invariant 8).
 - `voice` uses Pipecat for its pipeline, its WebRTC transport, speech detection, and the base
   classes of its speech-to-text and text-to-speech services (D-018). Its own subclasses of those
-  call the speech-to-text and text-to-speech ports, and its own processor runs `agent`'s turn
-  inside the turn's cancel scope. Pipecat's ready-made provider services (its Groq
+  call the speech-to-text and text-to-speech ports, and `agent`'s turn will run inside the
+  cancel scope of the reply that answers it. Pipecat's ready-made provider services (its Groq
   speech-to-text, model, and text-to-speech services), its model services, and its own
   interruptions are never used: a provider service would reach Groq without a port (GP-22).
   ARCH-BAN keeps those services out of the library's imports; neither it nor ARCH-OWNER can see
   an import made inside Pipecat.
-- Every turn runs inside a cancel scope owned by `voice`: a stop, a correction, or new words
-  cancel the model, the speech, and read-only lookups. Writes to the ticket system run as jobs
-  of `actions`, outside any turn, so a cancel never cuts one in half.
+- Each reply runs in a cancel scope owned by `voice`, and the work that answers a turn starts
+  inside it (D-060): a stop, a correction, or new words cancel the model, the speech, and
+  read-only lookups. Writes to the ticket system run as jobs of `actions`, outside any scope,
+  so a cancel never cuts one in half.
 - Every turn is one trace in Phoenix, with a span per step (speech-to-text, the model, each
   tool, text-to-speech), recorded through `core`'s tracing helpers. The helpers take the turn's
   span as an argument, since Pipecat runs each processor in its own task and an implicit
