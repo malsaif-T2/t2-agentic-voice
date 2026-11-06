@@ -5,11 +5,13 @@ happens when the caller speaks over the agent, how a stop cancels the work behin
 what the library keeps of what the caller heard. The talker, its tools and confirmed actions join
 this page when they land (M4 and M5). Every setting named here is in the generated
 [settings reference](../generated/settings.md), and why each works as it does in
-[decisions.md](../design/decisions.md) (D-060 to D-067).
+[decisions.md](../design/decisions.md) (D-060 to D-068).
 
 **Status.** What this page describes is in the library from M3, still with the echo agent: the
-agent says back what it heard. The interruption that listens to the caller's words is behind a
-setting, `interruptions.mode`, and off by default ("Choosing the mode", below).
+agent says back what it heard. The interruption that listens to the caller's words is on by
+default (`interruptions.mode = "two_step"`, the owner's ruling after Ole5's registered
+measurement: D-068); `drop` keeps M2's call, where speech over a reply is not answered
+("Choosing the mode", below).
 
 ## Turns and replies
 
@@ -28,13 +30,13 @@ setting, `interruptions.mode`, and off by default ("Choosing the mode", below).
 
 ## One turn, and a stop over its reply
 
-With `interruptions.mode` set to `two_step`, the caller asks something, hears the start of the
-reply, and says "stop" over it:
+Under `interruptions.mode = "two_step"`, the default, the caller asks something, hears the start
+of the reply, and says "stop" over it:
 
 | Step | What happens | What drives it |
 | --- | --- | --- |
 | 1 | The caller asks and pauses. 200 ms into the pause the speech detector hears it stop, and Smart Turn says "complete" | `turns` |
-| 2 | The turn ends (after `turns.complete_hold_ms`, 0 by default), and its audio goes to Whisper in one request | `stt` |
+| 2 | The turn ends (after `turns.complete_hold_ms`, 600 ms by default), and its audio goes to Whisper in one request | `stt` |
 | 3 | The transcript comes. Text Whisper wrote for silence counts as nothing heard | `stt.no_speech_max`, `stt.caption_filter` |
 | 4 | The reply starts: "I heard:" from the phrase cache at once, then the heard words through Orpheus, clause by clause, each captioned as it plays. Its cancel scope opens | the session |
 | 5 | The caller says "stop". About 0.34 s into the speech, the speech detector fires: the browser lowers the agent's voice to a quarter | `duck`, `interruptions.duck_level` |
@@ -42,21 +44,21 @@ reply, and says "stop" over it:
 | 7 | The rule reads "stop": the reply is dropped and its scope cancelled, the voice comes back to full, the clause that was playing is captioned again as cut, and observers get `Interrupted` | `unduck`, a caption's `cut` |
 | 8 | The history keeps what the caller heard: the clauses played, the one cut with the share of it that played, the rest unplayed. The "stop" turn is a command, never said back | the heard history |
 
-Under `drop` (the default), steps 5 to 8 do not happen: the "stop" turn is not answered, the reply
-plays on, and the caller stops it with the Stop button or Esc.
+Under `drop`, steps 5 to 8 do not happen: the "stop" turn is not answered, the reply plays on, and
+the caller stops it with the Stop button or Esc.
 
 ## Speech over a reply: `interruptions.mode`
 
 A turn whose speech began while a reply played, or within 300 ms after its last clause played (the
 agent's own voice may still be coming back through the speakers), is taken one of two ways:
 
-- **`drop`, the default:** the turn is not answered. The agent never answers its own voice, and
-  the caller stops it only with the Stop button or Esc.
-- **`two_step`:** the turn is an overlap, and the agent stops only when the caller's words say
-  so: the two-step interruption below.
+- **`two_step`, the default:** the turn is an overlap, and the agent stops only when the caller's
+  words say so: the two-step interruption below.
+- **`drop`:** the turn is not answered. The agent never answers its own voice, and the caller
+  stops it only with the Stop button or Esc.
 
-Turn it on with `T2V_INTERRUPTIONS__MODE=two_step`, or in code, as the library's integration test
-builds its settings, in
+Choose it with `T2V_INTERRUPTIONS__MODE` (`two_step` or `drop`), or in code, as the library's
+integration test builds its settings, naming the mode it tests, in
 [test_loopback_interruptions.py](../../tests/t2_agentic_voice/test_loopback_interruptions.py):
 
 ```python
@@ -104,7 +106,7 @@ first that applies deciding:
 | 3 | A repeat request, with at most polite words and listening sounds beside it ("can you repeat that") | stops, then says its last reply again |
 | 4 | Its own words coming back through the speakers: every word a word, or one letter off a word, of the clauses played in the last `interruptions.own_words_s` (5 s) or playing now | goes on |
 | 5 | Only listening sounds ("mm-hmm", «اها», "okay") | goes on |
-| 6 | A short output: at most `interruptions.short_words` (2) words in under `interruptions.short_s` (1.6 s), none a listed word, asking no question (often a listening sound Whisper misheard) | goes on |
+| 6 | A short output: at most `interruptions.short_words` (2) words in under `interruptions.short_s` (1.2 s), none a listed word, asking no question (often a listening sound Whisper misheard) | goes on |
 | 7 | At least `interruptions.min_words` (2) real words | stops: new words, or a correction when the first is a no word |
 | | Fewer | goes on |
 
@@ -237,11 +239,12 @@ was heard, it says nothing.
 Whisper writes text for audio that holds no speech: captions it invents for silence or noise
 ("thank you for watching", «موسيقى», music) or a word made of noise. A transcript counts as no
 words, for a turn and for an overlap, when it has no word at all, when Whisper's `no_speech_prob`
-for it is above `stt.no_speech_max` (0.5), or when it is, whole, one of those captions
+for it is above `stt.no_speech_max` (0.55), or when it is, whole, one of those captions
 (`stt.caption_filter`, on). A turn so heard is said back as nothing; an overlap so heard lets the
 reply go on. Leave `stt.no_speech_max` unset to turn the threshold off, and set
 `stt.caption_filter` false to turn the list off. On Ole5's golden set (one speaker) the two
-blanked 6 of the 9 clips where nothing was said and none of the 222 with speech (D-063).
+blanked 6 of the 9 clips where nothing was said and none of the 222 with speech, at a threshold
+of 0.5 and again at 0.55 (D-063, D-068).
 
 ## The end of a turn, and the hold after "complete"
 
@@ -253,22 +256,27 @@ on, and Smart Turn judges again at the next pause, hearing the whole turn. Every
 comes that much later, but a stop over the agent does not: the hold acts after the speech
 detector's stop, which the overlap's request waits on.
 
-It is 0, no hold, by default. On those recordings a 600 ms hold left 9 of 51 paused requests cut
-off instead of 50 or 51 (D-067), and 600 ms becomes the default only once Ole5's held-out set
-confirms it. Until then an app sets it:
+It is 600 ms by default. On those recordings the 600 ms hold left 9 of 51 dev paused requests cut
+off instead of 50 or 51, and 5 of 28 held-out ones instead of 27, with no turn end missed, a turn
+then ending a median of about 0.94 s after the caller's own end (D-067). An app that wants a
+turn to end at Smart Turn's verdict sets no hold:
 
 ```bash
-T2V_TURNS__COMPLETE_HOLD_MS=600
+T2V_TURNS__COMPLETE_HOLD_MS=0
 ```
 
 ## Choosing the mode
 
-- `interruptions.mode` stays `drop` by default until a registered measurement moves it: Ole5's,
-  on its golden set's overlap clips and its call recordings, is under way. Callers whose voices
-  and devices differ from those are worth measuring on their own recordings
-  ([evaluation.md](evaluation.md)); the `evals` facade's `AudioCall` (provisional) replays a
-  recorded clip over a reply through the real turn-taking and reports each overlap's verdict,
-  its requests and its stop time.
+- `interruptions.mode` is `two_step` by default, by the owner's ruling after Ole5's registered
+  measurement on its golden set's overlap clips, with one speaker (D-068): on held-out, the agent
+  stopped for 10 of 18 stop and pause words and 15 of 18 requests said over a reply, and never
+  for a listening sound, its own echo, silence or noise; what it missed, Whisper misheard, short
+  Arabic command words such as «وقف» most. Callers whose voices and devices differ from those are worth
+  measuring on their own recordings ([evaluation.md](evaluation.md)); the `evals` facade's
+  `AudioCall` (provisional) replays a recorded clip over a reply through the real turn-taking
+  and reports each overlap's verdict, its requests and its stop time.
+- `drop` keeps the call half-duplex: the agent never stops for what the caller says over it, so
+  a word it mishears never stops it either, and the caller stops it with Stop or Esc.
 - On a laptop's speakers the agent's voice can come back through the microphone past the
   browser's echo cancellation. The rule's own-words step lets the reply go on for what it
   recognises; when the echo stays high, push-to-talk keeps the microphone off except while a key
@@ -279,14 +287,14 @@ T2V_TURNS__COMPLETE_HOLD_MS=600
 
 | Setting | Default | What it does |
 | --- | --- | --- |
-| `T2V_INTERRUPTIONS__MODE` | `drop` | `drop`: speech over a reply is not answered; `two_step`: the two-step interruption |
+| `T2V_INTERRUPTIONS__MODE` | `two_step` | `two_step`: the two-step interruption; `drop`: speech over a reply is not answered |
 | `T2V_INTERRUPTIONS__DUCK_LEVEL` | 0.25 | How loud the reply plays while the overlap is judged, from 0 to 1 |
 | `T2V_INTERRUPTIONS__FIRST_WINDOW_MS` | 750 | The window sent before the caller has finished |
 | `T2V_INTERRUPTIONS__MIN_WORDS` | 2 | The fewest real words that stop the agent when none is a listed word |
-| `T2V_INTERRUPTIONS__SHORT_WORDS`, `__SHORT_S` | 2, 1.6 | The short output the agent goes on through |
+| `T2V_INTERRUPTIONS__SHORT_WORDS`, `__SHORT_S` | 2, 1.2 | The short output the agent goes on through |
 | `T2V_INTERRUPTIONS__OWN_WORDS_S` | 5 | How far back the agent's own words count |
 | `T2V_WORDS__STOP`, `__WAIT`, `__REPEAT`, `__BACKCHANNEL`, `__NO` | none | Your words, added to each language's lists |
-| `T2V_STT__NO_SPEECH_MAX` | 0.5 | Above this no-speech probability, a transcript is no words |
+| `T2V_STT__NO_SPEECH_MAX` | 0.55 | Above this no-speech probability, a transcript is no words |
 | `T2V_STT__CAPTION_FILTER` | true | Whisper's invented captions count as no words |
 | `T2V_TURNS__VAD_STOP_MS` | 200 | The pause that ends speech, which a turn's end and an overlap's request wait on |
-| `T2V_TURNS__COMPLETE_HOLD_MS` | 0 | The hold after Smart Turn's "complete" |
+| `T2V_TURNS__COMPLETE_HOLD_MS` | 600 | The hold after Smart Turn's "complete" |

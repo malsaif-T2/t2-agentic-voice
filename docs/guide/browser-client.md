@@ -76,8 +76,8 @@ the caller said.
 
 ## The agent's voice lowered while the caller speaks
 
-With the runtime's `interruptions.mode` set to `two_step`, the caller can stop the agent by
-speaking over it ([concepts.md](concepts.md)). As soon as the server hears the caller over a
+Under the runtime's `interruptions.mode` `two_step`, the default, the caller can stop the agent
+by speaking over it ([concepts.md](concepts.md)). As soon as the server hears the caller over a
 reply it sends `duck`, and the client plays the agent at `level` times the volume its audio
 element had when the call started (the server's `interruptions.duck_level`, 0.25 by default):
 the agent keeps talking, quieter, while the server decides from the caller's words whether to
@@ -88,8 +88,7 @@ The client also brings the volume back to full on its own `stop()`, on the first
 reply, and when the call ends, so no reply plays lowered whatever reaches it. Each change is a
 `volume` event; the page need do nothing with it, and may show it (the dev page shows a
 percentage). If you pass your own `audio` element, the client sets its volume during the call,
-from the volume it had at the start. Under the default `drop` mode the server sends neither
-message.
+from the volume it had at the start. Under the `drop` mode the server sends neither message.
 
 ## Cut captions
 

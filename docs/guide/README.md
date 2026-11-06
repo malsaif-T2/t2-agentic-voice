@@ -12,8 +12,8 @@ button and Esc. Around it: serving (a process of its own, or mounted in your Fas
 join tokens, the reference browser client, settings, logs and traces. M3 adds the interruption
 that listens to the caller: the agent's voice lowered when the caller speaks over it, then a
 stop, a repeat or the reply going on, decided from the words, with each reply's work in a cancel
-scope and a history of what the caller heard ([concepts.md](concepts.md)); it is a setting, off
-by default until its measurement ends. Not built yet: the talker that answers (M4), tools and
+scope and a history of what the caller heard ([concepts.md](concepts.md)); it is on by default,
+and a setting brings back M2's call, where speech over a reply is not answered. Not built yet: the talker that answers (M4), tools and
 actions taken on a spoken yes (M5), and the deployment with TURN, which left M2 for a plan of its
 own once a server is available ([roadmap](../plans/roadmap.md)). The library is used from Python only (D-014), and no tagged
 version exists to install yet: until the first one, run it from this repository's workspace
@@ -136,7 +136,7 @@ names. The pages written so far are linked.
 | [evaluation.md](evaluation.md) | The evaluation helpers; recording your own test set with consent and keeping audio out of git; writing your own spelling guide; the golden-set commands, making a registered run and reading its scorecard; noise and the sign test; held-out and window runs; the run history | M1 (written) |
 | `contract.md` | What the library provides, what you must provide, and what you may provide, with the default for each | M0 (fixed then, D-018); not written yet, and when it is written is an open question in the roadmap |
 | [concepts.md](concepts.md) | Turns and replies, the two-step interruption and its words, the cancel scope, the history of what the caller heard, the repeat, text from silence, the hold after the end of a turn; one turn in a table; later the talker, tools and actions | M3 (written: turns and interruptions), M4 and M5 |
-| `audio-troubleshooting.md` | Echo on laptop speakers, Bluetooth headsets, microphone permissions, UDP and TURN failures | M3 |
+| `audio-troubleshooting.md` | Echo on laptop speakers, Bluetooth headsets, microphone permissions, UDP and TURN failures | Not planned yet: left out of M3 with the Bluetooth warning (plan 005) |
 | `writing-for-voice.md` | Instructions written for speech, tool descriptions, read-backs, claim phrases, send words and spoken labels, each with a good and a bad example | M4 |
 | `languages.md` | Language presets, the reply language, normalization, speaking numbers and IDs, spoken labels, vocabulary, pronunciation | M4 |
 | `latency.md` | Where the time goes in a turn, and how to measure yours | M4 |
