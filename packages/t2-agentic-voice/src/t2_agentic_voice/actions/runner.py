@@ -36,6 +36,7 @@ from t2_agentic_voice.core.clock import Clock
 from t2_agentic_voice.core.errors import ConfigurationError, ToolError
 from t2_agentic_voice.core.logging import get_logger
 from t2_agentic_voice.domain.ports.chat_model import ToolCallRequest, ToolSchema
+from t2_agentic_voice.domain.talker_declaration import DeclaredTool
 
 _log = get_logger(__name__)
 # A tool's return as JSON: a model, a dataclass, a date and the like as their JSON values.
@@ -63,19 +64,22 @@ def _frames(error: BaseException) -> str:
 
 
 class ToolRunner:
-    """One agent's `tools`, run for the talker; each name once. ConfigurationError, with a FIX
-    line, for a declared tool that is not a `Tool` (`VoiceAgent.tools` takes anything with a
-    tool's shape) or a name given twice."""
+    """One agent's `tools`, run for the talker; each name once. It takes the agent's declared
+    tools as they are (`ToolRunner(agent.tools)`): ConfigurationError, with a FIX line, for one
+    that is not a `Tool` (`VoiceAgent.tools` takes anything with a tool's shape,
+    `DeclaredTool`) or a name given twice."""
 
-    def __init__(self, tools: Sequence[Tool]) -> None:
-        self.tools = tuple(tools)
-        for each in self.tools:
+    def __init__(self, tools: Sequence[DeclaredTool]) -> None:
+        checked: list[Tool] = []
+        for each in tools:
             if not isinstance(each, Tool):
                 raise ConfigurationError(
                     f"The agent's tools hold one the talker cannot run: it is not a Tool. "
                     f"{_TOOLS_FIX}",
                     details={"field": "tools"},
                 )
+            checked.append(each)
+        self.tools = tuple(checked)
         names = [each.name for each in self.tools]
         if len(set(names)) != len(names):
             raise ConfigurationError(

@@ -19,6 +19,7 @@ from t2_agentic_voice.actions.tools import CallContext, ToolResult, from_caller,
 from t2_agentic_voice.core.errors import ConfigurationError, ToolError
 from t2_agentic_voice.core.identity import Caller
 from t2_agentic_voice.domain.cards import Card
+from t2_agentic_voice.domain.declaration import Language, VoiceAgent
 from t2_agentic_voice.domain.ports.chat_model import ToolCallRequest
 
 from tests.leaks import holding, shown
@@ -59,10 +60,17 @@ def test_a_declared_tool_that_is_not_a_tool_is_refused_at_construction() -> None
         name, description, progress = "search_help", "Search.", None
 
     with pytest.raises(ConfigurationError, match=r"not a Tool\. FIX: ") as raised:
-        ToolRunner([find_device, Shaped()])  # type: ignore[list-item]
+        ToolRunner([find_device, Shaped()])  # what `VoiceAgent.tools` may hold
     assert raised.value.details == {"field": "tools"}
     with pytest.raises(ConfigurationError, match=r"share a name\. FIX: "):
         ToolRunner([find_device, find_device])
+
+
+def test_the_runner_takes_an_agents_declared_tools() -> None:
+    declared = VoiceAgent(
+        name="helper", languages=[Language.english(greeting="Hi")], tools=[find_device]
+    )
+    assert ToolRunner(declared.tools).tools == (find_device,)
 
 
 def test_the_runner_tells_the_schemas_and_finds_a_tool_by_name() -> None:
