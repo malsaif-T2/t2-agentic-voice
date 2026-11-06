@@ -20,11 +20,11 @@ voice/session/call.py.
   once a reply, and `GuardBlocked` goes out (the talker keeps its developer note: the history
   holds only what the caller heard); each model request is counted in the call's usage as it
   goes and its tokens as it ends (`ModelRequested`, `ModelReplied`; an early start's, dropped
-  unplayed, once it is let go), the first one's first token the turn's; and the reply is closed once it is done (`ReplyDone`). A talker that fails is
-  logged by its failure's kind alone, a provider's failure told (`ProviderFailed`), and the
-  caller hears the `error` notice, once a reply, after any clause already said too, in the
-  turn's reply language (its last clause's, else the turn's as agent/language.py reads it);
-  the reply is closed.
+  unplayed, once it is let go), the first one's first token the turn's; and the reply is
+  closed once it is done (`ReplyDone`). A talker that fails is logged by its failure's kind
+  alone, a provider's failure told (`ProviderFailed`), and the caller hears the `error` notice,
+  once a reply, after any clause already said too, in the turn's reply language (its last
+  clause's, else the turn's as agent/language.py reads it); the reply is closed.
 - **The early start** (plan 006, Q2; io.py's early start). A turn's `held` transcript starts the
   talker at once, in a scope of its own, while the hold runs: what it gives is kept, and nothing
   is asked for. Speech that resumes in the hold cancels it (`resumed`). When the hold ends (the
