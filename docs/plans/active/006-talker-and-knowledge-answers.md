@@ -370,6 +370,9 @@ runs"; in this order, each with its smoke first)
   retrieval misses its target, a sparse query is the first amendment to propose.
 - 2026-11-06: The knowledge base's settings carry the owner's general names, so a second team
   reaching T2's service needs no renaming.
+- 2026-11-07: The knowledge base adapter stays in the Ole5 app (Q14, the owner's (b)); the
+  library gives every team the general way, the `KnowledgeBase` protocol and `knowledge_tool`, so
+  no `knowledge` facade or decision entry is added for an adapter.
 - 2026-11-06: The Whisper prompt from the vocabulary reaches the live session only if run W keeps
   W1 (GP-18), so no track wires `voice/stt_bridge.py` before then.
 
@@ -385,6 +388,10 @@ runs"; in this order, each with its smoke first)
 - 2026-11-06, on the knowledge base's setting names, after the agent proposed Ole5-prefixed
   ones: "I have setted them as: QDRANT_URL= QDRANT_LOGIN_EMAIL= QDRANT_LOGIN_PASSWORD= ... Ole5
   naming is not general enough."
+- 2026-11-07, to Q11 to Q14: Q11 "Drop K2"; Q12 "Replay without tool"; Q13 "Add 6 more"; Q14
+  "It should be on the Ole5 app, the library should provide a general way to access
+  knowledge-bases through a tool or an object". So the knowledge base adapter stays the Ole5
+  app's, and the library's general way is the `KnowledgeBase` protocol with `knowledge_tool`.
 
 ## Tracks
 
@@ -433,7 +440,9 @@ affect.*
   8 ask what the knowledge base does not hold, and about 6 are small talk or out of scope. Each
   item has two to four variants (Saudi, MSA, English, Arabic with English product terms), its
   expected points or `none`, two to four key facts, and whether it needs a search. Split by item,
-  dev about two thirds; held-out read only as aggregates.
+  dev about two thirds; held-out read only as aggregates. *Amended 2026-11-07, before any run
+  (Q13):* 6 more `none` items, placed by the split's rule with every item drafted before them
+  keeping its side, so that one miss does not fail the `none` target on dev.
 - *The scenarios* (run S): ten scripted calls, from the rehearsal and from the owner's word on
   flexibility: the password question, then «وقف», then «كمّل»; the archiving question, then a
   repeat request, then "only the second step"; an English question; a mumble; a correction of a
@@ -464,7 +473,8 @@ median, then held-out once; otherwise the rule stays.
 **K, the talker's model, retrieval and answers** (text through `TextCall` with the real model and
 knowledge base; about $1.50 for both dev runs of every arm). Arms: K1 `openai/gpt-oss-120b` at low
 reasoning (the design's default), K2 `llama-3.3-70b-versatile`, K3 `openai/gpt-oss-20b` at low
-reasoning (Q8). *Metrics, per variant:* retrieval (an expected point in the top 5, from the
+reasoning (Q8). *Amended 2026-11-07, before any run (Q11):* K2 is dropped, so K compares K1 and
+K3. *Metrics, per variant:* retrieval (an expected point in the top 5, from the
 talker's own query, and from the variant's raw words as a reference); the answer's verdict
 (right, partly right, wrong, invented, or an honest "not in my knowledge" for `none` items), by
 the judge (Q6); a search made when needed and not otherwise; the reply language; spoken words;
@@ -479,7 +489,10 @@ with the real speech, model, knowledge and voice; about $0.80). Arms: T0 with
 `tts.trim_silence` off (today's), T1 on (TD-090). *Metric:* from the labelled end of the caller's
 speech to the first audible frame of the reply, for replies with and without a search, and to the
 progress line where one plays. *Keep T1* if its median is lower and the owner hears no clipped
-first syllable in ten of its replies.
+first syllable in ten of its replies. *Amended 2026-11-07, before any run (Q12):* every recorded
+request needs a search, so the target for a reply with no search is read from one more pass, Tn:
+the same recordings with the kept `tts.trim_silence` and the knowledge tool left out of the agent,
+so every reply takes the path with no search; only its times are read (about $0.25).
 
 **S, the scenarios** (text, the kept arm, each scenario three times; about $0.30). *Metric:* each
 scenario's expectations (the tool called or not, the key facts said, by the judge, the language,
@@ -506,12 +519,15 @@ embedding, the search and a second request, about 0.8 to 1.2 s. The prototype me
 
 **Cost and limits.** About $3 in all at Groq's published prices, read at Block 0; the cap is $5
 (Q10), checked before each run. The pacer holds every run under the key's limits a minute.
+*Amended 2026-11-07 (Q11, Q12):* about $2.75 in all, K2 dropped and Tn added; each runner also
+reads the key's daily request limit from Groq's headers and spreads a run over days rather than
+pass it.
 
 ## The owner's questions
 
 Q1 to Q10 settled on 2026-11-06 ("Approve all"). Q11 to Q14, from the spike, Block 0 and the
-knowledge set's review, asked on 2026-11-06 before any registered run; an answer that changes a
-run is a dated amendment to the registration.
+knowledge set's review, asked on 2026-11-06 before any registered run and settled on 2026-11-07;
+each answer that changes a run is a dated amendment to the registration.
 
 - **Q1. What voice-first means here.** *Settled: (a).* The eight choices above. Options: (a) approve them; (b)
   change some. **The agent recommends (a).**
@@ -552,22 +568,22 @@ run is a dated amendment to the registration.
   (b) English calls only, from the start. **The agent recommends (a).**
 - **Q10. The spend.** *Settled: yes.* A cap of $5 for M4's runs (about $3 expected; M3 spent $0.46 of its $5).
   **The agent recommends it.**
-- **Q11. Run K's arm K2.** *Open.* In the spike, llama-3.3-70b failed 6 of 10 tool calls in
+- **Q11. Run K's arm K2.** *Settled 2026-11-07: (a).* In the spike, llama-3.3-70b failed 6 of 10 tool calls in
   Groq's own parser and put Chinese characters into some Saudi replies, and Groq now sells both
   Llama models on contact only. Options: (a) drop K2, so K compares K1 and K3 (about $0.50 less);
   (b) keep K2 as registered. **The agent recommends (a).** Run U's U1 (llama-3.1-8b, no tools, a
   one-word verdict) stays either way.
-- **Q12. Run T's reply with no search.** *Open.* All 28 recorded requests need a search (26
+- **Q12. Run T's reply with no search.** *Settled 2026-11-07: (a).* All 28 recorded requests need a search (26
   answerable, 2 `none`), so the target "a reply with no search" has no data unless the talker
   wrongly skips one. Options: (a) T replays the same recordings once more with the knowledge tool
   left out of the agent, so every reply takes the path with no search, and only its time is read
   (about $0.25); (b) the owner records 6 to 8 short turns (a greeting, thanks, "who are you"),
   about 10 minutes; (c) the target leaves T. **The agent recommends (a).**
-- **Q13. The `none` items.** *Open.* Dev holds 6 and held-out 4, so "at least 90% honest" fails on
+- **Q13. The `none` items.** *Settled 2026-11-07: (a).* Dev holds 6 and held-out 4, so "at least 90% honest" fails on
   one miss on dev. Options: (a) the agent writes 6 more `none` items before the owner's review,
   split by the set's rule; (b) keep 6, so the target needs all of them. **The agent recommends
   (a).**
-- **Q14. Where the knowledge base adapter lives.** *Open.* The design keeps it in the Ole5 app
+- **Q14. Where the knowledge base adapter lives.** *Settled 2026-11-07: (b), with the library's general way kept ("The owner's decisions").* The design keeps it in the Ole5 app
   until a second team needs it (its 6.3); T2's gateway and Qdrant serve every team, and the owner
   named its settings generally. Options: (a) the library, reached from the design's `knowledge`
   facade (5.1, with `knowledge_tool`), configured by the app with its address, account and tenant;
@@ -576,7 +592,7 @@ run is a dated amendment to the registration.
 
 ## What the owner does
 
-- Answer Q1 to Q10, and approve the plan (done 2026-11-06); answer Q11 to Q14.
+- Answer Q1 to Q10, and approve the plan (done 2026-11-06); answer Q11 to Q14 (done 2026-11-07).
 - Copy the knowledge base's access into `.env` (Q4; done 2026-11-06, under the owner's names).
 - Review the knowledge set's items (Q5, about 40 minutes), and check 24 judged answers (Q6, about
   20 minutes).
