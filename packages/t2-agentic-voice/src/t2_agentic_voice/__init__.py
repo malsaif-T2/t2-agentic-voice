@@ -16,6 +16,16 @@ import importlib
 import warnings
 from typing import TYPE_CHECKING, Any
 
+from t2_agentic_voice.actions.knowledge import knowledge_tool
+from t2_agentic_voice.actions.tools import (
+    CallContext,
+    FromCaller,
+    Tool,
+    ToolResult,
+    from_caller,
+    tool,
+)
+from t2_agentic_voice.agent.prompt import render_prompt
 from t2_agentic_voice.api.status import Status, status
 from t2_agentic_voice.core.config import VoiceSettings
 from t2_agentic_voice.core.errors import (
@@ -25,13 +35,16 @@ from t2_agentic_voice.core.errors import (
     NotFoundError,
     ProviderError,
     T2VoiceError,
+    ToolError,
 )
 from t2_agentic_voice.core.identity import Caller, Consent
 from t2_agentic_voice.core.logging import StructuredLogger, configure_logging, get_logger
 from t2_agentic_voice.core.settings.groq import GroqSettings
+from t2_agentic_voice.core.settings.guard import GuardSettings
 from t2_agentic_voice.core.settings.interruptions import InterruptionSettings
 from t2_agentic_voice.core.settings.join import JoinSettings
 from t2_agentic_voice.core.settings.limits import LimitSettings
+from t2_agentic_voice.core.settings.llm import LlmSettings
 from t2_agentic_voice.core.settings.logs import LoggingSettings
 from t2_agentic_voice.core.settings.privacy import PrivacySettings
 from t2_agentic_voice.core.settings.server import ServerSettings
@@ -42,7 +55,9 @@ from t2_agentic_voice.core.settings.tracing import TracingSettings
 from t2_agentic_voice.core.settings.tts import TtsSettings, TtsVoice
 from t2_agentic_voice.core.settings.turns import TurnSettings
 from t2_agentic_voice.core.settings.words import WordSettings
+from t2_agentic_voice.domain.cards import Card
 from t2_agentic_voice.domain.declaration import Language, VoiceAgent
+from t2_agentic_voice.domain.talker_declaration import DeclaredTool, Vocabulary
 from t2_agentic_voice.domain.words import Phrases, Words
 
 if TYPE_CHECKING:
@@ -55,16 +70,22 @@ _LAZY = {
 }
 
 __all__ = [
+    "CallContext",
     "Caller",
+    "Card",
     "ConfigurationError",
     "Consent",
+    "DeclaredTool",
+    "FromCaller",
     "GroqSettings",
+    "GuardSettings",
     "InterruptionSettings",
     "InvalidRequestError",
     "JoinRejected",
     "JoinSettings",
     "Language",
     "LimitSettings",
+    "LlmSettings",
     "LoggingSettings",
     "NotFoundError",
     "Phrases",
@@ -78,18 +99,26 @@ __all__ = [
     "StructuredLogger",
     "SttSettings",
     "T2VoiceError",
+    "Tool",
+    "ToolError",
+    "ToolResult",
     "TracingSettings",
     "TtsSettings",
     "TtsVoice",
     "TurnSettings",
+    "Vocabulary",
     "VoiceAgent",
     "VoiceRuntime",
     "VoiceSettings",
     "WordSettings",
     "Words",
     "configure_logging",
+    "from_caller",
     "get_logger",
+    "knowledge_tool",
+    "render_prompt",
     "status",
+    "tool",
 ]
 
 
