@@ -4,6 +4,15 @@ model, timeout and base URL are its own whatever a `T2V_` variable holds; shown 
 names, a secret only as set or not set, as the scorecard and the history record them; and
 `--show-settings`, which logs each of them, the worktree and each path, and sends nothing.
 
+**Run W's arms** (`answer_options`): with `--prompt-vocabulary FILE` (`evals/terms.toml`), each
+request carries a Whisper prompt for the language it is sent in, built from the file's terms, in
+its order, then the presets' command words for that language (their stop, wait and repeat lists,
+in the presets' order and the form the rule compares in), each once, joined with a comma, and
+trimmed to `PROMPT_BYTES` by that order, so the first term that does not fit and every one after
+it are left out; the log says how many were kept (arm W1; without it, none: W0). With
+`--language-hint ar`, every variant is sent as Arabic, an English item's too, as an Arabic call
+sends it (arm X). Each is recorded as `run.prompt` and `run.language_hint`.
+
 The library reads no `.env` it is not given (the design's 7.2): reading the working folder's is
 this app's choice, as the golden set's first runs read it; and a run is a developer's, so its
 settings run as `env=dev` whatever `T2V_ENV` says.
@@ -12,17 +21,27 @@ settings run as `env=dev` whatever `T2V_ENV` says.
 from __future__ import annotations
 
 import argparse
+import hashlib
 import json
 import re
-from collections.abc import Mapping
+from collections.abc import Mapping, Sequence
+from dataclasses import dataclass, field
 from pathlib import Path
+from typing import Final, Literal
 
 from pydantic import BaseModel
-from t2_agentic_voice import ConfigurationError, T2VoiceError, VoiceSettings, get_logger
+from t2_agentic_voice import ConfigurationError, Phrases, T2VoiceError, VoiceSettings, get_logger
 
-from ole5_voice.evals.items import GOLDEN_DIR, HISTORY_FILE, SPELLING_FILE, SPLIT_FILE
+from ole5_voice.evals.items import (
+    GOLDEN_DIR,
+    HISTORY_FILE,
+    SPELLING_FILE,
+    SPLIT_FILE,
+    GoldenSetError,
+    load_terms,
+)
 from ole5_voice.evals.run_parts import DATA, Parts, audio_roots
-from ole5_voice.evals.worktree import check_out, inspect
+from ole5_voice.evals.worktree import check_out, inspect, refused
 
 # The models a run may name, and the address it sends to unless `--base-url` gives another: the
 # library's own (`stt.model`'s choices, `groq.base_url`'s default), which a test ties them to.
@@ -33,6 +52,13 @@ GROQ_BASE_URL = "https://api.groq.com"  # the SDK's own, `groq.base_url`'s defau
 DOTENV: Path | None = Path(".env")
 # A setting shown only as set or not set: a secret, a key map, or a secret's file.
 _SECRET = re.compile(r"(^|_)(key|keys|secret|token|password|file)$")
+
+# Whisper's longest prompt is 224 tokens (Groq's transcription API). No tokenizer is installed,
+# so a prompt is held to as many bytes of UTF-8: a token of a byte-level tokenizer is a byte at
+# least, so a prompt within the bytes is within the tokens.
+PROMPT_BYTES: Final = 224
+_PROMPT_LANGUAGES: Final[tuple[Literal["ar", "en"], ...]] = ("ar", "en")  # the codes sent
+_COMMAND_KINDS: Final = ("stop", "wait", "repeat")  # the presets' lists a prompt adds
 
 log = get_logger(__name__)
 
@@ -94,11 +120,74 @@ def _named(error: ConfigurationError) -> list[str]:
     return [str(entry["setting"]) for entry in named if isinstance(entry, dict)]
 
 
-def shown(settings: VoiceSettings, args: argparse.Namespace) -> dict[str, str]:
+@dataclass(frozen=True)
+class Prompt:
+    """One language's Whisper prompt, and how many of its candidate terms it kept."""
+
+    text: str
+    kept: int
+    of: int
+
+
+def whisper_prompts(terms: Sequence[str], phrases: Phrases | None = None) -> dict[str, Prompt]:
+    """Each language's prompt (the module's docstring): `terms`, then the command words of
+    `phrases` (the presets' by default), kept in that order within `PROMPT_BYTES`."""
+    lists = Phrases.defaults() if phrases is None else phrases
+    found: dict[str, Prompt] = {}
+    for code in _PROMPT_LANGUAGES:
+        words = lists.words(code)
+        commands = [word for kind in _COMMAND_KINDS for word in getattr(words, kind)]
+        candidates = list(dict.fromkeys([*terms, *commands]))
+        kept: list[str] = []
+        for term in candidates:
+            if len(", ".join([*kept, term]).encode("utf-8")) > PROMPT_BYTES:
+                break
+            kept.append(term)
+        found[code] = Prompt(", ".join(kept), len(kept), len(candidates))
+    return found
+
+
+@dataclass(frozen=True)
+class AnswerOptions:
+    """Run W's arms as the `groq` answerer takes them: the language every request goes in
+    (None: the item's), each language's prompt, and how the run records them (`run.prompt`)."""
+
+    language: str | None = None
+    prompts: Mapping[str, str] = field(default_factory=dict)
+    shown: str = "none"
+
+
+def answer_options(args: argparse.Namespace) -> AnswerOptions:
+    """The arms `--language-hint ar` and `--prompt-vocabulary` choose; the run's refusal, before
+    anything is sent, for a vocabulary that does not load."""
+    language = "ar" if args.language_hint == "ar" else None
+    path: Path | None = args.prompt_vocabulary
+    if path is None:
+        return AnswerOptions(language=language)
+    try:
+        terms = load_terms(path)
+    except GoldenSetError:
+        raise refused(
+            "--prompt-vocabulary does not load as a list of terms, each once",
+            "give a TOML file of terms = [...], such as evals/terms.toml",
+        ) from None
+    prompts = whisper_prompts(terms)
+    for code, prompt in prompts.items():
+        log.info("whisper_prompt", language=code, terms_kept=prompt.kept, of=prompt.of)
+    texts = {code: prompt.text for code, prompt in prompts.items() if prompt.text}
+    digest = hashlib.sha256(json.dumps(texts, sort_keys=True).encode("utf-8")).hexdigest()
+    counts = ", ".join(f"{code} {p.kept} of {p.of} terms" for code, p in prompts.items())
+    return AnswerOptions(language, texts, f"{path.name}, sha256 {digest[:16]}, {counts}")
+
+
+def shown(
+    settings: VoiceSettings, args: argparse.Namespace, *, prompt: str | None = None
+) -> dict[str, str]:
     """Every setting a run has, by its dotted name, resolved; a secret only as set or not set.
     Those a run uses come first, then every other (`_others`), so a setting the library gains
-    is recorded too. (`storage.var_dir`, a local path that changes no result, is shown by
-    `--show-settings` alone.)"""
+    is recorded too; `prompt`, a `poe eval` run's `AnswerOptions.shown`, as `run.prompt`.
+    (`storage.var_dir`, a local path that changes no result, is shown by `--show-settings`
+    alone.)"""
     groq, stt, tracing = settings.groq, settings.stt, settings.tracing
     used = {
         "env": settings.env,
@@ -116,9 +205,11 @@ def shown(settings: VoiceSettings, args: argparse.Namespace) -> dict[str, str]:
         "tracing.redact": f"{len(tracing.redact)} patterns",
     }
     others = {name: value for name, value in _others(settings) if name not in used}
+    prompted = {} if prompt is None else {"run.prompt": prompt}
     return (
         used
         | others
+        | prompted
         | {
             "run.language_hint": args.language_hint,
             "run.max_rpm": str(args.max_rpm),
@@ -160,10 +251,12 @@ def _text(name: str, value: object) -> str:
     return str(value)
 
 
-def show(args: argparse.Namespace, settings: VoiceSettings, parts: Parts) -> None:
+def show(
+    args: argparse.Namespace, settings: VoiceSettings, parts: Parts, *, prompt: str = "none"
+) -> None:
     """`--show-settings`: each setting, the worktree and each path, as a run would use them."""
     var_dir = {"storage.var_dir": str(settings.storage.var_dir)}
-    for name, value in (shown(settings, args) | var_dir).items():
+    for name, value in (shown(settings, args, prompt=prompt) | var_dir).items():
         log.info("setting", name=name, value=value)
     try:
         checkout = inspect(parts.folder, parts.git)

@@ -7,7 +7,9 @@ hashed. Its settings load with `VoiceSettings.from_env` (`--env-file`, or the wo
 `.env`), the command line's on top (`run_settings.py`): a `groq` run names its model and
 timeout, and its base URL is `--base-url` or the SDK's own, whatever the environment holds, so
 no `T2V_` variable changes a registered arm; `--show-settings` shows each resolved, a secret
-only as set or not set. A smoke test of one
+only as set or not set. Run W's arms are its options too (`run_settings.answer_options`): a
+Whisper prompt from `--prompt-vocabulary`, and every variant sent as Arabic with
+`--language-hint ar`. A smoke test of one
 dev variant comes first and must pass with no failed, retried or refused request. Then each
 variant is answered, and its result written as it finishes (a dev run's `results.jsonl`), with
 a progress line of identifiers, verdicts and timings, never a transcript. The scorecard is
@@ -51,14 +53,26 @@ from ole5_voice.evals.run_parts import (
     clip_answers,
     load_plan,
 )
-from ole5_voice.evals.run_settings import GROQ_BASE_URL, MODELS, load_settings, show, shown
+from ole5_voice.evals.run_settings import (
+    GROQ_BASE_URL,
+    MODELS,
+    AnswerOptions,
+    answer_options,
+    load_settings,
+    show,
+    shown,
+)
 from ole5_voice.evals.runs import RunInfo, holds_placeholder
 from ole5_voice.evals.windows import measurer
 from ole5_voice.evals.worktree import Checkout, check_out, refused, run_checkout
 
 RESULTS_FILE = "results.jsonl"  # a dev run's results, one line each as it finishes
 _DESCRIPTION = "Run an answerer over the golden set, writing its results and scorecard into --out."
-_HINT_HELP = "the language sent: the item's label's (ar, or en for English), or none (auto)"
+_HINT_HELP = (
+    "the language sent: the item's label's (ar, or en for English), none (auto), or ar for "
+    "every variant, as an Arabic call sends it (arm X)"
+)
+_PROMPT_HELP = "a TOML file of terms (evals/terms.toml): send a Whisper prompt from it (arm W1)"
 _AUDIO_HELP = "the folder of an audio root the manifests name, once per root"
 _OUT_HELP = "a new folder, outside the worktree, that git ignores; its name is the run's"
 _WINDOWS_HELP = "send only these leading windows of each talk-over clip, unjudged"
@@ -94,7 +108,8 @@ def _parser() -> argparse.ArgumentParser:
     add("--model", choices=MODELS, help="stt.model for this run (groq needs it)")
     add("--timeout-s", type=_seconds, help="stt.timeout_s for this run (groq needs it)")
     add("--base-url", help=f"groq.base_url for this run ({GROQ_BASE_URL})")
-    add("--language-hint", choices=("label", "auto"), default="label", help=_HINT_HELP)
+    add("--language-hint", choices=("label", "auto", "ar"), default="label", help=_HINT_HELP)
+    add("--prompt-vocabulary", type=Path, help=_PROMPT_HELP)
     add("--env-file", type=Path, help="the .env file the settings load from (never printed)")
     add("--var-dir", type=Path, help="the settings' var_dir")
     add("--audio", action="append", default=[], metavar="ROOT=FOLDER", help=_AUDIO_HELP)
@@ -148,6 +163,8 @@ def _require(parser: argparse.ArgumentParser, args: argparse.Namespace) -> None:
         parser.error("--smoke-only sends the smoke test's clip, and no windows")
     if args.clips_from and not args.windows_ms:
         parser.error("--clips-from serves a windows run (--windows-ms)")
+    if args.prompt_vocabulary and args.language_hint == "auto":
+        parser.error("--prompt-vocabulary builds a prompt for the language sent: not with auto")
 
 
 async def _answer_all(
@@ -177,11 +194,12 @@ async def _answer_all(
         await answerer.aclose()
 
 
-def _run(args: argparse.Namespace, settings: VoiceSettings, parts: Parts) -> int:
+def _run(
+    args: argparse.Namespace, settings: VoiceSettings, parts: Parts, options: AnswerOptions
+) -> int:
     # The settings go into the committed history, as the note does (its check: `_parser`).
-    if placed := [
-        name for name, value in shown(settings, args).items() if holds_placeholder(value)
-    ]:
+    recorded = shown(settings, args, prompt=options.shown)
+    if placed := [name for name, value in recorded.items() if holds_placeholder(value)]:
         raise ConfigurationError(
             f"{placed[0]} holds an install placeholder, which the docs check refuses in the "
             "history. FIX: give the setting without one.",
@@ -199,7 +217,7 @@ def _run(args: argparse.Namespace, settings: VoiceSettings, parts: Parts) -> int
         split=args.split,
         windows_ms=tuple(args.windows_ms),
         questions=args.questions,
-        hint=args.language_hint,
+        hint="label" if args.language_hint == "ar" else args.language_hint,  # ar: the policy's
         roots=audio_roots(args.audio),
         needs_audio=spends,
     )
@@ -207,7 +225,13 @@ def _run(args: argparse.Namespace, settings: VoiceSettings, parts: Parts) -> int
     model = settings.stt.model
     reuse = clip_answers(args.clips_from, plan.todo, commit=checkout.commit, model=model)
     budget = Budget(price_per_hour_usd=args.price_per_hour or 0.0, cap_usd=args.cap_usd)
-    policy = Policy(args.max_attempts, args.max_rpm, args.variant_timeout_s)
+    policy = Policy(
+        args.max_attempts,
+        args.max_rpm,
+        args.variant_timeout_s,
+        language=options.language,
+        prompts=options.prompts,
+    )
     tracer = parts.tracing(settings) if args.tracing_endpoint else None
     try:
         answerer = make_answerer(
@@ -230,7 +254,7 @@ def _run(args: argparse.Namespace, settings: VoiceSettings, parts: Parts) -> int
             answerer=answerer.name,
             model=settings.stt.model if answerer.spends else None,
             split=args.split,
-            settings=shown(settings, args),
+            settings=recorded,
             price_per_hour_usd=budget.price_per_hour_usd,
             data_digest=plan.digest,
             note=args.note,
@@ -302,10 +326,11 @@ def main(argv: Sequence[str] | None = None, *, parts: Parts | None = None) -> in
         settings = load_settings(args)
         logs = settings.logging
         configure_logging(logs.level, logs.format, loggers=LOGGERS, content=logs.content)
+        options = answer_options(args)
         if args.show_settings:
-            show(args, settings, parts)
+            show(args, settings, parts, prompt=options.shown)
             return 0
-        return _run(args, settings, parts)
+        return _run(args, settings, parts, options)
     except T2VoiceError as error:
         log.error("eval_refused", code=error.code, message=error.message)
         return 2
