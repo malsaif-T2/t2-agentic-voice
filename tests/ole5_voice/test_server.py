@@ -20,8 +20,8 @@ import uvicorn
 from fastapi import APIRouter, FastAPI
 from fastapi.testclient import TestClient
 from ole5_voice import server
+from ole5_voice.agent import ECHO_AGENT
 from ole5_voice.server import (
-    AGENT,
     FILES,
     OFFER_SECRET_HEADER,
     PORT,
@@ -260,7 +260,7 @@ def test_the_app_verifies_its_callers_with_the_tokens_it_mints(
     app = server.make_app(loaded)
     [runtime] = _Runtime.made
     agent, voice, identity = runtime.given
-    assert (agent, voice) == (AGENT, loaded.voice)
+    assert (agent, voice) == (ECHO_AGENT, loaded.voice)  # no knowledge base set: the echo
     assert isinstance(identity, _Tokens)
     assert identity.built_from == (loaded.voice.join, "T2V_")
     with TestClient(app) as test:
@@ -268,13 +268,6 @@ def test_the_app_verifies_its_callers_with_the_tokens_it_mints(
         body = {"code": CODE, "consent": {"version": "v1", "record_audio": True}}
         assert test.post("/token", json=body).json() == {"token": "made-up-token"}
     assert identity.minted == [(Caller(subject="owner"), Consent(version="v1", record_audio=True))]
-
-
-def test_ole5s_agent_speaks_saudi_arabic_first_and_says_its_name() -> None:
-    assert AGENT.name == "ole5"
-    assert [language.tag for language in AGENT.languages] == ["ar-SA", "en"]
-    assert dict(AGENT.pronounce["Ole5"]) == {"ar": "أُولِي فايف", "en": "Oh-lee five"}
-    assert all("Ole5" in language.greeting for language in AGENT.languages)
 
 
 @pytest.fixture

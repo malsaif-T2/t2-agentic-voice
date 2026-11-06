@@ -3,7 +3,11 @@
 mounted under `VOICE_PREFIX` (the design's 4.5, "The mount"), run by uvicorn with one worker.
 
 `uv run --offline python -m ole5_voice.server --env-file .env` serves it on 127.0.0.1:7861, its
-settings from the environment and the file given (settings.py). The app is built as the mount
+settings from the environment and the file given (settings.py). Its agent (agent.py) is Ole5's
+talker, searching Ole5's knowledge base (knowledge_base.py), when the knowledge base's access is
+set (`QDRANT_URL`, `QDRANT_LOGIN_EMAIL`, `QDRANT_LOGIN_PASSWORD`), and the echo when none of it
+is, which one log line says; the settings refuse it set only in part. The knowledge base's
+client is closed as the app's lifespan ends, after the runtime's. The app is built as the mount
 asks, since there the library's router cannot reach the app's object:
 - FastAPI's own telemetry off (`TELEMETRY_OFF`): by default FastAPI traces, measures and logs
   every request through OpenTelemetry's global providers, and the library instruments no other
@@ -25,9 +29,10 @@ from __future__ import annotations
 
 import argparse
 import time
-from collections.abc import Awaitable, Callable, Mapping, Sequence
+from collections.abc import AsyncIterator, Awaitable, Callable, Mapping, Sequence
+from contextlib import AbstractAsyncContextManager, asynccontextmanager
 from pathlib import Path
-from typing import Final
+from typing import Any, Final, Protocol
 
 import uvicorn
 from fastapi import APIRouter, FastAPI
@@ -36,8 +41,6 @@ from fastapi.responses import FileResponse
 from fastapi.telemetry import TelemetryConfig
 from t2_agentic_voice import (
     ConfigurationError,
-    Language,
-    VoiceAgent,
     VoiceRuntime,
     VoiceSettings,
     configure_logging,
@@ -46,7 +49,9 @@ from t2_agentic_voice import (
 from t2_agentic_voice.identity import SignedJoinTokens
 
 from ole5_voice import LOGGERS
-from ole5_voice.settings import Settings, load
+from ole5_voice.agent import ECHO_AGENT, talker_agent
+from ole5_voice.knowledge_base import QdrantKnowledgeBase
+from ole5_voice.settings import ACCESS, KnowledgeAccess, Settings, knowledge_access, load
 from ole5_voice.token_route import Guard, Minter, token_router
 
 HOST: Final = "127.0.0.1"
@@ -71,38 +76,19 @@ FILES: Final = {
     "/widget.css": ("widget.css", "text/css; charset=utf-8"),
 }
 
-# Ole5's agent: Saudi Arabic first, then English, with Ole5's name as each says it, "oo-lee
-# faayf" and "Oh-lee five" (the prototype's D26 and D37, Ole5-chatbot/VOICE_LOG.md, lines 35
-# and 45). The Arabic texts are written with `\u` escapes, as the library's are, each with its
-# sound and meaning in a comment.
-AGENT: Final = VoiceAgent(
-    name="ole5",
-    languages=[
-        # hala, ma'ak musaa'id Ole5 as-sawti; takallam wa a'eed 'aleek illi asma'ah: hello, this
-        # is Ole5's voice assistant; speak, and I say back to you what I hear.
-        Language.saudi_arabic(
-            greeting=(
-                "\u0647\u0644\u0627\u060c \u0645\u0639\u0643 "
-                "\u0645\u0633\u0627\u0639\u062f Ole5 "
-                "\u0627\u0644\u0635\u0648\u062a\u064a. \u062a\u0643\u0644\u0651\u0645 "
-                "\u0648\u0623\u0639\u064a\u062f \u0639\u0644\u064a\u0643 "
-                "\u0627\u0644\u0644\u064a \u0623\u0633\u0645\u0639\u0647."
-            )
-        ),
-        Language.english(
-            greeting="Hi, this is the Ole5 voice assistant. Speak, and I will say back what I hear."
-        ),
-    ],
-    # oo-lee faayf
-    pronounce={
-        "Ole5": {
-            "ar": "\u0623\u064f\u0648\u0644\u0650\u064a \u0641\u0627\u064a\u0641",
-            "en": "Oh-lee five",
-        }
-    },
-)
+# The agent the app runs when the knowledge base's access is not set: the echo, under the name
+# the guide's sample of `make_app` shows (docs/guide/serving.md).
+AGENT: Final = ECHO_AGENT
+# An app's lifespan, as FastAPI keeps it on its router: the app in, a context out.
+Lifespan = Callable[[Any], AbstractAsyncContextManager[Any]]
 
 log = get_logger(__name__)
+
+
+class Closable(Protocol):
+    """What the app closes as its lifespan ends: the knowledge base's client."""
+
+    async def aclose(self) -> None: ...
 
 
 def page_headers(website_origin: str | None) -> dict[str, str]:
@@ -136,9 +122,11 @@ def build_app(
     minter: Minter,
     clock: Callable[[], float] = time.monotonic,
     web: Path = WEB,
+    closing: Sequence[Closable] = (),
 ) -> FastAPI:
     """The app: the widget's files from `web`, the token route minting with `minter` (its
-    guard on `clock`), and the library's `router` under VOICE_PREFIX."""
+    guard on `clock`), and the library's `router` under VOICE_PREFIX; each of `closing` closed
+    as the app's lifespan ends, after the router's."""
     app = FastAPI(telemetry=TELEMETRY_OFF, openapi_url=None)
     app.add_middleware(
         CORSMiddleware,
@@ -148,6 +136,8 @@ def build_app(
     )
     app.include_router(token_router(settings.app.access_code, minter, guard=Guard(clock=clock)))
     app.include_router(router, prefix=VOICE_PREFIX)
+    if closing:  # the router's lifespan, merged into the app's as it was included, runs inside
+        app.router.lifespan_context = _closing_after(app.router.lifespan_context, closing)
     headers = page_headers(settings.app.website_origin)
     for path, (name, media_type) in FILES.items():
         endpoint = _file(web / name, media_type, headers)
@@ -157,11 +147,28 @@ def build_app(
 
 def make_app(settings: Settings) -> FastAPI:
     """The app as it serves Ole5's calls: the runtime's callers verified by the signed join
-    tokens the token route mints, with the key `join.current_kid` names."""
+    tokens the token route mints, with the key `join.current_kid` names; its agent the talker,
+    searching the knowledge base, when the knowledge base's access is set, and else the echo,
+    which a log line says (the module's docstring)."""
+    access = knowledge_access(settings.app)
+    if access is not None:
+        return _talker_app(settings, access)
+    log.info("knowledge_base_not_set", agent="echo", fix=f"set {', '.join(ACCESS)}")
     voice = settings.voice
     tokens = SignedJoinTokens.from_settings(voice.join, prefix=voice.prefix)
     runtime = VoiceRuntime(AGENT, settings=voice, identity=tokens)
     return build_app(settings, router=runtime.router(), minter=tokens)
+
+
+def _talker_app(settings: Settings, access: KnowledgeAccess) -> FastAPI:
+    """The app whose agent is Ole5's talker, searching the knowledge base `access` reaches; its
+    client closed as the app's lifespan ends."""
+    voice = settings.voice
+    tokens = SignedJoinTokens.from_settings(voice.join, prefix=voice.prefix)
+    kb = QdrantKnowledgeBase(access)
+    runtime = VoiceRuntime(talker_agent(kb), settings=voice, identity=tokens)
+    log.info("knowledge_base_set", agent="talker")
+    return build_app(settings, router=runtime.router(), minter=tokens, closing=(kb,))
 
 
 def server_config(app: FastAPI, voice: VoiceSettings, *, host: str, port: int) -> uvicorn.Config:
@@ -188,17 +195,37 @@ def main(argv: Sequence[str] | None = None) -> int:
     args = _parser().parse_args(argv)
     try:
         settings = load(args.env_file)
-        app = make_app(settings)
     except ConfigurationError as error:
         configure_logging(loggers=LOGGERS)
         log.error("server_not_started", reason=error.message)
         return 2
     logs = settings.voice.logging
     configure_logging(logs.level, logs.format, loggers=(*LOGGERS, "uvicorn"), content=logs.content)
+    try:  # after the logs are set, so the line saying which agent runs is written
+        app = make_app(settings)
+    except ConfigurationError as error:
+        log.error("server_not_started", reason=error.message)
+        return 2
     config = server_config(app, settings.voice, host=args.host, port=args.port)
     log.info("server_ready", address=f"http://{args.host}:{args.port}/")
     uvicorn.Server(config).run()
     return 0
+
+
+def _closing_after(inner: Lifespan, closing: Sequence[Closable]) -> Lifespan:
+    """A lifespan that runs `inner` (the app's, the routers' merged into it), then closes each
+    of `closing`, in order, however `inner` ended."""
+
+    @asynccontextmanager
+    async def lifespan(app: Any) -> AsyncIterator[Any]:
+        try:
+            async with inner(app) as state:
+                yield state
+        finally:
+            for resource in closing:
+                await resource.aclose()
+
+    return lifespan
 
 
 def _file(
