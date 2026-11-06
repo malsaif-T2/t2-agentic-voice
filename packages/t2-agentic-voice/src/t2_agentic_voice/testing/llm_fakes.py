@@ -12,8 +12,9 @@ was given (`requests`), so a test reads the messages and tools the talker sent.
   need not count requests (one that answers by the last user text, or by a tool result).
 
 **The steps** of an entry or of `fn`'s answer: the port's events (`TextDelta`, `ToolCallRequest`,
-`Usage`, `Done`), played in order; a `Pause`, which waits that long on the fake's clock (a
-model's time to its first token, or between two pieces of its text); and a `ProviderError`,
+`Usage`, `Done`), played in order; a pause, a number of seconds (0 or more; `Pause(0.4)` names
+one) the fake waits on its clock (a model's time to its first token, or between two pieces of its
+text); and a `ProviderError`,
 raised from the stream where it stands, the steps before it played (a failure before the first
 token, or mid-reply). Nothing follows a `Done` or an error, and an answer reports its usage at
 most once; an answer with no `Done` and no error ends with one, `tool_calls` when it called a
@@ -24,10 +25,11 @@ as it streams the call with the next of its own, `call_1`, `call_2` and so on, i
 its calls: each call of a conversation has its own id, the same in every run of a script. An id
 a test writes itself is kept as it is.
 
-**The clock.** A `Pause` waits on the fake's `clock`: the call's (a virtual clock in a test, as
-`TextCall` runs on), given to the fake or set on it before the call starts; with none, the
-system's. A cancel stops a stream at once, during a `Pause` too, and leaves no task, as the
-port's rule says: the fake starts none.
+**The clock.** A pause waits on the fake's `clock`, which whoever runs the fake sets before the
+call starts: the call's (a virtual clock in a test, as `TextCall` runs on); while it is None,
+the system's. It is an attribute, not a constructor's parameter, so no public signature names
+the library's `Clock`, which no public module exports yet (D-032). A cancel stops a stream at
+once, during a pause too, and leaves no task, as the port's rule says: the fake starts none.
 """
 
 from __future__ import annotations
@@ -38,7 +40,6 @@ import json
 import math
 import re
 from collections.abc import AsyncIterator, Callable, Iterable, Iterator, Mapping, Sequence
-from dataclasses import dataclass
 
 from pydantic import JsonValue
 
@@ -68,19 +69,17 @@ AUTO_ID = "call_auto"
 _PIECE = re.compile(r"\s*\S+|\s+$")
 
 
-@dataclass(frozen=True)
-class Pause:
-    """A step of a fake's answer: wait `seconds` (0 or more) on the fake's clock before the next
-    step."""
+class Pause(float):
+    """A step of a fake's answer that names itself: wait this many seconds (0 or more) on the
+    fake's clock before the next step. Any number is a pause; this one says so where it stands,
+    and refuses a wrong one at once."""
 
-    seconds: float
-
-    def __post_init__(self) -> None:
-        if not (math.isfinite(self.seconds) and self.seconds >= 0):
-            raise ValueError("a pause lasts a finite number of seconds, 0 or more")
+    def __new__(cls, seconds: float) -> Pause:
+        return super().__new__(cls, _pause(seconds, "a pause"))
 
 
-type ScriptStep = ChatEvent | Pause | ProviderError
+# A step of a fake's answer: an event, a pause (a number of seconds), or an error.
+type ScriptStep = ChatEvent | float | ProviderError
 
 
 class ScriptExhaustedError(AssertionError):
@@ -91,20 +90,18 @@ class ScriptExhaustedError(AssertionError):
 class ScriptedLLM:
     """A chat model that plays `script`, one entry per request, in order (the module's
     docstring); a `ChatModel`. Each entry is checked when the fake is built, a wrong one refused
-    with its number. `clock` is the one a `Pause` waits on (None: the system's, unless it is set
-    before the call starts)."""
+    with its number. A pause waits on `clock`, set before the call starts (None: the
+    system's)."""
 
     name: str = "scripted"
     data_flow: DataFlow = FAKE_DATA_FLOW
 
-    def __init__(
-        self, script: Sequence[Sequence[ScriptStep]], *, clock: Clock | None = None
-    ) -> None:
+    def __init__(self, script: Sequence[Sequence[ScriptStep]]) -> None:
         self.script = tuple(tuple(entry) for entry in script)
         for number, entry in enumerate(self.script, 1):
             _checked(entry, f"entry {number} of the script")
         self.requests: list[ChatRequest] = []
-        self.clock = clock
+        self.clock: Clock | None = None
         self._ids = itertools.count(1)
 
     @staticmethod
@@ -158,17 +155,15 @@ class ScriptedLLM:
 class FunctionLLM:
     """A chat model whose every request `fn` answers with the steps it gives (the module's
     docstring); a `ChatModel`. `fn` runs when the stream starts, so what it raises comes from
-    the stream; `clock` is the one a `Pause` waits on, as `ScriptedLLM`'s."""
+    the stream; a pause waits on `clock`, as `ScriptedLLM`'s."""
 
     name: str = "function"
     data_flow: DataFlow = FAKE_DATA_FLOW
 
-    def __init__(
-        self, fn: Callable[[ChatRequest], Iterable[ScriptStep]], *, clock: Clock | None = None
-    ) -> None:
+    def __init__(self, fn: Callable[[ChatRequest], Iterable[ScriptStep]]) -> None:
         self.fn = fn
         self.requests: list[ChatRequest] = []
-        self.clock = clock
+        self.clock: Clock | None = None
         self._ids = itertools.count(1)
 
     def stream(self, request: ChatRequest) -> AsyncIterator[ChatEvent]:
@@ -196,7 +191,10 @@ def _checked(steps: Iterable[ScriptStep], where: str) -> tuple[ScriptStep, ...]:
     read: tuple[object, ...] = tuple(steps)  # as a test gave them, whatever their type
     given: list[ScriptStep] = []
     for number, step in enumerate(read, 1):
-        if not isinstance(step, TextDelta | ToolCallRequest | Usage | Done | Pause | ProviderError):
+        if isinstance(step, int | float) and not isinstance(step, bool):
+            given.append(_pause(step, f"{where}: step {number}, a pause,"))
+            continue
+        if not isinstance(step, TextDelta | ToolCallRequest | Usage | Done | ProviderError):
             kind = type(step).__name__
             raise ValueError(f"{where}: step {number} is a {kind}, not an event, pause or error")
         if isinstance(step, Done | ProviderError) and number < len(read):
@@ -216,8 +214,8 @@ async def _play(
     """Each step in turn: a pause waited on `clock`, an error raised, an event yielded after a
     turn of the loop, as a stream's chunks come, a call's `AUTO_ID` replaced by the next id."""
     for step in steps:
-        if isinstance(step, Pause):
-            await clock.sleep(step.seconds)
+        if isinstance(step, float):
+            await clock.sleep(step)
             continue
         if isinstance(step, ProviderError):
             raise step
@@ -225,6 +223,14 @@ async def _play(
         if isinstance(step, ToolCallRequest) and step.id == AUTO_ID:
             step = step.model_copy(update={"id": f"call_{next(ids)}"})
         yield step
+
+
+def _pause(seconds: float, what: str) -> float:
+    """`seconds` as a pause's length; ValueError saying `what` for one that is not finite, or
+    under 0."""
+    if not (math.isfinite(seconds) and seconds >= 0):
+        raise ValueError(f"{what} lasts a finite number of seconds, 0 or more")
+    return float(seconds)
 
 
 def _exhausted(entries: int, requests: Sequence[ChatRequest]) -> ScriptExhaustedError:

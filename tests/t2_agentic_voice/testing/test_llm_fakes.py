@@ -134,9 +134,11 @@ def test_an_entry_with_no_end_ends_with_one_done() -> None:
     ]
 
 
-def test_a_pause_waits_on_the_fakes_clock() -> None:
+@pytest.mark.parametrize("pause", [Pause(0.4), 0.4])
+def test_a_pause_waits_on_the_clock_the_fake_was_given(pause: float) -> None:
     clock = FakeClock()
-    llm = ScriptedLLM([[Pause(0.4), *ScriptedLLM.reply("Open Settings.")]], clock=clock)
+    llm = ScriptedLLM([[pause, *ScriptedLLM.reply("Open Settings.")]])
+    llm.clock = clock  # as a call that runs the fake on its own clock sets it
 
     async def scene() -> tuple[list[ChatEvent], list[ChatEvent]]:
         seen: list[ChatEvent] = []
@@ -155,24 +157,14 @@ def test_a_pause_waits_on_the_fakes_clock() -> None:
     before, seen = asyncio.run(scene())
     assert before == [] and seen[0] == TextDelta(text="Open")
     assert clock.sleeps == [0.4]
-    for seconds in (-0.1, float("inf"), float("nan")):
-        with pytest.raises(ValueError, match="finite number of seconds"):
-            Pause(seconds)
 
 
-def test_a_clock_set_after_the_fake_is_built_is_the_one_it_waits_on() -> None:
-    llm = ScriptedLLM([[Pause(30.0), *ScriptedLLM.reply("Hi")]])
-    clock = FakeClock()
-    llm.clock = clock  # as a call that runs the fake on its own clock sets it
-
-    async def scene() -> list[ChatEvent]:
-        task = asyncio.create_task(_collect(llm.stream(ASKED)))
-        await clock.advance(0)  # the stream starts, and waits in its pause
-        await clock.advance(30.0)
-        return await task
-
-    assert asyncio.run(scene())[0] == TextDelta(text="Hi")
-    assert clock.sleeps == [30.0]
+@pytest.mark.parametrize("seconds", [-0.1, float("inf"), float("nan")])
+def test_a_pause_lasts_a_finite_time(seconds: float) -> None:
+    with pytest.raises(ValueError, match="a pause lasts a finite number of seconds"):
+        Pause(seconds)
+    with pytest.raises(ValueError, match="entry 1 of the script: step 1, a pause, lasts a finite"):
+        ScriptedLLM([[seconds]])
 
 
 async def _collect(stream: AsyncIterator[ChatEvent]) -> list[ChatEvent]:
@@ -200,6 +192,7 @@ WRONG: list[tuple[list[Any], str]] = [
     ([ProviderError("timeout", True), Done(finish_reason="stop")], "step 1 ends the stream"),
     ([USAGE, USAGE], "a stream reports its usage once"),
     (["Open Settings."], "step 1 is a str"),
+    ([True], "step 1 is a bool"),
     ([TextDelta(text="Hi"), {"text": "x"}], "step 2 is a dict"),
 ]
 
@@ -274,11 +267,9 @@ def test_a_functions_error_comes_from_the_stream_and_its_answer_ends_with_done()
 def test_a_stopped_stream_ends_at_once_and_leaves_no_task(kind: str, how: str) -> None:
     clock = FakeClock()
     steps: list[ScriptStep] = [TextDelta(text="Open"), Pause(5.0), *ScriptedLLM.reply("Settings")]
-    llm: ChatModel = (
-        ScriptedLLM([steps], clock=clock)
-        if kind == "scripted"
-        else FunctionLLM(lambda request: steps, clock=clock)
-    )
+    fake = ScriptedLLM([steps]) if kind == "scripted" else FunctionLLM(lambda request: steps)
+    fake.clock = clock
+    llm: ChatModel = fake
 
     async def scene() -> tuple[list[ChatEvent], bool, set[asyncio.Task[Any]]]:
         stream = cast("AsyncGenerator[ChatEvent, None]", llm.stream(ASKED))
