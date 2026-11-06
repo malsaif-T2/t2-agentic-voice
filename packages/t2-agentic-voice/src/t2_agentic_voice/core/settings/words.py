@@ -3,7 +3,9 @@ interruption rule reads (the design's 7.6 and 4.3; plan 005), for each language 
 code (`ar` for both Arabic presets, `en`): its stop words, the words that ask it to pause, its
 repeat words, its listening sounds (`backchannel`) and its no words. Each is added to the
 language preset's list and the declaration's (`VoiceAgent(phrases=...)`, domain/words.py), so an
-app sets its own additions without code; none by default.
+app sets its own additions without code; none by default. And the product terms added to the
+declaration's vocabulary (`VoiceAgent(vocabulary=...)`), which becomes the Whisper prompt (plan
+006), in any language: none by default.
 """
 
 from __future__ import annotations
@@ -19,6 +21,8 @@ from t2_agentic_voice.core.settings.base import FROZEN, PLAIN, Group
 LanguageCode = Literal["ar", "en"]
 # One word or phrase, as a transcript would hold it.
 _Word = Annotated[str, Field(min_length=1, max_length=64)]
+# One product term, as a speaker says it and a transcript should write it ("VPN", "Outlook").
+_Term = Annotated[str, Field(min_length=1, max_length=64)]
 # A list of words for each language, by its code: read-only once loaded.
 WordLists = Annotated[Mapping[LanguageCode, tuple[_Word, ...]], FROZEN, PLAIN]
 _AS = 'as a JSON object from a language\'s code (ar, en) to a list: {"ar": ["..."]}'
@@ -43,3 +47,10 @@ class WordSettings(Group):
     )
     backchannel: WordLists = _additions("listening sounds, after which the agent goes on")
     no: WordLists = _additions("no words, which a short output never holds")
+    vocabulary: tuple[_Term, ...] = Field(
+        default=(),
+        description=(
+            "Product terms added to the declaration's vocabulary, which becomes the Whisper "
+            'prompt, as a JSON list: ["VPN", "Outlook"]. A value replaces the list.'
+        ),
+    )

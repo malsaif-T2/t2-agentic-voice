@@ -72,9 +72,11 @@ from t2_agentic_voice.core.settings.base import (
     setting_name,
 )
 from t2_agentic_voice.core.settings.groq import GroqSettings
+from t2_agentic_voice.core.settings.guard import GuardSettings
 from t2_agentic_voice.core.settings.interruptions import InterruptionSettings
 from t2_agentic_voice.core.settings.join import JoinSettings
 from t2_agentic_voice.core.settings.limits import LimitSettings
+from t2_agentic_voice.core.settings.llm import LlmSettings
 from t2_agentic_voice.core.settings.logs import LoggingSettings
 from t2_agentic_voice.core.settings.names import Problem, gathered, leaf
 from t2_agentic_voice.core.settings.privacy import PrivacySettings
@@ -131,10 +133,12 @@ class VoiceSettings(ReadOnlyModel):
     )
     groq: GroqSettings = Field(default_factory=GroqSettings)
     stt: SttSettings = Field(default_factory=SttSettings)
+    llm: LlmSettings = Field(default_factory=LlmSettings)
     tts: TtsSettings = Field(default_factory=TtsSettings)
     turns: TurnSettings = Field(default_factory=TurnSettings)
     interruptions: InterruptionSettings = Field(default_factory=InterruptionSettings)
     words: WordSettings = Field(default_factory=WordSettings)
+    guard: GuardSettings = Field(default_factory=GuardSettings)
     session: SessionSettings = Field(default_factory=SessionSettings)
     server: ServerSettings = Field(default_factory=ServerSettings)
     join: JoinSettings = Field(default_factory=JoinSettings)

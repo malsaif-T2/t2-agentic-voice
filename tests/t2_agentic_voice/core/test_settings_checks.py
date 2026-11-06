@@ -318,7 +318,7 @@ def test_the_turn_tts_and_limit_defaults_are_the_plans() -> None:
     }
     assert (settings.tts.cache_phrases, settings.tts.trim_silence) == (True, False)
     assert (settings.limits.max_call_s, settings.limits.idle_s) == (600.0, 120.0)
-    assert (settings.session.mode, settings.logging.pipecat) == ("echo", "off")
+    assert (settings.session.mode, settings.logging.pipecat) == (None, "off")  # the declaration's
     assert (settings.privacy.record_audio, settings.privacy.consent_version) == (False, None)
     assert (settings.server.turn_ttl_s, settings.server.forwarded_allow_ips) == (3600, ())
     assert (settings.join.ttl_s, settings.join.max_clock_skew_s) == (60, 30)
@@ -340,7 +340,7 @@ def test_the_interruption_and_word_defaults_are_plan_005s() -> None:
         "own_words_s": 5.0,
     }
     kinds = ("stop", "wait", "repeat", "backchannel", "no")
-    assert settings.words.model_dump() == {kind: {} for kind in kinds}
+    assert settings.words.model_dump() == {kind: {} for kind in kinds} | {"vocabulary": ()}
     assert (settings.stt.no_speech_max, settings.stt.caption_filter) == (0.55, True)
     words = VoiceSettings.model_validate({"env": "test", "words": {"stop": {"en": ["x", "y"]}}})
     assert words.words.stop == {"en": ("x", "y")} and words.words.no == {}
@@ -349,10 +349,10 @@ def test_the_interruption_and_word_defaults_are_plan_005s() -> None:
 
 
 def test_every_timing_or_size_setting_has_its_unit_in_its_name() -> None:
-    """The design's 7.3: `_ms` or `_s`, or `_words` for a count of words; only a ratio from 0
-    to 1 has none."""
+    """The design's 7.3: `_ms` or `_s`, or the thing counted for a count (`_words`, `_tokens`,
+    `_digits`: the design's 7.6 names); only a ratio from 0 to 1 has none."""
     numbers = [loc for loc, kind in fields() if kind in (int, float)]
-    units = ("_ms", "_s", "_words")
+    units = ("_ms", "_s", "_words", "_tokens", "_digits")
     unnamed = [loc for loc in numbers if not loc[-1].endswith(units) and loc not in RATIOS]
     assert numbers and unnamed == []
 
