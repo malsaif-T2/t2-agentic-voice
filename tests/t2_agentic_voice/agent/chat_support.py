@@ -21,6 +21,7 @@ from t2_agentic_voice.core.settings.tts import LanguageTag
 from t2_agentic_voice.domain.declaration import Language, VoiceAgent
 from t2_agentic_voice.domain.ports.chat_model import (
     ChatEvent,
+    ChatModel,
     ChatRequest,
     Done,
     FinishReason,
@@ -112,7 +113,7 @@ def agent(*tools: Tool, languages: Sequence[Language] = (SAUDI, MSA, ENGLISH)) -
 
 
 def talker(
-    model: FakeChat,
+    model: ChatModel,
     *tools: Tool,
     clock: FakeClock | None = None,
     language: LanguageTag = "en",
