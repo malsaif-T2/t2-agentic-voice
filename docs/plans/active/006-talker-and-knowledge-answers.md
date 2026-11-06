@@ -130,7 +130,8 @@ and measures; Q1 asks the owner to approve or change the list.
 
 - [ ] **The knowledge base adapter** behind `KnowledgeBase`: one query embedding from T2's
   embedding gateway and one search of Ole5's points in T2's Qdrant per question (D-002; Q4), its
-  settings under the app's prefix, its tests offline on a fake transport.
+  settings under the owner's general names (`QDRANT_*`, `EMBEDDING_URL`; only the tenant under
+  the app's prefix), its tests offline on a fake transport.
 - [ ] **The instructions**, per language: short spoken answers in the Saudi register, the steps
   to the card, numbers as digits, a plain "I cannot" for what no tool provides, and no promise of
   a ticket or a person before M5.
@@ -175,8 +176,9 @@ spike checks the cache path and keeps connections open from the start.
 **Before Block 0**
 
 1. The owner's answers to Q1 to Q10, and the knowledge base's access in this repository's `.env`
-   under the names Block 0 gives (Q4), copied by the owner from the prototype's; the agent reads
-   neither file.
+   (Q4), copied by the owner from the prototype's under general names of the owner's choosing
+   (`QDRANT_URL`, `QDRANT_LOGIN_EMAIL`, `QDRANT_LOGIN_PASSWORD`; amended 2026-11-06, "The owner's
+   decisions"); the agent reads neither file.
 2. **The spike** (paid, at most $0.10, by one agent alone on the machine): the chat models the
    key can call, read from Groq's model list; each candidate's time to its first token and to a
    tool call on three short prompts, five times each, with and without a varying first prompt
@@ -246,6 +248,109 @@ runs"; in this order, each with its smoke first)
   `llama-3.3-70b-versatile` and `llama-3.1-8b-instant`. Waits for the owner.
 - 2026-11-06: The owner approved the plan with every recommendation ("Approve all"). Next: the
   knowledge base's setting names for the owner's `.env`, the spike's Groq part, and Block 0.
+- 2026-11-06: The owner set the knowledge base's access in `.env` under general names rather than
+  the Ole5-prefixed ones Block 0's brief gave: `QDRANT_URL`, `QDRANT_LOGIN_EMAIL` and
+  `QDRANT_LOGIN_PASSWORD`, with no API key ("The owner's decisions"). The Ole5 app reads them with
+  no prefix (479c4c8), with T2's defaults under `QDRANT_LOGIN_URL` and `EMBEDDING_URL`; only the
+  tenant keeps `OLE5_VOICE_KB_TENANT`; the suite drops `QDRANT_*` and `EMBEDDING_URL` from the
+  shell.
+- 2026-11-06: The spike's Groq part, by one agent alone on the machine from main at 08f43f5: 120
+  streamed requests and 3 diagnostic ones. The spend was $0.023 by the usage, and at most $0.03
+  counting the requests that reported none. Prices were read that day from
+  console.groq.com/docs/models: gpt-oss-120b $0.15 in and $0.60 out a million tokens,
+  gpt-oss-20b $0.075 and $0.30. Both Llama models are now "Enterprise" there, priced on contact,
+  and were estimated at their last published prices.
+  - **Models.** All four candidates are on the key.
+  - **First clause.** On a warm connection, a reply with no tool gave its first clause at a median
+    of 0.25 to 0.35 s on every model. The 90th percentiles were 0.30 to 1.04 s, and 8.30 s for
+    llama-3.1-8b.
+  - **Tool calls.** Both gpt-oss models made 10 of 10 valid, their arguments complete at 0.28 to
+    0.35 s. llama-3.3-70b made 4 of 10 and llama-3.1-8b 8 of 10. Every failure was Groq's own
+    `tool_use_failed`, sent as an SSE error event: the model wrote its own function text.
+  - **The Saudi register.** gpt-oss-120b was Saudi in 10 of 10 replies, with the facts right.
+    gpt-oss-20b leaned to MSA, and on 5 of its 10 Saudi questions whose answer was in the prompt
+    it searched instead of answering. The Llama models put Chinese, Greek or English words into 4
+    and 6 of their 10 Arabic replies, some with wrong facts.
+  - **The varying first line** changed no median. First clause, fixed against varying: 0.35 and
+    0.31, 0.25 and 0.27, 0.32 and 0.31, 0.30 and 0.30. It removed every cache hit, and the 12
+    hits were not slow (median 0.24 s).
+  - **Slow requests.** 11 of the 120 waited more than 1.0 s for the response headers, in both
+    conditions, outside the times Groq reports. Five were llama-3.1-8b, up to 13.4 s.
+  - **Rate limits.** Two 429s asked for 1 s and passed on the next try.
+- 2026-11-06: How the prototype reached the knowledge base, read from Ole5-chatbot and its ragent2
+  (read only, D-010; no network).
+  - **The collection.** One Qdrant collection, `default`, is shared by tenants. Ole5's points are
+    selected by the payload field `group_id = "ole5"`, which every search must carry, since the
+    index is built per tenant only.
+  - **The vectors.** A named dense vector `dense` (bge-m3, 1024 dimensions, cosine, no query
+    prefix) and a named sparse one `sparse` (BM25, computed locally by ragent2). ragent2 queried
+    both and fused them (RRF), with no rerank.
+  - **Sign-in.** The embedding service (`/v1/embed`) needs none. Qdrant needs the gateway's
+    `ole5_session` cookie, and signs in again on a 401.
+  - **The export.** The knowledge set was drafted from it: 126 chunks named by `chunk_id`, which
+    repeats across documents. It skipped chunks under 10 words.
+- 2026-11-06: Block 0 merged into `plan-006-integration` (9f5f5ec; bd426b4 to 479c4c8). Every
+  stub raises until its track fills it. M3's 197 session tests pass untouched in echo mode.
+  - **What it lays down:**
+    - the `ChatModel` and `KnowledgeBase` ports;
+    - the tools and their runner;
+    - the talker's shapes and events, and the guard's rule B;
+    - `VoiceAgent`'s `instructions`, `tools`, `vocabulary` and `version`;
+    - the `llm` and `guard` settings and `words.vocabulary`;
+    - `t2v/1`'s `card`, and the session's seams;
+    - `GroqChat`'s shell;
+    - the fakes' and `TextCall`'s signatures, with `FakeKnowledgeBase` built;
+    - the Ole5 app's knowledge base settings.
+  - **Its choices:**
+    - `session.mode` is unset by default and follows the declaration; an explicit `echo` keeps its
+      meaning.
+    - The tool's barge-in field is `on_interrupt`, the design's name.
+    - As the layers require: `render_prompt` is a function in `agent/`, the history's models live
+      in `core/conversation.py`, and `domain` holds a `DeclaredTool` protocol.
+  - **The review** (one reviewer, one skeptic a finding). Two findings stood, fixed in 70f2446:
+    - The talker had no clock. The call's `Clock` moved to `core/clock.py` and goes to
+      `ChatTalker` and `ToolRunner.run`.
+    - A `TextCall` turn gave assertions but not its data. Read-only data stubs were added, with
+      `clock="system"` for run K.
+    - A third finding was refuted: the blocked clause needs no new phrase, since the presets'
+      `error` notice is declared and cached.
+  - **What is left** is TD-113 or in the tracks' briefs.
+- 2026-11-06: The knowledge set, drafted for the owner's review, merged (a2d09d3, from 0e0259b).
+  - **The items.** 64 in all: the 28 recorded requests with their splits, and 36 new ones split
+    by the golden set's rule (salt `plan-006-2026-11-06`).
+
+    | Split | Items | Variants | Answerable | `none` | Small talk | Out of scope |
+    | --- | --- | --- | --- | --- | --- | --- |
+    | dev | 42 | 124 | 32 | 6 | 2 | 2 |
+    | held-out | 22 | 65 | 16 | 4 | 1 | 1 |
+
+  - **Coverage.** At least 6 answerable dev items per language, by first variant alone. The items
+    point at 93 of the export's 126 chunks.
+  - **Its source.** It was drafted from the prototype's export, because the live points could not
+    be read before the owner set the access. `points.toml` lists the export's chunks, and the
+    validator runs in `poe check`.
+  - **Its review** found nothing that breaks. Its debt is TD-114, and two points went to the owner
+    (Q12, Q13).
+  - **The gate** after both merges (a2d09d3): `TOTAL 13306 0 100%`, `4085 passed, 1 skipped, 1
+    warning in 431.77s`.
+- 2026-11-06: The spike's knowledge base part, from the laptop, alone on the machine, with the
+  owner's access read from `.env` by the environment only, nothing of it printed. One kept-open
+  client served T2's gateway, Qdrant and the embedding service.
+  - **Sign-in.** One form post, 0.44 s; the gateway set `ole5_session`.
+  - **The collection.** `default` holds 4,422 points, 128 of them Ole5's (`group_id = "ole5"`).
+    Vectors: `dense` (1024, cosine) and `sparse` (`idf`); indexes on `group_id`,
+    `metadata.document_name`, `metadata.file_hash`, `metadata.page_number` and
+    `metadata.identifier_digit`; built per tenant only (`m = 0`, `payload_m = 16`).
+  - **The snapshot.** All 128 points with their payload (no vectors) went to
+    `var/kb/ole5-points.jsonl`, outside git (Q4). The 126 chunks of `points.toml` are all live.
+    The two more are `features-001` and `procedures-001`, the short chunks the export skipped.
+  - **Times.** For 10 dev questions, one embedding and one search, each with the question's raw
+    words, gave these medians, with the 90th percentile in brackets: embedding 0.25 s (0.40),
+    search 0.06 s (0.09), both 0.32 s (0.47). The prototype's ragent2 took 17 to 45 s a search.
+    After 15 s idle, both took 0.34 s; after 65 s, 0.47 s.
+  - **Retrieval, as a smoke only** (run K measures it from the talker's own query): an expected
+    point in the top 5 for 8 of the 10. The scores sit close together, 0.50 to 0.74, so no cutoff
+    by score is proposed.
 
 ## Decision log
 
@@ -257,6 +362,16 @@ runs"; in this order, each with its smoke first)
   repeatable, cost less, and cover the rehearsal's steps one by one (Q3).
 - 2026-11-06: The candidate models are Groq's production chat models of that day, not its
   preview ones, which may change or go without notice.
+- 2026-11-06: No varying first prompt line (the prototype's D9 cure): the spike saw no slow cache
+  path, and the varying line removed every cache hit, which halves the price of the input cached.
+- 2026-11-06: The knowledge base adapter sends a plain dense search (the `dense` vector with the
+  tenant's filter), not ragent2's hybrid one, whose BM25 query vector is computed by a package the
+  library does not have (Q4: no new package). Run K's retrieval measures what that costs; if
+  retrieval misses its target, a sparse query is the first amendment to propose.
+- 2026-11-06: The knowledge base's settings carry the owner's general names, so a second team
+  reaching T2's service needs no renaming.
+- 2026-11-06: The Whisper prompt from the vocabulary reaches the live session only if run W keeps
+  W1 (GP-18), so no track wires `voice/stt_bridge.py` before then.
 
 ## The owner's decisions
 
@@ -267,6 +382,9 @@ runs"; in this order, each with its smoke first)
   to be seamless and flexible a true implementation of approach 3."
 - 2026-11-06, to "Approve plan 006 with the recommended answers to Q1–Q10?": "Approve all". So
   Q1 to Q9 are settled as (a) and Q10's cap of $5 holds.
+- 2026-11-06, on the knowledge base's setting names, after the agent proposed Ole5-prefixed
+  ones: "I have setted them as: QDRANT_URL= QDRANT_LOGIN_EMAIL= QDRANT_LOGIN_PASSWORD= ... Ole5
+  naming is not general enough."
 
 ## Tracks
 
@@ -391,7 +509,9 @@ embedding, the search and a second request, about 0.8 to 1.2 s. The prototype me
 
 ## The owner's questions
 
-All settled on 2026-11-06 ("Approve all").
+Q1 to Q10 settled on 2026-11-06 ("Approve all"). Q11 to Q14, from the spike, Block 0 and the
+knowledge set's review, asked on 2026-11-06 before any registered run; an answer that changes a
+run is a dated amendment to the registration.
 
 - **Q1. What voice-first means here.** *Settled: (a).* The eight choices above. Options: (a) approve them; (b)
   change some. **The agent recommends (a).**
@@ -432,11 +552,32 @@ All settled on 2026-11-06 ("Approve all").
   (b) English calls only, from the start. **The agent recommends (a).**
 - **Q10. The spend.** *Settled: yes.* A cap of $5 for M4's runs (about $3 expected; M3 spent $0.46 of its $5).
   **The agent recommends it.**
+- **Q11. Run K's arm K2.** *Open.* In the spike, llama-3.3-70b failed 6 of 10 tool calls in
+  Groq's own parser and put Chinese characters into some Saudi replies, and Groq now sells both
+  Llama models on contact only. Options: (a) drop K2, so K compares K1 and K3 (about $0.50 less);
+  (b) keep K2 as registered. **The agent recommends (a).** Run U's U1 (llama-3.1-8b, no tools, a
+  one-word verdict) stays either way.
+- **Q12. Run T's reply with no search.** *Open.* All 28 recorded requests need a search (26
+  answerable, 2 `none`), so the target "a reply with no search" has no data unless the talker
+  wrongly skips one. Options: (a) T replays the same recordings once more with the knowledge tool
+  left out of the agent, so every reply takes the path with no search, and only its time is read
+  (about $0.25); (b) the owner records 6 to 8 short turns (a greeting, thanks, "who are you"),
+  about 10 minutes; (c) the target leaves T. **The agent recommends (a).**
+- **Q13. The `none` items.** *Open.* Dev holds 6 and held-out 4, so "at least 90% honest" fails on
+  one miss on dev. Options: (a) the agent writes 6 more `none` items before the owner's review,
+  split by the set's rule; (b) keep 6, so the target needs all of them. **The agent recommends
+  (a).**
+- **Q14. Where the knowledge base adapter lives.** *Open.* The design keeps it in the Ole5 app
+  until a second team needs it (its 6.3); T2's gateway and Qdrant serve every team, and the owner
+  named its settings generally. Options: (a) the library, reached from the design's `knowledge`
+  facade (5.1, with `knowledge_tool`), configured by the app with its address, account and tenant;
+  (b) the Ole5 app, as the design says. **The agent recommends (a).** A new facade gets a decision
+  entry, as D-032's did.
 
 ## What the owner does
 
-- Answer Q1 to Q10, and approve the plan.
-- Copy the knowledge base's access into `.env` under Block 0's names (Q4).
+- Answer Q1 to Q10, and approve the plan (done 2026-11-06); answer Q11 to Q14.
+- Copy the knowledge base's access into `.env` (Q4; done 2026-11-06, under the owner's names).
 - Review the knowledge set's items (Q5, about 40 minutes), and check 24 judged answers (Q6, about
   20 minutes).
 - Listen to ten replies of run T for clipped first syllables (about 5 minutes).
