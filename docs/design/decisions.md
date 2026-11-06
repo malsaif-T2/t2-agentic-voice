@@ -1855,15 +1855,15 @@ twice; DOC-REF: every `D-NNN` cited anywhere is a heading here), so keep its sha
 - **Consequences:** in M3's echo no task runs inside a scope: a reply's work is its speech and
   its text-to-speech requests, which the stop path drops, so the first tasks a scope holds are
   M4's talker's. A turn whose reply a stop cut before any clause played whole is marked in the
-  heard history (D-064), so the agent-led mode can roll it back. The design's 3.1 and the
-  roadmap's M3 still say "per turn".
+  heard history (D-064), so the agent-led mode can roll it back. The design's 1.2 and 3.1, which
+  said "per turn", say "per reply" since plan 005's close.
 - **Evidence:** the tests `tests/t2_agentic_voice/voice/session/test_scope.py` (a slow model
   stream and a slow lookup cancelled within the bound on the fake clock, no task left, work
   outside the scope going on), `tests/t2_agentic_voice/voice/session/test_overlap_stop.py` (the
   same through the session, by the rule's stop and by the caller's own), and plan 005's step 9,
   `tests/t2_agentic_voice/test_loopback_interruptions.py` (plan 005's progress log, 2026-11-04).
 
-## D-061 · The two-step interruption, its settings and its rule · 2026-11-03 · Accepted (the owner, 2026-11-03, approving plan 005 and its Q3 and Q4; `interruptions.mode` stays `drop` by default until the registered runs move it; two bullets Proposed)
+## D-061 · The two-step interruption, its settings and its rule · 2026-11-03 · Accepted (the owner, 2026-11-03, approving plan 005 and its Q3 and Q4; `interruptions.mode` defaults to `two_step` by the owner's ruling of 2026-11-06, D-068; two bullets Proposed)
 
 - **Context:** Groq's Whisper transcribes a finished clip, with no partial transcripts (D-004),
   so the caller's speech over a reply cannot be read word by word as it comes. The design's 3.1
@@ -1904,13 +1904,16 @@ twice; DOC-REF: every `D-NNN` cited anywhere is a heading here), so keep its sha
     `short_words` (2) words under `short_s` (1.6 s) of speech, none a stop, wait, repeat or no
     word, asking no question: go on (Q4, (a)); (7) at least `min_words` (2) real words, a
     listening sound counting as none: stop, a correction when the first is a no word; fewer:
-    go on.
-  - **Settings.** The `interruptions` group: `mode` (`drop`, M2's rule, by default, or
-    `two_step`), `duck_level` (0.25, the prototype's), `first_window_ms` (750), `min_words` (2),
-    `short_words` (2), `short_s` (1.6) and `own_words_s` (5.0). The `words` group adds a team's
-    words to each language's lists (D-062). `mode` defaults to `two_step`, in a commit of its
-    own, only once the registered targets hold on held-out and on M2's call recordings (plan
-    005's H3 and C3); a target that fails goes to the owner with its numbers (GP-18).
+    go on. Its one registered revision (D-068) added a spelling to step 2's mishearings and one
+    to the Arabic listening sounds, and moved `short_s` to 1.2 s.
+  - **Settings.** The `interruptions` group: `mode` (`two_step` or `drop`, M2's rule),
+    `duck_level` (0.25, the prototype's), `first_window_ms` (750), `min_words` (2),
+    `short_words` (2), `short_s` (1.2 since the revision; 1.6 as registered) and `own_words_s`
+    (5.0). The `words` group adds a team's words to each language's lists (D-062). As
+    registered, `mode` was to default to `two_step`, in a commit of its own, only once the
+    registered targets held on held-out and on M2's call recordings (plan 005's H3 and C3), a
+    target that failed going to the owner with its numbers (GP-18). Two failed on held-out, and
+    the owner ruled for `two_step` as the default all the same (afb6864; D-068).
   - **Proposed** (the agent's amendments of the registered rule, each dated and made before any
     result; plan 005's registration has them, (1) to (7)):
     - Step 2 goes on, as the agent's own words, when each stop or wait word heard is exactly a
@@ -1950,11 +1953,11 @@ twice; DOC-REF: every `D-NNN` cited anywhere is a heading here), so keep its sha
     overlap that went on; and a rule that raises (a bug) decides its overlap as going on, logged
     by its kind with no text, so its `unduck` follows.
 - **Consequences:** under `drop`, M2's session scenes give the same commands as before (GP-18):
-  a turn over a reply is still not answered, and `two_step` is a team's to turn on until the
-  default moves. The Stop button and Esc stop the agent at once under either mode. The design's
-  7.6 gives `mode` `two_step` as its default and lists none of the keys beyond `min_words`; its
-  6.6 gives `Interrupted`'s kinds without its `reason`. M4's talker takes over what an
-  interruption means beyond the fast stop (the roadmap's M4, "From M3").
+  a turn over a reply is still not answered; `two_step` is the default since 2026-11-06, and
+  `drop` a team's to choose. The Stop button and Esc stop the agent at once under either mode.
+  The design's 7.6 lists these keys, and its 6.6 `Interrupted`'s `reason`, since plan 005's
+  close. M4's talker takes over what an interruption means beyond the fast stop (the roadmap's
+  M4, "From M3").
 - **Evidence:** the owner's answers of 2026-11-03 to plan 005's Q1 to Q7: "Go with your
   recommendation for Q1, Q2, Q3, Q4, Q5 and Q7." The tests:
   `tests/t2_agentic_voice/domain/test_interruptions.py`, `test_interruptions_echo.py` and
@@ -2003,10 +2006,10 @@ twice; DOC-REF: every `D-NNN` cited anywhere is a heading here), so keep its sha
       rule's form when compared, never refused for their spelling. The spellings only Whisper
       writes for the stop word (`domain/interruption_words.py`) sit outside the lists and count
       only as a whole short utterance.
-- **Consequences:** the design's 3.1 gives the presets yes and send words, which wait for M5,
-  and no `wait` list; its 7.6's `words` group lists `stop`, `backchannel`, `yes`, `no`, `send`
-  and `vocabulary`, where M3 builds `stop`, `wait`, `repeat`, `backchannel` and `no`. Ole5's app
-  sets no additions so far: the presets hold the prototype's words. M4's plan weighs keeping
+- **Consequences:** the design's 3.1, 3.3 and 7.6 gave the presets and the `words` group yes and
+  send words, which wait for M5, and no `wait` list (3.3 and 7.6 no `repeat` list either); since
+  plan 005's close they name the five lists M3 builds. Ole5's app sets no additions so far: the presets hold the
+  prototype's words. M4's plan weighs keeping
   the talker's fixed lines free of these words (D-050).
 - **Evidence:** the owner's answer of 2026-11-03 (plan 005's "The owner's decisions"). The
   tests: `tests/t2_agentic_voice/domain/test_words.py` (the lists in the rule's form, each word
@@ -2031,11 +2034,15 @@ twice; DOC-REF: every `D-NNN` cited anywhere is a heading here), so keep its sha
   speech variants, with no request spent. So the defaults moved in a commit of their own
   (2b901fd; GP-18): `stt.no_speech_max` 0.5 and `stt.caption_filter` on. A turn so heard is said
   back as nothing, and an overlap so heard goes on (the rule's step 1, D-061). Beside it, a
-  clause with no letter or digit is never sent to text-to-speech (TD-060).
+  clause with no letter or digit is never sent to text-to-speech (TD-060). The rule's one
+  registered revision moved the threshold to 0.55, F's keep rule still holding there (6 of the
+  9 and none of the 222, on R1 and R3), after a window holding a stop word had been blanked at
+  0.523 (D-068).
 - **Consequences:** a caption matches only whole, so a request that holds a caption's words is
   never blanked by the list. `stt.no_speech_max` unset turns the threshold off, and
   `stt.caption_filter = false` the list. The scorers' own measure of text from silence
-  (`silence_output`, D-022) is unchanged. The design's 7.6 lists neither key.
+  (`silence_output`, D-022) is unchanged. The design's 7.6 lists both keys since plan 005's
+  close.
 - **Evidence:** plan 005's progress log, 2026-11-04 and 05 (F, on R1's and R3's stored
   scorecards). The tests: `tests/t2_agentic_voice/domain/test_silence.py` and
   `tests/t2_agentic_voice/voice/session/test_turn_filter.py`.
@@ -2109,8 +2116,8 @@ twice; DOC-REF: every `D-NNN` cited anywhere is a heading here), so keep its sha
   a caption's `cut`; a client of `t2v/1` that ignores them still works, at full volume and with
   plain captions. The voice is lowered at the detector's onset, about 0.34 s into the speech
   (D-034's spike); the prototype found lowering better than pausing for what Whisper hears
-  (`Ole5-chatbot/VOICE_LOG.md`, D53). The design's 5.5 gives neither `duck`'s level nor the
-  `cut` mark.
+  (`Ole5-chatbot/VOICE_LOG.md`, D53). The design's 5.5 gives `duck`'s level and the `cut` mark
+  since plan 005's close.
 - **Evidence:** the owner's approval of the design, 2026-11-01 (D-017, D-018). The tests:
   `tests/t2_agentic_voice/voice/test_protocol.py`, `tests/t2_agentic_voice/test_protocol_list.py`,
   `tests/t2_agentic_voice/test_browser_interruptions.py` and `tests/ole5_voice/test_widget.py`,
@@ -2143,7 +2150,7 @@ twice; DOC-REF: every `D-NNN` cited anywhere is a heading here), so keep its sha
   their scorecards under the main checkout's `var/runs/`, and plan 005's progress log, 2026-11-04
   and 05.
 
-## D-067 · A hold after Smart Turn's "complete", 600 ms by the owner's ruling, its default pending held-out · 2026-11-05 · Accepted (the owner, 2026-11-05, over plan 005's E; `turns.complete_hold_ms` stays 0 by default until held-out E confirms it)
+## D-067 · A hold after Smart Turn's "complete", 600 ms by the owner's ruling, the default once held-out confirmed it · 2026-11-05 · Accepted (the owner, 2026-11-05, over plan 005's E; `turns.complete_hold_ms` 600 by default since held-out E confirmed it the same day)
 
 - **Context:** M2's end-of-turn baseline (E1, plan 005's progress log, 2026-11-04): with the
   default turn settings, Smart Turn cut 22 of the 23 dev paused requests, scoring the owner's
@@ -2157,8 +2164,9 @@ twice; DOC-REF: every `D-NNN` cited anywhere is a heading here), so keep its sha
   speech resumes, the threshold staying 0.5; of several arms that pass, the one with the
   smaller median delay; held-out confirms by its aggregates before a default moves.
 - **Decision:**
-  - A new `turns` key, `complete_hold_ms` (0 by default, at most 1000): a turn Smart Turn judged
-    finished ends only once the hold has passed with no speech; speech that resumes within it,
+  - A new `turns` key, `complete_hold_ms` (at most 1000; 600 by default since held-out E, below):
+    a turn Smart Turn judged finished ends only once the hold has passed with no speech; speech
+    that resumes within it,
     as the speech detector hears it start, cancels the end, and Smart Turn judges again at the
     next pause, hearing the whole turn. It acts on the turn's end alone: the detector's 200 ms
     stop, which an overlap's decision waits on (D-061), is never delayed, and the silence
@@ -2174,18 +2182,99 @@ twice; DOC-REF: every `D-NNN` cited anywhere is a heading here), so keep its sha
     arm kept, by the owner's ruling over E's tie-break and over its 600 ms bound as read
     against E0's second run (+652 ms on its one timed variant; +466 to +600 ms read on every
     variant's first turn end at or after the owner's mark).
-  - `turns.complete_hold_ms` becomes 600 by default, in a commit of its own, only once held-out
-    E confirms Ec by its aggregates (no more cut-offs than E0's); if it does not, the default
-    stays 0 and the numbers go to the owner. Until then an app sets it itself.
+  - `turns.complete_hold_ms` was to become 600 by default, in a commit of its own, only once
+    held-out E confirmed Ec by its aggregates (no more cut-offs than E0's). It did, the same
+    day: on held-out's 28 paused variants of 10 items, E0 cut 27 and Ec 5, with no miss in
+    either, Ec's delay a median of 933 ms (1,005 at the 90th percentile). So the default moved
+    to 600 (8f1d762, merged as 35a82a0).
 - **Consequences:** with the hold, every turn ends about that much later, and the echo (M4's
   answer) after it; a stop over the agent is not slowed. The hold rests on Pipecat 1.15.0's
   private paths (`voice/turn_hold.py` names them), which tests drive through the real strategy,
   and a Pipecat upgrade checks them. `turns.smart_turn_threshold` (0.5, Smart Turn's own) is a
   key too, with no arm moving it. E0's first run's Smart Turn decisions took about 220 ms
   against about 60 in its second, cause unknown. Smart Turn fine-tuned on the owner's turns
-  stays in the roadmap's "Planned later". The design's 7.6 lists neither key.
-- **Evidence:** the history lines of E0 (twice), Ea, Eb and Ec
+  stays in the roadmap's "Planned later". The design's 7.6 lists both keys since plan 005's
+  close.
+- **Evidence:** the history lines of E0 (twice), Ea, Eb and Ec, and of held-out E0 and Ec
   (`apps/ole5-voice-agent/evals/history.jsonl`), plan 005's progress log, 2026-11-04 and 05, and
   the owner's words in its "The owner's decisions". The tests:
   `tests/t2_agentic_voice/voice/test_turn_hold.py`, `tests/t2_agentic_voice/voice/test_turns.py`
   and `tests/ole5_voice/evals/test_eot.py`.
+
+## D-068 · The registered results of the two-step interruption, and `two_step` the default at a plateau · 2026-11-06 · Accepted (the registered measurement and the owner's ruling, plan 005)
+
+- **Context:** plan 005 registered, before any result, the targets of the two-step interruption
+  (D-061; the owner's Q3, 2026-11-03), each to hold on O1's dev variants, on H3's held-out
+  aggregates and on C3, M2's call recordings imported as golden items; O2, O1 again at the same
+  commit, measured the noise. The arm: the replay (`AudioCall`, the `evals` facade) at real-time
+  pace with the real `GroqSTT` (`whisper-large-v3`, the item's label as the language), a fake
+  text-to-speech whose reply outlasts the clip, the clip 1 s into the reply, under
+  `interruptions.mode = "two_step"`. The rule could be revised once after O1 and O2, as a dated
+  amendment scored offline on their stored transcripts, before H3; a target still failing then
+  went to the owner with its numbers, and `mode` was to default to `two_step` only once every
+  target held.
+- **Decision** (the measured numbers, one speaker, the owner: D-006):
+  - **O1 and O2** (dev, at 35a82a0, O2 begun 62 minutes after O1 ended): 163 variants of 62
+    items each, 128 right in both, no failed request, every variant on its first attempt; 324
+    and 323 Whisper requests, $0.0999 and $0.0996. The noise: none of the 163 verdicts differs,
+    and the marked stops' median moved from 393 ms to 435 ms.
+  - **The revision** (amendment (10), registered after O1 and O2 and before its score; 8c44503,
+    merged as 1d1cc97): `stt.no_speech_max` 0.5 to 0.55, F's keep rule still holding there
+    (D-063); «وكيف» added to the stop word's mishearings and «كامل» to the Arabic listening
+    sounds, each a spelling Whisper wrote for the owner's word; `interruptions.short_s` 1.6 to
+    1.2 s. Scored on O1's and O2's stored transcripts, two verdicts changed in each run, both from
+    wrong to right: 130 of 163 right. The new bound decided no verdict, since the rule times the
+    session's speech, 0.79 to 0.97 s for the request it aimed at (the progress log's
+    `Deviation:` line). Not revised, as no list or bound reads them without fitting a single
+    take: «وانجح» and «حلو» for stop words, «اه» and «مشكلت» for repeat requests.
+  - **H3** (held-out, once, aggregates only, at 1d1cc97; $0.0330): 62 variants of 24 items, 47
+    right, no failed request. No variant that should let the reply go on stopped it (0 of 26),
+    and 25 of the 36 that should stop it did.
+  - **The targets,** on dev (O1 and O2, then the revision scored on them) and on held-out (H3):
+    - Whisper requests per interruption, at most 2: **held** (a mean of 1.955 on dev and 1.926
+      on held-out, in code at most 2).
+    - From the end of the stop word to silence, on the marked stops, a median of at most 700 ms,
+      a 90th percentile of at most 1,000 and none over 1,500: **held**. Dev's 11 marked stops: a
+      median of 393 and 435 ms, a 90th percentile of 425 and 639, at most 494 and 751; held-out:
+      486, 542 and 556.
+    - Every «وقف» at normal volume stops the agent: **failed** on dev, 4 of 6 (Whisper wrote
+      «وانجح» and «وكيف» on the laptop), 5 of 6 after the revision; not readable from
+      held-out's aggregates.
+    - At least 90% of the stop and pause words stop it: **held on dev** after the revision (34 of
+      39, 87.2%, then 36 of 39, 92.3%); **failed on held-out**, 10 of 18 (55.6%).
+    - At least 90% of the requests over a reply stop it: **failed** on dev, 60 of 74 (81.1%:
+      every request and correction, 2 of 7 short requests, and 11 of 19 repeat requests, none
+      of them repeated), unchanged by the revision; and on held-out, 15 of 18 (83.3%).
+    - At most 10% of the listening sounds stop it: **failed on dev**, 5 of 38 (13.2%), unchanged
+      by the revision; **held on held-out**, 0 of 19.
+    - No echo, silence or noise variant stops it: **held** (0 of 12 on dev; none on held-out).
+    - Nor the agent's own words, where their text is known: **not measured**, no such variant
+      having opened an overlap in any run.
+    - C3: the three dev call items were right in O1 and O2; the held-out one is read only in
+      its group's aggregate.
+  - Every stop word and listening sound opened an overlap, so the speech detector's miss of a
+    short word (TD-092) was not seen. The paid runs spent $0.4570 by H3, of the $5 cap (Q7).
+  - **The owner's ruling,** asked after H3 whether to make the two-step interruption the default
+    and close at a plateau after the live calls, or keep it off and revise again on fresh
+    recordings, 2026-11-06: "Yes make it the default and close. We might test other STT
+    providers later and see if it any different, but this for another time and not in this
+    milestone. Lets do the calls and Finnish M3". So `interruptions.mode` defaults to
+    `two_step` (afb6864, merged as f9500be), the targets that failed accepted, and M3 closes at
+    a plateau (evaluation.md, "Closing at a plateau"). The live calls passed the same day: "It
+    is good, Everything works as intended", the owner's one complaint being Whisper's
+    mishearing of short Arabic words.
+- **Consequences:** a caller can stop the agent, or ask it to repeat, by speaking over it, and on
+  held-out it never stopped when it should have gone on; what it misses, Whisper misheard: short
+  command words, Saudi and MSA, and repeat requests seldom read as repeats. The Stop button and
+  Esc stay the sure stop, and `drop` keeps the half-duplex call for a team that wants it. Every
+  number describes one speaker on Ole5's golden set; a team measures its own callers with
+  `AudioCall`. The owner, 2026-11-06, on what comes next: "The thing is that we don't really
+  want to rely on "five or six command words" to interact with the system, our next step should
+  be understanding the user request flexibly, but I think this is out of M3 scope." Plan 005's
+  Future improvements put that first, then what would let the word rule, the fast path, hear
+  short command words better.
+- **Evidence:** the history lines of O1, O2 and H3 (3dbab64, 614ef41 and dc27b79, in
+  `apps/ole5-voice-agent/evals/history.jsonl`), their scorecards under the main checkout's
+  `var/runs/`, plan 005's progress log (2026-11-05 and 06) and its "The owner's decisions". The
+  tests: `tests/ole5_voice/evals/test_overlap.py` (the `reference` answerer scores every committed
+  overlap right at 0 ms, inside `poe check`) and `tests/ole5_voice/evals/test_overlap_score.py`.
