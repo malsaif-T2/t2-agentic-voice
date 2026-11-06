@@ -82,7 +82,7 @@ Interruptions: how the caller's speech over the agent's reply is taken, and the 
 
 | Variable | Type | Default | Unit | Description |
 | --- | --- | --- | --- | --- |
-| `T2V_INTERRUPTIONS__MODE` | one of drop, two_step | `drop` | — | How the caller's speech over the agent's reply is taken: drop (the turn is not answered, so the agent never answers its own voice) or two_step (the agent's voice is lowered, the speech transcribed, and the agent stops only when the rule says so). A registered measurement moves the default (GP-18). |
+| `T2V_INTERRUPTIONS__MODE` | one of drop, two_step | `two_step` | — | How the caller's speech over the agent's reply is taken: two_step, the default by the owner's ruling (plan 005), lowers the agent's voice, transcribes the speech, and stops the agent only when the rule says so; drop keeps the half-duplex behaviour from before plan 005 (the turn is not answered, so the agent never answers its own voice). |
 | `T2V_INTERRUPTIONS__DUCK_LEVEL` | number | `0.25` | — | How loud the agent's reply plays while the caller speaks over it, until the speech is judged, from 0 (silent) to 1 (unchanged). |
 | `T2V_INTERRUPTIONS__FIRST_WINDOW_MS` | integer | `750` | milliseconds | The first part of the speech over a reply sent to speech-to-text before the caller has finished, counted from 300 ms before the speech detector heard it begin. |
 | `T2V_INTERRUPTIONS__MIN_WORDS` | integer | `2` | words | The fewest words over a reply that stop the agent when none is a listed word. |
