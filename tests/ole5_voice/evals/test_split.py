@@ -12,7 +12,7 @@ from pathlib import Path
 import pytest
 from ole5_voice.evals import split
 from ole5_voice.evals.items import EVALS, GoldenSetError, load_items
-from ole5_voice.evals.models import Item, Language, SplitFile
+from ole5_voice.evals.models import Item, Language, Split, SplitFile
 from ole5_voice.evals.split import DEFAULT_SALT, load_split, place_new, split_items
 from ole5_voice.evals.toml_write import dump_item
 
@@ -152,3 +152,46 @@ def test_the_committed_split_is_fresh_and_covers_every_item() -> None:
     assert set(committed.items) == {item.id for item in items}
     held_out = len(_held(committed.items))
     assert 0.27 <= held_out / len(items) <= 0.33
+
+
+def _knowledge(folder: Path, sides: Mapping[str, Split]) -> None:
+    """Made-up knowledge items under `folder`, each on the side `sides` gives."""
+    folder.mkdir(parents=True, exist_ok=True)
+    for name, side in sides.items():
+        language = "msa" if name.endswith("m") else "saudi"
+        (folder / f"{name}.toml").write_text(
+            f'id = "{name}"\nsplit = "{side}"\nkind = "none"\nneeds_search = true\n'
+            'key_facts = ["says so", "invents none"]\nnotes = "a made-up item"\n'
+            f'[[variants]]\nlanguage = "{language}"\ntext = "{name} one"\n'
+            f'[[variants]]\nlanguage = "english"\ntext = "{name} two"\n',
+            encoding="utf-8",
+        )
+
+
+def test_the_knowledge_sets_split_is_only_kept(tmp_path: Path) -> None:
+    """`--knowledge` keeps the knowledge set's committed split: an item added is placed by
+    `place_new` with the committed salt, every earlier item keeping its side, and `--check
+    --keep` fails until it is written; the split is never written whole."""
+    evals = tmp_path / "evals"
+    folder = evals / "knowledge"
+    old: dict[str, Split] = {f"q{n:02}_old": "held-out" if n < 3 else "dev" for n in range(10)}
+    _knowledge(folder, old)
+    command = ["--evals", str(evals), "--knowledge"]
+    assert split.main([*command, "--keep"]) == 1  # nothing committed to keep
+    committed = SplitFile(salt="made-up", items=old)
+    (folder / "split.json").write_text(split.dump_split(committed), encoding="utf-8")
+    assert split.main([*command, "--check", "--keep"]) == 0
+    new: dict[str, Split] = {f"q{n:02}_newm": "dev" for n in range(10, 14)}
+    _knowledge(folder, new)
+    assert split.main([*command, "--check", "--keep"]) == 1
+    assert split.main([*command, "--keep"]) == 0
+    kept = load_split(folder / "split.json")
+    assert kept.salt == "made-up"
+    assert {name: kept.items[name] for name in old} == old  # no earlier item moved
+    placed = {name: kept.items[name] for name in new}
+    assert sorted(placed.values()) == ["dev", "dev", "dev", "held-out"]  # 30% of the four
+    assert split.main([*command, "--check", "--keep"]) == 0
+    for refused in ([*command], [*command, "--check"]):
+        with pytest.raises(SystemExit) as stopped:
+            split.main(refused)
+        assert stopped.value.code == 2

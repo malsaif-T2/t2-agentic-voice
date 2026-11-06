@@ -9,8 +9,11 @@ and their language), the points that answer it (an `answerable` item's only), tw
 facts an answer must hold (for the other kinds, what the agent does instead) and notes on what
 it tests. The golden set's recorded requests `n01` to `n28` are items here under their own IDs
 and splits, their first variant the words recorded, so their recordings serve the time to first
-audio; every other item is split by the golden set's rule (`split.split_items`) with this set's
-salt. `problems` lists each rule the committed set breaks, and
+audio; every other item was split by the golden set's rule (`split.split_items`) with this set's
+salt. The sides are kept (TD-114's keep path): `knowledge/split.json` names every item's, the
+first 64 as drafted, and an item added later is placed by the golden set's `split.place_new`
+with that file's salt, so no item placed before moves (`python -m ole5_voice.evals.split
+--knowledge --keep` writes it). `problems` lists each rule the committed set breaks, and
 tests/ole5_voice/evals/test_knowledge_set.py holds it to none inside `poe check`.
 """
 
@@ -33,12 +36,14 @@ from ole5_voice.evals.items import (
     read_toml,
 )
 from ole5_voice.evals.models import Item, Model, Name, Split, SplitFile
-from ole5_voice.evals.split import load_split, split_items
+from ole5_voice.evals.split import KNOWLEDGE_KEEP_COMMAND, load_split, place_new, split_items
 
 KNOWLEDGE_DIR: Final = "knowledge"
 POINTS_FILE: Final = "points.toml"
 # The salt of the split of the items the golden set does not hold (`split.split_items`).
 SALT: Final = "plan-006-2026-11-06"
+# The committed split that keeps every item's side, beside the items.
+KEPT_FILE: Final = f"{KNOWLEDGE_DIR}/{SPLIT_FILE}"
 # The fewest answerable dev items with a variant in each language: the smallest change one run
 # can detect by the sign test on items (D-024).
 DEV_FLOOR: Final = 6
@@ -181,6 +186,7 @@ def problems(evals: Path) -> list[str]:
         load_items(evals / GOLDEN_DIR),
         load_split(evals / SPLIT_FILE),
         read_toml(folder / STRATA_FILE, KnowledgeStrata),
+        kept=load_split(evals / KEPT_FILE),
     )
 
 
@@ -192,17 +198,19 @@ def check(
     strata: KnowledgeStrata,
     *,
     floor: int = DEV_FLOOR,
+    kept: SplitFile | None = None,
 ) -> list[str]:
     """Every rule the items break: the points, the recorded requests, each item's kind, the
-    split, the floor (the fewest answerable dev items with a variant in each language) and the
-    registered counts."""
+    split (each item's side `kept` when given, the committed split that keeps them, or else the
+    rule's on the items the golden set does not hold), the floor (the fewest answerable dev
+    items with a variant in each language) and the registered counts."""
     found = _point_problems(points)
     found += _recorded_problems(items, golden, split)
     known = {point.id for point in points.points}
     for item in items:
         found += [f"{item.id}: {problem}" for problem in _item_problems(item, known)]
     found += _twice(items)
-    found += _split_problems(items, golden)
+    found += _split_problems(items, golden) if kept is None else _kept_problems(items, kept)
     found += _floor_problems(items, floor)
     if count_knowledge(items) != strata:
         found.append(
@@ -296,6 +304,23 @@ def _split_problems(items: Sequence[KnowledgeItem], golden: Sequence[Item]) -> l
         for item in new
         if item.split != wanted[item.id]
     ]
+
+
+def _kept_problems(items: Sequence[KnowledgeItem], kept: SplitFile) -> list[str]:
+    """Every item has the side the committed split keeps, or, added since, the side
+    `place_new` gives it; and the committed split names each item, and no other."""
+    wanted = place_new(items, kept)
+    found = [f"{KEPT_FILE}: its salt is not the set's ({SALT})"] if kept.salt != SALT else []
+    found += [
+        f"{item.id}: split {item.split}, the keep rule gives {wanted[item.id]} ({KEPT_FILE})"
+        for item in items
+        if item.split != wanted[item.id]
+    ]
+    fix = f"FIX: run `{KNOWLEDGE_KEEP_COMMAND}` and commit it"
+    found += [f"{i.id}: not in {KEPT_FILE}; {fix}" for i in items if i.id not in kept.items]
+    named = {item.id for item in items}
+    found += [f"{i}: in {KEPT_FILE} but not an item; {fix}" for i in kept.items if i not in named]
+    return found
 
 
 def _floor_problems(items: Sequence[KnowledgeItem], floor: int) -> list[str]:

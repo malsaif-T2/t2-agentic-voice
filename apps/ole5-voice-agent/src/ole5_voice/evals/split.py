@@ -14,6 +14,12 @@ moves between dev and held-out once a run has read it; the new items alone are s
 themselves by the same rule, with the committed salt; and an item no longer in the set leaves
 the split. Once a split was written so, it is checked with `--check --keep`: every item has its
 committed side, and no other is named.
+
+The knowledge set (`knowledge_set.py`) keeps its own split the same way, with `--knowledge`:
+`knowledge/split.json` froze the sides of its first 64 items (TD-114's keep path), so an item
+added later is placed by `place_new` with that file's salt, and no item placed before moves. Its
+split was never written whole, the recorded requests' sides being the golden set's, so it is
+only kept (`--keep`) or checked (`--check --keep`).
 """
 
 from __future__ import annotations
@@ -37,7 +43,7 @@ from ole5_voice.evals.items import (
     read_json,
     write_text,
 )
-from ole5_voice.evals.models import Item, Split, SplitFile
+from ole5_voice.evals.models import Split, SplitFile
 
 log = get_logger(__name__)
 _DESCRIPTION = "Write the golden set's split, or check that the committed one is fresh."
@@ -47,6 +53,8 @@ HELD_OUT_TENTHS: Final = 3
 DEFAULT_SALT: Final = "plan-002-2026-11-01"
 # The command a FIX names once the split is committed: new items placed, none moved.
 KEEP_COMMAND: Final = "python -m ole5_voice.evals.split --keep"
+# The same for the knowledge set, whose split is only ever kept.
+KNOWLEDGE_KEEP_COMMAND: Final = f"{KEEP_COMMAND} --knowledge"
 
 
 class Stratified(Protocol):
@@ -88,7 +96,7 @@ def split_items(items: Sequence[Stratified], salt: str) -> dict[str, Split]:
     return dict(sorted(split.items()))
 
 
-def place_new(items: Sequence[Item], committed: SplitFile) -> dict[str, Split]:
+def place_new(items: Sequence[Stratified], committed: SplitFile) -> dict[str, Split]:
     """Each item's split, every committed item keeping its side and the others split among
     themselves (`split_items`, with the committed salt); an item no longer in the set left out."""
     kept = {item.id: committed.items[item.id] for item in items if item.id in committed.items}
@@ -109,19 +117,24 @@ def dump_split(split: SplitFile) -> str:
 
 def main(argv: Sequence[str] | None = None) -> int:
     """`python -m ole5_voice.evals.split`: write the split, or check the committed one
-    (`--check`); with `--keep`, every committed item keeping its side."""
+    (`--check`); with `--keep`, every committed item keeping its side; with `--knowledge`, the
+    knowledge set's, only kept."""
     parser = argparse.ArgumentParser(prog="split", description=_DESCRIPTION)
     parser.add_argument("--evals", type=Path, default=EVALS, help="the golden set's folder")
     parser.add_argument("--salt", help="a new salt (by default the committed split's is kept)")
     parser.add_argument("--check", action="store_true", help="only check the committed split")
     parser.add_argument("--keep", action="store_true", help="keep each committed item's side")
+    parser.add_argument(
+        "--knowledge", action="store_true", help="the knowledge set's split, which is only kept"
+    )
     args = parser.parse_args(argv)
     if (args.check or args.keep) and args.salt:
         parser.error("--check and --keep take the committed split, with its own salt")
+    if args.knowledge and not args.keep:
+        parser.error("the knowledge set's split is only kept: --keep, or --check --keep")
     configure_logging(loggers=LOGGERS)
-    path = args.evals / SPLIT_FILE
     try:
-        items = load_items(args.evals / GOLDEN_DIR)
+        path, items = _committed(args.evals, knowledge=args.knowledge)
         committed = load_split(path) if path.is_file() or args.check or args.keep else None
         salt = args.salt or (committed.salt if committed else DEFAULT_SALT)
         if not items:
@@ -134,13 +147,17 @@ def main(argv: Sequence[str] | None = None) -> int:
         log.error("split_not_made", problem=str(error))
         return 1
     if fresh is None:
-        log.error("split_not_made", problem="the golden set holds no item")
+        log.error("split_not_made", problem="the set holds no item")
         return 1
     if args.check and committed is not None:
         named = fresh.items.keys() | committed.items.keys()
         changed = sorted(i for i in named if fresh.items.get(i) != committed.items.get(i))
         if changed:
-            fix = "run `python -m ole5_voice.evals.split` (with --keep once kept) and commit it"
+            fix = (
+                f"run `{KNOWLEDGE_KEEP_COMMAND}` and commit it"
+                if args.knowledge
+                else "run `python -m ole5_voice.evals.split` (with --keep once kept) and commit it"
+            )
             log.error("split_stale", items=changed, fix=fix)
             return 1
         log.info("split_fresh", items=len(fresh.items))
@@ -149,6 +166,18 @@ def main(argv: Sequence[str] | None = None) -> int:
     held_out = sum(1 for s in fresh.items.values() if s == "held-out")
     log.info("split_written", items=len(fresh.items), held_out=held_out)
     return 0
+
+
+def _committed(evals: Path, *, knowledge: bool) -> tuple[Path, Sequence[Stratified]]:
+    """The committed split's file and the items it splits: the golden set's, or with
+    `knowledge` the knowledge set's, its split beside its items."""
+    if not knowledge:
+        return evals / SPLIT_FILE, load_items(evals / GOLDEN_DIR)
+    # Imported here: the knowledge set's module imports this one.
+    from ole5_voice.evals.knowledge_set import KNOWLEDGE_DIR, load_knowledge_items
+
+    folder = evals / KNOWLEDGE_DIR
+    return folder / SPLIT_FILE, load_knowledge_items(folder)
 
 
 if __name__ == "__main__":
