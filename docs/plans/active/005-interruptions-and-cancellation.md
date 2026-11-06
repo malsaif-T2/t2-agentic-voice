@@ -612,6 +612,13 @@ affects.
 
 What the owner has already said that binds M3:
 
+- 2026-11-06, to the agent's question after H3 (make the two-step interruption the default and
+  close M3 at a plateau after the live calls, or keep it off and revise again on fresh
+  recordings): "Yes make it the default and close. We might test other STT providers later and see
+  if it any different, but this for another time and not in this milestone. Lets do the calls and
+  Finnish M3". So `interruptions.mode` defaults to `two_step` with H3's two targets failed and
+  accepted, M3 closes at a plateau after the live calls (evaluation.md, "Closing at a plateau"),
+  and another speech-to-text provider is a later improvement, not M3's.
 - 2026-11-05, to the agent's question which hold after Smart Turn's "complete" should become the
   default, the registered tie-break keeping 300 ms while 39 of 51 paused requests stayed cut:
   "600 ms". So Ec is the arm kept, by the owner's ruling over E's tie-break and over its 600 ms
