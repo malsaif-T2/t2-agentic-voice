@@ -12,6 +12,8 @@ caller heard it, built from the `Conversation` the session hands with each turn
 - **The turn answered now** says, after its words, whether it was said over a reply and which
   reply it cut, each named by its number; a reply so named carries its number in its message,
   in a note the prompt tells the model is never its to write.
+- **A note the model copies** anyway, a reply's number or a cut clause's share, is taken out of
+  what it writes before the clause splitter (`Unnoted`), so it is never spoken; only those two.
 - **What only the talker knew** goes beside the heard history, in its place: the tool calls and
   results it kept of a past turn (agent/talker.py), after that turn's words, and the developer
   note of a clause the output guard held back from that turn's reply.
@@ -24,6 +26,7 @@ answered.
 
 from __future__ import annotations
 
+import re
 from collections.abc import Mapping, Sequence
 
 from t2_agentic_voice.agent.prompt import CUT_MARK
@@ -37,6 +40,46 @@ BLOCKED = (
     "Note: the output guard held back a sentence of the reply to this turn, unspoken: it gave "
     "an ID-shaped number that no tool result or caller's words held. Never say such a number."
 )
+# The notes `said` writes into the model's own messages: a reply's number, a cut clause's share
+# (CUT_MARK). `Unnoted` takes them, and only them, out of what the model writes.
+_NOTE = re.compile(r"\[(?:reply [0-9]+|cut: about [0-9]+% heard)\]")
+
+
+def _beginnings(literal: str) -> str:
+    """A pattern of every beginning of `literal`, the empty one included."""
+    pattern = ""
+    for character in reversed(literal):
+        pattern = f"(?:{re.escape(character)}{pattern})?"
+    return pattern
+
+
+# A text that may still grow into a note: the beginning of one, up to its closing bracket.
+_OPENING = re.compile(
+    rf"\[(?:{_beginnings('reply ')}|reply [0-9]+|{_beginnings('cut: about ')}"
+    rf"|cut: about [0-9]+{_beginnings('% heard')})"
+)
+
+
+class Unnoted:
+    """The model's text as it streams, the history's notes taken out (`_NOTE`): `feed` gives
+    each piece's text that holds none, holding back a tail that may begin one until it is whole
+    or cannot be one; `close`, at the text's end, gives what is held."""
+
+    def __init__(self) -> None:
+        self._held = ""
+
+    def feed(self, piece: str) -> str:
+        """`piece`, with what was held before it, its notes taken out, less the tail held."""
+        text = _NOTE.sub(" ", self._held + piece)
+        start = text.rfind("[")
+        opening = start >= 0 and _OPENING.fullmatch(text, start) is not None
+        self._held = text[start:] if opening else ""
+        return text[: len(text) - len(self._held)]
+
+    def close(self) -> str:
+        """What is held at the text's end, which never became a note."""
+        held, self._held = self._held, ""
+        return held
 
 
 def said(reply: SaidReply, *, named: bool = False) -> str | None:

@@ -7,6 +7,7 @@ order they came; a turn the drop rule dropped left out."""
 from __future__ import annotations
 
 from t2_agentic_voice.agent.context import WENT_ON, history, said, turn_message
+from t2_agentic_voice.agent.talker import SpokenClause
 from t2_agentic_voice.core.conversation import (
     Conversation,
     PastTurn,
@@ -134,3 +135,12 @@ def test_a_turn_joined_after_a_resumed_hold_reaches_the_model_as_one_turn() -> N
 def test_a_turn_said_alone_that_cut_a_heard_reply_names_it() -> None:
     turn = TalkerTurn(turn_id=1, words="another question", cut_reply=1, conversation=SO_FAR)
     assert turn_message(turn).content == "another question [it cut your reply 1]"
+
+
+def test_a_note_the_model_copies_from_its_history_is_never_spoken() -> None:
+    """The history's notes on the model's own replies are taken out of what it writes, however
+    its stream cuts them; other text in square brackets is said as written."""
+    pieces = ("[re", "ply 1] Open the portal. [cut: about ", "40% heard] Then press [re", "set].")
+    events = reply(talker(FakeChat(entry(*pieces))), TalkerTurn(turn_id=1, words="and then?"))
+    spoken = [event.text for event in events if isinstance(event, SpokenClause)]
+    assert spoken == ["Open the portal.", "Then press [reset]."]

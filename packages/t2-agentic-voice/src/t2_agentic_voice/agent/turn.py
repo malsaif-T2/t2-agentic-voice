@@ -7,7 +7,8 @@ turn and the call as it was heard to the events the session plays, within the re
   offers the agent's tools, the last none, so the turn ends in words; a tool call the last one
   makes anyway is not run.
 - **Speech as it is written.** The model's text goes through the clause splitter as it streams
-  (`ClauseStream`), and each whole clause, once the output guard's rule B passed it against the
+  (`ClauseStream`), any note of the history's it copied taken out first (agent/context.py's
+  `Unnoted`), and each whole clause, once the output guard's rule B passed it against the
   evidence seen this call (its tools' results, the caller's heard words), is yielded at once.
   A blocked one is `ClauseBlocked`, and by `guard.on_block` the rest of the reply goes with it
   (`drop_rest`: no more clause, request or tool) or only it; the next turn's history holds a
@@ -34,7 +35,7 @@ from typing import Any
 
 from t2_agentic_voice.actions.runner import ToolRunner
 from t2_agentic_voice.actions.tools import CallContext, ToolResult
-from t2_agentic_voice.agent.context import BLOCKED, history, turn_message
+from t2_agentic_voice.agent.context import BLOCKED, Unnoted, history, turn_message
 from t2_agentic_voice.agent.events import (
     ClauseBlocked,
     ModelReplied,
@@ -207,7 +208,7 @@ class Turn:
         """The clauses of the model's answer to `request`, as it streams; `answer` gathers the
         rest."""
         started = self.clock.now()
-        splitter = ClauseStream(max_chars=None)
+        splitter, unnoted = ClauseStream(max_chars=None), Unnoted()
         stream = self.model.stream(request)
         try:
             async for event in stream:
@@ -215,7 +216,7 @@ class Turn:
                     answer.first_token_s = max(0.0, self.clock.now() - started)
                 if isinstance(event, TextDelta):
                     answer.text += event.text
-                    for said in self._said(splitter.feed(event.text)):
+                    for said in self._said(splitter.feed(unnoted.feed(event.text))):
                         yield said
                     if self.stopped:
                         return
@@ -235,7 +236,7 @@ class Turn:
             raise
         finally:
             await _closed(stream)
-        for said in self._said(splitter.close()):
+        for said in self._said((*splitter.feed(unnoted.close()), *splitter.close())):
             yield said
 
     def _evidence(self) -> Iterable[str]:
