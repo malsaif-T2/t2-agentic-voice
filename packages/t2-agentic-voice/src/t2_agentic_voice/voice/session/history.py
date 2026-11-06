@@ -13,22 +13,14 @@ The session writes it: its turns (turn_book.py) and its replies (speaker.py).
 from __future__ import annotations
 
 from dataclasses import dataclass, replace
-from typing import Literal
 
+from t2_agentic_voice.core.conversation import ClauseFate, TurnFate
 from t2_agentic_voice.core.events import TurnId
 from t2_agentic_voice.voice.protocol import ClauseIndex, ReplyId
 from t2_agentic_voice.voice.session.heard import HeardWords
 
-# What became of a clause of a reply: it played whole, a stop cut it while it played, or it
-# never played.
-ClauseFate = Literal["played", "cut", "unplayed"]
-# What became of one of the caller's turns: still being answered (`pending`); answered, its
-# reply played whole; its reply `cut` after a clause played, or `rolled_back`, cut before any
-# did; taken as a command (a stop, a pause, a repeat), not answered; an overlap after which the
-# reply `went_on`; `dropped` by the drop rule; or `unfinished`, the call ended first.
-TurnFate = Literal[
-    "pending", "answered", "cut", "rolled_back", "command", "went_on", "dropped", "unfinished"
-]
+# What became of a clause and of a turn (`ClauseFate`, `TurnFate`) is core/conversation.py's,
+# which the talker reads the call from.
 
 
 @dataclass(frozen=True, kw_only=True)

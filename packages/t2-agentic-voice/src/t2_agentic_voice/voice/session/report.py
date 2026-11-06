@@ -18,6 +18,7 @@ from pathlib import Path
 
 from pydantic import JsonValue, ValidationError
 
+from t2_agentic_voice.core.conversation import TurnFate
 from t2_agentic_voice.core.errors import ProviderErrorKind
 from t2_agentic_voice.core.events import (
     AgentSpeechEnded,
@@ -43,7 +44,6 @@ from t2_agentic_voice.core.logging import get_logger
 from t2_agentic_voice.core.settings.tts import LanguageTag
 from t2_agentic_voice.core.tracing_tts import CallTrace
 from t2_agentic_voice.voice.protocol import ClientStats, ReplyId
-from t2_agentic_voice.voice.session.history import TurnFate
 from t2_agentic_voice.voice.session.io import CallSetup
 
 _log = get_logger(__name__)
