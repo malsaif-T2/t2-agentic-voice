@@ -137,6 +137,13 @@ FAILURES = [
         True,
         {"step": "search", "error": "RemoteProtocolError"},
     ),
+    (
+        QUERY,
+        _raise(httpx.DecodingError),  # httpx's own error, not the network's
+        "server_error",
+        False,
+        {"step": "search", "error": "DecodingError"},
+    ),
 ]
 
 

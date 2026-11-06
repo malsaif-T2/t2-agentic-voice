@@ -14,10 +14,11 @@ the library's runtime.
   back what it heard, as the app ran before it had a knowledge base; the app runs it when the
   knowledge base's access is not set (server.py).
 
-Neither fixed line a call of the talker speaks as written (a greeting, a progress line) holds a
-word of the presets' stop, wait, repeat or listening lists, nor a yes or send word, so its echo
+No fixed line a call of the talker speaks as written (a greeting, a progress line) holds a word
+of the presets' stop, wait, repeat or listening lists, nor a yes or send word, so its echo
 cannot be heard as the caller's (plan 006, "What voice-first means here", item 6); a test reads
-them. Ole5's name is said "oo-lee faayf" in Arabic and "Oh-lee five" in English (the
+them; the echo's Saudi greeting holds a'eed (I say back), a word of the repeat list, as it did
+before. Ole5's name is said "oo-lee faayf" in Arabic and "Oh-lee five" in English (the
 prototype's D26 and D37, Ole5-chatbot/VOICE_LOG.md, lines 35 and 45). The Arabic texts are
 written with `\\u` escapes, as the library's are, each with its sound and meaning in a comment.
 """
