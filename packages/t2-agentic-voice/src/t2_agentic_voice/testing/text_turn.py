@@ -68,8 +68,10 @@ class TextTurn:
     and what it did as data (the module's docstring). Each read gives what the turn has done so
     far: a reply a later turn cuts, or a tool still running, reads as it now stands."""
 
-    def __init__(self, reads: TextReads, turn_id: int) -> None:
-        self._reads, self.turn_id = reads, turn_id
+    def __init__(self, _reads: TextReads, _turn_id: int) -> None:
+        # Built by the text call alone, its reads internal (D-032: no public signature names
+        # an internal type), so its parameters are private.
+        self._reads, self.turn_id = _reads, _turn_id
 
     @property
     def expect(self) -> TurnExpectations:

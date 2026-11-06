@@ -142,6 +142,7 @@ class TextSide:
         self._pump: asyncio.Task[None] | None = None
         self._player: asyncio.Task[None] | None = None
         self._taking = False
+        self.steps = 0  # every event handed and every command given, so a wait sees progress
 
     def start(self, session: Session) -> None:
         """Hand every event from now on to `session`, on a task of the side's own."""
@@ -155,6 +156,7 @@ class TextSide:
             return
         if self.ended is not None and not isinstance(event, _REPORTS):
             return
+        self.steps += 1
         self._waiting.append(event)
         self._ready.set()
 
@@ -169,6 +171,7 @@ class TextSide:
 
     async def run(self, command: Command) -> None:
         """Carry out `command` (the module's docstring); it never waits on the session."""
+        self.steps += 1
         match command:
             case Speak() if self.ended is None:
                 key = (command.reply_id, command.clause)

@@ -13,6 +13,7 @@ from functools import partial
 
 import pytest
 from t2_agentic_voice.agent.talker import (
+    ChatTalker,
     ProgressDue,
     ReplyDone,
     ReplyScope,
@@ -20,16 +21,20 @@ from t2_agentic_voice.agent.talker import (
     TalkerCall,
     TalkerEvent,
 )
-from t2_agentic_voice.core.clock import Clock
+from t2_agentic_voice.core.clock import SYSTEM_CLOCK, Clock
 from t2_agentic_voice.core.config import VoiceSettings
 from t2_agentic_voice.core.conversation import TalkerTurn
+from t2_agentic_voice.core.identity import Caller
 from t2_agentic_voice.domain.declaration import Language, VoiceAgent
 from t2_agentic_voice.domain.ports.speech_to_text import AudioClip
 from t2_agentic_voice.evals import AudioCall, TurnReplay
 from t2_agentic_voice.testing import audio_call
+from t2_agentic_voice.testing.text_watch import chat_talkers
 from t2_agentic_voice.voice.calls import VoiceCalls
+from t2_agentic_voice.voice.talkers import TalkerFactory
 
 from tests.t2_agentic_voice.fakes import FakeSpeechToText, FakeTextToSpeech, tone
+from tests.t2_agentic_voice.testing.text_call_support import NoModel
 from tests.t2_agentic_voice.voice.kit import PauseAnalyzer, ToneVAD
 
 AGENT = VoiceAgent(
@@ -65,13 +70,16 @@ def test_a_clip_replayed_as_a_turn_reads_its_reply_and_its_progress_line_apart(
         talkers.append(_Talker(clock))
         return talkers[-1]
 
+    class _Replay(AudioCall):
+        def _talkers(self) -> TalkerFactory | None:  # the test's talker, not the library's
+            return factory
+
     tts = FakeTextToSpeech(seconds_per_char=0.03)
-    replay = AudioCall(
+    replay = _Replay(
         settings=settings,
         stt=FakeSpeechToText(["where is my ticket"] * 2),
         tts=tts,
         agent=AGENT,
-        talker=factory,
     )
     hold_s = settings.turns.complete_hold_ms / 1000
 
@@ -100,3 +108,19 @@ def test_a_clip_replayed_as_a_turn_reads_its_reply_and_its_progress_line_apart(
     assert found.progress_ms == pytest.approx(found.progress_audible_ms - 500.0)
     assert found.times is not None and found.times.ttfa_ms is not None
     assert found.times.progress_ms is not None and found.times.progress_ms < found.times.ttfa_ms
+
+
+def test_a_replay_of_an_instructed_agent_writes_with_the_librarys_talker_on_its_chat_model(
+    settings: VoiceSettings,
+) -> None:
+    chat = NoModel()
+    replay = AudioCall(
+        settings=settings, stt=FakeSpeechToText(), tts=FakeTextToSpeech(), agent=AGENT, chat=chat
+    )
+    factory = replay._talkers()
+    assert factory is not None
+    call = TalkerCall(call_id="c-1", caller=Caller(subject="s"), language="en")
+    built = factory(call, SYSTEM_CLOCK)
+    assert isinstance(built, ChatTalker) and built.model is chat and built.call == call
+    echo = AudioCall(settings=settings, stt=FakeSpeechToText(), tts=FakeTextToSpeech())
+    assert echo._talkers() is None and chat_talkers(AGENT, settings, None) is None

@@ -2,7 +2,9 @@
 what the talker did (testing/turn_data.py) through nothing but the talker's own port: each
 reply's events with when they came (`WatchedTalker`), and each tool call's arguments and result
 (`RecordingRunner`, the tool runner the text call's talker is given), the results' evidence
-being what the output guard's checks of the call read.
+being what the output guard's checks of the call read; and the agent's tools as the runner runs
+them (`tools_of`), and the factory of each call's talker a replayed call uses (`chat_talkers`,
+as api/providers.py's `talkers` builds the runtime's).
 """
 
 from __future__ import annotations
@@ -16,10 +18,51 @@ from pydantic import JsonValue
 
 from t2_agentic_voice.actions.runner import ToolRunner
 from t2_agentic_voice.actions.tools import CallContext, Tool, ToolResult
-from t2_agentic_voice.agent.talker import ReplyScope, Talker, TalkerEvent
+from t2_agentic_voice.agent.talker import (
+    ChatTalker,
+    ReplyScope,
+    Talker,
+    TalkerCall,
+    TalkerEvent,
+)
 from t2_agentic_voice.core.clock import Clock
+from t2_agentic_voice.core.config import VoiceSettings
 from t2_agentic_voice.core.conversation import TalkerTurn
-from t2_agentic_voice.domain.ports.chat_model import ToolCallRequest
+from t2_agentic_voice.core.errors import ConfigurationError
+from t2_agentic_voice.domain.declaration import VoiceAgent
+from t2_agentic_voice.domain.ports.chat_model import ChatModel, ToolCallRequest
+from t2_agentic_voice.voice.talkers import TalkerFactory
+
+
+def tools_of(agent: VoiceAgent) -> tuple[Tool, ...]:
+    """The agent's tools, each the library's `Tool` the runner runs; ConfigurationError for any
+    other."""
+    tools = tuple(tool for tool in agent.tools if isinstance(tool, Tool))
+    if len(tools) != len(agent.tools):
+        raise ConfigurationError(
+            "A tool the agent declares is not one the library runs. FIX: build each with @tool, "
+            "Tool.from_function or knowledge_tool."
+        )
+    return tools
+
+
+def chat_talkers(
+    agent: VoiceAgent, settings: VoiceSettings, chat: ChatModel | None
+) -> TalkerFactory | None:
+    """The factory of each call's talker: the library's `ChatTalker` on `chat`, with one tool
+    runner of the agent's tools; None for an agent whose calls run the echo, or with no chat
+    model (voice's entry point then refuses an agent that runs the talker)."""
+    mode = settings.session.mode_for(instructed=agent.instructed, prefix=settings.prefix)
+    if mode != "talker" or chat is None:
+        return None
+    runner, model = ToolRunner(tools_of(agent)), chat
+
+    def build(call: TalkerCall, clock: Clock) -> Talker:
+        return ChatTalker(
+            agent, model=model, runner=runner, settings=settings, call=call, clock=clock
+        )
+
+    return build
 
 
 @dataclass(kw_only=True)

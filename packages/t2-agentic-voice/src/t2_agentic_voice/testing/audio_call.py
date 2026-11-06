@@ -22,9 +22,10 @@ nowhere but the replay, which reads its `Interrupted` and keeps every one of the
 (`emitted`), so a test reads the path the call took through the session (the parity test of
 `TextCall` and `AudioCall`, the design's 9.5).
 
-A team's agent may be given (`agent`, with `talker`, the factory of each call's talker, for one
-that runs it: api/providers.py's `talkers` builds the library's), so a clip is replayed through
-its own talker and tools; each call then greets with the reply in that agent's language of the
+A team's agent may be given (`agent`, with `chat`, the chat model the library's talker writes
+with, for one that runs the talker), so a clip is replayed through its own talker and tools,
+each call's `ChatTalker` built as the runtime builds it (testing/text_watch.py's
+`chat_talkers`); each call then greets with the reply in that agent's language of the
 clip's tag. `turn` replays a clip as a turn said while the agent is silent, once the greeting
 has played, and reads its time to first audio (turn_replay.py's `TurnReplay`), run T's measure
 (plan 006).
@@ -42,6 +43,7 @@ from t2_agentic_voice.core.identity import Caller, Consent
 from t2_agentic_voice.core.settings.tts import LanguageTag
 from t2_agentic_voice.core.tracing import Tracing
 from t2_agentic_voice.domain.declaration import Language, VoiceAgent
+from t2_agentic_voice.domain.ports.chat_model import ChatModel
 from t2_agentic_voice.domain.ports.speech_to_text import AudioClip, SpeechToText
 from t2_agentic_voice.domain.ports.text_to_speech import AudioChunk, TextToSpeech
 from t2_agentic_voice.testing.overlap_replay import (
@@ -50,6 +52,7 @@ from t2_agentic_voice.testing.overlap_replay import (
     RequestPart,
     replay_of,
 )
+from t2_agentic_voice.testing.text_watch import chat_talkers
 from t2_agentic_voice.testing.turn_replay import TurnReplay, turn_replay_of
 from t2_agentic_voice.testing.turns import CLIP_RATE
 from t2_agentic_voice.voice.calls import VoiceCalls
@@ -98,7 +101,7 @@ class AudioCall:
     """Clips replayed over a reply, each as a fresh call of one runtime of calls, started once
     (`start`) and closed after the last (`aclose`), with `settings` (their `interruptions` and
     `turns` groups among them), `stt` and `tts`, neither of which it closes; of `agent` (the
-    replay's own unless given), its talker built by `talker` when it runs one."""
+    replay's own unless given), its talker writing with `chat` when it runs one."""
 
     def __init__(
         self,
@@ -107,12 +110,12 @@ class AudioCall:
         stt: SpeechToText,
         tts: TextToSpeech,
         agent: VoiceAgent | None = None,
-        talker: TalkerFactory | None = None,
+        chat: ChatModel | None = None,
     ) -> None:
         self.settings = settings
         self.stt = stt
         self.tts = tts
-        self.agent, self.talker = agent, talker
+        self.agent, self.chat = agent, chat
         self._phrases = _ReplyAudio()
         self._interrupted: list[Interrupted] = []
         self._emitted: list[Event] = []
@@ -146,7 +149,7 @@ class AudioCall:
             phrases=self._phrases,
             tracing=Tracing(),
             emit=self._emit,
-            talker=self.talker,
+            talker=self._talkers(),
         )
         await self._calls.start()
 
@@ -242,6 +245,12 @@ class AudioCall:
         if self.agent is None or not found:
             return spoken
         return found[0].model_copy(update={"greeting": spoken.greeting})
+
+    def _talkers(self) -> TalkerFactory | None:
+        """The factory of each call's talker: the library's on `chat`, for an agent that runs
+        the talker (a test's own talker in a subclass)."""
+        agent = self.agent or _AGENT
+        return chat_talkers(agent, self.settings, self.chat)
 
     async def _said(self, text: str, language: LanguageTag) -> AudioChunk:
         """`text` as the replay's text-to-speech says it in `language`, its chunks joined;

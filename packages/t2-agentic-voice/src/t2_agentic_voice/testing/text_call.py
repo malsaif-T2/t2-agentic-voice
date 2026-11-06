@@ -51,7 +51,6 @@ from types import TracebackType
 from typing import Literal, Self
 
 from t2_agentic_voice.actions.runner import ToolRunner
-from t2_agentic_voice.actions.tools import Tool
 from t2_agentic_voice.agent.talker import ChatTalker, Talker, TalkerCall, ToolBegan, ToolEnded
 from t2_agentic_voice.core.clock import SYSTEM_CLOCK, Clock
 from t2_agentic_voice.core.config import VoiceSettings
@@ -67,7 +66,7 @@ from t2_agentic_voice.domain.ports.chat_model import ChatModel
 from t2_agentic_voice.domain.ports.speech_to_text import Transcript
 from t2_agentic_voice.testing.text_side import TextPhrases, TextSide, VirtualClock, settle
 from t2_agentic_voice.testing.text_turn import TextReads, TextTurn, TurnExpectations, TurnSaid
-from t2_agentic_voice.testing.text_watch import RecordingRunner, WatchedTalker
+from t2_agentic_voice.testing.text_watch import RecordingRunner, WatchedTalker, tools_of
 from t2_agentic_voice.voice.protocol import Hangup, Stop
 from t2_agentic_voice.voice.session.call import CallSession
 from t2_agentic_voice.voice.session.io import CallSetup
@@ -105,18 +104,6 @@ MAX_WAIT_S = 120.0
 WAIT_STEP_S = 0.05
 # The turns of the event loop a text call lets pass, at most, for its session to go quiet.
 _QUIET_ROUNDS = 200
-
-
-def tools_of(agent: VoiceAgent) -> tuple[Tool, ...]:
-    """The agent's tools, each the library's `Tool` the runner runs; ConfigurationError for any
-    other."""
-    tools = tuple(tool for tool in agent.tools if isinstance(tool, Tool))
-    if len(tools) != len(agent.tools):
-        raise ConfigurationError(
-            "A tool the agent declares is not one the library runs. FIX: build each with @tool, "
-            "Tool.from_function or knowledge_tool."
-        )
-    return tools
 
 
 class TextCall:
@@ -359,11 +346,13 @@ class TextCall:
 
     async def _quiet(self) -> None:
         """Let the session take what it was handed, and what that started run, with the clock
-        still: until nothing waits for it twice running, at most `_QUIET_ROUNDS` times."""
+        still: until nothing waits for it and nothing was handed or given, three rounds
+        running, at most `_QUIET_ROUNDS` rounds."""
         side, _ = self._parts()
-        calm = 0
+        calm, steps = 0, side.steps
         for _ in range(_QUIET_ROUNDS):
             await settle(5)
-            calm = 0 if side.busy else calm + 1
+            moved, steps = side.steps != steps, side.steps
+            calm = 0 if side.busy or moved else calm + 1
             if calm >= 3:
                 return
