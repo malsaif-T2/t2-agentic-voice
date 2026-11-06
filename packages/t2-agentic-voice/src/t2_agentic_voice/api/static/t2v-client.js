@@ -6,6 +6,7 @@
 //   startButton.onclick = async () => {
 //     const call = await VoiceClient.start({ base: "/voice", getToken, language: "ar-SA" });
 //     call.on("caption", (c) => show(c.speaker, c.text, c.final, c.cut));
+//     call.on("card", (c) => showCard(c.title, c.steps, c.source)); // source: null when none
 //     call.on("state", (s) => status(s.state));     // listening | thinking | speaking | confirming
 //     call.on("notice", (n) => tell(n.kind, n.text)); // busy | error | ended, in the call's language
 //     call.on("ended", (e) => done(e.reason));
@@ -36,6 +37,13 @@
 // the agent's audio. Text from the session is handed to the page as it came: a page shows it
 // with `textContent`, never as HTML.
 //
+// A reply says its answer short aloud and sends the whole to the screen as a `card`: a title,
+// its steps in order and the source they come from (null when there is none), handed to the
+// page as one `card` event, a card that is not one dropped. A page shows it beside the captions,
+// a new card in place of the last. The `state` is one of t2v/1's four, `thinking` while the
+// agent's talker or one of its tools works on a reply that has no audio yet; any other is
+// dropped.
+//
 // While the caller speaks over a reply, the session lowers the agent's voice (`duck`, to its
 // level of the volume the call started at) and brings it back once that overlap is decided
 // (`unduck`). The volume also comes back to full on the client's own `stop()`, on a new reply's
@@ -55,7 +63,9 @@ export const CLIENT = "t2v-client.js/1.0.0";
 // t2v/1's messages by direction (voice/protocol.py): the client sends only the first list's and
 // hands the page only the second's.
 const CLIENT_MESSAGES = ["hello", "stop", "hangup", "client_stats", "playback"];
-const SESSION_MESSAGES = ["hello", "state", "caption", "duck", "unduck", "notice", "ended"];
+const SESSION_MESSAGES = ["hello", "state", "caption", "card", "duck", "unduck", "notice", "ended"];
+// What the agent may be doing, as a `state` names it.
+const STATES = ["listening", "thinking", "speaking", "confirming"];
 // SmallWebRTC's own message type on the data channel.
 const RESERVED = "signalling";
 // The 409s a PATCH gets once the call has moved on, which the client ignores.
@@ -176,8 +186,8 @@ export class VoiceClient {
     return this.#closed;
   }
 
-  // Listen to an event: hello, state, caption, duck, unduck, volume, notice, ended, connection
-  // or error. Returns a function that removes the listener.
+  // Listen to an event: hello, state, caption, card, duck, unduck, volume, notice, ended,
+  // connection or error. Returns a function that removes the listener.
   on(name, listener) {
     if (!this.#listeners.has(name)) this.#listeners.set(name, new Set());
     this.#listeners.get(name).add(listener);
@@ -407,6 +417,11 @@ export class VoiceClient {
     if (!SESSION_MESSAGES.includes(message.type)) return;
     if (message.type === "hello") {
       this.languages = Array.isArray(message.languages) ? message.languages : [];
+    } else if (message.type === "state") {
+      if (!STATES.includes(message.state)) return;
+    } else if (message.type === "card") {
+      message = cardOf(message);
+      if (message === null) return;
     } else if (message.type === "duck") {
       const level = message.level;
       if (typeof level !== "number" || !(level >= 0 && level <= 1)) return;
@@ -512,6 +527,17 @@ function iceServer(server) {
     return { urls, username: server.username, credential: server.credential };
   }
   return { urls };
+}
+
+// A `card` as the page gets it, its fields as voice/protocol.py's `ShowCard` holds them (a
+// title of at least one character, its steps a list of text, its source text or null), or null
+// for a message that is not one.
+function cardOf(message) {
+  const { title, steps, source } = message;
+  if (typeof title !== "string" || title === "") return null;
+  if (!Array.isArray(steps) || !steps.every((step) => typeof step === "string")) return null;
+  if (source !== null && typeof source !== "string") return null;
+  return { v: PROTOCOL, type: "card", title, steps: [...steps], source };
 }
 
 function milliseconds(value) {
@@ -625,9 +651,10 @@ function clauseOf(pending) {
 }
 
 // The dev page (dev.html): a token (any, for the dev caller), a language, Start, Stop and Hang
-// up, push-to-talk (a switch, and a button held to talk), the call's state, the agent's volume
-// (lowered while the caller speaks over a reply), its captions (a clause a stop cut marked so)
-// and its notices. Every text is set with textContent.
+// up, push-to-talk (a switch, and a button held to talk), the call's state (`thinking` while
+// the talker or a tool works), the agent's volume (lowered while the caller speaks over a
+// reply), its card above its captions (a clause a stop cut marked so) and its notices. Every
+// text is set with textContent.
 function devPage(page) {
   const $ = (id) => page.getElementById(id);
   const captions = new Map();
@@ -658,10 +685,25 @@ function devPage(page) {
     shown.parts[c.speaker === "agent" ? c.clause : 0] = c.cut ? `${c.text} [cut]` : c.text;
     shown.item.textContent = `${c.speaker}: ${shown.parts.filter(Boolean).join(" ")}`;
   };
+  // The newest card in place of the last: its title, its steps numbered and its source, each
+  // line in the direction of its own first strong character (dir="auto").
+  const card = (c) => {
+    const text = (tag, value) => {
+      const node = page.createElement(tag);
+      node.dir = "auto";
+      node.textContent = value;
+      return node;
+    };
+    const steps = page.createElement("ol");
+    steps.append(...c.steps.map((step) => text("li", step)));
+    const source = c.source === null ? [] : [text("p", `Source: ${c.source}`)];
+    $("card").replaceChildren(text("h3", c.title), steps, ...source);
+  };
   const volume = (v) => ($("volume").textContent = `${Math.round(v.level * 100)}%`);
   $("start").addEventListener("click", async () => {
     running(true);
     captions.clear();
+    $("card").replaceChildren();
     $("captions").replaceChildren();
     $("notices").replaceChildren();
     $("status").textContent = "Starting.";
@@ -676,6 +718,7 @@ function devPage(page) {
           hello: (h) => ($("status").textContent = `Connected: call ${h.call_id}.`),
           state: (s) => ($("state").textContent = s.state),
           caption,
+          card,
           volume,
           notice: (n) => line("notices", `${n.kind}: ${n.text}`),
           connection: (c) => ($("connection").textContent = c.state),
