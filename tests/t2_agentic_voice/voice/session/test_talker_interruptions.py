@@ -4,8 +4,9 @@ talker, the stop going out before any model request, and reach the talker whole,
 included (TD-103), beside the cut reply, which the history holds as the caller heard it; a stop
 or pause request said whole is a command; a repeat request, over a reply or alone, is the
 talker's; a listening sound lets the reply go on; words said while a search runs cancel it, and
-the talker starts again with both turns; and a stop or the call's end cancels the talker's work.
-The rule is the tests' fake (overlap_support.py's `FakeRule`)."""
+the talker starts again with both turns; and a stop or the call's end cancels the talker's work,
+the talker's stream closed in the reply's own task (D-060). The rule is the tests' fake
+(overlap_support.py's `FakeRule`)."""
 
 from __future__ import annotations
 
@@ -231,6 +232,38 @@ def test_a_stop_or_the_calls_end_cancels_the_talkers_work(settings: VoiceSetting
     assert talker.cancelled == [0]
     assert session._speaker.scope(1).running == 0
     assert ended(session, 1)
+
+
+def test_a_reply_stopped_while_its_next_event_waits_closes_the_talkers_stream_in_its_task(
+    settings: VoiceSettings,
+) -> None:
+    """The talker's next event waits for a step of the session's, which stops the reply: the
+    talker's stream, paused at that event, is closed in the reply's own task, so the model's
+    request ends inside the reply's scope (D-060), not later in the event loop's finalizer."""
+
+    def script(turn: TalkerTurn) -> list[Step]:
+        return [
+            SpokenClause(text="Let me check.", language="en"),
+            Work(1.0),
+            SpokenClause(text="Found it.", language="en"),
+            ReplyDone(),
+        ]
+
+    io, session, talker = talker_call(settings, script)
+
+    async def drive() -> None:
+        await greeted(io)
+        await talked(io, 0, "Where is my ticket?")
+        async with session._lock:  # a step of the session's runs
+            await io.clock.advance(1.0)  # the work ends: the next clause waits for the step
+            await settle()
+            await session._speaker.scope(1).cancel()  # and the step stops the reply
+        await io.ending()
+        await io.close()
+
+    asyncio.run(drive())
+    assert talker.closed_in.get(0) == "talker-0"
+    assert [s.text for s in speaks(io, 1)] == ["Let me check."]
 
 
 def test_a_talker_is_built_for_the_tests_with_its_scope(settings: VoiceSettings) -> None:

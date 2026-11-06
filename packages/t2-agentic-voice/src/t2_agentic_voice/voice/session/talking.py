@@ -240,10 +240,13 @@ class Talking:
 
     async def _run(self, talk: _Talk, turn: TalkerTurn) -> None:
         """Iterate the talker's reply in `talk`'s scope, each event kept while held, else
-        played as a step of the session's; then the reply closed."""
+        played as a step of the session's; then the reply closed. The talker's stream is closed
+        here, in the reply's scope, even when a cancel comes while an event of it waits (D-060),
+        so the model's request never ends later, in the event loop's finalizer."""
         failure: Exception | None = None
+        stream = self._talker.reply(turn, scope=talk.scope)
         try:
-            async for event in self._talker.reply(turn, scope=talk.scope):
+            async for event in stream:
                 at = self._clock.now()
                 if talk.reply is None:
                     talk.pending.append((event, at))
@@ -251,6 +254,10 @@ class Talking:
                     await self._guarded("talker_event", partial(self._play, talk, event, at))
         except Exception as error:  # the talker's failure: told, and the reply closed
             failure = error
+        finally:
+            close = getattr(stream, "aclose", None)  # an async generator's, as a talker's is
+            if close is not None:
+                await close()
         if talk.reply is None:
             talk.written, talk.failure = True, failure
             return
