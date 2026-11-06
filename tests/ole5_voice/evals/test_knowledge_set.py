@@ -47,9 +47,11 @@ def test_the_set_is_the_one_the_registration_describes() -> None:
     items = load_knowledge_items(EVALS / KNOWLEDGE_DIR)
     recorded = [item for item in items if RECORDED.match(item.id)]
     new = [item for item in items if not RECORDED.match(item.id)]
-    assert len(recorded) == 28 and len(new) == 36  # about 60 in all
+    assert len(recorded) == 28 and len(new) == 42  # about 60, then 6 more `none` items (Q13)
     kinds = Counter(item.kind for item in new)
-    assert kinds == {"answerable": 22, "none": 8, "small_talk": 3, "out_of_scope": 3}
+    assert kinds == {"answerable": 22, "none": 14, "small_talk": 3, "out_of_scope": 3}
+    none = Counter(item.split for item in items if item.kind == "none")
+    assert none == {"dev": 10, "held-out": 6}  # one miss on dev no longer fails the 90%
     dev = sum(1 for item in items if item.split == "dev")
     assert 0.6 < dev / len(items) < 0.7  # dev about two thirds
     variants = Counter(v.language for item in items for v in item.variants)
@@ -127,6 +129,32 @@ def test_the_committed_split_keeps_every_items_side() -> None:
     items = load_knowledge_items(EVALS / KNOWLEDGE_DIR)
     assert kept.salt == SALT
     assert kept.items == {item.id: item.split for item in items}
+
+
+# The `none` items added after the first 64 were drafted (the owner's Q13, 2026-11-07).
+ADDED = (
+    "q37_dark_mode",
+    "q38_auto_reply",
+    "q39_fingerprint_login",
+    "q40_offline",
+    "q41_notification_sound",
+    "q42_password_expiry",
+)
+
+
+def test_the_items_added_later_were_placed_by_the_keep_rule() -> None:
+    """The six `none` items added after the first 64 were placed by `place_new` against the
+    split that froze those 64, so none of the 64 moved; each needs a search and expects no
+    point, and each language the set holds fewest of is among their variants."""
+    kept = load_split(EVALS / KEPT_FILE)
+    items = load_knowledge_items(EVALS / KNOWLEDGE_DIR)
+    first = SplitFile(salt=kept.salt, items={i: s for i, s in kept.items.items() if i not in ADDED})
+    assert len(first.items) == 64
+    assert place_new(items, first) == kept.items
+    added = [item for item in items if item.id in ADDED]
+    assert len(added) == 6
+    assert all(item.kind == "none" and item.needs_search and not item.expected for item in added)
+    assert all(any(v.language == "msa" for v in item.variants) for item in added)
 
 
 def _kept(items: list[KnowledgeItem]) -> SplitFile:

@@ -3,29 +3,30 @@
 # tests/ole5_voice/evals/test_knowledge_set.py fails when the committed items do not hold
 # them. `language` counts the items by their first variant's language, `variant_language` the
 # variants, and `answerable_language` the answerable items with a variant in each language.
-# A count changes only with the set it counts, in the same commit, reviewed like the items.
+# A count changes only with the set it counts, in the same commit, reviewed like the items:
+# the 6 `none` items q37 to q42 (the owner's Q13, 2026-11-07) added 4 to dev and 2 to held-out.
 
 [split.dev]
-items = 42
-variants = 124
+items = 46
+variants = 136
 
 [split.dev.kind]
 answerable = 32
-none = 6
+none = 10
 out_of_scope = 2
 small_talk = 2
 
 [split.dev.language]
-english = 9
-mixed = 9
-msa = 8
-saudi = 16
+english = 10
+mixed = 10
+msa = 9
+saudi = 17
 
 [split.dev.variant_language]
-english = 39
-mixed = 24
-msa = 20
-saudi = 41
+english = 42
+mixed = 26
+msa = 24
+saudi = 44
 
 [split.dev.answerable_language]
 english = 29
@@ -34,26 +35,26 @@ msa = 18
 saudi = 31
 
 [split.held-out]
-items = 22
-variants = 65
+items = 24
+variants = 71
 
 [split.held-out.kind]
 answerable = 16
-none = 4
+none = 6
 out_of_scope = 1
 small_talk = 1
 
 [split.held-out.language]
 english = 4
-mixed = 4
-msa = 4
+mixed = 5
+msa = 5
 saudi = 10
 
 [split.held-out.variant_language]
-english = 20
-mixed = 12
-msa = 12
-saudi = 21
+english = 21
+mixed = 14
+msa = 14
+saudi = 22
 
 [split.held-out.answerable_language]
 english = 15

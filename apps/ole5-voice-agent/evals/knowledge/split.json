@@ -64,6 +64,12 @@
     "q33_human_agent": "held-out",
     "q34_open_ticket": "dev",
     "q35_employee_left": "held-out",
-    "q36_scanner": "dev"
+    "q36_scanner": "dev",
+    "q37_dark_mode": "held-out",
+    "q38_auto_reply": "held-out",
+    "q39_fingerprint_login": "dev",
+    "q40_offline": "dev",
+    "q41_notification_sound": "dev",
+    "q42_password_expiry": "dev"
   }
 }

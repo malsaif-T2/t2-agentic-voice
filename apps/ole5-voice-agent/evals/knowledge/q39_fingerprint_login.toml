@@ -1,0 +1,22 @@
+id = "q39_fingerprint_login"
+split = "dev"
+kind = "none"
+needs_search = true
+expected = []
+key_facts = [
+  "Says plainly it does not have information on signing in with a fingerprint or the face.",
+  "Does not present the system's sign-in methods or its two-factor authentication as a fingerprint sign-in.",
+]
+notes = "A request close to the knowledge base's sign-in methods and mobile app, with a product term in English."
+
+[[variants]]
+language = "english"
+text = "Can I log in to the Ole5 app with my fingerprint?"
+
+[[variants]]
+language = "msa"
+text = "هل يمكن تسجيل الدخول إلى تطبيق الجوال ببصمة الإصبع؟"
+
+[[variants]]
+language = "mixed"
+text = "التطبيق يدعم Face ID للدخول؟"

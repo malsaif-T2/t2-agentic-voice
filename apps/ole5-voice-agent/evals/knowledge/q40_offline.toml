@@ -1,0 +1,22 @@
+id = "q40_offline"
+split = "dev"
+kind = "none"
+needs_search = true
+expected = []
+key_facts = [
+  "Says plainly it does not have information on using the system without a connection.",
+  "Invents no offline mode, and does not present saving a draft as sending it later.",
+]
+notes = "A request close to the knowledge base's connection troubleshooting and mobile app that it does not answer."
+
+[[variants]]
+language = "saudi"
+text = "أقدر أشتغل على النظام بدون نت وترسل المراسلة لما يرجع الاتصال؟"
+
+[[variants]]
+language = "msa"
+text = "هل يمكن استخدام النظام دون اتصال بالإنترنت؟"
+
+[[variants]]
+language = "english"
+text = "Does Ole5 work offline?"

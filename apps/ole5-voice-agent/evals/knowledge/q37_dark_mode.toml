@@ -1,0 +1,22 @@
+id = "q37_dark_mode"
+split = "held-out"
+kind = "none"
+needs_search = true
+expected = []
+key_facts = [
+  "Says plainly it does not have information on a dark mode.",
+  "Does not present the colours the administrator sets for the whole system as a dark mode the user can turn on.",
+]
+notes = "A request close to the knowledge base's interface colours, which the administrator sets for the whole system, that it does not answer."
+
+[[variants]]
+language = "mixed"
+text = "فيه dark mode في Ole5؟"
+
+[[variants]]
+language = "msa"
+text = "هل يوفر النظام وضعاً داكناً للواجهة؟"
+
+[[variants]]
+language = "english"
+text = "Can I switch Ole5 to dark mode?"
