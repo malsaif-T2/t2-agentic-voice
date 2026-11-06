@@ -1,0 +1,23 @@
+id = "q03_register_incoming"
+split = "held-out"
+kind = "answerable"
+needs_search = true
+expected = ["procedures-007", "procedures-009", "rules-002", "procedures-008"]
+key_facts = [
+  "From the side bar open the department mailboxes, choose the department, «إنشاء مراسلة», then incoming.",
+  "The source entity, the incoming number, its date, the receipt date and the receipt method are mandatory.",
+  "The incoming date must be on or before the receipt date.",
+]
+notes = "A request described by the situation (a letter came in), not by the screen's name."
+
+[[variants]]
+language = "saudi"
+text = "جانا خطاب من جهة خارجية، كيف أسجله وارد بالنظام؟"
+
+[[variants]]
+language = "msa"
+text = "كيف أنشئ مراسلة واردة من صندوق الإدارة؟"
+
+[[variants]]
+language = "mixed"
+text = "أبي أدخل incoming letter وصلنا من وزارة"

@@ -1,0 +1,23 @@
+id = "q06_favorite_group"
+split = "dev"
+kind = "answerable"
+needs_search = true
+expected = ["procedures-023", "procedures-024"]
+key_facts = [
+  "In user settings, open «المجموعات المفضلة» (favourite groups) and add a new group.",
+  "It needs the permission to create a favourite group.",
+  "The group then appears in the 'to' field, in its own tab beside users and departments.",
+]
+notes = "A need described in the caller's words (always the same people), answered by a feature's name."
+
+[[variants]]
+language = "saudi"
+text = "أرسل دايم لنفس الناس، أقدر أسوي لهم مجموعة؟"
+
+[[variants]]
+language = "msa"
+text = "كيف أنشئ مجموعة مفضلة للإرسال إليها؟"
+
+[[variants]]
+language = "english"
+text = "Can I make a group of people so I can send to all of them at once?"

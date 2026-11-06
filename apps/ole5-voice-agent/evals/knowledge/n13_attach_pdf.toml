@@ -1,0 +1,23 @@
+id = "n13_attach_pdf"
+split = "held-out"
+kind = "answerable"
+needs_search = true
+expected = ["procedures-005", "rules-001", "troubleshooting-011", "troubleshooting-012"]
+key_facts = [
+  "The file is chosen from the device or dragged and dropped.",
+  "If a PDF is refused, the correspondence's confidentiality level may limit the allowed formats, which an administrator checks.",
+  "The confidentiality level is set before attaching.",
+]
+notes = "A how-to with a product term (PDF) said in English and in Arabic letters."
+
+[[variants]]
+language = "english"
+text = "How do I attach a PDF to a correspondence?"
+
+[[variants]]
+language = "mixed"
+text = "كيف أرفق ملف PDF بالمراسلة؟"
+
+[[variants]]
+language = "saudi"
+text = "أبي أرفق ملف بي دي إف بالمراسلة"

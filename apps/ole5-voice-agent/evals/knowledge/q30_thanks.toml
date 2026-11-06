@@ -1,0 +1,22 @@
+id = "q30_thanks"
+split = "dev"
+kind = "small_talk"
+needs_search = false
+expected = []
+key_facts = [
+  "Thanks the caller back briefly.",
+  "Makes no search and adds no new information.",
+]
+notes = "Thanks at the end of a call, which needs a short close."
+
+[[variants]]
+language = "saudi"
+text = "يعطيك العافية، ما قصرت والله"
+
+[[variants]]
+language = "msa"
+text = "شكراً جزيلاً على المساعدة"
+
+[[variants]]
+language = "english"
+text = "Thanks a lot, that's all I needed"

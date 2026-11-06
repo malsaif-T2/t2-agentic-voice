@@ -1,0 +1,23 @@
+id = "q04_send_external"
+split = "dev"
+kind = "answerable"
+needs_search = true
+expected = ["procedures-012", "rules-003", "procedures-013"]
+key_facts = [
+  "Open the correspondence and choose «تصدير» (export), or create a new outgoing correspondence from the department's box.",
+  "The receiving entity is mandatory and only one is chosen; others can be added as copies.",
+  "The sending method is mandatory, one method only.",
+]
+notes = "A request whose answer uses the system's word (export) for what the caller calls sending outside."
+
+[[variants]]
+language = "msa"
+text = "كيف أصدر مراسلة إلى جهة خارجية؟"
+
+[[variants]]
+language = "saudi"
+text = "أبي أرسل خطاب لجهة برا الجهة، وش الطريقة؟"
+
+[[variants]]
+language = "english"
+text = "How do I send a letter to an outside organization?"

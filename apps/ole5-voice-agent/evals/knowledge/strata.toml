@@ -1,0 +1,62 @@
+# The knowledge set's registered counts, by split (plan 006's registration, "Data";
+# evaluation.md, "Writing items": strata in fixed proportions, which a test enforces).
+# tests/ole5_voice/evals/test_knowledge_set.py fails when the committed items do not hold
+# them. `language` counts the items by their first variant's language, `variant_language` the
+# variants, and `answerable_language` the answerable items with a variant in each language.
+# A count changes only with the set it counts, in the same commit, reviewed like the items.
+
+[split.dev]
+items = 42
+variants = 124
+
+[split.dev.kind]
+answerable = 32
+none = 6
+out_of_scope = 2
+small_talk = 2
+
+[split.dev.language]
+english = 9
+mixed = 9
+msa = 8
+saudi = 16
+
+[split.dev.variant_language]
+english = 39
+mixed = 24
+msa = 20
+saudi = 41
+
+[split.dev.answerable_language]
+english = 29
+mixed = 18
+msa = 18
+saudi = 31
+
+[split.held-out]
+items = 22
+variants = 65
+
+[split.held-out.kind]
+answerable = 16
+none = 4
+out_of_scope = 1
+small_talk = 1
+
+[split.held-out.language]
+english = 4
+mixed = 4
+msa = 4
+saudi = 10
+
+[split.held-out.variant_language]
+english = 20
+mixed = 12
+msa = 12
+saudi = 21
+
+[split.held-out.answerable_language]
+english = 15
+mixed = 10
+msa = 9
+saudi = 15

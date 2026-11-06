@@ -1,0 +1,22 @@
+id = "q28_chat"
+split = "dev"
+kind = "none"
+needs_search = true
+expected = []
+key_facts = [
+  "Says plainly it does not have information on a chat between colleagues.",
+  "Invents no chat feature, and does not present correspondence or quick replies as one.",
+]
+notes = "A request for a feature the system does not describe, close to its messaging."
+
+[[variants]]
+language = "saudi"
+text = "فيه شات داخل النظام أكلم فيه زملائي؟"
+
+[[variants]]
+language = "english"
+text = "Is there a chat inside Ole5 to message my colleagues?"
+
+[[variants]]
+language = "mixed"
+text = "فيه chat بين الموظفين في Ole5؟"

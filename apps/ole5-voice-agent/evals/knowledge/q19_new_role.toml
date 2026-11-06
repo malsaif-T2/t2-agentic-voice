@@ -1,0 +1,23 @@
+id = "q19_new_role"
+split = "dev"
+kind = "answerable"
+needs_search = true
+expected = ["procedures-030", "rules-022", "rules-023", "procedures-031", "rules-024"]
+key_facts = [
+  "Settings, system administration, the roles tab, then add new.",
+  "A role needs its Arabic and English names, its permission level, and its permissions.",
+  "A role cannot be deleted while users are linked to it.",
+]
+notes = "An administrator's question with an English term for the system's word (role)."
+
+[[variants]]
+language = "mixed"
+text = "كيف أضيف role جديد وأعطيه صلاحيات؟"
+
+[[variants]]
+language = "msa"
+text = "كيف أنشئ دوراً جديداً في النظام؟"
+
+[[variants]]
+language = "saudi"
+text = "أبي أسوي دور جديد للموظفين بصلاحيات معينة"

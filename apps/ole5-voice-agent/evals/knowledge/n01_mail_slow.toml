@@ -1,0 +1,24 @@
+id = "n01_mail_slow"
+split = "held-out"
+kind = "answerable"
+needs_search = true
+expected = ["troubleshooting-003"]
+key_facts = [
+  "Suggests a forced refresh (Ctrl + Shift + R) or opening the system in a private window.",
+  "Suggests checking that the connection is stable and trying another network.",
+  "Suggests making sure the browser is up to date.",
+  "Says that if it is fast on an outside network and slow inside, the cause is the internal network or the device, not the system.",
+]
+notes = "A vague Saudi complaint with no question in it, which the agent must read as a slowness problem."
+
+[[variants]]
+language = "saudi"
+text = "البريد عندي ثقيل مرة اليوم"
+
+[[variants]]
+language = "english"
+text = "Ole5 is really slow for me today, everything takes forever"
+
+[[variants]]
+language = "mixed"
+text = "الـ system بطيء مرة اليوم والمرفقات تاخذ وقت لين تفتح"

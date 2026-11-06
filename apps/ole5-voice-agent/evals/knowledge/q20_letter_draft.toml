@@ -1,0 +1,23 @@
+id = "q20_letter_draft"
+split = "held-out"
+kind = "answerable"
+needs_search = true
+expected = ["rules-009", "features-004"]
+key_facts = [
+  "From the side bar, «إنشاء مراسلة» (create), then «مشروع خطاب» (letter draft), and choose its type.",
+  "Its type, internal or outgoing, is mandatory, and a template is chosen to edit its content.",
+  "It can be returned, edited and sent again, and it carries a unique serial number.",
+]
+notes = "A how-to about a feature with its own name, which a caller may not know."
+
+[[variants]]
+language = "mixed"
+text = "كيف أسوي مشروع خطاب في Ole5؟"
+
+[[variants]]
+language = "msa"
+text = "ما طريقة إنشاء مشروع خطاب؟"
+
+[[variants]]
+language = "english"
+text = "How do I start a draft letter before it becomes an official correspondence?"

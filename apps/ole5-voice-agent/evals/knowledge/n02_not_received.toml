@@ -1,0 +1,23 @@
+id = "n02_not_received"
+split = "dev"
+kind = "answerable"
+needs_search = true
+expected = ["troubleshooting-022", "troubleshooting-025", "troubleshooting-011"]
+key_facts = [
+  "Says the sender may have recalled it: when the last action on it is a recall, it leaves the receiver's box.",
+  "Says that for a department's mailbox the user needs a role added on that mailbox.",
+  "Says a user sees only the correspondence whose confidentiality is equal to or below their own.",
+]
+notes = "A complaint with several possible causes; the answer names the likely ones briefly instead of guessing one."
+
+[[variants]]
+language = "saudi"
+text = "ما وصلتني المراسلة اللي أرسلوها لي"
+
+[[variants]]
+language = "msa"
+text = "لم تصلني المراسلة التي أرسلها لي زميلي"
+
+[[variants]]
+language = "english"
+text = "Someone sent me a correspondence but it never reached my inbox"

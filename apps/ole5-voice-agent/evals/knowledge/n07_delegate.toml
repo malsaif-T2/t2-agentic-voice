@@ -1,0 +1,23 @@
+id = "n07_delegate"
+split = "dev"
+kind = "answerable"
+needs_search = true
+expected = ["features-026", "rules-017"]
+key_facts = [
+  "The system offers automatic forwarding («التوجيه التلقائي») to a chosen user for a set period.",
+  "It needs the permission for automatic forwarding in the personal mailbox.",
+  "Invents no delegation screen or steps.",
+]
+notes = "A request worded as delegation, which the knowledge base answers under another name; the answer may say no steps are given."
+
+[[variants]]
+language = "msa"
+text = "كيف يمكنني تفويض صلاحياتي لزميل أثناء إجازتي؟"
+
+[[variants]]
+language = "saudi"
+text = "بطلع إجازة وأبي زميلي يستلم مراسلاتي، كيف أسويها؟"
+
+[[variants]]
+language = "english"
+text = "I'm going on leave, how do I hand my correspondence over to a colleague?"

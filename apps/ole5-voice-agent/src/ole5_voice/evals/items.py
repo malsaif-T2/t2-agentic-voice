@@ -6,7 +6,8 @@ files of `evals/` they are checked against.
 `frozen.json` (the expected answers `poe golden` freezes), `split.json`, `strata.toml` (the
 registered counts), `terms.toml` (the product terms), `script.toml` (the new recordings'
 script), `spelling.toml` (the spelling guide), `allowed_in_source.toml` and `history.jsonl` (the
-run history, `history.py`). Every file is
+run history, `history.py`); and `knowledge/`, the knowledge set the talker is measured on
+(`knowledge_set.py`). Every file is
 parsed strictly as it is read, and a file that cannot be read is a `GoldenSetError` naming it,
 never echoing what it holds.
 """

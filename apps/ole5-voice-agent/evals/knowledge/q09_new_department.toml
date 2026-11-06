@@ -1,0 +1,22 @@
+id = "q09_new_department"
+split = "dev"
+kind = "answerable"
+needs_search = true
+expected = ["troubleshooting-029", "rules-027", "rules-025", "features-023"]
+key_facts = [
+  "Settings, system administration, organizational structure, choose the main department, then the icon to add a sub-department.",
+  "A sub-department needs its Arabic and English names, the job title in charge, and its type: internal or administrative communications.",
+]
+notes = "An administrator's question about the structure, whose answer is a path and the fields it asks for."
+
+[[variants]]
+language = "msa"
+text = "كيف أضيف إدارة فرعية إلى الهيكل التنظيمي؟"
+
+[[variants]]
+language = "saudi"
+text = "أبي أضيف إدارة جديدة في الهيكل"
+
+[[variants]]
+language = "english"
+text = "How do I add a new department under our organization?"

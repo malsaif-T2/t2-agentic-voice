@@ -1,0 +1,18 @@
+id = "q29_greeting"
+split = "held-out"
+kind = "small_talk"
+needs_search = false
+expected = []
+key_facts = [
+  "Greets the caller back briefly, in the caller's language.",
+  "Offers help with Ole5, with no search.",
+]
+notes = "A greeting alone, which needs no search and a short reply."
+
+[[variants]]
+language = "saudi"
+text = "السلام عليكم، كيف حالك اليوم؟"
+
+[[variants]]
+language = "english"
+text = "Hi there, how are you doing today?"

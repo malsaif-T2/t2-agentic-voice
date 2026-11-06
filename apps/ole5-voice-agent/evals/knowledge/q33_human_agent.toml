@@ -1,0 +1,23 @@
+id = "q33_human_agent"
+split = "held-out"
+kind = "out_of_scope"
+needs_search = false
+expected = []
+key_facts = [
+  "Says plainly it cannot put the call through to a person yet.",
+  "Promises no transfer and no call back.",
+  "Offers to help with the question itself.",
+]
+notes = "A request for a person, which the agent cannot meet yet and says so."
+
+[[variants]]
+language = "saudi"
+text = "أبي أكلم موظف من الدعم الفني لو سمحت"
+
+[[variants]]
+language = "msa"
+text = "أريد التحدث مع أحد موظفي الدعم"
+
+[[variants]]
+language = "english"
+text = "Can you put me through to a real person from support?"

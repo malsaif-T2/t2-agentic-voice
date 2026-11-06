@@ -1,0 +1,23 @@
+id = "n20_error_suddenly"
+split = "dev"
+kind = "answerable"
+needs_search = true
+expected = ["troubleshooting-002"]
+key_facts = [
+  "Check the internet connection, and sign in through the secure login link.",
+  "Clear the cache and cookies or force a refresh (Ctrl + Shift + R), or try a private window or another browser.",
+  "A secure login session ends after 8 hours: close the browser, open the secure link again and sign in.",
+]
+notes = "A long Saudi story with the problem at its end; the answer goes to the access steps."
+
+[[variants]]
+language = "saudi"
+text = "أمس كنت أشتغل وفجأة طلع لي خطأ وما عاد يفتح البرنامج"
+
+[[variants]]
+language = "english"
+text = "The system suddenly stopped opening for me, I just get an error or a white page"
+
+[[variants]]
+language = "mixed"
+text = "النظام ما يفتح، يطلع لي white page بس"

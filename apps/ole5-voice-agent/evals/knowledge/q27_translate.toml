@@ -1,0 +1,22 @@
+id = "q27_translate"
+split = "held-out"
+kind = "none"
+needs_search = true
+expected = []
+key_facts = [
+  "Says plainly it does not have information on translating a correspondence.",
+  "Does not present the interface's two languages as a translation feature.",
+]
+notes = "A request close to the knowledge base's languages line that it does not answer."
+
+[[variants]]
+language = "msa"
+text = "هل يمكن ترجمة المراسلة إلى الإنجليزية تلقائياً؟"
+
+[[variants]]
+language = "saudi"
+text = "النظام يترجم المراسلة للإنجليزي؟"
+
+[[variants]]
+language = "mixed"
+text = "فيه auto translate للمراسلات؟"

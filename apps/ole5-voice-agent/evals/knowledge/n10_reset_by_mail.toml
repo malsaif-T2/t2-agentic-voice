@@ -1,0 +1,23 @@
+id = "n10_reset_by_mail"
+split = "dev"
+kind = "answerable"
+needs_search = true
+expected = ["troubleshooting-004", "procedures-028", "rules-015"]
+key_facts = [
+  "Yes: the recovery email reaches the user's registered email address.",
+  "The username is written followed by the entity's environment domain, or the recovery does not run.",
+  "If the message does not arrive: check the registered username and email, clear the cache and cookies, and look in the junk folder.",
+]
+notes = "A yes-or-no question whose answer starts with the yes, then the one condition."
+
+[[variants]]
+language = "msa"
+text = "هل يمكن استعادة كلمة المرور عبر البريد الإلكتروني؟"
+
+[[variants]]
+language = "saudi"
+text = "ينفع أسترجع كلمة السر عن طريق الإيميل؟"
+
+[[variants]]
+language = "english"
+text = "Can I get my password back by email?"

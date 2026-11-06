@@ -1,0 +1,23 @@
+id = "n19_refer_manager"
+split = "held-out"
+kind = "answerable"
+needs_search = true
+expected = ["procedures-022", "rules-005"]
+key_facts = [
+  "Open the internal or incoming correspondence and choose «إحالة» (referral) from the actions at the top.",
+  "In the referral window, choose the destination as 'to' or 'copy', the reason, and write the direction.",
+  "No new attachment can be added; only the correspondence's own attachments show.",
+]
+notes = "A Saudi request said with a pause, whose answer is a procedure of several steps."
+
+[[variants]]
+language = "saudi"
+text = "عندي مراسلة أبغى أحيلها للمدير حقي"
+
+[[variants]]
+language = "msa"
+text = "كيف أحيل مراسلة إلى مديري المباشر؟"
+
+[[variants]]
+language = "english"
+text = "How do I refer a correspondence to my manager?"

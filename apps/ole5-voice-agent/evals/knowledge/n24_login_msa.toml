@@ -1,0 +1,23 @@
+id = "n24_login_msa"
+split = "held-out"
+kind = "answerable"
+needs_search = true
+expected = ["troubleshooting-002", "troubleshooting-004"]
+key_facts = [
+  "Check the connection, and sign in through the secure login link.",
+  "Clear the cache or force a refresh, or try a private window or another browser.",
+  "A secure login session ends after 8 hours, after which the browser is closed and the link opened again.",
+]
+notes = "A login problem with a time in it, in MSA."
+
+[[variants]]
+language = "msa"
+text = "لدي مشكلة في تسجيل الدخول منذ صباح اليوم"
+
+[[variants]]
+language = "saudi"
+text = "من الصبح ما أقدر أسجل دخول"
+
+[[variants]]
+language = "english"
+text = "I haven't been able to log in since this morning"

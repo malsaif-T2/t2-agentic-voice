@@ -23,7 +23,7 @@ import hashlib
 import sys
 from collections.abc import Sequence
 from pathlib import Path
-from typing import Final
+from typing import Final, Protocol
 
 from t2_agentic_voice import configure_logging, get_logger
 
@@ -49,15 +49,27 @@ DEFAULT_SALT: Final = "plan-002-2026-11-01"
 KEEP_COMMAND: Final = "python -m ole5_voice.evals.split --keep"
 
 
+class Stratified(Protocol):
+    """What the split reads of an item: its ID and its strata. A golden item is one, and so is
+    an item of the knowledge set (`knowledge_set.py`), which is split by the same rule."""
+
+    @property
+    def id(self) -> str: ...
+    @property
+    def language(self) -> str: ...
+    @property
+    def kind(self) -> str: ...
+
+
 def _order(salt: str, name: str) -> str:
     return hashlib.sha256(f"{salt}\n{name}".encode()).hexdigest()
 
 
-def split_items(items: Sequence[Item], salt: str) -> dict[str, Split]:
+def split_items(items: Sequence[Stratified], salt: str) -> dict[str, Split]:
     """Each item's split, by its ID, about 30% held out, stratified by language and kind."""
     if not salt:
         raise ValueError("a split needs a salt")
-    strata: dict[str, list[Item]] = {}
+    strata: dict[str, list[Stratified]] = {}
     for item in items:
         strata.setdefault(f"{item.language}/{item.kind}", []).append(item)
     target = (HELD_OUT_TENTHS * len(items) + 5) // 10

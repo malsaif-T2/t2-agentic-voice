@@ -1,0 +1,23 @@
+id = "q08_send_disabled"
+split = "dev"
+kind = "answerable"
+needs_search = true
+expected = ["troubleshooting-019", "troubleshooting-011"]
+key_facts = [
+  "Force a refresh with Ctrl + Shift + R and complete the mandatory fields.",
+  "The mandatory properties are the confidentiality, importance and priority levels and the recipients.",
+  "For a physical correspondence, the number of physical attachments cannot be zero.",
+]
+notes = "A Saudi complaint about a control, answered by its likely causes in order."
+
+[[variants]]
+language = "saudi"
+text = "زر الإرسال مقفل وما يرضى يرسل"
+
+[[variants]]
+language = "english"
+text = "The send button is greyed out, I can't send"
+
+[[variants]]
+language = "mixed"
+text = "زر الـ send مو شغال وما أقدر أرسل المراسلة"

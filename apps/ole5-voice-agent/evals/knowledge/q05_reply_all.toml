@@ -1,0 +1,22 @@
+id = "q05_reply_all"
+split = "held-out"
+kind = "answerable"
+needs_search = true
+expected = ["procedures-011", "rules-004"]
+key_facts = [
+  "Open the correspondence and choose «رد» to answer the sender, or «رد الكل» to answer the sender and every recipient.",
+  "With reply all, the 'to' and 'copy' fields are filled in automatically.",
+]
+notes = "A short English how-to with a two-word answer at its heart."
+
+[[variants]]
+language = "english"
+text = "How do I reply to everyone on a correspondence?"
+
+[[variants]]
+language = "saudi"
+text = "أبي أرد على الكل في المراسلة"
+
+[[variants]]
+language = "mixed"
+text = "وين زر الـ reply all في المراسلة؟"

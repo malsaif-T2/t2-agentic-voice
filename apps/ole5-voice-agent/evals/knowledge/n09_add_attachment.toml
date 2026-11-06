@@ -1,0 +1,22 @@
+id = "n09_add_attachment"
+split = "held-out"
+kind = "answerable"
+needs_search = true
+expected = ["procedures-005", "rules-001", "features-005"]
+key_facts = [
+  "An attachment is added by choosing a file from the device or by drag and drop.",
+  "After the upload, hovering over it shows its actions: edit, block, print and download.",
+]
+notes = "A plain how-to in MSA with a short answer."
+
+[[variants]]
+language = "msa"
+text = "أريد إضافة مرفق إلى المراسلة"
+
+[[variants]]
+language = "saudi"
+text = "أبي أرفق ملف مع المراسلة"
+
+[[variants]]
+language = "english"
+text = "How do I add an attachment while writing a correspondence?"

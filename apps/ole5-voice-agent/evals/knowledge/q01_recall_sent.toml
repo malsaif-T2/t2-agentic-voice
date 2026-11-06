@@ -1,0 +1,27 @@
+id = "q01_recall_sent"
+split = "held-out"
+kind = "answerable"
+needs_search = true
+expected = ["rules-006", "features-003", "troubleshooting-010"]
+key_facts = [
+  "Open it from the sent items and choose «استرداد» (recall) from the actions at the top.",
+  "It cannot be recalled once a recipient has acted on it, such as replying, forwarding, archiving or deleting.",
+  "A recalled correspondence goes back to the sender's drafts and keeps its registration number.",
+]
+notes = "A worried request after a mistake, with a condition the answer must not leave out."
+
+[[variants]]
+language = "saudi"
+text = "أرسلت مراسلة بالغلط، أقدر أسحبها؟"
+
+[[variants]]
+language = "msa"
+text = "هل يمكنني استرداد مراسلة بعد إرسالها؟"
+
+[[variants]]
+language = "english"
+text = "I sent a correspondence by mistake, can I pull it back?"
+
+[[variants]]
+language = "mixed"
+text = "أبي أسوي recall لمراسلة أرسلتها"

@@ -1,0 +1,23 @@
+id = "q10_button_missing"
+split = "dev"
+kind = "answerable"
+needs_search = true
+expected = ["troubleshooting-009", "features-029", "rules-016", "troubleshooting-010", "features-010"]
+key_facts = [
+  "It is usually a missing permission, or one excepted for this user in the exception list.",
+  "An administrator checks the user's role and permissions in the user manager.",
+  "After a permission change, the user signs out and in again to see it.",
+]
+notes = "A vague complaint comparing the caller with a colleague, answered by the general rule."
+
+[[variants]]
+language = "saudi"
+text = "فيه زر ما يطلع عندي وزميلي يطلع عنده"
+
+[[variants]]
+language = "english"
+text = "Some buttons just don't show up for me"
+
+[[variants]]
+language = "msa"
+text = "ما سبب عدم ظهور بعض الأزرار في حسابي؟"

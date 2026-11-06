@@ -1,0 +1,22 @@
+id = "n18_archive_in_ole5"
+split = "held-out"
+kind = "answerable"
+needs_search = true
+expected = ["features-012", "rules-004", "features-014"]
+key_facts = [
+  "Each personal or department mailbox has an archived box («المؤرشفة»).",
+  "Archiving moves a correspondence to the archived items box, where it can still be opened.",
+]
+notes = "A where-is question with the product's name in it."
+
+[[variants]]
+language = "mixed"
+text = "وين ألقى الأرشيف في Ole5؟"
+
+[[variants]]
+language = "english"
+text = "Where's the archive in Ole5?"
+
+[[variants]]
+language = "saudi"
+text = "وين المراسلات اللي أرشفتها؟"

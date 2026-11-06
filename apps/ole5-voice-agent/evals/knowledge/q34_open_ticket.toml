@@ -1,0 +1,22 @@
+id = "q34_open_ticket"
+split = "dev"
+kind = "out_of_scope"
+needs_search = false
+expected = []
+key_facts = [
+  "Says plainly it cannot open a ticket yet.",
+  "Says no ticket was opened, and gives no ticket number.",
+]
+notes = "A request for a ticket, which the agent cannot open yet and must not claim to."
+
+[[variants]]
+language = "mixed"
+text = "أبي أفتح ticket عن مشكلتي"
+
+[[variants]]
+language = "english"
+text = "I want to open a support ticket for this problem"
+
+[[variants]]
+language = "saudi"
+text = "سجل لي بلاغ عن المشكلة لو سمحت"

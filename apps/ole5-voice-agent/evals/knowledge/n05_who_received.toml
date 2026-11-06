@@ -1,0 +1,22 @@
+id = "n05_who_received"
+split = "dev"
+kind = "answerable"
+needs_search = true
+expected = ["rules-004", "features-009", "features-017"]
+key_facts = [
+  "Open the correspondence and use its «الحركات» (movements) window.",
+  "It lists each movement since the correspondence was created: from, to, by which user, and the time and date.",
+]
+notes = "A question about a screen the caller has not named; the answer points to the window that shows it."
+
+[[variants]]
+language = "saudi"
+text = "أبغى أعرف مين استلم المراسلة"
+
+[[variants]]
+language = "english"
+text = "I want to see who received the correspondence I sent"
+
+[[variants]]
+language = "msa"
+text = "كيف أعرف من استلم المراسلة ومن اطلع عليها؟"

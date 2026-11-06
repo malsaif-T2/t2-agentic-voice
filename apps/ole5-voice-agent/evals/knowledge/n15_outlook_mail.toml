@@ -1,0 +1,23 @@
+id = "n15_outlook_mail"
+split = "held-out"
+kind = "answerable"
+needs_search = true
+expected = ["troubleshooting-025", "features-016"]
+key_facts = [
+  "Email notifications are enabled by the user in user settings and checked by an administrator at the system level.",
+  "The entity may enable or disable each kind of notification: email, text message and pop-up.",
+  "Invents no Outlook setting.",
+]
+notes = "A complaint naming a product the knowledge base does not cover, about something it does (the system's email notifications)."
+
+[[variants]]
+language = "mixed"
+text = "الإيميل ما يوصل على Outlook"
+
+[[variants]]
+language = "english"
+text = "Emails from the system aren't arriving in my Outlook"
+
+[[variants]]
+language = "saudi"
+text = "تنبيهات الإيميل من النظام ما توصلني"

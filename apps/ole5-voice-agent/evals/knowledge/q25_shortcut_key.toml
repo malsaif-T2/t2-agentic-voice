@@ -1,0 +1,18 @@
+id = "q25_shortcut_key"
+split = "held-out"
+kind = "none"
+needs_search = true
+expected = []
+key_facts = [
+  "Says plainly it does not have information on a keyboard shortcut for this.",
+  "Invents no key combination.",
+]
+notes = "A question close to the shortcuts the knowledge base does give (a forced refresh), which it does not answer."
+
+[[variants]]
+language = "english"
+text = "Is there a keyboard shortcut to start a new correspondence?"
+
+[[variants]]
+language = "saudi"
+text = "فيه اختصار بالكيبورد أفتح فيه مراسلة جديدة؟"

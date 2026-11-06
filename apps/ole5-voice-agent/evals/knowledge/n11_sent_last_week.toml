@@ -1,0 +1,22 @@
+id = "n11_sent_last_week"
+split = "dev"
+kind = "answerable"
+needs_search = true
+expected = ["features-012", "procedures-020", "rules-010", "features-008"]
+key_facts = [
+  "Sent correspondence is in the mailbox's sent box («المرسلة»).",
+  "Advanced search («البحث المتقدم») in the side bar searches by the correspondence dates, from a start to an end date.",
+]
+notes = "An English question with a time in it, answered by a place and a search."
+
+[[variants]]
+language = "english"
+text = "Where can I find the correspondence I sent last week?"
+
+[[variants]]
+language = "saudi"
+text = "وين ألقى المراسلة اللي أرسلتها الأسبوع اللي فات؟"
+
+[[variants]]
+language = "mixed"
+text = "أبغى أدور على مراسلة أرسلتها قبل أسبوع، أستخدم الـ advanced search؟"

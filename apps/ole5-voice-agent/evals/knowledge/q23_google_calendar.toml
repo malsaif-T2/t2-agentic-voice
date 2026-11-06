@@ -1,0 +1,22 @@
+id = "q23_google_calendar"
+split = "dev"
+kind = "none"
+needs_search = true
+expected = []
+key_facts = [
+  "Says plainly it does not have information on syncing with Google Calendar.",
+  "Invents no steps, buttons or settings.",
+]
+notes = "An English request close to the appointments and integrations topics."
+
+[[variants]]
+language = "english"
+text = "How do I sync my Ole5 appointments with Google Calendar?"
+
+[[variants]]
+language = "mixed"
+text = "أبي أربط مواعيد المراسلات مع Google Calendar"
+
+[[variants]]
+language = "saudi"
+text = "ينفع أخلي مواعيدي في النظام تطلع في تقويم قوقل؟"
