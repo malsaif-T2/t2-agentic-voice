@@ -40,9 +40,11 @@ items cited are plan 003's appendix, "Changes to the plan's interfaces".
   reply played, the greeting included, or within 300 ms after a reply's last clause played, is
   not answered, so the agent never answers its own voice leaking past the browser's echo
   cancellation. The turn is still closed and transcribed, and kept on the timeline. It is the
-  rule under `interruptions.mode = "drop"`, the default, which gives no `HearOverlap`.
-- **Overlaps** (plan 005). Under `interruptions.mode = "two_step"`, such a turn is an overlap
-  instead: the session sends `duck` at once (`Send`) and gives `HearOverlap`, and the
+  rule under `interruptions.mode = "drop"`, the half-duplex call plan 003 built, which gives
+  no `HearOverlap`.
+- **Overlaps** (plan 005). Under `interruptions.mode = "two_step"`, the default (the owner's
+  ruling of 2026-11-06), such a turn is an overlap instead: the session sends `duck` at once
+  (`Send`) and gives `HearOverlap`, and the
   speech-to-text bridge sends the overlap's `window` and `overlap` parts as that command says,
   each a `Transcribing` and a `Transcribed` naming its part; a `HearOverlap` that reaches the
   bridge after the detector heard the turn's speech stop gets its `overlap` part sent at once,

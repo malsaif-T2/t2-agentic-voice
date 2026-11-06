@@ -36,6 +36,7 @@ from tests.t2_agentic_voice.voice.session.session_support import (
     HEARD,
     call,
     captions,
+    drop,
     emitted,
     greeted,
     play,
@@ -87,7 +88,7 @@ def test_no_tail_follows_the_callers_own_stop(settings: VoiceSettings, mode: str
     nothing of it plays on: it is answered, under either mode (TD-060). Under `two_step` the stop
     also sends the playing caption again marked cut; under `drop` it gives the drop rule's
     commands."""
-    custom = two_step(settings) if mode == "two_step" else settings
+    custom = two_step(settings) if mode == "two_step" else drop(settings)
     io, _ = call(custom)
 
     async def drive() -> None:

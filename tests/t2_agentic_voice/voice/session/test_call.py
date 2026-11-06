@@ -3,8 +3,8 @@ call's start (the language named to speech-to-text, the `hello`, the greeting as
 echo per language (the cached frame, then the heard words in the language's voice, clause by
 clause, as the pronunciation map says them), the heard clauses packed into as few requests as fit
 and an echo's requests bounded, every reply's and caption's key its own, a turn whose speech
-began during the greeting not said back, the phrase cache never asked for heard words, and a call
-whose phrase audio lacks a fixed phrase."""
+began during the greeting not said back under `interruptions.mode = "drop"`, the phrase cache
+never asked for heard words, and a call whose phrase audio lacks a fixed phrase."""
 
 from __future__ import annotations
 
@@ -29,6 +29,7 @@ from tests.t2_agentic_voice.voice.session.session_support import (
     HEARD_AR,
     call,
     captions,
+    drop,
     emitted,
     greeted,
     play,
@@ -166,10 +167,10 @@ def test_an_echo_sends_at_most_its_bound_of_requests(
 def test_a_turn_begun_in_the_greeting_is_not_said_back_and_every_key_is_its_own(
     settings: VoiceSettings,
 ) -> None:
-    """The greeting is reply 0, naming no turn. Turn 0's speech begins while it plays, so it is
-    not said back (but kept, heard and dropped); turn 1's echo is reply 1, naming turn 1. Every
-    `Speak` and every agent caption has a key of its own."""
-    io, _ = call(settings)
+    """Under `drop`: the greeting is reply 0, naming no turn. Turn 0's speech begins while it
+    plays, so it is not said back (but kept, heard and dropped); turn 1's echo is reply 1, naming
+    turn 1. Every `Speak` and every agent caption has a key of its own."""
+    io, _ = call(drop(settings))
 
     async def drive() -> None:
         await io.connected()

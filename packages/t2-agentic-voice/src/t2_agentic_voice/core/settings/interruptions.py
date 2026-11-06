@@ -1,14 +1,16 @@
 """The `interruptions` group: what the agent does when the caller speaks over its reply (the
 design's 7.6; plan 005).
 
-Under `drop`, the default until the registered runs move it (GP-18), a turn that began over a
-reply is not answered, as before. Under `two_step`, the agent's voice is lowered at once
-(`duck_level`), the overlap is transcribed in a first window (`first_window_ms`) and then whole,
-and the session's rule decides from each transcript whether to stop: the bounds below are the
-rule's (plan 005's "The starting rule"). The duck level is the prototype's (its `web/voice.js`,
-line 174, `duck(level = 0.25)`, read 2026-11-03); the window is plan 002's run W3; the other
-bounds are the prototype's (its D30) and the starting rule's, but `short_s`: 1.6 s in both, it is
-1.2 s since the rule's one revision (plan 005's amendment (10), after its runs O1 and O2).
+Under `two_step`, the default since the owner's ruling of 2026-11-06 (plan 005, "The owner's
+decisions"), the agent's voice is lowered at once (`duck_level`), the overlap is transcribed in a
+first window (`first_window_ms`) and then whole, and the session's rule decides from each
+transcript whether to stop: the bounds below are the rule's (plan 005's "The starting rule").
+Under `drop`, a turn that began over a reply is not answered (io.py's drop rule): the half-duplex
+call plan 003 built, kept as it was (GP-18). The duck level is the prototype's (its
+`web/voice.js`, line 174, `duck(level = 0.25)`, read 2026-11-03); the window is plan 002's run
+W3; the other bounds are the prototype's (its D30) and the starting rule's, but `short_s`: 1.6 s
+in both, it is 1.2 s since the rule's one revision (plan 005's amendment (10), after its runs O1
+and O2).
 """
 
 from __future__ import annotations
@@ -28,12 +30,13 @@ class InterruptionSettings(Group):
     the rule that decides whether it stops the agent."""
 
     mode: InterruptionMode = Field(
-        default="drop",
+        default="two_step",
         description=(
-            "How the caller's speech over the agent's reply is taken: drop (the turn is not "
-            "answered, so the agent never answers its own voice) or two_step (the agent's voice "
-            "is lowered, the speech transcribed, and the agent stops only when the rule says "
-            "so). A registered measurement moves the default (GP-18)."
+            "How the caller's speech over the agent's reply is taken: two_step, the default by "
+            "the owner's ruling (plan 005), lowers the agent's voice, transcribes the speech, "
+            "and stops the agent only when the rule says so; drop keeps the half-duplex "
+            "behaviour from before plan 005 (the turn is not answered, so the agent never "
+            "answers its own voice)."
         ),
     )
     duck_level: float = Field(

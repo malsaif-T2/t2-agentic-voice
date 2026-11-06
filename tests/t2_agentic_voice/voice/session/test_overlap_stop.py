@@ -31,6 +31,7 @@ from tests.t2_agentic_voice.voice.session.overlap_support import (
 from tests.t2_agentic_voice.voice.session.session_support import (
     HEARD,
     call,
+    drop,
     emitted,
     greeted,
     report,
@@ -173,9 +174,10 @@ def test_a_requests_report_after_a_stop_is_still_counted(settings: VoiceSettings
 def test_under_drop_a_turn_over_the_echo_and_a_stop_give_the_drop_rules_commands(
     settings: VoiceSettings, rule: FakeRule
 ) -> None:
-    """The default mode: the turn over the echo gives no command and is not said back, not
-    judged, and kept dropped; the caller's `stop` gives `StopSpeaking` and the state alone."""
-    io, session = call(settings)
+    """Under `drop`, set here since `two_step` is the default: the turn over the echo gives no
+    command and is not said back, not judged, and kept dropped; the caller's `stop` gives
+    `StopSpeaking` and the state alone."""
+    io, session = call(drop(settings))
 
     async def drive() -> None:
         await echo_playing(io)

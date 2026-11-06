@@ -29,6 +29,7 @@ from tests.t2_agentic_voice.voice.session.session_support import (
     HEARD_AR,
     call,
     captions,
+    drop,
     emitted,
     greeted,
     play,
@@ -116,7 +117,7 @@ def test_a_sentence_holding_a_stop_word_is_answered(settings: VoiceSettings) -> 
 
 @pytest.mark.parametrize("text", [*STOPS, REPEAT], ids=["stop-twice", "wait", "noisy", "repeat"])
 def test_under_drop_every_whole_command_is_said_back(settings: VoiceSettings, text: str) -> None:
-    io, session = call(settings)
+    io, session = call(drop(settings))
 
     async def drive() -> None:
         await _answered(io)
@@ -252,7 +253,7 @@ def test_a_whole_stop_never_stops_an_answer_to_its_own_or_a_later_turn(
 def test_under_drop_a_whole_stop_said_just_before_an_answer_began_is_said_back(
     settings: VoiceSettings,
 ) -> None:
-    io, session = call(settings)
+    io, session = call(drop(settings))
 
     async def drive() -> None:
         await _said_as_the_answer_began(io, STOPS[0])

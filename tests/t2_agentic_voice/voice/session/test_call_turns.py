@@ -1,9 +1,10 @@
-"""The session's turns (voice/session/call.py; io.py's turns and drop rule): speech that starts
-while the echo plays, or within 300 ms after it, is not said back, and speech after that is; a
-turn's end that comes before its transcript, with the next turn opening before that transcript
-(plan 003's appendix, item 6), and a transcript before its turn's end; an empty transcript said
-back as nothing and kept on the timeline; and a failed transcript and a failed echo clause each
-giving the `error` notice, sent and spoken from the phrase cache with no request."""
+"""The session's turns (voice/session/call.py; io.py's turns and drop rule): under
+`interruptions.mode = "drop"`, speech that starts while the echo plays, or within 300 ms after
+it, is not said back, and speech after that is; a turn's end that comes before its transcript,
+with the next turn opening before that transcript (plan 003's appendix, item 6), and a
+transcript before its turn's end; an empty transcript said back as nothing and kept on the
+timeline; and a failed transcript and a failed echo clause each giving the `error` notice, sent
+and spoken from the phrase cache with no request."""
 
 from __future__ import annotations
 
@@ -21,6 +22,7 @@ from tests.t2_agentic_voice.voice.session.session_support import (
     HEARD,
     call,
     captions,
+    drop,
     emitted,
     greeted,
     play,
@@ -39,10 +41,10 @@ from tests.t2_agentic_voice.voice.session.session_support import (
 def test_speech_begun_while_the_echo_plays_or_just_after_is_not_said_back(
     settings: VoiceSettings, after_s: float | None, answered: bool
 ) -> None:
-    """Turn 1's speech begins while turn 0's echo plays (`None`), or `after_s` after its last
-    clause played: within 300 ms it is the agent's own voice leaking back, so it is not said
-    back, though it is heard and kept; after that it is the caller's, said back."""
-    io, _ = call(settings)
+    """Under `drop`, turn 1's speech begins while turn 0's echo plays (`None`), or `after_s`
+    after its last clause played: within 300 ms it is the agent's own voice leaking back, so it
+    is not said back, though it is heard and kept; after that it is the caller's, said back."""
+    io, _ = call(drop(settings))
 
     async def drive() -> None:
         await greeted(io)

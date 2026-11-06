@@ -325,13 +325,13 @@ def test_the_turn_tts_and_limit_defaults_are_the_plans() -> None:
 
 
 def test_the_interruption_and_word_defaults_are_plan_005s() -> None:
-    """The drop rule until the registered runs move it, the prototype's duck level, run W3's
-    window and the starting rule's bounds, the short output's as the rule's one revision set it
-    (1.2 s); no word added; the filter for text from silence on, as the registered rule F and
-    its one revision set it (0.55 and the caption list)."""
+    """The two-step interruption, by the owner's ruling of 2026-11-06 (plan 005), the
+    prototype's duck level, run W3's window and the starting rule's bounds, the short output's
+    as the rule's one revision set it (1.2 s); no word added; the filter for text from silence
+    on, as the registered rule F and its one revision set it (0.55 and the caption list)."""
     settings = VoiceSettings(env="test")
     assert settings.interruptions.model_dump() == {
-        "mode": "drop",
+        "mode": "two_step",
         "duck_level": 0.25,
         "first_window_ms": 750,
         "min_words": 2,

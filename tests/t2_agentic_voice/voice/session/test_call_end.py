@@ -26,6 +26,7 @@ from t2_agentic_voice.voice.session.session_events import Connected, TurnOpened
 from tests.t2_agentic_voice.voice.session.session_support import (
     HEARD,
     call,
+    drop,
     emitted,
     greeted,
     play,
@@ -74,10 +75,12 @@ def test_a_stop_drops_every_reply_asked_for_and_the_session_listens_again(
 
 
 def test_a_stop_that_drops_the_ended_notice_hangs_up_at_once(settings: VoiceSettings) -> None:
-    """At `limits.max_call_s` the `ended` notice is queued as reply 2 behind echo 1, still
-    playing. A stop drops both, so the notice never plays: the session hangs up at once."""
+    """Under `drop`, plan 003's stop path, whose stop sends no caption again marked cut (as
+    `two_step`'s does: test_overlap_order.py): at `limits.max_call_s` the `ended` notice is
+    queued as reply 2 behind echo 1, still playing. A stop drops both, so the notice never
+    plays: the session hangs up at once."""
     limits = LimitSettings(max_call_s=30.0, idle_s=60.0)
-    short = settings.model_copy(update={"limits": limits})
+    short = drop(settings).model_copy(update={"limits": limits})
     io, _ = call(short)
 
     async def drive() -> None:

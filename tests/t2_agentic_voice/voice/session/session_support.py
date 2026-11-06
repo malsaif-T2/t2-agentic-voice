@@ -1,6 +1,7 @@
 """What the session's tests share (Track D): a `CallSession` on the fake session I/O
-(tests/t2_agentic_voice/session_fakes.py), traced to memory when a test reads its spans, and the
-steps a call takes, each at the fake clock's time."""
+(tests/t2_agentic_voice/session_fakes.py), traced to memory when a test reads its spans, the
+settings of the half-duplex call (`drop`), and the steps a call takes, each at the fake clock's
+time."""
 
 from __future__ import annotations
 
@@ -22,6 +23,15 @@ from tests.t2_agentic_voice.session_fakes import FakeSessionIO
 HEARD = "please check the line"  # what the caller says, in English
 HEARD_AR = "ابغى اعرف حالة الطلب"  # what the caller says, in Saudi Arabic
 GAP_S = 1.0  # a pause well past the drop rule's 300 ms
+
+
+def drop(settings: VoiceSettings) -> VoiceSettings:
+    """`settings` under `interruptions.mode = "drop"`: the half-duplex call plan 003 built
+    (io.py's drop rule), which `two_step` replaced as the default by the owner's ruling (plan
+    005). A test of that call sets it, so it goes on testing the commands plan 003's session
+    gave (GP-18)."""
+    group = settings.interruptions.model_copy(update={"mode": "drop"})
+    return settings.model_copy(update={"interruptions": group})
 
 
 def call(settings: VoiceSettings, **given: Any) -> tuple[FakeSessionIO, CallSession]:
