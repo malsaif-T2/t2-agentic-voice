@@ -28,9 +28,8 @@ from t2_agentic_voice.domain.declaration import Language, VoiceAgent
 from t2_agentic_voice.domain.guard import IdVerdict
 from t2_agentic_voice.domain.ports.chat_model import ToolCallRequest
 from t2_agentic_voice.domain.words import PRESET_WORDS
-from t2_agentic_voice.evals import ScriptedLLM, TextCall, TextTurn
+from t2_agentic_voice.evals import Pause, ScriptedLLM, TextCall, TextTurn
 from t2_agentic_voice.testing import text_call
-from t2_agentic_voice.testing.llm_fakes import Pause
 
 from tests.t2_agentic_voice.testing.text_call_support import (
     AGENT,
