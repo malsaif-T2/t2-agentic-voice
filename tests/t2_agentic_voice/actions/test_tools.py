@@ -195,3 +195,41 @@ def test_a_lambda_has_no_name_the_talker_can_call() -> None:
     with pytest.raises(ConfigurationError, match="FIX: ") as raised:
         Tool.from_function(lambda: "x", description="Made up.")
     assert raised.value.details == {"field": "name"}
+
+
+class Opaque:
+    """A type pydantic has no schema for."""
+
+
+def _opaque(item: Opaque) -> str:
+    return str(item)
+
+
+def test_a_parameter_type_pydantic_cannot_parse_is_a_configuration_error() -> None:
+    with pytest.raises(ConfigurationError, match="not one pydantic can parse") as raised:
+        Tool.from_function(_opaque, description="Made up.")
+    assert raised.value.details == {"field": "function"}
+
+
+def _unreadable(query: Missing) -> str:  # type: ignore[name-defined]  # noqa: F821
+    return str(query)
+
+
+def test_a_tool_given_whole_whose_signature_cannot_be_read_runs_with_no_context() -> None:
+    """A Tool built from its fields (not from_function) is never refused for its annotations:
+    the runner gives it no context, and it runs."""
+    import asyncio
+
+    from t2_agentic_voice.actions.runner import ToolRunner
+    from t2_agentic_voice.domain.ports.chat_model import ToolCallRequest
+
+    from tests.t2_agentic_voice.fakes import FakeClock
+
+    class Query(BaseModel):
+        query: str
+
+    given = Tool(name="unreadable", description="Made up.", parameters=Query, function=_unreadable)
+    runner = ToolRunner([given])
+    ctx = CallContext(caller=CALLER, call_id="call-1", language="en")
+    request = ToolCallRequest(id="c-1", name="unreadable", arguments='{"query": "x"}')
+    assert asyncio.run(runner.run(request, ctx, clock=FakeClock())).data == "x"

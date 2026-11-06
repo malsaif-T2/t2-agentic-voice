@@ -129,3 +129,8 @@ def test_a_turn_joined_after_a_resumed_hold_reaches_the_model_as_one_turn() -> N
     reply(talker(model), TalkerTurn(turn_id=1, words="how do I reset my password on the portal"))
     users = [m.content for m in model.requests[0].messages if m.role == "user"]
     assert users == ["how do I reset my password on the portal"]
+
+
+def test_a_turn_said_alone_that_cut_a_heard_reply_names_it() -> None:
+    turn = TalkerTurn(turn_id=1, words="another question", cut_reply=1, conversation=SO_FAR)
+    assert turn_message(turn).content == "another question [it cut your reply 1]"

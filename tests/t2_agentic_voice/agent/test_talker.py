@@ -235,3 +235,9 @@ def test_the_talker_reads_no_time_but_its_clock() -> None:
     model = FakeChat(said("Sure."))
     reply(talker(model, clock=clock), TURN)
     assert f"Today is {clock.wall().date().isoformat()}." in _system(model, 0)
+
+
+def test_the_clauses_after_a_blocked_one_in_the_same_piece_are_dropped_too() -> None:
+    model = FakeChat(said("Your number is 4521. Then open it. And wait."))
+    events = reply(talker(model), TURN)
+    assert kinds(events) == ["ModelRequested", "ClauseBlocked", "ModelReplied", "ReplyDone"]

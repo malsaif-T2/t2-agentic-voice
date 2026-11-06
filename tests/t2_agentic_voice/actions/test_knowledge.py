@@ -133,3 +133,9 @@ def test_a_limit_under_one_is_a_configuration_error(limit: int) -> None:
     with pytest.raises(ConfigurationError, match="FIX: ") as raised:
         knowledge_tool(FakeKnowledgeBase(), description="Search.", limit=limit)
     assert raised.value.details == {"field": "limit"}
+
+
+def test_a_top_passage_whose_title_says_nothing_gives_no_card() -> None:
+    blank = RESET.model_copy(update={"title": "   ", "source": "  "})
+    result = _search(FakeKnowledgeBase([blank]))
+    assert result.card is None and result.ok

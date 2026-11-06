@@ -223,3 +223,20 @@ def test_an_arabic_prefix_written_onto_a_number_stays_on_its_first_word(
 ) -> None:
     """TD-058: «و٢١» left a lone waw before the number's words."""
     assert speak_digits(text, language="ar") == said
+
+
+def test_a_long_word_written_onto_a_number_is_set_apart() -> None:
+    """Only letters that are all an Arabic prefix stay on the number; a longer word does not."""
+    assert speak_digits("للمستخدمين٣", language="ar") == "للمستخدمين ثلاثة"
+
+
+def test_an_overflow_num2words_raises_is_read_digit_by_digit(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    from t2_agentic_voice.domain.text import speaking
+
+    def refused(number: int, *, lang: str) -> str:
+        raise OverflowError("past its range")
+
+    monkeypatch.setattr(speaking, "num2words", refused)
+    assert speak_number(-42, language="en") == "minus four two"
