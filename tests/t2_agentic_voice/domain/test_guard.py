@@ -81,6 +81,46 @@ def test_thousands_separators_and_decimals_read_alike_in_the_clause_and_the_evid
     assert _check("It costs 12.75.", "price: 12.75").passed
 
 
+def test_a_time_is_never_one_id() -> None:
+    """ "8:00" is not 800, nor "16:00" 1600: support hours pass, whatever the evidence says."""
+    assert _check("We open at 8:00 and close at 16:00.") == IdVerdict(passed=True)
+    assert _check("We open at 8:00 and close at 16:00.", "Support hours: 8 am to 4 pm").passed
+    assert _check("Call after 9:30am.").passed
+    assert _check("We are open 8:00-16:00.").passed  # no number of one joins the next
+
+
+def test_a_point_or_a_slash_never_joins_two_numbers() -> None:
+    assert _check("It costs 12.75.") == IdVerdict(passed=True)
+    assert _check("Support runs 24/7.").passed
+    assert _check("It costs 1234.50.") == IdVerdict(passed=False, unsupported=("1234",))
+    assert _check("It costs 1,234.50.", "price 1234.50").passed  # its thousands still join
+
+
+@pytest.mark.parametrize(
+    "clause", ["It came on 7/11/2026.", "It is due 07-11-2026.", "Today is 2026-11-07."]
+)
+def test_a_date_around_a_year_is_never_one_id(clause: str) -> None:
+    """The prompt's own date ("2026-11-07") among them: the talker may say it back."""
+    assert _check(clause) == IdVerdict(passed=True)
+
+
+def test_a_date_in_another_year_still_needs_evidence_for_its_year() -> None:
+    assert _check("It came on 7/11/2025.") == IdVerdict(passed=False, unsupported=("2025",))
+
+
+@pytest.mark.parametrize(
+    ("clause", "token"),
+    [
+        ("Your ticket is 45-21-33.", "452133"),
+        ("Your ticket is 11-07-33.", "110733"),  # no year among them
+        ("Your ticket is 4521 3390.", "45213390"),
+        ("Your ticket is 45-21-2026.", "4521"),  # no day and month: the year only ends it
+    ],
+)
+def test_a_ticket_number_read_in_groups_still_joins(clause: str, token: str) -> None:
+    assert _check(clause) == IdVerdict(passed=False, unsupported=(token,))
+
+
 def test_the_shortest_id_follows_the_setting() -> None:
     four = GuardSettings(min_id_digits=4)
     assert _check("Room 452.", settings=four).passed
