@@ -29,6 +29,9 @@ CLIENT = STATIC / "t2v-client.js"
 DEV_PAGE = STATIC / "dev.html"
 # The t2v/1 message list every track builds against (Block 0).
 FIXTURE = Path(__file__).parent / "fixtures" / "t2v_protocol.json"
+# The session's messages the client does not take yet, which it drops as it drops any type it
+# does not list: plan 006's `card`, until its Track D shows cards (it empties this).
+NOT_IN_CLIENT_YET = ("card",)
 # What inserts markup rather than text (the browser criteria of plan 003).
 MARKUP = re.compile(r"\b(innerHTML|outerHTML|insertAdjacentHTML)\b|document\s*\.\s*write")
 
@@ -98,7 +101,8 @@ def test_the_client_speaks_the_protocol_the_fixture_lists() -> None:
     fixture = json.loads(FIXTURE.read_text(encoding="utf-8"))
     channel = fixture["data_channel"]
     assert _array(source, "CLIENT_MESSAGES") == list(channel["client_to_session"])
-    assert _array(source, "SESSION_MESSAGES") == list(channel["session_to_client"])
+    listed = [kind for kind in channel["session_to_client"] if kind not in NOT_IN_CLIENT_YET]
+    assert _array(source, "SESSION_MESSAGES") == listed
     assert [_constant(source, "RESERVED").strip('"')] == fixture["reserved"]["types"]
     assert _constant(source, "PROTOCOL") == str(fixture["protocol"]) == "1"
     patch = protocol.BODIES["PATCH /offer"]

@@ -32,6 +32,7 @@ from t2_agentic_voice.voice.protocol import (
     Playback,
     SessionHello,
     SessionMessage,
+    ShowCard,
     State,
     Stop,
     Unduck,
@@ -278,6 +279,7 @@ def test_each_session_message_goes_out_with_its_version_and_type() -> None:
         SessionHello(call_id="c-1", languages=("ar-SA", "en")),
         State(state="listening"),
         Caption(speaker="caller", text="x", final=True, turn_id=0),
+        ShowCard(title="x", steps=("a", "b")),
         Duck(level=0.25),
         Unduck(),
         Notice(kind="ended", text="x"),
@@ -303,7 +305,8 @@ def test_each_session_message_goes_out_with_its_version_and_type() -> None:
     assert (wire(greeting)["turn_id"], sent[2]["reply_id"], sent[2]["clause"]) == (None,) * 3
     cut = Caption(speaker="agent", text="x", final=True, reply_id=5, clause=2, cut=True)
     assert wire(cut)["cut"] is True and sent[2]["cut"] is False
-    assert (sent[3], sent[4]) == (
+    assert sent[3] == {"v": 1, "type": "card", "title": "x", "steps": ["a", "b"], "source": None}
+    assert (sent[4], sent[5]) == (
         {"v": 1, "type": "duck", "level": 0.25},
         {"v": 1, "type": "unduck"},
     )
@@ -325,6 +328,8 @@ def test_each_session_message_goes_out_with_its_version_and_type() -> None:
         (SessionHello, {"call_id": "c 1", "languages": ("en",)}),
         (State, {"state": "napping"}),
         (Notice, {"kind": "ended", "text": ""}),
+        (ShowCard, {"title": "", "steps": ()}),
+        (ShowCard, {"title": "x", "steps": "a"}),  # not a list of steps
         (Duck, {"level": 1.5}),
         (Duck, {"level": -0.1}),
         (Duck, {"level": float("nan")}),
