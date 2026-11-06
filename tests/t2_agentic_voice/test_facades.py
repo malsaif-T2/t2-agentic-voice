@@ -91,6 +91,7 @@ NAMES = {
         "TextTurn",
         "TurnEnd",
         "TurnExpectations",
+        "TurnReplay",
         "TurnTiming",
         "cer",
         "echo_timings",

@@ -8,7 +8,6 @@ the times and the usage), their behaviour stubs that raise (Tracks A and C)."""
 from __future__ import annotations
 
 import asyncio
-from collections.abc import Callable
 from typing import Any
 
 import pytest
@@ -20,7 +19,7 @@ from t2_agentic_voice.domain.ports.chat_model import ChatMessage, ChatModel, Cha
 from t2_agentic_voice.domain.ports.knowledge import KnowledgeBase, Passage
 from t2_agentic_voice.testing.knowledge_fake import FakeKnowledgeBase, KnowledgeSearch
 from t2_agentic_voice.testing.llm_fakes import FAKE_DATA_FLOW, FunctionLLM, ScriptedLLM
-from t2_agentic_voice.testing.text_call import TextCall, TextTurn, TurnExpectations
+from t2_agentic_voice.testing.text_call import TextCall
 from t2_agentic_voice.testing.turn_data import BlockedClause, HeardClause, TextToolCall
 
 CALLER = Caller(subject="made-up-subject")
@@ -67,7 +66,8 @@ def test_the_fake_chat_models_send_nothing_and_their_streams_are_stubs() -> None
         ScriptedLLM.call_tool("search_help", query="password")
 
 
-def test_a_text_call_holds_its_injections_and_expectations_as_stubs() -> None:
+def test_a_text_call_holds_what_it_was_given() -> None:
+    """What it does is test_text_call.py's."""
     agent = VoiceAgent(
         name="helper", languages=[Language.english(greeting="Hi")], instructions="Be brief."
     )
@@ -78,40 +78,8 @@ def test_a_text_call_holds_its_injections_and_expectations_as_stubs() -> None:
         "system",
     )
 
-    async def scene() -> None:
-        with pytest.raises(NotImplementedError):
-            await call.__aenter__()
-        with pytest.raises(NotImplementedError):
-            await call.__aexit__(None, None, None)
-        for step in (
-            call.user("How do I reset my password?"),
-            call.user("stop", during="agent_speaking"),
-            call.user("actually, archiving", at="tool_running"),
-            call.advance(1.5),
-            call.stop(),
-        ):
-            with pytest.raises(NotImplementedError):
-                await step
 
-    asyncio.run(scene())
-    with pytest.raises(NotImplementedError):
-        _ = call.violations
-    with pytest.raises(NotImplementedError):
-        _ = TextTurn().expect
-    expect = TurnExpectations()
-    checks: list[Callable[[], None]] = [
-        lambda: expect.tool_call("search_help", query="password"),
-        lambda: expect.said(contains="Settings"),
-        expect.blocked,
-        lambda: expect.cancelled("search_help"),
-        lambda: expect.language("en"),
-    ]
-    for check in checks:
-        with pytest.raises(NotImplementedError):
-            check()
-
-
-def test_a_text_turn_gives_what_it_did_as_data_its_reads_stubs() -> None:
+def test_a_text_turn_gives_what_it_did_as_data() -> None:
     cut = HeardClause(text="Open Settings.", language="en", fate="cut", played_fraction=0.4)
     progress = HeardClause(
         text="One moment.", language="en", fate="played", played_fraction=1.0, phrase=True
@@ -128,21 +96,6 @@ def test_a_text_turn_gives_what_it_did_as_data_its_reads_stubs() -> None:
         search.arguments["query"] = "other"  # type: ignore[index]
     with pytest.raises(ValidationError):
         cut.text = "other"  # type: ignore[misc]
-    turn = TextTurn()
-    reads: list[Callable[[], object]] = [
-        lambda: turn.fate,
-        lambda: turn.clauses,
-        lambda: turn.tool_calls,
-        lambda: turn.cards,
-        lambda: turn.blocked,
-        lambda: turn.first_token_s,
-        lambda: turn.first_clause_s,
-        lambda: turn.model_requests,
-        lambda: turn.usage,
-    ]
-    for read in reads:
-        with pytest.raises(NotImplementedError):
-            read()
     # The types a runner reads them as (mypy checks the properties' shapes).
     shapes: tuple[type[object], ...] = (HeardClause, TextToolCall, BlockedClause, Card, Usage)
     assert all(isinstance(shape, type) for shape in shapes)

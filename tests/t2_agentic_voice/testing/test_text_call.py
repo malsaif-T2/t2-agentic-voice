@@ -1,0 +1,217 @@
+"""`TextCall` (testing/text_call.py; plan 006, Track C): the real session and its talker held in
+text on a virtual clock: a turn's reply as the caller hears it, its tool calls, cards, blocked
+clauses, times, requests and usage; a turn said over the reply playing, or while a search runs;
+the client's Stop; the guard's checks of the call; an echo agent's call; and what it refuses.
+The talker is the tests' scripted one (text_call_support.py)."""
+
+from __future__ import annotations
+
+import asyncio
+from typing import Any
+
+import pytest
+from t2_agentic_voice.actions.tools import ToolResult
+from t2_agentic_voice.agent.talker import (
+    ClauseBlocked,
+    ReplyDone,
+    ShownCard,
+    SpokenClause,
+    ToolBegan,
+    ToolEnded,
+)
+from t2_agentic_voice.core.config import VoiceSettings
+from t2_agentic_voice.core.conversation import TalkerTurn
+from t2_agentic_voice.core.errors import ConfigurationError
+from t2_agentic_voice.domain.cards import Card
+from t2_agentic_voice.domain.declaration import Language, VoiceAgent
+from t2_agentic_voice.domain.guard import IdVerdict
+from t2_agentic_voice.domain.ports.chat_model import ToolCallRequest
+from t2_agentic_voice.domain.words import PRESET_WORDS
+from t2_agentic_voice.evals import TextCall, TextTurn
+from t2_agentic_voice.testing import text_call
+
+from tests.t2_agentic_voice.testing.text_call_support import (
+    AGENT,
+    NoModel,
+    Ran,
+    ScriptedCall,
+    Step,
+    Work,
+    answer,
+)
+
+SEARCH = ToolCallRequest(id="t-1", name="search_help", arguments='{"query": "password"}')
+CARD = Card(title="Reset a password", steps=("Open Settings.", "Press Reset."))
+
+
+def _reset(turn: TalkerTurn) -> list[Step]:
+    if turn.turn_id == 0:
+        return [
+            ToolBegan(call_id="t-1", tool="search_help"),
+            Ran(SEARCH, ToolResult(data="passages", card=CARD, evidence=("Open Settings.",))),
+            ToolEnded(call_id="t-1", tool="search_help", ok=True, ms=120.0),
+            ShownCard(card=CARD),
+            *answer("Open Settings, then press Reset.", "Anything else?"),
+        ]
+    return answer("Made-up answer.")
+
+
+def test_a_turn_is_answered_by_the_real_session_and_read_as_the_caller_heard_it() -> None:
+    async def scene() -> TextTurn:
+        async with ScriptedCall(_reset) as call:
+            turn = await call.user("How do I reset my password?")
+            assert turn.fate == "pending" and turn.clauses[0].fate == "unplayed"  # still to play
+            turn.expect.said(contains="Open Settings")
+            await call.advance(10.0)
+            return turn
+
+    turn = asyncio.run(scene())
+    assert turn.fate == "answered"
+    assert [(c.text, c.fate, c.language, c.phrase) for c in turn.clauses] == [
+        ("Open Settings, then press Reset.", "played", "en", False),
+        ("Anything else?", "played", "en", False),
+    ]
+    turn.expect.tool_call("search_help", query="password")
+    turn.expect.language("en")
+    (call,) = turn.tool_calls
+    assert (call.outcome, call.ms, dict(call.arguments)) == ("ok", 120.0, {"query": "password"})
+    assert turn.cards == (CARD,) and turn.blocked == ()
+    assert (turn.model_requests, turn.usage.input_tokens, turn.usage.output_tokens) == (1, 100, 20)
+    assert turn.first_clause_s == 0.0 and turn.first_token_s == pytest.approx(0.2)
+    with pytest.raises(AssertionError, match="made no call of archive"):
+        turn.expect.tool_call("archive")
+    with pytest.raises(AssertionError, match="said"):
+        turn.expect.said(contains="Archive")
+    with pytest.raises(AssertionError, match="not ar-SA"):
+        turn.expect.language("ar-SA")
+    with pytest.raises(AssertionError, match="blocked no clause"):
+        turn.expect.blocked()
+    with pytest.raises(AssertionError, match="cancelled no search_help"):
+        turn.expect.cancelled("search_help")
+
+
+def test_a_stop_said_over_the_reply_cuts_it_and_the_turn_is_a_command() -> None:
+    stop = PRESET_WORDS["en"].stop[0]
+
+    async def scene() -> tuple[TextTurn, TextTurn]:
+        async with ScriptedCall(_reset) as call:
+            first = await call.user("How do I reset my password?")
+            second = await call.user(stop, during="agent_speaking")
+            return first, second
+
+    first, second = asyncio.run(scene())
+    assert second.fate == "command"
+    assert [c.fate for c in first.clauses] == ["cut", "unplayed"]
+    first.expect.said(contains="Open Settings")
+    with pytest.raises(AssertionError):
+        first.expect.said(contains="Anything else")  # cut away, never heard
+
+
+def test_words_said_while_a_search_runs_cancel_it_and_the_talker_hears_both() -> None:
+    def script(turn: TalkerTurn) -> list[Step]:
+        if turn.turn_id == 0:
+            return [
+                ToolBegan(call_id="t-1", tool="search_help"),
+                Work(3.0),
+                ToolEnded(call_id="t-1", tool="search_help", ok=True, ms=3000.0),
+                ReplyDone(),
+            ]
+        return answer("Archiving is under Tickets.")
+
+    async def scene() -> tuple[ScriptedCall, TextTurn, TextTurn]:
+        async with ScriptedCall(script) as call:
+            first = await call.user("How do I reset my password?")
+            second = await call.user("actually, archiving", at="tool_running")
+            await call.advance(5.0)
+            return call, first, second
+
+    call, first, second = asyncio.run(scene())
+    first.expect.cancelled("search_help")
+    second.expect.said(contains="Archiving")
+    assert call.talker is not None and call.talker.turns[1].cut_reply == 1
+    assert [t.fate for t in call.talker.turns[1].conversation.turns] == ["rolled_back"]
+
+
+def test_the_clients_stop_stops_the_reply_and_its_work() -> None:
+    def script(turn: TalkerTurn) -> list[Step]:
+        return [SpokenClause(text="Let me check that.", language="en"), Work(5.0), ReplyDone()]
+
+    async def scene() -> TextTurn:
+        async with ScriptedCall(script) as call:
+            turn = await call.user("Where is my ticket?")
+            await call.advance(0.5)
+            await call.stop()
+            return turn
+
+    turn = asyncio.run(scene())
+    assert [c.fate for c in turn.clauses] == ["cut"]  # cut while it played
+    assert turn.fate == "rolled_back"  # no clause of it played whole
+
+
+def test_the_guards_checks_run_on_every_clause_the_talker_said(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """Rule B is Track B's, built in parallel: the tests' stand-in passes a token found in the
+    evidence (the caller's words, the tools' evidence, the cards) and fails any other."""
+
+    def check(clause: str, *, evidence: Any, settings: Any, year: int) -> IdVerdict:
+        tokens = [w.strip(".") for w in clause.split() if w.strip(".").isdigit()]
+        seen = " ".join(evidence)
+        missing = tuple(t for t in tokens if t not in seen)
+        return IdVerdict(passed=not missing, unsupported=missing)
+
+    monkeypatch.setattr(text_call, "check_ids", check)
+
+    def script(turn: TalkerTurn) -> list[Step]:
+        return [
+            ClauseBlocked(text="It is 77123.", language="en", unsupported=("77123",)),
+            *answer(f"Your ticket {turn.words.split()[-1]} is open.", "Call 55501 later."),
+        ]
+
+    async def scene() -> tuple[str, ...]:
+        async with ScriptedCall(script) as call:
+            turn = await call.user("Where is ticket 88231")
+            turn.expect.blocked()
+            assert turn.blocked[0].unsupported == ("77123",)
+            await call.advance(10.0)
+            return call.violations
+
+    (found,) = asyncio.run(scene())
+    assert "55501" in found and "88231" not in found
+
+
+def test_an_agent_with_no_instructions_runs_the_echo() -> None:
+    agent = VoiceAgent(name="echo-text", languages=[Language.english(greeting="Hi.")])
+
+    async def scene() -> TextTurn:
+        async with TextCall(agent, llm=NoModel()) as call:
+            turn = await call.user("check the line please")
+            await call.advance(10.0)
+            return turn
+
+    turn = asyncio.run(scene())
+    turn.expect.said(contains="check the line please")
+    assert turn.tool_calls == () and turn.model_requests == 0 and turn.first_token_s is None
+
+
+def test_a_text_call_refuses_another_env_and_use_outside_its_block(settings: VoiceSettings) -> None:
+    staging = settings.model_copy(update={"env": "staging"})
+    with pytest.raises(ConfigurationError, match="env=test"):
+        asyncio.run(TextCall(AGENT, llm=NoModel(), settings=staging).__aenter__())
+    with pytest.raises(RuntimeError, match="async with"):
+        asyncio.run(TextCall(AGENT, llm=NoModel()).user("hello"))
+
+
+def test_on_the_system_clock_a_turn_returns_once_its_reply_is_written() -> None:
+    def script(turn: TalkerTurn) -> list[Step]:
+        return [Work(0.05), *answer("Done.")]
+
+    async def scene() -> TextTurn:
+        async with ScriptedCall(script, clock="system", chars_per_second=2000.0) as call:
+            turn = await call.user("Is it done?")
+            assert turn.first_clause_s is not None and turn.first_clause_s >= 0.04
+            await call.advance(0.05)
+            return turn
+
+    turn = asyncio.run(scene())
+    assert turn.fate == "answered"

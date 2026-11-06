@@ -3,7 +3,8 @@ terms and IDs, text from silence, and the sign test by item; and the measurement
 file-fed pipeline, where a call's turns end and how long each step of an echo call takes (plan
 003's decision log), with the phrase audio an echo call plays (`PhraseAudio`, which the `stores`
 facade's `PhraseCache` meets); and the replay of a clip over a reply (`AudioCall`, the design's
-9.5), each overlap's verdict, requests and stop time (plan 005); and the call held in text
+9.5), each overlap's verdict, requests and stop time (plan 005), or of a clip as a turn,
+its time to first audio (`TurnReplay`); and the call held in text
 (`TextCall`, the design's 9.2) with the fakes it runs on and what each of its turns did, as
 data (plan 006), until the testing kit is a public module of its own (the design's 5.1).
 Provisional (D-021). A facade: it only re-exports (ARCH-FACADE)."""
@@ -18,6 +19,7 @@ from t2_agentic_voice.testing.llm_fakes import FunctionLLM, ScriptedLLM
 from t2_agentic_voice.testing.scorers import cer, wer
 from t2_agentic_voice.testing.text_call import TextCall, TextTurn, TurnExpectations
 from t2_agentic_voice.testing.turn_data import BlockedClause, HeardClause, TextToolCall
+from t2_agentic_voice.testing.turn_replay import TurnReplay
 from t2_agentic_voice.testing.turns import TurnEnd, turn_ends
 from t2_agentic_voice.voice.session.io import PhraseAudio
 
@@ -39,6 +41,7 @@ __all__ = [
     "TextTurn",
     "TurnEnd",
     "TurnExpectations",
+    "TurnReplay",
     "TurnTiming",
     "cer",
     "echo_timings",

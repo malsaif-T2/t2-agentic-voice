@@ -18,12 +18,22 @@ other fixed phrase (the echo's frame, a notice) is silence of no length. The fil
 feeds the clip `at_s` after the greeting's first audio was queued (`over_reply`), not after it
 played, so the clip lies over the reply, with `tail_s` of silence after it. Each clip is a fresh
 call of one `VoiceCalls`, started once, untraced and never recorded, whose public events go
-nowhere but its `Interrupted`, which the replay reads.
+nowhere but the replay, which reads its `Interrupted` and keeps every one of the last clip's call
+(`emitted`), so a test reads the path the call took through the session (the parity test of
+`TextCall` and `AudioCall`, the design's 9.5).
+
+A team's agent may be given (`agent`, with `talker`, the factory of each call's talker, for one
+that runs it: api/providers.py's `talkers` builds the library's), so a clip is replayed through
+its own talker and tools; each call then greets with the reply in that agent's language of the
+clip's tag. `turn` replays a clip as a turn said while the agent is silent, once the greeting
+has played, and reads its time to first audio (turn_replay.py's `TurnReplay`), run T's measure
+(plan 006).
 """
 
 from __future__ import annotations
 
 from collections.abc import Callable, Sequence
+from typing import TYPE_CHECKING
 
 from t2_agentic_voice.core.config import VoiceSettings
 from t2_agentic_voice.core.errors import ConfigurationError
@@ -40,10 +50,15 @@ from t2_agentic_voice.testing.overlap_replay import (
     RequestPart,
     replay_of,
 )
+from t2_agentic_voice.testing.turn_replay import TurnReplay, turn_replay_of
 from t2_agentic_voice.testing.turns import CLIP_RATE
 from t2_agentic_voice.voice.calls import VoiceCalls
+from t2_agentic_voice.voice.talkers import TalkerFactory
 
-__all__ = ["AudioCall", "OverlapReplay", "OverlapRequest", "RequestPart"]
+if TYPE_CHECKING:  # named in annotations only: this module imports no Pipecat at its top
+    from t2_agentic_voice.voice.file_transport import FedCall
+
+__all__ = ["AudioCall", "OverlapReplay", "OverlapRequest", "RequestPart", "TurnReplay"]
 
 # The rate of the silence the replay's other fixed phrases say: the pipeline's output rate,
 # which an empty chunk never plays at.
@@ -65,48 +80,73 @@ _CONSENT = Consent(version=None, record_audio=False)
 
 class _ReplyAudio:
     """The replay's phrase audio (voice's `PhraseAudio`): the reply's, for the greeting of the
-    call in progress (`reply`: its text, its language's tag and its audio); any other phrase as
-    silence of no length."""
+    call in progress (`reply`: its text, its language's tag and its audio); the agent's progress
+    lines, said once at the start (`lines`); any other phrase as silence of no length."""
 
     def __init__(self) -> None:
         self.reply: tuple[str, LanguageTag, AudioChunk] | None = None
+        self.lines: dict[tuple[str, LanguageTag], AudioChunk] = {}
 
     def audio(self, text: str, *, language: LanguageTag) -> AudioChunk:
         if self.reply is not None and self.reply[:2] == (text, language):
             return self.reply[2]
-        return AudioChunk(pcm16=b"", sample_rate=_SILENCE_RATE)
+        found = self.lines.get((text, language))
+        return found or AudioChunk(pcm16=b"", sample_rate=_SILENCE_RATE)
 
 
 class AudioCall:
     """Clips replayed over a reply, each as a fresh call of one runtime of calls, started once
     (`start`) and closed after the last (`aclose`), with `settings` (their `interruptions` and
-    `turns` groups among them), `stt` and `tts`, neither of which it closes."""
+    `turns` groups among them), `stt` and `tts`, neither of which it closes; of `agent` (the
+    replay's own unless given), its talker built by `talker` when it runs one."""
 
-    def __init__(self, *, settings: VoiceSettings, stt: SpeechToText, tts: TextToSpeech) -> None:
+    def __init__(
+        self,
+        *,
+        settings: VoiceSettings,
+        stt: SpeechToText,
+        tts: TextToSpeech,
+        agent: VoiceAgent | None = None,
+        talker: TalkerFactory | None = None,
+    ) -> None:
         self.settings = settings
         self.stt = stt
         self.tts = tts
+        self.agent, self.talker = agent, talker
         self._phrases = _ReplyAudio()
         self._interrupted: list[Interrupted] = []
+        self._emitted: list[Event] = []
         self._calls: VoiceCalls | None = None
         self._count = 0
 
     def _emit(self, event: Event) -> None:
-        """Where a replayed call's public events go: its `Interrupted` kept, the rest nowhere."""
+        """Where a replayed call's public events go: each kept for the clip's call, its
+        `Interrupted` apart."""
+        self._emitted.append(event)
         if isinstance(event, Interrupted):
             self._interrupted.append(event)
 
+    @property
+    def emitted(self) -> tuple[Event, ...]:
+        """The public events of the last clip's call, in the order the session emitted them."""
+        return tuple(self._emitted)
+
     async def start(self) -> None:
         """Start the calls' runtime once, before the first clip: the speech detector's and the
-        turn analyzer's models warmed."""
+        turn analyzer's models warmed, and the agent's progress lines said, one request each."""
+        for language in (self.agent or _AGENT).languages:
+            for line in language.progress.values():
+                key = (line, language.tag)
+                self._phrases.lines[key] = await self._said(line, language.tag)
         self._calls = VoiceCalls(
-            agent=_AGENT,
+            agent=self.agent or _AGENT,
             settings=self.settings,
             stt=self.stt,
             tts=self.tts,
             phrases=self._phrases,
             tracing=Tracing(),
             emit=self._emit,
+            talker=self.talker,
         )
         await self._calls.start()
 
@@ -125,13 +165,53 @@ class AudioCall:
         clip's labelled word end, from its start, times the stop. ValueError, before any call,
         for a clip at another rate than 16 kHz or a reply a greeting cannot say (nothing, or a
         character a phrase may not hold); RuntimeError before `start`."""
+        fed, call_id = await self._fed(
+            clip, reply=reply, language=language, lead_s=at_s, tail_s=tail_s, over_reply=True
+        )
+        heard = [event for event in self._interrupted if event.call_id == call_id]
+        return replay_of(fed, heard, word_end_ms=word_end_ms)
+
+    async def turn(
+        self,
+        clip: AudioClip,
+        *,
+        greeting: Sequence[str],
+        language: LanguageTag,
+        lead_s: float,
+        tail_s: float,
+        speech_end_ms: float | None = None,
+    ) -> TurnReplay:
+        """Play `clip` as a turn said while the agent is silent, `lead_s` after its greeting
+        (`greeting`'s clauses, as one phrase) has played, in a call held in `language`, with
+        `tail_s` of silence after it for the reply, and read its time to first audio
+        (turn_replay.py); `speech_end_ms`, the clip's labelled end of speech, from its start.
+        ValueError and RuntimeError as `over_reply`'s."""
+        fed, _ = await self._fed(
+            clip, reply=greeting, language=language, lead_s=lead_s, tail_s=tail_s
+        )
+        agent = self.agent or _AGENT
+        lines = frozenset(t for each in agent.languages for t in each.progress.values())
+        return turn_replay_of(fed, self.emitted, progress=lines, speech_end_ms=speech_end_ms)
+
+    async def _fed(
+        self,
+        clip: AudioClip,
+        *,
+        reply: Sequence[str],
+        language: LanguageTag,
+        lead_s: float,
+        tail_s: float,
+        over_reply: bool = False,
+    ) -> tuple[FedCall, str]:
+        """One fresh call fed `clip`, its greeting the clauses `reply` as one phrase; the call
+        and its ID."""
         from t2_agentic_voice.voice.file_transport import feed_file  # Pipecat's side, at first use
 
         if clip.sample_rate != CLIP_RATE:
             raise ValueError(f"a replayed clip is mono PCM16 at {CLIP_RATE} Hz")
         text = " ".join(reply)
         try:
-            spoken = _PRESETS[language](greeting=text)
+            spoken = self._language(text, language)
         except ConfigurationError:
             raise ValueError("the reply is no phrase a greeting may say") from None
         if self._calls is None:
@@ -140,6 +220,7 @@ class AudioCall:
         call_id = f"audio-call-{self._count}"
         self._count += 1
         self._interrupted.clear()
+        self._emitted.clear()
         fed = await feed_file(
             self._calls,
             clip,
@@ -147,12 +228,20 @@ class AudioCall:
             caller=_CALLER,
             consent=_CONSENT,
             language=spoken,
-            lead_s=at_s,
+            lead_s=lead_s,
             tail_s=tail_s,
-            over_reply=True,
+            over_reply=over_reply,
         )
-        heard = [event for event in self._interrupted if event.call_id == call_id]
-        return replay_of(fed, heard, word_end_ms=word_end_ms)
+        return fed, call_id
+
+    def _language(self, greeting: str, tag: LanguageTag) -> Language:
+        """The call's language: the agent's of `tag` (the preset's for the replay's own), its
+        greeting `greeting`; ConfigurationError for a greeting a phrase may not say."""
+        spoken = _PRESETS[tag](greeting=greeting)
+        found = [each for each in (self.agent or _AGENT).languages if each.tag == tag]
+        if self.agent is None or not found:
+            return spoken
+        return found[0].model_copy(update={"greeting": spoken.greeting})
 
     async def _said(self, text: str, language: LanguageTag) -> AudioChunk:
         """`text` as the replay's text-to-speech says it in `language`, its chunks joined;
