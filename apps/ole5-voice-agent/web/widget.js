@@ -9,7 +9,13 @@
 // agent short; End hangs up. A clause a stop cut while it played is shown cut. Push-to-talk, a
 // switch the caller may turn on before or during the call, keeps the microphone off except while
 // Space or the talk button is held: the fallback when the agent's voice comes back through the
-// laptop's speakers. Every text, the captions and notices included, is set with textContent.
+// laptop's speakers. While the agent thinks (its talker or a tool at work) the state line says
+// so beside a pulsing dot. A reply's whole answer comes as a card above the captions, so the
+// captions growing below never move it: its title, its steps numbered and the document they come
+// from. Each line of it takes the direction of its own first strong character (dir="auto"), so
+// an Arabic step reads right to left and an English one left to right in either language; a new
+// card replaces the last, and a new call clears it. Every text, the captions, card and notices
+// included, is set with textContent.
 
 import { VoiceClient } from "./voice/client/1/t2v-client.js";
 
@@ -36,6 +42,7 @@ const TEXT = {
     starting: "جارٍ الاتصال",
     you: "أنت",
     agent: "المساعد",
+    source: "المصدر:",
     ended: "انتهت المكالمة.",
     lost: "انقطع الاتصال.",
     microphone_missing: "لم يُعثر على ميكروفون. وصّل ميكروفوناً وحاول مرة أخرى.",
@@ -68,6 +75,7 @@ const TEXT = {
     starting: "Connecting",
     you: "You",
     agent: "Assistant",
+    source: "Source:",
     ended: "The call has ended.",
     lost: "The connection was lost.",
     microphone_missing: "No microphone was found. Connect one and try again.",
@@ -138,8 +146,10 @@ function space(event) {
   else if (!event.repeat) talk(true);
 }
 
-function state(text) {
+// The state line: its text, and the agent's state for widget.css (none once the call is over).
+function state(text, now = "") {
   $("state").textContent = text;
+  $("state").dataset.state = now;
 }
 
 function message(text) {
@@ -203,6 +213,21 @@ function caption(c) {
   shown.parts[index].classList.toggle("cut", c.cut === true);
 }
 
+// The newest card in place of the last, or none (`null`, a new call's).
+function card(c) {
+  const steps = (c?.steps ?? []).map((text) => {
+    const step = document.createElement("li");
+    step.dir = "auto";
+    step.textContent = text;
+    return step;
+  });
+  $("card-title").textContent = c?.title ?? "";
+  $("card-steps").replaceChildren(...steps);
+  $("card-source-name").textContent = c?.source ?? "";
+  $("card-source").hidden = !c?.source;
+  $("card").hidden = !c;
+}
+
 function ended(e) {
   page.call = null;
   talk(false);
@@ -216,6 +241,7 @@ async function start() {
   message("");
   page.captions.clear();
   $("captions").replaceChildren();
+  card(null);
   running(true);
   state(words().starting);
   try {
@@ -225,8 +251,9 @@ async function start() {
       getToken: token,
       pushToTalk: $("push-to-talk").checked,
       on: {
-        state: (s) => state(words().states[s.state] ?? ""),
+        state: (s) => state(words().states[s.state] ?? "", s.state),
         caption,
+        card,
         notice: (n) => message(n.text),
         ended,
       },

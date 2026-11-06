@@ -1,9 +1,10 @@
 """The browser side of `t2v/1` (plan 003's Track G): the reference client
 `api/static/t2v-client.js` and the dev page `api/static/dev.html`, read as text, since the suite
 runs no browser (the agent's browser pane and the owner's Chrome and Edge check the rest: plan
-003, step 16 and 18). The client speaks the protocol the fixture lists; every page and script,
-the Ole5 widget's included, inserts text only as text; the dev page holds no script or style of
-its own; and the built wheel ships both files."""
+003, step 16 and 18). The client speaks the protocol the fixture lists, every message of the
+session's included (plan 006's `card` among them; test_browser_cards.py runs the client in a
+fake browser); every page and script, the Ole5 widget's included, inserts text only as text; the
+dev page holds no script or style of its own; and the built wheel ships both files."""
 
 from __future__ import annotations
 
@@ -29,9 +30,6 @@ CLIENT = STATIC / "t2v-client.js"
 DEV_PAGE = STATIC / "dev.html"
 # The t2v/1 message list every track builds against (Block 0).
 FIXTURE = Path(__file__).parent / "fixtures" / "t2v_protocol.json"
-# The session's messages the client does not take yet, which it drops as it drops any type it
-# does not list: plan 006's `card`, until its Track D shows cards (it empties this).
-NOT_IN_CLIENT_YET = ("card",)
 # What inserts markup rather than text (the browser criteria of plan 003).
 MARKUP = re.compile(r"\b(innerHTML|outerHTML|insertAdjacentHTML)\b|document\s*\.\s*write")
 
@@ -101,8 +99,10 @@ def test_the_client_speaks_the_protocol_the_fixture_lists() -> None:
     fixture = json.loads(FIXTURE.read_text(encoding="utf-8"))
     channel = fixture["data_channel"]
     assert _array(source, "CLIENT_MESSAGES") == list(channel["client_to_session"])
-    listed = [kind for kind in channel["session_to_client"] if kind not in NOT_IN_CLIENT_YET]
-    assert _array(source, "SESSION_MESSAGES") == listed
+    # Every message of the session's (test_browser_cards.py sends each through the client).
+    assert _array(source, "SESSION_MESSAGES") == list(channel["session_to_client"])
+    states = channel["session_to_client"]["state"]["state"].split(" | ")
+    assert _array(source, "STATES") == states == ["listening", "thinking", "speaking", "confirming"]
     assert [_constant(source, "RESERVED").strip('"')] == fixture["reserved"]["types"]
     assert _constant(source, "PROTOCOL") == str(fixture["protocol"]) == "1"
     patch = protocol.BODIES["PATCH /offer"]

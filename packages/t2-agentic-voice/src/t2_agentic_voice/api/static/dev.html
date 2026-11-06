@@ -14,7 +14,9 @@
 <h1>Dev call</h1>
 <p>Allow the microphone, talk, and press Stop or Esc to cut the agent short. Speaking over the
   agent lowers its volume until the session decides; a clause a stop cut is captioned [cut].
-  With push to talk on, the agent hears you only while you hold the Talk button.</p>
+  With push to talk on, the agent hears you only while you hold the Talk button. The agent
+  shows thinking while it works on a reply, and the whole of an answer it says short as a card,
+  each new card in place of the last.</p>
 <p>
   <label>Join token <input id="token" type="text" value="dev" autocomplete="off" spellcheck="false"></label>
   <label>Language
@@ -38,6 +40,8 @@
 <p>Status: <output id="status">Not started.</output></p>
 <p>Connection: <output id="connection">none</output> · Agent: <output id="state">none</output>
   · Volume: <output id="volume">100%</output></p>
+<h2>Card</h2>
+<section id="card" aria-label="Card"></section>
 <h2>Captions</h2>
 <ol id="captions" dir="auto"></ol>
 <h2>Notices</h2>

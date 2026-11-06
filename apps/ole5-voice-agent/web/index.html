@@ -1,7 +1,8 @@
 <!doctype html>
 <!-- Ole5's voice widget, served by the Ole5 app's server (ole5_voice/server.py) with its
      Content-Security-Policy: no inline script or style; every text is set by widget.js with
-     textContent, in the language the caller picks (Arabic first). -->
+     textContent, in the language the caller picks (Arabic first). The card, above the captions,
+     holds the whole of an answer the agent says short. -->
 <html lang="ar" dir="rtl">
 <head>
 <meta charset="utf-8">
@@ -45,6 +46,12 @@
     </p>
     <p id="state" class="state" role="status" aria-live="polite"></p>
     <p id="message" class="message" role="alert"></p>
+    <section id="card" class="card" aria-labelledby="card-title" hidden>
+      <h2 id="card-title" dir="auto"></h2>
+      <ol id="card-steps" class="steps"></ol>
+      <p id="card-source" class="muted" hidden><span data-text="source"></span>
+        <span id="card-source-name" dir="auto"></span></p>
+    </section>
     <ol id="captions" class="captions" aria-live="polite"></ol>
   </section>
 </main>
