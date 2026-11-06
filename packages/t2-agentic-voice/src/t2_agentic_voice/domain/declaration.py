@@ -1,16 +1,17 @@
 """The declaration of a use case: the agent a team declares and the languages its calls are held
 in (the design's 4.3 and 5.2), frozen, with no IO.
 
-For now an agent has a name, its languages, its pronunciation map and the words its
-interruption rule reads (`phrases`, domain/words.py), and the voice session answers in echo mode
+An agent has a name, its languages, its pronunciation map and the words its interruption rule
+reads (`phrases`, domain/words.py). With no instructions, the voice session answers in echo mode
 (`session.mode`): each turn is said back, after a fixed frame in the turn's language,
-«سمعتك تقول: …» or "I heard: …" (plan 003, Q3). The talker's parts (instructions,
-tools, the vocabulary) come with the talker as optional arguments, so an echo agent stays a
-team's first audio check. Each language is built from its preset, which gives it its tag, its
-frame and a text for each notice the caller may be told; the team gives its greeting, the phrase
-that opens a call, and may give its own notices. The phrases a call speaks as written
-(domain/fixed_phrases.py) are synthesized once, at the runtime's start, and played from the
-phrase cache.
+«سمعتك تقول: …» or "I heard: …" (plan 003, Q3), so an echo agent stays a team's first audio
+check. The talker's parts, all optional (domain/talker_declaration.py), are its instructions,
+its tools, its vocabulary and its version; an agent that declares instructions runs the talker
+(plan 006). Each language is built from its preset, which gives it its tag, its frame and a text
+for each notice the caller may be told; the team gives its greeting, the phrase that opens a
+call, and may give its own notices and the progress lines its tools name. The phrases a call
+speaks as written (domain/fixed_phrases.py) are synthesized once, at the runtime's start, and
+played from the phrase cache.
 
 A phrase (a greeting, the frame, a notice, a spoken form) says something, on one line, and holds
 no character a reader cannot see but the no-break spaces, the joiners and the direction marks
@@ -28,12 +29,29 @@ import re
 from collections.abc import Mapping, Sequence
 from typing import Annotated, Literal, Self, final, get_args
 
-from pydantic import AfterValidator, BeforeValidator, Field, field_validator
+from pydantic import (
+    AfterValidator,
+    BeforeValidator,
+    Field,
+    PlainValidator,
+    ValidationInfo,
+    field_validator,
+)
 
 from t2_agentic_voice.core.settings.base import FROZEN, PLAIN
 from t2_agentic_voice.core.settings.tts import LanguageTag
 from t2_agentic_voice.domain.declaration_errors import FROM_PRESET, Declared
 from t2_agentic_voice.domain.presets import ECHO_FRAMES, NOTICES
+from t2_agentic_voice.domain.talker_declaration import (
+    DeclaredTool,
+    Instructions,
+    ProgressKey,
+    Vocabulary,
+    a_tool,
+    a_vocabulary,
+    instructions_for,
+    tools_for,
+)
 from t2_agentic_voice.domain.text.invisible import holds_refused_character, provider_text
 from t2_agentic_voice.domain.words import PRESET_WORDS, Phrases, Words
 
@@ -126,45 +144,67 @@ _Pronunciations = Annotated[Mapping[Annotated[str, AfterValidator(_form)], _Said
 class Language(Declared):
     """One language a call can be held in: its `tag` (`ar-SA` Saudi Arabic, `ar` Modern Standard
     Arabic, `en` English), the `greeting` the agent opens a call with in it, the `echo_frame`
-    the echo says before the words it heard, and its `notices`, the text of each kind of notice
-    (`NoticeKind`) the caller is told in it. Build one with its preset:
-    `Language.saudi_arabic(greeting=...)`, `Language.arabic(...)` or `Language.english(...)`,
-    which gives the tag, the frame and each notice's text in the language's register (plan 003,
-    Q5: Saudi for `ar-SA`, Modern Standard Arabic for `ar`); a team's own `notices` replace the
-    kinds they name. Each tag is spoken in the model and voice `tts.languages` gives it."""
+    the echo says before the words it heard, its `notices`, the text of each kind of notice
+    (`NoticeKind`) the caller is told in it, and its `progress` lines, the text of each line a
+    tool names by its key (`Tool(progress=...)`), spoken when the tool runs long (none by
+    default). Build one with its preset: `Language.saudi_arabic(greeting=...)`,
+    `Language.arabic(...)` or `Language.english(...)`, which gives the tag, the frame and each
+    notice's text in the language's register (plan 003, Q5: Saudi for `ar-SA`, Modern Standard
+    Arabic for `ar`); a team's own `notices` replace the kinds they name. Each tag is spoken in
+    the model and voice `tts.languages` gives it."""
 
     tag: LanguageTag
     greeting: _Phrase
     echo_frame: _Phrase
     notices: Annotated[Mapping[NoticeKind, _Phrase], AfterValidator(_every_kind), FROZEN, PLAIN]
+    progress: Annotated[Mapping[ProgressKey, _Phrase], FROZEN, PLAIN] = Field(
+        default_factory=dict, validate_default=True
+    )
 
     @classmethod
     def saudi_arabic(
-        cls, *, greeting: str, notices: Mapping[NoticeKind, str] | None = None
+        cls,
+        *,
+        greeting: str,
+        notices: Mapping[NoticeKind, str] | None = None,
+        progress: Mapping[str, str] | None = None,
     ) -> Self:
         """Saudi Arabic (`ar-SA`), opening each call with `greeting`; `notices` replaces the
-        preset's text of each kind it names."""
-        return cls._preset("ar-SA", greeting, notices)
+        preset's text of each kind it names; `progress` gives the tools' progress lines."""
+        return cls._preset("ar-SA", greeting, notices, progress)
 
     @classmethod
-    def arabic(cls, *, greeting: str, notices: Mapping[NoticeKind, str] | None = None) -> Self:
+    def arabic(
+        cls,
+        *,
+        greeting: str,
+        notices: Mapping[NoticeKind, str] | None = None,
+        progress: Mapping[str, str] | None = None,
+    ) -> Self:
         """Modern Standard Arabic (`ar`), opening each call with `greeting`; `notices` replaces
-        the preset's text of each kind it names."""
-        return cls._preset("ar", greeting, notices)
+        the preset's text of each kind it names; `progress` gives the tools' progress lines."""
+        return cls._preset("ar", greeting, notices, progress)
 
     @classmethod
-    def english(cls, *, greeting: str, notices: Mapping[NoticeKind, str] | None = None) -> Self:
+    def english(
+        cls,
+        *,
+        greeting: str,
+        notices: Mapping[NoticeKind, str] | None = None,
+        progress: Mapping[str, str] | None = None,
+    ) -> Self:
         """English (`en`), opening each call with `greeting`; `notices` replaces the preset's
-        text of each kind it names."""
-        return cls._preset("en", greeting, notices)
+        text of each kind it names; `progress` gives the tools' progress lines."""
+        return cls._preset("en", greeting, notices, progress)
 
     @classmethod
-    def _preset(cls, tag: LanguageTag, greeting: str, notices: object) -> Self:
+    def _preset(cls, tag: LanguageTag, greeting: str, notices: object, progress: object) -> Self:
         texts: object = notices if notices is not None else NOTICES[tag]
         if isinstance(notices, Mapping):
             texts = {**NOTICES[tag], **notices}
-        fields = {"tag": tag, "greeting": greeting, "echo_frame": ECHO_FRAMES[tag]}
-        return cls.model_validate(fields | {"notices": texts}, context=FROM_PRESET)
+        fields: dict[str, object] = {"tag": tag, "greeting": greeting}
+        fields |= {"echo_frame": ECHO_FRAMES[tag], "notices": texts, "progress": progress or {}}
+        return cls.model_validate(fields, context=FROM_PRESET)
 
     @property
     def primary(self) -> Literal["ar", "en"]:
@@ -187,14 +227,22 @@ class VoiceAgent(Declared):
     language says it, keyed by the language's primary code (`ar` for both Arabic presets, `en`),
     as `pronounce={"LT-": {"ar": ..., "en": "L T"}}`, which the `languages` facade's
     `pronounce` applies; and `phrases`, the words its interruption rule reads
-    (domain/words.py), the presets' unless the team extends them. Frozen, with no IO; built once
-    and handed to the runtime."""
+    (domain/words.py), the presets' unless the team extends them. The talker's parts, each
+    optional (domain/talker_declaration.py): `instructions`, one text, or one per language tag
+    for every language it speaks; `tools`, each name once, each progress line in every
+    language; `vocabulary`, the product terms for the Whisper prompt; and `version`, stamped on
+    its traces. It runs the talker when it declares instructions (`instructed`). Frozen, with no
+    IO; built once and handed to the runtime."""
 
     name: str
     # Given as any sequence (a list, as the design writes it), kept as a tuple.
     languages: Sequence[Annotated[Language, BeforeValidator(_a_language)]]
     pronounce: _Pronunciations = Field(default_factory=dict, validate_default=True)
     phrases: Phrases = Field(default_factory=Phrases.defaults)
+    instructions: Instructions | None = None
+    tools: Sequence[Annotated[DeclaredTool, PlainValidator(a_tool)]] = ()
+    vocabulary: Annotated[Vocabulary, BeforeValidator(a_vocabulary)] = Vocabulary()
+    version: str | None = Field(default=None, pattern=r"^[\x21-\x7e]{1,64}$")
 
     @field_validator("name")
     @classmethod
@@ -218,6 +266,22 @@ class VoiceAgent(Declared):
         if not tags or len(set(tags)) != len(tags):
             raise ValueError("an agent speaks at least one language, each once")
         return tuple(value)
+
+    @field_validator("instructions")
+    @classmethod
+    def _instructed(cls, value: Instructions | None, info: ValidationInfo) -> Instructions | None:
+        return instructions_for(value, [each.tag for each in info.data.get("languages", ())])
+
+    @field_validator("tools")
+    @classmethod
+    def _tooled(cls, value: Sequence[DeclaredTool], info: ValidationInfo) -> Sequence[DeclaredTool]:
+        lines = {each.tag: each.progress for each in info.data.get("languages", ())}
+        return tools_for(value, lines)
+
+    @property
+    def instructed(self) -> bool:
+        """Whether it declares instructions: its calls run the talker (`session.mode`)."""
+        return self.instructions is not None
 
     def call_language(self, requested: LanguageTag | None, *, locale: str | None) -> Language:
         """The language a call is held in, fixed when it joins and kept to its end (the echo

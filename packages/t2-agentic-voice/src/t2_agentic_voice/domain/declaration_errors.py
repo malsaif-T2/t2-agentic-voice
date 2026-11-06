@@ -1,8 +1,8 @@
 """How the declaration (domain/declaration.py) fails: what its models share (`Declared`:
 frozen, a misspelt key an error, and any failure to build one a ConfigurationError naming the
 field at fault, with its FIX line, and never the value it refused), each field's FIX, and who is
-at fault, a language or the agent, read from the library's own class a team's subclass is built
-on.
+at fault, a language, the agent's vocabulary (domain/talker_declaration.py) or the agent, read
+from the library's own class a team's subclass is built on.
 """
 
 from __future__ import annotations
@@ -49,6 +49,24 @@ _FIXES: dict[str, str] = {
         "give `phrases` the presets' words, extended with the team's, as "
         'phrases=Phrases.defaults().extend(stop={"en": ["..."]}).'
     ),
+    "progress": (
+        f"map each progress line's key, a lowercase word, to its text {_PLAIN}, as "
+        'progress={"searching": "..."}.'
+    ),
+    "instructions": (
+        "give `instructions` one text, or a text for each language the agent speaks, keyed by "
+        'its tag, as instructions={"ar-SA": ..., "en": ...}.'
+    ),
+    "tools": (
+        "give `tools` the tools built with @tool, Tool.from_function or knowledge_tool, each "
+        "with its own name; a progress line a tool names is given in every language."
+    ),
+    "vocabulary": 'give `vocabulary` its terms, as vocabulary=Vocabulary(terms=["VPN"]).',
+    "Vocabulary": 'declare it as Vocabulary(terms=["VPN", "Outlook"]).',
+    "terms": f'give each term {_PLAIN}, as a transcript should write it: terms=["VPN"].',
+    "version": (
+        'give `version` printable ASCII with no space, up to 64 characters, as "2026-11-06.1".'
+    ),
 }
 # The notices' FIX, by the way the language was built: through its preset, which gives the text
 # of each kind it is not given, or without one (`model_validate`), which gives none.
@@ -67,7 +85,7 @@ _NOTICES_FIX = {
 _JSON_FIX = (
     "give `model_validate_json` one JSON object of its fields, as `model_dump_json()` writes."
 )
-_WHO = {"Language": "A language", "VoiceAgent": "The agent"}
+_WHO = {"Language": "A language", "VoiceAgent": "The agent", "Vocabulary": "The vocabulary"}
 # The validation context a preset builds its language in, so that a failure's FIX says what the
 # preset gives.
 FROM_PRESET = object()
@@ -147,7 +165,10 @@ def _library(model: type[BaseModel]) -> type[Declared]:
     """The library's own class `model` is: itself, or the `Language` a team's subclass is
     built on, which says who is at fault and how each of its fields is fixed."""
     from t2_agentic_voice.domain.declaration import Language, VoiceAgent  # they build on this
+    from t2_agentic_voice.domain.talker_declaration import Vocabulary
 
+    if issubclass(model, Vocabulary):
+        return Vocabulary
     return Language if issubclass(model, Language) else VoiceAgent
 
 
@@ -163,4 +184,5 @@ def _fix(model: type[BaseModel], field: str | None, *, preset: bool) -> str:
     if field in model.model_fields:
         return f"correct `{field}`, the field {model.__name__} adds to {base.__name__}."
     *names, last = (f"`{name}`" for name in model.model_fields)
-    return f"remove `{field}`: {_WHO[base.__name__].lower()} takes {', '.join(names)} and {last}."
+    listed = f"{', '.join(names)} and {last}" if names else last
+    return f"remove `{field}`: {_WHO[base.__name__].lower()} takes {listed}."
