@@ -1,0 +1,23 @@
+id = "n26_inbox_loading"
+split = "dev"
+kind = "answerable"
+needs_search = true
+expected = ["troubleshooting-003", "troubleshooting-002"]
+key_facts = [
+  "Suggests a forced refresh (Ctrl + Shift + R) or a private window.",
+  "Suggests checking the connection and trying another network.",
+  "Suggests making sure the browser is up to date.",
+]
+notes = "A spoken English complaint with a restart in it."
+
+[[variants]]
+language = "english"
+text = "So the inbox it keeps loading and nothing shows up"
+
+[[variants]]
+language = "saudi"
+text = "صندوق الوارد يحمل ويحمل وما يطلع شي"
+
+[[variants]]
+language = "msa"
+text = "صندوق الوارد يستمر في التحميل ولا يظهر أي شيء"

@@ -1,0 +1,22 @@
+id = "q22_whatsapp"
+split = "dev"
+kind = "none"
+needs_search = true
+expected = []
+key_facts = [
+  "Says plainly it does not have information on sending through WhatsApp.",
+  "Invents no integration, and names none of the system's integrations as one with WhatsApp.",
+]
+notes = "A request beside the knowledge base's integrations topic, with a product name in English."
+
+[[variants]]
+language = "mixed"
+text = "ينفع أرسل المراسلة على WhatsApp من Ole5؟"
+
+[[variants]]
+language = "english"
+text = "Can Ole5 send a correspondence through WhatsApp?"
+
+[[variants]]
+language = "saudi"
+text = "أبي أرسل المراسلة للواتساب مباشرة من النظام"

@@ -1,0 +1,23 @@
+id = "n03_print"
+split = "dev"
+kind = "answerable"
+needs_search = true
+expected = ["procedures-017", "features-015", "rules-004"]
+key_facts = [
+  "From inside the correspondence, «طباعة» (print) is among the actions at the top of the screen.",
+  "From the mailbox, selecting one or more correspondences shows the print action at the top of the box.",
+  "Printing needs the permission for it, and the options may differ by the correspondence's type.",
+]
+notes = "A short how-to whose answer has two ways, said briefly, with the steps on the card."
+
+[[variants]]
+language = "saudi"
+text = "كيف أقدر أطبع المراسلة من النظام؟"
+
+[[variants]]
+language = "english"
+text = "How can I print a correspondence?"
+
+[[variants]]
+language = "mixed"
+text = "أبي أسوي print للمراسلة، وين ألقى الزر؟"

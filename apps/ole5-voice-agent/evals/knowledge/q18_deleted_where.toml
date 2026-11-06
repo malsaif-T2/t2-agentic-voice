@@ -1,0 +1,22 @@
+id = "q18_deleted_where"
+split = "held-out"
+kind = "answerable"
+needs_search = true
+expected = ["procedures-015", "features-007", "rules-021"]
+key_facts = [
+  "A deleted correspondence goes to the «المحذوفة» (deleted) box of the mailbox it was deleted from.",
+  "Deleted correspondence can be restored.",
+]
+notes = "A where-question asked after a mistake."
+
+[[variants]]
+language = "msa"
+text = "أين تذهب المراسلة بعد حذفها؟"
+
+[[variants]]
+language = "saudi"
+text = "مسحت مراسلة بالغلط، وين ألقاها؟"
+
+[[variants]]
+language = "english"
+text = "I deleted a correspondence by mistake, where did it go?"

@@ -1,0 +1,22 @@
+id = "n16_convert_pdf"
+split = "dev"
+kind = "none"
+needs_search = true
+expected = []
+key_facts = [
+  "Says plainly it does not have information on turning a correspondence into a PDF.",
+  "Invents no export button or steps.",
+]
+notes = "A request close to the knowledge base's printing and export topics that it does not answer."
+
+[[variants]]
+language = "mixed"
+text = "أبغى أحول المراسلة إلى PDF"
+
+[[variants]]
+language = "english"
+text = "Can I export a correspondence as a PDF file?"
+
+[[variants]]
+language = "saudi"
+text = "فيه طريقة أطلع المراسلة ملف بي دي إف؟"

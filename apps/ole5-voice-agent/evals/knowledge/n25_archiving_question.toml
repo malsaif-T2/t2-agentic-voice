@@ -1,0 +1,23 @@
+id = "n25_archiving_question"
+split = "held-out"
+kind = "answerable"
+needs_search = true
+expected = ["procedures-016", "features-014", "troubleshooting-021"]
+key_facts = [
+  "Archive from inside the correspondence, from the actions at the top, or from the mailbox after selecting one or more.",
+  "The archiving window asks for a reason, which is mandatory.",
+  "A correspondence marked as needing a reply cannot be archived until it is answered.",
+]
+notes = "A vague English opener that names a topic but asks nothing; the agent answers the likely how-to or asks what the caller needs."
+
+[[variants]]
+language = "english"
+text = "I have a question about archiving old correspondence"
+
+[[variants]]
+language = "saudi"
+text = "أبي أسأل عن أرشفة المراسلات القديمة"
+
+[[variants]]
+language = "mixed"
+text = "كيف أسوي archive للمراسلات القديمة؟"

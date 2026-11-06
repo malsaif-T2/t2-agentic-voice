@@ -1,0 +1,18 @@
+id = "q31_who_are_you"
+split = "dev"
+kind = "small_talk"
+needs_search = false
+expected = []
+key_facts = [
+  "Says it is Ole5's voice assistant, not a person.",
+  "Says briefly what it can help with, with no search.",
+]
+notes = "A question about the agent itself, which it answers honestly."
+
+[[variants]]
+language = "english"
+text = "Who am I talking to, are you a real person?"
+
+[[variants]]
+language = "saudi"
+text = "مين معي؟ أنت شخص ولا برنامج؟"

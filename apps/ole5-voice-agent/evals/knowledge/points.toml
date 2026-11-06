@@ -1,0 +1,653 @@
+# Every chunk of Ole5's knowledge base, as the prototype's export lists them (its
+# kb_export/ole5/, read only: D-010), with no text: each document by its name and the key its
+# points' IDs start with, then each chunk by its ID in the export, in order. A point's ID is
+# its document's key and its chunk's number. The export kept only the chunks of 10 words or
+# more, so a document may start after `chunk_001`, and it gave no page (Markdown documents).
+# Every `expected` ID of the knowledge set's items is one of these
+# (ole5_voice/evals/knowledge_set.py).
+
+[[documents]]
+key = "features"
+name = "نظام OLE5 — قاعدة المعرفة"
+
+[[documents]]
+key = "procedures"
+name = "دليل استخدام نظام OLE5 — الإجراءات والشاشات"
+
+[[documents]]
+key = "rules"
+name = "نظام OLE5 — الصلاحيات وقواعد العمل"
+
+[[documents]]
+key = "troubleshooting"
+name = "نظام OLE5 — حلول المشكلات الشائعة"
+
+[[points]]
+id = "features-002"
+document = "features"
+chunk = "chunk_002"
+
+[[points]]
+id = "features-003"
+document = "features"
+chunk = "chunk_003"
+
+[[points]]
+id = "features-004"
+document = "features"
+chunk = "chunk_004"
+
+[[points]]
+id = "features-005"
+document = "features"
+chunk = "chunk_005"
+
+[[points]]
+id = "features-006"
+document = "features"
+chunk = "chunk_006"
+
+[[points]]
+id = "features-007"
+document = "features"
+chunk = "chunk_007"
+
+[[points]]
+id = "features-008"
+document = "features"
+chunk = "chunk_008"
+
+[[points]]
+id = "features-009"
+document = "features"
+chunk = "chunk_009"
+
+[[points]]
+id = "features-010"
+document = "features"
+chunk = "chunk_010"
+
+[[points]]
+id = "features-011"
+document = "features"
+chunk = "chunk_011"
+
+[[points]]
+id = "features-012"
+document = "features"
+chunk = "chunk_012"
+
+[[points]]
+id = "features-013"
+document = "features"
+chunk = "chunk_013"
+
+[[points]]
+id = "features-014"
+document = "features"
+chunk = "chunk_014"
+
+[[points]]
+id = "features-015"
+document = "features"
+chunk = "chunk_015"
+
+[[points]]
+id = "features-016"
+document = "features"
+chunk = "chunk_016"
+
+[[points]]
+id = "features-017"
+document = "features"
+chunk = "chunk_017"
+
+[[points]]
+id = "features-018"
+document = "features"
+chunk = "chunk_018"
+
+[[points]]
+id = "features-019"
+document = "features"
+chunk = "chunk_019"
+
+[[points]]
+id = "features-020"
+document = "features"
+chunk = "chunk_020"
+
+[[points]]
+id = "features-021"
+document = "features"
+chunk = "chunk_021"
+
+[[points]]
+id = "features-022"
+document = "features"
+chunk = "chunk_022"
+
+[[points]]
+id = "features-023"
+document = "features"
+chunk = "chunk_023"
+
+[[points]]
+id = "features-024"
+document = "features"
+chunk = "chunk_024"
+
+[[points]]
+id = "features-025"
+document = "features"
+chunk = "chunk_025"
+
+[[points]]
+id = "features-026"
+document = "features"
+chunk = "chunk_026"
+
+[[points]]
+id = "features-027"
+document = "features"
+chunk = "chunk_027"
+
+[[points]]
+id = "features-028"
+document = "features"
+chunk = "chunk_028"
+
+[[points]]
+id = "features-029"
+document = "features"
+chunk = "chunk_029"
+
+[[points]]
+id = "procedures-002"
+document = "procedures"
+chunk = "chunk_002"
+
+[[points]]
+id = "procedures-003"
+document = "procedures"
+chunk = "chunk_003"
+
+[[points]]
+id = "procedures-004"
+document = "procedures"
+chunk = "chunk_004"
+
+[[points]]
+id = "procedures-005"
+document = "procedures"
+chunk = "chunk_005"
+
+[[points]]
+id = "procedures-006"
+document = "procedures"
+chunk = "chunk_006"
+
+[[points]]
+id = "procedures-007"
+document = "procedures"
+chunk = "chunk_007"
+
+[[points]]
+id = "procedures-008"
+document = "procedures"
+chunk = "chunk_008"
+
+[[points]]
+id = "procedures-009"
+document = "procedures"
+chunk = "chunk_009"
+
+[[points]]
+id = "procedures-010"
+document = "procedures"
+chunk = "chunk_010"
+
+[[points]]
+id = "procedures-011"
+document = "procedures"
+chunk = "chunk_011"
+
+[[points]]
+id = "procedures-012"
+document = "procedures"
+chunk = "chunk_012"
+
+[[points]]
+id = "procedures-013"
+document = "procedures"
+chunk = "chunk_013"
+
+[[points]]
+id = "procedures-014"
+document = "procedures"
+chunk = "chunk_014"
+
+[[points]]
+id = "procedures-015"
+document = "procedures"
+chunk = "chunk_015"
+
+[[points]]
+id = "procedures-016"
+document = "procedures"
+chunk = "chunk_016"
+
+[[points]]
+id = "procedures-017"
+document = "procedures"
+chunk = "chunk_017"
+
+[[points]]
+id = "procedures-018"
+document = "procedures"
+chunk = "chunk_018"
+
+[[points]]
+id = "procedures-019"
+document = "procedures"
+chunk = "chunk_019"
+
+[[points]]
+id = "procedures-020"
+document = "procedures"
+chunk = "chunk_020"
+
+[[points]]
+id = "procedures-021"
+document = "procedures"
+chunk = "chunk_021"
+
+[[points]]
+id = "procedures-022"
+document = "procedures"
+chunk = "chunk_022"
+
+[[points]]
+id = "procedures-023"
+document = "procedures"
+chunk = "chunk_023"
+
+[[points]]
+id = "procedures-024"
+document = "procedures"
+chunk = "chunk_024"
+
+[[points]]
+id = "procedures-025"
+document = "procedures"
+chunk = "chunk_025"
+
+[[points]]
+id = "procedures-026"
+document = "procedures"
+chunk = "chunk_026"
+
+[[points]]
+id = "procedures-027"
+document = "procedures"
+chunk = "chunk_027"
+
+[[points]]
+id = "procedures-028"
+document = "procedures"
+chunk = "chunk_028"
+
+[[points]]
+id = "procedures-029"
+document = "procedures"
+chunk = "chunk_029"
+
+[[points]]
+id = "procedures-030"
+document = "procedures"
+chunk = "chunk_030"
+
+[[points]]
+id = "procedures-031"
+document = "procedures"
+chunk = "chunk_031"
+
+[[points]]
+id = "procedures-032"
+document = "procedures"
+chunk = "chunk_032"
+
+[[points]]
+id = "procedures-033"
+document = "procedures"
+chunk = "chunk_033"
+
+[[points]]
+id = "procedures-034"
+document = "procedures"
+chunk = "chunk_034"
+
+[[points]]
+id = "procedures-035"
+document = "procedures"
+chunk = "chunk_035"
+
+[[points]]
+id = "procedures-036"
+document = "procedures"
+chunk = "chunk_036"
+
+[[points]]
+id = "procedures-037"
+document = "procedures"
+chunk = "chunk_037"
+
+[[points]]
+id = "procedures-038"
+document = "procedures"
+chunk = "chunk_038"
+
+[[points]]
+id = "rules-001"
+document = "rules"
+chunk = "chunk_001"
+
+[[points]]
+id = "rules-002"
+document = "rules"
+chunk = "chunk_002"
+
+[[points]]
+id = "rules-003"
+document = "rules"
+chunk = "chunk_003"
+
+[[points]]
+id = "rules-004"
+document = "rules"
+chunk = "chunk_004"
+
+[[points]]
+id = "rules-005"
+document = "rules"
+chunk = "chunk_005"
+
+[[points]]
+id = "rules-006"
+document = "rules"
+chunk = "chunk_006"
+
+[[points]]
+id = "rules-007"
+document = "rules"
+chunk = "chunk_007"
+
+[[points]]
+id = "rules-008"
+document = "rules"
+chunk = "chunk_008"
+
+[[points]]
+id = "rules-009"
+document = "rules"
+chunk = "chunk_009"
+
+[[points]]
+id = "rules-010"
+document = "rules"
+chunk = "chunk_010"
+
+[[points]]
+id = "rules-011"
+document = "rules"
+chunk = "chunk_011"
+
+[[points]]
+id = "rules-012"
+document = "rules"
+chunk = "chunk_012"
+
+[[points]]
+id = "rules-013"
+document = "rules"
+chunk = "chunk_013"
+
+[[points]]
+id = "rules-014"
+document = "rules"
+chunk = "chunk_014"
+
+[[points]]
+id = "rules-015"
+document = "rules"
+chunk = "chunk_015"
+
+[[points]]
+id = "rules-016"
+document = "rules"
+chunk = "chunk_016"
+
+[[points]]
+id = "rules-017"
+document = "rules"
+chunk = "chunk_017"
+
+[[points]]
+id = "rules-018"
+document = "rules"
+chunk = "chunk_018"
+
+[[points]]
+id = "rules-019"
+document = "rules"
+chunk = "chunk_019"
+
+[[points]]
+id = "rules-020"
+document = "rules"
+chunk = "chunk_020"
+
+[[points]]
+id = "rules-021"
+document = "rules"
+chunk = "chunk_021"
+
+[[points]]
+id = "rules-022"
+document = "rules"
+chunk = "chunk_022"
+
+[[points]]
+id = "rules-023"
+document = "rules"
+chunk = "chunk_023"
+
+[[points]]
+id = "rules-024"
+document = "rules"
+chunk = "chunk_024"
+
+[[points]]
+id = "rules-025"
+document = "rules"
+chunk = "chunk_025"
+
+[[points]]
+id = "rules-026"
+document = "rules"
+chunk = "chunk_026"
+
+[[points]]
+id = "rules-027"
+document = "rules"
+chunk = "chunk_027"
+
+[[points]]
+id = "rules-028"
+document = "rules"
+chunk = "chunk_028"
+
+[[points]]
+id = "rules-029"
+document = "rules"
+chunk = "chunk_029"
+
+[[points]]
+id = "troubleshooting-001"
+document = "troubleshooting"
+chunk = "chunk_001"
+
+[[points]]
+id = "troubleshooting-002"
+document = "troubleshooting"
+chunk = "chunk_002"
+
+[[points]]
+id = "troubleshooting-003"
+document = "troubleshooting"
+chunk = "chunk_003"
+
+[[points]]
+id = "troubleshooting-004"
+document = "troubleshooting"
+chunk = "chunk_004"
+
+[[points]]
+id = "troubleshooting-005"
+document = "troubleshooting"
+chunk = "chunk_005"
+
+[[points]]
+id = "troubleshooting-006"
+document = "troubleshooting"
+chunk = "chunk_006"
+
+[[points]]
+id = "troubleshooting-007"
+document = "troubleshooting"
+chunk = "chunk_007"
+
+[[points]]
+id = "troubleshooting-008"
+document = "troubleshooting"
+chunk = "chunk_008"
+
+[[points]]
+id = "troubleshooting-009"
+document = "troubleshooting"
+chunk = "chunk_009"
+
+[[points]]
+id = "troubleshooting-010"
+document = "troubleshooting"
+chunk = "chunk_010"
+
+[[points]]
+id = "troubleshooting-011"
+document = "troubleshooting"
+chunk = "chunk_011"
+
+[[points]]
+id = "troubleshooting-012"
+document = "troubleshooting"
+chunk = "chunk_012"
+
+[[points]]
+id = "troubleshooting-013"
+document = "troubleshooting"
+chunk = "chunk_013"
+
+[[points]]
+id = "troubleshooting-014"
+document = "troubleshooting"
+chunk = "chunk_014"
+
+[[points]]
+id = "troubleshooting-015"
+document = "troubleshooting"
+chunk = "chunk_015"
+
+[[points]]
+id = "troubleshooting-016"
+document = "troubleshooting"
+chunk = "chunk_016"
+
+[[points]]
+id = "troubleshooting-017"
+document = "troubleshooting"
+chunk = "chunk_017"
+
+[[points]]
+id = "troubleshooting-018"
+document = "troubleshooting"
+chunk = "chunk_018"
+
+[[points]]
+id = "troubleshooting-019"
+document = "troubleshooting"
+chunk = "chunk_019"
+
+[[points]]
+id = "troubleshooting-020"
+document = "troubleshooting"
+chunk = "chunk_020"
+
+[[points]]
+id = "troubleshooting-021"
+document = "troubleshooting"
+chunk = "chunk_021"
+
+[[points]]
+id = "troubleshooting-022"
+document = "troubleshooting"
+chunk = "chunk_022"
+
+[[points]]
+id = "troubleshooting-023"
+document = "troubleshooting"
+chunk = "chunk_023"
+
+[[points]]
+id = "troubleshooting-024"
+document = "troubleshooting"
+chunk = "chunk_024"
+
+[[points]]
+id = "troubleshooting-025"
+document = "troubleshooting"
+chunk = "chunk_025"
+
+[[points]]
+id = "troubleshooting-026"
+document = "troubleshooting"
+chunk = "chunk_026"
+
+[[points]]
+id = "troubleshooting-027"
+document = "troubleshooting"
+chunk = "chunk_027"
+
+[[points]]
+id = "troubleshooting-028"
+document = "troubleshooting"
+chunk = "chunk_028"
+
+[[points]]
+id = "troubleshooting-029"
+document = "troubleshooting"
+chunk = "chunk_029"
+
+[[points]]
+id = "troubleshooting-030"
+document = "troubleshooting"
+chunk = "chunk_030"
+
+[[points]]
+id = "troubleshooting-031"
+document = "troubleshooting"
+chunk = "chunk_031"
+
+[[points]]
+id = "troubleshooting-032"
+document = "troubleshooting"
+chunk = "chunk_032"

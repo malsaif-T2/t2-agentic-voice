@@ -1,0 +1,23 @@
+id = "q02_new_internal"
+split = "dev"
+kind = "answerable"
+needs_search = true
+expected = ["procedures-002", "procedures-003", "rules-001", "procedures-004"]
+key_facts = [
+  "From the side bar open the personal mailbox, choose «إنشاء مراسلة» (create) and pick internal.",
+  "The subject and the confidentiality, importance and priority levels are mandatory.",
+  "Send it with «إرسال», or keep it in the drafts with «حفظ».",
+]
+notes = "The most basic procedure, asked in English; the spoken answer is the first steps only."
+
+[[variants]]
+language = "english"
+text = "How do I create a new internal correspondence?"
+
+[[variants]]
+language = "saudi"
+text = "كيف أسوي مراسلة داخلية جديدة؟"
+
+[[variants]]
+language = "msa"
+text = "ما خطوات إنشاء مراسلة داخلية من البريد الشخصي؟"

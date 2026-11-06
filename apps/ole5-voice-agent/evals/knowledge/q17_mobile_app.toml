@@ -1,0 +1,22 @@
+id = "q17_mobile_app"
+split = "dev"
+kind = "answerable"
+needs_search = true
+expected = ["features-029", "features-020", "troubleshooting-027"]
+key_facts = [
+  "It depends on the entity enabling the mobile app, and its features may differ from the web version.",
+  "The phone's browser is not supported; the app comes from the platform's official store.",
+]
+notes = "A short yes-or-no question whose answer is a condition."
+
+[[variants]]
+language = "saudi"
+text = "فيه تطبيق جوال للنظام؟"
+
+[[variants]]
+language = "msa"
+text = "هل يتوفر النظام على الهاتف المحمول؟"
+
+[[variants]]
+language = "english"
+text = "Is there a mobile app for Ole5?"

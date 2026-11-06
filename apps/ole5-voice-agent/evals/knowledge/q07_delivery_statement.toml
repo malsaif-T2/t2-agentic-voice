@@ -1,0 +1,22 @@
+id = "q07_delivery_statement"
+split = "dev"
+kind = "answerable"
+needs_search = true
+expected = ["procedures-018", "troubleshooting-017", "features-006"]
+key_facts = [
+  "Select the correspondence in the sent items box and press «طباعة بيان التسليم» (print the delivery statement).",
+  "A window asks for the entity, the print type and the number of copies.",
+]
+notes = "A how-to with a product term a caller may say otherwise (a delivery paper)."
+
+[[variants]]
+language = "saudi"
+text = "كيف أطبع بيان التسليم للمراسلة؟"
+
+[[variants]]
+language = "mixed"
+text = "أبي أطبع ورقة التسليم بعد ما أرسلت الـ letter"
+
+[[variants]]
+language = "english"
+text = "How do I print the delivery statement?"

@@ -1,0 +1,22 @@
+id = "n27_outlook_sync"
+split = "held-out"
+kind = "none"
+needs_search = true
+expected = []
+key_facts = [
+  "Says plainly it does not have information on syncing Outlook.",
+  "Invents no steps, and does not present another integration of the system as an Outlook sync.",
+]
+notes = "A request naming a product beside one of the knowledge base's own integrations, which it does not answer."
+
+[[variants]]
+language = "mixed"
+text = "عندي مشكلة في Outlook ما يتزامن مع البريد"
+
+[[variants]]
+language = "english"
+text = "My Outlook won't sync with the Ole5 mailbox"
+
+[[variants]]
+language = "saudi"
+text = "الأوتلوك ما يتزامن مع بريد النظام"

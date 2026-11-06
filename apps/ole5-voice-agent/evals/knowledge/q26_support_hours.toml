@@ -1,0 +1,22 @@
+id = "q26_support_hours"
+split = "held-out"
+kind = "none"
+needs_search = true
+expected = []
+key_facts = [
+  "Says plainly it does not have the support team's working hours.",
+  "Invents no hours and no phone number.",
+]
+notes = "A question about the support team, which the knowledge base names without its hours."
+
+[[variants]]
+language = "saudi"
+text = "متى دوام الدعم الفني؟"
+
+[[variants]]
+language = "msa"
+text = "ما هي ساعات عمل فريق الدعم الفني؟"
+
+[[variants]]
+language = "english"
+text = "What are the technical support team's working hours?"

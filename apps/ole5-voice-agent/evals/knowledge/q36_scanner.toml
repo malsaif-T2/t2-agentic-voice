@@ -1,0 +1,22 @@
+id = "q36_scanner"
+split = "dev"
+kind = "answerable"
+needs_search = true
+expected = ["troubleshooting-014"]
+key_facts = [
+  "Uninstall the current version of the tool and delete the scanners defined in the system's settings.",
+  "Restart the device, install the latest version of the tool, and define the scanner again.",
+]
+notes = "A complaint with an English product term, whose answer is five steps in order: the first ones spoken, the rest on the card."
+
+[[variants]]
+language = "mixed"
+text = "الـ Scan Tool ما يشتغل عندي"
+
+[[variants]]
+language = "saudi"
+text = "الماسح الضوئي ما يشتغل مع النظام"
+
+[[variants]]
+language = "english"
+text = "The scanner tool stopped working with the system"

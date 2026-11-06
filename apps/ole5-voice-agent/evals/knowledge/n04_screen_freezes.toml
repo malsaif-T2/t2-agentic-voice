@@ -1,0 +1,23 @@
+id = "n04_screen_freezes"
+split = "held-out"
+kind = "answerable"
+needs_search = true
+expected = ["troubleshooting-003", "troubleshooting-002"]
+key_facts = [
+  "Suggests a forced refresh (Ctrl + Shift + R) or a private window.",
+  "Suggests checking the connection and trying another network.",
+  "Suggests making sure the browser is up to date.",
+]
+notes = "A symptom described in the caller's words (a freeze), not in the knowledge base's (slowness)."
+
+[[variants]]
+language = "saudi"
+text = "الشاشة تعلق لما أفتح صندوق الوارد"
+
+[[variants]]
+language = "english"
+text = "The screen freezes whenever I open my inbox"
+
+[[variants]]
+language = "msa"
+text = "تتجمد الشاشة عند فتح صندوق الوارد"

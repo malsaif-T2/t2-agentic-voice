@@ -1,0 +1,23 @@
+id = "n12_phone_notifications"
+split = "dev"
+kind = "answerable"
+needs_search = true
+expected = ["troubleshooting-025", "features-016", "troubleshooting-027"]
+key_facts = [
+  "The user enables notifications in user settings, under managing the user's notifications.",
+  "An administrator checks they are enabled at the system level, under system administration then notifications.",
+  "On a phone the app is used, from the platform's official store and kept up to date; the phone's browser is not supported.",
+]
+notes = "An English complaint about the phone, which the answer joins to the notification settings and the app."
+
+[[variants]]
+language = "english"
+text = "My notifications don't show up on my phone."
+
+[[variants]]
+language = "saudi"
+text = "الإشعارات ما توصلني على الجوال"
+
+[[variants]]
+language = "mixed"
+text = "الـ notifications ما تجيني على الجوال من Ole5"

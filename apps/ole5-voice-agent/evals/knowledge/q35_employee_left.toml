@@ -1,0 +1,22 @@
+id = "q35_employee_left"
+split = "held-out"
+kind = "answerable"
+needs_search = true
+expected = ["troubleshooting-007", "features-022"]
+key_facts = [
+  "In user management, choose the user and click «تعطيل المستخدم» (disable the user).",
+  "The option «نقل بيانات المستخدم إلى صندوق» then appears, to choose the box the user's data moves to.",
+]
+notes = "An administrator's request told as a situation (someone left), whose answer is one action and its option."
+
+[[variants]]
+language = "saudi"
+text = "موظف عندنا استقال، كيف أقفل حسابه وأحتفظ بمراسلاته؟"
+
+[[variants]]
+language = "english"
+text = "An employee resigned, how do I disable his account but keep his correspondence?"
+
+[[variants]]
+language = "msa"
+text = "استقال أحد الموظفين، فكيف أوقف حسابه دون أن تضيع مراسلاته؟"

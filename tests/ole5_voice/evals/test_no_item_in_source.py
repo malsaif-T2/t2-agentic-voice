@@ -1,5 +1,6 @@
-"""No item in the product (evaluation.md, "No item in the product"): no item's reference, and no
-line of the script, appears as whole words in a string constant or a text file under
+"""No item in the product (evaluation.md, "No item in the product"): no item's reference, no
+line of the script and no variant of the knowledge set's items (plan 006, the words the talker
+is measured on), appears as whole words in a string constant or a text file under
 `packages/`, `apps/*/src`, `apps/*/web` (an app's browser widget) or `examples/`, except a text of
 `allowed_in_source.toml`, which grows only by the owner's ruling. A self-test shows the search
 finds pasted text.
@@ -22,6 +23,7 @@ from datetime import date
 from pathlib import Path
 
 from ole5_voice.evals.items import EVALS, load_items, read_toml
+from ole5_voice.evals.knowledge_set import KNOWLEDGE_DIR, load_knowledge_items
 from ole5_voice.evals.takes import Script
 from pydantic import BaseModel, ConfigDict, Field
 from t2_agentic_voice.domain.scoring import scored_form
@@ -91,6 +93,9 @@ def references(evals: Path) -> dict[str, str]:
             found.setdefault(fold(variant.reference), f"variant {variant.id}")
     for line in read_toml(evals / "script.toml", Script).lines:
         found.setdefault(fold(line.text), f"script line {line.id}")
+    for knowledge in load_knowledge_items(evals / KNOWLEDGE_DIR):
+        for asked in knowledge.variants:
+            found.setdefault(fold(asked.text), f"knowledge item {knowledge.id}")
     found.pop("", None)
     return found
 
@@ -132,6 +137,7 @@ def test_no_item_appears_in_the_source() -> None:
     found = references(EVALS)
     assert len(found) > 80  # the talk-over's and the script's, so the search has its terms
     assert {"stop", "wait", "okay", "yeah"} <= set(found)
+    assert sum(1 for where in found.values() if where.startswith("knowledge item")) > 120
     assert find_pasted(ROOT, SCANNED, found, allowed(EVALS / "allowed_in_source.toml")) == []
 
 

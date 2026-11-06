@@ -1,0 +1,22 @@
+id = "q21_schedule_send"
+split = "dev"
+kind = "none"
+needs_search = true
+expected = []
+key_facts = [
+  "Says plainly it does not have information on scheduling a correspondence to go out later.",
+  "Invents no scheduling steps, and does not present linking a correspondence to an appointment as scheduled sending.",
+]
+notes = "A request close to the knowledge base's appointments topic that it does not answer."
+
+[[variants]]
+language = "saudi"
+text = "أقدر أجدول مراسلة تنرسل بكرة الساعة ثمان الصبح؟"
+
+[[variants]]
+language = "english"
+text = "Can I schedule a correspondence to go out tomorrow morning?"
+
+[[variants]]
+language = "mixed"
+text = "فيه option أسوي فيه schedule للإرسال؟"

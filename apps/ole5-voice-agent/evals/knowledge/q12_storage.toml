@@ -1,0 +1,23 @@
+id = "q12_storage"
+split = "dev"
+kind = "answerable"
+needs_search = true
+expected = ["troubleshooting-008", "features-021", "features-019"]
+key_facts = [
+  "An administrator sees and assigns space under settings, system administration, storage space.",
+  "A department's quota cannot go below the 500 MB minimum.",
+  "To raise the account's total, the Account Manager is contacted to buy more space.",
+]
+notes = "A short complaint with an English term; the answer holds a number said as digits."
+
+[[variants]]
+language = "mixed"
+text = "الـ storage خلص عندي، وش الحل؟"
+
+[[variants]]
+language = "saudi"
+text = "المساحة عندي امتلت، كيف أزيدها؟"
+
+[[variants]]
+language = "msa"
+text = "كيف يمكن زيادة مساحة التخزين للإدارة؟"

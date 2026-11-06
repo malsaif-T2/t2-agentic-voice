@@ -1,0 +1,23 @@
+id = "n22_app_notifications"
+split = "dev"
+kind = "answerable"
+needs_search = true
+expected = ["troubleshooting-025", "troubleshooting-027", "features-016"]
+key_facts = [
+  "The user enables notifications in user settings, under managing the user's notifications.",
+  "An administrator checks they are enabled at the system level.",
+  "Update the app to its latest version from the official store, or remove it and install it again.",
+]
+notes = "A polite Saudi complaint about the mobile app."
+
+[[variants]]
+language = "saudi"
+text = "لو سمحت التطبيق في الجوال ما يرسل لي إشعارات"
+
+[[variants]]
+language = "english"
+text = "The mobile app isn't sending me any notifications"
+
+[[variants]]
+language = "mixed"
+text = "الـ app حق Ole5 ما يرسل notifications"

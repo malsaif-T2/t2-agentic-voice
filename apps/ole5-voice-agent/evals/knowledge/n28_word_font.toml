@@ -1,0 +1,22 @@
+id = "n28_word_font"
+split = "dev"
+kind = "answerable"
+needs_search = true
+expected = ["troubleshooting-012"]
+key_facts = [
+  "Check the file itself: open it on the device, save it again in a proper format, and try again.",
+  "Files edited with outside tools can cause a font rendering error.",
+]
+notes = "A symptom described from the caller's side, answered by a cause the knowledge base gives for files."
+
+[[variants]]
+language = "mixed"
+text = "لما أفتح المرفق يفتح في Word بس الخط يطلع غلط"
+
+[[variants]]
+language = "english"
+text = "When I open the attachment in Word the font looks wrong"
+
+[[variants]]
+language = "saudi"
+text = "الخط في الملف المرفق يطلع خربان"

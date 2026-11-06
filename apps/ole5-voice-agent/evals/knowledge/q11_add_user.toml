@@ -1,0 +1,23 @@
+id = "q11_add_user"
+split = "dev"
+kind = "answerable"
+needs_search = true
+expected = ["rules-015", "procedures-028", "troubleshooting-006", "features-022", "rules-014"]
+key_facts = [
+  "In the user manager, «إضافة جديد» (add new) opens three steps: basic information, additional information, and the user's role.",
+  "The username takes only English letters, digits and the signs @ _ and dot.",
+  "The email must be written all in lower case.",
+]
+notes = "An administrator's question in English, whose answer holds two rules a caller trips on."
+
+[[variants]]
+language = "english"
+text = "How do I add a new user to the system?"
+
+[[variants]]
+language = "saudi"
+text = "أبي أضيف موظف جديد في النظام"
+
+[[variants]]
+language = "mixed"
+text = "كيف أسوي add user جديد من مدير المستخدمين؟"

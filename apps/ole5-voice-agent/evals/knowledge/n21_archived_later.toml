@@ -1,0 +1,23 @@
+id = "n21_archived_later"
+split = "dev"
+kind = "answerable"
+needs_search = true
+expected = ["features-014", "features-012", "rules-004"]
+key_facts = [
+  "Archived correspondence moves to the archived box and can be reached electronically afterwards.",
+  "Comments and further attachments can be added to archived correspondence.",
+  "Invents no retention period or automatic deletion.",
+]
+notes = "A question whose likely intent (how long archived items are kept) the knowledge base does not answer; the answer keeps to what it holds."
+
+[[variants]]
+language = "saudi"
+text = "أبغى أسأل عن المراسلات المؤرشفة وين تروح بعد فترة"
+
+[[variants]]
+language = "msa"
+text = "أين تذهب المراسلات بعد أرشفتها؟"
+
+[[variants]]
+language = "english"
+text = "What happens to correspondence after I archive it?"

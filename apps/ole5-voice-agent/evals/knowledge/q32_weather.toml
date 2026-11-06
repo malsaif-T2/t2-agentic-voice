@@ -1,0 +1,18 @@
+id = "q32_weather"
+split = "dev"
+kind = "out_of_scope"
+needs_search = false
+expected = []
+key_facts = [
+  "Says plainly it can help only with Ole5.",
+  "Invents no weather and makes no search.",
+]
+notes = "A question outside Ole5, which the agent declines briefly."
+
+[[variants]]
+language = "saudi"
+text = "كيف الجو اليوم في الرياض؟"
+
+[[variants]]
+language = "english"
+text = "What's the weather like in Riyadh today?"

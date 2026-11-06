@@ -1,0 +1,23 @@
+id = "q14_late_report"
+split = "dev"
+kind = "answerable"
+needs_search = true
+expected = ["procedures-025", "procedures-026", "troubleshooting-024", "rules-013"]
+key_facts = [
+  "From the side bar, «التقارير» (reports), then the system administration reports, as the user's permissions allow.",
+  "The parameters, such as the period and the department, are entered before Submit shows the data.",
+  "The late correspondence report shows each late correspondence and how long it is late.",
+]
+notes = "A request for a report by what it shows, not by its name."
+
+[[variants]]
+language = "saudi"
+text = "أبي تقرير بالمراسلات المتأخرة، من وين أطلعه؟"
+
+[[variants]]
+language = "english"
+text = "Where can I get a report of late correspondence?"
+
+[[variants]]
+language = "mixed"
+text = "أبي report بالمراسلات المتأخرة"

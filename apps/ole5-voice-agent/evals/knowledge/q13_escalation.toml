@@ -1,0 +1,23 @@
+id = "q13_escalation"
+split = "dev"
+kind = "answerable"
+needs_search = true
+expected = ["procedures-032", "procedures-033", "troubleshooting-026", "features-024", "procedures-035"]
+key_facts = [
+  "Settings, system administration, then the escalation policies tab, to add a new policy.",
+  "A policy holds general information, a calendar, official holidays and actions.",
+  "One policy can be linked to several departments.",
+]
+notes = "An administrator's setup question with an English product term."
+
+[[variants]]
+language = "mixed"
+text = "كيف أسوي escalation policy للمراسلات المتأخرة؟"
+
+[[variants]]
+language = "msa"
+text = "كيف أضيف سياسة تصعيد جديدة؟"
+
+[[variants]]
+language = "english"
+text = "How do I set up an escalation for late correspondence?"

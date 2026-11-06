@@ -1,0 +1,22 @@
+id = "q16_two_factor"
+split = "dev"
+kind = "answerable"
+needs_search = true
+expected = ["features-018", "features-021"]
+key_facts = [
+  "Yes: multi-factor authentication at sign-in is supported.",
+  "Its type, a text message or a secure token, is set in the settings.",
+]
+notes = "A yes-or-no question about a feature, with a product term in English."
+
+[[variants]]
+language = "english"
+text = "Does Ole5 support two-factor authentication?"
+
+[[variants]]
+language = "saudi"
+text = "فيه تحقق بخطوتين وقت الدخول؟"
+
+[[variants]]
+language = "mixed"
+text = "النظام يدعم MFA وقت تسجيل الدخول؟"

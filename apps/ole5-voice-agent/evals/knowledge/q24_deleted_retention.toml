@@ -1,0 +1,22 @@
+id = "q24_deleted_retention"
+split = "dev"
+kind = "none"
+needs_search = true
+expected = []
+key_facts = [
+  "Says plainly it does not have information on how long deleted correspondence is kept.",
+  "Invents no number of days.",
+]
+notes = "A question about a number the knowledge base does not give, close to its delete topic."
+
+[[variants]]
+language = "msa"
+text = "كم مدة بقاء المراسلات في صندوق المحذوفة قبل حذفها نهائياً؟"
+
+[[variants]]
+language = "saudi"
+text = "المراسلات المحذوفة كم تجلس قبل ما تنمسح للأبد؟"
+
+[[variants]]
+language = "english"
+text = "How long do deleted items stay before they're gone for good?"
