@@ -8,6 +8,13 @@ The app's own, for its server (server.py) and its token route (token_route.py):
 - `OLE5_VOICE_WEBSITE_ORIGIN`: the website allowed to frame the widget's page
   (`frame-ancestors`), an origin as a browser sends it; unset, no page may frame it.
 
+And for its knowledge base (plan 006, Q4), which the talker searches through T2's embedding
+gateway and T2's Qdrant: the account it logs in with (`OLE5_VOICE_KB_LOGIN_EMAIL` and
+`OLE5_VOICE_KB_LOGIN_PASSWORD`) and the key (`OLE5_VOICE_KB_API_KEY`), all optional, the owner's
+to copy into `.env`; and the addresses and the tenant, each with T2's default
+(`OLE5_VOICE_KB_QDRANT_URL`, `OLE5_VOICE_KB_LOGIN_URL`, `OLE5_VOICE_KB_EMBEDDING_URL`,
+`OLE5_VOICE_KB_TENANT`). With none of them set the app still starts, its agent the echo.
+
 A blank value counts as unset, as the library's do. The library's settings are
 `VoiceSettings.from_env`'s, and the token route signs every token with the join key
 `T2V_JOIN__CURRENT_KID` names, so that one is required too. Every failure is one
@@ -19,6 +26,7 @@ from __future__ import annotations
 from dataclasses import dataclass
 from pathlib import Path
 from typing import Final
+from urllib.parse import urlsplit
 
 from pydantic import Field, SecretStr, ValidationError, field_validator
 from pydantic_settings import BaseSettings, SettingsConfigDict
@@ -58,6 +66,59 @@ class AppSettings(BaseSettings):
             "(https://www.example.com). Unset: no page may frame it."
         ),
     )
+
+    kb_login_email: str | None = Field(
+        default=None,
+        max_length=254,
+        description="The account the app logs in to the knowledge base's service with.",
+    )
+    kb_login_password: SecretStr | None = Field(
+        default=None, description="That account's password."
+    )
+    kb_api_key: SecretStr | None = Field(
+        default=None, description="The key the knowledge base's service takes with a request."
+    )
+    kb_qdrant_url: str = Field(
+        default="https://ds.t2.sa:443/ole5_agent/qdrant",
+        description="T2's Qdrant, which holds Ole5's points, over HTTPS.",
+    )
+    kb_login_url: str = Field(
+        default="https://ds.t2.sa/ole5_agent/api/login",
+        description="Where the app logs in to the knowledge base's service, over HTTPS.",
+    )
+    kb_embedding_url: str = Field(
+        default="https://ds.t2.sa/text_embed",
+        description="T2's embedding gateway, which embeds each question, over HTTPS.",
+    )
+    kb_tenant: str = Field(
+        default="ole5",
+        pattern=r"^[A-Za-z0-9_.-]{1,64}$",
+        description="The tenant whose points the search reads.",
+    )
+
+    @field_validator("kb_login_email")
+    @classmethod
+    def _an_email(cls, value: str | None) -> str | None:
+        if value is None:
+            return None
+        name, at, host = value.strip().rpartition("@")
+        if not (name and at and "." in host) or any(c.isspace() for c in value.strip()):
+            raise ValueError("is not an email address: a name, an @ and a host")
+        return value.strip()
+
+    @field_validator("kb_qdrant_url", "kb_login_url", "kb_embedding_url")
+    @classmethod
+    def _https(cls, value: str) -> str:
+        try:
+            parts = urlsplit(value)
+            port = parts.port  # read, so urllib checks it
+        except ValueError:  # its error repeats the value: not chained
+            parts, port = None, None
+        if parts is None or parts.scheme != "https" or not parts.hostname or port == 0:
+            raise ValueError("must be an https:// URL with a host")
+        if parts.username is not None or parts.password is not None:
+            raise ValueError("must hold no user name or password; they have settings of their own")
+        return value
 
     @field_validator("access_code")
     @classmethod

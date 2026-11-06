@@ -123,3 +123,60 @@ def test_settings_built_in_code_keep_their_checks() -> None:
     with pytest.raises(ValueError, match="fewer than 16"):
         AppSettings(access_code=SecretStr("x"))
     assert app_settings.GENERATOR.startswith("python -c")
+
+
+def test_the_knowledge_bases_settings_have_t2s_defaults_and_none_is_needed(
+    environment: pytest.MonkeyPatch,
+) -> None:
+    """Plan 006, Q4: the names the owner copies the values under; with none of them set the app
+    still loads (its agent the echo)."""
+    app = load().app
+    assert (app.kb_login_email, app.kb_login_password, app.kb_api_key) == (None, None, None)
+    assert (app.kb_qdrant_url, app.kb_login_url, app.kb_embedding_url, app.kb_tenant) == (
+        "https://ds.t2.sa:443/ole5_agent/qdrant",
+        "https://ds.t2.sa/ole5_agent/api/login",
+        "https://ds.t2.sa/text_embed",
+        "ole5",
+    )
+
+
+def test_the_knowledge_bases_access_loads_from_the_environment_kept_secret(
+    environment: pytest.MonkeyPatch, caplog: pytest.LogCaptureFixture
+) -> None:
+    password, key = "made-up-kb-password-0123", "made-up-kb-key-4567"
+    environment.setenv("OLE5_VOICE_KB_LOGIN_EMAIL", " someone@example.com ")
+    environment.setenv("OLE5_VOICE_KB_LOGIN_PASSWORD", password)
+    environment.setenv("OLE5_VOICE_KB_API_KEY", key)
+    environment.setenv("OLE5_VOICE_KB_TENANT", "ole5-test")
+    app = load().app
+    assert app.kb_login_email == "someone@example.com"
+    assert app.kb_login_password is not None and app.kb_api_key is not None
+    assert (app.kb_login_password.get_secret_value(), app.kb_api_key.get_secret_value()) == (
+        password,
+        key,
+    )
+    surfaces = {"repr": repr(app), "dump": repr(app.model_dump())}
+    assert holding(password, surfaces) == [] and holding(key, surfaces) == []
+
+
+@pytest.mark.parametrize(
+    ("name", "value"),
+    [
+        ("KB_LOGIN_EMAIL", "not-an-email"),
+        ("KB_LOGIN_EMAIL", "some one@example.com"),
+        ("KB_QDRANT_URL", "http://made-up.example/qdrant"),  # the key would travel in clear text
+        ("KB_LOGIN_URL", "https://user:made-up@made-up.example/login"),
+        ("KB_EMBEDDING_URL", "https://made-up.example:0/embed"),
+        ("KB_EMBEDDING_URL", "https://made-up.example:notaport/embed"),
+        ("KB_EMBEDDING_URL", "made-up.example/embed"),
+        ("KB_TENANT", "two words"),
+    ],
+)
+def test_a_wrong_knowledge_base_setting_is_refused_never_shown(
+    environment: pytest.MonkeyPatch, name: str, value: str, caplog: pytest.LogCaptureFixture
+) -> None:
+    environment.setenv(f"OLE5_VOICE_{name}", value)
+    with pytest.raises(ConfigurationError, match=f"OLE5_VOICE_{name} ") as caught:
+        load()
+    assert caught.value.details == {"settings": [f"OLE5_VOICE_{name}"]}
+    assert holding(value, shown(caught.value, caplog=caplog)) == []
