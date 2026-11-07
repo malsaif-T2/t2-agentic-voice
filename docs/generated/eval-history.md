@@ -5,7 +5,7 @@ per `poe eval` run that called a provider, kept or not; never edited by hand
 ([generated docs](README.md), GP-11). Every number describes one speaker, the owner (D-006).
 Full scorecards stay out of git, in each run's `--out` folder.
 
-Spend so far: 34 run(s), 44100.3 billed seconds, $1.1887.
+Spend so far: 35 run(s), 44100.3 billed seconds, $1.1887.
 
 ## Runs
 
@@ -55,6 +55,12 @@ Spend so far: 34 run(s), 44100.3 billed seconds, $1.1887.
 | 27 | 2026-11-05T12:57:18+00:00 | o1-dev | 35a82a073792a3b6939c15d47245a0998ee11c29 | pipeline | dev | 62 | 163 | 0 | 128 | 393 | 425 | 2 | 5 of 8 | 324 | 3240.0 | $0.0999 | yes |
 | 28 | 2026-11-05T15:19:42+00:00 | o2-dev | 35a82a073792a3b6939c15d47245a0998ee11c29 | pipeline | dev | 62 | 163 | 0 | 128 | 435 | 639 | 2 | 5 of 8 | 323 | 3230.0 | $0.0996 | yes |
 | 29 | 2026-11-05T17:04:26+00:00 | h3-held-out | 1d1cc9794b6f05cfb1e9eeba39d1293a6cda5f32 | pipeline | held-out | 24 | 62 | 0 | 47 | 486 | 542 | 2 | 6 of 8 | 107 | 1070.0 | $0.0330 | yes |
+
+## Knowledge-depth runs
+
+| # | Time | Run | Commit | Split | Items | Variants | Failures | Kept k | Points found, kept k | Points found, k = 8 | Characters, kept k (median) | Complete |
+| --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- |
+| 35 | 2026-11-07T19:33:12+00:00 | k0-dev | 55a092912075ea5050a2d39c4e8b0a77e173b1db | dev | 32 | 96 | 0 | 7 | 62.1% | 65.1% | 5928 | yes |
 
 ## Each run
 
@@ -2171,3 +2177,28 @@ Spend so far: 34 run(s), 44100.3 billed seconds, $1.1887.
 | language | none | 3 | 0.0% |
 | language | saudi | 20 | 36.4% |
 | split | held-out | 42 | 42.0% |
+
+### 35 · k0-dev
+
+| Field | Value |
+| --- | --- |
+| Why | Plan 006 run K0 \(Q20\): the passages' depth on dev |
+| Data digest | `e00de0f75e442695b9caedca0ec36f63695e6c54ef54475cf5ba4b5a500bfa04` |
+| Scorecard | scorecard.json |
+| Setting run.chat_model | none |
+| Setting run.depth | 8 |
+| Setting run.knowledge | ole5_voice.knowledge_base:knowledge_base |
+| Setting run.margin | 0.05 |
+| Setting run.passage_chars | 1500 |
+| Setting run.search_timeout_s | 30.0 |
+
+| k | Items with a point found | Points found | Characters (median) | Characters (90th) | Characters (most) |
+| --- | --- | --- | --- | --- | --- |
+| 1 | 69.8% | 28.1% | 646 | 1349 | 1441 |
+| 2 | 77.1% | 39.1% | 1405 | 2316 | 2827 |
+| 3 | 83.3% | 46.3% | 2352 | 3342 | 4197 |
+| 4 | 84.4% | 51.7% | 3127 | 4346 | 5064 |
+| 5 | 85.4% | 56.4% | 4038 | 5628 | 6209 |
+| 6 | 86.5% | 59.6% | 4824 | 6415 | 7485 |
+| 7 | 87.5% | 62.1% | 5928 | 7596 | 8822 |
+| 8 | 89.6% | 65.1% | 6852 | 8238 | 9573 |
