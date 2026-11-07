@@ -10,15 +10,14 @@ the working folder's `.env`, `run_settings.DOTENV`) for the key alone, its base 
 or the SDK's own and its timeout `--timeout-s`; and the call's, built in code from the
 library's defaults and the command line's `llm` group, so no `T2V_` variable changes an arm.
 The agent and its knowledge base come from factories named `module:name` inside `ole5_voice`
-(`--agent`, given the knowledge base; `--knowledge`, given the `--env-file`), so a run measures
-the app's own declaration through the library's public API.
+(`--agent`, given the knowledge base; `--knowledge`, given the `--env-file`: factories.py), so a
+run measures the app's own declaration through the library's public API.
 """
 
 from __future__ import annotations
 
 import argparse
 import asyncio
-import importlib
 import math
 import re
 import time
@@ -33,10 +32,11 @@ from pydantic import BaseModel
 from t2_agentic_voice import LlmSettings, VoiceAgent, VoiceSettings, get_logger
 from t2_agentic_voice.evals import TextCall
 from t2_agentic_voice.groq import GroqChat
-from t2_agentic_voice.ports import ChatModel, KnowledgeBase
+from t2_agentic_voice.ports import ChatModel
 
 from ole5_voice.evals import run_folder, run_settings
 from ole5_voice.evals.chat_pacing import Limits, ModelPacer, PacedChat, Price, Spend
+from ole5_voice.evals.factories import env_file_of, load_factory
 from ole5_voice.evals.groq_answerer import Clock, Sleep
 from ole5_voice.evals.judge import JUDGE_MODEL
 from ole5_voice.evals.models import NAME_RULE, is_name
@@ -49,8 +49,6 @@ EFFORTS: Final = get_args(LlmSettings.model_fields["reasoning_effort"].annotatio
 INPUT_BUDGET: Final = 6000  # tokens a request is budgeted to read: the prompt, history, passages
 _SECRET = re.compile(r"(^|_)(key|keys|secret|token|password|file)$")
 _LIMITS: Final = ("rpm", "tpm", "rpd")
-AgentFactory = Callable[[KnowledgeBase], VoiceAgent]
-KnowledgeFactory = Callable[[Path | None], KnowledgeBase]
 log = get_logger(__name__)
 
 
@@ -60,22 +58,6 @@ def _now() -> datetime:
 
 def _here() -> Path:
     return Path(__file__).resolve().parent
-
-
-def load_factory(spec: str) -> Callable[..., object]:
-    """The callable `spec` names as `module:name`, inside `ole5_voice`; refused otherwise."""
-    module, colon, name = spec.partition(":")
-    fix = "name a callable of the Ole5 app as ole5_voice.<module>:<name>"
-    if not colon or not module.startswith("ole5_voice.") or not name.isidentifier():
-        raise refused(f"{spec} is not a module:name inside ole5_voice", fix)
-    found: object
-    try:
-        found = getattr(importlib.import_module(module), name)
-    except (ImportError, AttributeError):
-        found = None
-    if not callable(found):
-        raise refused(f"{spec} names no callable", fix)
-    return found
 
 
 @dataclass(frozen=True)
@@ -180,11 +162,7 @@ def require(parser: argparse.ArgumentParser, args: argparse.Namespace, *also: st
 def chat_settings(args: argparse.Namespace) -> VoiceSettings:
     """The chat adapter's settings: the key from the environment and the `.env`, the base URL
     and the timeout from the command line."""
-    env_file = args.env_file
-    dotenv = run_settings.DOTENV
-    if env_file is None and dotenv is not None and dotenv.is_file():
-        env_file = dotenv
-    loaded = VoiceSettings.from_env(env_file=env_file, env="dev")
+    loaded = VoiceSettings.from_env(env_file=env_file_of(args), env="dev")
     data = loaded.model_dump()
     data["groq"]["base_url"] = args.base_url or run_settings.GROQ_BASE_URL
     data["llm"]["timeout_s"] = args.timeout_s

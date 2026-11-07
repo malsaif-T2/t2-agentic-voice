@@ -32,6 +32,9 @@ cookie, question, vector or payload text is in an error, its chain or a log line
 outside the handler, so no exception chain leads to httpx's error, which holds the request. A
 cancel is never caught: the request stops at once.
 
+**The factory** a measurement run builds it with is `knowledge_base`, given the run's env file:
+it reads the knowledge base's access alone, so a run needs no access code or widget setting.
+
 `language` and `caller` are the port's, unused: Ole5's points serve every caller alike, and one
 embedding serves both languages (bge-m3).
 """
@@ -41,6 +44,7 @@ from __future__ import annotations
 import asyncio
 import math
 from http.cookiejar import CookieJar, DefaultCookiePolicy
+from pathlib import Path
 from typing import Any, Final, Literal
 
 import httpx
@@ -49,7 +53,7 @@ from t2_agentic_voice import Caller, ProviderError, get_logger
 from t2_agentic_voice.ports import Passage
 
 from ole5_voice.passages import passages
-from ole5_voice.settings import KnowledgeAccess
+from ole5_voice.settings import KnowledgeAccess, load_knowledge
 
 log = get_logger(__name__)
 
@@ -214,6 +218,14 @@ class QdrantKnowledgeBase:
         except httpx.HTTPError as error:
             failure = ProviderError("server_error", False, details=_details(step, error))
         raise failure
+
+
+def knowledge_base(env_file: Path | None = None) -> QdrantKnowledgeBase:
+    """Ole5's knowledge base, its access read alone from the environment and `env_file` when
+    given (settings.py's `load_knowledge`): the factory a measurement run names
+    (`--knowledge ole5_voice.knowledge_base:knowledge_base`), which needs no access code. A
+    ConfigurationError when the access is not set, or set only in part."""
+    return QdrantKnowledgeBase(load_knowledge(env_file))
 
 
 def _read[M: BaseModel](step: Step, response: httpx.Response, model: type[M]) -> M:

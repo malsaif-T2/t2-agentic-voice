@@ -30,10 +30,11 @@ from pathlib import Path
 from typing import Final, get_args
 
 from t2_agentic_voice import T2VoiceError, VoiceAgent, configure_logging, get_logger
-from t2_agentic_voice.ports import KnowledgeBase
 
 from ole5_voice import LOGGERS
 from ole5_voice.evals.chat_pacing import Spend
+from ole5_voice.evals.factories import Closing, env_file_of, knowledge_of
+from ole5_voice.evals.factories import agent_of as built_agent
 from ole5_voice.evals.items import HISTORY_FILE
 from ole5_voice.evals.judge import JUDGE_ATTEMPTS, Judge
 from ole5_voice.evals.kb_points import KnowledgeData, RecordingKnowledge, load_knowledge
@@ -93,23 +94,18 @@ class _Found:
     stopped: Stopped | None = None
 
 
-def agent_of(args: argparse.Namespace, parts: TalkerParts) -> tuple[VoiceAgent, RecordingKnowledge]:
-    """The agent the factories build, on the knowledge base behind a recorder; refused when
-    either is not what it should be, or the agent has no `--search-tool`."""
-    kb = parts.load_factory(args.knowledge)(args.env_file)
-    if not callable(getattr(kb, "search", None)):
-        raise refused(f"--knowledge {args.knowledge} gave no knowledge base", "name its factory")
-    recording = RecordingKnowledge(_as_base(kb))
-    agent = parts.load_factory(args.agent)(recording)
-    if not isinstance(agent, VoiceAgent):
-        raise refused(f"--agent {args.agent} gave no VoiceAgent", "name the agent's factory")
+def agent_of(
+    args: argparse.Namespace, parts: TalkerParts, closing: Closing
+) -> tuple[VoiceAgent, RecordingKnowledge]:
+    """The agent the factories build (factories.py), on the knowledge base behind a recorder,
+    the base kept in `closing`; refused when either is not what it should be, or the agent has
+    no `--search-tool`."""
+    kb = closing.add(knowledge_of(parts.load_factory, args.knowledge, env_file_of(args)))
+    recording = RecordingKnowledge(kb)
+    agent = built_agent(parts.load_factory, args.agent, recording)
     if args.search_tool not in {tool.name for tool in agent.tools}:
         raise refused(f"the agent has no tool {args.search_tool}", "give its knowledge tool's name")
     return agent, recording
-
-
-def _as_base(kb: object) -> KnowledgeBase:
-    return kb  # type: ignore[return-value]  # its `search` is checked by `agent_of`
 
 
 def _plan(
@@ -133,10 +129,19 @@ def _plan(
 
 
 def _run(args: argparse.Namespace, parts: TalkerParts) -> int:
+    """The run, what it built closed whenever it ends, a refusal's included."""
+    closing = Closing()
+    try:
+        return _built(args, parts, closing)
+    finally:
+        closing.close_now()
+
+
+def _built(args: argparse.Namespace, parts: TalkerParts, closing: Closing) -> int:
     checkout = run_checkout(parts.folder, parts.git)
     data = load_knowledge(checkout.top / DATA, args.points_text)
     chat, call = chat_settings(args), call_settings(args)
-    agent, recording = agent_of(args, parts)
+    agent, recording = agent_of(args, parts, closing)
     smoke, todo = _plan(args, data, agent)
     folder = folder_for(args.out, resume=args.resume, checkout=checkout, git=parts.git)
     info = TalkerRun(
@@ -174,7 +179,7 @@ def _run(args: argparse.Namespace, parts: TalkerParts) -> int:
     before = sum(session.cost_usd for session in sessions)
     paced = pacing(
         args,
-        parts.chat(chat),
+        closing.add(parts.chat(chat)),
         today=parts.requests_today(history, began.date()),
         before_usd=before,
         parts=parts,
@@ -205,7 +210,7 @@ def _run(args: argparse.Namespace, parts: TalkerParts) -> int:
         "run_started", run=info.name, split=info.split, variants=len(remaining), done=len(done)
     )
     try:
-        asyncio.run(_measure(measuring, smoke, remaining, found, folder, args))
+        asyncio.run(_measure(measuring, smoke, remaining, found, folder, args, closing))
     except KeyboardInterrupt:
         found.stopped = "interrupted"
         log.warning("run_interrupted", done=len(found.results), of=len(remaining))
@@ -237,6 +242,7 @@ async def _measure(
     found: _Found,
     folder: RunFolder,
     args: argparse.Namespace,
+    closing: Closing,
 ) -> None:
     held_out = args.split == "held-out"
     spend = measuring.paced.spend
@@ -276,10 +282,7 @@ async def _measure(
         found.stopped = stop.reason
         log.warning("run_stopped", reason=stop.reason, done=len(found.results), of=len(todo))
     finally:
-        await measuring.paced.aclose()
-        closing = getattr(measuring.knowledge.kb, "aclose", None)
-        if closing is not None:
-            await closing()
+        await closing.aclose()  # the chat model and the knowledge base, in the run's own loop
 
 
 def _close(

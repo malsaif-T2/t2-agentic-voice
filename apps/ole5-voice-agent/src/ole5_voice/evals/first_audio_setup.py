@@ -7,7 +7,6 @@ records.
 from __future__ import annotations
 
 import argparse
-import importlib
 from collections.abc import Callable, Sequence
 from dataclasses import dataclass, field
 from pathlib import Path
@@ -20,6 +19,8 @@ from t2_agentic_voice.stores import PhraseCache
 
 from ole5_voice.evals import history, run_settings
 from ole5_voice.evals.audio import read_wav
+from ole5_voice.evals.factories import Closing, Loader, env_file_of, knowledge_of, load_factory
+from ole5_voice.evals.factories import agent_of as built_agent
 from ole5_voice.evals.first_audio_run import (
     LEAD_S,
     Phrases,
@@ -66,7 +67,8 @@ def phrase_cache(settings: VoiceSettings, tts: TextToSpeech, agent: VoiceAgent) 
 @dataclass(frozen=True)
 class FirstAudioParts:
     """What a run is built from, each replaceable by a test's fake: the run's `Parts`, the
-    speech, voice and chat adapters, the phrase cache, the replay and the history."""
+    speech, voice and chat adapters, the phrase cache, the replay, the history, and the loader
+    of the agent's and the knowledge base's factories."""
 
     plan: Parts = field(default_factory=Parts)
     speech_to_text: Callable[[VoiceSettings], SpeechToText] = GroqSTT.from_settings
@@ -75,6 +77,7 @@ class FirstAudioParts:
     phrases: Callable[[VoiceSettings, TextToSpeech, VoiceAgent], Phrases] = phrase_cache
     replay: ReplayFactory = not_wired
     append_line: AppendLine = history.append_line
+    load_factory: Loader = load_factory
 
 
 def price(text: str) -> tuple[str, float]:
@@ -103,23 +106,26 @@ def settings_of(args: argparse.Namespace) -> VoiceSettings:
     return with_set(run_settings.load_settings(namespace), [*pinned, *args.set])
 
 
-def agent_of(text: str, *, tools: bool) -> VoiceAgent:
-    """The agent `--agent MODULE:NAME` names, its tools left out unless `tools`; the run's
-    refusal for a factory that is not there or gives no talker's agent."""
-    module, colon, name = text.partition(":")
-    try:
-        factory = getattr(importlib.import_module(module), name, None) if colon else None
-    except (ImportError, ValueError):  # no such module, or an empty name
-        factory = None
-    if not callable(factory):
-        raise refused("--agent names no factory", "give it as MODULE:NAME, an importable callable")
-    agent = factory()
-    if not isinstance(agent, VoiceAgent) or not agent.instructed:
+def agent_of(args: argparse.Namespace, load: Loader, closing: Closing) -> VoiceAgent:
+    """The agent the factories build (factories.py), as runs K and S build theirs: `--agent`
+    given the knowledge base `--knowledge` builds from the run's env file, kept in `closing`; or,
+    with `--no-tools` (Tn), given None and no knowledge base built. Refused for a factory that is
+    not there or gives no talker's agent, and for one that gives tools with no knowledge base."""
+    kb = None
+    if not args.no_tools:
+        kb = closing.add(knowledge_of(load, args.knowledge, env_file_of(args)))
+    agent = built_agent(load, args.agent, kb)
+    if not agent.instructed:
         raise refused(
             "--agent's factory gives no agent with instructions, whose calls run the talker",
             "name the app's factory of its talker's agent",
         )
-    return agent if tools else agent.model_copy(update={"tools": ()})
+    if args.no_tools and agent.tools:
+        raise refused(
+            "--no-tools: the agent's factory gave tools with no knowledge base",
+            "name a factory that gives the talker with no tool when given none",
+        )
+    return agent
 
 
 def shown(settings: VoiceSettings, args: argparse.Namespace, tail_s: float) -> dict[str, str]:
@@ -136,6 +142,7 @@ def shown(settings: VoiceSettings, args: argparse.Namespace, tail_s: float) -> d
     library = run_settings.shown(settings, namespace)
     run = {
         "run.agent": args.agent,
+        "run.knowledge": args.knowledge or "none",
         "run.tools": "none" if args.no_tools else "declared",
         "run.lead_s": str(LEAD_S),
         "run.tail_s": str(tail_s),

@@ -5,10 +5,12 @@ real speech-to-text, chat model, knowledge and voice (first_audio_run.py), and s
 (first_audio_score.py, first_audio_card.py).
 
 **The arms** are the command line's: `--trim-silence off` (T0) or `on` (T1), and `--no-tools`
-(Tn: the agent with its tools left out, so no reply searches; Ole5's one tool is its knowledge
-search). **The agent** comes from a factory, `--agent MODULE:NAME`, called with no argument, that
-gives a `VoiceAgent` with instructions (the talker's), its knowledge base built from the app's
-own settings (first_audio_setup.py).
+(Tn: no reply searches). **The agent and its knowledge base** come from factories, as runs K's
+and S's do (factories.py): `--agent`, given the knowledge base, gives a `VoiceAgent` with
+instructions (the talker's: Ole5's `ole5_voice.agent:talker_agent`), and `--knowledge`, given the
+run's env file, its knowledge base (Ole5's `ole5_voice.knowledge_base:knowledge_base`); with
+`--no-tools` the agent's factory is given None, as Ole5's then gives its talker with no tool, and
+no knowledge base is built. Each is closed when the run ends, a refusal's included.
 
 As `poe eval-timing`, a run refuses the main checkout and a dirty tree, an `--out` that exists or
 that git would track, and audio that is not the file its manifest hashed; its settings load as
@@ -43,6 +45,7 @@ from t2_agentic_voice import (
 
 from ole5_voice import LOGGERS
 from ole5_voice.evals import run_settings
+from ole5_voice.evals.factories import Closing
 from ole5_voice.evals.first_audio_card import AudioRun, Stopped, close_run
 from ole5_voice.evals.first_audio_run import (
     LEAD_S,
@@ -98,8 +101,9 @@ def _parser() -> argparse.ArgumentParser:
     parser = argparse.ArgumentParser(prog="poe first-audio", description=_DESCRIPTION)
     add = parser.add_argument
     add("--split", choices=get_args(Split), help="the split the run covers, all of it")
-    add("--agent", help="the agent's factory, MODULE:NAME, called with no argument")
-    add("--no-tools", action="store_true", help="the agent with its tools left out (Tn)")
+    add("--agent", help="the agent's factory, ole5_voice.<module>:<name>, given the base")
+    add("--knowledge", help="the knowledge base's factory, given --env-file (not with Tn)")
+    add("--no-tools", action="store_true", help="the agent given no knowledge base (Tn)")
     add("--trim-silence", choices=("on", "off"), help="tts.trim_silence: on (T1) or off (T0)")
     add("--model", choices=run_settings.MODELS, help="stt.model")
     add("--timeout-s", type=_amount, help="stt.timeout_s")
@@ -134,6 +138,10 @@ def _require(parser: argparse.ArgumentParser, args: argparse.Namespace) -> None:
         parser.error(f"a run needs {', '.join(missing)}")
     if holds_placeholder(args.note):
         parser.error("--note holds an install placeholder, which the docs check refuses")
+    if args.no_tools and args.knowledge is not None:
+        parser.error("--no-tools builds no knowledge base: no --knowledge")
+    if not args.no_tools and args.knowledge is None:
+        parser.error("a run needs --knowledge, or --no-tools for Tn")
 
 
 async def _measure(
@@ -193,6 +201,15 @@ async def _measure(
 
 
 def _run(args: argparse.Namespace, parts: FirstAudioParts) -> int:
+    """The run, what it built closed whenever it ends, a refusal's included."""
+    closing = Closing()
+    try:
+        return _built(args, parts, closing)
+    finally:
+        closing.close_now()
+
+
+def _built(args: argparse.Namespace, parts: FirstAudioParts, closing: Closing) -> int:
     settings = settings_of(args)
     plan = parts.plan
     checkout = run_checkout(plan.folder, plan.git)
@@ -211,7 +228,7 @@ def _run(args: argparse.Namespace, parts: FirstAudioParts) -> int:
             "smoke test",
             "check --split and the committed split",
         )
-    agent = agent_of(args.agent, tools=not args.no_tools)
+    agent = agent_of(args, parts.load_factory, closing)
     languages = {t.item.language for t in [*todo, dev[0]]}
     if unspoken := sorted({TAGS[each] for each in languages if not speaks(agent, each)}):
         raise refused(f"the agent speaks no {', '.join(unspoken)}", "give the Ole5 agent")
@@ -224,8 +241,9 @@ def _run(args: argparse.Namespace, parts: FirstAudioParts) -> int:
             f"the run's budget, ${most:.2f} at most, passes --cap-usd",
             "raise --cap-usd, or check the prices and --llm-input-tokens",
         )
-    stt, tts = parts.speech_to_text(settings), parts.text_to_speech(settings)
-    llm, tail_s = parts.chat_model(settings), tail_of(settings, agent)
+    stt = closing.add(parts.speech_to_text(settings))
+    tts = closing.add(parts.text_to_speech(settings))
+    llm, tail_s = closing.add(parts.chat_model(settings)), tail_of(settings, agent)
     phrases = parts.phrases(settings, tts, agent)
     replay = parts.replay(
         agent=agent, settings=settings, stt=stt, tts=tts, llm=llm, phrases=phrases
@@ -266,7 +284,7 @@ def _run(args: argparse.Namespace, parts: FirstAudioParts) -> int:
         sleep=sleep,
         replies=None if held_out else out / REPLIES_DIR,
         tail_s=tail_s,
-        adapters=(stt, tts, llm),
+        adapters=(closing,),  # the speech, voice, chat and knowledge adapters
     )
     out.mkdir(parents=True)
     found: list[AudioResult] = []

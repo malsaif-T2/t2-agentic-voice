@@ -10,6 +10,7 @@ from pathlib import Path
 
 import pytest
 from ole5_voice.evals.chat_pacing import Price
+from ole5_voice.evals.factories import load_factory
 from ole5_voice.evals.kb_points import digest
 from ole5_voice.evals.talker_args import (
     add_common,
@@ -17,7 +18,6 @@ from ole5_voice.evals.talker_args import (
     chat_settings,
     flat,
     limit,
-    load_factory,
     price,
     seconds,
     shown,
