@@ -661,6 +661,17 @@ runs"; in this order, each with its smoke first)
     0.364, MSA 0.474 to 0.526, English unchanged at 0.773.
   - **Settled by the owner (Q23): W1 kept.** Live calls send the prompt `whisper_prompt` builds
     from the agent's vocabulary, a setting turning it off; the live calls show whether it holds.
+- 2026-11-07: **Q23 built: live calls send the Whisper prompt** (2c06b13; ef19162, 515fe9a,
+  a6e58f0, then the agent's docstring), reviewed once (nothing that breaks a call).
+  - `call_prompts` builds `whisper_prompt` once a call for `ar` and `en`, from the agent's
+    vocabulary (then `words.vocabulary`'s terms), byte for byte W1's for Ole5's talker (sha256
+    `7b52b432c4bd5ae3`). Every request of a call sends its language's: the turn's transcript,
+    the held one, each window and overlap. A request that names no language sends none.
+  - `stt.send_prompt` (on by default) turns it off. `AudioCall` takes the same path, so run T
+    measures what ships. The echo, with no vocabulary, sends the command words alone.
+  - The history page that run W's commits had left stale was rendered again (a6e58f0).
+  - Gate: `5000 passed`, `TOTAL 19964 35 99%`.
+  - **Debt:** TD-130.
 
 ## Decision log
 
