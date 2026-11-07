@@ -2,8 +2,9 @@
 
 How a runtime serves calls (D-029): in a process of its own, the sidecar, or mounted in your own
 FastAPI app; how it knows who is calling, through signed join tokens; and what crosses the wire,
-the protocol `t2v/1`. The deployment (a server, a reverse proxy, TURN, drain) is not built in M2:
-it has a plan of its own once a server is available.
+the protocol `t2v/1`; and which agent a served app runs, the talker or the echo. The deployment
+(a server, a reverse proxy, TURN, drain) is not built yet: it has a plan of its own once a server
+is available.
 
 ## Two shapes, one worker each
 
@@ -114,13 +115,12 @@ either.
 
 - **`SignedJoinTokens`** verifies the join tokens your website or app mints for its signed-in
   users. Build it from the `join` settings, as the Ole5 app's `make_app` does in
-  [server.py](../../apps/ole5-voice-agent/src/ole5_voice/server.py):
+  [server.py](../../apps/ole5-voice-agent/src/ole5_voice/server.py), and pass it to the runtime
+  as `identity=` ("Which agent a served app runs", below):
 
   ```python
       voice = settings.voice
       tokens = SignedJoinTokens.from_settings(voice.join, prefix=voice.prefix)
-      runtime = VoiceRuntime(AGENT, settings=voice, identity=tokens)
-      return build_app(settings, router=runtime.router(), minter=tokens)
   ```
 
 - **`DevIdentity()`** is the dev caller (`Caller(subject="dev")`, consent to nothing): it joins
@@ -198,8 +198,46 @@ Under the prefix (`/voice` above), the runtime serves:
   quiet 409 (`not_offered`, `ice_completed`, `call_ended`), which the client ignores.
 - Until the lifespan has run, every route answers 503 `not_started`.
 - `/join` answers `server.ice_servers` as they are set, with no credentials: TURN credentials
-  come with the deployment, not M2, so a call needs a direct UDP path between the browser and
-  the backend, as on one machine or one network.
+  come with the deployment, not built yet, so a call needs a direct UDP path between the
+  browser and the backend, as on one machine or one network.
+
+## Which agent a served app runs
+
+A runtime runs the agent it is given. An agent that declares instructions runs the talker, the
+chat model answering with the agent's tools; one that declares none runs the echo
+([concepts.md](concepts.md)); `session.mode` overrides that, `echo` for any agent and `talker`
+for one with instructions. The runtime builds the chat model as it starts, from the `llm`
+settings, beside the speech providers, and keeps its connection open between requests
+([latency.md](latency.md)). A model of your own, written to the `ChatModel` port (the `ports`
+facade), is passed in code: `VoiceRuntime(agent, ..., providers=Providers.from_settings(settings).replace(chat=model))`.
+
+The Ole5 app chooses at its start. With the knowledge base's access set (`QDRANT_URL`,
+`QDRANT_LOGIN_EMAIL` and `QDRANT_LOGIN_PASSWORD`) it runs Ole5's talker, whose one tool searches
+that knowledge base; with none of them set, the echo; with only some, it refuses to start,
+naming the rest. One log line says which agent runs. Its `make_app`, in
+[server.py](../../apps/ole5-voice-agent/src/ole5_voice/server.py):
+
+```python
+    access = knowledge_access(settings.app)
+    voice = settings.voice
+    tokens = SignedJoinTokens.from_settings(voice.join, prefix=voice.prefix)
+    if access is None:
+        log.info("knowledge_base_not_set", agent="echo", fix=f"set {', '.join(ACCESS)}")
+        runtime = VoiceRuntime(ECHO_AGENT, settings=voice, identity=tokens)
+        return build_app(settings, router=runtime.router(), minter=tokens)
+    kb = QdrantKnowledgeBase(access)
+    runtime = VoiceRuntime(talker_agent(kb), settings=voice, identity=tokens)
+    log.info("knowledge_base_set", agent="talker")
+    return build_app(settings, router=runtime.router(), minter=tokens, closing=(kb,))
+```
+
+- **The knowledge base** is the app's own adapter behind the library's `KnowledgeBase` port,
+  and `talker_agent` makes the agent's search tool of it with the library's `knowledge_tool`
+  ([concepts.md](concepts.md), "Knowledge").
+- **Its client is the app's to close.** The runtime closes what it built (the providers, the
+  chat model among them) as its lifespan ends; the knowledge base's client, which the app
+  opened, `build_app` closes after it (`closing`).
+- **The log line names no value**: the agent it runs and, for the echo, the settings to set.
 
 ## Pages on another origin
 
@@ -214,6 +252,8 @@ each with `"v": 1` and a `type` from a closed list. The client sends `hello`, `s
 `client_stats` (its connection's view: the candidate type, the time to connect, whether echo
 cancellation applied, when the first audio played) and `playback` (when each clause of the
 agent's reply started and ended playing); the session sends `hello` (the call's ID and
-languages), `state`, `caption`, `notice` and `ended`. The session parses every client message
+languages), `state` (`thinking` while the talker or a tool works), `caption`, `card` (a reply's
+whole answer for the screen), `duck` and `unduck` (the agent's voice lowered while the caller
+speaks over it, and brought back), `notice` and `ended`. The session parses every client message
 strictly, and no message can set the caller or their consent (D-039). The reference client
 speaks all of it: [browser-client.md](browser-client.md).

@@ -57,24 +57,27 @@ belongs on storage that survives a restart.
 - **Media goes over UDP**, from the caller's browser to your backend, with no media server
   between. On one machine, or within one network, nothing else is needed.
 - **From other networks** the backend needs an open UDP path or a TURN relay, and a network that
-  passes only TCP 443 needs TURN over TLS on 443. M2 mints no TURN credentials: that comes with
-  the deployment, which has its own plan once a server is available.
+  passes only TCP 443 needs TURN over TLS on 443. The library mints no TURN credentials yet:
+  they come with the deployment, which has its own plan once a server is available.
 - **HTTPS** serves the page that opens the microphone, anywhere but `localhost`.
 - **Outbound,** the library contacts Groq and your trace endpoint, and nothing else.
 
 ## Groq
 
-- **The only provider for now** (D-004): Whisper hears each turn and Orpheus speaks. You need a
-  key, and each Orpheus model's terms accepted in Groq's console. Both Orpheus models are
-  previews and take at most 200 characters a request, which the library keeps to.
+- **The only provider for now** (D-004): Whisper hears each turn, a chat model writes the
+  talker's replies (`openai/gpt-oss-120b` by default), and Orpheus speaks. You need a key
+  that can call that model, and each Orpheus model's terms accepted in Groq's console. Both
+  Orpheus models are previews and take at most 200 characters a request, which the library
+  keeps to.
 - **The published limits are low.** Groq's rate-limits page, read on 2026-10-31 (the design's
   10.4), lists 10 requests a minute, 100 a day and 3.6K tokens a day for each Orpheus model, and
   20 requests a minute for each Whisper model. The echo sends one Whisper request a turn and up
   to three Orpheus requests an echo, and synthesizes its fixed phrases once, at its first start,
   so 100 Orpheus requests a day carry only a few calls. Read your key's real limits in the
-  console; each call's report counts its requests per call minute, per model.
+  console; each call's report counts its requests per call minute, per model. The talker's
+  one to three chat requests a turn count against the chat model's own limits.
 - **A 429 in a call** fails that turn, and the caller hears the error notice; waiting it out,
-  and turning callers away with a busy notice, come with M6.
+  and turning callers away with a busy notice, are not built yet.
 
 ## Licences
 

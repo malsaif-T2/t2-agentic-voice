@@ -4,18 +4,20 @@ T2 Agentic Voice is a Python library for speech-first voice agents: a caller tal
 agent in the browser, in Saudi Arabic, Modern Standard Arabic or English, and hears it answer.
 This guide shows how to add one to your own product.
 
-**Status: M2, a call that listens and speaks.** What works today is an **echo agent**: the
-browser opens a live call to your backend over WebRTC, the library hears when the caller has
-finished a turn (Silero VAD and Smart Turn v3.2, on the CPU), sends the turn to Groq's Whisper,
-and says the words back through Groq's Orpheus voices ("I heard: ..."), with captions, a Stop
-button and Esc. Around it: serving (a process of its own, or mounted in your FastAPI app), signed
-join tokens, the reference browser client, settings, logs and traces. M3 adds the interruption
-that listens to the caller: the agent's voice lowered when the caller speaks over it, then a
-stop, a repeat or the reply going on, decided from the words, with each reply's work in a cancel
-scope and a history of what the caller heard ([concepts.md](concepts.md)); it is on by default,
-and a setting brings back M2's call, where speech over a reply is not answered. Not built yet: the talker that answers (M4), tools and
-actions taken on a spoken yes (M5), and the deployment with TURN, which left M2 for a plan of its
-own once a server is available ([roadmap](../plans/roadmap.md)). The library is used from Python only (D-014), and no tagged
+**Status: an agent that answers.** What works today: the browser opens a live call to your
+backend over WebRTC; the library hears when the caller has finished a turn (Silero VAD and Smart
+Turn v3.2, on the CPU, with a hold after "complete"), sends the turn to Groq's Whisper, and the
+**talker**, Groq's chat model with your instructions, answers it: it reads what the caller
+heard, calls your read tools and your knowledge base, speaks its reply clause by clause through
+Groq's Orpheus voices while it still writes, shows the whole answer on screen as a card, and
+says an ID only when a tool or the caller gave it ([concepts.md](concepts.md)). The caller can
+speak over the agent: its voice is lowered at once, a stop or real words stop it, and the
+talker reads what they meant. An agent with no instructions is an **echo**, which says back what
+it heard: a team's first audio check. Around it: serving (a process of its own, or mounted in
+your FastAPI app), signed join tokens, the reference browser client, settings, logs, traces, and
+a call held in text for your tests. Not built yet: actions taken on a spoken yes, and the
+deployment with TURN, which has a plan of its own once a server is available
+([roadmap](../plans/roadmap.md)). The library is used from Python only (D-014), and no tagged
 version exists to install yet: until the first one, run it from this repository's workspace
 ([quickstart](quickstart.md)). The design is [package-design.md](../design/package-design.md)
 (D-017, as amended by D-018).
@@ -25,15 +27,19 @@ a run of that file's lines, which `poe docs` checks (DOC-SAMPLE).
 
 ## The contract in brief
 
-The design's section 3 is the full contract; for the echo agent of M2 it comes to this.
+The design's section 3 is the full contract; for an agent that answers, it comes to this.
 
 | The library provides | Your app provides |
 | --- | --- |
-| The call: WebRTC in your backend process, end of turn, Whisper, Orpheus, captions, Stop | A `VoiceAgent`: a name and its languages, each with a greeting |
+| The call: WebRTC in your backend process, end of turn, Whisper, Orpheus, captions, Stop, interruptions | A `VoiceAgent`: a name and its languages, each with a greeting |
+| The talker: the chat model's turn from what the caller heard, its prompt's rules for the ear, the reply's language, clauses spoken as they are written | Its `instructions`, written for the ear ([writing-for-voice.md](writing-for-voice.md)) |
+| `@tool`, `Tool.from_function` and `knowledge_tool`, run with their arguments checked, a timeout and a progress line; cards on screen | Its read tools over your own systems, and a `KnowledgeBase` adapter for your knowledge base ([concepts.md](concepts.md)) |
+| The output guard: no ID-shaped number said without evidence from the call | The IDs your tools return, as evidence |
+| `TextCall`, `ScriptedLLM`, `FunctionLLM` and `FakeKnowledgeBase`, to test an agent with no key ([evaluation.md](evaluation.md)) | Your tests |
 | `VoiceRuntime`, served by `serve()`, `t2v serve`, `t2v dev`, or mounted with `runtime.router()` | One process with one worker per data folder (`storage.var_dir`), and a serving shape ([serving.md](serving.md)) |
 | `SignedJoinTokens` to mint and verify join tokens; `DevIdentity` for `env` dev on your machine | An identity source: your website or app mints a join token for each caller, with their consent |
 | `t2v-client.js`, the reference browser client, and a dev page | A page with a consent screen, served over HTTPS or from localhost ([browser-client.md](browser-client.md)) |
-| `VoiceSettings`, loaded from `T2V_*` variables or built in code | `env` (dev, test, staging or prod; no default) and a Groq key, with each Orpheus model's terms accepted |
+| `VoiceSettings`, loaded from `T2V_*` variables or built in code | `env` (dev, test, staging or prod; no default) and a Groq key that can call the chat model, with each Orpheus model's terms accepted |
 | Structured logs and traces, with no call content in logs at INFO and above | A logging configuration, and a trace backend if you want traces ([tracing-and-logs.md](tracing-and-logs.md)) |
 
 What the library stores and sends is [data-and-privacy.md](data-and-privacy.md); whether it fits
@@ -121,31 +127,30 @@ point here rather than list them, and the debt rows named say why each is still 
 
 ## Pages
 
-Each page is written when the part it describes lands in the library, in the milestone its row
-names. The pages written so far are linked.
+Each page is written when the part it describes is built. The pages written so far are linked.
 
-| Page | What it covers | Lands with |
+| Page | What it covers | Status |
 | --- | --- | --- |
-| [is-this-for-you.md](is-this-for-you.md) | The fit check: Python version, operating system, the install's size and its heavy dependencies, one process per data folder and the sidecar, network needs, Groq's published limits, the licences | M2 (written) |
-| [quickstart.md](quickstart.md) | `examples/minimal` end to end, in English, then in Saudi Arabic; a checklist for a first call that does not work | M2 (written: the echo agent), M5 (the final quickstart) |
-| [serving.md](serving.md) | The sidecar or the mount, one process per data folder, identity and join tokens, the routes, cross-origin pages, the browser protocol | M2 (written) |
-| [browser-client.md](browser-client.md) | The reference browser client: starting a call, its events and states, tokens and consent, Stop and Esc, the agent's voice lowered, cut captions, push-to-talk, errors, browser support | M2 and M3 (written) |
-| [tracing-and-logs.md](tracing-and-logs.md) | The logging policy and `configure_logging`, Pipecat's own lines, Phoenix or your own tracer provider, what a trace holds, redaction | M2 (written) |
-| [data-and-privacy.md](data-and-privacy.md) | What the library itself stores and sends: the data folder, recordings and consent, what a trace holds, how long Phoenix keeps it | M2 (written) |
-| [settings.md](../generated/settings.md) (generated, `uv run poe settings-ref`) | Every setting, with its default, unit and environment name | M2 (written) |
-| [evaluation.md](evaluation.md) | The evaluation helpers; recording your own test set with consent and keeping audio out of git; writing your own spelling guide; the golden-set commands, making a registered run and reading its scorecard; noise and the sign test; held-out and window runs; the run history | M1 (written) |
-| `contract.md` | What the library provides, what you must provide, and what you may provide, with the default for each | M0 (fixed then, D-018); not written yet, and when it is written is an open question in the roadmap |
-| [concepts.md](concepts.md) | Turns and replies, the two-step interruption and its words, the cancel scope, the history of what the caller heard, the repeat, text from silence, the hold after the end of a turn; one turn in a table; later the talker, tools and actions | M3 (written: turns and interruptions), M4 and M5 |
-| `audio-troubleshooting.md` | Echo on laptop speakers, Bluetooth headsets, microphone permissions, UDP and TURN failures | Not planned yet: left out of M3 with the Bluetooth warning (plan 005) |
-| `writing-for-voice.md` | Instructions written for speech, tool descriptions, read-backs, claim phrases, send words and spoken labels, each with a good and a bad example | M4 |
-| `languages.md` | Language presets, the reply language, normalization, speaking numbers and IDs, spoken labels, vocabulary, pronunciation | M4 |
-| `latency.md` | Where the time goes in a turn, and how to measure yours | M4 |
-| `providers.md` | Writing an adapter for another speech, model or voice provider | M4 |
-| `tools-and-actions.md` | Writing each kind, wrapping existing functions, the action lifecycle, consent, the error table, idempotency and lookups | M5 |
-| `safety.md` | How the yes rule and the output guard work; what the library guarantees and what stays yours | M5 |
-| `testing.md` | Text calls, the fakes, the safety suite for your actions, live scenarios, audio replay | M5 |
-| `deployment.md` | The process model, containers, TURN, drain, health, capacity | M6 |
-| `runbook.md` | Rate limits and outages, a stuck write, key rotation, a deletion request | M6 |
-| `cookbook/` | Worked use cases with no Ole5 code: an IT helpdesk, HR leave | M5, M7 |
+| [is-this-for-you.md](is-this-for-you.md) | The fit check: Python version, operating system, the install's size and its heavy dependencies, one process per data folder and the sidecar, network needs, Groq's published limits, the licences | Written |
+| [quickstart.md](quickstart.md) | `examples/minimal` end to end: a helper that answers with one read tool, and an echo, in English, then in Saudi Arabic; its test with no key; a checklist for a first call that does not work | Written; an action on a spoken yes joins it with confirmed actions |
+| [concepts.md](concepts.md) | Turns and replies; the talker's turn; tools, progress lines, knowledge and cards; the output guard's ID rule; the two-step interruption and its words, handed to the talker; the cancel scope; the history of what the caller heard; the repeat; text from silence; the hold after the end of a turn | Written; confirmed actions join it when built |
+| [writing-for-voice.md](writing-for-voice.md) | Instructions written for the ear, the steps to the card, numbers as digits, a plain "I cannot", no promise the agent cannot keep, tool descriptions, greetings and progress lines, and why no fixed line holds a command word, each with a weak and a better example | Written; read-backs, claim phrases and send words join it with confirmed actions |
+| [languages.md](languages.md) | The presets, the call's language and each reply's, Saudi Arabic and MSA, product terms inside Arabic, the pronunciation map, numbers and IDs, the vocabulary | Written |
+| [latency.md](latency.md) | The time to first audio, from where to where; where the time goes in a turn; the early start, connections kept open and progress lines; the budget; measuring yours | Written; the measured numbers once Ole5's run has run |
+| [serving.md](serving.md) | The sidecar or the mount, one process per data folder, identity and join tokens, which agent a served app runs, the routes, cross-origin pages, the browser protocol | Written |
+| [browser-client.md](browser-client.md) | The reference browser client: starting a call, its events and states, cards and the agent thinking, tokens and consent, Stop and Esc, the agent's voice lowered, cut captions, push-to-talk, errors, browser support | Written |
+| [tracing-and-logs.md](tracing-and-logs.md) | The logging policy and `configure_logging`, Pipecat's own lines, Phoenix or your own tracer provider, what a trace holds, redaction | Written |
+| [data-and-privacy.md](data-and-privacy.md) | What the library itself stores and sends: the data folder, recordings and consent, what a trace holds, how long Phoenix keeps it | Written |
+| [settings.md](../generated/settings.md) (generated, `uv run poe settings-ref`) | Every setting, with its default, unit and environment name | Written |
+| [evaluation.md](evaluation.md) | Testing an agent in text with `TextCall`, the fake models and the fake knowledge base; the evaluation helpers; recording your own test set with consent and keeping audio out of git; writing your own spelling guide; the golden-set commands, making a registered run and reading its scorecard; noise and the sign test; held-out and window runs; the run history | Written |
+| `contract.md` | What the library provides, what you must provide, and what you may provide, with the default for each | Fixed in the design (D-018); when it is written is an open question in the roadmap |
+| `audio-troubleshooting.md` | Echo on laptop speakers, Bluetooth headsets, microphone permissions, UDP and TURN failures | Not planned yet: left out with the Bluetooth warning (plan 005) |
+| `providers.md` | Writing an adapter for another speech, model or voice provider | Not written yet: with the guide's last pages |
+| `tools-and-actions.md` | Writing each kind, wrapping existing functions, the action lifecycle, consent, the error table, idempotency and lookups | With confirmed actions |
+| `safety.md` | How the yes rule and the output guard work; what the library guarantees and what stays yours | With confirmed actions |
+| `testing.md` | Text calls, the fakes, the safety suite for your actions, live scenarios, audio replay | With confirmed actions |
+| `deployment.md` | The process model, containers, TURN, drain, health, capacity | With the deployment |
+| `runbook.md` | Rate limits and outages, a stuck write, key rotation, a deletion request | With the deployment |
+| `cookbook/` | Worked use cases with no Ole5 code: an IT helpdesk, HR leave | With confirmed actions, and the guide's last pages |
 | `reference/api.md` (generated) | The public modules, from their docstrings, with each module's stability | The first version a teammate installs |
 | `upgrading.md` | Versions, stability levels, deprecations, behaviour changes | The first version a teammate installs |
