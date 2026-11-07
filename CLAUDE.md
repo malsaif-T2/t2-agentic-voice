@@ -35,14 +35,14 @@ Run everything as `uv run poe <task>` (`uv run poe` lists tasks).
 | `golden` · `record` | Validate the golden set and freeze its expected answers · record and review its takes (a page on 127.0.0.1). |
 | `eval` · `eval-compare` · `eval-history` | Run an answerer over the golden set (refuses the main checkout) · compare two runs (sign test by item) · render the run history. |
 | `eot` · `overlap` · `eval-timing` | Where the turns end on the golden set, offline (refuses the main checkout) · its overlap clips replayed over a reply (refuses the main checkout; `pipeline` spends) · the time of each step of an echo call (spends). |
-| `eval-talker` · `eval-talker-compare` · `eval-talker-keep` · `judge-check` · `eval-scenarios` | Run K, one arm over one split of the knowledge set (spends) · compare two dev runs (sign test by item, the noise) · its keep rule · the owner's check of the judge · run S's scripted calls (spends); each run refuses the main checkout. |
+| `eval-talker` · `eval-talker-compare` · `eval-talker-keep` · `judge-check` · `eval-scenarios` · `uncertain` · `first-audio` · `first-audio-listen` | Run K, one arm over one split of the knowledge set (spends) · compare two dev runs (sign test by item, the noise) · its keep rule · the owner's check of the judge · run S's scripted calls (spends) · run U, a model's verdict on a stored overlap run's uncertain overlaps · run T, the time to first audio of the agent's replies to the recorded requests (each spends) · ten of T1's replies and a sheet for the owner's listen, or the sheet read back; runs K and S refuse the main checkout. |
 | `settings-ref` | Write `docs/generated/settings.md` and `.env.example` from the library's settings model. |
 
 Add a row for every task the project adds. Add dependencies with `uv add <pkg>` (`--dev` for
 tooling), in the member that needs them (`uv add --package t2-agentic-voice <pkg>`); never use pip
 or edit `uv.lock`. The library's settings are one `VoiceSettings`, built in code or loaded by
 `VoiceSettings.from_env()` from `T2V_*` variables (and a `.env` only when it is passed one);
-[.env.example](.env.example) lists them all. The harness's own rules (layers, the public API, apps,
+[.env.example](.env.example) lists them all. The harness's rules (layers, the public API, the apps,
 owned libraries, required docs, size caps, the coverage floor) live in [harness.toml](harness.toml).
 
 ## Where things are

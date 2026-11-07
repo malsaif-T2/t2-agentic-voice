@@ -300,12 +300,15 @@ def test_an_interrupted_held_out_run_keeps_no_result(tmp_path: Path) -> None:
 
 
 def test_the_cap_ends_a_run_between_requests(tmp_path: Path) -> None:
+    """The run's least cost is within the cap, so it starts; a retry it did not count takes it
+    to the cap, which ends it before the next request."""
     setup = Setup(tmp_path)
-    setup.stt = FakeSpeechToText(["open the inbox"] * 4)
-    # $10 a request: the smoke test and one more.
-    assert setup.main("--price-per-hour", "3600", "--cap-usd", "25") == 1
-    assert setup.calls() == 2 and [r.variant for r in setup.results()] == ["a-v1"]
-    assert setup.history.lines[0].cost_usd == pytest.approx(20.0)
+    retried: list[str | ProviderError] = ["open the inbox", ProviderError("server_error", True)]
+    setup.stt = FakeSpeechToText([*retried, *["open the inbox"] * 4])
+    # $10 a request: four at the least (the smoke test and three), and the retry.
+    assert setup.main("--price-per-hour", "3600", "--cap-usd", "45") == 1
+    assert setup.calls() == 4 and [r.variant for r in setup.results()] == ["a-v1", "b-v1"]
+    assert setup.history.lines[0].cost_usd == pytest.approx(40.0)
 
 
 def test_stuck_and_failed_variants_are_infrastructure_failures_of_a_complete_run(

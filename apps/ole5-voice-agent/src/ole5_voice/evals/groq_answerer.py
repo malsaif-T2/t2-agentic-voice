@@ -8,7 +8,10 @@ the prototype's scorer paused (`Ole5-chatbot/scripts/stt_eval.py`, lines 575-585
 last attempt, or on a refusal no retry can mend, the variant is a provider failure, an answer and
 not an exception. A variant still running at `--variant-timeout-s` is stuck. Before each request
 the run's `Budget` is charged what Groq bills for it, and a request that would take the run past
-`--cap-usd` is never sent. No line it logs holds a transcript or names a variant.
+`--cap-usd` is never sent. Each request goes in the language the run's policy sends every one
+in (run W's arm X sends `ar`, as an Arabic call does), or else the item's, with the policy's
+Whisper prompt for that language, if it holds one (run W's arm W1). No line it logs holds a
+transcript or names a variant.
 """
 
 from __future__ import annotations
@@ -16,7 +19,7 @@ from __future__ import annotations
 import asyncio
 from collections.abc import AsyncIterator, Awaitable, Callable, Mapping, Sequence
 from contextlib import asynccontextmanager
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 
 from t2_agentic_voice import ProviderError, get_logger
 from t2_agentic_voice.ports import AudioClip, SpeechToText, Transcript
@@ -78,13 +81,23 @@ class Budget:
         self.requests += 1
 
 
+def least_billed(requests: Sequence[AnswerRequest]) -> float:
+    """The fewest seconds Groq bills for `requests`, each segment sent once: the cap's check
+    before a run starts (a retry, or a request over the cap, comes on top)."""
+    return sum(max(GROQ_MINIMUM_S, read_wav(path).seconds) for r in requests for path in r.segments)
+
+
 @dataclass(frozen=True)
 class Policy:
-    """How the `groq` answerer asks: `--max-attempts`, `--max-rpm`, `--variant-timeout-s`."""
+    """How the `groq` answerer asks: `--max-attempts`, `--max-rpm`, `--variant-timeout-s`; the
+    language every request goes in (`language`; None: the item's, as the run's hint gives it);
+    and the Whisper prompt sent with each language, by its code (`prompts`; none for another)."""
 
     max_attempts: int = 4
     max_rpm: int = 20
     variant_timeout_s: float = 120.0
+    language: str | None = None
+    prompts: Mapping[str, str] = field(default_factory=dict)
 
 
 class Pacer:
@@ -104,7 +117,7 @@ class Pacer:
 
 class GroqAnswerer:
     """Asks the speech-to-text port for each segment of a variant, or for each of its windows,
-    in the language the run hints, with no prompt."""
+    in the language its policy sends or the run hints, with its policy's prompt for it."""
 
     name = "groq"
     spends = True
@@ -154,7 +167,7 @@ class GroqAnswerer:
             for index, path in enumerate(request.segments):
                 wav = read_wav(path)
                 clip = AudioClip(pcm16=wav.pcm16, sample_rate=wav.sample_rate)
-                transcript = await self._ask(send, clip, request.language, index)
+                transcript = await self._ask(send, clip, self._language(request), index)
                 if transcript is None:
                     return Answer(variant=variant.id, requests=tuple(self._log), failure="provider")
                 parts.append((wav.seconds, transcript))
@@ -172,11 +185,15 @@ class GroqAnswerer:
                 found.append(measure(variant.reference, ms, known, True))
                 continue
             clip = AudioClip(pcm16=leading_window(wav, ms), sample_rate=wav.sample_rate)
-            transcript = await self._ask(send, clip, request.language, 0)
+            transcript = await self._ask(send, clip, self._language(request), 0)
             if transcript is None:
                 return Answer(variant=variant.id, requests=tuple(self._log), failure="provider")
             found.append(measure(variant.reference, ms, transcript.text, False))
         return Answer(variant=variant.id, requests=tuple(self._log), windows=tuple(found))
+
+    def _language(self, request: AnswerRequest) -> str | None:
+        """The language a variant's requests go in: the policy's, else the request's."""
+        return self._policy.language or request.language
 
     async def _ask(
         self, send: _Send, clip: AudioClip, language: str | None, segment: int
@@ -244,7 +261,8 @@ class GroqAnswerer:
             yield traced
 
     async def _send(self, clip: AudioClip, language: str | None) -> Transcript:
-        return await self._stt.transcribe(clip, language=language, prompt=None)
+        prompt = None if language is None else self._policy.prompts.get(language)
+        return await self._stt.transcribe(clip, language=language, prompt=prompt)
 
 
 def _combined(
