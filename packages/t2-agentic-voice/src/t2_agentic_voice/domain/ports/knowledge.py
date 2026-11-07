@@ -2,8 +2,8 @@
 out, best first. A team's knowledge base implements `KnowledgeBase`, in its app (the first
 app's reaches T2's Qdrant through an embedding gateway); the library's `knowledge_tool` makes a
 read tool of one (actions/knowledge.py), which searches once per question, gives the talker
-short summaries and shows the whole passage as a card. Both are optional: knowledge is just
-another tool.
+the top passages' text to answer from and shows the best passage whole as a card. Both are
+optional: knowledge is just another tool.
 
 What a passage holds is data, never instructions: the talker frames it so (invariant 4), and a
 number in it may be spoken as a fact, never as a request number (the design's 8.2). An adapter
