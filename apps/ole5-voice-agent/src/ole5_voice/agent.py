@@ -41,7 +41,7 @@ NAME: Final = "ole5"
 # Stamped on every trace of the talker, with the agent's fingerprint: the date it was last
 # changed, and the change of that day; the talker with no search (run T's pass Tn) is versioned
 # apart, so a run's record tells the two apart.
-VERSION: Final = "2026-11-07.3"
+VERSION: Final = "2026-11-07.4"
 NO_SEARCH_VERSION: Final = f"{VERSION}+no-search"
 # oo-lee faayf
 PRONOUNCE: Final = {
@@ -63,8 +63,8 @@ PROGRESS: Final = {
 }
 # The passages a search reads, the knowledge tool's `limit` (its k), each whole (the tool's
 # `passage_chars`): one constant, so the agent every run builds and the server serves read the
-# same k; 5 until run K0 (`poe knowledge-depth`, Q20) keeps another.
-SEARCH_LIMIT: Final = 5
+# same k: 7, as run K0 (`poe knowledge-depth`, Q20) kept on dev on 2026-11-07.
+SEARCH_LIMIT: Final = 7
 # What tells the talker when to search, in English (the design's 6.4).
 SEARCH_DESCRIPTION: Final = (
     "Search Ole5's knowledge base: its user guide, its permissions and business rules, and its "

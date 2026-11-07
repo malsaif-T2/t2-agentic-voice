@@ -208,8 +208,8 @@ def test_the_search_is_the_librarys_knowledge_tool_with_ole5s_lines(
 
 
 def test_the_talkers_search_reads_one_named_k_of_passages() -> None:
-    """The k every run's agent and the served agent read: 5 until run K0 keeps another (Q20)."""
-    assert SEARCH_LIMIT == 5
+    """The k every run's agent and the served agent read: 7, as run K0 kept it (Q20)."""
+    assert SEARCH_LIMIT == 7
     found = [
         Passage(id=f"made-up-{n}", title=f"Made-up {n}", text="Made up.", score=0.5)
         for n in range(1, 9)
