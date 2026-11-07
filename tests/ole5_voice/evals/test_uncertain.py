@@ -14,7 +14,7 @@ from pathlib import Path
 
 import pytest
 from ole5_voice.evals import uncertain
-from ole5_voice.evals.run_lines import OverlapLine
+from ole5_voice.evals.measure_lines import UncertainLine
 from ole5_voice.evals.runs import SCORECARD_FILE
 from ole5_voice.evals.uncertain_card import UncertainScorecard
 from ole5_voice.evals.uncertain_run import INSTRUCTION, RESULTS_FILE, Prices
@@ -64,7 +64,13 @@ def test_a_run_asks_each_uncertain_overlap_and_scores_it_against_the_rule(
     assert card.run.source == "o1" and card.run.settings["llm.model"] == "llama-3.1-8b-instant"
     assert (card.run.rejudged, card.run.unmatched) == (4, 0)
     (line, history), (copy, beside) = run.lines.appended
-    assert isinstance(line, OverlapLine) and line.answerer == "uncertain" and line == copy
+    assert isinstance(line, UncertainLine) and line.source == "o1" and line == copy
+    # U0's right verdicts and listening stops beside the arm's, so the keep rule reads back.
+    assert (line.rule.right, line.arm.right) == (0, 2)
+    assert line.arm.answer_median_ms == pytest.approx(200.0)
+    assert (line.rule.listening_stops, line.arm.listening_stops) == (0, 0)
+    assert (line.better, line.worse, line.kept) == (2, 0, False)
+    assert line.requests == {"llama-3.1-8b-instant": 4} and line.tokens["llama-3.1-8b-instant"] > 0
     assert history == run.world.data / "history.jsonl" and beside == run.out / "history.jsonl"
     assert line.targets == {
         "raises_right": False,

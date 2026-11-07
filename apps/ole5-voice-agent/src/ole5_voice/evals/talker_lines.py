@@ -66,7 +66,8 @@ class TalkerLine(Model):
     search: _Share | None
     language: _Share | None
     words_median: _S | None
-    first_clause_median_s: _S | None
+    first_clause_median_s: _S | None  # on the wall clock, the tools' time in it
+    own_first_clause_median_s: _S | None = None  # the model's own, the keep rule's (Q15)
     blocked: int = Field(ge=0)
     violations: int = Field(ge=0)
     targets: dict[Name, bool | None]

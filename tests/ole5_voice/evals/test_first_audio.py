@@ -17,8 +17,8 @@ from ole5_voice.evals import first_audio
 from ole5_voice.evals.first_audio_run import LEAD_S
 from ole5_voice.evals.first_audio_score import ReplayedCall, ReplayedTurn
 from ole5_voice.evals.first_audio_setup import FirstAudioParts, agent_of, phrase_cache
+from ole5_voice.evals.measure_lines import FirstAudioLine
 from ole5_voice.evals.models import Item
-from ole5_voice.evals.run_lines import TimingLine
 from t2_agentic_voice import ProviderError, StorageSettings, T2VoiceError, VoiceAgent, VoiceSettings
 from t2_agentic_voice.stores import PhraseCache
 
@@ -87,8 +87,11 @@ def test_a_dev_run_replays_each_recorded_request_as_a_call_of_the_agent(
         assert (reader.getframerate(), reader.getnframes()) == (24_000, 2400)
     assert len((run.out / "results.jsonl").read_text(encoding="utf-8").splitlines()) == 3
     (line, _), (copy, _) = run.lines.appended
-    assert isinstance(line, TimingLine) and line == copy
-    assert line.medians_ms["search"] == 2500.0 and line.medians_ms["no_search"] == 1350.0
+    assert isinstance(line, FirstAudioLine) and line == copy
+    assert line.paths["search"].median_ms == 2500.0 and line.paths["no_search"].median_ms == 1350.0
+    assert line.targets == held and line.progress_late == 0 and line.tools
+    # The two starts of time, apart (Q18): the owner's marked end, and the detector's stop.
+    assert {end: group.items for end, group in line.ends.items()} == {"detector": 2, "label": 1}
     assert line.requests == {WHISPER: 4, ARABIC: 4, CHAT: 8}
     assert line.cost_usd == pytest.approx(card.cost_usd) and card.cost_usd > 0
     assert "variant_done" in capsys.readouterr().out
@@ -129,9 +132,16 @@ def test_a_held_out_run_keeps_aggregates_only(tmp_path: Path) -> None:
     run = t_run(tmp_path, call(), call(_fast()), items=items, held_out=held)
     assert first_audio.main(run.argv(split="held-out"), parts=run.parts()) == 0
     card = run.card()
-    assert card.variants == () and card.breakdowns == {} and card.totals.variants == 4
+    assert card.variants == () and card.totals.variants == 4
     assert card.totals.paths["no_search"].median_ms == 1200.0  # 4 items: shown
     assert card.totals.paths["search"].median_ms is None  # none: withheld
+    # Held-out shows where its time starts apart too (Q18), each group as aggregates: the four
+    # held-out recordings are timed from the detector's stop, and no label group is shown.
+    (detector,) = card.breakdowns["end"].items()
+    assert list(card.breakdowns) == ["end"] and detector[0] == "detector"
+    assert detector[1].items == 4 and detector[1].paths["no_search"].median_ms == 1200.0
+    (line, _), _ = run.lines.appended
+    assert isinstance(line, FirstAudioLine) and list(line.ends) == ["detector"]
     assert not (run.out / "results.jsonl").exists() and not (run.out / "replies").exists()
     assert run.replay.asked[0]["end_ms"] == 1500.0  # the smoke test is the dev recording
 

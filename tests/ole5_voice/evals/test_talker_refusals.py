@@ -15,7 +15,9 @@ from pathlib import Path
 
 import pytest
 from ole5_voice.evals import run_folder, talker_run
+from ole5_voice.evals.history import read_history, render_history
 from ole5_voice.evals.talker_args import TalkerParts
+from ole5_voice.evals.talker_lines import TalkerLine
 from t2_agentic_voice import Language, VoiceAgent
 from t2_agentic_voice.ports import KnowledgeBase
 
@@ -179,12 +181,17 @@ def test_a_history_that_cannot_hold_the_line_is_refused(
     _refused(setup, [*setup.argv(), *DEV], "takes no line of run K's kind yet", capsys)
 
 
-def test_the_shared_history_does_not_take_run_ks_line_until_the_integration_names_it(
-    setup: Setup, capsys: pytest.CaptureFixture[str]
-) -> None:
-    parts = dataclasses.replace(setup.parts(), history_accepts=run_folder.history_accepts)
-    assert talker_run.main([*setup.argv(), *DEV], parts=parts) == 2
-    assert "takes no line of run K's kind yet" in capsys.readouterr().out
+def test_the_shared_history_takes_run_ks_line_and_reads_it_back(setup: Setup) -> None:
+    parts = dataclasses.replace(
+        setup.parts(),
+        history_accepts=run_folder.history_accepts,
+        append_line=run_folder.append_shared,
+    )
+    assert talker_run.main([*setup.argv(), *DEV], parts=parts) == 0
+    (line,) = read_history(setup.data / "history.jsonl")
+    assert isinstance(line, TalkerLine) and line.arm == "k1" and line.complete
+    assert read_history(setup.out() / "history.jsonl") == (line,)
+    assert "## Talker runs" in render_history([line])
 
 
 def test_a_resume_of_a_folder_with_no_run_is_refused(

@@ -1,11 +1,13 @@
 """The scorecard of `poe first-audio` (plan 006's registration, T; its scoring is
 first_audio_score.py's): what the run was, its totals, its targets, its numbers by where the
 time starts and by language, what it spent and each recording, written whole at the run's end
-(`close_run`) with its history line (`line_of`). A held-out run's holds aggregates only: no
-recording, no breakdown, and no path's times over fewer than `HELD_OUT_MIN_ITEMS` items. The
-history line is a timing line (run_lines.py's `TimingLine`, whose fields hold a run of times by
-step): its steps are each path's median and 90th percentile and the progress lines' median, its
-requests and characters each model's, and its cost every model's, the chat model's included.
+(`close_run`) with its history line (`line_of`, measure_lines.py's `FirstAudioLine`: the totals,
+every target, the numbers by where the time starts, each model's requests, the chat model's
+among them, and the cost every model's). The targets read every recording together, those timed
+from the owner's marked end and those from the speech detector's stop, and the scorecard shows
+the two apart (Q18): a dev run's breakdowns by where the time starts and by language, a held-out
+run's by where the time starts only, as aggregates. A held-out run holds no recording, no group
+of fewer than `HELD_OUT_MIN_ITEMS` items, and no path's times over fewer.
 """
 
 from __future__ import annotations
@@ -29,10 +31,10 @@ from ole5_voice.evals.first_audio_score import (
     targets,
 )
 from ole5_voice.evals.items import HISTORY_FILE
+from ole5_voice.evals.measure_lines import FirstAudioGroup, FirstAudioLine
 from ole5_voice.evals.models import Commit, Model, Name, Sha256, Split
 from ole5_voice.evals.overlap_card import AppendLine
 from ole5_voice.evals.overlap_score import Target
-from ole5_voice.evals.run_lines import TimingLine
 from ole5_voice.evals.runs import HELD_OUT_MIN_ITEMS, SCORECARD_FILE, Note, Plain, Shown
 from ole5_voice.evals.timing_score import summed
 
@@ -94,33 +96,51 @@ def _withheld(totals: AudioMetrics) -> AudioMetrics:
     return AudioMetrics.model_validate(totals.model_dump() | {"paths": paths})
 
 
-def line_of(card: AudioScorecard) -> TimingLine:
+def held_out_ends(results: list[AudioResult]) -> dict[str, dict[str, AudioMetrics]]:
+    """A held-out run's numbers by where the time starts: each group of `HELD_OUT_MIN_ITEMS`
+    items or more, its paths' times withheld as the totals' are; a smaller group left out."""
+    groups = breakdowns(results).get("end", {})
+    return {"end": {e: _withheld(m) for e, m in groups.items() if m.items >= HELD_OUT_MIN_ITEMS}}
+
+
+def line_of(card: AudioScorecard) -> FirstAudioLine:
     """The history line of a run (the module's docstring)."""
     run, totals = card.run, card.totals
     stt = [usage for usage in card.spend if usage.model.startswith("whisper")]
-    steps = {
-        f"{path}{suffix}": value
-        for path, stats in totals.paths.items()
-        for suffix, value in (("", stats.median_ms), ("_p90", stats.p90_ms))
-    }
     requests = {usage.model: usage.requests for usage in card.spend}
-    return TimingLine(
+    return FirstAudioLine(
         time=run.started_at,
         commit=run.commit,
         run=run.name,
+        agent=run.agent,
+        tools=run.tools,
         settings=run.settings,
         split=run.split,
+        items=totals.items,
         variants=totals.variants,
-        cut_variants=totals.cut,
+        cut=totals.cut,
         failures=totals.failures,
+        unanswered=totals.unanswered,
+        no_audio=totals.no_audio,
+        paths=totals.paths,
+        progress_lines=totals.progress_lines,
+        progress_median_ms=totals.progress_median_ms,
+        progress_late=totals.progress_late,
+        targets={target.name: target.holds for target in card.targets},
+        ends={
+            end: FirstAudioGroup(
+                items=m.items, variants=m.variants, paths=m.paths, progress_late=m.progress_late
+            )
+            for end, m in card.breakdowns.get("end", {}).items()
+        },
         phrase_requests=card.phrase_requests,
         requests=requests | {run.settings["llm.model"]: card.chat.requests},
         characters={usage.model: usage.characters for usage in card.spend if usage.characters},
         billed_seconds=sum(usage.billed_s for usage in stt),
         price_per_hour_usd=run.price_per_hour_usd,
         tts_price_per_million_usd=run.tts_price_per_million_usd,
+        chat_price_per_million_usd=run.chat_price_per_million_usd,
         cost_usd=card.cost_usd,
-        medians_ms=steps | {"progress": totals.progress_median_ms},
         scorecard=SCORECARD_FILE,
         data_digest=run.data_digest,
         note=run.note,
@@ -150,7 +170,7 @@ def close_run(
         phrase_requests=measuring.phrase_requests,
         totals=_withheld(metrics(kept)) if held_out else metrics(kept),
         targets=targets(kept, held_out=held_out, tail_s=info.tail_s),
-        breakdowns={} if held_out else breakdowns(kept),
+        breakdowns=held_out_ends(kept) if held_out else breakdowns(kept),
         spend=summed(measuring.usages),
         chat=ChatSpend(
             requests=sum(c.requests for c in chats),
