@@ -19,6 +19,10 @@ in order, and nothing else:
 The rules are written in English, which models follow more reliably, whatever language the call
 is in (the design's 6.4 says the same of a tool's description).
 
+Each request's system message opens with a line of its own before the prompt, new on every
+request (`FIRST_LINE`, while `llm.vary_first_line` is on; agent/turn.py), so no two requests
+share a prefix the provider has cached; `render_prompt` does not show it.
+
 `render_prompt` shows a team the prompt its agent's talker is given in one language, as `t2v
 check` will print it (the design's 4.3). The design names it a method of `VoiceAgent`, but the
 prompt is the talker's (agent/), which `domain` may not import (harness.toml [layers]), so it is
@@ -27,6 +31,8 @@ a function of the agent here.
 
 from __future__ import annotations
 
+import itertools
+import secrets
 from datetime import date
 
 from t2_agentic_voice.actions.knowledge import SHOWN
@@ -64,6 +70,11 @@ LANGUAGE_SECTIONS: dict[LanguageTag, str] = {
     "ar": _ARABIC,
     "en": "Reply in English. Keep product names as the caller says them.",
 }
+# The first line of each request's system message (the module's docstring), and its ids: a
+# count from a random start, as 8 hex digits, so no two of one process are the same and two
+# processes seldom share one.
+FIRST_LINE = "Request {id}."
+_IDS = itertools.count(secrets.randbits(32))
 
 
 def compose_prompt(agent: VoiceAgent, *, language: LanguageTag, today: date) -> str:
@@ -85,3 +96,13 @@ def render_prompt(agent: VoiceAgent, language: LanguageTag) -> str:
     """The system prompt `agent`'s talker is given in `language` today, for a team to read.
     ValueError for a language the agent does not speak, or an agent with no instructions."""
     return compose_prompt(agent, language=language, today=SYSTEM_CLOCK.wall().date())
+
+
+def request_id() -> str:
+    """A new id for a request's first line (`FIRST_LINE`); a test may replace it."""
+    return f"{next(_IDS) % 2**32:08x}"
+
+
+def with_first_line(prompt: str) -> str:
+    """`prompt` opened by a first line of its own, new on each call (`FIRST_LINE`)."""
+    return f"{FIRST_LINE.format(id=request_id())}\n{prompt}"

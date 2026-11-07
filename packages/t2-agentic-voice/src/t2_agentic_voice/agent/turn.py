@@ -2,7 +2,8 @@
 turn and the call as it was heard to the events the session plays, within the reply's scope.
 
 - **The request.** The system prompt in the turn's reply language (agent/prompt.py,
-  agent/language.py), the call as the caller heard it with what the talker kept beside it
+  agent/language.py), opened on each request by a line new on every request (`llm.vary_first_line`:
+  prompt.py's `FIRST_LINE`), the call as the caller heard it with what the talker kept beside it
   (agent/context.py), then the turn, whole. At most `MAX_REQUESTS` a turn: each but the last
   offers the agent's tools, the last none, so the turn ends in words; a tool call the last one
   makes anyway is not run.
@@ -50,7 +51,7 @@ from t2_agentic_voice.agent.events import (
     TalkerEvent,
 )
 from t2_agentic_voice.agent.language import reply_language
-from t2_agentic_voice.agent.prompt import compose_prompt
+from t2_agentic_voice.agent.prompt import compose_prompt, with_first_line
 from t2_agentic_voice.agent.tool_calls import Memory, ToolCalls, exchange
 from t2_agentic_voice.core.clock import Clock
 from t2_agentic_voice.core.config import VoiceSettings
@@ -204,6 +205,8 @@ class Turn:
         self, messages: Sequence[ChatMessage], tools: tuple[ToolSchema, ...]
     ) -> ChatRequest:
         llm = self.settings.llm
+        if llm.vary_first_line:  # so no two requests share a cached prefix (the setting's text)
+            messages = [ChatMessage.system(with_first_line(messages[0].content)), *messages[1:]]
         return ChatRequest(
             messages=tuple(messages),
             tools=tools,

@@ -25,7 +25,8 @@ ReasoningEffort = Literal["low", "medium", "high"]
 
 class LlmSettings(Group):
     """The chat model the talker writes its replies with: the adapter, the model, how much it
-    reasons, the most it may write, and how long a request may take."""
+    reasons, the most it may write, how long a request may take, and whether each request opens
+    with a line of its own."""
 
     provider: LlmProvider = Field(
         default="groq",
@@ -61,4 +62,14 @@ class LlmSettings(Group):
         gt=0,
         allow_inf_nan=False,
         description="The longest one model request may take before it is a timeout.",
+    )
+    vary_first_line: bool = Field(
+        default=True,
+        description=(
+            "Whether each request's system message opens with a line new on every request, so "
+            "no two requests share a prefix the provider has cached. Groq's cache can be slow: "
+            "on openai/gpt-oss-120b with one 3,617-character prompt, 3 of the 8 requests it "
+            "served from its cache took 1.03, 1.25 and 5.71 s to the first token, while 12 "
+            "requests with a first line of their own all took 0.15 to 0.30 s (2026-11-07)."
+        ),
     )
