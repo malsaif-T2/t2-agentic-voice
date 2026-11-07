@@ -1,14 +1,17 @@
 """How runs K and S read Ole5's knowledge base: a passage's ID as the knowledge set names it, the
 expected points' text the judge reads, and the searches a call made.
 
-- **The points.** The knowledge base adapter names a passage `"<document name>/<chunk_id>"`;
-  `PointIndex` maps it to `points.toml`'s ID (`features-002`) through the document's name. A
-  passage `points.toml` does not hold maps to None, which retrieval counts as a miss, never as an
-  error.
+- **The points.** The knowledge base adapter names a passage `"<document name>/<chunk_id>"`
+  (passages.py's `passage_id`); `PointIndex` maps it to `points.toml`'s ID (`features-002`)
+  through the document's name, read with its spaces collapsed and in Unicode's NFC form, and the
+  chunk's ID, `chunk_002` or the bare number a payload may hold. A passage `points.toml` does not
+  hold maps to None, which retrieval counts as a miss, never as an error; the ID's form never
+  makes one.
 - **Their text.** The judge reads each expected point's text from a snapshot of Ole5's points
   (`--points-text`: one JSON object a line, each with a point's `payload` as Qdrant gives it),
   read only when a run is made, from the path its command line names: the text is the payload's
-  `metadata.source_text`, or its `page_content` when that is missing.
+  `metadata.source_text`, or its `page_content` when that is missing, each point named by the
+  passage ID the adapter gives the same payload, so the judge reads the text of the point found.
 - **The searches.** `RecordingKnowledge` stands between the talker's tool and the knowledge base:
   it asks for at least `TOP` passages, keeps each search's query and passage IDs, and hands the
   tool as many as it asked for, so retrieval is read from the talker's own query.
@@ -21,6 +24,7 @@ from __future__ import annotations
 
 import hashlib
 import re
+import unicodedata
 from collections.abc import Collection, Mapping, Sequence
 from dataclasses import dataclass
 from functools import partial
@@ -43,25 +47,35 @@ from ole5_voice.evals.knowledge_set import (
 )
 from ole5_voice.evals.talker_data import Tag, TalkerDataError
 from ole5_voice.evals.worktree import refused
+from ole5_voice.passages import passage_id
 
 TOP: Final = 5  # retrieval counts an expected point among the first five passages
-_CHUNK = re.compile(r"chunk_[0-9]{3}")
+# A chunk's ID: as the export wrote it (`chunk_002`), or as a bare number.
+_CHUNK = re.compile(r"chunk_(?P<named>[0-9]{3})|(?P<bare>[0-9]{1,3})")
+
+
+def _name(text: str) -> str:
+    """A document's name as the index compares it: in NFC, each run of spaces one, none at the
+    ends."""
+    return " ".join(unicodedata.normalize("NFC", text).split())
 
 
 class PointIndex:
     """`points.toml`'s documents by name, and every point it holds."""
 
     def __init__(self, points: Points) -> None:
-        self._keys = {document.name: document.key for document in points.documents}
+        self._keys = {_name(document.name): document.key for document in points.documents}
         self.ids = frozenset(point.id for point in points.points)
 
     def point_of(self, passage_id: str) -> str | None:
         """The point a passage is, None when `points.toml` holds no such point."""
         name, slash, chunk = passage_id.rpartition("/")
-        key = self._keys.get(name)
-        if not slash or key is None or not _CHUNK.fullmatch(chunk):
+        key = self._keys.get(_name(name))
+        found = _CHUNK.fullmatch(chunk)
+        if not slash or key is None or found is None:
             return None
-        point = f"{key}-{chunk.removeprefix('chunk_')}"
+        number = found["named"] or f"{int(found['bare']):03d}"
+        point = f"{key}-{number}"
         return point if point in self.ids else None
 
     def hit(self, passages: Sequence[str], expected: Collection[str]) -> bool:
@@ -75,7 +89,7 @@ class _Snapshot(BaseModel):
 
 class _Metadata(_Snapshot):
     document_name: str
-    chunk_id: str
+    chunk_id: str | int  # as the adapter takes it (passages.py's `Metadata`)
     source_text: str | None = None
 
 
@@ -101,7 +115,9 @@ def read_point_texts(path: Path, index: PointIndex) -> dict[str, str]:
             continue
         where = f"{path.name}, line {number}"
         payload = parse_json(_Line, line, partial(_not_a_point, where)).payload
-        point = index.point_of(f"{payload.metadata.document_name}/{payload.metadata.chunk_id}")
+        point = index.point_of(
+            passage_id(payload.metadata.document_name, payload.metadata.chunk_id)
+        )
         body = payload.metadata.source_text or payload.page_content
         if point is not None and body:
             found[point] = body
