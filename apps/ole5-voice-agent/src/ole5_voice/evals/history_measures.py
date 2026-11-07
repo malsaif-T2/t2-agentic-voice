@@ -1,8 +1,9 @@
 """The tables of `docs/generated/eval-history.md` for plan 006's runs (history.py renders the
 page; history_tables.py holds the other kinds' tables and the cell helpers): a table for each
-kind that has a run, K's talker runs, S's scenario runs, U's uncertain-middle runs and T's
-first-audio runs, and each run's numbers by stratum value, its targets and its prices. Of these
-runs only T bills audio, so only its section shows a price per hour.
+kind that has a run, K's talker runs, S's scenario runs, U's uncertain-middle runs, T's
+first-audio runs and K0's knowledge-depth runs, and each run's numbers by stratum value (K0's by
+k), its targets and its prices. Of these runs only T bills audio, so only its section shows a
+price per hour; K0 sends no chat request, so its section shows no price.
 """
 
 from __future__ import annotations
@@ -12,6 +13,7 @@ from typing import Final
 
 from ole5_voice.evals.first_audio_score import PathStats, ReplyPath
 from ole5_voice.evals.history_tables import cell, ms, percent, row
+from ole5_voice.evals.knowledge_depth_card import DEPTH, DepthAt, DepthLine
 from ole5_voice.evals.measure_lines import FirstAudioLine, UncertainLine
 from ole5_voice.evals.talker_lines import ScenarioLine, TalkerLine
 
@@ -30,6 +32,14 @@ _UNCERTAIN: Final = (
     "| # | Time | Run | Commit | Source | Model | Overlaps | Failed | Right, U0 | Right, arm "
     "| Listening stops, U0 | Listening stops, arm | Answer median (ms) | p | Kept | Cost "
     "| Complete |"
+)
+_DEPTH: Final = (
+    "| # | Time | Run | Commit | Split | Items | Variants | Failures | Kept k "
+    "| Points found, kept k | Points found, k = 8 | Characters, kept k (median) | Complete |"
+)
+_DEPTH_AT: Final = (
+    "| k | Items with a point found | Points found | Characters (median) "
+    "| Characters (90th) | Characters (most) |"
 )
 _FIRST_AUDIO: Final = (
     "| # | Time | Run | Commit | Split | Tools | Variants | No search median (ms) "
@@ -61,7 +71,7 @@ def _yes(value: bool) -> str:
     return "yes" if value else "no"
 
 
-def _time(line: MeasureLine) -> str:
+def _time(line: MeasureLine | DepthLine) -> str:
     return line.time.isoformat(timespec="seconds")
 
 
@@ -226,3 +236,45 @@ def measure_strata(line: MeasureLine) -> list[str]:
         ]
     targets = [row(cell(name), _HELD[holds]) for name, holds in line.targets.items()]
     return _block(header, rows) + _block("| Target | Held |", targets)
+
+
+def _at(line: DepthLine, k: int | None) -> DepthAt | None:
+    return next((at for at in line.depths if at.k == k), None)
+
+
+def _chars(value: float | None) -> str:
+    return "—" if value is None else f"{value:.0f}"
+
+
+def depth_rows(lines: Sequence[tuple[int, DepthLine]]) -> list[str]:
+    """Run K0's table, when it has a run: the kept k, and the share of expected points found
+    there beside k = `DEPTH`'s."""
+    rows = []
+    for n, line in lines:
+        kept, deepest = _at(line, line.kept_k), _at(line, DEPTH)
+        rows.append(
+            row(
+                *(str(n), _time(line), line.run, line.commit, line.split),
+                *map(str, (line.items, line.variants, line.failures)),
+                "—" if line.kept_k is None else str(line.kept_k),
+                percent(None if kept is None else kept.found),
+                percent(None if deepest is None else deepest.found),
+                _chars(None if kept is None else kept.chars_median),
+                _yes(line.complete),
+            )
+        )
+    return table("Knowledge-depth runs", _DEPTH, rows)
+
+
+def depth_strata(line: DepthLine) -> list[str]:
+    """A run of K0's numbers at each k."""
+    rows = [
+        row(
+            str(at.k),
+            percent(at.hit),
+            percent(at.found),
+            *map(_chars, (at.chars_median, at.chars_p90, at.chars_most)),
+        )
+        for at in line.depths
+    ]
+    return _block(_DEPTH_AT, rows)

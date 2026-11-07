@@ -138,6 +138,10 @@ cmd = "python -m ole5_voice.evals.talker_keep"
 help = "Draw 24 judged answers of a dev run for the owner's check, or read the filled sheet back"
 cmd = "python -m ole5_voice.evals.judge_check"
 
+[tool.poe.tasks.knowledge-depth]
+help = "Run K0: each answerable dev variant's words searched once in the knowledge base, the share of expected points found at each k from 1 to 8 and the k kept (no chat model; dev only)"
+cmd = "python -m ole5_voice.evals.knowledge_depth"
+
 [tool.poe.tasks.eval-scenarios]
 help = "Play run S's scripted calls with the kept arm, each three times (spends: as eval-talker)"
 cmd = "python -m ole5_voice.evals.scenario_run"
