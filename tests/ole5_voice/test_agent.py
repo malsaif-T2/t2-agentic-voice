@@ -84,6 +84,26 @@ def test_the_vocabulary_holds_the_golden_sets_product_terms_first() -> None:
 
 
 @pytest.mark.parametrize("tag", ["ar-SA", "en"])
+def test_how_to_answer_names_each_of_several_causes_briefly(tag: Tag) -> None:
+    """Run K's first dev round: most `partly_right` verdicts named one of an item's two to four
+    key facts (a median of 25 words), such as one of three causes of a correspondence that never
+    came. Each language's "How you answer" holds one line that asks for each of them, briefly,
+    in one spoken sentence; the line names no search, so the talker with none (run T's Tn),
+    which keeps the section, is told nothing of one; and the version moves on."""
+    sections = instructions()[tag].split("\n\n")
+    [answer] = [section for section in sections if section.startswith("How you answer:")]
+    wanted = (
+        "- When the knowledge base gives several causes, places or conditions (a permission an "
+        "action needs, for example), name each in a few words, up to three, in one spoken "
+        "sentence."
+    )
+    assert answer.splitlines().count(wanted) == 1
+    assert "search" not in wanted
+    assert answer in instructions(search=False)[tag]
+    assert VERSION == "2026-11-07.5"
+
+
+@pytest.mark.parametrize("tag", ["ar-SA", "en"])
 def test_each_languages_instructions_hold_what_the_ear_needs(tag: Tag) -> None:
     """The plan's "The Ole5 app": short spoken answers, in the Saudi register or MSA or
     English as the caller speaks; the steps on the screen, when a card shows them (below);
