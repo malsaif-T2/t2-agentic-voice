@@ -7,26 +7,19 @@ talker's.
   cards it showed, beside the item's expected points' text and key facts, and answers in JSON
   with one verdict (`VERDICTS`) and a short reason. The verdicts it may give depend on the
   item's kind (`ALLOWED`): a `none` item's answer is an honest "not in my knowledge", wrong or
-  invented. `PASSING` is the verdict that counts as a right answer for each kind. Once it gives
-  one, the reply's register is asked (below), and the verdict carries it (`Judged.arabic`).
-- **The register** of a reply's Arabic (`REGISTERS`; run K reads a reply's script from its own
-  words, its register from the judge, and run S's register checks read it): asked in a request
-  of its own, with the question the lead probed with (`REGISTER_SYSTEM`), of the talker's own
-  words, every clause of them but no fixed phrase; one word back, saudi, msa or none. Run K's
-  first dev round had the verdict prompt's register agree with the lead's labels of 20 replies 7
-  times, this question 17 (`llama-3.3-70b-versatile`) and 18 times (`openai/gpt-oss-120b`). A
-  reply with no Arabic letter is `none` with no request.
-- **Checks** (run S): the judge reads the call so far as the caller heard it (a cut reply
-  marked), the turn's words and its reply, and answers, for each of the turn's expectations,
-  whether it holds, with a short reason.
+  invented. `PASSING` is the verdict that counts as a right answer for each kind. The verdict
+  then carries the reply's register (`Judged.arabic`).
+- **The register** of a reply's Arabic (`REGISTERS`, read by run K's language score and run S's
+  register checks): asked on its own, with the lead's probe (`REGISTER_SYSTEM`; run K's first
+  dev round: the verdict prompt's register agreed with 7 of 20 hand labels, this 17 and 18), of
+  the talker's own words, no fixed phrase; one word back. A reply with no Arabic is `none`.
+- **Checks** (run S): the judge reads the call so far as heard (a cut reply marked), the turn's
+  words and its reply, and answers whether each of its expectations holds, with a reason.
 
-A reply that is not the JSON asked for, or names a verdict the item's kind does not allow, or a
-register answer that is not one of its three words, is asked once more (`JUDGE_ATTEMPTS` in all
-for each); then it is no verdict or no register, which a run counts as a judge failure, not an
-answer. Every request is the judge's model's, through the run's paced model, so the register's
-are paced, priced and counted against the cap as the verdict's are (`JUDGE_REQUESTS`, the most
-one reply takes). What the talker said reaches the judge as data, framed so. Nothing here logs a
-text.
+An answer that is not the JSON or the word asked for, or a verdict the item's kind does not
+allow, is asked once more (`JUDGE_ATTEMPTS` in all); then none, a judge failure to a run. The
+register's requests are paced, priced and budgeted as the verdict's (`JUDGE_REQUESTS`, the most
+one reply takes). What the talker said reaches the judge as data, framed so; nothing logs a text.
 """
 
 from __future__ import annotations
@@ -121,9 +114,8 @@ CHECKS_SYSTEM: Final = (
 
 
 class Judged(Model):
-    """The judge's verdict on one answer, the register of its Arabic, with its reason, and the
-    requests both took; no verdict when it gave none valid after every attempt, and no register
-    when the register's question had no clear answer (or was not asked, with no verdict)."""
+    """The judge's verdict on one answer, its reason, the register of its Arabic and the requests
+    both took; no verdict, or no register, when none was valid after every attempt."""
 
     verdict: Verdict | None = None
     arabic: Register | None = None  # the register of the answer's Arabic
@@ -132,8 +124,7 @@ class Judged(Model):
 
 
 class Registered(Model):
-    """The register of a reply's Arabic, as the judge answered its question, and the requests
-    it took; no register when no answer was clear after every attempt."""
+    """The judge's register of a reply's Arabic, None when no answer was clear; its requests."""
 
     arabic: Register | None = None
     requests: int = Field(default=0, ge=0)
@@ -215,8 +206,7 @@ class Judge:
         return Judged(requests=JUDGE_ATTEMPTS)
 
     async def register(self, turn: HeardTurn) -> Registered:
-        """The register of the Arabic in the talker's own words in `turn` (the module's
-        docstring): `none`, with no request, when they hold none."""
+        """The register of the talker's own words in `turn`; `none`, asked nothing, for none."""
         said = turn.own_text
         if not has_arabic(said):
             return Registered(arabic="none")
