@@ -16,12 +16,14 @@ import pytest
 from ole5_voice.evals import first_audio
 from ole5_voice.evals.factories import agent_of as built_agent
 from ole5_voice.evals.factories import load_factory
+from ole5_voice.evals.first_audio_replay import AudioReplay
 from ole5_voice.evals.first_audio_run import LEAD_S
 from ole5_voice.evals.first_audio_score import ReplayedCall, ReplayedTurn
 from ole5_voice.evals.first_audio_setup import FirstAudioParts, phrase_cache
 from ole5_voice.evals.measure_lines import FirstAudioLine
 from ole5_voice.evals.models import Item
 from t2_agentic_voice import ProviderError, StorageSettings, T2VoiceError, VoiceAgent, VoiceSettings
+from t2_agentic_voice.evals import AudioCall, ScriptedLLM
 from t2_agentic_voice.stores import PhraseCache
 
 from tests.ole5_voice.evals.eot_support import paused
@@ -246,14 +248,17 @@ def test_each_refusal_comes_before_anything_is_sent(
     _refused(none, none.argv(), capsys, "no recorded request")
 
 
-def test_until_the_replay_is_wired_a_run_is_refused_before_anything_is_sent(
-    tmp_path: Path, capsys: pytest.CaptureFixture[str]
-) -> None:
+def test_the_default_replay_is_the_librarys_audio_call_of_the_runs_agent(tmp_path: Path) -> None:
     run = t_run(tmp_path)
-    unwired = run.parts(replay=FirstAudioParts().replay)
-    assert first_audio.main(run.argv(), parts=unwired) == 2
-    assert "replay is not wired" in capsys.readouterr().out
-    assert run.cache.declared == [] and not run.out.exists()
+    settings = VoiceSettings(env="test", storage=StorageSettings(var_dir=tmp_path))
+    made, chat = agent(run.kb), ScriptedLLM([])
+    replay = FirstAudioParts().replay(
+        agent=made, settings=settings, stt=run.stt, tts=run.tts, llm=chat, phrases=run.cache
+    )
+    assert isinstance(replay, AudioReplay) and isinstance(replay.call_of, AudioCall)
+    assert replay.call_of.agent is made and replay.call_of.chat is chat
+    assert replay.call_of.stt is run.stt and replay.call_of.tts is replay.voice
+    assert replay.voice.inner is run.tts
 
 
 @pytest.mark.parametrize(

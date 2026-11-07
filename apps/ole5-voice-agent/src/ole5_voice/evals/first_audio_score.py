@@ -68,12 +68,14 @@ class ReplayedTurn(Model):
 
 
 class ChatSpend(Model):
-    """What a call's chat model requests used."""
+    """What a call's chat model requests used, and the headroom for the key's day its provider
+    last reported (None: none)."""
 
     requests: int = Field(default=0, ge=0)
     input_tokens: int = Field(default=0, ge=0)
     cached_tokens: int = Field(default=0, ge=0)
     output_tokens: int = Field(default=0, ge=0)
+    remaining_requests: int | None = Field(default=None, ge=0)
 
 
 @dataclass(frozen=True)

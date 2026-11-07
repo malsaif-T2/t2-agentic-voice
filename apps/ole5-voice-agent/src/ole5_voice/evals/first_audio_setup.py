@@ -21,13 +21,13 @@ from ole5_voice.evals import history, run_settings
 from ole5_voice.evals.audio import read_wav
 from ole5_voice.evals.factories import Closing, Loader, env_file_of, knowledge_of, load_factory
 from ole5_voice.evals.factories import agent_of as built_agent
+from ole5_voice.evals.first_audio_replay import audio_replay
 from ole5_voice.evals.first_audio_run import (
     LEAD_S,
     Phrases,
     Prices,
     ReplayFactory,
     held_in,
-    not_wired,
 )
 from ole5_voice.evals.knowledge_set import RECORDED
 from ole5_voice.evals.models import Split
@@ -75,7 +75,7 @@ class FirstAudioParts:
     text_to_speech: Callable[[VoiceSettings], TextToSpeech] = GroqTTS.from_settings
     chat_model: Callable[[VoiceSettings], ChatModel] = GroqChat.from_settings
     phrases: Callable[[VoiceSettings, TextToSpeech, VoiceAgent], Phrases] = phrase_cache
-    replay: ReplayFactory = not_wired
+    replay: ReplayFactory = audio_replay
     append_line: AppendLine = history.append_line
     load_factory: Loader = load_factory
 

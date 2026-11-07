@@ -4,11 +4,9 @@ agent with the real speech-to-text, chat model, knowledge and voice, paced betwe
 and held under the run's cap and the key's day.
 
 **The replay** is the seam to the library (`Replay`): one call of the agent per recording, at
-real-time pace, the recording's labelled end handed in where marked, and what the call report
-gives back (`ReplayedCall`). The `evals` facade's `AudioCall` replays a clip over a fixed reply
-only, with no talker, so the default (`not_wired`) refuses before anything is sent; the
-integration wires it to `AudioCall`'s replay of a talker's call once the session's time to first
-audio is in the call report (plan 006's Track C), in this one place.
+real-time pace, the recording's labelled end handed in where marked, and what the call gives
+back (`ReplayedCall`); the run's is the `evals` facade's `AudioCall` replaying the recording as a
+turn of the agent's talker (first_audio_replay.py), a test's a fake.
 
 **Limits.** Before each recording the run waits until each model's pacer has room for what one
 recording may send (`STT_PER_VARIANT`, `TTS_PER_VARIANT` to its voice, `CHAT_PER_VARIANT`), or
@@ -37,7 +35,7 @@ from dataclasses import dataclass, field
 from pathlib import Path
 from typing import Final, Protocol
 
-from t2_agentic_voice import ConfigurationError, Tool, VoiceAgent, VoiceSettings, get_logger
+from t2_agentic_voice import Tool, VoiceAgent, VoiceSettings, get_logger
 from t2_agentic_voice.evals import PhraseAudio
 from t2_agentic_voice.events import ModelUsage
 from t2_agentic_voice.ports import AudioClip
@@ -53,7 +51,9 @@ from ole5_voice.evals.timing_run import TAGS, Tag
 from ole5_voice.evals.timing_score import cost
 
 STT_PER_VARIANT: Final = 2  # a turn's transcript, and a second turn's when the caller's is cut
-TTS_PER_VARIANT: Final = 4  # a spoken reply's clauses: one to three short sentences, and room
+# The greeting the replay says before the call, and a spoken reply's clauses: one to three
+# short sentences, and room.
+TTS_PER_VARIANT: Final = 5
 CHAT_PER_VARIANT: Final = 3  # the talker's most model requests a turn
 TTS_CHARS_PER_VARIANT: Final = 800  # the voice's most characters a request (200) times four
 MAX_CHARS: Final = 200
@@ -112,16 +112,6 @@ class Replay(Protocol):
 
 # How a replay is built: with `agent`, `settings`, `stt`, `tts`, `llm` and `phrases`.
 ReplayFactory = Callable[..., Replay]
-
-
-def not_wired(**built: object) -> Replay:
-    """The replay until the library replays a talker's call: refused, before anything is sent."""
-    raise ConfigurationError(
-        "Run T's replay is not wired: the evals facade's AudioCall replays no talker's call yet. "
-        "FIX: wire first_audio_run's replay to AudioCall's replay of a talker's call (plan "
-        "006's Track C), reading each turn's time to first audio from the call report.",
-        details={"setting": "replay"},
-    )
 
 
 class Phrases(PhraseAudio, Protocol):
@@ -277,6 +267,8 @@ class Measuring:
             if usage.remaining_requests is not None:
                 self._headroom[usage.model] = usage.remaining_requests
         self.pacers[self.settings.llm.model].count(call.chat.requests)
+        if call.chat.remaining_requests is not None:
+            self._headroom[self.settings.llm.model] = call.chat.remaining_requests
         return call
 
     def _openings(self, todo: Todo, call: ReplayedCall) -> tuple[str | None, ...]:
