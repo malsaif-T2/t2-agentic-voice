@@ -2,11 +2,13 @@
 (voice/session/talking.py's kept reply; plan 006, Q19; test_talker_kept.py holds `TextCall`'s
 cases): a clause due in the newer turn's Smart Turn hold is kept, played after a turn heard as
 nothing, or never once the turn's held words have started its own answer; a reply opened while a
-newer turn is still open is kept behind it, as is one whose first audio came after that turn's
-speech began (no overlap), whose next clause waits; a newer turn whose own request failed hears
-the `error` notice, then the kept reply goes on; the client's Stop stops a kept reply, and
-nothing it kept plays; and once the call is ending or has ended nothing kept plays, the model
-request it kept counted in the call's usage. The talker is the tests' fake (talker_support.py)."""
+newer turn is still open is kept behind it, and one kept behind two open turns plays once both
+are heard as nothing; a turn dropped over another reply keeps nothing; a reply whose first audio
+came after the newer turn's speech began (no overlap) keeps its next clause; a turn whose request
+failed hears the `error` notice, then the kept reply goes on; the client's Stop stops a kept
+reply, and nothing it kept plays; and once the call is ending or has ended nothing kept plays,
+the model request it kept counted in the call's usage. The talker is the tests' fake
+(talker_support.py)."""
 
 from __future__ import annotations
 
@@ -22,6 +24,7 @@ from t2_agentic_voice.voice.protocol import Notice, State
 from tests.t2_agentic_voice.session_fakes import FakeSessionIO
 from tests.t2_agentic_voice.voice.session.overlap_support import two_step
 from tests.t2_agentic_voice.voice.session.session_support import (
+    drop,
     greeted,
     play,
     report,
@@ -132,6 +135,53 @@ def test_a_reply_opened_while_a_newer_turn_is_open_is_kept_behind_it(
     handed = talker.turns[1]
     assert handed.cut_reply == 1
     assert [(t.turn_id, t.fate) for t in handed.conversation.turns] == [(0, "rolled_back")]
+
+
+def test_a_reply_kept_behind_two_open_turns_plays_once_both_are_heard_as_nothing(
+    settings: VoiceSettings,
+) -> None:
+    """Turn 2 opens before turn 1's transcript comes, the reply still kept: turn 1 heard as
+    nothing leaves it kept behind turn 2, and it plays once turn 2 is heard as nothing too."""
+    io, _, _ = talker_call(two_step(settings), _search)
+
+    async def drive() -> None:
+        await _searching(io)
+        await io.clock.advance(1.0)  # the search ends: its clause kept
+        await io.turn_closed(1)
+        await io.transcribing(1)
+        await io.turn_opened(2)
+        await io.transcribed(1, "", language="en")
+        await settle()
+        assert speaks(io, 1) == []  # turn 2 still open
+        await io.clock.advance(0.5)
+        await _heard(io, 2, "")
+
+    asyncio.run(drive())
+    assert [s.text for s in speaks(io, 1)] == ["Found it."]
+
+
+def test_a_turn_dropped_over_another_reply_keeps_nothing(settings: VoiceSettings) -> None:
+    """Under `drop`, a turn whose speech began over the `error` notice playing is dropped, never
+    answered: the talker's reply, whose search runs with nothing played, is not kept behind it,
+    as no turn over a reply keeps one (an overlap's, under `two_step`)."""
+    io, _, _ = talker_call(drop(settings), _search)
+
+    async def drive() -> None:
+        await greeted(io)
+        await talked(io, 0, SEARCHED)
+        await io.turn_opened(1)
+        await io.clock.advance(0.2)
+        await io.turn_closed(1)
+        await io.transcribing(1)
+        await io.transcribed(1, None, failure="timeout", retryable=True)  # the notice, reply 2
+        await io.clause_queued(2, 0)
+        await io.clock.advance(0.1)
+        await io.turn_opened(2)  # over the notice: dropped
+        await io.clock.advance(1.0)  # the search ends while turn 2 is open
+        await settle()
+
+    asyncio.run(drive())
+    assert [s.text for s in speaks(io, 1)] == ["Found it."]
 
 
 def test_a_reply_whose_first_audio_came_after_the_newer_turns_speech_began_keeps_the_rest(
