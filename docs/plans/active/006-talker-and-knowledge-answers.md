@@ -104,7 +104,9 @@ and measures; Q1 asks the owner to approve or change the list.
   cache; a test that no fixed line of the library or of Ole5 holds a word of the presets' lists.
 - [ ] **Knowledge**: `KnowledgeBase.search(query, *, language, caller, limit) -> list[Passage]`
   and `knowledge_tool(kb, description=..., progress=...)`: one search per question, short
-  summaries to the talker, the full passage as a card.
+  summaries to the talker, the full passage as a card. *Amended 2026-11-07 (Q20):* the talker
+  writes its own answer from each of the top k passages whole (cut near 1,500 characters), k
+  kept by run K0; it never reads a passage out.
 - [ ] **Cards** over `t2v/1` (a title and steps), shown by `t2v-client.js` and the dev page, and
   the `thinking` state while the talker or a tool works.
 - [ ] **The output guard's ID rule** (rule B, the design's 8.2), with digit normalization, on
@@ -221,7 +223,8 @@ skeptic per finding; merged into `plan-006-integration`)
 runs"; in this order, each with its smoke first)
 
 12. W, the Whisper prompt and English in an Arabic call (speech-to-text only).
-13. K, the talker's model, retrieval and answers (text, the real knowledge base).
+13. K0, the passages' depth (the real knowledge base only), then K, the talker's model,
+    retrieval and answers (text, the real knowledge base).
 14. U, the uncertain middle (offline, on M3's stored overlap transcripts; after K, whose kept
     model is one of its arms).
 15. T, the time to first audio (the golden set's recorded requests replayed through `AudioCall`).
@@ -523,6 +526,33 @@ runs"; in this order, each with its smoke first)
   - **Debt:** TD-121 to TD-124, what Track E and this round leave.
   - **Next:** the review of the whole merged code (step 11), then the live smoke of the talker
     with the real model and knowledge base, then the registered runs.
+- 2026-11-07: Step 11's review of the whole merged code (at e24337d), in four areas (the session,
+  the talker and the model, the Ole5 app as served, the registered runs), each reviewer in a
+  worktree of its own with probe tests, one skeptic a finding; merged with the gate (be34263).
+  - **TD-120's open question, answered:** a talker reply playing when the call's limit asks for
+    its `ended` notice does end, and the call hangs up; the caller hears no clause asked after
+    the notice, but the notice waits behind the clauses asked before it (TD-125).
+  - **Three findings stood and were fixed** (ad6fa94, 22336f6, 3f9420c):
+    - a held-out run of K or T printed the library's `talker_replied` line beside each count,
+      which showed each held-out variant's search, blocks and language; held-out runs now hold
+      the library's lines below ERROR;
+    - a reply the model ends with no clause (an empty answer, a `length` end with nothing
+      written) was silence and read `answered`; the session now says the `error` notice, once a
+      reply, and a `length` end is logged by its model;
+    - run K's pacer waited inside the talker's request, so a wait for room in the minute landed
+      in both first-clause times (Q15's included); K now waits for room for a variant's requests
+      before its call, and a variant that still waits inside is left untimed.
+  - Two of these were promoted by the lead from the reviewers' debt lines, each then checked by a
+    skeptic; two others promoted were refuted (Ole5's cross-language lines, run U's card on a
+    bug) and are debt.
+  - **Refuted, to the owner instead:** words begun during a search and outlasting it are talked
+    over until their turn closes; the skeptic found it the recorded rule (D-068's amendment 7), a
+    design question, so it went to the owner as Q19. The lead's own reading of the knowledge tool
+    went to the owner as Q20.
+  - Gate: `4916 passed`, `TOTAL 19563 35 99%`.
+  - **Debt:** TD-125 and TD-126.
+  - **Next:** Q19 and Q20 built (in their own worktrees), then the live smoke and the registered
+    runs, K0 before K.
 
 ## Decision log
 
@@ -558,6 +588,9 @@ runs"; in this order, each with its smoke first)
   captioned as written (Track C).
 - 2026-11-06: The Whisper prompt from the vocabulary reaches the live session only if run W keeps
   W1 (GP-18), so no track wires `voice/stt_bridge.py` before then.
+- 2026-11-07: With a talker, a reply is held while a newer turn of the caller's that is no
+  overlap of it is open (Q19), which narrows D-068's amendment 7 for the talker only; the echo
+  keeps M3's rule. A decision entry is written at the plan's close.
 
 ## The owner's decisions
 
@@ -577,6 +610,12 @@ runs"; in this order, each with its smoke first)
   app's, and the library's general way is the `KnowledgeBase` protocol with `knowledge_tool`.
 - 2026-11-07, to Q15 to Q18: Q15 "Model's own time"; Q16 "Replay H3's clips"; Q17 "Proper
   spellings only"; Q18 "Pool both, report apart".
+- 2026-11-07, to Q19 and Q20, from the whole-code review: Q19 "Hold the reply". Q20, first:
+  "I believe it should formulate the answer itself from the retrieved passages and not read
+  them exactly. Almost all knowledge-bases are made to be read and not voiced. If you see this
+  approach problematic then we can do/try a different one"; then, asked how much of each
+  passage the model writes from: "Use the full first few passages found, determined by k
+  (top-k), find the best k for our case".
 
 ## Tracks
 
@@ -662,6 +701,16 @@ median, then held-out once; otherwise the rule stays. *Amended 2026-11-07, befor
 clips live, the kept arm deciding each uncertain overlap as it comes, and writes aggregates
 only (about $0.03 of Whisper and the chat requests); it is built once an arm passes on dev.
 
+**K0, the passages' depth** (*added 2026-11-07, before any run, Q20*; the real knowledge base
+only, no chat model, no Groq request). Before K, on dev only, each answerable variant's raw
+words are searched once, as K's reference search, with a limit of 8. *Metrics, for each k from
+1 to 8:* the share of the answerable items with an expected point in the top k; the share of
+each item's expected points found in the top k, averaged over the answerable items; the
+characters the talker would read (the top k passages, each cut near 1,500). *Keep:* the
+smallest k whose share of expected points found is within 0.05 of k = 8's; Ole5's agent then
+reads that k, and K, T and S run with it. Held-out is never read by K0; K's retrieval target
+still reads the top 5.
+
 **K, the talker's model, retrieval and answers** (text through `TextCall` with the real model and
 knowledge base; about $1.50 for both dev runs of every arm). Arms: K1 `openai/gpt-oss-120b` at low
 reasoning (the design's default), K2 `llama-3.3-70b-versatile`, K3 `openai/gpt-oss-20b` at low
@@ -725,7 +774,9 @@ pass it.
 
 Q1 to Q10 settled on 2026-11-06 ("Approve all"). Q11 to Q14, from the spike, Block 0 and the
 knowledge set's review, asked on 2026-11-06 before any registered run and settled on 2026-11-07;
-Q15 to Q18, from Track E's review, asked and settled on 2026-11-07 before any registered run.
+Q15 to Q18, from Track E's review, asked and settled on 2026-11-07 before any registered run;
+Q19 and Q20, from the whole-code review, asked and settled on 2026-11-07 before any registered
+run.
 Each answer that changes a run is a dated amendment to the registration.
 
 - **Q1. What voice-first means here.** *Settled: (a).* The eight choices above. Options: (a) approve them; (b)
@@ -805,11 +856,22 @@ Each answer that changes a run is a dated amendment to the registration.
   marked end of speech, `n01` to `n18` the speech detector's stop. Options: (a) the targets
   read both together, the scorecard showing the groups apart; (b) only the marked ends.
   **The agent recommends (a).**
+- **Q19. Words begun during a search.** *Settled 2026-11-07: (a).* A turn the caller begins
+  while nothing of the reply plays is no overlap of it (D-068's amendment 7), so when the search
+  ends while the caller still speaks, the progress line and the first clauses play over them
+  until their turn closes. Options: (a) hold the reply while a newer turn is open: with words,
+  the earlier reply is dropped and both turns answered; heard as nothing, the held reply plays;
+  (b) keep today's rule and judge it on the live calls. **The agent recommended (a).**
+- **Q20. What the model writes from.** *Settled 2026-11-07: the top k passages whole, k
+  measured (K0).* The tool gave the talker each passage's first 3 lines, cut near 400
+  characters, and the best passage's steps: about 92% of the best passage's words, about 26% of
+  each other passage's text (122 of Ole5's 128 points cut). The agent recommended each passage
+  whole, cut near 1,500 characters; the owner chose the full top k with k found for Ole5.
 
 ## What the owner does
 
-- Answer Q1 to Q10, and approve the plan (done 2026-11-06); answer Q11 to Q14 and Q15 to Q18
-  (done 2026-11-07).
+- Answer Q1 to Q10, and approve the plan (done 2026-11-06); answer Q11 to Q14, Q15 to Q18, and
+  Q19 and Q20 (done 2026-11-07).
 - Copy the knowledge base's access into `.env` (Q4; done 2026-11-06, under the owner's names).
 - Review the knowledge set's items (Q5, about 40 minutes), and check 24 judged answers (Q6, about
   20 minutes).
