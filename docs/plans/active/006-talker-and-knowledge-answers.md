@@ -432,6 +432,50 @@ runs"; in this order, each with its smoke first)
       open.
     - Gate: `4498 passed`, `TOTAL 15424 41 99%`.
   - The rest of the two reviews' debt is TD-119 and TD-120.
+- 2026-11-07: Track E built in three parts in parallel worktrees from 92b2f80, each reviewed once
+  with one skeptic a finding, and merged one at a time with the gate after each merge.
+  - **E1, Ole5's agent and its knowledge base** (85b6bff; d0c3a85 to c184c66).
+    - **The adapter:** `QdrantKnowledgeBase` behind `KnowledgeBase`: one embedding and one dense
+      search with the tenant's filter, the session cookie sent to Qdrant only, one more sign-in on
+      a 401, a 4 s deadline a search, the client kept open.
+    - **The agent:** instructions per language (`instructions/ar-SA.md`, `en.md`), a progress
+      line, 14 product terms as its vocabulary, and its version. The server runs the talker when
+      the three `QDRANT_*` names are set, the echo when none is, and refuses to start with only
+      some.
+    - **The knowledge set:** the keep path, and the 6 `none` items of Q13 (`q37` to `q42`, 4 on dev
+      and 2 on held-out), no earlier item moved.
+    - **The review.** Its one finding was refuted: the declared vocabulary differs from run W's
+      terms file, but no live call sends a prompt before run W decides (Q17 then settled it).
+    - Gate: `4583 passed`, `TOTAL 15741 41 99%`.
+  - **E2, the runners of runs K and S** (48526b3; aeac84e to bb75d5c).
+    - **Run K** (`poe eval-talker`) with its comparison and keep rule, the judge, and the owner's
+      check of 24 judged answers (`poe judge-check`).
+    - **Run S** (`poe eval-scenarios`): ten scripted calls, six of them the rehearsal's steps.
+    - Both are paced under the key's limits, with the cap checked before the run and before each
+      request.
+    - **The review.** Three findings stood and were fixed in bb75d5c:
+      - a turn was read before its reply had played, so run K would have counted no words spoken
+        and no violation;
+      - a correction said while a search ran crashed run S;
+      - the reply's language was read from the tag the caller's words set, so every MSA variant
+        scored wrong. It is now read from the reply's own words and the judge's register.
+    - Two were refuted: the keep rule's time (Q15 then settled it) and a long `retry-after`.
+    - Gate: `4754 passed`, `TOTAL 17804 42 99%`.
+  - **E3, the runners of runs W, U and T** (9e09517; b3af622 to 2197e6e).
+    - **Run W:** its arms in `poe eval` (W1's prompt, X's language hint).
+    - **Run U:** `poe uncertain`.
+    - **Run T:** `poe first-audio`, and the owner's listen (`poe first-audio-listen`).
+    - **The review.** Three findings stood and were fixed in 2197e6e:
+      - run T refused Ole5's own agent for its MSA recordings; each is now held in the language
+        the agent gives that caller;
+      - a reply that sent no audio was dropped from T's numbers unseen. It is now counted as
+        `no_audio` and ranked slowest, with the tail sized to the slowest answer (47 s);
+      - U0 read the verdicts O1 and O2 gave before D-068's revision. The stored overlaps are now
+        replayed through `AudioCall` on their stored transcripts, under the rule of today.
+    - Two were refuted: run T's shared phrase cache, and U's held-out pass (Q16 then settled it).
+    - Gate: `4830 passed`, `TOTAL 19087 42 99%`.
+  - **Still open:** the runners are joined to the merged code in the integration's next round,
+    with Q15 to Q18 built into them; their debt is written once that round is done.
 
 ## Decision log
 
