@@ -268,7 +268,29 @@ given after the task's name:
   clip whose last attempt is still rate-limited stops the run as `rate_limited`, its scorecard
   and history line written as at the cap, rather than being scored as the rule's verdict; and a
   variant whose deciding request failed is an infrastructure failure, not an answer: counted
-  apart and left out of the rates, in dev and in held-out aggregates.
+  apart and left out of the rates, in dev and in held-out aggregates;
+- `uv run poe eval-talker` (`talker_run.py`) is plan 006's run K: one arm of the talker over
+  one split of the knowledge set, each variant one text call with the real model and knowledge
+  base, judged, paced under the key's limits and its cap, a stopped dev run resumed with
+  `--resume`, appending a talker line each session (it spends; refuses the main checkout);
+- `uv run poe eval-talker-compare A B` (`talker_compare.py`) judges two dev runs of K by item,
+  with the variants whose verdict differs between an arm's two runs counted as its noise;
+- `uv run poe eval-talker-keep` (`talker_keep.py`) applies K's keep rule to each arm's two dev
+  runs, reading the model's own time to the first clause (the tools' time taken out) beside the
+  wall clock's;
+- `uv run poe judge-check` (`judge_check.py`) draws 24 judged answers of a dev run of K for the
+  owner's check of the judge, or reads the filled sheet back;
+- `uv run poe eval-scenarios` (`scenario_run.py`) is run S: the scripted calls with the kept arm,
+  each played three times and checked turn by turn, appending a scenario line each session (it
+  spends; refuses the main checkout);
+- `uv run poe uncertain` (`uncertain.py`) is run U: a model's verdict on the overlaps the rule
+  left uncertain in a stored dev overlap run, against the rule's, appending an uncertain line (it
+  spends);
+- `uv run poe first-audio` (`first_audio.py`) is run T: the recorded requests replayed through
+  `AudioCall` as calls of the agent, its time to first audio by path, appending a first-audio
+  line (it spends);
+- `uv run poe first-audio-listen` (`first_audio_listen.py`) writes ten of a T1 run's reply
+  openings and a sheet for the owner's listen, or reads the marked sheet back.
 
 The split has no task: `python -m ole5_voice.evals.split` writes it (with `--keep`, new items
 placed and every committed item keeping its side), and a test inside `poe check` fails when the
