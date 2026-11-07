@@ -713,6 +713,7 @@ runs"; in this order, each with its smoke first)
   passage the model writes from: "Use the full first few passages found, determined by k
   (top-k), find the best k for our case".
 - 2026-11-07, to Q21, from the live smoke: "Vary the first line".
+- 2026-11-07, to Q22, after run W on dev: "Test it on held-out".
 
 ## Tracks
 
@@ -791,6 +792,13 @@ W1's prompt holds Ole5's declared vocabulary, then each command word as it shoul
 never a mishearing the presets keep for what Whisper writes (such as «وكيف» for «وقف»), which a
 prompt could make Whisper write; it is built by the one function a live call would use, so
 W1 measures the prompt the agent would ship. Term recall is still scored on `evals/terms.toml`.
+*Amended 2026-11-07, after W's dev runs and before held-out is read (Q22):* W1, not kept on dev
+by the rule above, is tested once on held-out by a rule registered now: W0 and W1 run on
+held-out at one commit, read as aggregates only; *keep W1* if its accuracy is higher than
+W0's, its word errors no higher, its accuracy on the `stop_word` and `repeat_request` kinds no
+lower, and the live filter (`stt.no_speech_max` 0.55 and the captions) keeps the text of no
+more silence, noise and echo variants than W0's. If kept, live calls send the prompt
+`whisper_prompt` builds (Q17).
 
 **U, the uncertain middle** (offline on stored transcripts; about $0.05). For each overlap whose
 rule verdict is a short output or too few words, a model reads the reply clause the caller heard
@@ -882,7 +890,7 @@ Q1 to Q10 settled on 2026-11-06 ("Approve all"). Q11 to Q14, from the spike, Blo
 knowledge set's review, asked on 2026-11-06 before any registered run and settled on 2026-11-07;
 Q15 to Q18, from Track E's review, asked and settled on 2026-11-07 before any registered run;
 Q19 and Q20, from the whole-code review, and Q21, from the live smoke, asked and settled on
-2026-11-07 before any registered run.
+2026-11-07 before any registered run; Q22, after run W's dev runs and before its held-out.
 Each answer that changes a run is a dated amendment to the registration.
 
 - **Q1. What voice-first means here.** *Settled: (a).* The eight choices above. Options: (a) approve them; (b)
@@ -978,11 +986,15 @@ Each answer that changes a run is a dated amendment to the registration.
   varying first line took over 0.30 s. Options: (a) every request's first line varies, a
   setting to turn it off; (b) keep the cache and let K and T measure how often the slow path
   hits. **The agent recommended (a).**
+- **Q22. Run W1 after dev.** *Settled 2026-11-07: (a).* On dev, W1 failed its rule (term recall
+  0.333 in both) but raised the right count beyond the noise, mostly on the command words, and
+  wrote no word of the prompt into silence. Options: (a) a rule registered now, tested once on
+  the unread held-out; (b) no prompt, as the rule decided. **The agent recommended (a).**
 
 ## What the owner does
 
 - Answer Q1 to Q10, and approve the plan (done 2026-11-06); answer Q11 to Q14, Q15 to Q18,
-  Q19 and Q20, and Q21 (done 2026-11-07).
+  Q19 and Q20, Q21 and Q22 (done 2026-11-07).
 - Copy the knowledge base's access into `.env` (Q4; done 2026-11-06, under the owner's names).
 - Review the knowledge set's items (Q5, about 40 minutes), and check 24 judged answers (Q6, about
   20 minutes).
