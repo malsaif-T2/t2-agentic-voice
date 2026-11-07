@@ -12,6 +12,7 @@ import asyncio
 from typing import Any
 
 import pytest
+from t2_agentic_voice.actions.knowledge import knowledge_tool
 from t2_agentic_voice.actions.tools import ToolResult
 from t2_agentic_voice.agent.talker import (
     ClauseBlocked,
@@ -27,9 +28,17 @@ from t2_agentic_voice.core.errors import ConfigurationError
 from t2_agentic_voice.domain.cards import Card
 from t2_agentic_voice.domain.declaration import Language, VoiceAgent
 from t2_agentic_voice.domain.guard import IdVerdict
-from t2_agentic_voice.domain.ports.chat_model import ToolCallRequest
+from t2_agentic_voice.domain.ports.chat_model import Done, ToolCallRequest
+from t2_agentic_voice.domain.ports.knowledge import Passage
 from t2_agentic_voice.domain.words import PRESET_WORDS
-from t2_agentic_voice.evals import Pause, ScriptedLLM, ScriptExhaustedError, TextCall, TextTurn
+from t2_agentic_voice.evals import (
+    FakeKnowledgeBase,
+    Pause,
+    ScriptedLLM,
+    ScriptExhaustedError,
+    TextCall,
+    TextTurn,
+)
 from t2_agentic_voice.testing import text_call
 
 from tests.t2_agentic_voice.testing.text_call_support import (
@@ -256,6 +265,42 @@ def test_a_fake_model_whose_script_ran_out_fails_the_test_never_heard_as_the_err
 
     asyncio.run(scene())
     assert len(llm.requests) == 2
+
+
+@pytest.mark.parametrize(
+    "script",
+    [
+        [[Done(finish_reason="length")]],
+        [
+            list(ScriptedLLM.call_tool("search_knowledge", query="password")),
+            list(ScriptedLLM.reply("")),
+        ],
+    ],
+    ids=["cut-at-its-limit", "empty-after-a-search"],
+)
+def test_a_reply_the_model_ends_with_no_word_is_heard_as_the_error_notice(
+    script: list[list[Any]],
+) -> None:
+    """The library's talker on a `ScriptedLLM` whose answer ends with no word written: cut at
+    the model's limit (`length`) before any, or empty after a search. The caller hears the
+    `error` notice, once, never silence after asking."""
+    passage = Passage(id="p-1", title="Reset a password", text="Open Settings.", score=0.9)
+    search = knowledge_tool(FakeKnowledgeBase([passage]), description="Search the help.")
+    agent = VoiceAgent(
+        name="text-test", languages=AGENT.languages, instructions="Answer.", tools=[search]
+    )
+    llm = ScriptedLLM(script)
+
+    async def scene() -> TextTurn:
+        async with TextCall(agent, llm=llm, language="en") as call:
+            turn = await call.user("How do I reset my password?")
+            await call.advance(10.0)
+            return turn
+
+    turn = asyncio.run(scene())
+    error = AGENT.languages[0].notices["error"]
+    assert [(c.text, c.phrase) for c in turn.clauses] == [(error, True)]
+    assert turn.first_clause_s is None and len(llm.requests) == len(script)
 
 
 def _model_then_search(turn: TalkerTurn) -> list[Step]:

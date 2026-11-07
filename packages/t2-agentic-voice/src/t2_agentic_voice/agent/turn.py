@@ -19,7 +19,9 @@ turn and the call as it was heard to the events the session plays, within the re
   result's card is shown once the guard passed its text, and the calls and results are kept
   for the call's next `KEPT_TURNS` turns, which the heard history does not hold.
 - **Failure and cancel.** A `ProviderError` from the model ends the reply: it is raised from the
-  stream after any clause already given, for the session to say the `error` notice; any other
+  stream after any clause already given, for the session to say the `error` notice (which it
+  says too for a reply that ends with no clause); a request cut at `max_output_tokens`
+  (`length`) is logged by its model, its words so far given as written; any other
   error comes out as it is (a fake's `ScriptExhaustedError`, an AssertionError, fails its test).
   A cancel of the reply's scope cancels the task that iterates the stream, so the model's
   request and every tool of the scope stop at once, and no `ReplyDone` comes. The model's stream
@@ -65,6 +67,7 @@ from t2_agentic_voice.domain.ports.chat_model import (
     ChatMessage,
     ChatModel,
     ChatRequest,
+    Done,
     TextDelta,
     ToolCallRequest,
     ToolSchema,
@@ -234,6 +237,14 @@ class Turn:
                             answer.calls.append(event)
                     elif isinstance(event, Usage):
                         answer.usage = event
+                    elif isinstance(event, Done) and event.finish_reason == "length":
+                        _log.warning(
+                            "talker_reply_truncated",
+                            call_id=self.ctx.call_id,
+                            turn_id=self.turn.turn_id,
+                            model=request.model,
+                            finish_reason=event.finish_reason,
+                        )
         except ProviderError as error:
             _log.warning(
                 "talker_model_failed",

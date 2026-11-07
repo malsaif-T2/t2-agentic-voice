@@ -21,7 +21,9 @@ voice/session/call.py.
   holds only what the caller heard); each model request is counted in the call's usage as it
   goes and its tokens as it ends (`ModelRequested`, `ModelReplied`; an early start's, dropped
   unplayed, once it is let go), the first one's first token the turn's; and the reply is
-  closed once it is done (`ReplyDone`). A talker that fails is logged by its failure's kind
+  closed once it is done (`ReplyDone`), the `error` notice said first when it said no clause
+  (a model's empty answer, or one cut at its limit before a word), once a reply, so the caller
+  never hears silence after asking. A talker that fails is logged by its failure's kind
   alone, a provider's failure told (`ProviderFailed`), and the caller hears the `error` notice,
   once a reply, after any clause already said too, in the turn's reply language (its last
   clause's, else the turn's as agent/language.py reads it); the reply is closed.
@@ -303,12 +305,17 @@ class Talking:
             _log.warning("talker_failed", call_id=self._setup.call_id, failure=kind)
             if isinstance(failure, ProviderError):
                 self._events.failed(failure.kind, failure.retryable, talk.turn_id)
-            if not talk.told:  # in the reply's language, after its clauses too
-                talk.told = True
-                language = language_of(self._setup, talk.language or self._setup.language.tag)
-                await reply.add_phrase(language.notices["error"], language=language.tag, at=now)
+            await self._tell(talk, reply, now)  # in the reply's language, after its clauses too
         await reply.finish(now)
         await self._sync()
+
+    async def _tell(self, talk: _Talk, reply: OpenReply, at: float) -> None:
+        """The `error` notice said, once a reply, in its language (its last clause's, else its
+        turn's)."""
+        if not talk.told:
+            talk.told = True
+            language = language_of(self._setup, talk.language or self._setup.language.tag)
+            await reply.add_phrase(language.notices["error"], language=language.tag, at=at)
 
     async def _play(self, talk: _Talk, event: TalkerEvent, at: float) -> None:
         """Play one of the talker's events (the module's list), given at `at`."""
@@ -361,5 +368,7 @@ class Talking:
                 if log.first_token_at is None and first is not None and asked is not None:
                     log.first_token_at = asked + first
             case ReplyDone():
+                if not talk.said:  # an empty answer, or one cut before a word: never silence
+                    await self._tell(talk, reply, at)
                 await reply.finish(at)
         await self._sync()

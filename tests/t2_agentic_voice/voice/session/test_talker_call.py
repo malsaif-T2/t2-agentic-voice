@@ -299,6 +299,47 @@ def test_a_talkers_failure_is_told_in_the_turns_reply_language(
     assert ended(session, 1)
 
 
+_ASKED: list[Step] = [
+    ModelRequested(model=MODEL),
+    ModelReplied(model=MODEL, usage=None, first_token_s=None),
+]
+_BLOCKED = ClauseBlocked(text="It is 4521.", language="en", unsupported=("4521",))
+
+
+@pytest.mark.parametrize(
+    ("given", "phrases"),
+    [
+        ([], 0),
+        ([ProgressDue(tool="search_help", key="looking", language="en")], 1),
+        ([_BLOCKED], 0),
+    ],
+    ids=["nothing", "a-progress-line-only", "a-blocked-clause-only"],
+)
+def test_a_reply_that_ends_with_no_clause_is_told_the_error_notice_once(
+    settings: VoiceSettings, given: list[Step], phrases: int
+) -> None:
+    """A talker whose reply ends (`ReplyDone`) with no clause said, as a model's empty answer or
+    one cut at its limit ends: the caller hears the `error` notice in its place, once a reply
+    (after a progress line, and never again after a blocked clause's), never silence."""
+
+    def script(turn: TalkerTurn) -> list[Step]:
+        return [*_ASKED, *given, ReplyDone()]
+
+    io, session, _ = talker_call(settings, script)
+
+    async def drive() -> None:
+        await greeted(io)
+        await talked(io, 0, "Where is my ticket?", language="en")
+        await play(io, 1)
+        await io.ending()
+        await io.close()
+
+    asyncio.run(drive())
+    said = [s.text for s in speaks(io, 1)]
+    assert said == [*([PROGRESS["en"]] * phrases), AGENT.languages[0].notices["error"]]
+    assert ended(session, 1)
+
+
 def test_a_talker_that_refuses_the_turn_at_once_is_told_and_its_reply_closed(
     settings: VoiceSettings,
 ) -> None:
