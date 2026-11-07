@@ -2,8 +2,9 @@
 requests, factories for `--agent` with the real one's signature, given the knowledge base (a
 talker's with a made-up tool, none when given no base; an echo's; and a factory that gives no
 agent) and for `--knowledge`, given the env file, a fake replay that answers each recording
-from a script and keeps what it was asked, and a run's world with the parts it is built from,
-so nothing is sent and no time passes but the run's own pauses."""
+from a script and keeps what it was asked (one also logs the talker's line), and a run's world
+with the parts it is built from, so nothing is sent and no time passes but the run's own
+pauses."""
 
 from __future__ import annotations
 
@@ -19,7 +20,7 @@ from ole5_voice.evals.first_audio_setup import FirstAudioParts
 from ole5_voice.evals.models import Item
 from ole5_voice.evals.runs import SCORECARD_FILE
 from t2_agentic_voice import Language as Spoken
-from t2_agentic_voice import VoiceAgent, VoiceSettings
+from t2_agentic_voice import VoiceAgent, VoiceSettings, get_logger
 from t2_agentic_voice.events import ModelUsage
 from t2_agentic_voice.ports import AudioChunk, AudioClip, KnowledgeBase
 
@@ -129,6 +130,17 @@ class FakeReplay:
 
     async def aclose(self) -> None:
         self.closed += 1
+
+
+class Talking(FakeReplay):
+    """The fake replay, each call logging the talker's line under the library's logger as the
+    real replay's talker does (`talker_replied`, its search or none), and an error."""
+
+    async def call(self, clip: AudioClip, **asked: Any) -> ReplayedCall:
+        talker = get_logger("t2_agentic_voice.agent.turn")
+        talker.info("talker_replied", tools=1)
+        talker.error("made_up_failure")
+        return await super().call(clip, **asked)
 
 
 def recorded(world: World) -> list[Item]:

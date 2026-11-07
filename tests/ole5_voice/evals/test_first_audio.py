@@ -27,7 +27,7 @@ from t2_agentic_voice.evals import AudioCall, ScriptedLLM
 from t2_agentic_voice.stores import PhraseCache
 
 from tests.ole5_voice.evals.eot_support import paused
-from tests.ole5_voice.evals.first_audio_support import CHAT, TRun, agent, call, t_run
+from tests.ole5_voice.evals.first_audio_support import CHAT, Talking, TRun, agent, call, t_run
 from tests.ole5_voice.evals.run_support import World
 from tests.ole5_voice.evals.timing_support import ARABIC, WHISPER
 from tests.t2_agentic_voice.fakes import FakeTextToSpeech
@@ -149,6 +149,20 @@ def test_a_held_out_run_keeps_aggregates_only(tmp_path: Path) -> None:
     assert isinstance(line, FirstAudioLine) and list(line.ends) == ["detector"]
     assert not (run.out / "results.jsonl").exists() and not (run.out / "replies").exists()
     assert run.replay.asked[0]["end_ms"] == 1500.0  # the smoke test is the dev recording
+
+
+def test_a_held_out_run_prints_no_line_of_the_library_but_its_errors(
+    tmp_path: Path, capsys: pytest.CaptureFixture[str]
+) -> None:
+    def items(world: World) -> list[Item]:
+        return [paused(world, "n20_made_up"), paused(world, "n03_held", kind="request")]
+
+    run = t_run(tmp_path, items=items, held_out=("n03_held",))
+    run.replay = Talking(run.clock, [call(), call(_fast())])
+    assert first_audio.main(run.argv(split="held-out"), parts=run.parts()) == 0
+    logged = capsys.readouterr().out
+    assert "progress" in logged and "made_up_failure" in logged
+    assert "talker_replied" not in logged
 
 
 @pytest.mark.parametrize(
