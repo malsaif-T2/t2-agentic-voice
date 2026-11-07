@@ -553,6 +553,32 @@ runs"; in this order, each with its smoke first)
   - **Debt:** TD-125 and TD-126.
   - **Next:** Q19 and Q20 built (in their own worktrees), then the live smoke and the registered
     runs, K0 before K.
+- 2026-11-07: The owner's Q19 and Q20, built in parallel worktrees from be34263, each reviewed
+  once (neither review found what breaks a call), merged one at a time with the gate after each.
+  - **Q20, the top k passages whole** (80f8b52; a42848b to e9f2ceb).
+    - `knowledge_tool` gives the talker each passage's whole text (`text`), cut at a line near
+      the new optional `passage_chars` (1,500); the card, the guard's evidence and the steps are
+      unchanged.
+    - Ole5's agent reads one named k (`SEARCH_LIMIT`, 5 until K0 keeps another; its version
+      `2026-11-07.2`).
+    - Run K0 is `poe knowledge-depth`: one search per answerable dev variant with a limit of 8,
+      no chat request, the shares and characters per k, the keep rule reckoned in exact
+      fractions, held-out refused, a smoke search first, a history line of its own.
+    - Gate: `4957 passed`, `TOTAL 19871 36 99%`.
+  - **Q19, the reply held while the caller speaks** (fb5df3f; eaa44d5, 74e933c).
+    - A talker reply none of which played when a newer turn's speech began is kept, its events
+      in the early start's `pending`, until that turn is taken. Words in it stop the reply as
+      before; a turn heard as nothing lets it play in order; a stop or the call's end plays
+      nothing of it. The client shows `thinking` while it waits; the echo is unchanged.
+    - Per-event playing moved to `talker_play.py`, so `talking.py` stays under the size cap.
+    - A kept reply waits about 1.1 s after a turn heard as nothing when Smart Turn says
+      complete, about 3.5 s when it says incomplete.
+    - Gate: `4973 passed`, `TOTAL 19926 36 99%`.
+  - **Debt:** TD-127.
+  - **Before the runs:** once K0 keeps a k, `SEARCH_LIMIT`, Ole5's `VERSION` and the test that pins
+    5 change together, and run K's `--input-budget-tokens` (6,000) is checked against K0's
+    characters. Before the live rehearsal of step 5, TD-117's early start rebuilds its turn after
+    the stop.
 
 ## Decision log
 
