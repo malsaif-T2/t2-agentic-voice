@@ -12,6 +12,13 @@ failure, in the call, its search or the reference search, makes the variant a `p
 passed (or a moment the call waited for in vain) a `stuck` one, and a judge with no valid verdict
 a `judge` one: each counted apart. When the cap or the key's daily limit stops a request
 (`chat_pacing`), the variant is dropped unscored (`StopRun`), so a resumed run measures it again.
+
+**Its times are the model's** (Q15), never the run's pacing: before its call, outside its limit,
+a variant waits until the talker's model has room in the minute for the most requests a turn
+sends (`TALKER_REQUESTS`, `PacedChat.ahead`), so no request of the call waits for room. A call
+whose requests waited inside it anyway (one turned away and sent again after its retry-after,
+or room the minute still lacked) keeps no time: its first token and first clause are None, so
+no median holds a wait, and the variant is scored otherwise as any other.
 """
 
 from __future__ import annotations
@@ -21,7 +28,14 @@ from collections.abc import Sequence
 from dataclasses import dataclass
 from typing import Final, Literal
 
-from t2_agentic_voice import Caller, ProviderError, T2VoiceError, VoiceAgent, VoiceSettings
+from t2_agentic_voice import (
+    Caller,
+    ProviderError,
+    T2VoiceError,
+    VoiceAgent,
+    VoiceSettings,
+    get_logger,
+)
 
 from ole5_voice.evals.chat_pacing import CapReachedError, DailyLimitError, PacedChat
 from ole5_voice.evals.groq_answerer import Clock
@@ -34,6 +48,8 @@ from ole5_voice.evals.talker_data import TAGS, Failure, HeardTurn, Tag, in_langu
 from ole5_voice.evals.talker_score import SearchMade, Stopped, VariantRecord
 
 CALLER: Final = Caller(subject="talker-run")  # the reference search's caller, made up
+TALKER_REQUESTS: Final = 3  # the most model requests the talker sends a turn
+log = get_logger(__name__)
 CallLanguage = Literal["first", "variant"]
 
 
@@ -104,8 +120,10 @@ class Measuring:
 
     async def variant(self, todo: Todo, split: Split) -> VariantRecord:
         """`todo` measured and scored; StopRun when the cap or the day's limit stopped it."""
+        llm = self.settings.llm
+        await self.paced.ahead(llm.model, TALKER_REQUESTS, llm.max_output_tokens)
         began, mark = self.clock(), len(self.knowledge.searches)
-        failed = self.paced.spend.failures()
+        failed, waited = self.paced.spend.failures(), self.paced.waited_s
         item, words, want = todo.item, todo.asked.text, TAGS[todo.asked.language]
         failure: Failure | None = None
         turn: HeardTurn | None = None
@@ -118,6 +136,9 @@ class Measuring:
         except ProviderError:
             failure = "provider"
         self._stopped()
+        if turn is not None and (inside := self.paced.waited_s - waited) > 0:
+            log.warning("variant_untimed", waited_s=round(inside, 3))  # the run's own wait
+            turn = turn.model_copy(update={"first_token_s": None, "first_clause_s": None})
         if self.paced.spend.failures() > failed and failure is None:
             failure = "provider"  # a model request failed, though the talker caught it
         searches = tuple(

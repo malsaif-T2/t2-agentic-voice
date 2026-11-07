@@ -12,22 +12,24 @@ A smoke test comes first, the first dev variant (for a held-out run too), which 
 no failed, retried or refused request; then each variant (`talker_measure.py`), its record
 written as it finishes (a dev run's `results.jsonl`) with a progress line of identifiers,
 verdicts and times, never a text. A held-out run writes no record, its progress lines are counts
-only, and one that does not finish keeps no result. A dev run stopped by the key's daily limit,
-the cap or an interrupt goes on with `--resume` and the same command line, its finished variants
-kept. Each session writes the scorecard (`talker_score.py`) and appends its history line
-(`talker_lines.TalkerLine`) to the worktree's `history.jsonl`, copied beside the scorecard.
+only, the library's lines but its errors held back, and one that does not finish keeps no
+result. A dev run stopped by the key's daily limit, the cap or an interrupt goes on with
+`--resume` and the same command line, its finished variants kept. Each session writes the
+scorecard (`talker_score.py`) and appends its history line (`talker_lines.TalkerLine`) to the
+worktree's `history.jsonl`, copied beside the scorecard.
 """
 
 from __future__ import annotations
 
 import argparse
 import asyncio
+import logging
 import sys
 from collections.abc import Sequence
 from dataclasses import dataclass, field
 from datetime import datetime
 from pathlib import Path
-from typing import Final, get_args
+from typing import get_args
 
 from t2_agentic_voice import T2VoiceError, VoiceAgent, configure_logging, get_logger
 
@@ -53,7 +55,14 @@ from ole5_voice.evals.talker_args import (
 )
 from ole5_voice.evals.talker_data import TAGS
 from ole5_voice.evals.talker_lines import talker_line
-from ole5_voice.evals.talker_measure import CallLanguage, Measuring, StopRun, Todo, todo_of
+from ole5_voice.evals.talker_measure import (
+    TALKER_REQUESTS,
+    CallLanguage,
+    Measuring,
+    StopRun,
+    Todo,
+    todo_of,
+)
 from ole5_voice.evals.talker_score import (
     PriceShown,
     Session,
@@ -64,7 +73,6 @@ from ole5_voice.evals.talker_score import (
 )
 from ole5_voice.evals.worktree import refused, run_checkout
 
-TALKER_REQUESTS: Final = 3  # the most model requests the talker sends a turn
 _DESCRIPTION = "Run the talker over one split of the knowledge set, one arm, into --out."
 log = get_logger(__name__)
 
@@ -329,6 +337,8 @@ def main(argv: Sequence[str] | None = None, *, parts: TalkerParts | None = None)
     args = parser.parse_args(argv)
     _require(parser, args)
     configure_logging(loggers=LOGGERS)
+    if args.split == "held-out":  # the talker's lines would tell each variant's path apart
+        logging.getLogger("t2_agentic_voice").setLevel(logging.ERROR)
     try:
         return _run(args, TalkerParts() if parts is None else parts)
     except T2VoiceError as error:

@@ -21,16 +21,17 @@ sent. It declares the agent's fixed phrases, then plays the smoke test, the firs
 which must answer one turn, its reply heard, with no failure on its first call; then each
 recording, a dev run's result written as it finishes (`results.jsonl`) with a progress line of
 identifiers and times, never a text, and its replies' openings kept for the owner's listen
-(`poe first-audio-listen`); a held-out run's lines are counts, and its scorecard aggregates
-only. The scorecard is written whole at the end, whatever ended the run once it started (an
-error's `stopped` is `error`), and its history line appended to the worktree's `history.jsonl`
-and copied beside it, every request counted.
+(`poe first-audio-listen`); a held-out run's lines are counts, the library's lines but its
+errors held back, and its scorecard aggregates only. The scorecard is written whole at the end,
+whatever ended the run once it started (an error's `stopped` is `error`), and its history line
+appended to the worktree's `history.jsonl` and copied beside it, every request counted.
 """
 
 from __future__ import annotations
 
 import argparse
 import asyncio
+import logging
 import math
 import sys
 from collections.abc import Sequence
@@ -315,6 +316,8 @@ def main(argv: Sequence[str] | None = None, *, parts: FirstAudioParts | None = N
     args = parser.parse_args(argv)
     _require(parser, args)
     configure_logging(loggers=LOGGERS)
+    if args.split == "held-out":  # the talker's lines would tell each recording's path apart
+        logging.getLogger("t2_agentic_voice").setLevel(logging.ERROR)
     try:
         return _run(args, FirstAudioParts() if parts is None else parts)
     except T2VoiceError as error:

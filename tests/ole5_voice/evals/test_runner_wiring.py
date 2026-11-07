@@ -2,9 +2,10 @@
 command line reaches its smoke test with Ole5's own agent factory (`talker_agent`, given the
 knowledge base) and a knowledge factory of the real one's signature (given the env file), the
 library's real `TextCall` on the system clock, a fake chat model and a fake knowledge base, so
-nothing is sent; and every run closes its knowledge base and its chat model when it ends, also
-after a refusal that comes once they are built. Ole5's knowledge factory reads only the knowledge
-base's access, and both of Ole5's factories have the signatures a run gives them."""
+nothing is sent; a held-out run of K prints none of the talker's lines; and every run closes
+its knowledge base and its chat model when it ends, also after a refusal that comes once they
+are built. Ole5's knowledge factory reads only the knowledge base's access, and both of Ole5's
+factories have the signatures a run gives them."""
 
 from __future__ import annotations
 
@@ -91,6 +92,21 @@ def test_run_ss_smoke_reaches_ole5s_agent_through_the_real_text_call(tmp_path: P
     (smoke,) = card.plays
     assert smoke.failure is None and smoke.passed and smoke.turns[0].said == "a short answer"
     assert setup.chat.closed and setup.kb.closed
+
+
+def test_a_held_out_run_through_the_real_text_call_prints_no_line_of_the_talker(
+    tmp_path: Path, capsys: pytest.CaptureFixture[str]
+) -> None:
+    """The talker's own line (`talker_replied`: its searches, blocks and language) would sit
+    beside each held-out variant's count; a held-out run prints the library's errors only."""
+    setup = make_setup(tmp_path)
+    held_out = ["--split", "held-out", "--call-language", "variant"]
+    load, argv = _ole5(setup, [*setup.argv(out="k1-h"), *held_out])
+    assert talker_run.main(argv, parts=_real(setup, load)) == 0
+    card = TalkerScorecard.model_validate_json((setup.out("k1-h") / SCORECARD_FILE).read_bytes())
+    assert card.complete and card.totals.variants == 6  # each held-out variant ran
+    logged = capsys.readouterr().out
+    assert "variant_done" in logged and "talker_replied" not in logged
 
 
 @pytest.mark.parametrize("command", [talker_run, scenario_run])

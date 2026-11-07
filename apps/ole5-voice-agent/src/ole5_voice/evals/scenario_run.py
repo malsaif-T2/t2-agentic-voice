@@ -46,8 +46,8 @@ from ole5_voice.evals.talker_args import (
     shown,
 )
 from ole5_voice.evals.talker_lines import scenario_line
-from ole5_voice.evals.talker_measure import StopRun
-from ole5_voice.evals.talker_run import TALKER_REQUESTS, agent_of
+from ole5_voice.evals.talker_measure import TALKER_REQUESTS, StopRun
+from ole5_voice.evals.talker_run import agent_of
 from ole5_voice.evals.talker_score import PriceShown, Session, Stopped
 from ole5_voice.evals.worktree import refused, run_checkout
 

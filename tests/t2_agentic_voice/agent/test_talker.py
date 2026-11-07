@@ -7,6 +7,7 @@ and the reply language per turn, Saudi, MSA and English in one call."""
 from __future__ import annotations
 
 import asyncio
+import logging
 from typing import Any
 
 import pytest
@@ -32,6 +33,7 @@ from t2_agentic_voice.core.settings.llm import LlmSettings
 from t2_agentic_voice.domain.ports.chat_model import TextDelta, Usage
 from t2_agentic_voice.voice.session.scope import CancelScope
 
+from tests.leaks import holding, shown
 from tests.t2_agentic_voice.agent.chat_support import (
     HOLD,
     FakeChat,
@@ -224,8 +226,32 @@ def test_an_msa_call_replies_in_its_own_tag() -> None:
 
 
 def test_a_reply_that_says_nothing_still_ends() -> None:
+    """It ends as any other: the session says the `error` notice for a reply with no clause."""
     model = FakeChat(said(" "))
     assert kinds(reply(talker(model), TURN)) == ["ModelRequested", "ModelReplied", "ReplyDone"]
+
+
+def test_an_answer_cut_at_the_models_limit_is_logged_by_its_model_never_its_text(
+    caplog: pytest.LogCaptureFixture,
+) -> None:
+    """A request that ends at `max_output_tokens` (`length`, gpt-oss's reasoning filling it):
+    its words so far are still given, and a warning names the model and the finish reason."""
+    caplog.set_level(logging.DEBUG, logger="t2_agentic_voice")
+    model = FakeChat(said("To reset your password,", " open", finish="length"))
+    events = reply(talker(model), TURN)
+    assert [e.text for e in events if isinstance(e, SpokenClause)] == [
+        "To reset your password,",
+        "open",
+    ]
+    [record] = [r for r in caplog.records if r.getMessage() == "talker_reply_truncated"]
+    assert record.levelno == logging.WARNING
+    fields = record.fields  # type: ignore[attr-defined]
+    assert (fields["model"], fields["finish_reason"], fields["turn_id"]) == (
+        "openai/gpt-oss-120b",
+        "length",
+        1,
+    )
+    assert holding("reset your password", shown(caplog=caplog)) == []
 
 
 def test_the_talker_reads_no_time_but_its_clock() -> None:
