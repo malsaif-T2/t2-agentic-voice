@@ -19,15 +19,22 @@ voice/session/call.py.
   never said (`ClauseBlocked`): the call language's preset `error` notice is said in its place,
   once a reply, and `GuardBlocked` goes out (the talker keeps its developer note: the history
   holds only what the caller heard); each model request is counted in the call's usage as it
-  goes and its tokens as it ends (`ModelRequested`, `ModelReplied`), the first one's first token
-  the turn's; and the reply is closed once it is done (`ReplyDone`). A talker that fails is
-  logged by its failure's kind alone, a provider's failure told (`ProviderFailed`), and the
-  caller hears the `error` notice when nothing of the reply was said; the reply is closed.
+  goes and its tokens as it ends (`ModelRequested`, `ModelReplied`; an early start's, dropped
+  unplayed, once it is let go), the first one's first token the turn's; and the reply is
+  closed once it is done (`ReplyDone`). A talker that fails is logged by its failure's kind
+  alone, a provider's failure told (`ProviderFailed`), and the caller hears the `error` notice,
+  once a reply, after any clause already said too, in the turn's reply language (its last
+  clause's, else the turn's as agent/language.py reads it); the reply is closed.
 - **The early start** (plan 006, Q2; io.py's early start). A turn's `held` transcript starts the
   talker at once, in a scope of its own, while the hold runs: what it gives is kept, and nothing
   is asked for. Speech that resumes in the hold cancels it (`resumed`). When the hold ends (the
   turn's `TurnClosed`), the reply is opened in that scope (`release`), what was kept is played
-  in order, and the rest as it comes; the turn's own transcript then finds it answering.
+  in order, each event guarded as one the talker gives later (a failure logged, the rest still
+  played, the reply closed), and the rest as it comes; the turn's own transcript then finds it
+  answering. Once the call has ended or is ending (its `ended` notice) nothing kept plays: the
+  work is cancelled. A client's `stop` in the hold cancels the work too (`stopped`), and the
+  turn is answered by nothing (`rolled_back`: the reply it began was stopped before any
+  played).
 
 Every event the talker gives is played as one step of the session's (`guarded`, under its lock,
 in the order they came), so it never interleaves with one the Pipecat side hands; the client is
@@ -37,10 +44,11 @@ told what the agent is doing after each (`sync`).
 from __future__ import annotations
 
 import asyncio
-from collections.abc import Awaitable, Callable
+from collections.abc import AsyncIterator, Awaitable, Callable
 from dataclasses import dataclass, field
 from functools import partial
 
+from t2_agentic_voice.agent.language import reply_language
 from t2_agentic_voice.agent.talker import (
     ClauseBlocked,
     ModelReplied,
@@ -58,6 +66,7 @@ from t2_agentic_voice.core.conversation import TalkerTurn
 from t2_agentic_voice.core.errors import ProviderError
 from t2_agentic_voice.core.events import GuardBlocked, ToolFinished, ToolStarted, TurnId
 from t2_agentic_voice.core.logging import get_logger
+from t2_agentic_voice.core.settings.tts import LanguageTag
 from t2_agentic_voice.voice.session.books import CallBooks
 from t2_agentic_voice.voice.session.heard import HeardWords
 from t2_agentic_voice.voice.session.io import CallSetup
@@ -79,8 +88,9 @@ class _Talk:
     """One reply of the talker's as the session plays it: the turn and words it answers, its
     scope, its reply once opened (None while the early start holds it), what was given while
     held, whether the talker's stream ended and how (`written`, `failure`), the clauses said,
-    whether the guard's line was said, when its last model request went, and whether the
-    early start began it (`early`)."""
+    whether the guard's line was said, when its last model request went, whether the early
+    start began it (`early`), and the language it is said in (its last clause's, else its
+    turn's)."""
 
     turn_id: TurnId
     words: str
@@ -93,12 +103,14 @@ class _Talk:
     said: int = 0
     told: bool = False
     request_at: float | None = None
+    language: LanguageTag | None = None
     task: asyncio.Task[None] | None = None
 
 
 class Talking:
     """One call's talker replies, played by `speaker` for the turns `turns` keeps, each event
-    played as a step `guarded` runs, the client's state brought up to date by `sync`."""
+    played as a step `guarded` runs, the client's state brought up to date by `sync`; `over`
+    says whether the call has ended or is ending."""
 
     def __init__(
         self,
@@ -110,10 +122,11 @@ class Talking:
         turns: TurnBook,
         guarded: Guarded,
         sync: Callable[[], Awaitable[None]],
+        over: Callable[[], bool],
     ) -> None:
         self._setup, self._talker, self._speaker, self._turns = setup, talker, speaker, turns
         self._usage, self._events, self._history = books.usage, books.events, books.history
-        self._guarded, self._sync = guarded, sync
+        self._guarded, self._sync, self._over = guarded, sync, over
         self._clock = setup.clock
         self._talks: dict[TurnId, _Talk] = {}
         self._holding: set[TurnId] = set()  # the turns whose hold began and has not resumed
@@ -122,6 +135,9 @@ class Talking:
         """Answer `turn`, its words `heard`, with the talker, unless its early start answers it
         already (the same words); the replies in progress to earlier turns stopped first."""
         talk = self._talks.get(turn.turn_id)
+        if talk is not None and talk.reply is None and talk.scope.cancelled:  # stopped in the hold
+            self._turns.ended(turn, "rolled_back")
+            return
         if talk is not None and talk.early and talk.words == heard.text:
             if talk.reply is None:
                 await self.release(turn, at)
@@ -165,14 +181,23 @@ class Talking:
         talk = self._talks.get(turn.turn_id)
         if talk is None or talk.reply is not None or talk.scope.cancelled:
             return
+        if self._over():  # the call has ended, or its `ended` notice plays: nothing kept plays
+            await self._dropped(talk)
+            return
         await self._stop_earlier(turn, at)
         talk.reply = await self._speaker.open_reply(at, turn_id=turn.turn_id, scope=talk.scope)
         turn.reply_id = talk.reply.reply_id
         while talk.pending:
             event, when = talk.pending.pop(0)
-            await self._play(talk, event, when)
+            await self._held_event(talk, event, when)
         if talk.written:
             await self._close(talk, talk.failure)
+
+    async def stopped(self) -> None:
+        """The client's `stop`: the work of every early start still held is cancelled, so
+        nothing it kept plays, and its turn is answered by nothing (`answer`)."""
+        for talk in [talk for talk in self._talks.values() if talk.reply is None]:
+            await self._cancel(talk)
 
     async def end(self) -> None:
         """The call ended: every early start still held is cancelled (a reply's own scope is
@@ -196,6 +221,8 @@ class Talking:
         )
 
     def _start(self, talk: _Talk, turn: TalkerTurn) -> None:
+        spoken = [language.tag for language in self._setup.agent.languages]
+        talk.language = reply_language(turn, call=self._setup.language.tag, spoken=spoken)
         self._talks[talk.turn_id] = talk
         talk.task = talk.scope.start(self._run(talk, turn), name=f"talker-{talk.turn_id}")
 
@@ -204,7 +231,18 @@ class Talking:
         dropped it)."""
         if self._talks.get(talk.turn_id) is talk:
             del self._talks[talk.turn_id]
+        await self._cancel(talk)
+
+    async def _cancel(self, talk: _Talk) -> None:
+        """`talk`'s work cancelled; the model requests it made while held, which went though
+        none of it will play, counted in the call's usage (usage.py) as they would have been."""
         await talk.scope.cancel()
+        for event, _ in talk.pending:
+            if isinstance(event, ModelRequested):
+                self._usage.chat_requested(event.model)
+            elif isinstance(event, ModelReplied):
+                self._usage.chat_replied(event.model, event.usage)
+        talk.pending.clear()
 
     async def _stop_earlier(self, turn: TurnLog, at: float) -> None:
         """Before `turn` is answered: the replies in progress to earlier turns stopped, their
@@ -221,10 +259,14 @@ class Talking:
 
     async def _run(self, talk: _Talk, turn: TalkerTurn) -> None:
         """Iterate the talker's reply in `talk`'s scope, each event kept while held, else
-        played as a step of the session's; then the reply closed."""
+        played as a step of the session's; then the reply closed. The talker's stream is closed
+        here, in the reply's scope, even when a cancel comes while an event of it waits (D-060),
+        so the model's request never ends later, in the event loop's finalizer."""
         failure: Exception | None = None
+        stream: AsyncIterator[TalkerEvent] | None = None
         try:
-            async for event in self._talker.reply(turn, scope=talk.scope):
+            stream = self._talker.reply(turn, scope=talk.scope)  # a team's may raise here
+            async for event in stream:
                 at = self._clock.now()
                 if talk.reply is None:
                     talk.pending.append((event, at))
@@ -232,10 +274,24 @@ class Talking:
                     await self._guarded("talker_event", partial(self._play, talk, event, at))
         except Exception as error:  # the talker's failure: told, and the reply closed
             failure = error
+        finally:
+            close = getattr(stream, "aclose", None)  # an async generator's, as a talker's is
+            if close is not None:
+                await close()
         if talk.reply is None:
             talk.written, talk.failure = True, failure
             return
         await self._guarded("talker_end", partial(self._close, talk, failure))
+
+    async def _held_event(self, talk: _Talk, event: TalkerEvent, at: float) -> None:
+        """Play one event the hold kept, guarded as a step of the session's is (`_run`'s): a
+        failure logged by its kind alone, so the rest still plays and the reply closes."""
+        try:
+            await self._play(talk, event, at)
+        except Exception as error:
+            failure = type(error).__qualname__
+            call_id = self._setup.call_id
+            _log.error("session_step_failed", call_id=call_id, step="talker_event", failure=failure)
 
     async def _close(self, talk: _Talk, failure: Exception | None) -> None:
         reply = talk.reply
@@ -247,11 +303,10 @@ class Talking:
             _log.warning("talker_failed", call_id=self._setup.call_id, failure=kind)
             if isinstance(failure, ProviderError):
                 self._events.failed(failure.kind, failure.retryable, talk.turn_id)
-            if not talk.said and not talk.told:
+            if not talk.told:  # in the reply's language, after its clauses too
                 talk.told = True
-                await reply.add_phrase(
-                    self._setup.language.notices["error"], language=self._setup.language.tag, at=now
-                )
+                language = language_of(self._setup, talk.language or self._setup.language.tag)
+                await reply.add_phrase(language.notices["error"], language=language.tag, at=now)
         await reply.finish(now)
         await self._sync()
 
@@ -264,7 +319,7 @@ class Talking:
         call_id, emit = self._setup.call_id, self._setup.emit
         match event:
             case SpokenClause(text=text, language=tag):
-                talk.said += 1
+                talk.said, talk.language = talk.said + 1, tag
                 await reply.add_clause(text, language=tag, at=at)
             case ShownCard(card=card):
                 await reply.card(card)

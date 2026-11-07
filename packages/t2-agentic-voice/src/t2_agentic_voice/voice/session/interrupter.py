@@ -44,9 +44,11 @@ sound, the agent's own echo or silence. Once a stop or a repeat request stopped 
 turn's own transcript reaches the talker whole, its stop word included (TD-103), with the reply
 it cut (`TurnLog.cut_reply`; none when the reply had ended and the speech began in its tail),
 unless it is a stop or pause request said whole, which is a command and answered by nothing;
-what followed is not read apart, and the reply is never said again by the session. A repeat
-request said while the agent was silent is answered by the talker too; a stop or pause request
-said whole stays a command. The fixed repeat (D-064) stays only for a session with no talker.
+new words or a correction whose own transcript failed hear the `error` notice, as with no
+talker, and so do those the whole overlap held after a window's stop or repeat request; what
+followed is not read apart, and the reply is never said again by the session. A repeat request
+said while the agent was silent is answered by the talker too; a stop or pause request said
+whole stays a command. The fixed repeat (D-064) stays only for a session with no talker.
 """
 
 from __future__ import annotations
@@ -254,7 +256,9 @@ class Interrupter:
         """The turn's own transcript, its overlap decided, in a call with a talker (the
         module's): after a verdict to go on, judged again when speech followed it; once the
         agent was stopped, the turn handed to the talker whole, unless it is a stop or pause
-        request said whole, or nothing was heard (a command)."""
+        request said whole, or nothing was heard (a command); new words or a correction whose
+        own transcript failed hear the `error` notice, as with no talker, and so do those its
+        whole overlap held after its window's stop or repeat request (`OverlapState.instead`)."""
         decided = None if state is None else state.decided
         if state is not None and decided is not None and decided.action == "go_on":
             played = self._played(state)
@@ -266,7 +270,9 @@ class Interrupter:
         if decided is not None and decided.action == "go_on":
             self._turns.settle(turn)
             return
-        if state is not None and (heard is None or self.command(heard) == "stop"):
+        answered = decided is None or answers(decided) or (state is not None and state.instead)
+        failed = event.failure is not None and answered
+        if state is not None and not failed and (heard is None or self.command(heard) == "stop"):
             self._turns.ended(turn, "command")
             self._turns.settle(turn)
             return

@@ -1,11 +1,14 @@
 """Interruptions handed to the talker (voice/session/interrupter.py, talking.py; plan 006, "What
 voice-first means here", items 2 and 7): real words over a reply stop it at once, as with no
 talker, the stop going out before any model request, and reach the talker whole, the stop word
-included (TD-103), beside the cut reply, which the history holds as the caller heard it; a stop
-or pause request said whole is a command; a repeat request, over a reply or alone, is the
+included (TD-103), beside the cut reply, which the history holds as the caller heard it, and
+when its own transcript fails the `error` notice is said, as with no talker, and so after a
+window's stop word or repeat request whose whole overlap holds new words; a stop or pause
+request said whole is a command; a repeat request, over a reply or alone, is the
 talker's; a listening sound lets the reply go on; words said while a search runs cancel it, and
-the talker starts again with both turns; and a stop or the call's end cancels the talker's work.
-The rule is the tests' fake (overlap_support.py's `FakeRule`)."""
+the talker starts again with both turns; and a stop or the call's end cancels the talker's work,
+the talker's stream closed in the reply's own task (D-060). The rule is the tests' fake
+(overlap_support.py's `FakeRule`)."""
 
 from __future__ import annotations
 
@@ -17,6 +20,7 @@ from t2_agentic_voice.core.config import VoiceSettings
 from t2_agentic_voice.core.conversation import TalkerTurn
 from t2_agentic_voice.core.events import Interrupted
 from t2_agentic_voice.domain.words import PRESET_WORDS
+from t2_agentic_voice.voice.protocol import Notice
 from t2_agentic_voice.voice.session.commands import StopSpeaking
 
 from tests.t2_agentic_voice.session_fakes import FakeSessionIO
@@ -25,11 +29,19 @@ from tests.t2_agentic_voice.voice.session.overlap_support import (
     NEW_TEXT,
     REPEAT_TEXT,
     STOP,
+    STOP_TEXT,
     FakeRule,
+    echo_playing,
     overlap_part,
     two_step,
 )
-from tests.t2_agentic_voice.voice.session.session_support import emitted, greeted, speaks
+from tests.t2_agentic_voice.voice.session.session_support import (
+    call,
+    emitted,
+    greeted,
+    sent,
+    speaks,
+)
 from tests.t2_agentic_voice.voice.session.talker_support import (
     FakeTalker,
     Step,
@@ -117,6 +129,45 @@ def test_words_begun_in_a_played_replys_tail_reach_the_talker_with_no_cut_reply(
     assert (handed.words, handed.over_reply, handed.cut_reply) == (NEW_TEXT, 1, None)
     heard = handed.conversation.replies[-1]
     assert heard.reply_id == 1 and [c.fate for c in heard.clauses] == ["played", "played"]
+
+
+@pytest.mark.parametrize(
+    "window", [None, STOP_TEXT, REPEAT_TEXT], ids=["whole", "window_stop", "window_repeat"]
+)
+@pytest.mark.parametrize("talker", [True, False], ids=["talker", "echo"])
+def test_words_that_stopped_a_reply_whose_own_transcript_failed_hear_the_error_notice(
+    settings: VoiceSettings, rule: FakeRule, talker: bool, window: str | None
+) -> None:
+    """Real words over a reply stop it, or its window's stop word or repeat request stops it
+    and the whole overlap holds new words; the caller goes on, and the turn's own request, its
+    own, fails: the `error` notice is said, with a talker as with none, never a silent
+    command."""
+    io = talker_call(two_step(settings), _two)[0] if talker else call(two_step(settings))[0]
+
+    async def drive() -> None:
+        if talker:
+            await greeted(io)
+            await talked(io, 0, "How do I reset my password?")
+            await io.synthesizing(1, 0)
+            await io.clause_queued(1, 0)
+            await io.clock.advance(0.2)
+        else:
+            await echo_playing(io)
+        await io.turn_opened(1)
+        if window is not None:
+            await overlap_part(io, 1, window, part="window", audio_s=0.75)
+        await overlap_part(io, 1, NEW_TEXT)
+        await io.clock.advance(0.5)
+        await io.turn_closed(1)
+        await io.transcribing(1, audio_s=1.6)
+        await io.transcribed(1, None, failure="timeout", retryable=True)
+        await settle()
+
+    asyncio.run(drive())
+    assert len(io.commands.of(StopSpeaking)) == 1
+    assert [n.kind for n in sent(io, Notice)] == ["error"]
+    error = io.setup.language.notices["error"]
+    assert [s.text for s in speaks(io, 2)] == [error]
 
 
 def test_a_stop_word_said_whole_over_a_reply_is_a_command_answered_by_nothing(
@@ -231,6 +282,38 @@ def test_a_stop_or_the_calls_end_cancels_the_talkers_work(settings: VoiceSetting
     assert talker.cancelled == [0]
     assert session._speaker.scope(1).running == 0
     assert ended(session, 1)
+
+
+def test_a_reply_stopped_while_its_next_event_waits_closes_the_talkers_stream_in_its_task(
+    settings: VoiceSettings,
+) -> None:
+    """The talker's next event waits for a step of the session's, which stops the reply: the
+    talker's stream, paused at that event, is closed in the reply's own task, so the model's
+    request ends inside the reply's scope (D-060), not later in the event loop's finalizer."""
+
+    def script(turn: TalkerTurn) -> list[Step]:
+        return [
+            SpokenClause(text="Let me check.", language="en"),
+            Work(1.0),
+            SpokenClause(text="Found it.", language="en"),
+            ReplyDone(),
+        ]
+
+    io, session, talker = talker_call(settings, script)
+
+    async def drive() -> None:
+        await greeted(io)
+        await talked(io, 0, "Where is my ticket?")
+        async with session._lock:  # a step of the session's runs
+            await io.clock.advance(1.0)  # the work ends: the next clause waits for the step
+            await settle()
+            await session._speaker.scope(1).cancel()  # and the step stops the reply
+        await io.ending()
+        await io.close()
+
+    asyncio.run(drive())
+    assert talker.closed_in.get(0) == "talker-0"
+    assert [s.text for s in speaks(io, 1)] == ["Let me check."]
 
 
 def test_a_talker_is_built_for_the_tests_with_its_scope(settings: VoiceSettings) -> None:

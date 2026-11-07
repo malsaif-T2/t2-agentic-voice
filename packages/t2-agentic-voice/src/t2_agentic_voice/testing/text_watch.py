@@ -78,22 +78,33 @@ class TurnTalk:
 
 class WatchedTalker:
     """A `Talker` that hands on `inner`'s events unchanged, keeping each turn's last reply in
-    `talks`, timed on `clock`."""
+    `talks`, timed on `clock`, and the first AssertionError a reply raised (`failure`: a fake
+    model's script that ran out), which the session would tell as its `error` notice; `inner`'s
+    stream is closed in the reply's own task, even when it is cancelled."""
 
     def __init__(self, inner: Talker, clock: Clock) -> None:
         self.inner, self.clock = inner, clock
         self.talks: dict[int, TurnTalk] = {}
+        self.failure: AssertionError | None = None
 
     async def reply(self, turn: TalkerTurn, *, scope: ReplyScope) -> AsyncIterator[TalkerEvent]:
         talk = TurnTalk(turn_id=turn.turn_id, began_at=self.clock.now())
         self.talks[turn.turn_id] = talk
+        stream = self.inner.reply(turn, scope=scope)
         try:
-            async for event in self.inner.reply(turn, scope=scope):
+            async for event in stream:
                 talk.events.append((self.clock.now(), event))
                 yield event
         except (asyncio.CancelledError, GeneratorExit):
             talk.cancelled = True
             raise
+        except AssertionError as error:  # the test's own failure, never the agent's
+            self.failure = self.failure or error
+            raise
+        finally:
+            close = getattr(stream, "aclose", None)  # an async generator's, as a talker's is
+            if close is not None:
+                await close()
 
 
 def arguments_of(request: ToolCallRequest) -> dict[str, JsonValue]:

@@ -7,7 +7,10 @@ runs it.
 `TalkerEvent`s), and runs a `Work(seconds)` of the script as a task of the reply's scope that
 sleeps that long on the call's clock, as a tool or a model request would, the stream waiting on
 it. It keeps each turn it was handed, how many commands the session had given when it began
-(`began_after`), and each turn whose reply it was cancelled in (`cancelled`)."""
+(`began_after`), each turn whose reply it was cancelled in (`cancelled`), and, by turn, the
+name of the task its stream was closed in (`closed_in`): the reply's own, or the event loop's
+finalizer when nobody closed it. A `Fail(error)` of the script raises `error` from the stream
+where it stands, as a model's failure mid-reply."""
 
 from __future__ import annotations
 
@@ -58,7 +61,14 @@ class Work:
     seconds: float
 
 
-Step = TalkerEvent | Work
+@dataclass(frozen=True)
+class Fail:
+    """A step of a fake reply that raises `error` from the stream where it stands."""
+
+    error: Exception
+
+
+Step = TalkerEvent | Work | Fail
 Script = Callable[[TalkerTurn], Sequence[Step]]
 
 
@@ -85,6 +95,7 @@ class FakeTalker:
     turns: list[TalkerTurn] = field(default_factory=list)
     began_after: list[int] = field(default_factory=list)
     cancelled: list[int] = field(default_factory=list)
+    closed_in: dict[int, str] = field(default_factory=dict)
 
     async def reply(self, turn: TalkerTurn, *, scope: ReplyScope) -> AsyncIterator[TalkerEvent]:
         self.turns.append(turn)
@@ -94,11 +105,16 @@ class FakeTalker:
             for step in self.script(turn):
                 if isinstance(step, Work):
                     await scope.start(self.clock.sleep(step.seconds), name="fake-work")
+                elif isinstance(step, Fail):
+                    raise step.error
                 else:
                     yield step
         except asyncio.CancelledError:
             self.cancelled.append(turn.turn_id)
             raise
+        finally:
+            task = asyncio.current_task()
+            self.closed_in[turn.turn_id] = "" if task is None else task.get_name()
 
 
 async def settle(turns: int = 200) -> None:

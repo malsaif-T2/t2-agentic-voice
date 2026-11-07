@@ -43,7 +43,8 @@ With a talker (`setup.talker`, plan 006) it answers each turn with the talker in
 echo (talking.py): the turn's caption, then the talker's reply, spoken clause by clause as it is
 written; the interruptions are handed to it (interrupter.py); and a turn said while the agent
 was silent starts it early, at Smart Turn's "complete", playing nothing before the hold ends
-(io.py's early start). Every turn's time to first audio is timed to the reply's first audible
+(io.py's early start), nor after a client's `stop` in the hold or once the call ends or is
+ending. Every turn's time to first audio is timed to the reply's first audible
 frame sent, and to the browser's playback of it (turn_book.py).
 """
 
@@ -114,6 +115,7 @@ class CallSession:
                 turns=self._turns,
                 guarded=self._guarded,
                 sync=self._sync_state,
+                over=self._over,
             )
         self._limits = CallLimits(setup, over=self._over, reached=self._reached)
         self._started_at = self._ended_at = setup.clock.wall()
@@ -189,6 +191,8 @@ class CallSession:
                 await self._speaker.done(event, tell=self._ending is None)
             case on.FromClient(message=wire.Stop()):
                 await self._speaker.stop(event.at, client=True)
+                if self._talking is not None:
+                    await self._talking.stopped()
             case on.FromClient(message=wire.Hangup()):
                 await self._end("hangup", event.at, tell=True)
             case on.FromClient(message=wire.ClientStats() as stats):
@@ -268,7 +272,7 @@ class CallSession:
                 if lines:
                     reply = await self._speaker.say("echo", lines, event.at, turn_id=turn.turn_id)
                     turn.reply_id = reply.reply_id
-            if self._ending is None and turn.reply_id is None:
+            if self._ending is None and turn.reply_id is None and turn.fate == "pending":
                 self._turns.ended(turn, "answered")
         self._turns.settle(turn)
 

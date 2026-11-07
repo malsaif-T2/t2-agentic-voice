@@ -3,29 +3,52 @@ clock: a turn's `held` transcript, sent when Smart Turn called it complete, star
 once, and nothing plays before the hold ends with the turn's `TurnClosed`; the turn's own
 transcript, reusing it, starts nothing more; speech that resumes in the hold cancels that work,
 and the turn, joined, reaches the talker as one; a stop request said whole starts nothing; an
-overlap's turn and a call with no talker are as they were."""
+overlap's turn and a call with no talker are as they were. What the hold kept plays event by
+event, one that fails logged and the rest still played, the reply closed; and nothing it kept
+plays after a client's stop in the hold, which cancels its work, or over the `ended` notice.
+The model requests of an early start dropped are counted in the call's usage."""
 
 from __future__ import annotations
 
 import asyncio
 
+import pytest
+from t2_agentic_voice.agent.talker import (
+    ModelReplied,
+    ModelRequested,
+    ProgressDue,
+    ReplyDone,
+    SpokenClause,
+)
 from t2_agentic_voice.core.config import VoiceSettings
 from t2_agentic_voice.core.conversation import TalkerTurn
+from t2_agentic_voice.core.settings.limits import LimitSettings
+from t2_agentic_voice.core.settings.tts import LanguageTag
+from t2_agentic_voice.domain.ports.chat_model import Usage
+from t2_agentic_voice.domain.ports.text_to_speech import AudioChunk
 from t2_agentic_voice.domain.words import PRESET_WORDS
+from t2_agentic_voice.voice.protocol import Notice
 from t2_agentic_voice.voice.session.commands import Speak
 
+from tests.t2_agentic_voice.fakes import FakePhrases
 from tests.t2_agentic_voice.session_fakes import FakeSessionIO
 from tests.t2_agentic_voice.voice.session.overlap_support import two_step
 from tests.t2_agentic_voice.voice.session.session_support import (
     call,
     greeted,
     play,
+    report,
+    sent,
     speaks,
 )
 from tests.t2_agentic_voice.voice.session.talker_support import (
+    MODEL,
+    PROGRESS,
     Step,
     Work,
     answer,
+    ended,
+    phrases,
     settle,
     talker_call,
 )
@@ -131,3 +154,124 @@ def test_a_call_with_no_talker_starts_nothing_in_the_hold(settings: VoiceSetting
 
     asyncio.run(drive())
     assert speaks(io, 1)[-1].text == FIRST
+
+
+class _UnreadablePhrases(FakePhrases):
+    """The phrase audio, its English progress line unreadable (as a file the cache cannot
+    read)."""
+
+    def audio(self, text: str, *, language: LanguageTag) -> AudioChunk:
+        if text == PROGRESS["en"]:
+            raise OSError("made-up unreadable phrase")
+        return super().audio(text, language=language)
+
+
+def test_a_held_event_that_fails_is_logged_and_the_rest_plays_and_the_reply_closes(
+    settings: VoiceSettings, step_failures: None
+) -> None:
+    def script(turn: TalkerTurn) -> list[Step]:
+        return [
+            ProgressDue(tool="search_help", key="looking", language="en"),
+            SpokenClause(text="Found it.", language="en"),
+            ReplyDone(),
+        ]
+
+    unreadable = _UnreadablePhrases(phrases().declared)
+    io, session, _ = talker_call(two_step(settings), script, phrases=unreadable)
+
+    async def drive() -> None:
+        await greeted(io)
+        await _held(io, 0, FIRST)
+        await _closed(io, 0, FIRST)
+        assert [s.text for s in speaks(io, 1)] == ["Found it."]
+        await play(io, 1)
+        assert ended(session, 1)  # closed, not left open and thinking
+        await io.ending()
+        await io.close()
+
+    asyncio.run(drive())
+    assert [t.fate for t in session.history.turns()] == ["answered"]
+
+
+def test_a_client_stop_in_the_hold_cancels_the_early_work_and_nothing_answers_the_turn(
+    settings: VoiceSettings,
+) -> None:
+    def script(turn: TalkerTurn) -> list[Step]:
+        return [Work(1.0), *answer("Made-up answer.")]
+
+    io, session, talker = talker_call(two_step(settings), script)
+
+    async def drive() -> None:
+        await greeted(io)
+        await _held(io, 0, FIRST)
+        await io.client({"v": 1, "type": "stop"})
+        await settle()
+        assert talker.cancelled == [0]  # the work it began, cancelled at the stop
+        await _closed(io, 0, FIRST)
+        await io.clock.advance(1.5)
+        await settle()
+        await io.ending()
+        await io.close()
+
+    asyncio.run(drive())
+    assert speaks(io, 1) == [] and session._playback.reply(1) is None
+    assert len(talker.turns) == 1  # the turn's own transcript started nothing more
+    assert [t.fate for t in session.history.turns()] == ["rolled_back"]
+
+
+def test_a_held_reply_never_plays_over_the_ended_notice(settings: VoiceSettings) -> None:
+    limits = LimitSettings(max_call_s=5.0, idle_s=60.0)
+    io, _, _ = talker_call(two_step(settings).model_copy(update={"limits": limits}))
+
+    async def drive() -> None:
+        await greeted(io)
+        await _held(io, 0, FIRST)
+        await io.clock.advance(limits.max_call_s)  # the limit, in the hold: its notice asked
+        assert [n.kind for n in sent(io, Notice)] == ["ended"]
+        await _closed(io, 0, FIRST)
+        await play(io, 1)  # the notice plays, and the call hangs up
+        await io.close()
+
+    asyncio.run(drive())
+    assert [s.reply_id for s in speaks(io)] == [0, 1]  # the greeting and the notice alone
+
+
+@pytest.mark.parametrize("by", ["resumed", "end"])
+def test_the_model_requests_of_a_dropped_early_start_are_counted(
+    settings: VoiceSettings, by: str
+) -> None:
+    """An early start whose model request went and ended, dropped while its work runs (speech
+    resumed in the hold, or the call ended): that request went, so the call's usage counts it
+    and its tokens (usage.py), beside the turn's own request after it."""
+
+    def script(turn: TalkerTurn) -> list[Step]:
+        used = Usage(input_tokens=120, output_tokens=30)
+        return [
+            ModelRequested(model=MODEL),
+            ModelReplied(model=MODEL, usage=used, first_token_s=0.3),
+            Work(1.0),
+            SpokenClause(text="Made-up answer.", language="en"),
+            ReplyDone(),
+        ]
+
+    io, _, talker = talker_call(two_step(settings), script)
+
+    async def drive() -> None:
+        await greeted(io)
+        await _held(io, 0, FIRST)
+        if by == "resumed":
+            await io.hold_resumed(0)
+            await settle()
+            await io.turn_held(0)
+            await _closed(io, 0, f"{FIRST} {REST}", reused=False)
+            await io.clock.advance(1.0)
+            await settle()
+            await play(io, 1)
+        await io.ending()
+        await io.close()
+
+    asyncio.run(drive())
+    assert talker.cancelled[0] == 0
+    chat = {u.model: (u.requests, u.input_tokens, u.output_tokens) for u in report(io).usage}
+    runs = 2 if by == "resumed" else 1
+    assert chat.get(MODEL) == (runs, 120 * runs, 30 * runs)

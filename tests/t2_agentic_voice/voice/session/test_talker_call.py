@@ -2,13 +2,15 @@
 talker instead of the echo, from the heard history, its reply opened before its first clause and
 spoken clause by clause as the talker writes it, in the reply's scope; each of the talker's
 events played (a card, a tool's start and end, a progress line, a blocked clause, the model's
-usage); the reply language per clause; and a talker's failure told. The fake talker is the
-tests' own (talker_support.py)."""
+usage); the reply language per clause; and a talker's failure told, in the turn's reply
+language, after any clause already said too. The fake talker is the tests' own
+(talker_support.py)."""
 
 from __future__ import annotations
 
 import asyncio
 
+import pytest
 from t2_agentic_voice.agent.talker import (
     ClauseBlocked,
     ModelReplied,
@@ -48,6 +50,7 @@ from tests.t2_agentic_voice.voice.session.talker_support import (
     AGENT,
     MODEL,
     PROGRESS,
+    Fail,
     Step,
     Work,
     answer,
@@ -262,4 +265,59 @@ def test_a_talkers_failure_is_told_and_its_reply_closed(settings: VoiceSettings)
     assert [s.text for s in speaks(io, 1)] == [AGENT.languages[0].notices["error"]]
     (failed,) = emitted(io, ProviderFailed)
     assert (failed.turn_id, failed.kind, failed.retryable) == (0, "rate_limited", True)
+    assert ended(session, 1)
+
+
+@pytest.mark.parametrize("said", [False, True], ids=["before-a-clause", "after-a-clause"])
+def test_a_talkers_failure_is_told_in_the_turns_reply_language(
+    settings: VoiceSettings, said: bool
+) -> None:
+    """A Saudi call, an English turn: the talker fails before any clause, or after one it said
+    in English; the `error` notice is said once either way, in English, the language of the
+    clauses given, else of the turn as heard."""
+
+    def script(turn: TalkerTurn) -> list[Step]:
+        first: list[Step] = [SpokenClause(text="Let me check.", language="en")] if said else []
+        return [*first, Fail(ProviderError("timeout", True))]
+
+    io, session, _ = talker_call(settings, script, language="ar-SA")
+
+    async def drive() -> None:
+        await greeted(io)
+        await talked(io, 0, "Where is my ticket?", language="en")
+        await play(io, 1)
+        await io.ending()
+        await io.close()
+
+    asyncio.run(drive())
+    english = AGENT.languages[0]
+    told = [("Let me check.", "en")] if said else []
+    assert [(s.text, s.language) for s in speaks(io, 1)] == [
+        *told,
+        (english.notices["error"], "en"),
+    ]
+    assert ended(session, 1)
+
+
+def test_a_talker_that_refuses_the_turn_at_once_is_told_and_its_reply_closed(
+    settings: VoiceSettings,
+) -> None:
+    """A team's talker whose `reply` raises as it is called, before any stream: the `error`
+    notice is said and the reply closes, as for a failure inside the stream."""
+    io, session, talker = talker_call(settings)
+
+    def refuse(turn: TalkerTurn, *, scope: object) -> None:
+        raise RuntimeError("a team's talker refused the turn")
+
+    talker.reply = refuse  # type: ignore[assignment,method-assign]
+
+    async def drive() -> None:
+        await greeted(io)
+        await talked(io, 0, "Where is my ticket?")
+        await play(io, 1)
+        await io.ending()
+        await io.close()
+
+    asyncio.run(drive())
+    assert [s.text for s in speaks(io, 1)] == [AGENT.languages[0].notices["error"]]
     assert ended(session, 1)
