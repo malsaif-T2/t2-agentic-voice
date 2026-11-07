@@ -102,8 +102,9 @@ helper = VoiceAgent(
 - **`languages`** come from presets, `Language.english`, `Language.saudi_arabic` and
   `Language.arabic` (Modern Standard Arabic), each with your greeting. A preset brings the
   notices a caller is told (a failure, the end of a call), which `notices=` can replace. The
-  first language is a call's when nothing picks another; each reply then follows the language
-  of the caller's words ([languages.md](languages.md)).
+  first language is a call's when nothing picks another. Each reply follows the language its
+  turn's transcript is in, and since Whisper is told the call's language, that is most often
+  the call's own ([languages.md](languages.md)).
 - **`instructions`** make it a talker: an agent with none is an echo. **`tools`** are its read
   tools; a knowledge base joins them as one more ([concepts.md](concepts.md), "Knowledge").
 
@@ -201,9 +202,12 @@ uv run t2v dev minimal_example.app:make_runtime
    tell the branches' hours. Say "stop" over a reply and it stops at once.
 5. Pick `ar-SA`, press **Start** again, and speak Saudi Arabic («متى يفتح فرع العليا اليوم؟»,
    when does the Olaya branch open today?): the greeting and the answer come back in the Arabic
-   voice. A call joins in the language you picked, and each of the helper's replies follows the
-   language you speak in, among the two it speaks; a tag the agent does not speak (`ar` here)
-   joins in its first language.
+   voice. A call joins in the language you picked; a tag the agent does not speak (`ar` here)
+   joins in its first language. Each of the helper's replies follows the language its turn's
+   transcript is in. Whisper is told the call's language, so speech in the other one is mostly
+   written in the call's own, and the reply follows it there: whether English questions hold
+   up inside an Arabic call is measured before it is promised (plan 006's run X). To ask in
+   English, pick English in the client.
 
 Each turn sends Groq one Whisper request (at most 30 s of audio). The helper's answer sends one
 chat request, or two when it calls its tool (one asks for the tool, the next answers from its

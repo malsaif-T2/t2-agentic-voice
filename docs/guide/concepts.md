@@ -263,11 +263,14 @@ findings in `call.violations` and `turn.expect.blocked()` ([evaluation.md](evalu
 ## The reply's language
 
 A call joins in one language and keeps it for its greeting and its notices, but each of the
-talker's replies follows the language of the caller's turn: a Saudi question gets a Saudi
-answer, an English one in the same call an English answer, when the agent speaks English. The
-turn's language is the one its transcript was heard in, unless its words plainly say otherwise
-(at least 3 words in the other script, and more than twice as many as in the heard one's), so
-English product names inside an Arabic sentence keep the reply Arabic. The prompt's language
+talker's replies follows the language its turn's transcript is in: the one the transcript was
+heard in, unless its words plainly say otherwise (at least 3 words in the other script, and
+more than twice as many as in the heard one's), so English product names inside an Arabic
+sentence keep the reply Arabic. Whisper is told the call's language (D-066), so speech in the
+other language is mostly written in the call's own, and the reply follows it there: an English
+question in an Arabic call is most often transcribed, and answered, as Arabic. Whether English
+questions hold up inside an Arabic call is measured before it is promised (plan 006's run X);
+until then, a caller who will ask in English picks English in the client. The prompt's language
 section, your instructions for that language and the voice all follow the reply's language;
 the rule in full, and how Saudi Arabic and MSA are told apart, are in
 [languages.md](languages.md).
