@@ -297,3 +297,27 @@ def test_a_talkers_failure_is_told_in_the_turns_reply_language(
         (english.notices["error"], "en"),
     ]
     assert ended(session, 1)
+
+
+def test_a_talker_that_refuses_the_turn_at_once_is_told_and_its_reply_closed(
+    settings: VoiceSettings,
+) -> None:
+    """A team's talker whose `reply` raises as it is called, before any stream: the `error`
+    notice is said and the reply closes, as for a failure inside the stream."""
+    io, session, talker = talker_call(settings)
+
+    def refuse(turn: TalkerTurn, *, scope: object) -> None:
+        raise RuntimeError("a team's talker refused the turn")
+
+    talker.reply = refuse  # type: ignore[assignment,method-assign]
+
+    async def drive() -> None:
+        await greeted(io)
+        await talked(io, 0, "Where is my ticket?")
+        await play(io, 1)
+        await io.ending()
+        await io.close()
+
+    asyncio.run(drive())
+    assert [s.text for s in speaks(io, 1)] == [AGENT.languages[0].notices["error"]]
+    assert ended(session, 1)

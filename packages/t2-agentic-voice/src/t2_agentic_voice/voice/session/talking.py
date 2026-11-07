@@ -44,7 +44,7 @@ told what the agent is doing after each (`sync`).
 from __future__ import annotations
 
 import asyncio
-from collections.abc import Awaitable, Callable
+from collections.abc import AsyncIterator, Awaitable, Callable
 from dataclasses import dataclass, field
 from functools import partial
 
@@ -263,8 +263,9 @@ class Talking:
         here, in the reply's scope, even when a cancel comes while an event of it waits (D-060),
         so the model's request never ends later, in the event loop's finalizer."""
         failure: Exception | None = None
-        stream = self._talker.reply(turn, scope=talk.scope)
+        stream: AsyncIterator[TalkerEvent] | None = None
         try:
+            stream = self._talker.reply(turn, scope=talk.scope)  # a team's may raise here
             async for event in stream:
                 at = self._clock.now()
                 if talk.reply is None:

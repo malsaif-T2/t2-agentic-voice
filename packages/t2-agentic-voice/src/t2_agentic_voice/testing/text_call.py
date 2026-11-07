@@ -33,7 +33,9 @@ play as the clock moves; on the system clock, once its reply is written whole (o
 **Expectations**, on each turn's `expect`: `tool_call(name, **args)`, `said(contains=)` (the
 reply as the caller heard it, or is still to hear it when no stop cut it), `blocked()`,
 `cancelled(tool)` and `language(tag)`, each raising AssertionError with what the turn did
-instead. `call.violations` holds the output guard's checks (rule B, domain/guard.py), run on
+instead. An AssertionError the talker raises (a fake model whose script ran out) is raised by
+the next `user`, `advance`, `stop` or the call's end, never heard as the `error` notice only.
+`call.violations` holds the output guard's checks (rule B, domain/guard.py), run on
 every clause the talker said, against the caller's words, the tools' evidence and the cards.
 
 **What a turn did**, as data, for a runner that scores the call rather than asserts on it
@@ -203,6 +205,15 @@ class TextCall:
         await side.aclose()
         if self._folder is not None:
             self._folder.cleanup()
+        if error is None:
+            self._failed()
+
+    def _failed(self) -> None:
+        """Raise, once, the AssertionError the talker raised (a fake model's script that ran
+        out), so the test fails there and never passes on the `error` notice said for it."""
+        if self._watched is not None and (failure := self._watched.failure) is not None:
+            self._watched.failure = None
+            raise failure
 
     def _parts(self) -> tuple[TextSide, CallSession]:
         if self._side is None or self._session is None:
@@ -242,6 +253,7 @@ class TextCall:
         await self._quiet()
         if self.clock == "system":
             await self._until(lambda: self._written(turn_id), "the turn's reply was never written")
+        self._failed()
         return TextTurn(self._reads(), turn_id)
 
     async def advance(self, seconds: float) -> None:
@@ -249,12 +261,14 @@ class TextCall:
         clock, wait `seconds`)."""
         self._parts()
         await self._advance(seconds)
+        self._failed()
 
     async def stop(self) -> None:
         """The client's Stop: the agent's speech stops at once, and the reply's work with it."""
         side, _ = self._parts()
         side.hand(FromClient(message=Stop(v=1, type="stop"), at=self._time.now()))
         await self._quiet()
+        self._failed()
 
     @property
     def violations(self) -> tuple[str, ...]:

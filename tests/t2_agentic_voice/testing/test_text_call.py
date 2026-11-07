@@ -3,7 +3,8 @@ text on a virtual clock: a turn's reply as the caller hears it, its tool calls, 
 clauses, times, requests and usage; a turn said over the reply playing, or while a search runs;
 the client's Stop; the guard's checks of the call; an echo agent's call; and what it refuses.
 The talker is the tests' scripted one (text_call_support.py), but where a fake model's clock is
-tested: the library's talker on a `ScriptedLLM`, whose pauses run on each call's own clock."""
+tested: the library's talker on a `ScriptedLLM`, whose pauses run on each call's own clock, and
+whose script, once it has run out, fails the test."""
 
 from __future__ import annotations
 
@@ -28,7 +29,7 @@ from t2_agentic_voice.domain.declaration import Language, VoiceAgent
 from t2_agentic_voice.domain.guard import IdVerdict
 from t2_agentic_voice.domain.ports.chat_model import ToolCallRequest
 from t2_agentic_voice.domain.words import PRESET_WORDS
-from t2_agentic_voice.evals import Pause, ScriptedLLM, TextCall, TextTurn
+from t2_agentic_voice.evals import Pause, ScriptedLLM, ScriptExhaustedError, TextCall, TextTurn
 from t2_agentic_voice.testing import text_call
 
 from tests.t2_agentic_voice.testing.text_call_support import (
@@ -238,4 +239,20 @@ def test_a_fake_model_pauses_on_each_calls_own_clock_even_when_reused() -> None:
 
     asyncio.run(scene("Hello?", "First answer"))
     asyncio.run(scene("Hello again?", "Second answer"))
+    assert len(llm.requests) == 2
+
+
+def test_a_fake_model_whose_script_ran_out_fails_the_test_never_heard_as_the_error_notice() -> None:
+    """The library's talker on a `ScriptedLLM` of one answer: the call's second turn asks for a
+    second, which the script does not hold, and that turn raises `ScriptExhaustedError` (an
+    AssertionError), where the call alone would have said its `error` notice and passed."""
+    llm = ScriptedLLM([list(ScriptedLLM.reply("First answer."))])
+
+    async def scene() -> None:
+        async with TextCall(AGENT, llm=llm, language="en") as call:
+            (await call.user("Hello?")).expect.said(contains="First answer")
+            with pytest.raises(ScriptExhaustedError):
+                await call.user("And then?")
+
+    asyncio.run(scene())
     assert len(llm.requests) == 2
