@@ -630,6 +630,24 @@ runs"; in this order, each with its smoke first)
       kept from its last 4 turns: 3,927 input tokens over the first turn's two requests,
       12,892 over the fourth's.
   - **Debt:** TD-129; TD-121 narrowed (Tn's search instructions paid).
+- 2026-11-07: **Run W, on dev** (W0, W1, X: 292 variants of 98 items each, no failure; $0.0941
+  each, $0.28 in all; the history's lines 3635f1e, 86c0a17, 6469d5e).
+  - **W1, Ole5's Whisper prompt (Q17):** not kept by the registered rule, since term recall did
+    not rise (0.333 in both). It did raise the right count beyond the noise: 12 items better, 3
+    worse (p = 0.035); accuracy 0.390 to 0.442, word errors 0.259 to 0.223. The stop words went
+    from 0.69 to 0.92 and the repeat requests from 0.32 to 0.53; Saudi Arabic rose by 0.117,
+    beyond the noise. Text from silence, raw, rose from 104 to 156 characters: Whisper's own
+    captions («ترجمة نانسي قنقر», «اشتركوا في القناة»), never a word of the prompt; after the live
+    filter (`stt.no_speech_max` 0.55 and the captions), W1 leaves 1 of the 12 silence, noise and
+    echo variants' text, W0 5. Held-out is not read.
+  - **X, every variant sent as Arabic (Q9):** English in an Arabic call is not supported. The
+    English items' accuracy fell from 0.813 to 0.027 (22 items worse, none better, p < 0.0001),
+    as the guide's `languages.md` already says: a caller who will speak English picks English.
+  - **How it was compared.** Each run's history line was committed before the next arm ran, so
+    W1 and X ran at commits one history line after W0's (`git diff` shows only
+    `evals/history.jsonl`), and `poe eval-compare` refused their commits. They were compared as
+    copies of their scorecards with W0's commit, the data digest checked equal. The runs of one
+    comparison keep their history lines aside until the last has run, as M3's did.
 
 ## Decision log
 
