@@ -31,8 +31,9 @@ from t2_agentic_voice.domain.cards import Card
 from t2_agentic_voice.domain.ports.knowledge import KnowledgeBase, Passage
 
 # The tool's name as the talker calls it; about the most of a passage's text the talker reads,
-# by default (Ole5's median passage is 660 characters, its 90th percentile 1,469); the share of
-# it a cut at a line's end keeps at least, else the cut is at a word; and what follows a cut.
+# by default (the first app's median passage holds 660 characters, its 90th percentile 1,469);
+# the share of it a cut at a line's end keeps at least, else the cut is at a word; and what
+# follows a cut.
 NAME = "search_knowledge"
 PASSAGE_CHARS = 1500
 LINE_NEAR = 0.75
