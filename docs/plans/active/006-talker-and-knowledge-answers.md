@@ -705,6 +705,33 @@ runs"; in this order, each with its smoke first)
   - From the raw words, an expected passage is in the top 5 for 0.854 of the items, under K's
     90% target; K reads the talker's own query too. If K misses it, a sparse query beside the
     dense one is the first amendment to propose (the decision log, 2026-11-06).
+- 2026-11-07: **Run K's first dev round, exploratory** (K1 `gpt-oss-120b` and K3 `gpt-oss-20b`,
+  twice each, at dfc6953, 136 variants each, `--call-language first`, k = 7; $0.75; the history's
+  lines 7a52c20). The keep rule kept K3: both within 1.0 s (the model's own medians 0.600 and
+  0.550 s; wall 0.959 and 0.907 s), K3 better on 17 items, worse on 9 (p = 0.17), a tie to the
+  faster. Every target but the guard's failed:
+
+  | Run | Right (items) | Honest `none` | Language | Retrieval, top 5 |
+  | --- | --- | --- | --- | --- |
+  | k1-dev-a | 0.302 | 0.400 | 0.301 | 0.885 |
+  | k1-dev-b | 0.281 | 0.400 | 0.293 | 0.885 |
+  | k3-dev-a | 0.292 | 0.800 | 0.359 | 0.865 |
+  | k3-dev-b | 0.333 | 0.833 | 0.377 | 0.854 |
+
+  Read on dev, before any decision rests on the round, it showed four faults:
+  - **English questions answered in Arabic** (26 of 42 English variants in k1-dev-a, 17 in
+    k3-dev-a): the reply's tag and the prompt's language section said English, and the model
+    wrote Arabic, following the seven Arabic passages. A live English call would have the
+    English voice read Arabic (the rehearsal's step 7). A bug.
+  - **The judge's register is wrong.** The lead labelled 20 replies by hand: the verdict
+    prompt's register agreed with 7 (54 of 59 Saudi-marked replies in k1-dev-a called `msa`); a
+    register question of its own agreed with 17 (`llama-3.3-70b`) and 18 (`gpt-oss-120b`).
+  - **MSA callers answered in Saudi Arabic** (8 of the 10 MSA replies labelled), against Ole5's
+    instructions and the plan's item 8.
+  - **One cause given where the knowledge base has several**: most `partly_right` verdicts name
+    one of an item's two to four key facts (a median of 25 words), such as one of `n02`'s three
+    causes; three fit in one spoken sentence.
+  The round decides nothing: the talker and the judge are fixed, and the four dev runs run again.
 
 ## Decision log
 
