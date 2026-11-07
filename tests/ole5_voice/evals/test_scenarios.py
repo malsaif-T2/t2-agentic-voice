@@ -12,6 +12,7 @@ from ole5_voice.evals.items import EVALS, GoldenSetError
 from ole5_voice.evals.knowledge_set import KNOWLEDGE_DIR, load_knowledge_items
 from ole5_voice.evals.scenarios import (
     FOLLOWS,
+    REGISTER_CHECKS,
     SCENARIOS_DIR,
     Scenario,
     ScriptTurn,
@@ -69,7 +70,7 @@ def test_each_rule_refuses_what_it_should() -> None:
         [
             _scenario("s1", ScriptTurn(says="x", when="agent_speaking", search=True)),
             _scenario("s1", good, ScriptTurn(says="y", cuts_reply=True)),
-            _scenario("s3", good, ScriptTurn(says="z", cancels_search=True, when="agent_speaking")),
+            _scenario("s3", good, ScriptTurn(says="z", when="tool_running", search=True)),
             _scenario("s4", ScriptTurn(says="w", item="h1"), ScriptTurn(says="v", item="zz")),
             _scenario("s5", ScriptTurn(says="u"), rehearsal=True),
         ],
@@ -81,19 +82,23 @@ def test_each_rule_refuses_what_it_should() -> None:
         "the scenario 's1' twice",
         "s1, turn 1: the first turn follows no reply",
         "s1, turn 2: cuts a reply only when said over it (when = agent_speaking)",
-        "s3, turn 2: cancels a search only when said while it runs (when = tool_running)",
         "s4, turn 1: names 'h1', a held-out item, whose answers are read as counts",
         "s4, turn 2: names 'zz', which the knowledge set does not hold",
         "s5, turn 1: expects nothing of its reply",
     ]
 
 
-def test_a_turns_expectations_are_its_facts_or_its_items_and_what_it_follows() -> None:
+def test_a_turns_expectations_are_its_facts_or_its_items_what_it_follows_and_its_register() -> None:
     items = {"a1": item("a1")}
     assert ScriptTurn(says="x", item="a1").expectations(items) == items["a1"].key_facts
     turn = ScriptTurn(says="x", item="a1", facts=("Own.",), follows="repeats")
     assert turn.expectations(items) == ("Own.", FOLLOWS["repeats"])
     assert ScriptTurn(says="x").expectations(items) == ()
+    # A reply held to Arabic is judged on its register too; its script is read from its words.
+    saudi = ScriptTurn(says="x", language="ar-SA", follows="continues")
+    assert saudi.expectations(items) == (FOLLOWS["continues"], REGISTER_CHECKS["ar-SA"])
+    assert ScriptTurn(says="x", language="ar").expectations(items) == (REGISTER_CHECKS["ar"],)
+    assert ScriptTurn(says="x", language="en").expectations(items) == ()
 
 
 def test_a_folder_that_cannot_be_read_is_refused(tmp_path: Path) -> None:
@@ -106,4 +111,12 @@ def test_a_folder_that_cannot_be_read_is_refused(tmp_path: Path) -> None:
         encoding="utf-8",
     )
     with pytest.raises(GoldenSetError, match="holds the scenario 's2'"):
+        load_scenarios(folder)
+    # No turn expects a correction to cancel a search, which TextCall's calm speech outlasts.
+    (folder / "s1.toml").write_text(
+        'id = "s1"\nrehearsal = false\nlanguage = "en"\nnotes = "x"\n[[turns]]\nsays = "hi"\n'
+        "cancels_search = true\n",
+        encoding="utf-8",
+    )
+    with pytest.raises(GoldenSetError):
         load_scenarios(folder)

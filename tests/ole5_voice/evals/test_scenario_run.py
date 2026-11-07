@@ -1,8 +1,9 @@
 """`poe eval-scenarios` (scenario_run.py, scenario_score.py), run S, on fakes only: ten made-up
 scripted calls, each played three times, checked turn by turn (the tool called or not, the
-earlier reply cut or its search cancelled, the language, the words, the judge's checks), each
-scenario counted against its target (the rehearsal's 3 of 3, the others 2 of 3); a smoke test
-first; a stopped run resumed; refusals before anything is sent."""
+earlier reply cut, the language read from the reply's words, the words, the judge's checks),
+each scenario counted against its target (the rehearsal's 3 of 3, the others 2 of 3); a
+correction said while the earlier turn's search runs; a moment the call never reaches a stuck
+play; a smoke test first; a stopped run resumed; refusals before anything is sent."""
 
 from __future__ import annotations
 
@@ -23,7 +24,7 @@ from ole5_voice.evals.scenario_score import (
     needed,
 )
 from ole5_voice.evals.scenarios import ScriptTurn
-from ole5_voice.evals.talker_data import HeardTurn, ToolUse
+from ole5_voice.evals.talker_data import Clause, HeardTurn, ToolUse
 from ole5_voice.evals.talker_lines import ScenarioLine
 from pydantic import ValidationError
 from t2_agentic_voice import ProviderError
@@ -47,7 +48,7 @@ def write_scenarios(data: Path, count: int = 10) -> None:
             lines += ["", "[[turns]]", 'says = "go on 1"', 'follows = "continues"']
         if n == 2:
             lines += ["", "[[turns]]", 'says = "correction 2"', 'when = "tool_running"']
-            lines += ["cancels_search = true", 'facts = ["It answers the correction."]']
+            lines += ["search = true", 'facts = ["It answers the correction."]']
         (folder / f"s{n:02d}.toml").write_text("\n".join(lines) + "\n", encoding="utf-8")
 
 
@@ -57,7 +58,6 @@ def setup(tmp_path: Path) -> Setup:
     write_scenarios(found.data)
     found.calls.script["stop 1"] = Scripted(cuts_earlier=True, search=False, said="Okay.")
     found.calls.script["go on 1"] = Scripted(search=False)
-    found.calls.script["correction 2"] = Scripted(cancels_search=True)
     return found
 
 
@@ -77,8 +77,9 @@ def test_each_scenario_is_played_three_times_and_counted_against_its_target(setu
     first = next(play for play in card.plays if play.scenario == "s01")
     assert [check.cut for check in first.checks] == [None, True, None]
     assert first.checks[1].words is True and first.checks[2].judged == (True,)
+    # The correction is said while the first turn's search runs, which stops its reply.
     second = next(play for play in card.plays if play.scenario == "s02")
-    assert second.checks[1].cancelled is True
+    assert second.turns[0].fate == "rolled_back" and second.passed is True
     # The plays go round the scenarios: every one once, then again.
     order = [
         json.loads(line)["scenario"]
@@ -128,6 +129,14 @@ def test_a_judge_with_no_valid_answer_is_a_failure(setup: Setup) -> None:
     assert _main(setup) == 0
     plays = [play for play in _card(setup).plays if play.scenario == "s03"]
     assert {play.failure for play in plays} == {"judge"}
+
+
+def test_a_moment_the_call_never_reaches_is_a_stuck_play(setup: Setup) -> None:
+    setup.calls.script["question 2"] = Scripted(search=False)  # no search to correct over
+    assert _main(setup) == 0
+    card = _card(setup)
+    assert card.complete and {p.failure for p in card.plays if p.scenario == "s02"} == {"stuck"}
+    assert {count.scenario: count for count in card.scenarios}["s02"].met is None
 
 
 def test_a_failed_search_or_a_stuck_play_is_counted_apart(setup: Setup) -> None:
@@ -227,16 +236,29 @@ def test_the_command_line_refuses_what_a_run_cannot_be(
 def test_checks_are_read_from_what_the_call_did() -> None:
     searched = HeardTurn(fate="cut", tools=(ToolUse(tool=TOOL, outcome="cancelled"),))
     quiet = HeardTurn(fate="answered")
+    # Tagged ar-SA, as the library tags a reply by the caller's words, but said in English.
+    english = HeardTurn(fate="answered", clauses=(_clause("Open the settings."),))
+    arabic = HeardTurn(fate="answered", clauses=(_clause("افتح الإعدادات."),))
     turns = [
         ScriptTurn(says="a", search=True, language="en"),
-        ScriptTurn(says="b", when="tool_running", cancels_search=True, cuts_reply=False),
+        ScriptTurn(says="b", when="tool_running", cuts_reply=False),
         ScriptTurn(says="c", when="agent_speaking", cuts_reply=True, max_words=0),
+        ScriptTurn(says="d", language="ar-SA"),
+        ScriptTurn(says="e", language="en"),
+        ScriptTurn(says="f", language="ar-SA"),
     ]
-    found = checks_of(turns, [searched, quiet, quiet], [None, Checked(holds=(False,)), None], TOOL)
+    heard = [searched, quiet, quiet, english, english, arabic]
+    judged = [None, Checked(holds=(False,)), None, None, None, None]
+    found = checks_of(turns, heard, judged, TOOL)
     assert found[0] == TurnCheck(search=True, language=False)  # it said nothing in English
-    assert found[1].cancelled is True and found[1].passed is False
+    assert found[1].passed is False
     assert found[2].cut is False and found[2].words is True
+    assert [check.language for check in found[3:]] == [False, True, True]
     assert needed(True, 3) == 3 and needed(False, 3) == 2 and needed(False, 5) == 4
+
+
+def _clause(text: str) -> Clause:
+    return Clause(text=text, language="ar-SA", fate="played", played_fraction=1.0)
 
 
 def test_a_stop_the_talker_swallowed_still_stops_the_run(setup: Setup) -> None:

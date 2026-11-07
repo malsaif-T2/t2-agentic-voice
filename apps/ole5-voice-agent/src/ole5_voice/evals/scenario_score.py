@@ -2,8 +2,9 @@
 turn, and the scorecard with each scenario's target.
 
 A turn's checks are read from what the call did (`checks_of`): the knowledge tool called or not,
-the earlier reply cut or its search cancelled, the reply's language and its words; and the
-judge's checks of its facts and of what it repeats or continues. A play passes when every check
+the earlier reply cut, the reply's language (its own words' script, `talker_data.HELD_TO`) and
+its words; and the judge's checks of its facts, of what it repeats or continues, and of the
+register of its Arabic (`scenarios.REGISTER_CHECKS`). A play passes when every check
 of every turn holds and the output guard found no violation in the call. A scenario meets its
 target when it passed in every play if it is one of the rehearsal's, and in at least two of
 three otherwise (`needed`); a play with no result (`failure`) is not scored, and a scenario with
@@ -24,7 +25,7 @@ from ole5_voice.evals.judge import Checked
 from ole5_voice.evals.models import Commit, Model, Name, Sha256
 from ole5_voice.evals.runs import Note, Plain, Shown
 from ole5_voice.evals.scenarios import Scenario, ScriptTurn
-from ole5_voice.evals.talker_data import Failure, HeardTurn, ModelName
+from ole5_voice.evals.talker_data import HELD_TO, Failure, HeardTurn, ModelName
 from ole5_voice.evals.talker_score import PriceShown, Session, Stopped
 
 _S = Annotated[float, Field(ge=0, allow_inf_nan=False)]
@@ -36,7 +37,6 @@ class TurnCheck(Model):
 
     search: bool | None = None
     cut: bool | None = None
-    cancelled: bool | None = None
     language: bool | None = None
     words: bool | None = None
     judged: tuple[bool, ...] = ()
@@ -44,7 +44,7 @@ class TurnCheck(Model):
 
     @property
     def passed(self) -> bool:
-        found = (self.search, self.cut, self.cancelled, self.language, self.words)
+        found = (self.search, self.cut, self.language, self.words)
         return all(value is not False for value in found) and all(self.judged)
 
 
@@ -137,12 +137,9 @@ def checks_of(
             TurnCheck(
                 search=None if turn.search is None else reply.searched(tool) == turn.search,
                 cut=earlier.fate in ("cut", "rolled_back") if turn.cuts_reply and earlier else None,
-                cancelled=(
-                    any(use.tool == tool and use.outcome == "cancelled" for use in earlier.tools)
-                    if turn.cancels_search and earlier
-                    else None
+                language=(
+                    None if turn.language is None else reply.written_in(HELD_TO[turn.language][0])
                 ),
-                language=None if turn.language is None else reply.language == turn.language,
                 words=None if turn.max_words is None else reply.words <= turn.max_words,
                 judged=checked.holds or () if checked else (),
                 reasons=checked.reasons if checked else (),

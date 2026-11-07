@@ -3,12 +3,14 @@ set as one call through `talker_call.ask`, its words said once, then read and sc
 
 A variant's call is held in the agent's first language (`--call-language first`, an Arabic call,
 as Q9's run X may rule) or in its own words' (`variant`), and its reply is held to its words'
-language either way (`talker_data.TAGS`). Within `--variant-timeout-s` on the wall clock, the
-call runs; then, for an answerable item, the reference search of the variant's raw words; then
-the judge. A provider's failure, in the call, its search or the reference search, makes the
-variant a `provider` failure (a model request that failed after every attempt too, though the
-talker caught it), its limit passed a `stuck` one, and a judge with no valid verdict a `judge`
-one: each counted apart. When the cap or the key's daily limit stops a request
+language either way (`talker_data.TAGS`), read from the reply's own words and the judge's
+register (`talker_data.in_language`), never from the tag the library gave its clauses. Within
+`--variant-timeout-s` on the wall clock, the call runs and its reply plays; then, for an
+answerable item, the reference search of the variant's raw words; then the judge. A provider's
+failure, in the call, its search or the reference search, makes the variant a `provider` failure
+(a model request that failed after every attempt too, though the talker caught it), its limit
+passed (or a moment the call waited for in vain) a `stuck` one, and a judge with no valid verdict
+a `judge` one: each counted apart. When the cap or the key's daily limit stops a request
 (`chat_pacing`), the variant is dropped unscored (`StopRun`), so a resumed run measures it again.
 """
 
@@ -28,7 +30,7 @@ from ole5_voice.evals.kb_points import TOP, KnowledgeData, RecordingKnowledge
 from ole5_voice.evals.knowledge_set import KnowledgeItem, KnowledgeVariant
 from ole5_voice.evals.models import Split
 from ole5_voice.evals.talker_call import CallFactory, Held, ask
-from ole5_voice.evals.talker_data import TAGS, Failure, HeardTurn, Tag
+from ole5_voice.evals.talker_data import TAGS, Failure, HeardTurn, Tag, in_language
 from ole5_voice.evals.talker_score import SearchMade, Stopped, VariantRecord
 
 CALLER: Final = Caller(subject="talker-run")  # the reference search's caller, made up
@@ -157,7 +159,11 @@ class Measuring:
             own_hit=self.data.index.hit(own, item.expected) if answered and answerable else None,
             raw_hit=self.data.index.hit(raw, item.expected) if raw is not None else None,
             search_right=searched == item.needs_search if answered else None,
-            language_right=turn.language == want if turn is not None and answered else None,
+            language_right=(
+                in_language(turn, want, judged.arabic)
+                if turn is not None and judged is not None and answered
+                else None
+            ),
             judged=judged,
             passed=judged.verdict == PASSING[item.kind] if answered and judged else None,
             failure=failure,
@@ -167,7 +173,13 @@ class Measuring:
     async def _ask(self, words: str, tag: Tag) -> Held:
         try:
             return await ask(
-                self.agent, self.paced, self.settings, words=words, language=tag, call=self.call
+                self.agent,
+                self.paced,
+                self.settings,
+                words=words,
+                language=tag,
+                call=self.call,
+                limit_s=self.timeout_s,
             )
         except (CapReachedError, DailyLimitError) as error:
             raise StopRun(stop_of(error)) from None

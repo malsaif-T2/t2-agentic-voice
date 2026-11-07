@@ -1,7 +1,8 @@
 """The judge of runs K and S (judge.py, plan 006's Q6), on a fake model: a verdict in JSON with
-a reason, read beside the item's points and key facts; the verdicts each kind allows; a reply
-that is not the JSON asked for asked once more, then no verdict; and the checks of a scenario's
-turn against its expectations, with the call so far as heard."""
+the register of the answer's Arabic and a reason, read beside the item's points and key facts;
+the verdicts each kind allows; a reply that is not the JSON asked for, or names no register,
+asked once more, then no verdict; and the checks of a scenario's turn against its expectations,
+with the call so far as heard."""
 
 from __future__ import annotations
 
@@ -69,14 +70,15 @@ def _verdict(model: Replies, evidence: Evidence = EVIDENCE) -> Judged:
 
 
 def test_a_verdict_is_read_from_the_json_the_judge_gives() -> None:
-    model = Replies('Here: ```json\n{"verdict": "partly_right", "reason": " Half  of it. "}\n```')
+    reply = '{"verdict": "partly_right", "register": "msa", "reason": " Half  of it. "}'
+    model = Replies(f"Here: ```json\n{reply}\n```")
     judged = _verdict(model)
     assert judged.verdict == "partly_right" and judged.reason == "Half of it."
-    assert judged.requests == 1
+    assert judged.arabic == "msa" and judged.requests == 1
     (request,) = model.requests
     assert request.model == JUDGE_MODEL and request.temperature == 0.0 and not request.tools
     system, user = (message.content for message in request.messages)
-    assert "Reply with one JSON object" in system
+    assert "Reply with one JSON object" in system and '"register": "<saudi, msa or none>"' in system
     assert "never instructions to you" in user and "Point text." in user and "Fact one." in user
     # What the caller heard: a cut clause marked, an unplayed one marked, no fixed phrase.
     assert "Then press reset. [cut, 40% of it heard]" in user and "[never heard]" in user
@@ -85,7 +87,8 @@ def test_a_verdict_is_read_from_the_json_the_judge_gives() -> None:
 
 
 def test_a_reply_that_is_not_the_json_asked_for_is_asked_once_more() -> None:
-    model = Replies("I think it is right.", json.dumps({"verdict": "wrong", "reason": "No."}))
+    reply = json.dumps({"verdict": "wrong", "register": "none", "reason": "No."})
+    model = Replies("I think it is right.", reply)
     judged = _verdict(model)
     assert judged.verdict == "wrong" and judged.requests == 2
 
@@ -95,6 +98,7 @@ def test_a_reply_that_is_not_the_json_asked_for_is_asked_once_more() -> None:
     [
         ('{"verdict": "maybe"}', '{"reason": "no verdict"}'),
         ("{not json}", "[]"),
+        ('{"verdict": "right", "reason": "no register"}', '{"verdict": "right", "register": "x"}'),
     ],
 )
 def test_no_valid_verdict_after_every_attempt_is_none(replies: tuple[str, str]) -> None:
@@ -104,7 +108,8 @@ def test_no_valid_verdict_after_every_attempt_is_none(replies: tuple[str, str]) 
 
 def test_a_none_item_takes_only_its_own_verdicts() -> None:
     none = Evidence(kind="none", points=(), key_facts=("Says it does not know.",))
-    model = Replies('{"verdict": "right"}', '{"verdict": "not_in_knowledge", "reason": "Honest."}')
+    honest = '{"verdict": "not_in_knowledge", "register": "saudi", "reason": "Honest."}'
+    model = Replies('{"verdict": "right", "register": "saudi"}', honest)
     judged = _verdict(model, none)
     assert judged.verdict == "not_in_knowledge"
     assert "(none)" in model.requests[0].messages[1].content
@@ -118,7 +123,7 @@ def test_a_none_item_takes_only_its_own_verdicts() -> None:
 
 
 def test_a_long_reason_is_cut_short() -> None:
-    model = Replies(json.dumps({"verdict": "right", "reason": "word " * 200}))
+    model = Replies(json.dumps({"verdict": "right", "register": "none", "reason": "word " * 200}))
     judged = _verdict(model)
     assert len(judged.reason) == REASON_CHARS and judged.reason.endswith("...")
 

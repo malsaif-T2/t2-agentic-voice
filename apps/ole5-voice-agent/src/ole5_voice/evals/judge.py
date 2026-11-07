@@ -5,17 +5,19 @@ talker's.
 
 - **A verdict** (run K): the judge reads the caller's words, what the talker said aloud and the
   cards it showed, beside the item's expected points' text and key facts, and answers in JSON
-  with one verdict (`VERDICTS`) and a short reason. The verdicts it may give depend on the
-  item's kind (`ALLOWED`): a `none` item's answer is an honest "not in my knowledge", wrong or
-  invented. `PASSING` is the verdict that counts as a right answer for each kind.
+  with one verdict (`VERDICTS`), the register of the answer's Arabic (`REGISTERS`: run K reads a
+  reply's script from its own words, its register from the judge) and a short reason. The
+  verdicts it may give depend on the item's kind (`ALLOWED`): a `none` item's answer is an
+  honest "not in my knowledge", wrong or invented. `PASSING` is the verdict that counts as a
+  right answer for each kind.
 - **Checks** (run S): the judge reads the call so far as the caller heard it (a cut reply
   marked), the turn's words and its reply, and answers, for each of the turn's expectations,
   whether it holds, with a short reason.
 
-A reply that is not the JSON asked for, or names a verdict the item's kind does not allow, is
-asked once more (`JUDGE_ATTEMPTS` in all); then it is no verdict, which a run counts as a judge
-failure, not an answer. What the talker said reaches the judge as data, framed so. Nothing here
-logs a text.
+A reply that is not the JSON asked for, or names a verdict the item's kind does not allow or no
+register, is asked once more (`JUDGE_ATTEMPTS` in all); then it is no verdict, which a run counts
+as a judge failure, not an answer. What the talker said reaches the judge as data, framed so.
+Nothing here logs a text.
 """
 
 from __future__ import annotations
@@ -30,7 +32,7 @@ from t2_agentic_voice.ports import ChatMessage, ChatModel, ChatRequest, TextDelt
 
 from ole5_voice.evals.knowledge_set import KnowledgeKind
 from ole5_voice.evals.models import Model
-from ole5_voice.evals.talker_data import VERDICTS, HeardTurn, Verdict
+from ole5_voice.evals.talker_data import REGISTERS, VERDICTS, HeardTurn, Register, Verdict
 
 JUDGE_MODEL: Final = "llama-3.3-70b-versatile"
 JUDGE_ATTEMPTS: Final = 2
@@ -73,8 +75,11 @@ VERDICT_SYSTEM: Final = (
     "false; wrong, it misses them or says something the reference contradicts; invented, it "
     "states a step, screen, button, number, period or policy the reference does not support; "
     "not_in_knowledge, it says plainly that it does not have this information, and invents "
-    "nothing. Reply with one JSON object and nothing else: "
-    '{"verdict": "<an allowed verdict>", "reason": "<one short sentence>"}.'
+    "nothing. Name also the register of the Arabic it said: saudi, the Saudi dialect (English "
+    "product terms among it or not); msa, Modern Standard Arabic; none, it said no Arabic. "
+    "Reply with one JSON object and nothing else: "
+    '{"verdict": "<an allowed verdict>", "register": "<saudi, msa or none>", '
+    '"reason": "<one short sentence>"}.'
 )
 CHECKS_SYSTEM: Final = (
     "You check one turn of a scripted call with a voice assistant for Ole5, a correspondence "
@@ -90,10 +95,11 @@ CHECKS_SYSTEM: Final = (
 
 
 class Judged(Model):
-    """The judge's verdict on one answer, with its reason, and the requests it took; no verdict
-    when it gave none valid after every attempt."""
+    """The judge's verdict on one answer, the register of its Arabic, with its reason, and the
+    requests it took; no verdict when it gave none valid after every attempt."""
 
     verdict: Verdict | None = None
+    arabic: Register | None = None  # the register of the answer's Arabic
     reason: str = Field(default="", max_length=REASON_CHARS)
     requests: int = Field(default=0, ge=0)
 
@@ -121,6 +127,7 @@ class _Reply(BaseModel):
     model_config = ConfigDict(extra="ignore", hide_input_in_errors=True)
 
     verdict: str
+    arabic: str = Field(default="", alias="register")
     reason: str = ""
 
 
@@ -163,9 +170,13 @@ class Judge:
         )
         for attempt in range(1, JUDGE_ATTEMPTS + 1):
             reply = _parsed(_Reply, await self._ask(VERDICT_SYSTEM, user))
-            if reply is not None and reply.verdict in allowed:
-                verdict = next(v for v in VERDICTS if v == reply.verdict)
-                return Judged(verdict=verdict, reason=_short(reply.reason), requests=attempt)
+            if reply is not None and reply.verdict in allowed and reply.arabic in REGISTERS:
+                return Judged(
+                    verdict=next(v for v in VERDICTS if v == reply.verdict),
+                    arabic=next(r for r in REGISTERS if r == reply.arabic),
+                    reason=_short(reply.reason),
+                    requests=attempt,
+                )
         return Judged(requests=JUDGE_ATTEMPTS)
 
     async def checks(

@@ -1,7 +1,8 @@
 """`poe eval-talker` (talker_run.py), run K, on fakes only: each variant measured once through
-the call factory, scored, written as it finishes; the scorecard and a history line per session;
-held-out read only as aggregates; the smoke test first; the cap and the day's limit stopping a
-run, which `--resume` goes on with; failures counted apart (plan 006's registration, K)."""
+the call factory, scored (the reply language read from its own words and the judge's register),
+written as it finishes; the scorecard and a history line per session; held-out read only as
+aggregates; the smoke test first; the cap and the day's limit stopping a run, which `--resume`
+goes on with; failures counted apart (plan 006's registration, K)."""
 
 from __future__ import annotations
 
@@ -17,7 +18,7 @@ from ole5_voice.evals.talker_score import TalkerScorecard
 from t2_agentic_voice import ProviderError
 
 from tests.ole5_voice.evals.talker_fakes import JUDGE, TALKER, Scripted, passage
-from tests.ole5_voice.evals.talker_support import Setup, make_setup
+from tests.ole5_voice.evals.talker_support import Setup, item, make_setup
 
 DEV = ("--split", "dev", "--call-language", "variant")
 
@@ -73,6 +74,37 @@ def test_a_dev_run_measures_each_variant_once_and_writes_what_it_found(setup: Se
     assert first.requests == {TALKER: 7, JUDGE: 7} and first.session == 1 and first.complete
     assert first.cost_usd == pytest.approx(card.cost_usd) and first.cost_usd > 0
     assert setup.chat.closed and setup.kb.closed
+
+
+def test_the_reply_language_is_read_from_its_own_words_and_the_judges_register(
+    tmp_path: Path,
+) -> None:
+    asked = (
+        ("msa", "كيف أطبع المراسلة؟"),
+        ("english", "How do I print?"),
+        ("saudi", "كيف أطبع؟"),
+        ("mixed", "كيف أسوي print؟"),
+    )
+    setup = make_setup(tmp_path, items=(item("a1", asked=asked),))
+    # Every reply is tagged ar-SA, as the library tags a reply in an ar-SA call by the caller's
+    # words: only its own words, and the judge's register, say what language it is in.
+    for words, said in (
+        ("كيف أطبع المراسلة؟ a1", "يمكنك طباعة المراسلة من القائمة."),
+        ("How do I print? a1", "You can print it from the menu."),
+        ("كيف أطبع؟ a1", "يمكنك طباعتها من القائمة."),
+        ("كيف أسوي print؟ a1", "تقدر 打印 من القائمة."),
+    ):
+        setup.calls.script[words] = Scripted(language="ar-SA", said=said)
+    setup.chat.registers = {"كيف أطبع المراسلة؟ a1": "msa", "كيف أطبع؟ a1": "msa"}
+    argv = [*setup.argv(), "--split", "dev", "--call-language", "first"]
+    assert talker_run.main(argv, parts=setup.parts()) == 0
+    by_variant = {r.variant: r for r in _card(setup).variants}
+    assert by_variant["v1"].language_right is True  # MSA words, an Arabic reply in MSA
+    assert by_variant["v2"].language_right is True  # English words, an English reply
+    assert by_variant["v3"].language_right is False  # Saudi words, a reply in MSA
+    assert by_variant["v4"].language_right is False  # a word in another script
+    judged = by_variant["v1"].judged
+    assert judged is not None and judged.arabic == "msa"
 
 
 def test_every_call_is_held_in_the_agents_first_language_when_asked(setup: Setup) -> None:

@@ -3,12 +3,20 @@ the judge's verdicts, what one turn of a `TextCall` did as a run keeps it (`Hear
 the `evals` facade's turn data, never from the talker's own events), and what a run spent on each
 model (`ModelSpend`). Strict, as every model of the golden set's commands: a result read back is
 checked as it is read, and an error never echoes the value it refused.
+
+**The reply's language** is read from its own words, never from its clauses' tags: the library
+tags a clause by the caller's words (an MSA turn in an `ar-SA` call stays `ar-SA`), and a tag
+cannot tell Saudi from MSA. Each of the talker's clauses is in the script most of its words are
+written in (`script_of`), and a reply is in a language's script when every clause that has one
+is, and no word is in another script (`HeardTurn.written_in`); an Arabic reply's register is the
+judge's word (`Register`). `in_language` holds a reply to both, as `HELD_TO` says.
 """
 
 from __future__ import annotations
 
+import unicodedata
 from collections import Counter
-from collections.abc import Mapping
+from collections.abc import Iterable, Mapping
 from typing import Annotated, Final, Literal, get_args
 
 from pydantic import Field, JsonValue
@@ -29,6 +37,20 @@ TAGS: Final[Mapping[SpokenLanguage, Tag]] = {
     "mixed": "ar-SA",
     "msa": "ar",
     "english": "en",
+}
+# The script a word or a clause is written in: Arabic's, Latin's (English's), or another (the
+# spike's Llama replies put Chinese and Greek words into Arabic ones).
+Script = Literal["ar", "en", "other"]
+# The register of a reply's Arabic, as the judge reads it: Saudi, Modern Standard, or none (a
+# reply with no Arabic).
+Register = Literal["saudi", "msa", "none"]
+REGISTERS: Final = get_args(Register)
+# The script and the register a reply held to a tag is in: Arabic in the Saudi register for
+# `ar-SA` (Saudi words, or Arabic with English product terms), in MSA for `ar`, English for `en`.
+HELD_TO: Final[Mapping[Tag, tuple[Script, Register]]] = {
+    "ar-SA": ("ar", "saudi"),
+    "ar": ("ar", "msa"),
+    "en": ("en", "none"),
 }
 # The judge's verdict on an answer (the registration's K, Q6): right, partly right, wrong,
 # invented, or an honest "not in my knowledge".
@@ -110,11 +132,13 @@ class HeardTurn(Model):
         """The words the talker said that the caller heard."""
         return len(self.said.split())
 
-    @property
-    def language(self) -> Tag | None:
-        """The language most of the talker's clauses were spoken in, None when it said none."""
-        found = Counter(clause.language for clause in self.clauses if not clause.phrase)
-        return found.most_common(1)[0][0] if found else None
+    def written_in(self, script: Script) -> bool:
+        """Whether the talker's own clauses, heard or not, are written in `script`: each that
+        has a script (`script_of`), at least one, and no word of any in another script."""
+        own = [clause.text for clause in self.clauses if not clause.phrase]
+        scripts = [found for found in map(script_of, own) if found is not None]
+        other = any(_word_script(word) == "other" for text in own for word in text.split())
+        return bool(scripts) and all(found == script for found in scripts) and not other
 
     def searched(self, tool: str) -> bool:
         """Whether the reply called the tool `tool`."""
@@ -130,6 +154,36 @@ class HeardTurn(Model):
             for clause in self.clauses
             if not clause.phrase
         )
+
+
+def in_language(turn: HeardTurn, tag: Tag, register: Register | None) -> bool:
+    """Whether `turn`'s reply is in the language `tag` holds it to (`HELD_TO`): written in its
+    script, and, held to Arabic, in its register as the judge read it (`register`)."""
+    script, wanted = HELD_TO[tag]
+    return turn.written_in(script) and (script != "ar" or register == wanted)
+
+
+def script_of(text: str) -> Script | None:
+    """The script most of `text`'s words are written in, a word's the script most of its letters
+    are; None when it holds no letter, or as many words in two scripts (a short Arabic clause
+    around English product terms, an English one quoting the screen's Arabic labels)."""
+    return _most(_word_script(word) for word in text.split())
+
+
+def _word_script(word: str) -> Script | None:
+    return _most(_letter_script(letter) for letter in word if letter.isalpha())
+
+
+def _letter_script(letter: str) -> Script:
+    name = unicodedata.name(letter, "")
+    return "ar" if name.startswith("ARABIC") else "en" if name.startswith("LATIN") else "other"
+
+
+def _most(scripts: Iterable[Script | None]) -> Script | None:
+    ranked = Counter(script for script in scripts if script is not None).most_common(2)
+    if not ranked or (len(ranked) == 2 and ranked[0][1] == ranked[1][1]):
+        return None
+    return ranked[0][0]
 
 
 class ModelSpend(Model):

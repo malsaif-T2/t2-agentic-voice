@@ -1,11 +1,12 @@
 """The playing part of a `poe eval-scenarios` run (`scenario_run.py`): one play of a scenario as
 one call through `talker_call.play`, within `--variant-timeout-s` for each of its turns, then
-checked turn by turn (`scenario_score.checks_of`), the judge reading each turn that expects facts
-or a repeat, with the call so far as the caller heard it. A provider's failure, in the call, its
-searches or a model request the talker caught, makes the play a `provider` failure, its limit
-passed a `stuck` one, and a judge with no valid answer a `judge` one. When the cap or the key's
-daily limit stops a request (`chat_pacing`), the play is dropped unscored (`StopRun`), so a resumed
-run plays it again.
+checked turn by turn (`scenario_score.checks_of`), the judge reading each turn that expects facts,
+what it follows or an Arabic reply's register, with the call so far as the caller heard it. A
+provider's failure, in the call, its searches or a model request the talker caught, makes the
+play a `provider` failure, its limit passed (or a moment the call waited for in vain) a `stuck`
+one, and a judge with no valid answer a `judge` one. When the cap or the key's daily limit stops
+a request (`chat_pacing`), the play is dropped unscored (`StopRun`), so a resumed run plays it
+again.
 """
 
 from __future__ import annotations
@@ -104,6 +105,7 @@ class Playing:
                 turns=scenario.turns,
                 language=scenario.language,
                 call=self.call,
+                limit_s=self.timeout_s,
             )
         except (CapReachedError, DailyLimitError) as error:
             raise StopRun(stop_of(error)) from None

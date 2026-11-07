@@ -4,7 +4,7 @@
 id = "s05_correction"
 rehearsal = true
 language = "ar-SA"
-notes = "A correction said while a search runs cancels it, and the talker answers both turns together, as corrected."
+notes = "A correction said while a search runs stops the reply that search was for, and the talker answers both turns together, as corrected."
 
 [[turns]]
 says = "كيف أصور مراسلة لجهة خارجية؟"
@@ -13,7 +13,6 @@ search = true
 [[turns]]
 says = "لا لا، قصدي أصدّر مو أصور، أبي أرسلها لجهة برا"
 when = "tool_running"
-cancels_search = true
 search = true
 language = "ar-SA"
 item = "q04_send_external"

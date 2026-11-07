@@ -10,9 +10,12 @@ search runs; unset, once the agent is silent), how long the call goes on before 
 what is expected of the reply, each optional:
 
 - `search`: the knowledge tool called (true) or not (false);
-- `cuts_reply`: the words cut the earlier turn's reply; `cancels_search`: they cancelled its
-  search;
-- `language`: the reply's language tag; `max_words`: the most words the reply says;
+- `cuts_reply`: the words cut the earlier turn's reply (no expectation says a correction
+  cancelled a search: TextCall speaks a turn's words at a calm pace, so a real search has ended
+  before they are heard);
+- `language`: the tag the reply is held to, read from its own words' script
+  (`talker_data.HELD_TO`), and held to Arabic its register too, judged (`REGISTER_CHECKS`);
+  `max_words`: the most words the reply says;
 - `facts`: what the reply must say or do, each judged; `item`, a dev item of the knowledge set,
   whose expected points' text the judge reads, and whose key facts are the turn's when it names
   none (a held-out item is never named, so no scenario's result shows one);
@@ -49,6 +52,14 @@ FOLLOWS: Final[Mapping[Follows, str]] = {
         "and does not start over from the beginning."
     ),
 }
+# What the judge checks of a reply held to Arabic, beside its words' script.
+REGISTER_CHECKS: Final[Mapping[Tag, str]] = {
+    "ar-SA": (
+        "Speaks Arabic in the Saudi dialect, not in Modern Standard Arabic (English product "
+        "terms among it are fine)."
+    ),
+    "ar": "Speaks Modern Standard Arabic, not a dialect.",
+}
 
 
 class ScriptTurn(Model):
@@ -59,7 +70,6 @@ class ScriptTurn(Model):
     after_s: Annotated[float, Field(ge=0, le=30, allow_inf_nan=False)] = 0.0
     search: bool | None = None
     cuts_reply: bool = False
-    cancels_search: bool = False
     language: Tag | None = None
     max_words: int | None = Field(default=None, ge=0)
     item: Name | None = None
@@ -68,9 +78,11 @@ class ScriptTurn(Model):
 
     def expectations(self, items: Mapping[str, KnowledgeItem]) -> tuple[str, ...]:
         """What the judge checks the reply against: its facts (or its item's key facts), then
-        what it follows, in the judge's words."""
+        what it follows and the register of its Arabic, in the judge's words."""
         facts = self.facts or (items[self.item].key_facts if self.item else ())
-        return (*facts, *((FOLLOWS[self.follows],) if self.follows else ()))
+        follows = (FOLLOWS[self.follows],) if self.follows else ()
+        register = REGISTER_CHECKS.get(self.language) if self.language else None
+        return (*facts, *follows, *((register,) if register else ()))
 
 
 class Scenario(Model):
@@ -116,12 +128,10 @@ def problems(scenarios: Sequence[Scenario], items: Sequence[KnowledgeItem]) -> l
 
 def _turn_problems(turn: ScriptTurn, number: int, items: Mapping[str, KnowledgeItem]) -> list[str]:
     found = []
-    if number == 1 and (turn.when or turn.cuts_reply or turn.cancels_search or turn.follows):
+    if number == 1 and (turn.when or turn.cuts_reply or turn.follows):
         found.append("the first turn follows no reply")
     if turn.cuts_reply and turn.when != "agent_speaking":
         found.append("cuts a reply only when said over it (when = agent_speaking)")
-    if turn.cancels_search and turn.when != "tool_running":
-        found.append("cancels a search only when said while it runs (when = tool_running)")
     if turn.item is not None:
         item = items.get(turn.item)
         if item is None:
@@ -129,8 +139,6 @@ def _turn_problems(turn: ScriptTurn, number: int, items: Mapping[str, KnowledgeI
         elif item.split != "dev":
             found.append(f"names '{turn.item}', a held-out item, whose answers are read as counts")
     expects = (turn.search, turn.language, turn.max_words, turn.follows)
-    if all(value is None for value in expects) and not (
-        turn.facts or turn.item or turn.cuts_reply or turn.cancels_search
-    ):
+    if all(value is None for value in expects) and not (turn.facts or turn.item or turn.cuts_reply):
         found.append("expects nothing of its reply")
     return found
