@@ -1,0 +1,19 @@
+# Run S's scenarios (plan 006's registration, "Data"; ole5_voice/evals/scenarios.py): a change of
+# language in one call.
+id = "s07_language_change"
+rehearsal = false
+language = "ar-SA"
+notes = "The reply follows each turn's language: Saudi Arabic, then English, in one call."
+
+[[turns]]
+says = "وين ألقى المراسلات اللي أرسلتها؟"
+search = true
+language = "ar-SA"
+item = "n11_sent_last_week"
+facts = ["Says the sent correspondence is in the mailbox's sent box."]
+
+[[turns]]
+says = "And can I look them up by date?"
+language = "en"
+item = "n11_sent_last_week"
+facts = ["Says, in English, that the advanced search finds correspondence by its dates."]

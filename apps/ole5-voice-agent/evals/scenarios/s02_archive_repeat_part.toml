@@ -1,0 +1,26 @@
+# Run S's scenarios (plan 006's registration, "Data"; ole5_voice/evals/scenarios.py): the
+# rehearsal's archiving question and its step 2, a repeat request, then a part of the answer.
+# The archiving items of the knowledge set are held-out, so no item is named and the answer's
+# facts are run K's to judge: here the repeat and the part are judged against the reply heard.
+id = "s02_archive_repeat_part"
+rehearsal = true
+language = "ar-SA"
+notes = "A repeat request and a request for one part are read from what the caller heard, with no new search."
+
+[[turns]]
+says = "كيف أؤرشف مراسلة في النظام؟"
+search = true
+language = "ar-SA"
+
+[[turns]]
+says = "ممكن تعيد؟"
+search = false
+language = "ar-SA"
+follows = "repeats"
+
+[[turns]]
+says = "بس الخطوة الثانية"
+search = false
+language = "ar-SA"
+max_words = 40
+facts = ["Says only the second step of the earlier answer, not the whole answer again."]

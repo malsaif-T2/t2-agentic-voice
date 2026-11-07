@@ -1,0 +1,16 @@
+# Run S's scenarios (plan 006's registration, "Data"; ole5_voice/evals/scenarios.py): the
+# rehearsal's step 4.
+id = "s04_mumble"
+rehearsal = true
+language = "ar-SA"
+notes = "Words that say no request are asked about, briefly, with no search and no guess."
+
+[[turns]]
+says = "اممم... يعني... ذاك الشي اللي... ما أدري"
+search = false
+language = "ar-SA"
+max_words = 25
+facts = [
+  "Asks the caller, briefly, what they need or to say it again.",
+  "Guesses no procedure and gives no answer of its own.",
+]

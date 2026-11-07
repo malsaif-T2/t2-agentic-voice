@@ -119,6 +119,29 @@ cmd = "python -m ole5_voice.evals.overlap"
 help = "Time each step of an echo call on the golden set's dev paused requests (spends: model, timeout, prices and cap on its command line)"
 cmd = "python -m ole5_voice.evals.timing"
 
+# Runs K and S (plan 006's registration): the talker's model, retrieval and answers, and the
+# scripted calls, with the judge and the owner's check of it.
+
+[tool.poe.tasks.eval-talker]
+help = "Run the talker over one split of the knowledge set, one arm (spends: model, judge, prices, limits and cap on its command line)"
+cmd = "python -m ole5_voice.evals.talker_run"
+
+[tool.poe.tasks.eval-talker-compare]
+help = "Compare two dev runs of the talker: fixed, broken, net, the sign test by item and the noise"
+cmd = "python -m ole5_voice.evals.talker_compare"
+
+[tool.poe.tasks.eval-talker-keep]
+help = "Apply run K's keep rule to each arm's two dev runs"
+cmd = "python -m ole5_voice.evals.talker_keep"
+
+[tool.poe.tasks.judge-check]
+help = "Draw 24 judged answers of a dev run for the owner's check, or read the filled sheet back"
+cmd = "python -m ole5_voice.evals.judge_check"
+
+[tool.poe.tasks.eval-scenarios]
+help = "Play run S's scripted calls with the kept arm, each three times (spends: as eval-talker)"
+cmd = "python -m ole5_voice.evals.scenario_run"
+
 [tool.poe.tasks.record]
 help = "Record and review the golden set's new takes in Chrome, on a page served on 127.0.0.1"
 cmd = "python -m ole5_voice.evals.recorder"

@@ -1,0 +1,13 @@
+# Run S's scenarios (plan 006's registration, "Data"; ole5_voice/evals/scenarios.py): the
+# rehearsal's step 7. The call is an Arabic one, as Q9's (a) holds when run X keeps English in an
+# Arabic call; if X rules otherwise, the call's language here becomes "en" (a dated amendment).
+id = "s03_english_question"
+rehearsal = true
+language = "ar-SA"
+notes = "An English question in an Arabic call is answered in English, from the knowledge base."
+
+[[turns]]
+says = "How can I start a new internal correspondence in the system?"
+search = true
+language = "en"
+item = "q02_new_internal"
