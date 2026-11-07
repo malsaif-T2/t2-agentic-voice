@@ -92,8 +92,8 @@ def test_a_turn_with_a_tool_makes_two_requests_its_result_framed_as_data() -> No
     ]
     assert [r.tools[0].name for r in model.requests] == [NAME, NAME]
     second = model.requests[1].messages
-    assert [m.role for m in second[-3:]] == ["user", "assistant", "tool"]
-    assert second[-2].content == "Let me check. " and second[-2].tool_calls[0].name == NAME
+    assert [m.role for m in second[-4:]] == ["user", "assistant", "tool", "system"]
+    assert second[-3].content == "Let me check. " and second[-3].tool_calls[0].name == NAME
     [framed] = _tool_messages(model, 1)
     assert framed.startswith(f'<data tool="{NAME}">') and framed.endswith("</data>")
     data = json.loads(framed.removeprefix(f'<data tool="{NAME}">').removesuffix("</data>"))

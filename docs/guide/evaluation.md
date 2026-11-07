@@ -37,7 +37,8 @@ channel. Everything below comes from the `evals` facade.
   that asked once too often says where. An entry's steps may hold a `Pause(seconds)`, the
   model's time on the call's clock, and a `ProviderError`, a failure where it stands.
 - **`FunctionLLM(fn)`** asks `fn` for each request's steps, so a test need not count requests: it
-  can answer by the last message, the caller's words or a tool's result.
+  can answer by the last message, the caller's words or a tool's result. A request that follows
+  a tool's result ends with a short system line naming the reply's language, after the result.
 - Both keep every request in `requests`, so a test reads what the talker sent: the prompt, the
   history, the tools offered, a tool's result as the model read it.
 - A real model, through its port and with `clock="system"`, makes the same call a measurement:

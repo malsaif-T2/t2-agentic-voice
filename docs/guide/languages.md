@@ -53,8 +53,11 @@ call may hold Saudi, MSA and English turns, each answered in its own. The rule, 
    in the call's: an agent that speaks no English answers an English turn in its own language.
 
 The system prompt's language section, and the instructions of that tag when you give one a
-language, follow the reply's tag; each clause is spoken in that tag's voice. The output guard,
-the speaking rules and the pronunciation map read the clause in its own language.
+language, follow the reply's tag; each clause is spoken in that tag's voice. A request that
+follows a tool's result ends with a short line naming the reply's language, whatever language
+the result is in, so an English question answered from Arabic passages is answered in English.
+The output guard, the speaking rules and the pronunciation map read the clause in its own
+language.
 
 ## Saudi Arabic and MSA
 

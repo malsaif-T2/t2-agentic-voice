@@ -16,6 +16,12 @@ in order, and nothing else:
    from it (agent/language.py); an Arabic reply in the Saudi register unless the caller speaks
    Modern Standard Arabic.
 
+Every request that follows a tool result of the turn ends with a short system line of its own
+naming the reply's language (`REPLY_LINES`), so the last thing the model reads before it writes
+is the language to write in, whatever language the results are in: run K's first dev round had
+English questions answered in Arabic after seven Arabic passages, the section saying English.
+The first request of a turn ends with the caller's words, as it did.
+
 The rules are written in English, which models follow more reliably, whatever language the call
 is in (the design's 6.4 says the same of a tool's description).
 
@@ -69,6 +75,14 @@ LANGUAGE_SECTIONS: dict[LanguageTag, str] = {
     "ar-SA": _ARABIC,
     "ar": _ARABIC,
     "en": "Reply in English. Keep product names as the caller says them.",
+}
+# The line that ends each request after a tool result of the turn (agent/turn.py), by the reply
+# language's tag, so the last thing the model reads is the language to write in.
+_WHATEVER = "whatever language the tool results are in."
+REPLY_LINES: dict[LanguageTag, str] = {
+    "ar-SA": f"Reply in Arabic, in the Saudi dialect, the caller's language, {_WHATEVER}",
+    "ar": f"Reply in Arabic, the caller's language, {_WHATEVER}",
+    "en": f"Reply in English, the caller's language, {_WHATEVER}",
 }
 # The first line of each request's system message (the module's docstring), and its ids: a
 # count from a random start, as 8 hex digits, so no two of one process are the same and two

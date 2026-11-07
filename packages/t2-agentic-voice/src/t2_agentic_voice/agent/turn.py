@@ -4,7 +4,9 @@ turn and the call as it was heard to the events the session plays, within the re
 - **The request.** The system prompt in the turn's reply language (agent/prompt.py,
   agent/language.py), opened on each request by a line new on every request (`llm.vary_first_line`:
   prompt.py's `FIRST_LINE`), the call as the caller heard it with what the talker kept beside it
-  (agent/context.py), then the turn, whole. At most `MAX_REQUESTS` a turn: each but the last
+  (agent/context.py), then the turn, whole; a request after a tool result of the turn ends with
+  a line naming the reply's language (prompt.py's `REPLY_LINES`). At most `MAX_REQUESTS` a
+  turn: each but the last
   offers the agent's tools, the last none, so the turn ends in words; a tool call the last one
   makes anyway is not run.
 - **Speech as it is written.** The model's text goes through the clause splitter as it streams
@@ -51,7 +53,7 @@ from t2_agentic_voice.agent.events import (
     TalkerEvent,
 )
 from t2_agentic_voice.agent.language import reply_language
-from t2_agentic_voice.agent.prompt import compose_prompt, with_first_line
+from t2_agentic_voice.agent.prompt import REPLY_LINES, compose_prompt, with_first_line
 from t2_agentic_voice.agent.tool_calls import Memory, ToolCalls, exchange
 from t2_agentic_voice.core.clock import Clock
 from t2_agentic_voice.core.config import VoiceSettings
@@ -158,7 +160,7 @@ class Turn:
         requests = tools_run = 0
         for index in range(MAX_REQUESTS):
             tools = self.runner.schemas() if index < MAX_REQUESTS - 1 else ()
-            request = self._request(messages, tools)
+            request = self._request(messages, tools, after_tools=tools_run > 0)
             requests += 1
             yield ModelRequested(model=request.model)
             answer = _Answer()
@@ -202,11 +204,13 @@ class Turn:
         yield ReplyDone()
 
     def _request(
-        self, messages: Sequence[ChatMessage], tools: tuple[ToolSchema, ...]
+        self, messages: Sequence[ChatMessage], tools: tuple[ToolSchema, ...], *, after_tools: bool
     ) -> ChatRequest:
         llm = self.settings.llm
         if llm.vary_first_line:  # so no two requests share a cached prefix (the setting's text)
             messages = [ChatMessage.system(with_first_line(messages[0].content)), *messages[1:]]
+        if after_tools:  # the request's own line, never kept in the turn's messages
+            messages = [*messages, ChatMessage.system(REPLY_LINES[self.language])]
         return ChatRequest(
             messages=tuple(messages),
             tools=tools,
