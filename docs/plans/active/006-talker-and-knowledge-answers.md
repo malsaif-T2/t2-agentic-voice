@@ -484,6 +484,8 @@ runs"; in this order, each with its smoke first)
   "It should be on the Ole5 app, the library should provide a general way to access
   knowledge-bases through a tool or an object". So the knowledge base adapter stays the Ole5
   app's, and the library's general way is the `KnowledgeBase` protocol with `knowledge_tool`.
+- 2026-11-07, to Q15 to Q18: Q15 "Model's own time"; Q16 "Replay H3's clips"; Q17 "Proper
+  spellings only"; Q18 "Pool both, report apart".
 
 ## Tracks
 
@@ -552,7 +554,11 @@ heard, and text from silence, noise and echo, by stratum. *Keep W1* if term reca
 sign test on items, with word errors and text from silence no worse than the noise (D-024), then
 held-out once; Whisper can write a prompt's words into silence, which the silence items catch.
 *X decides Q9:* English in an Arabic call is supported if X's word errors on the English items
-are within the noise of the English language's.
+are within the noise of the English language's. *Amended 2026-11-07, before any run (Q17):*
+W1's prompt holds Ole5's declared vocabulary, then each command word as it should be written,
+never a mishearing the presets keep for what Whisper writes (such as «وكيف» for «وقف»), which a
+prompt could make Whisper write; it is built by the one function a live call would use, so
+W1 measures the prompt the agent would ship. Term recall is still scored on `evals/terms.toml`.
 
 **U, the uncertain middle** (offline on stored transcripts; about $0.05). For each overlap whose
 rule verdict is a short output or too few words, a model reads the reply clause the caller heard
@@ -560,7 +566,10 @@ and the overlap's words and answers "go on" or "stop". Arms: U0 the rule (D-061)
 `llama-3.1-8b-instant`, U2 the talker's model. *Metrics:* right verdicts, listening sounds that
 stopped the agent, the model's time to its answer. *Keep* an arm that raises right verdicts by the
 sign test on items, stops no more listening sounds than U0, and answers within 300 ms at the
-median, then held-out once; otherwise the rule stays.
+median, then held-out once; otherwise the rule stays. *Amended 2026-11-07, before any run
+(Q16):* M3's held-out run H3 stored aggregates only, so U's held-out pass replays H3's held-out
+clips live, the kept arm deciding each uncertain overlap as it comes, and writes aggregates
+only (about $0.03 of Whisper and the chat requests); it is built once an arm passes on dev.
 
 **K, the talker's model, retrieval and answers** (text through `TextCall` with the real model and
 knowledge base; about $1.50 for both dev runs of every arm). Arms: K1 `openai/gpt-oss-120b` at low
@@ -575,6 +584,9 @@ model's own time; `TextCall`'s virtual clock times the rest). *The noise:* every
 variant whose verdict differs between the two counts as noisy. *Keep:* among the arms whose first
 clause comes within 1.0 s at the median after the transcript, the one with the most right answers
 by the sign test on items; a tie goes to the faster. Then held-out once with the kept arm.
+*Amended 2026-11-07, before any run (Q15):* the keep rule's 1.0 s reads the model's own time,
+a reply's time to its first clause less the time its tools ran (each tool's start to its end),
+so the knowledge base's search is not counted; the wall clock's time is reported beside it.
 
 **T, the time to first audio** (the dev recordings of `n01` to `n28` replayed through `AudioCall`
 with the real speech, model, knowledge and voice; about $0.80). Arms: T0 with
@@ -585,6 +597,9 @@ first syllable in ten of its replies. *Amended 2026-11-07, before any run (Q12):
 request needs a search, so the target for a reply with no search is read from one more pass, Tn:
 the same recordings with the kept `tts.trim_silence` and the knowledge tool left out of the agent,
 so every reply takes the path with no search; only its times are read (about $0.25).
+*Amended 2026-11-07, before any run (Q18):* the time starts at the owner's marked end for `n19`
+to `n28` and at the speech detector's stop for `n01` to `n18`; the targets read both together,
+and the scorecard shows the two groups apart.
 
 **S, the scenarios** (text, the kept arm, each scenario three times; about $0.30). *Metric:* each
 scenario's expectations (the tool called or not, the key facts said, by the judge, the language,
@@ -619,7 +634,8 @@ pass it.
 
 Q1 to Q10 settled on 2026-11-06 ("Approve all"). Q11 to Q14, from the spike, Block 0 and the
 knowledge set's review, asked on 2026-11-06 before any registered run and settled on 2026-11-07;
-each answer that changes a run is a dated amendment to the registration.
+Q15 to Q18, from Track E's review, asked and settled on 2026-11-07 before any registered run.
+Each answer that changes a run is a dated amendment to the registration.
 
 - **Q1. What voice-first means here.** *Settled: (a).* The eight choices above. Options: (a) approve them; (b)
   change some. **The agent recommends (a).**
@@ -681,10 +697,28 @@ each answer that changes a run is a dated amendment to the registration.
   facade (5.1, with `knowledge_tool`), configured by the app with its address, account and tenant;
   (b) the Ole5 app, as the design says. **The agent recommends (a).** A new facade gets a decision
   entry, as D-032's did.
+- **Q15. Run K's 1.0 s.** *Settled 2026-11-07: (a).* The keep rule reads "the first clause within
+  1.0 s at the median", and the metric calls that time "the model's own time" but measures it on
+  the wall clock, so a reply that searches first counts the knowledge base's search too.
+  Options: (a) the model's own time, the tools' time taken out; (b) the wall clock, search
+  included. **The agent recommends (a).**
+- **Q16. Run U's held-out pass.** *Settled 2026-11-07: (a).* M3's held-out run H3 stored
+  aggregates only, so no held-out overlap's words exist to read. Options: (a) replay H3's
+  held-out clips live, the kept arm deciding each overlap as it comes, aggregates only (about
+  $0.03 and the chat requests); (b) dev only. **The agent recommends (a).**
+- **Q17. Run W1's command words.** *Settled 2026-11-07: (a).* The presets' lists also hold the
+  mishearings the rule must catch («وكيف», "stopp"). Options: (a) the prompt carries each
+  command word as it should be written; (b) the presets' lists whole. **The agent recommends
+  (a).**
+- **Q18. Run T's start of time.** *Settled 2026-11-07: (a).* `n19` to `n28` have the owner's
+  marked end of speech, `n01` to `n18` the speech detector's stop. Options: (a) the targets
+  read both together, the scorecard showing the groups apart; (b) only the marked ends.
+  **The agent recommends (a).**
 
 ## What the owner does
 
-- Answer Q1 to Q10, and approve the plan (done 2026-11-06); answer Q11 to Q14 (done 2026-11-07).
+- Answer Q1 to Q10, and approve the plan (done 2026-11-06); answer Q11 to Q14 and Q15 to Q18
+  (done 2026-11-07).
 - Copy the knowledge base's access into `.env` (Q4; done 2026-11-06, under the owner's names).
 - Review the knowledge set's items (Q5, about 40 minutes), and check 24 judged answers (Q6, about
   20 minutes).
