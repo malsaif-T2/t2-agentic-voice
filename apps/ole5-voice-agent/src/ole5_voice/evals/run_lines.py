@@ -2,9 +2,11 @@
 `poe eot` (`EotLine`), a timing run of `poe eval-timing` (`TimingLine`) and an overlap run of
 `poe overlap` (`OverlapLine`, plan 005), each marked by its `kind`, and `AnyLine`, the one shape
 every line of `history.jsonl` is read as, a line with no `kind` being `poe eval`'s
-(`runs.HistoryLine`, whose lines predate the field). Strict as every history line: a held-out
-run's breakdowns hold no group of fewer than `HELD_OUT_MIN_ITEMS` items, and a secret setting is
-shown only as set or not set.
+(`runs.HistoryLine`, whose lines predate the field). `AnyLine` also takes plan 006's runs: K's
+`TalkerLine` and S's `ScenarioLine` (talker_lines.py), and U's `UncertainLine` and T's
+`FirstAudioLine` (measure_lines.py). Strict as every history line: a held-out run's breakdowns
+hold no group of fewer than `HELD_OUT_MIN_ITEMS` items, and a secret setting is shown only as set
+or not set.
 """
 
 from __future__ import annotations
@@ -14,8 +16,10 @@ from typing import Annotated, Literal, Self
 
 from pydantic import Discriminator, Field, Tag, model_validator
 
+from ole5_voice.evals.measure_lines import FirstAudioLine, UncertainLine
 from ole5_voice.evals.models import Commit, Model, Name, Sha256, Split
 from ole5_voice.evals.runs import HELD_OUT_MIN_ITEMS, HistoryLine, Note, Plain, Shown
+from ole5_voice.evals.talker_lines import ScenarioLine, TalkerLine
 
 # A model's name as a history line keys its numbers by it (`whisper-large-v3`,
 # `canopylabs/orpheus-arabic-saudi`).
@@ -173,6 +177,10 @@ AnyLine = Annotated[
     Annotated[HistoryLine, Tag("stt")]
     | Annotated[EotLine, Tag("eot")]
     | Annotated[TimingLine, Tag("timing")]
-    | Annotated[OverlapLine, Tag("overlap")],
+    | Annotated[OverlapLine, Tag("overlap")]
+    | Annotated[TalkerLine, Tag("talker")]
+    | Annotated[ScenarioLine, Tag("scenarios")]
+    | Annotated[UncertainLine, Tag("uncertain")]
+    | Annotated[FirstAudioLine, Tag("first_audio")],
     Discriminator(_kind),
 ]

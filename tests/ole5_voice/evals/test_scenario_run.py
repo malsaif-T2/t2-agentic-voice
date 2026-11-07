@@ -12,7 +12,8 @@ import json
 from pathlib import Path
 
 import pytest
-from ole5_voice.evals import scenario_run
+from ole5_voice.evals import run_folder, scenario_run
+from ole5_voice.evals.history import read_history, render_history
 from ole5_voice.evals.judge import Checked
 from ole5_voice.evals.run_folder import RESULTS_FILE
 from ole5_voice.evals.runs import SCORECARD_FILE
@@ -290,3 +291,28 @@ def test_a_model_request_the_talker_caught_still_fails_its_play(setup: Setup) ->
     assert _main(setup) == 0
     second = next(play for play in _card(setup).plays if play.scenario == "s02")
     assert second.failure == "provider" and second.turns != ()
+
+
+def test_the_shared_history_takes_run_ss_line_and_reads_it_back(setup: Setup) -> None:
+    parts = dataclasses.replace(
+        setup.parts(),
+        history_accepts=run_folder.history_accepts,
+        append_line=run_folder.append_shared,
+    )
+    assert scenario_run.main([*setup.argv(out="s-a"), "--repeats", "1"], parts=parts) == 0
+    (line,) = read_history(setup.data / "history.jsonl")
+    assert isinstance(line, ScenarioLine) and line.plays == 10 and line.complete
+    assert read_history(setup.out("s-a") / "history.jsonl") == (line,)
+    assert "## Scenario runs" in render_history([line])
+
+
+@pytest.mark.parametrize("step", ["user", "advance", "exit"])
+def test_a_talkers_assertion_from_any_step_of_the_call_is_a_stuck_play_and_the_run_goes_on(
+    setup: Setup, step: str
+) -> None:
+    setup.calls.script["question 3"] = Scripted(fails_in=step)  # type: ignore[arg-type]
+    assert _main(setup) == 0
+    card = _card(setup)
+    assert card.complete and len(card.plays) == 30
+    assert {p.failure for p in card.plays if p.scenario == "s03"} == {"stuck"}
+    assert {p.failure for p in card.plays if p.scenario == "s04"} == {None}

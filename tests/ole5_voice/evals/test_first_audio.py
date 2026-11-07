@@ -14,12 +14,16 @@ from pathlib import Path
 
 import pytest
 from ole5_voice.evals import first_audio
+from ole5_voice.evals.factories import agent_of as built_agent
+from ole5_voice.evals.factories import load_factory
+from ole5_voice.evals.first_audio_replay import AudioReplay
 from ole5_voice.evals.first_audio_run import LEAD_S
 from ole5_voice.evals.first_audio_score import ReplayedCall, ReplayedTurn
-from ole5_voice.evals.first_audio_setup import FirstAudioParts, agent_of, phrase_cache
+from ole5_voice.evals.first_audio_setup import FirstAudioParts, phrase_cache
+from ole5_voice.evals.measure_lines import FirstAudioLine
 from ole5_voice.evals.models import Item
-from ole5_voice.evals.run_lines import TimingLine
 from t2_agentic_voice import ProviderError, StorageSettings, T2VoiceError, VoiceAgent, VoiceSettings
+from t2_agentic_voice.evals import AudioCall, ScriptedLLM
 from t2_agentic_voice.stores import PhraseCache
 
 from tests.ole5_voice.evals.eot_support import paused
@@ -87,8 +91,11 @@ def test_a_dev_run_replays_each_recorded_request_as_a_call_of_the_agent(
         assert (reader.getframerate(), reader.getnframes()) == (24_000, 2400)
     assert len((run.out / "results.jsonl").read_text(encoding="utf-8").splitlines()) == 3
     (line, _), (copy, _) = run.lines.appended
-    assert isinstance(line, TimingLine) and line == copy
-    assert line.medians_ms["search"] == 2500.0 and line.medians_ms["no_search"] == 1350.0
+    assert isinstance(line, FirstAudioLine) and line == copy
+    assert line.paths["search"].median_ms == 2500.0 and line.paths["no_search"].median_ms == 1350.0
+    assert line.targets == held and line.progress_late == 0 and line.tools
+    # The two starts of time, apart (Q18): the owner's marked end, and the detector's stop.
+    assert {end: group.items for end, group in line.ends.items()} == {"detector": 2, "label": 1}
     assert line.requests == {WHISPER: 4, ARABIC: 4, CHAT: 8}
     assert line.cost_usd == pytest.approx(card.cost_usd) and card.cost_usd > 0
     assert "variant_done" in capsys.readouterr().out
@@ -110,10 +117,11 @@ def test_an_msa_request_is_held_in_the_language_the_agent_gives_an_msa_caller(
     assert [v.language for v in run.card().variants] == ["saudi", "msa"]
 
 
-def test_arm_tn_leaves_the_agents_tools_out(tmp_path: Path) -> None:
+def test_arm_tn_gives_the_agents_factory_no_knowledge_base(tmp_path: Path) -> None:
     run = t_run(tmp_path, call(_fast()))
     assert first_audio.main(run.argv("--no-tools", "--smoke-only"), parts=run.parts()) == 0
-    assert run.replay.built["agent"].tools == ()
+    # The factory is given None, as Ole5's `talker_agent(None)`, and no base is built.
+    assert run.replay.built["agent"].tools == () and run.env_files == []
     assert run.replay.asked[0]["tail_s"] == TAIL - 10.0  # no tool runs
     card = run.card()
     assert card.run.tools is False and card.run.settings["run.tools"] == "none"
@@ -129,9 +137,16 @@ def test_a_held_out_run_keeps_aggregates_only(tmp_path: Path) -> None:
     run = t_run(tmp_path, call(), call(_fast()), items=items, held_out=held)
     assert first_audio.main(run.argv(split="held-out"), parts=run.parts()) == 0
     card = run.card()
-    assert card.variants == () and card.breakdowns == {} and card.totals.variants == 4
+    assert card.variants == () and card.totals.variants == 4
     assert card.totals.paths["no_search"].median_ms == 1200.0  # 4 items: shown
     assert card.totals.paths["search"].median_ms is None  # none: withheld
+    # Held-out shows where its time starts apart too (Q18), each group as aggregates: the four
+    # held-out recordings are timed from the detector's stop, and no label group is shown.
+    (detector,) = card.breakdowns["end"].items()
+    assert list(card.breakdowns) == ["end"] and detector[0] == "detector"
+    assert detector[1].items == 4 and detector[1].paths["no_search"].median_ms == 1200.0
+    (line, _), _ = run.lines.appended
+    assert isinstance(line, FirstAudioLine) and list(line.ends) == ["detector"]
     assert not (run.out / "results.jsonl").exists() and not (run.out / "replies").exists()
     assert run.replay.asked[0]["end_ms"] == 1500.0  # the smoke test is the dev recording
 
@@ -214,8 +229,8 @@ def test_each_refusal_comes_before_anything_is_sent(
     tmp_path: Path, capsys: pytest.CaptureFixture[str]
 ) -> None:
     run = t_run(tmp_path)
-    _refused(run, run.argv(factory="missing"), capsys, "--agent names no factory")
-    _refused(run, run.argv(factory="no_agent"), capsys, "gives no agent with instructions")
+    _refused(run, run.argv(factory="missing"), capsys, "ole5_voice.fake:missing names no")
+    _refused(run, run.argv(factory="no_agent"), capsys, "gave no VoiceAgent")
     _refused(run, run.argv(factory="echo_agent"), capsys, "gives no agent with instructions")
     _refused(run, run.argv(factory="english_agent"), capsys, "the agent speaks no ar-SA")
     argv = run.argv()
@@ -233,14 +248,17 @@ def test_each_refusal_comes_before_anything_is_sent(
     _refused(none, none.argv(), capsys, "no recorded request")
 
 
-def test_until_the_replay_is_wired_a_run_is_refused_before_anything_is_sent(
-    tmp_path: Path, capsys: pytest.CaptureFixture[str]
-) -> None:
+def test_the_default_replay_is_the_librarys_audio_call_of_the_runs_agent(tmp_path: Path) -> None:
     run = t_run(tmp_path)
-    unwired = run.parts(replay=FirstAudioParts().replay)
-    assert first_audio.main(run.argv(), parts=unwired) == 2
-    assert "replay is not wired" in capsys.readouterr().out
-    assert run.cache.declared == [] and not run.out.exists()
+    settings = VoiceSettings(env="test", storage=StorageSettings(var_dir=tmp_path))
+    made, chat = agent(run.kb), ScriptedLLM([])
+    replay = FirstAudioParts().replay(
+        agent=made, settings=settings, stt=run.stt, tts=run.tts, llm=chat, phrases=run.cache
+    )
+    assert isinstance(replay, AudioReplay) and isinstance(replay.call_of, AudioCall)
+    assert replay.call_of.agent is made and replay.call_of.chat is chat
+    assert replay.call_of.stt is run.stt and replay.call_of.tts is replay.voice
+    assert replay.voice.inner is run.tts
 
 
 @pytest.mark.parametrize(
@@ -287,13 +305,65 @@ def test_a_reply_with_no_opening_keeps_none(tmp_path: Path) -> None:
     assert {v.openings for v in run.card().variants} == {(None,)}
 
 
+def test_tn_refuses_a_factory_that_gives_tools_with_no_knowledge_base(
+    tmp_path: Path, capsys: pytest.CaptureFixture[str]
+) -> None:
+    run = t_run(tmp_path)
+    argv = run.argv("--no-tools", factory="always_tools")
+    _refused(run, argv, capsys, "--no-tools: the agent's factory gave tools")
+
+
+@pytest.mark.parametrize(
+    ("extra", "says"),
+    [(("--no-tools", "--knowledge", "ole5_voice.fake:kb"), "no --knowledge"), ((), "--knowledge")],
+)
+def test_the_knowledge_factory_is_named_exactly_when_the_agent_searches(
+    tmp_path: Path, extra: tuple[str, ...], says: str, capsys: pytest.CaptureFixture[str]
+) -> None:
+    run = t_run(tmp_path)
+    argv = [*run.argv(*extra)]
+    if not extra:
+        del argv[:2]  # the --knowledge the run names by default
+    with pytest.raises(SystemExit) as done:
+        first_audio.main(argv, parts=run.parts())
+    assert done.value.code == 2 and says in capsys.readouterr().err
+
+
+def test_the_knowledge_base_and_the_adapters_are_closed_at_the_end_and_on_a_refusal(
+    tmp_path: Path, capsys: pytest.CaptureFixture[str]
+) -> None:
+    run = t_run(tmp_path)
+    assert first_audio.main(run.argv(), parts=run.parts()) == 0
+    assert run.kb.closed and run.env_files == [None] and run.stt.closed and run.tts.closed
+    refused = t_run(tmp_path / "refused")
+    argv = refused.argv()
+    argv[argv.index("--cap-usd") + 1] = "0.01"  # refused once the knowledge base is built
+    _refused(refused, argv, capsys, "passes --cap-usd")
+    assert refused.kb.closed and refused.env_files == [None]
+
+
 @pytest.mark.parametrize("named", ["made_up_missing_module:agent", "no-colon", ":agent"])
 def test_an_agent_factory_that_cannot_be_found_is_refused(named: str) -> None:
-    with pytest.raises(T2VoiceError, match="--agent names no factory"):
-        agent_of(named, tools=True)
+    with pytest.raises(T2VoiceError, match="FIX: name a callable of the Ole5 app"):
+        built_agent(load_factory, named, None)
 
 
 def test_the_phrase_cache_is_kept_in_the_agents_own_folder(tmp_path: Path) -> None:
     settings = VoiceSettings(env="test", storage=StorageSettings(var_dir=tmp_path))
     cache = phrase_cache(settings, FakeTextToSpeech(), agent())
     assert isinstance(cache, PhraseCache) and list(tmp_path.iterdir()) == []
+
+
+@pytest.mark.parametrize("arm", [(), ("--no-tools",)])
+def test_the_command_line_reaches_its_smoke_with_ole5s_own_agent_factory(
+    tmp_path: Path, arm: tuple[str, ...]
+) -> None:
+    run = t_run(tmp_path, call(_fast()))
+    argv = run.argv(*arm, "--smoke-only")
+    argv[argv.index("--agent") + 1] = "ole5_voice.agent:talker_agent"
+    assert first_audio.main(argv, parts=run.parts()) == 0
+    agent = run.replay.built["agent"]
+    # Ole5's talker, its search on the knowledge base built; Tn's, given none, with no tool.
+    assert agent.name == "ole5" and run.card().complete
+    assert [tool.name for tool in agent.tools] == ([] if arm else ["search_knowledge"])
+    assert run.env_files == ([] if arm else [None]) and run.kb.closed == (not arm)

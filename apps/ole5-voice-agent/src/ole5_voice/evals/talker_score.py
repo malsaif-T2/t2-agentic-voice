@@ -6,8 +6,10 @@ no ID. Its record holds what the call did, the talker's searches and the referen
 raw words, and what is read from them: retrieval (an expected point in the top 5) from the
 talker's first query and from the raw words, for an answerable item; a search made exactly when
 needed; the reply language; the judge's verdict, and whether it is the item kind's passing one
-(`judge.PASSING`). A variant with no result to score (`failure`: the provider's, its limit
-passed, or the judge's) is counted apart and left out of every rate.
+(`judge.PASSING`). The time to the first clause is kept twice: on the wall clock, and the model's
+own, the time its tools ran before it taken out (`HeardTurn.own_first_clause_s`, Q15), which the
+keep rule reads (`KEEP_TIME`). A variant with no result to score (`failure`: the provider's, its
+limit passed, or the judge's) is counted apart and left out of every rate.
 
 A rate is kept over the variants (`rate`) and over the items (`item_rate`, each item weighing
 its variants' share once, as the item is the unit): the targets on items read `item_rate`, the
@@ -43,6 +45,9 @@ TARGETS: Final[Mapping[str, float]] = {
     "honest": 0.90,
     "language": 0.95,
 }
+# The time run K's keep rule reads (Q15): the model's own time to the first clause, the tools'
+# time taken out, at the median; the wall clock's, the search in it, is reported beside it.
+KEEP_TIME: Final = "own_first_clause_median_s"
 _Usd = Annotated[float, Field(ge=0, allow_inf_nan=False)]
 _S = Annotated[float, Field(ge=0, allow_inf_nan=False)]
 
@@ -113,8 +118,10 @@ class TalkerMetrics(Model):
     language: Rate | None  # the reply in the caller's language
     words_median: float | None
     words_p90: float | None
-    first_clause_median_s: float | None
+    first_clause_median_s: float | None  # on the wall clock, the tools' time in it
     first_clause_p90_s: float | None
+    own_first_clause_median_s: float | None = None  # the model's own (Q15): no tool's time
+    own_first_clause_p90_s: float | None = None
     first_token_median_s: float | None
     blocked: int = Field(ge=0)
     violations: int = Field(ge=0)
@@ -159,10 +166,12 @@ class Session(Model):
 
 
 class TalkerScorecard(Model):
-    """Run K's scorecard (the module's docstring), checked as it is read."""
+    """Run K's scorecard (the module's docstring), checked as it is read; `keep_time` names the
+    time the keep rule reads (talker_keep.py)."""
 
     run: TalkerRun
     speakers: Literal["one speaker"] = "one speaker"  # the owner alone (D-006)
+    keep_time: Literal["own_first_clause_median_s"] = KEEP_TIME
     complete: bool
     stopped: Stopped | None
     sessions: tuple[Session, ...]
@@ -222,6 +231,7 @@ def metrics(records: Sequence[VariantRecord], *, least: int = 1) -> TalkerMetric
 
     words = spread(float(turn.words) for turn in turns)
     first = spread(turn.first_clause_s for turn in turns)
+    own = spread(turn.own_first_clause_s for turn in turns)
     verdicts = Counter(r.judged.verdict for r in answered if r.judged and r.judged.verdict)
     return TalkerMetrics(
         items=len({r.item for r in answered}),
@@ -239,6 +249,8 @@ def metrics(records: Sequence[VariantRecord], *, least: int = 1) -> TalkerMetric
         words_p90=words[1],
         first_clause_median_s=first[0],
         first_clause_p90_s=first[1],
+        own_first_clause_median_s=own[0],
+        own_first_clause_p90_s=own[1],
         first_token_median_s=spread(turn.first_token_s for turn in turns)[0],
         blocked=sum(turn.blocked for turn in turns),
         violations=sum(r.violations for r in records),  # every call's: a hard constraint

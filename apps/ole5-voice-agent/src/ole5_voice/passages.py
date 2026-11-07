@@ -92,7 +92,7 @@ def passage(point: object) -> Passage | None:
         return None
     try:
         return Passage(
-            id=f"{meta.document_name}/{meta.chunk_id}",
+            id=passage_id(meta.document_name, meta.chunk_id),
             title=_said(meta.section) or title_of(text) or meta.document_name,
             text=text,
             steps=steps_of(text),
@@ -101,6 +101,13 @@ def passage(point: object) -> Passage | None:
         )
     except ValidationError:
         return None
+
+
+def passage_id(document_name: str, chunk_id: str | int) -> str:
+    """A point's passage ID (the module's docstring): its document's name, a slash, and its
+    chunk's ID, as the payload holds them. Runs K and S read the snapshot of the points with this
+    same function (evals/kb_points.py), so a live passage and its point's text share one ID."""
+    return f"{document_name}/{chunk_id}"
 
 
 def title_of(text: str) -> str | None:

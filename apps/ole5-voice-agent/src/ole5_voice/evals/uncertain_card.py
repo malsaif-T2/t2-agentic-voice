@@ -1,9 +1,9 @@
 """The scorecard of `poe uncertain` (plan 006's registration, U; its scoring is
 uncertain_score.py's): what the run was, the rule's and the arm's numbers, the keep rule, the
 arm's numbers by kind and language, its spend and each overlap judged, written whole at the run's
-end (`close_run`) with its history line (`line_of`). The history line is an overlap line
-(run_lines.py's `OverlapLine`), whose fields hold a run of verdicts on overlaps: its answerer is
-`uncertain`, its numbers are the arm's, and its targets are the keep rule's three parts.
+end (`close_run`) with its history line (`line_of`), an uncertain line (measure_lines.py's
+`UncertainLine`): the rule's numbers (U0) beside the arm's, the keep rule's three parts as its
+targets, and the chat model's requests by model.
 """
 
 from __future__ import annotations
@@ -18,9 +18,9 @@ from pydantic import Field
 from t2_agentic_voice import get_logger
 
 from ole5_voice.evals.items import HISTORY_FILE
+from ole5_voice.evals.measure_lines import UncertainCount, UncertainLine
 from ole5_voice.evals.models import Commit, Model, Name, Sha256
 from ole5_voice.evals.overlap_card import AppendLine
-from ole5_voice.evals.run_lines import OverlapCount, OverlapLine
 from ole5_voice.evals.runs import SCORECARD_FILE, Note, Plain, Shown
 from ole5_voice.evals.uncertain_run import Asking, Found, Stopped
 from ole5_voice.evals.uncertain_score import (
@@ -96,39 +96,43 @@ class UncertainScorecard(Model):
     results: tuple[UncertainResult, ...] = ()
 
 
-def line_of(card: UncertainScorecard) -> OverlapLine:
-    """The history line of a run (the module's docstring): it sends no audio, so its billed
-    seconds and price per hour are 0, and its cost is the tokens'."""
-    run, arm, keep = card.run, card.arm, card.keep
-    return OverlapLine(
+def line_of(card: UncertainScorecard) -> UncertainLine:
+    """The history line of a run (the module's docstring)."""
+    run, keep = card.run, card.keep
+
+    def counted(found: ArmMetrics) -> UncertainCount:
+        return UncertainCount.model_validate(found, from_attributes=True)
+
+    return UncertainLine(
         time=run.started_at,
         commit=run.commit,
         run=run.name,
-        answerer="uncertain",
+        source=run.source,
+        model=run.model,
         settings=run.settings,
         split="dev",
-        items=arm.items,
-        variants=arm.variants,
-        failed=arm.failed,
-        right=arm.right,
-        stop_median_ms=None,
-        stop_p90_ms=None,
-        requests_max=None,
+        rule=counted(card.rule),
+        arm=counted(card.arm),
+        better=keep.better,
+        worse=keep.worse,
+        p=keep.p,
         targets={
             "raises_right": keep.raises_right,
             "listening_no_more": keep.listening_no_more,
             "answers_in_time": keep.answers_in_time,
         },
+        kept=keep.kept,
         breakdowns={
-            stratum: {
-                value: OverlapCount.model_validate(m, from_attributes=True)
-                for value, m in values.items()
-            }
+            stratum: {value: counted(m) for value, m in values.items()}
             for stratum, values in card.breakdowns.items()
         },
-        requests=card.requests,
-        billed_seconds=0.0,
-        price_per_hour_usd=0.0,
+        requests={run.model: card.requests},
+        tokens={run.model: card.input_tokens + card.output_tokens},
+        prices={
+            "input": run.price_input_usd,
+            "cached": run.price_cached_usd,
+            "output": run.price_output_usd,
+        },
         cost_usd=card.cost_usd,
         scorecard=SCORECARD_FILE,
         data_digest=run.data_digest,

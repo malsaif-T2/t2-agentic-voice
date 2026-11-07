@@ -12,8 +12,10 @@ import pytest
 from ole5_voice.evals import talker_compare, talker_keep
 from ole5_voice.evals.judge_check import CHECK_FILE, JudgeCheck
 from ole5_voice.evals.runs import SCORECARD_FILE
-from ole5_voice.evals.talker_score import VariantRecord
+from ole5_voice.evals.talker_data import ToolUse
+from ole5_voice.evals.talker_score import TalkerScorecard, VariantRecord
 
+from tests.ole5_voice.evals.talker_fakes import TOOL
 from tests.ole5_voice.evals.talker_support import record, write_run
 
 BETTER = [f"i{n}" for n in range(8)]
@@ -144,3 +146,32 @@ def test_the_keep_rule_takes_complete_dev_runs_of_each_arm(
     assert "is not a complete dev run of the arm k1" in capsys.readouterr().out
     argv = [*_arms(tmp_path / "three", _records(set()), _records(set())), "--arm", f"k9={a},{a}"]
     assert talker_keep.main(argv) == 1
+
+
+def _searched(records: list[VariantRecord], ms: float) -> list[VariantRecord]:
+    """`records`, each answerable reply having searched from 0.3 s for `ms` before it spoke."""
+    search = (ToolUse(tool=TOOL, outcome="ok", ms=ms, began_s=0.3),)
+    return [
+        r.model_copy(update={"turn": r.turn.model_copy(update={"tools": search})})
+        if r.turn is not None and r.kind == "answerable"
+        else r
+        for r in records
+    ]
+
+
+def test_the_keep_rule_reads_the_models_own_time_the_search_taken_out(
+    tmp_path: Path, capsys: pytest.CaptureFixture[str]
+) -> None:
+    """Q15: k1 searches for 0.9 s before its first clause at 1.6 s on the wall clock, its own
+    time 0.7 s, so it is within 1.0 s; k3 does not search and takes 1.2 s."""
+    k1, k3 = _searched(_records(set(), 1.6), 900.0), _records(set(), 1.2)
+    argv = _arms(tmp_path, k1, k3)
+    assert talker_keep.main(argv) == 0
+    report = capsys.readouterr().out
+    assert "The rule reads the model's own time to the first clause (Q15)" in report
+    assert "| k1 |" in report and "| 0.700 | 1.600 | yes |" in report
+    assert "| 1.200 | 1.200 | no |" in report and "Only k1 comes within 1.0 s" in report
+    card = TalkerScorecard.model_validate_json((tmp_path / "k1-a" / SCORECARD_FILE).read_bytes())
+    assert card.keep_time == "own_first_clause_median_s"
+    assert card.totals.own_first_clause_median_s == pytest.approx(0.7)
+    assert card.totals.first_clause_median_s == pytest.approx(1.6)

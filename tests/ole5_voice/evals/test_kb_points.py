@@ -5,12 +5,23 @@ text read from a snapshot; and the searches the talker's tool made, kept by the 
 from __future__ import annotations
 
 import asyncio
+import json
+import unicodedata
 from pathlib import Path
 
 import pytest
+from ole5_voice.evals.items import EVALS, read_toml
 from ole5_voice.evals.kb_points import TOP, PointIndex, RecordingKnowledge, read_point_texts
-from ole5_voice.evals.knowledge_set import Document, Point, Points
+from ole5_voice.evals.knowledge_set import (
+    KNOWLEDGE_DIR,
+    POINTS_FILE,
+    Document,
+    Point,
+    Points,
+    load_knowledge_items,
+)
 from ole5_voice.evals.talker_data import TalkerDataError
+from ole5_voice.passages import passage as live_passage
 from t2_agentic_voice import Caller
 
 from tests.ole5_voice.evals.talker_fakes import DOCUMENT, FakeKnowledgeBase, passage
@@ -98,3 +109,50 @@ def test_the_recorder_keeps_each_search_and_hands_the_tool_its_limit() -> None:
     first, failed = recording.searches
     assert first.query == "q" and len(first.passages) == TOP and not first.failed
     assert failed.failed and failed.passages == () and inner.searches[-1][2] == 8
+
+
+def _payload(name: str, chunk: str | int, text: str) -> dict[str, object]:
+    return {"metadata": {"document_name": name, "chunk_id": chunk, "source_text": text}}
+
+
+def test_every_committed_point_found_live_is_the_point_the_judges_text_names(
+    tmp_path: Path,
+) -> None:
+    """For each point of the committed `points.toml`, a payload as Qdrant gives it: the passage
+    the adapter makes of it (passages.py) maps to that point, and the same payload in the
+    snapshot (`--points-text`) gives that point's text, so no retrieved passage is a miss for
+    its ID's form, and the judge reads the text of the point found."""
+    points = read_toml(EVALS / KNOWLEDGE_DIR / POINTS_FILE, Points)
+    index = PointIndex(points)
+    names = {document.key: document.name for document in points.documents}
+    lines = []
+    for point in points.points:
+        payload = _payload(names[point.document], point.chunk, f"The text of {point.id}.")
+        found = live_passage({"score": 0.6, "payload": payload})
+        assert found is not None and index.point_of(found.id) == point.id
+        lines.append(json.dumps({"id": point.id, "payload": payload}, ensure_ascii=False))
+    snapshot = tmp_path / "points.jsonl"
+    snapshot.write_text("\n".join(lines) + "\n", encoding="utf-8")
+    texts = read_point_texts(snapshot, index)
+    assert texts == {point.id: f"The text of {point.id}." for point in points.points}
+    # Every expected point of the knowledge set is one of them.
+    items = load_knowledge_items(EVALS / KNOWLEDGE_DIR)
+    assert {p for item in items for p in item.expected} <= set(texts)
+
+
+@pytest.mark.parametrize(
+    ("name", "chunk"),
+    [
+        (unicodedata.normalize("NFD", DOCUMENT), "chunk_002"),  # another Unicode form
+        (f"  {DOCUMENT}  ", "chunk_002"),  # spaces around it
+        (DOCUMENT.replace(" ", "  "), "chunk_002"),  # two spaces for one
+        (DOCUMENT, 2),  # a chunk ID held as a number
+        (DOCUMENT, "2"),
+    ],
+)
+def test_a_passages_id_form_never_makes_a_miss(tmp_path: Path, name: str, chunk: str | int) -> None:
+    found = live_passage({"score": 0.6, "payload": _payload(name, chunk, "Some text.")})
+    assert found is not None and INDEX.point_of(found.id) == "guide-002"
+    line = json.dumps({"id": 2, "payload": _payload(name, chunk, "Some text.")})
+    (snapshot := tmp_path / "points.jsonl").write_text(line + "\n", encoding="utf-8")
+    assert read_point_texts(snapshot, INDEX) == {"guide-002": "Some text."}

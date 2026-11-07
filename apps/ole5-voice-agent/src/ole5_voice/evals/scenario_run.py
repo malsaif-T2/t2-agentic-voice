@@ -26,6 +26,7 @@ from typing import Final
 from t2_agentic_voice import T2VoiceError, configure_logging, get_logger
 
 from ole5_voice import LOGGERS
+from ole5_voice.evals.factories import Closing
 from ole5_voice.evals.items import HISTORY_FILE, GoldenSetError
 from ole5_voice.evals.judge import JUDGE_ATTEMPTS, Judge
 from ole5_voice.evals.kb_points import KnowledgeData, load_knowledge
@@ -88,13 +89,22 @@ def _scenarios(data_dir: Path, data: KnowledgeData) -> tuple[Scenario, ...]:
 
 
 def _run(args: argparse.Namespace, parts: TalkerParts) -> int:
+    """The run, what it built closed whenever it ends, a refusal's included."""
+    closing = Closing()
+    try:
+        return _built(args, parts, closing)
+    finally:
+        closing.close_now()
+
+
+def _built(args: argparse.Namespace, parts: TalkerParts, closing: Closing) -> int:
     checkout = run_checkout(parts.folder, parts.git)
     data_dir = checkout.top / DATA
     files = sorted((data_dir / SCENARIOS_DIR).glob("*.toml"))
     data = load_knowledge(data_dir, args.points_text, files)
     scenarios = _scenarios(data_dir, data)
     chat, call = chat_settings(args), call_settings(args)
-    agent, recording = agent_of(args, parts)
+    agent, recording = agent_of(args, parts, closing)
     folder = folder_for(args.out, resume=args.resume, checkout=checkout, git=parts.git)
     info = ScenarioRun(
         name=folder.out.name,
@@ -130,7 +140,7 @@ def _run(args: argparse.Namespace, parts: TalkerParts) -> int:
     began = parts.now()
     paced = pacing(
         args,
-        parts.chat(chat),
+        closing.add(parts.chat(chat)),
         today=parts.requests_today(history, began.date()),
         before_usd=sum(session.cost_usd for session in sessions),
         parts=parts,
@@ -162,7 +172,7 @@ def _run(args: argparse.Namespace, parts: TalkerParts) -> int:
     found = _Found()
     log.info("run_started", run=info.name, plays=len(todo), done=len(done))
     try:
-        asyncio.run(_measure(playing, scenarios[0], todo, found, folder, args.smoke_only))
+        asyncio.run(_measure(playing, scenarios[0], todo, found, folder, args.smoke_only, closing))
     except KeyboardInterrupt:
         found.stopped = "interrupted"
         log.warning("run_interrupted", done=len(found.plays), of=len(todo))
@@ -205,6 +215,7 @@ async def _measure(
     found: _Found,
     folder: RunFolder,
     smoke_only: bool,
+    closing: Closing,
 ) -> None:
     spend = playing.paced.spend
     try:
@@ -236,10 +247,7 @@ async def _measure(
         found.stopped = stop.reason
         log.warning("run_stopped", reason=stop.reason, done=len(found.plays), of=len(todo))
     finally:
-        await playing.paced.aclose()
-        closing = getattr(playing.knowledge.kb, "aclose", None)
-        if closing is not None:
-            await closing()
+        await closing.aclose()  # the chat model and the knowledge base, in the run's own loop
 
 
 def main(argv: Sequence[str] | None = None, *, parts: TalkerParts | None = None) -> int:

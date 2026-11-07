@@ -159,3 +159,17 @@ def test_a_reply_opening_names_a_file_of_the_runs_replies_only() -> None:
     for path in ("../secret.wav", "replies/../x.wav", "/var/a.wav", "replies/a.txt"):
         with pytest.raises(ValidationError):
             AudioResult.model_validate(base | {"openings": (path,)})
+
+
+def test_the_targets_read_both_starts_of_time_together_the_breakdown_each_apart() -> None:
+    """Q18: the replies timed from the owner's marked end (`n19` to `n28`) and those timed from
+    the speech detector's stop (`n01` to `n18`) are read together by the targets, and apart by
+    the breakdown by where the time starts."""
+    marked = [_result(f"n2{n}", _search(2000.0 + 100 * n)) for n in range(3)]
+    detected = [_result(f"n0{n}", _search(3500.0 + 100 * n), end="detector") for n in range(3)]
+    results = [*marked, *detected]
+    median = {t.name: t.value for t in targets(results, held_out=False, tail_s=TAIL)}
+    assert median["search_median_ms"] == pytest.approx(2850.0)  # the six together
+    ends = breakdowns(results)["end"]
+    assert ends["label"].paths["search"].median_ms == pytest.approx(2100.0)
+    assert ends["detector"].paths["search"].median_ms == pytest.approx(3600.0)

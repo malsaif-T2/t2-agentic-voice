@@ -64,6 +64,7 @@ NAMES = {
         "Pronunciations",
         "SpellingIssue",
         "SpellingRule",
+        "WhisperPrompt",
         "normalize_arabic",
         "normalize_digits",
         "pronounce",
@@ -72,6 +73,7 @@ NAMES = {
         "speak_number",
         "spelling_issues",
         "split_clauses",
+        "whisper_prompt",
     },
     "t2_agentic_voice.evals": {
         "AudioCall",

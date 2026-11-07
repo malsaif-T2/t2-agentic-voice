@@ -1,15 +1,18 @@
 """What the tests of `poe first-audio` and `poe first-audio-listen` share: made-up recorded
-requests, agents for `--agent` (a talker's with a made-up tool, an echo's, and a factory that
-gives no agent), a fake replay that answers each recording from a script and keeps what it was
-asked, and a run's world with the parts it is built from, so nothing is sent and no time
-passes but the run's own pauses."""
+requests, factories for `--agent` with the real one's signature, given the knowledge base (a
+talker's with a made-up tool, none when given no base; an echo's; and a factory that gives no
+agent) and for `--knowledge`, given the env file, a fake replay that answers each recording
+from a script and keeps what it was asked, and a run's world with the parts it is built from,
+so nothing is sent and no time passes but the run's own pauses."""
 
 from __future__ import annotations
 
+from collections.abc import Callable
 from dataclasses import dataclass, field
 from pathlib import Path
 from typing import Any
 
+from ole5_voice.evals.factories import load_factory
 from ole5_voice.evals.first_audio_card import AudioScorecard
 from ole5_voice.evals.first_audio_score import ChatSpend, ReplayedCall, ReplayedTurn
 from ole5_voice.evals.first_audio_setup import FirstAudioParts
@@ -18,15 +21,15 @@ from ole5_voice.evals.runs import SCORECARD_FILE
 from t2_agentic_voice import Language as Spoken
 from t2_agentic_voice import VoiceAgent, VoiceSettings
 from t2_agentic_voice.events import ModelUsage
-from t2_agentic_voice.ports import AudioChunk, AudioClip
+from t2_agentic_voice.ports import AudioChunk, AudioClip, KnowledgeBase
 
 from tests.ole5_voice.evals.eot_support import Lines, golden_set, parts_of, paused
 from tests.ole5_voice.evals.run_support import FakeClock, World, make_world
+from tests.ole5_voice.evals.talker_fakes import FakeKnowledgeBase
 from tests.ole5_voice.evals.timing_support import ARABIC, ENGLISH, WHISPER, FakePhraseCache
 from tests.t2_agentic_voice.fakes import FakeSpeechToText, FakeTextToSpeech
 
 CHAT = "openai/gpt-oss-120b"
-SUPPORT = "tests.ole5_voice.evals.first_audio_support"
 
 
 @dataclass(frozen=True)
@@ -44,26 +47,31 @@ def _languages() -> list[Spoken]:
     return [Spoken.saudi_arabic(greeting="مرحبا"), Spoken.english(greeting="Hello.")]
 
 
-def agent() -> VoiceAgent:
-    """A talker's agent with one tool, as the app's factory gives one."""
-    return VoiceAgent(
-        name="made-up", languages=_languages(), instructions="Answer.", tools=[MadeUpTool()]
-    )
+def agent(kb: KnowledgeBase | None = None) -> VoiceAgent:
+    """A talker's agent with one tool searching `kb`, as the app's factory gives one; with no
+    base, the same talker with no tool, as Ole5's `talker_agent(None)`."""
+    tools = [MadeUpTool()] if kb is not None else []
+    return VoiceAgent(name="made-up", languages=_languages(), instructions="Answer.", tools=tools)
 
 
-def echo_agent() -> VoiceAgent:
+def always_tools(kb: KnowledgeBase | None) -> VoiceAgent:
+    """A factory that gives a tool even with no knowledge base."""
+    return agent(kb or FakeKnowledgeBase())
+
+
+def echo_agent(kb: KnowledgeBase | None) -> VoiceAgent:
     """An agent with no instructions: its calls run the echo."""
     return VoiceAgent(name="made-up", languages=_languages())
 
 
-def english_agent() -> VoiceAgent:
+def english_agent(kb: KnowledgeBase | None) -> VoiceAgent:
     """A talker's agent that speaks English only."""
     return VoiceAgent(
         name="made-up", languages=[Spoken.english(greeting="Hello.")], instructions="Answer."
     )
 
 
-def no_agent() -> str:
+def no_agent(kb: KnowledgeBase | None) -> str:
     """A factory that gives something else."""
     return "not an agent"
 
@@ -148,6 +156,29 @@ class TRun:
     tts: FakeTextToSpeech = field(default_factory=FakeTextToSpeech)
     lines: Lines = field(default_factory=Lines)
     built: list[VoiceSettings] = field(default_factory=list)
+    kb: FakeKnowledgeBase = field(default_factory=FakeKnowledgeBase)
+    env_files: list[Path | None] = field(default_factory=list)
+
+    def load(self, spec: str) -> Callable[..., object]:
+        """The factories `ole5_voice.fake:<name>` names: this module's agents, and a knowledge
+        base's that keeps the env file it was given; any other spec as a run loads it."""
+        module, _, name = spec.partition(":")
+
+        def knowledge(env_file: Path | None) -> FakeKnowledgeBase:
+            self.env_files.append(env_file)
+            return self.kb
+
+        made: dict[str, Callable[..., object]] = {
+            "agent": agent,
+            "always_tools": always_tools,
+            "echo_agent": echo_agent,
+            "english_agent": english_agent,
+            "no_agent": no_agent,
+            "kb": knowledge,
+        }
+        if module == "ole5_voice.fake" and name in made:
+            return made[name]
+        return load_factory(spec)
 
     def parts(self, **changed: Any) -> FirstAudioParts:
         plan = parts_of(self.world, golden_set(*self.items, held_out=self.held_out))
@@ -165,6 +196,7 @@ class TRun:
             "phrases": lambda settings, tts, agent: self.cache,
             "replay": self.replay,
             "append_line": self.lines,
+            "load_factory": self.load,
         }
         return FirstAudioParts(**(found | changed))
 
@@ -173,11 +205,13 @@ class TRun:
         return self.world.main / "var" / "runs" / "t1"
 
     def argv(self, *extra: str, split: str = "dev", factory: str = "agent") -> list[str]:
+        knowledge = [] if "--no-tools" in extra else ["--knowledge", "ole5_voice.fake:kb"]
         return [
+            *knowledge,
             "--split",
             split,
             "--agent",
-            f"{SUPPORT}:{factory}",
+            f"ole5_voice.fake:{factory}",
             "--trim-silence",
             "on",
             "--model",

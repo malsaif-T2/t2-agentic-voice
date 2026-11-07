@@ -18,7 +18,9 @@ with, `QDRANT_LOGIN_EMAIL` and `QDRANT_LOGIN_PASSWORD`; and, each with T2's defa
 set the app still starts, its agent the echo; with all three, its agent is the talker, which
 searches the knowledge base; with only some, it refuses to start, naming the ones missing.
 
-A blank value counts as unset, as the library's do. The library's settings are
+A measurement run reads the knowledge base's access alone (`KnowledgeSettings`,
+`load_knowledge`), with no access code or widget setting. A blank value counts as unset, as the
+library's do. The library's settings are
 `VoiceSettings.from_env`'s, and the token route signs every token with the join key
 `T2V_JOIN__CURRENT_KID` names, so that one is required too. Every failure is one
 ConfigurationError naming each setting that cannot load, never its value, with a FIX line.
@@ -57,8 +59,9 @@ _FIX: Final = (
 )
 
 
-class AppSettings(BaseSettings):
-    """The Ole5 app's own settings, read-only once loaded."""
+class KnowledgeSettings(BaseSettings):
+    """The knowledge base's access, read-only once loaded: all a measurement run needs of the
+    app's settings (`load_knowledge`), with no access code or widget setting."""
 
     model_config = SettingsConfigDict(
         env_prefix=PREFIX,
@@ -66,19 +69,6 @@ class AppSettings(BaseSettings):
         extra="ignore",
         frozen=True,
         hide_input_in_errors=True,
-    )
-
-    access_code: SecretStr = Field(
-        description=(
-            "The code the owner types in the widget to get a join token, at least 16 characters."
-        ),
-    )
-    website_origin: str | None = Field(
-        default=None,
-        description=(
-            "The website allowed to frame the widget's page, an origin as a browser sends it "
-            "(https://www.example.com). Unset: no page may frame it."
-        ),
     )
 
     qdrant_url: str | None = Field(
@@ -139,6 +129,24 @@ class AppSettings(BaseSettings):
             raise ValueError("must hold no user name or password; they have settings of their own")
         return value
 
+
+class AppSettings(KnowledgeSettings):
+    """The Ole5 app's own settings, the knowledge base's access among them, read-only once
+    loaded."""
+
+    access_code: SecretStr = Field(
+        description=(
+            "The code the owner types in the widget to get a join token, at least 16 characters."
+        ),
+    )
+    website_origin: str | None = Field(
+        default=None,
+        description=(
+            "The website allowed to frame the widget's page, an origin as a browser sends it "
+            "(https://www.example.com). Unset: no page may frame it."
+        ),
+    )
+
     @field_validator("access_code")
     @classmethod
     def _long_enough(cls, value: SecretStr) -> SecretStr:
@@ -178,7 +186,7 @@ class KnowledgeAccess:
     tenant: str
 
 
-def knowledge_access(app: AppSettings) -> KnowledgeAccess | None:
+def knowledge_access(app: KnowledgeSettings) -> KnowledgeAccess | None:
     """The knowledge base's access when `app` sets all three of `ACCESS`, None when it sets
     none (the agent is then the echo); a ConfigurationError naming the ones missing when it
     sets only some, never a value."""
@@ -236,6 +244,27 @@ def load(env_file: Path | None = None) -> Settings:
         )
     knowledge_access(app)  # all three or none, refused here before anything is built
     return Settings(app=app, voice=voice)
+
+
+def load_knowledge(env_file: Path | None = None) -> KnowledgeAccess:
+    """The knowledge base's access alone, from the environment and `env_file` when given (a
+    measurement run's, which needs no access code); a ConfigurationError naming each setting
+    that cannot load, or that is not set, never a value."""
+    refused: ConfigurationError | None = None
+    try:
+        loaded = KnowledgeSettings(_env_file=env_file, _env_file_encoding="utf-8")
+    except ValidationError as error:
+        refused = _cannot_load(error)
+    if refused is not None:  # raised here, so no chain leads back to the values refused
+        raise refused
+    access = knowledge_access(loaded)
+    if access is None:
+        raise ConfigurationError(
+            "The knowledge base's access is not set. FIX: set QDRANT_URL, QDRANT_LOGIN_EMAIL "
+            "and QDRANT_LOGIN_PASSWORD in the environment or the .env file given.",
+            details={"settings": list(ACCESS)},
+        )
+    return access
 
 
 def _cannot_load(error: ValidationError) -> ConfigurationError:

@@ -10,7 +10,7 @@ import re
 from collections.abc import Sequence
 from typing import Final
 
-from ole5_voice.evals.run_lines import AnyLine, EotLine, OverlapLine, TimingLine
+from ole5_voice.evals.run_lines import EotLine, OverlapLine, TimingLine
 from ole5_voice.evals.runs import HistoryLine
 
 # Markdown's own characters, escaped in a cell so a note renders as the text it is: no link, no
@@ -18,7 +18,7 @@ from ole5_voice.evals.runs import HistoryLine
 _MARKDOWN: Final = re.compile(r"([\\`*\[\](){}<>|~&])")
 
 
-def strata(line: AnyLine) -> list[str]:
+def strata(line: HistoryLine | EotLine | TimingLine | OverlapLine) -> list[str]:
     """A run's numbers by stratum value: accuracy for `poe eval`'s, cut-offs and misses for an
     end-of-turn run's, each with its items; each step's median for a timing run's; the right
     verdicts, stops and false stops, then whether each target held, for an overlap run's."""
