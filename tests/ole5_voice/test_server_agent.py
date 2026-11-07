@@ -16,7 +16,7 @@ import uvicorn
 from fastapi import APIRouter, FastAPI
 from fastapi.testclient import TestClient
 from ole5_voice import agent, server
-from ole5_voice.agent import ECHO_AGENT, PROGRESS_KEY
+from ole5_voice.agent import ECHO_AGENT, PROGRESS_KEY, SEARCH_LIMIT
 from ole5_voice.settings import AppSettings, KnowledgeAccess, Settings, knowledge_access
 from pydantic import SecretStr
 from t2_agentic_voice import ConfigurationError, VoiceSettings
@@ -89,10 +89,11 @@ class _Tool:
 @pytest.fixture
 def fakes(monkeypatch: pytest.MonkeyPatch) -> list[object]:
     """The runtime, the tokens, the knowledge base and the library's knowledge tool, faked; the
-    list of the bases each search tool was made of."""
+    list of the bases each search tool was made of, each checked to read Ole5's one k."""
     searched: list[object] = []
 
     def knowledge_tool(kb: object, **given: object) -> _Tool:
+        assert given["limit"] == SEARCH_LIMIT  # the k every run's agent reads too
         searched.append(kb)
         return _Tool()
 
