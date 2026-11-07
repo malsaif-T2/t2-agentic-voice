@@ -579,6 +579,39 @@ runs"; in this order, each with its smoke first)
     5 change together, and run K's `--input-budget-tokens` (6,000) is checked against K0's
     characters. Before the live rehearsal of step 5, TD-117's early start rebuilds its turn after
     the stop.
+- 2026-11-07: The live smoke, before any registered run: the real knowledge base,
+  `openai/gpt-oss-120b` at low reasoning, and Ole5's talker through `TextCall` on the system
+  clock; then two probes (about 40 model requests in all, about a cent).
+  - **The knowledge base** answered 8 passages for a limit of 8, none unreadable, their IDs in
+    `points.toml`'s form (`<document>/chunk_NNN`): 1.11 s for the process's first search, its
+    sign-in included, then 0.34 s on the kept connection.
+  - **Groq took a `system` message mid-history** (the guard's note, TD-116): finish `stop`, a
+    sensible reply.
+  - **The rehearsal's step 1** («نسيت كلمة المرور كيف أستعيدها؟»): one search (0.34 s), two
+    requests, the first token at 0.26 s and the first clause at 0.82 s on the wall clock (about
+    0.48 s of the model's own), four clauses in the Saudi register, no block, no violation. The
+    follow-up («طيب وش الخطوة الثانية؟») was answered with no new search.
+  - **The screen promised with nothing on it.** Both replies told the caller the full steps were
+    on the screen, and no card was shown: the best passage of the talker's own query lists no
+    steps, and the library's rule and Ole5's instructions named the screen whatever was shown.
+    Fixed and merged (e94a7df; d57f379, 39cb81b, then e67142a): the knowledge tool's
+    `shown_on_screen` always says what is shown (`"nothing"` when no card), and the rules name
+    the screen only when it holds the steps. Rechecked live: the reply no longer names it.
+  - **A follow-up took 7.8 s to its first token** in the recheck. A probe of Ole5's real prompt,
+    24 short requests alternated: with the same prompt, 8 of 12 were served from Groq's cache
+    and 3 of those 8 took 1.03, 1.25 and 5.71 s; with a first line varied per request, none was
+    cached and all 12 came in 0.15 to 0.30 s. The prototype's slow cache path (its D9), which
+    Block 0's spike did not see: the owner's Q21.
+  - **Tn's talker was refused.** Ole5's talker with no tool (`talker_agent(None)`, run T's Tn)
+    keeps the instructions to search first; four Ole5 questions sent with no tools gave three
+    Groq refusals (`tool_use_failed`: the model wrote a tool call no request offered) and one
+    empty answer. Tn would have timed the `error` notice; its talker gets instructions with no
+    search (built in its own worktree).
+  - TextCall's system-clock test failed once alone as well as under load: a 0.05 s sleep on the
+    loop's clock, which ticks every 15.6 ms on Windows, ended 0.033 s later by the finer counter;
+    its bound now allows the tick (3cc3eb7). Gate: `4976 passed`, `TOTAL 19927 35 99%`.
+  - **Debt:** TD-128; paid from TD-116 (the mid-history `system` message), TD-120 (the
+    system-clock test) and TD-121 (the adapter against the live service).
 
 ## Decision log
 
@@ -592,6 +625,7 @@ runs"; in this order, each with its smoke first)
   preview ones, which may change or go without notice.
 - 2026-11-06: No varying first prompt line (the prototype's D9 cure): the spike saw no slow cache
   path, and the varying line removed every cache hit, which halves the price of the input cached.
+  *Reversed 2026-11-07 (Q21):* the live probe saw the slow path on Ole5's real prompt.
 - 2026-11-06: The knowledge base adapter sends a plain dense search (the `dense` vector with the
   tenant's filter), not ragent2's hybrid one, whose BM25 query vector is computed by a package the
   library does not have (Q4: no new package). Run K's retrieval measures what that costs; if
@@ -642,6 +676,7 @@ runs"; in this order, each with its smoke first)
   approach problematic then we can do/try a different one"; then, asked how much of each
   passage the model writes from: "Use the full first few passages found, determined by k
   (top-k), find the best k for our case".
+- 2026-11-07, to Q21, from the live smoke: "Vary the first line".
 
 ## Tracks
 
@@ -701,6 +736,11 @@ affect.*
   a new request over a reply.
 - *M3's stored overlap transcripts* (O1 and O2 on dev, H3 on held-out; plan 005) for run U, and
   the golden set's speech items for run W.
+
+*Amended 2026-11-07, before any run (Q21):* every request the talker sends opens with a short
+line that differs on every request (`llm.vary_first_line`, on by default), so no request is
+served from Groq's prompt cache, whose slow path took up to 5.7 s in the live probe; runs K, T
+and S measure with it (K0 sends no chat request).
 
 **W, the Whisper prompt and English in an Arabic call** (speech-to-text only, about $0.05 a run).
 Arm W1 sends the vocabulary (Ole5's product terms and the presets' command words) as Whisper's
@@ -801,8 +841,8 @@ pass it.
 Q1 to Q10 settled on 2026-11-06 ("Approve all"). Q11 to Q14, from the spike, Block 0 and the
 knowledge set's review, asked on 2026-11-06 before any registered run and settled on 2026-11-07;
 Q15 to Q18, from Track E's review, asked and settled on 2026-11-07 before any registered run;
-Q19 and Q20, from the whole-code review, asked and settled on 2026-11-07 before any registered
-run.
+Q19 and Q20, from the whole-code review, and Q21, from the live smoke, asked and settled on
+2026-11-07 before any registered run.
 Each answer that changes a run is a dated amendment to the registration.
 
 - **Q1. What voice-first means here.** *Settled: (a).* The eight choices above. Options: (a) approve them; (b)
@@ -893,11 +933,16 @@ Each answer that changes a run is a dated amendment to the registration.
   characters, and the best passage's steps: about 92% of the best passage's words, about 26% of
   each other passage's text (122 of Ole5's 128 points cut). The agent recommended each passage
   whole, cut near 1,500 characters; the owner chose the full top k with k found for Ole5.
+- **Q21. Groq's prompt cache.** *Settled 2026-11-07: (a).* In the live probe, 3 of 8 requests
+  Groq served from its cache took 1.03 to 5.71 s to the first token, and none of 12 with a
+  varying first line took over 0.30 s. Options: (a) every request's first line varies, a
+  setting to turn it off; (b) keep the cache and let K and T measure how often the slow path
+  hits. **The agent recommended (a).**
 
 ## What the owner does
 
-- Answer Q1 to Q10, and approve the plan (done 2026-11-06); answer Q11 to Q14, Q15 to Q18, and
-  Q19 and Q20 (done 2026-11-07).
+- Answer Q1 to Q10, and approve the plan (done 2026-11-06); answer Q11 to Q14, Q15 to Q18,
+  Q19 and Q20, and Q21 (done 2026-11-07).
 - Copy the knowledge base's access into `.env` (Q4; done 2026-11-06, under the owner's names).
 - Review the knowledge set's items (Q5, about 40 minutes), and check 24 judged answers (Q6, about
   20 minutes).
