@@ -34,6 +34,11 @@ hold began (turn_hold.py's `TurnHeldFrame`) hands `TurnHeld` and sends its speec
 (`HoldResumedFrame`) cancels that request, then hands `HoldResumed`. When no speech followed its
 audio, the turn's own `Transcribed` is that request's result again, with no request.
 
+Every request, each part's, names the language last named (`listen_in`) and carries that
+language's Whisper prompt: the call's `prompts`, built once a call by `call_prompts`, the prompt
+run W's arm W1 measured and kept (plan 006, Q23). A request that names no language, or one whose
+prompt holds no word, carries none, as W1 sent none; with `stt.send_prompt` off, none carries one.
+
 `drop` ends the call's side here (io.py's end): the held audio is dropped, never flushed, and
 every request in flight cancelled, a part's included, its `Transcribing` already handed. A muted
 service holds no audio (Pipecat's `STTMuteFrame`).
@@ -43,7 +48,7 @@ from __future__ import annotations
 
 import asyncio
 from collections import deque
-from collections.abc import AsyncGenerator, Coroutine
+from collections.abc import AsyncGenerator, Coroutine, Mapping
 from dataclasses import replace
 from typing import Any
 
@@ -59,9 +64,12 @@ from pipecat.processors.frame_processor import FrameDirection
 from pipecat.services.settings import STTSettings
 from pipecat.services.stt_service import STTService
 
+from t2_agentic_voice.core.config import VoiceSettings
 from t2_agentic_voice.core.errors import ProviderError, ProviderErrorKind
 from t2_agentic_voice.core.logging import get_logger
+from t2_agentic_voice.domain.declaration import VoiceAgent
 from t2_agentic_voice.domain.ports.speech_to_text import AudioClip, SpeechToText, Transcript
+from t2_agentic_voice.domain.whisper_prompt import COMMAND_SPELLINGS, whisper_prompt
 from t2_agentic_voice.voice.pipecat_events import FailureReport
 from t2_agentic_voice.voice.session.session_events import (
     HoldResumed,
@@ -96,10 +104,23 @@ MAX_TURN_S = 30.0
 OVERLAP_LEAD_S = 0.3
 
 
+def call_prompts(agent: VoiceAgent, settings: VoiceSettings) -> dict[str, str]:
+    """The Whisper prompt of each language a call of `agent` may name, by its primary code:
+    `whisper_prompt` of the declaration's vocabulary, the `words.vocabulary` setting's terms
+    after it, as run W's arm W1 built it (its `--prompt-agent`); none with `stt.send_prompt`
+    off, and none for a language whose prompt holds no word."""
+    if not settings.stt.send_prompt:
+        return {}
+    terms = (*agent.vocabulary.terms, *settings.words.vocabulary)
+    prompts = {code: whisper_prompt(terms, code).text for code in COMMAND_SPELLINGS}
+    return {code: text for code, text in prompts.items() if text}
+
+
 class TurnSTTBridge(STTService):
     """One call's speech-to-text bridge: each user turn's audio to `stt` in one request, and an
     overlap's parts, its events to `events`, its failures to `report`; `start_s` is the speech
-    detector's start delay; `early`, a turn's `held` request at its hold (the module's)."""
+    detector's start delay; `early`, a turn's `held` request at its hold; `prompts`, the call's
+    Whisper prompt of each language (`call_prompts`; none by default) (the module's)."""
 
     def __init__(
         self,
@@ -109,6 +130,7 @@ class TurnSTTBridge(STTService):
         report: FailureReport,
         start_s: float,
         early: bool = False,
+        prompts: Mapping[str, str] | None = None,
     ) -> None:
         super().__init__(
             audio_passthrough=False,
@@ -132,6 +154,7 @@ class TurnSTTBridge(STTService):
         self._requests: set[asyncio.Task[Transcribed]] = set()
         self._dropped = False
         self._early = early
+        self._prompts = dict(prompts or {})
 
     @property
     def supports_ttfs(self) -> bool:
@@ -140,7 +163,8 @@ class TurnSTTBridge(STTService):
         return False
 
     def listen_in(self, language: str | None) -> None:
-        """Name `language` to the provider for every turn's request from now on (`ListenIn`)."""
+        """Name `language` to the provider for every turn's request from now on (`ListenIn`),
+        each sent with that language's prompt (the module's)."""
         self._language = language
 
     def hear_overlap(self, turn_id: int, window_ms: int) -> None:
@@ -293,8 +317,10 @@ class TurnSTTBridge(STTService):
         transcript: Transcript | None = None
         failure: ProviderErrorKind | None = None
         retryable = False
+        language = self._language
+        prompt = None if language is None else self._prompts.get(language)
         try:
-            transcript = await self._stt.transcribe(clip, language=self._language, prompt=None)
+            transcript = await self._stt.transcribe(clip, language=language, prompt=prompt)
         except ProviderError as error:
             failure, retryable = error.kind, error.retryable
         except Exception as error:  # an adapter's bug: still exactly one result for the part

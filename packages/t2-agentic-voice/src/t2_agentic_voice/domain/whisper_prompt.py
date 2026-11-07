@@ -1,8 +1,8 @@
 """The Whisper prompt of a call (the design's 4.3; plan 006's run W, Q17): the words a
 speech-to-text request carries so that Whisper writes the agent's product terms, and the caller's
-command words, as they should be written. A pure function (`whisper_prompt`), so the live call can
-send the same prompt the measurement measured; nothing sends it yet: a call passes no prompt until
-run W keeps its arm W1 (GP-18).
+command words, as they should be written. A pure function (`whisper_prompt`), so the live call
+sends the same prompt the measurement measured: run W kept its arm W1 (Q23), so every request of
+a call carries it (voice/stt_bridge.py's `call_prompts`) unless `stt.send_prompt` is off (GP-18).
 
 **What it holds**, each once, joined with a comma, in this order: the declaration's vocabulary
 terms (`VoiceAgent.vocabulary`), then each command word of the call's language as it should be
