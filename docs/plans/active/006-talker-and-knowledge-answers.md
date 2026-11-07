@@ -670,8 +670,41 @@ runs"; in this order, each with its smoke first)
   - `stt.send_prompt` (on by default) turns it off. `AudioCall` takes the same path, so run T
     measures what ships. The echo, with no vocabulary, sends the command words alone.
   - The history page that run W's commits had left stale was rendered again (a6e58f0).
-  - Gate: `5000 passed`, `TOTAL 19964 35 99%`.
+  - Tests: `5000 passed`, `TOTAL 19964 35 99%`; lint failed on one line of Ole5's agent
+    docstring, which the lead read past, wrapped in 55a0929.
   - **Debt:** TD-130.
+- 2026-11-07: **The knowledge set's review (Q5)**, before any run read it. The owner: "Ok It seems
+  good to me, but to be fair I am not very familiar with the knowledge-base myself, so just make
+  sure the information are there in the knowledge-base to back the answers." So the agent checked
+  every item against the snapshot's text (four readers in parallel, read only):
+  - each answerable item's key facts against its expected passages, and the other passages for
+    one a right answer needs; each `none` item against all 128 passages;
+  - 61 of 70 were backed as written. Nine were corrected to what the passages say (96e5061):
+    - key facts: `n12` (no "kept up to date" for notifications), `n21` (extra attachments when
+      archiving, not after), `n22` (the knowledge base ties no app update to notifications),
+      `n25` (or that setting turned off), `q16` (the sign-in check's other ways), `q19` (the
+      roles' sub-tabs, and a shared department role's type);
+    - expected passages: `n17` gains `rules-004` (the view screen's attachments), `q12` gains
+      `rules-021` and `rules-017` (a department's and the account's space), `q15` loses
+      `procedures-019` (nothing on the label's date).
+  - No item changed kind or split; every `none` item is absent from the knowledge base.
+  - The tests of the set pass (23); the whole gate ran at the k of 7 below.
+- 2026-11-07: **Run K0 on dev** (Q20; at 55a0929, 96 variants of 32 answerable items, no failure,
+  no Groq request; the history's line 5299725). From the raw words, for each k: the share of
+  items with an expected passage in the top k, then the share of their expected passages found:
+
+  | k | 1 | 2 | 3 | 4 | 5 | 6 | 7 | 8 |
+  | --- | --- | --- | --- | --- | --- | --- | --- | --- |
+  | An expected passage in the top k | 0.698 | 0.771 | 0.833 | 0.844 | 0.854 | 0.865 | 0.875 | 0.896 |
+  | Expected passages found | 0.281 | 0.391 | 0.463 | 0.517 | 0.564 | 0.596 | 0.621 | 0.651 |
+  | Characters read, median | 647 | 1,405 | 2,352 | 3,127 | 4,039 | 4,825 | 5,928 | 6,852 |
+
+  - **k = 7 kept**: the smallest within 0.05 of k = 8's 0.651 (k = 6 is 0.005 short). At k = 7
+    the talker reads a median of 5,928 characters of passages, 7,596 at the 90th percentile,
+    8,822 at most. Ole5's `SEARCH_LIMIT` is 7, its version `2026-11-07.4` (bf7793a).
+  - From the raw words, an expected passage is in the top 5 for 0.854 of the items, under K's
+    90% target; K reads the talker's own query too. If K misses it, a sparse query beside the
+    dense one is the first amendment to propose (the decision log, 2026-11-06).
 
 ## Decision log
 
@@ -1026,7 +1059,7 @@ Each answer that changes a run is a dated amendment to the registration.
 - Answer Q1 to Q10, and approve the plan (done 2026-11-06); answer Q11 to Q14, Q15 to Q18,
   Q19 and Q20, Q21, Q22 and Q23 (done 2026-11-07).
 - Copy the knowledge base's access into `.env` (Q4; done 2026-11-06, under the owner's names).
-- Review the knowledge set's items (Q5, about 40 minutes), and check 24 judged answers (Q6, about
-  20 minutes).
+- Review the knowledge set's items (Q5, about 40 minutes; done 2026-11-07, checked by the agent
+  against the knowledge base), and check 24 judged answers (Q6, about 20 minutes).
 - Listen to ten replies of run T for clipped first syllables (about 5 minutes).
 - Hold the live calls (about 20 minutes).
