@@ -3,7 +3,10 @@ name = "t2-agentic-voice-minimal-example"
 version = "0.1.0"
 description = "The smallest app on T2 Agentic Voice: the guide's quickstart, and a test that the library works without any Ole5 code."
 requires-python = ">=3.12"
-dependencies = ["t2-agentic-voice"]
+dependencies = [
+    "pydantic>=2.13.5",
+    "t2-agentic-voice",
+]
 
 [tool.uv.sources]
 t2-agentic-voice = { workspace = true }
