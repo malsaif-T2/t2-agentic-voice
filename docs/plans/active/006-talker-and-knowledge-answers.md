@@ -612,6 +612,24 @@ runs"; in this order, each with its smoke first)
     its bound now allows the tick (3cc3eb7). Gate: `4976 passed`, `TOTAL 19927 35 99%`.
   - **Debt:** TD-128; paid from TD-116 (the mid-history `system` message), TD-120 (the
     system-clock test) and TD-121 (the adapter against the live service).
+- 2026-11-07: The live probes' two fixes, built in parallel worktrees from 3cc3eb7, each reviewed
+  once (neither review found what breaks a call), merged one at a time with the gate after each.
+  - **Q21, a first line of its own** (d547e1b; aaf7b34, 8725872, then 7011d09). Every request the
+    talker sends opens its system message with `Request <id>.`, the ids from a counter with a
+    random start; `llm.vary_first_line` (on by default) turns it off; `render_prompt` shows the
+    prompt without it; `latency.md` says why. Gate: `4987 passed`, `TOTAL 19938 35 99%`.
+  - **Tn's talker with no search** (48185bb; 74ec2bc to e90d7b9). `talker_agent(None)` swaps
+    each language's "Searching:" section for one saying there is no knowledge base or tool, and
+    carries its own version (`+no-search`); the served talker's prompt is unchanged byte for
+    byte. Gate: `4992 passed`, `TOTAL 19951 35 99%`.
+  - **Rechecked live** (about a cent):
+    - Tn's talker: 6 Ole5 questions with no tools, 0 refused, 0 empty; it said twice that it
+      cannot look it up and answered 4 times from its own knowledge, which Tn does not read.
+    - The served talker: 4 turns, 8 requests offering the search, 0 cached tokens; the first
+      token at a median of 0.36 s, the slowest 0.49 s. A call's requests grow with the passages
+      kept from its last 4 turns: 3,927 input tokens over the first turn's two requests,
+      12,892 over the fourth's.
+  - **Debt:** TD-129; TD-121 narrowed (Tn's search instructions paid).
 
 ## Decision log
 
@@ -806,6 +824,10 @@ so every reply takes the path with no search; only its times are read (about $0.
 *Amended 2026-11-07, before any run (Q18):* the time starts at the owner's marked end for `n19`
 to `n28` and at the speech detector's stop for `n01` to `n18`; the targets read both together,
 and the scorecard shows the two groups apart.
+*Amended 2026-11-07, before any run (from the live probe):* Tn's talker is also told it has no
+knowledge base, its instructions' "Searching:" section replaced, and carries its own version
+(`+no-search`): with that section and no tool, Groq refused 3 of 4 Ole5 questions
+(`tool_use_failed`), so Tn would have timed the `error` notice.
 
 **S, the scenarios** (text, the kept arm, each scenario three times; about $0.30). *Metric:* each
 scenario's expectations (the tool called or not, the key facts said, by the judge, the language,
