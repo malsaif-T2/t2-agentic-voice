@@ -65,6 +65,14 @@ result, before step 5.
   the prototype that came before the library put 1.1 to 1.3 s on its first sound after a search
   by closing idle connections, against 0.23 to 0.25 s with them kept open. A runtime's first
   answer still opens the chat model's connection: it is not warmed at the start.
+- **A first line new on every request.** Each request's system message opens with a line of its
+  own (such as `Request 7f3a9c21.`), so no two requests share a prefix Groq has cached, for its
+  cache can be the slow path. In 24 short requests to `openai/gpt-oss-120b` with Ole5's system
+  prompt (3,617 characters), alternated: with the same prompt every time, Groq served 8 of 12
+  from its cache, and 3 of those 8 took 1.03, 1.25 and 5.71 s to the first token; with a first
+  line of their own, none was cached and all 12 took 0.15 to 0.30 s (medians 0.20 and 0.18 s).
+  A live follow-up turn the same day waited 7.8 s for its first token. Turning the line off
+  (`llm.vary_first_line`) lets requests share a cached prefix again, and with it that slow path.
 - **A progress line during a search.** A tool past its `progress_after_s` (1 s by default) gets
   its progress line from the phrase cache, with no request, so the caller hears that the agent
   is at work while the search runs ([concepts.md](concepts.md), "Progress lines").
