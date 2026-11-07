@@ -6,6 +6,7 @@ its prompt rendered in each language once the library composes it."""
 
 from __future__ import annotations
 
+import asyncio
 import tomllib
 from collections.abc import Mapping
 from dataclasses import dataclass
@@ -18,6 +19,7 @@ from ole5_voice.agent import (
     PROGRESS,
     PROGRESS_KEY,
     SEARCH_DESCRIPTION,
+    SEARCH_LIMIT,
     VERSION,
     VOCABULARY,
     Tag,
@@ -27,10 +29,10 @@ from ole5_voice.agent import (
     talker_agent,
 )
 from ole5_voice.evals.items import EVALS, TERMS_FILE
-from t2_agentic_voice import Tool, VoiceAgent, render_prompt
+from t2_agentic_voice import CallContext, Caller, Tool, VoiceAgent, render_prompt
 from t2_agentic_voice.evals import FakeKnowledgeBase
 from t2_agentic_voice.languages import normalize_arabic, provider_text
-from t2_agentic_voice.ports import KnowledgeBase
+from t2_agentic_voice.ports import KnowledgeBase, Passage
 
 
 @dataclass(frozen=True)
@@ -185,11 +187,32 @@ def test_the_search_is_the_librarys_knowledge_tool_with_ole5s_lines(
     assert built is tool
     [(searched, given)] = made
     assert searched is kb
-    assert given == {"description": SEARCH_DESCRIPTION, "progress": PROGRESS_KEY}
+    assert given == {
+        "description": SEARCH_DESCRIPTION,
+        "progress": PROGRESS_KEY,
+        "limit": SEARCH_LIMIT,
+    }
     talker = talker_agent(kb)
     assert talker.instructed and talker.tools == (tool,)
     bare = talker_agent(None)  # the knowledge tool left out, as run T's pass Tn needs
     assert bare.instructed and bare.tools == ()
+
+
+def test_the_talkers_search_reads_one_named_k_of_passages() -> None:
+    """The k every run's agent and the served agent read: 5 until run K0 keeps another (Q20)."""
+    assert SEARCH_LIMIT == 5
+    found = [
+        Passage(id=f"made-up-{n}", title=f"Made-up {n}", text="Made up.", score=0.5)
+        for n in range(1, 9)
+    ]
+    kb = FakeKnowledgeBase(found)
+    [search] = talker_agent(kb).tools
+    assert isinstance(search, Tool)
+    context = CallContext(caller=Caller(subject="made-up"), call_id="call-1", language="ar-SA")
+    result = asyncio.run(search.function(context, query="made up"))
+    assert [each.limit for each in kb.searches] == [SEARCH_LIMIT]
+    assert isinstance(result.data, dict) and isinstance(result.data["passages"], list)
+    assert len(result.data["passages"]) == SEARCH_LIMIT
 
 
 def test_the_search_description_is_in_english_and_says_when_to_search() -> None:

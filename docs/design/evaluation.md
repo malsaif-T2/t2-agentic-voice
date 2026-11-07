@@ -269,6 +269,10 @@ given after the task's name:
   and history line written as at the cap, rather than being scored as the rule's verdict; and a
   variant whose deciding request failed is an infrastructure failure, not an answer: counted
   apart and left out of the rates, in dev and in held-out aggregates;
+- `uv run poe knowledge-depth` (`knowledge_depth.py`) is plan 006's run K0, the passages' depth:
+  each answerable dev variant's raw words searched once in the knowledge base with a limit of 8
+  and no chat model, the share of expected points found at each k and the k kept, appending a
+  knowledge-depth line (dev only; refuses the main checkout);
 - `uv run poe eval-talker` (`talker_run.py`) is plan 006's run K: one arm of the talker over
   one split of the knowledge set, each variant one text call with the real model and knowledge
   base, judged, paced under the key's limits and its cap, a stopped dev run resumed with

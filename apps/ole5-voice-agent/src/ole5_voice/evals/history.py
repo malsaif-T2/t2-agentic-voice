@@ -3,8 +3,9 @@ run that called a provider, kept or not (evaluation.md, "Run history"), one `Eot
 `poe eot` run of the pipeline, one `TimingLine` per `poe eval-timing` run and one `OverlapLine`
 per `poe overlap` run of the replay (run_lines.py); for plan 006's runs, a `TalkerLine` per
 session of `poe eval-talker`, a `ScenarioLine` per session of `poe eval-scenarios`
-(talker_lines.py), an `UncertainLine` per `poe uncertain` run and a `FirstAudioLine` per
-`poe first-audio` run (measure_lines.py); and `poe eval-history`, which renders it into
+(talker_lines.py), an `UncertainLine` per `poe uncertain` run, a `FirstAudioLine` per
+`poe first-audio` run (measure_lines.py) and a `DepthLine` per `poe knowledge-depth` run
+(knowledge_depth_card.py); and `poe eval-history`, which renders it into
 `docs/generated/eval-history.md` (GP-11), each kind's table but `poe eval`'s written by
 history_tables.py, and plan 006's kinds' by history_measures.py.
 
@@ -29,6 +30,8 @@ from t2_agentic_voice import configure_logging, get_logger
 from ole5_voice import LOGGERS
 from ole5_voice.evals.files import parse_json, read_text
 from ole5_voice.evals.history_measures import (
+    depth_rows,
+    depth_strata,
     first_audio_rows,
     measure_prices,
     measure_strata,
@@ -46,6 +49,7 @@ from ole5_voice.evals.history_tables import (
     timing_rows,
 )
 from ole5_voice.evals.items import EVALS, HISTORY_FILE
+from ole5_voice.evals.knowledge_depth_card import DepthLine
 from ole5_voice.evals.measure_lines import FirstAudioLine, UncertainLine
 from ole5_voice.evals.run_lines import AnyLine, EotLine, OverlapLine, TimingLine
 from ole5_voice.evals.runs import SCORECARD_FILE, HistoryLine, Scorecard, StratumValue
@@ -57,8 +61,10 @@ DOC: Final = EVALS.parents[2] / "docs" / "generated" / "eval-history.md"  # the 
 _DESCRIPTION = "Render the golden set's run history into docs/generated/eval-history.md."
 log = get_logger(__name__)
 _LINE: Final[TypeAdapter[AnyLine]] = TypeAdapter(AnyLine)
-# The kinds whose lines bill audio, and plan 006's kinds (history_measures.py).
+# The kinds whose lines bill audio, those whose lines spend nothing, and plan 006's kinds
+# (history_measures.py).
 _BILLED: Final = (HistoryLine, TimingLine, OverlapLine, FirstAudioLine)
+_UNPRICED: Final = (EotLine, DepthLine)
 _MEASURES: Final = (TalkerLine, ScenarioLine, UncertainLine, FirstAudioLine)
 _HEADER = """# Run history
 
@@ -145,12 +151,13 @@ def line_of(
 def render_history(lines: Sequence[AnyLine]) -> str:
     """`docs/generated/eval-history.md` for `lines`: the spend so far, a row per run in its
     kind's table (`poe eval`'s, then the end-of-turn, timing and overlap runs', then plan 006's
-    talker, scenario, uncertain-middle and first-audio runs', each shown only when it has a
-    run), and each run's reason, data, prices, settings and numbers by stratum value."""
+    talker, scenario, uncertain-middle, first-audio and knowledge-depth runs', each shown only
+    when it has a run), and each run's reason, data, prices, settings and numbers by stratum
+    value (a knowledge-depth run's by k)."""
     if not lines:
         return f"{_HEADER}\nNo runs yet.\n"
     billed = sum(line.billed_seconds for line in lines if isinstance(line, _BILLED))
-    cost = sum(line.cost_usd for line in lines if not isinstance(line, EotLine))
+    cost = sum(line.cost_usd for line in lines if not isinstance(line, _UNPRICED))
     numbered = list(enumerate(lines, start=1))
     parts = [
         _HEADER,
@@ -189,6 +196,7 @@ def render_history(lines: Sequence[AnyLine]) -> str:
     parts += scenario_rows([(n, line) for n, line in numbered if isinstance(line, ScenarioLine)])
     parts += uncertain_rows([(n, line) for n, line in numbered if isinstance(line, UncertainLine)])
     parts += first_audio_rows([(n, ln) for n, ln in numbered if isinstance(ln, FirstAudioLine)])
+    parts += depth_rows([(n, line) for n, line in numbered if isinstance(line, DepthLine)])
     parts.append("\n## Each run")
     for number, line in numbered:
         parts += [f"\n### {number} · {line.run}\n", "| Field | Value |\n| --- | --- |"]
@@ -197,7 +205,7 @@ def render_history(lines: Sequence[AnyLine]) -> str:
         parts.append(row("Scorecard", cell(line.scorecard)))
         if isinstance(line, _MEASURES):
             parts += measure_prices(line)
-        elif not isinstance(line, EotLine):
+        elif not isinstance(line, _UNPRICED):
             parts.append(row("Price per hour of audio", f"${line.price_per_hour_usd:g}"))
         if isinstance(line, TimingLine):
             parts += [
@@ -208,7 +216,12 @@ def render_history(lines: Sequence[AnyLine]) -> str:
             row(f"Setting {cell(name)}", cell(value))
             for name, value in sorted(line.settings.items())
         ]
-        parts += measure_strata(line) if isinstance(line, _MEASURES) else strata(line)
+        if isinstance(line, _MEASURES):
+            parts += measure_strata(line)
+        elif isinstance(line, DepthLine):
+            parts += depth_strata(line)
+        else:
+            parts += strata(line)
     return "\n".join(parts) + "\n"
 
 

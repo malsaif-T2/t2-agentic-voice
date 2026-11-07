@@ -7,9 +7,10 @@ the library's runtime.
   English; the steps to the screen; numbers as digits; a plain "I cannot" for what no tool
   provides; no ticket and no person promised, since the agent can do neither; and a search
   whenever the question is about Ole5. Its one tool searches Ole5's knowledge base
-  (`search_tool`, the library's `knowledge_tool`), with a progress line in each language
-  (`PROGRESS`) for a search that runs long; its vocabulary holds Ole5's product terms for the
-  Whisper prompt, used only if run W keeps its arm W1; its `version` is stamped on its traces.
+  (`search_tool`, the library's `knowledge_tool`), reading the top `SEARCH_LIMIT` passages
+  whole, with a progress line in each language (`PROGRESS`) for a search that runs long; its
+  vocabulary holds Ole5's product terms for the Whisper prompt, used only if run W keeps its
+  arm W1; its `version` is stamped on its traces.
 - **The echo** (`ECHO_AGENT`): the same languages and name with no instructions, which says
   back what it heard, as the app ran before it had a knowledge base; the app runs it when the
   knowledge base's access is not set (server.py).
@@ -35,7 +36,7 @@ from t2_agentic_voice.ports import KnowledgeBase
 NAME: Final = "ole5"
 # Stamped on every trace of the talker, with the agent's fingerprint: the date it was last
 # changed, and the change of that day.
-VERSION: Final = "2026-11-07.1"
+VERSION: Final = "2026-11-07.2"
 # oo-lee faayf
 PRONOUNCE: Final = {
     "Ole5": {
@@ -54,6 +55,10 @@ PROGRESS: Final = {
     ),
     "en": "I'm checking the Ole5 guide for that.",
 }
+# The passages a search reads, the knowledge tool's `limit` (its k), each whole (the tool's
+# `passage_chars`): one constant, so the agent every run builds and the server serves read the
+# same k; 5 until run K0 (`poe knowledge-depth`, Q20) keeps another.
+SEARCH_LIMIT: Final = 5
 # What tells the talker when to search, in English (the design's 6.4).
 SEARCH_DESCRIPTION: Final = (
     "Search Ole5's knowledge base: its user guide, its permissions and business rules, and its "
@@ -129,8 +134,11 @@ ECHO_AGENT: Final = VoiceAgent(name=NAME, languages=_languages(talker=False), pr
 
 def search_tool(kb: KnowledgeBase) -> Tool:
     """The talker's search of `kb`: the library's knowledge tool, told when to search
-    (`SEARCH_DESCRIPTION`), with Ole5's progress line."""
-    return knowledge_tool(kb, description=SEARCH_DESCRIPTION, progress=PROGRESS_KEY)
+    (`SEARCH_DESCRIPTION`), reading the top `SEARCH_LIMIT` passages, with Ole5's progress
+    line."""
+    return knowledge_tool(
+        kb, description=SEARCH_DESCRIPTION, progress=PROGRESS_KEY, limit=SEARCH_LIMIT
+    )
 
 
 def declare(tools: Sequence[DeclaredTool] = ()) -> VoiceAgent:

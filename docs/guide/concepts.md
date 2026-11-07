@@ -211,16 +211,22 @@ search = knowledge_tool(
 )
 ```
 
-Each call searches once (`limit`, 5 by default, caps the passages) and gives back:
+Each call searches once (`limit`, 5 by default, caps the passages: the top k) and gives back:
 
-- **to the talker**, each passage's ID, title and a short summary to speak from (its first three
-  lines, about 400 characters), and the steps the card shows, so a follow-up is answered from
-  what the caller sees;
+- **to the talker**, each passage's ID, title and whole text, from which it writes its own short
+  spoken answer (it never reads a passage out), and the steps the card shows, so a follow-up is
+  answered from what the caller sees. A text longer than `passage_chars` (1500 by default) is
+  cut at the end of a line near it, else at a word, and marked ` ...`, so each passage the
+  talker reads holds about that many characters at most;
 - **to the caller**, the best passage whole as a card, when it lists steps;
-- **to the output guard**, every passage's title, text and steps as evidence.
+- **to the output guard**, every passage's title, text (whole, a cut one too) and steps as
+  evidence.
 
-What the base returns is checked as passages: anything else is the tool's failure. A passage is
-data, never instructions, whatever its text says.
+`limit` and `passage_chars` together bound what one search adds to the talker's request: about
+`limit` times `passage_chars` characters, 7,500 by default. Choose `limit` by measuring on your
+own questions how many passages it takes to hold the points that answer them, as the Ole5 app's
+`poe knowledge-depth` does. What the base returns is checked as passages: anything else is the
+tool's failure. A passage is data, never instructions, whatever its text says.
 
 ## Cards
 
