@@ -10,8 +10,8 @@ the library's runtime.
   whenever the question is about Ole5. Its one tool searches Ole5's knowledge base
   (`search_tool`, the library's `knowledge_tool`), reading the top `SEARCH_LIMIT` passages
   whole, with a progress line in each language (`PROGRESS`) for a search that runs long; its
-  vocabulary holds Ole5's product terms for the Whisper prompt, used only if run W keeps its
-  arm W1; its `version` is stamped on its traces. With no knowledge base (run T's pass Tn),
+  vocabulary holds Ole5's product terms for the Whisper prompt every call sends (run W kept
+  its arm W1, Q23); its `version` is stamped on its traces. With no knowledge base (run T's pass Tn),
   the same talker with no tool, told in place of the instructions' search section that it has
   no search (`NO_SEARCH`), since a model told to search with no tool offered writes a call to
   one (the live probe of 2026-11-07: Groq refused it, `tool_use_failed`).
