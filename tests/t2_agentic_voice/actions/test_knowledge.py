@@ -1,8 +1,9 @@
 """The knowledge tool (actions/knowledge.py; the design's 6.3): one search per call, in the
 reply's language and as the call's caller, at most `limit` passages (the k); each passage's
 whole text to the talker, cut at a line (else a word) near `passage_chars`; the top passage with
-steps as the card, its steps cut to a card's 50; every passage's text as the guard's evidence.
-With `FakeKnowledgeBase`; every passage is written for the test."""
+steps as the card, its steps cut to a card's 50, and the talker told what it shows, or that
+nothing is; every passage's text as the guard's evidence. With `FakeKnowledgeBase`; every
+passage is written for the test."""
 
 from __future__ import annotations
 
@@ -130,9 +131,12 @@ def test_a_cut_passage_is_still_whole_in_the_evidence() -> None:
     assert long.text in result.evidence
 
 
-def test_a_top_passage_with_no_steps_gives_no_card() -> None:
+def test_a_top_passage_with_no_steps_gives_no_card_and_says_nothing_is_shown() -> None:
+    """The live smoke of 2026-11-07: with no card, the talker was told nothing and said the
+    steps were on the screen; it now reads that nothing is, from an explicit value."""
     result = _search(FakeKnowledgeBase([ARCHIVE, RESET]))
-    assert result.card is None and "shown_on_screen" not in _data(result)
+    assert result.card is None
+    assert _data(result)["shown_on_screen"] == "nothing"
 
 
 def test_a_card_holds_at_most_fifty_steps() -> None:
@@ -141,9 +145,9 @@ def test_a_card_holds_at_most_fifty_steps() -> None:
     assert card is not None and len(card.steps) == 50 and card.steps[-1] == "Step 50"
 
 
-def test_nothing_found_is_an_empty_list() -> None:
+def test_nothing_found_is_an_empty_list_and_nothing_shown() -> None:
     result = _search(FakeKnowledgeBase())
-    assert result == ToolResult(data={"passages": []})
+    assert result == ToolResult(data={"passages": [], "shown_on_screen": "nothing"})
 
 
 def test_what_is_no_passage_is_the_tools_failure() -> None:
@@ -177,3 +181,4 @@ def test_a_top_passage_whose_title_says_nothing_gives_no_card() -> None:
     blank = RESET.model_copy(update={"title": "   ", "source": "  "})
     result = _search(FakeKnowledgeBase([blank]))
     assert result.card is None and result.ok
+    assert _data(result)["shown_on_screen"] == "nothing"

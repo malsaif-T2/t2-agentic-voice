@@ -2,7 +2,8 @@
 declaration, which loads with instructions for every language it speaks, each holding what the
 ear needs; its search, the library's knowledge tool with Ole5's description and progress line;
 its vocabulary and version; no fixed line of it holding a word the caller commands with; and
-its prompt rendered in each language once the library composes it."""
+its prompt rendered in each language once the library composes it, naming the screen only when
+the search shows a card."""
 
 from __future__ import annotations
 
@@ -80,8 +81,9 @@ def test_the_vocabulary_holds_the_golden_sets_product_terms_first() -> None:
 @pytest.mark.parametrize("tag", ["ar-SA", "en"])
 def test_each_languages_instructions_hold_what_the_ear_needs(tag: Tag) -> None:
     """The plan's "The Ole5 app": short spoken answers, in the Saudi register or MSA or
-    English as the caller speaks; the steps to the screen; numbers as digits; a plain "I
-    cannot"; no ticket or person promised; a search when the question is about Ole5."""
+    English as the caller speaks; the steps on the screen, when a card shows them (below);
+    numbers as digits; a plain "I cannot"; no ticket or person promised; a search when the
+    question is about Ole5."""
     text = " ".join(instructions()[tag].split())
     for needed in (
         "Saudi spoken register",
@@ -243,3 +245,25 @@ def test_the_prompt_renders_with_ole5s_instructions(tag: Tag) -> None:
     assert " ".join(instructions()[tag].split()) in " ".join(prompt.split())
     with pytest.raises(ValueError):
         render_prompt(talker, "ar")  # a language the talker does not speak
+
+
+@pytest.mark.parametrize("tag", ["ar-SA", "en"])
+def test_the_prompt_names_the_screen_only_when_the_search_shows_a_card(tag: Tag) -> None:
+    """The live smoke of 2026-11-07: asked how to recover a password, the talker said the full
+    steps were on the screen when its search showed no card. In the prompt of each language, the
+    library's rule and Ole5's line say it only on the condition of the search result's
+    `shown_on_screen`, which says "nothing" when no card is shown. A test cannot show that a
+    real model obeys: the registered runs and the live calls can."""
+    prompt = render_prompt(declare(), tag)
+    lines = [line for line in prompt.splitlines() if "on the screen" in line]
+    assert len(lines) == 2, lines  # the library's rule, then Ole5's
+    for line in lines:
+        assert "on the screen only when" in line, line
+        assert "shown_on_screen holds them; otherwise never mention the screen." in line, line
+    no_steps = Passage(id="made-up-1", title="Made-up", text="Made up.", score=0.5)
+    [search] = talker_agent(FakeKnowledgeBase([no_steps])).tools
+    assert isinstance(search, Tool)
+    context = CallContext(caller=Caller(subject="made-up"), call_id="call-1", language=tag)
+    result = asyncio.run(search.function(context, query="made up"))
+    assert result.card is None
+    assert isinstance(result.data, dict) and result.data["shown_on_screen"] == "nothing"

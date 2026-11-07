@@ -57,6 +57,17 @@ def test_the_rules_say_what_a_voice_reply_needs_and_stay_short() -> None:
     assert len(RULES) < 1300  # every token is paid on every request
 
 
+def test_the_rules_name_the_screen_only_when_a_tool_result_shows_the_steps() -> None:
+    """The live smoke of 2026-11-07: the rule said the full steps were on the screen whatever
+    was shown, and the caller was told of steps no card showed. Its one line names the screen
+    only as the condition of a result's `shown_on_screen` (actions/knowledge.py), never
+    otherwise."""
+    [line] = [line for line in RULES.splitlines() if "on the screen" in line]
+    assert line.startswith("- Never read steps out one by one: give the gist or the first")
+    assert "on the screen only when a tool result's shown_on_screen holds them" in line
+    assert line.endswith("; otherwise never mention the screen.")
+
+
 def test_the_language_section_asks_for_the_saudi_register_unless_the_caller_speaks_msa() -> None:
     assert LANGUAGE_SECTIONS["ar-SA"] == LANGUAGE_SECTIONS["ar"]
     assert (

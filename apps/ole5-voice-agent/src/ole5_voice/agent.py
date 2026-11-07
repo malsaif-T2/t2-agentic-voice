@@ -4,7 +4,8 @@ the library's runtime.
 - **The talker** (`talker_agent`): Saudi Arabic first, then English; Ole5's instructions for
   each (instructions/, one file a language), written for the ear: short spoken answers in the
   Saudi register, in Modern Standard Arabic for a caller who speaks it and in English for
-  English; the steps to the screen; numbers as digits; a plain "I cannot" for what no tool
+  English; the first steps in a few words, and the screen named only when the search's card
+  shows them; numbers as digits; a plain "I cannot" for what no tool
   provides; no ticket and no person promised, since the agent can do neither; and a search
   whenever the question is about Ole5. Its one tool searches Ole5's knowledge base
   (`search_tool`, the library's `knowledge_tool`), reading the top `SEARCH_LIMIT` passages
@@ -36,7 +37,7 @@ from t2_agentic_voice.ports import KnowledgeBase
 NAME: Final = "ole5"
 # Stamped on every trace of the talker, with the agent's fingerprint: the date it was last
 # changed, and the change of that day.
-VERSION: Final = "2026-11-07.2"
+VERSION: Final = "2026-11-07.3"
 # oo-lee faayf
 PRONOUNCE: Final = {
     "Ole5": {
