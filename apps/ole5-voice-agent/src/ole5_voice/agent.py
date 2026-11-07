@@ -39,8 +39,10 @@ from t2_agentic_voice.ports import KnowledgeBase
 
 NAME: Final = "ole5"
 # Stamped on every trace of the talker, with the agent's fingerprint: the date it was last
-# changed, and the change of that day.
+# changed, and the change of that day; the talker with no search (run T's pass Tn) is versioned
+# apart, so a run's record tells the two apart.
 VERSION: Final = "2026-11-07.3"
+NO_SEARCH_VERSION: Final = f"{VERSION}+no-search"
 # oo-lee faayf
 PRONOUNCE: Final = {
     "Ole5": {
@@ -171,10 +173,10 @@ def search_tool(kb: KnowledgeBase) -> Tool:
 
 def declare(tools: Sequence[DeclaredTool] = (), *, search: bool = True) -> VoiceAgent:
     """The talker's declaration (the module's docstring) with `tools`; with `search` False,
-    told it has no search (`instructions(search=False)`)."""
+    told it has no search (`instructions(search=False)`) and versioned apart."""
     return VoiceAgent(
         name=NAME,
-        version=VERSION,
+        version=VERSION if search else NO_SEARCH_VERSION,
         languages=_languages(talker=True),
         pronounce=PRONOUNCE,
         instructions=instructions(search=search),

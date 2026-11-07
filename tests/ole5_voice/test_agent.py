@@ -203,6 +203,8 @@ def test_the_search_is_the_librarys_knowledge_tool_with_ole5s_lines(
     assert talker.instructed and talker.tools == (tool,)
     bare = talker_agent(None)  # the knowledge tool left out, as run T's pass Tn needs
     assert bare.instructed and bare.tools == ()
+    # A run's record tells Tn's talker, told it has no search, from the served one.
+    assert (talker.version, bare.version) == (VERSION, f"{VERSION}+no-search")
 
 
 def test_the_talkers_search_reads_one_named_k_of_passages() -> None:
