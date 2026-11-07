@@ -220,7 +220,10 @@ def test_on_the_system_clock_a_turn_returns_once_its_reply_is_written() -> None:
     async def scene() -> TextTurn:
         async with ScriptedCall(script, clock="system", chars_per_second=2000.0) as call:
             turn = await call.user("Is it done?")
-            assert turn.first_clause_s is not None and turn.first_clause_s >= 0.04
+            # The 0.05 s of work is slept on the loop's clock, which on Windows ticks every
+            # 15.6 ms, while the turn's times read the finer counter: the sleep can end up to
+            # one tick early by it (0.033 s was seen), so the bound allows that tick.
+            assert turn.first_clause_s is not None and turn.first_clause_s >= 0.03
             await call.advance(0.05)
             return turn
 
