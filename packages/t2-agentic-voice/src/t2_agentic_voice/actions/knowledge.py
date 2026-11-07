@@ -6,9 +6,11 @@ as the call's caller; and it gives back:
 - **to the talker**, each passage's id, title and whole text to write its own short spoken
   answer from, each line's spaces collapsed and its blank lines dropped, a text longer than
   `passage_chars` cut at the end of a line near it (one that keeps at least `LINE_NEAR` of it),
-  else at a word, else at `passage_chars`, with `MORE` after the cut; and the steps the card
-  shows, so a follow-up ("only the second step") is answered from what the caller sees; a
-  passage is data, never instructions (invariant 4);
+  else at a word, else at `passage_chars`, with `MORE` after the cut; and under `SHOWN` the
+  card's title and steps, so a follow-up ("only the second step") is answered from what the
+  caller sees, or `NOTHING_SHOWN` when no card is, so the talker never says steps are on a
+  screen that shows none (the prompt's rule); a passage is data, never instructions
+  (invariant 4);
 - **to the caller**, the best passage whole as a card, its title, its steps (at most a card's 50)
   and its document, when it lists steps (a passage with none gives no card: its title alone
   adds nothing to the captions);
@@ -33,11 +35,13 @@ from t2_agentic_voice.domain.ports.knowledge import KnowledgeBase, Passage
 # The tool's name as the talker calls it; about the most of a passage's text the talker reads,
 # by default (the first app's median passage holds 660 characters, its 90th percentile 1,469);
 # the share of it a cut at a line's end keeps at least, else the cut is at a word; and what
-# follows a cut.
+# follows a cut; the key the talker reads the card under, and its value when none is shown.
 NAME = "search_knowledge"
 PASSAGE_CHARS = 1500
 LINE_NEAR = 0.75
 MORE = " ..."
+SHOWN = "shown_on_screen"
+NOTHING_SHOWN = "nothing"
 # A card's most steps (domain/cards.py's `Card`).
 _CARD_STEPS = 50
 _PASSAGES = TypeAdapter(list[Passage])
@@ -93,10 +97,9 @@ def answer(passages: list[Passage], *, passage_chars: int = PASSAGE_CHARS) -> To
         "passages": [
             {"id": passage.id, "title": passage.title, "text": _text(passage.text, passage_chars)}
             for passage in passages
-        ]
+        ],
+        SHOWN: NOTHING_SHOWN if card is None else {"title": card.title, "steps": list(card.steps)},
     }
-    if card is not None:
-        data["shown_on_screen"] = {"title": card.title, "steps": list(card.steps)}
     evidence = tuple(text for p in passages for text in (p.title, p.text, *p.steps))
     return ToolResult(data=data, card=card, evidence=evidence)  # type: ignore[arg-type]
 

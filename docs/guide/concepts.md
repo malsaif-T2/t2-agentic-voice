@@ -214,8 +214,9 @@ search = knowledge_tool(
 Each call searches once (`limit`, 5 by default, caps the passages: the top k) and gives back:
 
 - **to the talker**, each passage's ID, title and whole text, from which it writes its own short
-  spoken answer (it never reads a passage out), and the steps the card shows, so a follow-up is
-  answered from what the caller sees. A text longer than `passage_chars` (1500 by default) is
+  spoken answer (it never reads a passage out), and under `shown_on_screen` the title and steps
+  the card shows, so a follow-up is answered from what the caller sees, or `"nothing"` when no
+  card is shown. A text longer than `passage_chars` (1500 by default) is
   cut at the end of a line near it, else at a word, and marked ` ...`, so each passage the
   talker reads holds about that many characters at most;
 - **to the caller**, the best passage whole as a card, when it lists steps;
