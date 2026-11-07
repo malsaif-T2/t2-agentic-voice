@@ -23,6 +23,7 @@ def test_the_llm_and_guard_defaults_are_the_designs() -> None:
         "reasoning_effort": "low",
         "max_output_tokens": 1024,
         "timeout_s": 8.0,
+        "vary_first_line": True,
     }
     assert settings.guard.model_dump() == {
         "id_patterns": (),
@@ -36,14 +37,16 @@ def test_the_new_settings_load_from_the_environment(monkeypatch: pytest.MonkeyPa
     monkeypatch.setenv("T2V_ENV", "test")
     monkeypatch.setenv("T2V_LLM__MODEL", "llama-3.3-70b-versatile")
     monkeypatch.setenv("T2V_LLM__REASONING_EFFORT", "medium")
+    monkeypatch.setenv("T2V_LLM__VARY_FIRST_LINE", "false")
     monkeypatch.setenv("T2V_GUARD__ID_PATTERNS", '["LT-\\\\d{5}"]')
     monkeypatch.setenv("T2V_GUARD__ON_BLOCK", "drop_clause")
     monkeypatch.setenv("T2V_WORDS__VOCABULARY", '["VPN", "Outlook"]')
     monkeypatch.setenv("T2V_SESSION__MODE", "talker")
     settings = VoiceSettings.from_env()
-    assert (settings.llm.model, settings.llm.reasoning_effort) == (
+    assert (settings.llm.model, settings.llm.reasoning_effort, settings.llm.vary_first_line) == (
         "llama-3.3-70b-versatile",
         "medium",
+        False,
     )
     assert (settings.guard.id_patterns, settings.guard.on_block) == (("LT-\\d{5}",), "drop_clause")
     assert (settings.words.vocabulary, settings.session.mode) == (("VPN", "Outlook"), "talker")
@@ -57,6 +60,7 @@ def test_the_new_settings_load_from_the_environment(monkeypatch: pytest.MonkeyPa
         ("LLM__REASONING_EFFORT", "none"),
         ("LLM__MAX_OUTPUT_TOKENS", "0"),
         ("LLM__TIMEOUT_S", "-1"),
+        ("LLM__VARY_FIRST_LINE", "maybe"),
         ("GUARD__ID_PATTERNS", '["("]'),  # no regular expression
         ("GUARD__ID_PATTERNS", '["\\\\d*"]'),  # matches every clause
         ("GUARD__MIN_ID_DIGITS", "0"),
