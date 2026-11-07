@@ -9,8 +9,10 @@ budgeted cost would take the run past `--cap-usd` (`CapReachedError`); each sets
 run whose talker swallowed the error still stops. A request turned away before any event came (a
 429, a timeout, a lost connection, a server error) waits for its `retry-after` (or
 `RETRY_WAIT_S` when it names none) and is sent again, up to `--max-attempts` sends in all, each
-counted. A request whose provider reported no usage (a cancelled one, say) is counted at its
-budget, so the spend is an upper bound. The prices are the command line's, in USD per million
+counted. Every wait inside a request, for room or a retry, is summed in `waited_s`, and `ahead`
+waits for a call's room before the call, so a run keeps its own waits out of a call's times. A
+request whose provider reported no usage (a cancelled one, say) is counted at its budget, so the
+spend is an upper bound. The prices are the command line's, in USD per million
 tokens, the cached tokens at the input price.
 
 The daily limit comes from the command line (`--rpd`), the day's requests so far from the run
@@ -80,13 +82,18 @@ class ModelPacer:
         self._requests = MinutePacer(limits.rpm, clock, sleep)
         self._tokens = MinutePacer(limits.tpm, clock, sleep)
 
-    async def room(self, model: str, tokens: int) -> None:
-        """Return once one more request of `tokens` fits the minute; DailyLimitError when it
-        would pass the day's limit."""
+    async def room(self, model: str, tokens: int) -> float:
+        """Return once one more request of `tokens` fits the minute, with the seconds it waited;
+        DailyLimitError when it would pass the day's limit."""
         if self.today >= self.limits.rpd:
             raise DailyLimitError(model, self.today, self.limits.rpd)
-        await self._requests.room_for(1)
-        await self._tokens.room_for(min(tokens, self.limits.tpm))
+        return await self.ahead(1, tokens)
+
+    async def ahead(self, requests: int, tokens: int) -> float:
+        """Return once `requests` more requests of `tokens` each fit the minute (as many as it
+        holds), with the seconds it waited; nothing is counted."""
+        waited = await self._requests.room_for(min(requests, self.limits.rpm))
+        return waited + await self._tokens.room_for(min(requests * tokens, self.limits.tpm))
 
     def sent(self) -> None:
         """Count one request sent, now."""
@@ -188,19 +195,30 @@ class PacedChat:
         self._inner, self.pacers, self.spend = inner, pacers, spend
         self._input_budget, self._attempts, self._sleep = input_budget, attempts, sleep
         self.stopped: Stopped | None = None
+        self.waited_s = 0.0  # the seconds its requests waited inside them, for room or a retry
+
+    def _pacer(self, model: str) -> ModelPacer:
+        pacer = self.pacers.get(model)
+        if pacer is None:
+            raise ValueError(f"the run has no limits for the model {model}")
+        return pacer
+
+    async def ahead(self, model: str, requests: int, output: int | None) -> None:
+        """Return once `model` has room in the minute for `requests` more requests, each of
+        the input budget and `output` tokens written (`OUTPUT_BUDGET` when None): a call that
+        sends no more then finds room at once, and never waits for it inside its times."""
+        await self._pacer(model).ahead(requests, self._input_budget + (output or OUTPUT_BUDGET))
 
     async def stream(self, request: ChatRequest) -> AsyncIterator[ChatEvent]:
         """`inner`'s events for `request`, paced and counted."""
         model = request.model
-        pacer = self.pacers.get(model)
-        if pacer is None:
-            raise ValueError(f"the run has no limits for the model {model}")
+        pacer = self._pacer(model)
         use = self.spend.use(model)
         output = request.max_output_tokens or OUTPUT_BUDGET
         attempt = 0
         while True:
             attempt += 1
-            await self._admit(model, pacer, output)
+            self.waited_s += await self._admit(model, pacer, output)
             use.requests += 1
             use.retried += attempt > 1
             found = _Found()
@@ -226,11 +244,14 @@ class PacedChat:
                 self._settle(pacer, use, found, output)
             if wait is None:
                 return
+            self.waited_s += wait
             await self._sleep(wait)
 
-    async def _admit(self, model: str, pacer: ModelPacer, output: int) -> None:
+    async def _admit(self, model: str, pacer: ModelPacer, output: int) -> float:
+        """The request let through, with the seconds it waited for room; refused at the day's
+        limit or the cap."""
         try:
-            await pacer.room(model, self._input_budget + output)
+            waited = await pacer.room(model, self._input_budget + output)
             self.spend.check(model, self._input_budget, output)
         except DailyLimitError:
             self.stopped = "daily_limit"
@@ -239,6 +260,7 @@ class PacedChat:
             self.stopped = "cap"
             raise
         pacer.sent()
+        return waited
 
     def _settle(self, pacer: ModelPacer, use: _Use, found: _Found, output: int) -> None:
         """Count what one send used: its usage, nothing for one a rate limit turned away, or

@@ -35,15 +35,19 @@ class MinutePacer:
             self._sent.popleft()
         return len(self._sent)
 
-    async def room_for(self, requests: int) -> None:
-        """Return once `requests` more fit in the window; ValueError for more than `limit`,
-        which never fit."""
+    async def room_for(self, requests: int) -> float:
+        """Return once `requests` more fit in the window, with the seconds it waited for them;
+        ValueError for more than `limit`, which never fit."""
         if requests > self.limit:
             raise ValueError(f"{requests} requests never fit in a window of {self.limit}")
+        waited = 0.0
         while self.in_window() + requests > self.limit:
             # The oldest request that must leave the window for these to fit.
             leaving = self._sent[self.in_window() + requests - self.limit - 1]
-            await self._sleep(max(leaving + WINDOW_S - self._clock(), 0.0) + 1e-3)
+            wait = max(leaving + WINDOW_S - self._clock(), 0.0) + 1e-3
+            waited += wait
+            await self._sleep(wait)
+        return waited
 
     def count(self, requests: int) -> None:
         """Count `requests` sent, now."""

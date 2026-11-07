@@ -29,7 +29,7 @@ from collections.abc import Sequence
 from dataclasses import dataclass, field
 from datetime import datetime
 from pathlib import Path
-from typing import Final, get_args
+from typing import get_args
 
 from t2_agentic_voice import T2VoiceError, VoiceAgent, configure_logging, get_logger
 
@@ -55,7 +55,14 @@ from ole5_voice.evals.talker_args import (
 )
 from ole5_voice.evals.talker_data import TAGS
 from ole5_voice.evals.talker_lines import talker_line
-from ole5_voice.evals.talker_measure import CallLanguage, Measuring, StopRun, Todo, todo_of
+from ole5_voice.evals.talker_measure import (
+    TALKER_REQUESTS,
+    CallLanguage,
+    Measuring,
+    StopRun,
+    Todo,
+    todo_of,
+)
 from ole5_voice.evals.talker_score import (
     PriceShown,
     Session,
@@ -66,7 +73,6 @@ from ole5_voice.evals.talker_score import (
 )
 from ole5_voice.evals.worktree import refused, run_checkout
 
-TALKER_REQUESTS: Final = 3  # the most model requests the talker sends a turn
 _DESCRIPTION = "Run the talker over one split of the knowledge set, one arm, into --out."
 log = get_logger(__name__)
 

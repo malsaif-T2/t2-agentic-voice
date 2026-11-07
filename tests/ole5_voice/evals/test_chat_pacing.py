@@ -137,6 +137,26 @@ def test_the_tokens_a_minute_are_held_by_each_requests_budget() -> None:
     assert sum(clock.pauses) >= 60.0
 
 
+def test_room_ahead_is_waited_for_before_and_counted_nowhere_and_waits_inside_are_summed() -> None:
+    """`ahead` waits until the minute holds the requests named (no more than its limit) and
+    their tokens, counting nothing, so they then go at once; a request's waits inside it, for
+    room and a retry's, are summed in `waited_s`."""
+    inner = Inner([(3, None), (0, ProviderError("rate_limited", True, 4.0))])
+    clock = FakeClock()
+    paced = _paced(inner, clock, rpm=3, tpm=6600)  # three of 2000 + 200 budgeted tokens
+
+    async def run() -> None:
+        await _all(paced)  # one request and its 1100 tokens in the minute
+        await paced.ahead(MODEL, 5, 200)  # room for three, the limit, and for 6600 tokens
+        assert clock.pauses and sum(clock.pauses) >= 60.0 and paced.waited_s == 0.0
+        pauses = len(clock.pauses)
+        await _all(paced)  # room at once; turned away once, then sent again
+        assert clock.pauses[pauses:] == [4.0] and paced.waited_s == 4.0
+
+    asyncio.run(run())
+    assert inner.sent == 3
+
+
 def test_the_days_limit_refuses_the_next_request_and_marks_the_stop() -> None:
     inner, clock = Inner(), FakeClock()
     paced = _paced(inner, clock, rpd=5, today=5)
