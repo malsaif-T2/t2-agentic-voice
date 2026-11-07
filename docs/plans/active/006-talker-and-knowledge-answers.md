@@ -476,6 +476,53 @@ runs"; in this order, each with its smoke first)
     - Gate: `4830 passed`, `TOTAL 19087 42 99%`.
   - **Still open:** the runners are joined to the merged code in the integration's next round,
     with Q15 to Q18 built into them; their debt is written once that round is done.
+- 2026-11-07: The integration's second round, built in two parts in parallel worktrees from
+  b96a5ae, each reviewed once with one skeptic a finding, fixed, and merged one at a time with the
+  gate after each merge.
+  - **Wiring, the runners joined to the merged code** (3ff04ea; f551909 to eeb9979).
+    - **One way to build Ole5's agent and knowledge base** for runs K, S and T:
+      `--agent ole5_voice.agent:talker_agent`, and
+      `--knowledge ole5_voice.knowledge_base:knowledge_base`, which reads only the knowledge
+      base's access (`KnowledgeSettings`, no access code). Tn is `talker_agent(None)`. The knowledge base and
+      the chat model are closed at every end, a refusal after they are built included.
+    - **The history** takes K's and S's lines. U and T got lines of their own, since the borrowed
+      ones could not hold U0's right count or T's targets and starts of time.
+    - **Run T's replay** goes through the library's `AudioCall.turn`; `TurnReplay` gains
+      `opening`, the reply's first 3 s, for the owner's listen.
+    - **Q15:** the keep rule reads the time to the first clause less the time the tools ran
+      (overlapping tools counted once); the scorecard shows both medians and names the one read.
+    - **Q17:** `whisper_prompt` (`domain/whisper_prompt.py`, on the `languages` facade) builds the
+      prompt from the agent's vocabulary, then a tuple of proper spellings of the command words,
+      trimmed to 224 bytes; a test shows no mishearing of the presets' lists can reach it. W1 is
+      `--prompt-agent`; no live call sends a prompt yet.
+    - **Q16:** U's refusal of a held-out source says the pass replays H3's clips and is built once
+      an arm passes on dev. **Q18:** the targets already read both groups together; the held-out
+      scorecard now shows them apart too, as aggregates.
+    - **Checked:** a stalled call is a `stuck` variant or play in K and S, never a crash (a bug,
+      its tests written first); S's injections on the real `TextCall` with Ole5's talker; the
+      adapter's passage IDs and the judge's text agree for every committed point.
+    - **The review.** One finding stood and was fixed in eeb9979: a failed greeting request in
+      run T's replay ended the run with no scorecard or history line. It is now a failed
+      recording (a `rate_limited` one retried), and the card and history lines are written at
+      every end. One was refuted: run T never reads the chat model's day headroom, but the key's
+      day limits are far out of reach (D-040).
+    - Gate: `4894 passed`, `TOTAL 19522 36 99%`.
+  - **Guide, the minimal example and the guide's pages** (63dc256; d806a15 to 8ac4b62).
+    - **`examples/minimal`'s helper:** the talker with one read tool, `opening_hours` (`@tool`),
+      served by `make_runtime` and tested through `TextCall` with `ScriptedLLM` in English and
+      Saudi Arabic; the echo stays, served by `make_echo_runtime`.
+    - **The guide's pages:** `writing-for-voice.md`, `languages.md` and `latency.md` are new;
+      `concepts.md`, `browser-client.md`, `serving.md`, the guide's `evaluation.md`, the
+      quickstart and the README are brought to the talker. The samples beyond the quickstart's
+      come from a tested file.
+    - **The review.** One finding stood and was fixed in 8ac4b62: the quickstart and
+      `concepts.md` promised an English answer to English words in a Saudi call, which run X
+      measures first.
+    - Then the library's README and three stale lines (bdc5422).
+    - Gate: `4905 passed`, `TOTAL 19531 36 99%`.
+  - **Debt:** TD-121 to TD-124, what Track E and this round leave.
+  - **Next:** the review of the whole merged code (step 11), then the live smoke of the talker
+    with the real model and knowledge base, then the registered runs.
 
 ## Decision log
 
