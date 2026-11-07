@@ -19,6 +19,15 @@ headroom for the key's day, as the provider last reported it in a call's usage (
 call met a rate limit is replayed after `RATE_LIMIT_PAUSE_S`, up to `MAX_ATTEMPTS` calls, every
 call's requests counted. The phrase cache's requests are counted on each voice's pacer before
 the first recording, each at its most characters.
+
+**The call's language** is the one the agent gives a caller whose locale is the recording's
+(`held_in`, the library's `VoiceAgent.call_language`): an MSA request is held in Saudi Arabic by
+an agent that declares no MSA, as Ole5's talker is (it answers MSA in MSA within it), and as its
+real call would be; a run whose agent speaks no language of a recording's locale is refused.
+**The tail** after each recording (`tail_of`) is the slowest reply that still answers: its
+turn's end, its transcript, the talker's every model request and its slowest tool between them,
+each at its time limit, and the voice's first request at its own; a reply not heard by then is
+counted as one never heard (first_audio_score.py's `no_audio`), never dropped.
 """
 
 from __future__ import annotations
@@ -28,7 +37,7 @@ from dataclasses import dataclass, field
 from pathlib import Path
 from typing import Final, Protocol
 
-from t2_agentic_voice import ConfigurationError, VoiceAgent, VoiceSettings, get_logger
+from t2_agentic_voice import ConfigurationError, Tool, VoiceAgent, VoiceSettings, get_logger
 from t2_agentic_voice.evals import PhraseAudio
 from t2_agentic_voice.events import ModelUsage
 from t2_agentic_voice.ports import AudioClip
@@ -36,6 +45,7 @@ from t2_agentic_voice.ports import AudioClip
 from ole5_voice.evals.audio import read_wav, write_wav
 from ole5_voice.evals.first_audio_score import AudioResult, ChatSpend, ReplayedCall, result_of
 from ole5_voice.evals.groq_answerer import GROQ_MINIMUM_S, Sleep
+from ole5_voice.evals.models import Language as ItemLanguage
 from ole5_voice.evals.models import Split
 from ole5_voice.evals.pacers import MinutePacer
 from ole5_voice.evals.run_parts import Todo
@@ -50,9 +60,32 @@ MAX_CHARS: Final = 200
 MAX_ATTEMPTS: Final = 3
 RATE_LIMIT_PAUSE_S: Final = 60.0  # a whole pacer window, the per-minute limit's own
 LEAD_S: Final = 1.0  # digital silence before each recording (the golden set's runs')
-TAIL_S: Final = 6.0  # and after it: room for the reply, its search and its progress line
+TURN_END_S: Final = 1.0  # the caller's turn ended after its speech: the hold and the detector
+TOOL_TIMEOUT_S: Final = 5.0  # a declared tool's time limit when it names none (the library's)
 REPLIES_DIR: Final = "replies"  # a dev run's reply openings, for the owner's listen
 log = get_logger(__name__)
+
+
+def tail_of(settings: VoiceSettings, agent: VoiceAgent) -> float:
+    """The silence after each recording, in seconds (the module's docstring): the talker's
+    `CHAT_PER_VARIANT` model requests with its slowest tool run between each two."""
+    tool_s = max(
+        (t.timeout_s if isinstance(t, Tool) else TOOL_TIMEOUT_S for t in agent.tools), default=0.0
+    )
+    talker = CHAT_PER_VARIANT * settings.llm.timeout_s + (CHAT_PER_VARIANT - 1) * tool_s
+    return TURN_END_S + settings.stt.timeout_s + talker + settings.tts.timeout_s
+
+
+def held_in(agent: VoiceAgent, language: ItemLanguage) -> Tag:
+    """The tag of the language a recording of `language` is held in: the one `agent` gives a
+    caller of its locale (`TAGS`), or its first when it speaks none of that locale's."""
+    return agent.call_language(None, locale=TAGS[language]).tag
+
+
+def speaks(agent: VoiceAgent, language: ItemLanguage) -> bool:
+    """Whether `agent` speaks a language of the locale of a recording of `language` (its
+    primary subtag: `ar` for Saudi Arabic and MSA)."""
+    return held_in(agent, language).partition("-")[0] == TAGS[language].partition("-")[0]
 
 
 class Replay(Protocol):
@@ -169,6 +202,7 @@ class Measuring:
     prices: Prices
     sleep: Sleep
     replies: Path | None  # None for a held-out run, which keeps no reply
+    tail_s: float  # the silence after each recording (`tail_of`)
     adapters: tuple[Closes, ...] = ()  # the speech, voice and chat adapters, closed at the end
     usages: list[ModelUsage] = field(default_factory=list)  # every call's, in order
     chats: list[ChatSpend] = field(default_factory=list)
@@ -189,10 +223,11 @@ class Measuring:
             self.pacers[model].count(min(self.phrase_requests, self.pacers[model].limit))
 
     async def variant(self, todo: Todo, side: Split) -> AudioResult:
-        """One recording's call, replayed while it meets a rate limit, its time from the
-        owner's label of its speech's end (the last of `turn_ends_ms`) where marked."""
+        """One recording's call, held in the language the agent gives its caller (`held_in`),
+        replayed while it meets a rate limit, its time from the owner's label of its speech's
+        end (the last of `turn_ends_ms`) where marked."""
         item, variant = todo.item, todo.variant
-        tag = TAGS[item.language]
+        tag = held_in(self.agent, item.language)
         clip = AudioClip(pcm16=b"".join(read_wav(p).pcm16 for p in todo.request.segments))
         end_ms = float(variant.turn_ends_ms[-1]) if variant.turn_ends_ms else None
         base: dict[str, object] = {
@@ -232,7 +267,7 @@ class Measuring:
         if self.spent_usd + self.prices.budget(clip.seconds, tts_model) > self.prices.cap_usd:
             raise CapReachedError
         call = await self.replay.call(
-            clip, language=tag, end_ms=end_ms, lead_s=LEAD_S, tail_s=TAIL_S
+            clip, language=tag, end_ms=end_ms, lead_s=LEAD_S, tail_s=self.tail_s
         )
         self.usages.extend(call.usage)
         self.chats.append(call.chat)

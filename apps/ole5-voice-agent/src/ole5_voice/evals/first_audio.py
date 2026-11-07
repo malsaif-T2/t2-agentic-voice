@@ -16,12 +16,12 @@ that git would track, and audio that is not the file its manifest hashed; its se
 on top, untraced; it names a price for every model it calls, and refuses a run whose budget,
 every recording and the smoke test at their most, would pass `--cap-usd`, all before anything is
 sent. It declares the agent's fixed phrases, then plays the smoke test, the first dev recording,
-which must answer one turn with no failure on its first call; then each recording, a dev run's
-result written as it finishes (`results.jsonl`) with a progress line of identifiers and times,
-never a text, and its replies' openings kept for the owner's listen (`poe first-audio-listen`);
-a held-out run's lines are counts, and its scorecard aggregates only. The scorecard is written
-whole at the end, and its history line appended to the worktree's `history.jsonl` and copied
-beside it, every request counted.
+which must answer one turn, its reply heard, with no failure on its first call; then each
+recording, a dev run's result written as it finishes (`results.jsonl`) with a progress line of
+identifiers and times, never a text, and its replies' openings kept for the owner's listen
+(`poe first-audio-listen`); a held-out run's lines are counts, and its scorecard aggregates
+only. The scorecard is written whole at the end, and its history line appended to the
+worktree's `history.jsonl` and copied beside it, every request counted.
 """
 
 from __future__ import annotations
@@ -47,10 +47,11 @@ from ole5_voice.evals.first_audio_card import AudioRun, Stopped, close_run
 from ole5_voice.evals.first_audio_run import (
     LEAD_S,
     REPLIES_DIR,
-    TAIL_S,
     CapReachedError,
     DayLimitError,
     Measuring,
+    speaks,
+    tail_of,
 )
 from ole5_voice.evals.first_audio_score import AudioResult
 from ole5_voice.evals.first_audio_setup import (
@@ -154,10 +155,11 @@ async def _measure(
             log.error("phrases_failed", kind=error.kind)
             return "phrases_failed"
         tried = await measuring.variant(smoke, "dev")
-        if tried.failure is not None or tried.timed is None or tried.attempts > 1:
+        heard = None if tried.timed is None else tried.timed.ttfa_ms  # its reply's audio came
+        if tried.failure is not None or heard is None or tried.attempts > 1:
             log.error("smoke_failed", failure=tried.failure, turns=len(tried.turns))
             return "smoke_failed"
-        log.info("smoke_passed", ttfa_ms=tried.timed.ttfa_ms)
+        log.info("smoke_passed", ttfa_ms=heard)
         for each in () if args.smoke_only else todo:
             result = await measuring.variant(each, args.split)
             found.append(result)
@@ -210,20 +212,20 @@ def _run(args: argparse.Namespace, parts: FirstAudioParts) -> int:
             "check --split and the committed split",
         )
     agent = agent_of(args.agent, tools=not args.no_tools)
-    spoken = {language.tag for language in agent.languages}
-    if unspoken := sorted({TAGS[t.item.language] for t in [*todo, dev[0]]} - spoken):
+    languages = {t.item.language for t in [*todo, dev[0]]}
+    if unspoken := sorted({TAGS[each] for each in languages if not speaks(agent, each)}):
         raise refused(f"the agent speaks no {', '.join(unspoken)}", "give the Ole5 agent")
-    voices = sorted({settings.tts.languages[tag].model for tag in spoken})
+    voices = sorted({settings.tts.languages[language.tag].model for language in agent.languages})
     prices = prices_of(args, settings, voices)
     played = [dev[0], *(() if args.smoke_only else todo)]
-    most = sum(prices.budget(seconds_of(t), voice_of(settings, t)) for t in played)
+    most = sum(prices.budget(seconds_of(t), voice_of(settings, agent, t)) for t in played)
     if most > args.cap_usd:
         raise refused(
             f"the run's budget, ${most:.2f} at most, passes --cap-usd",
             "raise --cap-usd, or check the prices and --llm-input-tokens",
         )
     stt, tts = parts.speech_to_text(settings), parts.text_to_speech(settings)
-    llm = parts.chat_model(settings)
+    llm, tail_s = parts.chat_model(settings), tail_of(settings, agent)
     phrases = parts.phrases(settings, tts, agent)
     replay = parts.replay(
         agent=agent, settings=settings, stt=stt, tts=tts, llm=llm, phrases=phrases
@@ -235,10 +237,10 @@ def _run(args: argparse.Namespace, parts: FirstAudioParts) -> int:
         split=args.split,
         agent=args.agent,
         tools=not args.no_tools,
-        settings=shown(settings, args),
+        settings=shown(settings, args, tail_s),
         data_digest=digest,
         lead_s=LEAD_S,
-        tail_s=TAIL_S,
+        tail_s=tail_s,
         price_per_hour_usd=args.price_per_hour,
         tts_price_per_million_usd=dict(prices.per_million_chars_usd),
         chat_price_per_million_usd={
@@ -263,6 +265,7 @@ def _run(args: argparse.Namespace, parts: FirstAudioParts) -> int:
         prices=prices,
         sleep=sleep,
         replies=None if held_out else out / REPLIES_DIR,
+        tail_s=tail_s,
         adapters=(stt, tts, llm),
     )
     out.mkdir(parents=True)

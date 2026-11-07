@@ -53,8 +53,9 @@ def breakdowns(results: Sequence[UncertainResult]) -> dict[str, dict[str, ArmMet
 
 class UncertainRun(Model):
     """What a run was: when, at which commit, on which stored overlap run (its name, commit and
-    the digest of its scorecard file), with which model and settings, prices (USD per million
-    tokens), cap and pacing, and why."""
+    the digest of its scorecard file), how many of its overlaps were judged again under this
+    commit's rule and how many of those were not reproduced (uncertain_rejudge.py), with which
+    model and settings, prices (USD per million tokens), cap and pacing, and why."""
 
     name: Name
     started_at: datetime
@@ -62,6 +63,8 @@ class UncertainRun(Model):
     source: Name
     source_commit: Commit
     data_digest: Sha256
+    rejudged: int = Field(default=0, ge=0)
+    unmatched: int = Field(default=0, ge=0)
     model: Plain
     settings: Shown
     price_input_usd: _Usd

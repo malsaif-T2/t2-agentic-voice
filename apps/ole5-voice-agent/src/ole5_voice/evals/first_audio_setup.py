@@ -22,10 +22,10 @@ from ole5_voice.evals import history, run_settings
 from ole5_voice.evals.audio import read_wav
 from ole5_voice.evals.first_audio_run import (
     LEAD_S,
-    TAIL_S,
     Phrases,
     Prices,
     ReplayFactory,
+    held_in,
     not_wired,
 )
 from ole5_voice.evals.knowledge_set import RECORDED
@@ -122,8 +122,8 @@ def agent_of(text: str, *, tools: bool) -> VoiceAgent:
     return agent if tools else agent.model_copy(update={"tools": ()})
 
 
-def shown(settings: VoiceSettings, args: argparse.Namespace) -> dict[str, str]:
-    """Every setting, as `poe eval` records them, with the run's own."""
+def shown(settings: VoiceSettings, args: argparse.Namespace, tail_s: float) -> dict[str, str]:
+    """Every setting, as `poe eval` records them, with the run's own (its tail `tail_s`)."""
     namespace = argparse.Namespace(
         language_hint="label",
         max_rpm=args.stt_rpm,
@@ -138,7 +138,7 @@ def shown(settings: VoiceSettings, args: argparse.Namespace) -> dict[str, str]:
         "run.agent": args.agent,
         "run.tools": "none" if args.no_tools else "declared",
         "run.lead_s": str(LEAD_S),
-        "run.tail_s": str(TAIL_S),
+        "run.tail_s": str(tail_s),
         "run.stt_rpm": str(args.stt_rpm),
         "run.tts_rpm": str(args.tts_rpm),
         "run.llm_rpm": str(args.llm_rpm),
@@ -187,6 +187,6 @@ def seconds_of(todo: Todo) -> float:
     return sum(read_wav(path).seconds for path in todo.request.segments)
 
 
-def voice_of(settings: VoiceSettings, todo: Todo) -> str:
-    """The voice a recording's call is answered in."""
-    return settings.tts.languages[TAGS[todo.item.language]].model
+def voice_of(settings: VoiceSettings, agent: VoiceAgent, todo: Todo) -> str:
+    """The voice a recording's call is answered in: its language's (`held_in`)."""
+    return settings.tts.languages[held_in(agent, todo.item.language)].model

@@ -39,11 +39,9 @@ class MadeUpTool:
 
 
 def _languages() -> list[Spoken]:
-    return [
-        Spoken.saudi_arabic(greeting="مرحبا"),
-        Spoken.arabic(greeting="مرحبا"),
-        Spoken.english(greeting="Hello."),
-    ]
+    """Saudi Arabic and English, as Ole5's talker speaks: no MSA of its own (its MSA callers are
+    answered in MSA within the Saudi language)."""
+    return [Spoken.saudi_arabic(greeting="مرحبا"), Spoken.english(greeting="Hello.")]
 
 
 def agent() -> VoiceAgent:

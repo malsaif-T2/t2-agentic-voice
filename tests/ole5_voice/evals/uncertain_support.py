@@ -1,20 +1,24 @@
-"""What the tests of `poe uncertain` share (test_uncertain*.py): made-up stored overlap runs, a
-fake chat model that answers from a script and keeps every request, and a run's world (a
-checkout with a run worktree, a clock that moves only when the run pauses, the history lines)."""
+"""What the tests of `poe uncertain` share (test_uncertain*.py): made-up stored overlap runs and
+their recordings, a fake replay that judges each again by a made-up rule on the transcripts the
+stored run heard, a fake chat model that answers from a script and keeps every request, and a
+run's world (a checkout with a run worktree and its golden set, a clock that moves only when the
+run pauses, the history lines)."""
 
 from __future__ import annotations
 
 import asyncio
-from collections.abc import AsyncIterator, Sequence
+from collections.abc import AsyncIterator, Callable, Sequence
 from dataclasses import dataclass, field
 from pathlib import Path
+from typing import Any, Literal
 
-from ole5_voice.evals.models import Kind, Split
+from ole5_voice.evals.models import Item, Kind, Split
 from ole5_voice.evals.overlap_card import OverlapRun, OverlapScorecard, breakdowns
 from ole5_voice.evals.overlap_score import (
     Action,
     Heard,
     OverlapResult,
+    Part,
     Verdict,
     judge,
     metrics,
@@ -24,11 +28,21 @@ from ole5_voice.evals.run_parts import Parts
 from ole5_voice.evals.runs import SCORECARD_FILE
 from ole5_voice.evals.uncertain import UncertainParts
 from t2_agentic_voice import ProviderError, VoiceSettings
-from t2_agentic_voice.ports import ChatEvent, ChatModel, ChatRequest, Done, TextDelta, Usage
+from t2_agentic_voice.evals import OverlapReplay, OverlapRequest
+from t2_agentic_voice.ports import (
+    AudioClip,
+    ChatEvent,
+    ChatModel,
+    ChatRequest,
+    Done,
+    SpeechToText,
+    TextDelta,
+    Usage,
+)
 
-from tests.ole5_voice.evals.eot_support import Lines
+from tests.ole5_voice.evals.eot_support import Lines, parts_of, paused
 from tests.ole5_voice.evals.fakes import FAKE_FLOW
-from tests.ole5_voice.evals.run_support import FakeClock, World, make_world
+from tests.ole5_voice.evals.run_support import FakeClock, World, golden_set, make_world
 from tests.ole5_voice.evals.samples import WHEN
 
 DIGEST = "d" * 64
@@ -116,6 +130,86 @@ def stored(
     return folder
 
 
+# The steps the made-up rule decides by.
+Reason = Literal["stop_word", "listening", "short_output"]
+
+
+def made_up_rule(words: str) -> tuple[Action, Reason]:
+    """A made-up rule on a window's words, as the revised one reads them: a stop word stops, as
+    Whisper's «وكيف» for it does; «كامل» is a listening sound; anything else a short output."""
+    if "وقف" in words or "وكيف" in words:
+        return "stop", "stop_word"
+    if "كامل" in words:
+        return "go_on", "listening"
+    return "go_on", "short_output"
+
+
+@dataclass
+class FakeAudioCall:
+    """Stands in for `AudioCall`: each clip's call asks the speech-to-text it was built with for
+    a window's and an overlap's transcripts (the call's `parts` by its number, where given),
+    and the window's words decide by `rule`; a call whose number is in `fails` cannot be
+    played. It keeps what each call was asked."""
+
+    rule: Callable[[str], tuple[Action, Reason]] = made_up_rule
+    parts: dict[int, tuple[Part, ...]] = field(default_factory=dict)
+    fails: set[int] = field(default_factory=set)
+    built: dict[str, Any] = field(default_factory=dict)
+    played: list[dict[str, Any]] = field(default_factory=list)
+    started: int = 0
+    closed: int = 0
+
+    def __call__(self, **built: Any) -> FakeAudioCall:
+        self.built = built
+        return self
+
+    async def start(self) -> None:
+        self.started += 1
+
+    async def over_reply(
+        self,
+        clip: AudioClip,
+        *,
+        reply: Sequence[str],
+        language: str,
+        at_s: float,
+        tail_s: float,
+        word_end_ms: float | None = None,
+    ) -> OverlapReplay:
+        number = len(self.played)
+        self.played.append({"clip": clip, "reply": tuple(reply), "language": language})
+        if number in self.fails:
+            raise ValueError("the reply is no phrase a greeting may say")
+        stt: SpeechToText = self.built["stt"]
+        parts = self.parts.get(number, ("window", "overlap"))
+        heard = [await stt.transcribe(clip, language=None, prompt=None) for _ in parts]
+        action, reason = self.rule(heard[0].text)
+        requests = tuple(
+            OverlapRequest(
+                turn_id=0,
+                part=part,
+                sent_ms=500.0 * (k + 1),
+                audio_s=0.75,
+                text=found.text,
+                no_speech_prob=found.no_speech_prob,
+            )
+            for k, (part, found) in enumerate(zip(parts, heard, strict=True))
+        )
+        return OverlapReplay(
+            opened=True,
+            overlap_turns=(0,),
+            action=action,
+            kind="false" if action == "go_on" else "stop",
+            reason=reason,
+            decided_by=parts[0],
+            decided_turn=0,
+            requests=requests,
+        )
+
+    async def aclose(self) -> None:
+        self.closed += 1
+
+
 Reply = str | ProviderError | BaseException | float
 
 
@@ -153,28 +247,42 @@ class FakeChat:
 
 @dataclass
 class URun:
-    """A run's world: a checkout with its run worktree, the chat model, clock and history."""
+    """A run's world: a checkout with its run worktree and golden set, the replay, the chat
+    model, clock and history."""
 
     world: World
     chat: FakeChat
     clock: FakeClock
     lines: Lines = field(default_factory=Lines)
     built: list[VoiceSettings] = field(default_factory=list)
+    items: dict[str, Item] = field(default_factory=dict)
+    audio: FakeAudioCall = field(default_factory=FakeAudioCall)
+
+    def store(self, name: str, results: Sequence[OverlapResult], **kept: Any) -> Path:
+        """A stored overlap run of `results` (`stored`), each one's item and recording put in
+        the golden set."""
+        for result in results:
+            kind, language = result.kind, result.language
+            self.items[result.item] = paused(self.world, result.item, kind=kind, language=language)
+        return stored(self.world.main / "var" / "runs" / name, results, **kept)
 
     def parts(self) -> UncertainParts:
-        plan = Parts(
-            folder=self.world.top,
-            git=self.world.git,
-            now=lambda: WHEN,
-            clock=self.clock,
-            sleep=self.clock.sleep,
+        """The run's parts; with no item stored, the golden set's own loaders, which a run
+        refused before it reads the golden set never calls."""
+        plan = (
+            parts_of(self.world, golden_set(*self.items.values()))
+            if self.items
+            else Parts(folder=self.world.top, git=self.world.git, now=lambda: WHEN)
         )
+        plan = type(plan)(**{**plan.__dict__, "clock": self.clock, "sleep": self.clock.sleep})
 
         def chat_model(settings: VoiceSettings) -> ChatModel:
             self.built.append(settings)
             return self.chat
 
-        return UncertainParts(plan=plan, chat_model=chat_model, append_line=self.lines)
+        return UncertainParts(
+            plan=plan, chat_model=chat_model, audio_call=self.audio, append_line=self.lines
+        )
 
     @property
     def out(self) -> Path:
@@ -200,6 +308,8 @@ class URun:
             "1",
             "--day-requests",
             "1000",
+            "--audio",
+            f"owner={self.world.audio}",
             "--out",
             str(self.out),
             "--note",

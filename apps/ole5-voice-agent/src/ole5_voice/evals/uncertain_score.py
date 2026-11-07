@@ -3,12 +3,14 @@ overlaps it reads, each judged under the rule (U0) and under the model arm, the 
 and the keep rule; the scorecard and the history line are uncertain_card.py's.
 
 **The overlaps** are those of a stored dev overlap run (plan 005's O1 or O2, `poe overlap`'s
-scorecard) whose rule verdict was a short output or too few words (`UNCERTAIN_REASONS`), the
-deciding request answered and its words not empty; each with the reply it was played over (its
-clauses joined, as the replay spoke them as one phrase) and those words. What each should do is
-its kind's action, a repeat request counted as a stop, since with a talker a stop hands the
-words to the talker, which says the reply again. **U0** is the stored verdict, read with no
-request (the rule before plan 005's amendment (10), the one those runs ran). **The arm's**
+scorecard), each judged again under the session's rule at this commit (uncertain_rejudge.py),
+whose verdict is a short output or too few words (`UNCERTAIN_REASONS`), the deciding request
+answered and its words not empty; each with the reply it was played over (its clauses joined,
+as the replay spoke them as one phrase) and those words. What each should do is its kind's
+action, a repeat request counted as a stop, since with a talker a stop hands the words to the
+talker, which says the reply again. **U0** is that verdict, the rule (D-061) with its one
+revision (D-068), the session's default, which O1 and O2 ran before; no model request gives it.
+**The arm's**
 verdict is the model's one-word answer; an answer that is neither word is `unclear` and takes
 the rule's verdict, as a call would; a request that failed is an infrastructure failure, counted
 apart and left out of both arms' numbers.
@@ -61,7 +63,8 @@ class UncertainOverlap(Model):
 
 
 def uncertain_overlaps(card: OverlapScorecard) -> tuple[UncertainOverlap, ...]:
-    """The overlaps of `card` the arms judge (the module's docstring), in its order."""
+    """The overlaps of `card`, its verdicts this commit's rule's, the arms judge (the module's
+    docstring), in its order."""
     found = []
     for result in card.variants:
         verdict = result.verdict

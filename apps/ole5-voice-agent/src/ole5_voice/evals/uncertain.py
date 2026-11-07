@@ -1,11 +1,13 @@
 """`poe uncertain`: run U, the uncertain middle (plan 006's registration), on a stored overlap
 run, into a new folder, `--out`, as evaluation.md's "Running" says.
 
-It reads one complete dev overlap run's scorecard (`--overlaps`: plan 005's O1 or O2), takes the
-overlaps whose rule verdict was a short output or too few words (uncertain_score.py), and asks
-the model arm about each (uncertain_run.py), scoring it against the rule's stored verdict, U0,
-which sends nothing. A held-out overlap run's scorecard holds aggregates only, no overlap's words
-(evaluation.md, "Splits"), so it is refused: U's held-out pass has no stored data to read.
+It reads one complete dev overlap run's scorecard (`--overlaps`: plan 005's O1 or O2), judges
+each of its overlaps again under the session's rule at this commit from the transcripts it
+stored, replaying its recordings (`--audio`) with nothing sent (uncertain_rejudge.py), takes the
+overlaps whose verdict is then a short output or too few words (uncertain_score.py), and asks
+the model arm about each (uncertain_run.py), scoring it against that verdict, U0. A held-out
+overlap run's scorecard holds aggregates only, no overlap's words (evaluation.md, "Splits"), so
+it is refused: U's held-out pass has no stored data to read.
 
 As `poe overlap`, a run refuses the main checkout and a dirty tree and an `--out` that exists or
 that git would track; its settings load as `poe eval`'s (the environment and `--env-file`, the
@@ -30,7 +32,7 @@ from dataclasses import dataclass, field
 from pathlib import Path
 from typing import Final
 
-from t2_agentic_voice import T2VoiceError, VoiceSettings, configure_logging, get_logger
+from t2_agentic_voice import T2VoiceError, VoiceSettings, configure_logging, evals, get_logger
 from t2_agentic_voice.groq import GroqChat
 from t2_agentic_voice.ports import ChatModel
 
@@ -42,9 +44,10 @@ from ole5_voice.evals.models import NAME_RULE, is_name
 from ole5_voice.evals.overlap_card import AppendLine, OverlapScorecard
 from ole5_voice.evals.overlap_plan import setting, with_set
 from ole5_voice.evals.pacers import MinutePacer
-from ole5_voice.evals.run_parts import DATA, Parts
+from ole5_voice.evals.run_parts import DATA, Choice, Parts, audio_roots, load_plan
 from ole5_voice.evals.runs import SCORECARD_FILE, holds_placeholder
 from ole5_voice.evals.uncertain_card import UncertainRun, close_run
+from ole5_voice.evals.uncertain_rejudge import ReplayerFactory, rejudged
 from ole5_voice.evals.uncertain_run import Asking, Found, Prices, asked, request_of
 from ole5_voice.evals.uncertain_score import uncertain_overlaps
 from ole5_voice.evals.worktree import check_out, refused, run_checkout
@@ -59,9 +62,11 @@ log = get_logger(__name__)
 @dataclass(frozen=True)
 class UncertainParts:
     """What a run is built from, each replaceable by a test's fake: the run's `Parts` (its
-    checkout, the clocks), the chat model and the history."""
+    checkout, the golden set's loaders, the clocks), the replay, the chat model and the
+    history."""
 
     plan: Parts = field(default_factory=Parts)
+    audio_call: ReplayerFactory = evals.AudioCall
     chat_model: Callable[[VoiceSettings], ChatModel] = GroqChat.from_settings
     append_line: AppendLine = history.append_line
 
@@ -82,6 +87,7 @@ def _parser() -> argparse.ArgumentParser:
     parser = argparse.ArgumentParser(prog="poe uncertain", description=_DESCRIPTION)
     add = parser.add_argument
     add("--overlaps", type=Path, help="a dev overlap run's scorecard, or its --out folder")
+    add("--audio", action="append", default=[], metavar="ROOT=FOLDER", help="an audio root")
     add("--model", help="llm.model: the arm's chat model")
     add("--reasoning-effort", choices=("low", "medium", "high"), help="llm.reasoning_effort")
     add("--max-output-tokens", type=_count, help="llm.max_output_tokens")
@@ -188,7 +194,10 @@ def _run(args: argparse.Namespace, parts: UncertainParts) -> int:
         raise refused(
             "--overlaps is not an overlap run's scorecard", "give a dev run's scorecard.json"
         ) from None
-    overlaps = uncertain_overlaps(card)
+    choice = Choice(split="dev", roots=audio_roots(args.audio), needs_audio=True)
+    recorded = {each.variant.id: each for each in load_plan(checkout.top / DATA, choice, plan).todo}
+    again = asyncio.run(rejudged(card, recorded, parts.audio_call, settings))
+    overlaps = uncertain_overlaps(card.model_copy(update={"variants": tuple(again.results)}))
     if not overlaps:
         raise refused("--overlaps holds no overlap the rule left uncertain", "give O1's or O2's")
     todo = [(each, request_of(each, settings, args.temperature)) for each in overlaps]
@@ -212,6 +221,8 @@ def _run(args: argparse.Namespace, parts: UncertainParts) -> int:
         source=card.run.name,
         source_commit=card.run.commit,
         data_digest=sha256_file(file),
+        rejudged=len(card.variants),
+        unmatched=again.unmatched,
         model=settings.llm.model,
         settings=shown(settings, args),
         price_input_usd=args.price_input,

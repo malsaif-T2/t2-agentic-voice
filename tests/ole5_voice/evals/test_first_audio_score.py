@@ -1,6 +1,7 @@
 """Run T's scoring (plan 006's registration, T): each recording's timed turn, the numbers by path
-(a reply with a search, and with none), the progress line begun by 2 s, the registered targets,
-a held-out run's withheld ones, and the breakdowns by where the time starts and by language."""
+(a reply with a search, and with none), a reply never heard by the call's end counted and ranked
+slowest, the progress line begun by 2 s, the registered targets, a held-out run's withheld ones,
+and the breakdowns by where the time starts and by language."""
 
 from __future__ import annotations
 
@@ -18,6 +19,8 @@ from ole5_voice.evals.first_audio_score import (
     targets,
 )
 from pydantic import ValidationError
+
+TAIL = 47.0  # the run's tail: the talker's worst case at the tests' time limits
 
 
 def _result(
@@ -73,7 +76,7 @@ def test_each_path_has_its_own_spread_and_a_late_search_needs_its_progress_line(
     assert search.p90_ms == pytest.approx(3230.0)
     assert (plain.median_ms, plain.p90_ms) == (1500.0, 1900.0)
     assert (found.progress_lines, found.progress_median_ms, found.progress_late) == (2, 1800.0, 2)
-    held = {t.name: (t.value, t.holds) for t in targets(results, held_out=False)}
+    held = {t.name: (t.value, t.holds) for t in targets(results, held_out=False, tail_s=TAIL)}
     assert held == {
         "no_search_median_ms": (1500.0, True),
         "no_search_p90_ms": (1900.0, True),
@@ -83,11 +86,51 @@ def test_each_path_has_its_own_spread_and_a_late_search_needs_its_progress_line(
     }
 
 
+def test_a_reply_never_heard_by_the_calls_end_is_counted_and_ranked_slowest() -> None:
+    """A timed turn whose reply sent no audio before the call ended took longer than the call's
+    tail: it is counted (`no_audio`) and ranked after every reply heard, so a quantile that
+    reaches it has no value, and its target fails; it began nothing by 2 s either."""
+    heard = [_result(f"s{k}", _search(2100.0 + 100.0 * k, 1500.0)) for k in range(7)]
+    silent = [_result(f"x{k}", ReplayedTurn(searched=True)) for k in range(2)]
+    found = metrics([*heard, *silent])
+    search = found.paths["search"]
+    assert (search.turns, search.items, search.no_audio, found.no_audio) == (9, 9, 2, 2)
+    assert (search.median_ms, search.p90_ms) == (2500.0, None)
+    assert (found.unanswered, found.progress_late) == (0, 2)
+    held = {
+        t.name: (t.value, t.holds) for t in targets([*heard, *silent], held_out=False, tail_s=TAIL)
+    }
+    assert held["search_median_ms"] == (2500.0, True)
+    assert held["search_p90_ms"] == (None, False)
+    assert held["progress_late"] == (2.0, False)
+
+
+def test_a_quantile_that_reaches_an_unheard_reply_fails_when_even_the_tail_breaks_its_bound() -> (
+    None
+):
+    """An unheard reply's time is at least the call's tail: a quantile weighted toward it fails
+    when the tail's time alone would break its bound, and is unknown otherwise."""
+    results = [_result(f"s{k}", _search(1000.0, 900.0)) for k in range(18)]
+    results += [_result(f"x{k}", ReplayedTurn(searched=True)) for k in range(2)]
+
+    def p90(tail_s: float) -> tuple[float | None, bool | None]:
+        shown = {t.name: t for t in targets(results, held_out=False, tail_s=tail_s)}
+        return shown["search_p90_ms"].value, shown["search_p90_ms"].holds
+
+    assert p90(TAIL) == (None, False)  # at least 1000 + 0.1 x (47000 - 1000) ms: past 4000
+    assert p90(6.0) == (None, None)  # at least 1500 ms: it may still hold
+    none_heard = {t.name: t for t in targets(results[18:], held_out=False, tail_s=TAIL)}
+    assert (none_heard["search_median_ms"].value, none_heard["search_median_ms"].holds) == (
+        None,
+        False,
+    )
+
+
 def test_a_target_over_too_few_held_out_items_or_none_is_withheld() -> None:
     results = [_result("a", ReplayedTurn(ttfa_ms=900.0)), _result("b", _search(2000.0))]
-    shown = {t.name: t.value for t in targets(results, held_out=True)}
+    shown = {t.name: t.value for t in targets(results, held_out=True, tail_s=TAIL)}
     assert set(shown.values()) == {None}
-    dev = {t.name: t.value for t in targets(results[:1], held_out=False)}
+    dev = {t.name: t.value for t in targets(results[:1], held_out=False, tail_s=TAIL)}
     assert dev["no_search_median_ms"] == 900.0 and dev["search_median_ms"] is None
     assert dev["progress_late"] is None
 

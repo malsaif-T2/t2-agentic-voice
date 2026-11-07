@@ -88,7 +88,7 @@ def _withheld(totals: AudioMetrics) -> AudioMetrics:
     paths = {
         path: stats
         if stats.items >= HELD_OUT_MIN_ITEMS
-        else PathStats(turns=stats.turns, items=stats.items)
+        else PathStats(turns=stats.turns, items=stats.items, no_audio=stats.no_audio)
         for path, stats in totals.paths.items()
     }
     return AudioMetrics.model_validate(totals.model_dump() | {"paths": paths})
@@ -149,7 +149,7 @@ def close_run(
         stopped=stopped,
         phrase_requests=measuring.phrase_requests,
         totals=_withheld(metrics(kept)) if held_out else metrics(kept),
-        targets=targets(kept, held_out=held_out),
+        targets=targets(kept, held_out=held_out, tail_s=info.tail_s),
         breakdowns={} if held_out else breakdowns(kept),
         spend=summed(measuring.usages),
         chat=ChatSpend(

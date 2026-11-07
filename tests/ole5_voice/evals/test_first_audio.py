@@ -14,7 +14,7 @@ from pathlib import Path
 
 import pytest
 from ole5_voice.evals import first_audio
-from ole5_voice.evals.first_audio_run import LEAD_S, TAIL_S
+from ole5_voice.evals.first_audio_run import LEAD_S
 from ole5_voice.evals.first_audio_score import ReplayedCall, ReplayedTurn
 from ole5_voice.evals.first_audio_setup import FirstAudioParts, agent_of, phrase_cache
 from ole5_voice.evals.models import Item
@@ -27,6 +27,11 @@ from tests.ole5_voice.evals.first_audio_support import CHAT, TRun, agent, call, 
 from tests.ole5_voice.evals.run_support import World
 from tests.ole5_voice.evals.timing_support import ARABIC, WHISPER
 from tests.t2_agentic_voice.fakes import FakeTextToSpeech
+
+# The tail after each recording at the tests' time limits: the turn's end (1 s), the transcript
+# (6 s), the talker's three model requests (8 s each), its tool twice (5 s each) and the voice's
+# first request (6 s), so any reply that still answers is heard.
+TAIL = 47.0
 
 
 def _fast() -> ReplayedTurn:
@@ -43,10 +48,10 @@ def test_a_dev_run_replays_each_recorded_request_as_a_call_of_the_agent(
     assert built["phrases"] is run.cache and run.cache.declared == [built["agent"]]
     asked = [(a["language"], a["end_ms"], a["lead_s"], a["tail_s"]) for a in run.replay.asked]
     assert asked == [  # the smoke test's, then each recorded request, n20 marked at 1500 ms
-        ("ar-SA", 1500.0, LEAD_S, TAIL_S),
-        ("ar-SA", 1500.0, LEAD_S, TAIL_S),
-        ("ar-SA", None, LEAD_S, TAIL_S),
-        ("en", None, LEAD_S, TAIL_S),
+        ("ar-SA", 1500.0, LEAD_S, TAIL),
+        ("ar-SA", 1500.0, LEAD_S, TAIL),
+        ("ar-SA", None, LEAD_S, TAIL),
+        ("en", None, LEAD_S, TAIL),
     ]
     assert run.replay.started == run.replay.closed == 1 and run.stt.closed and run.tts.closed
     settings = run.built[0]
@@ -57,6 +62,7 @@ def test_a_dev_run_replays_each_recorded_request_as_a_call_of_the_agent(
     )
     card = run.card()
     assert card.complete and card.phrase_requests == 4
+    assert card.run.tail_s == TAIL and card.run.settings["run.tail_s"] == str(TAIL)
     assert [(v.item, v.end) for v in card.variants] == [
         ("n20_made_up", "label"),
         ("n02_made_up", "detector"),
@@ -88,10 +94,27 @@ def test_a_dev_run_replays_each_recorded_request_as_a_call_of_the_agent(
     assert "variant_done" in capsys.readouterr().out
 
 
+def test_an_msa_request_is_held_in_the_language_the_agent_gives_an_msa_caller(
+    tmp_path: Path,
+) -> None:
+    """The agent speaks Saudi Arabic and English only, as Ole5's talker does: an MSA request's
+    call is held in Saudi Arabic, the agent's language for an `ar` locale, and answered in its
+    voice, as a real call of the agent would be."""
+
+    def items(world: World) -> list[Item]:
+        return [paused(world, "n20_made_up"), paused(world, "n07_made_up", language="msa")]
+
+    run = t_run(tmp_path, call(_fast()), items=items)
+    assert first_audio.main(run.argv(), parts=run.parts()) == 0
+    assert [a["language"] for a in run.replay.asked] == ["ar-SA", "ar-SA", "ar-SA"]
+    assert [v.language for v in run.card().variants] == ["saudi", "msa"]
+
+
 def test_arm_tn_leaves_the_agents_tools_out(tmp_path: Path) -> None:
     run = t_run(tmp_path, call(_fast()))
     assert first_audio.main(run.argv("--no-tools", "--smoke-only"), parts=run.parts()) == 0
     assert run.replay.built["agent"].tools == ()
+    assert run.replay.asked[0]["tail_s"] == TAIL - 10.0  # no tool runs
     card = run.card()
     assert card.run.tools is False and card.run.settings["run.tools"] == "none"
     assert card.variants == () and card.complete
@@ -118,6 +141,7 @@ def test_a_held_out_run_keeps_aggregates_only(tmp_path: Path) -> None:
     [
         call(ReplayedTurn(failure="server_error")),
         call(ReplayedTurn(ttfa_ms=900.0), ReplayedTurn(ttfa_ms=900.0)),
+        call(ReplayedTurn(searched=True)),  # a reply never heard by the call's end
     ],
 )
 def test_a_smoke_test_that_failed_stops_the_run(tmp_path: Path, smoke: ReplayedCall) -> None:

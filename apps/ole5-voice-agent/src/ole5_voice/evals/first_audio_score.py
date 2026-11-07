@@ -7,8 +7,13 @@ path (a reply with a search, and with none), the registered targets, and what th
 delay, reported apart as `detector`) to the first audible frame of the reply sent; and, where a
 progress line played, to its first audible frame. **The timed turn** is a call's one answered
 turn; a call that answered more than one (the caller's turn cut in two) is `cut`, reported apart
-and left out of the numbers, as is one that failed or answered nothing. **The path** of a reply
-is `search` when a tool ran in it, else `no_search`. Quantiles are type 7 (`scorecard.quantile`).
+and left out of the numbers, as is one that failed or answered nothing. **A reply never heard**,
+a timed turn whose reply sent no audio before the call ended (`no_audio`), took longer than the
+call's tail (first_audio_run.py's `tail_of`, the slowest reply that still answers): it stays in
+its path's turns, ranked after every reply heard, so a quantile that reaches it has no value, and
+its target fails when the tail's time, the least such a reply took, would break the bound, and is
+unknown (`holds` None) otherwise. **The path** of a reply is `search` when a tool ran in it, else
+`no_search`. Quantiles are type 7 (`scorecard.quantile`).
 
 **The targets** (the registration's, Q7): a reply with no search at a median of at most
 1,600 ms and a 90th percentile of at most 2,400 ms; with a search, at most 3,000 and 4,000 ms,
@@ -18,6 +23,7 @@ numbers are aggregates only: a target over fewer than `HELD_OUT_MIN_ITEMS` items
 
 from __future__ import annotations
 
+import math
 from collections import defaultdict
 from collections.abc import Callable, Iterable, Sequence
 from dataclasses import dataclass
@@ -114,24 +120,28 @@ def result_of(
 
 
 class PathStats(Model):
-    """One path's timed turns, their median and 90th percentile, and their items."""
+    """One path's timed turns, those whose reply was never heard, their median and 90th
+    percentile (None where one reaches a reply never heard), and their items."""
 
     turns: int = Field(ge=0)
     items: int = Field(ge=0)
+    no_audio: int = Field(default=0, ge=0)
     median_ms: float | None = None
     p90_ms: float | None = None
 
 
 class AudioMetrics(Model):
     """The numbers of some recordings: how many, their items, those cut, failed or unanswered,
-    each path's times, the progress lines played and their median, and the replies with a
-    search that had not begun by `PROGRESS_BY_MS` and no progress line begun by then."""
+    the timed replies never heard, each path's times, the progress lines played and their
+    median, and the replies with a search that had not begun by `PROGRESS_BY_MS` and no
+    progress line begun by then."""
 
     variants: int = Field(ge=0)
     items: int = Field(ge=0)
     cut: int = Field(ge=0)
     failures: int = Field(ge=0)
     unanswered: int = Field(ge=0)
+    no_audio: int = Field(default=0, ge=0)
     paths: dict[ReplyPath, PathStats]
     progress_lines: int = Field(ge=0)
     progress_median_ms: float | None = None
@@ -142,25 +152,45 @@ def _path(turn: ReplayedTurn) -> ReplyPath:
     return "search" if turn.searched else "no_search"
 
 
+def _times(results: Sequence[AudioResult], path: ReplyPath) -> tuple[list[float], int]:
+    """The times of `path`'s timed replies heard, sorted, and how many were never heard."""
+    timed = [t for r in results if (t := r.timed) is not None and _path(t) == path]
+    heard = sorted(t.ttfa_ms for t in timed if t.ttfa_ms is not None)
+    return heard, len(timed) - len(heard)
+
+
+def heard_quantile(heard: Sequence[float], unheard: int, q: float) -> float | None:
+    """The `q` quantile (type 7) of `heard` (sorted) and `unheard` replies ranked after every
+    one of them; None when there is none, or when it reaches an unheard one."""
+    if not heard:
+        return None
+    position = q * (len(heard) + unheard - 1)
+    low = math.floor(position)
+    high = low if position == low else low + 1
+    if high >= len(heard):
+        return None
+    return heard[low] + (heard[high] - heard[low]) * (position - low)
+
+
 def metrics(results: Sequence[AudioResult]) -> AudioMetrics:
     """The numbers of `results` (the module's docstring)."""
-    timed = [(r, t) for r in results if (t := r.timed) is not None and t.ttfa_ms is not None]
+    timed = [(r, t) for r in results if (t := r.timed) is not None]
     paths: dict[ReplyPath, PathStats] = {}
     for path in ("search", "no_search"):
-        those = [(r, t) for r, t in timed if _path(t) == path]
-        times = sorted(t.ttfa_ms for _, t in those if t.ttfa_ms is not None)
+        heard, unheard = _times(results, path)
         paths[path] = PathStats(
-            turns=len(times),
-            items=len({r.item for r, _ in those}),
-            median_ms=quantile(times, 0.5),
-            p90_ms=quantile(times, 0.9),
+            turns=len(heard) + unheard,
+            items=len({r.item for r, t in timed if _path(t) == path}),
+            no_audio=unheard,
+            median_ms=heard_quantile(heard, unheard, 0.5),
+            p90_ms=heard_quantile(heard, unheard, 0.9),
         )
     progress = sorted(p for _, t in timed if (p := t.progress_ms) is not None)
     late = [
         t
         for _, t in timed
         if t.searched
-        and (t.ttfa_ms or 0.0) > PROGRESS_BY_MS
+        and (t.ttfa_ms is None or t.ttfa_ms > PROGRESS_BY_MS)
         and (t.progress_ms is None or t.progress_ms > PROGRESS_BY_MS)
     ]
     return AudioMetrics(
@@ -169,6 +199,7 @@ def metrics(results: Sequence[AudioResult]) -> AudioMetrics:
         cut=sum(r.cut for r in results),
         failures=sum(r.failure is not None for r in results),
         unanswered=sum(not r.turns and r.failure is None for r in results),
+        no_audio=sum(t.ttfa_ms is None for _, t in timed),
         paths=paths,
         progress_lines=len(progress),
         progress_median_ms=quantile(progress, 0.5),
@@ -176,21 +207,27 @@ def metrics(results: Sequence[AudioResult]) -> AudioMetrics:
     )
 
 
-def targets(results: Sequence[AudioResult], *, held_out: bool) -> tuple[Target, ...]:
-    """The registration's targets on `results`; one over too few items in a held-out run, or
-    over none, withheld."""
+def targets(results: Sequence[AudioResult], *, held_out: bool, tail_s: float) -> tuple[Target, ...]:
+    """The registration's targets on `results`, whose calls had `tail_s` of silence after each
+    recording; one over too few items in a held-out run, or over none, withheld, and one whose
+    quantile reaches a reply never heard failed or unknown (the module's docstring)."""
     found = metrics(results)
-    rows: list[tuple[str, int, float | None, float]] = []
+    rows: list[tuple[str, int, float | None, float, bool | None]] = []
     for name, path, q, bound in BOUNDS:
         stats = found.paths[path]
-        rows.append((name, stats.items, stats.median_ms if q == 0.5 else stats.p90_ms, bound))
-    search = found.paths["search"]
-    rows.append(("progress_late", search.items, float(found.progress_late), 0.0))
-    shown = []
-    for name, items, value, bound in rows:
-        if items == 0 or (held_out and items < HELD_OUT_MIN_ITEMS):
-            value = None
+        value = stats.median_ms if q == 0.5 else stats.p90_ms
         holds = None if value is None else value <= bound
+        heard, unheard = _times(results, path)
+        if value is None and unheard:  # at least the tail, for each never heard
+            least = quantile(sorted([*heard, *[tail_s * 1000.0] * unheard]), q)
+            holds = False if least is not None and least > bound else None
+        rows.append((name, stats.items, value, bound, holds))
+    late = float(found.progress_late)
+    rows.append(("progress_late", found.paths["search"].items, late, 0.0, late <= 0.0))
+    shown = []
+    for name, items, value, bound, holds in rows:
+        if items == 0 or (held_out and items < HELD_OUT_MIN_ITEMS):
+            value, holds = None, None
         shown.append(
             Target(name=name, items=items, value=value, bound=bound, at_most=True, holds=holds)
         )

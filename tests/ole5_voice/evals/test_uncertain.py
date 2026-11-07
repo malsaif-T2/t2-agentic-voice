@@ -1,8 +1,9 @@
-"""`poe uncertain` as a run (plan 006's registration, U): a stored dev overlap run read, the
-uncertain overlaps asked one short request each through the chat model port, paced, capped,
-held under the day's requests, the 429 waited for, each result written as it finishes and never
-its words logged, and the scorecard and history line written; every refusal before anything is
-sent."""
+"""`poe uncertain` as a run (plan 006's registration, U): a stored dev overlap run read and each
+of its overlaps judged again under the session's rule at this commit, from the transcripts it
+stored, the uncertain overlaps asked one short request each through the chat model port, paced,
+capped, held under the day's requests, the 429 waited for, each result written as it finishes
+and never its words logged, and the scorecard and history line written; every refusal before
+anything is sent."""
 
 from __future__ import annotations
 
@@ -24,8 +25,10 @@ from tests.ole5_voice.evals.uncertain_support import URun, overlap, stored, u_ru
 
 def _source(run: URun, n: int = 3) -> Path:
     results = [overlap(f"i{k}", "request", expected="stop") for k in range(n)]
-    results.append(overlap("q", "stop_word", expected="stop", reason="stop_word", action="stop"))
-    return stored(run.world.main / "var" / "runs" / "o1", results)
+    stop = overlap(
+        "q", "stop_word", expected="stop", reason="stop_word", action="stop", words="وقف"
+    )
+    return run.store("o1", [*results, stop])
 
 
 def _card(run: URun) -> UncertainScorecard:
@@ -59,6 +62,7 @@ def test_a_run_asks_each_uncertain_overlap_and_scores_it_against_the_rule(
     assert card.cost_usd == pytest.approx(4 * (100 * 0.05 + 100 * 0.05 + 2 * 0.08) / 1e6)
     assert len((run.out / RESULTS_FILE).read_text(encoding="utf-8").splitlines()) == 3
     assert card.run.source == "o1" and card.run.settings["llm.model"] == "llama-3.1-8b-instant"
+    assert (card.run.rejudged, card.run.unmatched) == (4, 0)
     (line, history), (copy, beside) = run.lines.appended
     assert isinstance(line, OverlapLine) and line.answerer == "uncertain" and line == copy
     assert history == run.world.data / "history.jsonl" and beside == run.out / "history.jsonl"
@@ -168,6 +172,66 @@ def _refused(run: URun, argv: list[str], capsys: pytest.CaptureFixture[str], say
     assert run.chat.requests == [] and not run.out.exists() and run.lines.appended == []
 
 
+def test_u0_is_the_sessions_rule_at_this_commit_on_the_stored_transcripts(tmp_path: Path) -> None:
+    """The stored verdicts predate the rule's revision (D-068): each stored overlap is replayed
+    with the transcripts it stored, and the session's rule decides U's overlaps and U0 again. A
+    stop word heard as «وكيف», which went on as too few words, now stops, and «كامل» is now a
+    listening sound, so neither is uncertain; one the stored rule stopped and today's leaves
+    uncertain is asked."""
+    run = u_run(tmp_path, "stop", "stop", "go_on")
+    source = run.store(
+        "o1",
+        [
+            overlap("a", "stop_word", expected="stop", reason="too_few_words", words="وكيف"),
+            overlap("b", reason="short_output", words="كامل"),
+            overlap("c", "request", expected="stop", reason="enough_words", action="stop"),
+            overlap("d", "request", expected="stop", language="none"),
+            overlap("e", words="كامل", language="none").model_copy(update={"reply": ("تمام.",)}),
+        ],
+    )
+    assert uncertain.main(run.argv(source), parts=run.parts()) == 0
+    audio = run.audio
+    assert audio.started == audio.closed == 1 and audio.built["tts"].name == "none"
+    assert [p["language"] for p in audio.played] == ["ar-SA", "ar-SA", "ar-SA", "en", "ar-SA"]
+    assert audio.played[0]["reply"] == ("the first clause.", "the second clause.")
+    assert len(run.chat.requests) == 3  # the smoke test's, then c and d
+    card = _card(run)
+    assert [r.overlap.item for r in card.results] == ["c", "d"]
+    assert {(r.overlap.rule, r.overlap.reason) for r in card.results} == {("go_on", "short_output")}
+    assert (card.rule.right, card.arm.right, card.keep.better) == (0, 1, 1)
+    assert (card.run.rejudged, card.run.unmatched) == (5, 0)
+
+
+def test_an_overlap_its_replay_does_not_reproduce_is_counted_apart_and_left_out(
+    tmp_path: Path,
+) -> None:
+    """Only a replay whose requests, up to the deciding one, are the stored run's was answered
+    with its own transcripts; one asked in another order, one the replay cannot play and one
+    whose stored request failed are counted apart, and a request after the deciding one is
+    answered with no words."""
+    run = u_run(tmp_path, "stop", "stop")
+    results = [overlap(f"i{k}", "request", expected="stop") for k in range(3)]
+    failed = overlap("i3", "request", expected="stop", failure="timeout")
+    source = run.store("o1", [*results, failed])
+    run.audio.parts = {0: ("overlap", "window"), 2: ("window", "overlap", "turn")}
+    run.audio.fails = {1}
+    assert uncertain.main(run.argv(source), parts=run.parts()) == 0
+    assert len(run.audio.played) == 3  # the failed one is not replayed
+    card = _card(run)
+    assert [r.overlap.item for r in card.results] == ["i2"]
+    assert (card.run.rejudged, card.run.unmatched) == (4, 3)
+
+
+def test_a_stored_variant_the_golden_set_does_not_hold_is_refused(
+    tmp_path: Path, capsys: pytest.CaptureFixture[str]
+) -> None:
+    run = u_run(tmp_path)
+    run.store("held", [overlap("a")])
+    source = stored(run.world.main / "o", [overlap("a"), overlap("gone")])
+    _refused(run, run.argv(source), capsys, "holds no checked variant gone-laptop")
+    assert run.audio.played == []
+
+
 def test_a_held_out_or_unfinished_overlap_run_is_refused(
     tmp_path: Path, capsys: pytest.CaptureFixture[str]
 ) -> None:
@@ -187,7 +251,7 @@ def test_a_run_with_nothing_uncertain_or_past_its_limits_is_refused(
     tmp_path: Path, capsys: pytest.CaptureFixture[str]
 ) -> None:
     run = u_run(tmp_path)
-    none = stored(run.world.main / "o", [overlap("a", reason="listening")])
+    none = run.store("o", [overlap("a", reason="listening", words="كامل")])
     _refused(run, run.argv(none), capsys, "holds no overlap the rule left uncertain")
     source = _source(run)
     argv = run.argv(source)
