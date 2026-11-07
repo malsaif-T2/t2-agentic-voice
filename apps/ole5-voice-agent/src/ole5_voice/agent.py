@@ -11,7 +11,10 @@ the library's runtime.
   (`search_tool`, the library's `knowledge_tool`), reading the top `SEARCH_LIMIT` passages
   whole, with a progress line in each language (`PROGRESS`) for a search that runs long; its
   vocabulary holds Ole5's product terms for the Whisper prompt, used only if run W keeps its
-  arm W1; its `version` is stamped on its traces.
+  arm W1; its `version` is stamped on its traces. With no knowledge base (run T's pass Tn),
+  the same talker with no tool, told in place of the instructions' search section that it has
+  no search (`NO_SEARCH`), since a model told to search with no tool offered writes a call to
+  one (the live probe of 2026-11-07: Groq refused it, `tool_use_failed`).
 - **The echo** (`ECHO_AGENT`): the same languages and name with no instructions, which says
   back what it heard, as the app ran before it had a knowledge base; the app runs it when the
   knowledge base's access is not set (server.py).
@@ -92,12 +95,36 @@ VOCABULARY: Final = Vocabulary(
 # instructions are given for, each by its file under instructions/.
 Tag = Literal["ar-SA", "ar", "en"]
 TAGS: Final[tuple[Tag, ...]] = ("ar-SA", "en")
+# The heading of each language's section on when and how to search, and what the talker with no
+# tool is told in its place, in English as the rest of the instructions.
+SEARCH_HEADING: Final = "Searching:"
+NO_SEARCH: Final = (
+    "No knowledge base in this call:\n"
+    "- In this call there is no knowledge base and no tool. Answer from the conversation, in "
+    "one to three short sentences.\n"
+    "- For a question about Ole5 that would need the guide, say plainly, in one sentence, that "
+    "you cannot look that up right now."
+)
 
 
-def instructions() -> dict[Tag, str]:
-    """Ole5's instructions for each language, by tag, read from instructions/<tag>.md."""
+def instructions(*, search: bool = True) -> dict[Tag, str]:
+    """Ole5's instructions for each language, by tag, read from instructions/<tag>.md; with
+    `search` False, each one's search section replaced by `NO_SEARCH`."""
     folder = files("ole5_voice") / "instructions"
-    return {tag: (folder / f"{tag}.md").read_text(encoding="utf-8") for tag in TAGS}
+    found = {tag: (folder / f"{tag}.md").read_text(encoding="utf-8") for tag in TAGS}
+    return found if search else {tag: without_search(text) for tag, text in found.items()}
+
+
+def without_search(text: str) -> str:
+    """`text` with its one section headed `SEARCH_HEADING` (the sections are split by a blank
+    line) replaced by `NO_SEARCH`, every other section as it was. ValueError for a text with no
+    such section, or more than one."""
+    sections = text.split("\n\n")
+    found = [n for n, section in enumerate(sections) if section.startswith(SEARCH_HEADING)]
+    if len(found) != 1:
+        raise ValueError(f"the instructions hold {len(found)} sections headed {SEARCH_HEADING}")
+    sections[found[0]] = NO_SEARCH
+    return "\n\n".join(sections)
 
 
 def _languages(*, talker: bool) -> list[Language]:
@@ -142,20 +169,23 @@ def search_tool(kb: KnowledgeBase) -> Tool:
     )
 
 
-def declare(tools: Sequence[DeclaredTool] = ()) -> VoiceAgent:
-    """The talker's declaration (the module's docstring) with `tools`."""
+def declare(tools: Sequence[DeclaredTool] = (), *, search: bool = True) -> VoiceAgent:
+    """The talker's declaration (the module's docstring) with `tools`; with `search` False,
+    told it has no search (`instructions(search=False)`)."""
     return VoiceAgent(
         name=NAME,
         version=VERSION,
         languages=_languages(talker=True),
         pronounce=PRONOUNCE,
-        instructions=instructions(),
+        instructions=instructions(search=search),
         tools=tools,
         vocabulary=VOCABULARY,
     )
 
 
 def talker_agent(kb: KnowledgeBase | None) -> VoiceAgent:
-    """Ole5's talker, searching `kb`; with None, the same talker with no tool (a run that
-    times the replies with no search, as run T's pass Tn does)."""
-    return declare([search_tool(kb)] if kb is not None else [])
+    """Ole5's talker, searching `kb`; with None, the same talker with no tool, told it has no
+    search (a run that times the replies with no search, as run T's pass Tn does)."""
+    if kb is None:
+        return declare(search=False)
+    return declare([search_tool(kb)])
