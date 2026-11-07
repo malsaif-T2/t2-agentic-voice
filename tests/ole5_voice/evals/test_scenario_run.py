@@ -14,7 +14,7 @@ from pathlib import Path
 import pytest
 from ole5_voice.evals import run_folder, scenario_run
 from ole5_voice.evals.history import read_history, render_history
-from ole5_voice.evals.judge import Checked
+from ole5_voice.evals.judge import JUDGE_ATTEMPTS, REGISTER_SYSTEM, Checked
 from ole5_voice.evals.run_folder import RESULTS_FILE
 from ole5_voice.evals.runs import SCORECARD_FILE
 from ole5_voice.evals.scenario_score import (
@@ -30,7 +30,7 @@ from ole5_voice.evals.talker_lines import ScenarioLine
 from pydantic import ValidationError
 from t2_agentic_voice import ProviderError
 
-from tests.ole5_voice.evals.talker_fakes import TALKER, TOOL, Scripted
+from tests.ole5_voice.evals.talker_fakes import JUDGE, TALKER, TOOL, Scripted
 from tests.ole5_voice.evals.talker_support import Setup, make_setup
 
 
@@ -132,6 +132,35 @@ def test_a_judge_with_no_valid_answer_is_a_failure(setup: Setup) -> None:
     assert {play.failure for play in plays} == {"judge"}
 
 
+@pytest.mark.parametrize(
+    ("answer", "passed", "failure"),
+    [("saudi", True, None), ("msa", False, None), ("Saudi, mostly", None, "judge")],
+)
+def test_a_reply_held_to_arabic_is_held_to_the_register_the_judge_names_when_asked_apart(
+    setup: Setup, answer: str, passed: bool | None, failure: str | None
+) -> None:
+    """Run K's first dev round: the register is asked in a question of its own, of the reply's
+    own words, never as one of the checks' expectations; an unclear answer twice is no result."""
+    lines = ['id = "s08"', "rehearsal = false", 'language = "ar-SA"', 'notes = "Made up."']
+    lines += ["", "[[turns]]", 'says = "question 8"', "search = true", 'language = "ar-SA"']
+    (setup.data / "scenarios" / "s08.toml").write_text("\n".join(lines) + "\n", encoding="utf-8")
+    said = "تقدر تطبعها من القائمة."
+    setup.calls.script["question 8"] = Scripted(language="ar-SA", said=said)
+    setup.chat.registers = {said: answer}
+    assert _main(setup) == 0
+    plays = [play for play in _card(setup).plays if play.scenario == "s08"]
+    assert {play.passed for play in plays} == {passed}
+    assert {play.failure for play in plays} == {failure}
+    if failure is None:
+        assert {play.checks[0].in_register for play in plays} == {answer == "saudi"}
+        assert {play.checks[0].judged for play in plays} == {()}  # no expectation to judge
+    asked = [r for r in setup.chat.requests if r.messages[0].content == REGISTER_SYSTEM]
+    assert {r.messages[1].content for r in asked} == {said}
+    assert len(asked) == 3 * (1 if failure is None else JUDGE_ATTEMPTS)  # each play's turn
+    checked = [r.messages[-1].content for r in setup.chat.requests if r.model == JUDGE]
+    assert not any("question 8" in text for text in checked if "The expectations:" in text)
+
+
 def test_a_moment_the_call_never_reaches_is_a_stuck_play(setup: Setup) -> None:
     setup.calls.script["question 2"] = Scripted(search=False)  # no search to correct over
     assert _main(setup) == 0
@@ -189,7 +218,8 @@ def test_an_error_is_raised_once_the_scorecard_is_written(setup: Setup) -> None:
 
 def test_the_cap_stops_a_run(setup: Setup) -> None:
     setup.chat.input_tokens = 3000
-    assert scenario_run.main([*setup.argv(out="s-a", cap="0.05")], parts=setup.parts()) == 1
+    # The cap leaves room for one play's most, its judge's register questions among them.
+    assert scenario_run.main([*setup.argv(out="s-a", cap="0.08")], parts=setup.parts()) == 1
     assert _card(setup).stopped == "cap"
 
 

@@ -9,7 +9,8 @@ tags a clause by the caller's words (an MSA turn in an `ar-SA` call stays `ar-SA
 cannot tell Saudi from MSA. Each of the talker's clauses is in the script most of its words are
 written in (`script_of`), and a reply is in a language's script when every clause that has one
 is, and no word is in another script (`HeardTurn.written_in`); an Arabic reply's register is the
-judge's word (`Register`). `in_language` holds a reply to both, as `HELD_TO` says.
+judge's word, asked of the same words on its own (`Register`, judge.py). `in_language` holds a
+reply to both, as `HELD_TO` says.
 """
 
 from __future__ import annotations
@@ -143,6 +144,12 @@ class HeardTurn(Model):
         """The words the talker said that the caller heard."""
         return len(self.said.split())
 
+    @property
+    def own_text(self) -> str:
+        """The talker's own clauses, heard or not, joined: the words its script (`written_in`)
+        and its register (the judge's) are read from; no fixed phrase."""
+        return " ".join(clause.text for clause in self.clauses if not clause.phrase)
+
     def written_in(self, script: Script) -> bool:
         """Whether the talker's own clauses, heard or not, are written in `script`: each that
         has a script (`script_of`), at least one, and no word of any in another script."""
@@ -195,6 +202,12 @@ def in_language(turn: HeardTurn, tag: Tag, register: Register | None) -> bool:
     script, and, held to Arabic, in its register as the judge read it (`register`)."""
     script, wanted = HELD_TO[tag]
     return turn.written_in(script) and (script != "ar" or register == wanted)
+
+
+def has_arabic(text: str) -> bool:
+    """Whether `text` holds an Arabic letter, which a reply needs for the judge to be asked its
+    register."""
+    return any(_letter_script(letter) == "ar" for letter in text if letter.isalpha())
 
 
 def script_of(text: str) -> Script | None:

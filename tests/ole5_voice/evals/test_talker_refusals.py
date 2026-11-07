@@ -16,6 +16,7 @@ from pathlib import Path
 import pytest
 from ole5_voice.evals import run_folder, talker_run
 from ole5_voice.evals.history import read_history, render_history
+from ole5_voice.evals.judge import JUDGE_ATTEMPTS, JUDGE_REQUESTS
 from ole5_voice.evals.talker_args import TalkerParts
 from ole5_voice.evals.talker_lines import TalkerLine
 from t2_agentic_voice import Language, VoiceAgent
@@ -164,6 +165,16 @@ def test_a_cap_with_no_room_for_one_variant_is_refused(
     setup: Setup, capsys: pytest.CaptureFixture[str]
 ) -> None:
     _refused(setup, [*setup.argv(cap="0.001"), *DEV], "leaves no room for one more", capsys)
+
+
+def test_the_cap_budgets_the_judges_register_beside_its_verdict(
+    setup: Setup, capsys: pytest.CaptureFixture[str]
+) -> None:
+    """One variant's most: the talker's 3 requests and the judge's 4 (its verdict and the
+    register's question, each asked once more), each at its budget, about $0.0187 at the
+    made-up prices; $0.015 had room for the verdict's alone."""
+    assert JUDGE_REQUESTS == 2 * JUDGE_ATTEMPTS == 4
+    _refused(setup, [*setup.argv(cap="0.015"), *DEV], "leaves no room for one more", capsys)
 
 
 def test_a_held_out_run_that_would_pass_the_days_limit_is_refused(

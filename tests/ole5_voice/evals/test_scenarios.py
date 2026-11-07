@@ -88,17 +88,24 @@ def test_each_rule_refuses_what_it_should() -> None:
     ]
 
 
-def test_a_turns_expectations_are_its_facts_or_its_items_what_it_follows_and_its_register() -> None:
+def test_a_turns_expectations_are_its_facts_or_its_items_and_what_it_follows() -> None:
     items = {"a1": item("a1")}
     assert ScriptTurn(says="x", item="a1").expectations(items) == items["a1"].key_facts
     turn = ScriptTurn(says="x", item="a1", facts=("Own.",), follows="repeats")
     assert turn.expectations(items) == ("Own.", FOLLOWS["repeats"])
     assert ScriptTurn(says="x").expectations(items) == ()
-    # A reply held to Arabic is judged on its register too; its script is read from its words.
+    # A reply held to Arabic is held to its register too, which the judge is asked apart (run
+    # K's first dev round): never one of the expectations; its script is read from its words.
     saudi = ScriptTurn(says="x", language="ar-SA", follows="continues")
-    assert saudi.expectations(items) == (FOLLOWS["continues"], REGISTER_CHECKS["ar-SA"])
-    assert ScriptTurn(says="x", language="ar").expectations(items) == (REGISTER_CHECKS["ar"],)
-    assert ScriptTurn(says="x", language="en").expectations(items) == ()
+    assert saudi.expectations(items) == (FOLLOWS["continues"],)
+    assert ScriptTurn(says="x", language="ar").expectations(items) == ()
+    assert REGISTER_CHECKS == {"ar-SA": "saudi", "ar": "msa"}
+    assert [ScriptTurn(says="x", language=tag).held_register() for tag in ("ar-SA", "ar")] == [
+        "saudi",
+        "msa",
+    ]
+    assert ScriptTurn(says="x", language="en").held_register() is None
+    assert ScriptTurn(says="x").held_register() is None
 
 
 def test_a_folder_that_cannot_be_read_is_refused(tmp_path: Path) -> None:

@@ -14,6 +14,7 @@ from types import TracebackType
 from typing import Any, Final, Literal
 
 from ole5_voice.evals.chat_pacing import CapReachedError, DailyLimitError
+from ole5_voice.evals.judge import REGISTER_SYSTEM
 from ole5_voice.evals.talker_data import Tag, script_of
 from pydantic import BaseModel
 from t2_agentic_voice import Caller, Card, Language, ProviderError, Tool, VoiceAgent
@@ -68,9 +69,10 @@ Reply = Callable[[ChatRequest], Sequence[ChatEvent]]
 
 class FakeChat:
     """A chat model: the judge's requests (`JUDGE`) answered with `verdicts`' verdict for the
-    first of its keys found in the request (`right` by default) and `registers`' register
-    (`saudi` for a reply in Arabic by default, `none` otherwise), every other with a short
-    text; `errors` raised, in order, before any event of the next requests."""
+    first of its keys found in the request (`right` by default), its register questions with
+    `registers`' word for the first of its keys found in the reply's words (`saudi` for a reply
+    in Arabic by default, `none` otherwise), every other with a short text; `errors` raised, in
+    order, before any event of the next requests."""
 
     name = "fake"
     data_flow = FLOW
@@ -108,14 +110,14 @@ class FakeChat:
         asked = request.messages[-1].content
         if self.replies:
             text = self.replies.pop(0)
+        elif request.messages[0].content == REGISTER_SYSTEM:  # the reply's own words
+            arabic = "saudi" if script_of(asked) == "ar" else "none"
+            text = next((r for key, r in self.registers.items() if key in asked), arabic)
         elif "The expectations:" in asked:
             text = json.dumps({"checks": self._checks(asked)})
         else:
             verdict = next((v for key, v in self.verdicts.items() if key in asked), "right")
-            aloud = asked.split("The assistant said aloud: ")[1].splitlines()[0]
-            arabic = "saudi" if script_of(aloud) == "ar" else "none"
-            register = next((r for key, r in self.registers.items() if key in asked), arabic)
-            text = json.dumps({"verdict": verdict, "register": register, "reason": "Made up."})
+            text = json.dumps({"verdict": verdict, "reason": "Made up."})
         return [TextDelta(text=text), usage, Done(finish_reason="stop")]
 
     def _checks(self, asked: str) -> list[dict[str, object]]:

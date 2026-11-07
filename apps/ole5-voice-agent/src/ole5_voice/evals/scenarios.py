@@ -14,7 +14,8 @@ what is expected of the reply, each optional:
   cancelled a search: TextCall speaks a turn's words at a calm pace, so a real search has ended
   before they are heard);
 - `language`: the tag the reply is held to, read from its own words' script
-  (`talker_data.HELD_TO`), and held to Arabic its register too, judged (`REGISTER_CHECKS`);
+  (`talker_data.HELD_TO`), and held to Arabic its register too (`REGISTER_CHECKS`), the judge's
+  answer to the register's question of its own (judge.py's `Judge.register`);
   `max_words`: the most words the reply says;
 - `facts`: what the reply must say or do, each judged; `item`, a dev item of the knowledge set,
   whose expected points' text the judge reads, and whose key facts are the turn's when it names
@@ -38,7 +39,7 @@ from pydantic import Field
 from ole5_voice.evals.items import GoldenSetError, read_toml
 from ole5_voice.evals.knowledge_set import KnowledgeItem, Text
 from ole5_voice.evals.models import Model, Name
-from ole5_voice.evals.talker_data import Tag
+from ole5_voice.evals.talker_data import HELD_TO, Register, Tag
 
 SCENARIOS_DIR: Final = "scenarios"
 SCENARIO_COUNT: Final = 10  # the registration's ten scripted calls
@@ -52,14 +53,10 @@ FOLLOWS: Final[Mapping[Follows, str]] = {
         "and does not start over from the beginning."
     ),
 }
-# What the judge checks of a reply held to Arabic, beside its words' script.
-REGISTER_CHECKS: Final[Mapping[Tag, str]] = {
-    "ar-SA": (
-        "Speaks Arabic in the Saudi dialect, not in Modern Standard Arabic (English product "
-        "terms among it are fine)."
-    ),
-    "ar": "Speaks Modern Standard Arabic, not a dialect.",
-}
+# The register a reply held to Arabic is checked to be in, beside its words' script: the
+# judge's answer to the register's question, asked on its own (run K's first dev round found the
+# question of its own agreed with the lead's labels where a judged expectation did not).
+REGISTER_CHECKS: Final[Mapping[Tag, Register]] = {tag: HELD_TO[tag][1] for tag in ("ar-SA", "ar")}
 
 
 class ScriptTurn(Model):
@@ -78,11 +75,14 @@ class ScriptTurn(Model):
 
     def expectations(self, items: Mapping[str, KnowledgeItem]) -> tuple[str, ...]:
         """What the judge checks the reply against: its facts (or its item's key facts), then
-        what it follows and the register of its Arabic, in the judge's words."""
+        what it follows, in the judge's words; the register is asked apart (`held_register`)."""
         facts = self.facts or (items[self.item].key_facts if self.item else ())
         follows = (FOLLOWS[self.follows],) if self.follows else ()
-        register = REGISTER_CHECKS.get(self.language) if self.language else None
-        return (*facts, *follows, *((register,) if register else ()))
+        return (*facts, *follows)
+
+    def held_register(self) -> Register | None:
+        """The register the reply is held to (`REGISTER_CHECKS`), None unless held to Arabic."""
+        return REGISTER_CHECKS.get(self.language) if self.language else None
 
 
 class Scenario(Model):

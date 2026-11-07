@@ -3,8 +3,9 @@ turn, and the scorecard with each scenario's target.
 
 A turn's checks are read from what the call did (`checks_of`): the knowledge tool called or not,
 the earlier reply cut, the reply's language (its own words' script, `talker_data.HELD_TO`) and
-its words; and the judge's checks of its facts, of what it repeats or continues, and of the
-register of its Arabic (`scenarios.REGISTER_CHECKS`). A play passes when every check
+its words; the judge's checks of its facts and of what it repeats or continues; and the register
+of its Arabic, the judge's answer to the register's question of its own, against the one it is
+held to (`scenarios.REGISTER_CHECKS`). A play passes when every check
 of every turn holds and the output guard found no violation in the call. A scenario meets its
 target when it passed in every play if it is one of the rehearsal's, and in at least two of
 three otherwise (`needed`); a play with no result (`failure`) is not scored, and a scenario with
@@ -25,7 +26,7 @@ from ole5_voice.evals.judge import Checked
 from ole5_voice.evals.models import Commit, Model, Name, Sha256
 from ole5_voice.evals.runs import Note, Plain, Shown
 from ole5_voice.evals.scenarios import Scenario, ScriptTurn
-from ole5_voice.evals.talker_data import HELD_TO, Failure, HeardTurn, ModelName
+from ole5_voice.evals.talker_data import HELD_TO, Failure, HeardTurn, ModelName, Register
 from ole5_voice.evals.talker_score import PriceShown, Session, Stopped
 
 _S = Annotated[float, Field(ge=0, allow_inf_nan=False)]
@@ -33,7 +34,8 @@ _S = Annotated[float, Field(ge=0, allow_inf_nan=False)]
 
 class TurnCheck(Model):
     """One turn's checks: each None when the scenario expects nothing of it; `judged` the
-    judge's, in the order of the turn's expectations."""
+    judge's, in the order of the turn's expectations; `in_register` whether the judge's register
+    of its Arabic is the one it is held to."""
 
     search: bool | None = None
     cut: bool | None = None
@@ -41,10 +43,11 @@ class TurnCheck(Model):
     words: bool | None = None
     judged: tuple[bool, ...] = ()
     reasons: tuple[str, ...] = ()
+    in_register: bool | None = None
 
     @property
     def passed(self) -> bool:
-        found = (self.search, self.cut, self.language, self.words)
+        found = (self.search, self.cut, self.language, self.words, self.in_register)
         return all(value is not False for value in found) and all(self.judged)
 
 
@@ -127,12 +130,16 @@ def checks_of(
     heard: Sequence[HeardTurn],
     judged: Sequence[Checked | None],
     tool: str,
+    registers: Sequence[Register | None] = (),
 ) -> tuple[TurnCheck, ...]:
     """Each turn's checks (the module's docstring); `judged` the judge's, None for a turn
-    whose scenario expects nothing the judge reads."""
+    whose scenario expects nothing the judge reads; `registers` the judge's register of each
+    turn's reply, None for one not asked (every one, when not given)."""
+    asked = list(registers) or [None] * len(turns)
     found = []
     for n, (turn, reply, checked) in enumerate(zip(turns, heard, judged, strict=True)):
         earlier = heard[n - 1] if n else None
+        held = turn.held_register()
         found.append(
             TurnCheck(
                 search=None if turn.search is None else reply.searched(tool) == turn.search,
@@ -143,6 +150,7 @@ def checks_of(
                 words=None if turn.max_words is None else reply.words <= turn.max_words,
                 judged=checked.holds or () if checked else (),
                 reasons=checked.reasons if checked else (),
+                in_register=None if held is None else asked[n] == held,
             )
         )
     return tuple(found)
