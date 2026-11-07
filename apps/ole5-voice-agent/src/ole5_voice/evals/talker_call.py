@@ -12,9 +12,10 @@ heard its replies. A variant's reply plays at `CHARS_PER_SECOND_K`, so it never 
 speech on the wall clock; a scenario's at `TextCall`'s own pace, so words can be said over it. The
 turn before one said `at="tool_running"` is said as a task, since its `user` returns only once
 its search has ended: the next is said while it is still being answered. A moment `TextCall`
-waits for in vain (its AssertionError: no reply played, no tool ran, the agent never silent), and
-a last reply still playing after `limit_s` on the wall clock, are each a TimeoutError, which a run
-counts as a `stuck` variant or play.
+waits for in vain (its AssertionError: no reply played, no tool ran, the agent never silent, all
+after `MAX_WAIT_S`), the talker's AssertionError `TextCall` raises from any step (`user`,
+`advance`, or the call's end), and a last reply still playing after `limit_s` on the wall clock,
+are each a TimeoutError, which a run counts as a `stuck` variant or play, and goes on.
 """
 
 from __future__ import annotations
@@ -150,20 +151,20 @@ async def ask(
 ) -> Held:
     """One variant: a call of `agent` on `llm` in `language`, in which the caller says
     `words` once, read once its reply has played (the module's docstring)."""
-    async with call(
-        agent,
-        llm=llm,
-        settings=settings,
-        language=language,
-        clock="system",
-        chars_per_second=CHARS_PER_SECOND_K,
-    ) as held:
-        try:
+    try:
+        async with call(
+            agent,
+            llm=llm,
+            settings=settings,
+            language=language,
+            clock="system",
+            chars_per_second=CHARS_PER_SECOND_K,
+        ) as held:
             turn = await held.user(words)
-        except AssertionError as error:
-            raise _never_came(error) from error
-        await _played(held, turn, limit_s)
-        return Held((heard(turn),), len(held.violations))
+            await _played(held, turn, limit_s)
+            return Held((heard(turn),), len(held.violations))
+    except AssertionError as error:  # a wait given up on, or the talker's, from any step
+        raise _never_came(error) from error
 
 
 async def play(
@@ -179,28 +180,38 @@ async def play(
     """One scenario: a call of `agent` on `llm` in `language`, each of `turns` said when it
     says, after the call goes on its `after_s`; every turn read once the last reply has played
     (the module's docstring)."""
-    async with call(agent, llm=llm, settings=settings, language=language, clock="system") as held:
-        said: dict[int, Turn] = {}
-        answering: list[tuple[int, asyncio.Task[Turn]]] = []
-        try:
-            for n, turn in enumerate(turns):
-                if turn.after_s:
-                    await held.advance(turn.after_s)
-                if n + 1 < len(turns) and turns[n + 1].when == "tool_running":
-                    answering.append((n, asyncio.create_task(_say(held, turn))))
-                    continue
-                said[n] = await _say(held, turn)
-                for earlier, task in answering:
-                    said[earlier] = await task
-                answering.clear()
-            await _played(held, said[len(turns) - 1], limit_s)
-        except AssertionError as error:
-            raise _never_came(error) from error
-        finally:
-            for _, task in answering:
-                task.cancel()
-            await asyncio.gather(*(task for _, task in answering), return_exceptions=True)
-        return Held(tuple(heard(said[n]) for n in range(len(turns))), len(held.violations))
+    try:
+        async with call(
+            agent, llm=llm, settings=settings, language=language, clock="system"
+        ) as held:
+            said = await _said_all(held, turns, limit_s)
+            return Held(tuple(heard(said[n]) for n in range(len(turns))), len(held.violations))
+    except AssertionError as error:  # a wait given up on, or the talker's, from any step
+        raise _never_came(error) from error
+
+
+async def _said_all(held: Call, turns: Sequence[ScriptTurn], limit_s: float) -> dict[int, Turn]:
+    """Each of `turns` said when it says, the one before a turn said `at="tool_running"` as a
+    task; then the call moved on until the last reply has played (the module's docstring)."""
+    said: dict[int, Turn] = {}
+    answering: list[tuple[int, asyncio.Task[Turn]]] = []
+    try:
+        for n, turn in enumerate(turns):
+            if turn.after_s:
+                await held.advance(turn.after_s)
+            if n + 1 < len(turns) and turns[n + 1].when == "tool_running":
+                answering.append((n, asyncio.create_task(_say(held, turn))))
+                continue
+            said[n] = await _say(held, turn)
+            for earlier, task in answering:
+                said[earlier] = await task
+            answering.clear()
+        await _played(held, said[len(turns) - 1], limit_s)
+    finally:
+        for _, task in answering:
+            task.cancel()
+        await asyncio.gather(*(task for _, task in answering), return_exceptions=True)
+    return said
 
 
 async def _say(held: Call, turn: ScriptTurn) -> Turn:

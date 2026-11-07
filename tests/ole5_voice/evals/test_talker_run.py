@@ -286,3 +286,19 @@ def test_a_model_request_the_talker_caught_still_fails_its_variant(setup: Setup)
     assert talker_run.main([*setup.argv(), *DEV], parts=setup.parts()) == 0
     first = _card(setup).variants[0]
     assert first.failure == "provider" and first.turn is not None and first.judged is None
+
+
+@pytest.mark.parametrize("step", ["user", "advance", "exit"])
+def test_a_talkers_assertion_from_any_step_of_the_call_is_a_stuck_variant_and_the_run_goes_on(
+    setup: Setup, step: str
+) -> None:
+    """TextCall raises the talker's AssertionError (a fake model's script that ran out) from the
+    turn's `user`, the next `advance` or the call's end, and gives up a wait after `MAX_WAIT_S`
+    with one: each ends that variant as stuck, never the run."""
+    setup.calls.script["How do I print? a2"] = Scripted(fails_in=step)  # type: ignore[arg-type]
+    assert talker_run.main([*setup.argv(), *DEV], parts=setup.parts()) == 0
+    card = _card(setup)
+    by_key = {(r.item, r.variant): r for r in card.variants}
+    assert by_key["a2", "v1"].failure == "stuck" and by_key["a2", "v1"].turn is None
+    assert card.complete and len(card.variants) == 6 and card.totals.failures == 1
+    assert by_key["n1", "v2"].failure is None  # the variants after it were measured

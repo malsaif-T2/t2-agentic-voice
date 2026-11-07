@@ -162,6 +162,9 @@ class Scripted:
     cards: tuple[Card, ...] = ()
     swallows: bool = False  # a model request's error, as a talker that catches every one
     never_ends: bool = False
+    # The talker's AssertionError (a fake model's script that ran out), as TextCall raises it:
+    # from this turn's `user`, from the next `advance`, or from the call's end.
+    fails_in: Literal["user", "advance", "exit"] | None = None
 
     @property
     def text(self) -> str:
@@ -244,6 +247,7 @@ class FakeTextCall:
         self.turns: list[FakeTurn] = []
         self.running = 0  # the searches running now
         self.corrections = 0  # the turns said while one ran
+        self.failure: tuple[str, AssertionError] | None = None  # the talker's, still to raise
 
     async def __aenter__(self) -> FakeTextCall:
         assert self.given["clock"] == "system"
@@ -255,7 +259,8 @@ class FakeTextCall:
         error: BaseException | None,
         traceback: TracebackType | None,
     ) -> None:
-        return None
+        if error is None and self.failure is not None:
+            raise self.failure[1]
 
     async def user(
         self, text: str, *, during: str | None = None, at: str | None = None
@@ -267,6 +272,10 @@ class FakeTextCall:
             await asyncio.sleep(scripted.delay_s)
         if scripted.error is not None:
             raise scripted.error
+        if scripted.fails_in is not None:
+            self.failure = (scripted.fails_in, AssertionError("the fake model's script ran out"))
+            if scripted.fails_in == "user":
+                raise self.failure[1]
         await self._request(text, scripted)
         tools, corrected = await self._search(text) if scripted.search else ((), False)
         if self.turns and scripted.cuts_earlier and self.turns[-1].fate == "pending":
@@ -349,6 +358,8 @@ class FakeTextCall:
 
     async def advance(self, seconds: float) -> None:
         self.calls.advanced.append(seconds)
+        if self.failure is not None and self.failure[0] == "advance":
+            raise self.failure[1]
         left = seconds
         for turn in self.turns:
             left = turn.play(left)

@@ -20,14 +20,15 @@ from ole5_voice.evals.factories import AgentFactory, KnowledgeFactory, load_fact
 from ole5_voice.evals.runs import SCORECARD_FILE
 from ole5_voice.evals.scenario_score import ScenarioScorecard
 from ole5_voice.evals.talker_args import TalkerParts
+from ole5_voice.evals.talker_call import ask
 from ole5_voice.evals.talker_score import TalkerScorecard
 from ole5_voice.knowledge_base import QdrantKnowledgeBase, knowledge_base
 from ole5_voice.settings import load_knowledge
-from t2_agentic_voice import ConfigurationError
+from t2_agentic_voice import ConfigurationError, LlmSettings, VoiceSettings
 from t2_agentic_voice.evals import TextCall
 from t2_agentic_voice.ports import KnowledgeBase
 
-from tests.ole5_voice.evals.talker_fakes import FakeKnowledgeBase
+from tests.ole5_voice.evals.talker_fakes import FakeChat, FakeKnowledgeBase
 from tests.ole5_voice.evals.talker_support import Setup, make_setup
 from tests.ole5_voice.evals.test_scenario_run import write_scenarios
 
@@ -169,3 +170,14 @@ def test_ole5s_knowledge_factory_refuses_an_access_not_set_naming_never_showing(
     with pytest.raises(ConfigurationError, match=says) as caught:
         knowledge_base(_env(tmp_path / "kb.env", *lines))
     assert PASSWORD not in caught.value.message and "made-up.example" not in caught.value.message
+
+
+def test_the_talkers_assertion_through_the_real_text_call_is_a_stall_never_a_crash() -> None:
+    """TextCall raises the talker's AssertionError (a fake model's script that ran out) rather
+    than letting the `error` notice pass for it: a run reads it as a stuck variant."""
+    chat = FakeChat()
+    chat.errors.append(AssertionError("the fake model's script ran out"))
+    settings = VoiceSettings(env="test", llm=LlmSettings(model="openai/gpt-oss-120b"))
+    agent = talker_agent(FakeKnowledgeBase())
+    with pytest.raises(TimeoutError, match="never came"):
+        asyncio.run(ask(agent, chat, settings, words="How do I print?", language="en"))

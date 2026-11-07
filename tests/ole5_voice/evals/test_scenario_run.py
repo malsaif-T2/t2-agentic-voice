@@ -304,3 +304,15 @@ def test_the_shared_history_takes_run_ss_line_and_reads_it_back(setup: Setup) ->
     assert isinstance(line, ScenarioLine) and line.plays == 10 and line.complete
     assert read_history(setup.out("s-a") / "history.jsonl") == (line,)
     assert "## Scenario runs" in render_history([line])
+
+
+@pytest.mark.parametrize("step", ["user", "advance", "exit"])
+def test_a_talkers_assertion_from_any_step_of_the_call_is_a_stuck_play_and_the_run_goes_on(
+    setup: Setup, step: str
+) -> None:
+    setup.calls.script["question 3"] = Scripted(fails_in=step)  # type: ignore[arg-type]
+    assert _main(setup) == 0
+    card = _card(setup)
+    assert card.complete and len(card.plays) == 30
+    assert {p.failure for p in card.plays if p.scenario == "s03"} == {"stuck"}
+    assert {p.failure for p in card.plays if p.scenario == "s04"} == {None}
