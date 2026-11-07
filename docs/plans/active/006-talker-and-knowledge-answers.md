@@ -648,6 +648,19 @@ runs"; in this order, each with its smoke first)
     `evals/history.jsonl`), and `poe eval-compare` refused their commits. They were compared as
     copies of their scorecards with W0's commit, the data digest checked equal. The runs of one
     comparison keep their history lines aside until the last has run, as M3's did.
+- 2026-11-07: **Run W1 on held-out, by Q22's rule** (W0 and W1 at 23d887c, 131 variants of 42
+  items each, no failure, aggregates only; $0.0416 each; the history's lines 8eb7ebf).
+  - Accuracy 0.382 to 0.420 (higher: met); word errors 0.254 to 0.218 (no higher: met); the
+    `stop_word` kind 0.778 to 0.889 (no lower: met).
+  - **Two conditions cannot be read as registered:** held-out's aggregates show no
+    `repeat_request` kind (a kind shows only over 3 items or more in both runs), and a held-out
+    run stores no answer, so the live filter cannot be applied to its silence, noise and echo
+    variants. Their nearest aggregates: text from silence 69 and 67 characters, the share the
+    same (1.0). The rule should have named aggregates a held-out run keeps.
+  - Also: term recall 0.65 to 0.60, the `request` kind 0.462 to 0.410, Saudi Arabic 0.303 to
+    0.364, MSA 0.474 to 0.526, English unchanged at 0.773.
+  - **Settled by the owner (Q23): W1 kept.** Live calls send the prompt `whisper_prompt` builds
+    from the agent's vocabulary, a setting turning it off; the live calls show whether it holds.
 
 ## Decision log
 
@@ -714,6 +727,7 @@ runs"; in this order, each with its smoke first)
   (top-k), find the best k for our case".
 - 2026-11-07, to Q21, from the live smoke: "Vary the first line".
 - 2026-11-07, to Q22, after run W on dev: "Test it on held-out".
+- 2026-11-07, to Q23, after W1's held-out pass: "Keep the prompt".
 
 ## Tracks
 
@@ -890,7 +904,8 @@ Q1 to Q10 settled on 2026-11-06 ("Approve all"). Q11 to Q14, from the spike, Blo
 knowledge set's review, asked on 2026-11-06 before any registered run and settled on 2026-11-07;
 Q15 to Q18, from Track E's review, asked and settled on 2026-11-07 before any registered run;
 Q19 and Q20, from the whole-code review, and Q21, from the live smoke, asked and settled on
-2026-11-07 before any registered run; Q22, after run W's dev runs and before its held-out.
+2026-11-07 before any registered run; Q22, after run W's dev runs and before its held-out;
+Q23, after that held-out pass.
 Each answer that changes a run is a dated amendment to the registration.
 
 - **Q1. What voice-first means here.** *Settled: (a).* The eight choices above. Options: (a) approve them; (b)
@@ -990,11 +1005,15 @@ Each answer that changes a run is a dated amendment to the registration.
   0.333 in both) but raised the right count beyond the noise, mostly on the command words, and
   wrote no word of the prompt into silence. Options: (a) a rule registered now, tested once on
   the unread held-out; (b) no prompt, as the rule decided. **The agent recommended (a).**
+- **Q23. W1 after held-out.** *Settled 2026-11-07: (a).* Three of Q22's five conditions met; the
+  other two cannot be read from held-out's aggregates, whose nearest aggregates are no worse.
+  Options: (a) keep the prompt, live calls sending it; (b) read the two as unmet. **The agent
+  recommended (a).**
 
 ## What the owner does
 
 - Answer Q1 to Q10, and approve the plan (done 2026-11-06); answer Q11 to Q14, Q15 to Q18,
-  Q19 and Q20, Q21 and Q22 (done 2026-11-07).
+  Q19 and Q20, Q21, Q22 and Q23 (done 2026-11-07).
 - Copy the knowledge base's access into `.env` (Q4; done 2026-11-06, under the owner's names).
 - Review the knowledge set's items (Q5, about 40 minutes), and check 24 judged answers (Q6, about
   20 minutes).
