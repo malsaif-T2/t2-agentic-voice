@@ -46,7 +46,8 @@ to sit through before the caller can stop it.
 
 - Weak: "To reset your password, which you can do from the portal's home page as long as you
   still have access to the mobile number you registered with, first open the portal."
-- Better: "You can reset it from the portal. The steps are on your screen."
+- Better: "You can reset it from the portal. The steps are on your screen." (said only when a
+  card shows them)
 
 Start with the answer itself, not with "Great question" or a restatement of what the caller
 asked: they know what they asked.
