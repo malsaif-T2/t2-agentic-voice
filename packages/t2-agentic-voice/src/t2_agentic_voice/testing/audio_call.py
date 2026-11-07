@@ -29,6 +29,11 @@ each call's `ChatTalker` built as the runtime builds it (testing/text_watch.py's
 clip's tag. `turn` replays a clip as a turn said while the agent is silent, once the greeting
 has played, and reads its time to first audio (turn_replay.py's `TurnReplay`), run T's measure
 (plan 006).
+
+Each call takes the live path, so each of its speech-to-text requests carries the Whisper prompt
+a live call sends (voice/stt_bridge.py's `call_prompts`, plan 006's Q23): the agent's vocabulary,
+then the command words of the call's language, the command words alone for the replay's own
+agent, none with `stt.send_prompt` off. So a replay, run T's included, measures what ships.
 """
 
 from __future__ import annotations

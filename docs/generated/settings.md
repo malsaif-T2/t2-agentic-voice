@@ -35,7 +35,7 @@ Groq, the provider of every model for now (D-004). The library reads only these 
 
 ## `stt`
 
-Speech-to-text: the adapter, the Whisper model, and how long a request may take.
+Speech-to-text: the adapter, the Whisper model, how long a request may take, the language and the prompt a call sends, and the filter for text from silence.
 
 | Variable | Type | Default | Unit | Description |
 | --- | --- | --- | --- | --- |
@@ -45,6 +45,7 @@ Speech-to-text: the adapter, the Whisper model, and how long a request may take.
 | `T2V_STT__LIVE_LANGUAGE` | one of session, auto | `session` | — | The language a live call sends Whisper: session (the call's language, fixed when it joins from the caller's pick or the join token's locale) or auto (none, so Whisper detects it). A registered measurement sets the default (GP-18). |
 | `T2V_STT__NO_SPEECH_MAX` | number, or unset | `0.55` | — | The no-speech probability Whisper reports above which a transcript counts as no words (text from silence), for a turn and for speech over a reply, from 0 to 1; unset, the threshold is off. 0.55 by the registered rule F and its one revision (plan 005), which changes only on another registered measurement (GP-18). |
 | `T2V_STT__CAPTION_FILTER` | true or false | `true` | — | Whether a transcript that is one of the captions Whisper invents for silence or noise counts as no words; on by the registered rule F (plan 005), which changes only on another registered measurement (GP-18). |
+| `T2V_STT__SEND_PROMPT` | true or false | `true` | — | Whether each speech-to-text request of a call sends Whisper the prompt of the language it names: the agent's vocabulary, then the command words as they should be written. On since run W's arm W1 (plan 006), which on the golden set raised Whisper's right count beyond the noise on dev (stop words 0.69 to 0.92, repeat requests 0.32 to 0.53) and on held-out (accuracy 0.382 to 0.420, word errors 0.254 to 0.218, stop words 0.778 to 0.889); it changes only on another registered measurement (GP-18). |
 
 ## `llm`
 

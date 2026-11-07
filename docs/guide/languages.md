@@ -91,11 +91,21 @@ forms, in MSA, and a native speaker's check of them is still to come (TD-058).
 
 An agent declares the product terms its callers say, as a transcript should write them:
 `vocabulary=Vocabulary(terms=["Outlook", "VPN"])` (at most 200 terms, each one line of at most
-64 characters), and the `words.vocabulary` setting adds terms with no code change. They are for
-the Whisper prompt, which can make Whisper write "Outlook" where it heard «أوتلوك».
+64 characters), and the `words.vocabulary` setting adds terms after them with no code change.
+They become the Whisper prompt, which can make Whisper write "Outlook" where it heard «أوتلوك».
 
-A call does not send them yet. Whisper can also write a prompt's words into silence, and a
-prompt can change how it writes the command words the interruption rule reads, so the vocabulary
-becomes the Whisper prompt only once a registered measurement keeps it (GP-18; plan 006's run W,
-on Ole5's golden set). Declare it now, and the agent's calls will use it if that measurement
-does.
+Every speech-to-text request of a call, a turn's and an overlap's, sends the prompt of the
+language it names: your terms, then that language's command words as a transcript should write
+them («وقف», «ممكن تعيد», "stop", "can you repeat that"), each once, held to 224 bytes (the first
+word that does not fit and every one after it are left out). The `languages` facade's
+`whisper_prompt(terms, "ar")` shows a prompt. An agent that declares no vocabulary, the echo's
+among them, sends the command words alone.
+
+Whisper can write a prompt's words into silence, and a prompt can change how it writes the
+command words the interruption rule reads, so the prompt was measured before calls sent it
+(GP-18; plan 006's run W, on Ole5's golden set with Ole5's vocabulary): on dev the stop words
+heard right rose from 0.69 to 0.92 and the repeat requests from 0.32 to 0.53, and on held-out
+the share heard right rose from 0.382 to 0.420 and the word errors fell from 0.254 to 0.218.
+Measure your own vocabulary on your callers' recordings ([evaluation.md](evaluation.md)).
+`stt.send_prompt = false` sends no prompt, and a call under `stt.live_language = "auto"` names
+no language, so it sends none either.

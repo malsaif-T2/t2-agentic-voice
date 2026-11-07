@@ -594,5 +594,6 @@ T2V_TURNS__COMPLETE_HOLD_MS=0
 | `T2V_WORDS__STOP`, `__WAIT`, `__REPEAT`, `__BACKCHANNEL`, `__NO` | none | Your words, added to each language's lists |
 | `T2V_STT__NO_SPEECH_MAX` | 0.55 | Above this no-speech probability, a transcript is no words |
 | `T2V_STT__CAPTION_FILTER` | true | Whisper's invented captions count as no words |
+| `T2V_STT__SEND_PROMPT` | true | Each request sends Whisper the prompt of its language: your vocabulary, then the command words ([languages.md](languages.md)) |
 | `T2V_TURNS__VAD_STOP_MS` | 200 | The pause that ends speech, which a turn's end and an overlap's request wait on |
 | `T2V_TURNS__COMPLETE_HOLD_MS` | 600 | The hold after Smart Turn's "complete" |

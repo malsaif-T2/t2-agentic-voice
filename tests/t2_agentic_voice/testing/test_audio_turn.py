@@ -29,6 +29,7 @@ from t2_agentic_voice.domain.declaration import Language, VoiceAgent
 from t2_agentic_voice.domain.ports.speech_to_text import AudioClip
 from t2_agentic_voice.domain.ports.text_to_speech import AudioChunk
 from t2_agentic_voice.evals import AudioCall, TurnReplay
+from t2_agentic_voice.languages import whisper_prompt
 from t2_agentic_voice.testing import audio_call
 from t2_agentic_voice.testing.text_watch import chat_talkers
 from t2_agentic_voice.testing.turn_replay import OPENING_S, turn_replay_of
@@ -84,13 +85,8 @@ def test_a_clip_replayed_as_a_turn_reads_its_reply_and_its_progress_line_apart(
         def _talkers(self) -> TalkerFactory | None:  # the test's talker, not the library's
             return factory
 
-    tts = FakeTextToSpeech(seconds_per_char=0.03)
-    replay = _Replay(
-        settings=settings,
-        stt=FakeSpeechToText(["where is my ticket"] * 2),
-        tts=tts,
-        agent=AGENT,
-    )
+    tts, stt = FakeTextToSpeech(seconds_per_char=0.03), FakeSpeechToText(["where is my ticket"] * 2)
+    replay = _Replay(settings=settings, stt=stt, tts=tts, agent=AGENT)
     hold_s = settings.turns.complete_hold_ms / 1000
 
     async def run() -> TurnReplay:
@@ -111,6 +107,10 @@ def test_a_clip_replayed_as_a_turn_reads_its_reply_and_its_progress_line_apart(
     found = asyncio.run(asyncio.wait_for(run(), timeout=60))
     (talker,) = talkers
     assert [t.words for t in talker.turns] == ["where is my ticket"]
+    # The live path's Whisper prompt: an agent with no vocabulary sends the command words alone.
+    assert stt.calls and {(language, prompt) for _, language, prompt in stt.calls} == {
+        ("en", whisper_prompt((), "en").text)
+    }
     assert ("One moment please.", "en") in tts.calls  # said once, at the start
     assert found.progress_audible_ms is not None and found.first_audible_ms is not None
     assert found.progress_audible_ms < found.first_audible_ms

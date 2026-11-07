@@ -1,5 +1,6 @@
 """The `stt` group: speech-to-text, and the filter for text from silence (plan 005), on by
-default since the registered rule F held on plan 002's runs R1 and R3 (GP-18)."""
+default since the registered rule F held on plan 002's runs R1 and R3 (GP-18); and the Whisper
+prompt each request sends, on by default since run W kept its arm W1 (plan 006, Q23)."""
 
 from __future__ import annotations
 
@@ -16,7 +17,8 @@ LiveLanguage = Literal["session", "auto"]
 
 
 class SttSettings(Group):
-    """Speech-to-text: the adapter, the Whisper model, and how long a request may take."""
+    """Speech-to-text: the adapter, the Whisper model, how long a request may take, the
+    language and the prompt a call sends, and the filter for text from silence."""
 
     provider: SttProvider = Field(
         default="groq",
@@ -61,5 +63,17 @@ class SttSettings(Group):
             "Whether a transcript that is one of the captions Whisper invents for silence or "
             "noise counts as no words; on by the registered rule F (plan 005), which changes "
             "only on another registered measurement (GP-18)."
+        ),
+    )
+    send_prompt: bool = Field(
+        default=True,
+        description=(
+            "Whether each speech-to-text request of a call sends Whisper the prompt of the "
+            "language it names: the agent's vocabulary, then the command words as they should "
+            "be written. On since run W's arm W1 (plan 006), which on the golden set raised "
+            "Whisper's right count beyond the noise on dev (stop words 0.69 to 0.92, repeat "
+            "requests 0.32 to 0.53) and on held-out (accuracy 0.382 to 0.420, word errors "
+            "0.254 to 0.218, stop words 0.778 to 0.889); it changes only on another registered "
+            "measurement (GP-18)."
         ),
     )
