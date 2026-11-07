@@ -16,6 +16,10 @@ call's language has played (`AudioCall.turn`), and what the call gave back read 
   the headroom its provider last reported); and the voice's every request, counted as it goes
   (`CountedVoice`): the session's, which the report counts, and the replay's own, the greeting it
   says before each call and the progress lines it says once at the start, which it does not.
+- **A failed call** is one turn of its failure (`failed`), never an error out of the run: the
+  greeting's request the voice failed (its `ProviderError` kind, so run T replays a
+  `rate_limited` one), or the call whose greeting never played (`GREETING_NOT_PLAYED`); what it
+  used counted all the same.
 
 The phrase cache a run declares (`phrases`) is not the replay's: `AudioCall` says the greeting
 and the progress lines itself and every other fixed phrase as silence, so a reply's time is the
@@ -27,14 +31,25 @@ from __future__ import annotations
 from collections import Counter
 from collections.abc import AsyncIterator, Mapping, Sequence
 from datetime import datetime
+from typing import Final
 
-from t2_agentic_voice import VoiceAgent, VoiceSettings
+from t2_agentic_voice import ProviderError, T2VoiceError, VoiceAgent, VoiceSettings
 from t2_agentic_voice.evals import AudioCall, TurnReplay
-from t2_agentic_voice.events import CallEnded, Event, ModelUsage, ProviderFailed, ToolStarted
+from t2_agentic_voice.events import (
+    CallEnded,
+    CallReport,
+    Event,
+    ModelUsage,
+    ProviderFailed,
+    ToolStarted,
+)
 from t2_agentic_voice.ports import AudioChunk, AudioClip, ChatModel, SpeechToText, TextToSpeech
 
 from ole5_voice.evals.first_audio_score import ChatSpend, ReplayedCall, ReplayedTurn
 from ole5_voice.evals.timing_run import Tag
+
+# A call's failure when its greeting never played (the file-fed transport's T2VoiceError).
+GREETING_NOT_PLAYED: Final = "greeting_not_played"
 
 
 class CountedVoice:
@@ -102,20 +117,30 @@ class AudioReplay:
         lead_s: float,
         tail_s: float,
     ) -> ReplayedCall:
-        """`clip` replayed as a turn after the agent's greeting in `language`."""
+        """`clip` replayed as a turn after the agent's greeting in `language`; a call that
+        failed as one turn of its failure (the module's docstring)."""
         greeting = next(each.greeting for each in self.agent.languages if each.tag == language)
-        replay = await self.call_of.turn(
-            clip,
-            greeting=(greeting,),
-            language=language,
-            lead_s=lead_s,
-            tail_s=tail_s,
-            speech_end_ms=end_ms,
-        )
+        chat_model = self.settings.llm.model
+        try:
+            replay = await self.call_of.turn(
+                clip,
+                greeting=(greeting,),
+                language=language,
+                lead_s=lead_s,
+                tail_s=tail_s,
+                speech_end_ms=end_ms,
+            )
+        except ProviderError as error:  # the greeting's request, before the call: none emitted
+            return failed(error.kind, (), chat_model=chat_model, voice=self.voice.taken())
+        except T2VoiceError as error:
+            if type(error) is not T2VoiceError:  # a setting, a request: no failure of the call
+                raise
+            emitted, voice = self.call_of.emitted, self.voice.taken()
+            return failed(GREETING_NOT_PLAYED, emitted, chat_model=chat_model, voice=voice)
         return replayed(
             replay,
             self.call_of.emitted,
-            chat_model=self.settings.llm.model,
+            chat_model=chat_model,
             voice=self.voice.taken(),
             labelled=end_ms is not None,
         )
@@ -152,10 +177,10 @@ def replayed(
     report = next((e.report for e in emitted if isinstance(e, CallEnded)), None)
     records = [] if report is None else [t for t in report.turns if not t.dropped and t.heard]
     searched = {e.turn_id for e in emitted if isinstance(e, ToolStarted)}
-    failed: dict[int | None, str] = {}
+    failures: dict[int | None, str] = {}
     for event in emitted:
         if isinstance(event, ProviderFailed):
-            failed.setdefault(event.turn_id, event.kind)
+            failures.setdefault(event.turn_id, event.kind)
     turns, openings = [], []
     for record in records:
         first = record.turn_id == 0
@@ -167,10 +192,35 @@ def replayed(
                 ttfa_ms=ttfa,
                 searched=record.turn_id in searched,
                 progress_ms=progress,
-                failure=failed.get(record.turn_id),
+                failure=failures.get(record.turn_id),
             )
         )
         openings.append(replay.opening if first else None)
+    usage, chat = _spent(report, chat_model=chat_model, voice=voice)
+    return ReplayedCall(turns=tuple(turns), openings=tuple(openings), usage=usage, chat=chat)
+
+
+def failed(
+    kind: str,
+    emitted: Sequence[Event],
+    *,
+    chat_model: str,
+    voice: Mapping[str, tuple[int, int]],
+) -> ReplayedCall:
+    """A call that failed (the module's docstring): one turn of `kind`, no opening, and what
+    it used, its report's where `emitted` holds one and the voice's requests (`replayed`)."""
+    report = next((e.report for e in emitted if isinstance(e, CallEnded)), None)
+    usage, chat = _spent(report, chat_model=chat_model, voice=voice)
+    return ReplayedCall(
+        turns=(ReplayedTurn(failure=kind),), openings=(None,), usage=usage, chat=chat
+    )
+
+
+def _spent(
+    report: CallReport | None, *, chat_model: str, voice: Mapping[str, tuple[int, int]]
+) -> tuple[tuple[ModelUsage, ...], ChatSpend]:
+    """A call's speech usage, the voice's requests its report did not count added, and its
+    chat model's."""
     usage = [] if report is None else list(report.usage)
     chat = next((u for u in usage if u.model == chat_model), ModelUsage(model=chat_model))
     speech = [u for u in usage if u.model != chat_model]
@@ -182,15 +232,11 @@ def replayed(
                 model=model, requests=requests - sent, characters=max(characters - said, 0)
             )
             speech.append(extra)
-    return ReplayedCall(
-        turns=tuple(turns),
-        openings=tuple(openings),
-        usage=tuple(speech),
-        chat=ChatSpend(
-            requests=chat.requests,
-            input_tokens=chat.input_tokens,
-            cached_tokens=chat.cached_tokens,
-            output_tokens=chat.output_tokens,
-            remaining_requests=chat.remaining_requests,
-        ),
+    spend = ChatSpend(
+        requests=chat.requests,
+        input_tokens=chat.input_tokens,
+        cached_tokens=chat.cached_tokens,
+        output_tokens=chat.output_tokens,
+        remaining_requests=chat.remaining_requests,
     )
+    return tuple(speech), spend

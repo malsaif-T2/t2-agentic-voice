@@ -22,8 +22,9 @@ which must answer one turn, its reply heard, with no failure on its first call; 
 recording, a dev run's result written as it finishes (`results.jsonl`) with a progress line of
 identifiers and times, never a text, and its replies' openings kept for the owner's listen
 (`poe first-audio-listen`); a held-out run's lines are counts, and its scorecard aggregates
-only. The scorecard is written whole at the end, and its history line appended to the
-worktree's `history.jsonl` and copied beside it, every request counted.
+only. The scorecard is written whole at the end, whatever ended the run once it started (an
+error's `stopped` is `error`), and its history line appended to the worktree's `history.jsonl`
+and copied beside it, every request counted.
 """
 
 from __future__ import annotations
@@ -156,8 +157,8 @@ async def _measure(
     day; why it stopped early, if it did."""
     held_out = args.split == "held-out"
     try:
-        await measuring.replay.start()
-        try:
+        try:  # the progress lines the replay says at its start, then the phrase cache
+            await measuring.replay.start()
             await measuring.declare()
         except ProviderError as error:
             log.error("phrases_failed", kind=error.kind)
@@ -289,20 +290,27 @@ def _built(args: argparse.Namespace, parts: FirstAudioParts, closing: Closing) -
     out.mkdir(parents=True)
     found: list[AudioResult] = []
     log.info("run_started", run=info.name, split=info.split, variants=len(todo))
-    stopped: Stopped | None
+    stopped: Stopped | None = "error"  # until the measuring returns why it stopped
+    total = 0 if args.smoke_only else len(todo)
     try:
         stopped = asyncio.run(_measure(measuring, dev[0], todo, found, args, out))
     except KeyboardInterrupt:
         stopped = "interrupted"
         log.warning("run_interrupted", done=len(found), of=len(todo))
-    total = 0 if args.smoke_only else len(todo)
-    return close_run(info, found, stopped, total, measuring, out, data, parts.append_line)
+    except Exception as error:  # requests were spent: the card and line written all the same
+        log.error("run_failed", error=type(error).__name__, done=len(found), of=len(todo))
+        if not isinstance(error, T2VoiceError):
+            raise  # a bug's traceback, once its card and line are written
+    finally:
+        ended = close_run(info, found, stopped, total, measuring, out, data, parts.append_line)
+    return ended
 
 
 def main(argv: Sequence[str] | None = None, *, parts: FirstAudioParts | None = None) -> int:
     """`uv run poe first-audio`: run T over one split's recorded requests. 0 when the run is
     complete, 1 when it is not (the phrase cache, a failed smoke test, the cap, a model's day,
-    an interrupt), 2 when it is refused before anything is sent."""
+    an interrupt, a library error once it started), 2 when it is refused before anything is
+    sent."""
     parser = _parser()
     args = parser.parse_args(argv)
     _require(parser, args)

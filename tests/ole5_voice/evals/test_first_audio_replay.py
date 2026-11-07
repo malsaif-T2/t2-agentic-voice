@@ -10,14 +10,22 @@ from __future__ import annotations
 
 import asyncio
 from functools import partial
+from typing import Any
 
 import pytest
 from ole5_voice.agent import talker_agent
-from ole5_voice.evals.first_audio_replay import CountedVoice, audio_replay, replayed
-from ole5_voice.evals.first_audio_score import ReplayedCall
+from ole5_voice.evals.first_audio_replay import (
+    GREETING_NOT_PLAYED,
+    AudioReplay,
+    CountedVoice,
+    audio_replay,
+    replayed,
+)
+from ole5_voice.evals.first_audio_score import ChatSpend, ReplayedCall, ReplayedTurn
 from ole5_voice.evals.first_audio_setup import FirstAudioParts
-from t2_agentic_voice import VoiceSettings
-from t2_agentic_voice.evals import ScriptedLLM, TurnReplay
+from t2_agentic_voice import ConfigurationError, ProviderError, T2VoiceError, VoiceSettings
+from t2_agentic_voice.core.errors import ProviderErrorKind
+from t2_agentic_voice.evals import AudioCall, ScriptedLLM, TurnReplay
 from t2_agentic_voice.events import CallEnded, CallReport, ModelUsage, ToolStarted, TurnRecord
 from t2_agentic_voice.events import TurnTimes as Times
 from t2_agentic_voice.ports import AudioClip, Usage
@@ -26,7 +34,7 @@ from t2_agentic_voice.voice.calls import VoiceCalls
 
 from tests.ole5_voice.evals.samples import WHEN
 from tests.ole5_voice.evals.talker_fakes import FakeKnowledgeBase
-from tests.ole5_voice.evals.timing_support import ENGLISH
+from tests.ole5_voice.evals.timing_support import ENGLISH, WHISPER
 from tests.t2_agentic_voice.fakes import FakeSpeechToText, FakeTextToSpeech, tone
 from tests.t2_agentic_voice.voice.kit import PauseAnalyzer, ToneVAD
 
@@ -147,3 +155,105 @@ def test_the_voice_counts_each_request_by_its_languages_model() -> None:
 
 def test_a_run_replays_through_the_library_by_default() -> None:
     assert FirstAudioParts().replay is audio_replay
+
+
+@pytest.mark.parametrize("kind", ["rate_limited", "server_error", "timeout"])
+def test_a_greeting_the_voice_failed_is_a_failed_call_its_request_counted(
+    settings: VoiceSettings, monkeypatch: pytest.MonkeyPatch, kind: ProviderErrorKind
+) -> None:
+    detectors = partial(VoiceCalls, speech_detector=ToneVAD, turn_analyzer=PauseAnalyzer)
+    monkeypatch.setattr(audio_call, "VoiceCalls", detectors)
+    agent = talker_agent(FakeKnowledgeBase())
+    greeting = next(each.greeting for each in agent.languages if each.tag == "en")
+    tts = FakeTextToSpeech(failures={greeting: ProviderError(kind, kind != "rejected")})
+    chat = ScriptedLLM([ScriptedLLM.reply("Never asked.")])
+    replay = audio_replay(
+        agent=agent, settings=settings, stt=FakeSpeechToText([ASKED]), tts=tts, llm=chat
+    )
+
+    async def run() -> ReplayedCall:
+        await replay.start()
+        try:
+            return await replay.call(
+                AudioClip(pcm16=tone(0.5, 16_000)),
+                language="en",
+                end_ms=None,
+                lead_s=0.5,
+                tail_s=1.0,
+            )
+        finally:
+            await replay.aclose()
+
+    found = asyncio.run(asyncio.wait_for(run(), timeout=60))
+    assert found.turns == (ReplayedTurn(failure=kind),) and found.openings == (None,)
+    assert found.chat == ChatSpend()  # the talker never asked
+    # Every voice request counted: the progress lines said at the start, and the greeting's.
+    english = [text for text, language in tts.calls if language == "en"]
+    assert greeting in english and sum(u.requests for u in found.usage) == len(tts.calls)
+    (voice,) = [usage for usage in found.usage if usage.model == ENGLISH]
+    assert (voice.requests, voice.characters) == (len(english), sum(map(len, english)))
+
+
+class _Unplayed(AudioCall):
+    """The library's replay whose feed gave up before the greeting played, the call's report
+    emitted with what it used."""
+
+    async def start(self) -> None:
+        """Nothing to start."""
+
+    async def turn(self, clip: AudioClip, **asked: Any) -> TurnReplay:
+        async for _ in self.tts.synthesize("Hello.", language="en"):
+            pass
+        usage = (ModelUsage(model=WHISPER, requests=1, billed_s=10.0),)
+        report = CallReport(
+            call_id="c",
+            agent="ole5",
+            started_at=WHEN,
+            ended_at=WHEN,
+            ended_by="hangup",
+            usage=usage,
+        )
+        self._emitted[:] = [CallEnded(call_id="c", at=WHEN, report=report)]
+        raise T2VoiceError("The file-fed call's greeting never played.")
+
+    async def aclose(self) -> None:
+        """Nothing to close."""
+
+
+def test_a_greeting_that_never_played_is_a_failed_call_what_it_used_counted(
+    settings: VoiceSettings,
+) -> None:
+    replay = AudioReplay(
+        agent=talker_agent(FakeKnowledgeBase()),
+        settings=settings,
+        stt=FakeSpeechToText(),
+        tts=FakeTextToSpeech(),
+        llm=ScriptedLLM([]),
+        audio_call=_Unplayed,
+    )
+    clip = AudioClip(pcm16=tone(0.5, 16_000))
+    asked = {"language": "en", "end_ms": None, "lead_s": 0.5, "tail_s": 1.0}
+    found = asyncio.run(replay.call(clip, **asked))  # type: ignore[arg-type]
+    assert found.turns == (ReplayedTurn(failure=GREETING_NOT_PLAYED),)
+    assert [(u.model, u.requests) for u in found.usage] == [(WHISPER, 1), (ENGLISH, 1)]
+
+
+class _Misconfigured(_Unplayed):
+    async def turn(self, clip: AudioClip, **asked: Any) -> TurnReplay:
+        raise ConfigurationError("A bad setting.")
+
+
+def test_any_other_library_error_of_the_call_is_not_a_failed_call(
+    settings: VoiceSettings,
+) -> None:
+    replay = AudioReplay(
+        agent=talker_agent(FakeKnowledgeBase()),
+        settings=settings,
+        stt=FakeSpeechToText(),
+        tts=FakeTextToSpeech(),
+        llm=ScriptedLLM([]),
+        audio_call=_Misconfigured,
+    )
+    clip = AudioClip(pcm16=tone(0.5, 16_000))
+    with pytest.raises(ConfigurationError):
+        asyncio.run(replay.call(clip, language="en", end_ms=None, lead_s=0.5, tail_s=1.0))

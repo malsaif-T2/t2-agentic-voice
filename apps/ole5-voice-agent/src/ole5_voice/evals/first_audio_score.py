@@ -59,7 +59,7 @@ class ReplayedTurn(Model):
     """One answered turn of a replayed call, as its call report gives it: the time to the
     reply's first audible frame, whether a tool ran in the reply, the time to its progress
     line's first audible frame where one played, and the failure it met (a `ProviderError`
-    kind)."""
+    kind, or first_audio_replay.py's `GREETING_NOT_PLAYED`)."""
 
     ttfa_ms: _Ms | None = None
     searched: bool = False

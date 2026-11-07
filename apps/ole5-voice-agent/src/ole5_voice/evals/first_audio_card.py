@@ -40,8 +40,9 @@ from ole5_voice.evals.timing_score import summed
 
 _Usd = Annotated[float, Field(ge=0, allow_inf_nan=False)]
 # Why a run stopped before its last recording: the phrase cache failed, the smoke test failed,
-# the next recording would pass the cap or a model's day, or the run was interrupted.
-Stopped = Literal["phrases_failed", "smoke_failed", "cap", "day_limit", "interrupted"]
+# the next recording would pass the cap or a model's day, the run was interrupted, or an error
+# no recording's result holds ended it.
+Stopped = Literal["phrases_failed", "smoke_failed", "cap", "day_limit", "interrupted", "error"]
 log = get_logger(__name__)
 
 
