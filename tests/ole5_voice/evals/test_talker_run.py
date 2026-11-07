@@ -64,6 +64,10 @@ def test_a_dev_run_measures_each_variant_once_and_writes_what_it_found(setup: Se
     assert card.totals.verdicts["not_in_knowledge"] == 2 and card.totals.failures == 0
     assert card.targets["guard"] is True and card.targets["honest"] is True
     assert card.totals.retrieval is not None and card.totals.retrieval.hits == 1
+    # The first clause's time on the wall clock, and the model's own, its search taken out.
+    assert a1.turn is not None and a1.turn.first_clause_s == pytest.approx(0.4)
+    assert a1.turn.own_first_clause_s == pytest.approx(0.391)  # its 9 ms search taken out
+    assert card.totals.own_first_clause_median_s is not None
     # Each record as it finished, the sessions, and the line in both places.
     lines = (setup.out() / RESULTS_FILE).read_text(encoding="utf-8").splitlines()
     assert len(lines) == 6 and json.loads(lines[0])["item"] == "a1"
@@ -72,6 +76,7 @@ def test_a_dev_run_measures_each_variant_once_and_writes_what_it_found(setup: Se
     assert first == second and isinstance(first, TalkerLine)
     assert shared == setup.data / "history.jsonl" and copied == setup.out() / "history.jsonl"
     assert first.requests == {TALKER: 7, JUDGE: 7} and first.session == 1 and first.complete
+    assert first.own_first_clause_median_s == card.totals.own_first_clause_median_s
     assert first.cost_usd == pytest.approx(card.cost_usd) and first.cost_usd > 0
     assert setup.chat.closed and setup.kb.closed
 

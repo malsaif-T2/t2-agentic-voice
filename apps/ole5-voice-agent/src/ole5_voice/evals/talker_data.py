@@ -84,12 +84,22 @@ class Clause(Model):
 
 class ToolUse(Model):
     """One tool call of a reply (the facade's `TextToolCall`): the tool, the arguments the model
-    wrote, what came of it, and how long it ran in ms (None while it runs)."""
+    wrote, what came of it, how long it ran in ms (None while it runs), and when it began, in
+    seconds from the caller's request (None when not known)."""
 
     tool: str = Field(min_length=1)
     arguments: dict[str, JsonValue] = Field(default_factory=dict)
     outcome: Literal["ok", "failed", "cancelled", "running"]
     ms: _Seconds | None = None
+    began_s: _Seconds | None = None
+
+    @property
+    def span_s(self) -> tuple[float, float] | None:
+        """When it began and ended, in seconds from the caller's request; None until it ends,
+        or when its start is not known."""
+        if self.began_s is None or self.ms is None:
+            return None
+        return self.began_s, self.began_s + self.ms / 1000
 
 
 class CardShown(Model):
@@ -103,7 +113,8 @@ class CardShown(Model):
 class HeardTurn(Model):
     """What one of the caller's turns did, as a run keeps it: its fate, the clauses heard, the
     tool calls, the cards, the guard's blocks, the times to the first token and the first clause
-    (seconds, on the call's clock), the model requests and their tokens."""
+    (seconds, on the call's clock, the tools' time in them; `own_first_clause_s` takes it out),
+    the model requests and their tokens."""
 
     fate: str
     clauses: tuple[Clause, ...] = ()
@@ -139,6 +150,29 @@ class HeardTurn(Model):
         scripts = [found for found in map(script_of, own) if found is not None]
         other = any(_word_script(word) == "other" for text in own for word in text.split())
         return bool(scripts) and all(found == script for found in scripts) and not other
+
+    @property
+    def own_first_clause_s(self) -> float | None:
+        """The model's own time to the first clause (Q15, run K's keep rule): the time to it
+        less the time its tools ran before it, each from its start to its end, of those that
+        ended before the first clause, time two ran at once counted once; so a search is not
+        counted. None with no first clause, or a tool that ended before it whose start is not
+        known."""
+        first = self.first_clause_s
+        if first is None:
+            return None
+        spans = []
+        for use in self.tools:
+            span = use.span_s
+            if span is None and use.ms is not None and use.ms / 1000 <= first:
+                return None  # it may have ended before the first clause, from an unknown start
+            if span is not None and span[1] <= first:
+                spans.append(span)
+        ran, reached = 0.0, 0.0
+        for began, ended in sorted(spans):
+            ran += max(ended - max(began, reached), 0.0)
+            reached = max(reached, ended)
+        return max(first - ran, 0.0)
 
     def searched(self, tool: str) -> bool:
         """Whether the reply called the tool `tool`."""

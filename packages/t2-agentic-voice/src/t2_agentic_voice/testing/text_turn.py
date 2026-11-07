@@ -125,7 +125,8 @@ class TextTurn:
 
     @property
     def tool_calls(self) -> tuple[TextToolCall, ...]:
-        """The tool calls the turn's reply made, in the order they began."""
+        """The tool calls the turn's reply made, in the order they began, each with when it
+        began."""
         talk = self._talk
         if talk is None:
             return ()
@@ -152,6 +153,7 @@ class TextTurn:
                     arguments=arguments,
                     outcome=outcome,
                     ms=ms,
+                    began_s=self._since(began_at),
                 )
             )
         return tuple(found)

@@ -119,7 +119,13 @@ def heard(turn: Turn) -> HeardTurn:
             for c in turn.clauses
         ),
         tools=tuple(
-            ToolUse(tool=t.tool, arguments=dict(t.arguments), outcome=t.outcome, ms=t.ms)
+            ToolUse(
+                tool=t.tool,
+                arguments=dict(t.arguments),
+                outcome=t.outcome,
+                ms=t.ms,
+                began_s=t.began_s,
+            )
             for t in turn.tool_calls
         ),
         cards=tuple(CardShown(title=c.title, steps=c.steps, source=c.source) for c in turn.cards),

@@ -343,7 +343,7 @@ class FakeTextCall:
             await asyncio.sleep(0)
         self.running -= 1
         used = TextToolCall(
-            call_id="c1", tool=TOOL, arguments={"query": text}, outcome=outcome, ms=9.0
+            call_id="c1", tool=TOOL, arguments={"query": text}, outcome=outcome, ms=9.0, began_s=0.1
         )
         return (used,), self.corrections > before
 

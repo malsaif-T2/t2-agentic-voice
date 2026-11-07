@@ -51,14 +51,17 @@ class HeardClause(_Data):
 class TextToolCall(_Data):
     """A tool call the turn's reply made: the model's id for it, the tool's name, the arguments
     the model wrote, parsed as JSON (empty when they were not a JSON object; a bound parameter is
-    the caller's, never among them), what came of it, and how long it ran on the call's clock in
-    milliseconds, None while it runs."""
+    the caller's, never among them), what came of it, how long it ran on the call's clock in
+    milliseconds, None while it runs, and when it began, in seconds on the call's clock from the
+    moment the turn's words were handed to the session, as the turn's other times are (`began_s`,
+    None when not known), so a runner can take the tools' time out of the reply's."""
 
     call_id: str = Field(min_length=1)
     tool: str = Field(min_length=1)
     arguments: Annotated[Mapping[str, JsonValue], FROZEN, PLAIN] = Field(default_factory=dict)
     outcome: ToolOutcome
     ms: float | None = Field(default=None, ge=0, allow_inf_nan=False)
+    began_s: float | None = Field(default=None, ge=0, allow_inf_nan=False)
 
     @model_validator(mode="after")
     def _timed_once_ended(self) -> Self:

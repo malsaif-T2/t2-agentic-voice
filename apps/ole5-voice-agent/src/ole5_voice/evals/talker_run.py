@@ -276,6 +276,7 @@ async def _measure(
                 own_hit=record.own_hit,
                 language_right=record.language_right,
                 first_clause_s=record.turn.first_clause_s if record.turn else None,
+                own_first_clause_s=record.turn.own_first_clause_s if record.turn else None,
                 seconds=round(record.seconds, 2),
             )
     except StopRun as stop:

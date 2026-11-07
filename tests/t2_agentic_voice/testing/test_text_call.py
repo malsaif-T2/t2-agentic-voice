@@ -256,3 +256,28 @@ def test_a_fake_model_whose_script_ran_out_fails_the_test_never_heard_as_the_err
 
     asyncio.run(scene())
     assert len(llm.requests) == 2
+
+
+def _model_then_search(turn: TalkerTurn) -> list[Step]:
+    """The model's first request takes 0.4 s, its search 0.9 s, then it answers after 0.3 s."""
+    return [
+        Work(0.4),
+        ToolBegan(call_id="t-1", tool="search_help"),
+        Work(0.9),
+        ToolEnded(call_id="t-1", tool="search_help", ok=True, ms=900.0),
+        Work(0.3),
+        *answer("Open Settings."),
+    ]
+
+
+def test_a_tool_call_says_when_it_began_so_its_time_can_be_taken_out_of_the_replys() -> None:
+    async def scene() -> TextTurn:
+        async with ScriptedCall(_model_then_search) as call:
+            turn = await call.user("How do I reset my password?")
+            await call.advance(10.0)
+            return turn
+
+    turn = asyncio.run(scene())
+    (search,) = turn.tool_calls
+    assert search.began_s == pytest.approx(0.4) and search.ms == 900.0
+    assert turn.first_clause_s == pytest.approx(1.6)  # the search's time in it

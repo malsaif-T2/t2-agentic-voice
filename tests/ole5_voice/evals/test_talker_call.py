@@ -12,7 +12,7 @@ import inspect
 import pytest
 from ole5_voice.evals.scenarios import ScriptTurn
 from ole5_voice.evals.talker_call import CHARS_PER_SECOND_K, ask, heard, play
-from ole5_voice.evals.talker_data import Clause, HeardTurn, in_language, script_of
+from ole5_voice.evals.talker_data import Clause, HeardTurn, ToolUse, in_language, script_of
 from t2_agentic_voice import Card, LlmSettings, VoiceSettings
 from t2_agentic_voice.evals import BlockedClause, HeardClause, TextCall, TextToolCall
 from t2_agentic_voice.ports import Usage
@@ -182,3 +182,41 @@ def test_a_moment_the_call_never_reaches_is_given_up_on(
 def test_the_default_call_is_the_librarys_text_call() -> None:
     assert inspect.signature(ask).parameters["call"].default is TextCall
     assert inspect.signature(play).parameters["call"].default is TextCall
+
+
+def _timed(first: float | None, *spans: tuple[float | None, float | None]) -> HeardTurn:
+    tools = tuple(
+        ToolUse(tool=TOOL, outcome="ok" if ms is not None else "running", ms=ms, began_s=began)
+        for began, ms in spans
+    )
+    return HeardTurn(fate="answered", tools=tools, first_clause_s=first)
+
+
+def test_the_models_own_time_to_the_first_clause_takes_its_tools_time_out() -> None:
+    """Q15: the time to the first clause less each tool's time from its start to its end, the
+    tools that ended before the first clause, time two ran at once counted once."""
+    assert _timed(0.8).own_first_clause_s == pytest.approx(0.8)  # no tool
+    assert _timed(1.4, (0.2, 700.0)).own_first_clause_s == pytest.approx(0.7)
+    both = _timed(1.5, (0.2, 700.0), (0.5, 600.0))  # 0.2 to 0.9 and 0.5 to 1.1: 0.9 s ran
+    assert both.own_first_clause_s == pytest.approx(0.6)
+    said_first = _timed(0.4, (0.6, 800.0))  # it spoke first, then searched
+    assert said_first.own_first_clause_s == pytest.approx(0.4)
+    assert _timed(1.0, (0.3, None)).own_first_clause_s == pytest.approx(1.0)  # still running
+    assert _timed(1.4, (None, 700.0)).own_first_clause_s is None  # its start unknown
+    assert _timed(None, (0.2, 700.0)).own_first_clause_s is None
+
+
+def test_a_tools_start_reaches_what_a_run_keeps() -> None:
+    turn = FakeTurn(
+        fate="answered",
+        clauses=(),
+        tool_calls=(TextToolCall(call_id="c", tool=TOOL, outcome="ok", ms=500.0, began_s=0.25),),
+        cards=(),
+        blocked=(),
+        first_token_s=0.1,
+        first_clause_s=1.0,
+        model_requests=2,
+        usage=Usage(input_tokens=0, output_tokens=0),
+    )
+    kept = heard(turn)
+    assert kept.tools[0].began_s == 0.25 and kept.own_first_clause_s == pytest.approx(0.5)

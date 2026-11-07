@@ -2,8 +2,12 @@
 (`--arm k1=RUN_A,RUN_B`, once per arm), on stdout as Markdown.
 
 "Among the arms whose first clause comes within 1.0 s at the median after the transcript, the
-one with the most right answers by the sign test on items; a tie goes to the faster." An arm's
-median is taken over the first clauses of both its runs' scored variants together. Its right
+one with the most right answers by the sign test on items; a tie goes to the faster." The time
+is the model's own (amended before any run, Q15): a reply's time to its first clause less the
+time its tools ran before it, each from its start to its end (`HeardTurn.own_first_clause_s`),
+so the knowledge base's search is not counted; the wall clock's, the search in it, is reported
+beside it, and the report names the time the rule read. An arm's median is taken over the first
+clauses of both its runs' scored variants together. Its right
 answers are its passing verdicts (`judge.PASSING`), each item's counted over both runs on the
 variants all four runs scored; the sign test by item (`compare.by_item`) judges the two arms, a
 p of 0.05 or more being a tie, which goes to the arm with the lower median. One arm within the
@@ -19,7 +23,7 @@ import argparse
 import statistics
 import sys
 from collections import defaultdict
-from collections.abc import Sequence
+from collections.abc import Callable, Sequence
 from dataclasses import dataclass
 from pathlib import Path
 from typing import Final
@@ -29,29 +33,45 @@ from t2_agentic_voice import T2VoiceError, configure_logging, evals, get_logger
 from ole5_voice import LOGGERS
 from ole5_voice.evals.compare import ALPHA, Change, ComparisonError, SignTest, by_item
 from ole5_voice.evals.talker_compare import check_pair, loaded
+from ole5_voice.evals.talker_data import HeardTurn
 from ole5_voice.evals.talker_score import TalkerScorecard
 
 FIRST_CLAUSE_S: Final = 1.0  # the registered median, at most
+_READS: Final = (
+    "The rule reads the model's own time to the first clause (Q15): a reply's time to it less "
+    "the time its tools ran before it, so the knowledge base's search is not counted. The wall "
+    "clock's time, the search in it, is shown beside it."
+)
 _DESCRIPTION = "Apply run K's keep rule to each arm's two dev runs."
 log = get_logger(__name__)
 
 
 @dataclass(frozen=True)
 class Arm:
-    """One arm's two dev runs, and its median first clause over both."""
+    """One arm's two dev runs, and its median first clause over both: the model's own, which
+    the rule reads, and the wall clock's, reported beside it."""
 
     name: str
     runs: tuple[TalkerScorecard, ...]
 
-    @property
-    def median_s(self) -> float | None:
+    def _median(self, time: Callable[[HeardTurn], float | None]) -> float | None:
         found = [
-            r.turn.first_clause_s
+            seconds
             for card in self.runs
             for r in card.variants
-            if r.passed is not None and r.turn is not None and r.turn.first_clause_s is not None
+            if r.passed is not None and r.turn is not None and (seconds := time(r.turn)) is not None
         ]
         return statistics.median(found) if found else None
+
+    @property
+    def median_s(self) -> float | None:
+        """The model's own time to the first clause, the rule's (Q15), at the median."""
+        return self._median(lambda turn: turn.own_first_clause_s)
+
+    @property
+    def wall_median_s(self) -> float | None:
+        """The wall clock's, the tools' time in it, at the median."""
+        return self._median(lambda turn: turn.first_clause_s)
 
 
 def arms(given: Sequence[str]) -> list[Arm]:
@@ -96,15 +116,19 @@ def contest(a: Arm, b: Arm, sign_test: SignTest) -> tuple[int, int, float]:
 
 def decide(found: Sequence[Arm], sign_test: SignTest) -> tuple[str | None, list[str]]:
     """The arm kept (None: the default stays), and the report's lines."""
-    lines = ["# Run K's keep rule\n", "| Arm | Runs | Median first clause (s) | Within 1.0 s |"]
-    lines.append("| --- | --- | --- | --- |")
+    lines = ["# Run K's keep rule\n", _READS, ""]
+    lines.append(
+        "| Arm | Runs | Median first clause, the model's own (s) "
+        "| Median first clause, wall clock (s) | Within 1.0 s |"
+    )
+    lines.append("| --- | --- | --- | --- | --- |")
     within = []
     for arm in found:
-        median = arm.median_s
+        median, wall = arm.median_s, arm.wall_median_s
         ok = median is not None and median <= FIRST_CLAUSE_S
         within += [arm] if ok else []
         runs = ", ".join(card.run.name for card in arm.runs)
-        shown = "none" if median is None else f"{median:.3f}"
+        shown = " | ".join("none" if s is None else f"{s:.3f}" for s in (median, wall))
         lines.append(f"| {arm.name} | {runs} | {shown} | {'yes' if ok else 'no'} |")
     lines.append("")
     if not within:

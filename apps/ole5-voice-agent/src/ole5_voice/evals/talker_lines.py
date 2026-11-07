@@ -155,6 +155,7 @@ def talker_line(card: TalkerScorecard, session: Session, number: int) -> TalkerL
         language=None if totals.language is None else totals.language.rate,
         words_median=totals.words_median,
         first_clause_median_s=totals.first_clause_median_s,
+        own_first_clause_median_s=totals.own_first_clause_median_s,
         blocked=totals.blocked,
         violations=totals.violations,
         targets=card.targets,
