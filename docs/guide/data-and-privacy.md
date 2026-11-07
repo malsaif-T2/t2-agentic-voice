@@ -45,7 +45,7 @@ on the call's report and traces.
 
 | To | What |
 | --- | --- |
-| Groq (`groq.base_url`, `https://api.groq.com` by default) | Each caller turn's audio, one Whisper request a turn (at most 30 s); with a talker, one to three chat requests a turn, each holding the system prompt (your instructions among it), the call as the caller heard it, the turn's words, your tools' schemas and their results of the last 4 turns; the text the agent says, in Orpheus requests (the echo sends back the words it heard); the fixed phrases, once, at the first start; the key, with each request |
+| Groq (`groq.base_url`, `https://api.groq.com` by default) | Each caller turn's audio, one Whisper request a turn (at most 30 s), with the Whisper prompt: your vocabulary's terms and the command words, unless `stt.send_prompt` is off ([languages.md](languages.md)); with a talker, one to three chat requests a turn, each holding the system prompt (your instructions among it), the call as the caller heard it, the turn's words, your tools' schemas and their results of the last 4 turns; the text the agent says, in Orpheus requests (the echo sends back the words it heard); the fixed phrases, once, at the first start; the key, with each request |
 | Your trace backend (`tracing.endpoint`), or your own tracer provider | The spans of each turn and call, with the transcripts unless `tracing.include_transcripts` is off, after `tracing.redact`'s patterns: never audio or a secret ([tracing-and-logs.md](tracing-and-logs.md)) |
 | The caller's browser | The agent's audio over WebRTC, and the captions, state, cards and notices on the data channel |
 
