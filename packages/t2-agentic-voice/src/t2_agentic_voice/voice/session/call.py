@@ -44,8 +44,10 @@ echo (talking.py): the turn's caption, then the talker's reply, spoken clause by
 written; the interruptions are handed to it (interrupter.py); and a turn said while the agent
 was silent starts it early, at Smart Turn's "complete", playing nothing before the hold ends
 (io.py's early start), nor after a client's `stop` in the hold or once the call ends or is
-ending. Every turn's time to first audio is timed to the reply's first audible
-frame sent, and to the browser's playback of it (turn_book.py).
+ending; and while a newer turn, no overlap of the talker's reply, is open, nothing more of that
+reply plays until the turn is taken: its words stop the reply, and a turn heard as nothing lets
+it go on (talking.py's kept reply). Every turn's time to first audio is timed to the reply's
+first audible frame sent, and to the browser's playback of it (turn_book.py).
 """
 
 from __future__ import annotations
@@ -165,6 +167,8 @@ class CallSession:
                 over = self._turns.opened(event)
                 if over is not None:
                     await self._interrupter.opened(event, over)
+                elif self._talking is not None:
+                    self._talking.opened(self._turns.turn(event.turn_id))
             case on.TurnHeld() | on.HoldResumed():
                 await self._hold(event)
             case on.TurnClosed():
@@ -220,12 +224,15 @@ class CallSession:
 
     async def _transcribed(self, event: on.Transcribed) -> None:
         """A turn's own transcript: an overlap's taken by its overlap, any other's answered
-        unless, under `two_step`, it is a command said whole (interrupter.py's `alone`)."""
+        unless, under `two_step`, it is a command said whole (interrupter.py's `alone`); then,
+        with a talker, a reply kept behind it goes on unless it stopped it (talking.py)."""
         turn, heard = self._turns.transcribed(event)
         if turn.overlap:
             await self._interrupter.turn_heard(turn, heard, event)
         else:
             await self._interrupter.alone(turn, heard, event)
+            if self._talking is not None:
+                await self._talking.taken(turn)
 
     async def _hold(self, event: on.TurnHeld | on.HoldResumed) -> None:
         """The turn's hold began, or the caller resumed within it (io.py's early start)."""
