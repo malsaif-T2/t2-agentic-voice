@@ -399,6 +399,39 @@ runs"; in this order, each with its smoke first)
     - The parity test covers echo mode only.
     - Ten items of the tracks' debt that can break a call or miscount a run go to the integration
       round; the rest are TD-115 to TD-118.
+- 2026-11-07: The integration round's ten picked fixes, in two parts built in parallel worktrees
+  from 7abb6b3, each reviewed once with one skeptic a finding, and merged one at a time with the
+  gate after each merge.
+  - **The talker and the guard** (f55bbac; dc52678 to 9751cf9).
+    - **The guard** reads a time, a decimal, "24/7" and a date around a year one number at a time,
+      so "8:00", "12.75" and the prompt's own date pass. A ticket number read in groups by spaces
+      or hyphens still joins.
+    - **Notes:** `[reply N]` and `[cut: about N% heard]` copied by the model are never spoken, even
+      split across stream pieces.
+    - **The talker** closes the model's stream with `aclosing`, and a `ScriptExhaustedError` goes
+      through it.
+    - **The port's docstring** says a cancel mid-answer closes the connection.
+    - **The review.** One finding stood and was fixed in 9751cf9: a date written with a Unicode
+      hyphen (U+2010 to U+2013, U+2212), as gpt-oss writes them, was still blocked, and a tool
+      result's date said back that way was blocked where it had passed before the fix.
+    - Gate: `4478 passed`, `TOTAL 15365 45 99%`.
+  - **The session and the test kit** (71c14b0; 1b340e8 to aba9fcc).
+    - **The held reply:** each held event is guarded, nothing held plays once the call ends or its
+      `ended` notice plays, and a client stop in the hold cancels the work.
+    - **Closing:** the talker's stream is closed in the reply's own task.
+    - **The error notice** is said once a reply, after clauses too, in the reply's language. A
+      failed transcript after words that stopped a reply now says it with a talker as without one.
+    - **Usage:** the requests of a dropped early start are counted.
+    - **The test kit:** `TextCall` sets a fake model's clock for every call; `Pause`,
+      `ScriptExhaustedError` and `ScriptStep` are on the `evals` facade; and an AssertionError the
+      talker raises fails the test from the next `user`, `advance`, `stop` or the call's end.
+    - **The review.** One finding stood and was fixed in 2369857: after a stop word or a repeat
+      request in a window, a failed transcript of new words stayed silent with a talker. The
+      coordinator added aba9fcc for two points the parts left: a script that ran out was still
+      only heard as the `error` notice, and a talker raising as `reply` is called left its reply
+      open.
+    - Gate: `4498 passed`, `TOTAL 15424 41 99%`.
+  - The rest of the two reviews' debt is TD-119 and TD-120.
 
 ## Decision log
 
