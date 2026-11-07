@@ -1,23 +1,22 @@
 """`poe eval`: run an answerer over one split of the golden set into a new folder, `--out`, as
 evaluation.md's "Running" says.
 
-Before anything is sent, a run refuses the main checkout and a dirty tree, an `--out` that
-exists or that git would track (`worktree.py`), audio that is not the file its manifest hashed,
-and a `groq` run whose least cost (each request once, billed as Groq bills it; a windows run's
-aside) would pass `--cap-usd`. Its settings load with `VoiceSettings.from_env` (`--env-file`, or
-the working folder's `.env`), the command line's on top (`run_settings.py`): a `groq` run names
-its model and timeout, and its base URL is `--base-url` or the SDK's own, whatever the
-environment holds, so no `T2V_` variable changes a registered arm; `--show-settings` shows each
-resolved, a secret only as set or not set. Run W's arms are its options too
-(`run_settings.answer_options`): a Whisper prompt from `--prompt-vocabulary`, and every variant
-sent as Arabic with `--language-hint ar`. A smoke test of one dev variant comes first and must
-pass with no failed, retried or refused request. Then each variant is answered, and its result
-written as it finishes (a dev run's `results.jsonl`), with a progress line of identifiers,
-verdicts and timings, never a transcript. The scorecard is written by `scorecard.py` and, for a
-run that calls a provider, its history line is appended to the worktree's `history.jsonl` and
-copied beside the scorecard. A held-out run writes no per-variant output, its lines hold counts
-only, it is never traced, and one that does not finish keeps no result. A run's name is its
-`--out` folder's name.
+Before anything is sent, a run refuses the main checkout and a dirty tree, an `--out` that exists
+or that git would track (`worktree.py`), audio that is not the file its manifest hashed, and a
+`groq` run whose least cost (each request once, billed as Groq bills it; a windows run's aside)
+would pass `--cap-usd`. Its settings load with `VoiceSettings.from_env` (`--env-file`, or the
+working folder's `.env`), the command line's on top (`run_settings.py`): a `groq` run names its
+model and timeout, and its base URL is `--base-url` or the SDK's own, whatever the environment
+holds, so no `T2V_` variable changes a registered arm; `--show-settings` shows each resolved, a
+secret only as set or not set. Run W's arms are its options too (`run_arms.answer_options`): the
+Whisper prompt the agent `--prompt-agent` names would ship, and every variant sent as Arabic with
+`--language-hint ar`. A smoke test of one dev variant comes first and must pass with no failed,
+retried or refused request. Then each variant is answered, and its result written as it finishes (a
+dev run's `results.jsonl`), with a progress line of identifiers, verdicts and timings, never a
+transcript. The scorecard is written by `scorecard.py` and, for a run that calls a provider, its
+history line is appended to the worktree's `history.jsonl` and copied beside the scorecard. A
+held-out run writes no per-variant output, its lines hold counts only, it is never traced, and one
+that does not finish keeps no result. A run's name is its `--out` folder's name.
 """
 
 from __future__ import annotations
@@ -44,6 +43,7 @@ from ole5_voice.evals.answerers import ANSWERERS, RunAnswerer, make_answerer
 from ole5_voice.evals.groq_answerer import Budget, CapReachedError, Policy, least_billed
 from ole5_voice.evals.items import HISTORY_FILE
 from ole5_voice.evals.models import NAME_RULE, Split, is_name
+from ole5_voice.evals.run_arms import AnswerOptions, answer_options
 from ole5_voice.evals.run_parts import (
     DATA,
     Choice,
@@ -54,15 +54,7 @@ from ole5_voice.evals.run_parts import (
     clip_answers,
     load_plan,
 )
-from ole5_voice.evals.run_settings import (
-    GROQ_BASE_URL,
-    MODELS,
-    AnswerOptions,
-    answer_options,
-    load_settings,
-    show,
-    shown,
-)
+from ole5_voice.evals.run_settings import GROQ_BASE_URL, MODELS, load_settings, show, shown
 from ole5_voice.evals.runs import RunInfo, cost_usd, holds_placeholder
 from ole5_voice.evals.windows import measurer
 from ole5_voice.evals.worktree import Checkout, check_out, refused, run_checkout
@@ -73,7 +65,10 @@ _HINT_HELP = (
     "the language sent: the item's label's (ar, or en for English), none (auto), or ar for "
     "every variant, as an Arabic call sends it (arm X)"
 )
-_PROMPT_HELP = "a TOML file of terms (evals/terms.toml): send a Whisper prompt from it (arm W1)"
+_PROMPT_HELP = (
+    "the agent's factory, ole5_voice.<module>:<name> (ole5_voice.agent:talker_agent): send the "
+    "Whisper prompt of its declared vocabulary (arm W1)"
+)
 _AUDIO_HELP = "the folder of an audio root the manifests name, once per root"
 _OUT_HELP = "a new folder, outside the worktree, that git ignores; its name is the run's"
 _WINDOWS_HELP = "send only these leading windows of each talk-over clip, unjudged"
@@ -110,7 +105,7 @@ def _parser() -> argparse.ArgumentParser:
     add("--timeout-s", type=_seconds, help="stt.timeout_s for this run (groq needs it)")
     add("--base-url", help=f"groq.base_url for this run ({GROQ_BASE_URL})")
     add("--language-hint", choices=("label", "auto", "ar"), default="label", help=_HINT_HELP)
-    add("--prompt-vocabulary", type=Path, help=_PROMPT_HELP)
+    add("--prompt-agent", help=_PROMPT_HELP)
     add("--env-file", type=Path, help="the .env file the settings load from (never printed)")
     add("--var-dir", type=Path, help="the settings' var_dir")
     add("--audio", action="append", default=[], metavar="ROOT=FOLDER", help=_AUDIO_HELP)
@@ -164,8 +159,8 @@ def _require(parser: argparse.ArgumentParser, args: argparse.Namespace) -> None:
         parser.error("--smoke-only sends the smoke test's clip, and no windows")
     if args.clips_from and not args.windows_ms:
         parser.error("--clips-from serves a windows run (--windows-ms)")
-    if args.prompt_vocabulary and args.language_hint == "auto":
-        parser.error("--prompt-vocabulary builds a prompt for the language sent: not with auto")
+    if args.prompt_agent and args.language_hint == "auto":
+        parser.error("--prompt-agent builds a prompt for the language sent: not with auto")
 
 
 async def _answer_all(
