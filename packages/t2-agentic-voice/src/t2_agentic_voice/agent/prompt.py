@@ -13,14 +13,18 @@ in order, and nothing else:
 2. **The team's instructions** for the reply language (`VoiceAgent.instructions`: its one text,
    or the text of that language's tag).
 3. **The language section**: reply in the language of the caller's turn, which the talker reads
-   from it (agent/language.py); an Arabic reply in the Saudi register unless the caller speaks
-   Modern Standard Arabic.
+   from it (agent/language.py); an `ar-SA` reply in the register the caller's Arabic is in
+   (`language_section`): Modern Standard Arabic when their words hold no Saudi or Gulf dialect
+   form (`MSA_SECTION`; agent/language.py's `register_of`), else the tag's section, which asks
+   for the Saudi register unless the caller speaks MSA, as an `ar` reply's does
+   (`LANGUAGE_SECTIONS`).
 
 Every request that follows a tool result of the turn ends with a short system line of its own
-naming the reply's language (`REPLY_LINES`), so the last thing the model reads before it writes
-is the language to write in, whatever language the results are in: run K's first dev round had
-English questions answered in Arabic after seven Arabic passages, the section saying English.
-The first request of a turn ends with the caller's words, as it did.
+naming the reply's language (`reply_line`, in the section's register), so the last thing the
+model reads before it writes is the language to write in, whatever language the results are
+in: run K's first dev round had English questions answered in Arabic after seven Arabic
+passages, the section saying English. The first request of a turn ends with the caller's
+words, as it did.
 
 The rules are written in English, which models follow more reliably, whatever language the call
 is in (the design's 6.4 says the same of a tool's description).
@@ -42,6 +46,7 @@ import secrets
 from datetime import date
 
 from t2_agentic_voice.actions.knowledge import SHOWN
+from t2_agentic_voice.agent.language import Register
 from t2_agentic_voice.core.clock import SYSTEM_CLOCK
 from t2_agentic_voice.core.settings.tts import LanguageTag
 from t2_agentic_voice.domain.declaration import VoiceAgent
@@ -84,6 +89,12 @@ REPLY_LINES: dict[LanguageTag, str] = {
     "ar": f"Reply in Arabic, the caller's language, {_WHATEVER}",
     "en": f"Reply in English, the caller's language, {_WHATEVER}",
 }
+# The section and the line of an `ar-SA` reply to a caller whose Arabic holds no dialect form.
+MSA_SECTION = (
+    "Reply in Modern Standard Arabic, as the caller speaks it, with no Saudi or Gulf dialect "
+    "word. Keep product names as the caller says them."
+)
+MSA_REPLY_LINE = f"Reply in Modern Standard Arabic, the caller's register, {_WHATEVER}"
 # The first line of each request's system message (the module's docstring), and its ids: a
 # count from a random start, as 8 hex digits, so no two of one process are the same and two
 # processes seldom share one.
@@ -91,19 +102,32 @@ FIRST_LINE = "Request {id}."
 _IDS = itertools.count(secrets.randbits(32))
 
 
-def compose_prompt(agent: VoiceAgent, *, language: LanguageTag, today: date) -> str:
-    """The system prompt `agent`'s talker is given for a reply in `language` on `today` (the
-    module's docstring). ValueError for a language the agent does not speak, or an agent with
-    no instructions."""
+def language_section(language: LanguageTag, register: Register = "saudi") -> str:
+    """The language section of a reply in `language` to a caller whose Arabic is in `register`
+    (the module's docstring)."""
+    return MSA_SECTION if (language, register) == ("ar-SA", "msa") else LANGUAGE_SECTIONS[language]
+
+
+def reply_line(language: LanguageTag, register: Register = "saudi") -> str:
+    """The line that ends a request after a tool result, for a reply in `language` to a caller
+    whose Arabic is in `register` (the module's docstring)."""
+    return MSA_REPLY_LINE if (language, register) == ("ar-SA", "msa") else REPLY_LINES[language]
+
+
+def compose_prompt(
+    agent: VoiceAgent, *, language: LanguageTag, today: date, register: Register = "saudi"
+) -> str:
+    """The system prompt `agent`'s talker is given for a reply in `language` on `today` to a
+    caller whose Arabic is in `register` (the module's docstring). ValueError for a language the
+    agent does not speak, or an agent with no instructions."""
     if language not in {each.tag for each in agent.languages}:
         raise ValueError("the agent does not speak that language")
     instructions = agent.instructions
     if instructions is None:
         raise ValueError("the agent declares no instructions, so it runs no talker")
     team = instructions if isinstance(instructions, str) else instructions[language]
-    return "\n\n".join(
-        (f"{RULES}\nToday is {today.isoformat()}.", team.strip(), LANGUAGE_SECTIONS[language])
-    )
+    section = language_section(language, register)
+    return "\n\n".join((f"{RULES}\nToday is {today.isoformat()}.", team.strip(), section))
 
 
 def render_prompt(agent: VoiceAgent, language: LanguageTag) -> str:

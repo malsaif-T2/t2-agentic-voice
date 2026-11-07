@@ -12,7 +12,7 @@ from typing import Any
 
 import pytest
 from t2_agentic_voice.agent.context import BLOCKED
-from t2_agentic_voice.agent.prompt import LANGUAGE_SECTIONS
+from t2_agentic_voice.agent.prompt import LANGUAGE_SECTIONS, MSA_SECTION
 from t2_agentic_voice.agent.talker import (
     ClauseBlocked,
     ModelReplied,
@@ -194,8 +194,8 @@ def _system(model: FakeChat, index: int) -> str:
 
 def test_the_reply_language_follows_each_turn_in_one_call() -> None:
     """Saudi, MSA and English turns in one Saudi call: each reply in the turn's language, the
-    team's instructions for it, and the language section that asks for the Saudi register
-    unless the caller speaks MSA."""
+    team's instructions for it, and the language section of its register: the Saudi turn's asks
+    for the Saudi register unless the caller speaks MSA, the MSA turn's for MSA."""
     model = FakeChat(said("أبشر."), said("حسنا."), said("Sure."), said("Sure."))
     chat = talker(model, language="ar-SA")
     turns = [
@@ -211,7 +211,7 @@ def test_the_reply_language_follows_each_turn_in_one_call() -> None:
     assert languages == [["ar-SA"], ["ar-SA"], ["en"], ["en"]]
     assert "Made-up Saudi instructions." in _system(model, 0)
     assert _system(model, 0).endswith(LANGUAGE_SECTIONS["ar-SA"])
-    assert "Saudi dialect, unless the caller speaks Modern Standard Arabic" in _system(model, 1)
+    assert _system(model, 1).endswith(MSA_SECTION)
     assert "Made-up English instructions." in _system(model, 2)
     assert _system(model, 3).endswith(LANGUAGE_SECTIONS["en"])
 

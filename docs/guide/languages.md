@@ -62,11 +62,18 @@ language.
 ## Saudi Arabic and MSA
 
 Saudi Arabic and MSA share a code, so a transcript cannot tell them apart, and the tag does not
-decide the register. The language section asks the model to reply in the Saudi dialect unless
-the caller speaks MSA, and then in MSA. The presets' own texts (the notices, the echo's frame)
-are in the register of their tag: Saudi for `ar-SA`, MSA for `ar`. Write your greetings and
-progress lines in the register of their tag too; Ole5's instructions ask for the Saudi spoken
-register, and MSA for a caller who speaks it.
+decide the register: the caller's words do. The talker reads each Arabic turn against a small
+list of Saudi and Gulf dialect forms (such as «أبي»، «أبغى»، «وش»، «وين»، «اللي»، «الحين»،
+«بس»، «مو», and «ما» before a verb, which is Saudi's "not"; the library's `agent/language.py`
+holds the list): a turn that holds one is Saudi, a turn of Arabic that holds none is MSA, and a
+turn with no Arabic word keeps the Saudi default. An `ar-SA` reply to an MSA turn gets a
+language section, and a line after a tool's result, that ask for Modern Standard Arabic with no
+dialect word; any other `ar-SA` reply's section asks for the Saudi dialect unless the caller
+speaks MSA, as an `ar` reply's does whatever the words. A short or plain turn («كيف أطبع
+الملف؟») holds no dialect form, so it is answered in MSA. The presets' own texts (the
+notices, the echo's frame) are in the register of their tag: Saudi for `ar-SA`, MSA for `ar`.
+Write your greetings and progress lines in the register of their tag too; Ole5's instructions
+ask for the Saudi spoken register, and MSA for a caller who speaks it.
 
 ## Product terms inside Arabic
 
