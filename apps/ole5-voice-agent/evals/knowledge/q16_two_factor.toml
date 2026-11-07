@@ -5,7 +5,7 @@ needs_search = true
 expected = ["features-018", "features-021"]
 key_facts = [
   "Yes: multi-factor authentication at sign-in is supported.",
-  "Its type, a text message or a secure token, is set in the settings.",
+  "It is set up in the settings, with a text message or a secure token; the sign-in check also offers email, SMS or OTP.",
 ]
 notes = "A yes-or-no question about a feature, with a product term in English."
 

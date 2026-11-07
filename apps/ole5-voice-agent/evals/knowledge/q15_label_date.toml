@@ -2,7 +2,7 @@ id = "q15_label_date"
 split = "dev"
 kind = "answerable"
 needs_search = true
-expected = ["troubleshooting-016", "procedures-019"]
+expected = ["troubleshooting-016"]
 key_facts = [
   "An administrator changes the variable used in «بناء الملصق» (the label builder) to show the correspondence's creation date.",
   "Label settings are under settings, label settings, with the system administrator's account.",

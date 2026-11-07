@@ -5,7 +5,7 @@ needs_search = true
 expected = ["features-014", "features-012", "rules-004"]
 key_facts = [
   "Archived correspondence moves to the archived box and can be reached electronically afterwards.",
-  "Comments and further attachments can be added to archived correspondence.",
+  "Comments can be added to archived correspondence, and extra attachments can be added when archiving it.",
   "Invents no retention period or automatic deletion.",
 ]
 notes = "A question whose likely intent (how long archived items are kept) the knowledge base does not answer; the answer keeps to what it holds."

@@ -6,7 +6,7 @@ expected = ["troubleshooting-025", "troubleshooting-027", "features-016"]
 key_facts = [
   "The user enables notifications in user settings, under managing the user's notifications.",
   "An administrator checks they are enabled at the system level.",
-  "Update the app to its latest version from the official store, or remove it and install it again.",
+  "Notifications are sent by the entity's settings, as email, text message or pop-up; invents no app setting or app update as the fix.",
 ]
 notes = "A polite Saudi complaint about the mobile app."
 

@@ -4,8 +4,8 @@ kind = "answerable"
 needs_search = true
 expected = ["procedures-030", "rules-022", "rules-023", "procedures-031", "rules-024"]
 key_facts = [
-  "Settings, system administration, the roles tab, then add new.",
-  "A role needs its Arabic and English names, its permission level, and its permissions.",
+  "Roles are added from settings, system administration, the roles tab («الأدوار في النظام», or «أدوار الإدارات المشتركة» for a shared department role), then «إضافة جديد».",
+  "A system role needs its Arabic and English names, its permission level and its permissions; a shared department role takes a role type (internal or administrative communications) instead of a level.",
   "A role cannot be deleted while users are linked to it.",
 ]
 notes = "An administrator's question with an English term for the system's word (role)."

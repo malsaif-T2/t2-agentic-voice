@@ -2,7 +2,7 @@ id = "n17_save_word"
 split = "dev"
 kind = "answerable"
 needs_search = true
-expected = ["procedures-005", "troubleshooting-010", "features-005"]
+expected = ["procedures-005", "troubleshooting-010", "features-005", "rules-004"]
 key_facts = [
   "Hovering over the attachment shows «تنزيل» (download).",
   "If the download icon does not show, the user lacks the permission «حفظ وتنزيل المرفقات», on the personal account or the department.",
