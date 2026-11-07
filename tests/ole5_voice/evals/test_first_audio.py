@@ -13,6 +13,7 @@ import wave
 from pathlib import Path
 
 import pytest
+from ole5_voice.agent import VERSION, instructions
 from ole5_voice.evals import first_audio
 from ole5_voice.evals.factories import agent_of as built_agent
 from ole5_voice.evals.factories import load_factory
@@ -377,7 +378,10 @@ def test_the_command_line_reaches_its_smoke_with_ole5s_own_agent_factory(
     argv[argv.index("--agent") + 1] = "ole5_voice.agent:talker_agent"
     assert first_audio.main(argv, parts=run.parts()) == 0
     agent = run.replay.built["agent"]
-    # Ole5's talker, its search on the knowledge base built; Tn's, given none, with no tool.
+    # Ole5's talker, its search on the knowledge base built; Tn's, given none, with no tool,
+    # told it has no search and versioned apart (the live probe of 2026-11-07).
     assert agent.name == "ole5" and run.card().complete
     assert [tool.name for tool in agent.tools] == ([] if arm else ["search_knowledge"])
+    assert agent.instructions == instructions(search=not arm)
+    assert agent.version == (f"{VERSION}+no-search" if arm else VERSION)
     assert run.env_files == ([] if arm else [None]) and run.kb.closed == (not arm)

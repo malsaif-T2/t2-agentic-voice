@@ -1,22 +1,26 @@
 """Ole5's agents (ole5_voice/agent.py): the echo as the app ran before; the talker's
 declaration, which loads with instructions for every language it speaks, each holding what the
 ear needs; its search, the library's knowledge tool with Ole5's description and progress line;
-its vocabulary and version; no fixed line of it holding a word the caller commands with; and
-its prompt rendered in each language once the library composes it, naming the screen only when
-the search shows a card."""
+its vocabulary and version; no fixed line of it holding a word the caller commands with; its
+prompt rendered in each language once the library composes it, naming the screen only when the
+search shows a card; and the talker with no tool (run T's pass Tn), told in place of the
+search's section that it has none, versioned apart, the served talker's prompt unchanged."""
 
 from __future__ import annotations
 
 import asyncio
+import re
 import tomllib
 from collections.abc import Mapping
 from dataclasses import dataclass
+from importlib.resources import files
 from typing import Any, Literal
 
 import pytest
 from ole5_voice import agent
 from ole5_voice.agent import (
     ECHO_AGENT,
+    NO_SEARCH,
     PROGRESS,
     PROGRESS_KEY,
     SEARCH_DESCRIPTION,
@@ -28,6 +32,7 @@ from ole5_voice.agent import (
     instructions,
     search_tool,
     talker_agent,
+    without_search,
 )
 from ole5_voice.evals.items import EVALS, TERMS_FILE
 from t2_agentic_voice import CallContext, Caller, Tool, VoiceAgent, render_prompt
@@ -198,6 +203,8 @@ def test_the_search_is_the_librarys_knowledge_tool_with_ole5s_lines(
     assert talker.instructed and talker.tools == (tool,)
     bare = talker_agent(None)  # the knowledge tool left out, as run T's pass Tn needs
     assert bare.instructed and bare.tools == ()
+    # A run's record tells Tn's talker, told it has no search, from the served one.
+    assert (talker.version, bare.version) == (VERSION, f"{VERSION}+no-search")
 
 
 def test_the_talkers_search_reads_one_named_k_of_passages() -> None:
@@ -267,3 +274,50 @@ def test_the_prompt_names_the_screen_only_when_the_search_shows_a_card(tag: Tag)
     result = asyncio.run(search.function(context, query="made up"))
     assert result.card is None
     assert isinstance(result.data, dict) and result.data["shown_on_screen"] == "nothing"
+
+
+@pytest.mark.parametrize("tag", ["ar-SA", "en"])
+def test_the_talker_with_no_tool_is_told_it_has_no_search(tag: Tag) -> None:
+    """The live probe of 2026-11-07: told to search first with no tool offered, the model wrote
+    a tool call the request did not offer (Groq's `tool_use_failed`), so run T's pass Tn would
+    have timed a refusal. Tn's talker is told, in place of the search's section, that this call
+    has no knowledge base and no tool, and keeps every other section whole: no line tells it to
+    search. A test cannot show that a real model obeys: a live call can."""
+    prompt = render_prompt(talker_agent(None), tag)
+    searching = [line for line in prompt.splitlines() if re.search(r"search", line, re.I)]
+    # The one line that names a search says when to name the screen, never to search.
+    assert len(searching) == 1, searching
+    assert "only when the search result's shown_on_screen holds them" in searching[0]
+    flat = " ".join(prompt.split())
+    assert "In this call there is no knowledge base and no tool." in flat
+    assert "Answer from the conversation, in one to three short sentences." in flat
+    assert "say plainly, in one sentence, that you cannot look that up right now." in flat
+    served = instructions()[tag].strip().split("\n\n")
+    kept = [section for section in served if not section.startswith("Searching:")]
+    assert len(kept) == len(served) - 1 == 3
+    assert all(section in prompt for section in kept)  # byte for byte
+    before, after = kept[1], kept[2]  # how to answer, the no-search section, what it cannot do
+    assert prompt.index(before) < prompt.index("In this call there is") < prompt.index(after)
+
+
+@pytest.mark.parametrize("tag", ["ar-SA", "en"])
+def test_the_served_talkers_prompt_keeps_its_instructions_as_written(tag: Tag) -> None:
+    """The talker with a search (the served agent, runs K and S) keeps each language's file
+    byte for byte, its search's section with it."""
+    folder = files("ole5_voice") / "instructions"
+    written = (folder / f"{tag}.md").read_text(encoding="utf-8")
+    served = talker_agent(FakeKnowledgeBase())
+    assert isinstance(served.instructions, Mapping) and served.instructions[tag] == written
+    assert dict(served.instructions) == instructions()
+    prompt = render_prompt(served, tag)
+    assert written.strip() in prompt and "\n\nSearching:\n" in prompt
+    assert "no knowledge base and no tool" not in prompt
+
+
+def test_the_search_section_is_replaced_only_when_the_text_holds_one() -> None:
+    made_up = "Intro.\n\nSearching:\n- Search first.\n- Not for thanks.\n\nEnd."
+    assert without_search(made_up) == f"Intro.\n\n{NO_SEARCH}\n\nEnd."
+    with pytest.raises(ValueError, match="0 sections"):
+        without_search("Intro.\n\nHow you answer:\n- Briefly.")
+    with pytest.raises(ValueError, match="2 sections"):
+        without_search("Searching:\n- One.\n\nSearching:\n- Two.")
