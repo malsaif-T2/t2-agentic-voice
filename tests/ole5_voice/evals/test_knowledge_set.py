@@ -1,7 +1,8 @@
 """The knowledge set (plan 006's registration, "Data"): the committed items break no rule; the
-set is the one the registration describes; and each rule is shown failing on a made-up set: the
-points, the recorded requests, each kind's rule, the variants and key facts, the split, the
-floor and the registered counts."""
+set is the one the registration describes; and each rule is shown failing on a made-up set
+(knowledge_samples.py): the points, the recorded requests, each kind's rule, the variants and
+key facts, the split, the floor and the registered counts. The split's keep path (TD-114):
+test_knowledge_keep.py."""
 
 from __future__ import annotations
 
@@ -29,12 +30,16 @@ from ole5_voice.evals.knowledge_set import (
     load_knowledge_items,
     problems,
 )
-from ole5_voice.evals.models import Item, SplitFile
-from ole5_voice.evals.split import split_items
+from ole5_voice.evals.models import SplitFile
 from ole5_voice.evals.toml_write import dump_item
 from pydantic import ValidationError
 
-from tests.ole5_voice.evals import samples
+from tests.ole5_voice.evals.knowledge_samples import GOLDEN, POINTS, SPLIT
+from tests.ole5_voice.evals.knowledge_samples import an_item as _item
+from tests.ole5_voice.evals.knowledge_samples import kept_as as _kept
+from tests.ole5_voice.evals.knowledge_samples import made_up_set as _set
+from tests.ole5_voice.evals.knowledge_samples import problems_in as _problems
+from tests.ole5_voice.evals.knowledge_samples import recorded_item as _recorded
 
 
 def test_the_committed_knowledge_set_breaks_no_rule() -> None:
@@ -45,9 +50,11 @@ def test_the_set_is_the_one_the_registration_describes() -> None:
     items = load_knowledge_items(EVALS / KNOWLEDGE_DIR)
     recorded = [item for item in items if RECORDED.match(item.id)]
     new = [item for item in items if not RECORDED.match(item.id)]
-    assert len(recorded) == 28 and len(new) == 36  # about 60 in all
+    assert len(recorded) == 28 and len(new) == 42  # about 60, then 6 more `none` items (Q13)
     kinds = Counter(item.kind for item in new)
-    assert kinds == {"answerable": 22, "none": 8, "small_talk": 3, "out_of_scope": 3}
+    assert kinds == {"answerable": 22, "none": 14, "small_talk": 3, "out_of_scope": 3}
+    none = Counter(item.split for item in items if item.kind == "none")
+    assert none == {"dev": 10, "held-out": 6}  # one miss on dev no longer fails the 90%
     dev = sum(1 for item in items if item.split == "dev")
     assert 0.6 < dev / len(items) < 0.7  # dev about two thirds
     variants = Counter(v.language for item in items for v in item.variants)
@@ -56,61 +63,9 @@ def test_the_set_is_the_one_the_registration_describes() -> None:
     assert (len(points.documents), len(points.points)) == (4, 126)  # the export's every chunk
 
 
-# A made-up set: one recorded request of a made-up golden set, and new items.
-POINTS = Points(
-    documents=(Document(key="guide", name="A guide"),),
-    points=(Point(id="guide-001", document="guide", chunk="chunk_001"),),
-)
-
-
-def _golden(item_id: str, text: str) -> Item:
-    item = samples.item(item_id, text=text)
-    return item.model_copy(update={"variants": (samples.variant(f"{item_id}-1", text),)})
-
-
-GOLDEN = (_golden("b01_other", "stop now"), _golden("n01_asked", "where is it"))
-SPLIT = SplitFile(salt="s", items={"b01_other": "held-out", "n01_asked": "dev"})
-RECORDED_WORDS = {"language": "english", "text": "where is it"}
-
-
-def _item(item_id: str, **changes: Any) -> KnowledgeItem:
-    base: dict[str, Any] = {
-        "id": item_id,
-        "split": "dev",
-        "kind": "answerable",
-        "needs_search": True,
-        "variants": [
-            {"language": "english", "text": f"{item_id} asked"},
-            {"language": "saudi", "text": f"{item_id} وين"},
-        ],
-        "expected": ["guide-001"],
-        "key_facts": ["says where", "says how"],
-        "notes": "a made-up item",
-    }
-    return KnowledgeItem.model_validate(base | changes)
-
-
-def _recorded() -> KnowledgeItem:
-    return _item("n01_asked", variants=[RECORDED_WORDS, {"language": "saudi", "text": "وينه"}])
-
-
-def _set(*extra: KnowledgeItem) -> list[KnowledgeItem]:
-    """The recorded request, two new items and `extra`, each new one split by the rule."""
-    new = [_item("q01_new"), _item("q02_none", kind="none", expected=[]), *extra]
-    golden = {item.id for item in GOLDEN}
-    sides = split_items([item for item in new if item.id not in golden], SALT)
-    return [_recorded(), *(i.model_copy(update={"split": sides.get(i.id, i.split)}) for i in new)]
-
-
-def _problems(items: list[KnowledgeItem], **changes: Any) -> list[str]:
-    """`check` on `items` against the made-up golden set, the floor left out, the registered
-    counts the items' own unless `changes` gives others."""
-    given: dict[str, Any] = {"points": POINTS, "strata": count_knowledge(items)} | changes
-    return check(items, given["points"], GOLDEN, SPLIT, given["strata"], floor=0)
-
-
 def test_a_made_up_set_that_keeps_every_rule_has_no_problem() -> None:
     assert _problems(_set()) == []
+    assert _problems(_set(), kept=_kept(_set())) == []
 
 
 def test_each_points_rule_is_checked() -> None:
@@ -288,8 +243,13 @@ def test_the_files_are_read_strictly_and_checked_whole(tmp_path: Path) -> None:
     points += '[[points]]\nid = "guide-001"\ndocument = "guide"\nchunk = "chunk_001"\n'
     (folder / POINTS_FILE).write_text(points, encoding="utf-8")
     (folder / "strata.toml").write_text(_strata(count_knowledge(items)), encoding="utf-8")
+    with pytest.raises(GoldenSetError, match=re.escape("split.json")):
+        problems(evals)  # no committed split that keeps the sides
+    kept = SplitFile(salt=SALT, items={item.id: "dev" for item in items})
+    (folder / "split.json").write_text(kept.model_dump_json(), encoding="utf-8")
     assert load_knowledge_items(folder) == tuple(sorted(items, key=lambda item: item.id))
-    assert problems(evals) == check(items, POINTS, GOLDEN, SPLIT, count_knowledge(items))
+    counted = count_knowledge(items)
+    assert problems(evals) == check(items, POINTS, GOLDEN, SPLIT, counted, kept=kept) != []
     (folder / "q99_elsewhere.toml").write_text(_dump(items[1]), encoding="utf-8")
     with pytest.raises(
         GoldenSetError, match=re.escape("q99_elsewhere.toml: holds the item 'q01_new'")

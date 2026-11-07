@@ -1,0 +1,22 @@
+id = "q41_notification_sound"
+split = "dev"
+kind = "none"
+needs_search = true
+expected = []
+key_facts = [
+  "Says plainly it does not have information on changing the notifications' sound.",
+  "Does not present turning notifications on or off, or choosing their types, as a choice of sound.",
+]
+notes = "A request close to the knowledge base's notification settings that it does not answer."
+
+[[variants]]
+language = "mixed"
+text = "أقدر أغير صوت الـ notifications حق Ole5؟"
+
+[[variants]]
+language = "msa"
+text = "هل يمكن تغيير صوت تنبيهات المراسلات الجديدة؟"
+
+[[variants]]
+language = "saudi"
+text = "أبي أغير نغمة التنبيه لما توصلني مراسلة"

@@ -14,8 +14,9 @@ so its settings are read under the general names the owner set, with no prefix (
 2026-11-06: "Ole5 naming is not general enough"): `QDRANT_URL`, and the account the app signs in
 with, `QDRANT_LOGIN_EMAIL` and `QDRANT_LOGIN_PASSWORD`; and, each with T2's default,
 `QDRANT_LOGIN_URL` and `EMBEDDING_URL`. Only the tenant, Ole5's own, keeps the prefix
-(`OLE5_VOICE_KB_TENANT`). All are optional: with none of them set the app still starts, its agent
-the echo.
+(`OLE5_VOICE_KB_TENANT`). The access is all or none (`knowledge_access`): with none of the three
+set the app still starts, its agent the echo; with all three, its agent is the talker, which
+searches the knowledge base; with only some, it refuses to start, naming the ones missing.
 
 A blank value counts as unset, as the library's do. The library's settings are
 `VoiceSettings.from_env`'s, and the token route signs every token with the join key
@@ -48,6 +49,8 @@ UNPREFIXED: Final = (
     "QDRANT_LOGIN_URL",
     "EMBEDDING_URL",
 )
+# The settings the knowledge base's access needs, all three or none: where, and the account.
+ACCESS: Final = ("QDRANT_URL", "QDRANT_LOGIN_EMAIL", "QDRANT_LOGIN_PASSWORD")
 _FIX: Final = (
     "FIX: set each one in the environment or the .env file given; make an access code with "
     f"{GENERATOR}."
@@ -161,6 +164,49 @@ class AppSettings(BaseSettings):
         )
 
 
+@dataclass(frozen=True, kw_only=True)
+class KnowledgeAccess:
+    """What the knowledge base is reached with (knowledge_base.py): Qdrant's URL, the gateway's
+    sign-in URL and the account, the embedding service's URL, and the tenant whose points a
+    search reads. The password is kept a secret: no repr shows it."""
+
+    qdrant_url: str
+    login_url: str
+    login_email: str
+    login_password: SecretStr
+    embedding_url: str
+    tenant: str
+
+
+def knowledge_access(app: AppSettings) -> KnowledgeAccess | None:
+    """The knowledge base's access when `app` sets all three of `ACCESS`, None when it sets
+    none (the agent is then the echo); a ConfigurationError naming the ones missing when it
+    sets only some, never a value."""
+    url, email, password = app.qdrant_url, app.qdrant_login_email, app.qdrant_login_password
+    given = (url, email, password)
+    missing = [name for name, value in zip(ACCESS, given, strict=True) if value is None]
+    if len(missing) == len(ACCESS):
+        return None
+    if url is None or email is None or password is None:
+        *rest, last = missing
+        listed = f"{', '.join(rest)} and {last}" if rest else last
+        verb = "are" if rest else "is"
+        raise ConfigurationError(
+            f"The knowledge base's access is set only in part: {listed} {verb} not set. FIX: set "
+            "all three of QDRANT_URL, QDRANT_LOGIN_EMAIL and QDRANT_LOGIN_PASSWORD for the "
+            "talker, which searches it, or none of them for the echo.",
+            details={"settings": [*missing]},
+        )
+    return KnowledgeAccess(
+        qdrant_url=url,
+        login_url=app.qdrant_login_url,
+        login_email=email,
+        login_password=password,
+        embedding_url=app.embedding_url,
+        tenant=app.kb_tenant,
+    )
+
+
 @dataclass(frozen=True)
 class Settings:
     """What the app runs with: its own settings, and the library's."""
@@ -171,7 +217,8 @@ class Settings:
 
 def load(env_file: Path | None = None) -> Settings:
     """The app's settings and the library's, from the environment and `env_file` when given;
-    ConfigurationError naming each setting that cannot load."""
+    ConfigurationError naming each setting that cannot load, or the knowledge base's access
+    set only in part (`knowledge_access`)."""
     voice = VoiceSettings.from_env(env_file=env_file)
     refused: ConfigurationError | None = None
     try:
@@ -187,6 +234,7 @@ def load(env_file: Path | None = None) -> Settings:
             f"FIX: set it to the ID of a key in {voice.env_name('join', 'keys')}.",
             details={"settings": [name]},
         )
+    knowledge_access(app)  # all three or none, refused here before anything is built
     return Settings(app=app, voice=voice)
 
 
