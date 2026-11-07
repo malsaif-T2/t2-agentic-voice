@@ -382,8 +382,22 @@ keeps talking in the same turn, the turn's own transcript is read again, and may
 agent.
 
 **Words said while a tool runs.** A turn said while a reply's tool still runs, with nothing yet
-playing, stops that reply, and its tools with it (`on_interrupt="cancel"`): the talker starts
-again with both turns, the earlier in the history as it ended.
+playing, is no overlap: nothing of that reply plays while the turn is open. What the talker
+gives meanwhile (its progress line, its cards, its clauses) is kept in order, even when the
+search ends before the caller does, and the client shows `thinking`, since the reply has no
+audio yet. Once the turn is heard:
+
+- **with words**, it stops that reply, and its tools with it (`on_interrupt="cancel"`): the
+  talker starts again with both turns, the earlier in the history as it ended (`rolled_back`
+  when none of its reply played);
+- **as nothing** (an empty transcript, or text from silence), or not at all (its transcription
+  failed, and the `error` notice is said first), what was kept plays, in order, and the rest as
+  it comes: the reply has waited for the turn's end, its hold included
+  ([latency.md](latency.md)), and its first kept clause then waits for its voice;
+- **as a stop or pause request said whole**, the reply is stopped and nothing kept plays.
+
+A reply that began playing before the caller began speaking is an overlap of the turn, under the
+two-step interruption above.
 
 Each decision reaches the runtime's observers as `Interrupted` (the `events` facade): its `kind`
 (`stop`, `correction`, `new_words`, or `false` when the agent went on), its `reason` (the step
