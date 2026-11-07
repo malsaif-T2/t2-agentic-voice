@@ -241,13 +241,16 @@ def test_a_stored_variant_the_golden_set_does_not_hold_is_refused(
 def test_a_held_out_or_unfinished_overlap_run_is_refused(
     tmp_path: Path, capsys: pytest.CaptureFixture[str]
 ) -> None:
-    """A held-out overlap run's scorecard holds aggregates only, no overlap's words, so U's
-    held-out pass has nothing stored to read."""
+    """A held-out overlap run's scorecard holds aggregates only, no overlap's words: U's
+    held-out pass replays H3's clips live (Q16), built once an arm passes on dev, so the
+    refusal says so."""
     run = u_run(tmp_path)
     folder = stored(run.world.main / "o", [overlap("a")], complete=False)
     _refused(run, run.argv(folder), capsys, "not a complete dev overlap run")
     held_out = stored(run.world.main / "h", [], split="held-out")
-    _refused(run, run.argv(held_out), capsys, "a held-out run's scorecard holds no")
+    for says in ("holds no overlap's words", "replays H3's held-out clips live", "(Q16)"):
+        _refused(run, run.argv(held_out), capsys, says)
+    _refused(run, run.argv(held_out), capsys, "is built once an arm passes on dev")
     card = folder / SCORECARD_FILE
     card.write_text("{}", encoding="utf-8")
     _refused(run, run.argv(card), capsys, "is not an overlap run's scorecard")

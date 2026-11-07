@@ -7,7 +7,9 @@ stored, replaying its recordings (`--audio`) with nothing sent (uncertain_rejudg
 overlaps whose verdict is then a short output or too few words (uncertain_score.py), and asks
 the model arm about each (uncertain_run.py), scoring it against that verdict, U0. A held-out
 overlap run's scorecard holds aggregates only, no overlap's words (evaluation.md, "Splits"), so
-it is refused: U's held-out pass has no stored data to read.
+it is refused: U's held-out pass replays H3's held-out clips live instead, the kept arm deciding
+each uncertain overlap as it comes (amended before any run, Q16), and it is built only once an
+arm passes on dev.
 
 As `poe overlap`, a run refuses the main checkout and a dirty tree and an `--out` that exists or
 that git would track; its settings load as `poe eval`'s (the environment and `--env-file`, the
@@ -169,10 +171,16 @@ def _source(path: Path) -> tuple[OverlapScorecard, Path]:
     """The stored overlap run, and its scorecard file; refused unless a complete dev run."""
     file = path / SCORECARD_FILE if path.is_dir() else path
     card = read_model(file, OverlapScorecard, lambda problem: ValueError(problem))
-    if card.run.split != "dev" or not card.complete:
+    if card.run.split != "dev":
         raise refused(
-            "--overlaps is not a complete dev overlap run: a held-out run's scorecard holds no "
-            "overlap's words",
+            "--overlaps is a held-out overlap run, whose scorecard holds no overlap's words: U's "
+            "held-out pass replays H3's held-out clips live, the kept arm deciding each "
+            "uncertain overlap as it comes (Q16), and is built once an arm passes on dev",
+            "give the scorecard of a complete dev run of `poe overlap`, such as O1's",
+        )
+    if not card.complete:
+        raise refused(
+            "--overlaps is not a complete dev overlap run",
             "give the scorecard of a complete dev run of `poe overlap`, such as O1's",
         )
     return card, file
