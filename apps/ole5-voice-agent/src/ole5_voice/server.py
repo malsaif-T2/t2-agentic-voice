@@ -51,7 +51,7 @@ from t2_agentic_voice.identity import SignedJoinTokens
 from ole5_voice import LOGGERS
 from ole5_voice.agent import ECHO_AGENT, talker_agent
 from ole5_voice.knowledge_base import QdrantKnowledgeBase
-from ole5_voice.settings import ACCESS, KnowledgeAccess, Settings, knowledge_access, load
+from ole5_voice.settings import ACCESS, Settings, knowledge_access, load
 from ole5_voice.token_route import Guard, Minter, token_router
 
 HOST: Final = "127.0.0.1"
@@ -76,9 +76,6 @@ FILES: Final = {
     "/widget.css": ("widget.css", "text/css; charset=utf-8"),
 }
 
-# The agent the app runs when the knowledge base's access is not set: the echo, under the name
-# the guide's sample of `make_app` shows (docs/guide/serving.md).
-AGENT: Final = ECHO_AGENT
 # An app's lifespan, as FastAPI keeps it on its router: the app in, a context out.
 Lifespan = Callable[[Any], AbstractAsyncContextManager[Any]]
 
@@ -148,23 +145,16 @@ def build_app(
 def make_app(settings: Settings) -> FastAPI:
     """The app as it serves Ole5's calls: the runtime's callers verified by the signed join
     tokens the token route mints, with the key `join.current_kid` names; its agent the talker,
-    searching the knowledge base, when the knowledge base's access is set, and else the echo,
-    which a log line says (the module's docstring)."""
+    searching the knowledge base, when the knowledge base's access is set, its client closed as
+    the app's lifespan ends, and else the echo; a log line says which (the module's
+    docstring)."""
     access = knowledge_access(settings.app)
-    if access is not None:
-        return _talker_app(settings, access)
-    log.info("knowledge_base_not_set", agent="echo", fix=f"set {', '.join(ACCESS)}")
     voice = settings.voice
     tokens = SignedJoinTokens.from_settings(voice.join, prefix=voice.prefix)
-    runtime = VoiceRuntime(AGENT, settings=voice, identity=tokens)
-    return build_app(settings, router=runtime.router(), minter=tokens)
-
-
-def _talker_app(settings: Settings, access: KnowledgeAccess) -> FastAPI:
-    """The app whose agent is Ole5's talker, searching the knowledge base `access` reaches; its
-    client closed as the app's lifespan ends."""
-    voice = settings.voice
-    tokens = SignedJoinTokens.from_settings(voice.join, prefix=voice.prefix)
+    if access is None:
+        log.info("knowledge_base_not_set", agent="echo", fix=f"set {', '.join(ACCESS)}")
+        runtime = VoiceRuntime(ECHO_AGENT, settings=voice, identity=tokens)
+        return build_app(settings, router=runtime.router(), minter=tokens)
     kb = QdrantKnowledgeBase(access)
     runtime = VoiceRuntime(talker_agent(kb), settings=voice, identity=tokens)
     log.info("knowledge_base_set", agent="talker")

@@ -1,8 +1,9 @@
-"""The minimal example, an echo agent on the public API alone (the design's 4.2 and 9.8): its
-runtime is made with no IO, from the settings given or the environment's; `python -m
-minimal_example` sends the example's loggers and `__main__`'s to the output with the library's
-and serves it; and a call joins it and offers. No key and no network: the providers, voice's
-entry point and the identity source are the library's test fakes."""
+"""The minimal example on the public API alone (the design's 4.2 and 9.8): its runtimes, the
+helper's and the echo's, are made with no IO, from the settings given or the environment's;
+`python -m minimal_example` sends the example's loggers and `__main__`'s to the output with the
+library's and serves the helper; and a call joins the echo agent and offers. No key and no
+network: the providers, voice's entry point and the identity source are the library's test
+fakes. The helper's talker and its tool are test_helper.py's."""
 
 from __future__ import annotations
 
@@ -16,7 +17,7 @@ from pathlib import Path
 import pytest
 from minimal_example import LOGGERS
 from minimal_example import __main__ as started
-from minimal_example.app import agent, make_runtime
+from minimal_example.app import agent, helper, make_echo_runtime, make_runtime
 from t2_agentic_voice import VoiceRuntime, VoiceSettings
 from t2_agentic_voice import server as serving_facade
 from t2_agentic_voice.identity import DevIdentity
@@ -36,22 +37,27 @@ def test_the_agent_echoes_in_english_and_saudi_arabic() -> None:
     assert [language.tag for language in agent.languages] == ["en", "ar-SA"]
 
 
-def test_its_runtime_is_made_with_no_io(tmp_path: Path) -> None:
+@pytest.mark.parametrize(("make", "named"), [(make_runtime, "helper"), (make_echo_runtime, "echo")])
+def test_its_runtimes_are_made_with_no_io(
+    make: Callable[[VoiceSettings], VoiceRuntime], named: str, tmp_path: Path
+) -> None:
     settings = dev_settings(tmp_path)
-    runtime = make_runtime(settings)
+    runtime = make(settings)
     assert isinstance(runtime, VoiceRuntime)
+    assert runtime._agent is {"helper": helper, "echo": agent}[named]
     assert isinstance(runtime._identity, DevIdentity) and runtime._settings is settings
     assert not settings.storage.var_dir.exists()
 
 
-def test_its_runtime_loads_the_settings_from_the_environment(
+def test_its_runtimes_load_the_settings_from_the_environment(
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
     monkeypatch.setenv("T2V_ENV", "dev")
     assert make_runtime()._settings.env == "dev"
+    assert make_echo_runtime()._settings.env == "dev"
 
 
-def test_it_starts_with_its_loggers_and_serves_the_echo_agent(
+def test_it_starts_with_its_loggers_and_serves_the_helper(
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
     monkeypatch.setenv("T2V_ENV", "dev")
@@ -62,7 +68,7 @@ def test_it_starts_with_its_loggers_and_serves_the_echo_agent(
     for name in (*LOGGERS, "uvicorn", "t2_agentic_voice"):
         assert logging.getLogger(name).handlers, name
     [factory] = factories
-    assert factory()._settings.env == "dev"
+    assert factory()._settings.env == "dev" and factory()._agent is helper
 
 
 def test_python_m_minimal_example_starts_it(monkeypatch: pytest.MonkeyPatch) -> None:
@@ -89,5 +95,6 @@ def test_a_call_joins_the_echo_agent_and_offers(
     asyncio.run(scene())
 
 
-def test_settings_built_in_code_reach_the_runtime(settings: VoiceSettings) -> None:
+def test_settings_built_in_code_reach_the_runtimes(settings: VoiceSettings) -> None:
     assert make_runtime(settings)._settings is settings
+    assert make_echo_runtime(settings)._settings is settings

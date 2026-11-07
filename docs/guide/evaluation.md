@@ -1,17 +1,111 @@
-# Evaluation: measuring speech-to-text on your own voices
+# Evaluation: testing an agent, and measuring speech-to-text on your own voices
 
-How a team measures speech-to-text on the voices it serves, with the library's evaluation
-helpers: what each helper takes and gives back, how to record a golden set with every speaker's
-consent and keep its audio out of git, how to write the spelling guide its references follow,
-how to make a registered run and read its scorecard, and how to tell a real change from noise
-with the sign test. The method itself, from the golden set to the run history, is
-[evaluation.md](../design/evaluation.md); this page applies it with the library, and with Ole5's
-golden-set commands as the worked example.
+Two jobs with the library's testing kit and evaluation helpers. First, testing an agent: a call
+held in text, with a scripted chat model and a fake knowledge base, that runs your agent's
+instructions, tools and fixed lines through the real session with no key ("Testing an agent in
+text"). Then measuring speech-to-text on the voices you serve: what each helper takes and gives
+back, how to record a golden set with every speaker's consent and keep its audio out of git, how
+to write the spelling guide its references follow, how to make a registered run and read its
+scorecard, and how to tell a real change from noise with the sign test. The method itself, from
+the golden set to the run history, is [evaluation.md](../design/evaluation.md); this page applies
+it with the library, and with Ole5's golden-set commands as the worked example.
 
 **Status: provisional.** The two modules on this page, `t2_agentic_voice.languages` and
 `t2_agentic_voice.evals`, are provisional (D-021): either may change in any minor release, with
-the change in the changelog. They landed with M1 (plan 002), whose runs are this page's
-examples. Every number from those runs describes one speaker, Ole5's owner (D-006).
+the change in the changelog. The speech-to-text helpers landed with plan 002, whose runs are this
+page's examples; the text call and its fakes with plan 006. Every number from those runs
+describes one speaker, Ole5's owner (D-006).
+
+## Testing an agent in text
+
+`TextCall` holds a call in text. It runs the real voice session, the real talker, your tools and
+the output guard, with no audio: each of the caller's turns is typed text standing in for the
+words Whisper would have heard, the agent's speech is a fake voice that plays each clause at
+`chars_per_second` (15 characters a second), and time is a virtual clock that moves only when the
+test says. It needs no key and no network, never starts Pipecat, and gives the same result every
+run. It runs only under `env="test"`, the one place typed text may stand in for heard words, and
+writes its call's report to a folder of its own, never to your `var/`. It is a test, not a chat
+channel. Everything below comes from the `evals` facade.
+
+**The model** is the test's:
+
+- **`ScriptedLLM`** plays a script, one entry per model request:
+  `ScriptedLLM.call_tool(name, **arguments)` asks for a tool, `ScriptedLLM.reply(text)` answers,
+  and `call_tools` asks for several at once. A turn that uses a tool makes two requests, one that calls it and one that
+  answers from its result. When the script runs out, the next request fails the test
+  (`ScriptExhaustedError`), listing the requests so far and each one's last user text, so a test
+  that asked once too often says where. An entry's steps may hold a `Pause(seconds)`, the
+  model's time on the call's clock, and a `ProviderError`, a failure where it stands.
+- **`FunctionLLM(fn)`** asks `fn` for each request's steps, so a test need not count requests: it
+  can answer by the last message, the caller's words or a tool's result.
+- Both keep every request in `requests`, so a test reads what the talker sent: the prompt, the
+  history, the tools offered, a tool's result as the model read it.
+- A real model, through its port and with `clock="system"`, makes the same call a measurement:
+  every request is then paid for.
+
+**The knowledge base** is `FakeKnowledgeBase(passages, answers={query: passages})`, which
+answers each query `answers` names with its passages and any other with `passages`, and keeps
+each search it was asked in `searches` (its query, language, caller and limit). Its passages are
+written for the test, never a real base's.
+
+The guide's sample agent, a helpdesk with the knowledge tool, a wrapped function and a tool that
+may fail ([concepts.md](concepts.md), "Tools"), tested with a `FunctionLLM` that searches on the
+caller's question and then answers, in
+[test_guide_samples.py](../../tests/minimal_example/test_guide_samples.py):
+
+```python
+def answer(request: ChatRequest) -> Iterable[ScriptStep]:
+    """A fake model that searches on the caller's question, then answers from what it found."""
+    if request.messages[-1].role == "user":
+        return ScriptedLLM.call_tool("search_knowledge", query="reset my password")
+    return ScriptedLLM.reply("Choose Forgot password in the portal. The steps are on your screen.")
+```
+
+and its call, in [test_guide_samples.py](../../tests/minimal_example/test_guide_samples.py):
+
+```python
+        async with TextCall(helpdesk, llm=FunctionLLM(answer)) as call:
+            turn = await call.user("How do I reset my password?")
+            turn.expect.tool_call("search_knowledge", query="reset my password")
+            turn.expect.said(contains="Forgot password")
+            assert [card.title for card in turn.cards] == ["Reset your password"]
+        assert [search.query for search in kb.searches] == ["reset my password"]
+        assert call.violations == ()
+```
+
+A `TextCall` is entered with `async with`, which connects the call and plays its greeting; the
+repository's tests run each scene with `asyncio.run`. Its caller is a made-up one unless you give
+your own, as a tool bound to the caller's ID needs:
+`TextCall(agent, llm=llm, caller=Caller(subject="u-1"))`; its language is the agent's first unless you give one
+(`language="ar-SA"`). The quickstart's own test runs the helper in English and Saudi Arabic
+([quickstart.md](quickstart.md), "Test it with no key").
+
+**What the caller does:**
+
+| Injection | What it does |
+| --- | --- |
+| `await call.user(text)` | The caller says `text` while the agent is silent (the clock moves on until the reply playing has ended) |
+| `await call.user(text, during="agent_speaking")` | Said over the reply playing: the two-step interruption reads it |
+| `await call.user(text, at="tool_running")` | Said while a tool of the reply runs |
+| `await call.advance(seconds)` | The clock moves on: what is due by then runs, a progress line, a tool's timeout, the clauses' playing |
+| `await call.stop()` | The client's Stop |
+
+`user` returns the turn once what its words started has run as far as it can with the clock
+still: the reply written as far as the model could, its clauses still to play as the clock
+moves.
+
+**What to check**, on each turn's `expect`, each raising AssertionError with what the turn did
+instead: `tool_call(name, **args)` (the talker called it, with those among its arguments);
+`said(contains=)` (the reply as the caller heard it, or is still to hear it when no stop cut
+it); `blocked()` (the output guard blocked a clause); `cancelled(tool)`; and `language(tag)`.
+`call.violations` holds the guard's checks over every clause the talker said in the call, empty
+when it said no ID without evidence. A turn also gives what it did as data, for a runner that
+scores rather than asserts: its `fate`, the `clauses` the caller heard (each with its text,
+language, fate and the share of it that played), its `tool_calls` (each tool's arguments,
+outcome and time), its `cards`, its `blocked` clauses, `first_token_s` and `first_clause_s`
+(on the call's clock, [latency.md](latency.md)), its `model_requests` and its `usage`.
+
+The rest of this page measures speech-to-text on your own voices.
 
 ## What the library gives you, and what stays yours
 
@@ -84,8 +178,8 @@ Ole5's set holds one speaker, its owner (D-006); yours may hold more. For every 
   pass. `poe golden` accepts only the variants so checked, and a run scores only those. A take
   confirmed by mistake is corrected from the review page's "Confirmed" section: typed again, its
   confirmation no longer counts, and it comes back for its own check in the next pass, as one of
-  M1's takes did. Leaving a clip out is the owner's call: M1 left out two talk-over clips cut off
-  at their start, whose typed text the script's list of listening sounds refuses.
+  plan 002's takes did. Leaving a clip out is the owner's call: plan 002 left out two talk-over
+  clips cut off at their start, whose typed text the script's list of listening sounds refuses.
 - **Say how many voices.** While a set holds one voice, every number from it describes that
   voice alone, and is never reported as Saudi speakers in general (D-006). Ole5's scorecards say
   "one speaker" in a field that can hold nothing else.
@@ -228,7 +322,8 @@ run (evaluation.md, "Registering a measurement"). Then:
    arm runs on is the measurement commit. Make a linked worktree at it (`git worktree add`):
    every run of the measurement starts there, whatever the main branch gains meanwhile.
    `poe eval` refuses the main checkout and a worktree with changes (`git status` not empty).
-   M1's measurement commit was 1c3c4dc, and all 13 of its runs were made in one worktree there.
+   Plan 002's measurement commit was 1c3c4dc, and all 13 of its runs were made in one worktree
+   there.
 3. **Name every flag.** Every run needs `--answerer`, `--split`, `--out` and `--note`, and a
    `groq` run also `--model`, `--timeout-s`, `--price-per-hour` and `--cap-usd`; a run missing
    one is refused before anything is sent.
@@ -249,8 +344,8 @@ run (evaluation.md, "Registering a measurement"). Then:
    | `--out` | a new folder outside the worktree that git ignores (under the main checkout's `var/`, or outside the repository); its name, a lowercase letter or digit, then up to 127 lowercase letters, digits, `_`, `.` or `-`, is the run's |
    | `--note` | why the run is made, kept in its history line |
 
-   M1's runs gave `--timeout-s 6`, `--price-per-hour 0.111` for large-v3 and `0.04` for turbo,
-   `--max-rpm 10` (the owner's call: something else might use the key), `--max-attempts 4`,
+   Plan 002's runs gave `--timeout-s 6`, `--price-per-hour 0.111` for large-v3 and `0.04` for
+   turbo, `--max-rpm 10` (the owner's call: something else might use the key), `--max-attempts 4`,
    `--variant-timeout-s 120`, the `label` hint, both audio roots (`talkover` and `owner`), and
    an `--out` under the main checkout's `var/runs/` named after the run, such as `r1-large-v3`,
    and `--env-file` naming the main checkout's `.env`, which holds the key: a linked worktree has
@@ -263,16 +358,16 @@ run (evaluation.md, "Registering a measurement"). Then:
    and the `--out` folder new.
 5. **The smoke test.** Every run first sends one dev variant, a held-out run's too, so that it
    reads no held-out answer. It must pass with no failed, retried or refused request; otherwise
-   the run stops there, incomplete. `--smoke-only` sends it alone: M1's tracing check, run P,
+   the run stops there, incomplete. `--smoke-only` sends it alone: plan 002's tracing check, run P,
    was one, traced with `--tracing-endpoint` (dev runs only) to a Phoenix listening on
    127.0.0.1 only (`Get-NetTCPConnection -LocalPort <port> -State Listen` shows the address).
    A Phoenix listening on every interface lets anyone on the same network read its traces, with
-   no login; M1 found the prototype's Phoenix listening so, and ran its own on other ports.
+   no login; plan 002 found the prototype's Phoenix listening so, and ran its own on other ports.
 6. **The cap.** Before each request a `groq` run is charged what Groq bills for it, at least
    10 s of audio a request at `--price-per-hour`, and a request that would take the run past
    `--cap-usd` is never sent: the run ends there, incomplete. The plan's cap covers all its runs
    together, so before each run the spend so far (the history's) plus the run's estimate is
-   compared with the cap, and the run is given what is left: M1's cap was $5, R1 was given
+   compared with the cap, and the run is given what is left: plan 002's cap was $5, R1 was given
    `--cap-usd 4.9996` after run P, and the 13 runs spent $0.3645 in all.
 7. **While it runs.** Nothing else runs on the machine
    ([working rules](../../WORKING-RULES.md), "Measurement runs"). Each variant's result is
@@ -285,7 +380,7 @@ run (evaluation.md, "Registering a measurement"). Then:
    The line goes to the main branch in its own commit, with `poe eval-history` run in the same
    commit (GP-11); then the run worktree's file is reset
    (`git checkout -- apps/ole5-voice-agent/evals/history.jsonl`), so the next run starts clean at
-   the measurement commit. M1 carried each of its 13 lines so (`Plan 002: history, run R1` and
+   the measurement commit. plan 002 carried each of its 13 lines so (`Plan 002: history, run R1` and
    the like).
 
 ## Reading a scorecard
@@ -319,7 +414,7 @@ A run writes `scorecard.json` into its `--out` folder, labelled `"speakers": "on
   request's attempt, latency, billed seconds and outcome; any failure) and the verdict. A
   held-out scorecard holds none (below, "Held-out runs").
 
-M1's R1, large-v3 on dev (231 variants of 66 items): 99 right (0.429), WER 0.250, CER 0.103,
+Plan 002's R1, large-v3 on dev (231 variants of 66 items): 99 right (0.429), WER 0.250, CER 0.103,
 term recall 0.333, ID recall 0.571, and text from every one of the 9 empty-reference variants
 (silence share 1.0). By language: English 0.847, Saudi 0.370, MSA 0.256, mixed 0.050. A
 scorecard's requests, billed seconds and cost leave out the smoke test, while its history line's
@@ -338,12 +433,12 @@ they moved. From that count comes the smallest change one run can detect. Record
 decision and as a tech-debt row: "one run is one sample; repeated runs are the lasting fix"
 (evaluation.md).
 
-M1 ran each model twice on dev with the same code, R1 and R3 for large-v3 and R2 and R4 for
+Plan 002 ran each model twice on dev with the same code, R1 and R3 for large-v3 and R2 and R4 for
 turbo: in each pair no variant of the 231 changed its verdict and none of the 66 items moved
 (p = 1.0), and the transcripts were the same for every variant under large-v3 and for 230 of
 231 under turbo.
 So the noise moved d = 0 items, and one run detects a change of 6 items (D-024). Those pairs were
-made on one evening with one key; M3 ran large-v3's pair again on another day, R5 and R6, and
+made on one evening with one key; plan 005 ran large-v3's pair again on another day, R5 and R6, and
 again no item moved (D-066).
 
 **2. Judge by item, with the sign test.** Compare the candidate's run with the last kept run
@@ -379,11 +474,11 @@ compared by aggregates only.
 - **The header:** both runs, their commit and data digest, and a line "Settings that differ".
   Two runs whose commits, data digests or splits differ are refused, the difference named, and
   so are two whose settings differ, each setting named and never its value: a setting one run
-  records and the other lacks counts (an M1 run records only the keys it used). The model,
+  records and the other lacks counts (a run of plan 002 records only the keys it used). The model,
   the cap and the smoke-only switch (`stt.model`, `run.cap_usd`, `run.smoke_only`) may always
   differ, and `--allow-setting NAME` names another that the registered comparison varies,
   once per setting (a comparison of language hints names `run.language_hint`). The line lists
-  every setting that differs, with both values: in M1's model comparisons, only `stt.model`
+  every setting that differs, with both values: in plan 002's model comparisons, only `stt.model`
   and `run.cap_usd` differed.
 - **Variant by variant:** fixed (wrong in A, right in B), broken (right in A, wrong in B), the
   net and the unchanged, each fixed and broken variant named by its ID, and the variants left
@@ -406,7 +501,7 @@ A refusal is a log line, `comparison_not_made`, and exit code 1. The library log
 output, the stream the report is printed to, so `poe eval-compare A B > report.md` writes a
 refusal into the file and shows nothing on the terminal: check the exit code before reading it.
 
-M1's baseline, R2 (turbo) judged against R1 (large-v3): 231 variants compared, 6 fixed and 35
+Plan 002's baseline, R2 (turbo) judged against R1 (large-v3): 231 variants compared, 6 fixed and 35
 broken (net -29); 2 items better, 18 worse and 46 unchanged, p = 0.0004, beyond the noise. The
 guard read turbo worse beyond the noise on Saudi Arabic (2 better, 12 worse, p = 0.0129), the
 laptop (3 and 16, p = 0.0044) and the wired headset (1 and 8, p = 0.0391), and every other value
@@ -442,10 +537,10 @@ Held-out measures; it never chooses a change, and tuning uses dev alone (evaluat
   be worked out: a left-out `other` group's counts are the totals minus the values shown
   (TD-029).
 - **Capped by the plan.** The plan caps how many held-out runs a milestone makes, so that it
-  does not pick changes by held-out noise (evaluation.md, "Splits"): M1 made two, H1 and H2, once
+  does not pick changes by held-out noise (evaluation.md, "Splits"): plan 002 made two, H1 and H2, once
   each, after every dev run.
 
-M1's held-out runs, 106 variants of 29 items: large-v3 (H1) 41 right (0.387), WER 0.266, CER
+Plan 002's held-out runs, 106 variants of 29 items: large-v3 (H1) 41 right (0.387), WER 0.266, CER
 0.127, term recall 0.722; turbo (H2) 22 right (0.208), WER 0.397, CER 0.221, term recall 0.611.
 ID recall and text from silence were left out of both, each taken over fewer than 3 held-out
 items. The kinds of fewer than 3 items were pooled as `other` (6 items), and the `none`
@@ -454,7 +549,7 @@ large-v3 0.387 against turbo 0.208, as 0.429 against 0.303 on dev.
 
 ## Window runs
 
-A window run measures what the first part of each clip lets a model hear, the data M3 chooses
+A window run measures what the first part of each clip lets a model hear, the data plan 005 chose
 its window from.
 
 - **`--windows-ms`** (one length or several) sends only the leading window of each talk-over
@@ -471,10 +566,10 @@ its window from.
   `--out` folder, as `eval-compare` takes a run. A window at least as long as its clip is then
   not sent again: the clip's answer from that scorecard is used, marked `reused`. A scorecard
   that is not a dev run of the same model at the same commit is refused; without
-  `--clips-from`, such a window sends the whole clip, marked not reused. (In M1 it took the file
+  `--clips-from`, such a window sends the whole clip, marked not reused. (In plan 002 it took the file
   only, and the first try at W1, naming R1's folder, was refused before anything was sent.)
 
-M1's window runs, W1 to W6: 500, 750 and 1000 ms of the 90 dev talk-over clips (33 items), each
+Plan 002's window runs, W1 to W6: 500, 750 and 1000 ms of the 90 dev talk-over clips (33 items), each
 model at each length, the models alternating; at 1000 ms, 2 clips no longer than that reused
 their answers from R1 and R2. The one-word clips whose window held their word:
 
@@ -503,10 +598,10 @@ run before it is believed (evaluation.md, "Fitted, then fresh").
   ending.
 - **The page.** `uv run poe eval-history` renders it into
   [eval-history.md](../generated/eval-history.md): a table of the runs, each run's settings and
-  strata, and the spend so far (after M1's 13 runs, 17,369.7 billed seconds and $0.3645). The
+  strata, and the spend so far (after plan 002's 13 runs, 17,369.7 billed seconds and $0.3645). The
   page is never edited by hand, and a freshness test fails when it is stale (GP-11), so a line
   and the page reach the main branch in one commit.
-- **The scorecards.** Full scorecards stay out of git, in each run's `--out` folder (M1's in the
+- **The scorecards.** Full scorecards stay out of git, in each run's `--out` folder (plan 002's in the
   main checkout's `var/runs/`): a summary line alone cannot be compared item by item.
 
 ## The rest of the method

@@ -3,9 +3,10 @@
 `t2v-client.js` is the library's reference client for the browser: one ES module with no
 dependency and no build step, speaking the protocol `t2v/1` ([serving.md](serving.md)). The
 runtime serves it at `<prefix>/client/1/t2v-client.js`; a page on another origin may import it
-from there or keep a copy on its own site. This page covers what M2 and M3 build: the call, its
-events, Stop and Esc, the agent's voice lowered while the caller speaks over it, cut captions and
-push-to-talk. The `confirming` state and cards come with confirmed actions in M5.
+from there or keep a copy on its own site. This page covers the call, its events, Stop and Esc,
+the agent's voice lowered while the caller speaks over it, cut captions, the talker's cards and
+the `thinking` state, and push-to-talk. The `confirming` state comes with confirmed actions,
+which are not built yet.
 
 ## Starting a call
 
@@ -36,8 +37,9 @@ does not compare with its file):
       getToken: token,
       pushToTalk: $("push-to-talk").checked,
       on: {
-        state: (s) => state(words().states[s.state] ?? ""),
+        state: (s) => state(words().states[s.state] ?? "", s.state),
         caption,
+        card,
         notice: (n) => message(n.text),
         ended,
       },
@@ -52,12 +54,13 @@ that throws is logged to the console and the others still run.
 | Event | What the listener gets |
 | --- | --- |
 | `hello` | `{call_id, languages}`, once the data channel opens: the call's languages, its own first |
-| `state` | `{state}`: `listening`, `thinking` or `speaking` |
+| `state` | `{state}`: `listening`; `thinking`, while a reply asked for has no audio yet (the talker or one of its tools at work) or a turn's transcript is awaited; or `speaking` (below, "The agent thinking") |
 | `caption` | `{speaker, text, final, turn_id, reply_id, clause, cut}`: the caller's turn once heard (`speaker` `caller`, named by `turn_id`), or the agent's reply clause by clause as each starts playing (`agent`, named by `reply_id` and `clause`); `cut` is true for an agent's clause a stop cut while it played, sent again with the mark (below) |
+| `card` | `{title, steps, source}`: a reply's whole answer for the screen, its steps a list of text in order (empty when its source lists none) and `source` the document it comes from, `null` when there is none (below, "Cards") |
 | `duck` | `{level}`: the caller is speaking over the agent, whose voice now plays at `level` (0 to 1) of its volume until the session decides |
 | `unduck` | `{}`: the session has decided, and the agent's voice is back to full volume |
 | `volume` | `{level}`: the client changed the agent's volume, 1 at full; the client's own event, sent on each change, whatever caused it |
-| `notice` | `{kind, text}`: `error` (a turn or an echo failed) or `ended` (the call ended at a limit), its text in the call's language |
+| `notice` | `{kind, text}`: `error` (a turn's transcript failed, or a clause's speech) or `ended` (the call ended at a limit), its text in the call's language. A talker's failure, or a sentence the output guard held back, is told inside the reply instead: the `error` notice's text said and captioned as one of its clauses |
 | `ended` | `{reason}`: `hangup`, `caller_left`, `max_call`, `idle`, `transport` or `server` |
 | `connection` | `{state}`: the peer connection's state as the browser reports it |
 | `error` | A `VoiceClientError` from sending candidates, while the call goes on |
@@ -97,6 +100,50 @@ button or Esc), the server sends that clause's caption again with `cut: true`. S
 the caller heard only its start. Ole5's widget shows a cut clause muted and ended by an ellipsis,
 keeping each clause in an element of its own so the mark lands on the right one. A caller's
 caption is never cut.
+
+## Cards
+
+A talker's reply says its answer short aloud, one to three spoken sentences, and sends the whole
+to the screen as a `card`: a title, its steps in order, and the document they come from. The
+knowledge tool shows the passage that answers best as one, when it lists steps; a tool of your
+own shows one by returning a `ToolResult` with a `card` ([concepts.md](concepts.md), "Cards").
+The session sends a card only once the output guard has read its text, as it reads a clause's.
+
+The client hands the page each card as one `card` event, and drops a message that is not one
+(no title, steps that are not text). Show it beside the captions, a new card in place of the
+last, and every text as text (`textContent`): a passage's steps are the knowledge base's words,
+not your page's. Ole5's widget shows the card above the captions, so the captions growing below
+never move it, with its steps numbered and each line in the direction of its own first strong
+character (`dir="auto"`): an Arabic step reads right to left and an English one left to right,
+in a call of either language. A new call clears it. Its card, in
+[widget.js](../../apps/ole5-voice-agent/web/widget.js):
+
+```js
+// The newest card in place of the last, or none (`null`, a new call's).
+function card(c) {
+  const steps = (c?.steps ?? []).map((text) => {
+    const step = document.createElement("li");
+    step.dir = "auto";
+    step.textContent = text;
+    return step;
+  });
+  $("card-title").textContent = c?.title ?? "";
+  $("card-steps").replaceChildren(...steps);
+  $("card-source-name").textContent = c?.source ?? "";
+  $("card-source").hidden = !c?.source;
+  $("card").hidden = !c;
+}
+```
+
+## The agent thinking
+
+`state` is `thinking` while a reply has been asked for and has no audio yet: the talker waiting
+on the model, a tool running with nothing left to play, or a turn's transcript still to come.
+It turns `speaking` when the reply's first audio plays, and back to `thinking` when the reply has
+played all it has while the model still writes or a tool still runs; `listening` once it is
+done. A search that runs long gets a progress line ("I'm checking the guide for that."), which
+plays as `speaking`. Show it plainly: Ole5's widget says "Thinking" («يفكر») beside a pulsing
+dot, so a caller who hears nothing for a second knows the agent is at work.
 
 ## Push-to-talk
 
@@ -189,6 +236,7 @@ microphone: HTTPS, or `localhost` or `127.0.0.1` on the caller's own machine.
 
 `<prefix>/dev` is a call page with no code of its own: a join token field (any text for the dev
 caller), a language, Start, Stop and Hang up, push-to-talk (a switch and a Talk button held), the
-call's state, the agent's volume, its captions (a clause a stop cut marked `[cut]`) and its
-notices. It loads only the client, and answers only under `env` dev, with the dev page on, to a
-browser on the same machine ([quickstart.md](quickstart.md)).
+call's state (`thinking` while the talker or a tool works), the agent's volume, the newest card
+above the captions (its title, its steps numbered, its source), its captions (a clause a stop cut
+marked `[cut]`) and its notices. It loads only the client, and answers only under `env` dev,
+with the dev page on, to a browser on the same machine ([quickstart.md](quickstart.md)).

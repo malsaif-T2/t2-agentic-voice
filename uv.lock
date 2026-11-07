@@ -2840,11 +2840,15 @@ name = "t2-agentic-voice-minimal-example"
 version = "0.1.0"
 source = { editable = "examples/minimal" }
 dependencies = [
+    { name = "pydantic" },
     { name = "t2-agentic-voice" },
 ]
 
 [package.metadata]
-requires-dist = [{ name = "t2-agentic-voice", editable = "packages/t2-agentic-voice" }]
+requires-dist = [
+    { name = "pydantic", specifier = ">=2.13.5" },
+    { name = "t2-agentic-voice", editable = "packages/t2-agentic-voice" },
+]
 
 [[package]]
 name = "t2-agentic-voice-workspace"

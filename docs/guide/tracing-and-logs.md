@@ -46,7 +46,7 @@ does, or its own handlers print its lines twice. Your own modules log the same w
 
 Pipecat, which carries each call, logs through loguru, a logger for the whole process, and its
 lines below WARNING hold call content. The library switches Pipecat's loguru namespace off before
-it first imports Pipecat (`logging.pipecat = "off"`, the only value in M2): no line of Pipecat's
+it first imports Pipecat (`logging.pipecat = "off"`, the only value): no line of Pipecat's
 reaches any sink, loguru's default one included, and no sink is added or removed, so your own
 loguru lines are unchanged. Pipecat's failures still show, as the library's own lines
 (`transport_failed`, `pipeline_failed`) and as the events `TransportFailed` and
@@ -67,7 +67,7 @@ globally and never instruments another library.
 - **Neither:** no span leaves the process.
 
 Phoenix is run beside your app, never installed with it (its Elastic License 2.0 allows running
-it inside T2, not offering it as a service). M1 ran it on this machine with
+it inside T2, not offering it as a service). Plan 002 ran it on this machine with
 `uvx --from "arize-phoenix==21.0.0" phoenix serve`, `PHOENIX_HOST=127.0.0.1` and a
 `PHOENIX_WORKING_DIR` of its own: without `PHOENIX_HOST`, Phoenix may listen on every network
 interface with no login, and its traces hold what callers said. How long it keeps them:
@@ -84,6 +84,11 @@ call's ID (`session.id`), which is no credential.
 | `speech_to_text`, under its turn | The model, the audio's length, the language sent, the language and billed seconds returned, and the transcript (`tracing.include_transcripts`, on by default) |
 | `text_to_speech`, one per reply, under its turn (the greeting and a notice under the call) | The model, the voice, the language, the characters sent, the chunks played, the requests, the phrases played from the cache, the time to first audio, and whether a take came back cut short; never the text |
 | `call`, the root of the call's own trace | The resource attributes, and the call's report in numbers, with no text |
+
+The talker's model requests and tool calls have no span of their own yet: each model's requests
+and tokens are in the call's report (`ModelUsage`, and the `call` span's numbers), each turn's
+time to the model's first token in its times ([latency.md](latency.md)), and each tool call
+reaches a runtime's observers as `ToolStarted` and `ToolFinished`.
 
 The resource attributes, on each root span: `t2v.version`, `t2v.pipecat.version`,
 `t2v.settings.digest` (a hash of the settings with every secret left out), `t2v.agent.name`,
