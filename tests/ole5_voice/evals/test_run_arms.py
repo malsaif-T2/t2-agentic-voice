@@ -10,7 +10,7 @@ from pathlib import Path
 from typing import Literal
 
 import pytest
-from ole5_voice.agent import VERSION, VOCABULARY
+from ole5_voice.agent import NO_SEARCH_VERSION, VOCABULARY
 from ole5_voice.evals import run
 from ole5_voice.evals.items import EVALS, TERMS_FILE, load_terms
 from ole5_voice.evals.models import Item
@@ -57,7 +57,9 @@ def test_arm_w1_sends_each_language_the_prompt_ole5s_agent_would_ship(
     ((info, _, _, _),) = setup.writer.calls
     recorded = info.settings["run.prompt"]
     english = whisper_prompt(VOCABULARY.terms, "en")
-    assert recorded.startswith(f"{OLE5} (ole5 {VERSION}), sha256 ")
+    # Given no knowledge base, the factory gives the talker with no search, versioned apart;
+    # its vocabulary, all W1 reads, is the served talker's.
+    assert recorded.startswith(f"{OLE5} (ole5 {NO_SEARCH_VERSION}), sha256 ")
     assert f"en {english.kept} of {english.of} words" in recorded
     out = capsys.readouterr().out
     assert "whisper_prompt" in out and "words_kept" in out
@@ -121,7 +123,7 @@ def test_the_shown_settings_hold_the_prompt(
     argv = ["--show-settings", "--prompt-agent", OLE5]
     assert run.main(argv, parts=setup.parts()) == 0
     out = capsys.readouterr().out
-    assert "run.prompt" in out and f"{OLE5} (ole5 {VERSION}), sha256" in out
+    assert "run.prompt" in out and f"{OLE5} (ole5 {NO_SEARCH_VERSION}), sha256" in out
 
 
 def test_a_run_whose_least_cost_passes_the_cap_is_refused_before_anything_is_sent(
