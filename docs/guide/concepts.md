@@ -251,9 +251,9 @@ fixed phrases are not read.
   `ToolResult`'s `evidence`) and the caller's own heard words. A number in a passage may be said
   as a fact.
 - **A blocked clause** is never spoken. By `guard.on_block`, it and the rest of the reply are
-  dropped (`drop_rest`, the default) or only it (`drop_clause`); the call language's `error` notice
-  is said in its place, once a reply; observers get `GuardBlocked`; and the talker's next turn holds
-  a note that a number was held back, never the number.
+  dropped (`drop_rest`, the default) or only it (`drop_clause`); the `error` notice in the
+  clause's own language is said in its place, once a reply; observers get `GuardBlocked`; and
+  the talker's next turn holds a note that a number was held back, never the number.
 
 The rule is why the library's rules ask the model for numbers in digits: a number written in
 words ("twenty-one") is not read. The speaking rules then say each number in the reply's

@@ -92,7 +92,8 @@ refreshes them. A gap the grade cannot see is named by its debt row.
   `worktree.py`. Its tests near the hard limit are
   `test_scorecard.py` (389), `test_recorder_security.py` (384) and `test_held_out_groups.py`
   (381). Also debt: TD-021, TD-022 and TD-029.
-- **minimal_example** (A): 15 lines; it becomes the echo agent of the quickstart in M2.
+- **minimal_example** (A): the quickstart's two agents, the helper (the talker with one read
+  tool) and the echo.
 - **scripts** (A): the scripts are measured but outside the coverage floor (`[tool.coverage.report]
   omit`), at 97%. Its 3 duplicate runs are the look-alikes the round kept, whose inputs differ
   (`arch_module.py`, line 57, and `arch_public.py`, line 34; `harness_toml.py`, lines 86 and 93;

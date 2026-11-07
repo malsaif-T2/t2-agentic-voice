@@ -4,37 +4,56 @@ A Python library for speech-first voice agents: a live call in the browser, natu
 turn-taking and interruptions, answers from your knowledge base, and actions (such as opening a
 ticket) taken only after a clear spoken yes, in Saudi Arabic, MSA and English.
 
-**Status: M2, a call that listens and speaks.** What works today is an echo agent: the browser
-opens a live call to your backend over WebRTC, the library hears when the caller has finished a
-turn (Silero VAD and Smart Turn v3.2, on the CPU), sends the turn to Groq's Whisper and says the
-words back through Groq's Orpheus voices, with captions and a Stop button. Around it: serving
-(a process of its own, or mounted in a FastAPI app), signed join tokens, the reference browser
-client `t2v-client.js` with a dev page, typed settings, structured logs and OpenTelemetry
-traces. The talker that answers, tools, actions on a spoken yes, interruptions beyond Stop and
-the deployment come in later milestones. No tagged version exists yet: use it from its
-repository's uv workspace.
+**Status: in development; no tagged version exists yet**, so use it from its repository's uv
+workspace. What works today: the browser opens a live call to your backend over WebRTC; the
+library hears when the caller has finished a turn (Silero VAD and Smart Turn v3.2, on the CPU)
+and sends it to Groq's Whisper; the talker answers with Groq's chat model, the agent's own tools
+and its knowledge base, in short spoken clauses through Groq's Orpheus voices, with captions,
+cards of steps and a Stop button; a caller can also stop it, ask it to wait or to repeat, in
+words. Around it: serving (a process of its own, or mounted in a FastAPI app), signed join
+tokens, the reference browser client `t2v-client.js` with a dev page, typed settings, structured
+logs, OpenTelemetry traces, and a test kit that runs an agent's calls in text with a scripted
+model (`TextCall`, `ScriptedLLM`). Actions taken on a spoken yes, and the deployment, come later.
 
-An agent, as `examples/minimal/src/minimal_example/app.py` declares it:
+An agent, as `examples/minimal/src/minimal_example/app.py` declares it: a talker with one read
+tool, which needs no knowledge base.
 
 ```python
-agent = VoiceAgent(
-    name="minimal-echo",
-    languages=[
-        Language.english(greeting="Hi! Say something, and I will say it back."),
-        Language.saudi_arabic(greeting=SAUDI_GREETING),
+@tool(description="Today's opening hours of one branch, by the branch's name.")
+async def opening_hours(
+    branch: Annotated[
+        str,
+        Field(min_length=1, max_length=40, description="The branch's name, such as Olaya."),
     ],
+) -> str:
+    """The branch's hours today; the branches there are, when it names none of them."""
+    hours = HOURS.get(branch.strip().casefold())
+    if hours is None:
+        return f"No branch has that name. The branches are {', '.join(map(str.title, HOURS))}."
+    return hours
+
+
+helper = VoiceAgent(
+    name="minimal-helper",
+    languages=[
+        Language.english(greeting="Hi! Which branch's opening hours would you like to know?"),
+        Language.saudi_arabic(greeting=HELPER_GREETING),
+    ],
+    instructions=INSTRUCTIONS,
+    tools=[opening_hours],
 )
 
 
 def make_runtime(settings: VoiceSettings | None = None) -> VoiceRuntime:
-    """The echo agent's runtime, with `settings`, or those the `T2V_*` variables give (nothing
-    is read at import)."""
+    """The helper's runtime, with `settings`, or those the `T2V_*` variables give (nothing is
+    read at import)."""
     return VoiceRuntime(
-        agent, settings=settings or VoiceSettings.from_env(), identity=DevIdentity()
+        helper, settings=settings or VoiceSettings.from_env(), identity=DevIdentity()
     )
 ```
 
-Served on this machine with its dev page, from the repository's root:
+Served on this machine with its dev page, from the repository's root (the same key calls the
+chat model; `make_echo_runtime` serves the example's echo, which needs no chat model):
 
 ```bash
 uv sync

@@ -141,9 +141,9 @@ function card(c) {
 on the model, a tool running with nothing left to play, or a turn's transcript still to come.
 It turns `speaking` when the reply's first audio plays, and back to `thinking` when the reply has
 played all it has while the model still writes or a tool still runs; `listening` once it is
-done. A search that runs long gets a progress line ("I'm checking the guide for that."), which
-plays as `speaking`. Show it plainly: Ole5's widget says "Thinking" («يفكر») beside a pulsing
-dot, so a caller who hears nothing for a second knows the agent is at work.
+done. A search that runs long gets a progress line ("I'm checking the Ole5 guide for that."),
+which plays as `speaking`. Show it plainly: Ole5's widget says "Thinking" («يفكر») beside a
+pulsing dot, so a caller who hears nothing for a second knows the agent is at work.
 
 ## Push-to-talk
 
