@@ -839,6 +839,7 @@ runs"; in this order, each with its smoke first)
 - 2026-11-07, to Q22, after run W on dev: "Test it on held-out".
 - 2026-11-07, to Q23, after W1's held-out pass: "Keep the prompt".
 - 2026-11-08, to Q24, after run K's first dev round: "Either register right".
+- 2026-11-08, to Q25, after run T's smoke: "Raise it to $7".
 
 ## Tracks
 
@@ -1014,6 +1015,9 @@ embedding, the search and a second request, about 0.8 to 1.2 s. The prototype me
 *Amended 2026-11-07 (Q11, Q12):* about $2.75 in all, K2 dropped and Tn added; each runner also
 reads the key's daily request limit from Groq's headers and spreads a run over days rather than
 pass it.
+*Amended 2026-11-08 (Q25):* the cap is $7. Run T costs about $0.95 a dev pass, not the
+$0.40 estimated: each recording's greeting and reply are spoken by the Saudi voice, $40 a
+million characters (Groq's models page, read that day; the English voice $22).
 
 ## The owner's questions
 
@@ -1022,7 +1026,8 @@ knowledge set's review, asked on 2026-11-06 before any registered run and settle
 Q15 to Q18, from Track E's review, asked and settled on 2026-11-07 before any registered run;
 Q19 and Q20, from the whole-code review, and Q21, from the live smoke, asked and settled on
 2026-11-07 before any registered run; Q22, after run W's dev runs and before its held-out;
-Q23, after that held-out pass; Q24, after run K's first dev round and before its dev runs again.
+Q23, after that held-out pass; Q24, after run K's first dev round and before its dev runs again;
+Q25, after run T's smoke.
 Each answer that changes a run is a dated amendment to the registration.
 
 - **Q1. What voice-first means here.** *Settled: (a).* The eight choices above. Options: (a) approve them; (b)
@@ -1131,11 +1136,14 @@ Each answer that changes a run is a dated amendment to the registration.
   of run S's turns held to Saudi), and the fixed talker answers plain Arabic in MSA. Options:
   (a) for words with no dialect form, either register is right; (b) relabel them MSA. **The
   agent recommended (a).**
+- **Q25. The cap.** *Settled 2026-11-08: (a).* $2.01 spent of $5 by run T's smoke, about $3.70
+  left to run. Options: (a) raise it to $7; (b) keep $5 and run T's Tn and held-out on fewer
+  recordings. **The agent recommended (a).**
 
 ## What the owner does
 
 - Answer Q1 to Q10, and approve the plan (done 2026-11-06); answer Q11 to Q14, Q15 to Q18,
-  Q19 and Q20, Q21, Q22 and Q23 (done 2026-11-07), and Q24 (done 2026-11-08).
+  Q19 and Q20, Q21, Q22 and Q23 (done 2026-11-07), and Q24 and Q25 (done 2026-11-08).
 - Copy the knowledge base's access into `.env` (Q4; done 2026-11-06, under the owner's names).
 - Review the knowledge set's items (Q5, about 40 minutes; done 2026-11-07, checked by the agent
   against the knowledge base), and check 24 judged answers (Q6, about 20 minutes).
