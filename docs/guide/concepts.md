@@ -157,9 +157,9 @@ annotation, a `bind=` for a parameter it lacks), or a value it refuses, is a
 
 A tool that may run long names a progress line by a key (`progress="checking"`), and each of the
 agent's languages gives that line's text (`progress={"checking": ...}` in its preset). When
-`progress_after_s` (2.8 s by default) has passed since the caller stopped speaking and no answer
-has begun, whatever the reply is waiting on by then (the tool, the model or the voice), the line
-is spoken from the phrase cache, so the caller knows the agent is at work: one line a reply,
+`progress_after_s` (2.6 s by default, so it is heard by 3.0 s) has passed since the caller stopped
+speaking and no clause of the answer has gone to the voice, whether the tool or the model holds
+it up, the line is spoken from the phrase cache, so the caller knows the agent is at work: one line a reply,
 however many tools run. An answer that begins first goes without it, and an answer ready while
 the line plays waits for its end. Each line is synthesized once, at the runtime's start, with the
 greetings. The guide's sample agent, from

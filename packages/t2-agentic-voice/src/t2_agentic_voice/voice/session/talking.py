@@ -51,8 +51,8 @@ voice/session/call.py.
   Once its reply was stopped, or the call has ended or is ending, nothing kept plays. While
   kept, the reply has no audio, so the client is shown `thinking`.
 - **The progress line** (plan 006, Q27). A `ProgressDue` with an `after_s` waits, in the reply's
-  scope, until that long after the caller stopped speaking, whatever the reply is waiting on by
-  then (the search, the model, the voice), and is said only if no clause has been asked for by
+  scope, until that long after the caller stopped speaking, whether the search or the model
+  holds the reply up by then, and is said only if no clause has been asked of the voice by
   then, the reply is not kept and no notice took its place; past that time it is said at once,
   and once a clause was asked for never. With no `after_s` it is said as it comes.
 

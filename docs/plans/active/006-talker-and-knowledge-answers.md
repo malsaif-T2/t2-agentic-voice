@@ -808,8 +808,8 @@ runs"; in this order, each with its smoke first)
     wait is the speech-to-text and the first model request before the tool, and the second model
     request and the voice after it. Its target is the owner's call (Q27).
 - 2026-11-08: **The progress line by the caller's wait (Q27).** `Tool.progress_after_s` now
-  reads from the end of the caller's speech (2.8 s by default, so the line is heard by 3.0 s),
-  whatever the reply is waiting on; the talker gives `ProgressDue` as the tool begins, with its
+  reads from the end of the caller's speech (2.6 s by default, so the line is heard by 3.0 s),
+  whether the tool or the model holds the reply up; the talker gives `ProgressDue` as the tool begins, with its
   `after_s`, and the session says the line at that time unless a clause was asked for, the reply
   is kept or a notice took its place. A tool's `progress_after_s` is no longer tied to its
   timeout. Run T's target reads 3.0 s (`PROGRESS_BY_MS`), and T0's dev pass is run again on it.
@@ -865,8 +865,12 @@ runs"; in this order, each with its smoke first)
 - 2026-11-08: The progress line's timer is the session's, not the talker's: only the session
   knows when the caller stopped speaking and whether a clause was asked for, and the talker
   could time past the tool only by iterating the model's stream from a second task, which a
-  stream of the reply's scope must not be (D-060). Its default is 2.8 s, not 3.0 s, so the first
-  audible frame falls inside the target's 3.0 s.
+  stream of the reply's scope must not be (D-060). Its default is 2.6 s, not 3.0 s: the cached
+  lines open with up to about 0.25 s of their own silence (measured on the phrase cache), and
+  a clause asked of the voice by 2.6 s is heard by about 3.0 s, so the two meet near the target.
+  A clause already asked of the voice counts as the answer begun: it plays first in any case,
+  since a reply's audio is in the order asked. Found by the review of the change (b69071f),
+  which read 2.8 s as past the target.
 
 ## The owner's decisions
 

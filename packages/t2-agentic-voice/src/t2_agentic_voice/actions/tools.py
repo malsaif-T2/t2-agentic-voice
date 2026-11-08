@@ -7,7 +7,8 @@ to have its result discarded (the design's 3.2).
   model of the arguments the talker gives, the only schema it sees; the `function`, async or
   sync; its `timeout_s`; its `progress` line's key (`Language.progress`, domain/declaration.py)
   and `progress_after_s`, how long after the caller stopped speaking that line is said if no
-  answer has begun, whatever the reply is waiting on (plan 006, Q27); what a barge-in does to
+  answer has been asked of the voice, whether the tool or the model holds it up (plan 006, Q27);
+  what a barge-in does to
   it (`on_interrupt`: `cancel`, the default for a read tool, or `finish`); and `bind`, its
   parameters filled from the session, never shown to the talker (`from_caller`).
 - **`@tool`** makes one of an async or a sync function (a sync one runs in a worker thread),
@@ -63,8 +64,9 @@ OnInterrupt = Literal["cancel", "finish"]
 _CALLER_FIELD = r"^(subject|display_name|locale|attributes\.[A-Za-z0-9_.-]{1,64})$"
 _ATTRIBUTES = "attributes."
 # Seconds after the caller stopped speaking with no answer begun that a tool's progress line is
-# said by default: a little under 3.0 s, so the caller hears it by then (plan 006, Q27).
-PROGRESS_AFTER_S: Final = 2.8
+# said by default: under 3.0 s by the cached line's own leading silence (up to about 0.25 s) and
+# the way out, so the caller hears it by then (plan 006, Q27).
+PROGRESS_AFTER_S: Final = 2.6
 # What fixes each field of a tool that `from_function` cannot build.
 _FIXES = {
     "name": 'name the tool with letters, digits, underscores and hyphens, as name="lookup_device"',
