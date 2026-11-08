@@ -93,9 +93,9 @@ def test_how_to_answer_names_each_of_several_causes_briefly(tag: Tag) -> None:
     sections = instructions()[tag].split("\n\n")
     [answer] = [section for section in sections if section.startswith("How you answer:")]
     wanted = (
-        "- When the knowledge base gives several causes, places or conditions (a permission an "
-        "action needs, for example), name each in a few words, up to three, in one spoken "
-        "sentence."
+        "- When the knowledge base says an action needs a permission, say so in a few words, even "
+        "in the shortest answer. When it gives several causes, places or conditions, name each in "
+        "a few words, up to three, in one spoken sentence."
     )
     assert answer.splitlines().count(wanted) == 1
     assert "search" not in wanted
