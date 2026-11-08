@@ -65,7 +65,8 @@ class Speaker:
     scope of its own (`scope`), each clause captioned as it plays, each notice told, a stop, a
     reply said again (`repeat`), and each reply's end, counted, traced, recorded and kept in
     the heard history (`books`). When a reply ends, however, its scope is cancelled, its
-    `AgentSpeechEnded` goes out, its span ends, and the session hears of it (`ended`)."""
+    `AgentSpeechEnded` goes out, its span ends, and the session hears of it (`ended`); and
+    of any stop that dropped the replies in progress (`stopped`)."""
 
     def __init__(
         self,
@@ -74,9 +75,11 @@ class Speaker:
         books: CallBooks,
         *,
         ended: Callable[[Reply], Awaitable[None]],
+        stopped: Callable[[float], Awaitable[None]] | None = None,
     ) -> None:
         self.playback = Playback()
         self._setup, self._commands, self._ended = setup, commands, ended
+        self._stopped = stopped
         self._usage, self._trace, self._recorder = books.usage, books.trace, books.recorder
         self._events, self._history = books.events, books.history
         self._tag = setup.language.tag
@@ -306,6 +309,8 @@ class Speaker:
             if client:
                 self._events.interrupted(reply.turn_id)
             await self._end(reply)
+        if self._stopped is not None:
+            await self._stopped(at)
 
     async def cut(self, at: float) -> None:
         """The call ended: every reply still asked for ends, as much of it played as did."""

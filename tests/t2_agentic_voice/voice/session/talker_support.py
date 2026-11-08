@@ -144,13 +144,15 @@ def talker_call(
     settings: VoiceSettings, script: Script | None = None, **given: Any
 ) -> tuple[FakeSessionIO, CallSession, FakeTalker]:
     """A session of `AGENT` (unless another is given) whose talker is a `FakeTalker` of
-    `script`, on the fake session I/O built with `given`."""
+    `script`, on the fake session I/O built with `given` (`overlap_model`, the chat model of
+    an uncertain overlap, none unless given)."""
     agent = given.pop("agent", AGENT)
+    overlap_model = given.pop("overlap_model", None)
     io = FakeSessionIO(settings, agent=agent, phrases=given.pop("phrases", phrases(agent)), **given)
     talker = FakeTalker(io.clock, commands=io.commands.commands)
     if script is not None:
         talker.script = script
-    setup = dataclasses.replace(io.setup, talker=talker)
+    setup = dataclasses.replace(io.setup, talker=talker, overlap_model=overlap_model)
     io.setup = setup
     session = CallSession(setup, io.commands)
     io.attach(session)

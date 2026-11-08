@@ -11,7 +11,9 @@ the library's runtime.
   (`search_tool`, the library's `knowledge_tool`), reading the top `SEARCH_LIMIT` passages
   whole, with a progress line in each language (`PROGRESS`) for a search that runs long; its
   vocabulary holds Ole5's product terms for the Whisper prompt every call sends (run W kept
-  its arm W1, Q23); its `version` is stamped on its traces. With no knowledge base (run T's
+  its arm W1, Q23); its `version` is stamped on its traces; and a chat model decides a short
+  overlap of two or more words the rule would let go on (`ask_on_uncertain_overlaps`, D-069;
+  the owner's ruling on run U, Q28). With no knowledge base (run T's
   pass Tn), the same talker with no tool, told in place of the instructions' search section
   that it has no search (`NO_SEARCH`), since a model told to search with no tool offered
   writes a call to one (the live probe of 2026-11-07: Groq refused it, `tool_use_failed`).
@@ -41,7 +43,7 @@ NAME: Final = "ole5"
 # Stamped on every trace of the talker, with the agent's fingerprint: the date it was last
 # changed, and the change of that day; the talker with no search (run T's pass Tn) is versioned
 # apart, so a run's record tells the two apart.
-VERSION: Final = "2026-11-07.5"
+VERSION: Final = "2026-11-08.1"
 NO_SEARCH_VERSION: Final = f"{VERSION}+no-search"
 # oo-lee faayf
 PRONOUNCE: Final = {
@@ -182,6 +184,7 @@ def declare(tools: Sequence[DeclaredTool] = (), *, search: bool = True) -> Voice
         instructions=instructions(search=search),
         tools=tools,
         vocabulary=VOCABULARY,
+        ask_on_uncertain_overlaps=True,
     )
 
 

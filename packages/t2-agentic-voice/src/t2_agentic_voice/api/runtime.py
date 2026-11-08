@@ -265,6 +265,9 @@ class VoiceRuntime:
         observing = asyncio.create_task(self._observe(self._events))
         stack.push_async_callback(_drained, self._events, observing)
         talker = talkers(agent, settings, providers.chat)  # each call's, for the talker
+        talking: dict[str, Any] = {}
+        if talker is not None:
+            talking = {"talker": talker, "chat": providers.chat}
         calls = self._calls(
             agent=agent,
             settings=settings,
@@ -274,7 +277,7 @@ class VoiceRuntime:
             tracing=tracing,
             emit=self._emit,
             clock=self._clock,
-            **({} if talker is None else {"talker": talker}),
+            **talking,
         )
         stack.push_async_callback(calls.aclose)
         await calls.start()

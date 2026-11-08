@@ -184,6 +184,7 @@ class TextCall:
             emit=self._emitted.append,
             clock=clock,
             talker=talker,
+            overlap_model=self.llm,
         )
         self._session = CallSession(setup, side)
         side.start(self._session)

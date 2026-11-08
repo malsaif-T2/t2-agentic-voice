@@ -181,5 +181,6 @@ def test_the_runtime_hands_its_calls_the_talkers_and_closes_the_chat_model(
     asyncio.run(scene())
     assert chat.closed
     (given,) = built
+    assert given["chat"] is chat  # the model of an uncertain overlap, D-069
     talker = given["talker"](TalkerCall(call_id="c", caller=Caller(subject="s"), language="en"), 0)
     assert isinstance(talker, ChatTalker) and talker.model is chat

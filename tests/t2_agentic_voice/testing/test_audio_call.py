@@ -14,7 +14,7 @@ import pytest
 from t2_agentic_voice.core.config import VoiceSettings
 from t2_agentic_voice.core.events import Interrupted
 from t2_agentic_voice.domain.ports.speech_to_text import AudioClip
-from t2_agentic_voice.evals import AudioCall
+from t2_agentic_voice.evals import AudioCall, ScriptedLLM
 from t2_agentic_voice.testing import audio_call
 from t2_agentic_voice.voice import file_transport
 from t2_agentic_voice.voice.file_transport import FedCall
@@ -93,6 +93,21 @@ def test_each_clip_is_a_fresh_call_over_the_reply_its_greeting(
     assert len(said.pcm16) == 2 * round(len("Another.") * 0.05 * said.sample_rate)
     assert phrases.audio("Another.", language="ar").pcm16 == b""  # another language's: silence
     assert phrases.audio(language.echo_frame, language="ar-SA").pcm16 == b""
+
+
+def test_its_chat_model_reaches_its_calls_for_an_uncertain_overlap(
+    feed: FakeFeed, settings: VoiceSettings
+) -> None:
+    chat = ScriptedLLM([])
+    replay = AudioCall(settings=settings, stt=FakeSpeechToText(), tts=FakeTextToSpeech(), chat=chat)
+
+    async def run() -> None:
+        await replay.start()
+        await replay.aclose()
+
+    asyncio.run(run())
+    (calls,) = feed.built
+    assert calls.built["chat"] is chat
 
 
 def test_what_the_replay_refuses_before_any_call(feed: FakeFeed, settings: VoiceSettings) -> None:

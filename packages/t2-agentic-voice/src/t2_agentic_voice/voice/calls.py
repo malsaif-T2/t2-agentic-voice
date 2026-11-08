@@ -85,6 +85,7 @@ from t2_agentic_voice.core.identity import Caller, Consent
 from t2_agentic_voice.core.logging import get_logger, hold_transport_loggers
 from t2_agentic_voice.core.tracing import Tracing
 from t2_agentic_voice.domain.declaration import Language, VoiceAgent
+from t2_agentic_voice.domain.ports.chat_model import ChatModel
 from t2_agentic_voice.domain.ports.speech_to_text import SpeechToText
 from t2_agentic_voice.domain.ports.text_to_speech import TextToSpeech
 from t2_agentic_voice.voice.loguru_policy import switch_pipecat_off
@@ -185,6 +186,7 @@ class CallsFactory(Protocol):
         emit: EventSink,
         clock: Clock = SYSTEM_CLOCK,
         talker: TalkerFactory | None = None,
+        chat: ChatModel | None = None,
     ) -> Calls:
         """voice's entry point for the runtime's calls, built with no IO."""
 
@@ -196,8 +198,10 @@ class VoiceCalls:
     `emit`, its times on `clock`. Each call's speech detector comes from `speech_detector` and
     its turn analyzer from `turn_analyzer`, each called once per call, off the event loop; None
     builds Silero VAD and Smart Turn v3.2, each loading its model for the call. A call of an
-    agent that runs the talker gets its own, built by `talker` (voice/talkers.py). Built cheaply,
-    with no IO; `start` imports onnxruntime and warms one pair of models."""
+    agent that runs the talker gets its own, built by `talker` (voice/talkers.py), and `chat`,
+    the chat model that decides an overlap the rule left uncertain, for an agent that asks
+    for it (D-069). Built cheaply, with no IO; `start` imports onnxruntime and warms one pair
+    of models."""
 
     def __init__(
         self,
@@ -211,10 +215,12 @@ class VoiceCalls:
         emit: EventSink,
         clock: Clock = SYSTEM_CLOCK,
         talker: TalkerFactory | None = None,
+        chat: ChatModel | None = None,
         speech_detector: Callable[[], VADAnalyzer] | None = None,
         turn_analyzer: Callable[[], BaseTurnAnalyzer] | None = None,
     ) -> None:
         self._talker = talker if talks(agent, settings, talker) else None
+        self._chat = chat
         self._agent = agent
         self._settings = settings
         self._stt = stt
@@ -364,6 +370,7 @@ class VoiceCalls:
             talker=talker_for(
                 self._talker, call_id=call_id, caller=caller, language=language, clock=self._clock
             ),
+            overlap_model=self._chat if self._talker is not None else None,
         )
         detector, analyzer = detectors
         return CallPipeline(

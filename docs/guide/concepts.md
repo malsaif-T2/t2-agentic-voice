@@ -371,6 +371,20 @@ deciding:
 | 7 | At least `interruptions.min_words` (2) real words | stops: new words, or a correction when the first is a no word |
 | | Fewer | goes on |
 
+**When the rule is unsure.** Steps 6 and 7 let the reply go on for want of words, so a short
+request («أبغى موظف», "I want an employee") said over a reply can be ignored. An agent that
+declares `ask_on_uncertain_overlaps=True` (off by default, so an agent that does not ask for it
+and any scripted model see no new request) has a chat model decide when the rule goes on at step
+6 or 7 for the transcript that decides the overlap and its words, as the rule splits them, number
+two or more; a single word, a window's transcript and the rule's own stops never ask it. It is
+one request, `openai/gpt-oss-120b` at low reasoning, counted in the call's usage, in the
+overlap's own lifetime: the reply plays on, ducked, and the overlap stays undecided (its `unduck`
+waiting) until the model answers or a second passes on the call's clock. `stop` ends the agent's
+speech with `Interrupted` reason `model`, the turn's own words going to the talker as for any new
+request; `go_on`, anything else, a failure or the timeout leave the rule's verdict, logged by
+kind, and the overlap ends with its one `unduck` either way. A stop, or the call's end, while it
+waits cancels the request, and nothing more happens.
+
 **What follows a stop, with a talker.** The stop goes out before any model request, so the
 talker adds nothing to the time a stop takes. Then the turn's own words, whole, reach the talker
 beside the reply they cut, the stop word included, and the talker reads what they mean from the
@@ -415,7 +429,8 @@ two-step interruption above.
 Each decision reaches the runtime's observers as `Interrupted` (the `events` facade): its `kind`
 (`stop`, `correction`, `new_words`, or `false` when the agent went on), its `reason` (the step
 that decided: `no_words`, `stop_word`, `repeat_word`, `own_words`, `listening`, `short_output`,
-`enough_words` or `too_few_words`), and its `turn_id`, the turn the cut reply answered. The Stop
+`enough_words`, `too_few_words`, or `model`, a chat model's stop on an uncertain overlap), and its
+`turn_id`, the turn the cut reply answered. The Stop
 button and Esc give `kind` `stop` with no `reason`.
 
 ### Whole commands said while the agent is silent

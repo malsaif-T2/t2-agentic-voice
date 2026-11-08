@@ -230,9 +230,11 @@ class VoiceAgent(Declared):
     (domain/words.py), the presets' unless the team extends them. The talker's parts, each
     optional (domain/talker_declaration.py): `instructions`, one text, or one per language tag
     for every language it speaks; `tools`, each name once, each progress line in every
-    language; `vocabulary`, the product terms for the Whisper prompt; and `version`, stamped on
-    its traces. It runs the talker when it declares instructions (`instructed`). Frozen, with no
-    IO; built once and handed to the runtime."""
+    language; `vocabulary`, the product terms for the Whisper prompt; `version`, stamped on its
+    traces; and `ask_on_uncertain_overlaps`, whether a chat model decides the short overlaps of
+    two or more words the rule would let go on (D-069; False, so an agent that does not ask for
+    it, and any test script, sees no new request). It runs the talker when it declares
+    instructions (`instructed`). Frozen, with no IO; built once and handed to the runtime."""
 
     name: str
     # Given as any sequence (a list, as the design writes it), kept as a tuple.
@@ -243,6 +245,7 @@ class VoiceAgent(Declared):
     tools: Sequence[Annotated[DeclaredTool, PlainValidator(a_tool)]] = ()
     vocabulary: Annotated[Vocabulary, BeforeValidator(a_vocabulary)] = Vocabulary()
     version: str | None = Field(default=None, pattern=r"^[\x21-\x7e]{1,64}$")
+    ask_on_uncertain_overlaps: bool = False
 
     @field_validator("name")
     @classmethod

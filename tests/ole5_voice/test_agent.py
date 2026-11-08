@@ -100,7 +100,7 @@ def test_how_to_answer_names_each_of_several_causes_briefly(tag: Tag) -> None:
     assert answer.splitlines().count(wanted) == 1
     assert "search" not in wanted
     assert answer in instructions(search=False)[tag]
-    assert VERSION == "2026-11-07.5"
+    assert VERSION == "2026-11-08.1"  # D-069: the talker asks about uncertain overlaps
 
 
 @pytest.mark.parametrize("tag", ["ar-SA", "en"])

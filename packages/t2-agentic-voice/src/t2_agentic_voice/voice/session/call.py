@@ -95,7 +95,9 @@ class CallSession:
         books = CallBooks.of(setup)
         self._usage, self._recorder, self._events = books.usage, books.recorder, books.events
         self._trace, self.history = books.trace, books.history  # what the caller heard
-        self._speaker = Speaker(setup, commands, books, ended=self._reply_ended)
+        self._speaker = Speaker(
+            setup, commands, books, ended=self._reply_ended, stopped=self._replies_stopped
+        )
         self._playback = self._speaker.playback
         self._turns = TurnBook(setup, books, listen=self._listen, playback=self._playback)
         self._interrupter = Interrupter(
@@ -106,6 +108,8 @@ class CallSession:
             turns=self._turns,
             over=self._over,
             answer=self._answer,
+            guarded=self._guarded,
+            sync=self._sync_state,
         )
         self._talking: Talking | None = None
         if setup.talker is not None:
@@ -283,6 +287,11 @@ class CallSession:
                 self._turns.ended(turn, "answered")
         self._turns.settle(turn)
 
+    async def _replies_stopped(self, at: float) -> None:
+        """A stop dropped the replies in progress (the speaker's word, whoever asked): a chat
+        model's request on an uncertain overlap is cancelled (overlap_ask.py)."""
+        await self._interrupter.asks.stopped(at)
+
     async def _reply_ended(self, reply: Reply) -> None:
         """A reply ended, however (the speaker's word): its turn settles, and an `ended` notice
         ends the call."""
@@ -304,6 +313,7 @@ class CallSession:
         not yet heard is unfinished."""
         self._ended, self._ended_at = reason, self._setup.clock.wall()
         self._limits.stop()
+        await self._interrupter.asks.end()
         await self._speaker.cut(at)
         if self._talking is not None:
             await self._talking.end()

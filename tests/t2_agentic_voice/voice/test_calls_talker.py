@@ -12,6 +12,7 @@ from t2_agentic_voice.core.config import VoiceSettings
 from t2_agentic_voice.core.identity import Caller, Consent
 from t2_agentic_voice.core.tracing import Tracing
 from t2_agentic_voice.domain.declaration import Language, VoiceAgent
+from t2_agentic_voice.testing.llm_fakes import ScriptedLLM
 from t2_agentic_voice.voice.calls import VoiceCalls
 from t2_agentic_voice.voice.file_transport import file_output
 
@@ -48,7 +49,8 @@ def test_each_call_of_the_talker_gets_its_own_and_the_early_start(
         built.append((call, on))
         return object()
 
-    calls = _calls(settings, AGENT, talker=factory, clock=clock)
+    chat = ScriptedLLM([])
+    calls = _calls(settings, AGENT, talker=factory, chat=chat, clock=clock)
     language = AGENT.languages[0]
     pipeline = calls._pipeline(
         "call-7",
@@ -61,7 +63,8 @@ def test_each_call_of_the_talker_gets_its_own_and_the_early_start(
     ((call, on),) = built
     assert (call, on) == (TalkerCall(call_id="call-7", caller=CALLER, language="en"), clock)
     assert pipeline.setup.talker is not None and pipeline.stt_bridge._early
-    echo = _calls(settings, ECHO)._pipeline(
+    assert pipeline.setup.overlap_model is chat  # for an agent that asks about uncertain overlaps
+    echo = _calls(settings, ECHO, chat=chat)._pipeline(
         "call-8",
         (ToneVAD(), None),
         caller=CALLER,
@@ -70,3 +73,4 @@ def test_each_call_of_the_talker_gets_its_own_and_the_early_start(
         output=file_output(),
     )
     assert echo.setup.talker is None and not echo.stt_bridge._early
+    assert echo.setup.overlap_model is None

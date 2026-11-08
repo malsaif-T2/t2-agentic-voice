@@ -126,4 +126,4 @@ def test_a_correction_said_while_the_search_runs_lands_in_it_and_is_answered() -
     assert first.fate in ("cut", "rolled_back") and len(kb.searches) == 2
     assert correction.fate == "answered" and correction.said
     checks = _checked("s05_correction", held)
-    assert checks[0].search and checks[1].search and checks[1].language
+    assert checks[0].search and checks[1].search is None and checks[1].language  # Q29: unchecked

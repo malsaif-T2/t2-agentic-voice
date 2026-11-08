@@ -24,10 +24,14 @@ silent, for a command said whole (`alone`).
   else is answered, the echo saying back what followed; after a repeat request, new words (no
   whole command, at least `min_words` words) are answered so, and the repeat stands otherwise.
 
+A verdict to go on for want of words on two or more words, in a call whose agent asks for it,
+leaves the overlap undecided for a chat model's word (overlap_ask.py, D-069), the reply playing on
+ducked, its `stop` carried out as new words (`model_said`); everything above then follows.
+
 Each `unduck` waits until no overlap of the call is undecided (`Overlaps.settle`). The turn's own
-transcript that comes while its overlap's whole transcript is still awaited is held, and taken
-once the overlap is decided (and its window's repeat request followed). Every verdict judged is a
-line of the call's timeline, when it is recorded.
+transcript that comes while its overlap's whole transcript is still awaited, or the model's word,
+is held, and taken once the overlap is decided (and its window's repeat request followed). Every
+verdict judged is a line of the call's timeline, when it is recorded.
 
 A turn said while the agent was silent (no overlap) is read whole under `two_step`
 (domain/interruptions.py's `whole_command`): a repeat request says the last reply again, and a
@@ -69,10 +73,12 @@ from t2_agentic_voice.voice.session.books import CallBooks
 from t2_agentic_voice.voice.session.heard import HeardWords
 from t2_agentic_voice.voice.session.io import CallSetup, Commands
 from t2_agentic_voice.voice.session.overlap import Overlaps, OverlapState, answers
+from t2_agentic_voice.voice.session.overlap_ask import OverlapAsks
 from t2_agentic_voice.voice.session.playback import Reply
 from t2_agentic_voice.voice.session.report import TurnLog
 from t2_agentic_voice.voice.session.session_events import Transcribed, Transcribing, TurnOpened
 from t2_agentic_voice.voice.session.speaker import Speaker
+from t2_agentic_voice.voice.session.talking import Guarded
 from t2_agentic_voice.voice.session.turn_book import TurnBook
 
 # Answer the caller's turn: the session's echo of its own transcript (call.py).
@@ -86,7 +92,8 @@ _STOPS: Mapping[WholeCommand, Verdict] = {
 
 class Interrupter:
     """One call's overlaps as the session carries them out; `over` says whether the call has
-    ended or is ending, and `answer` answers a turn."""
+    ended or is ending, `answer` answers a turn, and `guarded` and `sync` run a chat model's
+    word on an uncertain overlap as a step of the session's (overlap_ask.py)."""
 
     def __init__(
         self,
@@ -98,8 +105,11 @@ class Interrupter:
         turns: TurnBook,
         over: Callable[[], bool],
         answer: Answer,
+        guarded: Guarded,
+        sync: Callable[[], Awaitable[None]],
     ) -> None:
         self._commands, self._speaker, self._turns = commands, speaker, turns
+        self._sync = sync
         self._usage, self._recorder, self._events = books.usage, books.recorder, books.events
         self._over, self._answer = over, answer
         self._two_step = setup.settings.interruptions.mode == "two_step"
@@ -107,6 +117,7 @@ class Interrupter:
         self._min_words = setup.settings.interruptions.min_words
         self._overlaps = Overlaps(setup)
         self._talker = setup.talker is not None
+        self.asks = OverlapAsks(setup, books, guarded=guarded, over=over, decide=self.model_said)
         self._held: dict[TurnId, tuple[TurnLog, HeardWords | None, Transcribed]] = {}
         self._repeats: set[TurnId] = set()  # each window's repeat request still to follow
 
@@ -146,6 +157,7 @@ class Interrupter:
             return
         self._judged(event, verdict)
         if state.decided is None:
+            self._ask(state)
             return
         if event.turn_id in self._repeats:
             await self._follow(state, event.at)
@@ -168,6 +180,10 @@ class Interrupter:
             verdict = self._overlaps.judge(event, played=self._played(state), ended_at=ended)
             if verdict is not None:
                 self._judged(event, verdict)
+                if state.asking is not None:  # a model is asked: the turn waits for its word
+                    self._held[turn.turn_id] = (turn, heard, event)
+                    self._ask(state)
+                    return
                 await self._act(state, verdict, event.at)
         await self._take(turn, heard, event)
 
@@ -186,6 +202,25 @@ class Interrupter:
             await self._repeat(turn, event.at)
         self._turns.ended(turn, "command")
         self._turns.settle(turn)
+
+    def _ask(self, state: OverlapState) -> None:
+        """The overlap's transcript waits for a chat model's word: its request starts, off the
+        session's lock (overlap_ask.py), the reply playing on ducked."""
+        if state.asking is not None:
+            spoken = self._speaker.playback.reply(state.reply_id)
+            self.asks.start(state, "" if spoken is None else spoken.text)
+
+    async def model_said(
+        self, state: OverlapState, verdict: Verdict, event: Transcribed, at: float
+    ) -> None:
+        """The model's word (or the rule's when it gave none) decided the overlap: carried out
+        as a step of the session's, a turn's own transcript held for it then taken."""
+        self._judged(replace(event, at=at), verdict)
+        await self._act(state, verdict, at)
+        held = self._held.pop(state.turn_id, None)
+        if held is not None:
+            await self._take(*held)
+        await self._sync()
 
     def command(self, heard: HeardWords | None) -> WholeCommand | None:
         """What `heard`, a turn said while the agent was silent, asks as a whole under

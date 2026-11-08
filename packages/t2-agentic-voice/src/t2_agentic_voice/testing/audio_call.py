@@ -155,6 +155,7 @@ class AudioCall:
             tracing=Tracing(),
             emit=self._emit,
             talker=self._talkers(),
+            chat=self.chat,
         )
         await self._calls.start()
 
