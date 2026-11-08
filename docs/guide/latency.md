@@ -56,7 +56,8 @@ result, before step 5.
   kept, and nothing goes to the voice before the hold has passed. If the caller speaks again within the
   hold, that work is cancelled and the turn goes on, so a resumed turn costs a model request
   (counted in the call's usage), never a reply to half a question. A client's Stop in the hold
-  cancels it too.
+  cancels it too. While a reply to an earlier turn is still in progress the turn has no early
+  start, so the model reads the call after that reply is stopped.
 - **Speech while the model writes.** Each clause goes to the voice as soon as it is whole, so
   the caller hears the first while the model writes the rest; the library's rules ask the model
   for a short first sentence ([writing-for-voice.md](writing-for-voice.md)).

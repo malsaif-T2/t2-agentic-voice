@@ -38,7 +38,8 @@ voice/session/call.py.
   answering. Once the call has ended or is ending (its `ended` notice) nothing kept plays: the
   work is cancelled. A client's `stop` in the hold cancels the work too (`stopped`), and the
   turn is answered by nothing (`rolled_back`: the reply it began was stopped before any
-  played).
+  played). While a reply to an earlier turn is in progress there is no early start: the talker
+  would read the call before that reply is stopped, and `answer` stops it first (TD-117).
 - **The kept reply** (plan 006, Q19). While a newer turn of the caller's is open, from its
   `TurnOpened` until it is taken (`taken`: its own transcript answered, a command, or heard as
   nothing), and is no overlap of a reply of the talker's (its speech began before any of that
@@ -81,6 +82,7 @@ from t2_agentic_voice.core.logging import get_logger
 from t2_agentic_voice.voice.session.books import CallBooks
 from t2_agentic_voice.voice.session.heard import HeardWords
 from t2_agentic_voice.voice.session.io import CallSetup
+from t2_agentic_voice.voice.session.playback import Reply
 from t2_agentic_voice.voice.session.report import TurnLog
 from t2_agentic_voice.voice.session.scope import CancelScope
 from t2_agentic_voice.voice.session.speaker import Speaker
@@ -151,6 +153,8 @@ class Talking:
         """The turn's `held` transcript came while its hold runs: the talker starts on it, its
         events kept until the hold ends (the module's early start)."""
         if turn.turn_id not in self._holding or turn.turn_id in self._talks:
+            return
+        if self._earlier(turn.turn_id) is not None:
             return
         scope = CancelScope(name=f"held-{turn.turn_id}", clock=self._clock)
         talk = Talk(turn_id=turn.turn_id, words=heard.text, scope=scope, early=True)
@@ -278,14 +282,20 @@ class Talking:
         """Before `turn` is answered: the replies in progress to earlier turns stopped, their
         work cancelled, with one `Interrupted`; none when one answers this turn or a later
         one."""
-        playback = self._speaker.playback
-        answering = [r for r in playback.in_progress() if r.turn_id is not None]
-        if not answering or max(r.turn_id or 0 for r in answering) >= turn.turn_id:
+        newest = self._earlier(turn.turn_id)
+        if newest is None:
             return
-        newest = answering[-1]
         await self._speaker.stop(at, client=False)
         turn.cut_reply = turn.cut_reply if turn.cut_reply is not None else newest.reply_id
         self._events.interrupted(newest.turn_id, "new_words")
+
+    def _earlier(self, turn_id: TurnId) -> Reply | None:
+        """The newest reply in progress to an earlier turn; None when one answers `turn_id` or
+        a later turn, or none is in progress."""
+        answering = [r for r in self._speaker.playback.in_progress() if r.turn_id is not None]
+        if not answering or max(r.turn_id or 0 for r in answering) >= turn_id:
+            return None
+        return answering[-1]
 
     async def _run(self, talk: Talk, turn: TalkerTurn) -> None:
         """Iterate the talker's reply in `talk`'s scope, each event kept while held or kept,

@@ -893,6 +893,11 @@ runs"; in this order, each with its smoke first)
   predate the timer, so no run has yet heard the line at its new time, and the live calls are
   where it is first heard. The no-search times stand on dev's 12 recordings (median 1.36 s,
   90th percentile 1.48 s).
+- 2026-11-09: **TD-117's early start, before the live calls.** A turn held while a reply to an
+  earlier turn is in progress no longer starts early, so its transcript takes `answer`'s path,
+  which stops that reply first: the talker reads the reply as cut and its turn as rolled back.
+  This replaces the rebuild the debt row named, which would have spent a model request to reach
+  the same place. A test failed on the old code and passes now; the other debt in TD-117 stays.
 
 ## Decision log
 

@@ -103,6 +103,34 @@ def test_a_clause_due_in_the_newer_turns_hold_is_kept(
         assert talker.turns[1].words == WORDS
 
 
+def test_a_turn_held_while_an_earlier_search_runs_reads_the_call_after_that_reply_is_stopped(
+    settings: VoiceSettings,
+) -> None:
+    """TD-117: no early start while a reply to an earlier turn is in progress, so the talker,
+    started once the turn is answered, reads that reply as cut and its turn as rolled back."""
+    io, _, talker = talker_call(two_step(settings), _search)
+
+    async def drive() -> None:
+        await _searching(io)
+        await io.clock.advance(0.5)
+        await io.turn_held(1)
+        await io.transcribing(1, part="held")
+        await io.clock.advance(0.3)
+        await io.transcribed(1, WORDS, language="en", part="held")
+        await settle()
+        assert [t.turn_id for t in talker.turns] == [0]  # nothing started on the held words
+        await io.clock.advance(0.3)
+        await io.turn_closed(1)
+        await io.transcribed(1, WORDS, language="en")
+        await settle()
+
+    asyncio.run(drive())
+    handed = talker.turns[1]
+    assert (handed.words, handed.cut_reply) == (WORDS, 1)
+    assert [(t.turn_id, t.fate) for t in handed.conversation.turns] == [(0, "rolled_back")]
+    assert [s.text for s in speaks(io, 2)] == ["Exporting is under Tickets."]
+
+
 @pytest.mark.parametrize("later", ["", WORDS], ids=["nothing", "words"])
 def test_a_reply_opened_while_a_newer_turn_is_open_is_kept_behind_it(
     settings: VoiceSettings, later: str
