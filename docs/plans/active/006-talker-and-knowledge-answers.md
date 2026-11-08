@@ -799,6 +799,7 @@ runs"; in this order, each with its smoke first)
 - 2026-11-07, to Q21, from the live smoke: "Vary the first line".
 - 2026-11-07, to Q22, after run W on dev: "Test it on held-out".
 - 2026-11-07, to Q23, after W1's held-out pass: "Keep the prompt".
+- 2026-11-08, to Q24, after run K's first dev round: "Either register right".
 
 ## Tracks
 
@@ -906,6 +907,12 @@ smallest k whose share of expected points found is within 0.05 of k = 8's; Ole5'
 reads that k, and K, T and S run with it. Held-out is never read by K0; K's retrieval target
 still reads the top 5.
 
+*Amended 2026-11-08, after run K's first dev round (which decides nothing) and before its
+dev runs run again (Q24):* the reply's register is judged by a question of its own, of the
+judge's model. A reply to a variant or scenario turn labelled MSA must be in MSA; one labelled
+Saudi or mixed whose words hold a dialect form (the library's `register_of`) must be in the
+Saudi register; one labelled Saudi or mixed whose words hold none is right in either.
+
 **K, the talker's model, retrieval and answers** (text through `TextCall` with the real model and
 knowledge base; about $1.50 for both dev runs of every arm). Arms: K1 `openai/gpt-oss-120b` at low
 reasoning (the design's default), K2 `llama-3.3-70b-versatile`, K3 `openai/gpt-oss-20b` at low
@@ -976,7 +983,7 @@ knowledge set's review, asked on 2026-11-06 before any registered run and settle
 Q15 to Q18, from Track E's review, asked and settled on 2026-11-07 before any registered run;
 Q19 and Q20, from the whole-code review, and Q21, from the live smoke, asked and settled on
 2026-11-07 before any registered run; Q22, after run W's dev runs and before its held-out;
-Q23, after that held-out pass.
+Q23, after that held-out pass; Q24, after run K's first dev round and before its dev runs again.
 Each answer that changes a run is a dated amendment to the registration.
 
 - **Q1. What voice-first means here.** *Settled: (a).* The eight choices above. Options: (a) approve them; (b)
@@ -1080,11 +1087,16 @@ Each answer that changes a run is a dated amendment to the registration.
   other two cannot be read from held-out's aggregates, whose nearest aggregates are no worse.
   Options: (a) keep the prompt, live calls sending it; (b) read the two as unmet. **The agent
   recommended (a).**
+- **Q24. The register of a reply to plain Arabic.** *Settled 2026-11-08: (a).* 18 variants of
+  the knowledge set labelled Saudi or mixed hold no dialect word, plain MSA as written (and 7
+  of run S's turns held to Saudi), and the fixed talker answers plain Arabic in MSA. Options:
+  (a) for words with no dialect form, either register is right; (b) relabel them MSA. **The
+  agent recommended (a).**
 
 ## What the owner does
 
 - Answer Q1 to Q10, and approve the plan (done 2026-11-06); answer Q11 to Q14, Q15 to Q18,
-  Q19 and Q20, Q21, Q22 and Q23 (done 2026-11-07).
+  Q19 and Q20, Q21, Q22 and Q23 (done 2026-11-07), and Q24 (done 2026-11-08).
 - Copy the knowledge base's access into `.env` (Q4; done 2026-11-06, under the owner's names).
 - Review the knowledge set's items (Q5, about 40 minutes; done 2026-11-07, checked by the agent
   against the knowledge base), and check 24 judged answers (Q6, about 20 minutes).
