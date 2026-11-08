@@ -2321,3 +2321,77 @@ twice; DOC-REF: every `D-NNN` cited anywhere is a heading here), so keep its sha
   `tests/t2_agentic_voice/voice/session/test_overlap_ask_wait.py`,
   `tests/t2_agentic_voice/domain/test_uncertain_overlaps.py` and
   `tests/ole5_voice/test_uncertain_overlap_call.py`.
+
+## D-070 · With a talker, a reply is kept while a newer turn of the caller's is open · 2026-11-07 · Accepted (the owner's ruling, Q19 in plan 006)
+
+- **Context:** a turn the caller begins while nothing of the reply plays is no overlap of it
+  (D-068's amendment 7), so when a search ended while the caller still spoke, the progress line
+  and the first clauses played over them until their turn closed.
+- **Decision:** from the newer turn's `TurnOpened` until it is taken, nothing more of that reply
+  plays and what its talker gives is kept, in order. Heard with words, the turn stops the reply
+  and both turns are answered; heard as nothing, or failed, what was kept plays. A stop or pause
+  said whole stops it. This narrows D-068's amendment 7 for the talker only: the echo keeps M3's
+  rule. While a reply to an earlier turn is in progress the newer turn has no early start, so
+  the talker reads that reply as cut (TD-117).
+- **Consequences:** a correction said over a search is never talked over. A reply kept behind a
+  turn heard as nothing waits about 1.1 s after it, about 3.5 s when Smart Turn calls it
+  incomplete. The remaining edges are TD-127.
+- **Evidence:** plan 006's Q19 and its progress log; eaa44d5;
+  `tests/t2_agentic_voice/voice/session/test_talker_kept.py` and `test_talker_kept_steps.py`.
+
+## D-071 · The talker writes its answer from the top k passages whole, k measured for each app · 2026-11-07 · Accepted (the owner's ruling, Q20 in plan 006, and run K0)
+
+- **Context:** the knowledge tool gave the talker each passage's first 3 lines, cut near 400
+  characters, and the best passage's steps: about 26% of each other passage's text, 122 of
+  Ole5's 128 points cut. Knowledge bases are written to be read, not spoken, so the owner chose
+  that the model formulate the answer itself from the retrieved passages, the full top k.
+- **Decision:** `knowledge_tool` gives the talker each of the top `limit` passages whole, cut only
+  past `passage_chars` (about 1,500), at the end of a line where it can. The best passage
+  still goes to the caller as a card. The k is an app's, found on its own data: for Ole5,
+  `SEARCH_LIMIT` is 7, the smallest k within 0.05 of k = 8's expected passages found (K0, 0.621
+  against 0.651); the library's default stays 5.
+- **Consequences:** the talker reads a median of 5,928 characters of passages at Ole5's k, 8,822
+  at most. Retrieval stays a plain dense search; from the raw words, an expected passage is in
+  the top 5 for 0.854 of the items, under K's 90% target.
+- **Evidence:** plan 006's Q20 and K0's progress entry; a42848b, 84c3915, 7aa98e7.
+
+## D-072 · Each chat request opens with a first line of its own · 2026-11-07 · Accepted (the owner's ruling, Q21 in plan 006)
+
+- **Context:** plan 006 first chose no varying line, the spike having seen no slow cache path. In
+  the live probe on Ole5's real prompt, 3 of 8 requests Groq served from its cache took 1.03 to
+  5.71 s to the first token; 12 requests with a first line of their own took 0.15 to 0.30 s.
+- **Decision:** `llm.vary_first_line`, true by default, opens each request's system message with
+  a line new on every request, so no two requests share a cached prefix.
+- **Consequences:** a reply's first token no longer waits on the slow cache path, at the price of
+  Groq's half-price cached input. If the provider's cache improves, the setting turns it off.
+- **Evidence:** plan 006's Q21 and its progress entry of the live probe.
+
+## D-073 · The progress line by the caller's wait, 2.6 s after they stop, on the session's timer · 2026-11-08 · Accepted (the owner's ruling, Q27 in plan 006)
+
+- **Context:** 59 of run T's T0's 67 search turns began after 2.0 s with no line: the line's clock
+  was the tool's own, and the wait is mostly the model.
+- **Decision:** `Tool.progress_after_s`, 2.6 s by default, counts from the end of the caller's
+  speech, whether the search or the model holds the reply up. The line is said only if no clause
+  was asked of the voice by then, the reply is not kept and no notice took its place. The timer
+  is the session's, since only the session knows when the caller stopped and what was asked for.
+  The target is 3.0 s; the line is set at 2.6 s since the cached lines open with up to about
+  0.25 s of their own silence.
+- **Consequences:** a clause already asked of the voice counts as the answer begun, so a reply
+  asked for just before 2.6 s can be heard just after 3.0 s with no line before it. Run T on
+  held-out (319c5d4) did not meet this target: 5 of 40 search replies had neither begun nor been
+  preceded by a line by 3.0 s, and the line played in none of the 40; held-out keeps aggregates
+  only, so the cause is not confirmed. The live calls are the first to hear it at this time.
+- **Evidence:** plan 006's Q27, its decision log and the progress entry of 2026-11-09; run T's
+  history line; `tests/t2_agentic_voice/voice/session/test_talker_progress.py`.
+
+## D-074 · Live calls send the Whisper prompt, and `gpt-oss-120b` reasons at medium · 2026-11-08 · Accepted (the owner's rulings, Q23 and Q26 in plan 006)
+
+- **Context:** run W's W1 (the agent's vocabulary, then the command words) met three of the five
+  conditions set after dev (Q22); the other two could not be read from held-out's aggregates. An
+  exploratory dev pass of run K put `gpt-oss-120b` at medium against low: 6 answers of 136
+  invented against 18, for about 0.33 s more to the first clause.
+- **Decision:** `stt.send_prompt` is on by default, each request sending its language's prompt
+  (`whisper_prompt`, held to 224 bytes), and `llm.reasoning_effort` defaults to medium.
+- **Consequences:** a term or command word that does not fit the prompt is left out. The live
+  calls show whether the prompt holds; `stt.send_prompt` turns it off.
+- **Evidence:** plan 006's Q22, Q23 and Q26 and their progress entries.

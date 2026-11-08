@@ -898,6 +898,11 @@ runs"; in this order, each with its smoke first)
   which stops that reply first: the talker reads the reply as cut and its turn as rolled back.
   This replaces the rebuild the debt row named, which would have spent a model request to reach
   the same place. A test failed on the old code and passes now; the other debt in TD-117 stays.
+- 2026-11-09: **The close's documents, as far as they stand without the owner:** the design's
+  lines on the Whisper prompt, the knowledge tool and the chat settings corrected as facts;
+  decision entries D-070 to D-074 (Q19, Q20, Q21, Q27, and Q23 with Q26). The `## Future
+  improvements`, the plan's move and the roadmap's row wait for the judge check, K's held-out
+  pass and the live calls.
 
 ## Decision log
 

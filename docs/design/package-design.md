@@ -198,7 +198,7 @@ All the personas need the same things, and this design is built around them:
 | A `validate` hook on an action | Only the draft model's own validation |
 | `bind=` on a tool | No parameter is filled from the session. `t2v check` warns about a parameter named like an identity (`email`, `user_id`, `customer_id`) that is left unbound |
 | `reports_on=` on a status tool | No tool result supports a claim; only the call's own record does |
-| Vocabulary (terms for the Whisper prompt, spoken forms) | No prompt beyond the language hint |
+| Vocabulary (terms for the Whisper prompt, spoken forms) | Whisper's prompt holds the language's command words alone (`stt.send_prompt` turns it off: D-074) |
 | A pronunciation map | Text goes to TTS as written |
 | More stop, wait, repeat, listening (`backchannel`) and no words; yes and send words with the yes rule (M5) | The library's preset for each language |
 | Send words per action (`ReadBack(send_words=...)`) | The language preset's send words |
@@ -345,7 +345,7 @@ When `VoiceAgent(...)` is constructed, these checks run. Each failure has a FIX 
 - A template in a language other than English that uses a `Literal` or enum field needs a spoken label for every value in that language.
 - Tool and action names are unique.
 - No draft field is named like consent (`confirmed`, `approved`).
-- Warning: the Whisper prompt built from the vocabulary exceeds Groq's 224-token limit (checked).
+- Warning: the Whisper prompt built from the vocabulary and the command words does not fit Groq's 224-token limit, so `whisper_prompt` leaves out the words past 224 bytes (D-074).
 - Warning: a claim phrase appears in the same action's read-back, so the talker's own paraphrase of the read-back would be blocked.
 - Warning: a tool parameter named like an identity is left unbound.
 
@@ -901,7 +901,7 @@ What v1 must already have for it, all built for M3 to M5 anyway:
 - **Fixed value sets** are `Literal` types or enums in the team's code, with spoken labels. When the real list lives in the backend, the team either keeps a `Literal` that matches it, or types the field as `str` and checks it against the backend's list in `validate`, which tells the talker the allowed values. A list loaded from the backend into the schema at startup (`Choices`) is on request.
 - **Knowledge** has a protocol and a helper:
   - `KnowledgeBase` has one method, `async search(query, *, language, caller, limit) -> list[Passage]`.
-  - `knowledge_tool(kb, description=..., progress=...)` returns a read tool. It does one search per question, gives the talker short spoken summaries, and shows the full passage as a card.
+  - `knowledge_tool(kb, description=..., progress=...)` returns a read tool. It does one search per question, gives the talker the top `limit` passages whole to write its own short spoken answer from (D-071), and shows the best passage as a card.
   - Both are optional: a team can write its own tool instead.
   - A generic Qdrant adapter comes later. Ole5's stays in the app until a second team needs one.
 
@@ -1076,7 +1076,7 @@ The defaults below are the agent's starting values, to be measured in the milest
 | top level | `env` (required) | — |
 | `groq` | `api_key` (required for Groq adapters), `api_key_file`, `base_url`, `timeout_s` | — |
 | `stt` | `provider` (groq), `model` (`whisper-large-v3`, chosen by the M1 baseline: D-025), `timeout_s` (6), `no_speech_max` (0.55) and `caption_filter` (true), the filter for text from silence (D-063, D-068) | M1, M3 |
-| `llm` | `provider` (groq), `model` (openai/gpt-oss-120b), `reasoning_effort` (low), `max_output_tokens`, `timeout_s` (8) | M4 |
+| `llm` | `provider` (groq), `model` (openai/gpt-oss-120b), `reasoning_effort` (medium: D-074), `max_output_tokens`, `timeout_s` (8), `vary_first_line` (true: D-072) | M4 |
 | `tts` | `provider` (groq), `languages` (a map from language to `{model, voice}`; models `canopylabs/orpheus-arabic-saudi` and `canopylabs/orpheus-v1-english`; voices chosen in M2), `timeout_s`, `cache_phrases` (true) | M2 |
 | `turns` | `vad_confidence`, `vad_start_ms`, `vad_stop_ms` (200), `smart_turn` (true), `smart_turn_threshold` (0.5), `complete_hold_ms` (600, the hold after Smart Turn's "complete": D-067), `max_silence_ms` (fallback end of turn) | M2, M3 |
 | `interruptions` | `mode` (two_step, by the owner's ruling: D-068; or drop), `duck_level` (0.25), `first_window_ms` (750), `min_words` (2), `short_words` (2), `short_s` (1.2), `own_words_s` (5) (D-061) | M3 (from the M1 overlap data) |
