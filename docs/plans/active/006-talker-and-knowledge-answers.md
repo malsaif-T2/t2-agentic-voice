@@ -732,6 +732,24 @@ runs"; in this order, each with its smoke first)
     one of an item's two to four key facts (a median of 25 words), such as one of `n02`'s three
     causes; three fit in one spoken sentence.
   The round decides nothing: the talker and the judge are fixed, and the four dev runs run again.
+- 2026-11-08: **The fixes from run K's first dev round** (d2cf04d; bc24e35 to b1322cc), built by
+  one agent, reviewed once; the review's one finding fixed (026c746). Gate: `5091 passed`, `TOTAL 20062 39 99%`, exit 0.
+  - **The reply's language held over the passages':** every request that follows a tool exchange
+    of the turn ends with a `system` line naming the reply's language (`prompt.reply_line`), for
+    that request only, never kept in the history.
+  - **The reply's register read from the caller's words, over the call** (`register_of`,
+    `call_register` in `agent/language.py`): Saudi once any turn of the call has held a dialect form
+    (`DIALECT_WORDS`, and ما before a word shaped as a verb), MSA while none has; the language
+    section and the line after a tool then say MSA. The review found that a turn read alone
+    turned a Saudi caller's «تمام» or «كمل» to MSA and had a repeat reworded; it is read over the
+    call.
+  - **The judge's register asked on its own**, of the judge's model, with the lead's probe prompt
+    (a reply with no Arabic costs no request; an unclear answer is asked once more, then a judge
+    failure); runs K and S read it under Q24's rule.
+  - **Ole5's instructions** name each of several causes, places or conditions briefly, up to
+    three, in one sentence; its version `2026-11-07.5`.
+  - The Ole5 app's README says how to try the agent on this machine (d87aefd).
+  - **Debt:** TD-131.
 
 ## Decision log
 
