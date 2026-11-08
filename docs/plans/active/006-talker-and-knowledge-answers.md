@@ -786,6 +786,25 @@ runs"; in this order, each with its smoke first)
 
   The owner ruled for medium (Q26): `llm.reasoning_effort` defaults to `medium`; K's held-out
   and runs T, U and S use it.
+- 2026-11-08: **Run T's T0 and T1 on dev** (`gpt-oss-120b` at medium reasoning, at b5ff7e8; 72
+  recordings each, no failure, every reply heard; $0.60 and $0.57; history lines a9ad02e):
+
+  | | No search, median, p90 (turns) | Search, median, p90 (turns) | Past 3.0 s | Progress lines | Late |
+  | --- | --- | --- | --- | --- | --- |
+  | T0, trim off | 1.38, 1.55 s (3) | 2.40, 3.01 s (67) | 7 | 0 | 59 |
+  | T1, trim on | 1.97, 3.55 s (2) | 2.47, 4.75 s (69) | 17 | 10 | 58 |
+
+  - **The trim is not kept.** T1's median is not lower than T0's, so the keep rule leaves
+    `tts.trim_silence` off and the owner's listen is not needed. T1's long tail comes with slow
+    searches (10 past the tool's 1.0 s, none in T0); on the 57 turns with no progress line in T1,
+    the median pair differs by +36 ms, so the trim gains nothing on like turns.
+  - **With a search, T0 holds both times** (targets 3.0 s and 4.0 s). The times with no search
+    wait for Tn; these are the few turns the model chose not to search.
+  - **The progress line's target fails, by how the line is built.** 59 of 67 search turns began
+    after 2.0 s with no line before it. The line's clock is the tool's own: 1.0 s from the tool's
+    start, stopped when the tool ends, and the search took under 1.0 s on every T0 turn. The
+    wait is the speech-to-text and the first model request before the tool, and the second model
+    request and the voice after it. Its target is the owner's call (Q27).
 
 ## Decision log
 
@@ -1168,5 +1187,5 @@ Each answer that changes a run is a dated amendment to the registration.
 - Copy the knowledge base's access into `.env` (Q4; done 2026-11-06, under the owner's names).
 - Review the knowledge set's items (Q5, about 40 minutes; done 2026-11-07, checked by the agent
   against the knowledge base), and check 24 judged answers (Q6, about 20 minutes).
-- Listen to ten replies of run T for clipped first syllables (about 5 minutes).
+- Listen to ten replies of run T for clipped first syllables: not needed, T1 was not kept (2026-11-08).
 - Hold the live calls (about 20 minutes).
