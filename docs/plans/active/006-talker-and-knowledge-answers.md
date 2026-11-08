@@ -771,6 +771,10 @@ runs"; in this order, each with its smoke first)
   - **`none` items:** 6 of 30 got an invented answer (an export to PDF, a scheduled sending).
   - The owner's check of 24 judged answers (Q6) is drawn from k3-dev-c (`judge-sheet.toml` in its
     run folder), before the held-out pass.
+- 2026-11-08: **The owner's ruling: `gpt-oss-120b`** over the keep rule's K3 ("The owner's
+  decisions"). Run T's first T0 pass, begun on K3, was stopped at 7 of 72 recordings (about
+  $0.09, no history line, its folder `t0-dev` left as it is), to run again on K1. The owner's
+  check of the judge is drawn again from `k1-dev-c`.
 
 ## Decision log
 
@@ -840,6 +844,9 @@ runs"; in this order, each with its smoke first)
 - 2026-11-07, to Q23, after W1's held-out pass: "Keep the prompt".
 - 2026-11-08, to Q24, after run K's first dev round: "Either register right".
 - 2026-11-08, to Q25, after run T's smoke: "Raise it to $7".
+- 2026-11-08, on run K's result (the keep rule had kept K3): "use "gpt-oss-120b" instead, it
+  has more reasoning power and more capable to hold conversations longer". So K1 ships,
+  `llm.model` stays `openai/gpt-oss-120b`, and K's held-out and runs T, U and S use it.
 
 ## Tracks
 
