@@ -142,7 +142,7 @@ class Playing:
 
     async def _register(self, turn: ScriptTurn, reply: HeardTurn) -> Registered | None:
         """The judge's register of `reply`, when `turn` holds it to Arabic; None otherwise."""
-        if turn.held_register() is None:
+        if not turn.held_registers():
             return None
         try:
             return await self.judge.register(reply)

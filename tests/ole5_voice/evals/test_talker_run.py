@@ -89,28 +89,41 @@ def test_the_reply_language_is_read_from_its_own_words_and_the_judges_register(
     asked = (
         ("msa", "كيف أطبع المراسلة؟"),
         ("english", "How do I print?"),
-        ("saudi", "كيف أطبع؟"),
+        ("saudi", "كيف أقدر أطبع؟"),
         ("mixed", "كيف أسوي print؟"),
     )
-    setup = make_setup(tmp_path, items=(item("a1", asked=asked),))
+    plain = (
+        ("saudi", "كيف أطبع الملف؟"),  # no dialect form in it
+        ("mixed", "كيف أطبع ملف PDF؟"),  # none either
+        ("msa", "هل يمكنني الطباعة؟"),
+    )
+    setup = make_setup(tmp_path, items=(item("a1", asked=asked), item("a2", asked=plain)))
     # Every reply is tagged ar-SA, as the library tags a reply in an ar-SA call by the caller's
     # words: only its own words, and the judge's register, say what language it is in.
     for words, said in (
         ("كيف أطبع المراسلة؟ a1", "يمكنك طباعة المراسلة من القائمة."),
         ("How do I print? a1", "You can print it from the menu."),
-        ("كيف أطبع؟ a1", "يمكنك طباعتها من القائمة."),
+        ("كيف أقدر أطبع؟ a1", "يمكنك طباعتها من القائمة."),
         ("كيف أسوي print؟ a1", "تقدر 打印 من القائمة."),
+        ("كيف أطبع الملف؟ a2", "يمكنك طباعته من القائمة."),
+        ("كيف أطبع ملف PDF؟ a2", "تقدر تطبعه من القائمة."),
+        ("هل يمكنني الطباعة؟ a2", "تقدر تطبع من القائمة."),
     ):
         setup.calls.script[words] = Scripted(language="ar-SA", said=said)
     # The register's question reads the reply's own words, never the caller's.
-    setup.chat.registers = {"طباعة المراسلة من": "msa", "طباعتها من": "msa"}
+    setup.chat.registers = {"طباعة المراسلة من": "msa", "طباعتها من": "msa", "طباعته من": "msa"}
     argv = [*setup.argv(), "--split", "dev", "--call-language", "first"]
     assert talker_run.main(argv, parts=setup.parts()) == 0
-    by_variant = {r.variant: r for r in _card(setup).variants}
+    by_key = {(r.item, r.variant): r for r in _card(setup).variants}
+    by_variant = {variant: r for (name, variant), r in by_key.items() if name == "a1"}
     assert by_variant["v1"].language_right is True  # MSA words, an Arabic reply in MSA
     assert by_variant["v2"].language_right is True  # English words, an English reply
     assert by_variant["v3"].language_right is False  # Saudi words, a reply in MSA
     assert by_variant["v4"].language_right is False  # a word in another script
+    # The owner's Q24: a Saudi or mixed label's words with no dialect form take either register.
+    assert by_key["a2", "v1"].language_right is True  # answered in MSA
+    assert by_key["a2", "v2"].language_right is True  # answered in Saudi Arabic
+    assert by_key["a2", "v3"].language_right is False  # MSA words, a reply in Saudi Arabic
     judged = by_variant["v1"].judged
     assert judged is not None and judged.arabic == "msa" and judged.requests == 2
     english = by_variant["v2"].judged
@@ -118,10 +131,10 @@ def test_the_reply_language_is_read_from_its_own_words_and_the_judges_register(
     # Asked in a request of its own, of the judge's model, for each reply that holds Arabic.
     registers = [r for r in setup.chat.requests if r.messages[0].content == REGISTER_SYSTEM]
     assert {r.model for r in registers} == {JUDGE}
-    assert [r for r in registers if "a1" in r.messages[1].content] == []
+    assert [r for r in registers if " a" in r.messages[1].content] == []  # no caller's ID
     ((line, _), _) = setup.lines.lines
     assert isinstance(line, TalkerLine)
-    assert line.requests[JUDGE] == len(registers) + 5  # and a verdict a variant, the smoke's too
+    assert line.requests[JUDGE] == len(registers) + 8  # and a verdict a variant, the smoke's too
 
 
 def test_a_register_with_no_clear_answer_after_two_asks_is_a_judge_failure(

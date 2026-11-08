@@ -10,6 +10,7 @@ from pathlib import Path
 import pytest
 from ole5_voice.evals.items import EVALS, GoldenSetError
 from ole5_voice.evals.knowledge_set import KNOWLEDGE_DIR, load_knowledge_items
+from ole5_voice.evals.scenario_score import checks_of
 from ole5_voice.evals.scenarios import (
     FOLLOWS,
     REGISTER_CHECKS,
@@ -19,7 +20,9 @@ from ole5_voice.evals.scenarios import (
     load_scenarios,
     problems,
 )
+from ole5_voice.evals.talker_data import REGISTERS, Clause, HeardTurn
 from t2_agentic_voice.domain.words import PRESET_WORDS, WORD_KINDS
+from t2_agentic_voice.languages import register_of
 
 from tests.ole5_voice.evals.talker_support import item
 from tests.ole5_voice.evals.test_no_item_in_source import SCANNED, find_pasted, fold
@@ -100,12 +103,52 @@ def test_a_turns_expectations_are_its_facts_or_its_items_and_what_it_follows() -
     assert saudi.expectations(items) == (FOLLOWS["continues"],)
     assert ScriptTurn(says="x", language="ar").expectations(items) == ()
     assert REGISTER_CHECKS == {"ar-SA": "saudi", "ar": "msa"}
-    assert [ScriptTurn(says="x", language=tag).held_register() for tag in ("ar-SA", "ar")] == [
-        "saudi",
-        "msa",
-    ]
-    assert ScriptTurn(says="x", language="en").held_register() is None
-    assert ScriptTurn(says="x").held_register() is None
+    # By the owner's Q24: an MSA turn's reply MSA; a Saudi turn's Saudi when its words hold a
+    # dialect form (or no Arabic word, the library's Saudi default), either when they hold none.
+    assert ScriptTurn(says="وين الزر؟", language="ar-SA").held_registers() == {"saudi"}
+    assert ScriptTurn(says="كيف أطبع؟", language="ar-SA").held_registers() == {"saudi", "msa"}
+    assert ScriptTurn(says="x", language="ar-SA").held_registers() == {"saudi"}
+    assert ScriptTurn(says="وين الزر؟", language="ar").held_registers() == {"msa"}
+    assert ScriptTurn(says="x", language="en").held_registers() == frozenset()
+    assert ScriptTurn(says="x").held_registers() == frozenset()
+
+
+# The committed scenarios' turns held to Arabic whose own words hold no dialect form, so their
+# replies are right in either register (the owner's Q24, 2026-11-08, "Either register right"),
+# by scenario and turn (from 1); a review found the same seven.
+NEUTRAL_TURNS = {
+    ("s01_password_stop_go_on", 1),
+    ("s01_password_stop_go_on", 3),
+    ("s02_archive_repeat_part", 1),
+    ("s02_archive_repeat_part", 2),
+    ("s06_follow_up", 1),
+    ("s09_person_over_reply", 1),
+    ("s10_new_request_over_reply", 2),
+}
+
+
+def test_each_committed_turn_held_to_arabic_is_checked_in_the_register_its_words_call_for() -> None:
+    """Each neutral turn's register check accepts either register, never no Arabic; every other
+    turn held to Arabic accepts the Saudi register alone (no turn is held to MSA)."""
+    reply = HeardTurn(
+        fate="answered",
+        clauses=(Clause(text="افتح الرسالة.", language="ar-SA", fate="played", played_fraction=1),),
+    )
+    neutral = set()
+    for scenario in load_scenarios(EVALS / SCENARIOS_DIR):
+        for number, turn in enumerate(scenario.turns, start=1):
+            held = turn.held_registers()
+            if not held:
+                continue
+            if register_of(turn.says) == "msa":
+                neutral.add((scenario.id, number))
+                assert held == {"saudi", "msa"}, (scenario.id, number)
+            else:
+                assert held == {"saudi"}, (scenario.id, number)
+            for answer in REGISTERS:
+                [check] = checks_of([turn], [reply], [None], "search", [answer])
+                assert check.in_register is (answer in held), (scenario.id, number, answer)
+    assert neutral == NEUTRAL_TURNS
 
 
 def test_a_folder_that_cannot_be_read_is_refused(tmp_path: Path) -> None:

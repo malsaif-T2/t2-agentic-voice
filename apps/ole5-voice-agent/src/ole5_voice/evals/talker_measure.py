@@ -182,7 +182,7 @@ class Measuring:
             raw_hit=self.data.index.hit(raw, item.expected) if raw is not None else None,
             search_right=searched == item.needs_search if answered else None,
             language_right=(
-                in_language(turn, want, judged.arabic)
+                in_language(turn, want, judged.arabic, words=words)
                 if turn is not None and judged is not None and answered
                 else None
             ),

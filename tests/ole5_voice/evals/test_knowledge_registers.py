@@ -1,11 +1,11 @@
-"""The register the library reads from each Arabic variant of the knowledge set (agent/language.py's
-`register_of`; plan 006, item 8, after run K's first dev round): every MSA variant reads as MSA, and
-its prompt asks Ole5's talker for MSA; every Saudi variant, and every Arabic one with English
-product terms (`mixed`, which run K holds to the Saudi register too), reads as Saudi, its prompt
-asking for the Saudi register, but for the variants named in `NEUTRAL`, whose words hold none of
-the rule's dialect forms. The rule reads a turn of Arabic with no dialect form as MSA, so the
-talker is asked for MSA there, and a run that holds such a variant to the Saudi register by its
-label counts an MSA reply wrong; each is named with why, for the lead to rule on."""
+"""The register of each Arabic variant of the knowledge set (plan 006, item 8, after run K's first
+dev round) and the register its reply is held to. The library reads it from the caller's words
+(the `languages` facade's `register_of`): every MSA variant reads as MSA, and its prompt asks
+Ole5's talker for MSA; a Saudi or mixed variant reads as Saudi when its words hold a dialect form,
+its prompt asking for the Saudi register, and as MSA when they hold none. Run K holds each reply
+by the owner's Q24 (2026-11-08, "Either register right"; `talker_data.registers_held`): a reply
+to an MSA variant must be MSA; to a Saudi or mixed one whose words hold a dialect form, Saudi; to
+a Saudi or mixed one whose words hold none, either register is right, but never no Arabic."""
 
 from __future__ import annotations
 
@@ -16,71 +16,79 @@ from datetime import date
 import pytest
 from ole5_voice.agent import talker_agent
 from ole5_voice.evals.items import EVALS
-from ole5_voice.evals.knowledge_set import KNOWLEDGE_DIR, KnowledgeItem, load_knowledge_items
-from t2_agentic_voice.agent.language import register_of
+from ole5_voice.evals.knowledge_set import (
+    KNOWLEDGE_DIR,
+    KnowledgeItem,
+    SpokenLanguage,
+    load_knowledge_items,
+)
+from ole5_voice.evals.talker_data import (
+    REGISTERS,
+    TAGS,
+    Clause,
+    HeardTurn,
+    in_language,
+    registers_held,
+)
 from t2_agentic_voice.agent.prompt import LANGUAGE_SECTIONS, MSA_SECTION, compose_prompt
 from t2_agentic_voice.evals import ScriptedLLM, TextCall
+from t2_agentic_voice.languages import register_of
 from t2_agentic_voice.ports import ChatRequest
 from t2_agentic_voice.testing.knowledge_fake import FakeKnowledgeBase
 
 ITEMS = load_knowledge_items(EVALS / KNOWLEDGE_DIR)
 DAY = date(2026, 11, 7)
-_NONE = "no dialect form: MSA as written"
-# The Saudi and mixed variants the rule reads as MSA, by item and variant (from 1), and why.
-NEUTRAL: dict[tuple[str, int], str] = {
-    ("n04_screen_freezes", 1): "lamma (when) before a verb, which the list does not hold",
-    ("n13_attach_pdf", 2): _NONE,
-    ("n17_save_word", 1): _NONE,
-    ("n20_error_suddenly", 1): "ma 'aad (no longer): a perfect with no ending, no verb's shape",
-    ("n23_signature_msa", 2): _NONE,
-    ("q03_register_incoming", 1): "jana (came to us), which the list does not hold",
-    ("q07_delivery_statement", 1): _NONE,
-    ("q12_storage", 2): "imtalat, MSA's imtala'at (filled) written without its hamza",
-    ("q16_two_factor", 3): _NONE,
-    ("q19_new_role", 1): _NONE,
-    ("q26_support_hours", 1): _NONE,
-    ("q27_translate", 2): _NONE,
-    ("q29_greeting", 1): _NONE,
-    ("q32_weather", 1): _NONE,
-    ("q34_open_ticket", 3): _NONE,
-    ("q35_employee_left", 1): "aqfil (I close), which MSA says too",
-    ("q39_fingerprint_login", 3): _NONE,
-    ("q42_password_expiry", 3): _NONE,
-}
+# A reply in Arabic, as the judge's register is asked of it; the script check passes it.
+ARABIC = HeardTurn(
+    fate="answered",
+    clauses=(Clause(text="افتح الرسالة.", language="ar-SA", fate="played", played_fraction=1),),
+)
 
 
-def _variants(*languages: str) -> Iterable[tuple[KnowledgeItem, int, str]]:
+def _variants(
+    *languages: SpokenLanguage,
+) -> Iterable[tuple[KnowledgeItem, int, SpokenLanguage, str]]:
     for item in ITEMS:
         for position, variant in enumerate(item.variants, start=1):
             if variant.language in languages:
-                yield item, position, variant.text
+                yield item, position, variant.language, variant.text
 
 
-def test_every_msa_variant_reads_as_msa_and_is_asked_for_msa() -> None:
+def test_every_msa_variant_reads_as_msa_is_asked_for_msa_and_held_to_it() -> None:
     talker = talker_agent(FakeKnowledgeBase())
     read = list(_variants("msa"))
     assert len(read) > 30  # the set's MSA variants, every one
-    for item, position, text in read:
+    for item, position, language, text in read:
         register = register_of(text)
         assert register == "msa", (item.id, position)
         prompt = compose_prompt(talker, language="ar-SA", today=DAY, register=register)
         assert prompt.endswith(f"\n\n{MSA_SECTION}"), (item.id, position)
+        assert registers_held(TAGS[language], text) == {"msa"}, (item.id, position)
 
 
-def test_every_saudi_variant_reads_as_saudi_but_the_neutral_ones() -> None:
+def test_a_saudi_or_mixed_variant_is_held_to_saudi_with_a_dialect_form_and_to_either_without() -> (
+    None
+):
+    """The rule over every Saudi and mixed variant, both kinds of words among them: the
+    registers a reply is right in, and run K's language score of an Arabic reply in each."""
     talker = talker_agent(FakeKnowledgeBase())
     read = list(_variants("saudi", "mixed"))
     assert len(read) > 100
-    misread = set()
-    for item, position, text in read:
+    kinds: set[str] = set()
+    for item, position, language, text in read:
+        where = (item.id, position)
         register = register_of(text)
+        kinds.add(register)
+        held = registers_held(TAGS[language], text)
+        assert held == ({"saudi"} if register == "saudi" else {"saudi", "msa"}), where
+        right = {
+            each for each in REGISTERS if in_language(ARABIC, TAGS[language], each, words=text)
+        }
+        assert right == held and "none" not in right, where
+        section = LANGUAGE_SECTIONS["ar-SA"] if register == "saudi" else MSA_SECTION
         prompt = compose_prompt(talker, language="ar-SA", today=DAY, register=register)
-        if register == "msa":
-            misread.add((item.id, position))
-            assert prompt.endswith(f"\n\n{MSA_SECTION}")
-        else:
-            assert prompt.endswith(f"\n\n{LANGUAGE_SECTIONS['ar-SA']}"), (item.id, position)
-    assert misread == set(NEUTRAL)  # a change of the rule or of the set shows here
+        assert prompt.endswith(f"\n\n{section}"), where
+    assert kinds == {"saudi", "msa"}  # the set holds both kinds of words
 
 
 @pytest.mark.parametrize(("item", "position"), [("q02_new_internal", 3), ("q02_new_internal", 2)])

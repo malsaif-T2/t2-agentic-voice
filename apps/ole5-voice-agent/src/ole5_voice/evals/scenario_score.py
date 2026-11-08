@@ -4,8 +4,8 @@ turn, and the scorecard with each scenario's target.
 A turn's checks are read from what the call did (`checks_of`): the knowledge tool called or not,
 the earlier reply cut, the reply's language (its own words' script, `talker_data.HELD_TO`) and
 its words; the judge's checks of its facts and of what it repeats or continues; and the register
-of its Arabic, the judge's answer to the register's question of its own, against the one it is
-held to (`scenarios.REGISTER_CHECKS`). A play passes when every check
+of its Arabic, the judge's answer to the register's question of its own, against those it is
+held to (`ScriptTurn.held_registers`, the owner's Q24). A play passes when every check
 of every turn holds and the output guard found no violation in the call. A scenario meets its
 target when it passed in every play if it is one of the rehearsal's, and in at least two of
 three otherwise (`needed`); a play with no result (`failure`) is not scored, and a scenario with
@@ -35,7 +35,7 @@ _S = Annotated[float, Field(ge=0, allow_inf_nan=False)]
 class TurnCheck(Model):
     """One turn's checks: each None when the scenario expects nothing of it; `judged` the
     judge's, in the order of the turn's expectations; `in_register` whether the judge's register
-    of its Arabic is the one it is held to."""
+    of its Arabic is one it is held to."""
 
     search: bool | None = None
     cut: bool | None = None
@@ -139,7 +139,7 @@ def checks_of(
     found = []
     for n, (turn, reply, checked) in enumerate(zip(turns, heard, judged, strict=True)):
         earlier = heard[n - 1] if n else None
-        held = turn.held_register()
+        held = turn.held_registers()
         found.append(
             TurnCheck(
                 search=None if turn.search is None else reply.searched(tool) == turn.search,
@@ -150,7 +150,7 @@ def checks_of(
                 words=None if turn.max_words is None else reply.words <= turn.max_words,
                 judged=checked.holds or () if checked else (),
                 reasons=checked.reasons if checked else (),
-                in_register=None if held is None else asked[n] == held,
+                in_register=asked[n] in held if held else None,
             )
         )
     return tuple(found)

@@ -14,8 +14,10 @@ what is expected of the reply, each optional:
   cancelled a search: TextCall speaks a turn's words at a calm pace, so a real search has ended
   before they are heard);
 - `language`: the tag the reply is held to, read from its own words' script
-  (`talker_data.HELD_TO`), and held to Arabic its register too (`REGISTER_CHECKS`), the judge's
-  answer to the register's question of its own (judge.py's `Judge.register`);
+  (`talker_data.HELD_TO`), and held to Arabic its register too, the judge's answer to the
+  register's question of its own (judge.py's `Judge.register`): its tag's (`REGISTER_CHECKS`),
+  or either for an `ar-SA` turn whose words hold no dialect form (`ScriptTurn.held_registers`,
+  the owner's Q24);
   `max_words`: the most words the reply says;
 - `facts`: what the reply must say or do, each judged; `item`, a dev item of the knowledge set,
   whose expected points' text the judge reads, and whose key facts are the turn's when it names
@@ -39,7 +41,7 @@ from pydantic import Field
 from ole5_voice.evals.items import GoldenSetError, read_toml
 from ole5_voice.evals.knowledge_set import KnowledgeItem, Text
 from ole5_voice.evals.models import Model, Name
-from ole5_voice.evals.talker_data import HELD_TO, Register, Tag
+from ole5_voice.evals.talker_data import HELD_TO, Register, Tag, registers_held
 
 SCENARIOS_DIR: Final = "scenarios"
 SCENARIO_COUNT: Final = 10  # the registration's ten scripted calls
@@ -75,14 +77,17 @@ class ScriptTurn(Model):
 
     def expectations(self, items: Mapping[str, KnowledgeItem]) -> tuple[str, ...]:
         """What the judge checks the reply against: its facts (or its item's key facts), then
-        what it follows, in the judge's words; the register is asked apart (`held_register`)."""
+        what it follows, in the judge's words; the register is asked apart (`held_registers`)."""
         facts = self.facts or (items[self.item].key_facts if self.item else ())
         follows = (FOLLOWS[self.follows],) if self.follows else ()
         return (*facts, *follows)
 
-    def held_register(self) -> Register | None:
-        """The register the reply is held to (`REGISTER_CHECKS`), None unless held to Arabic."""
-        return REGISTER_CHECKS.get(self.language) if self.language else None
+    def held_registers(self) -> frozenset[Register]:
+        """The registers its reply is right in when held to Arabic (`REGISTER_CHECKS`), read
+        from its words by the owner's Q24 (`talker_data.registers_held`); none otherwise."""
+        if self.language is None or self.language not in REGISTER_CHECKS:
+            return frozenset()
+        return registers_held(self.language, self.says)
 
 
 class Scenario(Model):

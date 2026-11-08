@@ -10,7 +10,8 @@ cannot tell Saudi from MSA. Each of the talker's clauses is in the script most o
 written in (`script_of`), and a reply is in a language's script when every clause that has one
 is, and no word is in another script (`HeardTurn.written_in`); an Arabic reply's register is the
 judge's word, asked of the same words on its own (`Register`, judge.py). `in_language` holds a
-reply to both, as `HELD_TO` says.
+reply to both: the script `HELD_TO` says, and a register of those `registers_held` gives by the
+owner's Q24 (2026-11-08, "Either register right"), read from the caller's words.
 """
 
 from __future__ import annotations
@@ -22,6 +23,7 @@ from typing import Annotated, Final, Literal, get_args
 
 from pydantic import Field, JsonValue
 from t2_agentic_voice import T2VoiceError
+from t2_agentic_voice.languages import register_of
 
 from ole5_voice.evals.knowledge_set import SpokenLanguage
 from ole5_voice.evals.models import Model
@@ -31,8 +33,9 @@ from ole5_voice.evals.runs import Plain
 Tag = Literal["ar-SA", "ar", "en"]
 TAG_CHOICES: Final = get_args(Tag)
 # The language a reply is held to, by the language of the caller's words: Saudi Arabic and Arabic
-# with English product terms in the Saudi register, MSA in MSA, English in English ("What
-# voice-first means here", item 8).
+# with English product terms in the Saudi register (either register when the words hold no
+# dialect form: `registers_held`), MSA in MSA, English in English ("What voice-first means
+# here", item 8).
 TAGS: Final[Mapping[SpokenLanguage, Tag]] = {
     "saudi": "ar-SA",
     "mixed": "ar-SA",
@@ -47,7 +50,8 @@ Script = Literal["ar", "en", "other"]
 Register = Literal["saudi", "msa", "none"]
 REGISTERS: Final = get_args(Register)
 # The script and the register a reply held to a tag is in: Arabic in the Saudi register for
-# `ar-SA` (Saudi words, or Arabic with English product terms), in MSA for `ar`, English for `en`.
+# `ar-SA` (Saudi words, or Arabic with English product terms; either register for words with no
+# dialect form, `registers_held`), in MSA for `ar`, English for `en`.
 HELD_TO: Final[Mapping[Tag, tuple[Script, Register]]] = {
     "ar-SA": ("ar", "saudi"),
     "ar": ("ar", "msa"),
@@ -197,11 +201,24 @@ class HeardTurn(Model):
         )
 
 
-def in_language(turn: HeardTurn, tag: Tag, register: Register | None) -> bool:
-    """Whether `turn`'s reply is in the language `tag` holds it to (`HELD_TO`): written in its
-    script, and, held to Arabic, in its register as the judge read it (`register`)."""
-    script, wanted = HELD_TO[tag]
-    return turn.written_in(script) and (script != "ar" or register == wanted)
+def registers_held(tag: Tag, words: str) -> frozenset[Register]:
+    """The registers a reply held to `tag` is right in, as the reply to the caller's `words`
+    (the owner's Q24): the tag's (`HELD_TO`: MSA for an MSA label, none for English, Saudi for a
+    Saudi or mixed one), but either Arabic register for a Saudi or mixed label whose words hold
+    no dialect form (the library's `register_of` reads them as MSA), never none."""
+    wanted = HELD_TO[tag][1]
+    if wanted == "saudi" and register_of(words) == "msa":
+        return frozenset({"saudi", "msa"})
+    return frozenset({wanted})
+
+
+def in_language(turn: HeardTurn, tag: Tag, register: Register | None, *, words: str) -> bool:
+    """Whether `turn`'s reply, to the caller's `words`, is in the language `tag` holds it to:
+    written in its script (`HELD_TO`), and, held to Arabic, in a register `registers_held` gives,
+    as the judge read it (`register`)."""
+    script, _ = HELD_TO[tag]
+    held = registers_held(tag, words)
+    return turn.written_in(script) and (script != "ar" or register in held)
 
 
 def has_arabic(text: str) -> bool:
