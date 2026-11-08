@@ -822,7 +822,32 @@ runs"; in this order, each with its smoke first)
     p90 1.48 s against 1.6 s and 2.4 s; no scorecard or history line, about $0.05, its folder
     `tn-dev-120b` left as it is), which decides nothing; T0's second dev pass, which held-out's
     pass replaces; and run U, whose rule (D-061) stays, a model for the uncertain middle left
-    for later.
+    for later (brought back the same day, Q28).
+- 2026-11-08: **Run S, first pass** (`gpt-oss-120b` at medium, at b69071f; 30 plays, no failure,
+  no guard violation; $0.08; an earlier start stopped at its smoke test, the knowledge base's
+  embedding timing out once, $0.001, no line kept): 5 of 10 scenarios met. Met: s01 stop and go
+  on, s03 English, s04 mumble, s07 change of language, s08 not in the knowledge base (2 of 3).
+  Not met, each 0 of 3:
+  - **s09, a request for a person over a reply:** «أبغى موظف» went on unanswered, the rule's
+    `short_output` (two words under 1.2 s), a real fault (Q28).
+  - **s02** only on the last turn's register, plain Arabic to a caller who used «بس»; **s05** only
+    on `search`, the correction answered from the passages already found (and once on its key
+    facts): the behaviour right, the checks stricter than a short spoken answer.
+  - **s06 and s10** on a key fact a short answer left out ("permission or options differ").
+  The owner (Q29): loosen the register and the correction's search, keep the key facts.
+- 2026-11-08: **Run U on dev** (on O1's 35 uncertain overlaps of 19 items, 15 that should stop;
+  at aedce08, history lines kept; $0.003), brought back by Q28:
+
+  | | Right | Stops of the 15 | Listening sounds stopped | Answer, median | Kept |
+  | --- | --- | --- | --- | --- | --- |
+  | U0, the rule | 20 | 0 | 0 | none | |
+  | U1, `llama-3.1-8b-instant` | 20 | 0 | 0 | 180 ms | no |
+  | U2, `gpt-oss-120b` at low | 25 | 8 | 3 | 177 ms | no |
+
+  U2 fails the keep rule on the sign test (3 items better, 2 worse) and on the listening sounds
+  (three single words, «إيه؟» twice and a garbled one). The owner's ruling (Q28) over the keep
+  rule: U2, on overlaps of two or more words only (5 of the 15 stopped, none wrongly, on this
+  data); single words keep the rule.
 
 ## Decision log
 
@@ -906,6 +931,10 @@ runs"; in this order, each with its smoke first)
   `llm.model` stays `openai/gpt-oss-120b`, and K's held-out and runs T, U and S use it.
 - 2026-11-08, to Q26, after an exploratory dev pass at medium reasoning: "Medium reasoning".
 - 2026-11-08, to Q27, after run T's T0: "Line at 3.0 s".
+- 2026-11-08, to Q28, after run S's first pass: "Let a model decide"; after run U: "Model on 2+
+  words".
+- 2026-11-08, to Q29, after run S's first pass: "Loosen them, except 'you need permission to
+  print'".
 
 ## Tracks
 
@@ -1003,6 +1032,9 @@ median, then held-out once; otherwise the rule stays. *Amended 2026-11-07, befor
 clips live, the kept arm deciding each uncertain overlap as it comes, and writes aggregates
 only (about $0.03 of Whisper and the chat requests); it is built once an arm passes on dev.
 *Amended 2026-11-08 (the owner, "only the important ones"):* run U is not run; the rule stays.
+*Amended 2026-11-08, after run S's first pass (Q28):* run U is run on dev after all, U2 at low
+reasoning. The owner ruled over the keep rule, for U2 on overlaps of two or more words, with no
+held-out replay: the scenarios and the live calls check it.
 
 **K0, the passages' depth** (*added 2026-11-07, before any run, Q20*; the real knowledge base
 only, no chat model, no Groq request). Before K, on dev only, each answerable variant's raw
@@ -1097,7 +1129,8 @@ Q15 to Q18, from Track E's review, asked and settled on 2026-11-07 before any re
 Q19 and Q20, from the whole-code review, and Q21, from the live smoke, asked and settled on
 2026-11-07 before any registered run; Q22, after run W's dev runs and before its held-out;
 Q23, after that held-out pass; Q24, after run K's first dev round and before its dev runs again;
-Q25, after run T's smoke; Q26, after an exploratory pass of run K; Q27, after run T's T0.
+Q25, after run T's smoke; Q26, after an exploratory pass of run K; Q27, after run T's T0;
+Q28 and Q29, after run S's first pass.
 Each answer that changes a run is a dated amendment to the registration.
 
 - **Q1. What voice-first means here.** *Settled: (a).* The eight choices above. Options: (a) approve them; (b)
@@ -1218,11 +1251,20 @@ Each answer that changes a run is a dated amendment to the registration.
   with the line, and one ready at 2.4 s is heard at about 4 s); (c) as built, the target
   reworded (silence when the model is the slow part, 6.3 s at the longest). **The agent
   recommended (a).**
+- **Q28. A short request over a reply.** *Settled 2026-11-08: (b), then (a).* Run S's s09: a
+  two-word request over a reply is ignored by the rule's `short_output`. Options: (a) request
+  words stop it; (b) a model decides (run U); (c) leave it. **The agent recommended (a); the
+  owner chose (b).** After run U: (a) the model on two or more words; (b) on every short
+  overlap; (c) the rule as it is. **The agent recommended (a), and the owner chose it.**
+- **Q29. Run S's strict checks.** *Settled 2026-11-08: (a), but for the key facts.* A reply in
+  plain Arabic marked wrong for a caller with one dialect word; a correction answered from the
+  passages it had; a short answer without a listed key fact. Options: (a) loosen them;
+  (b) keep them. **The agent recommended (a).**
 
 ## What the owner does
 
 - Answer Q1 to Q10, and approve the plan (done 2026-11-06); answer Q11 to Q14, Q15 to Q18,
-  Q19 and Q20, Q21, Q22 and Q23 (done 2026-11-07), and Q24 to Q27 (done 2026-11-08).
+  Q19 and Q20, Q21, Q22 and Q23 (done 2026-11-07), and Q24 to Q29 (done 2026-11-08).
 - Copy the knowledge base's access into `.env` (Q4; done 2026-11-06, under the owner's names).
 - Review the knowledge set's items (Q5, about 40 minutes; done 2026-11-07, checked by the agent
   against the knowledge base), and check 24 judged answers (Q6, about 20 minutes).

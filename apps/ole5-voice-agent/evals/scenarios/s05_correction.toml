@@ -13,6 +13,5 @@ search = true
 [[turns]]
 says = "لا لا، قصدي أصدّر مو أصور، أبي أرسلها لجهة برا"
 when = "tool_running"
-search = true
 language = "ar-SA"
 item = "q04_send_external"

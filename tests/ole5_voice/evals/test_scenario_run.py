@@ -134,7 +134,12 @@ def test_a_judge_with_no_valid_answer_is_a_failure(setup: Setup) -> None:
 
 @pytest.mark.parametrize(
     ("answer", "passed", "failure"),
-    [("saudi", True, None), ("msa", False, None), ("Saudi, mostly", None, "judge")],
+    [
+        ("saudi", True, None),
+        ("msa", True, None),
+        ("none", False, None),
+        ("Saudi, mostly", None, "judge"),
+    ],
 )
 def test_a_reply_held_to_arabic_is_held_to_the_register_the_judge_names_when_asked_apart(
     setup: Setup, answer: str, passed: bool | None, failure: str | None
@@ -152,7 +157,7 @@ def test_a_reply_held_to_arabic_is_held_to_the_register_the_judge_names_when_ask
     assert {play.passed for play in plays} == {passed}
     assert {play.failure for play in plays} == {failure}
     if failure is None:
-        assert {play.checks[0].in_register for play in plays} == {answer == "saudi"}
+        assert {play.checks[0].in_register for play in plays} == {answer != "none"}
         assert {play.checks[0].judged for play in plays} == {()}  # no expectation to judge
     asked = [r for r in setup.chat.requests if r.messages[0].content == REGISTER_SYSTEM]
     assert {r.messages[1].content for r in asked} == {said}

@@ -5,7 +5,7 @@ per `poe eval` run that called a provider, kept or not; never edited by hand
 ([generated docs](README.md), GP-11). Every number describes one speaker, the owner (D-006).
 Full scorecards stay out of git, in each run's `--out` folder.
 
-Spend so far: 48 run(s), 46340.3 billed seconds, $4.1453.
+Spend so far: 51 run(s), 46340.3 billed seconds, $4.2296.
 
 ## Runs
 
@@ -70,6 +70,19 @@ Spend so far: 48 run(s), 46340.3 billed seconds, $4.1453.
 | 43 | 2026-11-08T03:40:24+00:00 | k1-dev-d | 6f820daf24b610d507932f42686c2e4760cd2913 | k1 | openai/gpt-oss-120b | dev | 46 | 136 | 0 | 33.3% | 30.0% | 84.4% | 84.6% | 0.526 | 0.850 | 0 | $0.2215 | yes |
 | 44 | 2026-11-08T03:49:55+00:00 | k3-dev-d | 6f820daf24b610d507932f42686c2e4760cd2913 | k3 | openai/gpt-oss-20b | dev | 46 | 136 | 0 | 33.3% | 80.0% | 85.4% | 75.0% | 0.556 | 0.883 | 0 | $0.1749 | yes |
 | 46 | 2026-11-08T07:15:41+00:00 | k1m-dev-a | 8e12024b9b3ea4a8ae91ddc6ad3340d61b46ea6e | k1m | openai/gpt-oss-120b | dev | 46 | 136 | 0 | 37.5% | 73.3% | 84.4% | 86.8% | 0.848 | 1.104 | 0 | $0.2323 | yes |
+
+## Scenario runs
+
+| # | Time | Run | Commit | Model | Repeats | Scenarios | Plays | Failures | Passing plays | Targets met | Violations | Cost | Complete |
+| --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- |
+| 49 | 2026-11-08T13:46:42+00:00 | s-120b-2 | b69071f6ab9c4d42881c0345acaa3fec4595eafe | openai/gpt-oss-120b | 3 | 10 | 30 | 0 | 14 | no | 0 | $0.0814 | yes |
+
+## Uncertain-middle runs
+
+| # | Time | Run | Commit | Source | Model | Overlaps | Failed | Right, U0 | Right, arm | Listening stops, U0 | Listening stops, arm | Answer median (ms) | p | Kept | Cost | Complete |
+| --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- |
+| 50 | 2026-11-08T14:46:17+00:00 | u2-dev | aedce08a1a279056f5291cff03627a7ac0e0fb2c | o1-dev | openai/gpt-oss-120b | 35 | 0 | 20 | 25 | 0 | 3 | 177 | 1.0000 | no | $0.0024 | yes |
+| 51 | 2026-11-08T16:29:05+00:00 | u1-dev | aedce08a1a279056f5291cff03627a7ac0e0fb2c | o1-dev | llama-3.1-8b-instant | 35 | 0 | 20 | 20 | 0 | 0 | 180 | 1.0000 | no | $0.0004 | yes |
 
 ## First-audio runs
 
@@ -3843,3 +3856,347 @@ Spend so far: 48 run(s), 46340.3 billed seconds, $4.1453.
 | search_median_ms | holds |
 | search_p90_ms | fails |
 | progress_late | fails |
+
+### 49 · s-120b-2
+
+| Field | Value |
+| --- | --- |
+| Why | Plan 006 run S on gpt-oss-120b at medium reasoning |
+| Data digest | `abbf805438b5efc9fe1785c46890b82afa7eaaf750466cf5e57e22867a36d52b` |
+| Scorecard | scorecard.json |
+| Price per million tokens, llama-3.3-70b-versatile | $0.59 in, $0.79 out |
+| Price per million tokens, openai/gpt-oss-120b | $0.15 in, $0.6 out |
+| Setting env | test |
+| Setting groq.api_key | set |
+| Setting groq.api_key_file | not set |
+| Setting groq.base_url | https://api.groq.com |
+| Setting guard.id_patterns | 0 entries |
+| Setting guard.min_id_digits | 3 |
+| Setting guard.on_block | drop_rest |
+| Setting interruptions.duck_level | 0.25 |
+| Setting interruptions.first_window_ms | 750 |
+| Setting interruptions.min_words | 2 |
+| Setting interruptions.mode | two_step |
+| Setting interruptions.own_words_s | 5.0 |
+| Setting interruptions.short_s | 1.2 |
+| Setting interruptions.short_words | 2 |
+| Setting join.current_kid | none |
+| Setting join.keys | not set |
+| Setting join.keys_file | not set |
+| Setting join.max_clock_skew_s | 30 |
+| Setting join.ttl_s | 60 |
+| Setting limits.idle_s | 120.0 |
+| Setting limits.max_call_s | 600.0 |
+| Setting llm.max_output_tokens | 1024 |
+| Setting llm.model | openai/gpt-oss-120b |
+| Setting llm.provider | groq |
+| Setting llm.reasoning_effort | medium |
+| Setting llm.timeout_s | 8.0 |
+| Setting llm.vary_first_line | true |
+| Setting logging.content | false |
+| Setting logging.format | console |
+| Setting logging.level | INFO |
+| Setting logging.pipecat | off |
+| Setting privacy.consent_version | none |
+| Setting privacy.record_audio | false |
+| Setting run.agent | ole5_voice.agent:talker_agent |
+| Setting run.agent_name | ole5 |
+| Setting run.agent_version | 2026-11-07.5 |
+| Setting run.arm | k1 |
+| Setting run.cap_usd | 2.4 |
+| Setting run.input_budget_tokens | 8000 |
+| Setting run.judge_max_output_tokens | 300 |
+| Setting run.judge_model | llama-3.3-70b-versatile |
+| Setting run.knowledge | ole5_voice.knowledge_base:knowledge_base |
+| Setting run.max_attempts | 4 |
+| Setting run.price.llama-3.3-70b-versatile | 0.59/0.79 |
+| Setting run.price.openai/gpt-oss-120b | 0.15/0.6 |
+| Setting run.repeats | 3 |
+| Setting run.rpd.llama-3.3-70b-versatile | 10000 |
+| Setting run.rpd.openai/gpt-oss-120b | 10000 |
+| Setting run.rpm.llama-3.3-70b-versatile | 30 |
+| Setting run.rpm.openai/gpt-oss-120b | 30 |
+| Setting run.search_tool | search_knowledge |
+| Setting run.smoke_only | false |
+| Setting run.tpm.llama-3.3-70b-versatile | 100000 |
+| Setting run.tpm.openai/gpt-oss-120b | 100000 |
+| Setting run.variant_timeout_s | 180.0 |
+| Setting server.allowed_origins | 0 entries |
+| Setting server.dev_page | false |
+| Setting server.forwarded_allow_ips | 0 entries |
+| Setting server.ice_servers | 0 entries |
+| Setting server.public_url | none |
+| Setting server.turn_secret | not set |
+| Setting server.turn_secret_file | not set |
+| Setting server.turn_ttl_s | 3600 |
+| Setting session.mode | none |
+| Setting stt.caption_filter | true |
+| Setting stt.live_language | session |
+| Setting stt.model | whisper-large-v3 |
+| Setting stt.no_speech_max | 0.55 |
+| Setting stt.provider | groq |
+| Setting stt.send_prompt | true |
+| Setting stt.timeout_s | 6.0 |
+| Setting tracing.endpoint | none |
+| Setting tracing.include_transcripts | true |
+| Setting tracing.project | none |
+| Setting tracing.redact | 0 entries |
+| Setting tts.cache_phrases | true |
+| Setting tts.languages | ar,ar-SA,en |
+| Setting tts.provider | groq |
+| Setting tts.timeout_s | 6.0 |
+| Setting tts.trim_silence | false |
+| Setting turns.complete_hold_ms | 600 |
+| Setting turns.max_silence_ms | 3000 |
+| Setting turns.smart_turn | true |
+| Setting turns.smart_turn_max_duration_s | 8.0 |
+| Setting turns.smart_turn_pre_speech_ms | 500 |
+| Setting turns.smart_turn_stop_ms | 3000 |
+| Setting turns.smart_turn_threshold | 0.5 |
+| Setting turns.vad_confidence | 0.7 |
+| Setting turns.vad_min_volume | 0.6 |
+| Setting turns.vad_start_ms | 200 |
+| Setting turns.vad_stop_ms | 200 |
+| Setting words.backchannel | none |
+| Setting words.no | none |
+| Setting words.repeat | none |
+| Setting words.stop | none |
+| Setting words.vocabulary | 0 entries |
+| Setting words.wait | none |
+
+| Scenario | Passing plays |
+| --- | --- |
+| s01_password_stop_go_on | 3 |
+| s02_archive_repeat_part | 0 |
+| s03_english_question | 3 |
+| s04_mumble | 3 |
+| s05_correction | 0 |
+| s06_follow_up | 0 |
+| s07_language_change | 3 |
+| s08_not_in_knowledge | 2 |
+| s09_person_over_reply | 0 |
+| s10_new_request_over_reply | 0 |
+
+### 50 · u2-dev
+
+| Field | Value |
+| --- | --- |
+| Why | Plan 006 run U, U2: gpt-oss-120b at low reasoning on O1's uncertain overlaps |
+| Data digest | `27887bdfdfce5eef129c991bc0a628f38ba4fb43b922fb51cf563587aa99ae7b` |
+| Scorecard | scorecard.json |
+| Price per million tokens, cached | $0.075 |
+| Price per million tokens, input | $0.15 |
+| Price per million tokens, output | $0.6 |
+| Setting env | dev |
+| Setting groq.api_key | set |
+| Setting groq.api_key_file | not set |
+| Setting groq.base_url | https://api.groq.com |
+| Setting guard.id_patterns | 0 entries |
+| Setting guard.min_id_digits | 3 |
+| Setting guard.on_block | drop_rest |
+| Setting interruptions.duck_level | 0.25 |
+| Setting interruptions.first_window_ms | 750 |
+| Setting interruptions.min_words | 2 |
+| Setting interruptions.mode | two_step |
+| Setting interruptions.own_words_s | 5.0 |
+| Setting interruptions.short_s | 1.2 |
+| Setting interruptions.short_words | 2 |
+| Setting join.current_kid | key-1 |
+| Setting join.keys | set |
+| Setting join.keys_file | not set |
+| Setting join.max_clock_skew_s | 30 |
+| Setting join.ttl_s | 60 |
+| Setting limits.idle_s | 120.0 |
+| Setting limits.max_call_s | 600.0 |
+| Setting llm.max_output_tokens | 256 |
+| Setting llm.model | openai/gpt-oss-120b |
+| Setting llm.provider | groq |
+| Setting llm.reasoning_effort | low |
+| Setting llm.timeout_s | 8.0 |
+| Setting llm.vary_first_line | true |
+| Setting logging.content | false |
+| Setting logging.format | console |
+| Setting logging.level | INFO |
+| Setting logging.pipecat | off |
+| Setting privacy.consent_version | none |
+| Setting privacy.record_audio | false |
+| Setting run.cap_usd | 0.1 |
+| Setting run.day_requests | 10000 |
+| Setting run.item_timeout_s | 30.0 |
+| Setting run.max_attempts | 3 |
+| Setting run.rpm | 20 |
+| Setting run.smoke_only | false |
+| Setting run.temperature | 0.0 |
+| Setting server.allowed_origins | 0 entries |
+| Setting server.dev_page | false |
+| Setting server.forwarded_allow_ips | 0 entries |
+| Setting server.ice_servers | 0 entries |
+| Setting server.public_url | none |
+| Setting server.turn_secret | not set |
+| Setting server.turn_secret_file | not set |
+| Setting server.turn_ttl_s | 3600 |
+| Setting session.mode | none |
+| Setting stt.caption_filter | true |
+| Setting stt.live_language | session |
+| Setting stt.model | whisper-large-v3 |
+| Setting stt.no_speech_max | 0.55 |
+| Setting stt.provider | groq |
+| Setting stt.send_prompt | true |
+| Setting stt.timeout_s | 6.0 |
+| Setting tracing.endpoint | none |
+| Setting tracing.include_transcripts | true |
+| Setting tracing.project | none |
+| Setting tracing.redact | 0 patterns |
+| Setting tts.cache_phrases | true |
+| Setting tts.languages | \{"ar": \{"model": "canopylabs/orpheus-arabic-saudi", "voice": "abdullah"\}, "ar-SA": \{"model": "canopylabs/orpheus-arabic-saudi", "voice": "abdullah"\}, "en": \{"model": "canopylabs/orpheus-v1-english", "voice": "troy"\}\} |
+| Setting tts.provider | groq |
+| Setting tts.timeout_s | 6.0 |
+| Setting tts.trim_silence | false |
+| Setting turns.complete_hold_ms | 600 |
+| Setting turns.max_silence_ms | 3000 |
+| Setting turns.smart_turn | true |
+| Setting turns.smart_turn_max_duration_s | 8.0 |
+| Setting turns.smart_turn_pre_speech_ms | 500 |
+| Setting turns.smart_turn_stop_ms | 3000 |
+| Setting turns.smart_turn_threshold | 0.5 |
+| Setting turns.vad_confidence | 0.7 |
+| Setting turns.vad_min_volume | 0.6 |
+| Setting turns.vad_start_ms | 200 |
+| Setting turns.vad_stop_ms | 200 |
+| Setting words.backchannel | \{\} |
+| Setting words.no | \{\} |
+| Setting words.repeat | \{\} |
+| Setting words.stop | \{\} |
+| Setting words.vocabulary | 0 entries |
+| Setting words.wait | \{\} |
+
+| Stratum | Value | Items | Variants | Right | Stopped of those that should | False stops |
+| --- | --- | --- | --- | --- | --- | --- |
+| kind | confirmation | 1 | 1 | 0 | 0 of 1 | 0 of 0 |
+| kind | listening_sound | 9 | 18 | 15 | 0 of 0 | 3 of 18 |
+| kind | noise | 2 | 2 | 2 | 0 of 0 | 0 of 2 |
+| kind | repeat_request | 2 | 6 | 4 | 4 of 6 | 0 of 0 |
+| kind | short_request | 2 | 5 | 4 | 4 of 5 | 0 of 0 |
+| kind | stop_word | 3 | 3 | 0 | 0 of 3 | 0 of 0 |
+| language | english | 1 | 2 | 2 | 0 of 0 | 0 of 2 |
+| language | msa | 2 | 2 | 0 | 0 of 2 | 0 of 0 |
+| language | none | 2 | 2 | 2 | 0 of 0 | 0 of 2 |
+| language | saudi | 14 | 29 | 21 | 8 of 13 | 3 of 16 |
+
+| Target | Held |
+| --- | --- |
+| raises_right | fails |
+| listening_no_more | fails |
+| answers_in_time | holds |
+
+### 51 · u1-dev
+
+| Field | Value |
+| --- | --- |
+| Why | Plan 006 run U, U1: llama-3.1-8b-instant on O1's uncertain overlaps |
+| Data digest | `27887bdfdfce5eef129c991bc0a628f38ba4fb43b922fb51cf563587aa99ae7b` |
+| Scorecard | scorecard.json |
+| Price per million tokens, cached | $0.05 |
+| Price per million tokens, input | $0.05 |
+| Price per million tokens, output | $0.08 |
+| Setting env | dev |
+| Setting groq.api_key | set |
+| Setting groq.api_key_file | not set |
+| Setting groq.base_url | https://api.groq.com |
+| Setting guard.id_patterns | 0 entries |
+| Setting guard.min_id_digits | 3 |
+| Setting guard.on_block | drop_rest |
+| Setting interruptions.duck_level | 0.25 |
+| Setting interruptions.first_window_ms | 750 |
+| Setting interruptions.min_words | 2 |
+| Setting interruptions.mode | two_step |
+| Setting interruptions.own_words_s | 5.0 |
+| Setting interruptions.short_s | 1.2 |
+| Setting interruptions.short_words | 2 |
+| Setting join.current_kid | key-1 |
+| Setting join.keys | set |
+| Setting join.keys_file | not set |
+| Setting join.max_clock_skew_s | 30 |
+| Setting join.ttl_s | 60 |
+| Setting limits.idle_s | 120.0 |
+| Setting limits.max_call_s | 600.0 |
+| Setting llm.max_output_tokens | 16 |
+| Setting llm.model | llama-3.1-8b-instant |
+| Setting llm.provider | groq |
+| Setting llm.reasoning_effort | low |
+| Setting llm.timeout_s | 8.0 |
+| Setting llm.vary_first_line | true |
+| Setting logging.content | false |
+| Setting logging.format | console |
+| Setting logging.level | INFO |
+| Setting logging.pipecat | off |
+| Setting privacy.consent_version | none |
+| Setting privacy.record_audio | false |
+| Setting run.cap_usd | 0.1 |
+| Setting run.day_requests | 10000 |
+| Setting run.item_timeout_s | 30.0 |
+| Setting run.max_attempts | 3 |
+| Setting run.rpm | 20 |
+| Setting run.smoke_only | false |
+| Setting run.temperature | 0.0 |
+| Setting server.allowed_origins | 0 entries |
+| Setting server.dev_page | false |
+| Setting server.forwarded_allow_ips | 0 entries |
+| Setting server.ice_servers | 0 entries |
+| Setting server.public_url | none |
+| Setting server.turn_secret | not set |
+| Setting server.turn_secret_file | not set |
+| Setting server.turn_ttl_s | 3600 |
+| Setting session.mode | none |
+| Setting stt.caption_filter | true |
+| Setting stt.live_language | session |
+| Setting stt.model | whisper-large-v3 |
+| Setting stt.no_speech_max | 0.55 |
+| Setting stt.provider | groq |
+| Setting stt.send_prompt | true |
+| Setting stt.timeout_s | 6.0 |
+| Setting tracing.endpoint | none |
+| Setting tracing.include_transcripts | true |
+| Setting tracing.project | none |
+| Setting tracing.redact | 0 patterns |
+| Setting tts.cache_phrases | true |
+| Setting tts.languages | \{"ar": \{"model": "canopylabs/orpheus-arabic-saudi", "voice": "abdullah"\}, "ar-SA": \{"model": "canopylabs/orpheus-arabic-saudi", "voice": "abdullah"\}, "en": \{"model": "canopylabs/orpheus-v1-english", "voice": "troy"\}\} |
+| Setting tts.provider | groq |
+| Setting tts.timeout_s | 6.0 |
+| Setting tts.trim_silence | false |
+| Setting turns.complete_hold_ms | 600 |
+| Setting turns.max_silence_ms | 3000 |
+| Setting turns.smart_turn | true |
+| Setting turns.smart_turn_max_duration_s | 8.0 |
+| Setting turns.smart_turn_pre_speech_ms | 500 |
+| Setting turns.smart_turn_stop_ms | 3000 |
+| Setting turns.smart_turn_threshold | 0.5 |
+| Setting turns.vad_confidence | 0.7 |
+| Setting turns.vad_min_volume | 0.6 |
+| Setting turns.vad_start_ms | 200 |
+| Setting turns.vad_stop_ms | 200 |
+| Setting words.backchannel | \{\} |
+| Setting words.no | \{\} |
+| Setting words.repeat | \{\} |
+| Setting words.stop | \{\} |
+| Setting words.vocabulary | 0 entries |
+| Setting words.wait | \{\} |
+
+| Stratum | Value | Items | Variants | Right | Stopped of those that should | False stops |
+| --- | --- | --- | --- | --- | --- | --- |
+| kind | confirmation | 1 | 1 | 0 | 0 of 1 | 0 of 0 |
+| kind | listening_sound | 9 | 18 | 18 | 0 of 0 | 0 of 18 |
+| kind | noise | 2 | 2 | 2 | 0 of 0 | 0 of 2 |
+| kind | repeat_request | 2 | 6 | 0 | 0 of 6 | 0 of 0 |
+| kind | short_request | 2 | 5 | 0 | 0 of 5 | 0 of 0 |
+| kind | stop_word | 3 | 3 | 0 | 0 of 3 | 0 of 0 |
+| language | english | 1 | 2 | 2 | 0 of 0 | 0 of 2 |
+| language | msa | 2 | 2 | 0 | 0 of 2 | 0 of 0 |
+| language | none | 2 | 2 | 2 | 0 of 0 | 0 of 2 |
+| language | saudi | 14 | 29 | 16 | 0 of 13 | 0 of 16 |
+
+| Target | Held |
+| --- | --- |
+| raises_right | fails |
+| listening_no_more | holds |
+| answers_in_time | holds |

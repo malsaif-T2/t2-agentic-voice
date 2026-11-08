@@ -16,8 +16,8 @@ what is expected of the reply, each optional:
 - `language`: the tag the reply is held to, read from its own words' script
   (`talker_data.HELD_TO`), and held to Arabic its register too, the judge's answer to the
   register's question of its own (judge.py's `Judge.register`): its tag's (`REGISTER_CHECKS`),
-  or either for an `ar-SA` turn whose words hold no dialect form (`ScriptTurn.held_registers`,
-  the owner's Q24);
+  or either for an `ar-SA` turn (`ScriptTurn.held_registers`, the owner's word after run S's
+  first pass: plain Arabic is right for a Saudi caller);
   `max_words`: the most words the reply says;
 - `facts`: what the reply must say or do, each judged; `item`, a dev item of the knowledge set,
   whose expected points' text the judge reads, and whose key facts are the turn's when it names
@@ -83,10 +83,13 @@ class ScriptTurn(Model):
         return (*facts, *follows)
 
     def held_registers(self) -> frozenset[Register]:
-        """The registers its reply is right in when held to Arabic (`REGISTER_CHECKS`), read
-        from its words by the owner's Q24 (`talker_data.registers_held`); none otherwise."""
+        """The registers its reply is right in when held to Arabic (`REGISTER_CHECKS`): either
+        for an `ar-SA` turn (the module's docstring), read from its words by the owner's Q24
+        otherwise (`talker_data.registers_held`); none when it is not held to Arabic."""
         if self.language is None or self.language not in REGISTER_CHECKS:
             return frozenset()
+        if self.language == "ar-SA":
+            return frozenset({"saudi", "msa"})
         return registers_held(self.language, self.says)
 
 
