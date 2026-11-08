@@ -848,6 +848,33 @@ runs"; in this order, each with its smoke first)
   (three single words, «إيه؟» twice and a garbled one). The owner's ruling (Q28) over the keep
   rule: U2, on overlaps of two or more words only (5 of the 15 stopped, none wrongly, on this
   data); single words keep the rule.
+- 2026-11-08: **The model on short overlaps of two or more words (Q28)**, built by one agent,
+  reviewed once with no finding (51a4a75, 85525d4; D-069); `VoiceAgent.ask_on_uncertain_overlaps`,
+  on for Ole5's talker. Gate: 5136 passed.
+- 2026-11-08: **Run S's second and third passes**, $0.09 and $0.08, no failure, no guard
+  violation. The second (s-120b-3, at 85525d4): «أبغى موظف» stopped the reply and was answered
+  in all 3 plays, s09 failing only on the offer to go on helping. Ole5's instructions then gained
+  a line to say when an action needs a permission and to offer to go on helping (d169991).
+  The third (s-120b-4, at b5be04d), the record:
+
+  | Scenario | Passed | Needed | Met |
+  | --- | --- | --- | --- |
+  | s01 stop and go on | 3 | 3 | yes |
+  | s02 archive, repeat, one part | 2 | 3 | no |
+  | s03 English | 2 | 3 | no |
+  | s04 mumble | 3 | 3 | yes |
+  | s05 correction | 3 | 3 | yes |
+  | s06 follow-up | 0 | 2 | no |
+  | s07 change of language | 1 | 2 | no |
+  | s08 not in the knowledge base | 3 | 2 | yes |
+  | s09 a person, over a reply | 3 | 3 | yes |
+  | s10 a new request, over a reply | 3 | 2 | yes |
+
+  6 of 10 met. s06's first answer leaves out that printing needs a permission (the key fact the
+  owner kept, Q29). s02 once mixed up which step was second. s03 and s07 failed on language: an
+  English reply naming Arabic buttons in Arabic script, which the English voice cannot read, and
+  once a reply wholly in Arabic. Ole5's instructions now say English names in an English reply;
+  no further pass is run for it, K's held-out reading the language.
 
 ## Decision log
 

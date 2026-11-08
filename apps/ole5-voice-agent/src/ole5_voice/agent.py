@@ -43,7 +43,7 @@ NAME: Final = "ole5"
 # Stamped on every trace of the talker, with the agent's fingerprint: the date it was last
 # changed, and the change of that day; the talker with no search (run T's pass Tn) is versioned
 # apart, so a run's record tells the two apart.
-VERSION: Final = "2026-11-08.2"
+VERSION: Final = "2026-11-08.3"
 NO_SEARCH_VERSION: Final = f"{VERSION}+no-search"
 # oo-lee faayf
 PRONOUNCE: Final = {
