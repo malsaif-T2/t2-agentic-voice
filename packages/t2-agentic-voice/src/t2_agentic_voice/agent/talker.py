@@ -12,11 +12,12 @@ its developer notes, and the evidence its tools gave the output guard.
 **Out:** events the session plays in order, as they come (agent/events.py, each re-exported
 here): a clause to speak (`SpokenClause`, in the reply's language, each whole once the model has
 written it, so the first is spoken while the model still writes); a card to show (`ShownCard`);
-a tool begun and ended (`ToolBegan`, `ToolEnded`); a progress line due, when a tool runs past
-its progress time (`ProgressDue`, spoken from the phrase cache); a clause the output guard
-blocked (`ClauseBlocked`, never spoken: the session speaks the presets' `error` notice in its
-place and emits `GuardBlocked`, and the talker keeps a developer note); each model request as it
-goes and as it ends (`ModelRequested`, `ModelReplied`, for the call's usage and the turn's
+a tool begun and ended (`ToolBegan`, `ToolEnded`); the progress line of a tool that has one
+(`ProgressDue`, said by the session from the phrase cache if the wait runs long); a clause
+the output guard blocked (`ClauseBlocked`, never spoken: the session speaks the presets'
+`error` notice in its place and emits `GuardBlocked`, and the talker keeps a developer
+note); each model request as it goes and as it ends (`ModelRequested`, `ModelReplied`, for the
+call's usage and the turn's
 times); and the reply's end (`ReplyDone`), after its last clause and its work. A `ProviderError`
 from the model is raised from the stream instead, after any clause already given, for the
 session to say the `error` notice: no event says it (plan 006's Track B report).
@@ -34,8 +35,7 @@ ends the stream at once, with no `ReplyDone`.
 
 **The clock.** The talker keeps its times on the call's clock (core/clock.py's `Clock`, the one
 the session runs on: `SYSTEM_CLOCK` in a call, `TextCall`'s virtual clock in a test), never on
-asyncio's own time or the system's: a tool's progress time (`ProgressDue` once
-`progress_after_s` has passed on it), the tool's timeout (the runner's `run` takes the clock), a
+asyncio's own time or the system's: the tool's timeout (the runner's `run` takes the clock), a
 tool's `ms`, a request's `first_token_s`, and the prompt's date (`compose_prompt`'s `today`, the
 date of `clock.wall()`). So a test that moves its clock on brings what is due by then, and only
 that.

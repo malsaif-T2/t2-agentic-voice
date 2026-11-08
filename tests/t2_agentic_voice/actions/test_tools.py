@@ -177,7 +177,7 @@ def _lambda_free(secret_value: str) -> str:
         ({"description": "  "}, "description"),
         ({"timeout_s": 0}, "timeout_s"),
         ({"progress": "Searching"}, "progress"),
-        ({"progress": "searching", "progress_after_s": 9.0}, "progress_after_s"),
+        ({"progress": "searching", "progress_after_s": 0}, "progress_after_s"),
         ({"on_interrupt": "pause"}, "on_interrupt"),
     ],
 )

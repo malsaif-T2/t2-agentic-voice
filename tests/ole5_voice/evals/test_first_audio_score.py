@@ -63,25 +63,25 @@ def test_a_call_of_one_answered_turn_is_timed_and_others_are_not() -> None:
 
 def test_each_path_has_its_own_spread_and_a_late_search_needs_its_progress_line() -> None:
     results = [
-        _result("a", _search(2500.0, 1500.0)),  # late, its progress line in time
-        _result("b", _search(3500.0)),  # late, with none
-        _result("c", _search(2600.0, 2100.0)),  # late, its line too late
-        _result("d", _search(1800.0)),  # in time: needs none
+        _result("a", _search(3500.0, 2500.0)),  # late, its progress line in time
+        _result("b", _search(4500.0)),  # late, with none
+        _result("c", _search(3600.0, 3100.0)),  # late, its line too late
+        _result("d", _search(2800.0)),  # in time: needs none
         _result("e", ReplayedTurn(ttfa_ms=1000.0)),
         _result("f", ReplayedTurn(ttfa_ms=2000.0)),
     ]
     found = metrics(results)
     search, plain = found.paths["search"], found.paths["no_search"]
-    assert (search.turns, search.items, search.median_ms) == (4, 4, 2550.0)
-    assert search.p90_ms == pytest.approx(3230.0)
+    assert (search.turns, search.items, search.median_ms) == (4, 4, 3550.0)
+    assert search.p90_ms == pytest.approx(4230.0)
     assert (plain.median_ms, plain.p90_ms) == (1500.0, 1900.0)
-    assert (found.progress_lines, found.progress_median_ms, found.progress_late) == (2, 1800.0, 2)
+    assert (found.progress_lines, found.progress_median_ms, found.progress_late) == (2, 2800.0, 2)
     held = {t.name: (t.value, t.holds) for t in targets(results, held_out=False, tail_s=TAIL)}
     assert held == {
         "no_search_median_ms": (1500.0, True),
         "no_search_p90_ms": (1900.0, True),
-        "search_median_ms": (2550.0, True),
-        "search_p90_ms": (pytest.approx(3230.0), True),
+        "search_median_ms": (3550.0, False),
+        "search_p90_ms": (pytest.approx(4230.0), False),
         "progress_late": (2.0, False),
     }
 
@@ -89,7 +89,7 @@ def test_each_path_has_its_own_spread_and_a_late_search_needs_its_progress_line(
 def test_a_reply_never_heard_by_the_calls_end_is_counted_and_ranked_slowest() -> None:
     """A timed turn whose reply sent no audio before the call ended took longer than the call's
     tail: it is counted (`no_audio`) and ranked after every reply heard, so a quantile that
-    reaches it has no value, and its target fails; it began nothing by 2 s either."""
+    reaches it has no value, and its target fails; it began nothing by 3 s either."""
     heard = [_result(f"s{k}", _search(2100.0 + 100.0 * k, 1500.0)) for k in range(7)]
     silent = [_result(f"x{k}", ReplayedTurn(searched=True)) for k in range(2)]
     found = metrics([*heard, *silent])

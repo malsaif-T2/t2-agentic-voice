@@ -38,7 +38,7 @@ from ole5_voice.evals.overlap_score import Target
 from ole5_voice.evals.runs import HELD_OUT_MIN_ITEMS
 from ole5_voice.evals.scorecard import quantile
 
-PROGRESS_BY_MS: Final = 2000.0
+PROGRESS_BY_MS: Final = 3000.0
 ReplyPath = Literal["search", "no_search"]
 # The registration's bounds, by target: its path, its quantile and its most ms.
 BOUNDS: Final[tuple[tuple[str, ReplyPath, float, float], ...]] = (

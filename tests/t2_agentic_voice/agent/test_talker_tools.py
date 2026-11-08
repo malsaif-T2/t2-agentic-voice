@@ -82,6 +82,7 @@ def test_a_turn_with_a_tool_makes_two_requests_its_result_framed_as_data() -> No
         "SpokenClause",
         "ModelReplied",
         "ToolBegan",
+        "ProgressDue",
         "ToolEnded",
         "ShownCard",
         "ModelRequested",
@@ -156,7 +157,7 @@ def test_a_tool_error_goes_back_with_its_message() -> None:
     ]
 
 
-def test_a_tool_runs_past_its_progress_time_then_times_out_on_the_calls_clock() -> None:
+def test_a_tool_gives_its_progress_line_as_it_begins_and_times_out_on_the_calls_clock() -> None:
     @tool(description="Search slowly.", progress="searching", progress_after_s=1.0, timeout_s=3.0)
     async def slow(query: str) -> str:
         await asyncio.Event().wait()
@@ -167,11 +168,8 @@ def test_a_tool_runs_past_its_progress_time_then_times_out_on_the_calls_clock() 
 
     async def steps(task: Any, events: list[TalkerEvent], scope: CancelScope, used: Any) -> None:
         await settle()
-        await clock.advance(0.9)
-        assert "ProgressDue" not in kinds(events)
-        await clock.advance(0.1)
-        assert events[-1] == ProgressDue(tool="slow", key="searching", language="en")
-        await clock.advance(2.0)
+        assert events[-1] == ProgressDue(tool="slow", key="searching", language="en", after_s=1.0)
+        await clock.advance(3.0)
 
     events = reply(talker(model, slow, clock=clock), TURN, steps=steps)
     assert ToolEnded(call_id="c-1", tool="slow", ok=False, ms=3000.0) in events
@@ -179,10 +177,13 @@ def test_a_tool_runs_past_its_progress_time_then_times_out_on_the_calls_clock() 
     assert _tool_messages(model, 1) == [f'<data tool="slow">{{"error": "{FAILED}"}}</data>']
 
 
-def test_a_tool_done_before_its_progress_time_says_no_progress_line() -> None:
-    model = FakeChat(calls(call(NAME, query="x")), said("Sure."))
-    events = reply(talker(model, _search(FakeKnowledgeBase([RESET]))), TURN)
-    assert "ProgressDue" not in kinds(events)
+def test_a_tool_with_no_progress_line_gives_none() -> None:
+    @tool(description="Quick.")
+    async def quick() -> str:
+        return "done"
+
+    model = FakeChat(calls(call("quick")), said("Sure."))
+    assert "ProgressDue" not in kinds(reply(talker(model, quick), TURN))
 
 
 def test_a_card_whose_text_holds_an_id_with_no_evidence_is_not_shown() -> None:

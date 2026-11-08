@@ -38,8 +38,8 @@ class Talk:
     kept behind (`kept_for`: talking.py's kept reply), what was given while held or kept
     (`pending`), whether the talker's stream ended and how (`written`, `failure`), the clauses
     said, whether the guard's line was said, when its last model request went, whether the
-    early start began it (`early`), and the language it is said in (its last clause's, else
-    its turn's)."""
+    early start began it (`early`), the language it is said in (its last clause's, else its
+    turn's), and the wait for its progress line (`waiting`: talking.py's progress line)."""
 
     turn_id: TurnId
     words: str
@@ -55,6 +55,7 @@ class Talk:
     request_at: float | None = None
     language: LanguageTag | None = None
     task: asyncio.Task[None] | None = None
+    waiting: asyncio.Task[None] | None = None
 
     @property
     def held(self) -> bool:

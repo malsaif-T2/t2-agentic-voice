@@ -5,8 +5,9 @@ replies (`Memory`).
   (actions/runner.py, which never raises for the tool's own failure): in the reply's scope, so a
   stop cancels it with the reply, but for a tool whose barge-in is `finish`, which the talker
   holds itself, its result kept for the next turn if the reply ends first.
-- **Progress.** While they run, the first progress line due is given once a tool has run past
-  its `progress_after_s` on the call's clock: one line a reply, however many tools.
+- **Progress.** The first call in a reply of a tool with a progress line gives that line
+  (`ProgressDue`, with the soonest `progress_after_s` of the request's tools), for the session
+  to say if the wait runs long: one line a reply, however many tools.
 - **Results.** Each result, as it comes: `ToolEnded`, its data and evidence kept as the output
   guard's evidence for the rest of the call, and its card shown once the guard passed its text.
 - **Framed.** A result goes back to the model as JSON inside the data frame the prompt names
@@ -38,8 +39,6 @@ from t2_agentic_voice.domain.ports.chat_model import ChatMessage, ToolCallReques
 
 # The past turns whose tool calls and results the talker keeps for the model.
 KEPT_TURNS = 4
-# How close to its progress time a tool counts as past it, for a clock's rounding.
-_EPSILON_S = 1e-9
 
 
 @dataclass
@@ -108,26 +107,17 @@ class ToolCalls:
         began = self.clock.now()
         tasks: dict[asyncio.Future[ToolResult], ToolCallRequest] = {}
         finished: set[asyncio.Future[ToolResult]] = set()
-        timer: asyncio.Future[None] | None = None
         try:
             for call in calls:
                 tasks[self._started(call)] = call
             for call in calls:
                 yield ToolBegan(call_id=call.id, tool=call.name)
-            timer = self._timer(calls, began)
+            line = self._line(calls)
+            if line is not None:
+                yield line
             while len(finished) < len(tasks):
                 pending = set(tasks) - finished
-                waiters = pending | ({timer} if timer else set())
-                done, _ = await asyncio.wait(waiters, return_when=asyncio.FIRST_COMPLETED)
-                if timer is not None and timer in done:
-                    waiting = [tasks[task] for task in pending if task not in done]
-                    due = self._due(waiting, began)
-                    if due is not None and due.progress is not None:
-                        self.progress_said = True
-                        yield ProgressDue(
-                            tool=due.name, key=due.progress, language=self.ctx.language
-                        )
-                    timer = self._timer(waiting, began)
+                done, _ = await asyncio.wait(pending, return_when=asyncio.FIRST_COMPLETED)
                 for task in [task for task in tasks if task in done]:
                     finished.add(task)
                     call = tasks[task]
@@ -138,8 +128,6 @@ class ToolCalls:
                     if result.card is not None and self.shown(result.card, call.name):
                         yield ShownCard(card=result.card)
         finally:
-            if timer is not None:
-                timer.cancel()
             for task, call in tasks.items():
                 if task in finished:
                     continue
@@ -159,22 +147,20 @@ class ToolCalls:
             return task
         return self.scope.start(work, name=f"tool-{call.name}")
 
-    def _progressing(self, calls: Iterable[ToolCallRequest]) -> list[Tool]:
+    def _line(self, calls: Iterable[ToolCallRequest]) -> ProgressDue | None:
+        """The reply's progress line, the soonest of `calls`' tools': None once given, or when
+        none has one."""
         tools = [self.runner.tool(call.name) for call in calls]
-        return [tool for tool in tools if tool is not None and tool.progress is not None]
-
-    def _timer(self, calls: Iterable[ToolCallRequest], began: float) -> asyncio.Future[None] | None:
-        """A sleep until the next progress line of `calls` is due, None when none is."""
-        times = [tool.progress_after_s for tool in self._progressing(calls)]
-        if self.progress_said or not times:
+        lined = [
+            (t.progress_after_s, t.name, t.progress)
+            for t in tools
+            if t is not None and t.progress is not None
+        ]
+        if self.progress_said or not lined:
             return None
-        left = min(times) - (self.clock.now() - began)
-        return asyncio.ensure_future(self.clock.sleep(max(0.0, left)))
-
-    def _due(self, calls: Sequence[ToolCallRequest], began: float) -> Tool | None:
-        """The first of `calls`' tools now past its progress time."""
-        elapsed = self.clock.now() - began + _EPSILON_S
-        return next((t for t in self._progressing(calls) if t.progress_after_s <= elapsed), None)
+        self.progress_said = True
+        after_s, name, key = min(lined)
+        return ProgressDue(tool=name, key=key, language=self.ctx.language, after_s=after_s)
 
     def _keep_when_done(self, call: ToolCallRequest, task: asyncio.Future[ToolResult]) -> None:
         """A `finish` tool's call outlived its reply: its result is kept for the next turn."""

@@ -57,12 +57,14 @@ class ToolEnded(_Event):
 
 
 class ProgressDue(_Event):
-    """A tool ran past its progress time: its progress line `key`, to speak in `language` from
-    the phrase cache."""
+    """A tool with a progress line began: its line `key`, to say in `language` from the phrase
+    cache `after_s` after the caller stopped speaking, unless the answer has begun by then; with
+    `after_s` 0, at once."""
 
     tool: str = Field(min_length=1)
     key: ProgressKey
     language: LanguageTag
+    after_s: float = Field(default=0.0, ge=0, allow_inf_nan=False)
 
 
 class ClauseBlocked(_Event):

@@ -126,8 +126,8 @@ question, so the caller knows it is their turn.
 
 ## Progress lines
 
-A tool that may run long (a search) names a progress line, spoken when it has run
-`progress_after_s` (1 s by default) with no answer ([concepts.md](concepts.md), "Progress
+A tool that may run long (a search) names a progress line, spoken when the caller has waited
+`progress_after_s` (2.8 s by default) with no answer begun ([concepts.md](concepts.md), "Progress
 lines"). Make it short and honest: it says the agent is at work, promises no time, asks
 nothing, and is said once a reply, whatever else follows.
 

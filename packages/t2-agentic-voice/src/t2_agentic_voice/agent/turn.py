@@ -16,8 +16,9 @@ turn and the call as it was heard to the events the session plays, within the re
   (`drop_rest`: no more clause, request or tool) or only it; the next turn's history holds a
   developer note.
 - **Tools** (agent/tool_calls.py). Each call the model asks for starts at once, in the reply's
-  scope, and runs through the runner; a progress line is due once a tool runs past its
-  `progress_after_s` (one a reply); each result goes back to the model framed as data, a
+  scope, and runs through the runner; the first with a progress line gives it, for the
+  session to say if the wait runs long (one a reply); each result goes back to the model
+  framed as data, a
   result's card is shown once the guard passed its text, and the calls and results are kept
   for the call's next `KEPT_TURNS` turns, which the heard history does not hold.
 - **Failure and cancel.** A `ProviderError` from the model ends the reply: it is raised from the
@@ -28,7 +29,7 @@ turn and the call as it was heard to the events the session plays, within the re
   A cancel of the reply's scope cancels the task that iterates the stream, so the model's
   request and every tool of the scope stop at once, and no `ReplyDone` comes. The model's stream
   is closed as the reply leaves it, whatever ends it (`contextlib.aclosing`).
-- **Time** is the call's clock's alone: the progress time, a tool's `ms`, a request's
+- **Time** is the call's clock's alone: a tool's `ms`, a request's
   `first_token_s` and the prompt's date (the runner times each tool's timeout on it too).
 """
 

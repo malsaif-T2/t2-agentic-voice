@@ -65,8 +65,8 @@ The talker answers one turn at a time, and starts again from what the caller hea
 - **tool calls**: each one the model asks for starts at once, in the reply's cancel scope, and
   its result goes back to the model inside a data frame (`<data tool="...">...</data>`) that no
   text in it can close;
-- **a card**, when a tool's result holds one, and **a progress line**, when a tool runs past its
-  progress time (both below);
+- **a card**, when a tool's result holds one, and **a progress line**, when the caller has waited
+  long with no answer begun (both below);
 - **a blocked clause**, never spoken ("The output guard's ID rule", below).
 
 A turn makes at most three model requests. Each but the last offers the agent's tools, the last
@@ -107,7 +107,6 @@ my_requests = Tool.from_function(
     bind={"employee_id": from_caller("subject")},
     timeout_s=3,
     progress="checking",
-    progress_after_s=1.0,
 )
 ```
 
@@ -157,10 +156,12 @@ annotation, a `bind=` for a parameter it lacks), or a value it refuses, is a
 ### Progress lines
 
 A tool that may run long names a progress line by a key (`progress="checking"`), and each of the
-agent's languages gives that line's text (`progress={"checking": ...}` in its preset). When the
-tool has run `progress_after_s` (1 s by default, under its timeout) with no answer, the line is
-spoken from the phrase cache, so the caller knows the agent is at work: one line a reply,
-however many tools run. Each line is synthesized once, at the runtime's start, with the
+agent's languages gives that line's text (`progress={"checking": ...}` in its preset). When
+`progress_after_s` (2.8 s by default) has passed since the caller stopped speaking and no answer
+has begun, whatever the reply is waiting on by then (the tool, the model or the voice), the line
+is spoken from the phrase cache, so the caller knows the agent is at work: one line a reply,
+however many tools run. An answer that begins first goes without it, and an answer ready while
+the line plays waits for its end. Each line is synthesized once, at the runtime's start, with the
 greetings. The guide's sample agent, from
 [test_guide_samples.py](../../tests/minimal_example/test_guide_samples.py):
 

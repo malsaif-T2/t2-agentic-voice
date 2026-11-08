@@ -72,7 +72,7 @@ def test_a_tool_holds_the_designs_fields_and_is_the_declarations_shape() -> None
         {"description": " "},
         {"timeout_s": 0},
         {"progress": "Searching"},
-        {"progress": "searching", "progress_after_s": 5.0},  # never before the timeout
+        {"progress": "searching", "progress_after_s": 0},
         {"on_interrupt": "pause"},
         {"bind": {"asset_tag": from_caller("subject")}},  # the talker's own parameter
         {"parameters": dict},

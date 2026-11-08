@@ -193,6 +193,35 @@ def test_a_held_event_that_fails_is_logged_and_the_rest_plays_and_the_reply_clos
     assert [t.fate for t in session.history.turns()] == ["answered"]
 
 
+def test_a_progress_line_given_in_the_hold_is_said_at_its_time_after_the_caller_stopped(
+    settings: VoiceSettings,
+) -> None:
+    def script(turn: TalkerTurn) -> list[Step]:
+        return [
+            ProgressDue(tool="search_help", key="looking", language="en", after_s=2.0),
+            Work(9.0),
+            *answer("Found it."),
+        ]
+
+    io, _, _ = talker_call(two_step(settings), script)
+    due = 2.0 - settings.turns.vad_stop_ms / 1000
+
+    async def drive() -> None:
+        await greeted(io)
+        await _held(io, 0, FIRST)
+        await _closed(io, 0, FIRST)
+        await io.clock.advance(due - 0.01)
+        await settle()
+        assert speaks(io, 1) == []
+        await io.clock.advance(0.01)
+        await settle()
+        assert [s.text for s in speaks(io, 1)] == [PROGRESS["en"]]
+        await io.ending()
+        await io.close()
+
+    asyncio.run(drive())
+
+
 def test_a_client_stop_in_the_hold_cancels_the_early_work_and_nothing_answers_the_turn(
     settings: VoiceSettings,
 ) -> None:

@@ -105,6 +105,12 @@ class TurnLog:
         return self.transcribed_at is not None
 
     @property
+    def spoken_at(self) -> float | None:
+        """When the caller's speech ended: the detector's stop less its delay."""
+        end = self.speech_ended_at
+        return None if end is None else end - self.stop_delay_s
+
+    @property
     def awaited(self) -> bool:
         """Whether the turn has closed, is to be answered (not dropped, nor taken by an
         overlap's verdict as a command or let go on), and its transcript has not come."""
@@ -119,7 +125,7 @@ class TurnLog:
         came to the transcript (when a request went); and the reply's first request to its
         first audio."""
         end = self.speech_ended_at
-        spoken = None if end is None else end - self.stop_delay_s
+        spoken = self.spoken_at
         tts_ms = None if self.tts_first_audio_s is None else self.tts_first_audio_s * 1000
         heard = self.first_audible_at if self.audio_seen else self.first_audio_at
         progress = self.progress_audible_at if self.audio_seen else self.progress_at

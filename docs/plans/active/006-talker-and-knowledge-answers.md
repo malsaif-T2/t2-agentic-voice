@@ -50,7 +50,8 @@ and measures; Q1 asks the owner to approve or change the list.
    goes to text-to-speech as soon as it is whole; the instructions keep the first clause short.
 5. **Short to the ear, whole on the screen.** One to three short spoken sentences; a passage's
    full steps go to the screen as a card (`t2v/1`).
-6. **Honest waits.** A search that runs past a set time gets a pre-recorded progress line. No
+6. **Honest waits.** A reply that keeps the caller waiting past a set time, with a search
+   under way or just done, gets a pre-recorded progress line (Q27). No
    fixed line holds a stop, wait, repeat, yes, send or listening word, so its echo cannot be
    heard as the caller's (the roadmap's M4, from the next phase's study).
 7. **One reply, one scope.** The model's requests, the search and the speech of a reply run in
@@ -100,7 +101,8 @@ and measures; Q1 asks the owner to approve or change the list.
   from the session and hidden from the schema), a timeout, the barge-in policy (`cancel` for read
   tools), arguments parsed before the function runs, and `ToolError` and other exceptions as the
   design's 6.4 table says.
-- [ ] **Progress lines**: spoken only when a tool runs past its progress time, from the phrase
+- [ ] **Progress lines**: spoken only when the caller has waited past the line's time with no
+  answer begun (Q27), from the phrase
   cache; a test that no fixed line of the library or of Ole5 holds a word of the presets' lists.
 - [ ] **Knowledge**: `KnowledgeBase.search(query, *, language, caller, limit) -> list[Passage]`
   and `knowledge_tool(kb, description=..., progress=...)`: one search per question, short
@@ -805,6 +807,22 @@ runs"; in this order, each with its smoke first)
     start, stopped when the tool ends, and the search took under 1.0 s on every T0 turn. The
     wait is the speech-to-text and the first model request before the tool, and the second model
     request and the voice after it. Its target is the owner's call (Q27).
+- 2026-11-08: **The progress line by the caller's wait (Q27).** `Tool.progress_after_s` now
+  reads from the end of the caller's speech (2.8 s by default, so the line is heard by 3.0 s),
+  whatever the reply is waiting on; the talker gives `ProgressDue` as the tool begins, with its
+  `after_s`, and the session says the line at that time unless a clause was asked for, the reply
+  is kept or a notice took its place. A tool's `progress_after_s` is no longer tied to its
+  timeout. Run T's target reads 3.0 s (`PROGRESS_BY_MS`), and T0's dev pass is run again on it.
+- 2026-11-08: **The owner's word: only the runs that matter** ("Lets skip any unnecessary runs.
+  Only do the important ones"). The agent's reading, each for what it still decides:
+  - **Still to run:** S, the only automated check of the multi-turn behaviour; T's held-out pass,
+    once, with the progress line, the one full pass of the code that ships; K's held-out pass,
+    once, after the owner's check of the judge; and the live calls.
+  - **Dropped:** Tn, stopped at 12 of 72 recordings (3 items, all with no search, median 1.36 s,
+    p90 1.48 s against 1.6 s and 2.4 s; no scorecard or history line, about $0.05, its folder
+    `tn-dev-120b` left as it is), which decides nothing; T0's second dev pass, which held-out's
+    pass replaces; and run U, whose rule (D-061) stays, a model for the uncertain middle left
+    for later.
 
 ## Decision log
 
@@ -844,6 +862,11 @@ runs"; in this order, each with its smoke first)
 - 2026-11-07: With a talker, a reply is held while a newer turn of the caller's that is no
   overlap of it is open (Q19), which narrows D-068's amendment 7 for the talker only; the echo
   keeps M3's rule. A decision entry is written at the plan's close.
+- 2026-11-08: The progress line's timer is the session's, not the talker's: only the session
+  knows when the caller stopped speaking and whether a clause was asked for, and the talker
+  could time past the tool only by iterating the model's stream from a second task, which a
+  stream of the reply's scope must not be (D-060). Its default is 2.8 s, not 3.0 s, so the first
+  audible frame falls inside the target's 3.0 s.
 
 ## The owner's decisions
 
@@ -878,6 +901,7 @@ runs"; in this order, each with its smoke first)
   has more reasoning power and more capable to hold conversations longer". So K1 ships,
   `llm.model` stays `openai/gpt-oss-120b`, and K's held-out and runs T, U and S use it.
 - 2026-11-08, to Q26, after an exploratory dev pass at medium reasoning: "Medium reasoning".
+- 2026-11-08, to Q27, after run T's T0: "Line at 3.0 s".
 
 ## Tracks
 
@@ -974,6 +998,7 @@ median, then held-out once; otherwise the rule stays. *Amended 2026-11-07, befor
 (Q16):* M3's held-out run H3 stored aggregates only, so U's held-out pass replays H3's held-out
 clips live, the kept arm deciding each uncertain overlap as it comes, and writes aggregates
 only (about $0.03 of Whisper and the chat requests); it is built once an arm passes on dev.
+*Amended 2026-11-08 (the owner, "only the important ones"):* run U is not run; the rule stays.
 
 **K0, the passages' depth** (*added 2026-11-07, before any run, Q20*; the real knowledge base
 only, no chat model, no Groq request). Before K, on dev only, each answerable variant's raw
@@ -1017,6 +1042,9 @@ first syllable in ten of its replies. *Amended 2026-11-07, before any run (Q12):
 request needs a search, so the target for a reply with no search is read from one more pass, Tn:
 the same recordings with the kept `tts.trim_silence` and the knowledge tool left out of the agent,
 so every reply takes the path with no search; only its times are read (about $0.25).
+*Amended 2026-11-08 (the owner, "only the important ones"):* Tn stopped at 12 of 72 recordings
+and read as it stood; T0's dev pass is not run again with the progress line (Q27), held-out's
+pass measuring that code.
 *Amended 2026-11-07, before any run (Q18):* the time starts at the owner's marked end for `n19`
 to `n28` and at the speech detector's stop for `n01` to `n18`; the targets read both together,
 and the scorecard shows the two groups apart.
@@ -1033,7 +1061,7 @@ what was repeated or continued, no guard violation).
 - the time to first audio, a reply with no search: a median of at most 1.6 s, a 90th percentile
   of at most 2.4 s;
 - with a search: a median of at most 3.0 s, a 90th percentile of at most 4.0 s, and a progress
-  line begun by 2.0 s whenever the answer has not;
+  line begun by 3.0 s whenever the answer has not (*amended 2026-11-08, Q27, from 2.0 s*);
 - retrieval: an expected point in the top 5 for at least 90% of the answerable items;
 - answers: at least 80% of the answerable items right, and at least 90% of the `none` items
   answered with an honest "not in my knowledge" and no invented steps;
@@ -1065,7 +1093,7 @@ Q15 to Q18, from Track E's review, asked and settled on 2026-11-07 before any re
 Q19 and Q20, from the whole-code review, and Q21, from the live smoke, asked and settled on
 2026-11-07 before any registered run; Q22, after run W's dev runs and before its held-out;
 Q23, after that held-out pass; Q24, after run K's first dev round and before its dev runs again;
-Q25, after run T's smoke; Q26, after an exploratory pass of run K.
+Q25, after run T's smoke; Q26, after an exploratory pass of run K; Q27, after run T's T0.
 Each answer that changes a run is a dated amendment to the registration.
 
 - **Q1. What voice-first means here.** *Settled: (a).* The eight choices above. Options: (a) approve them; (b)
@@ -1179,11 +1207,18 @@ Each answer that changes a run is a dated amendment to the registration.
   recordings. **The agent recommended (a).**
 - **Q26. `gpt-oss-120b`'s reasoning.** *Settled 2026-11-08: (a).* An exploratory dev pass at
   medium against the two at low. Options: (a) medium; (b) low. **The agent recommended (a).**
+- **Q27. The progress line.** *Settled 2026-11-08: (a).* 59 of T0's 67 search turns began
+  after 2.0 s with no line: the line's clock was the tool's own, and the wait is mostly the
+  model. Options: (a) the line 3.0 s after the caller stops if no answer has begun, whatever the
+  wait (7 of T0's 67 turns); (b) the same clock at 2.0 s (about nine in ten search answers open
+  with the line, and one ready at 2.4 s is heard at about 4 s); (c) as built, the target
+  reworded (silence when the model is the slow part, 6.3 s at the longest). **The agent
+  recommended (a).**
 
 ## What the owner does
 
 - Answer Q1 to Q10, and approve the plan (done 2026-11-06); answer Q11 to Q14, Q15 to Q18,
-  Q19 and Q20, Q21, Q22 and Q23 (done 2026-11-07), and Q24, Q25 and Q26 (done 2026-11-08).
+  Q19 and Q20, Q21, Q22 and Q23 (done 2026-11-07), and Q24 to Q27 (done 2026-11-08).
 - Copy the knowledge base's access into `.env` (Q4; done 2026-11-06, under the owner's names).
 - Review the knowledge set's items (Q5, about 40 minutes; done 2026-11-07, checked by the agent
   against the knowledge base), and check 24 judged answers (Q6, about 20 minutes).

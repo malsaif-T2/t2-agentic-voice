@@ -6,7 +6,8 @@ to have its result discarded (the design's 3.2).
   (models call English descriptions more reliably: the design's 6.4); `parameters`, the pydantic
   model of the arguments the talker gives, the only schema it sees; the `function`, async or
   sync; its `timeout_s`; its `progress` line's key (`Language.progress`, domain/declaration.py)
-  and `progress_after_s`, how long it runs before that line is spoken; what a barge-in does to
+  and `progress_after_s`, how long after the caller stopped speaking that line is said if no
+  answer has begun, whatever the reply is waiting on (plan 006, Q27); what a barge-in does to
   it (`on_interrupt`: `cancel`, the default for a read tool, or `finish`); and `bind`, its
   parameters filled from the session, never shown to the talker (`from_caller`).
 - **`@tool`** makes one of an async or a sync function (a sync one runs in a worker thread),
@@ -32,7 +33,7 @@ ConfigurationError naming the field, with a FIX line, never the value (actions/s
 from __future__ import annotations
 
 from collections.abc import Callable, Mapping
-from typing import Annotated, Any, Literal, Self
+from typing import Annotated, Any, Final, Literal, Self
 
 from pydantic import (
     BaseModel,
@@ -61,13 +62,16 @@ OnInterrupt = Literal["cancel", "finish"]
 # one of its attributes, as `attributes.<key>`.
 _CALLER_FIELD = r"^(subject|display_name|locale|attributes\.[A-Za-z0-9_.-]{1,64})$"
 _ATTRIBUTES = "attributes."
+# Seconds after the caller stopped speaking with no answer begun that a tool's progress line is
+# said by default: a little under 3.0 s, so the caller hears it by then (plan 006, Q27).
+PROGRESS_AFTER_S: Final = 2.8
 # What fixes each field of a tool that `from_function` cannot build.
 _FIXES = {
     "name": 'name the tool with letters, digits, underscores and hyphens, as name="lookup_device"',
     "description": "describe, in English, when the talker calls it",
     "timeout_s": "give timeout_s a number of seconds above 0",
     "progress": 'name the progress line by its key, a lowercase word, as progress="searching"',
-    "progress_after_s": "give progress_after_s a number of seconds above 0, under timeout_s",
+    "progress_after_s": "give progress_after_s a number of seconds above 0",
     "on_interrupt": 'give on_interrupt "cancel" or "finish"',
     "bind": 'bind each parameter with from_caller("subject") or another field of the caller',
 }
@@ -129,7 +133,7 @@ class Tool(_Frozen):
     function: Callable[..., Any]
     timeout_s: float = Field(default=5.0, gt=0, allow_inf_nan=False)
     progress: ProgressKey | None = None
-    progress_after_s: float = Field(default=1.0, gt=0, allow_inf_nan=False)
+    progress_after_s: float = Field(default=PROGRESS_AFTER_S, gt=0, allow_inf_nan=False)
     on_interrupt: OnInterrupt = "cancel"
     bind: Annotated[Mapping[str, FromCaller], FROZEN, PLAIN] = Field(
         default_factory=dict, validate_default=True
@@ -146,8 +150,6 @@ class Tool(_Frozen):
     def _consistent(self) -> Self:
         if set(self.bind) & set(self.parameters.model_fields):
             raise ValueError("a bound parameter is filled from the session, never by the talker")
-        if self.progress is not None and self.progress_after_s >= self.timeout_s:
-            raise ValueError("a progress line is spoken before the tool's timeout")
         return self
 
     @classmethod
@@ -159,7 +161,7 @@ class Tool(_Frozen):
         name: str | None = None,
         timeout_s: float = 5.0,
         progress: str | None = None,
-        progress_after_s: float = 1.0,
+        progress_after_s: float = PROGRESS_AFTER_S,
         on_interrupt: OnInterrupt = "cancel",
         bind: Mapping[str, FromCaller] | None = None,
     ) -> Tool:
@@ -184,9 +186,8 @@ class Tool(_Frozen):
             return cls.model_validate(values)
         except ValidationError as error:
             first = error.errors(include_input=False, include_url=False)[0]
-        # A check of the whole tool names no field: its message says which it is.
-        whole = "progress_after_s" if "progress" in first["msg"] else "bind"
-        field = str(first["loc"][0]) if first["loc"] else whole
+        # The check of the whole tool names no field: it is its `bind`.
+        field = str(first["loc"][0]) if first["loc"] else "bind"
         raise ConfigurationError(
             f"A tool cannot take its `{field}`: {first['msg']}. "
             f"FIX: {_FIXES.get(field, _FIXES['bind'])}.",
@@ -208,7 +209,7 @@ def tool(
     name: str | None = None,
     timeout_s: float = 5.0,
     progress: str | None = None,
-    progress_after_s: float = 1.0,
+    progress_after_s: float = PROGRESS_AFTER_S,
     on_interrupt: OnInterrupt = "cancel",
     bind: Mapping[str, FromCaller] | None = None,
 ) -> Callable[[Callable[..., Any]], Tool]:

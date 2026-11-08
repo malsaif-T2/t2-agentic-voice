@@ -53,7 +53,6 @@ my_requests = Tool.from_function(
     bind={"employee_id": from_caller("subject")},
     timeout_s=3,
     progress="checking",
-    progress_after_s=1.0,
 )
 
 

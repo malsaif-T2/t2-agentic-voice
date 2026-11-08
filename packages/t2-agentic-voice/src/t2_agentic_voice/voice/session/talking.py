@@ -15,8 +15,9 @@ voice/session/call.py.
   (`SpokenClause`, in its language, open_reply.py's speech); a card is shown (`ShownCard`,
   `t2v/1`'s `card`); a tool's start and end are the public `ToolStarted` and `ToolFinished`, and
   while the talker or a tool works with nothing left to play the agent is `thinking`
-  (playback.py); a progress line due is said from the phrase cache in its language
-  (`ProgressDue`, timed apart); a clause the guard blocked is never said (`ClauseBlocked`): the
+  (playback.py); a progress line is said from the phrase cache in its language (`ProgressDue`,
+  timed apart: **the progress line** below); a clause the guard blocked is never said
+  (`ClauseBlocked`): the
   call language's preset `error` notice is said in its place, once a reply, and `GuardBlocked`
   goes out (the talker keeps its developer note: the history holds only what the caller heard);
   each model request is counted in the call's usage as it goes and its tokens as it ends
@@ -49,6 +50,11 @@ voice/session/call.py.
   lets it go on: what was kept plays in order, each event guarded, and the rest as it comes.
   Once its reply was stopped, or the call has ended or is ending, nothing kept plays. While
   kept, the reply has no audio, so the client is shown `thinking`.
+- **The progress line** (plan 006, Q27). A `ProgressDue` with an `after_s` waits, in the reply's
+  scope, until that long after the caller stopped speaking, whatever the reply is waiting on by
+  then (the search, the model, the voice), and is said only if no clause has been asked for by
+  then, the reply is not kept and no notice took its place; past that time it is said at once,
+  and once a clause was asked for never. With no `after_s` it is said as it comes.
 
 Every event the talker gives is played as one step of the session's (`guarded`, under its lock,
 in the order they came), so it never interleaves with one the Pipecat side hands; the client is
@@ -61,7 +67,13 @@ from collections.abc import AsyncIterator, Awaitable, Callable
 from functools import partial
 
 from t2_agentic_voice.agent.language import reply_language
-from t2_agentic_voice.agent.talker import ModelReplied, ModelRequested, Talker, TalkerEvent
+from t2_agentic_voice.agent.talker import (
+    ModelReplied,
+    ModelRequested,
+    ProgressDue,
+    Talker,
+    TalkerEvent,
+)
 from t2_agentic_voice.core.conversation import TalkerTurn
 from t2_agentic_voice.core.errors import ProviderError
 from t2_agentic_voice.core.events import TurnId
@@ -322,11 +334,41 @@ class Talking:
 
     async def _play(self, talk: Talk, event: TalkerEvent, at: float) -> None:
         """Play one of the talker's events (talker_play.py), then tell the client what the agent
-        is doing."""
+        is doing; a progress line with a time set is said at that time (`_line_now`)."""
+        if isinstance(event, ProgressDue) and event.after_s > 0 and not self._line_now(talk, event):
+            return
         await self._player.play(talk, event, at)
         await self._sync()
 
+    def _line_now(self, talk: Talk, event: ProgressDue) -> bool:
+        """Whether `event`'s line is said now: past its time with no answer begun. Before its
+        time it waits (the module's progress line)."""
+        if talk.said or talk.told:
+            return False
+        now = self._clock.now()
+        spoken = self._turns.turn(talk.turn_id).spoken_at
+        left = (now if spoken is None else spoken) + event.after_s - now
+        if left <= 0:
+            return True
+        talk.waiting = talk.scope.start(
+            self._line_at(talk, event, left), name=f"progress-{talk.turn_id}"
+        )
+        return False
+
+    async def _line_at(self, talk: Talk, event: ProgressDue, left: float) -> None:
+        """Say `event`'s line in `left` seconds, as a step of the session's, if it is still
+        wanted (the module's progress line)."""
+        await self._clock.sleep(left)
+        await self._guarded("talker_event", partial(self._said_late, talk, event))
+
+    async def _said_late(self, talk: Talk, event: ProgressDue) -> None:
+        if not (talk.said or talk.told or talk.held):
+            await self._player.play(talk, event, self._clock.now())
+            await self._sync()
+
     async def _close(self, talk: Talk, failure: Exception | None) -> None:
+        if talk.waiting is not None:
+            talk.waiting.cancel()
         reply = talk.reply
         if reply is None:
             return

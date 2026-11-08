@@ -73,9 +73,12 @@ result, before step 5.
   line of their own, none was cached and all 12 took 0.15 to 0.30 s (medians 0.20 and 0.18 s).
   A live follow-up turn the same day waited 7.8 s for its first token. Turning the line off
   (`llm.vary_first_line`) lets requests share a cached prefix again, and with it that slow path.
-- **A progress line during a search.** A tool past its `progress_after_s` (1 s by default) gets
-  its progress line from the phrase cache, with no request, so the caller hears that the agent
-  is at work while the search runs ([concepts.md](concepts.md), "Progress lines").
+- **A progress line for a long wait.** A reply with a tool that has a progress line, with no
+  answer begun `progress_after_s` (2.8 s by default) after the caller stopped speaking, gets the
+  line from the phrase cache, with no request, so the caller hears that the agent is at work
+  ([concepts.md](concepts.md), "Progress lines"). It is kept for the long waits: the line takes
+  about two seconds to say and the answer waits behind it, so a line on every search would make
+  most answers later.
 - **A stop costs no model time.** The interruption rule stops the reply before any model request
   is sent, so the talker adds nothing to the time a stop takes.
 
@@ -87,7 +90,7 @@ its targets before any run, for one speaker on the laptop:
 | Reply | Median | 90th percentile |
 | --- | --- | --- |
 | With no search | at most 1.6 s | at most 2.4 s |
-| With a search | at most 3.0 s | at most 4.0 s, and a progress line begun by 2.0 s whenever the answer has not |
+| With a search | at most 3.0 s | at most 4.0 s, and a progress line begun by 3.0 s whenever the answer has not |
 
 What the plan expects, before any measurement: without the early start, a reply with no search
 about 1.9 s after the caller's end (the 0.93 s turn end with the hold, then the transcript, the
