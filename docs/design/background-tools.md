@@ -69,6 +69,34 @@ what cannot be made fast: the 17 to 45 s the prototype's search took through rag
 44.3 s of Ole5's chat graph per knowledge turn, and a team's slow backend. How slow a tool must
 be before this feels better than an honest wait is one of the things the try finds out.
 
+### Saying what it is about to do
+
+The owner, 2026-11-08, asked whether the agent should call out what it is about to look up and
+why: to "Do you have any batteries on stock", it says "Let me see what kind of batteries we have
+in stock, give me a moment <calls a tools to search>. We have battery AAA and AA available". The
+agent recommended this as the general behaviour for voice agents made with the library, in this
+form, and the owner asked for it to be added to this try:
+
+1. A tool declares whether it is slow. A fast tool stays silent: a spoken sentence outlasts a
+   0.32 s search and would delay the answer.
+2. For a slow tool, the talker writes one short clause of intent in the caller's language, in
+   the same request as the tool call, once per reply. It says the purpose in the caller's terms
+   and never names the tool.
+3. The library filters that clause for stop, wait, repeat and yes words, as it does for fixed
+   lines: an echo through the speakers could be heard as the caller's own. "Give me a moment"
+   and «لحظة» are such words.
+4. If the model wrote no clause and the wait runs long, the tool's fixed cached line plays, as
+   it does today.
+
+Why it is worth trying: the clause shows the caller what was understood, so a mishearing can be
+corrected before the slow work ends, and sound starts while the tool call is still being written.
+It is also how the talker says it is waiting on a background job.
+
+What it costs and risks: a written clause needs an Orpheus request of its own, where cached lines
+need none (Groq allows about 10 voice requests a minute, D-033, and the owner's calls used about 6
+per call minute, D-040). And a model can say "let me check" and then call no tool, so the library
+must catch that rather than leave the caller waiting.
+
 ## Built to fit the agent-led mode
 
 The agent-led mode ([agent-led-mode.md](agent-led-mode.md), D-050) has one voice layer and two
@@ -120,7 +148,9 @@ thinker would be one more job source; whether it is needed at all stays the owne
 - A live call by the owner with the stand-in tool, inline against background: the owner's ear
   decides whether it is natural.
 - M5's plan registers what is counted before any run: at least answers invented while pending,
-  results spoken over the caller, results lost, and model requests per call minute.
+  results spoken over the caller, results lost, and model requests per call minute. For the
+  spoken intent: the time to first sound, Orpheus requests per call minute, and how often it
+  says it will check and calls no tool.
 
 ## Open for M5's plan
 
@@ -128,6 +158,8 @@ thinker would be one more job source; whether it is needed at all stays the owne
 - Several jobs at once, or one per tool; the cap.
 - What a stop does to a job, and whether the talker can cancel one.
 - How the board's section stays short in the prompt, and what it does to Groq's prompt cache.
+- How a tool declares that it is slow, and what the spoken intent does in relay, which has no
+  model on the content path: the agent-led page's fixed `progress` lines are its first answer.
 - Where the board lives in the layers. The agent's first thought is `actions`, which already
   owns running things, with a read-only view for the talker and only an "arrived" event for
   `voice`, which never imports `actions` (D-003).

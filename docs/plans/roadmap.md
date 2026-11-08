@@ -257,7 +257,8 @@ rehearsal's password, archiving, and English questions pass.
   knows it is waiting, and reads the result from a board when convenient, as a person reads a
   screen. Behind a setting, off by default, after the consent core; the *Done when* lines do not
   change. It is built so that the agent-led mode can use the same board
-  ([background-tools.md](../design/background-tools.md)).
+  ([background-tools.md](../design/background-tools.md)). The same try covers the talker saying,
+  in one short clause, what it is about to look up.
 
 *Done when* simulated calls create the right tickets with zero false action claims; the
 rehearsal's ticket flow passes, where an eager «نعم أرسلها» over the closing question creates the
