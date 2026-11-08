@@ -750,6 +750,27 @@ runs"; in this order, each with its smoke first)
     three, in one sentence; its version `2026-11-07.5`.
   - The Ole5 app's README says how to try the agent on this machine (d87aefd).
   - **Debt:** TD-131.
+- 2026-11-08: **Run K's second dev round** (at 6f820da, the fixes in; 136 variants each, no
+  failure; $0.79; the history's lines 2768bfe). **The keep rule kept K3, `gpt-oss-20b`**: both
+  within 1.0 s (the model's own medians 0.519 and 0.559 s; wall 0.845 and 0.892 s), K3 better
+  on 18 items, worse on 5 (p = 0.0106, beyond the noise). Every target but the guard's still
+  fails:
+
+  | Run | Right (items) | Honest `none` | Language | Retrieval, top 5 |
+  | --- | --- | --- | --- | --- |
+  | k1-dev-c | 0.302 | 0.400 | 0.808 | 0.875 |
+  | k1-dev-d | 0.333 | 0.300 | 0.841 | 0.844 |
+  | k3-dev-c | 0.396 | 0.800 | 0.808 | 0.854 |
+  | k3-dev-d | 0.333 | 0.800 | 0.750 | 0.854 |
+
+  - **Language** rose from about 0.33 to about 0.80; 15 of k3-dev-c's 26 misses are Saudi replies
+    («هلا، أقدر أساعدك… إذا ما وصلتك») the register question still calls MSA.
+  - **Answers:** of k3-dev-c's 96 answerable variants, 38 right, 40 partly right (19 with a card),
+    13 wrong, 4 invented. The judge's reasons for `partly_right` name a key fact the spoken
+    answer left out.
+  - **`none` items:** 6 of 30 got an invented answer (an export to PDF, a scheduled sending).
+  - The owner's check of 24 judged answers (Q6) is drawn from k3-dev-c (`judge-sheet.toml` in its
+    run folder), before the held-out pass.
 
 ## Decision log
 
