@@ -53,17 +53,31 @@ call may hold Saudi, MSA and English turns, each answered in its own. The rule, 
    in the call's: an agent that speaks no English answers an English turn in its own language.
 
 The system prompt's language section, and the instructions of that tag when you give one a
-language, follow the reply's tag; each clause is spoken in that tag's voice. The output guard,
-the speaking rules and the pronunciation map read the clause in its own language.
+language, follow the reply's tag; each clause is spoken in that tag's voice. A request that
+follows a tool's result ends with a short line naming the reply's language, whatever language
+the result is in, so an English question answered from Arabic passages is answered in English.
+The output guard, the speaking rules and the pronunciation map read the clause in its own
+language.
 
 ## Saudi Arabic and MSA
 
 Saudi Arabic and MSA share a code, so a transcript cannot tell them apart, and the tag does not
-decide the register. The language section asks the model to reply in the Saudi dialect unless
-the caller speaks MSA, and then in MSA. The presets' own texts (the notices, the echo's frame)
-are in the register of their tag: Saudi for `ar-SA`, MSA for `ar`. Write your greetings and
-progress lines in the register of their tag too; Ole5's instructions ask for the Saudi spoken
-register, and MSA for a caller who speaks it.
+decide the register: the caller's words do. The talker reads each Arabic turn against a small
+list of Saudi and Gulf dialect forms (such as «أبي»، «أبغى»، «وش»، «وين»، «اللي»، «الحين»،
+«بس»، «مو», and «ما» before a verb, which is Saudi's "not"; the library's `agent/language.py`
+holds the list), over the caller's heard turns of the call so far, the one answered now among
+them: the caller is Saudi once any of them held a form, MSA while none of the turns with Arabic
+in them has, and Saudi by default while no turn held an Arabic word. So a short plain turn after
+a Saudi one («تمام»، «كمل»، «ممكن تعيد؟») stays Saudi, while a call that opens with a plain
+question («كيف أطبع الملف؟») is answered in MSA until the caller says a dialect form. An `ar-SA`
+reply to an MSA caller gets a language section, and a line after a tool's result, that ask for
+Modern Standard Arabic with no dialect word; any other `ar-SA` reply's section asks for the
+Saudi dialect unless the caller speaks MSA, as an `ar` reply's does whatever the words. A turn
+the drop rule judged the agent's own voice is not the caller's, and says nothing of their
+register. The presets' own texts (the
+notices, the echo's frame) are in the register of their tag: Saudi for `ar-SA`, MSA for `ar`.
+Write your greetings and progress lines in the register of their tag too; Ole5's instructions
+ask for the Saudi spoken register, and MSA for a caller who speaks it.
 
 ## Product terms inside Arabic
 

@@ -38,7 +38,7 @@ from ole5_voice.evals.chat_pacing import Spend
 from ole5_voice.evals.factories import Closing, env_file_of, knowledge_of
 from ole5_voice.evals.factories import agent_of as built_agent
 from ole5_voice.evals.items import HISTORY_FILE
-from ole5_voice.evals.judge import JUDGE_ATTEMPTS, Judge
+from ole5_voice.evals.judge import JUDGE_REQUESTS, Judge
 from ole5_voice.evals.kb_points import KnowledgeData, RecordingKnowledge, load_knowledge
 from ole5_voice.evals.models import Split
 from ole5_voice.evals.run_folder import RunFolder, folder_for
@@ -194,7 +194,7 @@ def _built(args: argparse.Namespace, parts: TalkerParts, closing: Closing) -> in
     )
     keys = {(record.item, record.variant) for record in done}
     remaining = [each for each in todo if each.key not in keys]
-    requests = {args.model: TALKER_REQUESTS, args.judge_model: JUDGE_ATTEMPTS}
+    requests = {args.model: TALKER_REQUESTS, args.judge_model: JUDGE_REQUESTS}
     check_budget(
         args, paced, units=len(remaining) + 1, requests=requests, whole_day=args.split == "held-out"
     )

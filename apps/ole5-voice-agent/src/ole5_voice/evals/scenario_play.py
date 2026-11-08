@@ -1,12 +1,13 @@
 """The playing part of a `poe eval-scenarios` run (`scenario_run.py`): one play of a scenario as
 one call through `talker_call.play`, within `--variant-timeout-s` for each of its turns, then
-checked turn by turn (`scenario_score.checks_of`), the judge reading each turn that expects facts,
-what it follows or an Arabic reply's register, with the call so far as the caller heard it. A
-provider's failure, in the call, its searches or a model request the talker caught, makes the
-play a `provider` failure, its limit passed (or a moment the call waited for in vain) a `stuck`
-one, and a judge with no valid answer a `judge` one. When the cap or the key's daily limit stops
-a request (`chat_pacing`), the play is dropped unscored (`StopRun`), so a resumed run plays it
-again.
+checked turn by turn (`scenario_score.checks_of`), the judge reading each turn that expects facts
+or what it follows, with the call so far as the caller heard it, and asked the register of each
+reply held to Arabic in a question of its own (judge.py's `Judge.register`). A provider's
+failure, in the call, its searches or a model request the talker caught, makes the play a
+`provider` failure, its limit passed (or a moment the call waited for in vain) a `stuck` one, and
+a judge with no valid answer, or no clear register, a `judge` one. When the cap or the key's
+daily limit stops a request (`chat_pacing`), the play is dropped unscored (`StopRun`), so a
+resumed run plays it again.
 """
 
 from __future__ import annotations
@@ -19,13 +20,13 @@ from t2_agentic_voice import ProviderError, VoiceAgent, VoiceSettings
 
 from ole5_voice.evals.chat_pacing import CapReachedError, DailyLimitError, PacedChat
 from ole5_voice.evals.groq_answerer import Clock
-from ole5_voice.evals.judge import Checked, Judge
+from ole5_voice.evals.judge import Checked, Judge, Registered
 from ole5_voice.evals.kb_points import KnowledgeData, RecordingKnowledge
 from ole5_voice.evals.knowledge_set import KnowledgeItem
 from ole5_voice.evals.scenario_score import PlayRecord, TurnCheck, checks_of
-from ole5_voice.evals.scenarios import Scenario
+from ole5_voice.evals.scenarios import Scenario, ScriptTurn
 from ole5_voice.evals.talker_call import CallFactory, Held, play
-from ole5_voice.evals.talker_data import Failure
+from ole5_voice.evals.talker_data import Failure, HeardTurn
 from ole5_voice.evals.talker_measure import StopRun, stop_of
 
 
@@ -67,9 +68,13 @@ class Playing:
         if held is None or failure is not None:
             return self._record(scenario, repeat, began, held=held, failure=failure or "provider")
         judged = await self._judged(scenario, held)
-        if any(checked is not None and checked.holds is None for checked in judged):
+        pairs = zip(scenario.turns, held.turns, strict=True)
+        registered = [await self._register(turn, reply) for turn, reply in pairs]
+        unclear = any(found is not None and found.arabic is None for found in registered)
+        if unclear or any(checked is not None and checked.holds is None for checked in judged):
             return self._record(scenario, repeat, began, held=held, failure="judge")
-        checks = checks_of(scenario.turns, held.turns, judged, self.search_tool)
+        registers = [found.arabic if found else None for found in registered]
+        checks = checks_of(scenario.turns, held.turns, judged, self.search_tool, registers)
         passed = all(check.passed for check in checks) and held.violations == 0
         return self._record(scenario, repeat, began, held=held, checks=checks, passed=passed)
 
@@ -134,3 +139,14 @@ class Playing:
                 raise StopRun(stop_of(error)) from None
             found.append(checked)
         return found
+
+    async def _register(self, turn: ScriptTurn, reply: HeardTurn) -> Registered | None:
+        """The judge's register of `reply`, when `turn` holds it to Arabic; None otherwise."""
+        if not turn.held_registers():
+            return None
+        try:
+            return await self.judge.register(reply)
+        except ProviderError:
+            return Registered()
+        except (CapReachedError, DailyLimitError) as error:
+            raise StopRun(stop_of(error)) from None

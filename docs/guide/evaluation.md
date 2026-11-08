@@ -37,7 +37,8 @@ channel. Everything below comes from the `evals` facade.
   that asked once too often says where. An entry's steps may hold a `Pause(seconds)`, the
   model's time on the call's clock, and a `ProviderError`, a failure where it stands.
 - **`FunctionLLM(fn)`** asks `fn` for each request's steps, so a test need not count requests: it
-  can answer by the last message, the caller's words or a tool's result.
+  can answer by the last message, the caller's words or a tool's result. A request that follows
+  a tool's result ends with a short system line naming the reply's language, after the result.
 - Both keep every request in `requests`, so a test reads what the talker sent: the prompt, the
   history, the tools offered, a tool's result as the model read it.
 - A real model, through its port and with `clock="system"`, makes the same call a measurement:
@@ -135,6 +136,7 @@ module's names.
 | `normalize_arabic(text)` | `languages` | `text` in one canonical form for comparison: no diacritics and no tatweel; the alef, hamza, teh marbuta and alef maksura forms folded; Latin letters in lower case; punctuation, symbols, emoji and an underscore read as spaces (`Outlook.PDF` is two words); runs of space made one |
 | `normalize_digits(text)` | `languages` | `text` with every digit as 0 to 9: Arabic-Indic and Persian digits, and digits spelled out one word each, in Arabic or in English; a run of single digits with only spaces between them becomes one number (`4 5 2 1` reads `4521`) |
 | `spelling_issues(reference, rules)` | `languages` | A `SpellingIssue` (`rule`, `found`, `write`) for each spelling one of your `SpellingRule`s avoids that `reference` holds, however often, as a whole word or phrase, bare or with an Arabic prefix written onto its first word (ال، و، ف، ب، ل، ك, or two or three of them in order, such as وال، بال، لل or وبال), both compared after `normalize_arabic`; empty when it follows them all. A word counts once per rule, for the spelling it holds with the shortest prefix: a rule that avoids both اوتلوك and الاوتلوك names الاوتلوك once, as itself. The check reads letters, not meaning, so a word that is a prefix and an avoided spelling is named too (الاثنين, Monday, where a rule avoids اثنين) |
+| `register_of(words)` | `languages` | The register of one turn's Arabic, `words`, as the talker reads each of the caller's turns (a reply follows the call's, Saudi once a turn was): `"saudi"` when they hold a Saudi or Gulf dialect form of the library's list, or no Arabic word; `"msa"` when their Arabic holds none ([languages.md](languages.md), "Saudi Arabic and MSA"). A measurement can hold a reply to it: Ole5's run K takes either register for a Saudi question whose words read `"msa"` |
 | `wer(references, outputs)` | `evals` | The word error rate, pair by pair and pooled: substitutions, deletions and insertions over all the references' words, both sides normalized |
 | `cer(references, outputs)` | `evals` | The character error rate, pooled as `wer` is, with every space removed first, so a word split differently is not counted twice |
 | `term_recall(reference, output, terms)` | `evals` | A `Recall`: of the `terms` (your product terms) that `reference` holds, how many `output` holds too, each as a whole word or phrase, both texts normalized. A Latin term with an Arabic prefix written onto it (الoutlook, بالPDF) is not found (TD-009) |

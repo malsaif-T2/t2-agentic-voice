@@ -28,7 +28,7 @@ from t2_agentic_voice import T2VoiceError, configure_logging, get_logger
 from ole5_voice import LOGGERS
 from ole5_voice.evals.factories import Closing
 from ole5_voice.evals.items import HISTORY_FILE, GoldenSetError
-from ole5_voice.evals.judge import JUDGE_ATTEMPTS, Judge
+from ole5_voice.evals.judge import JUDGE_REQUESTS, Judge
 from ole5_voice.evals.kb_points import KnowledgeData, load_knowledge
 from ole5_voice.evals.run_folder import RunFolder, folder_for
 from ole5_voice.evals.run_parts import DATA
@@ -153,7 +153,7 @@ def _built(args: argparse.Namespace, parts: TalkerParts, closing: Closing) -> in
         if (scenario.id, repeat) not in keys
     ]
     turns = max(len(scenario.turns) for scenario in scenarios)
-    requests = {args.model: TALKER_REQUESTS * turns, args.judge_model: JUDGE_ATTEMPTS * turns}
+    requests = {args.model: TALKER_REQUESTS * turns, args.judge_model: JUDGE_REQUESTS * turns}
     check_budget(args, paced, units=len(todo) + 1, requests=requests, whole_day=False)
     playing = Playing(
         agent=agent,

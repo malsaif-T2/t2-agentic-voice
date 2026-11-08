@@ -151,5 +151,5 @@ def test_a_tool_gives_the_talker_its_result_or_its_error(
 
     turn = asyncio.run(scene())
     assert [call.outcome for call in turn.tool_calls] == [outcome]
-    result = llm.requests[1].messages[-1]
+    [result] = [message for message in llm.requests[1].messages if message.role == "tool"]
     assert result.content == f'<data tool="{name}">{json.dumps(data)}</data>'

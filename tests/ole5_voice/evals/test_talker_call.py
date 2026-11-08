@@ -12,7 +12,14 @@ import inspect
 import pytest
 from ole5_voice.evals.scenarios import ScriptTurn
 from ole5_voice.evals.talker_call import CHARS_PER_SECOND_K, ask, heard, play
-from ole5_voice.evals.talker_data import Clause, HeardTurn, ToolUse, in_language, script_of
+from ole5_voice.evals.talker_data import (
+    Clause,
+    HeardTurn,
+    ToolUse,
+    in_language,
+    registers_held,
+    script_of,
+)
 from t2_agentic_voice import Card, LlmSettings, VoiceSettings
 from t2_agentic_voice.evals import BlockedClause, HeardClause, TextCall, TextToolCall
 from t2_agentic_voice.ports import Usage
@@ -82,10 +89,24 @@ def test_a_replys_language_is_read_from_its_own_words() -> None:
     assert not turn("افتح الإعدادات.", "Then press save.").written_in("ar")
     assert not turn("افتح 设置 الإعدادات.").written_in("ar")
     assert not turn().written_in("en") and not turn("اضغط Save").written_in("ar")
-    # Held to a tag: its script, and held to Arabic, its register as the judge read it.
-    assert in_language(turn("افتح الإعدادات."), "ar", "msa")
-    assert not in_language(turn("افتح الإعدادات."), "ar-SA", "msa")
-    assert in_language(turn("Open the settings."), "en", None)
+    # Held to a tag: its script, and held to Arabic, its register as the judge read it, by the
+    # owner's Q24 (2026-11-08, "Either register right"): an MSA label's reply MSA; a Saudi or
+    # mixed label's Saudi when the caller's words hold a dialect form, either when they hold
+    # none, never no Arabic.
+    reply = turn("افتح الإعدادات.")
+    assert in_language(reply, "ar", "msa", words="كيف أفتح الإعدادات؟")
+    assert not in_language(reply, "ar", "saudi", words="كيف أفتح الإعدادات؟")
+    assert not in_language(reply, "ar-SA", "msa", words="وين الإعدادات؟")
+    assert in_language(reply, "ar-SA", "saudi", words="وين الإعدادات؟")
+    assert in_language(reply, "ar-SA", "msa", words="كيف أفتح الإعدادات؟")
+    assert in_language(reply, "ar-SA", "saudi", words="كيف أفتح الإعدادات؟")
+    assert not in_language(reply, "ar-SA", "none", words="كيف أفتح الإعدادات؟")
+    assert not in_language(reply, "ar-SA", None, words="كيف أفتح الإعدادات؟")
+    assert in_language(turn("Open the settings."), "en", None, words="How do I open it?")
+    assert registers_held("ar-SA", "كيف أفتح الإعدادات؟") == {"saudi", "msa"}
+    assert registers_held("ar-SA", "وين الإعدادات؟") == registers_held("ar-SA", "OK") == {"saudi"}
+    assert registers_held("ar", "وين الإعدادات؟") == {"msa"}  # the label's, whatever the words
+    assert registers_held("en", "How?") == {"none"}
 
 
 def test_a_variant_is_read_once_its_reply_has_played() -> None:

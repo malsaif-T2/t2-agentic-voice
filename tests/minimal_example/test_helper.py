@@ -92,8 +92,9 @@ def test_the_talker_calls_the_tool_and_says_its_answer(
     # The second request read the tool's result, framed as data, beside the caller's words.
     first, second = llm.requests
     assert [tool.name for tool in first.tools] == ["opening_hours"]
-    result = second.messages[-1]
+    result, line = second.messages[-2:]  # the result, then the line naming the reply's language
     assert result.role == "tool" and result.tool_call_id == turn.tool_calls[0].call_id
+    assert line.role == "system" and line.content.startswith("Reply in ")
     assert result.content == f'<data tool="opening_hours">{json.dumps(HOURS["olaya"])}</data>'
     assert any(question in message.content for message in second.messages)
 

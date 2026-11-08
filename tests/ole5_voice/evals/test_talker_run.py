@@ -11,6 +11,7 @@ from pathlib import Path
 
 import pytest
 from ole5_voice.evals import talker_run
+from ole5_voice.evals.judge import JUDGE_ATTEMPTS, REGISTER_SYSTEM
 from ole5_voice.evals.run_folder import RESULTS_FILE, SESSIONS_FILE
 from ole5_voice.evals.runs import SCORECARD_FILE
 from ole5_voice.evals.talker_lines import TalkerLine
@@ -75,7 +76,8 @@ def test_a_dev_run_measures_each_variant_once_and_writes_what_it_found(setup: Se
     ((first, shared), (second, copied)) = setup.lines.lines
     assert first == second and isinstance(first, TalkerLine)
     assert shared == setup.data / "history.jsonl" and copied == setup.out() / "history.jsonl"
-    assert first.requests == {TALKER: 7, JUDGE: 7} and first.session == 1 and first.complete
+    # Seven verdicts, and the register of the two replies in Arabic, each asked on its own.
+    assert first.requests == {TALKER: 7, JUDGE: 9} and first.session == 1 and first.complete
     assert first.own_first_clause_median_s == card.totals.own_first_clause_median_s
     assert first.cost_usd == pytest.approx(card.cost_usd) and first.cost_usd > 0
     assert setup.chat.closed and setup.kb.closed
@@ -87,29 +89,70 @@ def test_the_reply_language_is_read_from_its_own_words_and_the_judges_register(
     asked = (
         ("msa", "كيف أطبع المراسلة؟"),
         ("english", "How do I print?"),
-        ("saudi", "كيف أطبع؟"),
+        ("saudi", "كيف أقدر أطبع؟"),
         ("mixed", "كيف أسوي print؟"),
     )
-    setup = make_setup(tmp_path, items=(item("a1", asked=asked),))
+    plain = (
+        ("saudi", "كيف أطبع الملف؟"),  # no dialect form in it
+        ("mixed", "كيف أطبع ملف PDF؟"),  # none either
+        ("msa", "هل يمكنني الطباعة؟"),
+    )
+    setup = make_setup(tmp_path, items=(item("a1", asked=asked), item("a2", asked=plain)))
     # Every reply is tagged ar-SA, as the library tags a reply in an ar-SA call by the caller's
     # words: only its own words, and the judge's register, say what language it is in.
     for words, said in (
         ("كيف أطبع المراسلة؟ a1", "يمكنك طباعة المراسلة من القائمة."),
         ("How do I print? a1", "You can print it from the menu."),
-        ("كيف أطبع؟ a1", "يمكنك طباعتها من القائمة."),
+        ("كيف أقدر أطبع؟ a1", "يمكنك طباعتها من القائمة."),
         ("كيف أسوي print؟ a1", "تقدر 打印 من القائمة."),
+        ("كيف أطبع الملف؟ a2", "يمكنك طباعته من القائمة."),
+        ("كيف أطبع ملف PDF؟ a2", "تقدر تطبعه من القائمة."),
+        ("هل يمكنني الطباعة؟ a2", "تقدر تطبع من القائمة."),
     ):
         setup.calls.script[words] = Scripted(language="ar-SA", said=said)
-    setup.chat.registers = {"كيف أطبع المراسلة؟ a1": "msa", "كيف أطبع؟ a1": "msa"}
+    # The register's question reads the reply's own words, never the caller's.
+    setup.chat.registers = {"طباعة المراسلة من": "msa", "طباعتها من": "msa", "طباعته من": "msa"}
     argv = [*setup.argv(), "--split", "dev", "--call-language", "first"]
     assert talker_run.main(argv, parts=setup.parts()) == 0
-    by_variant = {r.variant: r for r in _card(setup).variants}
+    by_key = {(r.item, r.variant): r for r in _card(setup).variants}
+    by_variant = {variant: r for (name, variant), r in by_key.items() if name == "a1"}
     assert by_variant["v1"].language_right is True  # MSA words, an Arabic reply in MSA
     assert by_variant["v2"].language_right is True  # English words, an English reply
     assert by_variant["v3"].language_right is False  # Saudi words, a reply in MSA
     assert by_variant["v4"].language_right is False  # a word in another script
+    # The owner's Q24: a Saudi or mixed label's words with no dialect form take either register.
+    assert by_key["a2", "v1"].language_right is True  # answered in MSA
+    assert by_key["a2", "v2"].language_right is True  # answered in Saudi Arabic
+    assert by_key["a2", "v3"].language_right is False  # MSA words, a reply in Saudi Arabic
     judged = by_variant["v1"].judged
-    assert judged is not None and judged.arabic == "msa"
+    assert judged is not None and judged.arabic == "msa" and judged.requests == 2
+    english = by_variant["v2"].judged
+    assert english is not None and english.arabic == "none" and english.requests == 1
+    # Asked in a request of its own, of the judge's model, for each reply that holds Arabic.
+    registers = [r for r in setup.chat.requests if r.messages[0].content == REGISTER_SYSTEM]
+    assert {r.model for r in registers} == {JUDGE}
+    assert [r for r in registers if " a" in r.messages[1].content] == []  # no caller's ID
+    ((line, _), _) = setup.lines.lines
+    assert isinstance(line, TalkerLine)
+    assert line.requests[JUDGE] == len(registers) + 8  # and a verdict a variant, the smoke's too
+
+
+def test_a_register_with_no_clear_answer_after_two_asks_is_a_judge_failure(
+    tmp_path: Path,
+) -> None:
+    asked = (("english", "How do I print?"), ("saudi", "كيف أطبع؟"))  # the smoke test: v1
+    setup = make_setup(tmp_path, items=(item("a1", asked=asked),))
+    setup.calls.script["كيف أطبع؟ a1"] = Scripted(language="ar-SA", said="تقدر تطبعها.")
+    setup.chat.registers = {"تقدر تطبعها.": "Saudi, I think"}  # never one word
+    argv = [*setup.argv(), "--split", "dev", "--call-language", "first"]
+    assert talker_run.main(argv, parts=setup.parts()) == 0
+    by_variant = {r.variant: r for r in _card(setup).variants}
+    unclear = by_variant["v2"]
+    assert unclear.failure == "judge" and unclear.passed is None
+    assert unclear.language_right is None
+    assert unclear.judged is not None and unclear.judged.verdict == "right"
+    assert unclear.judged.arabic is None and unclear.judged.requests == 1 + JUDGE_ATTEMPTS
+    assert by_variant["v1"].failure is None  # an English reply asks nothing of it
 
 
 def test_every_call_is_held_in_the_agents_first_language_when_asked(setup: Setup) -> None:
@@ -155,12 +198,13 @@ def test_the_smoke_test_alone(setup: Setup) -> None:
 
 
 def test_the_cap_stops_a_run_that_writes_what_it_measured(setup: Setup) -> None:
-    setup.chat.input_tokens = 2000  # each request costs about a third of its budget
-    assert talker_run.main([*setup.argv(cap="0.012"), *DEV], parts=setup.parts()) == 1
+    setup.chat.input_tokens = 3000  # each request costs about half its budget
+    # The cap leaves room for one variant's most: its talker's requests and the judge's four.
+    assert talker_run.main([*setup.argv(cap="0.02"), *DEV], parts=setup.parts()) == 1
     card = _card(setup)
     assert card.stopped == "cap" and not card.complete
     assert 0 < len(card.variants) < 6
-    assert card.cost_usd <= 0.012
+    assert card.cost_usd <= 0.02
 
 
 def test_the_days_limit_stops_a_run_which_resume_goes_on_with(setup: Setup) -> None:

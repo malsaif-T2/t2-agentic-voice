@@ -10,8 +10,9 @@ answerable item, the reference search of the variant's raw words; then the judge
 failure, in the call, its search or the reference search, makes the variant a `provider` failure
 (a model request that failed after every attempt too, though the talker caught it), its limit
 passed (or a moment the call waited for in vain) a `stuck` one, and a judge with no valid verdict
-a `judge` one: each counted apart. When the cap or the key's daily limit stops a request
-(`chat_pacing`), the variant is dropped unscored (`StopRun`), so a resumed run measures it again.
+or no clear register (asked on its own, judge.py) a `judge` one: each counted apart. When the cap
+or the key's daily limit stops a request (`chat_pacing`), the variant is dropped unscored
+(`StopRun`), so a resumed run measures it again.
 
 **Its times are the model's** (Q15), never the run's pacing: before its call, outside its limit,
 a variant waits until the talker's model has room in the minute for the most requests a turn
@@ -160,7 +161,7 @@ class Measuring:
         judged: Judged | None = None
         if failure is None and turn is not None:
             judged = await self._judged(words, turn, item)
-            failure = None if judged.verdict is not None else "judge"
+            failure = None if judged.verdict and judged.arabic else "judge"
         answered = turn is not None and failure is None
         searched = turn.searched(self.search_tool) if turn is not None else None
         answerable = item.kind == "answerable"
@@ -181,7 +182,7 @@ class Measuring:
             raw_hit=self.data.index.hit(raw, item.expected) if raw is not None else None,
             search_right=searched == item.needs_search if answered else None,
             language_right=(
-                in_language(turn, want, judged.arabic)
+                in_language(turn, want, judged.arabic, words=words)
                 if turn is not None and judged is not None and answered
                 else None
             ),

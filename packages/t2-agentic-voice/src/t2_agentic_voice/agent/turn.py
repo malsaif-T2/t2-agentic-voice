@@ -1,12 +1,13 @@
 """One reply of the talker's (agent/talker.py's `ChatTalker.reply`; plan 006): from the caller's
 turn and the call as it was heard to the events the session plays, within the reply's scope.
 
-- **The request.** The system prompt in the turn's reply language (agent/prompt.py,
-  agent/language.py), opened on each request by a line new on every request (`llm.vary_first_line`:
-  prompt.py's `FIRST_LINE`), the call as the caller heard it with what the talker kept beside it
-  (agent/context.py), then the turn, whole. At most `MAX_REQUESTS` a turn: each but the last
-  offers the agent's tools, the last none, so the turn ends in words; a tool call the last one
-  makes anyway is not run.
+- **The request.** The system prompt in the turn's reply language and the register of the
+  caller's Arabic over the call (agent/prompt.py, agent/language.py), opened by a line new on
+  every request (`llm.vary_first_line`: prompt.py's `FIRST_LINE`), the call as the caller heard
+  it with what the talker kept beside it (agent/context.py), then the turn, whole; a request
+  after a tool result of the turn ends with a line naming the reply's language (prompt.py's
+  `reply_line`). At most `MAX_REQUESTS` a turn: each but the last offers the agent's tools, the
+  last none, so the turn ends in words; a tool call the last one makes anyway is not run.
 - **Speech as it is written.** The model's text goes through the clause splitter as it streams
   (`ClauseStream`), any note of the history's it copied taken out first (agent/context.py's
   `Unnoted`), and each whole clause, once the output guard's rule B passed it against the
@@ -50,8 +51,8 @@ from t2_agentic_voice.agent.events import (
     SpokenClause,
     TalkerEvent,
 )
-from t2_agentic_voice.agent.language import reply_language
-from t2_agentic_voice.agent.prompt import compose_prompt, with_first_line
+from t2_agentic_voice.agent.language import call_register, reply_language
+from t2_agentic_voice.agent.prompt import compose_prompt, reply_line, with_first_line
 from t2_agentic_voice.agent.tool_calls import Memory, ToolCalls, exchange
 from t2_agentic_voice.core.clock import Clock
 from t2_agentic_voice.core.config import VoiceSettings
@@ -132,6 +133,7 @@ class Turn:
         self.year = clock.wall().year
         heard = [t.words for t in turn.conversation.turns if t.fate != "dropped" and t.words]
         self.heard = (*heard, turn.words)
+        self.register = call_register(self.heard)  # the call's so far, this turn's among it
         self.stopped = False  # a blocked clause dropped the rest of the reply
         self.blocked = 0
         self.tools = ToolCalls(
@@ -147,7 +149,8 @@ class Turn:
     async def events(self) -> AsyncGenerator[TalkerEvent, None]:
         """The reply's events, in order, ending with `ReplyDone` unless cancelled."""
         named = frozenset(r for r in (self.turn.over_reply, self.turn.cut_reply) if r is not None)
-        prompt = compose_prompt(self.agent, language=self.language, today=self.clock.wall().date())
+        today, register = self.clock.wall().date(), self.register
+        prompt = compose_prompt(self.agent, language=self.language, today=today, register=register)
         past = history(
             self.turn.conversation,
             exchanges=self.memory.exchanges,
@@ -158,7 +161,7 @@ class Turn:
         requests = tools_run = 0
         for index in range(MAX_REQUESTS):
             tools = self.runner.schemas() if index < MAX_REQUESTS - 1 else ()
-            request = self._request(messages, tools)
+            request = self._request(messages, tools, after_tools=tools_run > 0)
             requests += 1
             yield ModelRequested(model=request.model)
             answer = _Answer()
@@ -202,11 +205,13 @@ class Turn:
         yield ReplyDone()
 
     def _request(
-        self, messages: Sequence[ChatMessage], tools: tuple[ToolSchema, ...]
+        self, messages: Sequence[ChatMessage], tools: tuple[ToolSchema, ...], *, after_tools: bool
     ) -> ChatRequest:
         llm = self.settings.llm
         if llm.vary_first_line:  # so no two requests share a cached prefix (the setting's text)
             messages = [ChatMessage.system(with_first_line(messages[0].content)), *messages[1:]]
+        if after_tools:  # the request's own line, never kept in the turn's messages
+            messages = [*messages, ChatMessage.system(reply_line(self.language, self.register))]
         return ChatRequest(
             messages=tuple(messages),
             tools=tools,

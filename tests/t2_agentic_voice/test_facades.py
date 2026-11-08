@@ -69,6 +69,7 @@ NAMES = {
         "normalize_digits",
         "pronounce",
         "provider_text",
+        "register_of",
         "speak_id",
         "speak_number",
         "spelling_issues",
