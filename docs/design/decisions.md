@@ -2279,3 +2279,45 @@ twice; DOC-REF: every `D-NNN` cited anywhere is a heading here), so keep its sha
   `var/runs/`, plan 005's progress log (2026-11-05 and 06) and its "The owner's decisions". The
   tests: `tests/ole5_voice/evals/test_overlap.py` (the `reference` answerer scores every committed
   overlap right at 0 ms, inside `poe check`) and `tests/ole5_voice/evals/test_overlap_score.py`.
+
+## D-069 · A chat model decides the short overlaps the rule would let go on, on two or more words · 2026-11-08 · Accepted (the owner's ruling on run U, Q28 in plan 006, over run U's keep rule)
+
+- **Context:** the two-step interruption's rule (D-061) lets a short overlap go on at its steps 6
+  and 7 (`short_output`, `too_few_words`), so a caller who says «أبغى موظف» ("I want an employee")
+  over a reply is ignored (run S's s09, 2026-11-08). Run U asked what a chat model would do with
+  the overlaps the rule leaves there: on O1's 35 uncertain overlaps of 19 items, 15 of which
+  should stop, U0 (the rule) got 20 right and stopped none of the 15; U2, `gpt-oss-120b` at low
+  reasoning, got 25 right and stopped 8 of the 15, at a median of 177 ms, but failed run U's keep
+  rule (the sign test: 3 items better, 2 worse), stopping 3 listening sounds, all single words
+  («إيه؟» twice and a garbled one). On overlaps of two or more words only, U2 stopped 5 of the
+  15, none wrongly, on O1's data. Asked after run U (Q28), the agent recommended the model on two
+  or more words, single words keeping the rule; the owner chose that, over the keep rule.
+- **Decision:**
+  - The rule's steps stay as they are. When it goes on for `short_output` or `too_few_words` on
+    the transcript that decides an overlap, and that transcript holds two or more words as the rule
+    splits them (`domain/uncertain_overlaps.py`'s `is_uncertain`), a chat model decides,
+    `gpt-oss-120b` at low reasoning, 256 output tokens, within 1 s on the call's clock. A single
+    word, a window's transcript and the rule's own stops send nothing.
+  - Off unless the agent asks: `VoiceAgent.ask_on_uncertain_overlaps`, False by default (a field
+    on the declaration, not a setting, since every path through `talker_agent`, the server, run S
+    and run T included, holds the agent, and `core/config.py` is near its size cap). Ole5's talker
+    sets it; the echo, with no chat model, cannot.
+  - The prompt that ran (run U's) moved into the library, so the eval and the call share it, the
+    request is one of the call's chat requests (counted as the talker's are), and it runs in a
+    cancel scope of the overlap's own, off the session's step lock, its verdict applied as a step
+    of its own (`voice/session/overlap_ask.py`): the reply plays on, ducked, the overlap undecided
+    until then, and the turn's own transcript waits for it.
+  - `stop` stops the agent as new words, reason `model`, the turn's words going to the talker;
+    `go_on`, anything else, a failure or the timeout leave the rule's verdict, logged by kind
+    with no text. Each overlap still ends with exactly one `unduck`; a stop or the call's end during
+    the wait cancels the request and nothing more happens.
+- **Consequences:** a short request over a reply can now be answered; a two-word listening sound
+  costs at most a model's answer (a median of 177 ms, 1 s at most) before the voice comes back,
+  ducked meanwhile, and a request of Groq's per overlap so asked. No held-out replay was run: the
+  numbers above are O1's dev data, the rest of the check being on the call's fakes.
+- **Evidence:** run U's history line (at aedce08, in `apps/ole5-voice-agent/evals/history.jsonl`) and
+  plan 006's progress log of 2026-11-08 and its Q28. The tests:
+  `tests/t2_agentic_voice/voice/session/test_overlap_ask.py`,
+  `tests/t2_agentic_voice/voice/session/test_overlap_ask_wait.py`,
+  `tests/t2_agentic_voice/domain/test_uncertain_overlaps.py` and
+  `tests/ole5_voice/test_uncertain_overlap_call.py`.

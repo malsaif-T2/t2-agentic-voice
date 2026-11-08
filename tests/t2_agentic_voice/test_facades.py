@@ -106,6 +106,8 @@ NAMES = {
         "silence_output",
         "term_recall",
         "turn_ends",
+        "uncertain_overlap_answer",
+        "uncertain_overlap_request",
         "wer",
     },
     "t2_agentic_voice.tracing": {"Redactor", "SpeechToTextSpan", "Tracing"},

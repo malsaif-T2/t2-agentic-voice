@@ -51,7 +51,8 @@ EndReason = Literal["hangup", "caller_left", "max_call", "idle", "transport", "s
 # `stop`, the Stop button or Esc, and the others come with the interruption rules.
 InterruptionKind = Literal["stop", "correction", "new_words", "false"]
 # Which step of the interruption rule decided (domain/interruptions.py's `VerdictReason` is this
-# list), in the rule's order: for the trace and the scorecards, never the words themselves.
+# list), in the rule's order, or `model`, the chat model's stop on an overlap the rule left
+# uncertain (D-069): for the trace and the scorecards, never the words themselves.
 InterruptionReason = Literal[
     "no_words",
     "stop_word",
@@ -61,6 +62,7 @@ InterruptionReason = Literal[
     "short_output",
     "enough_words",
     "too_few_words",
+    "model",
 ]
 # Why the output guard blocked a clause (the design's 8.2): an ID-shaped token with no evidence
 # (rule B); the claims (rule A) and the text after an action call (rule C) come with the actions.

@@ -158,6 +158,11 @@ def judge(
     return _goes_on("too_few_words")
 
 
+def word_count(text: str, *, words: Words) -> int:
+    """How many words the rule reads in `text`, each listed phrase one (`_tokens`)."""
+    return len(_tokens(rule_form(text).split(), _lists(words)))
+
+
 def whole_command(text: str, *, words: Words) -> WholeCommand | None:
     """What `text`, a turn's transcript said while the agent was silent, asks of it as a whole,
     read as `judge` reads an overlap's, with the call language's `words`: `stop` for stop or

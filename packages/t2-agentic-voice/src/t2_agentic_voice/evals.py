@@ -13,6 +13,10 @@ Provisional (D-021). A facade: it only re-exports (ARCH-FACADE)."""
 from t2_agentic_voice.domain.recall import Recall
 from t2_agentic_voice.domain.scoring import id_recall, silence_output, term_recall
 from t2_agentic_voice.domain.sign_test import sign_test
+from t2_agentic_voice.domain.uncertain_overlaps import (
+    uncertain_overlap_answer,
+    uncertain_overlap_request,
+)
 from t2_agentic_voice.testing.audio_call import AudioCall, OverlapReplay, OverlapRequest
 from t2_agentic_voice.testing.echo_timing import EchoTiming, TurnTiming, echo_timings
 from t2_agentic_voice.testing.knowledge_fake import FakeKnowledgeBase, KnowledgeSearch
@@ -60,5 +64,7 @@ __all__ = [
     "silence_output",
     "term_recall",
     "turn_ends",
+    "uncertain_overlap_answer",
+    "uncertain_overlap_request",
     "wer",
 ]

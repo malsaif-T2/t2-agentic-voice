@@ -17,8 +17,9 @@ from ole5_voice.evals import uncertain
 from ole5_voice.evals.measure_lines import UncertainLine
 from ole5_voice.evals.runs import SCORECARD_FILE
 from ole5_voice.evals.uncertain_card import UncertainScorecard
-from ole5_voice.evals.uncertain_run import INSTRUCTION, RESULTS_FILE, Prices
+from ole5_voice.evals.uncertain_run import RESULTS_FILE, Prices
 from t2_agentic_voice import ProviderError
+from t2_agentic_voice.evals import uncertain_overlap_request
 
 from tests.ole5_voice.evals.uncertain_support import URun, overlap, stored, u_run
 
@@ -43,7 +44,7 @@ def test_a_run_asks_each_uncertain_overlap_and_scores_it_against_the_rule(
     assert uncertain.main(run.argv(source), parts=run.parts()) == 0
     first = run.chat.requests[0]
     assert [m.role for m in first.messages] == ["system", "user"]
-    assert first.messages[0].content == INSTRUCTION
+    assert first.messages[0].content == uncertain_overlap_request("r", "w").messages[0].content
     assert "the first clause. the second clause." in first.messages[1].content
     assert "made-up words" in first.messages[1].content
     assert (first.model, first.reasoning_effort, first.max_output_tokens) == (

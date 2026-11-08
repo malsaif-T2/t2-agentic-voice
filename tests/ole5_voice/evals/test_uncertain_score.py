@@ -8,7 +8,6 @@ from pathlib import Path
 from ole5_voice.evals.overlap_card import OverlapScorecard
 from ole5_voice.evals.overlap_score import OverlapResult
 from ole5_voice.evals.runs import SCORECARD_FILE
-from ole5_voice.evals.uncertain_run import answer_of
 from ole5_voice.evals.uncertain_score import (
     ArmAnswer,
     UncertainOverlap,
@@ -18,6 +17,7 @@ from ole5_voice.evals.uncertain_score import (
     metrics,
     uncertain_overlaps,
 )
+from t2_agentic_voice.evals import uncertain_overlap_answer
 
 from tests.ole5_voice.evals.uncertain_support import overlap, stored
 
@@ -50,7 +50,7 @@ def test_only_the_overlaps_the_rule_left_uncertain_are_read(tmp_path: Path) -> N
 def test_the_answer_is_one_of_the_two_words_or_unclear() -> None:
     cases = {"stop": "stop", " Stop.": "stop", "go_on": "go_on", "Go on!": "go_on"}
     cases |= {"maybe": "unclear", "": "unclear", "stop now": "unclear", "continue": "unclear"}
-    assert {text: answer_of(text) for text in cases} == cases
+    assert {text: uncertain_overlap_answer(text) for text in cases} == cases
 
 
 def _overlap(item: str, *, expected: str = "go_on", kind: str = "request") -> UncertainOverlap:
