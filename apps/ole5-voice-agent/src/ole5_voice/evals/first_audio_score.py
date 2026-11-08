@@ -17,7 +17,7 @@ unknown (`holds` None) otherwise. **The path** of a reply is `search` when a too
 
 **The targets** (the registration's, Q7): a reply with no search at a median of at most
 1,600 ms and a 90th percentile of at most 2,400 ms; with a search, at most 3,000 and 4,000 ms,
-and a progress line begun by 2,000 ms whenever the reply had not begun by then. A held-out run's
+and a progress line begun by 3,000 ms whenever the reply had not begun by then. A held-out run's
 numbers are aggregates only: a target over fewer than `HELD_OUT_MIN_ITEMS` items is withheld.
 """
 

@@ -875,6 +875,24 @@ runs"; in this order, each with its smoke first)
   English reply naming Arabic buttons in Arabic script, which the English voice cannot read, and
   once a reply wholly in Arabic. Ole5's instructions now say English names in an English reply;
   no further pass is run for it, K's held-out reading the language.
+- 2026-11-09: **Run T on held-out, once** (t-held-out-120b, at 319c5d4: trim off, the progress
+  line at 2.6 s; 11 items, 44 variants; $0.43; no failure, no reply unheard; 4 variants cut in
+  two and left out, so 40 timed replies, all with a search):
+
+  | Target | Result | Bound | Held |
+  | --- | --- | --- | --- |
+  | With a search, median | 2,532 ms | 3,000 ms | yes |
+  | With a search, 90th percentile | 3,044 ms | 4,000 ms | yes |
+  | No search, median and 90th percentile | no held-out item answers without one | 1,600 and 2,400 ms | not measured |
+  | Replies not begun by 3.0 s with no line by then | 5 of 40 | 0 | **no** |
+
+  The line played in none of the 40. It is withheld once a clause was asked of the voice (Q27),
+  so the likely reading is that in those 5 a clause had been asked by 2.6 s and its audio came
+  just past 3.0 s; a held-out run keeps aggregates only, so the run does not confirm it. The
+  result stands, held-out being run once. The six session tests of the line pass; T's dev passes
+  predate the timer, so no run has yet heard the line at its new time, and the live calls are
+  where it is first heard. The no-search times stand on dev's 12 recordings (median 1.36 s,
+  90th percentile 1.48 s).
 
 ## Decision log
 
