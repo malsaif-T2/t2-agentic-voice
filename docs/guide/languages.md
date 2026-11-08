@@ -65,12 +65,16 @@ Saudi Arabic and MSA share a code, so a transcript cannot tell them apart, and t
 decide the register: the caller's words do. The talker reads each Arabic turn against a small
 list of Saudi and Gulf dialect forms (such as «أبي»، «أبغى»، «وش»، «وين»، «اللي»، «الحين»،
 «بس»، «مو», and «ما» before a verb, which is Saudi's "not"; the library's `agent/language.py`
-holds the list): a turn that holds one is Saudi, a turn of Arabic that holds none is MSA, and a
-turn with no Arabic word keeps the Saudi default. An `ar-SA` reply to an MSA turn gets a
-language section, and a line after a tool's result, that ask for Modern Standard Arabic with no
-dialect word; any other `ar-SA` reply's section asks for the Saudi dialect unless the caller
-speaks MSA, as an `ar` reply's does whatever the words. A short or plain turn («كيف أطبع
-الملف؟») holds no dialect form, so it is answered in MSA. The presets' own texts (the
+holds the list), over the caller's heard turns of the call so far, the one answered now among
+them: the caller is Saudi once any of them held a form, MSA while none of the turns with Arabic
+in them has, and Saudi by default while no turn held an Arabic word. So a short plain turn after
+a Saudi one («تمام»، «كمل»، «ممكن تعيد؟») stays Saudi, while a call that opens with a plain
+question («كيف أطبع الملف؟») is answered in MSA until the caller says a dialect form. An `ar-SA`
+reply to an MSA caller gets a language section, and a line after a tool's result, that ask for
+Modern Standard Arabic with no dialect word; any other `ar-SA` reply's section asks for the
+Saudi dialect unless the caller speaks MSA, as an `ar` reply's does whatever the words. A turn
+the drop rule judged the agent's own voice is not the caller's, and says nothing of their
+register. The presets' own texts (the
 notices, the echo's frame) are in the register of their tag: Saudi for `ar-SA`, MSA for `ar`.
 Write your greetings and progress lines in the register of their tag too; Ole5's instructions
 ask for the Saudi spoken register, and MSA for a caller who speaks it.

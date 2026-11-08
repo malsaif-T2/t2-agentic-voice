@@ -2,7 +2,7 @@
 turn and the call as it was heard to the events the session plays, within the reply's scope.
 
 - **The request.** The system prompt in the turn's reply language and the register of the
-  caller's Arabic (agent/prompt.py, agent/language.py), opened on each request by a line new on
+  caller's Arabic over the call (agent/prompt.py, agent/language.py), opened by a line new on
   every request (`llm.vary_first_line`: prompt.py's `FIRST_LINE`), the call as the caller heard
   it with what the talker kept beside it (agent/context.py), then the turn, whole; a request
   after a tool result of the turn ends with a line naming the reply's language (prompt.py's
@@ -51,7 +51,7 @@ from t2_agentic_voice.agent.events import (
     SpokenClause,
     TalkerEvent,
 )
-from t2_agentic_voice.agent.language import register_of, reply_language
+from t2_agentic_voice.agent.language import call_register, reply_language
 from t2_agentic_voice.agent.prompt import compose_prompt, reply_line, with_first_line
 from t2_agentic_voice.agent.tool_calls import Memory, ToolCalls, exchange
 from t2_agentic_voice.core.clock import Clock
@@ -129,11 +129,11 @@ class Turn:
         self.turn, self.scope = turn, scope
         spoken = [language.tag for language in agent.languages]
         self.language = reply_language(turn, call=call_language, spoken=spoken)
-        self.register = register_of(turn.words)
         self.ctx = CallContext(caller=caller, call_id=call_id, language=self.language)
         self.year = clock.wall().year
         heard = [t.words for t in turn.conversation.turns if t.fate != "dropped" and t.words]
         self.heard = (*heard, turn.words)
+        self.register = call_register(self.heard)  # the call's so far, this turn's among it
         self.stopped = False  # a blocked clause dropped the rest of the reply
         self.blocked = 0
         self.tools = ToolCalls(

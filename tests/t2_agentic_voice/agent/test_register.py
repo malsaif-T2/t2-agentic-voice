@@ -3,8 +3,9 @@
 dev round had 8 of 10 MSA callers answered in Saudi Arabic while the model alone was told to tell
 the two apart; the library now reads it from the caller's words, by a small explicit list of Saudi
 and Gulf dialect forms: a turn of Arabic with none is MSA, and an `ar-SA` reply's language section
-and its line after a tool result say so. An agent's Arabic tag that is not Saudi (`ar`) keeps its
-section. Every sentence is written for the test."""
+and its line after a tool result say so. A reply follows the call's register: Saudi once any heard
+turn of the caller's held a form (a review finding), MSA while none has. An agent's Arabic tag
+that is not Saudi (`ar`) keeps its section. Every sentence is written for the test."""
 
 from __future__ import annotations
 
@@ -27,7 +28,7 @@ from t2_agentic_voice.agent.prompt import (
     language_section,
     reply_line,
 )
-from t2_agentic_voice.core.conversation import TalkerTurn
+from t2_agentic_voice.core.conversation import Conversation, PastTurn, TalkerTurn, TurnFate
 from t2_agentic_voice.core.settings.tts import LanguageTag
 from t2_agentic_voice.domain.declaration import Language
 from t2_agentic_voice.domain.ports.knowledge import Passage
@@ -197,3 +198,48 @@ def test_an_agents_arabic_that_is_not_saudi_keeps_its_section() -> None:
     first, second = model.requests
     assert first.messages[0].content.endswith(f"\n\n{LANGUAGE_SECTIONS['ar']}")
     assert second.messages[-1].content == REPLY_LINES["ar"]
+
+
+# The register over the call (a review finding): a short plain turn after a Saudi one («تمام»،
+# «كمل»، «ممكن تعيد؟») flipped the reply to MSA, and a repeat came back reworded in MSA.
+def _call(*turns: str, dropped: frozenset[int] = frozenset()) -> list[tuple[str, str]]:
+    """Each turn of one ar-SA call answered with a search, in order: the system prompt's last
+    line and the line after its result, as the talker sent them; the turns of `dropped` (from
+    0) heard as the agent's own voice."""
+    search = knowledge_tool(FakeKnowledgeBase([PASSAGE]), description="Search the help.")
+    entries = [step for _ in turns for step in (calls(call(NAME, query="print")), said("Sure."))]
+    model = FakeChat(*entries)
+    chat = talker(model, search, language="ar-SA", declared=agent(search))
+    past: list[PastTurn] = []
+    for n, words in enumerate(turns):
+        heard = Conversation(turns=tuple(past))
+        reply(chat, TalkerTurn(turn_id=n + 1, words=words, language="ar", conversation=heard))
+        fate: TurnFate = "dropped" if n in dropped else "answered"
+        past.append(PastTurn(turn_id=n + 1, words=words, fate=fate))
+    systems = [r.messages[0].content.rsplit("\n\n", 1)[1] for r in model.requests[::2]]
+    lines = [r.messages[-1].content for r in model.requests[1::2]]
+    return list(zip(systems, lines, strict=True))
+
+
+SAUDI_ASKED = (LANGUAGE_SECTIONS["ar-SA"], REPLY_LINES["ar-SA"])
+MSA_ASKED = (MSA_SECTION, MSA_REPLY_LINE)
+
+
+def test_plain_turns_after_a_saudi_turn_keep_the_saudi_register() -> None:
+    assert _call("أبي أطبع الرسالة", "تمام شكرا", "ممكن تعيد؟", "كمل") == [SAUDI_ASKED] * 4
+
+
+def test_a_call_of_msa_turns_only_keeps_msa() -> None:
+    assert _call("كيف أطبع الرسالة؟", "شكرا جزيلا", "هل يمكنني إعادتها؟") == [MSA_ASKED] * 3
+
+
+def test_a_plain_first_turn_is_msa_then_saudi_from_the_first_dialect_turn_on() -> None:
+    found = _call("كيف أطبع الرسالة؟", "ممكن تعيد؟", "وين الزر؟", "تمام", "How long does it take?")
+    assert found[:2] == [MSA_ASKED] * 2
+    assert found[2:4] == [SAUDI_ASKED] * 2
+    assert found[4] == (LANGUAGE_SECTIONS["en"], REPLY_LINES["en"])  # English, the call's Saudi
+
+
+def test_a_turn_heard_as_the_agents_own_voice_says_nothing_of_the_callers_register() -> None:
+    """A dialect word the drop rule judged the agent's echo is not the caller's."""
+    assert _call("الحين يظهر الخطأ", "كيف أطبع الرسالة؟", dropped=frozenset({0}))[1] == MSA_ASKED

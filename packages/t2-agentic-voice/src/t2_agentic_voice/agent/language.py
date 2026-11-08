@@ -14,10 +14,13 @@ Saudi, MSA and English turns, each answered in its own.
 - **The tag.** That language is the agent's tag for it: the call's own when its language is
   the same (an `ar-SA` call stays `ar-SA`), else the first of the agent's tags in it, else the
   call's.
-- **The register** of an Arabic turn (`register_of`). Saudi Arabic and MSA share a code, so the
-  tag does not tell them apart; the caller's words do, by a small explicit list of Saudi and
-  Gulf dialect forms: a turn whose Arabic holds one is Saudi, one that holds none is MSA (and a
-  turn with no Arabic word keeps the Saudi default). An `ar-SA` reply's language section and its
+- **The register** of the caller's Arabic (`register_of`, a turn's; `call_register`, the
+  call's). Saudi Arabic and MSA share a code, so the tag does not tell them apart; the caller's
+  words do, by a small explicit list of Saudi and Gulf dialect forms: a turn whose Arabic holds
+  one is Saudi, one that holds none is MSA (and a turn with no Arabic word keeps the Saudi
+  default). A reply follows the call's: Saudi once any heard turn of the caller's held a form,
+  so a short plain turn after a Saudi one (tamam, okay; kammil, go on) stays Saudi, and MSA
+  while none of them has. An `ar-SA` reply's language section and its
   line after a tool result then ask for that register (agent/prompt.py); an agent's Arabic tag
   that is not Saudi (`ar`) keeps its section as it was. Run K's first dev round had 8 of 10 MSA
   callers answered in Saudi Arabic while the model alone was asked to tell the two apart.
@@ -191,3 +194,15 @@ def register_of(words: str) -> Register:
     negated = (NEGATION, _AND + NEGATION)
     pairs = itertools.pairwise(heard)
     return "saudi" if any(ma in negated and _verb(after) for ma, after in pairs) else "msa"
+
+
+def call_register(turns: Sequence[str]) -> Register:
+    """The register of the caller's Arabic over the call so far, from the words of each of
+    their heard `turns`, the one answered now among them (the module's docstring): Saudi once a
+    turn held a dialect form, or while none held an Arabic word; MSA while every turn with
+    Arabic in it held none. Each turn is read on its own (`register_of`), so a form opens only
+    its own turn and ma pairs only with a word of its own turn."""
+    arabic = [words for words in turns if any(map(_ARABIC_LETTER.search, words.split()))]
+    if any(register_of(words) == "saudi" for words in arabic) or not arabic:
+        return "saudi"
+    return "msa"
