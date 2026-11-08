@@ -41,11 +41,12 @@ class LlmSettings(Group):
         ),
     )
     reasoning_effort: ReasoningEffort = Field(
-        default="low",
+        default="medium",
         description=(
             "How much a reasoning model thinks before it answers: low, medium or high. Sent "
-            "only to a model that takes it (the gpt-oss models); low keeps the first clause "
-            "soon."
+            "only to a model that takes it (the gpt-oss models). Medium, as the owner ruled "
+            "on run K's dev pass (plan 006, Q26): gpt-oss-120b invented 6 answers of 136 "
+            "against 18 at low, for about 0.33 s more to the first clause."
         ),
     )
     max_output_tokens: int = Field(

@@ -775,6 +775,17 @@ runs"; in this order, each with its smoke first)
   decisions"). Run T's first T0 pass, begun on K3, was stopped at 7 of 72 recordings (about
   $0.09, no history line, its folder `t0-dev` left as it is), to run again on K1. The owner's
   check of the judge is drawn again from `k1-dev-c`.
+- 2026-11-08: **An exploratory dev pass of `gpt-oss-120b` at medium reasoning** (k1m-dev-a, at
+  8e12024, 136 variants, no failure, no reply cut at the token limit; $0.23), against the two
+  at low (k1-dev-c and d):
+
+  | | Right (items) | Honest `none` | Invented | Language | Own first clause, median, p90 |
+  | --- | --- | --- | --- | --- | --- |
+  | low | 0.302, 0.333 | 0.400, 0.300 | 19, 18 | 0.808, 0.841 | 0.52, 0.61 s |
+  | medium | 0.375 | 0.733 | 6 | 0.870 | 0.85, 1.24 s |
+
+  The owner ruled for medium (Q26): `llm.reasoning_effort` defaults to `medium`; K's held-out
+  and runs T, U and S use it.
 
 ## Decision log
 
@@ -847,6 +858,7 @@ runs"; in this order, each with its smoke first)
 - 2026-11-08, on run K's result (the keep rule had kept K3): "use "gpt-oss-120b" instead, it
   has more reasoning power and more capable to hold conversations longer". So K1 ships,
   `llm.model` stays `openai/gpt-oss-120b`, and K's held-out and runs T, U and S use it.
+- 2026-11-08, to Q26, after an exploratory dev pass at medium reasoning: "Medium reasoning".
 
 ## Tracks
 
@@ -1034,7 +1046,7 @@ Q15 to Q18, from Track E's review, asked and settled on 2026-11-07 before any re
 Q19 and Q20, from the whole-code review, and Q21, from the live smoke, asked and settled on
 2026-11-07 before any registered run; Q22, after run W's dev runs and before its held-out;
 Q23, after that held-out pass; Q24, after run K's first dev round and before its dev runs again;
-Q25, after run T's smoke.
+Q25, after run T's smoke; Q26, after an exploratory pass of run K.
 Each answer that changes a run is a dated amendment to the registration.
 
 - **Q1. What voice-first means here.** *Settled: (a).* The eight choices above. Options: (a) approve them; (b)
@@ -1146,11 +1158,13 @@ Each answer that changes a run is a dated amendment to the registration.
 - **Q25. The cap.** *Settled 2026-11-08: (a).* $2.01 spent of $5 by run T's smoke, about $3.70
   left to run. Options: (a) raise it to $7; (b) keep $5 and run T's Tn and held-out on fewer
   recordings. **The agent recommended (a).**
+- **Q26. `gpt-oss-120b`'s reasoning.** *Settled 2026-11-08: (a).* An exploratory dev pass at
+  medium against the two at low. Options: (a) medium; (b) low. **The agent recommended (a).**
 
 ## What the owner does
 
 - Answer Q1 to Q10, and approve the plan (done 2026-11-06); answer Q11 to Q14, Q15 to Q18,
-  Q19 and Q20, Q21, Q22 and Q23 (done 2026-11-07), and Q24 and Q25 (done 2026-11-08).
+  Q19 and Q20, Q21, Q22 and Q23 (done 2026-11-07), and Q24, Q25 and Q26 (done 2026-11-08).
 - Copy the knowledge base's access into `.env` (Q4; done 2026-11-06, under the owner's names).
 - Review the knowledge set's items (Q5, about 40 minutes; done 2026-11-07, checked by the agent
   against the knowledge base), and check 24 judged answers (Q6, about 20 minutes).

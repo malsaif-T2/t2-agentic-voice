@@ -20,7 +20,7 @@ def test_the_llm_and_guard_defaults_are_the_designs() -> None:
     assert settings.llm.model_dump() == {
         "provider": "groq",
         "model": "openai/gpt-oss-120b",
-        "reasoning_effort": "low",
+        "reasoning_effort": "medium",
         "max_output_tokens": 1024,
         "timeout_s": 8.0,
         "vary_first_line": True,
