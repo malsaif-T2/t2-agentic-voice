@@ -5,7 +5,7 @@ per `poe eval` run that called a provider, kept or not; never edited by hand
 ([generated docs](README.md), GP-11). Every number describes one speaker, the owner (D-006).
 Full scorecards stay out of git, in each run's `--out` folder.
 
-Spend so far: 45 run(s), 44110.3 billed seconds, $2.7493.
+Spend so far: 46 run(s), 44110.3 billed seconds, $2.9816.
 
 ## Runs
 
@@ -69,6 +69,7 @@ Spend so far: 45 run(s), 44110.3 billed seconds, $2.7493.
 | 42 | 2026-11-08T03:30:56+00:00 | k3-dev-c | 6f820daf24b610d507932f42686c2e4760cd2913 | k3 | openai/gpt-oss-20b | dev | 46 | 136 | 0 | 39.6% | 80.0% | 85.4% | 80.9% | 0.566 | 0.896 | 0 | $0.1745 | yes |
 | 43 | 2026-11-08T03:40:24+00:00 | k1-dev-d | 6f820daf24b610d507932f42686c2e4760cd2913 | k1 | openai/gpt-oss-120b | dev | 46 | 136 | 0 | 33.3% | 30.0% | 84.4% | 84.6% | 0.526 | 0.850 | 0 | $0.2215 | yes |
 | 44 | 2026-11-08T03:49:55+00:00 | k3-dev-d | 6f820daf24b610d507932f42686c2e4760cd2913 | k3 | openai/gpt-oss-20b | dev | 46 | 136 | 0 | 33.3% | 80.0% | 85.4% | 75.0% | 0.556 | 0.883 | 0 | $0.1749 | yes |
+| 46 | 2026-11-08T07:15:41+00:00 | k1m-dev-a | 8e12024b9b3ea4a8ae91ddc6ad3340d61b46ea6e | k1m | openai/gpt-oss-120b | dev | 46 | 136 | 0 | 37.5% | 73.3% | 84.4% | 86.8% | 0.848 | 1.104 | 0 | $0.2323 | yes |
 
 ## First-audio runs
 
@@ -3489,3 +3490,128 @@ Spend so far: 45 run(s), 44110.3 billed seconds, $2.7493.
 | search_median_ms | — |
 | search_p90_ms | — |
 | progress_late | — |
+
+### 46 · k1m-dev-a
+
+| Field | Value |
+| --- | --- |
+| Why | Plan 006 run K, exploratory: gpt-oss-120b at medium reasoning |
+| Data digest | `d1ce1796032216b2463c224bc8e2e8610ded468d08569fffc15b0d1429613a31` |
+| Scorecard | scorecard.json |
+| Price per million tokens, llama-3.3-70b-versatile | $0.59 in, $0.79 out |
+| Price per million tokens, openai/gpt-oss-120b | $0.15 in, $0.6 out |
+| Setting env | test |
+| Setting groq.api_key | set |
+| Setting groq.api_key_file | not set |
+| Setting groq.base_url | https://api.groq.com |
+| Setting guard.id_patterns | 0 entries |
+| Setting guard.min_id_digits | 3 |
+| Setting guard.on_block | drop_rest |
+| Setting interruptions.duck_level | 0.25 |
+| Setting interruptions.first_window_ms | 750 |
+| Setting interruptions.min_words | 2 |
+| Setting interruptions.mode | two_step |
+| Setting interruptions.own_words_s | 5.0 |
+| Setting interruptions.short_s | 1.2 |
+| Setting interruptions.short_words | 2 |
+| Setting join.current_kid | none |
+| Setting join.keys | not set |
+| Setting join.keys_file | not set |
+| Setting join.max_clock_skew_s | 30 |
+| Setting join.ttl_s | 60 |
+| Setting limits.idle_s | 120.0 |
+| Setting limits.max_call_s | 600.0 |
+| Setting llm.max_output_tokens | 1024 |
+| Setting llm.model | openai/gpt-oss-120b |
+| Setting llm.provider | groq |
+| Setting llm.reasoning_effort | medium |
+| Setting llm.timeout_s | 8.0 |
+| Setting llm.vary_first_line | true |
+| Setting logging.content | false |
+| Setting logging.format | console |
+| Setting logging.level | INFO |
+| Setting logging.pipecat | off |
+| Setting privacy.consent_version | none |
+| Setting privacy.record_audio | false |
+| Setting run.agent | ole5_voice.agent:talker_agent |
+| Setting run.agent_name | ole5 |
+| Setting run.agent_version | 2026-11-07.5 |
+| Setting run.arm | k1m |
+| Setting run.cap_usd | 0.6 |
+| Setting run.input_budget_tokens | 8000 |
+| Setting run.judge_max_output_tokens | 300 |
+| Setting run.judge_model | llama-3.3-70b-versatile |
+| Setting run.knowledge | ole5_voice.knowledge_base:knowledge_base |
+| Setting run.max_attempts | 4 |
+| Setting run.price.llama-3.3-70b-versatile | 0.59/0.79 |
+| Setting run.price.openai/gpt-oss-120b | 0.15/0.6 |
+| Setting run.rpd.llama-3.3-70b-versatile | 10000 |
+| Setting run.rpd.openai/gpt-oss-120b | 10000 |
+| Setting run.rpm.llama-3.3-70b-versatile | 30 |
+| Setting run.rpm.openai/gpt-oss-120b | 30 |
+| Setting run.search_tool | search_knowledge |
+| Setting run.smoke_only | false |
+| Setting run.tpm.llama-3.3-70b-versatile | 100000 |
+| Setting run.tpm.openai/gpt-oss-120b | 100000 |
+| Setting run.variant_timeout_s | 180.0 |
+| Setting server.allowed_origins | 0 entries |
+| Setting server.dev_page | false |
+| Setting server.forwarded_allow_ips | 0 entries |
+| Setting server.ice_servers | 0 entries |
+| Setting server.public_url | none |
+| Setting server.turn_secret | not set |
+| Setting server.turn_secret_file | not set |
+| Setting server.turn_ttl_s | 3600 |
+| Setting session.mode | none |
+| Setting stt.caption_filter | true |
+| Setting stt.live_language | session |
+| Setting stt.model | whisper-large-v3 |
+| Setting stt.no_speech_max | 0.55 |
+| Setting stt.provider | groq |
+| Setting stt.send_prompt | true |
+| Setting stt.timeout_s | 6.0 |
+| Setting tracing.endpoint | none |
+| Setting tracing.include_transcripts | true |
+| Setting tracing.project | none |
+| Setting tracing.redact | 0 entries |
+| Setting tts.cache_phrases | true |
+| Setting tts.languages | ar,ar-SA,en |
+| Setting tts.provider | groq |
+| Setting tts.timeout_s | 6.0 |
+| Setting tts.trim_silence | false |
+| Setting turns.complete_hold_ms | 600 |
+| Setting turns.max_silence_ms | 3000 |
+| Setting turns.smart_turn | true |
+| Setting turns.smart_turn_max_duration_s | 8.0 |
+| Setting turns.smart_turn_pre_speech_ms | 500 |
+| Setting turns.smart_turn_stop_ms | 3000 |
+| Setting turns.smart_turn_threshold | 0.5 |
+| Setting turns.vad_confidence | 0.7 |
+| Setting turns.vad_min_volume | 0.6 |
+| Setting turns.vad_start_ms | 200 |
+| Setting turns.vad_stop_ms | 200 |
+| Setting words.backchannel | none |
+| Setting words.no | none |
+| Setting words.repeat | none |
+| Setting words.stop | none |
+| Setting words.vocabulary | 0 entries |
+| Setting words.wait | none |
+
+| Stratum | Value | Items | Variants | Failures | Answers | Passing |
+| --- | --- | --- | --- | --- | --- | --- |
+| kind | answerable | 32 | 96 | 0 | 37.5% | 37.5% |
+| kind | none | 10 | 30 | 0 | — | 73.3% |
+| kind | out_of_scope | 2 | 5 | 0 | — | 100.0% |
+| kind | small_talk | 2 | 5 | 0 | — | 100.0% |
+| language | english | 42 | 42 | 0 | 24.1% | 45.2% |
+| language | mixed | 26 | 26 | 0 | 55.6% | 65.4% |
+| language | msa | 24 | 24 | 0 | 50.0% | 50.0% |
+| language | saudi | 44 | 44 | 0 | 32.3% | 45.5% |
+
+| Target | Held |
+| --- | --- |
+| retrieval | fails |
+| answers | fails |
+| honest | fails |
+| language | fails |
+| guard | holds |
