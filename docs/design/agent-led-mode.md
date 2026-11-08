@@ -171,7 +171,10 @@ the first version.
 
 ## Decisions to take when the phase is planned
 
-- Relay first, or our talker with one delegate, after the comparison on sample agents.
+- Relay first, or our talker with one delegate, after the comparison on sample agents. M5's try
+  of background tools gives first evidence on the delegate
+  ([background-tools.md](background-tools.md)), and that page lists the rules here a board must
+  be reconciled with.
 - Whether a write tool must accept our request ID before it may be labelled act in production,
   or "could not confirm" is accepted after a lost reply.
 - The double ask for agents that confirm in plain text, or a way to ask once.
@@ -202,6 +205,8 @@ answers.
 - M5's consent core (read-back, receipt, yes rule, outbox, record) is built so that a second
   executor, one that resumes a team's paused agent, can be added later
   ([roadmap](../plans/roadmap.md), M5).
+- M5's try of background tools keeps its board brain-neutral, so a team's agent run can later be
+  one more job on it ([background-tools.md](background-tools.md)).
 - Fixed spoken lines carry no stop, wait, repeat, yes, send or listening word: an echo through
   the speakers could otherwise be heard as the caller's own. The design's own progress-line
   example used «لحظة» and "One moment", both wait words in the prototype's lists; it is fixed.
