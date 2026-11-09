@@ -142,7 +142,9 @@ def test_what_is_no_passage_is_the_tools_failure() -> None:
         async def search(self, query: str, **_: Any) -> list[Passage]:
             return [{"id": "x"}]  # type: ignore[list-item]
 
-    assert _search(Broken()) == ToolResult(data={"error": FAILED}, ok=False)
+    assert _search(Broken()) == ToolResult(
+        data={"error": FAILED}, ok=False, failure="ValidationError"
+    )
 
 
 def test_the_query_is_the_only_parameter_the_talker_sees() -> None:

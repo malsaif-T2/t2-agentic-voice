@@ -124,7 +124,13 @@ class ToolCalls:
                     result = results[call.id] = task.result()
                     self.memory.took(result)
                     ms = max(0.0, self.clock.now() - began) * 1000
-                    yield ToolEnded(call_id=call.id, tool=call.name, ok=result.ok, ms=ms)
+                    yield ToolEnded(
+                        call_id=call.id,
+                        tool=call.name,
+                        ok=result.ok,
+                        ms=ms,
+                        failure=result.failure,
+                    )
                     if result.card is not None and self.shown(result.card, call.name):
                         yield ShownCard(card=result.card)
         finally:

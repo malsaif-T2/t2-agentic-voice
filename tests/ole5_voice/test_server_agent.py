@@ -76,6 +76,9 @@ class _KnowledgeBase:
         self.access = access
         _KnowledgeBase.made.append(self)
 
+    async def warm_up(self) -> None:
+        _Runtime.happened.append("knowledge base warmed up")
+
     async def aclose(self) -> None:
         _Runtime.happened.append("knowledge base closed")
 
@@ -144,8 +147,13 @@ def test_with_the_knowledge_base_set_the_app_runs_the_talker_with_its_search(
     assert _lines(caplog, "knowledge_base_not_set") == []
     assert _Runtime.happened == []
     with TestClient(app):
-        assert _Runtime.happened == ["runtime started"]
-    assert _Runtime.happened == ["runtime started", "runtime stopped", "knowledge base closed"]
+        assert _Runtime.happened == ["runtime started", "knowledge base warmed up"]
+    assert _Runtime.happened == [
+        "runtime started",
+        "knowledge base warmed up",
+        "runtime stopped",
+        "knowledge base closed",
+    ]
     assert holding(PASSWORD, shown(caplog=caplog)) == []
 
 

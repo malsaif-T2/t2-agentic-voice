@@ -19,14 +19,17 @@ The wire, as plan 006's spike saw it on 2026-11-06:
 **Connections.** One client an adapter, and the app builds one adapter a process, for T2's
 host: it keeps a connection open five minutes (`LIMITS`; the prototype's D41: reconnecting put
 about 1 s on the first sound after a search). The port has no `aclose` (TD-113), so the adapter
-has its own, which the app's lifespan awaits.
+has its own, which the app's lifespan awaits. The lifespan also signs in as the server starts
+(`warm_up`), so the first caller's search does not have to.
 
 **Timeouts** are a tool's: each request connects within 2 s and reads within 3 s (`TIMEOUT`),
 and a whole search, a second sign-in included, ends within `deadline_s` (4 s by default), under
 the knowledge tool's own timeout.
 
 **Failures.** Every failure is a `ProviderError` (the port's rule), which the talker's tool
-turns into "I cannot look that up now", never a hang. Its details name the step (`sign_in`,
+turns into "I cannot look that up now", never a hang. A failure that may pass is asked once
+more, within the search's deadline, so one brief fault never reaches the caller; a rate limit
+is not (D-078). Its details name the step (`sign_in`,
 `embed`, `search`), the failure and the HTTP status, never a value: no email, password,
 cookie, question, vector or payload text is in an error, its chain or a log line. It is raised
 outside the handler, so no exception chain leads to httpx's error, which holds the request. A
@@ -135,8 +138,7 @@ class QdrantKnowledgeBase:
         failure: ProviderError | None = None
         try:
             async with asyncio.timeout(self._deadline_s):
-                vector = await self._embed(words)
-                points = await self._query(vector, limit)
+                points = await self._found(words, limit)
         except ProviderError as error:
             failure = error
         except TimeoutError:
@@ -145,6 +147,34 @@ class QdrantKnowledgeBase:
             log.warning("knowledge_search_failed", kind=failure.kind, **failure.details)
             raise failure
         return passages(points)[:limit]  # at most `limit`, whatever the answer held
+
+    async def warm_up(self) -> None:
+        """Sign in now, within the search's deadline, so the first search need not. A failure
+        is logged and goes no further: the first search then tries again."""
+        kind: str | None = None
+        try:
+            async with asyncio.timeout(self._deadline_s):
+                await self._signed_in()
+        except ProviderError as error:
+            kind = error.kind
+        except TimeoutError:
+            kind = "timeout"
+        if kind is not None:
+            log.warning("knowledge_base_warm_up_failed", kind=kind)
+
+    async def _found(self, words: str, limit: int) -> list[JsonValue]:
+        """The points for `words`, asked once more after a failure that may pass (the module's
+        Failures); the second try's failure is the search's."""
+        try:
+            return await self._points(words, limit)
+        except ProviderError as error:
+            if not error.retryable or error.kind == "rate_limited":
+                raise
+            log.info("knowledge_search_retried", kind=error.kind, **error.details)
+        return await self._points(words, limit)
+
+    async def _points(self, words: str, limit: int) -> list[JsonValue]:
+        return await self._query(await self._embed(words), limit)
 
     async def aclose(self) -> None:
         """Close the client and its kept-open connections; a search after it fails."""

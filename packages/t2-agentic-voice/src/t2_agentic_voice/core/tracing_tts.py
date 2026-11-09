@@ -24,7 +24,7 @@ from importlib.metadata import version
 from typing import Any, get_args
 
 from openinference.semconv.trace import OpenInferenceSpanKindValues, SpanAttributes
-from opentelemetry.trace import Span, set_span_in_context
+from opentelemetry.trace import Span, StatusCode, set_span_in_context
 from opentelemetry.util.types import AnyValue
 from pydantic import BaseModel, SecretStr
 
@@ -186,6 +186,7 @@ class CallTrace:
         self._turns: dict[int, tuple[ExitStack, Span]] = {}
         self._stt: dict[int, tuple[ExitStack, SpeechToTextSpan]] = {}
         self._tts: dict[int, tuple[ExitStack, TextToSpeechSpan]] = {}
+        self._tools: dict[str, tuple[int, ExitStack, Span]] = {}
 
     def _root(self, name: str) -> tuple[ExitStack, Span]:
         stack = ExitStack()
@@ -254,9 +255,33 @@ class CallTrace:
             tts.record(numbers)
             stack.close()
 
+    def tool_began(self, turn_id: int, tool_call_id: str, *, tool: str) -> None:
+        """A tool call of the turn `turn_id` began: its span opens under the turn's, while that
+        is open."""
+        if turn_id in self._turns:
+            stack = ExitStack()
+            span = stack.enter_context(self._tracing.tool(self._turns[turn_id][1], tool=tool))
+            self._tools[tool_call_id] = (turn_id, stack, span)
+
+    def tool_ended(self, tool_call_id: str, *, ok: bool, failure: str | None) -> None:
+        """The tool call ended: its span ends with whether it succeeded and what failed."""
+        opened = self._tools.pop(tool_call_id, None)
+        if opened is not None:
+            _, stack, span = opened
+            span.set_attribute("tool.ok", ok)
+            if failure is not None:
+                span.set_attribute("tool.failure", failure)
+            if not ok:
+                span.set_status(StatusCode.ERROR, failure or "failed")
+            stack.close()
+
     def turn_ended(self, turn_id: int, attributes: Attributes) -> None:
-        """The turn is done: its speech-to-text span, if still open, then its root span end,
-        with `attributes` (its outcome and times, never its text)."""
+        """The turn is done: its tool calls' and speech-to-text spans, if still open, then its
+        root span end, with `attributes` (its outcome and times, never its text)."""
+        for tool_call_id, opened in list(self._tools.items()):
+            if opened[0] == turn_id:
+                del self._tools[tool_call_id]
+                opened[1].close()
         stt = self._stt.pop(turn_id, None)
         if stt is not None:
             stt[0].close()
@@ -269,6 +294,9 @@ class CallTrace:
     def close(self, attributes: Attributes) -> None:
         """End every span still open: the replies', the turns' (each with what it had), then the
         call's, with `attributes` (the call's report as numbers)."""
+        for _, stack, _ in self._tools.values():
+            stack.close()
+        self._tools.clear()
         for stack, _ in [*self._tts.values(), *self._stt.values(), *self._turns.values()]:
             stack.close()
         self._tts.clear()

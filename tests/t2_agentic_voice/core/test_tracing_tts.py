@@ -182,3 +182,29 @@ def test_no_secret_reaches_a_call_traces_spans(tmp_path: Path) -> None:
     for secret in (MADE_UP_KEY, JOIN_KEY, TURN_SECRET):
         assert holding(secret, {"spans": shown}) == []
     assert "[redacted]" in shown
+
+
+def test_a_tool_call_is_a_span_under_its_turn_naming_what_failed() -> None:
+    """D-078: its name, whether it worked and what failed; one left open ends with its turn."""
+    tracing, exporter = private(redactor=None)
+    trace = CallTrace(tracing, call_id="call-7", resource={AGENT_NAME: "echo-test"})
+    trace.started()
+    trace.turn_opened(0)
+    trace.tool_began(0, "t-1", tool="search_help")
+    trace.tool_ended("t-1", ok=False, failure="timeout at search")
+    trace.tool_began(0, "t-2", tool="search_help")  # the turn ends first
+    trace.tool_began(9, "t-3", tool="search_help")  # no such turn is open: no span
+    trace.tool_ended("t-4", ok=True, failure=None)  # never began
+    trace.turn_ended(0, {})
+    trace.close({})
+    tracing.shutdown()
+    every = exporter.get_finished_spans()
+    turn = next(s for s in every if s.name == "turn")
+    tools = [s for s in every if s.name == "tool"]
+    assert len(tools) == 2 and all(
+        s.parent and s.parent.span_id == turn.context.span_id for s in tools
+    )
+    failed = dict(tools[0].attributes or {})
+    assert failed["tool.ok"] is False and failed["tool.failure"] == "timeout at search"
+    assert failed[SpanAttributes.TOOL_NAME] == "search_help"
+    assert "tool.ok" not in dict(tools[1].attributes or {})

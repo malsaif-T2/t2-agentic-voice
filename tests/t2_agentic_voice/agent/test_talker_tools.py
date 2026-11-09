@@ -141,7 +141,10 @@ def test_an_invalid_argument_goes_back_to_the_model_with_its_field_named() -> No
     looked_up.clear()
     model = FakeChat(calls(call("find_device", tag=5)), said("Which tag?"))
     events = reply(talker(model, find_device), TURN)
-    assert ToolEnded(call_id="c-1", tool="find_device", ok=False, ms=0.0) in events
+    assert (
+        ToolEnded(call_id="c-1", tool="find_device", ok=False, ms=0.0, failure="bad_arguments")
+        in events
+    )
     [framed] = _tool_messages(model, 1)
     assert "`tag`: Input should be a valid string" in framed and looked_up == []
 
@@ -173,7 +176,7 @@ def test_a_tool_gives_its_progress_line_as_it_begins_and_times_out_on_the_calls_
         await clock.advance(3.0)
 
     events = reply(talker(model, slow, clock=clock), TURN, steps=steps)
-    assert ToolEnded(call_id="c-1", tool="slow", ok=False, ms=3000.0) in events
+    assert ToolEnded(call_id="c-1", tool="slow", ok=False, ms=3000.0, failure="timed_out") in events
     assert kinds(events).count("ProgressDue") == 1
     assert _tool_messages(model, 1) == [f'<data tool="slow">{{"error": "{FAILED}"}}</data>']
 

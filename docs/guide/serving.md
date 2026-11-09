@@ -228,7 +228,9 @@ naming the rest. One log line says which agent runs. Its `make_app`, in
     kb = QdrantKnowledgeBase(access)
     runtime = VoiceRuntime(talker_agent(kb), settings=voice, identity=tokens)
     log.info("knowledge_base_set", agent="talker")
-    return build_app(settings, router=runtime.router(), minter=tokens, closing=(kb,))
+    return build_app(
+        settings, router=runtime.router(), minter=tokens, closing=(kb,), warming=(kb.warm_up,)
+    )
 ```
 
 - **The knowledge base** is the app's own adapter behind the library's `KnowledgeBase` port,
@@ -236,7 +238,8 @@ naming the rest. One log line says which agent runs. Its `make_app`, in
   ([concepts.md](concepts.md), "Knowledge").
 - **Its client is the app's to close.** The runtime closes what it built (the providers, the
   chat model among them) as its lifespan ends; the knowledge base's client, which the app
-  opened, `build_app` closes after it (`closing`).
+  opened, `build_app` closes after it (`closing`), and signs in once the runtime has started
+  (`warming`), so the first caller's search does not have to.
 - **The log line names no value**: the agent it runs and, for the echo, the settings to set.
 
 ## Pages on another origin

@@ -10,7 +10,7 @@ import asyncio
 import re
 import runpy
 import sys
-from collections.abc import Iterator
+from collections.abc import AsyncIterator, Iterator
 from html.parser import HTMLParser
 from pathlib import Path
 from typing import ClassVar
@@ -318,3 +318,29 @@ def test_the_module_runs_as_a_command(
         runpy.run_path(str(Path(server.__file__)), run_name="__main__")
     assert exited.value.code == 0
     assert "--env-file" in capsys.readouterr().out
+
+
+def test_the_knowledge_base_warms_up_once_the_app_has_started_and_closes_last() -> None:
+    from contextlib import asynccontextmanager
+
+    order: list[str] = []
+
+    @asynccontextmanager
+    async def inner(app: object) -> AsyncIterator[dict[str, object]]:
+        order.append("started")
+        yield {}
+        order.append("stopped")
+
+    async def warm() -> None:
+        order.append("warmed")
+
+    class Closing:
+        async def aclose(self) -> None:
+            order.append("closed")
+
+    async def scene() -> None:
+        async with server._around(inner, (Closing(),), (warm,))(object()):
+            order.append("serving")
+
+    asyncio.run(scene())
+    assert order == ["started", "warmed", "serving", "stopped", "closed"]

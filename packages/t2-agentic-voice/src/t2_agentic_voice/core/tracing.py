@@ -226,6 +226,15 @@ class Tracing:
             attributes[_STT_LANGUAGE_SENT] = language
         return self._stt(parent, attributes)
 
+    def tool(self, parent: Span, *, tool: str) -> AbstractContextManager[Span]:
+        """A tool call's span under `parent`, named by its tool; never its arguments or its
+        result, which may hold what a caller's records say."""
+        attributes: dict[str, AnyValue] = {
+            SpanAttributes.OPENINFERENCE_SPAN_KIND: OpenInferenceSpanKindValues.TOOL.value,
+            SpanAttributes.TOOL_NAME: tool,
+        }
+        return self._span("tool", set_span_in_context(parent), attributes)
+
     @contextmanager
     def _stt(self, parent: Span, attributes: dict[str, AnyValue]) -> Iterator[SpeechToTextSpan]:
         with self._span("speech_to_text", set_span_in_context(parent), attributes) as span:

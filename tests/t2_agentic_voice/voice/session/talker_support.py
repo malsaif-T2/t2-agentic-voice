@@ -148,11 +148,14 @@ def talker_call(
     an uncertain overlap, none unless given)."""
     agent = given.pop("agent", AGENT)
     overlap_model = given.pop("overlap_model", None)
+    tracing = given.pop("tracing", None)
     io = FakeSessionIO(settings, agent=agent, phrases=given.pop("phrases", phrases(agent)), **given)
     talker = FakeTalker(io.clock, commands=io.commands.commands)
     if script is not None:
         talker.script = script
-    setup = dataclasses.replace(io.setup, talker=talker, overlap_model=overlap_model)
+    setup = dataclasses.replace(
+        io.setup, talker=talker, overlap_model=overlap_model, tracing=tracing or io.setup.tracing
+    )
     io.setup = setup
     session = CallSession(setup, io.commands)
     io.attach(session)

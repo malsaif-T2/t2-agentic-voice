@@ -55,7 +55,7 @@ def test_the_echo_speaks_saudi_arabic_first_says_its_name_and_has_no_instruction
     assert ECHO_AGENT.name == "ole5"
     assert [language.tag for language in ECHO_AGENT.languages] == ["ar-SA", "en"]
     for form in ("Ole5", "OLE5", "ole5"):  # the knowledge base writes OLE5, which the model copies
-        assert dict(ECHO_AGENT.pronounce[form]) == {"ar": "أولي فايف", "en": "Oh-lee five"}
+        assert dict(ECHO_AGENT.pronounce[form]) == {"ar": "أو لي فايف", "en": "Oh-lee five"}
     assert all("Ole5" in language.greeting for language in ECHO_AGENT.languages)
     assert not ECHO_AGENT.instructed and ECHO_AGENT.tools == ()
     assert all(not language.progress for language in ECHO_AGENT.languages)
@@ -102,7 +102,7 @@ def test_how_to_answer_names_each_of_several_causes_briefly(tag: Tag) -> None:
     assert answer.splitlines().count(wanted) == 1
     assert "search" not in wanted
     assert answer in instructions(search=False)[tag]
-    assert VERSION == "2026-11-09.2"  # after the owner's calls of that day (D-077)
+    assert VERSION == "2026-11-09.3"  # the name as the owner chose it (D-077)
 
 
 @pytest.mark.parametrize("tag", ["ar-SA", "en"])
@@ -351,7 +351,7 @@ def test_the_search_section_is_replaced_only_when_the_text_holds_one() -> None:
 def test_the_name_is_said_as_the_knowledge_base_writes_it_too() -> None:
     from t2_agentic_voice.languages import pronounce
 
-    assert pronounce("نظام OLE5", ECHO_AGENT.pronounce, language="ar-SA") == "نظام أولي فايف"
+    assert pronounce("نظام OLE5", ECHO_AGENT.pronounce, language="ar-SA") == "نظام أو لي فايف"
     assert pronounce("In OLE5", ECHO_AGENT.pronounce, language="en") == "In Oh-lee five"
 
 

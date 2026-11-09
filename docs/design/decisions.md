@@ -2451,7 +2451,7 @@ twice; DOC-REF: every `D-NNN` cited anywhere is a heading here), so keep its sha
   of the 10 times the progress line played, the answer began within 0.1 s of its end.
 - **Decision:**
   - Ole5's map holds `OLE5` and `ole5` beside `Ole5`, since the knowledge base writes `OLE5` and
-    the model copies it; the Arabic form loses its marks («أولي فايف»).
+    the model copies it; the Arabic form is «أو لي فايف», the owner's pick the same day of ten samples of the voice, after «أُولِي فايف» and «أولي فايف» both sounded wrong.
   - An arrow is said as "then" («ثم»), or dropped with no words on one side (`speak_arrows`,
     applied in `said`, so the caption keeps it).
   - An English reply is cut at sentence ends, or at a comma once a clause is 120 characters
@@ -2472,3 +2472,24 @@ twice; DOC-REF: every `D-NNN` cited anywhere is a heading here), so keep its sha
   `tests/t2_agentic_voice/domain/test_clause_stream.py`,
   `tests/t2_agentic_voice/domain/test_speaking.py`,
   `tests/t2_agentic_voice/voice/session/test_talker_call.py`, `tests/ole5_voice/test_agent.py`.
+
+## D-078 · A failed search is asked once more, and is seen in the trace · 2026-11-09 · Accepted (the owner's ruling, Q36 in plan 006)
+
+- **Context:** in the owner's Arabic call of 15:57 the agent said it could not look anything up,
+  on the first search since the server started at 15:56. Eighteen searches run afterwards from
+  the same machine all passed, so the fault was brief. The search tried once, its reason went
+  only to the server's log, and no span recorded a tool call.
+- **Decision:**
+  - Ole5's knowledge base asks once more after a failure that may pass, within the 4 s deadline
+    of the search; a rate limit is not asked again.
+  - The server signs in to the knowledge base once the runtime has started; a failure there is
+    logged, and the first search tries again.
+  - Each tool call is a `tool` span under its turn: the tool's name, `tool.ok` and
+    `tool.failure`, a word or two the runner sets (`ToolResult.failure`), such as
+    `timeout at search`. Never an argument or a result, which may hold a caller's records.
+- **Consequences:** a slow service can still use the whole deadline, so the caller may wait up to
+  4 s before hearing the same honest sentence. A provider's `details` may name a `step`, which
+  the trace then shows, so a team's adapter keeps that value to its own short list.
+- **Evidence:** plan 006's Q36; `tests/ole5_voice/test_knowledge_base_failures.py`,
+  `tests/ole5_voice/test_server.py`, `tests/t2_agentic_voice/core/test_tracing_tts.py`,
+  `tests/t2_agentic_voice/actions/test_runner.py`.

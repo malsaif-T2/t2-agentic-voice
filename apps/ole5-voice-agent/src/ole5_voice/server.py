@@ -7,7 +7,8 @@ settings from the environment and the file given (settings.py). Its agent (agent
 talker, searching Ole5's knowledge base (knowledge_base.py), when the knowledge base's access is
 set (`QDRANT_URL`, `QDRANT_LOGIN_EMAIL`, `QDRANT_LOGIN_PASSWORD`), and the echo when none of it
 is, which one log line says; the settings refuse it set only in part. The knowledge base's
-client is closed as the app's lifespan ends, after the runtime's. The app is built as the mount
+client signs in once the runtime has started, and is closed as the app's lifespan ends, after
+the runtime's. The app is built as the mount
 asks, since there the library's router cannot reach the app's object:
 - FastAPI's own telemetry off (`TELEMETRY_OFF`): by default FastAPI traces, measures and logs
   every request through OpenTelemetry's global providers, and the library instruments no other
@@ -120,10 +121,12 @@ def build_app(
     clock: Callable[[], float] = time.monotonic,
     web: Path = WEB,
     closing: Sequence[Closable] = (),
+    warming: Sequence[Callable[[], Awaitable[None]]] = (),
 ) -> FastAPI:
     """The app: the widget's files from `web`, the token route minting with `minter` (its
-    guard on `clock`), and the library's `router` under VOICE_PREFIX; each of `closing` closed
-    as the app's lifespan ends, after the router's."""
+    guard on `clock`), and the library's `router` under VOICE_PREFIX; each of `warming` awaited
+    once the router has started, and each of `closing` closed as the app's lifespan ends, after
+    the router's."""
     app = FastAPI(telemetry=TELEMETRY_OFF, openapi_url=None)
     app.add_middleware(
         CORSMiddleware,
@@ -133,8 +136,8 @@ def build_app(
     )
     app.include_router(token_router(settings.app.access_code, minter, guard=Guard(clock=clock)))
     app.include_router(router, prefix=VOICE_PREFIX)
-    if closing:  # the router's lifespan, merged into the app's as it was included, runs inside
-        app.router.lifespan_context = _closing_after(app.router.lifespan_context, closing)
+    if closing or warming:  # the router's lifespan, merged into the app's as included, runs inside
+        app.router.lifespan_context = _around(app.router.lifespan_context, closing, warming)
     headers = page_headers(settings.app.website_origin)
     for path, (name, media_type) in FILES.items():
         endpoint = _file(web / name, media_type, headers)
@@ -158,7 +161,9 @@ def make_app(settings: Settings) -> FastAPI:
     kb = QdrantKnowledgeBase(access)
     runtime = VoiceRuntime(talker_agent(kb), settings=voice, identity=tokens)
     log.info("knowledge_base_set", agent="talker")
-    return build_app(settings, router=runtime.router(), minter=tokens, closing=(kb,))
+    return build_app(
+        settings, router=runtime.router(), minter=tokens, closing=(kb,), warming=(kb.warm_up,)
+    )
 
 
 def server_config(app: FastAPI, voice: VoiceSettings, *, host: str, port: int) -> uvicorn.Config:
@@ -202,14 +207,21 @@ def main(argv: Sequence[str] | None = None) -> int:
     return 0
 
 
-def _closing_after(inner: Lifespan, closing: Sequence[Closable]) -> Lifespan:
-    """A lifespan that runs `inner` (the app's, the routers' merged into it), then closes each
-    of `closing`, in order, however `inner` ended."""
+def _around(
+    inner: Lifespan,
+    closing: Sequence[Closable],
+    warming: Sequence[Callable[[], Awaitable[None]]] = (),
+) -> Lifespan:
+    """A lifespan that runs `inner` (the app's, the routers' merged into it), awaits each of
+    `warming` once it has started, and closes each of `closing`, in order, however `inner`
+    ended."""
 
     @asynccontextmanager
     async def lifespan(app: Any) -> AsyncIterator[Any]:
         try:
             async with inner(app) as state:
+                for warm in warming:
+                    await warm()
                 yield state
         finally:
             for resource in closing:

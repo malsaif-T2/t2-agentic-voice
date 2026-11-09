@@ -116,7 +116,7 @@ def test_an_invalid_argument_goes_back_to_the_talker_with_its_field_named(
 ) -> None:
     seen.clear()
     result = _run(ToolRunner([find_device]), _request("find_device", arguments))
-    assert result == ToolResult(data={"error": told}, ok=False)
+    assert result == ToolResult(data={"error": told}, ok=False, failure="bad_arguments")
     assert seen == []  # the function never ran
 
 
@@ -134,6 +134,7 @@ def test_a_tool_the_agent_does_not_have_is_answered_with_the_tools_it_has() -> N
     assert result == ToolResult(
         data={"error": "there is no tool named `delete_everything`; the tools are: find_device"},
         ok=False,
+        failure="no_such_tool",
     )
 
 
@@ -144,7 +145,9 @@ def test_a_tool_error_gives_the_talker_its_message() -> None:
 
     result = _run(ToolRunner([strict]), _request("strict", '{"tag": "x"}'))
     assert result == ToolResult(
-        data={"error": "No device with that tag is assigned to you."}, ok=False
+        data={"error": "No device with that tag is assigned to you."},
+        ok=False,
+        failure="tool_error",
     )
 
 
@@ -157,7 +160,7 @@ def test_any_other_failure_is_generic_and_logged_by_its_type_never_its_text(
 
     caplog.set_level(logging.DEBUG, logger="t2_agentic_voice")
     result = _run(ToolRunner([broken]), _request("broken", f'{{"tag": "{SECRET}"}}'))
-    assert result == ToolResult(data={"error": FAILED}, ok=False)
+    assert result == ToolResult(data={"error": FAILED}, ok=False, failure="KeyError")
     [record] = [r for r in caplog.records if r.getMessage() == "tool_failed"]
     assert record.levelno == logging.ERROR
     fields = record.fields  # type: ignore[attr-defined]
@@ -172,7 +175,7 @@ def test_a_bound_value_the_caller_does_not_hold_fails_and_is_logged() -> None:
         return room
 
     result = _run(ToolRunner([room_of]), _request("room_of"))
-    assert result == ToolResult(data={"error": FAILED}, ok=False)
+    assert result == ToolResult(data={"error": FAILED}, ok=False, failure="bound_value_missing")
 
 
 def test_a_value_that_is_no_json_is_a_failure() -> None:
@@ -180,7 +183,9 @@ def test_a_value_that_is_no_json_is_a_failure() -> None:
     async def odd() -> object:
         return object()
 
-    assert _run(ToolRunner([odd]), _request("odd")) == ToolResult(data={"error": FAILED}, ok=False)
+    assert _run(ToolRunner([odd]), _request("odd")) == ToolResult(
+        data={"error": FAILED}, ok=False, failure="unreadable_result"
+    )
 
 
 def test_a_tool_result_returned_whole_is_kept_as_it_is() -> None:
@@ -218,7 +223,7 @@ def test_the_timeout_is_timed_on_the_calls_clock(caplog: pytest.LogCaptureFixtur
         await clock.advance(1.9)
         assert not task.done()  # only the call's clock times it out, never asyncio's
         await clock.advance(0.1)
-        assert await task == ToolResult(data={"error": FAILED}, ok=False)
+        assert await task == ToolResult(data={"error": FAILED}, ok=False, failure="timed_out")
 
     caplog.set_level(logging.WARNING, logger="t2_agentic_voice")
     asyncio.run(_on_clock(steps))
@@ -250,3 +255,16 @@ def test_a_cancel_stops_the_call_at_once() -> None:
         assert clock.sleeps == [30.0]
 
     asyncio.run(_on_clock(steps))
+
+
+def test_a_failed_call_names_what_failed_for_the_trace_never_a_value() -> None:
+    """D-078: a provider's failure by its kind and step, anything else by a word or its type."""
+    from t2_agentic_voice.actions.runner import _failure_of
+    from t2_agentic_voice.core.errors import ProviderError
+
+    step = ProviderError("timeout", True, details={"step": "search", "error": "ReadTimeout"})
+    assert _failure_of(step) == "timeout at search"
+    assert _failure_of(ProviderError("rejected", False)) == "rejected"
+    assert _failure_of(ValueError("a value the caller gave")) == "ValueError"
+    bad = ToolRunner([find_device]).run(_request("find_device", "not json"), CTX, clock=FakeClock())
+    assert asyncio.run(bad).failure == "bad_arguments"

@@ -245,3 +245,81 @@ def test_no_error_or_log_line_shows_the_account_session_question_or_payload(
         assert holding(value, surfaces) == [], value
     for line in SOURCE_TEXT.splitlines():
         assert holding(line, surfaces) == [], line
+
+
+def test_a_brief_failure_is_asked_once_more_and_the_search_passes() -> None:
+    """D-078: one fault that may pass never reaches the caller."""
+    service = Service()
+
+    async def once(request: httpx.Request) -> httpx.Response:
+        del service.replaced[EMBED]
+        raise httpx.ReadError("made up", request=request)
+
+    service.replace(EMBED, once)
+    kb, _ = adapter(service)
+    assert len(_search(kb)) >= 1
+
+
+@pytest.mark.parametrize("status", [401, 429])
+def test_a_refusal_or_a_rate_limit_is_not_asked_again(status: int) -> None:
+    service = Service()
+    calls: list[int] = []
+
+    async def refused(request: httpx.Request) -> httpx.Response:
+        calls.append(status)
+        return httpx.Response(status)
+
+    service.replace(EMBED, refused)
+    kb, _ = adapter(service)
+    with pytest.raises(ProviderError):
+        _search(kb)
+    assert len(calls) == 1
+
+
+def test_a_second_failure_is_the_searchs() -> None:
+    service = Service()
+    calls: list[int] = []
+
+    async def down(request: httpx.Request) -> httpx.Response:
+        calls.append(503)
+        return httpx.Response(503)
+
+    service.replace(EMBED, down)
+    kb, _ = adapter(service)
+    with pytest.raises(ProviderError) as raised:
+        _search(kb)
+    assert len(calls) == 2 and raised.value.details["step"] == "embed"
+
+
+def test_warming_up_signs_in_once_so_the_first_search_need_not() -> None:
+    service = Service()
+    kb, _ = adapter(service)
+
+    async def scene() -> list[Passage]:
+        await kb.warm_up()
+        assert service.signed_in == ["made-up-session-1"]
+        try:
+            return await kb.search(QUESTION, language="en", caller=CALLER, limit=1)
+        finally:
+            await kb.aclose()
+
+    assert len(asyncio.run(scene())) == 1
+    assert service.signed_in == ["made-up-session-1"]
+
+
+def test_a_warm_up_that_fails_is_logged_and_the_first_search_signs_in() -> None:
+    service = Service()
+    service.replace(LOGIN, _answer(503))
+    kb, _ = adapter(service)
+
+    async def scene() -> list[Passage]:
+        await kb.warm_up()  # raises nothing
+        assert service.signed_in == []
+        del service.replaced[LOGIN]
+        try:
+            return await kb.search(QUESTION, language="en", caller=CALLER, limit=1)
+        finally:
+            await kb.aclose()
+
+    assert len(asyncio.run(scene())) == 1
+    assert service.signed_in == ["made-up-session-1"]

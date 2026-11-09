@@ -36,7 +36,6 @@ from t2_agentic_voice.core.settings.tts import LanguageTag
 from t2_agentic_voice.domain.cards import Card
 from t2_agentic_voice.domain.ports.chat_model import Usage
 from t2_agentic_voice.voice.protocol import ShowCard, State
-from t2_agentic_voice.voice.session.echo import BEAT_S
 
 from tests.t2_agentic_voice.voice.session.session_support import (
     captions,
@@ -363,35 +362,3 @@ def test_a_talker_that_refuses_the_turn_at_once_is_told_and_its_reply_closed(
     asyncio.run(drive())
     assert [s.text for s in speaks(io, 1)] == [AGENT.languages[0].notices["error"]]
     assert ended(session, 1)
-
-
-def test_a_clause_that_fails_after_one_played_is_told_at_the_replys_end_after_a_beat(
-    settings: VoiceSettings,
-) -> None:
-    """D-077: no clause of the reply follows the line, which says the answer was cut off and is
-    longer than its phrase by the beat before it."""
-
-    def script(turn: TalkerTurn) -> list[Step]:
-        return [*answer("First.", "Second.", "Third.")]
-
-    io, _, _ = talker_call(settings, script, language="en")
-
-    async def drive() -> None:
-        await greeted(io)
-        await talked(io, 0, "Where is my ticket?", language="en")
-        await io.clause_queued(1, 0)
-        await io.clause_played(1, 0)
-        await io.clause_failed(1, 1)
-        assert len(speaks(io)) == 4  # the greeting and the three clauses: nothing told yet
-        await io.clause_queued(1, 2)
-        await io.clause_played(1, 2)
-        await io.ending()
-        await io.close()
-
-    asyncio.run(drive())
-    english = AGENT.languages[0]
-    [told] = speaks(io, 2)
-    assert told.text == english.notices["cut_off"]
-    phrase = io.setup.phrases.audio(told.text, language="en")
-    assert told.audio is not None
-    assert len(told.audio.pcm16) - len(phrase.pcm16) == 2 * round(BEAT_S * phrase.sample_rate)

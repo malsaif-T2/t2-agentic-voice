@@ -83,12 +83,13 @@ call's ID (`session.id`), which is no credential.
 | `turn`, the root of each turn's trace | The resource attributes below, the turn's number, and at its end its outcome and times, never its text |
 | `speech_to_text`, under its turn | The model, the audio's length, the language sent, the language and billed seconds returned, and the transcript (`tracing.include_transcripts`, on by default) |
 | `text_to_speech`, one per reply, under its turn (the greeting and a notice under the call) | The model, the voice, the language, the characters sent, the chunks played, the requests, the phrases played from the cache, the time to first audio, and whether a take came back cut short; never the text |
+| `tool`, one per tool call, under its turn | The tool's name, `tool.ok`, and when it failed `tool.failure`: what failed, such as `timeout at search` or `bad_arguments`, never an argument or a result |
 | `call`, the root of the call's own trace | The resource attributes, and the call's report in numbers, with no text |
 
-The talker's model requests and tool calls have no span of their own yet: each model's requests
-and tokens are in the call's report (`ModelUsage`, and the `call` span's numbers), each turn's
-time to the model's first token in its times ([latency.md](latency.md)), and each tool call
-reaches a runtime's observers as `ToolStarted` and `ToolFinished`.
+The talker's model requests have no span of their own yet: each model's requests and tokens are
+in the call's report (`ModelUsage`, and the `call` span's numbers), and each turn's time to the
+model's first token in its times ([latency.md](latency.md)). Each tool call also reaches a
+runtime's observers as `ToolStarted` and `ToolFinished`.
 
 The resource attributes, on each root span: `t2v.version`, `t2v.pipecat.version`,
 `t2v.settings.digest` (a hash of the settings with every secret left out), `t2v.agent.name`,

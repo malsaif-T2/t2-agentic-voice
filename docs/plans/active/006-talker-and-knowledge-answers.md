@@ -984,6 +984,12 @@ runs"; in this order, each with its smoke first)
   base (a script, no run recorded; under $0.10): 1 of 23 dev questions asked back, all 4 vague
   requests did, all 6 archiving questions were answered from the knowledge base, and 0 of 11
   English replies held Arabic letters. The owner's own archiving question stays unexplained.
+- 2026-11-09: **The owner's second round of calls (Q36, D-078).** English sounds better, with a
+  pause between sentences the owner finds tolerable (left as it is). The Arabic name is still
+  wrong: of ten more spellings said by the voice the owner found two best, and «أو لي فايف» went
+  in (Ole5's version `2026-11-09.3`). One Arabic turn at 15:57 said the
+  search could not be done, the first search since the server started; a search now tries twice
+  within its deadline, the server signs in at its start, and each tool call has a span.
 
 ## Decision log
 
@@ -1086,6 +1092,10 @@ runs"; in this order, each with its smoke first)
   is kind of odd, like it is out of breath"; to Q35: "Yes, make them. 'Ole5' is said ok in
   English but in Arabic even the greeting is wrong. Fix them and I will try it again once you
   finish."
+- 2026-11-09, after the next calls: "The Ole5 in Arabic is till wrong. English sound better but
+  there is this strange pause between sentences, it is tolerable"; to Q36: "Yes add them."; of
+  the samples: "'Ole5-sample-02.wav' and 'Ole5-sample-03.wav' sounds the best, either would be
+  good".
 - 2026-11-08, to Q29, after run S's first pass: "Loosen them, except 'you need permission to
   print'".
 
@@ -1433,11 +1443,14 @@ Each answer that changes a run is a dated amendment to the registration.
   The name in every capitalization; arrows said as a word; English cut at sentence ends; a beat
   beside fixed lines and a new line for a reply cut off; a shorter progress line; a button's
   meaning and Arabic sound in an English reply; one narrow rule for asking back.
+- **Q36. A search that failed in a call.** *Settled 2026-11-09: all three, as the agent
+  recommended.* Ask a failed search once more within its deadline; sign in as the server starts;
+  record each tool call and what failed in the trace.
 
 ## What the owner does
 
 - Answer Q1 to Q10, and approve the plan (done 2026-11-06); answer Q11 to Q14, Q15 to Q18,
-  Q19 and Q20, Q21, Q22 and Q23 (done 2026-11-07), Q24 to Q29 (done 2026-11-08), and Q30 to Q35 (done 2026-11-09).
+  Q19 and Q20, Q21, Q22 and Q23 (done 2026-11-07), Q24 to Q29 (done 2026-11-08), and Q30 to Q36 (done 2026-11-09).
 - Copy the knowledge base's access into `.env` (Q4; done 2026-11-06, under the owner's names).
 - Review the knowledge set's items (Q5, about 40 minutes; done 2026-11-07, checked by the agent
   against the knowledge base), and check 24 judged answers (Q6, about 20 minutes).

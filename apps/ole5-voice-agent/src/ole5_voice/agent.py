@@ -25,7 +25,7 @@ No fixed line a call of the talker speaks as written (a greeting, a progress lin
 of the presets' stop, wait, repeat or listening lists, nor a yes or send word, so its echo
 cannot be heard as the caller's (plan 006, "What voice-first means here", item 6); a test reads
 them; the echo's Saudi greeting holds a'eed (I say back), a word of the repeat list, as it did
-before. Ole5's name is said "oo-lee faayf" in Arabic and "Oh-lee five" in English (the
+before. Ole5's name is said "oo lee faayf" in Arabic and "Oh-lee five" in English (the
 prototype's D26 and D37, Ole5-chatbot/VOICE_LOG.md, lines 35 and 45). The Arabic texts are
 written with `\\u` escapes, as the library's are, each with its sound and meaning in a comment.
 """
@@ -43,10 +43,13 @@ NAME: Final = "ole5"
 # Stamped on every trace of the talker, with the agent's fingerprint: the date it was last
 # changed, and the change of that day; the talker with no search (run T's pass Tn) is versioned
 # apart, so a run's record tells the two apart.
-VERSION: Final = "2026-11-09.2"
+VERSION: Final = "2026-11-09.3"
 NO_SEARCH_VERSION: Final = f"{VERSION}+no-search"
-# oo-lee faayf, with no marks: the owner heard the marked spelling as wrong on 2026-11-09.
-_NAME_SAID: Final = {"ar": "\u0623\u0648\u0644\u064a \u0641\u0627\u064a\u0641", "en": "Oh-lee five"}
+# oo lee faayf, as two plain words: the owner's pick of ten samples of the voice, 2026-11-09.
+_NAME_SAID: Final = {
+    "ar": "\u0623\u0648 \u0644\u064a \u0641\u0627\u064a\u0641",
+    "en": "Oh-lee five",
+}
 # The map finds a form as written, and the knowledge base writes OLE5, which the model copies.
 PRONOUNCE: Final = dict.fromkeys(("Ole5", "OLE5", "ole5"), _NAME_SAID)
 

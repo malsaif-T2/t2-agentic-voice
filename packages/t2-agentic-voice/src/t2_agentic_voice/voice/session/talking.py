@@ -117,7 +117,7 @@ class Talking:
         self._usage, self._events, self._history = books.usage, books.events, books.history
         self._guarded, self._sync, self._over = guarded, sync, over
         self._clock = setup.clock
-        self._player = TalkPlayer(setup, books.usage, turns)
+        self._player = TalkPlayer(setup, books.usage, turns, books.trace)
         self._talks: dict[TurnId, Talk] = {}
         self._holding: set[TurnId] = set()  # the turns whose hold began and has not resumed
         self._open: set[TurnId] = set()  # the turns open, no overlap, not yet taken (kept replies)

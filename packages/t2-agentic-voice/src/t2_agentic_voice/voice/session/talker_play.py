@@ -24,6 +24,7 @@ from t2_agentic_voice.agent.talker import (
 )
 from t2_agentic_voice.core.events import GuardBlocked, ToolFinished, ToolStarted, TurnId
 from t2_agentic_voice.core.settings.tts import LanguageTag
+from t2_agentic_voice.core.tracing_tts import CallTrace
 from t2_agentic_voice.voice.session.io import CallSetup
 from t2_agentic_voice.voice.session.open_reply import OpenReply, language_of
 from t2_agentic_voice.voice.session.scope import CancelScope
@@ -65,11 +66,11 @@ class Talk:
 
 
 class TalkPlayer:
-    """Plays the talker's events of one call (`setup`), its model requests counted in `usage`
-    and its first token timed on the turns `turns` keeps."""
+    """Plays the talker's events of one call (`setup`), its model requests counted in `usage`,
+    its first token timed on the turns `turns` keeps, and its tool calls traced on `trace`."""
 
-    def __init__(self, setup: CallSetup, usage: Usage, turns: TurnBook) -> None:
-        self._setup, self._usage, self._turns = setup, usage, turns
+    def __init__(self, setup: CallSetup, usage: Usage, turns: TurnBook, trace: CallTrace) -> None:
+        self._setup, self._usage, self._turns, self._trace = setup, usage, turns, trace
 
     async def tell(self, talk: Talk, reply: OpenReply, at: float) -> None:
         """The caller told the reply failed, once a reply, in its language (its last clause's,
@@ -98,11 +99,13 @@ class TalkPlayer:
             case ShownCard(card=card):
                 await reply.card(card)
             case ToolBegan(call_id=tool_call, tool=tool):
+                self._trace.tool_began(turn_id, tool_call, tool=tool)
                 started = ToolStarted(
                     call_id=call_id, turn_id=turn_id, at=wall, tool=tool, tool_call_id=tool_call
                 )
                 emit(started)
-            case ToolEnded(call_id=tool_call, tool=tool, ok=ok, ms=ms):
+            case ToolEnded(call_id=tool_call, tool=tool, ok=ok, ms=ms, failure=failure):
+                self._trace.tool_ended(tool_call, ok=ok, failure=failure)
                 finished = ToolFinished(
                     call_id=call_id,
                     turn_id=turn_id,

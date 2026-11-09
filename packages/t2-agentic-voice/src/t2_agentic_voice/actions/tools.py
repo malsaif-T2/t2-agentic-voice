@@ -117,12 +117,14 @@ class ToolResult(_Frozen):
     a `card` to show the caller, if any; `evidence`, the texts beside `data` whose ID-shaped
     tokens the output guard may let the talker say (a passage's whole text, a record's number);
     and `ok`, False when the call failed (a `ToolError`, any other failure, the timeout, an
-    argument the talker got wrong), its `data` then saying why."""
+    argument the talker got wrong), its `data` then saying why, and `failure` naming what failed
+    for the call's trace (D-078): a word or two the runner sets, never a value."""
 
     data: JsonValue = None
     card: Card | None = None
     evidence: tuple[str, ...] = ()
     ok: bool = True
+    failure: str | None = None
 
 
 class Tool(_Frozen):
