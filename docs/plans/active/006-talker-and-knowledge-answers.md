@@ -910,6 +910,19 @@ runs"; in this order, each with its smoke first)
   the 48 pointed the caller at the screen: the library's rules, Ole5's instructions and
   `knowledge_tool` now have every step said in one reply, repeated whole or in part on request,
   and no card shown. The judge reads only what was said aloud. Ole5's version `2026-11-09.1`.
+- 2026-11-09: **Run S after D-075** (s-120b-5, at 4dc35ac; 30 plays, no guard violation, one
+  failure; $0.09). Gate at that commit: 5138 passed. 5 of 10 scenarios met: s01, s04, s05, s07
+  and s08. s02 had 2 of the 2 plays it could judge, its third play failing on a provider's
+  `rejected` when a third request, which offers no tools, was answered with a tool call. s03 2 of
+  3 (an English reply naming Arabic buttons), s06 1 of 3 (the permission left out of the first
+  answer), s09 2 of 3 («أبغى موظف» read as referring a correspondence to an employee), s10 0 of
+  3: each failed on its first turn's last fact, which the script's own interruption keeps from
+  being said, a check that spoken-only scoring makes impossible; that turn's item is now taken
+  out of s10, and two of the three plays would have met it. Against the last pass: «أبشر» in 0
+  of 46 Arabic replies (was 22 of 48); no reply pointing the caller at a screen (17 name "the top
+  of the screen" as where a button is); replies a median of 178 characters, 500 at most, 4
+  clauses, 11 at most, and at most 763 output tokens of the 1,024. One reply wrote its steps
+  twice; 4 of 57 replies copy the knowledge base's `←` arrows, for the live calls to hear.
 
 ## Decision log
 

@@ -9,7 +9,6 @@ notes = "A new request said over a reply stops it, and the new request is answer
 says = "كيف أسوي مجموعة مفضلة للإرسال؟"
 search = true
 language = "ar-SA"
-item = "q06_favorite_group"
 
 [[turns]]
 says = "طيب خلها، كيف أطبع المراسلة؟"
