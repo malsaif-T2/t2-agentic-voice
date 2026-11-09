@@ -83,6 +83,7 @@ class Reply:
     ended_at: float | None = None
     failed: bool = False
     told: bool = False
+    to_tell: bool = False  # a clause failed: the caller is told when the reply ends
     stopped: bool = False
     cut: bool = False
     tail_s: float = DROP_AFTER_S

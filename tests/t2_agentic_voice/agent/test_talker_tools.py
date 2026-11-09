@@ -87,7 +87,6 @@ def test_a_turn_with_a_tool_makes_two_requests_its_result_framed_as_data() -> No
         "ToolEnded",
         "ModelRequested",
         "SpokenClause",
-        "SpokenClause",
         "ModelReplied",
         "ReplyDone",
     ]

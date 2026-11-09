@@ -58,12 +58,13 @@ from t2_agentic_voice.domain.words import PRESET_WORDS, Phrases, Words
 # A notice's kind (the design's 5.5), each told in the call's language: `busy`, a call that
 # cannot be taken, which admission control answers at join, before a call has audio (the
 # design's 10.5); `error`, a turn or an echo that failed; `ended`, a call the session ends
-# itself, at a limit (plan 003, Q4). The session sends `error` and `ended` as `t2v/1`'s
-# `notice`, whose text the client shows, and speaks each as a reply (voice/session/call.py).
-NoticeKind = Literal["busy", "error", "ended"]
+# itself, at a limit (plan 003, Q4); `cut_off`, a reply that failed after the caller heard some
+# of it (D-077). The session sends all but `busy` as `t2v/1`'s `notice`, whose text the client
+# shows, and speaks each as a reply (voice/session/call.py).
+NoticeKind = Literal["busy", "error", "cut_off", "ended"]
 NOTICE_KINDS: tuple[NoticeKind, ...] = get_args(NoticeKind)
 # The notices a call speaks, so the phrase cache holds them: `busy` comes before any call.
-SPOKEN_NOTICES: tuple[NoticeKind, ...] = ("error", "ended")
+SPOKEN_NOTICES: tuple[NoticeKind, ...] = ("error", "cut_off", "ended")
 
 # An agent's name: it names the agent's folder under `storage.var_dir` and its traces, so it is
 # a lowercase word, with hyphens.
@@ -120,7 +121,9 @@ def _every_kind[T](value: Mapping[NoticeKind, T]) -> Mapping[NoticeKind, T]:
     if missing:
         *rest, last = missing
         listed = f"{', '.join(rest)} or {last}" if rest else last
-        raise ValueError(f"it has no text for {listed}; each of busy, error and ended needs one")
+        raise ValueError(
+            f"it has no text for {listed}; each of busy, error, cut_off and ended needs one"
+        )
     return value
 
 

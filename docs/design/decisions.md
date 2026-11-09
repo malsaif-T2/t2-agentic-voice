@@ -2440,3 +2440,35 @@ twice; DOC-REF: every `D-NNN` cited anywhere is a heading here), so keep its sha
   whether the law asks for more (the roadmap's M6).
 - **Evidence:** plan 006's Q34; `tests/ole5_voice/test_server.py`,
   `tests/ole5_voice/test_widget_cards.py`.
+
+## D-077 · What the owner's live calls changed in how the agent sounds · 2026-11-09 · Accepted (the owner's ruling on plan 006's Q35)
+
+- **Context:** the owner's first three calls after D-075 and D-076 (13:42, 13:47 and 13:59 local
+  time): Ole5 said wrongly, in Arabic even in the greeting; "←" badly handled; an English voice
+  "out of breath"; Arabic words in English replies; the agent saying it did not know something
+  the knowledge base holds; the error line and the answer each said at once after other speech.
+  The calls were not traced, so what was said is not known; the reports give their timings. In 7
+  of the 10 times the progress line played, the answer began within 0.1 s of its end.
+- **Decision:**
+  - Ole5's map holds `OLE5` and `ole5` beside `Ole5`, since the knowledge base writes `OLE5` and
+    the model copies it; the Arabic form loses its marks («أولي فايف»).
+  - An arrow is said as "then" («ثم»), or dropped with no words on one side (`speak_arrows`,
+    applied in `said`, so the caption keeps it).
+  - An English reply is cut at sentence ends, or at a comma once a clause is 120 characters
+    long (`ClauseStream(whole_sentences=True)`). Arabic replies are cut as before; the owner did
+    not hear the fault there.
+  - A progress line is followed, and a notice preceded, by 0.4 s of silence (`BEAT_S`).
+  - A new notice, `cut_off`, offers the answer again after a reply that failed once some of it
+    was heard. A clause's failed speech is told at the reply's end, so no clause follows the
+    line, and not at all when the caller stopped the reply. An echo or a repeat keeps `error`.
+  - Ole5's progress line is shorter and no longer names the product. Its instructions ask for one
+    short question when the caller's words make no sense for Ole5 or could mean two things, and
+    for a button's meaning and its Arabic sound in Latin letters in an English reply.
+- **Consequences:** `t2v/1`'s `notice` has one more `kind`, and a language built without a preset
+  must give its text. English first audio waits for the first sentence, not its first comma.
+  Which of the causes the owner's archiving question had is unknown: the knowledge base holds
+  archiving in 16 of its 128 passages.
+- **Evidence:** plan 006's progress entry of 2026-11-09 and Q35;
+  `tests/t2_agentic_voice/domain/test_clause_stream.py`,
+  `tests/t2_agentic_voice/domain/test_speaking.py`,
+  `tests/t2_agentic_voice/voice/session/test_talker_call.py`, `tests/ole5_voice/test_agent.py`.

@@ -24,9 +24,11 @@ from dataclasses import dataclass, replace
 from t2_agentic_voice.core.events import TurnId
 from t2_agentic_voice.core.logging import get_logger
 from t2_agentic_voice.domain.declaration import Language, VoiceAgent
+from t2_agentic_voice.domain.ports.text_to_speech import AudioChunk
 from t2_agentic_voice.domain.text.clauses import split_clauses
 from t2_agentic_voice.domain.text.invisible import provider_text
 from t2_agentic_voice.domain.text.pronounce import pronounce
+from t2_agentic_voice.domain.text.speaking import speak_arrows
 from t2_agentic_voice.voice.protocol import ReplyId
 from t2_agentic_voice.voice.session.commands import Speak
 from t2_agentic_voice.voice.session.heard import HeardWords
@@ -37,6 +39,9 @@ _log = get_logger(__name__)
 # at Orpheus's 200 characters, about 40 s of English said back, and under a third of Groq's
 # published 10 requests a minute, so a transcript a hallucination made long cannot burst past it.
 MAX_ECHO_REQUESTS = 3
+# The silence around a fixed line said next to other speech (a progress line, a notice), so one
+# does not run into the other (D-077).
+BEAT_S = 0.4
 
 
 @dataclass(frozen=True, kw_only=True)
@@ -70,15 +75,23 @@ def fixed(
     return Line(speak=speak, caption=text)
 
 
+def padded(audio: AudioChunk, *, before_s: float = 0.0, after_s: float = 0.0) -> AudioChunk:
+    """`audio` with silence before and after it."""
+    before, after = (bytes(2 * round(s * audio.sample_rate)) for s in (before_s, after_s))
+    return audio.model_copy(update={"pcm16": before + audio.pcm16 + after})
+
+
 def said(text: str, *, agent: VoiceAgent, language: Language, max_chars: int | None) -> list[str]:
-    """`text` as the agent says it in `language`, one item a request: its pronunciation map
-    applied, then cut into clauses of at most `max_chars` characters, and the clauses packed
+    """`text` as the agent says it in `language`, one item a request: its arrows said as a
+    word (`speak_arrows`), its pronunciation map applied, then cut into clauses of at most
+    `max_chars` characters, and the clauses packed
     greedily, in order, joined by a space, a request ended only where its next clause would pass
     `max_chars` (one request for no limit); none for a text with nothing to say. Only a clause
     with a letter or a digit is kept, none of which `provider_text` drops, so every request
     still says something as the provider's text: a clause of symbols alone ("♪", which
     Whisper writes on noise), or of joiners and direction marks, is never one (TD-060)."""
-    spoken = pronounce(text, agent.pronounce, language=language.tag)
+    arrows = speak_arrows(text, language=language.tag)
+    spoken = pronounce(arrows, agent.pronounce, language=language.tag)
     requests: list[str] = []
     for clause in split_clauses(spoken, max_chars=max_chars):
         if not any(character.isalnum() for character in clause):

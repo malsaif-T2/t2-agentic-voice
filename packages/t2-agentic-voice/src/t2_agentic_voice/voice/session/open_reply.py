@@ -32,7 +32,7 @@ from t2_agentic_voice.domain.ports.text_to_speech import AudioChunk
 from t2_agentic_voice.domain.text.invisible import provider_text
 from t2_agentic_voice.domain.text.speaking import speak_digits
 from t2_agentic_voice.voice.protocol import ReplyId
-from t2_agentic_voice.voice.session.echo import said
+from t2_agentic_voice.voice.session.echo import BEAT_S, padded, said
 from t2_agentic_voice.voice.session.io import CallSetup
 from t2_agentic_voice.voice.session.scope import CancelScope
 
@@ -127,14 +127,25 @@ class OpenReply:
                 return
 
     async def add_phrase(
-        self, text: str, *, language: LanguageTag, at: float, progress: bool = False
+        self,
+        text: str,
+        *,
+        language: LanguageTag,
+        at: float,
+        progress: bool = False,
+        beat_before: bool = False,
     ) -> bool:
         """Ask for a fixed phrase, `text` in `language`'s voice, from the phrase cache, as the
-        reply's next clause (`progress` for a progress line, timed apart); whether it was."""
+        reply's next clause (`progress` for a progress line, timed apart and followed by a beat
+        of silence, so the answer does not run into it; `beat_before` for a line said after the
+        reply's words); whether it was."""
         writer, setup = self._parts()
         audio = phrase_audio(setup, text, language)
         if audio is None:
             return False
+        audio = padded(
+            audio, before_s=BEAT_S if beat_before else 0.0, after_s=BEAT_S if progress else 0.0
+        )
         return await writer.write(
             self.reply_id,
             text=text,

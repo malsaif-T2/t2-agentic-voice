@@ -16,6 +16,9 @@ its own is joined to the word after it, as Arabic writes it. Only whole numbers 
 num2words, whose decimals read the wrong fraction (plan 003, step 4), and one call at a time,
 since its converters keep each call's state on one shared object.
 
+An arrow, as a knowledge base writes a menu's path ("Inbox ← Archive"), is said as "then"
+(`speak_arrows`), since a voice reads the symbol badly or not at all.
+
 The forms a talker's reply holds (TD-058): a decimal ("3.5", or with the Arabic decimal
 separator) is said as its whole part, "point" («فاصلة»), then its fraction digit by digit; a
 number written with thousands separators ("1,234", or with the Arabic one) is that number, never
@@ -193,3 +196,21 @@ def speak_digits(text: str, *, language: LanguageTag) -> str:
         return f"{cue}{lead}{words}{tail}"
 
     return _RUN.sub(said, text)
+
+
+# The arrow characters a text may hold: the Arrows and Supplemental Arrows-A blocks' and the two
+# heavy arrows people type.
+_ARROWS = re.compile("[\u2190-\u21ff\u27f0-\u27ff\u2794\u279c]")
+# What an arrow is said as: thumma (then), theh, meem.
+_THEN_ARABIC = "\u062b\u0645"
+
+
+def speak_arrows(text: str, *, language: LanguageTag) -> str:
+    """`text` with each arrow between two words said as "then" in `language`, and an arrow with
+    no words on one side of it dropped; a text with no arrow is returned as it is."""
+    if _ARROWS.search(text) is None:
+        return text
+    parts = [part.strip() for part in _ARROWS.split(text)]
+    kept = [part for part in parts if any(character.isalnum() for character in part)]
+    then = "then" if language == "en" else _THEN_ARABIC
+    return f" {then} ".join(kept)

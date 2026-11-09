@@ -38,7 +38,7 @@
       "card": {"title": "string", "steps": "[string]", "source": "string | null"},
       "duck": {"level": "number"},
       "unduck": {},
-      "notice": {"kind": "busy | error | ended", "text": "string"},
+      "notice": {"kind": "busy | error | cut_off | ended", "text": "string"},
       "ended": {"reason": "hangup | caller_left | max_call | idle | transport | server"}
     }
   },

@@ -40,10 +40,10 @@ from tests.t2_agentic_voice.voice.session.session_support import (
 def test_a_stop_drops_every_reply_asked_for_and_the_session_listens_again(
     settings: VoiceSettings,
 ) -> None:
-    """Echo 1's heard words fail while its frame plays, so the `error` notice is queued as reply
-    2 behind it; a `stop` gives one `StopSpeaking` naming reply 2, both replies end at once
-    (stopped, with what played), no event of either is awaited, and turn 1 is said back as
-    reply 3. A stop with nothing asked for gives no command."""
+    """Echo 1's heard words fail while its frame plays, so the caller is to be told at its end;
+    a `stop` gives one `StopSpeaking` naming reply 1, it ends at once (stopped, with what
+    played), nothing is told of it, no event of it is awaited, and turn 1 is said back as reply
+    2. A stop with nothing asked for gives no command."""
     io, _ = call(settings)
 
     async def drive() -> None:
@@ -56,18 +56,18 @@ def test_a_stop_drops_every_reply_asked_for_and_the_session_listens_again(
         await io.client('{"v": 1, "type": "stop"}')
         await io.clock.advance(1.0)
         await turn(io, 1, HEARD)
-        await play(io, 3)
+        await play(io, 2)
         await io.ending()
         await io.close()
 
     asyncio.run(drive())
-    assert io.commands.of(StopSpeaking) == [StopSpeaking(reply_id=2)]
-    assert io.dropped >= {(1, 0), (1, 1), (2, 0)}
-    assert {s.reply_id for s in speaks(io)} == {0, 1, 2, 3}
+    assert io.commands.of(StopSpeaking) == [StopSpeaking(reply_id=1)]
+    assert io.dropped >= {(1, 0), (1, 1)}
+    assert {s.reply_id for s in speaks(io)} == {0, 1, 2}
     stopped = [e.turn_id for e in emitted(io, Interrupted)]
-    assert stopped == [0, None] and {e.kind for e in emitted(io, Interrupted)} == {"stop"}
+    assert stopped == [0] and {e.kind for e in emitted(io, Interrupted)} == {"stop"}
     ended = [(e.turn_id, e.played_fraction) for e in emitted(io, AgentSpeechEnded)]
-    assert ended[1:3] == [(0, 0.0), (None, 0.0)] and ended[3] == (1, 1.0)
+    assert ended[1] == (0, 0.0) and ended[2] == (1, 1.0)
     first, second = report(io).turns
     assert first.stopped and not second.stopped
     states = [m.state for m in sent(io, State)]

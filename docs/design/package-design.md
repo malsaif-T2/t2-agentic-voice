@@ -577,7 +577,7 @@ FastAPI's `include_router` merges a router's lifespan into the app's (checked in
   call.on("caption", c => render(c.speaker, c.text, c.final));
   call.on("card", card => renderCard(card));
   call.on("state", s => setStatus(s));      // listening | thinking | speaking | confirming
-  call.on("notice", n => showNotice(n));    // busy, error, ended, with localized text
+  call.on("notice", n => showNotice(n));    // busy, error, cut_off, ended, with localized text
   stopBtn.onclick = () => call.stop();      // Esc is bound by default
 </script>
 ```

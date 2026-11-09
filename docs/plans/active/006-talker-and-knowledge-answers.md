@@ -972,6 +972,18 @@ runs"; in this order, each with its smoke first)
 - 2026-11-09: **No consent screen on Ole5's page (Q34, D-076).** The page goes straight to the
   access code, with one box, off by default, to keep the call's audio. The library's recording
   rule (invariant 8) and the widget's version value are unchanged, so no setting moves.
+- 2026-11-09: **The owner's first live calls, and what they changed (Q35, D-077).** Three calls
+  (Arabic, English, Arabic), judged good, with notes the entry in D-077 lists. They were not
+  traced, so only their timings are known: replies with no search began at a median of 3.0, 2.1
+  and 2.3 s, those with a search at 5.1, 5.6 and 4.9 s. Seven of the ten progress lines ended
+  within 0.1 s of the answer's start. Three replies waited over 4 s with no line. Three
+  times the voice took 1.9 to 2.8 s to start where 0.25 s is usual. Eight spellings of the name
+  were said by the real voice and read back by Whisper: only the unmarked one came back whole.
+  English pieces averaged 32 characters; one reply cut at its commas ran 13.3 s, at its
+  sentences 10.7 s. Ole5's version `2026-11-09.2`. A replay through the real model and knowledge
+  base (a script, no run recorded; under $0.10): 1 of 23 dev questions asked back, all 4 vague
+  requests did, all 6 archiving questions were answered from the knowledge base, and 0 of 11
+  English replies held Arabic letters. The owner's own archiving question stays unexplained.
 
 ## Decision log
 
@@ -1069,6 +1081,11 @@ runs"; in this order, each with its smoke first)
 - 2026-11-09, unprompted: "Do we really need consent? I think that any developer having access
   to and running this has already consented. it is tiring to manage that every time"; to Q34:
   "Yes, remove the screen".
+- 2026-11-09, after three live calls: "both did good, but my notes would be that both pronounce
+  Ole5 wrongly, I have noticed that '←' is not well handled in Arabic [...] The English speech
+  is kind of odd, like it is out of breath"; to Q35: "Yes, make them. 'Ole5' is said ok in
+  English but in Arabic even the greeting is wrong. Fix them and I will try it again once you
+  finish."
 - 2026-11-08, to Q29, after run S's first pass: "Loosen them, except 'you need permission to
   print'".
 
@@ -1412,11 +1429,15 @@ Each answer that changes a run is a dated amendment to the registration.
 - **Q34. The consent screen.** *Settled 2026-11-09: remove it.* It is one step of Ole5's page,
   before every call, and its text had gone stale. The agent proposed removing it and keeping the
   library's recording rule, with a note for the deployment; the owner agreed.
+- **Q35. The fixes from the owner's calls.** *Settled 2026-11-09: all, as the agent recommended.*
+  The name in every capitalization; arrows said as a word; English cut at sentence ends; a beat
+  beside fixed lines and a new line for a reply cut off; a shorter progress line; a button's
+  meaning and Arabic sound in an English reply; one narrow rule for asking back.
 
 ## What the owner does
 
 - Answer Q1 to Q10, and approve the plan (done 2026-11-06); answer Q11 to Q14, Q15 to Q18,
-  Q19 and Q20, Q21, Q22 and Q23 (done 2026-11-07), Q24 to Q29 (done 2026-11-08), and Q30 to Q34 (done 2026-11-09).
+  Q19 and Q20, Q21, Q22 and Q23 (done 2026-11-07), Q24 to Q29 (done 2026-11-08), and Q30 to Q35 (done 2026-11-09).
 - Copy the knowledge base's access into `.env` (Q4; done 2026-11-06, under the owner's names).
 - Review the knowledge set's items (Q5, about 40 minutes; done 2026-11-07, checked by the agent
   against the knowledge base), and check 24 judged answers (Q6, about 20 minutes).

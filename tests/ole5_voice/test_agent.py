@@ -54,7 +54,8 @@ class _Tool:
 def test_the_echo_speaks_saudi_arabic_first_says_its_name_and_has_no_instructions() -> None:
     assert ECHO_AGENT.name == "ole5"
     assert [language.tag for language in ECHO_AGENT.languages] == ["ar-SA", "en"]
-    assert dict(ECHO_AGENT.pronounce["Ole5"]) == {"ar": "أُولِي فايف", "en": "Oh-lee five"}
+    for form in ("Ole5", "OLE5", "ole5"):  # the knowledge base writes OLE5, which the model copies
+        assert dict(ECHO_AGENT.pronounce[form]) == {"ar": "أولي فايف", "en": "Oh-lee five"}
     assert all("Ole5" in language.greeting for language in ECHO_AGENT.languages)
     assert not ECHO_AGENT.instructed and ECHO_AGENT.tools == ()
     assert all(not language.progress for language in ECHO_AGENT.languages)
@@ -101,7 +102,7 @@ def test_how_to_answer_names_each_of_several_causes_briefly(tag: Tag) -> None:
     assert answer.splitlines().count(wanted) == 1
     assert "search" not in wanted
     assert answer in instructions(search=False)[tag]
-    assert VERSION == "2026-11-09.1"  # every step said, no screen named (D-075)
+    assert VERSION == "2026-11-09.2"  # after the owner's calls of that day (D-077)
 
 
 @pytest.mark.parametrize("tag", ["ar-SA", "en"])
@@ -345,3 +346,25 @@ def test_the_search_section_is_replaced_only_when_the_text_holds_one() -> None:
         without_search("Intro.\n\nHow you answer:\n- Briefly.")
     with pytest.raises(ValueError, match="2 sections"):
         without_search("Searching:\n- One.\n\nSearching:\n- Two.")
+
+
+def test_the_name_is_said_as_the_knowledge_base_writes_it_too() -> None:
+    from t2_agentic_voice.languages import pronounce
+
+    assert pronounce("نظام OLE5", ECHO_AGENT.pronounce, language="ar-SA") == "نظام أولي فايف"
+    assert pronounce("In OLE5", ECHO_AGENT.pronounce, language="en") == "In Oh-lee five"
+
+
+@pytest.mark.parametrize("tag", ["ar-SA", "en"])
+def test_a_strange_or_two_way_request_gets_one_short_question(tag: Tag) -> None:
+    """The owner's calls of 2026-11-09 (D-077): one narrow line, never a question to be sure."""
+    line = (
+        "- If the caller's words make no sense for Ole5, or could mean two different things in "
+        "Ole5, ask one short question to find out what they mean, instead of guessing. Otherwise "
+        "answer: never ask only to be sure."
+    )
+    assert instructions()[tag].splitlines().count(line) == 1
+
+
+def test_english_replies_hold_no_arabic_letters_for_a_name() -> None:
+    assert "never write Arabic letters" in instructions()["en"]

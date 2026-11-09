@@ -16,7 +16,9 @@ from t2_agentic_voice.domain.declaration import Language, VoiceAgent
 # Which of a language's texts a fixed phrase is (`fixed_phrases`): its field, a notice's under
 # `notices`, or a tool's progress line (`progress`, its key in `FixedPhrase.key`). An error names
 # it in the place of the phrase's text.
-PhraseKind = Literal["greeting", "echo_frame", "notices.error", "notices.ended", "progress"]
+PhraseKind = Literal[
+    "greeting", "echo_frame", "notices.error", "notices.cut_off", "notices.ended", "progress"
+]
 
 
 @dataclass(frozen=True, kw_only=True)
@@ -65,5 +67,6 @@ def _phrases_of(language: Language) -> dict[PhraseKind, str]:
         "greeting": language.greeting,
         "echo_frame": language.echo_frame,
         "notices.error": language.notices["error"],
+        "notices.cut_off": language.notices["cut_off"],
         "notices.ended": language.notices["ended"],
     }

@@ -17,16 +17,18 @@ ENGLISH = Language.english(greeting="Hi! Which branch can I help you with?")
 def test_the_fixed_phrases_are_each_languages_greeting_frame_and_spoken_notices() -> None:
     """What the phrase cache declares: `busy` comes at join, before a call, so it is not one."""
     agent = VoiceAgent(name="branch-helper", languages=[SAUDI, ENGLISH])
-    assert SPOKEN_NOTICES == ("error", "ended")
+    assert SPOKEN_NOTICES == ("error", "cut_off", "ended")
     said = [(phrase.kind, phrase.text, phrase.language) for phrase in fixed_phrases(agent)]
     assert said == [
         ("greeting", SAUDI.greeting, "ar-SA"),
         ("echo_frame", "سمعتك تقول:", "ar-SA"),
         ("notices.error", SAUDI.notices["error"], "ar-SA"),
+        ("notices.cut_off", SAUDI.notices["cut_off"], "ar-SA"),
         ("notices.ended", SAUDI.notices["ended"], "ar-SA"),
         ("greeting", ENGLISH.greeting, "en"),
         ("echo_frame", "I heard:", "en"),
         ("notices.error", ENGLISH.notices["error"], "en"),
+        ("notices.cut_off", ENGLISH.notices["cut_off"], "en"),
         ("notices.ended", ENGLISH.notices["ended"], "en"),
     ]
     assert ENGLISH.notices["busy"] not in {phrase.text for phrase in fixed_phrases(agent)}
@@ -71,4 +73,4 @@ def test_each_progress_line_a_tool_names_is_a_fixed_phrase_in_every_language() -
         FixedPhrase(text="Checking that for you.", language="en", kind="progress", key="searching"),
     ]
     others = [phrase for phrase in fixed_phrases(agent) if phrase.kind != "progress"]
-    assert all(phrase.key is None for phrase in others) and len(others) == 8
+    assert all(phrase.key is None for phrase in others) and len(others) == 10

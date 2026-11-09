@@ -29,16 +29,19 @@ NOTICES = {
     "ar-SA": {
         "busy": "الخطوط مشغولة الحين، حاول مرة ثانية بعد شوي.",
         "error": "صار عندنا خلل بسيط، تكلم مرة ثانية لو سمحت.",
+        "cut_off": "معليش، انقطع الجواب. تبيه من البداية؟",
         "ended": "انتهت المكالمة، يعطيك العافية.",
     },
     "ar": {
         "busy": "الخطوط مشغولة الآن، يرجى المحاولة مرة أخرى بعد قليل.",
         "error": "حدث خلل لدينا، هل يمكنك إعادة ما قلته؟",
+        "cut_off": "عذرا، انقطعت الإجابة. هل تريدها من البداية؟",
         "ended": "انتهت المكالمة، شكرا لاتصالك.",
     },
     "en": {
         "busy": "All our lines are busy right now. Please try again in a little while.",
         "error": "Something went wrong on our side. Could you say that again?",
+        "cut_off": "Sorry, that answer got cut off. Do you want it from the start?",
         "ended": "The call has ended. Thank you for calling.",
     },
 }
@@ -59,7 +62,7 @@ def test_each_preset_has_a_text_for_every_notice_in_its_register() -> None:
     msa = Language.arabic(greeting="مرحبا بك")
     for language in (SAUDI, msa, ENGLISH):
         assert dict(language.notices) == NOTICES[language.tag], language.tag
-        assert tuple(language.notices) == NOTICE_KINDS == ("busy", "error", "ended")
+        assert tuple(language.notices) == NOTICE_KINDS == ("busy", "error", "cut_off", "ended")
     assert all(len(text) <= 200 for texts in NOTICES.values() for text in texts.values())
 
 
@@ -151,14 +154,14 @@ def test_a_teams_notice_says_something_on_one_line_for_a_kind_there_is(notices: 
 
 
 def test_a_language_built_without_its_preset_still_needs_every_notice() -> None:
-    """Its FIX asks for all three, which no preset fills in on this path."""
+    """Its FIX asks for all four, which no preset fills in on this path."""
     fields = ENGLISH.model_dump() | {"notices": {"busy": "Busy now."}}
-    with pytest.raises(ConfigurationError, match="no text for error or ended") as raised:
+    with pytest.raises(ConfigurationError, match="no text for error, cut_off or ended") as raised:
         Language.model_validate(fields)
     assert raised.value.details == {"field": "notices"}
-    assert "a text for each of busy, error and ended" in str(raised.value)
+    assert "a text for each of busy, error, cut_off and ended" in str(raised.value)
     assert "keeps the preset's text" not in str(raised.value)
-    with pytest.raises(ConfigurationError, match="no text for busy, error or ended"):
+    with pytest.raises(ConfigurationError, match="no text for busy, error, cut_off or ended"):
         Language.model_validate(fields | {"notices": {}})
 
 

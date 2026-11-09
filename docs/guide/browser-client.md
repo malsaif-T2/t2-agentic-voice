@@ -60,7 +60,7 @@ that throws is logged to the console and the others still run.
 | `duck` | `{level}`: the caller is speaking over the agent, whose voice now plays at `level` (0 to 1) of its volume until the session decides |
 | `unduck` | `{}`: the session has decided, and the agent's voice is back to full volume |
 | `volume` | `{level}`: the client changed the agent's volume, 1 at full; the client's own event, sent on each change, whatever caused it |
-| `notice` | `{kind, text}`: `error` (a turn's transcript failed, or a clause's speech) or `ended` (the call ended at a limit), its text in the call's language. A talker's failure, or a sentence the output guard held back, is told inside the reply instead: the `error` notice's text said and captioned as one of its clauses |
+| `notice` | `{kind, text}`: `error` (a turn's transcript failed, or a reply's speech with none of it heard), `cut_off` (a reply's speech failed after the caller heard some of it, told at the reply's end) or `ended` (the call ended at a limit), its text in the call's language. A talker's failure, or a sentence the output guard held back, is told inside the reply instead: the `error` notice's text, or `cut_off`'s after words already said, said and captioned as one of its clauses |
 | `ended` | `{reason}`: `hangup`, `caller_left`, `max_call`, `idle`, `transport` or `server` |
 | `connection` | `{state}`: the peer connection's state as the browser reports it |
 | `error` | A `VoiceClientError` from sending candidates, while the call goes on |
@@ -141,7 +141,7 @@ function card(c) {
 on the model, a tool running with nothing left to play, or a turn's transcript still to come.
 It turns `speaking` when the reply's first audio plays, and back to `thinking` when the reply has
 played all it has while the model still writes or a tool still runs; `listening` once it is
-done. A search whose answer takes long gets a progress line ("I'm checking the Ole5 guide for that."),
+done. A search whose answer takes long gets a progress line ("Let me check the guide."),
 which plays as `speaking`. Show it plainly: Ole5's widget says "Thinking" («يفكر») beside a
 pulsing dot, so a caller who hears nothing for a second knows the agent is at work.
 

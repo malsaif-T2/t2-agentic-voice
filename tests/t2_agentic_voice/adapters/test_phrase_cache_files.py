@@ -115,12 +115,12 @@ def test_a_take_cut_short_is_kept_flagged_but_never_written(tmp_path: Path) -> N
     cache, _ = declare(fake, tmp_path, english())
     assert cache.audio(GREETING, language="en").cut_short
     assert not cache.audio(NOTICES["en"]["ended"], language="en").cut_short
-    assert len(list(tmp_path.iterdir())) == 3
+    assert len(list(tmp_path.iterdir())) == 4
     again = FakeTextToSpeech()
     cached, sent = declare(again, tmp_path, english())
     assert (sent, again.calls) == (1, [(GREETING, "en")])
     assert not cached.audio(GREETING, language="en").cut_short
-    assert len(list(tmp_path.iterdir())) == 4
+    assert len(list(tmp_path.iterdir())) == 5
 
 
 @pytest.mark.parametrize("cache_phrases", [True, False])
@@ -133,7 +133,7 @@ def test_the_settings_say_whether_files_are_kept(cache_phrases: bool, tmp_path: 
         fake = FakeTextToSpeech()
         cache = PhraseCache.from_settings(settings, fake, folder=tmp_path / "earlier")
         sent = asyncio.run(cache.declare(english()))
-        assert sent == (0 if cache_phrases else 4), start
+        assert sent == (0 if cache_phrases else 5), start
         assert cache.audio(GREETING, language="en").pcm16 == take(GREETING, fake)
     unkept = PhraseCache.from_settings(settings, FakeTextToSpeech(), folder=tmp_path / "new")
     asyncio.run(unkept.declare(english()))

@@ -8,7 +8,7 @@
 //     call.on("caption", (c) => show(c.speaker, c.text, c.final, c.cut));
 //     call.on("card", (c) => showCard(c.title, c.steps, c.source)); // source: null when none
 //     call.on("state", (s) => status(s.state));     // listening | thinking | speaking | confirming
-//     call.on("notice", (n) => tell(n.kind, n.text)); // busy | error | ended, in the call's language
+//     call.on("notice", (n) => tell(n.kind, n.text)); // busy | error | cut_off | ended, in the call's language
 //     call.on("ended", (e) => done(e.reason));
 //     stopButton.onclick = () => call.stop();        // Esc is bound too
 //     endButton.onclick = () => call.hangup();

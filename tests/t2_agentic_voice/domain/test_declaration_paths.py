@@ -41,7 +41,9 @@ def test_a_subclass_fails_as_language_does(model: type[Language]) -> None:
     assert str(raised.value).startswith("A language cannot run with its `greeting`")
     with pytest.raises(ConfigurationError, match="keeps the preset's text") as raised:
         model.english(greeting="Hi there", notices={"ended": ""})
-    with pytest.raises(ConfigurationError, match="each of busy, error and ended") as raised:
+    with pytest.raises(
+        ConfigurationError, match="each of busy, error, cut_off and ended"
+    ) as raised:
         model.model_validate(ENGLISH.model_dump() | {"notices": {}})
     with pytest.raises(ConfigurationError, match="build each language with its preset") as raised:
         model.model_validate("en")

@@ -72,13 +72,13 @@ _FIXES: dict[str, str] = {
 # of each kind it is not given, or without one (`model_validate`), which gives none.
 _NOTICES_FIX = {
     True: (
-        f"give `notices` a text for `busy`, `error` or `ended`, each {_PLAIN}, as "
+        f"give `notices` a text for `busy`, `error`, `cut_off` or `ended`, each {_PLAIN}, as "
         'notices={"ended": ...}; with a preset, a kind it leaves out keeps the preset\'s text.'
     ),
     False: (
-        f"give `notices` a text for each of busy, error and ended, each {_PLAIN}, as "
-        'notices={"busy": ..., "error": ..., "ended": ...}; or build the language with its '
-        "preset, which gives the text of each kind left out."
+        f"give `notices` a text for each of busy, error, cut_off and ended, each {_PLAIN}, as "
+        'notices={"busy": ..., "error": ..., "cut_off": ..., "ended": ...}; or build the '
+        "language with its preset, which gives the text of each kind left out."
     ),
 }
 # A text that is not JSON, given to `model_validate_json`.

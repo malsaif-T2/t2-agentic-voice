@@ -24,7 +24,13 @@ from tests.t2_agentic_voice.fakes import FakeTextToSpeech, tone
 
 VOICES = TtsSettings().languages
 GREETING = "Hello, and welcome to the made-up line."
-ENGLISH = (GREETING, "I heard:", NOTICES["en"]["error"], NOTICES["en"]["ended"])
+ENGLISH = (
+    GREETING,
+    "I heard:",
+    NOTICES["en"]["error"],
+    NOTICES["en"]["cut_off"],
+    NOTICES["en"]["ended"],
+)
 LINES = [f"Made-up line {word} ends." for word in ("one", "two", "three", "four", "five")]
 LINES += [
     "Made-up line six ends.",

@@ -1,8 +1,8 @@
 """How each of the talker's events plays in its reply (plan 006), for voice/session/talking.py,
 which keeps each reply of the talker's as a `Talk` and plays each event its talker gives, one
 step of the session's at a time, with a `TalkPlayer` (`play`): the events, and what each does,
-are talking.py's module docstring's "Its events, in order". The call language's `error` notice
-is said in a reply once at most (`tell`).
+are talking.py's module docstring's "Its events, in order". A reply that fails is told so once
+at most (`tell`): the `error` notice when none of it was said, else `cut_off` after a beat.
 """
 
 from __future__ import annotations
@@ -72,12 +72,16 @@ class TalkPlayer:
         self._setup, self._usage, self._turns = setup, usage, turns
 
     async def tell(self, talk: Talk, reply: OpenReply, at: float) -> None:
-        """The `error` notice said, once a reply, in its language (its last clause's, else its
-        turn's)."""
+        """The caller told the reply failed, once a reply, in its language (its last clause's,
+        else its turn's)."""
+        await self._told(talk, reply, talk.language or self._setup.language.tag, at)
+
+    async def _told(self, talk: Talk, reply: OpenReply, tag: LanguageTag, at: float) -> None:
         if not talk.told:
             talk.told = True
-            language = language_of(self._setup, talk.language or self._setup.language.tag)
-            await reply.add_phrase(language.notices["error"], language=language.tag, at=at)
+            language = language_of(self._setup, tag)
+            line = language.notices["cut_off" if talk.said else "error"]
+            await reply.add_phrase(line, language=language.tag, at=at, beat_before=talk.said > 0)
 
     async def play(self, talk: Talk, event: TalkerEvent, at: float) -> None:
         """Play one of the talker's events in `talk`'s reply, given at `at` (talking.py's
@@ -117,10 +121,7 @@ class TalkPlayer:
                 emit(
                     GuardBlocked(call_id=call_id, turn_id=turn_id, at=wall, reason="unsupported_id")
                 )
-                if not talk.told:
-                    talk.told = True
-                    line = language_of(self._setup, tag).notices["error"]
-                    await reply.add_phrase(line, language=tag, at=at)
+                await self._told(talk, reply, tag, at)
             case ModelRequested(model=model):
                 self._usage.chat_requested(model)
                 talk.request_at = at

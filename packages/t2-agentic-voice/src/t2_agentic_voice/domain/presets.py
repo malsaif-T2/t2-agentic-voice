@@ -39,6 +39,13 @@ NOTICES: Mapping[LanguageTag, Mapping[str, str]] = {
             "\u0628\u0633\u064a\u0637\u060c \u062a\u0643\u0644\u0645 \u0645\u0631\u0629 "
             "\u062b\u0627\u0646\u064a\u0629 \u0644\u0648 \u0633\u0645\u062d\u062a."
         ),
+        # ma'aleesh, inqata' al-jawab. tabeeh min al-bidaaya: sorry, the answer was cut off; do
+        # you want it from the start?
+        "cut_off": (
+            "\u0645\u0639\u0644\u064a\u0634\u060c \u0627\u0646\u0642\u0637\u0639 "
+            "\u0627\u0644\u062c\u0648\u0627\u0628. \u062a\u0628\u064a\u0647 \u0645\u0646 "
+            "\u0627\u0644\u0628\u062f\u0627\u064a\u0629\u061f"
+        ),
         # intahat al-mukaalama, ya'teek al-'aafya: the call has ended; may you be well.
         "ended": (
             "\u0627\u0646\u062a\u0647\u062a \u0627\u0644\u0645\u0643\u0627\u0644\u0645\u0629\u060c "
@@ -61,6 +68,14 @@ NOTICES: Mapping[LanguageTag, Mapping[str, str]] = {
             "\u0647\u0644 \u064a\u0645\u0643\u0646\u0643 \u0625\u0639\u0627\u062f\u0629 "
             "\u0645\u0627 \u0642\u0644\u062a\u0647\u061f"
         ),
+        # 'udhran, inqata'at al-ijaaba. hal tureeduha min al-bidaaya: sorry, the answer was cut
+        # off; do you want it from the start?
+        "cut_off": (
+            "\u0639\u0630\u0631\u0627\u060c \u0627\u0646\u0642\u0637\u0639\u062a "
+            "\u0627\u0644\u0625\u062c\u0627\u0628\u0629. \u0647\u0644 "
+            "\u062a\u0631\u064a\u062f\u0647\u0627 \u0645\u0646 "
+            "\u0627\u0644\u0628\u062f\u0627\u064a\u0629\u061f"
+        ),
         # intahat al-mukaalama, shukran li-ittisaalik: the call has ended; thank you for calling.
         "ended": (
             "\u0627\u0646\u062a\u0647\u062a \u0627\u0644\u0645\u0643\u0627\u0644\u0645\u0629\u060c "
@@ -70,6 +85,7 @@ NOTICES: Mapping[LanguageTag, Mapping[str, str]] = {
     "en": {
         "busy": "All our lines are busy right now. Please try again in a little while.",
         "error": "Something went wrong on our side. Could you say that again?",
+        "cut_off": "Sorry, that answer got cut off. Do you want it from the start?",
         "ended": "The call has ended. Thank you for calling.",
     },
 }

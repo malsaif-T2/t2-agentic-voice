@@ -42,7 +42,10 @@ or give one a language (`instructions={"ar-SA": ..., "en": ...}`).
 
 Each clause goes to the voice as soon as the model has written it, while the model writes the
 next: the first clause is what the caller waits for, and a long one is long to wait for and long
-to sit through before the caller can stop it.
+to sit through before the caller can stop it. An English reply is cut at sentence ends (a comma
+cuts only a clause already 120 characters long), since the English voice says each request as a
+whole utterance and pieces cut at every comma sound out of breath; an Arabic reply is cut at
+every comma and full stop. An arrow in a reply ("Inbox ← Archive") is said as "then".
 
 - Weak: "To reset your password, which you can do from the portal's home page as long as you
   still have access to the mobile number you registered with, first open the portal."

@@ -25,8 +25,9 @@ where speech over a reply is not answered ("Choosing the mode", below).
 - **The agent speaks in replies.** The greeting is reply 0, and each answer (the talker's, or
   the echo's), each reply said again and each spoken notice is the next. A reply is spoken
   clause by clause: a fixed phrase (the greeting, a progress line, a notice, the echo's "I
-  heard:") from the phrase cache, the rest through Orpheus. Each clause's caption reaches the
-  browser as it starts playing.
+  heard:") from the phrase cache, the rest through Orpheus. A progress line is followed, and a
+  notice preceded, by a beat of silence, so it does not run into other speech. Each clause's
+  caption reaches the browser as it starts playing.
 - Turns and replies are numbered apart (a caption's `turn_id` and `reply_id`), so a turn and the
   reply that answers it never share a number.
 
@@ -261,7 +262,8 @@ fixed phrases are not read.
   as a fact.
 - **A blocked clause** is never spoken. By `guard.on_block`, it and the rest of the reply are
   dropped (`drop_rest`, the default) or only it (`drop_clause`); the `error` notice in the
-  clause's own language is said in its place, once a reply; observers get `GuardBlocked`; and
+  clause's own language, or `cut_off` after words already said, is said in its place, once a
+  reply; observers get `GuardBlocked`; and
   the talker's next turn holds a note that a number was held back, never the number.
 
 The rule is why the library's rules ask the model for numbers in digits: a number written in

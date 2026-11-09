@@ -43,25 +43,22 @@ NAME: Final = "ole5"
 # Stamped on every trace of the talker, with the agent's fingerprint: the date it was last
 # changed, and the change of that day; the talker with no search (run T's pass Tn) is versioned
 # apart, so a run's record tells the two apart.
-VERSION: Final = "2026-11-09.1"
+VERSION: Final = "2026-11-09.2"
 NO_SEARCH_VERSION: Final = f"{VERSION}+no-search"
-# oo-lee faayf
-PRONOUNCE: Final = {
-    "Ole5": {
-        "ar": "\u0623\u064f\u0648\u0644\u0650\u064a \u0641\u0627\u064a\u0641",
-        "en": "Oh-lee five",
-    }
-}
+# oo-lee faayf, with no marks: the owner heard the marked spelling as wrong on 2026-11-09.
+_NAME_SAID: Final = {"ar": "\u0623\u0648\u0644\u064a \u0641\u0627\u064a\u0641", "en": "Oh-lee five"}
+# The map finds a form as written, and the knowledge base writes OLE5, which the model copies.
+PRONOUNCE: Final = dict.fromkeys(("Ole5", "OLE5", "ole5"), _NAME_SAID)
 
 # The key the search tool names its progress line by, and the line in each language.
 PROGRESS_KEY: Final = "searching"
 PROGRESS: Final = {
-    # adawwir lak al-jawab fi daleel Ole5: I am looking up the answer for you in Ole5's guide.
+    # adawwir lak fi ad-daleel: I am looking for you in the guide.
     "ar-SA": (
-        "\u0623\u062f\u0648\u0651\u0631 \u0644\u0643 \u0627\u0644\u062c\u0648\u0627\u0628 "
-        "\u0641\u064a \u062f\u0644\u064a\u0644 Ole5."
+        "\u0623\u062f\u0648\u0651\u0631 \u0644\u0643 "
+        "\u0641\u064a \u0627\u0644\u062f\u0644\u064a\u0644."
     ),
-    "en": "I'm checking the Ole5 guide for that.",
+    "en": "Let me check the guide.",
 }
 # The passages a search reads, the knowledge tool's `limit` (its k), each whole (the tool's
 # `passage_chars`): one constant, so the agent every run builds and the server serves read the

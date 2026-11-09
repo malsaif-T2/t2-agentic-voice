@@ -22,6 +22,7 @@ before it was opened (the early start's, plan 006).
 from __future__ import annotations
 
 from collections.abc import Awaitable, Callable
+from dataclasses import replace
 
 from t2_agentic_voice.core.events import TurnId
 from t2_agentic_voice.core.settings.tts import LanguageTag
@@ -41,7 +42,7 @@ from t2_agentic_voice.voice.protocol import (
 )
 from t2_agentic_voice.voice.session.books import CallBooks
 from t2_agentic_voice.voice.session.commands import Send, Speak, StopSpeaking
-from t2_agentic_voice.voice.session.echo import Line, again, fixed
+from t2_agentic_voice.voice.session.echo import BEAT_S, Line, again, fixed, padded
 from t2_agentic_voice.voice.session.io import CallSetup, Commands
 from t2_agentic_voice.voice.session.open_reply import OpenReply
 from t2_agentic_voice.voice.session.playback import Clause, Playback, Reply, ReplyKind
@@ -230,7 +231,12 @@ class Speaker:
         text = self._setup.language.notices[kind]
         await self.send(Notice(kind=kind, text=text))
         line = fixed(self._setup, text, reply_id=self.playback.next_id)
-        return None if line is None else await self.say("notice", [line], at, notice=kind)
+        if line is None:
+            return None
+        audio = line.speak.audio
+        if audio is not None:  # a beat first, so it does not run into what was just said
+            line = replace(line, speak=replace(line.speak, audio=padded(audio, before_s=BEAT_S)))
+        return await self.say("notice", [line], at, notice=kind)
 
     async def repeat(self, at: float, *, turn_id: TurnId) -> Reply | None:
         """Say again the last reply the caller heard any of (the heard history's), all its
@@ -280,8 +286,7 @@ class Speaker:
         else:
             self._events.failed(event.failure, event.retryable, reply.turn_id)
             if reply.kind in ("echo", "repeat", "answer") and not reply.told and tell:
-                reply.told = True
-                await self.notice("error", event.at)
+                reply.told = reply.to_tell = True  # at its end, so no clause follows the line
         if reply.ended_at is not None:
             await self._end(reply)
 
@@ -346,6 +351,10 @@ class Speaker:
         )
 
     async def _end(self, reply: Reply) -> None:
+        if reply.to_tell and reply.ended_at is not None and not (reply.stopped or reply.cut):
+            words = (clause.played and not clause.progress for clause in reply.clauses)
+            heard = reply.kind == "answer" and any(words)
+            await self.notice("cut_off" if heard else "error", reply.ended_at)
         await self._scopes[reply.reply_id].cancel()
         played = self._history.reply(reply.reply_id).played_fraction
         self._events.spoke(reply.turn_id, reply.text, played)

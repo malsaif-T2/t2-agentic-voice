@@ -58,3 +58,24 @@ def test_a_clause_is_given_once_a_space_follows_its_last_word() -> None:
 def test_a_limit_under_one_is_refused() -> None:
     with pytest.raises(ValueError, match="at least 1"):
         ClauseStream(max_chars=0)
+
+
+def _whole(text: str) -> tuple[str, ...]:
+    stream = ClauseStream(max_chars=None, whole_sentences=True)
+    return (*stream.feed(text), *stream.close())
+
+
+def test_whole_sentences_cut_only_at_a_sentences_end() -> None:
+    """D-077: the English voice sounds out of breath when each comma starts a new request."""
+    assert _whole("Open it, then press Archive: choose a reason; press Save. It is done!") == (
+        "Open it, then press Archive: choose a reason; press Save.",
+        "It is done!",
+    )
+
+
+def test_whole_sentences_cut_at_a_comma_once_the_clause_is_long() -> None:
+    long = "word " * 24 + "last,"  # 124 characters
+    assert _whole(f"Short, still going, {long} and the end.") == (
+        f"Short, still going, {long}",
+        "and the end.",
+    )

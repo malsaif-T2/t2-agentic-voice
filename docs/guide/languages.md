@@ -85,8 +85,9 @@ Callers say product names in English inside Arabic sentences ("أبي أسوي r
 Outlook"). The language section asks the model to keep product names as the caller says them,
 and the reply's language rule keeps such a sentence Arabic (above). How the voice says a term is
 the agent's pronunciation map: `pronounce=` gives each written form, as a text holds it, the way
-each language says it, keyed by the primary code. Ole5's says its name «أُولِي فايف» in Arabic
-and "Oh-lee five" in English. The map is applied to each clause in its language after the guard
+each language says it, keyed by the primary code. A form is found as written, its case
+included, so give each way your texts write it: Ole5's map holds `Ole5`, `OLE5` and `ole5`, said
+«أولي فايف» in Arabic and "Oh-lee five" in English. The map is applied to each clause in its language after the guard
 and the speaking rules, and the caption keeps the written form.
 
 ## Numbers and IDs

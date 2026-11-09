@@ -53,8 +53,7 @@ def test_a_turn_with_no_tool_is_one_request_its_clauses_streamed() -> None:
     events = reply(talker(model), TURN)
     assert events == [
         ModelRequested(model="openai/gpt-oss-120b"),
-        SpokenClause(text="Open the portal,", language="en"),
-        SpokenClause(text="then choose Forgot password.", language="en"),
+        SpokenClause(text="Open the portal, then choose Forgot password.", language="en"),
         SpokenClause(text="Done.", language="en"),
         ModelReplied(
             model="openai/gpt-oss-120b",
@@ -185,7 +184,7 @@ def test_the_callers_own_words_are_evidence() -> None:
 
 def test_the_current_year_passes_with_no_evidence() -> None:
     model = FakeChat(said("Since 2026, it is free."))  # the fake clock's wall is in 2026
-    assert SpokenClause(text="Since 2026,", language="en") in reply(talker(model), TURN)
+    assert SpokenClause(text="Since 2026, it is free.", language="en") in reply(talker(model), TURN)
 
 
 def _system(model: FakeChat, index: int) -> str:
@@ -240,8 +239,7 @@ def test_an_answer_cut_at_the_models_limit_is_logged_by_its_model_never_its_text
     model = FakeChat(said("To reset your password,", " open", finish="length"))
     events = reply(talker(model), TURN)
     assert [e.text for e in events if isinstance(e, SpokenClause)] == [
-        "To reset your password,",
-        "open",
+        "To reset your password, open",
     ]
     [record] = [r for r in caplog.records if r.getMessage() == "talker_reply_truncated"]
     assert record.levelno == logging.WARNING

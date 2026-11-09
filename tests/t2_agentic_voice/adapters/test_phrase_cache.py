@@ -44,7 +44,7 @@ def test_each_phrase_is_synthesized_once_and_a_second_start_sends_nothing(
 ) -> None:
     first = FakeTextToSpeech()
     cache, sent = declare(first, tmp_path, english())
-    assert (sent, first.calls) == (4, [(text, "en") for text in ENGLISH])
+    assert (sent, first.calls) == (5, [(text, "en") for text in ENGLISH])
     again = FakeTextToSpeech()
     cached, sent = declare(again, tmp_path, english())
     assert (sent, again.calls) == (0, [])  # a cache hit sends nothing
@@ -71,7 +71,7 @@ def test_a_phrase_two_languages_share_is_synthesized_once(tmp_path: Path) -> Non
     fake = FakeTextToSpeech()
     languages = [Language.saudi_arabic(greeting="أهلا بك."), Language.arabic(greeting="مرحبا.")]
     cache, sent = declare(fake, tmp_path, VoiceAgent(name="echo", languages=languages))
-    assert sent == 7 and [text for text, _ in fake.calls].count(ARABIC_FRAME) == 1
+    assert sent == 9 and [text for text, _ in fake.calls].count(ARABIC_FRAME) == 1
     assert cache.audio(ARABIC_FRAME, language="ar-SA") == cache.audio(ARABIC_FRAME, language="ar")
 
 
@@ -131,7 +131,7 @@ def test_a_429_then_a_success_waits_once_and_sends_the_request_once_more(
     )
     sleeps = Sleeps()
     cache, sent = declare(refused, tmp_path, english(), sleeps)
-    assert (sleeps, sent, refused.asked) == ([waited], 5, [GREETING, *ENGLISH])
+    assert (sleeps, sent, refused.asked) == ([waited], 6, [GREETING, *ENGLISH])
     assert cache.audio(GREETING, language="en").pcm16 == take(GREETING, refused.inner)
 
 
@@ -156,7 +156,7 @@ def test_any_other_failure_fails_at_once_naming_the_phrase(tmp_path: Path) -> No
     sleeps = Sleeps()
     with pytest.raises(ProviderError) as raised:
         declare(fake, tmp_path, english(), sleeps)
-    assert (raised.value.kind, sleeps, len(fake.calls)) == ("server_error", [], 4)
+    assert (raised.value.kind, sleeps, len(fake.calls)) == ("server_error", [], 5)
     assert raised.value.details == {"status": 503, "phrase": "notices.ended", "language": "en"}
 
 
@@ -174,7 +174,7 @@ def test_a_map_that_takes_a_phrase_past_max_chars_sends_two_requests(tmp_path: P
     cache, sent = declare(fake, tmp_path, english(greeting, {"LT-": {"en": "the letters L and T"}}))
     said = "Your code the letters L and T is here."
     assert [text for text, _ in fake.calls[:2]] == [" ".join([said] * 5), " ".join([said] * 3)]
-    assert sent == 5 and all(len(text) <= 200 for text, _ in fake.calls)
+    assert sent == 6 and all(len(text) <= 200 for text, _ in fake.calls)
     assert cache.audio(greeting, language="en").seconds > 0
 
 
@@ -199,7 +199,7 @@ def test_heard_words_never_reach_the_cache(tmp_path: Path) -> None:
             cache.audio(text, language=language)  # type: ignore[arg-type]
         assert holding(text, shown(raised.value)) == []
         assert raised.value.__context__ is None
-    assert (len(fake.calls), sorted(tmp_path.iterdir())) == (4, files)
+    assert (len(fake.calls), sorted(tmp_path.iterdir())) == (5, files)
 
 
 class Rates:

@@ -246,7 +246,9 @@ class Turn:
         """The clauses of the model's answer to `request`, as it streams; `answer` gathers the
         rest."""
         started = self.clock.now()
-        splitter, unnoted = ClauseStream(max_chars=None), Unnoted()
+        whole_sentences = self.language == "en"  # D-077
+        splitter = ClauseStream(max_chars=None, whole_sentences=whole_sentences)
+        unnoted = Unnoted()
         try:
             async with _closing(self.model.stream(request)) as stream:
                 async for event in stream:

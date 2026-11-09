@@ -240,3 +240,19 @@ def test_an_overflow_num2words_raises_is_read_digit_by_digit(
 
     monkeypatch.setattr(speaking, "num2words", refused)
     assert speak_number(-42, language="en") == "minus four two"
+
+
+def test_an_arrow_between_words_is_said_as_then() -> None:
+    from t2_agentic_voice.domain.text.speaking import speak_arrows
+
+    assert speak_arrows("الوارد ← أرشفة ← حفظ.", language="ar-SA") == "الوارد ثم أرشفة ثم حفظ."
+    assert speak_arrows("Inbox → Archive", language="en") == "Inbox then Archive"
+
+
+def test_an_arrow_at_the_edge_or_alone_is_dropped_and_other_text_is_left_alone() -> None:
+    from t2_agentic_voice.domain.text.speaking import speak_arrows
+
+    assert speak_arrows("← Archive", language="en") == "Archive"
+    assert speak_arrows("Archive ←", language="en") == "Archive"
+    assert speak_arrows("←", language="en") == ""
+    assert speak_arrows("  no  arrow here ", language="en") == "  no  arrow here "
