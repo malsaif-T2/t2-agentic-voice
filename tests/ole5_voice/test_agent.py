@@ -4,7 +4,8 @@ ear needs; its search, the library's knowledge tool with Ole5's description and 
 its vocabulary and version; no fixed line of it holding a word the caller commands with; its
 prompt rendered in each language once the library composes it, every step said and no screen
 named (D-075); no opening word taught; and the talker with no tool (run T's pass Tn), told in
-place of the search's section that it has none, versioned apart, the served talker's prompt unchanged."""
+place of the search's section that it has none, versioned apart, the served talker's prompt
+unchanged."""
 
 from __future__ import annotations
 
