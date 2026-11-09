@@ -19,7 +19,7 @@ decisions (`D-NNN`), which are permanent. Living docs cite only milestones in th
 | M1 | The measurement first: the owner's voice as a golden set | done ([002](completed/002-golden-set-baseline.md)) |
 | M2 | A call that listens and speaks | done ([003](completed/003-call-listens-and-speaks.md)) |
 | M3 | Interruptions and cancellation | done ([005](completed/005-interruptions-and-cancellation.md)) |
-| M4 | The talker and knowledge answers | in progress ([006](active/006-talker-and-knowledge-answers.md)) |
+| M4 | The talker and knowledge answers | done ([006](completed/006-talker-and-knowledge-answers.md)); its live calls moved to M7 |
 | M5 | Tickets, ticket status, and handoff | planned |
 | M6 | Reliability and operations | planned |
 | M7 | The rehearsal: the owner's script passes | planned |
@@ -295,7 +295,8 @@ targets hold at the cap on live calls.
 **M7 · The rehearsal: the owner's script passes.**
 - The owner's rehearsal of 28 Oct 2026 ([DESCRIPTION.md](../project/DESCRIPTION.md), "How
   success is measured"), on laptop speakers, a wired headset, and a Bluetooth headset, against
-  the deployed backend.
+  the deployed backend. It holds M4's live calls, moved here when M4 closed on 2026-11-09 (the
+  owner, Q1 of M5's plan), and the first hearing of the Arabic name of D-077 if no earlier call has.
 - A report for the owner, every number with its source
   ([docs/project/README.md](../project/README.md)).
 - *Library:* the guide completed (cookbooks with no Ole5 code, safety, troubleshooting); the
@@ -341,6 +342,10 @@ targets hold at the cap on live calls.
   command words on the fast path, by a Whisper prompt, a keyword detector, another provider or a
   better microphone; requests and repeats over a reply, the turn hold, a Bluetooth sitting, the
   agent's own words, and requests per overlap against Groq's limits a minute).
+- What M4 left for later, ordered by expected value: [plan 006's Future
+  improvements](completed/006-talker-and-knowledge-answers.md#future-improvements) (first a judge
+  that can be trusted and better retrieval; then the Saudi register, one-word questions, the first
+  audio after a search, and slow starts of the voice).
 
 ## Decided
 
