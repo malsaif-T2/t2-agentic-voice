@@ -12,6 +12,7 @@ import pytest
 from openinference.semconv.trace import SpanAttributes
 from t2_agentic_voice.core.config import VoiceSettings
 from t2_agentic_voice.core.redaction import Redactor
+from t2_agentic_voice.core.tracing import Tracing
 from t2_agentic_voice.core.tracing_export import VERSION
 from t2_agentic_voice.core.tracing_tts import (
     AGENT_NAME,
@@ -208,3 +209,33 @@ def test_a_tool_call_is_a_span_under_its_turn_naming_what_failed() -> None:
     assert failed["tool.ok"] is False and failed["tool.failure"] == "timeout at search"
     assert failed[SpanAttributes.TOOL_NAME] == "search_help"
     assert "tool.ok" not in dict(tools[1].attributes or {})
+
+
+def _spoken_call(tracing: Tracing) -> None:
+    trace = CallTrace(tracing, call_id="call-7", resource={AGENT_NAME: "echo-test"})
+    trace.started()
+    trace.turn_opened(0)
+    trace.tool_began(0, "t-1", tool="search_help", arguments='{"query": "made up 123"}')
+    trace.tool_ended("t-1", ok=True, failure=None)
+    trace.tts_started(1, 0, model="m-2", voice="troy", language="en")
+    trace.tts_ended(1, NUMBERS, text="Made-up reply 123.")
+    trace.turn_ended(0, {}, heard="made-up words 123", said="Made-up reply 123.")
+    trace.close({})
+    tracing.shutdown()
+
+
+def test_each_span_holds_what_was_said_when_transcripts_are_on_and_redacted() -> None:
+    """D-079: the turn what was heard and said, the reply its text, the tool its arguments."""
+    tracing, exporter = private(redactor=lambda text: text.replace("123", "[redacted]"))
+    _spoken_call(tracing)
+    spans = {s.name: dict(s.attributes or {}) for s in exporter.get_finished_spans()}
+    assert spans["turn"][SpanAttributes.INPUT_VALUE] == "made-up words [redacted]"
+    assert spans["turn"][SpanAttributes.OUTPUT_VALUE] == "Made-up reply [redacted]."
+    assert spans["text_to_speech"][SpanAttributes.INPUT_VALUE] == "Made-up reply [redacted]."
+    assert spans["tool"][SpanAttributes.INPUT_VALUE] == '{"query": "made up [redacted]"}'
+
+
+def test_no_span_holds_what_was_said_with_transcripts_off() -> None:
+    tracing, exporter = private(redactor=None, include_transcripts=False)
+    _spoken_call(tracing)
+    assert "made" not in exported_text(exporter.get_finished_spans()).lower()

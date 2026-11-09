@@ -250,7 +250,8 @@ def test_one_trace_per_turn_with_its_spans_and_no_secret_in_any(tmp_path: Path) 
     shown = exported_text(found)
     for secret in (MADE_UP_KEY, JOIN_KEY, TURN_SECRET):
         assert holding(secret, {"spans": shown}) == []
-    assert "bytes" not in shown and HEARD not in repr(tts)
+    assert "bytes" not in shown
+    assert HEARD in str(tts["input.value"])  # what the reply said (D-079)
 
 
 RELAY = {"v": 1, "type": "client_stats", "candidate_type": "relay", "relay_protocol": "udp"}

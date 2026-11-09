@@ -229,7 +229,7 @@ class TurnBook:
         if reply is not None and reply.ended_at is None:
             return
         turn.done = True
-        self._trace.turn_ended(turn.turn_id, turn.outcome())
+        self._end_trace(turn)
         if not turn.dropped:
             self._events.metrics(turn)
 
@@ -255,5 +255,11 @@ class TurnBook:
         every turn, for the report."""
         for turn in self._turns.values():
             if not turn.done:
-                self._trace.turn_ended(turn.turn_id, turn.outcome())
+                self._end_trace(turn)
         return list(self._turns.values())
+
+    def _end_trace(self, turn: TurnLog) -> None:
+        """The turn's trace ends, with its outcome, what was heard and what its reply said."""
+        reply = None if turn.reply_id is None else self._playback.reply(turn.reply_id)
+        said = "" if reply is None else reply.text
+        self._trace.turn_ended(turn.turn_id, turn.outcome(), heard=turn.heard, said=said)

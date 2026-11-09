@@ -60,7 +60,7 @@ def test_a_tool_call_of_the_talker_reaches_the_trace(settings: VoiceSettings) ->
 
     def script(turn: TalkerTurn) -> list[Step]:
         return [
-            ToolBegan(call_id="t-1", tool="search_help"),
+            ToolBegan(call_id="t-1", tool="search_help", arguments='{"query": "my ticket"}'),
             ToolEnded(call_id="t-1", tool="search_help", ok=False, ms=900.0, failure="timeout"),
             *answer("Sorry."),
         ]
@@ -78,3 +78,7 @@ def test_a_tool_call_of_the_talker_reaches_the_trace(settings: VoiceSettings) ->
     session._setup.tracing.shutdown()
     [tool] = [s for s in exporter.get_finished_spans() if s.name == "tool"]
     assert (tool.attributes or {})["tool.failure"] == "timeout"
+    assert (tool.attributes or {})["input.value"] == '{"query": "my ticket"}'
+    [root] = [s for s in exporter.get_finished_spans() if s.name == "turn"]
+    assert (root.attributes or {})["input.value"] == "Where is my ticket?"
+    assert (root.attributes or {})["output.value"] == "Sorry."

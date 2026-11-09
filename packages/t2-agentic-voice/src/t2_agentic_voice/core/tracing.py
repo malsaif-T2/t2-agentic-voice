@@ -203,6 +203,11 @@ class Tracing:
         those still queued when `shutdown` gave up or ended after it."""
         return 0 if self._queue is None else self._queue.dropped
 
+    @property
+    def include_transcripts(self) -> bool:
+        """Whether spans carry what was said (`tracing.include_transcripts`)."""
+        return self._include_transcripts
+
     def turn(self, *, session_id: str, name: str = "turn") -> AbstractContextManager[Span]:
         """The span of one turn, or of one golden-set variant: the root of its trace, with
         `session.id` set to `session_id`, so the backend groups one call's (or run's) traces."""
@@ -227,8 +232,8 @@ class Tracing:
         return self._stt(parent, attributes)
 
     def tool(self, parent: Span, *, tool: str) -> AbstractContextManager[Span]:
-        """A tool call's span under `parent`, named by its tool; never its arguments or its
-        result, which may hold what a caller's records say."""
+        """A tool call's span under `parent`, named by its tool (D-078). `CallTrace` adds the
+        arguments the model wrote; its result never goes, which may hold a caller's records."""
         attributes: dict[str, AnyValue] = {
             SpanAttributes.OPENINFERENCE_SPAN_KIND: OpenInferenceSpanKindValues.TOOL.value,
             SpanAttributes.TOOL_NAME: tool,

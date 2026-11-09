@@ -98,8 +98,8 @@ class TalkPlayer:
                 await reply.add_clause(text, language=tag, at=at)
             case ShownCard(card=card):
                 await reply.card(card)
-            case ToolBegan(call_id=tool_call, tool=tool):
-                self._trace.tool_began(turn_id, tool_call, tool=tool)
+            case ToolBegan(call_id=tool_call, tool=tool, arguments=arguments):
+                self._trace.tool_began(turn_id, tool_call, tool=tool, arguments=arguments)
                 started = ToolStarted(
                     call_id=call_id, turn_id=turn_id, at=wall, tool=tool, tool_call_id=tool_call
                 )

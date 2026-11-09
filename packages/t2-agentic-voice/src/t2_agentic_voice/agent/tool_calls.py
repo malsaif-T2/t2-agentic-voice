@@ -111,7 +111,7 @@ class ToolCalls:
             for call in calls:
                 tasks[self._started(call)] = call
             for call in calls:
-                yield ToolBegan(call_id=call.id, tool=call.name)
+                yield ToolBegan(call_id=call.id, tool=call.name, arguments=call.arguments)
             line = self._line(calls)
             if line is not None:
                 yield line

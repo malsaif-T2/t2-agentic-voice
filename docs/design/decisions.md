@@ -2493,3 +2493,18 @@ twice; DOC-REF: every `D-NNN` cited anywhere is a heading here), so keep its sha
 - **Evidence:** plan 006's Q36; `tests/ole5_voice/test_knowledge_base_failures.py`,
   `tests/ole5_voice/test_server.py`, `tests/t2_agentic_voice/core/test_tracing_tts.py`,
   `tests/t2_agentic_voice/actions/test_runner.py`.
+
+## D-079 · Traces hold what the agent said and what it searched for · 2026-11-09 · Accepted (the owner's ruling, Q37 in plan 006)
+
+- **Context:** invariant 8 kept the speech-to-text transcript as the only call content in a
+  trace, so the agent's words and a search's text were nowhere to be read after a call. In the
+  owner's calls even the transcript was on 2 turns of 12: its span opens only for a turn with a
+  request of its own. The owner: "make it do so to ease our job".
+- **Decision:** under `tracing.include_transcripts`, on by default and through `tracing.redact`,
+  a turn's root span holds what was heard and what its reply said, each reply's span its text,
+  and each tool call's span the arguments the model wrote. A tool's result is not exported, and
+  neither is a value bound from the caller, since neither is what was said. Invariant 8 says so.
+- **Consequences:** Phoenix keeps more of each call, for as long as its retention says (none is
+  set on the laptop). The roadmap's M6 question of what other callers must be told covers it.
+- **Evidence:** plan 006's Q37; `tests/t2_agentic_voice/core/test_tracing_tts.py`,
+  `tests/t2_agentic_voice/voice/session/test_talker_told.py`.

@@ -358,5 +358,5 @@ class Speaker:
         await self._scopes[reply.reply_id].cancel()
         played = self._history.reply(reply.reply_id).played_fraction
         self._events.spoke(reply.turn_id, reply.text, played)
-        self._trace.tts_ended(reply.reply_id, reply.numbers())
+        self._trace.tts_ended(reply.reply_id, reply.numbers(), text=reply.text)
         await self._ended(reply)

@@ -990,6 +990,9 @@ runs"; in this order, each with its smoke first)
   in (Ole5's version `2026-11-09.3`). One Arabic turn at 15:57 said the
   search could not be done, the first search since the server started; a search now tries twice
   within its deadline, the server signs in at its start, and each tool call has a span.
+- 2026-11-09: **Traces hold what was said (Q37, D-079).** Each turn's root span now holds what
+  was heard and what its reply said, each reply's span its text, each tool call's span the
+  arguments the model wrote, under `tracing.include_transcripts`. Invariant 8 changed with it.
 
 ## Decision log
 
@@ -1095,7 +1098,7 @@ runs"; in this order, each with its smoke first)
 - 2026-11-09, after the next calls: "The Ole5 in Arabic is till wrong. English sound better but
   there is this strange pause between sentences, it is tolerable"; to Q36: "Yes add them."; of
   the samples: "'Ole5-sample-02.wav' and 'Ole5-sample-03.wav' sounds the best, either would be
-  good".
+  good"; of the traces: "Why not? make it do so to ease our job" (Q37).
 - 2026-11-08, to Q29, after run S's first pass: "Loosen them, except 'you need permission to
   print'".
 
@@ -1446,11 +1449,14 @@ Each answer that changes a run is a dated amendment to the registration.
 - **Q36. A search that failed in a call.** *Settled 2026-11-09: all three, as the agent
   recommended.* Ask a failed search once more within its deadline; sign in as the server starts;
   record each tool call and what failed in the trace.
+- **Q37. What a trace holds.** *Settled 2026-11-09: the agent's words and the search's text
+  too.* The owner asked for it directly, against invariant 8 as it stood; the setting that turns
+  transcripts off and the redaction hook cover the new text.
 
 ## What the owner does
 
 - Answer Q1 to Q10, and approve the plan (done 2026-11-06); answer Q11 to Q14, Q15 to Q18,
-  Q19 and Q20, Q21, Q22 and Q23 (done 2026-11-07), Q24 to Q29 (done 2026-11-08), and Q30 to Q36 (done 2026-11-09).
+  Q19 and Q20, Q21, Q22 and Q23 (done 2026-11-07), Q24 to Q29 (done 2026-11-08), and Q30 to Q37 (done 2026-11-09).
 - Copy the knowledge base's access into `.env` (Q4; done 2026-11-06, under the owner's names).
 - Review the knowledge set's items (Q5, about 40 minutes; done 2026-11-07, checked by the agent
   against the knowledge base), and check 24 judged answers (Q6, about 20 minutes).

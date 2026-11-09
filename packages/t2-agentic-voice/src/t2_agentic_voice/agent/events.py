@@ -40,10 +40,12 @@ class ShownCard(_Event):
 
 
 class ToolBegan(_Event):
-    """A tool call began: the model's id for the call, and the tool's name."""
+    """A tool call began: the model's id for the call, the tool's name, and the arguments the
+    model wrote, for the call's trace (D-079)."""
 
     call_id: str = Field(min_length=1)
     tool: str = Field(min_length=1)
+    arguments: str = Field(default="", repr=False)
 
 
 class ToolEnded(_Event):

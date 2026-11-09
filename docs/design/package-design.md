@@ -1284,7 +1284,7 @@ Ole5's golden-set machinery stays in the app, under `apps/ole5-voice-agent/evals
 - **Resource attributes:** the library version, the Pipecat version, a digest of the settings, the agent's fingerprint and version, the model IDs, and the consent version.
 - **Redaction and content:**
   - The redaction hook runs on every text attribute.
-  - `include_transcripts` is on by default, because invariant 8 keeps transcripts in traces as the only call content stored by default.
+  - `include_transcripts` is on by default, because invariant 8 keeps what was said in traces as the only call content stored by default: the transcript, the agent's replies and the arguments the model wrote for a tool (D-079).
   - Audio and secrets, the offer secret included, are never exported.
 - **Exporter failures never touch a call.** The batch processor has a bounded queue and short timeouts, and dropped spans are counted.
 - **Explicit spans.** The span helpers take the turn's span as an argument, because an implicit current span does not cross Pipecat's tasks (ARCHITECTURE.md).

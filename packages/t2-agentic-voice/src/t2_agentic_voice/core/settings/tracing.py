@@ -28,8 +28,9 @@ class TracingSettings(Group):
     include_transcripts: bool = Field(
         default=True,
         description=(
-            "Whether spans carry what was said: transcripts are the only call content a trace "
-            "holds (docs/SECURITY.md, invariant 8)."
+            "Whether spans carry what was said: what the caller was heard to say, the agent's "
+            "replies and the text of its tool calls are the only call content a trace holds "
+            "(docs/SECURITY.md, invariant 8)."
         ),
     )
     redact: tuple[str, ...] = Field(

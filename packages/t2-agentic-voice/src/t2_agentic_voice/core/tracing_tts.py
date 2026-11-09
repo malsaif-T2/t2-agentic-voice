@@ -8,8 +8,9 @@ The resource attributes go on each trace's root span (a turn's, and the call's o
 provider's `Resource`: a team's provider keeps its own, and the agent and the consent version are
 the call's, not the process's. The digest is a SHA-256 of the settings written as JSON with every
 secret left out, and the `_file` setting that names the file holding it, so the digest is the same
-whichever key or file is given and says nothing of either. No span here holds what was said: a
-transcript goes only on the speech-to-text span, under `tracing.include_transcripts`.
+whichever key or file is given and says nothing of either. Under `tracing.include_transcripts`
+a turn's root span holds what was heard and what its reply said, a reply's span its text, and a
+tool call's span the arguments the model wrote (D-079), each through the redaction hook.
 """
 
 from __future__ import annotations
@@ -23,7 +24,11 @@ from functools import cache
 from importlib.metadata import version
 from typing import Any, get_args
 
-from openinference.semconv.trace import OpenInferenceSpanKindValues, SpanAttributes
+from openinference.semconv.trace import (
+    OpenInferenceMimeTypeValues,
+    OpenInferenceSpanKindValues,
+    SpanAttributes,
+)
 from opentelemetry.trace import Span, StatusCode, set_span_in_context
 from opentelemetry.util.types import AnyValue
 from pydantic import BaseModel, SecretStr
@@ -131,8 +136,9 @@ class TextToSpeechSpan:
     def __init__(self, span: Span) -> None:
         self._span = span
 
-    def record(self, numbers: ReplyNumbers) -> None:
-        """What the reply took (`ReplyNumbers`)."""
+    def record(self, numbers: ReplyNumbers, *, text: str = "") -> None:
+        """What the reply took (`ReplyNumbers`) and, when given, what it was to say."""
+        _words(self._span, SpanAttributes.INPUT_VALUE, SpanAttributes.INPUT_MIME_TYPE, text)
         attributes: dict[str, AnyValue] = {
             TTS_CHARACTERS: numbers.characters,
             TTS_CHUNKS: numbers.chunks,
@@ -169,6 +175,13 @@ def _tts(
     # kept apart under the module size cap): the same package's, so its redaction applies.
     with tracing._span("text_to_speech", set_span_in_context(parent), attributes) as span:
         yield TextToSpeechSpan(span)
+
+
+def _words(span: Span, value: str, mime_type: str, text: str) -> None:
+    """`text`, when there is any, as the span's `value`, plain text."""
+    if text:
+        span.set_attribute(value, text)
+        span.set_attribute(mime_type, OpenInferenceMimeTypeValues.TEXT.value)
 
 
 class CallTrace:
@@ -247,20 +260,28 @@ class CallTrace:
         tts = text_to_speech(self._tracing, parent, model=model, voice=voice, language=language)
         self._tts[reply_id] = (stack, stack.enter_context(tts))
 
-    def tts_ended(self, reply_id: int, numbers: ReplyNumbers) -> None:
-        """The reply ended, however: its span ends with what it took."""
+    def tts_ended(self, reply_id: int, numbers: ReplyNumbers, *, text: str = "") -> None:
+        """The reply ended, however: its span ends with what it took and, under
+        `tracing.include_transcripts`, what it was to say."""
         opened = self._tts.pop(reply_id, None)
         if opened is not None:
             stack, tts = opened
-            tts.record(numbers)
+            tts.record(numbers, text=text if self._tracing.include_transcripts else "")
             stack.close()
 
-    def tool_began(self, turn_id: int, tool_call_id: str, *, tool: str) -> None:
+    def tool_began(
+        self, turn_id: int, tool_call_id: str, *, tool: str, arguments: str = ""
+    ) -> None:
         """A tool call of the turn `turn_id` began: its span opens under the turn's, while that
-        is open."""
+        is open, with the arguments the model wrote (`tracing.include_transcripts`)."""
         if turn_id in self._turns:
             stack = ExitStack()
             span = stack.enter_context(self._tracing.tool(self._turns[turn_id][1], tool=tool))
+            if arguments and self._tracing.include_transcripts:
+                span.set_attribute(SpanAttributes.INPUT_VALUE, arguments)
+                span.set_attribute(
+                    SpanAttributes.INPUT_MIME_TYPE, OpenInferenceMimeTypeValues.JSON.value
+                )
             self._tools[tool_call_id] = (turn_id, stack, span)
 
     def tool_ended(self, tool_call_id: str, *, ok: bool, failure: str | None) -> None:
@@ -275,9 +296,12 @@ class CallTrace:
                 span.set_status(StatusCode.ERROR, failure or "failed")
             stack.close()
 
-    def turn_ended(self, turn_id: int, attributes: Attributes) -> None:
+    def turn_ended(
+        self, turn_id: int, attributes: Attributes, *, heard: str = "", said: str = ""
+    ) -> None:
         """The turn is done: its tool calls' and speech-to-text spans, if still open, then its
-        root span end, with `attributes` (its outcome and times, never its text)."""
+        root span end, with `attributes` (its outcome and times) and, under
+        `tracing.include_transcripts`, what was `heard` and what its reply `said`."""
         for tool_call_id, opened in list(self._tools.items()):
             if opened[0] == turn_id:
                 del self._tools[tool_call_id]
@@ -289,6 +313,9 @@ class CallTrace:
         if turn is not None:
             stack, span = turn
             span.set_attributes(attributes)
+            if self._tracing.include_transcripts:
+                _words(span, SpanAttributes.INPUT_VALUE, SpanAttributes.INPUT_MIME_TYPE, heard)
+                _words(span, SpanAttributes.OUTPUT_VALUE, SpanAttributes.OUTPUT_MIME_TYPE, said)
             stack.close()
 
     def close(self, attributes: Attributes) -> None:
