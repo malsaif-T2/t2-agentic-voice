@@ -923,6 +923,33 @@ runs"; in this order, each with its smoke first)
   of the screen" as where a button is); replies a median of 178 characters, 500 at most, 4
   clauses, 11 at most, and at most 763 output tokens of the 1,024. One reply wrote its steps
   twice; 4 of 57 replies copy the knowledge base's `←` arrows, for the live calls to hear.
+- 2026-11-09: **Run K on dev after D-075** (k1-dev-spoken, at a9693bc; 136 variants; $0.23; the
+  owner's Q31 and Q32). Beside k1m-dev-a, the last pass at medium (8e12024), which scored the card
+  too, so not like for like:
+
+  | | k1m-dev-a | k1-dev-spoken |
+  | --- | --- | --- |
+  | Passed | 0.500 | 0.594 |
+  | Language right | 0.868 | 0.752 |
+  | First clause, median and 90th percentile | 1.10 and 1.51 s | 1.27 and 1.82 s |
+  | Words, median and 90th percentile | | 26 and 48 |
+  | Failures | 0 | 3 |
+
+  Of 136: right 56, partly right 38, wrong 8, invented 8, not in knowledge 23. Retrieval 0.849.
+  The language check reads a reply in imperatives as not Saudi, «أبشر» having been the only dialect
+  word in many; the first clause is later with no short opener.
+  - **The check of the judge (Q32): not passed.** An agent blind to the judge's verdicts checked
+    the 24 drawn answers against the knowledge base: 17 of 24 agree, 7 disagree, and the registered
+    limit is 3 (`MOST_DISAGREEMENTS`). Four of the 7 change pass or fail, two each way, and the
+    agent marked all four as close calls. By the registered rule
+    the run's verdicts are not to be compared or kept on.
+  - **The 3 failures** were one fault, as in run S's one: after two searches the third request
+    offers no tool, the model writes a tool call anyway, and Groq refuses it, so the caller hears
+    the `error` notice. D-075's longer answers made it likelier (8 of the 136 turns reached a
+    third request). Telling the model no tool is left took a replay of those 8 questions three
+    times from 3 of 8 to 2 of 24 failed; the last request now also holds the results with the calls
+    that asked for them dropped (`_without_calls`, agent/turn.py): 0 of 24 failed, 11 of them
+    reaching a third request (about 3 cents).
 
 ## Decision log
 

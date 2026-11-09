@@ -95,6 +95,9 @@ MSA_SECTION = (
     "word. Keep product names as the caller says them."
 )
 MSA_REPLY_LINE = f"Reply in Modern Standard Arabic, the caller's register, {_WHATEVER}"
+# What the last request of a turn, which offers no tool, opens its line with: told nothing, the
+# model sometimes writes a tool call the request did not offer, which Groq refuses (run K, D-075).
+NO_MORE_TOOLS = "You have no more tools in this turn: answer now from the results above."
 # The first line of each request's system message (the module's docstring), and its ids: a
 # count from a random start, as 8 hex digits, so no two of one process are the same and two
 # processes seldom share one.
@@ -108,10 +111,12 @@ def language_section(language: LanguageTag, register: Register = "saudi") -> str
     return MSA_SECTION if (language, register) == ("ar-SA", "msa") else LANGUAGE_SECTIONS[language]
 
 
-def reply_line(language: LanguageTag, register: Register = "saudi") -> str:
+def reply_line(language: LanguageTag, register: Register = "saudi", *, last: bool = False) -> str:
     """The line that ends a request after a tool result, for a reply in `language` to a caller
-    whose Arabic is in `register` (the module's docstring)."""
-    return MSA_REPLY_LINE if (language, register) == ("ar-SA", "msa") else REPLY_LINES[language]
+    whose Arabic is in `register` (the module's docstring), opening with `NO_MORE_TOOLS` for a
+    turn's `last` request."""
+    line = MSA_REPLY_LINE if (language, register) == ("ar-SA", "msa") else REPLY_LINES[language]
+    return f"{NO_MORE_TOOLS} {line}" if last else line
 
 
 def compose_prompt(

@@ -16,6 +16,7 @@ from typing import Any
 from t2_agentic_voice.actions.knowledge import NAME, knowledge_tool
 from t2_agentic_voice.actions.runner import FAILED
 from t2_agentic_voice.actions.tools import from_caller, tool
+from t2_agentic_voice.agent.prompt import NO_MORE_TOOLS
 from t2_agentic_voice.agent.talker import (
     ProgressDue,
     ShownCard,
@@ -122,6 +123,8 @@ def test_three_requests_at_most_the_last_with_no_tools() -> None:
     events = reply(talker(model, _search(kb)), TURN)
     assert [len(r.tools) for r in model.requests] == [1, 1, 0]
     assert [s.query for s in kb.searches] == ["one", "two"]
+    told = [r.messages[-1].content for r in model.requests[1:]]  # told so only when none is left
+    assert NO_MORE_TOOLS not in told[0] and told[1].startswith(NO_MORE_TOOLS)
     assert kinds(events).count("ModelRequested") == 3 and kinds(events)[-1] == "ReplyDone"
 
 

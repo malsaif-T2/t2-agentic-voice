@@ -7,7 +7,8 @@ turn and the call as it was heard to the events the session plays, within the re
   it with what the talker kept beside it (agent/context.py), then the turn, whole; a request
   after a tool result of the turn ends with a line naming the reply's language (prompt.py's
   `reply_line`). At most `MAX_REQUESTS` a turn: each but the last offers the agent's tools, the
-  last none, so the turn ends in words; a tool call the last one makes anyway is not run.
+  last none, so the turn ends in words, told so and holding the results with the calls that
+  asked for them dropped (`_without_calls`); a tool call the last one makes anyway is not run.
 - **Speech as it is written.** The model's text goes through the clause splitter as it streams
   (`ClauseStream`), any note of the history's it copied taken out first (agent/context.py's
   `Unnoted`), and each whole clause, once the output guard's rule B passed it against the
@@ -83,6 +84,21 @@ _log = get_logger(__name__)
 MAX_REQUESTS = 3
 # The models that take a reasoning effort (`llm.reasoning_effort`); the others are sent none.
 _REASONING = frozenset({"openai/gpt-oss-120b", "openai/gpt-oss-20b"})
+
+
+def _without_calls(messages: Sequence[ChatMessage]) -> list[ChatMessage]:
+    """`messages` for a request that offers no tool: each result kept, framed as it was, and the
+    calls that asked for them dropped. A model that can read its own calls sometimes writes
+    another, which Groq refuses when the request offers none (run K, D-075)."""
+    kept: list[ChatMessage] = []
+    for message in messages:
+        if message.role == "tool":
+            kept.append(ChatMessage.system(message.content))
+        elif not message.tool_calls:
+            kept.append(message)
+        elif message.content:
+            kept.append(ChatMessage.assistant(message.content))
+    return kept
 
 
 @dataclass
@@ -211,8 +227,11 @@ class Turn:
         llm = self.settings.llm
         if llm.vary_first_line:  # so no two requests share a cached prefix (the setting's text)
             messages = [ChatMessage.system(with_first_line(messages[0].content)), *messages[1:]]
+        if not tools:
+            messages = _without_calls(messages)
         if after_tools:  # the request's own line, never kept in the turn's messages
-            messages = [*messages, ChatMessage.system(reply_line(self.language, self.register))]
+            line = reply_line(self.language, self.register, last=not tools)
+            messages = [*messages, ChatMessage.system(line)]
         return ChatRequest(
             messages=tuple(messages),
             tools=tools,

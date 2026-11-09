@@ -12,6 +12,7 @@ from collections.abc import Iterable
 from typing import Any
 
 from t2_agentic_voice.actions.knowledge import NAME, knowledge_tool
+from t2_agentic_voice.agent.prompt import NO_MORE_TOOLS
 from t2_agentic_voice.core.conversation import Conversation, PastTurn, TalkerTurn
 from t2_agentic_voice.core.settings.tts import LanguageTag
 from t2_agentic_voice.domain.ports.chat_model import ChatMessage, ChatRequest
@@ -93,8 +94,10 @@ def test_each_request_after_a_result_ends_with_one_line_never_two() -> None:
     never kept in the turn's messages."""
     first, second, third = _asked(ENGLISH_TURN, "ar-SA", _searched_then_said(times=2))
     assert [len(_lines(r)) for r in (first, second, third)] == [0, 1, 1]
-    assert third.messages[-1] == second.messages[-1]
-    assert [m.role for m in third.messages[-3:]] == ["assistant", "tool", "system"]
+    assert third.messages[-1].content == f"{NO_MORE_TOOLS} {second.messages[-1].content}"
+    assert [m.role for m in third.messages[-2:]] == ["system", "system"]
+    assert all(m.role != "tool" and not m.tool_calls for m in third.messages)  # no call to copy
+    assert sum(m.content.startswith('<data tool="') for m in third.messages) == 2  # results kept
 
 
 def test_the_next_turns_first_request_holds_no_line_from_the_last_turns_tools() -> None:
