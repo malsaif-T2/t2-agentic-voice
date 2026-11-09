@@ -216,7 +216,7 @@ def _spoken_call(tracing: Tracing) -> None:
     trace.started()
     trace.turn_opened(0)
     trace.tool_began(0, "t-1", tool="search_help", arguments='{"query": "made up 123"}')
-    trace.tool_ended("t-1", ok=True, failure=None)
+    trace.tool_ended("t-1", ok=True, failure=None, result='{"passages": "made up 123"}')
     trace.tts_started(1, 0, model="m-2", voice="troy", language="en")
     trace.tts_ended(1, NUMBERS, text="Made-up reply 123.")
     trace.turn_ended(0, {}, heard="made-up words 123", said="Made-up reply 123.")
@@ -233,6 +233,7 @@ def test_each_span_holds_what_was_said_when_transcripts_are_on_and_redacted() ->
     assert spans["turn"][SpanAttributes.OUTPUT_VALUE] == "Made-up reply [redacted]."
     assert spans["text_to_speech"][SpanAttributes.INPUT_VALUE] == "Made-up reply [redacted]."
     assert spans["tool"][SpanAttributes.INPUT_VALUE] == '{"query": "made up [redacted]"}'
+    assert spans["tool"][SpanAttributes.OUTPUT_VALUE] == '{"passages": "made up [redacted]"}'
 
 
 def test_no_span_holds_what_was_said_with_transcripts_off() -> None:

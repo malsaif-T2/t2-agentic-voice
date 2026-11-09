@@ -132,8 +132,9 @@ has not reviewed those either.
    consent `SignedJoinTokens` read from a token whose signature it verified counts (a
    `SignedConsent`), so `DevIdentity`'s never does, and no client message sets either. Audio is
    never exported to traces; what was said (what the caller was heard to say, the agent's
-   replies and the arguments the model wrote for a tool, never a tool's result or a value bound
-   from the caller) is the only call content traces keep, under `tracing.include_transcripts`,
+   replies, the arguments the model wrote for a tool and what the tool gave back, never a value
+   bound from the caller as such) is the only call content traces keep, under
+   `tracing.include_transcripts`,
    on by default (D-079).
    Call content is not logged at any level unless `logging.content` is on, which only `dev`
    allows, and no framework's debug log writes call content: Pipecat's loguru namespace is off

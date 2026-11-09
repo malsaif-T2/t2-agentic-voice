@@ -130,6 +130,7 @@ class ToolCalls:
                         ok=result.ok,
                         ms=ms,
                         failure=result.failure,
+                        result=json.dumps(result.data, ensure_ascii=False),
                     )
                     if result.card is not None and self.shown(result.card, call.name):
                         yield ShownCard(card=result.card)

@@ -10,7 +10,8 @@ the call's, not the process's. The digest is a SHA-256 of the settings written a
 secret left out, and the `_file` setting that names the file holding it, so the digest is the same
 whichever key or file is given and says nothing of either. Under `tracing.include_transcripts`
 a turn's root span holds what was heard and what its reply said, a reply's span its text, and a
-tool call's span the arguments the model wrote (D-079), each through the redaction hook.
+tool call's span the arguments the model wrote and what the tool gave back (D-079), each through
+the redaction hook.
 """
 
 from __future__ import annotations
@@ -284,11 +285,19 @@ class CallTrace:
                 )
             self._tools[tool_call_id] = (turn_id, stack, span)
 
-    def tool_ended(self, tool_call_id: str, *, ok: bool, failure: str | None) -> None:
-        """The tool call ended: its span ends with whether it succeeded and what failed."""
+    def tool_ended(
+        self, tool_call_id: str, *, ok: bool, failure: str | None, result: str = ""
+    ) -> None:
+        """The tool call ended: its span ends with whether it succeeded, what failed and, under
+        `tracing.include_transcripts`, what it gave back."""
         opened = self._tools.pop(tool_call_id, None)
         if opened is not None:
             _, stack, span = opened
+            if result and self._tracing.include_transcripts:
+                span.set_attribute(SpanAttributes.OUTPUT_VALUE, result)
+                span.set_attribute(
+                    SpanAttributes.OUTPUT_MIME_TYPE, OpenInferenceMimeTypeValues.JSON.value
+                )
             span.set_attribute("tool.ok", ok)
             if failure is not None:
                 span.set_attribute("tool.failure", failure)

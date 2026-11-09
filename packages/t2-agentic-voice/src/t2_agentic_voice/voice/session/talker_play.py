@@ -104,8 +104,10 @@ class TalkPlayer:
                     call_id=call_id, turn_id=turn_id, at=wall, tool=tool, tool_call_id=tool_call
                 )
                 emit(started)
-            case ToolEnded(call_id=tool_call, tool=tool, ok=ok, ms=ms, failure=failure):
-                self._trace.tool_ended(tool_call, ok=ok, failure=failure)
+            case ToolEnded(
+                call_id=tool_call, tool=tool, ok=ok, ms=ms, failure=failure, result=result
+            ):
+                self._trace.tool_ended(tool_call, ok=ok, failure=failure, result=result)
                 finished = ToolFinished(
                     call_id=call_id,
                     turn_id=turn_id,

@@ -992,7 +992,8 @@ runs"; in this order, each with its smoke first)
   within its deadline, the server signs in at its start, and each tool call has a span.
 - 2026-11-09: **Traces hold what was said (Q37, D-079).** Each turn's root span now holds what
   was heard and what its reply said, each reply's span its text, each tool call's span the
-  arguments the model wrote, under `tracing.include_transcripts`. Invariant 8 changed with it.
+  arguments the model wrote and what the tool gave back, under `tracing.include_transcripts`.
+  Invariant 8 changed with it.
 
 ## Decision log
 
@@ -1098,7 +1099,7 @@ runs"; in this order, each with its smoke first)
 - 2026-11-09, after the next calls: "The Ole5 in Arabic is till wrong. English sound better but
   there is this strange pause between sentences, it is tolerable"; to Q36: "Yes add them."; of
   the samples: "'Ole5-sample-02.wav' and 'Ole5-sample-03.wav' sounds the best, either would be
-  good"; of the traces: "Why not? make it do so to ease our job" (Q37).
+  good"; of the traces: "Why not? make it do so to ease our job" (Q37); "make what the tool returned is traced too".
 - 2026-11-08, to Q29, after run S's first pass: "Loosen them, except 'you need permission to
   print'".
 

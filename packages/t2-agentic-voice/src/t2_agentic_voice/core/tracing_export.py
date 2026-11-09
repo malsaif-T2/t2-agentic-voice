@@ -38,8 +38,9 @@ DELAY_S = 1.0  # the longest a span sits in the queue before its batch is sent
 EXPORT_TIMEOUT_S = 2.0  # one export request, the exporter's own retries included
 CLOSE_S = 3.0  # the longest `shutdown` gives the last batch before counting it dropped
 # All eight, so none comes from an OTEL_*_LIMIT variable: the SDK's own 128 for the attributes,
-# events, links, a span's, an event's and a link's attributes; and a cap on a value's length.
-_LIMITS = SpanLimits(128, 128, 128, 128, 128, 128, 8192, 8192)
+# events, links, a span's, an event's and a link's attributes; and a cap on a value's length,
+# which holds a search's whole result (seven passages of about 1,500 characters and their steps).
+_LIMITS = SpanLimits(128, 128, 128, 128, 128, 128, 32768, 32768)
 # All an export request carries, beside the Content-Length, the Host and the
 # `Accept-Encoding: identity` that the transport adds: no OTEL_* header, no .netrc login.
 EXPORT_HEADERS = {

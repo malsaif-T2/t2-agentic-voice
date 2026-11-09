@@ -233,7 +233,7 @@ class Tracing:
 
     def tool(self, parent: Span, *, tool: str) -> AbstractContextManager[Span]:
         """A tool call's span under `parent`, named by its tool (D-078). `CallTrace` adds the
-        arguments the model wrote; its result never goes, which may hold a caller's records."""
+        arguments the model wrote and what the tool gave back (D-079)."""
         attributes: dict[str, AnyValue] = {
             SpanAttributes.OPENINFERENCE_SPAN_KIND: OpenInferenceSpanKindValues.TOOL.value,
             SpanAttributes.TOOL_NAME: tool,

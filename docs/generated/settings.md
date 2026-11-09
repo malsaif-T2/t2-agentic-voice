@@ -190,7 +190,7 @@ Tracing, as plain OTLP over HTTP to Phoenix or any OpenTelemetry backend (D-023)
 | --- | --- | --- | --- | --- |
 | `T2V_TRACING__ENDPOINT` | text, or unset | unset | — | Where spans are sent: an OTLP/HTTP traces endpoint, such as a local Phoenix's http://127.0.0.1:6006/v1/traces. Unset: no span leaves the process, unless the app passes its own tracer provider. |
 | `T2V_TRACING__PROJECT` | text, or unset | unset | — | The project the spans are filed under in Phoenix. Unset: the default one. |
-| `T2V_TRACING__INCLUDE_TRANSCRIPTS` | true or false | `true` | — | Whether spans carry what was said: what the caller was heard to say, the agent's replies and the text of its tool calls are the only call content a trace holds (docs/SECURITY.md, invariant 8). |
+| `T2V_TRACING__INCLUDE_TRANSCRIPTS` | true or false | `true` | — | Whether spans carry what was said: what the caller was heard to say, the agent's replies and its tool calls with their results are the only call content a trace holds (docs/SECURITY.md, invariant 8). |
 | `T2V_TRACING__REDACT` | JSON list of text | `[]` | — | Regular expressions; every match is replaced in each text attribute before it is exported. A JSON list, such as ["\\d{10}"]. Unset: none. |
 
 ## `limits`

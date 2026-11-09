@@ -50,13 +50,15 @@ class ToolBegan(_Event):
 
 class ToolEnded(_Event):
     """A tool call ended, whether it succeeded (`ok`: a `ToolError`, any other failure or the
-    timeout is not), how long it ran, and what failed (`ToolResult.failure`)."""
+    timeout is not), how long it ran, what failed (`ToolResult.failure`), and what the tool gave
+    back as JSON, for the call's trace (D-079)."""
 
     call_id: str = Field(min_length=1)
     tool: str = Field(min_length=1)
     ok: bool
     ms: float = Field(ge=0, allow_inf_nan=False)
     failure: str | None = None
+    result: str = Field(default="", repr=False)
 
 
 class ProgressDue(_Event):

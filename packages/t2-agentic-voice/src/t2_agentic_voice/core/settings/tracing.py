@@ -29,7 +29,7 @@ class TracingSettings(Group):
         default=True,
         description=(
             "Whether spans carry what was said: what the caller was heard to say, the agent's "
-            "replies and the text of its tool calls are the only call content a trace holds "
+            "replies and its tool calls with their results are the only call content a trace holds "
             "(docs/SECURITY.md, invariant 8)."
         ),
     )

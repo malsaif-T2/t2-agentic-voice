@@ -83,7 +83,7 @@ call's ID (`session.id`), which is no credential.
 | `turn`, the root of each turn's trace | The resource attributes below, the turn's number, and at its end its outcome and times; with `tracing.include_transcripts`, what was heard (`input.value`) and what its reply said (`output.value`) |
 | `speech_to_text`, under its turn | The model, the audio's length, the language sent, the language and billed seconds returned, and the transcript (`tracing.include_transcripts`, on by default) |
 | `text_to_speech`, one per reply, under its turn (the greeting and a notice under the call) | With `tracing.include_transcripts`, the reply's text (`input.value`); the model, the voice, the language, the characters sent, the chunks played, the requests, the phrases played from the cache, the time to first audio, and whether a take came back cut short; never the text |
-| `tool`, one per tool call, under its turn | The tool's name, `tool.ok`, and when it failed `tool.failure`: what failed, such as `timeout at search` or `bad_arguments`; with `tracing.include_transcripts`, the arguments the model wrote (`input.value`), so a search's text. Never a result, or a value bound from the caller |
+| `tool`, one per tool call, under its turn | The tool's name, `tool.ok`, and when it failed `tool.failure`: what failed, such as `timeout at search` or `bad_arguments`; with `tracing.include_transcripts`, the arguments the model wrote (`input.value`), so a search's text, and what the tool gave back (`output.value`), so the passages it found |
 | `call`, the root of the call's own trace | The resource attributes, and the call's report in numbers, with no text |
 
 The talker's model requests have no span of their own yet: each model's requests and tokens are

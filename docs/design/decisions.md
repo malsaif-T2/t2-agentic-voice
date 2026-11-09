@@ -2502,8 +2502,10 @@ twice; DOC-REF: every `D-NNN` cited anywhere is a heading here), so keep its sha
   request of its own. The owner: "make it do so to ease our job".
 - **Decision:** under `tracing.include_transcripts`, on by default and through `tracing.redact`,
   a turn's root span holds what was heard and what its reply said, each reply's span its text,
-  and each tool call's span the arguments the model wrote. A tool's result is not exported, and
-  neither is a value bound from the caller, since neither is what was said. Invariant 8 says so.
+  and each tool call's span the arguments the model wrote and what the tool gave back, the owner
+  asking for the result too the same day, so a search's passages can be read. A value's length in
+  a span may reach 32,768 characters, to hold a whole search. A value bound from the caller is
+  not exported as such, but a result may repeat it. Invariant 8 says so.
 - **Consequences:** Phoenix keeps more of each call, for as long as its retention says (none is
   set on the laptop). The roadmap's M6 question of what other callers must be told covers it.
 - **Evidence:** plan 006's Q37; `tests/t2_agentic_voice/core/test_tracing_tts.py`,
