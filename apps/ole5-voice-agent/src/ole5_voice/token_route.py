@@ -1,6 +1,6 @@
 """The Ole5 app's token route (plan 003, Q4): `POST /token` mints a signed join token for a
-caller who types the owner's access code, carrying the consent they chose on the widget's
-consent screen. The widget joins with it (`t2v/1`'s `/join`), so a call's consent comes from
+caller who types the owner's access code, carrying the recording choice of the widget's box
+(D-076). The widget joins with it (`t2v/1`'s `/join`), so a call's consent comes from
 its signed token alone, and no later message can change it (docs/SECURITY.md, invariant 8).
 
 The body is JSON alone (415 otherwise, before a byte is read), at most `MAX_BODY_BYTES` (413),
@@ -72,7 +72,7 @@ log = get_logger(__name__)
 
 
 class TokenRequest(BaseModel):
-    """`POST /token`'s body: the access code, and the consent chosen on the consent screen."""
+    """`POST /token`'s body: the access code, and the recording choice made on the page."""
 
     model_config = ConfigDict(frozen=True, extra="forbid", strict=True, hide_input_in_errors=True)
 

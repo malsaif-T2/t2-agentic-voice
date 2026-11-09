@@ -2424,3 +2424,19 @@ twice; DOC-REF: every `D-NNN` cited anywhere is a heading here), so keep its sha
 - **Evidence:** plan 006's Q30 to Q32 and its progress entry of 2026-11-09;
   `tests/t2_agentic_voice/actions/test_knowledge.py`,
   `tests/t2_agentic_voice/agent/test_prompt.py` and `tests/ole5_voice/test_agent.py`.
+
+## D-076 · Ole5's page asks for no consent; the library's recording rule stays · 2026-11-09 · Accepted (the owner's ruling, Q34 in plan 006)
+
+- **Context:** Ole5's page showed a consent screen before every call, its text still describing
+  the echo. The owner: "any developer having access to and running this has already consented.
+  it is tiring to manage that every time".
+- **Decision:** the page has no consent screen. One box, off by default, asks to keep the call's
+  audio, and the join token carries that choice as before. `CONSENT_VERSION` does not change, so
+  no setting moves. The library's rule is unchanged (`docs/SECURITY.md`, invariant 8): no audio
+  is kept unless `privacy.record_audio` is on and the signed token allows it. A team's page may
+  still show its own consent screen.
+- **Consequences:** this holds for the developers who run it. Before any other caller uses Ole5,
+  a person decides what they must be told, their voice going to Groq, an outside company, and
+  whether the law asks for more (the roadmap's M6).
+- **Evidence:** plan 006's Q34; `tests/ole5_voice/test_server.py`,
+  `tests/ole5_voice/test_widget_cards.py`.

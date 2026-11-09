@@ -134,11 +134,12 @@ def test_the_page_holds_no_inline_script_or_style() -> None:
     assert ("link", {"rel": "stylesheet", "href": "widget.css"}) in page.tags
 
 
-def test_the_widget_holds_its_consent_labels_and_reaches_the_router() -> None:
+def test_the_widget_asks_no_consent_and_reaches_the_router() -> None:
     script = (WEB / "widget.js").read_text(encoding="utf-8")
     assert 'export const CONSENT_VERSION = "m2-owner-test-1";' in script
     assert 'stop: "إيقاف"' in script  # the labels Q6 settled
-    assert 'agree: "أوافق"' in script
+    assert "consentBody" not in script and 'id="agree"' not in script  # no screen (D-076)
+    assert 'record_audio: $("record").checked' in script  # off unless the box is ticked
     assert f'from ".{VOICE_PREFIX}/client/1/t2v-client.js"' in script
     assert 'base: "voice"' in script and VOICE_PREFIX == "/voice"
     assert 'fetch("token"' in script

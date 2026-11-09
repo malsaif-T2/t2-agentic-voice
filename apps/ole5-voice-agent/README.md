@@ -34,9 +34,9 @@ speaks. `--port` serves another port.
 
 1. Pick العربية or English. Ask English questions in an English call: Whisper is told the
    call's language, and English words in an Arabic call are written as Arabic.
-2. Agree to the consent screen, give the access code and allow the microphone.
-3. Ask about Ole5. While it searches it shows "Thinking"; when the passage it found lists steps,
-   they show as a card. Say «وقف» or "stop" to stop it, «لحظة» to make it wait, «ممكن تعيد؟» to
+2. Give the access code, tick the box only if the call's audio should be kept, and allow the
+   microphone.
+3. Ask about Ole5. While it searches it shows "Thinking", and it says the steps aloud. Say «وقف» or "stop" to stop it, «لحظة» to make it wait, «ممكن تعيد؟» to
    hear its answer again.
 
 **To stop it**, press Ctrl+C in the terminal that runs it. Each call costs a few cents of Groq.

@@ -277,6 +277,9 @@ after a clear yes.
   model, counted in the traces since M2, compared with the key's limits (the prototype found the
   key on Groq's on-demand tier, 400 requests a minute: Ole5-chatbot VOICE_LOG.md, 2026-10-27).
   The cap on live calls is set below that limit. Then how many calls the backend's CPU holds.
+- Before callers who are not the developers use it: what they must be told, their voice going
+  to Groq, an outside company, and whether the law asks for more (D-076, which removed Ole5's
+  consent screen for developers).
 - The deployment, moved from M2 on 2026-11-03 (the owner, plan 003): the Ole5 app on the owner's
   server behind HTTPS, the widget embedded in the website, calls from another network and from one
   that blocks UDP, and the media path recorded as a decision. It becomes a plan of its own as soon

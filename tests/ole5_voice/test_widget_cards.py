@@ -40,9 +40,8 @@ def _widget(folder: Path, steps: list[Step]) -> Shown:
 
 
 def _call(*steps: Step) -> list[Step]:
-    """The consent agreed to, a made-up code typed and the call started, then `steps`."""
+    """A made-up code typed and the call started, then `steps`."""
     return [
-        {"do": "click", "id": "agree"},
         {"do": "set", "id": "code", "value": "made-up-code"},
         {"do": "click", "id": "start"},
         {"do": "open"},

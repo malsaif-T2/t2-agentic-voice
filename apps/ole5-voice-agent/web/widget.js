@@ -1,16 +1,16 @@
 // Ole5's voice widget (index.html), on the library's reference client, served from the same
 // address as the token route (/token) and the library's router (/voice).
 //
-// The caller picks a language (Arabic first), reads the consent screen (version
-// CONSENT_VERSION, with a one-line box to record the call's audio) and agrees; then types the
-// owner's access code and starts the call. The client opens the microphone first, so a missing,
+// The caller picks a language (Arabic first), types the owner's access code, may tick the box
+// to keep the call's audio (off by default; no consent screen, D-076) and starts the call. The
+// client opens the microphone first, so a missing,
 // busy or refused microphone is told before a token is asked for; the token route mints a join
-// token carrying the consent chosen here, which no later message changes. Stop and Esc cut the
+// token carrying that choice, which no later message changes. Stop and Esc cut the
 // agent short; End hangs up. A clause a stop cut while it played is shown cut. Push-to-talk, a
 // switch the caller may turn on before or during the call, keeps the microphone off except while
 // Space or the talk button is held: the fallback when the agent's voice comes back through the
 // laptop's speakers. While the agent thinks (its talker or a tool at work) the state line says
-// so beside a pulsing dot. A reply's whole answer comes as a card above the captions, so the
+// so beside a pulsing dot. A tool's card, when one is sent, sits above the captions, so the
 // captions growing below never move it: its title, its steps numbered and the document they come
 // from. Each line of it takes the direction of its own first strong character (dir="auto"), so
 // an Arabic step reads right to left and an English one left to right in either language; a new
@@ -19,19 +19,15 @@
 
 import { VoiceClient } from "./voice/client/1/t2v-client.js";
 
-// The consent text's version: the server's privacy.consent_version (T2V_PRIVACY__CONSENT_VERSION)
-// is set to it for the owner's recorded calls, and /join refuses a token of another.
+// The version the join token carries: the server's privacy.consent_version
+// (T2V_PRIVACY__CONSENT_VERSION) is set to it for the owner's recorded calls, and /join refuses
+// a token of another, so it does not change.
 export const CONSENT_VERSION = "m2-owner-test-1";
 
 const TEXT = {
   ar: {
     title: "المساعد الصوتي لـ Ole5",
-    consentTitle: "قبل أن تبدأ",
-    consentBody:
-      "هذه مكالمة تجريبية مع المساعد الصوتي من T2، يعيد عليك ما يسمعه منك. يُرسل صوتك إلى Groq لتحويله إلى نص، ويُنطق الرد بصوت من Groq.",
-    consentVersion: `نسخة الموافقة: ${CONSENT_VERSION}`,
     record: "سجّل صوت هذه المكالمة، ويُحفظ على هذا الجهاز لتجربة المساعد.",
-    agree: "أوافق",
     code: "رمز الدخول",
     start: "ابدأ المكالمة",
     stop: "إيقاف",
@@ -59,12 +55,7 @@ const TEXT = {
   },
   en: {
     title: "Ole5 voice assistant",
-    consentTitle: "Before you start",
-    consentBody:
-      "This is a test call with T2's voice agent, which says back what it hears from you. Your voice is sent to Groq to be turned into text, and the reply is spoken in a voice from Groq.",
-    consentVersion: `Consent version: ${CONSENT_VERSION}`,
     record: "Record this call's audio, kept on this laptop to test the agent.",
-    agree: "I agree",
     code: "Access code",
     start: "Start the call",
     stop: "Stop",
@@ -121,6 +112,7 @@ function running(on) {
   $("stop").disabled = !on;
   $("end").disabled = !on;
   $("code").disabled = on;
+  $("record").disabled = on;
   for (const button of document.querySelectorAll("button.language")) button.disabled = on;
   talkable();
 }
@@ -163,8 +155,8 @@ function messageFor(error) {
   return typeof said === "string" ? said : words().failed;
 }
 
-// A join token from the app's token route, for the owner's access code, carrying the consent
-// chosen on the consent screen.
+// A join token from the app's token route, for the owner's access code, carrying whether the
+// box to keep the call's audio is ticked.
 async function token() {
   let response;
   try {
@@ -274,11 +266,6 @@ for (const button of document.querySelectorAll("button.language")) {
     render();
   });
 }
-$("agree").addEventListener("click", () => {
-  $("consent").hidden = true;
-  $("call").hidden = false;
-  $("code").focus();
-});
 $("start").addEventListener("click", start);
 $("stop").addEventListener("click", () => page.call?.stop());
 $("end").addEventListener("click", () => page.call?.hangup());
@@ -296,6 +283,7 @@ $("talk").addEventListener("pointerdown", (event) => {
 for (const name of ["pointerup", "pointercancel", "lostpointercapture"]) {
   $("talk").addEventListener(name, () => talk(false));
 }
+$("code").focus();
 document.addEventListener("keydown", space);
 document.addEventListener("keyup", space);
 globalThis.addEventListener("blur", () => talk(false)); // a key let go in another window

@@ -969,6 +969,9 @@ runs"; in this order, each with its smoke first)
   percentile 1.90 s; words: median 26, 90th percentile 55. The result stands, held-out being run
   once. Retrieval is under target as on dev, so a sparse query stays the first amendment to
   propose. The spend is about $4.83 of the $7 cap.
+- 2026-11-09: **No consent screen on Ole5's page (Q34, D-076).** The page goes straight to the
+  access code, with one box, off by default, to keep the call's audio. The library's recording
+  rule (invariant 8) and the widget's version value are unchanged, so no setting moves.
 
 ## Decision log
 
@@ -1063,6 +1066,9 @@ runs"; in this order, each with its smoke first)
   repeat a specific step, or get in detail about one under the caller request. No card or screen
   is needed."; to Q31: "Only spoken words"; to Q32: "An agent, against the KB".
 - 2026-11-09, to Q33, after the judge's check: "Run it, marked unverified".
+- 2026-11-09, unprompted: "Do we really need consent? I think that any developer having access
+  to and running this has already consented. it is tiring to manage that every time"; to Q34:
+  "Yes, remove the screen".
 - 2026-11-08, to Q29, after run S's first pass: "Loosen them, except 'you need permission to
   print'".
 
@@ -1403,11 +1409,14 @@ Each answer that changes a run is a dated amendment to the registration.
   the judge differed on 7 of 24 answers, the limit 3; 4 of the 7 change pass or fail, two each
   way. Options: (a) run it once, the answer scores marked unverified; (b) skip it. **The agent
   recommended (a).**
+- **Q34. The consent screen.** *Settled 2026-11-09: remove it.* It is one step of Ole5's page,
+  before every call, and its text had gone stale. The agent proposed removing it and keeping the
+  library's recording rule, with a note for the deployment; the owner agreed.
 
 ## What the owner does
 
 - Answer Q1 to Q10, and approve the plan (done 2026-11-06); answer Q11 to Q14, Q15 to Q18,
-  Q19 and Q20, Q21, Q22 and Q23 (done 2026-11-07), Q24 to Q29 (done 2026-11-08), and Q30 to Q33 (done 2026-11-09).
+  Q19 and Q20, Q21, Q22 and Q23 (done 2026-11-07), Q24 to Q29 (done 2026-11-08), and Q30 to Q34 (done 2026-11-09).
 - Copy the knowledge base's access into `.env` (Q4; done 2026-11-06, under the owner's names).
 - Review the knowledge set's items (Q5, about 40 minutes; done 2026-11-07, checked by the agent
   against the knowledge base), and check 24 judged answers (Q6, about 20 minutes).

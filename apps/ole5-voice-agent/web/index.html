@@ -1,8 +1,8 @@
 <!doctype html>
 <!-- Ole5's voice widget, served by the Ole5 app's server (ole5_voice/server.py) with its
      Content-Security-Policy: no inline script or style; every text is set by widget.js with
-     textContent, in the language the caller picks (Arabic first). The card, above the captions,
-     holds the whole of an answer the agent says short. -->
+     textContent, in the language the caller picks (Arabic first). A tool's card, when one is
+     sent, sits above the captions. -->
 <html lang="ar" dir="rtl">
 <head>
 <meta charset="utf-8">
@@ -22,19 +22,12 @@
 </header>
 
 <main>
-  <section id="consent" class="panel">
-    <h2 data-text="consentTitle"></h2>
-    <p data-text="consentBody"></p>
-    <p class="muted" data-text="consentVersion"></p>
-    <label class="box"><input type="checkbox" id="record"> <span data-text="record"></span></label>
-    <p><button type="button" id="agree" class="primary" data-text="agree"></button></p>
-  </section>
-
-  <section id="call" class="panel" hidden>
+  <section id="call" class="panel">
     <p id="code-row">
       <label><span data-text="code"></span>
         <input type="password" id="code" autocomplete="off" spellcheck="false" dir="ltr"></label>
     </p>
+    <p><label class="box"><input type="checkbox" id="record"> <span data-text="record"></span></label></p>
     <p class="controls">
       <button type="button" id="start" class="primary" data-text="start"></button>
       <button type="button" id="stop" data-text="stop" disabled></button>
