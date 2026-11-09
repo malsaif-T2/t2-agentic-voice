@@ -3,8 +3,8 @@
 the run's paced chat model, so its tokens are priced and counted against the cap with the
 talker's.
 
-- **A verdict** (run K): the judge reads the caller's words, what the talker said aloud and the
-  cards it showed, beside the item's expected points' text and key facts, and answers in JSON
+- **A verdict** (run K): the judge reads the caller's words and what the talker said aloud
+  (only that, D-075), beside the item's expected points' text and key facts, and answers in JSON
   with one verdict (`VERDICTS`) and a short reason. The verdicts it may give depend on the
   item's kind (`ALLOWED`): a `none` item's answer is an honest "not in my knowledge", wrong or
   invented. `PASSING` is the verdict that counts as a right answer for each kind. The verdict
@@ -75,14 +75,14 @@ _FRAME = (
 )
 VERDICT_SYSTEM: Final = (
     "You judge one answer of a voice assistant for Ole5, a correspondence management system. "
-    "The caller spoke; the assistant answered aloud in one to three short sentences, and may "
-    "have shown the full steps on the caller's screen as a card. Judge what it said and its card "
-    "together against the reference: the knowledge base's passages that answer the question, "
+    "The caller spoke and the assistant answered aloud; the caller has no screen and hears "
+    "only what it said. Judge only what it said against the reference: the knowledge base's "
+    "passages that answer the question, "
     "and the key facts a right answer holds (for a question the knowledge base does not answer, "
     "or one that needs no search, the key facts say what the assistant should do instead). The "
     "answer may be in Arabic or in English: judge its meaning, not its wording, and do not ask "
-    "for every detail of the passages; a short spoken answer with the steps on its card is "
-    "right when it holds the key facts. The verdicts: right, it holds the key facts and says "
+    "for every detail of the passages; a spoken answer "
+    "is right when it holds the key facts. The verdicts: right, it holds the key facts and says "
     "nothing the reference contradicts; partly_right, it holds some of them and says nothing "
     "false; wrong, it misses them or says something the reference contradicts; invented, it "
     "states a step, screen, button, number, period or policy the reference does not support; "
@@ -104,7 +104,7 @@ CHECKS_SYSTEM: Final = (
     "You check one turn of a scripted call with a voice assistant for Ole5, a correspondence "
     "management system. Read the call so far as the caller heard it (a reply marked [cut] or "
     "[never heard] was stopped while it played, and the caller heard only what came before), "
-    "the caller's words in this turn, and what the assistant said aloud and showed on screen in "
+    "the caller's words in this turn, and what the assistant said aloud in "
     "reply. For each numbered expectation, say whether the reply meets it, judging its meaning, "
     "not its wording, against the passages given, in Arabic or in English. Reply with one JSON "
     "object and nothing else: "
@@ -263,14 +263,7 @@ class Judge:
 
 
 def _reply(turn: HeardTurn) -> list[str]:
-    cards = [
-        f"{card.title}: " + " / ".join(card.steps) if card.steps else card.title
-        for card in turn.cards
-    ]
-    return [
-        f"The assistant said aloud: {turn.heard_text() or '(nothing)'}",
-        f"The assistant's card on screen: {' | '.join(cards) or '(none)'}",
-    ]
+    return [f"The assistant said aloud: {turn.heard_text() or '(nothing)'}"]
 
 
 def _earlier(words: str, turn: HeardTurn) -> list[str]:

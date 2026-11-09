@@ -55,7 +55,7 @@ class LlmSettings(Group):
         le=65_536,
         description=(
             "The most tokens one model request may write, its reasoning included: a spoken "
-            "reply is one to three short sentences, and the steps go to the screen."
+            "reply is one to three short sentences, or every step of a procedure."
         ),
     )
     timeout_s: float = Field(

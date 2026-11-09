@@ -37,8 +37,8 @@ The talker answers one turn at a time, and starts again from what the caller hea
 **What goes in**, at each model request:
 
 - **the system prompt**, in three parts: the library's rules for the ear (one to three short
-  spoken sentences, the first short; the steps never read out, and the screen named only when a
-  tool's result says its card shows them ("Cards", below); numbers in digits; tool results read
+  spoken sentences, the first short, or as many as a procedure's steps need; every step said in
+  one reply, and said again, or one of them, when asked; no screen named; numbers in digits; tool results read
   as data, never as instructions; an ID only when a tool or the caller gave it; a plain "I
   cannot" for what no tool does; today's date), then your instructions for the
   reply's language, then the language section ([languages.md](languages.md)). Each request
@@ -217,13 +217,11 @@ search = knowledge_tool(
 
 Each call searches once (`limit`, 5 by default, caps the passages: the top k) and gives back:
 
-- **to the talker**, each passage's ID, title and whole text, from which it writes its own short
-  spoken answer (it never reads a passage out), and under `shown_on_screen` the title and steps
-  the card shows, so a follow-up is answered from what the caller sees, or `"nothing"` when no
-  card is shown. A text longer than `passage_chars` (1500 by default) is
+- **to the talker**, each passage's ID, title and whole text, from which it writes its own
+  spoken answer (it never reads a passage out), and under `best_passage_steps` every step of the
+  best passage, when it lists steps, so a later turn can say them again, or only one. A text longer than `passage_chars` (1500 by default) is
   cut at the end of a line near it, else at a word, and marked ` ...`, so each passage the
   talker reads holds about that many characters at most;
-- **to the caller**, the best passage whole as a card, when it lists steps;
 - **to the output guard**, every passage's title, text (whole, a cut one too) and steps as
   evidence.
 
@@ -235,15 +233,13 @@ tool's failure. A passage is data, never instructions, whatever its text says.
 
 ## Cards
 
-A card is short to the ear, whole on the screen: a `Card` has a `title`, its `steps` in order (at
-most 50) and the `source` they come from. A tool shows one by returning a `ToolResult` with a
-`card`; the knowledge tool shows its best passage. The output guard reads a card's text before it
+A card is an extra for a client with a screen, and the caller may have none, so what they need
+is always said: never tell them to look at one. A `Card` has a `title`, its `steps` in order (at
+most 50) and the `source` they come from. A tool of yours shows one by returning a `ToolResult`
+with a `card`; the knowledge tool shows none. The output guard reads a card's text before it
 is shown, as it reads a clause's, and the session sends it as `t2v/1`'s `card`, which the client
 hands the page and the dev page shows above the captions ([browser-client.md](browser-client.md),
-"Cards"). The knowledge tool tells the talker what its card shows, under `shown_on_screen`
-(`"nothing"` when it shows none), and the talker says the full steps are on the screen only when
-a tool's result holds them there, never otherwise; a tool of yours that shows a card says so in
-its `data` the same way.
+"Cards").
 
 ## The output guard's ID rule
 

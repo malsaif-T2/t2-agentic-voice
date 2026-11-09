@@ -86,7 +86,7 @@ def test_a_verdict_is_read_from_the_json_the_judge_gives() -> None:
     # What the caller heard: a cut clause marked, an unplayed one marked, no fixed phrase.
     assert "Then press reset. [cut, 40% of it heard]" in user and "[never heard]" in user
     assert "One moment." not in user
-    assert "Reset: Open settings / Press reset | Alone" in user
+    assert "Open settings / Press reset" not in user and "Alone" not in user  # spoken only
 
 
 def test_a_reply_that_is_not_the_json_asked_for_is_asked_once_more() -> None:

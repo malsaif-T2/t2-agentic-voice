@@ -9,7 +9,7 @@ backend over WebRTC; the library hears when the caller has finished a turn (Sile
 Turn v3.2, on the CPU, with a hold after "complete"), sends the turn to Groq's Whisper, and the
 **talker**, Groq's chat model with your instructions, answers it: it reads what the caller
 heard, calls your read tools and your knowledge base, speaks its reply clause by clause through
-Groq's Orpheus voices while it still writes, shows the whole answer on screen as a card, and
+Groq's Orpheus voices while it still writes, and
 says an ID only when a tool or the caller gave it ([concepts.md](concepts.md)). The caller can
 speak over the agent: its voice is lowered at once, a stop or real words stop it, and the
 talker reads what they meant. An agent with no instructions is an **echo**, which says back what

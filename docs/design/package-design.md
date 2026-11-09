@@ -901,7 +901,7 @@ What v1 must already have for it, all built for M3 to M5 anyway:
 - **Fixed value sets** are `Literal` types or enums in the team's code, with spoken labels. When the real list lives in the backend, the team either keeps a `Literal` that matches it, or types the field as `str` and checks it against the backend's list in `validate`, which tells the talker the allowed values. A list loaded from the backend into the schema at startup (`Choices`) is on request.
 - **Knowledge** has a protocol and a helper:
   - `KnowledgeBase` has one method, `async search(query, *, language, caller, limit) -> list[Passage]`.
-  - `knowledge_tool(kb, description=..., progress=...)` returns a read tool. It does one search per question, gives the talker the top `limit` passages whole to write its own short spoken answer from (D-071), and shows the best passage as a card.
+  - `knowledge_tool(kb, description=..., progress=...)` returns a read tool. It does one search per question, gives the talker the top `limit` passages whole to write its own spoken answer from (D-071), with every step of the best passage, and shows no card (D-075).
   - Both are optional: a team can write its own tool instead.
   - A generic Qdrant adapter comes later. Ole5's stays in the app until a second team needs one.
 

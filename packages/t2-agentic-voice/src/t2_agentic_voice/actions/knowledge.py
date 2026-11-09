@@ -6,14 +6,10 @@ as the call's caller; and it gives back:
 - **to the talker**, each passage's id, title and whole text to write its own short spoken
   answer from, each line's spaces collapsed and its blank lines dropped, a text longer than
   `passage_chars` cut at the end of a line near it (one that keeps at least `LINE_NEAR` of it),
-  else at a word, else at `passage_chars`, with `MORE` after the cut; and under `SHOWN` the
-  card's title and steps, so a follow-up ("only the second step") is answered from what the
-  caller sees, or `NOTHING_SHOWN` when no card is, so the talker never says steps are on a
-  screen that shows none (the prompt's rule); a passage is data, never instructions
-  (invariant 4);
-- **to the caller**, the best passage whole as a card, its title, its steps (at most a card's 50)
-  and its document, when it lists steps (a passage with none gives no card: its title alone
-  adds nothing to the captions);
+  else at a word, else at `passage_chars`, with `MORE` after the cut; and under `STEPS` every
+  step of the best passage, when it lists steps, so the talker can say them all, and later in
+  the call say them again or only one (the prompt's rule; D-075), a cut text's too; a passage
+  is data, never instructions (invariant 4);
 - **to the output guard**, every passage's title, text (whole, a cut one too) and steps as
   evidence for the ID rule, so a number a passage holds may be spoken as a fact.
 
@@ -25,25 +21,21 @@ from __future__ import annotations
 
 from typing import Annotated
 
-from pydantic import Field, TypeAdapter, ValidationError
+from pydantic import Field, TypeAdapter
 
 from t2_agentic_voice.actions.tools import CallContext, Tool, ToolResult
 from t2_agentic_voice.core.errors import ConfigurationError
-from t2_agentic_voice.domain.cards import Card
 from t2_agentic_voice.domain.ports.knowledge import KnowledgeBase, Passage
 
 # The tool's name as the talker calls it; about the most of a passage's text the talker reads,
 # by default (the first app's median passage holds 660 characters, its 90th percentile 1,469);
 # the share of it a cut at a line's end keeps at least, else the cut is at a word; and what
-# follows a cut; the key the talker reads the card under, and its value when none is shown.
+# follows a cut; and the key the talker reads the best passage's steps under.
 NAME = "search_knowledge"
 PASSAGE_CHARS = 1500
 LINE_NEAR = 0.75
 MORE = " ..."
-SHOWN = "shown_on_screen"
-NOTHING_SHOWN = "nothing"
-# A card's most steps (domain/cards.py's `Card`).
-_CARD_STEPS = 50
+STEPS = "best_passage_steps"
 _PASSAGES = TypeAdapter(list[Passage])
 Query = Annotated[
     str,
@@ -92,16 +84,16 @@ def _at_least_one(value: object, field: str, meaning: str, example: int) -> None
 
 def answer(passages: list[Passage], *, passage_chars: int = PASSAGE_CHARS) -> ToolResult:
     """What a search that found `passages`, best first, gives back (the module's docstring)."""
-    card = _card(passages[0]) if passages else None
     data: dict[str, object] = {
         "passages": [
             {"id": passage.id, "title": passage.title, "text": _text(passage.text, passage_chars)}
             for passage in passages
         ],
-        SHOWN: NOTHING_SHOWN if card is None else {"title": card.title, "steps": list(card.steps)},
     }
+    if steps := [step for step in (passages[0].steps if passages else ()) if step.strip()]:
+        data[STEPS] = steps
     evidence = tuple(text for p in passages for text in (p.title, p.text, *p.steps))
-    return ToolResult(data=data, card=card, evidence=evidence)  # type: ignore[arg-type]
+    return ToolResult(data=data, evidence=evidence)  # type: ignore[arg-type]
 
 
 def _text(text: str, most: int) -> str:
@@ -117,16 +109,3 @@ def _text(text: str, most: int) -> str:
         return whole[:line] + MORE
     word = max(whole.rfind(" ", 0, most + 1), line)
     return whole[: word if word > 0 else most] + MORE
-
-
-def _card(passage: Passage) -> Card | None:
-    """The card `passage` shows: its title, its steps that say something and its document;
-    None when it lists no step, or its title says nothing."""
-    steps = tuple(step for step in passage.steps if step.strip())[:_CARD_STEPS]
-    if not steps:
-        return None
-    source = passage.source if passage.source and passage.source.strip() else None
-    try:
-        return Card(title=passage.title, steps=steps, source=source)
-    except ValidationError:
-        return None

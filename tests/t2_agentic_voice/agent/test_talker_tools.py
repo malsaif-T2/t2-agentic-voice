@@ -2,7 +2,7 @@
 requests, its result back to the model framed as data that no text in it can close; three
 requests at most, the last with no tools; bound parameters hidden from the schema the model
 sees; a timeout, a tool error and an invalid argument going back to the model; the progress line
-once a tool runs past its time, on the call's clock; the knowledge tool's card shown once the
+once a tool runs past its time, on the call's clock; a tool's card shown once the
 guard passed it; a cancel stopping the model and the tool at once; and two calls in one request
 run together, a repeated id once. What reaches the next turn: test_talker_followups.py. Every
 passage is written for the test."""
@@ -74,7 +74,7 @@ def test_a_turn_with_a_tool_makes_two_requests_its_result_framed_as_data() -> No
     kb = FakeKnowledgeBase([RESET])
     model = FakeChat(
         calls(call(NAME, query="reset my password"), before="Let me check. "),
-        said("Open the portal and choose Forgot password; the steps are on your screen."),
+        said("Open the portal and choose Forgot password; then enter your code."),
     )
     events = reply(talker(model, _search(kb)), TURN)
     assert kinds(events) == [
@@ -84,7 +84,6 @@ def test_a_turn_with_a_tool_makes_two_requests_its_result_framed_as_data() -> No
         "ToolBegan",
         "ProgressDue",
         "ToolEnded",
-        "ShownCard",
         "ModelRequested",
         "SpokenClause",
         "SpokenClause",
@@ -99,7 +98,7 @@ def test_a_turn_with_a_tool_makes_two_requests_its_result_framed_as_data() -> No
     assert framed.startswith(f'<data tool="{NAME}">') and framed.endswith("</data>")
     data = json.loads(framed.removeprefix(f'<data tool="{NAME}">').removesuffix("</data>"))
     assert data["passages"][0]["id"] == "made-up-001"
-    assert ShownCard(card=Card(title=RESET.title, steps=RESET.steps)) in events
+    assert data["best_passage_steps"] == list(RESET.steps)
 
 
 def test_no_text_in_a_tool_result_can_close_its_data_frame() -> None:
@@ -184,6 +183,17 @@ def test_a_tool_with_no_progress_line_gives_none() -> None:
 
     model = FakeChat(calls(call("quick")), said("Sure."))
     assert "ProgressDue" not in kinds(reply(talker(model, quick), TURN))
+
+
+def test_a_tools_card_is_shown_once_the_guard_passed_it() -> None:
+    @tool(description="Made up.")
+    async def carded() -> Any:
+        from t2_agentic_voice.actions.tools import ToolResult
+
+        return ToolResult(data={"ok": True}, card=Card(title="Reset"))
+
+    model = FakeChat(calls(call("carded")), said("Done."))
+    assert ShownCard(card=Card(title="Reset")) in reply(talker(model, carded), TURN)
 
 
 def test_a_card_whose_text_holds_an_id_with_no_evidence_is_not_shown() -> None:

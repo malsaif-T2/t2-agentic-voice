@@ -69,7 +69,6 @@ and its call, in [test_guide_samples.py](../../tests/minimal_example/test_guide_
             turn = await call.user("How do I reset my password?")
             turn.expect.tool_call("search_knowledge", query="reset my password")
             turn.expect.said(contains="Forgot password")
-            assert [card.title for card in turn.cards] == ["Reset your password"]
         assert [search.query for search in kb.searches] == ["reset my password"]
         assert call.violations == ()
 ```

@@ -2,7 +2,7 @@
 evaluation.md), each a teammate's code on the public API alone, run here so the pages never show
 code that does not work: a team's existing sync function wrapped as a tool, the caller's ID
 bound in from the join token and a progress line named; a tool's expected failure, which the
-talker reads; the knowledge tool over a fake knowledge base, its best passage shown as a card;
+talker reads; the knowledge tool over a fake knowledge base, its steps for the talker to say;
 and an agent tested with `FunctionLLM`, which answers by what each request holds rather than by
 their count. No key and no network: every backend is a made-up one written for the test."""
 
@@ -113,7 +113,7 @@ def answer(request: ChatRequest) -> Iterable[ScriptStep]:
     return ScriptedLLM.reply("Choose Forgot password in the portal. The steps are on your screen.")
 
 
-def test_the_talker_searches_once_and_shows_the_best_passage_as_a_card() -> None:
+def test_the_talker_searches_once_and_says_the_answer() -> None:
     kb.searches.clear()  # the fake keeps every search it was asked
 
     async def scene() -> None:
@@ -121,7 +121,6 @@ def test_the_talker_searches_once_and_shows_the_best_passage_as_a_card() -> None
             turn = await call.user("How do I reset my password?")
             turn.expect.tool_call("search_knowledge", query="reset my password")
             turn.expect.said(contains="Forgot password")
-            assert [card.title for card in turn.cards] == ["Reset your password"]
         assert [search.query for search in kb.searches] == ["reset my password"]
         assert call.violations == ()
 

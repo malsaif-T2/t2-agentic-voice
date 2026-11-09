@@ -34,8 +34,8 @@ event, outbound as urgent transport messages, so a stop never drops one (the app
 While the caller speaks over a reply, the session lowers the agent's voice in the browser
 (`Duck`) and brings it back once the overlap is decided, whether the reply goes on or was
 stopped (`Unduck`): the first step of the two-step interruption (the design's 5.5; plan 005).
-A clause a stop cut while it played is captioned again, marked `cut`. What a reply says short
-aloud, a passage's whole steps, goes to the screen as a `card` (plan 006).
+A clause a stop cut while it played is captioned again, marked `cut`. A tool may show a `card`
+as an extra for a client with a screen; what the caller needs is always said (D-075).
 """
 
 from __future__ import annotations

@@ -142,7 +142,7 @@ def sheet_text(run: str, seed: int, answers: Sequence[SheetAnswer]) -> str:
     """The sheet's TOML, which `tomllib` reads back as the same `Sheet`."""
     lines = [
         "# The owner's check of the judge (plan 006, Q6): for each answer, read what the caller",
-        "# said, the answer and its card beside the points and the key facts, and write your own",
+        "# said and the answer beside the points and the key facts, and write your own",
         f"# verdict in `owner`: {', '.join(VERDICTS)}. Then run `poe judge-check read`.",
         f"run = {_string(run)}",
         f"seed = {seed}",

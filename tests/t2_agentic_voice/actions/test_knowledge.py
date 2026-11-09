@@ -1,9 +1,8 @@
 """The knowledge tool (actions/knowledge.py; the design's 6.3): one search per call, in the
 reply's language and as the call's caller, at most `limit` passages (the k); each passage's
-whole text to the talker, cut at a line (else a word) near `passage_chars`; the top passage with
-steps as the card, its steps cut to a card's 50, and the talker told what it shows, or that
-nothing is; every passage's text as the guard's evidence. With `FakeKnowledgeBase`; every
-passage is written for the test."""
+whole text to the talker, cut at a line (else a word) near `passage_chars`; every step of the
+top passage to the talker, and no card (D-075); every passage's text as the guard's evidence.
+With `FakeKnowledgeBase`; every passage is written for the test."""
 
 from __future__ import annotations
 
@@ -17,7 +16,6 @@ from t2_agentic_voice.actions.runner import FAILED, ToolRunner
 from t2_agentic_voice.actions.tools import CallContext, ToolResult
 from t2_agentic_voice.core.errors import ConfigurationError
 from t2_agentic_voice.core.identity import Caller
-from t2_agentic_voice.domain.cards import Card
 from t2_agentic_voice.domain.ports.chat_model import ToolCallRequest
 from t2_agentic_voice.domain.ports.knowledge import Passage
 from t2_agentic_voice.testing.knowledge_fake import FakeKnowledgeBase, KnowledgeSearch
@@ -67,17 +65,14 @@ def test_one_search_in_the_reply_language_as_the_caller_at_most_the_limit() -> N
     assert [p["id"] for p in _data(result)["passages"]] == ["made-up-001"]
 
 
-def test_the_talker_gets_each_passage_whole_and_the_steps_the_card_shows() -> None:
+def test_the_talker_gets_each_passage_whole_and_the_best_ones_steps() -> None:
     result = _search(FakeKnowledgeBase([RESET, ARCHIVE]))
     assert result.data == {
         "passages": [
             {"id": "made-up-001", "title": "Reset a password", "text": RESET.text},
             {"id": "made-up-002", "title": "Archive a letter", "text": "Use the Archive menu."},
         ],
-        "shown_on_screen": {
-            "title": "Reset a password",
-            "steps": ["Open the portal", "Choose Forgot password", "Enter code 8841"],
-        },
+        "best_passage_steps": ["Open the portal", "Choose Forgot password", "Enter code 8841"],
     }
     assert result.ok
 
@@ -113,13 +108,9 @@ def test_passage_chars_is_1500_by_default() -> None:
     assert _text(whole + "\nOne line more.") == whole + MORE
 
 
-def test_the_top_passage_with_steps_is_the_card_and_every_passage_is_evidence() -> None:
+def test_no_card_is_shown_and_every_passage_is_evidence() -> None:
     result = _search(FakeKnowledgeBase([RESET, ARCHIVE]))
-    assert result.card == Card(
-        title="Reset a password",
-        steps=("Open the portal", "Choose Forgot password", "Enter code 8841"),
-        source="Made-up guide",
-    )
+    assert result.card is None  # the caller may have no screen (D-075)
     assert RESET.text in result.evidence and ARCHIVE.text in result.evidence
     assert "Enter code 8841" in result.evidence
 
@@ -131,23 +122,19 @@ def test_a_cut_passage_is_still_whole_in_the_evidence() -> None:
     assert long.text in result.evidence
 
 
-def test_a_top_passage_with_no_steps_gives_no_card_and_says_nothing_is_shown() -> None:
-    """The live smoke of 2026-11-07: with no card, the talker was told nothing and said the
-    steps were on the screen; it now reads that nothing is, from an explicit value."""
-    result = _search(FakeKnowledgeBase([ARCHIVE, RESET]))
-    assert result.card is None
-    assert _data(result)["shown_on_screen"] == "nothing"
+def test_a_top_passage_with_no_steps_gives_no_steps() -> None:
+    assert "best_passage_steps" not in _data(_search(FakeKnowledgeBase([ARCHIVE, RESET])))
 
 
-def test_a_card_holds_at_most_fifty_steps() -> None:
-    many = RESET.model_copy(update={"steps": tuple(f"Step {n}" for n in range(1, 61))})
-    card = _search(FakeKnowledgeBase([many])).card
-    assert card is not None and len(card.steps) == 50 and card.steps[-1] == "Step 50"
+def test_every_step_of_a_long_procedure_reaches_the_talker() -> None:
+    many = RESET.model_copy(update={"steps": (*(f"Step {n}" for n in range(1, 61)), "   ")})
+    steps = _data(_search(FakeKnowledgeBase([many])))["best_passage_steps"]
+    assert len(steps) == 60 and steps[-1] == "Step 60"  # a step that says nothing is left out
 
 
-def test_nothing_found_is_an_empty_list_and_nothing_shown() -> None:
+def test_nothing_found_is_an_empty_list() -> None:
     result = _search(FakeKnowledgeBase())
-    assert result == ToolResult(data={"passages": [], "shown_on_screen": "nothing"})
+    assert result == ToolResult(data={"passages": []})
 
 
 def test_what_is_no_passage_is_the_tools_failure() -> None:
@@ -175,10 +162,3 @@ def test_a_limit_or_passage_chars_under_one_is_a_configuration_error(
         knowledge_tool(FakeKnowledgeBase(), description="Search.", **{field: value})
     assert raised.value.details == {"field": field}
     assert f"{field}=" in raised.value.message
-
-
-def test_a_top_passage_whose_title_says_nothing_gives_no_card() -> None:
-    blank = RESET.model_copy(update={"title": "   ", "source": "  "})
-    result = _search(FakeKnowledgeBase([blank]))
-    assert result.card is None and result.ok
-    assert _data(result)["shown_on_screen"] == "nothing"

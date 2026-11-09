@@ -2339,7 +2339,7 @@ twice; DOC-REF: every `D-NNN` cited anywhere is a heading here), so keep its sha
 - **Evidence:** plan 006's Q19 and its progress log; eaa44d5;
   `tests/t2_agentic_voice/voice/session/test_talker_kept.py` and `test_talker_kept_steps.py`.
 
-## D-071 · The talker writes its answer from the top k passages whole, k measured for each app · 2026-11-07 · Accepted (the owner's ruling, Q20 in plan 006, and run K0)
+## D-071 · The talker writes its answer from the top k passages whole, k measured for each app · 2026-11-07 · Accepted (the owner's ruling, Q20 in plan 006, and run K0); its card replaced by D-075
 
 - **Context:** the knowledge tool gave the talker each passage's first 3 lines, cut near 400
   characters, and the best passage's steps: about 26% of each other passage's text, 122 of
@@ -2395,3 +2395,32 @@ twice; DOC-REF: every `D-NNN` cited anywhere is a heading here), so keep its sha
 - **Consequences:** a term or command word that does not fit the prompt is left out. The live
   calls show whether the prompt holds; `stt.send_prompt` turns it off.
 - **Evidence:** plan 006's Q22, Q23 and Q26 and their progress entries.
+
+## D-075 · The caller only hears: every step is said, and no screen is relied on · 2026-11-09 · Accepted (the owner's rulings, Q30, Q31 and Q32 in plan 006)
+
+- **Context:** the library told the model the caller "sees a screen beside the call" and never to
+  read steps out; the steps went to a card. In run S's last pass 23 of 48 Arabic replies pointed
+  the caller at the screen. The owner, listening: the agent is voice oriented and may run on
+  voice-only channels, so looking at a screen is not to be encouraged. The owner's answer to how
+  a caller gets the steps: "It should give all the steps in one reply, but be able to repeat
+  all, repeat a specific step, or get in detail about one under the caller request. No card or
+  screen is needed."
+- **Decision:**
+  - The library's rules and Ole5's instructions have a procedure said whole in one reply, in
+    order, each step in one short sentence; said again whole, or one named step, or one step in
+    more detail, when the caller asks; and never say that anything is on a screen or shown.
+  - `knowledge_tool` shows no card. It gives the talker every step of the best passage under
+    `best_passage_steps`, which it keeps for the rest of the call, so a later turn repeats a step
+    with no new search. This replaces D-071's sentence on the card; the rest of D-071 stands.
+  - The judge of runs K and S reads only what was said aloud (Q31), and the check of the judge
+    against the knowledge base is an agent's, recorded as such, since the owner does not know
+    the knowledge base well enough to judge it (Q32).
+  - A team's own tool may still return a `Card`, as an extra for a client with a screen; nothing
+    the library or Ole5 says depends on one.
+- **Consequences:** a how-to answer is longer to hear, and the caller stops it by speaking
+  (D-061). The Arabic voice costs more per reply. `llm.max_output_tokens`, 1,024 with the
+  reasoning in it, must hold the longest procedure. Runs K and S before this entry credited the
+  card and are not comparable with those after it on answer quality.
+- **Evidence:** plan 006's Q30 to Q32 and its progress entry of 2026-11-09;
+  `tests/t2_agentic_voice/actions/test_knowledge.py`,
+  `tests/t2_agentic_voice/agent/test_prompt.py` and `tests/ole5_voice/test_agent.py`.

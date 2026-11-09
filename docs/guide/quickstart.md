@@ -74,7 +74,7 @@ INSTRUCTIONS = (
   bound is pydantic's `Field`: declare `pydantic` in your own project when you import it, as
   the example's `pyproject.toml` does.
 - **It returns** a plain string here; any value that is JSON works, and so does a `ToolResult`
-  with a card for the screen ([concepts.md](concepts.md), "Tools").
+  ([concepts.md](concepts.md), "Tools").
 - **A read tool changes nothing.** When the caller speaks over the reply, its tool is cancelled
   or its result thrown away, so it must be safe to stop at any point.
 - **`INSTRUCTIONS`** say what the helper is for, when to use the tool, and what to say for

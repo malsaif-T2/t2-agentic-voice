@@ -1,8 +1,8 @@
 """What the caller is shown on screen beside the captions (the design's 3.1, "Browser side";
-plan 006, "What voice-first means here", item 5): a `Card`, short to the ear and whole on the
-screen. A reply says one to three short sentences aloud, and the card holds the whole: a
-knowledge passage's title and its steps, with the document they come from. A tool's result may
-carry one (actions/tools.py's `ToolResult`), the talker hands it on, and the session sends it to
+plan 006): a `Card`, a title, its steps and the document they come from. Only an extra for a
+client with a screen: the caller may have none, so what they need is always said (D-075), and
+the knowledge tool shows none. A tool's result may carry one (actions/tools.py's
+`ToolResult`), the talker hands it on, and the session sends it to
 the client as `t2v/1`'s `card` (voice/protocol.py's `ShowCard`) once its text passed the output
 guard, as a clause's does.
 """

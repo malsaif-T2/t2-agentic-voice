@@ -2,9 +2,9 @@
 declaration, which loads with instructions for every language it speaks, each holding what the
 ear needs; its search, the library's knowledge tool with Ole5's description and progress line;
 its vocabulary and version; no fixed line of it holding a word the caller commands with; its
-prompt rendered in each language once the library composes it, naming the screen only when the
-search shows a card; and the talker with no tool (run T's pass Tn), told in place of the
-search's section that it has none, versioned apart, the served talker's prompt unchanged."""
+prompt rendered in each language once the library composes it, every step said and no screen
+named (D-075); no opening word taught; and the talker with no tool (run T's pass Tn), told in
+place of the search's section that it has none, versioned apart, the served talker's prompt unchanged."""
 
 from __future__ import annotations
 
@@ -100,13 +100,13 @@ def test_how_to_answer_names_each_of_several_causes_briefly(tag: Tag) -> None:
     assert answer.splitlines().count(wanted) == 1
     assert "search" not in wanted
     assert answer in instructions(search=False)[tag]
-    assert VERSION == "2026-11-08.3"  # English replies say names in English (run S)
+    assert VERSION == "2026-11-09.1"  # every step said, no screen named (D-075)
 
 
 @pytest.mark.parametrize("tag", ["ar-SA", "en"])
 def test_each_languages_instructions_hold_what_the_ear_needs(tag: Tag) -> None:
     """The plan's "The Ole5 app": short spoken answers, in the Saudi register or MSA or
-    English as the caller speaks; the steps on the screen, when a card shows them (below);
+    English as the caller speaks; every step said (below);
     numbers as digits; a plain "I cannot"; no ticket or person promised; a search when the
     question is about Ole5."""
     text = " ".join(instructions()[tag].split())
@@ -115,7 +115,7 @@ def test_each_languages_instructions_hold_what_the_ear_needs(tag: Tag) -> None:
         "Modern Standard Arabic",
         "English",
         "one to three short sentences",
-        "the full steps are on the screen",
+        "say all of them in one reply",
         "Write numbers as digits.",
         "search Ole5's knowledge base first",
         "answer only from what it returns",
@@ -275,25 +275,30 @@ def test_the_prompt_renders_with_ole5s_instructions(tag: Tag) -> None:
 
 
 @pytest.mark.parametrize("tag", ["ar-SA", "en"])
-def test_the_prompt_names_the_screen_only_when_the_search_shows_a_card(tag: Tag) -> None:
-    """The live smoke of 2026-11-07: asked how to recover a password, the talker said the full
-    steps were on the screen when its search showed no card. In the prompt of each language, the
-    library's rule and Ole5's line say it only on the condition of the search result's
-    `shown_on_screen`, which says "nothing" when no card is shown. A test cannot show that a
-    real model obeys: the registered runs and the live calls can."""
+def test_the_prompt_has_every_step_said_and_names_no_screen(tag: Tag) -> None:
+    """The owner's ruling of 2026-11-09 (D-075): the agent may run on a voice-only channel, so
+    a procedure is said whole in one reply, and said again, or one step of it, when asked; the
+    search gives the talker the steps and shows no card. A test cannot show that a real model
+    obeys: the registered runs and the live calls can."""
     prompt = render_prompt(declare(), tag)
-    lines = [line for line in prompt.splitlines() if "on the screen" in line]
-    assert len(lines) == 2, lines  # the library's rule, then Ole5's
-    for line in lines:
-        assert "on the screen only when" in line, line
-        assert "shown_on_screen holds them; otherwise never mention the screen." in line, line
-    no_steps = Passage(id="made-up-1", title="Made-up", text="Made up.", score=0.5)
-    [search] = talker_agent(FakeKnowledgeBase([no_steps])).tools
+    assert "on the screen" not in prompt and "shown_on_screen" not in prompt
+    flat = " ".join(prompt.split())
+    assert "say all of them in one reply" in flat and "only the step they name" in flat
+    steps = Passage(id="made-up-1", title="Made-up", text="Made up.", score=0.5, steps=("Open.",))
+    [search] = talker_agent(FakeKnowledgeBase([steps])).tools
     assert isinstance(search, Tool)
     context = CallContext(caller=Caller(subject="made-up"), call_id="call-1", language=tag)
     result = asyncio.run(search.function(context, query="made up"))
     assert result.card is None
-    assert isinstance(result.data, dict) and result.data["shown_on_screen"] == "nothing"
+    assert isinstance(result.data, dict) and result.data["best_passage_steps"] == ["Open."]
+
+
+def test_the_arabic_instructions_teach_no_opening_word() -> None:
+    """The owner's listening of 2026-11-09: «أبشر», given as the first example of the Saudi
+    register, opened 22 of run S's 48 Arabic replies, mostly out of place."""
+    text = instructions()["ar-SA"]
+    assert "(for example «أبشر»" not in text
+    assert "do not open with «أبشر»" in text
 
 
 @pytest.mark.parametrize("tag", ["ar-SA", "en"])
@@ -305,9 +310,7 @@ def test_the_talker_with_no_tool_is_told_it_has_no_search(tag: Tag) -> None:
     search. A test cannot show that a real model obeys: a live call can."""
     prompt = render_prompt(talker_agent(None), tag)
     searching = [line for line in prompt.splitlines() if re.search(r"search", line, re.I)]
-    # The one line that names a search says when to name the screen, never to search.
-    assert len(searching) == 1, searching
-    assert "only when the search result's shown_on_screen holds them" in searching[0]
+    assert searching == []
     flat = " ".join(prompt.split())
     assert "In this call there is no knowledge base and no tool." in flat
     assert "Answer from the conversation, in one to three short sentences." in flat

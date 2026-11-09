@@ -49,7 +49,8 @@ and measures; Q1 asks the owner to approve or change the list.
 4. **Speak as it writes.** The model's text streams into the clause splitter, and each clause
    goes to text-to-speech as soon as it is whole; the instructions keep the first clause short.
 5. **Short to the ear, whole on the screen.** One to three short spoken sentences; a passage's
-   full steps go to the screen as a card (`t2v/1`).
+   full steps go to the screen as a card (`t2v/1`). *Amended 2026-11-09 (Q30, D-075):* the caller
+   only hears; every step is said in one reply, and no card is shown.
 6. **Honest waits.** A reply that keeps the caller waiting past a set time, with a search
    under way or just done, gets a pre-recorded progress line (Q27). No
    fixed line holds a stop, wait, repeat, yes, send or listening word, so its echo cannot be
@@ -903,6 +904,12 @@ runs"; in this order, each with its smoke first)
   decision entries D-070 to D-074 (Q19, Q20, Q21, Q27, and Q23 with Q26). The `## Future
   improvements`, the plan's move and the roadmap's row wait for the judge check, K's held-out
   pass and the live calls.
+- 2026-11-09: **The caller only hears (Q30 to Q32, D-075), from the owner's listening.** «أبشر»
+  opened 22 of run S's last 48 Arabic replies, since Ole5's instructions gave it as the first
+  example of the Saudi register: taken out of the examples, and forbidden as an opener. 23 of
+  the 48 pointed the caller at the screen: the library's rules, Ole5's instructions and
+  `knowledge_tool` now have every step said in one reply, repeated whole or in part on request,
+  and no card shown. The judge reads only what was said aloud. Ole5's version `2026-11-09.1`.
 
 ## Decision log
 
@@ -988,6 +995,14 @@ runs"; in this order, each with its smoke first)
 - 2026-11-08, to Q27, after run T's T0: "Line at 3.0 s".
 - 2026-11-08, to Q28, after run S's first pass: "Let a model decide"; after run U: "Model on 2+
   words".
+- 2026-11-09, unprompted, after listening: "I don't have enough knowledge about the
+  knowledge-base to judge how good the answers are, but I can say that the agent uses the word
+  'أبشر' a lot, and most of it seems out-of-context. Also We shouldn't rely on a screen to show
+  information, the agent is voice oriented, and potentially will run on voice only channels, so
+  'look at the screen' thing is not encouraged."
+- 2026-11-09, to Q30: "It should give all the steps in one reply, but be able to repeat all,
+  repeat a specific step, or get in detail about one under the caller request. No card or screen
+  is needed."; to Q31: "Only spoken words"; to Q32: "An agent, against the KB".
 - 2026-11-08, to Q29, after run S's first pass: "Loosen them, except 'you need permission to
   print'".
 
@@ -1315,11 +1330,20 @@ Each answer that changes a run is a dated amendment to the registration.
   plain Arabic marked wrong for a caller with one dialect word; a correction answered from the
   passages it had; a short answer without a listed key fact. Options: (a) loosen them;
   (b) keep them. **The agent recommended (a).**
+- **Q30. How a voice-only caller gets the steps.** *Settled 2026-11-09: the owner's own answer.*
+  Options: (a) step by step, the card silent; (b) step by step, no cards; (c) all in one reply.
+  **The agent recommended (a); the owner chose all the steps in one reply, repeated whole or in
+  part, or one in detail, on request, with no card.**
+- **Q31. What the judge counts.** *Settled 2026-11-09: (a).* Options: (a) only spoken words;
+  (b) spoken and screen. **The agent recommended (a).**
+- **Q32. Who checks the 24 judged answers.** *Settled 2026-11-09: (a).* The owner does not know
+  the knowledge base well enough. Options: (a) an agent, against it, recorded as an agent's
+  check; (b) no check; (c) a person who knows Ole5. **The agent recommended (a).**
 
 ## What the owner does
 
 - Answer Q1 to Q10, and approve the plan (done 2026-11-06); answer Q11 to Q14, Q15 to Q18,
-  Q19 and Q20, Q21, Q22 and Q23 (done 2026-11-07), and Q24 to Q29 (done 2026-11-08).
+  Q19 and Q20, Q21, Q22 and Q23 (done 2026-11-07), Q24 to Q29 (done 2026-11-08), and Q30 to Q32 (done 2026-11-09).
 - Copy the knowledge base's access into `.env` (Q4; done 2026-11-06, under the owner's names).
 - Review the knowledge set's items (Q5, about 40 minutes; done 2026-11-07, checked by the agent
   against the knowledge base), and check 24 judged answers (Q6, about 20 minutes).
