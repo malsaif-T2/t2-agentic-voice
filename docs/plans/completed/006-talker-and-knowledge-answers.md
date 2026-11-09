@@ -1,6 +1,6 @@
 # 006 · The talker and knowledge answers
 
-Status: active · Milestone: M4 · Started: 2026-11-06
+Status: completed · Milestone: M4 · Started: 2026-11-06 · Completed: 2026-11-09
 
 *Drafted on 2026-11-06 at the owner's word, and approved by the owner the same day with every
 recommendation, Q1 to Q10 ("The owner's decisions").*
@@ -66,97 +66,99 @@ and measures; Q1 asks the owner to approve or change the list.
 
 **The library**
 
-- [ ] **The `ChatModel` port** (`domain/ports/`): `stream(request) -> AsyncIterator[ChatEvent]`,
+- [x] **The `ChatModel` port** (`domain/ports/`): `stream(request) -> AsyncIterator[ChatEvent]`,
   with `TextDelta`, `ToolCallRequest`, `Usage` and `Done` (the design's 6.1). The request holds
   the messages, the tool schemas and the model's settings, each a pydantic model checked at the
   boundary (invariant 4).
-- [ ] **The Groq chat adapter** (`adapters/`, beside `groq_client.py`): streaming; tool calls
+- [x] **The Groq chat adapter** (`adapters/`, beside `groq_client.py`): streaming; tool calls
   parsed into `ToolCallRequest`, an invalid one going back to the talker with its field named;
   usage on the span; `ProviderError` with its kind, `retryable` and `retry_after_s`; and the
   port's rule that a cancelled call stops within 50 ms and leaks no task or connection, tested
   as the speech adapters are. The `llm` settings group (the design's 7.6): `provider`, `model`,
   `reasoning_effort`, `max_output_tokens`, `timeout_s`; `llm.model`'s default is the arm run K
   keeps.
-- [ ] **The talker loop** (`agent/`): one turn from the caller's heard words to clauses and tool
+- [x] **The talker loop** (`agent/`): one turn from the caller's heard words to clauses and tool
   calls; tool results framed as data, never as instructions; at most three model requests a
   turn; the system prompt composed from the library's rules, the team's instructions and the
   language section, shown by `agent.render_prompt()`. `VoiceAgent` gains `instructions` (per
   language), `tools` and `vocabulary` (the design's 4.3); `session.mode` gains `talker`, the
   mode of an agent that declares instructions.
-- [ ] **The heard history as the model's context**: tests that an unplayed clause never reaches
+- [x] **The heard history as the model's context**: tests that an unplayed clause never reaches
   the model as said, that a cut clause reaches it marked as cut, and that a turn joined after a
   resumed hold reaches it as one turn.
-- [ ] **Interruptions handed to the talker** (`voice/session/`): with a talker, real words over a
+- [x] **Interruptions handed to the talker** (`voice/session/`): with a talker, real words over a
   reply stop it at once, as in M3, and reach the talker as the caller's turn, whole, beside the
   cut reply; a repeat request, alone or over a reply, goes to the talker. With no talker, M3's
   behaviour is unchanged and its tests pass untouched. A test that the stop's `StopSpeaking` goes
   out before any model request, so the talker adds nothing to the time a stop takes.
-- [ ] **The early start** (Q2): the transcription and the first model request start at Smart
+- [x] **The early start** (Q2): the transcription and the first model request start at Smart
   Turn's "complete"; nothing plays before the hold ends; speech that resumes in the hold cancels
   them and joins the turn. Tested on the virtual clock.
-- [ ] **Clauses streamed to speech**: the speaker takes a reply's clauses as they come (today
+- [x] **Clauses streamed to speech**: the speaker takes a reply's clauses as they come (today
   `Playback.ask` takes every line up front), the reply's scope opened before its first clause and
   closed only when its last clause and its work are done.
-- [ ] **Tools** (`actions/`): `@tool` on an async or a sync function (a sync one in a worker
+- [x] **Tools** (`actions/`): `@tool` on an async or a sync function (a sync one in a worker
   thread), `Tool.from_function`, `CallContext` with a read-only `ctx.caller`, `bind=` (filled
   from the session and hidden from the schema), a timeout, the barge-in policy (`cancel` for read
   tools), arguments parsed before the function runs, and `ToolError` and other exceptions as the
   design's 6.4 table says.
-- [ ] **Progress lines**: spoken only when the caller has waited past the line's time with no
+- [x] **Progress lines**: spoken only when the caller has waited past the line's time with no
   answer begun (Q27), from the phrase
   cache; a test that no fixed line of the library or of Ole5 holds a word of the presets' lists.
-- [ ] **Knowledge**: `KnowledgeBase.search(query, *, language, caller, limit) -> list[Passage]`
+- [x] **Knowledge**: `KnowledgeBase.search(query, *, language, caller, limit) -> list[Passage]`
   and `knowledge_tool(kb, description=..., progress=...)`: one search per question, short
   summaries to the talker, the full passage as a card. *Amended 2026-11-07 (Q20):* the talker
   writes its own answer from each of the top k passages whole (cut near 1,500 characters), k
   kept by run K0; it never reads a passage out.
-- [ ] **Cards** over `t2v/1` (a title and steps), shown by `t2v-client.js` and the dev page, and
+- [x] **Cards** over `t2v/1` (a title and steps), shown by `t2v-client.js` and the dev page, and
   the `thinking` state while the talker or a tool works.
-- [ ] **The output guard's ID rule** (rule B, the design's 8.2), with digit normalization, on
+- [x] **The output guard's ID rule** (rule B, the design's 8.2), with digit normalization, on
   every clause before text-to-speech and on a card's text; a blocked clause gives the fixed
   phrase, a `GuardBlocked` event and a developer note in the history. The talker's numbers are
   spoken by the speaking rules, with TD-058's cases the talker can reach fixed.
-- [ ] **The reply language per turn**, tested with Saudi, MSA and English turns in one call.
-- [ ] **`TextCall`** (`testing/`): the real voice session, talker, tools and guard with no audio,
+- [x] **The reply language per turn**, tested with Saudi, MSA and English turns in one call.
+- [x] **`TextCall`** (`testing/`): the real voice session, talker, tools and guard with no audio,
   on a virtual clock, with `ScriptedLLM`, `FunctionLLM`, `FakeSTT`, `FakeTTS` and a fake
   knowledge base; the injections and expectations of the design's 9.2 that M4 needs
   (`during="agent_speaking"`, `at="tool_running"`, `advance`, `stop`; `tool_call`, `said`,
   `blocked`, `cancelled`, `language`).
-- [ ] **The parity test** (moved from M3, plan 005): one scripted call run as `TextCall` and as
+- [x] **The parity test** (moved from M3, plan 005): one scripted call run as `TextCall` and as
   `AudioCall` takes the same path through the session (the same verdicts, turns and replies).
-- [ ] **The time to first audio**, per turn: from the caller's end of speech (a replay's label;
+- [x] **The time to first audio**, per turn: from the caller's end of speech (a replay's label;
   in a live call the detector's stop less its delay) to the first audible frame of the reply
   sent, and to its playback in the browser (`client_stats`); progress lines counted apart; on the
   turn's span and in the call report (TD-063's `ttfa_ms`, TD-090's silent first chunks).
-- [ ] **`examples/minimal`** gets a read tool, and its test runs the talker through `TextCall`
+- [x] **`examples/minimal`** gets a read tool, and its test runs the talker through `TextCall`
   with `ScriptedLLM` (Core proof).
 
 **The Ole5 app**
 
-- [ ] **The knowledge base adapter** behind `KnowledgeBase`: one query embedding from T2's
+- [x] **The knowledge base adapter** behind `KnowledgeBase`: one query embedding from T2's
   embedding gateway and one search of Ole5's points in T2's Qdrant per question (D-002; Q4), its
   settings under the owner's general names (`QDRANT_*`, `EMBEDDING_URL`; only the tenant under
   the app's prefix), its tests offline on a fake transport.
-- [ ] **The instructions**, per language: short spoken answers in the Saudi register, the steps
+- [x] **The instructions**, per language: short spoken answers in the Saudi register, the steps
   to the card, numbers as digits, a plain "I cannot" for what no tool provides, and no promise of
   a ticket or a person before M5.
-- [ ] **The progress lines**, rendered once into the phrase cache.
-- [ ] **The vocabulary** that becomes the Whisper prompt, if run W keeps it.
+- [x] **The progress lines**, rendered once into the phrase cache.
+- [x] **The vocabulary** that becomes the Whisper prompt, if run W keeps it.
 
 **The measurement** (the roadmap's *Done when* for M4)
 
-- [ ] The knowledge set (`evals/knowledge/`), reviewed by the owner (Q5), split by item.
-- [ ] Runs W, K, U, T and S as registered below, held-out read once and only as aggregates, each
+- [x] The knowledge set (`evals/knowledge/`), reviewed by the owner (Q5), split by item.
+- [x] Runs W, K, U, T and S as registered below, held-out read once and only as aggregates, each
   target's result recorded, a default moved only by a keep rule (GP-18).
 - [ ] The live calls: the rehearsal's steps 1, 2, 3, 4, 5 and 7
   ([DESCRIPTION.md](../../project/DESCRIPTION.md), "How success is measured") pass on the
-  laptop's speakers and on the wired headset; step 6, the ticket, is M5's.
+  laptop's speakers and on the wired headset; step 6, the ticket, is M5's. *Not met at the
+  close: moved to M7's rehearsal, which repeats these steps (2026-11-09, the owner, plan 007's
+  Q1). The owner's calls of 2026-11-09 were judged good but were not the scripted steps.*
 
 **Left out, for the owner's yes with this plan** (Q3): `simulate` (a model playing the caller;
 the scripted scenarios of run S stand in for it); `t2v check` (to M7, with the guide);
 `reports_on` (to M5, with ticket status); the guide's `providers.md` (M7).
 
-- [ ] `uv run --offline poe check` passes, and the docs this plan touched are updated: the guide's
+- [x] `uv run --offline poe check` passes, and the docs this plan touched are updated: the guide's
   `concepts.md` (the talker and tools), `writing-for-voice.md`, `languages.md` (the reply language
   and the vocabulary) and `latency.md` (the budget as measured), the design's lines the code
   contradicts corrected as facts, and the decision entries written.
@@ -994,6 +996,21 @@ runs"; in this order, each with its smoke first)
   was heard and what its reply said, each reply's span its text, each tool call's span the
   arguments the model wrote and what the tool gave back, under `tracing.include_transcripts`.
   Invariant 8 changed with it.
+- 2026-11-09: **The close.** Deviation: M4 closes with its live calls not held and with
+  registered targets missed, by the owner's word (Q1 of M5's plan). The live calls move to M7's
+  rehearsal. The held-out results stand as recorded above and are not re-run:
+
+  | Target | Result | Bound | Held |
+  | --- | --- | --- | --- |
+  | An expected passage retrieved | 0.816 | 0.90 | no |
+  | Right answers (unverified: the judge's check failed, 7 of 24) | 0.408 | 0.80 | no |
+  | Honest when not in the knowledge base (unverified) | 0.941 | 0.90 | yes |
+  | Language and register | 0.690 | 0.95 | no |
+  | Guard: no blocked or violating reply | 0 | 0 | yes |
+  | A late reply covered by the progress line | 5 of 40 late with no line | none | no |
+
+  Held-out was run before the fixes of D-077, D-078 and D-079, which it does not measure. The
+  Arabic name of D-077 has not been heard in a call. The gate of 26c2d37: 5162 passed, 1 skipped.
 
 ## Decision log
 
@@ -1096,6 +1113,10 @@ runs"; in this order, each with its smoke first)
   is kind of odd, like it is out of breath"; to Q35: "Yes, make them. 'Ole5' is said ok in
   English but in Arabic even the greeting is wrong. Fix them and I will try it again once you
   finish."
+- 2026-11-09, on the close: "I won't take the calls now, but since M4 is essentially done, lets
+  start with M5"; "If it is necessary to close and merge M4 first tell me"; and to plan 007's
+  decisions, Q1 among them (close M4, its live calls moved to M7, its missed targets recorded,
+  and merge it): "Approve all".
 - 2026-11-09, after the next calls: "The Ole5 in Arabic is till wrong. English sound better but
   there is this strange pause between sentences, it is tolerable"; to Q36: "Yes add them."; of
   the samples: "'Ole5-sample-02.wav' and 'Ole5-sample-03.wav' sounds the best, either would be
@@ -1462,4 +1483,41 @@ Each answer that changes a run is a dated amendment to the registration.
 - Review the knowledge set's items (Q5, about 40 minutes; done 2026-11-07, checked by the agent
   against the knowledge base), and check 24 judged answers (Q6, about 20 minutes).
 - Listen to ten replies of run T for clipped first syllables: not needed, T1 was not kept (2026-11-08).
-- Hold the live calls (about 20 minutes).
+- Hold the live calls: moved to M7's rehearsal (2026-11-09).
+
+## Future improvements
+
+Written at the close, 2026-11-09, ordered by expected value (the agent's ordering), from runs K,
+T and S on held-out and the owner's calls of 2026-11-09; every number describes one speaker, the
+owner (D-006).
+
+- **A judge that can be trusted, before anything else about answers.** An agent blind to the
+  verdicts disagreed with the judge on 7 of 24 answers, the limit 3, and 4 of the 7 change pass
+  or fail, two each way. Until that holds, "right answers 0.408" is a rough signal and no answer
+  change can be kept or rejected on it. A person who knows Ole5 checking the sample is the
+  strongest fix (plan 006's Q32).
+- **Better retrieval: a sparse query beside the dense one.** An expected passage was found in
+  0.816 of held-out searches, against 0.90. A wrong or missing passage caps every answer after
+  it. It is the first amendment to propose to run K, and the knowledge base already answers with
+  sparse vectors if asked.
+- **The Saudi register, now «أبشر» is gone.** Language scored 0.690 against 0.95: Saudi and mixed
+  callers 0.50, MSA 0.857, English 0.905. The check reads plain imperatives as not Saudi, so part
+  of this is the check; the owner's ear in the calls found the Arabic good.
+- **What the model does with a one-word question.** Short and vague questions are where answers
+  fall furthest. The narrow rule for asking back (D-077) asked on 4 of 4 vague requests and 1 of
+  23 ordinary ones in a replay; run it against the set.
+- **The owner's unexplained «I don't know» about archiving.** The knowledge base holds archiving
+  in 16 of its 128 passages, and six archiving questions in a replay were answered. D-079's traces
+  now show what was heard, searched for and found, so the next miss can be read.
+- **The first audio after a search.** Median 4.9 to 5.6 s in the owner's calls, with the progress
+  line at 2.7 s, against 2.1 to 3.0 s with no search. Most of it is the model's second request.
+  Five of 40 held-out replies were late with no line.
+- **Occasional slow starts of the voice:** usually 0.25 s, three times 1.9 to 2.8 s in the owner's
+  calls, cause unknown.
+- **The pause between English sentences** (the owner: tolerable). Each sentence is its own
+  request, so it is probably each one's closing silence. `tts.trim_silence` exists, and was not
+  kept for this reason nor tested on it.
+- **Smaller things the runs showed:** a permission fact the talker leaves out (s06); English
+  replies with Arabic names, the rule of D-077 meant to end them, tested only in a replay; «أبغى
+  موظف» misread by Whisper; «أعلى الشاشة» said as a button's place, which is not a screen being
+  relied on but may read so; and a timing test that can fail by 50 microseconds (TD-132).
