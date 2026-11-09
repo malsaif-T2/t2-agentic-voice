@@ -950,6 +950,25 @@ runs"; in this order, each with its smoke first)
     times from 3 of 8 to 2 of 24 failed; the last request now also holds the results with the calls
     that asked for them dropped (`_without_calls`, agent/turn.py): 0 of 24 failed, 11 of them
     reaching a third request (about 3 cents).
+- 2026-11-09: **Run K on held-out, once** (k1-held-out-spoken, at 4529f32: `gpt-oss-120b` at
+  medium, k = 7, spoken words only; 24 items, 71 variants; $0.12; no failure, no guard block).
+  The judge's check having failed (7 of 24), the owner ruled the pass run with its answer scores
+  marked unverified (Q33).
+
+  | Target | Result | Bound | Held |
+  | --- | --- | --- | --- |
+  | An expected passage retrieved | 0.816 | 0.90 | no |
+  | Right answers (unverified) | 0.408 | 0.80 | no |
+  | Honest when not in the knowledge base (unverified) | 0.941 | 0.90 | yes |
+  | Language and register | 0.690 | 0.95 | no |
+  | Guard: no blocked or violating reply | 0 | 0 | yes |
+
+  A search was made in all 71. Language by the caller's speech: English 0.905, MSA 0.857, Saudi
+  0.50, mixed 0.50: a reply in plain imperatives reads as not Saudi. Verdicts: right 25, partly
+  right 22, wrong 2, invented 4, not in knowledge 18. First clause: median 1.31 s, 90th
+  percentile 1.90 s; words: median 26, 90th percentile 55. The result stands, held-out being run
+  once. Retrieval is under target as on dev, so a sparse query stays the first amendment to
+  propose. The spend is about $4.83 of the $7 cap.
 
 ## Decision log
 
@@ -1043,6 +1062,7 @@ runs"; in this order, each with its smoke first)
 - 2026-11-09, to Q30: "It should give all the steps in one reply, but be able to repeat all,
   repeat a specific step, or get in detail about one under the caller request. No card or screen
   is needed."; to Q31: "Only spoken words"; to Q32: "An agent, against the KB".
+- 2026-11-09, to Q33, after the judge's check: "Run it, marked unverified".
 - 2026-11-08, to Q29, after run S's first pass: "Loosen them, except 'you need permission to
   print'".
 
@@ -1379,11 +1399,15 @@ Each answer that changes a run is a dated amendment to the registration.
 - **Q32. Who checks the 24 judged answers.** *Settled 2026-11-09: (a).* The owner does not know
   the knowledge base well enough. Options: (a) an agent, against it, recorded as an agent's
   check; (b) no check; (c) a person who knows Ole5. **The agent recommended (a).**
+- **Q33. K's held-out after the judge's check failed.** *Settled 2026-11-09: (a).* An agent and
+  the judge differed on 7 of 24 answers, the limit 3; 4 of the 7 change pass or fail, two each
+  way. Options: (a) run it once, the answer scores marked unverified; (b) skip it. **The agent
+  recommended (a).**
 
 ## What the owner does
 
 - Answer Q1 to Q10, and approve the plan (done 2026-11-06); answer Q11 to Q14, Q15 to Q18,
-  Q19 and Q20, Q21, Q22 and Q23 (done 2026-11-07), Q24 to Q29 (done 2026-11-08), and Q30 to Q32 (done 2026-11-09).
+  Q19 and Q20, Q21, Q22 and Q23 (done 2026-11-07), Q24 to Q29 (done 2026-11-08), and Q30 to Q33 (done 2026-11-09).
 - Copy the knowledge base's access into `.env` (Q4; done 2026-11-06, under the owner's names).
 - Review the knowledge set's items (Q5, about 40 minutes; done 2026-11-07, checked by the agent
   against the knowledge base), and check 24 judged answers (Q6, about 20 minutes).
