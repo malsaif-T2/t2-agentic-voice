@@ -20,7 +20,7 @@ decisions (`D-NNN`), which are permanent. Living docs cite only milestones in th
 | M2 | A call that listens and speaks | done ([003](completed/003-call-listens-and-speaks.md)) |
 | M3 | Interruptions and cancellation | done ([005](completed/005-interruptions-and-cancellation.md)) |
 | M4 | The talker and knowledge answers | in progress ([006](active/006-talker-and-knowledge-answers.md)) |
-| M5 | Tickets, ticket status, and handoff | planned |
+| M5 | Tickets, ticket status, and handoff | drafted, waiting for the owner ([007](active/007-tickets-status-handoff.md)) |
 | M6 | Reliability and operations | planned |
 | M7 | The rehearsal: the owner's script passes | planned |
 
