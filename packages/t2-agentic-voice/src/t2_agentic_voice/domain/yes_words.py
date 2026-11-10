@@ -142,7 +142,7 @@ _ENGLISH_NO = ("nope", "nah", "never mind", "no thanks")
 _ENGLISH_FILLERS = (
     *("please", "now", "right now", "just", "thanks", "thank you", "thank you very much"),
     *("thanks a lot", "it", "the", "that", "and", "you", "can", "i", "want", "to", "for me"),
-    *("my", "request"),
+    *("my", "request", "do", "i m", "i am", "that s it"),
 )
 
 # Each language preset's lists, by its primary code.

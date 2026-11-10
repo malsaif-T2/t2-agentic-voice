@@ -85,6 +85,8 @@ def _decide(
         ("yes", ENGLISH),
         ("Yeah, go ahead, thanks.", ENGLISH),
         ("Okay, yes.", ENGLISH),
+        ("Yes, I'm sure, please do.", ENGLISH),
+        ("Yes, that's it.", ENGLISH),
     ],
 )
 def test_a_yes_after_the_closing_question_ended_is_a_yes(text: str, words: ConsentWords) -> None:
@@ -213,6 +215,7 @@ def test_a_no_is_declined(text: str, words: ConsentWords, speech_at: float) -> N
     ("text", "words"),
     [
         ("لا لا نعم", ARABIC),  # a no and a yes: unclear
+        ("I'm not sure.", ENGLISH),
         ("أرسلها", ARABIC),  # a send word alone, as the closing question's echo would say it
         ("send it", ENGLISH),
         ("تمام", ARABIC),  # a listening sound, never a decision
