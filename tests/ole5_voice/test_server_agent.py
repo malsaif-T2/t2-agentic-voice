@@ -18,6 +18,8 @@ from fastapi.testclient import TestClient
 from ole5_voice import agent, server
 from ole5_voice.agent import ECHO_AGENT, PROGRESS_KEY, SEARCH_LIMIT
 from ole5_voice.settings import AppSettings, KnowledgeAccess, Settings, knowledge_access
+from ole5_voice.tickets.page import tickets_router as real_tickets_router
+from ole5_voice.tickets.tools import ticket_tools as real_ticket_tools
 from pydantic import SecretStr
 from t2_agentic_voice import ConfigurationError, VoiceSettings
 
@@ -131,9 +133,24 @@ def test_with_no_knowledge_base_the_app_runs_the_echo_and_says_so_once(
 
 
 def test_with_the_knowledge_base_set_the_app_runs_the_talker_with_its_search(
-    fakes: list[object], caplog: pytest.LogCaptureFixture
+    fakes: list[object], caplog: pytest.LogCaptureFixture, monkeypatch: pytest.MonkeyPatch
 ) -> None:
+    """The talker searches the knowledge base and acts on the mock ticket system, the same one
+    whose page the app serves, so the page shows what the calls made (plan 007)."""
     caplog.set_level("INFO")
+    acted: list[object] = []
+    paged: list[object] = []
+
+    def ticket_tools(system: Any) -> Any:
+        acted.append(system)
+        return real_ticket_tools(system)
+
+    def tickets_router(system: Any, **given: Any) -> Any:
+        paged.append(system)
+        return real_tickets_router(system, **given)
+
+    monkeypatch.setattr(agent, "ticket_tools", ticket_tools)
+    monkeypatch.setattr(server, "tickets_router", tickets_router)
     loaded = _settings(**ACCESS)
     app = server.make_app(loaded)
     [runtime] = _Runtime.made
@@ -142,7 +159,14 @@ def test_with_the_knowledge_base_set_the_app_runs_the_talker_with_its_search(
     assert fakes == [kb]  # the search is made of that knowledge base
     talker = runtime.agent
     assert isinstance(talker, type(ECHO_AGENT)) and talker.instructed
-    assert [tool.name for tool in talker.tools] == ["search_knowledge"]
+    assert [tool.name for tool in talker.tools] == [
+        "search_knowledge",
+        "create_ticket",
+        "add_ticket_note",
+        "hand_off",
+        "ticket_status",
+    ]
+    assert len(acted) == len(paged) == 1 and acted[0] is paged[0]
     assert _lines(caplog, "knowledge_base_set") == [{"agent": "talker"}]
     assert _lines(caplog, "knowledge_base_not_set") == []
     assert _Runtime.happened == []

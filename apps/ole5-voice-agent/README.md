@@ -61,3 +61,16 @@ ticket. These settings, in the same `.env`, are optional:
 | `OLE5_VOICE_TICKETS_MODE` | How the mock answers each write: `answer` (the default), `refuse`, `timeout` (no answer, nothing done) or `late` (done, the answer after 30 s), to hear how the agent handles each. |
 | `OLE5_VOICE_TICKETS_LOOKUP` | `false` makes the mock unable to find a write by its request ID, as the real system is thought to be; `true` unless set. |
 | `OLE5_VOICE_TICKETS_DIR` | Another folder for the mock's tickets. |
+
+## Tickets in a call
+
+With the knowledge base set, the agent can also open a ticket on the mock, add a note to a
+ticket it opened in the same call, pass a request for a person to the support team as a
+ticket, and say the status of the tickets it opened for you. It asks only what is wrong and
+how urgent it is, reads the ticket back, and asks «تبيني أرسلها؟» or "Shall I send it?". It is
+sent only on a clear yes after the whole read-back: say «نعم أرسلها» or "yes, send it" over the
+question, or a plain yes once it has ended; a plain yes over the question is asked again, and a
+stop word over the read-back stops it with nothing sent. Once the ticket is made it says the
+whole number, in four groups of four digits; a status says only the last four. Asking for a
+person makes a ticket for the support team with what both of you said in the call; nobody joins
+the call.

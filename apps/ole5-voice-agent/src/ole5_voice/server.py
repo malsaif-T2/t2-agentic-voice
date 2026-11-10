@@ -5,7 +5,8 @@ read-only page (tickets/page.py, plan 007) and the library's router mounted unde
 
 `uv run --offline python -m ole5_voice.server --env-file .env` serves it on 127.0.0.1:7861, its
 settings from the environment and the file given (settings.py). Its agent (agent.py) is Ole5's
-talker, searching Ole5's knowledge base (knowledge_base.py), when the knowledge base's access is
+talker, searching Ole5's knowledge base (knowledge_base.py) and acting on the mock ticket system
+(tickets/tools.py), when the knowledge base's access is
 set (`QDRANT_URL`, `QDRANT_LOGIN_EMAIL`, `QDRANT_LOGIN_PASSWORD`), and the echo when none of it
 is, which one log line says; the settings refuse it set only in part. The knowledge base's
 client signs in once the runtime has started, and is closed as the app's lifespan ends, after
@@ -162,9 +163,10 @@ def build_app(
 def make_app(settings: Settings) -> FastAPI:
     """The app as it serves Ole5's calls: the runtime's callers verified by the signed join
     tokens the token route mints, with the key `join.current_kid` names; its agent the talker,
-    searching the knowledge base, when the knowledge base's access is set, its client closed as
-    the app's lifespan ends, and else the echo; a log line says which; and the mock ticket
-    system, with its page (the module's docstring)."""
+    searching the knowledge base and acting on the mock ticket system, when the knowledge
+    base's access is set, its client closed as the app's lifespan ends, and else the echo; a
+    log line says which; and the mock ticket system's page, the same mock the talker's tickets
+    go to (the module's docstring)."""
     access = knowledge_access(settings.app)
     voice = settings.voice
     tokens = SignedJoinTokens.from_settings(voice.join, prefix=voice.prefix)
@@ -178,7 +180,7 @@ def make_app(settings: Settings) -> FastAPI:
         runtime = VoiceRuntime(ECHO_AGENT, settings=voice, identity=tokens)
         return build_app(settings, router=runtime.router(), minter=tokens, tickets=tickets)
     kb = QdrantKnowledgeBase(access)
-    runtime = VoiceRuntime(talker_agent(kb), settings=voice, identity=tokens)
+    runtime = VoiceRuntime(talker_agent(kb, tickets=tickets), settings=voice, identity=tokens)
     log.info("knowledge_base_set", agent="talker")
     return build_app(
         settings,
