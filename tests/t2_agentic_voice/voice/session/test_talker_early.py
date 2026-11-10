@@ -104,6 +104,40 @@ def test_the_talker_starts_at_complete_and_nothing_plays_before_the_hold_ends(
     assert io.commands.commands.index(first) > 0 and closed.at >= 101.0
 
 
+def test_a_turn_that_takes_its_held_transcript_is_timed_by_that_request(
+    settings: VoiceSettings,
+) -> None:
+    """Whisper's time is the held request's, from the detector's stop to its transcript, when
+    the turn's own transcript reuses it with no request (D-083)."""
+    io, _, _ = talker_call(two_step(settings))
+    stop_ms = settings.turns.vad_stop_ms
+
+    async def drive() -> None:
+        await greeted(io)
+        await io.turn_opened(0)
+        await io.clock.advance(1.0)
+        stopped = io.clock.now()
+        await io.clock.advance(0.25)
+        await io.turn_held(0)
+        await io.transcribing(0, part="held")
+        await io.clock.advance(0.3)
+        await io.transcribed(0, FIRST, language="en", part="held")
+        await settle()
+        await io.clock.advance(0.3)
+        await io.turn_closed(0, speech_ended_at=stopped)
+        await io.transcribed(0, FIRST, language="en")  # the held one again, no request
+        await settle()
+        await play(io, 1)
+        await io.ending()
+        await io.close()
+
+    asyncio.run(drive())
+    times = report(io).turns[0].times
+    assert times.stt_ms == pytest.approx(550)
+    assert times.turn_complete_ms == pytest.approx(250 + stop_ms)
+    assert times.end_of_turn_ms == pytest.approx(850 + stop_ms)
+
+
 def test_speech_resumed_in_the_hold_cancels_the_early_work_and_joins_the_turn(
     settings: VoiceSettings,
 ) -> None:

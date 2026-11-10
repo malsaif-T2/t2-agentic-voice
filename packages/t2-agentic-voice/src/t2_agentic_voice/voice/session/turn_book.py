@@ -40,9 +40,11 @@ from t2_agentic_voice.voice.session.playback import Playback, Reply
 from t2_agentic_voice.voice.session.report import TurnLog
 from t2_agentic_voice.voice.session.session_events import (
     AgentAudio,
+    HoldResumed,
     Transcribed,
     Transcribing,
     TurnClosed,
+    TurnHeld,
     TurnOpened,
 )
 
@@ -99,7 +101,18 @@ class TurnBook:
     def closed(self, event: TurnClosed) -> None:
         turn = self.turn(event.turn_id)
         turn.closed, turn.speech_ended_at = True, event.speech_ended_at
+        turn.closed_at = event.at
         self.settle(turn)
+
+    def hold(self, event: TurnHeld | HoldResumed) -> bool:
+        """Smart Turn called the turn complete and its hold began (`TurnHeld`: True), its time
+        kept; or the caller spoke again within it (`HoldResumed`: False), and that time, and the
+        held request's transcript, no longer hold."""
+        held, turn = isinstance(event, TurnHeld), self.turn(event.turn_id)
+        turn.complete_at = event.at if held else None
+        if not held:
+            turn.held_heard_at = None
+        return held
 
     def transcribing(self, event: Transcribing) -> None:
         """A request of the turn went: counted; for its own transcript (the `turn` part), its
@@ -145,6 +158,8 @@ class TurnBook:
         self._usage.transcribed(event)
         if event.failure is not None:
             self._events.failed(event.failure, event.retryable, event.turn_id)
+        else:
+            self.turn(event.turn_id).held_heard_at = event.at
         speech_at = self.turn(event.turn_id).speech_at
         return self._unless_silence(heard_words(event, speech_at=speech_at), event)
 
@@ -252,7 +267,7 @@ class TurnBook:
         turn.done = True
         self._end_trace(turn)
         if not turn.dropped:
-            self._events.metrics(turn)
+            self._events.metrics(turn, self._usage.report())
 
     @property
     def all_closed(self) -> bool:

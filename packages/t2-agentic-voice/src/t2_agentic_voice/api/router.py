@@ -6,6 +6,7 @@ dev and the dev page on, to loopback clients.
 Every route answers 503 `not_started` while the runtime's lifespan has not run, or has ended,
 in the one error shape; every refusal and crash of a route is answered in it too
 (api/http_errors.py). No route declares a body parameter: each reads and parses its own body.
+With the dev page come the test console's routes, under `/dev/` (api/dev_console.py).
 `/join` mints no TURN credentials (plan 003, the owner's ruling of 2026-11-03; TD-048): it
 answers `server.ice_servers` as they are set. The browser's files, `t2v-client.js` and
 `dev.html`, are read from `STATIC` when first asked for, off the event loop, and kept.
@@ -24,6 +25,7 @@ from typing import Final, Literal
 from fastapi import APIRouter, HTTPException, Request, Response
 from pydantic import BaseModel, ConfigDict, SecretStr, ValidationError
 
+from t2_agentic_voice.api.dev_console import DevFeed, mount_console
 from t2_agentic_voice.api.http_errors import Refusal, answering, read_body
 from t2_agentic_voice.api.offers import CallRecord, CallRecords
 from t2_agentic_voice.api.protocol import (
@@ -84,7 +86,7 @@ class Running:
 class Served:
     """What the router serves: the agent with its settings and identity source, the records of
     its calls, the runtime's clock, what it runs (None until started), where the browser's files
-    are, and whether `/dev` is mounted."""
+    are, whether `/dev` is mounted, and the test console's feed (mounted with `/dev`)."""
 
     agent: VoiceAgent
     settings: VoiceSettings
@@ -94,6 +96,7 @@ class Served:
     running: Callable[[], Running | None]
     static: Path = STATIC
     dev_page: bool = False
+    feed: DevFeed | None = None
     _files: dict[str, bytes] = field(default_factory=dict)
 
 
@@ -137,6 +140,15 @@ def build_router(
         router.add_api_route(
             "/dev", answering("GET /dev", routes.dev), methods=["GET"], include_in_schema=False
         )
+        if served.feed is not None:
+            mount_console(
+                router,
+                agent=served.agent,
+                settings=served.settings,
+                feed=served.feed,
+                running=served.running,
+                read=routes._file,
+            )
     return router
 
 

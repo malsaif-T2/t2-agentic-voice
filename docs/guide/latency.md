@@ -15,7 +15,9 @@ Each turn's times, in milliseconds, each empty when its step did not happen:
 | `ttfa_ms`, the time to first audio | the end of the caller's speech | the first audible frame of the reply the backend sends |
 | `played_ms` | the end of the caller's speech | the reply's playback in the browser, from the client's `playback` report |
 | `progress_ms` | the end of the caller's speech | the first audible frame of a progress line, timed apart from the answer |
-| `stt_ms` | the speech detector's stop | the turn's transcript |
+| `stt_ms` | the speech detector's stop | the turn's transcript: its own request's, or, in a call with a talker, the early start's request it took as its own |
+| `end_of_turn_ms` | the end of the caller's speech | the turn's end, as the turn analyzer closed it: the stop delay, Smart Turn's judgement and the hold after it |
+| `turn_complete_ms` | the end of the caller's speech | Smart Turn's "complete", where the hold began (in a call with a talker, for a turn said while the agent was silent) |
 | `llm_first_token_ms` | the end of the caller's speech | the chat model's first token, the talker's first request |
 | `tts_first_audio_ms` | a text-to-speech request | its first audio |
 
@@ -28,8 +30,10 @@ Each turn's times, in milliseconds, each empty when its step did not happen:
 - **A progress line is not the answer.** "I'm checking that for you" tells the caller the agent
   is at work, so it is timed apart (`progress_ms`), and `ttfa_ms` waits for the answer itself.
 
-Each turn's times reach a runtime's observers as `TurnMetrics` (the `events` facade), and the
-call's `CallReport` (on `CallEnded`) holds them for every turn. The report's numbers, with no
+Each turn's times reach a runtime's observers as `TurnMetrics` (the `events` facade), with each
+model's usage in the call so far, and the call's `CallReport` (on `CallEnded`) holds them for
+every turn; the test console shows them turn by turn, as bars
+([browser-client.md](browser-client.md), "The test console"). The report's numbers, with no
 text of the call, are also written to a file per call under the data folder's `reports/`.
 
 ## Where the time goes in a turn

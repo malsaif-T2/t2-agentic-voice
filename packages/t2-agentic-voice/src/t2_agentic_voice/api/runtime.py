@@ -42,7 +42,8 @@ plan's interfaces".
   built: the environment and the live calls), `GET /ready` and `GET /client/1/t2v-client.js`.
   `GET /dev` is no `t2v/1` route: it is mounted only with `env` dev and the dev page on
   (`server.dev_page`, or `t2v dev`), and a client that is not loopback, or any `env` but dev,
-  checked before the client's address is read, gets the server's plain 404. `/join` reads the
+  checked before the client's address is read, gets the server's plain 404; the test console
+  comes with it, its feed an observer of every event (api/dev_console.py). `/join` reads the
   client's protocol version first, verifies the token once, refuses a `SignedConsent` whose
   version is not `privacy.consent_version` when that is set (a plain `Consent`, as `DevIdentity`
   gives, is not compared: D-029), fixes the call's language
@@ -101,6 +102,7 @@ from fastapi import APIRouter
 from t2_agentic_voice.actions.action_runner import ActionRunner
 from t2_agentic_voice.api import router as routing
 from t2_agentic_voice.api.actions import open_actions
+from t2_agentic_voice.api.dev_console import DevFeed
 from t2_agentic_voice.api.lockfile import LockFile
 from t2_agentic_voice.api.offers import FORGOTTEN_KEPT_S, CallRecords
 from t2_agentic_voice.api.providers import Providers, talkers
@@ -214,6 +216,10 @@ class VoiceRuntime:
 
             log.warning("dev_identity", fix="pass identity= to serve real callers")
             identity = DevIdentity()
+        dev_page = env == "dev" and (dev or self._settings.server.dev_page)
+        feed = DevFeed.of(self._settings) if dev_page else None
+        if feed is not None:
+            self.on(Event)(feed.observe)
         served = routing.Served(
             agent=self._agent,
             settings=self._settings,
@@ -222,7 +228,8 @@ class VoiceRuntime:
             clock=self._clock,
             running=lambda: self._running,
             static=routing.STATIC,
-            dev_page=env == "dev" and (dev or self._settings.server.dev_page),
+            dev_page=dev_page,
+            feed=feed,
         )
         return routing.build_router(served, lifespan=self.lifespan)
 

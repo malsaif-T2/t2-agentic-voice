@@ -89,6 +89,7 @@ class TalkPlayer:
     ) -> None:
         self._setup, self._usage, self._turns, self._trace = setup, usage, turns, trace
         self._confirming = confirming
+        self._arguments: dict[str, str] = {}  # each tool call's under way, for its end's event
 
     async def tell(self, talk: Talk, reply: OpenReply, at: float) -> None:
         """The caller told the reply failed, once a reply, in its language (its last clause's,
@@ -118,8 +119,14 @@ class TalkPlayer:
                 await reply.card(card)
             case ToolBegan(call_id=tool_call, tool=tool, arguments=arguments):
                 self._trace.tool_began(turn_id, tool_call, tool=tool, arguments=arguments)
+                self._arguments[tool_call] = arguments
                 started = ToolStarted(
-                    call_id=call_id, turn_id=turn_id, at=wall, tool=tool, tool_call_id=tool_call
+                    call_id=call_id,
+                    turn_id=turn_id,
+                    at=wall,
+                    tool=tool,
+                    tool_call_id=tool_call,
+                    arguments=arguments,
                 )
                 emit(started)
             case ToolEnded(
@@ -132,8 +139,11 @@ class TalkPlayer:
                     at=wall,
                     tool=tool,
                     tool_call_id=tool_call,
+                    arguments=self._arguments.pop(tool_call, ""),
                     ok=ok,
                     ms=ms,
+                    result=result,
+                    failure=failure,
                 )
                 emit(finished)
             case ProgressDue(key=key, language=tag):

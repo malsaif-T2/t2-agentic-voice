@@ -76,6 +76,8 @@ def test_a_read_back_says_its_summary_then_its_question_and_the_call_is_confirmi
         assert states(io)[-1] == "speaking"
         (began,) = emitted(io, ConfirmationRequested)  # its first audio
         assert (began.turn_id, began.action) == (0, ACTION)
+        read_back = session._confirming.read_back
+        assert read_back is not None and began.draft == read_back.plan.draft_json != ""
         await io.clause_played(1, 0, audio_s=2.0)
         await clause(io, 1)
         await settle()

@@ -84,8 +84,10 @@ def test_a_write_has_its_outbox_row_before_it_is_sent_and_is_recorded_once_done(
             at=rig.clock.wall(),
             action="open_request",
             request_id=outcome.request_id,
+            result=entry.result_json,
         )
     ]
+    assert outcome.result_json == entry.result_json and ISSUED in outcome.result_json
 
 
 def test_the_write_is_told_its_request_id_the_heard_consent_and_the_conversation() -> None:

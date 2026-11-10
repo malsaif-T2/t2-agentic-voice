@@ -124,6 +124,10 @@ def test_a_turn_is_answered_by_the_talker_clause_by_clause_from_the_heard_histor
     assert record.times.llm_first_token_ms is not None
 
 
+ARGUMENTS = '{"query": "where is my ticket"}'
+RESULT = '{"passages": []}'
+
+
 def test_a_reply_stays_open_while_its_talker_works_and_ends_once_it_is_done(
     settings: VoiceSettings,
 ) -> None:
@@ -134,9 +138,9 @@ def test_a_reply_stays_open_while_its_talker_works_and_ends_once_it_is_done(
     def script(turn: TalkerTurn) -> list[Step]:
         return [
             SpokenClause(text="Let me check.", language="en"),
-            ToolBegan(call_id="t-1", tool="search_help"),
+            ToolBegan(call_id="t-1", tool="search_help", arguments=ARGUMENTS),
             Work(2.0),
-            ToolEnded(call_id="t-1", tool="search_help", ok=True, ms=2000.0),
+            ToolEnded(call_id="t-1", tool="search_help", ok=True, ms=2000.0, result=RESULT),
             SpokenClause(text="Found it.", language="en"),
             ReplyDone(),
         ]
@@ -171,6 +175,8 @@ def test_a_reply_stays_open_while_its_talker_works_and_ends_once_it_is_done(
     started, finished = [e for e in io.emitted if isinstance(e, ToolStarted | ToolFinished)]
     assert (started.turn_id, started.tool, started.tool_call_id) == (0, "search_help", "t-1")
     assert isinstance(finished, ToolFinished) and (finished.ok, finished.ms) == (True, 2000.0)
+    assert started.arguments == ARGUMENTS == finished.arguments  # what the model wrote
+    assert (finished.result, finished.failure) == (RESULT, None)  # what it gave the model back
     assert talker.cancelled == []
 
 
