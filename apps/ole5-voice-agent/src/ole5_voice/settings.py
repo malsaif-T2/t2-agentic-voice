@@ -8,6 +8,17 @@ The app's own, for its server (server.py) and its token route (token_route.py):
 - `OLE5_VOICE_WEBSITE_ORIGIN`: the website allowed to frame the widget's page
   (`frame-ancestors`), an origin as a browser sends it; unset, no page may frame it.
 
+And for its mock ticket system (plan 007, tickets/):
+- `OLE5_VOICE_DEMO_CUSTOMER_EMAIL`: the customer every join token names (Q3), whose tickets a
+  call makes and reads (customer.py), `DEMO_CUSTOMER_EMAIL` unless set; nothing said in a call
+  changes it;
+- `OLE5_VOICE_TICKETS_MODE`: how the mock answers each write, `answer` unless set, or
+  `refuse`, `timeout` or `late` for a demo of each (tickets/mock.py);
+- `OLE5_VOICE_TICKETS_LOOKUP`: whether the mock finds a write by its request ID, true unless
+  set, false to behave as the real system is thought to;
+- `OLE5_VOICE_TICKETS_DIR`: the folder its tickets are kept in, unless set the app's own under
+  the library's `storage.var_dir` (`tickets_folder`).
+
 And for its knowledge base (plan 006, Q4), which the talker searches through T2's embedding
 service and T2's Qdrant behind T2's sign-in gateway. That service is T2's, shared by every team,
 so its settings are read under the general names the owner set, with no prefix (the owner, on
@@ -37,8 +48,16 @@ from pydantic import Field, SecretStr, ValidationError, field_validator
 from pydantic_settings import BaseSettings, SettingsConfigDict
 from t2_agentic_voice import ConfigurationError, ServerSettings, VoiceSettings
 
+from ole5_voice.tickets.mock import Mode
+
 # The app's prefix (the design's 7.3): one the library's settings never use.
 PREFIX: Final = "OLE5_VOICE_"
+# The demo customer every join token names unless the owner sets another (plan 007's Q3): the
+# prototype's Ole5 test customer (Ole5-chatbot/sheets/customers.xlsx).
+DEMO_CUSTOMER_EMAIL: Final = "ole5.test@example.com"
+# The app's own folder under the library's `storage.var_dir`, and its tickets' folder in it.
+APP_FOLDER: Final = "ole5"
+TICKETS_FOLDER: Final = "tickets"
 # The fewest characters an access code holds (Q4), and the command that makes one of 32.
 MIN_ACCESS_CODE_CHARS: Final = 16
 GENERATOR: Final = 'python -c "import secrets; print(secrets.token_urlsafe(24))"'
@@ -106,12 +125,7 @@ class KnowledgeSettings(BaseSettings):
     @field_validator("qdrant_login_email")
     @classmethod
     def _an_email(cls, value: str | None) -> str | None:
-        if value is None:
-            return None
-        name, at, host = value.strip().rpartition("@")
-        if not (name and at and "." in host) or any(c.isspace() for c in value.strip()):
-            raise ValueError("is not an email address: a name, an @ and a host")
-        return value.strip()
+        return None if value is None else _email(value)
 
     @field_validator("qdrant_url", "qdrant_login_url", "embedding_url")
     @classmethod
@@ -146,6 +160,37 @@ class AppSettings(KnowledgeSettings):
             "(https://www.example.com). Unset: no page may frame it."
         ),
     )
+    demo_customer_email: str = Field(
+        default=DEMO_CUSTOMER_EMAIL,
+        max_length=254,
+        description=(
+            "The customer every join token names, whose tickets a call makes and reads. "
+            "Nothing said in a call changes it."
+        ),
+    )
+    tickets_mode: Mode = Field(
+        default="answer",
+        description=(
+            "How the mock ticket system answers each write: answer, refuse, timeout (no reply, "
+            "nothing done) or late (done, the reply late)."
+        ),
+    )
+    tickets_lookup: bool = Field(
+        default=True,
+        description="Whether the mock ticket system finds a write by its request ID.",
+    )
+    tickets_dir: Path | None = Field(
+        default=None,
+        description=(
+            "The folder the mock ticket system keeps its tickets in. Unset: ole5/tickets under "
+            "the library's storage.var_dir."
+        ),
+    )
+
+    @field_validator("demo_customer_email")
+    @classmethod
+    def _a_customer(cls, value: str) -> str:
+        return _email(value)
 
     @field_validator("access_code")
     @classmethod
@@ -265,6 +310,22 @@ def load_knowledge(env_file: Path | None = None) -> KnowledgeAccess:
             details={"settings": list(ACCESS)},
         )
     return access
+
+
+def tickets_folder(settings: Settings) -> Path:
+    """The folder the mock ticket system keeps its tickets in: `OLE5_VOICE_TICKETS_DIR`, or the
+    app's own under the library's `storage.var_dir`."""
+    given = settings.app.tickets_dir
+    return given or settings.voice.storage.var_dir / APP_FOLDER / TICKETS_FOLDER
+
+
+def _email(value: str) -> str:
+    """`value`, stripped, when it is an email address: a name, an @ and a host with a dot, and
+    no space; the error never repeats it."""
+    name, at, host = value.strip().rpartition("@")
+    if not (name and at and "." in host) or any(c.isspace() for c in value.strip()):
+        raise ValueError("is not an email address: a name, an @ and a host")
+    return value.strip()
 
 
 def _cannot_load(error: ValidationError) -> ConfigurationError:

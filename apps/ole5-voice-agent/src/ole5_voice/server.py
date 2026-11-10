@@ -1,6 +1,7 @@
 """The Ole5 app's server (plan 003): one FastAPI app that serves Ole5's widget
-(apps/ole5-voice-agent/web/), the app's token route (token_route.py) and the library's router
-mounted under `VOICE_PREFIX` (the design's 4.5, "The mount"), run by uvicorn with one worker.
+(apps/ole5-voice-agent/web/), the app's token route (token_route.py), the mock ticket system's
+read-only page (tickets/page.py, plan 007) and the library's router mounted under
+`VOICE_PREFIX` (the design's 4.5, "The mount"), run by uvicorn with one worker.
 
 `uv run --offline python -m ole5_voice.server --env-file .env` serves it on 127.0.0.1:7861, its
 settings from the environment and the file given (settings.py). Its agent (agent.py) is Ole5's
@@ -8,7 +9,10 @@ talker, searching Ole5's knowledge base (knowledge_base.py), when the knowledge 
 set (`QDRANT_URL`, `QDRANT_LOGIN_EMAIL`, `QDRANT_LOGIN_PASSWORD`), and the echo when none of it
 is, which one log line says; the settings refuse it set only in part. The knowledge base's
 client signs in once the runtime has started, and is closed as the app's lifespan ends, after
-the runtime's. The app is built as the mount
+the runtime's. The mock ticket system is kept in the folder the settings give
+(`tickets_folder`), answering as `OLE5_VOICE_TICKETS_MODE` says; every join token the token
+route mints names the settings' demo customer (`OLE5_VOICE_DEMO_CUSTOMER_EMAIL`, customer.py).
+The app is built as the mount
 asks, since there the library's router cannot reach the app's object:
 - FastAPI's own telemetry off (`TELEMETRY_OFF`): by default FastAPI traces, measures and logs
   every request through OpenTelemetry's global providers, and the library instruments no other
@@ -52,7 +56,9 @@ from t2_agentic_voice.identity import SignedJoinTokens
 from ole5_voice import LOGGERS
 from ole5_voice.agent import ECHO_AGENT, talker_agent
 from ole5_voice.knowledge_base import QdrantKnowledgeBase
-from ole5_voice.settings import ACCESS, Settings, knowledge_access, load
+from ole5_voice.settings import ACCESS, Settings, knowledge_access, load, tickets_folder
+from ole5_voice.tickets.mock import MockTicketSystem
+from ole5_voice.tickets.page import STYLE, tickets_router
 from ole5_voice.token_route import Guard, Minter, token_router
 
 HOST: Final = "127.0.0.1"
@@ -75,6 +81,7 @@ FILES: Final = {
     "/": ("index.html", "text/html; charset=utf-8"),
     "/widget.js": ("widget.js", "text/javascript; charset=utf-8"),
     "/widget.css": ("widget.css", "text/css; charset=utf-8"),
+    f"/{STYLE}": (STYLE, "text/css; charset=utf-8"),
 }
 
 # An app's lifespan, as FastAPI keeps it on its router: the app in, a context out.
@@ -120,13 +127,14 @@ def build_app(
     minter: Minter,
     clock: Callable[[], float] = time.monotonic,
     web: Path = WEB,
+    tickets: MockTicketSystem | None = None,
     closing: Sequence[Closable] = (),
     warming: Sequence[Callable[[], Awaitable[None]]] = (),
 ) -> FastAPI:
     """The app: the widget's files from `web`, the token route minting with `minter` (its
-    guard on `clock`), and the library's `router` under VOICE_PREFIX; each of `warming` awaited
-    once the router has started, and each of `closing` closed as the app's lifespan ends, after
-    the router's."""
+    guard on `clock`) for the settings' demo customer, the page of `tickets` when given, and
+    the library's `router` under VOICE_PREFIX; each of `warming` awaited once the router has
+    started, and each of `closing` closed as the app's lifespan ends, after the router's."""
     app = FastAPI(telemetry=TELEMETRY_OFF, openapi_url=None)
     app.add_middleware(
         CORSMiddleware,
@@ -134,7 +142,13 @@ def build_app(
         allow_methods=["POST", "PATCH"],
         allow_headers=["content-type", OFFER_SECRET_HEADER],
     )
-    app.include_router(token_router(settings.app.access_code, minter, guard=Guard(clock=clock)))
+    customer = settings.app.demo_customer_email
+    guard = Guard(clock=clock)
+    app.include_router(
+        token_router(settings.app.access_code, minter, customer_email=customer, guard=guard)
+    )
+    if tickets is not None:
+        app.include_router(tickets_router(tickets, headers=page_headers(None)))
     app.include_router(router, prefix=VOICE_PREFIX)
     if closing or warming:  # the router's lifespan, merged into the app's as included, runs inside
         app.router.lifespan_context = _around(app.router.lifespan_context, closing, warming)
@@ -149,20 +163,30 @@ def make_app(settings: Settings) -> FastAPI:
     """The app as it serves Ole5's calls: the runtime's callers verified by the signed join
     tokens the token route mints, with the key `join.current_kid` names; its agent the talker,
     searching the knowledge base, when the knowledge base's access is set, its client closed as
-    the app's lifespan ends, and else the echo; a log line says which (the module's
-    docstring)."""
+    the app's lifespan ends, and else the echo; a log line says which; and the mock ticket
+    system, with its page (the module's docstring)."""
     access = knowledge_access(settings.app)
     voice = settings.voice
     tokens = SignedJoinTokens.from_settings(voice.join, prefix=voice.prefix)
+    tickets = MockTicketSystem(
+        tickets_folder(settings),
+        mode=settings.app.tickets_mode,
+        lookup=settings.app.tickets_lookup,
+    )
     if access is None:
         log.info("knowledge_base_not_set", agent="echo", fix=f"set {', '.join(ACCESS)}")
         runtime = VoiceRuntime(ECHO_AGENT, settings=voice, identity=tokens)
-        return build_app(settings, router=runtime.router(), minter=tokens)
+        return build_app(settings, router=runtime.router(), minter=tokens, tickets=tickets)
     kb = QdrantKnowledgeBase(access)
     runtime = VoiceRuntime(talker_agent(kb), settings=voice, identity=tokens)
     log.info("knowledge_base_set", agent="talker")
     return build_app(
-        settings, router=runtime.router(), minter=tokens, closing=(kb,), warming=(kb.warm_up,)
+        settings,
+        router=runtime.router(),
+        minter=tokens,
+        tickets=tickets,
+        closing=(kb,),
+        warming=(kb.warm_up,),
     )
 
 

@@ -2,6 +2,9 @@
 caller who types the owner's access code, carrying the recording choice of the widget's box
 (D-076). The widget joins with it (`t2v/1`'s `/join`), so a call's consent comes from
 its signed token alone, and no later message can change it (docs/SECURITY.md, invariant 8).
+Every token names the owner (`SUBJECT`) as the one demo customer the settings give (plan 007's
+Q3): their email is its caller's `customer_email` attribute (customer.py), which neither the
+request nor anything said in the call can set (invariant 3).
 
 The body is JSON alone (415 otherwise, before a byte is read), at most `MAX_BODY_BYTES` (413),
 parsed strictly: `{"code": "<access code>", "consent": {"version": ..., "record_audio": ...}}`.
@@ -34,6 +37,8 @@ from fastapi import APIRouter, Request
 from fastapi.responses import JSONResponse
 from pydantic import BaseModel, ConfigDict, Field, SecretStr, ValidationError
 from t2_agentic_voice import Caller, Consent, get_logger
+
+from ole5_voice.customer import CUSTOMER_EMAIL
 
 # The caller every token names: the owner, the only one who holds the code.
 SUBJECT: Final = "owner"
@@ -148,13 +153,19 @@ class Guard:
 
 
 def token_router(
-    access_code: SecretStr, minter: Minter, *, guard: Guard | None = None
+    access_code: SecretStr,
+    minter: Minter,
+    *,
+    customer_email: str,
+    guard: Guard | None = None,
 ) -> APIRouter:
     """The router with `POST /token`, which mints with `minter` for a caller who gives
-    `access_code`, guarded by `guard` (a new one unless given)."""
+    `access_code`, each token naming the customer `customer_email`, guarded by `guard` (a new
+    one unless given)."""
     router = APIRouter()
     expected = access_code.get_secret_value().encode()
     held = Guard() if guard is None else guard
+    caller = Caller(subject=SUBJECT, attributes={CUSTOMER_EMAIL: customer_email})
 
     @router.post("/token")
     async def token(request: Request) -> JSONResponse:
@@ -177,7 +188,7 @@ def token_router(
         late = held.before_mint()
         if late is not None:
             return _refused(*late)
-        minted = minter.mint(Caller(subject=SUBJECT), consent=asked.consent)
+        minted = minter.mint(caller, consent=asked.consent)
         held.minted()
         log.info("token_minted", record_audio=asked.consent.record_audio)
         return JSONResponse({"token": minted}, headers={"Cache-Control": "no-store"})

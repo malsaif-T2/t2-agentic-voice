@@ -3,9 +3,10 @@
 It uses only the library's public API, as a teammate's app would (ARCH-PUBLIC). It holds its
 server (`server.py`, with the token route and the widget's files), its settings, Ole5's agents
 (`agent.py`: the talker, with Ole5's instructions and its search of the knowledge base, and the
-echo), its knowledge base adapter (`knowledge_base.py`, `passages.py`) and `evals/`, the
-commands that measure the library on Ole5's own speech and questions. The ticket system is
-still to come.
+echo), its knowledge base adapter (`knowledge_base.py`, `passages.py`), its tickets
+(`tickets/`: the interface a ticket system is reached through, the mock the demo runs on and
+its page; `customer.py`, whose tickets a call sees) and `evals/`, the commands that measure the
+library on Ole5's own speech and questions.
 """
 
 # The app's loggers, which each command sends to its output with the library's

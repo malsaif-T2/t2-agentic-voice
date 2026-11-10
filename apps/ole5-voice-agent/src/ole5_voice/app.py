@@ -1,7 +1,7 @@
 """The Ole5 app's composition: what it builds from the library.
 
-It reports the library's status; the call, the talker and the knowledge base are composed by
-the server (server.py), and the ticket system will be.
+It reports the library's status; the call, the talker, the knowledge base and the mock ticket
+system are composed by the server (server.py).
 """
 
 from __future__ import annotations
