@@ -61,7 +61,8 @@ HANDOFFS_PER_CALL: Final = 1
 
 CREATE_DESCRIPTION: Final = (
     "Open a support ticket for the caller's Ole5 problem, only when the caller wants one. "
-    "First learn what is wrong, and how urgent it is if they say so; ask for nothing else. "
+    "First learn what is wrong and how urgent it is, asking in one short question for "
+    "whichever the caller has not said; ask for nothing else. "
     "Write the summary yourself and pick the type that fits. The caller hears the ticket read "
     "back and is asked to confirm it; say nothing yourself after calling this."
 )

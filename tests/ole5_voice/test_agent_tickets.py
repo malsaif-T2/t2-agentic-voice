@@ -59,14 +59,16 @@ def test_the_talker_with_no_search_is_given_no_ticket_system(tmp_path: Path) -> 
 
 @pytest.mark.parametrize("tag", ["ar-SA", "en"])
 def test_the_tickets_section_says_what_plan_007_asks(tag: Tag) -> None:
-    """Q5: only what is wrong, and how urgent; the summary and the type the model's. D-009 and
+    """Q5: only what is wrong and how urgent, in one question at most; the summary and the
+    type the model's, the priority Medium unless the caller says how urgent. D-009 and
     D-018: a person asked for is a handoff ticket, no transfer and no call back promised.
     Invariant 2: no ticket and no number but from a tool's result or the system's words;
     nothing said after an action's call. Q4 and Q6: the caller's own tickets, by their last
     four digits, a number they say said back first. D-075: all in one reply, no screen."""
     text = " ".join(instructions()[tag].split())
     for needed in (
-        "ask only what is wrong and, if the caller has not said, how urgent it is",
+        "learn only what is wrong and how urgent it is, asking in one short question for "
+        "whichever the caller has not said",
         "never ask for anything else",
         "Write the summary yourself",
         "pick the type",
