@@ -2,8 +2,8 @@
 scripted calls in which the agent acts, one TOML file each under `evals/actions/`, named by its
 ID, in Saudi Arabic, MSA and English, each split into dev or held-out before any run. They
 extend run S's scenarios (scenarios.py) with what an action needs; a scenario is played as one
-call through `TextCall`, against the mock ticket system (ole5_voice/tickets/mock.py), once the
-library's actions are built.
+call through `TextCall`, against the mock ticket system (ole5_voice/tickets/mock.py), by run A
+(`poe eval-actions`, action_run.py).
 
 **A scenario** has its ID, its `kind` (one of the registered 15, `KINDS`), its `split`, whether
 it is one of the rehearsal's steps (`rehearsal`: step 6, a yes with a send word over the
@@ -45,7 +45,8 @@ from pydantic import Field
 from ole5_voice.evals.items import GoldenSetError, read_toml
 from ole5_voice.evals.knowledge_set import Text
 from ole5_voice.evals.models import Model, Name
-from ole5_voice.evals.talker_data import Tag
+from ole5_voice.evals.scenarios import ScriptTurn
+from ole5_voice.evals.talker_data import Register, Tag
 from ole5_voice.tickets.mock import Mode
 from ole5_voice.tickets.system import NUMBER_PATTERN
 from ole5_voice.tickets.values import Status, TicketType
@@ -127,6 +128,11 @@ class ActionTurn(Model):
     language: Tag | None = None
     says_number: SaysNumber | None = None
     facts: tuple[Text, ...] = ()
+
+    def held_registers(self) -> frozenset[Register]:
+        """The registers its reply is right in when held to Arabic, as a turn of run S's is
+        (scenarios.py's `ScriptTurn.held_registers`); none when it is not."""
+        return ScriptTurn(says=self.says, language=self.language).held_registers()
 
 
 class ActionScenario(Model):
@@ -274,6 +280,11 @@ def _turn_problems(turn: ActionTurn, previous: ActionTurn | None) -> list[str]:
         found.append("cuts a reply only when said over it (when = agent_speaking)")
     if turn.when in ("read_back", "closing_question") and not confirming:
         found.append("is said over a read-back, but none is playing")
+    over = ("read_back", "closing_question")
+    # Asked again once the read-back ended: only the ask-again line plays, which is no read-back.
+    asked = previous is not None and previous.outcome == "asked_again" and previous.when not in over
+    if turn.when in over and asked:
+        found.append("is said over a read-back, but only the ask-again line plays")
     if turn.outcome in ENDED | {"ignored", "asked_again", "declined"} and not confirming:
         found.append(f"reaches {turn.outcome}, but nothing is being confirmed")
     if turn.outcome in ("read_back", "read_again") and turn.calls not in (*ACTIONS, None):

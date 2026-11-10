@@ -298,6 +298,7 @@ class Turn:
         splitter = ClauseStream(max_chars=None, whole_sentences=whole_sentences)
         unnoted = Unnoted()
         acted = False  # rule C: an action was called, and what the model writes after is dropped
+        dropped = False  # whether it wrote any
         try:
             async with _closing(self.model.stream(request)) as stream:
                 async for event in stream:
@@ -311,6 +312,8 @@ class Turn:
                             yield said
                         if self.stopped:
                             return
+                    elif isinstance(event, TextDelta):
+                        dropped = dropped or bool(event.text.strip())
                     elif isinstance(event, ToolCallRequest):
                         if all(event.id != known.id for known in answer.calls):  # each id once
                             answer.calls.append(event)
@@ -335,7 +338,9 @@ class Turn:
             )
             raise
         if acted:  # rule C: what the splitter held goes too, unspoken
-            _log.info("talker_text_after_action_dropped", turn_id=self.turn.turn_id)
+            held = [*splitter.feed(unnoted.close()), *splitter.close()]
+            if dropped or any(text.strip() for text in held):
+                _log.info("talker_text_after_action_dropped", turn_id=self.turn.turn_id)
             return
         for said in self._said((*splitter.feed(unnoted.close()), *splitter.close())):
             yield said

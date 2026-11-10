@@ -141,11 +141,11 @@ def plans_of(watched: WatchedTalker | None) -> tuple[ReadBackPlan, ...]:
     return tuple(e.plan for t in talks for _, e in t.events if isinstance(e, ReadBackRequested))
 
 
-def arguments_of(request: ToolCallRequest) -> dict[str, JsonValue]:
-    """The arguments the model wrote for a tool call, parsed as JSON; empty when they are not a
-    JSON object."""
+def arguments_of(written: str) -> dict[str, JsonValue]:
+    """The arguments the model wrote for a tool or an action call (`written`, its JSON text),
+    parsed; empty when they are not a JSON object."""
     try:
-        parsed = json.loads(request.arguments) if request.arguments else {}
+        parsed = json.loads(written) if written else {}
     except ValueError:
         return {}
     return parsed if isinstance(parsed, dict) else {}
@@ -167,12 +167,14 @@ class RecordingRunner(ToolRunner):
 
     @property
     def evidence(self) -> tuple[str, ...]:
-        """Every text the tools' results gave as evidence, in the order they returned."""
+        """Every text the tools' results gave as evidence, in the order they returned: each
+        one's data as JSON, then its evidence texts, as the talker keeps them for the output
+        guard (agent/tool_calls.py's `Memory.took`)."""
         return tuple(
             text
             for _, result in self.calls.values()
             if result is not None
-            for text in result.evidence
+            for text in (json.dumps(result.data, ensure_ascii=False), *result.evidence)
         )
 
 

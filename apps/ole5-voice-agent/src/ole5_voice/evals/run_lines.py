@@ -16,6 +16,7 @@ from typing import Annotated, Literal, Self
 
 from pydantic import Discriminator, Field, Tag, model_validator
 
+from ole5_voice.evals.action_history import ActionLine
 from ole5_voice.evals.knowledge_depth_card import DepthLine
 from ole5_voice.evals.measure_lines import FirstAudioLine, UncertainLine
 from ole5_voice.evals.models import Commit, Model, Name, Sha256, Split
@@ -183,6 +184,7 @@ AnyLine = Annotated[
     | Annotated[ScenarioLine, Tag("scenarios")]
     | Annotated[UncertainLine, Tag("uncertain")]
     | Annotated[FirstAudioLine, Tag("first_audio")]
-    | Annotated[DepthLine, Tag("knowledge_depth")],
+    | Annotated[DepthLine, Tag("knowledge_depth")]
+    | Annotated[ActionLine, Tag("actions")],
     Discriminator(_kind),
 ]

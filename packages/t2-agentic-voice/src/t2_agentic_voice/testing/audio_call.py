@@ -156,7 +156,8 @@ class AudioCall:
                 self._phrases.lines[key] = await self._said(line, language.tag)
         actions = actions_of(self.agent or _AGENT)
         if actions:  # the part that acts, as the runtime gives it: one runner for every call
-            self.actions = ActionRunner(actions, outbox=self.outbox)
+            per_day = self.settings.limits.actions_per_caller_per_day
+            self.actions = ActionRunner(actions, outbox=self.outbox, per_caller_per_day=per_day)
         self._calls = VoiceCalls(
             agent=self.agent or _AGENT,
             settings=self.settings,

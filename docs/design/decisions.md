@@ -2540,3 +2540,81 @@ twice; DOC-REF: every `D-NNN` cited anywhere is a heading here), so keep its sha
 - **Evidence:** plan 007's Tracks section; `tests/t2_agentic_voice/core/test_seals.py`,
   `tests/t2_agentic_voice/actions/test_action.py`,
   `tests/t2_agentic_voice/domain/test_declaration_actions.py`.
+
+## D-081 · The yes rule refined, the guard split, one runner an agent, the session's routing, and the checks in text · 2026-11-10 · Accepted (the agent's, in plan 007's tracks and integration, within the plan the owner approved; the stop kind follows the owner's ruling of 2026-11-10)
+
+- **Context:** on D-080's base, plan 007's five tracks built the yes rule and the guard's rule A
+  (A), the action runner and the talker's side (B), the session's confirming state (C),
+  `TextCall` and the safety suite (D) and Ole5's tickets (E), each against fakes, and the
+  integration joined them. Each met choices the design's 6.4, 8.2, 8.3, 9.2 and 9.3 left open;
+  three tracks asked whether rule A should run for an agent with no actions; and the owner's stop
+  ruling (a stop over the read-back keeps the draft, the agent asking what to change) had no
+  decline kind of its own.
+- **Decision:**
+  - *The yes rule (A).* Words begun before the summary ended, or with no `speech_at`, count for
+    nothing, a no or a correction too. A send word with no yes word (the closing question holds
+    one, and its echo must confirm nothing), a yes with a question mark («نعم؟», pardon) and a
+    yes beside a no are asked again; a word on none of the lists makes a correction; a word on
+    two lists counts as no, then yes, then send, then filler. The words are the rule's own lists,
+    its no words and fillers starting from `domain/words.py`'s, which stays unchanged (D-080).
+  - *The flow (A).* A stop or pause word over the read-back (`stop`) and no clear answer after
+    the last ask-again (`unclear`) end it `declined`, as a no and a correction do; a repeat and
+    an ask-again keep it `confirming`, so only a yes to the new reading counts; `sending` takes
+    no stop.
+  - *The guard (A, B, E).* Rule B lives in `domain/guard_ids.py`, rule A in `domain/claims.py`;
+    rule A runs first, and a clause it passed with a claim skips rule B. A claiming clause's
+    numbers are read as rule B reads them, against the claimed action's evidence alone: its
+    completed results this call and the ok results of the tools whose `reports_on` names it.
+    Rule B's evidence gains the record's results. The default claim phrases are past-tense,
+    mostly first person, none only introducing a number. A `reports_on` tool's result is
+    evidence, so it echoes no argument the model chose. Rule C drops the text after an action
+    call in its own request; a read-back ends the reply; after a refused call the model may speak
+    again, under rules A and B.
+  - *Rule A's scope (the integration).* Rule A runs only for an agent that declares an action,
+    as every rule added for actions does (plan 007's baseline), and `TextCall.violations` runs
+    rules A and C and its yes-rule check on the same terms. The alternative, the default phrases
+    for every agent, was set aside so that no measured run of an agent with none moves (GP-18).
+  - *The runner (B, its review).* One `ActionRunner` an agent serves every call, each call's
+    record kept by its ID; Block 0's `record=` stays, for `TextCall`. The request ID is derived
+    from the confirmed action, so a job handed twice is written once. The caps count outbox rows,
+    never proposals. A write past its timeout runs on, its result discarded; a lookup or
+    `validate` past its own is cancelled. The model reads only that its call is being read back,
+    and one action is taken a request.
+  - *The session (C, the integration).* A turn is the yes rule's when its speech began once the
+    summary's last clause played; the receipt is built at that moment, and a turn with none is
+    asked again. Real words that stop the closing question keep the receipt, so a yes with a send
+    word said there counts. A stop or pause word over the read-back, or said whole while
+    confirming, declines it as `stopped`, a new `DeclineKind`, the talker told to ask what to
+    change and keep the draft; real words over the summary decline it as a `correction`; a
+    repeat says it again as a new reply. A turn heard as nothing changes nothing while
+    confirming. `sending` answers the yes turn, and the outcome is said once, at a turn boundary,
+    as a reply that answers no turn. The session is the only sender of `ActionCompleted` and
+    `ActionUnconfirmed`; the runtime's runner sends no event.
+  - *Testing (D, the integration).* `ActionSafetySuite` takes `make_agent()`,
+    `action_under_test()`, `sample_draft()`, `language` and `caller`, the session's caller its
+    calls run as (`TextCall`'s made-up one unless a subclass gives one). `TextCall` and
+    `AudioCall` build the runner as the runtime does (its caps from the settings), over a
+    `MemoryOutbox` unless given an `outbox`; `TextCall` marks typed words `typed`, which the yes
+    rule takes only under `env="test"`, and exempts the runtime's own lines from its checks, as
+    the guard does. Its checks read the evidence the guard reads (a tool result's data and
+    texts, what an action's call gave back, a record entry's result whole), and a summary played
+    whole stands though a stop cut its reply after it, as for the receipt.
+  - *Ole5 (E).* A mock ticket system is the only one any code here reaches (plan 007's Q2); it
+    never dedupes a request ID, so a double send shows as two tickets, and scopes every read and
+    note by the session's customer. A ticket's number is said whole in four groups of four, and in
+    status only by its last four digits.
+- **Consequences:** an agent with read tools alone can still say it made a ticket, unblocked by
+  rule A. A lexical rule asks a real yes again rather than take a doubtful one. Two parts are
+  written but unread at run time, the flow's `advance` and the guard's `check_clause`. A ticket
+  number said with no claim phrase is not rule A's (the design's 8.4), Ole5's wording for it
+  left to the owner. The debt is TD-133 to TD-142.
+- **Evidence:** plan 007's Tracks section, Progress log and Decision log;
+  `tests/t2_agentic_voice/domain/test_yes_rule.py`, `test_action_flow.py`, `test_claims.py`;
+  `tests/t2_agentic_voice/agent/test_talker_claims.py`, `test_talker_actions.py`;
+  `tests/t2_agentic_voice/actions/test_action_run.py`;
+  `tests/t2_agentic_voice/api/test_runtime_actions.py`;
+  `tests/t2_agentic_voice/voice/session/test_yes_turns.py`, `test_yes_turns_safety.py`,
+  `test_read_back_overlaps.py`; `tests/t2_agentic_voice/testing/test_action_safety.py`;
+  `tests/ole5_voice/tickets/test_status.py`, `test_mock.py`; the end-to-end calls,
+  `tests/t2_agentic_voice/testing/test_action_calls.py`, `test_parity_actions.py`,
+  `tests/ole5_voice/tickets/test_ticket_calls.py`, `test_ticket_safety.py`.

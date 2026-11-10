@@ -146,6 +146,13 @@ cmd = "python -m ole5_voice.evals.knowledge_depth"
 help = "Play run S's scripted calls with the kept arm, each three times (spends: as eval-talker)"
 cmd = "python -m ole5_voice.evals.scenario_run"
 
+# Run A (plan 007's registration): the scripted calls in which the agent acts, on the mock
+# ticket system.
+
+[tool.poe.tasks.eval-actions]
+help = "Play run A's scripted ticket calls over one split, each three times, against the mock ticket system (spends: as eval-talker; gpt-oss-120b at medium and a $1.50 cap unless named)"
+cmd = "python -m ole5_voice.evals.action_run"
+
 [tool.poe.tasks.record]
 help = "Record and review the golden set's new takes in Chrome, on a page served on 127.0.0.1"
 cmd = "python -m ole5_voice.evals.recorder"

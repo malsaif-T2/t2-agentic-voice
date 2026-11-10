@@ -21,6 +21,5 @@ outcome = "asked_again"
 
 [[turns]]
 says = "ايه أرسلها"
-when = "closing_question"
 outcome = "done"
 says_number = "whole"

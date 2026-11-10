@@ -107,8 +107,11 @@ class TextTurn:
         runner = self._reads.runner
         found = []
         for began_at, began in [(at, e) for at, e in talk.events if isinstance(e, ToolBegan)]:
+            # A tool's call as the runner ran it; an action's, which no tool runner runs, as the
+            # model wrote it on the event.
             ran = None if runner is None else runner.calls.get(began.call_id)
-            arguments: dict[str, JsonValue] = {} if ran is None else arguments_of(ran[0])
+            written = began.arguments if ran is None else ran[0].arguments
+            arguments: dict[str, JsonValue] = arguments_of(written)
             end = ended.get(began.call_id)
             outcome: ToolOutcome
             ms: float | None = None

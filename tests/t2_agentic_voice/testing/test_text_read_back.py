@@ -1,8 +1,9 @@
 """Where a text call's read-backs play (testing/text_read_back.py; plan 007, Track D), read from a
 real `Playback` against the plans the talker asked for: a read-back said in one clause each, or
 cut into clauses captioned as said; a corrected draft's reading told from the first's; a
-summary that played whole, or was cut short, said with no audio, failed or stopped; and the
-runtime's own lines told from the talker's."""
+summary that played whole, or was cut short, said with no audio or failed, and one whose reply a
+stop cut over the closing question, which still played whole; and the runtime's own lines told
+from the talker's."""
 
 from __future__ import annotations
 
@@ -108,8 +109,8 @@ def test_a_summary_played_whole_says_when_and_any_fault_says_none() -> None:
     reply = _said(playback, [plan.summary.text, plan.question.text])
     (reading,) = readings(playback, [plan])
     _play(playback, reply, 0, 0.0)
-    reply.stopped = True  # a stop over the closing question
-    assert summary_played_at(playback, reading) is None
+    reply.stopped = True  # a stop over the closing question, the summary played whole
+    assert summary_played_at(playback, reading) == 1.0
 
 
 def test_the_runtimes_own_lines_are_told_from_the_talkers() -> None:

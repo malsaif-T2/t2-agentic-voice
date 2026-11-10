@@ -6,13 +6,19 @@ the caller's yes is refused before any read-back; the read-back says the branch 
 each language and shows nothing (the caller only hears the agent); a write books once for its
 request ID and its lookup finds it; and each agent made has a desk of its own.
 
-A call with it, the read-back played and a yes heard, runs on the library's runner, yes rule and
-session, which plan 007's other tracks fill: `ActionSafetySuite` runs on it once they merge."""
+A call with it, in each language, runs on the real parts (plan 007's integration): `TextCall`'s
+own talker on a scripted model that calls the action, the session's read-back and confirming,
+the yes rule, the guard and the action runner over a `MemoryOutbox`. A yes over the read-back and
+a bare yes over its closing question book nothing; a yes with a send word, heard once it played,
+books once. Its yes and send words are the yes rule's presets' (domain/yes_words.py, read in
+their rule form, domain/words.py: the only imports from inside the library). `ActionSafetySuite`
+runs on it in test_callback_safety.py."""
 
 from __future__ import annotations
 
 import asyncio
 import json
+from typing import Literal
 
 import pytest
 from minimal_example.app import helper, opening_hours
@@ -35,8 +41,22 @@ from t2_agentic_voice import (
     VoiceAgent,
     render_prompt,
 )
+from t2_agentic_voice.domain.words import rule_form
+from t2_agentic_voice.domain.yes_words import PRESET_CONSENT
+from t2_agentic_voice.evals import ScriptedLLM, TextCall
 
 DRAFT = CallbackRequest(branch="olaya", reason="my order did not arrive")
+# "Talabi ma waSal": my order did not arrive.
+SAUDI_REASON = "طلبي ما وصل"
+# Each language's call: the caller's request, the draft's reason, the branch's label, a yes, and
+# a send word ("na'am" yes, "arsilha" send it), each a preset's word (checked below).
+Tag = Literal["en", "ar-SA"]
+CALLS: dict[Tag, tuple[str, str, str, str, str]] = {
+    "en": ("Can Olaya call me back about my order?", DRAFT.reason, "Olaya", "yes", "send it"),
+    # "mumkin far' al-olaya yittaSil 'alay? Talabi ma waSal": can the Olaya branch call me? My
+    # order did not arrive.
+    "ar-SA": (f"ممكن فرع {OLAYA} يتصل علي؟ {SAUDI_REASON}", SAUDI_REASON, OLAYA, "نعم", "أرسلها"),
+}
 
 
 def _callback(agent: VoiceAgent | None = None) -> Action:
@@ -132,3 +152,41 @@ def test_each_agent_made_books_at_a_desk_of_its_own() -> None:
     assert list(first.booked) == ["r-1"] and second.booked == {}
     with pytest.raises(ValidationError):
         CallbackBooked(number="41")  # the desk's numbers are four digits
+
+
+def test_each_calls_yes_and_send_words_are_the_presets() -> None:
+    for tag, (_, _, _, yes, send) in CALLS.items():
+        words = PRESET_CONSENT["en" if tag == "en" else "ar"]
+        assert rule_form(yes) in words.yes and rule_form(send) in words.send
+
+
+@pytest.mark.parametrize("tag", list(CALLS))
+def test_a_callback_is_booked_only_after_a_yes_heard_once_the_read_back_played(tag: Tag) -> None:
+    request, reason, label, yes, send = CALLS[tag]
+    desk = CallbackDesk()
+    # One answer only: each later turn goes to the read-back's confirming, never to the model.
+    llm = ScriptedLLM([ScriptedLLM.call_tool("request_callback", branch="olaya", reason=reason)])
+
+    async def scene() -> tuple[str, ...]:
+        async with TextCall(make_callback_helper(desk), llm=llm, language=tag) as call:
+            asked = await call.user(request)
+            over = await call.user(yes, during="read_back")  # over the summary: it plays on
+            over.expect.no_action()
+            assert desk.booked == {}
+            asked.expect.read_back(contains=label, branch="olaya", reason=reason)
+            bare = await call.user(yes, during="closing_question")
+            bare.expect.asked_again()
+            bare.expect.no_action()
+            assert desk.booked == {}
+            await call.advance(10.0)
+            sent = await call.user(f"{yes} {send}")
+            await call.advance(30.0)
+            sent.expect.confirmed("request_callback", branch="olaya", reason=reason)
+            sent.expect.action_ended("request_callback", "done")
+            sent.expect.action_completed("request_callback")
+            assert [booked.number for _, booked in desk.booked.values()] == ["4101"]
+            rows = await call.outbox.entries(action="request_callback")
+            assert [row.state for row in rows] == ["done"]
+            return call.violations
+
+    assert asyncio.run(scene()) == ()

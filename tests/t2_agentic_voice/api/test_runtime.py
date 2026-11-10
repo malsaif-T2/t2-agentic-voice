@@ -154,7 +154,11 @@ def test_the_lifespan_opens_each_part_in_order_and_closes_each(tmp_path: Path) -
     )
     assert FakeUsedTokens.opened == [var_dir / "echo" / "used_tokens.sqlite3"]
     [given] = harness.built
-    assert set(given) == {"agent", "settings", "stt", "tts", "phrases", "tracing", "emit", "clock"}
+    assert set(given) == {
+        *("agent", "settings", "stt", "tts", "phrases", "tracing", "emit", "clock"),
+        "action_jobs",
+    }
+    assert given["action_jobs"] is None  # the echo declares no action
     assert (given["agent"], given["settings"], given["clock"]) == (
         AGENT,
         harness.settings,

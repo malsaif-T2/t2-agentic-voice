@@ -1,6 +1,6 @@
 # T2 Agentic Voice: package design
 
-**Status: Accepted as amended.** The agent drafted this on 2026-10-31 for the owner and revised it the same day after two reviews. On 2026-11-01 the owner answered its open questions (section 17, D-018), the sections those answers touch were changed to match, and the owner approved the design as amended (D-017). Each part is built with its milestone (section 16). Built so far, by M1 (plan 002): the five facades (`ports`, `groq`, `languages`, `evals`, `tracing`, D-021), the speech-to-text port and its Groq adapter, the `groq`, `stt` and `tracing` settings groups, tracing, the scorers (D-022) and the checks ARCH-FACADE and ARCH-WORDS (D-020); by plan 004, the base error's name, `T2VoiceError` (D-026); and by plan 003's Block 0, the settings (section 7), the library's logging (10.2), the ports, shared types and `t2v/1` models M2 builds on, and four more facades (`identity`, `server`, `stores` and `events`, D-032). Where plan 004's read found that what was built differs from a section, a note in italics there says so (5.1, 6.1, 7.6, 9.7 and 10.2). Where it would change a recorded decision or an architecture rule, it says so and names the decision entry to write (section 16.3). Where the agent disagrees with a decision, it says so in section 17 and does not change the decision.
+**Status: Accepted as amended.** The agent drafted this on 2026-10-31 for the owner and revised it the same day after two reviews. On 2026-11-01 the owner answered its open questions (section 17, D-018), the sections those answers touch were changed to match, and the owner approved the design as amended (D-017). Each part is built with its milestone (section 16). Built so far, by M1 (plan 002): the five facades (`ports`, `groq`, `languages`, `evals`, `tracing`, D-021), the speech-to-text port and its Groq adapter, the `groq`, `stt` and `tracing` settings groups, tracing, the scorers (D-022) and the checks ARCH-FACADE and ARCH-WORDS (D-020); by plan 004, the base error's name, `T2VoiceError` (D-026); and by plan 003's Block 0, the settings (section 7), the library's logging (10.2), the ports, shared types and `t2v/1` models M2 builds on, and four more facades (`identity`, `server`, `stores` and `events`, D-032). Where plan 004's read found that what was built differs from a section, a note in italics there says so (5.1, 6.1, 7.6, 9.7 and 10.2); plan 007's tracks added such notes to 4.6 and 8.2, and their choices are D-081. Where it would change a recorded decision or an architecture rule, it says so and names the decision entry to write (section 16.3). Where the agent disagrees with a decision, it says so in section 17 and does not change the decision.
 
 **Since the draft.** The design was written from commit `a0ca586`. The same day, plan 001 built its first step in a simpler form: one uv workspace with the library, the Ole5 app and `examples/minimal`; one `harness.toml` for the repository, with `[[apps]]` and the rule ARCH-PUBLIC (an app imports the library only through its public modules); and tests in one `tests/` folder at the root. Sections 12, 14 and 16 were aligned with that layout. The owner's decisions taken so far are D-012 to D-016, and D-018 for the answers to section 17; this design as a whole is D-017, accepted on 2026-11-01.
 
@@ -590,7 +590,9 @@ FastAPI's `include_router` merges a router's lifespan into the app's (checked in
 ### 4.6 Test
 
 ```python
-from t2_agentic_voice import Caller
+from pydantic import BaseModel
+
+from t2_agentic_voice import Action, Caller, VoiceAgent
 from t2_agentic_voice.testing import ActionSafetySuite, ScriptedLLM, TextCall, call_tool
 
 
@@ -608,26 +610,37 @@ async def test_request_needs_a_heard_yes(itsm_fake) -> None:
         ]
     )
     async with TextCall(
-        agent, deps=HelpdeskDeps(itsm=itsm_fake), llm=llm, caller=Caller(subject="u-1")
-    ) as call:  # env=test; heard words come from typed text
+        helpdesk_agent(itsm_fake), llm=llm, caller=Caller(subject="u-1")
+    ) as call:  # env=test; heard words come from typed text; the backend reached by a closure
         turn = await call.user("ابغى افتح طلب، اللابتوب LT-00423 ما يشبك على الـVPN")
-        turn.expect.read_back(contains="LT-00423")
         await call.user("نعم", during="read_back")  # over the summary: ignored, does not count
+        turn.expect.read_back(contains="LT-00423", asset_tag="LT-00423")
         assert itsm_fake.created == []
         turn = await call.user("نعم أرسله")  # after the receipt and the closing question
-        turn.expect.action_completed("open_request")
-        turn.expect.said(contains=itsm_fake.created[0].id)
-    assert call.violations == []  # guard and yes-rule checks run in every TextCall
+        await call.advance(30)  # the sending line, the write and its outcome
+        turn.expect.confirmed("open_request", asset_tag="LT-00423")
+        turn.expect.action_completed("open_request")  # sending, then the done line
+    assert call.violations == ()  # guard and yes-rule checks run in every TextCall
 
 
 class TestOpenRequestIsSafe(ActionSafetySuite):  # the library's adversarial cases, on my action
-    agent = agent
-    action = open_request
-    draft = OpenRequest(category="hardware", asset_tag="LT-00423", summary="VPN does not connect")
+    def make_agent(self) -> VoiceAgent:  # a fresh agent for each case, on a fresh backend
+        return helpdesk_agent(FakeItsm())
 
-    def make_deps(self) -> HelpdeskDeps:
-        return HelpdeskDeps(itsm=FakeItsm())
+    def action_under_test(self) -> Action:  # the agent's own action of this name is tested
+        return open_request
+
+    def sample_draft(self) -> BaseModel:
+        return OpenRequest(
+            category="hardware", asset_tag="LT-00423", summary="VPN does not connect"
+        )
+
+
+class TestOpenRequestIsSafeInSaudiArabic(TestOpenRequestIsSafe):
+    language = "ar-SA"  # the agent's first language unless given
 ```
+
+*As built (plans 006 and 007):* the kit is reached through the `evals` facade until `testing` is a public module (5.1), and a script's entry is `ScriptedLLM.call_tool(...)` or `ScriptedLLM.reply(...)`, each a whole request's events. There is no `deps` (D-080): a backend is reached by a closure, as `knowledge_tool` reaches its knowledge base, so `make_agent()` gives each case a fresh agent over a fresh backend; 4.4's and 4.5's samples, written before plan 007, still pass `deps`. The minimal example's tests run this flow and the suite on its `request_callback` (`examples/minimal`'s `callback.py`), in English and Saudi Arabic.
 
 These run in CI with no key and no network, and never start Pipecat. Live scenario runs are opt-in. A team marks them `@pytest.mark.t2v_live`, registers the marker in its `conftest.py`, and deselects it with `addopts = "-m 'not t2v_live'"` (testing.md gives the three lines).
 
@@ -918,7 +931,7 @@ What v1 must already have for it, all built for M3 to M5 anyway:
 | On barge-in | Async: cancelled (the default) or finished (`on_interrupt="finish"`). Sync: the result is discarded and the thread finishes in the background; such threads are counted and capped per process | Never cut in half |
 | Arguments | Model output parsed into the typed parameters. Bound parameters are filled from the session and never shown to the talker | Parsed into the draft model; then `validate` may reject it |
 | Result | Data for the talker, and evidence for the guard's ID rule. With `reports_on=`, also evidence for claims about those actions | Recorded as a completed action. The outcome sentence is the `done` template filled from the result |
-| What the talker may say about it | Anything the guard accepts | Never the outcome: the runtime speaks it. The talker's text after the call, in that turn, is dropped |
+| What the talker may say about it | Anything the guard accepts | Never the outcome: the runtime speaks it. The talker's text after the call, in that request, is dropped; once the call is read back, nothing more of the talker's is said in that turn |
 | Retries | The talker may call again, subject to the duplicate policy | Never blindly: a lookup by `request_id`, or "could not confirm" |
 
 **What errors mean:**
@@ -942,8 +955,8 @@ What v1 must already have for it, all built for M3 to M5 anyway:
 | `read_back` | yes | `ReadBack(templates, send_words=..., show_draft=False, max_attempts=2, asked_again=...)`. Each template is a pair, a summary and a closing question, kept apart because the receipt covers the summary. `show_draft` is off by default (the caller only hears the agent, D-075) |
 | `consent` | no; `ReadBack` | The consent mode (table below) |
 | `done` | yes | The outcome sentence, filled from the real result |
-| `sending` | no; library default | Said while the write runs, after the caller's yes and before the outcome, as a tool's progress line is: "One moment, I'm opening the ticket." A fixed line, its values from the draft. It never says the action is done |
-| `failed`, `unknown`, `declined` | no; library defaults | `failed`: definitely not done. `unknown`: no reply and no lookup hit. `declined`: nothing usable was heard after the last ask-again. After a plain no the talker answers in its own words |
+| `sending` | no; library default | Said while the write runs, after the caller's yes and before the outcome, as a tool's progress line is: "I'm opening the ticket now." A fixed line, its values from the draft. It never says the action is done, and, like every fixed line, should hold no stop, wait, repeat, listening, yes or send word, which its echo could act on ("one moment" is a wait word; only a closing question and the line that asks it again hold a send word); the library's own lines and Ole5's are tested for it |
+| `failed`, `unknown`, `declined` | no; library defaults | `failed`: definitely not done. `unknown`: no reply and no lookup hit. `declined`: nothing usable was heard after the last ask-again. After a plain no or a correction the talker answers in its own words, and after a stop it asks what to change, keeping its draft: the talker learns how the read-back was declined (`no`, `correction` or `stopped`; the kind `unclear` is the `declined` line's case, TD-135) |
 | `claims` | yes, in every declared language | Past-tense phrases that claim this action. The guard blocks them unless the record holds the action or a `reports_on` tool returned it |
 | `validate` | no | `async (ctx, draft) -> draft`, or it raises `ToolError`. Checks the draft against the backend's own lists before the read-back |
 | `lookup` | no | Finds a completed write by `request_id` (invariant 6) |
@@ -961,30 +974,39 @@ What v1 must already have for it, all built for M3 to M5 anyway:
 
 ```
 talker calls open_request({...})
-  -> the talker's further text in this turn is dropped              (guard rule C, section 8.2)
+  -> the talker's further text in this request is dropped           (guard rule C, section 8.2)
   -> parse into the draft model                    invalid: the talker is told which field
   -> validate(ctx, draft)                          rejected: the talker is told why
   -> caps (per call, per caller) and the duplicate check
-  -> state CONFIRMING; a draft card only with show_draft, off by default (D-075)
+                                                   any refusal: the talker may speak again (rules A, B)
+  -> the reply ends; the talker reads only that the call is being read back, never the draft
+  -> state CONFIRMING once the read-back plays; a draft card only with show_draft, off by default (D-075)
   -> the runtime speaks the read-back rendered from the draft (a template; fixed values through their labels)
        summary played in full                      -> ReadBackReceipt        (built only by the voice session)
        yes words or listening sounds over it       -> ignored: the summary plays on, and they do not count
-       other real words over it                    -> no receipt; the words go to the talker as a question
-                                                      or a correction; the read-back plays again later
-  -> heard words after the receipt                 -> the yes rule (section 8.3)
+       other real words over it                    -> no receipt; declined as a correction: the words go
+                                                      to the talker, which may call again with a new draft
+       a stop or pause word over the read-back     -> no receipt; declined as stopped: nothing is sent, the
+         or an ask-again, or said whole while         talker asks what to change, keeping its draft; only a
+         confirming                                   new read-back played in full can earn a yes
+       a request to hear it again                  -> said again as a new reply; only a yes to it counts
+  -> heard words begun after the summary ended     -> the yes rule (section 8.3)
        built from speech-to-text, or from typed text only when env is "test"
        yes              -> ConfirmedAction (only the yes rule builds one)
+                        -> the runtime speaks `sending`, a fixed line, never "done", as the reply to it
                         -> outbox row with request_id, then a job outside the turn: execute(ctx, draft)
-                        -> while it runs, the runtime speaks `sending`: a fixed line, never "done"
-       no or correction -> the talker gets "declined: <heard words>" and answers in its own words;
-                           it may call again with a new draft
+       no or correction -> the talker gets the turn's words, and a note of the action declined and how
+                           (never the draft); it answers in its own words, and may call again
        unclear          -> asked again (a template), at most max_attempts times; then, with nothing
                            usable heard, the runtime speaks `declined`
   -> result     returned                       -> CompletedAction recorded; the runtime speaks `done`
                 ActionRejected, ActionNotSent  -> `failed`
                 any other exception, timeout   -> lookup(request_id): found -> `done`; otherwise `unknown`,
                                                   no number; the outbox row is flagged for reconciling
+  -> the outcome's line is said once, at the next turn boundary (no reply playing, no turn open)
 ```
+
+The states and moves are `domain/action_flow.py`'s: from `confirming`, a yes goes to `confirmed`; a no, a correction, a stop (`stop`) and no clear answer after the last ask-again (`unclear`) go to `declined`; a request to hear it again (`repeat`) and an ask-again (`asked_again`) stay `confirming`. From `confirmed`, the write begun goes to `sending` and an outbox row not written to `failed`; from `sending`, the four ends. `sending` takes no stop, and no end is left.
 
 ### 6.5 Identity and join tokens
 
@@ -1009,8 +1031,8 @@ talker calls open_request({...})
 - **Events** (provisional). They are frozen, drawn from a closed list, and each carries `call_id`, `turn_id` and `at`:
   - Call: `CallStarted`, `CallEnded(report)`, `Busy`.
   - Speech and turns: `UserTurnEnded(heard)`, `Interrupted(kind: stop, correction, new_words, false; reason)`, `AgentSpeechEnded(text, played_fraction)`. An `Interrupted` comes for each overlap decided, of kind `false` when the reply went on; its `reason` is the rule's step that decided, none for the Stop button or Esc (D-061).
-  - Tools and actions: `ToolStarted`, `ToolFinished(ok, ms)`, `ConfirmationRequested`, `ConfirmationAnswered(decision)`, `ActionCompleted`, `ActionUnconfirmed`.
-  - Safety, errors and timing: `GuardBlocked(reason)`, `ProviderFailed(kind, retryable)`, `TransportFailed(stage)`, `TurnMetrics(ttfa_ms, stt_ms, llm_first_token_ms, tts_first_audio_ms)`.
+  - Tools and actions: `ToolStarted`, `ToolFinished(ok, ms)`, `ConfirmationRequested`, `ConfirmationAnswered(decision)`, `ActionCompleted`, `ActionUnconfirmed`. The voice session sends all four of an action's, and only it (plan 007): `ConfirmationRequested` at a read-back's first audio, `ConfirmationAnswered` for each of the yes rule's decisions (`yes`, `declined`, `correction`, `asked_again`), and `ActionCompleted` or `ActionUnconfirmed` once, from the outcome the action runner returns (the runtime's runner sends no event).
+  - Safety, errors and timing: `GuardBlocked(reason)` (`unsupported_claim` or `unsupported_id`, the blocked clause's own), `ProviderFailed(kind, retryable)`, `TransportFailed(stage)`, `TurnMetrics(ttfa_ms, stt_ms, llm_first_token_ms, tts_first_audio_ms)`.
 - **Observers.** `@runtime.on(events.CallEnded)` registers one. Observers run off the call's path: queued, with a timeout. If one raises, the exception is logged and the call goes on. Observers cannot change behaviour.
 - **`CallReport`** holds what was heard and said, the actions and tool calls, the timings, the usage per model, the consent version and the agent's fingerprint.
 - **Hooks that change behaviour.** There are only two, both on the agent:
@@ -1135,39 +1157,48 @@ The guard checks each clause before it goes to TTS.
 
 The prompt tells the talker to write numbers as digits. The speaking rules turn digits into words after the guard, so the guard sees digits.
 
-**Rule A, claims.** A clause that contains a claim phrase of action A passes only if one of these holds:
+**Rule A, claims.** It runs for an agent that declares an action, and only for one, as every rule added for actions does (plan 007), so an agent with none is checked as before. A clause that contains a claim phrase of action A passes only if one of these holds:
 - the call's record holds a completed A; or
-- a tool declared with `reports_on=["A"]` returned a result in this call.
+- a tool declared with `reports_on=["A"]` returned a result in this call that succeeded.
 
-Every ID-shaped token in that clause must also equal a value in that completed A's result, or in that status tool's result. Claim phrases come from each action's `claims`, plus a short default list per language ("I've created", «تم إنشاء», «سجلت لك» and the like), which counts as a claim about any action. Teams can extend or replace the default list. Matching runs on normalized text, on word boundaries.
+A failed status result, a passage, or any other tool's result is no evidence of a claim. Every ID-shaped token in that clause must also equal a value in that completed A's result, or in that status tool's result, read as rule B reads one (digits spaced, in groups, said one by one, or Arabic-Indic) against A's evidence alone. Claim phrases come from each action's `claims`, plus a short default list per language ("I've created", «تم إنشاء», «سجلت لك» and the like), which counts as a claim about any action and passes when some action has evidence. The defaults are past-tense phrases, mostly in the first person, and none of them only introduces a number ("your request number"), which would block the talker reading a caller's own number back. Teams can extend the default list (`guard.claims`); a default cannot be removed. Matching runs on normalized text, on word boundaries, and also after waw or feh written onto a phrase's first word («وتم»). A clause rule A passed with a claim skips rule B.
 
-**Rule B, IDs.** In a clause with no claim phrase, every ID-shaped token must appear in the call's record, in a tool result from this call (passages included), or in the caller's own heard words.
+**A `reports_on` tool's result is evidence**, so it must carry only values the tool read for the session's caller, never an argument the model chose: an echoed argument turns model output into evidence for a claim (invariants 2 and 4). Ole5's `ticket_status` gives back the digits the caller said only when one of the caller's own tickets matched them.
+
+**Rule B, IDs.** In a clause with no claim phrase, every ID-shaped token must appear in the call's record (its completed results), in a tool result from this call (passages and status results included), or in the caller's own heard words.
 - "ID-shaped" means a run of `guard.min_id_digits` (3) or more digits after normalization, or a match of a declared pattern: `guard.id_patterns`, and the `pattern` constraints of draft and result fields.
 - The current year and the next one are exempt, because the prompt holds the current date.
 - So a number from a knowledge-base passage may be spoken as a fact, but never as a request number (rule A).
 
-**Rule C, after an action call.** Once the talker calls an action in a turn, its further text in that turn is dropped. Only the runtime's templates speak until the outcome has been spoken.
+**Rule C, after an action call.** Once the talker calls an action in a request, the text it writes after the call is dropped, with any the clause splitter still held: neither spoken nor blocked. A call read back ends the reply, and no request follows it in that turn, so only the runtime's templates speak until the outcome has been spoken. A call refused (an invalid field, `validate`, a cap) reads back nothing, and the next request may speak, under rules A and B, to say why or ask for what is missing.
 
 **Templates are not checked.** The runtime's own templates are exempt from rules A and B: greetings, read-backs, `sending`, `done`, `failed`, `unknown`, `declined`, progress lines and fixed phrases. Their values come from the draft, read back so that the caller can check them, or from the real result.
 
 **When a clause is blocked:**
 - that clause and the rest of the reply are dropped (`guard.on_block="drop_rest"`), or only that clause (`"drop_clause"`);
 - the runtime speaks a fixed phrase in the reply language;
-- the talker's history gets a developer note;
-- a `GuardBlocked` event is traced.
+- the talker's history gets a developer note (one for a number, one for a claim);
+- a `GuardBlocked` event is traced, its reason the clause's own: `unsupported_claim` (rule A) or `unsupported_id` (rule B).
 
 False positives cost a sentence. They show up in traces for review. `t2v check` prints the effective lexicon.
 
+*As built (plan 007):* rule B is `domain/guard_ids.py`'s, rule A `domain/claims.py`'s, and `domain/guard.py`'s `check_clause` runs them in order; the talker's turn composes the two in `agent/speech_guard.py` and `TextCall` in its checks (TD-141).
+
 ### 8.3 How the yes rule decides
 
-The rule looks only at heard words that came after the receipt, normalized. In a served runtime they come from speech-to-text.
-- **After the closing question has finished:** a yes word, with no content beyond send words and fillers, is a **yes**.
+The rule looks only at the turn's own heard words, normalized, and only at words whose speech began once the summary ended: words begun before it, or with no start time, count for nothing, a no or a correction among them, and are **asked again**. In a served runtime they come from speech-to-text; typed words count only when `env` is `test`.
+- **After the closing question has finished:** a yes word, with no content beyond send words and fillers, and no question mark, is a **yes**.
 - **Over the closing question:** a yes needs a send word. A bare yes there is **asked again** (invariant 1).
-- A no word is **declined**.
-- Other content words are a **correction**, which goes to the talker.
+- A no word is **declined**, with only fillers or send words beside it; a yes and a no together are **asked again**.
+- A send word with no yes word is **asked again**: the closing question holds one, and its echo must confirm nothing. So is a yes with a question mark («نعم؟» means pardon).
+- Any word on none of the lists is a **correction**, which goes to the talker.
 - Nothing heard is **asked again**.
 
+A word on two of the lists counts as no first, then yes, then send, then filler, so a yes word a team adds is never only a filler. Phrases are matched longest first, as the interruption rule matches its words, and a send word may be written after waw (and). The words are the rule's own lists, its no words and fillers starting from the interruption rule's no words and listening sounds, which stay unchanged (D-080).
+
 Yes words and listening sounds spoken over the summary are ignored and do not count (section 6.4). The send words are the language preset's plus the action's own `send_words`. `t2v check` warns when no word of an action's closing question is among its effective send words. «نعم بس غيّر العنوان» is therefore a correction, never a yes.
+
+**What reaches the rule** (the voice session, plan 007). A turn is the rule's while a read-back is current, when its words were heard and its speech began once the summary's last clause played; the receipt is built at that moment, so a verdict on an overlap of the summary that lands late still denies it, and a turn with no receipt is asked again. A stop or pause request, and a request to hear it again, are caught before the rule (section 6.4). A turn heard as nothing never reaches the rule, so noise uses up no ask-again; a failed transcript gets the `error` notice, as anywhere in a call. Real words that stop the closing question leave the receipt standing, its question unfinished, so a yes with a send word said there still counts. An unclear answer is asked again at most `max_attempts` times; one more, and the runtime speaks `declined`.
 
 ### 8.4 What the library does not guarantee
 
@@ -1200,18 +1231,19 @@ Yes words and listening sounds spoken over the summary are ignored and do not co
 
 `TextCall` runs the real voice session through a text transport, together with the real talker, actions, yes rule, guard and outbox (in memory by default). It needs no key and no network, never starts Pipecat, and is deterministic. It always runs with `env="test"`, which is the only place typed text can stand in for heard words. It is not a chat channel, and testing.md says so.
 
-- **Playback.** The read-back counts as fully played unless the test says otherwise.
+- **Playback.** The read-back counts as fully played unless the test says otherwise: `call.fault_read_back("cut_short" | "no_audio" | "failed")` arms a fault for the next read-back: the first clause of its summary to end comes back cut short, with no audio, or failed, so the summary never plays whole.
 - **Injection:**
-  - `call.user(text, during="read_back" | "closing_question" | "agent_speaking")`;
+  - `call.user(text, during="read_back" | "closing_question" | "agent_speaking")`, `read_back` meaning over the summary;
   - `call.user(text, at="tool_running")`;
   - `call.advance(seconds)`;
   - `call.stop()`.
-- **Expectations:** `turn.expect.tool_call(name, **args)`, `.read_back(contains=)`, `.asked_again()`, `.action_completed(name)`, `.no_action()`, `.said(contains=)`, `.blocked()`, `.cancelled(tool)`, `.language("ar-SA")`.
-- **`call.violations`** holds the guard and yes-rule checks. They run automatically in every call.
+- **The part that acts.** For an agent with actions, `TextCall` builds the action runner as the runtime does, its daily cap per caller from the settings, over its outbox (`TextCall(outbox=...)`, a `MemoryOutbox` unless given), with a record of the call's own. The outcome line answers no turn, so `action_completed` checks it and a turn's `said` does not hold it. Its typed words carry the source `typed`.
+- **Expectations:** `turn.expect.tool_call(name, **args)`, `.read_back(contains=, **values)`, `.no_read_back()`, `.asked_again()`, `.confirmed(name, **values)`, `.no_action()`, `.action_ended(name, kind)` (the `sending` line, then the outcome's, said; `kind` one of `done`, `failed`, `unknown`), `.action_completed(name)`, `.said(contains=)`, `.blocked()`, `.cancelled(tool)`, `.language("ar-SA")`. A failure names the action, the turn and the fields that differ, never their values.
+- **`call.violations`** holds the guard and yes-rule checks. They run automatically in every call: rule B always; rules A and C, and the check that each confirmed action was confirmed by words begun once a read-back of its own draft had played whole, only for an agent that declares an action (section 8.2). The runtime's own lines are exempt, as the guard exempts them.
 
 ### 9.3 The adversarial suite
 
-`ActionSafetySuite` is a pytest base class. A team subclasses it with its agent, its action, a sample draft and fake dependencies. It runs these cases:
+`ActionSafetySuite` is a pytest base class. A team subclasses it with `make_agent()`, a fresh agent over a fresh fake backend (reached by a closure, D-080), `action_under_test()`, the action it tests by its name among the agent's, `sample_draft()`, and `language`, the agent's first unless it says (section 4.6). Each case is one `TextCall`, on a fake model, ending with `call.violations` clean. It runs these cases:
 - a yes spoken over the read-back's summary;
 - an eager yes before the read-back;
 - a bare yes over the closing question;
@@ -1239,7 +1271,7 @@ Yes words and listening sounds spoken over the summary are ignored and do not co
 `AudioCall` runs the real media pipeline on a transport fed from files, with no WebRTC: VAD, Smart Turn and the two-step interruption. It uses `FakeSTT` or a real provider.
 - It plays a golden WAV file over a reply, the reply played as the file-fed call's greeting, and reports each overlap's verdict, its Whisper requests and the time from a marked word end to the last agent audio frame sent. How often the caller is cut off is measured by `turn_ends`, on the same file-fed pipeline.
 - Built in M3 (plan 005), in `testing/audio_call.py`, and reached through the `evals` facade until the testing kit is public with `TextCall` (M4). Ole5's `poe overlap` runs it.
-- **The parity test** in the library's CI runs the same scripted call through `TextCall` and `AudioCall` and requires the same sequence of session events. It proves that text mode tests the same consent path as a real call. It moved to M4 with `TextCall`, which it needs (plan 005).
+- **The parity test** in the library's CI runs the same scripted call through `TextCall` and `AudioCall` and requires the same sequence of session events. It proves that text mode tests the same consent path as a real call. It moved to M4 with `TextCall`, which it needs (plan 005). For an agent with actions, `AudioCall` builds the action runner as the runtime does, its daily cap per caller from the settings, over a `MemoryOutbox` unless given one (`outbox=`), and hands it to its calls, so a call with an action runs the same way through both (plan 007).
 
 ### 9.6 Provider tests
 

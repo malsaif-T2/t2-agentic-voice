@@ -137,6 +137,16 @@ def test_a_valid_scenario_has_no_problem_of_its_own() -> None:
             },
             "expects nothing of its reply",
         ),
+        (
+            {
+                "turns": [
+                    {"says": "Open one.", "calls": "create_ticket", "outcome": "read_back"},
+                    {"says": "Umm.", "outcome": "asked_again"},
+                    {"says": "Yes, send it.", "when": "closing_question", "outcome": "done"},
+                ]
+            },
+            "only the ask-again line plays",
+        ),
     ],
 )
 def test_each_rule_catches_a_scenario_that_breaks_it(changed: dict[str, Any], found: str) -> None:

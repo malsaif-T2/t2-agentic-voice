@@ -13,8 +13,9 @@ transport's `ClausePlayed` reports, never the browser's `playback` message.
   and they count for nothing (overlap.py takes them as a listening sound). A stop or pause word
   (the interruption rule's stop and wait words) over the read-back, or real words over its
   summary, stop it (`cut_by`): no receipt, the confirming state ends and nothing is sent; the
-  turn reaches the talker, its stop word included, the action declined as a correction
-  (`declined`), so the talker asks what to change in its own words, its draft kept; and only a
+  turn reaches the talker, its stop word included, the action declined as `stopped` after a
+  stop or pause word and as a `correction` after real words (`declined`), so the talker asks
+  what to change in its own words, its draft kept; and only a
   new read-back played in full can earn a yes. A repeat request over it, or said whole while it
   is confirming, has the session say it again (`again`, `read_again`), the earlier one void.
   Other words over the closing question are the yes rule's. The client's `stop` while it plays,

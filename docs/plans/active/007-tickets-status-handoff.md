@@ -153,11 +153,22 @@ A change any track needs in a Block 0 file is a Block 0 amendment, logged here.
 
 | Track | Goal | Owns | Fills | May read |
 | --- | --- | --- | --- | --- |
-| A | The yes rule, the flow's states, the yes and send words, the guard's rule A | `domain/yes_rule.py`, `domain/yes_words.py`, `domain/action_flow.py`, `domain/claims.py`, `domain/action_lines.py`, `domain/guard.py`, `domain/fixed_phrases.py`, `domain/presets.py`; `tests/t2_agentic_voice/domain/test_stubs_track_a.py`, `test_guard.py`, `test_fixed_phrases.py`, `test_fixed_lines_words.py`, and new `test_yes_rule.py`, `test_yes_words.py`, `test_action_flow.py`, `test_claims.py` | `decide`, `consent_words`, `advance`, `check_claims`, `default_claims`, `default_action_lines` (`sending` among its Saudi, MSA and English texts); the yes and send presets (the owner's word first, below) | Block 0's types; `domain/words.py` and `domain/interruptions.py` (unchanged, D-080) |
+| A | The yes rule, the flow's states, the yes and send words, the guard's rule A | `domain/yes_rule.py`, `domain/yes_words.py`, `domain/action_flow.py`, `domain/claims.py`, `domain/action_lines.py`, `domain/guard.py`, new `domain/guard_ids.py` (rule B, moved out of `guard.py`), `domain/fixed_phrases.py`, `domain/presets.py`; `tests/t2_agentic_voice/domain/test_stubs_track_a.py`, `test_guard.py`, `test_fixed_phrases.py`, `test_fixed_lines_words.py`, and new `test_yes_rule.py`, `test_yes_words.py`, `test_action_flow.py`, `test_claims.py`, `test_action_lines.py` | `decide`, `consent_words`, `advance`, `check_claims`, `default_claims`, `default_action_lines` (`sending` among its Saudi, MSA and English texts); the yes and send presets (the owner's word first, below) | Block 0's types; `domain/words.py` and `domain/interruptions.py` (unchanged, D-080) |
 | B | `@action`'s lifecycle, the outbox, the jobs, the record, the caps, the error meanings, rule C on the talker's turn, `t2v outbox` | `actions/action_runner.py`, `actions/record.py`, `actions/memory_outbox.py`, `actions/runner.py`, `actions/tools.py`, `actions/action.py`, `actions/action_checks.py`, `actions/knowledge.py`, `adapters/outbox.py`, `agent/turn.py`, `agent/tool_calls.py`, `agent/context.py`, `agent/prompt.py`, `agent/talker.py`, `api/providers.py`, `api/runtime.py`, `api/cli.py`, new `actions/` and `api/` modules; `tests/t2_agentic_voice/actions/`, `tests/t2_agentic_voice/adapters/test_outbox.py`, `tests/t2_agentic_voice/agent/`, `tests/t2_agentic_voice/api/` | `ActionRunner.propose`, `run`, `reconcile`; `ActionRecord.add`, `entries`; `MemoryOutbox`, `SqliteOutbox`; `CallContext.past_actions`; rendering the read-back, `sending` and the outcome lines from `Say` and `ReadBack` in `propose` | Block 0's types; the `ActionJobs` and `Outbox` ports; `domain/claims.py`'s signature against a fake, never Track A's unfinished code |
 | C | The confirming state, the read-back and its receipt, the heard words routed to the yes rule, the outcome spoken at a turn boundary | `voice/session/read_back.py`, `call.py`, `interrupter.py`, `overlap.py`, `talking.py`, `talker_play.py`, `speaker.py`, `playback.py`, `open_reply.py`, `turn_book.py`, `history.py`, `heard.py`, `io.py`, `session_events.py`, `voice/calls.py`; `tests/t2_agentic_voice/voice/` | The read-back (`ReadBackRequested`), the receipt's preconditions before `played_receipt`, the turn routing, `Speaker.show_state`'s `confirming`, `ReadBackPlan.sending` spoken once the `ConfirmedAction` is issued, the outcome's flush; `Calls` takes and passes `action_jobs` | Block 0's types; the talker through its events, the yes rule through `decide`'s signature, the job through the `ActionJobs` port |
 | D | `TextCall`'s additions, `ActionSafetySuite`, the example's action | `testing/text_call.py`, `testing/text_side.py`, `testing/text_turn.py`, `testing/text_watch.py`, `testing/turn_data.py`, `testing/llm_fakes.py`, `testing/action_safety.py`, `evals.py`; `examples/minimal/`, `tests/minimal_example/`, `tests/t2_agentic_voice/testing/`, `tests/t2_agentic_voice/test_facades.py` | `during="read_back"` and `"closing_question"`, the expectations, the armed fault for a read-back, `MemoryOutbox` in `TextCall`, `violations` with rules A and C, the safety suite's cases; `TextCall` passes `action_jobs` as `Calls` does | Block 0's types; the session through `Playback`'s read of the read-back's parts, `Action.replaced`; nothing of the other tracks' unfinished code |
 | E | The mock ticket system and its page, the actions, the status tool, the handoff, the instructions, the scenarios | `apps/ole5-voice-agent/`, `tests/ole5_voice/` | The app's own: `@action`s over the mock, `ticket_status` with `reports_on`, the token's `customer_email` attribute | Only the library's public API |
+
+The modules the tracks added in their own folders: B's `actions/action_job.py`,
+`actions/action_writes.py`, `actions/spoken_lines.py`, `agent/speech_guard.py` and
+`api/actions.py`; C's `voice/session/yes_turns.py`, `action_job.py`, `talker_progress.py` and
+`overlap_follow.py` (the last two split out for size); D's `testing/text_actions.py`,
+`text_checks.py`, `text_moments.py`, `text_read_back.py`, `text_reads.py`, `action_faults.py`,
+`action_scenes.py` and `examples/minimal/`'s `callback.py`. The integration changed files no track
+owns, or another track's after its merge: `core/conversation.py` (Block 0's), `agent/context.py`,
+`api/runtime.py`, `testing/audio_call.py`, `testing/text_call.py`, `testing/text_watch.py`,
+`voice/protocol.py`, `voice/session/__init__.py`, `read_back.py`, `interrupter.py`,
+`talker_play.py` and `docs/guide/serving.md` (the Progress log, 2026-11-10).
 
 **What Block 0 settled**, beyond the design, and which the tracks follow:
 
@@ -180,13 +191,44 @@ A change any track needs in a Block 0 file is a Block 0 amendment, logged here.
   `CallContext.record` are plain views, which prove nothing.
 - `ReadBackPlan.declined` is the action's `declined` line, or the library's, rendered by Track
   B's `propose` beside `asked_again`; Track C's session speaks it when the read-back ends with
-  no yes and no talker turn answers it. `DeclinedAction.kind` (`no`, `correction`, `unclear`)
-  tells the talker a no from a correction.
+  no yes and no talker turn answers it. `DeclinedAction.kind` (`no`, `correction`, `stopped`,
+  `unclear`) tells the talker a no from a correction and from a stop. `stopped` is the
+  integration's amendment, for the owner's stop ruling: a stop or pause word over the read-back
+  (either part, or a line that asked again), or said whole while confirming; the talker's note
+  (`agent/context.py`'s `DECLINED`) tells it nothing was done and to ask what to change, keeping
+  the draft. Real words over the summary stay a `correction`.
 - `@action` takes `sending`, a `Say` checked as the outcome lines are (its fields the draft's,
   every language covered), and `ActionLines` gains the library's `sending`.
   `ReadBackPlan.sending` is required: Track B's `propose` renders it from the action's
   `sending`, or the library's line; Track C's session speaks it once the yes rule issues the
   `ConfirmedAction`, before the job's outcome. A fixed line, never a claim.
+- **The flow's events** (Track A's amendment). `FlowEvent` gained `stop`, `repeat`,
+  `asked_again` and `unclear`. From `confirming`, the yes rule's `yes` goes to `confirmed`; `no`,
+  `correction`, `stop` and `unclear` (no clear answer after the last ask-again) go to
+  `declined`, nothing sent and the draft left with the talker; `repeat` and `asked_again` stay
+  `confirming`, so only a yes to the new reading counts. `confirmed` with `refused` (the outbox
+  row not written, nothing sent) goes to `failed`. `sending` takes no stop, and `advance` refuses
+  any move its table lacks with a ValueError. No runtime code calls `advance` yet (TD-141).
+- **The guard's split** (Track A's amendment). Rule B moved to `domain/guard_ids.py`
+  (`check_ids`, and `guard_form`, the normalized form rule A matches on too); `domain/guard.py`
+  re-exports it and adds `check_clause`, rule A then rule B, its `GuardVerdict` carrying the
+  reason (`unsupported_claim` or `unsupported_id`), as `ClauseBlocked` and, since the
+  integration, `GuardBlocked` do. The talker's turn composes the same two rules in
+  `agent/speech_guard.py`, and `TextCall` in `testing/text_checks.py`, each from `check_claims`
+  and `check_ids`; only `check_clause`'s tests call it (TD-141).
+- **The runner** (Track B, its review, the integration). One `ActionRunner` per agent serves
+  every call (`CallSetup.action_jobs`), each call's `ActionRecord` kept by its call ID
+  (`record`, and `forget` when the call ends). It keeps Block 0's `record=`, which `TextCall`
+  passes so that every job fills that call's one record. The runtime builds it with no `emit`:
+  the session alone sends `ActionCompleted` and `ActionUnconfirmed`, from the `ActionOutcome` it
+  is returned (`voice` builds the events, core/events.py), so an observer hears each outcome
+  once; `TextCall` and `AudioCall` build theirs the same way, `AudioCall` over a `MemoryOutbox`
+  (its `outbox=`) for an agent with actions. `VoiceCalls` takes `action_jobs` and the runtime
+  passes it.
+- **Rule A's scope** (the integration). Rule A runs only for an agent that declares an action,
+  as every rule added for actions does (`test_no_action_baseline.py`); `TextCall.violations`
+  runs rules A and C and the yes-rule check on the same terms, so the measured runs of an agent
+  with none (Ole5's talker with no tickets, in runs K, S and T) do not move.
 
 ## The measurement, registered before any result
 
@@ -220,9 +262,153 @@ A change any track needs in a Block 0 file is a Block 0 amendment, logged here.
   actions' events, and stubs naming their tracks. The wire's `confirming` state was already there
   (`CallState`, the client, the widget, the fixture); only its comment changed. The Tracks table
   now names each track's files.
+- 2026-11-10: Tracks A to E built, each on its own branch against fakes, reviewed by the owner's
+  rule of 2026-11-03 (one reviewer, one skeptic a finding), and merged in turn into
+  `plan-007-integration`:
+  - **A** (merge `abe3f8c`): `decide`, `consent_words` and the presets' yes, send, no and filler
+    words; the flow's moves; rule A (`check_claims`, `default_claims`) and `check_clause`, rule B
+    moved to `guard_ids.py`; the library's action lines (`sending`, `failed`, `unknown`,
+    `declined`, `asked_again`) in Saudi, MSA and English. Its review confirmed no finding.
+  - **B** (`efe74d5`): the runner's `propose`, `run` and `reconcile`, the record, `MemoryOutbox`
+    and `SqliteOutbox`, the read-back's lines rendered, the talker's side (rules A and C in its
+    turn, one action per request, the declined notes), `past_actions`, the composition and
+    `t2v outbox`. Its review confirmed two findings: the runner had dropped Block 0's `record=`,
+    which `TextCall` passes, and each outcome's event reached the observers twice, from the
+    runner and from the session. Fixed in `9be6739`: `record=` kept, and the runtime's runner
+    built with no `emit`.
+  - **C** (`402ff77`): the read-back in the session and its receipt, what is heard over it, the
+    yes rule's routing, the job and its outcome said at a turn boundary, `VoiceCalls`'
+    `action_jobs`. Its review refuted one finding, the agent's own voice over the closing
+    question reaching the yes rule: no shipped line is made only of yes, send and filler words,
+    and plans 003 and 005 measured no echo of the agent opening an overlap.
+  - **D** (`1862a60`): `TextCall`'s read-back turns, its fault, expectations and checks;
+    `ActionSafetySuite`; the minimal example's `request_callback`. Its review confirmed one
+    finding, its action tests relying on the session ignoring `ReadBackRequested`, fixed in
+    `b765d0f` (their scripted talker keeps the plan from the session, so they test `TextCall`'s
+    reads apart from the session's confirming). It refuted one: the suite's "no lookup" case
+    installs a lookup that finds nothing, which ends `unknown` as no lookup does (TD-138).
+  - **E** (`b5acd77`): the mock ticket system and its page, the demo customer on the token,
+    `create_ticket`, `add_ticket_note`, `hand_off` and `ticket_status`, the instructions, and 30
+    scenarios (`a01` to `a30`), split before any run. Its review confirmed one finding:
+    `ticket_status` gave the caller's digits back when none of their tickets matched, so another
+    customer's last four could back a claim; fixed in `118b10f`, given back only on a match. It
+    refuted one, a lookup raising `ActionNotSent` in the start's reconcile, whose row is flagged
+    anyway (TD-136).
+  - **The integration's wiring** (`c85ecfa`): the runtime hands `VoiceCalls` the runner;
+    `TextCall`'s and `AudioCall`'s talkers get it, and `AudioCall` builds one over a
+    `MemoryOutbox` for an agent with actions; `GuardBlocked` carries the blocked clause's own
+    reason; `DeclineKind` gains `stopped`, which the session's stop paths send, with a note of
+    its own; the session's and the wire's docstrings; `serving.md`'s samples copied again from
+    `server.py` and `token_route.py`. The tracks' debt is TD-133 to TD-141, their decisions
+    D-081. Next: the end-to-end calls through `TextCall` and the audio session, and the gate
+    (the Plan's step 4).
+- 2026-11-10: The end-to-end calls, on the real parts with no stand-ins (the talker on a fake
+  model, the session's read-back and confirming, the yes rule, the guard, the interruption rule
+  and the runner over an outbox in memory), and run A's runner:
+  - **The library's** (`tests/t2_agentic_voice/testing/test_action_calls.py`,
+    `test_action_call_answers.py`, `test_action_call_claims.py`): the design's 9.2 flow in
+    English and Saudi Arabic; a stop or pause word over the summary, over the closing question
+    and said whole; a repeat; a plain no; a yes with a change; the declined line only after the
+    last unclear answer; `fault_read_back`; rule A in the real talker; a hang-up while the write
+    runs, its outcome sent once and never said.
+  - **The minimal example's**: `ActionSafetySuite` on `request_callback` in both languages, and
+    a call as the quickstart makes it.
+  - **Ole5's** (`tests/ole5_voice/tickets/test_ticket_calls.py`, `test_actions_runner.py`,
+    `test_ticket_safety.py`, `tests/ole5_voice/test_server_tickets.py`): the rehearsal's step 6
+    (a bare «نعم» asked again, «نعم أرسلها» over the closing question making one ticket, its
+    number said in four groups) and step 3 («أبغى موظف» over an answer, the handoff read back and
+    made); the stop ruling; status of one's own ticket and of another's, and in a later call; a
+    passage's number in a claim; a note on this call's ticket; the runner's mock modes and a
+    restart with a row left `sending`; the suite on `create_ticket` and `hand_off` in both
+    languages; the served runtime's outbox under `var/` and the tickets page.
+  - **Parity** (`test_parity_actions.py`,
+    `tests/t2_agentic_voice/api/test_runtime_calls_actions.py`): one scripted call with an
+    action takes the same path through `TextCall` and the audio session; a served call over
+    WebRTC is confirmed and written once.
+  - **Run A's runner**, `poe eval-actions` (`ole5_voice/evals/action_*.py`): every committed
+    scenario plays to its expected outcomes on fakes; the dry estimate is at most $1.24 for dev
+    and $1.22 for held-out, each within the $1.50 cap, both together over it; it refuses before
+    sending anything, and reads held-out once. Its review confirmed one finding, a stuck or
+    failed play losing its violations, fixed before the merge.
+  - **The defects the calls found, fixed here**: `TextTurn.tool_calls` gave an action call's
+    arguments empty (now the model's own text); `TextCall`'s yes-rule check took a stop over the
+    closing question for a broken summary, unlike the session's receipt; its rule B read the
+    tools' evidence texts but not their data, nor a record entry's result whole, both of which
+    the guard reads, so a status's last four digits counted as unsupported; `ActionSafetySuite`
+    gave its calls no caller, so every case of an action that reads the caller, as Ole5's do,
+    was refused before the read-back (`caller` added); «اممم» was on none of the yes rule's lists,
+    so it was a correction, not asked again (a13);
+    a14's third turn waited over a closing question that no ask-again line brings, and the
+    format now refuses that order; the shared history did not take run A's line, nor its page
+    render it; the talker logged dropped text after every action call, even when none was
+    written; and `read_back.py`'s docstring still said a stop declines as a correction.
+  - **The review of these fixes** (one reviewer for the code, one for the design docs, a
+    skeptic a finding) confirmed three, fixed here: `TextCall`'s rule B still missed what an
+    action's call gave back (a refusal holding a number), which the guard reads; the design's
+    4.6 sample checked the done line's number on the yes turn, though the outcome answers no
+    turn; and `TextCall` and `AudioCall` built the runner without the settings' daily cap per
+    caller (`tests/t2_agentic_voice/testing/test_text_call_as_served.py`). It refuted two.
+  - **Left**: TD-142, its first item the owner's call (Ole5's ticket-number wording).
 
 ## Decision log
 
+- 2026-11-10: The end-to-end calls' choices (D-081 holds them).
+  - *`TextCall`'s checks read what the live guard reads*: a tool result's data and evidence
+    texts, what an action's call gave back, a record entry's result whole and its texts; and a
+    summary played whole stands though a stop cut its reply after it, as for the session's
+    receipt. A check stricter than the guard fails a run for what a call did right. `TextCall`'s
+    and `AudioCall`'s runners take the caps from the settings, as the runtime's does.
+  - *`ActionSafetySuite.caller`*: the session's caller each case's call runs as, `TextCall`'s
+    made-up one unless a subclass gives one, since invariant 3 asks a ticket action to read it.
+  - *Ole5's claim phrases stay as Track E wrote them.* A phrase for "your ticket number" in both
+    `create_ticket`'s and `hand_off`'s lists would block a true number after either, rule A
+    asking evidence of every action a phrase names, and an any-action phrase (`guard.claims`)
+    would cut a knowledge answer that says it in a call with no ticket: the owner's call
+    (TD-142).
+  - *The scenario format refuses a turn said over a read-back after one asked again once it
+    ended*, the ask-again line being no read-back. «اممم» is one of the yes rule's fillers, not
+    a listening sound of the interruption rule's, so no agent without actions changes (GP-18).
+- 2026-11-10: What the tracks settled that the design left open, and the integration's choices;
+  D-081 holds them for the design, whose 4.6, 6.4, 6.6, 8.2, 8.3, 9.2, 9.3 and 9.5 now say them.
+  - *Track A, the yes rule.* Words begun before the summary ended, or with no `speech_at`,
+    count for nothing, a no or a correction too. A send word with no yes word is asked again
+    (the closing question holds one, and its echo must confirm nothing), and so are a yes with a
+    question mark («نعم؟», pardon) and a yes beside a no. Any word on none of the lists makes a
+    correction. A word on two lists counts as no, then yes, then send, then filler.
+  - *Track A, the guard.* Rule A, then rule B, which counts the record's and the status
+    results' texts as evidence. The default claim phrases are past-tense, mostly first person,
+    and none only introduces a number ("your request number"), which would block reading a
+    caller's own number back. The library's lines say "your request" («طلبك»), to fit any
+    action.
+  - *Track B.* Rule C drops the text after an action call in its request; a read-back ends the
+    reply, and after a refused call the next request may speak, under rules A and B. The model
+    reads only that its call is read back, never the draft, and one action is taken a request.
+    A declined read-back reaches it as a note on the turn's message, naming the action and the
+    kind; the note repeats neither the caller's words nor the draft. The request ID is derived
+    from the confirmed action, so it is written once; the caps count outbox rows, never
+    proposals; a write past its timeout runs on, never cancelled. `past_actions` reads the
+    outbox's done rows for the verified caller. `t2v outbox` shows no draft, result or subject.
+  - *Track C.* A turn is the yes rule's when its speech began once the summary's last clause
+    played; the receipt is built then, and a turn with none is asked again. Real words that stop
+    the closing question keep the receipt, so a yes with a send word there counts (the
+    rehearsal's step 6). A repeat says the read-back again as a new reply. An unclear answer is
+    asked again at most `max_attempts` times, then `declined` is said. A turn heard as nothing
+    changes nothing while confirming. `sending` answers the yes turn; the outcome is said once,
+    at a turn boundary.
+  - *Track D.* `ActionSafetySuite` takes `make_agent()`, `action_under_test()`,
+    `sample_draft()` and `language`. `TextCall` finds a read-back's parts by its captions, and
+    exempts the runtime's own lines from its checks as the guard does. The example's action is
+    in `callback.py`, so the guide's samples of `app.py` stand.
+  - *Track E.* The mock never dedupes a request ID (a strict witness of invariant 6) and scopes
+    every read and note by the session's customer. `ticket_status` gives the last four digits
+    only, and the caller's digits back only on a match: a `reports_on` tool's result is
+    evidence, so it may echo no argument the model chose. The handoff is a Request with the
+    call's transcript, one a call.
+  - *The integration.* Rule A runs only for an agent that declares actions, as Tracks A, B and D
+    asked the lead to settle: the plan's baseline, so no measured run of an agent with none moves
+    (GP-18), `TextCall.violations` likewise; the cost is that an agent with read tools alone can
+    say "I've created your ticket" unblocked. The kind `stopped`, so the talker tells a stop from a
+    correction and asks what to change. The session is the only sender of the outcome events.
 - 2026-11-10: The owner's rulings after Block 0 ("The owner's decisions"), and what they change.
   A plain no goes to the talker as a `DeclinedAction` of kind `no`, and it answers in its own
   words; the guard's rule A holds over that reply as over any. A correction goes to it as kind

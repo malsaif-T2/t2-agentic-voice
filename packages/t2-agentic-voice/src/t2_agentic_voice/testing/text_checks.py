@@ -3,7 +3,9 @@ caller heard of the talker's own words, each clause checked as the output guard 
 what the yes rule let through, so `call.violations` says what a guard or a rule let pass.
 
 - **Rule B** (domain/guard.py, plan 006): every ID-shaped token a clause holds has evidence,
-  the caller's words, the tools' results, the cards and the record of completed actions.
+  the caller's words, the tools' results (their data and evidence texts), what an action's call
+  gave back (its read-back's note or its refusal), the cards and the record of completed
+  actions, as the output guard reads them.
 - For an agent that declares an action (plan 007), and only then, so an agent with none is
   checked as before:
   - **Rule A** (domain/claims.py): a clause that claims an action is backed by the record or
@@ -24,7 +26,7 @@ from __future__ import annotations
 import json
 
 from t2_agentic_voice.actions.action import Action
-from t2_agentic_voice.agent.events import ReadBackRequested, SpokenClause
+from t2_agentic_voice.agent.events import ReadBackRequested, SpokenClause, ToolEnded
 from t2_agentic_voice.core.config import VoiceSettings
 from t2_agentic_voice.core.settings.words import LanguageCode
 from t2_agentic_voice.domain.claims import ActionEvidence, check_claims, default_claims
@@ -67,14 +69,30 @@ def _completed(reads: TextReads) -> tuple[CompletedAction, ...]:
     return () if reads.record is None or not runs else reads.record.entries()
 
 
+def _action_results(reads: TextReads) -> list[str]:
+    """What each action's call gave back to the model, its data as JSON, which the talker keeps
+    as a tool's (agent/tool_calls.py): the calls no tool runner ran."""
+    ran = set() if reads.runner is None else set(reads.runner.calls)
+    talks = [] if reads.watched is None else list(reads.watched.talks.values())
+    return [
+        event.result
+        for talk in talks
+        for _, event in talk.events
+        if isinstance(event, ToolEnded) and event.call_id not in ran and event.result
+    ]
+
+
 def _rule_b(reads: TextReads, heard: list[tuple[int, HeardClause]], *, year: int) -> list[str]:
     settings = reads.session.setup.settings.guard
     evidence = [said.text for said in reads.said.values()]
     evidence += list(reads.runner.evidence if reads.runner is not None else ())
+    evidence += _action_results(reads)
     for turn_id in reads.said:
         for card in TextTurn(reads, turn_id).cards:
             evidence += [card.title, *card.steps, *([card.source] if card.source else [])]
-    evidence += [text for done in _completed(reads) for text in done.evidence]
+    # A completed action's result whole and its texts, as the guard reads the record
+    # (agent/speech_guard.py).
+    evidence += [text for done in _completed(reads) for text in (done.result_json, *done.evidence)]
     found = []
     for turn_id, clause in heard:
         verdict = check_ids(clause.text, evidence=evidence, settings=settings, year=year)

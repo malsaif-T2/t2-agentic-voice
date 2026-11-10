@@ -221,6 +221,8 @@ def test_a_no_is_declined(text: str, words: ConsentWords, speech_at: float) -> N
         ("تمام", ARABIC),  # a listening sound, never a decision
         ("okay", ENGLISH),
         ("لو سمحت", ARABIC),
+        ("اممم", ARABIC),  # ummm, a hesitation, as Whisper writes it (plan 007's a13)
+        ("اه... امم", ARABIC),
         ("نعم؟", ARABIC),  # na'am asked back: pardon?
         ("Yes?", ENGLISH),
         ("...", ENGLISH),

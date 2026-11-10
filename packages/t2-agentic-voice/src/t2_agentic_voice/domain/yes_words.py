@@ -93,6 +93,9 @@ _ARABIC_NO = (
 )
 # Beside domain/words.py's Arabic listening sounds.
 _ARABIC_FILLERS = (
+    # ummm, a hesitation as Whisper writes it: alef, meem, meem, meem; beside the listening
+    # sounds' umm and mmm, but kept here, so no agent without actions hears it otherwise
+    "\u0627\u0645\u0645\u0645",
     "\u0644\u0648 \u0633\u0645\u062d\u062a",  # law samaht, please: lam, waw; seen, meem, hah, teh
     "\u0645\u0646 \u0641\u0636\u0644\u0643",  # min fadlak, please: meem, noon; feh, dad, lam, kaf
     "\u0631\u062c\u0627\u0621",  # rajaa'an, please (MSA): reh, jeem, alef, hamza

@@ -205,7 +205,10 @@ class TextCall:
         language = self.agent.call_language(self.language, locale=caller.locale)
         if actions := actions_of(self.agent):  # the part that acts, as the runtime gives it
             self._record = ActionRecord()
-            self._actions = ActionRunner(actions, outbox=self.outbox, record=self._record)
+            per_day = settings.limits.actions_per_caller_per_day
+            self._actions = ActionRunner(
+                actions, outbox=self.outbox, record=self._record, per_caller_per_day=per_day
+            )
             self._jobs = RecordingJobs(self._actions)
         talker: Talker | None = None
         if settings.session.mode_for(instructed=self.agent.instructed) == "talker":

@@ -24,6 +24,7 @@ from pydantic import BaseModel, JsonValue
 
 from t2_agentic_voice.actions.action import Action
 from t2_agentic_voice.actions.tools import Tool
+from t2_agentic_voice.core.identity import Caller
 from t2_agentic_voice.core.settings.tts import LanguageTag
 from t2_agentic_voice.core.settings.words import LanguageCode
 from t2_agentic_voice.domain.declaration import Language, VoiceAgent
@@ -40,12 +41,14 @@ _NUMBERS = ("48213", "73905", "61847", "95130")
 @dataclass(kw_only=True)
 class Scene:
     """One case's call (the module's docstring): the team's `agent`, its `action` as declared,
-    the sample `draft`, the call's `tag`, and the `writes` of the action, watched."""
+    the sample `draft`, the call's `tag`, its `caller` (None for `TextCall`'s made-up one), and
+    the `writes` of the action, watched."""
 
     agent: VoiceAgent
     action: Action
     draft: BaseModel
     tag: LanguageTag
+    caller: Caller | None = None
     writes: Writes = field(init=False)
 
     def __post_init__(self) -> None:

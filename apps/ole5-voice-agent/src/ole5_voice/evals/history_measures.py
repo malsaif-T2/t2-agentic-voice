@@ -1,9 +1,10 @@
-"""The tables of `docs/generated/eval-history.md` for plan 006's runs (history.py renders the
-page; history_tables.py holds the other kinds' tables and the cell helpers): a table for each
-kind that has a run, K's talker runs, S's scenario runs, U's uncertain-middle runs, T's
-first-audio runs and K0's knowledge-depth runs, and each run's numbers by stratum value (K0's by
-k), its targets and its prices. Of these runs only T bills audio, so only its section shows a
-price per hour; K0 sends no chat request, so its section shows no price.
+"""The tables of `docs/generated/eval-history.md` for plan 006's and plan 007's runs (history.py
+renders the page; history_tables.py holds the other kinds' tables and the cell helpers): a table
+for each kind that has a run, K's talker runs, S's scenario runs, U's uncertain-middle runs, T's
+first-audio runs, K0's knowledge-depth runs and A's action runs, and each run's numbers by
+stratum value (K0's by k, S's and A's by scenario), its targets and its prices. Of these runs
+only T bills audio, so only its section shows a price per hour; K0 sends no chat request, so its
+section shows no price.
 """
 
 from __future__ import annotations
@@ -11,13 +12,14 @@ from __future__ import annotations
 from collections.abc import Mapping, Sequence
 from typing import Final
 
+from ole5_voice.evals.action_history import ActionLine
 from ole5_voice.evals.first_audio_score import PathStats, ReplyPath
 from ole5_voice.evals.history_tables import cell, ms, percent, row
 from ole5_voice.evals.knowledge_depth_card import DEPTH, DepthAt, DepthLine
 from ole5_voice.evals.measure_lines import FirstAudioLine, UncertainLine
 from ole5_voice.evals.talker_lines import ScenarioLine, TalkerLine
 
-MeasureLine = TalkerLine | ScenarioLine | UncertainLine | FirstAudioLine
+MeasureLine = TalkerLine | ScenarioLine | UncertainLine | FirstAudioLine | ActionLine
 _HELD: Final = {True: "holds", False: "fails", None: "—"}
 _TALKER: Final = (
     "| # | Time | Run | Commit | Arm | Model | Split | Items | Variants | Failures | Answers "
@@ -27,6 +29,10 @@ _TALKER: Final = (
 _SCENARIOS: Final = (
     "| # | Time | Run | Commit | Model | Repeats | Scenarios | Plays | Failures | Passing plays "
     "| Targets met | Violations | Cost | Complete |"
+)
+_ACTIONS: Final = (
+    "| # | Time | Run | Commit | Model | Split | Repeats | Scenarios | Plays | Failures | Action "
+    "| Type | Summary | Language | Violations | Passed | Cost | Complete |"
 )
 _UNCERTAIN: Final = (
     "| # | Time | Run | Commit | Source | Model | Overlaps | Failed | Right, U0 | Right, arm "
@@ -125,6 +131,29 @@ def scenario_rows(lines: Sequence[tuple[int, ScenarioLine]]) -> list[str]:
     return table("Scenario runs", _SCENARIOS, rows)
 
 
+def action_rows(lines: Sequence[tuple[int, ActionLine]]) -> list[str]:
+    """Run A's table, when it has a run: its registered shares, its violations and whether it
+    passed (the hard constraint and the targets)."""
+    rows = [
+        row(
+            str(n),
+            _time(line),
+            line.run,
+            line.commit,
+            cell(line.model),
+            line.split,
+            *map(str, (line.repeats, line.scenarios, line.plays, line.failures)),
+            *map(percent, (line.action, line.type, line.summary, line.language)),
+            str(line.violations),
+            "—" if line.passed_run is None else _yes(line.passed_run),
+            f"${line.cost_usd:.4f}",
+            _yes(line.complete),
+        )
+        for n, line in lines
+    ]
+    return table("Action runs", _ACTIONS, rows)
+
+
 def uncertain_rows(lines: Sequence[tuple[int, UncertainLine]]) -> list[str]:
     """Run U's table, when it has a run: the rule's numbers (U0) beside the arm's."""
     rows = [
@@ -173,7 +202,7 @@ def first_audio_rows(lines: Sequence[tuple[int, FirstAudioLine]]) -> list[str]:
 
 def measure_prices(line: MeasureLine) -> list[str]:
     """A run's prices, as its section's rows."""
-    if isinstance(line, TalkerLine | ScenarioLine):
+    if isinstance(line, TalkerLine | ScenarioLine | ActionLine):
         priced = {m: f"${p.input_usd:g} in, ${p.output_usd:g} out" for m, p in line.prices.items()}
         return [
             row(f"Price per million tokens, {cell(model)}", text)
@@ -200,6 +229,10 @@ def measure_strata(line: MeasureLine) -> list[str]:
     if isinstance(line, ScenarioLine):
         rows = [row(cell(name), str(n)) for name, n in sorted(line.passed.items())]
         return _block("| Scenario | Passing plays |", rows)
+    if isinstance(line, ActionLine):  # a held-out run's line holds no scenario's count
+        rows = [row(cell(name), str(n)) for name, n in sorted(line.passed.items())]
+        targets = [row(cell(name), _HELD[holds]) for name, holds in line.targets.items()]
+        return _block("| Scenario | Passing plays |", rows) + _block("| Target | Held |", targets)
     if isinstance(line, TalkerLine):
         header = "| Stratum | Value | Items | Variants | Failures | Answers | Passing |"
         rows = [

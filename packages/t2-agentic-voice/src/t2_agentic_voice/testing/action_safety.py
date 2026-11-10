@@ -6,7 +6,9 @@ each a `test_` method pytest finds on a subclass whose name starts with `Test`.
 A subclass gives `make_agent()`, a fresh agent with a fresh backend (reached by a closure, as
 every backend is), `action_under_test()`, the action it tests by its name among the agent's,
 and `sample_draft()`, a draft the action takes; `language`, the call's, is the agent's first
-unless it says. Each case is one `TextCall` (testing/text_call.py) of the agent, the model a fake
+unless it says, and `caller`, the session's caller each call runs as, `TextCall`'s made-up one
+unless it gives one (an action that reads the caller, as a ticket's does, needs it). Each case
+is one `TextCall` (testing/text_call.py) of the agent, the model a fake
 (testing/action_scenes.py), the action watched or given a fault (testing/action_faults.py), and
 the suite's own read tools beside it where a case needs one. Every case ends with the call's
 checks clean (`call.violations`): rules A to C and the yes rule.
@@ -30,6 +32,7 @@ from pydantic import BaseModel, JsonValue
 from t2_agentic_voice.actions.action import Action
 from t2_agentic_voice.actions.tools import Tool, ToolResult
 from t2_agentic_voice.core.errors import ActionNotSent, ActionRejected
+from t2_agentic_voice.core.identity import Caller
 from t2_agentic_voice.core.settings.tts import LanguageTag
 from t2_agentic_voice.domain.declaration import VoiceAgent
 from t2_agentic_voice.domain.ports.action_jobs import OutcomeKind
@@ -70,6 +73,7 @@ class ActionSafetySuite:
     tests and a sample draft, and inherits every case (the module's docstring)."""
 
     language: LanguageTag | None = None
+    caller: Caller | None = None
 
     def make_agent(self) -> VoiceAgent:
         """A fresh agent, with its backend and its action (a backend is reached by a closure)."""
@@ -92,7 +96,7 @@ class ActionSafetySuite:
         _check(isinstance(draft, own[0].draft), "sample_draft() is not the action's draft")
         tag = self.language or agent.languages[0].tag
         _check(any(each.tag == tag for each in agent.languages), f"the agent speaks no {tag}")
-        return Scene(agent=agent, action=own[0], draft=draft, tag=tag)
+        return Scene(agent=agent, action=own[0], draft=draft, tag=tag, caller=self.caller)
 
     # Invariant 1: no action without a yes heard after the read-back.
 
@@ -102,7 +106,7 @@ class ActionSafetySuite:
     async def _yes_over_the_summary(self, scene: Scene) -> None:
         agent = scene.with_action(scene.writes.counted())
         model = scene.model({scene.request: scene.call_action()})
-        async with TextCall(agent, llm=model, language=scene.tag) as call:
+        async with TextCall(agent, llm=model, language=scene.tag, caller=scene.caller) as call:
             asked = await call.user(scene.request)
             yes = await call.user(scene.yes_send, during="read_back")
             await call.advance(SETTLE_S)
@@ -118,7 +122,7 @@ class ActionSafetySuite:
         agent = scene.with_action(scene.writes.counted())
         neutral = ScriptedLLM.reply(scene.language.greeting)
         model = scene.model({scene.request: neutral, scene.yes_send: scene.call_action()})
-        async with TextCall(agent, llm=model, language=scene.tag) as call:
+        async with TextCall(agent, llm=model, language=scene.tag, caller=scene.caller) as call:
             await call.user(scene.request)
             eager = await call.user(scene.yes_send)
             await call.advance(SETTLE_S)
@@ -133,7 +137,7 @@ class ActionSafetySuite:
     async def _bare_yes(self, scene: Scene) -> None:
         agent = scene.with_action(scene.writes.counted())
         model = scene.model({scene.request: scene.call_action()})
-        async with TextCall(agent, llm=model, language=scene.tag) as call:
+        async with TextCall(agent, llm=model, language=scene.tag, caller=scene.caller) as call:
             await call.user(scene.request)
             bare = await call.user(scene.yes, during="closing_question")
             await call.advance(SETTLE_S)
@@ -150,7 +154,7 @@ class ActionSafetySuite:
     async def _consent_claimed(self, scene: Scene, claimed: dict[str, JsonValue]) -> None:
         agent = scene.with_action(scene.writes.counted())
         model = scene.model({scene.request: scene.call_action(**claimed)})
-        async with TextCall(agent, llm=model, language=scene.tag) as call:
+        async with TextCall(agent, llm=model, language=scene.tag, caller=scene.caller) as call:
             asked = await call.user(scene.request)
             yes = await call.user(scene.yes_send)
             await call.advance(SETTLE_S)
@@ -167,7 +171,7 @@ class ActionSafetySuite:
     async def _claimed(self, scene: Scene) -> None:
         agent = scene.with_action(scene.writes.counted())
         model = scene.model({scene.request: ScriptedLLM.reply(f"{scene.claim}.")})
-        async with TextCall(agent, llm=model, language=scene.tag) as call:
+        async with TextCall(agent, llm=model, language=scene.tag, caller=scene.caller) as call:
             turn = await call.user(scene.request)
             await call.advance(SETTLE_S)
             turn.expect.blocked()
@@ -185,7 +189,7 @@ class ActionSafetySuite:
             {scene.request: scene.said_after_the_call(f"{scene.claim}.")},
             after={scene.action.name: claimed},
         )
-        async with TextCall(agent, llm=model, language=scene.tag) as call:
+        async with TextCall(agent, llm=model, language=scene.tag, caller=scene.caller) as call:
             turn = await call.user(scene.request)
             await call.advance(SETTLE_S)
             turn.expect.read_back()
@@ -212,7 +216,7 @@ class ActionSafetySuite:
         model = scene.model(
             {scene.request: ScriptedLLM.call_tool(STATUS_TOOL)}, after={STATUS_TOOL: said}
         )
-        async with TextCall(agent, llm=model, language=scene.tag) as call:
+        async with TextCall(agent, llm=model, language=scene.tag, caller=scene.caller) as call:
             turn = await call.user(scene.request)
             await call.advance(SETTLE_S)
             turn.expect.said(contains=number)
@@ -234,7 +238,7 @@ class ActionSafetySuite:
         model = scene.model(
             {scene.request: ScriptedLLM.call_tool(SEARCH_TOOL)}, after={SEARCH_TOOL: said}
         )
-        async with TextCall(agent, llm=model, language=scene.tag) as call:
+        async with TextCall(agent, llm=model, language=scene.tag, caller=scene.caller) as call:
             turn = await call.user(scene.request)
             await call.advance(SETTLE_S)
             turn.expect.blocked()
@@ -253,7 +257,7 @@ class ActionSafetySuite:
             written = number.translate(_ARABIC_INDIC)
         agent = scene.with_action(scene.writes.counted())
         model = scene.model({scene.request: ScriptedLLM.reply(f"{written}.")})
-        async with TextCall(agent, llm=model, language=scene.tag) as call:
+        async with TextCall(agent, llm=model, language=scene.tag, caller=scene.caller) as call:
             turn = await call.user(scene.request)
             await call.advance(SETTLE_S)
             turn.expect.blocked()
@@ -278,7 +282,7 @@ class ActionSafetySuite:
     async def _ended(self, scene: Scene, action: Action, kind: OutcomeKind) -> None:
         agent = scene.with_action(action)
         model = scene.model({scene.request: scene.call_action()})
-        async with TextCall(agent, llm=model, language=scene.tag) as call:
+        async with TextCall(agent, llm=model, language=scene.tag, caller=scene.caller) as call:
             await call.user(scene.request)
             yes = await call.user(scene.yes_send)
             await call.advance(scene.action.timeout_s + SETTLE_S)
@@ -293,7 +297,7 @@ class ActionSafetySuite:
     async def _twice(self, scene: Scene) -> None:
         agent = scene.with_action(scene.writes.counted())
         model = scene.model({scene.request: scene.call_action()})
-        async with TextCall(agent, llm=model, language=scene.tag) as call:
+        async with TextCall(agent, llm=model, language=scene.tag, caller=scene.caller) as call:
             await call.user(scene.request)
             yes = await call.user(scene.yes_send)
             await call.advance(SETTLE_S)
@@ -314,7 +318,7 @@ class ActionSafetySuite:
         agent = scene.with_action(scene.writes.counted())
         model = scene.model({scene.request: scene.call_action()})
         cap = scene.action.max_per_call
-        async with TextCall(agent, llm=model, language=scene.tag) as call:
+        async with TextCall(agent, llm=model, language=scene.tag, caller=scene.caller) as call:
             yeses = []
             for _ in range(cap + 1):
                 await call.user(scene.request)

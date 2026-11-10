@@ -120,9 +120,11 @@ def playing(playback: Playback, plans: Sequence[ReadBackPlan]) -> Part | None:
 
 def summary_played_at(playback: Playback, reading: Reading) -> float | None:
     """When the reading's summary ended, played whole: every clause of it played, none cut
-    short, each with audio, its reply not stopped; None otherwise, or while it plays."""
+    short, each with audio; None otherwise, or while it plays. A stop that cut its reply after
+    the summary changes none of that, as for the session's receipt (voice/session/read_back.py):
+    a stop over the summary leaves a clause of it unplayed or cut short."""
     reply = playback.reply(reading.reply_id)
-    if reply is None or reply.stopped:
+    if reply is None:
         return None
     clauses = [reply.clauses[index] for index in reading.summary]
     if any(not c.played or c.cut_short or c.chunks == 0 or c.played_at is None for c in clauses):

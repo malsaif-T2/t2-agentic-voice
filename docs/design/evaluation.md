@@ -287,6 +287,13 @@ given after the task's name:
 - `uv run poe eval-scenarios` (`scenario_run.py`) is run S: the scripted calls with the kept arm,
   each played three times and checked turn by turn, appending a scenario line each session (it
   spends; refuses the main checkout);
+- `uv run poe eval-actions` (`action_run.py`) is plan 007's run A: the scripted calls in which
+  the agent acts, over one split, each played three times against the mock ticket system and
+  checked turn by turn, one violation of the hard constraint (no unrecorded claim, no action
+  without a yes) failing the run, in any play, the smoke test's and one with no result included
+  (a stuck play checked on the turns said before it stuck), appending an action line each
+  session (it spends, refused past its cap by a dry estimate; refuses the main checkout, and a
+  held-out run unless named, or once one is complete);
 - `uv run poe uncertain` (`uncertain.py`) is run U: a model's verdict on the overlaps the rule
   left uncertain in a stored dev overlap run, against the rule's, appending an uncertain line (it
   spends);

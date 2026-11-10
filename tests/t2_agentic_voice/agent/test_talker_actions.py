@@ -117,6 +117,19 @@ def test_text_after_the_action_call_is_dropped_unspoken_and_unblocked() -> None:
     assert "ReadBackRequested" in kinds(events) and len(model.requests) == 1
 
 
+@pytest.mark.parametrize("after", ["", " Done, it is sorted."])
+def test_the_dropped_text_is_logged_only_when_there_was_some(
+    after: str, caplog: pytest.LogCaptureFixture
+) -> None:
+    """The trace says text was dropped (rule C) only when the model wrote some after its call,
+    or the splitter held some before it."""
+    caplog.set_level("INFO")
+    written = [TextDelta(text=after)] if after else []
+    model = FakeChat([TextDelta(text="Sure. "), call("open_request", **DRAFT), *written])
+    reply(acting(model).talker, TURN)
+    assert ("talker_text_after_action_dropped" in caplog.text) == bool(after)
+
+
 def test_text_after_a_refused_action_call_is_dropped_and_the_next_request_speaks() -> None:
     model = FakeChat(
         [
