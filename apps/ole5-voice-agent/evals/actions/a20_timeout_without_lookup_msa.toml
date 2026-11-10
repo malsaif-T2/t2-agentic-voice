@@ -1,0 +1,29 @@
+# Plan 007's action scenarios (its "The measurement"; ole5_voice/evals/action_scenarios.py):
+# a late reply with no lookup, in Modern Standard Arabic.
+id = "a20_timeout_without_lookup_msa"
+kind = "timeout_without_lookup"
+split = "held-out"
+language = "ar"
+notes = "With no reply in time and no lookup the unknown line is said; asked for the number after, the talker gives none."
+tickets_mode = "late"
+lookup = false
+made = 1
+ticket_type = "Issue"
+summary_facts = ["Says the caller cannot delegate their permissions to a colleague while on leave."]
+
+[[turns]]
+says = "أرجو فتح تذكرة: لا يمكنني تفويض صلاحياتي لزميل أثناء إجازتي، والأمر عاجل."
+calls = "create_ticket"
+outcome = "read_back"
+language = "ar"
+
+[[turns]]
+says = "نعم، أرسلها."
+outcome = "unknown"
+says_number = "none"
+
+[[turns]]
+says = "إذن ما رقم التذكرة؟"
+language = "ar"
+says_number = "none"
+facts = ["Gives no ticket number, and says the ticket could not be confirmed."]

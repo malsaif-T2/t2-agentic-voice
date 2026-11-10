@@ -1,0 +1,24 @@
+# Plan 007's action scenarios (its "The measurement"; ole5_voice/evals/action_scenarios.py):
+# a plain ticket, the caller's problem and how urgent said at once, a yes after the question.
+id = "a01_plain_ticket_saudi"
+kind = "plain_ticket"
+split = "dev"
+language = "ar-SA"
+notes = "A caller asks for a ticket, saying what is wrong and how urgent; it is read back, and a yes after the question opens it, its number said whole."
+made = 1
+ticket_type = "Mobile App Issue"
+summary_facts = [
+  "Says Ole5's mobile app sends the caller no notifications.",
+  "Says it has been so for about a week.",
+]
+
+[[turns]]
+says = "تطبيق أولي فايف في الجوال ما توصلني منه إشعارات من أسبوع، مو مستعجل بس أبغى تفتح لي تذكرة"
+calls = "create_ticket"
+outcome = "read_back"
+language = "ar-SA"
+
+[[turns]]
+says = "إيه"
+outcome = "done"
+says_number = "whole"

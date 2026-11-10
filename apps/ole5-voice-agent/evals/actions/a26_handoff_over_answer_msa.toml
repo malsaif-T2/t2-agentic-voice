@@ -1,0 +1,32 @@
+# Plan 007's action scenarios (its "The measurement"; ole5_voice/evals/action_scenarios.py):
+# a request for a person over an answer, in Modern Standard Arabic.
+id = "a26_handoff_over_answer_msa"
+kind = "handoff_over_answer"
+split = "held-out"
+language = "ar"
+notes = "An MSA request for a staff member said over a reply stops it; the handoff is read back and made after a yes."
+made = 1
+ticket_type = "Request"
+summary_facts = [
+  "Says the caller asked to speak to a staff member.",
+  "Mentions adding a signature to a correspondence.",
+]
+
+[[turns]]
+says = "كيف أضيف توقيعا إلى المراسلة؟"
+search = true
+language = "ar"
+
+[[turns]]
+says = "أريد التحدث مع موظف"
+when = "agent_speaking"
+after_s = 1.0
+cuts_reply = true
+calls = "hand_off"
+outcome = "read_back"
+language = "ar"
+
+[[turns]]
+says = "نعم، أرسلها."
+outcome = "done"
+says_number = "whole"

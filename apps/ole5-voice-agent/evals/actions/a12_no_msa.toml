@@ -1,0 +1,22 @@
+# Plan 007's action scenarios (its "The measurement"; ole5_voice/evals/action_scenarios.py):
+# a plain no in Modern Standard Arabic.
+id = "a12_no_msa"
+kind = "no"
+split = "held-out"
+language = "ar"
+notes = "A no in MSA after the read-back sends nothing; the talker answers it in its own words."
+made = 0
+
+[[turns]]
+says = "من فضلك افتح تذكرة، الإشعارات لا تصلني على البريد عند وصول مراسلة جديدة، وليس الأمر عاجلا."
+calls = "create_ticket"
+outcome = "read_back"
+language = "ar"
+
+[[turns]]
+says = "لا، لا ترسلها."
+calls = "nothing"
+outcome = "talker"
+language = "ar"
+says_number = "none"
+facts = ["Says plainly, in its own words, that nothing was sent.", "Does not say a ticket was made."]

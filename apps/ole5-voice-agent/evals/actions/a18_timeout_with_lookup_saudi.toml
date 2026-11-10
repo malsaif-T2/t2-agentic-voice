@@ -1,0 +1,24 @@
+# Plan 007's action scenarios (its "The measurement"; ole5_voice/evals/action_scenarios.py):
+# a late reply found by the lookup, in Saudi Arabic.
+id = "a18_timeout_with_lookup_saudi"
+kind = "timeout_with_lookup"
+split = "held-out"
+language = "ar-SA"
+notes = "The mock answers past the timeout; the lookup finds the ticket, whose number is said whole."
+tickets_mode = "late"
+lookup = true
+made = 1
+ticket_type = "Bug"
+summary_facts = ["Says an error appears when saving a correspondence to the archive."]
+
+[[turns]]
+says = "افتح لي تذكرة، الأرشيف يطلع لي خطأ لما أحفظ فيه أي مراسلة، ضروري"
+calls = "create_ticket"
+outcome = "read_back"
+language = "ar-SA"
+
+[[turns]]
+says = "ايه أرسلها"
+when = "closing_question"
+outcome = "done"
+says_number = "whole"

@@ -1,0 +1,50 @@
+# Plan 007's action scenarios (its "The measurement"; ole5_voice/evals/action_scenarios.py):
+# the status of the caller's own tickets, the outbox the list.
+id = "a21_own_status_msa"
+kind = "own_status"
+split = "dev"
+language = "ar"
+notes = "The caller asks after their tickets: only the two made through the agent are told, each by its last four digits, and neither the one made otherwise nor another customer's."
+made = 0
+
+[[seed]]
+owner = "caller"
+through_agent = true
+number = "2026110382000004"
+type = "Bug"
+status = "Open"
+summary = "The inbox shows an error when it opens."
+
+[[seed]]
+owner = "caller"
+through_agent = true
+by = "hand_off"
+number = "2026110582000011"
+type = "Request"
+status = "closed successful"
+summary = "The caller asked to speak to someone about archiving."
+
+[[seed]]
+owner = "caller"
+number = "2026110682000002"
+type = "Inquiry"
+status = "New"
+summary = "A question sent by email about the signature app."
+
+[[seed]]
+owner = "other"
+number = "2026110682000003"
+type = "Bug"
+status = "Pending Reminder"
+summary = "Another customer's reports do not load."
+
+[[turns]]
+says = "ما هي حالة التذاكر التي فتحتها لديكم؟"
+calls = "ticket_status"
+language = "ar"
+says_number = "last_four"
+facts = [
+  "Names the ticket ending 0004 and says it is open.",
+  "Names the ticket ending 0011 and says it is closed.",
+  "Says nothing of a ticket ending 0002 or 0003.",
+]

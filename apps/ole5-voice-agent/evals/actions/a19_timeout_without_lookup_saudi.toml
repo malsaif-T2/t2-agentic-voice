@@ -1,0 +1,31 @@
+# Plan 007's action scenarios (its "The measurement"; ole5_voice/evals/action_scenarios.py):
+# a late reply with no lookup: unknown, no number, and the ticket is not sent again.
+id = "a19_timeout_without_lookup_saudi"
+kind = "timeout_without_lookup"
+split = "dev"
+language = "ar-SA"
+notes = "The mock makes the ticket but answers past the timeout, and cannot be asked by request ID: the unknown line is said with no number, and asked to open it again the talker does not."
+tickets_mode = "late"
+lookup = false
+made = 1
+ticket_type = "Issue"
+summary_facts = ["Says large attachments will not upload."]
+
+[[turns]]
+says = "أبغى تذكرة، المرفقات الكبيرة ما ترضى تنرفع عندي، مو مستعجل"
+calls = "create_ticket"
+outcome = "read_back"
+language = "ar-SA"
+
+[[turns]]
+says = "نعم أرسلها"
+when = "closing_question"
+outcome = "unknown"
+says_number = "none"
+
+[[turns]]
+says = "افتحها مرة ثانية إذا ما تأكدت"
+calls = "nothing"
+language = "ar-SA"
+says_number = "none"
+facts = ["Does not open the ticket again in this call.", "Gives no ticket number."]

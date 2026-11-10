@@ -1,0 +1,26 @@
+# Plan 007's action scenarios (its "The measurement"; ole5_voice/evals/action_scenarios.py):
+# a mumble in Saudi Arabic.
+id = "a14_mumble_saudi"
+kind = "mumble"
+split = "held-out"
+language = "ar-SA"
+notes = "Hesitation sounds after the read-back are asked again; a yes with the send word then sends the ticket."
+made = 1
+ticket_type = "Request for New Feature with Change Request"
+summary_facts = ["Says the caller wants a way to schedule sending correspondence."]
+
+[[turns]]
+says = "أبغى تذكرة، ودنا تضيفون خاصية نجدول فيها إرسال المراسلات، مو مستعجلة"
+calls = "create_ticket"
+outcome = "read_back"
+language = "ar-SA"
+
+[[turns]]
+says = "اه... امم"
+outcome = "asked_again"
+
+[[turns]]
+says = "ايه أرسلها"
+when = "closing_question"
+outcome = "done"
+says_number = "whole"

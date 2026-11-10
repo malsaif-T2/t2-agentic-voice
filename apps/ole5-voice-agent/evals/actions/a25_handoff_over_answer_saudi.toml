@@ -1,0 +1,35 @@
+# Plan 007's action scenarios (its "The measurement"; ole5_voice/evals/action_scenarios.py):
+# the rehearsal's step 3: a request for a person said over an answer stops it, the handoff is
+# read back, and the ticket is made after a yes.
+id = "a25_handoff_over_answer_saudi"
+kind = "handoff_over_answer"
+split = "dev"
+rehearsal = true
+language = "ar-SA"
+notes = "A request for a person said over a reply stops it; the handoff is read back, with the call's conversation attached, and made after a yes; no transfer is promised."
+made = 1
+ticket_type = "Request"
+summary_facts = [
+  "Says the caller asked to speak to a person.",
+  "Mentions archiving a correspondence.",
+]
+
+[[turns]]
+says = "كيف أؤرشف مراسلة في النظام؟"
+search = true
+language = "ar-SA"
+
+[[turns]]
+says = "أبغى موظف"
+when = "agent_speaking"
+after_s = 1.0
+cuts_reply = true
+calls = "hand_off"
+outcome = "read_back"
+language = "ar-SA"
+
+[[turns]]
+says = "نعم أرسلها"
+when = "closing_question"
+outcome = "done"
+says_number = "whole"
