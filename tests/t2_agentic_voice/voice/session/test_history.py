@@ -78,3 +78,27 @@ def test_a_reply_that_says_nothing_played_whole() -> None:
     history = HeardHistory()
     history.asked(0, None, ())
     assert history.reply(0).played_fraction == 1.0 and history.turns() == ()
+
+
+def test_the_lines_say_the_call_as_the_caller_heard_it_in_order() -> None:
+    """What a confirmed action's job is handed (plan 007's Q7): each turn's words before the
+    reply that answers it, each reply as the caller heard it; nothing of a turn heard as nothing
+    or of a reply none of which played."""
+    history = HeardHistory()
+    history.asked(0, None, ("a made-up greeting",))
+    history.played(0, 0)
+    history.heard(WORDS)
+    history.asked(1, 0, ("made-up answer", "never played"))
+    history.played(1, 0)
+    history.turn_ended(1, "dropped", reply_id=None)  # heard as nothing
+    history.heard(_heard(2, "made-up second words", 3.0))
+    history.asked(2, 2, ("unplayed",))
+    history.heard(_heard(3, "made-up last words", 4.0))
+    assert [(line.speaker, line.text) for line in history.lines()] == [
+        ("agent", "a made-up greeting"),
+        ("caller", "made-up words"),
+        ("agent", "made-up answer"),
+        ("caller", "made-up second words"),
+        ("caller", "made-up last words"),
+    ]
+    assert "made-up words" not in repr(history.lines())

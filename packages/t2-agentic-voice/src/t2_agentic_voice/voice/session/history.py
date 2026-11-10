@@ -8,7 +8,7 @@ it, and the talker takes its context from it (`conversation`: core/conversation.
 turns before the one it answers and every reply so far, so an unplayed clause never reaches the
 model as said and a cut one reaches it marked cut, with its share); a turn whose reply was cut
 before any clause played is marked (`rolled_back`), so the agent-led mode (D-050) can roll it
-back.
+back. A confirmed action's job is handed the call so far from it, line by line (`lines`).
 
 The session writes it: its turns (turn_book.py) and its replies (speaker.py), a talker's reply
 clause by clause as it is written (`added`).
@@ -21,6 +21,7 @@ from dataclasses import dataclass, replace
 from t2_agentic_voice.core.conversation import (
     ClauseFate,
     Conversation,
+    ConversationLine,
     PastTurn,
     SaidClause,
     SaidReply,
@@ -160,6 +161,21 @@ class HeardHistory:
             for reply in self.replies()
         )
         return Conversation(turns=turns, replies=replies)
+
+    def lines(self) -> tuple[ConversationLine, ...]:
+        """The call so far as the caller heard it, in order, as an action may attach it (plan
+        007's Q7): each turn's heard words, before the first reply that answers it or a later
+        turn, and what the caller heard of each reply; nothing of a turn heard as nothing or a
+        reply none of which played."""
+        found: list[ConversationLine] = []
+        turns = [turn for turn in self.turns() if turn.words]
+        for reply in self.replies():
+            while turns and reply.turn_id is not None and turns[0].turn_id <= reply.turn_id:
+                found.append(ConversationLine(speaker="caller", text=turns.pop(0).words))
+            if reply.text:
+                found.append(ConversationLine(speaker="agent", text=reply.text))
+        found += [ConversationLine(speaker="caller", text=turn.words) for turn in turns]
+        return tuple(found)
 
     def last_reply(self) -> HeardReply | None:
         """The last reply asked for that the caller heard any of, the one playing (once a stop

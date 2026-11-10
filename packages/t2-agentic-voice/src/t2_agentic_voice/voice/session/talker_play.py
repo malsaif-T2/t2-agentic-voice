@@ -2,14 +2,19 @@
 which keeps each reply of the talker's as a `Talk` and plays each event its talker gives, one
 step of the session's at a time, with a `TalkPlayer` (`play`): the events, and what each does,
 are talking.py's module docstring's "Its events, in order". A reply that fails is told so once
-at most (`tell`): the `error` notice when none of it was said, else `cut_off` after a beat.
+at most (`tell`): the `error` notice when none of it was said, else `cut_off` after a beat. An
+action's read-back (`ReadBackRequested`) starts confirming as it plays, never as it is written,
+so an early start or a kept reply let go before then leaves nothing (read_back.py); it counts as
+said, so no `error` notice follows a reply that only read back.
 """
 
 from __future__ import annotations
 
 import asyncio
+from collections.abc import Awaitable, Callable
 from dataclasses import dataclass, field
 
+from t2_agentic_voice.agent.events import ReadBackRequested
 from t2_agentic_voice.agent.talker import (
     ClauseBlocked,
     ModelReplied,
@@ -27,9 +32,13 @@ from t2_agentic_voice.core.settings.tts import LanguageTag
 from t2_agentic_voice.core.tracing_tts import CallTrace
 from t2_agentic_voice.voice.session.io import CallSetup
 from t2_agentic_voice.voice.session.open_reply import OpenReply, language_of
+from t2_agentic_voice.voice.session.read_back import Confirming
 from t2_agentic_voice.voice.session.scope import CancelScope
 from t2_agentic_voice.voice.session.turn_book import TurnBook
 from t2_agentic_voice.voice.session.usage import Usage
+
+# A step of the session's, run under its lock (call.py's `_guarded`).
+Guarded = Callable[[str, Callable[[], Awaitable[None]]], Awaitable[None]]
 
 
 @dataclass(kw_only=True)
@@ -67,10 +76,19 @@ class Talk:
 
 class TalkPlayer:
     """Plays the talker's events of one call (`setup`), its model requests counted in `usage`,
-    its first token timed on the turns `turns` keeps, and its tool calls traced on `trace`."""
+    its first token timed on the turns `turns` keeps, its tool calls traced on `trace`, and its
+    actions' read-backs said in the call's `confirming` state."""
 
-    def __init__(self, setup: CallSetup, usage: Usage, turns: TurnBook, trace: CallTrace) -> None:
+    def __init__(
+        self,
+        setup: CallSetup,
+        usage: Usage,
+        turns: TurnBook,
+        trace: CallTrace,
+        confirming: Confirming,
+    ) -> None:
         self._setup, self._usage, self._turns, self._trace = setup, usage, turns, trace
+        self._confirming = confirming
 
     async def tell(self, talk: Talk, reply: OpenReply, at: float) -> None:
         """The caller told the reply failed, once a reply, in its language (its last clause's,
@@ -127,6 +145,9 @@ class TalkPlayer:
                     GuardBlocked(call_id=call_id, turn_id=turn_id, at=wall, reason="unsupported_id")
                 )
                 await self._told(talk, reply, tag, at)
+            case ReadBackRequested(plan=plan):  # its lines are templates: said, never guarded
+                talk.said, talk.language = talk.said + 1, plan.language
+                await self._confirming.read(reply, plan, at)
             case ModelRequested(model=model):
                 self._usage.chat_requested(model)
                 talk.request_at = at
