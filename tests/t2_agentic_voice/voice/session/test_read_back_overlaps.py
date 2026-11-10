@@ -19,6 +19,7 @@ from t2_agentic_voice.core.config import VoiceSettings
 from t2_agentic_voice.core.conversation import DeclinedAction
 from t2_agentic_voice.domain.text.invisible import provider_text
 from t2_agentic_voice.domain.words import PRESET_WORDS
+from t2_agentic_voice.domain.yes_rule import AskAgain
 from t2_agentic_voice.voice.protocol import Unduck
 from t2_agentic_voice.voice.session.commands import StopSpeaking
 
@@ -52,6 +53,7 @@ from tests.t2_agentic_voice.voice.session.talker_support import (
     talked,
     talker_call,
 )
+from tests.t2_agentic_voice.voice.session.yes_support import FakeYesRule
 
 STOP_WORD = PRESET_WORDS["en"].stop[0]
 WAIT_WORD = PRESET_WORDS["en"].wait[0]
@@ -272,6 +274,62 @@ def test_the_calls_end_ends_confirming(settings: VoiceSettings) -> None:
         await asked(io)
         await read_whole(io)
         await io.ending()
+
+    asyncio.run(drive())
+    assert not session._confirming.active
+    assert receipt(session, io.clock.now()) is None
+
+
+@pytest.mark.parametrize("text", [STOP_WORD, REPEAT_TEXT], ids=["stop", "repeat"])
+def test_over_a_line_that_asked_again_a_stop_word_declines_and_a_repeat_says_it_again(
+    settings: VoiceSettings, rule: FakeRule, yes_rule: FakeYesRule, text: str
+) -> None:
+    """A line that asked the read-back again is a follow-up of it: a stop word over it ends
+    confirming, the talker hearing the turn with the action declined, and a repeat request
+    over it has the read-back said again."""
+    yes_rule.forced = lambda heard, receipt: AskAgain()
+    io, session, talker = _call(settings)
+
+    async def drive() -> None:
+        await asked(io)
+        await read_whole(io)
+        await settle()
+        await io.clock.advance(1.0)
+        await talked(io, 1, "made-up mumble")
+        await io.synthesizing(2, 0)
+        await io.clause_queued(2, 0)  # the line that asks again plays
+        await over(io, 2, text)
+
+    asyncio.run(drive())
+    assert len(yes_rule.calls) == 1  # the mumble's; nothing said over the line reached it
+    if text == STOP_WORD:
+        assert not session._confirming.active
+        handed = talker.turns[-1]
+        assert handed.turn_id == 2
+        assert handed.declined == DeclinedAction(action=ACTION, kind="correction", words=text)
+    else:
+        assert [s.text for s in speaks(io, 3)] == READ_BACK
+        current = session._confirming.read_back
+        assert current is not None and current.reply_id == 3
+        assert [t.turn_id for t in talker.turns] == [0]
+
+
+def test_the_clients_stop_over_a_line_that_asked_again_ends_confirming(
+    settings: VoiceSettings, yes_rule: FakeYesRule
+) -> None:
+    yes_rule.forced = lambda heard, receipt: AskAgain()
+    io, session, _ = _call(settings)
+
+    async def drive() -> None:
+        await asked(io)
+        await read_whole(io)
+        await settle()
+        await io.clock.advance(1.0)
+        await talked(io, 1, "made-up mumble")
+        assert session._confirming.active  # asked again
+        await io.synthesizing(2, 0)
+        await io.clause_queued(2, 0)
+        await io.client({"v": 1, "type": "stop"})
 
     asyncio.run(drive())
     assert not session._confirming.active

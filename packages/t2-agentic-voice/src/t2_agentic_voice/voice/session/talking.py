@@ -56,7 +56,13 @@ voice/session/call.py.
   scope, until that long after the caller stopped speaking, whether the search or the model
   holds the reply up by then, and is said only if no clause has been asked of the voice by
   then, the reply is not kept and no notice took its place; past that time it is said at once,
-  and once a clause was asked for never. With no `after_s` it is said as it comes.
+  and once a clause was asked for never (talker_progress.py). With no `after_s` it is said as it
+  comes.
+- **An answer to an action's read-back** (plan 007; yes_turns.py). While the call is confirming,
+  a turn whose speech began once the read-back's summary played its last clause is the yes
+  rule's, never the talker's, and starts no talker early (call.py); the talker answers it only
+  when the rule declines the action, as a no or a correction (`TalkerTurn.declined`). The
+  outcome of a confirmed action's write is said at a turn boundary (action_job.py's `flush`).
 
 Every event the talker gives is played as one step of the session's (`guarded`, under its lock,
 in the order they came), so it never interleaves with one the Pipecat side hands; the client is
@@ -72,7 +78,6 @@ from t2_agentic_voice.agent.language import reply_language
 from t2_agentic_voice.agent.talker import (
     ModelReplied,
     ModelRequested,
-    ProgressDue,
     Talker,
     TalkerEvent,
 )
@@ -88,12 +93,13 @@ from t2_agentic_voice.voice.session.read_back import Confirming
 from t2_agentic_voice.voice.session.report import TurnLog
 from t2_agentic_voice.voice.session.scope import CancelScope
 from t2_agentic_voice.voice.session.speaker import Speaker
+from t2_agentic_voice.voice.session.talker_play import Guarded as Guarded
 from t2_agentic_voice.voice.session.talker_play import Talk, TalkPlayer
+from t2_agentic_voice.voice.session.talker_progress import ProgressLines
 from t2_agentic_voice.voice.session.turn_book import TurnBook
+from t2_agentic_voice.voice.session.yes_turns import Receipt, YesTurns
 
 _log = get_logger(__name__)
-# A step of the session's, run under its lock (call.py's `_guarded`).
-Guarded = Callable[[str, Callable[[], Awaitable[None]]], Awaitable[None]]
 # The longest language name a `TalkerTurn` takes (core/conversation.py).
 _LANGUAGE_CHARS = range(2, 17)
 
@@ -115,19 +121,37 @@ class Talking:
         sync: Callable[[], Awaitable[None]],
         over: Callable[[], bool],
         confirming: Confirming,
+        receipt: Receipt,
     ) -> None:
         self._setup, self._talker, self._speaker, self._turns = setup, talker, speaker, turns
         self._usage, self._events, self._history = books.usage, books.events, books.history
         self._guarded, self._sync, self._over = guarded, sync, over
         self._clock, self._confirming = setup.clock, confirming
         self._player = TalkPlayer(setup, books.usage, turns, books.trace, confirming)
+        self._progress = ProgressLines(setup, turns, self._player, guarded=guarded, sync=sync)
+        self.yes = YesTurns(
+            setup,
+            books,
+            speaker=speaker,
+            turns=turns,
+            confirming=confirming,
+            receipt=receipt,
+            talk=self.answer,
+            guarded=guarded,
+            sync=sync,
+            over=over,
+        )
         self._talks: dict[TurnId, Talk] = {}
         self._holding: set[TurnId] = set()  # the turns whose hold began and has not resumed
         self._open: set[TurnId] = set()  # the turns open, no overlap, not yet taken (kept replies)
 
     async def answer(self, turn: TurnLog, heard: HeardWords, at: float) -> None:
-        """Answer `turn`, its words `heard`, with the talker, unless its early start answers it
-        already (the same words); the replies in progress to earlier turns stopped first."""
+        """Answer `turn`, its words `heard`, with the talker, unless they answer an action's
+        read-back (the yes rule's: yes_turns.py) or its early start answers it already (the same
+        words); the replies in progress to earlier turns stopped first."""
+        if self.yes.takes(heard):
+            await self.yes.answer(turn, heard, at)
+            return
         talk = self._talks.get(turn.turn_id)
         if talk is not None and talk.reply is None and talk.scope.cancelled:  # stopped in the hold
             self._turns.ended(turn, "rolled_back")
@@ -230,7 +254,8 @@ class Talking:
 
     async def end(self) -> None:
         """The call ended: every early start still held, and every kept reply, is cancelled (a
-        reply's own scope is cancelled with the reply)."""
+        reply's own scope is cancelled with the reply); an action's outcome due is never said."""
+        self.yes.end()
         self._open.clear()
         for talk in [talk for talk in self._talks.values() if talk.held]:
             talk.kept_for.clear()
@@ -349,37 +374,11 @@ class Talking:
 
     async def _play(self, talk: Talk, event: TalkerEvent, at: float) -> None:
         """Play one of the talker's events (talker_play.py), then tell the client what the agent
-        is doing; a progress line with a time set is said at that time (`_line_now`)."""
-        if isinstance(event, ProgressDue) and event.after_s > 0 and not self._line_now(talk, event):
+        is doing; a progress line with a time set is said at that time (talker_progress.py)."""
+        if not self._progress.now(talk, event):
             return
         await self._player.play(talk, event, at)
         await self._sync()
-
-    def _line_now(self, talk: Talk, event: ProgressDue) -> bool:
-        """Whether `event`'s line is said now: past its time with no answer begun. Before its
-        time it waits (the module's progress line)."""
-        if talk.said or talk.told:
-            return False
-        now = self._clock.now()
-        spoken = self._turns.turn(talk.turn_id).spoken_at
-        left = (now if spoken is None else spoken) + event.after_s - now
-        if left <= 0:
-            return True
-        talk.waiting = talk.scope.start(
-            self._line_at(talk, event, left), name=f"progress-{talk.turn_id}"
-        )
-        return False
-
-    async def _line_at(self, talk: Talk, event: ProgressDue, left: float) -> None:
-        """Say `event`'s line in `left` seconds, as a step of the session's, if it is still
-        wanted (the module's progress line)."""
-        await self._clock.sleep(left)
-        await self._guarded("talker_event", partial(self._said_late, talk, event))
-
-    async def _said_late(self, talk: Talk, event: ProgressDue) -> None:
-        if not (talk.said or talk.told or talk.held):
-            await self._player.play(talk, event, self._clock.now())
-            await self._sync()
 
     async def _close(self, talk: Talk, failure: Exception | None) -> None:
         if talk.waiting is not None:

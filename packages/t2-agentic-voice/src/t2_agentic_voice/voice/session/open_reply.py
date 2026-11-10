@@ -6,8 +6,8 @@ The `Speaker` opens it (`open_reply`) before its first clause, so its cancel sco
 open for the talker's work from the start; each clause is added as it comes (`add_clause`),
 asked for at once, keyed on the reply and its next index, and kept in the heard history
 `unplayed` until it plays; a fixed phrase is added from the phrase cache (`add_phrase`: a
-progress line, or the line said in a blocked clause's place); a line of an action's read-back is
-added as a clause is, marked with its part (`add_line`); a card is shown (`card`), as
+progress line, or the line said in a blocked clause's place); an action's line is added as a
+clause is, a line of its read-back marked with its part (`add_line`); a card is shown (`card`), as
 `t2v/1`'s `card`; and the reply is closed (`finish`) once its last clause and its work are done.
 It ends, its scope cancelled, only once it is closed and its last clause has played or failed,
 or at once when a stop or the call's end drops it (closed or not), as every reply ends
@@ -132,12 +132,18 @@ class OpenReply:
                 return
 
     async def add_line(
-        self, line: SpokenLine, *, language: LanguageTag, at: float, part: ReadBackPart
+        self,
+        line: SpokenLine,
+        *,
+        language: LanguageTag,
+        at: float,
+        part: ReadBackPart | None = None,
     ) -> tuple[ClauseIndex, ...]:
-        """Ask for a line of an action's read-back (read_back.py), its `part`, as the reply's
-        next clauses: its `spoken` form said as a clause is (a template, which the output guard
-        does not check: the design's 8.2), captioned with its `text` when it fits one request;
-        the indexes asked for, none once a stop or the call's end dropped the reply."""
+        """Ask for an action's line (read_back.py, yes_turns.py), the read-back's `part` it
+        says if any, as the reply's next clauses: its `spoken` form said as a clause is (a
+        template, which the output guard does not check: the design's 8.2), captioned with its
+        `text` when it fits one request; the indexes asked for, none once a stop or the call's
+        end dropped the reply."""
         writer, setup = self._parts()
         requests = speech_of(setup, line.spoken, language)
         captions = [line.text] if len(requests) == 1 else [caption for _, caption in requests]

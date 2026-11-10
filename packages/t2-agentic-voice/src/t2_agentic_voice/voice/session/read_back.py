@@ -25,6 +25,14 @@ transport's `ClausePlayed` reports, never the browser's `playback` message.
   no overlap begun over the summary undecided; and the turn's speech begun once its last clause
   played. Its `question_ended_at` is the closing question's last `ClausePlayed`, None until every
   clause of the question has played so.
+- **The answer** (yes_turns.py). A turn whose speech began once the summary's last clause played
+  answers it (`answering`), and goes to the yes rule, with its words (`words`): a yes ends
+  confirming (`finish`); a no or a correction ends it too, the turn reaching the talker with the
+  action declined of that kind (`decline`); an unclear answer is asked again (`asks_again`) at
+  most the plan's `max_attempts` times, each line said a follow-up of the read-back
+  (`follow_up`), over which a stop or pause word or a repeat request does as over the read-back;
+  after the last, confirming ends. A stop or pause request said whole while confirming is a stop
+  word over it (the owner's ruling). Each read-back said is the public `ConfirmationRequested`.
 """
 
 from __future__ import annotations
@@ -32,13 +40,13 @@ from __future__ import annotations
 from collections.abc import Callable, Collection
 from dataclasses import dataclass
 
-from t2_agentic_voice.core.conversation import DeclinedAction
-from t2_agentic_voice.core.events import ReplyId, TurnId
+from t2_agentic_voice.core.conversation import DeclinedAction, DeclineKind
+from t2_agentic_voice.core.events import ConfirmationRequested, ReplyId, TurnId
 from t2_agentic_voice.core.yes_inputs import READ_BACK_SEAL, ReadBackReceipt
 from t2_agentic_voice.domain.action_lines import ReadBackPlan
 from t2_agentic_voice.domain.interruptions import Verdict
 from t2_agentic_voice.domain.words import rule_form
-from t2_agentic_voice.domain.yes_words import consent_words
+from t2_agentic_voice.domain.yes_words import ConsentWords, consent_words
 from t2_agentic_voice.voice.protocol import ClauseIndex
 from t2_agentic_voice.voice.session.io import CallSetup
 from t2_agentic_voice.voice.session.open_reply import OpenReply, language_of
@@ -107,8 +115,11 @@ class Confirming:
     def __init__(self, setup: CallSetup, playback: Playback) -> None:
         self._setup, self._playback = setup, playback
         self.read_back: ReadBack | None = None  # the current read-back; None when not confirming
-        self._declined: dict[TurnId, str] = {}  # each turn that stopped a read-back: its action
+        # each turn that declined a read-back: its action, and how
+        self._declined: dict[TurnId, tuple[str, DeclineKind]] = {}
         self._again: dict[TurnId, ReadBackPlan] = {}  # each turn whose repeat request said again
+        self._asked = 0  # how many times the current read-back was asked again
+        self._follow_ups: set[ReplyId] = set()  # the lines that asked it again
 
     @property
     def active(self) -> bool:
@@ -117,9 +128,11 @@ class Confirming:
 
     async def read(self, reply: OpenReply, plan: ReadBackPlan, at: float) -> ReadBack | None:
         """Say `plan`'s summary, then its closing question, as the next clauses of `reply`, in
-        the plan's language, at `at`: the current read-back, in place of any before it; None,
-        confirming nothing, when the reply was dropped before both were asked for."""
-        self.read_back = None
+        the plan's language, at `at`: the current read-back, in place of any before it, never
+        yet asked again; None, confirming nothing, when the reply was dropped before both were
+        asked for."""
+        self.read_back, self._asked = None, 0
+        self._follow_ups.clear()
         tag = plan.language
         summary = await reply.add_line(plan.summary, language=tag, at=at, part="summary")
         if not summary:
@@ -129,7 +142,65 @@ class Confirming:
             return None
         read_back = ReadBack(plan=plan, reply_id=reply.reply_id, summary=summary, question=question)
         self.read_back = read_back
+        said = self._playback.reply(reply.reply_id)
+        if said is not None and said.turn_id is not None:
+            wall, call_id = self._setup.clock.wall(), self._setup.call_id
+            asked = ConfirmationRequested(
+                call_id=call_id, turn_id=said.turn_id, at=wall, action=plan.action
+            )
+            self._setup.emit(asked)
         return read_back
+
+    def words(self, plan: ReadBackPlan) -> ConsentWords:
+        """The yes rule's words for `plan`'s read-back, in its language: the preset's, the
+        `words` settings group's additions and the action's own send words."""
+        code = language_of(self._setup, plan.language).primary
+        added = self._setup.settings.words
+        return consent_words(
+            code,
+            added_yes=added.yes.get(code, ()),
+            added_send=added.send.get(code, ()),
+            action_send=plan.send_words,
+        )
+
+    def answering(self, speech_at: float | None) -> bool:
+        """Whether speech begun at `speech_at` answers the current read-back: it began once
+        the read-back's summary had played its last clause (yes_turns.py's)."""
+        read_back = self.read_back
+        if read_back is None or speech_at is None:
+            return False
+        return not self._over_summary(read_back, speech_at)
+
+    def decline(self, turn_id: TurnId, kind: DeclineKind) -> None:
+        """The caller's turn `turn_id` declined the current read-back, as `kind`: confirming
+        ends, and the turn reaches the talker with the action declined so (`declined`)."""
+        read_back = self.read_back
+        if read_back is not None:
+            self._declined[turn_id] = (read_back.plan.action, kind)
+            self.read_back = None
+
+    def finish(self) -> None:
+        """Confirming ends: the yes rule issued a yes, or no yes came after the last ask-again."""
+        self.read_back = None
+        self._follow_ups.clear()
+
+    def asks_again(self) -> bool:
+        """The caller's answer to the current read-back was unclear: whether it is asked again,
+        at most its plan's `max_attempts` times; after that, confirming ends (`finish`)."""
+        read_back = self.read_back
+        if read_back is None:
+            return False
+        self._asked += 1
+        if self._asked <= read_back.plan.max_attempts:
+            return True
+        self.finish()
+        return False
+
+    def follow_up(self, reply_id: ReplyId) -> None:
+        """Reply `reply_id` asked the current read-back again: what is said over it is taken as
+        over the closing question (`cut_by`, `stopped`)."""
+        if self.read_back is not None:
+            self._follow_ups.add(reply_id)
 
     def ignored(
         self, reply_id: ReplyId, speech_at: float, text: str, *, listening: Collection[str]
@@ -142,32 +213,28 @@ class Confirming:
             return False
         if not self._over_summary(read_back, speech_at):
             return False
-        plan, code = read_back.plan, language_of(self._setup, read_back.plan.language).primary
-        added = self._setup.settings.words
-        words = consent_words(
-            code,
-            added_yes=added.yes.get(code, ()),
-            added_send=added.send.get(code, ()),
-            action_send=plan.send_words,
-        )
+        words = self.words(read_back.plan)
         return _covered(text, (*words.yes, *words.send, *words.fillers, *listening))
 
     def cut_by(
         self, turn_id: TurnId, *, reply_id: ReplyId, speech_at: float, verdict: Verdict
     ) -> None:
         """An overlap of the caller's turn `turn_id`, begun over reply `reply_id` at `speech_at`,
-        stops the agent for `verdict`: over the current read-back, a repeat request has it said
-        again (`again`), and a stop or pause word, or real words over its summary, declines it
-        (`declined`), the turn's words going to the talker; either ends it. Real words over the
-        closing question leave it to the yes rule."""
+        stops the agent for `verdict`: over the current read-back or a line that asked it again,
+        a repeat request has it said again (`again`), and a stop or pause word, or real words
+        over its summary, declines it as a correction (`declined`), the turn's words going to
+        the talker; either ends it. Real words over the closing question, or over a line that
+        asked it again, leave it to the yes rule."""
         read_back = self.read_back
-        if read_back is None or reply_id != read_back.reply_id or verdict.action == "go_on":
+        if read_back is None or verdict.action == "go_on":
+            return
+        if reply_id != read_back.reply_id and reply_id not in self._follow_ups:
             return
         if verdict.action == "repeat":
             self._again[turn_id] = read_back.plan
         elif verdict.kind != "stop" and not self._over_summary(read_back, speech_at):
             return
-        self._declined[turn_id] = read_back.plan.action
+        self._declined[turn_id] = (read_back.plan.action, "correction")
         self.read_back = None
 
     def again(self, turn_id: TurnId) -> ReadBackPlan | None:
@@ -183,20 +250,26 @@ class Confirming:
         return turn_id in self._declined
 
     def declined(self, turn_id: TurnId, *, words: str) -> DeclinedAction | None:
-        """The action the caller's turn `turn_id`, its words `words`, declined by stopping its
-        read-back, as the talker learns of it: a correction, so it asks what to change; None
-        when the turn stopped none."""
-        action = self._declined.get(turn_id)
-        if action is None:
+        """The action the caller's turn `turn_id`, its words `words`, declined, as the talker
+        learns of it: a `no`, or a `correction` (its read-back stopped included), so it answers
+        in its own words; None when the turn declined none."""
+        found = self._declined.get(turn_id)
+        if found is None:
             return None
-        return DeclinedAction(action=action, kind="correction", words=words)
+        action, kind = found
+        return DeclinedAction(action=action, kind=kind, words=words)
 
     def stopped(self) -> None:
-        """The client's `stop`: a read-back still playing ends, with no receipt."""
+        """The client's `stop`: a read-back, or a line that asked it again, still playing
+        ends, with no receipt."""
         read_back = self.read_back
-        reply = None if read_back is None else self._playback.reply(read_back.reply_id)
-        if reply is not None and reply.ended_at is None:
-            self.read_back = None
+        if read_back is None:
+            return
+        for reply_id in (read_back.reply_id, *self._follow_ups):
+            reply = self._playback.reply(reply_id)
+            if reply is not None and reply.ended_at is None:
+                self.finish()
+                return
 
     def reply_ended(self, reply: Reply) -> None:
         """`reply` ended, however: when it says the current read-back and its summary did not
@@ -209,7 +282,7 @@ class Confirming:
 
     def end(self) -> None:
         """The call ended: confirming ends, and nothing is said again."""
-        self.read_back = None
+        self.finish()
         self._again.clear()
 
     def receipt(self, *, speech_at: float | None, undecided: Undecided) -> ReadBackReceipt | None:

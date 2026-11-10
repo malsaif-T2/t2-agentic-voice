@@ -10,7 +10,8 @@ they hold with Track A's functions too.
 The interruption rule (domain/interruptions.py's `judge`) is plan 005's Track A's, built in
 parallel: a test that judges an overlap takes `rule`, a fake the test scripts, patched where the
 session calls it, and never runs Track A's code. So for the yes rule's words (plan 007's Track
-A's `consent_words`): a test of what is said over a read-back takes `consent`.
+A's `consent_words`): a test of what is said over a read-back takes `consent`; and for the yes
+rule itself (its `decide`): a test of the caller's answer to a read-back takes `yes_rule`.
 
 Every step the session takes is guarded (it logs a failure by its kind and goes on, as the
 `Session` protocol asks), so a test would not see a bug that raised inside it: every test here
@@ -28,10 +29,11 @@ import pytest
 from t2_agentic_voice.core.settings.tts import LanguageTag
 from t2_agentic_voice.domain.text import clauses, pronounce
 from t2_agentic_voice.domain.yes_words import ConsentWords
-from t2_agentic_voice.voice.session import echo, overlap, read_back
+from t2_agentic_voice.voice.session import echo, overlap, read_back, yes_turns
 
 from tests.t2_agentic_voice.voice.session.overlap_support import FakeRule
 from tests.t2_agentic_voice.voice.session.read_back_support import CONSENT
+from tests.t2_agentic_voice.voice.session.yes_support import FakeYesRule
 
 # Where a clause may end: the Arabic comma and question mark, and the Latin punctuation.
 _ENDS = re.compile(r"(?<=[،؟.,!?;:])\s+")
@@ -112,6 +114,16 @@ def consent(monkeypatch: pytest.MonkeyPatch) -> list[dict[str, Any]]:
 
     monkeypatch.setattr(read_back, "consent_words", words)
     return calls
+
+
+@pytest.fixture
+def yes_rule(monkeypatch: pytest.MonkeyPatch, consent: list[dict[str, Any]]) -> FakeYesRule:
+    """The yes rule as the tests give it (yes_support.py's `FakeYesRule`), standing in for
+    Track A's `decide` where the session calls it (yes_turns.py), with the tests' words
+    (`consent`): these tests never run Track A's code."""
+    fake = FakeYesRule()
+    monkeypatch.setattr(yes_turns, "decide", fake)
+    return fake
 
 
 @pytest.fixture

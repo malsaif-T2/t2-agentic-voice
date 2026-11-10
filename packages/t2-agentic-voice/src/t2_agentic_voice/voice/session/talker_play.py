@@ -11,6 +11,7 @@ said, so no `error` notice follows a reply that only read back.
 from __future__ import annotations
 
 import asyncio
+from collections.abc import Awaitable, Callable
 from dataclasses import dataclass, field
 
 from t2_agentic_voice.agent.events import ReadBackRequested
@@ -35,6 +36,9 @@ from t2_agentic_voice.voice.session.read_back import Confirming
 from t2_agentic_voice.voice.session.scope import CancelScope
 from t2_agentic_voice.voice.session.turn_book import TurnBook
 from t2_agentic_voice.voice.session.usage import Usage
+
+# A step of the session's, run under its lock (call.py's `_guarded`).
+Guarded = Callable[[str, Callable[[], Awaitable[None]]], Awaitable[None]]
 
 
 @dataclass(kw_only=True)

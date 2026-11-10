@@ -57,8 +57,11 @@ whole stays a command. The fixed repeat (D-064) stays only for a session with no
 
 **Over an action's read-back** (plan 007; read_back.py): a stop that cuts it is told to the call's
 confirming state first (`Confirming.cut_by`); a turn that stopped it reaches the talker with the
-action declined, a stop or pause request said whole included; and a repeat request over it, or
-said whole while it is confirming, has the session say it again, a command (`_read_again`).
+action declined, a stop or pause request said whole included, and so does a stop or pause
+request said whole while it is confirming; and a repeat request over it, or said whole while it
+is confirming, has the session say it again, a command (`_read_again`). A turn whose speech began
+once its summary played answers it, and is the yes rule's (yes_turns.py), an overlap the reply
+went on over included.
 """
 
 from __future__ import annotations
@@ -195,8 +198,12 @@ class Interrupter:
         """A turn's own transcript that is no overlap's: under `two_step`, a whole repeat
         request says the last reply again, and a whole stop or pause request is not said back,
         each a command, the replies answering earlier turns stopped first (`_stop_earlier`);
-        any other is answered, as under `drop`."""
+        any other is answered, as under `drop`. While confirming, a whole stop or pause request
+        declines the read-back, the talker asking what to change (the owner's stop ruling)."""
         command = None if self._over() else self.command(heard)
+        if command == "stop" and self._confirming.active:
+            self._confirming.decline(turn.turn_id, "correction")
+            command = None
         read_back = self._confirming.read_back if command == "repeat" else None
         if command is None or (command == "repeat" and self._talker and read_back is None):
             await self._answer(turn, heard, event)
@@ -276,7 +283,9 @@ class Interrupter:
         agent was stopped, the turn handed to the talker whole, unless it is a stop or pause
         request said whole, or nothing was heard (a command); new words or a correction whose
         own transcript failed hear the `error` notice, as with no talker, and so do those its
-        whole overlap held after its window's stop or repeat request (`OverlapState.instead`)."""
+        whole overlap held after its window's stop or repeat request (`OverlapState.instead`).
+        A turn the reply went on over is answered only when it answers a read-back, its speech
+        begun once the summary played (the yes rule's: a bare yes over the closing question)."""
         decided = None if state is None else state.decided
         if state is not None and decided is not None and decided.action == "go_on":
             played = self._played(state)
@@ -286,7 +295,10 @@ class Interrupter:
                 await self._act(state, again, event.at)
                 decided = again
         if decided is not None and decided.action == "go_on":
-            self._turns.settle(turn)
+            if heard is not None and self._confirming.answering(heard.speech_at):
+                await self._answer(self._follows.pending(turn), heard, event)
+            else:
+                self._turns.settle(turn)
             return
         answered = decided is None or answers(decided) or (state is not None and state.instead)
         failed = event.failure is not None and answered
