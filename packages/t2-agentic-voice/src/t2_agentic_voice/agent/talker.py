@@ -15,8 +15,10 @@ written it, so the first is spoken while the model still writes); a card to show
 a tool begun and ended (`ToolBegan`, `ToolEnded`); the progress line of a tool that has one
 (`ProgressDue`, said by the session from the phrase cache if the wait runs long); a clause
 the output guard blocked (`ClauseBlocked`, never spoken: the session speaks the presets'
-`error` notice in its place and emits `GuardBlocked`, and the talker keeps a developer
-note); each model request as it goes and as it ends (`ModelRequested`, `ModelReplied`, for the
+`error` notice in its place and emits `GuardBlocked` with its `reason`, and the talker keeps a
+developer note); an action's read-back to say (`ReadBackRequested`, the reply's last event
+before its end: the session reads it back and asks; nothing the talker gives confirms it);
+each model request as it goes and as it ends (`ModelRequested`, `ModelReplied`, for the
 call's usage and the turn's
 times); and the reply's end (`ReplyDone`), after its last clause and its work. A `ProviderError`
 from the model is raised from the stream instead, after any clause already given, for the
@@ -48,12 +50,14 @@ from __future__ import annotations
 from collections.abc import AsyncIterator
 from typing import Protocol
 
+from t2_agentic_voice.actions.action_runner import ActionRunner
 from t2_agentic_voice.actions.runner import ToolRunner
 from t2_agentic_voice.agent.events import (
     ClauseBlocked,
     ModelReplied,
     ModelRequested,
     ProgressDue,
+    ReadBackRequested,
     ReplyDone,
     ReplyScope,
     ShownCard,
@@ -80,6 +84,7 @@ __all__ = [
     "ModelReplied",
     "ModelRequested",
     "ProgressDue",
+    "ReadBackRequested",
     "ReplyDone",
     "ReplyScope",
     "ShownCard",
@@ -112,8 +117,10 @@ class Talker(Protocol):
 class ChatTalker:
     """The library's talker for one call (`call`): `agent`'s instructions and tools, the chat
     `model` and the tool `runner` the api layer injects, the `settings` (`llm`, `guard`), and
-    the call's `clock`, the session's, that it keeps its times on (the module's docstring). A
-    `Talker`; one reply at a time."""
+    the call's `clock`, the session's, that it keeps its times on (the module's docstring); and
+    `actions`, the agent's action runner when it declares actions, one for every call, whose
+    record of this call (`record`) its jobs add to and the output guard reads. A `Talker`; one
+    reply at a time."""
 
     def __init__(
         self,
@@ -124,9 +131,12 @@ class ChatTalker:
         settings: VoiceSettings,
         call: TalkerCall,
         clock: Clock,
+        actions: ActionRunner | None = None,
     ) -> None:
         self.agent, self.model, self.runner = agent, model, runner
         self.settings, self.call, self.clock = settings, call, clock
+        self.actions = actions
+        self.record = None if actions is None else actions.record(call.call_id)
         self._memory = Memory()
 
     def reply(self, turn: TalkerTurn, *, scope: ReplyScope) -> AsyncIterator[TalkerEvent]:
@@ -143,5 +153,7 @@ class ChatTalker:
             memory=self._memory,
             turn=turn,
             scope=scope,
+            actions=self.actions,
+            record=self.record,
         )
         return run.events()

@@ -31,6 +31,10 @@ HELPS = [
     ["doctor", "--help"],
     ["settings", "--help"],
     ["settings", "show", "--help"],
+    ["outbox", "--help"],
+    ["outbox", "list", "--help"],
+    ["outbox", "show", "--help"],
+    ["outbox", "reconcile", "--help"],
 ]
 # The child: import the library, then print each command's help, and say what was imported.
 _CHILD = f"""

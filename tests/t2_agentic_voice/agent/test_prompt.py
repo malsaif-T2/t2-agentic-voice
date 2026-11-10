@@ -1,24 +1,34 @@
 """The talker's system prompt (agent/prompt.py; the design's 3.1): the library's rules, the
 date, the team's instructions for the reply language, then the language section, in that order
-and nothing else; the rules short; `render_prompt` the same prompt today."""
+and nothing else; the rules short; the action rules for an agent with actions only; a request's
+tools, then its actions; `render_prompt` the same prompt today."""
 
 from __future__ import annotations
 
 from datetime import date
 
 import pytest
+from t2_agentic_voice.actions.action_runner import ActionRunner
+from t2_agentic_voice.actions.memory_outbox import MemoryOutbox
+from t2_agentic_voice.actions.runner import ToolRunner
+from t2_agentic_voice.actions.tools import tool
 from t2_agentic_voice.agent.prompt import (
+    ACTION_RULES,
     CUT_MARK,
     DATA_TAG,
     LANGUAGE_SECTIONS,
     RULES,
     compose_prompt,
     render_prompt,
+    tool_definitions,
 )
 from t2_agentic_voice.core.clock import SYSTEM_CLOCK
 from t2_agentic_voice.domain.declaration import VoiceAgent
 
+from tests.t2_agentic_voice.actions.action_support import Backend, an_action
+from tests.t2_agentic_voice.agent.action_talk_support import acting_agent
 from tests.t2_agentic_voice.agent.chat_support import ENGLISH, SAUDI, agent
+from tests.t2_agentic_voice.fakes import FakeClock
 
 DAY = date(2026, 11, 6)
 
@@ -72,6 +82,32 @@ def test_the_language_section_asks_for_the_saudi_register_unless_the_caller_spea
         "Saudi dialect, unless the caller speaks Modern Standard Arabic" in LANGUAGE_SECTIONS["ar"]
     )
     assert LANGUAGE_SECTIONS["en"].startswith("Reply in English.")
+
+
+def test_an_agent_with_actions_and_only_one_is_given_the_action_rules() -> None:
+    """Plan 007's baseline: a rule added for actions goes only to an agent that declares one."""
+    backend = Backend(outbox=MemoryOutbox(), clock=FakeClock())
+    acts = acting_agent(an_action(backend))
+    prompt = compose_prompt(acts, language="en", today=DAY)
+    assert prompt.startswith(f"{RULES}\n{ACTION_RULES}\nToday is 2026-11-06.")
+    assert ACTION_RULES not in compose_prompt(agent(), language="en", today=DAY)
+    for needed in ["only after their yes", "write nothing after the call", "Never say an action"]:
+        assert needed in ACTION_RULES, needed
+    assert len(ACTION_RULES) < 600  # every token is paid on every request
+
+
+def test_a_request_offers_the_tools_then_the_actions() -> None:
+    @tool(description="Search the made-up help.")
+    async def search_help(query: str) -> str:
+        return query
+
+    backend = Backend(outbox=MemoryOutbox(), clock=FakeClock())
+    actions = ActionRunner([an_action(backend)], outbox=MemoryOutbox())
+    runner = ToolRunner([search_help])
+    offered = tool_definitions(runner, actions)
+    assert [schema.name for schema in offered] == ["search_help", "open_request"]
+    assert offered[1] == actions.actions[0].tool_schema()
+    assert tool_definitions(runner) == runner.schemas()
 
 
 def test_render_prompt_shows_the_prompt_of_today() -> None:

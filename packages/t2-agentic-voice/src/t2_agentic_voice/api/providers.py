@@ -7,8 +7,10 @@ api may build an adapter and hand voice what the tools' layer makes (harness.tom
   code: `Providers.from_settings(settings).replace(stt=...)`.
 - `talkers`: the factory voice's entry point builds each call's talker with (voice/talkers.py):
   the library's `ChatTalker` for the agent, on the chat model, with one tool runner of the
-  agent's tools for every call (it holds no call's state), and the call's clock; None for an
-  agent whose calls run the echo.
+  agent's tools for every call (it holds no call's state), the agent's one action runner when
+  it declares actions (api/actions.py opens it; each call's talker reads its own call's record
+  from it, which that call's jobs add to), and the call's clock; None for an agent whose calls
+  run the echo.
 """
 
 from __future__ import annotations
@@ -16,6 +18,7 @@ from __future__ import annotations
 from dataclasses import dataclass
 
 from t2_agentic_voice.actions.action import Action
+from t2_agentic_voice.actions.action_runner import ActionRunner
 from t2_agentic_voice.actions.runner import ToolRunner
 from t2_agentic_voice.actions.tools import Tool
 from t2_agentic_voice.agent.talker import ChatTalker, Talker, TalkerCall
@@ -83,12 +86,21 @@ def tools_of(agent: VoiceAgent) -> tuple[Tool, ...]:
     return tools
 
 
+def actions_of(agent: VoiceAgent) -> tuple[Action, ...]:
+    """The agent's actions, in order, each carried out by its action runner, never by the tool
+    runner."""
+    return tuple(tool for tool in agent.tools if isinstance(tool, Action))
+
+
 def talkers(
-    agent: VoiceAgent, settings: VoiceSettings, chat: ChatModel | None
+    agent: VoiceAgent,
+    settings: VoiceSettings,
+    chat: ChatModel | None,
+    actions: ActionRunner | None = None,
 ) -> TalkerFactory | None:
-    """The factory of each call's talker (the module's docstring); None for an agent whose
-    calls run the echo, or when no chat model was given (voice's entry point then refuses an
-    agent that runs the talker, saying so)."""
+    """The factory of each call's talker (the module's docstring), each given `actions`, the
+    agent's action runner; None for an agent whose calls run the echo, or when no chat model
+    was given (voice's entry point then refuses an agent that runs the talker, saying so)."""
     mode = settings.session.mode_for(instructed=agent.instructed, prefix=settings.prefix)
     if mode != "talker" or chat is None:
         return None
@@ -97,7 +109,13 @@ def talkers(
 
     def build(call: TalkerCall, clock: Clock) -> Talker:
         return ChatTalker(
-            agent, model=model, runner=runner, settings=settings, call=call, clock=clock
+            agent,
+            model=model,
+            runner=runner,
+            settings=settings,
+            call=call,
+            clock=clock,
+            actions=actions,
         )
 
     return build

@@ -2,30 +2,145 @@
 the shape of adapters/used_tokens.py. `INSERT OR IGNORE` on the request ID is what makes a write
 never go twice, and a row is durable before `add` returns.
 
-Plan 007's Track B fills this.
+**How.** The file is the one `open` is given, its folder made when missing; the caller of
+`open` puts it under `storage.var_dir`. Every statement commits on its own (autocommit) with
+`synchronous` FULL, so a row is on disk before `add` or `mark` returns. The SQLite work runs in
+a worker thread (`asyncio.to_thread`), so a commit never stalls the event loop that paces every
+call's audio; one connection serves every thread, its lock held for each statement. Times are
+kept as whole microseconds since the epoch, read back in UTC; rows come oldest first, by
+`created_at`, then the order they were added. A row read back is parsed into an `OutboxEntry`
+(a boundary). `mark` refuses a request ID the file does not hold (LookupError, naming no value),
+and `count` a naive `since`. A row holds call content, so nothing here logs one (invariant 8).
 """
 
 from __future__ import annotations
 
-from datetime import datetime
+import asyncio
+import sqlite3
+import threading
+from collections.abc import Callable
+from datetime import UTC, datetime, timedelta
 from pathlib import Path
-from typing import Self
+from typing import Any, Self
 
 from t2_agentic_voice.domain.ports.outbox import OutboxEntry, OutboxState
 
-_TRACK = "plan 007's Track B fills SqliteOutbox"
+_EPOCH = datetime(1970, 1, 1, tzinfo=UTC)
+_MICROSECOND = timedelta(microseconds=1)
+_COLUMNS = (
+    "request_id",
+    "call_id",
+    "subject",
+    "action",
+    "draft_json",
+    "state",
+    "note",
+    "result_json",
+    "created_at",
+    "updated_at",
+)
+_SCHEMA = (
+    "PRAGMA synchronous = FULL",
+    "CREATE TABLE IF NOT EXISTS outbox ("
+    "request_id TEXT PRIMARY KEY, call_id TEXT NOT NULL, subject TEXT NOT NULL, "
+    "action TEXT NOT NULL, draft_json TEXT NOT NULL, state TEXT NOT NULL, note TEXT, "
+    "result_json TEXT, created_at INTEGER NOT NULL, updated_at INTEGER NOT NULL)",
+    "CREATE INDEX IF NOT EXISTS outbox_by_caller ON outbox (subject, action, created_at)",
+    "CREATE INDEX IF NOT EXISTS outbox_by_state ON outbox (state)",
+)
+_ADD = (
+    f"INSERT OR IGNORE INTO outbox ({', '.join(_COLUMNS)}) "  # noqa: S608 - fixed column names
+    f"VALUES ({', '.join('?' for _ in _COLUMNS)})"
+)
+_MARK = (
+    "UPDATE outbox SET state = ?, note = ?, result_json = COALESCE(?, result_json), "
+    "updated_at = ? WHERE request_id = ?"
+)
+_SELECT = f"SELECT {', '.join(_COLUMNS)} FROM outbox"  # noqa: S608 - fixed column names
+_ORDER = " ORDER BY created_at, rowid"
+_COUNT = "SELECT COUNT(*) FROM outbox WHERE subject = ? AND action = ? AND created_at >= ?"
+# What `mark` says of a request ID the file does not hold, never the ID itself.
+NO_ROW = "The outbox holds no row of that request ID."
+
+
+def _utc_now() -> datetime:
+    return datetime.now(UTC)
+
+
+def _micros(instant: datetime) -> int:
+    """`instant` as whole microseconds since the epoch: exact, where a float timestamp is not."""
+    return (instant - _EPOCH) // _MICROSECOND
+
+
+def _instant(micros: int) -> datetime:
+    return _EPOCH + micros * _MICROSECOND
+
+
+def _aware(since: datetime) -> datetime:
+    """`since` when it is an aware time; a naive one is refused, since it names no instant."""
+    if since.utcoffset() is None:
+        raise ValueError("since must be an aware time (with a time zone), as UTC is")
+    return since
+
+
+def _row(entry: OutboxEntry) -> tuple[Any, ...]:
+    values = entry.model_dump()
+    values["created_at"] = _micros(entry.created_at)
+    values["updated_at"] = _micros(entry.updated_at)
+    return tuple(values[name] for name in _COLUMNS)
+
+
+def _entry(row: tuple[Any, ...]) -> OutboxEntry:
+    """A row read back, parsed."""
+    values = dict(zip(_COLUMNS, row, strict=True))
+    values["created_at"] = _instant(values["created_at"])
+    values["updated_at"] = _instant(values["updated_at"])
+    return OutboxEntry.model_validate(values)
+
+
+def _connect(path: Path) -> sqlite3.Connection:
+    """The store's database at `path`, its folder and table created when missing."""
+    path.parent.mkdir(parents=True, exist_ok=True)
+    connection = sqlite3.connect(path, isolation_level=None, check_same_thread=False)
+    try:
+        for statement in _SCHEMA:
+            connection.execute(statement)
+    except BaseException:
+        connection.close()
+        raise
+    return connection
 
 
 class SqliteOutbox:
     """Every write of one agent, in a SQLite file under its `var_dir` folder."""
 
+    def __init__(self, _connection: sqlite3.Connection, _now: Callable[[], datetime]) -> None:
+        """Built by `open`, which opens the connection."""
+        self._connection = _connection
+        self._now = _now
+        self._lock = threading.Lock()
+
     @classmethod
-    async def open(cls, path: Path) -> Self:
-        """The store kept in the file `path`, created when absent."""
-        raise NotImplementedError(f"{_TRACK} ({path.name})")
+    async def open(cls, path: Path, *, _now: Callable[[], datetime] = _utc_now) -> Self:
+        """The store kept in the file `path`, created when absent; called at the runtime's
+        start. Close it with `aclose()`."""
+        connection = await asyncio.to_thread(_connect, path)
+        return cls(connection, _now)
+
+    def _run(self, statement: str, parameters: tuple[Any, ...]) -> sqlite3.Cursor:
+        with self._lock:
+            return self._connection.execute(statement, parameters)
+
+    def _all(self, statement: str, parameters: tuple[Any, ...]) -> list[tuple[Any, ...]]:
+        with self._lock:
+            rows: list[tuple[Any, ...]] = self._connection.execute(statement, parameters).fetchall()
+            return rows
 
     async def add(self, entry: OutboxEntry) -> bool:
-        raise NotImplementedError(f"{_TRACK} ({entry.action})")
+        """Write `entry` (the `Outbox` port's `add`), on disk before this returns: True the
+        first time, False when its request ID is held already, writing nothing."""
+        cursor = await asyncio.to_thread(self._run, _ADD, _row(entry))
+        return cursor.rowcount == 1
 
     async def mark(
         self,
@@ -35,10 +150,17 @@ class SqliteOutbox:
         note: str | None = None,
         result_json: str | None = None,
     ) -> None:
-        raise NotImplementedError(f"{_TRACK} ({state})")
+        """Move the row `request_id` to `state` (the `Outbox` port's `mark`), its result kept
+        when none is given."""
+        parameters = (state, note, result_json, _micros(self._now()), request_id)
+        cursor = await asyncio.to_thread(self._run, _MARK, parameters)
+        if cursor.rowcount != 1:
+            raise LookupError(NO_ROW)
 
     async def get(self, request_id: str) -> OutboxEntry | None:
-        raise NotImplementedError(_TRACK)
+        """The row `request_id`, None when there is none."""
+        rows = await asyncio.to_thread(self._all, f"{_SELECT} WHERE request_id = ?", (request_id,))
+        return _entry(rows[0]) if rows else None
 
     async def entries(
         self,
@@ -47,10 +169,26 @@ class SqliteOutbox:
         subject: str | None = None,
         action: str | None = None,
     ) -> tuple[OutboxEntry, ...]:
-        raise NotImplementedError(_TRACK)
+        """The rows that match every filter given, oldest first."""
+        filters = {"state": state, "subject": subject, "action": action}
+        given = {column: value for column, value in filters.items() if value is not None}
+        where = " AND ".join(f"{column} = ?" for column in given)
+        statement = f"{_SELECT}{' WHERE ' + where if where else ''}{_ORDER}"
+        rows = await asyncio.to_thread(self._all, statement, tuple(given.values()))
+        return tuple(_entry(row) for row in rows)
 
     async def count(self, *, subject: str, action: str, since: datetime) -> int:
-        raise NotImplementedError(f"{_TRACK} ({since})")
+        """How many writes of `action` `subject` asked for since `since`, whatever became of
+        them."""
+        parameters = (subject, action, _micros(_aware(since)))
+        rows = await asyncio.to_thread(self._all, _COUNT, parameters)
+        counted: int = rows[0][0]
+        return counted
 
     async def aclose(self) -> None:
-        raise NotImplementedError(_TRACK)
+        """Close the database connection."""
+        await asyncio.to_thread(self._close)
+
+    def _close(self) -> None:
+        with self._lock:
+            self._connection.close()

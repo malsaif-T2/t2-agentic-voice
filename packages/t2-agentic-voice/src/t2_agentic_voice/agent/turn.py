@@ -11,17 +11,27 @@ turn and the call as it was heard to the events the session plays, within the re
   asked for them dropped (`_without_calls`); a tool call the last one makes anyway is not run.
 - **Speech as it is written.** The model's text goes through the clause splitter as it streams
   (`ClauseStream`), any note of the history's it copied taken out first (agent/context.py's
-  `Unnoted`), and each whole clause, once the output guard's rule B passed it against the
-  evidence seen this call (its tools' results, the caller's heard words), is yielded at once.
-  A blocked one is `ClauseBlocked`, and by `guard.on_block` the rest of the reply goes with it
-  (`drop_rest`: no more clause, request or tool) or only it; the next turn's history holds a
-  developer note.
+  `Unnoted`), and each whole clause, once the output guard passed it (agent/speech_guard.py:
+  rule A on claims, for an agent with actions, then rule B against the evidence seen this
+  call: its tools' results, the call's record, the caller's heard words), is yielded at once.
+  A blocked one is `ClauseBlocked`, with its rule's reason, and by `guard.on_block` the rest of
+  the reply goes with it (`drop_rest`: no more clause, request or tool) or only it; the next
+  turn's history holds a developer note.
 - **Tools** (agent/tool_calls.py). Each call the model asks for starts at once, in the reply's
   scope, and runs through the runner; the first with a progress line gives it, for the
   session to say if the wait runs long (one a reply); each result goes back to the model
   framed as data, a
   result's card is shown once the guard passed its text, and the calls and results are kept
   for the call's next `KEPT_TURNS` turns, which the heard history does not hold.
+- **Actions** (the design's 6.4 and 8.2). A request offers the agent's actions beside its tools
+  (agent/prompt.py's `tool_definitions`). Rule C: once the model calls an action in a request,
+  its text after the call is dropped, unspoken and unblocked, with what the splitter held. The
+  call is proposed to the action runner (agent/tool_calls.py): a read-back ends the reply with
+  `ReadBackRequested`, after its request's other tools, and no request follows, so nothing the
+  model writes is spoken until the turn after the read-back; a refusal goes back to the model
+  as a result, and the next request may speak again (to say why, or ask what is missing),
+  under rule A. A turn that declined a read-back (`TalkerTurn.declined`) is answered by the
+  model in its own words, told so in the turn's message (agent/context.py).
 - **Failure and cancel.** A `ProviderError` from the model ends the reply: it is raised from the
   stream after any clause already given, for the session to say the `error` notice (which it
   says too for a reply that ends with no clause); a request cut at `max_output_tokens`
@@ -37,24 +47,40 @@ turn and the call as it was heard to the events the session plays, within the re
 from __future__ import annotations
 
 import contextlib
-import itertools
 from collections.abc import AsyncGenerator, AsyncIterator, Iterable, Sequence
 from dataclasses import dataclass, field
 
+from t2_agentic_voice.actions.action_runner import ActionRunner
+from t2_agentic_voice.actions.record import ActionRecord
 from t2_agentic_voice.actions.runner import ToolRunner
-from t2_agentic_voice.actions.tools import CallContext, ToolResult
-from t2_agentic_voice.agent.context import BLOCKED, Unnoted, history, turn_message
+from t2_agentic_voice.actions.tools import ToolResult
+from t2_agentic_voice.agent.context import (
+    BLOCKED,
+    CLAIM_BLOCKED,
+    Unnoted,
+    call_context,
+    declined_note,
+    history,
+    turn_message,
+)
 from t2_agentic_voice.agent.events import (
     ClauseBlocked,
     ModelReplied,
     ModelRequested,
+    ReadBackRequested,
     ReplyDone,
     ReplyScope,
     SpokenClause,
     TalkerEvent,
 )
 from t2_agentic_voice.agent.language import call_register, reply_language
-from t2_agentic_voice.agent.prompt import compose_prompt, reply_line, with_first_line
+from t2_agentic_voice.agent.prompt import (
+    compose_prompt,
+    reply_line,
+    tool_definitions,
+    with_first_line,
+)
+from t2_agentic_voice.agent.speech_guard import SpeechGuard
 from t2_agentic_voice.agent.tool_calls import Memory, ToolCalls, exchange
 from t2_agentic_voice.core.clock import Clock
 from t2_agentic_voice.core.config import VoiceSettings
@@ -65,7 +91,6 @@ from t2_agentic_voice.core.logging import get_logger
 from t2_agentic_voice.core.settings.tts import LanguageTag
 from t2_agentic_voice.domain.cards import Card
 from t2_agentic_voice.domain.declaration import VoiceAgent
-from t2_agentic_voice.domain.guard import check_ids
 from t2_agentic_voice.domain.ports.chat_model import (
     ChatEvent,
     ChatMessage,
@@ -140,19 +165,32 @@ class Turn:
         memory: Memory,
         turn: TalkerTurn,
         scope: ReplyScope,
+        actions: ActionRunner | None = None,
+        record: ActionRecord | None = None,
     ) -> None:
         self.agent, self.model, self.runner = agent, model, runner
         self.settings, self.clock, self.memory = settings, clock, memory
-        self.turn, self.scope = turn, scope
+        self.turn, self.scope, self.actions = turn, scope, actions
         spoken = [language.tag for language in agent.languages]
         self.language = reply_language(turn, call=call_language, spoken=spoken)
-        self.ctx = CallContext(caller=caller, call_id=call_id, language=self.language)
+        self.ctx = call_context(
+            caller=caller, call_id=call_id, language=self.language, actions=actions, record=record
+        )
         self.year = clock.wall().year
         heard = [t.words for t in turn.conversation.turns if t.fate != "dropped" and t.words]
         self.heard = (*heard, turn.words)
         self.register = call_register(self.heard)  # the call's so far, this turn's among it
         self.stopped = False  # a blocked clause dropped the rest of the reply
         self.blocked = 0
+        self.guard = SpeechGuard(
+            settings=settings.guard,
+            language=self.language,
+            year=self.year,
+            actions=() if actions is None else actions.actions,
+            record=record,
+            memory=memory,
+            heard=self.heard,
+        )
         self.tools = ToolCalls(
             runner=runner,
             ctx=self.ctx,
@@ -161,6 +199,7 @@ class Turn:
             memory=memory,
             turn_id=turn.turn_id,
             shown=self._shown,
+            actions=actions,
         )
 
     async def events(self) -> AsyncGenerator[TalkerEvent, None]:
@@ -175,9 +214,14 @@ class Turn:
             named=named,
         )
         messages = [ChatMessage.system(prompt), *past, turn_message(self.turn)]
+        if self.turn.declined is not None:  # kept beside the turn, once, for the turns after it
+            note = ChatMessage.system(declined_note(self.turn.declined))
+            if note not in self.memory.exchanges.get(self.turn.turn_id, ()):
+                self.memory.keep(self.turn.turn_id, [note])
         requests = tools_run = 0
         for index in range(MAX_REQUESTS):
-            tools = self.runner.schemas() if index < MAX_REQUESTS - 1 else ()
+            last = index == MAX_REQUESTS - 1
+            tools = () if last else tool_definitions(self.runner, self.actions)
             request = self._request(messages, tools, after_tools=tools_run > 0)
             requests += 1
             yield ModelRequested(model=request.model)
@@ -210,6 +254,9 @@ class Turn:
                 *done[1:],
             ]
             self.memory.keep(self.turn.turn_id, done)
+            if self.tools.plan is not None:  # read back: nothing more of the model this turn
+                yield ReadBackRequested(plan=self.tools.plan)
+                break
         _log.info(
             "talker_replied",
             call_id=self.ctx.call_id,
@@ -218,6 +265,7 @@ class Turn:
             requests=requests,
             tools=tools_run,
             blocked=self.blocked,
+            read_back=self.tools.plan is not None,
         )
         yield ReplyDone()
 
@@ -249,6 +297,7 @@ class Turn:
         whole_sentences = self.language == "en"  # D-077
         splitter = ClauseStream(max_chars=None, whole_sentences=whole_sentences)
         unnoted = Unnoted()
+        acted = False  # rule C: an action was called, and what the model writes after is dropped
         try:
             async with _closing(self.model.stream(request)) as stream:
                 async for event in stream:
@@ -256,7 +305,7 @@ class Turn:
                         event, TextDelta | ToolCallRequest
                     ):
                         answer.first_token_s = max(0.0, self.clock.now() - started)
-                    if isinstance(event, TextDelta):
+                    if isinstance(event, TextDelta) and not acted:
                         answer.text += event.text
                         for said in self._said(splitter.feed(unnoted.feed(event.text))):
                             yield said
@@ -265,6 +314,7 @@ class Turn:
                     elif isinstance(event, ToolCallRequest):
                         if all(event.id != known.id for known in answer.calls):  # each id once
                             answer.calls.append(event)
+                        acted = acted or self.tools.is_action(event.name)
                     elif isinstance(event, Usage):
                         answer.usage = event
                     elif isinstance(event, Done) and event.finish_reason == "length":
@@ -284,11 +334,11 @@ class Turn:
                 retryable=error.retryable,
             )
             raise
+        if acted:  # rule C: what the splitter held goes too, unspoken
+            _log.info("talker_text_after_action_dropped", turn_id=self.turn.turn_id)
+            return
         for said in self._said((*splitter.feed(unnoted.close()), *splitter.close())):
             yield said
-
-    def _evidence(self) -> Iterable[str]:
-        return itertools.chain(self.memory.evidence, self.heard)
 
     def _said(self, clauses: Iterable[str]) -> list[TalkerEvent]:
         """`clauses`, each spoken once the guard passed it, or blocked (the module's
@@ -297,26 +347,29 @@ class Turn:
         for text in clauses:
             if self.stopped:
                 break
-            guard = self.settings.guard
-            verdict = check_ids(text, evidence=self._evidence(), settings=guard, year=self.year)
-            if verdict.passed:
+            checked = self.guard.check(text)
+            if checked.passed:
                 events.append(SpokenClause(text=text, language=self.language))
                 continue
             self.blocked += 1
-            self.memory.notes[self.turn.turn_id] = BLOCKED
-            unsupported = verdict.unsupported
-            events.append(ClauseBlocked(text=text, language=self.language, unsupported=unsupported))
-            self.stopped = guard.on_block == "drop_rest"
+            claim = checked.reason == "unsupported_claim"
+            self.memory.notes[self.turn.turn_id] = CLAIM_BLOCKED if claim else BLOCKED
+            events.append(
+                ClauseBlocked(
+                    text=text,
+                    language=self.language,
+                    unsupported=checked.unsupported,
+                    reason=checked.reason,
+                )
+            )
+            self.stopped = self.settings.guard.on_block == "drop_rest"
         return events
 
     def _shown(self, card: Card, tool: str) -> bool:
         """Whether `card`'s text passes the guard; a card that does not is not shown, and is
         logged by its tool's name alone."""
         texts = [card.title, *card.steps, *([card.source] if card.source else [])]
-        guard, evidence = self.settings.guard, list(self._evidence())
-        if all(
-            check_ids(t, evidence=evidence, settings=guard, year=self.year).passed for t in texts
-        ):
+        if self.guard.ids_pass(texts):
             return True
         _log.warning("talker_card_blocked", turn_id=self.turn.turn_id, tool=tool)
         return False

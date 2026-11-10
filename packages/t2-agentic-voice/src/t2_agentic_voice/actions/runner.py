@@ -51,7 +51,7 @@ _TOOLS_FIX = (
 )
 
 
-def _failed(message: str, failure: str) -> ToolResult:
+def failed_result(message: str, failure: str) -> ToolResult:
     """A call that failed, `message` the talker reads, `failure` what its trace names."""
     return ToolResult(data={"error": message}, ok=False, failure=failure)
 
@@ -65,7 +65,7 @@ def _failure_of(error: BaseException) -> str:
     return f"{error.kind} at {step}" if isinstance(step, str) else error.kind
 
 
-def _frames(error: BaseException) -> str:
+def frames_of(error: BaseException) -> str:
     """Where `error` was raised, as file, line and function, innermost last; no source line,
     local or message, which could hold an argument."""
     frames = traceback.extract_tb(error.__traceback__)[-_FRAMES_LOGGED:]
@@ -117,8 +117,8 @@ class ToolRunner:
         if tool is None:
             names = ", ".join(self._by_name) or "none"
             message = f"there is no tool named `{request.name}`; the tools are: {names}"
-            return _failed(message, "no_such_tool")
-        arguments = _parsed(tool.parameters, request.arguments)
+            return failed_result(message, "no_such_tool")
+        arguments = parsed_arguments(tool.parameters, request.arguments)
         if isinstance(arguments, ToolResult):
             return arguments
         kwargs = {name: getattr(arguments, name) for name in type(arguments).model_fields}
@@ -126,7 +126,7 @@ class ToolRunner:
             value = binding.value(ctx.caller)
             if value is None:
                 _log.error("tool_bound_value_missing", tool=tool.name, parameter=name)
-                return _failed(FAILED, "bound_value_missing")
+                return failed_result(FAILED, "bound_value_missing")
             kwargs[name] = value
         context = self._contexts[tool.name]
         if context is not None:
@@ -139,16 +139,18 @@ class ToolRunner:
         return await _within(tool, call, clock)
 
 
-def _parsed(parameters: type[BaseModel], text: str) -> BaseModel | ToolResult:
+def parsed_arguments(parameters: type[BaseModel], text: str) -> BaseModel | ToolResult:
     """The arguments `text` gives, parsed into `parameters`; a failed result naming what is
     wrong, each field at fault by its name, never its value."""
     try:
         raw = json.loads(text) if text.strip() else {}
     except json.JSONDecodeError:
         message = "the arguments are not JSON: give a JSON object of the tool's parameters"
-        return _failed(message, "bad_arguments")
+        return failed_result(message, "bad_arguments")
     if not isinstance(raw, dict):
-        return _failed("the arguments are a JSON object of the tool's parameters", "bad_arguments")
+        return failed_result(
+            "the arguments are a JSON object of the tool's parameters", "bad_arguments"
+        )
     try:
         return parameters.model_validate(raw)
     except ValidationError as error:
@@ -157,7 +159,7 @@ def _parsed(parameters: type[BaseModel], text: str) -> BaseModel | ToolResult:
         f"`{'.'.join(str(part) for part in problem['loc']) or 'arguments'}`: {problem['msg']}"
         for problem in problems[:_ERRORS_TOLD]
     )
-    return _failed(f"invalid arguments: {told}", "bad_arguments")
+    return failed_result(f"invalid arguments: {told}", "bad_arguments")
 
 
 async def _awaited(function: Callable[..., Any], kwargs: dict[str, Any]) -> Any:
@@ -180,14 +182,14 @@ async def _within(tool: Tool, call: Coroutine[Any, Any, Any], clock: Clock) -> T
             work.cancel()
     if not work.done() or work.cancelled():
         _log.warning("tool_timed_out", tool=tool.name, timeout_s=tool.timeout_s)
-        return _failed(FAILED, "timed_out")
+        return failed_result(FAILED, "timed_out")
     error = work.exception()
     if isinstance(error, ToolError):
-        return _failed(error.message, "tool_error")
+        return failed_result(error.message, "tool_error")
     if error is not None:
         failure = type(error).__qualname__
-        _log.error("tool_failed", tool=tool.name, failure=failure, at=_frames(error))
-        return _failed(FAILED, _failure_of(error))
+        _log.error("tool_failed", tool=tool.name, failure=failure, at=frames_of(error))
+        return failed_result(FAILED, _failure_of(error))
     value = work.result()
     if isinstance(value, ToolResult):
         return value
@@ -195,4 +197,4 @@ async def _within(tool: Tool, call: Coroutine[Any, Any, Any], clock: Clock) -> T
         return ToolResult(data=_JSON.dump_python(value, mode="json"))
     except (TypeError, ValueError):  # pydantic's serialization error is a ValueError
         _log.error("tool_result_unreadable", tool=tool.name, kind=type(value).__qualname__)
-        return _failed(FAILED, "unreadable_result")
+        return failed_result(FAILED, "unreadable_result")

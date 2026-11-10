@@ -25,7 +25,10 @@ plan's interfaces".
   its first request, TD-012, the chat adapter's included);
   has the phrase cache declare the agent's fixed phrases (`PhraseCache.declare(agent)`, under
   `storage.var_dir/<agent name>/phrases`), which synthesizes those it lacks one request at a
-  time; opens the used-token store (`storage.var_dir/<agent name>/used_tokens.sqlite3`); and
+  time; opens the used-token store (`storage.var_dir/<agent name>/used_tokens.sqlite3`); for an
+  agent that declares actions, opens its one action runner on its outbox there and reconciles
+  the rows left `sending` (api/actions.py), each call's talker given it, and each call's record
+  let go as the call ends (`CallEnded`); and
   starts voice's entry point (`VoiceCalls.start`), which builds Silero and Smart Turn there,
   never at import (item 24). On its way out it ends every call (`Calls.aclose`, each peer's
   close bounded by voice: item 20), gives the observers the events still queued (at most
@@ -95,14 +98,16 @@ from typing import Any, Final
 
 from fastapi import APIRouter
 
+from t2_agentic_voice.actions.action_runner import ActionRunner
 from t2_agentic_voice.api import router as routing
+from t2_agentic_voice.api.actions import open_actions
 from t2_agentic_voice.api.lockfile import LockFile
 from t2_agentic_voice.api.offers import FORGOTTEN_KEPT_S, CallRecords
 from t2_agentic_voice.api.providers import Providers, talkers
 from t2_agentic_voice.api.router import Running
 from t2_agentic_voice.core.config import VoiceSettings
 from t2_agentic_voice.core.errors import ConfigurationError
-from t2_agentic_voice.core.events import Event
+from t2_agentic_voice.core.events import CallEnded, Event
 from t2_agentic_voice.core.logging import get_logger
 from t2_agentic_voice.core.tracing import TracerProvider, Tracing
 from t2_agentic_voice.domain.declaration import VoiceAgent
@@ -157,6 +162,7 @@ class VoiceRuntime:
         self._records = CallRecords(window_s=join.ttl_s + 2 * join.max_clock_skew_s)
         self._observers: list[tuple[type[Event], Observer]] = []
         self._events: asyncio.Queue[Event] | None = None
+        self._actions: ActionRunner | None = None  # the agent's, set as the lifespan starts
         self._running: Running | None = None
         self._entered = False
         # Set by `serve()`, whose app answers CORS for `server.allowed_origins`.
@@ -264,7 +270,9 @@ class VoiceRuntime:
         self._events = asyncio.Queue(OBSERVER_QUEUE)
         observing = asyncio.create_task(self._observe(self._events))
         stack.push_async_callback(_drained, self._events, observing)
-        talker = talkers(agent, settings, providers.chat)  # each call's, for the talker
+        actions = await open_actions(agent, settings, clock=self._clock, stack=stack)
+        self._actions = actions
+        talker = talkers(agent, settings, providers.chat, actions)  # each call's, for the talker
         talking: dict[str, Any] = {}
         if talker is not None:
             talking = {"talker": talker, "chat": providers.chat}
@@ -294,7 +302,9 @@ class VoiceRuntime:
 
     def _emit(self, event: Event) -> None:
         """Queue `event` for the observers of its kind, at once; never raises (voice's
-        `EventSink`)."""
+        `EventSink`). A call's end lets its record of actions go."""
+        if isinstance(event, CallEnded) and self._actions is not None:
+            self._actions.forget(event.call_id)
         queue = self._events
         if queue is None or not any(isinstance(event, kind) for kind, _ in self._observers):
             return
