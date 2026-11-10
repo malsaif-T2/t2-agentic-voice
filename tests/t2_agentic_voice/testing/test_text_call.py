@@ -39,7 +39,7 @@ from t2_agentic_voice.evals import (
     TextCall,
     TextTurn,
 )
-from t2_agentic_voice.testing import text_call
+from t2_agentic_voice.testing import text_checks
 
 from tests.t2_agentic_voice.testing.text_call_support import (
     AGENT,
@@ -171,7 +171,7 @@ def test_the_guards_checks_run_on_every_clause_the_talker_said(
         missing = tuple(t for t in tokens if t not in seen)
         return IdVerdict(passed=not missing, unsupported=missing)
 
-    monkeypatch.setattr(text_call, "check_ids", check)
+    monkeypatch.setattr(text_checks, "check_ids", check)
 
     def script(turn: TalkerTurn) -> list[Step]:
         return [

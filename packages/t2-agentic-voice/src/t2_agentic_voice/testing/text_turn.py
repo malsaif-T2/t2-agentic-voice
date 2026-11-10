@@ -1,14 +1,13 @@
-"""One turn of a `TextCall` and what came of it (testing/text_call.py; plan 006): its checks
-(`TurnExpectations`) and what it did as data (`TextTurn`, testing/turn_data.py's shapes), each
-read from the call as it now stands: the session's heard history and its replies, the commands
-it gave (each clause's language, and whether it was a fixed phrase), and what the call watched of
-its talker and its tools (testing/text_watch.py). Every time is in seconds on the call's clock,
-from the moment the turn's words were handed to the session.
+"""One turn of a `TextCall` and what came of it (testing/text_call.py; plans 006 and 007): its
+checks (`TurnExpectations`, an action's among them: testing/text_actions.py) and what it did as
+data (`TextTurn`, testing/turn_data.py's shapes), each read from the call as it now stands
+(testing/text_reads.py): the session's heard history and its replies, the commands it gave (each
+clause's language, and whether it was a fixed phrase), and what the call watched of its talker,
+its tools and the part that acts (testing/text_watch.py). Every time is in seconds on the call's
+clock, from the moment the turn's words were handed to the session.
 """
 
 from __future__ import annotations
-
-from dataclasses import dataclass
 
 from pydantic import JsonValue
 
@@ -24,43 +23,17 @@ from t2_agentic_voice.agent.talker import (
 from t2_agentic_voice.core.conversation import TurnFate
 from t2_agentic_voice.core.settings.tts import LanguageTag
 from t2_agentic_voice.domain.cards import Card
+from t2_agentic_voice.domain.ports.action_jobs import OutcomeKind
 from t2_agentic_voice.domain.ports.chat_model import Usage
-from t2_agentic_voice.testing.text_side import TextSide
-from t2_agentic_voice.testing.text_watch import (
-    RecordingRunner,
-    TurnTalk,
-    WatchedTalker,
-    arguments_of,
-)
+from t2_agentic_voice.testing import text_actions
+from t2_agentic_voice.testing.text_reads import TextReads
+from t2_agentic_voice.testing.text_watch import TurnTalk, arguments_of
 from t2_agentic_voice.testing.turn_data import (
     BlockedClause,
     HeardClause,
     TextToolCall,
     ToolOutcome,
 )
-from t2_agentic_voice.voice.session.call import CallSession
-
-
-@dataclass(frozen=True, kw_only=True)
-class TurnSaid:
-    """One of the caller's turns as the text call said it: its number, its text, and when its
-    words were handed to the session."""
-
-    turn_id: int
-    text: str
-    handed_at: float
-
-
-@dataclass(frozen=True, kw_only=True)
-class TextReads:
-    """What a text call's turns are read from: its session, its side, the turns said, and what
-    it watched of its talker and its tools (none for a call of the echo)."""
-
-    session: CallSession
-    side: TextSide
-    said: dict[int, TurnSaid]
-    watched: WatchedTalker | None
-    runner: RecordingRunner | None
 
 
 class TextTurn:
@@ -282,3 +255,36 @@ class TurnExpectations:
         spoken = [clause.language for clause in self._turn.clauses if not clause.phrase]
         if not spoken or any(language != tag for language in spoken):
             raise AssertionError(f"turn {self._turn.turn_id}'s reply was in {spoken}, not {tag}")
+
+    # What the turn did with an action (testing/text_actions.py), read from what the agent said
+    # after it, whatever reply said it.
+
+    def read_back(self, *, contains: str | None = None, **values: JsonValue) -> None:
+        """The agent read a draft back after the turn, its summary said whole: one whose
+        read-back holds `contains`, its draft holding `values`."""
+        text_actions.expect_read_back(self._turn._reads, self._turn.turn_id, contains, values)
+
+    def no_read_back(self) -> None:
+        """The agent read no draft back after the turn."""
+        text_actions.expect_no_read_back(self._turn._reads, self._turn.turn_id)
+
+    def asked_again(self) -> None:
+        """The agent asked again after the turn, in a read-back's ask-again line."""
+        text_actions.expect_asked_again(self._turn._reads, self._turn.turn_id)
+
+    def confirmed(self, name: str, **values: JsonValue) -> None:
+        """The turn's words confirmed the action `name`, its draft holding `values`."""
+        text_actions.expect_confirmed(self._turn._reads, self._turn.turn_id, name, values)
+
+    def no_action(self) -> None:
+        """The turn's words confirmed no action."""
+        text_actions.expect_no_action(self._turn._reads, self._turn.turn_id)
+
+    def action_ended(self, name: str, kind: OutcomeKind) -> None:
+        """The action `name` the turn's words confirmed ended as `kind` (`done`, `failed`,
+        `unknown`), and the agent said its `sending` line, then the outcome's."""
+        text_actions.expect_ended(self._turn._reads, self._turn.turn_id, name, kind)
+
+    def action_completed(self, name: str) -> None:
+        """The action `name` the turn's words confirmed was done (`action_ended`, `done`)."""
+        self.action_ended(name, "done")

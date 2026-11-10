@@ -3,9 +3,11 @@ opening hours with the talker and one read tool, and an echo agent.
 
 It is a test of the library too: it uses only the public API and no Ole5 code, so a library
 change that quietly depends on Ole5 breaks it. `app.py` declares the agents and makes their
-runtimes (`make_runtime`, the helper's; `make_echo_runtime`, the echo's); `__main__.py` starts
-the helper, `python -m minimal_example`, or `t2v dev minimal_example.app:make_runtime` serves it
-with its dev page. It grows with the library, staying the shortest working example.
+runtimes (`make_runtime`, the helper's; `make_echo_runtime`, the echo's); `callback.py` gives
+the helper one action, a branch's callback read back and booked only on a clear yes, at a
+made-up desk (`make_callback_helper`); `__main__.py` starts the helper, `python -m
+minimal_example`, or `t2v dev minimal_example.app:make_runtime` serves it with its dev page. It
+grows with the library, staying the shortest working example.
 """
 
 # The example's loggers, which it sends to its output with the library's

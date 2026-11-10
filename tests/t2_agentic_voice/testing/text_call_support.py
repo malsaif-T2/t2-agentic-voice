@@ -4,8 +4,11 @@ through the private method that builds its talker (`_talker`), and an instructed
 
 `ScriptTalker` gives each turn the steps its `script` gives that turn: a talker event, `Work`
 (a wait of so many seconds on the call's clock, in the reply's scope, as a search would take),
-or `Ran` (a tool call the runner ran, kept in the call's recording runner as the library's
-runner would keep it, with its arguments and its result)."""
+`Ran` (a tool call the runner ran, kept in the call's recording runner as the library's
+runner would keep it, with its arguments and its result), or `Asked` (a read-back the talker
+asked for, kept among the reply's events in the call's watched talker, where the text call
+finds its plans, but never handed to the session, so the session plays only the clauses the
+script says, whether or not it reads a read-back back itself)."""
 
 from __future__ import annotations
 
@@ -15,6 +18,7 @@ from dataclasses import dataclass, field
 from typing import Any
 
 from t2_agentic_voice.actions.tools import ToolResult
+from t2_agentic_voice.agent.events import ReadBackRequested
 from t2_agentic_voice.agent.talker import (
     ModelReplied,
     ModelRequested,
@@ -29,6 +33,7 @@ from t2_agentic_voice.core.clock import Clock
 from t2_agentic_voice.core.config import VoiceSettings
 from t2_agentic_voice.core.conversation import TalkerTurn
 from t2_agentic_voice.core.settings.tts import LanguageTag
+from t2_agentic_voice.domain.action_lines import ReadBackPlan
 from t2_agentic_voice.domain.declaration import Language, VoiceAgent
 from t2_agentic_voice.domain.ports.chat_model import ToolCallRequest, Usage
 from t2_agentic_voice.domain.ports.speech_to_text import DataFlow
@@ -56,7 +61,12 @@ class Ran:
     result: ToolResult
 
 
-Step = TalkerEvent | Work | Ran
+@dataclass(frozen=True)
+class Asked:
+    plan: ReadBackPlan
+
+
+Step = TalkerEvent | Work | Ran | Asked
 
 
 def answer(*clauses: str, language: LanguageTag = "en") -> list[Step]:
@@ -103,6 +113,11 @@ class ScriptTalker:
                 runner = self.call._runner
                 assert runner is not None
                 runner.calls[step.request.id] = (step.request, step.result)
+            elif isinstance(step, Asked):
+                watched = self.call._watched
+                assert watched is not None
+                asked = ReadBackRequested(plan=step.plan)
+                watched.talks[turn.turn_id].events.append((self.clock.now(), asked))
             else:
                 yield step
         await asyncio.sleep(0)
