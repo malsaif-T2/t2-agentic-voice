@@ -292,6 +292,18 @@ rehearsal's password, archiving, and English questions pass.
     owner, 2026-11-10: "make it on disk without consent, because this what our agent
     produced"): it holds only the agent's own voice, so invariant 8's consent rule for call
     audio does not apply to it.
+  - *No stray script in what the agent says or shows.* In the owner's demo call of 2026-11-10
+    (report `0qPpF2-C`), `gpt-oss-120b` wrote «أيقونة "إ重新 كلمة مرور المستخدم"» where the passage
+    holds «إعادة كلمة مرور المستخدم», and no passage of the snapshot holds a Chinese character.
+    Nothing stops it today: the output guard checks claims and IDs only, and the reply's
+    language is read from its scripts but nothing is removed. So every text the talker writes
+    passes a script filter before it goes anywhere: characters outside the scripts of the
+    agent's languages are removed (for Ole5, Arabic and Latin, which carries English and the
+    product names, besides digits and punctuation), and each removal is counted in the trace.
+    The owner, 2026-11-10: "not only spoken, make it not appear as the llm response if we hook
+    up a screen". So the filter sits where the talker's text leaves it, before the guard, and
+    one filtered text feeds everything after: the voice, the captions and any text a client
+    shows, the history the next turn reads, and the trace.
 
 *Done when* simulated calls create the right tickets with zero false action claims; the
 rehearsal's ticket flow passes, where an eager «نعم أرسلها» over the closing question creates the
