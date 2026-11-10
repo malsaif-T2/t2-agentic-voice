@@ -124,10 +124,14 @@ that was definitely not sent (the design: none in v1).
 4. **The integration:** one scripted ticket call end to end through `TextCall` and the audio
    session; the gate.
 5. **The whole-code review**, kept to what breaks a call or an invariant; the rest are debt rows.
-6. **The scenario runs**, dev then held-out once ("The measurement").
-7. **The live calls**, by the owner.
-8. **The background try** (Q8), behind a setting, off by default, after everything above.
-9. **The close:** the logs, `## Future improvements`, the plan moved, the roadmap's row, the gate.
+6. **Blocks G, H and I** (the owner's rulings of 2026-11-10, "Tracks"), each approved before it
+   is built: Block G after the ruling on TD-144 and before the scenario runs, since it changes
+   the talker's text; Blocks H and I after run A, each measured by its own registered run (runs
+   H and I) before a default moves.
+7. **The scenario runs**, dev then held-out once ("The measurement").
+8. **The live calls**, by the owner.
+9. **The background try** (Q8), behind a setting, off by default, after everything above.
+10. **The close:** the logs, `## Future improvements`, the plan moved, the roadmap's row, the gate.
 
 ## Tracks
 
@@ -278,6 +282,728 @@ may judge a yes in words no list holds, within rails the yes rule keeps.
   that does not ask is unchanged, and the rehearsal's step 6 («نعم أرسلها», listed) asks
   nothing.
 
+**Block G, no stray script in what the agent says or shows** (the owner's ruling of 2026-11-10,
+the roadmap's *No stray script*: "not only spoken, make it not appear as the llm response if we
+hook up a screen"), built after the owner's ruling on TD-144 and before the scenario runs, since
+it changes the talker's text; by one builder, for the library, with Ole5's one test and run A's
+count through the public API; reviewed by the owner's rule (one reviewer a block, one skeptic a
+finding). In the owner's demo call (report `0qPpF2-C`), `gpt-oss-120b` wrote «أيقونة "إ重新 كلمة
+مرور المستخدم"» where the passage holds «إعادة كلمة مرور المستخدم». Nothing stops it today: the
+guard checks claims and IDs only (`agent/speech_guard.py`), and the library reads a script only
+to choose a reply's language from the caller's words (`agent/language.py:84-93`).
+
+- **Where it sits.** Every piece the model writes enters `Turn._asked` at one place, its
+  `TextDelta` branch (`agent/turn.py:308-311`), before `answer.text` (the same turn's next
+  request), `Unnoted`, the clause splitter and the guard (`turn.py:354`). Every tool call is kept
+  at `turn.py:318`, before `ToolCalls.run` traces it (`ToolBegan`, `agent/tool_calls.py:164`,
+  which the session sends on as the public `ToolStarted` and `ToolFinished`,
+  `voice/session/talker_play.py:120-148`, D-083) and proposes an action's. The filter runs at
+  those two points, so one filtered text feeds the guard, the voice, the captions, the history
+  the next turn reads, the trace, the public events and the test console: the ruling's "one
+  filtered text feeds everything after".
+- **The rule, pure** (new `domain/text/scripts.py`, shaped as `domain/text/invisible.py`, each
+  range a constant with its comment). An agent's scripts are those of all its languages, never
+  the reply's alone: `ar-SA` and `ar` write Arabic and Latin, `en` Latin (Q13), so Ole5 keeps
+  both. Each character is judged alone, so a streamed text gives piece by piece what it gives
+  whole, and nothing is held back.
+  - *Kept:* the blocks of the agent's scripts (Latin U+0000-036F, U+1E00-1EFF, U+2C60-2C7F,
+    U+A720-A7FF, U+FB00-FB06; Arabic U+0600-06FF, U+0750-077F, U+0870-08FF, U+FB50-FDFF,
+    U+FE70-FEFF); General Punctuation (U+2000-206F); the Arabic-Indic and Persian digits; every
+    character of a term the agent declares (its pronunciation map's written forms,
+    `agent.vocabulary.terms` and `settings.words.vocabulary`, as `voice/stt_bridge.py:114`
+    gathers the last two); any other punctuation, symbol, space, control or format character
+    («», %, currency, math, and the arrows the speaking rules say as "then", U+2190-21FF,
+    U+27F0-27FF, U+2794 and U+279C, `domain/text/speaking.py:203`); and a code point Python's
+    tables leave unassigned outside the ranges taken out.
+  - *Rewritten one for one:* a fullwidth form (U+FF01-FF5E) as its ASCII form; U+3000 as a
+    space, U+3001 as "," and U+3002 as ".", so no two words are joined; a decimal digit of any
+    other script as its ASCII digit.
+  - *Taken out:* any other letter or mark (Cyrillic, Greek, Hebrew, Devanagari, a variation
+    selector) and any private-use or surrogate code point; whatever its category, a character of
+    the CJK and Hangul ranges (U+2E80-A4CF, U+AC00-D7FF, U+F900-FAFF, U+FE30-FE4F,
+    U+20000-3FFFF), so one newer than Python 3.12's Unicode 15.0 tables goes too; and the
+    pictographs (Q12): U+1F000-1FAFF, U+2600-27BF but the two heavy arrows, and a fixed set of the
+    emoji below U+1F000 in other blocks (U+231A-231B, U+2328, U+23CF, U+23E9-23F3, U+23F8-23FA,
+    U+24C2, U+25AA-25AB, U+25B6, U+25C0, U+25FB-25FE, U+2934-2935, U+2B05-2B07, U+2B1B-2B1C,
+    U+2B50, U+2B55: the agent's reading of Unicode's emoji data, © ® ™ ‼ ⁉ left as symbols).
+  - *The result*, `Kept` (frozen): the text, how many characters were taken out or rewritten,
+    and a label for each kind (the first word of its Unicode name, "PICTOGRAPH", "FULLWIDTH", or
+    its category for a code point with no name), at most eight, sorted; no text of the reply.
+  - *How:* `str.translate` over a table that keeps each verdict once found (a `dict` with
+    `__missing__`), one table per pair of scripts and declared terms, so two agents in one
+    process never share a term's verdict; the text itself when nothing changed. Only
+    `unicodedata`, its `name` called with a default; every code point gets a verdict, so it
+    never raises.
+  - *Public:* `remove_stray_script(text: str, *, languages: Iterable[LanguageTag], kept:
+    Iterable[str] = ()) -> Kept`, with `Kept`, through the `languages` facade (provisional,
+    D-021), so a team's measurement can read a reply as the talker says it.
+- **One reply's filter** (new `agent/stray_script.py`), `StrayScript`, built in `Turn.__init__`
+  beside the guard (`turn.py:184-191`). `text(piece)` filters a piece. `call(request)` filters
+  every tool call's arguments (Q11): parsed as JSON, each string value filtered and never a key,
+  written back (`ensure_ascii=False`) only when one changed, so a call with nothing to change
+  keeps its exact text; arguments that are not JSON are kept as written, for the runner to refuse
+  as it does. `take()` gives the count and the labels since the last take. With
+  `guard.remove_stray_script` off, each returns its input and counts nothing.
+- **In the turn** (`agent/turn.py`). The `TextDelta` branch filters each piece once and feeds
+  that to `answer.text`, `Unnoted` and the splitter; `turn.py:318` keeps `self.scripts.call(event)`.
+  The guard reads the text after the filter, a safety rule: the other way round, «تم重 إنشاء»
+  would pass rule A as two words and be spoken as «تم إنشاء». Once the filter has taken a
+  character out of a reply, a clause left with no letter or digit is given as no
+  `SpokenClause`: it would be neither said nor captioned (`speak_arrows` drops a lone arrow,
+  `speaking.py:208-216`; `said` keeps only clauses with a letter or digit,
+  `voice/session/echo.py:84-103`), yet the session counts every `SpokenClause` said
+  (`talker_play.py:115-117`) and then skips the `error` notice (`talker_play.py:168-170`), so
+  «重置 → 确认» alone would be silence. A reply left with nothing to say gets the `error` notice,
+  as an empty answer does. `_without_calls` (`turn.py:114-126`) moves to `agent/context.py` as
+  `without_calls`, so `turn.py` does not grow.
+- **The count.** `ModelReplied` (`agent/events.py:102-108`, internal) gains `stray_characters:
+  int = 0` and `stray_scripts: tuple[str, ...] = ()`, filled from `take()` as each request ends
+  (`turn.py:234-236`). `TalkPlayer` (`talker_play.py:162-167`) adds them to the turn's `TurnLog`
+  (`voice/session/report.py:65`) and logs `talker_stray_script_removed` with the call, the turn,
+  the count and the labels, never a character or the reply's text; `TurnLog.outcome()`
+  (`report.py:164`) gives the turn's root span `turn.stray_characters` and `turn.stray_scripts`
+  only when the count is above zero. `TextTurn` (`testing/text_turn.py`) gains
+  `stray_characters`, summed from `ModelReplied` as its `usage` is (`text_turn.py:211-224`), and
+  run A's runner records it: each dev scenario's count in its results, the run's total on its
+  history line, held-out's too.
+- **The setting:** `guard.remove_stray_script` (`core/settings/guard.py`), a bool, **on**
+  (Q10): "Whether each character of a script none of the agent's languages writes (a Chinese
+  character in an Arabic reply), and each pictograph, is taken out of what the talker writes,
+  its tool calls' arguments included, before the guard reads it, and a digit of another script
+  written as its ASCII digit; the voice, the captions, the history, the trace and the events then
+  hold the text without it. Off: kept as written." `uv run poe settings-ref` writes
+  `T2V_GUARD__REMOVE_STRAY_SCRIPT`.
+- **What observers see:** the said text wherever it went before (`AgentSpeechEnded`,
+  `CallEnded`'s report, the spans' said text under `tracing.include_transcripts`), without the
+  stray characters; every tool call's arguments as filtered, in its span (D-079), in
+  `ToolStarted.arguments` and `ToolFinished.arguments` (D-083), on the test console and in its
+  files; `ConfirmationRequested.draft`, built from the filtered call. The turn's span gains its
+  two attributes. No new public event; `TurnRecord`, `CallReport` and `t2v/1`'s messages keep
+  their fields.
+- **What it never does:** change the caller's heard words (the yes rule's input, the guard's
+  evidence, the reply-language rule's input); change a tool's result, a card, a template or a
+  fixed phrase (the team's declared text, the design's 8.2); change what the model is sent
+  (`test_no_action_baseline.py` pins the prompt, the schemas, the turn's message and the word
+  lists); guess at what a removed character meant («إ重新» leaves «إ», the model's start of
+  «إعادة», Q14); hold text back; ask a model.
+- **The invariants.** *Invariant 2* holds because the guard reads the filtered text, which is
+  the text spoken: a stray character no longer hides a claim from rule A («تم重 إنشاء طلبك» and
+  "I've 重created your ticket" pass rule A today and are caught once filtered). For rule B, a
+  rewritten fullwidth colon, point or slash is read as its ASCII form is read today, keeping
+  numbers apart ("45：21：33", blocked today as one run, is then read as "45:21:33" is, which
+  passes); fullwidth and other-script digits, which rule B reads as no number today
+  ("１２３４５" passes unchecked), are now checked; and "12重34重5", which passes today as three
+  short runs, is checked as 12345. The guard's own files are not changed. *Invariant 1:* the
+  heard words and the receipt are untouched, and the draft is filtered before it is proposed, so
+  the read-back, the receipt's draft (D-080), the `ConfirmedAction` and the outbox row hold one
+  text. *Invariant 4:* arguments are still parsed into the draft, after the filter; keys are
+  never changed, so a field named like consent is refused as before; one change, said in
+  `docs/SECURITY.md`'s invariant 4: a fixed-set value that differs from a member only by a stray
+  character ("Technical重") parses as that member and is read back as it. *GP-18:* behind a
+  setting, on by default because no measured outcome moves: the filter changes none of the
+  stored measured texts (the check below), and characterization tests pin text in the agent's
+  scripts unchanged; evaluation.md's exception for a reliability fix covers keeping it on, and
+  run A, the first run after it, records each removal. *GP-19:* counts and labels only. *D-033:*
+  fixed phrases untouched; Block I keys on the filtered text. D-066 and D-067 untouched.
+- **The check, before the default stays on.** Already run by the agent on 2026-11-10 and 11,
+  read only, with a scan stricter than the rule (it flags any character outside a fixed list of
+  ranges, so its zero implies the rule's; `scan_scripts.py`, `latin_in_arabic.py` and
+  `inventory.py` in the drafting session's scratchpad, run with the worktree's Python): none of
+  the 5,747 clauses the talker wrote in the stored dev runs of K and S (k1-dev-a to d,
+  k1-dev-spoken, k1-smoke, k1m-dev-a, k3-dev-a to d, s-120b-2 to 5; 4,098 Arabic, 1,649 English)
+  changes, none of the 1,415 `search_knowledge` calls' arguments in them (the review's
+  `scan_args.py`), and none of the knowledge snapshot's 226,809 characters. The non-ASCII marks
+  the stored replies hold are all kept: the Arabic comma (1,687), curly quotes (704 pairs), «»
+  (183 pairs), → and ← (257), the no-break hyphen (52), en and em dashes, two zero-width spaces
+  and one soft hyphen; no emoji. Of the Arabic clauses, 266 hold Latin ("Ole5", "Ctrl", "PDF");
+  of the English, 351 hold Arabic letters. Still ahead, registered here: the builder runs the
+  same data through the built `remove_stray_script` with Ole5's scripts and terms, read only,
+  and names the command and its counts in the progress log (GP-16); the default stays on when it
+  changes none, and any change is listed to the owner by run and item, with its code points,
+  before it does. Then run A's count. The agent's reasoning, not measured: run T's times do not
+  move, since the filter is one `translate` of each piece with no hold-back.
+- **Tests**, each in its code's commit; every existing talker, session and `TextCall` test
+  passes unchanged, the characterization GP-18 asks.
+  - `tests/t2_agentic_voice/domain/test_scripts.py`: every code point of each preset's blocks,
+    of General Punctuation, the Arabic-Indic and Persian digits and every arrow the speaking
+    rules read (U+2190-21FF, U+27F0-27FF, U+2794, U+279C) kept; the demo phrase gives «أيقونة
+    "إ كلمة مرور المستخدم"», 2 characters, labelled CJK; an English agent takes out Arabic letters
+    and keeps Arabic-Indic digits; an Arabic preset keeps "Ole5", "Ctrl+Shift+R", an email and a
+    link; "，１２３" gives ",123" and "Restart it。Then" gives "Restart it.Then"; a Devanagari five
+    gives "5", U+3000 a space, and "10²" and "½" stay; a pictograph of each removed range, ⭐ and
+    ▶ among them, goes, and a variation selector after an arrow goes while the arrow stays; a CJK
+    code point unassigned in Python 3.12's tables goes; a Greek letter goes unless declared by
+    the pronunciation map, the vocabulary or `words.vocabulary`; two agents with other declared
+    terms in one process get their own verdicts; piece by piece equals whole for every cut of the
+    samples; filtering twice equals once, and nothing raises, for every code point of the first
+    plane.
+  - `tests/t2_agentic_voice/agent/test_talker_scripts.py` (the talker on the fake chat model): a
+    stray character in a piece of its own or cut across two is in no `SpokenClause`, and the
+    turn's next request holds the filtered text. *Adversarial, invariant 2,* in an agent with an
+    action and an empty record: «تم重 إنشاء طلبك» and "I've 重created your ticket" blocked as
+    `unsupported_claim`; "12重34重5" with no evidence blocked as `unsupported_id` (it passes
+    today); "12重345" with "12345" in a tool's result said as "12345" (blocked if the guard ran
+    first, so it pins the order); "４５：２１：３３" judged as "45:21:33" is. *Adversarial,
+    invariants 1 and 4:* a summary with a stray character read back without it, the receipt's
+    draft, the `ConfirmedAction` and the outbox row holding the same text; a fixed-set value
+    with one parsed as the member; a key holding one refused as an extra field; arguments that
+    are not JSON refused as before. A read tool's string values filtered and its keys kept; a
+    tool's result, a card and the heard words reaching their consumers as written;
+    `ModelReplied`'s count and labels, 0 and () when nothing went; with the setting off, every
+    event as today.
+  - `tests/t2_agentic_voice/voice/session/test_talker_scripts.py`: the caption, the heard
+    history, `AgentSpeechEnded.text`, the turn span's said text and `ToolStarted.arguments` hold
+    the filtered text; the root span's two attributes only on a turn with a removal; the log line
+    holds counts and labels only (`tests/leaks.py`'s `holding`); «重置 → 确认» alone, and a reply
+    wholly in a stray script, each give the `error` notice.
+  - `tests/t2_agentic_voice/testing/test_parity.py` (amended): a scripted call with a stray
+    character says the same clauses through `TextCall` and the audio session, and
+    `TextTurn.stray_characters` counts them.
+  - `tests/ole5_voice/test_agent_scripts.py` (the public API only): the demo's answer, scripted
+    through `TextCall` on Ole5's agent, says and captions no CJK character and keeps "Ole5" and a
+    menu path's arrow; `tests/ole5_voice/evals/test_action_score.py` reads a scenario's count.
+  - `tests/t2_agentic_voice/core/test_settings_talker.py` (its guard defaults, lines 28-33, gain
+    `"remove_stray_script": True`); `tests/t2_agentic_voice/test_facades.py` (the `languages`
+    facade gains `Kept` and `remove_stray_script`); `test_env_example.py` and
+    `test_settings_ref.py` after `poe settings-ref`. Unchanged: `test_no_action_baseline.py` and
+    `test_baselines.py`.
+- **Size** (ARCH-SIZE, 400 lines a module; recounted at `4dc1f23`): `agent/turn.py` 379 ends
+  near 376 (about +12, and −15 for `_without_calls`). The others it changes have room:
+  `agent/context.py` 231, `agent/events.py` 140, `core/settings/guard.py` 74,
+  `voice/session/talker_play.py` 171, `voice/session/report.py` 337, `testing/text_turn.py`
+  298, `languages.py` 36, Ole5's `evals/action_score.py` 263 and `action_history.py` 116; new
+  `scripts.py` (about 150) and `stray_script.py` (about 80). Not touched: `talking.py` 397,
+  `call.py` 396, `voice/calls.py` 395, `testing/text_call.py` 396, `interrupter.py` 388,
+  `speaker.py` 387, `api/runtime.py` 393, `read_back.py` 391, `core/config.py` 392, and the
+  guard's files (`speech_guard.py`, `claims.py`, `guard_ids.py`), which rule A's work edits; if
+  that work touches `turn.py`, Block G is rebased on it. The filter only removes or rewrites one
+  for one, so no text grows past Orpheus' 200 characters a request or the trace's 32,768 a value.
+- **Risks:** a filter that raised would end the reply (every code point gets a verdict,
+  malformed JSON is kept, and a test covers the first plane); a term a team needs in a third
+  script ("μs", a supplier's Chinese name) goes unless declared; a letter Unicode adds after 15.0
+  outside the removed ranges is unassigned in Python 3.12's tables and kept, and a later symbol
+  (the riyal sign, U+20C1) kept; the settings' digest gains the key, and no registered comparison
+  spans Block G (run A runs after it); `ModelReplied` gains two fields with defaults, the turn
+  span two attributes, `TextTurn` one read, the `languages` facade two names.
+- **Docs:** Block G's decision; the design's 8.2 (opens with the filter), 8.1's row for invariant 2, 5.2's
+  presets with their scripts, 10.1's turn attributes; `docs/SECURITY.md`'s invariants 2 and 4;
+  the guide's `languages.md` (a section "Scripts a reply may hold": each preset's scripts, what
+  is kept, rewritten and taken out, how a team keeps a term), `safety.md`'s "The output guard",
+  `tracing-and-logs.md`'s "What a trace holds", `writing-for-voice.md`; the generated settings;
+  the roadmap's item, marked built.
+
+**Block H, each turn's language from a classifier** (the owner's ruling of 2026-11-10 in the
+roadmap: "We should implement both of them and see their effectiveness and the latency
+improvements or delays they bring"; to this draft: "Yes, and I agree to download the
+dependencies and models"), built after run A, since `TextCall` sends no audio and nothing here
+can move it; by one builder for the library and one for Ole5's run commands, each part reviewed
+by the owner's rule. It adds a third value to D-066's setting: under `stt.live_language =
+"classified"`, each turn is sent to Whisper in the language a classifier heard, chosen among the
+agent's languages; a short, unsure, late, busy or failed turn keeps the current one. `session`
+stays the default until run H's keep rule (GP-18). For a reader new to this: Whisper writes a
+turn in the language it is told, and today it is told the call's, fixed at join (D-038, D-066),
+so an English question in an Arabic call is written as Arabic sounds (plan 006's run X: the
+English items' accuracy 0.813 sent as English, 0.027 as Arabic). A spoken-language classifier
+hears a few seconds of speech and says which language it is. With a talker, the early start
+(D-067) sends a turn's speech to Whisper the moment its 600 ms hold begins, so the language must
+be known by then. The agent's offline check of 2026-11-10 (another session's scratchpad,
+`C:/Users/m7ms/AppData/Local/Temp/claude/8fb745428e63359b/d39ce14f-8cf9-4755-9d54-6da2f7bf6e54/scratchpad/lid/`,
+read, not run; the times recomputed by the review from its `results.jsonl`), on the 280 dev variants that hold
+speech, whole clips, Arabic against English: ECAPA right on 261 (93%), Silero on 234 (84%); in
+wall time at 4 torch threads, ECAPA's median 735 ms a clip (about 257 ms a second of audio, p90
+381), Silero's about 12 ms a second; every ECAPA miss a clip of 2.31 s or less. A rule keeping
+the call's language under 2.0 s and switching on a share of 0.7 would have found 45 of the 75
+English clips in an Arabic call with ECAPA and kept all 205 Arabic ones; Silero 47, sending 11
+Arabic clips as English, four of them requests. In-sample, whole clips, one speaker (D-006): they
+shaped this block and prove nothing.
+
+- **Where it hooks in.** The session names the call's language once (`voice/session/call.py:92`,
+  sent by `ListenIn` at `call.py:229`); the bridge keeps it (`voice/stt_bridge.py:165-168`) and
+  every request names it with that language's prompt (`stt_bridge.py:320-321`). The language
+  named moves the transcript (`adapters/groq_stt.py:145-148`), the heard words
+  (`voice/session/heard.py:24`), the reply's language (`agent/language.py:84-93`) and the
+  read-back's yes words (`voice/session/read_back.py:173-183`) together; `call_prompts` already
+  holds a prompt for each code (`stt_bridge.py:107-116`, D-074).
+- **The port** (new `domain/ports/language_classifier.py`, public through `ports`,
+  provisional): `LanguageClassifier`, with `name`, `async load(among)` (the model loaded off the
+  event loop, once a process; a ConfigurationError, before any call, when it cannot hear a code
+  of `among`), `async classify(clip, *, among)` and `aclose()`; and `LanguageScores`, parsed at
+  the port: a share for each code asked, each from 0 to 1, summing to 1, and `mass`, the share of
+  the whole output those codes held. A busy classifier returns None; a failure raises
+  `ProviderError`; an answer that does not parse is a failure.
+- **The rule** (new `domain/turn_language.py`, pure): `LanguageRule(from_s, min_share)` and
+  `choose_language(current, verdict, *, speech_s, rule) -> LanguageChoice(language, by)`, in
+  order: `short` when the turn's speech had not reached `from_s` when its request went, then
+  `late`, `busy`, `failed`, `unsure` (the best share under `min_share`), else `classified`. Only
+  `classified` moves the call's current language (Q17). `speech_s` is the audio held from where
+  the speech detector heard the speech begin (`HeldTurn.speech`, `voice/stt_turn.py:28-46`)
+  when the request goes, counted in bytes, never on the clock; it may hold pauses.
+- **In the bridge** (new `voice/stt_language.py`, `TurnLanguages`, about 150 lines;
+  `stt_bridge.py` calls it at a few places). Built with the agent's codes, it holds, by turn, the
+  bytes held at each request. *While the caller speaks:* once a turn holds `from_s` from its
+  speech's first byte, those seconds go to the classifier, once a turn, on a task of
+  `TurnLanguages`' own set (the adapter works on a thread), so the verdict has the rest of the
+  turn, the detector's stop and Smart Turn's decision to arrive. *Never waiting:* each request
+  names the language in hand when it goes (`named(turn_id, part)`), decided before its
+  `Transcribing` is handed (`stt_bridge.py:316`, which today comes before the language is read,
+  at 320), so the event carries it. The held request decides at the hold's start
+  (`stt_bridge.py:240-249`); the turn's own request, after `_close` has cleared the turn
+  (`stt_bridge.py:271-272`), names the same, so a reused held result (`stt_turn.py:78-87`)
+  agrees with it; speech that resumes in the hold cancels the held request and its decision
+  (`stt_bridge.py:250-253`). The bridge tells `TurnLanguages` a hold began whatever `early` is
+  (before `_hold`'s return at `stt_bridge.py:243-244`), so a call with no talker records it too,
+  with no new event. *Overlaps:* the `window` and `overlap` parts always name the current
+  language (`by = "overlap"`), their timing being the two-step rule's (D-061). *The call's end:*
+  `drop` (`stt_bridge.py:349-356`) cancels `TurnLanguages`' tasks too, and a late result is
+  dropped unread.
+- **The two adapters** (new, `adapters`; reached by apps through a new provisional facade,
+  `classifiers`, which re-exports them as `groq.py` re-exports Groq's, so run H builds them as
+  the runtime does; any other passed in code, `Providers.replace(classifier=...)`, GP-22).
+  - `adapters/silero_language.py`, `SileroLanguage`: onnxruntime on `lang_classifier_95.onnx`
+    with its label map (code 55 `ar`, 30 `en`), the caller's PCM16 as float32, the softmax
+    renormalized over `among`, `stt.classifier_threads` intra-op threads. It imports onnxruntime
+    and numpy, which Pipecat brings today; ARCH-DEPS refuses a borrowed import (GP-24), so both
+    are declared in the library's `[project] dependencies` at the locked versions (`uv add
+    --package t2-agentic-voice onnxruntime numpy`).
+  - `adapters/ecapa_language.py`, `EcapaLanguage`: SpeechBrain's `EncoderClassifier`, loaded only
+    inside `load` and only through `importlib.import_module` with literal names, which ARCH-OWNER
+    and ARCH-BAN read (`scripts/arch_module.py:234-272`); ARCH-DEPS reads only `[project]
+    dependencies` (`scripts/arch_deps.py:153`) and every import statement, so an `import
+    torch` in a body would fail `poe arch` whether or not the extra is installed. It loads by
+    exactly `from_hparams(source=folder, savedir=folder, overrides={"pretrained_path": folder},
+    local_strategy=LocalStrategy.NO_LINK, run_opts={"device": "cpu"})`, which the download step's
+    smoke must prove on 1.1.2 writes nothing into the folder and reaches no host (the offline
+    check loaded otherwise, with a separate save folder and `COPY`, and its model folder gained a
+    0-byte `custom.py`). The folder must hold no `.py` file, since SpeechBrain puts it on
+    `sys.path`; `load` refuses one. Then `torch.set_num_threads(stt.classifier_threads)` and
+    `classify_batch`, its log-probabilities exponentiated and renormalized over `among` (`ar:
+    Arabic` at 3, `en: English` at 20). Without the extra, `load` is a ConfigurationError whose
+    fix names `uv sync --group language-id`.
+  - Both: one classification at a time a process (a second while one runs is `busy`); every file
+    checked against its pinned size and SHA-256 at `load` (new `adapters/model_files.py`), a
+    missing or changed file a ConfigurationError naming the file and the guide's page.
+- **The settings** (the `stt` group, `core/settings/stt.py`, 79 lines, so `core/config.py` is
+  not touched): `stt.live_language` gains `classified`; `stt.classifier`, `silero` by default, or
+  `ecapa`, which needs the extra; `stt.classifier_dir`, no default, the folder of the model
+  files, fetched once by hand and each checked at start, never under a repository (Q16);
+  `stt.classifier_from_s`, 2.0, "the seconds of a turn's audio, from where the speech detector
+  heard its speech begin, that the classifier hears; pauses inside the turn count";
+  `stt.classifier_min_share`, 0.7; `stt.classifier_threads`, 2. An agent with one primary code
+  runs no classifier. `uv run poe settings-ref` regenerates the docs.
+- **The wiring.** `Providers` (`api/providers.py`) gains `classifier`, built by `from_settings`
+  only under `classified`; the runtime's `_start` (`api/runtime.py:255-309`) loads it off the
+  loop, pushes its `aclose` and passes `classifier=` to `self._calls(...)` (`runtime.py:286`);
+  the `CallsFactory` protocol (`voice/calls.py:178-193`) and `VoiceCalls` take it and hand it to
+  each call's `CallPipeline` (`voice/pipeline.py:96-103`). `t2v doctor` (`api/doctor.py`) gains
+  a section under `classified`: each file's SHA-256 against its pin, as it checks Pipecat's ONNX
+  files, and, under `ecapa`, whether torch is installed and any `nvidia-*` or `triton`
+  distribution beside it, found without importing torch.
+- **The install.** `packages/t2-agentic-voice/pyproject.toml` gains `[project.optional-dependencies]
+  ecapa = ["speechbrain>=1.1.2", "torch>=2.11", "torchaudio>=2.11"]`; the root's
+  `[dependency-groups]` gains `language-id = ["t2-agentic-voice[ecapa]"]`, so this workspace
+  installs it with one command and no app depends on it. On Linux, torch and torchaudio come from
+  PyTorch's CPU index (an explicit index for those two, Linux only), so this workspace's lock
+  holds no CUDA package; a team that adds the extra from the git tag on Linux needs the same lines
+  in its own `pyproject.toml`, since uv reads a dependency's index only inside its own workspace,
+  and the guide gives them. `harness.toml` gains an owner rule giving `torch`, `torchaudio` and
+  `speechbrain` to `adapters` alone and a ban keeping `huggingface_hub` out of the library's own
+  code (ARCHITECTURE.md with it, ARCH-DOC); the Smart Turn v2 ban's fix text says "the base
+  install"; `test_public_types.py`'s `FRAMEWORKS` gains `torch` and `speechbrain`; mypy reads
+  torch through a small protocol, so `poe types` gives one answer either way. The torch check
+  (`tests/harness/test_install.py:37-51`) walks `uv.lock` from each member's base dependencies,
+  refusing any `torch*`, `nvidia-*`, `cuda-*` or `triton` package there, and proves torch comes
+  only through `t2-agentic-voice[ecapa]` (Q15).
+- **What observers see.** `Transcribing` (`voice/session/session_events.py:88-96`, internal)
+  gains the language its request named, `by` (`session`, `classified`, `short`, `unsure`,
+  `late`, `busy`, `failed`, `overlap`) and, with a verdict in hand, its best share and when it
+  came. `TurnBook.transcribing` (`voice/session/turn_book.py:117-126`) reads them from the turn's
+  first `Transcribing`, whatever its part, before its return for parts other than `turn`: in a
+  talker call the held request decides the turn, and a reused result hands no `turn` request
+  (`stt_bridge.py:277-279`). It traces them on the turn's speech-to-text span
+  (`stt.language_sent`, `core/tracing.py:56`) instead of the call's language. The call report's
+  `TurnRecord.language` (`core/events.py:163`, today the call's tag on every turn,
+  `voice/session/report.py:187-195`) becomes the tag of the language the turn was sent in, its
+  code mapped to the agent's tag as `reply_language` does, and `TurnRecord` gains
+  `language_by`; under `session` both read as today (the call's tag, and `session`). No new
+  public event, no audio, no score of a turn not classified.
+- **The yes rule with a turn in another language.** The yes rule's rails read only the
+  read-back's language (`read_back.py:173-183`; `domain/yes_rule.py:333-338`), and
+  `classified` makes a turn in the other language routine: an English "yes, but change the date"
+  over an Arabic read-back, put to the model under Block F, would confirm on its `yes` with no
+  rail reading "but". So whenever the heard words' language is not the read-back's, `judged`'s
+  rails (the no words and the change markers) read those of every language the agent speaks,
+  the lists that place a yes staying the read-back's; built in `voice/session/yes_turns.py`
+  (269 lines), so `read_back.py` does not grow. A rail only asks again or corrects, so this never
+  confirms what today's rule refuses.
+- **What it never does:** send a turn's audio anywhere but Whisper (the classifier runs in the
+  process); keep audio (the seconds it hears live in memory with the turn, invariant 8); make a
+  request, the hold or a turn's end wait on the classifier (its CPU's effect on the turn ends is
+  condition 4's, below); pick a language the agent does not speak; classify an overlap's parts;
+  change the call's language at join, its greeting, its notices or the phrase cache's language;
+  download at run time; import torch unless `stt.classifier = "ecapa"` under `classified`.
+- **Ole5** (the app's builder). Its live calls change nothing until the keep rule and Q19: the
+  owner's `.env`, which no agent reads, sets `stt.live_language`. The app gains run H's commands:
+  `poe eval-languages` (new `apps/ole5-voice-agent/src/ole5_voice/evals/languages_run.py` and
+  `languages_score.py`), on a provisional `evals` helper, `turn_languages` (new
+  `testing/turn_languages.py`, shaped as `testing/turns.py`'s `turn_ends` for an agent of two
+  languages, taking a `LanguageClassifier`); and `poe eval --language-from <H1 pass>` (new
+  `language_arms.py`, so `run.py`, 343 lines, grows by its option alone). Runs O and the echo
+  timing keep refusing any `stt.live_language` but `session` (`evals/overlap.py:207-211`,
+  `evals/timing.py:161-165`).
+- **The one download step** (the list under "Downloads to approve"). The only step that may
+  reach the network, run once in the build session and named in the progress log with what it
+  fetched. In order: `uv lock`; the diff of `uv.lock` compared with the approved list, and any
+  package not on it, or any `nvidia-*`, `cuda-*` or `triton` package, stops the step and goes to
+  the owner before `uv sync`; `uv sync --group language-id`; the model files copied from the
+  offline check's folder (the pinned files only, never its `custom.py` or `.cache`) or fetched
+  from the pinned commits, each size and SHA-256 checked; the smoke, offline (`uv run
+  --offline`, the `HF_*` variables unset, `HF_HUB_OFFLINE=1`, and the proxy variables pointed at
+  a closed local port so any request fails): each adapter loads from the folder, the folder's
+  listing and every file's SHA-256 the same after as before, and classifies three dev variants
+  (an English request, a Saudi one, an MSA one) as their items' languages; and it times ECAPA and
+  Silero on 2.0 s clips at the registered 2 threads, in wall time and the process's CPU time,
+  which become run H's expected lines before H1 runs. If torch 2.15.0 and torchaudio 2.11.1 fail
+  together, the lock takes torch 2.11.0, the version torchaudio 2.11 was made for, an amendment
+  shown to the owner. A failed smoke stops the block and is reported.
+- **Tests with no model and no network.** Every test of the session and the bridge uses a fake
+  `LanguageClassifier` (scripted verdicts, a delay, a failure, busy); each adapter's tests inject
+  its runner and check the label maps, the renormalization and the PCM conversion with no model
+  file; the file check runs on small files the test writes. `poe check` never loads a model or
+  imports torch, and gives the same answer whether or not the `language-id` group is installed;
+  `uv run --offline` stays the rule for everything but the step.
+  - `tests/t2_agentic_voice/domain/test_turn_language.py`: each branch of the rule and its edges
+    (speech exactly `from_s`, a share exactly `min_share`); the current language moves only on
+    `classified`; under `session` the call's language whatever the verdict.
+  - `tests/t2_agentic_voice/domain/test_language_scores.py` (adversarial, GP-08): a share of NaN,
+    -0.1 or 1.2, shares summing to 0.9, a code not asked, an empty answer, each refused at the
+    port, the turn keeping its language; a classifier sure of a third language still chooses
+    only between the agent's, its low `mass` recorded.
+  - `tests/t2_agentic_voice/domain/test_yes_rule_languages.py` (new; `test_yes_rule_judged.py` is
+    at 379; adversarial, a fake model answering `yes`): "yes, but change the date" heard as
+    English over an Arabic read-back and «نعم بس غيّر الموعد» heard as Arabic over an English one
+    are each a `Correction`; "no, send it" heard as English over an Arabic read-back is never a
+    yes; with the languages the same, every answer of today's tests stands. `ActionSafetySuite`
+    gains the two mixed-language cases (`testing/action_judged.py`, 174 lines), played on Ole5's
+    `create_ticket` both ways.
+  - `tests/t2_agentic_voice/voice/test_stt_language.py` (new), the bridge with a fake classifier
+    and a fake speech-to-text: classification starts once the turn's audio holds `from_s` from
+    the speech's first byte, never on the clock, at most once a turn; a shorter turn never asks;
+    the held request names the verdict in hand and its `Transcribing` carries it; a verdict still
+    running is `late`, and the held request goes in the same step as `TurnHeld`; a classifier
+    that blocks 2 s delays no frame and no request (a 20 ms ticker); an overlap's parts name the
+    current language with a verdict in hand; the turn's own request reuses the held language;
+    resumed speech decides again; an echo call's hold is recorded; `drop` cancels the task and a
+    late result is never used; a busy classifier keeps the language.
+  - `tests/t2_agentic_voice/voice/session/test_turn_language.py` (new): the trace and the call
+    report name each turn's language and `by`, a reused held result among them; under `session`,
+    the report as today.
+  - `tests/t2_agentic_voice/adapters/test_silero_language.py` and `test_ecapa_language.py`
+    (new): with injected runners, the label maps, the renormalization, the PCM16 conversion and
+    the thread count; the ECAPA module imports alone in a new process without torch; `load`
+    without the extra names the group; the load call is given the folder, `NO_LINK` and the
+    override; a folder holding a `.py` file is refused.
+    `tests/t2_agentic_voice/adapters/test_model_files.py` (new): a missing file, a wrong size and
+    a wrong hash each refused, naming the file and never its bytes (`tests/leaks.py`).
+  - `tests/t2_agentic_voice/api/test_providers.py`, `test_runtime.py`, `test_doctor.py`: the
+    classifier built only under `classified`, loaded at start and closed once; `classified`
+    with no `stt.classifier_dir` refused at start with a fix; the doctor's section.
+  - `tests/harness/test_install.py`: no member's base install holds a torch, CUDA or triton
+    package; torch only through the extra; its self-test on a made-up lock. New
+    `tests/harness/test_arch_models.py` (`test_check_architecture.py` is at 361): torch imported
+    outside `adapters` and `huggingface_hub` in the library each reported with its fix; every
+    module the ECAPA adapter loads is provided by a requirement of the `ecapa` extra.
+  - Ole5 (`tests/ole5_voice/evals/`): `test_languages_run.py` and `test_languages_score.py`
+    (new), as `test_eot.py` and `test_eot_score.py` are; `test_run_arms.py` gains
+    `--language-from`.
+- **The invariants.** *Invariant 1:* the classifier changes only the language a request names;
+  the heard words are still built only by `voice`; a yes in another language is on none of the
+  read-back's lists, so it is asked again or put to the model, whose `yes` then meets every
+  language's no words and change markers (above); short turns, where most yeses are, keep the
+  current language. Said plainly, what is left: an unlisted word heard in the read-back's own
+  language is judged as today (D-082), so a short «لا» over an English read-back, after an
+  English turn moved the current language, goes to Whisper as English and the model's word on
+  what it writes decides, under today's rails. *Invariant 4:* a classifier's answer is parsed at
+  the port, and one that does not parse is a failure. *Invariant 8:* the classifier hears a
+  turn's first seconds in memory and keeps nothing; traces hold codes, shares and times, never
+  audio (`core/tracing.py:60-64`). *The design's 11:* the files are fetched by hand, the adapters
+  load only from `stt.classifier_dir`, and `huggingface_hub` is banned from the library's code.
+  *GP-18:* `session` stays the default (`tests/t2_agentic_voice/core/test_config.py:48`), and
+  the existing tests of `session` and `auto` are the characterization. *GP-22*, *GP-24*:
+  above. *D-066* is amended by Block H's decision, a third value; *D-067*'s hold and early start never wait
+  on the classifier; *D-034*, *D-038*, *D-061*, *D-074* unchanged; *D-018*'s one install and
+  *D-032*'s torch check amended only by the owner's ruling on Q15.
+- **Size** (recounted at `4dc1f23`): `voice/calls.py` 395: `_detectors` (`calls.py:327-336`)
+  moves to `voice/turns.py` first, in a commit of its own, before the parameter, the attribute,
+  the protocol's parameter and the keyword to `CallPipeline`, so it ends near 390;
+  `api/runtime.py` 393 to about 397 (the load, the close, the keyword), and if it would pass
+  400, a part of `_start` moves out first, in a commit of its own; `voice/session/call.py` 396:
+  line 92 rewritten in place, no new case in `_take`; `voice/stt_bridge.py` 356 to about 366, the
+  logic in `stt_language.py`; `core/events.py` 361 and `core/tracing_tts.py` 344 a few lines
+  each. Not touched: `talking.py` 397, `text_call.py` 396, `interrupter.py` 388, `read_back.py`
+  391, `agent/turn.py` 379, `speaker.py` 387, `core/config.py` 392.
+- **Risks:** the torch check fails as soon as the lock holds torch (`test_install.py:42-51`), so
+  it is rewritten with the extra, after Q15; CPU (ECAPA shares the CPU with every call's speech
+  detector and Smart Turn, bounded by one classification at a time and the thread setting;
+  condition 4 measures one call, and how many calls the CPU holds is the reliability work's
+  count); late verdicts on turns a little over 2 s; a wrong switch on a long Arabic turn
+  (`min_share`, condition 2); text from silence sent as English (`domain/silence.py:100-110`,
+  condition 3); the model's load and memory, not measured (the smoke times the load, H1 records
+  the process's peak where it can); torch 2.15.0 is 14 days old and torchaudio is in its
+  maintenance phase (the smoke proves the three, torch 2.11.0 the fallback); Silero's file is a
+  third party's re-upload of a model deprecated upstream, pinned by commit and hash, whether it
+  equals Silero's own not checked; an exact `uv sync` without the group removes the extra, after
+  which ECAPA's `load` refuses with its fix; public names gained, all provisional
+  (`Providers.classifier`, the port, the `classifiers` facade, `TurnRecord.language_by` and the
+  new meaning of `TurnRecord.language`).
+- **Docs:** Block H's decision (D-066's consequences point to it; D-018's open question 2 and D-032's torch
+  check amended by Q15's ruling); the design's 4.1, 6.1, 7.6, 9.8 and 13 (the licence rows);
+  `docs/design/evaluation.md`'s "Running"; the guide's `languages.md` (the third value, the rule,
+  the files with their sources, sizes and hashes, a Linux team's index lines, run H's result),
+  `concepts.md` and `quickstart.md` (their "measured before it is promised" sentences),
+  `is-this-for-you.md` ("No GPU and no torch"), `serving.md`; `docs/SECURITY.md`'s invariant 8;
+  ARCHITECTURE.md and `harness.toml` together; CLAUDE.md's `eot` · `overlap` · `eval-timing` row
+  gains `eval-languages` within its line (CLAUDE.md is at its 120-line cap, DOC-ENTRY); the
+  generated settings; debt rows for several calls classifying one at a time, the CPU index
+  checked at the deployment, and Silero's file kept by a third party.
+
+**Block I, every clause the agent says kept on disk by its exact text** (the owner's rulings of
+2026-11-10 in the roadmap, amending D-033: "we should cache everything we can, because all of it
+is what the agent generated and we have full access to it and since we would an exact match, no
+user will hear the info of another"; "make it on disk without consent, because this what our
+agent produced"), built after run A, by one builder for the library and one for Ole5's run T
+arm, each part reviewed by the owner's rule. It touches text-to-speech only, lands behind a
+setting, off, until run I's keep rule (GP-18), and downloads nothing. For a reader new to this:
+each clause of a reply is one request to Orpheus, Groq's text-to-speech, which streams its audio
+back (`voice/tts_bridge.py:181-203`); only the fixed phrases (greetings, notices, progress lines)
+are made once and played from disk (the phrase cache, `adapters/phrase_cache.py`). A clause said
+again costs a request again. This block keeps every clause's audio, keyed by its exact text, so
+the same clause in the same voice plays from disk: one Orpheus request saved (Groq publishes 10
+a minute a model, the design's 10.4) and that request's wait for its first audio (about 0.25 s,
+plan 003).
+
+- **The settings** (`core/settings/tts.py`, beside `cache_phrases`): `tts.cache_clauses`,
+  **False**: "Whether every clause the agent speaks in a call with a talker is kept on disk
+  under the storage folder by its exact text, its language, its voice and the adapter that made
+  it, so the same clause plays again with no request; the echo's words said back are never
+  kept." `tts.clause_cache_mb`, at least 1, **512** (Q23): "The most disk the clause cache keeps,
+  in megabytes; past it, the clauses played longest ago are removed." No folder setting: the
+  cache is `storage.var_dir/<agent name>/clauses/`, beside `phrases/`.
+- **A protocol beside the port** (`domain/ports/text_to_speech.py`): `HeldSpeech`,
+  runtime-checkable, one method, `async def held(self, text: str, *, language: str) ->
+  AudioChunk | None`. Not in the `ports` facade; the port itself is unchanged, so `GroqTTS`, a
+  team's adapter and every fake stay as they are.
+- **The clause cache** (new `adapters/clause_cache.py`, about 250 lines), `ClauseCache`: a
+  `TextToSpeech` that wraps another and meets `HeldSpeech`. Built with no IO
+  (`ClauseCache(tts, *, folder, voices, trim_silence, max_mb)`, and `from_settings`); `async
+  open()` reads its folder; `aclose()` drains its own writer for at most 5 s (the agent's
+  number) and drops the rest, and never closes the adapter it wraps: whoever built that closes
+  it, as run T's `CountedVoice` does, the runtime already closing the providers' text-to-speech
+  (`api/runtime.py:266`), which the port says is closed once.
+  - *The key:* a SHA-256 of the cache's format tag, the wrapped adapter's `name`, the language
+    tag, that language's model and voice from `tts.languages`, `tts.trim_silence`, and the text
+    exactly as the provider is sent it, cut to 32 hex characters as `phrase_key` is
+    (`phrase_cache.py:250-254`). The text sent comes after the speaking rules, the pronunciation
+    map and `provider_text`, so a change to any of them that changes a clause's words changes its
+    key; no "speaking rules' version" exists in the code, and the key needs none (Q24). With the
+    adapter's name in it, takes one adapter made are never played for another passed in code.
+  - *Keeping a take:* each chunk is passed on at once, unchanged, and a copy kept in memory; only
+    once the stream has ended whole (after the loop, never in a `finally`) is the take kept: one
+    rate, some audio, no chunk cut short. A take that raised, came back cut short, gave no audio
+    or was stopped is never kept. `synthesize` never serves a held take: the bridge asks `held`
+    first.
+  - *Writing:* one writer task, its queue at most 64 takes (the agent's number; when full, the
+    take is dropped), each write in a thread to `<key>.<random>.part`, then renamed onto
+    `<key>.wav`, as the phrase cache writes. `_read`'s body (`phrase_cache.py:217`) and `_wav`
+    (`phrase_cache.py:277`) move into a new `adapters/wav_files.py` that both caches use.
+  - *The index:* at `open`, in a thread, each `<key>.wav` of its own pattern is an entry, its
+    size and its file's time its last use; each `.part` of its own pattern is removed; nothing
+    else in the folder is read, touched or removed (GP-21). It lives in memory on the event
+    loop, so a miss is a dictionary look-up.
+  - *Reading:* a key in the index is read in a thread within 100 ms (the agent's number), else it
+    is a miss and the clause is requested as today; the file is a take only when it reads as the
+    cache writes one (a mono 16-bit WAV, its frames matching its data, at most 4 MB); anything
+    else is a miss, the entry dropped and the file removed by the writer. `held` never raises.
+  - *The bound:* past `clause_cache_mb`, the writer removes the entries used longest ago until
+    under nine tenths of it; a hit refreshes its entry and its file's time; a file Windows will
+    not let go of stays for the next round, and a rename it refuses drops its `.part`.
+  - *`clear()`:* removes every take it keeps (its own files, in its own folder) and resets its
+    counts; run I calls it once its smoke call has passed.
+  - *Its counts* (`counts()`, and `taken()`, which also resets them): hits, misses, takes kept,
+    takes not kept by why, unreadable files, failed writes, entries removed, the entries and
+    megabytes held, each look-up's seconds, hits' and misses' apart; a frozen `ClauseCounts`, no
+    text and no key.
+  - *Public:* `ClauseCache` and `ClauseCounts` in the `stores` facade beside `PhraseCache`, so
+    run T builds the cache as the runtime does (`testing` never imports `adapters`); D-032's
+    sentence that `PhraseCache` is the one public name no public signature names
+    (`docs/design/decisions.md:1195-1197`) is amended.
+- **The bridge, the hook point** (`voice/tts_bridge.py`, 249 lines). `ClauseTTSBridge._speak`
+  (`tts_bridge.py:181-203`) plays a fixed phrase's audio, marks an empty clause, fails when the
+  service is unusable, or sends the request. Block I adds one branch after the empty clause:
+  when the bridge's text-to-speech meets `HeldSpeech` (checked once, in `__init__`) and `held`
+  gives a take, the bridge checks again that no stop dropped the clause while it was read (as
+  `_speak` checks at `tts_bridge.py:183`), then plays it through `_play` (`tts_bridge.py:204`),
+  the fixed phrase's path: no `Synthesizing`, no request. `ClauseTake` (`voice/tts_output.py`)
+  gains `held`, and `ClauseQueued` (`voice/session/session_events.py`) `held: bool = False`.
+  With any other text-to-speech the bridge does exactly what it does today.
+- **The session's counts** (`voice/session`). A held clause is a cache hit but never a fixed
+  phrase: `Clause.cached` (`playback.py:53-73`) means a phrase, which a reply said again looks up
+  in the phrase cache (`echo.py`'s `again`), where a talker's clause is not found and would go
+  unsaid. So `Clause` gains `held`, set by `Playback.queued` (`playback.py:232`) from the event;
+  `Reply.numbers()` counts `cached or held` as the span's `cache_hits` (`playback.py:130`);
+  `Speaker.queued` (`speaker.py:283-295`) counts the hit in the call's usage. A held clause sends
+  no characters.
+- **A reply said again says what was sent**, folded in, since a repeat must make the same key.
+  Today `Speaker.repeat` sends each clause's caption (`speaker.py:274`), in the call's language
+  (`voice/session/echo.py:133-157`). A clause that fits one request is captioned as the talker
+  wrote it (`open_reply.py:86-87`), and an action's line with its `text` while its `spoken` form
+  was sent (`open_reply.py:148-149`), so a repeat skips the speaking rules and the pronunciation
+  map (a ticket number's digits go to Orpheus raw), says an English clause of an Arabic call in
+  the Arabic voice, and could never hit the cache. `Clause` gains `sent`, the request's text
+  (`line.speak.text`, set where `playback.py` builds a clause, lines 167-171 and 192-199);
+  `speaker.py:274` passes each clause's caption, `sent`, language and `cached`, rewritten in
+  place; `again` sends `sent` in the clause's language, the call's when it has none. A reply said
+  again then says each clause as it was first said, and finds its held takes.
+- **The composition** (`api`). A new `api/voices.py` (about 60 lines) takes the phrase cache's
+  lines out of the runtime's `_start` (`api/runtime.py:257` and `272-274`): it declares the
+  phrase cache on the providers' text-to-speech, then, with `tts.cache_clauses` on and an agent
+  whose calls run the talker (`settings.session.mode_for(...)`, as `api/providers.py` reads it),
+  builds and opens the clause cache over it under `<agent>/clauses` and pushes the cache's own
+  `aclose`; otherwise it hands the providers' text-to-speech on unchanged. An echo agent's calls
+  never have one: the echo says the caller's words back, which the owner's reason ("what our
+  agent produced") does not cover.
+- **Ole5's part:** run T's arm only (run I, below). `first_audio.py` (329) gains `--clause-cache
+  on|off`, off by default; `AudioReplay` (`first_audio_replay.py`, 242) builds the cache over its
+  counting voice in `__init__`, opens it in `start` before `call_of.start()`, takes its counts
+  for each recording's attempt, and drains it in `aclose`; the run clears it once the smoke call
+  has passed (`first_audio.py:167-171`), which also clears the takes of the replay's own
+  progress lines (`AudioCall.start` says them through its text-to-speech,
+  `testing/audio_call.py:150-156`); `FirstAudioLine` (`evals/measure_lines.py`, 157) gains
+  `clause_cache: ... | None = None`. Ole5 sets nothing in its own settings or server until the
+  keep rule says so.
+- **What observers see.** No new public event. The call report's `ModelUsage`
+  (`core/events.py`) gives, for each Orpheus model, fewer `requests` and `characters` and more
+  `cache_hits`, its docstring widened from the phrases to the phrases and the clauses; each
+  reply's span gives its `cache_hits` and `requests`. A turn's time to first audio counts a held
+  first clause's audio as it counts a phrase's (`voice/session/turn_book.py:202-211`); the
+  turn's `tts_first_audio_ms` is the first *requested* clause's, so a held first clause moves it
+  to the next or leaves it empty (`playback.py:115-121`). Logs: `clause_cache_opened`,
+  `clause_cache_closed`, `clause_unreadable`, `clause_write_failed` (the error's type),
+  `clause_cache_trimmed`: never a text and never a key, since a key is a hash of a short text
+  that can be guessed back (GP-19).
+- **What it never does:** keep the caller's audio or the echo's words; keep a take that failed,
+  was cut short, gave no audio or was stopped; play a take for any text but the one it was made
+  from, in the same language, voice, adapter and trimming; send a request of its own; fail or
+  delay a clause on a disk error (a miss, then the request); write outside its folder, or remove
+  a file not of its own naming (GP-21); ask consent (the owner's ruling); log a text or a key.
+- **"No user will hear the info of another."** The audio is a function of the key alone, and
+  the key holds the whole text, so a hit says exactly the words the agent is saying to this
+  caller now. A passage is the knowledge base's, the same for every caller. A ticket number
+  reaches speech only in an outcome line, unique to its ticket, so a hit only when that line is
+  said again in the call, and in a status's last four digits of the caller's own tickets
+  (invariant 3). A read-back renders the model's summary of what the caller asked: kept as
+  audio, it is heard again only by a caller whose read-back is the same word for word. Said
+  plainly: a hit starts sooner than a request (no first byte to wait for), so a caller who can
+  make the agent say a clause exactly, a read-back of a summary they dictate among them, could
+  tell whether that clause was said in some call since it was last removed; the guard keeps the
+  talker from saying an ID it has no evidence for, and a free-text clause must match to the
+  character. The agent judges it negligible and proposes nothing (the owner's rule of 2026-11-03,
+  no hardening rounds). At rest the cache keeps the agent's words from calls as audio,
+  read-backs of callers' requests among them; the traces keep the same text already (D-079).
+- **The invariants.** *D-033* is amended: "Text built from heard words never reaches the phrase
+  cache" stays true of the phrase cache, which holds only the declared phrases; Block I's decision adds the
+  clause cache, for every clause a talker call speaks (a read-back too), never the echo's words,
+  and closes the sentence that left caching talker clauses for later. D-033's rule of keying on
+  the text sent, never the text written, is the clause cache's too. *Invariant 8*
+  (`docs/SECURITY.md:151`) gains a sentence: the agent's own synthesized voice (the phrase cache
+  and the clause cache) is not call audio and is kept with no consent (the owner, 2026-11-10),
+  though the clause cache's takes say the agent's words of a call; SECURITY.md's trust
+  boundaries gain a row for call content at rest under `storage.var_dir` (the clause cache's
+  takes beside the outbox and the test console's files), not only in Phoenix. *Invariant 2*
+  holds: the guard reads each clause before it is asked for, and a hit plays exactly that
+  text's audio; Block G's filter sits before both. *Invariant 3* holds: the cache gives no tool
+  or caller anything. *Invariant 7*'s lock file keeps one writer a folder. *GP-18:* off by
+  default, a characterization test proving the off path unchanged; the repeat's fix is not
+  behind the setting, since it corrects what a caller hears and no registered run says a reply
+  again. *GP-19*, *GP-21*, *GP-22*: above. D-066 and D-067 are not touched.
+- **Tests** (new files where a test file is near the cap):
+  - `tests/t2_agentic_voice/adapters/test_clause_cache.py` (new), on a fake text-to-speech and a
+    `tmp_path` folder. *The key* (adversarial): a take kept for a text is never given for another
+    (one character more, a space more, one digit changed, the other Arabic preset, the other
+    voice, the other model, `trim_silence` flipped, another adapter's name), and is given for the
+    same text, language, voice and adapter in a later cache over the same folder. *What is kept:*
+    a whole take, as it came; nothing for a take that raised mid-stream, came back cut short,
+    gave no audio or was closed after its first chunk, and no `.part` left. *The files:* a
+    truncated file, a stereo or 8-bit WAV, a file that is no WAV, a header counting more frames
+    than its data, a file over 4 MB, each a miss, removed, counted, and kept anew by the next
+    take; a `.part` left from a crash removed at `open`, and a file of another name left
+    untouched (GP-21). *The bound*, *at once* (two takes of one key, a refused rename, a refused
+    write), *slow or gone*, `aclose` draining and never closing the wrapped adapter, `clear()`,
+    and leaks (`tests/leaks.py`).
+  - `tests/t2_agentic_voice/adapters/test_phrase_cache.py` and `test_phrase_cache_files.py`
+    unchanged and passing once the WAV helpers move.
+  - `tests/t2_agentic_voice/voice/test_tts_bridge_held.py` (new; `test_tts_bridge.py` is at
+    377): a held clause plays with no request (no `Synthesizing`; `ClauseQueued` `held`,
+    `requested_at` None; then `ClausePlayed`); a miss as today; a stop that lands while the take
+    is read drops it unplayed; a text-to-speech that is no `HeldSpeech` gives today's events in
+    today's order (the characterization test).
+  - `tests/t2_agentic_voice/voice/session/test_held_clauses.py` (new;
+    `test_call_report.py` is at 359): a held clause is a cache hit in the call's usage and the
+    reply's numbers, with no characters; a reply said again that holds a held clause says it,
+    never looking it up as a phrase; a repeat sends each clause's text as sent and in its own
+    language (a caption with digits sent as the speaking rules said it; an English clause of an
+    Arabic call in the English voice); the existing repeat tests that read the text sent are
+    updated.
+  - `tests/t2_agentic_voice/api/test_runtime.py`: with the setting off, the calls get the
+    providers' text-to-speech itself; on, for a talker agent, a clause cache under
+    `var_dir/<agent>/clauses`; for an echo agent, none; the fixed phrases declared on the
+    unwrapped one; the providers' text-to-speech closed once.
+  - `tests/t2_agentic_voice/testing/test_audio_call_clauses.py` (new): two `AudioCall` calls of a
+    talker agent saying the same reply over one clause cache; the first sends each clause's
+    request, the second none for them (the requests counted, not the times: `AudioCall` runs on
+    the system clock).
+  - `tests/t2_agentic_voice/core/test_settings_clause_cache.py` (new; `test_settings_checks.py`
+    is at 375): the two settings' defaults and bounds; `test_facades.py`: `stores`' two new
+    names.
+  - Ole5, `tests/ole5_voice/evals/test_first_audio_cache.py` (new; `test_first_audio.py` is at
+    388): the flag builds the cache in the run's folder over the counting voice; it is cleared
+    once the smoke call passed; a repeated attempt's counts are kept apart; the history line
+    holds the counts; the hits are split between each item's first variant and the rest.
+- **Size** (recounted at `4dc1f23`): `voice/session/speaker.py` 387: +2 in `queued`, line 274
+  rewritten in place, its module docstring reflowed so it stays at 387; `api/runtime.py` 393:
+  the phrase cache's lines move to `api/voices.py`, net −1 or −2. Not touched: `talking.py` 397,
+  `call.py` 396 (its `ClauseQueued` case unchanged), `testing/text_call.py` 396 (`TextCall`
+  never synthesizes), `voice/calls.py` 395 (it passes the text-to-speech it is given),
+  `interrupter.py` 388, `read_back.py` 391, `agent/turn.py` 379. With room:
+  `voice/tts_bridge.py` 249, `voice/tts_output.py` 73, `session_events.py` 263, `playback.py`
+  319, `echo.py` 157, `usage.py` 123, `domain/ports/text_to_speech.py` 85,
+  `core/settings/tts.py` 75, `phrase_cache.py` 285 (shrinks), `stores.py` 13; Ole5's
+  `first_audio.py` 329, `first_audio_replay.py` 242, `measure_lines.py` 157,
+  `first_audio_score.py` 253. New: `clause_cache.py` (about 250, under `size_watch`'s 300),
+  `wav_files.py` (about 60), `api/voices.py` (about 60), and the new test files above. The disk:
+  a take is mono 16-bit at 24 kHz, 48 KB a second; run T's dev requests averaged 39 characters
+  in Arabic and 46 in English, so at about 14 characters a second with Orpheus's 0.4-0.7 s of
+  leading silence a clause is about 0.17 MB (the agent's estimate), and 512 MB holds about 3,000.
+- **Risks:** a repeat said wrong if a held clause were marked `cached` (pinned by a test); a stop
+  during the read (pinned); one bad take, clipped or mispronounced but not flagged cut short,
+  played to every caller who gets that text until it is removed, and the same if Groq changes a
+  model under its name (the remedy: delete the folder; no command proposed); disk at rest
+  (invariant 8's text, `data-and-privacy.md` and the roadmap's item on what callers who are not
+  the developers must be told gain it); `ModelUsage.cache_hits` (public) now counts clauses too
+  and `tts_first_audio_ms` skips a held first clause, so run T's reading allows for both;
+  `stores` gains two names; `ClauseQueued` gains a field with a default, so `TextCall`'s
+  hand-made events (`testing/text_side.py:220`) need no change; H and I both regenerate the
+  settings docs, made again after the second merges.
+- **Docs:** Block I's decision (D-033 amended; D-032's sentence on `stores`); `docs/SECURITY.md`'s invariant
+  8 and its trust-boundary row; the design's 10.4 ("TTS caching") and its storage row; the
+  guide's `data-and-privacy.md` (a row for `<agent name>/clauses/`, and "It deletes none of it"
+  amended, since the cache removes its own takes past its bound), `latency.md` and `concepts.md`
+  (a reply said again); `docs/design/evaluation.md` (run T's `--clause-cache`); the module
+  docstrings that say only declared phrases are kept (`adapters/phrase_cache.py:8-10`,
+  `voice/session/io.py:149-157`, `domain/fixed_phrases.py:40-43`, `voice/session/echo.py:13-16`);
+  the generated settings; the roadmap's item on what callers must be told gains the agent's words
+  kept on disk; a debt row, the phrase cache's key leaving out `tts.trim_silence`
+  (`phrase_cache.py:250-254`).
+
 ## The measurement, registered before any result
 
 - **Data:** scenarios in `apps/ole5-voice-agent/evals/actions/`, Saudi, MSA and English, split by
@@ -303,6 +1029,121 @@ may judge a yes in words no list holds, within rails the yes rule keeps.
   Block F's scenarios passed it; "The owner's decisions"), its dry estimate with the note pair
   at most $1.76 for dev and $1.73 for held-out; M7 takes up `simulate`. No default moves except by a registered keep rule
   (GP-18).
+
+- **Run H, each turn's language** (Block H; its folders named apart from the history's
+  `h1-large-v3`, `h2-turbo` and `h3-held-out`, for example `lid1-dev-silero`).
+  - *Data:* the golden set's dev split, 292 variants of 98 items (Saudi 128, MSA 51, mixed 26,
+    English 75, and 12 of silence, noise or echo), each fed as a fresh call; held-out, 131
+    variants of 42 items (8 English items, 22 variants), read once, by aggregates, after dev.
+    Three call languages for every variant: (a) the ordinary call, the item's own language
+    (English items in an English call, the rest in an Arabic one), where `session` is right by
+    construction; (b) an Arabic call, run X's condition; (c) an English call. Every pass at one
+    commit, each alone, its history line kept aside until the last has run; a one-variant smoke
+    first.
+  - *H1, the classifier, no spend* (`poe eval-languages`): the file-fed pipeline at real-time
+    pace with Ole5's two languages and a speech-to-text that answers at once and records the
+    language each request named. Passes, in order: off (`session`), Silero, ECAPA, off again, at
+    the registered `from_s` 2.0 s, `min_share` 0.7 and 2 threads (Q20). Each turn's verdict, when
+    it was asked and came, when its hold began and when the turn ended are recorded; each call
+    language's choice is computed from that record with the library's pure rule, as a talker
+    call makes it, when the held request goes at the hold's start, so a verdict counts as in time
+    only when it came before. One call at a time, so no turn finds the classifier busy.
+  - *H2, Whisper* (`poe eval --language-from <H1 pass>`): `whisper-large-v3` with the prompt (run
+    W's W1 settings), at H1's commit. On dev, three baselines, (a) every variant in its item's
+    language, (b) every variant as Arabic, (c) every variant as English; then, for each
+    classifier and call language, only the variants whose language H1's rule changed are sent,
+    the rest taken from that call language's baseline (Whisper's noise on dev was d = 0 twice,
+    D-024 and D-066). A variant is sent whole, in the language the rule named for its first turn;
+    a variant whose turns got different languages is counted and reported.
+  - *Held-out*, once after dev, aggregates only: whole runs, every variant sent: baselines (a) and
+    (b), and the kept arm in calls (a) and (b), 4 runs at about $0.042 each. H1's held-out passes
+    (off, the kept arm, off) keep each variant's language code in their run folder for those runs
+    to read, never printed, scored or shown by variant. Each held-out line keeps the accuracy, the
+    English stratum's accuracy and, from H1, the paused requests' cut-offs; a condition whose
+    aggregate a line does not show is recorded as not read, never guessed.
+  - *Metrics:* the matcher's accuracy by item and by stratum; text from silence on the 12
+    silence, noise and echo variants after the live filter; from H1, the share of each `by`, the
+    verdict's time (median, p90), the share in time and how late the late ones were; against the
+    two off passes, the paused requests' cut-offs, and the turn-end delay as the median of paired
+    differences (same clip, same turn) against the mean of the two off passes.
+  - *The keep rule.* An arm passes on dev when all hold: (1) *English in an Arabic call:* the
+    English items better beyond the noise against baseline (b) (the sign test by item, p < 0.05,
+    more better); (2) *the ordinary call:* at most 2 items worse than baseline (a), none a
+    `request`, `paused_request` or `ticket_number` item; (3) *text from silence:* no more
+    characters than baseline (a)'s; (4) *time:* no more paused cut-offs than the worse off pass
+    plus one (D-067's measured noise, 1 verdict of 51), and a median paired turn-end difference
+    that is not both over 50 ms and over the two off passes' own. Of two arms that pass, the one
+    with more English items right in an Arabic call; within 2 items of each other, Silero, which
+    needs no torch. Arabic in an English call (c) is reported, no condition. Held-out then
+    confirms once: the English stratum's accuracy in an Arabic call above baseline (b)'s, the
+    ordinary call's accuracy no lower than baseline (a)'s, and condition 4 from H1's held-out
+    passes. Only then does the arm become the setting Q19 names, recorded in Block H's decision. A miss is
+    recorded and goes to Future improvements, not re-run.
+  - *Check the conditions first:* each baseline against its recorded run (W1's dev accuracy
+    0.442; run X's English items 0.027); one that moved beyond the noise makes the run
+    unreliable: said, and nothing else read.
+  - *Expected,* from the offline check, and from the download step's smoke, whose timings are
+    added here before H1 runs: ECAPA passes 1 to 3, the English accuracy in an Arabic call near
+    0.5 against 0.027, the 1 to 2 s English turns still Arabic by design; Silero fails 2
+    (in-sample it sent four Arabic requests as English); ECAPA's verdict comes late on turns a
+    little longer than 2 s; whether its CPU moves the turn ends is condition 4's.
+  - *No time-to-first-audio run:* the block adds no wait, so the first audio moves only through
+    the turn ends, which H1 reads; a run T pass is added, as a dated amendment, only if condition
+    4 fails or is near its bound.
+  - *Cost and time:* H1 spends nothing, about 30 minutes a dev pass at real-time pace (the
+    agent's estimate), so about 2 hours for four, and about 40 minutes for held-out's three; H2
+    on dev at most 9 runs' worth of requests, about $0.85 at run W's $0.094 a full dev run, in
+    practice the three baselines and the changed variants, about an hour at 20 requests a minute;
+    held-out about $0.17 and 30 minutes. A cap of $3 (the owner, 2026-11-10: "I don't care about
+    the money as much as I care about wasted time and useless runs"). Read once: held-out.
+- **Run I, the clause cache** (Block I; its folder `i1-dev-120b`).
+  - *The question* (the owner's "their effectiveness and the latency improvements or delays they
+    bring"): how many clauses repeat in Ole5's calls, how many Orpheus requests that saves, how
+    much sooner a held clause plays, and whether looking up and keeping takes delays anything.
+    The roadmap's count, before any run: with today's spoken prompt, about 5% of model-written
+    clauses repeat across questions in run K's dev replies, mostly short openers ("I'm sorry,",
+    "Yes,", «نعم،»).
+  - *Which run:* run T (`poe first-audio`), the only run that speaks; runs K, S and A are text
+    calls that never synthesize, and run E's echo agent never has the cache: none of their
+    baselines moves.
+  - *Data:* run T's dev split as plan 006 registered it, 17 items and 72 variants (t0-dev-120b's
+    history line), each a fresh call, in the run's order. Held-out is not run: the rule and the
+    bound are set here, nothing is fitted to results, so nothing waits to be confirmed fresh
+    (evaluation.md, "Fitted, then fresh").
+  - *The arm, I1:* the block's commit; Ole5's talker with its tools; `gpt-oss-120b` at medium, as
+    T0's dev run; `tts.trim_silence` off; `--clause-cache on`, the cache in `<out>/clauses`, new,
+    and cleared once the smoke call has passed (the smoke plays dev's first recording, which the
+    run then plays again, `first_audio.py:226-239`), so the first measured call starts cold; a
+    recording replayed after a rate limit (`first_audio_run.py`) has its look-ups counted apart
+    and left out of the shares.
+  - *What is read:* the hits as a share of the clauses asked for, in each item's first variant
+    (which can hit only another question's clauses, the roadmap's "across questions") and in the
+    rest (the same question again in other words) apart; Orpheus requests per call minute, sent,
+    and with each hit added back; each look-up's time, hits' and misses' apart (median, p90,
+    most); Orpheus's own first audio in the same run, beside a hit's read; the time to first audio
+    by path, as run T scores it; the turns whose first answer clause was held, their count and
+    their time to first audio against the other turns'; the takes kept, not kept by why, files
+    unreadable, writes failed, megabytes at the end.
+  - *The keep rule.* `tts.cache_clauses` becomes True by default (Q25) only when I1 shows all
+    five, each number the agent's own: (1) no call failed, no clause failed, and no clause went
+    unsaid because of the cache; (2) the hits in the first variants at least 2% of their clauses
+    asked for (the agent's reasoning: a cache that starts empty hits only the later sayings of a
+    clause, so its share is below the roadmap's count of clauses that repeat; the share over
+    every variant is reported, not gated); (3) a miss's look-up at most 2 ms at p90 and 20 ms in
+    every case; (4) a hit's read at most 50 ms at p90; (5) every run T target T0's dev run met
+    (`no_search_median_ms`, `no_search_p90_ms`, `search_median_ms`, `search_p90_ms`, its history
+    line) still met. Otherwise the default stays off, the result is recorded, and the cache stays
+    for a team to turn on.
+  - *Expected* (the agent's): hits about 5 to 10% over every variant, fewer in the first ones;
+    requests per call minute down by about the same share; a miss's look-up in microseconds and a
+    hit's read a few milliseconds, against Orpheus's first byte of about 0.25 s; the time to
+    first audio by path within the spread of plan 006's T runs, since hits are few and the chat
+    model's time dominates.
+  - *Cost and time:* about T0's dev run, $0.60 (t0-dev-120b's `cost_usd` 0.597), less each hit's
+    characters, under the cap the run is given; its time bounded by Orpheus's pacing at
+    `run.tts_rpm` 5 (T0's dev sent 351 Orpheus requests, about 70 minutes of pacing alone), and I1
+    sends fewer. About 60 MB of takes in `<out>/clauses` (the agent's estimate). Run once and read
+    once; a miss of the keep rule is recorded, not re-run.
 
 ## Progress log
 
@@ -570,9 +1411,19 @@ may judge a yes in words no list holds, within rails the yes rule keeps.
   branch `merge-test-console` (its two doc conflicts resolved there, both sides kept, its gate
   green). It observes the runtime the app builds, so Ole5's served talker keeps
   `with_ticket_claims`.
+- 2026-11-11: Blocks G, H and I drafted for the owner's approval ("Tracks", runs H and I in "The
+  measurement", Q10 to Q25 and the downloads in "The owner's decisions"): one drafter a block,
+  read only, each checked against the code by one skeptic, then one synthesis. Block G's check of
+  the stored texts already ran: none of run K's and run S's 5,747 dev clauses, their 1,415
+  searches or the knowledge snapshot holds a character it would take out. Nothing built and
+  nothing downloaded.
 
 ## Decision log
 
+- 2026-11-11: The roadmap's three M5 items as Blocks G, H and I of this plan, not a plan of
+  their own: each is small beside the actions, Block G must land before run A, and H and I share
+  run A's branch and the owner's approvals. Block G is ordered first; H and I wait for run A,
+  since neither changes a text call.
 - 2026-11-10: The owner's four rulings before run A ("The owner's decisions"), built as one
   change: Ole5's MSA lines for its three actions, a run A pair for `add_ticket_note`, «رقم
   تذكرتك» and "your ticket number is" as Ole5's claim phrases, and the library's caps counting
@@ -758,6 +1609,12 @@ they set a figure of their own.
   claim that names one of its numbers, or one in a reply that already said one; "Number always":
   every claim a status backs names a number), the owner chose "Number or same reply". A claim
   the call's record backs is unchanged.
+- 2026-11-10, on the roadmap's three M5 items no block held yet (a per-turn language
+  classifier, every clause cached on disk, no stray script): asked "Should I draft these three
+  as new blocks in plan 007 for your approval, with the script filter first so it lands before
+  run A?", the owner answered "Yes, and I agree to download the dependencies and models". So
+  Blocks G, H and I ("Tracks") and runs H and I ("The measurement") are drafted, each block
+  built only once approved, with Q10 to Q25 and the exact downloads below.
 
 - **Q1. M4 and the base of this work.** *Settled 2026-11-09: (a).* Not necessary: M5 can branch from M4's branch. Options:
   (a) close M4 first, its live calls moved to M7's rehearsal and its missed targets recorded, and
@@ -796,10 +1653,194 @@ they set a figure of their own.
   (b) scripted only, about $1, `simulate` left to M7. **The agent recommended (b):** the scripted
   run holds the hard constraint, and the owner asked to skip runs that are not important.
 
+- **Q10. Block G on by default.** *Open.* The filter changes nothing written in the agent's scripts, and
+  none of the stored measured texts (5,747 clauses, 1,415 search calls, the snapshot). Options:
+  (a) on by default, `guard.remove_stray_script` to turn it off; (b) on always, with no setting;
+  (c) off by default until a run measures it. **The agent recommends (a):** it fixes the defect
+  the owner saw from the next call on; no measured outcome moves, and run A records each
+  removal; the setting is the off arm a later run can compare and a team's way out. (c) leaves
+  the demo's defect in run A.
+- **Q11. What the filter covers.** *Open.* Options: (a) everything the talker writes: its text and the
+  string values of every tool call's arguments, a search's query among them (never a key), so
+  the trace, the public `ToolStarted` and `ToolFinished` events and the test console show what
+  the voice and the captions do; (b) its text and its action calls' drafts only, a search's
+  query kept as the model wrote it, so the trace, the events and the test console can still show
+  a stray character; (c) its text only, so a ticket summary holding one is read back, captioned
+  and written to the ticket with it. A tool's result and a card stay the team's text under all
+  three. **The agent recommends (a):** it is the ruling's "every text the talker writes passes a
+  script filter before it goes anywhere", and none of the 1,415 stored searches would change.
+- **Q12. Emoji and other pictographs.** *Open.* The ruling keeps "digits and punctuation" beside the
+  scripts; arrows, quotes, %, currency and math signs stay either way, since the speaking rules
+  say an arrow as "then" and the stored replies hold 257. Options: (a) pictographs taken out and
+  counted with the stray script; (b) left as written, to the prompt, which already asks for "no
+  lists, markdown, emoji or symbols" (`agent/prompt.py:71-72`). **The agent recommends (a):** a
+  voice cannot say one, the owner asked that it never be shown, and no stored reply held one.
+- **Q13. Latin in the Arabic presets.** *Open.* Options: (a) `ar-SA` and `ar` write Arabic and Latin, so
+  an agent that speaks only Arabic keeps its product names, codes, email addresses and links;
+  (b) Arabic only, Latin coming only with an English preset. **The agent recommends (a):** 266
+  of the 4,098 stored Arabic clauses hold Latin ("Ole5", "Ctrl", "PDF"). Ole5 declares both
+  languages, so neither option changes Ole5.
+- **Q14. What a removal leaves.** *Open.* In the demo, «إ重新» leaves «إ», the start of the word «إعادة»
+  the model meant, which no filter can restore. Options: (a) each character judged alone, as the
+  ruling says; (b) the whole word that held a stray character taken out, so «إ重新» leaves
+  nothing but «Outlook重启» loses "Outlook" too, and each word is held until it ends. **The agent
+  recommends (a):** it is the ruling's words, it never loses a word of the agent's scripts, and it
+  holds nothing back.
+- **Q15. Where torch may live.** *Open.* ECAPA runs on PyTorch through SpeechBrain; the library installs
+  no torch today (the torch check), and the owner chose one install with no extras (D-018).
+  Silero's classifier needs nothing new. Options: (a) an optional extra of the library,
+  `t2-agentic-voice[ecapa]` (SpeechBrain 1.1.2, torch 2.15.0, torchaudio 2.11.1 and the
+  packages listed under "Downloads to approve"), installed here through a root dependency group
+  and by no app; the torch check rewritten to every member's base install; on Linux, torch from
+  PyTorch's CPU index, a promise this workspace's lock keeps and a team adding the extra keeps
+  with the guide's lines; D-018's one install amended for this one extra; (b) ECAPA converted
+  once to ONNX outside the repository and run on onnxruntime: no torch in any install, but a
+  converted model whose verdicts must first be shown equal to the original's on the dev clips;
+  (c) ECAPA measured only from a throwaway environment (`uv run --with`, nothing in the lock),
+  built in only if it wins run H. **The agent recommends (a):** it is what the owner asked for
+  ("implement both of them"), and it costs the base install nothing. With it, accepting the
+  licences, the owner's call by the design's 13: SpeechBrain Apache-2.0, PyTorch's BSD-3-style
+  set, torchaudio BSD, the rest BSD, MIT and Apache-2.0 but tqdm's MPL-2.0 AND MIT, the ECAPA
+  model Apache-2.0, Silero's classifier MIT.
+- **Q16. Where the model files are kept.** *Open.* Options: (a) a folder `stt.classifier_dir` names, with
+  no default, outside every repository and `var/` (on the laptop, for example
+  `%LOCALAPPDATA%\t2-agentic-voice\models\`), fetched once by hand and checked by SHA-256 at each
+  start and by `t2v doctor`; (b) under `var/`, which git ignores, as the owner allows by name;
+  (c) SpeechBrain's and Hugging Face's own caches, filled on first use, which reaches the network
+  at a server's start, a host the design's 11 does not list. **The agent recommends (a).**
+- **Q17. The language a short or unsure turn keeps.** *Open.* Options: (a) the language the call's last
+  confidently classified turn was sent in, the call's own until one is: after an English
+  question, the "yes" to its English read-back goes to Whisper as English; (b) always the call's
+  language at join, so that "yes" goes as Arabic and the English read-back's yes words do not
+  match it. **The agent recommends (a):** the owner asked that a call can change language
+  mid-call, and the yes rule reads the read-back's language.
+- **Q18. A verdict not in when the turn's request goes.** *Open.* Options: (a) the request never waits:
+  the turn keeps the current language, counted `late`; (b) it waits up to a bound, for example
+  300 ms, every wait added to the time to first audio. **The agent recommends (a):** run H
+  records how late each late verdict was, so a bound can be weighed on numbers later.
+- **Q19. What a kept arm changes.** *Open.* The library's default cannot need files no install brings.
+  Options: (a) the library's default stays `session`; a kept arm becomes the setting Ole5's live
+  calls run with, which the owner sets in their `.env` (`T2V_STT__LIVE_LANGUAGE=classified` and
+  the classifier's keys), recorded in Block H's decision, the guide saying when a team should; (b) the
+  library's default moves to `classified` with Silero, falling back to `session` with a warning
+  when the files are missing. **The agent recommends (a):** a default that changes with the files
+  on a disk is not one a measurement can stand behind.
+- **Q20. The rule's two numbers.** *Open.* Options: (a) one registered pair (`from_s` 2.0 s,
+  `min_share` 0.7), not tuned on dev, which has 75 English clips of one speaker; a failure on dev
+  is reported, and another pair is a dated amendment before any further run; (b) a grid on dev
+  with no spend (`from_s` 1.5 to 3.0 s, `min_share` 0.6 to 0.9), the best pair confirmed on
+  held-out ("Fitted, then fresh"). **The agent recommends (a):** fewer runs, and nothing fitted to
+  one speaker's 75 clips.
+- **Q21. What the clause cache keeps.** *Open.* Options: (a) every clause a talker call speaks: the
+  talker's clauses, a passage it reads, an action's read-back, its sending line and its outcome
+  with a ticket number; never the echo's words; (b) the talker's own clauses only, not an
+  action's lines, which hold a caller's details and seldom repeat; (c) as (a), but no clause that
+  holds an ID or an email. **The agent recommends (a),** the owner's "cache everything we can":
+  the same text is the same audio, and with the repeat's fix a reply said again within a call,
+  an outcome line among them, is a hit.
+- **Q22. How the cache is measured.** *Open.* Options: (a) one run T arm, the cache on and cleared after
+  the smoke call, its mechanism read directly (each hit is a request not sent; each look-up and
+  read timed), about $0.60 and the time of a T dev run; (b) two arms at one commit, the cache off
+  and on, the time to first audio compared by path, about $1.20 and twice the time; (c) no run
+  now, the default left off until the live rehearsal. **The agent recommends (a):** hits are a few
+  percent of the clauses and the chat model's time varies by hundreds of milliseconds between
+  runs, so a second arm would most likely answer nothing ("useless runs"); (a)'s fifth condition
+  still reads the time to first audio against T0's targets.
+- **Q23. Where the cache lives and how big it grows.** *Open.* Options: (a)
+  `storage.var_dir/<agent>/clauses`, beside the phrase cache, no folder setting, at most 512 MB
+  (`tts.clause_cache_mb`), the clauses played longest ago removed past it; (b) the same with
+  128 MB; (c) a folder setting of its own; (d) no bound. **The agent recommends (a):** about
+  3,000 clauses (the agent's estimate), and the short openers that repeat stay, since each hit
+  keeps its clause; (d) would grow by about 0.17 MB for nearly every clause said.
+- **Q24. The key's "speaking rules' version".** *Open.* Options: (a) none: the key holds the text sent,
+  after the speaking rules and the pronunciation map, so a change that alters a clause's words
+  gives it a new key; the language, model, voice, adapter and trimming are in it too; (b) a
+  version constant in `domain/text/speaking.py`, hashed into every key and raised by hand, which
+  empties the cache at every raise. **The agent recommends (a):** the roadmap lists the version,
+  but no such version exists in the code, and the text sent already carries what it would mark.
+- **Q25. Whose default run I's keep rule moves.** *Open.* Options: (a) the library's:
+  `tts.cache_clauses` becomes True for every team; held-out is not run, since nothing is fitted;
+  (b) Ole5's only: the library's default stays off and Ole5 turns it on. **The agent recommends
+  (a):** the bound caps the disk, an echo agent never has the cache, and a team can turn it off.
+- **Downloads to approve (Block H; Blocks G and I download nothing).** The owner agreed to the
+  downloads in principle ("Yes, and I agree to download the dependencies and models"); this is
+  the exact list, read from PyPI's JSON and Hugging Face on 2026-11-10 and 11, none fetched yet.
+  Packages are kept in uv's cache (`%LOCALAPPDATA%\uv\cache`) and the worktree's `.venv`,
+  through `uv sync --group language-id`, pinned in `uv.lock`; never in git. Sizes are the
+  Windows cp312 wheels the laptop takes; the 21 new packages' wheels total 182,176,173 bytes,
+  and installed they take far more (torch 2.5.1+cpu took 1,136 MB, scipy 99 MB and sympy 29 MB
+  in the offline check's environment).
+  - **The extra's three** (PyPI):
+    - `speechbrain` 1.1.2 (uploaded 2026-10-14): `speechbrain-1.1.2-py3-none-any.whl`, 912,709
+      bytes, sha256 `9fea4144c917ea58bcf13f17a1a1759179ed7472a30ec8416e7c7c8cf21d9c9a`;
+      Apache-2.0.
+    - `torch` 2.15.0 (2026-10-28): `torch-2.15.0-cp312-cp312-win_amd64.whl`, CPU only,
+      126,738,207 bytes, sha256 `f2bd0a3709a7493a6ef2ac5a654111242a854439f7558f910b6b653b56f7504d`;
+      `Apache-2.0 AND Apache-2.0 WITH LLVM-exception AND BSD-2-Clause AND BSD-3-Clause AND BSL-1.0
+      AND ISC AND MIT AND Zlib`. For Linux, later, from PyTorch's CPU index
+      (`https://download.pytorch.org/whl/cpu`): `torch-2.15.0+cpu-cp312-cp312-manylinux_2_28_x86_64.whl`,
+      209,530,490 bytes, recorded in the lock, not fetched on the laptop; PyPI's Linux wheel
+      (539,172,785 bytes) would pull CUDA packages (cuDNN 9.26.0.51, `cuda-toolkit` 13.2.2,
+      `triton` 3.9), which the step refuses. Fallback if the smoke fails: torch 2.11.0
+      (114,556,047 bytes on Windows).
+    - `torchaudio` 2.11.1 (2026-10-28): `torchaudio-2.11.1-py3-none-win_amd64.whl`, 334,360 bytes,
+      sha256 `46ea71634d181f797370f046075ea982043c228b38d674fd7d9fc1c855a37b6a`; BSD; requires
+      torch 2.11 or later; in a maintenance phase. Linux, later: `torchaudio-2.11.1+cpu-py3-none-
+      manylinux_2_28_x86_64.whl` from the CPU index, 348,141 bytes.
+  - **What they bring** (PyPI, each the newest its requirers allow; the lock's diff is checked
+    against this list before `uv sync`):
+    - `scipy` 1.18.1: 36,658,278 bytes; BSD (its wheel bundles OpenBLAS, LAPACK and the GCC
+      runtime). For SpeechBrain.
+    - `sympy` 1.14.0: 6,299,353 bytes; BSD. For torch.
+    - `mpmath` 1.3.0: 536,198 bytes; BSD. For sympy, which takes under 1.4.
+    - `networkx` 3.7: 2,142,205 bytes; BSD-3-Clause. For torch.
+    - `jinja2` 3.1.6: 134,899 bytes; BSD. For torch.
+    - `markupsafe` 3.0.4: 14,303 bytes; BSD-3-Clause. For jinja2.
+    - `fsspec` 2026.9.0: 221,738 bytes; BSD-3-Clause. For torch and huggingface-hub.
+    - `filelock` 4.2.10: 218,040 bytes; MIT. For torch and huggingface-hub.
+    - `setuptools` 84.2.1: 876,263 bytes; MIT. For torch.
+    - `sentencepiece` 0.2.3: 1,655,435 bytes; Apache-2.0. For SpeechBrain.
+    - `tqdm` 4.70.1: 80,199 bytes; MPL-2.0 AND MIT. For SpeechBrain and huggingface-hub.
+    - `joblib` 1.6.0: 306,115 bytes; BSD-3-Clause. For SpeechBrain.
+    - `cloudpickle` 3.1.2: 22,228 bytes; BSD-3-Clause. For joblib.
+    - `huggingface-hub` 2.4.0: 857,021 bytes; Apache-2.0. For SpeechBrain (which takes 0.8 or
+      later); the library's own code may not import it (Block H's ban).
+    - `hf-xet` 1.8.0: 3,911,559 bytes, a compiled package; Apache-2.0. For huggingface-hub on
+      x86_64.
+    - `hyperpyyaml` 1.2.3: 16,456 bytes; Apache (its classifier names no version). For
+      SpeechBrain.
+    - `ruamel.yaml` 0.18.17: 121,594 bytes; MIT. For hyperpyyaml, which takes under 0.19.
+    - `ruamel.yaml.clib` 0.2.15: 119,013 bytes; MIT. For ruamel.yaml on CPython.
+    - Already in `uv.lock`, nothing to fetch: `numpy` 2.5.4, `onnxruntime` 1.31.1 (both now
+      declared by the library itself), `packaging` 26.3, `requests` 2.34.2, `soundfile` 0.13.1,
+      `pyyaml` 6.0.3, `click` 8.5.0, `httpx2` 2.16.0, `typing-extensions` 4.16.0, `colorama` 0.4.6.
+  - **The models** (Hugging Face, each pinned by its repository's commit, size and SHA-256; kept
+    in the folder `stt.classifier_dir` names, outside every repository and `var/`, Q16; copied from
+    the offline check's `models/` folder once each hash matches, or fetched from
+    `https://huggingface.co/<repo>/resolve/<commit>/<file>`):
+    - *ECAPA on VoxLingua107:* `speechbrain/lang-id-voxlingua107-ecapa` at
+      `0253049ae131d6a4be1c4f0d8b0ff483a0f8c8e9`: `embedding_model.ckpt` 84,474,355 bytes (sha256
+      `ab750d5c06d713477045fa798fab5d33e959dbc0dfe4de510a9a47844c79a19a`), `classifier.ckpt`
+      762,555 (`a50d9024ff58d317031c9787d4c6c614d454a87a8ef32f9d36338cd3ff57adbc`),
+      `normalizer.ckpt` 1,063 (`c369e01dfa2e0d84c6b116f33c7b94f1fe28c061642086538e93cde3d97c26ef`),
+      `hyperparams.yaml` 1,519, `label_encoder.txt` 2,204, `config.json` 51; 85,241,747 bytes in
+      all; Apache-2.0 (its card, which says it is weaker on foreign accents, female and children's
+      speech). The three small files' SHA-256 are taken and pinned at the step.
+    - *Silero's 95-language classifier:* `deepghs/silero-lang95-onnx` at
+      `bf21c4f59503dc182ab4d69328889b93c51bf70f`: `lang_classifier_95.onnx` 16,972,591 bytes
+      (sha256 `12a91f706ad6ca5a5eba4e84a96739d077e56f121ec71db86a752f62e218a227`),
+      `lang_dict_95.json` 2,183, `lang_group_dict_95.json` 1,626; MIT (silero-vad's licence,
+      "Copyright (c) 2020-present Silero Team"). A third party's re-upload of the file silero-vad
+      v4.0 loads from `https://models.silero.ai/vad_models/lang_classifier_95.onnx`, deprecated
+      upstream; whether the two are byte-equal was not checked. It runs on the onnxruntime already
+      locked.
+
 ## What the owner does
 
 - Answer Q1 to Q9, and approve the plan (done 2026-11-09).
 - Rule on the yes words that are whole golden items, and on the read-back's edges (done
   2026-11-10, "The owner's decisions").
+- Approve Block G and answer Q10 to Q14 before run A; approve Blocks H and I, Q15 to Q25 and
+  the downloads before they are built, after run A.
 - Hold the live calls, against the mock ticket system, on the laptop's speakers and the wired
   headset (about 20 minutes).
