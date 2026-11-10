@@ -1,13 +1,16 @@
-"""The output guard's ID rule (domain/guard.py, the design's 8.2 rule B): every ID-shaped token
-of a clause needs evidence seen this call, after digits are normalized (Arabic-Indic and Persian
-digits, digit words, digits in groups); the current year and the next pass with none; declared
-patterns are ID-shaped too. Every number here is made up for the test."""
+"""The output guard (domain/guard.py, the design's 8.2). Its ID rule (rule B, domain/guard_ids.py):
+every ID-shaped token of a clause needs evidence seen this call, after digits are normalized
+(Arabic-Indic and Persian digits, digit words, digits in groups); the current year and the next
+pass with none; declared patterns are ID-shaped too. Then both rules together, the claim rule
+(rule A, domain/claims.py) first, the reason in the verdict. Every number here is made up for
+the test."""
 
 from __future__ import annotations
 
 import pytest
 from t2_agentic_voice.core.settings.guard import GuardSettings
-from t2_agentic_voice.domain.guard import IdVerdict, check_ids
+from t2_agentic_voice.domain.claims import ActionEvidence, default_claims
+from t2_agentic_voice.domain.guard import GuardVerdict, IdVerdict, check_clause, check_ids
 
 SETTINGS = GuardSettings()
 
@@ -163,3 +166,68 @@ def test_a_declared_pattern_is_id_shaped_and_passes_only_with_evidence() -> None
 def test_each_unsupported_token_is_named_once_in_order() -> None:
     verdict = _check("Call 5550 or 7777, not 5550.")
     assert verdict == IdVerdict(passed=False, unsupported=("5550", "7777"))
+
+
+# The guard's two rules together (`check_clause`): rule A, then rule B, the reason in the
+# verdict as `ClauseBlocked` carries it.
+_TICKET = "2026110482000123"
+_MADE = ActionEvidence(action="create_ticket", texts=(f'{{"ticket_number": "{_TICKET}"}}',))
+
+
+def _clause(clause: str, *evidence: str, actions: tuple[ActionEvidence, ...] = ()) -> GuardVerdict:
+    return check_clause(
+        clause,
+        evidence=evidence,
+        claims={"create_ticket": ("ticket opened",)},
+        any_action=default_claims("en"),
+        actions=actions,
+        settings=SETTINGS,
+        year=2026,
+    )
+
+
+def test_a_claim_with_no_record_is_blocked_as_a_claim() -> None:
+    verdict = _clause("I've created a ticket for you.")
+    assert verdict == GuardVerdict(passed=False, reason="unsupported_claim")
+    assert _clause("I've created a ticket for you.", actions=(_MADE,)) == GuardVerdict(
+        passed=True, claimed=("create_ticket",)
+    )
+
+
+def test_a_passages_number_in_a_claim_is_blocked_though_rule_b_would_pass_it() -> None:
+    fake = "2026110482000999"
+    clause = f"Ticket opened, its number is {fake}."
+    passage = f"Your ticket number is {fake}."
+    assert _check(clause, passage).passed  # rule B alone: the passage is evidence
+    verdict = _clause(clause, passage, actions=(_MADE,))
+    assert verdict == GuardVerdict(
+        passed=False, reason="unsupported_claim", unsupported=(fake,), claimed=("create_ticket",)
+    )
+
+
+def test_the_actions_number_passes_both_rules() -> None:
+    """Rule B counts the record's texts as evidence, so what rule A let through it passes."""
+    verdict = _clause(f"Ticket opened, number {_TICKET}.", actions=(_MADE,))
+    assert verdict == GuardVerdict(passed=True, claimed=("create_ticket",))
+
+
+def test_a_clause_with_no_claim_is_rule_bs_alone() -> None:
+    assert _clause("Your request number is 4521.") == GuardVerdict(
+        passed=False, reason="unsupported_id", unsupported=("4521",)
+    )
+    assert _clause("Your request number is 4521.", '{"request": "4521"}').passed
+    assert check_clause(
+        "Your request number is 4521.", evidence=(), settings=SETTINGS, year=2026
+    ) == GuardVerdict(passed=False, reason="unsupported_id", unsupported=("4521",))
+
+
+def test_a_claim_phrase_added_in_the_settings_is_a_default_one() -> None:
+    settings = GuardSettings.model_validate({"claims": {"en": ["all sorted for you"]}})
+    verdict = check_clause(
+        "It is all sorted for you.",
+        evidence=(),
+        any_action=(*default_claims("en"), *settings.claims["en"]),
+        settings=settings,
+        year=2026,
+    )
+    assert verdict == GuardVerdict(passed=False, reason="unsupported_claim")

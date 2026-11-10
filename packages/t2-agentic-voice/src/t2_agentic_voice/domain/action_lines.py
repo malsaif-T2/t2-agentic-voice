@@ -7,9 +7,8 @@ and every test read; and `spoken`, the same with each `{field:id}` said digit by
 only text-to-speech reads. A `ReadBackPlan` is everything the session needs to read one draft
 back, to end the read-back with no yes, and to speak while the write runs: `voice` cannot render
 a template, so the action runner renders each line it may speak. `ActionLines` are the fixed
-lines an action may leave to the library.
-
-Plan 007's Track A fills `default_action_lines`.
+lines an action may leave to the library, whose texts are domain/presets.py's (`ACTION_LINES`),
+in each preset's register and generic to any action.
 """
 
 from __future__ import annotations
@@ -17,6 +16,7 @@ from __future__ import annotations
 from pydantic import BaseModel, ConfigDict, Field
 
 from t2_agentic_voice.core.settings.tts import LanguageTag
+from t2_agentic_voice.domain.presets import ACTION_LINES
 
 
 class _Line(BaseModel):
@@ -74,4 +74,4 @@ class ActionLines(_Line):
 
 def default_action_lines(tag: LanguageTag) -> ActionLines:
     """The default lines in the language `tag`, in its register."""
-    raise NotImplementedError(f"plan 007's Track A fills default_action_lines ({tag})")
+    return ActionLines.model_validate(ACTION_LINES[tag])
