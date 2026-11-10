@@ -10,7 +10,12 @@ what the yes rule let through, so `call.violations` says what a guard or a rule 
   checked as before:
   - **Rule A** (domain/claims.py): a clause that claims an action, in any language's phrases,
     is backed by the record or by a result of a tool that `reports_on` it holding an ID-shaped
-    token, every ID it holds a value of that result.
+    token, every ID it holds a value of that result. A status backs it only when it names one
+    of the status's numbers, or names none after an earlier clause of the same reply named
+    one, a clause the guard would have passed (rules A and B found nothing in it), as the
+    guard keeps the clauses it passed (agent/speech_guard.py). A turn's talker reply is one
+    reply: the talker answers each turn once, and its other replies (a read-back, an outcome)
+    are the runtime's lines, not checked.
   - **Rule C**: once the talker asked for a read-back, it spoke no more words of its own in
     that turn.
   - **The yes rule**: every action the session confirmed was confirmed by words begun once a
@@ -76,8 +81,9 @@ def _action_results(reads: TextReads) -> list[str]:
     ]
 
 
-def _rule_b(reads: TextReads, heard: list[tuple[int, HeardClause]], *, year: int) -> list[str]:
-    settings = reads.session.setup.settings.guard
+def _id_evidence(reads: TextReads) -> list[str]:
+    """Rule B's evidence: the caller's words, the tools' results, what an action's call gave
+    back, the cards and the record, as the guard reads them."""
     evidence = [said.text for said in reads.said.values()]
     evidence += list(reads.runner.evidence if reads.runner is not None else ())
     evidence += _action_results(reads)
@@ -87,6 +93,12 @@ def _rule_b(reads: TextReads, heard: list[tuple[int, HeardClause]], *, year: int
     # A completed action's result whole and its texts, as the guard reads the record
     # (agent/speech_guard.py).
     evidence += [text for done in _completed(reads) for text in (done.result_json, *done.evidence)]
+    return evidence
+
+
+def _rule_b(reads: TextReads, heard: list[tuple[int, HeardClause]], *, year: int) -> list[str]:
+    settings = reads.session.setup.settings.guard
+    evidence = _id_evidence(reads)
     found = []
     for turn_id, clause in heard:
         verdict = check_ids(clause.text, evidence=evidence, settings=settings, year=year)
@@ -97,8 +109,9 @@ def _rule_b(reads: TextReads, heard: list[tuple[int, HeardClause]], *, year: int
 
 
 def _evidence(reads: TextReads, *, year: int) -> list[ActionEvidence]:
-    """What backs a claim about each action: its completed results, and the results of the
-    tools that report on it that hold an ID-shaped token, as the guard reads them."""
+    """What backs a claim about each action: its completed results (the record's), and the
+    results of the tools that report on it that hold an ID-shaped token (a status's), as the
+    guard reads them."""
     found = [
         ActionEvidence(action=done.action, texts=(*done.evidence, done.result_json))
         for done in _completed(reads)
@@ -112,7 +125,10 @@ def _evidence(reads: TextReads, *, year: int) -> list[ActionEvidence]:
             continue
         texts = (*result.evidence, json.dumps(result.data, ensure_ascii=False))
         if holds_an_id(texts, settings=settings, year=year):
-            found += [ActionEvidence(action=name, texts=texts) for name in tool.reports_on]
+            found += [
+                ActionEvidence(action=name, texts=texts, source="status")
+                for name in tool.reports_on
+            ]
     return found
 
 
@@ -120,12 +136,14 @@ def _rule_a(
     reads: TextReads, heard: list[tuple[int, HeardClause]], actions: tuple[Action, ...], year: int
 ) -> list[str]:
     settings: VoiceSettings = reads.session.setup.settings
-    evidence = _evidence(reads, year=year)
+    evidence, ids = _evidence(reads, year=year), _id_evidence(reads)
     # Every language's phrases, whatever the clause's, as the guard reads them.
     claims = {a.name: every_language(a.claims.phrases) for a in actions}
     any_action = any_action_claims(settings.guard.claims)
     found = []
+    passed: dict[int, list[str]] = {}  # each turn's reply: the clauses the guard would pass
     for turn_id, clause in heard:
+        earlier = passed.setdefault(turn_id, [])
         verdict = check_claims(
             clause.text,
             claims=claims,
@@ -133,10 +151,16 @@ def _rule_a(
             evidence=evidence,
             settings=settings.guard,
             year=year,
+            earlier=tuple(earlier),
         )
         if not verdict.passed:
             what = ", ".join(verdict.claimed) or "an action"
             found.append(f"turn {turn_id} claimed {what} with no record: {clause.text!r}")
+            continue
+        # Kept as the guard keeps a clause it passed: a claim rule A passed, or rule B's pass.
+        rule_b = check_ids(clause.text, evidence=ids, settings=settings.guard, year=year)
+        if verdict.claimed or rule_b.passed:
+            earlier.append(clause.text)
     return found
 
 

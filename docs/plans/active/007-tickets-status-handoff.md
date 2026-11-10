@@ -497,7 +497,8 @@ may judge a yes in words no list holds, within rails the yes rule keeps.
   `test_action_call_claims.py`, `test_claims.py` and Ole5's `test_ticket_claims.py`, in both
   languages; D-081, the design's 8.2 and the guide's `safety.md`, `concepts.md` and
   `tools-and-actions.md` updated. The stricter rule the review proposed, a status backing only a
-  claim that names a number it holds, is the owner's call: TD-144.
+  claim that names a number it holds, is the owner's call: TD-144 (since ruled, "Number or same
+  reply", below).
 - 2026-11-10: Two of the whole-code review's session findings fixed, each test first, on the real
   yes rule (`test_yes_turns_between.py`). The gap turn's decline (`Confirming.handed`, above) is
   now tested on the real rules with its early start too: a turn begun before the read-back's
@@ -549,6 +550,21 @@ may judge a yes in words no list holds, within rails the yes rule keeps.
     and a bump would move the version of runs K, S and T, whose talker did not change. With the
     caps' change a talker that calls `create_ticket` again after a refusal (a15, a16) now hears a
     second read-back, not `cap_per_call`; their `made = 0` holds with no yes.
+- 2026-11-10: The owner's ruling on TD-144 built, "Number or same reply" (D-081), test first,
+  one reviewer and one skeptic a finding. Rule A tells a status's evidence from the record's
+  (`ActionEvidence.source`): the record backs any claim about its action as before; a status
+  backs only a clause that holds one of its numbers (its last four digits too, as Ole5's
+  `ends_in` gives them), or a clause with no number after an earlier clause of the same reply
+  that the guard passed named one (`check_claims`'s `earlier`; `SpeechGuard` keeps the clauses
+  it passed, `TextCall`'s check the same for each turn's talker reply). The TD-144 case, "I've
+  opened a ticket for your reports page" after a status of an older ticket, is blocked
+  (`test_claims.py`, `test_talker_claim_evidence.py`, `test_text_call_claims.py`, Ole5's
+  `test_ticket_claims.py`, in English and Saudi Arabic). Ole5's instructions tell the talker to
+  say a ticket's last four digits first, before what happened to it, since an Arabic comma
+  ends a clause; run A's oracle already does, so all 40 scenarios play as before. The review's
+  three findings were refuted (the ruling accepts each); the guide's "sentence" became
+  "clause" from the first. TD-144 keeps its other part, evidence keyed by the action's name
+  alone. `VERSION` stays `2026-11-10.1`, for the reason the rulings' line gives.
 
 ## Decision log
 
@@ -730,6 +746,13 @@ they set a figure of their own.
     injected action can write, per call and per caller a day, they answered "Count only real
     writes": only rows whose write may have reached the system count (`sending`, `done`,
     `flagged`), not one the system refused or that was never sent, so the caller can try again.
+- 2026-11-10, after the rulings' build, on TD-144: a status result that lists any ticket backed
+  every claim about the actions its tool reports on, so after a caller asked about a ticket from
+  an earlier call, "I've opened a ticket for your reports page" passed with none made. Put with
+  two options, the agent's recommendation first ("Number or same reply": a status backs only a
+  claim that names one of its numbers, or one in a reply that already said one; "Number always":
+  every claim a status backs names a number), the owner chose "Number or same reply". A claim
+  the call's record backs is unchanged.
 
 - **Q1. M4 and the base of this work.** *Settled 2026-11-09: (a).* Not necessary: M5 can branch from M4's branch. Options:
   (a) close M4 first, its live calls moved to M7's rehearsal and its missed targets recorded, and

@@ -551,13 +551,13 @@ class TestRequestCallbackIsSafeInSaudiArabic(TestRequestCallbackIsSafe):
 - **It inherits every case**, each a `TextCall` of the agent: a yes over the summary, and a yes
   before any read-back, confirm nothing; a bare yes over the closing question is asked again;
   arguments that claim consent are refused; model text claiming the action is blocked, and so
-  is the talker's text after its call; a status from a `reports_on` tool may be said; a
-  passage's number is never said in a claim; an ID in digit words or in Arabic-Indic digits
-  counts as one; a lost reply is looked up and said done, or said unknown when nothing finds
-  it; a refused or unsent write is said failed; the same request twice is written once; and the
-  per-call cap holds. The cases for a chat model's judgement of the answers pass at once for an
-  agent that does not ask for one, as this one does not. Run it on each action of yours
-  ([testing.md](testing.md)).
+  is the talker's text after its call; a status from a `reports_on` tool may be said, in a claim
+  that names its number; a passage's number is never said in a claim; an ID in digit words or
+  in Arabic-Indic digits counts as one; a lost reply is looked up and said done, or said unknown
+  when nothing finds it; a refused or unsent write is said failed; the same request twice is
+  written once; and the per-call cap holds. The cases for a chat model's judgement of the
+  answers pass at once for an agent that does not ask for one, as this one does not. Run it on
+  each action of yours ([testing.md](testing.md)).
 
 Both run with the rest under `uv run poe test`, or alone:
 

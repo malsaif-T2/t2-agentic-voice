@@ -282,13 +282,22 @@ after waw or feh written onto its first word («وتم»):
 **Evidence of a claim** about an action is only:
 
 - the result of that action's write, completed in this call (the call's record, whose entries
-  only the library's action runner makes);
+  only the library's action runner makes). It backs any claim about the action, with a number
+  or none;
 - a result that succeeded, in this call, of one of your tools declared with
   `reports_on=["that_action"]`, such as a status tool, when it holds an ID-shaped number (or a
   match of `guard.id_patterns`). A status that found nothing holds none, and backs no claim.
+  A status backs fewer claims than the record: only a clause that names one of its numbers
+  (the whole number, or the last digits it gives back), or a clause with no number after an
+  earlier clause of the same reply named one. So "Your ticket ending 4417 is open. It has
+  been escalated." is said whole, while "I've opened a ticket for you", after a status of an
+  older ticket and with no action called, is blocked. "It has been escalated" alone, in a
+  later reply that names no number, is blocked too. An Arabic comma ends a clause, so a claim
+  written before the number («تم تصعيد طلبك، اللي ينتهي بـ 4417») is blocked: tell your talker
+  to say the number first, before what happened to the ticket.
 
 A passage, the caller's words, or any other tool's result is no evidence of a claim. A clause
-with a default phrase passes when some action has evidence.
+with a default phrase passes when some action backs it.
 
 **Its numbers.** Every ID-shaped number in a claiming clause must be in the claimed action's own
 evidence: a number a passage holds, or the caller said, is no proof that the action made it. A

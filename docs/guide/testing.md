@@ -412,7 +412,8 @@ No claim without a record (invariant 2):
 
 - the talker's words claiming the action, with nothing written, are blocked and never heard;
 - the talker's words after its own call of the action, in the same answer, are never heard;
-- a status from a tool declared with `reports_on=` your action may be said, its number too;
+- a status from a tool declared with `reports_on=` your action may be said in a claim that
+  names its number;
 - a number from a passage, said in a claim, is blocked;
 - an ID with no evidence, written in digit words or in Arabic-Indic digits, is blocked as one in
   digits is.

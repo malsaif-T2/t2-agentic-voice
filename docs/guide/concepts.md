@@ -360,7 +360,10 @@ The output guard reads the record, for an agent that declares an action:
 
 - **A claim needs the record.** A clause that claims an action is spoken only when the record
   holds that action, or a tool declared with `reports_on` naming it succeeded in this call with
-  an ID-shaped number in its result (a status lookup that found one, say). A claim is one of the
+  an ID-shaped number in its result (a status lookup that found one, say) and the clause names
+  one of that result's numbers, or names none after an earlier clause of the same reply did.
+  A status of a ticket from an earlier call never backs "I've opened a ticket" on its own, so
+  the talker cannot claim a new one it never made. A claim is one of the
   action's own `claims` phrases ("booked your callback"), or one of the library's short default
   list, which claims any action ("I've booked", «تم حجز», «سجلت لك»; `guard.claims` adds to it),
   in any of the agent's languages whatever the reply's. Otherwise the clause is blocked, as

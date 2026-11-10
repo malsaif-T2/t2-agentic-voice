@@ -82,7 +82,8 @@ def test_the_tickets_section_says_what_plan_007_asks(tag: Tag) -> None:
     D-018: a person asked for is a handoff ticket, no transfer and no call back promised.
     Invariant 2: no ticket and no number but from a tool's result or the system's words;
     nothing said after an action's call. Q4 and Q6: the caller's own tickets, by their last
-    four digits, a number they say said back first. D-075: all in one reply, no screen."""
+    four digits, a number they say said back first, the digits said before what happened to the
+    ticket (TD-144's ruling). D-075: all in one reply, no screen."""
     text = " ".join(instructions()[tag].split())
     for needed in (
         "learn only what is wrong and how urgent it is, asking in one short question for "
@@ -101,6 +102,11 @@ def test_the_tickets_section_says_what_plan_007_asks(tag: Tag) -> None:
         "It sees only the tickets made for this caller through this voice line",
         "Say only the last four digits of a ticket's number.",
         "first say its last four digits back, then that ticket's status, in the same reply",
+        # A status backs a claim only when it names a ticket's digits, or its reply already did
+        # (the owner's ruling of 2026-11-10 on TD-144, "Number or same reply"); an Arabic comma
+        # ends a clause, so the digits come before what happened.
+        "When you tell a ticket's status, say its last four digits first, before what happened "
+        "to it.",
         "say all of them in one reply",
         "Never say that anything is on a screen or shown to the caller.",
         "you never ask for a password, a code, an email address or an employee number",

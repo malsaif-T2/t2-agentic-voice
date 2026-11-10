@@ -546,6 +546,12 @@ What the output guard needs from a status tool (its claim rule, for an agent wit
   ID-shaped number, so return each record's number, or its last digits. A failed result (a
   `ToolError`), a result that found nothing, a passage, or any other tool's result is no
   evidence of a claim.
+- **A status backs only a clause that names one of its numbers**, or a clause with no number
+  after an earlier one of the same reply named one (an Arabic comma ends a clause). The record
+  backs any. So tell your talker to say the number (or its last digits) first, before what
+  happened: "Your callback ending 4417 is booked." A caller with a callback from an earlier
+  call who asks its status, then for a new one, does not hear "I have booked it" when no
+  action ran, unless that reply already named one of the status's numbers.
 - **Every ID-shaped number in such a sentence** must be in that evidence: the action's own
   results in this call, or the status tool's results. A number the caller said, or a passage
   holds, does not count there.

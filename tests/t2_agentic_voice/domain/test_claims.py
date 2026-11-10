@@ -1,8 +1,10 @@
 """The output guard's rule A (domain/claims.py; docs/SECURITY.md, invariant 2): no clause claims
 an action, or holds an action's number, unless the call's record or a `reports_on` result holds
 it. Adversarial (GP-08): model text claiming a ticket was made, a passage holding a fake number,
-a number never issued; each blocked without evidence and passed with it. Every number here is
-made up for the test."""
+a number never issued; each blocked without evidence and passed with it. A status result backs
+only a claim that names one of its numbers, or one in a reply that already said one (the owner's
+ruling of 2026-11-10 on TD-144, "Number or same reply"), while the record backs any. Every number
+here is made up for the test."""
 
 from __future__ import annotations
 
@@ -28,6 +30,11 @@ FAKE = "2026110482000999"  # one a passage carries, never issued
 CLAIMS: Mapping[str, Sequence[str]] = {"create_ticket": ("opened your ticket", "ticket opened")}
 ARABIC_CLAIMS: Mapping[str, Sequence[str]] = {"create_ticket": ("فتحت لك التذكرة",)}
 MADE = ActionEvidence(action="create_ticket", texts=(f'{{"ticket_number": "{TICKET}"}}',))
+# What a status of an older ticket gives back: its whole number (a team's tool), or its last
+# four digits alone (as Ole5's `ticket_status` does).
+LAST_FOUR = "4417"
+WHOLE_STATUS = f'{{"number": "{TICKET}", "state": "open"}}'
+FOUR_STATUS = f'{{"tickets": [{{"ends_in": "{LAST_FOUR}", "status": "open"}}], "total": 1}}'
 
 
 def _check(
@@ -36,16 +43,24 @@ def _check(
     code: LanguageCode = "en",
     claims: Mapping[str, Sequence[str]] | None = None,
     settings: GuardSettings = SETTINGS,
+    earlier: Sequence[str] = (),
+    added: Sequence[str] = (),
 ) -> ClaimVerdict:
     own = claims if claims is not None else (CLAIMS if code == "en" else ARABIC_CLAIMS)
     return check_claims(
         clause,
         claims=own,
-        any_action=default_claims(code),
+        any_action=(*default_claims(code), *added),
         evidence=evidence,
         settings=settings,
         year=2026,
+        earlier=earlier,
     )
+
+
+def _status(text: str, action: str = "create_ticket") -> ActionEvidence:
+    """A `reports_on` tool's result about `action`, holding `text`."""
+    return ActionEvidence(action=action, texts=(text,), source="status")
 
 
 @pytest.mark.parametrize(
@@ -126,8 +141,143 @@ def test_a_number_spaced_or_said_digit_by_digit_is_the_number(said: str) -> None
 
 def test_a_status_result_supports_the_claim_and_its_number() -> None:
     """A `reports_on` tool's result is evidence for the action it reports on."""
-    status = ActionEvidence(action="create_ticket", texts=(f'{{"{TICKET}": "open"}}',))
+    status = _status(f'{{"{TICKET}": "open"}}')
     assert _check(f"Your ticket {TICKET} has been registered and is open.", status).passed
+
+
+# The owner's ruling on TD-144 ("Number or same reply"): a status backs a claim that names one of
+# its numbers, whole or by the last digits it holds, or a claim with no number in a reply whose
+# earlier clause, one the guard passed, named one; the record backs any claim, as before. Each
+# case in English, Saudi Arabic and MSA, by the team's own phrase or a default one (any action).
+# «fataHt lak tadhkira 'an SafHat at-taqaareer»: I opened you a ticket about the reports page;
+# «laqad fataHtu tadhkiratan li-SafHati at-taqaareer»: I have opened a ticket for the reports
+# page (MSA); «fataHt lak at-tadhkira»: I opened you the ticket (the team's own).
+NO_NUMBER = [
+    pytest.param("I've opened a ticket for your reports page.", "en", id="default_english"),
+    pytest.param("Ticket opened for your reports page.", "en", id="own_english"),
+    pytest.param("فتحت لك تذكرة عن صفحة التقارير.", "ar", id="default_saudi"),
+    pytest.param("فتحت لك التذكرة.", "ar", id="own_saudi"),
+    pytest.param("لقد فتحت تذكرة لصفحة التقارير.", "ar", id="default_msa"),
+]
+# The same claims naming a number: {} is the number, as the status holds it or another.
+NAMED = [
+    pytest.param("I've opened your ticket {}.", "en", id="default_english"),
+    pytest.param("Ticket opened, its number is {}.", "en", id="own_english"),
+    pytest.param("فتحت لك تذكرة رقمها {}.", "ar", id="default_saudi"),
+    pytest.param("فتحت لك التذكرة اللي تنتهي بـ {}.", "ar", id="own_saudi"),
+    pytest.param("لقد فتحت تذكرة رقمها {}.", "ar", id="default_msa"),
+]
+# A clause that names the ticket's number and claims nothing, said earlier in the same reply:
+# «tadhkirtak illi tintihi bi-{} maftooHa», your ticket ending {} is open (Saudi); «tadhkiratuka
+# allati tantahi bi-{} maftooHa» (MSA).
+SAID_FIRST = {
+    "en": "Your ticket ending {} is open.",
+    "ar": "تذكرتك اللي تنتهي بـ {} مفتوحة.",
+}
+MSA_SAID_FIRST = "تذكرتك التي تنتهي بـ {} مفتوحة."
+
+
+@pytest.mark.parametrize(("clause", "code"), NO_NUMBER)
+def test_a_status_alone_backs_no_claim_that_names_no_number(
+    clause: str, code: LanguageCode
+) -> None:
+    """The TD-144 scenario: a status of an older ticket, then a claim of a new one with no
+    action called. The record backs the same claim, with no number, as before."""
+    for status in (_status(WHOLE_STATUS), _status(FOUR_STATUS)):
+        verdict = _check(clause, status, code=code)
+        assert verdict.passed is False and verdict.unsupported == ()
+    assert _check(clause, MADE, code=code).passed
+
+
+@pytest.mark.parametrize(("clause", "code"), NAMED)
+def test_a_status_backs_a_claim_that_names_its_number_whole_or_its_last_four(
+    clause: str, code: LanguageCode
+) -> None:
+    whole = _check(clause.format(TICKET), _status(WHOLE_STATUS), code=code)
+    four = _check(clause.format(LAST_FOUR), _status(FOUR_STATUS), code=code)
+    assert whole.passed and four.passed
+    assert whole.claimed == four.claimed == ("create_ticket",)
+
+
+@pytest.mark.parametrize(("clause", "code"), NAMED)
+def test_a_claim_naming_another_number_than_the_status_holds_is_blocked(
+    clause: str, code: LanguageCode
+) -> None:
+    for status in (_status(WHOLE_STATUS), _status(FOUR_STATUS)):
+        verdict = _check(clause.format("5521"), status, code=code)
+        assert verdict.passed is False and verdict.unsupported == ("5521",)
+    # Its last four digits are no number of a status holding the whole one: only its own texts,
+    # read as rule B reads them, back a claim.
+    assert not _check(clause.format(TICKET[-4:]), _status(WHOLE_STATUS), code=code).passed
+
+
+@pytest.mark.parametrize(("clause", "code"), NO_NUMBER)
+def test_a_claim_with_no_number_passes_once_its_reply_named_a_status_number(
+    clause: str, code: LanguageCode
+) -> None:
+    said = (MSA_SAID_FIRST if "لقد" in clause else SAID_FIRST[code]).format(LAST_FOUR)
+    status = _status(FOUR_STATUS)
+    assert _check(clause, status, code=code, earlier=(said,)).passed
+    # Earlier clauses that named no number of this status's, or none: no backing.
+    other = (SAID_FIRST[code].format("5521"), "Sure, one moment.")
+    assert _check(clause, status, code=code, earlier=other).passed is False
+    # A clause that names a number is read by its own: one the reply said before backs no other.
+    assert not _check(f"{clause.rstrip('.')} 5521.", status, code=code, earlier=(said,)).passed
+
+
+def test_a_later_sentence_of_a_status_answer_passes_and_alone_is_blocked() -> None:
+    """The accepted cost: "It has been escalated" passes after the sentence that named the
+    ticket's digits, and is blocked in a later reply that named none (the guard's fixed phrase
+    said instead)."""
+    status = _status(FOUR_STATUS, action="hand_off")
+    said = SAID_FIRST["en"].format(LAST_FOUR)
+    escalated = "It has been escalated to the network team."
+    assert _check(escalated, status, earlier=(said,)) == ClaimVerdict(
+        claimed=("hand_off",), passed=True
+    )
+    assert _check(escalated, status) == ClaimVerdict(claimed=(), passed=False)
+    # «wa-tamma taS'eed Talabak li-fareeq ash-shabakaat»: and your request was escalated to the
+    # network team.
+    arabic = "وتم تصعيد طلبك لفريق الشبكات."
+    assert _check(arabic, status, code="ar", earlier=(SAID_FIRST["ar"].format(LAST_FOUR),)).passed
+    assert not _check(arabic, status, code="ar").passed
+
+
+def test_a_default_phrase_stands_for_each_action_that_backs_it() -> None:
+    """The record backs its action with no number; a status-only action joins only when the
+    clause or its reply named one of its numbers."""
+    reported = _status(FOUR_STATUS, action="hand_off")
+    claim = "I've opened a ticket for your reports page."
+    assert _check(claim, MADE, reported).claimed == ("create_ticket",)
+    named = _check(f"I've opened a ticket ending {LAST_FOUR} for you.", MADE, reported)
+    assert named == ClaimVerdict(claimed=("create_ticket", "hand_off"), passed=True)
+    said = (SAID_FIRST["en"].format(LAST_FOUR),)
+    assert _check(claim, MADE, reported, earlier=said).claimed == ("create_ticket", "hand_off")
+
+
+def test_the_settings_phrases_claim_any_action_on_the_same_terms() -> None:
+    """`guard.claims`, as Ole5's «رقم تذكرتك» and "your ticket number is" (raqm tadhkirtak, your
+    ticket's number): a status backs the number it holds, and no other."""
+    added = ("your ticket number is", "رقم تذكرتك")
+    status = _status(FOUR_STATUS)
+    written: tuple[tuple[str, LanguageCode], ...] = (
+        ("Your ticket number is {}.", "en"),
+        ("رقم تذكرتك {}.", "ar"),
+    )
+    for clause, code in written:
+        assert _check(clause.format(LAST_FOUR), status, code=code, added=added).passed
+        held = _check(clause.format("5521"), status, code=code, added=added)
+        assert held == ClaimVerdict(claimed=(), passed=False, unsupported=("5521",))
+
+
+def test_a_record_and_a_status_of_one_action_back_its_claims_as_the_record_does() -> None:
+    """An action done in this call is backed by its record, whatever a status says of it: the
+    numbers of a claim about it are read against both."""
+    status = _status(FOUR_STATUS)
+    assert _check("I've opened a ticket for your reports page.", MADE, status).passed
+    assert _check(f"I've opened your ticket ending {LAST_FOUR}.", MADE, status).passed
+    assert _check(f"I've opened your ticket {TICKET}.", MADE, status).passed
+    assert not _check("I've opened your ticket 5521.", MADE, status).passed
 
 
 def test_a_clause_with_no_claim_phrase_passes_whatever_it_holds() -> None:

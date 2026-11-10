@@ -356,8 +356,10 @@ someone in your team reconciles the writes it flags (`t2v outbox`,
 An action's `claims` are the phrases that say it was done, in each language the agent speaks.
 The output guard reads every clause the talker writes, and blocks one that holds a phrase of an
 action unless the call's record holds that action done, or a tool declared with
-`reports_on=["<action>"]` returned it; every ID-shaped number in that clause must then be found
-in that action's own evidence, never in a passage or the caller's words. A short default list
+`reports_on=["<action>"]` returned it and the clause names one of that result's numbers (or
+names none after an earlier clause of the same reply did); every ID-shaped number in that
+clause must then be found in that action's own evidence, never in a passage or the caller's
+words. A short default list
 of phrases ("I've created", "has been booked", «تم إنشاء», «سجلت لك» and the like) claims any
 action; the `guard.claims` setting adds to it (`T2V_GUARD__CLAIMS`), and no default can be
 removed. Phrases match as whole words, in the guard's normalized form, and also after «و» or

@@ -9,10 +9,14 @@ any clause of it reaches here.
   (the library's default phrases, with the settings' `guard.claims`), every language's
   whatever the reply's, since a model may write a claim in another, passes only on that
   action's evidence: the results of its writes this call's record holds (each entry one only
-  `actions` built, `is_recorded`), and the results that succeeded of the tools whose
-  `reports_on` names it (agent/tool_calls.py's `Memory.reports`), when they hold an ID-shaped
-  token, so a status that found nothing backs nothing. A passage, or any other tool's result,
-  is no evidence of a claim. A clause it blocks is `unsupported_claim`.
+  `actions` built, `is_recorded`), which back any claim about it; and the results that
+  succeeded of the tools whose `reports_on` names it (agent/tool_calls.py's `Memory.reports`),
+  when they hold an ID-shaped token, so a status that found nothing backs nothing. A status
+  backs only a claim that names one of its numbers, or one with no number after a clause of
+  this reply that named one (the owner's ruling, "Number or same reply", D-081): the guard
+  keeps the clauses it passed in this reply, in order, for that. A clause it blocked was never
+  said, so it is not kept. A passage, or any other tool's result, is no evidence of a claim. A
+  clause it blocks is `unsupported_claim`.
 - **Rule B, IDs** (domain/guard.py's `check_ids`), on a clause that claims nothing: its
   evidence is every tool result of this call (passages included), the record's results and
   the caller's heard words.
@@ -63,9 +67,17 @@ class SpeechGuard:
         self.settings, self.year = settings, year
         self.actions, self.record, self.memory, self.heard = tuple(actions), record, memory, heard
         self._phrases: tuple[dict[str, tuple[str, ...]], tuple[str, ...]] | None = None
+        self._passed: list[str] = []  # the clauses of this reply the guard passed, in order
 
     def check(self, clause: str) -> Checked:
-        """Rule A on `clause`, then rule B on one that claims nothing."""
+        """Rule A on `clause`, then rule B on one that claims nothing; a clause that passes is
+        kept as said in this reply."""
+        checked = self._checked(clause)
+        if checked.passed:
+            self._passed.append(clause)
+        return checked
+
+    def _checked(self, clause: str) -> Checked:
         if self.actions:
             claims, any_action = self._claim_phrases()
             verdict = rule_a.check_claims(
@@ -75,6 +87,7 @@ class SpeechGuard:
                 evidence=self.action_evidence(),
                 settings=self.settings,
                 year=self.year,
+                earlier=tuple(self._passed),
             )
             if not verdict.passed:
                 return Checked(False, "unsupported_claim", verdict.unsupported)
@@ -97,16 +110,19 @@ class SpeechGuard:
         return [*self.memory.evidence, *recorded, *self.heard]
 
     def action_evidence(self) -> list[rule_a.ActionEvidence]:
-        """Rule A's evidence, by action: its completed writes' results, and the results of the
-        tools that report on it when they hold an ID-shaped token. An action with neither has
-        none."""
+        """Rule A's evidence, by action: its completed writes' results (the record's), and the
+        results of the tools that report on it when they hold an ID-shaped token (a status's).
+        An action with neither has none."""
         texts: dict[str, list[str]] = {}
         for entry in self._entries():
             texts.setdefault(entry.action, []).extend(_texts(entry))
+        found = [rule_a.ActionEvidence(action=a, texts=tuple(t)) for a, t in texts.items()]
         for action, reported in self.memory.reports.items():
             if rule_a.holds_an_id(reported, settings=self.settings, year=self.year):
-                texts.setdefault(action, []).extend(reported)
-        return [rule_a.ActionEvidence(action=a, texts=tuple(t)) for a, t in texts.items() if t]
+                found.append(
+                    rule_a.ActionEvidence(action=action, texts=tuple(reported), source="status")
+                )
+        return found
 
     def _entries(self) -> tuple[CompletedAction, ...]:
         """The record's entries now, each one only `actions` built."""

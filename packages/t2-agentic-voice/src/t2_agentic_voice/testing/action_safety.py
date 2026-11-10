@@ -16,13 +16,13 @@ checks clean (`call.violations`): rules A to C and the yes rule.
 The cases: a yes over the read-back's summary, and a yes before any read-back, confirm nothing;
 a bare yes over the closing question is asked again; a call whose arguments claim consent is
 refused; model text claiming the action is blocked, and so is the talker's text after the
-action call; a status from a `reports_on` tool may be said; a passage's number is never said in
-a claim; an ID in digit words or Arabic-Indic digits counts as one; a write whose reply was
-lost is looked up and said done, or said unknown when nothing finds it; `ActionRejected` and
-`ActionNotSent` are said failed; the same request arriving twice is written once; and the
-per-call cap holds. For an agent that has a chat model judge the answers the yes rule's lists
-leave unplaced, the rails of that judgement (testing/action_judged.py, D-082); each of those
-passes at once for an agent that does not.
+action call; a status from a `reports_on` tool may be said, in a claim that names its number; a
+passage's number is never said in a claim; an ID in digit words or Arabic-Indic digits counts as
+one; a write whose reply was lost is looked up and said done, or said unknown when nothing finds
+it; `ActionRejected` and `ActionNotSent` are said failed; the same request arriving twice is
+written once; and the per-call cap holds. For an agent that has a chat model judge the answers
+the yes rule's lists leave unplaced, the rails of that judgement (testing/action_judged.py,
+D-082); each of those passes at once for an agent that does not.
 """
 
 from __future__ import annotations

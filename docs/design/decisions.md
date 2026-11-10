@@ -2541,7 +2541,7 @@ twice; DOC-REF: every `D-NNN` cited anywhere is a heading here), so keep its sha
   `tests/t2_agentic_voice/actions/test_action.py`,
   `tests/t2_agentic_voice/domain/test_declaration_actions.py`.
 
-## D-081 · The yes rule refined, the guard split, one runner an agent, the session's routing, and the checks in text · 2026-11-10 · Accepted (the agent's, in plan 007's tracks and integration, within the plan the owner approved; the stop kind, what the caps count, an MSA caller's lines, the ticket number as a claim and run A's note pair follow the owner's rulings of 2026-11-10)
+## D-081 · The yes rule refined, the guard split, one runner an agent, the session's routing, and the checks in text · 2026-11-10 · Accepted (the agent's, in plan 007's tracks and integration, within the plan the owner approved; the stop kind, what the caps count, an MSA caller's lines, the ticket number as a claim, run A's note pair and what a status backs follow the owner's rulings of 2026-11-10)
 
 - **Context:** on D-080's base, plan 007's five tracks built the yes rule and the guard's rule A
   (A), the action runner and the talker's side (B), the session's confirming state (C),
@@ -2566,7 +2566,8 @@ twice; DOC-REF: every `D-NNN` cited anywhere is a heading here), so keep its sha
     numbers are read as rule B reads them, against the claimed action's evidence alone: its
     completed results this call and the ok results of the tools whose `reports_on` names it,
     those holding an ID-shaped token (since plan 007's whole-code review: a status that found
-    nothing backed any claim; a stricter rule is the owner's call, TD-144). Every language's
+    nothing backed any claim), a status's backing fewer claims than the record's (*What a
+    status backs*, below). Every language's
     phrases are read, whatever the reply's (the same review: a claim the model wrote in its
     other language passed). Rule B's evidence gains the record's results. The default claim phrases are past-tense,
     mostly first person, none only introducing a number. A `reports_on` tool's result is
@@ -2641,6 +2642,28 @@ twice; DOC-REF: every `D-NNN` cited anywhere is a heading here), so keep its sha
     checks a done line, but the talker reads it in the call's history as its own reply and
     copies it, and `TextCall` reads a clause that copies a piece of a runtime line as that line,
     so a done line in the claim's words would hide the talker's claim from `call.violations`.
+  - *What a status backs (the owner's ruling of 2026-11-10 on TD-144, "Number or same
+    reply").* A status holding an ID-shaped token (`holds_an_id`) backed every claim about the
+    actions its tool reports on, one that named no number too: a caller with a ticket from an
+    earlier call who asked its status, then for a new ticket, could hear "I've opened a ticket
+    for your reports page" with no action called, `call.violations` empty. The ruling: "a
+    status result backs only a claim that names one of its ticket numbers (or its last digits),
+    or a claim in the same reply that already said one of the status's numbers. A claim the
+    call's record backs (an action done in this call) is unchanged." So each `ActionEvidence`
+    says its `source`, `record` or `status`. An action with a record backs a claim as before.
+    One with only a status backs it when the clause holds an ID-shaped token the status's texts
+    hold, read as rule B reads one (`check_ids` against those texts, so last digits count when
+    the status holds them, as Ole5's `ends_in` does); or, for a clause with no ID-shaped token,
+    when an earlier clause of the same reply that the guard passed held one (`check_claims`'s
+    `earlier`). A default phrase, the `guard.claims` ones included, stands for each action that
+    backs it. The live guard keeps the clauses it passed in one reply (one `SpeechGuard` a
+    `Turn`); `TextCall`'s check keeps, for each turn's talker reply, the clauses rules A and B
+    found nothing in, so both decide alike. Rule B, rule C, the phrases read, `holds_an_id`, the
+    record's evidence and every agent without actions (GP-18) are unchanged. Ole5's
+    instructions tell the talker to say a ticket's last four digits first, before what happened
+    to it, since an Arabic comma ends a clause. The ruling accepts that a false claim with no number, in a reply that said a
+    status's number, passes, and that a status sentence with no number, in a reply that said
+    none ("Yes, it has been escalated"), is blocked, the guard's fixed phrase said instead.
   - *Run A's note pair (the owner's ruling of 2026-11-10, "Yes add a pair").* No run A
     scenario put `add_ticket_note` to the model, so one kind of its own, `ticket_note`, joins
     before any run, in English on dev (a39) and MSA on held-out (a40): a ticket read back and
@@ -2655,10 +2678,12 @@ twice; DOC-REF: every `D-NNN` cited anywhere is a heading here), so keep its sha
   written but unread at run time, the flow's `advance` and the guard's `check_clause`. A ticket
   number said with no claim phrase is not rule A's (the design's 8.4); Ole5's phrases for one,
   which only introduce a number, also block a question asking for it and a caller's own number
-  read back while no record or status holds a ticket (TD-134). The debt is TD-133 to TD-142.
+  read back while no record or status holds a ticket (TD-134). The debt is TD-133 to TD-142,
+  and TD-144's part the status ruling left: evidence keyed by an action's name alone.
 - **Evidence:** plan 007's Tracks section, Progress log and Decision log;
   `tests/t2_agentic_voice/domain/test_yes_rule.py`, `test_action_flow.py`, `test_claims.py`;
-  `tests/t2_agentic_voice/agent/test_talker_claims.py`, `test_talker_actions.py`;
+  `tests/t2_agentic_voice/agent/test_talker_claims.py`, `test_talker_claim_evidence.py`,
+  `test_talker_actions.py`; `tests/t2_agentic_voice/testing/test_text_call_claims.py`;
   `tests/t2_agentic_voice/actions/test_action_run.py`, `test_action_caps.py`;
   `tests/t2_agentic_voice/api/test_runtime_actions.py`;
   `tests/t2_agentic_voice/voice/session/test_yes_turns.py`, `test_yes_turns_safety.py`,

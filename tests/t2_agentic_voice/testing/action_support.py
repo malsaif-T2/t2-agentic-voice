@@ -204,6 +204,7 @@ class Claimed:
         evidence: Sequence[ActionEvidence],
         settings: GuardSettings,
         year: int,
+        earlier: Sequence[str] = (),
     ) -> ClaimVerdict:
         self.calls.append(
             {"clause": clause, "claims": claims, "any_action": any_action, "evidence": evidence}

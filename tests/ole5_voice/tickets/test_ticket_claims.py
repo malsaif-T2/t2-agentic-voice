@@ -15,6 +15,12 @@ invariant 2), through `TextCall` on the served talker, as test_ticket_calls.py r
   would pass it as a passage's fact, in Saudi Arabic, in MSA, in English and in the call's other
   language; in a call that made a ticket, by either action, its number passes said so, and a
   number no action made is blocked.
+- A status backs only a claim that names one of its numbers, or one with no number in a reply
+  that already said one (the owner's ruling of 2026-11-10 on TD-144, "Number or same reply"): a
+  caller with a ticket from an earlier call asks its status, then for a new ticket, and the
+  model's «فتحت لك تذكرة عن صفحة التقارير» (I opened you a ticket about the reports page), with
+  no action called, is blocked; a status answer that names the ticket's last four digits, then
+  says it was escalated, is said whole, and that claim alone in a later reply is blocked.
 """
 
 from __future__ import annotations
@@ -23,8 +29,10 @@ from pathlib import Path
 from typing import Final, Literal
 
 import pytest
+from t2_agentic_voice import VoiceAgent
 from t2_agentic_voice.evals import ScriptedLLM, ScriptStep
-from t2_agentic_voice.ports import Passage
+from t2_agentic_voice.ports import Outbox, Passage
+from t2_agentic_voice.stores import MemoryOutbox
 
 from tests.ole5_voice.tickets.call_support import (
     SETTLE_S,
@@ -102,6 +110,35 @@ AGAIN: Final = {"ar-SA": "وش كان الرقم؟", "en": "What was the number 
 SURE: Final = {"ar-SA": "متأكد؟", "en": "Are you sure?"}
 # A ticket-shaped number no action of the call made.
 MADE_UP: Final = "2026111082009999"
+# The status of a ticket from an earlier call, by its last four digits: «tadhkirtak illi tintihi
+# bil-arqaam ... maftooHa», your ticket ending in the digits ... is open; the model's claim of a
+# new ticket with no action called: «fataHt lak tadhkira 'an SafHat at-taqaareer», I opened you
+# a ticket about the reports page; a claim with no number: «wa-tamma taS'eed Talabak li-fareeq
+# ad-da'm», and your request was escalated to the support team (a default phrase, any action's);
+# and the caller asking whether it was: «Sa''adtooha?», did you escalate it?
+IS_OPEN: Final = {
+    "ar-SA": "تذكرتك اللي تنتهي بالأرقام {} مفتوحة.",
+    "en": "Your ticket ending {} is open.",
+}
+OPENED_NEW: Final = {
+    "ar-SA": "فتحت لك تذكرة عن صفحة التقارير.",
+    "en": "I've opened a ticket for your reports page.",
+}
+ESCALATED: Final = {
+    "ar-SA": "وتم تصعيد طلبك لفريق الدعم.",
+    "en": "It has been escalated to the support team.",
+}
+WAS_IT: Final = {"ar-SA": "صعدتوها؟", "en": "Was it escalated?"}
+
+
+async def _made_before(agent: VoiceAgent, tag: Tag, outbox: Outbox) -> None:
+    """A ticket made for the caller in an earlier call, its row on `outbox`."""
+    llm = model(Answer(PROBLEM[tag], ScriptedLLM.call_tool("create_ticket", **DRAFT[tag])))
+    async with text_call(agent, llm, tag, outbox) as first:
+        await first.user(PROBLEM[tag])
+        sent = await first.user(yes_send(tag))
+        await first.advance(SETTLE_S)
+        sent.expect.action_completed("create_ticket")
 
 
 @pytest.mark.parametrize("digits", [None, DIGITS], ids=["all", "no_match"])
@@ -223,6 +260,73 @@ def test_the_number_of_a_ticket_made_in_the_call_passes_said_as_the_callers(
             assert [blocked.unsupported for blocked in wrong.blocked] == [(MADE_UP,)]
             assert [event.reason for event in blocks(call)] == ["unsupported_claim"]
             assert MADE_UP not in said(call)
+            assert call.violations == ()
+
+    run(scene())
+
+
+@pytest.mark.parametrize("tag", ["ar-SA", "en"])
+def test_a_status_of_an_older_ticket_backs_no_claim_of_a_new_one(tmp_path: Path, tag: Tag) -> None:
+    """The TD-144 scenario, on the served talker's settings: the status lists the caller's
+    ticket from an earlier call, so it holds an ID, but the claim names none of its numbers and
+    its reply said none; this call's record is empty, so nothing backs it."""
+    agent, tickets = ole5(tmp_path)
+    outbox = MemoryOutbox()
+
+    async def scene() -> None:
+        await _made_before(agent, tag, outbox)
+        [made] = tickets.listed()
+        told = IS_OPEN[tag].format(made.number[-4:])
+        llm = model(
+            Answer(STATUS[tag], ScriptedLLM.call_tool("ticket_status")),
+            Answer(STATUS[tag], ScriptedLLM.reply(told), "ticket_status"),
+            Answer(OPEN[tag], ScriptedLLM.reply(OPENED_NEW[tag])),
+        )
+        async with text_call(agent, llm, tag, outbox) as call:
+            status = await call.user(STATUS[tag])
+            await call.advance(SETTLE_S)
+            status.expect.tool_call("ticket_status")
+            status.expect.said(contains=told)
+            assert status.blocked == ()
+            opened = await call.user(OPEN[tag])
+            await call.advance(SETTLE_S)
+            assert [blocked.unsupported for blocked in opened.blocked] == [()]
+            assert [event.reason for event in blocks(call)] == ["unsupported_claim"]
+            assert OPENED_NEW[tag] not in said(call)
+            assert call.violations == ()
+        assert [ticket.number for ticket in tickets.listed()] == [made.number]
+
+    run(scene())
+
+
+@pytest.mark.parametrize("tag", ["ar-SA", "en"])
+def test_a_status_answer_that_names_the_last_four_backs_its_claim_in_that_reply(
+    tmp_path: Path, tag: Tag
+) -> None:
+    """The sentence that names the ticket's last four digits, then a claim with no number: said
+    whole. The same claim in a later reply, which names no number, is blocked (the accepted
+    cost of the ruling)."""
+    agent, tickets = ole5(tmp_path)
+    outbox = MemoryOutbox()
+
+    async def scene() -> None:
+        await _made_before(agent, tag, outbox)
+        [made] = tickets.listed()
+        told = f"{IS_OPEN[tag].format(made.number[-4:])} {ESCALATED[tag]}"
+        llm = model(
+            Answer(STATUS[tag], ScriptedLLM.call_tool("ticket_status")),
+            Answer(STATUS[tag], ScriptedLLM.reply(told), "ticket_status"),
+            Answer(WAS_IT[tag], ScriptedLLM.reply(ESCALATED[tag])),
+        )
+        async with text_call(agent, llm, tag, outbox) as call:
+            status = await call.user(STATUS[tag])
+            await call.advance(SETTLE_S)
+            status.expect.said(contains=told)
+            assert status.blocked == () and blocks(call) == []
+            again = await call.user(WAS_IT[tag])
+            await call.advance(SETTLE_S)
+            assert [blocked.unsupported for blocked in again.blocked] == [()]
+            assert [event.reason for event in blocks(call)] == ["unsupported_claim"]
             assert call.violations == ()
 
     run(scene())

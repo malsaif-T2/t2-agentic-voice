@@ -14,18 +14,27 @@ What `check_claims` does:
   phrase, each in the guard's form (domain/guard_ids.py's `guard_form`), and also after waw or
   feh (and, so) written onto the phrase's first word («وتم»). A clause with none passes, whatever
   it holds.
-- **The evidence.** A phrase of an action passes only when `evidence` holds that action: the
-  texts of its completed results, or of a `reports_on` tool's results about it that hold an
-  ID-shaped token (`holds_an_id`), since a status that found nothing holds no record of it
-  (docs/SECURITY.md, invariant 2). A default phrase passes when any action has evidence, and
-  stands for each that has.
+- **The evidence.** A phrase of an action passes only when that action backs it. Each
+  `ActionEvidence` says where it comes from (`source`):
+  - `record`: the texts of the action's completed results this call. They back any claim
+    about it, with a number or none.
+  - `status`: the texts of a `reports_on` tool's results about it that hold an ID-shaped token
+    (`holds_an_id`), since a status that found nothing holds no record of it (docs/SECURITY.md,
+    invariant 2). They back a claim only when it names one of their numbers, or after one was
+    said (the owner's ruling of 2026-11-10, "Number or same reply", D-081): the clause holds
+    an ID-shaped token these texts hold (the whole number, or the last digits they hold); or it
+    holds none, and an earlier clause of the same reply, one the guard passed (`earlier`), held
+    one. Otherwise a caller with a ticket from before who asks its status, then for a new one,
+    would hear a new ticket claimed with no action called.
+  A default phrase passes when any action backs it, and stands for each that does.
 - **Its numbers.** Every ID-shaped token of a claiming clause is read as rule B reads one
   (domain/guard_ids.py: digits spaced, in groups, said digit by digit or in Arabic-Indic
-  digits), against the claimed actions' texts alone: a number a passage or the caller's words
-  hold, or another action's, is no evidence that this action made it.
+  digits), against the claimed actions' texts alone, the record's and the status's: a number a
+  passage or the caller's words hold, or another action's, is no evidence that this action made
+  it.
 - **The verdict** names the actions claimed and, when it does not pass, the ID-shaped tokens
-  with no support. `claimed` empty with `passed` False is a default phrase with no action done
-  or reported.
+  with no support. `claimed` empty with `passed` False is a default phrase that no action
+  backs.
 
 The defaults are past-tense phrases of an agent that did something for the caller, first
 person mostly, so that a knowledge answer that tells how a thing is done rarely holds one; a
@@ -39,6 +48,7 @@ from __future__ import annotations
 from collections.abc import Iterable, Mapping, Sequence
 from dataclasses import dataclass
 from functools import lru_cache
+from typing import Literal
 
 from t2_agentic_voice.core.settings.guard import GuardSettings
 from t2_agentic_voice.core.settings.words import LanguageCode
@@ -47,15 +57,19 @@ from t2_agentic_voice.domain.text.words import holds_words
 
 # The letters written onto a phrase's first word that leave it the same phrase: waw, feh (and).
 _JOINED = ("\u0648", "\u0641")
+# Where evidence of a claim comes from: the call's record, or a `reports_on` tool's result.
+EvidenceSource = Literal["record", "status"]
 
 
 @dataclass(frozen=True, slots=True)
 class ActionEvidence:
-    """What supports claims about one `action`: the texts of its completed results and of the
-    results of the `reports_on` tools that report on it."""
+    """What supports claims about one `action`: the `texts` of its completed results this call
+    (`source` "record"), or of the results of a `reports_on` tool that reports on it ("status"),
+    which back fewer claims (the module's docstring)."""
 
     action: str
     texts: tuple[str, ...]
+    source: EvidenceSource = "record"
 
 
 @dataclass(frozen=True, slots=True)
@@ -149,8 +163,9 @@ def any_action_claims(added: Mapping[LanguageCode, Sequence[str]]) -> tuple[str,
 
 def holds_an_id(texts: Iterable[str], *, settings: GuardSettings, year: int) -> bool:
     """Whether `texts`, a `reports_on` tool's results about an action, hold an ID-shaped token,
-    read as rule B reads one: only then do they back a claim about it, since a status that found
-    nothing (no ticket, or none ending in the digits asked) holds no record of it."""
+    read as rule B reads one: only then are they evidence of it (`source` "status"), since a
+    status that found nothing (no ticket, or none ending in the digits asked) holds no record of
+    it."""
     return any(
         not check_ids(text, evidence=(), settings=settings, year=year).passed for text in texts
     )
@@ -171,6 +186,16 @@ def _holds(clause: str, phrases: Sequence[str]) -> bool:
     return False
 
 
+def _names_one_of(text: str, texts: Sequence[str], *, settings: GuardSettings, year: int) -> bool:
+    """Whether `text` holds an ID-shaped token that `texts` hold, each read as rule B reads it:
+    the tokens it holds against no evidence, less those it holds against `texts`."""
+    every = check_ids(text, evidence=(), settings=settings, year=year).unsupported
+    if not every:
+        return False
+    missing = check_ids(text, evidence=texts, settings=settings, year=year).unsupported
+    return any(token not in missing for token in every)
+
+
 def check_claims(
     clause: str,
     *,
@@ -179,19 +204,38 @@ def check_claims(
     evidence: Sequence[ActionEvidence],
     settings: GuardSettings,
     year: int,
+    earlier: Sequence[str] = (),
 ) -> ClaimVerdict:
     """Rule A on `clause`, as the module says: `claims` maps each action to its phrases, every
-    language's, and `any_action` holds the default ones."""
+    language's, and `any_action` holds the default ones; `earlier`, the clauses of the same
+    reply the guard passed before this one, in order."""
     said = guard_form(clause)
     named = tuple(action for action, phrases in claims.items() if _holds(said, phrases))
     general = _holds(said, any_action)
     if not named and not general:
         return ClaimVerdict(claimed=(), passed=True)
     texts: dict[str, tuple[str, ...]] = {}
+    reported: dict[str, tuple[str, ...]] = {}
+    recorded: set[str] = set()
     for each in evidence:
         texts[each.action] = (*texts.get(each.action, ()), *each.texts)
-    claimed = named or tuple(texts)
-    held = all(action in texts for action in claimed) and bool(claimed)
+        if each.source == "record":
+            recorded.add(each.action)
+        else:
+            reported[each.action] = (*reported.get(each.action, ()), *each.texts)
+    # A clause that names a number is read by its numbers; one with none, by its reply's.
+    numbered = not check_ids(clause, evidence=(), settings=settings, year=year).passed
+    named_by = (clause,) if numbered else tuple(earlier)
+
+    def backs(action: str) -> bool:
+        status = reported.get(action, ())
+        return action in recorded or any(
+            _names_one_of(text, status, settings=settings, year=year) for text in named_by
+        )
+
+    backing = tuple(action for action in texts if backs(action))
+    claimed = named or backing
+    held = all(action in backing for action in claimed) and bool(claimed)
     support = [text for action in claimed for text in texts.get(action, ())]
     numbers = check_ids(clause, evidence=support, settings=settings, year=year)
     return ClaimVerdict(

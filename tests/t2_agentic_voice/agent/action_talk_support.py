@@ -63,6 +63,7 @@ class FakeClaims:
         evidence: Sequence[ActionEvidence],
         settings: GuardSettings,
         year: int,
+        earlier: Sequence[str] = (),
     ) -> ClaimVerdict:
         assert isinstance(settings, GuardSettings) and year > 2000
         given = {name: tuple(phrases) for name, phrases in claims.items()}
