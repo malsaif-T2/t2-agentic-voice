@@ -1,0 +1,124 @@
+<!doctype html>
+<!-- The test console (GET <prefix>/dev/console, env dev, loopback clients and a loopback Host
+     only: api/dev_console.py, D-083): every call on the runtime, turn by turn, from the
+     runtime's events (GET dev/feed), and a call of its own through t2v-client.js. For the
+     engineers who test an agent, never for callers. No inline script or style: its script is
+     dev-console.js, its style dev-console.css, and every text is set with textContent. -->
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Test console · T2 Agentic Voice</title>
+<link rel="icon" href="data:,">
+<link rel="stylesheet" href="console.css">
+<script type="module" src="console.js"></script>
+</head>
+<body>
+<header class="bar">
+  <div class="brand">
+    <span class="logo" aria-hidden="true"></span>
+    <div>
+      <h1>Test console</h1>
+      <p class="muted small">Every call on this runtime, turn by turn. For engineers: callers
+        never see it.</p>
+    </div>
+  </div>
+  <div class="chips" id="setup-chips" aria-label="What the agent runs with"></div>
+  <details class="setup" id="setup">
+    <summary>Setup</summary>
+    <div class="setup-body" id="setup-body"></div>
+  </details>
+</header>
+
+<section class="controls panel" aria-label="A call from this page">
+  <div class="field">
+    <label for="token">Join token</label>
+    <input id="token" type="text" value="dev" autocomplete="off" spellcheck="false">
+  </div>
+  <div class="field">
+    <label for="language">Language</label>
+    <select id="language">
+      <option value="">The agent's first</option>
+      <option value="ar-SA">ar-SA</option>
+      <option value="ar">ar</option>
+      <option value="en">en</option>
+    </select>
+  </div>
+  <div class="buttons">
+    <button type="button" id="start" class="primary">Start call</button>
+    <button type="button" id="stop" disabled>Stop</button>
+    <button type="button" id="hangup" class="danger" disabled>Hang up</button>
+  </div>
+  <div class="buttons">
+    <label class="switch"><input type="checkbox" id="push-to-talk"> Push to talk</label>
+    <button type="button" id="talk" aria-pressed="false" disabled>Talk (hold)</button>
+  </div>
+  <div class="live">
+    <span class="pill" id="state" data-state="idle">idle</span>
+    <span class="muted small">Volume <output id="volume">100%</output></span>
+    <span class="muted small">Connection <output id="connection">none</output></span>
+  </div>
+  <p class="status small" id="status" role="status">Start a call here, or watch one started
+    from another page on this runtime.</p>
+</section>
+
+<section class="captions panel" id="live" aria-label="This page's call, live" hidden>
+  <h2>Live captions <span class="muted small">this page's call</span></h2>
+  <ol class="caption-list" id="captions" dir="auto"></ol>
+  <div class="card" id="card" hidden></div>
+</section>
+
+<main class="layout">
+  <nav class="panel calls" aria-label="Calls">
+    <div class="panel-head">
+      <h2>Calls</h2>
+      <label class="switch small"><input type="checkbox" id="follow" checked> Follow newest</label>
+    </div>
+    <ol class="call-list" id="calls"></ol>
+    <p class="muted small" id="feed-state">Feed: connecting.</p>
+  </nav>
+
+  <section class="panel turns" aria-label="Turns">
+    <div class="panel-head">
+      <h2 id="turns-title">Turns</h2>
+      <div class="legend small" aria-hidden="true">
+        <span class="key k-eot">end of turn</span>
+        <span class="key k-complete">Smart Turn</span>
+        <span class="key k-stt">transcript</span>
+        <span class="key k-token">first token</span>
+        <span class="key k-audio">first audio</span>
+        <span class="key k-played">played</span>
+      </div>
+    </div>
+    <p class="muted small explain">Each bar runs from the end of the caller's speech. The
+      transcript ends Whisper's request, the first token is the model's, the first audio is
+      Orpheus's first sound sent: the time to first audio.</p>
+    <ol class="turn-list" id="turns"></ol>
+    <p class="empty muted" id="no-turns">No call chosen yet.</p>
+  </section>
+
+  <aside class="panel summary" aria-label="The call">
+    <div class="panel-head">
+      <h2>The call</h2>
+      <button type="button" id="export" disabled>Export JSON</button>
+    </div>
+    <div id="summary"></div>
+  </aside>
+</main>
+
+<section class="panel log" aria-label="Event log">
+  <details id="log-box">
+    <summary>Event log <span class="muted small" id="log-count"></span></summary>
+    <div class="log-tools">
+      <label for="log-filter" class="small">Show</label>
+      <select id="log-filter"><option value="">every event</option></select>
+    </div>
+    <table class="events">
+      <thead><tr><th scope="col">At</th><th scope="col">Event</th><th scope="col">Turn</th>
+        <th scope="col">What</th></tr></thead>
+      <tbody id="log"></tbody>
+    </table>
+  </details>
+</section>
+</body>
+</html>

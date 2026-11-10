@@ -9,9 +9,10 @@ and cannot change it. These are the events the session emits, the talker's among
 call begun and ended, a clause the output guard blocked: plan 006); the design's others
 (`Busy`) come with what they report; the actions' are declared here for plan 007's tracks.
 
-An event and the report hold what was heard and said, so neither is ever logged (call content
-is logged at no level, docs/SECURITY.md, invariant 8); the report's numbers are written apart,
-with no text.
+An event and the report hold what was heard and said (a tool's arguments and result, a
+read-back's draft and a write's result among it), so neither is ever logged (call content is
+logged at no level, docs/SECURITY.md, invariant 8); the report's numbers are written apart, with
+no text.
 """
 
 from __future__ import annotations
@@ -112,9 +113,13 @@ class TurnTimes(_Frozen):
     call whose output taps no audio, a test's or `TextCall`'s, times its first audio queued), a
     progress line counted apart (`progress_ms`, the first audible frame of one); to the
     browser's playback of the reply (`played_ms`, from its `playback` report, when it sends
-    one); and to the chat model's first token (`llm_first_token_ms`, the talker's). From the
-    detector's stop as it came, to the transcript (`stt_ms`); and from a text-to-speech request
-    to its first audio (`tts_first_audio_ms`)."""
+    one); to the chat model's first token (`llm_first_token_ms`, the talker's); to the turn's
+    end, as the turn analyzer closed it (`end_of_turn_ms`: the detector's stop delay, Smart
+    Turn's judgement and the hold after it); and to Smart Turn's "complete", where the hold
+    began (`turn_complete_ms`, in a call with a talker, for a turn said while the agent was
+    silent). From the detector's stop as it came, to the transcript (`stt_ms`: the turn's own
+    request's, or its held request's when it took that one as its own, in a call with a
+    talker); and from a text-to-speech request to its first audio (`tts_first_audio_ms`)."""
 
     ttfa_ms: float | None = Field(default=None, ge=0, allow_inf_nan=False)
     stt_ms: float | None = Field(default=None, ge=0, allow_inf_nan=False)
@@ -122,6 +127,8 @@ class TurnTimes(_Frozen):
     tts_first_audio_ms: float | None = Field(default=None, ge=0, allow_inf_nan=False)
     progress_ms: float | None = Field(default=None, ge=0, allow_inf_nan=False)
     played_ms: float | None = Field(default=None, ge=0, allow_inf_nan=False)
+    end_of_turn_ms: float | None = Field(default=None, ge=0, allow_inf_nan=False)
+    turn_complete_ms: float | None = Field(default=None, ge=0, allow_inf_nan=False)
 
 
 class ModelUsage(_Frozen):
@@ -265,24 +272,32 @@ class TransportFailed(Event):
 
 class ToolStarted(_TurnEvent):
     """The talker called the tool `tool` in its reply to the turn; `tool_call_id` is the
-    model's id for the call."""
+    model's id for the call, and `arguments` the JSON text the model wrote for it (call
+    content: a search's words)."""
 
     tool: str = Field(min_length=1)
     tool_call_id: str = Field(min_length=1)
+    arguments: str = ""
 
 
 class ToolFinished(ToolStarted):
     """The tool call ended: whether it succeeded (`ok`: a `ToolError`, any other failure or its
-    timeout is not), and how long it ran, in milliseconds on the call's clock."""
+    timeout is not), how long it ran, in milliseconds on the call's clock, what it gave the
+    model back (`result`, JSON text: call content, such as the passages a search found) and,
+    when it failed, what failed (`failure`, such as `timeout at search`: no call content)."""
 
     ok: bool
     ms: float = Field(ge=0, allow_inf_nan=False)
+    result: str = ""
+    failure: str | None = None
 
 
 class ConfirmationRequested(_TurnEvent):
-    """The read-back of `action` began to play in the reply to the turn."""
+    """The read-back of `action` began to play in the reply to the turn; `draft` is the draft
+    it reads back, as the JSON text the yes rule's receipt holds (call content)."""
 
     action: str = Field(min_length=1)
+    draft: str = ""
 
 
 class ConfirmationAnswered(_TurnEvent):
@@ -296,10 +311,12 @@ class ConfirmationAnswered(_TurnEvent):
 
 
 class ActionCompleted(Event):
-    """`action`'s write returned and was recorded, by its `request_id`."""
+    """`action`'s write returned and was recorded, by its `request_id`; `result` is the write's
+    real result as JSON text, as the call's record holds it (a ticket's number, say)."""
 
     action: str = Field(min_length=1)
     request_id: str = Field(min_length=1)
+    result: str = ""
 
 
 class ActionUnconfirmed(Event):
@@ -318,7 +335,10 @@ class GuardBlocked(_TurnEvent):
 
 
 class TurnMetrics(TurnTimes, _TurnEvent):
-    """How long a turn's steps took (its `TurnTimes`)."""
+    """How long a turn's steps took (its `TurnTimes`), and each model's usage in the call so far,
+    as the turn settled (`usage`: the call's report holds its last)."""
+
+    usage: tuple[ModelUsage, ...] = ()
 
 
 # The events a call emits, in the order the design's 6.6 lists them.

@@ -565,6 +565,11 @@ may judge a yes in words no list holds, within rails the yes rule keeps.
   three findings were refuted (the ruling accepts each); the guide's "sentence" became
   "clause" from the first. TD-144 keeps its other part, evidence keyed by the action's name
   alone. `VERSION` stays `2026-11-10.1`, for the reason the rulings' line gives.
+- 2026-11-11: The test console (D-083, its own session's branch `test-console`) merged here at
+  the owner's word ("also merge the test-console so I can use it to test"), through the side
+  branch `merge-test-console` (its two doc conflicts resolved there, both sides kept, its gate
+  green). It observes the runtime the app builds, so Ole5's served talker keeps
+  `with_ticket_claims`.
 
 ## Decision log
 

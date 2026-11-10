@@ -245,7 +245,7 @@ class CallSession:
 
     async def _hold(self, event: on.TurnHeld | on.HoldResumed) -> None:
         """The turn's hold began, or the caller resumed within it (io.py's early start)."""
-        held = isinstance(event, on.TurnHeld)
+        held = self._turns.hold(event)
         self._recorder.line(
             event.at, "turn_held" if held else "hold_resumed", turn_id=event.turn_id
         )

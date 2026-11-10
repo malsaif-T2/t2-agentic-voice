@@ -2798,3 +2798,60 @@ twice; DOC-REF: every `D-NNN` cited anywhere is a heading here), so keep its sha
   `test_yes_ask_echo.py`, `test_yes_ask_tail.py`;
   `tests/t2_agentic_voice/testing/test_action_call_judged.py`,
   `test_action_safety_judged.py`; `tests/ole5_voice/tickets/test_ticket_calls_judged.py`.
+
+## D-083 · A test console beside the dev page, fed by the runtime's events, which now carry each tool's arguments and result · 2026-11-10 · Accepted (the owner's approval of the agent's proposal, 2026-11-10)
+
+- **Context:** the owner: "Can you do a new interface for testing the agent, It should be
+  informative: have the tools used and what they returned, the latency for each thing, and any
+  information that might help me and fellow engineers test the system. Also make it with fairly
+  good UI". The dev page showed captions, cards and notices only; Phoenix's traces held the
+  tools' arguments and results but not the yes rule, the actions or the interruptions, and need a
+  server of their own. The public events carried a tool's name and time but not what it was
+  asked or gave back, and the turn's times had no end-of-turn step. The agent proposed a console
+  in the library beside the dev page, fed over HTTP long-polling by one observer of the events,
+  with five events given new fields; the owner answered "Approve, build it".
+- **Decision:**
+  - `<prefix>/dev/console`, with `dev/feed`, `dev/setup`, `dev/console.js` and
+    `dev/console.css` (`api/dev_console.py`, its files in `api/static/`), mounted with the dev
+    page and only then, so every team's `t2v dev` has it and an app's server under `env` dev
+    with `server.dev_page`. Each route answers the plain 404 under any `env` but dev, to a
+    client that is not loopback, and to a `Host` that is not a loopback name, so a page
+    elsewhere cannot reach it through a name it points at this machine. The page's policy allows
+    scripts and styles from the server alone, no framing; every text is set as text.
+  - The feed (`DevFeed`) is a runtime observer of every event, its records the events as JSON,
+    numbered: in memory the last 20 calls' (at most 20,000 records), never logged; each restart
+    a feed of a new name. The proposal kept them in memory only; on seeing it built, the owner
+    ruled (2026-11-10): "Make it save calls to the disk, since they are development related
+    calls". So every call's events are also saved, one JSON line each, appended off the event
+    loop, in `dev-console/<call ID>.jsonl` under `storage.var_dir`, which nothing deletes; a
+    start's feed reads the newest 20 back, each line parsed as the event it names, one that is
+    not skipped, before it keeps its first event. `GET dev/feed?after=N` answers at once with what
+    is newer, or waits up to 10 s for it: no stream to hold uvicorn's shutdown, no message added
+    to `t2v/1`, and a call from any page on the runtime is seen. The call's own data channel was
+    the alternative: it would add messages every client of `t2v/1` must know, and show only the
+    console's own calls.
+  - The events gain fields, each with a default, so an observer written before keeps working:
+    `ToolStarted.arguments` (the JSON the model wrote; on `ToolFinished` too),
+    `ToolFinished.result` (what the tool gave the model back) and `failure` (what failed, no
+    call content), `ConfirmationRequested.draft` (the draft its read-back reads),
+    `ActionCompleted.result` (the write's real result, as the record holds it, through
+    `ActionOutcome.result_json`), and `TurnMetrics.usage` (each model's usage so far). The
+    turn's times gain `end_of_turn_ms` (from the end of speech to the turn's close) and
+    `turn_complete_ms` (to Smart Turn's "complete"), and `stt_ms` now times the early start's
+    request when the turn took its transcript as its own, which was none before for most turns
+    of a call with a talker.
+  - `dev/setup` shows the agent's tools, actions, languages and mode, the library's and
+    Pipecat's versions and the settings' digest, and the settings groups `stt`, `llm`, `tts`,
+    `turns`, `interruptions` and `limits`, which hold no secret (a test).
+- **Consequences:** a team's observers receive call content they did not before (a search's
+  words, the passages found, a draft, a ticket's number), as they receive what was heard; none
+  of it is logged. A dev server's data folder holds every console call's content (no audio)
+  until someone deletes `dev-console/`; data-and-privacy.md lists it. The
+  console's script is checked by its text (no markup inserted, no inline script, every id it
+  reads on its page) and by a live call, not by `poe arch`. Its first live call on this laptop
+  showed the knowledge search timing out at 4 s, and Whisper once taking 3.9 s, each with its
+  arguments and times on the page.
+- **Evidence:** `tests/t2_agentic_voice/api/test_dev_console.py`;
+  `tests/t2_agentic_voice/voice/session/test_turn_times.py`, `test_talker_early.py`,
+  `test_talker_call.py`, `test_read_back.py`; `tests/t2_agentic_voice/actions/test_action_run.py`;
+  docs/guide/browser-client.md, "The test console".
