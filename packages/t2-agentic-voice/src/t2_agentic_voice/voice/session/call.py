@@ -198,6 +198,7 @@ class CallSession:
                 reply = await self._speaker.queued(event)
                 if reply is not None:
                     self._turns.first_audio(reply, event.clause, event.at)
+                    self._confirming.queued(reply, event.clause)
             case on.ClausePlayed() | on.ClauseFailed():
                 await self._speaker.done(event, tell=self._ending is None)
             case on.FromClient(message=wire.Stop()):

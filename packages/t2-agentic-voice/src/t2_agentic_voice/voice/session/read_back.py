@@ -32,7 +32,8 @@ transport's `ClausePlayed` reports, never the browser's `playback` message.
   most the plan's `max_attempts` times, each line said a follow-up of the read-back
   (`follow_up`), over which a stop or pause word or a repeat request does as over the read-back;
   after the last, confirming ends. A stop or pause request said whole while confirming is a stop
-  word over it (the owner's ruling). Each read-back said is the public `ConfirmationRequested`.
+  word over it (the owner's ruling). Each read-back's first audio is the public
+  `ConfirmationRequested` (`queued`).
 """
 
 from __future__ import annotations
@@ -142,14 +143,20 @@ class Confirming:
             return None
         read_back = ReadBack(plan=plan, reply_id=reply.reply_id, summary=summary, question=question)
         self.read_back = read_back
-        said = self._playback.reply(reply.reply_id)
-        if said is not None and said.turn_id is not None:
-            wall, call_id = self._setup.clock.wall(), self._setup.call_id
-            asked = ConfirmationRequested(
-                call_id=call_id, turn_id=said.turn_id, at=wall, action=plan.action
-            )
-            self._setup.emit(asked)
         return read_back
+
+    def queued(self, reply: Reply, index: ClauseIndex) -> None:
+        """Clause `index` of `reply` began to play (its first audio queued): the public
+        `ConfirmationRequested`, when it is the current read-back's first."""
+        read_back = self.read_back
+        if read_back is None or reply.reply_id != read_back.reply_id or reply.turn_id is None:
+            return
+        if index == read_back.summary[0]:
+            wall, call_id = self._setup.clock.wall(), self._setup.call_id
+            began = ConfirmationRequested(
+                call_id=call_id, turn_id=reply.turn_id, at=wall, action=read_back.plan.action
+            )
+            self._setup.emit(began)
 
     def words(self, plan: ReadBackPlan) -> ConsentWords:
         """The yes rule's words for `plan`'s read-back, in its language: the preset's, the

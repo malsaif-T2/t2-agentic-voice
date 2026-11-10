@@ -17,6 +17,7 @@ import pytest
 from t2_agentic_voice.agent.events import ReadBackRequested
 from t2_agentic_voice.core.config import VoiceSettings
 from t2_agentic_voice.core.conversation import TalkerTurn
+from t2_agentic_voice.core.events import ConfirmationRequested
 from t2_agentic_voice.core.yes_inputs import ReadBackReceipt, is_read_back_receipt
 from t2_agentic_voice.domain.text.invisible import provider_text
 from t2_agentic_voice.voice.protocol import Caption, Notice
@@ -39,7 +40,13 @@ from tests.t2_agentic_voice.voice.session.read_back_support import (
     receipt,
     states,
 )
-from tests.t2_agentic_voice.voice.session.session_support import greeted, play, sent, speaks
+from tests.t2_agentic_voice.voice.session.session_support import (
+    emitted,
+    greeted,
+    play,
+    sent,
+    speaks,
+)
 from tests.t2_agentic_voice.voice.session.talker_support import (
     Step,
     settle,
@@ -64,13 +71,17 @@ def test_a_read_back_says_its_summary_then_its_question_and_the_call_is_confirmi
         await asked(io)
         assert session._confirming.active
         assert states(io)[-1] == "confirming"  # asked for, no audio yet
+        assert emitted(io, ConfirmationRequested) == []
         await clause(io, 0, played=False)
         assert states(io)[-1] == "speaking"
+        (began,) = emitted(io, ConfirmationRequested)  # its first audio
+        assert (began.turn_id, began.action) == (0, ACTION)
         await io.clause_played(1, 0, audio_s=2.0)
         await clause(io, 1)
         await settle()
 
     asyncio.run(drive())
+    assert len(emitted(io, ConfirmationRequested)) == 1  # once, not again for the question
     assert [s.text for s in speaks(io, 1)] == [provider_text(SUMMARY_SPOKEN), QUESTION]
     reply = session.playback.reply(1)
     assert reply is not None and reply.ended_at is not None
