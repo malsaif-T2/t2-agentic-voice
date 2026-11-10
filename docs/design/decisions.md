@@ -2708,8 +2708,13 @@ twice; DOC-REF: every `D-NNN` cited anywhere is a heading here), so keep its sha
     elsewhere cannot reach it through a name it points at this machine. The page's policy allows
     scripts and styles from the server alone, no framing; every text is set as text.
   - The feed (`DevFeed`) is a runtime observer of every event, its records the events as JSON,
-    numbered, in memory only: the last 20 calls' (at most 20,000 records), never on disk, never
-    logged; each restart a feed of a new name. `GET dev/feed?after=N` answers at once with what
+    numbered: in memory the last 20 calls' (at most 20,000 records), never logged; each restart
+    a feed of a new name. The proposal kept them in memory only; on seeing it built, the owner
+    ruled (2026-11-10): "Make it save calls to the disk, since they are development related
+    calls". So every call's events are also saved, one JSON line each, appended off the event
+    loop, in `dev-console/<call ID>.jsonl` under `storage.var_dir`, which nothing deletes; a
+    start's feed reads the newest 20 back, each line parsed as the event it names, one that is
+    not skipped, before it keeps its first event. `GET dev/feed?after=N` answers at once with what
     is newer, or waits up to 10 s for it: no stream to hold uvicorn's shutdown, no message added
     to `t2v/1`, and a call from any page on the runtime is seen. The call's own data channel was
     the alternative: it would add messages every client of `t2v/1` must know, and show only the
@@ -2729,7 +2734,8 @@ twice; DOC-REF: every `D-NNN` cited anywhere is a heading here), so keep its sha
     `turns`, `interruptions` and `limits`, which hold no secret (a test).
 - **Consequences:** a team's observers receive call content they did not before (a search's
   words, the passages found, a draft, a ticket's number), as they receive what was heard; none
-  of it is logged. A dev server holds its last 20 calls' content in memory until it stops. The
+  of it is logged. A dev server's data folder holds every console call's content (no audio)
+  until someone deletes `dev-console/`; data-and-privacy.md lists it. The
   console's script is checked by its text (no markup inserted, no inline script, every id it
   reads on its page) and by a live call, not by `poe arch`. Its first live call on this laptop
   showed the knowledge search timing out at 4 s, and Whisper once taking 3.9 s, each with its

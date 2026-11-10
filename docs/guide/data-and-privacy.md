@@ -19,6 +19,7 @@ there is no purge command yet.
 | `<agent name>/used_tokens.sqlite3` | Each used join token's ID (`jti`) and the last instant it could verify, pruned after that instant | None |
 | `reports/<call ID>.json` | Each call's report in numbers: when it started and ended and why, its turns' outcomes and times, each model's usage, the browser's connection type and timings, the consent version | None: no word heard or said |
 | `recordings/<call ID>/` | Only when recording is allowed (below): `caller.wav`, `agent.wav`, and `timeline.jsonl`, which holds the words heard and each clause's text | All of it |
+| `dev-console/<call ID>.jsonl` | Only under `env` dev with the dev page on: each call's events, one JSON line each, which the test console reads back after a restart ([browser-client.md](browser-client.md), "The test console") | What was heard and said, each tool's arguments and result, a read-back's draft and a write's result; no audio |
 
 Logs hold no call content at INFO and above, and `logging.content`, which lets lines with
 addresses and SDP through, is refused outside `env` dev ([tracing-and-logs.md](tracing-and-logs.md)).

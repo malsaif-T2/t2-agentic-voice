@@ -273,7 +273,10 @@ bug report. **Setup** shows what the agent runs with: its tools and actions, its
 models and voices, and the settings that shape a turn's timing, with no secret.
 
 The page reads `GET dev/feed?after=N`, which answers once a new event comes, or after 10 s with
-none. The runtime keeps the events of its last 20 calls in memory only, never on disk or in a
-log, and forgets them when it stops. Since they hold what callers said and what tools returned,
-every route of the console answers only under `env` dev, to a browser on this machine that
-names it `localhost`, `127.0.0.1` or `[::1]`; any other request gets a plain 404.
+none. The runtime saves every call's events, since these are development calls: one JSON line
+per event in `dev-console/<call ID>.jsonl` under the data folder (`storage.var_dir`), which
+nothing deletes, so delete the folder to clear it. After a restart the console shows the
+newest 20 calls again, read back from there; the page holds the last 20 calls, and the files
+hold them all. None of it goes to a log. Since the events hold what callers said and what tools
+returned, every route of the console answers only under `env` dev, to a browser on this machine
+that names it `localhost`, `127.0.0.1` or `[::1]`; any other request gets a plain 404.

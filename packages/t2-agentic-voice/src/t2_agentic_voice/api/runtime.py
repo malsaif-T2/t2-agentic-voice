@@ -217,7 +217,7 @@ class VoiceRuntime:
             log.warning("dev_identity", fix="pass identity= to serve real callers")
             identity = DevIdentity()
         dev_page = env == "dev" and (dev or self._settings.server.dev_page)
-        feed = DevFeed() if dev_page else None
+        feed = DevFeed.of(self._settings) if dev_page else None
         if feed is not None:
             self.on(Event)(feed.observe)
         served = routing.Served(

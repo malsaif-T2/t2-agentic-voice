@@ -8,6 +8,8 @@ from __future__ import annotations
 
 import asyncio
 import json
+import logging
+import os
 import re
 from collections.abc import AsyncIterator
 from contextlib import asynccontextmanager
@@ -33,6 +35,7 @@ from t2_agentic_voice.core.events import (
 from t2_agentic_voice.core.settings.groq import GroqSettings
 from t2_agentic_voice.core.settings.server import ServerSettings
 
+from tests.leaks import holding, shown
 from tests.t2_agentic_voice.api.runtime_support import (
     AGENT,
     LOOPBACK,
@@ -46,6 +49,7 @@ pytestmark = pytest.mark.usefixtures("patched_stores")
 AT = datetime(2026, 11, 10, 12, 0, tzinfo=UTC)
 STATIC = Path(dev_console.__file__).parent / "static"
 LOCAL = "http://127.0.0.1:7860"
+HEARD_AR = "ابغى افتح تذكرة"  # what a caller said: call content
 
 
 def _started(call_id: str) -> CallStarted:
@@ -113,6 +117,104 @@ def test_a_poll_answers_at_once_on_a_new_record_or_when_its_wait_ends() -> None:
         assert await feed.wait_after(0, wait_s=5.0) == records  # at once
 
     asyncio.run(scene())
+
+
+def _aged(folder: Path, *names: str) -> None:
+    """Give the call files `names` mtimes in that order, oldest first."""
+    for age, name in enumerate(reversed(names)):
+        stamp = 1_800_000_000 - 60 * age
+        os.utime(folder / f"{name}.jsonl", (stamp, stamp))
+
+
+def test_each_event_is_saved_in_its_calls_file_and_a_new_feed_reads_them_back(
+    tmp_path: Path, caplog: pytest.LogCaptureFixture
+) -> None:
+    caplog.set_level(logging.DEBUG)
+    folder = tmp_path / "dev-console"
+    feed = DevFeed(folder=folder)
+
+    async def observed() -> None:
+        for event in (_started("c-1"), _heard("c-1", 0, HEARD_AR), _started("c-2")):
+            await feed.observe(event)
+
+    asyncio.run(observed())
+    assert sorted(path.name for path in folder.iterdir()) == ["c-1.jsonl", "c-2.jsonl"]
+    lines = (folder / "c-1.jsonl").read_text(encoding="utf-8").splitlines()
+    assert [json.loads(line)["type"] for line in lines] == ["CallStarted", "UserTurnEnded"]
+    assert HEARD_AR in lines[1]  # as said, not escaped
+    _aged(folder, "c-1", "c-2")
+    again = DevFeed(folder=folder)
+    records = asyncio.run(again.wait_after(0, wait_s=0))
+    assert [(r["call_id"], r["type"]) for r in records] == [
+        ("c-1", "CallStarted"),
+        ("c-1", "UserTurnEnded"),
+        ("c-2", "CallStarted"),
+    ]
+    assert [r["event"] for r in records] == [r["event"] for r in feed.after(0)]
+    assert [r["seq"] for r in records] == [1, 2, 3] and again.name != feed.name
+    asyncio.run(again.observe(_heard("c-2", 0)))  # read once: the saved calls are not doubled
+    assert [r["seq"] for r in again.after(0)] == [1, 2, 3, 4]
+    assert holding(HEARD_AR, shown(caplog=caplog)) == []  # saved and read, never logged
+
+
+def test_a_new_feed_reads_the_newest_calls_alone_and_skips_lines_that_are_no_event(
+    tmp_path: Path,
+) -> None:
+    folder = tmp_path / "dev-console"
+    feed = DevFeed(folder=folder)
+    for call in ("c-1", "c-2", "c-3"):
+        asyncio.run(feed.observe(_started(call)))
+    with (folder / "c-3.jsonl").open("a", encoding="utf-8", newline="\n") as file:
+        file.write("not json\n")
+        file.write(json.dumps({"type": "Unknown", "event": {}}) + "\n")
+        file.write(json.dumps({"type": "UserTurnEnded", "event": {"call_id": "c-3"}}) + "\n")
+        file.write("\n")
+    asyncio.run(feed.observe(_heard("c-3", 0)))
+    _aged(folder, "c-1", "c-2", "c-3")
+    again = DevFeed(folder=folder, calls=2)
+    records = asyncio.run(again.wait_after(0, wait_s=0))
+    assert [(r["call_id"], r["type"]) for r in records] == [
+        ("c-2", "CallStarted"),
+        ("c-3", "CallStarted"),
+        ("c-3", "UserTurnEnded"),
+    ]
+
+
+def test_a_file_that_cannot_be_written_is_logged_by_its_kind_and_the_event_kept(
+    tmp_path: Path, caplog: pytest.LogCaptureFixture
+) -> None:
+    caplog.set_level(logging.DEBUG)
+    blocked = tmp_path / "dev-console"
+    blocked.write_text("a file where the folder would be", encoding="utf-8")
+    feed = DevFeed(folder=blocked)
+    asyncio.run(feed.observe(_heard("c-1", 0, HEARD_AR)))
+    assert [r["type"] for r in feed.after(0)] == ["UserTurnEnded"]
+    assert "dev_console_not_saved" in caplog.text
+    assert holding(HEARD_AR, shown(caplog=caplog)) == []
+
+
+def test_a_runtimes_feed_saves_under_its_data_folder(tmp_path: Path) -> None:
+    harness, app = _app(tmp_path)
+    folder = harness.settings.storage.var_dir / dev_console.CONSOLE_FOLDER
+
+    async def scene() -> None:
+        async with _serving(app):
+            _emit(harness, _started("c-9"))
+            for _ in range(100):  # the observers run off the call's path
+                if (folder / "c-9.jsonl").exists():
+                    break
+                await asyncio.sleep(0.02)
+
+    asyncio.run(scene())
+    assert [path.name for path in folder.iterdir()] == ["c-9.jsonl"]
+    _, restarted = _app(tmp_path)
+
+    async def after_restart() -> list[str]:
+        async with _serving(restarted) as http:
+            answer = await http.get(PREFIX + "/dev/feed", params={"wait": 0})
+        return [record["call_id"] for record in answer.json()["records"]]
+
+    assert asyncio.run(after_restart()) == ["c-9"]
 
 
 @pytest.mark.parametrize(
