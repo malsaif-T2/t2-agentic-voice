@@ -5,12 +5,14 @@ any clause of it reaches here.
 
 - **Rule A, claims** (domain/claims.py's `check_claims`), for an agent that declares actions
   only: a rule added for actions goes only to an agent that declares one (plan 007's baseline).
-  A clause holding a claim phrase of an action (its `claims` in the reply's language) or one
-  that claims any action (the library's default phrases, with the settings' `guard.claims`)
-  passes only on that action's evidence: the results of its writes this call's record holds
-  (each entry one only `actions` built, `is_recorded`), and the results that succeeded of the
-  tools whose `reports_on` names it (agent/tool_calls.py's `Memory.reports`). A passage, or any
-  other tool's result, is no evidence of a claim. A clause it blocks is `unsupported_claim`.
+  A clause holding a claim phrase of an action (its `claims`) or one that claims any action
+  (the library's default phrases, with the settings' `guard.claims`), every language's
+  whatever the reply's, since a model may write a claim in another, passes only on that
+  action's evidence: the results of its writes this call's record holds (each entry one only
+  `actions` built, `is_recorded`), and the results that succeeded of the tools whose
+  `reports_on` names it (agent/tool_calls.py's `Memory.reports`), when they hold an ID-shaped
+  token, so a status that found nothing backs nothing. A passage, or any other tool's result,
+  is no evidence of a claim. A clause it blocks is `unsupported_claim`.
 - **Rule B, IDs** (domain/guard.py's `check_ids`), on a clause that claims nothing: its
   evidence is every tool result of this call (passages included), the record's results and
   the caller's heard words.
@@ -29,8 +31,6 @@ from t2_agentic_voice.actions.record import ActionRecord
 from t2_agentic_voice.agent.tool_calls import Memory
 from t2_agentic_voice.core.events import GuardReason
 from t2_agentic_voice.core.settings.guard import GuardSettings
-from t2_agentic_voice.core.settings.tts import LanguageTag
-from t2_agentic_voice.core.settings.words import LanguageCode
 from t2_agentic_voice.domain import claims as rule_a
 from t2_agentic_voice.domain.completed_action import CompletedAction, is_recorded
 from t2_agentic_voice.domain.guard import check_ids
@@ -54,14 +54,13 @@ class SpeechGuard:
         self,
         *,
         settings: GuardSettings,
-        language: LanguageTag,
         year: int,
         actions: Sequence[Action],
         record: ActionRecord | None,
         memory: Memory,
         heard: Sequence[str],
     ) -> None:
-        self.settings, self.language, self.year = settings, language, year
+        self.settings, self.year = settings, year
         self.actions, self.record, self.memory, self.heard = tuple(actions), record, memory, heard
         self._phrases: tuple[dict[str, tuple[str, ...]], tuple[str, ...]] | None = None
 
@@ -99,12 +98,14 @@ class SpeechGuard:
 
     def action_evidence(self) -> list[rule_a.ActionEvidence]:
         """Rule A's evidence, by action: its completed writes' results, and the results of the
-        tools that report on it. An action with neither has none."""
+        tools that report on it when they hold an ID-shaped token. An action with neither has
+        none."""
         texts: dict[str, list[str]] = {}
         for entry in self._entries():
             texts.setdefault(entry.action, []).extend(_texts(entry))
         for action, reported in self.memory.reports.items():
-            texts.setdefault(action, []).extend(reported)
+            if rule_a.holds_an_id(reported, settings=self.settings, year=self.year):
+                texts.setdefault(action, []).extend(reported)
         return [rule_a.ActionEvidence(action=a, texts=tuple(t)) for a, t in texts.items() if t]
 
     def _entries(self) -> tuple[CompletedAction, ...]:
@@ -114,18 +115,11 @@ class SpeechGuard:
         return tuple(entry for entry in self.record.entries() if is_recorded(entry))
 
     def _claim_phrases(self) -> tuple[dict[str, tuple[str, ...]], tuple[str, ...]]:
-        """Each action's claim phrases in the reply's language, and those that claim any
-        action, read once a reply."""
+        """Each action's claim phrases, and those that claim any action, every language's
+        whatever the reply's, read once a reply."""
         if self._phrases is None:
-            tag = self.language
-            code: LanguageCode = "en" if tag == "en" else "ar"
-            claims = {
-                action.name: action.claims.for_language(tag)
-                for action in self.actions
-                if action.claims.covers(tag)
-            }
-            extra = self.settings.claims.get(code, ())
-            self._phrases = claims, (*rule_a.default_claims(code), *extra)
+            claims = {a.name: rule_a.every_language(a.claims.phrases) for a in self.actions}
+            self._phrases = claims, rule_a.any_action_claims(self.settings.claims)
         return self._phrases
 
 

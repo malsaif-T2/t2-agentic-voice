@@ -41,17 +41,19 @@ words, its `yes` alone or to a send word alone asked again. Its `no` is declined
 correction, and anything else, no answer included, is asked again. An agent that does not ask
 takes `decide`'s answer as is.
 
-**The echo rail** (the owner's third ruling, 2026-11-10): words that copy the agent's own line,
-a run of its words in their order, are its echo only when the speech began while that line was
-heard: while its reply played, or within its tail after it ended, the drop rule's window
-(`DROP_AFTER_S` after a reply's end, none after the caller's own stop), the agent's voice leaked
-past the browser's echo cancellation. Over the closing question (by the receipt), or as the
-session tells it (`SaidLines.over_read_back`), that is the read-back's summary and question; as
-the session tells it of a line that asked it again (`SaidLines.over_asked_again`), the ask-again
-line; each True when the session cannot tell. Speech begun when none of them was heard cannot be
-the agent's echo, so a caller who answers arsilha once the question and its tail ended can send.
-Only the rail's window has the tail: a yes over the closing question is still one whose speech
-began before the question ended (`question_ended_at`, the receipt's).
+**The echo rail** (the owner's third ruling, 2026-11-10): words that copy the agent's own lines,
+read as the interruption rule reads its own words heard back (every word a word of the lines
+heard, or one edit from one of three letters or more), are its echo only when the speech began
+while those lines were heard: while its reply played, or within its tail after it ended, the
+drop rule's window (`DROP_AFTER_S` after a reply's end, none after the caller's own stop), the
+agent's voice leaked past the browser's echo cancellation. Over the closing question (by the
+receipt), or as the session tells it (`SaidLines.over_read_back`), that is the read-back's
+summary and question; as the session tells it of a line that asked it again
+(`SaidLines.over_asked_again`), the ask-again line; each True when the session cannot tell.
+Speech begun when none of them was heard cannot be the agent's echo, so a caller who answers
+arsilha once the question and its tail ended can send. Only the rail's window has the tail: a
+yes over the closing question is still one whose speech began before the question ended
+(`question_ended_at`, the receipt's).
 """
 
 from __future__ import annotations
@@ -74,6 +76,7 @@ from t2_agentic_voice.core.yes_inputs import (
 )
 from t2_agentic_voice.domain.consent_check import ConsentAnswer
 from t2_agentic_voice.domain.interruption_words import QUESTION_MARKS
+from t2_agentic_voice.domain.interruptions import own_words
 from t2_agentic_voice.domain.words import rule_form
 from t2_agentic_voice.domain.yes_words import ConsentWords
 
@@ -279,17 +282,13 @@ def _marked(text: str, markers: tuple[str, ...]) -> bool:
 
 
 def _echoes(text: str, playing: Sequence[str]) -> bool:
-    """Whether `text`, in the rule's form, is a run of the words of one of the agent's own
-    lines `playing` as the speech began, in their order: its read-back heard back, never the
-    caller's answer."""
+    """Whether `text`, in the rule's form, is the agent's own words, its lines `playing` as the
+    speech began read together as the interruption rule reads the clauses that played
+    (domain/interruptions.py's `own_words`): every word a word of them, or one edit from one of
+    three letters or more. Its read-back heard back, across two lines or a letter off, never
+    the caller's answer."""
     heard = text.split()
-    if not heard:
-        return False
-    for line in playing:
-        spoken = rule_form(line).split()
-        if any(spoken[at : at + len(heard)] == heard for at in range(len(spoken))):
-            return True
-    return False
+    return bool(heard) and own_words(heard, [rule_form(line) for line in playing])
 
 
 def _playing(said: SaidLines, *, over: bool) -> tuple[str, ...]:

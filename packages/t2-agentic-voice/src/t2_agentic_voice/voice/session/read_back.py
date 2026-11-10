@@ -14,10 +14,12 @@ transport's `ClausePlayed` reports, never the browser's `playback` message.
   (the interruption rule's stop and wait words) over the read-back, or real words over its
   summary, stop it (`cut_by`): no receipt, the confirming state ends and nothing is sent; the
   turn reaches the talker, its stop word included, the action declined as `stopped` after a
-  stop or pause word and as a `correction` after real words (`declined`), so the talker asks
-  what to change in its own words, its draft kept; and only a
-  new read-back played in full can earn a yes. A repeat request over it, or said whole while it
-  is confirming, has the session say it again (`again`, `read_again`), the earlier one void.
+  stop or pause word and as a `correction` after real words (`handed`), so the talker asks
+  what to change in its own words, its draft kept; and only a new read-back played in full can
+  earn a yes. A turn begun in the gap before its first audio is no overlap, and the summary
+  plays on over it; its words reaching the talker decline it as a `correction` all the same
+  (`handed`). A repeat request over it, or said whole while it is confirming, has the session
+  say it again (`again`, `read_again`), the earlier one void.
   Other words over the closing question are the yes rule's. The client's `stop` while it plays,
   its reply ending before its summary played whole, and the call's end end it too.
 - **The receipt** (`receipt`), built only when the yes rule is called, so a verdict landing late
@@ -185,7 +187,7 @@ class Confirming:
 
     def decline(self, turn_id: TurnId, kind: DeclineKind) -> None:
         """The caller's turn `turn_id` declined the current read-back, as `kind`: confirming
-        ends, and the turn reaches the talker with the action declined so (`declined`)."""
+        ends, and the turn reaches the talker with the action declined so (`handed`)."""
         read_back = self.read_back
         if read_back is not None:
             self._declined[turn_id] = (read_back.plan.action, kind)
@@ -261,7 +263,7 @@ class Confirming:
         """An overlap of the caller's turn `turn_id`, begun over reply `reply_id` at `speech_at`,
         stops the agent for `verdict`: over the current read-back or a line that asked it again,
         a repeat request has it said again (`again`), a stop or pause word declines it as
-        stopped, and real words over its summary as a correction (`declined`), the turn's words
+        stopped, and real words over its summary as a correction (`handed`), the turn's words
         going to the talker; either ends it. Real words over the closing question, or over a
         line that asked it again, leave it to the yes rule."""
         read_back = self.read_back
@@ -289,10 +291,15 @@ class Confirming:
         """Whether the caller's turn `turn_id` stopped a read-back."""
         return turn_id in self._declined
 
-    def declined(self, turn_id: TurnId, *, words: str) -> DeclinedAction | None:
+    def handed(self, turn_id: TurnId, *, words: str) -> DeclinedAction | None:
         """The action the caller's turn `turn_id`, its words `words`, declined, as the talker
         learns of it: a `no`, a `correction`, or `stopped` (a stop or pause word), so it
-        answers in its own words; None when the turn declined none."""
+        answers in its own words; None when the turn declined none. A turn handed to the talker
+        while a read-back is current began before its summary ended, or has no time (in the gap
+        before its first audio, the summary playing on over it), so it declines it first, as a
+        correction: confirming ends, and no later yes confirms a draft the caller spoke over."""
+        if turn_id not in self._declined:
+            self.decline(turn_id, "correction")
         found = self._declined.get(turn_id)
         if found is None:
             return None

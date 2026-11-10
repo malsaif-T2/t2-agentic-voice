@@ -331,7 +331,7 @@ Under the default `interruptions.mode` (`two_step`), with the example's helper:
 | 4 | Over the summary: a yes, a send word or a listening sound is ignored, and counts for nothing. A stop or pause word over the read-back ends it: nothing is sent, and the talker asks what to change, its draft kept. Other words that stop the summary decline it as a correction. A request to hear it again says it again | The read-back, playing on or said again; or the talker |
 | 5 | The caller answers. A turn begun once the summary has played whole goes to the yes rule, not to the talker ("The caller's yes", below) | |
 | 6 | **A yes.** The `sending` line is said, and the write starts as a job of its own: its outbox row is written, then your function is called with the draft the caller heard, within `timeout_s`. Neither a stop nor the call's end cuts it | `sending` |
-| 7 | **The outcome**, once the write ends, said once at the next turn boundary: when no reply is playing and every turn of the caller's has closed, so never over the caller. Observers get `ActionCompleted` or `ActionUnconfirmed` | `done`, `failed` or `unknown` |
+| 7 | **The outcome**, once the write ends, said once at the next turn boundary: when no reply is playing, every turn of the caller's has closed, and no other action's read-back waits for its answer, so never over the caller, and never between a closing question and its answer, where a "yes" to the outcome would confirm the other action. Observers get `ActionCompleted` or `ActionUnconfirmed` | `done`, `failed` or `unknown` |
 
 The answers that are not a yes:
 
@@ -529,8 +529,10 @@ What the output guard needs from a status tool (its claim rule, for an agent wit
 
 - **A sentence that claims the action** ("booked your callback", or one of the library's
   default phrases such as "I have booked") is spoken only when this call's record holds the
-  action, or a tool whose `reports_on` names it returned a result that succeeded. A failed
-  result (a `ToolError`), a passage, or any other tool's result is no evidence of a claim.
+  action, or a tool whose `reports_on` names it returned a result that succeeded and holds an
+  ID-shaped number, so return each record's number, or its last digits. A failed result (a
+  `ToolError`), a result that found nothing, a passage, or any other tool's result is no
+  evidence of a claim.
 - **Every ID-shaped number in such a sentence** must be in that evidence: the action's own
   results in this call, or the status tool's results. A number the caller said, or a passage
   holds, does not count there.

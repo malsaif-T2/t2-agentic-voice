@@ -166,6 +166,29 @@ def test_the_ask_again_line_heard_back_as_it_plays_is_its_echo(text: str, speech
     assert _sends(_judged("send", text, AFTER))  # said once it ended
 
 
+@pytest.mark.parametrize(
+    ("text", "asking"),
+    [
+        ("the projector is broken, shall I send it", False),  # the summary's end into the question
+        ("الغرفة أرسل الطلب", False),  # al-ghurfa arsil aT-Talab: the same, in Arabic
+        ("shall I sent it", False),  # a word one letter off
+        ("سجل الطلب", True),  # sajjil at-talab: «asajjil at-talab» with its first letter clipped
+        ("سجل", True),  # sajjil: register, the same word alone
+    ],
+)
+@pytest.mark.parametrize("word", ["send", "yes"])
+def test_the_agents_words_heard_back_across_its_lines_or_one_letter_off_are_its_echo(
+    text: str, asking: bool, word: ModelWord
+) -> None:
+    """Invariant 1: the rail reads the lines still heard as the interruption rule reads the
+    clauses that played (domain/interruptions.py's `own_words`): every word heard a word of
+    those lines together, or one edit from one of three letters or more, so an echo that runs
+    across two lines, or that Whisper writes a letter off, confirms nothing whatever the model
+    says; over the closing question, or over the ask-again line (`asking`)."""
+    speech_at = AFTER if asking else OVER_QUESTION
+    assert _judged(word, text, speech_at, asking=asking) == AskAgain()
+
+
 @pytest.mark.parametrize("text", ["send it", "أرسلها", "توكل"])
 def test_words_that_copy_no_ask_again_line_send_while_it_plays(text: str) -> None:
     assert _sends(_judged("send", text, AFTER, asking=True))

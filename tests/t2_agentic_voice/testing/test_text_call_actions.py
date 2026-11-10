@@ -307,7 +307,7 @@ def test_a_claim_is_a_violation_unless_a_record_or_a_status_backs_it(
     assert found.startswith("turn 0 claimed book_visit with no record") and "7303" in found
     asked = {call["clause"]: call for call in claimed.calls}
     backing = asked[f"Your {CLAIM}, number 5101."]
-    assert backing["claims"] == {"book_visit": (CLAIM,)}
+    assert backing["claims"] == {"book_visit": (CLAIM, "booked")}  # every language's
     assert backing["any_action"] == ("i've booked",)
     assert [(e.action, "5101" in e.texts) for e in backing["evidence"]] == [("book_visit", True)]
 

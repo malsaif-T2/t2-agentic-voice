@@ -312,7 +312,7 @@ The quickstart's callback, in English:
 | 3 | The read-back plays, rendered from your template, never from the model's words: its summary ("I'll ask the Olaya branch to call you back about: my order did not arrive."), then its closing question ("Shall I send it?"). The call is `confirming`, which the client shows while nothing plays. The talker learns only that its call is being read back | the session; `ReadBack` |
 | 4 | The caller answers. Their words go to the yes rule, not to the talker | the yes rule (below) |
 | 5 | On a yes, the agent says the `sending` line ("Sending it now, just a few seconds."), and the write starts as a job of its own: first a row with the write's request ID goes into the outbox, then your function runs with the draft the caller heard | the action job; the outbox |
-| 6 | Your function returns. The call's record gains the action, and the `done` line, filled from the real result ("Done, your callback number is 4101.", the number said digit by digit), is said at the next turn boundary: no reply playing, and no turn of the caller's open | the record; `done` |
+| 6 | Your function returns. The call's record gains the action, and the `done` line, filled from the real result ("Done, your callback number is 4101.", the number said digit by digit), is said at the next turn boundary: no reply playing, no turn of the caller's open, and no other read-back waiting for its answer | the record; `done` |
 
 ### The caller's answer
 
@@ -359,10 +359,11 @@ with `past_actions(name)`: a view, which proves no claim.
 The output guard reads the record, for an agent that declares an action:
 
 - **A claim needs the record.** A clause that claims an action is spoken only when the record
-  holds that action, or a tool declared with `reports_on` naming it succeeded in this call (a
-  status lookup, say). A claim is one of the action's own `claims` phrases ("booked your
-  callback"), or one of the library's short default list, which claims any action ("I've
-  booked", «تم حجز», «سجلت لك»; `guard.claims` adds to it). Otherwise the clause is blocked, as
+  holds that action, or a tool declared with `reports_on` naming it succeeded in this call with
+  an ID-shaped number in its result (a status lookup that found one, say). A claim is one of the
+  action's own `claims` phrases ("booked your callback"), or one of the library's short default
+  list, which claims any action ("I've booked", «تم حجز», «سجلت لك»; `guard.claims` adds to it),
+  in any of the agent's languages whatever the reply's. Otherwise the clause is blocked, as
   a number with no evidence is (above), and observers get `GuardBlocked` with the reason
   `unsupported_claim`.
 - **A claim's numbers must be that action's.** Every ID-shaped number in a claiming clause must

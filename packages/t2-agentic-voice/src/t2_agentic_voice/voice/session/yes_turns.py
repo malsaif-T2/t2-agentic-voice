@@ -110,7 +110,14 @@ class YesTurns:
         self._setup, self._speaker, self._confirming = setup, speaker, confirming
         self._receipt, self._talk = receipt, talk
         self.jobs = ActionJob(
-            setup, books, speaker=speaker, turns=turns, guarded=guarded, sync=sync, over=over
+            setup,
+            books,
+            speaker=speaker,
+            turns=turns,
+            confirming=confirming,
+            guarded=guarded,
+            sync=sync,
+            over=over,
         )
         self.asks = YesAsks(
             setup,

@@ -11,7 +11,8 @@ replies (`Memory`).
 - **Results.** Each result, as it comes: `ToolEnded`, its data and evidence kept as the output
   guard's evidence for the rest of the call, and its card shown once the guard passed its text.
   A result that succeeded, of a tool whose `reports_on` names actions, is kept as the evidence
-  of claims about those actions too (rule A), and no other tool's result is.
+  of claims about those actions too (rule A, which takes it only when it holds an ID-shaped
+  token: agent/speech_guard.py), and no other tool's result is.
 - **Actions** (the design's 6.4). A call of one of the agent's actions goes to the action
   runner's `propose`, in the reply's scope, and writes nothing: its read-back (`plan`, one a
   reply) goes to the session, and the model reads only that it is being read back

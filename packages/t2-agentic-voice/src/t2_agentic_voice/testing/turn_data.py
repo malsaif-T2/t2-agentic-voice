@@ -31,14 +31,20 @@ class HeardClause(_Data):
     """One clause of the turn's reply as the caller heard it: its text, as the output guard let
     it through and the fake text-to-speech played it; its language; what became of it, and the
     share of its audio that played (1 played, 0 unplayed, the share when cut: core/conversation.py's
-    `SaidClause`); and whether it was a fixed phrase from the phrase cache (`phrase`: a progress
-    line, or the guard's line said in a blocked clause's place) rather than the talker's words."""
+    `SaidClause`); whether it was a fixed phrase from the phrase cache (`phrase`: a progress
+    line, or the guard's line said in a blocked clause's place) rather than the talker's words;
+    and whether it was a line of the runtime's own for an action (`template`: a read-back's
+    summary or closing question, an ask-again, `declined`, `sending` or an outcome's line), the
+    agent's template filled with the draft's or the result's values, which the output guard
+    never checks (testing/text_read_back.py), so a runner reads the talker's register without
+    it."""
 
     text: str
     language: LanguageTag
     fate: ClauseFate
     played_fraction: float = Field(ge=0, le=1, allow_inf_nan=False)
     phrase: bool = False
+    template: bool = False
 
     @model_validator(mode="after")
     def _share_of_its_fate(self) -> Self:

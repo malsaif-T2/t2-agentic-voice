@@ -133,7 +133,7 @@ def judge(
     questions = QUESTION_WORDS[overlap.language]
     stops = _of_kinds(tokens, kinds, "stop", "wait")
     echo = 0 < len(stops) < len(tokens) and _said_back(stops, spoken)
-    if echo and _own_words(heard, spoken):
+    if echo and own_words(heard, spoken):
         return _goes_on("own_words")
     if stops or _noisy_stop(tokens, kinds, questions):
         return Verdict(action="stop", kind="stop", reason="stop_word")
@@ -142,7 +142,7 @@ def judge(
         if any(_said_back((form,), spoken, after_and=True) for form in forms):
             return _goes_on("own_words")
         return Verdict(action="repeat", kind="new_words", reason="repeat_word")
-    if _own_words(heard, spoken):
+    if own_words(heard, spoken):
         return _goes_on("own_words")
     if all("backchannel" in kind for kind in kinds):
         return _goes_on("listening")
@@ -290,9 +290,10 @@ def _opens_with_question(first: str, questions: Collection[str]) -> bool:
     return first in questions or (first.startswith(_AND) and first[1:] in questions)
 
 
-def _own_words(heard: Sequence[str], spoken: Iterable[str]) -> bool:
+def own_words(heard: Sequence[str], spoken: Iterable[str]) -> bool:
     """Whether every word of `heard` is the agent's own: a word of the `spoken` clauses (in the
-    rule's form), or one edit from one when it has at least `_FUZZY_LETTERS` letters."""
+    rule's form), or one edit from one when it has at least `_FUZZY_LETTERS` letters. Step 4's
+    test, and the yes rule's echo rail (domain/yes_rule.py's `judged`)."""
     said = {word for text in spoken for word in text.split()}
     return bool(said) and all(
         word in said

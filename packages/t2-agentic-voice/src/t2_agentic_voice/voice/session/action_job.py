@@ -12,8 +12,10 @@
   for `done`, `ActionUnconfirmed` for `failed` or `unknown`; and its line, the action's own
   template the runner rendered (`ActionOutcome.line`), is kept until the next turn boundary
   (`flush`): no reply in progress, every turn of the caller's closed and none awaiting its
-  transcript, so it is never said over the caller and follows the `sending` line. It is said
-  once, as a reply of its own that answers no turn. A job that raises (a failed write is an
+  transcript, and no read-back waiting for its answer (read_back.py's `Confirming`), so it is
+  never said over the caller, nor between another action's closing question and the caller's
+  answer, where a yes to it would confirm that action; it follows the `sending` line. It is
+  said once, as a reply of its own that answers no turn. A job that raises (a failed write is an
   outcome, never an exception, so only a bug does) is logged by its kind and told as the
   `error` notice; an outcome that lands once the call has ended or is ending is not said, and
   is logged by its action and kind alone.
@@ -35,6 +37,7 @@ from t2_agentic_voice.domain.ports.action_jobs import ActionOutcome
 from t2_agentic_voice.domain.yes_rule import ConfirmedAction
 from t2_agentic_voice.voice.session.books import CallBooks
 from t2_agentic_voice.voice.session.io import CallSetup
+from t2_agentic_voice.voice.session.read_back import Confirming
 from t2_agentic_voice.voice.session.speaker import Speaker
 from t2_agentic_voice.voice.session.talker_play import Guarded
 from t2_agentic_voice.voice.session.turn_book import TurnBook
@@ -57,9 +60,9 @@ class _Due:
 
 class ActionJob:
     """One call's confirmed actions' writes (the module's docstring), each outcome said by
-    `speaker` at a boundary of the turns `turns` keeps, landed as a step `guarded` runs, the
-    client's state then brought up to date by `sync`; `over` says whether the call has ended or
-    is ending."""
+    `speaker` at a boundary of the turns `turns` keeps, the call's `confirming` state not
+    waiting for an answer, landed as a step `guarded` runs, the client's state then brought up
+    to date by `sync`; `over` says whether the call has ended or is ending."""
 
     def __init__(
         self,
@@ -68,11 +71,13 @@ class ActionJob:
         *,
         speaker: Speaker,
         turns: TurnBook,
+        confirming: Confirming,
         guarded: Guarded,
         sync: Callable[[], Awaitable[None]],
         over: Callable[[], bool],
     ) -> None:
         self._setup, self._speaker, self._turns = setup, speaker, turns
+        self._confirming = confirming
         self._history, self._guarded, self._sync, self._over = books.history, guarded, sync, over
         self._started: set[ReplyId] = set()  # the read-backs whose confirmed action was started
         self._due: list[_Due] = []
@@ -181,7 +186,9 @@ class ActionJob:
         self._due.clear()
 
     def _boundary(self) -> bool:
-        """Whether no reply is in progress, and every turn of the caller's has closed, none of
-        them with its transcript still awaited."""
+        """Whether no reply is in progress, every turn of the caller's has closed, none of them
+        with its transcript still awaited, and no read-back waits for its answer."""
         turns = self._turns
-        return not self._speaker.playback.in_progress() and turns.all_closed and not turns.awaited
+        if self._confirming.active or self._speaker.playback.in_progress():
+            return False
+        return turns.all_closed and not turns.awaited

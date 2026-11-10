@@ -472,6 +472,49 @@ may judge a yes in words no list holds, within rails the yes rule keeps.
   `safety.md` and `testing.md` (the closing question's yes rail, "pardon?" a correction, no yes
   word in a closing question, an action's caller from `ctx.caller`; a check that runs out fails
   no test, the echo rail's condition). What the writers found in the code and the design: TD-143.
+- 2026-11-10: Two of the whole-code review's consent findings fixed, each test first. A turn
+  begun in the gap before a read-back's first audio, the summary playing whole over it, reached
+  the talker with no decline and left the read-back current, so a later bare yes confirmed the
+  old draft: a turn handed to the talker while a read-back is current now declines it as a
+  `correction` (`Confirming.handed`; `test_yes_turns.py`, the question played or still playing).
+  The echo rail read only an exact run of one line's words, so an echo across the summary's end
+  into the question, or a word one letter off («سجل الطلب» for «أسجل الطلب»), confirmed on the
+  model's `send`: it now reads the lines heard as the interruption rule reads its own words
+  (`interruptions.own_words`; `test_yes_rule_send_alone.py`). D-081, D-082, the design's 8.3 and
+  the guide's `safety.md` and `testing.md` updated.
+- 2026-11-10: Two of the whole-code review's claim findings fixed, each test first. A
+  `reports_on` result that succeeded backed any claim about its actions, so after a status that
+  found nothing (Ole5's `ticket_status` with no ticket, or digits that match none) "I've opened a
+  ticket" or «تم فتح التذكرة» was said with no ticket: such a result now backs a claim only when
+  it holds an ID-shaped token (`claims.holds_an_id`, in `SpeechGuard` and `TextCall`'s checks
+  alike). Rule A read only the reply language's phrases, so a claim the model wrote in its other
+  language passed with no record, a passage's made-up ticket number with it: both now read every
+  language's (`claims.every_language`, `any_action_claims`), and `SpeechGuard` takes no
+  language. `test_talker_claim_evidence.py`, `test_text_call_claims.py`,
+  `test_action_call_claims.py`, `test_claims.py` and Ole5's `test_ticket_claims.py`, in both
+  languages; D-081, the design's 8.2 and the guide's `safety.md`, `concepts.md` and
+  `tools-and-actions.md` updated. The stricter rule the review proposed, a status backing only a
+  claim that names a number it holds, is the owner's call: TD-144.
+- 2026-11-10: Two of the whole-code review's session findings fixed, each test first, on the real
+  yes rule (`test_yes_turns_between.py`). The gap turn's decline (`Confirming.handed`, above) is
+  now tested on the real rules with its early start too: a turn begun before the read-back's
+  first audio whose `held` transcript starts the talker once the read-back ended declines it as
+  a correction. An earlier action's outcome landing while a second read-back waited for its
+  answer was said straight after that read-back's closing question, so the caller's "yes" or
+  "yeah thank you" to the outcome confirmed the second action: an outcome now waits for no
+  read-back being current too (`ActionJob._boundary`, given the call's `Confirming`), and is said
+  once the answer's reply has played. The guide's `tools-and-actions.md` and `concepts.md` and
+  the design's action flow updated.
+- 2026-11-10: The whole-code review's run A scoring finding confirmed: Ole5's read-back and
+  action lines are Saudi only (TD-139), and run A asks the judge the register of a reply's every
+  clause but the fixed phrases, so each MSA turn answered by a read-back (a07, a13 and a37 in
+  dev; a02, a12, a20 and a26 in held-out) fails its register whatever the model wrote, and the
+  language target cannot be met. The owner had already ruled on it (MSA read-backs, the check as
+  registered: The owner's decisions), so the fixer's change to the scoring, the register asked
+  of the talker's words alone, was withdrawn; Ole5's MSA lines are built with the rulings. Kept
+  from it: `TextTurn.clauses` marks each line of the runtime's own for an action
+  (`HeardClause.template`, read as the call's checks read them, `text_actions.own_lines`;
+  `test_text_turn_lines.py`), and the guide's `testing.md` names it.
 
 ## Decision log
 

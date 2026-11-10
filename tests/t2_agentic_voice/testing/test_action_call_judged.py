@@ -185,8 +185,7 @@ def test_over_the_ask_again_line_only_its_own_words_are_its_echo(
     words: Words, said: dict[str, str], over: bool, answer: Answer
 ) -> None:
     """A hesitation asked again; then words said over the line that asks again, or once it
-    ended, each judged `send`: only a run of that line's words, heard as it plays, is its
-    echo."""
+    ended, each judged `send`: only that line's own words, heard as it plays, are its echo."""
     backend, heard = Backend(), said[words.tag]
     judged = {HESITATION[words.tag]: say("unclear"), heard: say("send")}
     llm = model({words.request: call_action(words.note)}, judged=judged)

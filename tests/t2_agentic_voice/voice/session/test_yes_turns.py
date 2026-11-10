@@ -7,9 +7,10 @@ plain no and a correction reach the talker with the action declined as that kind
 answers in its own words; an unclear answer is asked again at most `max_attempts` times, then
 the declined line ends it; with no `ActionJobs` a yes is told as the `error` notice and nothing
 is sent; a stop or pause request said whole while confirming declines it, the talker asking what
-to change; a turn that answers the read-back starts no talker early; and the turn book, the
-history and the next talker turn hold the read-back, the sending line and the outcome as they
-hold any reply. The yes rule and the port are the tests' fakes (yes_support.py)."""
+to change; a turn begun in the gap before the read-back's first audio declines it as a correction
+when its words reach the talker; a turn that answers the read-back starts no talker early; and
+the turn book, the history and the next talker turn hold the read-back, the sending line and the
+outcome as they hold any reply. The yes rule and the port are the tests' fakes (yes_support.py)."""
 
 from __future__ import annotations
 
@@ -41,6 +42,8 @@ from tests.t2_agentic_voice.voice.session.read_back_support import (
     QUESTION,
     REQUEST,
     SUMMARY,
+    asked,
+    clause,
 )
 from tests.t2_agentic_voice.voice.session.session_support import emitted, sent, speaks
 from tests.t2_agentic_voice.voice.session.talker_support import settle, talked
@@ -202,6 +205,44 @@ def test_a_stop_request_said_whole_while_confirming_declines_it_and_the_talker_a
     handed = talker.turns[1]
     assert handed.declined == DeclinedAction(action=ACTION, kind="stopped", words=STOP_WORD)
     assert jobs.runs == [] and not session._confirming.active
+
+
+@pytest.mark.parametrize("question", ["played", "playing"])
+def test_a_turn_begun_before_the_summary_that_reaches_the_talker_declines_the_read_back(
+    settings: VoiceSettings, yes_rule: FakeYesRule, question: str
+) -> None:
+    """Invariant 1: a turn said in the gap before the read-back's first audio is no overlap,
+    and the summary plays whole over it; its words reach the talker with the action declined as
+    a correction, confirming ends (the question cut or played), and a later bare yes is the
+    talker's, never a yes to the old draft."""
+    jobs = FakeJobs()
+    io, session, talker = confirm_call(settings, jobs)
+
+    async def drive() -> None:
+        await asked(io)
+        await io.turn_opened(1)  # in the gap: nothing of the read-back has played yet
+        await clause(io, 0)  # the summary plays whole over the caller
+        if question == "played":
+            await clause(io, 1)
+        else:
+            await io.synthesizing(1, 1)
+            await io.clause_queued(1, 1)
+        await io.turn_closed(1)
+        await io.transcribing(1)
+        await io.transcribed(1, CALLER_WORDS, language="en")
+        await settle()
+        assert not session._confirming.active
+        await play_reply(io, 2)
+        await io.clock.advance(1.0)
+        await talked(io, 2, YES)
+
+    asyncio.run(drive())
+    assert 1 not in io.overlaps
+    handed = talker.turns[1]
+    assert handed.turn_id == 1
+    assert handed.declined == DeclinedAction(action=ACTION, kind="correction", words=CALLER_WORDS)
+    assert yes_rule.calls == [] and jobs.runs == []
+    assert [t.turn_id for t in talker.turns] == [0, 1, 2]  # the bare yes went to the talker
 
 
 def test_a_turn_that_answers_the_read_back_starts_no_talker_in_its_hold(

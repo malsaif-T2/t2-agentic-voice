@@ -268,8 +268,8 @@ class Talking:
 
     def _turn(self, turn: TurnLog, heard: HeardWords) -> TalkerTurn:
         """The turn as the talker reads it: its words whole, the language they were heard in,
-        the replies it spoke over and cut, the action it declined by stopping its read-back
-        (read_back.py), and the call before it as the caller heard it."""
+        the replies it spoke over and cut, the action it declined (a read-back still current is
+        declined by it: read_back.py's `handed`), and the call before it as the caller heard it."""
         language = heard.language
         if language is not None and len(language) not in _LANGUAGE_CHARS:
             language = None
@@ -279,7 +279,7 @@ class Talking:
             language=language,
             over_reply=turn.over_reply,
             cut_reply=turn.cut_reply,
-            declined=self._confirming.declined(turn.turn_id, words=heard.text),
+            declined=self._confirming.handed(turn.turn_id, words=heard.text),
             conversation=self._history.conversation(before=turn.turn_id),
         )
 

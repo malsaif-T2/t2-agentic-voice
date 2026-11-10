@@ -184,7 +184,6 @@ class Turn:
         self.blocked = 0
         self.guard = SpeechGuard(
             settings=settings.guard,
-            language=self.language,
             year=self.year,
             actions=() if actions is None else actions.actions,
             record=record,

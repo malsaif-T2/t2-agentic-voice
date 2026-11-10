@@ -4,8 +4,9 @@ its signature (action_talk_support.py): model text claiming the action with no r
 blocked, by its reason, with a developer note; a write the record holds supports the claim and
 its number, and no other number; a result of a tool whose `reports_on` names the action supports
 it, while another tool's result, a passage's number or a failed status result does not; the
-record's results are rule B's evidence too; the claim phrases are the reply language's, the
-settings' added to the default ones; and an agent with no actions never asks rule A."""
+record's results are rule B's evidence too; the claim phrases are every language's, whatever the
+reply's, the settings' added to the default ones; and an agent with no actions never asks rule
+A. The real rule's evidence and phrases: test_talker_claim_evidence.py."""
 
 from __future__ import annotations
 
@@ -46,6 +47,9 @@ from tests.t2_agentic_voice.agent.chat_support import FakeChat, call, calls, rep
 TURN = TalkerTurn(turn_id=1, words="Did you open my made-up request?", language="en")
 NEVER_ISSUED = "2026111082000999"
 CLAIM = f"I've opened your request {ISSUED}."
+# The action's phrases and the stand-in's defaults, every language's, whatever the reply's.
+PHRASES = {"open_request": ("فتحت الطلب", "I've opened")}
+EVERY_DEFAULT = (*ANY_ACTION["ar"], *ANY_ACTION["en"])
 
 
 @pytest.fixture
@@ -106,7 +110,7 @@ def test_model_text_claiming_the_action_with_no_record_is_blocked(rule_a: FakeCl
     assert _spoken(events) == []
     clause, phrases, any_action, evidence = rule_a.seen[0]
     assert clause == CLAIM and evidence == []
-    assert phrases == {"open_request": ("I've opened",)} and any_action == ANY_ACTION["en"]
+    assert phrases == PHRASES and any_action == EVERY_DEFAULT
     after = TalkerTurn(
         turn_id=2,
         words="hello?",
@@ -127,15 +131,15 @@ def test_the_settings_phrases_are_added_to_the_default_ones(rule_a: FakeClaims) 
     guard = GuardSettings.model_validate({"claims": {"en": ["all sorted"]}})
     settings = VoiceSettings(env="test", guard=guard)
     events = reply(acting(FakeChat(said("It is all sorted.")), settings=settings).talker, TURN)
-    assert rule_a.seen[0][2] == (*ANY_ACTION["en"], "all sorted")
+    assert rule_a.seen[0][2] == (*EVERY_DEFAULT, "all sorted")
     assert [b.reason for b in _blocked(events)] == ["unsupported_claim"]
 
 
-def test_the_claim_phrases_are_the_reply_languages(rule_a: FakeClaims) -> None:
+def test_the_claim_phrases_are_every_languages_whatever_the_replys(rule_a: FakeClaims) -> None:
     arabic = TalkerTurn(turn_id=1, words="هل فتحت الطلب حقي؟", language="ar")
     reply(acting(FakeChat(said("لحظة من فضلك."))).talker, arabic)
     _, phrases, any_action, _ = rule_a.seen[0]
-    assert phrases == {"open_request": ("فتحت الطلب",)} and any_action == ANY_ACTION["ar"]
+    assert phrases == PHRASES and any_action == EVERY_DEFAULT
 
 
 def test_a_write_the_record_holds_supports_the_claim_and_its_number_only(

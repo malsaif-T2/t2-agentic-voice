@@ -134,9 +134,13 @@ caller's words or a draft's values. The runtime's own lines (a read-back, an ask
 
 A turn also gives what it did as data, for a runner that scores rather than asserts: its `fate`,
 the `clauses` the caller heard (each with its text, language, fate and the share of it that
-played), its `tool_calls` (each tool's arguments, outcome and time; an action's call among them,
-as the model wrote it), its `cards`, its `blocked` clauses, `first_token_s` and `first_clause_s`
-(on the call's clock, [latency.md](latency.md)), its `model_requests` and its `usage`.
+played; `phrase` when it was a fixed phrase, and `template` when it was one of the runtime's own
+lines for an action, a read-back's summary or closing question, an ask-again, `declined`,
+`sending` or an outcome's line, so a runner can tell the talker's words from the agent's
+template), its `tool_calls` (each tool's arguments, outcome and time; an action's
+call among them, as the model wrote it), its `cards`, its `blocked` clauses, `first_token_s` and
+`first_clause_s` (on the call's clock, [latency.md](latency.md)), its `model_requests` and its
+`usage`.
 
 ## A call with an action
 
@@ -303,11 +307,13 @@ goes to the test's model, the same one the talker writes with.
   question mark or a change word ("but", «بس») is never a yes. Over the closing question, only a
   `send` confirms, or a `yes` for a send word beside other words ("come on, send it"); a `yes`
   for words with no send word, or for a send word said alone, is asked again.
-- **The echo rail.** Words that copy the agent's own line, a run of its words in their order,
-  are never a yes when the caller's speech began while the agent was saying that line, or
-  within 300 ms after it ended (none after the client's Stop): the read-back's summary or
-  closing question, for speech begun while the read-back played or within 300 ms after it, and
-  the ask-again line, for speech begun while it played or within 300 ms after it. Words begun
+- **The echo rail.** Words that copy the agent's own lines (every word a word of them, or one
+  letter off for a word of three letters or more, so "the printer is broken, shall I sent it"
+  copies a summary and its question) are never a yes when the caller's speech began while the
+  agent was saying those lines, or within 300 ms after they ended (none after the client's
+  Stop): the read-back's summary and closing question, for speech begun while the read-back
+  played or within 300 ms after it, and the ask-again line, for speech begun while it played or
+  within 300 ms after it. Words begun
   later are judged like any other words, so "send it", said more than 300 ms after "Shall I
   send it?" ended (as `call.user(text)` says it), confirms on the model's `send` or `yes`.
 - **No word is asked again, and fails nothing.** A check whose fake raises anything, a

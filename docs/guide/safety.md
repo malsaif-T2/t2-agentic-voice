@@ -58,7 +58,7 @@ and only its start tells it apart.
 
 | The caller began to speak | What it is |
 | --- | --- |
-| Before the summary's last clause finished playing | Never an answer. Yes words, send words, fillers and listening sounds only: ignored, and the summary plays on. A stop or pause word ("stop", «وقف», "wait"): the read-back stops, nothing is sent, and the talker asks what to change, keeping the draft. Other words that stop it (as the interruption rule decides, [concepts.md](concepts.md)): a correction, handed to the talker. A repeat request: the read-back is said again |
+| Before the summary's last clause finished playing | Never an answer. Yes words, send words, fillers and listening sounds only: ignored, and the summary plays on. A stop or pause word ("stop", «وقف», "wait"): the read-back stops, nothing is sent, and the talker asks what to change, keeping the draft. Other words that stop it (as the interruption rule decides, [concepts.md](concepts.md)): a correction, handed to the talker. A repeat request: the read-back is said again. A turn begun before the read-back's first audio, which then plays on over it: handed to the talker as a correction, so a later yes confirms nothing until a new read-back plays |
 | After the summary, while the closing question plays | An answer **over the closing question**: a yes needs a send word beside it |
 | After the closing question's last clause played | An answer: a yes word is enough |
 
@@ -221,9 +221,10 @@ A `send` or a `yes` is not a yes when:
 2. the words hold a change marker ("but", "change", "instead", "except", "actually", "rather";
    «بس», «لكن», «غيّر», «عدّل», «بدّل», «بدال», «خلها», each also after waw): a correction, so
    "yes, but make it urgent" is never a yes;
-3. the words are the agent's own, heard back: a run of the words of the summary, the closing
-   question or the asked-again line, in their order ("send it", from "Shall I send it?"):
-   asked again. This holds only for speech begun while one of those lines was playing, or
+3. the words are the agent's own, heard back: every word a word of the summary, the closing
+   question or the asked-again line, or one letter off for a word of three letters or more
+   ("send it", from "Shall I send it?"; "the printer is broken, shall I sent it", across the
+   summary's end): asked again. This holds only for speech begun while one of those lines was playing, or
    within 300 ms after it ended (none after the client's Stop), while the agent's voice may
    still come back through the speakers: speech begun later cannot be its echo;
 4. the answer was said over the closing question, and the model said `yes`, agreement only:
@@ -265,11 +266,12 @@ without actions; [concepts.md](concepts.md) has it in full ("The output guard's 
 
 It runs only for an agent that declares at least one action.
 
-**A claim phrase** is one of these, matched as whole words on the normalized clause, and also
+**A claim phrase** is one of these, in any of your languages whatever the reply's (a model may
+write a claim in its other language), matched as whole words on the normalized clause, and also
 after waw or feh written onto its first word («وتم»):
 
-- **the action's own `claims`**, in the reply's language, which claim that action (the
-  example's "callback is booked", "booked your callback");
+- **the action's own `claims`**, which claim that action (the example's "callback is booked",
+  "booked your callback");
 - **the library's default list**, which claims any action: past-tense phrases, mostly first
   person, such as "I've created", "I have submitted", "has been registered", "successfully
   sent", «تم إنشاء» ("it was created"), «تم تسجيل طلبك» ("your request was registered") and
@@ -282,7 +284,8 @@ after waw or feh written onto its first word («وتم»):
 - the result of that action's write, completed in this call (the call's record, whose entries
   only the library's action runner makes);
 - a result that succeeded, in this call, of one of your tools declared with
-  `reports_on=["that_action"]`, such as a status tool.
+  `reports_on=["that_action"]`, such as a status tool, when it holds an ID-shaped number (or a
+  match of `guard.id_patterns`). A status that found nothing holds none, and backs no claim.
 
 A passage, the caller's words, or any other tool's result is no evidence of a claim. A clause
 with a default phrase passes when some action has evidence.

@@ -2,9 +2,10 @@
 checks (`TurnExpectations`, an action's among them: testing/text_actions.py) and what it did as
 data (`TextTurn`, testing/turn_data.py's shapes), each read from the call as it now stands
 (testing/text_reads.py): the session's heard history and its replies, the commands it gave (each
-clause's language, and whether it was a fixed phrase), and what the call watched of its talker,
-its tools and the part that acts (testing/text_watch.py). Every time is in seconds on the call's
-clock, from the moment the turn's words were handed to the session.
+clause's language, and whether it was a fixed phrase), the runtime's own lines for an action
+(text_actions.py's `own_lines`, a clause that says one marked `template`), and what the call
+watched of its talker, its tools and the part that acts (testing/text_watch.py). Every time is
+in seconds on the call's clock, from the moment the turn's words were handed to the session.
 """
 
 from __future__ import annotations
@@ -26,6 +27,7 @@ from t2_agentic_voice.domain.cards import Card
 from t2_agentic_voice.domain.ports.action_jobs import OutcomeKind
 from t2_agentic_voice.domain.ports.chat_model import Usage
 from t2_agentic_voice.testing import text_actions
+from t2_agentic_voice.testing.text_read_back import is_template
 from t2_agentic_voice.testing.text_reads import TextReads
 from t2_agentic_voice.testing.text_watch import TurnTalk, arguments_of
 from t2_agentic_voice.testing.turn_data import (
@@ -60,8 +62,10 @@ class TextTurn:
     @property
     def clauses(self) -> tuple[HeardClause, ...]:
         """The clauses of the turn's reply as the caller heard them, in order, fixed phrases
-        among them; a clause the guard blocked is never one."""
+        and the runtime's own lines among them, each marked so; a clause the guard blocked is
+        never one."""
         session, side = self._reads.session, self._reads.side
+        own = text_actions.own_lines(self._reads)
         found = []
         for reply in session.history.replies():
             if reply.turn_id != self.turn_id:
@@ -76,6 +80,7 @@ class TextTurn:
                         fate=clause.fate,
                         played_fraction=clause.played_fraction,
                         phrase=speak is not None and speak.audio is not None,
+                        template=is_template(clause.text, own),
                     )
                 )
         return tuple(found)

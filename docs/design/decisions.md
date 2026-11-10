@@ -2564,8 +2564,11 @@ twice; DOC-REF: every `D-NNN` cited anywhere is a heading here), so keep its sha
   - *The guard (A, B, E).* Rule B lives in `domain/guard_ids.py`, rule A in `domain/claims.py`;
     rule A runs first, and a clause it passed with a claim skips rule B. A claiming clause's
     numbers are read as rule B reads them, against the claimed action's evidence alone: its
-    completed results this call and the ok results of the tools whose `reports_on` names it.
-    Rule B's evidence gains the record's results. The default claim phrases are past-tense,
+    completed results this call and the ok results of the tools whose `reports_on` names it,
+    those holding an ID-shaped token (since plan 007's whole-code review: a status that found
+    nothing backed any claim; a stricter rule is the owner's call, TD-144). Every language's
+    phrases are read, whatever the reply's (the same review: a claim the model wrote in its
+    other language passed). Rule B's evidence gains the record's results. The default claim phrases are past-tense,
     mostly first person, none only introducing a number. A `reports_on` tool's result is
     evidence, so it echoes no argument the model chose. Rule C drops the text after an action
     call in its own request; a read-back ends the reply; after a refused call the model may speak
@@ -2585,8 +2588,10 @@ twice; DOC-REF: every `D-NNN` cited anywhere is a heading here), so keep its sha
     asked again. Real words that stop the closing question keep the receipt, so a yes with a send
     word said there counts. A stop or pause word over the read-back, or said whole while
     confirming, declines it as `stopped`, a new `DeclineKind`, the talker told to ask what to
-    change and keep the draft; real words over the summary decline it as a `correction`; a
-    repeat says it again as a new reply. A turn heard as nothing changes nothing while
+    change and keep the draft; real words over the summary decline it as a `correction`, and so
+    does a turn begun before its first audio once its words reach the talker (since plan 007's
+    whole-code review: the summary played on over it, and a later yes confirmed the old draft);
+    a repeat says it again as a new reply. A turn heard as nothing changes nothing while
     confirming. `sending` answers the yes turn, and the outcome is said once, at a turn boundary,
     as a reply that answers no turn. The session is the only sender of `ActionCompleted` and
     `ActionUnconfirmed`; the runtime's runner sends no event.
@@ -2677,9 +2682,12 @@ twice; DOC-REF: every `D-NNN` cited anywhere is a heading here), so keep its sha
     how long that is: a reply is heard while it plays and within its tail after it ended, the
     agent's voice leaked past the browser's echo cancellation (the drop rule's `DROP_AFTER_S`,
     0.3 s, plan 003's decision log; none after the caller's own stop, TD-060), so the rule's
-    "heard while the agent was speaking" is that window. Words that are a run of the words of a
-    line, in their order, are its echo when the speech began over the closing question (by the
-    receipt) or while the read-back's reply played or within its tail (the summary and the
+    "heard while the agent was speaking" is that window. Words that are the agent's own, read as
+    the interruption rule reads its words heard back (every word a word of the lines heard then,
+    taken together, or one edit from one of three letters or more: `own_words`; until plan 007's
+    whole-code review a run of one line's words in their order, which an echo running from the
+    summary into the question, or written a letter off, passed), are its echo when the speech
+    began over the closing question (by the receipt) or while the read-back's reply played or within its tail (the summary and the
     question; `Confirming.over_read_back`), or while a line that asked it again played or
     within its tail (`Confirming.over_follow_up`): the transport's reports, as the question's
     end is read, through the drop rule's own `Reply.over`; True when the session cannot tell,

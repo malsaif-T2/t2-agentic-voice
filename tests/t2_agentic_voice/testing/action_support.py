@@ -27,6 +27,7 @@ from t2_agentic_voice.core.conversation import ConversationLine
 from t2_agentic_voice.core.identity import Caller
 from t2_agentic_voice.core.settings.guard import GuardSettings
 from t2_agentic_voice.core.settings.tts import LanguageTag
+from t2_agentic_voice.domain import claims as rule_a
 from t2_agentic_voice.domain.action_declaration import Claims, ReadBack, Say
 from t2_agentic_voice.domain.action_lines import ReadBackPlan, SpokenLine
 from t2_agentic_voice.domain.claims import ActionEvidence, ClaimVerdict
@@ -232,5 +233,5 @@ def stand_in_claims(monkeypatch: pytest.MonkeyPatch) -> Claimed:
     """Track A's claim rule, stood in for in this test alone."""
     claimed = Claimed()
     monkeypatch.setattr(text_checks, "check_claims", claimed.check)
-    monkeypatch.setattr(text_checks, "default_claims", lambda code: ("i've booked",))
+    monkeypatch.setattr(rule_a, "default_claims", lambda code: ("i've booked",))
     return claimed

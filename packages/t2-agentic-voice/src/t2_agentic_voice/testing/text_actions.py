@@ -20,7 +20,7 @@ from pydantic import JsonValue
 
 from t2_agentic_voice.domain.action_lines import ReadBackPlan
 from t2_agentic_voice.domain.ports.action_jobs import OutcomeKind
-from t2_agentic_voice.testing.text_read_back import fold, forms, readings
+from t2_agentic_voice.testing.text_read_back import fold, forms, readings, templates
 from t2_agentic_voice.testing.text_reads import TextReads
 from t2_agentic_voice.testing.text_watch import JobRun, plans_of
 
@@ -105,6 +105,15 @@ def expect_asked_again(reads: TextReads, turn_id: int) -> None:
         if any(form in folded for form in forms(plan.asked_again, plan.language)):
             return
     raise AssertionError(f"turn {turn_id} was not asked again")
+
+
+def own_lines(reads: TextReads) -> frozenset[str]:
+    """The folded forms of the runtime's own lines the call may have said so far
+    (text_read_back's `templates`): each read-back's lines, and each outcome's in its
+    language."""
+    runs = () if reads.jobs is None else reads.jobs.runs
+    outcomes = [(r.outcome.line, r.given["language"]) for r in runs if r.outcome is not None]
+    return templates(plans_of(reads.watched), outcomes)
 
 
 def confirmed_by(reads: TextReads, turn_id: int) -> tuple[JobRun, ...]:

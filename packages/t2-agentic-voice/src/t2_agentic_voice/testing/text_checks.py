@@ -8,8 +8,9 @@ what the yes rule let through, so `call.violations` says what a guard or a rule 
   actions, as the output guard reads them.
 - For an agent that declares an action (plan 007), and only then, so an agent with none is
   checked as before:
-  - **Rule A** (domain/claims.py): a clause that claims an action is backed by the record or
-    by a result of a tool that `reports_on` it, every ID it holds a value of that result.
+  - **Rule A** (domain/claims.py): a clause that claims an action, in any language's phrases,
+    is backed by the record or by a result of a tool that `reports_on` it holding an ID-shaped
+    token, every ID it holds a value of that result.
   - **Rule C**: once the talker asked for a read-back, it spoke no more words of its own in
     that turn.
   - **The yes rule**: every action the session confirmed was confirmed by words begun once a
@@ -28,38 +29,31 @@ import json
 from t2_agentic_voice.actions.action import Action
 from t2_agentic_voice.agent.events import ReadBackRequested, SpokenClause, ToolEnded
 from t2_agentic_voice.core.config import VoiceSettings
-from t2_agentic_voice.core.settings.words import LanguageCode
-from t2_agentic_voice.domain.claims import ActionEvidence, check_claims, default_claims
+from t2_agentic_voice.domain.claims import (
+    ActionEvidence,
+    any_action_claims,
+    check_claims,
+    every_language,
+    holds_an_id,
+)
 from t2_agentic_voice.domain.completed_action import CompletedAction
 from t2_agentic_voice.domain.guard import check_ids
 from t2_agentic_voice.domain.yes_rule import is_confirmed
-from t2_agentic_voice.testing.text_read_back import (
-    is_template,
-    readings,
-    summary_played_at,
-    templates,
-)
+from t2_agentic_voice.testing.text_actions import own_lines
+from t2_agentic_voice.testing.text_read_back import is_template, readings, summary_played_at
 from t2_agentic_voice.testing.text_reads import TextReads
 from t2_agentic_voice.testing.text_turn import TextTurn
 from t2_agentic_voice.testing.text_watch import actions_of, plans_of
 from t2_agentic_voice.testing.turn_data import HeardClause
 
 
-def _own(reads: TextReads) -> frozenset[str]:
-    """The folded forms of the runtime's own lines the call may have said."""
-    runs = () if reads.jobs is None else reads.jobs.runs
-    outcomes = [(r.outcome.line, r.given["language"]) for r in runs if r.outcome is not None]
-    return templates(plans_of(reads.watched), outcomes)
-
-
 def _heard(reads: TextReads) -> list[tuple[int, HeardClause]]:
     """The talker's clauses the caller heard, each with its turn, but the runtime's own."""
-    own = _own(reads)
     return [
         (turn_id, clause)
         for turn_id in reads.said
         for clause in TextTurn(reads, turn_id).clauses
-        if not clause.phrase and clause.fate != "unplayed" and not is_template(clause.text, own)
+        if not clause.phrase and not clause.template and clause.fate != "unplayed"
     ]
 
 
@@ -102,14 +96,14 @@ def _rule_b(reads: TextReads, heard: list[tuple[int, HeardClause]], *, year: int
     return found
 
 
-def _evidence(reads: TextReads) -> list[ActionEvidence]:
+def _evidence(reads: TextReads, *, year: int) -> list[ActionEvidence]:
     """What backs a claim about each action: its completed results, and the results of the
-    tools that report on it."""
+    tools that report on it that hold an ID-shaped token, as the guard reads them."""
     found = [
         ActionEvidence(action=done.action, texts=(*done.evidence, done.result_json))
         for done in _completed(reads)
     ]
-    runner = reads.runner
+    runner, settings = reads.runner, reads.session.setup.settings.guard
     if runner is None:
         return found
     for request, result in runner.calls.values():
@@ -117,7 +111,8 @@ def _evidence(reads: TextReads) -> list[ActionEvidence]:
         if tool is None or result is None or not result.ok:
             continue
         texts = (*result.evidence, json.dumps(result.data, ensure_ascii=False))
-        found += [ActionEvidence(action=name, texts=texts) for name in tool.reports_on]
+        if holds_an_id(texts, settings=settings, year=year):
+            found += [ActionEvidence(action=name, texts=texts) for name in tool.reports_on]
     return found
 
 
@@ -125,13 +120,12 @@ def _rule_a(
     reads: TextReads, heard: list[tuple[int, HeardClause]], actions: tuple[Action, ...], year: int
 ) -> list[str]:
     settings: VoiceSettings = reads.session.setup.settings
-    evidence = _evidence(reads)
+    evidence = _evidence(reads, year=year)
+    # Every language's phrases, whatever the clause's, as the guard reads them.
+    claims = {a.name: every_language(a.claims.phrases) for a in actions}
+    any_action = any_action_claims(settings.guard.claims)
     found = []
     for turn_id, clause in heard:
-        tag = clause.language
-        code: LanguageCode = "en" if tag == "en" else "ar"
-        claims = {a.name: a.claims.for_language(tag) for a in actions if a.claims.covers(tag)}
-        any_action = (*default_claims(code), *settings.guard.claims.get(code, ()))
         verdict = check_claims(
             clause.text,
             claims=claims,
@@ -148,7 +142,7 @@ def _rule_a(
 
 def _rule_c(reads: TextReads) -> list[str]:
     found: list[str] = []
-    own = _own(reads)
+    own = own_lines(reads)
     talks = [] if reads.watched is None else list(reads.watched.talks.values())
     for talk in talks:
         asked = False

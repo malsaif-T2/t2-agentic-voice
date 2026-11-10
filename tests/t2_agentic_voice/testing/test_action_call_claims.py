@@ -2,10 +2,11 @@
 to end through `TextCall` (plan 007's integration; docs/SECURITY.md, invariants 2 and 6), on the
 real talker, session, guard and action runner over a `MemoryOutbox` (action_call_support.py).
 
-Model text claiming the action, in its own claim phrase or a default one, with no record is
-never said: the session emits `GuardBlocked` for an unsupported claim, and the call's checks
-stay clean. Once a write is done, a claim with the number it issued is said, and so is one a
-`reports_on` tool's status backs. A hang-up while the write runs lets it finish, once: its
+Model text claiming the action, in its own claim phrase or a default one, or in the call's other
+language, with no record is never said: the session emits `GuardBlocked` for an unsupported
+claim, and the call's checks stay clean. Once a write is done, a claim with the number it issued
+is said, and so is one a `reports_on` tool's status backs, but not a status that found nothing,
+which holds no number. A hang-up while the write runs lets it finish, once: its
 `ActionCompleted` is emitted, and its line is never said after the call's end."""
 
 from __future__ import annotations
@@ -36,13 +37,16 @@ from tests.t2_agentic_voice.testing.action_call_support import (
 )
 from tests.t2_agentic_voice.testing.action_support import Visit
 
-# A claim of each kind with no record, in each language: the action's own phrase, and a default
-# one ("I've booked"; «sajjalt lak», I registered for you).
+# A claim of each kind with no record, in each language: the action's own phrase, a default one
+# ("I've booked"; «sajjalt lak», I registered for you), and the action's own phrase in the
+# call's other language, as a model drifting into it writes it.
 CLAIMS: dict[tuple[LanguageTag, str], str] = {
     ("en", "own"): "Your visit is booked.",
     ("en", "default"): "I've booked it for you.",
+    ("en", "other"): "حجزت لك الغرفة.",
     ("ar-SA", "own"): "حجزت لك الغرفة.",  # Hajazt lak al-ghurfa: I booked you the room
     ("ar-SA", "default"): "سجلت لك الزيارة.",  # sajjalt lak az-ziyaara: I registered the visit
+    ("ar-SA", "other"): "Your visit is booked.",
 }
 ASKED = {"en": "Is my visit booked?", "ar-SA": "حجزت الزيارة؟"}  # Hajazt az-ziyaara?
 NUMBER = {"en": "What is my visit number?", "ar-SA": "كم رقم الحجز؟"}  # kam raqm al-Hajz?
@@ -108,6 +112,24 @@ def test_a_status_the_read_tool_reports_backs_a_claim_with_no_record() -> None:
             asked.expect.tool_call(STATUS)
             asked.expect.said(contains=claimed)
             assert _blocked(call) == []
+            return call.violations
+
+    assert asyncio.run(scene()) == ()
+
+
+def test_a_status_that_found_nothing_backs_no_claim() -> None:
+    backend = Backend()  # nothing booked: the status holds no number
+    claimed = "Your visit is booked."
+    llm = model({NUMBER["en"]: ScriptedLLM.call_tool(STATUS)}, after={STATUS: say(claimed)})
+
+    async def scene() -> tuple[str, ...]:
+        async with TextCall(agent_of(backend), llm=llm, language="en") as call:
+            asked = await call.user(NUMBER["en"])
+            await call.advance(SETTLE_S)
+            asked.expect.tool_call(STATUS)
+            asked.expect.blocked()
+            assert all(claimed not in text for text in said_texts(call))
+            assert _blocked(call) == ["unsupported_claim"]
             return call.violations
 
     assert asyncio.run(scene()) == ()

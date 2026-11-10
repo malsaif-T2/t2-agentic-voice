@@ -14,8 +14,10 @@ from t2_agentic_voice.core.settings.words import LanguageCode
 from t2_agentic_voice.domain.claims import (
     ActionEvidence,
     ClaimVerdict,
+    any_action_claims,
     check_claims,
     default_claims,
+    holds_an_id,
 )
 from t2_agentic_voice.domain.guard_ids import guard_form
 
@@ -142,6 +144,27 @@ def test_a_declared_pattern_in_a_claim_needs_the_actions_evidence() -> None:
     clause = "I've registered LT-00423 for you."
     assert _check(clause, issued, settings=settings).passed
     assert "00423" in _check(clause, MADE, settings=settings).unsupported
+
+
+@pytest.mark.parametrize(
+    ("result", "held"),
+    [
+        ('{"tickets": [{"ends_in": "4417", "opened_on": "2025-11-02"}], "total": 1}', True),
+        ('{"tickets": [], "total": 0, "asked_ends_in": null, "note": "None ends in it."}', False),
+        ('{"state": "none", "opened_on": "2026-11-10", "count": 12}', False),
+    ],
+    ids=["a_ticket", "found_nothing", "a_date_and_a_count"],
+)
+def test_a_status_result_backs_a_claim_only_when_it_holds_an_id(result: str, held: bool) -> None:
+    """A status that found nothing holds no record of the action (invariant 2); this year and
+    the parts of a date are no ID, as in rule B."""
+    assert holds_an_id([result], settings=SETTINGS, year=2026) is held
+
+
+def test_the_phrases_that_claim_any_action_are_every_languages() -> None:
+    found = any_action_claims({"en": ("all sorted",)})
+    assert set(found) == {*default_claims("ar"), *default_claims("en"), "all sorted"}
+    assert len(set(found)) == len(found)
 
 
 def test_the_defaults_are_written_in_the_guards_form_each_once() -> None:

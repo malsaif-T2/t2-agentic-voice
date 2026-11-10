@@ -6,14 +6,19 @@ of the clause. Pure, and matched on the guard's normalized text.
 
 What `check_claims` does:
 
-- **The phrases.** Each action's own (`claims`, its `Claims` in the clause's language) claim that
-  action; the default ones (`any_action`: `default_claims`, with the `guard.claims` setting's
-  added) claim any action. Both are matched as whole words of the clause and the phrase, each in
-  the guard's form (domain/guard_ids.py's `guard_form`), and also after waw or feh (and, so)
-  written onto the phrase's first word («وتم»). A clause with none passes, whatever it holds.
+- **The phrases.** Each action's own (`claims`, its `Claims` of every language) claim that
+  action; the default ones (`any_action`: `any_action_claims`, every language's defaults with the
+  `guard.claims` setting's added) claim any action. Every language's are read whatever the
+  reply's (`every_language`), since a model may write a claim in another (plan 006's run K saw
+  it answer in a passage's language). Both are matched as whole words of the clause and the
+  phrase, each in the guard's form (domain/guard_ids.py's `guard_form`), and also after waw or
+  feh (and, so) written onto the phrase's first word («وتم»). A clause with none passes, whatever
+  it holds.
 - **The evidence.** A phrase of an action passes only when `evidence` holds that action: the
-  texts of its completed results, or of a `reports_on` tool's results about it. A default phrase
-  passes when any action has evidence, and stands for each that has.
+  texts of its completed results, or of a `reports_on` tool's results about it that hold an
+  ID-shaped token (`holds_an_id`), since a status that found nothing holds no record of it
+  (docs/SECURITY.md, invariant 2). A default phrase passes when any action has evidence, and
+  stands for each that has.
 - **Its numbers.** Every ID-shaped token of a claiming clause is read as rule B reads one
   (domain/guard_ids.py: digits spaced, in groups, said digit by digit or in Arabic-Indic
   digits), against the claimed actions' texts alone: a number a passage or the caller's words
@@ -31,7 +36,7 @@ each comment giving the phrase's sound and meaning.
 
 from __future__ import annotations
 
-from collections.abc import Mapping, Sequence
+from collections.abc import Iterable, Mapping, Sequence
 from dataclasses import dataclass
 from functools import lru_cache
 
@@ -128,6 +133,29 @@ def default_claims(code: LanguageCode) -> tuple[str, ...]:
     return _DEFAULTS[code]
 
 
+def every_language[K: str](phrases: Mapping[K, Sequence[str]]) -> tuple[str, ...]:
+    """The phrases of every language of `phrases`, a map by language, once each, in order: rule
+    A reads them all whatever the reply's language (the module's docstring)."""
+    return tuple(dict.fromkeys(phrase for listed in phrases.values() for phrase in listed))
+
+
+def any_action_claims(added: Mapping[LanguageCode, Sequence[str]]) -> tuple[str, ...]:
+    """The phrases that claim any action, every language's: its `default_claims` and those
+    `added` (the `guard.claims` setting's)."""
+    return every_language(
+        {code: (*default_claims(code), *added.get(code, ())) for code in _DEFAULTS}
+    )
+
+
+def holds_an_id(texts: Iterable[str], *, settings: GuardSettings, year: int) -> bool:
+    """Whether `texts`, a `reports_on` tool's results about an action, hold an ID-shaped token,
+    read as rule B reads one: only then do they back a claim about it, since a status that found
+    nothing (no ticket, or none ending in the digits asked) holds no record of it."""
+    return any(
+        not check_ids(text, evidence=(), settings=settings, year=year).passed for text in texts
+    )
+
+
 @lru_cache(maxsize=4096)
 def _phrase(text: str) -> str:
     return guard_form(text)
@@ -152,8 +180,8 @@ def check_claims(
     settings: GuardSettings,
     year: int,
 ) -> ClaimVerdict:
-    """Rule A on `clause`, as the module says: `claims` maps each action to its phrases in the
-    clause's language and `any_action` holds the default ones."""
+    """Rule A on `clause`, as the module says: `claims` maps each action to its phrases, every
+    language's, and `any_action` holds the default ones."""
     said = guard_form(clause)
     named = tuple(action for action, phrases in claims.items() if _holds(said, phrases))
     general = _holds(said, any_action)
