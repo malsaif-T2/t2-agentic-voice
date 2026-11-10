@@ -74,3 +74,34 @@ def test_each_call_of_the_talker_gets_its_own_and_the_early_start(
     )
     assert echo.setup.talker is None and not echo.stt_bridge._early
     assert echo.setup.overlap_model is None
+
+
+def test_each_call_gets_the_one_action_jobs_the_runtime_was_given(
+    settings: VoiceSettings,
+) -> None:
+    """Plan 007: one `ActionJobs` for every call, which tells them apart by the call's ID, on
+    each call's `CallSetup`; with none, no call has one (its confirmed yes is then told as the
+    `error` notice, and nothing is sent: yes_turns.py)."""
+    jobs = object()
+    calls = _calls(settings, AGENT, talker=lambda call, on: object(), action_jobs=jobs)
+    built = [
+        calls._pipeline(
+            call_id,
+            (ToneVAD(), None),
+            caller=CALLER,
+            consent=CONSENT,
+            language=AGENT.languages[0],
+            output=file_output(),
+        )
+        for call_id in ("call-1", "call-2")
+    ]
+    assert [pipeline.setup.action_jobs for pipeline in built] == [jobs, jobs]
+    unwired = _calls(settings, AGENT, talker=lambda call, on: object())._pipeline(
+        "call-3",
+        (ToneVAD(), None),
+        caller=CALLER,
+        consent=CONSENT,
+        language=AGENT.languages[0],
+        output=file_output(),
+    )
+    assert unwired.setup.action_jobs is None

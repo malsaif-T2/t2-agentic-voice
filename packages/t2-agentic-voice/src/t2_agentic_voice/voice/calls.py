@@ -85,6 +85,7 @@ from t2_agentic_voice.core.identity import Caller, Consent
 from t2_agentic_voice.core.logging import get_logger, hold_transport_loggers
 from t2_agentic_voice.core.tracing import Tracing
 from t2_agentic_voice.domain.declaration import Language, VoiceAgent
+from t2_agentic_voice.domain.ports.action_jobs import ActionJobs
 from t2_agentic_voice.domain.ports.chat_model import ChatModel
 from t2_agentic_voice.domain.ports.speech_to_text import SpeechToText
 from t2_agentic_voice.domain.ports.text_to_speech import TextToSpeech
@@ -187,6 +188,7 @@ class CallsFactory(Protocol):
         clock: Clock = SYSTEM_CLOCK,
         talker: TalkerFactory | None = None,
         chat: ChatModel | None = None,
+        action_jobs: ActionJobs | None = None,
     ) -> Calls:
         """voice's entry point for the runtime's calls, built with no IO."""
 
@@ -200,8 +202,10 @@ class VoiceCalls:
     builds Silero VAD and Smart Turn v3.2, each loading its model for the call. A call of an
     agent that runs the talker gets its own, built by `talker` (voice/talkers.py), and `chat`,
     the chat model that decides an overlap the rule left uncertain, for an agent that asks
-    for it (D-069). Built cheaply, with no IO; `start` imports onnxruntime and warms one pair
-    of models."""
+    for it (D-069). `action_jobs` carries out each call's confirmed actions (plan 007), one
+    for every call, which it tells apart by the call's ID; with none, a call's confirmed yes is
+    told as the `error` notice and nothing is sent. Built cheaply, with no IO; `start` imports
+    onnxruntime and warms one pair of models."""
 
     def __init__(
         self,
@@ -216,21 +220,15 @@ class VoiceCalls:
         clock: Clock = SYSTEM_CLOCK,
         talker: TalkerFactory | None = None,
         chat: ChatModel | None = None,
+        action_jobs: ActionJobs | None = None,
         speech_detector: Callable[[], VADAnalyzer] | None = None,
         turn_analyzer: Callable[[], BaseTurnAnalyzer] | None = None,
     ) -> None:
         self._talker = talker if talks(agent, settings, talker) else None
-        self._chat = chat
-        self._agent = agent
-        self._settings = settings
-        self._stt = stt
-        self._tts = tts
-        self._phrases = phrases
-        self._tracing = tracing
-        self._emit = emit
-        self._clock = clock
-        self._speech_detector = speech_detector
-        self._turn_analyzer = turn_analyzer
+        self._chat, self._action_jobs = chat, action_jobs
+        self._agent, self._settings, self._stt, self._tts = agent, settings, stt, tts
+        self._phrases, self._tracing, self._emit, self._clock = phrases, tracing, emit, clock
+        self._speech_detector, self._turn_analyzer = speech_detector, turn_analyzer
         self._calls: dict[CallId, WebRTCCall] = {}
         self._answering: set[CallId] = set()
         self._started = False
@@ -371,6 +369,7 @@ class VoiceCalls:
                 self._talker, call_id=call_id, caller=caller, language=language, clock=self._clock
             ),
             overlap_model=self._chat if self._talker is not None else None,
+            action_jobs=self._action_jobs,
         )
         detector, analyzer = detectors
         return CallPipeline(
