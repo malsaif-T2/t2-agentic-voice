@@ -263,6 +263,35 @@ rehearsal's password, archiving, and English questions pass.
   change. It is built so that the agent-led mode can use the same board
   ([background-tools.md](../design/background-tools.md)). The same try covers the talker saying,
   in one short clause, what it is about to look up.
+- *To build in M5* (the owner, 2026-11-10: "We should implement both of them and see their
+  effectiveness and the latency improvements or delays they bring. Lets not delay them to M6 or
+  M7, they can reasonably be implemented in M5"), each behind a setting and measured on a
+  registered rule before a default changes (GP-18); the *Done when* lines do not change:
+  - *Each turn's language from a classifier,* so a call can change language mid-call, in place of
+    `stt.live_language = "session"` (D-066): Whisper is sent the classifier's language, chosen
+    from the agent's languages only. The two candidates, by the owner: SpeechBrain's ECAPA
+    (VoxLingua107) and Silero's 95-language classifier. The agent's offline check of 2026-11-10,
+    on the 280 dev recordings, Arabic against English, outside the repository with neither model
+    installed in it: ECAPA right on 93% (Saudi 98%, MSA 100%, English 79%, every request and
+    paused request), 740 ms of CPU a clip at the median; Silero right on 84% (Saudi 80%, English
+    79%), 36 ms. Every English clip ECAPA missed was a 1–2 s listening sound, stop word or yes,
+    so a rule that keeps the current language on a short or unsure turn goes with it, and
+    ECAPA's time must fit before the hold starts Whisper (D-067), for example by classifying the
+    turn's first seconds while the caller still speaks. Measured: transcripts against D-066's
+    `session`, English inside an Arabic call (run X: 0.813 sent as English, 0.027 as Arabic), and
+    the time each adds.
+  - *Every clause the agent says cached by its exact text,* not only the fixed phrases (amending
+    D-033's "Text built from heard words never reaches the phrase cache"). The owner: "we should
+    cache everything we can, because all of it is what the agent generated and we have full
+    access to it and since we would an exact match, no user will hear the info of another." The
+    key holds the text, the language, the voice, the model and the speaking rules' version.
+    The agent's count of 2026-11-10 on run K's dev replies: with the current spoken prompt about
+    5% of model-written clauses repeat across questions, mostly short openers ("I'm sorry,",
+    "Yes,", «نعم،»); under the earlier prompts 15–31%. Measured: hits, Orpheus requests per call
+    minute, and the time to first audio. The cache is kept on disk, with no consent asked (the
+    owner, 2026-11-10: "make it on disk without consent, because this what our agent
+    produced"): it holds only the agent's own voice, so invariant 8's consent rule for call
+    audio does not apply to it.
 
 *Done when* simulated calls create the right tickets with zero false action claims; the
 rehearsal's ticket flow passes, where an eager «نعم أرسلها» over the closing question creates the
