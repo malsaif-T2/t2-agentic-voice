@@ -9,7 +9,8 @@ they hold with Track A's functions too.
 
 The interruption rule (domain/interruptions.py's `judge`) is plan 005's Track A's, built in
 parallel: a test that judges an overlap takes `rule`, a fake the test scripts, patched where the
-session calls it, and never runs Track A's code.
+session calls it, and never runs Track A's code. So for the yes rule's words (plan 007's Track
+A's `consent_words`): a test of what is said over a read-back takes `consent`.
 
 Every step the session takes is guarded (it logs a failure by its kind and goes on, as the
 `Session` protocol asks), so a test would not see a bug that raised inside it: every test here
@@ -21,13 +22,16 @@ from __future__ import annotations
 import logging
 import re
 from collections.abc import Iterator, Mapping
+from typing import Any
 
 import pytest
 from t2_agentic_voice.core.settings.tts import LanguageTag
 from t2_agentic_voice.domain.text import clauses, pronounce
-from t2_agentic_voice.voice.session import echo, overlap
+from t2_agentic_voice.domain.yes_words import ConsentWords
+from t2_agentic_voice.voice.session import echo, overlap, read_back
 
 from tests.t2_agentic_voice.voice.session.overlap_support import FakeRule
+from tests.t2_agentic_voice.voice.session.read_back_support import CONSENT
 
 # Where a clause may end: the Arabic comma and question mark, and the Latin punctuation.
 _ENDS = re.compile(r"(?<=[،؟.,!?;:])\s+")
@@ -93,6 +97,21 @@ def rule(monkeypatch: pytest.MonkeyPatch) -> FakeRule:
     fake = FakeRule()
     monkeypatch.setattr(overlap, "judge", fake)
     return fake
+
+
+@pytest.fixture
+def consent(monkeypatch: pytest.MonkeyPatch) -> list[dict[str, Any]]:
+    """The yes rule's words as the read-back's tests give them (read_back_support.py's
+    `CONSENT`), standing in for Track A's `consent_words` where the session calls it
+    (read_back.py): these tests never run Track A's code. Each call's arguments are kept."""
+    calls: list[dict[str, Any]] = []
+
+    def words(code: str, **given: Any) -> ConsentWords:
+        calls.append({"code": code, **given})
+        return CONSENT
+
+    monkeypatch.setattr(read_back, "consent_words", words)
+    return calls
 
 
 @pytest.fixture

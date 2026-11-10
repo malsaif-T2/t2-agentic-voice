@@ -32,6 +32,7 @@ from t2_agentic_voice.domain.ports.text_to_speech import AudioChunk
 from t2_agentic_voice.voice.protocol import (
     CallState,
     Caption,
+    ClauseIndex,
     Notice,
     ReplyId,
     SessionHello,
@@ -45,7 +46,13 @@ from t2_agentic_voice.voice.session.commands import Send, Speak, StopSpeaking
 from t2_agentic_voice.voice.session.echo import BEAT_S, Line, again, fixed, padded
 from t2_agentic_voice.voice.session.io import CallSetup, Commands
 from t2_agentic_voice.voice.session.open_reply import OpenReply
-from t2_agentic_voice.voice.session.playback import Clause, Playback, Reply, ReplyKind
+from t2_agentic_voice.voice.session.playback import (
+    Clause,
+    Playback,
+    ReadBackPart,
+    Reply,
+    ReplyKind,
+)
 from t2_agentic_voice.voice.session.scope import CancelScope
 from t2_agentic_voice.voice.session.session_events import (
     AgentAudio,
@@ -94,13 +101,16 @@ class Speaker:
     async def send(self, message: SessionMessage) -> None:
         await self._commands.run(Send(message=message))
 
-    async def show_state(self, *, awaited: bool) -> None:
+    async def show_state(self, *, awaited: bool, confirming: bool = False) -> None:
         """Tell the client what the agent is doing, when it changed: speaking while a reply
-        plays; thinking while a reply asked for has no audio yet, or a turn's transcript is
-        `awaited`; listening otherwise."""
+        plays; while an action's read-back is `confirming` (read_back.py), confirming otherwise;
+        thinking while a reply asked for has no audio yet, or a turn's transcript is `awaited`;
+        listening otherwise."""
         state: CallState = "listening"
         if self.playback.speaking:
             state = "speaking"
+        elif confirming:
+            state = "confirming"
         elif self.playback.waiting or awaited:
             state = "thinking"
         if state != self._state:
@@ -175,13 +185,15 @@ class Speaker:
         at: float,
         audio: AudioChunk | None = None,
         progress: bool = False,
-    ) -> bool:
+        part: ReadBackPart | None = None,
+    ) -> ClauseIndex | None:
         """Ask for the next clause of the open reply `reply_id`: `text` in `language`'s voice
-        (or `audio`, a fixed phrase's, with no request), captioned `caption`; whether it was
-        asked for (not once the reply has ended or was closed)."""
+        (or `audio`, a fixed phrase's, with no request), captioned `caption`, the read-back's
+        `part` it says, if any; its index, None when it was not asked for (once the reply has
+        ended or was closed)."""
         reply = self.playback.reply(reply_id)
         if reply is None or reply.ended_at is not None or not reply.open:
-            return False
+            return None
         speak = Speak(
             reply_id=reply_id,
             clause=len(reply.clauses),
@@ -191,13 +203,13 @@ class Speaker:
             audio=audio,
         )
         line = Line(speak=speak, caption=caption)
-        self.playback.add(reply, line, progress=progress)
+        self.playback.add(reply, line, progress=progress, part=part)
         self._history.added(reply_id, caption)
         if audio is not None:
             self._usage.cached(language)
         self._recorder.asked(at, speak, caption)
         await self._commands.run(speak)
-        return True
+        return speak.clause
 
     async def show_card(self, reply_id: ReplyId, card: Card) -> bool:
         """Show the caller `card` for the open reply `reply_id`, as `t2v/1`'s `card`; whether it

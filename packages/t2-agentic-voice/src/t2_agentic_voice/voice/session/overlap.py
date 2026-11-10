@@ -28,6 +28,11 @@ The rule reads each transcript's speech time (`Overlap.speech_s`) from the turn'
 window's to its request, the speech still going on; the whole overlap's to its request less the
 speech detector's stop delay (`turns.vad_stop_ms`), since that request goes once the detector
 hears the speech stop; and the turn's own to when its speech ended.
+
+Over an action's read-back (plan 007), a transcript of yes words and listening sounds whose
+speech began over its summary is a listening sound, whatever the rule would say, so the summary
+plays on (read_back.py's `ignored`); and an overlap begun over the summary that is undecided
+denies the read-back its receipt (`undecided`).
 """
 
 from __future__ import annotations
@@ -44,6 +49,7 @@ from t2_agentic_voice.domain.words import WORD_KINDS, Words
 from t2_agentic_voice.voice.protocol import Duck, ReplyId
 from t2_agentic_voice.voice.session.commands import Command, HearOverlap, Send
 from t2_agentic_voice.voice.session.io import CallSetup
+from t2_agentic_voice.voice.session.read_back import Confirming
 from t2_agentic_voice.voice.session.session_events import (
     Transcribed,
     Transcribing,
@@ -53,6 +59,8 @@ from t2_agentic_voice.voice.session.session_events import (
 _log = get_logger(__name__)
 # The verdict on a transcript the rule failed on (a bug): the reply goes on, as for no words.
 _FAILED = Verdict(action="go_on", kind="false", reason="no_words")
+# The verdict on yes words and listening sounds over a read-back's summary: it plays on.
+_IGNORED = Verdict(action="go_on", kind="false", reason="listening")
 
 
 def answers(verdict: Verdict) -> bool:
@@ -160,10 +168,11 @@ class OverlapState:
 
 
 class Overlaps:
-    """One call's overlaps, by the caller's turn."""
+    """One call's overlaps, by the caller's turn; with `confirming`, the call's read-back
+    (read_back.py), what is said over its summary read as the module says."""
 
-    def __init__(self, setup: CallSetup) -> None:
-        self._setup = setup
+    def __init__(self, setup: CallSetup, *, confirming: Confirming | None = None) -> None:
+        self._setup, self._confirming = setup, confirming
         settings = setup.settings
         self._rules = settings.interruptions
         self._stop_s = settings.turns.vad_stop_ms / 1000
@@ -267,6 +276,14 @@ class Overlaps:
         found = (state.turn_id for state in self._overlaps.values() if state.decided is None)
         return tuple(sorted(found))
 
+    def undecided(self, reply_id: ReplyId, before: float) -> bool:
+        """Whether an overlap of reply `reply_id` whose speech began before `before` is not yet
+        decided (a chat model's word awaited included)."""
+        return any(
+            state.reply_id == reply_id and state.speech_at < before and state.decided is None
+            for state in self._overlaps.values()
+        )
+
     def _uncertain(self, verdict: Verdict, event: Transcribed) -> bool:
         """Whether a chat model decides the transcript the rule let go on for want of words
         (domain/uncertain_overlaps.py)."""
@@ -302,11 +319,17 @@ class Overlaps:
         ended_at: float | None,
     ) -> Verdict:
         transcript = event.transcript
+        text = "" if transcript is None else transcript.text
+        confirming, listening = self._confirming, self._words.backchannel
+        if confirming is not None and confirming.ignored(
+            state.reply_id, state.speech_at, text, listening=listening
+        ):
+            return _IGNORED
         if ended_at is None:
             sent = event.at if event.sent_at is None else event.sent_at
             ended_at = sent if event.part == "window" else sent - self._stop_s
         overlap = Overlap(
-            text="" if transcript is None else transcript.text,
+            text=text,
             no_speech_prob=None if transcript is None else transcript.no_speech_prob,
             speech_s=max(0.0, ended_at - state.speech_at),
             played=tuple(played),

@@ -16,7 +16,8 @@ voice/session/call.py.
   `t2v/1`'s `card`); a tool's start and end are the public `ToolStarted` and `ToolFinished`, and
   while the talker or a tool works with nothing left to play the agent is `thinking`
   (playback.py); a progress line is said from the phrase cache in its language (`ProgressDue`,
-  timed apart: **the progress line** below); a clause the guard blocked is never said
+  timed apart: **the progress line** below); an action's read-back is said, and the call is
+  confirming (`ReadBackRequested`, read_back.py); a clause the guard blocked is never said
   (`ClauseBlocked`): the
   call language's preset `error` notice is said in its place, once a reply, and `GuardBlocked`
   goes out (the talker keeps its developer note: the history holds only what the caller heard);
@@ -83,6 +84,7 @@ from t2_agentic_voice.core.yes_inputs import HeardWords
 from t2_agentic_voice.voice.session.books import CallBooks
 from t2_agentic_voice.voice.session.io import CallSetup
 from t2_agentic_voice.voice.session.playback import Reply
+from t2_agentic_voice.voice.session.read_back import Confirming
 from t2_agentic_voice.voice.session.report import TurnLog
 from t2_agentic_voice.voice.session.scope import CancelScope
 from t2_agentic_voice.voice.session.speaker import Speaker
@@ -112,12 +114,13 @@ class Talking:
         guarded: Guarded,
         sync: Callable[[], Awaitable[None]],
         over: Callable[[], bool],
+        confirming: Confirming,
     ) -> None:
         self._setup, self._talker, self._speaker, self._turns = setup, talker, speaker, turns
         self._usage, self._events, self._history = books.usage, books.events, books.history
         self._guarded, self._sync, self._over = guarded, sync, over
-        self._clock = setup.clock
-        self._player = TalkPlayer(setup, books.usage, turns, books.trace)
+        self._clock, self._confirming = setup.clock, confirming
+        self._player = TalkPlayer(setup, books.usage, turns, books.trace, confirming)
         self._talks: dict[TurnId, Talk] = {}
         self._holding: set[TurnId] = set()  # the turns whose hold began and has not resumed
         self._open: set[TurnId] = set()  # the turns open, no overlap, not yet taken (kept replies)
@@ -240,7 +243,8 @@ class Talking:
 
     def _turn(self, turn: TurnLog, heard: HeardWords) -> TalkerTurn:
         """The turn as the talker reads it: its words whole, the language they were heard in,
-        the replies it spoke over and cut, and the call before it as the caller heard it."""
+        the replies it spoke over and cut, the action it declined by stopping its read-back
+        (read_back.py), and the call before it as the caller heard it."""
         language = heard.language
         if language is not None and len(language) not in _LANGUAGE_CHARS:
             language = None
@@ -250,6 +254,7 @@ class Talking:
             language=language,
             over_reply=turn.over_reply,
             cut_reply=turn.cut_reply,
+            declined=self._confirming.declined(turn.turn_id, words=heard.text),
             conversation=self._history.conversation(before=turn.turn_id),
         )
 

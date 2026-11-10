@@ -14,7 +14,9 @@ such tail, since nothing of it plays on to echo (TD-060). Its clauses tell which
 The talker's reply is written while it plays (plan 006): it is opened with no clause (`open`),
 each clause added as it comes (`add`), and closed once its work is done (`close`); until then it
 does not end when its clauses have all played, and while it has nothing left to play it is
-thinking, not speaking.
+thinking, not speaking. An action's read-back (plan 007) is clauses of such a reply, each marked
+with its `part`, the summary's or the closing question's, so whoever reads the reply can tell
+them apart (read_back.py).
 """
 
 from __future__ import annotations
@@ -41,26 +43,32 @@ DROP_AFTER_S = 0.3
 # What a reply is: the greeting (reply 0), a turn's echo, a spoken notice, the last reply said
 # again at the caller's request, or the talker's answer, spoken while it is written (plan 006).
 ReplyKind = Literal["greeting", "echo", "notice", "repeat", "answer"]
+# Which part of an action's read-back a clause says: the summary, which the receipt covers, or
+# the closing question.
+ReadBackPart = Literal["summary", "question"]
 
 
 @dataclass(kw_only=True)
 class Clause:
     """One clause of a reply as it plays: its caption, the characters of the request it sent
     (none for a cached phrase), whether it is a progress line (`progress`, timed apart), the
-    language it is spoken in when not the call's (a talker's clause), and what came of it
-    (`played_at`, when its `ClausePlayed` came)."""
+    language it is spoken in when not the call's (a talker's clause), the read-back's part it
+    says (`part`, None for any other clause), and what came of it (`played_at`, when its
+    `ClausePlayed` came, with the seconds of audio it reported, `audio_s`)."""
 
     caption: str
     characters: int
     cached: bool
     progress: bool = False
     language: LanguageTag | None = None
+    part: ReadBackPart | None = None
     requested_at: float | None = None
     queued_at: float | None = None
     played: bool = False
     played_at: float | None = None
     done: bool = False
     chunks: int = 0
+    audio_s: float = 0.0
     cut_short: bool = False
 
 
@@ -167,7 +175,9 @@ class Playback:
         self._replies[reply.reply_id] = reply
         return reply
 
-    def add(self, reply: Reply, line: Line, *, progress: bool = False) -> Clause:
+    def add(
+        self, reply: Reply, line: Line, *, progress: bool = False, part: ReadBackPart | None = None
+    ) -> Clause:
         """Add the clause `line` says to the open `reply`, at its next index."""
         cached = line.speak.audio is not None
         characters = 0 if cached else len(line.speak.text)
@@ -177,6 +187,7 @@ class Playback:
             cached=cached,
             progress=progress,
             language=line.speak.language,
+            part=part,
         )
         reply.clauses.append(clause)
         return clause
@@ -230,6 +241,7 @@ class Playback:
         if isinstance(event, ClausePlayed):
             clause.played, clause.played_at = True, event.at
             clause.chunks, clause.cut_short = event.chunks, event.cut_short
+            clause.audio_s = event.audio_s
         else:
             reply.failed = True
         if not reply.open and all(each.done for each in reply.clauses):

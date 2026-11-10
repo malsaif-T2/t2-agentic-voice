@@ -6,7 +6,8 @@ The `Speaker` opens it (`open_reply`) before its first clause, so its cancel sco
 open for the talker's work from the start; each clause is added as it comes (`add_clause`),
 asked for at once, keyed on the reply and its next index, and kept in the heard history
 `unplayed` until it plays; a fixed phrase is added from the phrase cache (`add_phrase`: a
-progress line, or the line said in a blocked clause's place); a card is shown (`card`), as
+progress line, or the line said in a blocked clause's place); a line of an action's read-back is
+added as a clause is, marked with its part (`add_line`); a card is shown (`card`), as
 `t2v/1`'s `card`; and the reply is closed (`finish`) once its last clause and its work are done.
 It ends, its scope cancelled, only once it is closed and its last clause has played or failed,
 or at once when a stop or the call's end drops it (closed or not), as every reply ends
@@ -26,14 +27,16 @@ from typing import Protocol
 
 from t2_agentic_voice.core.logging import get_logger
 from t2_agentic_voice.core.settings.tts import LanguageTag
+from t2_agentic_voice.domain.action_lines import SpokenLine
 from t2_agentic_voice.domain.cards import Card
 from t2_agentic_voice.domain.declaration import Language
 from t2_agentic_voice.domain.ports.text_to_speech import AudioChunk
 from t2_agentic_voice.domain.text.invisible import provider_text
 from t2_agentic_voice.domain.text.speaking import speak_digits
-from t2_agentic_voice.voice.protocol import ReplyId
+from t2_agentic_voice.voice.protocol import ClauseIndex, ReplyId
 from t2_agentic_voice.voice.session.echo import BEAT_S, padded, said
 from t2_agentic_voice.voice.session.io import CallSetup
+from t2_agentic_voice.voice.session.playback import ReadBackPart
 from t2_agentic_voice.voice.session.scope import CancelScope
 
 _log = get_logger(__name__)
@@ -53,8 +56,9 @@ class ReplyWriter(Protocol):
         at: float,
         audio: AudioChunk | None = None,
         progress: bool = False,
-    ) -> bool:
-        """Ask for the reply's next clause; whether it was asked for."""
+        part: ReadBackPart | None = None,
+    ) -> ClauseIndex | None:
+        """Ask for the reply's next clause; its index, None when it was not asked for."""
 
     async def show_card(self, reply_id: ReplyId, card: Card) -> bool:
         """Show `card`, as `t2v/1`'s `card`; whether it was shown."""
@@ -121,10 +125,31 @@ class OpenReply:
         a stop or the call's end dropped the reply."""
         writer, setup = self._parts()
         for request, caption in speech_of(setup, text, language):
-            if not await writer.write(
+            asked = await writer.write(
                 self.reply_id, text=request, caption=caption, language=language, at=at
-            ):
+            )
+            if asked is None:
                 return
+
+    async def add_line(
+        self, line: SpokenLine, *, language: LanguageTag, at: float, part: ReadBackPart
+    ) -> tuple[ClauseIndex, ...]:
+        """Ask for a line of an action's read-back (read_back.py), its `part`, as the reply's
+        next clauses: its `spoken` form said as a clause is (a template, which the output guard
+        does not check: the design's 8.2), captioned with its `text` when it fits one request;
+        the indexes asked for, none once a stop or the call's end dropped the reply."""
+        writer, setup = self._parts()
+        requests = speech_of(setup, line.spoken, language)
+        captions = [line.text] if len(requests) == 1 else [caption for _, caption in requests]
+        asked: list[ClauseIndex] = []
+        for (request, _), caption in zip(requests, captions, strict=True):
+            index = await writer.write(
+                self.reply_id, text=request, caption=caption, language=language, at=at, part=part
+            )
+            if index is None:
+                break
+            asked.append(index)
+        return tuple(asked)
 
     async def add_phrase(
         self,
@@ -146,7 +171,7 @@ class OpenReply:
         audio = padded(
             audio, before_s=BEAT_S if beat_before else 0.0, after_s=BEAT_S if progress else 0.0
         )
-        return await writer.write(
+        asked = await writer.write(
             self.reply_id,
             text=text,
             caption=text,
@@ -155,6 +180,7 @@ class OpenReply:
             audio=audio,
             progress=progress,
         )
+        return asked is not None
 
     async def card(self, card: Card) -> None:
         """Show the caller `card`, as `t2v/1`'s `card`."""

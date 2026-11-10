@@ -47,7 +47,8 @@ was silent starts it early, at Smart Turn's "complete", playing nothing before t
 ending; and while a newer turn, no overlap of the talker's reply, is open, nothing more of that
 reply plays until the turn is taken: its words stop the reply, and a turn heard as nothing lets
 it go on (talking.py's kept reply). Every turn's time to first audio is timed to the reply's
-first audible frame sent, and to the browser's playback of it (turn_book.py).
+first audible frame sent, and to the browser's playback of it (turn_book.py). An action's
+read-back, the call's confirming state and its receipt are read_back.py's (plan 007).
 """
 
 from __future__ import annotations
@@ -68,6 +69,7 @@ from t2_agentic_voice.voice.session.interrupter import Interrupter
 from t2_agentic_voice.voice.session.io import CallSetup, Commands
 from t2_agentic_voice.voice.session.limits import CallLimits, Limit
 from t2_agentic_voice.voice.session.playback import Playback, Reply
+from t2_agentic_voice.voice.session.read_back import Confirming
 from t2_agentic_voice.voice.session.report import (
     TurnLog,
     call_report,
@@ -100,6 +102,7 @@ class CallSession:
         )
         self._playback = self._speaker.playback
         self._turns = TurnBook(setup, books, listen=self._listen, playback=self._playback)
+        self._confirming = Confirming(setup, self._playback)  # an action's read-back
         self._interrupter = Interrupter(
             setup,
             commands,
@@ -110,6 +113,7 @@ class CallSession:
             answer=self._answer,
             guarded=self._guarded,
             sync=self._sync_state,
+            confirming=self._confirming,
         )
         self._talking: Talking | None = None
         if setup.talker is not None:
@@ -122,6 +126,7 @@ class CallSession:
                 guarded=self._guarded,
                 sync=self._sync_state,
                 over=self._over,
+                confirming=self._confirming,
             )
         self._limits = CallLimits(setup, over=self._over, reached=self._reached)
         self._started_at = self._ended_at = setup.clock.wall()
@@ -198,6 +203,7 @@ class CallSession:
             case on.ClausePlayed() | on.ClauseFailed():
                 await self._speaker.done(event, tell=self._ending is None)
             case on.FromClient(message=wire.Stop()):
+                self._confirming.stopped()
                 await self._speaker.stop(event.at, client=True)
                 if self._talking is not None:
                     await self._talking.stopped()
@@ -296,6 +302,7 @@ class CallSession:
         """A reply ended, however (the speaker's word): its turn settles, and an `ended` notice
         ends the call."""
         self._turns.reply_ended(reply)
+        self._confirming.reply_ended(reply)
         if reply.notice == "ended" and reply.ended_at is not None:
             await self._end(self._ending or "max_call", reply.ended_at, tell=True)
 
@@ -312,6 +319,7 @@ class CallSession:
         """The call ended: its timers stop, every reply still asked for is cut, and every turn
         not yet heard is unfinished."""
         self._ended, self._ended_at = reason, self._setup.clock.wall()
+        self._confirming.end()
         self._limits.stop()
         await self._interrupter.asks.end()
         await self._speaker.cut(at)
@@ -381,4 +389,5 @@ class CallSession:
     async def _sync_state(self) -> None:
         """Tell the client what the agent is doing, when it changed."""
         if self._ended is None and self._connected:
-            await self._speaker.show_state(awaited=self._turns.awaited)
+            confirming = self._confirming.active
+            await self._speaker.show_state(awaited=self._turns.awaited, confirming=confirming)
