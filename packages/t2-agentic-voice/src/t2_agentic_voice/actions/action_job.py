@@ -24,9 +24,11 @@ the result cannot fill says the library's `unknown`, which claims nothing. `Acti
 from __future__ import annotations
 
 import asyncio
+import json
 import uuid
 from collections.abc import Callable, Mapping
 from dataclasses import dataclass
+from functools import partial
 from typing import Final
 
 from pydantic import BaseModel, ValidationError
@@ -35,6 +37,7 @@ from t2_agentic_voice.actions.action import Action, ActionContext, HeardConsent
 from t2_agentic_voice.actions.action_writes import Refused, Returned, look_up, write
 from t2_agentic_voice.actions.record import ActionRecord, evidence_of
 from t2_agentic_voice.actions.spoken_lines import outcome_line
+from t2_agentic_voice.actions.tools import RecordedAction
 from t2_agentic_voice.core.clock import Clock
 from t2_agentic_voice.core.conversation import ConversationLine
 from t2_agentic_voice.core.events import ActionCompleted, ActionUnconfirmed, CallId, Event, TurnId
@@ -151,7 +154,7 @@ class Writes:
             request_id=request_id,
             consent=consent,
             conversation=call.conversation,
-        )
+        ).reading_past(partial(done_rows, self._outbox))
         written = await write(action, ctx, draft, call.clock)
         if isinstance(written, Returned):
             return await self._done(action, request_id, written.result, call)
@@ -276,6 +279,23 @@ class Writes:
         await mark_row(
             self._outbox, row.request_id, state="done", note="looked_up", result_json=result_json
         )
+
+
+async def done_rows(outbox: Outbox, subject: str, action: str) -> tuple[RecordedAction, ...]:
+    """The writes of `action` done for the caller `subject`, in any call, oldest first: the
+    outbox's `done` rows, as plain values. A row whose result cannot be read is left out,
+    logged by the action's name alone."""
+    rows = await outbox.entries(state="done", subject=subject, action=action)
+    found: list[RecordedAction] = []
+    for row in rows:
+        try:
+            result = json.loads(row.result_json or "null")
+            found.append(
+                RecordedAction(action=row.action, request_id=row.request_id, result=result)
+            )
+        except (ValueError, ValidationError):
+            _log.error("outbox_result_unreadable", action=action)
+    return tuple(found)
 
 
 async def mark_row(

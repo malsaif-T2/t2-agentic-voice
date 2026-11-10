@@ -214,9 +214,10 @@ class Turn:
             named=named,
         )
         messages = [ChatMessage.system(prompt), *past, turn_message(self.turn)]
-        if self.turn.declined is not None:  # kept beside the turn for the turns after it
+        if self.turn.declined is not None:  # kept beside the turn, once, for the turns after it
             note = ChatMessage.system(declined_note(self.turn.declined))
-            self.memory.keep(self.turn.turn_id, [note])
+            if note not in self.memory.exchanges.get(self.turn.turn_id, ()):
+                self.memory.keep(self.turn.turn_id, [note])
         requests = tools_run = 0
         for index in range(MAX_REQUESTS):
             last = index == MAX_REQUESTS - 1

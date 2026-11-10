@@ -25,15 +25,14 @@ holds a draft's value, a result, the caller's words or a reason a backend gave.
 
 from __future__ import annotations
 
-import json
 from collections.abc import Sequence
 from datetime import timedelta
 from typing import Final
 
-from pydantic import BaseModel, ValidationError
+from pydantic import BaseModel
 
 from t2_agentic_voice.actions.action import Action
-from t2_agentic_voice.actions.action_job import EventSink, JobCall, Writes
+from t2_agentic_voice.actions.action_job import EventSink, JobCall, Writes, done_rows
 from t2_agentic_voice.actions.action_writes import parsed_result, validated
 from t2_agentic_voice.actions.record import ActionRecord
 from t2_agentic_voice.actions.runner import FAILED, failed_result, parsed_arguments
@@ -113,20 +112,9 @@ class ActionRunner:
         self._records.pop(call_id, None)
 
     async def past(self, subject: str, action: str) -> tuple[RecordedAction, ...]:
-        """The writes of `action` done for the caller `subject`, in any call, oldest first: the
-        outbox's `done` rows, as plain values (`CallContext.past_actions` reads them). A row
-        whose result cannot be read is left out, logged by the action's name."""
-        rows = await self._outbox.entries(state="done", subject=subject, action=action)
-        found: list[RecordedAction] = []
-        for row in rows:
-            try:
-                result = json.loads(row.result_json or "null")
-                found.append(
-                    RecordedAction(action=row.action, request_id=row.request_id, result=result)
-                )
-            except (ValueError, ValidationError):
-                _log.error("outbox_result_unreadable", action=action)
-        return tuple(found)
+        """The writes of `action` done for the caller `subject`, in any call, oldest first
+        (actions/action_job.py's `done_rows`; `CallContext.past_actions` reads them)."""
+        return await done_rows(self._outbox, subject, action)
 
     async def propose(
         self, request: ToolCallRequest, ctx: CallContext, *, clock: Clock = SYSTEM_CLOCK

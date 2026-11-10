@@ -272,3 +272,16 @@ def test_each_decline_has_its_note_naming_the_action_never_the_words(kind: Decli
     note = DECLINED[kind].format(action="open_request")
     assert turn_message(turn).content == f"made-up words {SUMMARY} {note}"
     assert SUMMARY not in note
+
+
+def test_a_turn_replied_twice_keeps_its_declined_note_once() -> None:
+    """An early start cancelled and the turn replied again (plan 006, Q2) keeps one note."""
+    model = FakeChat(calls(call("open_request", **DRAFT)), said("Sure."), said("Sure."))
+    rig = acting(model)
+    reply(rig.talker, TURN)
+    declined = _after(2, "no", kind="no")
+    reply(rig.talker, declined)
+    reply(rig.talker, declined)
+    note = DECLINED["no"].format(action="open_request")
+    kept = rig.talker._memory.exchanges[2]
+    assert [m.content for m in kept].count(note) == 1
