@@ -63,21 +63,27 @@ def _ms(later: float | None, earlier: float | None) -> float | None:
 
 @dataclass(kw_only=True)
 class TurnLog:
-    """One of the caller's turns as the session keeps it: when it began, when its speech ended
-    (as the detector's stop came, `stop_delay_s` after the speech's true end) and its transcript
-    came, what was heard and what the caller heard said back (the heard history's), the reply
-    that answers it, and how it ended (`fate`, the heard history's). A `dropped` one began over
-    the agent's speech under `interruptions.mode = "drop"`, an `overlap` under `two_step`
-    (overlap.py), over the reply `over_reply`; `cut_reply` is the reply its words stopped. Its
-    reply's first audio (queued, and the first audible frame sent once the output taps any:
-    `audio_seen`), its first progress line's apart, the browser's playback of it, and the chat
-    model's first token are its times' ends. While a chat model's word on its answer to a
-    read-back is awaited (yes_ask.py) it is `judging`: neither answered nor settled yet."""
+    """One of the caller's turns as the session keeps it: when it began, when its speech ended (as
+    the detector's stop came, `stop_delay_s` after the speech's true end), when Smart Turn
+    called it complete (`complete_at`, as its hold began) and when it closed, when its
+    transcript came (and its `held` request's, `held_heard_at`, which a turn whose speech did
+    not go on takes as its own: plan 006's early start), what was heard and what the caller
+    heard said back (the heard history's), the reply that answers it, and how it ended (`fate`,
+    the heard history's). A `dropped` one began over the agent's speech under
+    `interruptions.mode = "drop"`, an `overlap` under `two_step` (overlap.py), over the reply
+    `over_reply`; `cut_reply` is the reply its words stopped. Its reply's first audio (queued,
+    and the first audible frame sent once the output taps any: `audio_seen`), its first progress
+    line's apart, the browser's playback of it, and the chat model's first token are its times'
+    ends. While a chat model's word on its answer to a read-back is awaited (yes_ask.py) it is
+    `judging`: neither answered nor settled yet."""
 
     turn_id: TurnId
     speech_at: float | None = None
     closed: bool = False
     speech_ended_at: float | None = None
+    complete_at: float | None = None
+    closed_at: float | None = None
+    held_heard_at: float | None = None
     requested: bool = False
     transcribed_at: float | None = None
     heard: str = ""
@@ -123,21 +129,24 @@ class TurnLog:
         """How long its steps took (core/events.py's `TurnTimes`): from the end of the caller's
         speech, the detector's stop less its delay, to the reply's first audible frame (its
         first audio queued when the output tapped none), to its first progress line's, to the
-        browser's playback and to the chat model's first token; from the detector's stop as it
-        came to the transcript (when a request went); and the reply's first request to its
-        first audio."""
+        browser's playback, to the chat model's first token, to the turn's close and to Smart
+        Turn's "complete"; from the detector's stop as it came to the transcript (when a request
+        went, or its `held` request's that it took as its own); and the reply's first request to
+        its first audio."""
         end = self.speech_ended_at
         spoken = self.spoken_at
         tts_ms = None if self.tts_first_audio_s is None else self.tts_first_audio_s * 1000
         heard = self.first_audible_at if self.audio_seen else self.first_audio_at
         progress = self.progress_audible_at if self.audio_seen else self.progress_at
         return TurnTimes(
-            stt_ms=_ms(self.transcribed_at, end) if self.requested else None,
+            stt_ms=_ms(self.transcribed_at if self.requested else self.held_heard_at, end),
             ttfa_ms=_ms(heard, spoken),
             llm_first_token_ms=_ms(self.first_token_at, spoken),
             tts_first_audio_ms=tts_ms,
             progress_ms=_ms(progress, spoken),
             played_ms=_ms(self.played_at, spoken),
+            end_of_turn_ms=_ms(self.closed_at, spoken),
+            turn_complete_ms=_ms(self.complete_at, spoken),
         )
 
     def record(self, language: LanguageTag) -> TurnRecord:
@@ -223,10 +232,12 @@ class CallEvents:
             UserTurnEnded(call_id=self._id, turn_id=turn_id, at=self._clock.wall(), heard=heard)
         )
 
-    def metrics(self, turn: TurnLog) -> None:
+    def metrics(self, turn: TurnLog, usage: tuple[ModelUsage, ...] = ()) -> None:
+        """The turn settled: its `TurnMetrics`, with each model's `usage` in the call so far."""
         times = turn.times().model_dump()
         at = self._clock.wall()
-        self._emit(TurnMetrics(call_id=self._id, turn_id=turn.turn_id, at=at, **times))
+        metrics = TurnMetrics(call_id=self._id, turn_id=turn.turn_id, at=at, usage=usage, **times)
+        self._emit(metrics)
 
     def spoke(self, turn_id: TurnId | None, text: str, played: float) -> None:
         at = self._clock.wall()

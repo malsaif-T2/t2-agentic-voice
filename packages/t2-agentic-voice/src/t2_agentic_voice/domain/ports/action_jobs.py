@@ -27,8 +27,10 @@ OutcomeKind = Literal["done", "failed", "unknown"]
 
 
 class ActionOutcome(BaseModel):
-    """How one write ended: the `action`, its `request_id`, the `kind`, and the `line` the
-    session speaks at the next turn boundary, from the action's own template."""
+    """How one write ended: the `action`, its `request_id`, the `kind`, the `line` the
+    session speaks at the next turn boundary, from the action's own template, and, for `done`,
+    the write's real result as JSON text (`result_json`, as the call's record holds it; empty
+    otherwise), for the session's `ActionCompleted`."""
 
     model_config = ConfigDict(frozen=True, extra="forbid")
 
@@ -36,6 +38,7 @@ class ActionOutcome(BaseModel):
     request_id: str = Field(min_length=1)
     kind: OutcomeKind
     line: SpokenLine
+    result_json: str = Field(default="", repr=False)
 
 
 class ActionJobs(Protocol):

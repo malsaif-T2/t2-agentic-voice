@@ -5,8 +5,8 @@ dependency and no build step, speaking the protocol `t2v/1` ([serving.md](servin
 runtime serves it at `<prefix>/client/1/t2v-client.js`; a page on another origin may import it
 from there or keep a copy on its own site. This page covers the call, its events, Stop and Esc,
 the agent's voice lowered while the caller speaks over it, cut captions, the talker's cards and
-the `thinking` state, and push-to-talk. The `confirming` state comes with confirmed actions,
-which are not built yet.
+the `thinking` state, and push-to-talk; and, for engineers, the dev page and the test console.
+The `confirming` state comes with confirmed actions, which are not built yet.
 
 ## Starting a call
 
@@ -240,3 +240,40 @@ call's state (`thinking` while the talker or a tool works), the agent's volume, 
 above the captions (its title, its steps numbered, its source), its captions (a clause a stop cut
 marked `[cut]`) and its notices. It loads only the client, and answers only under `env` dev,
 with the dev page on, to a browser on the same machine ([quickstart.md](quickstart.md)).
+
+## The test console
+
+`<prefix>/dev/console` is a page for the engineers who test an agent (D-083): every call on the
+runtime, turn by turn, read from the runtime's own events. It comes with the dev page, so `t2v
+dev` serves it, and so does an app's server under `env` dev with `T2V_SERVER__DEV_PAGE=true`: for
+Ole5, `http://127.0.0.1:7861/voice/dev/console`. It shows calls made from any page on that
+runtime, and can make its own, as the dev page does: any token under `t2v dev`, a join token
+your identity source verifies otherwise. Ole5's server verifies signed tokens only, so start the
+call from Ole5's widget and watch it in the console.
+
+For each turn it shows:
+
+- what speech-to-text heard;
+- the time of each step from the end of the caller's speech, as numbers and as bars: Smart
+  Turn's "complete", the end of the turn, the transcript, the model's first token, a progress
+  line, the first audio (the time to first audio) and its playback in the browser; Whisper's and
+  Orpheus's own times; and the time the tools took ([latency.md](latency.md));
+- each tool call: its name, whether it succeeded or what failed, how long it ran, the arguments
+  the model wrote and what the tool returned;
+- an action's read-back with the draft it read, the yes rule's decision and whether its lists
+  (`words`) or the model decided, and the write: done, failed or unknown, how long after the
+  yes, and the write's result (for Ole5, the ticket's number);
+- what the agent said, how much of it played, interruptions and what decided them, guard
+  blocks and provider failures; and the requests and tokens the turn used.
+
+Beside the turns: the call's median and worst time to first audio, each model's usage, the record
+of completed actions, the connection and how the call ended; under them, every event in order,
+filtered by kind. **Export JSON** saves the call's events, with the agent's setup, to attach to a
+bug report. **Setup** shows what the agent runs with: its tools and actions, its languages, its
+models and voices, and the settings that shape a turn's timing, with no secret.
+
+The page reads `GET dev/feed?after=N`, which answers once a new event comes, or after 10 s with
+none. The runtime keeps the events of its last 20 calls in memory only, never on disk or in a
+log, and forgets them when it stops. Since they hold what callers said and what tools returned,
+every route of the console answers only under `env` dev, to a browser on this machine that
+names it `localhost`, `127.0.0.1` or `[::1]`; any other request gets a plain 404.

@@ -89,7 +89,9 @@ call's ID (`session.id`), which is no credential.
 The talker's model requests have no span of their own yet: each model's requests and tokens are
 in the call's report (`ModelUsage`, and the `call` span's numbers), and each turn's time to the
 model's first token in its times ([latency.md](latency.md)). Each tool call also reaches a
-runtime's observers as `ToolStarted` and `ToolFinished`.
+runtime's observers as `ToolStarted` and `ToolFinished`, with the arguments the model wrote
+and what the tool gave back, which the test console shows
+([browser-client.md](browser-client.md), "The test console").
 
 The resource attributes, on each root span: `t2v.version`, `t2v.pipecat.version`,
 `t2v.settings.digest` (a hash of the settings with every secret left out), `t2v.agent.name`,

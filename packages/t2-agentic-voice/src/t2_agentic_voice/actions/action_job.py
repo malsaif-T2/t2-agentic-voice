@@ -228,6 +228,7 @@ class Writes:
                     at=at,
                     action=action.name,
                     request_id=request_id,
+                    result=_json_of(result),
                 )
             else:
                 event = ActionUnconfirmed(
@@ -239,7 +240,13 @@ class Writes:
                     kind=kind,
                 )
             self._emit(event)
-        return ActionOutcome(action=action.name, request_id=request_id, kind=kind, line=line)
+        return ActionOutcome(
+            action=action.name,
+            request_id=request_id,
+            kind=kind,
+            line=line,
+            result_json=_json_of(result),
+        )
 
     async def reconcile(
         self, actions: Mapping[str, Action], clock: Clock, *, flagged: bool = False
@@ -322,6 +329,11 @@ def _recorded(action: Action, request_id: str, result: BaseModel, call: JobCall)
         evidence=evidence_of(result),
         at=call.clock.now(),
     )
+
+
+def _json_of(result: BaseModel | None) -> str:
+    """A write's real result as the call's record holds it, JSON text; empty for none."""
+    return "" if result is None else result.model_dump_json()
 
 
 def _stored_result(action: Action, row: OutboxEntry | None) -> BaseModel | None:

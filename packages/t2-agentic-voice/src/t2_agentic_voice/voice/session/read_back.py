@@ -154,8 +154,13 @@ class Confirming:
             return
         if index == read_back.summary[0]:
             wall, call_id = self._setup.clock.wall(), self._setup.call_id
+            plan = read_back.plan
             began = ConfirmationRequested(
-                call_id=call_id, turn_id=reply.turn_id, at=wall, action=read_back.plan.action
+                call_id=call_id,
+                turn_id=reply.turn_id,
+                at=wall,
+                action=plan.action,
+                draft=plan.draft_json,
             )
             self._setup.emit(began)
 

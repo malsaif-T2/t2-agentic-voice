@@ -147,7 +147,12 @@ class ActionJob:
         if outcome.kind == "done":
             setup.emit(
                 ActionCompleted(
-                    call_id=call_id, turn_id=turn_id, at=at, action=action, request_id=request_id
+                    call_id=call_id,
+                    turn_id=turn_id,
+                    at=at,
+                    action=action,
+                    request_id=request_id,
+                    result=outcome.result_json,
                 )
             )
             return
