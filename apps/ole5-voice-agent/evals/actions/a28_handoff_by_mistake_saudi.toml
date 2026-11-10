@@ -1,0 +1,24 @@
+# Plan 007's action scenarios (its "The measurement"; ole5_voice/evals/action_scenarios.py):
+# a person asked for by mistake, in Saudi Arabic.
+id = "a28_handoff_by_mistake_saudi"
+kind = "handoff_by_mistake"
+split = "held-out"
+language = "ar-SA"
+notes = "A Saudi caller declines the handoff's read-back and asks a question instead: nothing is passed on."
+made = 0
+
+[[turns]]
+says = "أبي أكلم أحد من الموظفين"
+calls = "hand_off"
+outcome = "read_back"
+language = "ar-SA"
+
+[[turns]]
+says = "لا ما أبي، بس قل لي كيف أغير كلمة المرور"
+outcome = "talker"
+language = "ar-SA"
+says_number = "none"
+facts = [
+  "Does not say anything was passed to the support team.",
+  "Goes on to the caller's question about changing the password.",
+]

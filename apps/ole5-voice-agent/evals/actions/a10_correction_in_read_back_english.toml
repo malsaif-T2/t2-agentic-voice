@@ -1,0 +1,34 @@
+# Plan 007's action scenarios (its "The measurement"; ole5_voice/evals/action_scenarios.py):
+# a correction over the summary in English.
+id = "a10_correction_in_read_back_english"
+kind = "correction_in_read_back"
+split = "held-out"
+language = "en"
+notes = "A correction of a date said over the summary is read back corrected, and sent on a yes."
+made = 1
+ticket_type = "Bug"
+summary_facts = [
+  "Says the archive search returns nothing.",
+  "Says it has been so since Thursday.",
+  "Does not say Monday.",
+]
+
+[[turns]]
+says = "Open a ticket please: the archive search returns nothing since Monday, and it's urgent."
+calls = "create_ticket"
+outcome = "read_back"
+language = "en"
+
+[[turns]]
+says = "No, not Monday, since Thursday."
+when = "read_back"
+after_s = 1.5
+calls = "create_ticket"
+outcome = "read_back"
+language = "en"
+facts = ["The ticket read back now says since Thursday, not since Monday."]
+
+[[turns]]
+says = "Yes, send it."
+outcome = "done"
+says_number = "whole"

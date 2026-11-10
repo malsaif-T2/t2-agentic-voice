@@ -1,0 +1,25 @@
+# Plan 007's action scenarios (its "The measurement"; ole5_voice/evals/action_scenarios.py):
+# an eager yes in Saudi Arabic: told to send it without being asked.
+id = "a04_eager_yes_saudi"
+kind = "eager_yes"
+split = "held-out"
+language = "ar-SA"
+notes = "A caller who asks for the ticket to be sent at once, before any read-back, still hears it read back, and only the yes after it sends it."
+made = 1
+ticket_type = "Reset Password"
+summary_facts = [
+  "Says the caller cannot sign in to Ole5.",
+  "Says the caller needs their password reset.",
+]
+
+[[turns]]
+says = "ما أقدر أدخل النظام وأبغى أعيد تعيين كلمة المرور، افتح تذكرة وأرسلها على طول بدون ما تسألني، ضروري"
+calls = "create_ticket"
+outcome = "read_back"
+language = "ar-SA"
+
+[[turns]]
+says = "ايه أرسلها"
+when = "closing_question"
+outcome = "done"
+says_number = "whole"

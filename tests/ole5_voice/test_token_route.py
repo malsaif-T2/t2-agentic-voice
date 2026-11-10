@@ -1,9 +1,9 @@
 """The Ole5 app's token route (ole5_voice/token_route.py, plan 003's Q4): a join token only for
 the owner's access code, compared in constant time; an address's repeated wrong codes slowed; the
 route closed by the hour's 20th wrong code until a restart; at most 10 tokens a day; the consent
-of the request passed into the token as it came, and nothing else of the body taken. The address
-a proxy forwards is taken only from a trusted one: tests/ole5_voice/test_server.py runs the
-route behind uvicorn's configuration."""
+of the request passed into the token as it came, the customer the route was built for named in
+it, and nothing else of the body taken. The address a proxy forwards is taken only from a
+trusted one: tests/ole5_voice/test_server.py runs the route behind uvicorn's configuration."""
 
 from __future__ import annotations
 
@@ -15,6 +15,7 @@ from typing import Any, Protocol
 import pytest
 from fastapi import FastAPI
 from fastapi.testclient import TestClient
+from ole5_voice.customer import CUSTOMER_EMAIL, customer_email
 from ole5_voice.token_route import (
     DAY_S,
     HOUR_S,
@@ -33,6 +34,8 @@ from tests.leaks import holding, shown
 CODE = "made-up-access-code-0123"
 WRONG = "not-the-code-at-all-0123"
 CONSENT = {"version": "m2-owner-test-1", "record_audio": True}
+CUSTOMER = "made-up.customer@example.com"
+OTHER = "someone.else@example.com"
 
 
 class Response(Protocol):
@@ -82,7 +85,9 @@ def clock() -> Clock:
 @pytest.fixture
 def app(minter: Minter, clock: Clock) -> FastAPI:
     app = FastAPI()
-    app.include_router(token_router(SecretStr(CODE), minter, guard=Guard(clock=clock)))
+    app.include_router(
+        token_router(SecretStr(CODE), minter, customer_email=CUSTOMER, guard=Guard(clock=clock))
+    )
     return app
 
 
@@ -105,7 +110,8 @@ def test_the_right_code_mints_a_token_carrying_the_consent_given(
     assert answer.json() == {"token": "made-up-token-0"}
     assert answer.headers["cache-control"] == "no-store"
     caller, consent, _ = minter.minted[0]
-    assert caller == Caller(subject=SUBJECT)
+    assert caller == Caller(subject=SUBJECT, attributes={CUSTOMER_EMAIL: CUSTOMER})
+    assert customer_email(caller) == CUSTOMER
     assert consent == Consent(version="m2-owner-test-1", record_audio=True)
     declined = {"version": "m2-owner-test-1", "record_audio": False}
     assert ask(app, consent=declined).status_code == 200
@@ -118,12 +124,22 @@ def test_the_right_code_mints_a_token_carrying_the_consent_given(
 def test_the_body_can_set_nothing_but_the_code_and_the_consent(
     app: FastAPI, minter: Minter
 ) -> None:
-    """No caller, subject or other claim is taken from the request: the token names the owner,
-    and its consent is the one the request carried, which no later message changes."""
+    """No caller, subject, customer or other claim is taken from the request: the token names
+    the owner as the customer the route was built for (invariant 3), and its consent is the one
+    the request carried, which no later message changes."""
     extra = {"code": CODE, "consent": CONSENT, "subject": "someone-else"}
     assert client(app).post("/token", json=extra).json()["code"] == "invalid_request"
     nested = {"code": CODE, "consent": {**CONSENT, "subject": "someone-else"}}
     assert client(app).post("/token", json=nested).json()["code"] == "invalid_request"
+    for named in (
+        {CUSTOMER_EMAIL: OTHER},
+        {"attributes": {CUSTOMER_EMAIL: OTHER}},
+        {"attrs": {CUSTOMER_EMAIL: OTHER}},
+        {"consent": {**CONSENT, CUSTOMER_EMAIL: OTHER}},
+    ):
+        answer = client(app).post("/token", json={"code": CODE, "consent": CONSENT, **named})
+        assert answer.json()["code"] == "invalid_request"
+        assert holding(OTHER, {"answer": answer.text}) == []
     assert minter.minted == []
 
 
@@ -262,7 +278,9 @@ def test_the_hours_20th_wrong_code_closes_the_route_until_a_restart(
     assert ask(app, address="198.51.100.2").status_code == 503
     assert len(minter.minted) == 1
     restarted = FastAPI()
-    restarted.include_router(token_router(SecretStr(CODE), minter, guard=Guard(clock=clock)))
+    restarted.include_router(
+        token_router(SecretStr(CODE), minter, customer_email=CUSTOMER, guard=Guard(clock=clock))
+    )
     assert ask(restarted).status_code == 200
 
 

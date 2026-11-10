@@ -1,0 +1,30 @@
+# Plan 007's action scenarios (its "The measurement"; ole5_voice/evals/action_scenarios.py):
+# yes words said over the read-back's summary are ignored, and the summary plays on.
+id = "a07_yes_over_summary_msa"
+kind = "yes_over_summary"
+split = "dev"
+language = "ar"
+notes = "Yes words over the summary count for nothing and do not cut it; the ticket is sent only on the yes after the whole read-back."
+made = 1
+ticket_type = "Bug"
+summary_facts = [
+  "Says the electronic signature does not appear on outgoing correspondence.",
+  "Says it has been so since the last update.",
+]
+
+[[turns]]
+says = "أرغب في فتح تذكرة: التوقيع الإلكتروني لا يظهر في المراسلات الصادرة منذ التحديث الأخير، والأمر عاجل."
+calls = "create_ticket"
+outcome = "read_back"
+language = "ar"
+
+[[turns]]
+says = "نعم نعم"
+when = "read_back"
+after_s = 1.0
+outcome = "ignored"
+
+[[turns]]
+says = "نعم، أرسلها."
+outcome = "done"
+says_number = "whole"

@@ -1,0 +1,22 @@
+# Plan 007's action scenarios (its "The measurement"; ole5_voice/evals/action_scenarios.py):
+# a plain no after the read-back: nothing sent, the talker answers in its own words.
+id = "a11_no_english"
+kind = "no"
+split = "dev"
+language = "en"
+notes = "A plain no after the read-back sends nothing; the talker answers it in its own words, with no claim and no number."
+made = 0
+
+[[turns]]
+says = "Can you open a ticket? My referrals to my manager stay stuck in my outbox. It's not urgent."
+calls = "create_ticket"
+outcome = "read_back"
+language = "en"
+
+[[turns]]
+says = "No, don't send it."
+calls = "nothing"
+outcome = "talker"
+language = "en"
+says_number = "none"
+facts = ["Says plainly, in its own words, that nothing was sent.", "Does not say a ticket was made."]

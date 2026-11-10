@@ -1,0 +1,33 @@
+/* The mock ticket system's page (ole5_voice/tickets/page.py), in the widget's colours. */
+:root {
+  --ink: #1e2a2c; --muted: #5f6d6b; --paper: #fbfcfb; --panel: #ffffff; --line: #dce3e0;
+  --accent: #1f6f5c;
+  color-scheme: light dark;
+}
+@media (prefers-color-scheme: dark) {
+  :root {
+    --ink: #e6ebe9; --muted: #a3b0ad; --paper: #141917; --panel: #1c2321; --line: #34403c;
+    --accent: #7fcfb8;
+  }
+}
+* { box-sizing: border-box; }
+body {
+  margin: 0; padding: 16px; background: var(--paper); color: var(--ink);
+  font: 16px/1.5 system-ui, "Segoe UI", Tahoma, sans-serif;
+}
+header, main { max-width: 1100px; margin: 0 auto; }
+h1 { font-size: 1.4rem; margin: 0; }
+.muted { color: var(--muted); font-size: 0.9rem; }
+main { overflow-x: auto; }
+table {
+  width: 100%; border-collapse: collapse; background: var(--panel);
+  border: 1px solid var(--line); border-radius: 10px; margin: 16px 0;
+}
+th, td {
+  text-align: start; vertical-align: top; padding: 8px 12px;
+  border-bottom: 1px solid var(--line);
+}
+th { font-size: 0.85rem; color: var(--muted); font-weight: 600; white-space: nowrap; }
+td.number { font-variant-numeric: tabular-nums; white-space: nowrap; color: var(--accent); }
+td.summary { min-width: 16em; overflow-wrap: anywhere; }
+.empty { color: var(--muted); margin: 16px 0; }

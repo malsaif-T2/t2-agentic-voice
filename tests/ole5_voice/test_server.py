@@ -1,6 +1,8 @@
 """The Ole5 app's server (ole5_voice/server.py): the widget's files with its page's headers, the
 token route and the library's router in one app with FastAPI's telemetry off and the app's own
-CORS, and uvicorn trusting proxy headers only from `server.forwarded_allow_ips`. The library's
+CORS, and uvicorn trusting proxy headers only from `server.forwarded_allow_ips`; the token
+route naming the settings' demo customer, and the mock ticket system kept where the settings
+say, its page served (tests/ole5_voice/tickets/test_page.py tests the page). The library's
 runtime is Track F's: these tests give the app a router of their own, and `make_app` fakes of
 the runtime and the signed tokens."""
 
@@ -13,7 +15,7 @@ import sys
 from collections.abc import AsyncIterator, Iterator
 from html.parser import HTMLParser
 from pathlib import Path
-from typing import ClassVar
+from typing import Any, ClassVar
 
 import pytest
 import uvicorn
@@ -21,6 +23,7 @@ from fastapi import APIRouter, FastAPI
 from fastapi.testclient import TestClient
 from ole5_voice import server
 from ole5_voice.agent import ECHO_AGENT
+from ole5_voice.customer import customer_email
 from ole5_voice.server import (
     FILES,
     OFFER_SECRET_HEADER,
@@ -31,12 +34,14 @@ from ole5_voice.server import (
     page_headers,
     server_config,
 )
-from ole5_voice.settings import AppSettings, Settings
+from ole5_voice.settings import DEMO_CUSTOMER_EMAIL, AppSettings, Settings
+from ole5_voice.tickets.mock import MockTicketSystem
 from pydantic import SecretStr
 from t2_agentic_voice import Caller, Consent, JoinSettings, ServerSettings, VoiceSettings
 from t2_agentic_voice.api import protocol
 
 from tests.leaks import holding, shown
+from tests.ole5_voice.tickets.ticket_support import new_ticket
 
 CODE = "made-up-access-code-0123"
 WRONG = "not-the-code-at-all-0123"
@@ -268,7 +273,47 @@ def test_the_app_verifies_its_callers_with_the_tokens_it_mints(
         assert test.get("/voice/health").status_code == 200
         body = {"code": CODE, "consent": {"version": "v1", "record_audio": True}}
         assert test.post("/token", json=body).json() == {"token": "made-up-token"}
-    assert identity.minted == [(Caller(subject="owner"), Consent(version="v1", record_audio=True))]
+    customer = Caller(subject="owner", attributes={"customer_email": DEMO_CUSTOMER_EMAIL})
+    assert identity.minted == [(customer, Consent(version="v1", record_audio=True))]
+
+
+def test_the_app_names_its_demo_customer_and_keeps_its_tickets_where_the_settings_say(
+    monkeypatch: pytest.MonkeyPatch, tmp_path: Path
+) -> None:
+    monkeypatch.setattr(server, "SignedJoinTokens", _Tokens)
+    monkeypatch.setattr(server, "VoiceRuntime", _Runtime)
+    made: list[MockTicketSystem] = []
+
+    class Kept(MockTicketSystem):
+        def __init__(self, *given: Any, **named: Any) -> None:
+            super().__init__(*given, **named)
+            made.append(self)
+
+    monkeypatch.setattr(server, "MockTicketSystem", Kept)
+    _Runtime.made.clear()
+    app_settings = AppSettings(
+        access_code=SecretStr(CODE),
+        demo_customer_email="another.demo@example.com",
+        tickets_dir=tmp_path,
+        tickets_mode="late",
+        tickets_lookup=False,
+    )
+    app = server.make_app(Settings(app=app_settings, voice=VoiceSettings(env="dev")))
+    [tickets] = made
+    assert (tickets.folder, tickets.mode, tickets.read_mode) == (tmp_path, "late", "answer")
+    assert tickets.can_find is False
+    assert not list(tmp_path.iterdir())  # nothing made until a ticket is
+    written = MockTicketSystem(tmp_path)
+    number = asyncio.run(written.create(new_ticket())).number
+    with TestClient(app, client=("127.0.0.1", 50000)) as test:
+        assert number in test.get("/tickets").text
+        body = {"code": CODE, "consent": {"version": None, "record_audio": False}}
+        assert test.post("/token", json=body).status_code == 200
+    [runtime] = _Runtime.made
+    identity = runtime.given[2]
+    assert isinstance(identity, _Tokens)
+    [(caller, _)] = identity.minted
+    assert customer_email(caller) == "another.demo@example.com"
 
 
 @pytest.fixture

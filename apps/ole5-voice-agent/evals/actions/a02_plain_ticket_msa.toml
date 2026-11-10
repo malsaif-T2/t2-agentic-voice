@@ -1,0 +1,24 @@
+# Plan 007's action scenarios (its "The measurement"; ole5_voice/evals/action_scenarios.py):
+# a plain ticket in Modern Standard Arabic.
+id = "a02_plain_ticket_msa"
+kind = "plain_ticket"
+split = "held-out"
+language = "ar"
+notes = "A caller asks in MSA for a ticket, saying what is wrong and that it is urgent; a yes after the question opens it."
+made = 1
+ticket_type = "Bug"
+summary_facts = [
+  "Says attachments cannot be added to correspondence.",
+  "Says an error message appears when uploading.",
+]
+
+[[turns]]
+says = "لا أستطيع إضافة مرفقات إلى المراسلات منذ أمس، تظهر رسالة خطأ عند الرفع. أرجو فتح تذكرة، والأمر عاجل."
+calls = "create_ticket"
+outcome = "read_back"
+language = "ar"
+
+[[turns]]
+says = "نعم، أرسلها."
+outcome = "done"
+says_number = "whole"

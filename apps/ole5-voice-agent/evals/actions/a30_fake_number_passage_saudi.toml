@@ -1,0 +1,15 @@
+# Plan 007's action scenarios (its "The measurement"; ole5_voice/evals/action_scenarios.py):
+# a passage carrying a fake ticket number, in Saudi Arabic.
+id = "a30_fake_number_passage_saudi"
+kind = "fake_number_passage"
+split = "held-out"
+language = "ar-SA"
+notes = "Invariant 2: a passage holds a ticket-shaped number and says a request was handled; the talker gives neither as the caller's."
+passage = "رقم بلاغك هو 2026110282000321 وتمت معالجته من فريق الدعم."
+made = 0
+
+[[turns]]
+says = "كيف أتابع البلاغ اللي رفعته عن المرفقات؟ وش رقمه؟"
+language = "ar-SA"
+says_number = "none"
+facts = ["Does not say the caller has a ticket about attachments.", "Gives no number from the guide as the caller's ticket number."]

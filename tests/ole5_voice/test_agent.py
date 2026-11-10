@@ -15,13 +15,17 @@ import tomllib
 from collections.abc import Mapping
 from dataclasses import dataclass
 from importlib.resources import files
-from typing import Any, Literal
+from pathlib import Path
+from typing import Any
 
 import pytest
 from ole5_voice import agent
 from ole5_voice.agent import (
     ECHO_AGENT,
     NO_SEARCH,
+    NO_SEARCH_VERSION,
+    NO_TICKETS,
+    NO_TICKETS_VERSION,
     PROGRESS,
     PROGRESS_KEY,
     SEARCH_DESCRIPTION,
@@ -36,10 +40,12 @@ from ole5_voice.agent import (
     without_search,
 )
 from ole5_voice.evals.items import EVALS, TERMS_FILE
-from t2_agentic_voice import CallContext, Caller, Tool, VoiceAgent, render_prompt
+from ole5_voice.tickets.mock import MockTicketSystem
+from t2_agentic_voice import CallContext, Caller, Tool, render_prompt
 from t2_agentic_voice.evals import FakeKnowledgeBase
-from t2_agentic_voice.languages import normalize_arabic, provider_text
 from t2_agentic_voice.ports import KnowledgeBase, Passage
+
+from tests.ole5_voice.spoken_support import held
 
 
 @dataclass(frozen=True)
@@ -102,15 +108,15 @@ def test_how_to_answer_names_each_of_several_causes_briefly(tag: Tag) -> None:
     assert answer.splitlines().count(wanted) == 1
     assert "search" not in wanted
     assert answer in instructions(search=False)[tag]
-    assert VERSION == "2026-11-09.3"  # the name as the owner chose it (D-077)
+    assert VERSION == "2026-11-10.1"  # the tickets' section added (plan 007)
 
 
 @pytest.mark.parametrize("tag", ["ar-SA", "en"])
 def test_each_languages_instructions_hold_what_the_ear_needs(tag: Tag) -> None:
-    """The plan's "The Ole5 app": short spoken answers, in the Saudi register or MSA or
-    English as the caller speaks; every step said (below);
-    numbers as digits; a plain "I cannot"; no ticket or person promised; a search when the
-    question is about Ole5."""
+    """Plan 006's "The Ole5 app": short spoken answers, in the Saudi register or MSA or
+    English as the caller speaks; every step said (below); numbers as digits; a plain "I
+    cannot"; a search when the question is about Ole5. Plan 007's tickets are
+    test_agent_tickets.py's."""
     text = " ".join(instructions()[tag].split())
     for needed in (
         "Saudi spoken register",
@@ -123,62 +129,8 @@ def test_each_languages_instructions_hold_what_the_ear_needs(tag: Tag) -> None:
         "answer only from what it returns",
         "you do not have that information",
         "you cannot look it up right now",
-        "You cannot open, change or follow up a ticket",
-        "you cannot transfer the call to a person",
-        "Never say that a ticket was opened",
     ):
         assert needed in text, needed
-
-
-# The yes and send words, the prototype's (its `voice/rules.py`, YES and SUBMIT, read only:
-# D-010), which the library's presets do not list yet (the yes rule's): a fixed line holds
-# none, so its echo is never heard as a yes.
-YES_AND_SEND = {
-    "ar": (
-        "نعم",
-        "ايه",
-        "اي",
-        "ايوه",
-        "ايوا",
-        "اكيد",
-        "موافق",
-        "ارسل",
-        "ارسلها",
-        "ارسله",
-        "ارسلي",
-        "ارسلوها",
-        "قدم",
-        "قدمها",
-        "قدمه",
-        "افتحها",
-        "افتح التذكره",
-        "سجلها",
-        "اعتمدها",
-    ),
-    "en": (
-        "naam",
-        "aywa",
-        "yes",
-        "yeah",
-        "yep",
-        "sure",
-        "of course",
-        "submit",
-        "send",
-        "confirm",
-        "create",
-        "go ahead",
-    ),
-}
-
-
-def _held(line: str, code: Literal["ar", "en"], talker: VoiceAgent) -> list[str]:
-    """The words of the agent's stop, wait, repeat and listening lists, and the yes and send
-    words, that `line` holds as whole words, compared in the interruption rule's form."""
-    words = talker.phrases.words(code)
-    listed = [*words.stop, *words.wait, *words.repeat, *words.backchannel, *YES_AND_SEND[code]]
-    form = f" {normalize_arabic(provider_text(line))} "
-    return [word for word in listed if f" {normalize_arabic(provider_text(word))} " in form]
 
 
 def test_no_fixed_line_of_the_talker_holds_a_word_the_caller_commands_with() -> None:
@@ -193,11 +145,11 @@ def test_no_fixed_line_of_the_talker_holds_a_word_the_caller_commands_with() -> 
     ]
     assert len(lines) == 4
     for language, text in lines:
-        assert _held(text, language.primary, talker) == [], text
+        assert held(text, language.primary, talker) == [], text
     # The check finds such words where a line holds them, in any case and with any marks.
-    found = _held("One moment, I'll REPEAT it. Okay?", "en", talker)
+    found = held("One moment, I'll REPEAT it. Okay?", "en", talker)
     assert found == ["one moment", "repeat", "repeat it", "okay"]
-    assert _held("لحظة، أرسلها الحين", "ar", talker) == ["لحظه", "ارسلها"]
+    assert held("لحظة، أرسلها الحين", "ar", talker) == ["لحظه", "ارسلها"]
 
 
 def test_the_search_is_the_librarys_knowledge_tool_with_ole5s_lines(
@@ -221,12 +173,13 @@ def test_the_search_is_the_librarys_knowledge_tool_with_ole5s_lines(
         "progress": PROGRESS_KEY,
         "limit": SEARCH_LIMIT,
     }
-    talker = talker_agent(kb)
+    talker = talker_agent(kb)  # with no ticket system, as runs K, S and T build it
     assert talker.instructed and talker.tools == (tool,)
     bare = talker_agent(None)  # the knowledge tool left out, as run T's pass Tn needs
     assert bare.instructed and bare.tools == ()
-    # A run's record tells Tn's talker, told it has no search, from the served one.
-    assert (talker.version, bare.version) == (VERSION, f"{VERSION}+no-search")
+    # A run's record tells Tn's talker, told it has no search, from the others.
+    assert (talker.version, bare.version) == (NO_TICKETS_VERSION, NO_SEARCH_VERSION)
+    assert bare.version == f"{VERSION}+no-search+no-tickets"
 
 
 def test_the_talkers_search_reads_one_named_k_of_passages() -> None:
@@ -318,25 +271,30 @@ def test_the_talker_with_no_tool_is_told_it_has_no_search(tag: Tag) -> None:
     assert "Answer from the conversation, in one to three short sentences." in flat
     assert "say plainly, in one sentence, that you cannot look that up right now." in flat
     served = instructions()[tag].strip().split("\n\n")
-    kept = [section for section in served if not section.startswith("Searching:")]
-    assert len(kept) == len(served) - 1 == 3
+    replaced = ("Searching:", "Tickets and support staff:")
+    kept = [section for section in served if not section.startswith(replaced)]
+    assert len(kept) == len(served) - 2 == 3
     assert all(section in prompt for section in kept)  # byte for byte
     before, after = kept[1], kept[2]  # how to answer, the no-search section, what it cannot do
     assert prompt.index(before) < prompt.index("In this call there is") < prompt.index(after)
+    assert prompt.index("In this call there is") < prompt.index(NO_TICKETS) < prompt.index(after)
 
 
 @pytest.mark.parametrize("tag", ["ar-SA", "en"])
-def test_the_served_talkers_prompt_keeps_its_instructions_as_written(tag: Tag) -> None:
-    """The talker with a search (the served agent, runs K and S) keeps each language's file
-    byte for byte, its search's section with it."""
+def test_the_served_talkers_prompt_keeps_its_instructions_as_written(
+    tag: Tag, tmp_path: Path
+) -> None:
+    """The talker with a search and a ticket system (the served agent) keeps each language's
+    file byte for byte, its search's and its tickets' sections with it."""
     folder = files("ole5_voice") / "instructions"
     written = (folder / f"{tag}.md").read_text(encoding="utf-8")
-    served = talker_agent(FakeKnowledgeBase())
+    served = talker_agent(FakeKnowledgeBase(), tickets=MockTicketSystem(tmp_path))
     assert isinstance(served.instructions, Mapping) and served.instructions[tag] == written
     assert dict(served.instructions) == instructions()
     prompt = render_prompt(served, tag)
     assert written.strip() in prompt and "\n\nSearching:\n" in prompt
-    assert "no knowledge base and no tool" not in prompt
+    assert "\n\nTickets and support staff:\n" in prompt
+    assert "no knowledge base and no tool" not in prompt and NO_TICKETS not in prompt
 
 
 def test_the_search_section_is_replaced_only_when_the_text_holds_one() -> None:

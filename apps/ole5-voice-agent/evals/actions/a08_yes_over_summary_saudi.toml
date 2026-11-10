@@ -1,0 +1,31 @@
+# Plan 007's action scenarios (its "The measurement"; ole5_voice/evals/action_scenarios.py):
+# yes words over the summary in Saudi Arabic.
+id = "a08_yes_over_summary_saudi"
+kind = "yes_over_summary"
+split = "held-out"
+language = "ar-SA"
+notes = "Saudi yes words over the summary are ignored; a yes with the send word over the closing question sends the ticket."
+made = 1
+ticket_type = "Request"
+summary_facts = [
+  "Says the caller wants a new employee added to Ole5.",
+  "Says the caller has no permission to add one.",
+]
+
+[[turns]]
+says = "أبي تذكرة، نبي نضيف موظف جديد على النظام وما عندي صلاحية، مو مستعجل"
+calls = "create_ticket"
+outcome = "read_back"
+language = "ar-SA"
+
+[[turns]]
+says = "ايه ايه"
+when = "read_back"
+after_s = 1.0
+outcome = "ignored"
+
+[[turns]]
+says = "ايه أرسلها"
+when = "closing_question"
+outcome = "done"
+says_number = "whole"

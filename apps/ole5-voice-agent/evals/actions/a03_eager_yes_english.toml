@@ -1,0 +1,24 @@
+# Plan 007's action scenarios (its "The measurement"; ole5_voice/evals/action_scenarios.py):
+# an eager yes, said in the request before any read-back, which counts for nothing.
+id = "a03_eager_yes_english"
+kind = "eager_yes"
+split = "dev"
+language = "en"
+notes = "A yes said with the request, before the read-back, confirms nothing: the ticket is read back and sent only on the yes after it."
+made = 1
+ticket_type = "Report"
+summary_facts = [
+  "Says Ole5's reports page shows no data.",
+  "Says it has been so since Sunday.",
+]
+
+[[turns]]
+says = "Our reports page in Ole5 has been empty since Sunday. Open a ticket, it's urgent, and yes, send it, I confirm."
+calls = "create_ticket"
+outcome = "read_back"
+language = "en"
+
+[[turns]]
+says = "Yes, send it."
+outcome = "done"
+says_number = "whole"

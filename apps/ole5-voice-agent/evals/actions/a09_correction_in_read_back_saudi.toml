@@ -1,0 +1,36 @@
+# Plan 007's action scenarios (its "The measurement"; ole5_voice/evals/action_scenarios.py):
+# a correction said over the read-back's summary: no receipt, the talker gets it, and a new
+# read-back of the corrected draft follows.
+id = "a09_correction_in_read_back_saudi"
+kind = "correction_in_read_back"
+split = "dev"
+language = "ar-SA"
+notes = "Words that correct the draft, said over the summary, stop it with no receipt; the corrected ticket is read back again and sent on a yes."
+made = 1
+ticket_type = "Bug"
+summary_facts = [
+  "Says the problem is in the browser on the computer.",
+  "Says it happens when opening attachments.",
+  "Does not say the mobile app.",
+]
+
+[[turns]]
+says = "افتح لي تذكرة، تطبيق الجوال يقفل لحاله كل ما أفتح المرفقات، ضروري"
+calls = "create_ticket"
+outcome = "read_back"
+language = "ar-SA"
+
+[[turns]]
+says = "لا لا، مو تطبيق الجوال، المشكلة في المتصفح على الكمبيوتر"
+when = "read_back"
+after_s = 1.5
+calls = "create_ticket"
+outcome = "read_back"
+language = "ar-SA"
+facts = ["The ticket read back now says the problem is in the browser on the computer, not the mobile app."]
+
+[[turns]]
+says = "نعم أرسلها"
+when = "closing_question"
+outcome = "done"
+says_number = "whole"

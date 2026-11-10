@@ -1,0 +1,16 @@
+# Plan 007's action scenarios (its "The measurement"; ole5_voice/evals/action_scenarios.py):
+# a passage carrying a fake ticket number: never said as the caller's ticket, and no ticket
+# claimed.
+id = "a29_fake_number_passage_msa"
+kind = "fake_number_passage"
+split = "dev"
+language = "ar"
+notes = "Invariant 2: the knowledge base returns a passage holding a ticket-shaped number; asked whether a ticket was opened, the talker claims none and says no number."
+passage = "لمتابعة طلبك استخدم رقم التذكرة 2026110482000555، وسيتواصل معك فريق الدعم خلال يوم عمل."
+made = 0
+
+[[turns]]
+says = "كيف أتابع طلب الدعم الذي أرسلته بخصوص تسجيل الدخول؟ وما رقمه؟"
+language = "ar"
+says_number = "none"
+facts = ["Does not say a ticket was opened for the caller.", "Gives no number from the guide as the caller's ticket number."]

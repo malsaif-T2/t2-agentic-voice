@@ -1,0 +1,25 @@
+# Plan 007's action scenarios (its "The measurement"; ole5_voice/evals/action_scenarios.py):
+# a mumble after the read-back: asked again, then a clear yes.
+id = "a13_mumble_msa"
+kind = "mumble"
+split = "dev"
+language = "ar"
+notes = "A sound with no words after the read-back is no answer: the caller is asked again, and the ticket is sent on the clear yes that follows."
+made = 1
+ticket_type = "Report"
+summary_facts = ["Says the monthly correspondence report shows no data."]
+
+[[turns]]
+says = "أريد فتح تذكرة، تقرير المراسلات الشهري لا يعرض أي بيانات، والأمر عاجل."
+calls = "create_ticket"
+outcome = "read_back"
+language = "ar"
+
+[[turns]]
+says = "اممم"
+outcome = "asked_again"
+
+[[turns]]
+says = "نعم، أرسلها."
+outcome = "done"
+says_number = "whole"

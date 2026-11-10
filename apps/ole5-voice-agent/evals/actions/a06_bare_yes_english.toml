@@ -1,0 +1,30 @@
+# Plan 007's action scenarios (its "The measurement"; ole5_voice/evals/action_scenarios.py):
+# a bare yes over the closing question in English.
+id = "a06_bare_yes_english"
+kind = "bare_yes"
+split = "held-out"
+language = "en"
+notes = "A bare yes said over the closing question is asked again; a yes with the send word over it sends the ticket."
+made = 1
+ticket_type = "Request for Integration"
+summary_facts = [
+  "Says the caller wants Ole5 connected to their HR system.",
+  "Says new staff should get accounts automatically.",
+]
+
+[[turns]]
+says = "Please open a ticket: we need Ole5 connected to our HR system so new staff get accounts automatically. It's not urgent."
+calls = "create_ticket"
+outcome = "read_back"
+language = "en"
+
+[[turns]]
+says = "Yes."
+when = "closing_question"
+outcome = "asked_again"
+
+[[turns]]
+says = "Yes, send it."
+when = "closing_question"
+outcome = "done"
+says_number = "whole"

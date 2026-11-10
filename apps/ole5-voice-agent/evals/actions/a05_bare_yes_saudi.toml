@@ -1,0 +1,32 @@
+# Plan 007's action scenarios (its "The measurement"; ole5_voice/evals/action_scenarios.py):
+# the rehearsal's step 6: a bare yes over the closing question is asked again, and a yes with
+# the send word over it sends the ticket.
+id = "a05_bare_yes_saudi"
+kind = "bare_yes"
+split = "dev"
+rehearsal = true
+language = "ar-SA"
+notes = "A bare yes over the closing question is asked again; a yes with the send word over it, once the summary has played, opens the ticket."
+made = 1
+ticket_type = "Bug"
+summary_facts = [
+  "Says an error appears when the caller opens the inbox.",
+  "Says the inbox does not open at all.",
+]
+
+[[turns]]
+says = "البريد الوارد ما يفتح أبد، يطلع لي خطأ كل ما أفتحه، أبغى تذكرة والموضوع مستعجل"
+calls = "create_ticket"
+outcome = "read_back"
+language = "ar-SA"
+
+[[turns]]
+says = "نعم"
+when = "closing_question"
+outcome = "asked_again"
+
+[[turns]]
+says = "نعم أرسلها"
+when = "closing_question"
+outcome = "done"
+says_number = "whole"

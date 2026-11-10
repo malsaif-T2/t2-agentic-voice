@@ -1,0 +1,33 @@
+# Plan 007's action scenarios (its "The measurement"; ole5_voice/evals/action_scenarios.py):
+# the status of one ticket the caller names by its last four digits.
+id = "a22_own_status_english"
+kind = "own_status"
+split = "held-out"
+language = "en"
+notes = "The caller names their ticket by its last four digits: the talker says them back first, then that ticket's status."
+made = 0
+
+[[seed]]
+owner = "caller"
+through_agent = true
+number = "2026110482000042"
+type = "Mobile App Issue"
+status = "Waiting For Customer Response"
+summary = "The mobile app logs the caller out every few minutes."
+
+[[seed]]
+owner = "other"
+number = "2026110482000043"
+type = "Report"
+status = "Open"
+summary = "Another customer's monthly report is empty."
+
+[[turns]]
+says = "What's happening with my ticket ending 0042?"
+calls = "ticket_status"
+language = "en"
+says_number = "last_four"
+facts = [
+  "Says back that the ticket ends in 0042 before its status.",
+  "Says the ticket is waiting for the caller's response.",
+]
