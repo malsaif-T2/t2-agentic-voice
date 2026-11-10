@@ -21,6 +21,7 @@ from typing import Any
 from pydantic import JsonValue
 
 from t2_agentic_voice.actions.action import Action
+from t2_agentic_voice.actions.action_runner import ActionRunner
 from t2_agentic_voice.actions.runner import ToolRunner
 from t2_agentic_voice.actions.tools import CallContext, Tool, ToolResult
 from t2_agentic_voice.agent.events import ReadBackRequested
@@ -64,11 +65,15 @@ def actions_of(agent: VoiceAgent) -> tuple[Action, ...]:
 
 
 def chat_talkers(
-    agent: VoiceAgent, settings: VoiceSettings, chat: ChatModel | None
+    agent: VoiceAgent,
+    settings: VoiceSettings,
+    chat: ChatModel | None,
+    actions: ActionRunner | None = None,
 ) -> TalkerFactory | None:
     """The factory of each call's talker: the library's `ChatTalker` on `chat`, with one tool
-    runner of the agent's tools; None for an agent whose calls run the echo, or with no chat
-    model (voice's entry point then refuses an agent that runs the talker)."""
+    runner of the agent's tools and `actions`, the agent's action runner, one for every call;
+    None for an agent whose calls run the echo, or with no chat model (voice's entry point then
+    refuses an agent that runs the talker)."""
     mode = settings.session.mode_for(instructed=agent.instructed, prefix=settings.prefix)
     if mode != "talker" or chat is None:
         return None
@@ -76,7 +81,13 @@ def chat_talkers(
 
     def build(call: TalkerCall, clock: Clock) -> Talker:
         return ChatTalker(
-            agent, model=model, runner=runner, settings=settings, call=call, clock=clock
+            agent,
+            model=model,
+            runner=runner,
+            settings=settings,
+            call=call,
+            clock=clock,
+            actions=actions,
         )
 
     return build

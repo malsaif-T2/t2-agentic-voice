@@ -165,6 +165,7 @@ class TextCall:
         self._watched: WatchedTalker | None = None
         self._runner: RecordingRunner | None = None
         self._jobs: RecordingJobs | None = None
+        self._actions: ActionRunner | None = None
         self._record: ActionRecord | None = None
         self._fault: ClauseFault | None = None
         self._folder: tempfile.TemporaryDirectory[str] | None = None
@@ -173,10 +174,17 @@ class TextCall:
         self._time: Clock = SYSTEM_CLOCK
 
     def _talker(self, call: TalkerCall, settings: VoiceSettings, clock: Clock) -> Talker:
-        """The call's talker: the library's, on the test's model and the agent's tools."""
+        """The call's talker: the library's, on the test's model, the agent's tools and its
+        actions' runner, the one the session's jobs go to."""
         runner: ToolRunner = self._runner or ToolRunner(tools_of(self.agent))
         return ChatTalker(
-            self.agent, model=self.llm, runner=runner, settings=settings, call=call, clock=clock
+            self.agent,
+            model=self.llm,
+            runner=runner,
+            settings=settings,
+            call=call,
+            clock=clock,
+            actions=self._actions,
         )
 
     async def __aenter__(self) -> Self:
@@ -197,8 +205,8 @@ class TextCall:
         language = self.agent.call_language(self.language, locale=caller.locale)
         if actions := actions_of(self.agent):  # the part that acts, as the runtime gives it
             self._record = ActionRecord()
-            runner = ActionRunner(actions, outbox=self.outbox, record=self._record)
-            self._jobs = RecordingJobs(runner)
+            self._actions = ActionRunner(actions, outbox=self.outbox, record=self._record)
+            self._jobs = RecordingJobs(self._actions)
         talker: Talker | None = None
         if settings.session.mode_for(instructed=self.agent.instructed) == "talker":
             call = TalkerCall(call_id=CALL_ID, caller=caller, language=language.tag)

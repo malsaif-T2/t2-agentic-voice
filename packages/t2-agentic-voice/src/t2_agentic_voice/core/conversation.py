@@ -31,9 +31,10 @@ TurnFate = Literal[
     "pending", "answered", "cut", "rolled_back", "command", "went_on", "dropped", "unfinished"
 ]
 # How the caller declined an action's read-back (the design's 6.4): a whole no answer; other
-# words, a correction the talker may answer with a new draft; or no clear answer after the
-# read-back's `max_attempts`.
-DeclineKind = Literal["no", "correction", "unclear"]
+# words, a correction the talker may answer with a new draft; a stop or pause word over it, or
+# said whole while it waits, after which the talker asks what to change, its draft kept (the
+# owner's stop ruling); or no clear answer after the read-back's `max_attempts`.
+DeclineKind = Literal["no", "correction", "stopped", "unclear"]
 # A language as a transcript names it, in the provider's code ("ar", "en").
 _Heard = Annotated[str, Field(min_length=2, max_length=16)]
 
@@ -99,7 +100,8 @@ class DeclinedAction(_Plain):
     words heard ("" when nothing was).
 
     Who speaks, as the owner rules (plan 007): after a plain no (`no`) the talker always
-    answers, in its own words, and after a `correction` too. The action's fixed `declined` line
+    answers, in its own words, and after a `correction` too; after a stop (`stopped`) it asks
+    what to change, keeping its draft. The action's fixed `declined` line
     (`ReadBackPlan.declined`) is the session's only where no talker turn can answer: nothing
     usable heard after the last ask-again (`unclear`)."""
 

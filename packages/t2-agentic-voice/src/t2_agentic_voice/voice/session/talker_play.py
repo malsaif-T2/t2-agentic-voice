@@ -14,12 +14,12 @@ import asyncio
 from collections.abc import Awaitable, Callable
 from dataclasses import dataclass, field
 
-from t2_agentic_voice.agent.events import ReadBackRequested
 from t2_agentic_voice.agent.talker import (
     ClauseBlocked,
     ModelReplied,
     ModelRequested,
     ProgressDue,
+    ReadBackRequested,
     ReplyDone,
     ShownCard,
     SpokenClause,
@@ -140,10 +140,8 @@ class TalkPlayer:
                 progress = language_of(self._setup, tag).progress.get(key)
                 if progress is not None:
                     await reply.add_phrase(progress, language=tag, at=at, progress=True)
-            case ClauseBlocked(language=tag):
-                emit(
-                    GuardBlocked(call_id=call_id, turn_id=turn_id, at=wall, reason="unsupported_id")
-                )
+            case ClauseBlocked(language=tag, reason=reason):
+                emit(GuardBlocked(call_id=call_id, turn_id=turn_id, at=wall, reason=reason))
                 await self._told(talk, reply, tag, at)
             case ReadBackRequested(plan=plan):  # its lines are templates: said, never guarded
                 talk.said, talk.language = talk.said + 1, plan.language

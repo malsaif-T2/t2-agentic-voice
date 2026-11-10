@@ -266,7 +266,7 @@ def test_nothing_the_talker_logs_of_an_action_holds_the_draft(
     assert holding(SUMMARY, surfaces) == [] and holding(ISSUED, surfaces) == []
 
 
-@pytest.mark.parametrize("kind", ["no", "correction", "unclear"])
+@pytest.mark.parametrize("kind", ["no", "correction", "stopped", "unclear"])
 def test_each_decline_has_its_note_naming_the_action_never_the_words(kind: DeclineKind) -> None:
     turn = _after(2, f"made-up words {SUMMARY}", kind=kind)
     note = DECLINED[kind].format(action="open_request")

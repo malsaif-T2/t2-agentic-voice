@@ -202,7 +202,7 @@ class Interrupter:
         declines the read-back, the talker asking what to change (the owner's stop ruling)."""
         command = None if self._over() else self.command(heard)
         if command == "stop" and self._confirming.active:
-            self._confirming.decline(turn.turn_id, "correction")
+            self._confirming.decline(turn.turn_id, "stopped")
             command = None
         read_back = self._confirming.read_back if command == "repeat" else None
         if command is None or (command == "repeat" and self._talker and read_back is None):

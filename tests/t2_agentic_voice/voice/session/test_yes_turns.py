@@ -200,7 +200,7 @@ def test_a_stop_request_said_whole_while_confirming_declines_it_and_the_talker_a
     asyncio.run(drive())
     assert yes_rule.calls == []
     handed = talker.turns[1]
-    assert handed.declined == DeclinedAction(action=ACTION, kind="correction", words=STOP_WORD)
+    assert handed.declined == DeclinedAction(action=ACTION, kind="stopped", words=STOP_WORD)
     assert jobs.runs == [] and not session._confirming.active
 
 

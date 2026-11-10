@@ -41,6 +41,8 @@ from __future__ import annotations
 from collections.abc import Callable, Sequence
 from typing import TYPE_CHECKING
 
+from t2_agentic_voice.actions.action_runner import ActionRunner
+from t2_agentic_voice.actions.memory_outbox import MemoryOutbox
 from t2_agentic_voice.core.config import VoiceSettings
 from t2_agentic_voice.core.errors import ConfigurationError
 from t2_agentic_voice.core.events import Event, Interrupted
@@ -49,6 +51,7 @@ from t2_agentic_voice.core.settings.tts import LanguageTag
 from t2_agentic_voice.core.tracing import Tracing
 from t2_agentic_voice.domain.declaration import Language, VoiceAgent
 from t2_agentic_voice.domain.ports.chat_model import ChatModel
+from t2_agentic_voice.domain.ports.outbox import Outbox
 from t2_agentic_voice.domain.ports.speech_to_text import AudioClip, SpeechToText
 from t2_agentic_voice.domain.ports.text_to_speech import AudioChunk, TextToSpeech
 from t2_agentic_voice.testing.overlap_replay import (
@@ -57,7 +60,7 @@ from t2_agentic_voice.testing.overlap_replay import (
     RequestPart,
     replay_of,
 )
-from t2_agentic_voice.testing.text_watch import chat_talkers
+from t2_agentic_voice.testing.text_watch import actions_of, chat_talkers
 from t2_agentic_voice.testing.turn_replay import TurnReplay, turn_replay_of
 from t2_agentic_voice.testing.turns import CLIP_RATE
 from t2_agentic_voice.voice.calls import VoiceCalls
@@ -106,7 +109,9 @@ class AudioCall:
     """Clips replayed over a reply, each as a fresh call of one runtime of calls, started once
     (`start`) and closed after the last (`aclose`), with `settings` (their `interruptions` and
     `turns` groups among them), `stt` and `tts`, neither of which it closes; of `agent` (the
-    replay's own unless given), its talker writing with `chat` when it runs one."""
+    replay's own unless given), its talker writing with `chat` when it runs one, and its actions'
+    writes kept in `outbox` (one in memory unless given) by one runner (`actions`, set at
+    `start` for an agent that declares an action)."""
 
     def __init__(
         self,
@@ -116,11 +121,14 @@ class AudioCall:
         tts: TextToSpeech,
         agent: VoiceAgent | None = None,
         chat: ChatModel | None = None,
+        outbox: Outbox | None = None,
     ) -> None:
         self.settings = settings
         self.stt = stt
         self.tts = tts
         self.agent, self.chat = agent, chat
+        self.outbox: Outbox = outbox if outbox is not None else MemoryOutbox()
+        self.actions: ActionRunner | None = None
         self._phrases = _ReplyAudio()
         self._interrupted: list[Interrupted] = []
         self._emitted: list[Event] = []
@@ -146,6 +154,9 @@ class AudioCall:
             for line in language.progress.values():
                 key = (line, language.tag)
                 self._phrases.lines[key] = await self._said(line, language.tag)
+        actions = actions_of(self.agent or _AGENT)
+        if actions:  # the part that acts, as the runtime gives it: one runner for every call
+            self.actions = ActionRunner(actions, outbox=self.outbox)
         self._calls = VoiceCalls(
             agent=self.agent or _AGENT,
             settings=self.settings,
@@ -156,6 +167,7 @@ class AudioCall:
             emit=self._emit,
             talker=self._talkers(),
             chat=self.chat,
+            action_jobs=self.actions,
         )
         await self._calls.start()
 
@@ -256,7 +268,7 @@ class AudioCall:
         """The factory of each call's talker: the library's on `chat`, for an agent that runs
         the talker (a test's own talker in a subclass)."""
         agent = self.agent or _AGENT
-        return chat_talkers(agent, self.settings, self.chat)
+        return chat_talkers(agent, self.settings, self.chat, self.actions)
 
     async def _said(self, text: str, language: LanguageTag) -> AudioChunk:
         """`text` as the replay's text-to-speech says it in `language`, its chunks joined;

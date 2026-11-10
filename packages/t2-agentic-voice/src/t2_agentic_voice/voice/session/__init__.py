@@ -13,5 +13,9 @@ overlaps under `interruptions.mode = "two_step"` (`overlap.py`, carried out by
 `interrupter.py`), and the call's books that its parts share (`books.py`). Plan 006 adds the
 talker in the call (`talking.py`, each of its events played by `talker_play.py`), its replies
 spoken while they are written (`open_reply.py`), the early start in Smart Turn's hold, and the
-reply kept behind the caller's newer turn while it is open.
+reply kept behind the caller's newer turn while it is open. Plan 007 adds an action's read-back,
+the confirming state and its receipt (`read_back.py`), the caller's answer to it routed to the
+yes rule (`yes_turns.py`), a confirmed action's job and its outcome (`action_job.py`), and splits
+the no-talker overlap follow-ups from `interrupter.py` (`overlap_follow.py`) and the timed
+progress line from `talking.py` (`talker_progress.py`).
 """

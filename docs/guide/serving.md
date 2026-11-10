@@ -77,7 +77,13 @@ TELEMETRY_OFF: Final[TelemetryConfig] = {
            allow_methods=["POST", "PATCH"],
            allow_headers=["content-type", OFFER_SECRET_HEADER],
        )
-       app.include_router(token_router(settings.app.access_code, minter, guard=Guard(clock=clock)))
+       customer = settings.app.demo_customer_email
+       guard = Guard(clock=clock)
+       app.include_router(
+           token_router(settings.app.access_code, minter, customer_email=customer, guard=guard)
+       )
+       if tickets is not None:
+           app.include_router(tickets_router(tickets, headers=page_headers(None)))
        app.include_router(router, prefix=VOICE_PREFIX)
    ```
 
@@ -164,11 +170,12 @@ verifies, so a new key can be added before it signs.
 **Minting.** In Python, `SignedJoinTokens.mint(caller, consent=...)` mints one with the key
 `current_kid` names; any JWT library that writes the claims above works as well. The Ole5 app's
 token route mints one for a caller who typed the owner's access code, carrying the consent its
-consent screen sent, in
+consent screen sent, its caller the owner as the demo customer the settings name
+(`OLE5_VOICE_DEMO_CUSTOMER_EMAIL`, carried as the caller's `customer_email` attribute), in
 [token_route.py](../../apps/ole5-voice-agent/src/ole5_voice/token_route.py):
 
 ```python
-        minted = minter.mint(Caller(subject=SUBJECT), consent=asked.consent)
+        minted = minter.mint(caller, consent=asked.consent)
         held.minted()
         log.info("token_minted", record_audio=asked.consent.record_audio)
         return JSONResponse({"token": minted}, headers={"Cache-Control": "no-store"})
@@ -212,24 +219,34 @@ settings, beside the speech providers, and keeps its connection open between req
 facade), is passed in code: `VoiceRuntime(agent, ..., providers=Providers.from_settings(settings).replace(chat=model))`.
 
 The Ole5 app chooses at its start. With the knowledge base's access set (`QDRANT_URL`,
-`QDRANT_LOGIN_EMAIL` and `QDRANT_LOGIN_PASSWORD`) it runs Ole5's talker, whose one tool searches
-that knowledge base; with none of them set, the echo; with only some, it refuses to start,
-naming the rest. One log line says which agent runs. Its `make_app`, in
+`QDRANT_LOGIN_EMAIL` and `QDRANT_LOGIN_PASSWORD`) it runs Ole5's talker, which searches that
+knowledge base and acts on the mock ticket system (its four ticket tools, `tickets/tools.py`);
+with none of them set, the echo; with only some, it refuses to start, naming the rest. One log line says which agent runs. Its `make_app`, in
 [server.py](../../apps/ole5-voice-agent/src/ole5_voice/server.py):
 
 ```python
     access = knowledge_access(settings.app)
     voice = settings.voice
     tokens = SignedJoinTokens.from_settings(voice.join, prefix=voice.prefix)
+    tickets = MockTicketSystem(
+        tickets_folder(settings),
+        mode=settings.app.tickets_mode,
+        lookup=settings.app.tickets_lookup,
+    )
     if access is None:
         log.info("knowledge_base_not_set", agent="echo", fix=f"set {', '.join(ACCESS)}")
         runtime = VoiceRuntime(ECHO_AGENT, settings=voice, identity=tokens)
-        return build_app(settings, router=runtime.router(), minter=tokens)
+        return build_app(settings, router=runtime.router(), minter=tokens, tickets=tickets)
     kb = QdrantKnowledgeBase(access)
-    runtime = VoiceRuntime(talker_agent(kb), settings=voice, identity=tokens)
+    runtime = VoiceRuntime(talker_agent(kb, tickets=tickets), settings=voice, identity=tokens)
     log.info("knowledge_base_set", agent="talker")
     return build_app(
-        settings, router=runtime.router(), minter=tokens, closing=(kb,), warming=(kb.warm_up,)
+        settings,
+        router=runtime.router(),
+        minter=tokens,
+        tickets=tickets,
+        closing=(kb,),
+        warming=(kb.warm_up,),
     )
 ```
 
@@ -241,6 +258,9 @@ naming the rest. One log line says which agent runs. Its `make_app`, in
   opened, `build_app` closes after it (`closing`), and signs in once the runtime has started
   (`warming`), so the first caller's search does not have to.
 - **The log line names no value**: the agent it runs and, for the echo, the settings to set.
+- **The mock ticket system** is built from the settings with no IO; the talker's actions and
+  the page at `/tickets` (loopback clients only) share that one instance, so the page shows
+  what the calls made.
 
 ## Pages on another origin
 

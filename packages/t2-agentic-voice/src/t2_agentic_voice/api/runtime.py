@@ -285,6 +285,7 @@ class VoiceRuntime:
             tracing=tracing,
             emit=self._emit,
             clock=self._clock,
+            action_jobs=actions,
             **talking,
         )
         stack.push_async_callback(calls.aclose)

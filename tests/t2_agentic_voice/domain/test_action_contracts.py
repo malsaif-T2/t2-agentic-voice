@@ -176,8 +176,8 @@ def test_a_declined_action_tells_the_talker_a_no_from_a_correction(
     assert words not in repr(declined)
 
 
-def test_a_declined_action_names_one_of_three_kinds() -> None:
-    assert get_args(DeclineKind) == ("no", "correction", "unclear")
+def test_a_declined_action_names_one_of_four_kinds() -> None:
+    assert get_args(DeclineKind) == ("no", "correction", "stopped", "unclear")
     unclear = DeclinedAction(action="open_request", kind="unclear", words="")
     assert unclear.kind == "unclear"  # asked max_attempts times, and nothing heard
     with pytest.raises(ValidationError):

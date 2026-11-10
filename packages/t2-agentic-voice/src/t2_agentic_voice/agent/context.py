@@ -72,6 +72,10 @@ DECLINED: Mapping[DeclineKind, str] = {
         "[the caller changed the read-back of {action}: nothing was done; call it again with "
         "the change]"
     ),
+    "stopped": (
+        "[the caller stopped the read-back of {action}: nothing was done; ask what to change, "
+        "keeping the draft]"
+    ),
     "unclear": "[the caller gave no clear answer to the read-back of {action}: nothing was done]",
 }
 # The notes `said` writes into the model's own messages: a reply's number, a cut clause's share

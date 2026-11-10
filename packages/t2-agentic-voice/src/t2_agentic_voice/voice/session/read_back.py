@@ -228,10 +228,10 @@ class Confirming:
     ) -> None:
         """An overlap of the caller's turn `turn_id`, begun over reply `reply_id` at `speech_at`,
         stops the agent for `verdict`: over the current read-back or a line that asked it again,
-        a repeat request has it said again (`again`), and a stop or pause word, or real words
-        over its summary, declines it as a correction (`declined`), the turn's words going to
-        the talker; either ends it. Real words over the closing question, or over a line that
-        asked it again, leave it to the yes rule."""
+        a repeat request has it said again (`again`), a stop or pause word declines it as
+        stopped, and real words over its summary as a correction (`declined`), the turn's words
+        going to the talker; either ends it. Real words over the closing question, or over a
+        line that asked it again, leave it to the yes rule."""
         read_back = self.read_back
         if read_back is None or verdict.action == "go_on":
             return
@@ -241,7 +241,8 @@ class Confirming:
             self._again[turn_id] = read_back.plan
         elif verdict.kind != "stop" and not self._over_summary(read_back, speech_at):
             return
-        self._declined[turn_id] = (read_back.plan.action, "correction")
+        kind: DeclineKind = "stopped" if verdict.kind == "stop" else "correction"
+        self._declined[turn_id] = (read_back.plan.action, kind)
         self.read_back = None
 
     def again(self, turn_id: TurnId) -> ReadBackPlan | None:
@@ -258,8 +259,8 @@ class Confirming:
 
     def declined(self, turn_id: TurnId, *, words: str) -> DeclinedAction | None:
         """The action the caller's turn `turn_id`, its words `words`, declined, as the talker
-        learns of it: a `no`, or a `correction` (its read-back stopped included), so it answers
-        in its own words; None when the turn declined none."""
+        learns of it: a `no`, a `correction`, or `stopped` (a stop or pause word), so it
+        answers in its own words; None when the turn declined none."""
         found = self._declined.get(turn_id)
         if found is None:
             return None

@@ -4,10 +4,10 @@ rulings of 2026-11-10; docs/SECURITY.md, invariant 1): yes words, send words, fi
 listening sounds over the summary are ignored, whatever the rule would say, the summary playing
 on and the words counting for nothing; a stop or pause word over the read-back stops it with no
 receipt, the confirming state ends, and the turn reaches the talker with the action declined as
-a correction, so it asks what to change; real words over the summary do the same; a repeat
-request over it, or said whole while it is confirming, has the session say it again, the earlier
-read-back void; real words over the closing question leave the read-back to the yes rule; the
-client's stop and the call's end end it. The rule is the tests' fake (overlap_support.py)."""
+stopped, so it asks what to change; real words over the summary do the same, as a correction; a
+repeat request over it, or said whole while it is confirming, has the session say it again, the
+earlier read-back void; real words over the closing question leave the read-back to the yes rule;
+the client's stop and the call's end end it. The rule is the tests' fake (overlap_support.py)."""
 
 from __future__ import annotations
 
@@ -137,7 +137,7 @@ def test_a_stop_or_pause_word_over_the_read_back_stops_it_and_the_talker_asks(
     assert receipt(session, io.clock.now()) is None
     handed = talker.turns[1]
     assert handed.words == word and handed.cut_reply == 1
-    assert handed.declined == DeclinedAction(action=ACTION, kind="correction", words=word)
+    assert handed.declined == DeclinedAction(action=ACTION, kind="stopped", words=word)
     assert states(io)[-1] != "confirming"
 
 
@@ -162,25 +162,28 @@ def test_real_words_over_the_summary_stop_it_and_reach_the_talker_declined(
 
 
 def test_real_words_over_the_closing_question_leave_the_read_back_to_the_yes_rule(
-    settings: VoiceSettings, rule: FakeRule, consent: list[dict[str, Any]]
+    settings: VoiceSettings, rule: FakeRule, yes_rule: FakeYesRule
 ) -> None:
-    """The summary played whole: words over the question stop it, but the read-back stays
-    current, its receipt saying the question never ended (a yes there needs a send word)."""
-    io, session, _ = _call(settings)
-    began: list[float] = []
+    """The summary played whole: words over the question stop it and reach the yes rule,
+    with a receipt saying the question never ended (a yes there needs a send word); words that
+    are no yes are a correction, which the talker answers."""
+    io, session, talker = _call(settings)
 
     async def drive() -> None:
         await asked(io)
         await clause(io, 0)
         await clause(io, 1, played=False)
-        began.append(io.clock.now())
         await over(io, 1, CALLER_WORDS)
 
     asyncio.run(drive())
     assert len(io.commands.of(StopSpeaking)) == 1
-    assert session._confirming.active
-    found = receipt(session, began[0])
-    assert found is not None and found.question_ended_at is None
+    [decided] = yes_rule.calls
+    assert decided.heard.text == CALLER_WORDS
+    assert decided.receipt.question_ended_at is None
+    assert not session._confirming.active
+    assert talker.turns[-1].declined == DeclinedAction(
+        action=ACTION, kind="correction", words=CALLER_WORDS
+    )
 
 
 @pytest.mark.parametrize("part", [0, 1], ids=["over_summary", "over_question"])
@@ -306,7 +309,7 @@ def test_over_a_line_that_asked_again_a_stop_word_declines_and_a_repeat_says_it_
         assert not session._confirming.active
         handed = talker.turns[-1]
         assert handed.turn_id == 2
-        assert handed.declined == DeclinedAction(action=ACTION, kind="correction", words=text)
+        assert handed.declined == DeclinedAction(action=ACTION, kind="stopped", words=text)
     else:
         assert [s.text for s in speaks(io, 3)] == READ_BACK
         current = session._confirming.read_back
