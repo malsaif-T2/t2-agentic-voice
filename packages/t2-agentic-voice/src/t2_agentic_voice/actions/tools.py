@@ -36,7 +36,7 @@ ConfigurationError naming the field, with a FIX line, never the value (actions/s
 
 from __future__ import annotations
 
-from collections.abc import Callable, Mapping, Sequence
+from collections.abc import Awaitable, Callable, Mapping, Sequence
 from typing import Annotated, Any, Final, Literal, Self
 
 from pydantic import (
@@ -44,6 +44,7 @@ from pydantic import (
     ConfigDict,
     Field,
     JsonValue,
+    PrivateAttr,
     ValidationError,
     field_validator,
     model_validator,
@@ -116,6 +117,11 @@ class RecordedAction(_Frozen):
     result: JsonValue = None
 
 
+# How a context reads the actions a caller had done, given the verified caller's subject and the
+# action's name: the action runner's `past`, over its outbox.
+PastReader = Callable[[str, str], Awaitable[tuple[RecordedAction, ...]]]
+
+
 class CallContext(_Frozen):
     """What a tool sees of its call: the verified `caller`, read-only (invariant 3), the
     call's id and the reply's language, and the actions done in this call (`record`)."""
@@ -124,11 +130,23 @@ class CallContext(_Frozen):
     call_id: CallId
     language: LanguageTag
     record: tuple[RecordedAction, ...] = ()
+    _past: PastReader | None = PrivateAttr(default=None)
+
+    def reading_past(self, reader: PastReader) -> Self:
+        """A copy of this context whose `past_actions` reads through `reader` (the talker
+        gives the runner's, over its outbox)."""
+        made = self.model_copy()
+        made._past = reader
+        return made
 
     async def past_actions(self, action: str) -> tuple[RecordedAction, ...]:
         """The actions named `action` this caller had done, in this call or before it, newest
-        last, read from the outbox and scoped to the verified caller."""
-        raise NotImplementedError(f"plan 007's Track B fills past_actions ({action})")
+        last, read from the outbox and scoped to the verified caller: the subject is the
+        context's own, never an argument. A context given no reader (one a test builds) reads
+        this call's `record` alone."""
+        if self._past is None:
+            return tuple(done for done in self.record if done.action == action)
+        return await self._past(self.caller.subject, action)
 
 
 class ToolResult(_Frozen):

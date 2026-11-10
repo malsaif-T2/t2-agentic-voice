@@ -10,6 +10,14 @@ replies (`Memory`).
   to say if the wait runs long: one line a reply, however many tools.
 - **Results.** Each result, as it comes: `ToolEnded`, its data and evidence kept as the output
   guard's evidence for the rest of the call, and its card shown once the guard passed its text.
+  A result that succeeded, of a tool whose `reports_on` names actions, is kept as the evidence
+  of claims about those actions too (rule A), and no other tool's result is.
+- **Actions** (the design's 6.4). A call of one of the agent's actions goes to the action
+  runner's `propose`, in the reply's scope, and writes nothing: its read-back (`plan`, one a
+  reply) goes to the session, and the model reads only that it is being read back
+  (`READ_BACK`); a refusal goes back to the model as a tool's result does. One action a
+  request: a second in the same request is refused unasked (`ONE_AT_A_TIME`). Nothing here
+  confirms an action: only the yes rule, over heard words, issues one (invariant 1).
 - **Framed.** A result goes back to the model as JSON inside the data frame the prompt names
   (`<data tool="...">`, agent/prompt.py), its `<` escaped, so no text in it can close the frame.
 """
@@ -21,7 +29,8 @@ import json
 from collections.abc import AsyncGenerator, Callable, Iterable, Sequence
 from dataclasses import dataclass, field
 
-from t2_agentic_voice.actions.runner import ToolRunner
+from t2_agentic_voice.actions.action_runner import ActionRunner
+from t2_agentic_voice.actions.runner import ToolRunner, failed_result
 from t2_agentic_voice.actions.tools import CallContext, Tool, ToolResult
 from t2_agentic_voice.agent.events import (
     ProgressDue,
@@ -34,22 +43,32 @@ from t2_agentic_voice.agent.events import (
 from t2_agentic_voice.agent.prompt import DATA_TAG
 from t2_agentic_voice.core.clock import Clock
 from t2_agentic_voice.core.events import TurnId
+from t2_agentic_voice.domain.action_lines import ReadBackPlan
 from t2_agentic_voice.domain.cards import Card
 from t2_agentic_voice.domain.ports.chat_model import ChatMessage, ToolCallRequest
 
 # The past turns whose tool calls and results the talker keeps for the model.
 KEPT_TURNS = 4
+# What the model reads of an action call whose read-back goes to the caller, and of a second
+# action call in one request.
+READ_BACK = (
+    "read back to the caller, who is asked to confirm it; nothing is done unless they say yes, "
+    "and the system says how it ended"
+)
+ONE_AT_A_TIME = "one action at a time: call it again once the caller has answered the first"
 
 
 @dataclass
 class Memory:
     """What one call's talker keeps between its replies, which the heard history does not
     hold: the tool calls and results of its last `KEPT_TURNS` turns, its developer notes, the
-    evidence its tools gave, and the tools left to finish after their reply."""
+    evidence its tools gave, the evidence of claims each action's `reports_on` tools gave
+    (`reports`, by the action's name), and the tools left to finish after their reply."""
 
     exchanges: dict[TurnId, list[ChatMessage]] = field(default_factory=dict)
     notes: dict[TurnId, str] = field(default_factory=dict)
     evidence: list[str] = field(default_factory=list)
+    reports: dict[str, list[str]] = field(default_factory=dict)
     finishing: set[asyncio.Future[ToolResult]] = field(default_factory=set)
 
     def keep(self, turn_id: TurnId, messages: Sequence[ChatMessage]) -> None:
@@ -58,9 +77,14 @@ class Memory:
         while len(self.exchanges) > KEPT_TURNS:
             del self.exchanges[min(self.exchanges)]
 
-    def took(self, result: ToolResult) -> None:
-        """Keep `result`'s data and evidence as the guard's evidence."""
-        self.evidence += [json.dumps(result.data, ensure_ascii=False), *result.evidence]
+    def took(self, result: ToolResult, *, reports_on: Sequence[str] = ()) -> None:
+        """Keep `result`'s data and evidence as the guard's evidence, and, when it succeeded,
+        as the evidence of claims about each action its tool `reports_on`."""
+        texts = [json.dumps(result.data, ensure_ascii=False), *result.evidence]
+        self.evidence += texts
+        if result.ok:
+            for action in reports_on:
+                self.reports.setdefault(action, []).extend(texts)
 
 
 def framed(tool: str, result: ToolResult) -> str:
@@ -81,9 +105,14 @@ def _finishes(tool: Tool | None) -> bool:
     return tool is not None and tool.on_interrupt == "finish"
 
 
+async def _given(result: ToolResult) -> ToolResult:
+    return result
+
+
 class ToolCalls:
     """The tool calls of one reply, request by request (the module's docstring): `shown` says
-    whether the output guard passes a card, by its tool's name."""
+    whether the output guard passes a card, by its tool's name; `actions`, the agent's action
+    runner, when it declares any; `plan`, the read-back an action call gave in this reply."""
 
     def __init__(
         self,
@@ -95,10 +124,17 @@ class ToolCalls:
         memory: Memory,
         turn_id: TurnId,
         shown: Callable[[Card, str], bool],
+        actions: ActionRunner | None = None,
     ) -> None:
         self.runner, self.ctx, self.clock, self.scope = runner, ctx, clock, scope
         self.memory, self.turn_id, self.shown = memory, turn_id, shown
+        self.actions = actions
         self.progress_said = False
+        self.plan: ReadBackPlan | None = None
+
+    def is_action(self, name: str) -> bool:
+        """Whether `name` is one of the agent's actions."""
+        return self.actions is not None and self.actions.action(name) is not None
 
     async def run(
         self, calls: Sequence[ToolCallRequest], results: dict[str, ToolResult]
@@ -107,9 +143,18 @@ class ToolCalls:
         began = self.clock.now()
         tasks: dict[asyncio.Future[ToolResult], ToolCallRequest] = {}
         finished: set[asyncio.Future[ToolResult]] = set()
+        proposed = False
         try:
             for call in calls:
-                tasks[self._started(call)] = call
+                actions = self.actions
+                if actions is None or actions.action(call.name) is None:
+                    tasks[self._started(call)] = call
+                    continue
+                if proposed or self.plan is not None:
+                    work = _given(failed_result(ONE_AT_A_TIME, "one_at_a_time"))
+                else:
+                    work, proposed = self._proposed(actions, call), True
+                tasks[self.scope.start(work, name=f"action-{call.name}")] = call
             for call in calls:
                 yield ToolBegan(call_id=call.id, tool=call.name, arguments=call.arguments)
             line = self._line(calls)
@@ -122,7 +167,7 @@ class ToolCalls:
                     finished.add(task)
                     call = tasks[task]
                     result = results[call.id] = task.result()
-                    self.memory.took(result)
+                    self.memory.took(result, reports_on=self._reports_on(call.name))
                     ms = max(0.0, self.clock.now() - began) * 1000
                     yield ToolEnded(
                         call_id=call.id,
@@ -154,6 +199,20 @@ class ToolCalls:
             return task
         return self.scope.start(work, name=f"tool-{call.name}")
 
+    async def _proposed(self, actions: ActionRunner, call: ToolCallRequest) -> ToolResult:
+        """The action call proposed to `actions`: its read-back kept as the reply's `plan`,
+        the model told only that it is read back; or the runner's refusal, as it is."""
+        made = await actions.propose(call, self.ctx, clock=self.clock)
+        if isinstance(made, ToolResult):
+            return made
+        self.plan = made
+        return ToolResult(data={"status": READ_BACK})
+
+    def _reports_on(self, name: str) -> tuple[str, ...]:
+        """The actions the results of the tool `name` report on; none for any other call."""
+        tool = self.runner.tool(name)
+        return () if tool is None else tool.reports_on
+
     def _line(self, calls: Iterable[ToolCallRequest]) -> ProgressDue | None:
         """The reply's progress line, the soonest of `calls`' tools': None once given, or when
         none has one."""
@@ -175,7 +234,7 @@ class ToolCalls:
         def kept(ended: asyncio.Future[ToolResult]) -> None:
             if ended.cancelled() or ended.exception() is not None:
                 return
-            self.memory.took(ended.result())
+            self.memory.took(ended.result(), reports_on=self._reports_on(call.name))
             self.memory.keep(self.turn_id, exchange([call], {call.id: ended.result()}))
 
         if task.done():

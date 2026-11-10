@@ -14,7 +14,9 @@ runner is for a tool. One serves every call of an agent, against its outbox.
   it out as a job outside the turn (actions/action_job.py): the outbox row before the write,
   the error meanings, the lookup, the record, the outcome's line and its event.
 - **`reconcile`**, at the runtime's start, looks up or flags each row left `sending`; it never
-  sends one again.
+  sends one again. `t2v outbox reconcile` looks the flagged rows up again too.
+- **`past`** reads what a caller had done, in any call: the outbox's `done` rows
+  (`CallContext.past_actions`).
 
 Each call's record is kept here by the call's ID (`record`), so call A's entries never reach
 call B; the runtime drops it with `forget` once the call has ended. No log line, error or event
@@ -23,11 +25,12 @@ holds a draft's value, a result, the caller's words or a reason a backend gave.
 
 from __future__ import annotations
 
+import json
 from collections.abc import Sequence
 from datetime import timedelta
 from typing import Final
 
-from pydantic import BaseModel
+from pydantic import BaseModel, ValidationError
 
 from t2_agentic_voice.actions.action import Action
 from t2_agentic_voice.actions.action_job import EventSink, JobCall, Writes
@@ -35,7 +38,7 @@ from t2_agentic_voice.actions.action_writes import parsed_result, validated
 from t2_agentic_voice.actions.record import ActionRecord
 from t2_agentic_voice.actions.runner import FAILED, failed_result, parsed_arguments
 from t2_agentic_voice.actions.spoken_lines import read_back_plan
-from t2_agentic_voice.actions.tools import CallContext, ToolResult
+from t2_agentic_voice.actions.tools import CallContext, RecordedAction, ToolResult
 from t2_agentic_voice.core.clock import SYSTEM_CLOCK, Clock
 from t2_agentic_voice.core.conversation import ConversationLine
 from t2_agentic_voice.core.errors import ConfigurationError, ToolError
@@ -108,6 +111,22 @@ class ActionRunner:
     def forget(self, call_id: CallId) -> None:
         """Drop the call's record once the call has ended; a job still running keeps its own."""
         self._records.pop(call_id, None)
+
+    async def past(self, subject: str, action: str) -> tuple[RecordedAction, ...]:
+        """The writes of `action` done for the caller `subject`, in any call, oldest first: the
+        outbox's `done` rows, as plain values (`CallContext.past_actions` reads them). A row
+        whose result cannot be read is left out, logged by the action's name."""
+        rows = await self._outbox.entries(state="done", subject=subject, action=action)
+        found: list[RecordedAction] = []
+        for row in rows:
+            try:
+                result = json.loads(row.result_json or "null")
+                found.append(
+                    RecordedAction(action=row.action, request_id=row.request_id, result=result)
+                )
+            except (ValueError, ValidationError):
+                _log.error("outbox_result_unreadable", action=action)
+        return tuple(found)
 
     async def propose(
         self, request: ToolCallRequest, ctx: CallContext, *, clock: Clock = SYSTEM_CLOCK
@@ -195,7 +214,9 @@ class ActionRunner:
         call = JobCall(caller, call_id, language, turn_id, conversation, clock, record)
         return await self._writes.start(action, confirmed, call)
 
-    async def reconcile(self, *, clock: Clock = SYSTEM_CLOCK) -> int:
+    async def reconcile(self, *, clock: Clock = SYSTEM_CLOCK, flagged: bool = False) -> int:
         """Looks up or flags every row left `sending`, never sending one again; how many. A row
-        whose write is under way in this process is left to its job."""
-        return await self._writes.reconcile(self._by_name, clock)
+        whose write is under way in this process is left to its job. With `flagged`
+        (`t2v outbox reconcile`), each flagged row is looked up again: found, it is done; else
+        it stays as it was."""
+        return await self._writes.reconcile(self._by_name, clock, flagged=flagged)

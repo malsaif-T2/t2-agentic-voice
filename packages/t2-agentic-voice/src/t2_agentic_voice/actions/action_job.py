@@ -12,8 +12,9 @@ start finds left `sending`.
   call's record. A row that cannot be written means nothing was sent: `failed`. A row that
   cannot be marked stays as it was, for `reconcile` at the next start.
 - **`reconcile`** looks up each row left `sending` by an earlier process, never sending it
-  again: found, `done`; else, or with no lookup, `flagged`. The outbox keeps no consent words
-  and no language, so the lookup is told none (English).
+  again: found, `done`; else, or with no lookup, `flagged`. Asked to (`t2v outbox reconcile`),
+  it looks each `flagged` row up again too: found, `done`; else left as it was. The outbox
+  keeps no consent words and no language, so the lookup is told none (English).
 
 The outcome's line is the action's `done`, `failed` or `unknown`, or the library's; a `done`
 the result cannot fill says the library's `unknown`, which claims nothing. `ActionCompleted` or
@@ -236,9 +237,14 @@ class Writes:
             self._emit(event)
         return ActionOutcome(action=action.name, request_id=request_id, kind=kind, line=line)
 
-    async def reconcile(self, actions: Mapping[str, Action], clock: Clock) -> int:
-        """Look up or flag every row left `sending` but those of the jobs under way here."""
+    async def reconcile(
+        self, actions: Mapping[str, Action], clock: Clock, *, flagged: bool = False
+    ) -> int:
+        """Look up or flag every row left `sending` but those of the jobs under way here; with
+        `flagged`, look the flagged rows up again too, one not found left as it was."""
         rows = await self._outbox.entries(state="sending")
+        if flagged:
+            rows += await self._outbox.entries(state="flagged")
         waiting = [row for row in rows if row.request_id not in self.running]
         for row in waiting:
             await self._reconciled(actions.get(row.action), row, clock)
@@ -246,6 +252,8 @@ class Writes:
         return len(waiting)
 
     async def _reconciled(self, action: Action | None, row: OutboxEntry, clock: Clock) -> None:
+        if row.state == "flagged" and (action is None or action.finder is None):
+            return  # nothing more to learn of it: its note stays
         if action is None or action.finder is None:
             note = "no_such_action" if action is None else "no_lookup"
             await mark_row(self._outbox, row.request_id, state="flagged", note=f"left, {note}")
@@ -259,7 +267,10 @@ class Writes:
         )
         found = await look_up(action, ctx, clock)
         if found is None:
-            await mark_row(self._outbox, row.request_id, state="flagged", note="left, not_found")
+            if row.state != "flagged":
+                await mark_row(
+                    self._outbox, row.request_id, state="flagged", note="left, not_found"
+                )
             return
         result_json = found.model_dump_json()
         await mark_row(

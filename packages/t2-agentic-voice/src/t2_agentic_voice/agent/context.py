@@ -11,7 +11,11 @@ caller heard it, built from the `Conversation` the session hands with each turn
   (`dropped`), or with no words, is none. One the reply went on over is marked so.
 - **The turn answered now** says, after its words, whether it was said over a reply and which
   reply it cut, each named by its number; a reply so named carries its number in its message,
-  in a note the prompt tells the model is never its to write.
+  in a note the prompt tells the model is never its to write. A turn that declined an action's
+  read-back (`TalkerTurn.declined`) says so too, and how (`declined_note`): after a plain no
+  the talker answers in its own words, and after a correction it may call the action again
+  with the new draft (the owner's ruling, plan 007). The talker keeps that note beside the
+  turn for the turns after it.
 - **A note the model copies** anyway, a reply's number or a cut clause's share, is taken out of
   what it writes before the clause splitter (`Unnoted`), so it is never spoken; only those two.
 - **What only the talker knew** goes beside the heard history, in its place: the tool calls and
@@ -22,6 +26,10 @@ The history holds two lists, the turns and the replies, each in order; they are 
 time by the turn each reply answers: a reply follows every turn up to the one it answers, and a
 reply that answers none (the greeting, a notice) follows the turns its earlier replies
 answered.
+
+What a tool or an action's `validate` sees of the call is `call_context`'s: the verified caller,
+the actions this call's record holds as plain values, and the caller's past actions read
+through the action runner, the caller's own only (invariant 3).
 """
 
 from __future__ import annotations
@@ -29,9 +37,21 @@ from __future__ import annotations
 import re
 from collections.abc import Mapping, Sequence
 
+from t2_agentic_voice.actions.action_runner import ActionRunner
+from t2_agentic_voice.actions.record import ActionRecord
+from t2_agentic_voice.actions.tools import CallContext
 from t2_agentic_voice.agent.prompt import CUT_MARK
-from t2_agentic_voice.core.conversation import Conversation, PastTurn, SaidReply, TalkerTurn
-from t2_agentic_voice.core.events import ReplyId, TurnId
+from t2_agentic_voice.core.conversation import (
+    Conversation,
+    DeclinedAction,
+    DeclineKind,
+    PastTurn,
+    SaidReply,
+    TalkerTurn,
+)
+from t2_agentic_voice.core.events import CallId, ReplyId, TurnId
+from t2_agentic_voice.core.identity import Caller
+from t2_agentic_voice.core.settings.tts import LanguageTag
 from t2_agentic_voice.domain.ports.chat_model import ChatMessage
 
 # The notes the model reads beside the caller's words and its own.
@@ -40,6 +60,20 @@ BLOCKED = (
     "Note: the output guard held back a sentence of the reply to this turn, unspoken: it gave "
     "an ID-shaped number that no tool result or caller's words held. Never say such a number."
 )
+CLAIM_BLOCKED = (
+    "Note: the output guard held back a sentence of the reply to this turn, unspoken: it said "
+    "an action was done that no record or status result holds. Never say an action is done: "
+    "the system says how it ended."
+)
+# How a turn that declined an action's read-back is told, by how it declined it.
+DECLINED: Mapping[DeclineKind, str] = {
+    "no": "[the caller said no to the read-back of {action}: nothing was done]",
+    "correction": (
+        "[the caller changed the read-back of {action}: nothing was done; call it again with "
+        "the change]"
+    ),
+    "unclear": "[the caller gave no clear answer to the read-back of {action}: nothing was done]",
+}
 # The notes `said` writes into the model's own messages: a reply's number, a cut clause's share
 # (CUT_MARK). `Unnoted` takes them, and only them, out of what the model writes.
 _NOTE = re.compile(r"\[(?:reply [0-9]+|cut: about [0-9]+% heard)\]")
@@ -113,8 +147,15 @@ def _before(turn: PastTurn, reply: SaidReply) -> bool:
     return turn.reply_id is not None and turn.reply_id < reply.reply_id
 
 
+def declined_note(declined: DeclinedAction) -> str:
+    """The note of an action's read-back the turn declined, by how (the module's docstring);
+    it names the action, never the draft or the words."""
+    return DECLINED[declined.kind].format(action=declined.action)
+
+
 def turn_message(turn: TalkerTurn) -> ChatMessage:
-    """The turn answered now, its words whole, then what it was said over and what it cut."""
+    """The turn answered now, its words whole, then what it was said over and what it cut, and
+    the read-back it declined."""
     heard = {reply.reply_id: said(reply) is not None for reply in turn.conversation.replies}
     over, cut = turn.over_reply, turn.cut_reply
     notes: list[str] = []
@@ -127,7 +168,29 @@ def turn_message(turn: TalkerTurn) -> ChatMessage:
             notes.append(f"[it cut your reply {cut}]")
         elif cut is not None:
             notes.append(f"[it stopped your reply {cut} before any of it was heard]")
+    if turn.declined is not None:
+        notes.append(declined_note(turn.declined))
     return ChatMessage.user(" ".join([turn.words, *notes]))
+
+
+def call_context(
+    *,
+    caller: Caller,
+    call_id: CallId,
+    language: LanguageTag,
+    actions: ActionRunner | None,
+    record: ActionRecord | None,
+) -> CallContext:
+    """What a tool or an action's `validate` sees of the call (the module's docstring): the
+    record's entries as plain values, and `past_actions` read through `actions`, when the agent
+    has any."""
+    ctx = CallContext(
+        caller=caller,
+        call_id=call_id,
+        language=language,
+        record=() if record is None else record.view(),
+    )
+    return ctx if actions is None else ctx.reading_past(actions.past)
 
 
 def history(

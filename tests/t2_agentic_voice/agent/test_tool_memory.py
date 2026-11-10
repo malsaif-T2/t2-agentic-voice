@@ -24,3 +24,13 @@ def test_a_result_is_kept_as_evidence_and_framed_as_data() -> None:
     memory.took(result)
     assert memory.evidence == ['{"code": "8841"}', "passage text 7788"]
     assert framed("search_help", result) == '<data tool="search_help">{"code": "8841"}</data>'
+
+
+def test_a_result_that_succeeded_is_kept_as_evidence_of_the_actions_its_tool_reports_on() -> None:
+    """Rule A's evidence (invariant 2): only a `reports_on` tool's result that succeeded."""
+    memory = Memory()
+    memory.took(ToolResult(data={"number": "7788"}), reports_on=("open_request",))
+    memory.took(ToolResult(data={"error": "none"}, ok=False), reports_on=("open_request",))
+    memory.took(ToolResult(data={"number": "9911"}))
+    assert memory.reports == {"open_request": ['{"number": "7788"}']}
+    assert len(memory.evidence) == 3  # rule B's evidence takes them all
