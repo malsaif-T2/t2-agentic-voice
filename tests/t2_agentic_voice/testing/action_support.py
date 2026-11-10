@@ -4,9 +4,11 @@ play for it, a `ConfirmedAction` and a record entry built through their seals as
 rule and the record build them, and stand-ins for the parts other tracks fill (the claims of
 Track A, the jobs of Track B), each patched in the test that needs it alone.
 
-Track C's session does not read a read-back back yet, so a test's scripted talker says the
-plan's lines as clauses (`read_back_steps`): the session plays them as it plays any clause,
-captioned as written, which is how the text call finds a read-back's parts."""
+A test's scripted talker keeps each plan from the session (`read_back_steps`, text_call_support's
+`Asked`) and says the plan's lines as clauses: the session plays them as it plays any clause,
+captioned as written, which is how the text call finds a read-back's parts, and never starts
+confirming, so a test's yes goes to the talker, and the tests hold before and after Track C's
+session reads a read-back back itself."""
 
 from __future__ import annotations
 
@@ -19,8 +21,7 @@ import pytest
 from pydantic import BaseModel, Field
 from t2_agentic_voice.actions.action import Action, ActionContext, HeardConsent, action
 from t2_agentic_voice.actions.record import ActionRecord
-from t2_agentic_voice.agent.events import ReadBackRequested
-from t2_agentic_voice.agent.talker import ReplyDone, SpokenClause, TalkerEvent
+from t2_agentic_voice.agent.talker import ReplyDone, SpokenClause
 from t2_agentic_voice.core.clock import Clock
 from t2_agentic_voice.core.conversation import ConversationLine
 from t2_agentic_voice.core.identity import Caller
@@ -34,6 +35,8 @@ from t2_agentic_voice.domain.declaration import Language, VoiceAgent
 from t2_agentic_voice.domain.ports.action_jobs import ActionOutcome, OutcomeKind
 from t2_agentic_voice.domain.yes_rule import CONFIRMED_SEAL, ConfirmedAction
 from t2_agentic_voice.testing import text_checks
+
+from tests.t2_agentic_voice.testing.text_call_support import Asked, Step
 
 CLAIM = "request is booked"
 
@@ -110,10 +113,11 @@ def plan_of(visit: Visit = VISIT, *, call_id: str = "t-1") -> ReadBackPlan:
     )
 
 
-def read_back_steps(plan: ReadBackPlan) -> list[TalkerEvent]:
-    """The plan asked for, then its lines said as clauses (the module's docstring)."""
+def read_back_steps(plan: ReadBackPlan) -> list[Step]:
+    """The plan asked for, kept from the session, then its lines said as clauses (the module's
+    docstring)."""
     return [
-        ReadBackRequested(plan=plan),
+        Asked(plan),
         SpokenClause(text=plan.summary.text, language=plan.language),
         SpokenClause(text=plan.question.text, language=plan.language),
         ReplyDone(),

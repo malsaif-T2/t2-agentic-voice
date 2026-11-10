@@ -3,8 +3,8 @@ said over a read-back's summary or its closing question, as each plays; a fault 
 next summary; the caller's words typed, as the yes rule reads them; the part that acts put on
 the call's setup, over its outbox; and what a turn did with an action, as its expectations read
 it. Tracks B and C fill the talker's read-back and the session's confirming, so the talker here
-is the tests' scripted one, saying a read-back's lines as clauses, and the part that acts is a
-fake (action_support.py)."""
+is the tests' scripted one, keeping each plan from the session and saying its lines as clauses,
+and the part that acts is a fake (action_support.py)."""
 
 from __future__ import annotations
 
