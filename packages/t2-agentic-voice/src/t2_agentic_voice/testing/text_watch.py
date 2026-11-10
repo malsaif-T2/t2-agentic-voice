@@ -1,10 +1,13 @@
-"""What a `TextCall` watches of its talker (testing/text_call.py; plan 006), so a turn's reads give
-what the talker did (testing/turn_data.py) through nothing but the talker's own port: each
-reply's events with when they came (`WatchedTalker`), and each tool call's arguments and result
-(`RecordingRunner`, the tool runner the text call's talker is given), the results' evidence
-being what the output guard's checks of the call read; and the agent's tools as the runner runs
-them (`tools_of`), and the factory of each call's talker a replayed call uses (`chat_talkers`,
-as api/providers.py's `talkers` builds the runtime's).
+"""What a `TextCall` watches of its talker (testing/text_call.py; plans 006 and 007), so a turn's
+reads give what the talker did (testing/turn_data.py) through nothing but the talker's own port:
+each reply's events with when they came (`WatchedTalker`), the read-backs among them
+(`plans_of`), and each tool call's arguments and result (`RecordingRunner`, the tool runner the
+text call's talker is given), the results' evidence being what the output guard's checks of the
+call read; each confirmed action the session hands the part that acts, and how it ended
+(`RecordingJobs`, the `ActionJobs` the text call's session is given); and the agent's tools as
+the runner runs them (`tools_of`), its actions (`actions_of`), and the factory of each call's
+talker a replayed call uses (`chat_talkers`, as api/providers.py's `talkers` builds the
+runtime's).
 """
 
 from __future__ import annotations
@@ -13,12 +16,14 @@ import asyncio
 import json
 from collections.abc import AsyncIterator, Sequence
 from dataclasses import dataclass, field
+from typing import Any
 
 from pydantic import JsonValue
 
 from t2_agentic_voice.actions.action import Action
 from t2_agentic_voice.actions.runner import ToolRunner
 from t2_agentic_voice.actions.tools import CallContext, Tool, ToolResult
+from t2_agentic_voice.agent.events import ReadBackRequested
 from t2_agentic_voice.agent.talker import (
     ChatTalker,
     ReplyScope,
@@ -28,10 +33,16 @@ from t2_agentic_voice.agent.talker import (
 )
 from t2_agentic_voice.core.clock import Clock
 from t2_agentic_voice.core.config import VoiceSettings
-from t2_agentic_voice.core.conversation import TalkerTurn
+from t2_agentic_voice.core.conversation import ConversationLine, TalkerTurn
 from t2_agentic_voice.core.errors import ConfigurationError
+from t2_agentic_voice.core.events import CallId, TurnId
+from t2_agentic_voice.core.identity import Caller
+from t2_agentic_voice.core.settings.tts import LanguageTag
+from t2_agentic_voice.domain.action_lines import ReadBackPlan
 from t2_agentic_voice.domain.declaration import VoiceAgent
+from t2_agentic_voice.domain.ports.action_jobs import ActionJobs, ActionOutcome
 from t2_agentic_voice.domain.ports.chat_model import ChatModel, ToolCallRequest
+from t2_agentic_voice.domain.yes_rule import ConfirmedAction
 from t2_agentic_voice.voice.talkers import TalkerFactory
 
 
@@ -45,6 +56,11 @@ def tools_of(agent: VoiceAgent) -> tuple[Tool, ...]:
             "Tool.from_function, knowledge_tool or @action."
         )
     return tools
+
+
+def actions_of(agent: VoiceAgent) -> tuple[Action, ...]:
+    """The agent's actions, in the order it declares them."""
+    return tuple(tool for tool in agent.tools if isinstance(tool, Action))
 
 
 def chat_talkers(
@@ -108,6 +124,12 @@ class WatchedTalker:
                 await close()
 
 
+def plans_of(watched: WatchedTalker | None) -> tuple[ReadBackPlan, ...]:
+    """Every read-back the talker asked for in the call, in the order it asked."""
+    talks = [] if watched is None else sorted(watched.talks.values(), key=lambda t: t.began_at)
+    return tuple(e.plan for t in talks for _, e in t.events if isinstance(e, ReadBackRequested))
+
+
 def arguments_of(request: ToolCallRequest) -> dict[str, JsonValue]:
     """The arguments the model wrote for a tool call, parsed as JSON; empty when they are not a
     JSON object."""
@@ -141,3 +163,53 @@ class RecordingRunner(ToolRunner):
             if result is not None
             for text in result.evidence
         )
+
+
+@dataclass(kw_only=True)
+class JobRun:
+    """One confirmed action the session handed the part that acts: as the yes rule issued it,
+    the rest of what the session gave with it (`given`), when it began on the call's clock, and
+    how it ended (`outcome`, None while it runs, or when it raised)."""
+
+    confirmed: ConfirmedAction
+    given: dict[str, Any]
+    began_at: float
+    outcome: ActionOutcome | None = None
+
+
+class RecordingJobs:
+    """The part that acts (`ActionJobs`), handing each job on to `inner` unchanged and keeping
+    each, in the order they began (`runs`)."""
+
+    def __init__(self, inner: ActionJobs) -> None:
+        self.inner = inner
+        self.runs: list[JobRun] = []
+
+    async def run(
+        self,
+        confirmed: ConfirmedAction,
+        *,
+        caller: Caller,
+        call_id: CallId,
+        language: LanguageTag,
+        turn_id: TurnId,
+        conversation: tuple[ConversationLine, ...],
+        clock: Clock,
+    ) -> ActionOutcome:
+        given: dict[str, Any] = {
+            "caller": caller,
+            "call_id": call_id,
+            "language": language,
+            "turn_id": turn_id,
+            "conversation": conversation,
+            "clock": clock,
+        }
+        job = JobRun(confirmed=confirmed, given=given, began_at=clock.now())
+        self.runs.append(job)
+        job.outcome = await self.inner.run(confirmed, **given)
+        return job.outcome
+
+    async def again(self, job: JobRun) -> ActionOutcome:
+        """`job`'s confirmed action handed on once more, with all it was given: the same
+        request arriving twice (the design's 9.3)."""
+        return await self.run(job.confirmed, **job.given)

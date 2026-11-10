@@ -15,7 +15,9 @@ the session under test is the real one (testing/text_call.py).
   clauses one after another; `StopSpeaking` drops every clause asked for so far, and every event
   of one still waiting (io.py's stop path); `HearOverlap` marks a turn an overlap, whose whole
   overlap part the call's caller then sends (the fake speech-to-text); each `Send` is kept;
-  `HangUp` ends the call, after which only a request's report is handed.
+  `HangUp` ends the call, after which only a request's report is handed. A clause plays whole
+  unless `fault`, asked as it ends, names a fault for it (plan 007): it comes back cut short
+  (`cut_short`), with no audio (`no_audio`), or its request fails (`failed`).
 """
 
 from __future__ import annotations
@@ -24,8 +26,9 @@ import asyncio
 import heapq
 import itertools
 from collections import deque
-from collections.abc import Iterable
+from collections.abc import Callable, Iterable
 from datetime import UTC, datetime, timedelta
+from typing import Literal
 
 from t2_agentic_voice.core.events import EndReason
 from t2_agentic_voice.core.settings.tts import LanguageTag
@@ -58,6 +61,8 @@ _RATE = 24_000
 # A clause's events, keyed on its reply and index, which a stop drops (io.py's stop path).
 _CLAUSE_EVENTS = (Synthesizing, ClauseQueued, ClausePlayed, ClauseFailed)
 _REPORTS = (Transcribing, Synthesizing)
+# What may go wrong with a clause as it plays (the module's docstring).
+ClauseFault = Literal["cut_short", "no_audio", "failed"]
 
 
 async def settle(turns: int = 60) -> None:
@@ -143,6 +148,7 @@ class TextSide:
         self._player: asyncio.Task[None] | None = None
         self._taking = False
         self.steps = 0  # every event handed and every command given, so a wait sees progress
+        self.fault: Callable[[Speak], ClauseFault | None] | None = None
 
     def start(self, session: Session) -> None:
         """Hand every event from now on to `session`, on a task of the side's own."""
@@ -214,10 +220,26 @@ class TextSide:
             self.hand(ClauseQueued(reply_id=reply, clause=clause, at=at, requested_at=requested))
             seconds = max(len(speak.text), 1) / self.chars_per_second
             await self.clock.sleep(seconds)
-            done = ClausePlayed(
-                reply_id=reply, clause=clause, at=self.clock.now(), audio_s=seconds, chunks=1
+            self.hand(self._ended(speak, seconds))
+
+    def _ended(self, speak: Speak, seconds: float) -> ClausePlayed | ClauseFailed:
+        """How the clause `speak` asked for ended, `seconds` of it played: whole, unless
+        `fault` names a fault for it."""
+        reply, clause, now = speak.reply_id, speak.clause, self.clock.now()
+        fault = None if self.fault is None else self.fault(speak)
+        if fault == "failed":
+            return ClauseFailed(
+                reply_id=reply, clause=clause, at=now, failure="server_error", retryable=True
             )
-            self.hand(done)
+        audio_s, chunks = (0.0, 0) if fault == "no_audio" else (seconds, 1)
+        return ClausePlayed(
+            reply_id=reply,
+            clause=clause,
+            at=now,
+            audio_s=audio_s,
+            chunks=chunks,
+            cut_short=fault == "cut_short",
+        )
 
     async def _consume(self, session: Session) -> None:
         while True:
