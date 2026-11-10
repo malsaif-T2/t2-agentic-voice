@@ -18,6 +18,7 @@ from typing import Literal
 
 from t2_agentic_voice.core.errors import ProviderErrorKind
 from t2_agentic_voice.core.events import EndReason, TransportStage, TurnId
+from t2_agentic_voice.core.yes_inputs import HeardSource
 from t2_agentic_voice.domain.ports.speech_to_text import Transcript
 from t2_agentic_voice.voice.protocol import ClauseIndex, ClientMessage, ReplyId
 
@@ -101,9 +102,10 @@ class Transcribed:
     reported for its key, when the adapter reads it), None when the request failed (`failure`,
     a `ProviderError`'s kind, and whether asking again may succeed) or when no audio was sent;
     `audio_s`, the seconds of audio sent; `sent_at`, when the request went (its `Transcribing`'s
-    `at`; None when none went); `at`, when the answer came; and `part`, which of the turn's
-    requests it answers (an overlap's turn may reuse its `overlap` transcript as its `turn`'s,
-    with no request: io.py's overlaps)."""
+    `at`; None when none went); `at`, when the answer came; `part`, which of the turn's requests
+    it answers (an overlap's turn may reuse its `overlap` transcript as its `turn`'s, with no
+    request: io.py's overlaps); and `source`, where the words came from, `typed` only in a
+    test's text call."""
 
     turn_id: TurnId
     at: float
@@ -113,6 +115,7 @@ class Transcribed:
     failure: ProviderErrorKind | None = None
     retryable: bool = False
     part: TranscriptPart = "turn"
+    source: HeardSource = "speech_to_text"
 
 
 @dataclass(frozen=True, kw_only=True)

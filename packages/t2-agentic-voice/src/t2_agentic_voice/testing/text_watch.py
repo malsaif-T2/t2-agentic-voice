@@ -16,6 +16,7 @@ from dataclasses import dataclass, field
 
 from pydantic import JsonValue
 
+from t2_agentic_voice.actions.action import Action
 from t2_agentic_voice.actions.runner import ToolRunner
 from t2_agentic_voice.actions.tools import CallContext, Tool, ToolResult
 from t2_agentic_voice.agent.talker import (
@@ -35,13 +36,13 @@ from t2_agentic_voice.voice.talkers import TalkerFactory
 
 
 def tools_of(agent: VoiceAgent) -> tuple[Tool, ...]:
-    """The agent's tools, each the library's `Tool` the runner runs; ConfigurationError for any
-    other."""
+    """The agent's tools, each the library's `Tool` the runner runs, its actions left to their
+    own runner; ConfigurationError for any other."""
     tools = tuple(tool for tool in agent.tools if isinstance(tool, Tool))
-    if len(tools) != len(agent.tools):
+    if len(tools) + sum(isinstance(tool, Action) for tool in agent.tools) != len(agent.tools):
         raise ConfigurationError(
             "A tool the agent declares is not one the library runs. FIX: build each with @tool, "
-            "Tool.from_function or knowledge_tool."
+            "Tool.from_function, knowledge_tool or @action."
         )
     return tools
 

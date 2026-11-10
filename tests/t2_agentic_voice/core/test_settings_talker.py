@@ -29,6 +29,7 @@ def test_the_llm_and_guard_defaults_are_the_designs() -> None:
         "id_patterns": (),
         "min_id_digits": 3,
         "on_block": "drop_rest",
+        "claims": {},
     }
     assert (settings.words.vocabulary, settings.session.mode) == ((), None)
 

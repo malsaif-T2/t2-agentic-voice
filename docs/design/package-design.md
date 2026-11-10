@@ -461,8 +461,11 @@ class RequestOpened(BaseModel):
     description="Open an IT request. Collect the category, the asset tag and a one-sentence summary first.",
     read_back=ReadBack(
         {
-            "ar": "بفتح طلب {category} للجهاز {asset_tag:id}: {summary}. أرسله؟",
-            "en": "I'll open a {category} request for {asset_tag:id}: {summary}. Shall I send it?",
+            "ar": ("بفتح طلب {category} للجهاز {asset_tag:id}: {summary}.", "أرسله؟"),
+            "en": (
+                "I'll open a {category} request for {asset_tag:id}: {summary}.",
+                "Shall I send it?",
+            ),
         },
         send_words={
             "ar": ["افتحه"],
@@ -493,7 +496,7 @@ async def find_request(ctx: ActionContext[HelpdeskDeps], request_id: str) -> Req
     return RequestOpened(id=found.id) if found else None
 ```
 
-Templates are keyed by language tag (`{"ar-SA": ..., "en": ...}`); the keyword form (`ar=`, `en=`) is shorthand for the same mapping. The talker sees a tool named `open_request` whose schema is the draft's schema and nothing more. There is no `confirmed` field and no "confirm" tool. Section 6.4 describes what happens when the talker calls it.
+Templates are keyed by language tag (`{"ar-SA": ..., "en": ...}`), and a language reads its own tag first, then its primary code, so an `ar` text serves both Arabic presets; the keyword form (`ar=`, `ar_SA=`, `en=`) is shorthand for the same mapping. A read-back's template is a pair, the summary and the closing question. The talker sees a tool named `open_request` whose schema is the draft's schema and nothing more. There is no `confirmed` field and no "confirm" tool. Section 6.4 describes what happens when the talker calls it.
 
 ### 4.5 Serve real callers
 
@@ -936,7 +939,7 @@ What v1 must already have for it, all built for M3 to M5 anyway:
 | `name` | no (the function's name) | The tool name the talker sees |
 | `description` | yes | Shown to the talker. Write it in English even for Arabic agents: the earlier research found English tool descriptions called more reliably |
 | The draft (the function's `draft` parameter type) | yes | A pydantic model, and the only schema the talker sees. A field named like consent is refused |
-| `read_back` | yes | `ReadBack(templates, send_words=..., show_draft=True, max_attempts=2)`. Each template is a summary followed by a closing question. The receipt covers the summary |
+| `read_back` | yes | `ReadBack(templates, send_words=..., show_draft=False, max_attempts=2, asked_again=...)`. Each template is a pair, a summary and a closing question, kept apart because the receipt covers the summary. `show_draft` is off by default (the caller only hears the agent, D-075) |
 | `consent` | no; `ReadBack` | The consent mode (table below) |
 | `done` | yes | The outcome sentence, filled from the real result |
 | `failed`, `unknown`, `declined` | no; library defaults | `failed`: definitely not done. `unknown`: no reply and no lookup hit. `declined`: the caller said no |
@@ -961,7 +964,7 @@ talker calls open_request({...})
   -> parse into the draft model                    invalid: the talker is told which field
   -> validate(ctx, draft)                          rejected: the talker is told why
   -> caps (per call, per caller) and the duplicate check
-  -> state CONFIRMING; the draft card is shown (show_draft)
+  -> state CONFIRMING; a draft card only with show_draft, off by default (D-075)
   -> the runtime speaks the read-back rendered from the draft (a template; fixed values through their labels)
        summary played in full                      -> ReadBackReceipt        (built only by the voice session)
        yes words or listening sounds over it       -> ignored: the summary plays on, and they do not count

@@ -9,7 +9,7 @@ from __future__ import annotations
 import dataclasses
 
 import pytest
-from t2_agentic_voice.voice.session.heard import HeardWords
+from t2_agentic_voice.core.yes_inputs import HEARD_WORDS_SEAL, HeardWords
 from t2_agentic_voice.voice.session.history import (
     HeardClause,
     HeardHistory,
@@ -17,7 +17,13 @@ from t2_agentic_voice.voice.session.history import (
     HeardTurn,
 )
 
-WORDS = HeardWords(turn_id=0, text="made-up words", language="en", at=1.0)
+
+def _heard(turn_id: int, text: str, at: float) -> HeardWords:
+    values = {"turn_id": turn_id, "text": text, "language": "en", "at": at, "speech_at": at}
+    return HeardWords.model_validate(values, context=HEARD_WORDS_SEAL)
+
+
+WORDS = _heard(0, "made-up words", 1.0)
 
 
 def test_the_records_are_frozen() -> None:
@@ -34,7 +40,7 @@ def test_each_turn_keeps_its_words_and_its_fate() -> None:
     history = HeardHistory()
     history.heard(WORDS)
     history.turn_ended(2, "command", reply_id=None)  # an overlap's verdict, before its words
-    history.heard(HeardWords(turn_id=2, text="made-up halting words", language="en", at=2.0))
+    history.heard(_heard(2, "made-up halting words", 2.0))
     history.turn_ended(0, "answered", reply_id=1)
     history.turn_ended(1, "unfinished", reply_id=None)  # never heard
     assert history.turns() == (

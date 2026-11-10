@@ -1,9 +1,9 @@
 """What the talker streams to the session (agent/talker.py, which re-exports every name here, so
 the session imports them from there): a clause to speak, a card to show, a tool begun and
-ended, a progress line due, a clause the output guard blocked, each model request as it goes and
-as it ends, and the reply's end; and the reply's cancel scope, which the talker starts its work
-in. They live apart from the talker so that the loop (agent/turn.py) and the talker
-(agent/talker.py) both import them, and neither the other.
+ended, a progress line due, a clause the output guard blocked, an action's read-back to say,
+each model request as it goes and as it ends, and the reply's end; and the reply's cancel scope,
+which the talker starts its work in. They live apart from the talker so that the loop
+(agent/turn.py) and the talker (agent/talker.py) both import them, and neither the other.
 """
 
 from __future__ import annotations
@@ -14,7 +14,9 @@ from typing import Any, Protocol
 
 from pydantic import BaseModel, ConfigDict, Field
 
+from t2_agentic_voice.core.events import GuardReason
 from t2_agentic_voice.core.settings.tts import LanguageTag
+from t2_agentic_voice.domain.action_lines import ReadBackPlan
 from t2_agentic_voice.domain.cards import Card
 from t2_agentic_voice.domain.ports.chat_model import Usage
 from t2_agentic_voice.domain.talker_declaration import ProgressKey
@@ -73,13 +75,22 @@ class ProgressDue(_Event):
 
 
 class ClauseBlocked(_Event):
-    """A clause the output guard blocked (rule B, domain/guard.py), never spoken: its `text`
-    and `language`, and the ID-shaped tokens it held with no evidence, for the developer note
-    and the trace, never for the caller."""
+    """A clause the output guard blocked (domain/guard.py, domain/claims.py), never spoken: its
+    `text` and `language`, why (`reason`), and the ID-shaped tokens it held with no evidence, for
+    the developer note and the trace, never for the caller."""
 
     text: str
     language: LanguageTag
     unsupported: tuple[str, ...] = ()
+    reason: GuardReason = "unsupported_id"
+
+
+class ReadBackRequested(_Event):
+    """The talker called an action and its draft parsed: `plan` is what to read back. The
+    session starts confirming when this plays, not when it is emitted, so an early start
+    cancelled before then leaves nothing."""
+
+    plan: ReadBackPlan
 
 
 class ModelRequested(_Event):
@@ -108,6 +119,7 @@ type TalkerEvent = (
     | ToolEnded
     | ProgressDue
     | ClauseBlocked
+    | ReadBackRequested
     | ModelRequested
     | ModelReplied
     | ReplyDone

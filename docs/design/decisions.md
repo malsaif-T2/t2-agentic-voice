@@ -2510,3 +2510,33 @@ twice; DOC-REF: every `D-NNN` cited anywhere is a heading here), so keep its sha
   set on the laptop). The roadmap's M6 question of what other callers must be told covers it.
 - **Evidence:** plan 006's Q37; `tests/t2_agentic_voice/core/test_tracing_tts.py`,
   `tests/t2_agentic_voice/voice/session/test_talker_told.py`.
+
+## D-080 · The consent objects are sealed, shared from below the rule that reads them · 2026-11-10 · Accepted (the agent's, in plan 007's Block 0, within the plan the owner approved)
+
+- **Context:** invariants 1 and 2 keep four objects to one layer each: the heard words and the
+  read-back receipt (`voice`), the confirmed action (the yes rule), the completed action
+  (`actions`). `domain`'s yes rule must read the first two, which `voice` builds, and `domain`
+  imports only `core`. `SignedConsent` is the pattern, but its code carries invariant 8 and was
+  left alone.
+- **Decision:**
+  - `HeardWords` moved to `core/yes_inputs.py`, with `ReadBackReceipt`; `heard_words()` stays in
+    `voice`. Each of the four is a sealed model (`core/seal.py`): built only by a validation given
+    its class's seal, recognised by one module-level check, and listed in `[[restricted]]` with
+    its seal's name. `CompletedAction` is defined in `domain`, where the guard reads it, and
+    built only by `actions/record.py`.
+  - The receipt holds the action and the draft as JSON text, and the confirmed action copies
+    them, so a draft can be confirmed only by the receipt of its own read-back.
+  - `HeardWords` gains `speech_at`, when the caller began speaking (its `at` is the transcript's
+    arrival), and `source`.
+  - Yes and send words stay out of `domain/words.py`'s five kinds, which the interruption rule
+    reads, so a measured rule does not change; they live in `domain/yes_words.py`. Settings add
+    to them through `words.yes` and `words.send`.
+  - Read-back templates are pairs, summary and closing question, and there is no `deps`: a backend
+    is reached by a closure, as `knowledge_tool` reaches its knowledge base.
+- **Consequences:** a module that named `HeardWords` from `voice/session/heard.py` imports it from
+  `core`; a test builds one through the seal, as `SignedConsent`'s do. The seal's check runs at
+  run time for every built object, and costs a dictionary entry per live object. `ARCH-CONSTRUCT`
+  still cannot see an aliased import of a class; the seal is what holds there.
+- **Evidence:** plan 007's Tracks section; `tests/t2_agentic_voice/core/test_seals.py`,
+  `tests/t2_agentic_voice/actions/test_action.py`,
+  `tests/t2_agentic_voice/domain/test_declaration_actions.py`.

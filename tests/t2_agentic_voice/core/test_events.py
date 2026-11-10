@@ -11,11 +11,15 @@ from pydantic import ValidationError
 from t2_agentic_voice.core.events import (
     EVENTS,
     MAX_INDEX,
+    ActionCompleted,
+    ActionUnconfirmed,
     AgentSpeechEnded,
     CallEnded,
     CallReport,
     CallStarted,
     ClientConnection,
+    ConfirmationAnswered,
+    ConfirmationRequested,
     Event,
     GuardBlocked,
     Interrupted,
@@ -53,6 +57,10 @@ def test_the_events_are_the_closed_list_the_session_emits() -> None:
         "AgentSpeechEnded",
         "ToolStarted",
         "ToolFinished",
+        "ConfirmationRequested",
+        "ConfirmationAnswered",
+        "ActionCompleted",
+        "ActionUnconfirmed",
         "GuardBlocked",
         "ProviderFailed",
         "TransportFailed",
@@ -73,6 +81,14 @@ def test_every_event_carries_its_call_its_turn_and_its_time() -> None:
         ToolStarted(call_id="c-1", turn_id=1, at=AT, tool="search_help", tool_call_id="t-1"),
         ToolFinished(
             call_id="c-1", turn_id=1, at=AT, tool="search_help", tool_call_id="t-1", ok=True, ms=8
+        ),
+        ConfirmationRequested(call_id="c-1", turn_id=1, at=AT, action="open_request"),
+        ConfirmationAnswered(
+            call_id="c-1", turn_id=2, at=AT, action="open_request", decision="yes"
+        ),
+        ActionCompleted(call_id="c-1", at=AT, action="open_request", request_id="r-1"),
+        ActionUnconfirmed(
+            call_id="c-1", at=AT, action="open_request", request_id="r-1", kind="unknown"
         ),
         GuardBlocked(call_id="c-1", turn_id=1, at=AT, reason="unsupported_id"),
         ProviderFailed(call_id="c-1", at=AT, kind="rate_limited", retryable=True),

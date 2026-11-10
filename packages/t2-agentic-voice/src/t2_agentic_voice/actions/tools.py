@@ -16,7 +16,10 @@ to have its result discarded (the design's 3.2).
   context, found by its type, and optional. **`Tool.from_function`** wraps an existing function
   without rewriting it.
 - **`CallContext`** is what a tool sees of the call: the verified `caller`, read-only, which
-  nothing said in the call changes (invariant 3); the call's id; and the reply language.
+  nothing said in the call changes (invariant 3); the call's id; the reply language; the call's
+  `record` of completed actions as plain values; and `past_actions`, what this caller has had
+  done before (the design's 6.4; plan 007's Q4). A tool with `reports_on` may back up a claim
+  about those actions (the design's 8.2, rule A).
 - **What comes back:** a `ToolResult`, the data the talker reads (framed as data, never as
   instructions: invariant 4), a card for the screen, the evidence the output guard's ID rule
   reads beside the data (domain/guard.py), and whether the call succeeded (`ok`). A function may
@@ -33,7 +36,7 @@ ConfigurationError naming the field, with a FIX line, never the value (actions/s
 
 from __future__ import annotations
 
-from collections.abc import Callable, Mapping
+from collections.abc import Callable, Mapping, Sequence
 from typing import Annotated, Any, Final, Literal, Self
 
 from pydantic import (
@@ -76,6 +79,7 @@ _FIXES = {
     "progress_after_s": "give progress_after_s a number of seconds above 0",
     "on_interrupt": 'give on_interrupt "cancel" or "finish"',
     "bind": 'bind each parameter with from_caller("subject") or another field of the caller',
+    "reports_on": 'name the actions its results report on, as reports_on=["open_request"]',
 }
 
 
@@ -103,13 +107,28 @@ def from_caller(field: str) -> FromCaller:
     return FromCaller(field=field)
 
 
+class RecordedAction(_Frozen):
+    """An action done for this caller, as plain values a tool or an action reads: its name,
+    its `request_id`, and its real result. Proves nothing: only the record's own entries do."""
+
+    action: str
+    request_id: str
+    result: JsonValue = None
+
+
 class CallContext(_Frozen):
     """What a tool sees of its call: the verified `caller`, read-only (invariant 3), the
-    call's id and the reply's language."""
+    call's id and the reply's language, and the actions done in this call (`record`)."""
 
     caller: Caller
     call_id: CallId
     language: LanguageTag
+    record: tuple[RecordedAction, ...] = ()
+
+    async def past_actions(self, action: str) -> tuple[RecordedAction, ...]:
+        """The actions named `action` this caller had done, in this call or before it, newest
+        last, read from the outbox and scoped to the verified caller."""
+        raise NotImplementedError(f"plan 007's Track B fills past_actions ({action})")
 
 
 class ToolResult(_Frozen):
@@ -142,6 +161,7 @@ class Tool(_Frozen):
     bind: Annotated[Mapping[str, FromCaller], FROZEN, PLAIN] = Field(
         default_factory=dict, validate_default=True
     )
+    reports_on: tuple[Annotated[str, Field(pattern=TOOL_NAME)], ...] = ()
 
     @field_validator("description")
     @classmethod
@@ -168,6 +188,7 @@ class Tool(_Frozen):
         progress_after_s: float = PROGRESS_AFTER_S,
         on_interrupt: OnInterrupt = "cancel",
         bind: Mapping[str, FromCaller] | None = None,
+        reports_on: Sequence[str] = (),
     ) -> Tool:
         """`function`, async or sync, as a tool named `name` (the function's own by default):
         its parameters' model read from its signature, a `CallContext` parameter and those
@@ -185,6 +206,7 @@ class Tool(_Frozen):
             "progress_after_s": progress_after_s,
             "on_interrupt": on_interrupt,
             "bind": bound,
+            "reports_on": reports_on,
         }
         try:
             return cls.model_validate(values)
@@ -203,7 +225,7 @@ class Tool(_Frozen):
         of `parameters`, no bound parameter in it (`from_function` leaves them out, and a
         `parameters` model given whole may not hold one), the schema's titles left out, which
         the model reads at every request and needs none of."""
-        schema = _untitled(self.parameters.model_json_schema())
+        schema = untitled_schema(self.parameters.model_json_schema())
         return ToolSchema(name=self.name, description=self.description, parameters=schema)
 
 
@@ -216,6 +238,7 @@ def tool(
     progress_after_s: float = PROGRESS_AFTER_S,
     on_interrupt: OnInterrupt = "cancel",
     bind: Mapping[str, FromCaller] | None = None,
+    reports_on: Sequence[str] = (),
 ) -> Callable[[Callable[..., Any]], Tool]:
     """The decorator that makes an async or a sync function a `Tool` (`Tool.from_function`'s
     arguments): `@tool(description="...", timeout_s=3)`."""
@@ -230,6 +253,7 @@ def tool(
             progress_after_s=progress_after_s,
             on_interrupt=on_interrupt,
             bind=bind,
+            reports_on=reports_on,
         )
 
     return made
@@ -239,16 +263,16 @@ def tool(
 _SCHEMA_MAPS = frozenset({"properties", "$defs", "definitions", "patternProperties"})
 
 
-def _untitled(node: Any) -> Any:
+def untitled_schema(node: Any) -> Any:
     """A JSON schema with its `title` keywords left out (a property named "title" kept)."""
     if isinstance(node, list):
-        return [_untitled(item) for item in node]
+        return [untitled_schema(item) for item in node]
     if not isinstance(node, dict):
         return node
     kept: dict[str, Any] = {}
     for key, value in node.items():
         if key in _SCHEMA_MAPS and isinstance(value, dict):
-            kept[key] = {name: _untitled(schema) for name, schema in value.items()}
+            kept[key] = {name: untitled_schema(schema) for name, schema in value.items()}
         elif not (key == "title" and isinstance(value, str)):
-            kept[key] = _untitled(value)
+            kept[key] = untitled_schema(value)
     return kept

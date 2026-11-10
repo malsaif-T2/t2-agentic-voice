@@ -3,9 +3,10 @@ interruption rule reads (the design's 7.6 and 4.3; plan 005), for each language 
 code (`ar` for both Arabic presets, `en`): its stop words, the words that ask it to pause, its
 repeat words, its listening sounds (`backchannel`) and its no words. Each is added to the
 language preset's list and the declaration's (`VoiceAgent(phrases=...)`, domain/words.py), so an
-app sets its own additions without code; none by default. And the product terms added to the
-declaration's vocabulary (`VoiceAgent(vocabulary=...)`), which becomes the Whisper prompt (plan
-006), in any language: none by default.
+app sets its own additions without code; none by default. `yes` and `send` are the yes rule's
+(domain/yes_words.py), added to the presets' and to an action's own send words. And the product
+terms added to the declaration's vocabulary (`VoiceAgent(vocabulary=...)`), which becomes the
+Whisper prompt (plan 006), in any language: none by default.
 """
 
 from __future__ import annotations
@@ -47,6 +48,8 @@ class WordSettings(Group):
     )
     backchannel: WordLists = _additions("listening sounds, after which the agent goes on")
     no: WordLists = _additions("no words, which a short output never holds")
+    yes: WordLists = _additions("yes words, which the yes rule reads")
+    send: WordLists = _additions("send words, which a yes over the closing question needs")
     vocabulary: tuple[_Term, ...] = Field(
         default=(),
         description=(

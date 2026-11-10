@@ -1,6 +1,7 @@
 """The `guard` group: the output guard's ID rule (the design's 8.2, rule B; plan 006): which
-tokens of a clause are ID-shaped, and what a blocked clause drops. Every clause the talker writes
-is checked before text-to-speech, and so is a card's text; the runtime's own templates are not.
+tokens of a clause are ID-shaped, and what a blocked clause drops; and the phrases added to the
+claim rule's default list (rule A; plan 007). Every clause the talker writes is checked before
+text-to-speech, and so is a card's text; the runtime's own templates are not.
 """
 
 from __future__ import annotations
@@ -11,6 +12,7 @@ from typing import Annotated, Literal
 from pydantic import Field, field_validator
 
 from t2_agentic_voice.core.settings.base import Group
+from t2_agentic_voice.core.settings.words import WordLists
 
 # What a blocked clause drops: it and the rest of the reply, or only it.
 OnBlock = Literal["drop_rest", "drop_clause"]
@@ -44,6 +46,16 @@ class GuardSettings(Group):
         description=(
             "What a blocked clause drops: drop_rest, it and the rest of the reply, or "
             "drop_clause, only it. A fixed phrase is spoken in its place either way."
+        ),
+    )
+
+    claims: WordLists = Field(
+        default_factory=dict,
+        validate_default=True,
+        description=(
+            "Phrases added to each language's default list of what claims any action, as a "
+            'JSON object from a language\'s code to a list: {"ar": ["..."]}. A value replaces '
+            "the map."
         ),
     )
 

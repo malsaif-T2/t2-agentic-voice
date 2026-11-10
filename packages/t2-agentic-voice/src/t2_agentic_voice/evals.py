@@ -6,8 +6,9 @@ facade's `PhraseCache` meets); and the replay of a clip over a reply (`AudioCall
 9.5), each overlap's verdict, requests and stop time (plan 005), or of a clip as a turn,
 its time to first audio (`TurnReplay`); and the call held in text
 (`TextCall`, the design's 9.2) with the fakes it runs on (the fake chat models, their script's
-steps and pauses, and the failure of a script that ran out) and what each of its turns did, as
-data (plan 006), until the testing kit is a public module of its own (the design's 5.1).
+steps and pauses, and the failure of a script that ran out), what each of its turns did, as
+data (plan 006), and `ActionSafetySuite` (the design's 9.3), until the testing kit is a public
+module of its own (the design's 5.1).
 Provisional (D-021). A facade: it only re-exports (ARCH-FACADE)."""
 
 from t2_agentic_voice.domain.recall import Recall
@@ -17,6 +18,7 @@ from t2_agentic_voice.domain.uncertain_overlaps import (
     uncertain_overlap_answer,
     uncertain_overlap_request,
 )
+from t2_agentic_voice.testing.action_safety import ActionSafetySuite
 from t2_agentic_voice.testing.audio_call import AudioCall, OverlapReplay, OverlapRequest
 from t2_agentic_voice.testing.echo_timing import EchoTiming, TurnTiming, echo_timings
 from t2_agentic_voice.testing.knowledge_fake import FakeKnowledgeBase, KnowledgeSearch
@@ -35,6 +37,7 @@ from t2_agentic_voice.testing.turns import TurnEnd, turn_ends
 from t2_agentic_voice.voice.session.io import PhraseAudio
 
 __all__ = [
+    "ActionSafetySuite",
     "AudioCall",
     "BlockedClause",
     "EchoTiming",

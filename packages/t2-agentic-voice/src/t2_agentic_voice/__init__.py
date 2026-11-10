@@ -16,10 +16,12 @@ import importlib
 import warnings
 from typing import TYPE_CHECKING, Any
 
+from t2_agentic_voice.actions.action import Action, ActionContext, HeardConsent, action
 from t2_agentic_voice.actions.knowledge import knowledge_tool
 from t2_agentic_voice.actions.tools import (
     CallContext,
     FromCaller,
+    RecordedAction,
     Tool,
     ToolResult,
     from_caller,
@@ -28,7 +30,10 @@ from t2_agentic_voice.actions.tools import (
 from t2_agentic_voice.agent.prompt import render_prompt
 from t2_agentic_voice.api.status import Status, status
 from t2_agentic_voice.core.config import VoiceSettings
+from t2_agentic_voice.core.conversation import ConversationLine
 from t2_agentic_voice.core.errors import (
+    ActionNotSent,
+    ActionRejected,
     ConfigurationError,
     InvalidRequestError,
     JoinRejected,
@@ -55,6 +60,7 @@ from t2_agentic_voice.core.settings.tracing import TracingSettings
 from t2_agentic_voice.core.settings.tts import TtsSettings, TtsVoice
 from t2_agentic_voice.core.settings.turns import TurnSettings
 from t2_agentic_voice.core.settings.words import WordSettings
+from t2_agentic_voice.domain.action_declaration import Claims, ReadBack, Say, Spoken
 from t2_agentic_voice.domain.cards import Card
 from t2_agentic_voice.domain.declaration import Language, VoiceAgent
 from t2_agentic_voice.domain.talker_declaration import DeclaredTool, Vocabulary
@@ -70,15 +76,22 @@ _LAZY = {
 }
 
 __all__ = [
+    "Action",
+    "ActionContext",
+    "ActionNotSent",
+    "ActionRejected",
     "CallContext",
     "Caller",
     "Card",
+    "Claims",
     "ConfigurationError",
     "Consent",
+    "ConversationLine",
     "DeclaredTool",
     "FromCaller",
     "GroqSettings",
     "GuardSettings",
+    "HeardConsent",
     "InterruptionSettings",
     "InvalidRequestError",
     "JoinRejected",
@@ -92,8 +105,12 @@ __all__ = [
     "PrivacySettings",
     "ProviderError",
     "Providers",
+    "ReadBack",
+    "RecordedAction",
+    "Say",
     "ServerSettings",
     "SessionSettings",
+    "Spoken",
     "Status",
     "StorageSettings",
     "StructuredLogger",
@@ -112,6 +129,7 @@ __all__ = [
     "VoiceSettings",
     "WordSettings",
     "Words",
+    "action",
     "configure_logging",
     "from_caller",
     "get_logger",

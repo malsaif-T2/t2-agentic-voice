@@ -7,7 +7,9 @@ instructions runs the talker (`session.mode`, core/settings/session.py).
 A tool is built in `actions/` (`@tool`, `Tool.from_function`, `knowledge_tool`), which `domain`
 may not import (harness.toml [layers]), so the declaration holds each as the smallest shape a
 tool has, `DeclaredTool`: its name, its description and the key of its progress line, which the
-declaration checks (each name once; each progress line in every language the agent speaks).
+declaration checks (each name once; each progress line in every language the agent speaks). An
+action (`@action`) is declared among the tools, with the shape `DeclaredAction` beside it: the
+texts each of the agent's languages must cover; and a tool's `reports_on` must name one of them.
 The talker (agent/) runs the tools themselves.
 """
 
@@ -43,6 +45,21 @@ class DeclaredTool(Protocol):
 
     @property
     def progress(self) -> str | None: ...
+
+
+class LanguageTexts(Protocol):
+    """A text of an action (`Say`, `ReadBack`, `Claims`), which a language may cover."""
+
+    def covers(self, tag: LanguageTag) -> bool: ...
+
+
+@runtime_checkable
+class DeclaredAction(DeclaredTool, Protocol):
+    """What the declaration reads of an action (actions/action.py's `Action` has it): each of
+    its texts every one of the agent's languages must cover, by the field that holds it."""
+
+    @property
+    def texts(self) -> Mapping[str, LanguageTexts]: ...
 
 
 def _instruction(value: str) -> str:
@@ -102,11 +119,18 @@ def tools_for(
     tools: Sequence[DeclaredTool], progress: Mapping[LanguageTag, Mapping[str, str]]
 ) -> tuple[DeclaredTool, ...]:
     """`tools` as a tuple, checked against the progress lines each of the agent's languages
-    gives (`progress`, by tag): each tool's name once, and its progress line, if any, in every
-    language. ValueError, in fixed words, otherwise."""
+    gives (`progress`, by tag): each tool's name once; its progress line, if any, in every
+    language; an action's texts in every language; and a `reports_on` naming only the agent's
+    own actions. ValueError, in fixed words, otherwise."""
     names = [tool.name for tool in tools]
     if len(set(names)) != len(names):
         raise ValueError("two tools share a name; the talker calls each by its own")
+    actions = {tool.name for tool in tools if isinstance(tool, DeclaredAction)}
+    for tool in tools:
+        if isinstance(tool, DeclaredAction) and not _covered(tool, tuple(progress)):
+            raise ValueError("an action has no text in a language the agent speaks")
+        if set(getattr(tool, "reports_on", ())) - actions:
+            raise ValueError("a tool's reports_on names an action the agent does not declare")
     for tool in tools:
         if tool.progress is not None and any(tool.progress not in p for p in progress.values()):
             raise ValueError(
@@ -116,8 +140,14 @@ def tools_for(
     return tuple(tools)
 
 
+def _covered(action: DeclaredAction, tags: Sequence[LanguageTag]) -> bool:
+    """Whether every text of `action` has a text for each of `tags`."""
+    return all(text.covers(tag) for text in action.texts.values() for tag in tags)
+
+
 def a_tool(value: object) -> DeclaredTool:
-    """`value` when it is a tool (`@tool`, `Tool.from_function`, `knowledge_tool`)."""
+    """`value` when it is a tool or an action (`@tool`, `Tool.from_function`,
+    `knowledge_tool`, `@action`)."""
     if not isinstance(value, DeclaredTool):
         raise ValueError("an item is not a tool: build it with @tool or Tool.from_function")
     return value

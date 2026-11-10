@@ -79,8 +79,8 @@ from t2_agentic_voice.core.conversation import TalkerTurn
 from t2_agentic_voice.core.errors import ProviderError
 from t2_agentic_voice.core.events import TurnId
 from t2_agentic_voice.core.logging import get_logger
+from t2_agentic_voice.core.yes_inputs import HeardWords
 from t2_agentic_voice.voice.session.books import CallBooks
-from t2_agentic_voice.voice.session.heard import HeardWords
 from t2_agentic_voice.voice.session.io import CallSetup
 from t2_agentic_voice.voice.session.playback import Reply
 from t2_agentic_voice.voice.session.report import TurnLog

@@ -27,8 +27,8 @@ from t2_agentic_voice.core.conversation import (
     TurnFate,
 )
 from t2_agentic_voice.core.events import TurnId
+from t2_agentic_voice.core.yes_inputs import HeardWords
 from t2_agentic_voice.voice.protocol import ClauseIndex, ReplyId
-from t2_agentic_voice.voice.session.heard import HeardWords
 
 # What became of a clause and of a turn (`ClauseFate`, `TurnFate`) is core/conversation.py's,
 # which the talker reads the call from.

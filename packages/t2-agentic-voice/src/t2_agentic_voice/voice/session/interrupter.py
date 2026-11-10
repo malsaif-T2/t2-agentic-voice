@@ -61,6 +61,7 @@ from collections.abc import Awaitable, Callable, Mapping
 from dataclasses import replace
 
 from t2_agentic_voice.core.events import TurnId
+from t2_agentic_voice.core.yes_inputs import HeardWords
 from t2_agentic_voice.domain.interruptions import (
     Verdict,
     WholeCommand,
@@ -70,7 +71,7 @@ from t2_agentic_voice.domain.interruptions import (
 from t2_agentic_voice.domain.words import rule_form
 from t2_agentic_voice.voice.protocol import Unduck
 from t2_agentic_voice.voice.session.books import CallBooks
-from t2_agentic_voice.voice.session.heard import HeardWords
+from t2_agentic_voice.voice.session.heard import with_text
 from t2_agentic_voice.voice.session.io import CallSetup, Commands
 from t2_agentic_voice.voice.session.overlap import Overlaps, OverlapState, answers
 from t2_agentic_voice.voice.session.overlap_ask import OverlapAsks
@@ -272,7 +273,7 @@ class Interrupter:
         if heard is not None and found is None and enough:
             self._repeats.discard(turn.turn_id)
             turn.reply_id = None  # a reply said again plays on before the answer
-            await self._answer(self._pending(turn), replace(heard, text=rest), event)
+            await self._answer(self._pending(turn), with_text(heard, rest), event)
             return
         if turn.turn_id in self._repeats:
             await self._follow(state, event.at)

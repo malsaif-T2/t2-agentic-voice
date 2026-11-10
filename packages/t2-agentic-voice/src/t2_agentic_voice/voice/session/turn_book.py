@@ -28,10 +28,11 @@ import struct
 
 from t2_agentic_voice.core.conversation import TurnFate
 from t2_agentic_voice.core.events import TurnId
+from t2_agentic_voice.core.yes_inputs import HeardWords
 from t2_agentic_voice.domain.silence import CAPTIONS, from_silence
 from t2_agentic_voice.voice.protocol import ClauseIndex
 from t2_agentic_voice.voice.session.books import CallBooks
-from t2_agentic_voice.voice.session.heard import HeardWords, heard_words
+from t2_agentic_voice.voice.session.heard import heard_words
 from t2_agentic_voice.voice.session.io import CallSetup
 from t2_agentic_voice.voice.session.playback import Playback, Reply
 from t2_agentic_voice.voice.session.report import TurnLog
@@ -123,7 +124,7 @@ class TurnBook:
             language=None if transcript is None else transcript.language,
             billed_seconds=None if transcript is None else transcript.billed_seconds,
         )
-        heard = self._unless_silence(heard_words(event), event)
+        heard = self._unless_silence(heard_words(event, speech_at=turn.speech_at), event)
         turn.heard = "" if heard is None else heard.text
         self._recorder.heard(event.at, event.turn_id, turn.heard, dropped=turn.dropped)
         if event.failure is not None and turn.requested:
@@ -142,7 +143,8 @@ class TurnBook:
         self._usage.transcribed(event)
         if event.failure is not None:
             self._events.failed(event.failure, event.retryable, event.turn_id)
-        return self._unless_silence(heard_words(event), event)
+        speech_at = self.turn(event.turn_id).speech_at
+        return self._unless_silence(heard_words(event, speech_at=speech_at), event)
 
     def _unless_silence(self, heard: HeardWords | None, event: Transcribed) -> HeardWords | None:
         """`heard`, or None when the filter is on and takes the transcript for text from

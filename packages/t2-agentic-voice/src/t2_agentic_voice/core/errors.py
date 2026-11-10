@@ -74,6 +74,21 @@ class ToolError(T2VoiceError):
     code = "tool_error"
 
 
+class ActionRejected(T2VoiceError):  # noqa: N818 - the design's 4.4 names it so
+    """An action's backend refused the write (the design's 6.4): definitely not done, so the
+    action's `failed` line is spoken and the outbox row marked rejected. The reason is for the
+    team's log, never read to the caller."""
+
+    code = "action_rejected"
+
+
+class ActionNotSent(T2VoiceError):  # noqa: N818 - the design's 4.4 names it so
+    """An action failed before anything was sent (the design's 6.4): definitely not done, so
+    the `failed` line is spoken, the outbox row marked not sent, and nothing retried."""
+
+    code = "action_not_sent"
+
+
 class ProviderError(T2VoiceError):
     """An outside service (speech-to-text, the model, text-to-speech) failed a request.
 

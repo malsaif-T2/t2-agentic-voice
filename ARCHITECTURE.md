@@ -58,11 +58,13 @@ web widget         microphone, speaker, captions, Stop; static files the app ser
   ▼ adapters   speech-to-text turns each stretch of speech into text (through a domain port;
                Groq's Whisper gives no partial transcripts)
   ▼ agent      the talker: the user's words in, a reply and tool calls out
-  ▼ actions    runs each tool (knowledge search, ticket status, ticket flow, handoff),
+  ▼ actions    runs each tool and, after a clear yes, each confirmed action as a job outside
+               the turn (knowledge search, ticket status, a ticket, a handoff, in Ole5's app),
                records what it completed, words the outcome
-  ▼ adapters   the knowledge base and the ticket system (through domain ports)
+  ▼ the app    its own backends, reached through its tools and actions: a knowledge base, a
+               ticket system (Ole5's is a mock, plan 007)
   ▲ voice      text-to-speech streams the reply clause by clause; a cancel stops it at once
-  ◆ domain     the rules every step applies: the yes rule, the ticket flow's states,
+  ◆ domain     the rules every step applies: the yes rule, an action's states,
                interruption words, Arabic normalization, how numbers are spoken
   ◆ core       settings, structured logs, errors, and traces to Phoenix, for every layer
 ```
@@ -89,9 +91,9 @@ An arrow or a line down means "may import"; `api` may import every layer, `testi
 | Layer | Responsibility | May import | Owns (only it may import) |
 | --- | --- | --- | --- |
 | `core` | Settings (`VoiceSettings` in `core/config.py`, the only module that reads the environment, and its groups in `core/settings/`), structured logging (`core/logging.py`), the error types (`core/errors.py`: `T2VoiceError` and its subclasses, each with a stable `code`), tracing to Phoenix, and the types every layer shares | none | `logging`, `structlog`, `pydantic_settings`, `opentelemetry`, `openinference`, `phoenix`, `requests` |
-| `domain` | The rules of a support call, with no IO: what counts as a clear yes, the ticket flow's states, what an interruption is, Arabic text normalization, how numbers (through num2words) and ticket IDs are spoken, the evaluation scorers' pure parts (term recall, ID recall, text from silence, the sign test), and the ports (protocols) every outside service is reached through | core | `num2words` |
-| `adapters` | One adapter per port: speech-to-text, the chat model and text-to-speech (Groq), the knowledge base, the ticket system, each chosen by a setting; the signed join tokens, the SQLite stores (the used tokens), the TURN credentials and the phrase cache | core, domain | `groq`, `httpx`, `qdrant_client`, `jwt`, `sqlite3` |
-| `actions` | The backend that acts: runs the talker's tools through the ports, keeps each call's record of completed actions, words every outcome from a real result | core, domain | — |
+| `domain` | The rules of a support call, with no IO: what counts as a clear yes, an action's states, what an interruption is, Arabic text normalization, how numbers (through num2words) and ticket IDs are spoken, the evaluation scorers' pure parts (term recall, ID recall, text from silence, the sign test), and the ports (protocols) every outside service is reached through | core | `num2words` |
+| `adapters` | One adapter per port: speech-to-text, the chat model and text-to-speech (Groq), each chosen by a setting; the signed join tokens, the SQLite stores (the used tokens and the outbox), the TURN credentials and the phrase cache | core, domain | `groq`, `httpx`, `qdrant_client`, `jwt`, `sqlite3` |
+| `actions` | The backend that acts: runs the talker's tools through the ports, carries out each confirmed action as a job, keeps each call's record of completed actions, words every outcome from a real result | core, domain | — |
 | `agent` | The talker: prompts, the few tool definitions, the reply language, one turn from the user's words to a reply and tool calls; the output guard on every sentence | core, domain, actions | — |
 | `voice` | One call's real-time pipeline: answers the WebRTC offer (Pipecat's peer connection), audio in and out, speech detection, end of turn, interruptions, each reply's cancel scope, speech-to-text and text-to-speech wired to the talker; Pipecat's logger (loguru), kept off | core, domain, agent | `pipecat`, `loguru` |
 | `testing` | What a team tests and measures its agent with: the evaluation scorers (word and character error rates), the turn-end and echo timings and the replay of a clip over a reply (`AudioCall`) the measurements run on, today; later the fakes of every port, text-mode calls, the adversarial suite and simulated callers (D-019) | core, domain, actions, agent, voice | `jiwer` |
@@ -126,17 +128,18 @@ The agent's reasoning, from the questions the kit asks (D-003 records the altern
   `api` and above `voice`: the scorers now, and the testing kit later, which runs the real
   pipeline's session code with fakes. It never imports `adapters`, so a test reaches a provider
   only through a port it passes in, and never `api`, so a team's tests need no HTTP stack.
-- **What may only one layer create?** A confirmed ticket draft, issued only by `domain`'s yes
-  rule; its two inputs, the caller's heard words and the read-back receipt, built only by
-  `voice`; and a completed action, recorded only by `actions`. Each goes into `[[restricted]]`
-  (ARCH-CONSTRUCT) in the commit that creates its class ([SECURITY.md](docs/SECURITY.md),
-  invariants 1 and 2). The first there is `SignedConsent`, the consent a verified signed join
-  token carried, built only by `adapters`' signed-token identity source, since only it lets a
-  call's audio be recorded (invariant 8). A call is not the only way to build an object, so the
-  class also checks at run time that its validation was given a seal, `CONSENT_SEAL`, and only
-  the instance that validation built, unchanged, lets audio be kept; and a `[[restricted]]`
-  table of `names` reports any mention of the seal outside `adapters/join_tokens.py`, which
-  gives it, and `core/identity.py`, which defines it.
+- **What may only one layer create?** A confirmed action (`ConfirmedAction`), issued only by
+  `domain`'s yes rule, `domain/yes_rule.py`; its two inputs, the caller's heard words and the
+  read-back receipt (`HeardWords`, `ReadBackReceipt`), built only by `voice`, each sitting in
+  `core`, `core/yes_inputs.py`, so `domain` can read it; and a completed action
+  (`CompletedAction`), recorded only by `actions/record.py`. Each is in `[[restricted]]`
+  (ARCH-CONSTRUCT) ([SECURITY.md](docs/SECURITY.md), invariants 1 and 2). A call is not the only
+  way to build an object, so each also checks at run time that its validation was given a seal
+  (`core/seal.py`): only the instance that validation built, unchanged, counts, and a
+  `[[restricted]]` table of `names` reports any mention of a seal outside the modules that
+  define and give it. `SignedConsent`, the consent a verified signed join token carried, built
+  only by `adapters`' signed-token identity source, is the pattern's first and keeps its own
+  code (`core/identity.py`), since only it lets a call's audio be recorded (invariant 8).
 
 ## The web widget
 

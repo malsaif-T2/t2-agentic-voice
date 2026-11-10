@@ -58,8 +58,9 @@ _FIXES: dict[str, str] = {
         'its tag, as instructions={"ar-SA": ..., "en": ...}.'
     ),
     "tools": (
-        "give `tools` the tools built with @tool, Tool.from_function or knowledge_tool, each "
-        "with its own name; a progress line a tool names is given in every language."
+        "give `tools` the tools built with @tool, Tool.from_function, knowledge_tool or "
+        "@action, each with its own name; a progress line a tool names and every text of an "
+        "action are given in every language; a tool's reports_on names an action declared here."
     ),
     "vocabulary": 'give `vocabulary` its terms, as vocabulary=Vocabulary(terms=["VPN"]).',
     "Vocabulary": 'declare it as Vocabulary(terms=["VPN", "Outlook"]).',

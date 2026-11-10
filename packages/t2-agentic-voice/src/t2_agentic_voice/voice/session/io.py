@@ -135,6 +135,7 @@ from t2_agentic_voice.core.identity import Caller, Consent
 from t2_agentic_voice.core.settings.tts import LanguageTag
 from t2_agentic_voice.core.tracing import Tracing
 from t2_agentic_voice.domain.declaration import Language, VoiceAgent
+from t2_agentic_voice.domain.ports.action_jobs import ActionJobs
 from t2_agentic_voice.domain.ports.chat_model import ChatModel
 from t2_agentic_voice.domain.ports.text_to_speech import AudioChunk
 from t2_agentic_voice.voice.session.commands import Command
@@ -191,8 +192,9 @@ class CallSetup:
     one text-to-speech request of a language takes (the provider's `max_chars`, which the clause
     splitter honours); the runtime's tracing; where the session's public events go; the call's
     clock; the call's talker, built for it when the agent runs the talker (`session.mode`,
-    `SessionSettings.mode_for`), None for the echo; and the chat model that decides an overlap
-    the rule left uncertain (D-069), None for a call that asks none."""
+    `SessionSettings.mode_for`), None for the echo; the chat model that decides an overlap the
+    rule left uncertain (D-069), None for a call that asks none; and the part that carries out a
+    confirmed action (plan 007; the `ActionJobs` port), None for an agent with none."""
 
     call_id: CallId
     caller: Caller
@@ -207,3 +209,4 @@ class CallSetup:
     clock: Clock = SYSTEM_CLOCK
     talker: Talker | None = None
     overlap_model: ChatModel | None = None
+    action_jobs: ActionJobs | None = None

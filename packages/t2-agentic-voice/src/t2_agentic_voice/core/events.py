@@ -7,7 +7,7 @@ Every event is frozen, from a closed list (`EVENTS`), and carries the call's ID,
 (None for an event of the whole call) and when it happened. Observers run off the call's path
 and cannot change it. These are the events the session emits, the talker's among them (a tool
 call begun and ended, a clause the output guard blocked: plan 006); the design's others
-(`Busy`, the actions' events) come with what they report.
+(`Busy`) come with what they report; the actions' are declared here for plan 007's tracks.
 
 An event and the report hold what was heard and said, so neither is ever logged (call content
 is logged at no level, docs/SECURITY.md, invariant 8); the report's numbers are written apart,
@@ -65,8 +65,13 @@ InterruptionReason = Literal[
     "model",
 ]
 # Why the output guard blocked a clause (the design's 8.2): an ID-shaped token with no evidence
-# (rule B); the claims (rule A) and the text after an action call (rule C) come with the actions.
-GuardReason = Literal["unsupported_id"]
+# (rule B), or a claim the record and a status result do not hold (rule A). Text after an action
+# call (rule C) is dropped silently, never blocked.
+GuardReason = Literal["unsupported_id", "unsupported_claim"]
+# What the yes rule made of a read-back's answer.
+ConfirmationDecision = Literal["yes", "declined", "correction", "asked_again"]
+# How a write ended when no record of it could be made: definitely not done, or unknown.
+UnconfirmedKind = Literal["failed", "unknown"]
 # Where a call's connection failed: its offer could not be answered; it never connected (ICE
 # failed, or the offer-to-connected deadline passed); or it dropped after it connected.
 TransportStage = Literal["offer", "connect", "media"]
@@ -274,6 +279,34 @@ class ToolFinished(ToolStarted):
     ms: float = Field(ge=0, allow_inf_nan=False)
 
 
+class ConfirmationRequested(_TurnEvent):
+    """The read-back of `action` began to play in the reply to the turn."""
+
+    action: str = Field(min_length=1)
+
+
+class ConfirmationAnswered(_TurnEvent):
+    """The yes rule read the turn as `decision` on `action`'s read-back."""
+
+    action: str = Field(min_length=1)
+    decision: ConfirmationDecision
+
+
+class ActionCompleted(Event):
+    """`action`'s write returned and was recorded, by its `request_id`."""
+
+    action: str = Field(min_length=1)
+    request_id: str = Field(min_length=1)
+
+
+class ActionUnconfirmed(Event):
+    """`action`'s write did not end in a record: `kind` says how it ended."""
+
+    action: str = Field(min_length=1)
+    request_id: str = Field(min_length=1)
+    kind: UnconfirmedKind
+
+
 class GuardBlocked(_TurnEvent):
     """The output guard blocked a clause of the reply to the turn, never spoken, for `reason`
     (the design's 8.2); a fixed phrase was said in its place."""
@@ -294,6 +327,10 @@ EVENTS: tuple[type[Event], ...] = (
     AgentSpeechEnded,
     ToolStarted,
     ToolFinished,
+    ConfirmationRequested,
+    ConfirmationAnswered,
+    ActionCompleted,
+    ActionUnconfirmed,
     GuardBlocked,
     ProviderFailed,
     TransportFailed,

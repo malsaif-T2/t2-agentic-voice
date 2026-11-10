@@ -115,6 +115,8 @@ Words: what a team adds to each language's lists, which the interruption rule re
 | `T2V_WORDS__REPEAT` | JSON object from one of ar, en to JSON list of text | `{}` | — | Words added to each language's repeat words, which stop the agent and say its last reply again, as a JSON object from a language's code (ar, en) to a list: {"ar": ["..."]}. A value replaces the map. |
 | `T2V_WORDS__BACKCHANNEL` | JSON object from one of ar, en to JSON list of text | `{}` | — | Words added to each language's listening sounds, after which the agent goes on, as a JSON object from a language's code (ar, en) to a list: {"ar": ["..."]}. A value replaces the map. |
 | `T2V_WORDS__NO` | JSON object from one of ar, en to JSON list of text | `{}` | — | Words added to each language's no words, which a short output never holds, as a JSON object from a language's code (ar, en) to a list: {"ar": ["..."]}. A value replaces the map. |
+| `T2V_WORDS__YES` | JSON object from one of ar, en to JSON list of text | `{}` | — | Words added to each language's yes words, which the yes rule reads, as a JSON object from a language's code (ar, en) to a list: {"ar": ["..."]}. A value replaces the map. |
+| `T2V_WORDS__SEND` | JSON object from one of ar, en to JSON list of text | `{}` | — | Words added to each language's send words, which a yes over the closing question needs, as a JSON object from a language's code (ar, en) to a list: {"ar": ["..."]}. A value replaces the map. |
 | `T2V_WORDS__VOCABULARY` | JSON list of text | `[]` | — | Product terms added to the declaration's vocabulary, which becomes the Whisper prompt, as a JSON list: ["VPN", "Outlook"]. A value replaces the list. |
 
 ## `guard`
@@ -126,6 +128,7 @@ The output guard: what counts as an ID, and what a clause that speaks one with n
 | `T2V_GUARD__ID_PATTERNS` | JSON list of text | `[]` | — | More ID shapes, beside runs of min_id_digits digits, as a JSON list of regular expressions, such as ["LT-\\d{5}"]. A pattern that matches no text at all (the empty text) is refused. Unset: none. |
 | `T2V_GUARD__MIN_ID_DIGITS` | integer | `3` | — | The fewest digits in a row, after digit words and Arabic-Indic digits are made digits, that count as an ID, which passes only with evidence from this call. |
 | `T2V_GUARD__ON_BLOCK` | one of drop_rest, drop_clause | `drop_rest` | — | What a blocked clause drops: drop_rest, it and the rest of the reply, or drop_clause, only it. A fixed phrase is spoken in its place either way. |
+| `T2V_GUARD__CLAIMS` | JSON object from one of ar, en to JSON list of text | `{}` | — | Phrases added to each language's default list of what claims any action, as a JSON object from a language's code to a list: {"ar": ["..."]}. A value replaces the map. |
 
 ## `session`
 
@@ -201,6 +204,7 @@ Limits on one call.
 | --- | --- | --- | --- | --- |
 | `T2V_LIMITS__MAX_CALL_S` | number | `600` | seconds | The longest a call may last; the library ends it then. |
 | `T2V_LIMITS__IDLE_S` | number | `120` | seconds | The longest a call may go with nothing heard from the caller; then it ends. |
+| `T2V_LIMITS__ACTIONS_PER_CALLER_PER_DAY` | integer | `20` | — | How many of one kind of action one caller may have done in a day, counted from the outbox whatever became of them. Beyond it the action is refused before its read-back. The agent's starting value. |
 
 ## `storage`
 

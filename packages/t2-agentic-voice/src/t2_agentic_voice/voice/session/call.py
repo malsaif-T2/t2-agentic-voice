@@ -58,12 +58,12 @@ from functools import partial
 
 from t2_agentic_voice.core.events import ClientConnection, EndReason
 from t2_agentic_voice.core.logging import get_logger
+from t2_agentic_voice.core.yes_inputs import HeardWords
 from t2_agentic_voice.voice import protocol as wire
 from t2_agentic_voice.voice.session import session_events as on
 from t2_agentic_voice.voice.session.books import CallBooks
 from t2_agentic_voice.voice.session.commands import HangUp, ListenIn
 from t2_agentic_voice.voice.session.echo import echo
-from t2_agentic_voice.voice.session.heard import HeardWords
 from t2_agentic_voice.voice.session.interrupter import Interrupter
 from t2_agentic_voice.voice.session.io import CallSetup, Commands
 from t2_agentic_voice.voice.session.limits import CallLimits, Limit

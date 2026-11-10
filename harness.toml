@@ -101,7 +101,7 @@ fix = "Join tokens are minted and verified only by the signed-join-token adapter
 [[owners]]
 modules = ["sqlite3"]
 layers = ["adapters"]
-fix = "The SQLite stores live in adapters/ behind their ports (`UsedTokens` so far); take the port, injected, instead of opening a database."
+fix = "The SQLite stores live in adapters/ behind their ports (`UsedTokens`, `Outbox`); take the port, injected, instead of opening a database."
 
 [[owners]]
 modules = ["num2words"]
@@ -149,11 +149,6 @@ fix = "Score through the evaluation helpers in testing/scorers.py (`wer`, `cer`,
 # at run time, so the class refuses everyone but the seal's holders, and the check names who
 # holds it (scripts/arch_module.py and scripts/arch_names.py). A name computed at run time is
 # beyond it.
-#
-# Planned here, in the commit that creates each class (docs/SECURITY.md, invariants 1 and 2): a
-# confirmed ticket draft, issued only by domain's yes rule; its two inputs, the caller's heard
-# words and the read-back receipt, built only by voice; and a completed action, recorded only by
-# actions.
 
 # The consent a verified signed join token carried (core/identity.py): only it lets a call's
 # audio be recorded (docs/SECURITY.md, invariant 8), so only the identity source that checks a
@@ -174,14 +169,62 @@ layers = []
 files = ["adapters/join_tokens.py", "core/identity.py"]
 fix = "Only adapters/join_tokens.py's SignedJoinTokens gives CONSENT_SEAL, to build the SignedConsent of a token whose signature it verified, and core/identity.py defines it; elsewhere, ask allows_recording(consent) (core/identity.py) whether a consent lets audio be kept, and name the seal in no code, string or docstring (write 'the seal'), and star-import neither module."
 
-# The caller's heard words (voice/session/heard.py): the only words a later rule takes as the
+# The caller's heard words (core/yes_inputs.py): the only words a later rule takes as the
 # caller's own, built from a speech-to-text result (docs/SECURITY.md, invariant 1), so only voice
-# builds them (plan 003, Track D).
+# builds them (plan 003, Track D), and the class checks a seal as SignedConsent does.
 [[restricted]]
 classes = ["HeardWords"]
 layers = ["voice"]
 files = []
 fix = "Only voice builds HeardWords, from a turn's speech-to-text result (voice/session/heard.py's `heard_words`); elsewhere, take the HeardWords voice hands on, and never build one from a tool argument or model output (docs/SECURITY.md, invariant 1)."
+
+[[restricted]]
+names = ["HEARD_WORDS_SEAL"]
+layers = []
+files = ["core/yes_inputs.py", "voice/session/heard.py"]
+fix = "Only voice/session/heard.py gives HEARD_WORDS_SEAL, and core/yes_inputs.py defines it; elsewhere, ask is_heard_words(value), and name the seal in no code, string or docstring (write 'the seal')."
+
+# The receipt that a read-back's summary played whole: one input of the yes rule, built only from
+# the transport's reports by voice/session/read_back.py (docs/SECURITY.md, invariant 1).
+[[restricted]]
+classes = ["ReadBackReceipt"]
+layers = []
+files = ["voice/session/read_back.py"]
+fix = "Only voice/session/read_back.py builds a ReadBackReceipt, from the transport's reports that a read-back's summary played whole; elsewhere, take the receipt the session built, and never build one from a tool argument or the browser's playback message."
+
+[[restricted]]
+names = ["READ_BACK_SEAL"]
+layers = []
+files = ["core/yes_inputs.py", "voice/session/read_back.py"]
+fix = "Only voice/session/read_back.py gives READ_BACK_SEAL, and core/yes_inputs.py defines it; elsewhere, ask is_read_back_receipt(value), and name the seal in no code, string or docstring (write 'the seal')."
+
+# The confirmed action: only the yes rule issues one (docs/SECURITY.md, invariant 1), and the
+# action runner takes nothing else.
+[[restricted]]
+classes = ["ConfirmedAction"]
+layers = []
+files = ["domain/yes_rule.py"]
+fix = "Only domain/yes_rule.py issues a ConfirmedAction, from heard words and a read-back receipt; call decide() instead of building one, and never make one from a tool argument or model output."
+
+[[restricted]]
+names = ["CONFIRMED_SEAL"]
+layers = []
+files = ["domain/yes_rule.py"]
+fix = "Only domain/yes_rule.py names CONFIRMED_SEAL, which it defines and gives; elsewhere, ask is_confirmed(value), and name the seal in no code, string or docstring (write 'the seal')."
+
+# A completed action: an entry of the call's record, which the output guard takes as proof
+# (docs/SECURITY.md, invariant 2), recorded only by actions/record.py.
+[[restricted]]
+classes = ["CompletedAction"]
+layers = []
+files = ["actions/record.py"]
+fix = "Only actions/record.py builds a CompletedAction, once a write has really returned; elsewhere, read the call's record, and never make one from a model's words or a tool's result."
+
+[[restricted]]
+names = ["RECORD_SEAL"]
+layers = []
+files = ["actions/record.py", "domain/completed_action.py"]
+fix = "Only actions/record.py gives RECORD_SEAL, and domain/completed_action.py defines it; elsewhere, ask is_recorded(value), and name the seal in no code, string or docstring (write 'the seal')."
 
 # Modules that the code a ban covers never imports, whichever layer owns their library (ARCH-BAN,
 # scripts/arch_ban.py; the design's 12.4). ARCH-OWNER gives a whole library to its layers; a ban

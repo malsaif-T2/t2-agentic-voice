@@ -23,6 +23,7 @@ from dataclasses import dataclass, replace
 
 from t2_agentic_voice.core.events import TurnId
 from t2_agentic_voice.core.logging import get_logger
+from t2_agentic_voice.core.yes_inputs import HeardWords
 from t2_agentic_voice.domain.declaration import Language, VoiceAgent
 from t2_agentic_voice.domain.ports.text_to_speech import AudioChunk
 from t2_agentic_voice.domain.text.clauses import split_clauses
@@ -31,7 +32,6 @@ from t2_agentic_voice.domain.text.pronounce import pronounce
 from t2_agentic_voice.domain.text.speaking import speak_arrows
 from t2_agentic_voice.voice.protocol import ReplyId
 from t2_agentic_voice.voice.session.commands import Speak
-from t2_agentic_voice.voice.session.heard import HeardWords
 from t2_agentic_voice.voice.session.io import CallSetup
 
 _log = get_logger(__name__)

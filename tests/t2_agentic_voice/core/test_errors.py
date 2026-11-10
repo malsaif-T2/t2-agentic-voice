@@ -10,6 +10,8 @@ import pytest
 import t2_agentic_voice
 from t2_agentic_voice.core.errors import (
     PROVIDER_ERROR_KINDS,
+    ActionNotSent,
+    ActionRejected,
     ConfigurationError,
     InvalidRequestError,
     JoinRejected,
@@ -25,6 +27,8 @@ ERRORS = (
     NotFoundError,
     ProviderError,
     JoinRejected,
+    ActionRejected,
+    ActionNotSent,
 )
 
 
@@ -37,6 +41,8 @@ def test_each_error_has_a_stable_code() -> None:
         "not_found",
         "provider_error",
         "join_rejected",
+        "action_rejected",
+        "action_not_sent",
     ]
 
 

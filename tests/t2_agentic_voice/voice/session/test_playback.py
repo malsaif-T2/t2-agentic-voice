@@ -110,15 +110,16 @@ def test_the_session_reads_no_event_of_a_clause_it_did_not_ask_for(
 def test_heard_words_are_the_transcripts_text_without_its_spaces() -> None:
     transcript = Transcript(text="  hello there ", language="en")
     event = Transcribed(turn_id=2, at=5.0, audio_s=1.0, sent_at=4.0, transcript=transcript)
-    heard = heard_words(event)
+    heard = heard_words(event, speech_at=3.5)
     assert heard is not None and (heard.turn_id, heard.text, heard.language, heard.at) == (
         2,
         "hello there",
         "en",
         5.0,
     )
+    assert heard.speech_at == 3.5 and heard.source == "speech_to_text"
     none = Transcribed(turn_id=2, at=5.0, audio_s=0.0, sent_at=None, transcript=None)
-    assert heard_words(none) is None
+    assert heard_words(none, speech_at=None) is None
 
 
 def test_a_transcript_of_marks_alone_is_said_back_as_nothing(settings: VoiceSettings) -> None:

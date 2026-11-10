@@ -233,10 +233,11 @@ class VoiceAgent(Declared):
     (domain/words.py), the presets' unless the team extends them. The talker's parts, each
     optional (domain/talker_declaration.py): `instructions`, one text, or one per language tag
     for every language it speaks; `tools`, each name once, each progress line in every
-    language; `vocabulary`, the product terms for the Whisper prompt; `version`, stamped on its
-    traces; and `ask_on_uncertain_overlaps`, whether a chat model decides the short overlaps of
-    two or more words the rule would let go on (D-069; False, so an agent that does not ask for
-    it, and any test script, sees no new request). It runs the talker when it declares
+    language, an action's texts in every language too; `vocabulary`, the product terms for the
+    Whisper prompt; `version`, stamped on its traces; and `ask_on_uncertain_overlaps`, whether a
+    chat model decides the short overlaps of two or more words the rule would let go on (D-069;
+    False, so an agent that does not ask for it, and any test script, sees no new request). It
+    runs the talker when it declares
     instructions (`instructed`). Frozen, with no IO; built once and handed to the runtime."""
 
     name: str

@@ -73,7 +73,8 @@ RESERVED_PREFIX = "ping"
 
 # What the agent is doing, for the client to show (the design's 5.5): the echo session uses
 # the first three, `thinking` while a reply asked for has no audio yet, which a talker's reply
-# is while the talker or a tool works (plan 006); `confirming` comes with confirmed actions.
+# is while the talker or a tool works (plan 006); `confirming` while a read-back waits for the
+# caller's answer (plan 007).
 CallState = Literal["listening", "thinking", "speaking", "confirming"]
 # A reply's number (`ReplyId`) and a clause's index in it (`ClauseIndex`) are core's
 # (core/events.py), which the talker's view of the call (core/conversation.py) shares.

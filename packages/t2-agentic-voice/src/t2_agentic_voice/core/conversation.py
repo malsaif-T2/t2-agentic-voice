@@ -30,6 +30,10 @@ ClauseFate = Literal["played", "cut", "unplayed"]
 TurnFate = Literal[
     "pending", "answered", "cut", "rolled_back", "command", "went_on", "dropped", "unfinished"
 ]
+# How the caller declined an action's read-back (the design's 6.4): a whole no answer; other
+# words, a correction the talker may answer with a new draft; or no clear answer after the
+# read-back's `max_attempts`.
+DeclineKind = Literal["no", "correction", "unclear"]
 # A language as a transcript names it, in the provider's code ("ar", "en").
 _Heard = Annotated[str, Field(min_length=2, max_length=16)]
 
@@ -81,17 +85,37 @@ class Conversation(_Plain):
     replies: tuple[SaidReply, ...] = ()
 
 
+class ConversationLine(_Plain):
+    """One thing said in a call, as an action may attach it for the people who read its record
+    (plan 007's Q7): who said it and the words, as the caller heard them."""
+
+    speaker: Literal["caller", "agent"]
+    text: str = Field(repr=False)
+
+
+class DeclinedAction(_Plain):
+    """An action the caller did not confirm, as the talker learns of it in the turn after: its
+    name, how it was declined (`kind`, so the talker can tell a no from a correction), and the
+    words heard ("" when nothing was)."""
+
+    action: str = Field(min_length=1)
+    kind: DeclineKind
+    words: str = Field(repr=False)
+
+
 class TalkerTurn(_Plain):
     """One turn of the caller's, as the session hands it to the talker: its number; its heard
     words, whole (a turn the caller went on with after a pause, within the hold, is one turn);
     the language its transcript was heard in (None when the provider named none); the reply its
     speech began over (`over_reply`, None when it was said while the agent was silent) and the
     reply it stopped (`cut_reply`, None when it stopped none; a turn said alone may stop a
-    reply to an earlier turn before it played); and the call so far."""
+    reply to an earlier turn before it played); the action this turn declined, if any; and the
+    call so far."""
 
     turn_id: TurnId
     words: str = Field(min_length=1)
     language: _Heard | None = None
     over_reply: ReplyId | None = None
     cut_reply: ReplyId | None = None
+    declined: DeclinedAction | None = None
     conversation: Conversation = Field(default_factory=Conversation)
