@@ -238,7 +238,8 @@ with none of them set, the echo; with only some, it refuses to start, naming the
         runtime = VoiceRuntime(ECHO_AGENT, settings=voice, identity=tokens)
         return build_app(settings, router=runtime.router(), minter=tokens, tickets=tickets)
     kb = QdrantKnowledgeBase(access)
-    runtime = VoiceRuntime(talker_agent(kb, tickets=tickets), settings=voice, identity=tokens)
+    talker = talker_agent(kb, tickets=tickets)
+    runtime = VoiceRuntime(talker, settings=with_ticket_claims(voice), identity=tokens)
     log.info("knowledge_base_set", agent="talker")
     return build_app(
         settings,
@@ -261,6 +262,10 @@ with none of them set, the echo; with only some, it refuses to start, naming the
 - **The mock ticket system** is built from the settings with no IO; the talker's actions and
   the page at `/tickets` (loopback clients only) share that one instance, so the page shows
   what the calls made.
+- **The talker's settings** are the loaded ones with Ole5's phrases for a ticket's number
+  added to `guard.claims` (`with_ticket_claims`, `tickets/tools.py`), so a number said as the
+  caller's ticket number is a claim ([safety.md](safety.md)); the echo, with no action, runs
+  on the settings as loaded.
 
 ## Pages on another origin
 

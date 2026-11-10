@@ -20,6 +20,7 @@ from ole5_voice.agent import ECHO_AGENT, PROGRESS_KEY, SEARCH_LIMIT
 from ole5_voice.settings import AppSettings, KnowledgeAccess, Settings, knowledge_access
 from ole5_voice.tickets.page import tickets_router as real_tickets_router
 from ole5_voice.tickets.tools import ticket_tools as real_ticket_tools
+from ole5_voice.tickets.tools import with_ticket_claims
 from pydantic import SecretStr
 from t2_agentic_voice import ConfigurationError, VoiceSettings
 
@@ -49,14 +50,14 @@ class _Tokens:
 
 
 class _Runtime:
-    """Stands in for `VoiceRuntime`: keeps the agent it was given, and its router's lifespan
-    writes to `happened`."""
+    """Stands in for `VoiceRuntime`: keeps the agent and the settings it was given, and its
+    router's lifespan writes to `happened`."""
 
     made: ClassVar[list[_Runtime]] = []
     happened: ClassVar[list[str]] = []
 
     def __init__(self, agent: object, *, settings: VoiceSettings, identity: object) -> None:
-        self.agent = agent
+        self.agent, self.settings = agent, settings
         _Runtime.made.append(self)
 
     def router(self) -> APIRouter:
@@ -136,7 +137,9 @@ def test_with_the_knowledge_base_set_the_app_runs_the_talker_with_its_search(
     fakes: list[object], caplog: pytest.LogCaptureFixture, monkeypatch: pytest.MonkeyPatch
 ) -> None:
     """The talker searches the knowledge base and acts on the mock ticket system, the same one
-    whose page the app serves, so the page shows what the calls made (plan 007)."""
+    whose page the app serves, so the page shows what the calls made (plan 007); its guard reads
+    Ole5's phrases for a ticket's number as claims (`with_ticket_claims`), every other setting
+    as loaded."""
     caplog.set_level("INFO")
     acted: list[object] = []
     paged: list[object] = []
@@ -167,6 +170,11 @@ def test_with_the_knowledge_base_set_the_app_runs_the_talker_with_its_search(
         "ticket_status",
     ]
     assert len(acted) == len(paged) == 1 and acted[0] is paged[0]
+    assert runtime.settings.guard.claims == with_ticket_claims(loaded.voice).guard.claims
+    assert dict(runtime.settings.guard.claims) != dict(loaded.voice.guard.claims)
+    assert runtime.settings.model_dump(exclude={"guard"}) == loaded.voice.model_dump(
+        exclude={"guard"}
+    )
     assert _lines(caplog, "knowledge_base_set") == [{"agent": "talker"}]
     assert _lines(caplog, "knowledge_base_not_set") == []
     assert _Runtime.happened == []

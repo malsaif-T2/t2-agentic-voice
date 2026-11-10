@@ -1,6 +1,7 @@
 """`@action`'s declaration (the design's 4.4 and 6.4; plan 007, Block 0): what it reads of the
-function, the schema the talker sees, and each boundary check, a ConfigurationError naming the
-field, with a FIX line, never a value. What an action does when it runs is Track B's."""
+function, the schema the talker sees, each boundary check, a ConfigurationError naming the
+field, with a FIX line, never a value, and the order its texts are read in, an MSA text first
+for `ar`. What an action does when it runs is Track B's."""
 
 from __future__ import annotations
 
@@ -19,7 +20,7 @@ from t2_agentic_voice.actions.tools import CallContext, RecordedAction, tool
 from t2_agentic_voice.core.conversation import ConversationLine
 from t2_agentic_voice.core.errors import ConfigurationError
 from t2_agentic_voice.core.identity import Caller
-from t2_agentic_voice.domain.action_declaration import Claims, ReadBack, Say, Spoken
+from t2_agentic_voice.domain.action_declaration import Claims, ReadBack, Say, Spoken, read_in
 from t2_agentic_voice.domain.declaration import Language, VoiceAgent
 
 ENGLISH = Language.english(greeting="Hi! How can I help?")
@@ -286,6 +287,26 @@ def test_a_template_key_serves_its_tag_then_its_primary_language() -> None:
     with_both = Say({"ar": "msa", "ar-SA": "saudi"})
     assert with_both.for_language("ar-SA") == "saudi" and with_both.for_language("ar") == "msa"
     assert Say(ar_SA="s", en="e").templates["ar-SA"] == "s"
+
+
+def test_a_text_read_in_ar_is_its_msa_one_else_its_saudi_one_which_covers_no_msa() -> None:
+    """A reply read in `ar` (agent/language.py's `wording`, an MSA caller's) says the `ar`
+    text, and the `ar-SA` one when there is none; a label likewise. The declaration's
+    `covers` stays its own: an `ar-SA` text never covers `ar`."""
+    assert read_in("ar") == ("ar", "ar-SA") and read_in("ar-SA") == ("ar-SA", "ar")
+    assert read_in("en") == ("en",)
+    saudi = Say({"ar-SA": "saudi", "en": "english"})
+    assert saudi.for_language("ar") == "saudi" and not saudi.covers("ar")
+    pairs = ReadBack({"ar-SA": ("s {a}", "q?"), "ar": ("m {a}", "mq?")})
+    assert pairs.for_language("ar") == ("m {a}", "mq?")
+    assert pairs.for_language("ar-SA") == ("s {a}", "q?")
+    assert ReadBack({"ar-SA": ("s {a}", "q?")}).for_language("ar") == ("s {a}", "q?")
+    assert Claims({"ar-SA": ["saudi claim"]}).for_language("ar") == ("saudi claim",)
+    labels = Spoken({"a": {"ar-SA": "سعودي", "ar": "فصيح"}, "b": {"ar-SA": "سعودي"}})
+    assert labels.label("a", "ar") == "فصيح" and labels.label("b", "ar") == "سعودي"
+    assert labels.label("a", "ar-SA") == "سعودي" and labels.label("b", "en") is None
+    with pytest.raises(KeyError):
+        Say({"en": "english"}).for_language("ar")
 
 
 @pytest.mark.parametrize(

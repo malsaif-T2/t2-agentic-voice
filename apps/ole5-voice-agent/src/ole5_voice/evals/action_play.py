@@ -91,18 +91,19 @@ class ActionPlaying:
                 failure = "provider"
             seeds = {ticket.id for ticket in seed_tickets(scenario)}
             made = [ticket for ticket in mock.listed() if ticket.id not in seeds]
+            noted = sum(len(ticket.notes) for ticket in mock.listed())  # a seed holds none
         if self.paced.stopped is not None:
             raise StopRun(self.paced.stopped)
         searches = self.knowledge.searches[mark:]
         failure = failure or (acted.failure if acted is not None else None)
         if any(search.failed for search in searches) or self.paced.spend.failures() > failed:
             failure = failure or "provider"
-        own = unasked(scenario, acted or _NOTHING, len(made))
+        own = unasked(scenario, acted or _NOTHING, len(made), noted)
         if acted is None or failure is not None:
             return self._record(
                 scenario, repeat, began, acted, own=own, failure=failure or "provider"
             )
-        return await self._scored(scenario, repeat, began, acted, made, own)
+        return await self._scored(scenario, repeat, began, acted, made, own, noted=noted)
 
     @contextlib.contextmanager
     def _folder(self, name: str) -> Iterator[Path]:
@@ -162,9 +163,12 @@ class ActionPlaying:
         acted: Acted,
         made: Sequence[MockTicket],
         own: Sequence[str],
+        *,
+        noted: int,
     ) -> ActionPlayRecord:
-        """The play checked (the module's docstring), `own` the scenario's own violations; a
-        `judge` failure when the judge gave no valid answer."""
+        """The play checked (the module's docstring), `own` the scenario's own violations and
+        `noted` the notes the call added; a `judge` failure when the judge gave no valid
+        answer."""
         judged = await self._judged(scenario, acted)
         registered = [
             await self._register(turn.held_registers() != frozenset(), heard)
@@ -192,6 +196,7 @@ class ActionPlaying:
         action_right = (
             len(mine) == scenario.made
             and len(made) == len(mine)
+            and noted == scenario.noted
             and all(check.calls is not False for check in checks)
         )
         type_right = (
@@ -211,6 +216,7 @@ class ActionPlaying:
             checks=checks,
             made=len(mine),
             others_made=len(made) - len(mine),
+            noted=noted,
             made_types=tuple(ticket.type for ticket in mine),
             action_right=action_right,
             type_right=type_right,

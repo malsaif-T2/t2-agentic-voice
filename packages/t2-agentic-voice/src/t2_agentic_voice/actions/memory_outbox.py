@@ -5,8 +5,9 @@ the `stores` facade gives it beside `SqliteOutbox`.
 It keeps the port's rules as `SqliteOutbox` does: `add` holds a request ID once and answers
 False for it again, writing nothing; `mark` refuses a request ID it does not hold (LookupError,
 naming no value); rows come oldest first, by `created_at`, then the order they were added; and
-`count` refuses a naive `since`. A row's `updated_at` is the store's clock, `datetime.now(UTC)`
-unless a test gives its own (`_now`). Gone when the process ends.
+`count` refuses a naive `since` and leaves out the rows the caps never count (`NOT_WRITTEN`).
+A row's `updated_at` is the store's clock, `datetime.now(UTC)` unless a test gives its own
+(`_now`). Gone when the process ends.
 """
 
 from __future__ import annotations
@@ -15,7 +16,7 @@ import threading
 from collections.abc import Callable
 from datetime import UTC, datetime
 
-from t2_agentic_voice.domain.ports.outbox import OutboxEntry, OutboxState
+from t2_agentic_voice.domain.ports.outbox import NOT_WRITTEN, OutboxEntry, OutboxState
 
 # What `mark` says of a request ID the store does not hold, never the ID itself.
 NO_ROW = "The outbox holds no row of that request ID."
@@ -92,10 +93,11 @@ class MemoryOutbox:
         return tuple(sorted(kept, key=lambda row: row.created_at))
 
     async def count(self, *, subject: str, action: str, since: datetime) -> int:
-        """How many writes of `action` `subject` asked for since `since`."""
+        """How many writes of `action` `subject` asked for since `since` that may have reached
+        the system: every row but one in `NOT_WRITTEN`."""
         _aware(since)
         rows = await self.entries(subject=subject, action=action)
-        return sum(1 for row in rows if row.created_at >= since)
+        return sum(1 for row in rows if row.created_at >= since and row.state not in NOT_WRITTEN)
 
     async def aclose(self) -> None:
         """Nothing to close."""

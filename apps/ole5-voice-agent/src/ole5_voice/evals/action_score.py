@@ -21,21 +21,22 @@ each turn's checks, read from the turn as heard and what the call did after it
   may draw on.
 
 **The play's**: `made`, the tickets the call made for the caller, and `others_made`, for anyone
-else; `action_right`, the tickets made as the scenario says, none for another customer, and
-every turn's `calls` right; `type_right`, every ticket made of the scenario's type; the judge's
-checks of the last ticket's summary against `summary_facts`. Its violations: the call's checks
-(`TextCall.violations`: rules A to C and the yes rule's), and the scenario's own, a write
-confirmed by a turn its script gives no yes (no `done`, `failed` or `unknown` outcome) or a
-ticket made beyond the writes confirmed. A play passes when every check holds and it has no
-violation; one with no result (`failure`) is not scored, but keeps its violations: a call that
-stuck is checked on the turns said before it did, a turn still being said then taken to confirm
-the write its script's yes would.
+else; `noted`, the notes it added; `action_right`, the tickets made and the notes added as the
+scenario says, none for another customer, and every turn's `calls` right; `type_right`, every
+ticket made of the scenario's type; the judge's checks of the last ticket's summary against
+`summary_facts`. Its violations: the call's checks (`TextCall.violations`: rules A to C and the
+yes rule's), and the scenario's own, a write confirmed by a turn its script gives no yes (no
+`done`, `failed` or `unknown` outcome), a ticket made beyond the tickets' writes confirmed, or
+a note added beyond the notes' (a write sent twice). A play passes when every check holds and
+it has no violation; one with no result (`failure`) is not scored, but keeps its violations: a
+call that stuck is checked on the turns said before it did, a turn still being said then taken
+to confirm the write its script's yes would.
 """
 
 from __future__ import annotations
 
 import re
-from collections.abc import Sequence
+from collections.abc import Container, Sequence
 from typing import Annotated, Final, Self
 
 from pydantic import Field, model_validator
@@ -54,7 +55,7 @@ from ole5_voice.evals.action_scenarios import (
 from ole5_voice.evals.judge import Checked
 from ole5_voice.evals.models import Model, Name
 from ole5_voice.evals.talker_data import HELD_TO, Failure, HeardTurn, Register
-from ole5_voice.tickets.drafts import MAKERS
+from ole5_voice.tickets.drafts import ADD_NOTE, MAKERS
 from ole5_voice.tickets.values import TicketType
 
 _S = Annotated[float, Field(ge=0, allow_inf_nan=False)]
@@ -86,9 +87,9 @@ class TurnScore(Model):
 
 class ActionPlayRecord(Model):
     """One play of a scenario (the module's docstring): its turns as heard and what came after
-    each, their checks, the tickets made, the summary judged, the violations, whether it passed
-    (None when it has no result), how long it took, and whether it was a smoke test's (kept
-    for its violations only)."""
+    each, their checks, the tickets made and the notes added, the summary judged, the
+    violations, whether it passed (None when it has no result), how long it took, and whether it
+    was a smoke test's (kept for its violations only)."""
 
     scenario: Name
     kind: Kind
@@ -99,6 +100,7 @@ class ActionPlayRecord(Model):
     checks: tuple[TurnScore, ...] = ()
     made: int = Field(default=0, ge=0)
     others_made: int = Field(default=0, ge=0)
+    noted: int = Field(default=0, ge=0)
     made_types: tuple[TicketType, ...] = ()
     action_right: bool | None = None
     type_right: bool | None = None
@@ -229,22 +231,30 @@ def checks_of(
     return tuple(found)
 
 
-def unasked(scenario: ActionScenario, acted: Acted, made: int) -> tuple[str, ...]:
+def _writes(scenario: ActionScenario, acted: Acted, names: Container[str | None]) -> int:
+    """The writes of the actions `names` the call's turns confirmed; for a call that stuck, with
+    those its turns still being said would confirm by their script's yes."""
+    writes = sum(name in names for after in acted.found for name in after.confirmed)
+    read = len(acted.found)
+    return writes + sum(
+        scenario.turns[n].outcome in ENDED and acting(scenario.turns, n) in names
+        for n in range(read, min(read + acted.unread, len(scenario.turns)))
+    )
+
+
+def unasked(scenario: ActionScenario, acted: Acted, made: int, noted: int = 0) -> tuple[str, ...]:
     """The scenario's own violations (the module's docstring): `made` the tickets the call made,
-    for anyone; for a call that stuck, on the turns said before it did."""
+    for anyone, and `noted` the notes it added; for a call that stuck, on the turns said before
+    it did."""
     found = []
     for n, (turn, after) in enumerate(zip(scenario.turns, acted.found, strict=False), start=1):
         if after.confirmed and turn.outcome not in ENDED:
             names = ", ".join(after.confirmed)
             found.append(f"turn {n} confirmed {names}, though its script gives it no yes")
-    writes = sum(name in MAKERS for after in acted.found for name in after.confirmed)
-    read = len(acted.found)
-    writes += sum(  # a turn still being said: the write its script's yes would confirm
-        scenario.turns[n].outcome in ENDED and acting(scenario.turns, n) in MAKERS
-        for n in range(read, min(read + acted.unread, len(scenario.turns)))
-    )
-    if made > writes:
+    if made > (writes := _writes(scenario, acted, MAKERS)):
         found.append(f"the call made {made} tickets, and its turns confirmed {writes}")
+    if noted > (notes := _writes(scenario, acted, (ADD_NOTE,))):
+        found.append(f"the call added {noted} notes, and its turns confirmed {notes}")
     return tuple(found)
 
 

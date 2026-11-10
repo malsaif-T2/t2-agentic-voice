@@ -326,8 +326,7 @@ def test_a_passages_ticket_number_said_as_the_callers_ticket_is_blocked(
 ) -> None:
     """In a claim phrase: a passage is evidence of no ticket (invariant 2), so rule A blocks
     it; rule B would pass it, a passage's number being evidence of a fact (the design's 8.2).
-    Said with no claim phrase, as the caller's ticket number, it passes (the design's 8.4;
-    TD-142)."""
+    Said as the caller's ticket number, it is blocked too (test_ticket_claims.py)."""
     agent, tickets = ole5(tmp_path, [FAKE_NUMBER])
     llm = model(
         Answer(FOLLOW_UP[tag], ScriptedLLM.call_tool("search_knowledge", query=FOLLOW_UP[tag])),

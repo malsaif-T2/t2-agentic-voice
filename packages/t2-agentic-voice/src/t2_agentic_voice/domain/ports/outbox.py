@@ -2,7 +2,8 @@
 write an action asks for, a row with its request ID written before the write. A write with no
 reply is never repeated blindly: at start, rows left `sending` are looked up or flagged, never
 sent again. The store also answers what a caller has done, across calls: the per-caller cap and
-a status tool read it.
+a status tool read it. The caps count only the writes that may have reached the system, never
+one refused or never sent (`NOT_WRITTEN`).
 
 A row holds call content (the draft, the result), so its text is logged at no level (invariant
 8). Public through the `ports` facade, provisional. `SqliteOutbox` lives in `adapters` and
@@ -12,7 +13,7 @@ A row holds call content (the draft, the result), so its text is logged at no le
 from __future__ import annotations
 
 from datetime import datetime
-from typing import Literal, Protocol
+from typing import Final, Literal, Protocol
 
 from pydantic import AwareDatetime, BaseModel, ConfigDict, Field
 
@@ -22,6 +23,10 @@ from t2_agentic_voice.core.events import CallId
 # `rejected` it; it was `not_sent` (definitely not done); or it is `flagged` for a person to
 # reconcile (no reply and no lookup hit).
 OutboxState = Literal["sending", "done", "rejected", "not_sent", "flagged"]
+# The rows the caps never count: a write the backend refused or that was never sent, definitely
+# not done, so the caller may try again (the owner's ruling of 2026-11-10). Every other row
+# (`sending`, `done`, `flagged`) may have reached the system, and counts.
+NOT_WRITTEN: Final[tuple[OutboxState, ...]] = ("rejected", "not_sent")
 
 
 class OutboxEntry(BaseModel):
@@ -75,8 +80,9 @@ class Outbox(Protocol):
         """The rows that match every filter given, oldest first."""
 
     async def count(self, *, subject: str, action: str, since: datetime) -> int:
-        """How many writes of `action` `subject` asked for since `since`, whatever became of
-        them; the per-caller cap reads it."""
+        """How many writes of `action` `subject` asked for since `since` that may have reached
+        the system: every row but one `rejected` or `not_sent` (`NOT_WRITTEN`). The per-caller
+        cap reads it."""
 
     async def aclose(self) -> None:
         """Close what the store holds open; one that holds none returns at once."""

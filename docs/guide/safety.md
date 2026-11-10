@@ -330,14 +330,20 @@ rules, to say why or ask for what is missing.
 
 - **The guard is lexical.** A claim worded in no list («خلصت الموضوع», "you're all set") passes.
   Add the phrases your simulated calls and traces show (`claims`, `T2V_GUARD__CLAIMS`).
-- **A number said with no claim phrase**, as "Your ticket number is ...", is not the claim
-  rule's, and a number in a passage then passes the ID rule as a fact (TD-142).
+- **A number said with no claim phrase** is not the claim rule's, and a number in a passage then
+  passes the ID rule as a fact. When a passage may hold numbers of your records' shape, add the
+  words that say a number is the caller's ("your ticket number is") to `T2V_GUARD__CLAIMS`, or
+  to the settings in code: Ole5 adds «رقم تذكرتك» and "your ticket number is", so a number said
+  so passes only when an action of the call or a status holds it, and its own lines say the
+  number in other words.
 - **An agent with no action** is not checked by the claim rule at all, so one with read tools
   alone can still say it made a ticket (D-081).
 - **A claim phrase can block a true sentence**: a default one such as "has been created" in a
   knowledge answer that says how a thing is made, or any phrase inside an Arabic negation,
   which puts its word before the verb («ما سجلت لك», "I did not register it for you", holds
-  «سجلت لك») (TD-134).
+  «سجلت لك»); and a phrase that only introduces a number, with no record or status to back it,
+  in a question that asks for one («وش رقم تذكرتك؟», "what is your ticket's number?") or in a
+  number the caller said read back to them (TD-134).
 - **Over the asked-again line**, a bare yes counts as said after the closing question, so it
   confirms with no send word (TD-133).
 - **A caller who stays silent** after the closing question leaves the agent waiting, with no

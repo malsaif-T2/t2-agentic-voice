@@ -134,6 +134,7 @@ class Run:
     language: LanguageTag
     turn_id: TurnId
     conversation: tuple[ConversationLine, ...]
+    wording: LanguageTag | None = None
 
 
 @dataclass
@@ -159,8 +160,9 @@ class FakeJobs:
         turn_id: TurnId,
         conversation: tuple[ConversationLine, ...],
         clock: Clock,
+        wording: LanguageTag | None = None,
     ) -> ActionOutcome:
-        self.runs.append(Run(confirmed, caller, call_id, language, turn_id, conversation))
+        self.runs.append(Run(confirmed, caller, call_id, language, turn_id, conversation, wording))
         if self.on_run is not None:
             self.on_run()
         try:

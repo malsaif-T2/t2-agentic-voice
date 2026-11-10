@@ -226,6 +226,14 @@ SAUDI_CLAIMS = [
   `unknown`, how a write ended other than done; `declined`, said when no clear answer came; and
   `asked_again`, given in `ReadBack(asked_again=...)`. Each is a `Say`, filled from the draft.
   The callback leaves all five to the library.
+- **An MSA caller's lines.** A caller who speaks MSA in an `ar-SA` call hears your `ar-SA` lines
+  unless a line gives an `ar` text beside its `ar-SA` one: then they hear that text, still in
+  the `ar-SA` voice, and the library's own lines in MSA. The agent need not speak `ar` for it.
+  Write it formal and as short, with no dialect form («تبي», «اللي», «الحين»), its closing
+  question holding the same send word («هل أرسلها؟», hal ursiluha: shall I send it?). The
+  callback's Saudi texts, keyed `ar`, are read for both; Ole5's
+  [lines.py](../../apps/ole5-voice-agent/src/ole5_voice/tickets/lines.py) gives each line an
+  MSA text of its own.
 
 ## The read-back's summary
 
@@ -365,6 +373,13 @@ The guard is lexical: a claim worded as no phrase is, such as "I've arranged for
 you", passes. Add the wordings your model writes as you find them in your tests and your calls'
 transcripts. Give a phrase to one action only: a phrase on two actions' lists needs the record of
 both before it passes, so put a phrase every action shares in `guard.claims` instead.
+
+A phrase that only introduces a number, such as "your ticket number is", stops a passage's number
+said as the caller's, but until a record or a status holds one it also blocks a question that
+asks for the number and the caller's own number read back. List one only where a passage may
+hold numbers of your records' shape, as Ole5 does, and keep it out of your own lines, `done`
+among them: the talker reads them in the call's history and copies their words, and `TextCall`
+reads a clause that copies a piece of one as the runtime's line, unchecked.
 
 ## Send words
 

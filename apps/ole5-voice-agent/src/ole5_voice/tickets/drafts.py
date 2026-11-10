@@ -7,7 +7,8 @@ line is filled from and the record keeps.
   and the priority, Medium unless the caller says how urgent it is. The queue follows the type
   (values.py's `QUEUE_OF`), and subtype and reason are left to support staff, so the talker
   is asked for neither. Each type and priority is said through its `Spoken` label in Saudi
-  Arabic and English.
+  Arabic and English, and in MSA through the Saudi label, which MSA says alike, but where it
+  differs.
 - **A note's draft** names a ticket made in this call by its number's last four digits, the
   way the caller hears it, and the note's text.
 - **A handoff's draft** is the summary of what the caller needs from a person; the call's
@@ -44,7 +45,8 @@ MAX_NOTE_CHARS: Final = MAX_SUMMARY_CHARS
 # A number said in four groups of four digits (Q6), the last group its last four.
 GROUP: Final = 4
 
-# How each type is said: Saudi Arabic first, then English.
+# How each type is said: Saudi Arabic first, then English; MSA says the Saudi label, but where
+# it gives its own (`ar`).
 TYPE_LABELS: Final[dict[str, dict[str, str]]] = {
     "Bug": {"ar-SA": "خلل في النظام", "en": "bug"},
     "Infrastructure": {"ar-SA": "بنية تحتية", "en": "infrastructure"},
@@ -52,7 +54,11 @@ TYPE_LABELS: Final[dict[str, dict[str, str]]] = {
     "Issue": {"ar-SA": "مشكلة", "en": "issue"},
     "Mobile App Issue": {"ar-SA": "مشكلة في تطبيق الجوال", "en": "mobile app issue"},
     "Report": {"ar-SA": "تقارير", "en": "report"},
-    "Request for Integration": {"ar-SA": "طلب ربط مع نظام ثاني", "en": "integration request"},
+    "Request for Integration": {
+        "ar-SA": "طلب ربط مع نظام ثاني",
+        "ar": "طلب ربط مع نظام آخر",  # talabu rabtin ma'a nidhaamin aakhar: with another system
+        "en": "integration request",
+    },
     "Request for Migration": {"ar-SA": "طلب نقل بيانات", "en": "migration request"},
     "Request for New Feature with Change Request": {
         "ar-SA": "طلب خاصية جديدة",

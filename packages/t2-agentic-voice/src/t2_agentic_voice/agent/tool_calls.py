@@ -15,10 +15,11 @@ replies (`Memory`).
   token: agent/speech_guard.py), and no other tool's result is.
 - **Actions** (the design's 6.4). A call of one of the agent's actions goes to the action
   runner's `propose`, in the reply's scope, and writes nothing: its read-back (`plan`, one a
-  reply) goes to the session, and the model reads only that it is being read back
-  (`READ_BACK`); a refusal goes back to the model as a tool's result does. One action a
-  request: a second in the same request is refused unasked (`ONE_AT_A_TIME`). Nothing here
-  confirms an action: only the yes rule, over heard words, issues one (invariant 1).
+  reply, its lines read in the caller's register: agent/language.py's `wording`, MSA for an
+  `ar-SA` reply to an MSA caller) goes to the session, and the model reads only that it is
+  being read back (`READ_BACK`); a refusal goes back to the model as a tool's result does. One
+  action a request: a second in the same request is refused unasked (`ONE_AT_A_TIME`). Nothing
+  here confirms an action: only the yes rule, over heard words, issues one (invariant 1).
 - **Framed.** A result goes back to the model as JSON inside the data frame the prompt names
   (`<data tool="...">`, agent/prompt.py), its `<` escaped, so no text in it can close the frame.
 """
@@ -41,6 +42,7 @@ from t2_agentic_voice.agent.events import (
     ToolBegan,
     ToolEnded,
 )
+from t2_agentic_voice.agent.language import Register, wording
 from t2_agentic_voice.agent.prompt import DATA_TAG
 from t2_agentic_voice.core.clock import Clock
 from t2_agentic_voice.core.events import TurnId
@@ -113,7 +115,8 @@ async def _given(result: ToolResult) -> ToolResult:
 class ToolCalls:
     """The tool calls of one reply, request by request (the module's docstring): `shown` says
     whether the output guard passes a card, by its tool's name; `actions`, the agent's action
-    runner, when it declares any; `plan`, the read-back an action call gave in this reply."""
+    runner, when it declares any; `register`, the caller's over the call, which an action's
+    lines are read in; `plan`, the read-back an action call gave in this reply."""
 
     def __init__(
         self,
@@ -126,10 +129,11 @@ class ToolCalls:
         turn_id: TurnId,
         shown: Callable[[Card, str], bool],
         actions: ActionRunner | None = None,
+        register: Register = "saudi",
     ) -> None:
         self.runner, self.ctx, self.clock, self.scope = runner, ctx, clock, scope
         self.memory, self.turn_id, self.shown = memory, turn_id, shown
-        self.actions = actions
+        self.actions, self.wording = actions, wording(ctx.language, register)
         self.progress_said = False
         self.plan: ReadBackPlan | None = None
 
@@ -203,7 +207,7 @@ class ToolCalls:
     async def _proposed(self, actions: ActionRunner, call: ToolCallRequest) -> ToolResult:
         """The action call proposed to `actions`: its read-back kept as the reply's `plan`,
         the model told only that it is read back; or the runner's refusal, as it is."""
-        made = await actions.propose(call, self.ctx, clock=self.clock)
+        made = await actions.propose(call, self.ctx, clock=self.clock, wording=self.wording)
         if isinstance(made, ToolResult):
             return made
         self.plan = made

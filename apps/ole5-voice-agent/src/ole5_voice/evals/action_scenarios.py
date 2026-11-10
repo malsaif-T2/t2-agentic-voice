@@ -5,10 +5,11 @@ extend run S's scenarios (scenarios.py) with what an action needs; a scenario is
 call through `TextCall`, against the mock ticket system (ole5_voice/tickets/mock.py), by run A
 (`poe eval-actions`, action_run.py).
 
-**A scenario** has its ID, its `kind` (one of the registered 19, `KINDS`: the plan's 15, and
-four of answers the yes rule's lists leave unplaced for a chat model to judge, D-082, added
-before any run: a yes and a go-ahead on no list, a yes with a change, and a hesitation in a
-spelling no list holds), its `split`, whether
+**A scenario** has its ID, its `kind` (one of the registered 20, `KINDS`: the plan's 15; four
+of answers the yes rule's lists leave unplaced for a chat model to judge, D-082, added before
+any run: a yes and a go-ahead on no list, a yes with a change, and a hesitation in a spelling
+no list holds; and a note on a ticket made in the call, added before any run by the owner's
+ruling of 2026-11-10), its `split`, whether
 it is one of the rehearsal's steps (`rehearsal`: step 6, a yes with a send word over the
 closing question, and step 3, a request for a person over an answer), the language its call is
 held in, notes on what it tests, and how the mock answers: `tickets_mode` for its writes
@@ -17,8 +18,10 @@ request ID. `seed` holds
 the tickets the mock holds before the call, the caller's (made through the agent, so in the
 outbox, or not) and another customer's; `passage` a knowledge-base passage the search returns,
 for the scenario with a fake number. What the call leaves: `made`, the tickets it makes for the
-caller, the action rightly taken or rightly not; `ticket_type`, the type such a ticket is right
-to hold; `summary_facts`, what a summary judged faithful says.
+caller, and `noted`, the notes it adds to them, the action rightly taken or rightly not;
+`ticket_type`, the type such a ticket is right to hold; `summary_facts`, what a summary judged
+faithful says. A note goes only on a ticket made earlier in the call, as `add_ticket_note`
+takes only a ticket its call's record holds (tickets/actions.py).
 
 **A turn** holds the caller's words (`says`), when they are said (`when`: run S's two, or
 `read_back`, over the read-back's summary, and `closing_question`, over its question), how long
@@ -50,6 +53,7 @@ from ole5_voice.evals.knowledge_set import Text
 from ole5_voice.evals.models import Model, Name
 from ole5_voice.evals.scenarios import ScriptTurn
 from ole5_voice.evals.talker_data import Register, Tag
+from ole5_voice.tickets.drafts import ADD_NOTE, MAKERS
 from ole5_voice.tickets.mock import Mode
 from ole5_voice.tickets.system import NUMBER_PATTERN
 from ole5_voice.tickets.values import Status, TicketType
@@ -76,6 +80,8 @@ Kind = Literal[
     "unlisted_go_ahead",
     "yes_but_change",
     "unlisted_hesitation",
+    # A note on a ticket made in the call (the owner's ruling of 2026-11-10).
+    "ticket_note",
 ]
 KINDS: Final[tuple[Kind, ...]] = get_args(Kind)
 Split = Literal["dev", "held-out"]
@@ -157,6 +163,7 @@ class ActionScenario(Model):
     seed: tuple[SeedTicket, ...] = ()
     passage: Text | None = None
     made: int = Field(ge=0, le=2)
+    noted: int = Field(default=0, ge=0, le=2)
     ticket_type: TicketType | None = None
     summary_facts: tuple[Text, ...] = ()
     turns: tuple[ActionTurn, ...] = Field(min_length=1, max_length=6)
@@ -165,13 +172,15 @@ class ActionScenario(Model):
 @dataclass(frozen=True)
 class _Rule:
     """What a kind of scenario must hold: the mock's mode, the tickets made, the outcomes its
-    turns reach, the tool one of them calls, and the mock's lookup (None: either)."""
+    turns reach, the tool one of them calls, the mock's lookup (None: either), and the notes
+    added."""
 
     mode: Mode
     made: int
     outcomes: tuple[Outcome, ...] = ()
     calls: Called | None = None
     lookup: bool | None = None
+    noted: int = 0
 
 
 _TICKET: Final = "create_ticket"
@@ -195,6 +204,7 @@ RULES: Final[Mapping[Kind, _Rule]] = {
     "unlisted_go_ahead": _Rule("answer", 1, ("read_back", "done"), _TICKET),
     "yes_but_change": _Rule("answer", 1, ("read_back", "done"), _TICKET),
     "unlisted_hesitation": _Rule("answer", 1, ("asked_again", "done"), _TICKET),
+    "ticket_note": _Rule("answer", 1, ("read_back", "done"), ADD_NOTE, noted=1),
 }
 
 
@@ -243,6 +253,8 @@ def _scenario_problems(scenario: ActionScenario) -> list[str]:
         found.append(f"its kind runs the mock with lookup {rule.lookup}")
     if scenario.made != rule.made:
         found.append(f"its kind makes {rule.made} tickets")
+    if scenario.noted != rule.noted:
+        found.append(f"its kind adds {rule.noted} notes")
     outcomes = {turn.outcome for turn in scenario.turns}
     found += [f"no turn reaches {each}" for each in rule.outcomes if each not in outcomes]
     if rule.calls is not None and rule.calls not in {turn.calls for turn in scenario.turns}:
@@ -254,6 +266,7 @@ def _scenario_problems(scenario: ActionScenario) -> list[str]:
     if (scenario.passage is not None) != (scenario.kind == "fake_number_passage"):
         found.append("only the fake number's scenario has a passage, and it has one")
     found += _seed_problems(scenario)
+    found += _note_problems(scenario.turns)
     previous: ActionTurn | None = None
     for number, turn in enumerate(scenario.turns, start=1):
         found += [f"turn {number}: {each}" for each in _turn_problems(turn, previous)]
@@ -280,6 +293,20 @@ def _seed_problems(scenario: ActionScenario) -> list[str]:
         shaped = re.findall("[0-9]{8}82[0-9]{6}", scenario.passage)
         if not shaped or set(shaped) & set(numbers):
             found.append("the passage holds no fake ticket number, or one the mock holds")
+    return found
+
+
+def _note_problems(turns: Sequence[ActionTurn]) -> list[str]:
+    """Each turn that calls `add_ticket_note` before a ticket's write was done in the call: a
+    turn reaching `done` while the action last called makes a ticket."""
+    found: list[str] = []
+    made = False
+    last: Called | None = None
+    for number, turn in enumerate(turns, start=1):
+        if turn.calls == ADD_NOTE and not made:
+            found.append(f"turn {number}: a note goes only on a ticket made earlier in the call")
+        last = turn.calls if turn.calls in ACTIONS else last
+        made = made or (turn.outcome == "done" and last in MAKERS)
     return found
 
 

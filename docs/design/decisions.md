@@ -2541,7 +2541,7 @@ twice; DOC-REF: every `D-NNN` cited anywhere is a heading here), so keep its sha
   `tests/t2_agentic_voice/actions/test_action.py`,
   `tests/t2_agentic_voice/domain/test_declaration_actions.py`.
 
-## D-081 · The yes rule refined, the guard split, one runner an agent, the session's routing, and the checks in text · 2026-11-10 · Accepted (the agent's, in plan 007's tracks and integration, within the plan the owner approved; the stop kind follows the owner's ruling of 2026-11-10)
+## D-081 · The yes rule refined, the guard split, one runner an agent, the session's routing, and the checks in text · 2026-11-10 · Accepted (the agent's, in plan 007's tracks and integration, within the plan the owner approved; the stop kind, what the caps count, an MSA caller's lines, the ticket number as a claim and run A's note pair follow the owner's rulings of 2026-11-10)
 
 - **Context:** on D-080's base, plan 007's five tracks built the yes rule and the guard's rule A
   (A), the action runner and the talker's side (B), the session's confirming state (C),
@@ -2580,7 +2580,10 @@ twice; DOC-REF: every `D-NNN` cited anywhere is a heading here), so keep its sha
   - *The runner (B, its review).* One `ActionRunner` an agent serves every call, each call's
     record kept by its ID; Block 0's `record=` stays, for `TextCall`. The request ID is derived
     from the confirmed action, so a job handed twice is written once. The caps count outbox rows,
-    never proposals. A write past its timeout runs on, its result discarded; a lookup or
+    never proposals, and only a write that may have reached the backend (`sending`, `done`,
+    `flagged`), never one `rejected` or `not_sent`, so a caller whose write was refused or never
+    sent may try again (the owner's ruling of 2026-11-10, "Count only real writes"; until then
+    every row counted). A write past its timeout runs on, its result discarded; a lookup or
     `validate` past its own is cancelled. The model reads only that its call is being read back,
     and one action is taken a request.
   - *The session (C, the integration).* A turn is the yes rule's when its speech began once the
@@ -2608,21 +2611,64 @@ twice; DOC-REF: every `D-NNN` cited anywhere is a heading here), so keep its sha
     never dedupes a request ID, so a double send shows as two tickets, and scopes every read and
     note by the session's customer. A ticket's number is said whole in four groups of four, and in
     status only by its last four digits.
+  - *An MSA caller's lines (the owner's ruling of 2026-11-10, "Add MSA read-backs").* Run A's
+    MSA callers heard Ole5's Saudi read-back, so the check that a reply is in the caller's
+    language failed on lines no model wrote; the check stays as registered, and the lines follow
+    the caller instead. The talker reads an action's texts in `wording` (agent/language.py):
+    `ar`, MSA, for an `ar-SA` reply whose caller's register is MSA (`call_register`), else the
+    reply's tag. A text is read in its own tag, then the other Arabic one
+    (domain/action_declaration.py's `read_in`), so an `ar-SA` agent may give an `ar` text
+    beside each `ar-SA` one, which declares no language (the declaration never refused one),
+    and an action with none says its `ar-SA` text, as before; the library's own lines are read
+    in that wording too, its MSA ones. The read-back's plan keeps the wording
+    (`ReadBackPlan.wording`) and the session hands it to the job (`ActionJobs.run`), so the
+    outcome is read as its read-back was; every line is still said in the reply's tag, the
+    `ar-SA` voice, since an agent that speaks no `ar` may have no voice for it. Ole5 gives each
+    of its actions' lines an MSA text (tickets/lines.py), formal, with no dialect form, its
+    closing question «هل أرسلها؟» holding the same send word. The alternative, judging the
+    register of the talker's own words alone, was withdrawn by the ruling.
+  - *The ticket number as a claim (the owner's ruling of 2026-11-10, "Yes, make them a
+    claim").* A number said as the caller's ticket number passed rule A in a call with no
+    ticket, and a passage's number then passed rule B as a fact. Ole5's «رقم تذكرتك» and "your
+    ticket number is" (tickets/lines.py's `NUMBER_CLAIMS`, MSA's words the same) claim any
+    action: the talker with tickets runs under settings whose `guard.claims` holds them
+    (tickets/tools.py's `with_ticket_claims`, in the server, run A and the tests of its calls),
+    so one passes when an action of the call or a status holds a ticket, its numbers read
+    against that evidence alone. The phrase on both `create_ticket`'s and `hand_off`'s lists was
+    set aside: rule A asks evidence of every action a phrase names, so a true number after
+    either would be blocked. Ole5's `done` lines say the number in other words («تم، تذكرتك
+    رقمها»; "Done. The ticket number is"), whole and digit by digit as before (Q6): nothing
+    checks a done line, but the talker reads it in the call's history as its own reply and
+    copies it, and `TextCall` reads a clause that copies a piece of a runtime line as that line,
+    so a done line in the claim's words would hide the talker's claim from `call.violations`.
+  - *Run A's note pair (the owner's ruling of 2026-11-10, "Yes add a pair").* No run A
+    scenario put `add_ticket_note` to the model, so one kind of its own, `ticket_note`, joins
+    before any run, in English on dev (a39) and MSA on held-out (a40): a ticket read back and
+    made on a yes, then a note on it read back by that ticket's last four digits and added on a
+    yes. A scenario states the notes its call adds (`noted`), and a note's call follows a turn
+    whose ticket was made, as its `validate` asks. A play counts the notes its mock holds: the
+    right action is the scenario's tickets and notes, and a note added beyond the notes'
+    writes its turns confirmed is the scenario's own violation, as a ticket beyond the
+    tickets' is, so a note sent twice fails the run.
 - **Consequences:** an agent with read tools alone can still say it made a ticket, unblocked by
   rule A. A lexical rule asks a real yes again rather than take a doubtful one. Two parts are
   written but unread at run time, the flow's `advance` and the guard's `check_clause`. A ticket
-  number said with no claim phrase is not rule A's (the design's 8.4), Ole5's wording for it
-  left to the owner. The debt is TD-133 to TD-142.
+  number said with no claim phrase is not rule A's (the design's 8.4); Ole5's phrases for one,
+  which only introduce a number, also block a question asking for it and a caller's own number
+  read back while no record or status holds a ticket (TD-134). The debt is TD-133 to TD-142.
 - **Evidence:** plan 007's Tracks section, Progress log and Decision log;
   `tests/t2_agentic_voice/domain/test_yes_rule.py`, `test_action_flow.py`, `test_claims.py`;
   `tests/t2_agentic_voice/agent/test_talker_claims.py`, `test_talker_actions.py`;
-  `tests/t2_agentic_voice/actions/test_action_run.py`;
+  `tests/t2_agentic_voice/actions/test_action_run.py`, `test_action_caps.py`;
   `tests/t2_agentic_voice/api/test_runtime_actions.py`;
   `tests/t2_agentic_voice/voice/session/test_yes_turns.py`, `test_yes_turns_safety.py`,
   `test_read_back_overlaps.py`; `tests/t2_agentic_voice/testing/test_action_safety.py`;
-  `tests/ole5_voice/tickets/test_status.py`, `test_mock.py`; the end-to-end calls,
-  `tests/t2_agentic_voice/testing/test_action_calls.py`, `test_parity_actions.py`,
-  `tests/ole5_voice/tickets/test_ticket_calls.py`, `test_ticket_safety.py`.
+  `tests/ole5_voice/tickets/test_status.py`, `test_mock.py`, `test_lines.py`; the end-to-end
+  calls, `tests/t2_agentic_voice/testing/test_action_calls.py`, `test_parity_actions.py`,
+  `test_action_call_registers.py`, `tests/ole5_voice/tickets/test_ticket_calls.py`,
+  `test_ticket_safety.py`, `test_ticket_calls_msa.py`, `test_ticket_claims.py`; run A's plays,
+  `tests/ole5_voice/evals/test_action_play.py`, its scenarios and checks,
+  `test_action_scenarios.py`, `test_action_score.py`.
 
 ## D-082 · A chat model judges the answers the yes rule's lists leave unplaced, within its rails · 2026-11-10 · Accepted (the owner's rulings of 2026-11-10, plan 007's Block F)
 

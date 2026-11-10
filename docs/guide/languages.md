@@ -77,7 +77,10 @@ the drop rule judged the agent's own voice is not the caller's, and says nothing
 register. The presets' own texts (the
 notices, the echo's frame) are in the register of their tag: Saudi for `ar-SA`, MSA for `ar`.
 Write your greetings and progress lines in the register of their tag too; Ole5's instructions
-ask for the Saudi spoken register, and MSA for a caller who speaks it.
+ask for the Saudi spoken register, and MSA for a caller who speaks it. An action's lines follow
+the caller: an `ar-SA` reply to an MSA caller says each line's `ar` text where the action gives
+one, and the library's own action lines in MSA, still in the `ar-SA` voice
+([tools-and-actions.md](tools-and-actions.md)).
 
 ## Product terms inside Arabic
 

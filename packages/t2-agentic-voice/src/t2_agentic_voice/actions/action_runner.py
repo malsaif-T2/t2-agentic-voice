@@ -8,11 +8,16 @@ runner is for a tool. One serves every call of an agent, against its outbox.
   a generic one; the caps, counted over the outbox's rows, which only a `ConfirmedAction`
   writes, never over proposals: `max_per_call` of the action in this call, and
   `per_caller_per_day` (`limits.actions_per_caller_per_day`) of it for the verified caller in
-  the last day; then the read-back rendered in the reply's language (actions/spoken_lines.py).
+  the last day, each counting only a write that may have reached the system (`sending`, `done`,
+  `flagged`), never one refused or never sent (`NOT_WRITTEN`), so the caller may try again;
+  then the read-back rendered in the reply's language (actions/spoken_lines.py), its texts read
+  in `wording` when the talker gives one (MSA, `ar`, for an `ar-SA` reply to an MSA caller:
+  agent/language.py's `wording`), which the plan keeps for the outcome's line.
 - **`run`** meets the `ActionJobs` port: it takes only a `ConfirmedAction` the yes rule issued
   (`is_confirmed`; anything else is a TypeError, and nothing is written or sent), and carries
   it out as a job outside the turn (actions/action_job.py): the outbox row before the write,
-  the error meanings, the lookup, the record, the outcome's line and its event.
+  the error meanings, the lookup, the record, the outcome's line, read in the read-back's
+  `wording` (its language when none is given), and its event.
 - **`reconcile`**, at the runtime's start, looks up or flags each row left `sending`; it never
   sends one again. `t2v outbox reconcile` looks the flagged rows up again too.
 - **`past`** reads what a caller had done, in any call: the outbox's `done` rows
@@ -50,7 +55,7 @@ from t2_agentic_voice.core.settings.tts import LanguageTag
 from t2_agentic_voice.domain.action_lines import ReadBackPlan
 from t2_agentic_voice.domain.ports.action_jobs import ActionOutcome
 from t2_agentic_voice.domain.ports.chat_model import ToolCallRequest, ToolSchema
-from t2_agentic_voice.domain.ports.outbox import Outbox
+from t2_agentic_voice.domain.ports.outbox import NOT_WRITTEN, Outbox
 from t2_agentic_voice.domain.yes_rule import ConfirmedAction, is_confirmed
 
 _log = get_logger(__name__)
@@ -126,10 +131,16 @@ class ActionRunner:
         return await done_rows(self._outbox, subject, action)
 
     async def propose(
-        self, request: ToolCallRequest, ctx: CallContext, *, clock: Clock = SYSTEM_CLOCK
+        self,
+        request: ToolCallRequest,
+        ctx: CallContext,
+        *,
+        clock: Clock = SYSTEM_CLOCK,
+        wording: LanguageTag | None = None,
     ) -> ReadBackPlan | ToolResult:
-        """The read-back of the call `request` names, or a failed result the talker reads,
-        naming the field at fault. Writes nothing; a cancelled early start leaves nothing."""
+        """The read-back of the call `request` names, its texts read in `wording` (the reply's
+        language unless given), or a failed result the talker reads, naming the field at
+        fault. Writes nothing; a cancelled early start leaves nothing."""
         action = self._by_name.get(request.name)
         if action is None:
             names = ", ".join(self._by_name) or "none"
@@ -145,7 +156,9 @@ class ActionRunner:
         if capped is not None:
             return capped
         try:
-            return read_back_plan(action, draft, tool_call_id=request.id, tag=ctx.language)
+            return read_back_plan(
+                action, draft, tool_call_id=request.id, tag=ctx.language, wording=wording
+            )
         except (KeyError, ValueError):
             _log.error("action_read_back_unsaid", action=action.name)
             return failed_result(UNSAID, "read_back_unsaid")
@@ -170,7 +183,8 @@ class ActionRunner:
         return again
 
     async def _capped(self, action: Action, ctx: CallContext, clock: Clock) -> ToolResult | None:
-        """The failed result of a cap the action has reached, None when it has reached none."""
+        """The failed result of a cap the action has reached, None when it has reached none;
+        each counts only the writes that may have reached the system."""
         subject = ctx.caller.subject
         try:
             rows = await self._outbox.entries(subject=subject, action=action.name)
@@ -180,7 +194,8 @@ class ActionRunner:
         except Exception as error:
             _log.error("outbox_unread", action=action.name, failure=type(error).__qualname__)
             return failed_result(FAILED, "outbox_unread")
-        if sum(row.call_id == ctx.call_id for row in rows) >= action.max_per_call:
+        in_call = sum(row.call_id == ctx.call_id and row.state not in NOT_WRITTEN for row in rows)
+        if in_call >= action.max_per_call:
             return failed_result(PER_CALL, "cap_per_call")
         if today >= self._per_day:
             return failed_result(PER_DAY, "cap_per_caller")
@@ -196,6 +211,7 @@ class ActionRunner:
         turn_id: TurnId,
         conversation: tuple[ConversationLine, ...],
         clock: Clock,
+        wording: LanguageTag | None = None,
     ) -> ActionOutcome:
         """Carries out `confirmed` (the `ActionJobs` port; the module's docstring)."""
         if not is_confirmed(confirmed):
@@ -208,7 +224,8 @@ class ActionRunner:
                 details={"field": "actions"},
             )
         record = self.record(call_id)
-        call = JobCall(caller, call_id, language, turn_id, conversation, clock, record)
+        read = wording or language
+        call = JobCall(caller, call_id, language, turn_id, conversation, clock, record, read)
         return await self._writes.start(action, confirmed, call)
 
     async def reconcile(self, *, clock: Clock = SYSTEM_CLOCK, flagged: bool = False) -> int:

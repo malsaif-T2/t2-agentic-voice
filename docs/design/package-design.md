@@ -496,7 +496,7 @@ async def find_request(ctx: ActionContext[HelpdeskDeps], request_id: str) -> Req
     return RequestOpened(id=found.id) if found else None
 ```
 
-Templates are keyed by language tag (`{"ar-SA": ..., "en": ...}`), and a language reads its own tag first, then its primary code, so an `ar` text serves both Arabic presets; the keyword form (`ar=`, `ar_SA=`, `en=`) is shorthand for the same mapping. A read-back's template is a pair, the summary and the closing question. The talker sees a tool named `open_request` whose schema is the draft's schema and nothing more. There is no `confirmed` field and no "confirm" tool. Section 6.4 describes what happens when the talker calls it.
+Templates are keyed by language tag (`{"ar-SA": ..., "en": ...}`), and a language reads its own tag first, then its primary code, so an `ar` text serves both Arabic presets; the keyword form (`ar=`, `ar_SA=`, `en=`) is shorthand for the same mapping. An `ar-SA` agent may also give an `ar` text, MSA, beside each `ar-SA` one, which declares no language: an `ar-SA` reply to a caller who speaks MSA (the register the talker reads from the caller's words) reads each line's `ar` text, its `ar-SA` one where it has none, and the library's own lines in MSA, all still said in the `ar-SA` voice; the outcome is read as its read-back was (the owner's ruling of 2026-11-10, D-081). A read-back's template is a pair, the summary and the closing question. The talker sees a tool named `open_request` whose schema is the draft's schema and nothing more. There is no `confirmed` field and no "confirm" tool. Section 6.4 describes what happens when the talker calls it.
 
 ### 4.5 Serve real callers
 
@@ -960,7 +960,7 @@ What v1 must already have for it, all built for M3 to M5 anyway:
 | `claims` | yes, in every declared language | Past-tense phrases that claim this action. The guard blocks them unless the record holds the action or a `reports_on` tool returned it |
 | `validate` | no | `async (ctx, draft) -> draft`, or it raises `ToolError`. Checks the draft against the backend's own lists before the read-back |
 | `lookup` | no | Finds a completed write by `request_id` (invariant 6) |
-| `max_per_call` | no; 1 | Also capped per caller (M6) |
+| `max_per_call` | no; 1 | How many writes of it one call may make; `limits.actions_per_caller_per_day` (20) caps them per caller in the last day. Both count the outbox's rows of writes that may have reached the backend (`sending`, `done`, `flagged`), never one `rejected` or `not_sent`, so a caller whose write was refused or never sent may try again (the owner's ruling of 2026-11-10) |
 | `timeout_s` | no; 20 | After it, a lookup or `unknown` |
 
 **Consent modes:**
@@ -977,11 +977,13 @@ talker calls open_request({...})
   -> the talker's further text in this request is dropped           (guard rule C, section 8.2)
   -> parse into the draft model                    invalid: the talker is told which field
   -> validate(ctx, draft)                          rejected: the talker is told why
-  -> caps (per call, per caller) and the duplicate check
+  -> caps (per call, per caller), over the writes that may have reached the backend, and the
+     duplicate check
                                                    any refusal: the talker may speak again (rules A, B)
   -> the reply ends; the talker reads only that the call is being read back, never the draft
   -> state CONFIRMING once the read-back plays; a draft card only with show_draft, off by default (D-075)
-  -> the runtime speaks the read-back rendered from the draft (a template; fixed values through their labels)
+  -> the runtime speaks the read-back rendered from the draft (a template; fixed values through their labels),
+     in the caller's register: MSA for an MSA caller of an ar-SA agent, its ar texts (section 4.4)
        summary played in full                      -> ReadBackReceipt        (built only by the voice session)
        yes words or listening sounds over it       -> ignored: the summary plays on, and they do not count
        other real words over it                    -> no receipt; declined as a correction: the words go

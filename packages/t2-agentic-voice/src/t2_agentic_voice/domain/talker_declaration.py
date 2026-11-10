@@ -9,8 +9,10 @@ may not import (harness.toml [layers]), so the declaration holds each as the sma
 tool has, `DeclaredTool`: its name, its description and the key of its progress line, which the
 declaration checks (each name once; each progress line in every language the agent speaks). An
 action (`@action`) is declared among the tools, with the shape `DeclaredAction` beside it: the
-texts each of the agent's languages must cover; and a tool's `reports_on` must name one of them.
-The talker (agent/) runs the tools themselves.
+texts each of the agent's languages must cover, a text of a tag it does not speak never refused
+(an `ar` text beside an `ar-SA` one is the MSA an `ar-SA` agent says to a caller who speaks it:
+domain/action_declaration.py); and a tool's `reports_on` must name one of them. The talker
+(agent/) runs the tools themselves.
 """
 
 from __future__ import annotations

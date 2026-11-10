@@ -208,11 +208,13 @@ class RecordingJobs:
         turn_id: TurnId,
         conversation: tuple[ConversationLine, ...],
         clock: Clock,
+        wording: LanguageTag | None = None,
     ) -> ActionOutcome:
         given: dict[str, Any] = {
             "caller": caller,
             "call_id": call_id,
             "language": language,
+            "wording": wording,
             "turn_id": turn_id,
             "conversation": conversation,
             "clock": clock,

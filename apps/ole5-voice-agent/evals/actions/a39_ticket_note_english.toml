@@ -1,0 +1,35 @@
+# Plan 007's action scenarios (its "The measurement"; ole5_voice/evals/action_scenarios.py),
+# added by the owner's ruling of 2026-11-10 before any run: a note on the ticket the call made,
+# read back and added on a yes.
+id = "a39_ticket_note_english"
+kind = "ticket_note"
+split = "dev"
+language = "en"
+notes = "A ticket is read back and opened on a yes; asked then for a note on it, the agent reads the note back on that ticket's last four digits, and the yes after it adds the note once."
+made = 1
+noted = 1
+ticket_type = "Bug"
+summary_facts = ["Says an Arabic subject typed on a new correspondence in Ole5 is saved as question marks."]
+
+[[turns]]
+says = "Hi, could you open a ticket for me? Whenever I type an Arabic subject on a new correspondence in Ole5, it saves as question marks. It's fairly urgent."
+calls = "create_ticket"
+outcome = "read_back"
+language = "en"
+
+[[turns]]
+says = "Yes, send it."
+outcome = "done"
+says_number = "whole"
+
+[[turns]]
+says = "Thanks. Oh, one more thing, add a note to that ticket: it only happens in Chrome, in Edge the subject saves fine."
+calls = "add_ticket_note"
+outcome = "read_back"
+language = "en"
+says_number = "last_four"
+facts = ["The note read back says it happens only in Chrome, and that Edge saves the subject correctly."]
+
+[[turns]]
+says = "Yes, send it."
+outcome = "done"

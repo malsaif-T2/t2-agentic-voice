@@ -254,7 +254,7 @@ class YesTurns:
         turn.reply_id = await speaker.say_line(
             plan.sending, language=tag, at=at, turn_id=turn.turn_id
         )
-        self.jobs.start(confirmed, turn_id=turn.turn_id, language=tag)
+        self.jobs.start(confirmed, turn_id=turn.turn_id, language=tag, wording=plan.wording)
 
     async def _ask_again(self, turn: TurnLog, plan: ReadBackPlan, at: float) -> None:
         """An unclear answer: `plan`'s `asked_again` line as the reply answering `turn`, a

@@ -176,7 +176,6 @@ class Turn:
         self.ctx = call_context(
             caller=caller, call_id=call_id, language=self.language, actions=actions, record=record
         )
-        self.year = clock.wall().year
         heard = [t.words for t in turn.conversation.turns if t.fate != "dropped" and t.words]
         self.heard = (*heard, turn.words)
         self.register = call_register(self.heard)  # the call's so far, this turn's among it
@@ -184,7 +183,7 @@ class Turn:
         self.blocked = 0
         self.guard = SpeechGuard(
             settings=settings.guard,
-            year=self.year,
+            year=clock.wall().year,
             actions=() if actions is None else actions.actions,
             record=record,
             memory=memory,
@@ -199,6 +198,7 @@ class Turn:
             turn_id=turn.turn_id,
             shown=self._shown,
             actions=actions,
+            register=self.register,
         )
 
     async def events(self) -> AsyncGenerator[TalkerEvent, None]:

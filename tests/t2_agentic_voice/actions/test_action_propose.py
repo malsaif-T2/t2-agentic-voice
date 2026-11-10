@@ -1,9 +1,9 @@
 """The action runner's `propose` (actions/action_runner.py; the design's 6.4): the talker's
 arguments parsed into the draft, each field at fault named and its value never repeated
-(invariant 4); the action's `validate`; the caps, counted over confirmed actions in the outbox,
-never over proposals; and the read-back rendered from the action's templates in the reply's
-language, its fixed values through their labels, an ID digit by digit, and the library's lines
-where the action leaves one out. A proposal writes nothing."""
+(invariant 4); the action's `validate`; an outbox that cannot be read to count the caps (the
+caps themselves in test_action_caps.py); and the read-back rendered from the action's templates
+in the reply's language, its fixed values through their labels, an ID digit by digit, and the
+library's lines where the action leaves one out. A proposal writes nothing."""
 
 from __future__ import annotations
 
@@ -14,7 +14,7 @@ from typing import Any
 import pytest
 from t2_agentic_voice.actions import spoken_lines
 from t2_agentic_voice.actions.action import ActionContext, action
-from t2_agentic_voice.actions.action_runner import PER_CALL, PER_DAY, ActionRunner
+from t2_agentic_voice.actions.action_runner import ActionRunner
 from t2_agentic_voice.actions.memory_outbox import MemoryOutbox
 from t2_agentic_voice.actions.runner import FAILED
 from t2_agentic_voice.actions.tools import CallContext, ToolResult
@@ -34,7 +34,6 @@ from tests.t2_agentic_voice.actions.action_support import (
     OpenRequest,
     RequestOpened,
     Rig,
-    confirmed_of,
     context,
     request,
     timer_set,
@@ -189,44 +188,6 @@ def test_a_validate_past_the_actions_timeout_is_cancelled() -> None:
     result = asyncio.run(proposed())
     assert result == ToolResult(data={"error": FAILED}, ok=False, failure="validate_failed")
     assert cancelled == [True]
-
-
-def test_the_per_call_cap_counts_confirmed_actions_never_proposals() -> None:
-    rig = Rig(max_per_call=1)
-
-    async def scenario() -> tuple[Any, Any, Any, Any]:
-        first = await rig.plan()
-        again = await rig.plan()  # a proposal counts for nothing
-        await rig.run(confirmed_of(first))
-        capped = await rig.runner.propose(request(), context(), clock=rig.clock)
-        other_call = await rig.runner.propose(request(), context(call_id="call-2"), clock=rig.clock)
-        return first, again, capped, other_call
-
-    first, again, capped, other_call = asyncio.run(scenario())
-    assert isinstance(first, ReadBackPlan) and isinstance(again, ReadBackPlan)
-    assert capped == ToolResult(data={"error": PER_CALL}, ok=False, failure="cap_per_call")
-    assert isinstance(other_call, ReadBackPlan)
-
-
-def test_the_per_caller_cap_counts_a_days_confirmed_actions_whatever_became_of_them() -> None:
-    rig = Rig("reject", max_per_call=5)
-    rig.runner = ActionRunner([rig.action], outbox=rig.outbox, per_caller_per_day=2)
-
-    async def scenario() -> list[Any]:
-        told = []
-        for call_id in ("call-1", "call-2", "call-3"):
-            plan = await rig.runner.propose(request(), context(call_id=call_id), clock=rig.clock)
-            told.append(plan)
-            if isinstance(plan, ReadBackPlan):
-                await rig.run(confirmed_of(plan), call_id=call_id)
-        await rig.clock.advance(24 * 3600.0 + 1.0)
-        told.append(await rig.runner.propose(request(), context("en"), clock=rig.clock))
-        return told
-
-    first, second, third, next_day = asyncio.run(scenario())
-    assert isinstance(first, ReadBackPlan) and isinstance(second, ReadBackPlan)
-    assert third == ToolResult(data={"error": PER_DAY}, ok=False, failure="cap_per_caller")
-    assert isinstance(next_day, ReadBackPlan)
 
 
 def test_an_action_the_agent_does_not_have_is_answered_with_those_it_has() -> None:

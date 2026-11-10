@@ -1,10 +1,11 @@
 """What the end-to-end tests of Ole5's ticket calls share (test_ticket_calls.py; plan 007): Ole5's
-served talker on the mock ticket system in a test's folder, its knowledge base a fake one; the
-caller the demo customer, as the token route mints every caller; the caller's yes, send, stop,
-pause and repeat words, taken from the library's lists and Ole5's lines; a fake model that answers
-each request by the turn it answers and the newest tool result, and the yes rule's check of an
-answer its lists leave unplaced (D-082) by the caller's words; and what the call said, what
-the guard blocked, what the model was given and asked, and what the yes rule read a turn as."""
+served talker on the mock ticket system in a test's folder, its knowledge base a fake one, under
+the settings the server gives it; the caller the demo customer, as the token route mints every
+caller; the caller's yes, send, stop, pause and repeat words, taken from the library's lists and
+Ole5's lines; a fake model that answers each request by the turn it answers and the newest tool
+result, and the yes rule's check of an answer its lists leave unplaced (D-082) by the caller's
+words; and what the call said, what the guard blocked, what the model was given and asked, and
+what the yes rule read a turn as."""
 
 from __future__ import annotations
 
@@ -19,8 +20,9 @@ from ole5_voice.customer import CUSTOMER_EMAIL
 from ole5_voice.settings import DEMO_CUSTOMER_EMAIL
 from ole5_voice.tickets.lines import SEND_WORDS
 from ole5_voice.tickets.mock import MockTicketSystem
+from ole5_voice.tickets.tools import with_ticket_claims
 from ole5_voice.token_route import SUBJECT
-from t2_agentic_voice import Caller, VoiceAgent
+from t2_agentic_voice import Caller, VoiceAgent, VoiceSettings
 from t2_agentic_voice.core.settings.words import LanguageCode
 from t2_agentic_voice.domain.uncertain_overlaps import UNCERTAIN_OVERLAP_INSTRUCTION
 from t2_agentic_voice.domain.words import PRESET_WORDS
@@ -42,6 +44,9 @@ from tests.ole5_voice.tickets.ticket_support import Clock
 Tag = Literal["ar-SA", "en"]
 # The demo customer, as the token route mints every caller (token_route.py, customer.py).
 CALLER: Final = Caller(subject=SUBJECT, attributes={CUSTOMER_EMAIL: DEMO_CUSTOMER_EMAIL})
+# A text call's settings: the library's, its guard reading Ole5's phrases for a ticket's number
+# as claims, as the server's talker runs (server.py).
+SETTINGS: Final = with_ticket_claims(VoiceSettings(env="test"))
 # How long a call runs on after the caller's yes: the sending line, the write and the outcome.
 SETTLE_S: Final = 30.0
 # What the uncertain overlap's request says before the caller's words over the reply.
@@ -87,9 +92,10 @@ def ole5(folder: Path, passages: Sequence[Passage] = ()) -> tuple[VoiceAgent, Mo
 def text_call(
     agent: VoiceAgent, llm: FunctionLLM, tag: Tag, outbox: Outbox | None = None
 ) -> TextCall:
-    """A text call of `agent` on `llm`, in `tag`, its caller the demo customer, its actions'
-    writes kept in `outbox` (a new one in memory unless given, so a later call can share it)."""
-    return TextCall(agent, llm=llm, caller=CALLER, language=tag, outbox=outbox)
+    """A text call of `agent` on `llm`, in `tag`, under the settings the server serves the
+    talker with (`with_ticket_claims`), its caller the demo customer, its actions' writes kept
+    in `outbox` (a new one in memory unless given, so a later call can share it)."""
+    return TextCall(agent, llm=llm, settings=SETTINGS, caller=CALLER, language=tag, outbox=outbox)
 
 
 @dataclass(frozen=True)

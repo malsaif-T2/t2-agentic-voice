@@ -1,6 +1,7 @@
 """An agent declares its actions among its tools (the design's 4.3; plan 007, Block 0): each text
-of an action in every language the agent speaks, a tool's `reports_on` naming one of its own
-actions, and the settings the actions read."""
+of an action in every language the agent speaks (an MSA text beside a Saudi one taken, though
+the agent speaks no MSA), a tool's `reports_on` naming one of its own actions, and the settings
+the actions read."""
 
 from __future__ import annotations
 
@@ -93,6 +94,27 @@ def test_a_text_for_arabic_serves_both_arabic_presets_but_not_the_reverse() -> N
     with pytest.raises(ConfigurationError, match="no text in a language"):
         VoiceAgent(name="branch-helper", languages=[both], tools=[made])
     assert VoiceAgent(name="saudi-helper", languages=[SAUDI], tools=[made]).tools
+
+
+def test_an_msa_text_beside_the_saudi_one_is_taken_by_an_agent_that_speaks_no_msa() -> None:
+    """An `ar` text is the MSA its `ar-SA` agent says to a caller who speaks MSA, never a
+    language the agent must declare."""
+    made = _action(
+        read_back=ReadBack(
+            {
+                "ar-SA": ("سعودي {summary}", "؟"),
+                "ar": ("فصيح {summary}", "؟"),
+                "en": ("e {summary}", "q"),
+            }
+        ),
+        done=Say({"ar-SA": "س {id}", "ar": "ف {id}", "en": "e {id}"}),
+        claims=Claims({"ar-SA": ["ف"], "en": ["c"]}),
+    )
+    agent = VoiceAgent(name="branch-helper", languages=[ENGLISH, SAUDI], tools=[made])
+    assert agent.tools == (made,) and [language.tag for language in agent.languages] == [
+        "en",
+        "ar-SA",
+    ]
 
 
 def test_a_tool_may_report_only_on_its_agents_own_actions() -> None:

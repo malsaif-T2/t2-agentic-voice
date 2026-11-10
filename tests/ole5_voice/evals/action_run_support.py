@@ -12,11 +12,14 @@ for a new read-back, no for the talker's answer, unclear for anything else, word
 among them. It finds the caller's words of each request among the
 scenarios' turns: a turn whose scenario expects a ticket tool calls it, as a model writes a call
 (`create_ticket` and `hand_off` with the caller's words as the summary and the scenario's type,
-`ticket_status` with the digits the caller said); a turn expecting a search, or the first of a
-scenario with a passage, searches; any other answers in its language, claiming nothing. A tool's
-result is answered from it: a status by each ticket's last four digits, a search shortly.
-`says` replaces the answer to the words given; `failing` makes the judge's checks of a request
-holding the words given fail, and `unanswered` its answer to one no valid answer.
+`add_ticket_note` with them as the note, on the last four digits of the ticket number the
+call's lines last said, `ticket_status` with the digits the caller said); a turn expecting a
+search, or the first of a scenario with a passage, searches; any other answers in its
+language, claiming nothing. A tool's result is answered from it: a status by each ticket's
+last four digits, a search shortly.
+`says` replaces the answer to the words given, and `answers` the answer to a tool's result in
+their turn; `failing` makes the judge's checks of a request holding the words given fail, and
+`unanswered` its answer to one no valid answer.
 """
 
 from __future__ import annotations
@@ -92,6 +95,8 @@ ANSWER: Final = {
     "ar": "يمكنك ذلك من القائمة، اختر ما تحتاجه ثم أكد الخطوة عندما يطلب منك ذلك.",
 }
 _DIGITS = re.compile("[0-9]{4,16}")
+# A ticket number as the agent's lines say it: four groups of four digits (tickets/lines.py).
+_SAID_NUMBER = re.compile("[0-9]{4}(?:[^0-9]{1,3}[0-9]{4}){3}")
 # The instruction of the request a session sends on an overlap the rule left uncertain.
 OVERLAP_SYSTEM: Final = uncertain_overlap_request("-", "-").messages[0].content
 # The yes rule's check's word on a turn whose scenario expects, after it, a new read-back (a
@@ -108,6 +113,18 @@ def said(text: str) -> list[ScriptStep]:
 def calls(name: str, **arguments: Any) -> list[ScriptStep]:
     """A model's answer that calls the tool `name` with `arguments`, its usage reported."""
     return [*ScriptedLLM.call_tools((name, arguments), usage=USAGE)]
+
+
+def _last_four(request: ChatRequest) -> str:
+    """The last four digits of the last ticket number the agent's lines said in the call (a done
+    line, in the request's history); 0000, which no ticket of a play ends in, when none."""
+    said = [
+        number
+        for message in request.messages
+        if message.role == "assistant"
+        for number in _SAID_NUMBER.findall(message.content)
+    ]
+    return said[-1][-4:] if said else "0000"
 
 
 def committed() -> tuple[ActionScenario, ...]:
@@ -144,6 +161,7 @@ class Oracle:
             for n, turn in enumerate(scenario.turns)
         }
         self.says: dict[str, Sequence[ScriptStep]] = {}
+        self.answers: dict[str, str] = {}
         self.heard: list[str] = []
 
     def __call__(self, request: ChatRequest) -> list[ScriptStep]:
@@ -156,6 +174,8 @@ class Oracle:
         asked = max(n for n, m in enumerate(request.messages) if m.role == "user")
         results = [m.content for m in request.messages[asked:] if _DATA.match(m.content)]
         if results:
+            if words in self.answers:
+                return said(self.answers[words])
             return said(self._from_result(results[-1], words))
         if words is None:
             return said(PLAIN["en" if script_of(users[-1]) == "en" else "ar-SA"])
@@ -163,7 +183,7 @@ class Oracle:
         if words in self.says:
             return list(self.says[words])
         scenario, n = self.turns[words]
-        return self._to(scenario, n)
+        return self._to(scenario, n, request)
 
     def _overlap(self, asked: str) -> list[ScriptStep]:
         """The word on an overlap the rule left uncertain: stop for words a turn says cut the
@@ -194,12 +214,14 @@ class Oracle:
         ]
         return max(known, key=len, default=None)
 
-    def _to(self, scenario: ActionScenario, n: int) -> list[ScriptStep]:
+    def _to(self, scenario: ActionScenario, n: int, request: ChatRequest) -> list[ScriptStep]:
         turn = scenario.turns[n]
         summary = " ".join(turn.says.split())[:200]
         if turn.calls == "create_ticket":
             kind = scenario.ticket_type or "Issue"
             return calls("create_ticket", summary=summary, type=kind, priority="Medium")
+        if turn.calls == "add_ticket_note":
+            return calls("add_ticket_note", ticket_ends_in=_last_four(request), note=summary)
         if turn.calls == "hand_off":
             return calls("hand_off", summary=summary)
         if turn.calls == "ticket_status":
@@ -221,17 +243,34 @@ class Oracle:
         if language == "en":
             told = [f"Your ticket ending {t['ends_in']} is {t['status']}." for t in data["tickets"]]
         else:
+            which = "التي" if language == "ar" else "اللي"  # allati in MSA, illi in Saudi: which
             told = [
-                f"تذكرتك اللي تنتهي بـ {t['ends_in']} حالتها {t['status']}."
+                f"تذكرتك {which} تنتهي بـ {t['ends_in']} حالتها {t['status']}."
                 for t in data["tickets"]
             ]
         return " ".join(told) or PLAIN[language]
 
 
+# The dialect forms the judge's register question names (REGISTER_SYSTEM) that the oracle reads,
+# each a word's start: tabi (want, as in tabeeni, do you want me to), illi (which), al-heen (now).
+GULF: Final = ("تبي", "اللي", "الحين")
+
+
+def register_read(text: str) -> str:
+    """The judge's register of `text`, as REGISTER_SYSTEM asks it, read by the oracle: `saudi`
+    when a word begins with a dialect form of `GULF`, even among standard words; `msa` for any
+    other Arabic; `none` for none."""
+    if script_of(text) != "ar":
+        return "none"
+    words = [word.strip("،؛؟.,!?:") for word in text.split()]
+    return "saudi" if any(word.startswith(GULF) for word in words) else "msa"
+
+
 class OracleChat:
     """The run's chat model: the judge's requests answered here, every check holding but where
-    `failing` names words its request holds, and a register question `msa` for Arabic (right
-    for both Arabic tags); the talker's through the library's `FunctionLLM` on the oracle."""
+    `failing` names words its request holds, and a register question read from its words'
+    dialect (`register_read`), so Ole5's Saudi lines read as Saudi; the talker's through the
+    library's `FunctionLLM` on the oracle."""
 
     name = "oracle"
     data_flow = FLOW
@@ -252,7 +291,7 @@ class OracleChat:
             return
         asked = request.messages[-1].content
         if request.messages[0].content == REGISTER_SYSTEM:
-            text = "msa" if script_of(asked) == "ar" else "none"
+            text = register_read(asked)
         elif any(words in asked for words in self.unanswered):
             text = "No answer."
         else:

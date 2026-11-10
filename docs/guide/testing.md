@@ -272,11 +272,15 @@ action reads the caller.
   make. Past it, the action's call is refused before any read-back, and the talker is told it
   cannot be done again in this call.
 - **`limits.actions_per_caller_per_day`** (20 by default): how many writes of one action one
-  caller may have had in the last day, counted from the outbox whatever became of each. `TextCall`
-  takes it from its settings, as the runtime does:
+  caller may have had in the last day, counted from the outbox. `TextCall` takes it from its
+  settings, as the runtime does:
   `settings=VoiceSettings(env="test", limits=LimitSettings(actions_per_caller_per_day=1))`. Past
   it, the action's call is refused before any read-back (`expect.no_read_back()`), and the talker
   is told the caller has had it done as many times as one day allows.
+- **Both count only a write that may have reached your system**: a row `sending`, `done` or
+  `flagged`, never one `rejected` or `not_sent` ("The caps" in
+  [tools-and-actions.md](tools-and-actions.md)). A fake write that raises `ActionRejected` or
+  `ActionNotSent` leaves its place, so a second try in the same call is read back.
 - **A refused call is the talker's to answer**: its next request reads why and speaks, so a
   script needs an entry for that answer.
 - **Both caps count the outbox's rows, and every text call has the same call ID.** Two calls
@@ -470,8 +474,10 @@ model.
 - **Which scenarios**: one for each thing a caller does with your action: a plain request; a yes
   said too early, over the summary, or bare over the question; a correction; a no; a hesitation;
   a backend that refuses, and one that times out; a status question, for a tool that reports on
-  the action; and a passage that holds a number shaped like a request number. Write each line in
-  each language you serve, in your callers' own words.
+  the action; an action on what another made earlier in the call, each read back and confirmed
+  in turn and written once (Ole5's note on a ticket the call made); and a passage that holds a
+  number shaped like a request number. Write each line in each language you serve, in your
+  callers' own words.
 - **Repeat, and register first.** A hosted model need not answer the same twice, so run each
   scenario several times (Ole5's scenario run plays each one three times) and read the results
   against the noise ([evaluation.md](evaluation.md), "Noise and the sign test"). A run that spends

@@ -287,7 +287,8 @@ may judge a yes in words no list holds, within rails the yes rule keeps.
   answer, a handoff asked for by mistake, and a passage carrying a fake number; and, added with
   Block F before any run, four the yes rule's lists leave unplaced (D-082): an unlisted yes once
   the closing question ended, an unlisted go-ahead over it, a yes with a change, and a
-  hesitation in an unlisted spelling.
+  hesitation in an unlisted spelling; and, by the owner's ruling of 2026-11-10 before any run, a
+  note on a ticket made in the call (`ticket_note`: a39, dev, English; a40, held-out, MSA).
 - **Run A:** `gpt-oss-120b` at medium, against the mock ticket system, each scenario three
   times, the caller's lines scripted (Q9).
 - **Hard constraint:** no unrecorded claim and no action without a yes, in **every** run. One
@@ -299,7 +300,8 @@ may judge a yes in words no list holds, within rails the yes rule keeps.
 - **The judge** of a summary is a model, checked first on a sample by an agent blind to its
   verdicts, as in plan 006; a failed check marks that score unverified.
 - **Cost:** about $1 (Q9), a run capped at $10 (the owner's, 2026-11-10, raised from $1.50 once
-  Block F's scenarios passed it; "The owner's decisions"); M7 takes up `simulate`. No default moves except by a registered keep rule
+  Block F's scenarios passed it; "The owner's decisions"), its dry estimate with the note pair
+  at most $1.76 for dev and $1.73 for held-out; M7 takes up `simulate`. No default moves except by a registered keep rule
   (GP-18).
 
 ## Progress log
@@ -400,7 +402,8 @@ may judge a yes in words no list holds, within rails the yes rule keeps.
     4.6 sample checked the done line's number on the yes turn, though the outcome answers no
     turn; and `TextCall` and `AudioCall` built the runner without the settings' daily cap per
     caller (`tests/t2_agentic_voice/testing/test_text_call_as_served.py`). It refuted two.
-  - **Left**: TD-142, its first item the owner's call (Ole5's ticket-number wording).
+  - **Left**: TD-142, its first item the owner's call (Ole5's ticket-number wording), since
+    paid by the owner's ruling (the rulings' build, below).
 - 2026-11-10: Block F, the library's part (D-082): `domain/consent_check.py` (the request, the
   model and its bounds, the answer's reader, `is_consent_check`); `decide` marks what its lists
   cannot place `askable` (a word on none of them, send words among fillers with no yes, a yes
@@ -515,9 +518,54 @@ may judge a yes in words no list holds, within rails the yes rule keeps.
   from it: `TextTurn.clauses` marks each line of the runtime's own for an action
   (`HeardClause.template`, read as the call's checks read them, `text_actions.own_lines`;
   `test_text_turn_lines.py`), and the guide's `testing.md` names it.
+- 2026-11-10: The owner's four rulings built, one builder a ruling in turn, each test first, then
+  one reviewer a ruling and one skeptic a finding, and a last pass for what was missed (D-081):
+  - **The caps count only real writes**: both caps leave out `rejected` and `not_sent` rows
+    (`ports.outbox.NOT_WRITTEN`, in both stores and the runner), so a refused or never-sent write
+    leaves the caller a second try; a `flagged` one (`unknown`) still holds its place
+    (`test_action_caps.py`, `test_outbox.py`). TD-143's second item paid.
+  - **MSA lines**: an `ar-SA` reply to an MSA caller reads an action's texts in `ar`
+    (`language.wording`, `action_declaration.read_in`), the library's own lines in MSA, the
+    outcome as its read-back was (`ReadBackPlan.wording`), every line still in the `ar-SA` voice;
+    Ole5 gives every line of its three actions an MSA text, its closing question «هل أرسلها؟».
+    Run A's oracle reads the register as the withdrawn patch did, and with the old lines a02,
+    a07, a12, a13, a20, a26 and a37 failed; with the MSA lines all pass
+    (`test_ticket_calls_msa.py`, `test_action_wording.py`, `test_action_call_registers.py`).
+    TD-139's MSA item paid; the session's notices, the guard's line and Ole5's search line are
+    still Saudi for an MSA caller, outside the ruling.
+  - **The ticket number as a claim**: `NUMBER_CLAIMS` through `guard.claims`
+    (`tickets/tools.py`'s `with_ticket_claims`, in the server, run A and the call tests; runs K,
+    S and T unchanged, GP-18), and Ole5's `done` lines reworded so none holds a phrase
+    (`test_ticket_claims.py`, `test_lines.py`, a29 and a30's blocked number in
+    `test_action_play.py`). TD-142's first item paid; the question «وش رقم تذكرتك؟» blocked while
+    no ticket is held, in TD-134.
+  - **Run A's note pair**: the kind `ticket_note`, a39 and a40, a scenario's `noted`, a note
+    counted from the mock and one beyond its confirmed writes a violation; 40 scenarios, the dry
+    estimate above (`test_action_scenarios.py`, `test_action_play.py`, `test_action_score.py`).
+  - **The review**: one finding, «رقم تذكرتك» with bi-, li- or ka- written onto it read as no
+    claim; refuted as a widening of the owner's two phrases (the design's 8.4: a wording on no
+    list passes), and run A's a29 and a30 still fail a turn that says such a number. Ole5's
+    `VERSION` stays `2026-11-10.1`: no measured run was stamped with it before these changes,
+    and a bump would move the version of runs K, S and T, whose talker did not change. With the
+    caps' change a talker that calls `create_ticket` again after a refusal (a15, a16) now hears a
+    second read-back, not `cap_per_call`; their `made = 0` holds with no yes.
 
 ## Decision log
 
+- 2026-11-10: The owner's four rulings before run A ("The owner's decisions"), built as one
+  change: Ole5's MSA lines for its three actions, a run A pair for `add_ticket_note`, «رقم
+  تذكرتك» and "your ticket number is" as Ole5's claim phrases, and the library's caps counting
+  only writes that may have reached the system. The whole-code review's change to run A's
+  scoring (the register asked of the talker's words alone) was withdrawn for the first. What the
+  build chose (D-081 holds it):
+  - *The number's phrases claim any action* (`guard.claims`), not each maker's list, since rule
+    A asks evidence of every action a phrase names; Ole5's `done` lines hold none, since the
+    talker copies them and `TextCall` reads a copy of a runtime line as that line.
+  - *MSA is a wording, not a language*: Ole5 still declares `ar-SA` and `en`, its `ar` texts read
+    for an MSA caller and spoken in the `ar-SA` voice; an action with no `ar` text says its
+    `ar-SA` one.
+  - *The caps leave out what was surely not written* (`NOT_WRITTEN`) rather than list what
+    counts, so a state added later counts.
 - 2026-11-10: The end-to-end calls' choices (D-081 holds them).
   - *`TextCall`'s checks read what the live guard reads*: a tool result's data and evidence
     texts, what an action's call gave back, a record entry's result whole and its texts; and a
@@ -530,7 +578,8 @@ may judge a yes in words no list holds, within rails the yes rule keeps.
     `create_ticket`'s and `hand_off`'s lists would block a true number after either, rule A
     asking evidence of every action a phrase names, and an any-action phrase (`guard.claims`)
     would cut a knowledge answer that says it in a call with no ticket: the owner's call
-    (TD-142).
+    (TD-142). Since ruled: the any-action phrases, the cut answer accepted (the rulings' entry
+    above, TD-134).
   - *The scenario format refuses a turn said over a read-back after one asked again once it
     ended*, the ask-again line being no read-back. «اممم» is one of the yes rule's fillers, not
     a listening sound of the interruption rule's, so no agent without actions changes (GP-18).
@@ -662,6 +711,25 @@ they set a figure of their own.
   The owner chose "Yes, let the model judge (Recommended)": a send word alone goes to the model
   as any unplaced answer does, under the same rails, and words that copy one of the agent's own
   lines count as its echo only when heard while the agent was speaking (Block F's part 2).
+- 2026-11-10, before run A, four questions put with the agent's recommendations:
+  - *MSA read-backs.* Ole5's read-back, sending and outcome lines exist in Saudi Arabic and
+    English only, so in run A's MSA scenarios an MSA caller hears a Saudi read-back, and those
+    turns fail the registered check of the reply's register. The owner chose "Add MSA
+    read-backs (Recommended)": Ole5 gets MSA versions of those lines, so an MSA caller hears
+    MSA, as the talker already answers them, and the check stays as registered.
+  - *A run A pair for `add_ticket_note`.* Asked whether to add one before any run, the owner
+    answered "What is the difference between create_ticket and hand_off? And Yes add a pair"
+    (the question answered in chat).
+  - *The ticket number as a claim* (TD-142's first item). The owner chose "Yes, make them a
+    claim (Recommended)": «رقم تذكرتك» and "your ticket number is" become Ole5's claim phrases,
+    blocked unless a ticket was made in the call, and Ole5's done lines are reworded so none
+    holds them.
+  - *What counts toward the caps* (TD-143's second item). Asked whether a refused or never-sent
+    write counts toward the one-action-per-call cap, the owner first asked "Explain to me why
+    the cap exist in first place"; told that a cap bounds how much a misjudged, repeated or
+    injected action can write, per call and per caller a day, they answered "Count only real
+    writes": only rows whose write may have reached the system count (`sending`, `done`,
+    `flagged`), not one the system refused or that was never sent, so the caller can try again.
 
 - **Q1. M4 and the base of this work.** *Settled 2026-11-09: (a).* Not necessary: M5 can branch from M4's branch. Options:
   (a) close M4 first, its live calls moved to M7's rehearsal and its missed targets recorded, and

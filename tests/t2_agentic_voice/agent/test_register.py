@@ -5,7 +5,8 @@ the two apart; the library now reads it from the caller's words, by a small expl
 and Gulf dialect forms: a turn of Arabic with none is MSA, and an `ar-SA` reply's language section
 and its line after a tool result say so. A reply follows the call's register: Saudi once any heard
 turn of the caller's held a form (a review finding), MSA while none has. An agent's Arabic tag
-that is not Saudi (`ar`) keeps its section. Every sentence is written for the test."""
+that is not Saudi (`ar`) keeps its section; an `ar-SA` reply to an MSA caller reads an action's
+MSA texts (`wording`). Every sentence is written for the test."""
 
 from __future__ import annotations
 
@@ -18,6 +19,7 @@ from t2_agentic_voice.agent.language import (
     DIALECT_WORDS,
     NOT_NEGATED,
     register_of,
+    wording,
 )
 from t2_agentic_voice.agent.prompt import (
     LANGUAGE_SECTIONS,
@@ -243,3 +245,11 @@ def test_a_plain_first_turn_is_msa_then_saudi_from_the_first_dialect_turn_on() -
 def test_a_turn_heard_as_the_agents_own_voice_says_nothing_of_the_callers_register() -> None:
     """A dialect word the drop rule judged the agent's echo is not the caller's."""
     assert _call("الحين يظهر الخطأ", "كيف أطبع الرسالة؟", dropped=frozenset({0}))[1] == MSA_ASKED
+
+
+def test_an_actions_lines_are_read_in_msa_for_an_saudi_reply_to_an_msa_caller() -> None:
+    """The register picks an action's texts, never the reply's tag: an `ar-SA` reply to an MSA
+    caller reads `ar`, the MSA texts, still spoken in `ar-SA`; any other reads its own tag."""
+    assert wording("ar-SA", "msa") == "ar" and wording("ar-SA", "saudi") == "ar-SA"
+    assert wording("ar", "saudi") == "ar" and wording("ar", "msa") == "ar"
+    assert wording("en", "msa") == "en" and wording("en", "saudi") == "en"

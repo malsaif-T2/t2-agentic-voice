@@ -9,15 +9,21 @@ invariant 2), through `TextCall` on the served talker, as test_ticket_calls.py r
 - A claim written in the call's other language is blocked too, as plan 006's run K saw the model
   drift into a passage's language: a passage's made-up ticket number said as the caller's, in
   Arabic in an English call and in English in an Arabic one.
+- A number said as the caller's ticket number («رقم تذكرتك», "your ticket number is") claims any
+  of Ole5's actions (the owner's ruling of 2026-11-10; tickets/lines.py's `NUMBER_CLAIMS`): in a
+  call with no ticket, a passage's made-up number said so is blocked by rule A, though rule B
+  would pass it as a passage's fact, in Saudi Arabic, in MSA, in English and in the call's other
+  language; in a call that made a ticket, by either action, its number passes said so, and a
+  number no action made is blocked.
 """
 
 from __future__ import annotations
 
 from pathlib import Path
-from typing import Final
+from typing import Final, Literal
 
 import pytest
-from t2_agentic_voice.evals import ScriptedLLM
+from t2_agentic_voice.evals import ScriptedLLM, ScriptStep
 from t2_agentic_voice.ports import Passage
 
 from tests.ole5_voice.tickets.call_support import (
@@ -29,6 +35,7 @@ from tests.ole5_voice.tickets.call_support import (
     ole5,
     said,
     text_call,
+    yes_send,
 )
 from tests.ole5_voice.tickets.ticket_support import run
 
@@ -68,6 +75,33 @@ AS_YOURS: Final = {
     "ar-SA": f"فتحت لك تذكرة رقمها {NUMBER}.",
     "en": f"I've opened your ticket, its number is {NUMBER}.",
 }
+# A number said as the caller's ticket number, with no other claim: raqm tadhkirtak, your
+# ticket's number; in MSA with huwa (is): raqmu tadhkiratika huwa.
+Written = Literal["ar-SA", "msa", "en"]
+YOURS: Final[dict[Written, str]] = {
+    "ar-SA": "رقم تذكرتك {}.",
+    "msa": "رقم تذكرتك هو {}.",
+    "en": "Your ticket number is {}.",
+}
+# The caller's problem and the ticket's draft; the caller asking for a person and the handoff's
+# summary; then the caller asking for the number again, and whether it is right.
+PROBLEM: Final = {
+    "ar-SA": "صفحة التقارير ما تطلع أي بيانات، افتح لي تذكرة.",
+    "en": "My reports page shows no data, please open a ticket.",
+}
+DRAFT: Final = {
+    "ar-SA": {"summary": "صفحة التقارير ما تعرض أي بيانات.", "type": "Report"},
+    "en": {"summary": "The reports page shows no data.", "type": "Report"},
+}
+PERSON: Final = {"ar-SA": "أبي أكلم أحد من الدعم.", "en": "I want to talk to someone from support."}
+HANDOFF: Final = {
+    "ar-SA": {"summary": "يبي يكلم أحد من الدعم عن صفحة التقارير."},
+    "en": {"summary": "Wants to talk to support about the reports page."},
+}
+AGAIN: Final = {"ar-SA": "وش كان الرقم؟", "en": "What was the number again?"}
+SURE: Final = {"ar-SA": "متأكد؟", "en": "Are you sure?"}
+# A ticket-shaped number no action of the call made.
+MADE_UP: Final = "2026111082009999"
 
 
 @pytest.mark.parametrize("digits", [None, DIGITS], ids=["all", "no_match"])
@@ -122,5 +156,73 @@ def test_a_claim_in_the_calls_other_language_is_blocked(
             assert NUMBER not in said(call)
             assert call.violations == ()
         assert tickets.listed() == ()
+
+    run(scene())
+
+
+@pytest.mark.parametrize(
+    ("tag", "written"),
+    [("ar-SA", "ar-SA"), ("ar-SA", "msa"), ("en", "en"), ("en", "ar-SA"), ("ar-SA", "en")],
+)
+def test_a_passages_number_said_as_the_callers_ticket_number_is_blocked(
+    tmp_path: Path, tag: Tag, written: Written
+) -> None:
+    agent, tickets = ole5(tmp_path, [FAKE_NUMBER])
+    llm = model(
+        Answer(FOLLOW_UP[tag], ScriptedLLM.call_tool("search_knowledge", query=FOLLOW_UP[tag])),
+        Answer(
+            FOLLOW_UP[tag], ScriptedLLM.reply(YOURS[written].format(NUMBER)), "search_knowledge"
+        ),
+    )
+
+    async def scene() -> None:
+        async with text_call(agent, llm, tag) as call:
+            asked = await call.user(FOLLOW_UP[tag])
+            await call.advance(SETTLE_S)
+            asked.expect.tool_call("search_knowledge")
+            assert [blocked.unsupported for blocked in asked.blocked] == [(NUMBER,)]
+            assert [event.reason for event in blocks(call)] == ["unsupported_claim"]
+            assert NUMBER not in said(call)
+            assert call.violations == ()
+        assert tickets.listed() == ()
+
+    run(scene())
+
+
+@pytest.mark.parametrize("action", ["create_ticket", "hand_off"])
+@pytest.mark.parametrize("tag", ["ar-SA", "en"])
+def test_the_number_of_a_ticket_made_in_the_call_passes_said_as_the_callers(
+    tmp_path: Path, tag: Tag, action: str
+) -> None:
+    """Either action's ticket: the phrase claims any action, so its number passes on that
+    action's record; a number no action made, said so, is blocked by rule A, its numbers read
+    against the record alone."""
+    agent, tickets = ole5(tmp_path)
+    asked, draft = (PROBLEM, DRAFT) if action == "create_ticket" else (PERSON, HANDOFF)
+    again: list[ScriptStep] = []  # written once the ticket is made, its number known then
+    llm = model(
+        Answer(asked[tag], ScriptedLLM.call_tool(action, **draft[tag])),
+        Answer(AGAIN[tag], again),
+        Answer(SURE[tag], ScriptedLLM.reply(YOURS[tag].format(MADE_UP))),
+    )
+
+    async def scene() -> None:
+        async with text_call(agent, llm, tag) as call:
+            await call.user(asked[tag])
+            sent = await call.user(yes_send(tag))
+            await call.advance(SETTLE_S)
+            sent.expect.action_completed(action)
+            [made] = tickets.listed()
+            again.extend(ScriptedLLM.reply(YOURS[tag].format(made.number)))
+            told = await call.user(AGAIN[tag])
+            await call.advance(SETTLE_S)
+            told.expect.said(contains=YOURS[tag].format(made.number))
+            assert told.blocked == ()
+            wrong = await call.user(SURE[tag])
+            await call.advance(SETTLE_S)
+            assert [blocked.unsupported for blocked in wrong.blocked] == [(MADE_UP,)]
+            assert [event.reason for event in blocks(call)] == ["unsupported_claim"]
+            assert MADE_UP not in said(call)
+            assert call.violations == ()
 
     run(scene())

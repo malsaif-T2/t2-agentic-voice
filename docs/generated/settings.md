@@ -204,7 +204,7 @@ Limits on one call.
 | --- | --- | --- | --- | --- |
 | `T2V_LIMITS__MAX_CALL_S` | number | `600` | seconds | The longest a call may last; the library ends it then. |
 | `T2V_LIMITS__IDLE_S` | number | `120` | seconds | The longest a call may go with nothing heard from the caller; then it ends. |
-| `T2V_LIMITS__ACTIONS_PER_CALLER_PER_DAY` | integer | `20` | — | How many of one kind of action one caller may have done in a day, counted from the outbox whatever became of them. Beyond it the action is refused before its read-back. The agent's starting value. |
+| `T2V_LIMITS__ACTIONS_PER_CALLER_PER_DAY` | integer | `20` | — | How many of one kind of action one caller may have done in a day, counted from the outbox: every write that may have reached the system, none refused or never sent. Beyond it the action is refused before its read-back. The agent's starting value. |
 
 ## `storage`
 

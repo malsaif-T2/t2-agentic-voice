@@ -1,7 +1,8 @@
 """`poe eval-actions`: run A (plan 007's "The measurement, registered before any result"), the
 scripted calls in which the agent acts, over one split, each scenario `--repeats` times (three,
 as registered), against the mock ticket system, into a folder, `--out`, with the real model
-(`gpt-oss-120b` at medium by default, Q9) and knowledge base.
+(`gpt-oss-120b` at medium by default, Q9) and knowledge base, the call's settings those the
+server's talker runs under (tickets/tools.py's `with_ticket_claims`).
 
 As `poe eval-scenarios`, a run refuses before anything is sent what it cannot measure: the
 checkout, the `--out`, the scenarios (read with `action_scenarios.problems`, refused when they
@@ -76,6 +77,7 @@ from ole5_voice.evals.talker_args import (
 from ole5_voice.evals.talker_measure import StopRun
 from ole5_voice.evals.talker_score import PriceShown, Session, Stopped
 from ole5_voice.evals.worktree import refused, run_checkout
+from ole5_voice.tickets.tools import with_ticket_claims
 
 REPEATS: Final = 3  # each scenario three times (the registration's run A)
 MODEL: Final = "openai/gpt-oss-120b"  # the registered model and effort (Q9)
@@ -149,7 +151,7 @@ def _built(args: argparse.Namespace, parts: ActionParts, closing: Closing) -> in
     every = load_scenarios(folder_of_scenarios)
     split = [scenario for scenario in every if scenario.split == args.split]
     smoke = next(scenario for scenario in every if scenario.split == "dev")
-    chat, call = chat_settings(args), call_settings(args)
+    chat, call = chat_settings(args), with_ticket_claims(call_settings(args))
     kb = closing.add(knowledge_of(parts.load_factory, args.knowledge, env_file_of(args)))
     recording = RecordingKnowledge(kb)
     make = AgentFactory(parts.load_factory(args.agent), args.agent)

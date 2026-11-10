@@ -16,8 +16,9 @@ start finds left `sending`.
   it looks each `flagged` row up again too: found, `done`; else left as it was. The outbox
   keeps no consent words and no language, so the lookup is told none (English).
 
-The outcome's line is the action's `done`, `failed` or `unknown`, or the library's; a `done`
-the result cannot fill says the library's `unknown`, which claims nothing. `ActionCompleted` or
+The outcome's line is the action's `done`, `failed` or `unknown`, or the library's, read in the
+read-back's wording (an MSA caller's in MSA: actions/spoken_lines.py); a `done` the result
+cannot fill says the library's `unknown`, which claims nothing. `ActionCompleted` or
 `ActionUnconfirmed` goes to `emit`, when given, as each job ends.
 """
 
@@ -69,7 +70,8 @@ def request_id_of(call_id: CallId, confirmed: ConfirmedAction) -> str:
 
 @dataclass(frozen=True, slots=True)
 class JobCall:
-    """What a job knows of the call that confirmed it, and the call's record."""
+    """What a job knows of the call that confirmed it, and the call's record: the reply's
+    `language`, and the tag its lines are read in (`wording`, the read-back's)."""
 
     caller: Caller
     call_id: CallId
@@ -78,6 +80,7 @@ class JobCall:
     conversation: tuple[ConversationLine, ...]
     clock: Clock
     record: ActionRecord
+    wording: LanguageTag
 
 
 class Writes:
@@ -216,8 +219,8 @@ class Writes:
         result: BaseModel | None = None,
         emit: bool = True,
     ) -> ActionOutcome:
-        """How the write ended, its line said in the call's language, and its event."""
-        line = _line(action, kind, draft=draft, result=result, tag=call.language)
+        """How the write ended, its line read in the read-back's wording, and its event."""
+        line = _line(action, kind, draft=draft, result=result, tag=call.wording)
         if emit and self._emit is not None:
             at = call.clock.wall()
             event: Event

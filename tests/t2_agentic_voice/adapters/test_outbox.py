@@ -1,8 +1,9 @@
 """The outbox stores (domain/ports/outbox.py; docs/SECURITY.md, invariant 6), SQLite's
 (adapters/outbox.py) and the one in memory (actions/memory_outbox.py), held to the same port: a
 request ID held once, `INSERT OR IGNORE`, so a write never goes twice; a row moved on, its
-result kept; rows by filter, oldest first; a count since an aware time. SQLite's own: a row on
-disk before `add` returns, read back by a later open of the file, its folder made."""
+result kept; rows by filter, oldest first; a count since an aware time of the writes that may
+have reached the system. SQLite's own: a row on disk before `add` returns, read back by a later
+open of the file, its folder made."""
 
 from __future__ import annotations
 
@@ -15,7 +16,7 @@ from typing import Any
 import pytest
 from t2_agentic_voice.actions.memory_outbox import NO_ROW, MemoryOutbox
 from t2_agentic_voice.adapters.outbox import SqliteOutbox
-from t2_agentic_voice.domain.ports.outbox import Outbox, OutboxEntry
+from t2_agentic_voice.domain.ports.outbox import Outbox, OutboxEntry, OutboxState
 
 AT = datetime(2026, 11, 10, 12, 0, tzinfo=UTC)
 LATER = AT + timedelta(minutes=5)
@@ -135,7 +136,7 @@ def test_a_count_reads_a_callers_rows_of_an_action_since_an_aware_time(
         await store.add(_entry("r-1"))
         await store.add(_entry("r-2", created_at=AT + timedelta(hours=1)))
         await store.add(_entry("r-3", subject="someone-else"))
-        await store.mark("r-2", state="not_sent")  # counted whatever became of it
+        await store.mark("r-2", state="flagged")  # it may have reached the system: counted
         count = store.count
         assert await count(subject="made-up-subject", action="open_request", since=AT) == 2
         later = AT + timedelta(minutes=1)
@@ -148,6 +149,24 @@ def test_a_count_reads_a_callers_rows_of_an_action_since_an_aware_time(
             await count(
                 subject="made-up-subject", action="open_request", since=AT.replace(tzinfo=None)
             )
+
+    within_store(body)
+
+
+def test_a_count_leaves_out_a_write_rejected_or_not_sent(
+    within_store: Callable[[Body], None],
+) -> None:
+    """The caps read the count, and count only a write that may have reached the system: one
+    `sending`, `done` or `flagged`, never one the backend `rejected` or one `not_sent`."""
+
+    async def body(store: Outbox, clock: Clock) -> None:
+        states: tuple[OutboxState, ...] = ("done", "flagged", "rejected", "not_sent")
+        await store.add(_entry("r-sending"))
+        for state in states:
+            await store.add(_entry(f"r-{state}"))
+            await store.mark(f"r-{state}", state=state)
+        counted = await store.count(subject="made-up-subject", action="open_request", since=AT)
+        assert counted == 3
 
     within_store(body)
 

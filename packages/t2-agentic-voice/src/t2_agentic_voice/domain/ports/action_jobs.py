@@ -51,7 +51,10 @@ class ActionJobs(Protocol):
         turn_id: TurnId,
         conversation: tuple[ConversationLine, ...],
         clock: Clock,
+        wording: LanguageTag | None = None,
     ) -> ActionOutcome:
         """Write the outbox row, run the action, wait for its reply or its timeout, look it up
-        when the reply was lost, and say how it ended; a failure of the write is an outcome,
-        never an exception. `confirmed` is refused unless `is_confirmed`."""
+        when the reply was lost, and say how it ended, its line read in `wording`, the tag the
+        read-back's texts were read in (`ReadBackPlan.wording`; `language` when None); a
+        failure of the write is an outcome, never an exception. `confirmed` is refused unless
+        `is_confirmed`."""

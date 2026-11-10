@@ -11,6 +11,7 @@ import asyncio
 import re
 from collections.abc import Mapping, Sequence
 from dataclasses import dataclass, field
+from typing import Any
 
 import pytest
 from t2_agentic_voice.actions.action import Action
@@ -21,6 +22,7 @@ from t2_agentic_voice.actions.tools import Tool
 from t2_agentic_voice.agent.talker import ChatTalker, TalkerCall
 from t2_agentic_voice.core.config import VoiceSettings
 from t2_agentic_voice.core.settings.guard import GuardSettings
+from t2_agentic_voice.core.settings.tts import LanguageTag
 from t2_agentic_voice.core.settings.words import LanguageCode
 from t2_agentic_voice.domain import claims
 from t2_agentic_voice.domain.claims import ActionEvidence, ClaimVerdict
@@ -121,20 +123,22 @@ def acting(
     *tools: Tool,
     settings: VoiceSettings | None = None,
     outbox: MemoryOutbox | None = None,
+    language: LanguageTag = "en",
+    **changes: Any,
 ) -> Acting:
-    """A call's talker of the tests' agent with `tools` and the made-up request action, its
-    runner on an in-memory outbox, in English."""
+    """A call's talker of the tests' agent with `tools` and the made-up request action (its
+    words changed by `changes`), its runner on an in-memory outbox, in `language`."""
     clock = FakeClock()
     store = outbox or MemoryOutbox()
     backend = Backend("answer", outbox=store, clock=clock)
-    action = an_action(backend)
+    action = an_action(backend, **changes)
     runner = ActionRunner([action], outbox=store)
     talker = ChatTalker(
         acting_agent(action, *tools),
         model=model,
         runner=ToolRunner(tools),
         settings=settings or VoiceSettings(env="test"),
-        call=TalkerCall(call_id=CALL_ID, caller=CALLER, language="en"),
+        call=TalkerCall(call_id=CALL_ID, caller=CALLER, language=language),
         clock=clock,
         actions=runner,
     )

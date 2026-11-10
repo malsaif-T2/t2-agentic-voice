@@ -35,8 +35,10 @@ class ReadBackPlan(_Line):
     `draft_json`, the parsed draft, which the receipt will hold; the `summary` the receipt
     covers and the closing `question`, rendered apart so each stays its own clause; the line
     `asked_again`, spoken when the answer is unclear; the lines `declined` and `sending`; the
-    reply's `language`; the action's own `send_words`; and `max_attempts`, how many times the
-    caller is asked.
+    reply's `language`, which every line is spoken in; `wording`, the tag its texts were read
+    in (`ar`, MSA, for an `ar-SA` reply to an MSA caller; None for the reply's own), which the
+    outcome's line is read in too; the action's own `send_words`; and `max_attempts`, how
+    many times the caller is asked.
 
     `declined` is the action's own line or the library's. The session speaks it only where no
     talker turn can answer: nothing usable heard after the last ask-again. After a plain no or
@@ -57,6 +59,7 @@ class ReadBackPlan(_Line):
     declined: SpokenLine
     sending: SpokenLine
     language: LanguageTag
+    wording: LanguageTag | None = None
     send_words: tuple[str, ...] = ()
     max_attempts: int = Field(ge=1)
 

@@ -243,10 +243,11 @@ def declare(
 
 def talker_agent(kb: KnowledgeBase | None, *, tickets: TicketSystem | None = None) -> VoiceAgent:
     """Ole5's talker, searching `kb` and acting on `tickets` (`ticket_tools`), as the server
-    serves it; with `tickets` None, told it has no tickets (runs K, S and T, which give it
-    none); with `kb` None, the same talker with no tool at all (a run that times the replies
-    with no search, as run T's pass Tn does), so given no ticket system: ValueError
-    otherwise."""
+    serves it, under the settings tickets/tools.py's `with_ticket_claims` gives, whose guard
+    reads a number said as the caller's ticket number as a claim; with `tickets` None, told it
+    has no tickets (runs K, S and T, which give it none); with `kb` None, the same talker with
+    no tool at all (a run that times the replies with no search, as run T's pass Tn does), so
+    given no ticket system: ValueError otherwise."""
     if kb is None:
         if tickets is not None:
             raise ValueError("the talker with no search has no tool; give it no ticket system")

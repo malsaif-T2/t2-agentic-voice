@@ -24,6 +24,10 @@ Saudi, MSA and English turns, each answered in its own.
   line after a tool result then ask for that register (agent/prompt.py); an agent's Arabic tag
   that is not Saudi (`ar`) keeps its section as it was. Run K's first dev round had 8 of 10 MSA
   callers answered in Saudi Arabic while the model alone was asked to tell the two apart.
+- **The wording** of an action's lines (`wording`): an `ar-SA` reply to an MSA caller reads an
+  action's texts in `ar`, its MSA ones (domain/action_declaration.py's `read_in`), and the
+  library's own lines in MSA, the owner's ruling of 2026-11-10; it is still spoken in `ar-SA`,
+  the agent's voice. Any other reply reads its own tag.
 """
 
 from __future__ import annotations
@@ -206,3 +210,10 @@ def call_register(turns: Sequence[str]) -> Register:
     if any(register_of(words) == "saudi" for words in arabic) or not arabic:
         return "saudi"
     return "msa"
+
+
+def wording(tag: LanguageTag, register: Register) -> LanguageTag:
+    """The tag an action's lines are read in, for a reply in `tag` to a caller whose Arabic is
+    in `register` (`call_register`): `ar`, MSA, for an `ar-SA` reply to an MSA caller, else
+    `tag` itself (the module's docstring)."""
+    return "ar" if tag == "ar-SA" and register == "msa" else tag

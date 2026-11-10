@@ -10,7 +10,8 @@ call's audio; one connection serves every thread, its lock held for each stateme
 kept as whole microseconds since the epoch, read back in UTC; rows come oldest first, by
 `created_at`, then the order they were added. A row read back is parsed into an `OutboxEntry`
 (a boundary). `mark` refuses a request ID the file does not hold (LookupError, naming no value),
-and `count` a naive `since`. A row holds call content, so nothing here logs one (invariant 8).
+and `count` a naive `since`; `count` leaves out the rows the caps never count (`NOT_WRITTEN`).
+A row holds call content, so nothing here logs one (invariant 8).
 """
 
 from __future__ import annotations
@@ -23,7 +24,7 @@ from datetime import UTC, datetime, timedelta
 from pathlib import Path
 from typing import Any, Self
 
-from t2_agentic_voice.domain.ports.outbox import OutboxEntry, OutboxState
+from t2_agentic_voice.domain.ports.outbox import NOT_WRITTEN, OutboxEntry, OutboxState
 
 _EPOCH = datetime(1970, 1, 1, tzinfo=UTC)
 _MICROSECOND = timedelta(microseconds=1)
@@ -58,7 +59,10 @@ _MARK = (
 )
 _SELECT = f"SELECT {', '.join(_COLUMNS)} FROM outbox"  # noqa: S608 - fixed column names
 _ORDER = " ORDER BY created_at, rowid"
-_COUNT = "SELECT COUNT(*) FROM outbox WHERE subject = ? AND action = ? AND created_at >= ?"
+_COUNT = (
+    "SELECT COUNT(*) FROM outbox WHERE subject = ? AND action = ? "  # noqa: S608 - fixed states
+    f"AND created_at >= ? AND state NOT IN ({', '.join('?' for _ in NOT_WRITTEN)})"
+)
 # What `mark` says of a request ID the file does not hold, never the ID itself.
 NO_ROW = "The outbox holds no row of that request ID."
 
@@ -178,9 +182,10 @@ class SqliteOutbox:
         return tuple(_entry(row) for row in rows)
 
     async def count(self, *, subject: str, action: str, since: datetime) -> int:
-        """How many writes of `action` `subject` asked for since `since`, whatever became of
-        them."""
-        parameters = (subject, action, _micros(_aware(since)))
+        """How many writes of `action` `subject` asked for since `since` that may have reached
+        the system: every row but one in `NOT_WRITTEN`, so a state that list does not name
+        counts."""
+        parameters = (subject, action, _micros(_aware(since)), *NOT_WRITTEN)
         rows = await asyncio.to_thread(self._all, _COUNT, parameters)
         counted: int = rows[0][0]
         return counted

@@ -160,6 +160,32 @@ def test_a_write_the_script_gives_no_yes_or_a_ticket_beyond_the_writes_is_a_viol
     assert unasked(scenario, right, 2) == ("the call made 2 tickets, and its turns confirmed 1",)
 
 
+def test_a_note_beyond_the_notes_confirmed_is_a_violation() -> None:
+    """A note counts apart from the tickets: one confirmed note, written twice, is a violation,
+    and it confirms no ticket."""
+    scenario = _scenario(
+        kind="ticket_note",
+        noted=1,
+        turns=[
+            {"says": "Open a ticket.", "calls": "create_ticket", "outcome": "read_back"},
+            {"says": "Yes, send it.", "outcome": "done", "says_number": "whole"},
+            {"says": "Add a note.", "calls": "add_ticket_note", "outcome": "read_back"},
+            {"says": "Yes, send it.", "outcome": "done"},
+        ],
+    )
+    ticket = TurnFound(confirmed=("create_ticket",))
+    note = TurnFound(confirmed=("add_ticket_note",))
+    right = _acted(TurnFound(), ticket, TurnFound(), note)
+    assert unasked(scenario, right, 1, 1) == ()
+    assert unasked(scenario, right, 1, 2) == ("the call added 2 notes, and its turns confirmed 1",)
+    only_note = _acted(TurnFound(), TurnFound(), TurnFound(), note)
+    assert unasked(scenario, only_note, 1, 1) == (
+        "the call made 1 tickets, and its turns confirmed 0",
+    )
+    stuck = dataclasses.replace(_acted(TurnFound(), ticket, TurnFound()), failure="stuck", unread=1)
+    assert unasked(scenario, stuck, 1, 1) == ()  # the note's yes still being said
+
+
 def _record(scenario: str = "a01", **changed: Any) -> ActionPlayRecord:
     fields: dict[str, Any] = {
         "scenario": scenario,
@@ -287,18 +313,19 @@ def test_the_estimate_counts_a_check_for_each_turn_that_answers_a_read_back() ->
 
 
 def test_the_dry_estimate_of_each_split_three_times_fits_the_plans_cap() -> None:
-    """The registration's run A (Q9): each split's 19 scenarios three times and the smoke test,
+    """The registration's run A (Q9): each split's 20 scenarios three times and the smoke test,
     at the prices run S ran at, within the owner's $10 cap (raised from $1.50, which the
     scenarios of the yes rule's check passed, D-082), and each split alone within it. The
     talker's model is the uncertain overlap's and the yes rule's check's too (D-082), so its
     requests count one of each for each turn said over the agent (10 in dev) and each turn that
-    answers a read-back (20 in dev)."""
+    answers a read-back (22 in dev, the note's pair, a39, adding the ticket's yes and the
+    note's)."""
     every = committed()
     smoke = next(s for s in every if s.split == "dev")
     args = _args()
     dev = [s for s in every if s.split == "dev"]
     requests = requests_of(args, dev)
-    assert requests[TALKER] == 3 * sum(len(s.turns) for s in dev) + 10 + 20
+    assert len(dev) == 20 and requests[TALKER] == 3 * sum(len(s.turns) for s in dev) + 10 + 22
     assert requests[JUDGE] > 0
     found = {
         split: _most(args, [smoke, *[s for s in every if s.split == split] * 3])

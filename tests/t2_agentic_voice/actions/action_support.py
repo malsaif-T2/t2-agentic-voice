@@ -71,6 +71,17 @@ READ_BACK = ReadBack(
     send_words={"ar": ["افتحه"], "en": ["open it"]},
     asked_again=Say(ar="ما سمعتك، أرسل طلب {category}؟", en="Sorry, shall I send it?"),
 )
+# A read-back in Saudi Arabic and in MSA: "baftaH Talab {category}: {summary}. arsiluh?" and
+# "sa-aftaH Talab {category}: {summary}. hal ursiluh?", I'll open a {category} request: ...
+# Shall I send it?
+SAUDI_AND_MSA = ReadBack(
+    {
+        "ar-SA": ("بفتح طلب {category}: {summary}.", "أرسله؟"),
+        "ar": ("سأفتح طلب {category}: {summary}.", "هل أرسله؟"),
+        "en": ("A {category} request: {summary}.", "Shall I send it?"),
+    },
+    send_words={"ar": ["أرسله"]},
+)
 DONE = Say({"ar": "تم، رقم الطلب {number:id}.", "en": "Done, your number is {number:id}."})
 CLAIMS = Claims({"ar": ["فتحت الطلب"], "en": ["I've opened"]})
 LINES: dict[str, Any] = {
@@ -215,9 +226,15 @@ class Rig:
         self.events: list[Event] = []
         self.runner = ActionRunner([self.action], outbox=self.outbox, emit=self.events.append)
 
-    async def plan(self, language: LanguageTag = "en", *, call_id: str = CALL_ID) -> ReadBackPlan:
+    async def plan(
+        self,
+        language: LanguageTag = "en",
+        *,
+        call_id: str = CALL_ID,
+        wording: LanguageTag | None = None,
+    ) -> ReadBackPlan:
         made = await self.runner.propose(
-            request(), context(language, call_id=call_id), clock=self.clock
+            request(), context(language, call_id=call_id), clock=self.clock, wording=wording
         )
         assert isinstance(made, ReadBackPlan), made
         return made
@@ -228,9 +245,11 @@ class Rig:
         *,
         call_id: str = CALL_ID,
         language: LanguageTag = "en",
+        wording: LanguageTag | None = None,
         advance_s: float = 0.0,
     ) -> ActionOutcome:
-        """Run `confirmed`, the clock moved `advance_s` on once the write's timer is set."""
+        """Run `confirmed`, its lines read in `wording` when given, the clock moved
+        `advance_s` on once the write's timer is set."""
         before = len(self.clock.sleeps)
         job = asyncio.ensure_future(
             self.runner.run(
@@ -238,6 +257,7 @@ class Rig:
                 caller=CALLER,
                 call_id=call_id,
                 language=language,
+                wording=wording,
                 turn_id=9,
                 conversation=CONVERSATION,
                 clock=self.clock,

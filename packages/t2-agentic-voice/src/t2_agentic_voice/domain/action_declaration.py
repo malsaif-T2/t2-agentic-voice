@@ -2,11 +2,15 @@
 of a sentence in each language; `ReadBack`, the read-back and how it is confirmed; `Claims`, the
 past-tense phrases that claim the action; and `Spoken`, how each fixed value is said.
 
-**A template's keys.** A text is keyed by a language tag, `ar-SA`, `ar` or `en`, and a language
-reads its own tag first, then its primary code: an `ar` text serves both Arabic presets unless
-`ar-SA` has its own, and an `ar-SA` text never serves `ar`. The declaration refuses an agent
-with a language none of an action's texts covers. Word lists (`send_words`) key by the primary
-code, as the presets' do.
+**A template's keys.** A text is keyed by a language tag, `ar-SA`, `ar` or `en`. A language
+is covered by a text of its own tag or of its primary code: an `ar` text covers both Arabic
+presets unless `ar-SA` has its own, and an `ar-SA` text never covers `ar`. The declaration
+refuses an agent with a language none of an action's texts covers, and never one with a text
+of a tag it does not speak. A text is read in its own tag first, then the other Arabic one
+(`read_in`): so an `ar-SA` agent's action may give an `ar` text, MSA, beside its `ar-SA` one,
+which a reply to a caller who speaks MSA reads (agent/language.py's `wording`), and its
+`ar-SA` text when it has none. Word lists (`send_words`) key by the primary code, as the
+presets' do.
 
 **A placeholder** is `{field}`, or `{field:id}` to say it digit by digit, and names a field of
 the draft or, in `done`, of the result. A fixed value is said through its `Spoken` label.
@@ -57,9 +61,15 @@ def _covers(keys: Collection[str], tag: LanguageTag) -> bool:
     return tag in keys or _primary(tag) in keys
 
 
+def read_in(tag: LanguageTag) -> tuple[LanguageTag, ...]:
+    """The keys a text is read by in `tag`, in order: its own, then the other Arabic tag."""
+    return ("en",) if tag == "en" else (tag, "ar" if tag == "ar-SA" else "ar-SA")
+
+
 def _text_for[T](texts: Mapping[LanguageTag, T], tag: LanguageTag) -> T:
-    """The text `tag` reads (the module's docstring); KeyError for a language none covers."""
-    return texts[tag] if tag in texts else texts[cast(LanguageTag, _primary(tag))]
+    """The text `tag` reads (the module's docstring); KeyError for a language none is read
+    in."""
+    return texts[next((key for key in read_in(tag) if key in texts), tag)]
 
 
 def _tag(field: str, key: object) -> LanguageTag:
@@ -249,8 +259,8 @@ class Claims:
 @dataclass(frozen=True, init=False, eq=False)
 class Spoken:
     """How each fixed value of a draft's field is said, put on the field's type:
-    `Annotated[Literal["hardware"], Spoken({"hardware": {"ar": "..."}})]`. A language with no
-    label says the value as it is written."""
+    `Annotated[Literal["hardware"], Spoken({"hardware": {"ar": "..."}})]`, a label read as a
+    text is (`read_in`). A language with no label says the value as it is written."""
 
     labels: Mapping[str, Mapping[LanguageTag, str]]
 
@@ -269,4 +279,4 @@ class Spoken:
     def label(self, value: str, tag: LanguageTag) -> str | None:
         """How `tag` says `value`; None when it has no label for it."""
         said = self.labels.get(value, {})
-        return said.get(tag, said.get(_primary(tag)))
+        return next((said[key] for key in read_in(tag) if key in said), None)

@@ -1,9 +1,9 @@
 """Plan 007's action scenarios (ole5_voice/evals/action_scenarios.py; the plan's "The
-measurement, registered before any result"): the committed thirty-eight break no rule, each of
-the 19 kinds (the plan's 15, and four of answers the yes rule's lists leave unplaced, D-082)
-once in dev and once in held-out, in another language, every language in each split; and each
-rule shown to catch a made-up scenario that breaks it. No scenario is played here
-(test_action_play.py plays each)."""
+measurement, registered before any result"): the committed forty break no rule, each of the 20
+kinds (the plan's 15, four of answers the yes rule's lists leave unplaced, D-082, and a note on
+a ticket made in the call, the owner's ruling of 2026-11-10) once in dev and once in held-out,
+in another language, every language in each split; and each rule shown to catch a made-up
+scenario that breaks it. No scenario is played here (test_action_play.py plays each)."""
 
 from __future__ import annotations
 
@@ -27,7 +27,7 @@ COMMITTED = load_action_scenarios(EVALS / ACTIONS_DIR)
 
 
 def test_the_committed_scenarios_break_no_rule() -> None:
-    assert len(COMMITTED) == 2 * len(KINDS) == 38
+    assert len(COMMITTED) == 2 * len(KINDS) == 40
     assert problems(COMMITTED) == []
     assert set(RULES) == set(KINDS)
 
@@ -93,6 +93,9 @@ def test_a_valid_scenario_has_no_problem_of_its_own() -> None:
         ({"made": 0, "ticket_type": None}, "makes 1 tickets"),
         ({"ticket_type": None}, "ticket_type is given exactly"),
         ({"passage": "A made-up passage, number 2026110482000555."}, "only the fake number's"),
+        ({"noted": 1}, "its kind adds 0 notes"),
+        ({"kind": "ticket_note"}, "its kind adds 1 notes"),
+        ({"kind": "ticket_note", "noted": 1}, "no turn calls add_ticket_note"),
         (
             {
                 "turns": [
@@ -172,6 +175,28 @@ def test_the_status_kinds_need_their_tickets() -> None:
     assert _of(**others, turns=said) == []
     forged = {**others, "seed": [{**other, "through_agent": True}]}
     assert any("never made through" in p for p in _of(**forged, turns=said))
+
+
+NOTE_TURNS: list[dict[str, Any]] = [
+    {"says": "Open a ticket.", "calls": "create_ticket", "outcome": "read_back"},
+    {"says": "Yes, send it.", "outcome": "done", "says_number": "whole"},
+    {"says": "Add a note to it.", "calls": "add_ticket_note", "outcome": "read_back"},
+    {"says": "Yes, send it.", "outcome": "done"},
+]
+
+
+def test_a_note_goes_only_on_a_ticket_the_call_made_before_it() -> None:
+    """As `add_ticket_note` takes only a ticket this call's record holds (tickets/actions.py):
+    its call follows a turn whose ticket's write was done, never one before the ticket or after
+    a ticket that was not made."""
+    note = {"kind": "ticket_note", "noted": 1}
+    assert _of(**note, turns=NOTE_TURNS) == []
+    early = [NOTE_TURNS[2], NOTE_TURNS[3], NOTE_TURNS[0], NOTE_TURNS[1]]
+    assert "made_up: turn 1: a note goes only on a ticket made earlier in the call" in _of(
+        **note, turns=early
+    )
+    refused = [NOTE_TURNS[0], {"says": "No.", "outcome": "talker"}, *NOTE_TURNS[2:]]
+    assert any("turn 3: a note goes only on a ticket made" in p for p in _of(**note, turns=refused))
 
 
 def test_the_set_needs_each_kind_in_both_splits_and_each_language_in_each() -> None:

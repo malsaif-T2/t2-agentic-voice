@@ -67,10 +67,13 @@ ticket. These settings, in the same `.env`, are optional:
 With the knowledge base set, the agent can also open a ticket on the mock, add a note to a
 ticket it opened in the same call, pass a request for a person to the support team as a
 ticket, and say the status of the tickets it opened for you. It asks only what is wrong and
-how urgent it is, reads the ticket back, and asks «تبيني أرسلها؟» or "Shall I send it?". It is
-sent only on a clear yes after the whole read-back: say «نعم أرسلها» or "yes, send it" over the
-question, or a plain yes once it has ended; a plain yes over the question is asked again, and a
-stop word over the read-back stops it with nothing sent. Once the ticket is made it says the
-whole number, in four groups of four digits; a status says only the last four. Asking for a
-person makes a ticket for the support team with what both of you said in the call; nobody joins
-the call.
+how urgent it is, reads the ticket back, and asks «تبيني أرسلها؟» or "Shall I send it?"; a
+caller who speaks MSA hears the read-back and what follows it in MSA, the question «هل
+أرسلها؟». It is sent only on a clear yes after the whole read-back: say «نعم أرسلها» or "yes,
+send it" over the question, or a plain yes once it has ended; a plain yes over the question is
+asked again, and a stop word over the read-back stops it with nothing sent. Once the ticket is
+made it says the whole number, in four groups of four digits; a status says only the last four.
+A number said as your ticket number («رقم تذكرتك», "your ticket number is") is held back unless
+a ticket was made or found in the call, and then it must be that ticket's. Asking for a person
+makes a ticket for the support team with what both of you said in the call; nobody joins the
+call.

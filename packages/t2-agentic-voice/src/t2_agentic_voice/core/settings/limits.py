@@ -29,7 +29,8 @@ class LimitSettings(Group):
         ge=1,
         description=(
             "How many of one kind of action one caller may have done in a day, counted from "
-            "the outbox whatever became of them. Beyond it the action is refused before its "
-            "read-back. The agent's starting value."
+            "the outbox: every write that may have reached the system, none refused or never "
+            "sent. Beyond it the action is refused before its read-back. The agent's starting "
+            "value."
         ),
     )

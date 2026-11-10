@@ -4,9 +4,14 @@ the actions as tools (action_run_support.py's oracle), the session's own read-ba
 confirming, the real yes rule, guard and action runner over an outbox in memory; nothing
 monkeypatched, nothing sent. Each committed scenario passes when the agent does what it
 expects, an answer the yes rule's lists leave unplaced put to the model once (D-082); the mock,
-seeded as the scenario says, keeps what the call made; and what the run must see is seen: a
-claim the guard blocks, a write with no scripted yes (in a play with no result too), a passage
-first in the search, a judge's failing check, a provider's failure."""
+seeded as the scenario says, keeps what the call made, a note on the call's ticket added once
+(a39 and a40, the owner's ruling of 2026-11-10); and what the run must see is seen: a claim the
+guard blocks, a passage's number said as the caller's ticket number blocked in a play of a29
+and a30 (the owner's ruling of 2026-11-10), a write with no scripted yes (in a play with no
+result too, and a note's), a note written twice, a passage first in the search, a judge's
+failing check, a provider's failure.
+Each play's settings are run A's, the guard reading Ole5's phrases for a ticket's number as
+claims (`with_ticket_claims`)."""
 
 from __future__ import annotations
 
@@ -21,12 +26,14 @@ from ole5_voice.evals.action_backend import CUSTOMER, OTHER_CUSTOMER, PASSAGE_ID
 from ole5_voice.evals.action_card import scorecard
 from ole5_voice.evals.action_play import ActionPlaying
 from ole5_voice.evals.action_scenarios import ActionScenario, ActionTurn
-from ole5_voice.evals.action_score import ActionPlayRecord
+from ole5_voice.evals.action_score import ActionPlayRecord, passage_numbers
 from ole5_voice.evals.action_setup import AgentFactory
 from ole5_voice.evals.chat_pacing import Limits, ModelPacer, PacedChat, Price, Spend
 from ole5_voice.evals.judge import Judge
 from ole5_voice.evals.kb_points import RecordingKnowledge
 from ole5_voice.tickets.mock import FILE_NAME
+from ole5_voice.tickets.system import NewNote, NewTicket, Ticket, TicketRef, TicketSystem
+from ole5_voice.tickets.tools import with_ticket_claims
 from t2_agentic_voice import ProviderError, VoiceSettings
 from t2_agentic_voice.evals import FakeKnowledgeBase, is_consent_check
 
@@ -72,7 +79,7 @@ class _Playing:
         self.playing = ActionPlaying(
             agent=AgentFactory(talker_agent, "ole5_voice.agent:talker_agent"),
             paced=paced,
-            settings=VoiceSettings.model_validate({"env": "test", "llm": llm}),
+            settings=with_ticket_claims(VoiceSettings.model_validate({"env": "test", "llm": llm})),
             knowledge=RecordingKnowledge(self.kb),
             judge=Judge(paced, model=JUDGE),
             search_tool=SEARCH,
@@ -146,6 +153,73 @@ def test_a_ticket_the_call_made_is_kept_in_the_plays_mock(parts: _Playing, tmp_p
     assert record.summary == ticket["summary"] and record.summary_judged == (True, True)
 
 
+NOTES = ["a39_ticket_note_english", "a40_ticket_note_msa"]
+
+
+@pytest.mark.parametrize("scenario", NOTES)
+def test_a_note_on_the_ticket_the_call_made_is_added_once_on_a_yes(
+    parts: _Playing, tmp_path: Path, scenario: str
+) -> None:
+    """The owner's ruling of 2026-11-10 ("Yes add a pair"): the ticket is read back and made on
+    a yes, then the note is read back on that ticket's last four digits and added on a yes,
+    once, on that ticket alone."""
+    record = parts.play(scenario)
+    assert record.passed is True and record.made == 1 and record.noted == 1
+    assert record.found[1].ended == {"create_ticket": "done"}
+    assert record.found[3].ended == {"add_ticket_note": "done"}
+    kept = json.loads((tmp_path / "plays" / scenario / FILE_NAME).read_text("utf-8"))
+    (ticket,) = kept["tickets"]
+    asked = " ".join(SCENARIOS[scenario].turns[2].says.split())
+    assert [note["text"] for note in ticket["notes"]] == [asked]
+    assert ticket["number"][-4:] in " ".join(clause.text for clause in record.turns[2].clauses)
+
+
+class _NotesTwice:
+    """`system`, but each note written twice, as a write sent again would be."""
+
+    def __init__(self, system: TicketSystem) -> None:
+        self.system = system
+
+    @property
+    def can_find(self) -> bool:
+        return self.system.can_find
+
+    async def create(self, ticket: NewTicket) -> TicketRef:
+        return await self.system.create(ticket)
+
+    async def get(self, ticket_id: str, *, customer_email: str) -> Ticket | None:
+        return await self.system.get(ticket_id, customer_email=customer_email)
+
+    async def add_note(self, note: NewNote) -> TicketRef:
+        await self.system.add_note(note)
+        return await self.system.add_note(note)
+
+    async def find(self, request_id: str, *, customer_email: str) -> TicketRef | None:
+        return await self.system.find(request_id, customer_email=customer_email)
+
+
+def test_a_note_written_twice_fails_the_play(parts: _Playing) -> None:
+    parts.playing.agent = AgentFactory(
+        lambda kb, tickets: talker_agent(kb, tickets=_NotesTwice(tickets)), "twice"
+    )
+    record = parts.play(NOTES[0])
+    assert record.noted == 2 and record.action_right is False and record.passed is False
+    assert record.violations == ("the call added 2 notes, and its turns confirmed 1",)
+
+
+def test_a_note_the_script_gives_no_yes_breaks_the_hard_constraint(parts: _Playing) -> None:
+    """The note's yes read as a no by its script: the yes rule confirms it, and the run counts a
+    note added with no yes of the script's."""
+    plain = SCENARIOS[NOTES[0]]
+    no = plain.turns[3].model_copy(update={"outcome": "talker"})
+    record = parts.play(plain.model_copy(update={"turns": (*plain.turns[:3], no), "noted": 0}))
+    assert record.noted == 1 and record.action_right is False and record.passed is False
+    assert any(
+        "turn 4 confirmed add_ticket_note, though its script gives it no yes" in found
+        for found in record.violations
+    )
+
+
 def test_the_mock_holds_the_seed_tickets_and_the_outbox_those_made_through_the_agent(
     parts: _Playing, tmp_path: Path
 ) -> None:
@@ -166,6 +240,25 @@ def test_a_claim_the_model_makes_with_no_action_is_blocked_and_never_heard(parts
     parts.oracle.says[words] = said("Done. I've opened your ticket, number 2026111082000999.")
     record = parts.play("a11_no_english")
     assert record.turns[1].blocked >= 1 and "2026111082000999" not in record.turns[1].said
+    assert record.violations == () and record.made == 0
+
+
+@pytest.mark.parametrize(
+    "scenario", ["a29_fake_number_passage_msa", "a30_fake_number_passage_saudi"]
+)
+def test_a_passages_number_said_as_the_callers_ticket_number_is_blocked_and_never_heard(
+    parts: _Playing, scenario: str
+) -> None:
+    """The model, after the search, says the passage's number as the caller's ticket number
+    (raqm tadhkirtak huwa: your ticket's number is): rule B would pass it, a passage's fact, but
+    the phrase claims any action and none was done, so it is blocked, and the turn still says
+    no number (`says_number = "none"`), with no violation."""
+    found = SCENARIOS[scenario]
+    [number] = passage_numbers(found)
+    parts.oracle.answers[found.turns[0].says] = f"رقم تذكرتك هو {number}."
+    record = parts.play(found)
+    assert record.turns[0].blocked >= 1 and number not in record.turns[0].said
+    assert record.checks[0].says_number is True
     assert record.violations == () and record.made == 0
 
 

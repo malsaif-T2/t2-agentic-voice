@@ -109,13 +109,18 @@ def test_a_summary_is_kept_trimmed() -> None:
 
 
 def test_every_type_and_priority_is_said_in_saudi_arabic_and_english() -> None:
+    """And in MSA: the Saudi label, which MSA says alike, or the MSA one where it differs."""
     assert set(TYPE_LABELS) == set(TYPES) and len(TYPES) == 11
     assert set(PRIORITY_LABELS) == set(PRIORITIES)
     for labels in (*TYPE_LABELS.values(), *PRIORITY_LABELS.values()):
-        assert set(labels) == {"ar-SA", "en"}
+        assert {"ar-SA", "en"} <= set(labels) <= {"ar-SA", "ar", "en"}
         assert labels["en"].isascii() and not labels["ar-SA"].isascii()
     said = [labels["ar-SA"] for labels in TYPE_LABELS.values()]
     assert len(set(said)) == len(said)  # each type is told apart by its label
+    # «nidhaam thaani», another system, is Saudi; MSA says «nidhaam aakhar».
+    assert TYPE_LABELS["Request for Integration"]["ar"] == "طلب ربط مع نظام آخر"
+    msa = [labels.get("ar", labels["ar-SA"]) for labels in TYPE_LABELS.values()]
+    assert len(set(msa)) == len(msa)
 
 
 def test_a_ticket_made_says_its_number_in_four_groups_the_last_its_last_four() -> None:

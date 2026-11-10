@@ -6,8 +6,9 @@
   call, each told apart by its `call_id`) as a task of its own, outside every reply's cancel
   scope and off the session's lock, so neither a stop nor the call's end cuts it in half; one
   read-back's is started once at most (`start`). It is handed the caller, the language of the
-  action's lines, the turn that said yes, and the call so far as the caller heard it
-  (history.py's `lines`, for an action that attaches it: plan 007's Q7).
+  action's lines and the wording its texts are read in (the read-back's: MSA for an MSA
+  caller), the turn that said yes, and the call so far as the caller heard it (history.py's
+  `lines`, for an action that attaches it: plan 007's Q7).
 - **Its outcome** lands as a step of the session's (under its lock): the public `ActionCompleted`
   for `done`, `ActionUnconfirmed` for `failed` or `unknown`; and its line, the action's own
   template the runner rendered (`ActionOutcome.line`), is kept until the next turn boundary
@@ -87,10 +88,17 @@ class ActionJob:
         """Whether the call has an `ActionJobs` to hand a confirmed action to."""
         return self._setup.action_jobs is not None
 
-    def start(self, confirmed: ConfirmedAction, *, turn_id: TurnId, language: LanguageTag) -> bool:
-        """Start `confirmed`'s write, the yes of the caller's turn `turn_id`, its lines in
-        `language`, as a job of its own; whether it was (not with no `ActionJobs`, nor a second
-        time for one read-back)."""
+    def start(
+        self,
+        confirmed: ConfirmedAction,
+        *,
+        turn_id: TurnId,
+        language: LanguageTag,
+        wording: LanguageTag | None = None,
+    ) -> bool:
+        """Start `confirmed`'s write, the yes of the caller's turn `turn_id`, its lines said in
+        `language` and read in `wording` (the read-back's), as a job of its own; whether it was
+        (not with no `ActionJobs`, nor a second time for one read-back)."""
         setup, jobs = self._setup, self._setup.action_jobs
         if jobs is None or confirmed.reply_id in self._started:
             return False
@@ -100,6 +108,7 @@ class ActionJob:
             caller=setup.caller,
             call_id=setup.call_id,
             language=language,
+            wording=wording,
             turn_id=turn_id,
             conversation=self._history.lines(),
             clock=setup.clock,

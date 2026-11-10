@@ -1,0 +1,35 @@
+# Plan 007's action scenarios (its "The measurement"; ole5_voice/evals/action_scenarios.py),
+# added by the owner's ruling of 2026-11-10 before any run: a note on the ticket the call made,
+# in Modern Standard Arabic.
+id = "a40_ticket_note_msa"
+kind = "ticket_note"
+split = "held-out"
+language = "ar"
+notes = "An MSA caller's ticket is read back and opened on a yes; the note asked for next is read back on that ticket's last four digits and added once on a yes."
+made = 1
+noted = 1
+ticket_type = "Mobile App Issue"
+summary_facts = ["Says the mobile app closes suddenly whenever the caller opens an attachment in a correspondence."]
+
+[[turns]]
+says = "أرجو فتح تذكرة: تطبيق الجوال يغلق فجأة كلما فتحت مرفقا في مراسلة، والأمر عاجل."
+calls = "create_ticket"
+outcome = "read_back"
+language = "ar"
+
+[[turns]]
+says = "نعم، أرسلها."
+outcome = "done"
+says_number = "whole"
+
+[[turns]]
+says = "شكرا. وأرجو إضافة ملاحظة إلى هذه التذكرة: يحدث ذلك على جهاز آيفون فقط، أما على أندرويد فيعمل التطبيق جيدا."
+calls = "add_ticket_note"
+outcome = "read_back"
+language = "ar"
+says_number = "last_four"
+facts = ["The note read back says it happens only on an iPhone, and that the app works well on Android."]
+
+[[turns]]
+says = "نعم، أرسلها."
+outcome = "done"

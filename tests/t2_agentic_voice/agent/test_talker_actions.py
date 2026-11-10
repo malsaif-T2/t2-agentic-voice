@@ -1,6 +1,7 @@
 """The talker's side of an action (agent/turn.py, agent/tool_calls.py; the design's 6.4): the
 action offered beside the tools, its schema the draft's alone; its call proposed to the action
-runner, the read-back the reply's last event and no request after it; a refusal back to the
+runner, the read-back the reply's last event and no request after it, read in the caller's
+register (an MSA caller's from the action's MSA texts, in the call's tag); a refusal back to the
 model, which may speak again; one action a request; rule C, the text after the call dropped
 unspoken (GP-08); a tool call that claims the caller's yes confirming nothing (invariant 1,
 GP-08); and a declined read-back answered by the model in its own words, a correction called
@@ -25,10 +26,11 @@ from t2_agentic_voice.core.conversation import (
     PastTurn,
     TalkerTurn,
 )
+from t2_agentic_voice.core.settings.tts import LanguageTag
 from t2_agentic_voice.domain.ports.chat_model import TextDelta
 
 from tests.leaks import holding, shown
-from tests.t2_agentic_voice.actions.action_support import ISSUED
+from tests.t2_agentic_voice.actions.action_support import ISSUED, SAUDI_AND_MSA
 from tests.t2_agentic_voice.agent.action_talk_support import FakeClaims, acting, fake_rule_a, rows
 from tests.t2_agentic_voice.agent.chat_support import FakeChat, call, calls, kinds, reply, said
 
@@ -89,6 +91,30 @@ def test_an_action_call_is_read_back_the_replys_last_event_and_nothing_is_writte
     assert json.loads(ended.result) == {"status": READ_BACK}
     assert rig.backend.writes == [] and rig.runner.record("call-1").entries() == ()
     assert rows(rig.outbox) == ()
+
+
+# An MSA caller and a Saudi caller asking for the request in an `ar-SA` call: "my computer does
+# not work, I want to open a request" ("Haasoobi la ya'mal, ureed fatH Talab"; "laptopi ma
+# yishtaghil, abi aftaH Talab").
+MSA_TURN = TalkerTurn(turn_id=1, words="حاسوبي لا يعمل، أريد فتح طلب.", language="ar")
+SAUDI_TURN = TalkerTurn(turn_id=1, words="لابتوبي ما يشتغل، أبي أفتح طلب.", language="ar")
+
+
+@pytest.mark.parametrize(("turn", "wording"), [(MSA_TURN, "ar"), (SAUDI_TURN, "ar-SA")])
+def test_an_msa_callers_action_is_read_back_from_its_msa_texts_in_the_calls_tag(
+    turn: TalkerTurn, wording: LanguageTag
+) -> None:
+    """agent/language.py's `wording`, from the call's register: an MSA caller in an `ar-SA`
+    call hears the action's `ar` texts, a Saudi caller its `ar-SA` ones; either is spoken in
+    the call's tag."""
+    model = FakeChat(calls(call("open_request", **DRAFT)))
+    rig = acting(model, language="ar-SA", read_back=SAUDI_AND_MSA)
+    [read_back] = [e for e in reply(rig.talker, turn) if isinstance(e, ReadBackRequested)]
+    plan = read_back.plan
+    summary, question = SAUDI_AND_MSA.templates[wording]
+    assert (plan.language, plan.wording) == ("ar-SA", wording)
+    assert plan.summary.text == summary.format(category="برامج", summary=SUMMARY)
+    assert plan.question.text == question
 
 
 def test_the_model_reads_that_its_call_is_read_back_in_the_turns_after() -> None:

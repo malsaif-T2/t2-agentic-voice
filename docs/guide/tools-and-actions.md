@@ -239,8 +239,15 @@ talker is told "the tool failed".
   one zero one".
 - **A text is keyed by a language tag**, `ar-SA`, `ar` or `en`. A language reads its own tag
   first, then its primary code, so an `ar` text serves both Arabic presets unless `ar-SA` has
-  its own; an `ar-SA` text never serves `ar`. Every line you give must cover every language
+  its own; an `ar-SA` text never covers `ar`. Every line you give must cover every language
   the agent speaks. The library's own lines exist in each preset's register.
+- **An MSA caller hears MSA.** The talker reads the register of the caller's Arabic from their
+  words (Saudi once a turn holds a dialect form, MSA while none has). An `ar-SA` agent may
+  give an `ar` text, MSA, beside each `ar-SA` one, and the agent need not speak `ar` for it:
+  a read-back to an MSA caller reads each line's `ar` text, its `ar-SA` one where it has none,
+  and the library's own lines in MSA; the outcome is read as its read-back was. Every line is
+  still said in the `ar-SA` voice. Ole5's
+  [lines.py](../../apps/ole5-voice-agent/src/ole5_voice/tickets/lines.py) gives one for each.
 - **The output guard does not read these lines.** Their values come from the parsed draft or
   the real result, never from the talker, so they must say what is true: a summary that leaves
   out a value that matters asks the caller to agree to something they did not hear.
@@ -434,7 +441,7 @@ what the talker then says, under the output guard.
 | `validate` raised `ToolError(message)` | The message | `draft_rejected` |
 | `validate` raised anything else, timed out, or returned something that is not the draft | "the tool failed" | `validate_failed` |
 | The outbox could not be read to count the caps | "the tool failed" | `outbox_unread` |
-| This call already holds `max_per_call` confirmed writes of the action, whatever became of them | "this cannot be done again in this call: tell the caller so, and do not call it again" | `cap_per_call` |
+| This call already holds `max_per_call` confirmed writes of the action that may have reached your system (`sending`, `done` or `flagged`) | "this cannot be done again in this call: tell the caller so, and do not call it again" | `cap_per_call` |
 | The caller reached the daily cap for this action | "the caller has had this done as many times as one day allows: tell them so" | `cap_per_caller` |
 | A read-back line cannot be filled from this draft | "the read-back cannot be said with this draft: give every field it reads" | `read_back_unsaid` |
 | A second action call in the same model request | "one action at a time: call it again once the caller has answered the first" | `one_at_a_time` |
@@ -506,10 +513,16 @@ The caller has heard the `sending` line. Each outcome's line is said at the next
 | Default | 1 | 20 |
 | What it counts | This action's outbox rows for this caller in this call | This action's outbox rows for this caller in the last 24 hours, in any call |
 
+A cap bounds how much a misjudged, repeated or injected action can write, in one call and for
+one caller in a day.
+
 - **Both count outbox rows**, which only a confirmed action writes. A proposal, or a read-back
   the caller said no to, counts nothing.
-- **A row counts whatever became of it.** A failed write uses up its place: with the default of
-  1, a caller whose write failed cannot try again in the same call.
+- **Only a write that may have reached your system counts**: a row `sending` (under way, or its
+  reply never came), `done`, or `flagged` (the caller heard `unknown`). A row `rejected`
+  (`ActionRejected`) or `not_sent` (`ActionNotSent`) counts nothing, since the write was
+  definitely not done: with the default of 1, a caller whose write was refused or never sent can
+  try again in the same call, and hears a new read-back.
 - **Both are checked when the talker calls the action**, before its read-back. The talker is told
   and says so; the caller hears no read-back.
 - **The caller is the verified one**, `Caller.subject` from the join token, never anything said

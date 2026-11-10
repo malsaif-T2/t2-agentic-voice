@@ -1,6 +1,8 @@
 """How the action runner renders an action's words (the design's 6.4; domain/action_lines.py):
 each template filled from the parsed draft or, in `done`, from the real result, never from
-model text, in the reply's language.
+model text, in the reply's language: its texts read in the read-back's wording, the tag the
+talker gives (`ar`, MSA, for an `ar-SA` reply to an MSA caller: agent/language.py's
+`wording`), as domain/action_declaration.py's `read_in` reads a text, or the reply's own tag.
 
 - A value is said as written, its spaces made single; a fixed value (a `Literal` or an enum)
   through its field's `Spoken` label in the language, or as written when it has none; a list
@@ -10,8 +12,8 @@ model text, in the reply's language.
   digits or more in groups of four, a comma between them, so a 16-digit number is said in
   four groups (plan 007, Q6).
 - A line the action leaves out (`sending`, `asked_again`, `declined`, `failed`, `unknown`),
-  or gives in no text the language reads, is the library's (`default_action_lines`), said as
-  it is written.
+  or gives in no text the language reads, is the library's (`default_action_lines`) in that
+  wording, so an MSA caller hears its MSA line, said as it is written.
 """
 
 from __future__ import annotations
@@ -27,7 +29,7 @@ from pydantic import BaseModel
 from t2_agentic_voice.actions.action import Action
 from t2_agentic_voice.core.settings.tts import LanguageTag
 from t2_agentic_voice.core.settings.words import LanguageCode
-from t2_agentic_voice.domain.action_declaration import Say, Spoken
+from t2_agentic_voice.domain.action_declaration import Say, Spoken, read_in
 from t2_agentic_voice.domain.action_lines import ReadBackPlan, SpokenLine, default_action_lines
 from t2_agentic_voice.domain.ports.action_jobs import OutcomeKind
 from t2_agentic_voice.domain.text.speaking import speak_id
@@ -109,8 +111,8 @@ def _plain(line: str) -> SpokenLine:
 def line_of(
     say: Say | None, kind: DefaultLine, values: Mapping[str, str], tag: LanguageTag
 ) -> SpokenLine:
-    """The action's own line `say` in `tag`, or the library's line of that `kind`."""
-    if say is not None and say.covers(tag):
+    """The action's own line `say` read in `tag`, or the library's line of that `kind`."""
+    if say is not None and any(key in say.templates for key in read_in(tag)):
         return render(say.for_language(tag), values, tag)
     return _plain(getattr(default_action_lines(tag), kind))
 
@@ -122,22 +124,30 @@ def draft_json(draft: BaseModel) -> str:
 
 
 def read_back_plan(
-    action: Action, draft: BaseModel, *, tool_call_id: str, tag: LanguageTag
+    action: Action,
+    draft: BaseModel,
+    *,
+    tool_call_id: str,
+    tag: LanguageTag,
+    wording: LanguageTag | None = None,
 ) -> ReadBackPlan:
-    """What the session needs to read `draft` back in `tag`, and to end the read-back with no
-    yes, and to speak while the write runs. ValueError when a line would say nothing."""
-    values = said_values(draft, tag)
-    summary, question = action.read_back.for_language(tag)
+    """What the session needs to read `draft` back in `tag`, its texts read in `wording` (`tag`
+    unless given), and to end the read-back with no yes, and to speak while the write runs.
+    ValueError when a line would say nothing."""
+    read = wording or tag
+    values = said_values(draft, read)
+    summary, question = action.read_back.for_language(read)
     return ReadBackPlan(
         action=action.name,
         tool_call_id=tool_call_id,
         draft_json=draft_json(draft),
-        summary=render(summary, values, tag),
-        question=render(question, values, tag),
-        asked_again=line_of(action.read_back.asked_again, "asked_again", values, tag),
-        declined=line_of(action.declined, "declined", values, tag),
-        sending=line_of(action.sending, "sending", values, tag),
+        summary=render(summary, values, read),
+        question=render(question, values, read),
+        asked_again=line_of(action.read_back.asked_again, "asked_again", values, read),
+        declined=line_of(action.declined, "declined", values, read),
+        sending=line_of(action.sending, "sending", values, read),
         language=tag,
+        wording=read,
         send_words=action.read_back.send_words.get(_primary(tag), ()),
         max_attempts=action.read_back.max_attempts,
     )

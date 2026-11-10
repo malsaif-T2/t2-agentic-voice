@@ -179,6 +179,7 @@ class FakeJobs:
         turn_id: int,
         conversation: tuple[ConversationLine, ...],
         clock: Clock,
+        wording: LanguageTag | None = None,
     ) -> ActionOutcome:
         self.ran.append(confirmed)
         await asyncio.sleep(0)

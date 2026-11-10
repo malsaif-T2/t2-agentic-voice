@@ -64,7 +64,7 @@ DIGITS = {
     "en": ("zero", "one", "two", "three", "four", "five", "six", "seven", "eight", "nine"),
 }
 COMMA = {"ar-SA": "، ", "en": ", "}
-DONE = {"ar-SA": "تم، رقم تذكرتك {}.", "en": "Done. Your ticket number is {}."}
+DONE = {"ar-SA": "تم، تذكرتك رقمها {}.", "en": "Done. The ticket number is {}."}
 
 
 def draft(tag: LanguageTag = "en") -> TicketDraft:

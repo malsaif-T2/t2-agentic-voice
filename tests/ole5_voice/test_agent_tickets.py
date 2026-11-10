@@ -7,8 +7,11 @@ the line saying it cannot open a ticket gone; and the talker given no ticket sys
 none, versioned apart.
 
 The adversarial cases of invariant 2 (docs/SECURITY.md) on the instructions: they hold no
-ID-shaped number and no claim phrase of any action, nor do the tools' descriptions, so the
-talker is taught no number and no claim to copy."""
+ID-shaped number and no claim phrase of any action, nor of Ole5's for a ticket's number, nor do
+the tools' descriptions, so the talker is taught no number and no claim to copy. The talker
+with tickets runs under settings whose guard reads a number said as the caller's ticket number
+(«رقم تذكرتك», "your ticket number is") as a claim of any action (the owner's ruling of
+2026-11-10; `with_ticket_claims`)."""
 
 from __future__ import annotations
 
@@ -26,9 +29,10 @@ from ole5_voice.agent import (
     talker_agent,
     without_tickets,
 )
+from ole5_voice.tickets.lines import NUMBER_CLAIMS
 from ole5_voice.tickets.mock import MockTicketSystem
-from ole5_voice.tickets.tools import ticket_tools
-from t2_agentic_voice import Action, Tool, render_prompt
+from ole5_voice.tickets.tools import ticket_tools, with_ticket_claims
+from t2_agentic_voice import Action, GuardSettings, Tool, VoiceSettings, render_prompt
 from t2_agentic_voice.evals import FakeKnowledgeBase
 from t2_agentic_voice.languages import normalize_arabic, normalize_digits, provider_text
 
@@ -125,6 +129,7 @@ def test_the_instructions_hold_no_number_and_no_claim_phrase(tag: Tag, tmp_path:
         if isinstance(tool, Action)
         for phrase in (*tool.claims.for_language("en"), *tool.claims.for_language(tag))
     ]
+    phrases += [phrase for listed in NUMBER_CLAIMS.values() for phrase in listed]
     assert len(phrases) > 40
     texts = [
         instructions()[tag],
@@ -135,6 +140,26 @@ def test_the_instructions_hold_no_number_and_no_claim_phrase(tag: Tag, tmp_path:
         assert re.search("[0-9]{3,}", normalize_digits(text)) is None
         form = _form(text)
         assert [phrase for phrase in phrases if _form(phrase) in form] == []
+
+
+def test_the_talker_with_tickets_reads_a_number_said_as_the_callers_as_a_claim() -> None:
+    """Ole5's phrases for a ticket's number are added to the guard's phrases that claim any
+    action, after those the settings hold (`T2V_GUARD__CLAIMS`), each once; every other setting
+    stays as it was, the prefix too."""
+    alone = with_ticket_claims(VoiceSettings(env="test"))
+    assert dict(alone.guard.claims) == {"ar": ("رقم تذكرتك",), "en": ("your ticket number is",)}
+    # khallaSt lak: I finished it for you; a team's own phrases, set in the environment.
+    own = GuardSettings.model_validate({"claims": {"ar": ["خلصت لك"], "en": ["all sorted"]}})
+    held = VoiceSettings(env="test", guard=own)
+    added = with_ticket_claims(held)
+    assert dict(added.guard.claims) == {
+        "ar": ("خلصت لك", "رقم تذكرتك"),
+        "en": ("all sorted", "your ticket number is"),
+    }
+    assert with_ticket_claims(added).guard.claims == added.guard.claims
+    assert added.model_dump(exclude={"guard"}) == held.model_dump(exclude={"guard"})
+    assert added.guard.model_dump(exclude={"claims"}) == held.guard.model_dump(exclude={"claims"})
+    assert added.prefix == held.prefix
 
 
 @pytest.mark.parametrize("tag", ["ar-SA", "en"])
