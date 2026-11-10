@@ -8,9 +8,12 @@ verified caller), each read from the system with the session's customer (custome
 from the caller and never shown to the talker (docs/SECURITY.md, invariant 3). A ticket the
 system does not hold for that customer is left out, so an outbox row of a customer the
 settings named before shows nothing. A number the caller says is matched only among those
-tickets, by its last digits, never looked up on its own; the result gives the digits back, so
-the talker says them first, and each ticket by its last four digits only, never its whole
-number (Q6). Its summary, type, priority and status are the caller's own ticket's.
+tickets, by its last digits, never looked up on its own; when one of theirs matches, the result
+gives its last four digits back, so the talker says them first, and each ticket by its last four
+digits only, never its whole number (Q6). Its summary, type, priority and status are the
+caller's own ticket's. Digits that match none are not given back: a status result backs a claim
+that a ticket was made (rule A), so another customer's number, or one never issued, must not be
+in it (invariant 2); the talker may still say them back as the caller's own words (rule B).
 
 A ticket system that fails is a ToolError the talker reads: it says it cannot check now.
 """
@@ -79,8 +82,9 @@ class SeenTicket(BaseModel):
 
 class StatusAnswer(BaseModel):
     """What `ticket_status` gives the talker: the caller's tickets (`LISTED` at most, newest
-    last), how many there are in all, the last four digits of a number the caller said
-    (`asked_ends_in`, none when they said none), and how to read the answer (`note`)."""
+    last), how many there are in all, the last four digits of a number the caller said when one
+    of their tickets ends in it (`asked_ends_in`, none otherwise), and how to read the answer
+    (`note`)."""
 
     model_config = ConfigDict(frozen=True, extra="forbid")
 
@@ -147,7 +151,7 @@ def ticket_status(system: TicketSystem) -> Tool:
         return StatusAnswer(
             tickets=tuple(seen[-LISTED:]),
             total=len(seen),
-            asked_ends_in=None if digits is None else digits[-GROUP:],
+            asked_ends_in=seen[-1].ends_in if digits is not None and seen else None,
             note=_NONE_MATCH if digits is not None and not seen else _SCOPE,
         )
 

@@ -125,16 +125,31 @@ def test_a_number_the_caller_says_is_matched_only_among_their_tickets(tmp_path: 
 def test_another_customers_number_gives_nothing_of_theirs(tmp_path: Path) -> None:
     """Invariant 3: the caller says another customer's ticket number, whole or its last four,
     or names their email beside it; the answer holds nothing of that ticket, not even whether
-    it exists."""
+    it exists. Invariant 2: nor are the said digits given back, since a status result backs a
+    claim of the ticket makers (rule A); a talker's clause naming them would pass as made."""
     scene = _Scene(tmp_path)
     ctx = call_context(past=scene.past)
     for said in (scene.theirs.number, scene.theirs.number[-4:], f"{scene.theirs.number} {OTHER}"):
         answer = _status(scene.tool, ctx, number=said)
         assert answer.tickets == () and answer.total == 0
+        assert answer.asked_ends_in is None
         assert "None of the caller's tickets" in answer.note
         data = json.dumps(answer.model_dump(mode="json"), ensure_ascii=False)
-        for value in (THEIR_SUMMARY, OTHER, "Ole5 Support", "Inquiry", "New"):
+        for value in (scene.theirs.number[-4:], THEIR_SUMMARY, OTHER, "Ole5 Support", "Inquiry"):
             assert value not in data
+        assert "New" not in data
+
+
+def test_digits_matching_none_of_the_callers_tickets_are_not_given_back(tmp_path: Path) -> None:
+    """Invariant 2: a number never issued, or one a passage made up, said as the caller's, is
+    not in the result, so it backs no claim that a ticket was made (rule A)."""
+    scene = _Scene(tmp_path)
+    taken = {scene.first.number[-4:], scene.handed.number[-4:]}
+    unissued = next(f"{n:04d}" for n in range(10_000) if f"{n:04d}" not in taken)
+    for said in (unissued, f"2026 1110 8200 {unissued}"):
+        answer = _status(scene.tool, call_context(past=scene.past), number=said)
+        assert answer.tickets == () and answer.asked_ends_in is None
+        assert unissued not in json.dumps(answer.model_dump(mode="json"), ensure_ascii=False)
 
 
 def test_an_outbox_row_of_another_customers_ticket_shows_nothing(tmp_path: Path) -> None:
@@ -146,6 +161,11 @@ def test_an_outbox_row_of_another_customers_ticket_shows_nothing(tmp_path: Path)
     answer = _status(scene.tool, call_context(past=forged))
     assert scene.theirs.number[-4:] not in [t.ends_in for t in answer.tickets]
     assert THEIR_SUMMARY not in json.dumps(answer.model_dump(mode="json"), ensure_ascii=False)
+    # Its number said: the outbox row matches, the system holds none for this caller, and the
+    # said digits are not given back either.
+    named = _status(scene.tool, call_context(past=forged), number=scene.theirs.number)
+    assert named.tickets == () and named.asked_ends_in is None
+    assert scene.theirs.number[-4:] not in json.dumps(named.model_dump(mode="json"))
     # A row whose ID now names another of the caller's tickets is not taken for it.
     moved = recorded("create_ticket", TicketRef(id=scene.first.id, number=scene.elsewhere.number))
     assert _status(scene.tool, call_context(past=(moved,))).tickets == ()
