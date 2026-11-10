@@ -1,5 +1,6 @@
 """The `t2v` command (the first part of the design's 10.6): `t2v serve APP`, `t2v dev APP`,
-`t2v doctor` and `t2v settings show --redacted`.
+`t2v doctor`, `t2v settings show --redacted`, and `t2v outbox list APP`, `show APP REQUEST_ID`
+and `reconcile APP`.
 
 `APP` names a team's runtime factory as `module:function` (`minimal_example.app:make_runtime`),
 a function that takes no argument and returns a `VoiceRuntime`; its module is imported from the
@@ -8,6 +9,13 @@ app's package's, `__main__`'s and uvicorn's from the runtime's settings, then se
 process is stopped. `doctor` and `settings show` load the settings from the environment under a
 prefix (`T2V_` unless `--prefix` gives another), and from a `.env` file only when `--env-file`
 names one.
+
+`outbox` reads the outbox of APP's agent, under its settings' `storage.var_dir`
+(api/actions.py): `list` its rows, of one `--state` when given, and `show` one, each with its
+request ID, action, state, note and times (and `show` its call's ID and whether it holds a
+result), never its draft, its result or the caller's subject; `reconcile` looks the rows left
+`sending` and the flagged ones up again, never sending one, and is refused while a server holds
+the same folder's lock.
 
 This module imports nothing heavy at its top, so `t2v --help` and each command's `--help` only
 print help: no Pipecat, no FastAPI and no provider SDK is imported (GP-17). It is the one module
@@ -24,7 +32,7 @@ import json
 import sys
 from collections.abc import Callable, Sequence
 from pathlib import Path
-from typing import TYPE_CHECKING, Final
+from typing import TYPE_CHECKING, Final, TextIO
 
 from t2_agentic_voice.core.errors import ConfigurationError, T2VoiceError
 
@@ -36,6 +44,10 @@ PROGRAM: Final = "t2v"
 # What a redacted secret, or the file that holds one, is shown as.
 REDACTED: Final = "**********"
 _APP_HELP = "the runtime factory, as module:function (a function that returns a VoiceRuntime)"
+# Where an outbox row may stand (domain/ports/outbox.py's `OutboxState`), and the columns
+# `outbox list` prints.
+OUTBOX_STATES: Final = ("sending", "done", "rejected", "not_sent", "flagged")
+_COLUMNS: Final = ("request_id", "action", "state", "created_at", "updated_at", "note")
 
 
 def main(argv: Sequence[str] | None = None) -> int:
@@ -79,7 +91,30 @@ def _parser() -> argparse.ArgumentParser:
     show.add_argument("--redacted", action="store_true", help="redact every secret (always on)")
     _loading(show)
     show.set_defaults(command=_show)
+    _outbox(commands)
     return parser
+
+
+def _outbox(commands: argparse._SubParsersAction[argparse.ArgumentParser]) -> None:
+    outbox = commands.add_parser("outbox", help="the writes the agent's actions asked for")
+    kept = outbox.add_subparsers(title="commands", required=True)
+    listed = kept.add_parser(
+        "list", help="list the rows: request ID, action, state, times and note, oldest first"
+    )
+    listed.add_argument("app", metavar="APP", help=_APP_HELP)
+    listed.add_argument("--state", choices=OUTBOX_STATES, help="only the rows in this state")
+    listed.set_defaults(command=_outbox_list)
+    shown = kept.add_parser("show", help="print one row as JSON, never its draft or result")
+    shown.add_argument("app", metavar="APP", help=_APP_HELP)
+    shown.add_argument("request_id", metavar="REQUEST_ID", help="the row's request ID")
+    shown.set_defaults(command=_outbox_show)
+    again = kept.add_parser(
+        "reconcile",
+        help="look the rows left sending and the flagged ones up again, never sending one; "
+        "refused while a server runs on the same storage folder",
+    )
+    again.add_argument("app", metavar="APP", help=_APP_HELP)
+    again.set_defaults(command=_outbox_reconcile)
 
 
 def _serving(parser: argparse.ArgumentParser) -> None:
@@ -110,9 +145,10 @@ def _dev(args: argparse.Namespace) -> int:
     return 0
 
 
-def _runtime(app: str) -> VoiceRuntime:
+def _runtime(app: str, *, logs_to: TextIO | None = None) -> VoiceRuntime:
     """The runtime `app`'s factory makes, with logging configured from its settings for the
-    library, the app's package, `__main__` and uvicorn."""
+    library, the app's package, `__main__` and uvicorn, its lines to `logs_to` (the standard
+    output unless given: `outbox` gives the standard error, its report the output's)."""
     from t2_agentic_voice.api.runtime import VoiceRuntime
     from t2_agentic_voice.core.logging import configure_logging
 
@@ -125,7 +161,9 @@ def _runtime(app: str) -> VoiceRuntime:
         )
     logs = runtime._settings.logging
     loggers = (module.partition(".")[0], "__main__", "uvicorn")
-    configure_logging(logs.level, logs.format, loggers=loggers, content=logs.content)
+    configure_logging(
+        logs.level, logs.format, stream=logs_to, loggers=loggers, content=logs.content
+    )
     return runtime
 
 
@@ -160,6 +198,41 @@ def _doctor(args: argparse.Namespace) -> int:
 
 def _show(args: argparse.Namespace) -> int:
     print(json.dumps(redacted(_settings(args)), indent=2, ensure_ascii=False))
+    return 0
+
+
+def _outbox_list(args: argparse.Namespace) -> int:
+    from t2_agentic_voice.api.actions import outbox_rows, shown_row
+
+    runtime = _runtime(args.app, logs_to=sys.stderr)
+    found = asyncio.run(outbox_rows(runtime._settings, runtime._agent, state=args.state))
+    if not found:
+        print("no rows")
+        return 0
+    rows = [{name: str(value or "") for name, value in shown_row(row).items()} for row in found]
+    widths = {name: max(len(name), *(len(row[name]) for row in rows)) for name in _COLUMNS}
+    for row in [dict(zip(_COLUMNS, _COLUMNS, strict=True)), *rows]:
+        print("  ".join(f"{row[name]:<{widths[name]}}" for name in _COLUMNS).rstrip())
+    return 0
+
+
+def _outbox_show(args: argparse.Namespace) -> int:
+    from t2_agentic_voice.api.actions import outbox_row, shown_row
+
+    runtime = _runtime(args.app, logs_to=sys.stderr)
+    row = asyncio.run(outbox_row(runtime._settings, runtime._agent, args.request_id))
+    print(json.dumps(shown_row(row), indent=2))
+    return 0
+
+
+def _outbox_reconcile(args: argparse.Namespace) -> int:
+    from t2_agentic_voice.api.actions import outbox_rows, reconciled
+
+    runtime = _runtime(args.app, logs_to=sys.stderr)
+    settings, agent = runtime._settings, runtime._agent
+    looked = asyncio.run(reconciled(settings, agent))
+    flagged = asyncio.run(outbox_rows(settings, agent, state="flagged"))
+    print(f"{looked} rows looked up; {len(flagged)} flagged rows wait for a person")
     return 0
 
 
