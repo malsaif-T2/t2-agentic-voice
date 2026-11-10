@@ -41,7 +41,7 @@ from t2_agentic_voice.domain.guard_ids import check_ids, guard_form
 from t2_agentic_voice.domain.text.words import holds_words
 
 # The letters written onto a phrase's first word that leave it the same phrase: waw, feh (and).
-_JOINED = ("و", "ف")
+_JOINED = ("\u0648", "\u0641")
 
 
 @dataclass(frozen=True, slots=True)
@@ -79,41 +79,45 @@ _ENGLISH = (
 )
 # The Arabic defaults, both Arabic presets', in the guard's form.
 _ARABIC = (
-    "تم انشاء",  # tamma inshaa', it was created
+    "\u062a\u0645 \u0627\u0646\u0634\u0627\u0621",  # tamma inshaa', it was created
     # tamma tasjeel talabak, your request was registered
-    "تم تسجيل طلبك",
-    "تم رفع طلبك",  # tamma raf' talabak, raised
+    "\u062a\u0645 \u062a\u0633\u062c\u064a\u0644 \u0637\u0644\u0628\u0643",
+    "\u062a\u0645 \u0631\u0641\u0639 \u0637\u0644\u0628\u0643",  # tamma raf' talabak, raised
     # tamma taqdeem talabak, your request was submitted
-    "تم تقديم طلبك",
+    "\u062a\u0645 \u062a\u0642\u062f\u064a\u0645 \u0637\u0644\u0628\u0643",
     # tamma irsaal talabak, your request was sent
-    "تم ارسال طلبك",
-    "تم فتح طلب",  # tamma fath talab, a request was opened
+    "\u062a\u0645 \u0627\u0631\u0633\u0627\u0644 \u0637\u0644\u0628\u0643",
+    "\u062a\u0645 \u0641\u062a\u062d \u0637\u0644\u0628",  # tamma fath talab, a request was opened
     # tamma tahweel talabak, your request was transferred
-    "تم تحويل طلبك",
+    "\u062a\u0645 \u062a\u062d\u0648\u064a\u0644 \u0637\u0644\u0628\u0643",
     # tamma tas'eed talabak, your request was escalated
-    "تم تصعيد طلبك",
-    "تم حجز",  # tamma hajz, it was booked
-    "سجلت لك",  # sajjalt lak, I registered for you
-    "سجلت طلبك",  # sajjalt talabak, I registered your request
-    "رفعت لك",  # rafa't lak, I raised for you
-    "رفعت طلبك",  # rafa't talabak, I raised your request
-    "فتحت لك",  # fatah-t lak, I opened for you
+    "\u062a\u0645 \u062a\u0635\u0639\u064a\u062f \u0637\u0644\u0628\u0643",
+    "\u062a\u0645 \u062d\u062c\u0632",  # tamma hajz, it was booked
+    "\u0633\u062c\u0644\u062a \u0644\u0643",  # sajjalt lak, I registered for you
+    # sajjalt talabak, I registered your request
+    "\u0633\u062c\u0644\u062a \u0637\u0644\u0628\u0643",
+    "\u0631\u0641\u0639\u062a \u0644\u0643",  # rafa't lak, I raised for you
+    "\u0631\u0641\u0639\u062a \u0637\u0644\u0628\u0643",  # rafa't talabak, I raised your request
+    "\u0641\u062a\u062d\u062a \u0644\u0643",  # fatah-t lak, I opened for you
     # arsalt talabak, I sent your request
-    "ارسلت طلبك",
-    "قدمت طلبك",  # qaddamt talabak, I submitted your request
-    "انشات لك",  # ansha't lak, I created for you
-    "حولتك",  # hawwaltak, I transferred you
-    "حولت طلبك",  # hawwalt talabak, I transferred your request
-    "صعدت طلبك",  # sa''adt talabak, I escalated your request
+    "\u0627\u0631\u0633\u0644\u062a \u0637\u0644\u0628\u0643",
+    # qaddamt talabak, I submitted your request
+    "\u0642\u062f\u0645\u062a \u0637\u0644\u0628\u0643",
+    "\u0627\u0646\u0634\u0627\u062a \u0644\u0643",  # ansha't lak, I created for you
+    "\u062d\u0648\u0644\u062a\u0643",  # hawwaltak, I transferred you
+    # hawwalt talabak, I transferred your request
+    "\u062d\u0648\u0644\u062a \u0637\u0644\u0628\u0643",
+    # sa''adt talabak, I escalated your request
+    "\u0635\u0639\u062f\u062a \u0637\u0644\u0628\u0643",
     # laqad ansha't, sajjalt, arsalt, qaddamt, fatah-t, rafa't, hawwalt: I have created,
     # registered, sent, submitted, opened, raised, transferred (MSA)
-    "لقد انشات",
-    "لقد سجلت",
-    "لقد ارسلت",
-    "لقد قدمت",
-    "لقد فتحت",
-    "لقد رفعت",
-    "لقد حولت",
+    "\u0644\u0642\u062f \u0627\u0646\u0634\u0627\u062a",
+    "\u0644\u0642\u062f \u0633\u062c\u0644\u062a",
+    "\u0644\u0642\u062f \u0627\u0631\u0633\u0644\u062a",
+    "\u0644\u0642\u062f \u0642\u062f\u0645\u062a",
+    "\u0644\u0642\u062f \u0641\u062a\u062d\u062a",
+    "\u0644\u0642\u062f \u0631\u0641\u0639\u062a",
+    "\u0644\u0642\u062f \u062d\u0648\u0644\u062a",
 )
 _DEFAULTS: Mapping[LanguageCode, tuple[str, ...]] = {"ar": _ARABIC, "en": _ENGLISH}
 

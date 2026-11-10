@@ -47,81 +47,81 @@ class ConsentWords(BaseModel):
 
 # The Arabic lists, both Arabic presets'.
 _ARABIC_YES = (
-    "نعم",  # na'am, yes: noon, ain, meem
-    "ايه",  # eeh, yes (Saudi): alef, yeh, heh
-    "اي",  # ay, yes (Saudi): alef, yeh
-    "ايوه",  # aywa, yes (Saudi): alef, yeh, waw, heh
-    "ايوا",  # aywa, yes: alef, yeh, waw, alef
-    "اكيد",  # akeed, sure: alef, kaf, yeh, dal
-    "موافق",  # muwaafiq, agreed: meem, waw, alef, feh, qaf
-    "طبعا",  # tab'an, of course: tah, beh, ain, alef
+    "\u0646\u0639\u0645",  # na'am, yes: noon, ain, meem
+    "\u0627\u064a\u0647",  # eeh, yes (Saudi): alef, yeh, heh
+    "\u0627\u064a",  # ay, yes (Saudi): alef, yeh
+    "\u0627\u064a\u0648\u0647",  # aywa, yes (Saudi): alef, yeh, waw, heh
+    "\u0627\u064a\u0648\u0627",  # aywa, yes: alef, yeh, waw, alef
+    "\u0627\u0643\u064a\u062f",  # akeed, sure: alef, kaf, yeh, dal
+    "\u0645\u0648\u0627\u0641\u0642",  # muwaafiq, agreed: meem, waw, alef, feh, qaf
+    "\u0637\u0628\u0639\u0627",  # tab'an, of course: tah, beh, ain, alef
     # bit-ta'keed, certainly (MSA): beh, alef, lam, teh, alef, kaf, yeh, dal
-    "بالتاكيد",
+    "\u0628\u0627\u0644\u062a\u0627\u0643\u064a\u062f",
 )
 _ARABIC_SEND = (
-    "ارسل",  # arsil, send: alef, reh, seen, lam
-    "ارسلها",  # arsilha, send it: alef, reh, seen, lam, heh, alef
-    "ارسله",  # arsilah, send it: alef, reh, seen, lam, heh
-    "قدمها",  # qaddimha, submit it: qaf, dal, meem, heh, alef
-    "قدمه",  # qaddimah, submit it: qaf, dal, meem, heh
+    "\u0627\u0631\u0633\u0644",  # arsil, send: alef, reh, seen, lam
+    "\u0627\u0631\u0633\u0644\u0647\u0627",  # arsilha, send it: alef, reh, seen, lam, heh, alef
+    "\u0627\u0631\u0633\u0644\u0647",  # arsilah, send it: alef, reh, seen, lam, heh
+    "\u0642\u062f\u0645\u0647\u0627",  # qaddimha, submit it: qaf, dal, meem, heh, alef
+    "\u0642\u062f\u0645\u0647",  # qaddimah, submit it: qaf, dal, meem, heh
     # i'tamidha, approve it: alef, ain, teh, meem, dal, heh, alef; and without the alef
-    "اعتمدها",
-    "اعتمده",
-    "نفذها",  # naffidhha, carry it out: noon, feh, thal, heh, alef
-    "نفذه",  # naffidhah, carry it out: noon, feh, thal, heh
-    "سجلها",  # sajjilha, register it: seen, jeem, lam, heh, alef
-    "سجله",  # sajjilah, register it: seen, jeem, lam, heh
-    "توكل",  # tawakkal, go ahead (Saudi): teh, waw, kaf, lam
+    "\u0627\u0639\u062a\u0645\u062f\u0647\u0627",
+    "\u0627\u0639\u062a\u0645\u062f\u0647",
+    "\u0646\u0641\u0630\u0647\u0627",  # naffidhha, carry it out: noon, feh, thal, heh, alef
+    "\u0646\u0641\u0630\u0647",  # naffidhah, carry it out: noon, feh, thal, heh
+    "\u0633\u062c\u0644\u0647\u0627",  # sajjilha, register it: seen, jeem, lam, heh, alef
+    "\u0633\u062c\u0644\u0647",  # sajjilah, register it: seen, jeem, lam, heh
+    "\u062a\u0648\u0643\u0644",  # tawakkal, go ahead (Saudi): teh, waw, kaf, lam
     # tawakkal 'ala allah, go ahead (Saudi): teh, waw, kaf, lam; ain, lam, yeh; alef, lam,
     # lam, heh
-    "توكل علي الله",
+    "\u062a\u0648\u0643\u0644 \u0639\u0644\u064a \u0627\u0644\u0644\u0647",
     # qum bi-irsaalih, send it (MSA): qaf, meem; beh, alef, reh, seen, alef, lam, heh
-    "قم بارساله",
+    "\u0642\u0645 \u0628\u0627\u0631\u0633\u0627\u0644\u0647",
 )
 # Beside domain/words.py's Arabic no words.
 _ARABIC_NO = (
-    "كلا",  # kalla, no (MSA): kaf, lam, alef
-    "ابدا",  # abadan, never: alef, beh, dal, alef
+    "\u0643\u0644\u0627",  # kalla, no (MSA): kaf, lam, alef
+    "\u0627\u0628\u062f\u0627",  # abadan, never: alef, beh, dal, alef
     # alghiha, cancel it (Saudi): alef, lam, ghain, yeh, heh, alef; and without the alef
-    "الغيها",
-    "الغيه",
-    "مابي",  # maabi, I don't want (Saudi): meem, alef, beh, yeh
-    "مابغي",  # maabghi, I don't want (Saudi): meem, alef, beh, ghain, yeh
+    "\u0627\u0644\u063a\u064a\u0647\u0627",
+    "\u0627\u0644\u063a\u064a\u0647",
+    "\u0645\u0627\u0628\u064a",  # maabi, I don't want (Saudi): meem, alef, beh, yeh
+    "\u0645\u0627\u0628\u063a\u064a",  # maabghi, I don't want (Saudi): meem, alef, beh, ghain, yeh
     # la tirsilha, don't send it: lam, alef; teh, reh, seen, lam, heh, alef; and without alef
-    "لا ترسلها",
-    "لا ترسله",
+    "\u0644\u0627 \u062a\u0631\u0633\u0644\u0647\u0627",
+    "\u0644\u0627 \u062a\u0631\u0633\u0644\u0647",
 )
 # Beside domain/words.py's Arabic listening sounds.
 _ARABIC_FILLERS = (
-    "لو سمحت",  # law samaht, please: lam, waw; seen, meem, hah, teh
-    "من فضلك",  # min fadlak, please: meem, noon; feh, dad, lam, kaf
-    "رجاء",  # rajaa'an, please (MSA): reh, jeem, alef, hamza
-    "يا",  # ya (calling someone): yeh, alef
-    "الحين",  # al-heen, now (Saudi): alef, lam, hah, yeh, noon
-    "الان",  # al-aan, now (MSA): alef, lam, alef, noon
-    "شكرا",  # shukran, thanks: sheen, kaf, reh, alef
-    "مشكور",  # mashkoor, thanks (Saudi): meem, sheen, kaf, waw, reh
-    "جزيلا",  # jazeelan, (thanks) a lot: jeem, zain, yeh, lam, alef
-    "لك",  # lak, to you: lam, kaf
+    "\u0644\u0648 \u0633\u0645\u062d\u062a",  # law samaht, please: lam, waw; seen, meem, hah, teh
+    "\u0645\u0646 \u0641\u0636\u0644\u0643",  # min fadlak, please: meem, noon; feh, dad, lam, kaf
+    "\u0631\u062c\u0627\u0621",  # rajaa'an, please (MSA): reh, jeem, alef, hamza
+    "\u064a\u0627",  # ya (calling someone): yeh, alef
+    "\u0627\u0644\u062d\u064a\u0646",  # al-heen, now (Saudi): alef, lam, hah, yeh, noon
+    "\u0627\u0644\u0627\u0646",  # al-aan, now (MSA): alef, lam, alef, noon
+    "\u0634\u0643\u0631\u0627",  # shukran, thanks: sheen, kaf, reh, alef
+    "\u0645\u0634\u0643\u0648\u0631",  # mashkoor, thanks (Saudi): meem, sheen, kaf, waw, reh
+    "\u062c\u0632\u064a\u0644\u0627",  # jazeelan, (thanks) a lot: jeem, zain, yeh, lam, alef
+    "\u0644\u0643",  # lak, to you: lam, kaf
     # ya'teek al-'aafya, bless you: yeh, ain, tah, yeh, kaf; alef, lam, ain, alef, feh, yeh, heh
-    "يعطيك العافيه",
+    "\u064a\u0639\u0637\u064a\u0643 \u0627\u0644\u0639\u0627\u0641\u064a\u0647",
     # allah ya'aafeek, God keep you well: alef, lam, lam, heh; yeh, ain, alef, feh, yeh, kaf
-    "الله يعافيك",
+    "\u0627\u0644\u0644\u0647 \u064a\u0639\u0627\u0641\u064a\u0643",
     # jazaak allah khair, God reward you: jeem, zain, alef, kaf; alef, lam, lam, heh; khah,
     # yeh, reh
-    "جزاك الله خير",
-    "يلا",  # yalla, come on: yeh, lam, alef
-    "خلاص",  # khalas, that's it: khah, lam, alef, sad
-    "صحيح",  # saheeh, right: sad, hah, yeh, hah
-    "لي",  # li, for me: lam, yeh
-    "اياها",  # iyyaaha, it: alef, yeh, alef, heh, alef
-    "ابي",  # abi, I want (Saudi): alef, beh, yeh
-    "ابغي",  # abghi, I want (Saudi): alef, beh, ghain, yeh
-    "اريد",  # ureed, I want (MSA): alef, reh, yeh, dal
-    "والله",  # wallah, truly: waw, alef, lam, lam, heh
-    "و",  # wa, and: waw
-    "الطلب",  # at-talab, the request: alef, lam, tah, lam, beh
-    "طلبي",  # talabi, my request: tah, lam, beh, yeh
+    "\u062c\u0632\u0627\u0643 \u0627\u0644\u0644\u0647 \u062e\u064a\u0631",
+    "\u064a\u0644\u0627",  # yalla, come on: yeh, lam, alef
+    "\u062e\u0644\u0627\u0635",  # khalas, that's it: khah, lam, alef, sad
+    "\u0635\u062d\u064a\u062d",  # saheeh, right: sad, hah, yeh, hah
+    "\u0644\u064a",  # li, for me: lam, yeh
+    "\u0627\u064a\u0627\u0647\u0627",  # iyyaaha, it: alef, yeh, alef, heh, alef
+    "\u0627\u0628\u064a",  # abi, I want (Saudi): alef, beh, yeh
+    "\u0627\u0628\u063a\u064a",  # abghi, I want (Saudi): alef, beh, ghain, yeh
+    "\u0627\u0631\u064a\u062f",  # ureed, I want (MSA): alef, reh, yeh, dal
+    "\u0648\u0627\u0644\u0644\u0647",  # wallah, truly: waw, alef, lam, lam, heh
+    "\u0648",  # wa, and: waw
+    "\u0627\u0644\u0637\u0644\u0628",  # at-talab, the request: alef, lam, tah, lam, beh
+    "\u0637\u0644\u0628\u064a",  # talabi, my request: tah, lam, beh, yeh
 )
 
 # The English lists, with the Latin spellings Whisper wrote for the owner's Arabic yes and send

@@ -50,7 +50,7 @@ from t2_agentic_voice.domain.yes_words import ConsentWords
 
 # What one word of the heard words is to the rule: on a list, or on none (`content`).
 _Kind = Literal["no", "yes", "send", "filler", "content"]
-_AND = "و"  # waw, and
+_AND = "\u0648"  # waw, and
 
 # The seal a validation of a `ConfirmedAction` must be given; only this module names it.
 CONFIRMED_SEAL: Final[object] = object()
