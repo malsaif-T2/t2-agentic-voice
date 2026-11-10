@@ -96,7 +96,12 @@ class ConversationLine(_Plain):
 class DeclinedAction(_Plain):
     """An action the caller did not confirm, as the talker learns of it in the turn after: its
     name, how it was declined (`kind`, so the talker can tell a no from a correction), and the
-    words heard ("" when nothing was)."""
+    words heard ("" when nothing was).
+
+    Who speaks, as the owner rules (plan 007): after a plain no (`no`) the talker always
+    answers, in its own words, and after a `correction` too. The action's fixed `declined` line
+    (`ReadBackPlan.declined`) is the session's only where no talker turn can answer: nothing
+    usable heard after the last ask-again (`unclear`)."""
 
     action: str = Field(min_length=1)
     kind: DeclineKind

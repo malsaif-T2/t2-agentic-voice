@@ -132,7 +132,8 @@ def check_templates(
     draft: type[BaseModel],
     outcomes: Iterable[tuple[str, Say | None]],
 ) -> None:
-    """`done` names only the result's fields; each other outcome only the draft's."""
+    """`done` names only the result's fields; each other line (`sending`, said before there is a
+    result, the other outcomes and the ask-again) only the draft's."""
     check_fields("done", done.placeholders, result.model_fields)
     for field, say in outcomes:
         if say is not None:

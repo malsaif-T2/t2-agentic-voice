@@ -1,6 +1,7 @@
 """What plan 007's Block 0 settled for its tracks holds: the yes rule's inputs bind the draft that
 was read back, the outbox's row is frozen and hides what was said, the states are the design's,
-a read-back carries the line that ends it with no yes, and a declined action says how. Its
+a read-back carries the line that ends it with no yes and the line said while the write runs,
+and a declined action says how. Its
 stubs' own tests are in the files named test_stubs_track_*.py, each its track's to delete as it
 fills them."""
 
@@ -112,6 +113,7 @@ def test_the_flows_states_end_where_the_design_says() -> None:
 
 LINE = SpokenLine(text="number 123", spoken="number one two three")
 DECLINED = SpokenLine(text="I have not opened it.", spoken="I have not opened it.")
+SENDING = SpokenLine(text="One moment, opening it.", spoken="One moment, opening it.")
 
 
 def _plan(**changes: Any) -> ReadBackPlan:
@@ -123,6 +125,7 @@ def _plan(**changes: Any) -> ReadBackPlan:
         "question": LINE,
         "asked_again": LINE,
         "declined": DECLINED,
+        "sending": SENDING,
         "language": "en",
         "max_attempts": 2,
     }
@@ -137,10 +140,21 @@ def test_a_read_back_reaches_the_session_as_an_event_and_a_summary_apart() -> No
     assert blocked.reason == "unsupported_claim"
 
 
+def test_a_read_back_carries_its_sending_line_for_the_session_to_speak() -> None:
+    """The session speaks the action's `sending` line, or the library's, once the yes rule
+    issues the `ConfirmedAction`, before the job's outcome (the owner's ruling, plan 007):
+    `voice` cannot render a template, so the read-back carries it rendered."""
+    assert _plan().sending is SENDING
+    values = _plan().model_dump()
+    del values["sending"]
+    with pytest.raises(ValidationError):
+        ReadBackPlan.model_validate(values)
+
+
 def test_a_read_back_carries_its_declined_line_for_the_session_to_speak() -> None:
-    """The session speaks the action's own `declined` line when the read-back ends with no yes
-    and no talker turn: after the last ask-again with nothing heard, no `TalkerTurn` can be
-    built, and `voice` cannot render a template itself."""
+    """The session speaks the action's own `declined` line only where no talker turn can answer:
+    nothing usable heard after the last ask-again, so no `TalkerTurn` can be built, and `voice`
+    cannot render a template itself. After a plain no the talker answers."""
     assert _plan().declined is DECLINED
     values = _plan().model_dump()
     del values["declined"]

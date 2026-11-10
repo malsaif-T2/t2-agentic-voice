@@ -154,17 +154,23 @@ def test_the_scan_takes_each_apps_widget_folder(tmp_path: Path) -> None:
 
 def test_the_allow_list_holds_only_the_owners_ruling(tmp_path: Path) -> None:
     """The owner's answer to Q6 of plan 003: "stop", the protocol's message and the client's
-    method; and to Q1 of plan 005: each word of the language presets' lists that an item's text
-    is, quoting it. Every other text an item holds stays searched."""
+    method; to Q1 of plan 005: each word of the language presets' lists that an item's text
+    is, quoting it; and to plan 007's yes words: the four yes words that are items' whole texts.
+    Every other text an item holds stays searched."""
     with (EVALS / "allowed_in_source.toml").open("rb") as file:
         entries = AllowList.model_validate(tomllib.load(file)).allowed
     q1 = [entry for entry in entries if entry.on == date(2026, 11, 3)]
     presets = {fold(entry.text) for entry in q1}
-    assert allowed(EVALS / "allowed_in_source.toml") == {"stop"} | presets
+    yes = [entry for entry in entries if entry.on == date(2026, 11, 10)]
+    yes_words = {fold(entry.text) for entry in yes}
+    assert allowed(EVALS / "allowed_in_source.toml") == {"stop"} | presets | yes_words
     assert len(presets) == len(q1) == 16
     assert {entry.said for entry in q1} == {
         "Go with your recommendation for Q1, Q2, Q3, Q4, Q5 and Q7."
     }
+    assert yes_words == {fold(word) for word in ("نعم", "إيه", "أيوه", "yeah")} and len(yes) == 4
+    said = {entry.said for entry in yes}  # one answer, quoted in the allow list
+    assert len(said) == 1 and said.pop().startswith("Allow them, as in ")
     listed = {
         fold(word)
         for words in PRESET_WORDS.values()

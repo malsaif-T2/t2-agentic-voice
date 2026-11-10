@@ -4,7 +4,8 @@ as a job outside the turn.
 - **`Action`** holds one: its `name`, which the talker calls it by; its `description`, in
   English; `draft`, the pydantic model of what the talker gives, the only schema it sees;
   `result`, the model the function returns; the `execute` function; the words (`read_back`,
-  `done`, `claims`, and `failed`, `unknown`, `declined`, the library's own unless given); an
+  `done`, `claims`, and `sending`, `failed`, `unknown`, `declined`, the library's own unless
+  given; `sending` is said while the write runs, a fixed line that never says it is done); an
   optional `validate`; `max_per_call` and `timeout_s`. Build one with **`@action`**.
 - **`@action`** reads the draft and the result from the function's signature: a `draft`
   parameter, a return annotation, each a pydantic model, and optionally a parameter annotated
@@ -94,6 +95,7 @@ class Action:
     read_back: ReadBack
     done: Say
     claims: Claims
+    sending: Say | None = None
     failed: Say | None = None
     unknown: Say | None = None
     declined: Say | None = None
@@ -120,6 +122,7 @@ class Action:
             self.result,
             self.draft,
             (
+                ("sending", self.sending),
                 ("failed", self.failed),
                 ("unknown", self.unknown),
                 ("declined", self.declined),
@@ -163,7 +166,7 @@ class Action:
             "done": self.done,
             "claims": self.claims,
         }
-        for name in ("failed", "unknown", "declined"):
+        for name in ("sending", "failed", "unknown", "declined"):
             text: Say | None = getattr(self, name)
             if text is not None:
                 kept[name] = text
@@ -179,6 +182,7 @@ def action(
     done: Say,
     claims: Claims,
     name: str | None = None,
+    sending: Say | None = None,
     failed: Say | None = None,
     unknown: Say | None = None,
     declined: Say | None = None,
@@ -201,6 +205,7 @@ def action(
             read_back=read_back,
             done=done,
             claims=claims,
+            sending=sending,
             failed=failed,
             unknown=unknown,
             declined=declined,

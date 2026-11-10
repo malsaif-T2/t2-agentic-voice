@@ -122,3 +122,33 @@ text = "uh huh"
 reason = "A listening sound of the English preset's backchannel list (domain/words.py's `PRESET_WORDS`), which the interruption rule reads."
 said = "Go with your recommendation for Q1, Q2, Q3, Q4, Q5 and Q7."
 on = 2026-11-03
+
+# Plan 007, the yes words: the owner's answer of 2026-11-10, put with the agent's
+# recommendation and chosen as worded here (the plan's "The owner's decisions"). The same
+# exception as plan 005's Q1, for the language presets' yes lists, which the yes rule reads
+# (the design's 8.3). One entry for each yes word that an item's reference holds as its whole
+# text (y04, b02, b05, b10 and their variants), each exempting that whole text only; a longer
+# reference that holds the word, such as «نعم ارسلها», stays searched.
+[[allowed]]
+text = "نعم"
+reason = "A yes word of the Arabic presets' yes list (domain/yes_words.py), which the yes rule reads."
+said = "Allow them, as in M3 (Recommended)"
+on = 2026-11-10
+
+[[allowed]]
+text = "ايه"
+reason = "A yes word of the Saudi preset's yes list (domain/yes_words.py), which the yes rule reads."
+said = "Allow them, as in M3 (Recommended)"
+on = 2026-11-10
+
+[[allowed]]
+text = "ايوه"
+reason = "A yes word of the Saudi preset's yes list (domain/yes_words.py), which the yes rule reads."
+said = "Allow them, as in M3 (Recommended)"
+on = 2026-11-10
+
+[[allowed]]
+text = "yeah"
+reason = "A yes word of the English preset's yes list (domain/yes_words.py), which the yes rule reads."
+said = "Allow them, as in M3 (Recommended)"
+on = 2026-11-10

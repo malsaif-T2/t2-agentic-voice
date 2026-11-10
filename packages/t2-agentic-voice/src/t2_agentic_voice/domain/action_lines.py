@@ -5,9 +5,9 @@ guard does not check it.
 A `SpokenLine` keeps two forms: `text`, the plain words (a number as issued), which the caption
 and every test read; and `spoken`, the same with each `{field:id}` said digit by digit, which
 only text-to-speech reads. A `ReadBackPlan` is everything the session needs to read one draft
-back, and to end the read-back with no yes: `voice` cannot render a template, so the action
-runner renders each line it may speak. `ActionLines` are the fixed lines an action may leave to
-the library.
+back, to end the read-back with no yes, and to speak while the write runs: `voice` cannot render
+a template, so the action runner renders each line it may speak. `ActionLines` are the fixed
+lines an action may leave to the library.
 
 Plan 007's Track A fills `default_action_lines`.
 """
@@ -34,11 +34,19 @@ class ReadBackPlan(_Line):
     """One draft to read back: the `action` and the model's id for the call (`tool_call_id`);
     `draft_json`, the parsed draft, which the receipt will hold; the `summary` the receipt
     covers and the closing `question`, rendered apart so each stays its own clause; the line
-    `asked_again`, spoken when the answer is unclear; the line `declined`, the action's own or
-    the library's, spoken when the read-back ends with no yes and no talker turn answers it: no
-    clear answer after `max_attempts`, nothing heard included (after a plain no, as the owner
-    rules, plan 007); the reply's `language`; the action's own `send_words`; and
-    `max_attempts`, how many times the caller is asked."""
+    `asked_again`, spoken when the answer is unclear; the lines `declined` and `sending`; the
+    reply's `language`; the action's own `send_words`; and `max_attempts`, how many times the
+    caller is asked.
+
+    `declined` is the action's own line or the library's. The session speaks it only where no
+    talker turn can answer: nothing usable heard after the last ask-again. After a plain no or
+    a correction the talker answers in its own words, and this line is not spoken (the owner's
+    ruling, plan 007).
+
+    `sending` is rendered by Track B's `propose` from the action's `sending`, or the library's
+    line when it is left out. Track C's session speaks it once the yes rule issues the
+    `ConfirmedAction`, before the job's outcome. It is a fixed line, never a claim that the
+    action is done."""
 
     action: str = Field(min_length=1)
     tool_call_id: str = Field(min_length=1)
@@ -47,14 +55,17 @@ class ReadBackPlan(_Line):
     question: SpokenLine
     asked_again: SpokenLine
     declined: SpokenLine
+    sending: SpokenLine
     language: LanguageTag
     send_words: tuple[str, ...] = ()
     max_attempts: int = Field(ge=1)
 
 
 class ActionLines(_Line):
-    """The library's default text of the lines an action may leave out, in one language."""
+    """The library's default text of the lines an action may leave out, in one language:
+    `sending`, said while the write runs, and the outcomes and the ask-again."""
 
+    sending: str = Field(min_length=1)
     failed: str = Field(min_length=1)
     unknown: str = Field(min_length=1)
     declined: str = Field(min_length=1)

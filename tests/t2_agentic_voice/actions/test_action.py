@@ -20,6 +20,10 @@ from t2_agentic_voice.core.conversation import ConversationLine
 from t2_agentic_voice.core.errors import ConfigurationError
 from t2_agentic_voice.core.identity import Caller
 from t2_agentic_voice.domain.action_declaration import Claims, ReadBack, Say, Spoken
+from t2_agentic_voice.domain.declaration import Language, VoiceAgent
+
+ENGLISH = Language.english(greeting="Hi! How can I help?")
+SAUDI = Language.saudi_arabic(greeting="هلا! وش أقدر أساعدك فيه؟")
 
 Category = Annotated[
     Literal["hardware", "software"],
@@ -153,12 +157,24 @@ def test_names_that_do_not_read_as_consent(name: str) -> None:
         ({"read_back": ReadBack({"en": ("{missing}", "Send?")})}, "read_back"),
         ({"done": Say(en="{not_a_result}")}, "done"),
         ({"failed": Say(en="{not_a_field}")}, "failed"),
+        ({"sending": Say(en="{not_a_field}")}, "sending"),
+        ({"sending": Say(en="{id}")}, "sending"),
         ({"max_per_call": 0}, "max_per_call"),
         ({"timeout_s": 0}, "max_per_call"),
         ({"name": "has spaces"}, "name"),
         ({"description": "   "}, "description"),
     ],
-    ids=["read_back", "done", "failed", "cap", "timeout", "name", "description"],
+    ids=[
+        "read_back",
+        "done",
+        "failed",
+        "sending",
+        "sending names the result",
+        "cap",
+        "timeout",
+        "name",
+        "description",
+    ],
 )
 def test_a_field_it_cannot_run_with_is_a_configuration_error(
     changes: dict[str, Any], field: str
@@ -166,6 +182,27 @@ def test_a_field_it_cannot_run_with_is_a_configuration_error(
     with pytest.raises(ConfigurationError) as caught:
         _an_action(**changes)
     assert caught.value.details["field"] == field and "FIX:" in caught.value.message
+
+
+SENDING = Say({"ar": "لحظة، أفتح لك طلب {category}.", "en": "One moment, opening it."})
+
+
+def test_an_action_takes_its_own_sending_line_or_leaves_it_to_the_library() -> None:
+    """The line said while the write runs (the owner's ruling, plan 007): the action's own, from
+    the draft's fields, a text each of the agent's languages must cover as the outcome lines'
+    are; or None, for the library's."""
+    plain = _an_action()
+    assert plain.sending is None and "sending" not in plain.texts
+    made = _an_action(sending=SENDING)
+    assert made.sending is SENDING and made.texts["sending"] is SENDING
+
+
+def test_a_sending_line_short_of_a_language_the_agent_speaks_is_refused() -> None:
+    short = _an_action(sending=Say(en="One moment, opening it."))
+    with pytest.raises(ConfigurationError, match="no text in a language") as caught:
+        VoiceAgent(name="branch-helper", languages=[ENGLISH, SAUDI], tools=[short])
+    assert caught.value.details["field"] == "tools" and "FIX:" in caught.value.message
+    assert VoiceAgent(name="english-helper", languages=[ENGLISH], tools=[short]).tools == (short,)
 
 
 class _NoLabels(BaseModel):

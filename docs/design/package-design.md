@@ -204,7 +204,7 @@ All the personas need the same things, and this design is built around them:
 | Send words per action (`ReadBack(send_words=...)`) | The language preset's send words |
 | A TTS model and voice per language | The library's documented default per language, chosen in M2 |
 | Speaking formats (`{x:id}`, `{x:number}`, their own) | The built-in formats |
-| `failed`, `unknown` and `declined` templates | Library defaults in each preset language. A declared language with no preset must supply them |
+| `sending`, `failed`, `unknown` and `declined` templates | Library defaults in each preset language. A declared language with no preset must supply them |
 | `on_call_start` | The language's greeting, with no extra context |
 | A `KnowledgeBase` and `knowledge_tool()` | None: knowledge is just another tool |
 | Cards for the screen (`ctx.show`) | Only captions are shown |
@@ -942,7 +942,8 @@ What v1 must already have for it, all built for M3 to M5 anyway:
 | `read_back` | yes | `ReadBack(templates, send_words=..., show_draft=False, max_attempts=2, asked_again=...)`. Each template is a pair, a summary and a closing question, kept apart because the receipt covers the summary. `show_draft` is off by default (the caller only hears the agent, D-075) |
 | `consent` | no; `ReadBack` | The consent mode (table below) |
 | `done` | yes | The outcome sentence, filled from the real result |
-| `failed`, `unknown`, `declined` | no; library defaults | `failed`: definitely not done. `unknown`: no reply and no lookup hit. `declined`: the caller said no |
+| `sending` | no; library default | Said while the write runs, after the caller's yes and before the outcome, as a tool's progress line is: "One moment, I'm opening the ticket." A fixed line, its values from the draft. It never says the action is done |
+| `failed`, `unknown`, `declined` | no; library defaults | `failed`: definitely not done. `unknown`: no reply and no lookup hit. `declined`: nothing usable was heard after the last ask-again. After a plain no the talker answers in its own words |
 | `claims` | yes, in every declared language | Past-tense phrases that claim this action. The guard blocks them unless the record holds the action or a `reports_on` tool returned it |
 | `validate` | no | `async (ctx, draft) -> draft`, or it raises `ToolError`. Checks the draft against the backend's own lists before the read-back |
 | `lookup` | no | Finds a completed write by `request_id` (invariant 6) |
@@ -974,8 +975,11 @@ talker calls open_request({...})
        built from speech-to-text, or from typed text only when env is "test"
        yes              -> ConfirmedAction (only the yes rule builds one)
                         -> outbox row with request_id, then a job outside the turn: execute(ctx, draft)
-       no or correction -> the talker gets "declined: <heard words>" and may call again with a new draft
-       unclear          -> asked again (a template), at most max_attempts times, then declined
+                        -> while it runs, the runtime speaks `sending`: a fixed line, never "done"
+       no or correction -> the talker gets "declined: <heard words>" and answers in its own words;
+                           it may call again with a new draft
+       unclear          -> asked again (a template), at most max_attempts times; then, with nothing
+                           usable heard, the runtime speaks `declined`
   -> result     returned                       -> CompletedAction recorded; the runtime speaks `done`
                 ActionRejected, ActionNotSent  -> `failed`
                 any other exception, timeout   -> lookup(request_id): found -> `done`; otherwise `unknown`,
@@ -1144,7 +1148,7 @@ Every ID-shaped token in that clause must also equal a value in that completed A
 
 **Rule C, after an action call.** Once the talker calls an action in a turn, its further text in that turn is dropped. Only the runtime's templates speak until the outcome has been spoken.
 
-**Templates are not checked.** The runtime's own templates are exempt from rules A and B: greetings, read-backs, `done`, `failed`, `unknown`, `declined`, progress lines and fixed phrases. Their values come from the draft, read back so that the caller can check them, or from the real result.
+**Templates are not checked.** The runtime's own templates are exempt from rules A and B: greetings, read-backs, `sending`, `done`, `failed`, `unknown`, `declined`, progress lines and fixed phrases. Their values come from the draft, read back so that the caller can check them, or from the real result.
 
 **When a clause is blocked:**
 - that clause and the rest of the reply are dropped (`guard.on_block="drop_rest"`), or only that clause (`"drop_clause"`);
