@@ -18,7 +18,7 @@ start finds left `sending`.
 
 The outcome's line is the action's `done`, `failed` or `unknown`, or the library's; a `done`
 the result cannot fill says the library's `unknown`, which claims nothing. `ActionCompleted` or
-`ActionUnconfirmed` goes to `emit` as each job ends.
+`ActionUnconfirmed` goes to `emit`, when given, as each job ends.
 """
 
 from __future__ import annotations
@@ -50,8 +50,9 @@ from t2_agentic_voice.domain.ports.outbox import Outbox, OutboxEntry, OutboxStat
 from t2_agentic_voice.domain.yes_rule import ConfirmedAction
 
 _log = get_logger(__name__)
-# Where the runner's public events go: the runtime's observers (voice/session/io.py's
-# `EventSink`, which `actions` may not import).
+# Where the runner's public events go, when it is given a sink (voice/session/io.py's
+# `EventSink`, which `actions` may not import). The runtime gives none: the session reports
+# each outcome from the `ActionOutcome` (api/actions.py).
 EventSink = Callable[[Event], None]
 # The namespace of the request IDs, each a UUID 5 of the call and the confirmed action.
 _REQUESTS = uuid.UUID("6f3a7c2e-0b1d-5e8f-9a4c-2d7e1b5f8c30")

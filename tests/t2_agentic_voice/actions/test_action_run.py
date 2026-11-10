@@ -4,7 +4,8 @@ action the yes rule issued is carried out; its outbox row is written `sending` b
 write; each error has its meaning, a backend that refuses, raises, times out, loses its reply or
 replies late, each with and without a lookup; the same confirmed action never goes twice; a
 stop never cuts a write in half; only a write that really returned, or that a lookup found, is
-recorded, in its own call's record; and nothing shown holds a draft's value or a reason."""
+recorded, in its own call's record or in the one record the runner was given; and nothing
+shown holds a draft's value or a reason."""
 
 from __future__ import annotations
 
@@ -14,8 +15,9 @@ from typing import Any
 
 import pytest
 from t2_agentic_voice.actions import spoken_lines
-from t2_agentic_voice.actions.action_runner import NOT_CONFIRMED
+from t2_agentic_voice.actions.action_runner import NOT_CONFIRMED, ActionRunner
 from t2_agentic_voice.actions.memory_outbox import MemoryOutbox
+from t2_agentic_voice.actions.record import ActionRecord
 from t2_agentic_voice.core.events import ActionCompleted, ActionUnconfirmed
 from t2_agentic_voice.domain.action_lines import ActionLines
 from t2_agentic_voice.domain.completed_action import is_recorded
@@ -264,6 +266,19 @@ def test_each_calls_record_holds_only_its_own_writes() -> None:
     kept = rig.runner.record(CALL_ID)
     rig.runner.forget(CALL_ID)
     assert rig.runner.record(CALL_ID) is not kept and rig.runner.record(CALL_ID).entries() == ()
+
+
+def test_a_runner_given_a_record_fills_that_one_and_keeps_it() -> None:
+    """Block 0's `record=` (TextCall's one call): the jobs and the talker's guard share it."""
+    rig = Rig()
+    given = ActionRecord()
+    rig.runner = ActionRunner([rig.action], outbox=rig.outbox, record=given)
+    outcome = asyncio.run(rig.confirmed_run())
+    [entry] = given.entries()
+    assert outcome.kind == "done" and entry.request_id == outcome.request_id
+    assert rig.runner.record(CALL_ID) is given and rig.runner.record("call-2") is given
+    rig.runner.forget(CALL_ID)
+    assert rig.runner.record(CALL_ID) is given and len(given.entries()) == 1
 
 
 @pytest.mark.parametrize("mode", ["reject", "not_sent", "raise"])

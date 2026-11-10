@@ -19,7 +19,8 @@ runner is for a tool. One serves every call of an agent, against its outbox.
   (`CallContext.past_actions`).
 
 Each call's record is kept here by the call's ID (`record`), so call A's entries never reach
-call B; the runtime drops it with `forget` once the call has ended. No log line, error or event
+call B; the runtime drops it with `forget` once the call has ended. A runner given one call's
+`record` (Block 0's keyword, `TextCall`'s) fills that one instead. No log line, error or event
 holds a draft's value, a result, the caller's words or a reason a backend gave.
 """
 
@@ -69,14 +70,17 @@ _ACTIONS_FIX = "FIX: build each action with @action, each with its own name."
 
 
 class ActionRunner:
-    """One agent's `actions`, against its `outbox`, for every call (the module's docstring); its
-    events to `emit`, when given."""
+    """One agent's `actions`, against its `outbox`, for every call (the module's docstring).
+    Given `record` (one call's, as `TextCall` gives it), every job adds to that one. Its events
+    go to `emit` when given; the runtime gives none, since the session reports each outcome
+    from the `ActionOutcome` it is returned (core/events.py: `voice` builds the events)."""
 
     def __init__(
         self,
         actions: Sequence[Action],
         *,
         outbox: Outbox,
+        record: ActionRecord | None = None,
         per_caller_per_day: int = PER_CALLER_PER_DAY,
         emit: EventSink | None = None,
     ) -> None:
@@ -93,6 +97,7 @@ class ActionRunner:
         self._outbox = outbox
         self._per_day = per_caller_per_day
         self._writes = Writes(outbox, emit)
+        self._record = record
         self._records: dict[str, ActionRecord] = {}
 
     def schemas(self) -> tuple[ToolSchema, ...]:
@@ -104,11 +109,15 @@ class ActionRunner:
         return self._by_name.get(name)
 
     def record(self, call_id: CallId) -> ActionRecord:
-        """The record of the call `call_id`, shared by its jobs and its talker's guard."""
+        """The record of the call `call_id`, shared by its jobs and its talker's guard: the one
+        the runner was given, when it was given one."""
+        if self._record is not None:
+            return self._record
         return self._records.setdefault(call_id, ActionRecord())
 
     def forget(self, call_id: CallId) -> None:
-        """Drop the call's record once the call has ended; a job still running keeps its own."""
+        """Drop the call's record once the call has ended; a job still running keeps its own. A
+        record the runner was given stays its giver's."""
         self._records.pop(call_id, None)
 
     async def past(self, subject: str, action: str) -> tuple[RecordedAction, ...]:

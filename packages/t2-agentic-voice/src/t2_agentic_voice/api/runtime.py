@@ -270,9 +270,7 @@ class VoiceRuntime:
         self._events = asyncio.Queue(OBSERVER_QUEUE)
         observing = asyncio.create_task(self._observe(self._events))
         stack.push_async_callback(_drained, self._events, observing)
-        actions = await open_actions(
-            agent, settings, emit=self._emit, clock=self._clock, stack=stack
-        )
+        actions = await open_actions(agent, settings, clock=self._clock, stack=stack)
         self._actions = actions
         talker = talkers(agent, settings, providers.chat, actions)  # each call's, for the talker
         talking: dict[str, Any] = {}

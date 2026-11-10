@@ -1,10 +1,10 @@
 """The composition of an agent's actions (api/actions.py, api/providers.py, api/runtime.py; plan
 007, Track B): one action runner for every call of the runtime, on the SQLite outbox under
-`storage.var_dir/<agent>/outbox.sqlite3`, the per-caller cap from the settings and its events
-to the runtime's observers; the rows an earlier process left `sending` reconciled as the runtime
-starts, before any call, never sent again (invariant 6); each call's talker given the runner and
-its own call's record; a call's record let go as it ends; the outbox closed as the runtime
-stops; and an agent with no actions opening no outbox."""
+`storage.var_dir/<agent>/outbox.sqlite3`, the per-caller cap from the settings, emitting no
+event of its own (the session reports each outcome); the rows an earlier process left `sending`
+reconciled as the runtime starts, before any call, never sent again (invariant 6); each call's
+talker given the runner and its own call's record; a call's record let go as it ends; the
+outbox closed as the runtime stops; and an agent with no actions opening no outbox."""
 
 from __future__ import annotations
 
@@ -28,14 +28,30 @@ from t2_agentic_voice.api.actions import OUTBOX_NAME, outbox_path
 from t2_agentic_voice.api.providers import Providers, actions_of, talkers, tools_of
 from t2_agentic_voice.api.runtime import VoiceRuntime
 from t2_agentic_voice.core.config import VoiceSettings
-from t2_agentic_voice.core.events import CallEnded, CallReport
+from t2_agentic_voice.core.events import (
+    ActionCompleted,
+    ActionUnconfirmed,
+    CallEnded,
+    CallReport,
+    Event,
+)
 from t2_agentic_voice.core.identity import Caller
 from t2_agentic_voice.core.settings.limits import LimitSettings
+from t2_agentic_voice.domain.action_lines import ReadBackPlan
 from t2_agentic_voice.domain.declaration import Language, VoiceAgent
 from t2_agentic_voice.domain.ports.outbox import OutboxEntry
 from t2_agentic_voice.testing.llm_fakes import FAKE_DATA_FLOW
 
-from tests.t2_agentic_voice.actions.action_support import Backend, RequestOpened, an_action
+from tests.t2_agentic_voice.actions.action_support import (
+    CALL_ID,
+    CALLER,
+    Backend,
+    RequestOpened,
+    an_action,
+    confirmed_of,
+    context,
+    request,
+)
 from tests.t2_agentic_voice.api.runtime_support import FakeIdentity, dev_settings, serving
 from tests.t2_agentic_voice.fakes import FakeCalls, FakeClock, FakeSpeechToText, FakeTextToSpeech
 
@@ -172,10 +188,44 @@ def test_the_runtime_opens_the_runner_on_its_outbox_and_reconciles_before_any_ca
     runner: ActionRunner = seen["runner"]
     assert seen["rows"] == {"r-found": "done", "r-lost": "flagged"}
     assert rig.backend.writes == []  # never sent again
-    assert runner._per_day == 3 and runner._writes._emit == rig.runtime._emit
+    assert runner._per_day == 3 and runner._writes._emit is None
     assert isinstance(seen["talker"], ChatTalker) and seen["talker"].actions is runner
     with pytest.raises(sqlite3.ProgrammingError):  # closed as the runtime stopped
         asyncio.run(runner._outbox.entries())
+
+
+def test_the_runtimes_runner_leaves_each_outcomes_event_to_the_session(tmp_path: Path) -> None:
+    """core/events.py: `voice` builds the events, so the session alone reports an outcome, from
+    the `ActionOutcome` the runner returns; the runner the runtime opens emits none."""
+    rig = _Runtime(dev_settings(tmp_path))
+    observed: list[Event] = []
+
+    async def heard(event: Event) -> None:
+        observed.append(event)
+
+    rig.runtime.on(ActionCompleted)(heard)
+    rig.runtime.on(ActionUnconfirmed)(heard)
+
+    async def scene() -> str:
+        async with serving(rig.app):
+            runner = rig.runtime._actions
+            assert runner is not None
+            clock = FakeClock()
+            plan = await runner.propose(request(), context(), clock=clock)
+            assert isinstance(plan, ReadBackPlan)
+            outcome = await runner.run(
+                confirmed_of(plan),
+                caller=CALLER,
+                call_id=CALL_ID,
+                language="en",
+                turn_id=9,
+                conversation=(),
+                clock=clock,
+            )
+            return outcome.kind
+
+    assert asyncio.run(scene()) == "done" and len(rig.backend.writes) == 1
+    assert observed == []  # the observers' queue drained as the runtime stopped
 
 
 def test_a_calls_record_is_let_go_as_the_call_ends(tmp_path: Path) -> None:

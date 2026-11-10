@@ -4,9 +4,11 @@ composition root's part, since only api may build an adapter (harness.toml [laye
 - **`open_actions`**, in the runtime's lifespan: for an agent that declares actions, one
   `ActionRunner` for every call of the runtime, on the SQLite outbox at `outbox_path`
   (`storage.var_dir/<agent name>/outbox.sqlite3`), the per-caller cap from
-  `limits.actions_per_caller_per_day`, its events to the runtime's observers; the rows an
-  earlier process left `sending` reconciled before any call starts (invariant 6); the outbox
-  closed as the lifespan ends. An agent with no actions opens no outbox: None.
+  `limits.actions_per_caller_per_day`; the rows an earlier process left `sending` reconciled
+  before any call starts (invariant 6); the outbox closed as the lifespan ends. An agent with
+  no actions opens no outbox: None. The runner emits no event: the session reports each
+  outcome (`ActionCompleted`, `ActionUnconfirmed`) from the `ActionOutcome` it is returned,
+  as `voice` builds the events (core/events.py), so an observer hears each outcome once.
 - **What `t2v outbox` reads** (api/cli.py prints it): the rows (`outbox_rows`, none for an
   outbox not made yet, which reading never makes), each as `shown_row` gives it, and
   `reconciled`, which takes the runtime's lock first, so it never runs beside a server on the
@@ -26,7 +28,6 @@ from contextlib import AsyncExitStack
 from pathlib import Path
 from typing import Final
 
-from t2_agentic_voice.actions.action_job import EventSink
 from t2_agentic_voice.actions.action_runner import ActionRunner
 from t2_agentic_voice.api.lockfile import LockFile
 from t2_agentic_voice.api.providers import actions_of
@@ -50,24 +51,18 @@ def outbox_path(settings: VoiceSettings, agent: VoiceAgent) -> Path:
     return settings.storage.var_dir / agent.name / OUTBOX_NAME
 
 
-def _runner(
-    agent: VoiceAgent, settings: VoiceSettings, outbox: Outbox, emit: EventSink | None
-) -> ActionRunner:
+def _runner(agent: VoiceAgent, settings: VoiceSettings, outbox: Outbox) -> ActionRunner:
+    """The runner, with no `emit`: the session reports each outcome's event (the module's
+    docstring)."""
     return ActionRunner(
         actions_of(agent),
         outbox=outbox,
         per_caller_per_day=settings.limits.actions_per_caller_per_day,
-        emit=emit,
     )
 
 
 async def open_actions(
-    agent: VoiceAgent,
-    settings: VoiceSettings,
-    *,
-    emit: EventSink,
-    clock: Clock,
-    stack: AsyncExitStack,
+    agent: VoiceAgent, settings: VoiceSettings, *, clock: Clock, stack: AsyncExitStack
 ) -> ActionRunner | None:
     """The agent's one action runner (the module's docstring), its outbox's close pushed on
     `stack`; None for an agent with no actions."""
@@ -77,7 +72,7 @@ async def open_actions(
         return None
     outbox = await SqliteOutbox.open(outbox_path(settings, agent))
     stack.push_async_callback(outbox.aclose)
-    runner = _runner(agent, settings, outbox, emit)
+    runner = _runner(agent, settings, outbox)
     reconciled = await runner.reconcile(clock=clock)
     log.info("actions_opened", actions=len(runner.actions), reconciled=reconciled)
     return runner
@@ -130,7 +125,7 @@ async def reconciled(
     try:
         outbox = await SqliteOutbox.open(path)
         try:
-            return await _runner(agent, settings, outbox, None).reconcile(clock=clock, flagged=True)
+            return await _runner(agent, settings, outbox).reconcile(clock=clock, flagged=True)
         finally:
             await outbox.aclose()
     finally:
