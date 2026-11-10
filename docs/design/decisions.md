@@ -2618,3 +2618,72 @@ twice; DOC-REF: every `D-NNN` cited anywhere is a heading here), so keep its sha
   `tests/ole5_voice/tickets/test_status.py`, `test_mock.py`; the end-to-end calls,
   `tests/t2_agentic_voice/testing/test_action_calls.py`, `test_parity_actions.py`,
   `tests/ole5_voice/tickets/test_ticket_calls.py`, `test_ticket_safety.py`.
+
+## D-082 · A chat model judges the answers the yes rule's lists leave unplaced, within its rails · 2026-11-10 · Accepted (the owner's rulings of 2026-11-10, plan 007's Block F)
+
+- **Context:** the integration found «اممم» read as a correction for want of a list entry. The
+  owner: "We should be more flexiable, we shouldn't just have a list and rely on it, there are
+  things a caller might say (or STT might hear) that no list can cover, so the agent should
+  handle this itself". Put three options, the agent's recommendation first (a model sorting what
+  the lists miss into unclear, no or change, never yes), the owner chose it with an addition:
+  "Lets do the model sorts the rest. But I would also want it to recognize different words of
+  confirmation like ("go for it", "اكيد" etc.. While also capable of knowing that "Yes, but
+  change.." is a request for change and not only confirmation)". The agent had advised against a
+  model's yes ("a misjudged 'yes, but change X' would send a ticket the caller never approved").
+  On the first draft, whose rail made a judged yes over the closing question still need a listed
+  send word, the owner asked: "Over the closing question: a judged yes still needs a send word,
+  as a listed yes does. Doesn't this defeat the purpose of a judged confirmation in first
+  place?"; to the agent's change (the model telling an explicit go-ahead from plain agreement,
+  only the go-ahead counting over the question, the agent's own words heard back unclear), the
+  owner answered "Yes, send it". The ruling amends invariant 1 (docs/SECURITY.md).
+- **Decision:**
+  - The lists stay first and unchanged: whatever `decide` places is its answer, and asks no
+    model. It marks `askable` what it cannot place: a word on none of its lists (until now a
+    correction), send words among fillers with no yes word and no question mark («يلا أرسلها»,
+    which the lists ask again), and a yes among fillers over the closing question with no send
+    word. A send word alone stays asked again, never put to the model.
+  - For an agent that asks (`VoiceAgent.ask_on_unlisted_answers`, False by default, as
+    `ask_on_uncertain_overlaps` is under D-069), those words are put to a chat model
+    (`domain/consent_check.py`: `openai/gpt-oss-120b` at low effort, temperature 0, 256 output
+    tokens, 1.5 s on the call's clock), the request holding as data, in JSON, the read-back's
+    summary and closing question as the plan rendered them and the heard words, nothing else;
+    it answers `send`, `yes`, `no`, `change` or `unclear`, anything else read as `unclear`.
+  - The yes rule decides what the word makes (`judged`, beside `decide`, the only other builder
+    of a `ConfirmedAction`). A `send` or `yes` is a yes only when the words hold no no word and
+    no question mark (else asked again), no change marker (`domain/yes_words.py`'s new list a
+    language: the brief's "but", "change", "instead", "except", "actually", "rather" and «بس»,
+    «لكن», «غيّر», «عدّل», «بدل», «بدال», «خلها», «خله», with those verbs' forms with the
+    object pronoun, each also after waw; else a correction), are not the agent's own words heard
+    back, a run of the words of its summary, closing question or ask-again line (else asked
+    again), and the receipt built when the words reached the rule still stands (else asked
+    again). Once the closing question ended, `send` and `yes` both confirm; over it, `send` or
+    a listed send word in the words, and `yes` alone is asked again. `no` is declined, `change`
+    a correction, and `unclear`, a failure and a timeout are asked again.
+  - The echo rail is the agent's own: the brief names the agent's words heard back unclear for
+    the model, and the lists now hand the model send words among fillers, which the Saudi
+    closing question «أرسل الطلب؟» heard back is; a misjudged echo would send what the caller
+    never approved, so the rule refuses it whatever the model says.
+  - In the session (`voice/session/yes_ask.py`, shaped as D-069's `overlap_ask.py`): a task of a
+    cancel scope of its own, no lock held, the verdict a session step applied only while the
+    same read-back is current; a newer answer, the client's stop and the call's end cancel it;
+    counted in the call's usage; logged by its outcome's kind alone. It runs on the call's chat
+    model for the session's own requests (`CallSetup.overlap_model`, kept by its name).
+  - Observers tell a judged answer from a listed one: `ConfirmationAnswered.by`, `words` or
+    `model`. `TextCall` needs nothing new: its fake model receives the check's requests as it
+    receives the overlap's, told by the instruction (`is_consent_check`, in the `evals` facade
+    with the request and the answer's reader). `ActionSafetySuite` gains the rails' cases, each
+    passing at once for an agent that does not ask.
+- **Consequences:** an agent that asks hears "go for it" or «يلا أرسلها» as a yes, and «امممم»
+  asked again, not corrected; the caller waits in silence while the check runs, at most 1.5 s,
+  and that wait counts in the turn's time to first audio: the turn settles, its `TurnMetrics`
+  sent and its trace ended, only once the reply its verdict says has played. A model fooled into `send` on words that carry no refusal, change or echo (a hesitation, after
+  a read-back whose draft held text written to steer it) would still confirm: the rails are
+  lexical, and the read-back's summary is the draft's own words, so the prompt frames it as
+  data. «اكيد» and "sure" were listed yes words already, so they reach no model. An agent that
+  does not ask, and every measured run, is unchanged (GP-18; `test_no_action_baseline.py`).
+  Ole5 sets the flag, its end-to-end calls and run A's oracle answer the check, and run A gains
+  scenarios for it (the plan's Block F, the Ole5 builder's part).
+- **Evidence:** plan 007's "The owner's decisions" (2026-11-10, both rulings) and its Block F;
+  `tests/t2_agentic_voice/domain/test_consent_check.py`, `test_yes_rule_judged.py`;
+  `tests/t2_agentic_voice/voice/session/test_yes_ask.py`;
+  `tests/t2_agentic_voice/testing/test_action_call_judged.py`, `test_action_safety_judged.py`.

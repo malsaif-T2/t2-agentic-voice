@@ -1,0 +1,22 @@
+# Plan 007's action scenarios (its "The measurement"; ole5_voice/evals/action_scenarios.py),
+# added with the yes rule's model check (D-082) before any run: a yes in words on none of the
+# yes rule's lists, said once the closing question ended, which the model judges a yes.
+id = "a31_unlisted_yes_saudi"
+kind = "unlisted_yes"
+split = "dev"
+language = "ar-SA"
+notes = "An agreement on no list (sah, kitha tamaam: right, that's fine), said once the closing question ended, is judged a yes and opens the ticket once."
+made = 1
+ticket_type = "Bug"
+summary_facts = ["Says the print button does nothing when the caller prints a correspondence."]
+
+[[turns]]
+says = "زر الطباعة ما يسوي شي لما أطبع المراسلة في أولي فايف، مو مستعجلة بس أبغى تذكرة"
+calls = "create_ticket"
+outcome = "read_back"
+language = "ar-SA"
+
+[[turns]]
+says = "صح، كذا تمام"
+outcome = "done"
+says_number = "whole"

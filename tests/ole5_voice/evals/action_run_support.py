@@ -5,7 +5,11 @@ answers every check, a fake knowledge base, and the parts a run is built from, i
 read-back, the yes rule, the guard or the action runner.
 
 **The oracle** answers an overlap the interruption rule left uncertain with stop for words its
-turn says cut the reply, go on otherwise. It finds the caller's words of each request among the
+turn says cut the reply, go on otherwise; and the yes rule's check of an answer its lists leave
+unplaced (D-082, told by its instruction) with the word that makes the turn do what its
+scenario expects: yes for a write once the closing question ended, send for one over it, change
+for a new read-back, no for the talker's answer, unclear for anything else, words no turn says
+among them. It finds the caller's words of each request among the
 scenarios' turns: a turn whose scenario expects a ticket tool calls it, as a model writes a call
 (`create_ticket` and `hand_off` with the caller's words as the summary and the scenario's type,
 `ticket_status` with the digits the caller said); a turn expecting a search, or the first of a
@@ -29,7 +33,12 @@ from typing import Any, Final
 from ole5_voice.agent import talker_agent
 from ole5_voice.evals.action_card import ActionRun
 from ole5_voice.evals.action_run import ActionParts
-from ole5_voice.evals.action_scenarios import ACTIONS_DIR, ActionScenario, load_action_scenarios
+from ole5_voice.evals.action_scenarios import (
+    ACTIONS_DIR,
+    ENDED,
+    ActionScenario,
+    load_action_scenarios,
+)
 from ole5_voice.evals.factories import load_factory
 from ole5_voice.evals.judge import REGISTER_SYSTEM
 from ole5_voice.evals.run_parts import DATA
@@ -42,6 +51,7 @@ from t2_agentic_voice.evals import (
     ScriptedLLM,
     ScriptStep,
     TextCall,
+    is_consent_check,
     uncertain_overlap_request,
 )
 from t2_agentic_voice.ports import (
@@ -84,6 +94,9 @@ ANSWER: Final = {
 _DIGITS = re.compile("[0-9]{4,16}")
 # The instruction of the request a session sends on an overlap the rule left uncertain.
 OVERLAP_SYSTEM: Final = uncertain_overlap_request("-", "-").messages[0].content
+# The yes rule's check's word on a turn whose scenario expects, after it, a new read-back (a
+# correction) or the talker's answer (a no); unclear for any other outcome but a write's.
+JUDGED: Final = {"read_back": "change", "talker": "no"}
 _DATA = re.compile(r'<data tool="[a-z_]+">')  # a tool's result, as the talker frames it
 
 
@@ -136,6 +149,8 @@ class Oracle:
     def __call__(self, request: ChatRequest) -> list[ScriptStep]:
         if request.messages[0].content == OVERLAP_SYSTEM:
             return self._overlap(request.messages[-1].content)
+        if is_consent_check(request):
+            return self._judged(json.loads(request.messages[-1].content)["answer"])
         users = [m.content for m in request.messages if m.role == "user"]
         words = next((w for u in reversed(users) if (w := self._words(u)) is not None), None)
         asked = max(n for n, m in enumerate(request.messages) if m.role == "user")
@@ -157,6 +172,19 @@ class Oracle:
         found = self.turns.get(words)
         cuts = found is not None and found[0].turns[found[1]].cuts_reply
         return said("stop" if cuts else "go_on")
+
+    def _judged(self, words: str) -> list[ScriptStep]:
+        """The word on an answer to a read-back the yes rule's lists left unplaced: the one that
+        makes the turn saying `words` do what its scenario expects (`JUDGED`, by its outcome; a
+        write is sent on yes once the closing question ended, on send over it), and unclear for
+        any other words."""
+        found = self.turns.get(words)
+        if found is None:
+            return said("unclear")
+        turn = found[0].turns[found[1]]
+        if turn.outcome in ENDED:
+            return said("send" if turn.when == "closing_question" else "yes")
+        return said(JUDGED.get(turn.outcome or "", "unclear"))
 
     def _words(self, message: str) -> str | None:
         """The caller's words a user message holds, a session's note after them, when they

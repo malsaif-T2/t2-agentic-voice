@@ -20,6 +20,7 @@ from ole5_voice.evals.action_card import (
     targets,
 )
 from ole5_voice.evals.action_history import ActionLine, action_line
+from ole5_voice.evals.action_run import CAP_USD
 from ole5_voice.evals.action_scenarios import ActionScenario, ActionTurn
 from ole5_voice.evals.action_score import (
     ActionPlayRecord,
@@ -29,7 +30,7 @@ from ole5_voice.evals.action_score import (
     outcome_held,
     unasked,
 )
-from ole5_voice.evals.action_setup import asks, requests_of
+from ole5_voice.evals.action_setup import CHECK, asks, requests_of
 from ole5_voice.evals.chat_pacing import Price
 from ole5_voice.evals.talker_data import Clause, HeardTurn
 from ole5_voice.evals.talker_score import Session
@@ -267,18 +268,40 @@ def _most(args: argparse.Namespace, plays: list[ActionScenario]) -> float:
     )
 
 
+def test_the_estimate_counts_a_check_for_each_turn_that_answers_a_read_back() -> None:
+    """D-082: one request of the yes rule's check, at its own bound, for each turn said once a
+    read-back is being confirmed; none for the request, a status's turns or a yes said over the
+    summary, which counts for nothing."""
+    by_id = {scenario.id: scenario for scenario in committed()}
+    found = {
+        name: asks(_args(), by_id[name])[-1]
+        for name in ("a05_bare_yes_saudi", "a07_yes_over_summary_msa", "a21_own_status_msa")
+    }
+    assert {name: n for name, (_, n, _) in found.items()} == {
+        "a05_bare_yes_saudi": 2,
+        "a07_yes_over_summary_msa": 1,
+        "a21_own_status_msa": 0,
+    }
+    assert {(model, written) for model, _, written in found.values()} == {(TALKER, 256)}
+    assert (CHECK.model, CHECK.max_output_tokens) == (TALKER, 256)
+
+
 def test_the_dry_estimate_of_each_split_three_times_fits_the_plans_cap() -> None:
-    """The registration's run A (Q9): each split's 15 scenarios three times and the smoke test,
-    at the prices run S ran at, within $1.50; both splits under one cap would pass it."""
+    """The registration's run A (Q9): each split's 19 scenarios three times and the smoke test,
+    at the prices run S ran at, within the owner's $10 cap (raised from $1.50, which the
+    scenarios of the yes rule's check passed, D-082), and each split alone within it. The
+    talker's model is the uncertain overlap's and the yes rule's check's too (D-082), so its
+    requests count one of each for each turn said over the agent (10 in dev) and each turn that
+    answers a read-back (20 in dev)."""
     every = committed()
     smoke = next(s for s in every if s.split == "dev")
     args = _args()
+    dev = [s for s in every if s.split == "dev"]
+    requests = requests_of(args, dev)
+    assert requests[TALKER] == 3 * sum(len(s.turns) for s in dev) + 10 + 20
+    assert requests[JUDGE] > 0
     found = {
         split: _most(args, [smoke, *[s for s in every if s.split == split] * 3])
         for split in ("dev", "held-out")
     }
-    assert all(0.5 < most < 1.5 for most in found.values()), found
-    assert sum(found.values()) > 1.5
-    requests = requests_of(args, [s for s in every if s.split == "dev"])
-    assert requests[TALKER] == 3 * sum(len(s.turns) for s in every if s.split == "dev") + 9
-    assert requests[JUDGE] > 0
+    assert all(0.5 < most < CAP_USD for most in found.values()), found

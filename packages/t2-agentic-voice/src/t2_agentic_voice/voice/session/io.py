@@ -192,9 +192,11 @@ class CallSetup:
     one text-to-speech request of a language takes (the provider's `max_chars`, which the clause
     splitter honours); the runtime's tracing; where the session's public events go; the call's
     clock; the call's talker, built for it when the agent runs the talker (`session.mode`,
-    `SessionSettings.mode_for`), None for the echo; the chat model that decides an overlap the
-    rule left uncertain (D-069), None for a call that asks none; and the part that carries out a
-    confirmed action (plan 007; the `ActionJobs` port), None for an agent with none."""
+    `SessionSettings.mode_for`), None for the echo; the chat model of the session's own
+    requests, which decides an overlap the rule left uncertain (D-069) and judges an answer to
+    a read-back that the yes rule's lists leave unplaced (D-082), each only for an agent that
+    asks, None for a call that asks none; and the part that carries out a confirmed action
+    (plan 007; the `ActionJobs` port), None for an agent with none."""
 
     call_id: CallId
     caller: Caller

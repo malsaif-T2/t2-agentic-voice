@@ -1,5 +1,6 @@
 """Ole5's talker and its tickets (ole5_voice/agent.py; plan 007): the served talker acting on one
-ticket system through all four of its tools; its instructions telling it to ask only what is
+ticket system through all four of its tools, and it alone asking a chat model of an answer
+the yes rule's lists leave unplaced (D-082); its instructions telling it to ask only what is
 wrong and how urgent, to make a handoff ticket when the caller asks for a person, and to say no
 ticket and no number but from a tool's result or the system's words, all in one spoken reply;
 the line saying it cannot open a ticket gone; and the talker given no ticket system told it has
@@ -16,6 +17,7 @@ from pathlib import Path
 
 import pytest
 from ole5_voice.agent import (
+    ECHO_AGENT,
     NO_TICKETS,
     NO_TICKETS_VERSION,
     VERSION,
@@ -50,6 +52,18 @@ def test_the_served_talker_acts_on_one_ticket_system(tmp_path: Path) -> None:
     assert [each.name for each in actions] == TICKET_TOOLS[:3]
     assert all(each.description.isascii() for each in talker.tools)  # the design's 6.4
     assert not tmp_path.joinpath("tickets.json").exists()  # built with no IO
+
+
+def test_only_the_talker_with_tickets_asks_a_model_of_an_unlisted_answer(tmp_path: Path) -> None:
+    """D-082: the served talker has a chat model judge an answer to a read-back that the yes
+    rule's lists leave unplaced; the talker with no ticket system (runs K, S and T) and with no
+    search (run T's pass Tn) has no action, so no read-back, and does not ask, its declaration
+    as it was; nor does the echo."""
+    served = talker_agent(FakeKnowledgeBase(), tickets=MockTicketSystem(tmp_path))
+    assert served.ask_on_unlisted_answers and served.ask_on_uncertain_overlaps
+    for unasking in (talker_agent(FakeKnowledgeBase()), talker_agent(None), ECHO_AGENT):
+        assert not unasking.ask_on_unlisted_answers
+        assert not [tool for tool in unasking.tools if isinstance(tool, Action)]
 
 
 def test_the_talker_with_no_search_is_given_no_ticket_system(tmp_path: Path) -> None:

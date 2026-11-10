@@ -20,7 +20,9 @@ action call; a status from a `reports_on` tool may be said; a passage's number i
 a claim; an ID in digit words or Arabic-Indic digits counts as one; a write whose reply was
 lost is looked up and said done, or said unknown when nothing finds it; `ActionRejected` and
 `ActionNotSent` are said failed; the same request arriving twice is written once; and the
-per-call cap holds.
+per-call cap holds. For an agent that has a chat model judge the answers the yes rule's lists
+leave unplaced, the rails of that judgement (testing/action_judged.py, D-082); each of those
+passes at once for an agent that does not.
 """
 
 from __future__ import annotations
@@ -37,14 +39,12 @@ from t2_agentic_voice.core.settings.tts import LanguageTag
 from t2_agentic_voice.domain.declaration import VoiceAgent
 from t2_agentic_voice.domain.ports.action_jobs import OutcomeKind
 from t2_agentic_voice.domain.text.speaking import speak_id
-from t2_agentic_voice.testing.action_scenes import Scene
+from t2_agentic_voice.testing.action_judged import JudgedAnswerCases
+from t2_agentic_voice.testing.action_scenes import SETTLE_S, Scene, check, clean
 from t2_agentic_voice.testing.llm_fakes import ScriptedLLM
 from t2_agentic_voice.testing.text_call import TextCall
 from t2_agentic_voice.testing.text_turn import TextTurn
 
-# How long a case lets the call run on after the caller's last words: the read-back, its
-# question, the sending line and the outcome all played (seconds on the call's clock).
-SETTLE_S = 30.0
 # The names of the suite's own read tools, which no team's tool is likely to take.
 STATUS_TOOL = "t2v_safety_status"
 SEARCH_TOOL = "t2v_safety_search"
@@ -53,22 +53,12 @@ _GIVE = "A subclass of ActionSafetySuite gives {}(). FIX: define it on your test
 _ARABIC_INDIC = str.maketrans({str(digit): chr(0x0660 + digit) for digit in range(10)})
 
 
-def _check(holds: bool, what: str) -> None:
-    if not holds:
-        raise AssertionError(what)
-
-
 def _never_said(turn: TextTurn, text: str, what: str) -> None:
     heard = " ".join(clause.text for clause in turn.heard())
-    _check(text not in heard, f"turn {turn.turn_id} said {what}")
+    check(text not in heard, f"turn {turn.turn_id} said {what}")
 
 
-def _clean(call: TextCall) -> None:
-    found = call.violations
-    _check(not found, f"the call's checks found: {list(found)}")
-
-
-class ActionSafetySuite:
+class ActionSafetySuite(JudgedAnswerCases):
     """A team's action, tested: a subclass gives the agent with a fresh backend, the action it
     tests and a sample draft, and inherits every case (the module's docstring)."""
 
@@ -92,10 +82,10 @@ class ActionSafetySuite:
         language checked against it."""
         agent, wanted, draft = self.make_agent(), self.action_under_test(), self.sample_draft()
         own = [t for t in agent.tools if isinstance(t, Action) and t.name == wanted.name]
-        _check(bool(own), f"make_agent() declares no action named {wanted.name}")
-        _check(isinstance(draft, own[0].draft), "sample_draft() is not the action's draft")
+        check(bool(own), f"make_agent() declares no action named {wanted.name}")
+        check(isinstance(draft, own[0].draft), "sample_draft() is not the action's draft")
         tag = self.language or agent.languages[0].tag
-        _check(any(each.tag == tag for each in agent.languages), f"the agent speaks no {tag}")
+        check(any(each.tag == tag for each in agent.languages), f"the agent speaks no {tag}")
         return Scene(agent=agent, action=own[0], draft=draft, tag=tag, caller=self.caller)
 
     # Invariant 1: no action without a yes heard after the read-back.
@@ -112,8 +102,8 @@ class ActionSafetySuite:
             await call.advance(SETTLE_S)
             asked.expect.read_back()
             yes.expect.no_action()
-            _check(scene.writes.made == 0, "a yes over the summary wrote")
-            _clean(call)
+            check(scene.writes.made == 0, "a yes over the summary wrote")
+            clean(call)
 
     def test_an_eager_yes_before_the_read_back_confirms_nothing(self) -> None:
         asyncio.run(self._eager_yes(self._scene()))
@@ -128,8 +118,8 @@ class ActionSafetySuite:
             await call.advance(SETTLE_S)
             eager.expect.read_back()
             eager.expect.no_action()
-            _check(scene.writes.made == 0, "a yes before the read-back wrote")
-            _clean(call)
+            check(scene.writes.made == 0, "a yes before the read-back wrote")
+            clean(call)
 
     def test_a_bare_yes_over_the_closing_question_is_asked_again(self) -> None:
         asyncio.run(self._bare_yes(self._scene()))
@@ -143,8 +133,8 @@ class ActionSafetySuite:
             await call.advance(SETTLE_S)
             bare.expect.asked_again()
             bare.expect.no_action()
-            _check(scene.writes.made == 0, "a bare yes over the closing question wrote")
-            _clean(call)
+            check(scene.writes.made == 0, "a bare yes over the closing question wrote")
+            clean(call)
 
     def test_a_call_whose_arguments_claim_consent_is_refused(self) -> None:
         claims: tuple[dict[str, JsonValue], ...] = ({"confirmed": True}, {"caller_consent": "yes"})
@@ -160,8 +150,8 @@ class ActionSafetySuite:
             await call.advance(SETTLE_S)
             asked.expect.no_read_back()
             yes.expect.no_action()
-            _check(scene.writes.made == 0, "a call claiming consent wrote")
-            _clean(call)
+            check(scene.writes.made == 0, "a call claiming consent wrote")
+            clean(call)
 
     # Invariant 2: no claim without a record.
 
@@ -176,8 +166,8 @@ class ActionSafetySuite:
             await call.advance(SETTLE_S)
             turn.expect.blocked()
             _never_said(turn, scene.claim, "a claim with no record")
-            _check(scene.writes.made == 0, "a claim wrote")
-            _clean(call)
+            check(scene.writes.made == 0, "a claim wrote")
+            clean(call)
 
     def test_model_text_after_the_action_call_is_dropped(self) -> None:
         asyncio.run(self._after_the_call(self._scene()))
@@ -194,7 +184,7 @@ class ActionSafetySuite:
             await call.advance(SETTLE_S)
             turn.expect.read_back()
             _never_said(turn, scene.claim, "the talker's text after its action call")
-            _clean(call)
+            clean(call)
 
     def test_a_status_from_a_reports_on_tool_may_be_said(self) -> None:
         asyncio.run(self._status(self._scene()))
@@ -220,8 +210,8 @@ class ActionSafetySuite:
             turn = await call.user(scene.request)
             await call.advance(SETTLE_S)
             turn.expect.said(contains=number)
-            _check(not turn.blocked, f"turn {turn.turn_id}'s status was blocked")
-            _clean(call)
+            check(not turn.blocked, f"turn {turn.turn_id}'s status was blocked")
+            clean(call)
 
     def test_a_passages_number_is_never_said_in_a_claim(self) -> None:
         asyncio.run(self._passage(self._scene()))
@@ -243,7 +233,7 @@ class ActionSafetySuite:
             await call.advance(SETTLE_S)
             turn.expect.blocked()
             _never_said(turn, number, "a passage's number in a claim")
-            _clean(call)
+            clean(call)
 
     def test_an_id_in_digit_words_or_arabic_indic_digits_counts_as_one(self) -> None:
         for form in ("digit_words", "arabic_indic"):
@@ -262,7 +252,7 @@ class ActionSafetySuite:
             await call.advance(SETTLE_S)
             turn.expect.blocked()
             _never_said(turn, written, f"an ID in {form} with no evidence")
-            _clean(call)
+            clean(call)
 
     # Invariant 6: a write is never cut in half, nor repeated blindly.
 
@@ -288,8 +278,8 @@ class ActionSafetySuite:
             await call.advance(scene.action.timeout_s + SETTLE_S)
             yes.expect.confirmed(scene.action.name, **scene.arguments)
             yes.expect.action_ended(scene.action.name, kind)
-            _check(scene.writes.made == 1, f"the write was tried {scene.writes.made} times")
-            _clean(call)
+            check(scene.writes.made == 1, f"the write was tried {scene.writes.made} times")
+            clean(call)
 
     def test_the_same_request_twice_is_written_once(self) -> None:
         asyncio.run(self._twice(self._scene()))
@@ -303,13 +293,13 @@ class ActionSafetySuite:
             await call.advance(SETTLE_S)
             yes.expect.action_completed(scene.action.name)
             jobs = call._jobs
-            _check(jobs is not None and len(jobs.runs) == 1, "the yes confirmed no one job")
+            check(jobs is not None and len(jobs.runs) == 1, "the yes confirmed no one job")
             if jobs is not None:
                 await jobs.again(jobs.runs[0])
             rows = await call.outbox.entries(action=scene.action.name)
-            _check(scene.writes.made == 1, f"one request was written {scene.writes.made} times")
-            _check(len(rows) == 1, f"one request has {len(rows)} outbox rows")
-            _clean(call)
+            check(scene.writes.made == 1, f"one request was written {scene.writes.made} times")
+            check(len(rows) == 1, f"one request has {len(rows)} outbox rows")
+            clean(call)
 
     def test_the_per_call_cap_holds(self) -> None:
         asyncio.run(self._capped(self._scene()))
@@ -325,5 +315,5 @@ class ActionSafetySuite:
                 yeses.append(await call.user(scene.yes_send))
                 await call.advance(SETTLE_S)
             yeses[-1].expect.no_action()
-            _check(scene.writes.made <= cap, f"{scene.writes.made} writes, past the cap of {cap}")
-            _clean(call)
+            check(scene.writes.made <= cap, f"{scene.writes.made} writes, past the cap of {cap}")
+            clean(call)

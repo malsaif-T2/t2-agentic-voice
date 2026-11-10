@@ -2,12 +2,14 @@
 served talker on the mock ticket system in a test's folder, its knowledge base a fake one; the
 caller the demo customer, as the token route mints every caller; the caller's yes, send, stop,
 pause and repeat words, taken from the library's lists and Ole5's lines; a fake model that answers
-each request by the turn it answers and the newest tool result; and what the call said, what
-the guard blocked and what the model was given."""
+each request by the turn it answers and the newest tool result, and the yes rule's check of an
+answer its lists leave unplaced (D-082) by the caller's words; and what the call said, what
+the guard blocked, what the model was given and asked, and what the yes rule read a turn as."""
 
 from __future__ import annotations
 
-from collections.abc import Sequence
+import json
+from collections.abc import Mapping, Sequence
 from dataclasses import dataclass
 from pathlib import Path
 from typing import Final, Literal
@@ -23,8 +25,15 @@ from t2_agentic_voice.core.settings.words import LanguageCode
 from t2_agentic_voice.domain.uncertain_overlaps import UNCERTAIN_OVERLAP_INSTRUCTION
 from t2_agentic_voice.domain.words import PRESET_WORDS
 from t2_agentic_voice.domain.yes_words import PRESET_CONSENT
-from t2_agentic_voice.evals import FakeKnowledgeBase, FunctionLLM, ScriptedLLM, ScriptStep, TextCall
-from t2_agentic_voice.events import GuardBlocked
+from t2_agentic_voice.evals import (
+    FakeKnowledgeBase,
+    FunctionLLM,
+    ScriptedLLM,
+    ScriptStep,
+    TextCall,
+    is_consent_check,
+)
+from t2_agentic_voice.events import ConfirmationAnswered, GuardBlocked
 from t2_agentic_voice.ports import ChatRequest, Outbox, Passage
 
 from tests.ole5_voice.tickets.ticket_support import Clock
@@ -94,13 +103,22 @@ class Answer:
     after: str | None = None
 
 
-def model(*answers: Answer, stop_over: Sequence[str] = ()) -> FunctionLLM:
-    """A fake model that answers each request with the first of `answers` that fits it, and the
+def model(
+    *answers: Answer,
+    stop_over: Sequence[str] = (),
+    judged: Mapping[str, Sequence[ScriptStep]] | None = None,
+) -> FunctionLLM:
+    """A fake model that answers each request with the first of `answers` that fits it; the
     interruption rule's request for an uncertain overlap with stop when the words said over the
-    reply hold one of `stop_over`, else go_on; AssertionError for any other request, which the
-    call raises at its next step."""
+    reply hold one of `stop_over`, else go_on; and the yes rule's check of an answer its lists
+    leave unplaced (told by its instruction, D-082) by `judged` at the caller's words it holds,
+    unclear for any other. AssertionError for any other request, which the call raises at its
+    next step."""
+    words_judged = dict(judged or {})
 
     def answer(request: ChatRequest) -> Sequence[ScriptStep]:
+        if is_consent_check(request):
+            return words_judged.get(checked(request), ScriptedLLM.reply("unclear"))
         if _judging(request):
             over = request.messages[-1].content.split(_OVER)[-1]
             return ScriptedLLM.reply("stop" if any(w in over for w in stop_over) else "go_on")
@@ -123,6 +141,26 @@ def _judging(request: ChatRequest) -> bool:
     return first.role == "system" and first.content == UNCERTAIN_OVERLAP_INSTRUCTION
 
 
+def checked(request: ChatRequest) -> str:
+    """The caller's words the yes rule's check `request` asks about."""
+    said_as_data: dict[str, str] = json.loads(request.messages[-1].content)
+    return said_as_data["answer"]
+
+
+def checks(llm: FunctionLLM) -> list[str]:
+    """The caller's words of each of the yes rule's checks the call asked the model, in order."""
+    return [checked(request) for request in llm.requests if is_consent_check(request)]
+
+
+def answered(call: TextCall, turn_id: int) -> list[tuple[str, str]]:
+    """What the yes rule read the turn `turn_id` as, and by what (its lists or the model)."""
+    return [
+        (event.decision, event.by)
+        for event in call._emitted
+        if isinstance(event, ConfirmationAnswered) and event.turn_id == turn_id
+    ]
+
+
 def said(call: TextCall) -> str:
     """Every clause the agent said in the call, joined, an outcome's too, which answers no turn
     and so is in no turn's reads (TextCall reads no reply but a turn's)."""
@@ -142,7 +180,7 @@ def told(llm: FunctionLLM, heard: str) -> list[str]:
     each."""
     found = []
     for request in llm.requests:
-        if _judging(request):
+        if _judging(request) or is_consent_check(request):
             continue
         turns = [m.content for m in request.messages if m.role == "user"]
         if turns and heard in turns[-1] and turns[-1] not in found:

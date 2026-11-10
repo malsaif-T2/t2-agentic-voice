@@ -1,0 +1,26 @@
+# Plan 007's action scenarios (its "The measurement"; ole5_voice/evals/action_scenarios.py),
+# added with the yes rule's model check (D-082) before any run: an unlisted hesitation in
+# Saudi Arabic.
+id = "a38_unlisted_hesitation_saudi"
+kind = "unlisted_hesitation"
+split = "held-out"
+language = "ar-SA"
+notes = "A hesitation spelled as no list holds it (ummmm) is judged no answer and asked again; a yes with the send word then sends the ticket."
+made = 1
+ticket_type = "Issue"
+summary_facts = ["Says Ole5's notifications reach the caller hours late."]
+
+[[turns]]
+says = "أبغى تذكرة، الإشعارات في أولي فايف توصلني متأخرة بالساعات، مو مستعجلة"
+calls = "create_ticket"
+outcome = "read_back"
+language = "ar-SA"
+
+[[turns]]
+says = "امممم"
+outcome = "asked_again"
+
+[[turns]]
+says = "ايه أرسلها"
+outcome = "done"
+says_number = "whole"

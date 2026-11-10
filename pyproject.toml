@@ -150,7 +150,7 @@ cmd = "python -m ole5_voice.evals.scenario_run"
 # ticket system.
 
 [tool.poe.tasks.eval-actions]
-help = "Play run A's scripted ticket calls over one split, each three times, against the mock ticket system (spends: as eval-talker; gpt-oss-120b at medium and a $1.50 cap unless named)"
+help = "Play run A's scripted ticket calls over one split, each three times, against the mock ticket system (spends: as eval-talker; gpt-oss-120b at medium and a $10 cap unless named)"
 cmd = "python -m ole5_voice.evals.action_run"
 
 [tool.poe.tasks.record]

@@ -1,8 +1,9 @@
 """Plan 007's action scenarios (ole5_voice/evals/action_scenarios.py; the plan's "The
-measurement, registered before any result"): the committed thirty break no rule, each of the
-15 kinds once in dev and once in held-out, in another language, every language in each split;
-and each rule shown to catch a made-up scenario that breaks it. No scenario is played here:
-playing one needs the library's actions built (plan 007's Tracks B to D)."""
+measurement, registered before any result"): the committed thirty-eight break no rule, each of
+the 19 kinds (the plan's 15, and four of answers the yes rule's lists leave unplaced, D-082)
+once in dev and once in held-out, in another language, every language in each split; and each
+rule shown to catch a made-up scenario that breaks it. No scenario is played here
+(test_action_play.py plays each)."""
 
 from __future__ import annotations
 
@@ -26,7 +27,7 @@ COMMITTED = load_action_scenarios(EVALS / ACTIONS_DIR)
 
 
 def test_the_committed_scenarios_break_no_rule() -> None:
-    assert len(COMMITTED) == 2 * len(KINDS) == 30
+    assert len(COMMITTED) == 2 * len(KINDS) == 38
     assert problems(COMMITTED) == []
     assert set(RULES) == set(KINDS)
 

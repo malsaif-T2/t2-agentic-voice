@@ -1,0 +1,29 @@
+# Plan 007's action scenarios (its "The measurement"; ole5_voice/evals/action_scenarios.py),
+# added with the yes rule's model check (D-082) before any run: "yes, but change ..." in
+# English, a correction and a new read-back.
+id = "a36_yes_but_change_english"
+kind = "yes_but_change"
+split = "held-out"
+language = "en"
+notes = "Yes, but make it urgent sends nothing: the ticket is read back again as urgent, and the yes after it opens it once."
+made = 1
+ticket_type = "Bug"
+summary_facts = ["Says the delegation settings in Ole5 do not save."]
+
+[[turns]]
+says = "Can you open a ticket? The delegation settings in Ole5 don't save, every delegate I set is gone the next day. It's not urgent."
+calls = "create_ticket"
+outcome = "read_back"
+language = "en"
+
+[[turns]]
+says = "Yes, but make it urgent."
+calls = "create_ticket"
+outcome = "read_back"
+language = "en"
+facts = ["The ticket read back now gives it a high or urgent priority."]
+
+[[turns]]
+says = "Yes, send it."
+outcome = "done"
+says_number = "whole"

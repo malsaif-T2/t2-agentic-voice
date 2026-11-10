@@ -7,7 +7,8 @@ runner over an outbox in memory; the caller the demo customer, as the token rout
 - The rehearsal's step 6, in Saudi Arabic and in English: a yes with a send word over the
   closing question opens the ticket, its number said in four groups; a bare yes there is asked
   again, and once the read-back is said again at the caller's request, the yes over its closing
-  question counts (invariant 1, the owner's rulings).
+  question counts (invariant 1, the owner's rulings); the lists place each, so the talker,
+  which asks, asks no model of them (D-082; test_ticket_calls_judged.py asks).
 - The rehearsal's step 3: «أبغى موظف» over a search answer stops it, and the handoff read back
   and confirmed makes a Request ticket holding the call's lines (Q7).
 - A stop or pause word over the read-back sends nothing, and the talker is told it stopped;
@@ -40,6 +41,7 @@ from tests.ole5_voice.tickets.call_support import (
     Answer,
     Tag,
     blocks,
+    checks,
     grouped,
     model,
     ole5,
@@ -148,6 +150,7 @@ def test_step_6_a_yes_with_a_send_word_over_the_closing_question_opens_the_ticke
         assert (made.customer_email, made.summary) == (DEMO_CUSTOMER_EMAIL, SUMMARY[tag])
         assert (made.type, made.priority, made.queue) == ("Report", "High", QUEUE_OF["Report"])
         assert told(llm, yes(tag)) == []  # each yes went to the yes rule, never the talker
+        assert checks(llm) == []  # the lists placed each, so no model was asked (D-082)
 
     run(scene())
 

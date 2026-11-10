@@ -1,0 +1,25 @@
+# Plan 007's action scenarios (its "The measurement"; ole5_voice/evals/action_scenarios.py),
+# added with the yes rule's model check (D-082) before any run: an unlisted yes in English,
+# said once the closing question ended.
+id = "a32_unlisted_yes_english"
+kind = "unlisted_yes"
+split = "held-out"
+language = "en"
+notes = "An agreement on no list, said once the closing question ended, is judged a yes and opens the ticket once."
+made = 1
+ticket_type = "Issue"
+summary_facts = [
+  "Says Ole5's notification emails stopped arriving.",
+  "Says it has been so since last week.",
+]
+
+[[turns]]
+says = "Please open a ticket: the notification emails from Ole5 stopped arriving last week. It's not urgent."
+calls = "create_ticket"
+outcome = "read_back"
+language = "en"
+
+[[turns]]
+says = "Sounds good to me."
+outcome = "done"
+says_number = "whole"

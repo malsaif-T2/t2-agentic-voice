@@ -1,0 +1,23 @@
+# Plan 007's action scenarios (its "The measurement"; ole5_voice/evals/action_scenarios.py),
+# added with the yes rule's model check (D-082) before any run: a go-ahead on none of the yes
+# rule's lists, said over the closing question, which the model judges an explicit go-ahead.
+id = "a33_unlisted_go_ahead_english"
+kind = "unlisted_go_ahead"
+split = "dev"
+language = "en"
+notes = "A go-ahead on no list, said over the closing question once the summary has played, is judged a go-ahead to send and opens the ticket once."
+made = 1
+ticket_type = "Mobile App Issue"
+summary_facts = ["Says the Ole5 mobile app logs the caller out every few minutes."]
+
+[[turns]]
+says = "I need a ticket. The Ole5 mobile app logs me out every few minutes, and it's quite urgent."
+calls = "create_ticket"
+outcome = "read_back"
+language = "en"
+
+[[turns]]
+says = "Go for it."
+when = "closing_question"
+outcome = "done"
+says_number = "whole"

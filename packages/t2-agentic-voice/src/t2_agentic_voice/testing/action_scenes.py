@@ -11,7 +11,12 @@ draft is the caller's own words; a yes is the language preset's first yes word, 
 **The model** is a `FunctionLLM`: each request answered by the newest thing in it, the caller's
 line it holds (`turns`, by the line) or a tool's result (`after`, by the tool's name), and with
 a neutral line, the language's greeting, for anything else, so a case never depends on how
-many requests the talker makes.
+many requests the talker makes. The yes rule's check of an answer its lists leave unplaced
+(domain/consent_check.py, D-082), told by its instruction, is answered by `judged`, and by the
+neutral line, which reads as unclear, when a case gives none.
+
+What every case ends with is here too (`check`, `clean`, `SETTLE_S`), shared by the suite's two
+modules (testing/action_safety.py, testing/action_judged.py).
 """
 
 from __future__ import annotations
@@ -27,15 +32,32 @@ from t2_agentic_voice.actions.tools import Tool
 from t2_agentic_voice.core.identity import Caller
 from t2_agentic_voice.core.settings.tts import LanguageTag
 from t2_agentic_voice.core.settings.words import LanguageCode
+from t2_agentic_voice.domain.consent_check import is_consent_check
 from t2_agentic_voice.domain.declaration import Language, VoiceAgent
 from t2_agentic_voice.domain.ports.chat_model import ChatRequest, Done
 from t2_agentic_voice.domain.yes_words import consent_words
 from t2_agentic_voice.testing.action_faults import Writes
 from t2_agentic_voice.testing.llm_fakes import FunctionLLM, ScriptedLLM, ScriptStep
+from t2_agentic_voice.testing.text_call import TextCall
 
+# How long a case lets the call run on after the caller's last words: the read-back, its
+# question, the sending line and the outcome all played (seconds on the call's clock).
+SETTLE_S = 30.0
 # Numbers a case may say that nothing in the call holds: the first that the draft does not hold
 # is the case's (`Scene.number`).
 _NUMBERS = ("48213", "73905", "61847", "95130")
+
+
+def check(holds: bool, what: str) -> None:
+    """AssertionError saying `what` unless it `holds`."""
+    if not holds:
+        raise AssertionError(what)
+
+
+def clean(call: TextCall) -> None:
+    """The call's checks found nothing (`call.violations`)."""
+    found = call.violations
+    check(not found, f"the call's checks found: {list(found)}")
 
 
 @dataclass(kw_only=True)
@@ -57,6 +79,11 @@ class Scene:
     @property
     def code(self) -> LanguageCode:
         return "en" if self.tag == "en" else "ar"
+
+    @property
+    def asks(self) -> bool:
+        """Whether the agent has a chat model judge the answers its lists leave unplaced."""
+        return self.agent.ask_on_unlisted_answers
 
     @property
     def language(self) -> Language:
@@ -115,12 +142,16 @@ class Scene:
         self,
         turns: Mapping[str, Sequence[ScriptStep]],
         after: Mapping[str, Sequence[ScriptStep]] | None = None,
+        *,
+        judged: Sequence[ScriptStep] | None = None,
     ) -> FunctionLLM:
         """The fake model of the case (the module's docstring)."""
         neutral = ScriptedLLM.reply(self.language.greeting)
         answered_after = dict(after or {})
 
         def answer(request: ChatRequest) -> Sequence[ScriptStep]:
+            if is_consent_check(request):
+                return neutral if judged is None else judged
             said = [m for m in request.messages if m.role in ("user", "tool")]
             if not said:
                 return neutral

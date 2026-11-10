@@ -49,11 +49,26 @@ has not reviewed those either.
    caller's heard words, which only `voice` builds from a speech-to-text result, and a
    read-back receipt, which only `voice` builds once the read-back's summary has played in full
    without interruption. The yes rule takes heard words only if they came after the receipt.
-   Over the closing question it takes only a yes with a send word («نعم أرسلها»); a bare «نعم»
-   there is asked again. No tool argument or model output can stand in for either input.
+   A yes is the caller's own heard words after the read-back: a yes on the rule's lists, or,
+   for an agent that asks for it (`VoiceAgent.ask_on_unlisted_answers`, off by default), a
+   chat model's judgement of those same words as agreement, within the rule's rails. The owner
+   ruled so on 2026-11-10: "Lets do the model sorts the rest. But I would also want it to
+   recognize different words of confirmation like ("go for it", "اكيد" etc.. While also capable
+   of knowing that "Yes, but change.." is a request for change and not only confirmation)"
+   (D-082). The model is asked only about words the lists cannot place, and sees only the
+   read-back and those words; the rule never takes its word as it is: words with a no word, a
+   question mark or a change word ("but", «بس»), the agent's own words heard back, and an answer
+   to a read-back no longer current are never a yes, and a model that fails or is too slow
+   means the caller is asked again. Over the closing question the rule takes only a yes with a
+   send word («نعم أرسلها»), or the model's explicit go-ahead to send ("go for it"); a bare
+   «نعم», or the model's plain agreement ("sure"), there is asked again (the owner's second
+   ruling, the same day: "Yes, send it"). No tool argument or model output can stand in for
+   either input: the model judges the heard words, and builds neither.
    Enforced by `[[restricted]]` (ARCH-CONSTRUCT) on the confirmed draft (`domain`) and on both
-   inputs (`voice`), each added in the commit that creates its class, and by adversarial tests
-   of the yes rule and of a talker tool call that claims a yes.
+   inputs (`voice`), each added in the commit that creates its class, by adversarial tests
+   of the yes rule and of a talker tool call that claims a yes, and by adversarial tests of the
+   model's rails (`tests/t2_agentic_voice/domain/test_yes_rule_judged.py`,
+   `tests/t2_agentic_voice/voice/session/test_yes_ask.py`, `ActionSafetySuite`'s judged cases).
 2. **No claim without a record.** No sentence the agent speaks claims an action (created,
    updated, escalated, handed off), or says a ticket number, unless the call's record of
    completed actions or a ticket-status result holds it. Only `actions` records a completed

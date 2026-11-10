@@ -286,10 +286,13 @@ class ConfirmationRequested(_TurnEvent):
 
 
 class ConfirmationAnswered(_TurnEvent):
-    """The yes rule read the turn as `decision` on `action`'s read-back."""
+    """The yes rule read the turn as `decision` on `action`'s read-back, `by` its lists
+    (`words`), or by a chat model's word on words they left unplaced, within its rails (`model`,
+    D-082)."""
 
     action: str = Field(min_length=1)
     decision: ConfirmationDecision
+    by: Literal["words", "model"] = "words"
 
 
 class ActionCompleted(Event):

@@ -1,0 +1,29 @@
+# Plan 007's action scenarios (its "The measurement"; ole5_voice/evals/action_scenarios.py),
+# added with the yes rule's model check (D-082) before any run: a hesitation in a spelling on
+# none of the yes rule's lists, which the model judges unclear: asked again, then a clear yes.
+id = "a37_unlisted_hesitation_msa"
+kind = "unlisted_hesitation"
+split = "dev"
+language = "ar"
+notes = "A hesitation spelled as no list holds it (hmmmm) after the read-back is judged no answer: the caller is asked again, and the ticket is sent on the clear yes that follows."
+made = 1
+ticket_type = "Mobile App Issue"
+summary_facts = [
+  "Says the caller cannot sign in to the mobile app.",
+  "Says it has been so since yesterday.",
+]
+
+[[turns]]
+says = "أرجو فتح تذكرة، لا أستطيع تسجيل الدخول إلى تطبيق الجوال منذ أمس، والأمر عاجل."
+calls = "create_ticket"
+outcome = "read_back"
+language = "ar"
+
+[[turns]]
+says = "همممم"
+outcome = "asked_again"
+
+[[turns]]
+says = "نعم، أرسلها."
+outcome = "done"
+says_number = "whole"

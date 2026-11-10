@@ -1,0 +1,227 @@
+"""A chat model's word on an answer to an action's read-back that the yes rule's lists leave
+unplaced (D-082; the owner's rulings of 2026-11-10), for yes_turns.py.
+
+**When.** Only for an agent that asks (`VoiceAgent.ask_on_unlisted_answers`), in a call with a
+chat model (`CallSetup.overlap_model`, the call's chat model for the session's own requests),
+and only for words `decide` marked `askable` (domain/yes_rule.py): every other answer is the
+lists' and asks nothing (`wanted`). One request a turn, and one at a time.
+
+**The request** (domain/consent_check.py's) holds the read-back's summary and closing question
+as its plan rendered them and the turn's own heard words, nothing else. It is a call's chat
+request, counted in its usage as the talker's are (usage.py), and runs as a task of a cancel
+scope of its own, holding no lock of the session's: only its answer lands as a step of the
+session's (`guarded`, under its lock), so no other step waits on the model. A request that takes
+longer than `TIMEOUT_S` on the call's clock is cancelled; a failure or a timeout is no word. Each
+outcome is logged by its kind alone, never the words.
+
+**The verdict** is the yes rule's (`judged`), never the model's word as it is, carried out by
+yes_turns.py as any answer is, told `by="model"`; and only while the same read-back is current
+and the call has not ended and is not ending. A newer turn that answers the read-back cancels a
+request still in flight (`cancel`, which yes_turns.py calls first), and so do the client's stop
+(`cancel`) and the call's end: each decides nothing.
+
+**The turn** is judged meanwhile (turn_book.py's `judging`): it takes no fate and does not
+settle, so its times run to the first audio of the reply its verdict says, the wait included,
+and its trace stays open for that reply. Once the verdict is carried out, or the request
+dropped, it is `judged`: answered by nothing when no reply answers it (unless the call has ended
+or is ending, when the call's end leaves it unfinished), and settled as any turn is.
+"""
+
+from __future__ import annotations
+
+import asyncio
+from collections.abc import Awaitable, Callable
+from dataclasses import dataclass
+from functools import partial
+from typing import Final, Literal
+
+from t2_agentic_voice.core.errors import ProviderError
+from t2_agentic_voice.core.logging import get_logger
+from t2_agentic_voice.core.yes_inputs import HeardWords, ReadBackReceipt
+from t2_agentic_voice.domain.action_lines import ReadBackPlan
+from t2_agentic_voice.domain.consent_check import (
+    TIMEOUT_S,
+    ConsentAnswer,
+    consent_check_answer,
+    consent_check_request,
+)
+from t2_agentic_voice.domain.ports.chat_model import ChatRequest, TextDelta, Usage
+from t2_agentic_voice.domain.yes_rule import AskAgain, Correction, ModelWord, YesOutcome, judged
+from t2_agentic_voice.voice.session.books import CallBooks
+from t2_agentic_voice.voice.session.io import CallSetup
+from t2_agentic_voice.voice.session.read_back import Confirming, ReadBack
+from t2_agentic_voice.voice.session.report import TurnLog
+from t2_agentic_voice.voice.session.scope import CancelScope
+from t2_agentic_voice.voice.session.talker_play import Guarded
+from t2_agentic_voice.voice.session.turn_book import TurnBook
+
+_log = get_logger(__name__)
+# What became of a request: the model's word, or that it failed or timed out.
+Outcome = ConsentAnswer | Literal["failed", "timeout"]
+# The current read-back's receipt for speech begun at a time, built now (interrupter.py's).
+Receipt = Callable[[float | None], ReadBackReceipt | None]
+# What carries out the yes rule's verdict on a turn, by a model's word (yes_turns.py's): the
+# turn, its words, the receipt built when they reached the rule, the verdict, the plan, the time.
+Settle = Callable[
+    [TurnLog, HeardWords, ReadBackReceipt, YesOutcome, ReadBackPlan, float], Awaitable[None]
+]
+_STEP: Final = "yes_model"
+
+
+def _word(outcome: Outcome) -> ModelWord:
+    """The model's word of `outcome`; None when it gave none (it failed or timed out)."""
+    if outcome == "failed" or outcome == "timeout":
+        return None
+    return outcome
+
+
+def said_lines(plan: ReadBackPlan) -> tuple[str, ...]:
+    """What the agent says of `plan`'s read-back, written and spoken: its summary, its closing
+    question and its ask-again line, the words its echo would be made of."""
+    lines = (plan.summary, plan.question, plan.asked_again)
+    return tuple(text for line in lines for text in (line.text, line.spoken))
+
+
+@dataclass(frozen=True, kw_only=True)
+class _Ask:
+    """One request in flight: the turn it answers, its words, the receipt built when they
+    reached the rule, the read-back they answer, and the scope its work runs in."""
+
+    turn: TurnLog
+    heard: HeardWords
+    receipt: ReadBackReceipt
+    read_back: ReadBack
+    scope: CancelScope
+
+
+class YesAsks:
+    """One call's requests for a chat model's word on an answer (the module's docstring): each
+    started (`start`) in a scope of its own, its turn judged in `turns` meanwhile, its verdict
+    landed as a step `guarded` runs and carried out by `settle`, the client then told by `sync`;
+    `over` says whether the call has ended or is ending, `receipt` builds the current
+    read-back's receipt."""
+
+    def __init__(
+        self,
+        setup: CallSetup,
+        books: CallBooks,
+        *,
+        turns: TurnBook,
+        confirming: Confirming,
+        receipt: Receipt,
+        guarded: Guarded,
+        sync: Callable[[], Awaitable[None]],
+        over: Callable[[], bool],
+        settle: Settle,
+    ) -> None:
+        self._setup, self._usage, self._clock, self._turns = setup, books.usage, setup.clock, turns
+        self._confirming, self._receipt, self._settle = confirming, receipt, settle
+        self._guarded, self._sync, self._over = guarded, sync, over
+        self._asks = setup.agent.ask_on_unlisted_answers and setup.overlap_model is not None
+        self._ask: _Ask | None = None
+
+    def wanted(self, outcome: YesOutcome) -> bool:
+        """Whether the lists' `outcome` is put to the model: the agent asks, and the lists left
+        the words unplaced."""
+        return self._asks and isinstance(outcome, Correction | AskAgain) and outcome.askable
+
+    def start(
+        self, turn: TurnLog, heard: HeardWords, receipt: ReadBackReceipt, read_back: ReadBack
+    ) -> None:
+        """Ask the model about `turn`'s words `heard`, answering `read_back`, `receipt` the one
+        built as they reached the rule; the turn judged until its word lands or is dropped."""
+        plan = read_back.plan
+        request = consent_check_request(plan.summary.text, plan.question.text, heard.text)
+        scope = CancelScope(name=f"yes-check-{turn.turn_id}", clock=self._clock)
+        ask = _Ask(turn=turn, heard=heard, receipt=receipt, read_back=read_back, scope=scope)
+        self._ask = ask
+        self._turns.judging(turn)
+        scope.start(self._run(ask, request), name=f"yes-check-ask-{turn.turn_id}")
+
+    async def cancel(self) -> None:
+        """A newer turn answers the read-back, the client stopped, or the call ended: the
+        request still in flight is cancelled, and decides nothing; its turn is judged."""
+        ask, self._ask = self._ask, None
+        if ask is None:
+            return
+        await ask.scope.cancel()
+        _log.info(
+            "yes_model_dropped", call_id=self._setup.call_id, turn_id=ask.turn.turn_id, why="cancel"
+        )
+        self._turns.judged(ask.turn, answered=not self._over())
+
+    async def _run(self, ask: _Ask, request: ChatRequest) -> None:
+        """The request, within its timeout on the call's clock, then its answer landed as a
+        step of the session's; a cancel stops both."""
+        turn_id = ask.turn.turn_id
+        read = ask.scope.start(self._read(request), name=f"yes-check-read-{turn_id}")
+        timer = ask.scope.start(self._clock.sleep(TIMEOUT_S), name=f"yes-check-timer-{turn_id}")
+        await asyncio.wait((read, timer), return_when=asyncio.FIRST_COMPLETED)
+        timer.cancel()
+        if not read.done():
+            read.cancel()
+            outcome: Outcome = "timeout"
+        else:
+            outcome = read.result()
+        await self._guarded(_STEP, partial(self._landed, ask, outcome))
+
+    async def _read(self, request: ChatRequest) -> Outcome:
+        """The model's whole answer, read as one word; `failed` for its failure, logged by kind.
+        Never raises (the scope would log its own line) but for a cancel."""
+        model = self._setup.overlap_model
+        if model is None:  # never so: `wanted` asks only with a model
+            return "failed"
+        self._usage.chat_requested(request.model)
+        usage: Usage | None = None
+        parts: list[str] = []
+        try:
+            async for event in model.stream(request):
+                if isinstance(event, TextDelta):
+                    parts.append(event.text)
+                elif isinstance(event, Usage):
+                    usage = event
+        except Exception as error:
+            failure = error.kind if isinstance(error, ProviderError) else type(error).__qualname__
+            _log.warning("yes_model_failed", call_id=self._setup.call_id, failure=failure)
+            return "failed"
+        finally:
+            self._usage.chat_replied(request.model, usage)
+        return consent_check_answer("".join(parts))
+
+    async def _landed(self, ask: _Ask, outcome: Outcome) -> None:
+        """The request's answer, as a step of the session's: the yes rule's verdict on it,
+        carried out, while the same read-back is current and the call goes on; nothing when a
+        cancel took it first. Its turn is judged then, whatever came of it."""
+        if self._ask is not ask:
+            return
+        self._ask = None
+        try:
+            await self._verdict(ask, outcome)
+        finally:
+            self._turns.judged(ask.turn, answered=not self._over())
+
+    async def _verdict(self, ask: _Ask, outcome: Outcome) -> None:
+        """The yes rule's verdict on `outcome`, carried out and the client told, unless the
+        call has ended or is ending or `ask`'s read-back is no longer current."""
+        call_id, turn_id = self._setup.call_id, ask.turn.turn_id
+        if self._over() or self._confirming.read_back is not ask.read_back:
+            _log.info("yes_model_dropped", call_id=call_id, turn_id=turn_id, why="stale")
+            return
+        plan = ask.read_back.plan
+        try:
+            verdict = judged(
+                _word(outcome),
+                ask.heard,
+                ask.receipt,
+                current=self._receipt(ask.heard.speech_at),
+                words=self._confirming.words(plan),
+                env=self._setup.settings.env,
+                said=said_lines(plan),
+            )
+        except Exception as error:  # a bug: never a yes
+            failure = type(error).__qualname__
+            _log.error("yes_rule_failed", call_id=call_id, turn_id=turn_id, failure=failure)
+            verdict = AskAgain()
+        _log.info("yes_model_answered", call_id=call_id, turn_id=turn_id, answer=outcome)
+        await self._settle(ask.turn, ask.heard, ask.receipt, verdict, plan, self._clock.now())
+        await self._sync()

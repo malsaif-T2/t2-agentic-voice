@@ -23,6 +23,7 @@ from t2_agentic_voice.core.events import Event
 from t2_agentic_voice.core.settings.tts import LanguageTag
 from t2_agentic_voice.core.settings.words import LanguageCode
 from t2_agentic_voice.domain.action_declaration import Claims, ReadBack, Say
+from t2_agentic_voice.domain.consent_check import is_consent_check
 from t2_agentic_voice.domain.declaration import Language, VoiceAgent
 from t2_agentic_voice.domain.ports.chat_model import ChatRequest
 from t2_agentic_voice.domain.words import PRESET_WORDS
@@ -100,12 +101,15 @@ def status_tool(backend: Backend) -> Tool:
     )
 
 
-def agent_of(backend: Backend) -> VoiceAgent:
+def agent_of(backend: Backend, *, asks: bool = False) -> VoiceAgent:
+    """The agent over `backend`; with `asks`, one that has a chat model judge the answers the
+    yes rule's lists leave unplaced (D-082)."""
     return VoiceAgent(
         name="visit-desk",
         languages=[Language.english(greeting="Hello."), Language.saudi_arabic(greeting="هلا.")],
         instructions="Book visits to rooms, and tell a caller how their visit stands.",
         tools=[book_action(backend), status_tool(backend)],
+        ask_on_unlisted_answers=asks,
     )
 
 
@@ -179,14 +183,20 @@ def model(
     lines: Mapping[str, Sequence[ScriptStep]],
     *,
     after: Mapping[str, Sequence[ScriptStep]] | None = None,
+    judged: Mapping[str, Sequence[ScriptStep]] | None = None,
     neutral: str = "How can I help?",
 ) -> FunctionLLM:
     """The fake model: a request whose newest message is the caller's turn answered by `lines`
     at its words (the turn's message is its words, then the notes the talker adds), one whose
-    newest is a tool's result by `after` at the tool's name, and `neutral` otherwise."""
-    answered_after = dict(after or {})
+    newest is a tool's result by `after` at the tool's name, the yes rule's check of an answer
+    (told by its instruction, D-082) by `judged` at the caller's words it holds (`unclear` for
+    any other), and `neutral` otherwise."""
+    answered_after, answered_judged = dict(after or {}), dict(judged or {})
 
     def answer(request: ChatRequest) -> Sequence[ScriptStep]:
+        if is_consent_check(request):
+            words = json.loads(request.messages[-1].content)["answer"]
+            return answered_judged.get(words, say("unclear"))
         said = [m for m in request.messages if m.role in ("user", "tool")]
         if not said:
             return say(neutral)

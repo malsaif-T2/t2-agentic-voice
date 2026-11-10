@@ -9,9 +9,13 @@
   `ticket_status`. It is built once before the run, on a mock it never uses.
 - **The dry estimate** of the run's most spend, with no request (`most_usd`): for each play, each
   turn's most talker requests (`TALKER_REQUESTS`), the judge's most for each turn's facts, its
-  register when it is held to Arabic, and the summary (`JUDGE_ATTEMPTS` each), and one request
-  on an uncertain overlap for each turn said over the agent (`OVERLAP`), every request reading
-  `--input-budget-tokens` and writing its model's most. The run is refused when what it
+  register when it is held to Arabic, and the summary (`JUDGE_ATTEMPTS` each), one request on
+  an uncertain overlap for each turn said over the agent (`OVERLAP`), and one of the yes rule's
+  check (`CHECK`, D-082) for each turn that answers a read-back once its summary played (the
+  turn after one whose outcome still confirms, not said over the summary): the lists leave some
+  of those unplaced, which ones is the library's reading, so each counts, as each overlap does;
+  every request reading `--input-budget-tokens` and writing its model's most. The run is
+  refused when what it
   spent and the estimate of what is left pass `--cap-usd`, and a held-out run, which is never
   resumed, when its requests would pass a model's daily limit (`check_estimate`).
 - **Held-out read once**: whether the shared history holds a complete held-out run of A
@@ -24,14 +28,20 @@ import argparse
 from collections import Counter
 from collections.abc import Callable, Mapping, Sequence
 from dataclasses import dataclass
+from itertools import pairwise
 from pathlib import Path
 from typing import Final
 
 from t2_agentic_voice import VoiceAgent, get_logger
-from t2_agentic_voice.evals import uncertain_overlap_request
+from t2_agentic_voice.evals import consent_check_request, uncertain_overlap_request
 from t2_agentic_voice.ports import KnowledgeBase
 
-from ole5_voice.evals.action_scenarios import ACTIONS, ActionScenario, load_action_scenarios
+from ole5_voice.evals.action_scenarios import (
+    ACTIONS,
+    CONFIRMING,
+    ActionScenario,
+    load_action_scenarios,
+)
 from ole5_voice.evals.action_scenarios import problems as scenario_problems
 from ole5_voice.evals.chat_pacing import OUTPUT_BUDGET, PacedChat
 from ole5_voice.evals.history import read_history
@@ -50,6 +60,9 @@ TICKET_TOOLS: Final = (*ACTIONS, TICKET_STATUS)
 # turn is said over the agent, so that one may be sent.
 OVERLAP: Final = uncertain_overlap_request("-", "-")
 OVER: Final = frozenset({"agent_speaking", "read_back", "closing_question"})
+# The request a call's session sends on an answer to a read-back that the yes rule's lists leave
+# unplaced (`VoiceAgent.ask_on_unlisted_answers`, D-082): its model and bound, the library's.
+CHECK: Final = consent_check_request("-", "-", "-")
 _UNUSED: Final = Path("run-a-probe")  # the folder of the mock the check builds, never used
 log = get_logger(__name__)
 
@@ -100,14 +113,26 @@ def _asked(scenario: ActionScenario) -> int:
     return turns + bool(scenario.summary_facts)
 
 
+def _answers(scenario: ActionScenario) -> int:
+    """The turns of `scenario` that answer a read-back once its summary played: each after a
+    turn whose outcome still confirms, but one said over the summary, which counts for
+    nothing."""
+    return sum(
+        before.outcome in CONFIRMING and turn.when != "read_back"
+        for before, turn in pairwise(scenario.turns)
+    )
+
+
 def asks(args: argparse.Namespace, scenario: ActionScenario) -> tuple[tuple[str, int, int], ...]:
     """The most requests one play of `scenario` sends, each model's with the most each writes:
-    the talker's, the judge's, and an uncertain overlap's for each turn said over the agent."""
+    the talker's, the judge's, an uncertain overlap's for each turn said over the agent, and the
+    yes rule's check for each turn that answers a read-back (`_answers`)."""
     over = sum(turn.when in OVER for turn in scenario.turns)
     return (
         (args.model, TALKER_REQUESTS * len(scenario.turns), args.max_output_tokens),
         (args.judge_model, JUDGE_ATTEMPTS * _asked(scenario), args.judge_max_output_tokens),
         (OVERLAP.model, over, OVERLAP.max_output_tokens or OUTPUT_BUDGET),
+        (CHECK.model, _answers(scenario), CHECK.max_output_tokens or OUTPUT_BUDGET),
     )
 
 

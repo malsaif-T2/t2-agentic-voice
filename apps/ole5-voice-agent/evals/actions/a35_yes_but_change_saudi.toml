@@ -1,0 +1,30 @@
+# Plan 007's action scenarios (its "The measurement"; ole5_voice/evals/action_scenarios.py),
+# added with the yes rule's model check (D-082) before any run: a yes with a change in it,
+# said once the closing question ended, is a correction, never a yes: the corrected ticket is
+# read back and sent on the yes after it.
+id = "a35_yes_but_change_saudi"
+kind = "yes_but_change"
+split = "dev"
+language = "ar-SA"
+notes = "Eeh bas khalliha 'aajla (yes, but make it urgent) sends nothing: the ticket is read back again as urgent, and the yes after it opens it once."
+made = 1
+ticket_type = "Report"
+summary_facts = ["Says the outgoing correspondence report has not updated since Sunday."]
+
+[[turns]]
+says = "افتح لي تذكرة، تقرير المراسلات الصادرة ما يتحدث من يوم الأحد، مو مستعجلة"
+calls = "create_ticket"
+outcome = "read_back"
+language = "ar-SA"
+
+[[turns]]
+says = "ايه بس خلها عاجلة"
+calls = "create_ticket"
+outcome = "read_back"
+language = "ar-SA"
+facts = ["The ticket read back now gives it a high or urgent priority."]
+
+[[turns]]
+says = "نعم أرسلها"
+outcome = "done"
+says_number = "whole"

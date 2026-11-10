@@ -24,11 +24,19 @@ rule decides, each the public `ConfirmationAnswered`:
 The rule failing (a bug) is unclear, logged by its kind alone, never a yes; and a `Yes` whose
 confirmed action is not the receipt's, for this turn, unchanged since the rule issued it, is not
 taken as one.
+
+**Words the lists leave unplaced** (D-082). For an agent that asks, an answer `decide` marks
+`askable` is put to a chat model first (yes_ask.py), and nothing is decided or said, nor the
+turn settled, until its word lands: the yes rule's verdict on it (`judged`) is then carried out
+as above, the event's `by` `model`, and the turn settles after the reply it says. A turn that
+answers the read-back first cancels a request still in flight, so only the newest answer
+decides; the client's stop and the call's end cancel it too (`stopped`, `end`).
 """
 
 from __future__ import annotations
 
 from collections.abc import Awaitable, Callable
+from typing import Literal
 
 from t2_agentic_voice.core.conversation import DeclineKind
 from t2_agentic_voice.core.events import ConfirmationAnswered, ConfirmationDecision, TurnId
@@ -53,12 +61,14 @@ from t2_agentic_voice.voice.session.report import TurnLog
 from t2_agentic_voice.voice.session.speaker import Speaker
 from t2_agentic_voice.voice.session.talker_play import Guarded
 from t2_agentic_voice.voice.session.turn_book import TurnBook
+from t2_agentic_voice.voice.session.yes_ask import Receipt as Receipt
+from t2_agentic_voice.voice.session.yes_ask import YesAsks
 
 _log = get_logger(__name__)
 # The talker's answer to a turn (talking.py's `Talking.answer`).
 Talk = Callable[[TurnLog, HeardWords, float], Awaitable[None]]
-# The current read-back's receipt for speech begun at a time, built now (interrupter.py's).
-Receipt = Callable[[float | None], ReadBackReceipt | None]
+# What decided a turn's answer: the yes rule's lists, or a chat model's word within its rails.
+DecidedBy = Literal["words", "model"]
 # What each of the rule's outcomes is, as `ConfirmationAnswered` names it.
 _DECISIONS: dict[type, ConfirmationDecision] = {
     Yes: "yes",
@@ -80,7 +90,8 @@ class YesTurns:
     """One call's answers to its read-backs (the module's docstring), said by `speaker`, the
     call's `confirming` state read and ended, the receipt built by `receipt`, a declined turn
     answered by `talk`; its confirmed actions' writes are `jobs` (action_job.py's, given the
-    turns, `guarded`, `sync` and `over`)."""
+    turns, `guarded`, `sync` and `over`), and its requests for a chat model's word on words the
+    lists leave unplaced `asks` (yes_ask.py's, given the same)."""
 
     def __init__(
         self,
@@ -101,6 +112,17 @@ class YesTurns:
         self.jobs = ActionJob(
             setup, books, speaker=speaker, turns=turns, guarded=guarded, sync=sync, over=over
         )
+        self.asks = YesAsks(
+            setup,
+            books,
+            turns=turns,
+            confirming=confirming,
+            receipt=receipt,
+            guarded=guarded,
+            sync=sync,
+            over=over,
+            settle=self._judged,
+        )
 
     def takes(self, heard: HeardWords | None) -> bool:
         """Whether `heard`, a turn's own words, answer the current read-back: the yes rule's."""
@@ -108,13 +130,48 @@ class YesTurns:
 
     async def answer(self, turn: TurnLog, heard: HeardWords, at: float) -> None:
         """Take `turn`, its words `heard`, as the answer to the current read-back, at `at`: the
-        yes rule's word on it, then what follows (the module's docstring)."""
+        yes rule's word on it, then what follows, or first a chat model's word on words its
+        lists leave unplaced, for an agent that asks (the module's docstring)."""
         read_back = self._confirming.read_back
         if read_back is None:  # never so: `takes` said it answers one
             return
+        await self.asks.cancel()  # a newer answer: an earlier one's request decides nothing
         plan = read_back.plan
         receipt = self._receipt(heard.speech_at)
         outcome = AskAgain() if receipt is None else self._decided(turn, heard, receipt, plan)
+        if receipt is not None and self.asks.wanted(outcome):
+            self.asks.start(turn, heard, receipt, read_back)
+            return
+        await self._settled(turn, heard, outcome, plan, at, by="words")
+
+    async def _judged(
+        self,
+        turn: TurnLog,
+        heard: HeardWords,
+        receipt: ReadBackReceipt,
+        outcome: YesOutcome,
+        plan: ReadBackPlan,
+        at: float,
+    ) -> None:
+        """The yes rule's verdict on a chat model's word (yes_ask.py), carried out as any
+        answer's; a `Yes` that is not `receipt`'s for `turn` is unclear, as `_decided` says."""
+        if isinstance(outcome, Yes) and not _issued_for(outcome.confirmed, receipt, turn.turn_id):
+            call_id = self._setup.call_id
+            _log.error("yes_rule_failed", call_id=call_id, turn_id=turn.turn_id, failure="receipt")
+            outcome = AskAgain()
+        await self._settled(turn, heard, outcome, plan, at, by="model")
+
+    async def _settled(
+        self,
+        turn: TurnLog,
+        heard: HeardWords,
+        outcome: YesOutcome,
+        plan: ReadBackPlan,
+        at: float,
+        *,
+        by: DecidedBy,
+    ) -> None:
+        """`outcome`, decided `by` the lists or a model's word, told and carried out."""
         decision = _DECISIONS[type(outcome)]
         setup = self._setup
         answered = ConfirmationAnswered(
@@ -123,10 +180,15 @@ class YesTurns:
             at=setup.clock.wall(),
             action=plan.action,
             decision=decision,
+            by=by,
         )
         setup.emit(answered)
         _log.info(
-            "read_back_answered", call_id=setup.call_id, turn_id=turn.turn_id, decision=decision
+            "read_back_answered",
+            call_id=setup.call_id,
+            turn_id=turn.turn_id,
+            decision=decision,
+            by=by,
         )
         if isinstance(outcome, Yes):
             await self._confirmed(turn, plan, outcome.confirmed, at)
@@ -141,8 +203,14 @@ class YesTurns:
         """Say each action's outcome now due, at a turn boundary (action_job.py's `flush`)."""
         await self.jobs.flush(at)
 
-    def end(self) -> None:
-        """The call ended: an outcome still due is never said."""
+    async def stopped(self) -> None:
+        """The client's `stop`: a chat model's request still in flight decides nothing."""
+        await self.asks.cancel()
+
+    async def end(self) -> None:
+        """The call ended: a chat model's request still in flight decides nothing, and an
+        outcome still due is never said."""
+        await self.asks.cancel()
         self.jobs.end()
 
     def _decided(

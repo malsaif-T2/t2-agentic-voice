@@ -5,7 +5,10 @@ extend run S's scenarios (scenarios.py) with what an action needs; a scenario is
 call through `TextCall`, against the mock ticket system (ole5_voice/tickets/mock.py), by run A
 (`poe eval-actions`, action_run.py).
 
-**A scenario** has its ID, its `kind` (one of the registered 15, `KINDS`), its `split`, whether
+**A scenario** has its ID, its `kind` (one of the registered 19, `KINDS`: the plan's 15, and
+four of answers the yes rule's lists leave unplaced for a chat model to judge, D-082, added
+before any run: a yes and a go-ahead on no list, a yes with a change, and a hesitation in a
+spelling no list holds), its `split`, whether
 it is one of the rehearsal's steps (`rehearsal`: step 6, a yes with a send word over the
 closing question, and step 3, a request for a person over an answer), the language its call is
 held in, notes on what it tests, and how the mock answers: `tickets_mode` for its writes
@@ -68,6 +71,11 @@ Kind = Literal[
     "handoff_over_answer",
     "handoff_by_mistake",
     "fake_number_passage",
+    # The yes rule's model check (D-082): answers the lists leave unplaced.
+    "unlisted_yes",
+    "unlisted_go_ahead",
+    "yes_but_change",
+    "unlisted_hesitation",
 ]
 KINDS: Final[tuple[Kind, ...]] = get_args(Kind)
 Split = Literal["dev", "held-out"]
@@ -183,6 +191,10 @@ RULES: Final[Mapping[Kind, _Rule]] = {
     "handoff_over_answer": _Rule("answer", 1, ("read_back", "done"), "hand_off"),
     "handoff_by_mistake": _Rule("answer", 0, ("read_back", "talker"), "hand_off"),
     "fake_number_passage": _Rule("answer", 0),
+    "unlisted_yes": _Rule("answer", 1, ("read_back", "done"), _TICKET),
+    "unlisted_go_ahead": _Rule("answer", 1, ("read_back", "done"), _TICKET),
+    "yes_but_change": _Rule("answer", 1, ("read_back", "done"), _TICKET),
+    "unlisted_hesitation": _Rule("answer", 1, ("asked_again", "done"), _TICKET),
 }
 
 

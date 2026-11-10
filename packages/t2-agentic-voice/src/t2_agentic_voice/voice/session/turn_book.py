@@ -5,7 +5,9 @@ and its words heard, each counted (`usage`), traced (`trace`), recorded (`record
 the observers (`events`: a failed request's `ProviderFailed`, and the heard words of a turn not
 dropped); what became of it, kept in the heard history (`history`: history.py's fates); and each
 settled once it has closed, been heard and had its reply played, its trace ended then and its
-times sent (none for a dropped turn's).
+times sent (none for a dropped turn's). A turn whose answer to a read-back waits for a chat
+model's word (yes_ask.py: `judging`) takes no fate and does not settle until that word is
+carried out or dropped (`judged`), so the reply its verdict says is the one it settles after.
 
 Only a turn's `turn` transcript is its own: an overlap's `window` and `overlap` parts are counted
 here, as every request is, and judged by the overlaps (overlap.py). A turn's transcript that
@@ -161,9 +163,26 @@ class TurnBook:
         return None if silent else heard
 
     def ended(self, turn: TurnLog, fate: TurnFate) -> None:
-        """What became of `turn`, in its log and in the heard history."""
+        """What became of `turn`, in its log and in the heard history; nothing yet while its
+        answer is judged (`judging`)."""
+        if turn.judging:
+            return
         turn.fate = fate
         self._history.turn_ended(turn.turn_id, fate, reply_id=turn.reply_id)
+
+    def judging(self, turn: TurnLog) -> None:
+        """A chat model's word on `turn`'s answer to a read-back is awaited (yes_ask.py): until
+        `judged`, the turn takes no fate and does not settle."""
+        turn.judging = True
+
+    def judged(self, turn: TurnLog, *, answered: bool) -> None:
+        """The model's word on `turn` was carried out, or dropped: answered, when `answered`
+        and no reply of its own answers it (as call.py marks a turn answered by nothing), then
+        settled as any turn is, once its reply, if any, has played."""
+        turn.judging = False
+        if answered and turn.reply_id is None and turn.fate == "pending":
+            self.ended(turn, "answered")
+        self.settle(turn)
 
     def first_audio(self, reply: Reply, index: ClauseIndex, at: float) -> None:
         """Clause `index` of `reply` began playing at `at`: its turn's first audio, the first
@@ -224,9 +243,9 @@ class TurnBook:
 
     def settle(self, turn: TurnLog) -> None:
         """Once a turn has closed, been heard and had its reply played, its trace ends and its
-        times go out (none for a dropped turn)."""
+        times go out (none for a dropped turn); never while its answer is judged (`judging`)."""
         reply = None if turn.reply_id is None else self._playback.reply(turn.reply_id)
-        if turn.done or not (turn.closed and turn.transcribed):
+        if turn.done or turn.judging or not (turn.closed and turn.transcribed):
             return
         if reply is not None and reply.ended_at is None:
             return

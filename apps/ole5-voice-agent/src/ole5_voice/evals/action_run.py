@@ -7,7 +7,7 @@ As `poe eval-scenarios`, a run refuses before anything is sent what it cannot me
 checkout, the `--out`, the scenarios (read with `action_scenarios.problems`, refused when they
 break a rule), an agent the factory builds without the knowledge tool or the ticket tools, the
 prices and limits, the shared history (`run_folder.history_accepts`), and a dry estimate of the
-run's most spend past the cap (`--cap-usd`, $1.50 by default, the plan's Q9): each play's most
+run's most spend past the cap (`--cap-usd`, $10 by default, the owner's): each play's most
 requests, each reading `--input-budget-tokens` and writing its model's most (action_setup.py).
 Held-out is played only when `--split held-out` names it, and read once: refused when the shared
 history holds a complete held-out run of A.
@@ -80,7 +80,7 @@ from ole5_voice.evals.worktree import refused, run_checkout
 REPEATS: Final = 3  # each scenario three times (the registration's run A)
 MODEL: Final = "openai/gpt-oss-120b"  # the registered model and effort (Q9)
 EFFORT: Final = "medium"
-CAP_USD: Final = 1.50  # the plan's cap (Q9)
+CAP_USD: Final = 10.00  # the owner's cap of 2026-11-10 (plan 007's Decision log)
 PLAYS_DIR: Final = "plays"  # under --out, each dev play's mock
 _DESCRIPTION = "Play run A's scripted ticket calls over one split, each three times, into --out."
 log = get_logger(__name__)

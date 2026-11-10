@@ -4,7 +4,9 @@ Saudi Arabic and English (plan 007's integration): each case a `TextCall` of Ole
 test's own, on the library's talker, session, yes rule, guard and action runner over a
 `MemoryOutbox`, the model a fake. The call's caller is the session's customer, as the token
 route mints one (customer.py): every Ole5 action is refused before its read-back for a caller
-who names no customer (invariant 3).
+who names no customer (invariant 3). Ole5's talker asks a chat model of an answer the yes rule's
+lists leave unplaced (D-082), so the suite's judged cases (testing/action_judged.py) play here,
+each rail held.
 
 `add_ticket_note` has no suite here: its `validate` takes only a ticket this call's record
 holds, and the suite starts each case on a fresh call, with no step that makes one first.
@@ -56,6 +58,12 @@ class TestCreateTicketIsSafe(ActionSafetySuite):
 
     def sample_draft(self) -> BaseModel:
         return TicketDraft(summary=ENGLISH_SUMMARY, type="Report", priority="High")
+
+    def test_its_judged_cases_put_the_answers_to_the_model(self) -> None:
+        """Ole5's talker asks (D-082), so the suite's judged cases play their calls, the check
+        answered by the case's fake model, and never pass at once as for an agent that does
+        not ask."""
+        assert self._scene().asks
 
 
 class TestCreateTicketIsSafeInSaudiArabic(TestCreateTicketIsSafe):

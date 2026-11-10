@@ -12,24 +12,23 @@ voice/session/call.py.
   that reply first, its work cancelled, so the talker starts again with both turns, the earlier
   one in the history as it ended (`rolled_back` when none of its reply played).
 - **Its events, in order** (agent/talker.py; each played by talker_play.py): a clause is said
-  (`SpokenClause`, in its language, open_reply.py's speech); a card is shown (`ShownCard`,
-  `t2v/1`'s `card`); a tool's start and end are the public `ToolStarted` and `ToolFinished`, and
-  while the talker or a tool works with nothing left to play the agent is `thinking`
-  (playback.py); a progress line is said from the phrase cache in its language (`ProgressDue`,
-  timed apart: **the progress line** below); an action's read-back is said, and the call is
-  confirming (`ReadBackRequested`, read_back.py); a clause the guard blocked is never said
-  (`ClauseBlocked`): the
-  call language's preset `error` notice is said in its place, once a reply, and `GuardBlocked`
-  goes out (the talker keeps its developer note: the history holds only what the caller heard);
-  each model request is counted in the call's usage as it goes and its tokens as it ends
-  (`ModelRequested`, `ModelReplied`; an early start's or a kept reply's, dropped unplayed, once
-  it is let go), the first one's first token the turn's; and the reply is closed once it is done
-  (`ReplyDone`), the `error` notice said first when it said no clause (a model's empty answer,
-  or one cut at its limit before a word), once a reply, so the caller never hears silence after
-  asking. A talker that fails is logged by its failure's kind alone, a provider's failure told
-  (`ProviderFailed`), and the caller hears the `error` notice, once a reply, after any clause
-  already said too, in the turn's reply language (its last clause's, else the turn's as
-  agent/language.py reads it); the reply is closed.
+  (`SpokenClause`, in its language, open_reply.py's speech); a card is shown (`ShownCard`, `t2v/1`'s
+  `card`); a tool's start and end are the public `ToolStarted` and `ToolFinished`, and while the
+  talker or a tool works with nothing left to play the agent is `thinking` (playback.py); a progress
+  line is said from the phrase cache in its language (`ProgressDue`, timed apart: **the progress
+  line** below); an action's read-back is said, and the call is confirming (`ReadBackRequested`,
+  read_back.py); a clause the guard blocked is never said (`ClauseBlocked`): the call language's
+  preset `error` notice is said in its place, once a reply, and `GuardBlocked` goes out (the talker
+  keeps its developer note: the history holds only what the caller heard); each model request is
+  counted in the call's usage as it goes and its tokens as it ends (`ModelRequested`,
+  `ModelReplied`; an early start's or a kept reply's, dropped unplayed, once it is let go), the
+  first one's first token the turn's; and the reply is closed once it is done (`ReplyDone`), the
+  `error` notice said first when it said no clause (a model's empty answer, or one cut at its limit
+  before a word), once a reply, so the caller never hears silence after asking. A talker that fails
+  is logged by its failure's kind alone, a provider's failure told (`ProviderFailed`), and the
+  caller hears the `error` notice, once a reply, after any clause already said too, in the turn's
+  reply language (its last clause's, else the turn's as agent/language.py reads it); the reply is
+  closed.
 - **The early start** (plan 006, Q2; io.py's early start). A turn's `held` transcript starts the
   talker at once, in a scope of its own, while the hold runs: what it gives is kept, and nothing
   is asked for. Speech that resumes in the hold cancels it (`resumed`). When the hold ends (the
@@ -53,16 +52,16 @@ voice/session/call.py.
   Once its reply was stopped, or the call has ended or is ending, nothing kept plays. While
   kept, the reply has no audio, so the client is shown `thinking`.
 - **The progress line** (plan 006, Q27). A `ProgressDue` with an `after_s` waits, in the reply's
-  scope, until that long after the caller stopped speaking, whether the search or the model
-  holds the reply up by then, and is said only if no clause has been asked of the voice by
-  then, the reply is not kept and no notice took its place; past that time it is said at once,
-  and once a clause was asked for never (talker_progress.py). With no `after_s` it is said as it
-  comes.
+  scope, until that long after the caller stopped speaking, whether the search or the model holds
+  the reply up by then, and is said only if no clause has been asked of the voice by then, the reply
+  is not kept and no notice took its place; past that time it is said at once, and once a clause was
+  asked for never (talker_progress.py). With no `after_s` it is said as it comes.
 - **An answer to an action's read-back** (plan 007; yes_turns.py). While the call is confirming,
   a turn whose speech began once the read-back's summary played its last clause is the yes
   rule's, never the talker's, and starts no talker early (call.py); the talker answers it only
-  when the rule declines the action, as a no or a correction (`TalkerTurn.declined`). The
-  outcome of a confirmed action's write is said at a turn boundary (action_job.py's `flush`).
+  when the rule declines the action, as a no or a correction (`TalkerTurn.declined`); a client's
+  stop cancels a chat model's word on it still awaited (yes_ask.py). The outcome of a confirmed
+  action's write is said at a turn boundary (action_job.py's `flush`).
 
 Every event the talker gives is played as one step of the session's (`guarded`, under its lock,
 in the order they came), so it never interleaves with one the Pipecat side hands; the client is
@@ -249,13 +248,14 @@ class Talking:
     async def stopped(self) -> None:
         """The client's `stop`: the work of every early start still held is cancelled, so
         nothing it kept plays, and its turn is answered by nothing (`answer`)."""
+        await self.yes.stopped()
         for talk in [talk for talk in self._talks.values() if talk.reply is None]:
             await self._cancel(talk)
 
     async def end(self) -> None:
         """The call ended: every early start still held, and every kept reply, is cancelled (a
         reply's own scope is cancelled with the reply); an action's outcome due is never said."""
-        self.yes.end()
+        await self.yes.end()
         self._open.clear()
         for talk in [talk for talk in self._talks.values() if talk.held]:
             talk.kept_for.clear()

@@ -15,12 +15,16 @@ the library's runtime.
   act on a ticket system (tickets/tools.py's `ticket_tools`: `create_ticket`,
   `add_ticket_note`, `hand_off` and `ticket_status`); its
   vocabulary holds Ole5's product terms for the Whisper prompt every call sends (run W kept
-  its arm W1, Q23); its `version` is stamped on its traces; and a chat model decides a short
+  its arm W1, Q23); its `version` is stamped on its traces; a chat model decides a short
   overlap of two or more words the rule would let go on (`ask_on_uncertain_overlaps`, D-069;
-  the owner's ruling on run U, Q28). With no ticket system (runs K, S and T, which give
-  none), the same talker told in place of the tickets' section that it can neither open a
-  ticket nor pass the call on (`NO_TICKETS`), since a model told of a tool none offers writes a
-  call to one (the live probe of 2026-11-07: Groq refused it, `tool_use_failed`); with no
+  the owner's ruling on run U, Q28); and, with its tickets, a chat model judges an answer to a
+  ticket's read-back that the yes rule's lists leave unplaced, within the rule's rails
+  (`ask_on_unlisted_answers`, D-082; the owner's rulings of 2026-11-10). With no ticket system
+  (runs K, S and T, which give none), the same talker told in place of the tickets' section
+  that it can neither open a ticket nor pass the call on (`NO_TICKETS`), since a model told of
+  a tool none offers writes a call to one (the live probe of 2026-11-07: Groq refused it,
+  `tool_use_failed`); having no action, it reads nothing back, and it does not ask, so its
+  declaration and those runs are as they were; with no
   knowledge base either (run T's pass Tn), with no tool at all, told in place of the search
   section that it has none (`NO_SEARCH`), for the same reason. Each is versioned apart.
 - **The echo** (`ECHO_AGENT`): the same languages and name with no instructions, which says
@@ -222,7 +226,8 @@ def declare(
 ) -> VoiceAgent:
     """The talker's declaration (the module's docstring) with `tools`; with `search` False,
     told it has no search (`instructions(search=False)`), with `tickets` False, that it has no
-    tickets, each versioned apart (`version`)."""
+    tickets, each versioned apart (`version`), and asking a chat model of an unlisted answer to
+    a read-back only with its tickets."""
     return VoiceAgent(
         name=NAME,
         version=version(search=search, tickets=tickets),
@@ -232,6 +237,7 @@ def declare(
         tools=tools,
         vocabulary=VOCABULARY,
         ask_on_uncertain_overlaps=True,
+        ask_on_unlisted_answers=tickets,
     )
 
 

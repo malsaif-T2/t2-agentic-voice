@@ -61,7 +61,8 @@ def test_a_dev_run_plays_each_scenario_three_times_evenly_after_a_smoke_test(
 ) -> None:
     assert _main(setup) == 0
     card = _card(setup)
-    assert card.complete and len(card.plays) == 45 and card.run.repeats == 3
+    plays = 3 * len(DEV)  # each of dev's 19 scenarios three times
+    assert card.complete and len(card.plays) == plays == 57 and card.run.repeats == 3
     order = [
         json.loads(line)["scenario"]
         for line in (setup.out() / RESULTS_FILE).read_text("utf-8").splitlines()
@@ -75,7 +76,7 @@ def test_a_dev_run_plays_each_scenario_three_times_evenly_after_a_smoke_test(
     assert [count.needed for count in card.scenarios if count.scenario.startswith("a05")] == [3]
     ((line, _), (copy, _)) = setup.lines.lines
     assert isinstance(line, ActionLine) and line == copy and line.split == "dev"
-    assert line.plays == 45 and line.requests[TALKER] > 45 and line.requests[JUDGE] > 45
+    assert line.plays == plays and line.requests[TALKER] > plays and line.requests[JUDGE] > plays
     assert line.estimate_usd == card.run.estimate_usd > 0
 
 
@@ -95,7 +96,7 @@ def test_the_smoke_test_alone_with_the_registered_model_effort_and_cap(setup: Ac
     assert _main(setup, "--smoke-only") == 0
     card = _card(setup)
     assert card.complete and len(card.plays) == 1 and card.passed is None
-    assert card.run.model == "openai/gpt-oss-120b" and card.run.cap_usd == 1.5
+    assert card.run.model == "openai/gpt-oss-120b" and card.run.cap_usd == 10.0
     assert card.run.settings["llm.reasoning_effort"] == "medium"
 
 

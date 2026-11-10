@@ -8,9 +8,16 @@ its time to first audio (`TurnReplay`); and the call held in text
 (`TextCall`, the design's 9.2) with the fakes it runs on (the fake chat models, their script's
 steps and pauses, and the failure of a script that ran out), what each of its turns did, as
 data (plan 006), and `ActionSafetySuite` (the design's 9.3), until the testing kit is a public
-module of its own (the design's 5.1).
+module of its own (the design's 5.1); and the chat model's requests a call makes of its own, an
+uncertain overlap's (D-069) and the yes rule's check of an answer its lists leave unplaced
+(D-082), so a fake or a measurement tells them apart and answers them.
 Provisional (D-021). A facade: it only re-exports (ARCH-FACADE)."""
 
+from t2_agentic_voice.domain.consent_check import (
+    consent_check_answer,
+    consent_check_request,
+    is_consent_check,
+)
 from t2_agentic_voice.domain.recall import Recall
 from t2_agentic_voice.domain.scoring import id_recall, silence_output, term_recall
 from t2_agentic_voice.domain.sign_test import sign_test
@@ -61,8 +68,11 @@ __all__ = [
     "TurnReplay",
     "TurnTiming",
     "cer",
+    "consent_check_answer",
+    "consent_check_request",
     "echo_timings",
     "id_recall",
+    "is_consent_check",
     "sign_test",
     "silence_output",
     "term_recall",

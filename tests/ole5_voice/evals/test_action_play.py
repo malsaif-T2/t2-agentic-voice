@@ -3,9 +3,10 @@ on its mock ticket system, the library's `TextCall` with its talker on a `Functi
 the actions as tools (action_run_support.py's oracle), the session's own read-back and
 confirming, the real yes rule, guard and action runner over an outbox in memory; nothing
 monkeypatched, nothing sent. Each committed scenario passes when the agent does what it
-expects; the mock, seeded as the scenario says, keeps what the call made; and what the run must
-see is seen: a claim the guard blocks, a write with no scripted yes (in a play with no result
-too), a passage first in the search, a judge's failing check, a provider's failure."""
+expects, an answer the yes rule's lists leave unplaced put to the model once (D-082); the mock,
+seeded as the scenario says, keeps what the call made; and what the run must see is seen: a
+claim the guard blocks, a write with no scripted yes (in a play with no result too), a passage
+first in the search, a judge's failing check, a provider's failure."""
 
 from __future__ import annotations
 
@@ -27,7 +28,7 @@ from ole5_voice.evals.judge import Judge
 from ole5_voice.evals.kb_points import RecordingKnowledge
 from ole5_voice.tickets.mock import FILE_NAME
 from t2_agentic_voice import ProviderError, VoiceSettings
-from t2_agentic_voice.evals import FakeKnowledgeBase
+from t2_agentic_voice.evals import FakeKnowledgeBase, is_consent_check
 
 from tests.ole5_voice.evals.action_run_support import (
     GUIDE,
@@ -109,6 +110,26 @@ def test_each_committed_scenario_passes_when_the_agent_does_what_it_expects(
     failed = [(n, check) for n, check in enumerate(record.checks, start=1) if not check.passed]
     assert record.failure is None and failed == [] and record.violations == ()
     assert record.passed is True and record.action_right is True
+
+
+@pytest.mark.parametrize(
+    "scenario",
+    [
+        "a31_unlisted_yes_saudi",
+        "a33_unlisted_go_ahead_english",
+        "a35_yes_but_change_saudi",
+        "a37_unlisted_hesitation_msa",
+        "a27_handoff_by_mistake_english",
+    ],
+)
+def test_an_answer_the_lists_leave_unplaced_is_put_to_the_model_once(
+    parts: _Playing, scenario: str
+) -> None:
+    """Ole5's talker asks (D-082): the oracle's word on the one turn its lists cannot place
+    makes the play pass, and no other turn asks."""
+    record = parts.play(scenario)
+    asked = [request for request in parts.chat.requests if is_consent_check(request)]
+    assert record.passed is True and len(asked) == 1
 
 
 def test_a_ticket_the_call_made_is_kept_in_the_plays_mock(parts: _Playing, tmp_path: Path) -> None:

@@ -71,7 +71,8 @@ class TurnLog:
     (overlap.py), over the reply `over_reply`; `cut_reply` is the reply its words stopped. Its
     reply's first audio (queued, and the first audible frame sent once the output taps any:
     `audio_seen`), its first progress line's apart, the browser's playback of it, and the chat
-    model's first token are its times' ends."""
+    model's first token are its times' ends. While a chat model's word on its answer to a
+    read-back is awaited (yes_ask.py) it is `judging`: neither answered nor settled yet."""
 
     turn_id: TurnId
     speech_at: float | None = None
@@ -98,6 +99,7 @@ class TurnLog:
     played_at: float | None = None
     first_token_at: float | None = None
     tts_first_audio_s: float | None = None
+    judging: bool = False
     done: bool = False
 
     @property

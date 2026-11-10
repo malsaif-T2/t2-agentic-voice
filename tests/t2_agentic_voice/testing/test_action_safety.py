@@ -53,6 +53,12 @@ CASES = [
     "test_a_refused_or_unsent_write_is_said_failed",
     "test_the_same_request_twice_is_written_once",
     "test_the_per_call_cap_holds",
+    # For an agent that has a chat model judge what the lists leave unplaced (D-082).
+    "test_a_model_yes_beside_a_change_marker_is_a_correction",
+    "test_a_model_yes_beside_a_no_word_or_a_question_mark_is_asked_again",
+    "test_a_check_that_fails_or_times_out_is_asked_again",
+    "test_a_model_yes_over_the_closing_question_with_no_send_word_is_asked_again",
+    "test_an_unlisted_yes_once_the_question_ended_confirms_once",
 ]
 
 

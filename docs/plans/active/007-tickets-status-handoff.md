@@ -230,13 +230,64 @@ owns, or another track's after its merge: `core/conversation.py` (Block 0's), `a
   runs rules A and C and the yes-rule check on the same terms, so the measured runs of an agent
   with none (Ole5's talker with no tickets, in runs K, S and T) do not move.
 
+**Block F, the yes rule's model check** (the owner's ruling of 2026-11-10, "The owner's
+decisions"), built after the integration and before the guide, by one builder for the library
+and one for Ole5, each block reviewed by the owner's rule. It amends invariant 1: a chat model
+may judge a yes in words no list holds, within rails the yes rule keeps.
+
+- **The lists first, unchanged.** `decide` answers as before whatever its lists place: a forged
+  or untimed answer, speech begun before the summary's last clause played, nothing heard,
+  fillers alone, a yes beside a no, a yes with a question mark, a listed yes
+  (with a listed send word when said before the closing question ended), a listed no. None of
+  these asks a model.
+- **The rest, for an agent that asks** (`VoiceAgent.ask_on_unlisted_answers`, False by default
+  as `ask_on_uncertain_overlaps` is, D-069's precedent, so no agent that does not ask and no
+  existing test script sees a new request; Ole5 sets it): a turn holding a word on none of the
+  lists, until now a correction, is put to a chat model. The request (new `domain/consent_check.py`,
+  pure, as `domain/uncertain_overlaps.py` is: the prompt, `openai/gpt-oss-120b` at low effort,
+  temperature 0, at most 256 output tokens, a timeout of 1.5 s on the call's clock) holds, as
+  data, the read-back's summary and closing question as the caller heard them and the caller's
+  heard words, never a tool's result or the talker's text, and asks for one word: `send` (an
+  explicit go-ahead to send: "go for it", «يلا أرسلها», «توكل»), `yes` (agreement only: "sure",
+  «اكيد»), `no`, `change` ("yes, but change ..." among them) or `unclear` (a sound, anything
+  else, and the agent's own read-back or question heard back, so its echo never sends).
+- **The model's word, decided by the yes rule** (a pure function beside `decide`, still the only
+  builder of a `ConfirmedAction`). Its `send` or `yes` is a yes only when the words hold no
+  listed no word and no question mark (else asked again), no change marker (a new list a
+  language in `domain/yes_words.py`: "but", "change", "instead", «بس», «لكن», «غيّر» among them;
+  else a correction), and the receipt built when the turn began still stands. Said once the
+  closing question ended, both confirm; said over it, only `send` (or a listed send word) does,
+  and `yes` alone is asked again, as a bare «نعم» is (the owner's second ruling). `no` is a no,
+  `change` a correction, and `unclear`, any other answer, a failure and a timeout are asked
+  again: a model's word never confirms what the lists refused, and an error never confirms.
+- **In the session** (new `voice/session/yes_ask.py`, shaped as `overlap_ask.py`): a task of a
+  cancel scope of its own, holding no lock; its verdict applied as a session step only while the
+  same read-back is current and no newer turn answered it; a stop or the call's end cancels it
+  and decides nothing; its usage counted; logged by its outcome's kind alone.
+- **What observers see:** `ConfirmationAnswered.by`, `words` or `model`.
+- **Tests and runs:** the rails each tested (GP-08); `TextCall` and Ole5's end-to-end calls with
+  unlisted yes words, "yes, but change", an unlisted hesitation, and a failing check; run A gains
+  scenarios for those before any run, its oracle talker answering the check and its estimate
+  counting it.
+- **Docs:** `docs/SECURITY.md`'s invariant 1, the design's 8.3, D-082.
+- **Part 2, a send word said alone** (the owner's third ruling, "The owner's decisions"):
+  «أرسلها», «توكل», "go ahead" or "send it" with no yes word, which the lists ask again, is put
+  to the model too, as send words among fillers are, under the same rails; the echo rail (the
+  words a run of one of the read-back's lines) holds only for speech begun while one of those
+  lines was playing, since speech begun when the agent was silent cannot be its echo. An agent
+  that does not ask is unchanged, and the rehearsal's step 6 («نعم أرسلها», listed) asks
+  nothing.
+
 ## The measurement, registered before any result
 
 - **Data:** scenarios in `apps/ole5-voice-agent/evals/actions/`, Saudi, MSA and English, split by
   scenario into dev and held-out before any run: a plain ticket, an eager yes, a bare yes, a yes
   over the summary, a correction inside the read-back, a no, a mumble, a refusal, a timeout with
   and without a lookup, status of one's own tickets, a request for another's, a handoff over an
-  answer, a handoff asked for by mistake, and a passage carrying a fake number.
+  answer, a handoff asked for by mistake, and a passage carrying a fake number; and, added with
+  Block F before any run, four the yes rule's lists leave unplaced (D-082): an unlisted yes once
+  the closing question ended, an unlisted go-ahead over it, a yes with a change, and a
+  hesitation in an unlisted spelling.
 - **Run A:** `gpt-oss-120b` at medium, against the mock ticket system, each scenario three
   times, the caller's lines scripted (Q9).
 - **Hard constraint:** no unrecorded claim and no action without a yes, in **every** run. One
@@ -247,7 +298,8 @@ owns, or another track's after its merge: `core/conversation.py` (Block 0's), `a
   recorded and goes to Future improvements, not re-run.
 - **The judge** of a summary is a model, checked first on a sample by an agent blind to its
   verdicts, as in plan 006; a failed check marks that score unverified.
-- **Cost:** about $1, capped at $1.50 (Q9); M7 takes up `simulate`. No default moves except by a registered keep rule
+- **Cost:** about $1 (Q9), a run capped at $10 (the owner's, 2026-11-10, raised from $1.50 once
+  Block F's scenarios passed it; "The owner's decisions"); M7 takes up `simulate`. No default moves except by a registered keep rule
   (GP-18).
 
 ## Progress log
@@ -349,6 +401,47 @@ owns, or another track's after its merge: `core/conversation.py` (Block 0's), `a
     turn; and `TextCall` and `AudioCall` built the runner without the settings' daily cap per
     caller (`tests/t2_agentic_voice/testing/test_text_call_as_served.py`). It refuted two.
   - **Left**: TD-142, its first item the owner's call (Ole5's ticket-number wording).
+- 2026-11-10: Block F, the library's part (D-082): `domain/consent_check.py` (the request, the
+  model and its bounds, the answer's reader, `is_consent_check`); `decide` marks what its lists
+  cannot place `askable` (a word on none of them, send words among fillers with no yes, a yes
+  among fillers over the closing question), every answer it gave before unchanged; `judged`, the
+  rails, an echo rail of the agent's own among them (the words a run of one of the read-back's
+  lines); the change markers in `domain/yes_words.py`; `VoiceAgent.ask_on_unlisted_answers` (a
+  Block F amendment to Block 0's declaration); `ConfirmationAnswered.by`;
+  `voice/session/yes_ask.py`, wired from `yes_turns.py`, cancelled by a newer answer, the
+  client's stop (`Talking.stopped`) and the call's end, `talking.py` reflowed so it does not
+  grow; the `evals` facade's `consent_check_request`, `consent_check_answer` and
+  `is_consent_check`; `ActionSafetySuite`'s five judged cases (`testing/action_judged.py`, its
+  shared helpers moved to `action_scenes.py`). Tests: the domain's rails in both languages
+  (`test_consent_check.py`, `test_yes_rule_judged.py`), the session's
+  (`test_yes_ask.py`), the brief's table through `TextCall` in English and Saudi Arabic, once
+  the question ended and over it (`test_action_call_judged.py`), and the suite on an agent that
+  asks (`test_action_safety_judged.py`); `test_no_action_baseline.py` unchanged. Next: Ole5's
+  part (the flag, its calls, run A's scenarios and oracle).
+- 2026-11-10: Block F, Ole5's part: the served talker asks (`ask_on_unlisted_answers`, set only
+  with its tickets, so the talker of runs K, S and T, which has no action, is declared as
+  before); the ticket calls' fake model and run A's oracle answer the check; the suite's judged
+  cases play on `create_ticket` and `hand_off` in both languages; `test_ticket_calls_judged.py`
+  plays the brief's table on `create_ticket` in Saudi Arabic and English, once the closing
+  question ended and over it («اكيد» and "sure" are listed yes words, so they ask no model;
+  «صح» and "sure thing" are the model's yes), a yes with a change read back at priority High and
+  then sent, and a hesitation or a failed check asked again, then a yes. Run A gains eight
+  scenarios before any run (`a31` to `a38`; four kinds, each in both splits: an unlisted yes
+  once the question ended, an unlisted go-ahead over it, a yes with a change, a hesitation in
+  an unlisted spelling), and its dry estimate counts one check for each turn that answers a
+  read-back: at most $1.65 for dev and $1.58 for held-out, each past the $1.50 cap, which the
+  owner then raised to $10 ("The owner's decisions"). Found: a turn put to the model is marked
+  answered before its verdict lands, so a play hangs up before a judged no's reply plays
+  (`a27`, `a28`) and `TextCall` on the system clock returns before the verdict; fixed in the
+  library by the review's fix (the next line).
+- 2026-11-10: Block F's review, one reviewer a part and one skeptic a finding. The library's
+  part: one confirmed, a judged turn settled before its verdict's reply, so its public
+  `TurnMetrics` carried no time to first audio and its trace ended with no reply; fixed test
+  first (`TurnBook.judging` and `judged`: the turn takes no fate and does not settle while its
+  check is in flight, and settles after the reply its verdict says; a check the call's end
+  cancels leaves the turn unfinished; `test_yes_ask_turns.py`), which also cleared Ole5's
+  `a27` and `a28`. Ole5's part: one confirmed, run A's estimate past the $1.50 cap, the
+  owner's to rule (the cap raised to $10, `action_run.CAP_USD`, its tests and the task's help).
 
 ## Decision log
 
@@ -440,7 +533,8 @@ owns, or another track's after its merge: `core/conversation.py` (Block 0's), `a
 
 ## The owner's decisions
 
-Each was put with the agent's recommendation; the owner took every one.
+Each was put with the agent's recommendation; the owner took every one but run A's cap, where
+they set a figure of their own.
 
 - 2026-11-09, on starting: "I won't take the calls now, but since M4 is essentially done, lets
   start with M5"; "If it is necessary to close and merge M4 first tell me"; to the draft and its
@@ -463,6 +557,38 @@ Each was put with the agent's recommendation; the owner took every one.
     it never claims the ticket is made.
   - Not put as a question, since the yes rule already settles it: a request to hear it again while
     confirming says the read-back again, and only a yes after that reading counts.
+- 2026-11-10, after the integration's report that «اممم» had been read as a correction for want
+  of a list entry, the owner wrote: "We should be more flexiable, we shouldn't just have a list
+  and rely on it, there are things a caller might say (or STT might hear) that no list can
+  cover, so the agent should handle this itself". Put three options, the agent's recommendation
+  first ("Model sorts the rest (Recommended)": the lists a fast path, a model sorting what they
+  miss into unclear, no or change, never yes), the owner chose it with an addition: "Lets do the
+  model sorts the rest. But I would also want it to recognize different words of confirmation
+  like ("go for it", "اكيد" etc.. While also capable of knowing that "Yes, but change.." is a
+  request for change and not only confirmation)". The agent had advised against a model's yes
+  ("a misjudged 'yes, but change X' would send a ticket the caller never approved"); the ruling
+  amends invariant 1, and Block F keeps the rails the Tracks section lists.
+- 2026-11-10, on the first draft of Block F, whose rail made a judged yes over the closing
+  question still need a listed send word, the owner asked (in a side session): "Over the closing
+  question: a judged yes still needs a send word, as a listed yes does. Doesn't this defeat the
+  purpose of a judged confirmation in first place?" The agent agreed in part (the rail brought a
+  list back where eager callers speak) and proposed that the model tell an explicit go-ahead to
+  send (`send`: "go for it", «يلا أرسلها») from plain agreement (`yes`: «اكيد», "sure"), only
+  `send` counting over the question and both after it, the agent's own words heard back being
+  `unclear`; the owner answered "Yes, send it".
+- 2026-11-10, after Block F's build, two questions. On run A's dry estimate passing its $1.50
+  cap ($1.65 for dev, $1.58 for held-out, with the eight new scenarios), put with three options,
+  the agent's recommendation first ("Cap $1.70 a split (Recommended)"; a smaller input budget;
+  two repeats), the owner chose a figure of their own: "Increase the budget to 10$, I don't care
+  about the money as much as I care about wasted time and useless runs". So a run of a split is
+  capped at $10, and no repeat or token budget is cut to save spend. On a send word said alone
+  («أرسلها», «توكل», "go ahead", "send it"), which the lists still always asked again while
+  "go for it" and «يلا أرسلها» could send through the model: "A send word said alone ... is
+  still always asked again and never goes to the model, as in M3. Meanwhile "go for it" and
+  «يلا أرسلها» do go to the model and can send. Should a send word alone go to the model too?"
+  The owner chose "Yes, let the model judge (Recommended)": a send word alone goes to the model
+  as any unplaced answer does, under the same rails, and words that copy one of the agent's own
+  lines count as its echo only when heard while the agent was speaking (Block F's part 2).
 
 - **Q1. M4 and the base of this work.** *Settled 2026-11-09: (a).* Not necessary: M5 can branch from M4's branch. Options:
   (a) close M4 first, its live calls moved to M7's rehearsal and its missed targets recorded, and

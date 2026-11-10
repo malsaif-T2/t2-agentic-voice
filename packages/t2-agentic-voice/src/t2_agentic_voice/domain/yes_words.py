@@ -14,6 +14,11 @@ noun), with the Saudi and the Modern Standard Arabic words in the one Arabic lis
 domain/words.py's are. Each is written in the rule's form (`rule_form`), the Arabic with `\\u`
 escapes, each comment giving the word's sound and meaning, then its letters. A send word is
 never a yes alone: the closing question holds one, and its echo must not confirm anything.
+
+The change markers (`change`, D-082) are read only of a chat model's yes (domain/yes_rule.py's
+`judged`): words that say a yes comes with a change ("yes, but ..."), so a model's yes beside
+one is a correction, never a yes. They are the owner's ruling's examples of a change, and the
+verbs with the object pronoun on them, as the send words are listed.
 """
 
 from __future__ import annotations
@@ -29,8 +34,9 @@ from t2_agentic_voice.domain.words import PRESET_WORDS, rule_form
 class ConsentWords(BaseModel):
     """One language's lists for one read-back, each in the rule's form (domain/words.py's
     `rule_form`): `yes`, `send` (the preset's, the settings' and the action's), `no`, and the
-    `fillers` a yes may stand among. A word is brought to the rule's form as the lists are
-    built, each once; one that says nothing in it is dropped."""
+    `fillers` a yes may stand among; and `change`, the markers of a change that a chat model's
+    yes may not stand beside (D-082), none unless given. A word is brought to the rule's form as
+    the lists are built, each once; one that says nothing in it is dropped."""
 
     model_config = ConfigDict(frozen=True, extra="forbid", hide_input_in_errors=True)
 
@@ -38,8 +44,9 @@ class ConsentWords(BaseModel):
     send: tuple[str, ...]
     no: tuple[str, ...]
     fillers: tuple[str, ...]
+    change: tuple[str, ...] = ()
 
-    @field_validator("yes", "send", "no", "fillers")
+    @field_validator("yes", "send", "no", "fillers", "change")
     @classmethod
     def _in_rule_form(cls, value: tuple[str, ...]) -> tuple[str, ...]:
         return tuple(dict.fromkeys(form for word in value if (form := rule_form(word))))
@@ -126,6 +133,26 @@ _ARABIC_FILLERS = (
     "\u0627\u0644\u0637\u0644\u0628",  # at-talab, the request: alef, lam, tah, lam, beh
     "\u0637\u0644\u0628\u064a",  # talabi, my request: tah, lam, beh, yeh
 )
+# The Arabic change markers (D-082); ghayyir and 'addil written with their shadda come to the
+# words below in the rule's form, which drops it.
+_ARABIC_CHANGE = (
+    "\u0628\u0633",  # bas, but: beh, seen
+    "\u0644\u0643\u0646",  # laakin, but: lam, kaf, noon
+    "\u063a\u064a\u0631",  # ghayyir, change (ghair, other than): ghain, yeh, reh
+    "\u063a\u064a\u0631\u0647\u0627",  # ghayyirha, change it: ghain, yeh, reh, heh, alef
+    "\u063a\u064a\u0631\u0647",  # ghayyirah, change it: ghain, yeh, reh, heh
+    "\u0639\u062f\u0644",  # 'addil, edit: ain, dal, lam
+    "\u0639\u062f\u0644\u0647\u0627",  # 'addilha, edit it: ain, dal, lam, heh, alef
+    "\u0639\u062f\u0644\u0647",  # 'addilah, edit it: ain, dal, lam, heh
+    "\u0628\u062f\u0644",  # baddil, swap (badal, instead of): beh, dal, lam
+    "\u0628\u062f\u0644\u0647\u0627",  # baddilha, swap it: beh, dal, lam, heh, alef
+    "\u0628\u062f\u0644\u0647",  # baddilah, swap it: beh, dal, lam, heh
+    "\u0628\u062f\u0627\u0644",  # badaal, instead of (Saudi): beh, dal, alef, lam
+    "\u062e\u0644\u0647\u0627",  # khalliha, make it: khah, lam, heh, alef
+    "\u062e\u0644\u0647",  # khalleh, make it: khah, lam, heh
+    "\u062e\u0644\u064a\u0647\u0627",  # khalliiha, make it: khah, lam, yeh, heh, alef
+    "\u062e\u0644\u064a\u0647",  # khalliih, make it: khah, lam, yeh, heh
+)
 
 # The English lists, with the Latin spellings Whisper wrote for the owner's Arabic yes and send
 # words in an English call (the prototype's, as above).
@@ -147,6 +174,8 @@ _ENGLISH_FILLERS = (
     *("thanks a lot", "it", "the", "that", "and", "you", "can", "i", "want", "to", "for me"),
     *("my", "request", "do", "i m", "i am", "that s it"),
 )
+# The English change markers (D-082).
+_ENGLISH_CHANGE = ("but", "change", "instead", "except", "actually", "rather")
 
 # Each language preset's lists, by its primary code.
 PRESET_CONSENT: Mapping[LanguageCode, ConsentWords] = {
@@ -155,12 +184,14 @@ PRESET_CONSENT: Mapping[LanguageCode, ConsentWords] = {
         send=_ARABIC_SEND,
         no=(*PRESET_WORDS["ar"].no, *_ARABIC_NO),
         fillers=(*_ARABIC_FILLERS, *PRESET_WORDS["ar"].backchannel),
+        change=_ARABIC_CHANGE,
     ),
     "en": ConsentWords(
         yes=_ENGLISH_YES,
         send=_ENGLISH_SEND,
         no=(*PRESET_WORDS["en"].no, *_ENGLISH_NO),
         fillers=(*_ENGLISH_FILLERS, *PRESET_WORDS["en"].backchannel),
+        change=_ENGLISH_CHANGE,
     ),
 }
 
@@ -173,11 +204,13 @@ def consent_words(
     action_send: Sequence[str] = (),
 ) -> ConsentWords:
     """The lists the yes rule reads in the language `code`: the preset's, with the settings'
-    additions (`words.yes`, `words.send`) and the action's own send words after them."""
+    additions (`words.yes`, `words.send`) and the action's own send words after them, and the
+    preset's change markers."""
     preset = PRESET_CONSENT[code]
     return ConsentWords(
         yes=(*preset.yes, *added_yes),
         send=(*preset.send, *added_send, *action_send),
         no=preset.no,
         fillers=preset.fillers,
+        change=preset.change,
     )
