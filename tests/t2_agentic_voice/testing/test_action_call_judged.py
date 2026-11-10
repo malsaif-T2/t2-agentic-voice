@@ -7,7 +7,14 @@ answers, each judged answer told `by="model"`, the lists' answers asking no mode
 
 «اكيد» and "sure" are on the lists' yes words (Track A's), so they ask no model: they send once
 the question ended and are asked again over it, as the table says, by the words; «صح» and "sure
-thing", on no list, are the model's `yes`, and land the same, by the model."""
+thing", on no list, are the model's `yes`, and land the same, by the model.
+
+A send word said alone goes to the model too (the owner's third ruling, 2026-11-10): it sends on
+the model's `send`, over the closing question unless it copies the question, and on its `yes`
+only once the question ended; words that copy a line are its echo only when heard as that line
+plays or within its reply's tail, the closing question's or the ask-again line's (the library's
+English one, "Shall I go ahead?", holds "go ahead"), and the caller's own once it and its tail
+ended, as a turn said while the agent is silent is (the tail itself is test_yes_ask_tail.py's)."""
 
 from __future__ import annotations
 
@@ -50,6 +57,16 @@ CHANGE = {
 }
 # The closing question heard back: "Shall I send it?"; «arsil aT-Talab?», send the request?
 ECHO = {"en": "Shall I send it", "ar-SA": "أرسل الطلب"}
+# A send word said alone (the owner's third ruling): ones that copy neither the summary nor the
+# closing question («tawakkal», go ahead; «arsilha», send it), and one that copies the question
+# («arsil», send).
+OWN_SEND = {"en": "go ahead", "ar-SA": "توكل"}
+OTHER_SEND = {"en": "proceed", "ar-SA": "أرسلها"}
+COPYING_SEND = {"en": "send it", "ar-SA": "أرسل"}
+# The library's ask-again line heard back: "... Shall I go ahead?", which holds a send word;
+# «... asajjil at-talab?», shall I register the request?, which holds none.
+ASKED_ECHO = {"en": "go ahead", "ar-SA": "أسجل الطلب"}
+HESITATION = {"en": "uhhh", "ar-SA": "امممم"}  # ummmm, on no list
 
 
 @dataclass(frozen=True)
@@ -79,11 +96,21 @@ ROWS = {
     "yes_but_change_judged_yes": Row(  # the change marker's rail
         CHANGE, say("yes"), CORRECTION_BY_MODEL, CORRECTION_BY_MODEL
     ),
-    "hesitation": Row(
-        {"en": "uhhh", "ar-SA": "امممم"}, say("unclear"), AGAIN_BY_MODEL, AGAIN_BY_MODEL
-    ),  # ummmm, on no list
+    "hesitation": Row(HESITATION, say("unclear"), AGAIN_BY_MODEL, AGAIN_BY_MODEL),
     "echo": Row(ECHO, say("unclear"), AGAIN_BY_MODEL, AGAIN_BY_MODEL),
-    "echo_judged_send": Row(ECHO, say("send"), AGAIN_BY_MODEL, AGAIN_BY_MODEL),  # the echo rail
+    # the echo rail over the question; said once it ended, the words are the caller's own
+    "echo_judged_send": Row(ECHO, say("send"), YES_BY_MODEL, AGAIN_BY_MODEL),
+    "send_alone": Row(OWN_SEND, say("send"), YES_BY_MODEL, YES_BY_MODEL),
+    "other_send_alone": Row(OTHER_SEND, say("send"), YES_BY_MODEL, YES_BY_MODEL),
+    "send_alone_copying_the_question": Row(COPYING_SEND, say("send"), YES_BY_MODEL, AGAIN_BY_MODEL),
+    "send_alone_judged_yes": Row(OWN_SEND, say("yes"), YES_BY_MODEL, AGAIN_BY_MODEL),
+    "send_alone_judged_unclear": Row(OWN_SEND, say("unclear"), AGAIN_BY_MODEL, AGAIN_BY_MODEL),
+    "send_alone_check_failed": Row(
+        OWN_SEND, (ProviderError("server_error", True),), AGAIN_BY_MODEL, AGAIN_BY_MODEL
+    ),
+    "send_alone_check_timed_out": Row(
+        OWN_SEND, (Pause(TIMEOUT_S + 1.0), *say("send")), AGAIN_BY_MODEL, AGAIN_BY_MODEL
+    ),
     "asked_back": Row(  # tawakkal ya ghaali?: go ahead, dear?
         {"en": "go for it?", "ar-SA": "توكل يا غالي؟"}, say("send"), AGAIN_BY_MODEL, AGAIN_BY_MODEL
     ),
@@ -143,19 +170,65 @@ def test_each_answer_in_the_table_lands_as_the_brief_says(
     assert asyncio.run(scene()) == ()
 
 
+@pytest.mark.parametrize(
+    ("said", "over", "answer"),
+    [
+        (ASKED_ECHO, True, AGAIN_BY_MODEL),  # the ask-again line heard back as it plays
+        (ASKED_ECHO, False, YES_BY_MODEL),  # its words said once it ended
+        (OTHER_SEND, True, YES_BY_MODEL),  # a send word alone that copies no line, over it
+        (COPYING_SEND, True, YES_BY_MODEL),  # one that copies the question, over the line
+    ],
+    ids=["echo", "echo_said_after", "send_alone", "copying_the_question"],
+)
 @pytest.mark.parametrize("words", LANGUAGES, ids=_ids)
-def test_an_agent_that_does_not_ask_hears_unlisted_words_as_before(words: Words) -> None:
-    """The flag off: a go-ahead the lists cannot place is unclear or a correction, as before,
-    and no check is asked."""
-    backend = Backend()
-    said = GO_AHEAD[words.tag]
-    llm = model({words.request: call_action(words.note)}, judged={said: say("send")})
+def test_over_the_ask_again_line_only_its_own_words_are_its_echo(
+    words: Words, said: dict[str, str], over: bool, answer: Answer
+) -> None:
+    """A hesitation asked again; then words said over the line that asks again, or once it
+    ended, each judged `send`: only a run of that line's words, heard as it plays, is its
+    echo."""
+    backend, heard = Backend(), said[words.tag]
+    judged = {HESITATION[words.tag]: say("unclear"), heard: say("send")}
+    llm = model({words.request: call_action(words.note)}, judged=judged)
+
+    async def scene() -> tuple[str, ...]:
+        async with TextCall(agent_of(backend, asks=True), llm=llm, language=words.tag) as call:
+            await call.user(words.request)
+            await call.advance(SETTLE_S)
+            unsure = await call.user(HESITATION[words.tag])
+            if over:
+                said_back = await call.user(heard, during="agent_speaking")
+            else:
+                await call.advance(SETTLE_S)
+                said_back = await call.user(heard)
+            await call.advance(SETTLE_S)
+            found = [
+                (e.turn_id, e.decision, e.by)
+                for e in events(call)
+                if isinstance(e, ConfirmationAnswered)
+            ]
+            assert found == [(unsure.turn_id, *AGAIN_BY_MODEL), (said_back.turn_id, *answer)]
+            assert backend.writes == (1 if answer == YES_BY_MODEL else 0)
+            return call.violations
+
+    assert asyncio.run(scene()) == ()
+
+
+@pytest.mark.parametrize("words", LANGUAGES, ids=_ids)
+@pytest.mark.parametrize("said", [GO_AHEAD, OWN_SEND], ids=["go_ahead", "send_alone"])
+def test_an_agent_that_does_not_ask_hears_unlisted_words_as_before(
+    words: Words, said: dict[str, str]
+) -> None:
+    """The flag off: a go-ahead the lists cannot place, or a send word alone, is unclear or a
+    correction, as before, and no check is asked."""
+    backend, heard = Backend(), said[words.tag]
+    llm = model({words.request: call_action(words.note)}, judged={heard: say("send")})
 
     async def scene() -> tuple[str, ...]:
         async with TextCall(agent_of(backend), llm=llm, language=words.tag) as call:
             await call.user(words.request)
             await call.advance(SETTLE_S)
-            answer = await call.user(said)
+            answer = await call.user(heard)
             await call.advance(SETTLE_S)
             answer.expect.no_action()
             assert not [request for request in llm.requests if is_consent_check(request)]

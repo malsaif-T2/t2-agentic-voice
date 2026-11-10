@@ -35,6 +35,10 @@ transport's `ClausePlayed` reports, never the browser's `playback` message.
   after the last, confirming ends. A stop or pause request said whole while confirming is a stop
   word over it (the owner's ruling). Each read-back's first audio is the public
   `ConfirmationRequested` (`queued`).
+- **What was still heard** (D-082's echo rail). Whether a turn's speech began while the
+  read-back, or a line that asked it again, was still heard (`over_read_back`,
+  `over_follow_up`): its reply playing, or within its tail after it ended, the drop rule's
+  window (playback.py's `Reply.over`); True when the session cannot tell.
 """
 
 from __future__ import annotations
@@ -209,6 +213,33 @@ class Confirming:
         over the closing question (`cut_by`, `stopped`)."""
         if self.read_back is not None:
             self._follow_ups.add(reply_id)
+
+    def over_read_back(self, speech_at: float | None) -> bool:
+        """Whether speech begun at `speech_at` began while the current read-back was still
+        heard: its reply playing, or within its tail after it ended (playback.py's
+        `Reply.over`, the drop rule's window, the transport's reports); True when the session
+        cannot tell, so the yes rule's echo rail keeps its lines (domain/yes_rule.py's
+        `judged`)."""
+        read_back = self.read_back
+        return read_back is None or self._heard(speech_at, (read_back.reply_id,))
+
+    def over_follow_up(self, speech_at: float | None) -> bool:
+        """Whether speech begun at `speech_at` began while a line that asked the current
+        read-back again was still heard: from its reply's first audio queued to the end of its
+        tail after it ended, as `over_read_back` reads the read-back's; True when the session
+        cannot tell, so the echo rail keeps that line."""
+        return self._heard(speech_at, self._follow_ups)
+
+    def _heard(self, speech_at: float | None, reply_ids: Collection[ReplyId]) -> bool:
+        """Whether speech begun at `speech_at` began over one of `reply_ids`, its tail included;
+        True with no time, or for a reply the session no longer holds."""
+        if speech_at is None:
+            return True
+        for reply_id in reply_ids:
+            reply = self._playback.reply(reply_id)
+            if reply is None or reply.over(speech_at):
+                return True
+        return False
 
     def ignored(
         self, reply_id: ReplyId, speech_at: float, text: str, *, listening: Collection[str]

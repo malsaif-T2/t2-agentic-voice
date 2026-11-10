@@ -110,7 +110,7 @@ def answer(request: ChatRequest) -> Iterable[ScriptStep]:
     """A fake model that searches on the caller's question, then answers from what it found."""
     if request.messages[-1].role == "user":
         return ScriptedLLM.call_tool("search_knowledge", query="reset my password")
-    return ScriptedLLM.reply("Choose Forgot password in the portal. The steps are on your screen.")
+    return ScriptedLLM.reply("Open the portal and choose Forgot password.")
 
 
 def test_the_talker_searches_once_and_says_the_answer() -> None:

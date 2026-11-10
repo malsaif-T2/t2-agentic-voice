@@ -8,9 +8,18 @@ instruction) with the word a row gives.
 - The brief's table: «اكيد» and "sure" are on the lists' yes words, so they ask no model, send
   once the question ended and are asked again over it, by the words; «صح» and "sure thing", on
   no list, are the model's yes and land the same, by the model; a go-ahead, "go for it" and
-  «يلا أرسلها», sends either way; a hesitation, the closing question heard back (judged send,
-  the echo's rail), a go-ahead asked back, a check that fails and one that times out are asked
-  again. Each yes makes one ticket, its number said; nothing else makes any.
+  «يلا أرسلها», sends either way; a hesitation, a go-ahead asked back, a check that fails and
+  one that times out are asked again; the closing question heard back, judged send, is asked
+  again over it (the echo's rail) and sends once it ended (the caller's own words then). Each
+  yes makes one ticket, its number said; nothing else makes any.
+- A send word said alone (the owner's third ruling, 2026-11-10): «توكل» and "go ahead", which
+  copy none of the read-back's lines, send on the model's send either way and on its yes once
+  the question ended; «أرسلها» and "send it", which copy Ole5's closing questions («تبيني
+  أرسلها», "Shall I send it?"), are its echo over them and send once they ended; unclear, a
+  failed and a late check ask again.
+- Over the library's ask-again line (Ole5's own), its words heard back are asked again: "go
+  ahead" ("Shall I go ahead?") and «أسجل الطلب»; said once it ended, or «أرسلها» and "proceed"
+  said over it, they send.
 - A hesitation or a failed check asked again, a later yes makes one ticket.
 - «ايه بس خلها عاجلة» and "yes, but make it urgent" are a correction, judged change or yes (the
   change marker's rail): the talker reads the ticket back again at priority High, and a listed
@@ -60,6 +69,14 @@ CHANGE = {
     "en": "yes, but make it urgent",
 }
 HESITATION = {"ar-SA": "امممم", "en": "uhhh"}  # ummmm, uhhh: on no list
+# Send words alone: copying no line of Ole5's (tawakkal: go ahead), and copying its closing
+# questions (arsilha: send it; "tabeeni arsilha?", "Shall I send it?").
+OWN_SEND = {"ar-SA": "توكل", "en": "go ahead"}
+COPYING_SEND = {"ar-SA": "أرسلها", "en": "send it"}
+# The library's ask-again line heard back: «...asajjil at-talab?», shall I register the
+# request?, and "... Shall I go ahead?".
+ASKED_ECHO = {"ar-SA": "أسجل الطلب", "en": "go ahead"}
+OVER_ASKED = {"ar-SA": "أرسلها", "en": "proceed"}  # copying no ask-again line
 # What the yes rule read a turn as, and by what.
 Read = tuple[str, str]
 YES_BY_MODEL: Read = ("yes", "model")
@@ -94,8 +111,20 @@ ROWS = {
     "echo_judged_send": Row(  # tabeeni arsilha: do you want me to send it (the closing question)
         {"ar-SA": "تبيني أرسلها", "en": "Shall I send it"},
         _word("send"),
+        YES_BY_MODEL,  # said once it ended, the caller's own words
         AGAIN_BY_MODEL,
-        AGAIN_BY_MODEL,
+    ),
+    "send_alone": Row(OWN_SEND, _word("send"), YES_BY_MODEL, YES_BY_MODEL),
+    "send_alone_copying_the_question": Row(
+        COPYING_SEND, _word("send"), YES_BY_MODEL, AGAIN_BY_MODEL
+    ),
+    "send_alone_judged_yes": Row(OWN_SEND, _word("yes"), YES_BY_MODEL, AGAIN_BY_MODEL),
+    "send_alone_judged_unclear": Row(OWN_SEND, _word("unclear"), AGAIN_BY_MODEL, AGAIN_BY_MODEL),
+    "send_alone_check_failed": Row(
+        OWN_SEND, (ProviderError("server_error", True),), AGAIN_BY_MODEL, AGAIN_BY_MODEL
+    ),
+    "send_alone_check_timed_out": Row(
+        OWN_SEND, (Pause(TIMEOUT_S + 1.0), *_word("send")), AGAIN_BY_MODEL, AGAIN_BY_MODEL
     ),
     "asked_back": Row(  # tawakkal ya ghaali?: go ahead, dear?
         {"ar-SA": "توكل يا غالي؟", "en": "go for it?"},
@@ -187,6 +216,47 @@ def test_asked_again_after_a_hesitation_or_a_failed_check_a_later_yes_makes_one_
             assert call.violations == ()
         assert [made.summary for made in tickets.listed()] == [SUMMARY[tag]]
         assert checks(llm) == [HESITATION[tag]]  # the listed yes asked no model
+
+    run(scene())
+
+
+@pytest.mark.parametrize(
+    ("heard", "over", "read"),
+    [
+        (ASKED_ECHO, True, AGAIN_BY_MODEL),  # the ask-again line heard back as it plays
+        (ASKED_ECHO, False, YES_BY_MODEL),  # its words said once it ended
+        (OVER_ASKED, True, YES_BY_MODEL),  # a send word alone that copies it not, over it
+    ],
+    ids=["echo", "echo_said_after", "send_alone"],
+)
+@pytest.mark.parametrize("tag", TAGS)
+def test_over_the_ask_again_line_only_its_own_words_are_its_echo(
+    tmp_path: Path, tag: Tag, heard: Mapping[str, str], over: bool, read: Read
+) -> None:
+    """A hesitation asked again; then words said over the line that asks again, or once it
+    ended, each judged send: only that line's words, heard as it plays, are its echo; a yes
+    makes one ticket."""
+    agent, tickets = ole5(tmp_path)
+    words = heard[tag]
+    judged = {HESITATION[tag]: _word("unclear"), words: _word("send")}
+    llm = model(_create(tag), judged=judged)
+
+    async def scene() -> None:
+        async with text_call(agent, llm, tag) as call:
+            await call.user(REQUEST[tag])
+            await call.advance(SETTLE_S)
+            unsure = await call.user(HESITATION[tag])
+            if over:
+                answer = await call.user(words, during="agent_speaking")
+            else:
+                await call.advance(SETTLE_S)
+                answer = await call.user(words)
+            await call.advance(SETTLE_S)
+            assert answered(call, unsure.turn_id) == [AGAIN_BY_MODEL]
+            assert answered(call, answer.turn_id) == [read]
+            assert len(tickets.listed()) == (1 if read == YES_BY_MODEL else 0)
+            assert call.violations == ()
+        assert checks(llm) == [HESITATION[tag], words]
 
     run(scene())
 

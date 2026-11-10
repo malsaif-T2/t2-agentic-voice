@@ -4,9 +4,10 @@ the model's word from ever standing alone. Each is a `TextCall` of the team's ag
 model (testing/action_scenes.py) answers the check with the word the case names, whatever the
 words: a yes beside a change marker is a correction; a yes beside a no word, or a go-ahead with
 a question mark, is asked again; a check that fails or times out is asked again; a yes over the
-closing question with no send word is asked again; and an unlisted yes said once the question
-ended confirms, once. Each ends with the call's checks clean, and passes at once for an agent
-that does not ask, so every team's suite holds them.
+closing question with no send word is asked again; the closing question heard back as it plays,
+judged a go-ahead, confirms nothing (the echo rail, the owner's third ruling); and an unlisted
+yes said once the question ended confirms, once. Each ends with the call's checks clean, and
+passes at once for an agent that does not ask, so every team's suite holds them.
 
 The caller's lines are the owner's ruling's kinds, in the call's language (`JUDGED`), each with
 a word on none of the lists, or send words among fillers, so the lists leave it unplaced.
@@ -21,10 +22,12 @@ from t2_agentic_voice.core.errors import ProviderError
 from t2_agentic_voice.core.events import ConfirmationAnswered, ConfirmationDecision
 from t2_agentic_voice.core.settings.words import LanguageCode
 from t2_agentic_voice.domain.consent_check import TIMEOUT_S
+from t2_agentic_voice.domain.interruption_words import QUESTION_MARKS
 from t2_agentic_voice.testing.action_scenes import SETTLE_S, Scene, check, clean
 from t2_agentic_voice.testing.llm_fakes import Pause, ScriptedLLM, ScriptStep
 from t2_agentic_voice.testing.text_call import TextCall
 from t2_agentic_voice.testing.text_moments import During
+from t2_agentic_voice.testing.text_watch import plans_of
 
 
 @dataclass(frozen=True, kw_only=True)
@@ -99,9 +102,39 @@ class JudgedAnswerCases:
         over: During = "closing_question"
         asyncio.run(_answered(scene, agreement, _word("yes"), "asked_again", during=over))
 
+    def test_the_closing_question_heard_back_as_it_plays_confirms_nothing(self) -> None:
+        asyncio.run(_echoed(self._scene()))
+
     def test_an_unlisted_yes_once_the_question_ended_confirms_once(self) -> None:
         scene = self._scene()
         asyncio.run(_answered(scene, JUDGED[scene.code].agreement, _word("yes"), "yes"))
+
+
+async def _echoed(scene: Scene) -> None:
+    """The caller asks for the action; over its closing question the question's own words are
+    heard back, its question marks dropped, and the check answers `send`: the echo rail keeps
+    any yes from them, and nothing is written."""
+    if not scene.asks:
+        return
+    agent = scene.with_action(scene.writes.counted())
+    model = scene.model({scene.request: scene.call_action()}, judged=_word("send"))
+    async with TextCall(agent, llm=model, language=scene.tag, caller=scene.caller) as call:
+        await call.user(scene.request)
+        plans = plans_of(call._reads().watched)
+        check(bool(plans), "the action was never read back")
+        question = plans[-1].question.text
+        heard = "".join(mark for mark in question if mark not in QUESTION_MARKS).strip()
+        echo = await call.user(heard, during="closing_question")
+        await call.advance(SETTLE_S)
+        found = [
+            e.decision
+            for e in call._emitted
+            if isinstance(e, ConfirmationAnswered) and e.turn_id == echo.turn_id
+        ]
+        check("yes" not in found, f"the closing question heard back was answered {found}")
+        echo.expect.no_action()
+        check(scene.writes.made == 0, "the closing question heard back wrote")
+        clean(call)
 
 
 async def _answered(

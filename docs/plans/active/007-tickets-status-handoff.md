@@ -105,7 +105,7 @@ later, and shapes the mock.
   rehearsal's step 6, where «نعم أرسلها» over the closing question creates the ticket once the
   summary has played and a bare «نعم» there is asked again; and step 3's «أبغى موظف» over an
   answer, which stops it, reads the handoff back and makes the ticket after a yes.
-- [ ] `uv run --offline poe check` passes; the guide's `tools-and-actions.md`, `safety.md` and
+- [x] `uv run --offline poe check` passes; the guide's `tools-and-actions.md`, `safety.md` and
   `testing.md` written, `concepts.md` and `quickstart.md` extended; the decision entries written.
 
 **Left out**, for the owner's yes with this plan: the real ticket system's adapter and any real
@@ -442,6 +442,36 @@ may judge a yes in words no list holds, within rails the yes rule keeps.
   cancels leaves the turn unfinished; `test_yes_ask_turns.py`), which also cleared Ole5's
   `a27` and `a28`. Ole5's part: one confirmed, run A's estimate past the $1.50 cap, the
   owner's to rule (the cap raised to $10, `action_run.CAP_USD`, its tests and the task's help).
+- 2026-11-10: Block F's part 2, the owner's third ruling (D-082): `decide` marks a send word said
+  alone `askable` too, its answer unchanged; `judged` takes `SaidLines` and holds the echo rail
+  only over a line that was playing (the session's `Confirming.over_follow_up` for the ask-again
+  lines); over the closing question the model's `yes` on a send word said alone is asked again,
+  its `send` confirms it, and a `yes` on a send word beside other words («يلا أرسلها») confirms as
+  before; `ActionSafetySuite` gains a sixth judged case, the closing question heard back as it
+  plays. No run A scenario holds a send word said alone, so none moved. Its review: two findings,
+  both refuted as the brief's words, but they showed a real gap: speech copying the agent's line
+  begun within the 0.3 s the library already counts as its own voice after a reply ends
+  (`playback.DROP_AFTER_S`) was judged as the caller's. Fixed (the next line).
+- 2026-11-10: The echo rail takes a reply's tail, test first: words copying the read-back's
+  summary or closing question, or an ask-again line, are the agent's echo when the speech began
+  while that reply played or within its tail after it ended (`DROP_AFTER_S`, none after the
+  caller's stop), the drop rule's own window (`Reply.over`; `Confirming.over_read_back` and
+  `over_follow_up`; `SaidLines.over_read_back`); when a turn is said over the closing question
+  for the send rule is unchanged (`question_ended_at`, no tail). `test_yes_ask_tail.py` (an echo
+  0.1 s and 0.25 s after the line asked again, 0.4 s after judged as the caller's words, in
+  English and Saudi Arabic); D-082, invariant 1, the design's 8.3 and the guide updated. Its
+  review confirmed two, both fixed: a guide sample's fake reply the agent's lead had shortened
+  to one clause, not yet played when `call.user` returned, and six guide excerpts `ruff format`
+  would rewrite, now between `<!-- fmt:off -->` and `<!-- fmt:on -->`.
+- 2026-11-10: The guide pages for actions, by five writers, each reviewed against the code with one
+  skeptic a finding: `tools-and-actions.md`, `safety.md` and `testing.md` new (the text call's
+  section of `evaluation.md` moved to `testing.md`, a pointer left); `concepts.md` gains confirmed
+  actions, `quickstart.md` the example's callback on a spoken yes, `writing-for-voice.md`
+  read-backs, claim phrases and send words, `README.md` its status, contract and pages tables;
+  `browser-client.md` the `confirming` state. Four findings confirmed and fixed, all in
+  `safety.md` and `testing.md` (the closing question's yes rail, "pardon?" a correction, no yes
+  word in a closing question, an action's caller from `ctx.caller`; a check that runs out fails
+  no test, the echo rail's condition). What the writers found in the code and the design: TD-143.
 
 ## Decision log
 

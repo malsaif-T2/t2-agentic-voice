@@ -5,8 +5,7 @@ dependency and no build step, speaking the protocol `t2v/1` ([serving.md](servin
 runtime serves it at `<prefix>/client/1/t2v-client.js`; a page on another origin may import it
 from there or keep a copy on its own site. This page covers the call, its events, Stop and Esc,
 the agent's voice lowered while the caller speaks over it, cut captions, the talker's cards and
-the `thinking` state, and push-to-talk. The `confirming` state comes with confirmed actions,
-which are not built yet.
+the `thinking` and `confirming` states, and push-to-talk.
 
 ## Starting a call
 
@@ -54,7 +53,7 @@ that throws is logged to the console and the others still run.
 | Event | What the listener gets |
 | --- | --- |
 | `hello` | `{call_id, languages}`, once the data channel opens: the call's languages, its own first |
-| `state` | `{state}`: `listening`; `thinking`, while a reply asked for has no audio yet (the talker or one of its tools at work) or a turn's transcript is awaited; or `speaking` (below, "The agent thinking") |
+| `state` | `{state}`: `listening`; `thinking`, while a reply asked for has no audio yet (the talker or one of its tools at work) or a turn's transcript is awaited; `speaking` (below, "The agent thinking"); or `confirming`, while an action's read-back waits for the caller's answer and nothing plays ([tools-and-actions.md](tools-and-actions.md)) |
 | `caption` | `{speaker, text, final, turn_id, reply_id, clause, cut}`: the caller's turn once heard (`speaker` `caller`, named by `turn_id`), or the agent's reply clause by clause as each starts playing (`agent`, named by `reply_id` and `clause`); `cut` is true for an agent's clause a stop cut while it played, sent again with the mark (below) |
 | `card` | `{title, steps, source}`: a reply's whole answer for the screen, its steps a list of text in order (empty when its source lists none) and `source` the document it comes from, `null` when there is none (below, "Cards") |
 | `duck` | `{level}`: the caller is speaking over the agent, whose voice now plays at `level` (0 to 1) of its volume until the session decides |

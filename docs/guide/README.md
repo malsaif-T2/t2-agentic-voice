@@ -4,38 +4,51 @@ T2 Agentic Voice is a Python library for speech-first voice agents: a caller tal
 agent in the browser, in Saudi Arabic, Modern Standard Arabic or English, and hears it answer.
 This guide shows how to add one to your own product.
 
-**Status: an agent that answers.** What works today: the browser opens a live call to your
-backend over WebRTC; the library hears when the caller has finished a turn (Silero VAD and Smart
-Turn v3.2, on the CPU, with a hold after "complete"), sends the turn to Groq's Whisper, and the
-**talker**, Groq's chat model with your instructions, answers it: it reads what the caller
-heard, calls your read tools and your knowledge base, speaks its reply clause by clause through
-Groq's Orpheus voices while it still writes, and
-says an ID only when a tool or the caller gave it ([concepts.md](concepts.md)). The caller can
-speak over the agent: its voice is lowered at once, a stop or real words stop it, and the
-talker reads what they meant. An agent with no instructions is an **echo**, which says back what
-it heard: a team's first audio check. Around it: serving (a process of its own, or mounted in
-your FastAPI app), signed join tokens, the reference browser client, settings, logs, traces, and
-a call held in text for your tests. Not built yet: actions taken on a spoken yes, and the
-deployment with TURN, which has a plan of its own once a server is available
-([roadmap](../plans/roadmap.md)). The library is used from Python only (D-014), and no tagged
-version exists to install yet: until the first one, run it from this repository's workspace
-([quickstart](quickstart.md)). The design is [package-design.md](../design/package-design.md)
-(D-017, as amended by D-018).
+**Status: an agent that answers, and acts on a spoken yes.** What works today: the browser
+opens a live call to your backend over WebRTC; the library hears when the caller has finished a
+turn (Silero VAD and Smart Turn v3.2, on the CPU, with a hold after "complete"), sends the turn
+to Groq's Whisper, and the **talker**, Groq's chat model with your instructions, answers it: it
+reads what the caller heard, calls your read tools and your knowledge base, speaks its reply
+clause by clause through Groq's Orpheus voices while it still writes, and says an ID only when a
+tool or the caller gave it ([concepts.md](concepts.md)). The talker can also propose an
+**action** of yours, one change in your system: the library reads it back aloud from your
+template, carries it out only after the caller's clear yes, heard once the read-back's summary
+has played whole, as a job of its own that a stop never cuts in half, and then says how it ended
+from your backend's real answer; the output guard blocks a sentence that claims an action the
+call's record does not hold ([tools-and-actions.md](tools-and-actions.md),
+[safety.md](safety.md)). The caller can speak over the agent: its voice is lowered at once, a
+stop or real words stop it, and the talker reads what they meant. An agent with no instructions
+is an **echo**, which says back what it heard: a team's first audio check. Around it: serving (a
+process of its own, or mounted in your FastAPI app), signed join tokens, the reference browser
+client, settings, logs, traces, and a call held in text for your tests, with a safety suite for
+your actions ([testing.md](testing.md)). Actions are tested in text calls on fake models, on the
+example's action and on Ole5's mock ticket system; their scenario runs on a real model and their
+first live calls are still to come (plan 007). Not built yet: the deployment with TURN, which
+has a plan of its own once a server is available ([roadmap](../plans/roadmap.md)). The library
+is used from Python only (D-014), and no tagged version exists to install yet: until the first
+one, run it from this repository's workspace ([quickstart](quickstart.md)). The design is
+[package-design.md](../design/package-design.md) (D-017, as amended by D-018).
 
 Code samples on these pages are taken from tested files: a block after a link to a `.py` file is
 a run of that file's lines, which `poe docs` checks (DOC-SAMPLE).
 
 ## The contract in brief
 
-The design's section 3 is the full contract; for an agent that answers, it comes to this.
+The design's section 3 is the full contract; for an agent that answers and acts, it comes to
+this.
 
 | The library provides | Your app provides |
 | --- | --- |
 | The call: WebRTC in your backend process, end of turn, Whisper, Orpheus, captions, Stop, interruptions | A `VoiceAgent`: a name and its languages, each with a greeting |
-| The talker: the chat model's turn from what the caller heard, its prompt's rules for the ear, the reply's language, clauses spoken as they are written | Its `instructions`, written for the ear ([writing-for-voice.md](writing-for-voice.md)) |
-| `@tool`, `Tool.from_function` and `knowledge_tool`, run with their arguments checked, a timeout and a progress line; cards on screen | Its read tools over your own systems, and a `KnowledgeBase` adapter for your knowledge base ([concepts.md](concepts.md)) |
-| The output guard: no ID-shaped number said without evidence from the call | The IDs your tools return, as evidence |
-| `TextCall`, `ScriptedLLM`, `FunctionLLM` and `FakeKnowledgeBase`, to test an agent with no key ([evaluation.md](evaluation.md)) | Your tests |
+| The talker: the chat model's turn from what the caller heard, its prompt's rules for the ear (and for actions, when the agent has one), the reply's language, clauses spoken as they are written | Its `instructions`, written for the ear ([writing-for-voice.md](writing-for-voice.md)) |
+| `@tool`, `Tool.from_function` and `knowledge_tool`, run with their arguments checked, a timeout and a progress line; cards, an extra for a client with a screen | Its read tools over your own systems, and a `KnowledgeBase` adapter for your knowledge base ([concepts.md](concepts.md)) |
+| `@action`, with `ReadBack`, `Say`, `Claims` and `Spoken`: the draft parsed, then your `validate` if you give one; the read-back said from your template, with nothing shown; the write run as a job outside the turn, which a stop never cuts in half; a line while it runs, then how it ended, said from your backend's real answer; the library's own lines for those you leave out | Each action's function over your backend, reached by a closure; its draft model; its read-back (a summary and a closing question), its `done` line and its claim phrases in every language it speaks, written for the ear ([tools-and-actions.md](tools-and-actions.md), [writing-for-voice.md](writing-for-voice.md)) |
+| The yes rule, the only way to a confirmed action: the caller's own words, heard through Whisper once the read-back's summary played whole, read on each preset's yes, send and no words; with `ask_on_unlisted_answers`, a chat model's word on what its lists leave unplaced, within its rails | Your own send words when your closing question's verb is on no list (`send_words`, `words.send`), and whether your agent asks the model ([safety.md](safety.md)) |
+| The output guard: no ID-shaped number said without evidence from the call, and, for an agent with actions, no claim phrase without the record or a `reports_on` result | The IDs your tools return, as evidence; your actions' claim phrases, and `reports_on=` on your status tools |
+| The outbox and the record: a row with the write's `request_id` before each write (SQLite, in the agent's data folder), never sent again blindly; the rows a stopped process left `sending` looked up or flagged at the next start; `t2v outbox` to list, show and reconcile them; the record of the call's completed actions, which the guard reads | Idempotency in your backend, keyed on `request_id`; a `lookup` where your backend can find a write by it; someone who reconciles a flagged row ([tools-and-actions.md](tools-and-actions.md)) |
+| The caps: `max_per_call` on each action (1 by default) and `limits.actions_per_caller_per_day` (20), each refused before the read-back | The caps your use case needs |
+| `TextCall`, `ScriptedLLM`, `FunctionLLM` and `FakeKnowledgeBase`, to test an agent with no key, its read-backs and the caller's answers to them included ([testing.md](testing.md)) | Your tests |
+| `ActionSafetySuite`: the library's adversarial cases, run on your action in text calls | A subclass of it in your tests, with `make_agent()`, `action_under_test()` and `sample_draft()` ([testing.md](testing.md)) |
 | `VoiceRuntime`, served by `serve()`, `t2v serve`, `t2v dev`, or mounted with `runtime.router()` | One process with one worker per data folder (`storage.var_dir`), and a serving shape ([serving.md](serving.md)) |
 | `SignedJoinTokens` to mint and verify join tokens; `DevIdentity` for `env` dev on your machine | An identity source: your website or app mints a join token for each caller, with their consent |
 | `t2v-client.js`, the reference browser client, and a dev page | A page with a consent screen, served over HTTPS or from localhost ([browser-client.md](browser-client.md)) |
@@ -132,9 +145,11 @@ Each page is written when the part it describes is built. The pages written so f
 | Page | What it covers | Status |
 | --- | --- | --- |
 | [is-this-for-you.md](is-this-for-you.md) | The fit check: Python version, operating system, the install's size and its heavy dependencies, one process per data folder and the sidecar, network needs, Groq's published limits, the licences | Written |
-| [quickstart.md](quickstart.md) | `examples/minimal` end to end: a helper that answers with one read tool, and an echo, in English, then in Saudi Arabic; its test with no key; a checklist for a first call that does not work | Written; an action on a spoken yes joins it with confirmed actions |
-| [concepts.md](concepts.md) | Turns and replies; the talker's turn; tools, progress lines, knowledge and cards; the output guard's ID rule; the two-step interruption and its words, handed to the talker; the cancel scope; the history of what the caller heard; the repeat; text from silence; the hold after the end of a turn | Written; confirmed actions join it when built |
-| [writing-for-voice.md](writing-for-voice.md) | Instructions written for the ear, the steps to the card, numbers as digits, a plain "I cannot", no promise the agent cannot keep, tool descriptions, greetings and progress lines, and why no fixed line holds a command word, each with a weak and a better example | Written; read-backs, claim phrases and send words join it with confirmed actions |
+| [quickstart.md](quickstart.md) | `examples/minimal` end to end: a helper that answers with one read tool, and an echo, in English, then in Saudi Arabic; the helper with an action, a callback read back and booked on a spoken yes; their tests with no key; a checklist for a first call that does not work | Written |
+| [concepts.md](concepts.md) | Turns and replies; the talker's turn; tools, progress lines, knowledge and cards; the output guard's ID rule; confirmed actions, from the talker's call to the outcome, the caller's answer and the record of completed actions; the two-step interruption and its words, handed to the talker; the cancel scope; the history of what the caller heard; the repeat; text from silence; the hold after the end of a turn | Written |
+| [tools-and-actions.md](tools-and-actions.md) | Writing a read tool and an action, wrapping a function you already have as either, the lines an action speaks, one action in a call, the error table, writing at most once, the caps, lookups and status tools | Written |
+| [safety.md](safety.md) | How the yes rule decides and why a yes over the closing question needs a send word; the model check of the words its lists cannot place; the output guard's ID and claim rules; what the library guarantees, what stays yours, and what the rules do not catch | Written |
+| [writing-for-voice.md](writing-for-voice.md) | Instructions written for the ear, every step said by voice, numbers as digits, a plain "I cannot", no promise the agent cannot keep, tool descriptions, greetings and progress lines; an action's words: the read-back's summary and closing question, the lines while the write runs and when no clear answer came, claim phrases and send words; and why no fixed line holds a command word; each with a weak and a better example | Written |
 | [languages.md](languages.md) | The presets, the call's language and each reply's, Saudi Arabic and MSA, product terms inside Arabic, the pronunciation map, numbers and IDs, the vocabulary | Written |
 | [latency.md](latency.md) | The time to first audio, from where to where; where the time goes in a turn; the early start, connections kept open and progress lines; the budget; measuring yours | Written; the measured numbers once Ole5's run has run |
 | [serving.md](serving.md) | The sidecar or the mount, one process per data folder, identity and join tokens, which agent a served app runs, the routes, cross-origin pages, the browser protocol | Written |
@@ -142,13 +157,11 @@ Each page is written when the part it describes is built. The pages written so f
 | [tracing-and-logs.md](tracing-and-logs.md) | The logging policy and `configure_logging`, Pipecat's own lines, Phoenix or your own tracer provider, what a trace holds, redaction | Written |
 | [data-and-privacy.md](data-and-privacy.md) | What the library itself stores and sends: the data folder, recordings and consent, what a trace holds, how long Phoenix keeps it | Written |
 | [settings.md](../generated/settings.md) (generated, `uv run poe settings-ref`) | Every setting, with its default, unit and environment name | Written |
-| [evaluation.md](evaluation.md) | Testing an agent in text with `TextCall`, the fake models and the fake knowledge base; the evaluation helpers; recording your own test set with consent and keeping audio out of git; writing your own spelling guide; the golden-set commands, making a registered run and reading its scorecard; noise and the sign test; held-out and window runs; the run history | Written |
+| [testing.md](testing.md) | Testing an agent in text with `TextCall`, the fake models and the fake knowledge base; a call with an action, from the request to the read-back, the yes and the write; a fake model that answers the yes rule's check; `ActionSafetySuite` on your actions; live scenarios on a real model; audio replay | Written |
+| [evaluation.md](evaluation.md) | Measuring speech-to-text on your own voices: the evaluation helpers; recording your own test set with consent and keeping audio out of git; writing your own spelling guide; the golden-set commands, making a registered run and reading its scorecard; noise and the sign test; held-out and window runs; the run history | Written |
 | `contract.md` | What the library provides, what you must provide, and what you may provide, with the default for each | Fixed in the design (D-018); when it is written is an open question in the roadmap |
 | `audio-troubleshooting.md` | Echo on laptop speakers, Bluetooth headsets, microphone permissions, UDP and TURN failures | Not planned yet: left out with the Bluetooth warning (plan 005) |
 | `providers.md` | Writing an adapter for another speech, model or voice provider | Not written yet: with the guide's last pages |
-| `tools-and-actions.md` | Writing each kind, wrapping existing functions, the action lifecycle, consent, the error table, idempotency and lookups | With confirmed actions |
-| `safety.md` | How the yes rule and the output guard work; what the library guarantees and what stays yours | With confirmed actions |
-| `testing.md` | Text calls, the fakes, the safety suite for your actions, live scenarios, audio replay | With confirmed actions |
 | `deployment.md` | The process model, containers, TURN, drain, health, capacity | With the deployment |
 | `runbook.md` | Rate limits and outages, a stuck write, key rotation, a deletion request | With the deployment |
 | `cookbook/` | Worked use cases with no Ole5 code: an IT helpdesk, HR leave | With confirmed actions, and the guide's last pages |

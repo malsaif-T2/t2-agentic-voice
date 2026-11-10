@@ -12,8 +12,9 @@ The presets' words are the prototype's (its `voice/rules.py`, read only: D-010):
 a yes, for sending, for a no and for filling, kept to what any action can use (no ticket's
 noun), with the Saudi and the Modern Standard Arabic words in the one Arabic list, as
 domain/words.py's are. Each is written in the rule's form (`rule_form`), the Arabic with `\\u`
-escapes, each comment giving the word's sound and meaning, then its letters. A send word is
-never a yes alone: the closing question holds one, and its echo must not confirm anything.
+escapes, each comment giving the word's sound and meaning, then its letters. To the lists a send
+word is never a yes alone: the closing question holds one, and its echo must not confirm
+anything; for an agent that asks, a chat model judges it within the yes rule's rails (D-082).
 
 The change markers (`change`, D-082) are read only of a chat model's yes (domain/yes_rule.py's
 `judged`): words that say a yes comes with a change ("yes, but ..."), so a model's yes beside

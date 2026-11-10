@@ -16,9 +16,14 @@ outcome is logged by its kind alone, never the words.
 
 **The verdict** is the yes rule's (`judged`), never the model's word as it is, carried out by
 yes_turns.py as any answer is, told `by="model"`; and only while the same read-back is current
-and the call has not ended and is not ending. A newer turn that answers the read-back cancels a
-request still in flight (`cancel`, which yes_turns.py calls first), and so do the client's stop
-(`cancel`) and the call's end: each decides nothing.
+and the call has not ended and is not ending. The rule is handed the read-back's lines
+(`said_lines`) and whether the read-back, and a line that asked it again, were still heard as
+the turn's speech began, each reply playing or within its tail after it ended (read_back.py's
+`over_read_back` and `over_follow_up`), so its echo rail reads only a line the caller was
+hearing.
+A newer turn that answers the read-back cancels a request still in flight (`cancel`, which
+yes_turns.py calls first), and so do the client's stop (`cancel`) and the call's end: each
+decides nothing.
 
 **The turn** is judged meanwhile (turn_book.py's `judging`): it takes no fate and does not
 settle, so its times run to the first audio of the reply its verdict says, the wait included,
@@ -38,7 +43,7 @@ from typing import Final, Literal
 from t2_agentic_voice.core.errors import ProviderError
 from t2_agentic_voice.core.logging import get_logger
 from t2_agentic_voice.core.yes_inputs import HeardWords, ReadBackReceipt
-from t2_agentic_voice.domain.action_lines import ReadBackPlan
+from t2_agentic_voice.domain.action_lines import ReadBackPlan, SpokenLine
 from t2_agentic_voice.domain.consent_check import (
     TIMEOUT_S,
     ConsentAnswer,
@@ -46,7 +51,14 @@ from t2_agentic_voice.domain.consent_check import (
     consent_check_request,
 )
 from t2_agentic_voice.domain.ports.chat_model import ChatRequest, TextDelta, Usage
-from t2_agentic_voice.domain.yes_rule import AskAgain, Correction, ModelWord, YesOutcome, judged
+from t2_agentic_voice.domain.yes_rule import (
+    AskAgain,
+    Correction,
+    ModelWord,
+    SaidLines,
+    YesOutcome,
+    judged,
+)
 from t2_agentic_voice.voice.session.books import CallBooks
 from t2_agentic_voice.voice.session.io import CallSetup
 from t2_agentic_voice.voice.session.read_back import Confirming, ReadBack
@@ -75,11 +87,22 @@ def _word(outcome: Outcome) -> ModelWord:
     return outcome
 
 
-def said_lines(plan: ReadBackPlan) -> tuple[str, ...]:
-    """What the agent says of `plan`'s read-back, written and spoken: its summary, its closing
-    question and its ask-again line, the words its echo would be made of."""
-    lines = (plan.summary, plan.question, plan.asked_again)
-    return tuple(text for line in lines for text in (line.text, line.spoken))
+def said_lines(plan: ReadBackPlan, *, over_read_back: bool, over_asked_again: bool) -> SaidLines:
+    """What the agent says of `plan`'s read-back, written and spoken, the words its echo would
+    be made of: its summary and closing question, and its ask-again line, with whether the
+    caller's speech began while each was still heard (`over_read_back`, `over_asked_again`:
+    read_back.py's `Confirming.over_read_back` and `over_follow_up`, each reply's tail
+    included)."""
+
+    def forms(*lines: SpokenLine) -> tuple[str, ...]:
+        return tuple(text for line in lines for text in (line.text, line.spoken))
+
+    return SaidLines(
+        read_back=forms(plan.summary, plan.question),
+        asked_again=forms(plan.asked_again),
+        over_read_back=over_read_back,
+        over_asked_again=over_asked_again,
+    )
 
 
 @dataclass(frozen=True, kw_only=True)
@@ -207,16 +230,21 @@ class YesAsks:
         if self._over() or self._confirming.read_back is not ask.read_back:
             _log.info("yes_model_dropped", call_id=call_id, turn_id=turn_id, why="stale")
             return
-        plan = ask.read_back.plan
+        plan, began, confirming = ask.read_back.plan, ask.heard.speech_at, self._confirming
         try:
+            said = said_lines(
+                plan,
+                over_read_back=confirming.over_read_back(began),
+                over_asked_again=confirming.over_follow_up(began),
+            )
             verdict = judged(
                 _word(outcome),
                 ask.heard,
                 ask.receipt,
-                current=self._receipt(ask.heard.speech_at),
-                words=self._confirming.words(plan),
+                current=self._receipt(began),
+                words=confirming.words(plan),
                 env=self._setup.settings.env,
-                said=said_lines(plan),
+                said=said,
             )
         except Exception as error:  # a bug: never a yes
             failure = type(error).__qualname__

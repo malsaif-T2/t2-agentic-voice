@@ -4,10 +4,11 @@ session has asked for, which are playing, how much of each played, and when each
 asks for each reply clause by clause and ends each, is speaker.py's.
 
 A reply plays from its first clause's first audio (`ClauseQueued`) to its end: its last clause
-played or failed, or a stop or the call's end that dropped what was left. The drop rule and the
-overlaps read those times: a turn whose speech began while a reply played, or within
-`DROP_AFTER_S` after one ended, is over it (`over`); a reply the caller's own `stop` ended has no
-such tail, since nothing of it plays on to echo (TD-060). Its clauses tell which one plays now
+played or failed, or a stop or the call's end that dropped what was left. The drop rule, the
+overlaps and the yes rule's echo rail (read_back.py) read those times: a turn whose speech began
+while a reply played, or within `DROP_AFTER_S` after one ended, is over it (`Reply.over`,
+`Playback.over`); a reply the caller's own `stop` ended has no such tail, since nothing of it
+plays on to echo (TD-060). Its clauses tell which one plays now
 (`playing`), and which played lately, whose words the agent's own voice heard back would say
 (`heard_since`).
 
@@ -118,6 +119,13 @@ class Reply:
             if clause.requested_at is not None and clause.queued_at is not None:
                 return max(0.0, clause.queued_at - clause.requested_at)
         return None
+
+    def over(self, speech_at: float) -> bool:
+        """Whether speech begun at `speech_at` began over it, its voice still heard: while it
+        played, from its first audio queued, or within its tail after it ended (`tail_s`)."""
+        if self.started_at is None or self.started_at > speech_at:
+            return False
+        return self.ended_at is None or speech_at <= self.ended_at + self.tail_s
 
     def numbers(self) -> ReplyNumbers:
         """What it took, as its text-to-speech span records it: the requests that went (their
@@ -306,8 +314,6 @@ class Playback:
         `stop`); None when it began over none (the drop rule and the overlaps)."""
         found = None
         for reply in self._replies.values():
-            if reply.started_at is None or reply.started_at > speech_at:
-                continue
-            if reply.ended_at is None or speech_at <= reply.ended_at + reply.tail_s:
+            if reply.over(speech_at):
                 found = reply
         return found

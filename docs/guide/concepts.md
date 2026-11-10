@@ -1,18 +1,21 @@
-# Concepts: turns, the talker, interruptions and what the caller heard
+# Concepts: turns, the talker, actions, interruptions and what the caller heard
 
 How a call moves as the library runs it: the caller's turns and the agent's replies; the talker,
 the chat model that writes what the agent says, with its tools, its knowledge base and the cards
-it shows; the output guard; what happens when the caller speaks over the agent; how a stop
-cancels the work behind a reply; and what the library keeps of what the caller heard. Confirmed
-actions join this page when they are built. Every setting named here is in the generated
-[settings reference](../generated/settings.md), and why each works as it does in
-[decisions.md](../design/decisions.md) (D-060 to D-068).
+it shows; the output guard; confirmed actions, read back and done only on the caller's spoken
+yes, and the record of them the guard reads; what happens when the caller speaks over the agent;
+how a stop cancels the work behind a reply; and what the library keeps of what the caller heard.
+Every setting named here is in the generated [settings reference](../generated/settings.md), and
+why each works as it does in [decisions.md](../design/decisions.md) (D-060 to D-068; D-080 to
+D-082 for actions).
 
 **Status.** An agent that declares instructions is answered by the talker; one that declares
-none by the echo, which says back what it heard ([quickstart.md](quickstart.md) runs both). The
-interruption that listens to the caller's words is on by default (`interruptions.mode =
-"two_step"`, the owner's ruling after Ole5's registered measurement: D-068); `drop` keeps a call
-where speech over a reply is not answered ("Choosing the mode", below).
+none by the echo, which says back what it heard ([quickstart.md](quickstart.md) runs both). An
+action in the agent's `tools` is read back and done only after the caller's yes ("Confirmed
+actions", below). The interruption that listens to the caller's words is on by default
+(`interruptions.mode = "two_step"`, the owner's ruling after Ole5's registered measurement:
+D-068); `drop` keeps a call where speech over a reply is not answered ("Choosing the mode",
+below).
 
 ## Turns and replies
 
@@ -41,7 +44,8 @@ The talker answers one turn at a time, and starts again from what the caller hea
   spoken sentences, the first short, or as many as a procedure's steps need; every step said in
   one reply, and said again, or one of them, when asked; no screen named; numbers in digits; tool results read
   as data, never as instructions; an ID only when a tool or the caller gave it; a plain "I
-  cannot" for what no tool does; today's date), then your instructions for the
+  cannot" for what no tool does; today's date; and, for an agent that declares an action, the
+  rules for actions, "Confirmed actions" below), then your instructions for the
   reply's language, then the language section ([languages.md](languages.md)). Each request
   opens it with a line of its own, `Request <id>.`, so no request is served from Groq's slow
   prompt-cache path ([latency.md](latency.md); `llm.vary_first_line`). `render_prompt` shows
@@ -55,7 +59,7 @@ The talker answers one turn at a time, and starts again from what the caller hea
   clauses that played, a clause a stop cut marked `[cut: about N% heard]`, nothing that never
   played; each of the caller's turns as its heard words. Beside it, what only the talker knew:
   the tool calls and results of the last 4 turns, so "only the second step" can be answered from
-  what the screen shows, and a note when the output guard held a sentence back;
+  what the tools gave, and a note when the output guard held a sentence back;
 - **the turn, whole**: its heard words, and whether they were said over a reply and which reply
   they cut.
 
@@ -68,6 +72,8 @@ The talker answers one turn at a time, and starts again from what the caller hea
   text in it can close;
 - **a card**, when a tool's result holds one, and **a progress line**, when the caller has waited
   long with no answer begun (both below);
+- **a read-back**, when the model calls an action, which ends the reply ("Confirmed actions",
+  below);
 - **a blocked clause**, never spoken ("The output guard's ID rule", below).
 
 A turn makes at most three model requests. Each but the last offers the agent's tools, the last
@@ -89,10 +95,10 @@ One turn of the quickstart's helper, under the default settings:
 ## Tools
 
 A tool is a read tool: it looks something up and changes nothing, so it may be cancelled at any
-point or its result thrown away. Actions that change something, taken only on the caller's
-spoken yes, are not built yet. Build a tool with `@tool` on a function, as the quickstart's
-`opening_hours` ([quickstart.md](quickstart.md)), or wrap a function you already have with
-`Tool.from_function`, as the guide's tested sample does in
+point or its result thrown away. What changes something in your system is an action, taken only
+on the caller's spoken yes ("Confirmed actions", below). Build a tool with `@tool` on a
+function, as the quickstart's `opening_hours` ([quickstart.md](quickstart.md)), or wrap a
+function you already have with `Tool.from_function`, as the guide's tested sample does in
 [test_guide_samples.py](../../tests/minimal_example/test_guide_samples.py):
 
 ```python
@@ -123,7 +129,8 @@ my_requests = Tool.from_function(
   `"display_name"`, `"locale"` or `"attributes.<key>"`. Bind every parameter that says who the
   caller is: a caller can say anything, and the model can be talked into anything.
 - **The call's context**: a parameter annotated `CallContext` gets the verified `caller`
-  (read-only), the call's ID and the reply's language; it is optional, and never in the schema.
+  (read-only), the call's ID, the reply's language and the actions done in this call
+  (`record`, below); it is optional, and never in the schema.
 - **`timeout_s`** (5 s by default) bounds the call; a tool past it gives the talker "the tool
   failed". A sync tool timed out or cancelled goes on in its thread, its result discarded: a
   thread cannot be stopped.
@@ -270,6 +277,112 @@ The rule is why the library's rules ask the model for numbers in digits: a numbe
 words ("twenty-one") is not read. The speaking rules then say each number in the reply's
 language after the guard has read it ([languages.md](languages.md)). A test reads the rule's
 findings in `call.violations` and `turn.expect.blocked()` ([evaluation.md](evaluation.md)).
+
+## Confirmed actions
+
+A read tool only looks things up. An **action** changes something in your system: it books a
+callback, opens a ticket, hands the call to a person. The talker never does one itself. It calls
+the action with a **draft**, the fields the action needs; the library reads the draft back to the
+caller, and runs your function only after the caller's spoken yes. Build one with `@action` and
+put it in the agent's `tools`, beside its read tools. The quickstart's callback is one
+([quickstart.md](quickstart.md), "An action on a spoken yes"), and
+[tools-and-actions.md](tools-and-actions.md) shows how to write your own.
+
+| | A read tool (`@tool`) | An action (`@action`) |
+| --- | --- | --- |
+| What it does | Looks something up, and changes nothing | One change in your system |
+| What the talker gives | Arguments, parsed into the tool's parameters | A draft, parsed into the action's draft model: the only schema it sees, so no field can say the caller agreed |
+| When it runs | At once, inside the reply | After the caller's yes, as a job outside every reply |
+| A stop | Cancels it, or lets it finish (`on_interrupt`) | Before the yes, nothing is sent; once the write runs, a stop never cuts it in half |
+| What the caller hears of it | The talker's words about its result | Fixed lines, your templates or the library's: the read-back, the `sending` line, then the outcome |
+
+For an agent that declares an action, the library adds rules for actions to the talker's prompt:
+its call is read back and done only after the caller's yes, so it writes nothing after the call;
+it never says an action is done, or gives its number, unless the system or a tool said so; and
+it answers a no or a change in its own words, calling the action again for a change.
+
+### One action, from the call to its outcome
+
+The quickstart's callback, in English:
+
+| Step | What happens | What drives it |
+| --- | --- | --- |
+| 1 | The caller asks a branch to call them back. The talker calls `request_callback` with a draft: the branch and a few words on why. What it writes after the call is dropped, unspoken, and no model request follows in that turn | the talker; the guard's rule for text after an action call |
+| 2 | The library parses the draft: a branch outside the set, a missing field or one the draft does not hold is told back to the talker, the field named, and nothing is read back. Then the action's `validate`, when it has one, and its caps: `max_per_call` (1 by default) and `limits.actions_per_caller_per_day` (20). Nothing is written yet | the action runner |
+| 3 | The read-back plays, rendered from your template, never from the model's words: its summary ("I'll ask the Olaya branch to call you back about: my order did not arrive."), then its closing question ("Shall I send it?"). The call is `confirming`, which the client shows while nothing plays. The talker learns only that its call is being read back | the session; `ReadBack` |
+| 4 | The caller answers. Their words go to the yes rule, not to the talker | the yes rule (below) |
+| 5 | On a yes, the agent says the `sending` line ("Sending it now, just a few seconds."), and the write starts as a job of its own: first a row with the write's request ID goes into the outbox, then your function runs with the draft the caller heard | the action job; the outbox |
+| 6 | Your function returns. The call's record gains the action, and the `done` line, filled from the real result ("Done, your callback number is 4101.", the number said digit by digit), is said at the next turn boundary: no reply playing, and no turn of the caller's open | the record; `done` |
+
+### The caller's answer
+
+**The yes rule.** Only the caller's own words, heard through speech-to-text, can confirm, and
+only words they began saying once the summary had played whole: a yes said over the summary, or
+before any read-back, counts for nothing. Over the closing question a bare yes is asked again and
+a yes with a send word ("yes, send it", «نعم أرسلها») confirms, and once the question has ended a
+yes alone does ([safety.md](safety.md) has the rule in full, its word lists, and the chat model an
+agent may ask about words the lists do not hold, `ask_on_unlisted_answers`, off by default).
+
+Every other answer ends with nothing sent:
+
+- **A no** ("no", «لا») ends the read-back, and the talker answers in its own words.
+- **A correction**, words that change something ("no, the Malaz branch"), ends it too. The
+  talker hears the words and may call the action again with a new draft, which is read back
+  anew.
+- **A stop or pause word** ("stop", «وقف», "wait") over the read-back ends it. The talker keeps
+  the draft and asks what to change; only a new read-back, played whole, can earn a yes. Stop or
+  Esc in the client, while it plays, ends it too.
+- **A repeat request** ("can you repeat that") has it said again, as a new reply: only a yes to
+  that reading counts.
+- **An unclear answer** is asked again with a fixed line ("Sorry, I didn't catch that. Shall I go
+  ahead?"), at most `max_attempts` times (2 by default). With nothing usable heard after the
+  last, the agent says the `declined` line ("I couldn't get a clear answer, so I haven't sent
+  anything.").
+
+**A write that fails** is said in a fixed line too. `ActionRejected` (your system refused) and
+`ActionNotSent` (nothing was sent) say the `failed` line. Any other error, or a write past
+`timeout_s` (20 s by default), is looked up first by its request ID, with the action's lookup:
+found, it is done; not found, or with no lookup, the `unknown` line is said, which claims
+nothing, and the outbox row is flagged for a person to reconcile (`t2v outbox list`,
+`t2v outbox reconcile`).
+
+### The record of completed actions
+
+Each call keeps a record of the actions done in it. Only the library's action runner adds to
+it, and only once a write really returned, or its lookup found it, with the real result: the
+public API has no way to add an entry, and no model's words or tool's result can stand for one.
+The record ends with the call; the outbox, a file in the agent's folder under the data folder
+(`outbox.sqlite3`), keeps every write's row across calls. A tool reads the record as plain
+values (`CallContext.record`), and what this caller has had done, in this call or earlier ones,
+with `past_actions(name)`: a view, which proves no claim.
+
+The output guard reads the record, for an agent that declares an action:
+
+- **A claim needs the record.** A clause that claims an action is spoken only when the record
+  holds that action, or a tool declared with `reports_on` naming it succeeded in this call (a
+  status lookup, say). A claim is one of the action's own `claims` phrases ("booked your
+  callback"), or one of the library's short default list, which claims any action ("I've
+  booked", «تم حجز», «سجلت لك»; `guard.claims` adds to it). Otherwise the clause is blocked, as
+  a number with no evidence is (above), and observers get `GuardBlocked` with the reason
+  `unsupported_claim`.
+- **A claim's numbers must be that action's.** Every ID-shaped number in a claiming clause must
+  be in the claimed action's own result, or its status tool's: a number from a passage, from
+  the caller's words or from another action is no evidence that this action made it.
+- **The record is evidence for the ID rule too**, so once the callback is booked, the talker may
+  say its number again in a later turn.
+
+The check reads words: a claim worded in none of the phrases passes, so list the ways your domain
+says it ([safety.md](safety.md)). An agent with no action gets none of these checks, so a claim it
+makes is not blocked by them: what changes something belongs in an action.
+
+**What stays yours:** the draft, with a `Spoken` label for each fixed value the read-back says;
+the read-back, `done` and `claims` texts in every language the agent speaks, true to what your
+function does, which the library cannot check; the function, which reaches your system by a
+closure and passes it `ctx.request_id` as an idempotency key (advised); a lookup by that ID where
+your system can find a write; and a person who reconciles the flagged rows. Observers get
+`ConfirmationRequested` as a read-back starts to play, `ConfirmationAnswered` with the rule's
+decision, and `ActionCompleted` or `ActionUnconfirmed` as the write ends (the `events` facade).
+How to write each part is [tools-and-actions.md](tools-and-actions.md).
 
 ## The reply's language
 
@@ -486,8 +599,8 @@ clause still queued; at most about 40 ms already in the WebRTC track still plays
 text-to-speech requests, the talker's model request and its tools (but a tool whose
 `on_interrupt` is `finish`). Each task is cancelled, then awaited at most 100 ms; one that will
 not end is logged by its name and left to end on its own. Work started outside a scope is never
-cancelled by one: once confirmed actions are built, an action's write runs as a job of its own,
-so a stop never cuts a write in half.
+cancelled by one: an action's write runs as a job of its own, outside every reply's scope, so a
+stop never cuts a write in half ("Confirmed actions", above).
 
 The echo runs no task of its own in a scope; the talker's work starts there. The library's own
 test shows what a stop does to a slow model stream, a slow lookup and a write started elsewhere,
@@ -599,6 +712,9 @@ T2V_TURNS__COMPLETE_HOLD_MS=0
 | `T2V_GUARD__MIN_ID_DIGITS` | 3 | The fewest digits in a row that count as an ID |
 | `T2V_GUARD__ID_PATTERNS` | none | More ID shapes, as a JSON list of regular expressions |
 | `T2V_GUARD__ON_BLOCK` | `drop_rest` | What a blocked clause drops: the rest of the reply, or only it (`drop_clause`) |
+| `T2V_GUARD__CLAIMS` | none | Phrases added to each language's default list of what claims any action |
+| `T2V_WORDS__YES`, `__SEND` | none | Your words, added to each language's yes and send words, which the yes rule reads |
+| `T2V_LIMITS__ACTIONS_PER_CALLER_PER_DAY` | 20 | How many of one action one caller may have done in a day; past it, the action is refused before its read-back |
 | `T2V_INTERRUPTIONS__MODE` | `two_step` | `two_step`: the two-step interruption; `drop`: speech over a reply is not answered |
 | `T2V_INTERRUPTIONS__DUCK_LEVEL` | 0.25 | How loud the reply plays while the overlap is judged, from 0 to 1 |
 | `T2V_INTERRUPTIONS__FIRST_WINDOW_MS` | 750 | The window sent before the caller has finished |

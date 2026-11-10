@@ -58,6 +58,7 @@ CASES = [
     "test_a_model_yes_beside_a_no_word_or_a_question_mark_is_asked_again",
     "test_a_check_that_fails_or_times_out_is_asked_again",
     "test_a_model_yes_over_the_closing_question_with_no_send_word_is_asked_again",
+    "test_the_closing_question_heard_back_as_it_plays_confirms_nothing",
     "test_an_unlisted_yes_once_the_question_ended_confirms_once",
 ]
 

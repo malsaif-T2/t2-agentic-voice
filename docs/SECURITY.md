@@ -57,18 +57,24 @@ has not reviewed those either.
    of knowing that "Yes, but change.." is a request for change and not only confirmation)"
    (D-082). The model is asked only about words the lists cannot place, and sees only the
    read-back and those words; the rule never takes its word as it is: words with a no word, a
-   question mark or a change word ("but", «بس»), the agent's own words heard back, and an answer
-   to a read-back no longer current are never a yes, and a model that fails or is too slow
-   means the caller is asked again. Over the closing question the rule takes only a yes with a
-   send word («نعم أرسلها»), or the model's explicit go-ahead to send ("go for it"); a bare
-   «نعم», or the model's plain agreement ("sure"), there is asked again (the owner's second
-   ruling, the same day: "Yes, send it"). No tool argument or model output can stand in for
-   either input: the model judges the heard words, and builds neither.
+   question mark or a change word ("but", «بس»), the agent's own words heard back as it says
+   them, and an answer to a read-back no longer current are never a yes, and a model that fails
+   or is too slow means the caller is asked again. Over the closing question the rule takes only
+   a yes with a send word («نعم أرسلها»), or the model's explicit go-ahead to send ("go for
+   it"); a bare «نعم», or the model's plain agreement ("sure"), there is asked again (the
+   owner's second ruling, the same day: "Yes, send it"). A send word said alone («أرسلها», "go
+   ahead") is the model's to judge too, and words that copy the agent's own line count as its
+   echo only when begun while that line could still be heard: as it plays, or within its
+   reply's tail after it ended, the drop rule's 0.3 s of the agent's voice leaked past echo
+   cancellation, none after the caller's own stop (the owner's third ruling, the same day:
+   "Yes, let the model judge"). No tool argument or model output can stand in for either input:
+   the model judges the heard words, and builds neither.
    Enforced by `[[restricted]]` (ARCH-CONSTRUCT) on the confirmed draft (`domain`) and on both
    inputs (`voice`), each added in the commit that creates its class, by adversarial tests
    of the yes rule and of a talker tool call that claims a yes, and by adversarial tests of the
    model's rails (`tests/t2_agentic_voice/domain/test_yes_rule_judged.py`,
-   `tests/t2_agentic_voice/voice/session/test_yes_ask.py`, `ActionSafetySuite`'s judged cases).
+   `test_yes_rule_send_alone.py`, `tests/t2_agentic_voice/voice/session/test_yes_ask.py`,
+   `test_yes_ask_echo.py`, `test_yes_ask_tail.py`, `ActionSafetySuite`'s judged cases).
 2. **No claim without a record.** No sentence the agent speaks claims an action (created,
    updated, escalated, handed off), or says a ticket number, unless the call's record of
    completed actions or a ticket-status result holds it. Only `actions` records a completed

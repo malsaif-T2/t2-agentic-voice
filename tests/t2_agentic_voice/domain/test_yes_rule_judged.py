@@ -5,8 +5,9 @@ the lists' whatever the model says, and takes its `send` or `yes` only within th
 word, no question mark, no change marker (each, in each language), not the agent's own words
 heard back, the receipt still standing, and over the closing question only a go-ahead.
 Adversarial (GP-08): a model's yes on a listed no, on a yes beside a no, on a bare yes over the
-question, on a send word alone, on a yes with a change, on the closing question heard back, on
-a stale or forged receipt. Every word and time here is made up for the test."""
+question, on a yes with a change, on the read-back or its ask-again line heard back as it plays,
+on a stale or forged receipt. A send word said alone is test_yes_rule_send_alone.py's (the
+owner's third ruling). Every word and time here is made up for the test."""
 
 from __future__ import annotations
 
@@ -16,12 +17,14 @@ import pytest
 from t2_agentic_voice.core.config import Environment
 from t2_agentic_voice.core.yes_inputs import HEARD_WORDS_SEAL, HeardSource, HeardWords
 from t2_agentic_voice.domain.consent_check import ConsentAnswer
+from t2_agentic_voice.domain.presets import ACTION_LINES
 from t2_agentic_voice.domain.words import rule_form
 from t2_agentic_voice.domain.yes_rule import (
     AskAgain,
     Correction,
     Declined,
     ModelWord,
+    SaidLines,
     Yes,
     YesOutcome,
     decide,
@@ -37,15 +40,16 @@ DRAFT = '{"summary": "made up"}'
 # The summary's last clause played at 10.0, the closing question's at 12.0.
 SUMMARY_AT, QUESTION_AT = 10.0, 12.0
 OVER_QUESTION, AFTER = 11.0, 12.5
-# What the agent said: its read-back's summary, its closing question, its ask-again line.
-SAID = (
+# What the agent said: its read-back's summary and closing question, and its ask-again line,
+# the library's own in each language.
+READ_BACK = (
     "I'll book room R-204 for: the projector is broken.",
     "Shall I send it?",
-    "Sorry, I didn't catch that. Shall I go ahead?",
     # "baHjiz lak al-ghurfa": I'll book you the room; "arsil aT-Talab?": send the request?
     "بحجز لك الغرفة R-204.",
     "أرسل الطلب؟",
 )
+ASKED_AGAIN = (ACTION_LINES["en"]["asked_again"], ACTION_LINES["ar-SA"]["asked_again"])
 WORDS = (ENGLISH, ARABIC)
 YES_WORDS: tuple[ConsentAnswer, ...] = ("send", "yes")
 
@@ -86,11 +90,21 @@ def _judged(
     receipt: Any = None,
     current: Any = "same",
     env: Environment = "prod",
+    asking: bool = False,
 ) -> YesOutcome:
+    """`judged` on `text`; `asking`, whether the speech began while the ask-again line played."""
     given = receipt if receipt is not None else _receipt()
     now = given if current == "same" else current
-    heard = _heard(text, speech_at)
-    return judged(word, heard, given, current=now, words=_words(text), env=env, said=SAID)
+    heard, said = _heard(text, speech_at), _said(asking=asking)
+    return judged(word, heard, given, current=now, words=_words(text), env=env, said=said)
+
+
+def _said(*, asking: bool = False) -> SaidLines:
+    """The lines, the session telling the read-back's reply and its tail ended before the
+    speech began, and whether the ask-again line was still heard (`asking`)."""
+    return SaidLines(
+        read_back=READ_BACK, asked_again=ASKED_AGAIN, over_read_back=False, over_asked_again=asking
+    )
 
 
 # What the lists leave unplaced, and what they place.
@@ -106,6 +120,8 @@ def _judged(
         "صح",  # sah, right
         "يلا أرسلها",  # yalla arsilha: send words among fillers, with no yes
         "please send it",
+        "send it",  # a send word alone (the owner's third ruling)
+        "أرسلها",  # arsilha: send it
     ],
 )
 @pytest.mark.parametrize("speech_at", [OVER_QUESTION, AFTER])
@@ -131,8 +147,6 @@ def test_a_yes_among_fillers_is_askable_only_over_the_closing_question(text: str
         ("اكيد", AFTER),
         ("نعم", OVER_QUESTION),  # a bare yes over the question
         ("sure", OVER_QUESTION),
-        ("send it", AFTER),  # a send word alone, as the question's echo would say it
-        ("أرسلها", OVER_QUESTION),
         ("تمام", AFTER),  # a listening sound alone
         ("okay", AFTER),
         ("لا", AFTER),  # a no
@@ -155,8 +169,6 @@ def test_what_the_lists_place_is_never_askable(text: str, speech_at: float) -> N
         ("no thanks", AFTER, Declined(words="no thanks")),
         ("لا لا نعم", AFTER, AskAgain()),
         ("نعم", OVER_QUESTION, AskAgain()),
-        ("send it", AFTER, AskAgain()),
-        ("أرسلها", OVER_QUESTION, AskAgain()),
         ("نعم؟", AFTER, AskAgain()),
         ("Yes?", AFTER, AskAgain()),
         ("تمام", AFTER, AskAgain()),
@@ -269,17 +281,33 @@ def test_the_owners_change_markers_are_listed_in_the_rules_form() -> None:
     "text",
     [
         "Shall I send it",  # the closing question heard back
-        "shall I go ahead",  # the ask-again line's end heard back
         "أرسل الطلب",  # arsil aT-Talab: send the request, the Saudi question heard back
         "the projector is broken",  # a piece of the summary
     ],
 )
+@pytest.mark.parametrize("ended", [QUESTION_AT, None])
+@pytest.mark.parametrize("word", YES_WORDS)
+def test_the_read_back_heard_back_over_its_question_is_asked_again_whatever_the_model_says(
+    text: str, ended: float | None, word: ModelWord
+) -> None:
+    assert _judged(word, text, OVER_QUESTION, receipt=_receipt(ended)) == AskAgain()
+
+
+@pytest.mark.parametrize(
+    "text",
+    [
+        "shall I go ahead",  # the library's English ask-again line's end heard back
+        "go ahead",
+        # asajjil at-talab: shall I register the request, its Saudi line's end heard back
+        "أسجل الطلب",
+    ],
+)
 @pytest.mark.parametrize("speech_at", [OVER_QUESTION, AFTER])
 @pytest.mark.parametrize("word", YES_WORDS)
-def test_the_agents_own_words_heard_back_are_asked_again_whatever_the_model_says(
+def test_the_ask_again_line_heard_back_as_it_plays_is_asked_again_whatever_the_model_says(
     text: str, speech_at: float, word: ModelWord
 ) -> None:
-    assert _judged(word, text, speech_at) == AskAgain()
+    assert _judged(word, text, speech_at, asking=True) == AskAgain()
 
 
 @pytest.mark.parametrize("text", ["go for it", "يلا أرسلها", "yes, but make it urgent"])
@@ -324,11 +352,11 @@ def test_typed_words_count_for_nothing_outside_a_test_whatever_the_model_says(
     typed = _heard("go for it", AFTER, source="typed")
     for word in YES_WORDS:
         outcome = judged(
-            word, typed, _receipt(), current=_receipt(), words=ENGLISH, env=env, said=SAID
+            word, typed, _receipt(), current=_receipt(), words=ENGLISH, env=env, said=_said()
         )
         assert outcome == AskAgain()
     outcome = judged(
-        "send", typed, _receipt(), current=_receipt(), words=ENGLISH, env="test", said=SAID
+        "send", typed, _receipt(), current=_receipt(), words=ENGLISH, env="test", said=_said()
     )
     assert isinstance(outcome, Yes)
 
@@ -342,9 +370,10 @@ def test_a_receipt_not_built_by_voice_counts_for_nothing_whatever_the_model_says
     forged: Any = _receipt().model_dump()
     heard = _heard("go for it")
     for word in YES_WORDS:
-        outcome = judged(word, heard, forged, current=forged, words=ENGLISH, env="test", said=SAID)
+        said = _said()
+        outcome = judged(word, heard, forged, current=forged, words=ENGLISH, env="test", said=said)
         assert outcome == AskAgain()
         outcome = judged(
-            word, heard, forged, current=_receipt(), words=ENGLISH, env="test", said=SAID
+            word, heard, forged, current=_receipt(), words=ENGLISH, env="test", said=said
         )
         assert outcome == AskAgain()

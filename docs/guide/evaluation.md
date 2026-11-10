@@ -1,111 +1,25 @@
-# Evaluation: testing an agent, and measuring speech-to-text on your own voices
+# Evaluation: measuring speech-to-text on your own voices
 
-Two jobs with the library's testing kit and evaluation helpers. First, testing an agent: a call
-held in text, with a scripted chat model and a fake knowledge base, that runs your agent's
-instructions, tools and fixed lines through the real session with no key ("Testing an agent in
-text"). Then measuring speech-to-text on the voices you serve: what each helper takes and gives
-back, how to record a golden set with every speaker's consent and keep its audio out of git, how
-to write the spelling guide its references follow, how to make a registered run and read its
-scorecard, and how to tell a real change from noise with the sign test. The method itself, from
-the golden set to the run history, is [evaluation.md](../design/evaluation.md); this page applies
-it with the library, and with Ole5's golden-set commands as the worked example.
+Measuring speech-to-text on the voices you serve with the library's evaluation helpers: what each
+helper takes and gives back, how to record a golden set with every speaker's consent and keep its
+audio out of git, how to write the spelling guide its references follow, how to make a registered
+run and read its scorecard, and how to tell a real change from noise with the sign test. The
+method itself, from the golden set to the run history, is
+[evaluation.md](../design/evaluation.md); this page applies it with the library, and with Ole5's
+golden-set commands as the worked example. Testing an agent, in a call held in text, with the
+safety suite on your actions, live, or by replaying audio, is [testing.md](testing.md).
 
 **Status: provisional.** The two modules on this page, `t2_agentic_voice.languages` and
 `t2_agentic_voice.evals`, are provisional (D-021): either may change in any minor release, with
 the change in the changelog. The speech-to-text helpers landed with plan 002, whose runs are this
-page's examples; the text call and its fakes with plan 006. Every number from those runs
-describes one speaker, Ole5's owner (D-006).
+page's examples. Every number from those runs describes one speaker, Ole5's owner (D-006).
 
 ## Testing an agent in text
 
-`TextCall` holds a call in text. It runs the real voice session, the real talker, your tools and
-the output guard, with no audio: each of the caller's turns is typed text standing in for the
-words Whisper would have heard, the agent's speech is a fake voice that plays each clause at
-`chars_per_second` (15 characters a second), and time is a virtual clock that moves only when the
-test says. It needs no key and no network, never starts Pipecat, and gives the same result every
-run. It runs only under `env="test"`, the one place typed text may stand in for heard words, and
-writes its call's report to a folder of its own, never to your `var/`. It is a test, not a chat
-channel. Everything below comes from the `evals` facade.
-
-**The model** is the test's:
-
-- **`ScriptedLLM`** plays a script, one entry per model request:
-  `ScriptedLLM.call_tool(name, **arguments)` asks for a tool, `ScriptedLLM.reply(text)` answers,
-  and `call_tools` asks for several at once. A turn that uses a tool makes two requests, one that calls it and one that
-  answers from its result. When the script runs out, the next request fails the test
-  (`ScriptExhaustedError`), listing the requests so far and each one's last user text, so a test
-  that asked once too often says where. An entry's steps may hold a `Pause(seconds)`, the
-  model's time on the call's clock, and a `ProviderError`, a failure where it stands.
-- **`FunctionLLM(fn)`** asks `fn` for each request's steps, so a test need not count requests: it
-  can answer by the last message, the caller's words or a tool's result. A request that follows
-  a tool's result ends with a short system line naming the reply's language, after the result.
-- Both keep every request in `requests`, so a test reads what the talker sent: the prompt, the
-  history, the tools offered, a tool's result as the model read it.
-- A real model, through its port and with `clock="system"`, makes the same call a measurement:
-  every request is then paid for.
-
-**The knowledge base** is `FakeKnowledgeBase(passages, answers={query: passages})`, which
-answers each query `answers` names with its passages and any other with `passages`, and keeps
-each search it was asked in `searches` (its query, language, caller and limit). Its passages are
-written for the test, never a real base's.
-
-The guide's sample agent, a helpdesk with the knowledge tool, a wrapped function and a tool that
-may fail ([concepts.md](concepts.md), "Tools"), tested with a `FunctionLLM` that searches on the
-caller's question and then answers, in
-[test_guide_samples.py](../../tests/minimal_example/test_guide_samples.py):
-
-```python
-def answer(request: ChatRequest) -> Iterable[ScriptStep]:
-    """A fake model that searches on the caller's question, then answers from what it found."""
-    if request.messages[-1].role == "user":
-        return ScriptedLLM.call_tool("search_knowledge", query="reset my password")
-    return ScriptedLLM.reply("Choose Forgot password in the portal. The steps are on your screen.")
-```
-
-and its call, in [test_guide_samples.py](../../tests/minimal_example/test_guide_samples.py):
-
-```python
-        async with TextCall(helpdesk, llm=FunctionLLM(answer)) as call:
-            turn = await call.user("How do I reset my password?")
-            turn.expect.tool_call("search_knowledge", query="reset my password")
-            turn.expect.said(contains="Forgot password")
-        assert [search.query for search in kb.searches] == ["reset my password"]
-        assert call.violations == ()
-```
-
-A `TextCall` is entered with `async with`, which connects the call and plays its greeting; the
-repository's tests run each scene with `asyncio.run`. Its caller is a made-up one unless you give
-your own, as a tool bound to the caller's ID needs:
-`TextCall(agent, llm=llm, caller=Caller(subject="u-1"))`; its language is the agent's first unless you give one
-(`language="ar-SA"`). The quickstart's own test runs the helper in English and Saudi Arabic
-([quickstart.md](quickstart.md), "Test it with no key").
-
-**What the caller does:**
-
-| Injection | What it does |
-| --- | --- |
-| `await call.user(text)` | The caller says `text` while the agent is silent (the clock moves on until the reply playing has ended) |
-| `await call.user(text, during="agent_speaking")` | Said over the reply playing: the two-step interruption reads it |
-| `await call.user(text, at="tool_running")` | Said while a tool of the reply runs |
-| `await call.advance(seconds)` | The clock moves on: what is due by then runs, a progress line, a tool's timeout, the clauses' playing |
-| `await call.stop()` | The client's Stop |
-
-`user` returns the turn once what its words started has run as far as it can with the clock
-still: the reply written as far as the model could, its clauses still to play as the clock
-moves.
-
-**What to check**, on each turn's `expect`, each raising AssertionError with what the turn did
-instead: `tool_call(name, **args)` (the talker called it, with those among its arguments);
-`said(contains=)` (the reply as the caller heard it, or is still to hear it when no stop cut
-it); `blocked()` (the output guard blocked a clause); `cancelled(tool)`; and `language(tag)`.
-`call.violations` holds the guard's checks over every clause the talker said in the call, empty
-when it said no ID without evidence. A turn also gives what it did as data, for a runner that
-scores rather than asserts: its `fate`, the `clauses` the caller heard (each with its text,
-language, fate and the share of it that played), its `tool_calls` (each tool's arguments,
-outcome and time), its `cards`, its `blocked` clauses, `first_token_s` and `first_clause_s`
-(on the call's clock, [latency.md](latency.md)), its `model_requests` and its `usage`.
-
-The rest of this page measures speech-to-text on your own voices.
+Testing an agent in text, with `TextCall`, the fake models and the fake knowledge base, is now
+[testing.md](testing.md) ("Testing an agent in text"), beside a call that takes an action, the
+safety suite for your actions, live scenarios and audio replay. The rest of this page measures
+speech-to-text on your own voices.
 
 ## What the library gives you, and what stays yours
 
