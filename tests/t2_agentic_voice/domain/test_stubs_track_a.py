@@ -8,12 +8,10 @@ from typing import Any
 
 import pytest
 from t2_agentic_voice.core.settings.guard import GuardSettings
-from t2_agentic_voice.domain.action_flow import advance
 from t2_agentic_voice.domain.action_lines import default_action_lines
 from t2_agentic_voice.domain.claims import check_claims, default_claims
 
 STUBS: dict[str, Callable[[], Any]] = {
-    "advance": lambda: advance("confirming", "yes"),
     "check_claims": lambda: check_claims(
         "made up", claims={}, any_action=(), evidence=(), settings=GuardSettings(), year=2026
     ),
