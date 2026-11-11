@@ -132,15 +132,17 @@ class Synthesizing:
 
 @dataclass(frozen=True, kw_only=True)
 class ClauseQueued:
-    """The first audio of a clause the session asked for came, from the provider or the phrase
-    cache, and was queued for the output: `requested_at`, when its text-to-speech request went
-    (its `Synthesizing`'s `at`; None for a cached phrase, which sends none), so the first audio
-    took `at - requested_at`."""
+    """The first audio of a clause the session asked for came, from the provider, the phrase
+    cache or the clause cache, and was queued for the output: `requested_at`, when its
+    text-to-speech request went (its `Synthesizing`'s `at`; None for a cached phrase or a held
+    take, which send none), so the first audio took `at - requested_at`; `held`, a take the
+    clause cache held (never a fixed phrase: voice/session/playback.py's `Clause.held`)."""
 
     reply_id: ReplyId
     clause: ClauseIndex
     at: float
     requested_at: float | None
+    held: bool = False
 
 
 @dataclass(frozen=True, kw_only=True)

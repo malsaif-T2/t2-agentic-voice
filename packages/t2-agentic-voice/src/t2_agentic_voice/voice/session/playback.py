@@ -51,15 +51,19 @@ ReadBackPart = Literal["summary", "question"]
 
 @dataclass(kw_only=True)
 class Clause:
-    """One clause of a reply as it plays: its caption, the characters of the request it sent
-    (none for a cached phrase), whether it is a progress line (`progress`, timed apart), the
-    language it is spoken in when not the call's (a talker's clause), the read-back's part it
-    says (`part`, None for any other clause), and what came of it (`played_at`, when its
-    `ClausePlayed` came, with the seconds of audio it reported, `audio_s`)."""
+    """One clause of a reply as it plays: its caption, the text its request sends (`sent`, as
+    the speaking rules and the pronunciation map said it, which a reply said again sends) and
+    its characters (none for a cached phrase), whether it is a fixed phrase (`cached`) or a take
+    the clause cache held (`held`, set once its audio is queued: a cache hit, never a phrase),
+    whether it is a progress line (`progress`, timed apart), the language it is spoken in, the
+    read-back's part it says (`part`, None for any other clause), and what came of it
+    (`played_at`, when its `ClausePlayed` came, with the seconds of audio it reported)."""
 
     caption: str
     characters: int
     cached: bool
+    sent: str = ""
+    held: bool = False
     progress: bool = False
     language: LanguageTag | None = None
     part: ReadBackPart | None = None
@@ -129,14 +133,14 @@ class Reply:
 
     def numbers(self) -> ReplyNumbers:
         """What it took, as its text-to-speech span records it: the requests that went (their
-        characters), the chunks played, the phrases played from the cache."""
+        characters), the chunks played, the phrases and held takes played from the caches."""
         asked = [clause for clause in self.clauses if clause.requested_at is not None]
         first = self.first_audio_s
         return ReplyNumbers(
             characters=sum(clause.characters for clause in asked),
             chunks=sum(clause.chunks for clause in self.clauses),
             requests=len(asked),
-            cache_hits=sum(clause.cached for clause in self.clauses),
+            cache_hits=sum(clause.cached or clause.held for clause in self.clauses),
             first_audio_ms=None if first is None else first * 1000,
             cut_short=any(clause.cut_short for clause in self.clauses),
         )
@@ -163,14 +167,7 @@ class Playback:
     ) -> Reply:
         """Keep the reply `lines` say, numbered `next_id`: each a cached phrase, or a request of
         its text's characters."""
-        clauses = [
-            Clause(
-                caption=line.caption,
-                characters=0 if line.speak.audio is not None else len(line.speak.text),
-                cached=line.speak.audio is not None,
-            )
-            for line in lines
-        ]
+        clauses = [_clause(line) for line in lines]
         reply = Reply(
             reply_id=self.next_id, kind=kind, turn_id=turn_id, notice=notice, clauses=clauses
         )
@@ -187,16 +184,7 @@ class Playback:
         self, reply: Reply, line: Line, *, progress: bool = False, part: ReadBackPart | None = None
     ) -> Clause:
         """Add the clause `line` says to the open `reply`, at its next index."""
-        cached = line.speak.audio is not None
-        characters = 0 if cached else len(line.speak.text)
-        clause = Clause(
-            caption=line.caption,
-            characters=characters,
-            cached=cached,
-            progress=progress,
-            language=line.speak.language,
-            part=part,
-        )
+        clause = _clause(line, progress=progress, part=part)
         reply.clauses.append(clause)
         return clause
 
@@ -234,7 +222,7 @@ class Playback:
         found = self.clause(event.reply_id, event.clause)
         if found is not None:
             reply, clause = found
-            clause.queued_at = event.at
+            clause.queued_at, clause.held = event.at, event.held
             if reply.started_at is None:
                 reply.started_at = event.at
         return found
@@ -317,3 +305,18 @@ class Playback:
             if reply.over(speech_at):
                 found = reply
         return found
+
+
+def _clause(line: Line, *, progress: bool = False, part: ReadBackPart | None = None) -> Clause:
+    """The clause `line` says: a cached phrase, or a request of its text's characters, in the
+    language it is spoken in."""
+    cached = line.speak.audio is not None
+    return Clause(
+        caption=line.caption,
+        characters=0 if cached else len(line.speak.text),
+        cached=cached,
+        sent=line.speak.text,
+        progress=progress,
+        language=line.speak.language,
+        part=part,
+    )

@@ -66,6 +66,23 @@ class TtsSettings(Group):
             "once and cached under the storage folder."
         ),
     )
+    cache_clauses: bool = Field(
+        default=False,
+        description=(
+            "Whether every clause the agent speaks in a call with a talker is kept on disk under "
+            "the storage folder by its exact text, its language, its voice and the adapter that "
+            "made it, so the same clause plays again with no request; the echo's words said back "
+            "are never kept."
+        ),
+    )
+    clause_cache_mb: int = Field(
+        default=512,
+        ge=1,
+        description=(
+            "The most disk the clause cache keeps, in megabytes; past it, the clauses played "
+            "longest ago are removed."
+        ),
+    )
     trim_silence: bool = Field(
         default=False,
         description=(

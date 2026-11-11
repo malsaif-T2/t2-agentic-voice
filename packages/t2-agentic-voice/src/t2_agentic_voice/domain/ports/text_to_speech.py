@@ -9,13 +9,18 @@ behind, and closes its connections with `aclose()`. The caller keeps each clause
 What a call's usage needs of a response travels on its chunks, since one adapter serves every
 call at once: the rate-limit headroom the provider reported, on the first chunk of the response,
 and a take that came back cut short, on its last.
+
+`HeldSpeech`, beside the port and not in the `ports` facade, is what a text-to-speech that keeps
+takes meets as well (adapters/clause_cache.py's `ClauseCache`): the take it holds for a text,
+which the text-to-speech bridge asks for first and plays with no request. The port itself is
+unchanged, so an adapter that keeps nothing never meets it.
 """
 
 from __future__ import annotations
 
 from collections.abc import AsyncIterator
 from datetime import datetime
-from typing import Protocol
+from typing import Protocol, runtime_checkable
 
 from pydantic import BaseModel, ConfigDict, Field, field_validator
 
@@ -83,3 +88,14 @@ class TextToSpeech(Protocol):
     async def aclose(self) -> None:
         """Close what the adapter holds open, its connections; an adapter that holds none
         returns at once. Called once, when the runtime stops."""
+
+
+@runtime_checkable
+class HeldSpeech(Protocol):
+    """A text-to-speech that keeps the takes it made (the clause cache): `held` gives the take
+    it holds for exactly `text` in `language`, whole, from its own store with no request, or
+    None when it holds none (a miss: the clause is then requested as any other). It never
+    raises for a miss or a store that fails."""
+
+    async def held(self, text: str, *, language: str) -> AudioChunk | None:
+        """The take held for `text` in `language`, or None."""

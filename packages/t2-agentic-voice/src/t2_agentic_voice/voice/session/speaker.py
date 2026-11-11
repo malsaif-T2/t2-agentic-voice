@@ -1,23 +1,21 @@
 """How one call's session speaks (voice/session/call.py): the `Speaker` asks for each reply clause
 by clause, each in a cancel scope of its own (scope.py), captions each clause as it plays, tells
-the caller each notice, stops, says the last reply again, and ends each reply, counted, traced,
-recorded and kept in the heard history (history.py). The replies as they play are playback.py's
-(`Playback`).
+the caller each notice, stops, says the last reply again (each clause as it was sent, in its own
+language, so a take the clause cache held is found again), and ends each reply, counted, traced,
+recorded and kept in the heard history (history.py). The replies as they play: playback.py's.
 
 What the caller heard of a clause a stop or the call's end cut is the agent's audio the output
 sent since that clause began playing (its first audio queued, or the clause before it ended:
 `AgentAudio` reaches the session in order with each clause's `ClausePlayed`, voice/transport.py's
 `OutputTap`), over the clause's length, estimated from this call's clauses played so far, seconds
-per caption character (`SECONDS_PER_CHARACTER` before any played), as a reply's played share
-counts by characters.
+per caption character (`SECONDS_PER_CHARACTER` before any played), as a reply's share counts.
 
 A reply's scope is cancelled once the reply ends, however, so a reply that will ask for more
 clauses while its work runs (the talker's) must not end before that work is done: such a reply
-is opened before its first clause, written clause by clause (`write`, each clause in the
-language the talker wrote it in, counted under that language's model) and closed once its work
-is done (`open_reply`, open_reply.py's `OpenReply`). Its scope may be one its work began in
-before it was opened (the early start's, plan 006). An action's fixed line is said so too, as a
-reply of its own (`say_line`, plan 007).
+is opened before its first clause, written clause by clause (`write`, each in the language the
+talker wrote it in, counted under that language's model) and closed once its work is done
+(`open_reply`, open_reply.py's `OpenReply`). Its scope may be one its work began in before it
+was opened (the early start's, plan 006). An action's line is a reply of its own (`say_line`).
 """
 
 from __future__ import annotations
@@ -266,12 +264,12 @@ class Speaker:
     async def repeat(self, at: float, *, turn_id: TurnId) -> Reply | None:
         """Say again the last reply the caller heard any of (the heard history's), all its
         clauses, as the reply answering `turn_id`: a fixed phrase from the phrase cache, the
-        rest through text-to-speech; None when no reply was heard."""
+        rest through text-to-speech as each was sent; None when no reply was heard."""
         last = self._history.last_reply()
         reply = None if last is None else self.playback.reply(last.reply_id)
         if reply is None:
             return None
-        clauses = [(clause.caption, clause.cached) for clause in reply.clauses]
+        clauses = [(c.caption, c.sent, c.language, c.cached) for c in reply.clauses]
         lines = again(self._setup, clauses, reply_id=self.playback.next_id, turn_id=turn_id)
         return await self.say("repeat", lines, at, turn_id=turn_id) if lines else None
 
@@ -287,6 +285,8 @@ class Speaker:
         if found is None:
             return None
         reply, clause = found
+        if event.held:  # a take the clause cache held: a hit, which sent nothing
+            self._usage.cached(clause.language or self._tag)
         now = self.playback.playing()
         if now is not None and now[0] is reply and now[1] == event.clause:
             self._since_s = 0.0  # it plays now: its audio counts from here

@@ -40,7 +40,7 @@ def fixed_phrases(agent: VoiceAgent) -> tuple[FixedPhrase, ...]:
     spoken, so it is not declared). The declaration has checked that each language gives every
     such line. The phrase cache has each at hand from the runtime's start
     (`PhraseCache.declare(agent)`), so the session plays each with no request; words heard in a
-    call are never among them (invariant 8)."""
+    call are never among them (invariant 8), and a talker's clauses are the clause cache's."""
     keys = tuple(dict.fromkeys(tool.progress for tool in agent.tools if tool.progress))
     return tuple(
         phrase

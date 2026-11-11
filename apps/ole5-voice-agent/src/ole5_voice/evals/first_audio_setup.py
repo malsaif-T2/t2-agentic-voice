@@ -93,11 +93,12 @@ def price(text: str) -> tuple[str, float]:
 
 
 def settings_of(args: argparse.Namespace) -> VoiceSettings:
-    """The settings `poe eval` loads, untraced, with the arm's from the flags and each `--set`
-    on top."""
+    """The settings `poe eval` loads, untraced, with the arm's from the flags (the clause
+    cache's among them, so the run records it) and each `--set` on top."""
     namespace = argparse.Namespace(**vars(args), tracing_endpoint=None)
     pinned = [
         ("tts.trim_silence", args.trim_silence == "on"),
+        ("tts.cache_clauses", args.clause_cache == "on"),
         ("llm.model", args.llm_model),
         ("llm.reasoning_effort", args.llm_reasoning_effort),
         ("llm.max_output_tokens", args.llm_max_output_tokens),

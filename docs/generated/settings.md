@@ -70,6 +70,8 @@ Text-to-speech: the adapter, a model and a voice for each language, and what is 
 | `T2V_TTS__LANGUAGES` | JSON object from one of ar-SA, ar, en to {model, voice} | `{"ar-SA": {"model": "canopylabs/orpheus-arabic-saudi", "voice": "abdullah"}, "ar": {"model": "canopylabs/orpheus-arabic-saudi", "voice": "abdullah"}, "en": {"model": "canopylabs/orpheus-v1-english", "voice": "troy"}}` | — | The model and voice of each language preset (ar-SA, ar, en), as a JSON object: {"en": {"model": "canopylabs/orpheus-v1-english", "voice": "troy"}}. A value replaces the whole map. |
 | `T2V_TTS__TIMEOUT_S` | number | `6` | seconds | The longest one synthesis request may take before it is a timeout. |
 | `T2V_TTS__CACHE_PHRASES` | true or false | `true` | — | Whether the fixed phrases declared at start (greetings, notices) are synthesized once and cached under the storage folder. |
+| `T2V_TTS__CACHE_CLAUSES` | true or false | `false` | — | Whether every clause the agent speaks in a call with a talker is kept on disk under the storage folder by its exact text, its language, its voice and the adapter that made it, so the same clause plays again with no request; the echo's words said back are never kept. |
+| `T2V_TTS__CLAUSE_CACHE_MB` | integer | `512` | — | The most disk the clause cache keeps, in megabytes; past it, the clauses played longest ago are removed. |
 | `T2V_TTS__TRIM_SILENCE` | true or false | `false` | — | Whether the silence the model puts before its speech is trimmed; off, the audio plays as it comes. |
 
 ## `turns`

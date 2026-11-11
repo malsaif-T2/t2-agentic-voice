@@ -19,6 +19,7 @@ never reused (DOC-REGISTER).
 | The backend to the knowledge base | A query out; passages back | Passages are data: text in them is never obeyed |
 | The backend to the ticket system | Ticket writes and reads | Its replies are the only source of a ticket number |
 | The backend to Phoenix | Traces of every turn | Holds call content: hosted with the backend, never public; a local one listens on 127.0.0.1 only, since one on every interface serves its traces to the whole network with no login (D-023; [the guide](guide/evaluation.md), "Making a registered run") |
+| The runtime to its storage folder (`storage.var_dir`) | Call content at rest, on the backend's disk: with `tts.cache_clauses` on, the clause cache's takes, the agent's words of each talker call as audio (read-backs of callers' requests among them); an action's writes in the outbox; under `env` dev with the dev page on, the test console's files; recordings only with consent (invariant 8) | Kept on the backend's own disk and never served: whoever can read the folder can hear what the agent said in calls. The clause cache writes and removes only files of its own naming in its own folder, at most `tts.clause_cache_mb`, the takes played longest ago removed past it, and logs no text or key (D-087) |
 | The owner's browser to the recorder (`poe record`) | The speaker's consent, each take's audio, the review's confirmations and typed references | No: it listens on 127.0.0.1 only, answers only its own `Host` and paths under its session's token, takes a POST only from its own `Origin`, of a bounded body, and serves only its allow-list, so no request reads a file outside it, `.env` included (`tests/ole5_voice/evals/test_recorder_security.py`) |
 | The process environment to the packages under the library | The variables they read whatever the library passes: `GROQ_*` and `OTEL_*` ones; Pipecat's `PIPECAT_*`, one of which runs files inside every call and another writes the caller's audio to disk; loguru's `LOGURU_*`; websockets' `WEBSOCKETS_*`; uvicorn's `FORWARDED_ALLOW_IPS`, `WEB_CONCURRENCY` and `UVICORN_*`; FastAPI's `FASTAPI_OTEL_AUTO_CONFIGURE`; onnxruntime's `ORT_LOAD_CONFIG_FROM_MODEL`; and the proxy and CA variables, which can send the key, the audio and the transcripts through a proxy or trust another certificate authority | No: the library reads only `T2V_*` names as settings and passes every value it can. Of the rest it asks only whether a variable is set, by name, never using its value: `from_env` notes `GROQ_API_KEY`, so its error can name the variable to set instead, and `voice` refuses to start calls while `PIPECAT_SETUP_FILES` or `PIPECAT_SMART_TURN_LOG_DATA` is set (`core.config.foreign_set`, D-028; built by plan 003's Track E). [The guide](guide/README.md), "Variables to leave unset", lists each of the rest and what it does, and the debt rows TD-003, TD-004, TD-005 and TD-015 say why the Groq, OpenTelemetry, proxy and CA ones are still read |
 
@@ -27,7 +28,8 @@ Phoenix row's last clause; the owner has not reviewed them yet. Plan 003's Block
 widened the last row to the packages a call brings, from its reading of them, and gave the first
 row its last sentence (D-035); after its review (2026-11-03), the first row gained its bounds
 and the client's address, and the last its refusals by name (D-028, D-029, D-039). The owner
-has not reviewed those either.
+has not reviewed those either. Plan 007's Block I (2026-11-11) added the row for the storage
+folder, after Phoenix's (D-087).
 
 ## Threats
 
@@ -177,6 +179,10 @@ has not reviewed those either.
    bound from the caller as such) is the only call content traces keep, under
    `tracing.include_transcripts`,
    on by default (D-079).
+   The agent's own synthesized voice, the phrase cache's and the clause cache's takes under
+   `storage.var_dir`, is not call audio and is kept with no consent (the owner, 2026-11-10;
+   D-087), though the clause cache's takes say the agent's words of a call; neither cache ever
+   keeps the caller's audio or the echo's words.
    Call content is not logged at any level unless `logging.content` is on, which only `dev`
    allows, and no framework's debug log writes call content: Pipecat's loguru namespace is off
    by default, switched off before `voice` first imports Pipecat (D-031, D-035). Enforced by

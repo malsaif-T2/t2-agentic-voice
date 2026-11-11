@@ -281,10 +281,13 @@ rehearsal's password, archiving, and English questions pass.
     `session`, English inside an Arabic call (run X: 0.813 sent as English, 0.027 as Arabic), and
     the time each adds.
   - *Every clause the agent says cached by its exact text,* not only the fixed phrases (amending
-    D-033's "Text built from heard words never reaches the phrase cache"). The owner: "we should
-    cache everything we can, because all of it is what the agent generated and we have full
-    access to it and since we would an exact match, no user will hear the info of another." The
-    key holds the text, the language, the voice, the model and the speaking rules' version.
+    D-033's "Text built from heard words never reaches the phrase cache"; built: D-087, plan
+    007's Block I, `tts.cache_clauses`, off by default until run I's keep rule). The owner: "we
+    should cache everything we can, because all of it is what the agent generated and we have
+    full access to it and since we would an exact match, no user will hear the info of
+    another." The key holds the text sent, the language, the voice, the model, the adapter and
+    the trimming; no speaking rules' version is needed, since the text sent changes with the
+    rules (plan 007's Q24).
     The agent's count of 2026-11-10 on run K's dev replies: with the current spoken prompt about
     5% of model-written clauses repeat across questions, mostly short openers ("I'm sorry,",
     "Yes,", «نعم،»); under the earlier prompts 15–31%. Measured: hits, Orpheus requests per call
@@ -325,8 +328,9 @@ after a clear yes.
   key on Groq's on-demand tier, 400 requests a minute: Ole5-chatbot VOICE_LOG.md, 2026-10-27).
   The cap on live calls is set below that limit. Then how many calls the backend's CPU holds.
 - Before callers who are not the developers use it: what they must be told, their voice going
-  to Groq, an outside company, and whether the law asks for more (D-076, which removed Ole5's
-  consent screen for developers).
+  to Groq, an outside company, the agent's words of their calls kept on disk as audio once the
+  clause cache is on (read-backs of what they asked among them, D-087), and whether the law
+  asks for more (D-076, which removed Ole5's consent screen for developers).
 - The deployment, moved from M2 on 2026-11-03 (the owner, plan 003): the Ole5 app on the owner's
   server behind HTTPS, the widget embedded in the website, calls from another network and from one
   that blocks UDP, and the media path recorded as a decision. It becomes a plan of its own as soon

@@ -303,13 +303,17 @@ class FakeSessionIO:
         now = self.clock.now()
         return await self._hand(Synthesizing(reply_id=reply_id, clause=clause, at=now))
 
-    async def clause_queued(self, reply_id: int, clause: int) -> ClauseQueued:
+    async def clause_queued(
+        self, reply_id: int, clause: int, *, held: bool = False
+    ) -> ClauseQueued:
         """The clause's first audio is queued now: its request went at its `Synthesizing`, or
-        none did (a cached phrase)."""
+        none did (a cached phrase, or a take the clause cache held: `held`)."""
         asked = [e for e in self.events if isinstance(e, Synthesizing)]
         sent = [e.at for e in asked if (e.reply_id, e.clause) == (reply_id, clause)]
         requested_at, now = (sent[-1] if sent else None), self.clock.now()
-        event = ClauseQueued(reply_id=reply_id, clause=clause, at=now, requested_at=requested_at)
+        event = ClauseQueued(
+            reply_id=reply_id, clause=clause, at=now, requested_at=requested_at, held=held
+        )
         return await self._hand(event)
 
     async def clause_played(

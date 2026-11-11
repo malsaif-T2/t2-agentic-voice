@@ -33,6 +33,7 @@ from pydantic import Field, StringConstraints
 from t2_agentic_voice.events import ModelUsage
 from t2_agentic_voice.ports import AudioChunk
 
+from ole5_voice.evals.first_audio_cache import ClauseCall
 from ole5_voice.evals.models import Device, Language, Model, Name, Split
 from ole5_voice.evals.overlap_score import Target
 from ole5_voice.evals.runs import HELD_OUT_MIN_ITEMS
@@ -58,13 +59,15 @@ Opening = Annotated[str, StringConstraints(pattern=r"^replies/[a-z0-9][a-z0-9_.-
 class ReplayedTurn(Model):
     """One answered turn of a replayed call, as its call report gives it: the time to the
     reply's first audible frame, whether a tool ran in the reply, the time to its progress
-    line's first audible frame where one played, and the failure it met (a `ProviderError`
-    kind, or first_audio_replay.py's `GREETING_NOT_PLAYED`)."""
+    line's first audible frame where one played, the failure it met (a `ProviderError` kind, or
+    first_audio_replay.py's `GREETING_NOT_PLAYED`), and Orpheus's own time from the turn's first
+    clause request to its first audio (`TurnTimes.tts_first_audio_ms`)."""
 
     ttfa_ms: _Ms | None = None
     searched: bool = False
     progress_ms: _Ms | None = None
     failure: Name | None = None
+    tts_first_audio_ms: _Ms | None = None
 
 
 class ChatSpend(Model):
@@ -82,18 +85,21 @@ class ChatSpend(Model):
 class ReplayedCall:
     """One recording's call: each answered turn in order, each one's reply's opening audio as
     sent (for the owner's listen; None where none came), and what the call used: the speech
-    models' usage as its report counts it, and the chat model's."""
+    models' usage as its report counts it, and the chat model's; and, with the clause cache,
+    what it did in the call (first_audio_cache.py)."""
 
     turns: tuple[ReplayedTurn, ...]
     openings: tuple[AudioChunk | None, ...]
     usage: tuple[ModelUsage, ...]
     chat: ChatSpend
+    clauses: ClauseCall | None = None
 
 
 class AudioResult(Model):
     """One recording of a run: its strata, where its time starts and the label's time, how many
     calls it took (a rate-limited one is run again), its last call's turns, whether it was cut,
-    its timed turn, each reply's opening as a file of the run's folder, and its failure."""
+    its timed turn, each reply's opening as a file of the run's folder, its failure, and what the
+    clause cache did in each of its calls, in order, when the run had one."""
 
     item: Name
     variant: Name
@@ -108,17 +114,24 @@ class AudioResult(Model):
     timed: ReplayedTurn | None = None
     openings: tuple[Opening | None, ...] = ()
     failure: str | None = None
+    clause_cache: tuple[ClauseCall, ...] = ()
 
 
 def result_of(
-    base: dict[str, object], call: ReplayedCall, attempts: int, openings: tuple[str | None, ...]
+    base: dict[str, object],
+    call: ReplayedCall,
+    attempts: int,
+    openings: tuple[str | None, ...],
+    clauses: tuple[ClauseCall, ...] = (),
 ) -> AudioResult:
-    """A recording's result from its last call: `base` its strata and end."""
+    """A recording's result from its last call: `base` its strata and end; `clauses`, what the
+    clause cache did in each of its calls."""
     failure = next((t.failure for t in call.turns if t.failure is not None), None)
     cut = len(call.turns) > 1
     timed = call.turns[0] if len(call.turns) == 1 and failure is None else None
     found = {"attempts": attempts, "turns": call.turns, "cut": cut, "timed": timed}
-    return AudioResult.model_validate(base | found | {"openings": openings, "failure": failure})
+    kept = {"openings": openings, "failure": failure, "clause_cache": clauses}
+    return AudioResult.model_validate(base | found | kept)
 
 
 class PathStats(Model):

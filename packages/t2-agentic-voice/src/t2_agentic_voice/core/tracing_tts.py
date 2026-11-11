@@ -119,9 +119,9 @@ def resource_attributes(
 @dataclass(frozen=True, kw_only=True)
 class ReplyNumbers:
     """What one reply took, as its text-to-speech span records it: the characters sent in its
-    requests, the audio chunks played, the requests sent, the phrases played from the cache, how
-    long its first request took to its first audio (none when no request's audio came), and
-    whether a take came back cut short. No text: what the reply says is the call's."""
+    requests, the audio chunks played, the requests sent, the phrases and held clauses played
+    from the caches, how long its first request took to its first audio (none when no request's
+    audio came), and whether a take came back cut short. No text: what it says is the call's."""
 
     characters: int
     chunks: int

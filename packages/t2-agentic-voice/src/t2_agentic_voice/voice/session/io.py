@@ -149,12 +149,13 @@ EventSink = Callable[[Event], None]
 class PhraseAudio(Protocol):
     """The audio of the runtime's fixed phrases (the greetings, the echo's frames, the notices),
     each synthesized once at the runtime's start and kept: what the session plays them from
-    (adapters/phrase_cache.py's `PhraseCache` meets it)."""
+    (adapters/phrase_cache.py's `PhraseCache` meets it). A talker's clauses are kept apart, by
+    the clause cache behind the text-to-speech (adapters/clause_cache.py), never asked here."""
 
     def audio(self, text: str, *, language: LanguageTag) -> AudioChunk:
         """A declared phrase's audio in `language`'s voice, from memory, with no request.
-        LookupError for any text not declared at the start: no heard words reach the cache
-        (invariant 8)."""
+        LookupError for any text not declared at the start: no heard words reach the phrase
+        cache (invariant 8)."""
 
 
 class Session(Protocol):

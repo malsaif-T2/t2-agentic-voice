@@ -28,7 +28,9 @@ below).
 - **The agent speaks in replies.** The greeting is reply 0, and each answer (the talker's, or
   the echo's), each reply said again and each spoken notice is the next. A reply is spoken
   clause by clause: a fixed phrase (the greeting, a progress line, a notice, the echo's "I
-  heard:") from the phrase cache, the rest through Orpheus. A progress line is followed, and a
+  heard:") from the phrase cache, the rest through Orpheus; with `tts.cache_clauses` on, a
+  talker's clause said before in the same voice plays from the clause cache, with no request
+  ([latency.md](latency.md)). A progress line is followed, and a
   notice preceded, by a beat of silence, so it does not run into other speech. Each clause's
   caption reaches the browser as it starts playing.
 - Turns and replies are numbered apart (a caption's `turn_id` and `reply_id`), so a turn and the
@@ -649,12 +651,14 @@ itself is the session's: a team reads it through those events and the call's rep
 
 ## The repeat
 
-With a talker, a repeat request is the talker's to answer, from what the caller heard. With the
-echo, a repeat request, over a reply or said while the agent is silent, says again the last reply
-the caller heard any of, the one just cut included, every clause of it: its fixed phrases from
-the phrase cache, the rest through Orpheus, so it costs that reply's text-to-speech requests
-again (D-064). It is the reply to the request's turn, which is a command and never said back.
-Before any reply was heard, it says nothing.
+With a talker, a repeat request is the talker's to answer, from what the caller heard; with
+`tts.cache_clauses` on, each clause it says word for word as before plays from the clause cache.
+With the echo, a repeat request, over a reply or said while the agent is silent, says again the
+last reply the caller heard any of, the one just cut included, every clause of it: its fixed
+phrases from the phrase cache, the rest through Orpheus, each clause as it was first sent (after
+the speaking rules) and in its own language, so it costs that reply's text-to-speech requests
+again (D-064, D-087). It is the reply to the request's turn, which is a command and never said
+back. Before any reply was heard, it says nothing.
 
 ## Text from silence
 

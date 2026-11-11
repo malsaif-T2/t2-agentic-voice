@@ -15,7 +15,8 @@ request at its most) would take the run past `--cap-usd`; and stops before one w
 headroom for the key's day, as the provider last reported it in a call's usage (Groq's
 `x-ratelimit-remaining-requests`), is under what one recording may send it. A recording whose
 call met a rate limit is replayed after `RATE_LIMIT_PAUSE_S`, up to `MAX_ATTEMPTS` calls, every
-call's requests counted. The phrase cache's requests are counted on each voice's pacer before
+call's requests counted, and what the clause cache did in each call, when the run has one, kept
+apart (first_audio_cache.py). The phrase cache's requests are counted on each voice's pacer before
 the first recording, each at its most characters.
 
 **The call's language** is the one the agent gives a caller whose locale is the recording's
@@ -41,6 +42,7 @@ from t2_agentic_voice.events import ModelUsage
 from t2_agentic_voice.ports import AudioClip
 
 from ole5_voice.evals.audio import read_wav, write_wav
+from ole5_voice.evals.first_audio_cache import ClauseCall
 from ole5_voice.evals.first_audio_score import AudioResult, ChatSpend, ReplayedCall, result_of
 from ole5_voice.evals.groq_answerer import GROQ_MINIMUM_S, Sleep
 from ole5_voice.evals.models import Language as ItemLanguage
@@ -93,6 +95,10 @@ class Replay(Protocol):
 
     async def start(self) -> None:
         """Start the calls' runtime once, before the first recording."""
+
+    async def clear(self) -> None:
+        """Empty the clause cache the calls speak through, its counts too, when the run keeps
+        one (run I's arm): once the smoke call has passed."""
 
     async def call(
         self,
@@ -229,16 +235,17 @@ class Measuring:
             "end": "detector" if end_ms is None else "label",
             "end_ms": end_ms,
         }
-        attempts = 0
+        attempts, clauses = 0, list[ClauseCall]()  # what the clause cache did in each call
         while True:
             attempts += 1
             call = await self._call(clip, tag, end_ms)
+            clauses += [] if call.clauses is None else [call.clauses]
             limited = any(turn.failure == "rate_limited" for turn in call.turns)
             if not limited or attempts >= MAX_ATTEMPTS:
                 break
             log.warning("variant_rate_limited", attempt=attempts, pause_s=RATE_LIMIT_PAUSE_S)
             await self.sleep(RATE_LIMIT_PAUSE_S)
-        return result_of(base, call, attempts, self._openings(todo, call))
+        return result_of(base, call, attempts, self._openings(todo, call), tuple(clauses))
 
     async def _call(self, clip: AudioClip, tag: Tag, end_ms: float | None) -> ReplayedCall:
         """One paced call, refused at the cap and at the day's headroom, its requests

@@ -135,10 +135,10 @@ class ModelUsage(_Frozen):
     """One provider model's use in one call: its requests, each counted once it went, answered
     or not (one the call's end cancelled included); for speech-to-text, the audio seconds sent
     and billed (at least 10 s a request, as Groq bills Whisper); for text-to-speech, the
-    characters sent and the phrases played from the cache, which sent nothing; for the chat
-    model, the tokens read (the cached ones among them counted again in `cached_tokens`) and
-    written, as each request's provider reported them; and the last headroom the provider
-    reported for its key."""
+    characters sent and the cache's hits, the phrases and the clauses played from the caches,
+    which sent nothing; for the chat model, the tokens read (the cached ones counted again in
+    `cached_tokens`) and written, as each request's provider reported them; and the last
+    headroom the provider reported for its key."""
 
     model: str = Field(min_length=1)
     requests: int = Field(default=0, ge=0)

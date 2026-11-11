@@ -213,9 +213,11 @@ def test_nothing_heard_is_said_again_and_a_phrase_the_cache_lacks_goes_unsaid(
         assert await session._speaker.repeat(1.0, turn_id=0) is None
 
     asyncio.run(drive())
-    lines = again(
-        io.setup, [("not a declared phrase", True), ("made-up words", False)], reply_id=3, turn_id=1
-    )
+    clauses = [  # each clause's caption, the text it sent, its language (the call's) and kind
+        ("not a declared phrase", "not a declared phrase", None, True),
+        ("made-up words", "made-up words", None, False),
+    ]
+    lines = again(io.setup, clauses, reply_id=3, turn_id=1)
     assert [(line.speak.clause, line.speak.text, line.speak.audio) for line in lines] == [
         (0, "made-up words", None)
     ]

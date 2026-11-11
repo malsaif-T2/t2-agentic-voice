@@ -1196,7 +1196,9 @@ twice; DOC-REF: every `D-NNN` cited anywhere is a heading here), so keep its sha
       keeps it under `var_dir` beside the used tokens), so a timing run builds the phrase audio
       `echo_timings` takes as the runtime does, since `testing` never imports `adapters` (the
       integrator's ruling after that check; set aside: `groq`, the cache being no Groq
-      adapter, and a builder function in `api`, a second way to build the same thing).
+      adapter, and a builder function in `api`, a second way to build the same thing). D-087
+      adds a second such name, for the same reason: `stores`' `ClauseCache`, the clause cache
+      (`ClauseCounts`, beside it, is named by its `counts`).
       `speak_digits` is held back, as no public signature names it and no app imports it in
       M2. Set aside: the 5.1 names alone, which would leave public signatures typed by names an
       app cannot import; spreading the settings groups across the facades by topic, which
@@ -1225,7 +1227,7 @@ twice; DOC-REF: every `D-NNN` cited anywhere is a heading here), so keep its sha
   `tests/harness/test_install.py`, `tests/t2_agentic_voice/test_facades.py` and
   `tests/t2_agentic_voice/test_public_types.py`.
 
-## D-033 · The echo's shape: an agent with a name and its languages, `session.mode`, a fixed frame · 2026-11-02 · Accepted (the owner, 2026-11-02, plan 003, Q3, and the design's 4.3 for the pronunciation map; one bullet Proposed)
+## D-033 · The echo's shape: an agent with a name and its languages, `session.mode`, a fixed frame · 2026-11-02 · Accepted (the owner, 2026-11-02, plan 003, Q3, and the design's 4.3 for the pronunciation map; one bullet Proposed; amended by D-087 for a talker's clauses)
 
 - **Context:** M2 has no talker: the voice session says back what it heard (the design's 16.1:
   "the voice session in echo mode", and `examples/minimal` "as an echo use case"). The design
@@ -1332,7 +1334,10 @@ twice; DOC-REF: every `D-NNN` cited anywhere is a heading here), so keep its sha
       under which a long greeting of short sentences sent a burst at start that Groq's
       published 10 requests a minute refuses (the check of Block 0's fixes); and a default
       delay of the cache's own, a number nobody gave (GP-16). Caching talker clauses that
-      repeat exactly (the design's 10.4) is M4's to decide.
+      repeat exactly (the design's 10.4) was left for later: D-087 keeps every clause a talker
+      call speaks in a cache of its own, the clause cache, never the echo's words, keyed on the
+      text sent as this bullet keys a phrase. The phrase cache still holds only the declared
+      phrases.
     - The session and the phrase cache, not the text-to-speech adapter the design's 3.1 gives
       them to, say text through the pronunciation map and cut it into clauses. The session
       applies `pronounce` with `agent.pronounce`, in the call's language, to a reply's text
@@ -3131,3 +3136,162 @@ twice; DOC-REF: every `D-NNN` cited anywhere is a heading here), so keep its sha
   `tests/t2_agentic_voice/voice/session/test_talker_questions.py`,
   `tests/t2_agentic_voice/testing/test_parity.py`,
   `tests/t2_agentic_voice/core/test_settings_talker.py`.
+
+## D-087 · Every clause a talker call speaks kept on disk by its exact text, behind a setting · 2026-11-11 · Accepted (the owner's rulings of 2026-11-10 and approval of 2026-11-11, plan 007's Block I; `tts.cache_clauses` off by default until run I's keep rule)
+
+- **Context:** each clause of a reply is one request to Orpheus, Groq's text-to-speech, which
+  streams its audio back. Only the fixed phrases (greetings, notices, progress lines) were made
+  once and played from disk (the phrase cache, D-033), and D-033 left caching the talker's
+  clauses for later. A clause said again cost a request again: one of Groq's published 10 a
+  minute a model (the design's 10.4) and about 0.25 s of waiting for its first audio (plan 003).
+  The owner ruled on 2026-11-10, in the roadmap: "we should cache everything we can, because all
+  of it is what the agent generated and we have full access to it and since we would an exact
+  match, no user will hear the info of another"; and "make it on disk without consent, because
+  this what our agent produced". Plan 007's Block I drafted the cache with five questions. Asked
+  "Approve Blocks H and I with my recommendations for Q15 to Q25 and the downloads?", the owner
+  answered on 2026-11-11 "Approve both", so each is its option (a): every clause a talker call
+  speaks is kept, a passage it reads, an action's read-back, its sending line and its outcome
+  among them, never the echo's words (Q21); one run T arm measures it (Q22); it lives under
+  `storage.var_dir/<agent name>/clauses/`, at most 512 MB, the clauses played longest ago
+  removed past it (Q23); the key has no "speaking rules' version", since it holds the text sent
+  (Q24); and run I's keep rule, if it passes, turns the library's default on for every team
+  (Q25).
+- **Decision:**
+  - **The settings** (`core/settings/tts.py`): `tts.cache_clauses`, False by default, and
+    `tts.clause_cache_mb`, at least 1, 512 by default (a megabyte is 1,000,000 bytes). No folder
+    setting: the cache is `storage.var_dir/<agent name>/clauses/`, beside `phrases/`.
+  - **The cache** (`adapters/clause_cache.py`, with `clause_files.py`, its folder and its index,
+    and `clause_counts.py`, its counts): `ClauseCache` is a `TextToSpeech` that wraps another and
+    meets `HeldSpeech`, a protocol beside the port (`domain/ports/text_to_speech.py`) with one
+    method, `held(text, *, language)`. The port is unchanged, so `GroqTTS`, a team's adapter and
+    every fake stay as they are. It is built with no IO (`ClauseCache(tts, *, folder, voices,
+    trim_silence, max_mb)`, or `from_settings`); `open` reads its folder; `aclose` lets its
+    writer finish, at most 5 s, drops the rest, and never closes the adapter it wraps.
+  - **The key** is a SHA-256 of the files' format tag, the wrapped adapter's `name`, the language
+    tag, that language's model and voice, `tts.trim_silence`, and the text exactly as the provider
+    is sent it, hashed from a JSON list so two inputs cannot run together, cut to 32 hex
+    characters. The text sent comes after the speaking rules, the pronunciation map and
+    `provider_text`, so a change to any of them that changes a clause's words changes its key
+    (Q24); D-033's rule of keying on the text sent, never the text written, is the clause
+    cache's too. With the adapter's name in it, a take one adapter made never plays for another.
+  - **Keeping a take.** `synthesize` passes each chunk on at once, unchanged, and keeps a copy.
+    Only once the stream has ended whole is the take queued: one sample rate, some audio, no
+    chunk cut short, at most 4 MB. A take that raised, came back cut short, gave no audio or was
+    stopped is never kept. `synthesize` never serves a held take: the bridge asks `held` first.
+  - **Writing.** One writer task, its queue at most 64 takes (a full queue drops the take); each
+    write in a thread, to a temporary name and then renamed (`adapters/wav_files.py`, which the
+    phrase cache now uses too). Two takes of one clause at once: the first is kept, the second
+    is counted as held.
+  - **Reading.** At `open`, in a thread, each take file of its own naming is an entry, and each
+    temporary file of its own naming is removed; nothing else in the folder is read, touched or
+    removed (GP-21). The index lives in memory, so a miss is a dictionary look-up. A hit is read
+    in a thread within 100 ms, else it is a miss and the clause is requested as before. A file is
+    a take only when it reads as the cache writes one (a mono 16-bit WAV, its frames matching its
+    header, at most 4 MB); anything else is a miss, its entry dropped and its file removed.
+    `held` never raises.
+  - **The bound.** Past `tts.clause_cache_mb`, the writer removes the takes played longest ago
+    until under nine tenths of it; a hit moves its take last and touches its file. A file the
+    system will not let go of stays for the next round, and the trim goes on down the order, so
+    the bound holds, the take just written included.
+  - **`clear()`** removes every take it keeps (its own files, in its own folder) and resets its
+    counts. **`counts()`** and **`taken()`** (which also resets them) give a frozen
+    `ClauseCounts`: hits, misses, takes kept, takes not kept by why, unreadable files, failed
+    writes, takes removed, the entries and megabytes held, and each look-up's seconds, hits' and
+    misses' apart; no text and no key.
+  - **The bridge** (`voice/tts_bridge.py`) checks once, when it is built, whether its
+    text-to-speech holds speech. If so, a clause with text and no fixed audio asks `held` first.
+    A take it gets plays as a fixed phrase plays, with no `Synthesizing` and no request, once the
+    bridge has checked again that no stop dropped the clause while it was read; its
+    `ClauseQueued` is marked `held`. With any other text-to-speech nothing is looked up.
+  - **The session's counts** (`voice/session`). A held clause is a cache hit but never a fixed
+    phrase: `Clause` gains `held` beside `cached`, the reply's span counts `cached or held` as its
+    `cache_hits`, and the call's usage counts the hit with no characters.
+  - **A reply said again says what was sent** (not behind the setting, since it corrects what a
+    caller hears). `Clause` gains `sent`, the request's text, and its own language. The repeat
+    (`Speaker.repeat`, the echo's `again`) sends each clause's `sent` text in its own language,
+    the call's when it has none, where it used to send the caption in the call's language. So
+    a repeat says each clause as it was first said (the speaking rules applied, an English clause
+    of an Arabic call in the English voice), and finds its held takes.
+  - **The composition** (`api/voices.py`): it declares the phrase cache on the providers'
+    text-to-speech, then, with `tts.cache_clauses` on and an agent whose calls run the talker
+    (`settings.session.mode_for`), builds and opens the clause cache over it and pushes the
+    cache's own close on the runtime's stack; otherwise the calls get the providers'
+    text-to-speech itself. An echo agent's calls never have one: the echo says the caller's words
+    back, which the owner's reason ("what our agent produced") does not cover. An `OSError`
+    making or reading the folder at the start stops the runtime's start, as the phrase cache's
+    does.
+  - **Public:** `ClauseCache` and `ClauseCounts` in the `stores` facade beside `PhraseCache`, so
+    a timing run builds the cache as the runtime does. D-032's sentence on `stores` is amended
+    with it: `ClauseCache` is the second public name no public signature names
+    (`ClauseCounts` is named by `counts()`).
+  - **Logs:** `clause_cache_opened`, `clause_cache_closed`, `clause_cache_trimmed`,
+    `clause_unreadable`, and `clause_write_failed`, `clause_lookup_failed` and
+    `clause_writer_failed` with the error's type only: never a text and never a key, since a key
+    is a hash of a short text that can be guessed back (GP-19).
+  - **What it never does:** keep the caller's audio or the echo's words; keep a take that
+    failed, was cut short, gave no audio or was stopped; play a take for any text but the one it
+    was made from, in the same language, model, voice, adapter and trimming; send a request of
+    its own; fail or delay a clause on a disk error (a miss, then the request); write outside
+    its folder, or remove a file not of its own naming; ask consent (the owner's ruling); log a
+    text or a key.
+  - **Ole5's part: run T's arm only** (run I, plan 007's measurement). `poe first-audio` gains
+    `--clause-cache on|off`, off by default, refused for held-out. On, the run pins
+    `tts.cache_clauses` true in its recorded settings and the replay builds the cache, new, in
+    the run's folder (`<out>/clauses`), over its counting voice, so the voice counts only the
+    requests a miss sends. The replay opens it before its start says the progress lines, takes
+    its counts once each call has ended, and drains it at its close; the run clears it once the
+    smoke call has passed, so the first measured call starts cold. A recording's attempts keep
+    their counts apart, and one replayed after a rate limit is left out of the shares. The
+    scorecard and the history line hold the run's numbers (`ole5_voice/evals/first_audio_cache.py`):
+    the hits' shares in each item's first variant and in the rest, the look-ups' times, Orpheus's
+    own first audio beside them, the turns whose first clause was held, the requests per call
+    minute with and without the hits, the takes, and the keep rule's first four conditions. Ole5
+    sets nothing in its own settings or server until the keep rule says so.
+- **"No user will hear the info of another."** The audio is a function of the key alone, and the
+  key holds the whole text, so a hit says exactly the words the agent is saying to this caller
+  now. A ticket number reaches speech only in an outcome line, unique to its ticket, or in the
+  last four digits of the caller's own tickets (invariant 3). A read-back is heard again only by
+  a caller whose read-back is the same word for word. Said plainly: a hit starts sooner than a
+  request, so a caller who can make the agent say a clause exactly could tell whether it was said
+  in some call since it was last removed. The agent judged it negligible and proposed nothing
+  (the owner's rule of 2026-11-03, no hardening rounds). At rest, the cache keeps the agent's
+  words from calls as audio, read-backs of callers' requests among them; the traces keep the
+  same text already (D-079).
+- **The invariants.** D-033 is amended: "Text built from heard words never reaches the phrase
+  cache" stays true of the phrase cache, which holds only the declared phrases; the clause cache
+  keeps every clause a talker call speaks (a read-back too), never the echo's words, and this
+  closes D-033's sentence that left caching talker clauses for later. Invariant 8
+  (`docs/SECURITY.md`) gains a sentence: the agent's own synthesized voice (the phrase cache and
+  the clause cache) is not call audio and is kept with no consent, though the clause cache's
+  takes say the agent's words of a call; SECURITY.md's trust boundaries gain a row for call
+  content at rest under `storage.var_dir`. Invariant 2 holds: the guard reads each clause
+  before it is asked for, and a hit plays exactly that text's audio; Block G's filter sits
+  before both (D-084). Invariant 3 holds: the cache gives no tool or caller anything. Invariant
+  7's lock file keeps one writer a folder. D-066 and D-067 are not touched.
+- **Why off by default:** GP-18. A characterization test proves the path with the setting off
+  unchanged, and the existing text-to-speech, speaker, session and run T tests pass unchanged.
+  Run I (plan 007's measurement, `i1-dev-120b`) reads, on run T's dev split, the hits, the
+  Orpheus requests saved, each look-up's time and the time to first audio; only if all five of
+  its keep rule's conditions hold does `tts.cache_clauses` become True by default for every team
+  (Q25). Otherwise the default stays off, the result is recorded, and the cache stays for a team
+  to turn on.
+- **Consequences:** a team that turns it on keeps the agent's words of its calls as audio under
+  `var_dir`, at most `tts.clause_cache_mb`, removed only past the bound or with the folder; the
+  guide's data-and-privacy page says so. `ModelUsage.cache_hits` (public) now counts held
+  clauses too, so a call with the cache sends fewer `requests` and `characters`; a turn's
+  `tts_first_audio_ms` is the first requested clause's, so a held first clause moves it to the
+  next or leaves it empty. One bad take (clipped or mispronounced, but not flagged cut short)
+  plays to every caller who gets that text until it is removed, and the same if Groq changes a
+  model under its name: the remedy is to delete the folder. The phrase cache's key still leaves
+  out `tts.trim_silence` and the adapter (TD-061). `ClauseQueued` gains a field with a default,
+  `stores` two names, and the phrase cache's reading now refuses a file whose header counts more
+  frames than its data. No public event, `TurnRecord`, `CallReport` or `t2v/1` message changes.
+- **Evidence:** plan 007's Block I, "Run I" in its measurement, and "The owner's decisions" (Q21
+  to Q25); the tests `tests/t2_agentic_voice/adapters/test_clause_cache.py`,
+  `tests/t2_agentic_voice/adapters/test_clause_cache_files.py`,
+  `tests/t2_agentic_voice/voice/test_tts_bridge_held.py`,
+  `tests/t2_agentic_voice/voice/session/test_held_clauses.py`,
+  `tests/t2_agentic_voice/testing/test_audio_call_clauses.py`,
+  `tests/t2_agentic_voice/core/test_settings_clause_cache.py`,
+  `tests/t2_agentic_voice/api/test_runtime.py`, and Ole5's
+  `tests/ole5_voice/evals/test_first_audio_cache.py`.

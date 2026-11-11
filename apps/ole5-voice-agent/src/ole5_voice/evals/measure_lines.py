@@ -5,8 +5,9 @@ stopped beside the arm's, the arm's time to an answer and the keep rule (an over
 the arm's numbers alone); and `FirstAudioLine` for a `poe first-audio` run, with each path's
 times, the replies whose progress line began late, every target, and the two starts of time
 apart (Q18: the owner's marked end, `label`, and the speech detector's stop, `detector`), where
-a timing line holds medians alone. Each counts its requests by model, so a later run's pacers
-start the day's count from them (`run_folder.requests_today`).
+a timing line holds medians alone, and, for a run with the clause cache (run I's arm), its
+numbers (first_audio_cache.py's `ClauseSummary`). Each counts its requests by model, so a later
+run's pacers start the day's count from them (`run_folder.requests_today`).
 
 Strict as every history line: a held-out run's groups each cover at least `HELD_OUT_MIN_ITEMS`
 items, and a secret setting is shown only as set or not set.
@@ -20,6 +21,7 @@ from typing import Annotated, Literal, Self
 
 from pydantic import Field, model_validator
 
+from ole5_voice.evals.first_audio_cache import ClauseSummary
 from ole5_voice.evals.first_audio_score import PathStats, ReplyPath
 from ole5_voice.evals.models import Commit, Model, Name, Sha256, Split
 from ole5_voice.evals.runs import HELD_OUT_MIN_ITEMS, Note, Plain, Shown
@@ -101,8 +103,9 @@ class FirstAudioLine(Model):
     """One line of `history.jsonl` for a `poe first-audio` run (the module's docstring): its
     agent, whether its tools were left out, its settings and split; its recordings, those cut,
     failed, unanswered and never heard; each path's times, the progress lines and those begun
-    late; whether each target held; the numbers by where the time starts; and every model's
-    requests, the voices' characters, Whisper's billed seconds, the prices and the cost."""
+    late; whether each target held; the numbers by where the time starts; every model's
+    requests, the voices' characters, Whisper's billed seconds, the prices and the cost; and the
+    clause cache's numbers, when the run had one."""
 
     kind: Literal["first_audio"] = "first_audio"
     time: datetime
@@ -132,6 +135,7 @@ class FirstAudioLine(Model):
     tts_price_per_million_usd: dict[ModelName, _Usd]
     chat_price_per_million_usd: dict[Name, _Usd]  # input, cached and output
     cost_usd: _Usd
+    clause_cache: ClauseSummary | None = None
     scorecard: str
     data_digest: Sha256
     note: Note

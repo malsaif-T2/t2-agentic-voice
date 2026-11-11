@@ -22,20 +22,21 @@ plan's interfaces".
   start rather than at the first join; builds the providers (the chat model among them, whose
   connection pool it keeps open for every call's requests and closes on its way out) and
   tracing; warms the adapters with no request (the platform detection the Groq SDK runs before
-  its first request, TD-012, the chat adapter's included);
-  has the phrase cache declare the agent's fixed phrases (`PhraseCache.declare(agent)`, under
-  `storage.var_dir/<agent name>/phrases`), which synthesizes those it lacks one request at a
-  time; opens the used-token store (`storage.var_dir/<agent name>/used_tokens.sqlite3`); for an
-  agent that declares actions, opens its one action runner on its outbox there and reconciles
-  the rows left `sending` (api/actions.py), each call's talker given it, and each call's record
-  let go as the call ends (`CallEnded`); and
-  starts voice's entry point (`VoiceCalls.start`), which builds Silero and Smart Turn there,
-  never at import (item 24). On its way out it ends every call (`Calls.aclose`, each peer's
-  close bounded by voice: item 20), gives the observers the events still queued (at most
-  `OBSERVER_TIMEOUT_S`), closes the store, tracing and each adapter (`aclose`), and releases the
-  lock; what it opened before a failure at start is closed the same way. It runs once at a time:
-  a second entry while it runs (a router included twice) is a ConfigurationError. No error it
-  raises holds a secret: Starlette sends its traceback's text to uvicorn's error log.
+  its first request, TD-012, the chat adapter's included); opens the agent's voices
+  (api/voices.py: the phrase cache declares its fixed phrases under `storage.var_dir/<agent
+  name>/phrases`, and, with `tts.cache_clauses` on for a talker agent, the clause cache opens
+  under `<agent name>/clauses`); opens the used-token store (`<agent name>/used_tokens.sqlite3`);
+  for an agent that declares actions, opens its one action runner on its outbox there and
+  reconciles the rows left `sending` (api/actions.py), each call's talker given it, and each
+  call's record let go as the call ends (`CallEnded`); and starts voice's entry point
+  (`VoiceCalls.start`), which builds Silero and Smart Turn there, never at import (item 24),
+  the calls speaking through the voices' text-to-speech. On its way out it ends every call
+  (`Calls.aclose`, each peer's close bounded by voice: item 20), gives the observers the events
+  still queued (at most `OBSERVER_TIMEOUT_S`), closes the store, tracing, the clause cache and
+  each adapter (`aclose`), and releases the lock; what it opened before a failure at start is
+  closed the same way. It runs once at a time: a second entry while it runs (a router included
+  twice) is a ConfigurationError. No error it raises holds a secret: Starlette sends its
+  traceback's text to uvicorn's error log.
 - **The router** (api/router.py) serves, after its prefix, the `t2v/1` routes, `POST /join`,
   `POST` and `PATCH /offer` (each with the call's offer secret, in the `X-T2V-Offer-Secret`
   header or the body, never in a URL), and `GET /health` (what the design's 10.5 lists that is
@@ -107,6 +108,7 @@ from t2_agentic_voice.api.lockfile import LockFile
 from t2_agentic_voice.api.offers import FORGOTTEN_KEPT_S, CallRecords
 from t2_agentic_voice.api.providers import Providers, talkers
 from t2_agentic_voice.api.router import Running
+from t2_agentic_voice.api.voices import open_voices
 from t2_agentic_voice.core.config import VoiceSettings
 from t2_agentic_voice.core.errors import ConfigurationError
 from t2_agentic_voice.core.events import CallEnded, Event
@@ -254,7 +256,6 @@ class VoiceRuntime:
 
     async def _start(self, stack: AsyncExitStack) -> None:
         """Start the runtime, each part's close pushed on `stack` as it is opened."""
-        from t2_agentic_voice.adapters.phrase_cache import PhraseCache
         from t2_agentic_voice.adapters.used_tokens import SqliteUsedTokens
 
         settings, agent = self._settings, self._agent
@@ -270,8 +271,7 @@ class VoiceRuntime:
         stack.push_async_callback(asyncio.to_thread, tracing.shutdown)
         await asyncio.to_thread(_warm)
         folder = settings.storage.var_dir / agent.name
-        phrases = PhraseCache.from_settings(settings, providers.tts, folder=folder / "phrases")
-        requests = await phrases.declare(agent)
+        voices = await open_voices(agent, settings, providers.tts, stack=stack)
         used_tokens = await SqliteUsedTokens.open(folder / "used_tokens.sqlite3")
         stack.push_async_callback(used_tokens.aclose)
         self._events = asyncio.Queue(OBSERVER_QUEUE)
@@ -287,8 +287,8 @@ class VoiceRuntime:
             agent=agent,
             settings=settings,
             stt=providers.stt,
-            tts=providers.tts,
-            phrases=phrases,
+            tts=voices.tts,
+            phrases=voices.phrases,
             tracing=tracing,
             emit=self._emit,
             clock=self._clock,
@@ -300,7 +300,7 @@ class VoiceRuntime:
         sweeping = asyncio.create_task(self._sweep(calls))
         stack.push_async_callback(_cancelled, sweeping)
         self._running = Running(calls=calls, used_tokens=used_tokens)
-        log.info("runtime_started", agent=agent.name, phrase_requests=requests)
+        log.info("runtime_started", agent=agent.name, phrase_requests=voices.phrase_requests)
         if not self._served:
             log.info(
                 "router_mounted",
