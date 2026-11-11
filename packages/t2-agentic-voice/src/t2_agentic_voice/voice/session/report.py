@@ -75,7 +75,9 @@ class TurnLog:
     and the first audible frame sent once the output taps any: `audio_seen`), its first progress
     line's apart, the browser's playback of it, and the chat model's first token are its times'
     ends. While a chat model's word on its answer to a read-back is awaited (yes_ask.py) it is
-    `judging`: neither answered nor settled yet."""
+    `judging`: neither answered nor settled yet. `stray_characters` counts the characters the
+    stray-script filter took out of, or rewrote in, what its reply's model requests wrote, and
+    `stray_scripts` labels their kinds (agent/stray_script.py), never a character."""
 
     turn_id: TurnId
     speech_at: float | None = None
@@ -107,6 +109,8 @@ class TurnLog:
     tts_first_audio_s: float | None = None
     judging: bool = False
     done: bool = False
+    stray_characters: int = 0
+    stray_scripts: tuple[str, ...] = ()
 
     @property
     def transcribed(self) -> bool:
@@ -162,7 +166,8 @@ class TurnLog:
         )
 
     def outcome(self) -> dict[str, str | bool | int | float]:
-        """Its outcome and times as span attributes: no text."""
+        """Its outcome and times as span attributes: no text. A turn whose reply lost a
+        character to the stray-script filter says how many and their labels, comma-separated."""
         found: dict[str, str | bool | int | float] = {
             "turn.dropped": self.dropped,
             "turn.stopped": self.stopped,
@@ -170,6 +175,9 @@ class TurnLog:
         }
         times = self.times().model_dump(exclude_none=True)
         found |= {f"turn.{name}": value for name, value in times.items()}
+        if self.stray_characters:
+            found["turn.stray_characters"] = self.stray_characters
+            found["turn.stray_scripts"] = ",".join(self.stray_scripts)
         return found
 
 

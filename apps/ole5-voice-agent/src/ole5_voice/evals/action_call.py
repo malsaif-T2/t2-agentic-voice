@@ -61,10 +61,14 @@ class Expect(Protocol):
 
 
 class ActedTurn(Turn, Protocol):
-    """What a run reads of one of a call's turns (`TextTurn`'s data), and its checks."""
+    """What a run reads of one of a call's turns (`TextTurn`'s data), and its checks: among
+    them, how many characters the stray-script filter took out of, or rewrote in, what the
+    talker wrote (D-084)."""
 
     @property
     def expect(self) -> Expect: ...
+    @property
+    def stray_characters(self) -> int: ...
 
 
 class ActionCall(Protocol):
@@ -112,16 +116,18 @@ class TurnFound(Model):
 
 @dataclass(frozen=True)
 class Acted:
-    """What a call did: each turn as heard and what came after it, in order, and the
-    violations the call's checks found (`TextCall.violations`); for a call that could not go
-    on (`failure`), the turns said before it stopped, and how many more were being said then
-    (`unread`)."""
+    """What a call did: each turn as heard and what came after it, in order, the violations
+    the call's checks found (`TextCall.violations`), and the characters the stray-script filter
+    took out of what the talker wrote in those turns (`stray_characters`); for a call that
+    could not go on (`failure`), the turns said before it stopped, and how many more were being
+    said then (`unread`)."""
 
     turns: tuple[HeardTurn, ...]
     found: tuple[TurnFound, ...]
     violations: tuple[str, ...]
     failure: Stuck | None = None
     unread: int = 0
+    stray_characters: int = 0
 
 
 def _holds(check: Callable[..., None], *args: Any) -> bool:
@@ -206,6 +212,7 @@ class _Saying:
             violations=held.violations,
             failure=failure,
             unread=self.begun - len(self.said),
+            stray_characters=sum(turn.stray_characters for turn in self.said),
         )
 
 

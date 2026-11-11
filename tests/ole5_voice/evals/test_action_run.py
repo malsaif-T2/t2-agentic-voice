@@ -78,6 +78,7 @@ def test_a_dev_run_plays_each_scenario_three_times_evenly_after_a_smoke_test(
     assert isinstance(line, ActionLine) and line == copy and line.split == "dev"
     assert line.plays == plays and line.requests[TALKER] > plays and line.requests[JUDGE] > plays
     assert line.estimate_usd == card.run.estimate_usd > 0
+    assert line.stray_characters == card.totals.stray_characters == 0  # the oracle writes none
 
 
 def test_a_held_out_run_keeps_its_aggregates_only(setup: ActionSetup) -> None:
@@ -89,6 +90,7 @@ def test_a_held_out_run_keeps_its_aggregates_only(setup: ActionSetup) -> None:
     assert not (setup.out("a-held-out") / "plays").exists()
     ((line, _), _) = setup.lines.lines
     assert isinstance(line, ActionLine) and line.split == "held-out" and line.passed == {}
+    assert line.stray_characters == card.totals.stray_characters == 0  # the total, held-out's too
     assert setup.oracle.heard[0] == committed()[0].turns[0].says  # its smoke test is dev's
 
 

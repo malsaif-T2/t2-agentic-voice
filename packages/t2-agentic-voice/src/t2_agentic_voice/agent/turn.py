@@ -8,15 +8,18 @@ turn and the call as it was heard to the events the session plays, within the re
   after a tool result of the turn ends with a line naming the reply's language (prompt.py's
   `reply_line`). At most `MAX_REQUESTS` a turn: each but the last offers the agent's tools, the
   last none, so the turn ends in words, told so and holding the results with the calls that
-  asked for them dropped (`_without_calls`); a tool call the last one makes anyway is not run.
-- **Speech as it is written.** The model's text goes through the clause splitter as it streams
-  (`ClauseStream`), any note of the history's it copied taken out first (agent/context.py's
-  `Unnoted`), and each whole clause, once the output guard passed it (agent/speech_guard.py:
-  rule A on claims, for an agent with actions, then rule B against the evidence seen this
-  call: its tools' results, the call's record, the caller's heard words), is yielded at once.
-  A blocked one is `ClauseBlocked`, with its rule's reason, and by `guard.on_block` the rest of
-  the reply goes with it (`drop_rest`: no more clause, request or tool) or only it; the next
-  turn's history holds a developer note.
+  asked for them dropped (agent/context.py's `without_calls`); a tool call the last one makes
+  anyway is not run.
+- **Speech as it is written.** Each piece the model writes, and each tool call's arguments, are
+  filtered first (agent/stray_script.py: no script the agent's languages do not write), so all
+  that follows reads one text; a clause the filter left with no letter or digit is none. The
+  text goes through the clause splitter as it streams (`ClauseStream`), any note of the
+  history's it copied taken out first (agent/context.py's `Unnoted`), and each whole clause,
+  once the output guard passed it (agent/speech_guard.py: rule A on claims, for an agent with
+  actions, then rule B against the evidence seen this call: its tools' results, the call's
+  record, the caller's heard words), is yielded at once. A blocked one is `ClauseBlocked`, with
+  its rule's reason, and by `guard.on_block` the rest of the reply goes with it (`drop_rest`:
+  no more clause, request or tool) or only it; the next turn's history holds a developer note.
 - **Tools** (agent/tool_calls.py). Each call the model asks for starts at once, in the reply's
   scope, and runs through the runner; the first with a progress line gives it, for the
   session to say if the wait runs long (one a reply); each result goes back to the model
@@ -62,6 +65,7 @@ from t2_agentic_voice.agent.context import (
     declined_note,
     history,
     turn_message,
+    without_calls,
 )
 from t2_agentic_voice.agent.events import (
     ClauseBlocked,
@@ -81,6 +85,7 @@ from t2_agentic_voice.agent.prompt import (
     with_first_line,
 )
 from t2_agentic_voice.agent.speech_guard import SpeechGuard
+from t2_agentic_voice.agent.stray_script import StrayScript
 from t2_agentic_voice.agent.tool_calls import Memory, ToolCalls, exchange
 from t2_agentic_voice.core.clock import Clock
 from t2_agentic_voice.core.config import VoiceSettings
@@ -109,21 +114,6 @@ _log = get_logger(__name__)
 MAX_REQUESTS = 3
 # The models that take a reasoning effort (`llm.reasoning_effort`); the others are sent none.
 _REASONING = frozenset({"openai/gpt-oss-120b", "openai/gpt-oss-20b"})
-
-
-def _without_calls(messages: Sequence[ChatMessage]) -> list[ChatMessage]:
-    """`messages` for a request that offers no tool: each result kept, framed as it was, and the
-    calls that asked for them dropped. A model that can read its own calls sometimes writes
-    another, which Groq refuses when the request offers none (run K, D-075)."""
-    kept: list[ChatMessage] = []
-    for message in messages:
-        if message.role == "tool":
-            kept.append(ChatMessage.system(message.content))
-        elif not message.tool_calls:
-            kept.append(message)
-        elif message.content:
-            kept.append(ChatMessage.assistant(message.content))
-    return kept
 
 
 @dataclass
@@ -189,6 +179,7 @@ class Turn:
             memory=memory,
             heard=self.heard,
         )
+        self.scripts = StrayScript.of(agent, settings)
         self.tools = ToolCalls(
             runner=runner,
             ctx=self.ctx,
@@ -231,8 +222,13 @@ class Turn:
                     yield event
             finally:
                 await asked.aclose()
+            stray, scripts = self.scripts.take()
             yield ModelReplied(
-                model=request.model, usage=answer.usage, first_token_s=answer.first_token_s
+                model=request.model,
+                usage=answer.usage,
+                first_token_s=answer.first_token_s,
+                stray_characters=stray,
+                stray_scripts=scripts,
             )
             if self.stopped or not answer.calls:
                 break
@@ -275,7 +271,7 @@ class Turn:
         if llm.vary_first_line:  # so no two requests share a cached prefix (the setting's text)
             messages = [ChatMessage.system(with_first_line(messages[0].content)), *messages[1:]]
         if not tools:
-            messages = _without_calls(messages)
+            messages = without_calls(messages)
         if after_tools:  # the request's own line, never kept in the turn's messages
             line = reply_line(self.language, self.register, last=not tools)
             messages = [*messages, ChatMessage.system(line)]
@@ -306,8 +302,9 @@ class Turn:
                     ):
                         answer.first_token_s = max(0.0, self.clock.now() - started)
                     if isinstance(event, TextDelta) and not acted:
-                        answer.text += event.text
-                        for said in self._said(splitter.feed(unnoted.feed(event.text))):
+                        piece = self.scripts.text(event.text)
+                        answer.text += piece
+                        for said in self._said(splitter.feed(unnoted.feed(piece))):
                             yield said
                         if self.stopped:
                             return
@@ -315,7 +312,7 @@ class Turn:
                         dropped = dropped or bool(event.text.strip())
                     elif isinstance(event, ToolCallRequest):
                         if all(event.id != known.id for known in answer.calls):  # each id once
-                            answer.calls.append(event)
+                            answer.calls.append(self.scripts.call(event))
                         acted = acted or self.tools.is_action(event.name)
                     elif isinstance(event, Usage):
                         answer.usage = event
@@ -351,6 +348,8 @@ class Turn:
         for text in clauses:
             if self.stopped:
                 break
+            if self.scripts.changed and not any(char.isalnum() for char in text):
+                continue  # the filter left it nothing to say: never a clause said as silence
             checked = self.guard.check(text)
             if checked.passed:
                 events.append(SpokenClause(text=text, language=self.language))

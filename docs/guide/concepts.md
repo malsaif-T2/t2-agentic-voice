@@ -717,6 +717,7 @@ T2V_TURNS__COMPLETE_HOLD_MS=0
 | `T2V_GUARD__ID_PATTERNS` | none | More ID shapes, as a JSON list of regular expressions |
 | `T2V_GUARD__ON_BLOCK` | `drop_rest` | What a blocked clause drops: the rest of the reply, or only it (`drop_clause`) |
 | `T2V_GUARD__CLAIMS` | none | Phrases added to each language's default list of what claims any action |
+| `T2V_GUARD__REMOVE_STRAY_SCRIPT` | true | Whether a script none of the agent's languages writes, and each emoji, is taken out of what the talker writes before the guard reads it ([languages.md](languages.md), "Scripts a reply may hold") |
 | `T2V_WORDS__YES`, `__SEND` | none | Your words, added to each language's yes and send words, which the yes rule reads |
 | `T2V_LIMITS__ACTIONS_PER_CALLER_PER_DAY` | 20 | How many of one action one caller may have done in a day; past it, the action is refused before its read-back |
 | `T2V_INTERRUPTIONS__MODE` | `two_step` | `two_step`: the two-step interruption; `drop`: speech over a reply is not answered |

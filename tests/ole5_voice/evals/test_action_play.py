@@ -243,6 +243,16 @@ def test_a_claim_the_model_makes_with_no_action_is_blocked_and_never_heard(parts
     assert record.violations == () and record.made == 0
 
 
+def test_a_plays_record_counts_what_the_filter_took_out_of_its_replies(parts: _Playing) -> None:
+    """A reply holding a Chinese character and an emoji is heard without them, the play scored
+    as before, and its record counts the two (D-084)."""
+    words = SCENARIOS["a11_no_english"].turns[1].says
+    parts.oracle.says[words] = said("Okay重. How else can I help you today😀?")
+    record = parts.play("a11_no_english")
+    assert record.stray_characters == 2 and record.passed is True
+    assert record.turns[1].said == "Okay. How else can I help you today?"
+
+
 @pytest.mark.parametrize(
     "scenario", ["a29_fake_number_passage_msa", "a30_fake_number_passage_saudi"]
 )

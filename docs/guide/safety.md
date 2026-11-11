@@ -12,13 +12,13 @@ agent:
 This page says how each rule decides, what the library guarantees, and what stays yours. The
 invariants themselves are in [SECURITY.md](../SECURITY.md). How to declare an action, and what
 happens around its write, is [tools-and-actions.md](tools-and-actions.md); testing your actions
-is [testing.md](testing.md). Why each rule works as it does is D-080, D-081 and D-082 in
-[decisions.md](../design/decisions.md), and plan 007.
+is [testing.md](testing.md). Why each rule works as it does is D-080, D-081, D-082 and D-084
+in [decisions.md](../design/decisions.md), and plan 007.
 
 **Status.** Built and tested on fake models and fake backends: the yes rule, the model check of
-the words its lists leave unplaced (off unless an agent asks for it), and the guard's ID and
-claim rules. Plan 007's scenario runs and its live calls on real speakers have not been made
-yet, so no rate on this page is measured on real callers.
+the words its lists leave unplaced (off unless an agent asks for it), the guard's ID and claim
+rules, and the stray-script filter before them. Plan 007's scenario runs and its live calls on
+real speakers have not been made yet, so no rate on this page is measured on real callers.
 
 ## Words used on this page
 
@@ -251,6 +251,17 @@ are not read: the greetings, the notices, the progress lines, and an action's re
 (which the caller hears read back) or from the write's real result, so the `done` line may say
 the number your system returned.
 
+**What the guard reads** is the text as the stray-script filter left it (D-084;
+[languages.md](languages.md), "Scripts a reply may hold"). Before anything reads what the talker
+writes, each character of a script none of your agent's languages writes, and each emoji, is
+taken out, and a fullwidth form or another script's digit is written as its plain form; a tool
+call's string values get the same, never its keys. The guard then reads the text that is said,
+so a stray character cannot hide a claim from it, and the order is a safety rule: «تم重 إنشاء
+طلبك» would pass the claim rule as two words if the guard read it first, then be said as «تم
+إنشاء طلبك». The same goes for numbers: "12重34重5" is read as 12345, and "４５：２１" as "45:21".
+`T2V_GUARD__REMOVE_STRAY_SCRIPT=false` turns the filter off, and the guard reads the text as the
+model wrote it.
+
 ### The ID rule
 
 An ID-shaped number is said only with evidence from this call. It runs for every agent, with or
@@ -453,5 +464,6 @@ entry left makes the check fail, which asks the caller again rather than failing
 | `T2V_GUARD__MIN_ID_DIGITS` | 3 | The fewest digits in a row that count as an ID |
 | `T2V_GUARD__ID_PATTERNS` | none | More ID shapes, as a JSON list of regular expressions |
 | `T2V_GUARD__ON_BLOCK` | `drop_rest` | What a blocked clause drops: the rest of the reply, or only it (`drop_clause`) |
+| `T2V_GUARD__REMOVE_STRAY_SCRIPT` | true | Whether a script none of the agent's languages writes, and each emoji, is taken out of what the talker writes before the guard reads it |
 
 Every setting is in the generated [settings reference](../generated/settings.md).

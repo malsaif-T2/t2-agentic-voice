@@ -282,8 +282,8 @@ may judge a yes in words no list holds, within rails the yes rule keeps.
   that does not ask is unchanged, and the rehearsal's step 6 («نعم أرسلها», listed) asks
   nothing.
 
-**Block G, no stray script in what the agent says or shows** (the owner's ruling of 2026-11-10,
-the roadmap's *No stray script*: "not only spoken, make it not appear as the llm response if we
+**Block G, no stray script in what the agent says or shows** (built 2026-11-11, D-084; the
+owner's ruling of 2026-11-10, the roadmap's *No stray script*: "not only spoken, make it not appear as the llm response if we
 hook up a screen"), built after the owner's ruling on TD-144 and before the scenario runs, since
 it changes the talker's text; by one builder, for the library, with Ole5's one test and run A's
 count through the public API; reviewed by the owner's rule (one reviewer a block, one skeptic a
@@ -416,11 +416,11 @@ to choose a reply's language from the caller's words (`agent/language.py:84-93`)
   the stored replies hold are all kept: the Arabic comma (1,687), curly quotes (704 pairs), «»
   (183 pairs), → and ← (257), the no-break hyphen (52), en and em dashes, two zero-width spaces
   and one soft hyphen; no emoji. Of the Arabic clauses, 266 hold Latin ("Ole5", "Ctrl", "PDF");
-  of the English, 351 hold Arabic letters. Still ahead, registered here: the builder runs the
-  same data through the built `remove_stray_script` with Ole5's scripts and terms, read only,
-  and names the command and its counts in the progress log (GP-16); the default stays on when it
-  changes none, and any change is listed to the owner by run and item, with its code points,
-  before it does. Then run A's count. The agent's reasoning, not measured: run T's times do not
+  of the English, 351 hold Arabic letters. Registered here, and run on 2026-11-11 (the progress
+  log): the builder runs the same data through the built `remove_stray_script` with Ole5's
+  scripts and terms, read only, and names the command and its counts in the progress log
+  (GP-16); the default stays on when it changes none, and any change is listed to the owner by
+  run and item, with its code points, before it does. It changed none. Then run A's count. The agent's reasoning, not measured: run T's times do not
   move, since the filter is one `translate` of each piece with no hold-back.
 - **Tests**, each in its code's commit; every existing talker, session and `TextCall` test
   passes unchanged, the characterization GP-18 asks.
@@ -485,7 +485,7 @@ to choose a reply's language from the caller's words (`agent/language.py:84-93`)
   (the riyal sign, U+20C1) kept; the settings' digest gains the key, and no registered comparison
   spans Block G (run A runs after it); `ModelReplied` gains two fields with defaults, the turn
   span two attributes, `TextTurn` one read, the `languages` facade two names.
-- **Docs:** Block G's decision; the design's 8.2 (opens with the filter), 8.1's row for invariant 2, 5.2's
+- **Docs:** Block G's decision (D-084); the design's 8.2 (opens with the filter), 8.1's row for invariant 2, 5.2's
   presets with their scripts, 10.1's turn attributes; `docs/SECURITY.md`'s invariants 2 and 4;
   the guide's `languages.md` (a section "Scripts a reply may hold": each preset's scripts, what
   is kept, rewritten and taken out, how a team keeps a term), `safety.md`'s "The output guard",
@@ -1417,8 +1417,42 @@ plan 003).
   the stored texts already ran: none of run K's and run S's 5,747 dev clauses, their 1,415
   searches or the knowledge snapshot holds a character it would take out. Nothing built and
   nothing downloaded.
+- 2026-11-11: Block G built at the owner's approval ("Approve Block G"; Q10 to Q14 each (a)),
+  as "Tracks" drafts it (D-084): by one builder for the library and one for Ole5, the docs and
+  the stored-data check, each test first; one reviewer, who found nothing that breaks a call or
+  a contract, so no skeptic and no fix ran; then a check of every bullet against the diff, which
+  found nothing missing and fixed four small doc lines. The stored-data check through the built
+  rule (GP-16), read only: `uv run --offline python -I <scratchpad>/block_g/stored_check.py
+  <main checkout>/var`, with Ole5's languages (`ar-SA`, `en`) and its 17 declared terms, over the
+  15 dev runs the check above names and the snapshot: 5,747 clauses (205,751 characters), 1,415
+  `search_knowledge` argument values, and 128 snapshot records (1,528 texts, 226,809
+  characters), none changed, so the default stays on. `agent/turn.py` ends at 378 lines; Ole5's
+  `evals/action_run.py` at 379.
+- 2026-11-11: Tracing the owner's question "can he cancel the ticket all together and start to
+  ask another question or open another ticket?" (one reader a path, one skeptic a claimed gap,
+  read only): a plain no after the read-back cancels it with nothing sent, the talker answering
+  in its own words, and a cancelled draft counts toward no cap, so another question or ticket
+  follows. Three gaps confirmed and put to the owner with fixes, none built: a question, or a
+  new request the model reads as unclear, in answer to the read-back is asked again (the
+  consent check's instruction names "a question" as unclear, the agent's wording, not a
+  ruling), its words never reaching the talker; «خلاص» alone over the summary is ignored, being
+  both a stop word and a filler; and a cancel said over the summary reaches the talker as a
+  correction. Run A holds no bare question to a read-back. A false claim after a cap's refusal
+  joined TD-144's row.
 
 ## Decision log
+
+- 2026-11-11: What Block G's build chose where the spec left it open (D-084): `Kept(text,
+  changed, labels)`, the log line's `characters` and `scripts`, and the turn span's
+  `turn.stray_scripts` as one comma-separated string, since a span attribute holds no tuple; a
+  number sign that is no decimal digit (⅓, ①) kept, as a symbol is, unless in a removed range;
+  a fullwidth form whose ASCII form the agent's scripts would not keep taken out, so filtering
+  twice equals once; `remove_stray_script` refuses a tag that is not a preset's, and no text
+  makes it raise (arguments too deeply nested for Python's reader are kept as written); the
+  empty-clause rule keyed on the reply's text alone, not a tool call's arguments; run A's count
+  carried through `action_call.py`, `action_play.py` and `action_card.py` as well, each dev
+  scenario's on the scorecard, every new field 0 by default; and the fixed-set example "Bug重",
+  since "Technical" is no ticket type of Ole5's.
 
 - 2026-11-11: The roadmap's three M5 items as Blocks G, H and I of this plan, not a plan of
   their own: each is small beside the actions, Block G must land before run A, and H and I share
@@ -1615,6 +1649,10 @@ they set a figure of their own.
   run A?", the owner answered "Yes, and I agree to download the dependencies and models". So
   Blocks G, H and I ("Tracks") and runs H and I ("The measurement") are drafted, each block
   built only once approved, with Q10 to Q25 and the exact downloads below.
+- 2026-11-11, on Block G: asked "Approve Block G with the agent's recommendations for Q10 to
+  Q14?", the owner answered "Approve Block G". So Q10 to Q14 are settled as the agent
+  recommended, (a) each, and Block G is built before run A. Blocks H and I, Q15 to Q25 and the
+  downloads still wait for their own approval, after run A.
 
 - **Q1. M4 and the base of this work.** *Settled 2026-11-09: (a).* Not necessary: M5 can branch from M4's branch. Options:
   (a) close M4 first, its live calls moved to M7's rehearsal and its missed targets recorded, and
@@ -1653,14 +1691,14 @@ they set a figure of their own.
   (b) scripted only, about $1, `simulate` left to M7. **The agent recommended (b):** the scripted
   run holds the hard constraint, and the owner asked to skip runs that are not important.
 
-- **Q10. Block G on by default.** *Open.* The filter changes nothing written in the agent's scripts, and
+- **Q10. Block G on by default.** *Settled 2026-11-11: (a).* The filter changes nothing written in the agent's scripts, and
   none of the stored measured texts (5,747 clauses, 1,415 search calls, the snapshot). Options:
   (a) on by default, `guard.remove_stray_script` to turn it off; (b) on always, with no setting;
   (c) off by default until a run measures it. **The agent recommends (a):** it fixes the defect
   the owner saw from the next call on; no measured outcome moves, and run A records each
   removal; the setting is the off arm a later run can compare and a team's way out. (c) leaves
   the demo's defect in run A.
-- **Q11. What the filter covers.** *Open.* Options: (a) everything the talker writes: its text and the
+- **Q11. What the filter covers.** *Settled 2026-11-11: (a).* Options: (a) everything the talker writes: its text and the
   string values of every tool call's arguments, a search's query among them (never a key), so
   the trace, the public `ToolStarted` and `ToolFinished` events and the test console show what
   the voice and the captions do; (b) its text and its action calls' drafts only, a search's
@@ -1669,18 +1707,18 @@ they set a figure of their own.
   and written to the ticket with it. A tool's result and a card stay the team's text under all
   three. **The agent recommends (a):** it is the ruling's "every text the talker writes passes a
   script filter before it goes anywhere", and none of the 1,415 stored searches would change.
-- **Q12. Emoji and other pictographs.** *Open.* The ruling keeps "digits and punctuation" beside the
+- **Q12. Emoji and other pictographs.** *Settled 2026-11-11: (a).* The ruling keeps "digits and punctuation" beside the
   scripts; arrows, quotes, %, currency and math signs stay either way, since the speaking rules
   say an arrow as "then" and the stored replies hold 257. Options: (a) pictographs taken out and
   counted with the stray script; (b) left as written, to the prompt, which already asks for "no
   lists, markdown, emoji or symbols" (`agent/prompt.py:71-72`). **The agent recommends (a):** a
   voice cannot say one, the owner asked that it never be shown, and no stored reply held one.
-- **Q13. Latin in the Arabic presets.** *Open.* Options: (a) `ar-SA` and `ar` write Arabic and Latin, so
+- **Q13. Latin in the Arabic presets.** *Settled 2026-11-11: (a).* Options: (a) `ar-SA` and `ar` write Arabic and Latin, so
   an agent that speaks only Arabic keeps its product names, codes, email addresses and links;
   (b) Arabic only, Latin coming only with an English preset. **The agent recommends (a):** 266
   of the 4,098 stored Arabic clauses hold Latin ("Ole5", "Ctrl", "PDF"). Ole5 declares both
   languages, so neither option changes Ole5.
-- **Q14. What a removal leaves.** *Open.* In the demo, «إ重新» leaves «إ», the start of the word «إعادة»
+- **Q14. What a removal leaves.** *Settled 2026-11-11: (a).* In the demo, «إ重新» leaves «إ», the start of the word «إعادة»
   the model meant, which no filter can restore. Options: (a) each character judged alone, as the
   ruling says; (b) the whole word that held a stray character taken out, so «إ重新» leaves
   nothing but «Outlook重启» loses "Outlook" too, and each word is held until it ends. **The agent
@@ -1840,7 +1878,7 @@ they set a figure of their own.
 - Answer Q1 to Q9, and approve the plan (done 2026-11-09).
 - Rule on the yes words that are whole golden items, and on the read-back's edges (done
   2026-11-10, "The owner's decisions").
-- Approve Block G and answer Q10 to Q14 before run A; approve Blocks H and I, Q15 to Q25 and
-  the downloads before they are built, after run A.
+- Approve Block G and answer Q10 to Q14 before run A (done 2026-11-11); approve Blocks H and I,
+  Q15 to Q25 and the downloads before they are built, after run A.
 - Hold the live calls, against the mock ticket system, on the laptop's speakers and the wired
   headset (about 20 minutes).

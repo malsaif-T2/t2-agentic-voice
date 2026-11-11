@@ -2855,3 +2855,103 @@ twice; DOC-REF: every `D-NNN` cited anywhere is a heading here), so keep its sha
   `tests/t2_agentic_voice/voice/session/test_turn_times.py`, `test_talker_early.py`,
   `test_talker_call.py`, `test_read_back.py`; `tests/t2_agentic_voice/actions/test_action_run.py`;
   docs/guide/browser-client.md, "The test console".
+
+## D-084 · No stray script in what the talker writes: one filter before the guard, on by default · 2026-11-11 · Accepted (the owner's ruling of 2026-11-10 and approval of 2026-11-11, plan 007's Block G)
+
+- **Context:** in the owner's demo call of 2026-11-10 (report `0qPpF2-C`), `gpt-oss-120b`
+  wrote «أيقونة "إ重新 كلمة مرور المستخدم"» where the passage holds «إعادة كلمة مرور المستخدم»,
+  and no passage of the knowledge snapshot holds a Chinese character. Nothing stopped it: the
+  output guard checks claims and IDs only, and the library read a text's script only to choose a
+  reply's language. The owner, the same day, on the roadmap's item: "not only spoken, make it
+  not appear as the llm response if we hook up a screen". Plan 007's Block G drafted the filter
+  with five questions. Asked "Approve Block G with the agent's recommendations for Q10 to Q14?",
+  the owner answered on 2026-11-11 "Approve Block G", so each is its option (a): on by default,
+  with a setting to turn it off (Q10); it covers everything the talker writes, its text and the
+  string values of every tool call's arguments, a search's query among them, never a key, while
+  a tool's result, a card, a template and a fixed phrase stay the team's text (Q11); emoji and
+  other pictographs are taken out and counted with the stray script (Q12); `ar-SA` and `ar`
+  write Arabic and Latin, `en` writes Latin (Q13); each character is judged alone, nothing is
+  held back, and nothing is guessed in a removed character's place (Q14).
+- **Decision:**
+  - **Where it sits.** One reply's filter (`agent/stray_script.py`'s `StrayScript`) is built
+    beside the guard in each turn (`agent/turn.py`). Each piece of text the model streams is
+    filtered once, and that piece goes to the turn's text, to the step that takes out a copied
+    note, and to the clause splitter; each tool call is filtered as it is kept. So the guard, the
+    voice, the captions, the history the next request reads, the trace, the public events
+    (`ToolStarted.arguments`, `ToolFinished.arguments`, `ConfirmationRequested.draft`, D-083),
+    the test console and an action's draft all hold one filtered text. The guard reads the text
+    after the filter, as a safety rule: the other way round, «تم重 إنشاء» would pass the claim
+    rule as two words and then be said as «تم إنشاء».
+  - **The rule** (`domain/text/scripts.py`, pure, its ranges constants with comments;
+    `remove_stray_script(text, *, languages, kept=())`, giving `Kept`, public through the
+    `languages` facade, provisional as D-021 says). An agent's scripts are those of all its
+    languages, never one reply's. *Kept:* the blocks of the agent's scripts (Latin U+0000-036F,
+    U+1E00-1EFF, U+2C60-2C7F, U+A720-A7FF, U+FB00-FB06; Arabic U+0600-06FF, U+0750-077F,
+    U+0870-08FF, U+FB50-FDFF, U+FE70-FEFF); General Punctuation (U+2000-206F); the Arabic-Indic
+    and Persian digits; every character of a term the agent declares (its pronunciation map's
+    written forms, `vocabulary.terms` and the `words.vocabulary` setting); any other
+    punctuation, symbol, space, control or format character (quotes, «», %, a currency or math
+    sign, and the arrows the speaking rules say as "then"); a number sign that is no decimal
+    digit (², ½, ①); and a code point Python's Unicode tables leave unassigned, outside the
+    ranges taken out. *Rewritten one for one:* a fullwidth form (U+FF01-FF5E) as its ASCII form;
+    the ideographic space, comma and full stop (U+3000-3002) as a space, a comma and a full
+    stop, so no two words are joined; a decimal digit of any other script as its ASCII digit.
+    *Taken out:* any other letter or mark (Cyrillic, Greek, Hebrew, Devanagari, a variation
+    selector), any private-use or surrogate code point; whatever its category, a character of
+    the CJK and Hangul ranges (U+2E80-A4CF, U+AC00-D7FF, U+F900-FAFF, U+FE30-FE4F,
+    U+20000-3FFFF), so one newer than Python's tables goes too; and the pictographs: U+1F000-1FAFF,
+    U+2600-27BF but the two heavy arrows (U+2794, U+279C), and a fixed set of emoji below
+    U+1F000 in other blocks (© ® ™ ‼ ⁉ stay, as symbols). `Kept` holds the text, how many
+    characters were taken out or rewritten, and at most eight labels, sorted (the first word of
+    the character's Unicode name, "PICTOGRAPH", "FULLWIDTH", or the category of a code point
+    with no name), never a character it took. It is one `str.translate` over a table that keeps
+    each verdict once found, one table per agent's scripts and declared characters; every code
+    point gets a verdict, so no text makes it raise.
+  - **A tool call's arguments** are parsed as JSON and each string value is filtered, never a
+    key (a key names a field, which the runner checks as the model wrote it). They are written
+    back only when a value changed, so a call with nothing to change keeps its exact text;
+    arguments that are not JSON are kept as written, for the runner to refuse as it does.
+  - **A clause left with nothing to say.** Once the filter has changed a reply's text, a clause
+    with no letter or digit is no clause, so it is never counted as said in silence; a reply
+    left with nothing to say gets the `error` notice, as an empty answer does.
+  - **The count.** Each model request's end carries how many characters went and their labels
+    (`ModelReplied`, internal). The session adds them to the turn's log, logs
+    `talker_stray_script_removed` with the call, the turn, the count and the labels alone, and
+    gives the turn's root span `turn.stray_characters` and `turn.stray_scripts` only when the
+    count is above zero; `turn.stray_scripts` is one comma-separated string, since a span
+    attribute holds one plain value. `TextTurn.stray_characters` sums a turn's, and Ole5's run A
+    records each play's, each dev scenario's and the run's total, held-out's too.
+  - **The setting:** `guard.remove_stray_script`, a bool, on (`T2V_GUARD__REMOVE_STRAY_SCRIPT`).
+    Off, what the talker writes is kept as written.
+  - **What it never does:** change the caller's heard words, a tool's result, a card, a
+    template or a fixed phrase (the design's 8.2), or what the model is sent (the prompt, the
+    tools' schemas, the turn's message and the word lists, `test_no_action_baseline.py`); guess
+    at a removed character («إ重新» leaves «إ», the model's start of «إعادة»); hold text back;
+    ask a model.
+- **Why on by default:** it fixes the defect the owner heard from the next call on, and no
+  measured outcome moves. Read only, the agent ran every stored text of the measured dev runs
+  of K and S (k1-dev-a to d, k1-dev-spoken, k1-smoke, k1m-dev-a, k3-dev-a to d, s-120b-2 to 5)
+  and the knowledge snapshot through the built rule, with Ole5's languages (`ar-SA`, `en`) and
+  its 17 declared terms: none of the 5,747 clauses the talker wrote, none of the 1,415 argument
+  values of their `search_knowledge` calls, and none of the snapshot's 1,528 texts (226,809
+  characters) changes. Tests pin text in the agent's scripts unchanged, so it is the
+  evaluation.md exception for a reliability fix; run A, the first run after it, records each
+  removal; and the setting is the off arm a later run can compare, and a team's way out (GP-18).
+- **Consequences:** invariant 2 holds on the text spoken: a stray character no longer hides a
+  claim from the claim rule («تم重 إنشاء طلبك», "I've 重created your ticket"), and the ID rule
+  reads a fullwidth colon or point as its ASCII form, and fullwidth or other-script digits, and
+  "12重34重5", as the numbers they are. Invariant 4 gains one change: a fixed-set value that
+  differs from a member only by a stray character (a ticket type "Bug重") parses as that member
+  and is read back as it. A term a team needs in a third script ("μs", a supplier's Chinese name) is
+  taken out unless the agent declares it. A letter Unicode adds after Python's tables, outside
+  the removed ranges, is kept, and so is a later symbol. `remove_stray_script` called directly
+  raises ValueError for a tag that is not `ar-SA`, `ar` or `en`. The settings' digest gains the
+  key; `ModelReplied` gains two fields with defaults, the turn span two attributes, `TextTurn`
+  one read, and the `languages` facade two names. `TurnRecord`, `CallReport` and `t2v/1`'s
+  messages keep their fields, and no new public event is added.
+- **Evidence:** plan 007's Block G and "The owner's decisions" (Q10 to Q14);
+  `tests/t2_agentic_voice/domain/test_scripts.py`,
+  `tests/t2_agentic_voice/agent/test_talker_scripts.py`,
+  `tests/t2_agentic_voice/voice/session/test_talker_scripts.py`,
+  `tests/t2_agentic_voice/testing/test_parity.py`; `tests/ole5_voice/test_agent_scripts.py`,
+  `tests/ole5_voice/evals/test_action_score.py`, `test_action_play.py`, `test_action_run.py`.

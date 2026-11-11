@@ -21,6 +21,8 @@ caller heard it, built from the `Conversation` the session hands with each turn
 - **What only the talker knew** goes beside the heard history, in its place: the tool calls and
   results it kept of a past turn (agent/talker.py), after that turn's words, and the developer
   note of a clause the output guard held back from that turn's reply.
+- **A request that offers no tool** holds each tool result as a system message and none of the
+  calls that asked for them (`without_calls`).
 
 The history holds two lists, the turns and the replies, each in order; they are told apart in
 time by the turn each reply answers: a reply follows every turn up to the one it answers, and a
@@ -175,6 +177,21 @@ def turn_message(turn: TalkerTurn) -> ChatMessage:
     if turn.declined is not None:
         notes.append(declined_note(turn.declined))
     return ChatMessage.user(" ".join([turn.words, *notes]))
+
+
+def without_calls(messages: Sequence[ChatMessage]) -> list[ChatMessage]:
+    """`messages` for a request that offers no tool: each result kept, framed as it was, and the
+    calls that asked for them dropped. A model that can read its own calls sometimes writes
+    another, which Groq refuses when the request offers none (run K, D-075)."""
+    kept: list[ChatMessage] = []
+    for message in messages:
+        if message.role == "tool":
+            kept.append(ChatMessage.system(message.content))
+        elif not message.tool_calls:
+            kept.append(message)
+        elif message.content:
+            kept.append(ChatMessage.assistant(message.content))
+    return kept
 
 
 def call_context(

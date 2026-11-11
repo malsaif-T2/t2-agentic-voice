@@ -138,9 +138,11 @@ played; `phrase` when it was a fixed phrase, and `template` when it was one of t
 lines for an action, a read-back's summary or closing question, an ask-again, `declined`,
 `sending` or an outcome's line, so a runner can tell the talker's words from the agent's
 template), its `tool_calls` (each tool's arguments, outcome and time; an action's
-call among them, as the model wrote it), its `cards`, its `blocked` clauses, `first_token_s` and
-`first_clause_s` (on the call's clock, [latency.md](latency.md)), its `model_requests` and its
-`usage`.
+call among them, as the model wrote it, after the stray-script filter), its `cards`, its
+`blocked` clauses, `first_token_s` and `first_clause_s` (on the call's clock,
+[latency.md](latency.md)), its `model_requests`, its `usage`, and its `stray_characters`, how
+many characters the filter took out of, or rewrote in, what the talker wrote
+([languages.md](languages.md), "Scripts a reply may hold").
 
 ## A call with an action
 

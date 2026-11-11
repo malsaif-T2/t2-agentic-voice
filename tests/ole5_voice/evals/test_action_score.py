@@ -273,6 +273,34 @@ def test_a_held_out_card_and_line_hold_the_aggregates_only() -> None:
         ActionLine.model_validate(line.model_dump() | {"passed": {"a01": 1}})
 
 
+def test_each_plays_stray_count_is_in_its_record_its_scenarios_and_the_runs_line() -> None:
+    """The characters the stray-script filter took out of what the talker wrote (D-084): each
+    play's in its record, a play with no result's too, each dev scenario's summed on the
+    scorecard, and the run's total on its history line, a held-out run's too, which holds no
+    scenario's count."""
+    plays = [
+        _record(stray_characters=2),
+        _record("a02", stray_characters=1),
+        _record("a02", repeat=2, passed=None, failure="stuck", checks=(), stray_characters=4),
+    ]
+    scenarios = [_scenario(id="a01"), _scenario(id="a02")]
+    card = scorecard(_run(repeats=2), scenarios, plays, complete=True, stopped=None, sessions=[])
+    assert card.totals.stray_characters == 7
+    assert {count.scenario: count.stray_characters for count in card.scenarios} == {
+        "a01": 2,
+        "a02": 5,
+    }
+    session = Session(started_at=WHEN, stopped=None, variants=3, cost_usd=0.01)
+    assert action_line(card, session, 1, len(scenarios)).stray_characters == 7
+    held = scorecard(_run("held-out"), scenarios, plays, complete=True, stopped=None, sessions=[])
+    line = action_line(held, session, 1, len(scenarios))
+    assert line.stray_characters == 7 and line.passed == {} and held.scenarios == ()
+    read = ActionPlayRecord.model_validate_json(plays[2].model_dump_json())
+    assert read.stray_characters == 4
+    older = plays[0].model_dump(exclude={"stray_characters"})  # a record written before the count
+    assert ActionPlayRecord.model_validate(older).stray_characters == 0
+
+
 def _args(**changed: Any) -> argparse.Namespace:
     given = {
         "model": TALKER,

@@ -73,6 +73,7 @@ NAMES = {
         "UserTurnEnded",
     },
     "t2_agentic_voice.languages": {
+        "Kept",
         "Pronunciations",
         "SpellingIssue",
         "SpellingRule",
@@ -82,6 +83,7 @@ NAMES = {
         "pronounce",
         "provider_text",
         "register_of",
+        "remove_stray_script",
         "speak_id",
         "speak_number",
         "spelling_issues",

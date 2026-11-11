@@ -1,7 +1,9 @@
 """The `guard` group: the output guard's ID rule (the design's 8.2, rule B; plan 006): which
-tokens of a clause are ID-shaped, and what a blocked clause drops; and the phrases added to the
-claim rule's default list (rule A; plan 007). Every clause the talker writes is checked before
-text-to-speech, and so is a card's text; the runtime's own templates are not.
+tokens of a clause are ID-shaped, and what a blocked clause drops; the phrases added to the
+claim rule's default list (rule A; plan 007); and whether a script none of the agent's languages
+writes is taken out of what the talker writes before the guard reads it (agent/stray_script.py).
+Every clause the talker writes is checked before text-to-speech, and so is a card's text; the
+runtime's own templates are not.
 """
 
 from __future__ import annotations
@@ -56,6 +58,17 @@ class GuardSettings(Group):
             "Phrases added to each language's default list of what claims any action, as a "
             'JSON object from a language\'s code to a list: {"ar": ["..."]}. A value replaces '
             "the map."
+        ),
+    )
+    remove_stray_script: bool = Field(
+        default=True,
+        description=(
+            "Whether each character of a script none of the agent's languages writes (a "
+            "Chinese character in an Arabic reply), and each pictograph, is taken out of what "
+            "the talker writes, its tool calls' arguments included, before the guard reads it, "
+            "and a digit of another script written as its ASCII digit; the voice, the "
+            "captions, the history, the trace and the events then hold the text without it. "
+            "Off: kept as written."
         ),
     )
 

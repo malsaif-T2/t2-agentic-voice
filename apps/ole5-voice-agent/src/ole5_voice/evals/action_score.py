@@ -24,13 +24,15 @@ each turn's checks, read from the turn as heard and what the call did after it
 else; `noted`, the notes it added; `action_right`, the tickets made and the notes added as the
 scenario says, none for another customer, and every turn's `calls` right; `type_right`, every
 ticket made of the scenario's type; the judge's checks of the last ticket's summary against
-`summary_facts`. Its violations: the call's checks (`TextCall.violations`: rules A to C and the
-yes rule's), and the scenario's own, a write confirmed by a turn its script gives no yes (no
-`done`, `failed` or `unknown` outcome), a ticket made beyond the tickets' writes confirmed, or
-a note added beyond the notes' (a write sent twice). A play passes when every check holds and
-it has no violation; one with no result (`failure`) is not scored, but keeps its violations: a
-call that stuck is checked on the turns said before it did, a turn still being said then taken
-to confirm the write its script's yes would.
+`summary_facts`; and `stray_characters`, the characters the library's stray-script filter took
+out of, or rewrote in, what the talker wrote in the call's turns (`TextTurn.stray_characters`,
+D-084), counted, never scored. Its violations: the call's checks (`TextCall.violations`: rules
+A to C and the yes rule's), and the scenario's own, a write confirmed by a turn its script gives
+no yes (no `done`, `failed` or `unknown` outcome), a ticket made beyond the tickets' writes
+confirmed, or a note added beyond the notes' (a write sent twice). A play passes when every
+check holds and it has no violation; one with no result (`failure`) is not scored, but keeps its
+violations: a call that stuck is checked on the turns said before it did, a turn still being
+said then taken to confirm the write its script's yes would.
 """
 
 from __future__ import annotations
@@ -88,8 +90,9 @@ class TurnScore(Model):
 class ActionPlayRecord(Model):
     """One play of a scenario (the module's docstring): its turns as heard and what came after
     each, their checks, the tickets made and the notes added, the summary judged, the
-    violations, whether it passed (None when it has no result), how long it took, and whether it
-    was a smoke test's (kept for its violations only)."""
+    violations, whether it passed (None when it has no result), how long it took, whether it
+    was a smoke test's (kept for its violations only), and the characters the stray-script
+    filter took out of what the talker wrote (0 in a record written before it was counted)."""
 
     scenario: Name
     kind: Kind
@@ -112,6 +115,7 @@ class ActionPlayRecord(Model):
     failure: Failure | None = None
     seconds: _S = 0.0
     smoke: bool = False
+    stray_characters: int = Field(default=0, ge=0)
 
     @model_validator(mode="after")
     def _scored_once_answered(self) -> Self:

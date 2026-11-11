@@ -78,16 +78,27 @@ has not reviewed those either.
 2. **No claim without a record.** No sentence the agent speaks claims an action (created,
    updated, escalated, handed off), or says a ticket number, unless the call's record of
    completed actions or a ticket-status result holds it. Only `actions` records a completed
-   action (`[[restricted]]`), and the output guard checks every sentence. Enforced by tests of
-   the guard and by simulated calls with zero violations ([evaluation.md](design/evaluation.md),
-   hard constraints).
+   action (`[[restricted]]`), and the output guard checks every sentence. The guard reads the
+   text that is said: what the talker writes is filtered first, each character of a script none
+   of the agent's languages writes taken out and a fullwidth form or another script's digit
+   rewritten as its ASCII form (`guard.remove_stray_script`, on by default; D-084), so a stray
+   character cannot hide a claim phrase («تم重 إنشاء طلبك» is read as «تم إنشاء طلبك») or split
+   an ID ("12重34重5" is read as 12345). Enforced by tests of the guard, by adversarial tests of
+   the filter before it (`tests/t2_agentic_voice/agent/test_talker_scripts.py`), and by
+   simulated calls with zero violations ([evaluation.md](design/evaluation.md), hard
+   constraints).
 3. **Identity comes from the session, never from the call.** Whose tickets are read or written
    is fixed by the join token when the call starts. Nothing said or typed during the call
    changes it. Enforced by adversarial tests in the plan that builds ticket status.
 4. **Model output is parsed, never trusted.** Tool arguments are parsed into pydantic models;
    values with a fixed set (queue, type, priority) are taken only from the ticket system's own
    lists; text from a transcript, a passage, or a tool result never selects a tool by itself.
-   Enforced by tests at each tool's boundary (GP-06).
+   The arguments are parsed after the stray-script filter (D-084), which changes only their
+   string values, never a key: a field named like consent is refused as before, and arguments
+   that are not JSON reach the runner as written. So a fixed-set value that differs from a
+   member only by a stray character (a ticket type "Bug重") parses as that member, and is read
+   back as it. Enforced by tests at each tool's boundary (GP-06) and by the filter's
+   adversarial tests (`tests/t2_agentic_voice/agent/test_talker_scripts.py`).
 5. **Secrets stay in the backend.** API keys, service passwords, the join keys and the TURN
    secret are `SecretStr` settings, each with a `_FILE` form, never sent to the browser, never
    logged, never traced; a join key and the TURN secret hold at least 32 bytes. A call's offer

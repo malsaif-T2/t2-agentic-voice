@@ -141,8 +141,8 @@ class ActionPlaying:
         own: Sequence[str] = (),
         **fields: Any,
     ) -> ActionPlayRecord:
-        """The play's record: the call as heard, its violations and `own`'s, `fields`, and how
-        long it took."""
+        """The play's record: the call as heard, its violations and `own`'s, `fields`, how long
+        it took, and what the stray-script filter took out of what the talker wrote."""
         return ActionPlayRecord(
             scenario=scenario.id,
             kind=scenario.kind,
@@ -152,6 +152,7 @@ class ActionPlaying:
             found=acted.found if acted else (),
             violations=(*(acted.violations if acted else ()), *own),
             seconds=max(self.clock() - began, 0.0),
+            stray_characters=acted.stray_characters if acted else 0,
             **fields,
         )
 

@@ -16,6 +16,9 @@ constraint, and, for a dev run, each scenario's plays and the plays themselves.
   meets every target (a smoke test alone neither passes nor fails).
 - **A scenario** of a dev run meets its target as run S's does (scenario_score.py's `needed`):
   in every play for the rehearsal's, in two of three for any other.
+- **The stray count** (D-084): the characters the library's stray-script filter took out of, or
+  rewrote in, what the talker wrote, counted and never scored: each play's in its record, each
+  dev scenario's summed over its plays, and the run's over every play (`stray_characters`).
 
 A held-out run's scorecard holds the aggregates only: no play and no scenario's count, refused
 as it is read otherwise, as run K's is (held-out is read once).
@@ -65,8 +68,8 @@ def share(values: Iterable[bool | None]) -> Share | None:
 
 class ActionMetrics(Model):
     """The registered metrics over the plays so far (the module's docstring), the plays scored
-    and those with no result, and the violations of every play, those the card keeps no play
-    of included."""
+    and those with no result, the violations of every play, those the card keeps no play of
+    included, and the stray count of every play it keeps."""
 
     plays: int = Field(ge=0)
     failures: int = Field(ge=0)
@@ -75,6 +78,7 @@ class ActionMetrics(Model):
     summary: Share | None = None
     language: Share | None = None
     violations: int = Field(default=0, ge=0)
+    stray_characters: int = Field(default=0, ge=0)
 
 
 def metrics(plays: Sequence[ActionPlayRecord], *, dropped: int = 0) -> ActionMetrics:
@@ -95,6 +99,7 @@ def metrics(plays: Sequence[ActionPlayRecord], *, dropped: int = 0) -> ActionMet
         summary=share(play.summary_faithful for play in scored),
         language=share(language),
         violations=dropped + sum(len(play.violations) for play in plays),
+        stray_characters=sum(play.stray_characters for play in plays),
     )
 
 
@@ -109,7 +114,8 @@ def targets(totals: ActionMetrics) -> dict[str, bool | None]:
 
 class ScenarioPasses(Model):
     """One scenario's plays in a dev run: how many were scored and passed, how many failed, how
-    many it needs, and whether it met its target (None until every play is scored)."""
+    many it needs, whether it met its target (None until every play is scored), and the stray
+    count of its plays."""
 
     scenario: Name
     kind: Kind
@@ -119,6 +125,7 @@ class ScenarioPasses(Model):
     failures: int = Field(ge=0)
     needed: int = Field(ge=1)
     met: bool | None
+    stray_characters: int = Field(default=0, ge=0)
 
 
 class ActionRun(Model):
@@ -185,6 +192,7 @@ def _passes(
                 failures=len(own) - len(scored),
                 needed=wanted,
                 met=passed >= wanted if len(scored) >= repeats else None,
+                stray_characters=sum(play.stray_characters for play in own),
             )
         )
     return tuple(counts)

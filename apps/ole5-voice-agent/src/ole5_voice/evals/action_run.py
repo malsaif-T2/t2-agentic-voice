@@ -17,13 +17,13 @@ A smoke test comes first, the first dev scenario played once, which must end wit
 retried or refused request and no violation (one is counted, and kept for a resumed dev run as
 a `smoke` record); then every scenario of the split once, then again, until each has
 its repeats, so a run stopped early has played them evenly (action_play.py). A dev play's record
-is written as it finishes, with a progress line of identifiers and verdicts, never a text, and
-its mock's tickets kept under `--out/plays/`; a dev run stopped by the key's daily limit, the
-cap or an interrupt goes on with `--resume`. A held-out run is one whole session: it writes no
-record, its progress lines are counts only, the library's lines but its errors held back, and
-one that does not finish keeps no result but its violations. Each session writes the scorecard
-(action_card.py) and appends its history line (`action_history.ActionLine`); one violation of
-the hard constraint, in any play, fails the run.
+is written as it finishes, with a progress line of identifiers, verdicts and counts (its stray
+count among them, D-084), never a text, and its mock's tickets kept under `--out/plays/`; a dev
+run stopped by the key's daily limit, the cap or an interrupt goes on with `--resume`. A
+held-out run is one whole session: it writes no record, its progress lines are counts only, the
+library's lines but its errors held back, and one that does not finish keeps no result but its
+violations. Each session writes the scorecard (action_card.py) and appends its history line
+(`action_history.ActionLine`); one violation of the hard constraint, in any play, fails the run.
 """
 
 from __future__ import annotations
@@ -304,6 +304,7 @@ async def _measure(
                 passed=record.passed,
                 failure=record.failure,
                 violations=len(record.violations),
+                stray_characters=record.stray_characters,
                 seconds=round(record.seconds, 2),
             )
     except StopRun as stop:

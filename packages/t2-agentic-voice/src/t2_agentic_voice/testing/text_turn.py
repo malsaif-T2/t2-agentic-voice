@@ -223,6 +223,14 @@ class TextTurn:
             cached_tokens=sum(u.cached_tokens for u in used),
         )
 
+    @property
+    def stray_characters(self) -> int:
+        """The characters the stray-script filter took out of, or rewrote in, what the turn's
+        model requests wrote (`guard.remove_stray_script`), summed over them; 0 when none."""
+        talk = self._talk
+        events = [] if talk is None else talk.events
+        return sum(e.stray_characters for _, e in events if isinstance(e, ModelReplied))
+
 
 class TurnExpectations:
     """What one turn of a `TextCall` is expected to have done; each check raises AssertionError

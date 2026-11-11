@@ -75,6 +75,28 @@ every comma and full stop. An arrow in a reply ("Inbox ← Archive") is said as 
 Start with the answer itself, not with "Great question" or a restatement of what the caller
 asked: they know what they asked.
 
+## Only your languages' scripts
+
+What the talker writes keeps only the scripts your agent's languages write: Arabic and Latin
+for `ar-SA` and `ar`, Latin for `en`. A Chinese character a model slips into an Arabic word, a
+Greek letter, or an emoji is taken out before the guard, the voice and the captions read the
+reply, and a fullwidth form or another script's digit is written as its plain form
+([languages.md](languages.md), "Scripts a reply may hold"; D-084). So your instructions need
+not ask for it, and the library's rules already ask for no emoji or symbols. Arrows, quotes,
+«», % and the like stay, and an arrow is said as "then".
+
+Two things stay yours:
+
+- **A term in a third script.** Declare it, or the filter takes it out: in `pronounce=`, in
+  `vocabulary=`, or in the `words.vocabulary` setting. The filter does not guess a word it cut:
+  a product name written partly in another script is said with only its letters of your scripts.
+  - Weak: a passage that names a supplier in Chinese characters only, the name never declared:
+    the talker copies it, and the caller hears the sentence without it.
+  - Better: the name declared in `vocabulary=`, or written in Latin letters in your passages too.
+- **Your own lines.** The greeting, progress lines, notices and an action's read-back and
+  outcome lines are never filtered, nor is a tool's result or a card: they are your text, so
+  write them in your languages' scripts, with no emoji.
+
 ## Every step, by voice
 
 The caller only hears the agent, and may have no screen at all, so never tell them to look at

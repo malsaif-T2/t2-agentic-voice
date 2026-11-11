@@ -5,7 +5,9 @@ are talking.py's module docstring's "Its events, in order". A reply that fails i
 at most (`tell`): the `error` notice when none of it was said, else `cut_off` after a beat. An
 action's read-back (`ReadBackRequested`) starts confirming as it plays, never as it is written,
 so an early start or a kept reply let go before then leaves nothing (read_back.py); it counts as
-said, so no `error` notice follows a reply that only read back.
+said, so no `error` notice follows a reply that only read back. What the stray-script filter
+took out of a model request's answer (`ModelReplied`'s count and labels) is added to its turn's
+log, for the turn's span, and logged by its count and labels alone.
 """
 
 from __future__ import annotations
@@ -28,14 +30,19 @@ from t2_agentic_voice.agent.talker import (
     ToolEnded,
 )
 from t2_agentic_voice.core.events import GuardBlocked, ToolFinished, ToolStarted, TurnId
+from t2_agentic_voice.core.logging import get_logger
 from t2_agentic_voice.core.settings.tts import LanguageTag
 from t2_agentic_voice.core.tracing_tts import CallTrace
+from t2_agentic_voice.domain.text.scripts import MAX_LABELS
 from t2_agentic_voice.voice.session.io import CallSetup
 from t2_agentic_voice.voice.session.open_reply import OpenReply, language_of
 from t2_agentic_voice.voice.session.read_back import Confirming
+from t2_agentic_voice.voice.session.report import TurnLog
 from t2_agentic_voice.voice.session.scope import CancelScope
 from t2_agentic_voice.voice.session.turn_book import TurnBook
 from t2_agentic_voice.voice.session.usage import Usage
+
+_log = get_logger(__name__)
 
 # A step of the session's, run under its lock (call.py's `_guarded`).
 Guarded = Callable[[str, Callable[[], Awaitable[None]]], Awaitable[None]]
@@ -165,7 +172,24 @@ class TalkPlayer:
                 asked = talk.request_at
                 if log.first_token_at is None and first is not None and asked is not None:
                     log.first_token_at = asked + first
+                self._stray(log, event)
             case ReplyDone():
                 if not talk.said:  # an empty answer, or one cut before a word: never silence
                     await self.tell(talk, reply, at)
                 await reply.finish(at)
+
+    def _stray(self, log: TurnLog, replied: ModelReplied) -> None:
+        """What the stray-script filter took out of a model request's answer, added to its
+        turn's log and logged by its count and labels alone, never a character or a word."""
+        if not replied.stray_characters:
+            return
+        log.stray_characters += replied.stray_characters
+        labels = sorted({*log.stray_scripts, *replied.stray_scripts})
+        log.stray_scripts = tuple(labels[:MAX_LABELS])
+        _log.info(
+            "talker_stray_script_removed",
+            call_id=self._setup.call_id,
+            turn_id=log.turn_id,
+            characters=replied.stray_characters,
+            scripts=replied.stray_scripts,
+        )

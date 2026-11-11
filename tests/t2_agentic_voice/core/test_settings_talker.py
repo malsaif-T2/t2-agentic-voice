@@ -30,6 +30,7 @@ def test_the_llm_and_guard_defaults_are_the_designs() -> None:
         "min_id_digits": 3,
         "on_block": "drop_rest",
         "claims": {},
+        "remove_stray_script": True,
     }
     assert (settings.words.vocabulary, settings.session.mode) == ((), None)
 

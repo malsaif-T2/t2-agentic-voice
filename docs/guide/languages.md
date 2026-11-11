@@ -2,9 +2,9 @@
 
 The library speaks Saudi Arabic, Modern Standard Arabic (MSA) and English. This page says which
 language a call is held in, which language each reply is in, how Saudi Arabic and MSA are told
-apart, what happens to an English product name inside an Arabic sentence, how numbers are said,
-and what the agent's vocabulary is for. How to word what the agent says is
-[writing-for-voice.md](writing-for-voice.md).
+apart, what happens to an English product name inside an Arabic sentence, which scripts a reply
+may hold, how numbers are said, and what the agent's vocabulary is for. How to word what the
+agent says is [writing-for-voice.md](writing-for-voice.md).
 
 ## The presets
 
@@ -92,6 +92,68 @@ each language says it, keyed by the primary code. A form is found as written, it
 included, so give each way your texts write it: Ole5's map holds `Ole5`, `OLE5` and `ole5`, said
 «أو لي فايف» in Arabic and "Oh-lee five" in English. The map is applied to each clause in its language after the guard
 and the speaking rules, and the caption keeps the written form.
+
+## Scripts a reply may hold
+
+A model sometimes writes a word of another language's script into a reply: in the owner's demo
+call, `gpt-oss-120b` wrote «إ重新» (two Chinese characters) where it meant «إعادة». So
+everything the talker writes, its text and the string values of its tool calls' arguments,
+passes a filter before anything reads it (D-084). The caller hears, and the captions, the
+history, the trace and the events hold, the text without the stray characters.
+
+**Each preset's scripts.** `ar-SA` and `ar` write Arabic and Latin, so an Arabic agent keeps its
+product names, codes, email addresses and links; `en` writes Latin. An agent keeps the scripts of
+all its languages, whatever the reply's: Ole5, which speaks Saudi Arabic and English, keeps both
+in every reply.
+
+**What is kept:**
+
+- every letter and mark of those scripts' blocks (Latin: Basic Latin to the combining marks,
+  Latin Extended Additional, -C and -D, and the Latin ligatures; Arabic: the Arabic block, its
+  Supplement, Extended-A and -B, and the Presentation Forms);
+- General Punctuation (dashes, curly quotes, a zero-width space), and the Arabic-Indic (٠–٩) and
+  Persian (۰–۹) digits;
+- every other punctuation, symbol, space or format character: «», %, a currency or math sign,
+  © ® ™, and the arrows the speaking rules say as "then" ("Inbox → Archive");
+- a number sign that is no digit, such as ⅓ or ①;
+- every character of a term the agent declares (below).
+
+**What is rewritten, one character for one:** a fullwidth form as its plain form (`，１２３`
+becomes `,123`); the ideographic space, comma and full stop as a space, a comma and a full stop
+(`Restart it。Then` becomes `Restart it.Then`), so no two words are joined; and a digit of any
+other script as its ASCII digit (a Devanagari five becomes `5`), so the output guard reads the
+number.
+
+**What is taken out:** every other letter or mark (Greek, Cyrillic, Hebrew, Devanagari, a
+variation selector), every Chinese, Japanese and Korean character, a private-use character,
+and every emoji and other pictograph (⭐, ▶, 😀). Each character is judged alone, so a word
+loses only its stray characters: «إ重新» leaves «إ», and the library never guesses what was
+meant. Once the filter has changed a reply's text, a clause left with no letter or digit is not
+said; a reply left with nothing to say gets the `error` notice.
+
+**What is never changed:** the caller's heard words, a tool's result, a card, and your own
+lines (greetings, progress lines, notices, an action's read-back and outcome lines). They are
+your text or the caller's, so write them as you mean them. The prompt and the tools' schemas
+sent to the model are unchanged too.
+
+**Keeping a term of another script.** A term your callers need in a third script ("μs", a
+supplier's Chinese name) is taken out unless the agent declares it. Every character of a
+declared term is kept: the written forms of `pronounce=`, the terms of `vocabulary=`, and the
+`words.vocabulary` setting's (`T2V_WORDS__VOCABULARY`), which needs no code change. A declared
+character is kept wherever it appears, not only inside that term.
+
+**Seeing what went.** Each model request whose answer lost a character logs
+`talker_stray_script_removed` with the count and the kinds alone, never a character, and the
+turn's trace's root span holds `turn.stray_characters` and `turn.stray_scripts`
+([tracing-and-logs.md](tracing-and-logs.md)).
+In a test, a `TextCall` turn's `stray_characters` counts them. The `languages` facade's
+`remove_stray_script(text, languages=["ar-SA", "en"], kept=terms)` shows what a text keeps:
+it gives a `Kept`, with the text, how many characters changed and their labels ("CJK",
+"PICTOGRAPH"), so your own measurement can read a reply as the talker says it.
+
+**Turning it off.** `T2V_GUARD__REMOVE_STRAY_SCRIPT=false` keeps what the talker writes as
+written. It is on by default: on every clause and search of Ole5's stored dev runs of the
+talker, and on its knowledge snapshot, it changed nothing (D-084).
 
 ## Numbers and IDs
 

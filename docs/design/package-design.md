@@ -706,7 +706,7 @@ Stability levels are defined in section 5.4. "Provisional" covers everything tha
 | `t2_agentic_voice.testing.simulate` | `simulate`, `SimulatedCaller`, the hard checks | provisional |
 | `t2_agentic_voice.testing.audio` | `AudioCall` (audio replay) | provisional |
 | `t2_agentic_voice.events` | Frozen event classes (section 6.6) | provisional |
-| `t2_agentic_voice.languages` | Presets, `normalize_arabic`, `normalize_digits`, `speak_number`, `speak_id`, `speak_date`, script detection | provisional |
+| `t2_agentic_voice.languages` | Presets, `normalize_arabic`, `normalize_digits`, `speak_number`, `speak_id`, `speak_date`, script detection, the stray-script rule (`remove_stray_script`, giving `Kept`; section 8.2, D-084) | provisional |
 | `t2_agentic_voice.knowledge` | `knowledge_tool(kb, ...)` | provisional |
 | `t2_agentic_voice.stores` | `SqliteOutbox`, `SqliteUsedTokens`, `MemoryOutbox`, `MemoryUsedTokens` | provisional |
 | `t2_agentic_voice.tracing` | Tracing setup from settings, `Redactor`, Saudi PII patterns | provisional |
@@ -731,7 +731,7 @@ The settings keys (section 7) are public too. Renaming or removing one follows t
 | `Caller` | The verified identity | Frozen: `subject`, `display_name`, `locale`, `attributes` (a string map). It travels in a JWT the caller can read, so it never holds secrets |
 | `Consent` | The caller's choices on the consent screen | `version`, `record_audio`. Carried only in the signed join token |
 | `Say`, `ReadBack`, `Claims`, `Spoken`, `Card` | Templates, labels and screen content | Template values come from the draft or the result. Fixed values are spoken through their labels. Free-text draft fields are model output: parsed, capped in length, and read back word for word so the caller can check them |
-| `Language`, `Vocabulary`, `Phrases`, `SpeakingRules` | The language parts | Presets for `ar-SA`, `ar`, `en` |
+| `Language`, `Vocabulary`, `Phrases`, `SpeakingRules` | The language parts | Presets for `ar-SA` and `ar`, which write Arabic and Latin, and `en`, which writes Latin: what the talker writes keeps only the scripts of its agent's languages, and the characters of the terms it declares (section 8.2, D-084) |
 | `Providers` | The STT, chat and TTS objects | `Providers.from_settings(s)`, `.replace(stt=...)` |
 | `VoiceSettings` | All tunable settings | Section 7 |
 | `VoiceRuntime` | Runs calls for one agent | Construction is cheap and does no IO. `identity=` takes one identity source. `lifespan` does IO: it takes the lock file, warms VAD and Smart Turn, checks models and voices, renders and caches fixed phrases, starts the outbox worker and reconciles the previous run. Also `router()`, `on(Event)`, `drain()`. Several runtimes in one process share the per-model limiter, and each keeps its stores under `var_dir/<agent name>/` |
@@ -1113,7 +1113,7 @@ The defaults below are the agent's starting values, to be measured in the milest
 | `turns` | `vad_confidence`, `vad_start_ms`, `vad_stop_ms` (200), `smart_turn` (true), `smart_turn_threshold` (0.5), `complete_hold_ms` (600, the hold after Smart Turn's "complete": D-067), `max_silence_ms` (fallback end of turn) | M2, M3 |
 | `interruptions` | `mode` (two_step, by the owner's ruling: D-068; or drop), `duck_level` (0.25), `first_window_ms` (750), `min_words` (2), `short_words` (2), `short_s` (1.2), `own_words_s` (5) (D-061) | M3 (from the M1 overlap data) |
 | `words` | `stop`, `wait`, `repeat`, `backchannel`, `no` (M3, D-062); `yes`, `send`, `vocabulary`: additions to the declaration | M3 to M5 |
-| `guard` | `id_patterns` ([]), `min_id_digits` (3), `on_block` (`drop_rest`; or `drop_clause`) | M4, M5 |
+| `guard` | `id_patterns` ([]), `min_id_digits` (3), `on_block` (`drop_rest`; or `drop_clause`), `remove_stray_script` (true: section 8.2, D-084) | M4, M5 |
 | `limits` | `max_call_s` (600), `idle_s`, `max_live_calls`, `max_live_calls_per_caller` (1), `calls_per_caller_per_day`, `max_abandoned_threads` | M6 |
 | `server` | `public_url`, `allowed_origins` ([]), `ice_servers` ([]), `turn_secret`, `turn_ttl_s`, `dev_page` (false), `drain_timeout_s` | M2, M6 |
 | `join` | `keys` (a key-ID-to-secret map), `keys_file`, `current_kid`, `ttl_s` (60), `max_clock_skew_s` (30) | M2 |
@@ -1141,7 +1141,7 @@ Ole5's invariants (docs/SECURITY.md) are generalized from tickets to any action.
 | Invariant | What the library enforces, and how | What stays the app's |
 | --- | --- | --- |
 | 1. No action without consent heard from the caller | The talker's schema holds only the draft. The read-back is a template filled from the draft. Heard words are built only by the voice session, from speech-to-text results, and carry their source. Read-back receipts are built only by the voice session, from the transport's playback reports. The yes rule is the only thing that builds a `ConfirmedAction`, and the action runner accepts nothing else. Consent built from typed text reaches `execute` only when `env` is `test`, and serving refuses `test`. No public constructor or parameter accepts consent. These classes are `[[restricted]]` in the library's harness. Adversarial tests run in the library, and `ActionSafetySuite` runs the same cases on each team's actions. A handoff is an action like any other (open question 6) | Templates that state every field that matters, truthfully. Spoken labels callers understand. Its own word additions |
-| 2. No claim without a record | Outcome sentences come only from `done` templates filled from real results. The guard applies rules A to C (section 8.2) to every clause before TTS, and to model-written text shown on screen. A status result counts only from a tool declared with `reports_on=`. Simulated calls count violations, and the check runs in every `TextCall` | Claim phrases that cover how its domain talks ("submitted" against "approved"). `reports_on=` on its status tools. Tool results that carry only true data |
+| 2. No claim without a record | Outcome sentences come only from `done` templates filled from real results. What the talker writes is filtered first, each script none of the agent's languages writes taken out (section 8.2, D-084), so the guard reads the text that is said. The guard applies rules A to C (section 8.2) to every clause before TTS, and to model-written text shown on screen. A status result counts only from a tool declared with `reports_on=`. Simulated calls count violations, and the check runs in every `TextCall` | Claim phrases that cover how its domain talks ("submitted" against "approved"). `reports_on=` on its status tools. Tool results that carry only true data |
 | 3. Identity comes from the session | The `Caller` is fixed at join. `ctx.caller` is read-only, and nothing said in the call changes it. `bind=from_caller(...)` fills identity parameters from the session and hides them from the talker. `t2v check` warns about identity-like parameters left unbound | A correct identity source. Tools that scope data by `ctx.caller`, never by an argument |
 | 4. Model output is parsed | Every tool and action argument is parsed into pydantic types, and invalid values go back to the talker with the field named. `Literal` types and enums fix value sets, and `validate` checks against the backend's lists. Tool results and passages are framed as data in the prompt | Fixed sets that match its backend. No tool that executes instructions found in text |
 | 5. Secrets stay in the backend | Section 7.5. Join-token claims are documented as readable by the caller | Its own secrets; no secrets in token claims; tool results that return none |
@@ -1151,7 +1151,27 @@ Ole5's invariants (docs/SECURITY.md) are generalized from tickets to any action.
 
 ### 8.2 How the output guard decides
 
-The guard checks each clause before it goes to TTS.
+**Before the guard, the stray-script filter** (D-084; the owner's ruling of 2026-11-10: "not
+only spoken, make it not appear as the llm response if we hook up a screen"). Each piece of text
+the talker streams, and each string value of each tool call's arguments (never a key), is
+filtered as it arrives, so the guard, the voice, the captions, the history, the trace, the events
+and an action's draft read one text. What it keeps follows the scripts of all the agent's
+languages: `ar-SA` and `ar` write Arabic and Latin, `en` Latin. It keeps those scripts' blocks,
+General Punctuation, the Arabic-Indic and Persian digits, every character of a term the agent
+declares (its pronunciation map's written forms, `vocabulary.terms`, `words.vocabulary`), and any
+other punctuation, symbol, space or format character, the arrows said as "then" among them. It
+rewrites a fullwidth form as its ASCII form, the ideographic space, comma and full stop as a
+space, a comma and a full stop, and a digit of another script as its ASCII digit. It takes out
+any other letter or mark, the CJK and Hangul ranges whatever their category, and the pictographs
+(emoji among them). Each character is judged alone, so nothing is held back and nothing is
+guessed in a removed character's place. Once it has changed a reply's text, a clause with no
+letter or digit is no clause, and a reply left with nothing to say gets the `error` notice. It
+never changes the caller's heard words, a tool's result, a card, a template or a fixed phrase:
+they are the team's or the caller's text. `guard.remove_stray_script`, on by default, turns it
+off when set to false.
+
+The guard checks each clause before it goes to TTS, as the filter left it: a stray character
+cannot hide a claim phrase or split an ID.
 
 **First, it normalizes the clause:**
 - the canonical Arabic normalizer;
@@ -1324,7 +1344,10 @@ Ole5's golden-set machinery stays in the app, under `apps/ole5-voice-agent/evals
   - Plain OTLP goes to Phoenix by default, and to any OpenTelemetry backend if the team points it elsewhere.
 - **One trace per turn.** Phoenix groups a call's traces through `session.id`, which is set to the call ID. The call ID is not a credential (section 5.5).
 - **Spans**, following OpenInference conventions:
-  - the turn;
+  - the turn (its outcome and times, no text: `turn.dropped`, `turn.stopped`, `turn.unfinished`
+    and each of its times; and, only on a turn whose reply lost a character to the stray-script
+    filter, `turn.stray_characters`, how many were taken out or rewritten, and
+    `turn.stray_scripts`, their labels as one comma-separated string, D-084);
   - speech-to-text (audio seconds, billed seconds, model, language);
   - the model (tokens, time to first token);
   - each tool (arguments and results after redaction);

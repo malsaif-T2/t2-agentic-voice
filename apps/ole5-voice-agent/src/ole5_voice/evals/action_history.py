@@ -4,9 +4,12 @@ session sent (every request, the smoke test's and the judge's included), so the 
 adds up over a run spread over days; its numbers are the scorecard's after that session.
 
 Strict as every history line: a held-out run's line holds no scenario's count, and a secret
-setting is shown only as set or not set. The shared history reads a line through
-`run_lines.AnyLine`, which names each kind it takes: until it names this one, a run refuses to
-start (`run_folder.history_accepts`), so no line is written the history cannot read back.
+setting is shown only as set or not set. Every line, a held-out run's too, holds the run's
+stray count (`stray_characters`, D-084): the characters the library's stray-script filter took
+out of, or rewrote in, what the talker wrote in the plays its scorecard keeps, an aggregate.
+The shared history reads a line through `run_lines.AnyLine`, which names each kind it takes:
+until it names this one, a run refuses to start (`run_folder.history_accepts`), so no line is
+written the history cannot read back.
 """
 
 from __future__ import annotations
@@ -29,8 +32,9 @@ _Usd = Annotated[float, Field(ge=0, allow_inf_nan=False)]
 class ActionLine(Model):
     """One line of `history.jsonl` for a session of a `poe eval-actions` run: its model, the
     judge's, the split, how many times each scenario was played, the registered metrics and
-    whether each target held, the hard constraint and the violations, whether the run passed,
-    each dev scenario's passing plays, and the session's requests, tokens, prices and cost."""
+    whether each target held, the hard constraint and the violations, the stray count, whether
+    the run passed, each dev scenario's passing plays, and the session's requests, tokens,
+    prices and cost."""
 
     kind: Literal["actions"] = "actions"
     time: datetime
@@ -49,6 +53,7 @@ class ActionLine(Model):
     summary: _Share | None
     language: _Share | None
     violations: int = Field(ge=0)
+    stray_characters: int = Field(default=0, ge=0)
     held: bool | None
     targets: dict[Name, bool | None]
     targets_met: bool | None
@@ -97,6 +102,7 @@ def action_line(card: ActionScorecard, session: Session, number: int, scenarios:
         summary=_share(totals.summary),
         language=_share(totals.language),
         violations=totals.violations,
+        stray_characters=totals.stray_characters,
         held=card.held,
         targets=card.targets,
         targets_met=card.targets_met,

@@ -8,7 +8,11 @@ The script: the caller speaks over the greeting, a stop word, or new words the e
 The audio call runs the real file-fed pipeline with the tests' tone detector and a turn analyzer
 that ends each turn at its first pause (voice/kit.py), speech-to-text the fake's (the scripted
 words for each request), at real-time pace; the text call runs the same session code with no
-audio, on its virtual clock. Both run the real interruption rule."""
+audio, on its virtual clock. Both run the real interruption rule.
+
+A talker's reply with a stray character takes the same path too: the same clauses said through
+`TextCall` and through the audio session, the filter's in both, and `TextTurn.stray_characters`
+counts what went."""
 
 from __future__ import annotations
 
@@ -28,7 +32,7 @@ from t2_agentic_voice.core.events import (
 from t2_agentic_voice.domain.declaration import Language, VoiceAgent
 from t2_agentic_voice.domain.ports.speech_to_text import AudioClip
 from t2_agentic_voice.domain.words import PRESET_WORDS
-from t2_agentic_voice.evals import AudioCall, TextCall
+from t2_agentic_voice.evals import AudioCall, ScriptedLLM, TextCall
 from t2_agentic_voice.testing import audio_call
 from t2_agentic_voice.voice.calls import VoiceCalls
 
@@ -94,6 +98,68 @@ def _text(settings: VoiceSettings, words: str) -> dict[str, Any]:
 
     asyncio.run(run())
     return path(call._emitted)
+
+
+# A talker's reply with a stray character and a pictograph, which the filter takes out before the
+# guard, the voice and the captions read it, and what is said of it.
+ASKED = "my laptop is stuck on the login screen"
+STRAY = "Restart重 it now. Then sign in😀 again."
+STRAY_SAID = ["Restart it now.", "Then sign in again."]
+
+
+def _talker_agent() -> VoiceAgent:
+    return VoiceAgent(
+        name="parity-scripts",
+        languages=[Language.english(greeting=GREETING)],
+        instructions="Answer briefly.",
+    )
+
+
+def _stray_text(settings: VoiceSettings) -> tuple[dict[str, Any], int, list[str]]:
+    model = ScriptedLLM([ScriptedLLM.reply(STRAY)])
+    call = TextCall(_talker_agent(), llm=model, settings=settings)
+
+    async def run() -> tuple[int, list[str]]:
+        async with call:
+            asked = await call.user(ASKED)
+            await call.advance(15.0)
+            return asked.stray_characters, [clause.text for clause in asked.clauses]
+
+    count, clauses = asyncio.run(run())
+    return path(call._emitted), count, clauses
+
+
+def _stray_audio(settings: VoiceSettings, monkeypatch: pytest.MonkeyPatch) -> dict[str, Any]:
+    detectors = partial(VoiceCalls, speech_detector=ToneVAD, turn_analyzer=PauseAnalyzer)
+    monkeypatch.setattr(audio_call, "VoiceCalls", detectors)
+    replay = AudioCall(
+        settings=settings,
+        stt=FakeSpeechToText([ASKED]),
+        tts=FakeTextToSpeech(seconds_per_char=0.02),
+        agent=_talker_agent(),
+        chat=ScriptedLLM([ScriptedLLM.reply(STRAY)]),
+    )
+
+    async def run() -> None:
+        await replay.start()
+        try:
+            clip = AudioClip(pcm16=tone(0.6, 16_000))
+            await replay.turn(clip, greeting=(GREETING,), language="en", lead_s=0.5, tail_s=4.0)
+        finally:
+            await replay.aclose()
+
+    asyncio.run(asyncio.wait_for(run(), timeout=60))
+    return path(replay.emitted)
+
+
+def test_a_reply_with_a_stray_character_says_the_same_clauses_as_text_and_as_audio(
+    settings: VoiceSettings, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    text, count, clauses = _stray_text(settings)
+    audio = _stray_audio(settings, monkeypatch)
+    assert text == audio
+    assert clauses == STRAY_SAID and count == 2
+    assert text["replies"][1] == (0, " ".join(STRAY_SAID), True)
 
 
 @pytest.mark.parametrize("script", sorted(SCRIPTS))
