@@ -1,12 +1,14 @@
 """What the talker writes for Ole5's actions (ole5_voice/tickets/drafts.py): each draft parsed
 strictly, a value outside a fixed set and a key the draft does not hold refused, naming the field
-and never the value (docs/SECURITY.md, invariant 4); every type and priority said in Saudi
-Arabic and English; a number in four groups; and the record's tickets read back, anything else
-skipped."""
+and never the value (docs/SECURITY.md, invariant 4); the type told how to choose when more
+than one fits, and a handoff's summary told to say what the caller needs help with (run A's
+a2-dev); every type and priority said in Saudi Arabic and English; a number in four groups; and
+the record's tickets read back, anything else skipped."""
 
 from __future__ import annotations
 
 from pathlib import Path
+from typing import Any
 
 import pytest
 from ole5_voice.tickets.actions import add_ticket_note, create_ticket, hand_off
@@ -74,6 +76,54 @@ def test_the_talker_sets_the_priority_from_the_callers_words_and_never_asks(
     ):
         assert needed in told, needed
     assert "how urgent it is:" not in told  # the old help, which waited for the caller to say
+
+
+def _told_of(schema: dict[str, Any], field: str) -> str:
+    """The description of `field` in a draft's JSON schema, as the model reads it, on one line."""
+    return " ".join(str(schema["properties"][field]["description"]).split())
+
+
+def test_the_type_defines_each_type_once_then_says_the_most_specific_wins(
+    tmp_path: Path,
+) -> None:
+    """Run A's second dev run (a2-dev): the talker picked "Bug" for a report that shows nothing,
+    and "Bug" or "Issue" for a problem in the mobile app, since "works wrongly" fits those too.
+    The type, as the model is told of it, still defines each of the 11 once, in their order;
+    then it says how to choose when more than one fits (the owner's "Fix, then dev again",
+    2026-11-11)."""
+    told = _told_of(_drafts(tmp_path)["create_ticket"].model_json_schema(), "type")
+    assert told.isascii()
+    defined, rule = told.split(" When more than one fits, ")
+    items = defined.removeprefix("The one type that fits best: ").removesuffix(".").split("; ")
+    assert [item.split(", ")[0] for item in items] == list(TYPES)
+    for needed in (
+        "the most specific wins",
+        "a problem with a report or the reports page is Report, even when it looks broken or "
+        "shows an error",
+        "a problem in Ole5's mobile app is Mobile App Issue, signing in to it too",
+        "unless the caller says they need a new password, which is Reset Password",
+        "Bug is for a defect in Ole5 that fits none of those",
+        "Issue only for a problem that is not clearly a defect",
+    ):
+        assert needed in rule, needed
+
+
+def test_a_handoffs_summary_says_what_the_caller_needs_help_with(tmp_path: Path) -> None:
+    """a25 in a2-dev: asked how to archive, then for a person, the talker's summary said only
+    that the caller wanted a staff member. The summary, as the model is told of it in the draft
+    and in hand_off's own description, says what the caller needs help with."""
+    told = _told_of(_drafts(tmp_path)["hand_off"].model_json_schema(), "summary")
+    for needed in (
+        "What the caller needs help with: their question or problem as they said it in this "
+        "call, not only that they asked for a person",
+        "in the caller's language, at most 200 characters. It is read back to them.",
+    ):
+        assert needed in told, needed
+    described = " ".join(hand_off(mock(tmp_path)).description.split())
+    assert (
+        "Write the summary of what the caller needs help with, their question or problem, not "
+        "only that they asked for a person." in described
+    )
 
 
 @pytest.mark.parametrize(

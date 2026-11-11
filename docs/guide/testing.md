@@ -325,8 +325,8 @@ goes to the test's model, the same one the talker writes with.
   later are judged like any other words, so "send it", said more than 300 ms after "Shall I
   send it?" ended (as `call.user(text)` says it), confirms on the model's `send` or `yes`.
 - **No word is asked again, and fails nothing.** A check whose fake raises anything, a
-  `ProviderError` step or a script that ran out, or answers after 1.5 s on the call's clock (a
-  `Pause(2.0)` before its word), gives no word: the caller is asked again, and the test does not
+  `ProviderError` step or a script that ran out, or answers after 2.5 s on the call's clock (a
+  `Pause(3.0)` before its word), gives no word: the caller is asked again, and the test does not
   fail. So `asked_again()` and `no_action()` can pass with the model's word never tested. Move
   the clock on after the answer, so the check, the sending line and the write have run.
 - **A `ScriptedLLM` counts each check as a request**: with an agent that asks, its script needs
@@ -439,7 +439,7 @@ answer and the rails held:
 - its `yes` for a yes beside a change word ("yes, but make it urgent") is a correction;
 - its `yes` for a yes beside a no word ("yes, not like that"), or its `send` for a go-ahead asked
   as a question ("go for it?"), is asked again;
-- a check that fails, or answers after its 1.5 s, is asked again;
+- a check that fails, or answers after its 2.5 s, is asked again;
 - the closing question's own words heard back while it plays, which the check answers `send`,
   confirm nothing and write nothing (the echo rail);
 - its `yes` over the closing question, for words with no send word ("sure thing"), is asked

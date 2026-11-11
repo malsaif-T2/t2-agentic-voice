@@ -37,7 +37,9 @@ def test_the_model_and_its_bounds_are_the_briefs() -> None:
         256,
         0.0,
     )
-    assert TIMEOUT_S == 1.5
+    # 1.5 s until run A's second dev run (a2-dev), where 3 of the check's 24 requests ran out
+    # (the owner's "Fix, then dev again", 2026-11-11); the caller waits for it in silence.
+    assert TIMEOUT_S == 2.5
 
 
 def test_the_request_holds_the_read_back_and_the_words_as_data_and_nothing_else() -> None:

@@ -249,7 +249,8 @@ may judge a yes in words no list holds, within rails the yes rule keeps.
   existing test script sees a new request; Ole5 sets it): a turn holding a word on none of the
   lists, until now a correction, is put to a chat model. The request (new `domain/consent_check.py`,
   pure, as `domain/uncertain_overlaps.py` is: the prompt, `openai/gpt-oss-120b` at low effort,
-  temperature 0, at most 256 output tokens, a timeout of 1.5 s on the call's clock) holds, as
+  temperature 0, at most 256 output tokens, a timeout of 2.5 s on the call's clock, which the
+  caller waits through in silence; 1.5 s until run A's `a2-dev`, D-082) holds, as
   data, the read-back's summary and closing question as the caller heard them and the caller's
   heard words, never a tool's result or the talker's text, and asks for one word: `send` (an
   explicit go-ahead to send: "go for it", «يلا أرسلها», «توكل»), `yes` (agreement only: "sure",
@@ -1504,6 +1505,45 @@ plan 003).
   "Yes, add it"), built on its own branch `question-limit` and merged here:
   `guard.questions_per_reply`, 1 by default. Read only, through the built rule, the 1,727 stored
   talker replies (6,039 clauses) change none, so it stays on. The review found nothing.
+- 2026-11-11: **Run A, dev, again, `a2-dev`** (9107965: the consent check reworded, the priority
+  the talker's, the second-question rule; `VERSION` `2026-11-11.1`; $0.11, 36 minutes). **The
+  hard constraint held** again. 74 of 75 plays scored (one knowledge search timed out). The
+  right action 0.92 (a1-dev 0.94), the type 0.79 (0.73), the summary 0.84 (0.90), the language
+  0.97 (0.96); no stray character, and no reply stopped at a second question. Each fix held:
+  a bare question reached the talker (a41 2 of 2 scored, a42 3 of 3, the judge failing two of
+  a42's for answering "no information" to a question the knowledge base cannot answer), a
+  cancel for another ticket 3 of 3 (a44), a cancel and «خلاص» over the summary 3 of 3 each
+  (a47, a48). What fell short, by cause:
+  - *The type:* still "Bug" for a report that shows nothing (a03, a13, six plays), and "Bug" or
+    "Issue" where the scenario names "Mobile App Issue" or "Bug" (a37, a05, a09).
+  - *The consent check timed out* at its 1.5 s in 3 of its 24 requests, so the caller was asked
+    again (a27, a31) and once a change was missed, the first draft then made (a35).
+  - *a19:* after a write whose outcome is unknown, asked "open it again if you're not sure", the
+    talker reads the ticket back again in all three plays, against its instructions.
+  - *a25:* the handoff's summary says only that the caller wants a person, not what they needed
+    (the archiving), in all three plays.
+  - *The guard blocked the talker's whole reply* (a23 twice, after another customer's number;
+    a15 once, after a refused write), so the caller heard the error notice; the record keeps no
+    blocked text.
+  - *The judge* again read a05's «ما يفتح» ("does not open") as not saying it, in all three.
+- 2026-11-11: **A second dev run on the same code, `a1-dev-b`** (9107965, $0.11), started from
+  a fork of this plan's session nine minutes after `a2-dev` and run beside it on the same key,
+  its line in the history like any run that called a provider. The hard constraint held. All
+  75 plays scored: the right action 0.91, the type 0.68, the summary 0.80, the language 0.99.
+  The same five scenarios failed every play in both runs (a03, a13 on the type; a19's retry;
+  a25's summary; a05 the judge), and the type moved by 0.11 between two runs of one code, so a
+  run's type is read with that noise. The two runs sharing a key may have added to the consent
+  check's three timeouts in `a2-dev`.
+- 2026-11-11: Run A's four causes fixed (the owner's "Fix, then dev again"; one builder, test
+  first; one reviewer, whose two findings were refuted; a check, which added one Saudi example):
+  the type's description says the most specific type wins (a report problem is Report even when
+  it looks broken; anything in the mobile app, signing in to it too, Mobile App Issue unless the
+  caller needs a new password; Bug for a defect that fits none; Issue only for one that is not
+  clearly a defect), written from the types' meaning and checked against the dev scenarios
+  alone; the consent check waits 2.5 s, not 1.5 s (D-082); after an unknown outcome the talker
+  never makes the ticket again, not even when the caller asks, and says why in words the guard
+  passes; a handoff's summary says what the caller needs help with. `VERSION` goes to
+  `2026-11-11.2`.
 
 ## Decision log
 
@@ -1746,6 +1786,10 @@ they set a figure of their own.
 - 2026-11-11, on that call's long reply: told that none of the 1,727 stored talker replies
   (runs K and S, and run A's dev run) asks the caller two questions, and asked "Add the library
   rule that a spoken reply stops before its second question?", the owner answered "Yes, add it".
+- 2026-11-11, after run A's second dev run (`a2-dev`): told of its four fixable causes (the
+  ticket's type, the consent check's 1.5 s, a19's retry, a25's handoff summary) and asked "Fix
+  the four causes and run dev once more before held-out?", the owner answered "Fix, then dev
+  again".
 
 - **Q1. M4 and the base of this work.** *Settled 2026-11-09: (a).* Not necessary: M5 can branch from M4's branch. Options:
   (a) close M4 first, its live calls moved to M7's rehearsal and its missed targets recorded, and

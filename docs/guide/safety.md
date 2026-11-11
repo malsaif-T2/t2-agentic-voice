@@ -222,7 +222,7 @@ stand, or the answer is asked again. Then:
 | --- | --- |
 | `no` | declined, unless the words are the agent's own, heard back (rail 3 below): asked again |
 | `change` | a correction, unless the words are the agent's own, heard back (rail 3 below): asked again |
-| `unclear`, any other answer, a failed request, or no answer within 1.5 s on the call's clock | asked again |
+| `unclear`, any other answer, a failed request, or no answer within 2.5 s on the call's clock, while the caller waits in silence | asked again |
 | `send` or `yes` | a yes, unless one of the rails below holds |
 
 So the agent's own lines heard back never confirm, cancel or change a read-back, whatever the
@@ -246,8 +246,9 @@ A `send` or a `yes` is not a yes when:
    asked again, as a bare «نعم» is. Over the question, only its `send` confirms a send word said
    alone.
 
-**In the call.** The caller waits in silence while the check runs, 1.5 s at most, and the wait
-counts in the turn's time to first audio. A newer answer from the caller, the client's Stop and
+**In the call.** The caller waits in silence while the check runs, 2.5 s at most, and the wait
+counts in the turn's time to first audio. (The limit was 1.5 s until run A's second dev run,
+where 3 of the check's 24 requests ran out and the caller was asked again: D-082.) A newer answer from the caller, the client's Stop and
 the call's end cancel a request still waiting, so only the newest answer decides. A word that
 lands when its read-back is no longer the current one (said again, stopped, or the call ending)
 decides nothing, and nothing is said for it.
@@ -357,7 +358,7 @@ rules, to say why or ask for what is missing.
 | Only the yes rule issues a confirmed action, and the action runner runs no write without one | Your system's own checks and permissions: the yes rule proves the caller agreed, not that they may do it. Check in `validate`, before the read-back, and refuse in `execute` with `ActionRejected` |
 | Consent is the caller's own speech, begun after the summary played whole; typed words only in a test | Who the caller is: an identity source that mints join tokens; for a tool, `bind=from_caller(...)` on every parameter that says who the caller is; for an action, which has no `bind=`, `ctx.caller` in `execute` and `validate`, never a draft field ([tools-and-actions.md](tools-and-actions.md), [serving.md](serving.md), invariant 3) |
 | What runs is the draft the caller heard read back | Read-back templates that say every field that matters, truthfully: nothing checks that they describe what `execute` does |
-| The model check, when you turn it on, never confirms what the lists refused, and a failure never confirms | Whether to turn it on, for its cost: one request and up to 1.5 s of silence for each unplaced answer |
+| The model check, when you turn it on, never confirms what the lists refused, and a failure never confirms | Whether to turn it on, for its cost: one request and up to 2.5 s of silence for each unplaced answer |
 | The talker's text after an action call is never spoken, and the outcome is said from the real result | Your instructions: what the talker collects before it calls the action ([writing-for-voice.md](writing-for-voice.md)) |
 | No clause says an ID-shaped number without evidence, and, for an agent with actions, none claims an action without the record or a `reports_on` result | Claim phrases in your domain's words (each action's `claims`, and `T2V_GUARD__CLAIMS`); `reports_on` on your status tools, whose results hold only values read for the caller, never an argument the model chose |
 | | A closing question with a send word and no yes word, `send_words` for your own verb, and the yes words your callers use |

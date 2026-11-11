@@ -76,9 +76,9 @@ NOTE_DESCRIPTION: Final = (
 HANDOFF_DESCRIPTION: Final = (
     "Pass the caller's request to Ole5's support team as a ticket, when the caller asks for a "
     "person, a staff member or a human. There is no live transfer: support staff read the "
-    "ticket, with what was said in this call. Write the summary of what the caller needs. The "
-    "caller hears it read back and is asked to confirm it; say nothing yourself after calling "
-    "this."
+    "ticket, with what was said in this call. Write the summary of what the caller needs help "
+    "with, their question or problem, not only that they asked for a person. The caller hears "
+    "it read back and is asked to confirm it; say nothing yourself after calling this."
 )
 _NO_CUSTOMER: Final = (
     "This call has no customer to open a ticket for, so no ticket can be made in it. Tell the "

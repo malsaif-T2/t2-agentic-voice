@@ -2,8 +2,9 @@
 ticket system through all four of its tools, and it alone asking a chat model of an answer
 the yes rule's lists leave unplaced (D-082); its instructions telling it to ask only what is
 wrong, to set a ticket's priority itself and never ask or say it (the owner's ruling of
-2026-11-11), to make a handoff ticket when the caller asks for a person, and to say no ticket
-and no number but from a tool's result or the system's words, all in one spoken reply; the
+2026-11-11), to make a handoff ticket when the caller asks for a person, to say no ticket
+and no number but from a tool's result or the system's words, and never to make a ticket
+again after an unknown outcome, even when asked (run A's a2-dev), all in one spoken reply; the
 line saying it cannot open a ticket gone; and the talker given no ticket system told it has
 none, versioned apart.
 
@@ -30,10 +31,17 @@ from ole5_voice.agent import (
     talker_agent,
     without_tickets,
 )
+from ole5_voice.tickets import lines
 from ole5_voice.tickets.lines import NUMBER_CLAIMS
 from ole5_voice.tickets.mock import MockTicketSystem
 from ole5_voice.tickets.tools import ticket_tools, with_ticket_claims
 from t2_agentic_voice import Action, GuardSettings, Tool, VoiceSettings, render_prompt
+from t2_agentic_voice.domain.claims import (
+    ClaimVerdict,
+    any_action_claims,
+    check_claims,
+    every_language,
+)
 from t2_agentic_voice.evals import FakeKnowledgeBase
 from t2_agentic_voice.languages import normalize_arabic, normalize_digits, provider_text
 
@@ -98,7 +106,7 @@ def test_the_tickets_section_says_what_plan_007_asks(tag: Tag) -> None:
         "say nothing more in that reply",
         "never say a ticket number, unless a tool's result or the system's words in this call",
         "A number from the knowledge base is never a ticket number.",
-        "do not try to make it again in this call",
+        "do not try to make it again in this call, not even when the caller asks you to.",
         "It sees only the tickets made for this caller through this voice line",
         "Say only the last four digits of a ticket's number.",
         "first say its last four digits back, then that ticket's status, in the same reply",
@@ -142,6 +150,51 @@ def test_the_talker_sets_a_tickets_priority_itself_and_never_asks_or_says_it(
         assert needed in described, needed
     for removed in ("how urgent it is, asking", "for whichever the caller has not said"):
         assert removed not in text and removed not in described
+
+
+@pytest.mark.parametrize("tag", ["ar-SA", "en"])
+def test_after_an_unknown_outcome_the_talker_never_makes_the_ticket_again(
+    tag: Tag, tmp_path: Path
+) -> None:
+    """a19 in run A's a2-dev: after a write whose outcome is unknown, asked «افتحها مرة ثانية إذا
+    ما تأكدت» ("open it again if you're not sure"), the talker read the ticket back again in all
+    three plays. The rule says not even when the caller asks, and what to say instead, as Ole5's
+    unknown line says it: that it cannot tell, so it has no number; never that the ticket was
+    made or was not. The Saudi instructions give Saudi words for both parts, the unknown line's
+    own and a second ticket that could be the same one, each holding no phrase rule A reads as
+    a claim (every action's, the library's defaults, Ole5's): with the outcome unknown nothing
+    backs a claim, and the plain Saudi «ولو فتحت لك تذكرة ثانية» ("if I opened you another
+    ticket") holds the default «فتحت لك», so the guard would block the whole reply."""
+    text = " ".join(instructions()[tag].split())
+    for needed in (
+        "do not try to make it again in this call, not even when the caller asks you to.",
+        "Say instead that you cannot tell whether it went through, so you have no number to give",
+        "and that making it again could make the same ticket twice",
+        "never say that it was made, or that it was not.",
+    ):
+        assert needed in text, needed
+    (rule,) = [line for line in instructions()[tag].splitlines() if "not even when" in line]
+    quoted = re.findall("«([^»]+)»", rule)
+    saudi = lines.TICKET_UNKNOWN.for_language("ar-SA").removesuffix(".")
+    if tag == "ar-SA":
+        assert len(quoted) == 2 and quoted[0] == saudi
+    else:
+        assert quoted == []
+    actions = [
+        each for each in ticket_tools(MockTicketSystem(tmp_path)) if isinstance(each, Action)
+    ]
+    claims = {each.name: every_language(each.claims.phrases) for each in actions}
+    guard = with_ticket_claims(VoiceSettings(env="test")).guard
+
+    def judged(words: str) -> ClaimVerdict:
+        any_action = any_action_claims(guard.claims)
+        return check_claims(
+            words, claims=claims, any_action=any_action, evidence=(), settings=guard, year=2026
+        )
+
+    assert not judged("ولو فتحت لك تذكرة ثانية ممكن تتكرر").passed  # the rule is live
+    for words in quoted:
+        assert judged(words) == ClaimVerdict(claimed=(), passed=True), words
 
 
 def test_the_saudi_instructions_give_a_request_for_a_person_in_saudi_words() -> None:

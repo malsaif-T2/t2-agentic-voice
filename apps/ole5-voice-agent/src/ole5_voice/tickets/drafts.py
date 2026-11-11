@@ -3,7 +3,9 @@ and Q7): the drafts, parsed strictly and read back to the caller, and the result
 line is filled from and the record keeps.
 
 - **A ticket's draft** holds a summary of what is wrong, which the model writes in the
-  caller's language, at most `MAX_SUMMARY_CHARS`; one of the 11 types; and the priority,
+  caller's language, at most `MAX_SUMMARY_CHARS`; one of the 11 types, each defined once, and
+  where more than one fits the most specific (`_TYPE_HELP`: run A's a2-dev picked "Bug" for a
+  report that shows nothing and for a problem in the mobile app); and the priority,
   which is internal (the owner's ruling of 2026-11-11): the talker sets it from what the
   caller said, Medium when they say nothing of it, never asks for it and never says it, so
   the read-back leaves it out. The caller is asked only what is wrong. The queue follows the
@@ -13,8 +15,9 @@ line is filled from and the record keeps.
   read-back says only the type's.
 - **A note's draft** names a ticket made in this call by its number's last four digits, the
   way the caller hears it, and the note's text.
-- **A handoff's draft** is the summary of what the caller needs from a person; the call's
-  transcript goes with it, from the session, never from the talker (D-009, Q7).
+- **A handoff's draft** is the summary of what the caller needs help with, their question or
+  problem, not only that they asked for a person (a2-dev's a25); the call's transcript goes
+  with it, from the session, never from the talker (D-009, Q7).
 - **The results:** a ticket made (`TicketMade`), its number in four groups of four digits so
   `done` says it digit by digit in groups (Q6), and a note added (`NoteAdded`), with the last
   four digits. `made_in` reads the tickets a list of recorded actions holds, parsed, any row
@@ -86,7 +89,11 @@ _TYPE_HELP: Final = (
     "Ole5 with another system; Request for Migration, moving data into or out of Ole5; Request "
     "for New Feature with Change Request, a new feature or a change to Ole5; Request, any other "
     "request to support staff, such as a user or a permission; Reset Password, the caller "
-    "cannot sign in and needs a new password."
+    "cannot sign in and needs a new password. When more than one fits, the most specific wins: "
+    "a problem with a report or the reports page is Report, even when it looks broken or shows "
+    "an error; a problem in Ole5's mobile app is Mobile App Issue, signing in to it too, unless "
+    "the caller says they need a new password, which is Reset Password; Bug is for a defect in "
+    "Ole5 that fits none of those, and Issue only for a problem that is not clearly a defect."
 )
 _PRIORITY_HELP: Final = (
     "Set it yourself from what the caller said; never ask for it, and never say it to them. "
@@ -161,8 +168,10 @@ class HandoffDraft(_Draft):
         Field(
             max_length=MAX_SUMMARY_CHARS,
             description=(
-                "What the caller needs from a person, in one or two short sentences you write "
-                "in the caller's language, at most 200 characters. It is read back to them."
+                "What the caller needs help with: their question or problem as they said it in "
+                "this call, not only that they asked for a person. In one or two short sentences "
+                "you write in the caller's language, at most 200 characters. It is read back to "
+                "them."
             ),
         ),
     ]

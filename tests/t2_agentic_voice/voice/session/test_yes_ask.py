@@ -208,6 +208,29 @@ def test_a_request_that_times_out_on_the_calls_clock_is_asked_again(
     assert _said(io, 2) == ASKED_AGAIN and jobs.runs == [] and session._confirming.active
 
 
+def test_a_word_within_the_time_limit_decides_while_the_caller_waits_in_silence(
+    settings: VoiceSettings,
+) -> None:
+    """Run A's a2-dev: 3 of the check's 24 requests ran past its 1.5 s, so the caller was asked
+    again. The limit is 2.5 s now (the owner's "Fix, then dev again", 2026-11-11): a word that
+    comes at 2 s decides, and nothing is said before it."""
+    io, _session, _talker, _llm, jobs = _call(settings, (Pause(2.0), *ScriptedLLM.reply("send")))
+
+    async def drive() -> None:
+        await read_back_played(io)
+        await talked(io, 1, UNLISTED)
+        await io.clock.advance(1.9)
+        await settle()
+        assert _answered(io) == [] and _said(io, 2) == []  # the caller waits, nothing said
+        await io.clock.advance(0.2)
+        await settle()
+
+    asyncio.run(drive())
+    assert TIMEOUT_S == 2.5
+    assert _answered(io) == [(1, "yes", "model")] and len(jobs.runs) == 1
+    assert _said(io, 2) == SENDING
+
+
 def test_a_request_that_fails_is_asked_again_logged_by_its_kind_alone(
     settings: VoiceSettings, caplog: pytest.LogCaptureFixture
 ) -> None:

@@ -30,11 +30,12 @@ from t2_agentic_voice.domain.ports.chat_model import ChatMessage, ChatRequest
 
 # The model and its bounds, as the overlap's request runs them (domain/uncertain_overlaps.py),
 # and the most a request may take on the call's clock: the caller waits in silence for it.
+# 1.5 s until run A's second dev run, where 3 of the check's 24 requests ran out (D-082).
 MODEL: Final[LlmModel] = "openai/gpt-oss-120b"
 REASONING_EFFORT: Final[ReasoningEffort] = "low"
 MAX_OUTPUT_TOKENS: Final = 256
 TEMPERATURE: Final = 0.0
-TIMEOUT_S: Final = 1.5
+TIMEOUT_S: Final = 2.5
 CONSENT_CHECK_INSTRUCTION: Final = (
     "You decide one moment of a phone call with a voice agent. The agent read back an action it "
     "is about to take for the caller, then asked whether to send it, and the caller answered; "

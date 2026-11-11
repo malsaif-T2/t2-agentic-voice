@@ -2752,7 +2752,8 @@ twice; DOC-REF: every `D-NNN` cited anywhere is a heading here), so keep its sha
   - For an agent that asks (`VoiceAgent.ask_on_unlisted_answers`, False by default, as
     `ask_on_uncertain_overlaps` is under D-069), those words are put to a chat model
     (`domain/consent_check.py`: `openai/gpt-oss-120b` at low effort, temperature 0, 256 output
-    tokens, 1.5 s on the call's clock), the request holding as data, in JSON, the read-back's
+    tokens, 2.5 s on the call's clock, which the caller waits through in silence; 1.5 s until
+    `a2-dev`, below), the request holding as data, in JSON, the read-back's
     summary and closing question as the plan rendered them and the heard words, nothing else;
     it answers `send`, `yes`, `no`, `change` or `unclear`, anything else read as `unclear`.
     *Amended 2026-11-11:* its `no` covers, beside a refusal or a cancel, an answer that turns to
@@ -2769,7 +2770,11 @@ twice; DOC-REF: every `D-NNN` cited anywhere is a heading here), so keep its sha
     question the caller asks instead is no", and `unclear` is "only" a sound, a hesitation or a
     word that answers nothing. Asked again the same 13 answers four times each, the model gave
     48 of 52 right; the rest were 3 failed requests and one `no` to "Yes, I want to talk to a
-    person" over a handoff's read-back, which drops it with nothing sent.
+    person" over a handoff's read-back, which drops it with nothing sent. *Amended again on
+    2026-11-11*, after run A's second dev run (`a2-dev`), by the owner's "Fix, then dev again":
+    the time limit is 2.5 s, up from 1.5 s, since 3 of the check's 24 requests ran out there,
+    so the caller was asked again, and once a change was missed and the unchanged ticket made.
+    The caller waits in silence for the check, so a slow one costs up to 2.5 s of silence.
   - The yes rule decides what the word makes (`judged`, beside `decide`, the only other builder
     of a `ConfirmedAction`). A `send` or `yes` is a yes only when the words hold no no word and
     no question mark (else asked again), no change marker (`domain/yes_words.py`'s new list a
@@ -2822,7 +2827,7 @@ twice; DOC-REF: every `D-NNN` cited anywhere is a heading here), so keep its sha
     passing at once for an agent that does not ask, the closing question heard back as it plays
     among them (judged `send`, it confirms nothing).
 - **Consequences:** an agent that asks hears "go for it" or «يلا أرسلها» as a yes, and «امممم»
-  asked again, not corrected; the caller waits in silence while the check runs, at most 1.5 s,
+  asked again, not corrected; the caller waits in silence while the check runs, at most 2.5 s,
   and that wait counts in the turn's time to first audio: the turn settles, its `TurnMetrics`
   sent and its trace ended, only once the reply its verdict says has played. A model fooled into `send` on words that carry no refusal, change or echo (a hesitation, after
   a read-back whose draft held text written to steer it) would still confirm: the rails are
