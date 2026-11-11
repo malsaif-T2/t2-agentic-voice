@@ -4,9 +4,11 @@ a fake chat model: only for an agent that asks and only for unplaced words, one 
 holding the read-back and the words; its word decided by the rule (`judged`) and carried out as
 any answer is, told `by="model"`, its no on a question reaching the talker declined as a no
 (the owner's answer of 2026-11-11); a timeout on the call's clock, a failure and a word that is
-none asked again; a newer answer, the client's stop, the call's end and a stop word that
-declined the read-back each leave a request still in flight deciding nothing; the request
-counted in the call's usage, its outcome logged by kind, never the words."""
+none asked again, but a timeout or a failure on words holding a no word declined, reaching the
+talker as a no (the owner's "Yes, all three", 2026-11-11); a newer answer, the client's stop,
+the call's end and a stop word that declined the read-back each leave a request still in
+flight deciding nothing; the request counted in the call's usage, its outcome logged by kind,
+never the words."""
 
 from __future__ import annotations
 
@@ -40,12 +42,15 @@ from tests.t2_agentic_voice.voice.session.talker_support import (
 from tests.t2_agentic_voice.voice.session.yes_support import (
     FakeJobs,
     confirm_call,
+    play_reply,
     read_back_played,
 )
 
 ASKS = AGENT.model_copy(update={"ask_on_unlisted_answers": True})
 UNLISTED = "go for it"  # words on none of the lists
 QUESTION_WORDS = "How do I reset my password?"  # a question about something else
+# a no that asks for another ticket instead: a no word beside words on none of the lists
+CANCEL_FOR_ANOTHER = "No, forget that one, open a ticket about the projector instead"
 SENDING = [provider_text(PLAN.sending.spoken)]
 ASKED_AGAIN = [provider_text(ASKED)]
 STOP_WORD = PRESET_WORDS["en"].stop[0]
@@ -206,6 +211,44 @@ def test_a_request_that_times_out_on_the_calls_clock_is_asked_again(
     assert TIMEOUT_S in io.clock.sleeps  # the call's clock
     assert _answered(io) == [(1, "asked_again", "model")]
     assert _said(io, 2) == ASKED_AGAIN and jobs.runs == [] and session._confirming.active
+
+
+@pytest.mark.parametrize(
+    "steps",
+    [(Pause(5.0), *ScriptedLLM.reply("send")), (ProviderError("server_error", True),)],
+    ids=["timeout", "failed"],
+)
+def test_no_word_on_a_no_that_asks_for_another_ticket_hands_it_to_the_talker_declined(
+    settings: VoiceSettings, steps: tuple[ScriptStep, ...]
+) -> None:
+    """Run A's a3-dev, a44: the check ran out on "No, forget that one. Open a ticket about ...
+    instead", the caller was asked again, and their "Yes, send it." made the ticket they had
+    dropped. Words that hold a no word, given no word, are declined (the owner's "Yes, all
+    three", 2026-11-11): the turn goes to the talker with the no note and its words whole, and
+    nothing is sent, nor by the yes that follows."""
+    io, session, talker, llm, jobs = _call(settings, steps)
+
+    async def drive() -> None:
+        await read_back_played(io)
+        await talked(io, 1, CANCEL_FOR_ANOTHER)
+        await io.clock.advance(TIMEOUT_S + 0.1)
+        await settle()
+        await play_reply(io, 2)  # the talker's answer to turn 1
+        await io.clock.advance(1.0)
+        await talked(io, 2, "Yes, send it.")  # no read-back current: the talker's
+        await io.clock.advance(1.0)
+        await settle()
+
+    asyncio.run(drive())
+    (request,) = llm.requests
+    assert json.loads(request.messages[1].content)["answer"] == CANCEL_FOR_ANOTHER
+    assert _answered(io) == [(1, "declined", "model")]
+    (handed,) = [t for t in talker.turns if t.turn_id == 1]
+    no = DeclinedAction(action=PLAN.action, kind="no", words=CANCEL_FOR_ANOTHER)
+    assert handed.declined == no
+    assert [t.turn_id for t in talker.turns] == [0, 1, 2]
+    assert jobs.runs == [] and not session._confirming.active
+    assert _said(io, 2) != ASKED_AGAIN  # the talker's answer, never the ask-again line
 
 
 def test_a_word_within_the_time_limit_decides_while_the_caller_waits_in_silence(

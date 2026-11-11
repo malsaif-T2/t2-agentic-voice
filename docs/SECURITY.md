@@ -59,7 +59,11 @@ has not reviewed those either.
    read-back and those words; the rule never takes its word as it is: words with a no word, a
    question mark or a change word ("but", «بس»), the agent's own words heard back as it says
    them, and an answer to a read-back no longer current are never a yes, and a model that fails
-   or is too slow means the caller is asked again. Over the closing question the rule takes only
+   or is too slow is never a yes either: the caller is asked again, or, when the words hold a
+   no word and are not the agent's own words heard back, the read-back is dropped as a no,
+   nothing sent (the owner's "Yes, all three", 2026-11-11, after run A's `a3-dev`, where a
+   cancel for another ticket was asked again and the next yes made the ticket dropped). Over
+   the closing question the rule takes only
    a yes with a send word («نعم أرسلها»), or the model's explicit go-ahead to send ("go for
    it"); a bare «نعم», or the model's plain agreement ("sure"), there is asked again (the
    owner's second ruling, the same day: "Yes, send it"). A send word said alone («أرسلها», "go

@@ -2790,7 +2790,18 @@ twice; DOC-REF: every `D-NNN` cited anywhere is a heading here), so keep its sha
     `yes` is, since a question is now a `no` and the closing question heard back is a question;
     the model's `no` stays `Declined`, so the turn goes to the talker with the action declined
     as a no and its words whole, and the talker answers the question or proposes the new action
-    in its own words (the owner's ruling "The model always answers"). An agent that does not
+    in its own words (the owner's ruling "The model always answers"). *Amended a third time on
+    2026-11-11*, after run A's third dev run (`a3-dev`): a failure or a timeout, which gives no
+    word, on words that hold a no word of the lists ("no", «لا», «ما» and the rest) is
+    `Declined`, as the model's `no` is, unless the words are the agent's echo (below, the same
+    lines and window), when it is asked again; on any other words it is asked again, as before,
+    and `unclear` and every other word are unchanged. There the check ran out at 2.5 s in 5 of
+    its 24 requests, and twice (a44) "No, forget that one. Open a ticket about the electronic
+    signature instead ..." was asked again, so the scripted "Yes, send it." made the ticket
+    the caller had dropped. Put among three fixes as "a consent check that fails or runs out of
+    time on words holding a no word handed to the talker as a decline instead of asked again",
+    with the question "Make the three fixes below, then run held-out?", the owner answered
+    "Yes, all three". Either way nothing is sent without a later yes. An agent that does not
     ask is unchanged: its unplaced words stay a correction (GP-18).
   - The echo rail is the agent's own: the brief names the agent's words heard back unclear for
     the model, and the lists hand the model send words, alone or among fillers, which the Saudi
@@ -2842,9 +2853,13 @@ twice; DOC-REF: every `D-NNN` cited anywhere is a heading here), so keep its sha
   is never asked again when the model says `no`: the caller hears the talker's answer at once,
   and can go on to another question or another action; a model that still says `unclear` for
   one asks it again, as before. The instruction's text changed, so a measured run of the check
-  before that day is not comparable with one after it.
+  before that day is not comparable with one after it. Since `a3-dev`, a check that fails or
+  runs out of time on words with a no word drops the read-back to the talker instead of asking
+  again, so a cancel for another action is answered at once on a slow network too; a no word
+  the caller did not mean as a refusal ("yes, not like that") drops the read-back the same
+  way, nothing sent, and the talker answers it, reading a new draft back when one is asked for.
 - **Evidence:** plan 007's "The owner's decisions" (2026-11-10, the rulings; 2026-11-11, the
-  owner's answer) and its Block F;
+  owner's answers) and its Block F; run A's `a3-dev` (a44);
   `tests/t2_agentic_voice/domain/test_consent_check.py`, `test_yes_rule_judged.py`,
   `test_yes_rule_judged_no.py`, `test_yes_rule_send_alone.py`;
   `tests/t2_agentic_voice/voice/session/test_yes_ask.py`, `test_yes_ask_echo.py`,

@@ -16,11 +16,13 @@ outcome is logged by its kind alone, never the words.
 
 **The verdict** is the yes rule's (`judged`), never the model's word as it is, carried out by
 yes_turns.py as any answer is, told `by="model"`; and only while the same read-back is current
-and the call has not ended and is not ending. The rule is handed the read-back's lines
-(`said_lines`) and whether the read-back, and a line that asked it again, were still heard as
-the turn's speech began, each reply playing or within its tail after it ended (read_back.py's
-`over_read_back` and `over_follow_up`), so its echo rail reads only a line the caller was
-hearing.
+and the call has not ended and is not ending. No word, on words that hold a no word of the
+lists, is declined, as the model's `no` is (the owner's "Yes, all three", 2026-11-11); on any
+other words, or on the agent's own lines heard back, it is asked again. The rule is handed
+the read-back's lines (`said_lines`) and whether the read-back, and a line that asked it
+again, were still heard as the turn's speech began, each reply playing or within its tail
+after it ended (read_back.py's `over_read_back` and `over_follow_up`), so its echo rail reads
+only a line the caller was hearing.
 A newer turn that answers the read-back cancels a request still in flight (`cancel`, which
 yes_turns.py calls first), and so do the client's stop (`cancel`) and the call's end: each
 decides nothing.

@@ -160,26 +160,34 @@ def test_after_an_unknown_outcome_the_talker_never_makes_the_ticket_again(
     ما تأكدت» ("open it again if you're not sure"), the talker read the ticket back again in all
     three plays. The rule says not even when the caller asks, and what to say instead, as Ole5's
     unknown line says it: that it cannot tell, so it has no number; never that the ticket was
-    made or was not. The Saudi instructions give Saudi words for both parts, the unknown line's
-    own and a second ticket that could be the same one, each holding no phrase rule A reads as
-    a claim (every action's, the library's defaults, Ole5's): with the outcome unknown nothing
-    backs a claim, and the plain Saudi «ولو فتحت لك تذكرة ثانية» ("if I opened you another
-    ticket") holds the default «فتحت لك», so the guard would block the whole reply."""
+    made or was not.
+
+    The rule is plain words in both files, with no quoted sentence (run A's a3-dev: the two
+    Saudi example sentences it held most likely pulled a29's MSA caller into Saudi in all three
+    plays, the file being the instructions for Saudi and MSA callers alike). The Saudi file
+    keeps the reason they were there, in words: with the outcome unknown nothing backs a claim,
+    and the plain Saudi «ولو فتحت لك تذكرة ثانية» ("if I opened you another ticket") holds the
+    default «فتحت لك», so the guard would block the whole reply; it tells the talker to say
+    both parts without saying it opened or made a ticket."""
     text = " ".join(instructions()[tag].split())
     for needed in (
         "do not try to make it again in this call, not even when the caller asks you to.",
-        "Say instead that you cannot tell whether it went through, so you have no number to give",
-        "and that making it again could make the same ticket twice",
+        "Say instead that you cannot tell whether it went through, so you have no number to "
+        "give, and that making it again could make the same ticket twice;",
         "never say that it was made, or that it was not.",
     ):
         assert needed in text, needed
     (rule,) = [line for line in instructions()[tag].splitlines() if "not even when" in line]
-    quoted = re.findall("«([^»]+)»", rule)
-    saudi = lines.TICKET_UNKNOWN.for_language("ar-SA").removesuffix(".")
+    assert rule.isascii() and "«" not in rule  # no quoted sentence, no Arabic
+    (english,) = [line for line in instructions()["en"].splitlines() if "not even when" in line]
+    unsaid = (
+        "Say both without saying that you opened or made a ticket, not even after if: with no "
+        "ticket on record, a reply that says so is never spoken."
+    )
     if tag == "ar-SA":
-        assert len(quoted) == 2 and quoted[0] == saudi
+        assert rule == f"{english} {unsaid}"  # the English rule, and the reason in words
     else:
-        assert quoted == []
+        assert rule == english and unsaid not in text
     actions = [
         each for each in ticket_tools(MockTicketSystem(tmp_path)) if isinstance(each, Action)
     ]
@@ -192,9 +200,11 @@ def test_after_an_unknown_outcome_the_talker_never_makes_the_ticket_again(
             words, claims=claims, any_action=any_action, evidence=(), settings=guard, year=2026
         )
 
-    assert not judged("ولو فتحت لك تذكرة ثانية ممكن تتكرر").passed  # the rule is live
-    for words in quoted:
-        assert judged(words) == ClaimVerdict(claimed=(), passed=True), words
+    # the reason is live: the plain Saudi "if I opened you another one" is blocked, while Ole5's
+    # own unknown line, which says the first part, passes
+    assert not judged("ولو فتحت لك تذكرة ثانية ممكن تتكرر").passed
+    saudi = lines.TICKET_UNKNOWN.for_language("ar-SA")
+    assert judged(saudi) == ClaimVerdict(claimed=(), passed=True)
 
 
 def test_the_saudi_instructions_give_a_request_for_a_person_in_saudi_words() -> None:

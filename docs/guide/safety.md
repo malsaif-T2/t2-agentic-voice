@@ -212,7 +212,9 @@ Any other answer counts as `unclear`. A question in answer to a read-back is a `
 answer of 2026-11-11): the read-back ends, nothing is sent, and the turn goes to the talker with
 its words whole and the no note, so the talker answers the question, or reads back the new
 action the caller asked for, in its own words, with no ask-again line. A model that still says
-`unclear`, fails or is too slow has it asked again, as the rails below say.
+`unclear` has it asked again; one that fails or is too slow has it asked again too, unless the
+words hold a no word ("No, forget that one, open a ticket about the signature instead"): then
+the read-back ends the same way, handed to the talker, as the rails below say.
 
 **The rails.** The model's word is never taken as it is: the yes rule decides what it makes.
 First, whatever the model says, the receipt built when the words reached the rule must still
@@ -222,11 +224,12 @@ stand, or the answer is asked again. Then:
 | --- | --- |
 | `no` | declined, unless the words are the agent's own, heard back (rail 3 below): asked again |
 | `change` | a correction, unless the words are the agent's own, heard back (rail 3 below): asked again |
-| `unclear`, any other answer, a failed request, or no answer within 2.5 s on the call's clock, while the caller waits in silence | asked again |
+| `unclear`, or any other answer | asked again |
+| nothing: a failed request, or no answer within 2.5 s on the call's clock, while the caller waits in silence | declined when the words hold a no word ("no", «لا», «ما»), unless they are the agent's own, heard back (rail 3 below): asked again; for any other words, asked again |
 | `send` or `yes` | a yes, unless one of the rails below holds |
 
 So the agent's own lines heard back never confirm, cancel or change a read-back, whatever the
-model says.
+model says, or when it says nothing.
 
 A `send` or a `yes` is not a yes when:
 
@@ -248,14 +251,21 @@ A `send` or a `yes` is not a yes when:
 
 **In the call.** The caller waits in silence while the check runs, 2.5 s at most, and the wait
 counts in the turn's time to first audio. (The limit was 1.5 s until run A's second dev run,
-where 3 of the check's 24 requests ran out and the caller was asked again: D-082.) A newer answer from the caller, the client's Stop and
-the call's end cancel a request still waiting, so only the newest answer decides. A word that
-lands when its read-back is no longer the current one (said again, stopped, or the call ending)
-decides nothing, and nothing is said for it.
+where 3 of the check's 24 requests ran out and the caller was asked again: D-082.) A request
+that fails or runs out of time is no answer: words that hold a no word are then declined, as
+the model's `no` is, and the talker answers them; other words are asked again. (Until run A's
+third dev run they were all asked again; there 5 of the check's 24 requests ran out, and twice
+a caller's "No, forget that one. Open a ticket about the electronic signature instead" was
+asked again, so their next "Yes, send it." made the ticket they had dropped: D-082.) A newer
+answer from the caller, the client's Stop and the call's end cancel a request still waiting,
+so only the newest answer decides. A word that lands when its read-back is no longer the
+current one (said again, stopped, or the call ending) decides nothing, and nothing is said for
+it.
 
 Turn it on when your callers agree in words no list holds. It costs one chat request for each
 unplaced answer, and a request that fails or times out asks the caller again, even for words
-the lists alone would have made a correction.
+the lists alone would have made a correction, unless they hold a no word, which ends the
+read-back as a no.
 
 ## The output guard
 
@@ -466,7 +476,9 @@ claims=Claims(
 In a `TextCall` of an agent that asks, the fake model gets the check's request as one more
 request. A `FunctionLLM` tells it apart with `is_consent_check` (the `evals` facade) and answers
 one of the five words. A `ScriptedLLM` gives it the script's next entry, and a script with no
-entry left makes the check fail, which asks the caller again rather than failing the test.
+entry left makes the check fail, which asks the caller again rather than failing the test;
+unless the words hold a no word, which declines, as the rails above say: the turn then goes to
+the talker, whose request finds no entry either and fails the test.
 
 ## The settings and fields, in short
 

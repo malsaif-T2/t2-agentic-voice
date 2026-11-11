@@ -3,10 +3,11 @@ judges for an agent that asks (`VoiceAgent.ask_on_unlisted_answers`; D-082): the
 the model's word from ever standing alone. Each is a `TextCall` of the team's agent whose fake
 model (testing/action_scenes.py) answers the check with the word the case names, whatever the
 words: a yes beside a change marker is a correction; a yes beside a no word, or a go-ahead with
-a question mark, is asked again; a check that fails or times out is asked again; a yes over the
-closing question with no send word is asked again; the closing question heard back as it plays,
-judged a go-ahead, confirms nothing (the echo rail, the owner's third ruling); and an unlisted
-yes said once the question ended confirms, once. Each ends with the call's checks clean, and
+a question mark, is asked again; a check that fails or times out on a go-ahead is asked again
+(on words with a no word it is declined, D-082); a yes over the closing question with no send
+word is asked again; the closing question heard back as it plays, judged a go-ahead, confirms
+nothing (the echo rail, the owner's third ruling); and an unlisted yes said once the question
+ended confirms, once. Each ends with the call's checks clean, and
 passes at once for an agent that does not ask, so every team's suite holds them.
 
 The caller's lines are the owner's ruling's kinds, in the call's language (`JUDGED`), each with

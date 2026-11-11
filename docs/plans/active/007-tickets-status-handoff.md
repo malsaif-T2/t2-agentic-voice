@@ -1544,6 +1544,44 @@ plan 003).
   never makes the ticket again, not even when the caller asks, and says why in words the guard
   passes; a handoff's summary says what the caller needs help with. `VERSION` goes to
   `2026-11-11.2`.
+- 2026-11-11: **Run A, dev, a third time, `a3-dev`** (d40f3d8, $0.11). **The hard constraint
+  held**, as in every play of the day's four dev runs. Only 61 of 75 plays scored: 13 knowledge
+  searches timed out on the remote knowledge base, so a25, a27, a41 and a42 were not measured
+  at all. On the 61: the right action 0.95, the type 0.82, the summary 0.87, the language 0.97;
+  three of the four held-out targets met on dev. The fixes held: a13, a35 and a37 right in
+  every play (a report's type, a heard change, the mobile app's type), and a19's talker
+  declines to make the ticket again. What fell short:
+  - *The consent check timed out at 2.5 s in 5 of its 24 requests* (the network slow all run),
+    and twice (a44) the cancel for another ticket was asked again, so the scripted "Yes, send
+    it" made the ticket the caller had dropped.
+  - *a29's MSA caller answered in Saudi in all three plays* (3 of 3 right in a2-dev), most
+    likely from the two Saudi example sentences the retry rule gained in the instructions.
+  - *The type:* the English "reports page" still "Bug" (a03), one mobile app ticket "Bug" (a01),
+    and a19's "Issue" now "Bug", as the check foresaw.
+  - *The judge* marked a19's two negative facts ("Does not open the ticket again", "Gives no
+    ticket number") false though its own reasons say the talker did as they ask, and a05's again;
+    the measurement's check of the judge, by an agent blind to its verdicts, has not run yet.
+- 2026-11-11: The last three before held-out (the owner's "Yes, all three"; one builder, test
+  first; three agents for the judge's check; one reviewer, whose one finding, two guide lines
+  still saying a check with no word is always asked again, was confirmed and fixed):
+  - *The Saudi example sentences out:* the retry rule in `ar-SA.md` is the English rule in plain
+    words, with one sentence telling the talker to say it without saying it opened or made a
+    ticket. `VERSION` goes to `2026-11-11.3`.
+  - *A check with no word, on words holding a no word, declines* (D-082 amended): the turn goes
+    to the talker with the no note, unless the words are the agent's own lines heard back, which
+    are asked again as before; `unclear`, and a missing word on words with no no word, unchanged.
+  - **The check of run A's judge: passed.** 24 judged facts drawn at random from `a3-dev`
+    (seeded, by the judge's verdict: 6 false, 18 true; 7 negative facts, 14 Saudi, 14 summaries),
+    judged by an agent blind to the verdicts and compared by a third: 22 agree, 2 disagree, the
+    registered limit 3 (plan 006's). Both are one fact, a05's "Says the inbox does not open at
+    all", the judge too strict on the Saudi «ما يفتح»; no negative fact of the sample disagreed.
+    A reworded prompt for run A gave 24 of 24 live (the old 22), but the check passed, so the
+    registered judge stays for held-out. Outside the sample, a19's two negative facts were
+    misjudged in `a3-dev`, recorded here as the judge's known error.
+- 2026-11-11: Before held-out, the knowledge base checked as run A searches it (16 searches,
+  two rounds, a scratch script): every one failed in about half a second with `server_error`
+  from the remote knowledge base. Held-out waits: read once, it would lose every scenario that
+  searches. The owner: "ok lets pause until I fix it."
 
 ## Decision log
 
@@ -1790,6 +1828,13 @@ they set a figure of their own.
   ticket's type, the consent check's 1.5 s, a19's retry, a25's handoff summary) and asked "Fix
   the four causes and run dev once more before held-out?", the owner answered "Fix, then dev
   again".
+- 2026-11-11, after the third dev run (`a3-dev`): put three things before held-out (the two
+  Saudi example sentences out of the instructions, since an MSA caller then heard Saudi; a
+  consent check that fails or runs out of time on words holding a no word handed to the talker
+  as a decline instead of asked again, which amends D-082's "a failure and a timeout are asked
+  again"; and the measurement's check of the judge, by an agent blind to its verdicts, with
+  its prompt reworded for negative facts if that is where it goes wrong) and asked "Make the
+  three fixes below, then run held-out?", the owner answered "Yes, all three".
 
 - **Q1. M4 and the base of this work.** *Settled 2026-11-09: (a).* Not necessary: M5 can branch from M4's branch. Options:
   (a) close M4 first, its live calls moved to M7's rehearsal and its missed targets recorded, and

@@ -108,7 +108,7 @@ def test_how_to_answer_names_each_of_several_causes_briefly(tag: Tag) -> None:
     assert answer.splitlines().count(wanted) == 1
     assert "search" not in wanted
     assert answer in instructions(search=False)[tag]
-    assert VERSION == "2026-11-11.2"  # run A's a2-dev: the type, the retry, the handoff
+    assert VERSION == "2026-11-11.3"  # run A's a3-dev: the retry rule's Saudi examples gone
 
 
 @pytest.mark.parametrize("tag", ["ar-SA", "en"])

@@ -19,6 +19,9 @@ rule decides, each the public `ConfirmationAnswered`:
   (the owner's ruling); a correction's new draft is read back anew. For an agent that asks, a
   question or a request for something else is the model's `no` (the owner's answer of
   2026-11-11), so the talker answers it; a model that says `unclear` instead asks it again.
+  A check that gives no word (it failed or ran out of time) on words that hold a no word is a
+  no too, so a cancel for another action reaches the talker, never the ask-again line (the
+  owner's "Yes, all three", 2026-11-11); on any other words it asks again.
 - **unclear**, or no receipt (the summary not played whole with audio, or an overlap of it still
   undecided): the plan's `asked_again` line, at most its `max_attempts` times, each a follow-up
   of the read-back; after the last, the plan's `declined` line, and confirming ends.

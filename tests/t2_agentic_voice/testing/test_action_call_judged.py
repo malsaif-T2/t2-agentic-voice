@@ -14,7 +14,12 @@ the model's `send`, over the closing question unless it copies the question, and
 only once the question ended; words that copy a line are its echo only when heard as that line
 plays or within its reply's tail, the closing question's or the ask-again line's (the library's
 English one, "Shall I go ahead?", holds "go ahead"), and the caller's own once it and its tail
-ended, as a turn said while the agent is silent is (the tail itself is test_yes_ask_tail.py's)."""
+ended, as a turn said while the agent is silent is (the tail itself is test_yes_ask_tail.py's).
+
+No word from the check (it failed, or ran out of its time) asks again, but declines words that
+hold a no word (the owner's "Yes, all three", 2026-11-11): the turn then goes to the talker, so
+a `ScriptedLLM` whose script ran out on the check fails the test at the talker's request
+(docs/guide/testing.md, "The fake model and the yes rule's check")."""
 
 from __future__ import annotations
 
@@ -26,7 +31,12 @@ import pytest
 from t2_agentic_voice.core.errors import ProviderError
 from t2_agentic_voice.core.events import ConfirmationAnswered
 from t2_agentic_voice.domain.consent_check import TIMEOUT_S, is_consent_check
-from t2_agentic_voice.testing.llm_fakes import Pause, ScriptStep
+from t2_agentic_voice.testing.llm_fakes import (
+    Pause,
+    ScriptedLLM,
+    ScriptExhaustedError,
+    ScriptStep,
+)
 from t2_agentic_voice.testing.text_call import TextCall
 
 from tests.t2_agentic_voice.testing.action_call_support import (
@@ -50,6 +60,7 @@ Answer = tuple[str, str]
 YES_BY_MODEL: Answer = ("yes", "model")
 AGAIN_BY_MODEL: Answer = ("asked_again", "model")
 CORRECTION_BY_MODEL: Answer = ("correction", "model")
+DECLINED_BY_MODEL: Answer = ("declined", "model")
 GO_AHEAD = {"en": "go for it", "ar-SA": "يلا أرسلها"}  # yalla arsilha: come on, send it
 CHANGE = {
     "en": "yes, but make it urgent",
@@ -67,6 +78,13 @@ COPYING_SEND = {"en": "send it", "ar-SA": "أرسل"}
 # «... asajjil at-talab?», shall I register the request?, which holds none.
 ASKED_ECHO = {"en": "go ahead", "ar-SA": "أسجل الطلب"}
 HESITATION = {"en": "uhhh", "ar-SA": "امممم"}  # ummmm, on no list
+# A no that asks for another visit instead (run A's a3-dev, a44's kind): a no word beside words on
+# no list, so the lists leave it to the model. «la, insaha, abgha ghurfa thaanya badaalha»: no,
+# forget it, I want another room instead.
+NO_AND_ANOTHER = {
+    "en": "No, forget that one, I want another room instead",
+    "ar-SA": "لا، انسها، أبغى غرفة ثانية بدالها",
+}
 
 
 @dataclass(frozen=True)
@@ -119,6 +137,12 @@ ROWS = {
     ),
     "check_timed_out": Row(
         GO_AHEAD, (Pause(TIMEOUT_S + 1.0), *say("send")), AGAIN_BY_MODEL, AGAIN_BY_MODEL
+    ),
+    "no_and_another_check_failed": Row(
+        NO_AND_ANOTHER, (ProviderError("server_error", True),), DECLINED_BY_MODEL, DECLINED_BY_MODEL
+    ),
+    "no_and_another_check_timed_out": Row(
+        NO_AND_ANOTHER, (Pause(TIMEOUT_S + 1.0), *say("send")), DECLINED_BY_MODEL, DECLINED_BY_MODEL
     ),
 }
 
@@ -237,3 +261,33 @@ def test_an_agent_that_does_not_ask_hears_unlisted_words_as_before(
             return call.violations
 
     assert asyncio.run(scene()) == ()
+
+
+@pytest.mark.parametrize("words", LANGUAGES, ids=_ids)
+@pytest.mark.parametrize("said", [GO_AHEAD, NO_AND_ANOTHER], ids=["go_ahead", "no_and_another"])
+def test_a_script_run_out_on_the_check_fails_the_test_only_when_the_talker_answers(
+    words: Words, said: dict[str, str]
+) -> None:
+    """A `ScriptedLLM` with one entry, the talker's call of the action: the check finds none
+    left, which is no word. On a go-ahead the caller is asked again and the test goes on; on
+    words with a no word the read-back is declined and the turn goes to the talker, whose
+    request finds no entry either, so the test fails there (testing.md, "No word")."""
+    backend, heard = Backend(), said[words.tag]
+    llm = ScriptedLLM([call_action(words.note)])
+
+    async def scene() -> None:
+        async with TextCall(agent_of(backend, asks=True), llm=llm, language=words.tag) as call:
+            await call.user(words.request)
+            await call.advance(SETTLE_S)
+            answer = await call.user(heard)
+            await call.advance(SETTLE_S)
+            answer.expect.asked_again()
+            answer.expect.no_action()
+
+    if said is GO_AHEAD:
+        asyncio.run(scene())
+    else:
+        with pytest.raises(ScriptExhaustedError):
+            asyncio.run(scene())
+    assert len([request for request in llm.requests if is_consent_check(request)]) == 1
+    assert backend.writes == 0

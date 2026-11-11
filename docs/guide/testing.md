@@ -65,7 +65,8 @@ be served under `test`), and writes its call's report to a folder of its own, ne
 - **A failure of the session's own request never fails the test.** When the fake raises for one,
   a `ProviderError` step or a script that ran out, the session reads it as no word, as it reads a
   provider's failure, and the call goes on: an uncertain overlap keeps the rule's verdict, so the
-  agent speaks on, and an answer to a read-back is asked again. A test that counts on the model's
+  agent speaks on, and an answer to a read-back is asked again, or declined when its words hold a
+  no word ([safety.md](safety.md), the model check's rails). A test that counts on the model's
   word counts these requests in `requests`: `is_consent_check(request)` is true for the yes
   rule's check, and an overlap's request has the same first message, its instruction, as one
   that `uncertain_overlap_request(reply, words)` builds.
@@ -329,6 +330,13 @@ goes to the test's model, the same one the talker writes with.
   `Pause(3.0)` before its word), gives no word: the caller is asked again, and the test does not
   fail. So `asked_again()` and `no_action()` can pass with the model's word never tested. Move
   the clock on after the answer, so the check, the sending line and the write have run.
+- **Unless the words hold a no word.** No word on words with a no word ("No, forget that one,
+  open a ticket about the printer instead") declines the read-back, as the model's `no` does
+  ([safety.md](safety.md), the model check's rails): the caller is not asked again, and the turn
+  goes to the talker, which answers it in one more request. A `ScriptedLLM` needs an entry for
+  that reply after the check's. A script that ran out on the check has none, so the talker's
+  request fails the test (`ScriptExhaustedError`). Words that are the agent's own lines heard
+  back are still asked again.
 - **A `ScriptedLLM` counts each check as a request**: with an agent that asks, its script needs
   an entry for each check, in order among the talker's. A check that finds none left is no word,
   as above; a check that takes the entry meant for the talker's next reply reads it as its word,
@@ -439,7 +447,8 @@ answer and the rails held:
 - its `yes` for a yes beside a change word ("yes, but make it urgent") is a correction;
 - its `yes` for a yes beside a no word ("yes, not like that"), or its `send` for a go-ahead asked
   as a question ("go for it?"), is asked again;
-- a check that fails, or answers after its 2.5 s, is asked again;
+- a check that fails, or answers after its 2.5 s, on a go-ahead ("go for it") is asked again
+  (on words with a no word it is declined, [safety.md](safety.md));
 - the closing question's own words heard back while it plays, which the check answers `send`,
   confirm nothing and write nothing (the echo rail);
 - its `yes` over the closing question, for words with no send word ("sure thing"), is asked

@@ -58,7 +58,7 @@ NAME: Final = "ole5"
 # changed, and the change of that day; the talker with no search, or no tickets, is versioned
 # apart (`version`), so a run's record tells each apart: no tickets, as runs K, S and T build
 # it with a search; and no tool at all, as run T's pass Tn builds it.
-VERSION: Final = "2026-11-11.2"
+VERSION: Final = "2026-11-11.3"
 NO_TICKETS_VERSION: Final = f"{VERSION}+no-tickets"
 NO_SEARCH_VERSION: Final = f"{VERSION}+no-search+no-tickets"
 # oo lee faayf, as two plain words: the owner's pick of ten samples of the voice, 2026-11-09.

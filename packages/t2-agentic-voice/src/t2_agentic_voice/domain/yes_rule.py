@@ -39,9 +39,13 @@ asked again), no change marker (else a correction), are not the agent's own word
 over the closing question only its `send` confirms, or its `yes` beside a send word and other
 words, its `yes` alone or to a send word alone asked again. Its `no` is declined and its
 `change` a correction, but on the agent's own words heard back (the echo rail) each is asked
-again, as its `yes` is; anything else, no answer included, is asked again. The model is told
-that a question, or a request for something else, is a `no` (the owner's answer of 2026-11-11),
-so the turn goes to the talker, which answers it. An agent that does not ask takes `decide`'s
+again, as its `yes` is; anything else is asked again. No word at all (the request failed or ran
+out of its time) is asked again too, unless the words hold a no word of the lists: then it is
+declined, as the model's `no` is, and asked again only on the agent's own words heard back
+(the owner's "Yes, all three", 2026-11-11, after run A's a3-dev, where a no that asked for
+another ticket, asked again, let the next yes make the ticket dropped). The model is told that
+a question, or a request for something else, is a `no` (the owner's answer of 2026-11-11), so
+the turn goes to the talker, which answers it. An agent that does not ask takes `decide`'s
 answer as is.
 
 **A plain no** (`plain_no`): a no word with only send words and fillers beside it, the words
@@ -49,16 +53,17 @@ answer as is.
 a cancel said over the summary is declined as a no, not a correction (D-081).
 
 **The echo rail** (the owner's third ruling, 2026-11-10; on the model's `no` and `change` too,
-2026-11-11): a model's word on the agent's own lines heard back is asked again, so its echo
-never confirms, cancels or changes a read-back. Words that copy them, read as the interruption
-rule reads its own words heard back (every word a word of the lines heard, or one edit from one
-of three letters or more), are its echo only when the speech began while those lines were
-heard: while its reply played, or within its tail after it ended, the drop rule's window
-(`DROP_AFTER_S` after a reply's end, none after the caller's own stop), the agent's voice
-leaked past the browser's echo cancellation. Over the closing question (by the
-receipt), or as the session tells it (`SaidLines.over_read_back`), that is the read-back's
-summary and question; as the session tells it of a line that asked it again
-(`SaidLines.over_asked_again`), the ask-again line; each True when the session cannot tell.
+2026-11-11, and on no word with a no word): a model's word, or no word, on the agent's own
+lines heard back is asked again, so its echo never confirms, cancels or changes a read-back.
+Words that copy them, read as the interruption rule reads its own words heard back (every word
+a word of the lines heard, or one edit from one of three letters or more), are its echo only
+when the speech began while those lines were heard: while its reply played, or within its
+tail after it ended, the drop rule's window (`DROP_AFTER_S` after a reply's end, none after
+the caller's own stop), the agent's voice leaked past the browser's echo cancellation. Over
+the closing question (by the receipt), or as the session tells it (`SaidLines.over_read_back`),
+that is the read-back's summary and question; as the session tells it of a line that asked it
+again (`SaidLines.over_asked_again`), the ask-again line; each True when the session cannot
+tell.
 Speech begun when none of them was heard cannot be the agent's echo, so a caller who answers
 arsilha once the question and its tail ended can send. Only the rail's window has the tail: a
 yes over the closing question is still one whose speech began before the question ended
@@ -336,25 +341,28 @@ def judged(
     lines as the agent said them and whether each was still heard as the speech began. A
     receipt that no longer stands is asked again; every other answer of `decide`'s that is not
     `askable` stands as it is, so a model's word never confirms what the lists refused; a
-    missing word (None) is asked again; and its `no` or `change` on the agent's own words heard
-    back is asked again, never a cancel. The only other builder of a `ConfirmedAction`, inside a
-    `Yes`."""
+    missing word (None: the request failed or timed out) is declined on words that hold a no
+    word, as a `no` is, and asked again on any other; and its `no` or `change`, or a missing
+    word, on the agent's own words heard back is asked again, never a cancel. The only other
+    builder of a `ConfirmedAction`, inside a `Yes`."""
     if not _stands(receipt, current):
         return AskAgain()
     listed = decide(heard, receipt, words=words, env=env)
     if not _askable(listed) or heard is None or heard.speech_at is None:
         return listed
-    if word not in ("send", "yes", "no", "change"):
-        return AskAgain()
     text = rule_form(heard.text)
     began, ended = heard.speech_at, receipt.question_ended_at
     over = ended is None or began < ended
     echo = _echoes(text, _playing(said, over=over))
+    kinds = _kinds(text, words)
+    if word is None:  # no word: a no word declines, unless it is the agent's echo
+        return Declined(words=heard.text) if "no" in kinds and not echo else AskAgain()
+    if word not in ("send", "yes", "no", "change"):
+        return AskAgain()
     if word in ("no", "change"):  # the agent's echo never cancels or changes a read-back
         if echo:
             return AskAgain()
         return Declined(words=heard.text) if word == "no" else Correction(words=heard.text)
-    kinds = _kinds(text, words)
     if "no" in kinds or any(mark in heard.text for mark in QUESTION_MARKS):
         return AskAgain()
     if _marked(text, words.change):
