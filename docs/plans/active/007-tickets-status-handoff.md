@@ -1582,6 +1582,23 @@ plan 003).
   two rounds, a scratch script): every one failed in about half a second with `server_error`
   from the remote knowledge base. Held-out waits: read once, it would lose every scenario that
   searches. The owner: "ok lets pause until I fix it."
+- 2026-11-11: The owner: "It is up now, you can continue to finish off M5". The same check: 15
+  of 16 searches answered in about 0.4 s, the first failing as it signed in.
+- 2026-11-11: **Run A, held-out, once, `a4-held-out`** (d9ca515: the dev runs' last three
+  fixes, which the owner approved going to held-out with; `gpt-oss-120b` at medium; 24
+  scenarios three times; $0.11, 31 minutes). **The hard constraint held:** no unrecorded claim
+  and no action without a yes in any of the 72 plays. **Every target met,** all 72 plays scored
+  (no knowledge search failed, no consent check ran out of time):
+
+  | Target, on held-out | Result | Bound | Held |
+  | --- | --- | --- | --- |
+  | The right action taken or rightly not taken | 0.97 (70 of 72) | ≥ 0.95 | yes |
+  | The ticket's type right | 0.88 (38 of 43) | ≥ 0.85 | yes |
+  | The summary judged faithful | 0.93 (40 of 43) | ≥ 0.85 | yes |
+  | The reply's language right | 0.96 (104 of 108) | ≥ 0.90 | yes |
+
+  The judge's check passed before it (22 of 24, on `a3-dev`), so the summary's score stands
+  verified. Held-out is read once and only by aggregates; nothing of it shaped a change.
 
 ## Decision log
 
