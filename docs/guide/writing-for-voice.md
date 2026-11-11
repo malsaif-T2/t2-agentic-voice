@@ -463,8 +463,9 @@ caller's "yes, send it". Only the closing question, and the line that asks it ag
 word: the caller needs one there, and the question heard back cannot confirm. On the lists, an
 answer with a send word and no yes word is asked again, so the question heard back as "send
 it" sends nothing; and for an agent that has a chat model judge what the lists leave unplaced,
-the yes rule refuses the model's yes for words that copy the read-back's own lines, or the line
-that asks it again, begun while they played or within 300 ms after ([safety.md](safety.md)).
+the yes rule asks again, whatever the model says (a yes, a no or a change), for words that copy
+the read-back's own lines, or the line that asks it again, begun while they played or within
+300 ms after ([safety.md](safety.md)).
 
 The lists hold some words you would not guess, among them "read", "continue" and "ok" in
 English, and «خلاص», «تمام», «طيب» and «زين» in Arabic, and the yes words "correct", "sure" and

@@ -61,8 +61,8 @@ def test_a_dev_run_plays_each_scenario_three_times_evenly_after_a_smoke_test(
 ) -> None:
     assert _main(setup) == 0
     card = _card(setup)
-    plays = 3 * len(DEV)  # each of dev's 20 scenarios three times
-    assert card.complete and len(card.plays) == plays == 60 and card.run.repeats == 3
+    plays = 3 * len(DEV)  # each of dev's 25 scenarios three times
+    assert card.complete and len(card.plays) == plays == 75 and card.run.repeats == 3
     order = [
         json.loads(line)["scenario"]
         for line in (setup.out() / RESULTS_FILE).read_text("utf-8").splitlines()

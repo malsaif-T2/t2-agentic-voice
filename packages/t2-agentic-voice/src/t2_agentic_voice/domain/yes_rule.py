@@ -37,16 +37,25 @@ its `send` or `yes` is a yes only when the words hold no no word and no question
 asked again), no change marker (else a correction), are not the agent's own words heard back
 (else asked again), and the receipt built when the turn began still stands (else asked again);
 over the closing question only its `send` confirms, or its `yes` beside a send word and other
-words, its `yes` alone or to a send word alone asked again. Its `no` is declined, its `change` a
-correction, and anything else, no answer included, is asked again. An agent that does not ask
-takes `decide`'s answer as is.
+words, its `yes` alone or to a send word alone asked again. Its `no` is declined and its
+`change` a correction, but on the agent's own words heard back (the echo rail) each is asked
+again, as its `yes` is; anything else, no answer included, is asked again. The model is told
+that a question, or a request for something else, is a `no` (the owner's answer of 2026-11-11),
+so the turn goes to the talker, which answers it. An agent that does not ask takes `decide`'s
+answer as is.
 
-**The echo rail** (the owner's third ruling, 2026-11-10): words that copy the agent's own lines,
-read as the interruption rule reads its own words heard back (every word a word of the lines
-heard, or one edit from one of three letters or more), are its echo only when the speech began
-while those lines were heard: while its reply played, or within its tail after it ended, the
-drop rule's window (`DROP_AFTER_S` after a reply's end, none after the caller's own stop), the
-agent's voice leaked past the browser's echo cancellation. Over the closing question (by the
+**A plain no** (`plain_no`): a no word with only send words and fillers beside it, the words
+`decide` declines once the summary played. The session reads what cuts the summary with it, so
+a cancel said over the summary is declined as a no, not a correction (D-081).
+
+**The echo rail** (the owner's third ruling, 2026-11-10; on the model's `no` and `change` too,
+2026-11-11): a model's word on the agent's own lines heard back is asked again, so its echo
+never confirms, cancels or changes a read-back. Words that copy them, read as the interruption
+rule reads its own words heard back (every word a word of the lines heard, or one edit from one
+of three letters or more), are its echo only when the speech began while those lines were
+heard: while its reply played, or within its tail after it ended, the drop rule's window
+(`DROP_AFTER_S` after a reply's end, none after the caller's own stop), the agent's voice
+leaked past the browser's echo cancellation. Over the closing question (by the
 receipt), or as the session tells it (`SaidLines.over_read_back`), that is the read-back's
 summary and question; as the session tells it of a line that asked it again
 (`SaidLines.over_asked_again`), the ask-again line; each True when the session cannot tell.
@@ -221,6 +230,16 @@ def _kinds(text: str, words: ConsentWords) -> set[_Kind]:
     return found
 
 
+def plain_no(text: str, words: ConsentWords) -> bool:
+    """Whether `text`, brought to the rule's form, is a plain no to the lists `words`: a no
+    word, and beside it only send words and fillers ("no, cancel it, don't send it"), with no
+    yes word and no word on none of the lists; the words `decide` declines once the summary
+    played. The session reads what cuts a read-back's summary with it (voice/session/
+    read_back.py's `handed`), so a cancel said over it is a no, not a correction."""
+    kinds = _kinds(rule_form(text), words)
+    return "no" in kinds and not kinds & {"yes", "content"}
+
+
 def decide(
     heard: HeardWords | None,
     receipt: ReadBackReceipt,
@@ -316,29 +335,31 @@ def judged(
     rule, `current` as the word lands (None when no read-back is current), `said` the read-back's
     lines as the agent said them and whether each was still heard as the speech began. A
     receipt that no longer stands is asked again; every other answer of `decide`'s that is not
-    `askable` stands as it is, so a model's word never confirms what the lists refused; and a
-    missing word (None) is asked again. The only other builder of a `ConfirmedAction`, inside a
+    `askable` stands as it is, so a model's word never confirms what the lists refused; a
+    missing word (None) is asked again; and its `no` or `change` on the agent's own words heard
+    back is asked again, never a cancel. The only other builder of a `ConfirmedAction`, inside a
     `Yes`."""
     if not _stands(receipt, current):
         return AskAgain()
     listed = decide(heard, receipt, words=words, env=env)
     if not _askable(listed) or heard is None or heard.speech_at is None:
         return listed
-    if word == "no":
-        return Declined(words=heard.text)
-    if word == "change":
-        return Correction(words=heard.text)
-    if word not in ("send", "yes"):
+    if word not in ("send", "yes", "no", "change"):
         return AskAgain()
     text = rule_form(heard.text)
+    began, ended = heard.speech_at, receipt.question_ended_at
+    over = ended is None or began < ended
+    echo = _echoes(text, _playing(said, over=over))
+    if word in ("no", "change"):  # the agent's echo never cancels or changes a read-back
+        if echo:
+            return AskAgain()
+        return Declined(words=heard.text) if word == "no" else Correction(words=heard.text)
     kinds = _kinds(text, words)
     if "no" in kinds or any(mark in heard.text for mark in QUESTION_MARKS):
         return AskAgain()
     if _marked(text, words.change):
         return Correction(words=heard.text)
-    began, ended = heard.speech_at, receipt.question_ended_at
-    over = ended is None or began < ended
-    if _echoes(text, _playing(said, over=over)):
+    if echo:
         return AskAgain()
     # over the question a yes needs a go-ahead: the model's `send`, or a send word beside other
     # words; a send word alone it judged agreement only is asked again, as the lists ask it

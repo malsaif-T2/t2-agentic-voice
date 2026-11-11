@@ -475,7 +475,9 @@ model.
   as data: its `tool_calls`, `fate`, `clauses` and their languages, `first_clause_s` and
   `usage`, and the action's expectations.
 - **Which scenarios**: one for each thing a caller does with your action: a plain request; a yes
-  said too early, over the summary, or bare over the question; a correction; a no; a hesitation;
+  said too early, over the summary, or bare over the question; a correction; a no, after the
+  read-back and over its summary; a stop word over the summary; a question, or a request for
+  something else, in answer to the read-back, which the talker should answer; a hesitation;
   a backend that refuses, and one that times out; a status question, for a tool that reports on
   the action; an action on what another made earlier in the call, each read back and confirmed
   in turn and written once (Ole5's note on a ticket the call made); and a passage that holds a

@@ -1,0 +1,32 @@
+# Plan 007's action scenarios (its "The measurement"; ole5_voice/evals/action_scenarios.py),
+# added by the owner's answer of 2026-11-11 before any run: a no that asks for another ticket
+# instead, in Saudi Arabic.
+id = "a45_cancel_for_another_saudi"
+kind = "cancel_for_another"
+split = "held-out"
+language = "ar-SA"
+notes = "A Saudi caller says no to the read-back and asks for a ticket about archived correspondence instead (la, insa hadhi, iftah li badalha: no, forget this one, open me one instead): the first is never sent, and only the new one is opened, on a yes."
+made = 1
+ticket_type = "Bug"
+summary_facts = [
+  "Says the page of archived correspondence comes up empty.",
+  "Does not say attaching a file.",
+]
+
+[[turns]]
+says = "أبي تذكرة، لما أرفق ملف كبير في المراسلة يعلق الرفع وما يكمل، مو مستعجلة"
+calls = "create_ticket"
+outcome = "read_back"
+language = "ar-SA"
+
+[[turns]]
+says = "لا، انسى هذي. افتح لي بدالها تذكرة إن المراسلات المؤرشفة ما تطلع لي، الصفحة تجي فاضية"
+calls = "create_ticket"
+outcome = "read_back"
+language = "ar-SA"
+facts = ["The ticket read back now is about the archived correspondence page coming up empty, not about attaching a file."]
+
+[[turns]]
+says = "ايه أرسلها"
+outcome = "done"
+says_number = "whole"

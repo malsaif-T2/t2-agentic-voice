@@ -341,19 +341,20 @@ def test_the_estimate_counts_a_check_for_each_turn_that_answers_a_read_back() ->
 
 
 def test_the_dry_estimate_of_each_split_three_times_fits_the_plans_cap() -> None:
-    """The registration's run A (Q9): each split's 20 scenarios three times and the smoke test,
-    at the prices run S ran at, within the owner's $10 cap (raised from $1.50, which the
-    scenarios of the yes rule's check passed, D-082), and each split alone within it. The
-    talker's model is the uncertain overlap's and the yes rule's check's too (D-082), so its
-    requests count one of each for each turn said over the agent (10 in dev) and each turn that
-    answers a read-back (22 in dev, the note's pair, a39, adding the ticket's yes and the
-    note's)."""
+    """The registration's run A (Q9): each split's scenarios (25 in dev, 24 in held-out) three
+    times and the smoke test, at the prices run S ran at, within the owner's $10 cap (raised
+    from $1.50, which the scenarios of the yes rule's check passed, D-082), and each split alone
+    within it. The talker's model is the uncertain overlap's and the yes rule's check's too
+    (D-082), so its requests count one of each for each turn said over the agent (12 in dev, a47
+    and a48 adding their words over the summary) and each turn that answers a read-back (26 in
+    dev, the note's pair, a39, adding the ticket's yes and the note's; a41 and a42 their
+    question; a44 its request for another ticket and the yes to it)."""
     every = committed()
     smoke = next(s for s in every if s.split == "dev")
     args = _args()
     dev = [s for s in every if s.split == "dev"]
     requests = requests_of(args, dev)
-    assert len(dev) == 20 and requests[TALKER] == 3 * sum(len(s.turns) for s in dev) + 10 + 22
+    assert len(dev) == 25 and requests[TALKER] == 3 * sum(len(s.turns) for s in dev) + 12 + 26
     assert requests[JUDGE] > 0
     found = {
         split: _most(args, [smoke, *[s for s in every if s.split == split] * 3])

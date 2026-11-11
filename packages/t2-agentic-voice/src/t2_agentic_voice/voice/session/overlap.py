@@ -29,9 +29,13 @@ window's to its request, the speech still going on; the whole overlap's to its r
 speech detector's stop delay (`turns.vad_stop_ms`), since that request goes once the detector
 hears the speech stop; and the turn's own to when its speech ended.
 
-Over an action's read-back (plan 007), a transcript of yes words and listening sounds whose
-speech began over its summary is a listening sound, whatever the rule would say, so the summary
-plays on (read_back.py's `ignored`); and an overlap begun over the summary that is undecided
+Over an action's read-back (plan 007), a transcript of yes words, send words, fillers and
+listening sounds whose speech began over its summary is a listening sound, whatever the rule
+would say, so the summary plays on (read_back.py's `ignored`); but one that holds a stop or wait
+word of the call's (`call_words`, as the rule reads them: domain/interruptions.py's
+`holds_stop`) is never ignored, a word on both lists included (khalas, enough, an Arabic stop
+word and a filler to the yes rule), so the rule judges it as any stop word, and it stops the
+read-back (D-081, amended 2026-11-11). An overlap begun over the summary that is undecided
 denies the read-back its receipt (`undecided`).
 """
 
@@ -42,7 +46,7 @@ from dataclasses import dataclass, field
 
 from t2_agentic_voice.core.events import TurnId
 from t2_agentic_voice.core.logging import get_logger
-from t2_agentic_voice.domain.interruptions import Overlap, Verdict, judge
+from t2_agentic_voice.domain.interruptions import Overlap, Verdict, holds_stop, judge
 from t2_agentic_voice.domain.silence import CAPTIONS
 from t2_agentic_voice.domain.uncertain_overlaps import is_uncertain
 from t2_agentic_voice.domain.words import WORD_KINDS, Words
@@ -320,9 +324,13 @@ class Overlaps:
     ) -> Verdict:
         transcript = event.transcript
         text = "" if transcript is None else transcript.text
-        confirming, listening = self._confirming, self._words.backchannel
-        if confirming is not None and confirming.ignored(
-            state.reply_id, state.speech_at, text, listening=listening
+        confirming, words = self._confirming, self._words
+        if (
+            confirming is not None
+            and not holds_stop(text, words=words)  # a stop or wait word is the rule's
+            and confirming.ignored(
+                state.reply_id, state.speech_at, text, listening=words.backchannel
+            )
         ):
             return _IGNORED
         if ended_at is None:

@@ -2,9 +2,11 @@
 (voice/session/read_back.py, overlap.py, interrupter.py; plan 007, Track C, and the owner's
 rulings of 2026-11-10; docs/SECURITY.md, invariant 1): yes words, send words, fillers and
 listening sounds over the summary are ignored, whatever the rule would say, the summary playing
-on and the words counting for nothing; a stop or pause word over the read-back stops it with no
+on and the words counting for nothing, but never words with a stop or pause word (a team's
+added ones included, on a filler too); a stop or pause word over the read-back stops it with no
 receipt, the confirming state ends, and the turn reaches the talker with the action declined as
-stopped, so it asks what to change; real words over the summary do the same, as a correction; a
+stopped, so it asks what to change; real words over the summary do the same, as a correction,
+or as a no when they are a plain no by the yes rule's lists (D-081, amended 2026-11-11); a
 repeat request over it, or said whole while it is confirming, has the session say it again, the
 earlier read-back void; real words over the closing question leave the read-back to the yes rule;
 the client's stop and the call's end end it. The rule is the tests' fake (overlap_support.py)."""
@@ -25,6 +27,7 @@ from t2_agentic_voice.voice.session.commands import StopSpeaking
 
 from tests.t2_agentic_voice.session_fakes import FakeSessionIO
 from tests.t2_agentic_voice.voice.session.overlap_support import (
+    CORRECTION,
     NEW_WORDS,
     REPEAT,
     REPEAT_TEXT,
@@ -35,6 +38,7 @@ from tests.t2_agentic_voice.voice.session.overlap_support import (
 from tests.t2_agentic_voice.voice.session.read_back_support import (
     ACTION,
     CALLER_WORDS,
+    CONSENT,
     QUESTION,
     SUMMARY_SPOKEN,
     YES_TEXT,
@@ -59,6 +63,8 @@ STOP_WORD = PRESET_WORDS["en"].stop[0]
 WAIT_WORD = PRESET_WORDS["en"].wait[0]
 LISTENING_WORD = PRESET_WORDS["en"].backchannel[0]
 READ_BACK = [provider_text(SUMMARY_SPOKEN), QUESTION]
+(FILLER,) = CONSENT.fillers
+PLAIN_NO = f"no no {FILLER}"  # CONSENT's no word twice and its filler: a plain no
 
 
 @pytest.fixture
@@ -159,6 +165,48 @@ def test_real_words_over_the_summary_stop_it_and_reach_the_talker_declined(
     assert talker.turns[1].declined == DeclinedAction(
         action=ACTION, kind="correction", words=CALLER_WORDS
     )
+
+
+def test_a_plain_no_over_the_summary_reaches_the_talker_declined_as_a_no(
+    settings: VoiceSettings, rule: FakeRule, consent: list[dict[str, Any]]
+) -> None:
+    """D-081 as amended 2026-11-11: words that cut the summary and are a plain no by the yes
+    rule's lists (a no word, beside it only fillers) decline it as a no, not a correction."""
+    rule.script[PLAIN_NO] = CORRECTION
+    io, session, talker = _call(settings)
+
+    async def drive() -> None:
+        await asked(io)
+        await clause(io, 0, played=False)
+        await over(io, 1, PLAIN_NO)
+
+    asyncio.run(drive())
+    assert len(io.commands.of(StopSpeaking)) == 1
+    assert not session._confirming.active
+    assert receipt(session, io.clock.now()) is None
+    assert talker.turns[1].declined == DeclinedAction(action=ACTION, kind="no", words=PLAIN_NO)
+
+
+def test_a_stop_word_a_team_added_on_a_filler_over_the_summary_is_never_ignored(
+    settings: VoiceSettings, rule: FakeRule, consent: list[dict[str, Any]]
+) -> None:
+    """D-081 as amended 2026-11-11: speech holding a stop or wait word of the call's (the
+    `words` settings' additions included) goes to the rule, as any stop word does, though the
+    yes rule's lists hold it as a filler: it stops the summary, declined as stopped."""
+    added = settings.words.model_copy(update={"stop": {"en": (FILLER,)}})
+    io, session, talker = _call(settings.model_copy(update={"words": added}))
+    rule.script[FILLER] = STOP
+
+    async def drive() -> None:
+        await asked(io)
+        await clause(io, 0, played=False)
+        await over(io, 1, FILLER)
+
+    asyncio.run(drive())
+    assert FILLER in rule.texts  # the session no longer reads it first
+    assert len(io.commands.of(StopSpeaking)) == 1
+    assert not session._confirming.active
+    assert talker.turns[1].declined == DeclinedAction(action=ACTION, kind="stopped", words=FILLER)
 
 
 def test_real_words_over_the_closing_question_leave_the_read_back_to_the_yes_rule(

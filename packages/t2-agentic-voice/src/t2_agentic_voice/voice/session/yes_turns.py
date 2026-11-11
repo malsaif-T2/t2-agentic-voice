@@ -16,7 +16,9 @@ rule decides, each the public `ConfirmationAnswered`:
   `error` notice, and nothing is sent.
 - **no** or **correction:** confirming ends, and the turn goes to the talker with the action
   declined as that kind (core/conversation.py's `DeclinedAction`), which answers in its own words
-  (the owner's ruling); a correction's new draft is read back anew.
+  (the owner's ruling); a correction's new draft is read back anew. For an agent that asks, a
+  question or a request for something else is the model's `no` (the owner's answer of
+  2026-11-11), so the talker answers it; a model that says `unclear` instead asks it again.
 - **unclear**, or no receipt (the summary not played whole with audio, or an overlap of it still
   undecided): the plan's `asked_again` line, at most its `max_attempts` times, each a follow-up
   of the read-back; after the last, the plan's `declined` line, and confirming ends.

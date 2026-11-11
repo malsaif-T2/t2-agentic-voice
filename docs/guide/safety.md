@@ -58,7 +58,7 @@ and only its start tells it apart.
 
 | The caller began to speak | What it is |
 | --- | --- |
-| Before the summary's last clause finished playing | Never an answer. Yes words, send words, fillers and listening sounds only: ignored, and the summary plays on. A stop or pause word ("stop", «وقف», "wait"): the read-back stops, nothing is sent, and the talker asks what to change, keeping the draft. Other words that stop it (as the interruption rule decides, [concepts.md](concepts.md)): a correction, handed to the talker. A repeat request: the read-back is said again. A turn begun before the read-back's first audio, which then plays on over it: handed to the talker as a correction, so a later yes confirms nothing until a new read-back plays |
+| Before the summary's last clause finished playing | Never an answer. Yes words, send words, fillers and listening sounds only: ignored, and the summary plays on. A stop or pause word ("stop", «وقف», «خلاص», "wait"), alone or beside other words: the read-back stops, nothing is sent, and the talker asks what to change, keeping the draft; such words are never ignored, though «خلاص» is also a filler below. Words that stop it and are a plain no by the lists below (a no word, with only send words and fillers beside it: "No, cancel it, don't send it.", «لا لا، لا ترسلها»): declined as a no, handed to the talker, which answers in its own words. Other words that stop it (as the interruption rule decides, [concepts.md](concepts.md)): a correction, handed to the talker ("No, not Monday, since Thursday."). A single word that is no stop word is too few to stop it. A repeat request: the read-back is said again. A turn begun before the read-back's first audio, which then plays on over it: handed to the talker as a correction (or a no, for a plain no), so a later yes confirms nothing until a new read-back plays |
 | After the summary, while the closing question plays | An answer **over the closing question**: a yes needs a send word beside it |
 | After the closing question's last clause played | An answer: a yes word is enough |
 
@@ -87,7 +87,9 @@ The English lists also hold the Latin spellings Whisper wrote for the Arabic yes
 in an English call ("aywa", "arsilha"). A send word may be written after waw (and): «وأرسلها».
 A word on two lists counts as a no first, then a yes, then a send word, then a filler. The no
 words and fillers start from the interruption rule's no words and listening sounds
-([concepts.md](concepts.md), "The words").
+([concepts.md](concepts.md), "The words"). «خلاص» ("enough") is a filler here and a stop word
+of the interruption rule: once the read-back played, «ايه خلاص أرسلها» ("yes, that's it, send
+it") is a yes, but «خلاص» said over the summary stops it, as any stop word does.
 
 What you can add, and nothing else reaches these lists:
 
@@ -122,7 +124,9 @@ So, for an agent that does not ask a model (the next section):
 - «نعم بس غيّر العنوان» ("yes, but change the address") is a correction: «بس» and «غيّر» are on
   no list. So is "no, make it Malaz", which step 2 reaches before step 3.
 - "pardon?" is a correction too, not asked again: "pardon" is on no list, and step 2 comes
-  before step 4. Only a question of listed words, such as "yes?", is asked again.
+  before step 4. Any other question with a word on no list is one as well ("How do I reset my
+  password?"): the read-back ends, and the talker answers it. Only a question of listed words,
+  such as "yes?", is asked again.
 - "okay" or «تمام» alone is asked again: a listening sound is a filler, never a yes.
 
 ### Why a yes over the closing question needs a send word
@@ -153,7 +157,8 @@ lines: not that a closing question holds a send word, nor that it holds no yes w
   ([tools-and-actions.md](tools-and-actions.md)).
 - **Declined, or a correction**: the read-back ends and nothing is sent. The talker answers in
   its own words, told how the caller declined it (a no, a change, a stop). For a change, it
-  calls the action again, and the new draft is read back from the start.
+  calls the action again, and the new draft is read back from the start. After a no the caller
+  can go on at once: ask another question, or ask for another action, which is read back anew.
 - **Asked again**: the action's `asked_again` line ("Sorry, I didn't catch that. Shall I go
   ahead?", unless you give one), at most `max_attempts` times (2 by default). The next unclear
   answer ends the read-back with the `declined` line ("I couldn't get a clear answer, so I
@@ -177,7 +182,8 @@ these:
 
 - words with a word on none of the lists, which the lists alone make a correction: "go for it",
   "sure thing", "yes, but make it urgent", «صح» ("right"), a hesitation Whisper wrote as
-  «امممم», or a question such as "pardon?" (whose `send` or `yes` rail 1 below asks again);
+  «امممم», a question such as "How do I reset my password?" (whose `send` or `yes` rail 1 below
+  asks again), or a request for something else ("No thanks, I want to open another ticket.");
 - send words among fillers, with no yes word and no question mark: "please send it", «يلا
   أرسلها» ("come on, send it");
 - a send word said alone: «أرسلها», «توكل», "go ahead", "send it";
@@ -198,11 +204,15 @@ kind, never the words. The model answers one word:
 | --- | --- | --- |
 | `send` | an outright go-ahead to send it | "go for it", «يلا أرسلها» |
 | `yes` | agreement only, with no outright go-ahead | "sure thing", «صح» |
-| `no` | a refusal, or a cancel | "forget it" |
+| `no` | a refusal or a cancel, or an answer that turns to something else instead: a question, about this action or anything else, or a request for something other than what was read back (another ticket, another topic) | "forget it", "How do I reset my password?", «أبي أفتح تذكرة ثانية» ("I want to open another ticket") |
 | `change` | a wish to change, add or leave out anything, a yes with a change in it among them | "yes, but make it urgent" |
-| `unclear` | a sound, a hesitation, a question, the agent's own words heard back, anything else | «امممم» |
+| `unclear` | a sound, a hesitation, a word that answers nothing, or the agent's own words heard back; that comes first, even for a question ("Shall I send it?" heard back) | «امممم» |
 
-Any other answer counts as `unclear`.
+Any other answer counts as `unclear`. A question in answer to a read-back is a `no` (the owner's
+answer of 2026-11-11): the read-back ends, nothing is sent, and the turn goes to the talker with
+its words whole and the no note, so the talker answers the question, or reads back the new
+action the caller asked for, in its own words, with no ask-again line. A model that still says
+`unclear`, fails or is too slow has it asked again, as the rails below say.
 
 **The rails.** The model's word is never taken as it is: the yes rule decides what it makes.
 First, whatever the model says, the receipt built when the words reached the rule must still
@@ -210,10 +220,13 @@ stand, or the answer is asked again. Then:
 
 | The model says | The yes rule makes it |
 | --- | --- |
-| `no` | declined |
-| `change` | a correction |
+| `no` | declined, unless the words are the agent's own, heard back (rail 3 below): asked again |
+| `change` | a correction, unless the words are the agent's own, heard back (rail 3 below): asked again |
 | `unclear`, any other answer, a failed request, or no answer within 1.5 s on the call's clock | asked again |
 | `send` or `yes` | a yes, unless one of the rails below holds |
+
+So the agent's own lines heard back never confirm, cancel or change a read-back, whatever the
+model says.
 
 A `send` or a `yes` is not a yes when:
 

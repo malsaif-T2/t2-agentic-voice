@@ -1,9 +1,11 @@
 """Plan 007's action scenarios (ole5_voice/evals/action_scenarios.py; the plan's "The
-measurement, registered before any result"): the committed forty break no rule, each of the 20
-kinds (the plan's 15, four of answers the yes rule's lists leave unplaced, D-082, and a note on
-a ticket made in the call, the owner's ruling of 2026-11-10) once in dev and once in held-out,
-in another language, every language in each split; and each rule shown to catch a made-up
-scenario that breaks it. No scenario is played here (test_action_play.py plays each)."""
+measurement, registered before any result"): the committed 49 break no rule, each of the 24
+kinds (the plan's 15, four of answers the yes rule's lists leave unplaced, D-082, a note on a
+ticket made in the call, the owner's ruling of 2026-11-10, and four of a read-back dropped, the
+owner's answer of 2026-11-11) in dev and in held-out, held-out in a language its dev scenarios
+are not, every language in each split; the four of a read-back dropped split and said as that
+answer registered them; and each rule shown to catch a made-up scenario that breaks it. No
+scenario is played here (test_action_play.py plays each)."""
 
 from __future__ import annotations
 
@@ -27,17 +29,51 @@ COMMITTED = load_action_scenarios(EVALS / ACTIONS_DIR)
 
 
 def test_the_committed_scenarios_break_no_rule() -> None:
-    assert len(COMMITTED) == 2 * len(KINDS) == 40
+    assert len(COMMITTED) == 49 and len(KINDS) == 24
     assert problems(COMMITTED) == []
     assert set(RULES) == set(KINDS)
 
 
 def test_each_kind_is_split_across_two_languages() -> None:
-    """Split by scenario before any run (the plan): one dev and one held-out of each kind, in
-    two languages, so held-out shows each kind in a language dev did not."""
+    """Split by scenario before any run (the plan): each kind in dev and in held-out, one
+    scenario of each but a question in answer to a read-back, which has two in dev (English and
+    Saudi, the owner's answer of 2026-11-11), so held-out shows each kind in a language dev did
+    not."""
     for kind in KINDS:
-        pair = {s.split: s.language for s in COMMITTED if s.kind == kind}
-        assert set(pair) == {"dev", "held-out"} and pair["dev"] != pair["held-out"], kind
+        dev = [s.language for s in COMMITTED if s.kind == kind and s.split == "dev"]
+        held = [s.language for s in COMMITTED if s.kind == kind and s.split == "held-out"]
+        assert len(dev) == (2 if kind == "question_to_read_back" else 1), kind
+        assert len(held) == 1 and held[0] not in dev, kind
+
+
+# The owner's answer of 2026-11-11 ("Fix all, then run A"): each scenario of a read-back
+# dropped, its split, and its second turn, the one that drops it: when it is said (None: once
+# the read-back played) and what follows it.
+DROPPED = {
+    "a41_question_to_read_back_english": ("dev", None, "talker"),
+    "a42_question_to_read_back_saudi": ("dev", None, "talker"),
+    "a43_question_to_read_back_msa": ("held-out", None, "talker"),
+    "a44_cancel_for_another_english": ("dev", None, "read_back"),
+    "a45_cancel_for_another_saudi": ("held-out", None, "read_back"),
+    "a46_cancel_over_summary_english": ("held-out", "read_back", "talker"),
+    "a47_cancel_over_summary_saudi": ("dev", "read_back", "talker"),
+    "a48_stop_over_summary_saudi": ("dev", "read_back", "stopped"),
+    "a49_stop_over_summary_msa": ("held-out", "read_back", "stopped"),
+}
+
+
+def test_a_read_back_dropped_is_split_and_said_as_the_owners_answer_registered_it() -> None:
+    """A question or a request for another ticket said once the read-back played, a cancel or
+    «خلاص» (khalas, enough) said over its summary: each after a ticket's read-back, nothing
+    made but the other ticket the caller asks for, read back anew and made on a yes."""
+    by_id = {scenario.id: scenario for scenario in COMMITTED}
+    for name, (split, when, outcome) in DROPPED.items():
+        found = by_id[name]
+        first, dropping = found.turns[:2]
+        assert (found.split, dropping.when, dropping.outcome) == (split, when, outcome), name
+        assert first.calls == "create_ticket" and first.outcome == "read_back", name
+        assert found.made == (1 if outcome == "read_back" else 0), name
+    assert {by_id[name].turns[1].says for name in DROPPED if "stop" in name} == {"خلاص"}
 
 
 def test_the_tickets_made_hold_a_type_and_summary_facts_to_judge() -> None:

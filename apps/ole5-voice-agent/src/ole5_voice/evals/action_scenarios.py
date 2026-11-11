@@ -5,11 +5,14 @@ extend run S's scenarios (scenarios.py) with what an action needs; a scenario is
 call through `TextCall`, against the mock ticket system (ole5_voice/tickets/mock.py), by run A
 (`poe eval-actions`, action_run.py).
 
-**A scenario** has its ID, its `kind` (one of the registered 20, `KINDS`: the plan's 15; four
+**A scenario** has its ID, its `kind` (one of the registered 24, `KINDS`: the plan's 15; four
 of answers the yes rule's lists leave unplaced for a chat model to judge, D-082, added before
 any run: a yes and a go-ahead on no list, a yes with a change, and a hesitation in a spelling
-no list holds; and a note on a ticket made in the call, added before any run by the owner's
-ruling of 2026-11-10), its `split`, whether
+no list holds; a note on a ticket made in the call, added before any run by the owner's
+ruling of 2026-11-10; and four of a ticket's read-back dropped, added before any run by the
+owner's answer of 2026-11-11: a question in answer to it, a no that asks for another ticket
+instead, a cancel said over its summary, and «خلاص» (khalas, enough) alone over it), its
+`split` (each kind in dev and in held-out), whether
 it is one of the rehearsal's steps (`rehearsal`: step 6, a yes with a send word over the
 closing question, and step 3, a request for a person over an answer), the language its call is
 held in, notes on what it tests, and how the mock answers: `tickets_mode` for its writes
@@ -82,6 +85,11 @@ Kind = Literal[
     "unlisted_hesitation",
     # A note on a ticket made in the call (the owner's ruling of 2026-11-10).
     "ticket_note",
+    # A ticket's read-back dropped (the owner's answer of 2026-11-11).
+    "question_to_read_back",
+    "cancel_for_another",
+    "cancel_over_summary",
+    "stop_over_summary",
 ]
 KINDS: Final[tuple[Kind, ...]] = get_args(Kind)
 Split = Literal["dev", "held-out"]
@@ -205,6 +213,10 @@ RULES: Final[Mapping[Kind, _Rule]] = {
     "yes_but_change": _Rule("answer", 1, ("read_back", "done"), _TICKET),
     "unlisted_hesitation": _Rule("answer", 1, ("asked_again", "done"), _TICKET),
     "ticket_note": _Rule("answer", 1, ("read_back", "done"), ADD_NOTE, noted=1),
+    "question_to_read_back": _Rule("answer", 0, ("read_back", "talker"), _TICKET),
+    "cancel_for_another": _Rule("answer", 1, ("read_back", "done"), _TICKET),
+    "cancel_over_summary": _Rule("answer", 0, ("read_back", "talker"), _TICKET),
+    "stop_over_summary": _Rule("answer", 0, ("read_back", "stopped"), _TICKET),
 }
 
 
@@ -223,15 +235,15 @@ def load_action_scenarios(folder: Path) -> tuple[ActionScenario, ...]:
 
 
 def problems(scenarios: Sequence[ActionScenario]) -> list[str]:
-    """Every rule the scenarios break: each kind once in dev and once in held-out, every
-    language in each split, the rehearsal's two steps, and each scenario's own rules."""
+    """Every rule the scenarios break: each kind in dev and in held-out, every language in each
+    split, the rehearsal's two steps, and each scenario's own rules."""
     found = []
     twice = [name for name, n in Counter(s.id for s in scenarios).items() if n > 1]
     found += [f"the scenario '{name}' twice" for name in sorted(twice)]
     for kind in KINDS:
         splits = sorted(s.split for s in scenarios if s.kind == kind)
-        if splits != sorted(SPLITS):
-            found.append(f"the kind '{kind}' is in {splits or 'no split'}, not once in each")
+        if set(splits) != set(SPLITS):
+            found.append(f"the kind '{kind}' is in {splits or 'no split'}, not in each")
     for split in SPLITS:
         held = {s.language for s in scenarios if s.split == split}
         found += [f"{split} has no scenario in {tag}" for tag in LANGUAGES if tag not in held]

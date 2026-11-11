@@ -2595,7 +2595,20 @@ twice; DOC-REF: every `D-NNN` cited anywhere is a heading here), so keep its sha
     change and keep the draft; real words over the summary decline it as a `correction`, and so
     does a turn begun before its first audio once its words reach the talker (since plan 007's
     whole-code review: the summary played on over it, and a later yes confirmed the old draft);
-    a repeat says it again as a new reply. A turn heard as nothing changes nothing while
+    a repeat says it again as a new reply. *Amended 2026-11-11* (the owner's "Fix all, then run
+    A", on his question whether a caller can cancel a read-back and ask something else): over
+    the summary, words that hold a stop or wait word of the call's, read as the interruption
+    rule reads them (the `words` settings' additions included), are never ignored, so the rule
+    judges them as any stop word; «خلاص», a stop word of the `ar` list and a filler to the yes
+    rule, said alone over the summary declined nothing and the summary played on, and now
+    declines it as `stopped` (said once the read-back played, «ايه خلاص أرسلها» is still a
+    yes). And words that cut the summary and are a plain no by the yes rule's lists for the
+    read-back's language (`yes_rule.plain_no`: a no word, beside it only send words and
+    fillers, the words `decide` declines once the summary played; "No, cancel it, don't send
+    it.", «لا لا، لا ترسلها») decline it as a `no`, not a `correction`, read on the turn's whole
+    words as it reaches the talker, so the talker is not told to call the action again; "No,
+    not Monday, since Thursday." stays a correction. A single word over the summary that is no
+    stop or wait word is still too few to stop it (D-069). A turn heard as nothing changes nothing while
     confirming. `sending` answers the yes turn, and the outcome is said once, at a turn boundary,
     as a reply that answers no turn. The session is the only sender of `ActionCompleted` and
     `ActionUnconfirmed`; the runtime's runner sends no event.
@@ -2693,7 +2706,9 @@ twice; DOC-REF: every `D-NNN` cited anywhere is a heading here), so keep its sha
   `test_action_call_registers.py`, `tests/ole5_voice/tickets/test_ticket_calls.py`,
   `test_ticket_safety.py`, `test_ticket_calls_msa.py`, `test_ticket_claims.py`; run A's plays,
   `tests/ole5_voice/evals/test_action_play.py`, its scenarios and checks,
-  `test_action_scenarios.py`, `test_action_score.py`.
+  `test_action_scenarios.py`, `test_action_score.py`; for the amendment of 2026-11-11,
+  `tests/t2_agentic_voice/testing/test_action_call_cancels.py`, `test_read_back_overlaps.py`'s
+  plain no and stop word on a filler, and `test_yes_rule.py`'s `plain_no` cases.
 
 ## D-082 · A chat model judges the answers the yes rule's lists leave unplaced, within its rails · 2026-11-10 · Accepted (the owner's rulings of 2026-11-10, plan 007's Block F)
 
@@ -2719,7 +2734,13 @@ twice; DOC-REF: every `D-NNN` cited anywhere is a heading here), so keep its sha
   (Recommended)": "A send word alone goes to the model like any other unplaced answer, under the
   same rails. Words that copy the agent's own line are treated as its echo only if heard while
   the agent was speaking, so a caller who answers «أرسلها» once the question ended can send."
-  The rulings amend invariant 1 (docs/SECURITY.md).
+  The rulings amend invariant 1 (docs/SECURITY.md). On 2026-11-11 the owner asked: "When the
+  agent offer a ticket, the user can approve or edit. But can he cancel the ticket all together
+  and start to ask another question or open another ticket?" A trace found a plain no worked,
+  but the instruction listed "a question" under `unclear` (the agent's wording when Block F was
+  built, no ruling's), so a question said in answer to the read-back was asked again, up to
+  `max_attempts` times, then met the declined line, and never reached the talker. Put with the
+  fix, the owner answered "Fix all, then run A".
 - **Decision:**
   - The lists stay first and unchanged: whatever `decide` places is its answer, and asks no
     model. It marks `askable` what it cannot place: a word on none of its lists (until now a
@@ -2734,6 +2755,15 @@ twice; DOC-REF: every `D-NNN` cited anywhere is a heading here), so keep its sha
     tokens, 1.5 s on the call's clock), the request holding as data, in JSON, the read-back's
     summary and closing question as the plan rendered them and the heard words, nothing else;
     it answers `send`, `yes`, `no`, `change` or `unclear`, anything else read as `unclear`.
+    *Amended 2026-11-11:* its `no` covers, beside a refusal or a cancel, an answer that turns to
+    something else instead of answering: a question, about this action or anything else, or a
+    request for something other than what was read back (another ticket, another topic; not
+    "a person", since a person asked for over a handoff's read-back is that very thing, and a
+    yes to it stays a yes); `unclear` keeps a
+    sound, a hesitation, a word that answers nothing and the agent's own read-back or question
+    heard back, and says that rule comes first (words that match what the agent said are never
+    the caller's answer, even when they are a question); `change` is unchanged, and there is no
+    sixth word.
   - The yes rule decides what the word makes (`judged`, beside `decide`, the only other builder
     of a `ConfirmedAction`). A `send` or `yes` is a yes only when the words hold no no word and
     no question mark (else asked again), no change marker (`domain/yes_words.py`'s new list a
@@ -2744,7 +2774,13 @@ twice; DOC-REF: every `D-NNN` cited anywhere is a heading here), so keep its sha
     asked again). Once the closing question ended, `send` and `yes` both confirm; over it,
     `send`, or `yes` to a listed send word beside other words, and `yes` alone, or to a send
     word alone, is asked again. `no` is declined, `change` a correction, and `unclear`, a
-    failure and a timeout are asked again.
+    failure and a timeout are asked again. *Amended 2026-11-11:* a `no` or `change` on the
+    agent's echo (below, the same lines and window as for a yes) is asked again too, as its
+    `yes` is, since a question is now a `no` and the closing question heard back is a question;
+    the model's `no` stays `Declined`, so the turn goes to the talker with the action declined
+    as a no and its words whole, and the talker answers the question or proposes the new action
+    in its own words (the owner's ruling "The model always answers"). An agent that does not
+    ask is unchanged: its unplaced words stay a correction (GP-18).
   - The echo rail is the agent's own: the brief names the agent's words heard back unclear for
     the model, and the lists hand the model send words, alone or among fillers, which the Saudi
     closing question «أرسل الطلب؟» heard back is; a misjudged echo would send what the caller
@@ -2791,13 +2827,19 @@ twice; DOC-REF: every `D-NNN` cited anywhere is a heading here), so keep its sha
   scenarios for it (the plan's Block F, the Ole5 builder's part). After the third ruling a send
   word alone costs a chat request too, and a failed or slow one is asked again, as the lists
   asked it; no committed run A turn is a send word alone, so no expected outcome of run A
-  moves.
-- **Evidence:** plan 007's "The owner's decisions" (2026-11-10, the rulings) and its Block F;
+  moves. Since 2026-11-11 a question or a request for something else in answer to a read-back
+  is never asked again when the model says `no`: the caller hears the talker's answer at once,
+  and can go on to another question or another action; a model that still says `unclear` for
+  one asks it again, as before. The instruction's text changed, so a measured run of the check
+  before that day is not comparable with one after it.
+- **Evidence:** plan 007's "The owner's decisions" (2026-11-10, the rulings; 2026-11-11, the
+  owner's answer) and its Block F;
   `tests/t2_agentic_voice/domain/test_consent_check.py`, `test_yes_rule_judged.py`,
-  `test_yes_rule_send_alone.py`; `tests/t2_agentic_voice/voice/session/test_yes_ask.py`,
-  `test_yes_ask_echo.py`, `test_yes_ask_tail.py`;
-  `tests/t2_agentic_voice/testing/test_action_call_judged.py`,
-  `test_action_safety_judged.py`; `tests/ole5_voice/tickets/test_ticket_calls_judged.py`.
+  `test_yes_rule_judged_no.py`, `test_yes_rule_send_alone.py`;
+  `tests/t2_agentic_voice/voice/session/test_yes_ask.py`, `test_yes_ask_echo.py`,
+  `test_yes_ask_tail.py`; `tests/t2_agentic_voice/testing/test_action_call_judged.py`,
+  `test_action_call_cancels.py`, `test_action_safety_judged.py`;
+  `tests/ole5_voice/tickets/test_ticket_calls_judged.py`.
 
 ## D-083 · A test console beside the dev page, fed by the runtime's events, which now carry each tool's arguments and result · 2026-11-10 · Accepted (the owner's approval of the agent's proposal, 2026-11-10)
 

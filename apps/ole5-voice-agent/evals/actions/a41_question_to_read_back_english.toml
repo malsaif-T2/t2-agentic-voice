@@ -1,0 +1,27 @@
+# Plan 007's action scenarios (its "The measurement"; ole5_voice/evals/action_scenarios.py),
+# added by the owner's answer of 2026-11-11 before any run: a bare question in answer to a
+# ticket's read-back, once its closing question ended: nothing is sent, and the talker answers
+# the question.
+id = "a41_question_to_read_back_english"
+kind = "question_to_read_back"
+split = "dev"
+language = "en"
+notes = "Asked to confirm a ticket, the caller asks a question instead, with no yes and no no: the model judges it a no, nothing is sent, and the talker goes on to the question in its own words, not the ask-again line."
+made = 0
+
+[[turns]]
+says = "Please open a ticket: the counters on my Ole5 dashboard show zero although my department has pending correspondence. It's not urgent."
+calls = "create_ticket"
+outcome = "read_back"
+language = "en"
+
+[[turns]]
+says = "How do I attach a file to a correspondence?"
+calls = "nothing"
+outcome = "talker"
+language = "en"
+says_number = "none"
+facts = [
+  "Goes on to the caller's question about attaching a file to a correspondence.",
+  "Does not say a ticket was made.",
+]

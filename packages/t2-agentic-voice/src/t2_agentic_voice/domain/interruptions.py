@@ -39,7 +39,8 @@ since Whisper may spell the one heard back otherwise.
 `whole_command` reads a turn said while the agent was silent, which `judge` never sees: a stop
 or pause request, or a repeat request, said whole, with only polite words and listening sounds
 beside it; a sentence that holds such a word asks nothing. `after_command` gives what a turn
-says after the stop or repeat request it opens with (plan 005's whole-plan review).
+says after the stop or repeat request it opens with (plan 005's whole-plan review). `holds_stop`
+says whether a transcript holds a stop or wait word, read as step 2 reads it.
 """
 
 from __future__ import annotations
@@ -161,6 +162,17 @@ def judge(
 def word_count(text: str, *, words: Words) -> int:
     """How many words the rule reads in `text`, each listed phrase one (`_tokens`)."""
     return len(_tokens(rule_form(text).split(), _lists(words)))
+
+
+def holds_stop(text: str, *, words: Words) -> bool:
+    """Whether `text` holds a stop word or a word asking the agent to pause, read as `judge`
+    reads an overlap's (step 2's words, each listed phrase one word, the longest first), with
+    the call language's `words`: speech over an action's read-back that holds one is never
+    ignored, so the rule judges it (voice/session/overlap.py)."""
+    lists = _lists(words)
+    tokens = _tokens(rule_form(text).split(), lists)
+    kinds = [lists.get(token, frozenset()) for token in tokens]
+    return bool(_of_kinds(tokens, kinds, "stop", "wait"))
 
 
 def whole_command(text: str, *, words: Words) -> WholeCommand | None:

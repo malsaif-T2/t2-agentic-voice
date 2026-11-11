@@ -1,0 +1,25 @@
+# Plan 007's action scenarios (its "The measurement"; ole5_voice/evals/action_scenarios.py),
+# added by the owner's answer of 2026-11-11 before any run: a cancel said over the read-back's
+# summary: it stops it, nothing is sent, and the talker hears it as a no, not a change.
+id = "a46_cancel_over_summary_english"
+kind = "cancel_over_summary"
+split = "held-out"
+language = "en"
+notes = "A cancel said over the summary stops it with no receipt, and the lists read it as a plain no: nothing is sent, and the talker says so in its own words, with no read-back again."
+made = 0
+
+[[turns]]
+says = "Open a ticket for me please: when I reply to a correspondence, the reply loses its attachments. It's urgent."
+calls = "create_ticket"
+outcome = "read_back"
+language = "en"
+
+[[turns]]
+says = "No, cancel it, don't send it."
+when = "read_back"
+after_s = 1.5
+calls = "nothing"
+outcome = "talker"
+language = "en"
+says_number = "none"
+facts = ["Says plainly, in its own words, that nothing was sent.", "Does not read the ticket back again."]

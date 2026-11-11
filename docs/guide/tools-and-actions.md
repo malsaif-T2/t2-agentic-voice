@@ -335,7 +335,7 @@ Under the default `interruptions.mode` (`two_step`), with the example's helper:
 | 1 | The caller asks Olaya to call them back. The talker collects what the draft needs and calls `request_callback`. **Nothing is written.** What the talker writes after the call, in that request, is dropped unspoken (the guard's rule C) | Whatever the talker said before the call |
 | 2 | The library parses the draft, runs `validate`, checks the caps and renders the read-back in the reply's language. A refusal goes back to the talker, the field or the reason named, and the talker may speak again, to say why or to ask for what is missing | Nothing yet, or the talker's next words after a refusal |
 | 3 | The reply ends with the read-back. The talker reads only that its call is being read back, never the draft, and says nothing more in this turn. Observers get `ConfirmationRequested` as the summary starts to play | The summary, then the closing question |
-| 4 | Over the summary: a yes, a send word or a listening sound is ignored, and counts for nothing. A stop or pause word over the read-back ends it: nothing is sent, and the talker asks what to change, its draft kept. Other words that stop the summary decline it as a correction. A request to hear it again says it again | The read-back, playing on or said again; or the talker |
+| 4 | Over the summary: a yes, a send word, a filler or a listening sound is ignored, and counts for nothing. A stop or pause word over the read-back ends it, even one the yes rule reads as a filler («خلاص», "enough"): nothing is sent, and the talker asks what to change, its draft kept. Words that stop the summary and are a plain no to the yes rule's lists ("No, cancel it, don't send it.", «لا لا، لا ترسلها») decline it as a no; other words that stop it decline it as a correction ("No, not Monday, since Thursday."). A request to hear it again says it again | The read-back, playing on or said again; or the talker |
 | 5 | The caller answers. A turn begun once the summary has played whole goes to the yes rule, not to the talker ("The caller's yes", below) | |
 | 6 | **A yes.** The `sending` line is said, and the write starts as a job of its own: its outbox row is written, then your function is called with the draft the caller heard, within `timeout_s`. Neither a stop nor the call's end cuts it | `sending` |
 | 7 | **The outcome**, once the write ends, said once at the next turn boundary: when no reply is playing, every turn of the caller's has closed, and no other action's read-back waits for its answer, so never over the caller, and never between a closing question and its answer, where a "yes" to the outcome would confirm the other action. Observers get `ActionCompleted` or `ActionUnconfirmed` | `done`, `failed` or `unknown` |
@@ -344,7 +344,13 @@ The answers that are not a yes:
 
 - **A plain no.** Confirming ends, and the turn goes to the talker with a note that the caller
   said no and nothing was done. The talker answers in its own words (the owner's ruling, plan
-  007): no fixed line is said.
+  007): no fixed line is said. The caller hears that answer, and can go on at once: ask another
+  question, or ask for another action, whose draft is read back anew. The same holds for a
+  plain no said over the summary, and, for an agent that asks, for a question or a request for
+  something else said in answer to the read-back ("How do I reset my password?", "No, open a
+  ticket about my printer instead."): the model's `no` declines it, so the talker answers the
+  question, or reads back the new action, instead of asking again (the owner's answer of
+  2026-11-11).
 - **A correction** ("no, the Malaz branch", or other words on none of the yes rule's lists).
   Confirming ends, and the turn goes to the talker with a note that the caller changed the
   read-back and that it should call the action again with the change. The new draft is read
@@ -408,7 +414,7 @@ read-back. [safety.md](safety.md) has the rule in full; in brief:
 - **Only heard words count**, from speech-to-text. Typed words count only when `env` is `test`,
   which a runtime refuses to serve and a test's `TextCall` runs under.
 - **Only words begun once the summary has played whole count**: every clause of it played, none
-  cut short. A yes said over the summary is ignored.
+  cut short. A yes said over the summary is ignored; a stop word said over it stops it.
 - **After the closing question has ended**, a plain yes ("yes", «نعم») confirms. **Over the
   closing question**, a yes needs a send word too ("yes, send it", «نعم أرسلها»); a bare yes
   there is asked again.

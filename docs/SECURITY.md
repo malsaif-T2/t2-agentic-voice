@@ -67,13 +67,18 @@ has not reviewed those either.
    echo only when begun while that line could still be heard: as it plays, or within its
    reply's tail after it ended, the drop rule's 0.3 s of the agent's voice leaked past echo
    cancellation, none after the caller's own stop (the owner's third ruling, the same day:
-   "Yes, let the model judge"). No tool argument or model output can stand in for either input:
-   the model judges the heard words, and builds neither.
+   "Yes, let the model judge"). The model's `no` (a refusal or a cancel, and since the owner's
+   answer of 2026-11-11 a question or a request for something else) and its `change` only ever
+   drop the read-back, nothing sent, and on the agent's own words heard back as it says them
+   each is asked again, so its echo never cancels or changes a read-back either. No tool
+   argument or model output can stand in for either input: the model judges the heard words,
+   and builds neither.
    Enforced by `[[restricted]]` (ARCH-CONSTRUCT) on the confirmed draft (`domain`) and on both
    inputs (`voice`), each added in the commit that creates its class, by adversarial tests
    of the yes rule and of a talker tool call that claims a yes, and by adversarial tests of the
    model's rails (`tests/t2_agentic_voice/domain/test_yes_rule_judged.py`,
-   `test_yes_rule_send_alone.py`, `tests/t2_agentic_voice/voice/session/test_yes_ask.py`,
+   `test_yes_rule_judged_no.py`, `test_yes_rule_send_alone.py`,
+   `tests/t2_agentic_voice/voice/session/test_yes_ask.py`,
    `test_yes_ask_echo.py`, `test_yes_ask_tail.py`, `ActionSafetySuite`'s judged cases).
 2. **No claim without a record.** No sentence the agent speaks claims an action (created,
    updated, escalated, handed off), or says a ticket number, unless the call's record of

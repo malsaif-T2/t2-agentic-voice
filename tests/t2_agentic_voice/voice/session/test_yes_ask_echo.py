@@ -4,7 +4,8 @@
 audio to the end of its tail after it ended (the drop rule's window), and only speech begun then
 may be its echo; the session keeps the rail when it cannot tell. On the real yes rule, its words
 and a fake chat model, for an agent that asks: words that copy the ask-again line, said over it,
-are asked again whatever the model says, and said once it and its tail ended, or words that copy
+are asked again whatever the model says (its no and change too, since 2026-11-11), and said once
+it and its tail ended, or words that copy
 the closing question said so, are the model's to judge (test_yes_ask_tail.py has the tail)."""
 
 from __future__ import annotations
@@ -150,6 +151,32 @@ def test_words_that_copy_the_ask_again_line_over_it_are_asked_again_whatever_the
     asyncio.run(drive())
     assert _answered(io) == [(1, "asked_again", "words"), (2, "asked_again", "model")]
     assert len(llm.requests) == 1 and jobs.runs == []
+
+
+@pytest.mark.parametrize("word", ["no", "change"])
+def test_words_that_copy_the_ask_again_line_over_it_judged_no_or_change_are_asked_again(
+    settings: VoiceSettings, word: str
+) -> None:
+    """D-082's echo rail on the model's no and change (the owner's answer of 2026-11-11): the
+    agent's own line heard back never cancels or changes the read-back; confirming goes on."""
+    llm, jobs = ScriptedLLM([ScriptedLLM.reply(word)]), FakeJobs()
+    io, session, talker = confirm_call(settings, jobs, agent=ASKS, overlap_model=llm)
+    llm.clock = io.clock
+
+    async def drive() -> None:
+        await read_back_played(io)
+        await talked(io, 1, UNCLEAR)
+        (speak,) = speaks(io, 2)
+        await io.synthesizing(2, speak.clause)
+        await io.clause_queued(2, speak.clause)  # the line that asks again plays
+        await over(io, 2, COPIES_ASKED)
+        await io.clock.advance(5.0)
+        await settle()
+
+    asyncio.run(drive())
+    assert _answered(io) == [(1, "asked_again", "words"), (2, "asked_again", "model")]
+    assert session._confirming.active and jobs.runs == []
+    assert [t.declined for t in talker.turns if t.turn_id == 2] in ([], [None])
 
 
 @pytest.mark.parametrize("words", [COPIES_ASKED, COPIES_QUESTION])

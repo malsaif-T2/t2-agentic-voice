@@ -5,7 +5,9 @@ confirming, the real yes rule, guard and action runner over an outbox in memory;
 monkeypatched, nothing sent. Each committed scenario passes when the agent does what it
 expects, an answer the yes rule's lists leave unplaced put to the model once (D-082); the mock,
 seeded as the scenario says, keeps what the call made, a note on the call's ticket added once
-(a39 and a40, the owner's ruling of 2026-11-10); and what the run must see is seen: a claim the
+(a39 and a40, the owner's ruling of 2026-11-10); a read-back dropped reaches the talker told
+as a no, or as a stop for «خلاص» (khalas, enough) over it, never asked again (a41 to a49, the
+owner's answer of 2026-11-11); and what the run must see is seen: a claim the
 guard blocks, a passage's number said as the caller's ticket number blocked in a play of a29
 and a30 (the owner's ruling of 2026-11-10), a write with no scripted yes (in a play with no
 result too, and a note's), a note written twice, a passage first in the search, a judge's
@@ -35,6 +37,8 @@ from ole5_voice.tickets.mock import FILE_NAME
 from ole5_voice.tickets.system import NewNote, NewTicket, Ticket, TicketRef, TicketSystem
 from ole5_voice.tickets.tools import with_ticket_claims
 from t2_agentic_voice import ProviderError, VoiceSettings
+from t2_agentic_voice.agent.context import DECLINED
+from t2_agentic_voice.core.conversation import DeclineKind
 from t2_agentic_voice.evals import FakeKnowledgeBase, is_consent_check
 
 from tests.ole5_voice.evals.action_run_support import (
@@ -127,6 +131,8 @@ def test_each_committed_scenario_passes_when_the_agent_does_what_it_expects(
         "a35_yes_but_change_saudi",
         "a37_unlisted_hesitation_msa",
         "a27_handoff_by_mistake_english",
+        "a41_question_to_read_back_english",
+        "a44_cancel_for_another_english",
     ],
 )
 def test_an_answer_the_lists_leave_unplaced_is_put_to_the_model_once(
@@ -137,6 +143,39 @@ def test_an_answer_the_lists_leave_unplaced_is_put_to_the_model_once(
     record = parts.play(scenario)
     asked = [request for request in parts.chat.requests if is_consent_check(request)]
     assert record.passed is True and len(asked) == 1
+
+
+# The kinds of a read-back dropped (the owner's answer of 2026-11-11: a41 to a49).
+DROPS = ("question_to_read_back", "cancel_for_another", "cancel_over_summary", "stop_over_summary")
+
+
+@pytest.mark.parametrize("scenario", sorted(n for n, s in SCENARIOS.items() if s.kind in DROPS))
+def test_a_read_back_dropped_reaches_the_talker_as_a_no_or_a_stop(
+    parts: _Playing, scenario: str
+) -> None:
+    """Nothing is asked again. A question, or a no that asks for another ticket, said once the
+    read-back played is put to the model once, and its no reaches the talker with the no note
+    (agent/context.py's notes); a plain cancel over the summary is a no by the lists, not a
+    correction, and «خلاص» alone over it a stop, never ignored, with no model asked. The ticket
+    made after a request for another is that one, read back anew from the second turn's words."""
+    found = SCENARIOS[scenario]
+    kind: DeclineKind = "stopped" if found.kind == "stop_over_summary" else "no"
+    checks = 0 if found.turns[1].when == "read_back" else 1
+    record = parts.play(found)
+    words = found.turns[1].says
+    told = {
+        message.content
+        for request in parts.chat.requests
+        if request.model == TALKER and not is_consent_check(request)
+        for message in request.messages
+        if message.role == "user" and message.content.startswith(words)
+    }
+    note = DECLINED[kind].format(action="create_ticket")  # last, after a cut's over the summary
+    assert record.passed is True
+    assert told and all(content.endswith(f" {note}") for content in told)
+    assert len([request for request in parts.chat.requests if is_consent_check(request)]) == checks
+    if found.made:
+        assert record.made == 1 and record.summary == " ".join(words.split())
 
 
 def test_a_ticket_the_call_made_is_kept_in_the_plays_mock(parts: _Playing, tmp_path: Path) -> None:

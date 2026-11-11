@@ -1,0 +1,26 @@
+# Plan 007's action scenarios (its "The measurement"; ole5_voice/evals/action_scenarios.py),
+# added by the owner's answer of 2026-11-11 before any run: a bare question in answer to a
+# ticket's read-back, in Saudi Arabic.
+id = "a42_question_to_read_back_saudi"
+kind = "question_to_read_back"
+split = "dev"
+language = "ar-SA"
+notes = "A Saudi caller answers the read-back with a question about the interface language (kaif aghayyir lughat al-waajiha: how do I change the interface language): nothing is sent, and the talker goes on to the question."
+made = 0
+
+[[turns]]
+says = "أبغى تذكرة، صفحة التقارير في أولي فايف تاخذ وقت طويل لين تفتح كل يوم الصبح، مو مستعجلة"
+calls = "create_ticket"
+outcome = "read_back"
+language = "ar-SA"
+
+[[turns]]
+says = "كيف أغير لغة الواجهة للإنجليزي؟"
+calls = "nothing"
+outcome = "talker"
+language = "ar-SA"
+says_number = "none"
+facts = [
+  "Goes on to the caller's question about changing the interface language to English.",
+  "Does not say a ticket was made.",
+]

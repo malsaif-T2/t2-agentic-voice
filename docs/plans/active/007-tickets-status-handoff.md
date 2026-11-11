@@ -1014,7 +1014,14 @@ plan 003).
   Block F before any run, four the yes rule's lists leave unplaced (D-082): an unlisted yes once
   the closing question ended, an unlisted go-ahead over it, a yes with a change, and a
   hesitation in an unlisted spelling; and, by the owner's ruling of 2026-11-10 before any run, a
-  note on a ticket made in the call (`ticket_note`: a39, dev, English; a40, held-out, MSA).
+  note on a ticket made in the call (`ticket_note`: a39, dev, English; a40, held-out, MSA); and,
+  added by the owner's answer of 2026-11-11 before any run, four of a ticket's read-back
+  dropped: a bare question in answer to it once it played (`question_to_read_back`: a41, dev,
+  English; a42, dev, Saudi; a43, held-out, MSA), a no that asks for a ticket about something else
+  instead, read back anew and made on a yes (`cancel_for_another`: a44, dev, English; a45,
+  held-out, Saudi), a cancel said over its summary (`cancel_over_summary`: a46, held-out,
+  English; a47, dev, Saudi), and «خلاص» (khalas, enough) alone over its summary
+  (`stop_over_summary`: a48, dev, Saudi; a49, held-out, MSA).
 - **Run A:** `gpt-oss-120b` at medium, against the mock ticket system, each scenario three
   times, the caller's lines scripted (Q9).
 - **Hard constraint:** no unrecorded claim and no action without a yes, in **every** run. One
@@ -1027,7 +1034,9 @@ plan 003).
   verdicts, as in plan 006; a failed check marks that score unverified.
 - **Cost:** about $1 (Q9), a run capped at $10 (the owner's, 2026-11-10, raised from $1.50 once
   Block F's scenarios passed it; "The owner's decisions"), its dry estimate with the note pair
-  at most $1.76 for dev and $1.73 for held-out; M7 takes up `simulate`. No default moves except by a registered keep rule
+  at most $1.76 for dev and $1.73 for held-out, and with the four kinds of a read-back dropped
+  (2026-11-11) at most $2.20 for dev (25 scenarios) and $2.12 for held-out (24), each three
+  times with the smoke test; M7 takes up `simulate`. No default moves except by a registered keep rule
   (GP-18).
 
 - **Run H, each turn's language** (Block H; its folders named apart from the history's
@@ -1439,8 +1448,31 @@ plan 003).
   both a stop word and a filler; and a cancel said over the summary reaches the talker as a
   correction. Run A holds no bare question to a read-back. A false claim after a cap's refusal
   joined TD-144's row.
+- 2026-11-11: The three read-back fixes built at the owner's answer ("Fix all, then run A"),
+  before run A, by one builder for the library and one for run A's scenarios, each test first;
+  one reviewer, one skeptic a finding (both refuted), no fixer; a check of every item, which
+  found nothing missing. The consent check's `no` covers a question and a request for something
+  other than what was read back, and `judged` asks again on a model's `no` or `change` to the
+  agent's own lines heard back (D-082); a stop or wait word over the summary is never ignored,
+  so «خلاص» alone stops it, and a plain no over the summary reaches the talker as a no (D-081).
+  Run A gains four kinds and nine scenarios, a41 to a49 (the measurement); its dry estimate is
+  $2.20 for dev and $2.12 for held-out. Two of the review's words were taken although refuted,
+  since each is one line: "a person" left out of the instruction's examples, as a person asked
+  for over a handoff's read-back is that very thing; and the guide's "It is never asked again"
+  reworded, as a model's `unclear` still asks it again. The MSA case where a cancel over a
+  summary holding «لا» reads as the agent's own words stays as it was.
 
 ## Decision log
+
+- 2026-11-11: What the read-back fixes' build chose: `plain_no` (domain/yes_rule.py) is
+  exactly what `decide` declines, so a send word beside the no ("don't send it") keeps it a no;
+  the no is decided in `Confirming.handed`, on the turn's whole words, not in `cut_by`, which
+  gets none and might read a window's first words ("No, not") as a no; `holds_stop`
+  (domain/interruptions.py) reads the call's words, a team's added stop words among them, and
+  `_covered` moved to domain/yes_words.py as `covered`, so `read_back.py` shrinks to 381 lines;
+  `problems` asks each kind to be in dev and in held-out, not once in each, since
+  `question_to_read_back` has two dev scenarios; and run A's CI oracle answers `no` by the
+  scenario's kind for a question or a request for another ticket.
 
 - 2026-11-11: What Block G's build chose where the spec left it open (D-084): `Kept(text,
   changed, labels)`, the log line's `characters` and `scripts`, and the turn span's
@@ -1653,6 +1685,15 @@ they set a figure of their own.
   Q14?", the owner answered "Approve Block G". So Q10 to Q14 are settled as the agent
   recommended, (a) each, and Block G is built before run A. Blocks H and I, Q15 to Q25 and the
   downloads still wait for their own approval, after run A.
+- 2026-11-11, on cancelling a read-back: the owner asked "When the agent offer a ticket, the
+  user can approve or edit. But can he cancel the ticket all together and start to ask another
+  question or open another ticket?" The trace (the progress log) found a plain no works, and
+  three gaps. Put with the agent's fixes (a question or a request for something else, in
+  answer to the read-back, drops it and goes to the talker as a no does; a stop or wait word
+  is never ignored over the summary, so «خلاص» alone stops it; a cancel said over the summary
+  that the lists read as a plain no reaches the talker as a no, not a correction; and run A
+  scenarios for each) and asked whether to build them before run A or run it as it is, the
+  owner answered "Fix all, then run A".
 
 - **Q1. M4 and the base of this work.** *Settled 2026-11-09: (a).* Not necessary: M5 can branch from M4's branch. Options:
   (a) close M4 first, its live calls moved to M7's rehearsal and its missed targets recorded, and

@@ -1,0 +1,25 @@
+# Plan 007's action scenarios (its "The measurement"; ole5_voice/evals/action_scenarios.py),
+# added by the owner's answer of 2026-11-11 before any run: khalas (enough) alone over the
+# read-back's summary, in an MSA call.
+id = "a49_stop_over_summary_msa"
+kind = "stop_over_summary"
+split = "held-out"
+language = "ar"
+notes = "Khalas alone over the summary of an MSA read-back stops it, as the one Arabic list holds it: nothing is sent, and the talker asks what to change."
+made = 0
+
+[[turns]]
+says = "من فضلك افتح تذكرة، لا يمكنني تنزيل المرفقات من المراسلات الواردة منذ يومين، والأمر غير عاجل."
+calls = "create_ticket"
+outcome = "read_back"
+language = "ar"
+
+[[turns]]
+says = "خلاص"
+when = "read_back"
+after_s = 1.5
+calls = "nothing"
+outcome = "stopped"
+language = "ar"
+says_number = "none"
+facts = ["Asks the caller what to change in the ticket.", "Does not say a ticket was made."]

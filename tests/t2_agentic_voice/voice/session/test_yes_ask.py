@@ -2,7 +2,8 @@
 unplaced (voice/session/yes_ask.py, yes_turns.py; D-082), on the real yes rule and its words and
 a fake chat model: only for an agent that asks and only for unplaced words, one request a turn
 holding the read-back and the words; its word decided by the rule (`judged`) and carried out as
-any answer is, told `by="model"`; a timeout on the call's clock, a failure and a word that is
+any answer is, told `by="model"`, its no on a question reaching the talker declined as a no
+(the owner's answer of 2026-11-11); a timeout on the call's clock, a failure and a word that is
 none asked again; a newer answer, the client's stop, the call's end and a stop word that
 declined the read-back each leave a request still in flight deciding nothing; the request
 counted in the call's usage, its outcome logged by kind, never the words."""
@@ -15,7 +16,7 @@ from typing import Any
 
 import pytest
 from t2_agentic_voice.core.config import VoiceSettings
-from t2_agentic_voice.core.conversation import DeclineKind
+from t2_agentic_voice.core.conversation import DeclinedAction, DeclineKind
 from t2_agentic_voice.core.errors import ProviderError
 from t2_agentic_voice.core.events import ConfirmationAnswered
 from t2_agentic_voice.domain.consent_check import TIMEOUT_S, is_consent_check
@@ -44,6 +45,7 @@ from tests.t2_agentic_voice.voice.session.yes_support import (
 
 ASKS = AGENT.model_copy(update={"ask_on_unlisted_answers": True})
 UNLISTED = "go for it"  # words on none of the lists
+QUESTION_WORDS = "How do I reset my password?"  # a question about something else
 SENDING = [provider_text(PLAN.sending.spoken)]
 ASKED_AGAIN = [provider_text(ASKED)]
 STOP_WORD = PRESET_WORDS["en"].stop[0]
@@ -135,6 +137,27 @@ def test_the_models_word_is_the_yes_rules_and_is_carried_out_as_any_answer(
         assert handed.declined is not None and handed.declined.kind == kind
     if decision == "asked_again":
         assert _said(io, 2) == ASKED_AGAIN and session._confirming.active
+
+
+def test_a_question_the_model_calls_no_reaches_the_talker_declined_and_sends_nothing(
+    settings: VoiceSettings,
+) -> None:
+    """The owner's answer of 2026-11-11 (D-082): a question in answer to the read-back drops it,
+    and the talker answers it in its own words; nothing is asked again or sent."""
+    io, session, talker, llm, jobs = _call(settings, ScriptedLLM.reply("no"))
+
+    async def drive() -> None:
+        await read_back_played(io)
+        await talked(io, 1, QUESTION_WORDS)
+
+    asyncio.run(drive())
+    (request,) = llm.requests
+    assert json.loads(request.messages[1].content)["answer"] == QUESTION_WORDS
+    assert _answered(io) == [(1, "declined", "model")]
+    (handed,) = [t for t in talker.turns if t.turn_id == 1]
+    assert handed.declined == DeclinedAction(action=PLAN.action, kind="no", words=QUESTION_WORDS)
+    assert jobs.runs == [] and not session._confirming.active
+    assert _said(io, 2) != ASKED_AGAIN  # the talker's answer, never the ask-again line
 
 
 def test_listed_words_ask_nothing(settings: VoiceSettings) -> None:

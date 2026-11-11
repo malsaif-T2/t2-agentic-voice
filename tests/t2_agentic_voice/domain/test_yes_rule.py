@@ -2,7 +2,8 @@
 words and a receipt `voice` built, only after the summary played whole, and over the closing
 question only with a send word. Adversarial (GP-08): a yes over the summary, an eager yes, a bare
 yes over the closing question, inputs not built by their sealed builders, a correction inside a
-yes. Every word and time here is made up for the test."""
+yes. `plain_no`, the lists' own test of a cancel said over the summary, is true only of what
+`decide` declines. Every word and time here is made up for the test."""
 
 from __future__ import annotations
 
@@ -22,6 +23,7 @@ from t2_agentic_voice.domain.yes_rule import (
     YesOutcome,
     decide,
     is_confirmed,
+    plain_no,
 )
 from t2_agentic_voice.domain.yes_words import ConsentWords, consent_words
 from t2_agentic_voice.voice.session.read_back import played_receipt
@@ -284,6 +286,46 @@ def test_an_actions_own_send_words_and_the_settings_yes_words_count() -> None:
     assert _decide(_heard("نعم افتحها", OVER_QUESTION)) == Correction(words="نعم افتحها")
     assert isinstance(_decide(_heard("تمام", AFTER), words=words), Yes)
     assert _decide(_heard("تمام", AFTER)) == AskAgain()
+
+
+# A cancel said over the summary (D-081 as amended 2026-11-11): the session reads it with
+# `plain_no`, the lists' own test, and declines the read-back as a no only for a plain no.
+PLAIN_NOS = [
+    ("No, cancel it, don't send it.", ENGLISH),  # a send word beside a no, as decide reads it
+    ("no", ENGLISH),
+    ("No thanks.", ENGLISH),
+    ("never mind", ENGLISH),
+    ("لا لا، لا ترسلها", ARABIC),  # la la, la tirsilha: no no, don't send it
+    ("لا، ألغها", ARABIC),  # la, alghiha: no, cancel it (Saudi)
+    ("كلا، لا ترسلها", ARABIC),  # kallaa, la tursilha: no, don't send it (MSA)
+]
+NOT_PLAIN_NOS = [
+    ("No, not Monday, since Thursday.", ENGLISH),  # a correction: words on no list
+    ("لا، مو الاثنين، الخميس", ARABIC),  # la, mu al-ithnain, al-khamees: no, not Monday, Thursday
+    ("No, stop.", ENGLISH),  # "stop" is the interruption rule's, on none of these lists
+    ("no, yes", ENGLISH),  # a yes beside the no: unclear
+    ("لا لا نعم", ARABIC),
+    ("please", ENGLISH),  # no no word
+    ("خلاص", ARABIC),  # khalas, enough: a filler to these lists
+    ("", ENGLISH),
+]
+
+
+@pytest.mark.parametrize(("text", "words"), PLAIN_NOS)
+def test_a_plain_no_is_a_no_word_with_only_send_words_and_fillers_beside_it(
+    text: str, words: ConsentWords
+) -> None:
+    """The same lists `decide` reads, in the rule's form: once the summary played, it
+    declines each of them."""
+    assert plain_no(text, words) is True
+    assert _decide(_heard(text, AFTER), words=words) == Declined(words=text)
+
+
+@pytest.mark.parametrize(("text", "words"), NOT_PLAIN_NOS)
+def test_a_no_beside_a_yes_or_a_word_on_no_list_and_words_with_no_no_are_no_plain_no(
+    text: str, words: ConsentWords
+) -> None:
+    assert plain_no(text, words) is False
 
 
 def test_deciding_changes_nothing() -> None:

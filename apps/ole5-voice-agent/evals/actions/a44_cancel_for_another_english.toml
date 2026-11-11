@@ -1,0 +1,33 @@
+# Plan 007's action scenarios (its "The measurement"; ole5_voice/evals/action_scenarios.py),
+# added by the owner's answer of 2026-11-11 before any run: a no to a ticket's read-back that
+# asks for another ticket instead: the first is dropped, the new one is read back, and a yes
+# makes it.
+id = "a44_cancel_for_another_english"
+kind = "cancel_for_another"
+split = "dev"
+language = "en"
+notes = "The caller says no to the read-back and asks for a ticket about something else: the model judges it a no, the first ticket is never sent, the talker reads back the new one, and the yes after it opens only that one."
+made = 1
+ticket_type = "Bug"
+summary_facts = [
+  "Says the electronic signature does not show on the letters the caller issues.",
+  "Does not say the search or a reference number.",
+]
+
+[[turns]]
+says = "Can you open a ticket? Ole5's search can't find a correspondence by its reference number. It's not urgent."
+calls = "create_ticket"
+outcome = "read_back"
+language = "en"
+
+[[turns]]
+says = "No, forget that one. Open a ticket about the electronic signature instead: it doesn't show on the letters I issue."
+calls = "create_ticket"
+outcome = "read_back"
+language = "en"
+facts = ["The ticket read back now is about the electronic signature not showing on letters, not about the search."]
+
+[[turns]]
+says = "Yes, send it."
+outcome = "done"
+says_number = "whole"

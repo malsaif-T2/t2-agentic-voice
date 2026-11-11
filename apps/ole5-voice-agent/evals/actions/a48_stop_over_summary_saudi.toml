@@ -1,0 +1,26 @@
+# Plan 007's action scenarios (its "The measurement"; ole5_voice/evals/action_scenarios.py),
+# added by the owner's answer of 2026-11-11 before any run: khalas (enough), a stop word and a
+# filler, said alone over the read-back's summary: it stops it, and the talker asks what to
+# change.
+id = "a48_stop_over_summary_saudi"
+kind = "stop_over_summary"
+split = "dev"
+language = "ar-SA"
+notes = "Khalas alone over the summary is a stop word, never ignored: the read-back stops with no receipt, nothing is sent, and the talker asks what to change, the draft kept."
+made = 0
+
+[[turns]]
+says = "أبغى تذكرة، ما أقدر أضيف مستلم من خارج الجهة في المراسلة الصادرة، مو مستعجلة"
+calls = "create_ticket"
+outcome = "read_back"
+language = "ar-SA"
+
+[[turns]]
+says = "خلاص"
+when = "read_back"
+after_s = 1.5
+calls = "nothing"
+outcome = "stopped"
+language = "ar-SA"
+says_number = "none"
+facts = ["Asks the caller what to change in the ticket.", "Does not say a ticket was made."]

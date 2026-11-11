@@ -9,14 +9,16 @@ turn says cut the reply, go on otherwise; and the yes rule's check of an answer 
 unplaced (D-082, told by its instruction) with the word that makes the turn do what its
 scenario expects: yes for a write once the closing question ended, send for one over it, change
 for a new read-back, no for the talker's answer, unclear for anything else, words no turn says
-among them. It finds the caller's words of each request among the
-scenarios' turns: a turn whose scenario expects a ticket tool calls it, as a model writes a call
-(`create_ticket` and `hand_off` with the caller's words as the summary and the scenario's type,
-`add_ticket_note` with them as the note, on the last four digits of the ticket number the
-call's lines last said, `ticket_status` with the digits the caller said); a turn expecting a
-search, or the first of a scenario with a passage, searches; any other answers in its
-language, claiming nothing. A tool's result is answered from it: a status by each ticket's
-last four digits, a search shortly.
+among them; but no, as the instruction asks since the owner's answer of 2026-11-11, for a
+question in answer to a read-back or a request for something else, even one that a new
+ticket's read-back follows (`TURNS_ELSEWHERE`). It finds the caller's words of each request
+among the scenarios' turns: a turn whose scenario expects a ticket tool calls it, as a model
+writes a call (`create_ticket` and `hand_off` with the caller's words as the summary and the
+scenario's type, `add_ticket_note` with them as the note, on the last four digits of the
+ticket number the call's lines last said, `ticket_status` with the digits the caller said); a
+turn expecting a search, or the first of a scenario with a passage, searches; any other
+answers in its language, claiming nothing. A tool's result is answered from it: a status by
+each ticket's last four digits, a search shortly.
 `says` replaces the answer to the words given, and `answers` the answer to a tool's result in
 their turn; `failing` makes the judge's checks of a request holding the words given fail, and
 `unanswered` its answer to one no valid answer.
@@ -102,6 +104,10 @@ OVERLAP_SYSTEM: Final = uncertain_overlap_request("-", "-").messages[0].content
 # The yes rule's check's word on a turn whose scenario expects, after it, a new read-back (a
 # correction) or the talker's answer (a no); unclear for any other outcome but a write's.
 JUDGED: Final = {"read_back": "change", "talker": "no"}
+# The kinds whose answer to a read-back turns to something else, a question or a request for
+# another ticket: the check's no, whatever follows (its instruction, the owner's answer of
+# 2026-11-11), so the talker answers it or reads the other ticket back.
+TURNS_ELSEWHERE: Final = frozenset({"question_to_read_back", "cancel_for_another"})
 _DATA = re.compile(r'<data tool="[a-z_]+">')  # a tool's result, as the talker frames it
 
 
@@ -196,14 +202,16 @@ class Oracle:
     def _judged(self, words: str) -> list[ScriptStep]:
         """The word on an answer to a read-back the yes rule's lists left unplaced: the one that
         makes the turn saying `words` do what its scenario expects (`JUDGED`, by its outcome; a
-        write is sent on yes once the closing question ended, on send over it), and unclear for
-        any other words."""
+        write is sent on yes once the closing question ended, on send over it; no for a turn to
+        something else, `TURNS_ELSEWHERE`), and unclear for any other words."""
         found = self.turns.get(words)
         if found is None:
             return said("unclear")
         turn = found[0].turns[found[1]]
         if turn.outcome in ENDED:
             return said("send" if turn.when == "closing_question" else "yes")
+        if found[0].kind in TURNS_ELSEWHERE:
+            return said("no")
         return said(JUDGED.get(turn.outcome or "", "unclear"))
 
     def _words(self, message: str) -> str | None:

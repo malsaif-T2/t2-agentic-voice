@@ -20,11 +20,14 @@ The change markers (`change`, D-082) are read only of a chat model's yes (domain
 `judged`): words that say a yes comes with a change ("yes, but ..."), so a model's yes beside
 one is a correction, never a yes. They are the owner's ruling's examples of a change, and the
 verbs with the object pronoun on them, as the send words are listed.
+
+`covered` says whether a text is only words of given lists, as a read-back reads what is said
+over its summary (voice/session/read_back.py's `ignored`).
 """
 
 from __future__ import annotations
 
-from collections.abc import Mapping, Sequence
+from collections.abc import Collection, Mapping, Sequence
 
 from pydantic import BaseModel, ConfigDict, field_validator
 
@@ -195,6 +198,26 @@ PRESET_CONSENT: Mapping[LanguageCode, ConsentWords] = {
         change=_ENGLISH_CHANGE,
     ),
 }
+
+
+def covered(text: str, phrases: Collection[str]) -> bool:
+    """Whether every word of `text` belongs to one of `phrases`, both in the rule's form
+    (domain/words.py's `rule_form`), each phrase whole words, the longest first; False for a
+    text with no word. How a read-back reads what is said over its summary (voice/session/
+    read_back.py's `ignored`)."""
+    heard = rule_form(text).split()
+    forms = {form for form in (rule_form(phrase) for phrase in phrases) if form}
+    if not heard or not forms:
+        return False
+    longest = max(len(form.split()) for form in forms)
+    at = 0
+    while at < len(heard):
+        sizes = range(min(longest, len(heard) - at), 0, -1)
+        size = next((n for n in sizes if " ".join(heard[at : at + n]) in forms), 0)
+        if not size:
+            return False
+        at += size
+    return True
 
 
 def consent_words(
