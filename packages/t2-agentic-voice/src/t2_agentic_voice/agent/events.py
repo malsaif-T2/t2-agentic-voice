@@ -113,7 +113,11 @@ class ModelReplied(_Event):
 
 
 class ReplyDone(_Event):
-    """The reply ended: its last clause given and its work done."""
+    """The reply ended: its last clause given and its work done; `unsaid_clauses`, how many
+    clauses the talker wrote that the reply did not say, once it stopped before a question past
+    its limit (agent/question_limit.py), 0 when it did not."""
+
+    unsaid_clauses: int = Field(default=0, ge=0)
 
 
 type TalkerEvent = (

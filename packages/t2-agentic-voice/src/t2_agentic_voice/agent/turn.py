@@ -20,6 +20,10 @@ turn and the call as it was heard to the events the session plays, within the re
   record, the caller's heard words), is yielded at once. A blocked one is `ClauseBlocked`, with
   its rule's reason, and by `guard.on_block` the rest of the reply goes with it (`drop_rest`:
   no more clause, request or tool) or only it; the next turn's history holds a developer note.
+- **Questions.** Before the guard, a clause that asks the caller a question past
+  `guard.questions_per_reply` (agent/question_limit.py) is dropped with every clause after it,
+  unspoken and unblocked: the reply stops there, but its request's tool calls still run and are
+  kept, and no request follows them. `ReplyDone` counts the clauses dropped.
 - **Tools** (agent/tool_calls.py). Each call the model asks for starts at once, in the reply's
   scope, and runs through the runner; the first with a progress line gives it, for the
   session to say if the wait runs long (one a reply); each result goes back to the model
@@ -42,15 +46,14 @@ turn and the call as it was heard to the events the session plays, within the re
   error comes out as it is (a fake's `ScriptExhaustedError`, an AssertionError, fails its test).
   A cancel of the reply's scope cancels the task that iterates the stream, so the model's
   request and every tool of the scope stop at once, and no `ReplyDone` comes. The model's stream
-  is closed as the reply leaves it, whatever ends it (`contextlib.aclosing`).
+  is closed as the reply leaves it, whatever ends it (domain/ports/chat_model.py's `closing`).
 - **Time** is the call's clock's alone: a tool's `ms`, a request's
   `first_token_s` and the prompt's date (the runner times each tool's timeout on it too).
 """
 
 from __future__ import annotations
 
-import contextlib
-from collections.abc import AsyncGenerator, AsyncIterator, Iterable, Sequence
+from collections.abc import AsyncGenerator, Iterable, Sequence
 from dataclasses import dataclass, field
 
 from t2_agentic_voice.actions.action_runner import ActionRunner
@@ -84,6 +87,7 @@ from t2_agentic_voice.agent.prompt import (
     tool_definitions,
     with_first_line,
 )
+from t2_agentic_voice.agent.question_limit import QuestionLimit
 from t2_agentic_voice.agent.speech_guard import SpeechGuard
 from t2_agentic_voice.agent.stray_script import StrayScript
 from t2_agentic_voice.agent.tool_calls import Memory, ToolCalls, exchange
@@ -97,7 +101,6 @@ from t2_agentic_voice.core.settings.tts import LanguageTag
 from t2_agentic_voice.domain.cards import Card
 from t2_agentic_voice.domain.declaration import VoiceAgent
 from t2_agentic_voice.domain.ports.chat_model import (
-    ChatEvent,
     ChatMessage,
     ChatModel,
     ChatRequest,
@@ -106,6 +109,7 @@ from t2_agentic_voice.domain.ports.chat_model import (
     ToolCallRequest,
     ToolSchema,
     Usage,
+    closing,
 )
 from t2_agentic_voice.domain.text.clauses import ClauseStream
 
@@ -125,17 +129,6 @@ class _Answer:
     calls: list[ToolCallRequest] = field(default_factory=list)
     usage: Usage | None = None
     first_token_s: float | None = None
-
-
-def _closing(
-    stream: AsyncIterator[ChatEvent],
-) -> contextlib.AbstractAsyncContextManager[AsyncIterator[ChatEvent]]:
-    """The model's `stream`, closed on leaving by `contextlib.aclosing`, as an async generator
-    closes, so its response closes within the reply's scope (D-060), never when the stream is
-    collected; a stream that is no generator has nothing to close."""
-    if isinstance(stream, AsyncGenerator):
-        return contextlib.aclosing(stream)
-    return contextlib.nullcontext(stream)
 
 
 class Turn:
@@ -180,6 +173,7 @@ class Turn:
             heard=self.heard,
         )
         self.scripts = StrayScript.of(agent, settings)
+        self.questions = QuestionLimit(settings.guard.questions_per_reply)
         self.tools = ToolCalls(
             runner=runner,
             ctx=self.ctx,
@@ -252,6 +246,9 @@ class Turn:
             if self.tools.plan is not None:  # read back: nothing more of the model this turn
                 yield ReadBackRequested(plan=self.tools.plan)
                 break
+            if self.questions.stopped:  # nothing more of the reply is said: no more request
+                break
+        self.questions.logged(call_id=self.ctx.call_id, turn_id=self.turn.turn_id)
         _log.info(
             "talker_replied",
             call_id=self.ctx.call_id,
@@ -262,7 +259,7 @@ class Turn:
             blocked=self.blocked,
             read_back=self.tools.plan is not None,
         )
-        yield ReplyDone()
+        yield ReplyDone(unsaid_clauses=self.questions.unsaid)
 
     def _request(
         self, messages: Sequence[ChatMessage], tools: tuple[ToolSchema, ...], *, after_tools: bool
@@ -295,7 +292,7 @@ class Turn:
         acted = False  # rule C: an action was called, and what the model writes after is dropped
         dropped = False  # whether it wrote any
         try:
-            async with _closing(self.model.stream(request)) as stream:
+            async with closing(self.model.stream(request)) as stream:
                 async for event in stream:
                     if answer.first_token_s is None and isinstance(
                         event, TextDelta | ToolCallRequest
@@ -342,14 +339,16 @@ class Turn:
             yield said
 
     def _said(self, clauses: Iterable[str]) -> list[TalkerEvent]:
-        """`clauses`, each spoken once the guard passed it, or blocked (the module's
-        docstring)."""
+        """`clauses`, each spoken once the guard passed it, or blocked, or dropped past the
+        reply's question limit (the module's docstring)."""
         events: list[TalkerEvent] = []
         for text in clauses:
             if self.stopped:
                 break
             if self.scripts.changed and not any(char.isalnum() for char in text):
                 continue  # the filter left it nothing to say: never a clause said as silence
+            if self.questions.drops(text, said=self.guard.passed):
+                continue  # a question past the reply's limit, or a clause after one: unsaid
             checked = self.guard.check(text)
             if checked.passed:
                 events.append(SpokenClause(text=text, language=self.language))

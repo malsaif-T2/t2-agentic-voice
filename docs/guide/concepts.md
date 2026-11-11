@@ -66,7 +66,9 @@ The talker answers one turn at a time, and starts again from what the caller hea
 **What comes out**, in order, as it comes:
 
 - **clauses**: the model's text is cut into clauses as it streams, and each whole one, once the
-  output guard has read it, is spoken at once, while the model still writes the next;
+  output guard has read it, is spoken at once, while the model still writes the next; a reply
+  asks the caller one question at most, and stops before a second, which is not said, nor
+  anything after it ([writing-for-voice.md](writing-for-voice.md), "One question at a time");
 - **tool calls**: each one the model asks for starts at once, in the reply's cancel scope, and
   its result goes back to the model inside a data frame (`<data tool="...">...</data>`) that no
   text in it can close;
@@ -718,6 +720,7 @@ T2V_TURNS__COMPLETE_HOLD_MS=0
 | `T2V_GUARD__ON_BLOCK` | `drop_rest` | What a blocked clause drops: the rest of the reply, or only it (`drop_clause`) |
 | `T2V_GUARD__CLAIMS` | none | Phrases added to each language's default list of what claims any action |
 | `T2V_GUARD__REMOVE_STRAY_SCRIPT` | true | Whether a script none of the agent's languages writes, and each emoji, is taken out of what the talker writes before the guard reads it ([languages.md](languages.md), "Scripts a reply may hold") |
+| `T2V_GUARD__QUESTIONS_PER_REPLY` | 1 | The most questions one reply asks the caller: the reply stops before the next, which is not said, nor anything after it ([writing-for-voice.md](writing-for-voice.md), "One question at a time"); None, in code, for no limit |
 | `T2V_WORDS__YES`, `__SEND` | none | Your words, added to each language's yes and send words, which the yes rule reads |
 | `T2V_LIMITS__ACTIONS_PER_CALLER_PER_DAY` | 20 | How many of one action one caller may have done in a day; past it, the action is refused before its read-back |
 | `T2V_INTERRUPTIONS__MODE` | `two_step` | `two_step`: the two-step interruption; `drop`: speech over a reply is not answered |

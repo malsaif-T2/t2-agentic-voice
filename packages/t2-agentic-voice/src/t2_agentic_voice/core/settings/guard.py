@@ -1,8 +1,9 @@
 """The `guard` group: the output guard's ID rule (the design's 8.2, rule B; plan 006): which
 tokens of a clause are ID-shaped, and what a blocked clause drops; the phrases added to the
-claim rule's default list (rule A; plan 007); and whether a script none of the agent's languages
-writes is taken out of what the talker writes before the guard reads it (agent/stray_script.py).
-Every clause the talker writes is checked before text-to-speech, and so is a card's text; the
+claim rule's default list (rule A; plan 007); whether a script none of the agent's languages
+writes is taken out of what the talker writes before the guard reads it (agent/stray_script.py);
+and how many questions one reply may ask the caller (agent/question_limit.py, D-085). Every
+clause the talker writes is checked before text-to-speech, and so is a card's text; the
 runtime's own templates are not.
 """
 
@@ -69,6 +70,15 @@ class GuardSettings(Group):
             "and a digit of another script written as its ASCII digit; the voice, the "
             "captions, the history, the trace and the events then hold the text without it. "
             "Off: kept as written."
+        ),
+    )
+    questions_per_reply: int | None = Field(
+        default=1,
+        ge=1,
+        description=(
+            "The most questions one spoken reply of the talker's may ask the caller: the reply "
+            "stops before the next one, which is not said, nor anything after it. A question is "
+            "a clause that ends with a question mark. None, given in code: no limit."
         ),
     )
 

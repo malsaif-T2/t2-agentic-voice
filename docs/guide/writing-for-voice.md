@@ -75,6 +75,31 @@ every comma and full stop. An arrow in a reply ("Inbox ← Archive") is said as 
 Start with the answer itself, not with "Great question" or a restatement of what the caller
 asked: they know what they asked.
 
+## One question at a time
+
+A caller answers one question, once the agent stops: two in a row leave them to guess which to
+answer, and words after a question talk over the answer. So a reply asks the caller at most one
+question: a second one, and the rest of the reply after it, is not said. The library says the
+talker's clauses up to and including the first that ends with a question mark ("?" or «؟», a
+closing quote or bracket after it allowed), and stops before the next one: that question is not
+said, nor anything after it in the reply (`guard.questions_per_reply`, 1 by default; D-085).
+The clauses between the two are said, and a reply that asks one question and then gives steps
+is said whole. A tool call the talker makes in the same reply still runs, and its result is
+kept for the turns after; the reply just says nothing more. Your own lines never count: a
+progress line, a notice, and an action's read-back with its closing question are said as you
+wrote them.
+
+So write your instructions to ask for one thing at a time, and to stop at the question:
+
+- Weak: "Is it urgent? Is it stopping your work? How many people does it affect?" The caller
+  hears only "Is it urgent?".
+- Better: "Is it stopping your work?" Then the next thing, in the reply after the caller's
+  answer.
+- Weak: a reply that asks, asks again, then answers for the caller ("Is it urgent? Can it
+  wait? No answer, so I can't open a ticket now."). Only "Is it urgent?" is said. A reply that
+  asks once and then goes on is said whole, words after the question included, so the
+  instructions, not the library, keep the talker from talking past its question.
+
 ## Only your languages' scripts
 
 What the talker writes keeps only the scripts your agent's languages write: Arabic and Latin

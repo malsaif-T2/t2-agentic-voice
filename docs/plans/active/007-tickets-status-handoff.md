@@ -1494,6 +1494,16 @@ plan 003).
   summary says, since a change of urgency is no longer heard (the measurement). `VERSION` goes
   to `2026-11-11.1`, so the next run A is told apart from `a1-dev`; the talkers with no tickets
   or no search keep their prompts, though their stamps move with it.
+- 2026-11-11: The test console's own Start (D-083 amended; the owner's "Yes, build it"), built on
+  its own branch `console-start` beside run A and merged here: with its token field empty, the
+  console mints a signed join token for the caller the app declares (`server.dev_caller`; Ole5's
+  demo customer under `env` dev only), under the console's guard alone, the client asking for it
+  once the microphone is open, as the widget does. The review's one finding was refuted; its
+  remedy (that order) was taken, being three lines. Not yet tried in a live call.
+- 2026-11-11: A spoken reply stops before its second question to the caller (D-085; the owner's
+  "Yes, add it"), built on its own branch `question-limit` and merged here:
+  `guard.questions_per_reply`, 1 by default. Read only, through the built rule, the 1,727 stored
+  talker replies (6,039 clauses) change none, so it stays on. The review found nothing.
 
 ## Decision log
 

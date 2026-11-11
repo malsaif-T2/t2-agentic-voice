@@ -275,6 +275,11 @@ so a stray character cannot hide a claim from it, and the order is a safety rule
 `T2V_GUARD__REMOVE_STRAY_SCRIPT=false` turns the filter off, and the guard reads the text as the
 model wrote it.
 
+A clause past the reply's question limit never reaches the guard (D-085;
+[writing-for-voice.md](writing-for-voice.md), "One question at a time"): it is not said, so it
+is neither checked nor blocked, and no notice is said in its place. A question the guard
+blocked was not said, so it does not count toward the limit.
+
 ### The ID rule
 
 An ID-shaped number is said only with evidence from this call. It runs for every agent, with or
@@ -478,5 +483,6 @@ entry left makes the check fail, which asks the caller again rather than failing
 | `T2V_GUARD__ID_PATTERNS` | none | More ID shapes, as a JSON list of regular expressions |
 | `T2V_GUARD__ON_BLOCK` | `drop_rest` | What a blocked clause drops: the rest of the reply, or only it (`drop_clause`) |
 | `T2V_GUARD__REMOVE_STRAY_SCRIPT` | true | Whether a script none of the agent's languages writes, and each emoji, is taken out of what the talker writes before the guard reads it |
+| `T2V_GUARD__QUESTIONS_PER_REPLY` | 1 | The most questions one reply asks the caller: the reply stops before the next, which is not said, nor anything after it ([writing-for-voice.md](writing-for-voice.md), "One question at a time"); None, in code, for no limit |
 
 Every setting is in the generated [settings reference](../generated/settings.md).

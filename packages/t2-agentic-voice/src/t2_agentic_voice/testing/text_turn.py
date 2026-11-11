@@ -16,6 +16,7 @@ from t2_agentic_voice.agent.talker import (
     ClauseBlocked,
     ModelReplied,
     ModelRequested,
+    ReplyDone,
     ShownCard,
     SpokenClause,
     ToolBegan,
@@ -230,6 +231,15 @@ class TextTurn:
         talk = self._talk
         events = [] if talk is None else talk.events
         return sum(e.stray_characters for _, e in events if isinstance(e, ModelReplied))
+
+    @property
+    def unsaid_clauses(self) -> int:
+        """The clauses the talker wrote that the turn's reply did not say, once it stopped
+        before a question past `guard.questions_per_reply` (D-085); 0 when none, and while the
+        reply runs."""
+        talk = self._talk
+        events = [] if talk is None else talk.events
+        return sum(e.unsaid_clauses for _, e in events if isinstance(e, ReplyDone))
 
 
 class TurnExpectations:

@@ -100,6 +100,12 @@ request whose answer lost any also logs one line at INFO, `talker_stray_script_r
 `call_id`, `turn_id`, `characters` (how many) and `scripts` (their kinds), never a character or
 a word of the reply.
 
+A reply that stopped before a question past its limit (`guard.questions_per_reply`, D-085;
+[writing-for-voice.md](writing-for-voice.md), "One question at a time") logs one line at INFO,
+`talker_reply_stopped`, with `call_id`, `turn_id`, `reason` (`question_limit`) and
+`unsaid_clauses` (how many of the talker's clauses it did not say), never a word of the reply.
+The trace holds only what was said.
+
 The resource attributes, on each root span: `t2v.version`, `t2v.pipecat.version`,
 `t2v.settings.digest` (a hash of the settings with every secret left out), `t2v.agent.name`,
 `t2v.models` and, when the caller's consent names one, `t2v.consent.version`.

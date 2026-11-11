@@ -25,15 +25,16 @@ _SENTENCE_ENDS = frozenset("\u061f\u06d4" + ".?!" + "\u2026")
 # Under `whole_sentences`, how long a clause must be for a comma, colon or semicolon to end it.
 LONG_CLAUSE_CHARS = 120
 # What may follow a clause's mark in its word: quotes and closing brackets, the right-pointing
-# guillemet and the right quotation marks among them.
-_CLOSERS = "\"')]}\u00bb\u201d\u2019"
+# guillemet and the right quotation marks among them. The question limit reads a clause's end
+# past them too (agent/question_limit.py).
+CLOSERS = "\"')]}\u00bb\u201d\u2019"
 # The general categories of what is said: letters, numbers and symbols.
 _SAID = frozenset("LNS")
 
 
 def _ends_clause(word: str) -> bool:
     """Whether `word` ends its clause (above)."""
-    return word.rstrip(_CLOSERS)[-1:] in _ENDS
+    return word.rstrip(CLOSERS)[-1:] in _ENDS
 
 
 def _says_something(clause: str) -> bool:
@@ -123,7 +124,7 @@ class ClauseStream:
         if not self._whole_sentences or not _ends_clause(word):
             return _ends_clause(word)
         return (
-            word.rstrip(_CLOSERS)[-1:] in _SENTENCE_ENDS
+            word.rstrip(CLOSERS)[-1:] in _SENTENCE_ENDS
             or len(" ".join(self._words)) >= LONG_CLAUSE_CHARS
         )
 
