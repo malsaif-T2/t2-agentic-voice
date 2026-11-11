@@ -11,7 +11,8 @@ The app's own, for its server (server.py) and its token route (token_route.py):
 And for its mock ticket system (plan 007, tickets/):
 - `OLE5_VOICE_DEMO_CUSTOMER_EMAIL`: the customer every join token names (Q3), whose tickets a
   call makes and reads (customer.py), `DEMO_CUSTOMER_EMAIL` unless set; nothing said in a call
-  changes it;
+  changes it. Under `env` dev, and only then, `load` also names that customer the library's
+  `server.dev_caller`, so a call the test console starts is theirs, as a widget's call is;
 - `OLE5_VOICE_TICKETS_MODE`: how the mock answers each write, `answer` unless set, or
   `refuse`, `timeout` or `late` for a demo of each (tickets/mock.py);
 - `OLE5_VOICE_TICKETS_LOOKUP`: whether the mock finds a write by its request ID, true unless
@@ -48,6 +49,7 @@ from pydantic import Field, SecretStr, ValidationError, field_validator
 from pydantic_settings import BaseSettings, SettingsConfigDict
 from t2_agentic_voice import ConfigurationError, ServerSettings, VoiceSettings
 
+from ole5_voice.customer import demo_caller
 from ole5_voice.tickets.mock import Mode
 
 # The app's prefix (the design's 7.3): one the library's settings never use.
@@ -269,7 +271,8 @@ class Settings:
 
 
 def load(env_file: Path | None = None) -> Settings:
-    """The app's settings and the library's, from the environment and `env_file` when given;
+    """The app's settings and the library's, from the environment and `env_file` when given,
+    the demo customer the test console's dev caller under `env` dev (`with_dev_caller`);
     ConfigurationError naming each setting that cannot load, or the knowledge base's access
     set only in part (`knowledge_access`)."""
     voice = VoiceSettings.from_env(env_file=env_file)
@@ -288,7 +291,19 @@ def load(env_file: Path | None = None) -> Settings:
             details={"settings": [name]},
         )
     knowledge_access(app)  # all three or none, refused here before anything is built
-    return Settings(app=app, voice=voice)
+    return Settings(app=app, voice=with_dev_caller(voice, app.demo_customer_email))
+
+
+def with_dev_caller(voice: VoiceSettings, email: str) -> VoiceSettings:
+    """Under `env` dev alone, `voice` with the demo customer `email` as the test console's dev
+    caller (`server.dev_caller`), every other setting as it was; `voice` itself under any other
+    `env`, so the console mints no token outside dev."""
+    if voice.env != "dev":
+        return voice
+    server = ServerSettings.model_validate(
+        voice.server.model_dump() | {"dev_caller": demo_caller(email)}
+    )
+    return voice.model_copy(update={"server": server})
 
 
 def load_knowledge(env_file: Path | None = None) -> KnowledgeAccess:

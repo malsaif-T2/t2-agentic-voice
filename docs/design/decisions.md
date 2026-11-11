@@ -2841,7 +2841,7 @@ twice; DOC-REF: every `D-NNN` cited anywhere is a heading here), so keep its sha
   `test_action_call_cancels.py`, `test_action_safety_judged.py`;
   `tests/ole5_voice/tickets/test_ticket_calls_judged.py`.
 
-## D-083 · A test console beside the dev page, fed by the runtime's events, which now carry each tool's arguments and result · 2026-11-10 · Accepted (the owner's approval of the agent's proposal, 2026-11-10)
+## D-083 · A test console beside the dev page, fed by the runtime's events, which now carry each tool's arguments and result · 2026-11-10 · Accepted (the owner's approval of the agent's proposal, 2026-11-10; its Start's own token, the owner's "Yes, build it", 2026-11-11)
 
 - **Context:** the owner: "Can you do a new interface for testing the agent, It should be
   informative: have the tools used and what they returned, the latency for each thing, and any
@@ -2851,12 +2851,21 @@ twice; DOC-REF: every `D-NNN` cited anywhere is a heading here), so keep its sha
   server of their own. The public events carried a tool's name and time but not what it was
   asked or gave back, and the turn's times had no end-of-turn step. The agent proposed a console
   in the library beside the dev page, fed over HTTP long-polling by one observer of the events,
-  with five events given new fields; the owner answered "Approve, build it".
+  with five events given new fields; the owner answered "Approve, build it". On 2026-11-11 the
+  owner asked "why can't I start a call from the dev console? can we do that easily". The
+  console's Start joined with the token in its "Join token" field, `dev` by default, which only
+  `t2v dev`'s identity takes, while Ole5's server takes only the tokens it signs after the
+  access code, with the demo customer's email in them. The agent proposed: "when you leave the
+  field empty, the console's Start makes its own signed token for a test caller the app names
+  (for Ole5 the demo customer, so tickets work); only under dev with the dev page on, for a
+  browser on this machine, the same guard the console's call feed already has; no access code
+  and no daily count of 10 on that path; the same kind of signed token, so the call runs exactly
+  as one from the widget". The owner answered "Yes, build it".
 - **Decision:**
-  - `<prefix>/dev/console`, with `dev/feed`, `dev/setup`, `dev/console.js` and
-    `dev/console.css` (`api/dev_console.py`, its files in `api/static/`), mounted with the dev
-    page and only then, so every team's `t2v dev` has it and an app's server under `env` dev
-    with `server.dev_page`. Each route answers the plain 404 under any `env` but dev, to a
+  - `<prefix>/dev/console`, with `dev/feed`, `dev/setup`, `dev/console.js`,
+    `dev/console.css` and `dev/token` (below) (`api/dev_console.py`, its files in
+    `api/static/`), mounted with the dev page and only then, so every team's `t2v dev` has it
+    and an app's server under `env` dev with `server.dev_page`. Each route answers the plain 404 under any `env` but dev, to a
     client that is not loopback, and to a `Host` that is not a loopback name, so a page
     elsewhere cannot reach it through a name it points at this machine. The page's policy allows
     scripts and styles from the server alone, no framing; every text is set as text.
@@ -2885,6 +2894,25 @@ twice; DOC-REF: every `D-NNN` cited anywhere is a heading here), so keep its sha
   - `dev/setup` shows the agent's tools, actions, languages and mode, the library's and
     Pipecat's versions and the settings' digest, and the settings groups `stt`, `llm`, `tts`,
     `turns`, `interruptions` and `limits`, which hold no secret (a test).
+  - `POST dev/token`, the console's own token (the owner, 2026-11-11). With the "Join token"
+    field left empty, Start asks it for a token and joins with it, or with `dev` when it gets
+    none; a token typed in the field is used as typed. It answers under the console's guard
+    alone (above): `env` dev, the dev page, a loopback client and a loopback `Host`, else the
+    plain 404. It mints with `SignedJoinTokens.from_settings(settings.join)` for the caller the
+    app declares in the setting `server.dev_caller` (a `Caller`, none by default; an app sets
+    it in code, or `T2V_SERVER__DEV_CALLER` gives it as JSON), never for one the request names
+    (invariant 3): the body is `{"record_audio": <bool>}` alone, at most 256 bytes, parsed
+    strictly, false unless the page's "Keep the call's audio" box is ticked; the consent's
+    version is `privacy.consent_version`. So the call runs as one from the app's widget: a
+    signed token of the same kind, verified once by the runtime's identity source, its consent
+    a signed one. No access code and no count of the app's own apply. With no dev caller
+    declared, or no join key that signs (`join.current_kid`), it answers the plain 404, logged
+    as `dev_token_refused` with why, so `t2v dev` works as before. It never logs the token:
+    `dev_token_minted` holds the consent's `record_audio` alone. Ole5 names its demo customer
+    the dev caller under `env` dev alone (`ole5_voice.settings.with_dev_caller`), so a console
+    call's tickets are the demo customer's, as a widget call's are; its token route and its
+    daily count are unchanged. A setting, not a parameter of the runtime, since
+    `api/runtime.py` is at its size and the settings already carry what the router reads.
 - **Consequences:** a team's observers receive call content they did not before (a search's
   words, the passages found, a draft, a ticket's number), as they receive what was heard; none
   of it is logged. A dev server's data folder holds every console call's content (no audio)
@@ -2892,8 +2920,13 @@ twice; DOC-REF: every `D-NNN` cited anywhere is a heading here), so keep its sha
   console's script is checked by its text (no markup inserted, no inline script, every id it
   reads on its page) and by a live call, not by `poe arch`. Its first live call on this laptop
   showed the knowledge search timing out at 4 s, and Whisper once taking 3.9 s, each with its
-  arguments and times on the page.
-- **Evidence:** `tests/t2_agentic_voice/api/test_dev_console.py`;
+  arguments and times on the page. The console's token needs no code, so under `env` dev a
+  page the same server serves, or one whose origin `server.allowed_origins` lists (CORS lets
+  it send JSON there), opened in a browser on this machine, can start a call as the dev
+  caller; and the settings' digest counts the dev caller.
+- **Evidence:** `tests/t2_agentic_voice/api/test_dev_console.py`, `test_dev_token.py`;
+  `tests/t2_agentic_voice/core/test_settings_dev_caller.py`;
+  `tests/ole5_voice/test_server_console.py`;
   `tests/t2_agentic_voice/voice/session/test_turn_times.py`, `test_talker_early.py`,
   `test_talker_call.py`, `test_read_back.py`; `tests/t2_agentic_voice/actions/test_action_run.py`;
   docs/guide/browser-client.md, "The test console".

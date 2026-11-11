@@ -1,7 +1,8 @@
 """How the environment's names and texts become the settings' data, for `VoiceSettings.from_env`
 (core/config.py), which alone reads them (ARCH-ENV): each setting's location by its name, the
-setting an error falls in, and the values of several sources merged into nested data, a list
-or a map decoded from JSON. Nothing here reads the environment; each function takes the model.
+setting an error falls in, and the values of several sources merged into nested data, a list,
+a map or an object decoded from JSON. Nothing here reads the environment; each function takes
+the model.
 """
 
 from __future__ import annotations
@@ -115,6 +116,10 @@ def _decoded(model: type[BaseModel], location: tuple[str, ...], value: str) -> o
 
 
 def is_json(annotation: object) -> bool:
-    """Whether a setting of this annotation is given as JSON: a list, a tuple or a map."""
+    """Whether a setting of this annotation is given as JSON: a list, a tuple, a map, or an
+    object a model reads (`server.dev_caller`, a `Caller`)."""
     kinds = get_args(annotation) if get_origin(annotation) in (Union, UnionType) else ()
-    return any(get_origin(kind) in (tuple, list, dict, Mapping) for kind in kinds or (annotation,))
+    return any(
+        get_origin(kind) in (tuple, list, dict, Mapping) or group(kind) is not None
+        for kind in kinds or (annotation,)
+    )

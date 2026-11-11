@@ -141,7 +141,7 @@ The voice session: what answers the caller.
 
 ## `server`
 
-Serving: the backend's address, the pages that may call it, how media finds a path, and the dev page.
+Serving: the backend's address, the pages that may call it, how media finds a path, and the dev page with the test console's dev caller.
 
 | Variable | Type | Default | Unit | Description |
 | --- | --- | --- | --- | --- |
@@ -152,6 +152,7 @@ Serving: the backend's address, the pages that may call it, how media finds a pa
 | `T2V_SERVER__TURN_SECRET_FILE` | path, or unset | unset | — | Or the full path of a file that holds only the TURN secret. |
 | `T2V_SERVER__TURN_TTL_S` | integer | `3600` | seconds | How long each call's TURN credentials last, at most 86400 (a day). |
 | `T2V_SERVER__DEV_PAGE` | true or false | `false` | — | Whether the router serves its /dev page, to loopback clients; dev only. |
+| `T2V_SERVER__DEV_CALLER` | {subject, display_name, locale, attributes}, or unset | unset | — | The caller the test console's Start makes a signed join token for, under env dev with the dev page on: a JSON object, such as {"subject": "owner", "attributes": {"customer_email": "demo@example.com"}}, read as the library's Caller. An app usually sets it in code. Unset: the console makes none and joins as dev. |
 | `T2V_SERVER__FORWARDED_ALLOW_IPS` | JSON list of text | `[]` | — | The proxies whose X-Forwarded-For headers are trusted, as a JSON list of IP addresses or networks, such as ["127.0.0.1"], a network by its own address (10.0.0.0/24): an entry is no wider than /8 for IPv4 or /32 for IPv6, and no wider than /104 where it overlaps ::ffff:0:0/96, ::ffff:0:0:0/96, 64:ff9b::/96, 64:ff9b:1::/48 or ::/96, or /24 where it overlaps 2002::/16, the IPv6 ranges that carry IPv4 addresses; "*" is refused. Unset: none. |
 
 ## `join`

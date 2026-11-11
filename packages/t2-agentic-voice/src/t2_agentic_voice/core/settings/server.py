@@ -1,6 +1,6 @@
 """The `server` group: how calls are served (the design's 5.5, 11): the public address, the
-pages allowed to call it, the ICE servers and the TURN secret, the dev page, and which peers'
-proxy headers are trusted."""
+pages allowed to call it, the ICE servers and the TURN secret, the dev page and the test
+console's dev caller, and which peers' proxy headers are trusted."""
 
 from __future__ import annotations
 
@@ -11,6 +11,7 @@ from urllib.parse import SplitResult, urlsplit
 
 from pydantic import Field, SecretStr, field_validator
 
+from t2_agentic_voice.core.identity import Caller
 from t2_agentic_voice.core.settings.base import (
     PREFIX,
     Group,
@@ -62,7 +63,7 @@ Network = ipaddress.IPv4Network | ipaddress.IPv6Network
 
 class ServerSettings(Group):
     """Serving: the backend's address, the pages that may call it, how media finds a path, and
-    the dev page."""
+    the dev page with the test console's dev caller."""
 
     public_url: str | None = Field(
         default=None,
@@ -105,6 +106,15 @@ class ServerSettings(Group):
     dev_page: bool = Field(
         default=False,
         description="Whether the router serves its /dev page, to loopback clients; dev only.",
+    )
+    dev_caller: Caller | None = Field(
+        default=None,
+        description=(
+            "The caller the test console's Start makes a signed join token for, under env dev "
+            'with the dev page on: a JSON object, such as {"subject": "owner", "attributes": '
+            '{"customer_email": "demo@example.com"}}, read as the library\'s Caller. An app '
+            "usually sets it in code. Unset: the console makes none and joins as dev."
+        ),
     )
     forwarded_allow_ips: tuple[str, ...] = Field(
         default=(),

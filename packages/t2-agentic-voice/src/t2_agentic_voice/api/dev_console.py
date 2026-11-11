@@ -17,8 +17,17 @@ action's write and its outcome, the models' usage). It is for engineers, never f
 - **The routes**, after the router's prefix: `GET /dev/console` (the page), `/dev/console.js`
   and `/dev/console.css` (its script and style, from the static folder), `GET /dev/setup`
   (what the agent runs with: its tools, actions, languages, models and the settings that shape
-  a turn's timing, never a secret) and `GET /dev/feed?after=N` (the records after `N`, at once
-  when there are any, else once one comes or `WAIT_S` passes: long-polling).
+  a turn's timing, never a secret), `GET /dev/feed?after=N` (the records after `N`, at once
+  when there are any, else once one comes or `WAIT_S` passes: long-polling) and
+  `POST /dev/token`, the token the page's Start joins with when its field is left empty.
+- **The token** (the owner, 2026-11-11): a signed join token, as the app's own token route
+  mints, from `SignedJoinTokens.from_settings(settings.join)`, for the caller the app declares
+  (`server.dev_caller`), never one a request names (invariant 3). Its body is the page's
+  keep-audio box alone (`TokenAsk`, at most `MAX_TOKEN_BYTES`), its consent the server's
+  `privacy.consent_version`. No access code and no count of the app's own apply. With no dev
+  caller, or no join key that signs (`join.current_kid`), it answers the plain 404, logged as
+  `dev_token_refused` with why, and the page joins with `dev`. The token is never logged:
+  `dev_token_minted` holds the consent's `record_audio` alone.
 - **On this machine, under dev, only.** The routes are mounted with the dev page alone (`env`
   dev and `server.dev_page`, or `t2v dev`), and each answers the server's plain 404 under any
   other `env`, to a client that is not loopback, and to a request whose `Host` is not a
@@ -39,12 +48,15 @@ from pathlib import Path
 from typing import Final
 
 from fastapi import APIRouter, HTTPException, Request, Response
-from pydantic import BaseModel, ConfigDict, Field, JsonValue, ValidationError
+from pydantic import BaseModel, ConfigDict, Field, JsonValue, StrictBool, ValidationError
 
 from t2_agentic_voice.adapters.dev_identity import is_loopback
-from t2_agentic_voice.api.http_errors import Refusal, answering
+from t2_agentic_voice.adapters.join_tokens import SignedJoinTokens
+from t2_agentic_voice.api.http_errors import Refusal, answering, read_body
 from t2_agentic_voice.core.config import VoiceSettings
+from t2_agentic_voice.core.errors import ConfigurationError
 from t2_agentic_voice.core.events import EVENTS, CallEnded, Event
+from t2_agentic_voice.core.identity import Consent
 from t2_agentic_voice.core.logging import get_logger
 from t2_agentic_voice.core.tracing_tts import resource_attributes
 from t2_agentic_voice.domain.declaration import VoiceAgent
@@ -57,6 +69,8 @@ FEED_RECORDS: Final = 20_000
 WAIT_S: Final = 10.0
 # The folder under `storage.var_dir` that holds each call's events, one file a call.
 CONSOLE_FOLDER: Final = "dev-console"
+# The most bytes `POST /dev/token` reads: its body is `{"record_audio": false}`.
+MAX_TOKEN_BYTES: Final = 256
 PAGE: Final = "dev-console.html"
 SCRIPT: Final = "dev-console.js"
 STYLE: Final = "dev-console.css"
@@ -92,6 +106,15 @@ class FeedQuery(BaseModel):
 
     after: int = Field(default=0, ge=0)
     wait: float = Field(default=WAIT_S, ge=0, le=WAIT_S, allow_inf_nan=False)
+
+
+class TokenAsk(BaseModel):
+    """`POST /dev/token`'s body: whether the call's audio may be kept (the page's box, false
+    unless given), and nothing else: the caller is the app's (`server.dev_caller`)."""
+
+    model_config = ConfigDict(frozen=True, extra="forbid", strict=True, hide_input_in_errors=True)
+
+    record_audio: StrictBool = False
 
 
 class DevFeed:
@@ -315,18 +338,51 @@ def mount_console(
         admitted(request)
         return _json(setup)
 
-    routes: tuple[tuple[str, Callable[..., Awaitable[Response]]], ...] = (
-        ("/dev/console", serving(PAGE, "text/html; charset=utf-8", PAGE_HEADERS)),
-        ("/dev/console.js", serving(SCRIPT, "text/javascript; charset=utf-8", _FILE_HEADERS)),
-        ("/dev/console.css", serving(STYLE, "text/css; charset=utf-8", _FILE_HEADERS)),
-        ("/dev/feed", feed_route),
-        ("/dev/setup", setup_route),
+    async def token_route(request: Request, reference: str) -> Response:
+        admitted(request)
+        caller = settings.server.dev_caller
+        if caller is None:
+            _log.info("dev_token_refused", reason="no_dev_caller")
+            raise HTTPException(status_code=404)
+        body = await read_body(request, MAX_TOKEN_BYTES)
+        try:
+            asked = TokenAsk.model_validate_json(body)
+        except ValidationError:
+            raise Refusal(400, "invalid_request") from None
+        tokens = await asyncio.to_thread(_signer, settings)
+        if tokens is None:
+            _log.info("dev_token_refused", reason="no_join_key")
+            raise HTTPException(status_code=404)
+        consent = Consent(version=settings.privacy.consent_version, record_audio=asked.record_audio)
+        token = tokens.mint(caller, consent=consent)
+        _log.info("dev_token_minted", record_audio=asked.record_audio)
+        return _json({"token": token})
+
+    script = serving(SCRIPT, "text/javascript; charset=utf-8", _FILE_HEADERS)
+    routes: tuple[tuple[str, str, Callable[..., Awaitable[Response]]], ...] = (
+        ("GET", "/dev/console", serving(PAGE, "text/html; charset=utf-8", PAGE_HEADERS)),
+        ("GET", "/dev/console.js", script),
+        ("GET", "/dev/console.css", serving(STYLE, "text/css; charset=utf-8", _FILE_HEADERS)),
+        ("GET", "/dev/feed", feed_route),
+        ("GET", "/dev/setup", setup_route),
+        ("POST", "/dev/token", token_route),
     )
-    for path, handler in routes:
-        route = f"GET {path}"
+    for method, path, handler in routes:
+        route = f"{method} {path}"
         router.add_api_route(
-            path, answering(route, handler), methods=["GET"], include_in_schema=False
+            path, answering(route, handler), methods=[method], include_in_schema=False
         )
+
+
+def _signer(settings: VoiceSettings) -> SignedJoinTokens | None:
+    """The signed join tokens the join settings describe, when they hold a key and name the one
+    that signs (`join.current_kid`); None otherwise. The keys may be read from a file."""
+    if settings.join.current_kid is None:
+        return None
+    try:
+        return SignedJoinTokens.from_settings(settings.join, prefix=settings.prefix)
+    except ConfigurationError:
+        return None
 
 
 def _json(body: dict[str, JsonValue]) -> Response:

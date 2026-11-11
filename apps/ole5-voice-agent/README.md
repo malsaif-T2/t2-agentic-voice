@@ -45,6 +45,14 @@ To see each call's steps and times, start Phoenix on this machine and set
 `T2V_TRACING__ENDPOINT` to it before starting the server ([the guide's tracing and
 logs](../../docs/guide/tracing-and-logs.md)).
 
+**The test console** shows each call turn by turn, and starts calls of its own ([the guide's
+test console](../../docs/guide/browser-client.md#the-test-console)). Set `T2V_ENV=dev` and
+`T2V_SERVER__DEV_PAGE=true` in the `.env`, start the server, and open
+http://127.0.0.1:7861/voice/dev/console on the same machine. Leave **Join token** empty and
+press **Start call**: the console makes a token for the demo customer, as the widget's are, so
+the call makes and reads that customer's tickets. It asks for no access code and leaves the
+widget's 10 tokens a day alone. Tick **Keep the call's audio** only if it should be kept.
+
 ## The mock ticket system
 
 The app has no real ticket system: its tickets go to a mock that keeps them across restarts in
