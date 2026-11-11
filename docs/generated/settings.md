@@ -130,6 +130,7 @@ The output guard: what counts as an ID, and what a clause that speaks one with n
 | `T2V_GUARD__ON_BLOCK` | one of drop_rest, drop_clause | `drop_rest` | — | What a blocked clause drops: drop_rest, it and the rest of the reply, or drop_clause, only it. A fixed phrase is spoken in its place either way. |
 | `T2V_GUARD__CLAIMS` | JSON object from one of ar, en to JSON list of text | `{}` | — | Phrases added to each language's default list of what claims any action, as a JSON object from a language's code to a list: {"ar": ["..."]}. A value replaces the map. |
 | `T2V_GUARD__REMOVE_STRAY_SCRIPT` | true or false | `true` | — | Whether each character of a script none of the agent's languages writes (a Chinese character in an Arabic reply), and each pictograph, is taken out of what the talker writes, its tool calls' arguments included, before the guard reads it, and a digit of another script written as its ASCII digit; the voice, the captions, the history, the trace and the events then hold the text without it. Off: kept as written. |
+| `T2V_GUARD__QUESTIONS_PER_REPLY` | integer, or unset | `1` | — | The most questions one spoken reply of the talker's may ask the caller: the reply stops before the next one, which is not said, nor anything after it. A question is a clause that ends with a question mark. None, given in code: no limit. |
 
 ## `session`
 

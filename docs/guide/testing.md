@@ -140,9 +140,11 @@ lines for an action, a read-back's summary or closing question, an ask-again, `d
 template), its `tool_calls` (each tool's arguments, outcome and time; an action's
 call among them, as the model wrote it, after the stray-script filter), its `cards`, its
 `blocked` clauses, `first_token_s` and `first_clause_s` (on the call's clock,
-[latency.md](latency.md)), its `model_requests`, its `usage`, and its `stray_characters`, how
+[latency.md](latency.md)), its `model_requests`, its `usage`, its `stray_characters`, how
 many characters the filter took out of, or rewrote in, what the talker wrote
-([languages.md](languages.md), "Scripts a reply may hold").
+([languages.md](languages.md), "Scripts a reply may hold"), and its `unsaid_clauses`, how many
+of the talker's clauses the reply did not say once it stopped before a second question
+([writing-for-voice.md](writing-for-voice.md), "One question at a time").
 
 ## A call with an action
 

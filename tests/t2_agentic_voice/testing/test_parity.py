@@ -12,7 +12,8 @@ audio, on its virtual clock. Both run the real interruption rule.
 
 A talker's reply with a stray character takes the same path too: the same clauses said through
 `TextCall` and through the audio session, the filter's in both, and `TextTurn.stray_characters`
-counts what went."""
+counts what went. So does a reply that asks two questions: both say it up to its first question
+(the question limit, D-085), and `TextTurn.unsaid_clauses` counts what went unsaid."""
 
 from __future__ import annotations
 
@@ -115,21 +116,35 @@ def _talker_agent() -> VoiceAgent:
     )
 
 
-def _stray_text(settings: VoiceSettings) -> tuple[dict[str, Any], int, list[str]]:
-    model = ScriptedLLM([ScriptedLLM.reply(STRAY)])
+# A talker's reply that asks two questions, which the question limit says up to its first.
+QUESTIONS = "Is it the office laptop? Is it stuck on the login screen? Tell me more."
+QUESTIONS_SAID = ["Is it the office laptop?"]
+
+
+def _talker_text(settings: VoiceSettings, written: str) -> tuple[dict[str, Any], dict[str, Any]]:
+    """The path of a `TextCall` whose talker writes `written` to the caller's one turn, and what
+    the turn read once the call had run on: its clauses' texts and its two counts."""
+    model = ScriptedLLM([ScriptedLLM.reply(written)])
     call = TextCall(_talker_agent(), llm=model, settings=settings)
 
-    async def run() -> tuple[int, list[str]]:
+    async def run() -> dict[str, Any]:
         async with call:
             asked = await call.user(ASKED)
             await call.advance(15.0)
-            return asked.stray_characters, [clause.text for clause in asked.clauses]
+            return {
+                "clauses": [clause.text for clause in asked.clauses],
+                "stray": asked.stray_characters,
+                "unsaid": asked.unsaid_clauses,
+            }
 
-    count, clauses = asyncio.run(run())
-    return path(call._emitted), count, clauses
+    turn = asyncio.run(run())
+    return path(call._emitted), turn
 
 
-def _stray_audio(settings: VoiceSettings, monkeypatch: pytest.MonkeyPatch) -> dict[str, Any]:
+def _talker_audio(
+    settings: VoiceSettings, monkeypatch: pytest.MonkeyPatch, written: str
+) -> dict[str, Any]:
+    """The path of an `AudioCall` whose talker writes `written` to the caller's one turn."""
     detectors = partial(VoiceCalls, speech_detector=ToneVAD, turn_analyzer=PauseAnalyzer)
     monkeypatch.setattr(audio_call, "VoiceCalls", detectors)
     replay = AudioCall(
@@ -137,7 +152,7 @@ def _stray_audio(settings: VoiceSettings, monkeypatch: pytest.MonkeyPatch) -> di
         stt=FakeSpeechToText([ASKED]),
         tts=FakeTextToSpeech(seconds_per_char=0.02),
         agent=_talker_agent(),
-        chat=ScriptedLLM([ScriptedLLM.reply(STRAY)]),
+        chat=ScriptedLLM([ScriptedLLM.reply(written)]),
     )
 
     async def run() -> None:
@@ -155,11 +170,19 @@ def _stray_audio(settings: VoiceSettings, monkeypatch: pytest.MonkeyPatch) -> di
 def test_a_reply_with_a_stray_character_says_the_same_clauses_as_text_and_as_audio(
     settings: VoiceSettings, monkeypatch: pytest.MonkeyPatch
 ) -> None:
-    text, count, clauses = _stray_text(settings)
-    audio = _stray_audio(settings, monkeypatch)
-    assert text == audio
-    assert clauses == STRAY_SAID and count == 2
+    text, turn = _talker_text(settings, STRAY)
+    assert text == _talker_audio(settings, monkeypatch, STRAY)
+    assert (turn["clauses"], turn["stray"], turn["unsaid"]) == (STRAY_SAID, 2, 0)
     assert text["replies"][1] == (0, " ".join(STRAY_SAID), True)
+
+
+def test_a_reply_with_two_questions_says_the_same_clauses_as_text_and_as_audio(
+    settings: VoiceSettings, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    text, turn = _talker_text(settings, QUESTIONS)
+    assert text == _talker_audio(settings, monkeypatch, QUESTIONS)
+    assert (turn["clauses"], turn["stray"], turn["unsaid"]) == (QUESTIONS_SAID, 0, 2)
+    assert text["replies"][1] == (0, " ".join(QUESTIONS_SAID), True)
 
 
 @pytest.mark.parametrize("script", sorted(SCRIPTS))

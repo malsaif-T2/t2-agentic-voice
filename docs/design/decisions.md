@@ -2997,3 +2997,78 @@ twice; DOC-REF: every `D-NNN` cited anywhere is a heading here), so keep its sha
   `tests/t2_agentic_voice/voice/session/test_talker_scripts.py`,
   `tests/t2_agentic_voice/testing/test_parity.py`; `tests/ole5_voice/test_agent_scripts.py`,
   `tests/ole5_voice/evals/test_action_score.py`, `test_action_play.py`, `test_action_run.py`.
+
+## D-085 · A spoken reply stops before its second question · 2026-11-11 · Accepted (the owner's answer of 2026-11-11)
+
+- **Context:** in a demo call, Ole5's talker was asked to open a ticket. It wrote one reply that
+  asked how urgent the problem was a dozen ways, then played out the caller's silence («ما في
+  رد، فأنا ما أقدر أفتح تذكرة الآن», "no answer, so I can't open a ticket now"), and all of it
+  was spoken. A read-only scan of the 1,727 stored talker replies (the dev runs of K and S, and
+  run A's dev run `a1-dev`; the talker's clauses, those with `phrase` false) found 139 that ask
+  the caller a question (a clause ending in "?" or «؟») and none that asks two; 4 go on after
+  their one question (a step answer, or "if you tell me more, I can help"). Asked "Add the
+  library rule that a spoken reply stops before its second question?", the owner answered on
+  2026-11-11 "Yes, add it".
+- **Decision:**
+  - **The rule** (`agent/question_limit.py`). In one talker reply (one turn, `agent/turn.py`,
+    across its model requests), the talker's own clauses are said up to and including the
+    first one that asks the caller a question. The next clause that also asks one is not said,
+    nor anything after it in that reply: the reply stops there. The clauses between the two
+    questions are said.
+  - **A question** is a clause whose last character is "?" or «؟» (the library's
+    `QUESTION_MARKS`), once the spaces at its end and the closing quotes and brackets the
+    clause splitter reads past (`domain/text/clauses.py`'s `CLOSERS`) are taken off. So «...؟»
+    and `...?"` ask. The agent's choice, as the scan counted: "?!", «؟.» and a mark inside the
+    clause do not.
+  - **What counts:** only the talker's own clauses, and only those said. The limit reads the
+    clauses the guard passed in this reply, so a clause the guard blocked, or one the
+    stray-script filter left with nothing to say, asks nothing. The session's fixed lines (a
+    progress line, a notice, an action's read-back and its closing question, its outcome lines)
+    are not the talker's clauses: they neither count nor stop a reply.
+  - **Where it sits.** Each clause is judged as it comes, in the turn, after the check for a
+    clause the filter emptied and before the guard. The question past the limit, and each
+    clause after it, never reaches the guard: it is neither said nor blocked, and no notice is
+    said in its place.
+  - **The rest of the reply, beside the guard's `drop_rest`** (the agent's reading of what
+    `drop_rest` does, and where the stop differs):
+    - *The turn's remaining stream.* `drop_rest` closes it at once. The stop reads it to its
+      end, its text unsaid, because a tool call comes after the text in the stream: a tool call
+      the model makes in the same request still runs as it does today, and its result is kept
+      for the call's next turns as always. An action called there is still read back.
+    - *The next request inside the turn.* `drop_rest` makes none, and neither does the stop:
+      after the request's tools have run, no request follows, since nothing more of the reply
+      would be said. So the model's text of that request (`answer.text`, which holds the unsaid
+      words) is never sent.
+    - *The heard history.* For both, it holds only what was said, since the session builds it
+      from what played. The stop gives the model no note (a blocked clause gives one).
+  - **The setting:** `guard.questions_per_reply`, an integer of at least 1, 1 by default
+    (`T2V_GUARD__QUESTIONS_PER_REPLY`). None, given in code, sets no limit; an environment
+    variable left blank keeps the default.
+  - **The count.** `ReplyDone.unsaid_clauses` (internal) counts the clauses the reply left
+    unsaid, and `TextTurn.unsaid_clauses` reads it for a team's tests. The turn logs
+    `talker_reply_stopped` at INFO with `call_id`, `turn_id`, `reason` (`question_limit`) and
+    `unsaid_clauses`, never a word of the reply.
+  - **What it never does:** change a clause's text; hold text back; ask a model; change a tool
+    call; change what the model is sent (`test_no_action_baseline.py` and `test_baselines.py`
+    pass unchanged).
+- **Why on by default:** it stops the demo's defect from the next call on, and no measured
+  outcome moves. Read only, the agent ran the same stored replies through the built rule's pure
+  part (`said_clauses`) at the default: runs `k1-dev-a` to `d`, `k1-dev-spoken`, `k1-smoke`,
+  `k1m-dev-a`, `k3-dev-a` to `d`, `s-120b-2` to `5` and `a1-dev`, 1,727 replies and 6,039
+  clauses. 139 ask a question, none asks two, 4 go on after their one question, and none
+  changes.
+- **Consequences:** a reply asks the caller one thing at a time. A reply that asks two things
+  in one go ("Is it urgent? Is it blocking your work?") says the first only. A question asked
+  before a tool round counts too, so steps answered after the round that end in "Did that
+  work?" lose that last question. A clause after the stop that the guard would have blocked is
+  not blocked, so no `GuardBlocked` and no notice come of it. A team whose instructions ask for
+  two questions in one reply raises the setting. `ReplyDone` gains one field with a default,
+  `TextTurn` one read, `SpeechGuard` a read of the clauses it passed, and the settings' digest
+  the key. `domain/text/clauses.py`'s closers are public (`CLOSERS`), and the turn's stream
+  closer moved to the chat model port's module (`closing`), so `turn.py` stays under its size.
+  No public event, `TurnRecord`, `CallReport` or `t2v/1` message changes.
+- **Evidence:** the owner's answer above; `tests/t2_agentic_voice/agent/test_question_limit.py`,
+  `tests/t2_agentic_voice/agent/test_talker_questions.py`,
+  `tests/t2_agentic_voice/voice/session/test_talker_questions.py`,
+  `tests/t2_agentic_voice/testing/test_parity.py`,
+  `tests/t2_agentic_voice/core/test_settings_talker.py`.

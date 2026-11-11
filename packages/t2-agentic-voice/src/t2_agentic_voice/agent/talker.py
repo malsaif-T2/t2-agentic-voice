@@ -20,9 +20,11 @@ developer note); an action's read-back to say (`ReadBackRequested`, the reply's 
 before its end: the session reads it back and asks; nothing the talker gives confirms it);
 each model request as it goes and as it ends (`ModelRequested`, `ModelReplied`, for the
 call's usage and the turn's
-times); and the reply's end (`ReplyDone`), after its last clause and its work. A `ProviderError`
-from the model is raised from the stream instead, after any clause already given, for the
-session to say the `error` notice: no event says it (plan 006's Track B report).
+times); and the reply's end (`ReplyDone`), after its last clause and its work, with how many of
+the talker's clauses it left unsaid once it stopped before a question past its limit
+(`unsaid_clauses`, agent/question_limit.py, D-085). A `ProviderError` from the model is
+raised from the stream instead, after any clause already given, for the session to say the
+`error` notice: no event says it (plan 006's Track B report).
 
 **A clause's length.** The talker cuts the model's text with the clause splitter at no limit,
 for it knows no voice: the session fits each clause to the voice's `max_chars` once it has said

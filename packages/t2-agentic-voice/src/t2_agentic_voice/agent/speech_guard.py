@@ -77,6 +77,12 @@ class SpeechGuard:
             self._passed.append(clause)
         return checked
 
+    @property
+    def passed(self) -> tuple[str, ...]:
+        """The clauses of this reply the guard passed, in order: those said, which the question
+        limit reads (agent/question_limit.py)."""
+        return tuple(self._passed)
+
     def _checked(self, clause: str) -> Checked:
         if self.actions:
             claims, any_action = self._claim_phrases()

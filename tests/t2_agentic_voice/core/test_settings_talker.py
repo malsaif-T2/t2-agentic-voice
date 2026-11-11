@@ -31,6 +31,7 @@ def test_the_llm_and_guard_defaults_are_the_designs() -> None:
         "on_block": "drop_rest",
         "claims": {},
         "remove_stray_script": True,
+        "questions_per_reply": 1,
     }
     assert (settings.words.vocabulary, settings.session.mode) == ((), None)
 
@@ -42,6 +43,7 @@ def test_the_new_settings_load_from_the_environment(monkeypatch: pytest.MonkeyPa
     monkeypatch.setenv("T2V_LLM__VARY_FIRST_LINE", "false")
     monkeypatch.setenv("T2V_GUARD__ID_PATTERNS", '["LT-\\\\d{5}"]')
     monkeypatch.setenv("T2V_GUARD__ON_BLOCK", "drop_clause")
+    monkeypatch.setenv("T2V_GUARD__QUESTIONS_PER_REPLY", "2")
     monkeypatch.setenv("T2V_WORDS__VOCABULARY", '["VPN", "Outlook"]')
     monkeypatch.setenv("T2V_SESSION__MODE", "talker")
     settings = VoiceSettings.from_env()
@@ -51,7 +53,13 @@ def test_the_new_settings_load_from_the_environment(monkeypatch: pytest.MonkeyPa
         False,
     )
     assert (settings.guard.id_patterns, settings.guard.on_block) == (("LT-\\d{5}",), "drop_clause")
+    assert settings.guard.questions_per_reply == 2
     assert (settings.words.vocabulary, settings.session.mode) == (("VPN", "Outlook"), "talker")
+
+
+def test_no_question_limit_is_set_in_code() -> None:
+    """None, given in code, sets no limit; an environment variable left blank keeps 1."""
+    assert GuardSettings(questions_per_reply=None).questions_per_reply is None
 
 
 @pytest.mark.parametrize(
@@ -67,6 +75,8 @@ def test_the_new_settings_load_from_the_environment(monkeypatch: pytest.MonkeyPa
         ("GUARD__ID_PATTERNS", '["\\\\d*"]'),  # matches every clause
         ("GUARD__MIN_ID_DIGITS", "0"),
         ("GUARD__ON_BLOCK", "drop_call"),
+        ("GUARD__QUESTIONS_PER_REPLY", "0"),
+        ("GUARD__QUESTIONS_PER_REPLY", "one"),
         ("WORDS__VOCABULARY", '[""]'),
         ("SESSION__MODE", "auto"),
     ],

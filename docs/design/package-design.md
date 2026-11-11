@@ -1117,7 +1117,7 @@ The defaults below are the agent's starting values, to be measured in the milest
 | `turns` | `vad_confidence`, `vad_start_ms`, `vad_stop_ms` (200), `smart_turn` (true), `smart_turn_threshold` (0.5), `complete_hold_ms` (600, the hold after Smart Turn's "complete": D-067), `max_silence_ms` (fallback end of turn) | M2, M3 |
 | `interruptions` | `mode` (two_step, by the owner's ruling: D-068; or drop), `duck_level` (0.25), `first_window_ms` (750), `min_words` (2), `short_words` (2), `short_s` (1.2), `own_words_s` (5) (D-061) | M3 (from the M1 overlap data) |
 | `words` | `stop`, `wait`, `repeat`, `backchannel`, `no` (M3, D-062); `yes`, `send`, `vocabulary`: additions to the declaration | M3 to M5 |
-| `guard` | `id_patterns` ([]), `min_id_digits` (3), `on_block` (`drop_rest`; or `drop_clause`), `remove_stray_script` (true: section 8.2, D-084) | M4, M5 |
+| `guard` | `id_patterns` ([]), `min_id_digits` (3), `on_block` (`drop_rest`; or `drop_clause`), `remove_stray_script` (true: section 8.2, D-084), `questions_per_reply` (1; none in code for no limit: section 8.2, D-085) | M4, M5 |
 | `limits` | `max_call_s` (600), `idle_s`, `max_live_calls`, `max_live_calls_per_caller` (1), `calls_per_caller_per_day`, `max_abandoned_threads` | M6 |
 | `server` | `public_url`, `allowed_origins` ([]), `ice_servers` ([]), `turn_secret`, `turn_ttl_s`, `dev_page` (false), `drain_timeout_s` | M2, M6 |
 | `join` | `keys` (a key-ID-to-secret map), `keys_file`, `current_kid`, `ttl_s` (60), `max_clock_skew_s` (30) | M2 |
@@ -1198,6 +1198,20 @@ The record backs any claim about A, with a number or none. A status backs fewer 
 - So a number from a knowledge-base passage may be spoken as a fact, but never as a request number (rule A).
 
 **Rule C, after an action call.** Once the talker calls an action in a request, the text it writes after the call is dropped, with any the clause splitter still held: neither spoken nor blocked. A call read back ends the reply, and no request follows it in that turn, so only the runtime's templates speak until the outcome has been spoken. A call refused (an invalid field, `validate`, a cap) reads back nothing, and the next request may speak, under rules A and B, to say why or ask for what is missing.
+
+**One question a reply** (D-085; the owner, 2026-11-11: "Yes, add it"). In one reply, across
+its model requests, the talker's clauses are said up to and including the first that asks the
+caller a question: a clause whose last character, once trailing spaces and closing quotes and
+brackets are taken off, is "?" or «؟». The next clause that asks one is not said, nor anything
+after it: the reply stops there, and the clauses between the two are said. Only the talker's
+clauses said count, so a clause the guard blocked, or one the filter emptied, asks nothing; the
+runtime's templates and fixed phrases (a progress line, a notice, a read-back and its closing
+question) neither count nor stop. The limit judges each clause as it comes, before the guard,
+so the clauses it drops are neither said nor blocked, and no phrase is spoken in their place. A
+tool call in the same request still runs, and its result is kept, but no request follows it,
+as none follows `drop_rest`; an action called there is still read back. It never changes a
+clause's text, holds text back, asks a model, changes a tool call or changes what the model is
+sent. `guard.questions_per_reply`, 1 by default, raises the limit; None, in code, removes it.
 
 **Templates are not checked.** The runtime's own templates are exempt from rules A and B: greetings, read-backs, `sending`, `done`, `failed`, `unknown`, `declined`, progress lines and fixed phrases. Their values come from the draft, read back so that the caller can check them, or from the real result.
 

@@ -9,7 +9,8 @@ Every chat model adapter implements `ChatModel`, and keeps to the rules of every
   or connection behind: the response is closed. Over HTTP/1.1 a half-read answer closes its
   connection too, since the connection carries no other request until its answer is read whole,
   so the request after a cancel mid-answer opens a new one (its TCP and TLS set-up paid again);
-  only an answer read to its end leaves its connection for the next request.
+  only an answer read to its end leaves its connection for the next request. Its reader closes
+  the stream as it leaves it, whatever ends its reading (`closing`).
 - **Failures** are raised as `ProviderError` (its kind, `retryable` and `retry_after_s`), from
   the stream, never as the SDK's own error, which may hold the request.
 - **Tool calls** come whole: a `ToolCallRequest` holds the call's id, the tool's name and the
@@ -25,7 +26,8 @@ facade; the design's 5.1 calls it stable.
 
 from __future__ import annotations
 
-from collections.abc import AsyncIterator, Mapping
+import contextlib
+from collections.abc import AsyncGenerator, AsyncIterator, Mapping
 from typing import Annotated, Literal, Protocol, Self
 
 from pydantic import BaseModel, ConfigDict, Field, JsonValue, model_validator
@@ -177,3 +179,14 @@ class ChatModel(Protocol):
     async def aclose(self) -> None:
         """Close what the adapter holds open, its connections; an adapter that holds none
         returns at once. Called once, when its owner (the runtime, a run) is done with it."""
+
+
+def closing(
+    stream: AsyncIterator[ChatEvent],
+) -> contextlib.AbstractAsyncContextManager[AsyncIterator[ChatEvent]]:
+    """A model's `stream`, closed as its reader leaves it by `contextlib.aclosing`, as an async
+    generator closes, so its response closes within the reader's scope (a reply's, D-060), never
+    when the stream is collected; a stream that is no generator has nothing to close."""
+    if isinstance(stream, AsyncGenerator):
+        return contextlib.aclosing(stream)
+    return contextlib.nullcontext(stream)
