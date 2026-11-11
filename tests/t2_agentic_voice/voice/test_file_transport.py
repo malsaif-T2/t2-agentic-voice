@@ -4,7 +4,9 @@ same Pipecat modules as a call over WebRTC, with the fakes' detectors and provid
 from __future__ import annotations
 
 import asyncio
+import math
 import time
+from collections.abc import Callable
 
 import pytest
 from t2_agentic_voice.core.config import VoiceSettings
@@ -75,25 +77,66 @@ def test_a_file_fed_call_greets_hears_a_turn_and_says_it_back(settings: VoiceSet
     assert built.tts.calls == [("hello there", "en")] and len(built.stt.calls) == 1
 
 
-def test_the_pacer_plays_a_minute_of_frames_within_100_ms_of_real_time() -> None:
-    """60 s of 20 ms frames, each due at an absolute deadline on `time.perf_counter`: the last
-    leaves within 100 ms (the agent's tolerance) of when it is due, and the minute takes
-    within 100 ms of a minute, though asyncio's clock steps at 15.6 ms on Windows."""
+_TICK_S = 0.015625  # the step of asyncio's clock on Windows under Python 3.12 (1/64 s)
+
+
+class _SteppingClock:
+    """`time.perf_counter` and `asyncio.sleep` for `pace`, as Windows gives them at worst, with
+    no time passing in the test: asyncio reads a clock that steps every `_TICK_S`, so a sleep
+    is timed from the step before it starts and ends at the first step after that, 1 ms of
+    scheduling later. A sleep ends up to a step later than asked (earlier, when the step it was
+    timed from lags the clock); a pacer that slept a frame's length each time would slip about
+    11 ms a frame on it, 34 s over the minute."""
+
+    def __init__(self) -> None:
+        self.now = 1_000.0
+
+    def perf_counter(self) -> float:
+        return self.now
+
+    async def sleep(self, delay: float) -> None:
+        read = math.floor(self.now / _TICK_S) * _TICK_S  # what asyncio's clock says now
+        self.now = math.ceil((read + delay) / _TICK_S) * _TICK_S + 0.001
+
+
+def _paced(seconds: float, perf_counter: Callable[[], float]) -> tuple[float, list[float]]:
+    """`seconds` of 20 ms frames through `pace`: when it began, and when each frame left, both
+    on `perf_counter`."""
     sent: list[float] = []
-    frames = round(60 / FRAME_S)
+    frames = round(seconds / FRAME_S)
 
     def frame(due: float) -> bytes | None:
         return b"\x00\x00" if len(sent) < frames else None
 
     async def send(audio: bytes) -> None:
-        sent.append(time.perf_counter())
+        sent.append(perf_counter())
 
-    began = time.perf_counter()
+    began = perf_counter()
     asyncio.run(pace(frame, send))
     assert len(sent) == frames
-    last_due = began + (frames - 1) * FRAME_S
-    assert abs(sent[-1] - last_due) < 0.1
-    assert abs((sent[-1] - sent[0]) - (frames - 1) * FRAME_S) < 0.1
+    return began, sent
+
+
+def test_the_pacer_plays_a_minute_of_frames_within_100_ms_of_real_time(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """60 s of 20 ms frames, each due at an absolute deadline on `time.perf_counter`: the last
+    leaves within 100 ms (the agent's tolerance) of when it is due, and the minute takes
+    within 100 ms of a minute, though asyncio's clock steps at 15.6 ms on Windows. The minute
+    runs on `_SteppingClock`, that clock at its worst, so it takes no real time and the bounds
+    stay the minute's own; then one real second shows the pacer keeps time on the real clock,
+    with the same bounds (a frame's tolerance, which does not grow with the window)."""
+    clock = _SteppingClock()
+    with monkeypatch.context() as patch:
+        patch.setattr(file_transport, "time", clock)  # `pace` reads `time.perf_counter`
+        patch.setattr(file_transport, "asyncio", clock)  # and waits with `asyncio.sleep`
+        minute = _paced(60.0, clock.perf_counter)
+    second = _paced(1.0, time.perf_counter)
+    for seconds, (began, sent) in ((60.0, minute), (1.0, second)):
+        frames = round(seconds / FRAME_S)
+        last_due = began + (frames - 1) * FRAME_S
+        assert abs(sent[-1] - last_due) < 0.1, seconds
+        assert abs((sent[-1] - sent[0]) - (frames - 1) * FRAME_S) < 0.1, seconds
 
 
 def test_a_clip_at_another_rate_is_refused(settings: VoiceSettings) -> None:

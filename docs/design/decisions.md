@@ -3131,3 +3131,43 @@ twice; DOC-REF: every `D-NNN` cited anywhere is a heading here), so keep its sha
   `tests/t2_agentic_voice/voice/session/test_talker_questions.py`,
   `tests/t2_agentic_voice/testing/test_parity.py`,
   `tests/t2_agentic_voice/core/test_settings_talker.py`.
+
+## D-088 · The gate's tests run on every core, and its slowest tests do less of what the gate already does · 2026-11-11 · Accepted (the owner's request and approval of 2026-11-11)
+
+- **Context:** the owner asked "can you optimize the gate tests so that it doesn't take too much
+  time every time we use it". `poe check` took 14 to 15 minutes, almost all of it the test step:
+  7,438 tests, one after another, on one core of the laptop's eight (coverage already on
+  Python 3.12's `sys.monitoring`, `core = "sysmon"`). A profile (`--durations`) found 150 tests
+  at half a second or more making 62% of the time: a test that ran the gate's own commands on the
+  whole repository again, the architecture and docs checkers' "repository is clean" tests (what
+  the gate's `arch` and `docs` steps run), a pacer test that played a real minute of frames, run
+  A's runner tests playing every dev scenario, and 48 small-project architecture tests each
+  reading every installed distribution's files.
+- **Decision:**
+  - **Every core:** `poe test` runs `pytest -n auto` (pytest-xdist 3.8.0, with execnet 2.1.2, MIT,
+    in the root's dev group; the owner answered "Yes, download them"). Each worker is a process of
+    its own, so the suite's isolation (tests/conftest.py, tests/isolation.py) holds in each; the
+    whole suite passed on six workers with no change to a test.
+  - **Less of what the gate already does**, each test keeping what it protects: the commands
+    test runs the real `python -m` checks on two small projects, one clean and one with an
+    architecture and a docs violation, and asserts each exit code and last line; the checkers'
+    "repository is clean" tests keep only what the gate's steps do not fail on (that the check
+    reads real code and docs, never an OK on zero files); ARCH-DOC's repository test calls its
+    rule alone; `tests/harness/conftest.py` reads the installed distributions once a run for the
+    48 architecture tests (the environment cannot change within a run).
+  - **No wall clock for a minute:** the pacer test plays its minute on a fake clock that steps as
+    Windows' 15.6 ms clock does at its worst, at the original 100 ms bounds, beside one real
+    second (it still catches a pacer that drifts: one sleeping a frame each time ends 33.8 s late).
+  - **Smaller fixtures:** run A's runner tests play three dev and two held-out scenarios; the
+    committed set is still read and checked by the real loader.
+- **Consequences:** the gate takes about 3 minutes (179 s wall, its tests 158 s, while two other
+  builds used the machine), from 14 to 15; on one core the trimmed suite takes 499 s, from 645 s
+  on a quiet machine. Coverage holds at 99.40%. `poe test` run alone no longer fails on an
+  architecture or docs violation anywhere in the repository; `poe check`, the definition of done,
+  still does through its `arch` and `docs` steps. The real-time call tests (about three minutes
+  of a serial run) are left as they are, since shortening each means re-timing its silences
+  against the speech detector and turn timers. TD-072's pacer part is paid.
+- **Evidence:** the profile and the timings above; `tests/harness/test_commands.py`,
+  `tests/harness/test_check_architecture.py`, `tests/harness/test_check_docs.py`,
+  `tests/harness/test_arch_doc.py`, `tests/harness/conftest.py`,
+  `tests/t2_agentic_voice/voice/test_file_transport.py`, `tests/ole5_voice/evals/test_action_run.py`.

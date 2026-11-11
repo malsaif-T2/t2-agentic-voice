@@ -5,7 +5,7 @@ from __future__ import annotations
 
 from pathlib import Path
 
-from scripts.arch_doc import layer_table
+from scripts.arch_doc import check_layer_doc, layer_table
 from scripts.check_architecture import ROOT, check_repo
 from scripts.harness_config import load_config
 from tests.harness.support import ARCHITECTURE, config, write
@@ -74,5 +74,8 @@ def test_the_table_ends_at_the_first_line_outside_it() -> None:
 
 
 def test_this_repositorys_table_matches_its_config() -> None:
-    violations, _ = check_repo(ROOT, load_config(ROOT))
-    assert [str(v) for v in violations if v.rule == "ARCH-DOC"] == []
+    """ARCH-DOC alone on this repository (the gate's `arch` step runs every rule on it), with
+    its doc turned on and present, so the rule reads a table."""
+    arch = load_config(ROOT).arch
+    assert arch.architecture_doc and (ROOT / arch.architecture_doc).is_file()
+    assert [str(v) for v in check_layer_doc(ROOT, arch)] == []

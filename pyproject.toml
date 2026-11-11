@@ -32,6 +32,7 @@ dev = [
     "poethepoet>=0.48.0",
     "pytest>=9.1.1",
     "pytest-cov>=7.1.0",
+    "pytest-xdist==3.8.0",
     "ruff>=0.16.9",
 ]
 
@@ -68,8 +69,8 @@ help = "Verify the knowledge base: required docs, links, orphans, placeholders, 
 cmd = "python -m scripts.check_docs"
 
 [tool.poe.tasks.test]
-help = "Run the tests with line coverage, failing under the floor in harness.toml"
-cmd = "pytest --cov --cov-config=harness.toml"
+help = "Run the tests on every core (pytest-xdist) with line coverage, failing under the floor in harness.toml"
+cmd = "pytest -n auto --cov --cov-config=harness.toml"
 
 [tool.poe.tasks.check]
 help = "Definition-of-done gate: lint, types, arch, docs, test (runs all, fails if any fail)"
