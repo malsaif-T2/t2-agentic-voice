@@ -6,7 +6,8 @@ session of `poe eval-talker`, a `ScenarioLine` per session of `poe eval-scenario
 (talker_lines.py), an `UncertainLine` per `poe uncertain` run, a `FirstAudioLine` per
 `poe first-audio` run (measure_lines.py) and a `DepthLine` per `poe knowledge-depth` run
 (knowledge_depth_card.py); for plan 007's run A, an `ActionLine` per session of
-`poe eval-actions` (action_history.py); and `poe eval-history`, which renders it into
+`poe eval-actions` (action_history.py); for plan 007's run H, a `LanguagesLine` per pass of
+`poe eval-languages` (languages_card.py); and `poe eval-history`, which renders it into
 `docs/generated/eval-history.md` (GP-11), each kind's table but `poe eval`'s written by
 history_tables.py, and plan 006's and 007's kinds' by history_measures.py.
 
@@ -45,6 +46,8 @@ from ole5_voice.evals.history_measures import (
 from ole5_voice.evals.history_tables import (
     cell,
     eot_rows,
+    languages_rows,
+    languages_strata,
     overlap_rows,
     percent,
     row,
@@ -53,6 +56,7 @@ from ole5_voice.evals.history_tables import (
 )
 from ole5_voice.evals.items import EVALS, HISTORY_FILE
 from ole5_voice.evals.knowledge_depth_card import DepthLine
+from ole5_voice.evals.languages_card import LanguagesLine
 from ole5_voice.evals.measure_lines import FirstAudioLine, UncertainLine
 from ole5_voice.evals.run_lines import AnyLine, EotLine, OverlapLine, TimingLine
 from ole5_voice.evals.runs import SCORECARD_FILE, HistoryLine, Scorecard, StratumValue
@@ -67,7 +71,7 @@ _LINE: Final[TypeAdapter[AnyLine]] = TypeAdapter(AnyLine)
 # The kinds whose lines bill audio, those whose lines spend nothing, and plan 006's kinds
 # (history_measures.py).
 _BILLED: Final = (HistoryLine, TimingLine, OverlapLine, FirstAudioLine)
-_UNPRICED: Final = (EotLine, DepthLine)
+_UNPRICED: Final = (EotLine, DepthLine, LanguagesLine)
 _MEASURES: Final = (TalkerLine, ScenarioLine, UncertainLine, FirstAudioLine, ActionLine)
 _HEADER = """# Run history
 
@@ -201,6 +205,7 @@ def render_history(lines: Sequence[AnyLine]) -> str:
     parts += first_audio_rows([(n, ln) for n, ln in numbered if isinstance(ln, FirstAudioLine)])
     parts += depth_rows([(n, line) for n, line in numbered if isinstance(line, DepthLine)])
     parts += action_rows([(n, line) for n, line in numbered if isinstance(line, ActionLine)])
+    parts += languages_rows([(n, ln) for n, ln in numbered if isinstance(ln, LanguagesLine)])
     parts.append("\n## Each run")
     for number, line in numbered:
         parts += [f"\n### {number} · {line.run}\n", "| Field | Value |\n| --- | --- |"]
@@ -224,6 +229,8 @@ def render_history(lines: Sequence[AnyLine]) -> str:
             parts += measure_strata(line)
         elif isinstance(line, DepthLine):
             parts += depth_strata(line)
+        elif isinstance(line, LanguagesLine):
+            parts += languages_strata(line)
         else:
             parts += strata(line)
     return "\n".join(parts) + "\n"

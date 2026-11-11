@@ -336,7 +336,7 @@ twice; DOC-REF: every `D-NNN` cited anywhere is a heading here), so keep its sha
   settings prefix of the scaffold (`T2_AGENTIC_VOICE_`, D-013) is interim until its open
   question 4 is answered.
 
-## D-018 · The owner's answers to the package design's open questions · 2026-11-01 · Accepted
+## D-018 · The owner's answers to the package design's open questions · 2026-11-01 · Accepted (its answer to open question 2, one install, amended by D-086 for the `ecapa` extra)
 
 - **Context:** The package design (D-017) ended with 23 open questions, each with options and
   the agent's recommendation. The owner went through them with the agent on 2026-11-01, in six
@@ -1104,7 +1104,7 @@ twice; DOC-REF: every `D-NNN` cited anywhere is a heading here), so keep its sha
   `tests/t2_agentic_voice/core/test_logging.py`, `test_logging_console.py` and
   `test_logging_import.py`; plan 003's Track E adds invariant 8's tests in a child process.
 
-## D-032 · ARCH-BAN, the owners M2 adds, and the facades `identity`, `server`, `stores` and `events` · 2026-11-02 · Accepted (the owner, 2026-11-01, as the design's 5.1, 5.3, 12.2 and 12.4; one bullet Proposed)
+## D-032 · ARCH-BAN, the owners M2 adds, and the facades `identity`, `server`, `stores` and `events` · 2026-11-02 · Accepted (the owner, 2026-11-01, as the design's 5.1, 5.3, 12.2 and 12.4; one bullet Proposed; its torch check amended by D-086)
 
 - **Context:** the design's 12.4 adds ARCH-BAN, banned module prefixes with exceptions, since
   ARCH-OWNER gives a whole library to its layers and cannot keep Pipecat's provider services
@@ -2123,7 +2123,7 @@ twice; DOC-REF: every `D-NNN` cited anywhere is a heading here), so keep its sha
   `tests/t2_agentic_voice/test_browser_interruptions.py` and `tests/ole5_voice/test_widget.py`,
   which read the client and the widget as text; plan 005's live calls try them in Chrome.
 
-## D-066 · `stt.live_language` stays `session` · 2026-11-04 · Accepted (the registered rule L, plan 005, as plan 003 registered it)
+## D-066 · `stt.live_language` stays `session` · 2026-11-04 · Accepted (the registered rule L, plan 005, as plan 003 registered it; a third value, `classified`, added by D-086)
 
 - **Context:** a live call sends Whisper the call's language, fixed at join (D-038), under
   `stt.live_language = "session"`; `auto` sends none, for Whisper to detect it. Plan 003
@@ -3131,3 +3131,127 @@ twice; DOC-REF: every `D-NNN` cited anywhere is a heading here), so keep its sha
   `tests/t2_agentic_voice/voice/session/test_talker_questions.py`,
   `tests/t2_agentic_voice/testing/test_parity.py`,
   `tests/t2_agentic_voice/core/test_settings_talker.py`.
+
+## D-086 · Each turn's language from a classifier: a third value of `stt.live_language`, off until run H's keep rule · 2026-11-12 · Accepted (the owner's rulings of 2026-11-10 and approval of 2026-11-11, plan 007's Block H, Q15 to Q20 each settled (a); the downloads approved as listed)
+
+- **Context:** Whisper writes a turn in the language it is told. Until now a live call told it
+  the call's language, fixed at join (D-038, D-066), so an English question in an Arabic call
+  came back as Arabic sounds (plan 006's run X: the English items' accuracy 0.813 sent as
+  English, 0.027 sent as Arabic). A spoken-language classifier hears a few seconds of speech and
+  says which language it is. The owner's ruling of 2026-11-10 in the roadmap: "We should
+  implement both of them and see their effectiveness and the latency improvements or delays
+  they bring"; to the draft of plan 007's Block H: "Yes, and I agree to download the
+  dependencies and models". Asked on 2026-11-11 "Approve Blocks H and I with my recommendations
+  for Q15 to Q25 and the downloads?", the owner answered "Approve both". The agent's offline
+  check of 2026-11-10 (280 dev variants with speech, whole clips, Arabic against English) found
+  ECAPA right on 93% and Silero on 84%: in-sample, one speaker (D-006). It shaped the block and
+  proves nothing.
+- **Decision:**
+  - **A third value.** `stt.live_language = "classified"` sends each turn to Whisper in the
+    language a classifier heard, chosen among the agent's languages. `session` stays the
+    library's default (GP-18, Q19). An agent of one language runs no classifier.
+  - **The rule** (`domain/turn_language.py`, pure; Q17, Q18, Q20). Once a turn holds
+    `stt.classifier_from_s` (2.0) seconds from where the speech detector heard its speech
+    begin, counted in bytes and never on the clock, those seconds go to the classifier, once a
+    turn, on a task of its own. When the turn's request goes, in order: `short` (the speech had
+    not reached 2.0 s), `late` (no verdict yet: the request never waits), `busy`, `failed`,
+    `unsure` (the best share under `stt.classifier_min_share`, 0.7), else `classified`. Only
+    `classified` moves the call's current language; every other case keeps it, so after an
+    English question the short "yes" to its English read-back goes as English. The two numbers
+    are registered for run H, not tuned on dev; another pair is a dated amendment.
+  - **When it decides** (`voice/stt_language.py`, `TurnLanguages`). A turn's language is decided
+    when its 600 ms hold begins (D-067), the moment a talker call sends its held request, in a
+    call with no talker too; with no hold, when the turn closes. Every request of the turn names
+    that language, its `Transcribing` carrying it, with when it was decided and the speech held
+    then. Speech that resumes in the hold undoes the decision. An overlap's requests name the
+    current language (`overlap`). The call's end cancels every classification in flight.
+  - **The classifiers.** The port is `LanguageClassifier` with `LanguageScores`, parsed at the
+    port (each share from 0 to 1, summing to 1, and `mass`, the share the agent's codes held of
+    the model's whole output); an answer that does not parse is a failure. The adapters are
+    reached through the `classifiers` facade: `SileroLanguage` (`stt.classifier = "silero"`, the
+    default), Silero's 95-language model on the onnxruntime the base install already has; and
+    `EcapaLanguage` (`ecapa`), ECAPA on VoxLingua107 on torch through SpeechBrain. One
+    classification runs at a time a process (a second is `busy`), on
+    `stt.classifier_threads` (2) threads.
+  - **Where torch may live (Q15).** Only in the library's optional extra
+    `t2-agentic-voice[ecapa]` (SpeechBrain 1.1.2, torch 2.15.0, torchaudio 2.11.1), which this
+    workspace installs with `uv sync --group language-id` and no app depends on. On Linux,
+    torch and torchaudio come from PyTorch's CPU index, so the lock holds no CUDA package; a
+    team that adds the extra on Linux needs the same index lines in its own `pyproject.toml`
+    (the guide's `languages.md`). Only `adapters` may import torch, torchaudio or SpeechBrain
+    (an owner rule in `harness.toml`), and only inside `EcapaLanguage.load`; the library's own
+    code may not import `huggingface_hub` (a ban).
+  - **Where the model files are kept (Q16).** In the folder `stt.classifier_dir` names, with no
+    default, fetched once by hand, outside every repository and `var/` (on the laptop,
+    `%LOCALAPPDATA%\t2-agentic-voice\models\`, one folder a model). Each file is checked against
+    its pinned size and SHA-256 at every load and by `t2v doctor`. Nothing is downloaded at run
+    time. The files, from Hugging Face at pinned commits:
+    - `speechbrain/lang-id-voxlingua107-ecapa` at `0253049ae131d6a4be1c4f0d8b0ff483a0f8c8e9`
+      (Apache-2.0): `embedding_model.ckpt` 84,474,355 bytes, `classifier.ckpt` 762,555,
+      `normalizer.ckpt` 1,063, `hyperparams.yaml` 1,519, `label_encoder.txt` 2,204,
+      `config.json` 51 (85,241,747 in all);
+    - `deepghs/silero-lang95-onnx` at `bf21c4f59503dc182ab4d69328889b93c51bf70f` (MIT, Silero
+      Team): `lang_classifier_95.onnx` 16,972,591 bytes and `lang_dict_95.json` 2,183. A third
+      party's re-upload of the file silero-vad v4.0 loads; whether it equals Silero's own was not
+      checked.
+    The hashes are in the adapters (`ECAPA_FILES`, `SILERO_FILES`) and the guide.
+  - **The yes rule with a turn in another language.** When the heard words' language is not the
+    read-back's, the rails of the model's judgement (D-082: the no words and the change markers)
+    read those of every language the agent speaks; the lists that place a yes stay the
+    read-back's. A rail only asks again or corrects, so this never confirms what the rule
+    refused before.
+  - **What observers see.** `TurnRecord.language` is now the tag of the language the turn was
+    sent in, and `TurnRecord.language_by` says how it was chosen (`session` under `session`, so
+    a report reads as before); the turn's speech-to-text span names the language sent and, for a
+    classified turn, its share. No new public event, no audio, no score of a turn not classified.
+  - **What a kept arm changes (Q19).** Nothing in the library's defaults. If run H's keep rule
+    holds, the arm it keeps becomes the setting Ole5's live calls run with, which the owner sets
+    in their `.env` (`T2V_STT__LIVE_LANGUAGE=classified` and the classifier's keys), recorded in
+    an amendment of this entry with the numbers.
+  - **The measurement, run H** (plan 007's "Run H"). H1, `poe eval-languages`: every variant of
+    a split through the file-fed pipeline at real-time pace, with no spend, in four passes at one
+    commit (off, Silero, ECAPA, off again), each turn's classification, decision and end
+    recorded; the language each call language (the ordinary call, an Arabic call, an English
+    call) would send is computed from that record with the library's rule, and `--read` gives
+    the time condition (4) against the two off passes. H2, `poe eval --language-from <H1 pass>`
+    (with `--language-base` on dev): Whisper on each variant in the language H1's rule named for
+    its first turn. Runs O and the echo timing keep refusing any value but `session`.
+- **Consequences:**
+  - D-066 gains a third value; its `session` stays the default and its measured `auto` stays
+    refused by its rule. D-067's hold and early start never wait on the classifier.
+  - D-018's answer to open question 2 (one install, no extras) is amended for this one extra,
+    which the base install never needs. D-032's torch check is amended: it now walks `uv.lock`
+    from every member's base dependencies, refusing any `torch*`, `nvidia-*`, `cuda-*` or
+    `triton` package there, and proves torch comes only through the extra.
+  - `poe check` loads no model and imports no torch, and gives the same answer with or without
+    the `language-id` group. An exact `uv sync` without the group removes the extra, after which
+    ECAPA's `load` refuses with its fix.
+  - Costs and risks, said plainly: ECAPA shares the CPU with every call's speech detector and
+    Smart Turn (bounded by one classification at a time and the thread setting; run H measures
+    one call, and how many calls a CPU holds is the reliability work's count); a verdict comes
+    late on turns a little over 2 s, which keep the current language; a long Arabic turn may be
+    sent as English when the share passes 0.7 wrongly; text from silence may be sent as English;
+    the short turns, where most yeses are, keep the current language, so a short «لا» over an
+    English read-back after an English turn goes to Whisper as English (the model's word on what
+    it writes decides it, under today's rails). The model's memory is recorded by H1 where the
+    platform tells it.
+  - Public names gained, all provisional: the port and its scores, the `classifiers` facade,
+    `Providers.classifier`, `TurnRecord.language_by` and the new meaning of
+    `TurnRecord.language`; the `evals` facade's `turn_languages`, `LanguageTurn`, `chosen` and
+    `LanguageChoice`.
+  - Debt: several calls classify one at a time (TD-145); the CPU index is checked again at the
+    deployment (TD-146); Silero's file is kept by a third party (TD-147).
+  - Run H has not run: its numbers, and whether an arm is kept, come in an amendment.
+- **Evidence:** the owner's words above; the download step's smoke of 2026-11-11 (each adapter
+  loaded from the folder with no request and no file written; an English, a Saudi and an MSA
+  dev variant classified as their items' languages by both; on 2.0 s clips at 2 threads, the
+  wall-clock median about 7 ms for Silero and about 250 ms for ECAPA, which are run H's
+  expected lines before H1); `tests/t2_agentic_voice/domain/test_turn_language.py`,
+  `test_language_scores.py`, `test_yes_rule_languages.py`,
+  `tests/t2_agentic_voice/voice/test_stt_language.py`,
+  `tests/t2_agentic_voice/voice/session/test_turn_language.py`,
+  `tests/t2_agentic_voice/adapters/test_silero_language.py`, `test_ecapa_language.py`,
+  `test_model_files.py`, `tests/t2_agentic_voice/testing/test_turn_languages.py`,
+  `tests/harness/test_install.py`, `tests/harness/test_arch_models.py`, and Ole5's
+  `tests/ole5_voice/evals/test_languages_run.py`, `test_languages_score.py` and
+  `test_run_arms.py`.

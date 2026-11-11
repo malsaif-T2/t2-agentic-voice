@@ -38,6 +38,7 @@ from pipecat.workers.runner import WorkerRunner
 from t2_agentic_voice.core.errors import T2VoiceError
 from t2_agentic_voice.core.events import EndReason, TransportStage
 from t2_agentic_voice.core.logging import get_logger
+from t2_agentic_voice.domain.ports.language_classifier import LanguageClassifier
 from t2_agentic_voice.domain.ports.speech_to_text import SpeechToText
 from t2_agentic_voice.domain.ports.text_to_speech import TextToSpeech
 from t2_agentic_voice.voice.pipecat_events import FailureReport
@@ -45,6 +46,7 @@ from t2_agentic_voice.voice.session.io import CallSetup, Session
 from t2_agentic_voice.voice.session.session_events import Connected, Ending, TransportFailure
 from t2_agentic_voice.voice.session_bridge import CallEvents, SessionBridge, SessionCommands
 from t2_agentic_voice.voice.stt_bridge import TurnSTTBridge, call_prompts
+from t2_agentic_voice.voice.stt_language import turn_languages
 from t2_agentic_voice.voice.transport import (
     CLOSE_TIMEOUT_S,
     CONNECT_DEADLINE_S,
@@ -74,7 +76,8 @@ class CallPipeline:
     (every pause, with none), between `input` (None: frames queued at the head) and `output`.
     `closing` closes the call's peer; `on_finished` is called once the call is done. With
     `record`, what the session was handed and gave is kept (`events.handed`,
-    `commands.given`)."""
+    `commands.given`). `classifier` hears each turn's language under `stt.live_language =
+    "classified"` (voice/stt_language.py)."""
 
     def __init__(
         self,
@@ -89,6 +92,7 @@ class CallPipeline:
         closing: Callable[[], Awaitable[None]] | None = None,
         on_finished: Callable[[], None] = lambda: None,
         record: bool = False,
+        classifier: LanguageClassifier | None = None,
     ) -> None:
         self.setup = setup
         self.report = FailureReport(call_id=setup.call_id, emit=setup.emit, clock=setup.clock)
@@ -100,6 +104,7 @@ class CallPipeline:
             start_s=detector.params.start_secs,
             early=setup.talker is not None,  # the early start is the talker's (plan 006, Q2)
             prompts=call_prompts(setup.agent, setup.settings),  # once a call (plan 006, Q23)
+            languages=turn_languages(setup.agent, setup.settings, classifier, setup.clock),
         )
         bridge = SessionBridge(events)
         timeout_s = setup.settings.tts.timeout_s

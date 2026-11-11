@@ -34,7 +34,7 @@ Run everything as `uv run poe <task>` (`uv run poe` lists tasks).
 | `gc` · `quality` | Say whether a garbage-collection round is due, then list its candidates · grade each layer, each app and `scripts/` after `check`; neither is a gate. |
 | `golden` · `record` | Validate the golden set and freeze its expected answers · record and review its takes (a page on 127.0.0.1). |
 | `eval` · `eval-compare` · `eval-history` | Run an answerer over the golden set (refuses the main checkout) · compare two runs (sign test by item) · render the run history. |
-| `eot` · `overlap` · `eval-timing` | Where the turns end on the golden set, offline (refuses the main checkout) · its overlap clips replayed over a reply (refuses the main checkout; `pipeline` spends) · the time of each step of an echo call (spends). |
+| `eot` · `overlap` · `eval-timing` · `eval-languages` | Where the turns end on the golden set, offline (refuses the main checkout) · its overlap clips replayed over a reply (refuses the main checkout; `pipeline` spends) · the time of each step of an echo call (spends) · each turn's language from a classifier, run H's H1, offline (refuses the main checkout; `--read` gives condition 4). |
 | `knowledge-depth` · `eval-talker` · `eval-talker-compare` · `eval-talker-keep` · `judge-check` · `eval-scenarios` · `eval-actions` · `uncertain` · `first-audio` · `first-audio-listen` | Run K0, the passages' depth: each answerable dev variant searched once, the k kept (no chat model) · run K, one arm over one split of the knowledge set (spends) · compare two dev runs (sign test by item, the noise) · its keep rule · the owner's check of the judge · run S's scripted calls (spends) · run A's scripted ticket calls over one split, against the mock ticket system (spends; held-out only when named, and once) · run U, a model's verdict on a stored overlap run's uncertain overlaps · run T, the time to first audio of the agent's replies to the recorded requests (each spends) · ten of T1's replies and a sheet for the owner's listen, or the sheet read back; runs K0, K, S and A refuse the main checkout. |
 | `settings-ref` | Write `docs/generated/settings.md` and `.env.example` from the library's settings model. |
 
@@ -72,7 +72,7 @@ owned libraries, required docs, size caps, the coverage floor) live in [harness.
 ```
 packages/t2-agentic-voice/src/t2_agentic_voice/   the library; its public API is __init__.py
   and the facades beside it (re-exports only): ports.py groq.py identity.py server.py
-  stores.py events.py languages.py evals.py tracing.py
+  stores.py events.py languages.py evals.py tracing.py classifiers.py
   core/       settings, logging, errors (T2VoiceError), tracing, the shared types (identity, events)
   domain/     the call's rules, no IO: the ports, the declaration (VoiceAgent), normalization,
               the speaking rules, the interruption rule and the presets' words (D-061, D-062),

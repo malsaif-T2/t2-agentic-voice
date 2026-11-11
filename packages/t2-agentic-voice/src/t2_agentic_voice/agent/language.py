@@ -87,7 +87,16 @@ def reply_language(
     """The tag the reply to `turn` is in, in a call held in `call` by an agent that speaks
     `spoken` (the module's docstring)."""
     heard = _heard(turn.language)
-    code = _written(turn.words, heard) or heard or code_of(call)
+    return tag_of(_written(turn.words, heard) or heard, call=call, spoken=spoken)
+
+
+def tag_of(
+    language: str | None, *, call: LanguageTag, spoken: Sequence[LanguageTag]
+) -> LanguageTag:
+    """The agent's tag of `language` (a code, or a provider's name of it): the call's own when
+    its language is the same, else the first of `spoken` in it, else the call's. The call
+    report names a turn's language so (plan 007's Block H)."""
+    code = _heard(language) or code_of(call)
     if code_of(call) == code:
         return call
     return next((tag for tag in spoken if code_of(tag) == code), call)

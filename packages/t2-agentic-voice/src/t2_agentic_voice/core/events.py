@@ -48,6 +48,13 @@ _Ms = Annotated[float, Field(ge=0, le=MAX_MS, allow_inf_nan=False)]
 # reached `limits.max_call_s`, or `limits.idle_s` with nothing heard; the connection failed;
 # the server stopped or failed.
 EndReason = Literal["hangup", "caller_left", "max_call", "idle", "transport", "server"]
+# How the language a turn was sent to speech-to-text in was chosen (plan 007's Block H): the
+# session's (`session`: no classifier runs), a classifier's verdict (`classified`), or the
+# current language kept: the speech too short to classify, the verdict late, the classifier
+# busy or failed, its best share under the rule's, or an overlap's part (domain/turn_language.py).
+LanguageBy = Literal[
+    "session", "classified", "short", "unsure", "late", "busy", "failed", "overlap"
+]
 # How an interruption ended the agent's speech (the design's 6.6); the echo session has only
 # `stop`, the Stop button or Esc, and the others come with the interruption rules.
 InterruptionKind = Literal["stop", "correction", "new_words", "false"]
@@ -154,13 +161,16 @@ class ModelUsage(_Frozen):
 
 
 class TurnRecord(_Frozen):
-    """One turn of a call: what was heard, in which language, and what the agent said back;
-    whether the turn was dropped (its speech began while the agent spoke, the greeting included,
-    or just after), its reply stopped by the caller, or the turn left unfinished (the call ended
-    before its transcript came, so nothing was heard); and its times."""
+    """One turn of a call: what was heard, and the agent's tag of the language its request was
+    sent in (the call's, unless a classifier moved it: plan 007's Block H) and how that was
+    chosen (`language_by`); what the agent said back; whether the turn was dropped (its speech
+    began while the agent spoke, the greeting included, or just after), its reply stopped by the
+    caller, or the turn left unfinished (the call ended before its transcript came, so nothing
+    was heard); and its times. Provisional."""
 
     turn_id: TurnId
     language: LanguageTag | None = None
+    language_by: LanguageBy = "session"
     heard: str
     said: str = ""
     dropped: bool = False

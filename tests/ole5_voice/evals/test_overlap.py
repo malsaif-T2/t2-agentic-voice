@@ -207,6 +207,7 @@ def test_a_run_refuses_the_main_checkout_and_a_dirty_tree_before_any_clip(
         (["--set", "made.up=1"], "--set made.up names no setting"),
         (["--set", "stt.no_speech_max=loud"], "a value of --set stt.no_speech_max"),
         (["--set", "stt.live_language=auto"], "stt.live_language session"),
+        (["--set", "stt.live_language=classified"], "stt.live_language session"),
         ([], "holds no text of the reply r1"),  # q1's reply, with no --replies
     ],
 )

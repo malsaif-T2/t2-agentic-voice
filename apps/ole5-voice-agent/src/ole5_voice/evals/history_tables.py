@@ -10,6 +10,7 @@ import re
 from collections.abc import Sequence
 from typing import Final
 
+from ole5_voice.evals.languages_card import CALLS, LanguagesLine
 from ole5_voice.evals.run_lines import EotLine, OverlapLine, TimingLine
 from ole5_voice.evals.runs import HistoryLine
 
@@ -100,6 +101,52 @@ def eot_rows(lines: Sequence[tuple[int, EotLine]]) -> list[str]:
                 "yes" if line.complete else "no",
             )
             for number, line in lines
+        ),
+    ]
+
+
+def languages_rows(lines: Sequence[tuple[int, LanguagesLine]]) -> list[str]:
+    """Run H's passes' table (plan 007's Block H), when there is one: each turn's language."""
+    if not lines:
+        return []
+    return [
+        "\n## Each turn's language\n",
+        "| # | Time | Run | Commit | Classifier | Split | Variants | Turns | In time | Late "
+        "| Median verdict (ms) | Median late (ms) | Cut-offs | Changed (label, ar, en) "
+        "| Disagreements | Peak memory (MB) | Complete |\n" + "| --- " * 17 + "|",
+        *(
+            row(
+                str(number),
+                line.time.isoformat(timespec="seconds"),
+                line.run,
+                line.commit,
+                line.classifier,
+                line.split,
+                str(line.variants),
+                str(line.turns),
+                str(line.in_time),
+                str(line.late),
+                ms(line.verdict_median_ms),
+                ms(line.late_median_ms),
+                str(line.cut_offs),
+                ", ".join(str(line.changed[call]) for call in CALLS),
+                str(line.disagreements),
+                "—" if line.peak_mb is None else f"{line.peak_mb:.0f}",
+                "yes" if line.complete else "no",
+            )
+            for number, line in lines
+        ),
+    ]
+
+
+def languages_strata(line: LanguagesLine) -> list[str]:
+    """A pass's turns by how their language was chosen, and each call language's counts."""
+    return [
+        *(row(f"Turns chosen {by}", str(count)) for by, count in sorted(line.by.items())),
+        *(row(f"Variants changed, call {call}", str(line.changed[call])) for call in CALLS),
+        *(
+            row(f"Variants whose turns differ, call {call}", str(line.mixed[call]))
+            for call in CALLS
         ),
     ]
 

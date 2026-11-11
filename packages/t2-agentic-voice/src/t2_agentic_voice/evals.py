@@ -10,7 +10,9 @@ steps and pauses, and the failure of a script that ran out), what each of its tu
 data (plan 006), and `ActionSafetySuite` (the design's 9.3), until the testing kit is a public
 module of its own (the design's 5.1); and the chat model's requests a call makes of its own, an
 uncertain overlap's (D-069) and the yes rule's check of an answer its lists leave unplaced
-(D-082), so a fake or a measurement tells them apart and answers them.
+(D-082), so a fake or a measurement tells them apart and answers them; and each turn's language
+in a file-fed call of an agent of two languages, with the rule read back for any call's
+language (`turn_languages`, `chosen`; plan 007's Block H, run H).
 Provisional (D-021). A facade: it only re-exports (ARCH-FACADE)."""
 
 from t2_agentic_voice.domain.consent_check import (
@@ -21,6 +23,7 @@ from t2_agentic_voice.domain.consent_check import (
 from t2_agentic_voice.domain.recall import Recall
 from t2_agentic_voice.domain.scoring import id_recall, silence_output, term_recall
 from t2_agentic_voice.domain.sign_test import sign_test
+from t2_agentic_voice.domain.turn_language import LanguageChoice
 from t2_agentic_voice.domain.uncertain_overlaps import (
     uncertain_overlap_answer,
     uncertain_overlap_request,
@@ -39,6 +42,7 @@ from t2_agentic_voice.testing.llm_fakes import (
 from t2_agentic_voice.testing.scorers import cer, wer
 from t2_agentic_voice.testing.text_call import TextCall, TextTurn, TurnExpectations
 from t2_agentic_voice.testing.turn_data import BlockedClause, HeardClause, TextToolCall
+from t2_agentic_voice.testing.turn_languages import LanguageTurn, chosen, turn_languages
 from t2_agentic_voice.testing.turn_replay import TurnReplay
 from t2_agentic_voice.testing.turns import TurnEnd, turn_ends
 from t2_agentic_voice.voice.session.io import PhraseAudio
@@ -52,6 +56,8 @@ __all__ = [
     "FunctionLLM",
     "HeardClause",
     "KnowledgeSearch",
+    "LanguageChoice",
+    "LanguageTurn",
     "OverlapReplay",
     "OverlapRequest",
     "Pause",
@@ -68,6 +74,7 @@ __all__ = [
     "TurnReplay",
     "TurnTiming",
     "cer",
+    "chosen",
     "consent_check_answer",
     "consent_check_request",
     "echo_timings",
@@ -77,6 +84,7 @@ __all__ = [
     "silence_output",
     "term_recall",
     "turn_ends",
+    "turn_languages",
     "uncertain_overlap_answer",
     "uncertain_overlap_request",
     "wer",

@@ -232,6 +232,8 @@ Teammates install from a git tag until T2's index is used (section 15).
 
 **One install, with no extras** (open question 2). Installing the library brings everything a call needs: Pipecat (`pipecat-ai[webrtc]~=1.15.0`), FastAPI and uvicorn, the Groq SDK, PyJWT, num2words, the OpenTelemetry API, SDK and OTLP exporter, and the scorers (jiwer). Pipecat 1.15.0's `silero` extra exists but adds no requirement (its installed metadata, read 2026-11-04): the Silero VAD and Smart Turn v3.2 ONNX files ship inside its base wheel (checked). The library never uses Pipecat's `local-smart-turn` extra, which pulls in torch and transformers (checked).
 
+**One extra, `ecapa`** (D-086, Q15 of plan 007; D-018's answer to open question 2 amended for it). `t2-agentic-voice[ecapa]` adds SpeechBrain, torch and torchaudio, for the ECAPA spoken-language classifier of `stt.live_language = "classified"`, and nothing else needs it: the base install still holds no torch, and Silero's classifier runs on the onnxruntime it already has. This workspace installs the extra with `uv sync --group language-id`; no app depends on it. On Linux, torch and torchaudio come from PyTorch's CPU index, so no CUDA package is installed, and a team that adds the extra on Linux puts the same index lines in its own `pyproject.toml` (the guide's `languages.md`). The classifiers' model files are never installed: a team fetches them once by hand into the folder `stt.classifier_dir` names, and each is checked against its pinned SHA-256.
+
 The install is heavy. Pipecat 1.15.0's base dependencies include numpy, numba, onnxruntime (1.24.3 or later), openai, protobuf (5.29.6 or later), Pillow, loguru, python-dotenv, num2words and an exact `sentencex==1.0.32`. Its `webrtc` extra adds aiortc and `opencv-python-headless` (all checked). The headless OpenCV package may clash with an installed `opencv-python` (**verify**). is-this-for-you.md lists these, with the install size measured in M2.
 
 ### 4.2 Quickstart: `examples/minimal/app.py`
@@ -849,7 +851,24 @@ class TextToSpeech(Protocol):
     async def check_language(
         self, language: str
     ) -> None: ...  # raises naming the missing model, voice, access or terms
+
+
+class LanguageScores(BaseModel, frozen=True):  # provisional (D-086)
+    shares: Mapping[str, float]  # each code asked, 0 to 1, summing to 1
+    mass: float  # the share of the model's whole output those codes held
+
+
+class LanguageClassifier(Protocol):  # provisional (D-086)
+    name: str
+
+    async def load(self, among: Sequence[str]) -> None: ...  # once a process, off the loop
+    async def classify(
+        self, clip: AudioClip, *, among: Sequence[str]
+    ) -> LanguageScores | None: ...  # None: busy with another clip
+    async def aclose(self) -> None: ...
 ```
+
+*Added by plan 007's Block H (D-086):* the spoken-language classifier port, which runs in the process and sends no audio anywhere, so it has no `DataFlow`. Its answer is parsed at the port: an answer that does not parse is a failure, as a `ProviderError` is. The `classifiers` facade gives Silero's (on onnxruntime) and ECAPA's (on torch, through the `ecapa` extra); any other is passed in code, `Providers.from_settings(settings).replace(classifier=...)`.
 
 The Groq `DataFlow` values come from Groq's "Your Data" page (checked). That page does not say where requests are processed.
 
@@ -1111,7 +1130,7 @@ The defaults below are the agent's starting values, to be measured in the milest
 | --- | --- | --- |
 | top level | `env` (required) | — |
 | `groq` | `api_key` (required for Groq adapters), `api_key_file`, `base_url`, `timeout_s` | — |
-| `stt` | `provider` (groq), `model` (`whisper-large-v3`, chosen by the M1 baseline: D-025), `timeout_s` (6), `no_speech_max` (0.55) and `caption_filter` (true), the filter for text from silence (D-063, D-068) | M1, M3 |
+| `stt` | `provider` (groq), `model` (`whisper-large-v3`, chosen by the M1 baseline: D-025), `timeout_s` (6), `no_speech_max` (0.55) and `caption_filter` (true), the filter for text from silence (D-063, D-068); `live_language` (`session`; or `auto`, or `classified`: D-066, D-086) and its classifier, `classifier` (`silero`; or `ecapa`), `classifier_dir` (none), `classifier_from_s` (2.0), `classifier_min_share` (0.7) and `classifier_threads` (2), registered for run H | M1, M3, plan 007 |
 | `llm` | `provider` (groq), `model` (openai/gpt-oss-120b), `reasoning_effort` (medium: D-074), `max_output_tokens`, `timeout_s` (8), `vary_first_line` (true: D-072) | M4 |
 | `tts` | `provider` (groq), `languages` (a map from language to `{model, voice}`; models `canopylabs/orpheus-arabic-saudi` and `canopylabs/orpheus-v1-english`; voices chosen in M2), `timeout_s`, `cache_phrases` (true) | M2 |
 | `turns` | `vad_confidence`, `vad_start_ms`, `vad_stop_ms` (200), `smart_turn` (true), `smart_turn_threshold` (0.5), `complete_hold_ms` (600, the hold after Smart Turn's "complete": D-067), `max_silence_ms` (fallback end of turn) | M2, M3 |
@@ -1333,7 +1352,8 @@ The prototype's scorer is ported to the library as functions, as D-010 allows:
 - `wer` and `cer`, after that normalization;
 - `term_recall` and `id_recall`, for product terms and IDs;
 - `silence_output`: text produced from silence or from the agent's own echo;
-- `sign_test`: the paired sign test by item from evaluation.md.
+- `sign_test`: the paired sign test by item from evaluation.md;
+- `turn_languages` and `chosen` (plan 007's Block H, D-086): each turn's language in a file-fed call through a classifier, and the language the rule would send it in for a call held in any of the agent's languages.
 
 Ole5's golden-set machinery stays in the app, under `apps/ole5-voice-agent/evals` with its poe tasks, exactly as evaluation.md defines it: `poe golden`, `poe eval`, `poe eval-compare`, item validation, frozen answers, splits, held-out aggregates and `history.jsonl`. A `t2v eval` CLI comes when a second team records a golden set.
 
@@ -1346,7 +1366,7 @@ Ole5's golden-set machinery stays in the app, under `apps/ole5-voice-agent/evals
 `examples/minimal` is a workspace member with its own `pyproject.toml`. It depends only on `t2-agentic-voice` and is banned from importing internals (section 12.5). CI runs:
 1. its text-mode tests in English and Saudi Arabic, with no key;
 2. `t2v check` on its agent;
-3. from M2, a **torch check**: the resolved install must not contain torch;
+3. from M2, a **torch check**: no workspace member's base install holds torch, a CUDA package or triton, and torch comes only through the library's `ecapa` extra (D-086), walked in `uv.lock` (`tests/harness/test_install.py`);
 4. from the first teammate tag, a **wheel job**: CI builds the library wheel and installs it into a fresh environment outside the workspace, then imports it, runs `t2v check`, starts `serve()` and requests `/health`, which proves the packaging;
 5. an opt-in live smoke test with a key, run by hand or on a schedule.
 
@@ -1365,8 +1385,11 @@ Ole5's golden-set machinery stays in the app, under `apps/ole5-voice-agent/evals
   - the turn (its outcome and times, no text: `turn.dropped`, `turn.stopped`, `turn.unfinished`
     and each of its times; and, only on a turn whose reply lost a character to the stray-script
     filter, `turn.stray_characters`, how many were taken out or rewritten, and
-    `turn.stray_scripts`, their labels as one comma-separated string, D-084);
-  - speech-to-text (audio seconds, billed seconds, model, language);
+    `turn.stray_scripts`, their labels as one comma-separated string, D-084; under
+    `stt.live_language = "classified"`, `turn.language` and `turn.language_by`, the language
+    the turn was sent in and how it was chosen, D-086);
+  - speech-to-text (audio seconds, billed seconds, model, language; under `classified`,
+    `stt.language_by` and a classified turn's `stt.language_share`, D-086);
   - the model (tokens, time to first token);
   - each tool (arguments and results after redaction);
   - the guard's decisions;
@@ -1596,7 +1619,7 @@ The app shrinks to five layers:
 
 ## 13. Open-source building blocks
 
-Accepting each licence is the owner's call (WORKING-RULES.md): the owner accepted this list on 2026-11-01 (open question 20).
+Accepting each licence is the owner's call (WORKING-RULES.md): the owner accepted this list on 2026-11-01 (open question 20), and the rows of plan 007's Block H with its downloads on 2026-11-11 (D-086).
 
 | Component | Licence | Verdict | Where | Notes |
 | --- | --- | --- | --- | --- |
@@ -1618,6 +1641,12 @@ Accepting each licence is the owner's call (WORKING-RULES.md): the owner accepte
 | num2words | LGPL-2.1 | **Depend**, unmodified, behind a `domain` function | `domain` | MSA numbers. IDs are spoken digit by digit from our own table. It is already a Pipecat base dependency (checked) |
 | sentencex | MIT | **Indirect** (Pipecat pins `==1.0.32`, checked) | — | Our own clause splitter in `domain` handles «؟» and «،», and Pipecat's TTS aggregation is set to pass text through, so text mode and audio mode split text the same way |
 | jiwer | Apache-2.0 | **Depend** | `testing` | — |
+| numpy, onnxruntime | BSD-3, MIT | **Depend** (declared by the library since plan 007's Block H; Pipecat brings them too) | `adapters` | Silero's language classifier runs on them (D-086) |
+| Silero's 95-language classifier (`deepghs/silero-lang95-onnx`) | MIT (Silero Team) | **Use**, a model file fetched by hand, pinned by commit, size and SHA-256 | `adapters` | A third party's re-upload of a model silero-vad deprecated upstream (TD-147) |
+| SpeechBrain | Apache-2.0 | **Depend**, only in the `ecapa` extra (Q15 of plan 007, D-086) | `adapters` | Loaded only inside `EcapaLanguage.load`; it puts the model folder on `sys.path`, so the folder may hold no `.py` file |
+| torch, torchaudio | PyTorch's BSD-3-style set; BSD | **Depend**, only in the `ecapa` extra, CPU wheels | `adapters` | torchaudio is in a maintenance phase; on Linux from PyTorch's CPU index (TD-146) |
+| ECAPA on VoxLingua107 (`speechbrain/lang-id-voxlingua107-ecapa`) | Apache-2.0 | **Use**, model files fetched by hand, pinned | `adapters` | Its card says it is weaker on foreign accents and on women's and children's speech |
+| What the extra brings: scipy, sympy, mpmath, networkx, jinja2, markupsafe, fsspec, filelock, setuptools, sentencepiece, joblib, cloudpickle, hyperpyyaml, ruamel.yaml, ruamel.yaml.clib, huggingface-hub, hf-xet, tqdm | BSD, MIT and Apache-2.0; tqdm MPL-2.0 AND MIT | **Indirect**, only in the `ecapa` extra | — | The library's own code may not import `huggingface_hub` (a ban in `harness.toml`): the files are fetched by hand |
 | griffe | ISC | **Depend (dev)**, from the first teammate tag | CI | The public-API snapshot |
 | eot-bench | Apache-2.0; data CC-BY-4.0 | **Depend (dev)** | evals | Its Arabic slice is not Saudi speech |
 | Pipecat evals | BSD-2 | **Learn**; maybe dev later | — | Its default judge, caller voice and transcriber do not fit Arabic |

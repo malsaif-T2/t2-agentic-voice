@@ -4,7 +4,8 @@
 every line of `history.jsonl` is read as, a line with no `kind` being `poe eval`'s
 (`runs.HistoryLine`, whose lines predate the field). `AnyLine` also takes plan 006's runs: K's
 `TalkerLine` and S's `ScenarioLine` (talker_lines.py), U's `UncertainLine` and T's
-`FirstAudioLine` (measure_lines.py), and K0's `DepthLine` (knowledge_depth_card.py). Strict as
+`FirstAudioLine` (measure_lines.py), and K0's `DepthLine` (knowledge_depth_card.py); and plan
+007's run H, a pass's `LanguagesLine` (languages_card.py). Strict as
 every history line: a held-out run's breakdowns hold no group of fewer than `HELD_OUT_MIN_ITEMS`
 items, and a secret setting is shown only as set or not set.
 """
@@ -18,6 +19,7 @@ from pydantic import Discriminator, Field, Tag, model_validator
 
 from ole5_voice.evals.action_history import ActionLine
 from ole5_voice.evals.knowledge_depth_card import DepthLine
+from ole5_voice.evals.languages_card import LanguagesLine
 from ole5_voice.evals.measure_lines import FirstAudioLine, UncertainLine
 from ole5_voice.evals.models import Commit, Model, Name, Sha256, Split
 from ole5_voice.evals.runs import HELD_OUT_MIN_ITEMS, HistoryLine, Note, Plain, Shown
@@ -185,6 +187,7 @@ AnyLine = Annotated[
     | Annotated[UncertainLine, Tag("uncertain")]
     | Annotated[FirstAudioLine, Tag("first_audio")]
     | Annotated[DepthLine, Tag("knowledge_depth")]
-    | Annotated[ActionLine, Tag("actions")],
+    | Annotated[ActionLine, Tag("actions")]
+    | Annotated[LanguagesLine, Tag("languages")],
     Discriminator(_kind),
 ]

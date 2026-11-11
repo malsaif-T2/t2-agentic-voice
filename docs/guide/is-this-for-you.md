@@ -11,7 +11,11 @@ network and your Groq account, and what comes with it.
   developer's machine until the repository has a remote for CI (TD-001). macOS is not checked.
 - **CPU only.** No GPU and no torch: Silero VAD and Smart Turn v3.2 run through ONNX Runtime, on
   model files that ship inside Pipecat's wheel, so nothing is downloaded at run time;
-  `t2v doctor` checks each file's SHA-256.
+  `t2v doctor` checks each file's SHA-256. The one exception is opt-in: the ECAPA classifier of
+  each turn's language runs on torch (CPU builds) through the library's `ecapa` extra, which
+  the base install never brings; Silero's classifier needs no torch. Either's model files are
+  fetched once by hand ([languages.md](languages.md), "Each turn's language from a
+  classifier").
 
 ## The install
 

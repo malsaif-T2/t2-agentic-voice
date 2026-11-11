@@ -176,7 +176,10 @@ has not reviewed those either.
    replies, the arguments the model wrote for a tool and what the tool gave back, never a value
    bound from the caller as such) is the only call content traces keep, under
    `tracing.include_transcripts`,
-   on by default (D-079).
+   on by default (D-079). A spoken-language classifier (`stt.live_language = "classified"`,
+   D-086) hears a turn's first seconds in memory, in the call's process, and keeps nothing:
+   the audio is sent nowhere for it, and its traces hold language codes, shares and times,
+   never audio.
    Call content is not logged at any level unless `logging.content` is on, which only `dev`
    allows, and no framework's debug log writes call content: Pipecat's loguru namespace is off
    by default, switched off before `voice` first imports Pipecat (D-031, D-035). Enforced by

@@ -16,6 +16,12 @@ was, so one request is never counted or reported twice. A transcript the filter 
 text from silence takes for no words (domain/silence.py, under `stt.no_speech_max` and
 `stt.caption_filter`, both on by default) is heard as nothing, so it is said back as nothing.
 
+A turn's language (plan 007's Block H) is the one its first request named, whatever its part,
+and how it was chosen, as that request's `Transcribing` says: in a call with a talker the held
+request decides the turn, and a reused result hands no request of the turn's own. Speech resumed
+in the hold decides it again. It is traced on the turn's speech-to-text span, with the
+verdict's share for a classified turn only, and named in the call report (report.py).
+
 A turn's time to first audio (plan 006) ends at its reply's first audible frame sent: a piece of
 the agent's audio the output tapped (`AgentAudio`) while a clause of the reply played, with a
 sample louder than `AUDIBLE_FLOOR`, so a silent first chunk is not audible (TD-090); a progress
@@ -111,18 +117,29 @@ class TurnBook:
         held, turn = isinstance(event, TurnHeld), self.turn(event.turn_id)
         turn.complete_at = event.at if held else None
         if not held:
-            turn.held_heard_at = None
+            turn.held_heard_at = turn.language_by = None
         return held
 
     def transcribing(self, event: Transcribing) -> None:
-        """A request of the turn went: counted; for its own transcript (the `turn` part), its
-        span opened too."""
+        """A request of the turn went: counted, and the first names the turn's language (the
+        module's docstring); for its own transcript (the `turn` part), its span opened too."""
         self._usage.transcribing(event)
+        turn = self.turn(event.turn_id)
+        if turn.language_by is None:
+            turn.language, turn.language_by = event.language or self._listen, event.language_by
+            turn.language_share = event.share
         if event.part != "turn":
             return
-        self.turn(event.turn_id).requested = True
+        turn.requested = True
+        by = None if turn.language_by == "session" else turn.language_by
+        share = turn.language_share if by == "classified" else None
         self._trace.stt_sent(
-            event.turn_id, model=self._model, language=self._listen, audio_seconds=event.audio_s
+            event.turn_id,
+            model=self._model,
+            language=turn.language,
+            audio_seconds=event.audio_s,
+            by=by,
+            share=share,
         )
 
     def transcribed(self, event: Transcribed) -> tuple[TurnLog, HeardWords | None]:

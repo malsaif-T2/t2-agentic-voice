@@ -36,6 +36,7 @@ from t2_agentic_voice.voice.session.io import SYSTEM_CLOCK
 
 from tests.t2_agentic_voice.api.runtime_support import (
     AGENT,
+    FakeIdentity,
     FakePhraseCache,
     FakeUsedTokens,
     Harness,
@@ -45,7 +46,8 @@ from tests.t2_agentic_voice.api.runtime_support import (
     serving,
 )
 from tests.t2_agentic_voice.core.test_settings_checks import CHECKS
-from tests.t2_agentic_voice.fakes import FakeCalls
+from tests.t2_agentic_voice.fakes import FakeCalls, FakeSpeechToText, FakeTextToSpeech
+from tests.t2_agentic_voice.language_fakes import FakeLanguageClassifier
 
 pytestmark = pytest.mark.usefixtures("patched_stores")
 KEY = "gsk_made-up-key-0123456789abcdefghijklmnop"
@@ -233,3 +235,77 @@ def test_a_failed_sweep_is_logged_and_the_next_one_runs(
     asyncio.run(scene())
     failed = [r for r in caplog.records if r.getMessage() == "sweep_failed"]
     assert len(failed) == 2 and all(r.levelno == logging.ERROR for r in failed)
+
+
+def _classifying(
+    tmp_path: Path, classifier: Any, *, agent: Any = AGENT, live: str = "classified"
+) -> tuple[VoiceRuntime, list[dict[str, Any]]]:
+    """A runtime of `agent` whose providers hold `classifier`, under `stt.live_language` `live`
+    (plan 007's Block H), and the arguments its calls were built with."""
+    from t2_agentic_voice.core.settings.stt import SttSettings
+
+    built: list[dict[str, Any]] = []
+
+    def calls(**given: Any) -> FakeCalls:
+        built.append(given)
+        return FakeCalls()
+
+    settings = dev_settings(tmp_path, stt=SttSettings(live_language=live))  # type: ignore[arg-type]
+    providers = Providers(stt=FakeSpeechToText(), tts=FakeTextToSpeech(), classifier=classifier)
+    runtime = VoiceRuntime(
+        agent, settings=settings, identity=FakeIdentity(), providers=providers, _calls=calls
+    )
+    return runtime, built
+
+
+def _app(runtime: VoiceRuntime) -> Any:
+    from fastapi import FastAPI
+
+    app = FastAPI()
+    app.include_router(runtime.router(), prefix="/voice")
+    return app
+
+
+def test_the_classifier_is_loaded_at_start_with_the_agents_codes_and_closed_once(
+    tmp_path: Path,
+) -> None:
+    classifier = FakeLanguageClassifier()
+    runtime, built = _classifying(tmp_path, classifier)
+
+    async def scene() -> None:
+        async with serving(_app(runtime)):
+            assert classifier.loaded == [("en", "ar")] and classifier.closed == 0
+
+    asyncio.run(scene())
+    assert classifier.closed == 1
+    (given,) = built
+    assert given["classifier"] is classifier
+
+
+def test_no_classifier_runs_under_session_nor_for_an_agent_of_one_code(tmp_path: Path) -> None:
+    english = AGENT.model_copy(update={"languages": AGENT.languages[:1]})
+    for agent, live in ((AGENT, "session"), (english, "classified")):
+        classifier = FakeLanguageClassifier()
+        runtime, built = _classifying(tmp_path / live, classifier, agent=agent, live=live)
+
+        async def scene(app: Any) -> None:
+            async with serving(app):
+                pass
+
+        asyncio.run(scene(_app(runtime)))
+        assert classifier.loaded == [] and classifier.closed == 1
+        assert "classifier" not in built[0]
+
+
+def test_classified_with_no_classifier_dir_is_refused_at_start_with_a_fix(tmp_path: Path) -> None:
+    from t2_agentic_voice.adapters.silero_language import SileroLanguage
+
+    runtime, built = _classifying(tmp_path, SileroLanguage(None, threads=2))
+
+    async def scene() -> None:
+        with pytest.raises(ConfigurationError, match=r"stt\.classifier_dir is not set.*FIX"):
+            async with serving(_app(runtime)):
+                pass  # the start fails first
+
+    asyncio.run(scene())
+    assert built == []  # no call was built

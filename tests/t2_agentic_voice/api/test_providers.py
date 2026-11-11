@@ -39,6 +39,7 @@ from tests.t2_agentic_voice.fakes import (
     FakeSpeechToText,
     FakeTextToSpeech,
 )
+from tests.t2_agentic_voice.language_fakes import FakeLanguageClassifier
 from tests.t2_agentic_voice.session_fakes import AGENT as ECHO
 
 pytestmark = pytest.mark.usefixtures("patched_stores")
@@ -184,3 +185,42 @@ def test_the_runtime_hands_its_calls_the_talkers_and_closes_the_chat_model(
     assert given["chat"] is chat  # the model of an uncertain overlap, D-069
     talker = given["talker"](TalkerCall(call_id="c", caller=Caller(subject="s"), language="en"), 0)
     assert isinstance(talker, ChatTalker) and talker.model is chat
+
+
+def test_the_providers_build_a_classifier_only_under_classified(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    """Plan 007's Block H: Silero's by default, ECAPA's when named, each on the settings'
+    folder and threads, built with no IO (its files are checked when the runtime loads it);
+    `replace` keeps it, or puts another in its place."""
+    from t2_agentic_voice.adapters.ecapa_language import EcapaLanguage
+    from t2_agentic_voice.adapters.silero_language import SileroLanguage
+    from t2_agentic_voice.core.settings.stt import SttSettings
+
+    monkeypatch.setattr(groq_tts, "GroqTTS", _Tts)
+    groq = GroqSettings(api_key=SecretStr(KEY))
+    plain = Providers.from_settings(dev_settings(tmp_path, groq=groq))
+    assert plain.classifier is None
+    folder = tmp_path / "models"
+    for name, kind in (("silero", SileroLanguage), ("ecapa", EcapaLanguage)):
+        stt = SttSettings(
+            live_language="classified",
+            classifier=name,  # type: ignore[arg-type]
+            classifier_dir=folder,
+            classifier_threads=3,
+        )
+        providers = Providers.from_settings(dev_settings(tmp_path, groq=groq, stt=stt))
+        built = providers.classifier
+        assert isinstance(built, kind) and (built.folder, built.threads) == (folder, 3)
+        assert providers.replace().classifier is built
+        other = FakeLanguageClassifier()
+        replaced = providers.replace(classifier=other)
+        assert replaced.classifier is other and replaced.stt is providers.stt
+        _closed(providers)
+    _closed(plain)
+
+
+def _closed(providers: Providers) -> None:
+    asyncio.run(providers.stt.aclose())
+    if providers.chat is not None:
+        asyncio.run(providers.chat.aclose())

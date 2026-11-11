@@ -9,7 +9,9 @@
   how many words each language's prompt kept. `evals/terms.toml` stays the list term recall is
   scored on, never the prompt's source. **W0**, without it: no prompt.
 - **X**, `--language-hint ar`: every variant is sent as Arabic, an English item's too, as an
-  Arabic call sends it.
+  Arabic call sends it; and run H's baseline (c), `--language-hint en`, every variant as English,
+  as an English call sends it. With `--language-from` (language_arms.py) the hint names the
+  call's language instead, and the arm names each variant's.
 
 Each is recorded, as `run.prompt` (the factory, the agent's name and version, the digest of the
 prompts sent and each one's counts) and `run.language_hint`.
@@ -49,9 +51,10 @@ class AnswerOptions:
 
 
 def answer_options(args: argparse.Namespace, load: Loader = load_factory) -> AnswerOptions:
-    """The arms `--language-hint ar` and `--prompt-agent` choose; the run's refusal, before
-    anything is sent, for an agent factory that is not there or gives no agent."""
-    language = "ar" if args.language_hint == "ar" else None
+    """The arms `--language-hint ar` (or `en`) and `--prompt-agent` choose; the run's refusal,
+    before anything is sent, for an agent factory that is not there or gives no agent."""
+    every = args.language_hint in ("ar", "en") and getattr(args, "language_from", None) is None
+    language = args.language_hint if every else None
     spec: str | None = args.prompt_agent
     if spec is None:
         return AnswerOptions(language=language)

@@ -22,6 +22,15 @@ process on it stops at its start, with a FIX line.
   runtime's lifespan (FastAPI merges it). An app that mounts the router's app as a
   sub-application combines the lifespans itself with `combine_lifespans` (from `server`).
 
+**Each turn's language at start.** Under `stt.live_language = "classified"`, the runtime
+builds the classifier `stt.classifier` names (`Providers.from_settings`) and loads it at its
+start, off the event loop, once a process, with the agent's languages, before any call: it
+refuses to start, with a FIX, when `stt.classifier_dir` is unset, a model file is missing or
+changed, or `ecapa` runs without the library's `ecapa` extra. ECAPA's load takes seconds and
+its model stays in the process's memory. One classification runs at a time in a process, so
+the calls of one runtime share it (TD-145). [languages.md](languages.md) says how to fetch
+the files.
+
 ### The sidecar
 
 ```bash

@@ -23,6 +23,18 @@ members = ["packages/*", "apps/*", "examples/*"]
 t2-agentic-voice = { workspace = true }
 ole5-voice-agent = { workspace = true }
 t2-agentic-voice-minimal-example = { workspace = true }
+# On Linux, torch and torchaudio (the library's `ecapa` extra, plan 007's Block H) come from
+# PyTorch's CPU index, whose wheels bring no CUDA package, so this workspace's lock holds none
+# (tests/harness/test_install.py). uv reads an index only inside its own workspace: a team that
+# adds the extra on Linux puts the same lines in its own pyproject.toml (the guide's languages
+# page). Elsewhere PyPI's wheels are CPU builds already.
+torch = [{ index = "pytorch-cpu", marker = "sys_platform == 'linux'" }]
+torchaudio = [{ index = "pytorch-cpu", marker = "sys_platform == 'linux'" }]
+
+[[tool.uv.index]]
+name = "pytorch-cpu"
+url = "https://download.pytorch.org/whl/cpu"
+explicit = true
 
 [dependency-groups]
 dev = [
@@ -33,6 +45,9 @@ dev = [
     "pytest>=9.1.1",
     "pytest-cov>=7.1.0",
     "ruff>=0.16.9",
+]
+language-id = [
+    "t2-agentic-voice[ecapa]",
 ]
 
 # --------------------------------------------------------------------------- tasks
@@ -118,6 +133,10 @@ cmd = "python -m ole5_voice.evals.overlap"
 [tool.poe.tasks.eval-timing]
 help = "Time each step of an echo call on the golden set's dev paused requests (spends: model, timeout, prices and cap on its command line)"
 cmd = "python -m ole5_voice.evals.timing"
+
+[tool.poe.tasks.eval-languages]
+help = "Run H's H1: each turn's language from a classifier on the golden set, offline and with no spend (`--classifier off`, `silero` or `ecapa`); `--read` gives condition 4 across the passes"
+cmd = "python -m ole5_voice.evals.languages_run"
 
 # Runs K and S (plan 006's registration): the talker's model, retrieval and answers, and the
 # scripted calls, with the judge and the owner's check of it.
@@ -209,6 +228,12 @@ explicit_package_bases = true
 # loguru and PyJWT do.
 [[tool.mypy.overrides]]
 module = ["num2words", "num2words.*"]
+ignore_missing_imports = true
+
+# onnxruntime 1.31.1 ships no types either (no py.typed in its wheel): Silero's spoken-language
+# classifier opens its session through it (adapters/silero_language.py, plan 007's Block H).
+[[tool.mypy.overrides]]
+module = ["onnxruntime", "onnxruntime.*"]
 ignore_missing_imports = true
 
 [tool.pydantic-mypy]

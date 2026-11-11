@@ -1,7 +1,8 @@
 # Languages: the call's, each reply's, and the words in between
 
 The library speaks Saudi Arabic, Modern Standard Arabic (MSA) and English. This page says which
-language a call is held in, which language each reply is in, how Saudi Arabic and MSA are told
+language a call is held in and each turn is heard in, which language each reply is in, how
+Saudi Arabic and MSA are told
 apart, what happens to an English product name inside an Arabic sentence, which scripts a reply
 may hold, how numbers are said, and what the agent's vocabulary is for. How to word what the
 agent says is [writing-for-voice.md](writing-for-voice.md).
@@ -33,9 +34,120 @@ notices the session tells the caller, and what each turn's transcription is told
 A call tells Whisper its language (`stt.live_language = "session"`, the default, D-066): on
 Ole5's golden set, letting Whisper detect it instead got 11 items worse and none better, the
 Saudi items, listening sounds and confirmations most. The cost is that an English sentence in an
-Arabic call is transcribed as Arabic speech. Whether English questions hold up
-inside an Arabic call is measured before it is promised (plan 006's run X, on Ole5's golden
-set); until then, a caller who will ask in English picks English in the client.
+Arabic call is transcribed as Arabic speech: on Ole5's golden set, its English items were heard
+right 0.813 of the time sent as English and 0.027 sent as Arabic (plan 006's run X). A third
+value sends each turn in the language a classifier heard (next section); whether it holds up is
+measured before it is promised (plan 007's run H). Until then, a caller who will ask in English
+picks English in the client.
+
+## Each turn's language from a classifier
+
+`stt.live_language = "classified"` (D-086, provisional) sends each turn to Whisper in the
+language a spoken-language classifier heard in it, chosen among the agent's languages, so an
+English question in an Arabic call can be written as English. It is off by default: the default
+stays `session` until a registered measurement keeps it (GP-18; plan 007's run H, on Ole5's
+golden set, which has not run yet), and nothing here is promised before then. Turn it on only
+when your callers change language within a call, and measure it on your own callers'
+recordings first ([evaluation.md](evaluation.md)). An agent of one language runs no classifier.
+
+**The rule.** Once a turn holds `stt.classifier_from_s` (2.0) seconds of audio from where the
+speech detector heard its speech begin (pauses inside the turn count), those seconds go to the
+classifier, once a turn, while the caller goes on speaking. The turn's language is decided when
+its 600 ms hold begins ([concepts.md](concepts.md), "The end of a turn"), or at its end when
+there is no hold, and the request never waits:
+
+1. **short**: the turn's speech had not reached 2.0 s;
+2. **late**: the classifier has not answered yet;
+3. **busy**: the classifier was hearing another turn (one at a time in a process);
+4. **failed**: it raised, or its answer did not parse;
+5. **unsure**: its best share is under `stt.classifier_min_share` (0.7);
+6. else **classified**: the language of its best share.
+
+Every case but the last keeps the current language, which only a classified turn moves: the
+call's own at first, then the language last classified. So after an English question, the short
+"yes" to its English read-back goes to Whisper as English. A turn that overlaps the agent's
+speech keeps the current language. The heard words, the reply's language and the read-back's
+yes words follow the language the turn was sent in, as they follow the call's under `session`.
+When a yes is heard in another language than the read-back's, the model's check of it reads the
+no words and the change markers of every language the agent speaks ([safety.md](safety.md),
+"The model check: words the lists cannot place"), so
+"yes, but change the date" over an Arabic read-back is a change, never a yes.
+
+**The two classifiers** (the `classifiers` facade; any other is passed in code,
+`Providers.from_settings(settings).replace(classifier=...)`):
+
+| `stt.classifier` | Model | Runs on | Install |
+| --- | --- | --- | --- |
+| `silero` (the default) | Silero's 95-language classifier | ONNX Runtime, already in the base install | nothing more |
+| `ecapa` | ECAPA on VoxLingua107, through SpeechBrain | torch, on the CPU | the library's `ecapa` extra |
+
+Both run in the call's process, on the CPU, on `stt.classifier_threads` (2) threads: no audio is
+sent anywhere for them, and they keep none. On the developer's laptop, on 2.0 s clips at 2
+threads (the download step's smoke, 2026-11-11), Silero took about 7 ms and ECAPA about 250 ms,
+ECAPA's CPU time two to three times its wall time. ECAPA's load takes seconds at the runtime's start (5 to 20 s on the
+developer's laptop, cold).
+
+**The model files** are never downloaded at run time. Fetch them once by hand into a folder of
+your own, outside every repository and `var/`, one folder a model (on Windows, for example
+`%LOCALAPPDATA%\t2-agentic-voice\models\speechbrain__lang-id-voxlingua107-ecapa\`), and set
+`T2V_STT__CLASSIFIER_DIR` to the folder of the classifier you run. Each file comes from
+`https://huggingface.co/<repository>/resolve/<commit>/<file>`. The runtime checks every file's
+size and SHA-256 at its start and refuses to start, with a FIX, when one is missing or changed;
+`t2v doctor` checks them too.
+
+- ECAPA, `speechbrain/lang-id-voxlingua107-ecapa` at commit
+  `0253049ae131d6a4be1c4f0d8b0ff483a0f8c8e9` (Apache-2.0). Keep no `.py` file in its folder:
+  SpeechBrain puts the folder on `sys.path`, and the runtime refuses one that holds a `.py` file.
+
+  | File | Bytes | SHA-256 |
+  | --- | --- | --- |
+  | `embedding_model.ckpt` | 84,474,355 | `ab750d5c06d713477045fa798fab5d33e959dbc0dfe4de510a9a47844c79a19a` |
+  | `classifier.ckpt` | 762,555 | `a50d9024ff58d317031c9787d4c6c614d454a87a8ef32f9d36338cd3ff57adbc` |
+  | `normalizer.ckpt` | 1,063 | `c369e01dfa2e0d84c6b116f33c7b94f1fe28c061642086538e93cde3d97c26ef` |
+  | `hyperparams.yaml` | 1,519 | `88fec9791a8416a152fb10834327e18d38e5bf7a351e9b714e08cdc4af05de6f` |
+  | `label_encoder.txt` | 2,204 | `9f566d83c4f19168be4a0bf86c0c7dac7d3264a95105bcbf33a7c32b83ccc17f` |
+  | `config.json` | 51 | `a861f8fbc2e23c0fc0823b3c0fd2b3d1e839563c2d4e3f9663a1237cce62bc89` |
+
+- Silero, `deepghs/silero-lang95-onnx` at commit `bf21c4f59503dc182ab4d69328889b93c51bf70f`
+  (MIT, Silero Team): a third party's copy of the file silero-vad v4.0 loads, whether it equals
+  Silero's own not yet checked (TD-147).
+
+  | File | Bytes | SHA-256 |
+  | --- | --- | --- |
+  | `lang_classifier_95.onnx` | 16,972,591 | `12a91f706ad6ca5a5eba4e84a96739d077e56f121ec71db86a752f62e218a227` |
+  | `lang_dict_95.json` | 2,183 | `70b62ef4939d712b960a8ed8aaea9e0d7117b10877e917a97cc4e8bbb7bd340f` |
+
+**The `ecapa` extra.** Add the library with it, `uv add "t2-agentic-voice[ecapa] @ git+..."`
+(the install line of [quickstart.md](quickstart.md) with `[ecapa]` after the name); in this
+repository, `uv sync --group language-id`. It brings SpeechBrain, torch and torchaudio (CPU
+builds) and about 18 packages they need, well over a gigabyte installed. On Linux, PyPI's torch
+wheel brings CUDA packages, so take torch and torchaudio from PyTorch's CPU index with these
+lines in your own `pyproject.toml` (uv reads an index only inside the workspace that names it);
+`t2v doctor` reports a CUDA or `triton` package it finds beside torch:
+
+```toml
+[tool.uv.sources]
+torch = [{ index = "pytorch-cpu", marker = "sys_platform == 'linux'" }]
+torchaudio = [{ index = "pytorch-cpu", marker = "sys_platform == 'linux'" }]
+
+[[tool.uv.index]]
+name = "pytorch-cpu"
+url = "https://download.pytorch.org/whl/cpu"
+explicit = true
+```
+
+Without the extra, `stt.classifier = "ecapa"` is refused at the runtime's start, its FIX naming
+the extra. An exact `uv sync` without it removes it again.
+
+**What a team sees.** Each turn's speech-to-text span names the language the turn was sent in
+and how it was chosen (`stt.language_by`), and a classified turn's share
+([tracing-and-logs.md](tracing-and-logs.md)); the call report's `TurnRecord.language` is the
+tag of that language and `TurnRecord.language_by` how it was chosen (`session` under `session`).
+What is left, said plainly: a turn under 2.0 s keeps the current language, so a short «لا» over
+an English read-back, after an English turn moved the language, goes to Whisper as English; a
+long Arabic turn the classifier wrongly gives English 0.7 is sent as English; and with several
+calls in one process, a turn that finds the classifier busy keeps the current language
+(TD-145).
 
 ## Each reply's language
 

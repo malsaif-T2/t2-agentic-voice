@@ -22,7 +22,10 @@ other words, or on the agent's own lines heard back, it is asked again. The rule
 the read-back's lines (`said_lines`) and whether the read-back, and a line that asked it
 again, were still heard as the turn's speech began, each reply playing or within its tail
 after it ended (read_back.py's `over_read_back` and `over_follow_up`), so its echo rail reads
-only a line the caller was hearing.
+only a line the caller was hearing; and, for words heard in another language than the
+read-back's, the no words and change markers of every language the agent speaks
+(domain/yes_words.py's `rails_for`; plan 007's Block H), so an English "yes, but ..." over an
+Arabic read-back is a correction.
 A newer turn that answers the read-back cancels a request still in flight (`cancel`, which
 yes_turns.py calls first), and so do the client's stop (`cancel`) and the call's end: each
 decides nothing.
@@ -61,8 +64,10 @@ from t2_agentic_voice.domain.yes_rule import (
     YesOutcome,
     judged,
 )
+from t2_agentic_voice.domain.yes_words import ConsentWords, rails_for
 from t2_agentic_voice.voice.session.books import CallBooks
 from t2_agentic_voice.voice.session.io import CallSetup
+from t2_agentic_voice.voice.session.open_reply import language_of
 from t2_agentic_voice.voice.session.read_back import Confirming, ReadBack
 from t2_agentic_voice.voice.session.report import TurnLog
 from t2_agentic_voice.voice.session.scope import CancelScope
@@ -190,6 +195,12 @@ class YesAsks:
             outcome = read.result()
         await self._guarded(_STEP, partial(self._landed, ask, outcome))
 
+    def _rails(self, heard: HeardWords, words: ConsentWords, plan: ReadBackPlan) -> ConsentWords:
+        """The lists `judged`'s rails read for `heard` (the module's docstring)."""
+        code = language_of(self._setup, plan.language).primary
+        spoken = [each.primary for each in self._setup.agent.languages]
+        return rails_for(words, heard=heard.language, read_back=code, spoken=spoken)
+
     async def _read(self, request: ChatRequest) -> Outcome:
         """The model's whole answer, read as one word; `failed` for its failure, logged by kind.
         Never raises (the scope would log its own line) but for a cancel."""
@@ -239,14 +250,16 @@ class YesAsks:
                 over_read_back=confirming.over_read_back(began),
                 over_asked_again=confirming.over_follow_up(began),
             )
+            words = confirming.words(plan)
             verdict = judged(
                 _word(outcome),
                 ask.heard,
                 ask.receipt,
                 current=self._receipt(began),
-                words=confirming.words(plan),
+                words=words,
                 env=self._setup.settings.env,
                 said=said,
+                rails=self._rails(ask.heard, words, plan),
             )
         except Exception as error:  # a bug: never a yes
             failure = type(error).__qualname__

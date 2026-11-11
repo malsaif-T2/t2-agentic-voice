@@ -334,11 +334,14 @@ def judged(
     words: ConsentWords,
     env: Environment,
     said: SaidLines,
+    rails: ConsentWords | None = None,
 ) -> YesOutcome:
     """What a chat model's `word` on the turn's own `heard` words makes of the read-back
     `receipt` stands for (the module's docstring): `receipt` built when the words reached the
     rule, `current` as the word lands (None when no read-back is current), `said` the read-back's
-    lines as the agent said them and whether each was still heard as the speech began. A
+    lines as the agent said them and whether each was still heard as the speech began, `rails`
+    the lists whose no words and change markers the rails read (`words` unless given; every
+    language's for words heard in another: domain/yes_words.py's `rails_for`). A
     receipt that no longer stands is asked again; every other answer of `decide`'s that is not
     `askable` stands as it is, so a model's word never confirms what the lists refused; a
     missing word (None: the request failed or timed out) is declined on words that hold a no
@@ -355,17 +358,18 @@ def judged(
     over = ended is None or began < ended
     echo = _echoes(text, _playing(said, over=over))
     kinds = _kinds(text, words)
+    refused = "no" in _kinds(text, rails or words)
     if word is None:  # no word: a no word declines, unless it is the agent's echo
-        return Declined(words=heard.text) if "no" in kinds and not echo else AskAgain()
+        return Declined(words=heard.text) if refused and not echo else AskAgain()
     if word not in ("send", "yes", "no", "change"):
         return AskAgain()
     if word in ("no", "change"):  # the agent's echo never cancels or changes a read-back
         if echo:
             return AskAgain()
         return Declined(words=heard.text) if word == "no" else Correction(words=heard.text)
-    if "no" in kinds or any(mark in heard.text for mark in QUESTION_MARKS):
+    if refused or any(mark in heard.text for mark in QUESTION_MARKS):
         return AskAgain()
-    if _marked(text, words.change):
+    if _marked(text, (rails or words).change):
         return Correction(words=heard.text)
     if echo:
         return AskAgain()

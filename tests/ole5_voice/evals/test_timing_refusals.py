@@ -47,6 +47,11 @@ def test_a_run_refuses_settings_the_registration_fixes_and_a_missing_price(
     assert timing.main(setup.argv(), parts=setup.parts()) == 2
     assert "tts.trim_silence false" in capsys.readouterr().out
     monkeypatch.delenv("T2V_TTS__TRIM_SILENCE")
+    for live in ("auto", "classified"):  # every turn's request names the session's language
+        monkeypatch.setenv("T2V_STT__LIVE_LANGUAGE", live)
+        assert timing.main(setup.argv(), parts=setup.parts()) == 2
+        assert "stt.live_language session" in capsys.readouterr().out
+    monkeypatch.delenv("T2V_STT__LIVE_LANGUAGE")
     argv = setup.argv()
     del argv[argv.index(f"{ENGLISH}=22") - 1 : argv.index(f"{ENGLISH}=22") + 1]
     assert timing.main(argv, parts=setup.parts()) == 2
