@@ -1852,6 +1852,10 @@ they set a figure of their own.
   again"; and the measurement's check of the judge, by an agent blind to its verdicts, with
   its prompt reworded for negative facts if that is where it goes wrong) and asked "Make the
   three fixes below, then run held-out?", the owner answered "Yes, all three".
+- 2026-11-11, after run A's held-out: asked "Approve Blocks H and I with my recommendations for
+  Q15 to Q25 and the downloads?", the owner answered "Approve both". So Q15 to Q25 are settled
+  as the agent recommended, (a) each, and the downloads below are approved as listed: the
+  language-id group's packages, torch CPU only, and the two models pinned by commit and hash.
 
 - **Q1. M4 and the base of this work.** *Settled 2026-11-09: (a).* Not necessary: M5 can branch from M4's branch. Options:
   (a) close M4 first, its live calls moved to M7's rehearsal and its missed targets recorded, and
@@ -1924,7 +1928,7 @@ they set a figure of their own.
   nothing but «Outlook重启» loses "Outlook" too, and each word is held until it ends. **The agent
   recommends (a):** it is the ruling's words, it never loses a word of the agent's scripts, and it
   holds nothing back.
-- **Q15. Where torch may live.** *Open.* ECAPA runs on PyTorch through SpeechBrain; the library installs
+- **Q15. Where torch may live.** *Settled 2026-11-11: (a).* ECAPA runs on PyTorch through SpeechBrain; the library installs
   no torch today (the torch check), and the owner chose one install with no extras (D-018).
   Silero's classifier needs nothing new. Options: (a) an optional extra of the library,
   `t2-agentic-voice[ecapa]` (SpeechBrain 1.1.2, torch 2.15.0, torchaudio 2.11.1 and the
@@ -1940,43 +1944,43 @@ they set a figure of their own.
   licences, the owner's call by the design's 13: SpeechBrain Apache-2.0, PyTorch's BSD-3-style
   set, torchaudio BSD, the rest BSD, MIT and Apache-2.0 but tqdm's MPL-2.0 AND MIT, the ECAPA
   model Apache-2.0, Silero's classifier MIT.
-- **Q16. Where the model files are kept.** *Open.* Options: (a) a folder `stt.classifier_dir` names, with
+- **Q16. Where the model files are kept.** *Settled 2026-11-11: (a).* Options: (a) a folder `stt.classifier_dir` names, with
   no default, outside every repository and `var/` (on the laptop, for example
   `%LOCALAPPDATA%\t2-agentic-voice\models\`), fetched once by hand and checked by SHA-256 at each
   start and by `t2v doctor`; (b) under `var/`, which git ignores, as the owner allows by name;
   (c) SpeechBrain's and Hugging Face's own caches, filled on first use, which reaches the network
   at a server's start, a host the design's 11 does not list. **The agent recommends (a).**
-- **Q17. The language a short or unsure turn keeps.** *Open.* Options: (a) the language the call's last
+- **Q17. The language a short or unsure turn keeps.** *Settled 2026-11-11: (a).* Options: (a) the language the call's last
   confidently classified turn was sent in, the call's own until one is: after an English
   question, the "yes" to its English read-back goes to Whisper as English; (b) always the call's
   language at join, so that "yes" goes as Arabic and the English read-back's yes words do not
   match it. **The agent recommends (a):** the owner asked that a call can change language
   mid-call, and the yes rule reads the read-back's language.
-- **Q18. A verdict not in when the turn's request goes.** *Open.* Options: (a) the request never waits:
+- **Q18. A verdict not in when the turn's request goes.** *Settled 2026-11-11: (a).* Options: (a) the request never waits:
   the turn keeps the current language, counted `late`; (b) it waits up to a bound, for example
   300 ms, every wait added to the time to first audio. **The agent recommends (a):** run H
   records how late each late verdict was, so a bound can be weighed on numbers later.
-- **Q19. What a kept arm changes.** *Open.* The library's default cannot need files no install brings.
+- **Q19. What a kept arm changes.** *Settled 2026-11-11: (a).* The library's default cannot need files no install brings.
   Options: (a) the library's default stays `session`; a kept arm becomes the setting Ole5's live
   calls run with, which the owner sets in their `.env` (`T2V_STT__LIVE_LANGUAGE=classified` and
   the classifier's keys), recorded in Block H's decision, the guide saying when a team should; (b) the
   library's default moves to `classified` with Silero, falling back to `session` with a warning
   when the files are missing. **The agent recommends (a):** a default that changes with the files
   on a disk is not one a measurement can stand behind.
-- **Q20. The rule's two numbers.** *Open.* Options: (a) one registered pair (`from_s` 2.0 s,
+- **Q20. The rule's two numbers.** *Settled 2026-11-11: (a).* Options: (a) one registered pair (`from_s` 2.0 s,
   `min_share` 0.7), not tuned on dev, which has 75 English clips of one speaker; a failure on dev
   is reported, and another pair is a dated amendment before any further run; (b) a grid on dev
   with no spend (`from_s` 1.5 to 3.0 s, `min_share` 0.6 to 0.9), the best pair confirmed on
   held-out ("Fitted, then fresh"). **The agent recommends (a):** fewer runs, and nothing fitted to
   one speaker's 75 clips.
-- **Q21. What the clause cache keeps.** *Open.* Options: (a) every clause a talker call speaks: the
+- **Q21. What the clause cache keeps.** *Settled 2026-11-11: (a).* Options: (a) every clause a talker call speaks: the
   talker's clauses, a passage it reads, an action's read-back, its sending line and its outcome
   with a ticket number; never the echo's words; (b) the talker's own clauses only, not an
   action's lines, which hold a caller's details and seldom repeat; (c) as (a), but no clause that
   holds an ID or an email. **The agent recommends (a),** the owner's "cache everything we can":
   the same text is the same audio, and with the repeat's fix a reply said again within a call,
   an outcome line among them, is a hit.
-- **Q22. How the cache is measured.** *Open.* Options: (a) one run T arm, the cache on and cleared after
+- **Q22. How the cache is measured.** *Settled 2026-11-11: (a).* Options: (a) one run T arm, the cache on and cleared after
   the smoke call, its mechanism read directly (each hit is a request not sent; each look-up and
   read timed), about $0.60 and the time of a T dev run; (b) two arms at one commit, the cache off
   and on, the time to first audio compared by path, about $1.20 and twice the time; (c) no run
@@ -1984,19 +1988,19 @@ they set a figure of their own.
   percent of the clauses and the chat model's time varies by hundreds of milliseconds between
   runs, so a second arm would most likely answer nothing ("useless runs"); (a)'s fifth condition
   still reads the time to first audio against T0's targets.
-- **Q23. Where the cache lives and how big it grows.** *Open.* Options: (a)
+- **Q23. Where the cache lives and how big it grows.** *Settled 2026-11-11: (a).* Options: (a)
   `storage.var_dir/<agent>/clauses`, beside the phrase cache, no folder setting, at most 512 MB
   (`tts.clause_cache_mb`), the clauses played longest ago removed past it; (b) the same with
   128 MB; (c) a folder setting of its own; (d) no bound. **The agent recommends (a):** about
   3,000 clauses (the agent's estimate), and the short openers that repeat stay, since each hit
   keeps its clause; (d) would grow by about 0.17 MB for nearly every clause said.
-- **Q24. The key's "speaking rules' version".** *Open.* Options: (a) none: the key holds the text sent,
+- **Q24. The key's "speaking rules' version".** *Settled 2026-11-11: (a).* Options: (a) none: the key holds the text sent,
   after the speaking rules and the pronunciation map, so a change that alters a clause's words
   gives it a new key; the language, model, voice, adapter and trimming are in it too; (b) a
   version constant in `domain/text/speaking.py`, hashed into every key and raised by hand, which
   empties the cache at every raise. **The agent recommends (a):** the roadmap lists the version,
   but no such version exists in the code, and the text sent already carries what it would mark.
-- **Q25. Whose default run I's keep rule moves.** *Open.* Options: (a) the library's:
+- **Q25. Whose default run I's keep rule moves.** *Settled 2026-11-11: (a).* Options: (a) the library's:
   `tts.cache_clauses` becomes True for every team; held-out is not run, since nothing is fitted;
   (b) Ole5's only: the library's default stays off and Ole5 turns it on. **The agent recommends
   (a):** the bound caps the disk, an echo agent never has the cache, and a team can turn it off.
@@ -2079,6 +2083,6 @@ they set a figure of their own.
 - Rule on the yes words that are whole golden items, and on the read-back's edges (done
   2026-11-10, "The owner's decisions").
 - Approve Block G and answer Q10 to Q14 before run A (done 2026-11-11); approve Blocks H and I,
-  Q15 to Q25 and the downloads before they are built, after run A.
+  Q15 to Q25 and the downloads before they are built, after run A (done 2026-11-11).
 - Hold the live calls, against the mock ticket system, on the laptop's speakers and the wired
   headset (about 20 minutes).
