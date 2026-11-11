@@ -12,8 +12,9 @@ which at Groq's published 10 requests a minute would burst past it. An echo send
 sent as the provider's text (`provider_text`, never longer) and captioned as said; a clause with
 no letter or digit says nothing and is never sent (TD-060). A reply said again at the caller's
 request (`again`) says each of its clauses as it did: a fixed phrase from the phrase audio, the
-rest through text-to-speech. No text built from heard words is ever asked of the phrase audio
-(invariant 8).
+rest through text-to-speech as each was first sent, in its own language, so a clause the clause
+cache kept (a talker's, never the echo's words) is found again. No text built from heard words is
+ever asked of the phrase audio (invariant 8).
 """
 
 from __future__ import annotations
@@ -23,6 +24,7 @@ from dataclasses import dataclass, replace
 
 from t2_agentic_voice.core.events import TurnId
 from t2_agentic_voice.core.logging import get_logger
+from t2_agentic_voice.core.settings.tts import LanguageTag
 from t2_agentic_voice.core.yes_inputs import HeardWords
 from t2_agentic_voice.domain.declaration import Language, VoiceAgent
 from t2_agentic_voice.domain.ports.text_to_speech import AudioChunk
@@ -132,26 +134,27 @@ def echo(setup: CallSetup, heard: HeardWords, *, reply_id: ReplyId) -> list[Line
 
 def again(
     setup: CallSetup,
-    clauses: Sequence[tuple[str, bool]],
+    clauses: Sequence[tuple[str, str, LanguageTag | None, bool]],
     *,
     reply_id: ReplyId,
     turn_id: TurnId | None,
 ) -> list[Line]:
     """A reply said again at the caller's request, as reply `reply_id` answering `turn_id`: each
-    of its `clauses` in order, given as its caption and whether it was a fixed phrase. A fixed
-    phrase plays from the phrase audio as `fixed` plays it (none, logged, when the phrase audio
-    lacks it); any other clause, its caption as said, goes through text-to-speech again as the
-    provider's text, so no heard words reach the phrase audio (invariant 8)."""
+    of its `clauses` in order, given as its caption, the text its request sent, its language
+    (None: the call's) and whether it was a fixed phrase. A fixed phrase plays from the phrase
+    audio as `fixed` plays it (none, logged, when the phrase audio lacks it); any other clause
+    sends the text it first sent, in its own language, captioned as before, so no heard words
+    reach the phrase audio (invariant 8)."""
     tag = setup.language.tag
     lines: list[Line] = []
-    for caption, cached in clauses:
+    for caption, sent, language, cached in clauses:
         index = len(lines)
         if cached:
             line = fixed(setup, caption, reply_id=reply_id, turn_id=turn_id)
             if line is not None:
                 lines.append(replace(line, speak=replace(line.speak, clause=index)))
             continue
-        text = provider_text(caption)
-        speak = Speak(reply_id=reply_id, clause=index, turn_id=turn_id, text=text, language=tag)
+        spoken = language or tag
+        speak = Speak(reply_id=reply_id, clause=index, turn_id=turn_id, text=sent, language=spoken)
         lines.append(Line(speak=speak, caption=caption))
     return lines

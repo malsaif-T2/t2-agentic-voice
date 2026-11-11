@@ -14,6 +14,11 @@ session_bridge.py's `SpeakFrame`) through the `TextToSpeech` port, one request a
 - A fixed phrase plays its cached audio in a context of its own, with no request; a clause
   whose audio is empty, or whose request gave none, sends no frame and opens no context: a
   `ClauseEndFrame` marks its place behind the audio queued before it.
+- With a text-to-speech that holds speech (`HeldSpeech`, the clause cache: checked once, when
+  the bridge is built), a clause with text asks `held` first; a take it holds plays as a fixed
+  phrase's audio plays, with no `Synthesizing` and no request, its `ClauseQueued` marked `held`,
+  once the bridge has checked again that no stop dropped the clause while its take was read. A
+  miss is requested as any clause. With any other text-to-speech nothing is looked up.
 - Every clause's last audio is followed by its context's `TTSStoppedFrame`, which the output
   transport passes on once that audio has left it: the output tap then asks `played` for the
   clause's `ClausePlayed` (transport.py), with the seconds and chunks that came, the headroom on
@@ -54,7 +59,7 @@ from pipecat.services.tts_service import TextAggregationMode, TTSService
 
 from t2_agentic_voice.core.errors import ProviderError, ProviderErrorKind
 from t2_agentic_voice.core.logging import get_logger
-from t2_agentic_voice.domain.ports.text_to_speech import AudioChunk, TextToSpeech
+from t2_agentic_voice.domain.ports.text_to_speech import AudioChunk, HeldSpeech, TextToSpeech
 from t2_agentic_voice.voice.pipecat_events import FailureReport
 from t2_agentic_voice.voice.session.commands import Speak
 from t2_agentic_voice.voice.session.session_events import (
@@ -94,6 +99,7 @@ class ClauseTTSBridge(TTSService):
             name="t2v-tts-bridge",
         )
         self._tts = tts
+        self._holder = tts if isinstance(tts, HeldSpeech) else None
         self._events = events
         self._report = report
         self._clauses: dict[ClauseKey, ClauseTake] = {}
@@ -182,9 +188,15 @@ class ClauseTTSBridge(TTSService):
         key = (speak.reply_id, speak.clause)
         if self._events.ended or key in self._events.dropped:
             return
+        audio = speak.audio
+        if audio is None and speak.text.strip() and self._holder is not None:
+            audio = await self._holder.held(speak.text, language=speak.language)
+            if self._events.ended or key in self._events.dropped:  # a stop came as it was read
+                return
         clause = self._clauses[key] = ClauseTake(turn_id=speak.turn_id)
-        if speak.audio is not None:
-            await self._play(key, clause, speak.audio)
+        if audio is not None:
+            clause.held = speak.audio is None
+            await self._play(key, clause, audio)
         elif not speak.text.strip():
             await self._mark(key)
         elif not self.is_usable:
@@ -202,8 +214,8 @@ class ClauseTTSBridge(TTSService):
                 await self._mark(key)
 
     async def _play(self, key: ClauseKey, clause: ClauseTake, audio: AudioChunk) -> None:
-        """A fixed phrase's cached audio, in a context of its own, with no request, in whole
-        output chunks."""
+        """A fixed phrase's cached audio, or a held take, in a context of its own, with no
+        request, in whole output chunks."""
         if not audio.pcm16:
             await self._mark(key)
             return
@@ -227,7 +239,11 @@ class ClauseTTSBridge(TTSService):
         clause.queued = True
         now = self._events.clock.now()
         queued = ClauseQueued(
-            reply_id=key[0], clause=key[1], at=now, requested_at=clause.requested_at
+            reply_id=key[0],
+            clause=key[1],
+            at=now,
+            requested_at=clause.requested_at,
+            held=clause.held,
         )
         self._events.hand(queued)
 

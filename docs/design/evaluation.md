@@ -299,7 +299,13 @@ given after the task's name:
   spends);
 - `uv run poe first-audio` (`first_audio.py`) is run T: the recorded requests replayed through
   `AudioCall` as calls of the agent, its time to first audio by path, appending a first-audio
-  line (it spends);
+  line (it spends). With `--clause-cache on` (off by default; dev only) it is plan 007's run I:
+  `tts.cache_clauses` on, the clause cache new in the run's folder (`<out>/clauses`) over the
+  replay's counting voice, cleared once the smoke call has passed so the first measured call
+  starts cold; each call's look-ups counted, a recording replayed after a rate limit apart and
+  left out of the shares; and the scorecard and the line holding the hits in each item's first
+  variant and in the rest, each look-up's time, the requests per call minute with and without
+  the hits, the takes, and the keep rule's first four conditions (`first_audio_cache.py`, D-087);
 - `uv run poe first-audio-listen` (`first_audio_listen.py`) writes ten of a T1 run's reply
   openings and a sheet for the owner's listen, or reads the marked sheet back.
 

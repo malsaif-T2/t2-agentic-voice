@@ -4,27 +4,32 @@ knowledge set's `RECORDED`) of one split replayed, each as a fresh call of the a
 real speech-to-text, chat model, knowledge and voice (first_audio_run.py), and scored by path
 (first_audio_score.py, first_audio_card.py).
 
-**The arms** are the command line's: `--trim-silence off` (T0) or `on` (T1), and `--no-tools`
-(Tn: no reply searches). **The agent and its knowledge base** come from factories, as runs K's
-and S's do (factories.py): `--agent`, given the knowledge base, gives a `VoiceAgent` with
-instructions (the talker's: Ole5's `ole5_voice.agent:talker_agent`), and `--knowledge`, given the
-run's env file, its knowledge base (Ole5's `ole5_voice.knowledge_base:knowledge_base`); with
-`--no-tools` the agent's factory is given None, as Ole5's then gives its talker with no tool, and
-no knowledge base is built. Each is closed when the run ends, a refusal's included.
+**The arms** are the command line's: `--trim-silence off` (T0) or `on` (T1), `--no-tools`
+(Tn: no reply searches), and `--clause-cache on` (run I's I1, plan 007: `tts.cache_clauses` on,
+the clause cache new in the run's folder, `<out>/clauses`, over the replay's counting voice,
+first_audio_cache.py; a dev run only). **The agent and its knowledge base** come from
+factories, as runs K's and S's do (factories.py): `--agent`, given the knowledge base, gives a
+`VoiceAgent` with instructions (the talker's: Ole5's `ole5_voice.agent:talker_agent`), and
+`--knowledge`, given the run's env file, its knowledge base (Ole5's
+`ole5_voice.knowledge_base:knowledge_base`); with `--no-tools` the agent's factory is given None,
+as Ole5's then gives its talker with no tool, and no knowledge base is built. Each is closed when
+the run ends, a refusal's included.
 
 As `poe eval-timing`, a run refuses the main checkout and a dirty tree, an `--out` that exists or
 that git would track, and audio that is not the file its manifest hashed; its settings load as
-`poe eval`'s, the speech and chat models' and `tts.trim_silence` from their flags and each `--set`
-on top, untraced; it names a price for every model it calls, and refuses a run whose budget,
-every recording and the smoke test at their most, would pass `--cap-usd`, all before anything is
-sent. It declares the agent's fixed phrases, then plays the smoke test, the first dev recording,
-which must answer one turn, its reply heard, with no failure on its first call; then each
-recording, a dev run's result written as it finishes (`results.jsonl`) with a progress line of
-identifiers and times, never a text, and its replies' openings kept for the owner's listen
-(`poe first-audio-listen`); a held-out run's lines are counts, the library's lines but its
-errors held back, and its scorecard aggregates only. The scorecard is written whole at the end,
-whatever ended the run once it started (an error's `stopped` is `error`), and its history line
-appended to the worktree's `history.jsonl` and copied beside it, every request counted.
+`poe eval`'s, the speech and chat models', `tts.trim_silence` and `tts.cache_clauses` from their
+flags and each `--set` on top, untraced; it names a price for every model it calls, and refuses
+a run whose budget, every recording and the smoke test at their most, would pass `--cap-usd`,
+all before anything is sent. It declares the agent's fixed phrases, then plays the smoke test,
+the first dev recording, which must answer one turn, its reply heard, with no failure on its
+first call, after which the clause cache, when the run has one, is emptied, so the first
+recording measured starts cold; then each recording, a dev run's result written as it finishes
+(`results.jsonl`) with a progress line of identifiers and times, never a text, and its replies'
+openings kept for the owner's listen (`poe first-audio-listen`); a held-out run's lines are
+counts, the library's lines but its errors held back, and its scorecard aggregates only. The
+scorecard is written whole at the end, whatever ended the run once it started (an error's
+`stopped` is `error`), and its history line appended to the worktree's `history.jsonl` and copied
+beside it, every request counted.
 """
 
 from __future__ import annotations
@@ -48,6 +53,7 @@ from t2_agentic_voice import (
 from ole5_voice import LOGGERS
 from ole5_voice.evals import run_settings
 from ole5_voice.evals.factories import Closing
+from ole5_voice.evals.first_audio_cache import CLAUSES_DIR
 from ole5_voice.evals.first_audio_card import AudioRun, Stopped, close_run
 from ole5_voice.evals.first_audio_run import (
     LEAD_S,
@@ -107,6 +113,7 @@ def _parser() -> argparse.ArgumentParser:
     add("--knowledge", help="the knowledge base's factory, given --env-file (not with Tn)")
     add("--no-tools", action="store_true", help="the agent given no knowledge base (Tn)")
     add("--trim-silence", choices=("on", "off"), help="tts.trim_silence: on (T1) or off (T0)")
+    add("--clause-cache", choices=("on", "off"), default="off", help="tts.cache_clauses (I1)")
     add("--model", choices=run_settings.MODELS, help="stt.model")
     add("--timeout-s", type=_amount, help="stt.timeout_s")
     add("--llm-model", help="llm.model")
@@ -170,6 +177,7 @@ async def _measure(
             log.error("smoke_failed", failure=tried.failure, turns=len(tried.turns))
             return "smoke_failed"
         log.info("smoke_passed", ttfa_ms=heard)
+        await measuring.replay.clear()  # the clause cache, if any, cold for the first measured
         for each in () if args.smoke_only else todo:
             result = await measuring.variant(each, args.split)
             found.append(result)
@@ -213,6 +221,11 @@ def _run(args: argparse.Namespace, parts: FirstAudioParts) -> int:
 
 def _built(args: argparse.Namespace, parts: FirstAudioParts, closing: Closing) -> int:
     settings = settings_of(args)
+    if settings.tts.cache_clauses and args.split == "held-out":
+        raise refused(
+            "the clause cache (--clause-cache on) runs on dev only: run I runs no held-out",
+            "give --split dev, or leave the clause cache off",
+        )
     plan = parts.plan
     checkout = run_checkout(plan.folder, plan.git)
     out = check_out(args.out, checkout, plan.git)
@@ -247,8 +260,9 @@ def _built(args: argparse.Namespace, parts: FirstAudioParts, closing: Closing) -
     tts = closing.add(parts.text_to_speech(settings))
     llm, tail_s = closing.add(parts.chat_model(settings)), tail_of(settings, agent)
     phrases = parts.phrases(settings, tts, agent)
+    clauses = out / CLAUSES_DIR if settings.tts.cache_clauses else None
     replay = parts.replay(
-        agent=agent, settings=settings, stt=stt, tts=tts, llm=llm, phrases=phrases
+        agent=agent, settings=settings, stt=stt, tts=tts, llm=llm, phrases=phrases, clauses=clauses
     )
     info = AudioRun(
         name=out.name,
@@ -257,6 +271,7 @@ def _built(args: argparse.Namespace, parts: FirstAudioParts, closing: Closing) -
         split=args.split,
         agent=args.agent,
         tools=not args.no_tools,
+        clause_cache=clauses is not None,
         settings=shown(settings, args, tail_s),
         data_digest=digest,
         lead_s=LEAD_S,

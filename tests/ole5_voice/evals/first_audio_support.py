@@ -104,12 +104,14 @@ def call(*turns: ReplayedTurn, opening: bool = True, remaining: int | None = Non
 @dataclass
 class FakeReplay:
     """Stands in for the replay: each recording answered by the next of `script` (the last
-    repeats; an exception is raised), keeping what it was built with and asked."""
+    repeats; an exception is raised), keeping what it was built with and asked, and how many
+    calls it had been asked when its clause cache was cleared."""
 
     clock: FakeClock
     script: list[ReplayedCall | BaseException]
     built: dict[str, Any] = field(default_factory=dict)
     asked: list[dict[str, Any]] = field(default_factory=list)
+    cleared: list[int] = field(default_factory=list)
     started: int = 0
     closed: int = 0
 
@@ -127,6 +129,9 @@ class FakeReplay:
         if isinstance(found, BaseException):
             raise found
         return found
+
+    async def clear(self) -> None:
+        self.cleared.append(len(self.asked))
 
     async def aclose(self) -> None:
         self.closed += 1

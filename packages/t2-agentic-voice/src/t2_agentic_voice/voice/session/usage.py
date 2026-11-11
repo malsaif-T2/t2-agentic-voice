@@ -2,10 +2,10 @@
 as it goes (voice/session/io.py's usage): a `Transcribing` is one speech-to-text request, its
 audio sent and billed as Groq bills Whisper, at least `WHISPER_MIN_BILLED_S` a request; a
 `Synthesizing` is one text-to-speech request, its clause's text the characters sent; a phrase
-played from the cache is a cache hit, which sends nothing; a chat model's request is counted as
-the talker reports it going (`ModelRequested`), and its tokens as its provider reported them
-when it ended (`ModelReplied`). A request the call's end cancelled is counted, since it went;
-the last headroom the provider reported for its key is kept per model.
+or a held clause played from a cache is a cache hit, which sends nothing; a chat model's request
+is counted as the talker reports it going (`ModelRequested`), and its tokens as its provider
+reported them when it ended (`ModelReplied`). A request the call's end cancelled is counted,
+since it went; the last headroom the provider reported for its key is kept per model.
 """
 
 from __future__ import annotations
@@ -84,7 +84,7 @@ class Usage:
         counts.characters += characters
 
     def cached(self, language: LanguageTag) -> None:
-        """A phrase of `language` was played from the cache."""
+        """A phrase, or a clause the clause cache held, of `language` was played from a cache."""
         self._tts(language).cache_hits += 1
 
     def played(self, language: LanguageTag, event: ClausePlayed) -> None:

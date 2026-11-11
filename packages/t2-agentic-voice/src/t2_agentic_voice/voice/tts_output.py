@@ -47,9 +47,11 @@ class OutputChunks:
 
 @dataclass
 class ClauseTake:
-    """What came of one clause so far, until its `ClausePlayed`."""
+    """What came of one clause so far, until its `ClausePlayed`: `held` when its take came from
+    the clause cache (adapters/clause_cache.py), with no request."""
 
     turn_id: int | None
+    held: bool = False
     requested_at: float | None = None
     queued: bool = False
     audio_s: float = 0.0

@@ -1599,9 +1599,29 @@ plan 003).
 
   The judge's check passed before it (22 of 24, on `a3-dev`), so the summary's score stands
   verified. Held-out is read once and only by aggregates; nothing of it shaped a change.
+- 2026-11-11: The owner asked for a faster gate (D-088, built on its own branch `gate-speed` and
+  merged): the tests run on every core (pytest-xdist, the owner's "Yes, download them"), and the
+  slowest do less of what the gate's own steps already do; `poe check` takes about 3 minutes,
+  from 14 to 15, coverage unchanged.
+- 2026-11-12: **Block I built** (D-087; the owner's "Approve both"; on its own branch `block-i`,
+  one builder for the library and one for Ole5's run T arm and the docs, test first; one
+  reviewer, who found nothing; a check, which fixed two doc rows). `tts.cache_clauses`, off until
+  run I's keep rule, and `tts.clause_cache_mb`, 512; `ClauseCache` beside the phrase cache under
+  `storage.var_dir/<agent>/clauses`; `poe first-audio --clause-cache on|off`, refused on
+  held-out. Not run yet: run I.
 
 ## Decision log
 
+- 2026-11-12: What Block I's build chose where the spec left it open (D-087): the cache in three
+  modules (`clause_cache.py` 300 lines, `clause_files.py`, `clause_counts.py`), not one, which
+  would have passed the cap; the key hashed from a JSON list of its fields, so no two inputs
+  collide; a megabyte 1,000,000 bytes; two takes of one clause at once keep the first; five
+  reasons a take is not kept beyond the spec's four (`sample_rates`, `too_large`, `queue_full`,
+  `held`, `closed`); the bound stays hard even when the system holds old files; an `OSError` at
+  `open()` stops the runtime's start, as the phrase cache's does; `take_of`, shared with the
+  phrase cache, refuses a file whose header counts more frames than its data; each clause of a
+  reply said again requested in its own language; run T's arm counts through a thin
+  `CachedVoice`, its per-call counts taken as each call ends.
 - 2026-11-11: What the read-back fixes' build chose: `plain_no` (domain/yes_rule.py) is
   exactly what `decide` declines, so a send word beside the no ("don't send it") keeps it a no;
   the no is decided in `Confirming.handed`, on the turn's whole words, not in `cut_by`, which

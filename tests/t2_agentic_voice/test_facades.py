@@ -43,6 +43,8 @@ NAMES = {
     "t2_agentic_voice.identity": {"DevIdentity", "SignedJoinTokens"},
     "t2_agentic_voice.server": {"combine_lifespans", "serve"},
     "t2_agentic_voice.stores": {
+        "ClauseCache",
+        "ClauseCounts",
         "MemoryOutbox",
         "MemoryUsedTokens",
         "PhraseCache",

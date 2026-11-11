@@ -5,11 +5,12 @@ sends nothing. Public through the `stores` facade, so a timing run builds the ph
 file-fed calls play as the runtime does (testing's `echo_timings` takes it, since `testing`
 never imports adapters).
 
-Only declared phrases are kept: text built from heard words never reaches the cache, since
-caching it would keep call content by default (invariant 8; plan 003's decision log). A file is
-written whole, to a temporary name and then renamed, so a stopped write leaves no half phrase.
-The session reads a phrase's audio through voice's `PhraseAudio` protocol
-(voice/session/io.py), which this class meets.
+Only declared phrases are kept here: text built from heard words never reaches this cache
+(invariant 8; plan 003's decision log). The clauses a talker speaks are kept by the clause cache
+(adapters/clause_cache.py), never the echo's words. A file is written whole, to a temporary name
+and then renamed (adapters/wav_files.py), so a stopped write leaves no half phrase. The session
+reads a phrase's audio through voice's `PhraseAudio` protocol (voice/session/io.py), which this
+class meets.
 
 **What is sent.** A phrase is said as the agent's pronunciation map says it: `declare` applies
 `pronounce` (domain/text/pronounce.py) with `agent.pronounce` in the phrase's language, then
@@ -65,14 +66,12 @@ from __future__ import annotations
 
 import asyncio
 import hashlib
-import io
-import secrets
-import wave
 from collections.abc import Awaitable, Callable, Mapping
 from pathlib import Path
 
 from pydantic import JsonValue
 
+from t2_agentic_voice.adapters.wav_files import take_of, wav_of, write_whole
 from t2_agentic_voice.core.config import VoiceSettings
 from t2_agentic_voice.core.errors import ConfigurationError, ProviderError
 from t2_agentic_voice.core.settings.base import setting_name
@@ -223,14 +222,7 @@ class PhraseCache:
             data = self._path(key).read_bytes()
         except FileNotFoundError:
             return None
-        try:
-            with wave.open(io.BytesIO(data), "rb") as reader:
-                if (reader.getnchannels(), reader.getsampwidth()) != (1, 2):
-                    return None
-                rate, pcm = reader.getframerate(), reader.readframes(reader.getnframes())
-            return AudioChunk(pcm16=pcm, sample_rate=rate)
-        except (wave.Error, EOFError, ValueError):  # ValueError: pydantic's, on a bad rate
-            return None
+        return take_of(data)
 
     def _write(self, key: str, audio: AudioChunk) -> None:
         """Write the phrase's file whole, to a temporary name and then renamed (above); nothing
@@ -238,13 +230,7 @@ class PhraseCache:
         if not self._keep_files or audio.cut_short:
             return
         self._folder.mkdir(parents=True, exist_ok=True)
-        path = self._path(key)
-        part = path.with_name(f"{path.stem}.{secrets.token_hex(8)}.part")
-        try:
-            part.write_bytes(_wav(audio))
-            part.replace(path)
-        finally:
-            part.unlink(missing_ok=True)
+        write_whole(self._path(key), wav_of(audio))
 
 
 def phrase_key(said: str, voice: TtsVoice) -> str:
@@ -272,14 +258,3 @@ def packed(text: str, max_chars: int | None) -> list[str]:
 def _named(details: dict[str, JsonValue], phrase: FixedPhrase) -> dict[str, JsonValue]:
     """`details` naming the phrase by its kind and language, never its text."""
     return details | {"phrase": phrase.kind, "language": phrase.language}
-
-
-def _wav(audio: AudioChunk) -> bytes:
-    """`audio` as a WAV file: mono, 16-bit, at its sample rate."""
-    buffer = io.BytesIO()
-    with wave.open(buffer, "wb") as writer:
-        writer.setnchannels(1)
-        writer.setsampwidth(2)
-        writer.setframerate(audio.sample_rate)
-        writer.writeframes(audio.pcm16)
-    return buffer.getvalue()

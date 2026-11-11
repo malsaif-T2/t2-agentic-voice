@@ -24,13 +24,22 @@ call's language has played (`AudioCall.turn`), and what the call gave back read 
 The phrase cache a run declares (`phrases`) is not the replay's: `AudioCall` says the greeting
 and the progress lines itself and every other fixed phrase as silence, so a reply's time is the
 talker's and the voice's alone.
+
+**The clause cache** (run I's arm, `clauses` its folder; plan 007): the `stores` facade's
+`ClauseCache` over the counting voice, built with no IO, as the runtime builds it, so the voice
+counts only the requests a miss sends; the calls speak through it (first_audio_cache.py's
+`CachedVoice`). It is opened at `start`, before the progress lines are said through it; `clear`
+empties it, its counts too; each call's counts are taken once the call has ended; and `aclose`
+drains it after the calls' runtime is closed, never closing the voice.
 """
 
 from __future__ import annotations
 
+import dataclasses
 from collections import Counter
 from collections.abc import AsyncIterator, Mapping, Sequence
 from datetime import datetime
+from pathlib import Path
 from typing import Final
 
 from t2_agentic_voice import ProviderError, T2VoiceError, VoiceAgent, VoiceSettings
@@ -44,7 +53,9 @@ from t2_agentic_voice.events import (
     ToolStarted,
 )
 from t2_agentic_voice.ports import AudioChunk, AudioClip, ChatModel, SpeechToText, TextToSpeech
+from t2_agentic_voice.stores import ClauseCache
 
+from ole5_voice.evals.first_audio_cache import CachedVoice
 from ole5_voice.evals.first_audio_score import ChatSpend, ReplayedCall, ReplayedTurn
 from ole5_voice.evals.timing_run import Tag
 
@@ -88,7 +99,8 @@ class CountedVoice:
 
 class AudioReplay:
     """The replay of a run's recordings, each a fresh call of `agent` (the module's
-    docstring); `audio_call` stands in for the library's in a test."""
+    docstring), through the clause cache kept in `clauses` when given; `audio_call` stands in
+    for the library's in a test."""
 
     def __init__(
         self,
@@ -98,15 +110,28 @@ class AudioReplay:
         stt: SpeechToText,
         tts: TextToSpeech,
         llm: ChatModel,
+        clauses: Path | None = None,
         audio_call: type[AudioCall] = AudioCall,
     ) -> None:
         self.agent, self.settings = agent, settings
         models: dict[str, str] = {t: v.model for t, v in settings.tts.languages.items()}
         self.voice = CountedVoice(tts, models)
-        self.call_of = audio_call(settings=settings, stt=stt, tts=self.voice, agent=agent, chat=llm)
+        self.clauses: CachedVoice | None = None
+        spoken: TextToSpeech = self.voice
+        if clauses is not None:
+            cache = ClauseCache.from_settings(settings, self.voice, folder=clauses)
+            self.clauses = spoken = CachedVoice(cache)
+        self.call_of = audio_call(settings=settings, stt=stt, tts=spoken, agent=agent, chat=llm)
 
     async def start(self) -> None:
+        if self.clauses is not None:
+            await self.clauses.cache.open()
         await self.call_of.start()
+
+    async def clear(self) -> None:
+        """Empty the clause cache and its counts, when the replay has one."""
+        if self.clauses is not None:
+            await self.clauses.clear()
 
     async def call(
         self,
@@ -131,22 +156,35 @@ class AudioReplay:
                 speech_end_ms=end_ms,
             )
         except ProviderError as error:  # the greeting's request, before the call: none emitted
-            return failed(error.kind, (), chat_model=chat_model, voice=self.voice.taken())
+            found = failed(error.kind, (), chat_model=chat_model, voice=self.voice.taken())
+            return self._counted(found, ())
         except T2VoiceError as error:
             if type(error) is not T2VoiceError:  # a setting, a request: no failure of the call
                 raise
             emitted, voice = self.call_of.emitted, self.voice.taken()
-            return failed(GREETING_NOT_PLAYED, emitted, chat_model=chat_model, voice=voice)
-        return replayed(
+            found = failed(GREETING_NOT_PLAYED, emitted, chat_model=chat_model, voice=voice)
+            return self._counted(found, emitted)
+        found = replayed(
             replay,
             self.call_of.emitted,
             chat_model=chat_model,
             voice=self.voice.taken(),
             labelled=end_ms is not None,
         )
+        return self._counted(found, self.call_of.emitted)
+
+    def _counted(self, call: ReplayedCall, emitted: Sequence[Event]) -> ReplayedCall:
+        """`call` with what the clause cache did in it, when the replay has one."""
+        if self.clauses is None:
+            return call
+        return dataclasses.replace(call, clauses=self.clauses.took(emitted))
 
     async def aclose(self) -> None:
-        await self.call_of.aclose()
+        try:
+            await self.call_of.aclose()
+        finally:
+            if self.clauses is not None:
+                await self.clauses.cache.aclose()
 
 
 def audio_replay(
@@ -157,10 +195,12 @@ def audio_replay(
     tts: TextToSpeech,
     llm: ChatModel,
     phrases: object = None,
+    clauses: Path | None = None,
 ) -> AudioReplay:
     """Run T's replay (first_audio_setup.py's `FirstAudioParts.replay`); `phrases`, the run's
-    phrase cache, is not the replay's (the module's docstring)."""
-    return AudioReplay(agent=agent, settings=settings, stt=stt, tts=tts, llm=llm)
+    phrase cache, is not the replay's; `clauses`, the clause cache's folder, run I's (the
+    module's docstring)."""
+    return AudioReplay(agent=agent, settings=settings, stt=stt, tts=tts, llm=llm, clauses=clauses)
 
 
 def replayed(
@@ -193,6 +233,7 @@ def replayed(
                 searched=record.turn_id in searched,
                 progress_ms=progress,
                 failure=failures.get(record.turn_id),
+                tts_first_audio_ms=record.times.tts_first_audio_ms,
             )
         )
         openings.append(replay.opening if first else None)

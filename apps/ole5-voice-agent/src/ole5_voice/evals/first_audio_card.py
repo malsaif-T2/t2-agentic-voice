@@ -7,7 +7,9 @@ among them, and the cost every model's). The targets read every recording togeth
 from the owner's marked end and those from the speech detector's stop, and the scorecard shows
 the two apart (Q18): a dev run's breakdowns by where the time starts and by language, a held-out
 run's by where the time starts only, as aggregates. A held-out run holds no recording, no group
-of fewer than `HELD_OUT_MIN_ITEMS` items, and no path's times over fewer.
+of fewer than `HELD_OUT_MIN_ITEMS` items, and no path's times over fewer. A run with the clause
+cache (run I's arm, a dev run) holds its numbers too, on the scorecard and its line
+(first_audio_cache.py's `clause_summary`).
 """
 
 from __future__ import annotations
@@ -20,6 +22,7 @@ from pydantic import Field
 from t2_agentic_voice import get_logger
 from t2_agentic_voice.events import ModelUsage
 
+from ole5_voice.evals.first_audio_cache import ClauseSummary, clause_summary
 from ole5_voice.evals.first_audio_run import Measuring
 from ole5_voice.evals.first_audio_score import (
     AudioMetrics,
@@ -48,7 +51,8 @@ log = get_logger(__name__)
 
 class AudioRun(Model):
     """What a run was: when, at which commit, on which split, with which agent (its factory,
-    and whether its tools were left out), settings, padding, prices and cap, and why."""
+    and whether its tools were left out), whether it spoke through the clause cache, settings,
+    padding, prices and cap, and why."""
 
     name: Name
     started_at: datetime
@@ -56,6 +60,7 @@ class AudioRun(Model):
     split: Split
     agent: Plain
     tools: bool
+    clause_cache: bool = False
     settings: Shown
     data_digest: Sha256
     lead_s: float = Field(ge=0, allow_inf_nan=False)
@@ -69,8 +74,8 @@ class AudioRun(Model):
 
 class AudioScorecard(Model):
     """A run's scorecard: whether it finished, and why not; the phrase cache's requests; the
-    totals, targets and breakdowns; each model's usage, the chat model's and the cost; and each
-    recording, none for a held-out run."""
+    totals, targets and breakdowns; each model's usage, the chat model's and the cost; the clause
+    cache's numbers, when the run had one; and each recording, none for a held-out run."""
 
     run: AudioRun
     speakers: Literal["one speaker"] = "one speaker"  # the owner alone (D-006)
@@ -83,6 +88,7 @@ class AudioScorecard(Model):
     spend: tuple[ModelUsage, ...]
     chat: ChatSpend
     cost_usd: _Usd
+    clause_cache: ClauseSummary | None = None
     variants: tuple[AudioResult, ...] = ()
 
 
@@ -142,6 +148,7 @@ def line_of(card: AudioScorecard) -> FirstAudioLine:
         tts_price_per_million_usd=run.tts_price_per_million_usd,
         chat_price_per_million_usd=run.chat_price_per_million_usd,
         cost_usd=card.cost_usd,
+        clause_cache=card.clause_cache,
         scorecard=SCORECARD_FILE,
         data_digest=run.data_digest,
         note=run.note,
@@ -180,6 +187,7 @@ def close_run(
             output_tokens=sum(c.output_tokens for c in chats),
         ),
         cost_usd=measuring.spent_usd,
+        clause_cache=clause_summary(kept) if info.clause_cache else None,
         variants=() if held_out else tuple(kept),
     )
     partial = out / f".{SCORECARD_FILE}.partial"

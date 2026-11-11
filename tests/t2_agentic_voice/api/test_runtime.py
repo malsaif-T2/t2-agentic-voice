@@ -15,6 +15,7 @@ from typing import Any, ClassVar, cast
 import pytest
 from pydantic import SecretStr
 from t2_agentic_voice.adapters import groq_tts
+from t2_agentic_voice.adapters.clause_cache import ClauseCache
 from t2_agentic_voice.adapters.dev_identity import DevIdentity
 from t2_agentic_voice.adapters.groq_stt import GroqSTT
 from t2_agentic_voice.api.lockfile import LockFile
@@ -28,7 +29,9 @@ from t2_agentic_voice.core.config import VoiceSettings
 from t2_agentic_voice.core.errors import ConfigurationError, ProviderError
 from t2_agentic_voice.core.settings.groq import GroqSettings
 from t2_agentic_voice.core.settings.join import JoinSettings
+from t2_agentic_voice.core.settings.tts import TtsSettings
 from t2_agentic_voice.core.tracing import Tracing
+from t2_agentic_voice.domain.declaration import Language, VoiceAgent
 from t2_agentic_voice.domain.ports.speech_to_text import SpeechToText
 from t2_agentic_voice.domain.ports.text_to_speech import TextToSpeech
 from t2_agentic_voice.voice.calls import VoiceCalls
@@ -45,7 +48,7 @@ from tests.t2_agentic_voice.api.runtime_support import (
     serving,
 )
 from tests.t2_agentic_voice.core.test_settings_checks import CHECKS
-from tests.t2_agentic_voice.fakes import FakeCalls
+from tests.t2_agentic_voice.fakes import FakeCalls, FakeTextToSpeech
 
 pytestmark = pytest.mark.usefixtures("patched_stores")
 KEY = "gsk_made-up-key-0123456789abcdefghijklmnop"
@@ -167,6 +170,55 @@ def test_the_lifespan_opens_each_part_in_order_and_closes_each(tmp_path: Path) -
     assert (given["stt"], given["tts"], given["phrases"]) == (harness.stt, harness.tts, cache)
     assert isinstance(given["tracing"], Tracing)
     LockFile.take(var_dir).release()
+
+
+TALKER = VoiceAgent(
+    name="talking", languages=[Language.english(greeting="Hello.")], instructions="Be brief."
+)
+
+
+class _Counted(FakeTextToSpeech):
+    """The fakes' text-to-speech, counting its closes."""
+
+    def __init__(self) -> None:
+        super().__init__()
+        self.closes = 0
+
+    async def aclose(self) -> None:
+        self.closes += 1
+
+
+@pytest.mark.parametrize(
+    ("agent", "on", "cached"),
+    [(TALKER, True, True), (TALKER, False, False), (AGENT, True, False), (AGENT, False, False)],
+    ids=["talker-on", "talker-off", "echo-on", "echo-off"],
+)
+def test_the_calls_get_a_clause_cache_only_for_a_talker_agent_with_it_on(
+    agent: VoiceAgent, on: bool, cached: bool, tmp_path: Path
+) -> None:
+    """api/voices.py: with `tts.cache_clauses` on, a talker agent's calls speak through a clause
+    cache under `var_dir/<agent>/clauses` over the providers' text-to-speech; off, or for an echo
+    agent, through the providers' own. The fixed phrases are declared on the providers' own, and
+    it is closed once, the cache never closing it."""
+    settings = dev_settings(tmp_path, tts=TtsSettings(cache_clauses=on))
+    harness = Harness(settings, agent=agent, tts=_Counted())
+    folder = settings.storage.var_dir / agent.name / "clauses"
+
+    async def scene() -> None:
+        async with serving(harness.app()):
+            assert folder.is_dir() is cached
+
+    asyncio.run(scene())
+    [given] = harness.built
+    tts = given["tts"]
+    if cached:
+        assert isinstance(tts, ClauseCache) and tts._tts is harness.tts
+        assert tts._files.folder == folder
+    else:
+        assert tts is harness.tts
+    [phrases] = FakePhraseCache.built
+    assert phrases.tts is harness.tts
+    assert isinstance(harness.tts, _Counted) and harness.tts.closes == 1
 
 
 def test_a_failure_at_start_closes_what_was_opened(tmp_path: Path) -> None:
