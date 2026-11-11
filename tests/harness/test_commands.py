@@ -11,10 +11,13 @@ from __future__ import annotations
 import ast
 import importlib.util
 import os
+import shutil
 import subprocess
 import sys
 import tomllib
 from pathlib import Path
+
+from tests.harness.support import ARCHITECTURE, SYNTHETIC, write
 
 ROOT = Path(__file__).resolve().parents[2]
 SAMPLE = "東京, Grüße, café"
@@ -80,17 +83,57 @@ def test_every_command_parses_its_arguments() -> None:
     )
 
 
-def test_each_check_runs_as_a_command_and_says_how_it_went() -> None:
-    """The gate's own checks, as `poe arch` and `poe docs` run them: an exit code and a last
-    line that either says OK or asks for every item to be fixed."""
-    for module in ("scripts.check_architecture", "scripts.check_docs"):
-        done = subprocess.run(
+CHECKS = ("scripts.check_architecture", "scripts.check_docs")
+# The synthetic project of support.py, with this repository's scripts/ copied in to run it: the
+# copy is read by neither check (its own rules are the gate's `arch` and `docs` steps').
+_PROJECT = SYNTHETIC.replace('support_dirs = ["scripts", "tests"]', 'support_dirs = ["tests"]')
+_PROJECT = _PROJECT.replace('code_dirs = ["src", "scripts", "tests"]', 'code_dirs = ["src"]')
+# The projects' files beside the copy: none more, and a violation of each check, an upward
+# import (ARCH-LAYER) and a broken link (DOC-LINK).
+_BROKEN = {"src/app/core/x.py": "from app.api import routes\n", "CLAUDE.md": "[a](docs/no.md)\n"}
+_FILES: dict[str, dict[str, str]] = {"clean": {}, "broken": _BROKEN}
+
+
+def _project(root: Path, files: dict[str, str]) -> Path:
+    """A small project at `root` that the checks pass, with `files` added: this repository's
+    scripts/, found by `python -m` from the project's root as poe finds them from this one."""
+    skipped = shutil.ignore_patterns("__pycache__")
+    shutil.copytree(ROOT / "scripts", root / "scripts", ignore=skipped)
+    base = {"harness.toml": _PROJECT, "ARCHITECTURE.md": ARCHITECTURE, "CLAUDE.md": "A map.\n"}
+    return write(root, base | {"src/app/__init__.py": ""} | files)
+
+
+def test_each_check_runs_as_a_command_and_says_how_it_went(tmp_path: Path) -> None:
+    """The gate's own checks, as `poe arch` and `poe docs` run them from a project's root: an
+    exit code and a last line that either says OK or asks for every item to be fixed. On a
+    small project, clean and then with a violation of each, the four runs side by side; the
+    gate's own `arch` and `docs` steps run them on this repository."""
+    assert "scripts" not in _PROJECT  # the copy sits in no folder the checks read
+    roots = {kind: _project(tmp_path / kind, files) for kind, files in _FILES.items()}
+    children = {
+        (kind, module): subprocess.Popen(
             [sys.executable, "-m", module],
-            cwd=ROOT,
+            cwd=root,
             env={**os.environ, **_poe_env()},
-            capture_output=True,
-            check=False,
+            stdout=subprocess.PIPE,
+            stderr=subprocess.PIPE,
         )
-        last = done.stdout.decode("utf-8").strip().splitlines()[-1]
-        assert (": OK (" in last) == (done.returncode == 0), last
-        assert done.returncode == 0 or last.endswith("Fix every item above, then re-run.")
+        for kind, root in roots.items()
+        for module in CHECKS
+    }
+    done = {}
+    try:
+        for key, child in children.items():
+            out, _ = child.communicate(timeout=300)
+            done[key] = (child.returncode, out.decode("utf-8").strip().splitlines()[-1])
+    finally:
+        for child in children.values():
+            child.kill()
+            child.wait()
+    fix = "violation(s). Fix every item above, then re-run."
+    assert done == {
+        ("clean", "scripts.check_architecture"): (0, "check_architecture: OK (1 files checked)"),
+        ("clean", "scripts.check_docs"): (0, "check_docs: OK (2 files checked)"),
+        ("broken", "scripts.check_architecture"): (1, f"check_architecture: 1 {fix}"),
+        ("broken", "scripts.check_docs"): (1, f"check_docs: 1 {fix}"),
+    }

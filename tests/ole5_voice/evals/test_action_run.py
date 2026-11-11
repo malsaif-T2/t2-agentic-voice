@@ -1,11 +1,11 @@
-"""`poe eval-actions` (action_run.py), run A, end to end on fakes only: the committed scenarios
-played through the library's `TextCall` (on its virtual clock) with Ole5's agent on a mock
-ticket system each play, its talker on the oracle's `FunctionLLM` (action_run_support.py); a
-smoke test first; each scenario of the split three times, evenly; a dev run's records, mocks
-and scorecard, a held-out run's aggregates only; a stopped run resumed; a violation that fails
-the run though the card keeps no play of it (the smoke test's, an unfinished held-out run's);
-the shared history's line; and what a run refuses before anything is sent, its dry estimate
-past the cap among them."""
+"""`poe eval-actions` (action_run.py), run A, end to end on fakes only: a few of the committed
+scenarios (`FEW`) played through the library's `TextCall` (on its virtual clock) with Ole5's
+agent on a mock ticket system each play, its talker on the oracle's `FunctionLLM`
+(action_run_support.py); a smoke test first; each scenario of the split three times, evenly; a
+dev run's records, mocks and scorecard, a held-out run's aggregates only; a stopped run resumed;
+a violation that fails the run though the card keeps no play of it (the smoke test's, an
+unfinished held-out run's); the shared history's line; and what a run refuses before anything
+is sent, its dry estimate past the cap among them."""
 
 from __future__ import annotations
 
@@ -19,7 +19,8 @@ import pytest
 from ole5_voice.evals import action_run, run_folder
 from ole5_voice.evals.action_card import ActionScorecard
 from ole5_voice.evals.action_history import ActionLine
-from ole5_voice.evals.action_scenarios import ACTIONS_DIR
+from ole5_voice.evals.action_scenarios import ACTIONS_DIR, ActionScenario
+from ole5_voice.evals.action_setup import load_scenarios
 from ole5_voice.evals.history import read_history
 from ole5_voice.evals.items import HISTORY_FILE
 from ole5_voice.evals.run_folder import RESULTS_FILE
@@ -39,12 +40,26 @@ from tests.ole5_voice.evals.action_run_support import (
     virtual,
 )
 
-DEV = [scenario.id for scenario in committed() if scenario.split == "dev"]
-HELD_OUT = [scenario.id for scenario in committed() if scenario.split == "held-out"]
+# The runs here play a few of the committed scenarios: each still reads and checks the whole
+# committed set as `poe eval-actions` does (`load_scenarios`, whose refusals are below), then
+# plays only these, three dev ones and two held-out ones, so its order, its evenness, its stops
+# and its resume show on a few plays, not on all 49 scenarios' (each scenario's own play is
+# test_action_play.py's). a01 is the smoke test, a05 one whose plays needed the card counts,
+# a11 one whose mock makes nothing; a02 and a12 are held-out's.
+FEW = ("a01", "a05", "a11", "a02", "a12")
+PLAYED = [scenario for scenario in committed() if scenario.id[:3] in FEW]
+DEV = [scenario.id for scenario in PLAYED if scenario.split == "dev"]
+HELD_OUT = [scenario.id for scenario in PLAYED if scenario.split == "held-out"]
+
+
+def _few(folder: Path) -> tuple[ActionScenario, ...]:
+    """The scenarios under `folder`, read and checked as a run reads them, `FEW` of them kept."""
+    return tuple(scenario for scenario in load_scenarios(folder) if scenario.id[:3] in FEW)
 
 
 @pytest.fixture
-def setup(tmp_path: Path) -> ActionSetup:
+def setup(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> ActionSetup:
+    monkeypatch.setattr(action_run, "load_scenarios", _few)
     return make_action_setup(tmp_path)
 
 
@@ -61,8 +76,8 @@ def test_a_dev_run_plays_each_scenario_three_times_evenly_after_a_smoke_test(
 ) -> None:
     assert _main(setup) == 0
     card = _card(setup)
-    plays = 3 * len(DEV)  # each of dev's 25 scenarios three times
-    assert card.complete and len(card.plays) == plays == 75 and card.run.repeats == 3
+    plays = 3 * len(DEV)  # each of the dev scenarios played three times
+    assert card.complete and len(card.plays) == plays == 9 and card.run.repeats == 3
     order = [
         json.loads(line)["scenario"]
         for line in (setup.out() / RESULTS_FILE).read_text("utf-8").splitlines()
@@ -112,7 +127,7 @@ def test_a_smoke_test_that_fails_stops_the_run(setup: ActionSetup) -> None:
 
 
 def test_the_days_limit_stops_a_run_which_resume_goes_on_with(setup: ActionSetup) -> None:
-    today = Counter({TALKER: 9_980})
+    today = Counter({TALKER: 9_997})  # three of the talker's requests left of its 10,000
     parts = dataclasses.replace(setup.parts(), requests_today=lambda path, day: today)
     argv = setup.argv("--repeats", "1")
     assert action_run.main(argv, parts=parts) == 1
@@ -206,7 +221,7 @@ def test_the_shared_history_takes_run_as_line_and_reads_it_back(setup: ActionSet
         ("break", "the scenarios cannot be read"),
         ("history", "takes no line of run A's kind yet"),
         ("held-out", "held-out is read once"),
-        ("cap", "passes --cap-usd 0.5"),
+        ("cap", "passes --cap-usd 0.1"),
         ("agent", "the agent has no tool create_ticket"),
         ("checkout", "the worktree has changes"),
         ("out", "exists"),
@@ -223,7 +238,7 @@ def test_what_a_run_refuses_before_anything_is_sent(
         next(folder.glob("a30_*.toml")).write_text("id = 1\n", encoding="utf-8")
     setup.accepts = change != "history"
     setup.held_out_run = change == "held-out"
-    extra = ["--cap-usd", "0.5"] if change == "cap" else []
+    extra = ["--cap-usd", "0.1"] if change == "cap" else []
     argv = setup.argv(*extra, split="held-out" if change == "held-out" else "dev")
     if change == "agent":
         argv[argv.index("--agent") + 1] = NO_TICKETS

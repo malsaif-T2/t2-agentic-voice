@@ -31,10 +31,15 @@ def _check(tmp_path: Path, files: dict[str, str], text: str = SYNTHETIC) -> list
     return [(v.path.removeprefix("src/app/"), v.rule) for v in violations]
 
 
-def test_repository_is_clean() -> None:
-    violations, checked = check_repo(ROOT, load_config(ROOT))
-    assert checked > 10  # the library, the apps, scripts/, and tests/
-    assert violations == [], "\n".join(map(str, violations))
+def test_this_repositorys_config_points_the_check_at_its_code() -> None:
+    """The gate's `arch` step runs the check on this repository and fails on any violation; it
+    would pass on no files, so this test keeps that its OK is not one of nothing: the config
+    names the library, the apps, scripts/ and tests/, and each holds Python modules. The rules
+    themselves are the tests below, on small projects."""
+    arch = load_config(ROOT).arch
+    folders = [arch.package_dir, *(app.dir for app in arch.apps), *arch.support_dirs]
+    assert len(arch.apps) > 1 and {"scripts", "tests"} <= set(arch.support_dirs)
+    assert [f for f in folders if next((ROOT / f).rglob("*.py"), None) is None] == []
 
 
 def test_allowed_downward_imports_pass(tmp_path: Path) -> None:

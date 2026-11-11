@@ -11,14 +11,19 @@ from pathlib import Path
 
 from scripts.check_docs import ROOT, check_repo
 from scripts.doc_plans import TEMPLATE
+from scripts.doc_text import markdown_files
 from scripts.harness_config import load_config
 from tests.harness.support import ACTIVE, DONE, MAINTENANCE, PLAN_BODY, config, doc_rules, write
 
 
-def test_repository_is_clean() -> None:
-    violations, checked = check_repo(ROOT, load_config(ROOT))
-    assert checked > 0
-    assert violations == [], "\n".join(map(str, violations))
+def test_this_repositorys_docs_are_what_the_check_reads() -> None:
+    """The gate's `docs` step runs the check on this repository and fails on any violation; it
+    would pass on no docs, so this test keeps that its OK is not one of nothing: the docs it
+    reads hold the entry doc and the docs under docs/. The rules themselves are the tests
+    below, on small repositories."""
+    config = load_config(ROOT)
+    read = {path.relative_to(ROOT).as_posix() for path in markdown_files(ROOT)}
+    assert config.docs.entry in read and any(rel.startswith("docs/") for rel in read)
 
 
 def test_valid_links_and_reachability_pass(tmp_path: Path) -> None:
