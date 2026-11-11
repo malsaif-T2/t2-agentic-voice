@@ -1,9 +1,10 @@
 """Ole5's talker and its tickets (ole5_voice/agent.py; plan 007): the served talker acting on one
 ticket system through all four of its tools, and it alone asking a chat model of an answer
 the yes rule's lists leave unplaced (D-082); its instructions telling it to ask only what is
-wrong and how urgent, to make a handoff ticket when the caller asks for a person, and to say no
-ticket and no number but from a tool's result or the system's words, all in one spoken reply;
-the line saying it cannot open a ticket gone; and the talker given no ticket system told it has
+wrong, to set a ticket's priority itself and never ask or say it (the owner's ruling of
+2026-11-11), to make a handoff ticket when the caller asks for a person, and to say no ticket
+and no number but from a tool's result or the system's words, all in one spoken reply; the
+line saying it cannot open a ticket gone; and the talker given no ticket system told it has
 none, versioned apart.
 
 The adversarial cases of invariant 2 (docs/SECURITY.md) on the instructions: they hold no
@@ -77,8 +78,8 @@ def test_the_talker_with_no_search_is_given_no_ticket_system(tmp_path: Path) -> 
 
 @pytest.mark.parametrize("tag", ["ar-SA", "en"])
 def test_the_tickets_section_says_what_plan_007_asks(tag: Tag) -> None:
-    """Q5: only what is wrong and how urgent, in one question at most; the summary and the
-    type the model's, the priority Medium unless the caller says how urgent. D-009 and
+    """Q5, as the owner amended it on 2026-11-11: only what is wrong, in one question at most;
+    the summary, the type and the priority the model's (the next test). D-009 and
     D-018: a person asked for is a handoff ticket, no transfer and no call back promised.
     Invariant 2: no ticket and no number but from a tool's result or the system's words;
     nothing said after an action's call. Q4 and Q6: the caller's own tickets, by their last
@@ -86,8 +87,7 @@ def test_the_tickets_section_says_what_plan_007_asks(tag: Tag) -> None:
     ticket (TD-144's ruling). D-075: all in one reply, no screen."""
     text = " ".join(instructions()[tag].split())
     for needed in (
-        "learn only what is wrong and how urgent it is, asking in one short question for "
-        "whichever the caller has not said",
+        "learn only what is wrong, in one short question at most when the caller has not said it",
         "never ask for anything else",
         "Write the summary yourself",
         "pick the type",
@@ -116,6 +116,32 @@ def test_the_tickets_section_says_what_plan_007_asks(tag: Tag) -> None:
     for removed in ("You cannot open, change or follow up a ticket", "cannot transfer the call"):
         assert removed not in text
     assert "show_draft" not in text and " card" not in text
+
+
+@pytest.mark.parametrize("tag", ["ar-SA", "en"])
+def test_the_talker_sets_a_tickets_priority_itself_and_never_asks_or_says_it(
+    tag: Tag, tmp_path: Path
+) -> None:
+    """The owner's ruling of 2026-11-11, after a demo call in which the talker asked how urgent
+    a login problem was a dozen ways in one reply: "it should classify it itself and not really
+    communicate it with the user since it is an internal detail". The instructions and
+    create_ticket's description say so; the ask they held is gone."""
+    text = " ".join(instructions()[tag].split())
+    for needed in (
+        "never ask for anything else, and never ask how urgent it is",
+        "Set the priority yourself from what the caller said: High when they say it is urgent "
+        "or stops their work, Low when they say it can wait, Medium when they say nothing of "
+        "it.",
+        "Never tell the caller the priority.",
+    ):
+        assert needed in text, needed
+    tools = ticket_tools(MockTicketSystem(tmp_path))
+    [create] = [tool for tool in tools if tool.name == "create_ticket"]
+    described = " ".join(create.description.split())
+    for needed in ("never ask how urgent it is", "set the priority from the caller's words"):
+        assert needed in described, needed
+    for removed in ("how urgent it is, asking", "for whichever the caller has not said"):
+        assert removed not in text and removed not in described
 
 
 def test_the_saudi_instructions_give_a_request_for_a_person_in_saudi_words() -> None:

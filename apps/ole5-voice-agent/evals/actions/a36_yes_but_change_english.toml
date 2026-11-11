@@ -5,10 +5,10 @@ id = "a36_yes_but_change_english"
 kind = "yes_but_change"
 split = "held-out"
 language = "en"
-notes = "Yes, but make it urgent sends nothing: the ticket is read back again as urgent, and the yes after it opens it once."
+notes = "Yes, but add that it started on Monday sends nothing: the ticket is read back again with the day added, and the yes after it opens it once."
 made = 1
 ticket_type = "Bug"
-summary_facts = ["Says the delegation settings in Ole5 do not save."]
+summary_facts = ["Says the delegation settings in Ole5 do not save.", "Says it started on Monday."]
 
 [[turns]]
 says = "Can you open a ticket? The delegation settings in Ole5 don't save, every delegate I set is gone the next day. It's not urgent."
@@ -17,11 +17,11 @@ outcome = "read_back"
 language = "en"
 
 [[turns]]
-says = "Yes, but make it urgent."
+says = "Yes, but add that it started on Monday."
 calls = "create_ticket"
 outcome = "read_back"
 language = "en"
-facts = ["The ticket read back now gives it a high or urgent priority."]
+facts = ["The ticket read back now says it started on Monday."]
 
 [[turns]]
 says = "Yes, send it."

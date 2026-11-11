@@ -22,7 +22,8 @@ instruction) with the word a row gives.
   said over it, they send.
 - A hesitation or a failed check asked again, a later yes makes one ticket.
 - «ايه بس خلها عاجلة» and "yes, but make it urgent" are a correction, judged change or yes (the
-  change marker's rail): the talker reads the ticket back again at priority High, and a listed
+  change marker's rail): the talker calls create_ticket again at priority High, read back as
+  before since no read-back says the priority (the owner's ruling of 2026-11-11), and a listed
   yes makes that one ticket.
 """
 
@@ -268,7 +269,8 @@ def test_a_yes_with_a_change_is_read_back_changed_and_a_yes_makes_that_ticket(
     tmp_path: Path, word: str, tag: Tag, over: bool
 ) -> None:
     """Judged change, or judged yes beside the change marker (bas, but): a correction, so the
-    talker is given the words, and its new read-back at priority High is the one sent."""
+    talker is given the words, and its new draft at priority High, read back, is the one
+    sent."""
     agent, tickets = ole5(tmp_path)
     urgent = _create(tag, priority="High", heard=CHANGE[tag])
     llm = model(_create(tag), urgent, judged={CHANGE[tag]: _word(word)})

@@ -1,11 +1,13 @@
 """What Ole5's actions say (ole5_voice/tickets/lines.py): every text in each language Ole5
 speaks, so the library's declaration takes them and refuses a language they miss, and each line
 in MSA too, which an MSA caller hears (the owner's ruling of 2026-11-10); a read-back that
-states every field it sends; a number said whole, digit by digit, in four groups (plan 007's
-Q6), and none in a line with no result; a closing question holding its send word, and no other
-line a word the caller commands with; no line holding a claim phrase of any action or one that
-claims any, Ole5's for a ticket's number among them (the owner's ruling of 2026-11-10), naming
-a screen or promising a person (D-009, D-075); and no MSA line holding a dialect form."""
+states every field it sends but a ticket's priority, which the talker sets itself and never
+says (the owner's ruling of 2026-11-11); a number said whole, digit by digit, in four groups
+(plan 007's Q6), and none in a line with no result; a closing question holding its send word,
+and no other line a word the caller commands with; no line holding a claim phrase of any action
+or one that claims any, Ole5's for a ticket's number among them (the owner's ruling of
+2026-11-10), naming a screen or promising a person (D-009, D-075); and no MSA line holding a
+dialect form."""
 
 from __future__ import annotations
 
@@ -16,6 +18,7 @@ from typing import Final, Literal
 import pytest
 from ole5_voice.agent import Tag, declare
 from ole5_voice.tickets import lines
+from ole5_voice.tickets.drafts import PRIORITY_LABELS
 from ole5_voice.tickets.tools import ticket_tools, with_ticket_claims
 from t2_agentic_voice import (
     Action,
@@ -60,6 +63,12 @@ PROMISED = (
 # start, which no MSA line holds: tabi, want (as in tabeeni, do you want me to); illi, which;
 # al-heen, now; and the future's b- before a verb: baftaH, I'll open; baHawwil, I'll pass on.
 SAUDI_FORMS: Final = ("تبي", "اللي", "الحين", "بفتح", "بحول", "بضيف", "هال")
+# The fields a read-back leaves out, by action: a ticket's priority, which the talker sets
+# itself and never says (the owner's ruling of 2026-11-11).
+UNSAID: Final = {"create_ticket": {"priority"}}
+# What says a priority, as a word's part: priority, urgent; awlawiyya (priority), 'aajil
+# (urgent) and musta'jil (in a hurry).
+PRIORITY_STEMS: Final = ("priorit", "urgen", "أولوي", "عاجل", "مستعجل")
 
 
 def _actions(tmp_path: Path) -> list[Action]:
@@ -124,20 +133,35 @@ def test_each_action_speaks_every_language_ole5_speaks(tmp_path: Path) -> None:
         )
 
 
-def test_each_read_back_states_every_field_it_sends(tmp_path: Path) -> None:
-    """Invariant 1's templates: the caller confirms what is sent. A handoff's says the call's
-    conversation goes with it."""
+def test_each_read_back_states_every_field_it_sends_but_the_priority(tmp_path: Path) -> None:
+    """Invariant 1's templates: the caller confirms what is sent, but a ticket's priority,
+    which is internal (`UNSAID`). A handoff's says the call's conversation goes with it."""
     for made in _actions(tmp_path):
+        said = set(made.draft.model_fields) - UNSAID.get(made.name, set())
         assert made.read_back.show_draft is False  # the caller only hears the agent (D-075)
-        assert made.read_back.placeholders == set(made.draft.model_fields)
+        assert made.read_back.placeholders == said
         for tag in WORDINGS:
             summary, _ = made.read_back.for_language(tag)
             named = set(re.findall(r"{(\w+)", summary))
-            assert named == set(made.draft.model_fields), (made.name, tag)
+            assert named == said, (made.name, tag)
     summaries = lines.HANDOFF_READ_BACK.templates
     assert "what we said in this call" in summaries["en"][0]
     assert "كلامنا في هالمكالمة" in summaries["ar-SA"][0]
     assert "محادثتنا في هذه المكالمة" in summaries["ar"][0]  # our conversation in this call
+
+
+def test_a_tickets_read_back_says_its_type_and_summary_and_no_priority() -> None:
+    """The owner's ruling of 2026-11-11: the priority is "an internal detail", so no wording
+    of the ticket's read-back names it, says a word for it or a label of one; each still says
+    the type, then the summary."""
+    labels = [label for each in PRIORITY_LABELS.values() for label in each.values()]
+    for tag in WORDINGS:
+        summary, question = lines.TICKET_READ_BACK.for_language(tag)
+        assert re.findall(r"{(\w+)", summary) == ["type", "summary"], tag
+        words = _words(f"{summary} {question}")
+        stems = [normalize_arabic(stem) for stem in PRIORITY_STEMS]
+        assert [w for w in words if any(stem in w.lower() for stem in stems)] == [], tag
+        assert [w for w in words if w.lower() in map(normalize_arabic, labels)] == [], tag
 
 
 def test_a_ticket_made_is_said_whole_in_four_groups_and_no_other_line_says_a_number() -> None:

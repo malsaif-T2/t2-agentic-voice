@@ -2,13 +2,15 @@
 and Q7): the drafts, parsed strictly and read back to the caller, and the results the outcome
 line is filled from and the record keeps.
 
-- **A ticket's draft** holds only what a caller can answer: a summary of what is wrong, which
-  the model writes in the caller's language, at most `MAX_SUMMARY_CHARS`; one of the 11 types;
-  and the priority, Medium unless the caller says how urgent it is. The queue follows the type
-  (values.py's `QUEUE_OF`), and subtype and reason are left to support staff, so the talker
-  is asked for neither. Each type and priority is said through its `Spoken` label in Saudi
-  Arabic and English, and in MSA through the Saudi label, which MSA says alike, but where it
-  differs.
+- **A ticket's draft** holds a summary of what is wrong, which the model writes in the
+  caller's language, at most `MAX_SUMMARY_CHARS`; one of the 11 types; and the priority,
+  which is internal (the owner's ruling of 2026-11-11): the talker sets it from what the
+  caller said, Medium when they say nothing of it, never asks for it and never says it, so
+  the read-back leaves it out. The caller is asked only what is wrong. The queue follows the
+  type (values.py's `QUEUE_OF`), and subtype and reason are left to support staff, so the
+  talker is asked for neither. Each type and priority has its `Spoken` label in Saudi Arabic
+  and English, and in MSA the Saudi label, which MSA says alike, but where it differs; the
+  read-back says only the type's.
 - **A note's draft** names a ticket made in this call by its number's last four digits, the
   way the caller hears it, and the note's text.
 - **A handoff's draft** is the summary of what the caller needs from a person; the call's
@@ -87,8 +89,9 @@ _TYPE_HELP: Final = (
     "cannot sign in and needs a new password."
 )
 _PRIORITY_HELP: Final = (
-    "Medium unless the caller says how urgent it is: High when they say it is urgent, Critical "
-    "only when their work has stopped entirely, Low when they say it can wait."
+    "Set it yourself from what the caller said; never ask for it, and never say it to them. "
+    "High when they say it is urgent or stops their work, Low when they say it can wait, "
+    "Medium when they say nothing of it."
 )
 
 

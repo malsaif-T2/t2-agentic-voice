@@ -8,7 +8,9 @@ record or a status result holds the action (the design's 6.4 and 8.2).
 
 In the register of Ole5's other lines (agent.py): short, plain, friendly, Saudi for `ar-SA`;
 formal and as short for `ar`, with no dialect form. A read-back states every field that is
-sent, the handoff's attached conversation too (invariant 1); `done` says a ticket's whole
+sent, the handoff's attached conversation too (invariant 1), but a ticket's priority, which is
+internal: the talker sets it from the caller's words and never says it, so the caller hears
+the type and the summary (the owner's ruling of 2026-11-11); `done` says a ticket's whole
 number digit by digit in groups of four (plan 007's Q6); no line says a person is joining or
 will call (D-009), and `unknown` gives no number (invariant 6). No line but a closing question
 holds a word the caller commands with (a stop, a wait, a repeat, a listening sound, a yes or a
@@ -42,15 +44,14 @@ _ASK_AR: Final = "تبيني أرسلها؟"  # tabeeni arsilha: do you want me 
 _ASK_MSA: Final = "هل أرسلها؟"  # hal ursiluha: shall I send it?
 _ASK_EN: Final = "Shall I send it?"
 
-# create_ticket
+# create_ticket: the type and the summary, never the priority (the module's docstring)
 TICKET_READ_BACK: Final = ReadBack(
     {
-        # I'll open you a ticket, its type ..., its priority ...: ...
-        "ar-SA": ("بفتح لك تذكرة نوعها {type} وأولويتها {priority}: {summary}", _ASK_AR),
-        # sa-aftahu laka tadhkiratan naw'uha ... wa-awlawiyyatuha ...: I will open you a
-        # ticket, its type ..., its priority ...: ...
-        "ar": ("سأفتح لك تذكرة نوعها {type} وأولويتها {priority}: {summary}", _ASK_MSA),
-        "en": ("I'll open a ticket, type {type}, priority {priority}: {summary}", _ASK_EN),
+        # baftaH lak tadhkira naw'aha ...: I'll open you a ticket, its type ...: ...
+        "ar-SA": ("بفتح لك تذكرة نوعها {type}: {summary}", _ASK_AR),
+        # sa-aftahu laka tadhkiratan naw'uha ...: I will open you a ticket, its type ...: ...
+        "ar": ("سأفتح لك تذكرة نوعها {type}: {summary}", _ASK_MSA),
+        "en": ("I'll open a ticket, type {type}: {summary}", _ASK_EN),
     },
     send_words=SEND_WORDS,
 )

@@ -21,7 +21,7 @@ from ole5_voice.tickets.drafts import (
     made_in,
 )
 from ole5_voice.tickets.system import TicketRef
-from ole5_voice.tickets.values import PRIORITIES, TYPES
+from ole5_voice.tickets.values import DEFAULT_PRIORITY, PRIORITIES, TYPES
 from pydantic import BaseModel, ValidationError
 from t2_agentic_voice import RecordedAction
 
@@ -46,13 +46,34 @@ def _drafts(tmp_path: Path) -> dict[str, type[BaseModel]]:
 
 
 def test_a_ticket_draft_holds_only_what_a_caller_can_answer() -> None:
-    """Q5: what is wrong (the summary the model writes) and how urgent; the type the model
-    picks. No queue, subtype, reason, email or customer: those are not the talker's."""
+    """Q5: what is wrong (the summary the model writes); the type the model picks, and the
+    priority it sets (the next test). No queue, subtype, reason, email or customer: those are
+    not the talker's."""
     assert set(TicketDraft.model_fields) == {"summary", "type", "priority"}
     draft = TicketDraft(summary=SUMMARY, type="Report")
     assert draft.priority == "Medium"  # unless the caller says how urgent it is
     assert set(NoteDraft.model_fields) == {"ticket_ends_in", "note"}
     assert set(HandoffDraft.model_fields) == {"summary"}
+
+
+def test_the_talker_sets_the_priority_from_the_callers_words_and_never_asks(
+    tmp_path: Path,
+) -> None:
+    """The owner's ruling of 2026-11-11: the priority is internal. The field, as the model is
+    told of it, says to set it from what the caller said, Medium by default, and never to ask
+    for it or say it; a draft with none holds Medium."""
+    field = TicketDraft.model_fields["priority"]
+    assert field.default == DEFAULT_PRIORITY == "Medium"
+    schema = _drafts(tmp_path)["create_ticket"].model_json_schema()
+    told = " ".join(str(schema["properties"]["priority"]["description"]).split())
+    for needed in (
+        "Set it yourself from what the caller said; never ask for it, and never say it to them.",
+        "High when they say it is urgent or stops their work",
+        "Low when they say it can wait",
+        "Medium when they say nothing of it",
+    ):
+        assert needed in told, needed
+    assert "how urgent it is:" not in told  # the old help, which waited for the caller to say
 
 
 @pytest.mark.parametrize(

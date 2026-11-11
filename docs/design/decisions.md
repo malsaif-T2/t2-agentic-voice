@@ -2759,11 +2759,17 @@ twice; DOC-REF: every `D-NNN` cited anywhere is a heading here), so keep its sha
     something else instead of answering: a question, about this action or anything else, or a
     request for something other than what was read back (another ticket, another topic; not
     "a person", since a person asked for over a handoff's read-back is that very thing, and a
-    yes to it stays a yes); `unclear` keeps a
-    sound, a hesitation, a word that answers nothing and the agent's own read-back or question
-    heard back, and says that rule comes first (words that match what the agent said are never
-    the caller's answer, even when they are a question); `change` is unchanged, and there is no
-    sixth word.
+    yes to it stays a yes); `unclear` keeps a sound, a hesitation, a word that answers nothing
+    and the agent's own read-back or question heard back, and that rule comes first (words that
+    match what the agent said are never the caller's answer, even when they are a question);
+    `change` is unchanged, and there is no sixth word. *Reworded the same day* after run A's dev
+    run (`a1-dev`), where the model still answered `unclear` to a bare question (a41 twice,
+    a42 once) and, asked a Saudi one four times, ran out of its 256 tokens while reasoning in
+    three: the echo rule now opens the instruction ("First: ..."), `no` says plainly that "any
+    question the caller asks instead is no", and `unclear` is "only" a sound, a hesitation or a
+    word that answers nothing. Asked again the same 13 answers four times each, the model gave
+    48 of 52 right; the rest were 3 failed requests and one `no` to "Yes, I want to talk to a
+    person" over a handoff's read-back, which drops it with nothing sent.
   - The yes rule decides what the word makes (`judged`, beside `decide`, the only other builder
     of a `ConfirmedAction`). A `send` or `yes` is a yes only when the words hold no no word and
     no question mark (else asked again), no change marker (`domain/yes_words.py`'s new list a

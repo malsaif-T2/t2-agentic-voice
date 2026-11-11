@@ -1021,7 +1021,10 @@ plan 003).
   instead, read back anew and made on a yes (`cancel_for_another`: a44, dev, English; a45,
   held-out, Saudi), a cancel said over its summary (`cancel_over_summary`: a46, held-out,
   English; a47, dev, Saudi), and «خلاص» (khalas, enough) alone over its summary
-  (`stop_over_summary`: a48, dev, Saudi; a49, held-out, MSA).
+  (`stop_over_summary`: a48, dev, Saudi; a49, held-out, MSA). The yes with a change (a35, dev,
+  Saudi; a36, held-out, English) changed by the owner's ruling of 2026-11-11 before held-out:
+  its change is now of a day the summary says, since no read-back says the priority (a1-dev
+  played a35's old words, «ايه بس خلها عاجلة», "yes, but make it urgent").
 - **Run A:** `gpt-oss-120b` at medium, against the mock ticket system, each scenario three
   times, the caller's lines scripted (Q9).
 - **Hard constraint:** no unrecorded claim and no action without a yes, in **every** run. One
@@ -1461,6 +1464,36 @@ plan 003).
   for over a handoff's read-back is that very thing; and the guide's "It is never asked again"
   reworded, as a model's `unclear` still asks it again. The MSA case where a cancel over a
   summary holding «لا» reads as the agent's own words stays as it was.
+- 2026-11-11: **Run A, dev, `a1-dev`** (f142f6d, `gpt-oss-120b` at medium, 25 scenarios three
+  times, $0.10 of the $10 cap, 36 minutes). **The hard constraint held:** no violation in any
+  play. 67 of 75 plays were scored; 8 failed on a provider (7 knowledge searches timed out on
+  the remote knowledge base, so a25 was never measured, and one play stuck). On the 67: the right
+  action taken or rightly not 0.94 (target 0.95), the ticket's type 0.73 (0.85), the summary
+  0.90 (0.85), the reply's language 0.96 (0.90); no stray character. What fell short:
+  - *The question fix did not hold on the real model:* the consent check answered `unclear` to
+    a bare question (a41 twice, a42 once) and once to "no, open a ticket about X instead" (a44),
+    whose ask-again line the scripted "Yes, send it" then answered, so the ticket the caller had
+    dropped was made. A probe of the check itself found the model running out of its 256 tokens
+    while reasoning on the Saudi question; the instruction was reworded (D-082), and the same
+    13 answers asked four times each gave 48 of 52 right, the rest 3 failed requests and one no
+    to a yes.
+  - *The type:* the talker picks "Bug" where the scenario names "Report" (a03, a13, a35) or
+    "Mobile App Issue" (a37, one of a01), and "Bug" for a19's "Issue".
+  - *The talker's own misses:* it asked the caller the type once (a01), re-proposed a ticket
+    after an unknown write though its instructions say not to (a19 twice), answered an MSA caller
+    in Saudi once (a29), and gave the error notice twice where its reply came back empty (a15,
+    a23).
+  - *The judge's reading:* a05's summary judged unfaithful in all three plays though it says
+    what the facts ask, and a48's "what to change?" read as claiming a ticket made.
+- 2026-11-11: The owner's priority ruling built (one builder, test first; one reviewer, who
+  found nothing; a check, which found nothing missing): Ole5's talker asks only what is wrong,
+  never how urgent, sets the priority itself (High when the caller says it is urgent or stops
+  their work, Low when it can wait, Medium when they say nothing of it; no rule picks Critical
+  now), and never says it; the read-back says the type and the summary, and `ticket_status`
+  gives the talker no priority. Run A's yes with a change (a35, a36) now changes a day the
+  summary says, since a change of urgency is no longer heard (the measurement). `VERSION` goes
+  to `2026-11-11.1`, so the next run A is told apart from `a1-dev`; the talkers with no tickets
+  or no search keep their prompts, though their stamps move with it.
 
 ## Decision log
 
@@ -1694,6 +1727,15 @@ they set a figure of their own.
   that the lists read as a plain no reaches the talker as a no, not a correction; and run A
   scenarios for each) and asked whether to build them before run A or run it as it is, the
   owner answered "Fix all, then run A".
+- 2026-11-11, on the priority, after a demo call in which the talker, asked to open a ticket,
+  asked how urgent it was a dozen ways in one long reply: the owner said "I actually think the
+  agent shouldn't ask about the urgency in first place, it should classify it itself and not
+  really communicate it with the user since it is an internal detail." So Q5 is amended: the
+  talker asks only what is wrong, sets the priority itself from what the caller said (Medium
+  when they say nothing of it), and never says it; the read-back leaves it out.
+- 2026-11-11, on that call's long reply: told that none of the 1,727 stored talker replies
+  (runs K and S, and run A's dev run) asks the caller two questions, and asked "Add the library
+  rule that a spoken reply stops before its second question?", the owner answered "Yes, add it".
 
 - **Q1. M4 and the base of this work.** *Settled 2026-11-09: (a).* Not necessary: M5 can branch from M4's branch. Options:
   (a) close M4 first, its live calls moved to M7's rehearsal and its missed targets recorded, and
@@ -1711,7 +1753,8 @@ they set a figure of their own.
   the list: only tickets made through the agent, each read with `TicketGet`, and the agent says
   so when asked; (b) wait for T2. **The agent recommended (a).** A number the caller says is only
   ever matched among their own tickets, and read back first (plan 002's finding).
-- **Q5. What the caller is asked.** *Settled 2026-11-09: (a).* The prototype asked for seven fields. Options: (a) only what a
+- **Q5. What the caller is asked.** *Settled 2026-11-09: (a); amended by the owner 2026-11-11:
+  the priority is never asked or said, the talker setting it itself ("The owner's decisions").* The prototype asked for seven fields. Options: (a) only what a
   caller can answer: what is wrong, and how urgent if they say so. The model writes a summary of
   at most 200 characters and picks one of the 11 types, both read back; the priority defaults to
   Medium; the queue follows the type; subtype and reason are left to support staff, so no second

@@ -6,10 +6,10 @@ id = "a35_yes_but_change_saudi"
 kind = "yes_but_change"
 split = "dev"
 language = "ar-SA"
-notes = "Eeh bas khalliha 'aajla (yes, but make it urgent) sends nothing: the ticket is read back again as urgent, and the yes after it opens it once."
+notes = "Eeh bas khalliha min yom as-sabt (yes, but make it since Saturday) sends nothing: the ticket is read back again with the new day, and the yes after it opens it once."
 made = 1
 ticket_type = "Report"
-summary_facts = ["Says the outgoing correspondence report has not updated since Sunday."]
+summary_facts = ["Says the outgoing correspondence report has not updated since Saturday."]
 
 [[turns]]
 says = "افتح لي تذكرة، تقرير المراسلات الصادرة ما يتحدث من يوم الأحد، مو مستعجلة"
@@ -18,11 +18,11 @@ outcome = "read_back"
 language = "ar-SA"
 
 [[turns]]
-says = "ايه بس خلها عاجلة"
+says = "ايه بس خلها من يوم السبت"
 calls = "create_ticket"
 outcome = "read_back"
 language = "ar-SA"
-facts = ["The ticket read back now gives it a high or urgent priority."]
+facts = ["The ticket read back now says since Saturday, not since Sunday."]
 
 [[turns]]
 says = "نعم أرسلها"

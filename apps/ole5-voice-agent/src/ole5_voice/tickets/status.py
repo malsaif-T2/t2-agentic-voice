@@ -10,8 +10,9 @@ system does not hold for that customer is left out, so an outbox row of a custom
 settings named before shows nothing. A number the caller says is matched only among those
 tickets, by its last digits, never looked up on its own; when one of theirs matches, the result
 gives its last four digits back, so the talker says them first, and each ticket by its last four
-digits only, never its whole number (Q6). Its summary, type, priority and status are the
-caller's own ticket's. Digits that match none are not given back: a status result backs a claim
+digits only, never its whole number (Q6). Its summary, type and status are the caller's own
+ticket's; its priority is not given, as the talker never says it (the owner's ruling of
+2026-11-11). Digits that match none are not given back: a status result backs a claim
 that a ticket was made (rule A), so another customer's number, or one never issued, must not be
 in it (invariant 2); the talker may still say them back as the caller's own words (rule B).
 
@@ -30,7 +31,7 @@ from t2_agentic_voice.languages import normalize_digits
 from ole5_voice.customer import CUSTOMER_FIELD
 from ole5_voice.tickets.drafts import CREATE_TICKET, GROUP, HAND_OFF, MAKERS, made_in
 from ole5_voice.tickets.system import TicketSystem, TicketSystemError
-from ole5_voice.tickets.values import CLOSED, Priority, Status, TicketType
+from ole5_voice.tickets.values import CLOSED, Status, TicketType
 
 TICKET_STATUS: Final = "ticket_status"
 # The most tickets one answer lists, the newest: a reply says each aloud.
@@ -65,15 +66,14 @@ _UNAVAILABLE: Final = (
 
 class SeenTicket(BaseModel):
     """One of the caller's tickets as the talker is told of it: the last four digits of its
-    number, which action made it (`by`), its type, priority and status, whether it is closed,
-    its summary and the day it was opened."""
+    number, which action made it (`by`), its type and status, whether it is closed, its summary
+    and the day it was opened; never its priority, which the talker never says."""
 
     model_config = ConfigDict(frozen=True, extra="forbid")
 
     ends_in: str
     by: Literal["create_ticket", "hand_off"]
     type: TicketType
-    priority: Priority
     status: Status
     closed: bool
     summary: str
@@ -140,7 +140,6 @@ def ticket_status(system: TicketSystem) -> Tool:
                 ends_in=found.number[-GROUP:],
                 by="hand_off" if by == HAND_OFF else "create_ticket",
                 type=found.type,
-                priority=found.priority,
                 status=found.status,
                 closed=found.status in CLOSED,
                 summary=found.summary,

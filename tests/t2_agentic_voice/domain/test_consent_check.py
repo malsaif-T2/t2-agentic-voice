@@ -81,27 +81,29 @@ def _clause(start: str, end: str) -> str:
 def test_the_instructions_no_covers_a_question_and_a_request_for_something_else() -> None:
     """The owner's answer of 2026-11-11 (D-082): an answer that turns to something else instead
     of answering is a no, so the turn goes to the talker, which answers it in its own words."""
-    no = _clause("no, when ", "; change, ")
+    no = _clause("; no, when ", "; unclear, ")
     assert "refuses or cancels" in no
-    assert "a question" in no and "about this action or anything else" in no
+    # Any question, said plainly: run A's dev run found the model still answering unclear to a
+    # bare question under a softer wording (a41, a42), its reasoning cut off at its token limit.
+    assert "any question the caller asks instead is no" in no
     # Something other than what was read back: a person asked for over a handoff's read-back is
     # that very thing, so a yes to it stays a yes (the review of 2026-11-11).
     assert "a request for something other than what was read back" in no
-    assert "another ticket" in no and "another topic" in no
     assert "a person" not in CONSENT_CHECK_INSTRUCTION
 
 
 def test_the_instructions_unclear_keeps_sounds_hesitations_and_the_echo_first() -> None:
     """A question is no longer unclear; the agent's own words heard back stay unclear, and that
-    rule comes first, a question among them."""
-    unclear = _clause("unclear, for ", ". The caller")
+    rule comes first, before the five words, a question among them."""
+    told = CONSENT_CHECK_INSTRUCTION
+    first = _clause("First: ", " Otherwise: ")
+    assert "own read-back or question heard back" in first
+    assert "never the caller's answer" in first and "even when they are a question" in first
+    assert told.index("First: ") < told.index("send, when")
+    unclear = _clause("; unclear, only for ", ". The caller")
     for kept in ("a sound", "a hesitation", "a word that answers nothing"):
         assert kept in unclear
-    assert "own read-back or question heard back" in unclear
-    assert "comes first" in unclear and "never the caller's answer" in unclear
-    assert "even when they are a question" in unclear
-    assert "a question," not in unclear and "anything else" not in unclear
-    told = CONSENT_CHECK_INSTRUCTION
+    assert "question" not in unclear and "anything else" not in unclear
     assert told.endswith("Answer with one word only: send, yes, no, change or unclear.")
 
 

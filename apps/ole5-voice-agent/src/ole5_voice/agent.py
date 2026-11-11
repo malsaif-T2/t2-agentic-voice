@@ -7,9 +7,10 @@ the library's runtime.
   English; every step of a procedure said in one reply, repeated whole or in part when asked,
   and no screen named (D-075); numbers as digits; a plain "I cannot" for what no tool
   provides; a search whenever the question is about Ole5; and its tickets (plan 007): only
-  what is wrong and how urgent asked for one, a person asked for made a handoff ticket, no
-  ticket and no number said but from a tool's result or the system's own words, a status of
-  the caller's own tickets alone. Its tools search Ole5's knowledge base
+  what is wrong asked for one, its priority set by the talker from the caller's words and
+  never asked or said (the owner's ruling of 2026-11-11), a person asked for made a handoff
+  ticket, no ticket and no number said but from a tool's result or the system's own words, a
+  status of the caller's own tickets alone. Its tools search Ole5's knowledge base
   (`search_tool`, the library's `knowledge_tool`), reading the top `SEARCH_LIMIT` passages
   whole, with a progress line in each language (`PROGRESS`) for a search that runs long, and
   act on a ticket system (tickets/tools.py's `ticket_tools`: `create_ticket`,
@@ -57,7 +58,7 @@ NAME: Final = "ole5"
 # changed, and the change of that day; the talker with no search, or no tickets, is versioned
 # apart (`version`), so a run's record tells each apart: no tickets, as runs K, S and T build
 # it with a search; and no tool at all, as run T's pass Tn builds it.
-VERSION: Final = "2026-11-10.1"
+VERSION: Final = "2026-11-11.1"
 NO_TICKETS_VERSION: Final = f"{VERSION}+no-tickets"
 NO_SEARCH_VERSION: Final = f"{VERSION}+no-search+no-tickets"
 # oo lee faayf, as two plain words: the owner's pick of ten samples of the voice, 2026-11-09.

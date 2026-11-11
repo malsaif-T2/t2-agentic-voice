@@ -56,8 +56,8 @@ SAUDI = "صفحة التقارير ما تطلع فيها أي بيانات من
 SUMMARIES = {"ar-SA": SAUDI, "en": SUMMARY}
 TAGS: tuple[LanguageTag, ...] = ("ar-SA", "en")
 READ_BACKS = {
-    "ar-SA": (f"بفتح لك تذكرة نوعها خلل في النظام وأولويتها عالية: {SAUDI}", "تبيني أرسلها؟"),
-    "en": (f"I'll open a ticket, type bug, priority high: {SUMMARY}", "Shall I send it?"),
+    "ar-SA": (f"بفتح لك تذكرة نوعها خلل في النظام: {SAUDI}", "تبيني أرسلها؟"),
+    "en": (f"I'll open a ticket, type bug: {SUMMARY}", "Shall I send it?"),
 }
 DIGITS = {
     "ar-SA": ("صفر", "واحد", "اثنان", "ثلاثة", "أربعة", "خمسة", "ستة", "سبعة", "ثمانية", "تسعة"),
@@ -79,9 +79,10 @@ def code(tag: LanguageTag) -> LanguageCode:
 def test_the_ticket_is_read_back_by_its_labels_with_ole5s_own_lines(
     tmp_path: Path, tag: LanguageTag
 ) -> None:
-    """(a) The type and priority said by their labels, then the summary as written; the
-    closing question holds the send word; `sending` and `declined` are Ole5's, never the
-    library's; nothing is written before a yes."""
+    """(a) The type said by its label, then the summary as written, the draft's priority
+    (High) left unsaid (the owner's ruling of 2026-11-11); the closing question holds the send
+    word; `sending` and `declined` are Ole5's, never the library's; nothing is written before a
+    yes."""
     rig = Rig(tmp_path)
     plan = run(rig.plan(CREATE_TICKET, draft(tag), tag))
     assert (plan.summary.text, plan.question.text) == READ_BACKS[tag]

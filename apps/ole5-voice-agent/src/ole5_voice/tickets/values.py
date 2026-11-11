@@ -47,8 +47,8 @@ QUEUES: Final[tuple[Queue, ...]] = get_args(Queue)
 TYPES: Final[tuple[TicketType, ...]] = get_args(TicketType)
 PRIORITIES: Final[tuple[Priority, ...]] = get_args(Priority)
 STATUSES: Final[tuple[Status, ...]] = get_args(Status)
-# The priority a ticket takes unless the caller says how urgent it is (plan 007's Q5), and the
-# status a new ticket starts in.
+# The priority the talker gives a ticket when the caller says nothing of how urgent it is (plan
+# 007's Q5, amended by the owner on 2026-11-11), and the status a new ticket starts in.
 DEFAULT_PRIORITY: Final[Priority] = "Medium"
 NEW_STATUS: Final[Status] = "New"
 # The statuses the sheet marks closed; every other one is open.

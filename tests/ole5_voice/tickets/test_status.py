@@ -97,12 +97,10 @@ def test_the_caller_hears_only_their_tickets_made_through_the_agent(tmp_path: Pa
     ]
     assert answer.total == 2 and answer.asked_ends_in is None
     first = answer.tickets[0]
-    assert (first.type, first.priority, first.status, first.closed) == (
-        "Inquiry",
-        "Medium",
-        "New",
-        False,
-    )
+    assert (first.type, first.status, first.closed) == ("Inquiry", "New", False)
+    # The priority is internal (the owner's ruling of 2026-11-11): the talker is never told it.
+    assert "priority" not in type(first).model_fields
+    assert "priority" not in answer.model_dump_json()
     assert (first.summary, first.opened_on) == (SUMMARY, "2026-11-10")
     data = json.dumps(answer.model_dump(mode="json"), ensure_ascii=False)
     for number in (scene.first.number, scene.handed.number):
