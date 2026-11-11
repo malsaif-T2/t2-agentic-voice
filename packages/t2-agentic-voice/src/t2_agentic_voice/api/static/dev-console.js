@@ -653,6 +653,28 @@ function state(name) {
   $("state").textContent = name;
 }
 
+// The token this page's call joins with, and where it came from: the field's, as typed; with
+// the field empty, one the console makes for the app's dev caller (POST dev/token), the box
+// saying whether the call's audio may be kept; and `dev` when it makes none (no dev caller
+// declared, or no join key that signs: a plain 404), which `t2v dev`'s identity takes.
+async function joinToken() {
+  const typed = $("token").value;
+  if (typed) return { token: typed, from: "the token typed" };
+  try {
+    const response = await fetch("token", {
+      method: "POST",
+      headers: { "content-type": "application/json" },
+      body: JSON.stringify({ record_audio: $("keep-audio").checked }),
+      cache: "no-store",
+    });
+    const body = response.ok ? await response.json() : null;
+    if (typeof body?.token === "string" && body.token) return { token: body.token, from: "a token for the app's dev caller" };
+  } catch {
+    // none made: joined as dev
+  }
+  return { token: "dev", from: "dev (no token made: no dev caller, or no join key that signs)" };
+}
+
 async function start() {
   running(true);
   captions.clear();
@@ -661,9 +683,15 @@ async function start() {
   $("live").hidden = false;
   $("status").textContent = "Starting: allow the microphone.";
   try {
+    // As the widget does: the client asks for the token once the microphone is open, inside
+    // the click's start, so a slow microphone prompt never outlives the token.
     view.own = await VoiceClient.start({
       base: "..",
-      token: $("token").value || "dev",
+      getToken: async () => {
+        const joining = await joinToken();
+        $("status").textContent = `Joining with ${joining.from}.`;
+        return joining.token;
+      },
       language: $("language").value || undefined,
       pushToTalk: $("push-to-talk").checked,
       on: {

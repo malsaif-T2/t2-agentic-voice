@@ -94,18 +94,20 @@ def answering(route: str, handler: Callable[[Request, str], Awaitable[Response]]
     return answer
 
 
-async def read_body(request: Request, route: Route) -> bytes:
-    """The request's body, sent as JSON and within `route`'s cap; a `Refusal` otherwise (415
-    before a byte is read; 413 for a `Content-Length` over the cap, or at the cap as the body
-    streams past it)."""
+async def read_body(request: Request, route: Route | int) -> bytes:
+    """The request's body, sent as JSON and within `route`'s cap (or the bytes given, for a
+    route that is not `t2v/1`'s, the test console's); a `Refusal` otherwise (415 before a byte
+    is read; 413 for a `Content-Length` over the cap, or at the cap as the body streams past
+    it)."""
+    cap = route if isinstance(route, int) else route.max_bytes
     if not is_json(request.headers.get("content-type")):
         raise Refusal(415, "unsupported_media_type")
-    if _declared(request.headers.get("content-length")) > route.max_bytes:
+    if _declared(request.headers.get("content-length")) > cap:
         raise Refusal(413, "too_large")
     body = bytearray()
     async for chunk in request.stream():
         body += chunk
-        if len(body) > route.max_bytes:
+        if len(body) > cap:
             raise Refusal(413, "too_large")
     return bytes(body)
 

@@ -1,9 +1,11 @@
 <!doctype html>
 <!-- The test console (GET <prefix>/dev/console, env dev, loopback clients and a loopback Host
      only: api/dev_console.py, D-083): every call on the runtime, turn by turn, from the
-     runtime's events (GET dev/feed), and a call of its own through t2v-client.js. For the
-     engineers who test an agent, never for callers. No inline script or style: its script is
-     dev-console.js, its style dev-console.css, and every text is set with textContent. -->
+     runtime's events (GET dev/feed), and a call of its own through t2v-client.js, with the
+     token typed, or, the field left empty, one the console makes for the app's dev caller
+     (POST dev/token), else `dev`. For the engineers who test an agent, never for callers. No
+     inline script or style: its script is dev-console.js, its style dev-console.css, and every
+     text is set with textContent. -->
 <html lang="en">
 <head>
 <meta charset="utf-8">
@@ -33,7 +35,8 @@
 <section class="controls panel" aria-label="A call from this page">
   <div class="field">
     <label for="token">Join token</label>
-    <input id="token" type="text" value="dev" autocomplete="off" spellcheck="false">
+    <input id="token" type="text" placeholder="Empty: the console makes one" autocomplete="off"
+      spellcheck="false">
   </div>
   <div class="field">
     <label for="language">Language</label>
@@ -52,6 +55,11 @@
   <div class="buttons">
     <label class="switch"><input type="checkbox" id="push-to-talk"> Push to talk</label>
     <button type="button" id="talk" aria-pressed="false" disabled>Talk (hold)</button>
+  </div>
+  <div class="buttons">
+    <label class="switch"><input type="checkbox" id="keep-audio"> Keep the call's audio</label>
+    <span class="muted small">Asked in the token the console makes; kept only with the server's
+      privacy.record_audio on.</span>
   </div>
   <div class="live">
     <span class="pill" id="state" data-state="idle">idle</span>

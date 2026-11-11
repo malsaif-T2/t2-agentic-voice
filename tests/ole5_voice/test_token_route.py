@@ -15,12 +15,11 @@ from typing import Any, Protocol
 import pytest
 from fastapi import FastAPI
 from fastapi.testclient import TestClient
-from ole5_voice.customer import CUSTOMER_EMAIL, customer_email
+from ole5_voice.customer import CUSTOMER_EMAIL, SUBJECT, customer_email
 from ole5_voice.token_route import (
     DAY_S,
     HOUR_S,
     MAX_BODY_BYTES,
-    SUBJECT,
     TOKENS_PER_DAY,
     WRONG_PER_HOUR,
     Guard,

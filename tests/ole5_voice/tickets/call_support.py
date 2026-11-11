@@ -16,12 +16,11 @@ from pathlib import Path
 from typing import Final, Literal
 
 from ole5_voice.agent import talker_agent
-from ole5_voice.customer import CUSTOMER_EMAIL
+from ole5_voice.customer import CUSTOMER_EMAIL, SUBJECT
 from ole5_voice.settings import DEMO_CUSTOMER_EMAIL
 from ole5_voice.tickets.lines import SEND_WORDS
 from ole5_voice.tickets.mock import MockTicketSystem
 from ole5_voice.tickets.tools import with_ticket_claims
-from ole5_voice.token_route import SUBJECT
 from t2_agentic_voice import Caller, VoiceAgent, VoiceSettings
 from t2_agentic_voice.core.settings.words import LanguageCode
 from t2_agentic_voice.domain.uncertain_overlaps import UNCERTAIN_OVERLAP_INSTRUCTION

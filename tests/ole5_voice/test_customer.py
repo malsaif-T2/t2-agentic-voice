@@ -10,8 +10,8 @@ import asyncio
 import pytest
 from fastapi import FastAPI
 from fastapi.testclient import TestClient
-from ole5_voice.customer import CUSTOMER_EMAIL, CUSTOMER_FIELD, customer_email
-from ole5_voice.token_route import SUBJECT, token_router
+from ole5_voice.customer import CUSTOMER_EMAIL, CUSTOMER_FIELD, SUBJECT, customer_email
+from ole5_voice.token_route import token_router
 from pydantic import SecretStr, ValidationError
 from t2_agentic_voice import Caller, from_caller
 from t2_agentic_voice.identity import SignedJoinTokens

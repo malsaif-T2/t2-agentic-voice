@@ -247,9 +247,34 @@ with the dev page on, to a browser on the same machine ([quickstart.md](quicksta
 runtime, turn by turn, read from the runtime's own events. It comes with the dev page, so `t2v
 dev` serves it, and so does an app's server under `env` dev with `T2V_SERVER__DEV_PAGE=true`: for
 Ole5, `http://127.0.0.1:7861/voice/dev/console`. It shows calls made from any page on that
-runtime, and can make its own, as the dev page does: any token under `t2v dev`, a join token
-your identity source verifies otherwise. Ole5's server verifies signed tokens only, so start the
-call from Ole5's widget and watch it in the console.
+runtime, and can make its own.
+
+To start a call from the console, leave **Join token** empty and press **Start call**. When your
+app declares a dev caller (below), the console makes a signed join token for that caller
+(`POST dev/token`) and joins with it: the same kind of token your own page gets, verified once
+by your identity source, so the call runs as one from your page. It needs no access code, and
+your app's own limits never count it. When the app declares none, or the server holds no join key
+that signs (`T2V_JOIN__KEYS` and `T2V_JOIN__CURRENT_KID`), the console joins with `dev`, which
+`t2v dev` takes. Under `t2v dev` with no identity source of your own, `DevIdentity` takes any
+token and always gives the caller `dev` and a consent that keeps no audio, so the dev caller
+shows only on a server that verifies signed tokens, as Ole5's does. A token typed in the field
+is used as typed. **Keep the call's audio**, off
+unless ticked, is the consent the console's token carries; the audio is kept only when
+`privacy.record_audio` is on too ([data-and-privacy.md](data-and-privacy.md)).
+
+The dev caller is `server.dev_caller`: a caller of your app's, its subject and its attributes,
+which nothing in a request can change. Declare it in code:
+
+```python
+settings = VoiceSettings.from_env(
+    server={"dev_caller": {"subject": "tester", "attributes": {"department": "support"}}}
+)
+```
+
+or as JSON in `T2V_SERVER__DEV_CALLER`. It is read only under `env` dev with the dev page on.
+Ole5 declares its demo customer under `env` dev, so a call the console starts makes and reads
+that customer's tickets, as a call from the widget does: open the console with `T2V_ENV=dev`
+and `T2V_SERVER__DEV_PAGE=true`, leave the token empty and press Start.
 
 For each turn it shows:
 
@@ -278,5 +303,7 @@ per event in `dev-console/<call ID>.jsonl` under the data folder (`storage.var_d
 nothing deletes, so delete the folder to clear it. After a restart the console shows the
 newest 20 calls again, read back from there; the page holds the last 20 calls, and the files
 hold them all. None of it goes to a log. Since the events hold what callers said and what tools
-returned, every route of the console answers only under `env` dev, to a browser on this machine
-that names it `localhost`, `127.0.0.1` or `[::1]`; any other request gets a plain 404.
+returned, and its token starts a call as your dev caller, every route of the console answers
+only under `env` dev, to a browser on this machine that names it `localhost`, `127.0.0.1` or
+`[::1]`; any other request gets a plain 404. The token itself never goes to a log: the line
+`dev_token_minted` says only whether its consent keeps the audio.
