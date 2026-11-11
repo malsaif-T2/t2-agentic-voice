@@ -400,9 +400,11 @@ heard in, unless its words plainly say otherwise (at least 3 words in the other 
 more than twice as many as in the heard one's), so English product names inside an Arabic
 sentence keep the reply Arabic. Whisper is told the call's language (D-066), so speech in the
 other language is mostly written in the call's own, and the reply follows it there: an English
-question in an Arabic call is most often transcribed, and answered, as Arabic. Whether English
-questions hold up inside an Arabic call is measured before it is promised (plan 006's run X);
-until then, a caller who will ask in English picks English in the client. The prompt's language
+question in an Arabic call is most often transcribed, and answered, as Arabic (plan 006's run X
+measured it: 0.027 of Ole5's English items heard right). `stt.live_language = "classified"`
+sends each turn in the language a classifier heard instead (D-086); whether that holds up is
+measured before it is promised (plan 007's run H), so until then a caller who will ask in
+English picks English in the client. The prompt's language
 section, your instructions for that language and the voice all follow the reply's language;
 the rule in full, and how Saudi Arabic and MSA are told apart, are in
 [languages.md](languages.md).

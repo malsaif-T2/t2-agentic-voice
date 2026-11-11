@@ -87,6 +87,7 @@ from t2_agentic_voice.core.tracing import Tracing
 from t2_agentic_voice.domain.declaration import Language, VoiceAgent
 from t2_agentic_voice.domain.ports.action_jobs import ActionJobs
 from t2_agentic_voice.domain.ports.chat_model import ChatModel
+from t2_agentic_voice.domain.ports.language_classifier import LanguageClassifier
 from t2_agentic_voice.domain.ports.speech_to_text import SpeechToText
 from t2_agentic_voice.domain.ports.text_to_speech import TextToSpeech
 from t2_agentic_voice.voice.loguru_policy import switch_pipecat_off
@@ -189,6 +190,7 @@ class CallsFactory(Protocol):
         talker: TalkerFactory | None = None,
         chat: ChatModel | None = None,
         action_jobs: ActionJobs | None = None,
+        classifier: LanguageClassifier | None = None,
     ) -> Calls:
         """voice's entry point for the runtime's calls, built with no IO."""
 
@@ -204,8 +206,9 @@ class VoiceCalls:
     the chat model that decides an overlap the rule left uncertain, for an agent that asks
     for it (D-069). `action_jobs` carries out each call's confirmed actions (plan 007), one
     for every call, which it tells apart by the call's ID; with none, a call's confirmed yes is
-    told as the `error` notice and nothing is sent. Built cheaply, with no IO; `start` imports
-    onnxruntime and warms one pair of models."""
+    told as the `error` notice and nothing is sent. `classifier`, loaded by the runtime, hears
+    each turn's language under `stt.live_language = "classified"` (plan 007's Block H). Built
+    cheaply, with no IO; `start` imports onnxruntime and warms one pair of models."""
 
     def __init__(
         self,
@@ -221,11 +224,12 @@ class VoiceCalls:
         talker: TalkerFactory | None = None,
         chat: ChatModel | None = None,
         action_jobs: ActionJobs | None = None,
+        classifier: LanguageClassifier | None = None,
         speech_detector: Callable[[], VADAnalyzer] | None = None,
         turn_analyzer: Callable[[], BaseTurnAnalyzer] | None = None,
     ) -> None:
         self._talker = talker if talks(agent, settings, talker) else None
-        self._chat, self._action_jobs = chat, action_jobs
+        self._chat, self._action_jobs, self._classifier = chat, action_jobs, classifier
         self._agent, self._settings, self._stt, self._tts = agent, settings, stt, tts
         self._phrases, self._tracing, self._emit, self._clock = phrases, tracing, emit, clock
         self._speech_detector, self._turn_analyzer = speech_detector, turn_analyzer
@@ -325,15 +329,10 @@ class VoiceCalls:
         self._started = False
 
     def _detectors(self) -> tuple[VADAnalyzer, BaseTurnAnalyzer | None]:
-        """A speech detector and, with Smart Turn on, a turn analyzer, each loading its model:
-        called off the event loop."""
-        from t2_agentic_voice.voice.turns import speech_detector, turn_analyzer
+        """A call's speech detector and turn analyzer (voice/turns.py's): off the event loop."""
+        from t2_agentic_voice.voice.turns import detectors
 
-        turns = self._settings.turns
-        detector = (self._speech_detector or (lambda: speech_detector(turns)))()
-        if not turns.smart_turn:
-            return detector, None
-        return detector, (self._turn_analyzer or (lambda: turn_analyzer(turns)))()
+        return detectors(self._settings.turns, self._speech_detector, self._turn_analyzer)
 
     def _pipeline(
         self,
@@ -383,6 +382,7 @@ class VoiceCalls:
             closing=closing,
             on_finished=on_finished,
             record=record,
+            classifier=self._classifier,
         )
 
     def _session(self, pipeline: CallPipeline) -> Session:

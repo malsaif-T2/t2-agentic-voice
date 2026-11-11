@@ -66,7 +66,7 @@ class TurnEnd(BaseModel):
     end_ms: float
 
 
-class _HearsNothing:
+class HearsNothing:
     """A speech-to-text that answers at once, with nothing heard, and sends nothing."""
 
     name = "none"
@@ -81,7 +81,7 @@ class _HearsNothing:
         """Nothing is held open."""
 
 
-class _SaysSilence:
+class SaysSilence:
     """A text-to-speech, and the phrase audio, that say every text as silence of no length."""
 
     name = "none"
@@ -122,11 +122,11 @@ async def turn_ends(
     clips = list(clips)
     if any(clip.sample_rate != CLIP_RATE for clip in clips):
         raise ValueError(f"a file-fed call's caller is mono PCM16 at {CLIP_RATE} Hz")
-    silence = _SaysSilence()
+    silence = SaysSilence()
     calls = VoiceCalls(
         agent=_AGENT,
         settings=settings,
-        stt=_HearsNothing(),
+        stt=HearsNothing(),
         tts=silence,
         phrases=silence,
         tracing=Tracing(),

@@ -92,7 +92,7 @@ An arrow or a line down means "may import"; `api` may import every layer, `testi
 | --- | --- | --- | --- |
 | `core` | Settings (`VoiceSettings` in `core/config.py`, the only module that reads the environment, and its groups in `core/settings/`), structured logging (`core/logging.py`), the error types (`core/errors.py`: `T2VoiceError` and its subclasses, each with a stable `code`), tracing to Phoenix, and the types every layer shares | none | `logging`, `structlog`, `pydantic_settings`, `opentelemetry`, `openinference`, `phoenix`, `requests` |
 | `domain` | The rules of a support call, with no IO: what counts as a clear yes, an action's states, what an interruption is, Arabic text normalization, how numbers (through num2words) and ticket IDs are spoken, the evaluation scorers' pure parts (term recall, ID recall, text from silence, the sign test), and the ports (protocols) every outside service is reached through | core | `num2words` |
-| `adapters` | One adapter per port: speech-to-text, the chat model and text-to-speech (Groq), each chosen by a setting; the signed join tokens, the SQLite stores (the used tokens and the outbox), the TURN credentials, the phrase cache and the clause cache (D-087) | core, domain | `groq`, `httpx`, `qdrant_client`, `jwt`, `sqlite3` |
+| `adapters` | One adapter per port: speech-to-text, the chat model and text-to-speech (Groq), each chosen by a setting; the spoken-language classifiers (Silero on onnxruntime, ECAPA on torch through the library's `ecapa` extra) and the check of their model files; the signed join tokens, the SQLite stores (the used tokens and the outbox), the TURN credentials, the phrase cache and the clause cache (D-087) | core, domain | `groq`, `httpx`, `qdrant_client`, `torch`, `torchaudio`, `speechbrain`, `jwt`, `sqlite3` |
 | `actions` | The backend that acts: runs the talker's tools through the ports, carries out each confirmed action as a job, keeps each call's record of completed actions, words every outcome from a real result | core, domain | — |
 | `agent` | The talker: prompts, the few tool definitions, the reply language, one turn from the user's words to a reply and tool calls; the output guard on every sentence | core, domain, actions | — |
 | `voice` | One call's real-time pipeline: answers the WebRTC offer (Pipecat's peer connection), audio in and out, speech detection, end of turn, interruptions, each reply's cancel scope, speech-to-text and text-to-speech wired to the talker; Pipecat's logger (loguru), kept off | core, domain, agent | `pipecat`, `loguru` |
@@ -224,7 +224,8 @@ The rules live in [harness.toml](harness.toml), the source of truth;
   service, none of its LLM machinery (adapters, context aggregators, flows, LLM workers), none
   of its modules that reach an outside host (classifiers, the HTTP Smart Turn, serializers,
   every transport but Small WebRTC), nor its runner, its frame loggers, its torch or numba
-  modules, its DTMF aggregator or RTVI; `voice/session/` imports no Pipecat, not even through
+  modules, its DTMF aggregator or RTVI; the library's own code never imports `huggingface_hub`,
+  so no model is fetched at run time; `voice/session/` imports no Pipecat, not even through
   another of the library's modules; and the apps and the examples import neither Pipecat nor
   aiortc ([scripts/arch_ban.py](scripts/arch_ban.py));
 - ARCH-CONSTRUCT: a class in `[[restricted]]` is constructed only by its layers and its

@@ -12,12 +12,14 @@ from __future__ import annotations
 
 import asyncio
 import json
+from collections.abc import Sequence
 from dataclasses import dataclass
 from datetime import datetime
 from pathlib import Path
 
 from pydantic import JsonValue, ValidationError
 
+from t2_agentic_voice.agent.language import tag_of
 from t2_agentic_voice.core.conversation import TurnFate
 from t2_agentic_voice.core.errors import ProviderErrorKind
 from t2_agentic_voice.core.events import (
@@ -30,6 +32,7 @@ from t2_agentic_voice.core.events import (
     Interrupted,
     InterruptionKind,
     InterruptionReason,
+    LanguageBy,
     ModelUsage,
     ProviderFailed,
     TransportFailed,
@@ -77,7 +80,10 @@ class TurnLog:
     ends. While a chat model's word on its answer to a read-back is awaited (yes_ask.py) it is
     `judging`: neither answered nor settled yet. `stray_characters` counts the characters the
     stray-script filter took out of, or rewrote in, what its reply's model requests wrote, and
-    `stray_scripts` labels their kinds (agent/stray_script.py), never a character."""
+    `stray_scripts` labels their kinds (agent/stray_script.py), never a character. `language`,
+    `language_by` and `language_share` are what its first request named, how, and the verdict's
+    best share (plan 007's Block H), from its first `Transcribing`, whatever its part, as
+    turn_book.py keeps them."""
 
     turn_id: TurnId
     speech_at: float | None = None
@@ -111,6 +117,9 @@ class TurnLog:
     done: bool = False
     stray_characters: int = 0
     stray_scripts: tuple[str, ...] = ()
+    language: str | None = None
+    language_by: LanguageBy | None = None
+    language_share: float | None = None
 
     @property
     def transcribed(self) -> bool:
@@ -153,10 +162,14 @@ class TurnLog:
             turn_complete_ms=_ms(self.complete_at, spoken),
         )
 
-    def record(self, language: LanguageTag) -> TurnRecord:
+    def record(self, language: LanguageTag, spoken: Sequence[LanguageTag] = ()) -> TurnRecord:
+        """Its record in the report of a call held in `language` by an agent that speaks
+        `spoken`: the tag of the language its request was sent in (agent/language.py's
+        `tag_of`), the call's when none was named."""
         return TurnRecord(
             turn_id=self.turn_id,
-            language=language,
+            language=tag_of(self.language, call=language, spoken=spoken),
+            language_by=self.language_by or "session",
             heard=self.heard,
             said=self.said,
             dropped=self.dropped,
@@ -178,6 +191,10 @@ class TurnLog:
         if self.stray_characters:
             found["turn.stray_characters"] = self.stray_characters
             found["turn.stray_scripts"] = ",".join(self.stray_scripts)
+        if self.language_by not in (None, "session"):
+            found["turn.language_by"] = self.language_by
+            if self.language is not None:
+                found["turn.language"] = self.language
         return found
 
 
@@ -192,7 +209,7 @@ def call_report(
     client: ClientConnection | None,
 ) -> CallReport:
     """The call's report; it ends no earlier than it started, whatever the wall clock did."""
-    language = setup.language.tag
+    language, spoken = setup.language.tag, [each.tag for each in setup.agent.languages]
     return CallReport(
         call_id=setup.call_id,
         agent=setup.agent.name,
@@ -200,7 +217,9 @@ def call_report(
         ended_at=max(ended_at, started_at),
         ended_by=ended_by,
         consent_version=setup.consent.version,
-        turns=tuple(turn.record(language) for turn in sorted(turns, key=lambda t: t.turn_id)),
+        turns=tuple(
+            turn.record(language, spoken) for turn in sorted(turns, key=lambda t: t.turn_id)
+        ),
         usage=usage,
         client=client,
     )

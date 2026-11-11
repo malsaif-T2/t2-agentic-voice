@@ -34,14 +34,18 @@ hold began (turn_hold.py's `TurnHeldFrame`) hands `TurnHeld` and sends its speec
 (`HoldResumedFrame`) cancels that request, then hands `HoldResumed`. When no speech followed its
 audio, the turn's own `Transcribed` is that request's result again, with no request.
 
-Every request, each part's, names the language last named (`listen_in`) and carries that
+Every request, each part's, names the language `languages` gives it as it goes (voice/
+stt_language.py's `TurnLanguages`: the one last named, `listen_in`, unless a classifier chose
+another for the turn, plan 007's Block H), its `Transcribing` carrying it, and carries that
 language's Whisper prompt: the call's `prompts`, built once a call by `call_prompts`, the prompt
 run W's arm W1 measured and kept (plan 006, Q23). A request that names no language, or one whose
 prompt holds no word, carries none, as W1 sent none; with `stt.send_prompt` off, none carries one.
+The bridge tells `languages` of each turn's audio, its hold (whatever `early` says), its overlap
+and its close, and never waits on it.
 
 `drop` ends the call's side here (io.py's end): the held audio is dropped, never flushed, and
-every request in flight cancelled, a part's included, its `Transcribing` already handed. A muted
-service holds no audio (Pipecat's `STTMuteFrame`).
+every request in flight cancelled, a part's included, its `Transcribing` already handed, and
+every classification in flight. A muted service holds no audio (Pipecat's `STTMuteFrame`).
 """
 
 from __future__ import annotations
@@ -74,13 +78,13 @@ from t2_agentic_voice.voice.pipecat_events import FailureReport
 from t2_agentic_voice.voice.session.session_events import (
     HoldResumed,
     Transcribed,
-    Transcribing,
     TranscriptPart,
     TurnClosed,
     TurnHeld,
     TurnOpened,
 )
 from t2_agentic_voice.voice.session_bridge import CallEvents
+from t2_agentic_voice.voice.stt_language import TurnLanguages
 from t2_agentic_voice.voice.stt_turn import HeldOverlap, HeldTurn
 from t2_agentic_voice.voice.turn_hold import HoldResumedFrame, TurnHeldFrame
 
@@ -120,7 +124,8 @@ class TurnSTTBridge(STTService):
     """One call's speech-to-text bridge: each user turn's audio to `stt` in one request, and an
     overlap's parts, its events to `events`, its failures to `report`; `start_s` is the speech
     detector's start delay; `early`, a turn's `held` request at its hold; `prompts`, the call's
-    Whisper prompt of each language (`call_prompts`; none by default) (the module's)."""
+    Whisper prompt of each language (`call_prompts`; none by default); `languages`, each turn's
+    language (no classifier by default) (the module's)."""
 
     def __init__(
         self,
@@ -131,6 +136,7 @@ class TurnSTTBridge(STTService):
         start_s: float,
         early: bool = False,
         prompts: Mapping[str, str] | None = None,
+        languages: TurnLanguages | None = None,
     ) -> None:
         super().__init__(
             audio_passthrough=False,
@@ -150,7 +156,7 @@ class TurnSTTBridge(STTService):
         self._speech_at: float | None = None
         self._speech_from: int | None = None  # the byte held where the speech last began
         self._stopped_at: float | None = None
-        self._language: str | None = None
+        self._languages = languages or TurnLanguages(clock=events.clock)
         self._requests: set[asyncio.Task[Transcribed]] = set()
         self._dropped = False
         self._early = early
@@ -165,7 +171,7 @@ class TurnSTTBridge(STTService):
     def listen_in(self, language: str | None) -> None:
         """Name `language` to the provider for every turn's request from now on (`ListenIn`),
         each sent with that language's prompt (the module's)."""
-        self._language = language
+        self._languages.listen_in(language)
 
     def hear_overlap(self, turn_id: int, window_ms: int) -> None:
         """The turn `turn_id` is an overlap (`HearOverlap`): send its parts, as the module's
@@ -176,6 +182,7 @@ class TurnSTTBridge(STTService):
         if self._dropped:
             return
         if turn is not None and turn.turn_id == turn_id:
+            self._languages.overlap(turn_id)
             if turn.overlap is None:
                 overlap = turn.mark(self._bytes(OVERLAP_LEAD_S), self._bytes(window_ms / 1000))
                 if turn.cut_at is None:
@@ -209,6 +216,7 @@ class TurnSTTBridge(STTService):
                 self._preroll_bytes -= len(self._preroll.popleft())
         elif len(turn.audio) + len(frame.audio) <= int(MAX_TURN_S * self.sample_rate) * 2:
             turn.audio += frame.audio
+            self._languages.heard(turn, self.sample_rate)
             self._window_due(turn)
         elif not turn.full:
             turn.full = True
@@ -239,7 +247,9 @@ class TurnSTTBridge(STTService):
 
     async def _hold(self, turn: HeldTurn, now: float, *, began: bool) -> None:
         """The turn's hold began (its `held` request sent) or resumed (it cancelled), in a call
-        with the early start, for a turn that is no overlap (the module's)."""
+        with the early start, for a turn that is no overlap (the module's); told to
+        `languages` in every call."""
+        self._languages.held(turn, self.sample_rate, began=began)
         if not self._early or turn.overlap is not None:
             return
         if began and turn.held is None:
@@ -274,6 +284,7 @@ class TurnSTTBridge(STTService):
         self._events.hand(TurnClosed(turn_id=turn.turn_id, at=now, speech_ended_at=ended))
         if turn.overlap is not None and turn.overlap.part is None:  # no stop came since marked
             self._send_overlap(turn, turn.overlap)
+        self._languages.closed(turn, self.sample_rate)
         reused = turn.reused()
         if reused is not None:
             request = self._track(self._reuse(reused, "turn"))
@@ -312,12 +323,11 @@ class TurnSTTBridge(STTService):
             events.hand(heard)
             return heard
         clip = AudioClip(pcm16=audio, sample_rate=self.sample_rate)
-        sent_at = clock.now()
-        events.hand(Transcribing(turn_id=turn_id, at=sent_at, audio_s=clip.seconds, part=part))
+        sent_at, named = clock.now(), self._languages.named(turn_id, part)
+        events.hand(named.transcribing(turn_id, at=sent_at, audio_s=clip.seconds, part=part))
         transcript: Transcript | None = None
         failure: ProviderErrorKind | None = None
-        retryable = False
-        language = self._language
+        retryable, language = False, named.language
         prompt = None if language is None else self._prompts.get(language)
         try:
             transcript = await self._stt.transcribe(clip, language=language, prompt=prompt)
@@ -354,3 +364,4 @@ class TurnSTTBridge(STTService):
         self._preroll.clear()
         for request in list(self._requests):
             await self.cancel_task(request)
+        await self._languages.drop()

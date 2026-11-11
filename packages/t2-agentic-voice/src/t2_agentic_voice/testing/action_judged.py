@@ -7,8 +7,13 @@ a question mark, is asked again; a check that fails or times out on a go-ahead i
 (on words with a no word it is declined, D-082); a yes over the closing question with no send
 word is asked again; the closing question heard back as it plays, judged a go-ahead, confirms
 nothing (the echo rail, the owner's third ruling); and an unlisted yes said once the question
-ended confirms, once. Each ends with the call's checks clean, and
-passes at once for an agent that does not ask, so every team's suite holds them.
+ended confirms, once. Two more are said in the agent's other language than the read-back's, as a
+call that classifies each turn's language hears them (plan 007's Block H; the text call names
+the language, testing/text_side.py's `heard_in`): a yes beside a change marker is a correction,
+and a no word beside a go-ahead is asked again, never a yes, since the rails read every
+language's no words and change markers. Each ends with the call's checks clean, and
+passes at once for an agent that does not ask (the two in another language, for an agent of one
+language too), so every team's suite holds them.
 
 The caller's lines are the owner's ruling's kinds, in the call's language (`JUDGED`), each with
 a word on none of the lists, or send words among fillers, so the lists leave it unplaced.
@@ -68,6 +73,40 @@ JUDGED: dict[LanguageCode, JudgedLines] = {
 }
 
 
+@dataclass(frozen=True, kw_only=True)
+class MixedLines:
+    """One language's lines said over a read-back in the agent's other language: a yes with a
+    change, and a no word beside a go-ahead."""
+
+    change: str
+    refused: str
+
+
+MIXED: dict[LanguageCode, MixedLines] = {
+    "en": MixedLines(change="yes, but change the date", refused="no, send it"),
+    "ar": MixedLines(
+        # na'am bas ghayyir al-maw'id, yes but change the date: noon, ain, meem; beh, seen;
+        # ghain, yeh, shadda, reh; alef, lam, meem, waw, ain, dal
+        change=(
+            "\u0646\u0639\u0645 \u0628\u0633 "
+            "\u063a\u064a\u0651\u0631 \u0627\u0644\u0645\u0648\u0639\u062f"
+        ),
+        # la arsilha, no, send it: lam, alef; alef with hamza above, reh, seen, lam, heh, alef
+        refused="\u0644\u0627 \u0623\u0631\u0633\u0644\u0647\u0627",
+    ),
+}
+
+
+def _other(scene: Scene) -> LanguageCode | None:
+    """The agent's language other than the call's, which a mixed answer is heard in; None for
+    an agent of one language."""
+    codes: set[LanguageCode] = {
+        "en" if each.tag == "en" else "ar" for each in scene.agent.languages
+    }
+    others = sorted(codes - {scene.code})
+    return others[0] if others else None
+
+
 def _word(word: str) -> tuple[ScriptStep, ...]:
     return ScriptedLLM.reply(word)
 
@@ -110,6 +149,20 @@ class JudgedAnswerCases:
         scene = self._scene()
         asyncio.run(_answered(scene, JUDGED[scene.code].agreement, _word("yes"), "yes"))
 
+    def test_a_yes_with_a_change_in_another_language_is_a_correction(self) -> None:
+        scene = self._scene()
+        other = _other(scene)
+        if other is not None:
+            change = MIXED[other].change
+            asyncio.run(_answered(scene, change, _word("yes"), "correction", heard_in=other))
+
+    def test_a_no_word_in_another_language_is_never_a_yes(self) -> None:
+        scene = self._scene()
+        other = _other(scene)
+        if other is not None:
+            refused = MIXED[other].refused
+            asyncio.run(_answered(scene, refused, _word("yes"), "asked_again", heard_in=other))
+
 
 async def _echoed(scene: Scene) -> None:
     """The caller asks for the action; over its closing question the question's own words are
@@ -145,10 +198,12 @@ async def _answered(
     decision: ConfirmationDecision,
     *,
     during: During | None = None,
+    heard_in: LanguageCode | None = None,
 ) -> None:
     """The caller asks for the action, then answers its read-back with `words` (once it played
-    whole, or `during` its closing question), the check answered `judged`: the answer is
-    `decision`, by the model, and the action is written once for a yes, never otherwise."""
+    whole, or `during` its closing question), heard in `heard_in` (the call's language unless
+    given), the check answered `judged`: the answer is `decision`, by the model, and the action
+    is written once for a yes, never otherwise."""
     if not scene.asks:
         return
     agent = scene.with_action(scene.writes.counted())
@@ -157,6 +212,7 @@ async def _answered(
         await call.user(scene.request)
         if during is None:
             await call.advance(SETTLE_S)
+        call._parts()[0].heard_in = heard_in
         answer = await call.user(words, during=during)
         await call.advance(SETTLE_S)
         found = [

@@ -60,6 +60,9 @@ CASES = [
     "test_a_model_yes_over_the_closing_question_with_no_send_word_is_asked_again",
     "test_the_closing_question_heard_back_as_it_plays_confirms_nothing",
     "test_an_unlisted_yes_once_the_question_ended_confirms_once",
+    # Said in the agent's other language than the read-back's (plan 007's Block H).
+    "test_a_yes_with_a_change_in_another_language_is_a_correction",
+    "test_a_no_word_in_another_language_is_never_a_yes",
 ]
 
 

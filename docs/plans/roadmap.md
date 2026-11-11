@@ -267,7 +267,9 @@ rehearsal's password, archiving, and English questions pass.
   effectiveness and the latency improvements or delays they bring. Lets not delay them to M6 or
   M7, they can reasonably be implemented in M5"), each behind a setting and measured on a
   registered rule before a default changes (GP-18); the *Done when* lines do not change:
-  - *Each turn's language from a classifier,* so a call can change language mid-call, in place of
+  - *Each turn's language from a classifier* (built: D-086, plan 007's Block H, behind
+    `stt.live_language = "classified"`, off until run H's keep rule; run H not yet run), so a
+    call can change language mid-call, in place of
     `stt.live_language = "session"` (D-066): Whisper is sent the classifier's language, chosen
     from the agent's languages only. The two candidates, by the owner: SpeechBrain's ECAPA
     (VoxLingua107) and Silero's 95-language classifier. The agent's offline check of 2026-11-10,

@@ -178,7 +178,10 @@ folder, after Phoenix's (D-087).
    replies, the arguments the model wrote for a tool and what the tool gave back, never a value
    bound from the caller as such) is the only call content traces keep, under
    `tracing.include_transcripts`,
-   on by default (D-079).
+   on by default (D-079). A spoken-language classifier (`stt.live_language = "classified"`,
+   D-086) hears a turn's first seconds in memory, in the call's process, and keeps nothing:
+   the audio is sent nowhere for it, and its traces hold language codes, shares and times,
+   never audio.
    The agent's own synthesized voice, the phrase cache's and the clause cache's takes under
    `storage.var_dir`, is not call audio and is kept with no consent (the owner, 2026-11-10;
    D-087), though the clause cache's takes say the agent's words of a call; neither cache ever

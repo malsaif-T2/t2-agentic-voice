@@ -17,6 +17,9 @@ from scripts.harness_arch import Ban, under
 from scripts.harness_config import load_config
 
 ROOT = Path(__file__).resolve().parents[2]
+# Libraries a ban names whole that only the library's `ecapa` extra installs, by their module
+# and their distribution in the lock.
+EXTRA_ONLY = {"huggingface_hub": "huggingface-hub"}
 # The clients a module reaches another host with.
 CLIENTS = ("aiohttp", "httpx", "requests", "websockets")
 # The Pipecat modules voice may import although they import a client or a banned module: each
@@ -147,9 +150,15 @@ def test_the_walk_finds_a_client_or_a_banned_import(tmp_path: Path) -> None:
 
 
 def test_every_module_a_ban_names_is_in_the_installed_package() -> None:
-    """A module renamed or moved by a new version would leave its ban guarding nothing."""
+    """A module renamed or moved by a new version would leave its ban guarding nothing. A whole
+    library only the `ecapa` extra installs (EXTRA_ONLY: plan 007's Block H) is read from the lock
+    instead, so the answer is one with or without the `language-id` group."""
     names = {n for ban in load_config(ROOT).arch.bans for n in (*ban.modules, *ban.allowed)}
-    assert [n for n in sorted(names) if not _source(n).exists()] == []
+    extra = {n for n in names if n.split(".")[0] in EXTRA_ONLY}
+    assert [n for n in sorted(names - extra) if not _source(n).exists()] == []
+    assert extra == set(EXTRA_ONLY)  # each banned whole, so no version moves it
+    locked = (ROOT / "uv.lock").read_text(encoding="utf-8")
+    assert all(f'name = "{EXTRA_ONLY[n]}"' in locked for n in extra)
 
 
 def _closure(start: list[str], inside: str) -> set[str]:

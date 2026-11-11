@@ -255,7 +255,14 @@ class FakeTracing(Tracing):
 
     @contextmanager
     def speech_to_text(
-        self, parent: Span, *, model: str, language: str | None, audio_seconds: float
+        self,
+        parent: Span,
+        *,
+        model: str,
+        language: str | None,
+        audio_seconds: float,
+        by: str | None = None,
+        share: float | None = None,
     ) -> Iterator[SpeechToTextSpan]:
         attributes: dict[str, object] = {
             "span": "speech_to_text",

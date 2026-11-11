@@ -7,7 +7,7 @@ the CPU through onnxruntime, with no torch, from the settings' `turns` group.
   each loads its ONNX model when it is built, and importing onnxruntime takes 8 to 12 s a
   process (plan 003's appendix, "Changes to the plan's interfaces", item 24), so they import it
   only when called: by voice's entry point, at the runtime's start and, off the event loop, for
-  each call (voice/calls.py).
+  each call (voice/calls.py), through `detectors`, which a test gives factories of its own.
 - `turn_processors` builds a call's `VADProcessor` and `UserTurnProcessor` around them.
   Pipecat's interruptions stay off (item 2): the only start strategy is the speech detector's,
   with `enable_interruptions=False`, so a turn's start broadcasts no `InterruptionFrame` and
@@ -25,6 +25,7 @@ the CPU through onnxruntime, with no torch, from the settings' `turns` group.
 
 from __future__ import annotations
 
+from collections.abc import Callable
 from typing import TYPE_CHECKING
 
 from pipecat.audio.vad.vad_analyzer import VADParams
@@ -82,6 +83,19 @@ def turn_analyzer(turns: TurnSettings) -> BaseTurnAnalyzer:
         params=params,
         cpu_count=1,
     )
+
+
+def detectors(
+    turns: TurnSettings,
+    detector: Callable[[], VADAnalyzer] | None = None,
+    analyzer: Callable[[], BaseTurnAnalyzer] | None = None,
+) -> tuple[VADAnalyzer, BaseTurnAnalyzer | None]:
+    """One call's speech detector and, with Smart Turn on, its turn analyzer, each loading its
+    model, from the factories given (a test's) or the settings: called off the event loop."""
+    found = (detector or (lambda: speech_detector(turns)))()
+    if not turns.smart_turn:
+        return found, None
+    return found, (analyzer or (lambda: turn_analyzer(turns)))()
 
 
 def turn_processors(

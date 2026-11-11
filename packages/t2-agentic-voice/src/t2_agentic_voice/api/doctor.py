@@ -7,6 +7,11 @@ can check without a call, each a `Check` that passes or says what to fix.
   shows only with `--synthesize`.
 - **The ONNX files** Silero VAD and Smart Turn run on, each file's SHA-256 against the one the
   installed Pipecat wheel's record holds, read from its metadata: Pipecat is not imported.
+- **The classifier's files** (plan 007's Block H), under `stt.live_language = "classified"`:
+  each model file in `stt.classifier_dir` against its pinned size and SHA-256
+  (adapters/model_files.py), as the ONNX files are checked; and under `stt.classifier =
+  "ecapa"`, whether torch is installed and any CUDA package (`nvidia-*`, `cuda-*`) or triton
+  beside it, read from the installed distributions' metadata, never by importing torch.
 - **The clock**: this machine's UTC time and its skew against the text-to-speech provider's
   clock, with no request of its own: `check_language` returns the time the provider's answer
   gave (Groq's `Date` header, whole seconds), and the skew is this machine's time at the middle
@@ -31,12 +36,16 @@ from __future__ import annotations
 import base64
 import hashlib
 import math
-from collections.abc import Callable
+from collections.abc import Callable, Mapping, Sequence
 from dataclasses import dataclass
 from datetime import UTC, datetime
 from importlib import metadata
+from pathlib import Path
 from typing import Final
 
+from t2_agentic_voice.adapters.ecapa_language import ECAPA_FILES
+from t2_agentic_voice.adapters.model_files import ModelFile, digest, folder_problem, problem
+from t2_agentic_voice.adapters.silero_language import SILERO_FILES
 from t2_agentic_voice.api.runtime import Providers
 from t2_agentic_voice.core.config import VoiceSettings
 from t2_agentic_voice.core.errors import ConfigurationError, ProviderError
@@ -51,6 +60,7 @@ SAMPLES: Final[dict[str, str]] = {
     "en": "Voice check.",
 }
 _REINSTALL = "FIX: reinstall it (uv sync --reinstall-package pipecat-ai)."
+_EXTRA = "FIX: install the library's ecapa extra (in this workspace: uv sync --group language-id)."
 # The resolution of the provider's time: an HTTP Date holds whole seconds.
 RESOLUTION_S: Final = 1
 _SET_CLOCK = (
@@ -107,7 +117,8 @@ async def checks(
             providers = Providers.from_settings(settings)
         except ConfigurationError as error:
             clock = _clock(settings, wall(), "no language check ran")
-            return [*found, Check("providers", False, error.message), *onnx(), clock]
+            found += [Check("providers", False, error.message), *onnx()]
+            return [*found, *classifier_checks(settings), clock]
     try:
         measured: _Reading | None = None
         passed = False
@@ -120,7 +131,7 @@ async def checks(
             if passed
             else "no language check passed"
         )
-        found += [*onnx(), _clock(settings, wall(), measured or why)]
+        found += [*onnx(), *classifier_checks(settings), _clock(settings, wall(), measured or why)]
         if synthesize:
             for tag in settings.tts.languages:
                 found.append(await _synthesis(providers, tag))
@@ -128,8 +139,9 @@ async def checks(
         if built:
             await providers.stt.aclose()
             await providers.tts.aclose()
-            if providers.chat is not None:
-                await providers.chat.aclose()
+            for other in (providers.chat, providers.classifier):
+                if other is not None:
+                    await other.aclose()
     return found
 
 
@@ -199,6 +211,66 @@ def _model(file: metadata.PackagePath) -> Check:
     if expected != base64.urlsafe_b64encode(digest).rstrip(b"=").decode("ascii"):
         return Check(name, False, f"{shown} differs from the wheel's record. {_REINSTALL}")
     return Check(name, True, shown)
+
+
+def classifier_checks(
+    settings: VoiceSettings,
+    *,
+    files: Sequence[ModelFile] | None = None,
+    installed: Mapping[str, str] | None = None,
+) -> list[Check]:
+    """The classifier's section (the module's docstring), under `classified` only: its pinned
+    `files` (the settings' classifier's unless given) and, for ECAPA, the `installed`
+    distributions by name with their versions (this environment's unless given)."""
+    stt = settings.stt
+    if stt.live_language != "classified":
+        return []
+    ecapa = stt.classifier == "ecapa"
+    pinned = files if files is not None else (ECAPA_FILES if ecapa else SILERO_FILES)
+    folder, unset = stt.classifier_dir, folder_problem(stt.classifier_dir)
+    found = [Check("classifier folder", False, unset)] if unset is not None else []
+    if folder is not None and unset is None:
+        found += [_pinned(folder, file) for file in pinned]
+    if ecapa:
+        found += _torch(_installed() if installed is None else installed)
+    return found
+
+
+def _pinned(folder: Path, file: ModelFile) -> Check:
+    name = f"classifier {file.name}"
+    try:
+        failed = problem(folder, file)
+        return Check(name, failed is None, failed or f"sha256 {digest(folder / file.name)}")
+    except OSError as error:
+        return Check(name, False, f"cannot be read ({type(error).__name__}). FIX: fetch it again.")
+
+
+def _installed() -> dict[str, str]:
+    """Each installed distribution's normalized name, with its version, from the metadata."""
+    found = {}
+    for each in metadata.distributions():
+        name = each.metadata["Name"] or ""
+        found[name.lower().replace("_", "-").replace(".", "-")] = each.version
+    return found
+
+
+def _torch(installed: Mapping[str, str]) -> list[Check]:
+    """Whether torch is installed for ECAPA, and whether a CUDA package or triton is beside
+    it: the CPU wheels the lock takes hold none."""
+    version = installed.get("torch")
+    torch = (
+        Check("torch", True, f"torch {version}, read from its metadata")
+        if version is not None
+        else Check("torch", False, f"torch is not installed, and ECAPA runs on it. {_EXTRA}")
+    )
+    gpu = sorted(n for n in installed if n.startswith(("nvidia-", "cuda-")) or n == "triton")
+    if not gpu:
+        return [torch, Check("cuda", True, "no CUDA package and no triton is installed")]
+    fix = (
+        "FIX: take torch from PyTorch's CPU index (the workspace root's [tool.uv.sources]) and "
+        "sync again; ECAPA runs on the CPU."
+    )
+    return [torch, Check("cuda", False, f"{', '.join(gpu)} installed beside torch. {fix}")]
 
 
 def _clock(settings: VoiceSettings, now: datetime, measured: _Reading | str) -> Check:

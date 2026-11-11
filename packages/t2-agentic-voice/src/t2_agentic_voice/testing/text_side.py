@@ -17,12 +17,15 @@ the session under test is the real one (testing/text_call.py).
   overlap part the call's caller then sends (the fake speech-to-text); each `Send` is kept;
   `HangUp` ends the call, after which only a request's report is handed. A clause plays whole
   unless `fault`, asked as it ends, names a fault for it (plan 007): it comes back cut short
-  (`cut_short`), with no audio (`no_audio`), or its request fails (`failed`).
+  (`cut_short`), with no audio (`no_audio`), or its request fails (`failed`). With `heard_in`
+  set, each transcript handed names that language, as a call that classifies each turn's
+  language would have sent it (plan 007's Block H); the call's own otherwise.
 """
 
 from __future__ import annotations
 
 import asyncio
+import dataclasses
 import heapq
 import itertools
 from collections import deque
@@ -51,6 +54,7 @@ from t2_agentic_voice.voice.session.session_events import (
     ClauseQueued,
     SessionEvent,
     Synthesizing,
+    Transcribed,
     Transcribing,
 )
 
@@ -149,6 +153,7 @@ class TextSide:
         self._taking = False
         self.steps = 0  # every event handed and every command given, so a wait sees progress
         self.fault: Callable[[Speak], ClauseFault | None] | None = None
+        self.heard_in: str | None = None  # the language each transcript names from now on
 
     def start(self, session: Session) -> None:
         """Hand every event from now on to `session`, on a task of the side's own."""
@@ -162,6 +167,9 @@ class TextSide:
             return
         if self.ended is not None and not isinstance(event, _REPORTS):
             return
+        if self.heard_in is not None and isinstance(event, Transcribed) and event.transcript:
+            heard = event.transcript.model_copy(update={"language": self.heard_in})
+            event = dataclasses.replace(event, transcript=heard)
         self.steps += 1
         self._waiting.append(event)
         self._ready.set()

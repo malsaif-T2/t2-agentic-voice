@@ -89,7 +89,7 @@ class CallSession:
     def __init__(self, setup: CallSetup, commands: Commands) -> None:
         settings, language = setup.settings, setup.language
         self._setup, self._commands, self._language = setup, commands, language
-        self._listen = language.primary if settings.stt.live_language == "session" else None
+        self._listen = None if settings.stt.live_language == "auto" else language.primary
         self._lock = asyncio.Lock()
         books = CallBooks.of(setup)
         self._usage, self._recorder, self._events = books.usage, books.recorder, books.events

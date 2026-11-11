@@ -21,6 +21,13 @@ The change markers (`change`, D-082) are read only of a chat model's yes (domain
 one is a correction, never a yes. They are the owner's ruling's examples of a change, and the
 verbs with the object pronoun on them, as the send words are listed.
 
+With each turn's language from a classifier (plan 007's Block H), an answer in another language
+than the read-back's is routine, and the read-back's lists hold none of its no words or change
+markers. So `rails_for` gives `judged`'s rails, for words heard in another language (or in none
+named), the no words and the change markers of every language the agent speaks beside the
+read-back's own, the lists that place a yes staying the read-back's: a rail only asks again or
+corrects, so this never confirms what the read-back's lists refuse.
+
 `covered` says whether a text is only words of given lists, as a read-back reads what is said
 over its summary (voice/session/read_back.py's `ignored`).
 """
@@ -237,4 +244,30 @@ def consent_words(
         no=preset.no,
         fillers=preset.fillers,
         change=preset.change,
+    )
+
+
+def _code(language: str | None) -> str | None:
+    """The primary code a transcript's language names, a code or the provider's name of it in
+    any case ("ar", "Arabic", "en-US"); None for none."""
+    named = (language or "").casefold()
+    return next((code for code in PRESET_CONSENT if named.startswith(code)), None)
+
+
+def rails_for(
+    words: ConsentWords, *, heard: str | None, read_back: LanguageCode, spoken: Sequence[str]
+) -> ConsentWords:
+    """The lists `judged`'s rails read (the module's docstring): `words`, the read-back's in its
+    language `read_back`, when the words were `heard` in it; else `words` with the no words and
+    the change markers of every language of `spoken` (the agent's primary codes) beside its
+    own."""
+    if _code(heard) == read_back:
+        return words
+    others = [each for code, each in PRESET_CONSENT.items() if code in spoken]
+    return ConsentWords(
+        yes=words.yes,
+        send=words.send,
+        no=(*words.no, *(word for each in others for word in each.no)),
+        fillers=words.fillers,
+        change=(*words.change, *(word for each in others for word in each.change)),
     )

@@ -228,13 +228,21 @@ class CallTrace:
         self._turn_span(turn_id)
 
     def stt_sent(
-        self, turn_id: int, *, model: str, language: str | None, audio_seconds: float
+        self,
+        turn_id: int,
+        *,
+        model: str,
+        language: str | None,
+        audio_seconds: float,
+        by: str | None = None,
+        share: float | None = None,
     ) -> None:
-        """The turn's speech-to-text request went: its span opens under the turn's."""
+        """The turn's speech-to-text request went: its span opens under the turn's, naming the
+        language sent and, given, how it was chosen and its share."""
         stack = ExitStack()
         parent = self._turn_span(turn_id)
         stt = self._tracing.speech_to_text(
-            parent, model=model, language=language, audio_seconds=audio_seconds
+            parent, model=model, language=language, audio_seconds=audio_seconds, by=by, share=share
         )
         self._stt[turn_id] = (stack, stack.enter_context(stt))
 

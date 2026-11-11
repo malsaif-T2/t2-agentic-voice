@@ -20,7 +20,8 @@ plan's interfaces".
   points to the sidecar, on Windows and on Linux; resolves every secret the settings name in a
   file (the Groq key, the join keys, the TURN secret), so a short one stops the server at its
   start rather than at the first join; builds the providers (the chat model among them, whose
-  connection pool it keeps open for every call's requests and closes on its way out) and
+  connection pool it keeps open for every call's requests and closes on its way out, and the
+  classifier of each turn's language, loaded off the loop: api/providers.py's `opened`) and
   tracing; warms the adapters with no request (the platform detection the Groq SDK runs before
   its first request, TD-012, the chat adapter's included); opens the agent's voices
   (api/voices.py: the phrase cache declares its fixed phrases under `storage.var_dir/<agent
@@ -106,7 +107,7 @@ from t2_agentic_voice.api.actions import open_actions
 from t2_agentic_voice.api.dev_console import DevFeed
 from t2_agentic_voice.api.lockfile import LockFile
 from t2_agentic_voice.api.offers import FORGOTTEN_KEPT_S, CallRecords
-from t2_agentic_voice.api.providers import Providers, talkers
+from t2_agentic_voice.api.providers import Providers, opened, talkers
 from t2_agentic_voice.api.router import Running
 from t2_agentic_voice.api.voices import open_voices
 from t2_agentic_voice.core.config import VoiceSettings
@@ -263,10 +264,7 @@ class VoiceRuntime:
         stack.callback(lock.release)
         await asyncio.to_thread(_resolve_secrets, settings)
         providers = self._providers or Providers.from_settings(settings)
-        stack.push_async_callback(providers.stt.aclose)
-        stack.push_async_callback(providers.tts.aclose)
-        if providers.chat is not None:
-            stack.push_async_callback(providers.chat.aclose)
+        classifier = await opened(providers, agent, settings, stack)  # each turn's language
         tracing = Tracing.from_settings(settings, tracer_provider=self._tracer_provider)
         stack.push_async_callback(asyncio.to_thread, tracing.shutdown)
         await asyncio.to_thread(_warm)
@@ -280,9 +278,9 @@ class VoiceRuntime:
         actions = await open_actions(agent, settings, clock=self._clock, stack=stack)
         self._actions = actions
         talker = talkers(agent, settings, providers.chat, actions)  # each call's, for the talker
-        talking: dict[str, Any] = {}
+        talking: dict[str, Any] = {} if classifier is None else {"classifier": classifier}
         if talker is not None:
-            talking = {"talker": talker, "chat": providers.chat}
+            talking |= {"talker": talker, "chat": providers.chat}
         calls = self._calls(
             agent=agent,
             settings=settings,

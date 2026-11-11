@@ -1609,6 +1609,23 @@ plan 003).
   run I's keep rule, and `tts.clause_cache_mb`, 512; `ClauseCache` beside the phrase cache under
   `storage.var_dir/<agent>/clauses`; `poe first-audio --clause-cache on|off`, refused on
   held-out. Not run yet: run I.
+- 2026-11-12: **Block H built** (D-086; the owner's "Approve both"; on its own branch `block-h`,
+  one builder for the library and the download step and one for Ole5's run H commands and the
+  docs, test first; one reviewer, who found nothing; a check, which fixed two doc rows). Under
+  `stt.live_language = "classified"`, each turn's language from Silero or ECAPA; `session` stays
+  the default. **The download step**, the only one that reached the network: `uv add` of the
+  `ecapa` extra and the `language-id` group; the lock's diff, 21 new packages, matched the
+  approved list exactly, with no CUDA, `nvidia-*` or `triton` package; `uv sync --group
+  language-id` fetched torch 2.15.0 (120.9 MiB) and networkx, the rest from uv's cache; the four
+  large model files copied from the offline check's folder, each size and SHA-256 as pinned, and
+  the four small ones fetched at the pinned commits from huggingface.co, byte-equal to that
+  folder's and now pinned, into `%LOCALAPPDATA%\t2-agentic-voice\models\` (Q16). **The smoke**,
+  offline (`HF_HUB_OFFLINE=1`, proxies at a closed port, no socket tried): each adapter loaded
+  from the folder and wrote nothing into it; an English, a Saudi and an MSA variant classified
+  as their items' languages by both; on 2.0 s clips at 2 threads, Silero about 7 ms wall and
+  ECAPA about 250 ms (its CPU 2 to 2.8 times that), run H's expected lines. The spec's two moves
+  (`_detectors` to `voice/turns.py`, the runtime's closes to `Providers.opened`) went in with the
+  rest, in one commit, not in commits of their own. Not run yet: run H.
 
 ## Decision log
 

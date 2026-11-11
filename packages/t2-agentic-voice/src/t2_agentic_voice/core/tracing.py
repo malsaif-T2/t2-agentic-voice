@@ -54,6 +54,8 @@ _SCOPE = "t2_agentic_voice"
 _STT_AUDIO_SECONDS = "stt.audio_seconds"
 _STT_BILLED_SECONDS = "stt.billed_seconds"
 _STT_LANGUAGE_SENT = "stt.language_sent"
+_STT_LANGUAGE_BY = "stt.language_by"
+_STT_LANGUAGE_SHARE = "stt.language_share"
 _STT_LANGUAGE = "stt.language"
 
 
@@ -218,10 +220,18 @@ class Tracing:
         return self._span(name, Context(), attributes)
 
     def speech_to_text(
-        self, parent: Span, *, model: str, language: str | None, audio_seconds: float
+        self,
+        parent: Span,
+        *,
+        model: str,
+        language: str | None,
+        audio_seconds: float,
+        by: str | None = None,
+        share: float | None = None,
     ) -> AbstractContextManager[SpeechToTextSpan]:
-        """A speech-to-text span under `parent`, with the model, the language sent and the
-        clip's length; its `record` adds what came back."""
+        """A speech-to-text span under `parent`, with the model, the language sent, how it was
+        chosen and a classifier's share for it, when given (plan 007's Block H), and the clip's
+        length; its `record` adds what came back."""
         attributes: dict[str, AnyValue] = {
             SpanAttributes.OPENINFERENCE_SPAN_KIND: OpenInferenceSpanKindValues.LLM.value,
             SpanAttributes.LLM_MODEL_NAME: model,
@@ -229,6 +239,10 @@ class Tracing:
         }
         if language is not None:
             attributes[_STT_LANGUAGE_SENT] = language
+        if by is not None:
+            attributes[_STT_LANGUAGE_BY] = by
+        if share is not None:
+            attributes[_STT_LANGUAGE_SHARE] = share
         return self._stt(parent, attributes)
 
     def tool(self, parent: Span, *, tool: str) -> AbstractContextManager[Span]:

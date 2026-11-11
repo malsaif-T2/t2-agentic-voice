@@ -30,7 +30,7 @@ ROOT = Path(__file__).resolve().parents[2]
 PUBLIC = sorted(load_config(ROOT).arch.public)
 LIBRARY = "t2_agentic_voice"
 # The frameworks a public signature never names, by their top-level package.
-FRAMEWORKS = ("pipecat", "aiortc", "onnxruntime", "groq")
+FRAMEWORKS = ("pipecat", "aiortc", "onnxruntime", "groq", "torch", "speechbrain")
 # The dunders a caller uses, read with the public methods.
 DUNDERS = frozenset(
     {

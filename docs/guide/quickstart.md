@@ -208,9 +208,9 @@ uv run t2v dev minimal_example.app:make_runtime
    voice. A call joins in the language you picked; a tag the agent does not speak (`ar` here)
    joins in its first language. Each of the helper's replies follows the language its turn's
    transcript is in. Whisper is told the call's language, so speech in the other one is mostly
-   written in the call's own, and the reply follows it there: whether English questions hold
-   up inside an Arabic call is measured before it is promised (plan 006's run X). To ask in
-   English, pick English in the client.
+   written in the call's own, and the reply follows it there (plan 006's run X). A classifier
+   of each turn's language is off by default, measured before it is promised (plan 007's run
+   H; [languages.md](languages.md)). To ask in English, pick English in the client.
 
 Each turn sends Groq one Whisper request (at most 30 s of audio). The helper's answer sends one
 chat request, or two when it calls its tool (one asks for the tool, the next answers from its

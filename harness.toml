@@ -19,6 +19,7 @@ public = [
     "t2_agentic_voice",
     "t2_agentic_voice.ports",
     "t2_agentic_voice.groq",
+    "t2_agentic_voice.classifiers",
     "t2_agentic_voice.identity",
     "t2_agentic_voice.server",
     "t2_agentic_voice.stores",
@@ -34,6 +35,7 @@ public = [
 facades = [
     "t2_agentic_voice.ports",
     "t2_agentic_voice.groq",
+    "t2_agentic_voice.classifiers",
     "t2_agentic_voice.identity",
     "t2_agentic_voice.server",
     "t2_agentic_voice.stores",
@@ -92,6 +94,14 @@ fix = "Only core's tracing uses requests, as the OTLP exporter's session; reach 
 modules = ["groq", "httpx", "qdrant_client"]
 layers = ["adapters"]
 fix = "Reach an outside service through its port in domain/ports; the adapter that implements it lives in adapters/ and the api layer injects it."
+
+# torch and SpeechBrain run ECAPA, one of the spoken-language classifiers, through the library's
+# `ecapa` extra (plan 007's Block H, Q15): only its adapter loads them, by literal names, so the
+# base install and every other layer stay free of torch.
+[[owners]]
+modules = ["torch", "torchaudio", "speechbrain"]
+layers = ["adapters"]
+fix = "torch, torchaudio and SpeechBrain come only with the library's ecapa extra, which the base install does not hold: only adapters/ecapa_language.py loads them, inside its load and by importlib.import_module with literal names; elsewhere take the LanguageClassifier port, injected, and never import torch."
 
 [[owners]]
 modules = ["jwt"]
@@ -314,6 +324,16 @@ allowed = [
 within = ["t2_agentic_voice"]
 fix = "These modules send a call's audio or text to a host outside the design's 11, or fetch from one, with no port and no data flow (GP-22): a call runs on the Small WebRTC transport, ends its turns with the local Smart Turn v3 and VAD, and reaches an outside service only through a port in domain/ports, whose adapter lives in adapters/."
 
+# Hugging Face's client fetches models and files from its hub: the library loads a model only from
+# the folder a setting names, fetched once by hand, so it contacts no host the design's 11 does
+# not list (plan 007's Block H). SpeechBrain imports it inside its own modules, which no ban
+# reads (TD-043); the library's own code never does.
+[[bans]]
+modules = ["huggingface_hub"]
+allowed = []
+within = ["t2_agentic_voice"]
+fix = "The library never fetches a model at run time (the design's 11): a model's files are fetched once by hand into the folder stt.classifier_dir names, pinned by SHA-256 in adapters/model_files.py and checked at each load; load them from that folder, never through huggingface_hub."
+
 # The modules plan 003's reading of the installed Pipecat found unsafe or unneeded for a call
 # (its "Changes to the plan's interfaces", item 18), in four groups by what to do instead.
 [[bans]]
@@ -329,7 +349,7 @@ modules = [
 ]
 allowed = []
 within = ["t2_agentic_voice"]
-fix = "Smart Turn v2 runs on torch, and the resampy resampler on numba and llvmlite, none of which the library installs (the torch check): use Smart Turn v3 (`pipecat.audio.turn.smart_turn.local_smart_turn_v3`, ONNX on the CPU) and the soxr resamplers."
+fix = "Smart Turn v2 runs on torch, and the resampy resampler on numba and llvmlite, none of which the base install holds (the torch check): use Smart Turn v3 (`pipecat.audio.turn.smart_turn.local_smart_turn_v3`, ONNX on the CPU) and the soxr resamplers."
 
 [[bans]]
 modules = ["pipecat.processors.logger", "pipecat.observers.loggers"]

@@ -17,7 +17,7 @@ from dataclasses import dataclass
 from typing import Literal
 
 from t2_agentic_voice.core.errors import ProviderErrorKind
-from t2_agentic_voice.core.events import EndReason, TransportStage, TurnId
+from t2_agentic_voice.core.events import EndReason, LanguageBy, TransportStage, TurnId
 from t2_agentic_voice.core.yes_inputs import HeardSource
 from t2_agentic_voice.domain.ports.speech_to_text import Transcript
 from t2_agentic_voice.voice.protocol import ClauseIndex, ClientMessage, ReplyId
@@ -88,12 +88,23 @@ class HoldResumed:
 class Transcribing:
     """The speech-to-text bridge sent a turn's request, at `at`, with `audio_s` seconds of its
     audio: handed as the request goes, before the `Transcribed` of the same `part`, and whatever
-    comes of it, so a request the call's end cancels is still counted (io.py's usage)."""
+    comes of it, so a request the call's end cancels is still counted (io.py's usage). It names
+    the `language` the request named and how it was chosen (`language_by`: voice/
+    stt_language.py) and, with a classifier's verdict in hand, its best `share` and when it came
+    (`verdict_at`, on the call's clock; plan 007's Block H); under a classifier, when the turn's
+    language was decided (`decided_at`: its hold's start, or its close with no hold) and the
+    seconds of its speech held then (`speech_s`), which run H reads (testing/turn_languages.py)."""
 
     turn_id: TurnId
     at: float
     audio_s: float
     part: TranscriptPart = "turn"
+    language: str | None = None
+    language_by: LanguageBy = "session"
+    share: float | None = None
+    verdict_at: float | None = None
+    decided_at: float | None = None
+    speech_s: float | None = None
 
 
 @dataclass(frozen=True, kw_only=True)

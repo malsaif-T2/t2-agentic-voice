@@ -1,8 +1,9 @@
 """T2 Agentic Voice: a library for speech-first voice agents.
 
-This module and the facades beside it (`ports`, `groq`, `identity`, `server`, `stores`, `events`,
-`languages`, `evals`, `tracing`) are the library's public API (harness.toml [package] public):
-an app imports from them, never from the layers inside, and ARCH-PUBLIC fails an app that does.
+This module and the facades beside it (`ports`, `groq`, `classifiers`, `identity`, `server`,
+`stores`, `events`, `languages`, `evals`, `tracing`) are the library's public API (harness.toml
+[package] public): an app imports from them, never from the layers inside, and ARCH-PUBLIC fails
+an app that does.
 The layers and their rules: ARCHITECTURE.md. Beside `VoiceSettings` sit its groups, so an app
 can build one in code (`VoiceSettings(env="dev", server=ServerSettings(...))`), and beside
 `get_logger` the logger it returns.

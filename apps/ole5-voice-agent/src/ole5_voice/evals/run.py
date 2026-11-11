@@ -10,13 +10,15 @@ model and timeout, and its base URL is `--base-url` or the SDK's own, whatever t
 holds, so no `T2V_` variable changes a registered arm; `--show-settings` shows each resolved, a
 secret only as set or not set. Run W's arms are its options too (`run_arms.answer_options`): the
 Whisper prompt the agent `--prompt-agent` names would ship, and every variant sent as Arabic with
-`--language-hint ar`. A smoke test of one dev variant comes first and must pass with no failed,
-retried or refused request. Then each variant is answered, and its result written as it finishes (a
-dev run's `results.jsonl`), with a progress line of identifiers, verdicts and timings, never a
-transcript. The scorecard is written by `scorecard.py` and, for a run that calls a provider, its
-history line is appended to the worktree's `history.jsonl` and copied beside the scorecard. A
-held-out run writes no per-variant output, its lines hold counts only, it is never traced, and one
-that does not finish keeps no result. A run's name is its `--out` folder's name.
+`--language-hint ar` or as English with `en`; run H's H2 arm is `--language-from`, with
+`--language-base` (`language_arms.py`). A smoke test of one dev variant comes first and must
+pass with no failed, retried or refused request. Then each variant is answered, and its result
+written as it finishes (a dev run's `results.jsonl`), with a progress line of identifiers,
+verdicts and timings, never a transcript. The scorecard is written by `scorecard.py` and, for
+a run that calls a provider, its history line is appended to the worktree's `history.jsonl` and
+copied beside the scorecard. A held-out run writes no per-variant output, its lines hold counts
+only, it is never traced, and one that does not finish keeps no result. A run's name is its
+`--out` folder's name.
 """
 
 from __future__ import annotations
@@ -25,7 +27,7 @@ import argparse
 import asyncio
 import math
 import sys
-from collections.abc import Sequence
+from collections.abc import Mapping, Sequence
 from pathlib import Path
 from typing import get_args
 
@@ -42,7 +44,8 @@ from ole5_voice.evals import history
 from ole5_voice.evals.answerers import ANSWERERS, RunAnswerer, make_answerer
 from ole5_voice.evals.groq_answerer import Budget, CapReachedError, Policy, least_billed
 from ole5_voice.evals.items import HISTORY_FILE
-from ole5_voice.evals.models import NAME_RULE, Split, is_name
+from ole5_voice.evals.language_arms import flag_problem, language_arm
+from ole5_voice.evals.models import NAME_RULE, Split, Variant, is_name
 from ole5_voice.evals.run_arms import AnswerOptions, answer_options
 from ole5_voice.evals.run_parts import (
     DATA,
@@ -55,16 +58,19 @@ from ole5_voice.evals.run_parts import (
     load_plan,
 )
 from ole5_voice.evals.run_settings import GROQ_BASE_URL, MODELS, load_settings, show, shown
-from ole5_voice.evals.runs import RunInfo, cost_usd, holds_placeholder
+from ole5_voice.evals.runs import Answer, RunInfo, cost_usd, holds_placeholder
 from ole5_voice.evals.windows import measurer
 from ole5_voice.evals.worktree import Checkout, check_out, refused, run_checkout
 
 RESULTS_FILE = "results.jsonl"  # a dev run's results, one line each as it finishes
 _DESCRIPTION = "Run an answerer over the golden set, writing its results and scorecard into --out."
 _HINT_HELP = (
-    "the language sent: the item's label's (ar, or en for English), none (auto), or ar for "
-    "every variant, as an Arabic call sends it (arm X)"
+    "the language sent: the item's label's (ar, or en for English), none (auto), or ar or en "
+    "for every variant, as an Arabic or an English call sends it (arms X and C); with "
+    "--language-from, the call's language"
 )
+_FROM_HELP = "an H1 pass of poe eval-languages: each variant in the language its rule named"
+_BASE_HELP = "with --language-from on dev: the call language's baseline; only changes are sent"
 _PROMPT_HELP = (
     "the agent's factory, ole5_voice.<module>:<name> (ole5_voice.agent:talker_agent): send the "
     "Whisper prompt of its declared vocabulary (arm W1)"
@@ -104,8 +110,10 @@ def _parser() -> argparse.ArgumentParser:
     add("--model", choices=MODELS, help="stt.model for this run (groq needs it)")
     add("--timeout-s", type=_seconds, help="stt.timeout_s for this run (groq needs it)")
     add("--base-url", help=f"groq.base_url for this run ({GROQ_BASE_URL})")
-    add("--language-hint", choices=("label", "auto", "ar"), default="label", help=_HINT_HELP)
+    add("--language-hint", choices=("label", "auto", "ar", "en"), default="label", help=_HINT_HELP)
     add("--prompt-agent", help=_PROMPT_HELP)
+    add("--language-from", type=Path, help=_FROM_HELP)
+    add("--language-base", type=Path, help=_BASE_HELP)
     add("--env-file", type=Path, help="the .env file the settings load from (never printed)")
     add("--var-dir", type=Path, help="the settings' var_dir")
     add("--audio", action="append", default=[], metavar="ROOT=FOLDER", help=_AUDIO_HELP)
@@ -161,12 +169,19 @@ def _require(parser: argparse.ArgumentParser, args: argparse.Namespace) -> None:
         parser.error("--clips-from serves a windows run (--windows-ms)")
     if args.prompt_agent and args.language_hint == "auto":
         parser.error("--prompt-agent builds a prompt for the language sent: not with auto")
+    if (problem := flag_problem(args)) is not None:
+        parser.error(problem)
 
 
 async def _answer_all(
-    plan: Plan, answerer: RunAnswerer, progress: Progress, args: argparse.Namespace
+    plan: Plan,
+    answerer: RunAnswerer,
+    progress: Progress,
+    args: argparse.Namespace,
+    copied: Mapping[Variant, Answer],
 ) -> None:
-    """The smoke test, then every variant, in order; the run ends early at the cap."""
+    """The smoke test, then every variant, in order, the arm's baseline answers unsent; the run
+    ends early at the cap."""
     try:
         smoke = await answerer.answer(plan.smoke.variant, plan.smoke.request)
         if smoke.failure or any(r.outcome != "ok" or r.attempt > 1 for r in smoke.requests):
@@ -181,7 +196,9 @@ async def _answer_all(
             progress.add(plan.smoke.result(smoke, plan.matcher, args.split, True))
             return
         for todo in plan.todo:
-            answer = await answerer.answer(todo.variant, todo.request)
+            answer = copied.get(todo.variant)
+            if answer is None:
+                answer = await answerer.answer(todo.variant, todo.request)
             progress.add(todo.result(answer, plan.matcher, args.split, not args.windows_ms))
     except CapReachedError:
         progress.capped = True
@@ -213,16 +230,19 @@ def _run(
         split=args.split,
         windows_ms=tuple(args.windows_ms),
         questions=args.questions,
-        hint="label" if args.language_hint == "ar" else args.language_hint,  # ar: the policy's
+        hint="label" if args.language_hint in ("ar", "en") else args.language_hint,  # the policy's
         roots=audio_roots(args.audio),
         needs_audio=spends,
     )
     plan = load_plan(checkout.top / DATA, choice, parts)
     model = settings.stt.model
+    arm = language_arm(args, plan, commit=checkout.commit, model=model, prompt=options.shown)
+    plan, recorded = arm.plan, recorded | dict(arm.recorded)
     reuse = clip_answers(args.clips_from, plan.todo, commit=checkout.commit, model=model)
     budget = Budget(price_per_hour_usd=args.price_per_hour or 0.0, cap_usd=args.cap_usd)
     if spends and not args.windows_ms:  # the cap, before anything is sent
-        sent = [plan.smoke.request, *(() if args.smoke_only else (t.request for t in plan.todo))]
+        todo = [] if args.smoke_only else [t for t in plan.todo if t.variant not in arm.copied]
+        sent = [plan.smoke.request, *(t.request for t in todo)]
         if (least := cost_usd(least_billed(sent), budget.price_per_hour_usd)) > args.cap_usd:
             raise refused(
                 f"the run's least cost, ${least:.4f}, passes --cap-usd",
@@ -274,7 +294,7 @@ def _run(
         )
         log.info("run_started", run=info.name, split=info.split, variants=progress.total)
         try:
-            asyncio.run(_answer_all(plan, answerer, progress, args))
+            asyncio.run(_answer_all(plan, answerer, progress, args, arm.copied))
         except KeyboardInterrupt:
             progress.interrupted = True
             log.warning("run_interrupted", done=len(progress.results), of=progress.total)

@@ -253,12 +253,30 @@ given after the task's name:
   `evals/history.jsonl` (a `reference` run, which sends nothing, appends none);
 - `uv run poe eval-compare A B` (`compare.py`) judges run B against run A, as "Judging a change"
   says;
+- `uv run poe eval` also runs plan 007's run H's H2 (D-086): `--language-hint en` sends every
+  variant as English (baseline (c), as `ar` sends every one as Arabic), and `--language-from
+  <H1 pass>` (`language_arms.py`) sends each variant whole in the language the pass's rule named
+  for its first turn in the call language the hint names (`label`, `ar` or `en`), refusing a
+  pass at another commit, on other data or with no classifier; with `--language-base <run>`, the
+  baseline of that call language, a dev run sends only the variants whose language the rule
+  changed and takes every other answer from the baseline, unsent, and is read against it with
+  `poe eval-compare BASE ARM --allow-setting run.language_from`;
 - `uv run poe eval-history` (`history.py`) renders `evals/history.jsonl` into the generated
   [eval-history.md](../generated/eval-history.md);
 - `uv run poe eot` (`eot.py`) measures end of turn on the paused requests with the reference
   answerer or the file-fed pipeline, appending an end-of-turn line for a pipeline run;
 - `uv run poe eval-timing` (`timing.py`) times each step of an echo call and appends a timing
-  line;
+  line; it refuses any `stt.live_language` but `session`, as a run of `poe overlap` does;
+- `uv run poe eval-languages` (`languages_run.py`) is plan 007's run H's H1: every checked
+  variant of a split through the file-fed pipeline at real-time pace, with no spend, Ole5's two
+  languages and a speech-to-text that answers at once, `--classifier off`, `silero` or `ecapa`
+  at the registered rule (`stt.classifier_from_s` 2.0, `stt.classifier_min_share` 0.7, 2
+  threads; others refused), the classifier's files in `--classifier-dir`; each turn's
+  classification, decision and end kept in the pass's `turns.jsonl` (a held-out pass's whole,
+  once complete, never shown by variant), its scorecard by `languages_score.py`, and a
+  languages line appended (it refuses the main checkout; `--smoke-only` feeds one dev variant
+  and appends none); `--read <passes>` logs condition 4 for each classifier pass against the
+  two off passes, writing nothing;
 - `uv run poe overlap` (`overlap.py`) replays the overlap clips over a reply (plan 005's arm O)
   with the reference answerer, which scores every verdict right and 0 ms inside `poe check`, or
   the file-fed pipeline's `AudioCall`, which spends, paced at 10 Whisper requests a minute and
