@@ -20,7 +20,7 @@ decisions (`D-NNN`), which are permanent. Living docs cite only milestones in th
 | M2 | A call that listens and speaks | done ([003](completed/003-call-listens-and-speaks.md)) |
 | M3 | Interruptions and cancellation | done ([005](completed/005-interruptions-and-cancellation.md)) |
 | M4 | The talker and knowledge answers | done ([006](completed/006-talker-and-knowledge-answers.md)); its live calls moved to M7 |
-| M5 | Tickets, ticket status, and handoff | in progress ([007](active/007-tickets-status-handoff.md)) |
+| M5 | Tickets, ticket status, and handoff | done ([007](completed/007-tickets-status-handoff.md)); its background try moved to its Future improvements |
 | M6 | Reliability and operations | planned |
 | M7 | The rehearsal: the owner's script passes | planned |
 
@@ -247,7 +247,7 @@ rehearsal's password, archiving, and English questions pass.
   The handoff takes consent like any action: a read-back, then a clear yes (D-018).
 - *The ticket system:* the owner has no access to the real one (2026-11-09), so M5 builds a mock
   in the app, for the demo and to prove the actions; its adapter waits for access
-  ([plan 007](active/007-tickets-status-handoff.md), Q2). The T2 Ticket API lines here and in
+  ([plan 007](completed/007-tickets-status-handoff.md), Q2). The T2 Ticket API lines here and in
   the *Library* line above describe that later adapter.
 - *From M1* ([plan 002's Future improvements](completed/002-golden-set-baseline.md#future-improvements)),
   for M5's plan to weigh: a ticket number heard is read back before it is acted on, never taken
@@ -401,6 +401,11 @@ targets hold at the cap on live calls.
   improvements](completed/006-talker-and-knowledge-answers.md#future-improvements) (first a judge
   that can be trusted and better retrieval; then the Saudi register, one-word questions, the first
   audio after a search, and slow starts of the voice).
+- What M5 left for later, ordered by expected value: [plan 007's Future
+  improvements](completed/007-tickets-status-handoff.md#future-improvements) (first another
+  speech-to-text model for Arabic, the live calls' one clear bottleneck, with the API key the
+  owner will give; then the background try, the handoff's summary, the yes rule's model check in
+  time, each turn's language for a call held in English, and the clause cache across callers).
 
 ## Decided
 

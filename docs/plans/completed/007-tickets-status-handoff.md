@@ -1,6 +1,6 @@
 # 007 · Tickets, ticket status and handoff
 
-Status: active · Milestone: M5 · Started: 2026-11-09
+Status: completed · Milestone: M5 · Started: 2026-11-09 · Completed: 2026-11-12
 
 *Drafted on 2026-11-09 at the owner's word ("lets start with M5"), and approved by the owner the
 same day with every recommendation, Q1 to Q9 ("The owner's decisions").*
@@ -1172,6 +1172,14 @@ plan 003).
   then a fresh run, before `stt.live_language = "classified"` is turned on.
 - **What the clause cache saves in a live deployment** (run I): on by default by the owner's
   ruling; its hits across many callers, where the same answers repeat, are not measured yet.
+- **The handoff's summary names the caller's need** (run A's a25 in every run that played it,
+  and the owner's live handoff, "User requests to be connected to an employee for assistance"):
+  the model writes only that the caller wants a person, though the tool's description asks for
+  their question or problem. Support staff still read the call's conversation, attached (Q7).
+- **The yes rule's model check in time** (run A's a5-dev): it timed out on 8 of its 24 asks at
+  `TIMEOUT_S` 2.5 (2 to 5 in the earlier dev runs), each answer then taken as not clear and the
+  read-back's question asked again. A faster model for the check, or the wait measured against
+  how often it is needed, is a dated amendment to D-082 for the owner.
 - **Another speech-to-text model for Arabic** (the live calls of 2026-11-12): the owner found
   Arabic transcription the one clear bottleneck, Whisper large-v3 mishearing words in most
   Arabic calls («المستخدمين» as «المستقبلين», «كلمة المرور» as «كلمة الموضوع» and «كلمة
@@ -1713,7 +1721,29 @@ plan 003).
   turn added): the stopped read-back's note and the note tool's description; the leak check
   (agent/leaked_reasoning.py) and the clause splitter's cut at a glued sentence; the negation in
   rule A; a turn split by a pause read as one (agent/context.py). Over the runs' 1,827 distinct
-  stored replies, the leak check fires once, on a2-dev's leak.
+  stored replies, the leak check fires once, on a2-dev's leak. The gate: 7,791 passed, coverage
+  99.24% (c7ac414).
+- 2026-11-12: **Runs A (dev) and S after the fixes**, at c7ac414, both on the system clock, run S
+  beside run A's first 14 minutes.
+  - *Run A, `a5-dev`* (75 plays, $0.12, 34 min): no play failed (a3-dev lost 14 to the
+    provider), 0 violations, 0 stray characters. a48's new third turn passed 3 of 3: after
+    «خلاص», "mention in the ticket that …" was read back in a new draft, and no ticket number
+    was asked for. Type 0.86 (target met), language 0.97, action 0.92 and summary 0.79 (a3:
+    0.95 and 0.87). What fell is none of the fixes': the yes rule's model check timed out on 8
+    of its 24 asks (a1 2, a2 3, a3 5), each then "not clear" and asked again (a13, a31, a33,
+    a35, a42); the guard held back a clause in a23 and a15 three times, as in a1 and a2 (a3
+    none); and a25's handoff summary leaves out the caller's question in every run that played
+    it (a1-b, a2, a5; a3 lost it to the provider), as the owner's live handoff did. Better than
+    a3: a27, a29, a41 and a44.
+  - *Run S, `s-120b-6`* (30 plays, $0.08): 19 passed (21 on 2026-11-09, before M5), 0
+    violations; s05, the correction said while the search runs that now reads as one turn with
+    the first, 3 of 3; s10 0 to 3. The new misses (s03, s06, s07) are the judge's points on an
+    answer's content and a reply's language, none of the fixes'.
+  Both runs record the agent as `2026-11-11.3`: c7ac414 changed the note tool's description
+  without moving `VERSION`, which goes to `2026-11-12.1` after them; the runs' commit tells
+  their agent apart.
+- 2026-11-12: **Plan 007 closed, M5 done**: the logs, Future improvements, the roadmap's row,
+  the plan moved to completed, the gate.
 
 ## Decision log
 
