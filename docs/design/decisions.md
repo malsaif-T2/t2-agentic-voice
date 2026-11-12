@@ -3487,3 +3487,89 @@ twice; DOC-REF: every `D-NNN` cited anywhere is a heading here), so keep its sha
   `tests/harness/test_check_architecture.py`, `tests/harness/test_check_docs.py`,
   `tests/harness/test_arch_doc.py`, `tests/harness/conftest.py`,
   `tests/t2_agentic_voice/voice/test_file_transport.py`, `tests/ole5_voice/evals/test_action_run.py`.
+
+## D-089 · Four fixes from the owner's live calls: a draft's change, the model's reasoning, a negated claim, a turn split by a pause · 2026-11-12 · Accepted (the owner's approval of 2026-11-12, "Yes build them all", and their ruling on split turns)
+
+- **Context:** after plan 007's held-out run passed, the owner made ten calls on the dev console
+  (and a friend tested the English agent): "all of them went good", with one exception, call
+  `_Hdmiy0vDE`, where "it asked me for a ticket number when I tried to submit one". Reading
+  the ten records found four faults, each once:
+  - **A draft's change taken for a note** (`_Hdmiy0vDE`, turn 4). The read-back stopped with
+    «خلاص خلاص» (as the owner's stop ruling has it), the talker asked what to change, and the
+    owner said «اذكر في التذكرة انه النظام معلق على جميع المستخدمين في شركتنا» ("mention in the
+    ticket that the system is stuck for all users in our company"). The model took "mention in
+    the ticket" for `add_ticket_note` and asked for the last four digits of a ticket never
+    made. The prompt says a change calls the action again; nothing said it after a stop, and
+    the note tool's description did not say it is never for a ticket only read back.
+  - **The model's reasoning said aloud** (`_Hdmiy0vDE`, turn 5): «…عشان أضيف الملاحظة.User:
+    "ما أعرف، سولها". Possibly they want us to ask the system for ticket status? But we can't.
+    According to policies, …», played whole. gpt-oss wrote it into its answer, glued to the
+    sentence before with no space. The adapter keeps only the answer's channel; nothing caught
+    reasoning inside it. Because the clause splitter cut nothing inside a word, the glued
+    sentences also hid a second question from the question limit (D-085). Run A's a2-dev
+    stored the same kind of leak («…حالياً.We need to respond accordingly.…»), and 7 of the
+    4,467 distinct clauses the runs stored hold a glued sentence.
+  - **A negated claim blocked** (`_Hdmiy0vDE`, turns 8 and 9). Asked «افتحت التذكرة؟» with no
+    ticket made, the reply was held back twice as `unsupported_claim` and the caller heard the
+    `error` notice twice. The guard stores no blocked text; an offline check shows rule A blocks
+    «ما فتحت التذكرة» ("I did not open the ticket"), which holds «فتحت التذكرة». The guide
+    listed this as a known limit.
+  - **A turn split by a pause** (`LTLrFU`, turns 5 and 6): "what tickets submitted with my", a
+    pause past the end of turn, then "email". The second turn stopped the first's reply before
+    any of it played, so the talker had both turns, but as two messages. It answered "email" as
+    a question about sending email. The owner, approving the fixes: "A turn being splitted into
+    two is a common thing to happen, so we need to account for it".
+- **Decision:**
+  - **A change after a stop calls the action again.** The library's note for a stopped
+    read-back (agent/context.py's `DECLINED["stopped"]`) now ends "…and once they say it, call
+    {action} again with the change". Ole5's note tool says it is "never for one only read back
+    and not yet made: a change or an addition to that one, such as "mention this in the
+    ticket", is a change to its draft, so call create_ticket again with it". Run A's dev
+    scenario a48 gains a third turn: the change said that way, read back in a new draft, with
+    no ticket number asked for.
+  - **The model's reasoning is never said** (agent/leaked_reasoning.py, before the clause
+    splitter, after the stray-script filter). From a sentence glued to the one before (a
+    sentence's mark after a letter, a digit or a letter's mark, then no space) that begins with
+    a capital Latin letter in a reply in Arabic, or with one of the reasoning's openings ("We
+    need", "According to", "The user", "Possibly", …) in any language, or from any sentence that
+    begins with a speaker's label ("User:"), nothing more of that request's text is said. The
+    clause before it is said, the stream is closed (as `drop_rest` closes it), no tool of that
+    request runs, and no request follows. `talker_reasoning_dropped` logs the count alone. The
+    clause splitter cuts a word at a glued sentence's end before a letter that is no lowercase
+    Latin one, so "t2.example", "3.5" and "e.g." stay whole, and a glued sentence it lets
+    through is a clause of its own. A word list is the fast path: a model check of every reply
+    would cost every reply its time (the owner's "lists plus a model's judgement" keeps the model
+    for what the lists miss; none is added here). There is no setting; one can be added if a
+    team's model needs it.
+  - **A negated claim claims nothing** (domain/claims.py). A phrase right after ma or mub (waw
+    or feh written onto it too) is no claim, unless the word before the negation makes it a
+    conjunction (ba'd, awwal, yawm, kull, zayy, mithl, qabl, leen, tuul, daam: «بعد ما فتحت»,
+    after I opened), «إلا» or «غير» (only) follows the phrase, or the clause asks a question.
+    Any other phrase in the clause is read as before. The English defaults hold no negation to
+    begin with.
+  - **A turn split by a pause reads as one** (agent/context.py's `continued`). When the caller's
+    words stop the reply to their last turn before any of that reply was heard, and they were
+    said over nothing heard, they go on with that turn: the two are one user message, the
+    earlier's words first. The calls, results and notes the talker kept of the earlier turn stay
+    where they came, before that message, so the model sees what it found for the first part
+    and decides again on the whole (a correction's second part may need another search: run
+    S's s05). Past turns read the same: a `rolled_back` turn and the caller's next turn, with no
+    heard reply between them and the next not a command, are one message. Nothing of the
+    session changes: the report, the events and the yes rule keep each turn's own words.
+- **Consequences:**
+  - The caller of `_Hdmiy0vDE` would have heard the read-back again with the change, "I need the
+    ticket's last four digits to add the note." and nothing after it, and "no, I did not open
+    the ticket".
+  - The caller of `LTLrFU` would have been answered "what tickets submitted with my email".
+  - Run A's held-out split runs once, and its run passed before these fixes, so a48's new turn is
+    dev's alone, and the fixes are checked on dev run A and run S (plan 007's progress log).
+  - Over the 1,827 distinct replies the runs stored, the leak rule fires once, on a2-dev's
+    leak.
+- **Evidence:** the ten dev-console records (`var/dev-console/*.jsonl`, the owner's, read
+  only); `tests/t2_agentic_voice/agent/test_talker_split_turns.py`,
+  `tests/t2_agentic_voice/agent/test_leaked_reasoning.py`,
+  `tests/t2_agentic_voice/domain/test_claims.py` (the negation's adversarial cases),
+  `tests/t2_agentic_voice/domain/test_clauses.py`, `test_clause_stream.py`,
+  `tests/t2_agentic_voice/agent/test_talker_actions.py`, `tests/ole5_voice/tickets/test_actions.py`,
+  `tests/t2_agentic_voice/voice/session/test_talker_kept_steps.py`; plan 007's progress log for
+  the runs.

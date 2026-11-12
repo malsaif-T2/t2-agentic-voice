@@ -163,13 +163,12 @@ def test_a_read_back_dropped_reaches_the_talker_as_a_no_or_a_stop(
     checks = 0 if found.turns[1].when == "read_back" else 1
     record = parts.play(found)
     words = found.turns[1].says
-    told = {
-        message.content
+    told = {  # the dropping turn as each request answering it reads it (its last user message)
+        [message for message in request.messages if message.role == "user"][-1].content
         for request in parts.chat.requests
         if request.model == TALKER and not is_consent_check(request)
-        for message in request.messages
-        if message.role == "user" and message.content.startswith(words)
     }
+    told = {content for content in told if content.startswith(words)}
     note = DECLINED[kind].format(action="create_ticket")  # last, after a cut's over the summary
     assert record.passed is True
     assert told and all(content.endswith(f" {note}") for content in told)

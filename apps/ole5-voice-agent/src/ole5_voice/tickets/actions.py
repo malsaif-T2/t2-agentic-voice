@@ -67,11 +67,16 @@ CREATE_DESCRIPTION: Final = (
     "The caller hears the ticket read back and is asked to confirm it; say nothing yourself "
     "after calling this."
 )
+# The ticket only read back, from the live call `_Hdmiy0vDE` (2026-11-12): "mention in the
+# ticket that ..." after a stopped read-back was taken for a note, and the caller asked for the
+# last four digits of a ticket never made.
 NOTE_DESCRIPTION: Final = (
     "Add a note to a ticket made earlier in this call, to correct it or add to it once it is "
     "made. Give the last four digits of that ticket's number and the note. Only for a ticket "
-    "made in this call. The caller hears the note read back and is asked to confirm it; say "
-    "nothing yourself after calling this."
+    "made in this call, never for one only read back and not yet made: a change or an addition "
+    'to that one, such as "mention this in the ticket", is a change to its draft, so call '
+    f"{CREATE_TICKET} again with it. The caller hears the note read back and is asked to "
+    "confirm it; say nothing yourself after calling this."
 )
 HANDOFF_DESCRIPTION: Final = (
     "Pass the caller's request to Ole5's support team as a ticket, when the caller asks for a "

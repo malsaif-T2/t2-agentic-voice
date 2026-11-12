@@ -1,12 +1,14 @@
 # Plan 007's action scenarios (its "The measurement"; ole5_voice/evals/action_scenarios.py),
 # added by the owner's answer of 2026-11-11 before any run: khalas (enough), a stop word and a
 # filler, said alone over the read-back's summary: it stops it, and the talker asks what to
-# change.
+# change. Its third turn was added after the owner's live call _Hdmiy0vDE of 2026-11-12, by their
+# approval that day: the change said as "mention in the ticket that ...", which the talker took
+# for a note and asked for the digits of a ticket never made.
 id = "a48_stop_over_summary_saudi"
 kind = "stop_over_summary"
 split = "dev"
 language = "ar-SA"
-notes = "Khalas alone over the summary is a stop word, never ignored: the read-back stops with no receipt, nothing is sent, and the talker asks what to change, the draft kept."
+notes = "Khalas alone over the summary is a stop word, never ignored: the read-back stops with no receipt, nothing is sent, and the talker asks what to change, the draft kept; the change then said as \"mention in the ticket that ...\" is read back in a new draft, and no ticket number is asked for."
 made = 0
 
 [[turns]]
@@ -24,3 +26,11 @@ outcome = "stopped"
 language = "ar-SA"
 says_number = "none"
 facts = ["Asks the caller what to change in the ticket.", "Does not say a ticket was made."]
+
+[[turns]]
+says = "اذكر في التذكرة إن المشكلة تصير مع كل المستخدمين في جهتنا مو بس أنا"
+calls = "create_ticket"
+outcome = "read_back"
+language = "ar-SA"
+says_number = "none"
+facts = ["The ticket read back says the problem happens for every user in the caller's organization, not only the caller.", "Does not ask for a ticket number."]

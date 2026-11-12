@@ -537,7 +537,8 @@ audio yet. Once the turn is heard:
 
 - **with words**, it stops that reply, and its tools with it (`on_interrupt="cancel"`): the
   talker starts again with both turns, the earlier in the history as it ended (`rolled_back`
-  when none of its reply played);
+  when none of its reply played), and, since the caller heard nothing between them, reads
+  them as one turn, the earlier's words first (a turn split by a pause, D-089);
 - **as nothing** (an empty transcript, or text from silence), or not at all (its transcription
   failed, and the `error` notice is said first), what was kept plays, in order, and the rest as
   it comes: the reply has waited for the turn's end, its hold included

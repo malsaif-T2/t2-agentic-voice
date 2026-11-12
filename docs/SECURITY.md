@@ -94,10 +94,13 @@ folder, after Phoenix's (D-087).
    of the agent's languages writes taken out and a fullwidth form or another script's digit
    rewritten as its ASCII form (`guard.remove_stray_script`, on by default; D-084), so a stray
    character cannot hide a claim phrase («تم重 إنشاء طلبك» is read as «تم إنشاء طلبك») or split
-   an ID ("12重34重5" is read as 12345). Enforced by tests of the guard, by adversarial tests of
-   the filter before it (`tests/t2_agentic_voice/agent/test_talker_scripts.py`), and by
-   simulated calls with zero violations ([evaluation.md](design/evaluation.md), hard
-   constraints).
+   an ID ("12重34重5" is read as 12345). A claim phrase right after an Arabic negation («ما
+   فتحت لك التذكرة», I did not open the ticket for you) claims nothing, but never after a word
+   that makes the negation a conjunction («بعد ما», after), with «إلا» or «غير» (only) after
+   it, or in a question (D-089). Enforced by tests of the guard (the negation's adversarial
+   cases in `tests/t2_agentic_voice/domain/test_claims.py`), by adversarial tests of the filter
+   before it (`tests/t2_agentic_voice/agent/test_talker_scripts.py`), and by simulated calls
+   with zero violations ([evaluation.md](design/evaluation.md), hard constraints).
 3. **Identity comes from the session, never from the call.** Whose tickets are read or written
    is fixed by the join token when the call starts. Nothing said or typed during the call
    changes it. Enforced by adversarial tests in the plan that builds ticket status.

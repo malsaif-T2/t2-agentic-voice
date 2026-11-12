@@ -323,3 +323,37 @@ def test_the_defaults_are_written_in_the_guards_form_each_once() -> None:
         phrases = default_claims(code)
         assert phrases and all(phrase == guard_form(phrase) for phrase in phrases)
         assert len(set(phrases)) == len(phrases)
+
+
+# The owner's live call `_Hdmiy0vDE` (2026-11-12): asked "did you open the ticket?" with none
+# made, the true answer «ما فتحت لك التذكرة» (ma fatah-t lak at-tadhkara, I did not open the
+# ticket for you) was held back twice. A negated phrase claims nothing (D-089); every form that
+# says it was done still needs its evidence.
+@pytest.mark.parametrize(
+    "clause",
+    [
+        "لا، ما فتحت لك التذكرة لأنك ما أكدت.",  # la, ma fatah-t lak ..., no, I did not open it
+        "وما فتحت لك التذكرة للحين.",  # wa-ma ..., and I have not opened it yet
+        "مب فتحت لك التذكرة.",  # mub ..., I did not open it
+        "ما تم فتح طلب لك.",  # ma tamma fath talab, no request was opened (a default phrase)
+    ],
+)
+def test_a_negated_claim_passes_with_no_evidence(clause: str) -> None:
+    assert _check(clause, code="ar").passed
+
+
+@pytest.mark.parametrize(
+    "clause",
+    [
+        "بعد ما فتحت لك التذكرة بيوصلك إيميل.",  # ba'd ma ..., after I opened it, an email comes
+        "أول ما فتحت لك التذكرة وصلك رقمها.",  # awwal ma ..., as soon as I opened it
+        "ما فتحت لك التذكرة إلا بعد ما أكدت.",  # ma ... illa ..., I opened it only after you said
+        "ما فتحت لك التذكرة غير وحدة.",  # ma ... ghair wahda, I opened only one
+        "ما فتحت لك التذكرة؟",  # didn't I open the ticket for you?
+        "ما فتحت لك التذكرة، بس فتحت لك التذكرة الثانية.",  # not that one, but the second one
+        "فتحت لك التذكرة.",  # I opened the ticket for you
+    ],
+)
+def test_a_claim_said_otherwise_than_negated_is_still_blocked(clause: str) -> None:
+    verdict = _check(clause, code="ar")
+    assert not verdict.passed and verdict.claimed == ("create_ticket",)

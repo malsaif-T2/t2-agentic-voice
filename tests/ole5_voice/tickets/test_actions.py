@@ -242,3 +242,14 @@ def test_a_handoff_is_a_request_ticket_with_the_calls_conversation(tmp_path: Pat
     assert (kept.customer_email, kept.summary, kept.transcript) == (CUSTOMER, SUMMARY, said)
     assert result == TicketMade.of(TicketRef(id=kept.id, number=kept.number))
     assert made.max_per_call == 1  # one handoff ticket a call (D-009)
+
+
+def test_the_note_tool_sends_a_change_to_a_ticket_only_read_back_to_create_ticket(
+    tmp_path: Path,
+) -> None:
+    """The live call `_Hdmiy0vDE` (2026-11-12): "mention in the ticket that ..." after a stopped
+    read-back was taken for a note, and the caller was asked for the digits of a ticket never
+    made. The note tool's description says a change to a ticket not yet made goes to its draft."""
+    description = add_ticket_note(mock(tmp_path)).description
+    assert "never for one only read back and not yet made" in description
+    assert "call create_ticket again with it" in description

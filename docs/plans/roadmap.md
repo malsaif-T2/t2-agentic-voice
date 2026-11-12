@@ -262,13 +262,15 @@ rehearsal's password, archiving, and English questions pass.
   screen. Behind a setting, off by default, after the consent core; the *Done when* lines do not
   change. It is built so that the agent-led mode can use the same board
   ([background-tools.md](../design/background-tools.md)). The same try covers the talker saying,
-  in one short clause, what it is about to look up.
+  in one short clause, what it is about to look up. Moved to plan 007's Future improvements by
+  the owner on 2026-11-12, since the rest of M5 ran long.
 - *To build in M5* (the owner, 2026-11-10: "We should implement both of them and see their
   effectiveness and the latency improvements or delays they bring. Lets not delay them to M6 or
   M7, they can reasonably be implemented in M5"), each behind a setting and measured on a
   registered rule before a default changes (GP-18); the *Done when* lines do not change:
   - *Each turn's language from a classifier* (built: D-086, plan 007's Block H, behind
-    `stt.live_language = "classified"`, off until run H's keep rule; run H not yet run), so a
+    `stt.live_language = "classified"`; run H kept no arm, so `session` stays and the rule for a
+    call held in English is in plan 007's Future improvements), so a
     call can change language mid-call, in place of
     `stt.live_language = "session"` (D-066): Whisper is sent the classifier's language, chosen
     from the agent's languages only. The two candidates, by the owner: SpeechBrain's ECAPA

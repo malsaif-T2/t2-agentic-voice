@@ -129,7 +129,7 @@ that was definitely not sent (the design: none in v1).
    the talker's text; Blocks H and I after run A, each measured by its own registered run (runs
    H and I) before a default moves.
 7. **The scenario runs**, dev then held-out once ("The measurement").
-8. **The live calls**, by the owner.
+8. **The live calls**, by the owner (done 2026-11-12: ten calls, and four fixes from them, D-089).
 9. **The background try** (Q8), behind a setting, off by default, after everything above:
    moved to Future improvements by the owner, 2026-11-12.
 10. **The close:** the logs, `## Future improvements`, the plan moved, the roadmap's row, the gate.
@@ -1172,6 +1172,12 @@ plan 003).
   then a fresh run, before `stt.live_language = "classified"` is turned on.
 - **What the clause cache saves in a live deployment** (run I): on by default by the owner's
   ruling; its hits across many callers, where the same answers repeat, are not measured yet.
+- **Another speech-to-text model for Arabic** (the live calls of 2026-11-12): the owner found
+  Arabic transcription the one clear bottleneck, Whisper large-v3 mishearing words in most
+  Arabic calls («المستخدمين» as «المستقبلين», «كلمة المرور» as «كلمة الموضوع» and «كلمة
+  الملغوم»). The owner will give an API key for another model; it is a new STT adapter behind
+  the port (D-004 names Groq as the only provider for now, so a decision first), measured on
+  the golden set's Arabic items before it becomes the default.
 
 ## Progress log
 
@@ -1690,8 +1696,38 @@ plan 003).
   run T's `--clause-cache` stays off unless named. The whole suite passed with it on (7,747), the
   runtime's tests already covering both values. The background try (Q8) moved to Future
   improvements.
+- 2026-11-12: **The live calls** (plan step 8), on the dev console against the mock ticket system:
+  ten calls, six in Saudi Arabic and four in English, a friend's among them; the owner: "all of
+  them went good", the English one too, with Arabic speech-to-text the one clear bottleneck
+  (Future improvements). Across them: 9 read-backs, 4 made on a yes (a handoff among them) and
+  5 not sent (a cancel, a no with a correction, two questions over the read-back, a stop), 2
+  status answers, stop words obeyed, no claim without a record. Four faults, once each, all fixed (D-089): in
+  `_Hdmiy0vDE` (the owner's "it asked me for a ticket number when I tried to submit one") the
+  change said after a stopped read-back was taken for a note on a ticket never made, the
+  model's reasoning was said aloud, and «ما فتحت التذكرة» was held back twice as a claim, the
+  `error` notice twice; in `LTLrFU` a turn split by a pause ("what tickets submitted with my",
+  "email") was answered as two. Seen once and left as they are: in `NgYKi` a ticket read back
+  that the caller did not ask for ("I need a new password" for "my PC is not working"), declined;
+  in `LTLrFU` "or is it urgent for your work?", asked against the tool's description.
+- 2026-11-12: **The four fixes** (D-089), approved by the owner ("Yes build them all", the split
+  turn added): the stopped read-back's note and the note tool's description; the leak check
+  (agent/leaked_reasoning.py) and the clause splitter's cut at a glued sentence; the negation in
+  rule A; a turn split by a pause read as one (agent/context.py). Over the runs' 1,827 distinct
+  stored replies, the leak check fires once, on a2-dev's leak.
 
 ## Decision log
+
+- 2026-11-12: What the four fixes from the live calls chose (D-089). The change said after a
+  stop is checked by a third turn on run A's dev scenario a48, not a new kind: each kind has one
+  dev and one held-out scenario, and run A's held-out split runs once, which it has. A turn split
+  by a pause is joined in the talker's context only, never in the session, so the report, the
+  events and the yes rule keep each turn's words; the earlier turn's calls and results stay
+  before the joined message, since the version that put them after it let the model skip the
+  second search run S's s05 needs. The reasoning's stop is a word list with no setting and no
+  model check, by the owner's "time over money" (a model check would cost every reply), and it
+  closes the stream as `drop_rest` does. The negated claim is read in the guard's form, with the
+  words that make «ما» a conjunction and the words after that make it a claim, each blocked by
+  an adversarial test.
 
 - 2026-11-12: What Block I's build chose where the spec left it open (D-087): the cache in three
   modules (`clause_cache.py` 300 lines, `clause_files.py`, `clause_counts.py`), not one, which
@@ -2192,4 +2228,5 @@ they set a figure of their own.
 - Approve Block G and answer Q10 to Q14 before run A (done 2026-11-11); approve Blocks H and I,
   Q15 to Q25 and the downloads before they are built, after run A (done 2026-11-11).
 - Hold the live calls, against the mock ticket system, on the laptop's speakers and the wired
-  headset (about 20 minutes).
+  headset (about 20 minutes) (done 2026-11-12: ten calls, a friend's English call among them;
+  the fixes from them approved the same day).

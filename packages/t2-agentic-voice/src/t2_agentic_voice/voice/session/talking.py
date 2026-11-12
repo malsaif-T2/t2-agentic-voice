@@ -10,7 +10,7 @@ voice/session/call.py.
   request, the search and the speech at once. A turn answered while a reply to an earlier turn is
   in progress (said while the agent was silent, or while a search ran with nothing playing) stops
   that reply first, its work cancelled, so the talker starts again with both turns, the earlier
-  one in the history as it ended (`rolled_back` when none of its reply played).
+  one in the history as it ended (`rolled_back` when none of its reply played: then one turn).
 - **Its events, in order** (agent/talker.py; each played by talker_play.py): a clause is said
   (`SpokenClause`, in its language, open_reply.py's speech); a card is shown (`ShownCard`, `t2v/1`'s
   `card`); a tool's start and end are the public `ToolStarted` and `ToolFinished`, and while the

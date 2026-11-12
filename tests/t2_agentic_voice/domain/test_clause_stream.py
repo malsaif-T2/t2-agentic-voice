@@ -14,6 +14,7 @@ TEXTS = [
     "افتح الإعدادات، ثم اضغط إعادة التعيين. هل تحتاج شيئا آخر؟ «تم.»",
     "No mark at the end at all",
     "Visit t2.example and wait… then retry; done.",
+    "It saves.Open it again؟وش بعد? حالياً.We e.g. t2.example U.S.",  # glued sentences (D-089)
     "Spaces and\ttabs,\nand lines . . end.",
     "x" * 230 + " short, " + "word " * 60,
     "",

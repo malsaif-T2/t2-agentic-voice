@@ -9,12 +9,20 @@ A word is a run of characters between spaces (any Unicode space), and a clause e
 word whose last character, closing quotes and brackets aside, is a clause's mark: the Arabic
 comma, semicolon, question mark and full stop, or the comma, semicolon, colon, full stop,
 question mark, exclamation mark or ellipsis. So a mark inside a word ("3.5", "t2.example")
-cuts nothing. A clause's words are joined by one space, and a clause that holds no letter,
-digit or symbol (only marks, as ". ." leaves) says nothing and is left out.
+cuts nothing, but for a sentence's end glued to the next sentence with no space between: a
+sentence's mark (the Arabic question mark and full stop, the full stop, question mark,
+exclamation mark or ellipsis) after a letter, a digit or a letter's mark and before a letter
+that is no lowercase Latin one ends a word there (an abbreviation in capitals, "U.S.", is cut
+too, which only cuts its speech in two). gpt-oss writes them so when it joins two pieces of its
+answer («…بالضبط؟وش …», "…as needed.Open …"; D-089), and the question limit then counts the
+first one's question (agent/question_limit.py). A clause's words are joined by one space, and a
+clause that holds no letter, digit or symbol (only marks, as ". ." leaves) says nothing and is
+left out.
 """
 
 from __future__ import annotations
 
+import re
 import unicodedata
 
 # The marks that end a clause: ARABIC COMMA, ARABIC SEMICOLON, ARABIC QUESTION MARK, ARABIC FULL
@@ -30,6 +38,17 @@ LONG_CLAUSE_CHARS = 120
 CLOSERS = "\"')]}\u00bb\u201d\u2019"
 # The general categories of what is said: letters, numbers and symbols.
 _SAID = frozenset("LNS")
+# The combining marks a word may end in, a letter's diacritics: the Latin ones and the Arabic
+# harakat, tanween among them («حالياً.»), and the superscript alef.
+WORD_MARKS = "\u0300-\u036f\u064b-\u065f\u0670"
+# A sentence's end glued to the next sentence (the module's docstring): the mark is kept on the
+# word it ends.
+_GLUED = re.compile(rf"(?<=[^\W_]|[{WORD_MARKS}])([\u061f\u06d4.?!\u2026])(?=[^\W\d_a-z])")
+
+
+def _words(text: str) -> list[str]:
+    """`text`'s words: its runs between spaces, each cut after a glued sentence's end."""
+    return _GLUED.sub(lambda mark: f"{mark.group(1)} ", text).split()
 
 
 def _ends_clause(word: str) -> bool:
@@ -78,7 +97,7 @@ def split_clauses(text: str, *, max_chars: int | None) -> tuple[str, ...]:
         raise ValueError("max_chars is at least 1, or None for no limit")
     clauses: list[str] = []
     words: list[str] = []
-    for word in text.split():
+    for word in _words(text):
         words.append(word)
         if _ends_clause(word):
             clauses += _fitted(words, max_chars)
@@ -112,11 +131,11 @@ class ClauseStream:
         while cut > 0 and not text[cut - 1].isspace():
             cut -= 1
         self._tail = text[cut:]
-        return self._clauses(text[:cut].split(), closing=False)
+        return self._clauses(_words(text[:cut]), closing=False)
 
     def close(self) -> tuple[str, ...]:
         """The clauses left at the text's end; the stream is empty after it."""
-        words, self._tail = self._tail.split(), ""
+        words, self._tail = _words(self._tail), ""
         return self._clauses(words, closing=True)
 
     def _ended(self, word: str) -> bool:

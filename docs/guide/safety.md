@@ -291,6 +291,14 @@ A clause past the reply's question limit never reaches the guard (D-085;
 is neither checked nor blocked, and no notice is said in its place. A question the guard
 blocked was not said, so it does not count toward the limit.
 
+Nor does the model's reasoning written into its answer (D-089). gpt-oss now and then glues some
+of it to a sentence of its answer with no space between («…الملاحظة.User: … Possibly they want
+us to …»). Where a sentence glued so begins with a capital Latin letter in a reply in Arabic,
+or with one of the reasoning's openings ("We need", "According to", "The user", …) in any
+language, or any sentence begins with a speaker's label ("User:"), nothing of the model's text
+from there on is said, and the reply stops as the question limit stops one. A glued sentence
+that only starts the answer again is said, cut into a clause of its own.
+
 ### The ID rule
 
 An ID-shaped number is said only with evidence from this call. It runs for every agent, with or
@@ -388,11 +396,12 @@ rules, to say why or ask for what is missing.
 - **An agent with no action** is not checked by the claim rule at all, so one with read tools
   alone can still say it made a ticket (D-081).
 - **A claim phrase can block a true sentence**: a default one such as "has been created" in a
-  knowledge answer that says how a thing is made, or any phrase inside an Arabic negation,
-  which puts its word before the verb («ما سجلت لك», "I did not register it for you", holds
-  «سجلت لك»); and a phrase that only introduces a number, with no record or status to back it,
-  in a question that asks for one («وش رقم تذكرتك؟», "what is your ticket's number?") or in a
-  number the caller said read back to them (TD-134).
+  knowledge answer that says how a thing is made; and a phrase that only introduces a number,
+  with no record or status to back it, in a question that asks for one («وش رقم تذكرتك؟», "what
+  is your ticket's number?") or in a number the caller said read back to them (TD-134). A phrase
+  right after an Arabic negation claims nothing (D-089): «ما سجلت لك», "I did not register it
+  for you", passes, but not after a word that makes «ما» a conjunction («بعد ما سجلت لك», "after
+  I registered it for you"), nor with «إلا» or «غير» after it ("only"), nor in a question.
 - **Over the asked-again line**, a bare yes counts as said after the closing question, so it
   confirms with no send word (TD-133).
 - **A caller who stays silent** after the closing question leaves the agent waiting, with no

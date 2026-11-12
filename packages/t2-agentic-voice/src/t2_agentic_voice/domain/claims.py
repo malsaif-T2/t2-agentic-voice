@@ -32,6 +32,15 @@ What `check_claims` does:
   digits), against the claimed actions' texts alone, the record's and the status's: a number a
   passage or the caller's words hold, or another action's, is no evidence that this action made
   it.
+- **A negated phrase claims nothing** (D-089; the owner's live call `_Hdmiy0vDE` of 2026-11-12,
+  where «ما فتحت التذكرة», I did not open the ticket, the true answer to "did you open it?",
+  was held back twice and the caller heard the error notice): a phrase right after a negation
+  word (`_NEGATIONS`: ma, mub, also with waw or feh written onto it) is no claim, unless the
+  word before the negation makes it none (`_NOT_NEGATING`: «بعد ما فتحت», after I opened, and
+  the like), a word after the phrase turns the clause into one (`_ONLY`: «ما فتحت … إلا …», I
+  only opened … ), or the clause asks (it ends with a question mark: «ما فتحت التذكرة؟», didn't
+  I open the ticket?). Any other phrase in the clause is read as before. The English defaults
+  hold no negation to begin with ("I have not created" holds no phrase).
 - **The verdict** names the actions claimed and, when it does not pass, the ID-shaped tokens
   with no support. `claimed` empty with `passed` False is a default phrase that no action
   backs.
@@ -53,10 +62,30 @@ from typing import Literal
 from t2_agentic_voice.core.settings.guard import GuardSettings
 from t2_agentic_voice.core.settings.words import LanguageCode
 from t2_agentic_voice.domain.guard_ids import check_ids, guard_form
-from t2_agentic_voice.domain.text.words import holds_words
+from t2_agentic_voice.domain.interruption_words import QUESTION_MARKS
+from t2_agentic_voice.domain.text.clauses import CLOSERS
 
 # The letters written onto a phrase's first word that leave it the same phrase: waw, feh (and).
 _JOINED = ("\u0648", "\u0641")
+# The words that negate a phrase right after them (a negated phrase, the module's docstring).
+_NEGATIONS = ("\u0645\u0627", "\u0645\u0628")  # ma, mub: not
+# The words before a negation that make it none, each then «... ma» a conjunction: ba'd, awwal,
+# yawm, kull, zayy, mithl, qabl, leen, tuul, daam (after, as soon as, the day, whenever, like,
+# as, before, until, as long as, so long as).
+_NOT_NEGATING = (
+    "\u0628\u0639\u062f",
+    "\u0627\u0648\u0644",
+    "\u064a\u0648\u0645",
+    "\u0643\u0644",
+    "\u0632\u064a",
+    "\u0645\u062b\u0644",
+    "\u0642\u0628\u0644",
+    "\u0644\u064a\u0646",
+    "\u0637\u0648\u0644",
+    "\u062f\u0627\u0645",
+)
+# The words after a negated phrase that make the clause a claim: illa, ghair (but, only).
+_ONLY = ("\u0627\u0644\u0627", "\u063a\u064a\u0631")
 # Where evidence of a claim comes from: the call's record, or a `reports_on` tool's result.
 EvidenceSource = Literal["record", "status"]
 
@@ -176,14 +205,39 @@ def _phrase(text: str) -> str:
     return guard_form(text)
 
 
-def _holds(clause: str, phrases: Sequence[str]) -> bool:
+def _negated(words: Sequence[str], at: int, after: int) -> bool:
+    """Whether the phrase at `words[at:after]` is negated (the module's docstring)."""
+    before = words[at - 1] if at > 0 else ""
+    if before[:1] in _JOINED and before[1:] in _NEGATIONS:
+        before = before[1:]
+    if before not in _NEGATIONS:
+        return False
+    if at > 1 and words[at - 2] in _NOT_NEGATING:
+        return False
+    return not any(word in _ONLY for word in words[after:])
+
+
+def _holds(clause: str, phrases: Sequence[str], *, asks: bool = True) -> bool:
     """Whether `clause`, in the guard's form, holds one of `phrases` as whole words, or after
-    waw or feh written onto its first word."""
+    waw or feh written onto its first word, not negated (a negation counts only when the clause
+    does not `asks`)."""
+    words = clause.split(" ")
     for written in phrases:
         phrase = _phrase(written)
-        if phrase and any(holds_words(clause, start + phrase) for start in ("", *_JOINED)):
-            return True
+        for start in ("", *_JOINED) if phrase else ():
+            wanted = (start + phrase).split(" ")
+            for at in range(len(words) - len(wanted) + 1):
+                if words[at : at + len(wanted)] != wanted:
+                    continue
+                if asks or not _negated(words, at, at + len(wanted)):
+                    return True
     return False
+
+
+def _asks(clause: str) -> bool:
+    """Whether `clause`, as written, ends with a question mark, past closing quotes."""
+    end = clause.rstrip().rstrip(CLOSERS).rstrip()
+    return end[-1:] in QUESTION_MARKS
 
 
 def _names_one_of(text: str, texts: Sequence[str], *, settings: GuardSettings, year: int) -> bool:
@@ -209,9 +263,9 @@ def check_claims(
     """Rule A on `clause`, as the module says: `claims` maps each action to its phrases, every
     language's, and `any_action` holds the default ones; `earlier`, the clauses of the same
     reply the guard passed before this one, in order."""
-    said = guard_form(clause)
-    named = tuple(action for action, phrases in claims.items() if _holds(said, phrases))
-    general = _holds(said, any_action)
+    said, asks = guard_form(clause), _asks(clause)
+    named = tuple(a for a, phrases in claims.items() if _holds(said, phrases, asks=asks))
+    general = _holds(said, any_action, asks=asks)
     if not named and not general:
         return ClaimVerdict(claimed=(), passed=True)
     texts: dict[str, tuple[str, ...]] = {}

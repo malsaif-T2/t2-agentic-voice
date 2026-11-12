@@ -313,6 +313,16 @@ def test_each_decline_has_its_note_naming_the_action_never_the_words(kind: Decli
     assert SUMMARY not in note
 
 
+def test_a_stopped_read_back_says_to_call_the_action_again_once_the_change_is_said() -> None:
+    """The live call `_Hdmiy0vDE` (2026-11-12): the change said after a stop was taken for
+    another action; the note now says to call this one again with it."""
+    assert (
+        DECLINED["stopped"]
+        .format(action="open_request")
+        .endswith("once they say it, call open_request again with the change]")
+    )
+
+
 def test_a_turn_replied_twice_keeps_its_declined_note_once() -> None:
     """An early start cancelled and the turn replied again (plan 006, Q2) keeps one note."""
     model = FakeChat(calls(call("open_request", **DRAFT)), said("Sure."), said("Sure."))

@@ -1193,6 +1193,16 @@ never changes the caller's heard words, a tool's result, a card, a template or a
 they are the team's or the caller's text. `guard.remove_stray_script`, on by default, turns it
 off when set to false.
 
+**Then the model's reasoning, never said** (D-089; the owner's live call of 2026-11-12). gpt-oss
+now and then writes some of its reasoning into its answer, glued to a sentence with no space
+between. From a sentence glued so that begins with a capital Latin letter in a reply in Arabic,
+or with one of the reasoning's openings ("We need", "According to", "The user", …) in any
+language, or from any sentence that begins with a speaker's label ("User:"), nothing more of
+the model's text is said: the clause before it is, the model's stream is closed, and the reply
+stops as the question limit stops one (agent/leaked_reasoning.py). The clause splitter cuts a
+glued sentence it lets through into a clause of its own, so the question limit counts its
+question.
+
 The guard checks each clause before it goes to TTS, as the filter left it: a stray character
 cannot hide a claim phrase or split an ID.
 
@@ -1206,6 +1216,8 @@ The prompt tells the talker to write numbers as digits. The speaking rules turn 
 **Rule A, claims.** It runs for an agent that declares an action, and only for one, as every rule added for actions does (plan 007), so an agent with none is checked as before. A clause that contains a claim phrase of action A passes only if one of these holds:
 - the call's record holds a completed A; or
 - a tool declared with `reports_on=["A"]` returned a result in this call that succeeded and holds an ID-shaped token, as rule B reads one, and the clause names one of that result's numbers, or names none after an earlier clause of the same reply did.
+
+A phrase right after a negation word, ma or mub («ما فتحت لك التذكرة», I did not open the ticket for you), is no claim (D-089), unless the word before the negation makes it a conjunction («بعد ما», after), «إلا» or «غير» (only) follows the phrase, or the clause asks a question; any other phrase in the clause is read as always.
 
 The record backs any claim about A, with a number or none. A status backs fewer (the owner's ruling of 2026-11-10, "Number or same reply", D-081): only a clause that holds an ID-shaped token its result holds (the whole number, or the last digits it gives back, read as rule B reads one against that result), or a clause with no ID-shaped token whose reply already said one of the result's numbers, in a clause the guard passed. So a caller with a ticket from an earlier call who asks its status, then for a new one, never hears a new ticket claimed when no action ran. The ruling accepts that a false claim with no number passes in a reply that said a status's number, and that a status sentence with no number in a reply that said none ("Yes, it has been escalated") is blocked. A failed status result, a status that found nothing (no ticket, or none ending in the digits asked: it holds no ID-shaped token, so no record of A, invariant 2; since plan 007's whole-code review), a passage, or any other tool's result is no evidence of a claim. Every ID-shaped token in that clause must also equal a value in that completed A's result, or in that status tool's result, read as rule B reads one (digits spaced, in groups, said one by one, or Arabic-Indic) against A's evidence alone. Claim phrases come from each action's `claims`, plus a short default list per language ("I've created", «تم إنشاء», «سجلت لك» and the like), which counts as a claim about any action and passes when some action backs it, standing for each that does. Every language's phrases are read, whatever the reply's language, since a model may write a claim in its other language (plan 006's run K saw it answer in a passage's language; since the same review). The defaults are past-tense phrases, mostly in the first person, and none of them only introduces a number ("your request number"), which would block the talker reading a caller's own number back. Teams can extend the default list (`guard.claims`); a default cannot be removed. Matching runs on normalized text, on word boundaries, and also after waw or feh written onto a phrase's first word («وتم»). A clause rule A passed with a claim skips rule B.
 

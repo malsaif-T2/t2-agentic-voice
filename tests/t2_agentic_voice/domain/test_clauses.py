@@ -49,6 +49,26 @@ def test_a_mark_inside_a_word_cuts_nothing() -> None:
     )
 
 
+def test_a_sentence_glued_to_the_next_ends_its_clause_there() -> None:
+    """D-089: gpt-oss joins two pieces of its answer with no space; the sentence's mark after a
+    letter, a digit or a letter's mark (the tanween of «حالياً») and before a letter that is no
+    lowercase Latin one ends the clause, so "t2.example", "3.5" and "e.g." stay whole."""
+    assert split_clauses("وش تحتاج بالضبط؟وش الشي اللي تبي؟", max_chars=None) == (
+        "وش تحتاج بالضبط؟",
+        "وش الشي اللي تبي؟",
+    )
+    assert split_clauses("As needed.Open it.ما عندي حالياً.We", max_chars=None) == (
+        "As needed.",
+        "Open it.",
+        "ما عندي حالياً.",
+        "We",
+    )
+    assert split_clauses("See t2.example or v2.1, then 3.5", max_chars=None) == (
+        "See t2.example or v2.1,",
+        "then 3.5",
+    )
+
+
 def test_quotes_and_brackets_after_a_mark_stay_with_its_clause() -> None:
     text = 'He said "yes." Then (maybe, later) she left «تمام،» بعدين'
     assert split_clauses(text, max_chars=None) == (

@@ -16,6 +16,16 @@ caller heard it, built from the `Conversation` the session hands with each turn
   the talker answers in its own words, and after a correction it may call the action again
   with the new draft (the owner's ruling, plan 007). The talker keeps that note beside the
   turn for the turns after it.
+- **A turn split by a pause** reads as one (the owner's ruling of 2026-11-12, after the live call
+  `LTLrFU`: "what tickets submitted with my", a pause, "email", answered as a question about
+  email). When the caller's words stop the reply to their turn before it before any of that
+  reply was heard (`cut_reply`), they go on with that turn, since the caller heard nothing in
+  between: its words and theirs are one user message, in order (`continued`). The calls,
+  results and notes the talker kept of the earlier turn stay where they came, before that
+  message, so the model sees what it found for the first part and decides again on the whole
+  (a correction's second part may need another search: run S's s05). Past turns read the same:
+  a turn rolled back (`rolled_back`, its reply cut before any played) and the caller's next
+  turn, no heard reply between them and the next no command, are one message.
 - **A note the model copies** anyway, a reply's number or a cut clause's share, is taken out of
   what it writes before the clause splitter (`Unnoted`), so it is never spoken; only those two.
 - **What only the talker knew** goes beside the heard history, in its place: the tool calls and
@@ -38,6 +48,7 @@ from __future__ import annotations
 
 import re
 from collections.abc import Mapping, Sequence
+from itertools import pairwise
 
 from t2_agentic_voice.actions.action_runner import ActionRunner
 from t2_agentic_voice.actions.record import ActionRecord
@@ -74,9 +85,11 @@ DECLINED: Mapping[DeclineKind, str] = {
         "[the caller changed the read-back of {action}: nothing was done; call it again with "
         "the change]"
     ),
+    # The owner's stop ruling; the call again after it, from the live call `_Hdmiy0vDE`
+    # (2026-11-12), where a change said after the stop was taken for a note on a ticket.
     "stopped": (
         "[the caller stopped the read-back of {action}: nothing was done; ask what to change, "
-        "keeping the draft]"
+        "keeping the draft, and once they say it, call {action} again with the change]"
     ),
     "unclear": "[the caller gave no clear answer to the read-back of {action}: nothing was done]",
 }
@@ -159,10 +172,63 @@ def declined_note(declined: DeclinedAction) -> str:
     return DECLINED[declined.kind].format(action=declined.action)
 
 
+def _told(conversation: Conversation) -> list[PastTurn]:
+    """The caller's past turns that reach the model, in order."""
+    turns = sorted(conversation.turns, key=lambda turn: turn.turn_id)
+    return [turn for turn in turns if _turn_text(turn) is not None]
+
+
+def _goes_on(earlier: PastTurn, later: PastTurn, replies: Sequence[SaidReply]) -> bool:
+    """Whether the caller's past turn `later` goes on with `earlier`, the turn told before it
+    (the module's docstring): `earlier` rolled back, `later` no command, and no reply the caller
+    heard between them."""
+    if earlier.fate != "rolled_back" or later.fate == "command":
+        return False
+    return not any(
+        said(reply) is not None and _before(earlier, reply) and not _before(later, reply)
+        for reply in replies
+    )
+
+
+def continued(turn: TalkerTurn) -> tuple[PastTurn, ...]:
+    """The caller's past turns the turn answered now goes on with, oldest first (the module's
+    docstring): none unless its words stopped the reply to the caller's last turn before any of
+    it was heard, and it was said over nothing heard; then that turn, and each before it that
+    the next goes on with."""
+    replies = {reply.reply_id: reply for reply in turn.conversation.replies}
+    told = _told(turn.conversation)
+    cut = None if turn.cut_reply is None else replies.get(turn.cut_reply)
+    over = None if turn.over_reply is None else replies.get(turn.over_reply)
+    if cut is None or not told or cut.turn_id != told[-1].turn_id or said(cut) is not None:
+        return ()
+    if turn.over_reply is not None and (over is None or said(over) is not None):
+        return ()
+    found = [told.pop()]
+    while told and _goes_on(told[-1], found[0], turn.conversation.replies):
+        found.insert(0, told.pop())
+    return tuple(found)
+
+
+def kept_of(
+    turns: Sequence[PastTurn],
+    *,
+    exchanges: Mapping[TurnId, Sequence[ChatMessage]],
+    notes: Mapping[TurnId, str],
+) -> list[ChatMessage]:
+    """The calls, results and developer notes the talker kept of `turns`, in order."""
+    kept: list[ChatMessage] = []
+    for turn in turns:
+        kept.extend(exchanges.get(turn.turn_id, ()))
+        if turn.turn_id in notes:
+            kept.append(ChatMessage.system(notes[turn.turn_id]))
+    return kept
+
+
 def turn_message(turn: TalkerTurn) -> ChatMessage:
-    """The turn answered now, its words whole, then what it was said over and what it cut, and
-    the read-back it declined."""
+    """The turn answered now, its words whole, after those of the turns it goes on with
+    (`continued`), then what it was said over and what it cut, and the read-back it declined."""
     heard = {reply.reply_id: said(reply) is not None for reply in turn.conversation.replies}
+    joined = [past.words for past in continued(turn)]
     over, cut = turn.over_reply, turn.cut_reply
     notes: list[str] = []
     if over is not None and over == cut:
@@ -172,11 +238,11 @@ def turn_message(turn: TalkerTurn) -> ChatMessage:
             notes.append(f"[said over your reply {over}]")
         if cut is not None and heard.get(cut, False):
             notes.append(f"[it cut your reply {cut}]")
-        elif cut is not None:
+        elif cut is not None and not joined:
             notes.append(f"[it stopped your reply {cut} before any of it was heard]")
     if turn.declined is not None:
         notes.append(declined_note(turn.declined))
-    return ChatMessage.user(" ".join([turn.words, *notes]))
+    return ChatMessage.user(" ".join([*joined, turn.words, *notes]))
 
 
 def without_calls(messages: Sequence[ChatMessage]) -> list[ChatMessage]:
@@ -220,23 +286,32 @@ def history(
     exchanges: Mapping[TurnId, Sequence[ChatMessage]],
     notes: Mapping[TurnId, str],
     named: frozenset[ReplyId] = frozenset(),
+    continued: Sequence[PastTurn] = (),
 ) -> list[ChatMessage]:
     """The call so far as the model reads it (the module's docstring): `exchanges` holds the
-    tool calls and results the talker kept of each past turn, `notes` its developer notes, and
-    `named` the replies the turn answered now names."""
+    tool calls and results the talker kept of each past turn, `notes` its developer notes,
+    `named` the replies the turn answered now names, and `continued` the turns it goes on with,
+    whose words it says itself (`turn_message`)."""
     turns = sorted(conversation.turns, key=lambda turn: turn.turn_id)
+    replies = sorted(conversation.replies, key=lambda reply: reply.reply_id)
+    spoken = _told(conversation)
+    later = {turn.turn_id: after for turn, after in pairwise(spoken)}
+    tail = {turn.turn_id for turn in continued}
     messages: list[ChatMessage] = []
+    words: list[str] = []  # the words of the turns told so far that the next goes on with
     at = 0
 
     def told(turn: PastTurn) -> None:
-        text = _turn_text(turn)
-        if text is not None:
-            messages.append(ChatMessage.user(text))
-        messages.extend(exchanges.get(turn.turn_id, ()))
-        if turn.turn_id in notes:
-            messages.append(ChatMessage.system(notes[turn.turn_id]))
+        text, mine = _turn_text(turn), kept_of([turn], exchanges=exchanges, notes=notes)
+        if text is not None and turn.turn_id not in tail:
+            words.append(text)
+            after = later.get(turn.turn_id)
+            if after is None or after.turn_id in tail or not _goes_on(turn, after, replies):
+                messages.append(ChatMessage.user(" ".join(words)))
+                words.clear()
+        messages.extend(mine)  # in the order they came: a turn gone on with, before its words
 
-    for reply in sorted(conversation.replies, key=lambda reply: reply.reply_id):
+    for reply in replies:
         while at < len(turns) and _before(turns[at], reply):
             told(turns[at])
             at += 1

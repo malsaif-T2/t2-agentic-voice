@@ -104,7 +104,9 @@ A reply that stopped before a question past its limit (`guard.questions_per_repl
 [writing-for-voice.md](writing-for-voice.md), "One question at a time") logs one line at INFO,
 `talker_reply_stopped`, with `call_id`, `turn_id`, `reason` (`question_limit`) and
 `unsaid_clauses` (how many of the talker's clauses it did not say), never a word of the reply.
-The trace holds only what was said.
+The trace holds only what was said. A reply that stopped at the model's reasoning written into
+its answer (D-089) logs `talker_reasoning_dropped` at INFO, with `call_id`, `turn_id` and
+`dropped_chars` (how many characters went unsaid), never a word of them.
 
 The resource attributes, on each root span: `t2v.version`, `t2v.pipecat.version`,
 `t2v.settings.digest` (a hash of the settings with every secret left out), `t2v.agent.name`,

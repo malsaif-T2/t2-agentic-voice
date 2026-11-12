@@ -65,6 +65,7 @@ from t2_agentic_voice.agent.context import (
     CLAIM_BLOCKED,
     Unnoted,
     call_context,
+    continued,
     declined_note,
     history,
     turn_message,
@@ -81,6 +82,7 @@ from t2_agentic_voice.agent.events import (
     TalkerEvent,
 )
 from t2_agentic_voice.agent.language import call_register, reply_language
+from t2_agentic_voice.agent.leaked_reasoning import LeakedReasoning
 from t2_agentic_voice.agent.prompt import (
     compose_prompt,
     reply_line,
@@ -174,6 +176,7 @@ class Turn:
         )
         self.scripts = StrayScript.of(agent, settings)
         self.questions = QuestionLimit(settings.guard.questions_per_reply)
+        self.leak = LeakedReasoning(arabic=self.language != "en")  # D-089
         self.tools = ToolCalls(
             runner=runner,
             ctx=self.ctx,
@@ -196,6 +199,7 @@ class Turn:
             exchanges=self.memory.exchanges,
             notes=self.memory.notes,
             named=named,
+            continued=continued(self.turn),  # the turns it goes on with, said in its message
         )
         messages = [ChatMessage.system(prompt), *past, turn_message(self.turn)]
         if self.turn.declined is not None:  # kept beside the turn, once, for the turns after it
@@ -224,7 +228,7 @@ class Turn:
                 stray_characters=stray,
                 stray_scripts=scripts,
             )
-            if self.stopped or not answer.calls:
+            if self.stopped or self.leak.found or not answer.calls:
                 break
             if not tools:
                 _log.warning("talker_tool_call_ignored", turn_id=self.turn.turn_id)
@@ -249,6 +253,7 @@ class Turn:
             if self.questions.stopped:  # nothing more of the reply is said: no more request
                 break
         self.questions.logged(call_id=self.ctx.call_id, turn_id=self.turn.turn_id)
+        self.leak.logged(call_id=self.ctx.call_id, turn_id=self.turn.turn_id)
         _log.info(
             "talker_replied",
             call_id=self.ctx.call_id,
@@ -299,12 +304,14 @@ class Turn:
                     ):
                         answer.first_token_s = max(0.0, self.clock.now() - started)
                     if isinstance(event, TextDelta) and not acted:
-                        piece = self.scripts.text(event.text)
+                        piece = self.leak.text(self.scripts.text(event.text))
                         answer.text += piece
                         for said in self._said(splitter.feed(unnoted.feed(piece))):
                             yield said
                         if self.stopped:
                             return
+                        if self.leak.found:  # the rest is reasoning: what was held is said
+                            break
                     elif isinstance(event, TextDelta):
                         dropped = dropped or bool(event.text.strip())
                     elif isinstance(event, ToolCallRequest):
@@ -331,11 +338,13 @@ class Turn:
             )
             raise
         if acted:  # rule C: what the splitter held goes too, unspoken
-            held = [*splitter.feed(unnoted.close()), *splitter.close()]
+            held = [*splitter.feed(unnoted.feed(self.leak.close()) + unnoted.close())]
+            held += splitter.close()
             if dropped or any(text.strip() for text in held):
                 _log.info("talker_text_after_action_dropped", turn_id=self.turn.turn_id)
             return
-        for said in self._said((*splitter.feed(unnoted.close()), *splitter.close())):
+        rest = unnoted.feed(self.leak.close()) + unnoted.close()
+        for said in self._said((*splitter.feed(rest), *splitter.close())):
             yield said
 
     def _said(self, clauses: Iterable[str]) -> list[TalkerEvent]:

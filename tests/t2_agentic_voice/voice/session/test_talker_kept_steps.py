@@ -15,6 +15,7 @@ from __future__ import annotations
 import asyncio
 
 import pytest
+from t2_agentic_voice.agent.context import continued, turn_message
 from t2_agentic_voice.agent.talker import ReplyDone, SpokenClause, ToolBegan
 from t2_agentic_voice.core.config import VoiceSettings
 from t2_agentic_voice.core.conversation import TalkerTurn
@@ -129,6 +130,9 @@ def test_a_turn_held_while_an_earlier_search_runs_reads_the_call_after_that_repl
     assert (handed.words, handed.cut_reply) == (WORDS, 1)
     assert [(t.turn_id, t.fate) for t in handed.conversation.turns] == [(0, "rolled_back")]
     assert [s.text for s in speaks(io, 2)] == ["Exporting is under Tickets."]
+    # none of turn 0's reply was heard, so the talker reads both turns as one (agent/context.py)
+    assert continued(handed) == handed.conversation.turns
+    assert turn_message(handed).content == f"{SEARCHED} {WORDS}"
 
 
 @pytest.mark.parametrize("later", ["", WORDS], ids=["nothing", "words"])
