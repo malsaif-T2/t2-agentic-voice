@@ -3273,7 +3273,7 @@ twice; DOC-REF: every `D-NNN` cited anywhere is a heading here), so keep its sha
   `tests/ole5_voice/evals/test_languages_run.py`, `test_languages_score.py` and
   `test_run_arms.py`.
 
-## D-087 · Every clause a talker call speaks kept on disk by its exact text, behind a setting · 2026-11-11 · Accepted (the owner's rulings of 2026-11-10 and approval of 2026-11-11, plan 007's Block I; `tts.cache_clauses` off by default until run I's keep rule)
+## D-087 · Every clause a talker call speaks kept on disk by its exact text, behind a setting · 2026-11-11 · Accepted (the owner's rulings of 2026-11-10 and approval of 2026-11-11, plan 007's Block I; `tts.cache_clauses` on by default by the owner's ruling of 2026-11-12, over run I's keep rule)
 
 - **Context:** each clause of a reply is one request to Orpheus, Groq's text-to-speech, which
   streams its audio back. Only the fixed phrases (greetings, notices, progress lines) were made
@@ -3417,6 +3417,16 @@ twice; DOC-REF: every `D-NNN` cited anywhere is a heading here), so keep its sha
   the search path's p90 4,397 ms against T0's 3,009 and the 4,000 bound, the knowledge base
   timing out in the run (condition 5 fails). The cache works and costs no time, but a clause
   seldom comes back within the agent's calls.
+  *Amended again 2026-11-12, the owner's ruling: on by default.* Told run I's result, the owner
+  ruled "turn on clause cache as the default of the library since it helps and never costs
+  anything except space, its failed conditions do not really reflect its value": of the three
+  conditions that failed, two read the network of the day (a call lost to Whisper, one request
+  refused, the knowledge base's timeouts on the search path) and one the share of first-variant
+  hits, while a miss costs 0.04 ms and a hit saves a request and about 0.2 s. So
+  `tts.cache_clauses` is True for every team, bounded by `tts.clause_cache_mb`, and
+  `T2V_TTS__CACHE_CLAUSES=false` turns it off; run T's `--clause-cache` stays off unless named,
+  so its runs stay comparable with T0's. GP-18's measured move is waived here by the owner's
+  word, recorded as such.
 - **Consequences:** a team that turns it on keeps the agent's words of its calls as audio under
   `var_dir`, at most `tts.clause_cache_mb`, removed only past the bound or with the folder; the
   guide's data-and-privacy page says so. `ModelUsage.cache_hits` (public) now counts held

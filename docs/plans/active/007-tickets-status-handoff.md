@@ -130,7 +130,8 @@ that was definitely not sent (the design: none in v1).
    H and I) before a default moves.
 7. **The scenario runs**, dev then held-out once ("The measurement").
 8. **The live calls**, by the owner.
-9. **The background try** (Q8), behind a setting, off by default, after everything above.
+9. **The background try** (Q8), behind a setting, off by default, after everything above:
+   moved to Future improvements by the owner, 2026-11-12.
 10. **The close:** the logs, `## Future improvements`, the plan moved, the roadmap's row, the gate.
 
 ## Tracks
@@ -1158,6 +1159,20 @@ plan 003).
     sends fewer. About 60 MB of takes in `<out>/clauses` (the agent's estimate). Run once and read
     once; a miss of the keep rule is recorded, not re-run.
 
+## Future improvements
+
+- **The background try** (Q8, [background-tools.md](../../design/background-tools.md)): a slow
+  tool runs while the talker stays free and says what it is looking up; behind a setting, off
+  by default, judged on a fake slow tool and the owner's ear. Moved here by the owner on
+  2026-11-12, since the rest of M5 ran long.
+- **Each turn's language, for a call held in English** (run H): ECAPA helped every call held in
+  Arabic (English questions 0.08 to 0.37, nothing worse) and harmed only calls held in English,
+  where short English turns were heard as Arabic. A rule that classifies only in a call held
+  in Arabic, or asks a higher share to leave English, is a dated amendment for the owner,
+  then a fresh run, before `stt.live_language = "classified"` is turned on.
+- **What the clause cache saves in a live deployment** (run I): on by default by the owner's
+  ruling; its hits across many callers, where the same answers repeat, are not measured yet.
+
 ## Progress log
 
 - 2026-11-09: Drafted, and approved (Q1 to Q9). Drafted from the roadmap's M5, the design's 4.4, 6.3, 6.4 and 8, `docs/SECURITY.md`,
@@ -1670,6 +1685,11 @@ plan 003).
   search path's p90 4,397 ms against T0's 3,009 and the 4,000 bound (the knowledge base timed
   out in this run too; the cache adds 0.04 ms to a miss), the other three T0 targets still met.
   So the default stays off, the cache stays for a team to turn on, and the result is recorded.
+- 2026-11-12: By the owner's ruling after run I, `tts.cache_clauses` is on by default for every
+  team (D-087 amended; the settings test pins it, the generated settings and the guide say so);
+  run T's `--clause-cache` stays off unless named. The whole suite passed with it on (7,747), the
+  runtime's tests already covering both values. The background try (Q8) moved to Future
+  improvements.
 
 ## Decision log
 
@@ -1937,6 +1957,12 @@ they set a figure of their own.
   Q15 to Q25 and the downloads?", the owner answered "Approve both". So Q15 to Q25 are settled
   as the agent recommended, (a) each, and the downloads below are approved as listed: the
   language-id group's packages, torch CPU only, and the two models pinned by commit and hash.
+- 2026-11-12, after runs H and I: asked "Move the background try (Q8) to Future improvements and
+  close M5 after your live calls?", the owner answered "Yes move it to a future improvement. But
+  turn on clause cache as the default of the library since it helps and never costs anything
+  except space, its failed conditions do not really reflect its value." So Q8's try leaves this
+  plan for Future improvements, and `tts.cache_clauses` is on by default for every team, over
+  run I's keep rule, by the owner's word (D-087). The owner holds the live calls next.
 
 - **Q1. M4 and the base of this work.** *Settled 2026-11-09: (a).* Not necessary: M5 can branch from M4's branch. Options:
   (a) close M4 first, its live calls moved to M7's rehearsal and its missed targets recorded, and
@@ -1966,7 +1992,7 @@ they set a figure of their own.
 - **Q7. What a handoff ticket holds.** *Settled 2026-11-09: (a).* Options: (a) a summary read back to the caller, with what
   both sides said in the call attached for support staff; (b) the summary alone. **The agent
   recommends (a):** staff should not have to ask again.
-- **Q8. The background try** ([background-tools.md](../../design/background-tools.md)). *Settled 2026-11-09: (a).* A slow tool
+- **Q8. The background try** ([background-tools.md](../../design/background-tools.md)). *Settled 2026-11-09: (a); moved to Future improvements by the owner, 2026-11-12.* A slow tool
   runs while the talker stays free, and the talker says what it is about to look up. Options:
   (a) last in this plan, behind a setting, off by default, judged on a fake slow tool and the
   owner's ear; (b) its own plan after M5. **The agent recommended (a)**, as the owner asked on

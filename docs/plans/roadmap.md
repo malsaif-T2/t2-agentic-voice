@@ -284,7 +284,7 @@ rehearsal's password, archiving, and English questions pass.
     the time each adds.
   - *Every clause the agent says cached by its exact text,* not only the fixed phrases (amending
     D-033's "Text built from heard words never reaches the phrase cache"; built: D-087, plan
-    007's Block I, `tts.cache_clauses`, off by default until run I's keep rule). The owner: "we
+    007's Block I, `tts.cache_clauses`, on by default by the owner's ruling after run I). The owner: "we
     should cache everything we can, because all of it is what the agent generated and we have
     full access to it and since we would an exact match, no user will hear the info of
     another." The key holds the text sent, the language, the voice, the model, the adapter and

@@ -67,12 +67,13 @@ class TtsSettings(Group):
         ),
     )
     cache_clauses: bool = Field(
-        default=False,
+        default=True,
         description=(
             "Whether every clause the agent speaks in a call with a talker is kept on disk under "
             "the storage folder by its exact text, its language, its voice and the adapter that "
             "made it, so the same clause plays again with no request; the echo's words said back "
-            "are never kept."
+            "are never kept. On by default, as the owner ruled: it costs only disk, bounded by "
+            "clause_cache_mb."
         ),
     )
     clause_cache_mb: int = Field(

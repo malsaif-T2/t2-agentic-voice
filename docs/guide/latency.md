@@ -86,8 +86,8 @@ result, before step 5.
   most answers later.
 - **A stop costs no model time.** The interruption rule stops the reply before any model request
   is sent, so the talker adds nothing to the time a stop takes.
-- **A clause said before plays from disk** (with `tts.cache_clauses` on; off by default until
-  Ole5's run I, plan 007). Every clause a talker call speaks is kept in the clause cache by its
+- **A clause said before plays from disk** (`tts.cache_clauses`, on by default by the
+  owner's ruling after Ole5's run I, plan 007). Every clause a talker call speaks is kept in the clause cache by its
   exact text, language and voice, so the same clause said again, in this call or a later one,
   plays with no Orpheus request: no wait for its first audio (about 0.25 s) and one request of
   the key's minute saved. A miss is a look-up in memory, then the request as before. Most of a
