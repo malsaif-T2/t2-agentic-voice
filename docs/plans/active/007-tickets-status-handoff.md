@@ -1626,6 +1626,50 @@ plan 003).
   ECAPA about 250 ms (its CPU 2 to 2.8 times that), run H's expected lines. The spec's two moves
   (`_detectors` to `voice/turns.py`, the runtime's closes to `Providers.opened`) went in with the
   rest, in one commit, not in commits of their own. Not run yet: run H.
+- 2026-11-12: **Run H, dev: no arm passes; `session` stays, held-out not run.** At 94573f8, one
+  speaker (D-006); each pass and run alone, its history line kept aside beside its scorecard and
+  added with the rest at the end (each run refuses a worktree with changes).
+  - *H1* (`poe eval-languages`, no spend; a one-variant smoke first, `lid1-smoke`): passes off,
+    Silero, ECAPA, off (`lid1-dev-off-a`, `-silero`, `-ecapa`, `-off-b`), 292 variants each, 46
+    minutes each. Silero classified 145 turns in time, none late, its verdict 8 ms at the median;
+    ECAPA 143, 14 late (85 ms late at the median, 181 at most), its verdict 231 ms. Under an
+    Arabic call Silero changed 70 variants, ECAPA 33 (all English ones); in the ordinary call
+    Silero 32 (26 of them Saudi or MSA sent as English), ECAPA 5 (English ones sent as Arabic).
+    *Condition 4 holds for both:* 10 paused cut-offs each (allowed 12), the median paired
+    turn-end difference 0.8 ms (Silero) and 2.0 ms (ECAPA) against the off passes' 1.5 ms.
+  - *H2* (`poe eval`, run W1's settings): baselines (a) `lid2-dev-label` 0.4418, W1's 0.442 to the
+    variant, so the run holds; (b) `lid2-dev-ar` 0.2568, its English items 0.080 (run X's 0.027
+    had no prompt, and the tool compares no runs of two commits); (c) `lid2-dev-en` 0.2192. The
+    arms, each sending only the variants its pass changed (`lid2-dev-ecapa-label` stopped on one
+    Whisper timeout in its smoke and ran again as `-b`):
+    - *Silero:* condition 1 (English in an Arabic call) not reached, since condition 2 fails:
+      the ordinary call 5 items worse, none better (one, `n10_reset_by_mail`, a request).
+    - *ECAPA:* **condition 1 passes**, English in an Arabic call 10 items better, none worse
+      (p = 0.002; the English items' accuracy 0.08 to 0.37, no Arabic item worse); condition 3
+      holds (156 characters from silence, as the baseline); **condition 2 fails**, the ordinary
+      call 4 items worse, none better, each an English one heard as Arabic in an English call
+      (`b09_okay`, `k06_wait`, `n43_uh_huh`, and `n47_ticket_last_four_english`, a ticket
+      number item).
+    - *Arabic in an English call (c), reported:* Silero 0.2500 and ECAPA 0.2568 against 0.2192.
+  - Spent about $0.30 (three baselines and the arms' changed variants). By the keep rule, a miss
+    is recorded and goes to Future improvements, not re-run: ECAPA helps an Arabic call and harms
+    only an English one, so a rule that classifies only from the call's Arabic, or a higher share
+    to leave English, is a dated amendment for the owner before any further run.
+- 2026-11-12: **Run I, I1 (`i1-dev-120b`): the keep rule fails; `tts.cache_clauses` stays off.**
+  At Block I's commit (0df1682, from its own clean worktree, run H's H2 running beside it on
+  Whisper alone), as T0's dev run otherwise (`gpt-oss-120b` at medium, `trim_silence` off), the
+  cache new and emptied after the smoke; 72 variants, $0.74, 2 h 18 min at Orpheus's 5 requests
+  a minute. The cache did what it is for: 266 clauses asked, 9 held (3.4%), every one in an
+  item's later variants (4.8% of theirs), none in a first variant; a miss's look-up 0.038 ms at
+  p90 (0.053 at most), a hit's read 10.5 ms at p90 against Orpheus's own first audio 200 ms; the
+  two turns whose first clause was held played first at 2,135 ms at the median against the
+  rest's 2,572; Orpheus requests 3.84 a call minute, with the hits added back 3.97; 259 takes
+  kept, 46 MB, none unreadable, no write failed. The conditions: (1) fails, two calls failed (a
+  Whisper connection lost, one request rejected), neither the cache's, and two replies unsaid;
+  (2) fails, no hit in a first variant (at least 2% asked); (3) and (4) hold; (5) fails, the
+  search path's p90 4,397 ms against T0's 3,009 and the 4,000 bound (the knowledge base timed
+  out in this run too; the cache adds 0.04 ms to a miss), the other three T0 targets still met.
+  So the default stays off, the cache stays for a team to turn on, and the result is recorded.
 
 ## Decision log
 

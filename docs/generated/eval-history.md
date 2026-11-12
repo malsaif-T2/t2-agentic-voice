@@ -5,7 +5,7 @@ per `poe eval` run that called a provider, kept or not; never edited by hand
 ([generated docs](README.md), GP-11). Every number describes one speaker, the owner (D-006).
 Full scorecards stay out of git, in each run's `--out` folder.
 
-Spend so far: 62 run(s), 47080.3 billed seconds, $5.8084.
+Spend so far: 77 run(s), 60737.4 billed seconds, $6.9302.
 
 ## Runs
 
@@ -32,6 +32,16 @@ Spend so far: 62 run(s), 47080.3 billed seconds, $5.8084.
 | 32 | 2026-11-07T13:24:35+00:00 | x-dev-large-v3-ar | 86c0a17f66a97a739034b1b3700060c36f31d757 | groq | whisper-large-v3 | dev | 98 | 292 | 18.8% | 0 | 3062.8 | $0.0944 | 314 | yes |
 | 33 | 2026-11-07T14:19:06+00:00 | w0-held-out-large-v3 | 23d887c585f97f52a110354f10fb6b37831bd73b | groq | whisper-large-v3 | held-out | 42 | 131 | 38.2% | 0 | 1359.8 | $0.0419 | 293 | yes |
 | 34 | 2026-11-07T14:25:44+00:00 | w1-held-out-large-v3-prompt | 23d887c585f97f52a110354f10fb6b37831bd73b | groq | whisper-large-v3 | held-out | 42 | 131 | 42.0% | 0 | 1359.8 | $0.0419 | 306 | yes |
+| 67 | 2026-11-12T01:36:06+00:00 | lid2-dev-label | 94573f81ffb2e2afe9a23cb7c0d2e158a22f2b95 | groq | whisper-large-v3 | dev | 98 | 292 | 44.2% | 0 | 3062.8 | $0.0944 | 276 | yes |
+| 68 | 2026-11-12T01:51:01+00:00 | lid2-dev-ar | 94573f81ffb2e2afe9a23cb7c0d2e158a22f2b95 | groq | whisper-large-v3 | dev | 98 | 292 | 25.7% | 0 | 3072.8 | $0.0947 | 284 | yes |
+| 69 | 2026-11-12T02:06:04+00:00 | lid2-dev-en | 94573f81ffb2e2afe9a23cb7c0d2e158a22f2b95 | groq | whisper-large-v3 | dev | 98 | 292 | 21.9% | 0 | 3092.8 | $0.0954 | 270 | yes |
+| 70 | 2026-11-12T02:21:22+00:00 | lid2-dev-silero-label | 94573f81ffb2e2afe9a23cb7c0d2e158a22f2b95 | groq | whisper-large-v3 | dev | 98 | 292 | 42.1% | 0 | 354.9 | $0.0109 | 274 | yes |
+| 71 | 2026-11-12T02:23:08+00:00 | lid2-dev-silero-ar | 94573f81ffb2e2afe9a23cb7c0d2e158a22f2b95 | groq | whisper-large-v3 | dev | 98 | 292 | 33.2% | 0 | 734.9 | $0.0227 | 277 | yes |
+| 72 | 2026-11-12T02:26:49+00:00 | lid2-dev-silero-en | 94573f81ffb2e2afe9a23cb7c0d2e158a22f2b95 | groq | whisper-large-v3 | dev | 98 | 292 | 25.0% | 0 | 710.8 | $0.0219 | 276 | yes |
+| 73 | 2026-11-12T02:30:22+00:00 | lid2-dev-ecapa-label | 94573f81ffb2e2afe9a23cb7c0d2e158a22f2b95 | groq | whisper-large-v3 | dev | 0 | 0 | — | 0 | 20.0 | $0.0006 | — | no |
+| 74 | 2026-11-12T02:31:31+00:00 | lid2-dev-ecapa-label-b | 94573f81ffb2e2afe9a23cb7c0d2e158a22f2b95 | groq | whisper-large-v3 | dev | 98 | 292 | 42.8% | 0 | 60.0 | $0.0019 | 276 | yes |
+| 75 | 2026-11-12T02:31:50+00:00 | lid2-dev-ecapa-ar | 94573f81ffb2e2afe9a23cb7c0d2e158a22f2b95 | groq | whisper-large-v3 | dev | 98 | 292 | 33.2% | 0 | 340.0 | $0.0105 | 278 | yes |
+| 76 | 2026-11-12T02:33:34+00:00 | lid2-dev-ecapa-en | 94573f81ffb2e2afe9a23cb7c0d2e158a22f2b95 | groq | whisper-large-v3 | dev | 98 | 292 | 25.7% | 0 | 1088.2 | $0.0336 | 277 | yes |
 
 ## End-of-turn runs
 
@@ -97,6 +107,7 @@ Spend so far: 62 run(s), 47080.3 billed seconds, $5.8084.
 | 47 | 2026-11-08T08:31:07+00:00 | t0-dev-120b | b5ff7e8b47dc073143e1b8b40dcc47e5615019a1 | dev | declared | 72 | 1384 | 1550 | 2404 | 3009 | 59 | 4 of 5 | 1110.0 | $0.5969 | yes |
 | 48 | 2026-11-08T10:49:33+00:00 | t1-dev-120b | b5ff7e8b47dc073143e1b8b40dcc47e5615019a1 | dev | declared | 72 | 1970 | 3546 | 2472 | 4747 | 58 | 1 of 5 | 1120.0 | $0.5667 | yes |
 | 54 | 2026-11-08T21:06:26+00:00 | t-held-out-120b | 319c5d48ba71df1f6e59277fb763880d2a5e8d8f | held-out | declared | 44 | — | — | 2532 | 3044 | 5 | 2 of 5 | 740.0 | $0.4320 | yes |
+| 77 | 2026-11-12T01:35:45+00:00 | i1-dev-120b | 0df168297257073e6f712a72c8eb789b32d79b8c | dev | declared | 72 | 1385 | 1481 | 2649 | 4397 | 5 | 3 of 5 | 1120.0 | $0.7352 | yes |
 
 ## Knowledge-depth runs
 
@@ -113,6 +124,15 @@ Spend so far: 62 run(s), 47080.3 billed seconds, $5.8084.
 | 60 | 2026-11-11T10:30:48+00:00 | a1-dev-b | 9107965c6affbf57f35746b438b56b3069732e89 | openai/gpt-oss-120b | dev | 3 | 25 | 75 | 0 | 90.7% | 68.2% | 79.5% | 99.1% | 0 | no | $0.1113 | yes |
 | 61 | 2026-11-11T12:18:19+00:00 | a3-dev | d40f3d8d956b8eaad2d056439c10a7b6fce7b185 | openai/gpt-oss-120b | dev | 3 | 25 | 61 | 14 | 95.1% | 82.1% | 87.2% | 96.6% | 0 | no | $0.1060 | yes |
 | 62 | 2026-11-11T16:30:00+00:00 | a4-held-out | d9ca515fd57e609d44ff76b82e5f0dc3f0a7c456 | openai/gpt-oss-120b | held-out | 3 | 24 | 72 | 0 | 97.2% | 88.4% | 93.0% | 96.3% | 0 | yes | $0.1076 | yes |
+
+## Each turn's language
+
+| # | Time | Run | Commit | Classifier | Split | Variants | Turns | In time | Late | Median verdict (ms) | Median late (ms) | Cut-offs | Changed (label, ar, en) | Disagreements | Peak memory (MB) | Complete |
+| --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- |
+| 63 | 2026-11-11T22:26:24+00:00 | lid1-dev-off-a | 94573f81ffb2e2afe9a23cb7c0d2e158a22f2b95 | off | dev | 292 | 299 | 0 | 0 | — | — | 11 | 0, 0, 0 | 0 | — | yes |
+| 64 | 2026-11-11T23:13:59+00:00 | lid1-dev-silero | 94573f81ffb2e2afe9a23cb7c0d2e158a22f2b95 | silero | dev | 292 | 298 | 167 | 0 | 8 | — | 10 | 32, 70, 68 | 0 | — | yes |
+| 65 | 2026-11-12T00:00:21+00:00 | lid1-dev-ecapa | 94573f81ffb2e2afe9a23cb7c0d2e158a22f2b95 | ecapa | dev | 292 | 298 | 152 | 14 | 231 | 85 | 10 | 5, 33, 102 | 0 | — | yes |
+| 66 | 2026-11-12T00:46:51+00:00 | lid1-dev-off-b | 94573f81ffb2e2afe9a23cb7c0d2e158a22f2b95 | off | dev | 292 | 300 | 0 | 0 | — | — | 11 | 0, 0, 0 | 0 | — | yes |
 
 ## Each run
 
@@ -5652,3 +5672,1553 @@ Spend so far: 62 run(s), 47080.3 billed seconds, $5.8084.
 | type | holds |
 | summary | holds |
 | language | holds |
+
+### 63 · lid1-dev-off-a
+
+| Field | Value |
+| --- | --- |
+| Why | Run H's H1, dev, pass off-a \(9107965+blocks, 94573f8\) |
+| Data digest | `9ffaec013e41c75b9dc1efc7a14bffcfd5095c060183cd47aa61f70701c9139b` |
+| Scorecard | scorecard.json |
+| Setting env | dev |
+| Setting run.lead_s | 1.0 |
+| Setting run.smoke_only | false |
+| Setting run.tail_s | 4.5 |
+| Setting stt.classifier | none |
+| Setting stt.classifier_from_s | 2.0 |
+| Setting stt.classifier_min_share | 0.7 |
+| Setting stt.classifier_threads | 2 |
+| Setting stt.live_language | session |
+| Setting turns.complete_hold_ms | 600 |
+| Setting turns.max_silence_ms | 3000 |
+| Setting turns.smart_turn | true |
+| Setting turns.smart_turn_max_duration_s | 8.0 |
+| Setting turns.smart_turn_pre_speech_ms | 500 |
+| Setting turns.smart_turn_stop_ms | 3000 |
+| Setting turns.smart_turn_threshold | 0.5 |
+| Setting turns.vad_confidence | 0.7 |
+| Setting turns.vad_min_volume | 0.6 |
+| Setting turns.vad_start_ms | 200 |
+| Setting turns.vad_stop_ms | 200 |
+| Turns chosen session | 299 |
+| Variants changed, call label | 0 |
+| Variants changed, call ar | 0 |
+| Variants changed, call en | 0 |
+| Variants whose turns differ, call label | 0 |
+| Variants whose turns differ, call ar | 0 |
+| Variants whose turns differ, call en | 0 |
+
+### 64 · lid1-dev-silero
+
+| Field | Value |
+| --- | --- |
+| Why | Run H's H1, dev, pass silero \(94573f8\) |
+| Data digest | `9ffaec013e41c75b9dc1efc7a14bffcfd5095c060183cd47aa61f70701c9139b` |
+| Scorecard | scorecard.json |
+| Setting env | dev |
+| Setting run.lead_s | 1.0 |
+| Setting run.smoke_only | false |
+| Setting run.tail_s | 4.5 |
+| Setting stt.classifier | silero |
+| Setting stt.classifier_from_s | 2.0 |
+| Setting stt.classifier_min_share | 0.7 |
+| Setting stt.classifier_threads | 2 |
+| Setting stt.live_language | classified |
+| Setting turns.complete_hold_ms | 600 |
+| Setting turns.max_silence_ms | 3000 |
+| Setting turns.smart_turn | true |
+| Setting turns.smart_turn_max_duration_s | 8.0 |
+| Setting turns.smart_turn_pre_speech_ms | 500 |
+| Setting turns.smart_turn_stop_ms | 3000 |
+| Setting turns.smart_turn_threshold | 0.5 |
+| Setting turns.vad_confidence | 0.7 |
+| Setting turns.vad_min_volume | 0.6 |
+| Setting turns.vad_start_ms | 200 |
+| Setting turns.vad_stop_ms | 200 |
+| Turns chosen classified | 145 |
+| Turns chosen short | 131 |
+| Turns chosen unsure | 22 |
+| Variants changed, call label | 32 |
+| Variants changed, call ar | 70 |
+| Variants changed, call en | 68 |
+| Variants whose turns differ, call label | 3 |
+| Variants whose turns differ, call ar | 3 |
+| Variants whose turns differ, call en | 3 |
+
+### 65 · lid1-dev-ecapa
+
+| Field | Value |
+| --- | --- |
+| Why | Run H's H1, dev, pass ecapa \(94573f8\) |
+| Data digest | `9ffaec013e41c75b9dc1efc7a14bffcfd5095c060183cd47aa61f70701c9139b` |
+| Scorecard | scorecard.json |
+| Setting env | dev |
+| Setting run.lead_s | 1.0 |
+| Setting run.smoke_only | false |
+| Setting run.tail_s | 4.5 |
+| Setting stt.classifier | ecapa |
+| Setting stt.classifier_from_s | 2.0 |
+| Setting stt.classifier_min_share | 0.7 |
+| Setting stt.classifier_threads | 2 |
+| Setting stt.live_language | classified |
+| Setting turns.complete_hold_ms | 600 |
+| Setting turns.max_silence_ms | 3000 |
+| Setting turns.smart_turn | true |
+| Setting turns.smart_turn_max_duration_s | 8.0 |
+| Setting turns.smart_turn_pre_speech_ms | 500 |
+| Setting turns.smart_turn_stop_ms | 3000 |
+| Setting turns.smart_turn_threshold | 0.5 |
+| Setting turns.vad_confidence | 0.7 |
+| Setting turns.vad_min_volume | 0.6 |
+| Setting turns.vad_start_ms | 200 |
+| Setting turns.vad_stop_ms | 200 |
+| Turns chosen classified | 143 |
+| Turns chosen late | 14 |
+| Turns chosen short | 132 |
+| Turns chosen unsure | 9 |
+| Variants changed, call label | 5 |
+| Variants changed, call ar | 33 |
+| Variants changed, call en | 102 |
+| Variants whose turns differ, call label | 0 |
+| Variants whose turns differ, call ar | 0 |
+| Variants whose turns differ, call en | 7 |
+
+### 66 · lid1-dev-off-b
+
+| Field | Value |
+| --- | --- |
+| Why | Run H's H1, dev, pass off-b \(94573f8\) |
+| Data digest | `9ffaec013e41c75b9dc1efc7a14bffcfd5095c060183cd47aa61f70701c9139b` |
+| Scorecard | scorecard.json |
+| Setting env | dev |
+| Setting run.lead_s | 1.0 |
+| Setting run.smoke_only | false |
+| Setting run.tail_s | 4.5 |
+| Setting stt.classifier | none |
+| Setting stt.classifier_from_s | 2.0 |
+| Setting stt.classifier_min_share | 0.7 |
+| Setting stt.classifier_threads | 2 |
+| Setting stt.live_language | session |
+| Setting turns.complete_hold_ms | 600 |
+| Setting turns.max_silence_ms | 3000 |
+| Setting turns.smart_turn | true |
+| Setting turns.smart_turn_max_duration_s | 8.0 |
+| Setting turns.smart_turn_pre_speech_ms | 500 |
+| Setting turns.smart_turn_stop_ms | 3000 |
+| Setting turns.smart_turn_threshold | 0.5 |
+| Setting turns.vad_confidence | 0.7 |
+| Setting turns.vad_min_volume | 0.6 |
+| Setting turns.vad_start_ms | 200 |
+| Setting turns.vad_stop_ms | 200 |
+| Turns chosen session | 300 |
+| Variants changed, call label | 0 |
+| Variants changed, call ar | 0 |
+| Variants changed, call en | 0 |
+| Variants whose turns differ, call label | 0 |
+| Variants whose turns differ, call ar | 0 |
+| Variants whose turns differ, call en | 0 |
+
+### 67 · lid2-dev-label
+
+| Field | Value |
+| --- | --- |
+| Why | Run H's H2, dev: lid2-dev-label \(94573f8\) |
+| Data digest | `9ffaec013e41c75b9dc1efc7a14bffcfd5095c060183cd47aa61f70701c9139b` |
+| Scorecard | scorecard.json |
+| Price per hour of audio | $0.111 |
+| Setting env | dev |
+| Setting groq.api_key | set |
+| Setting groq.api_key_file | not set |
+| Setting groq.base_url | https://api.groq.com |
+| Setting guard.claims | \{\} |
+| Setting guard.id_patterns | 0 entries |
+| Setting guard.min_id_digits | 3 |
+| Setting guard.on_block | drop_rest |
+| Setting guard.questions_per_reply | 1 |
+| Setting guard.remove_stray_script | true |
+| Setting interruptions.duck_level | 0.25 |
+| Setting interruptions.first_window_ms | 750 |
+| Setting interruptions.min_words | 2 |
+| Setting interruptions.mode | two_step |
+| Setting interruptions.own_words_s | 5.0 |
+| Setting interruptions.short_s | 1.2 |
+| Setting interruptions.short_words | 2 |
+| Setting join.current_kid | key-1 |
+| Setting join.keys | set |
+| Setting join.keys_file | not set |
+| Setting join.max_clock_skew_s | 30 |
+| Setting join.ttl_s | 60 |
+| Setting limits.actions_per_caller_per_day | 20 |
+| Setting limits.idle_s | 120.0 |
+| Setting limits.max_call_s | 600.0 |
+| Setting llm.max_output_tokens | 1024 |
+| Setting llm.model | openai/gpt-oss-120b |
+| Setting llm.provider | groq |
+| Setting llm.reasoning_effort | medium |
+| Setting llm.timeout_s | 8.0 |
+| Setting llm.vary_first_line | true |
+| Setting logging.content | false |
+| Setting logging.format | console |
+| Setting logging.level | INFO |
+| Setting logging.pipecat | off |
+| Setting privacy.consent_version | none |
+| Setting privacy.record_audio | false |
+| Setting run.cap_usd | 0.3 |
+| Setting run.language_hint | label |
+| Setting run.max_attempts | 4 |
+| Setting run.max_rpm | 20 |
+| Setting run.prompt | ole5_voice.agent:talker_agent \(ole5 2026-11-11.3+no-search+no-tickets\), sha256 7b52b432c4bd5ae3, ar 25 of 25 words, en 22 of 22 words |
+| Setting run.smoke_only | false |
+| Setting run.variant_timeout_s | 120.0 |
+| Setting run.windows_ms | none |
+| Setting server.allowed_origins | 0 entries |
+| Setting server.dev_caller | none |
+| Setting server.dev_page | true |
+| Setting server.forwarded_allow_ips | 0 entries |
+| Setting server.ice_servers | 0 entries |
+| Setting server.public_url | none |
+| Setting server.turn_secret | not set |
+| Setting server.turn_secret_file | not set |
+| Setting server.turn_ttl_s | 3600 |
+| Setting session.mode | none |
+| Setting stt.caption_filter | true |
+| Setting stt.classifier | silero |
+| Setting stt.classifier_dir | none |
+| Setting stt.classifier_from_s | 2.0 |
+| Setting stt.classifier_min_share | 0.7 |
+| Setting stt.classifier_threads | 2 |
+| Setting stt.live_language | session |
+| Setting stt.model | whisper-large-v3 |
+| Setting stt.no_speech_max | 0.55 |
+| Setting stt.provider | groq |
+| Setting stt.send_prompt | true |
+| Setting stt.timeout_s | 6.0 |
+| Setting tracing.endpoint | none |
+| Setting tracing.include_transcripts | true |
+| Setting tracing.project | ole5-voice |
+| Setting tracing.redact | 0 patterns |
+| Setting tts.cache_clauses | false |
+| Setting tts.cache_phrases | true |
+| Setting tts.clause_cache_mb | 512 |
+| Setting tts.languages | \{"ar": \{"model": "canopylabs/orpheus-arabic-saudi", "voice": "abdullah"\}, "ar-SA": \{"model": "canopylabs/orpheus-arabic-saudi", "voice": "abdullah"\}, "en": \{"model": "canopylabs/orpheus-v1-english", "voice": "troy"\}\} |
+| Setting tts.provider | groq |
+| Setting tts.timeout_s | 6.0 |
+| Setting tts.trim_silence | false |
+| Setting turns.complete_hold_ms | 600 |
+| Setting turns.max_silence_ms | 3000 |
+| Setting turns.smart_turn | true |
+| Setting turns.smart_turn_max_duration_s | 8.0 |
+| Setting turns.smart_turn_pre_speech_ms | 500 |
+| Setting turns.smart_turn_stop_ms | 3000 |
+| Setting turns.smart_turn_threshold | 0.5 |
+| Setting turns.vad_confidence | 0.7 |
+| Setting turns.vad_min_volume | 0.6 |
+| Setting turns.vad_start_ms | 200 |
+| Setting turns.vad_stop_ms | 200 |
+| Setting words.backchannel | \{\} |
+| Setting words.no | \{\} |
+| Setting words.repeat | \{\} |
+| Setting words.send | \{\} |
+| Setting words.stop | \{\} |
+| Setting words.vocabulary | 0 entries |
+| Setting words.wait | \{\} |
+| Setting words.yes | \{\} |
+
+| Stratum | Value | Items | Accuracy |
+| --- | --- | --- | --- |
+| device | bluetooth | 33 | 44.7% |
+| device | laptop | 97 | 43.4% |
+| device | wired | 63 | 45.8% |
+| kind | confirmation | 3 | 77.8% |
+| kind | correction | 2 | 50.0% |
+| kind | echo_only | 2 | 0.0% |
+| kind | listening_sound | 15 | 50.0% |
+| kind | noise | 2 | 0.0% |
+| kind | paused_request | 20 | 23.5% |
+| kind | repeat_request | 6 | 52.6% |
+| kind | request | 26 | 32.6% |
+| kind | short_request | 2 | 42.9% |
+| kind | silence | 1 | 0.0% |
+| kind | stop_word | 16 | 92.3% |
+| kind | ticket_number | 3 | 47.6% |
+| language | english | 24 | 80.0% |
+| language | mixed | 9 | 7.7% |
+| language | msa | 15 | 23.5% |
+| language | none | 5 | 0.0% |
+| language | saudi | 45 | 43.0% |
+| split | dev | 98 | 44.2% |
+
+### 68 · lid2-dev-ar
+
+| Field | Value |
+| --- | --- |
+| Why | Run H's H2, dev: lid2-dev-ar \(94573f8\) |
+| Data digest | `9ffaec013e41c75b9dc1efc7a14bffcfd5095c060183cd47aa61f70701c9139b` |
+| Scorecard | scorecard.json |
+| Price per hour of audio | $0.111 |
+| Setting env | dev |
+| Setting groq.api_key | set |
+| Setting groq.api_key_file | not set |
+| Setting groq.base_url | https://api.groq.com |
+| Setting guard.claims | \{\} |
+| Setting guard.id_patterns | 0 entries |
+| Setting guard.min_id_digits | 3 |
+| Setting guard.on_block | drop_rest |
+| Setting guard.questions_per_reply | 1 |
+| Setting guard.remove_stray_script | true |
+| Setting interruptions.duck_level | 0.25 |
+| Setting interruptions.first_window_ms | 750 |
+| Setting interruptions.min_words | 2 |
+| Setting interruptions.mode | two_step |
+| Setting interruptions.own_words_s | 5.0 |
+| Setting interruptions.short_s | 1.2 |
+| Setting interruptions.short_words | 2 |
+| Setting join.current_kid | key-1 |
+| Setting join.keys | set |
+| Setting join.keys_file | not set |
+| Setting join.max_clock_skew_s | 30 |
+| Setting join.ttl_s | 60 |
+| Setting limits.actions_per_caller_per_day | 20 |
+| Setting limits.idle_s | 120.0 |
+| Setting limits.max_call_s | 600.0 |
+| Setting llm.max_output_tokens | 1024 |
+| Setting llm.model | openai/gpt-oss-120b |
+| Setting llm.provider | groq |
+| Setting llm.reasoning_effort | medium |
+| Setting llm.timeout_s | 8.0 |
+| Setting llm.vary_first_line | true |
+| Setting logging.content | false |
+| Setting logging.format | console |
+| Setting logging.level | INFO |
+| Setting logging.pipecat | off |
+| Setting privacy.consent_version | none |
+| Setting privacy.record_audio | false |
+| Setting run.cap_usd | 0.3 |
+| Setting run.language_hint | ar |
+| Setting run.max_attempts | 4 |
+| Setting run.max_rpm | 20 |
+| Setting run.prompt | ole5_voice.agent:talker_agent \(ole5 2026-11-11.3+no-search+no-tickets\), sha256 7b52b432c4bd5ae3, ar 25 of 25 words, en 22 of 22 words |
+| Setting run.smoke_only | false |
+| Setting run.variant_timeout_s | 120.0 |
+| Setting run.windows_ms | none |
+| Setting server.allowed_origins | 0 entries |
+| Setting server.dev_caller | none |
+| Setting server.dev_page | true |
+| Setting server.forwarded_allow_ips | 0 entries |
+| Setting server.ice_servers | 0 entries |
+| Setting server.public_url | none |
+| Setting server.turn_secret | not set |
+| Setting server.turn_secret_file | not set |
+| Setting server.turn_ttl_s | 3600 |
+| Setting session.mode | none |
+| Setting stt.caption_filter | true |
+| Setting stt.classifier | silero |
+| Setting stt.classifier_dir | none |
+| Setting stt.classifier_from_s | 2.0 |
+| Setting stt.classifier_min_share | 0.7 |
+| Setting stt.classifier_threads | 2 |
+| Setting stt.live_language | session |
+| Setting stt.model | whisper-large-v3 |
+| Setting stt.no_speech_max | 0.55 |
+| Setting stt.provider | groq |
+| Setting stt.send_prompt | true |
+| Setting stt.timeout_s | 6.0 |
+| Setting tracing.endpoint | none |
+| Setting tracing.include_transcripts | true |
+| Setting tracing.project | ole5-voice |
+| Setting tracing.redact | 0 patterns |
+| Setting tts.cache_clauses | false |
+| Setting tts.cache_phrases | true |
+| Setting tts.clause_cache_mb | 512 |
+| Setting tts.languages | \{"ar": \{"model": "canopylabs/orpheus-arabic-saudi", "voice": "abdullah"\}, "ar-SA": \{"model": "canopylabs/orpheus-arabic-saudi", "voice": "abdullah"\}, "en": \{"model": "canopylabs/orpheus-v1-english", "voice": "troy"\}\} |
+| Setting tts.provider | groq |
+| Setting tts.timeout_s | 6.0 |
+| Setting tts.trim_silence | false |
+| Setting turns.complete_hold_ms | 600 |
+| Setting turns.max_silence_ms | 3000 |
+| Setting turns.smart_turn | true |
+| Setting turns.smart_turn_max_duration_s | 8.0 |
+| Setting turns.smart_turn_pre_speech_ms | 500 |
+| Setting turns.smart_turn_stop_ms | 3000 |
+| Setting turns.smart_turn_threshold | 0.5 |
+| Setting turns.vad_confidence | 0.7 |
+| Setting turns.vad_min_volume | 0.6 |
+| Setting turns.vad_start_ms | 200 |
+| Setting turns.vad_stop_ms | 200 |
+| Setting words.backchannel | \{\} |
+| Setting words.no | \{\} |
+| Setting words.repeat | \{\} |
+| Setting words.send | \{\} |
+| Setting words.stop | \{\} |
+| Setting words.vocabulary | 0 entries |
+| Setting words.wait | \{\} |
+| Setting words.yes | \{\} |
+
+| Stratum | Value | Items | Accuracy |
+| --- | --- | --- | --- |
+| device | bluetooth | 33 | 26.3% |
+| device | laptop | 97 | 25.8% |
+| device | wired | 63 | 25.0% |
+| kind | confirmation | 3 | 66.7% |
+| kind | correction | 2 | 0.0% |
+| kind | echo_only | 2 | 0.0% |
+| kind | listening_sound | 15 | 26.3% |
+| kind | noise | 2 | 0.0% |
+| kind | paused_request | 20 | 7.8% |
+| kind | repeat_request | 6 | 42.1% |
+| kind | request | 26 | 17.4% |
+| kind | short_request | 2 | 42.9% |
+| kind | silence | 1 | 0.0% |
+| kind | stop_word | 16 | 59.0% |
+| kind | ticket_number | 3 | 23.8% |
+| language | english | 24 | 8.0% |
+| language | mixed | 9 | 7.7% |
+| language | msa | 15 | 23.5% |
+| language | none | 5 | 0.0% |
+| language | saudi | 45 | 43.0% |
+| split | dev | 98 | 25.7% |
+
+### 69 · lid2-dev-en
+
+| Field | Value |
+| --- | --- |
+| Why | Run H's H2, dev: lid2-dev-en \(94573f8\) |
+| Data digest | `9ffaec013e41c75b9dc1efc7a14bffcfd5095c060183cd47aa61f70701c9139b` |
+| Scorecard | scorecard.json |
+| Price per hour of audio | $0.111 |
+| Setting env | dev |
+| Setting groq.api_key | set |
+| Setting groq.api_key_file | not set |
+| Setting groq.base_url | https://api.groq.com |
+| Setting guard.claims | \{\} |
+| Setting guard.id_patterns | 0 entries |
+| Setting guard.min_id_digits | 3 |
+| Setting guard.on_block | drop_rest |
+| Setting guard.questions_per_reply | 1 |
+| Setting guard.remove_stray_script | true |
+| Setting interruptions.duck_level | 0.25 |
+| Setting interruptions.first_window_ms | 750 |
+| Setting interruptions.min_words | 2 |
+| Setting interruptions.mode | two_step |
+| Setting interruptions.own_words_s | 5.0 |
+| Setting interruptions.short_s | 1.2 |
+| Setting interruptions.short_words | 2 |
+| Setting join.current_kid | key-1 |
+| Setting join.keys | set |
+| Setting join.keys_file | not set |
+| Setting join.max_clock_skew_s | 30 |
+| Setting join.ttl_s | 60 |
+| Setting limits.actions_per_caller_per_day | 20 |
+| Setting limits.idle_s | 120.0 |
+| Setting limits.max_call_s | 600.0 |
+| Setting llm.max_output_tokens | 1024 |
+| Setting llm.model | openai/gpt-oss-120b |
+| Setting llm.provider | groq |
+| Setting llm.reasoning_effort | medium |
+| Setting llm.timeout_s | 8.0 |
+| Setting llm.vary_first_line | true |
+| Setting logging.content | false |
+| Setting logging.format | console |
+| Setting logging.level | INFO |
+| Setting logging.pipecat | off |
+| Setting privacy.consent_version | none |
+| Setting privacy.record_audio | false |
+| Setting run.cap_usd | 0.3 |
+| Setting run.language_hint | en |
+| Setting run.max_attempts | 4 |
+| Setting run.max_rpm | 20 |
+| Setting run.prompt | ole5_voice.agent:talker_agent \(ole5 2026-11-11.3+no-search+no-tickets\), sha256 7b52b432c4bd5ae3, ar 25 of 25 words, en 22 of 22 words |
+| Setting run.smoke_only | false |
+| Setting run.variant_timeout_s | 120.0 |
+| Setting run.windows_ms | none |
+| Setting server.allowed_origins | 0 entries |
+| Setting server.dev_caller | none |
+| Setting server.dev_page | true |
+| Setting server.forwarded_allow_ips | 0 entries |
+| Setting server.ice_servers | 0 entries |
+| Setting server.public_url | none |
+| Setting server.turn_secret | not set |
+| Setting server.turn_secret_file | not set |
+| Setting server.turn_ttl_s | 3600 |
+| Setting session.mode | none |
+| Setting stt.caption_filter | true |
+| Setting stt.classifier | silero |
+| Setting stt.classifier_dir | none |
+| Setting stt.classifier_from_s | 2.0 |
+| Setting stt.classifier_min_share | 0.7 |
+| Setting stt.classifier_threads | 2 |
+| Setting stt.live_language | session |
+| Setting stt.model | whisper-large-v3 |
+| Setting stt.no_speech_max | 0.55 |
+| Setting stt.provider | groq |
+| Setting stt.send_prompt | true |
+| Setting stt.timeout_s | 6.0 |
+| Setting tracing.endpoint | none |
+| Setting tracing.include_transcripts | true |
+| Setting tracing.project | ole5-voice |
+| Setting tracing.redact | 0 patterns |
+| Setting tts.cache_clauses | false |
+| Setting tts.cache_phrases | true |
+| Setting tts.clause_cache_mb | 512 |
+| Setting tts.languages | \{"ar": \{"model": "canopylabs/orpheus-arabic-saudi", "voice": "abdullah"\}, "ar-SA": \{"model": "canopylabs/orpheus-arabic-saudi", "voice": "abdullah"\}, "en": \{"model": "canopylabs/orpheus-v1-english", "voice": "troy"\}\} |
+| Setting tts.provider | groq |
+| Setting tts.timeout_s | 6.0 |
+| Setting tts.trim_silence | false |
+| Setting turns.complete_hold_ms | 600 |
+| Setting turns.max_silence_ms | 3000 |
+| Setting turns.smart_turn | true |
+| Setting turns.smart_turn_max_duration_s | 8.0 |
+| Setting turns.smart_turn_pre_speech_ms | 500 |
+| Setting turns.smart_turn_stop_ms | 3000 |
+| Setting turns.smart_turn_threshold | 0.5 |
+| Setting turns.vad_confidence | 0.7 |
+| Setting turns.vad_min_volume | 0.6 |
+| Setting turns.vad_start_ms | 200 |
+| Setting turns.vad_stop_ms | 200 |
+| Setting words.backchannel | \{\} |
+| Setting words.no | \{\} |
+| Setting words.repeat | \{\} |
+| Setting words.send | \{\} |
+| Setting words.stop | \{\} |
+| Setting words.vocabulary | 0 entries |
+| Setting words.wait | \{\} |
+| Setting words.yes | \{\} |
+
+| Stratum | Value | Items | Accuracy |
+| --- | --- | --- | --- |
+| device | bluetooth | 33 | 23.7% |
+| device | laptop | 97 | 19.8% |
+| device | wired | 63 | 26.4% |
+| kind | confirmation | 3 | 33.3% |
+| kind | correction | 2 | 50.0% |
+| kind | echo_only | 2 | 20.0% |
+| kind | listening_sound | 15 | 23.7% |
+| kind | noise | 2 | 0.0% |
+| kind | paused_request | 20 | 15.7% |
+| kind | repeat_request | 6 | 10.5% |
+| kind | request | 26 | 18.5% |
+| kind | short_request | 2 | 0.0% |
+| kind | silence | 1 | 66.7% |
+| kind | stop_word | 16 | 35.9% |
+| kind | ticket_number | 3 | 28.6% |
+| language | english | 24 | 80.0% |
+| language | mixed | 9 | 0.0% |
+| language | msa | 15 | 0.0% |
+| language | none | 5 | 25.0% |
+| language | saudi | 45 | 0.8% |
+| split | dev | 98 | 21.9% |
+
+### 70 · lid2-dev-silero-label
+
+| Field | Value |
+| --- | --- |
+| Why | Run H's H2, dev: lid2-dev-silero-label \(94573f8\) |
+| Data digest | `9ffaec013e41c75b9dc1efc7a14bffcfd5095c060183cd47aa61f70701c9139b` |
+| Scorecard | scorecard.json |
+| Price per hour of audio | $0.111 |
+| Setting env | dev |
+| Setting groq.api_key | set |
+| Setting groq.api_key_file | not set |
+| Setting groq.base_url | https://api.groq.com |
+| Setting guard.claims | \{\} |
+| Setting guard.id_patterns | 0 entries |
+| Setting guard.min_id_digits | 3 |
+| Setting guard.on_block | drop_rest |
+| Setting guard.questions_per_reply | 1 |
+| Setting guard.remove_stray_script | true |
+| Setting interruptions.duck_level | 0.25 |
+| Setting interruptions.first_window_ms | 750 |
+| Setting interruptions.min_words | 2 |
+| Setting interruptions.mode | two_step |
+| Setting interruptions.own_words_s | 5.0 |
+| Setting interruptions.short_s | 1.2 |
+| Setting interruptions.short_words | 2 |
+| Setting join.current_kid | key-1 |
+| Setting join.keys | set |
+| Setting join.keys_file | not set |
+| Setting join.max_clock_skew_s | 30 |
+| Setting join.ttl_s | 60 |
+| Setting limits.actions_per_caller_per_day | 20 |
+| Setting limits.idle_s | 120.0 |
+| Setting limits.max_call_s | 600.0 |
+| Setting llm.max_output_tokens | 1024 |
+| Setting llm.model | openai/gpt-oss-120b |
+| Setting llm.provider | groq |
+| Setting llm.reasoning_effort | medium |
+| Setting llm.timeout_s | 8.0 |
+| Setting llm.vary_first_line | true |
+| Setting logging.content | false |
+| Setting logging.format | console |
+| Setting logging.level | INFO |
+| Setting logging.pipecat | off |
+| Setting privacy.consent_version | none |
+| Setting privacy.record_audio | false |
+| Setting run.cap_usd | 0.3 |
+| Setting run.language_from | lid1-dev-silero \(silero\), call label, 32 of 292 variants changed, 3 whose turns differ, the rest from lid2-dev-label |
+| Setting run.language_hint | label |
+| Setting run.max_attempts | 4 |
+| Setting run.max_rpm | 20 |
+| Setting run.prompt | ole5_voice.agent:talker_agent \(ole5 2026-11-11.3+no-search+no-tickets\), sha256 7b52b432c4bd5ae3, ar 25 of 25 words, en 22 of 22 words |
+| Setting run.smoke_only | false |
+| Setting run.variant_timeout_s | 120.0 |
+| Setting run.windows_ms | none |
+| Setting server.allowed_origins | 0 entries |
+| Setting server.dev_caller | none |
+| Setting server.dev_page | true |
+| Setting server.forwarded_allow_ips | 0 entries |
+| Setting server.ice_servers | 0 entries |
+| Setting server.public_url | none |
+| Setting server.turn_secret | not set |
+| Setting server.turn_secret_file | not set |
+| Setting server.turn_ttl_s | 3600 |
+| Setting session.mode | none |
+| Setting stt.caption_filter | true |
+| Setting stt.classifier | silero |
+| Setting stt.classifier_dir | none |
+| Setting stt.classifier_from_s | 2.0 |
+| Setting stt.classifier_min_share | 0.7 |
+| Setting stt.classifier_threads | 2 |
+| Setting stt.live_language | session |
+| Setting stt.model | whisper-large-v3 |
+| Setting stt.no_speech_max | 0.55 |
+| Setting stt.provider | groq |
+| Setting stt.send_prompt | true |
+| Setting stt.timeout_s | 6.0 |
+| Setting tracing.endpoint | none |
+| Setting tracing.include_transcripts | true |
+| Setting tracing.project | ole5-voice |
+| Setting tracing.redact | 0 patterns |
+| Setting tts.cache_clauses | false |
+| Setting tts.cache_phrases | true |
+| Setting tts.clause_cache_mb | 512 |
+| Setting tts.languages | \{"ar": \{"model": "canopylabs/orpheus-arabic-saudi", "voice": "abdullah"\}, "ar-SA": \{"model": "canopylabs/orpheus-arabic-saudi", "voice": "abdullah"\}, "en": \{"model": "canopylabs/orpheus-v1-english", "voice": "troy"\}\} |
+| Setting tts.provider | groq |
+| Setting tts.timeout_s | 6.0 |
+| Setting tts.trim_silence | false |
+| Setting turns.complete_hold_ms | 600 |
+| Setting turns.max_silence_ms | 3000 |
+| Setting turns.smart_turn | true |
+| Setting turns.smart_turn_max_duration_s | 8.0 |
+| Setting turns.smart_turn_pre_speech_ms | 500 |
+| Setting turns.smart_turn_stop_ms | 3000 |
+| Setting turns.smart_turn_threshold | 0.5 |
+| Setting turns.vad_confidence | 0.7 |
+| Setting turns.vad_min_volume | 0.6 |
+| Setting turns.vad_start_ms | 200 |
+| Setting turns.vad_stop_ms | 200 |
+| Setting words.backchannel | \{\} |
+| Setting words.no | \{\} |
+| Setting words.repeat | \{\} |
+| Setting words.send | \{\} |
+| Setting words.stop | \{\} |
+| Setting words.vocabulary | 0 entries |
+| Setting words.wait | \{\} |
+| Setting words.yes | \{\} |
+
+| Stratum | Value | Items | Accuracy |
+| --- | --- | --- | --- |
+| device | bluetooth | 33 | 36.8% |
+| device | laptop | 97 | 42.3% |
+| device | wired | 63 | 44.4% |
+| kind | confirmation | 3 | 77.8% |
+| kind | correction | 2 | 50.0% |
+| kind | echo_only | 2 | 0.0% |
+| kind | listening_sound | 15 | 50.0% |
+| kind | noise | 2 | 0.0% |
+| kind | paused_request | 20 | 21.6% |
+| kind | repeat_request | 6 | 52.6% |
+| kind | request | 26 | 30.4% |
+| kind | short_request | 2 | 42.9% |
+| kind | silence | 1 | 0.0% |
+| kind | stop_word | 16 | 89.7% |
+| kind | ticket_number | 3 | 38.1% |
+| language | english | 24 | 78.7% |
+| language | mixed | 9 | 7.7% |
+| language | msa | 15 | 17.6% |
+| language | none | 5 | 0.0% |
+| language | saudi | 45 | 41.4% |
+| split | dev | 98 | 42.1% |
+
+### 71 · lid2-dev-silero-ar
+
+| Field | Value |
+| --- | --- |
+| Why | Run H's H2, dev: lid2-dev-silero-ar \(94573f8\) |
+| Data digest | `9ffaec013e41c75b9dc1efc7a14bffcfd5095c060183cd47aa61f70701c9139b` |
+| Scorecard | scorecard.json |
+| Price per hour of audio | $0.111 |
+| Setting env | dev |
+| Setting groq.api_key | set |
+| Setting groq.api_key_file | not set |
+| Setting groq.base_url | https://api.groq.com |
+| Setting guard.claims | \{\} |
+| Setting guard.id_patterns | 0 entries |
+| Setting guard.min_id_digits | 3 |
+| Setting guard.on_block | drop_rest |
+| Setting guard.questions_per_reply | 1 |
+| Setting guard.remove_stray_script | true |
+| Setting interruptions.duck_level | 0.25 |
+| Setting interruptions.first_window_ms | 750 |
+| Setting interruptions.min_words | 2 |
+| Setting interruptions.mode | two_step |
+| Setting interruptions.own_words_s | 5.0 |
+| Setting interruptions.short_s | 1.2 |
+| Setting interruptions.short_words | 2 |
+| Setting join.current_kid | key-1 |
+| Setting join.keys | set |
+| Setting join.keys_file | not set |
+| Setting join.max_clock_skew_s | 30 |
+| Setting join.ttl_s | 60 |
+| Setting limits.actions_per_caller_per_day | 20 |
+| Setting limits.idle_s | 120.0 |
+| Setting limits.max_call_s | 600.0 |
+| Setting llm.max_output_tokens | 1024 |
+| Setting llm.model | openai/gpt-oss-120b |
+| Setting llm.provider | groq |
+| Setting llm.reasoning_effort | medium |
+| Setting llm.timeout_s | 8.0 |
+| Setting llm.vary_first_line | true |
+| Setting logging.content | false |
+| Setting logging.format | console |
+| Setting logging.level | INFO |
+| Setting logging.pipecat | off |
+| Setting privacy.consent_version | none |
+| Setting privacy.record_audio | false |
+| Setting run.cap_usd | 0.3 |
+| Setting run.language_from | lid1-dev-silero \(silero\), call ar, 70 of 292 variants changed, 3 whose turns differ, the rest from lid2-dev-ar |
+| Setting run.language_hint | ar |
+| Setting run.max_attempts | 4 |
+| Setting run.max_rpm | 20 |
+| Setting run.prompt | ole5_voice.agent:talker_agent \(ole5 2026-11-11.3+no-search+no-tickets\), sha256 7b52b432c4bd5ae3, ar 25 of 25 words, en 22 of 22 words |
+| Setting run.smoke_only | false |
+| Setting run.variant_timeout_s | 120.0 |
+| Setting run.windows_ms | none |
+| Setting server.allowed_origins | 0 entries |
+| Setting server.dev_caller | none |
+| Setting server.dev_page | true |
+| Setting server.forwarded_allow_ips | 0 entries |
+| Setting server.ice_servers | 0 entries |
+| Setting server.public_url | none |
+| Setting server.turn_secret | not set |
+| Setting server.turn_secret_file | not set |
+| Setting server.turn_ttl_s | 3600 |
+| Setting session.mode | none |
+| Setting stt.caption_filter | true |
+| Setting stt.classifier | silero |
+| Setting stt.classifier_dir | none |
+| Setting stt.classifier_from_s | 2.0 |
+| Setting stt.classifier_min_share | 0.7 |
+| Setting stt.classifier_threads | 2 |
+| Setting stt.live_language | session |
+| Setting stt.model | whisper-large-v3 |
+| Setting stt.no_speech_max | 0.55 |
+| Setting stt.provider | groq |
+| Setting stt.send_prompt | true |
+| Setting stt.timeout_s | 6.0 |
+| Setting tracing.endpoint | none |
+| Setting tracing.include_transcripts | true |
+| Setting tracing.project | ole5-voice |
+| Setting tracing.redact | 0 patterns |
+| Setting tts.cache_clauses | false |
+| Setting tts.cache_phrases | true |
+| Setting tts.clause_cache_mb | 512 |
+| Setting tts.languages | \{"ar": \{"model": "canopylabs/orpheus-arabic-saudi", "voice": "abdullah"\}, "ar-SA": \{"model": "canopylabs/orpheus-arabic-saudi", "voice": "abdullah"\}, "en": \{"model": "canopylabs/orpheus-v1-english", "voice": "troy"\}\} |
+| Setting tts.provider | groq |
+| Setting tts.timeout_s | 6.0 |
+| Setting tts.trim_silence | false |
+| Setting turns.complete_hold_ms | 600 |
+| Setting turns.max_silence_ms | 3000 |
+| Setting turns.smart_turn | true |
+| Setting turns.smart_turn_max_duration_s | 8.0 |
+| Setting turns.smart_turn_pre_speech_ms | 500 |
+| Setting turns.smart_turn_stop_ms | 3000 |
+| Setting turns.smart_turn_threshold | 0.5 |
+| Setting turns.vad_confidence | 0.7 |
+| Setting turns.vad_min_volume | 0.6 |
+| Setting turns.vad_start_ms | 200 |
+| Setting turns.vad_stop_ms | 200 |
+| Setting words.backchannel | \{\} |
+| Setting words.no | \{\} |
+| Setting words.repeat | \{\} |
+| Setting words.send | \{\} |
+| Setting words.stop | \{\} |
+| Setting words.vocabulary | 0 entries |
+| Setting words.wait | \{\} |
+| Setting words.yes | \{\} |
+
+| Stratum | Value | Items | Accuracy |
+| --- | --- | --- | --- |
+| device | bluetooth | 33 | 26.3% |
+| device | laptop | 97 | 34.1% |
+| device | wired | 63 | 34.7% |
+| kind | confirmation | 3 | 66.7% |
+| kind | correction | 2 | 50.0% |
+| kind | echo_only | 2 | 0.0% |
+| kind | listening_sound | 15 | 28.9% |
+| kind | noise | 2 | 0.0% |
+| kind | paused_request | 20 | 21.6% |
+| kind | repeat_request | 6 | 42.1% |
+| kind | request | 26 | 27.2% |
+| kind | short_request | 2 | 42.9% |
+| kind | silence | 1 | 0.0% |
+| kind | stop_word | 16 | 61.5% |
+| kind | ticket_number | 3 | 33.3% |
+| language | english | 24 | 44.0% |
+| language | mixed | 9 | 7.7% |
+| language | msa | 15 | 17.6% |
+| language | none | 5 | 0.0% |
+| language | saudi | 45 | 41.4% |
+| split | dev | 98 | 33.2% |
+
+### 72 · lid2-dev-silero-en
+
+| Field | Value |
+| --- | --- |
+| Why | Run H's H2, dev: lid2-dev-silero-en \(94573f8\) |
+| Data digest | `9ffaec013e41c75b9dc1efc7a14bffcfd5095c060183cd47aa61f70701c9139b` |
+| Scorecard | scorecard.json |
+| Price per hour of audio | $0.111 |
+| Setting env | dev |
+| Setting groq.api_key | set |
+| Setting groq.api_key_file | not set |
+| Setting groq.base_url | https://api.groq.com |
+| Setting guard.claims | \{\} |
+| Setting guard.id_patterns | 0 entries |
+| Setting guard.min_id_digits | 3 |
+| Setting guard.on_block | drop_rest |
+| Setting guard.questions_per_reply | 1 |
+| Setting guard.remove_stray_script | true |
+| Setting interruptions.duck_level | 0.25 |
+| Setting interruptions.first_window_ms | 750 |
+| Setting interruptions.min_words | 2 |
+| Setting interruptions.mode | two_step |
+| Setting interruptions.own_words_s | 5.0 |
+| Setting interruptions.short_s | 1.2 |
+| Setting interruptions.short_words | 2 |
+| Setting join.current_kid | key-1 |
+| Setting join.keys | set |
+| Setting join.keys_file | not set |
+| Setting join.max_clock_skew_s | 30 |
+| Setting join.ttl_s | 60 |
+| Setting limits.actions_per_caller_per_day | 20 |
+| Setting limits.idle_s | 120.0 |
+| Setting limits.max_call_s | 600.0 |
+| Setting llm.max_output_tokens | 1024 |
+| Setting llm.model | openai/gpt-oss-120b |
+| Setting llm.provider | groq |
+| Setting llm.reasoning_effort | medium |
+| Setting llm.timeout_s | 8.0 |
+| Setting llm.vary_first_line | true |
+| Setting logging.content | false |
+| Setting logging.format | console |
+| Setting logging.level | INFO |
+| Setting logging.pipecat | off |
+| Setting privacy.consent_version | none |
+| Setting privacy.record_audio | false |
+| Setting run.cap_usd | 0.3 |
+| Setting run.language_from | lid1-dev-silero \(silero\), call en, 68 of 292 variants changed, 3 whose turns differ, the rest from lid2-dev-en |
+| Setting run.language_hint | en |
+| Setting run.max_attempts | 4 |
+| Setting run.max_rpm | 20 |
+| Setting run.prompt | ole5_voice.agent:talker_agent \(ole5 2026-11-11.3+no-search+no-tickets\), sha256 7b52b432c4bd5ae3, ar 25 of 25 words, en 22 of 22 words |
+| Setting run.smoke_only | false |
+| Setting run.variant_timeout_s | 120.0 |
+| Setting run.windows_ms | none |
+| Setting server.allowed_origins | 0 entries |
+| Setting server.dev_caller | none |
+| Setting server.dev_page | true |
+| Setting server.forwarded_allow_ips | 0 entries |
+| Setting server.ice_servers | 0 entries |
+| Setting server.public_url | none |
+| Setting server.turn_secret | not set |
+| Setting server.turn_secret_file | not set |
+| Setting server.turn_ttl_s | 3600 |
+| Setting session.mode | none |
+| Setting stt.caption_filter | true |
+| Setting stt.classifier | silero |
+| Setting stt.classifier_dir | none |
+| Setting stt.classifier_from_s | 2.0 |
+| Setting stt.classifier_min_share | 0.7 |
+| Setting stt.classifier_threads | 2 |
+| Setting stt.live_language | session |
+| Setting stt.model | whisper-large-v3 |
+| Setting stt.no_speech_max | 0.55 |
+| Setting stt.provider | groq |
+| Setting stt.send_prompt | true |
+| Setting stt.timeout_s | 6.0 |
+| Setting tracing.endpoint | none |
+| Setting tracing.include_transcripts | true |
+| Setting tracing.project | ole5-voice |
+| Setting tracing.redact | 0 patterns |
+| Setting tts.cache_clauses | false |
+| Setting tts.cache_phrases | true |
+| Setting tts.clause_cache_mb | 512 |
+| Setting tts.languages | \{"ar": \{"model": "canopylabs/orpheus-arabic-saudi", "voice": "abdullah"\}, "ar-SA": \{"model": "canopylabs/orpheus-arabic-saudi", "voice": "abdullah"\}, "en": \{"model": "canopylabs/orpheus-v1-english", "voice": "troy"\}\} |
+| Setting tts.provider | groq |
+| Setting tts.timeout_s | 6.0 |
+| Setting tts.trim_silence | false |
+| Setting turns.complete_hold_ms | 600 |
+| Setting turns.max_silence_ms | 3000 |
+| Setting turns.smart_turn | true |
+| Setting turns.smart_turn_max_duration_s | 8.0 |
+| Setting turns.smart_turn_pre_speech_ms | 500 |
+| Setting turns.smart_turn_stop_ms | 3000 |
+| Setting turns.smart_turn_threshold | 0.5 |
+| Setting turns.vad_confidence | 0.7 |
+| Setting turns.vad_min_volume | 0.6 |
+| Setting turns.vad_start_ms | 200 |
+| Setting turns.vad_stop_ms | 200 |
+| Setting words.backchannel | \{\} |
+| Setting words.no | \{\} |
+| Setting words.repeat | \{\} |
+| Setting words.send | \{\} |
+| Setting words.stop | \{\} |
+| Setting words.vocabulary | 0 entries |
+| Setting words.wait | \{\} |
+| Setting words.yes | \{\} |
+
+| Stratum | Value | Items | Accuracy |
+| --- | --- | --- | --- |
+| device | bluetooth | 33 | 28.9% |
+| device | laptop | 97 | 22.5% |
+| device | wired | 63 | 29.2% |
+| kind | confirmation | 3 | 33.3% |
+| kind | correction | 2 | 50.0% |
+| kind | echo_only | 2 | 20.0% |
+| kind | listening_sound | 15 | 23.7% |
+| kind | noise | 2 | 0.0% |
+| kind | paused_request | 20 | 19.6% |
+| kind | repeat_request | 6 | 10.5% |
+| kind | request | 26 | 23.9% |
+| kind | short_request | 2 | 0.0% |
+| kind | silence | 1 | 66.7% |
+| kind | stop_word | 16 | 35.9% |
+| kind | ticket_number | 3 | 38.1% |
+| language | english | 24 | 78.7% |
+| language | mixed | 9 | 3.8% |
+| language | msa | 15 | 2.0% |
+| language | none | 5 | 25.0% |
+| language | saudi | 45 | 7.0% |
+| split | dev | 98 | 25.0% |
+
+### 73 · lid2-dev-ecapa-label
+
+| Field | Value |
+| --- | --- |
+| Why | Run H's H2, dev: lid2-dev-ecapa-label \(94573f8\) |
+| Data digest | `9ffaec013e41c75b9dc1efc7a14bffcfd5095c060183cd47aa61f70701c9139b` |
+| Scorecard | scorecard.json |
+| Price per hour of audio | $0.111 |
+| Setting env | dev |
+| Setting groq.api_key | set |
+| Setting groq.api_key_file | not set |
+| Setting groq.base_url | https://api.groq.com |
+| Setting guard.claims | \{\} |
+| Setting guard.id_patterns | 0 entries |
+| Setting guard.min_id_digits | 3 |
+| Setting guard.on_block | drop_rest |
+| Setting guard.questions_per_reply | 1 |
+| Setting guard.remove_stray_script | true |
+| Setting interruptions.duck_level | 0.25 |
+| Setting interruptions.first_window_ms | 750 |
+| Setting interruptions.min_words | 2 |
+| Setting interruptions.mode | two_step |
+| Setting interruptions.own_words_s | 5.0 |
+| Setting interruptions.short_s | 1.2 |
+| Setting interruptions.short_words | 2 |
+| Setting join.current_kid | key-1 |
+| Setting join.keys | set |
+| Setting join.keys_file | not set |
+| Setting join.max_clock_skew_s | 30 |
+| Setting join.ttl_s | 60 |
+| Setting limits.actions_per_caller_per_day | 20 |
+| Setting limits.idle_s | 120.0 |
+| Setting limits.max_call_s | 600.0 |
+| Setting llm.max_output_tokens | 1024 |
+| Setting llm.model | openai/gpt-oss-120b |
+| Setting llm.provider | groq |
+| Setting llm.reasoning_effort | medium |
+| Setting llm.timeout_s | 8.0 |
+| Setting llm.vary_first_line | true |
+| Setting logging.content | false |
+| Setting logging.format | console |
+| Setting logging.level | INFO |
+| Setting logging.pipecat | off |
+| Setting privacy.consent_version | none |
+| Setting privacy.record_audio | false |
+| Setting run.cap_usd | 0.3 |
+| Setting run.language_from | lid1-dev-ecapa \(ecapa\), call label, 5 of 292 variants changed, 0 whose turns differ, the rest from lid2-dev-label |
+| Setting run.language_hint | label |
+| Setting run.max_attempts | 4 |
+| Setting run.max_rpm | 20 |
+| Setting run.prompt | ole5_voice.agent:talker_agent \(ole5 2026-11-11.3+no-search+no-tickets\), sha256 7b52b432c4bd5ae3, ar 25 of 25 words, en 22 of 22 words |
+| Setting run.smoke_only | false |
+| Setting run.variant_timeout_s | 120.0 |
+| Setting run.windows_ms | none |
+| Setting server.allowed_origins | 0 entries |
+| Setting server.dev_caller | none |
+| Setting server.dev_page | true |
+| Setting server.forwarded_allow_ips | 0 entries |
+| Setting server.ice_servers | 0 entries |
+| Setting server.public_url | none |
+| Setting server.turn_secret | not set |
+| Setting server.turn_secret_file | not set |
+| Setting server.turn_ttl_s | 3600 |
+| Setting session.mode | none |
+| Setting stt.caption_filter | true |
+| Setting stt.classifier | silero |
+| Setting stt.classifier_dir | none |
+| Setting stt.classifier_from_s | 2.0 |
+| Setting stt.classifier_min_share | 0.7 |
+| Setting stt.classifier_threads | 2 |
+| Setting stt.live_language | session |
+| Setting stt.model | whisper-large-v3 |
+| Setting stt.no_speech_max | 0.55 |
+| Setting stt.provider | groq |
+| Setting stt.send_prompt | true |
+| Setting stt.timeout_s | 6.0 |
+| Setting tracing.endpoint | none |
+| Setting tracing.include_transcripts | true |
+| Setting tracing.project | ole5-voice |
+| Setting tracing.redact | 0 patterns |
+| Setting tts.cache_clauses | false |
+| Setting tts.cache_phrases | true |
+| Setting tts.clause_cache_mb | 512 |
+| Setting tts.languages | \{"ar": \{"model": "canopylabs/orpheus-arabic-saudi", "voice": "abdullah"\}, "ar-SA": \{"model": "canopylabs/orpheus-arabic-saudi", "voice": "abdullah"\}, "en": \{"model": "canopylabs/orpheus-v1-english", "voice": "troy"\}\} |
+| Setting tts.provider | groq |
+| Setting tts.timeout_s | 6.0 |
+| Setting tts.trim_silence | false |
+| Setting turns.complete_hold_ms | 600 |
+| Setting turns.max_silence_ms | 3000 |
+| Setting turns.smart_turn | true |
+| Setting turns.smart_turn_max_duration_s | 8.0 |
+| Setting turns.smart_turn_pre_speech_ms | 500 |
+| Setting turns.smart_turn_stop_ms | 3000 |
+| Setting turns.smart_turn_threshold | 0.5 |
+| Setting turns.vad_confidence | 0.7 |
+| Setting turns.vad_min_volume | 0.6 |
+| Setting turns.vad_start_ms | 200 |
+| Setting turns.vad_stop_ms | 200 |
+| Setting words.backchannel | \{\} |
+| Setting words.no | \{\} |
+| Setting words.repeat | \{\} |
+| Setting words.send | \{\} |
+| Setting words.stop | \{\} |
+| Setting words.vocabulary | 0 entries |
+| Setting words.wait | \{\} |
+| Setting words.yes | \{\} |
+
+### 74 · lid2-dev-ecapa-label-b
+
+| Field | Value |
+| --- | --- |
+| Why | Run H's H2, dev: lid2-dev-ecapa-label-b \(94573f8\) |
+| Data digest | `9ffaec013e41c75b9dc1efc7a14bffcfd5095c060183cd47aa61f70701c9139b` |
+| Scorecard | scorecard.json |
+| Price per hour of audio | $0.111 |
+| Setting env | dev |
+| Setting groq.api_key | set |
+| Setting groq.api_key_file | not set |
+| Setting groq.base_url | https://api.groq.com |
+| Setting guard.claims | \{\} |
+| Setting guard.id_patterns | 0 entries |
+| Setting guard.min_id_digits | 3 |
+| Setting guard.on_block | drop_rest |
+| Setting guard.questions_per_reply | 1 |
+| Setting guard.remove_stray_script | true |
+| Setting interruptions.duck_level | 0.25 |
+| Setting interruptions.first_window_ms | 750 |
+| Setting interruptions.min_words | 2 |
+| Setting interruptions.mode | two_step |
+| Setting interruptions.own_words_s | 5.0 |
+| Setting interruptions.short_s | 1.2 |
+| Setting interruptions.short_words | 2 |
+| Setting join.current_kid | key-1 |
+| Setting join.keys | set |
+| Setting join.keys_file | not set |
+| Setting join.max_clock_skew_s | 30 |
+| Setting join.ttl_s | 60 |
+| Setting limits.actions_per_caller_per_day | 20 |
+| Setting limits.idle_s | 120.0 |
+| Setting limits.max_call_s | 600.0 |
+| Setting llm.max_output_tokens | 1024 |
+| Setting llm.model | openai/gpt-oss-120b |
+| Setting llm.provider | groq |
+| Setting llm.reasoning_effort | medium |
+| Setting llm.timeout_s | 8.0 |
+| Setting llm.vary_first_line | true |
+| Setting logging.content | false |
+| Setting logging.format | console |
+| Setting logging.level | INFO |
+| Setting logging.pipecat | off |
+| Setting privacy.consent_version | none |
+| Setting privacy.record_audio | false |
+| Setting run.cap_usd | 0.3 |
+| Setting run.language_from | lid1-dev-ecapa \(ecapa\), call label, 5 of 292 variants changed, 0 whose turns differ, the rest from lid2-dev-label |
+| Setting run.language_hint | label |
+| Setting run.max_attempts | 4 |
+| Setting run.max_rpm | 20 |
+| Setting run.prompt | ole5_voice.agent:talker_agent \(ole5 2026-11-11.3+no-search+no-tickets\), sha256 7b52b432c4bd5ae3, ar 25 of 25 words, en 22 of 22 words |
+| Setting run.smoke_only | false |
+| Setting run.variant_timeout_s | 120.0 |
+| Setting run.windows_ms | none |
+| Setting server.allowed_origins | 0 entries |
+| Setting server.dev_caller | none |
+| Setting server.dev_page | true |
+| Setting server.forwarded_allow_ips | 0 entries |
+| Setting server.ice_servers | 0 entries |
+| Setting server.public_url | none |
+| Setting server.turn_secret | not set |
+| Setting server.turn_secret_file | not set |
+| Setting server.turn_ttl_s | 3600 |
+| Setting session.mode | none |
+| Setting stt.caption_filter | true |
+| Setting stt.classifier | silero |
+| Setting stt.classifier_dir | none |
+| Setting stt.classifier_from_s | 2.0 |
+| Setting stt.classifier_min_share | 0.7 |
+| Setting stt.classifier_threads | 2 |
+| Setting stt.live_language | session |
+| Setting stt.model | whisper-large-v3 |
+| Setting stt.no_speech_max | 0.55 |
+| Setting stt.provider | groq |
+| Setting stt.send_prompt | true |
+| Setting stt.timeout_s | 6.0 |
+| Setting tracing.endpoint | none |
+| Setting tracing.include_transcripts | true |
+| Setting tracing.project | ole5-voice |
+| Setting tracing.redact | 0 patterns |
+| Setting tts.cache_clauses | false |
+| Setting tts.cache_phrases | true |
+| Setting tts.clause_cache_mb | 512 |
+| Setting tts.languages | \{"ar": \{"model": "canopylabs/orpheus-arabic-saudi", "voice": "abdullah"\}, "ar-SA": \{"model": "canopylabs/orpheus-arabic-saudi", "voice": "abdullah"\}, "en": \{"model": "canopylabs/orpheus-v1-english", "voice": "troy"\}\} |
+| Setting tts.provider | groq |
+| Setting tts.timeout_s | 6.0 |
+| Setting tts.trim_silence | false |
+| Setting turns.complete_hold_ms | 600 |
+| Setting turns.max_silence_ms | 3000 |
+| Setting turns.smart_turn | true |
+| Setting turns.smart_turn_max_duration_s | 8.0 |
+| Setting turns.smart_turn_pre_speech_ms | 500 |
+| Setting turns.smart_turn_stop_ms | 3000 |
+| Setting turns.smart_turn_threshold | 0.5 |
+| Setting turns.vad_confidence | 0.7 |
+| Setting turns.vad_min_volume | 0.6 |
+| Setting turns.vad_start_ms | 200 |
+| Setting turns.vad_stop_ms | 200 |
+| Setting words.backchannel | \{\} |
+| Setting words.no | \{\} |
+| Setting words.repeat | \{\} |
+| Setting words.send | \{\} |
+| Setting words.stop | \{\} |
+| Setting words.vocabulary | 0 entries |
+| Setting words.wait | \{\} |
+| Setting words.yes | \{\} |
+
+| Stratum | Value | Items | Accuracy |
+| --- | --- | --- | --- |
+| device | bluetooth | 33 | 44.7% |
+| device | laptop | 97 | 41.8% |
+| device | wired | 63 | 44.4% |
+| kind | confirmation | 3 | 77.8% |
+| kind | correction | 2 | 50.0% |
+| kind | echo_only | 2 | 0.0% |
+| kind | listening_sound | 15 | 44.7% |
+| kind | noise | 2 | 0.0% |
+| kind | paused_request | 20 | 23.5% |
+| kind | repeat_request | 6 | 52.6% |
+| kind | request | 26 | 32.6% |
+| kind | short_request | 2 | 42.9% |
+| kind | silence | 1 | 0.0% |
+| kind | stop_word | 16 | 89.7% |
+| kind | ticket_number | 3 | 42.9% |
+| language | english | 24 | 74.7% |
+| language | mixed | 9 | 7.7% |
+| language | msa | 15 | 23.5% |
+| language | none | 5 | 0.0% |
+| language | saudi | 45 | 43.0% |
+| split | dev | 98 | 42.8% |
+
+### 75 · lid2-dev-ecapa-ar
+
+| Field | Value |
+| --- | --- |
+| Why | Run H's H2, dev: lid2-dev-ecapa-ar \(94573f8\) |
+| Data digest | `9ffaec013e41c75b9dc1efc7a14bffcfd5095c060183cd47aa61f70701c9139b` |
+| Scorecard | scorecard.json |
+| Price per hour of audio | $0.111 |
+| Setting env | dev |
+| Setting groq.api_key | set |
+| Setting groq.api_key_file | not set |
+| Setting groq.base_url | https://api.groq.com |
+| Setting guard.claims | \{\} |
+| Setting guard.id_patterns | 0 entries |
+| Setting guard.min_id_digits | 3 |
+| Setting guard.on_block | drop_rest |
+| Setting guard.questions_per_reply | 1 |
+| Setting guard.remove_stray_script | true |
+| Setting interruptions.duck_level | 0.25 |
+| Setting interruptions.first_window_ms | 750 |
+| Setting interruptions.min_words | 2 |
+| Setting interruptions.mode | two_step |
+| Setting interruptions.own_words_s | 5.0 |
+| Setting interruptions.short_s | 1.2 |
+| Setting interruptions.short_words | 2 |
+| Setting join.current_kid | key-1 |
+| Setting join.keys | set |
+| Setting join.keys_file | not set |
+| Setting join.max_clock_skew_s | 30 |
+| Setting join.ttl_s | 60 |
+| Setting limits.actions_per_caller_per_day | 20 |
+| Setting limits.idle_s | 120.0 |
+| Setting limits.max_call_s | 600.0 |
+| Setting llm.max_output_tokens | 1024 |
+| Setting llm.model | openai/gpt-oss-120b |
+| Setting llm.provider | groq |
+| Setting llm.reasoning_effort | medium |
+| Setting llm.timeout_s | 8.0 |
+| Setting llm.vary_first_line | true |
+| Setting logging.content | false |
+| Setting logging.format | console |
+| Setting logging.level | INFO |
+| Setting logging.pipecat | off |
+| Setting privacy.consent_version | none |
+| Setting privacy.record_audio | false |
+| Setting run.cap_usd | 0.3 |
+| Setting run.language_from | lid1-dev-ecapa \(ecapa\), call ar, 33 of 292 variants changed, 0 whose turns differ, the rest from lid2-dev-ar |
+| Setting run.language_hint | ar |
+| Setting run.max_attempts | 4 |
+| Setting run.max_rpm | 20 |
+| Setting run.prompt | ole5_voice.agent:talker_agent \(ole5 2026-11-11.3+no-search+no-tickets\), sha256 7b52b432c4bd5ae3, ar 25 of 25 words, en 22 of 22 words |
+| Setting run.smoke_only | false |
+| Setting run.variant_timeout_s | 120.0 |
+| Setting run.windows_ms | none |
+| Setting server.allowed_origins | 0 entries |
+| Setting server.dev_caller | none |
+| Setting server.dev_page | true |
+| Setting server.forwarded_allow_ips | 0 entries |
+| Setting server.ice_servers | 0 entries |
+| Setting server.public_url | none |
+| Setting server.turn_secret | not set |
+| Setting server.turn_secret_file | not set |
+| Setting server.turn_ttl_s | 3600 |
+| Setting session.mode | none |
+| Setting stt.caption_filter | true |
+| Setting stt.classifier | silero |
+| Setting stt.classifier_dir | none |
+| Setting stt.classifier_from_s | 2.0 |
+| Setting stt.classifier_min_share | 0.7 |
+| Setting stt.classifier_threads | 2 |
+| Setting stt.live_language | session |
+| Setting stt.model | whisper-large-v3 |
+| Setting stt.no_speech_max | 0.55 |
+| Setting stt.provider | groq |
+| Setting stt.send_prompt | true |
+| Setting stt.timeout_s | 6.0 |
+| Setting tracing.endpoint | none |
+| Setting tracing.include_transcripts | true |
+| Setting tracing.project | ole5-voice |
+| Setting tracing.redact | 0 patterns |
+| Setting tts.cache_clauses | false |
+| Setting tts.cache_phrases | true |
+| Setting tts.clause_cache_mb | 512 |
+| Setting tts.languages | \{"ar": \{"model": "canopylabs/orpheus-arabic-saudi", "voice": "abdullah"\}, "ar-SA": \{"model": "canopylabs/orpheus-arabic-saudi", "voice": "abdullah"\}, "en": \{"model": "canopylabs/orpheus-v1-english", "voice": "troy"\}\} |
+| Setting tts.provider | groq |
+| Setting tts.timeout_s | 6.0 |
+| Setting tts.trim_silence | false |
+| Setting turns.complete_hold_ms | 600 |
+| Setting turns.max_silence_ms | 3000 |
+| Setting turns.smart_turn | true |
+| Setting turns.smart_turn_max_duration_s | 8.0 |
+| Setting turns.smart_turn_pre_speech_ms | 500 |
+| Setting turns.smart_turn_stop_ms | 3000 |
+| Setting turns.smart_turn_threshold | 0.5 |
+| Setting turns.vad_confidence | 0.7 |
+| Setting turns.vad_min_volume | 0.6 |
+| Setting turns.vad_start_ms | 200 |
+| Setting turns.vad_stop_ms | 200 |
+| Setting words.backchannel | \{\} |
+| Setting words.no | \{\} |
+| Setting words.repeat | \{\} |
+| Setting words.send | \{\} |
+| Setting words.stop | \{\} |
+| Setting words.vocabulary | 0 entries |
+| Setting words.wait | \{\} |
+| Setting words.yes | \{\} |
+
+| Stratum | Value | Items | Accuracy |
+| --- | --- | --- | --- |
+| device | bluetooth | 33 | 34.2% |
+| device | laptop | 97 | 31.9% |
+| device | wired | 63 | 36.1% |
+| kind | confirmation | 3 | 66.7% |
+| kind | correction | 2 | 50.0% |
+| kind | echo_only | 2 | 0.0% |
+| kind | listening_sound | 15 | 28.9% |
+| kind | noise | 2 | 0.0% |
+| kind | paused_request | 20 | 23.5% |
+| kind | repeat_request | 6 | 42.1% |
+| kind | request | 26 | 26.1% |
+| kind | short_request | 2 | 42.9% |
+| kind | silence | 1 | 0.0% |
+| kind | stop_word | 16 | 59.0% |
+| kind | ticket_number | 3 | 38.1% |
+| language | english | 24 | 37.3% |
+| language | mixed | 9 | 7.7% |
+| language | msa | 15 | 23.5% |
+| language | none | 5 | 0.0% |
+| language | saudi | 45 | 43.0% |
+| split | dev | 98 | 33.2% |
+
+### 76 · lid2-dev-ecapa-en
+
+| Field | Value |
+| --- | --- |
+| Why | Run H's H2, dev: lid2-dev-ecapa-en \(94573f8\) |
+| Data digest | `9ffaec013e41c75b9dc1efc7a14bffcfd5095c060183cd47aa61f70701c9139b` |
+| Scorecard | scorecard.json |
+| Price per hour of audio | $0.111 |
+| Setting env | dev |
+| Setting groq.api_key | set |
+| Setting groq.api_key_file | not set |
+| Setting groq.base_url | https://api.groq.com |
+| Setting guard.claims | \{\} |
+| Setting guard.id_patterns | 0 entries |
+| Setting guard.min_id_digits | 3 |
+| Setting guard.on_block | drop_rest |
+| Setting guard.questions_per_reply | 1 |
+| Setting guard.remove_stray_script | true |
+| Setting interruptions.duck_level | 0.25 |
+| Setting interruptions.first_window_ms | 750 |
+| Setting interruptions.min_words | 2 |
+| Setting interruptions.mode | two_step |
+| Setting interruptions.own_words_s | 5.0 |
+| Setting interruptions.short_s | 1.2 |
+| Setting interruptions.short_words | 2 |
+| Setting join.current_kid | key-1 |
+| Setting join.keys | set |
+| Setting join.keys_file | not set |
+| Setting join.max_clock_skew_s | 30 |
+| Setting join.ttl_s | 60 |
+| Setting limits.actions_per_caller_per_day | 20 |
+| Setting limits.idle_s | 120.0 |
+| Setting limits.max_call_s | 600.0 |
+| Setting llm.max_output_tokens | 1024 |
+| Setting llm.model | openai/gpt-oss-120b |
+| Setting llm.provider | groq |
+| Setting llm.reasoning_effort | medium |
+| Setting llm.timeout_s | 8.0 |
+| Setting llm.vary_first_line | true |
+| Setting logging.content | false |
+| Setting logging.format | console |
+| Setting logging.level | INFO |
+| Setting logging.pipecat | off |
+| Setting privacy.consent_version | none |
+| Setting privacy.record_audio | false |
+| Setting run.cap_usd | 0.3 |
+| Setting run.language_from | lid1-dev-ecapa \(ecapa\), call en, 102 of 292 variants changed, 7 whose turns differ, the rest from lid2-dev-en |
+| Setting run.language_hint | en |
+| Setting run.max_attempts | 4 |
+| Setting run.max_rpm | 20 |
+| Setting run.prompt | ole5_voice.agent:talker_agent \(ole5 2026-11-11.3+no-search+no-tickets\), sha256 7b52b432c4bd5ae3, ar 25 of 25 words, en 22 of 22 words |
+| Setting run.smoke_only | false |
+| Setting run.variant_timeout_s | 120.0 |
+| Setting run.windows_ms | none |
+| Setting server.allowed_origins | 0 entries |
+| Setting server.dev_caller | none |
+| Setting server.dev_page | true |
+| Setting server.forwarded_allow_ips | 0 entries |
+| Setting server.ice_servers | 0 entries |
+| Setting server.public_url | none |
+| Setting server.turn_secret | not set |
+| Setting server.turn_secret_file | not set |
+| Setting server.turn_ttl_s | 3600 |
+| Setting session.mode | none |
+| Setting stt.caption_filter | true |
+| Setting stt.classifier | silero |
+| Setting stt.classifier_dir | none |
+| Setting stt.classifier_from_s | 2.0 |
+| Setting stt.classifier_min_share | 0.7 |
+| Setting stt.classifier_threads | 2 |
+| Setting stt.live_language | session |
+| Setting stt.model | whisper-large-v3 |
+| Setting stt.no_speech_max | 0.55 |
+| Setting stt.provider | groq |
+| Setting stt.send_prompt | true |
+| Setting stt.timeout_s | 6.0 |
+| Setting tracing.endpoint | none |
+| Setting tracing.include_transcripts | true |
+| Setting tracing.project | ole5-voice |
+| Setting tracing.redact | 0 patterns |
+| Setting tts.cache_clauses | false |
+| Setting tts.cache_phrases | true |
+| Setting tts.clause_cache_mb | 512 |
+| Setting tts.languages | \{"ar": \{"model": "canopylabs/orpheus-arabic-saudi", "voice": "abdullah"\}, "ar-SA": \{"model": "canopylabs/orpheus-arabic-saudi", "voice": "abdullah"\}, "en": \{"model": "canopylabs/orpheus-v1-english", "voice": "troy"\}\} |
+| Setting tts.provider | groq |
+| Setting tts.timeout_s | 6.0 |
+| Setting tts.trim_silence | false |
+| Setting turns.complete_hold_ms | 600 |
+| Setting turns.max_silence_ms | 3000 |
+| Setting turns.smart_turn | true |
+| Setting turns.smart_turn_max_duration_s | 8.0 |
+| Setting turns.smart_turn_pre_speech_ms | 500 |
+| Setting turns.smart_turn_stop_ms | 3000 |
+| Setting turns.smart_turn_threshold | 0.5 |
+| Setting turns.vad_confidence | 0.7 |
+| Setting turns.vad_min_volume | 0.6 |
+| Setting turns.vad_start_ms | 200 |
+| Setting turns.vad_stop_ms | 200 |
+| Setting words.backchannel | \{\} |
+| Setting words.no | \{\} |
+| Setting words.repeat | \{\} |
+| Setting words.send | \{\} |
+| Setting words.stop | \{\} |
+| Setting words.vocabulary | 0 entries |
+| Setting words.wait | \{\} |
+| Setting words.yes | \{\} |
+
+| Stratum | Value | Items | Accuracy |
+| --- | --- | --- | --- |
+| device | bluetooth | 33 | 34.2% |
+| device | laptop | 97 | 22.5% |
+| device | wired | 63 | 29.2% |
+| kind | confirmation | 3 | 44.4% |
+| kind | correction | 2 | 50.0% |
+| kind | echo_only | 2 | 20.0% |
+| kind | listening_sound | 15 | 18.4% |
+| kind | noise | 2 | 0.0% |
+| kind | paused_request | 20 | 23.5% |
+| kind | repeat_request | 6 | 10.5% |
+| kind | request | 26 | 23.9% |
+| kind | short_request | 2 | 0.0% |
+| kind | silence | 1 | 66.7% |
+| kind | stop_word | 16 | 35.9% |
+| kind | ticket_number | 3 | 42.9% |
+| language | english | 24 | 74.7% |
+| language | mixed | 9 | 3.8% |
+| language | msa | 15 | 11.8% |
+| language | none | 5 | 25.0% |
+| language | saudi | 45 | 7.0% |
+| split | dev | 98 | 25.7% |
+
+### 77 · i1-dev-120b
+
+| Field | Value |
+| --- | --- |
+| Why | Run I, I1: the clause cache on, at Block I's commit \(0df1682\), as T0's dev run otherwise |
+| Data digest | `9ffaec013e41c75b9dc1efc7a14bffcfd5095c060183cd47aa61f70701c9139b` |
+| Scorecard | scorecard.json |
+| Price per hour of audio | $0.111 |
+| Price per million characters, canopylabs/orpheus-arabic-saudi | $40 |
+| Price per million characters, canopylabs/orpheus-v1-english | $22 |
+| Price per million tokens, cached | $0.075 |
+| Price per million tokens, input | $0.15 |
+| Price per million tokens, output | $0.6 |
+| Setting env | dev |
+| Setting groq.api_key | set |
+| Setting groq.api_key_file | not set |
+| Setting groq.base_url | https://api.groq.com |
+| Setting guard.claims | \{\} |
+| Setting guard.id_patterns | 0 entries |
+| Setting guard.min_id_digits | 3 |
+| Setting guard.on_block | drop_rest |
+| Setting guard.questions_per_reply | 1 |
+| Setting guard.remove_stray_script | true |
+| Setting interruptions.duck_level | 0.25 |
+| Setting interruptions.first_window_ms | 750 |
+| Setting interruptions.min_words | 2 |
+| Setting interruptions.mode | two_step |
+| Setting interruptions.own_words_s | 5.0 |
+| Setting interruptions.short_s | 1.2 |
+| Setting interruptions.short_words | 2 |
+| Setting join.current_kid | key-1 |
+| Setting join.keys | set |
+| Setting join.keys_file | not set |
+| Setting join.max_clock_skew_s | 30 |
+| Setting join.ttl_s | 60 |
+| Setting limits.actions_per_caller_per_day | 20 |
+| Setting limits.idle_s | 120.0 |
+| Setting limits.max_call_s | 600.0 |
+| Setting llm.max_output_tokens | 1024 |
+| Setting llm.model | openai/gpt-oss-120b |
+| Setting llm.provider | groq |
+| Setting llm.reasoning_effort | medium |
+| Setting llm.timeout_s | 8.0 |
+| Setting llm.vary_first_line | true |
+| Setting logging.content | false |
+| Setting logging.format | console |
+| Setting logging.level | INFO |
+| Setting logging.pipecat | off |
+| Setting privacy.consent_version | none |
+| Setting privacy.record_audio | false |
+| Setting run.agent | ole5_voice.agent:talker_agent |
+| Setting run.cap_usd | 2.6 |
+| Setting run.knowledge | ole5_voice.knowledge_base:knowledge_base |
+| Setting run.lead_s | 1.0 |
+| Setting run.llm_input_tokens | 8000 |
+| Setting run.llm_rpm | 20 |
+| Setting run.smoke_only | false |
+| Setting run.stt_rpm | 10 |
+| Setting run.tail_s | 47.0 |
+| Setting run.tools | declared |
+| Setting run.tts_rpm | 5 |
+| Setting server.allowed_origins | 0 entries |
+| Setting server.dev_caller | none |
+| Setting server.dev_page | true |
+| Setting server.forwarded_allow_ips | 0 entries |
+| Setting server.ice_servers | 0 entries |
+| Setting server.public_url | none |
+| Setting server.turn_secret | not set |
+| Setting server.turn_secret_file | not set |
+| Setting server.turn_ttl_s | 3600 |
+| Setting session.mode | none |
+| Setting stt.caption_filter | true |
+| Setting stt.live_language | session |
+| Setting stt.model | whisper-large-v3 |
+| Setting stt.no_speech_max | 0.55 |
+| Setting stt.provider | groq |
+| Setting stt.send_prompt | true |
+| Setting stt.timeout_s | 6.0 |
+| Setting tracing.endpoint | none |
+| Setting tracing.include_transcripts | true |
+| Setting tracing.project | ole5-voice |
+| Setting tracing.redact | 0 patterns |
+| Setting tts.cache_clauses | true |
+| Setting tts.cache_phrases | true |
+| Setting tts.clause_cache_mb | 512 |
+| Setting tts.languages | \{"ar": \{"model": "canopylabs/orpheus-arabic-saudi", "voice": "abdullah"\}, "ar-SA": \{"model": "canopylabs/orpheus-arabic-saudi", "voice": "abdullah"\}, "en": \{"model": "canopylabs/orpheus-v1-english", "voice": "troy"\}\} |
+| Setting tts.provider | groq |
+| Setting tts.timeout_s | 6.0 |
+| Setting tts.trim_silence | false |
+| Setting turns.complete_hold_ms | 600 |
+| Setting turns.max_silence_ms | 3000 |
+| Setting turns.smart_turn | true |
+| Setting turns.smart_turn_max_duration_s | 8.0 |
+| Setting turns.smart_turn_pre_speech_ms | 500 |
+| Setting turns.smart_turn_stop_ms | 3000 |
+| Setting turns.smart_turn_threshold | 0.5 |
+| Setting turns.vad_confidence | 0.7 |
+| Setting turns.vad_min_volume | 0.6 |
+| Setting turns.vad_start_ms | 200 |
+| Setting turns.vad_stop_ms | 200 |
+| Setting words.backchannel | \{\} |
+| Setting words.no | \{\} |
+| Setting words.repeat | \{\} |
+| Setting words.send | \{\} |
+| Setting words.stop | \{\} |
+| Setting words.vocabulary | 0 entries |
+| Setting words.wait | \{\} |
+| Setting words.yes | \{\} |
+
+| Start of time | Items | Variants | No search median (ms) | No search 90th (ms) | Search median (ms) | Search 90th (ms) | Progress late |
+| --- | --- | --- | --- | --- | --- | --- | --- |
+| detector | 11 | 49 | 1429 | 1464 | 2608 | 4383 | 2 |
+| label | 6 | 23 | 693 | 1457 | 2893 | 4500 | 3 |
+
+| Target | Held |
+| --- | --- |
+| no_search_median_ms | holds |
+| no_search_p90_ms | holds |
+| search_median_ms | holds |
+| search_p90_ms | fails |
+| progress_late | fails |

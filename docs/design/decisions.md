@@ -3246,8 +3246,20 @@ twice; DOC-REF: every `D-NNN` cited anywhere is a heading here), so keep its sha
     `LanguageChoice`.
   - Debt: several calls classify one at a time (TD-145); the CPU index is checked again at the
     deployment (TD-146); Silero's file is kept by a third party (TD-147).
-  - Run H has not run: its numbers, and whether an arm is kept, come in an amendment.
-- **Evidence:** the owner's words above; the download step's smoke of 2026-11-11 (each adapter
+  - *Amended 2026-11-12, run H on dev: no arm is kept; `session` stays the default, Q19's
+    setting is not written, and held-out is not run.* Both classifiers meet condition 4 (10
+    paused cut-offs each, 12 allowed; the median paired turn-end difference 0.8 ms for Silero
+    and 2.0 ms for ECAPA against the off passes' 1.5 ms) and condition 3. Silero fails
+    condition 2: the ordinary call 5 items worse, none better, one a request. ECAPA passes
+    condition 1, English in an Arabic call 10 items better and none worse (p = 0.002, the
+    English items' accuracy 0.08 to 0.37, no Arabic item worse), and fails condition 2: the
+    ordinary call 4 items worse, none better, each a short English turn heard as Arabic in an
+    English call, one a ticket number item. ECAPA helps a call held in Arabic and harms only one
+    held in English; a rule for that is a dated amendment for the owner before any further run
+    (plan 007's Future improvements).
+- **Evidence:** the owner's words above; run H's passes and runs (`lid1-dev-off-a`,
+  `lid1-dev-silero`, `lid1-dev-ecapa`, `lid1-dev-off-b`; `lid2-dev-label`, `lid2-dev-ar`,
+  `lid2-dev-en` and each classifier's three arms, in the history); the download step's smoke of 2026-11-11 (each adapter
   loaded from the folder with no request and no file written; an English, a Saudi and an MSA
   dev variant classified as their items' languages by both; on 2.0 s clips at 2 threads, the
   wall-clock median about 7 ms for Silero and about 250 ms for ECAPA, which are run H's
@@ -3398,7 +3410,13 @@ twice; DOC-REF: every `D-NNN` cited anywhere is a heading here), so keep its sha
   Orpheus requests saved, each look-up's time and the time to first audio; only if all five of
   its keep rule's conditions hold does `tts.cache_clauses` become True by default for every team
   (Q25). Otherwise the default stays off, the result is recorded, and the cache stays for a team
-  to turn on.
+  to turn on. *Amended 2026-11-12, run I's result: the default stays off.* Of 266 clauses asked,
+  9 were held (3.4%), all in an item's later variants and none in a first one (condition 2,
+  at least 2%, fails); a miss's look-up 0.038 ms and a hit's read 10.5 ms at p90 (conditions 3
+  and 4 hold); two calls failed, neither from the cache (condition 1, no call failed, fails);
+  the search path's p90 4,397 ms against T0's 3,009 and the 4,000 bound, the knowledge base
+  timing out in the run (condition 5 fails). The cache works and costs no time, but a clause
+  seldom comes back within the agent's calls.
 - **Consequences:** a team that turns it on keeps the agent's words of its calls as audio under
   `var_dir`, at most `tts.clause_cache_mb`, removed only past the bound or with the folder; the
   guide's data-and-privacy page says so. `ModelUsage.cache_hits` (public) now counts held
