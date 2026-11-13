@@ -79,7 +79,7 @@ def tag_of(
 ) -> LanguageTag:
     """The agent's tag of `language` (a code, or a provider's name of it): the call's own when
     its language is the same, else the first of `spoken` in it, else the call's. The call
-    report names a turn's language so (plan 007's Block H)."""
+    report names a turn's language so (D-086)."""
     code = heard_code(language) or primary_code(call)
     if primary_code(call) == code:
         return call

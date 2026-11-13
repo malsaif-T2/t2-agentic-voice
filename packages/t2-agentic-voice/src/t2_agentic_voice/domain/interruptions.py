@@ -32,8 +32,8 @@ domain/interruption_words.py. Its steps, in order:
    first is a no word; fewer: go on.
 
 Step 2's echo and its whole spellings, and step 3's exception, changed the registered rule on
-2026-11-03, after Track A's review: the agent says back what it heard, so a reply can hold any
-word the caller said; Track B's review widened step 3's to any repeat word the reply holds,
+2026-11-03, after plan 005's reviews (D-061): the agent says back what it heard, so a reply can
+hold any word the caller said; and step 3's exception covers any repeat word the reply holds,
 since Whisper may spell the one heard back otherwise.
 
 `whole_command` reads a turn said while the agent was silent, which `judge` never sees: a stop

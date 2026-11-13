@@ -46,10 +46,10 @@ class ReadBackPlan(_Line):
     a correction the talker answers in its own words, and this line is not spoken (the owner's
     ruling, plan 007).
 
-    `sending` is rendered by Track B's `propose` from the action's `sending`, or the library's
-    line when it is left out. Track C's session speaks it once the yes rule issues the
-    `ConfirmedAction`, before the job's outcome. It is a fixed line, never a claim that the
-    action is done."""
+    `sending` is rendered by the action runner's `propose` (actions/action_runner.py) from the
+    action's `sending`, or the library's line when it is left out. The session speaks it once
+    the yes rule issues the `ConfirmedAction`, before the job's outcome. It is a fixed line,
+    never a claim that the action is done."""
 
     action: ActionName
     tool_call_id: str = Field(min_length=1)

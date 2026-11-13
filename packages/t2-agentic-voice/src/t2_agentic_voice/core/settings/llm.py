@@ -1,6 +1,6 @@
 """The `llm` group: the talker's chat model (the design's 7.6; plan 006), on Groq, the only
-provider for now (D-004). Its defaults are the agent's starting values: `model` and
-`reasoning_effort` move only on the plan's registered run K (GP-18)."""
+provider for now (D-004). Its defaults move only on a registered measurement (GP-18): run K
+moved `reasoning_effort` to medium (D-074)."""
 
 from __future__ import annotations
 

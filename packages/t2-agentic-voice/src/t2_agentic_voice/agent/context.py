@@ -29,8 +29,9 @@ caller heard it, built from the `Conversation` the session hands with each turn
 - **A note the model copies** anyway, a reply's number or a cut clause's share, is taken out of
   what it writes before the clause splitter (`Unnoted`), so it is never spoken; only those two.
 - **What only the talker knew** goes beside the heard history, in its place: the tool calls and
-  results it kept of a past turn (agent/talker.py), after that turn's words, and the developer
-  note of a clause the output guard held back from that turn's reply.
+  results it kept of a past turn (agent/tool_calls.py's `Memory`), after that turn's words, or
+  before them for a turn gone on with, whose words join the next turn's message, and the
+  developer note of a clause the output guard held back from that turn's reply.
 - **A request that offers no tool** holds each tool result as a system message and none of the
   calls that asked for them (`without_calls`).
 

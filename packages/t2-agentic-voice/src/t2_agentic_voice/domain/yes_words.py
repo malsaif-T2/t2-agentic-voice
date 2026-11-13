@@ -21,7 +21,7 @@ The change markers (`change`, D-082) are read only of a chat model's yes (domain
 one is a correction, never a yes. They are the owner's ruling's examples of a change, and the
 verbs with the object pronoun on them, as the send words are listed.
 
-With each turn's language from a classifier (plan 007's Block H), an answer in another language
+With each turn's language from a classifier (D-086), an answer in another language
 than the read-back's is routine, and the read-back's lists hold none of its no words or change
 markers. So `rails_for` gives `judged`'s rails, for words heard in another language (or in none
 named), the no words and the change markers of every language the agent speaks beside the

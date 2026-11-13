@@ -1,4 +1,4 @@
-"""The spoken-language classifier port (plan 007's Block H): a few seconds of a turn's speech in,
+"""The spoken-language classifier port (D-086): a few seconds of a turn's speech in,
 the share of each language asked out, so each turn can be sent to speech-to-text in the
 language the caller spoke (domain/turn_language.py's rule).
 

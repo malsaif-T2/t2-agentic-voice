@@ -19,8 +19,7 @@ An action's schema is its draft's, with no field beyond it. Parsing refuses a ke
 does not hold, so a field the talker invents is told back to it (invariant 4), and consent is
 never something the talker can claim (invariant 1). Every check is actions/action_checks.py's.
 
-What the runtime does with an action is the job of `actions/action_runner.py` (plan 007's
-Track B).
+What the runtime does with an action is the job of `actions/action_runner.py`.
 """
 
 from __future__ import annotations

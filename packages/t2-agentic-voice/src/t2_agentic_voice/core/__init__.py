@@ -1,7 +1,7 @@
-"""core: what every layer shares: the settings, structured logging, the error types, tracing
-(the span helpers, the redaction hook, and the private provider with its exporter), the caller's
-identity and consent (`identity.py`), a call's events and report (`events.py`), and its clock
-(`clock.py`).
+"""core: what every layer shares, below them all: the settings, structured logging, the error
+types, tracing, the call's clock, and the types the layers hand each other (a caller's identity,
+a call's events and report, the yes rule's inputs).
 
-It imports no other layer (harness.toml [layers]), so every layer may import it.
+It imports no other layer, so every layer may import it. ARCHITECTURE.md's "Layers" maps the
+layers and what each owns; each module's docstring says what it holds.
 """

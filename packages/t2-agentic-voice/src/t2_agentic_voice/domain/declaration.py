@@ -294,11 +294,11 @@ class VoiceAgent(Declared):
 
     def call_language(self, requested: LanguageTag | None, *, locale: str | None) -> Language:
         """The language a call is held in, fixed when it joins and kept to its end (the echo
-        has no other; the talker will pick each reply's): the `requested` tag (the caller's
-        pick in the client) when the agent speaks it; else the caller's `locale` (a BCP 47 tag,
-        as the join token carries it), matched in any case, its exact tag first, then the first
-        of the agent's languages whose primary language is the locale's primary subtag (`ar`
-        for both Arabic presets); else the agent's first language."""
+        has no other; the talker picks each reply's, agent/language.py): the `requested` tag
+        (the caller's pick in the client) when the agent speaks it; else the caller's `locale`
+        (a BCP 47 tag, as the join token carries it), matched in any case, its exact tag first,
+        then the first of the agent's languages whose primary language is the locale's primary
+        subtag (`ar` for both Arabic presets); else the agent's first language."""
         for language in self.languages:
             if language.tag == requested:
                 return language

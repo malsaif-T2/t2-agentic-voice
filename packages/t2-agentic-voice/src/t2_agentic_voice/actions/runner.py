@@ -6,8 +6,9 @@ invalid one answered with its field named, invariant 4), the bound parameters fi
 call's caller, the function run, a sync one in a worker thread, within its `timeout_s` on the
 call's clock (core/clock.py: a test's virtual clock times a tool out only when it is moved on,
 never on asyncio's own time), and its return made a `ToolResult`; a `ToolError` answered with
-its message, any other failure or the timeout with a generic one, logged at ERROR by its type
-and its frames alone, never its text or an argument (actions/tools.py). The runner holds no
+its message, any other failure or the timeout with a generic one (actions/tools.py): a failure
+logged at ERROR by its type and its frames alone, a timeout at WARNING as `tool_timed_out` with
+its `timeout_s`, never a text or an argument. The runner holds no
 call's state, so one serves every call of an agent; each call's clock comes with each run, as
 its context does.
 

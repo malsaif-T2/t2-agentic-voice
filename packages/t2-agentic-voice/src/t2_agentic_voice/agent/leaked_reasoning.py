@@ -17,10 +17,10 @@ a2-dev saw too («…حالياً.We need to respond accordingly.…»).
   said: the clause splitter cuts it there (domain/text/clauses.py), and the question limit
   counts its question.
 - **What goes.** From a leak's first character, every piece of the model's text in that request
-  goes, unspoken and unblocked; what came before it is said. The reply then stops, as the
-  question limit stops one (agent/question_limit.py): the model's stream is closed, as a blocked
-  clause's `drop_rest` closes it, no tool of that request runs and no request follows. What the
-  model wrote is kept without the leak, so no later request reads it.
+  goes, unspoken and unblocked; what came before it is said. The reply then stops as a blocked
+  clause's `drop_rest` stops it (agent/turn.py): the model's stream is closed, no tool of that
+  request runs and no request follows. What the model wrote is kept without the leak, so no
+  later request reads it.
 - **As it streams** (`text`): the text after a possible beginning is held until it is one or
   cannot be (a few characters: the longest opening), so the clause before it is never held.
   `close` gives what is held at the end of a request's text, when it is none; each request of

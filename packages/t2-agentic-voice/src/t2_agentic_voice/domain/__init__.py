@@ -1,13 +1,7 @@
-"""domain: the rules of a support call, with no IO.
+"""domain: the rules of a support call, with no IO, and the ports (protocols) every outside
+service is reached through.
 
-What counts as a clear yes, the ticket flow's states, what an interruption is (spoken commands
-that cut the agent off, listening sounds, the agent's own words), Arabic text normalization,
-how numbers and ticket IDs are spoken, the evaluation scorers' pure parts (term recall, ID
-recall, text from silence, the sign test), and the ports (protocols) every outside service is
-reached through. Built so far: the text rules (`text/`), the scorers' pure parts, the
-declaration of a use case (`declaration.py`, how it fails `declaration_errors.py`), the words the
-interruption rule reads (`words.py`), and the speech-to-text, text-to-speech and identity ports;
-as signatures so far, the interruption rule (`interruptions.py`) and the filter for text from
-silence (`silence.py`). It imports only core (harness.toml [layers]), so its rules are easy to
-test and impossible to bypass with IO.
+It imports only core, so each rule is a plain function with plain tests that no IO can go
+around. ARCHITECTURE.md's "Layers" maps the layers and what each owns; each module's docstring
+says what it holds.
 """

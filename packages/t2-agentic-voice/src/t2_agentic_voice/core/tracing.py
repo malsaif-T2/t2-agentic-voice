@@ -230,7 +230,7 @@ class Tracing:
         share: float | None = None,
     ) -> AbstractContextManager[SpeechToTextSpan]:
         """A speech-to-text span under `parent`, with the model, the language sent, how it was
-        chosen and a classifier's share for it, when given (plan 007's Block H), and the clip's
+        chosen and a classifier's share for it, when given (D-086), and the clip's
         length; its `record` adds what came back."""
         attributes: dict[str, AnyValue] = {
             SpanAttributes.OPENINFERENCE_SPAN_KIND: OpenInferenceSpanKindValues.LLM.value,

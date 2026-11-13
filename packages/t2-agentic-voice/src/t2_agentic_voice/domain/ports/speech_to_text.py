@@ -3,8 +3,9 @@
 Every speech-to-text adapter implements `SpeechToText`. It raises `ProviderError` on a
 provider's failure, and stops at once when its task is cancelled, leaving no task or connection
 behind. Whoever builds an adapter closes it with `aclose()`, the one close every port that
-holds connections has (the text-to-speech port and the used-token store too), so no caller
-looks a close up by name. Public, and stable, through the `ports` facade (D-021).
+holds connections has (the chat model, text-to-speech, the language classifier, the used-token
+store and the outbox too; not the knowledge base, the team's own), so no caller looks a close
+up by name. Public, and stable, through the `ports` facade (D-021).
 """
 
 from __future__ import annotations
