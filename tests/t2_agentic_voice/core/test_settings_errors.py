@@ -183,6 +183,36 @@ def test_a_redact_pattern_re_cannot_compile_is_named_with_the_rest_never_its_tex
         assert (error.__cause__, error.__context__) == (None, None)
 
 
+@pytest.mark.parametrize(
+    "pattern",
+    [
+        "a{4294967296}",  # re raises OverflowError: past its repetition limit
+        f"(?P={MADE_UP_KEY})",  # re.error, whose text quotes the group's name
+    ],
+)
+def test_an_id_pattern_re_cannot_compile_is_named_never_its_text(
+    monkeypatch: pytest.MonkeyPatch, pattern: str
+) -> None:
+    """The guard's ID patterns fail as the redact patterns do: an OverflowError stopped the
+    load raw, with no setting named and no FIX line."""
+    monkeypatch.setenv(f"{PREFIX}GUARD__ID_PATTERNS", json.dumps(["x", pattern]))
+    builds: list[Callable[[], object]] = [
+        VoiceSettings.from_env,
+        lambda: VoiceSettings.model_validate(
+            {"env": "test", "guard": {"id_patterns": ("x", pattern)}}
+        ),
+    ]
+    for build in builds:
+        with pytest.raises(ConfigurationError) as raised:
+            build()
+        error = raised.value
+        assert _named(error) == [f"{PREFIX}GUARD__ID_PATTERNS"]
+        why = "(Value error, pattern 1 is not a regular expression Python reads)"
+        assert f"{PREFIX}GUARD__ID_PATTERNS {why}" in error.message and "FIX:" in error.message
+        assert holding(MADE_UP_KEY, shown(error)) == []
+        assert (error.__cause__, error.__context__) == (None, None)
+
+
 def test_from_env_says_what_to_correct(monkeypatch: pytest.MonkeyPatch) -> None:
     """An installed library ships no `.env.example`, so the FIX line names only the setting."""
     monkeypatch.setenv(f"{PREFIX}STT__TIMEOUT_S", "0")

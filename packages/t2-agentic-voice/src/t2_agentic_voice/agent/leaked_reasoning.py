@@ -107,7 +107,12 @@ class LeakedReasoning:
 
     def _give(self, *, closing: bool) -> str:
         until = len(self._text)
-        for start in _START.finditer(self._text, max(0, self._given - 2)):
+        # A start not yet read follows an end mark that is the given text's last character
+        # other than a space, however many spaces were given after it: the scan resumes at
+        # that character (at the text's beginning while it holds only spaces), so the text
+        # streamed is read as it is in one piece.
+        back = len(self._text[: self._given].rstrip())
+        for start in _START.finditer(self._text, max(0, back - 1)):
             at = start.end()
             if at < self._given:
                 continue
