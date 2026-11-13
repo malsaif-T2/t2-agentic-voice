@@ -259,7 +259,7 @@ its line says what changes.
   child become one child (about 30 s of a worker); the gc report's test runs on a small project, as
   D-088 did for the commands; the tickets server test gets test detectors instead of warming Silero
   and Smart Turn.
-- deb-1 (debt, TD-072): the stand-ins in `tests/t2_agentic_voice/voice/session/conftest.py` are
+- deb-1 (debt, a row now paid and removed): the stand-ins in `tests/t2_agentic_voice/voice/session/conftest.py` are
   removed, and the gate's only warning (Pipecat's own `AudioContextTTSService` deprecation, 8 times)
   is filtered in `pyproject.toml` beside the audioop filter.
 - Promote (step 5), each seen twice: plan-time names ("Track C", "Block 0") in the library's and the
@@ -281,13 +281,13 @@ its line says what changes.
   ARCHITECTURE.md's and CLAUDE.md's "later" for what is built (within CLAUDE.md's 120 lines); the
   roadmap's Decided list (stops at D-068), its settled questions and its missing *Done* lines for M2,
   M4 and M5; SECURITY.md's invariant 3 naming the plan instead of its tests; GP-19's test pointers;
-  WORKING-RULES.md's launch.json (three entries, one of which spends); TD-085's one-line fixes;
+  WORKING-RULES.md's launch.json (three entries, one of which spends); the guide's one-line slips (a debt row, now paid and removed);
   latency.md's 0.94 and 0.93 s for one quantity; package-design.md's "built so far" notes;
   garbage-collection.md's serial `--durations`.
 - doc-16 (untraced numbers, GP-16): the Ole5 README's "about 15 s" first start and latency.md's
   3,617-character prompt and "medians 0.20 and 0.18 s": measured again or removed.
-- deb-1 to deb-18, core-6, har-6, har-7 (the debt list): paid rows removed (TD-057, TD-072, TD-085,
-  TD-128, and the parts of others paid); stale rows brought up to date (TD-034, TD-048, TD-056,
+- deb-1 to deb-18, core-6, har-6, har-7 (the debt list): paid rows removed (GP-19's pointer, the suite's stand-ins,
+  the guide's slips, the cards' screen, and the parts of others paid); stale rows brought up to date (TD-034, TD-048, TD-056,
   TD-058, TD-059, TD-063, TD-090, TD-095, TD-104, TD-121, TD-124, TD-125, TD-127, TD-129, TD-130);
   the rows whose trigger passed given their next real trigger (TD-005, TD-014, TD-022, TD-068, TD-070,
   TD-075, TD-080, TD-081, TD-083, TD-087, TD-093, TD-103, TD-111); module sizes kept in TD-140 alone,
