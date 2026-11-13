@@ -62,19 +62,30 @@ def fixed(
     turn_id: TurnId | None = None,
 ) -> Line | None:
     """A fixed phrase of the call's language as the one clause of `reply_id` (its first, or the
-    echo's frame), its audio from the phrase audio, captioned as written; None, logged by the
-    language alone, when the phrase audio does not hold it, which the runtime's start declares
-    (it then goes unsaid, and no request is sent for it)."""
+    echo's frame), its audio from the phrase audio (`phrase_audio`), captioned as written; None
+    when the phrase audio does not hold it."""
     language = setup.language.tag
-    try:
-        audio = setup.phrases.audio(text, language=language)
-    except LookupError:
-        _log.warning("phrase_not_declared", language=language, reply_id=reply_id)
+    audio = phrase_audio(setup, text, language, reply_id=reply_id)
+    if audio is None:
         return None
     speak = Speak(
         reply_id=reply_id, clause=0, turn_id=turn_id, text=text, language=language, audio=audio
     )
     return Line(speak=speak, caption=text)
+
+
+def phrase_audio(
+    setup: CallSetup, text: str, tag: LanguageTag, *, reply_id: ReplyId
+) -> AudioChunk | None:
+    """A fixed phrase's audio in `tag`'s voice, for reply `reply_id`, from the phrase audio, with
+    no request; None, logged by the language and the reply's number alone, when the phrase audio
+    does not hold it, which the runtime's start declares (it then goes unsaid, and no request is
+    sent for it)."""
+    try:
+        return setup.phrases.audio(text, language=tag)
+    except LookupError:
+        _log.warning("phrase_not_declared", language=tag, reply_id=reply_id)
+        return None
 
 
 def padded(audio: AudioChunk, *, before_s: float = 0.0, after_s: float = 0.0) -> AudioChunk:

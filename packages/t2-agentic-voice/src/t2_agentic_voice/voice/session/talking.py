@@ -80,27 +80,24 @@ from t2_agentic_voice.agent.talker import (
     Talker,
     TalkerEvent,
 )
-from t2_agentic_voice.core.conversation import TalkerTurn
+from t2_agentic_voice.core.conversation import TalkerTurn, heard_language
 from t2_agentic_voice.core.errors import ProviderError
 from t2_agentic_voice.core.events import TurnId
 from t2_agentic_voice.core.logging import get_logger
 from t2_agentic_voice.core.yes_inputs import HeardWords
 from t2_agentic_voice.voice.session.books import CallBooks
-from t2_agentic_voice.voice.session.io import CallSetup
+from t2_agentic_voice.voice.session.io import CallSetup, Guarded
 from t2_agentic_voice.voice.session.playback import Reply
 from t2_agentic_voice.voice.session.read_back import Confirming
 from t2_agentic_voice.voice.session.report import TurnLog
 from t2_agentic_voice.voice.session.scope import CancelScope
 from t2_agentic_voice.voice.session.speaker import Speaker
-from t2_agentic_voice.voice.session.talker_play import Guarded as Guarded
 from t2_agentic_voice.voice.session.talker_play import Talk, TalkPlayer
 from t2_agentic_voice.voice.session.talker_progress import ProgressLines
 from t2_agentic_voice.voice.session.turn_book import TurnBook
 from t2_agentic_voice.voice.session.yes_turns import Receipt, YesTurns
 
 _log = get_logger(__name__)
-# The longest language name a `TalkerTurn` takes (core/conversation.py).
-_LANGUAGE_CHARS = range(2, 17)
 
 
 class Talking:
@@ -270,13 +267,10 @@ class Talking:
         """The turn as the talker reads it: its words whole, the language they were heard in,
         the replies it spoke over and cut, the action it declined (a read-back still current is
         declined by it: read_back.py's `handed`), and the call before it as the caller heard it."""
-        language = heard.language
-        if language is not None and len(language) not in _LANGUAGE_CHARS:
-            language = None
         return TalkerTurn(
             turn_id=turn.turn_id,
             words=heard.text,
-            language=language,
+            language=heard_language(heard.language),
             over_reply=turn.over_reply,
             cut_reply=turn.cut_reply,
             declined=self._confirming.handed(turn.turn_id, words=heard.text),
@@ -287,7 +281,7 @@ class Talking:
         spoken = [language.tag for language in self._setup.agent.languages]
         talk.language = reply_language(turn, call=self._setup.language.tag, spoken=spoken)
         self._talks[talk.turn_id] = talk
-        talk.task = talk.scope.start(self._run(talk, turn), name=f"talker-{talk.turn_id}")
+        talk.scope.start(self._run(talk, turn), name=f"talker-{talk.turn_id}")
 
     async def _dropped(self, talk: Talk) -> None:
         """`talk` is let go: its work cancelled (its reply, if opened, stopped by whoever
@@ -320,12 +314,10 @@ class Talking:
         self._events.interrupted(newest.turn_id, "new_words")
 
     def _earlier(self, turn_id: TurnId) -> Reply | None:
-        """The newest reply in progress to an earlier turn; None when one answers `turn_id` or
-        a later turn, or none is in progress."""
-        answering = [r for r in self._speaker.playback.in_progress() if r.turn_id is not None]
-        if not answering or max(r.turn_id or 0 for r in answering) >= turn_id:
-            return None
-        return answering[-1]
+        """The newest reply in progress to an earlier turn (playback.py's `Playback.earlier`);
+        None when there is none."""
+        earlier = self._speaker.playback.earlier(turn_id)
+        return earlier[-1] if earlier else None
 
     async def _run(self, talk: Talk, turn: TalkerTurn) -> None:
         """Iterate the talker's reply in `talk`'s scope, each event kept while held or kept,

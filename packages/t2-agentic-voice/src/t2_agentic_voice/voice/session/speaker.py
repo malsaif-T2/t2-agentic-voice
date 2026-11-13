@@ -141,14 +141,7 @@ class Speaker:
     ) -> Reply:
         """Ask for the reply `lines` say, clause by clause, its scope and its span opened."""
         reply = self.playback.ask(kind, lines, turn_id=turn_id, notice=notice)
-        self._scopes[reply.reply_id] = CancelScope(
-            name=f"reply-{reply.reply_id}", clock=self._setup.clock
-        )
-        self._history.asked(reply.reply_id, turn_id, tuple(line.caption for line in lines))
-        voice = self._voice
-        self._trace.tts_started(
-            reply.reply_id, turn_id, model=voice.model, voice=voice.voice, language=self._tag
-        )
+        self._opened(reply, tuple(line.caption for line in lines))
         for line in lines:
             if line.speak.audio is not None:
                 self._usage.cached(self._tag)
@@ -164,17 +157,23 @@ class Speaker:
         work began in) and its span opened, its clauses added as they come, closed once its
         work is done (open_reply.py)."""
         reply = self.playback.open("answer", turn_id=turn_id)
-        reply_id = reply.reply_id
+        opened = self._opened(reply, (), scope=scope)
+        return OpenReply(reply_id=reply.reply_id, scope=opened, writer=self, setup=self._setup)
+
+    def _opened(
+        self, reply: Reply, captions: tuple[str, ...], *, scope: CancelScope | None = None
+    ) -> CancelScope:
+        """`reply` is asked for, its clauses' `captions` known so far: its scope (a new one, or
+        `scope`), its entry in the heard history and its span opened; its scope."""
+        reply_id, turn_id = reply.reply_id, reply.turn_id
         name = f"reply-{reply_id}"
-        self._scopes[reply_id] = scope or CancelScope(name=name, clock=self._setup.clock)
-        self._history.asked(reply_id, turn_id, ())
+        opened = self._scopes[reply_id] = scope or CancelScope(name=name, clock=self._setup.clock)
+        self._history.asked(reply_id, turn_id, captions)
         voice = self._voice
         self._trace.tts_started(
             reply_id, turn_id, model=voice.model, voice=voice.voice, language=self._tag
         )
-        return OpenReply(
-            reply_id=reply_id, scope=self._scopes[reply_id], writer=self, setup=self._setup
-        )
+        return opened
 
     async def say_line(
         self, line: SpokenLine, *, language: LanguageTag, at: float, turn_id: TurnId | None

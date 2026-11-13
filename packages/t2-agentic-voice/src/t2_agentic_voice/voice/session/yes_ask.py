@@ -7,12 +7,11 @@ and only for words `decide` marked `askable` (domain/yes_rule.py): every other a
 lists' and asks nothing (`wanted`). One request a turn, and one at a time.
 
 **The request** (domain/consent_check.py's) holds the read-back's summary and closing question
-as its plan rendered them and the turn's own heard words, nothing else. It is a call's chat
-request, counted in its usage as the talker's are (usage.py), and runs as a task of a cancel
-scope of its own, holding no lock of the session's: only its answer lands as a step of the
-session's (`guarded`, under its lock), so no other step waits on the model. A request that takes
-longer than `TIMEOUT_S` on the call's clock is cancelled; a failure or a timeout is no word. Each
-outcome is logged by its kind alone, never the words.
+as its plan rendered them and the turn's own heard words, nothing else. It is the session's own
+timed chat request (model_word.py), within `TIMEOUT_S`, and runs as a task of a cancel scope of
+its own, holding no lock of the session's: only its answer lands as a step of the session's
+(`guarded`, under its lock), so no other step waits on the model. A failure or a timeout is no
+word. Each outcome is logged by its kind alone, never the words.
 
 **The verdict** is the yes rule's (`judged`), never the model's word as it is, carried out by
 yes_turns.py as any answer is, told `by="model"`; and only while the same read-back is current
@@ -39,13 +38,11 @@ or is ending, when the call's end leaves it unfinished), and settled as any turn
 
 from __future__ import annotations
 
-import asyncio
 from collections.abc import Awaitable, Callable
 from dataclasses import dataclass
 from functools import partial
 from typing import Final, Literal
 
-from t2_agentic_voice.core.errors import ProviderError
 from t2_agentic_voice.core.logging import get_logger
 from t2_agentic_voice.core.yes_inputs import HeardWords, ReadBackReceipt
 from t2_agentic_voice.domain.action_lines import ReadBackPlan, SpokenLine
@@ -55,7 +52,7 @@ from t2_agentic_voice.domain.consent_check import (
     consent_check_answer,
     consent_check_request,
 )
-from t2_agentic_voice.domain.ports.chat_model import ChatRequest, TextDelta, Usage
+from t2_agentic_voice.domain.ports.chat_model import ChatRequest
 from t2_agentic_voice.domain.yes_rule import (
     AskAgain,
     Correction,
@@ -66,12 +63,12 @@ from t2_agentic_voice.domain.yes_rule import (
 )
 from t2_agentic_voice.domain.yes_words import ConsentWords, rails_for
 from t2_agentic_voice.voice.session.books import CallBooks
-from t2_agentic_voice.voice.session.io import CallSetup
+from t2_agentic_voice.voice.session.io import CallSetup, Guarded
+from t2_agentic_voice.voice.session.model_word import model_word
 from t2_agentic_voice.voice.session.open_reply import language_of
 from t2_agentic_voice.voice.session.read_back import Confirming, ReadBack
 from t2_agentic_voice.voice.session.report import TurnLog
 from t2_agentic_voice.voice.session.scope import CancelScope
-from t2_agentic_voice.voice.session.talker_play import Guarded
 from t2_agentic_voice.voice.session.turn_book import TurnBook
 
 _log = get_logger(__name__)
@@ -181,18 +178,19 @@ class YesAsks:
         self._turns.judged(ask.turn, answered=not self._over())
 
     async def _run(self, ask: _Ask, request: ChatRequest) -> None:
-        """The request, within its timeout on the call's clock, then its answer landed as a
-        step of the session's; a cancel stops both."""
-        turn_id = ask.turn.turn_id
-        read = ask.scope.start(self._read(request), name=f"yes-check-read-{turn_id}")
-        timer = ask.scope.start(self._clock.sleep(TIMEOUT_S), name=f"yes-check-timer-{turn_id}")
-        await asyncio.wait((read, timer), return_when=asyncio.FIRST_COMPLETED)
-        timer.cancel()
-        if not read.done():
-            read.cancel()
-            outcome: Outcome = "timeout"
-        else:
-            outcome = read.result()
+        """The request, within its timeout on the call's clock, then its answer, read as one
+        word, landed as a step of the session's; a cancel stops both."""
+        outcome: Outcome = await model_word(
+            self._setup,
+            self._usage,
+            request,
+            consent_check_answer,
+            scope=ask.scope,
+            timeout_s=TIMEOUT_S,
+            name="yes-check",
+            turn_id=ask.turn.turn_id,
+            failed_line="yes_model_failed",
+        )
         await self._guarded(_STEP, partial(self._landed, ask, outcome))
 
     def _rails(self, heard: HeardWords, words: ConsentWords, plan: ReadBackPlan) -> ConsentWords:
@@ -200,29 +198,6 @@ class YesAsks:
         code = language_of(self._setup, plan.language).primary
         spoken = [each.primary for each in self._setup.agent.languages]
         return rails_for(words, heard=heard.language, read_back=code, spoken=spoken)
-
-    async def _read(self, request: ChatRequest) -> Outcome:
-        """The model's whole answer, read as one word; `failed` for its failure, logged by kind.
-        Never raises (the scope would log its own line) but for a cancel."""
-        model = self._setup.overlap_model
-        if model is None:  # never so: `wanted` asks only with a model
-            return "failed"
-        self._usage.chat_requested(request.model)
-        usage: Usage | None = None
-        parts: list[str] = []
-        try:
-            async for event in model.stream(request):
-                if isinstance(event, TextDelta):
-                    parts.append(event.text)
-                elif isinstance(event, Usage):
-                    usage = event
-        except Exception as error:
-            failure = error.kind if isinstance(error, ProviderError) else type(error).__qualname__
-            _log.warning("yes_model_failed", call_id=self._setup.call_id, failure=failure)
-            return "failed"
-        finally:
-            self._usage.chat_replied(request.model, usage)
-        return consent_check_answer("".join(parts))
 
     async def _landed(self, ask: _Ask, outcome: Outcome) -> None:
         """The request's answer, as a step of the session's: the yes rule's verdict on it,

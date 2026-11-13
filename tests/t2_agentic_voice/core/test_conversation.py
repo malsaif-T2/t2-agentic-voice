@@ -17,6 +17,7 @@ from t2_agentic_voice.core.conversation import (
     SaidReply,
     TalkerTurn,
     TurnFate,
+    heard_language,
 )
 from t2_agentic_voice.voice.session.history import HeardClause, HeardTurn
 
@@ -64,3 +65,19 @@ def test_the_fates_are_the_heard_historys() -> None:
 def test_a_wrong_value_is_refused(model: type[Any], values: dict[str, Any]) -> None:
     with pytest.raises(ValidationError):
         model.model_validate(values)
+
+
+@pytest.mark.parametrize(
+    ("heard", "kept"),
+    [("en", "en"), ("arabic", "arabic"), ("x" * 16, "x" * 16), ("x", None), ("x" * 17, None)],
+)
+def test_a_turn_keeps_a_heard_language_its_model_takes_and_none_other(
+    heard: str, kept: str | None
+) -> None:
+    """The session hands the talker a transcript's language only when `TalkerTurn` takes it."""
+    assert heard_language(heard) == kept and heard_language(None) is None
+    if kept is not None:
+        assert TalkerTurn(turn_id=0, words="hi", language=heard).language == kept
+    else:
+        with pytest.raises(ValidationError):
+            TalkerTurn(turn_id=0, words="hi", language=heard)

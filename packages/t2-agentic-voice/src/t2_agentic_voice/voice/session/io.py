@@ -118,7 +118,7 @@ entry point (`voice/calls.py`).
 
 from __future__ import annotations
 
-from collections.abc import Callable
+from collections.abc import Awaitable, Callable
 from dataclasses import dataclass
 from typing import Protocol
 
@@ -144,6 +144,9 @@ from t2_agentic_voice.voice.session.session_events import SessionEvent
 # Where the session's public events go (core/events.py): the runtime's observers, queued off the
 # call's path (the design's 6.6). It returns at once and never raises.
 EventSink = Callable[[Event], None]
+# A step of the session's, by its name, run under its lock, one at a time (call.py's `_guarded`):
+# what a task of the session's own (a talker's reply, a chat model's word) runs its result as.
+Guarded = Callable[[str, Callable[[], Awaitable[None]]], Awaitable[None]]
 
 
 class PhraseAudio(Protocol):

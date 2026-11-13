@@ -60,11 +60,10 @@ from t2_agentic_voice.domain.yes_rule import (
 )
 from t2_agentic_voice.voice.session.action_job import ActionJob
 from t2_agentic_voice.voice.session.books import CallBooks
-from t2_agentic_voice.voice.session.io import CallSetup
+from t2_agentic_voice.voice.session.io import CallSetup, Guarded
 from t2_agentic_voice.voice.session.read_back import Confirming
 from t2_agentic_voice.voice.session.report import TurnLog
 from t2_agentic_voice.voice.session.speaker import Speaker
-from t2_agentic_voice.voice.session.talker_play import Guarded
 from t2_agentic_voice.voice.session.turn_book import TurnBook
 from t2_agentic_voice.voice.session.yes_ask import Receipt as Receipt
 from t2_agentic_voice.voice.session.yes_ask import YesAsks

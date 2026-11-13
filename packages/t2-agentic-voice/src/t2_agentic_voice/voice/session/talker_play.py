@@ -13,7 +13,6 @@ log, for the turn's span, and logged by its count and labels alone.
 from __future__ import annotations
 
 import asyncio
-from collections.abc import Awaitable, Callable
 from dataclasses import dataclass, field
 
 from t2_agentic_voice.agent.talker import (
@@ -44,9 +43,6 @@ from t2_agentic_voice.voice.session.usage import Usage
 
 _log = get_logger(__name__)
 
-# A step of the session's, run under its lock (call.py's `_guarded`).
-Guarded = Callable[[str, Callable[[], Awaitable[None]]], Awaitable[None]]
-
 
 @dataclass(kw_only=True)
 class Talk:
@@ -71,7 +67,6 @@ class Talk:
     told: bool = False
     request_at: float | None = None
     language: LanguageTag | None = None
-    task: asyncio.Task[None] | None = None
     waiting: asyncio.Task[None] | None = None
 
     @property

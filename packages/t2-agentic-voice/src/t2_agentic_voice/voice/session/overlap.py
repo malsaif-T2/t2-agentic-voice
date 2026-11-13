@@ -46,7 +46,7 @@ from dataclasses import dataclass, field
 
 from t2_agentic_voice.core.events import TurnId
 from t2_agentic_voice.core.logging import get_logger
-from t2_agentic_voice.domain.interruptions import Overlap, Verdict, holds_stop, judge
+from t2_agentic_voice.domain.interruptions import Overlap, Verdict, goes_on, holds_stop, judge
 from t2_agentic_voice.domain.silence import CAPTIONS
 from t2_agentic_voice.domain.uncertain_overlaps import is_uncertain
 from t2_agentic_voice.domain.words import WORD_KINDS, Words
@@ -62,9 +62,9 @@ from t2_agentic_voice.voice.session.session_events import (
 
 _log = get_logger(__name__)
 # The verdict on a transcript the rule failed on (a bug): the reply goes on, as for no words.
-_FAILED = Verdict(action="go_on", kind="false", reason="no_words")
+_FAILED = goes_on("no_words")
 # The verdict on yes words and listening sounds over a read-back's summary: it plays on.
-_IGNORED = Verdict(action="go_on", kind="false", reason="listening")
+_IGNORED = goes_on("listening")
 
 
 def answers(verdict: Verdict) -> bool:
@@ -99,8 +99,8 @@ class Asking:
 
 @dataclass(kw_only=True)
 class OverlapState:
-    """One overlap: the caller's turn, the reply it spoke over, when its speech began and when
-    the agent's voice was lowered; the verdict on its window's transcript and on its whole
+    """One overlap: the caller's turn, the reply it spoke over, and when its speech began; the
+    verdict on its window's transcript and on its whole
     overlap's, each None until it came; the one that `decided` it and which transcript that
     was (`decided_by`), None while it is open; the transcript a chat model is being asked about
     (`asking`), the overlap undecided until it answers; the transcripts asked for and come so
@@ -109,7 +109,6 @@ class OverlapState:
     turn_id: TurnId
     reply_id: ReplyId
     speech_at: float
-    ducked_at: float
     window: Verdict | None = None
     overlap: Verdict | None = None
     decided: Verdict | None = None
@@ -190,13 +189,11 @@ class Overlaps:
         )
         self._overlaps: dict[TurnId, OverlapState] = {}
 
-    def open(
-        self, turn_id: TurnId, *, reply_id: ReplyId, speech_at: float, at: float
-    ) -> list[Command]:
-        """Mark the turn an overlap of reply `reply_id`, at `at`: the commands that begin it,
-        `duck` (a `Send`) and `HearOverlap`, in that order."""
+    def open(self, turn_id: TurnId, *, reply_id: ReplyId, speech_at: float) -> list[Command]:
+        """Mark the turn an overlap of reply `reply_id`: the commands that begin it, `duck` (a
+        `Send`) and `HearOverlap`, in that order."""
         self._overlaps[turn_id] = OverlapState(
-            turn_id=turn_id, reply_id=reply_id, speech_at=speech_at, ducked_at=at
+            turn_id=turn_id, reply_id=reply_id, speech_at=speech_at
         )
         rules = self._rules
         return [

@@ -248,6 +248,15 @@ class Playback:
         """The replies asked for that have not ended, oldest first."""
         return [reply for reply in self._replies.values() if reply.ended_at is None]
 
+    def earlier(self, turn_id: TurnId) -> list[Reply]:
+        """The replies in progress that answer the caller's turns earlier than `turn_id`, oldest
+        first, which a reply to it stops first; none when one answers `turn_id` or a later turn
+        (the stop would drop it too), or none is in progress."""
+        answering = [reply for reply in self.in_progress() if reply.turn_id is not None]
+        if not answering or max(reply.turn_id or 0 for reply in answering) >= turn_id:
+            return []
+        return answering
+
     def drop(self, at: float, *, tail: bool = True) -> list[Reply]:
         """End at `at` every reply asked for that has not ended, as a stop or the call's end
         drops them, with no tail after it unless `tail` (the caller's own `stop` leaves none);

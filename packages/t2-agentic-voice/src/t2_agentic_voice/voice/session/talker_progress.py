@@ -12,8 +12,8 @@ from collections.abc import Awaitable, Callable
 from functools import partial
 
 from t2_agentic_voice.agent.talker import ProgressDue, TalkerEvent
-from t2_agentic_voice.voice.session.io import CallSetup
-from t2_agentic_voice.voice.session.talker_play import Guarded, Talk, TalkPlayer
+from t2_agentic_voice.voice.session.io import CallSetup, Guarded
+from t2_agentic_voice.voice.session.talker_play import Talk, TalkPlayer
 from t2_agentic_voice.voice.session.turn_book import TurnBook
 
 
