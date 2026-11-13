@@ -19,7 +19,11 @@ the session under test is the real one (testing/text_call.py).
   unless `fault`, asked as it ends, names a fault for it (plan 007): it comes back cut short
   (`cut_short`), with no audio (`no_audio`), or its request fails (`failed`). With `heard_in`
   set, each transcript handed names that language, as a call that classifies each turn's
-  language would have sent it (plan 007's Block H); the call's own otherwise.
+  language would have sent it (D-086); the call's own otherwise.
+- **`TextDriver`**: how the call moves its clock (`advance`), waits for an injection's moment
+  (`until`, at most `MAX_WAIT_S`, stepping the virtual clock at most `WAIT_STEP_S` at a time so
+  it stops soon after the moment comes), and lets the session take what it was handed, and what
+  that started run, with the clock still (`quiet`); on the system clock, each waits instead.
 """
 
 from __future__ import annotations
@@ -67,6 +71,14 @@ _CLAUSE_EVENTS = (Synthesizing, ClauseQueued, ClausePlayed, ClauseFailed)
 _REPORTS = (Transcribing, Synthesizing)
 # What may go wrong with a clause as it plays (the module's docstring).
 ClauseFault = Literal["cut_short", "no_audio", "failed"]
+# The most a wait for an injection's moment moves the clock (on the system clock, waits) before
+# it gives up, saying so: the agent's bound, past any reply of a test's.
+MAX_WAIT_S = 120.0
+# The longest step a wait for an injection's moment moves the virtual clock, so it stops soon
+# after the moment comes, even when no sleep ends then (the drop rule's tail after a reply).
+WAIT_STEP_S = 0.05
+# The turns of the event loop a text call lets pass, at most, for its session to go quiet.
+_QUIET_ROUNDS = 200
 
 
 async def settle(turns: int = 60) -> None:
@@ -267,3 +279,54 @@ class TextSide:
             if task is not None:
                 task.cancel()
                 await asyncio.gather(task, return_exceptions=True)
+
+
+class TextDriver:
+    """How a text call moves its `clock` and lets its `side`'s session go quiet (the module's
+    docstring)."""
+
+    def __init__(self, side: TextSide, clock: Clock) -> None:
+        self.side, self.clock = side, clock
+
+    async def until(self, ready: Callable[[], bool], failure: str) -> None:
+        """Move the clock on (on the system clock, wait) until `ready()`, at most MAX_WAIT_S;
+        AssertionError saying `failure` otherwise."""
+        waited = 0.0
+        while not ready():
+            clock = self.clock
+            if isinstance(clock, VirtualClock):
+                due = clock.next_due
+                if waited >= MAX_WAIT_S:
+                    raise AssertionError(f"{failure} (the call waited {waited:.1f} s)")
+                step = WAIT_STEP_S if due is None else min(max(due - clock.now(), 0.0), WAIT_STEP_S)
+                await self.advance(step)
+                waited += step
+            else:
+                await asyncio.sleep(0.02)
+                waited += 0.02
+                if waited > MAX_WAIT_S:
+                    raise AssertionError(f"{failure} (the call waited {waited:.1f} s)")
+            await self.quiet()
+
+    async def advance(self, seconds: float) -> None:
+        """Move the clock `seconds` on (on the system clock, wait), then let the session go
+        quiet."""
+        clock = self.clock
+        if isinstance(clock, VirtualClock):
+            await clock.advance(seconds)
+        else:
+            await asyncio.sleep(seconds)
+        await self.quiet()
+
+    async def quiet(self) -> None:
+        """Let the session take what it was handed, and what that started run, with the clock
+        still: until nothing waits for it and nothing was handed or given, three rounds
+        running, at most `_QUIET_ROUNDS` rounds."""
+        side = self.side
+        calm, steps = 0, side.steps
+        for _ in range(_QUIET_ROUNDS):
+            await settle(5)
+            moved, steps = side.steps != steps, side.steps
+            calm = 0 if side.busy or moved else calm + 1
+            if calm >= 3:
+                return

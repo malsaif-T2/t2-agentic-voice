@@ -16,11 +16,11 @@ which `echo_timings` reads on its way to the pipeline, changing nothing of it
 (timed_speech.py). A turn's own transcript is its `turn` part's `Transcribing` and
 `Transcribed` only: an overlap's `window` and `overlap` parts (plan 005) are not its request.
 
-A call's usage per model is counted from the same events, as voice/session/io.py's usage says:
-each `Transcribing` one speech-to-text request, whatever its part, its audio sent and billed at
-least `STT_MIN_BILLED_S`; each `Synthesizing` one text-to-speech request, its `Speak`'s text the
-characters sent; each fixed phrase played from the phrase audio a cache hit; and the last
-headroom the provider reported, each model's.
+A call's usage per model is counted from the same events, as voice/session/io.py's usage says: each
+`Transcribing` one speech-to-text request, whatever its part, its audio sent and billed at least
+`WHISPER_MIN_BILLED_S` (core/settings/stt.py); each `Synthesizing` one text-to-speech request, its
+`Speak`'s text the characters sent; each fixed phrase played from the phrase audio a cache hit; and
+the last headroom the provider reported, each model's.
 """
 
 from __future__ import annotations
@@ -36,6 +36,7 @@ from t2_agentic_voice.core.config import VoiceSettings
 from t2_agentic_voice.core.errors import ProviderErrorKind
 from t2_agentic_voice.core.events import Event, ModelUsage, TurnId
 from t2_agentic_voice.core.identity import Caller, Consent
+from t2_agentic_voice.core.settings.stt import WHISPER_MIN_BILLED_S
 from t2_agentic_voice.core.settings.tts import LanguageTag
 from t2_agentic_voice.core.tracing import Tracing
 from t2_agentic_voice.domain.declaration import VoiceAgent
@@ -62,9 +63,6 @@ from t2_agentic_voice.voice.session.session_events import (
 if TYPE_CHECKING:  # named in annotations only; feed_file is imported at first use
     from t2_agentic_voice.voice.file_transport import FedCall
 
-# Groq bills each speech-to-text request at least 10 s of audio (the design's 10.4), as the
-# session counts it (voice/session/io.py's usage).
-STT_MIN_BILLED_S = 10.0
 # A file-fed call's caller and consent: no identity source, and nothing recorded.
 _CALLER = Caller(subject="echo-timings")
 _CONSENT = Consent(version=None, record_audio=False)
@@ -239,7 +237,7 @@ def usage_of(
         if isinstance(event, Transcribing):
             stt.requests += 1
             stt.audio_sent_s += event.audio_s
-            stt.billed_s += max(STT_MIN_BILLED_S, event.audio_s)
+            stt.billed_s += max(WHISPER_MIN_BILLED_S, event.audio_s)
         elif isinstance(event, Transcribed) and event.transcript is not None:
             stt.seen(event.transcript.remaining_requests, event.transcript.remaining_tokens)
         elif isinstance(event, Synthesizing) and (model := model_of(_key(event))) is not None:

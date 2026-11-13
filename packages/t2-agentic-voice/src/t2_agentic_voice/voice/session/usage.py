@@ -14,12 +14,10 @@ from dataclasses import dataclass
 
 from t2_agentic_voice.core.config import VoiceSettings
 from t2_agentic_voice.core.events import ModelUsage
+from t2_agentic_voice.core.settings.stt import WHISPER_MIN_BILLED_S
 from t2_agentic_voice.core.settings.tts import LanguageTag
 from t2_agentic_voice.domain.ports.chat_model import Usage as ChatUsage
 from t2_agentic_voice.voice.session.session_events import ClausePlayed, Transcribed, Transcribing
-
-# The least Groq bills a transcription request, in seconds (the design's 10.4, checked).
-WHISPER_MIN_BILLED_S = 10.0
 
 
 @dataclass(kw_only=True)

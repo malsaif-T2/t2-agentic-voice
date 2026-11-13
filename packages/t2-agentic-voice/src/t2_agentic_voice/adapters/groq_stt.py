@@ -39,12 +39,8 @@ from t2_agentic_voice.adapters.groq_client import (
 )
 from t2_agentic_voice.adapters.wav_files import wav_of
 from t2_agentic_voice.core.config import VoiceSettings
-from t2_agentic_voice.core.settings.stt import SttModel, SttSettings
+from t2_agentic_voice.core.settings.stt import WHISPER_MIN_BILLED_S, SttModel, SttSettings
 from t2_agentic_voice.domain.ports.speech_to_text import AudioClip, DataFlow, Transcript
-
-# Groq bills every transcription request at least this long (its pricing, plan 002's
-# registration, read 2026-11-01; the design's 10.4).
-_MIN_BILLED_S = 10.0
 
 
 class GroqSTT:
@@ -137,7 +133,7 @@ class GroqSTT:
                 result = await answer.parse()
             transcript = _Answer.model_validate(result.to_dict()).transcript(
                 language or None,
-                billed_seconds=max(_MIN_BILLED_S, clip.seconds),
+                billed_seconds=max(WHISPER_MIN_BILLED_S, clip.seconds),
                 remaining=headroom(answer.headers),
             )
         except Exception as error:  # every failure, the SDK's and the answer's; never a cancel

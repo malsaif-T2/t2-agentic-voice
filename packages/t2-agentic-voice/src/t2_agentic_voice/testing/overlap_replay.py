@@ -25,8 +25,7 @@ with the call's `Interrupted` events.
   to it (`stop_ms`).
 
 Every time is in milliseconds from the clip's first frame, on the call's clock,
-`time.perf_counter`, as testing/turns.py and testing/echo_timing.py time theirs (plan 003's
-Track H).
+`time.perf_counter`, as testing/turns.py and testing/echo_timing.py time theirs.
 """
 
 from __future__ import annotations
@@ -53,7 +52,7 @@ if TYPE_CHECKING:  # named in annotations only: this module imports no Pipecat
     from t2_agentic_voice.voice.file_transport import FedCall
 
 # Which of a turn's speech-to-text requests one was (voice/session/session_events.py's
-# `TranscriptPart`, spelt out for the public signature).
+# `TranscriptPart`, spelt out for the public signature; test_overlap_replay.py ties the two).
 RequestPart = Literal["window", "overlap", "turn", "held"]
 
 

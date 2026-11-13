@@ -37,11 +37,12 @@ from t2_agentic_voice.domain.declaration import Language, VoiceAgent
 from t2_agentic_voice.domain.ports.speech_to_text import AudioClip, DataFlow, Transcript
 from t2_agentic_voice.domain.ports.text_to_speech import AudioChunk
 from t2_agentic_voice.voice.calls import VoiceCalls
+from t2_agentic_voice.voice.file_transport import RATE
 from t2_agentic_voice.voice.session.session_events import TurnClosed
 
-# The speech detector's rate, the only one a file-fed call's caller is given in (Silero takes
-# 16 kHz or 8 kHz, and voice's transport resamples to 16 kHz: plan 003's appendix, item 15).
-CLIP_RATE = 16_000
+# The speech detector's rate, the only one a file-fed call's caller is given in: the file-fed
+# transport's (voice/file_transport.py's `RATE`).
+CLIP_RATE = RATE
 # The rate of the silence testing's text-to-speech and phrase audio say: the pipeline's output
 # rate, which an empty chunk never plays at.
 _SILENCE_RATE = 24_000

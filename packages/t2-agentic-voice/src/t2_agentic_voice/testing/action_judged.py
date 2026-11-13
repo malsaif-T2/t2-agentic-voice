@@ -8,7 +8,7 @@ a question mark, is asked again; a check that fails or times out on a go-ahead i
 word is asked again; the closing question heard back as it plays, judged a go-ahead, confirms
 nothing (the echo rail, the owner's third ruling); and an unlisted yes said once the question
 ended confirms, once. Two more are said in the agent's other language than the read-back's, as a
-call that classifies each turn's language hears them (plan 007's Block H; the text call names
+call that classifies each turn's language hears them (D-086; the text call names
 the language, testing/text_side.py's `heard_in`): a yes beside a change marker is a correction,
 and a no word beside a go-ahead is asked again, never a yes, since the rails read every
 language's no words and change markers. Each ends with the call's checks clean, and
@@ -31,7 +31,6 @@ from t2_agentic_voice.domain.consent_check import TIMEOUT_S
 from t2_agentic_voice.domain.interruption_words import QUESTION_MARKS
 from t2_agentic_voice.testing.action_scenes import SETTLE_S, Scene, check, clean
 from t2_agentic_voice.testing.llm_fakes import Pause, ScriptedLLM, ScriptStep
-from t2_agentic_voice.testing.text_call import TextCall
 from t2_agentic_voice.testing.text_moments import During
 from t2_agentic_voice.testing.text_watch import plans_of
 
@@ -170,7 +169,7 @@ async def _echoed(scene: Scene) -> None:
         return
     agent = scene.with_action(scene.writes.counted())
     model = scene.model({scene.request: scene.call_action()}, judged=_word("send"))
-    async with TextCall(agent, llm=model, language=scene.tag, caller=scene.caller) as call:
+    async with scene.call(agent, model) as call:
         await call.user(scene.request)
         plans = plans_of(call._reads().watched)
         check(bool(plans), "the action was never read back")
@@ -206,7 +205,7 @@ async def _answered(
         return
     agent = scene.with_action(scene.writes.counted())
     model = scene.model({scene.request: scene.call_action()}, judged=judged)
-    async with TextCall(agent, llm=model, language=scene.tag, caller=scene.caller) as call:
+    async with scene.call(agent, model) as call:
         await call.user(scene.request)
         if during is None:
             await call.advance(SETTLE_S)

@@ -18,7 +18,8 @@ set as each call starts, so a fake reused across calls never waits on an earlier
 `advance` brings a model's pause, a tool's progress line, its timeout and the words said
 `at="tool_running"` when they are due and not before. A measurement with a real model runs on
 the system clock instead (`clock="system"`), so its turns' times are real ones, and `advance`
-then waits that long.
+then waits that long. What moves the clock, waits for an injection's moment (at most
+`MAX_WAIT_S`) and lets the session go quiet is testing/text_side.py's `TextDriver`.
 
 **Injections:** `call.user(text)`, a turn said while the agent is silent (the clock moves on
 first until the reply playing has ended, and past the 300 ms after it that would make the turn
@@ -54,10 +55,8 @@ first clause, and the model requests and their usage (testing/text_turn.py).
 
 from __future__ import annotations
 
-import asyncio
 import dataclasses
 import tempfile
-from collections.abc import Callable
 from pathlib import Path
 from types import TracebackType
 from typing import Literal, Self
@@ -87,10 +86,10 @@ from t2_agentic_voice.testing.text_read_back import part_at, readings
 from t2_agentic_voice.testing.text_reads import TextReads, TurnSaid
 from t2_agentic_voice.testing.text_side import (
     ClauseFault,
+    TextDriver,
     TextPhrases,
     TextSide,
     VirtualClock,
-    settle,
 )
 from t2_agentic_voice.testing.text_turn import TextTurn, TurnExpectations
 from t2_agentic_voice.testing.text_watch import (
@@ -123,15 +122,9 @@ ClockKind = Literal["virtual", "system"]
 CHARS_PER_SECOND = 15.0
 # The most characters a text call's text-to-speech request takes: Orpheus's (the design's 3.1).
 MAX_CHARS = 200
-# The call's ID, and the most a wait for an injection's moment moves the clock (on the system
-# clock, waits) before it gives up, saying so: the agent's bound, past any reply of a test's.
+# The call's ID.
 CALL_ID = "text-call"
-MAX_WAIT_S = 120.0
-# The longest step a wait for an injection's moment moves the virtual clock, so it stops soon
-# after the moment comes, even when no sleep ends then (the drop rule's tail after a reply).
-WAIT_STEP_S = 0.05
-# The turns of the event loop a text call lets pass, at most, for its session to go quiet.
-_QUIET_ROUNDS = 200
+_OUTSIDE = "A text call is used inside `async with`. FIX: enter it first."
 
 
 class TextCall:
@@ -169,6 +162,7 @@ class TextCall:
         self._folder: tempfile.TemporaryDirectory[str] | None = None
         self._session: CallSession | None = None
         self._side: TextSide | None = None
+        self._driver: TextDriver | None = None
         self._time: Clock = SYSTEM_CLOCK
 
     def _talker(self, call: TalkerCall, settings: VoiceSettings, clock: Clock) -> Talker:
@@ -207,6 +201,7 @@ class TextCall:
             self._watched = talker = WatchedTalker(self._talker(call, settings, clock), clock)
         side = self._side = TextSide(clock, chars_per_second=self.chars_per_second)
         side.fault = self._faulted
+        self._driver = TextDriver(side, clock)
         setup = CallSetup(
             call_id=CALL_ID,
             caller=caller,
@@ -226,7 +221,7 @@ class TextCall:
         self._session = CallSession(setup, side)
         side.start(self._session)
         side.hand(Connected(at=clock.now()))
-        await self._quiet()
+        await self._drive().quiet()
         return self
 
     async def __aexit__(
@@ -238,7 +233,7 @@ class TextCall:
         side, session = self._parts()
         if side.ended is None:
             side.hand(FromClient(message=Hangup(v=1, type="hangup"), at=self._time.now()))
-            await self._quiet()
+            await self._drive().quiet()
         await session.aclose()
         await side.aclose()
         if self._folder is not None:
@@ -255,8 +250,14 @@ class TextCall:
 
     def _parts(self) -> tuple[TextSide, CallSession]:
         if self._side is None or self._session is None:
-            raise RuntimeError("A text call is used inside `async with`. FIX: enter it first.")
+            raise RuntimeError(_OUTSIDE)
         return self._side, self._session
+
+    def _drive(self) -> TextDriver:
+        """What moves the call's clock and lets its session go quiet (text_side.py's)."""
+        if self._driver is None:
+            raise RuntimeError(_OUTSIDE)
+        return self._driver
 
     async def user(
         self, text: str, *, during: During | None = None, at: At | None = None
@@ -266,14 +267,14 @@ class TextCall:
         as far as it can (the module's injections)."""
         side, session = self._parts()
         reads = self._reads()
-        await self._until(*text_moments.moment(reads, during, at, now=self._time.now))
+        await self._drive().until(*text_moments.moment(reads, during, at, now=self._time.now))
         turn_id, start = self._next_turn, self._time.now()
         self._next_turn += 1
         first_reply = session.playback.next_id
         side.hand(TurnOpened(turn_id=turn_id, at=start, speech_at=start))
-        await self._quiet()
+        await self._drive().quiet()
         speech_s = max(len(text), 1) / self.chars_per_second
-        await self._advance(speech_s + session.setup.settings.turns.vad_stop_ms / 1000)
+        await self._drive().advance(speech_s + session.setup.settings.turns.vad_stop_ms / 1000)
         end = self._time.now()
         heard = Transcript(text=text, language=session.setup.language.primary)
         own = Transcribed(
@@ -289,10 +290,10 @@ class TextCall:
         self._said[turn_id] = TurnSaid(
             turn_id=turn_id, text=text, handed_at=end, spoke_at=start, first_reply=first_reply
         )
-        await self._quiet()
+        await self._drive().quiet()
         if self.clock == "system":
             written = "the turn's reply was never written"
-            await self._until(lambda: text_moments.written(reads, turn_id), written)
+            await self._drive().until(lambda: text_moments.written(reads, turn_id), written)
         self._failed()
         return TextTurn(reads, turn_id)
 
@@ -300,14 +301,14 @@ class TextCall:
         """Move the call's virtual clock `seconds` on, what is due by then done (on the system
         clock, wait `seconds`)."""
         self._parts()
-        await self._advance(seconds)
+        await self._drive().advance(seconds)
         self._failed()
 
     async def stop(self) -> None:
         """The client's Stop: the agent's speech stops at once, and the reply's work with it."""
         side, _ = self._parts()
         side.hand(FromClient(message=Stop(v=1, type="stop"), at=self._time.now()))
-        await self._quiet()
+        await self._drive().quiet()
         self._failed()
 
     def fault_read_back(self, fault: ClauseFault) -> None:
@@ -343,44 +344,3 @@ class TextCall:
             jobs=self._jobs,
             record=self._record,
         )
-
-    async def _until(self, ready: Callable[[], bool], failure: str) -> None:
-        """Move the clock on (on the system clock, wait) until `ready()`, at most MAX_WAIT_S;
-        AssertionError saying `failure` otherwise."""
-        waited = 0.0
-        while not ready():
-            clock = self._time
-            if isinstance(clock, VirtualClock):
-                due = clock.next_due
-                if waited >= MAX_WAIT_S:
-                    raise AssertionError(f"{failure} (the call waited {waited:.1f} s)")
-                step = WAIT_STEP_S if due is None else min(max(due - clock.now(), 0.0), WAIT_STEP_S)
-                await self._advance(step)
-                waited += step
-            else:
-                await asyncio.sleep(0.02)
-                waited += 0.02
-                if waited > MAX_WAIT_S:
-                    raise AssertionError(f"{failure} (the call waited {waited:.1f} s)")
-            await self._quiet()
-
-    async def _advance(self, seconds: float) -> None:
-        clock = self._time
-        if isinstance(clock, VirtualClock):
-            await clock.advance(seconds)
-        else:
-            await asyncio.sleep(seconds)
-        await self._quiet()
-
-    async def _quiet(self) -> None:
-        """Let the session take what it was handed, and what that started run, with the clock
-        still: until nothing waits for it and nothing was handed or given, three rounds
-        running, at most `_QUIET_ROUNDS` rounds."""
-        side, _ = self._parts()
-        calm, steps = 0, side.steps
-        for _ in range(_QUIET_ROUNDS):
-            await settle(5)
-            moved, steps = side.steps != steps, side.steps
-            calm = 0 if side.busy or moved else calm + 1
-            if calm >= 3:
-                return

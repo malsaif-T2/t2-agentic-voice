@@ -16,9 +16,8 @@ from ole5_voice.evals.run_parts import Parts
 from ole5_voice.evals.runs import Answer, SegmentAnswer
 from pydantic import BaseModel
 from t2_agentic_voice import VoiceSettings
-from t2_agentic_voice.adapters import groq_stt
 from t2_agentic_voice.core.settings.groq import GroqSettings
-from t2_agentic_voice.core.settings.stt import SttModel, SttProvider
+from t2_agentic_voice.core.settings.stt import WHISPER_MIN_BILLED_S, SttModel, SttProvider
 from t2_agentic_voice.domain.scoring import scored_form
 from t2_agentic_voice.ports import Transcript
 
@@ -50,7 +49,7 @@ def test_a_runs_default_address_is_the_librarys_default_base_url() -> None:
 
 
 def test_the_answerers_billing_minimum_is_the_adapters() -> None:
-    assert groq_answerer.GROQ_MINIMUM_S == groq_stt._MIN_BILLED_S
+    assert groq_answerer.GROQ_MINIMUM_S == WHISPER_MIN_BILLED_S
 
 
 def test_an_answer_bounds_the_no_speech_estimate_as_a_transcript_does() -> None:
