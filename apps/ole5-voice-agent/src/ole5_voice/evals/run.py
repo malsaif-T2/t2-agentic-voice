@@ -43,7 +43,6 @@ from ole5_voice.evals import history
 from ole5_voice.evals.answerers import ANSWERERS, RunAnswerer, make_answerer
 from ole5_voice.evals.cli import amount, count, require, seconds
 from ole5_voice.evals.groq_answerer import Budget, CapReachedError, Policy, least_billed
-from ole5_voice.evals.items import HISTORY_FILE
 from ole5_voice.evals.language_arms import flag_problem, language_arm
 from ole5_voice.evals.models import NAME_RULE, Split, Variant, is_name
 from ole5_voice.evals.run_arms import AnswerOptions, answer_options
@@ -303,8 +302,7 @@ def _close(
             billed_seconds=budget.billed_seconds,
             cost_usd=budget.cost_usd,
         )
-        parts.append_line(line, checkout.top / DATA / HISTORY_FILE)
-        parts.append_line(line, out / HISTORY_FILE)
+        history.record_line(parts.append_line, line, checkout.top / DATA, out)
     failures = sum(r.answer.failure is not None for r in kept)
     log.info("run_finished", complete=complete, variants=len(kept), failures=failures)
     log.info("run_spent", requests=budget.requests, billed_s=budget.billed_seconds, out=str(out))

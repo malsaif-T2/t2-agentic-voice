@@ -18,7 +18,8 @@ from typing import Final, Literal, Self
 from pydantic import Field, model_validator
 from t2_agentic_voice import get_logger
 
-from ole5_voice.evals.items import HISTORY_FILE
+from ole5_voice.evals.files import write_json
+from ole5_voice.evals.history import record_line
 from ole5_voice.evals.models import Commit, Model, Name, Sha256, Split
 from ole5_voice.evals.overlap_run import Progress, Stopped
 from ole5_voice.evals.overlap_score import OverlapMetrics, OverlapResult, Target, metrics, targets
@@ -140,13 +141,9 @@ def close_run(
         cost_usd=cost_usd(billed, info.price_per_hour_usd or 0.0),
         variants=() if held_out else tuple(kept),
     )
-    partial = out / f".{SCORECARD_FILE}.partial"
-    partial.write_bytes((card.model_dump_json(indent=2) + "\n").encode("utf-8"))
-    partial.replace(out / SCORECARD_FILE)
+    write_json(out, SCORECARD_FILE, card)
     if info.answerer == "pipeline":
-        line = line_of(card)
-        append_line(line, data / HISTORY_FILE)
-        append_line(line, out / HISTORY_FILE)
+        record_line(append_line, line_of(card), data, out)
     totals = card.totals
     held = sum(target.holds is True for target in card.targets)
     log.info(

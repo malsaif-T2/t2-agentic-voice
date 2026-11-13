@@ -30,7 +30,7 @@ from t2_agentic_voice import T2VoiceError, evals
 from t2_agentic_voice.evals import Recall
 
 from ole5_voice.evals import matcher
-from ole5_voice.evals.files import parse_json, read_text
+from ole5_voice.evals.files import parse_json, read_text, write_json
 from ole5_voice.evals.models import TICKET_KIND, Language, Other
 from ole5_voice.evals.runs import (
     HELD_OUT_MIN_ITEMS,
@@ -311,6 +311,4 @@ def _window_metrics(
 def _write(out: Path, scorecard: Scorecard) -> None:
     """Written whole and then moved into place, so an interrupted write leaves no half file."""
     out.mkdir(parents=True, exist_ok=True)
-    partial = out / f".{SCORECARD_FILE}.partial"
-    partial.write_bytes((scorecard.model_dump_json(indent=2) + "\n").encode("utf-8"))
-    partial.replace(out / SCORECARD_FILE)
+    write_json(out, SCORECARD_FILE, scorecard)

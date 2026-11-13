@@ -22,6 +22,7 @@ from pydantic import Field
 from t2_agentic_voice import get_logger
 from t2_agentic_voice.events import ModelUsage
 
+from ole5_voice.evals.files import write_json
 from ole5_voice.evals.first_audio_cache import ClauseSummary, clause_summary
 from ole5_voice.evals.first_audio_run import Measuring
 from ole5_voice.evals.first_audio_score import (
@@ -33,7 +34,7 @@ from ole5_voice.evals.first_audio_score import (
     metrics,
     targets,
 )
-from ole5_voice.evals.items import HISTORY_FILE
+from ole5_voice.evals.history import record_line
 from ole5_voice.evals.measure_lines import FirstAudioGroup, FirstAudioLine
 from ole5_voice.evals.models import Commit, Model, Name, Sha256, Split
 from ole5_voice.evals.overlap_card import AppendLine
@@ -190,12 +191,8 @@ def close_run(
         clause_cache=clause_summary(kept) if info.clause_cache else None,
         variants=() if held_out else tuple(kept),
     )
-    partial = out / f".{SCORECARD_FILE}.partial"
-    partial.write_bytes((card.model_dump_json(indent=2) + "\n").encode("utf-8"))
-    partial.replace(out / SCORECARD_FILE)
-    line = line_of(card)
-    append_line(line, data / HISTORY_FILE)
-    append_line(line, out / HISTORY_FILE)
+    write_json(out, SCORECARD_FILE, card)
+    record_line(append_line, line_of(card), data, out)
     held = sum(target.holds is True for target in card.targets)
     log.info(
         "run_finished",

@@ -43,7 +43,7 @@ from ole5_voice.evals.eot_score import (
     proxy_end,
     set_card,
 )
-from ole5_voice.evals.items import HISTORY_FILE
+from ole5_voice.evals.files import write_json
 from ole5_voice.evals.models import NAME_RULE, Split, is_name
 from ole5_voice.evals.run_lines import AnyLine, EotCount, EotLine
 from ole5_voice.evals.run_parts import DATA, Choice, Parts, Todo, audio_roots, load_plan
@@ -258,13 +258,9 @@ def _close(
         secondary=set_card(others, held_out=False) if secondary else None,
         variants=() if held_out else tuple(kept),
     )
-    partial = out / f".{SCORECARD_FILE}.partial"
-    partial.write_bytes((card.model_dump_json(indent=2) + "\n").encode("utf-8"))
-    partial.replace(out / SCORECARD_FILE)
+    write_json(out, SCORECARD_FILE, card)
     if info.answerer == "pipeline":
-        line = line_of(card)
-        append_line(line, top / DATA / HISTORY_FILE)
-        append_line(line, out / HISTORY_FILE)
+        history.record_line(append_line, line_of(card), top / DATA, out)
     totals = card.paused.totals
     log.info(
         "run_finished",

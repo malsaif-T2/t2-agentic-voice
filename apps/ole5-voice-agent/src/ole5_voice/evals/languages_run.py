@@ -55,7 +55,6 @@ from ole5_voice.evals.audio import read_wav
 from ole5_voice.evals.cli import require
 from ole5_voice.evals.eot import LEAD_S, TAIL_S
 from ole5_voice.evals.eot_score import Decision, judge
-from ole5_voice.evals.items import HISTORY_FILE
 from ole5_voice.evals.languages_card import (
     PAUSED_KIND,
     TURNS_FILE,
@@ -287,8 +286,7 @@ def _close(
     write_pass(out, card, kept if complete or not held_out else None)
     if not smoke_only:
         line: LanguagesLine = line_of(card)
-        append_line(line, top / DATA / HISTORY_FILE)
-        append_line(line, out / HISTORY_FILE)
+        history.record_line(append_line, line, top / DATA, out)
     numbers = card.card
     log.info(
         "run_finished",

@@ -37,7 +37,8 @@ from t2_agentic_voice.ports import KnowledgeBase, Passage
 from ole5_voice import LOGGERS
 from ole5_voice.evals.cli import require, seconds
 from ole5_voice.evals.factories import Closing, knowledge_of
-from ole5_voice.evals.items import HISTORY_FILE, GoldenSetError, read_toml
+from ole5_voice.evals.history import record_line
+from ole5_voice.evals.items import GoldenSetError, read_toml
 from ole5_voice.evals.kb_points import PointIndex, digest
 from ole5_voice.evals.knowledge_depth_card import (
     DEPTH,
@@ -245,9 +246,7 @@ def _built(args: argparse.Namespace, parts: TalkerParts, closing: Closing) -> in
         complete = stopped is None and len(found) == len(data.todo)
         card = scorecard(run, found, complete=complete, stopped=stopped)
         folder.write_scorecard(card)
-        line = depth_line(card)
-        parts.append_line(line, checkout.top / DATA / HISTORY_FILE)
-        parts.append_line(line, folder.out / HISTORY_FILE)
+        record_line(parts.append_line, depth_line(card), checkout.top / DATA, folder.out)
         log.info("run_finished", complete=complete, variants=len(found), kept_k=card.kept_k)
     return 0 if stopped is None else 1
 

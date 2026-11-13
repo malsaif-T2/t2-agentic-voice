@@ -43,7 +43,7 @@ from ole5_voice import LOGGERS
 from ole5_voice.evals import history, run_settings
 from ole5_voice.evals.cli import amount, count, model_price, require, seconds
 from ole5_voice.evals.eot import LEAD_S, PAUSED_KIND, TAIL_S
-from ole5_voice.evals.items import HISTORY_FILE
+from ole5_voice.evals.files import write_json
 from ole5_voice.evals.models import NAME_RULE, is_name
 from ole5_voice.evals.pacers import MinutePacer
 from ole5_voice.evals.run_lines import AnyLine, TimingLine
@@ -295,12 +295,8 @@ def _run(args: argparse.Namespace, parts: TimingParts) -> int:
         cost_usd=prices.of(measuring.usages),
         variants=tuple(found.results),
     )
-    partial = out / f".{SCORECARD_FILE}.partial"
-    partial.write_bytes((card.model_dump_json(indent=2) + "\n").encode("utf-8"))
-    partial.replace(out / SCORECARD_FILE)
-    line = line_of(card)
-    parts.append_line(line, checkout.top / DATA / HISTORY_FILE)
-    parts.append_line(line, out / HISTORY_FILE)
+    write_json(out, SCORECARD_FILE, card)
+    history.record_line(parts.append_line, line_of(card), checkout.top / DATA, out)
     log.info("run_finished", complete=complete, variants=len(found.results), cost_usd=card.cost_usd)
     return 0 if complete else 1
 

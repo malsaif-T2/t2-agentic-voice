@@ -22,7 +22,7 @@ from __future__ import annotations
 
 import argparse
 import sys
-from collections.abc import Sequence
+from collections.abc import Callable, Sequence
 from pathlib import Path
 from typing import Final
 
@@ -51,6 +51,7 @@ from ole5_voice.evals.history_tables import (
     overlap_rows,
     percent,
     row,
+    ruled,
     strata,
     timing_rows,
 )
@@ -155,6 +156,14 @@ def line_of(
     )
 
 
+def record_line[L](append: Callable[[L, Path], None], line: L, data: Path, out: Path) -> None:
+    """A run's history line recorded as every run records it, with `append` (`append_line`, a
+    checking appender or a test's): appended to the worktree's history, `data / HISTORY_FILE`,
+    and copied beside the run's scorecard, `out / HISTORY_FILE`."""
+    append(line, data / HISTORY_FILE)
+    append(line, out / HISTORY_FILE)
+
+
 def render_history(lines: Sequence[AnyLine]) -> str:
     """`docs/generated/eval-history.md` for `lines`: the spend so far, a row per run in its
     kind's table (`poe eval`'s, then the end-of-turn, timing and overlap runs', then plan 006's
@@ -170,10 +179,10 @@ def render_history(lines: Sequence[AnyLine]) -> str:
         _HEADER,
         f"Spend so far: {len(lines)} run(s), {billed:.1f} billed seconds, ${cost:.4f}.\n",
         "## Runs\n",
-        "| # | Time | Run | Commit | Answerer | Model | Split | Items | Variants | Accuracy "
-        "| Violations | Billed seconds | Cost | Median latency (ms) | Complete |\n"
-        "| --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- "
-        "| --- |",
+        ruled(
+            "| # | Time | Run | Commit | Answerer | Model | Split | Items | Variants | Accuracy "
+            "| Violations | Billed seconds | Cost | Median latency (ms) | Complete |"
+        ),
     ]
     parts += [
         row(
@@ -208,7 +217,7 @@ def render_history(lines: Sequence[AnyLine]) -> str:
     parts += languages_rows([(n, ln) for n, ln in numbered if isinstance(ln, LanguagesLine)])
     parts.append("\n## Each run")
     for number, line in numbered:
-        parts += [f"\n### {number} · {line.run}\n", "| Field | Value |\n| --- | --- |"]
+        parts += [f"\n### {number} · {line.run}\n", ruled("| Field | Value |")]
         parts.append(row("Why", cell(line.note)))
         parts.append(row("Data digest", f"`{line.data_digest}`"))
         parts.append(row("Scorecard", cell(line.scorecard)))
