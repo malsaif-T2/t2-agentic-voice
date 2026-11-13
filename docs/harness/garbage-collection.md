@@ -94,3 +94,11 @@ Each round adds a line here: its plan, what prompted it, and what it found.
   close renamed the base error (D-026), made copies one, fixed drift and stale docs, promoted
   8 mistakes seen twice to a check, a test or a doc (ARCH-DEPS and DOC-SAMPLE new, D-027), paid
   7 debt rows and merged 3, and calibrated `[gc]`.
+- [Round 2](../plans/completed/008-garbage-collection-2.md), 2026-11-13, after M5, when the owner
+  asked ("its been long overdue"): `poe gc` said one was due (M2 to M5 completed; 451 commits).
+  Six readers found about 180 things, 5 of them bugs, each fixed with a failing test first. Six
+  blocks made about 60 copies one, split 11 of the 13 modules at the cap, ran the guard and the
+  action states on the domain's rules, brought the docs and the debt list up to date,
+  promoted the plan-time names to a check (DOC-PLANWORDS) and the real-time tests' bounds to
+  GP-12 (D-090), and recalibrated `[gc]` (a round due after 100 commits; duplication scored per
+  1,000 lines). The duplicate pairs fell from 861 to 603.

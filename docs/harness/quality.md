@@ -30,74 +30,83 @@ reader knows why.
 `uv run poe gc` compares the current grades with the rows of this table, so keep each row's
 first four cells in this shape: `| layer | **A** | score | coverage |`, with the letter in bold.
 
-Graded by garbage collection round 1 (plan 004) on 2026-11-02: `uv run --offline poe quality`
-at 8b85b29, whose code is that of the merge of the round's code blocks (5cbf520), right after
-`uv run --offline poe check` passed (1377 tests passed and 1 skipped; the product packages'
-coverage 100%). The table is the command's output as it printed it; its size column is the
-share within `[gc] size_watch` (300).
+Graded by garbage collection round 2 (plan 008) on 2026-11-13: `uv run --offline poe quality`
+at 556d255, the merge of the round's six blocks and its close, right after `uv run --offline
+poe check`'s tests passed on the same code (7899 passed and 1 skipped; coverage 99.32%; its lint
+step failed on one docstring line, rewrapped in 556d255 before the grading). The table is the
+command's output as it printed it; its size column is the share within `[gc] size_watch` (300),
+and its duplication column the pairs of places per 1,000 of the unit's lines (round 2's scale:
+plan 008's decision log). Round 1's grades (2026-11-02) are in
+[plan 004](../plans/completed/004-garbage-collection-1.md).
 
-| Layer | Grade | Score | Coverage | Modules within 300 lines | Largest | Suppressions per 1,000 lines | Duplicate runs | Docstrings |
+| Layer | Grade | Score | Coverage | Modules within 300 lines | Largest | Suppressions per 1,000 lines | Duplicate pairs (per 1,000 lines) | Docstrings |
 | --- | --- | --- | --- | --- | --- | --- | --- | --- |
-| core | **A** | 98 | 100% | 100% | 254 `config.py` | 1.0 | 0 | 100% |
-| domain | **A** | 98 | 100% | 100% | 134 `scoring.py` | 0.0 | 1 | 100% |
-| adapters | **C** | 76 | 100% | 0% | 338 `groq_stt.py` | 0.0 | 3 | 100% |
-| actions | empty | - | - | - | - | - | - | - |
-| agent | empty | - | - | - | - | - | - | - |
-| voice | empty | - | - | - | - | - | - | - |
-| testing | **A** | 100 | 100% | 100% | 61 `scorers.py` | 0.0 | 0 | 100% |
-| api | **A** | 100 | 100% | 100% | 34 `status.py` | 0.0 | 0 | 100% |
-| ole5_voice | **B** | 80 | 100% | 70% | 380 `answerers.py` | 0.2 | 9 | 100% |
-| minimal_example | **A** | 100 | 100% | 100% | 15 `__init__.py` | 0.0 | 0 | 100% |
-| scripts | **A** | 94 | 97% | 100% | 267 `check_docs.py` | 0.3 | 3 | 100% |
+| core | **B** | 90 | 100% | 94% | 392 `config.py` | 0.9 | 24 (5.3) | 100% |
+| domain | **A** | 92 | 100% | 93% | 375 `yes_rule.py` | 0.2 | 23 (3.9) | 100% |
+| adapters | **B** | 86 | 98% | 85% | 342 `groq_client.py` | 0.8 | 22 (6.2) | 100% |
+| actions | **B** | 89 | 98% | 85% | 378 `action_job.py` | 0.4 | 10 (4.3) | 100% |
+| agent | **A** | 95 | 100% | 83% | 344 `turn.py` | 0.0 | 2 (0.9) | 100% |
+| voice | **A** | 91 | 99% | 77% | 395 `read_back.py` | 0.4 | 24 (2.4) | 100% |
+| testing | **B** | 81 | 99% | 79% | 346 `text_call.py` | 0.0 | 76 (16.8) | 100% |
+| api | **A** | 91 | 99% | 73% | 366 `protocol.py` | 0.7 | 4 (1.4) | 100% |
+| ole5_voice | **B** | 81 | 99% | 81% | 395 `runs.py` | 0.3 | 457 (18.0) | 100% |
+| minimal_example | **A** | 95 | 100% | 100% | 147 `callback.py` | 0.0 | 1 (3.5) | 100% |
+| scripts | **A** | 96 | 97% | 92% | 358 `harness_arch.py` | 0.2 | 3 (0.7) | 100% |
 
 ## Gaps
 
-Each unit's gaps in words, as garbage collection round 1 read them (plan 004); the next round
-refreshes them. A gap the grade cannot see is named by its debt row.
+Each unit's gaps in words, as garbage collection round 2 read them (plan 008); the next round
+refreshes them. A gap the grade cannot see is named by its debt row. Module sizes near the cap
+are TD-140's alone. Look-alikes the round kept, so the next need not redo them, are listed in
+plan 008's "Considered and kept".
 
-- **core** (A): the one suppression is the `type: ignore[override]` on the exporter session's
-  `request` (`core/tracing_export.py`). What the grade does not see: a few variables the SDKs read
-  whatever is passed (TD-003, TD-005), with no test recording them (TD-038); the clients trust the
-  environment's proxy and CA (TD-004 with TD-015, for the deployment's plan); and the private
-  provider's worker is not restarted in a forked child (TD-014).
-- **domain** (A): its one duplicate run is the speech-to-text port's `transcribe` signature,
-  which `GroqSTT` restates as a protocol's implementation must (`adapters/groq_stt.py`, line
-  144, and `domain/ports/speech_to_text.py`, line 73). The text rules' known limits are debt:
-  presentation and format characters (TD-008), a prefix on a Latin or digit token in the recall
-  scorers (TD-009), the number words `normalize_digits` does not read (TD-031), and the spelling
-  check reading letters, not meaning (TD-035).
-- **adapters** (C): its one module, `groq_stt.py`, is 338 lines, above the watch, so the size
-  share is 0%; by the plans README's size rule, the next plan that grows it names its split. Its
-  3 duplicate runs are expected: the port's signature (above), and the segment's
-  `no_speech_prob` bounds, which the app's `runs.py` copies twice (lines 115 and 129) and
-  `tests/ole5_voice/evals/test_library_copies.py` ties to the library's (the owner's ruling of
-  2026-11-02). Also debt: the language form Whisper returns is unverified (TD-011), and the
-  first request detects the platform (TD-012), both for M2.
-- **actions**, **agent**, **voice**: empty, no module yet; the milestones that build them are
-  in the roadmap.
-- **testing** (A): `wer` and `cer` only; the testing kit (the fakes, text calls) comes later
-  (D-019).
-- **api** (A): one module, `status.py`; the rule that production never runs with DEBUG logs is
-  checked only when `status()` is called (plan 004's inventory leaves it to M2's plan), and the
-  package root exports `Status` and `status` beyond the design's 5.1 (TD-034).
-- **ole5_voice** (B): 8 of its modules are above the watch: `answerers.py` 380 (split since:
-  each answerer has its own module, and `answerers.py` is 80 lines, `groq_answerer.py` 291),
-  `recorder_state.py` 379, `runs.py` 367, `scorecard.py` 333, `golden.py` 331,
-  `run_parts.py` 324, `run.py` 315 and `import_talkover.py` 314. Its 9 duplicate runs
-  appeared when the round lowered `[gc] min_tokens` to 25, after the read. Two are the
-  `no_speech_prob` copies tied by test (above); the other 7 are not read yet: `Answer` and
-  `SegmentAnswer`'s shared fields (`runs.py`, lines 114 and 127), three between
-  `import_recordings.py` and `import_talkover.py`, `golden.py` against `recorder.py` and
-  against `split.py`, and one within the `groq` answerer (`groq_answerer.py`, lines 157 and
-  175, since the split). The one suppression is the `noqa: S603` on the git call in
-  `worktree.py`. Its tests near the hard limit are
-  `test_scorecard.py` (389), `test_recorder_security.py` (384) and `test_held_out_groups.py`
-  (381). Also debt: TD-021, TD-022 and TD-029.
-- **minimal_example** (A): the quickstart's two agents, the helper (the talker with one read
-  tool) and the echo.
-- **scripts** (A): the scripts are measured but outside the coverage floor (`[tool.coverage.report]
-  omit`), at 97%. Its 3 duplicate runs are the look-alikes the round kept, whose inputs differ
-  (`arch_module.py`, line 57, and `arch_public.py`, line 34; `harness_toml.py`, lines 86 and 93;
-  `gc_due.py`, line 200, and `gc_report.py`, line 221). The one suppression is the
-  `noqa: S603` on the git call in `gc_due.py`. ARCH-DEPS matches a namespace package on its
-  top-level name (TD-036).
+- **core** (B, 90; A at round 1, when it had no repeated run and no module above the watch): two
+  modules above the watch, `config.py` (392, TD-140) and `tracing_tts.py` (351). Its 24 pairs are
+  mostly kept look-alikes: `identity.py`'s signed consent beside `seal.py`'s sealed model (D-032),
+  and the call report's models (`call_report.py`) that the Ole5 evals' scorers project into their
+  counts; a 62-token run that `config.py` shares with `domain/declaration_errors.py` and one shared
+  by `settings/server.py` and `settings/tracing.py` were not read this round. What the grade does
+  not see: the variables the SDKs read whatever is passed (TD-003, TD-005) with no test recording
+  them (TD-038), the clients' trust in the environment's proxy and CA (TD-004, TD-015), and the
+  private provider's worker in a forked child (TD-014).
+- **domain** (A, 92): `yes_rule.py` (375), `declaration.py` and `interruptions.py` above the watch.
+  Its pairs are ports restated by their implementations (the outbox, the action jobs' `run`) and
+  `consent_check.py` beside `uncertain_overlaps.py` (43 tokens, not read). The text rules' known
+  limits are debt (TD-008, TD-009, TD-031, TD-035); the lifecycle's table lacks four endings of a
+  read-back (TD-150).
+- **adapters** (B, 86): three modules above the watch, the largest `groq_client.py` (342). Its
+  longest runs are the two language classifiers' look-alikes (`ecapa_language.py`,
+  `silero_language.py`), kept since their models' inputs differ, and the outbox's port signature.
+  Also debt: the stores on a file error (TD-065's three open parts), the language form Whisper
+  returns (TD-011) and the first request's platform detection (TD-012).
+- **actions** (B, 89): `action_job.py` (378, TD-140) and `tools.py` above the watch. Its pairs: the
+  outbox's port signature in both stores, the action jobs' `run`, and a 65-token run within
+  `tools.py` (lines 210 and 260), not read. `x_groq.error` is still never read (TD-125).
+- **agent** (A, 95): `turn.py` (344, from 386 with `clause_gate.py`) and `context.py` above the
+  watch; 2 pairs, one within `talker.py`'s two factories. No suppression.
+- **voice** (A, 91): twelve modules above the watch, after the round split six of them; the largest
+  is `voice/session/read_back.py` (395), which keeps the receipt (`[[restricted]]`), and
+  `interrupter.py` (376) is near the cap (TD-140). Its 24 pairs (2.4 per 1,000 lines) are runs the
+  transport bridges share (`session_bridge.py`, `stt_bridge.py`, `transport.py`) and one between
+  `open_reply.py` and `speaker.py`, not read. Debt: TD-055 and TD-104 (the stop path's wording),
+  TD-087 (`peerLeft` unnamed).
+- **testing** (B, 81): its duplication scores zero, 16.8 pairs per 1,000 lines: most are the safety
+  suite's case scripts (`action_safety.py`), kept since each case scripts its own answers, and the
+  rest runs the app's evals share with `timed_speech.py` and `turns.py`. Five modules above the
+  watch, the largest `text_call.py` (346, from 396 with `text_side.py`'s driver). Debt: TD-117,
+  TD-148, TD-149.
+- **api** (A, 91): four modules above the watch, the largest `protocol.py` (366); 4 pairs, a run
+  three times within `router.py` among them, not read. The package root still exports `Status` and
+  `status` beyond the design's 5.1, which the owner kept on 2026-11-13 (TD-034).
+- **ole5_voice** (B, 81): its duplication scores zero, 18.0 pairs per 1,000 lines, 457 of the
+  repository's 603: the evals' run, card, line and history modules (`history_measures.py`, `eot.py`,
+  `timing.py`, `talker_lines.py`, `scenario_run.py` the most often), whose per-run parts the round
+  kept as look-alikes after E1 to E6 made the shared ones one (plan 008). 22 modules above the
+  watch, `evals/runs.py` (395) and `evals/recorder_state.py` (380) near the cap (TD-140). Also debt:
+  TD-021, TD-022 and TD-029.
+- **minimal_example** (A, 95): the quickstart's agents; its one pair is a run its `__main__.py`
+  shares with the Ole5 app's `server.py`.
+- **scripts** (A, 96): measured but outside the coverage floor (`[tool.coverage.report] omit`), at
+  97%. Its 3 pairs are the look-alikes round 1 kept (`arch_module.py` and `arch_public.py`;
+  `harness_toml.py`'s two readers; `gc_due.py` and `gc_report.py`). ARCH-DEPS matches a namespace
+  package on its top-level name (TD-036).

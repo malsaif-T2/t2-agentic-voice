@@ -1,6 +1,6 @@
 # 008 · Garbage collection, round 2
 
-Status: active · Milestone: none (maintenance) · Started: 2026-11-13
+Status: completed · Milestone: none (maintenance) · Started: 2026-11-13 · Completed: 2026-11-13
 
 *Asked for by the owner on 2026-11-13, after M5 closed and before the next phase is planned: "But
 before all of that, lets do a round of cleaning and garbage collection, its been long overdue".*
@@ -14,18 +14,18 @@ behaviour; the owner's rule holds: what breaks a call or misleads a reader, not 
 
 ## Acceptance criteria
 
-- [ ] The inventory below is written before anything changes: duplications, drift, recurring
+- [x] The inventory below is written before anything changes: duplications, drift, recurring
   mistakes, bugs, what was considered and kept (with why), and the debt payable now.
-- [ ] Every fix preserves behaviour; a bug found on the way gets a failing test first and is
+- [x] Every fix preserves behaviour; a bug found on the way gets a failing test first and is
   listed here, and a change a caller could notice is listed and covered by a test.
-- [ ] A mistake seen twice becomes a check, a test or a doc, and golden-principles.md says which.
-- [ ] The payable rows of [tech-debt.md](../tech-debt.md) are paid, and the others brought up to
+- [x] A mistake seen twice becomes a check, a test or a doc, and golden-principles.md says which.
+- [x] The payable rows of [tech-debt.md](../tech-debt.md) are paid, and the others brought up to
   date.
-- [ ] `harness.toml`'s `[gc]` values are checked against what this round's read found to be noise,
+- [x] `harness.toml`'s `[gc]` values are checked against what this round's read found to be noise,
   each change in the decision log.
-- [ ] After the gate, `uv run poe quality` is run and [quality.md](../../harness/quality.md)'s
+- [x] After the gate, `uv run poe quality` is run and [quality.md](../../harness/quality.md)'s
   table and each layer's gaps are updated.
-- [ ] garbage-collection.md's "Rounds" lists this round; `uv run poe check` passes, and the docs
+- [x] garbage-collection.md's "Rounds" lists this round; `uv run poe check` passes, and the docs
   this plan touched are updated.
 
 ## Plan
@@ -338,26 +338,25 @@ open as written (TD-001, 011, 036, 039, 041, 042, 044, 047, 053, 055, 064, 089, 
   planned `reference/api.md`, and tech-debt.md's `agent/clauses.py`, real, for W6); 14 names, 7 of
   them this plan's and 7 outside it (tech-debt.md's `SessionSetup`, real, for W6; the rest a row's
   proposed or missing names); 0 unreferenced; 1 `noqa` without a reason (27 before), another
-  block's. tes-3: one child imports the whole library for both architecture tests, 9.3 s alone
-  (the two took 8.0 and 8.4 s). tes-4: the report's test on a small project, 15.4 s to 0.20 s.
+  block's. tes-3: one child imports the whole library for both architecture tests, 9.3 s alone (the
+  two took 8.0 and 8.4 s). tes-4: the report's test on a small project, 15.4 s to 0.20 s.
 - 2026-11-13: W1 merged (391dba3, seven commits e19e480 to 00de0aa). agt-1 and core-1 fixed, each
   with a failing test first; the copies made one; act-1's unused event path removed (the tests
-  assert on the returned `ActionOutcome`); TD-141's guard and action-job parts; `agent/turn.py`
-  386 to 344 lines with `agent/clause_gate.py`, `core/events.py` 371 to 229 with
-  `core/call_report.py` and `core/ids.py`. Gate on W1 and W5: 7823 passed, 1 skipped, coverage
-  99.24%.
+  assert on the returned `ActionOutcome`); TD-141's guard and action-job parts; `agent/turn.py` 386
+  to 344 lines with `agent/clause_gate.py`, `core/events.py` 371 to 229 with `core/call_report.py`
+  and `core/ids.py`. Gate on W1 and W5: 7823 passed, 1 skipped, coverage 99.24%.
 - 2026-11-13: W4 merged (9648cf6, nine commits b09e759 to c010cba). evl-1 and evl-3 fixed with
-  failing tests first; E1 to E6 with `evals/session_runner.py`; tes-1, and tes-5 (the tickets
-  server test 12.0 s to 0.3 s). Changes a caller notices beyond the inventory's, each tested: a
-  scenario file holding another ID says "holds the scenario '<id>', not '<stem>'", as items did;
-  run S logs `run_resumable` as K and A do; `run_failed` carries `of=` in every run; the session
-  lines come from the `session_runner` logger. Gate on W1, W4 and W5: lint, types, arch and docs
-  OK, 7870 passed, 2 failed, coverage 99.26%; the two failed only their real-time bound under
-  the load of the two blocks starting (0.229 s for 0.03 s, 0.215 s for 0.1 s) and passed alone.
+  failing tests first; E1 to E6 with `evals/session_runner.py`; tes-1, and tes-5 (the tickets server
+  test 12.0 s to 0.3 s). Changes a caller notices beyond the inventory's, each tested: a scenario
+  file holding another ID says "holds the scenario '<id>', not '<stem>'", as items did; run S logs
+  `run_resumable` as K and A do; `run_failed` carries `of=` in every run; the session lines come
+  from the `session_runner` logger. Gate on W1, W4 and W5: lint, types, arch and docs OK, 7870
+  passed, 2 failed, coverage 99.26%; the two failed only their real-time bound under the load of the
+  two blocks starting (0.229 s for 0.03 s, 0.215 s for 0.1 s) and passed alone.
 - 2026-11-13: Real-time tests failed under load in W1's, W4's and W5's gates and on the merged
   branch (the clause cache's 0.1 s reads, the chat deadline, `test_stt_language.py`, a loopback
-  duck): a mistake seen more than twice, so W2 and W3 make each independent of the machine's
-  speed, and W6 records the rule (step 5). W2 and W3 started from 9648cf6.
+  duck): a mistake seen more than twice, so W2 and W3 make each independent of the machine's speed,
+  and W6 records the rule (step 5). W2 and W3 started from 9648cf6.
 - 2026-11-13: W6 split in two, so that the docs not tied to voice's or the adapters' code need not
   wait: W6a (the living docs, the debt list, ARCHITECTURE.md's and CLAUDE.md's maps for W1, W4 and
   W5, and the small leftovers W1 and W4 found) from 756718e beside W2 and W3; the rest after them
@@ -365,12 +364,49 @@ open as written (TD-001, 011, 036, 039, 041, 042, 044, 047, 053, 055, 064, 089, 
   adapters, api and testing, the grades). W6a merged (2f80e43, six commits 5fcbe36 to 96adca4):
   doc-1 to doc-18 but doc-13 (the owner's "Leave them out"); five paid rows removed (GP-19's test
   pointer, the session tests' stand-ins and the gate's warning, the guide's slips, the two files
-  under the cap, the knowledge tool's screen text), TD-125's paid part dropped, 26 rows brought up to date or given a real trigger,
-  sizes kept in TD-140 alone, TD-148 (tst-4) and TD-149 (tst-8) added; `ActionName` on every
-  action field (the models' JSON schemas byte-identical before and after); `SpeechGuard.check`
-  returns `GuardVerdict`. Changes a caller notices, each tested: run K's held-out refusal says
-  "at least 3 items" as the other eight checks do; run S's `--repeats 0` is refused at parse
-  time, exit 2 as before. Its gate: 7872 passed, 1 skipped, coverage 99.26%.
+  under the cap, the knowledge tool's screen text), TD-125's paid part dropped, 26 rows brought up
+  to date or given a real trigger, sizes kept in TD-140 alone, TD-148 (tst-4) and TD-149 (tst-8)
+  added; `ActionName` on every action field (the models' JSON schemas byte-identical before and
+  after); `SpeechGuard.check` returns `GuardVerdict`. Changes a caller notices, each tested: run K's
+  held-out refusal says "at least 3 items" as the other eight checks do; run S's `--repeats 0` is
+  refused at parse time, exit 2 as before. Its gate: 7872 passed, 1 skipped, coverage 99.26%.
+- 2026-11-13: W2 merged (37e9350, five commits 042d73d to f8aac3b): voi-1 to voi-29 (voi-20 was
+  never listed); TD-141's session part, through the pure `moved` and
+  `voice/session/read_back_flow.py`, a refused move logged as `action_flow_refused` and the
+  session's tests failing on one unless they take `flow_refusals` (every refusal logged over 1,854
+  tests found only the deliberate one); six splits (`talking.py` 397 to 322 with `talker_play.py`'s
+  `TalkRunner`, `call.py` 396 to 360, `speaker.py` 387 to 369 with `cut_share.py`, `interrupter.py`
+  388 to 376, `read_back.py` at 395 beside `read_back_declines.py` and `read_back_flow.py`,
+  `calls.py` 395 to 310 with `voice/entry.py`). Changes a caller notices, each tested:
+  `phrase_not_declared` carries `reply_id`; the talker's `talker_failed` and `session_step_failed`
+  lines come from the `voice.session.talker_play` logger. Its gate: 7892 passed, 1 skipped, coverage
+  99.30%.
+- 2026-11-13: W3 merged (de4a104, seven commits 039dff0 to ed38d32): TD-065's failed commit, with a
+  failing test first (its row narrowed to its three open parts); ada-1 to ada-9, api-1 to api-11
+  (`status` and `Status` kept), tst-1 to tst-3, tst-5 to tst-7, tst-9, tst-12, tst-13 and tes-2,
+  with `adapters/sqlite_files.py`, `actions/agent_tools.py`, `api/dev_feed.py` and testing's
+  `TextDriver`; the plan-time names swept from about 60 test files (docstrings and comments only, by
+  an AST comparison). Changes a caller notices, each tested: a failed `COMMIT` refuses that join
+  alone; `TextCall`'s mode error names the variable with the settings' prefix; `/dev` refuses an
+  IPv4 address with a zone (`127.0.0.1%lo`); `t2v doctor` imports no FastAPI (0.9 to 1.2 s less) and
+  closes every provider it built though one close fails; the feed's log lines come from the
+  `api.dev_feed` logger. A leak check that matched a log timestamp (its draft's "5309" in
+  "...255309Z") looks for "q5309x". Its gate: 7878 passed, 1 skipped, coverage 99.27%. The merge's
+  one conflict was tech-debt.md's TD-065 and TD-066 rows: W3's TD-065 and W6a's TD-066 kept.
+- 2026-11-13: The rest of W6 (7e80a57, 556d255 and the close): DOC-PLANWORDS (D-090); the facades',
+  `pyproject.toml`'s and `harness.toml`'s last plan-time names; the package root's lazy `Providers`
+  from `api/providers.py`, so naming it imports no FastAPI (tested); GP-12 and GP-14; TD-140's sizes
+  after the splits, TD-048, TD-063 and TD-117 brought up to date, TD-150 for W2's finding;
+  package-design.md's lines on the guard, the action states and DEBUG. The gate on the whole round:
+  lint failed on one docstring line, rewrapped in 556d255; types, arch (844 files) and docs OK; 7899
+  passed, 1 skipped, coverage 99.32%. `poe quality` then, into quality.md: core B 90, domain A 92,
+  adapters B 86, actions B 89, agent A 95, voice A 91, testing B 81, api A 91, ole5_voice B 81,
+  minimal_example A 95, scripts A 96. `poe gc` after: 309 repeated runs in 603 pairs of places (375
+  in 861 before), 0 unreferenced definitions, 7 unresolved paths (one outside this plan, the guide's
+  planned `reference/api.md`), 12 names (6 outside it, each a debt row's proposed or missing name).
+- 2026-11-13: Closed: this plan moved to `completed/`, TD-141 removed (both its parts paid, W1's and
+  W2's), the roadmap's line and garbage-collection.md's "Rounds" updated; `uv run --offline poe
+  check` passed on the close.
 
 ## Decision log
 
@@ -412,3 +448,20 @@ open as written (TD-001, 011, 036, 039, 041, 042, 044, 047, 053, 055, 064, 089, 
   folder reader is in `items.py` and `table()` in `history_tables.py`, each to avoid an import
   cycle; the comparison helpers are `change_counts`, `changed_ids`, `sign_verdict`; the server
   tests' constants are in `tests/ole5_voice/server_support.py`, not a conftest.
+- 2026-11-13: The promotions (step 5). The plan-time names, seen in round 1 and in six areas this
+  round, became DOC-PLANWORDS; the real-time tests that failed under load in four gates became
+  GP-12's rule, enforced by review; both are D-090, written as Proposed, the owner's word asked with
+  the merge. The layer maps that list each module and drift (round 1's lib11, this round's voi-13,
+  core-5, ada-8, api-9, tst-12) became one: each layer's and package's `__init__` describes it and
+  points at ARCHITECTURE.md's "Layers", whose rows say what each layer does, so a new module needs
+  no map edit.
+- 2026-11-13: W2's and W3's departures, read before each merge. W2 kept W1's `Flow` on `advance`,
+  since its tests spy on it, and `voice/calls.py` re-exports what moved to `voice/entry.py`, so the
+  api layer and the tests import as before. W3 narrowed TD-065 instead of removing it (three parts
+  are open), kept `TalkerFactory` in voice (agent may not import voice) and `TextCall`'s `_talker`
+  seam (`ScriptedCall` overrides it). The agent mapped the package root's lazy `Providers` to
+  `api/providers.py` at the close (W3's finding).
+- 2026-11-13: The grades. core and testing fall from round 1's A to B: core has two modules above
+  the watch and 24 pairs where it had none, and testing's duplication scores zero on the safety
+  suite's case scripts, which the round kept. actions, agent and voice are graded for the first
+  time.

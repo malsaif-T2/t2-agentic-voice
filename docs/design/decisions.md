@@ -3573,3 +3573,41 @@ twice; DOC-REF: every `D-NNN` cited anywhere is a heading here), so keep its sha
   `tests/t2_agentic_voice/agent/test_talker_actions.py`, `tests/ole5_voice/tickets/test_actions.py`,
   `tests/t2_agentic_voice/voice/session/test_talker_kept_steps.py`; plan 007's progress log for
   the runs.
+
+## D-090 · Code names no plan's tracks or blocks (DOC-PLANWORDS), and a real-time test holds on a loaded machine · 2026-11-13 · Proposed (the agent's, under garbage-collection.md's step 5, in the round the owner asked for on 2026-11-13; the inventory the owner answered named the check)
+
+- **Context:** garbage collection round 2 (plan 008) read plan-time names in the library's and
+  the Ole5 app's living docstrings in six areas (its agt-4, dom-10, tst-13, ada-9, api-11, and
+  the facades' "plan 007's Block H"), after round 1 had removed them once (plan 004's app22): a
+  plan's tracks and blocks are its own work units, and once it is completed they tell a reader
+  nothing. The round's gates then failed real-time tests under the load of several gates at
+  once, in three blocks' runs and on the merged branch, each passing alone: the clause cache's
+  0.1 s disk reads, a 0.1 s chat deadline that held the SDK's first request, a 50 ms and a 0.1 s
+  bound in `test_stt_language.py`, and a loopback duck bounded at 0.03 s that took 0.229 s.
+  Both are mistakes seen twice; garbage-collection.md's step 5 makes such a mistake a check, a
+  test or a doc.
+- **Decision:**
+  - **DOC-PLANWORDS** (`scripts/doc_refs.py`, from `poe docs`, beside DOC-MILESTONE): no code
+    file (`[docs] code_dirs`, its exempt files aside) nor a TOML file at the root names a plan's
+    track or block, the word followed by a capital letter or a number. Code names the
+    capability, or cites the decision or the plan. Docs are not read: a plan's own record of its
+    tracks is its history. GP-14 names it.
+  - **A real-time test holds on a loaded machine**, since the gate runs on every core (D-088): it
+    checks the order of events or what was given, or runs on the test's clock; a limit the test
+    is not about is raised in the test; a wall-clock bound the test is about leaves room for the
+    load. GP-12 says it, enforced by review: no check tells a bound a test is about from one it
+    is not.
+- **Consequences:** the branch held 209 such names after its first four blocks, 7 after the
+  last two, and none at the close. The round's real-time tests changed as the rule says: the
+  clause cache's tests raise the cache's read limit (`relaxed_reads`, in the adapters' tests'
+  conftest) but for the test of a slow read; the chat deadline test warms the SDK first and
+  bounds 0.5 s; the language test's held request is checked by order and its blocking
+  classifier at half its 2 s block; the loopback test checks the stop path's order and the
+  amount of audio the client heard. Three wall-clock bounds W2 saw and never saw fail
+  (`test_file_transport.py`, `test_turn_hold.py`, the calls' ticker) are left as they are.
+- **Evidence:** plan 008's inventory, progress log and decision log; the rule's test,
+  `tests/harness/test_doc_refs.py`'s `test_code_and_the_root_toml_never_name_a_plans_track_or_block`;
+  the tests changed, `tests/t2_agentic_voice/adapters/conftest.py`,
+  `tests/t2_agentic_voice/adapters/test_groq_chat_checks.py`,
+  `tests/t2_agentic_voice/voice/test_stt_language.py` and
+  `tests/t2_agentic_voice/test_loopback_interruptions.py`.
