@@ -96,7 +96,7 @@ layers = ["adapters"]
 fix = "Reach an outside service through its port in domain/ports; the adapter that implements it lives in adapters/ and the api layer injects it."
 
 # torch and SpeechBrain run ECAPA, one of the spoken-language classifiers, through the library's
-# `ecapa` extra (plan 007's Block H, Q15): only its adapter loads them, by literal names, so the
+# `ecapa` extra (D-086): only its adapter loads them, by literal names, so the
 # base install and every other layer stay free of torch.
 [[owners]]
 modules = ["torch", "torchaudio", "speechbrain"]
@@ -326,7 +326,7 @@ fix = "These modules send a call's audio or text to a host outside the design's 
 
 # Hugging Face's client fetches models and files from its hub: the library loads a model only from
 # the folder a setting names, fetched once by hand, so it contacts no host the design's 11 does
-# not list (plan 007's Block H). SpeechBrain imports it inside its own modules, which no ban
+# not list (D-086). SpeechBrain imports it inside its own modules, which no ban
 # reads (TD-043); the library's own code never does.
 [[bans]]
 modules = ["huggingface_hub"]

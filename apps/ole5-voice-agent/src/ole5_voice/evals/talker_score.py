@@ -31,7 +31,15 @@ from pydantic import Field, model_validator
 from ole5_voice.evals.judge import Judged
 from ole5_voice.evals.knowledge_set import KnowledgeKind, SpokenLanguage
 from ole5_voice.evals.models import Commit, Model, Name, Sha256, Split
-from ole5_voice.evals.runs import HELD_OUT_MIN_ITEMS, ModelName, Note, Plain, Shown, pool_small
+from ole5_voice.evals.runs import (
+    HELD_OUT_MIN_ITEMS,
+    ModelName,
+    Note,
+    Plain,
+    Shown,
+    check_groups,
+    pool_small,
+)
 from ole5_voice.evals.scorecard import quantile
 from ole5_voice.evals.talker_data import VERDICTS, Failure, HeardTurn, ModelSpend, Tag
 
@@ -197,8 +205,7 @@ class TalkerScorecard(Model):
         if held_out and self.variants:
             raise ValueError("a held-out run's scorecard holds aggregates only")
         groups = [m.items for values in self.breakdowns.values() for m in values.values()]
-        if held_out and any(items < HELD_OUT_MIN_ITEMS for items in groups):
-            raise ValueError(f"a held-out run's groups each cover {HELD_OUT_MIN_ITEMS} items")
+        check_groups(self.run.split, None, groups, "groups")
         if any(record.split != self.run.split for record in self.variants):
             raise ValueError("a scorecard holds only its own split's variants")
         keys = [(record.item, record.variant) for record in self.variants]

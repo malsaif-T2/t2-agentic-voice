@@ -107,7 +107,7 @@ def test_a_scorecard_holds_a_held_out_runs_aggregates_only() -> None:
         TalkerScorecard.model_validate(card.model_dump() | {"variants": [found[0].model_dump()]})
     small = card.model_dump()
     small["breakdowns"] = {"language": {"english": metrics(found[:1]).model_dump()}}
-    with pytest.raises(ValidationError, match="each cover 3 items"):
+    with pytest.raises(ValidationError, match="groups each cover at least 3 items"):
         TalkerScorecard.model_validate(small)
 
 
