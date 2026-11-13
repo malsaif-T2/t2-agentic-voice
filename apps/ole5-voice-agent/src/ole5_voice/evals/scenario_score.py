@@ -24,9 +24,9 @@ from pydantic import Field, model_validator
 
 from ole5_voice.evals.judge import Checked
 from ole5_voice.evals.models import Commit, Model, Name, Sha256
-from ole5_voice.evals.runs import Note, Plain, Shown
+from ole5_voice.evals.runs import ModelName, Note, Plain, Shown
 from ole5_voice.evals.scenarios import Scenario, ScriptTurn
-from ole5_voice.evals.talker_data import HELD_TO, Failure, HeardTurn, ModelName, Register
+from ole5_voice.evals.talker_data import HELD_TO, Failure, HeardTurn, Register
 from ole5_voice.evals.talker_score import PriceShown, Session, Stopped
 
 _S = Annotated[float, Field(ge=0, allow_inf_nan=False)]

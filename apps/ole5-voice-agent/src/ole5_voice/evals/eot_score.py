@@ -27,7 +27,6 @@ from typing import Final, Literal, Self
 from pydantic import Field, model_validator
 
 from ole5_voice.evals.models import (
-    OTHER,
     Commit,
     Device,
     Kind,
@@ -37,7 +36,7 @@ from ole5_voice.evals.models import (
     Sha256,
     Split,
 )
-from ole5_voice.evals.runs import HELD_OUT_MIN_ITEMS, Note, Shown
+from ole5_voice.evals.runs import Note, Shown, check_groups, pool_small
 from ole5_voice.evals.scorecard import quantile
 
 TOLERANCE_MS: Final = 300.0  # a turn end this much before the true end still counts as on it
@@ -170,10 +169,7 @@ class EotScorecard(Model):
             raise ValueError("a held-out run's scorecard holds the paused requests' aggregates")
         cards = [self.paused] + ([self.secondary] if self.secondary else [])
         groups = [m.items for card in cards for v in card.breakdowns.values() for m in v.values()]
-        if self.run.split == "held-out" and any(n < HELD_OUT_MIN_ITEMS for n in groups):
-            raise ValueError(
-                f"a held-out run's groups each cover at least {HELD_OUT_MIN_ITEMS} items"
-            )
+        check_groups(self.run.split, None, groups, "groups")
         return self
 
 
@@ -220,20 +216,10 @@ def set_card(results: Sequence[EotResult], *, held_out: bool) -> EotSetCard:
         groups: dict[str, list[EotResult]] = defaultdict(list)
         for result in results:
             groups[key(result)].append(result)
-        if held_out:
-            groups = _pooled(groups)
+        if held_out:  # each group of fewer items pooled (`runs.pool_small`)
+            groups = pool_small(groups, _items)
         breakdowns[stratum] = {value: metrics(group) for value, group in sorted(groups.items())}
     return EotSetCard(totals=metrics(results), breakdowns=breakdowns)
-
-
-def _pooled(groups: dict[str, list[EotResult]]) -> dict[str, list[EotResult]]:
-    """Each group of `HELD_OUT_MIN_ITEMS` items or more, and the others pooled as `other`, left
-    out when it too covers fewer."""
-    kept = {value: group for value, group in groups.items() if _items(group) >= HELD_OUT_MIN_ITEMS}
-    small = [result for value, group in groups.items() if value not in kept for result in group]
-    if _items(small) >= HELD_OUT_MIN_ITEMS:
-        kept[OTHER] = small
-    return kept
 
 
 def _items(results: Iterable[EotResult]) -> int:

@@ -35,9 +35,8 @@ from pydantic import Field, model_validator
 from ole5_voice.evals.action_scenarios import ActionScenario, Kind
 from ole5_voice.evals.action_score import ActionPlayRecord
 from ole5_voice.evals.models import Commit, Model, Name, Sha256, Split
-from ole5_voice.evals.runs import Note, Plain, Shown
+from ole5_voice.evals.runs import ModelName, Note, Plain, Shown
 from ole5_voice.evals.scenario_score import needed
-from ole5_voice.evals.talker_data import ModelName
 from ole5_voice.evals.talker_score import PriceShown, Session, Stopped
 
 _Usd = Annotated[float, Field(ge=0, allow_inf_nan=False)]

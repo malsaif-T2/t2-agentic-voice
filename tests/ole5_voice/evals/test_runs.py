@@ -9,7 +9,9 @@ import json
 from typing import get_args
 
 import pytest
+from ole5_voice.evals.models import OTHER
 from ole5_voice.evals.runs import (
+    HELD_OUT_MIN_ITEMS,
     Answer,
     HistoryLine,
     Metrics,
@@ -20,6 +22,8 @@ from ole5_voice.evals.runs import (
     VariantResult,
     Window,
     WindowMetrics,
+    check_groups,
+    pool_small,
 )
 from pydantic import ValidationError
 from t2_agentic_voice.core.errors import PROVIDER_ERROR_KINDS
@@ -221,3 +225,32 @@ def test_a_result_carries_its_items_terms_and_want() -> None:
         samples.result().model_dump() | {"terms": ["Outlook"], "want": "send"}
     )
     assert (result.terms, result.want) == (("Outlook",), "send")
+
+
+def test_every_held_out_group_check_says_what_its_groups_are() -> None:
+    """One check for every scorecard and history line (`check_groups`), with the two wordings
+    they had: a history line's stratum values, a scorecard's groups."""
+    check_groups("held-out", 9, [3, 9], "groups")
+    check_groups("dev", 9, [1, 2], "stratum values")  # a dev run shows every group
+    with pytest.raises(ValueError, match=r"^a stratum value covers no more items than the run$"):
+        check_groups("dev", 4, [5], "stratum values")
+    with pytest.raises(ValueError, match=r"^a group covers no more items than the run's totals$"):
+        check_groups("dev", 4, [5], "groups")
+    check_groups("dev", None, [50], "groups")  # a card whose groups are not of its totals
+    for what in ("stratum values", "groups"):
+        with pytest.raises(ValueError, match=f"^a held-out run's {what} each cover at least 3 "):
+            check_groups("held-out", None, [HELD_OUT_MIN_ITEMS - 1], what)
+
+
+def test_small_groups_are_pooled_by_the_items_a_counter_counts() -> None:
+    def items(members: list[tuple[str, str]]) -> int:
+        return len({item for item, _ in members})
+
+    groups = {
+        "a": [("i1", "v1"), ("i2", "v1"), ("i3", "v1")],
+        "b": [("i4", "v1"), ("i4", "v2"), ("i4", "v3")],  # one item, three variants
+        "c": [("i5", "v1"), ("i6", "v1")],
+    }
+    assert pool_small(groups, items) == {"a": groups["a"], OTHER: groups["b"] + groups["c"]}
+    assert pool_small({"b": groups["b"]}, items) == {}  # the pool too small, left out
+    assert pool_small(groups, items, least=1) == groups

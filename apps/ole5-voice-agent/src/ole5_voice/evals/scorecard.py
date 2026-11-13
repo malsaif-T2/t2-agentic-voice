@@ -31,7 +31,7 @@ from t2_agentic_voice.evals import Recall
 
 from ole5_voice.evals import matcher
 from ole5_voice.evals.files import parse_json, read_text
-from ole5_voice.evals.models import OTHER, TICKET_KIND, Language, Other
+from ole5_voice.evals.models import TICKET_KIND, Language, Other
 from ole5_voice.evals.runs import (
     HELD_OUT_MIN_ITEMS,
     SCORECARD_FILE,
@@ -42,6 +42,7 @@ from ole5_voice.evals.runs import (
     Window,
     WindowMetrics,
     cost_usd,
+    pool_small,
 )
 
 # The strata a scorecard breaks its numbers down by, each read from a variant's result.
@@ -181,37 +182,19 @@ def _score(result: VariantResult, scorers: Scorers, normalize: Normalize) -> _Sc
 def _groups(
     scored: Sequence[_Scored], key: Callable[[VariantResult], str], *, least: int
 ) -> dict[str, list[_Scored]]:
-    """Each value's results, in order of value; in a held-out run, pooled by `_pool_small`."""
+    """Each value's results, in order of value; in a held-out run, pooled by
+    `runs.pool_small`."""
     groups: dict[str, list[_Scored]] = defaultdict(list)
     for one in scored:
         groups[key(one.result)].append(one)
     ordered = dict(sorted(groups.items()))
-    return _pool_small(ordered, _items, least) if least else ordered
+    return pool_small(ordered, _items, least) if least else ordered
 
 
 def _items(group: Iterable[_Scored]) -> int:
     """The items of `group`'s answered variants: an item whose every variant failed is not
     counted, since none of the group's rates rests on it."""
     return len({one.result.item for one in group if one.result.answer.failure is None})
-
-
-def _pool_small[K, T](
-    groups: dict[K, list[T]], items: Callable[[list[T]], int], least: int
-) -> dict[K | Other, list[T]]:
-    """A held-out run's `groups`, `items` counting the items of some of their members: the
-    groups that cover fewer than `least` items are pooled into one, `OTHER`, last, its numbers
-    taken over all their members as any group's are, and left out when it too covers fewer.
-    Items are counted, not variants (an item's devices and takes)."""
-    shown: dict[K | Other, list[T]] = {}
-    pooled: list[T] = []
-    for key, members in groups.items():
-        if items(members) < least:
-            pooled += members
-        else:
-            shown[key] = members
-    if items(pooled) >= least:
-        shown[OTHER] = pooled
-    return shown
 
 
 def _metrics(
@@ -278,7 +261,7 @@ def quantile(ordered: Sequence[float], q: float) -> float | None:
 def _windows(scored: Sequence[_Scored], *, least: int) -> tuple[WindowMetrics, ...]:
     """Each window length's measures over the clips of one language and `want` label, summed
     from each answered variant's windows (an infrastructure failure's are left out); in a
-    held-out run, each length's groups pooled by `_pool_small`, and a group's one-word clips
+    held-out run, each length's groups pooled by `runs.pool_small`, and a group's one-word clips
     counted only when they are of `least` items."""
     lengths: dict[int, dict[tuple[Language, str | None], list[_Clip]]] = defaultdict(
         lambda: defaultdict(list)
@@ -291,7 +274,7 @@ def _windows(scored: Sequence[_Scored], *, least: int) -> tuple[WindowMetrics, .
     found: list[WindowMetrics] = []
     for ms, groups in sorted(lengths.items()):
         ordered = dict(sorted(groups.items(), key=lambda entry: (entry[0][0], entry[0][1] or "")))
-        shown = _pool_small(ordered, _clip_items, least) if least else ordered
+        shown = pool_small(ordered, _clip_items, least) if least else ordered
         for key, clips in shown.items():
             # The pooled group's key is `OTHER`, every other group's a language and a label.
             language, want = (key, None) if isinstance(key, str) else key

@@ -19,11 +19,18 @@ from pydantic import Field, model_validator
 from t2_agentic_voice import get_logger
 
 from ole5_voice.evals.items import HISTORY_FILE
-from ole5_voice.evals.models import OTHER, Commit, Model, Name, Sha256, Split
+from ole5_voice.evals.models import Commit, Model, Name, Sha256, Split
 from ole5_voice.evals.overlap_run import Progress, Stopped
 from ole5_voice.evals.overlap_score import OverlapMetrics, OverlapResult, Target, metrics, targets
 from ole5_voice.evals.run_lines import AnyLine, OverlapCount, OverlapLine
-from ole5_voice.evals.runs import HELD_OUT_MIN_ITEMS, SCORECARD_FILE, Note, Shown, cost_usd
+from ole5_voice.evals.runs import (
+    SCORECARD_FILE,
+    Note,
+    Shown,
+    check_groups,
+    cost_usd,
+    pool_small,
+)
 
 log = get_logger(__name__)
 AppendLine = Callable[[AnyLine, Path], None]  # `history.append_line`, or a test's
@@ -73,10 +80,7 @@ class OverlapScorecard(Model):
         groups = [m.items for values in self.breakdowns.values() for m in values.values()]
         if self.variants or "item" in self.breakdowns:
             raise ValueError("a held-out run's scorecard holds aggregates only")
-        if any(n < HELD_OUT_MIN_ITEMS for n in groups):
-            raise ValueError(
-                f"a held-out run's groups each cover at least {HELD_OUT_MIN_ITEMS} items"
-            )
+        check_groups(self.run.split, None, groups, "groups")
         return self
 
 
@@ -100,18 +104,10 @@ def breakdowns(
         groups: dict[str, list[OverlapResult]] = defaultdict(list)
         for result in results:
             groups[key(result)].append(result)
-        if held_out:
-            groups = _pooled(groups)
+        if held_out:  # each group of fewer items pooled (`runs.pool_small`)
+            groups = pool_small(groups, _items)
         found[stratum] = {value: metrics(group) for value, group in sorted(groups.items())}
     return found
-
-
-def _pooled(groups: dict[str, list[OverlapResult]]) -> dict[str, list[OverlapResult]]:
-    kept = {value: group for value, group in groups.items() if _items(group) >= HELD_OUT_MIN_ITEMS}
-    small = [result for value, group in groups.items() if value not in kept for result in group]
-    if _items(small) >= HELD_OUT_MIN_ITEMS:
-        kept[OTHER] = small
-    return kept
 
 
 def _items(results: Iterable[OverlapResult]) -> int:
