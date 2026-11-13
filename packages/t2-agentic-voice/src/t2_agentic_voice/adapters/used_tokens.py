@@ -9,17 +9,20 @@ last instant any verifier could still accept its token (the token's `exp` plus
 is pruned only after that. `use` reads the store's own clock, and gives False for an
 `expires_at` that is not after its now, recording nothing. One process per `var_dir` holds the
 file (the runtime's lock file). `MemoryUsedTokens` keeps them in memory only, for tests and a
-dev machine. Track C's tests of each store: a row pruned once its `expires_at` has passed, and
-kept while it has not; `use` with an `expires_at` a millisecond before the store's now gives
-False and records nothing, so the same ID given later with a later `expires_at` gets True; and
-a token used once, then given again twice with its `expires_at`, the store's clock set a
+dev machine. Each store's tests hold: a row pruned once its `expires_at` has passed, and kept
+while it has not; `use` with an `expires_at` a millisecond before the store's now gives False
+and records nothing, so the same ID given later with a later `expires_at` gets True; and a
+token used once, then given again twice with its `expires_at`, the store's clock set a
 millisecond before that instant and then a millisecond after it, the row pruned between,
 gets False both times.
 
 **How.** Each `use` prunes the rows whose `expires_at` has passed by the store's clock, then
 records the ID unless it is held or its `expires_at` is not after that now, all under one lock
 and, for SQLite, in one `BEGIN IMMEDIATE` transaction whose insert is ignored when the ID is
-held, so its answer is True exactly once and durable before it returns. The SQLite work runs
+held, so its answer is True exactly once and durable before it returns. A failure anywhere in
+that transaction, its `COMMIT` included (busy while a reader holds the file), rolls it back
+unless SQLite already has, and is raised: it refuses that one join, and the next one starts a
+transaction of its own. The SQLite work runs
 in a worker thread (`asyncio.to_thread`), so a commit's write to disk never stalls the event
 loop that paces every call's audio; one connection serves every thread, its lock held for each
 statement. Times are kept as whole microseconds since the epoch, so a millisecond either side
@@ -103,17 +106,18 @@ class SqliteUsedTokens:
         """`use`'s work, in a worker thread: prune, then record, in one transaction."""
         with self._lock:
             now = _micros(self._now())
-            self._connection.execute("BEGIN IMMEDIATE")
             try:
+                self._connection.execute("BEGIN IMMEDIATE")
                 self._connection.execute(_PRUNE, (now,))
                 recorded = (
                     until > now
                     and self._connection.execute(_RECORD, (token_id, until)).rowcount == 1
                 )
+                self._connection.execute("COMMIT")
             except BaseException:
-                self._connection.execute("ROLLBACK")
+                if self._connection.in_transaction:  # none when SQLite rolled it back itself
+                    self._connection.execute("ROLLBACK")
                 raise
-            self._connection.execute("COMMIT")
             return recorded
 
     async def aclose(self) -> None:

@@ -219,6 +219,34 @@ def test_a_failed_use_leaves_no_transaction_open(tmp_path: Path) -> None:
     _run(_sqlite, tmp_path, clock, steps)
 
 
+def test_a_failed_commit_refuses_that_join_alone(tmp_path: Path) -> None:
+    """A reader holding the file (an operator's shell, a backup) makes `COMMIT` fail as busy,
+    which leaves SQLite's transaction open: the store rolls it back, so that one join is
+    refused, nothing of it kept, and the next join is taken."""
+    path = tmp_path / "used.db"
+    clock = Clock(EXPIRES - timedelta(seconds=90))
+
+    async def steps() -> tuple[bool, bool]:
+        store = await SqliteUsedTokens.open(path, _now=clock)
+        store._connection.execute("PRAGMA busy_timeout = 0")  # busy at once, not in 5 s
+        reader = sqlite3.connect(path, isolation_level=None)
+        try:
+            reader.execute("BEGIN")
+            reader.execute("SELECT COUNT(*) FROM used_tokens").fetchall()  # its shared lock
+            with pytest.raises(sqlite3.OperationalError, match="locked"):
+                await store.use("held", expires_at=EXPIRES)
+            reader.execute("COMMIT")
+            return (
+                await store.use("next", expires_at=EXPIRES),
+                await store.use("held", expires_at=EXPIRES),
+            )
+        finally:
+            reader.close()
+            await store.aclose()
+
+    assert asyncio.run(steps()) == (True, True)
+
+
 def test_a_file_that_is_no_database_is_refused_and_closed(tmp_path: Path) -> None:
     path = tmp_path / "used.db"
     path.write_bytes(b"not a database, made up for the test " * 64)
