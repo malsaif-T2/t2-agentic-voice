@@ -239,11 +239,12 @@ def test_this_repositorys_path_settings_hide_no_stale_path() -> None:
     kept = (
         "ole5_voice/agent.py t2_agentic_voice/voice/session/io.py knowledge/split.json "
         "evals/split.json voice/kit.py voice/rules.py voice/tts.py web/voice.js agent/handlers.py "
-        "pipecat/transports/smallwebrtc/connection.py transports/smallwebrtc/connection.py"
+        "pipecat/transports/smallwebrtc/connection.py"
     )
     stale = (
         "ole5_voice/gone.py t2_agentic_voice/voice/gone.py knowledge/gone.json voice/kit_gone.py "
-        "voice/rules_gone.py voice/tts_bridge_gone.py web/gone.js agent/gone.py"
+        "voice/rules_gone.py voice/tts_bridge_gone.py web/gone.js agent/gone.py "
+        "transports/smallwebrtc/connection.py"  # Pipecat's, written below its package's folder
     )
     texts = {"notes.md": f"{kept}\n{stale}\n"}
     found = unresolved_paths(ROOT, texts, path_bases(loaded), loaded.gc.path_ignored)

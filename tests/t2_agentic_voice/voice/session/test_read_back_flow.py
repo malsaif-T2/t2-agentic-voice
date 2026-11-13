@@ -17,6 +17,7 @@ from t2_agentic_voice.domain.action_flow import ActionState, FlowEvent, moved
 from t2_agentic_voice.domain.words import PRESET_WORDS
 from t2_agentic_voice.domain.yes_rule import AskAgain
 from t2_agentic_voice.voice.session import read_back_flow
+from t2_agentic_voice.voice.session.commands import StopSpeaking
 
 from tests.leaks import holding, shown
 from tests.t2_agentic_voice.session_fakes import FakeSessionIO
@@ -26,6 +27,7 @@ from tests.t2_agentic_voice.voice.session.overlap_support import (
     REPEAT_TEXT,
     STOP,
     FakeRule,
+    overlap_part,
 )
 from tests.t2_agentic_voice.voice.session.read_back_support import (
     ACTION,
@@ -169,6 +171,33 @@ def test_a_repeat_request_over_the_read_back_says_it_again_still_confirming(
     current = session._confirming.read_back
     assert session._confirming.state == "confirming"
     assert current is not None and current.reply_id == 2
+
+
+def test_a_repeat_request_answered_instead_of_said_again_is_a_correction(
+    settings: VoiceSettings, rule: FakeRule, consent: list[dict[str, Any]], moves: Moves
+) -> None:
+    """The window hears a repeat request over the summary, and the whole overlap new words: the
+    turn is answered instead, the action declined as a correction, and nothing is said again."""
+    io, session, talker = confirm_call(settings, FakeJobs())
+
+    async def drive() -> None:
+        await asked(io)
+        await clause(io, 0, played=False)
+        await io.turn_opened(1)
+        await overlap_part(io, 1, REPEAT_TEXT, part="window", audio_s=0.75)
+        await overlap_part(io, 1, CALLER_WORDS)
+        await io.clock.advance(0.5)
+        await io.turn_closed(1)
+        await io.transcribing(1, audio_s=1.6)
+        await io.transcribed(1, CALLER_WORDS, language="en")
+        await settle()
+
+    asyncio.run(drive())
+    assert len(io.commands.of(StopSpeaking)) == 1  # the window's repeat request stopped it
+    assert moves == [("confirming", "correction")]
+    assert session._confirming.state == "declined" and session._confirming.read_back is None
+    declined = talker.turns[1].declined
+    assert declined is not None and declined.kind == "correction"
 
 
 def test_a_repeat_request_said_whole_while_confirming_says_it_again_still_confirming(
