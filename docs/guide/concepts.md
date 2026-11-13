@@ -139,8 +139,8 @@ my_requests = Tool.from_function(
   failed". A sync tool timed out or cancelled goes on in its thread, its result discarded: a
   thread cannot be stopped.
 - **What it returns** is any value that is JSON (a string, a list, a dict, a pydantic model), or
-  a `ToolResult`: `data` for the talker, a `card` for the screen, and `evidence`, texts whose
-  ID-shaped numbers the talker may then say (below).
+  a `ToolResult`: `data` for the talker, a `card`, an extra for a client with a screen (below,
+  "Cards"), and `evidence`, texts whose ID-shaped numbers the talker may then say (below).
 - **`on_interrupt`**: `cancel` (the default) cancels the tool with its reply when the caller
   speaks over it or presses Stop; `finish` lets it run on, its result kept for the talker's
   next turn.
@@ -687,7 +687,7 @@ on.
 
 It is 600 ms by default. On those recordings the 600 ms hold left 9 of 51 dev paused requests cut
 off instead of 50 or 51, and 5 of 28 held-out ones instead of 27, with no turn end missed, a turn
-then ending a median of about 0.94 s after the caller's own end (D-067). With a talker, the hold
+then ending a median of 0.94 s after the caller's own end on dev (D-067). With a talker, the hold
 costs less than it adds: the transcription and the talker's first request start as the hold
 begins, and only the reply waits for its end ([latency.md](latency.md), "The early start"). An
 app that wants a turn to end at Smart Turn's verdict sets no hold:
@@ -720,7 +720,7 @@ T2V_TURNS__COMPLETE_HOLD_MS=0
 | --- | --- | --- |
 | `T2V_SESSION__MODE` | unset | What answers each turn: unset follows the declaration (the talker for an agent with instructions, else the echo); `echo` for any agent; `talker` |
 | `T2V_LLM__MODEL` | `openai/gpt-oss-120b` | The talker's chat model, on Groq; it changes only on a registered measurement |
-| `T2V_LLM__REASONING_EFFORT` | `low` | How much a reasoning model thinks before it answers; low keeps the first clause soon |
+| `T2V_LLM__REASONING_EFFORT` | `medium` | How much a reasoning model thinks before it answers; medium invented fewer answers than low on run K's dev pass, for about 0.33 s more to the first clause (D-074) |
 | `T2V_LLM__MAX_OUTPUT_TOKENS`, `__TIMEOUT_S` | 1024, 8 | The most one model request writes, and how long it may take |
 | `T2V_GUARD__MIN_ID_DIGITS` | 3 | The fewest digits in a row that count as an ID |
 | `T2V_GUARD__ID_PATTERNS` | none | More ID shapes, as a JSON list of regular expressions |

@@ -13,8 +13,11 @@ built the tooling for speech-to-text (D-022): the scorers in the library, public
 `evals/` of the paths below) and its tests in `tests/ole5_voice/evals/`, inside `poe check`.
 Its commands are listed under "Running" below, and the guide's
 [evaluation.md](../guide/evaluation.md) shows a team how to score its own set with the library
-and measure a change with the commands. Turn-taking, the talker and latency have no tooling
-yet: until a plan builds theirs, no check enforces their rules here.
+and measure a change with the commands. The later plans built the rest, in the same folders:
+end of turn and the timing of an echo call (plan 003), the overlap replay over a reply (plan
+005), the talker's runs K0, K and S, run U and the time to first audio, run T (plan 006), and
+run A of the agent's actions and run H of each turn's language (plan 007); "Running" below
+lists them.
 
 ## In this project
 

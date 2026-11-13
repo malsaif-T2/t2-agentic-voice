@@ -143,11 +143,17 @@ on the first 0.5–1.0 s of the 90 dev talk-over clips only, not of each talk-ov
 *Done when* the owner holds a recorded call session in Chrome on laptop speakers and on a headset,
 locally, and hears each turn back; end-of-turn cut-offs are measured on the golden set, offline; and
 the time of each step and requests per call minute for each Groq model are recorded from that
-session's traces and call reports.
+session's traces and call reports. *Done* on 2026-11-04 ([003](completed/003-call-listens-and-speaks.md)):
+six calls, three on the laptop's speakers and three on a headset, each turn said while the agent was
+quiet said back; the cut-offs measured by E1, E2 and held-out E (TD-094); the session's calls held
+no trace, so the time of each step and the requests per call minute (D-040) were read from their
+reports and timelines, which the owner accepted, and the test that no credential reaches a span
+was left as debt (TD-095).
 
 **M3 · Interruptions and cancellation.**
 - The cancel scope of every turn: a stop, a correction, or new words cancel the model, the
-  speech, and read-only lookups at once, and the screen shows it.
+  speech, and read-only lookups at once, and the widget's captions mark the cut (nothing the caller
+  needs relies on a screen: D-075, M4).
 - The two-step interruption. Step one: when the backend's speech detection fires over the
   agent, the widget lowers the agent's voice. Step two: Groq's Whisper gives no partial
   transcripts, so the decision comes from transcribing the overlap itself, a first window of a
@@ -193,7 +199,8 @@ were left out, and Ole5 needed no word additions (plan 005).
   with a test of that wiring.
 - `actions`: one knowledge search per question (T2's Qdrant and embedding gateway, D-002), a
   short spoken answer with the full steps on screen, and a pre-recorded progress line while a
-  tool runs. Deeper troubleshooting in the background moved to the thinker, after M7 (D-018).
+  tool runs. D-075 replaced the short answer and the screen inside M4: every step is said, and
+  said again, whole or one step, when the caller asks; no screen is relied on. Deeper troubleshooting in the background moved to the thinker, after M7 (D-018).
 - The output guard on every sentence (invariant 2), and tool arguments parsed at the boundary
   (invariant 4).
 - Simulated calls for knowledge questions in Arabic and English, each scenario repeated.
@@ -226,7 +233,13 @@ were left out, and Ole5 needed no word additions (plan 005).
 
 *Done when* retrieval (the right passage in the top 5) and answer correctness are measured; the
 time to the first useful audio meets a target registered in its plan before any run; and the
-rehearsal's password, archiving, and English questions pass.
+rehearsal's password, archiving, and English questions pass. *Done* on 2026-11-09
+([006](completed/006-talker-and-knowledge-answers.md)), with registered targets missed and its
+live calls moved to M7, by the owner's word: on held-out, an expected passage was retrieved for
+0.816 of the variants (bound 0.90) and right answers read 0.408 (bound 0.80, unverified, since the
+judge's check failed); with a search, the first audio's median and 90th percentile held (2,532
+and 3,044 ms), but 5 of 40 replies had not begun by 3.0 s with no progress line. `t2v check` was
+not built (TD-143).
 
 **M5 · Tickets, ticket status, and handoff.**
 - `domain`: the ticket flow's states and the yes rule, issuing the confirmed draft only from
@@ -318,7 +331,13 @@ rehearsal's password, archiving, and English questions pass.
 rehearsal's ticket flow passes, where an eager «نعم أرسلها» over the closing question creates the
 ticket once the summary has played and a bare «نعم» there is asked again; and «أبغى موظف»
 spoken over an answer stops the answer, reads the handoff back, and makes the handoff ticket
-after a clear yes.
+after a clear yes. *Done* on 2026-11-12 ([007](completed/007-tickets-status-handoff.md)), against
+the app's mock ticket system: run A's held-out scripted calls met every target, with no claim the
+record did not hold and no action without a yes in its 72 plays; the rehearsal's two steps are
+end-to-end tests (`tests/ole5_voice/tickets/test_ticket_calls.py`), and the owner's ten live calls
+on the dev console (D-089) made 4 of their 9 read-backs on a yes, a handoff among them, but did not
+take those steps one by one, which M7's rehearsal does. The background try moved to plan 007's
+Future improvements.
 
 **M6 · Reliability and operations.**
 - A time limit and a visible fallback for every part: speech-to-text, the model,
@@ -433,6 +452,17 @@ targets hold at the cap on live calls.
   (D-025).
 - From garbage collection round 1 (plan 004): the library's base error is `T2VoiceError`
   (D-026), and the checks ARCH-DEPS and DOC-SAMPLE (D-027).
+- From M2 (plan 003): the settings' precedence, prefix and required `env` (D-028); serving and
+  identity, with signed join tokens and the offer secret (D-029); a provider swapped by a setting
+  or an adapter passed in code (D-030); the library's logging and Pipecat's loguru (D-031);
+  ARCH-BAN, M2's owners and the facades `identity`, `server`, `stores` and `events` (D-032); the
+  echo's shape (D-033); SECURITY.md's invariants 7 and 8 brought to the design's 8.1 (D-035);
+  `t2v/1`'s data-channel messages parsed strictly (D-039); the calls on the owner's laptop for now,
+  Phoenix as M1's; and the voices, `abdullah` (Saudi Arabic) and `troy` (English), with the fixed
+  phrases in Saudi dialect (the owner, 2026-11-02, plan 003's Q5). The agent's, still Proposed: one
+  Whisper request per user turn (D-034), the ports beyond the design's 6.1 (D-036), agent speech
+  keyed on replies (D-037), a call's language fixed at join (D-038), and the requests per call
+  minute measured for M6's cap (D-040).
 - The next phase: voice for a team's existing agent, as a second, agent-led mode after the
   Ole5 Voice Agent, and the talker stays our own (D-050).
 - From M3 (plan 005): one cancel scope per reply (D-060), the two-step interruption, its settings
@@ -441,6 +471,20 @@ targets hold at the cap on live calls.
   push-to-talk (D-065), `stt.live_language` stays `session` (D-066), the hold after Smart Turn's
   "complete" (D-067), and the registered results with `two_step` the default at a plateau
   (D-068).
+- From M4 (plan 006): the knowledge base reached directly, Qdrant and T2's embedding gateway with
+  one search a question, as D-002 proposed (ragent2 not used); a chat model decides the short
+  overlaps the rule would let go on (D-069); a reply kept while a newer turn is open (D-070); the
+  top k passages whole (D-071); each chat request's own first line (D-072); the progress line by
+  the caller's wait (D-073); the Whisper prompt in live calls and `gpt-oss-120b` at medium
+  (D-074); every step said, no screen relied on (D-075); no consent screen on Ole5's page (D-076);
+  what the live calls changed in how the agent sounds (D-077); a failed search asked once more
+  (D-078); and traces that hold what the agent said and searched for (D-079).
+- From M5 (plan 007): the sealed consent objects (D-080); the yes rule refined and the guard split
+  (D-081); a chat model's word on the answers the yes rule's lists leave unplaced (D-082); the test
+  console (D-083); no stray script in what the talker writes (D-084); a spoken reply stops before
+  its second question (D-085); each turn's language from a classifier, off until a run keeps it
+  (D-086); every clause kept on disk by its exact text (D-087); the gate on every core (D-088); and
+  four fixes from the owner's live calls (D-089).
 
 ## Open questions (need a human decision)
 
@@ -456,30 +500,22 @@ targets hold at the cap on live calls.
 - How teammates are supported: left until someone starts using the library (the design's
   open question 14).
 
-To decide before M2, which builds the call set-up:
+To decide with the deployment, in its own plan (M6's section):
 
 - How the website proves who the customer is: its server mints the join token for a logged-in
   customer, signed with a key the backend verifies, or the customer confirms a one-time code
   sent to their email. An email typed in the widget is only a contact address: a ticket made
   with it is marked unverified for support staff, and it never unlocks ticket status. The
-  owner is asking the website team whether customers log in (D-018). M2's calls do not wait
-  for the answer: they get their tokens from the Ole5 app's access-code route (plan 003's Q4), and
-  the answer is taken up with the deployment (plan 003's Q12, moved out of M2 on 2026-11-03).
-- Where the backend and Phoenix run: on the owner's machine for now, Phoenix as M1's (the owner,
-  2026-11-02, [plan 003](completed/003-call-listens-and-speaks.md)). The deployment moved out
-  of M2 (the owner, 2026-11-03, plan 003): how WebRTC media reaches the backend from customers'
-  networks (UDP ports, a TURN service, or another transport) is decided in the deployment's own
-  plan, on the server, as soon as the owner has access to it (M6's section).
-- The voices: `abdullah` (Saudi Arabic) and `troy` (English), with M2's fixed phrases in
-  Saudi dialect (the owner, 2026-11-02, plan 003's Q5).
+  owner is asking the website team whether customers log in (D-018). Until then the calls get
+  their tokens from the Ole5 app's access-code route (plan 003's Q4; its Q12, moved out of M2 on
+  2026-11-03).
+- How WebRTC media reaches the backend from customers' networks (UDP ports, a TURN service, or
+  another transport), decided on the server as soon as the owner has access to it (the owner,
+  2026-11-03, [plan 003](completed/003-call-listens-and-speaks.md)).
 
 Later:
 
-- How the knowledge base is reached (M4): the agent recommends Qdrant and the embedding gateway
-  directly, with one embedding and one search per question, since the prototype measured
-  ragent2 at 20–45 s per answerable search (Ole5-chatbot VOICE_LOG.md, D28). ragent2 is used
-  only if the owner chooses it.
-- The ticket API's gaps, asked of T2 now so that M5's design follows the answer: a request ID
-  stored on the ticket with a lookup by it, a list of a customer's tickets, and creation with all
-  fields in one call.
+- The ticket API's gaps, asked of T2 when the real ticket system's adapter is built (M5 built a
+  mock, the owner having no access: plan 007's Q2): a request ID stored on the ticket with a
+  lookup by it, a list of a customer's tickets, and creation with all fields in one call.
 - When Phase 0 ends, can recordings from other speakers be gathered?

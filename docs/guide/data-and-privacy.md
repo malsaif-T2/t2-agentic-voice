@@ -9,9 +9,9 @@ team's call (D-018). The rules behind this page are [SECURITY.md](../SECURITY.md
 ## What it stores
 
 Everything the library keeps is under one data folder, `storage.var_dir` (`var` by default,
-relative to the working folder), on the machine that runs the runtime. It deletes none of it,
-but for the clause cache, which removes its own takes past its bound: there is no purge command
-yet.
+relative to the working folder), on the machine that runs the runtime. It deletes none of it
+but two kinds: the used-token store prunes a token's row once it could no longer verify, and the
+clause cache removes its own takes past its bound. There is no purge command yet.
 
 | Under `var_dir` | What it holds | Call content |
 | --- | --- | --- |
@@ -52,8 +52,8 @@ on the call's report and traces.
 | Your trace backend (`tracing.endpoint`), or your own tracer provider | The spans of each turn and call, with what the caller said, the agent's replies and its tool calls with their results unless `tracing.include_transcripts` is off, after `tracing.redact`'s patterns: never audio or a secret ([tracing-and-logs.md](tracing-and-logs.md)) |
 | The caller's browser | The agent's audio over WebRTC, and the captions, state, cards and notices on the data channel |
 
-Nothing else: the library contacts no STUN server unless `server.ice_servers` names one, and
-sends nothing home. Your tools and your knowledge base adapter are your app's code: what they
+Nothing else: the library contacts no STUN server unless `server.ice_servers` names one (the
+backend's peer and the browser then both use it), and sends nothing home. Your tools and your knowledge base adapter are your app's code: what they
 reach is yours to say, and what they return goes to the chat model as data, and to the caller's
 screen when it is a card. The browser's audio goes straight to your backend over WebRTC, with no
 media server between.

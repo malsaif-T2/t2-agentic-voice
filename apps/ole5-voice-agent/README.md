@@ -27,8 +27,8 @@ uv run python -m ole5_voice.server --env-file .env
 ```
 
 It is ready when it logs `knowledge_base_set agent=talker` and `Uvicorn running on
-http://127.0.0.1:7861`; its first start takes about 15 s while it records the fixed lines it
-speaks. `--port` serves another port.
+http://127.0.0.1:7861`; its first start takes longer (not measured) while it records the fixed
+lines it speaks. `--port` serves another port.
 
 **Then**, in Chrome or Edge on the same machine, open http://127.0.0.1:7861/:
 

@@ -44,7 +44,7 @@ For a reply with no tool, in order:
    (200 ms) of silence, and Smart Turn judges whether the turn is complete.
 2. **The hold after "complete"**: `turns.complete_hold_ms` (600 ms), so a pause inside a request
    does not end it ([concepts.md](concepts.md), "The end of a turn"). On Ole5's recordings a
-   turn then ended a median of about 0.94 s after the caller's own end (D-067).
+   turn then ended a median of 0.94 s after the caller's own end on the dev split (D-067).
 3. **The transcript**: the turn's audio, whole, in one Whisper request.
 4. **The first clause**: the chat model's request, to the end of its first clause.
 5. **The voice**: the first clause's text-to-speech request, to its first audio.
@@ -73,9 +73,9 @@ result, before step 5.
 - **A first line new on every request.** Each request's system message opens with a line of its
   own (such as `Request 7f3a9c21.`), so no two requests share a prefix Groq has cached, for its
   cache can be the slow path. In 24 short requests to `openai/gpt-oss-120b` with Ole5's system
-  prompt (3,617 characters), alternated: with the same prompt every time, Groq served 8 of 12
-  from its cache, and 3 of those 8 took 1.03, 1.25 and 5.71 s to the first token; with a first
-  line of their own, none was cached and all 12 took 0.15 to 0.30 s (medians 0.20 and 0.18 s).
+  prompt, alternated: with the same prompt every time, Groq served 8 of 12 from its cache, and 3
+  of those 8 took 1.03, 1.25 and 5.71 s to the first token; with a first line of their own, none
+  was cached and all 12 took 0.15 to 0.30 s (plan 006's probe of 2026-11-07, D-072).
   A live follow-up turn the same day waited 7.8 s for its first token. Turning the line off
   (`llm.vary_first_line`) lets requests share a cached prefix again, and with it that slow path.
 - **A progress line for a long wait.** A reply with a tool that has a progress line, with no
@@ -107,7 +107,7 @@ its targets before any run, for one speaker on the laptop:
 | With a search | at most 3.0 s | at most 4.0 s, and a progress line begun by 3.0 s whenever the answer has not |
 
 What the plan expects, before any measurement: without the early start, a reply with no search
-about 1.9 s after the caller's end (the 0.93 s turn end with the hold, then the transcript, the
+about 1.9 s after the caller's end (the dev split's 0.94 s turn end with the hold, then the transcript, the
 first clause and the voice's first audio); with it, about 1.3 to 1.5 s. A search adds the tool's
 request, the embedding, the search and a second request, about 0.8 to 1.2 s. The prototype
 measured a 1.5 to 1.6 s median for its first sound, its search apart. Its spike measured two of
@@ -115,8 +115,12 @@ the parts on the laptop: the chat models' first clause, on a warm connection, at
 0.25 to 0.35 s; and one embedding and one search of Ole5's knowledge base at a median of 0.32 s
 (0.47 s at the 90th percentile).
 
-The measured numbers go here once Ole5's run of the time to first audio (plan 006's run T) has
-run.
+What Ole5's run of the time to first audio measured (plan 006's run T on held-out, once, on
+2026-11-09: `gpt-oss-120b`, the progress line at 2.6 s, 40 timed replies, each with a search): a
+median of 2,532 ms and a 90th percentile of 3,044 ms, both within their targets; but 5 of the 40
+had not begun by 3.0 s and had no progress line by then, so that target failed. No held-out
+request is answered without a search; on dev's 12 recordings, the replies with no search took a
+median of 1.36 s and a 90th percentile of 1.48 s.
 
 ## Measuring yours
 

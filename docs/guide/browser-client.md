@@ -10,6 +10,12 @@ the test console.
 
 ## Starting a call
 
+Import it as a module, from where the runtime serves it (`"/voice"` here is the router's prefix):
+
+```js
+import { VoiceClient } from "/voice/client/1/t2v-client.js";
+```
+
 Call `VoiceClient.start(options)` inside the click that starts the call, so the browser lets the
 page play the agent's audio. It resolves with the call, or rejects with a `VoiceClientError`.
 
@@ -56,7 +62,7 @@ that throws is logged to the console and the others still run.
 | `hello` | `{call_id, languages}`, once the data channel opens: the call's languages, its own first |
 | `state` | `{state}`: `listening`; `thinking`, while a reply asked for has no audio yet (the talker or one of its tools at work) or a turn's transcript is awaited; `speaking` (below, "The agent thinking"); or `confirming`, while an action's read-back waits for the caller's answer and nothing plays ([tools-and-actions.md](tools-and-actions.md)) |
 | `caption` | `{speaker, text, final, turn_id, reply_id, clause, cut}`: the caller's turn once heard (`speaker` `caller`, named by `turn_id`), or the agent's reply clause by clause as each starts playing (`agent`, named by `reply_id` and `clause`); `cut` is true for an agent's clause a stop cut while it played, sent again with the mark (below) |
-| `card` | `{title, steps, source}`: a reply's whole answer for the screen, its steps a list of text in order (empty when its source lists none) and `source` the document it comes from, `null` when there is none (below, "Cards") |
+| `card` | `{title, steps, source}`: an extra a tool of your own returned, for a client with a screen, its steps a list of text in order (empty when its source lists none) and `source` the document it comes from, `null` when there is none (below, "Cards") |
 | `duck` | `{level}`: the caller is speaking over the agent, whose voice now plays at `level` (0 to 1) of its volume until the session decides |
 | `unduck` | `{}`: the session has decided, and the agent's voice is back to full volume |
 | `volume` | `{level}`: the client changed the agent's volume, 1 at full; the client's own event, sent on each change, whatever caused it |
@@ -103,11 +109,12 @@ caption is never cut.
 
 ## Cards
 
-A talker's reply says its answer short aloud, one to three spoken sentences, and sends the whole
-to the screen as a `card`: a title, its steps in order, and the document they come from. The
-knowledge tool shows the passage that answers best as one, when it lists steps; a tool of your
-own shows one by returning a `ToolResult` with a `card` ([concepts.md](concepts.md), "Cards").
-The session sends a card only once the output guard has read its text, as it reads a clause's.
+A talker's reply says every step of its answer aloud, and nothing the caller needs is only on a
+screen, which they may not have (D-075). A `card` is an extra for a client with one: a title,
+its steps in order, and the document they come from. Only a tool of your own shows one, by
+returning a `ToolResult` with a `card`; the knowledge tool shows none
+([concepts.md](concepts.md), "Cards"). The session sends a card only once the output guard has
+read its text, as it reads a clause's.
 
 The client hands the page each card as one `card` event, and drops a message that is not one
 (no title, steps that are not text). Show it beside the captions, a new card in place of the
@@ -195,6 +202,7 @@ rest: [serving.md](serving.md)) or the client's own:
 | `microphone_refused` | The browser refused the page the microphone |
 | `microphone_failed` | It could not be opened, or the page is not HTTPS or this machine's own address |
 | `network` | The voice server could not be reached |
+| `http_error` | The server refused a request with no error body of its own (a proxy's page, say): `status` holds its HTTP status |
 | `no_token` | `getToken` gave no token |
 | `ended` | The call ended while it was starting |
 
