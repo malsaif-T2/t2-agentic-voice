@@ -29,26 +29,14 @@ during a reply is evidence from then on.
 from __future__ import annotations
 
 from collections.abc import Iterable, Sequence
-from dataclasses import dataclass
 
 from t2_agentic_voice.actions.action import Action
 from t2_agentic_voice.actions.record import ActionRecord
 from t2_agentic_voice.agent.tool_calls import Memory
-from t2_agentic_voice.core.events import GuardReason
 from t2_agentic_voice.core.settings.guard import GuardSettings
 from t2_agentic_voice.domain import claims as rule_a
 from t2_agentic_voice.domain.completed_action import CompletedAction, is_recorded
-from t2_agentic_voice.domain.guard import check_clause, check_ids
-
-
-@dataclass(frozen=True, slots=True)
-class Checked:
-    """What the guard made of a clause: whether it `passed`, and when not, by which rule
-    (`reason`) and the ID-shaped tokens it held with no support (`unsupported`)."""
-
-    passed: bool
-    reason: GuardReason = "unsupported_id"
-    unsupported: tuple[str, ...] = ()
+from t2_agentic_voice.domain.guard import GuardVerdict, check_clause, check_ids
 
 
 class SpeechGuard:
@@ -70,9 +58,9 @@ class SpeechGuard:
         self._phrases: tuple[dict[str, tuple[str, ...]], tuple[str, ...]] | None = None
         self._passed: list[str] = []  # the clauses of this reply the guard passed, in order
 
-    def check(self, clause: str) -> Checked:
-        """Rule A on `clause`, then rule B on one that claims nothing; a clause that passes is
-        kept as said in this reply."""
+    def check(self, clause: str) -> GuardVerdict:
+        """Rule A on `clause`, then rule B on one rule A passed, as domain/guard.py's verdict; a
+        clause that passes is kept as said in this reply."""
         checked = self._checked(clause)
         if checked.passed:
             self._passed.append(clause)
@@ -84,9 +72,9 @@ class SpeechGuard:
         limit reads (agent/question_limit.py)."""
         return tuple(self._passed)
 
-    def _checked(self, clause: str) -> Checked:
+    def _checked(self, clause: str) -> GuardVerdict:
         claims, any_action = self._claim_phrases() if self.actions else ({}, ())
-        verdict = check_clause(
+        return check_clause(
             clause,
             evidence=[*self.memory.evidence, *self.heard],
             claims=claims,
@@ -96,7 +84,6 @@ class SpeechGuard:
             year=self.year,
             earlier=tuple(self._passed),
         )
-        return Checked(verdict.passed, verdict.reason or "unsupported_id", verdict.unsupported)
 
     def ids_pass(self, texts: Iterable[str]) -> bool:
         """Whether every text passes rule B (a card's)."""

@@ -85,7 +85,7 @@ class ClauseGate:
                     text=text,
                     language=self.language,
                     unsupported=checked.unsupported,
-                    reason=checked.reason,
+                    reason=checked.reason or "unsupported_id",
                 )
             )
             self.stopped = self.settings.on_block == "drop_rest"

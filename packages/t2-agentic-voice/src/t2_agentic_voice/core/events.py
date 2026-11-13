@@ -40,6 +40,7 @@ from t2_agentic_voice.core.ids import CallId as CallId
 from t2_agentic_voice.core.ids import ClauseIndex as ClauseIndex
 from t2_agentic_voice.core.ids import ReplyId as ReplyId
 from t2_agentic_voice.core.ids import TurnId as TurnId
+from t2_agentic_voice.core.yes_inputs import ActionName
 
 # How an interruption ended the agent's speech (the design's 6.6): `stop`, the Stop button, Esc
 # or a stop word; or the interruption rule's `correction` or `new_words` (domain/interruptions.py,
@@ -164,7 +165,7 @@ class ConfirmationRequested(_TurnEvent):
     """The read-back of `action` began to play in the reply to the turn; `draft` is the draft
     it reads back, as the JSON text the yes rule's receipt holds (call content)."""
 
-    action: str = Field(min_length=1)
+    action: ActionName
     draft: str = ""
 
 
@@ -173,7 +174,7 @@ class ConfirmationAnswered(_TurnEvent):
     (`words`), or by a chat model's word on words they left unplaced, within its rails (`model`,
     D-082)."""
 
-    action: str = Field(min_length=1)
+    action: ActionName
     decision: ConfirmationDecision
     by: Literal["words", "model"] = "words"
 
@@ -182,7 +183,7 @@ class ActionCompleted(Event):
     """`action`'s write returned and was recorded, by its `request_id`; `result` is the write's
     real result as JSON text, as the call's record holds it (a ticket's number, say)."""
 
-    action: str = Field(min_length=1)
+    action: ActionName
     request_id: str = Field(min_length=1)
     result: str = ""
 
@@ -190,7 +191,7 @@ class ActionCompleted(Event):
 class ActionUnconfirmed(Event):
     """`action`'s write did not end in a record: `kind` says how it ended."""
 
-    action: str = Field(min_length=1)
+    action: ActionName
     request_id: str = Field(min_length=1)
     kind: UnconfirmedKind
 

@@ -19,6 +19,7 @@ from typing import Annotated, Literal, Self
 from pydantic import BaseModel, ConfigDict, Field, model_validator
 
 from t2_agentic_voice.core.events import ReplyId, TurnId
+from t2_agentic_voice.core.yes_inputs import ActionName
 
 # What became of a clause of a reply: it played whole, a stop cut it while it played, or it
 # never played.
@@ -112,7 +113,7 @@ class DeclinedAction(_Plain):
     (`ReadBackPlan.declined`) is the session's only where no talker turn can answer: nothing
     usable heard after the last ask-again (`unclear`)."""
 
-    action: str = Field(min_length=1)
+    action: ActionName
     kind: DeclineKind
     words: str = Field(repr=False)
 
