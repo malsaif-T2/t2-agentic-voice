@@ -1,6 +1,6 @@
 """Per-call TURN credentials (the design's 11): minted from the TURN service's shared secret by
-coturn's REST scheme (its `use-auth-secret`), for `/join` to return with the ICE servers. Built
-by plan 003's Track C; until then a stub.
+coturn's REST scheme (its `use-auth-secret`), for `/join` to return with the ICE servers. A stub
+until the deployment's plan builds it (TD-048): `/join` mints none.
 
 The user name is `<expiry>:<call ID>`, the expiry in Unix seconds, so it holds no claim of the
 join token (no `sub`, no `name`); the password is the HMAC of the user name under the shared
@@ -17,7 +17,7 @@ from pydantic import AwareDatetime, BaseModel, ConfigDict, SecretStr
 
 from t2_agentic_voice.core.events import CallId
 
-_STUB = "TURN credentials are built by plan 003's Track C"
+_STUB = "TURN credentials are not built: the deployment's plan builds them (TD-048)"
 
 
 class TurnCredentials(BaseModel):

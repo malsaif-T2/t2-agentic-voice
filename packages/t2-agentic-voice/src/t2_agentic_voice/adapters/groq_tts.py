@@ -2,7 +2,7 @@
 
 It speaks each language in the model and voice `tts.languages` gives it
 (`canopylabs/orpheus-arabic-saudi` and `canopylabs/orpheus-v1-english`), one request per clause
-with `response_format` "wav" passed explicitly, the request's fields as Block 0's baseline
+with `response_format` "wav" passed explicitly, the request's fields as the baseline
 records them (tests/t2_agentic_voice/fixtures/groq_tts_request.json). It builds its client as
 every Groq adapter does (`adapters/groq_client.py`: the key, base URL and timeout always passed,
 the SDK's retries off, every request with the adapter's own headers, a body that does not open
@@ -36,8 +36,9 @@ public signature names a `groq` type (the design's 5.3). Public through the `gro
   11120, 2025-12-21; Groq's docs do not give it: UNVERIFIED). That refusal is `rejected`, its
   details naming the code and the model, with the FIX in its details' `fix` and as a note.
 - **Failures** go through `groq_client.failure`; a read of the streamed answer that times out
-  or loses its connection, which the SDK does not wrap, is `timeout` or `connection_lost`, and an
-  answer that is not a mono 16-bit WAV is a `server_error`.
+  or loses its connection, which the SDK does not wrap, is `timeout` or `connection_lost`
+  (`groq_client.stream_failure`), and an answer that is not a mono 16-bit WAV is a
+  `server_error`.
 """
 
 from __future__ import annotations
@@ -55,10 +56,11 @@ from t2_agentic_voice.adapters.groq_client import (
     failure,
     groq_client,
     headroom,
-    no_key,
     own_headers,
     raw_response,
     server_time,
+    settings_key,
+    stream_failure,
 )
 from t2_agentic_voice.adapters.wav_stream import WavStream
 from t2_agentic_voice.core.config import VoiceSettings
@@ -141,13 +143,7 @@ class GroqTTS:
         """The adapter the settings describe: `groq.resolved_api_key()`, `groq.base_url`,
         `tts.languages`, `tts.timeout_s` and `tts.trim_silence`. ConfigurationError naming
         `T2V_GROQ__API_KEY` (under the settings' prefix) when no key is set, as `GroqSTT`'s."""
-        key = settings.groq.resolved_api_key(settings.prefix)
-        if key is None:
-            raise no_key(
-                settings.env_name("groq", "api_key"),
-                settings.env_name("groq", "api_key_file"),
-                settings.saw("GROQ_API_KEY"),
-            )
+        key = settings_key(settings)
         return cls(
             api_key=key,
             languages=settings.tts.languages,
@@ -275,11 +271,7 @@ def _chunk(
 
 def _failure(error: Exception, model: str) -> ProviderError:
     """The ProviderError for a failure of a speech request on `model` (above)."""
-    if isinstance(error, httpx.TimeoutException):
-        return ProviderError("timeout", True, details={"error": type(error).__name__})
-    if isinstance(error, httpx.TransportError):
-        return ProviderError("connection_lost", True, details={"error": type(error).__name__})
-    mapped = failure(error)
+    mapped = stream_failure(error)
     if not (isinstance(error, APIStatusError) and _Refusal.code_of(error.body) == TERMS_CODE):
         return mapped
     mapped.details |= {"error": TERMS_CODE, "model": model}

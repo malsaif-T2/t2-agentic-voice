@@ -1,4 +1,4 @@
-"""A streamed WAV read whatever its chunk boundaries (adapters/wav_stream.py, plan 003's Track B):
+"""A streamed WAV read whatever its chunk boundaries (adapters/wav_stream.py):
 the audio in whole samples, the sample rate read from the header, the formats refused, and the
 silence before the speech measured, and trimmed only with `trim` on. The prototype's
 `WavStream` and `Trimmer` were read as specs, never run

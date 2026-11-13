@@ -1,4 +1,4 @@
-"""GroqChat's checks (adapters/groq_chat.py; plan 006, Track A): a cancel, or a stream closed
+"""GroqChat's checks (adapters/groq_chat.py): a cancel, or a stream closed
 between events, that stops within 50 ms and leaves no task or connection; one connection kept
 open between two requests, and the five-minute keep-alive on its own pool (the prototype's D41);
 `llm.timeout_s` bounding the whole request without ever cancelling the consumer; and the request
@@ -29,11 +29,10 @@ from tests.t2_agentic_voice.adapters.chat_support import (
     ask,
     chat_settings,
     chunk,
-    settle,
     sse,
     text,
 )
-from tests.t2_agentic_voice.adapters.groq_support import KEY, OTHER, FakeGroq
+from tests.t2_agentic_voice.adapters.groq_support import KEY, OTHER, FakeGroq, settle
 
 ANSWER = sse(*text("Open Settings."))
 
@@ -126,7 +125,9 @@ def test_the_timeout_bounds_the_whole_request_not_each_read() -> None:
 
 def test_the_deadline_never_cancels_the_consumer_between_events() -> None:
     """The consumer's own wait outlives the deadline untouched; the stream then fails at its
-    next wait for Groq, never inside the consumer's code."""
+    next wait for Groq, never inside the consumer's code. A request first warms the SDK (its
+    first request in a process costs it about 0.4 s here, the platform's detection among it), so
+    the first event comes well within the deadline, however loaded the machine."""
 
     async def slow() -> AsyncIterator[bytes]:
         yield sse(chunk({"content": "Open"}), done=False)
@@ -136,12 +137,13 @@ def test_the_deadline_never_cancels_the_consumer_between_events() -> None:
     fake = FakeGroq(httpx.Response(200, content=slow()))
 
     async def scene() -> tuple[bool, ProviderError | None]:
-        adapter = GroqChat.from_settings(chat_settings(timeout_s=0.1), transport=fake)
+        await ask(FakeGroq(httpx.Response(200, content=ANSWER)))  # the SDK warmed
+        adapter = GroqChat.from_settings(chat_settings(timeout_s=0.5), transport=fake)
         stream = adapter.stream(REQUEST)
         await anext(stream)
         slept = False
         try:
-            await asyncio.sleep(0.2)  # past the deadline
+            await asyncio.sleep(0.6)  # past the deadline
             slept = True
             await anext(stream)
         except ProviderError as error:

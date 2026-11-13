@@ -1,4 +1,4 @@
-"""GroqTTS's checks (plan 003, Track B): the key in no repr, error or log line; `GROQ_*` variables
+"""GroqTTS's checks: the key in no repr, error or log line; `GROQ_*` variables
 changing nothing in the request (the design's 7.3) and `GROQ_LOG` nothing on import (TD-003); a
 cancel that stops within 50 ms and leaves no task or connection, and a Groq that stops answering
 ended by `tts.timeout_s`, both over a real connection to a server on 127.0.0.1; the settings'
@@ -32,7 +32,7 @@ from t2_agentic_voice.domain.ports.text_to_speech import AudioChunk, TextToSpeec
 
 from tests.isolation import dropped
 from tests.leaks import holding, shown
-from tests.t2_agentic_voice.adapters.groq_support import KEY, OTHER, SETTING, FakeGroq
+from tests.t2_agentic_voice.adapters.groq_support import KEY, OTHER, SETTING, FakeGroq, settle
 from tests.t2_agentic_voice.adapters.tts_support import (
     ENGLISH,
     answer,
@@ -243,18 +243,6 @@ def _streaming(body: bytes) -> bytes:
     return head + f"{len(body):x}\r\n".encode() + body + b"\r\n"
 
 
-async def _settle() -> set[asyncio.Task[Any]]:
-    """The tasks still pending once the loop has settled, this one's aside: a take closed
-    between chunks leaves httpx's own async generators suspended, and each one's finalizer, a
-    task, closes the next on a later turn of the loop."""
-    for _ in range(100):
-        left = asyncio.all_tasks() - {asyncio.current_task()}
-        if not left:
-            break
-        await asyncio.sleep(0)
-    return left
-
-
 @pytest.mark.parametrize("how", ["cancel", "close"])
 def test_a_stopped_take_ends_at_once_and_closes_its_connection(how: str) -> None:
     """The design's 6.1: a take stopped mid-stream (its task cancelled while it waits for audio,
@@ -282,7 +270,7 @@ def test_a_stopped_take_ends_at_once_and_closes_its_connection(how: str) -> None
             start = time.perf_counter()
             await take.aclose()
         took = time.perf_counter() - start
-        left = await _settle()
+        left = await settle()
         assert await asyncio.to_thread(server.hung_up.wait, 5)  # before aclose: the stop closed it
         await adapter.aclose()
         return took, heard, left

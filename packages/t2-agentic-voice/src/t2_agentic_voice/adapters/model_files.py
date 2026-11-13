@@ -1,4 +1,4 @@
-"""The model files a spoken-language classifier loads (plan 007's Block H, Q16), and what the two
+"""The model files a spoken-language classifier loads (D-086; plan 007's Q16), and what the two
 classifier adapters share (silero_language.py, ecapa_language.py).
 
 **The files.** Each classifier's files are fetched once, by hand, into the folder
@@ -9,8 +9,8 @@ missing, cut short or changed is a ConfigurationError naming the file, the setti
 guide's page, never the file's bytes; `t2v doctor` shows each file's check (`problem`).
 
 **One at a time.** One classification runs at a time a process, whichever adapter: a second
-asked while one runs is busy, and the turn keeps its language (`ONE_AT_A_TIME`, taken on the
-worker thread, so a cancelled request that never ran holds nothing).
+asked while one runs is busy, and the turn keeps its language (`run_alone`, which takes
+`ONE_AT_A_TIME` on the worker thread, so a cancelled request that never ran holds nothing).
 
 **The caller's audio** reaches a model as float32 samples from -1 to 1 (`samples`), from the
 call's mono 16-bit PCM at 16 kHz, the rate both models were trained on (`RATE`).
@@ -21,7 +21,7 @@ from __future__ import annotations
 import hashlib
 import re
 import threading
-from collections.abc import Sequence
+from collections.abc import Callable, Sequence
 from dataclasses import dataclass
 from pathlib import Path
 from typing import Final
@@ -125,6 +125,19 @@ def heard_codes(name: str, among: Sequence[str], labels: Sequence[str]) -> tuple
             "set stt.live_language to session."
         )
     return codes
+
+
+def run_alone(
+    runner: Callable[[Samples], Samples], given: Samples
+) -> npt.NDArray[np.float64] | None:
+    """On a worker thread: `runner`'s output for `given`, as float64; None, never run, while
+    another classification runs, in either adapter (the module's docstring)."""
+    if not ONE_AT_A_TIME.acquire(blocking=False):
+        return None
+    try:
+        return np.asarray(runner(given), dtype=np.float64)
+    finally:
+        ONE_AT_A_TIME.release()
 
 
 def samples(clip: AudioClip) -> Samples:

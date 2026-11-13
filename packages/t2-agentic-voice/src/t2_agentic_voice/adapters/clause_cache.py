@@ -24,8 +24,10 @@ never closes the adapter it wraps (whoever built that closes it). Public through
   miss and the clause is requested as today; a file that is no take is a miss, counted, its entry
   dropped and its file removed by the writer. `held` never raises.
 - **Logs** never hold a text or a key (a key is a hash of a short text that can be guessed back,
-  GP-19): `clause_cache_opened`, `_closed` and `_trimmed`, `clause_unreadable`, and
-  `clause_write_failed` with the error's type.
+  GP-19): `clause_cache_opened`, `_closed` and `_trimmed` at INFO; at WARNING
+  `clause_unreadable`, and `clause_write_failed` and `clause_lookup_failed` (a lookup's own bug,
+  the clause then requested) with the error's type; and `clause_writer_failed` at ERROR, with the
+  error's type, the writer going on.
 """
 
 from __future__ import annotations

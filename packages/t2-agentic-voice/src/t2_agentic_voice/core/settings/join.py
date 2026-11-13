@@ -44,7 +44,8 @@ from t2_agentic_voice.core.settings.base import (
 )
 
 # A key ID travels in each token's `kid` header, which the caller can read: a short name.
-KeyId = Annotated[str, StringConstraints(pattern=r"^[A-Za-z0-9._-]{1,64}$")]
+KEY_ID_PATTERN = r"^[A-Za-z0-9._-]{1,64}$"
+KeyId = Annotated[str, StringConstraints(pattern=KEY_ID_PATTERN)]
 # A join token lives 120 s at most (the design's 6.5).
 MAX_TTL_S = 120
 # How far a token's times may be off this machine's clock, at most: the verifier takes a token

@@ -1,5 +1,5 @@
 """Silero's spoken-language classifier behind the `LanguageClassifier` port (adapters/
-silero_language.py; plan 007's Block H), with an injected runner and opener, so no model file
+silero_language.py; D-086), with an injected runner and opener, so no model file
 and no onnxruntime session: its label map (code 55 Arabic, 30 English, checked against the
 pinned label file at load), the softmax renormalized over the codes asked with its mass, the
 caller's PCM16 as float32, the session's thread count, the model loaded once a process, one

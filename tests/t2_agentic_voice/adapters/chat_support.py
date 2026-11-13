@@ -6,7 +6,6 @@ every kind of message, one request through `GroqChat` on a fake transport, and a
 
 from __future__ import annotations
 
-import asyncio
 import contextlib
 import json
 import re
@@ -235,15 +234,3 @@ class Server:
     def __exit__(self, *_: object) -> None:
         self.listener.close()
         self.thread.join(5)
-
-
-async def settle() -> set[asyncio.Task[Any]]:
-    """The tasks still pending once the loop has settled, this one's aside: a stream closed
-    between events leaves the SDK's and httpx's own async generators suspended, and each one's
-    finalizer, a task, closes the next on a later turn of the loop."""
-    for _ in range(100):
-        left = asyncio.all_tasks() - {asyncio.current_task()}
-        if not left:
-            break
-        await asyncio.sleep(0)
-    return left

@@ -1,11 +1,11 @@
-"""The phrase cache (adapters/phrase_cache.py, plan 003's Track B): each fixed phrase synthesized
+"""The phrase cache (adapters/phrase_cache.py): each fixed phrase synthesized
 once and kept, a cache hit sending nothing; a phrase over `max_chars` packed into the fewest
 requests that fit; a rate-limited request waited for and sent again, within the bounds; the
 pronunciation map and the provider's text sent, the phrase found as written. Against
-`FakeTextToSpeech` (tests/t2_agentic_voice/fakes.py), and Track A's splitter and map standing
-in by their contracts until Track A merges (phrase_support.py's `track_a`). The prototype's
-cache was read as a spec, never run (Ole5-chatbot/src/ole5_chat/voice/fillers.py, lines 24-75).
-test_phrase_cache_files.py holds the files' tests."""
+`FakeTextToSpeech` (tests/t2_agentic_voice/fakes.py), through the library's clause splitter and
+pronunciation map. The prototype's cache was read as a spec, never run
+(Ole5-chatbot/src/ole5_chat/voice/fillers.py, lines 24-75). test_phrase_cache_files.py holds the
+files' tests."""
 
 from __future__ import annotations
 
@@ -32,11 +32,8 @@ from tests.t2_agentic_voice.adapters.phrase_support import (
     declare,
     english,
     take,
-    track_a,
 )
 from tests.t2_agentic_voice.fakes import FAKE_FLOW, FakeTextToSpeech
-
-__all__ = ["track_a"]  # Track A's stand-ins, for every test here
 
 
 def test_each_phrase_is_synthesized_once_and_a_second_start_sends_nothing(

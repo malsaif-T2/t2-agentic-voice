@@ -16,7 +16,7 @@ string. A `ttl_s` above `MAX_TTL_S` or a `max_clock_skew_s` above `MAX_CLOCK_SKE
 bound, never the configured `max_clock_skew_s`), the latest instant any verifier would still
 take it, so the store never forgets a token a verifier would take again, after a restart with a
 larger allowance included; and a token the store refuses, its last instant passed by the time
-`use` runs, is refused as used before. Track C's replay tests: a token used once, the store
+`use` runs, is refused as used before. The replay tests: a token used once, the store
 then pruned at the token's `exp`, and the token presented again before its `exp` plus the skew,
 is refused as used before; and a token used through a store with a verifier allowed 30 s, the
 store closed and opened again on the same file, then presented at its `exp` plus 45 s to a
@@ -27,7 +27,7 @@ let a call be recorded (invariant 8): after the signature and every claim check 
 builds it from the token's `consent` claim as
 `SignedConsent.model_validate(claim, context=CONSENT_SEAL)` (core/identity.py), the only way one
 is built. Only this module refers to `CONSENT_SEAL` (`[[restricted]]`), and it never stores the
-seal, returns it or hands it on. Track C's tests: a verified token whose consent says
+seal, returns it or hands it on. Its tests: a verified token whose consent says
 `record_audio` true gives a consent that `allows_recording` accepts; one that says false gives a
 consent it refuses.
 
@@ -60,7 +60,12 @@ from pydantic import BaseModel, ConfigDict, Field, SecretStr, ValidationError
 from t2_agentic_voice.core.errors import ConfigurationError, JoinRejected
 from t2_agentic_voice.core.identity import CONSENT_SEAL, Caller, Consent, SignedConsent
 from t2_agentic_voice.core.settings.base import GENERATOR, PREFIX, secret, setting_name
-from t2_agentic_voice.core.settings.join import MAX_CLOCK_SKEW_S, MAX_TTL_S, JoinSettings
+from t2_agentic_voice.core.settings.join import (
+    KEY_ID_PATTERN,
+    MAX_CLOCK_SKEW_S,
+    MAX_TTL_S,
+    JoinSettings,
+)
 from t2_agentic_voice.domain.ports.identity import JoinContext
 
 ALGORITHM: Final = "HS256"
@@ -76,7 +81,7 @@ _DECODE: Final[Options] = {
 }
 # A token's ID: 1 to 128 printable ASCII characters with no space (a UUID, a URL-safe random).
 JTI_PATTERN = r"^[\x21-\x7e]{1,128}$"
-_KEY_ID = re.compile(r"[A-Za-z0-9._-]{1,64}")  # core/settings/join.py's `KeyId`
+_KEY_ID = re.compile(KEY_ID_PATTERN)
 _LAST_SECOND = 253402300799  # 9999-12-31T23:59:59Z, the last second a datetime holds
 _Seconds = Annotated[int, Field(ge=0, le=_LAST_SECOND)]
 _MESSAGES: Final = {

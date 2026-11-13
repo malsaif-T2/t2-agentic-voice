@@ -1,4 +1,4 @@
-"""GroqSTT against a fake Groq (plan 002, Track B): Block 0's baseline request, the result and
+"""GroqSTT against a fake Groq: the baseline request, the result and
 its headroom, a cancel, each failure as a ProviderError, the key and the SDK's own variables kept
 out. Nothing
 leaves the machine: a fake transport, or a server on 127.0.0.1. The prototype's call and tests

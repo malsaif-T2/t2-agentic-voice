@@ -33,6 +33,9 @@ from tests.t2_agentic_voice.adapters.clause_support import (
 )
 from tests.t2_agentic_voice.fakes import FakeTextToSpeech, tone
 
+# Each test here reads its takes within a limit no machine's load reaches (conftest.py).
+pytestmark = pytest.mark.usefixtures("relaxed_reads")
+
 KEY = "0123456789abcdef0123456789abcdef"
 
 

@@ -1,4 +1,4 @@
-"""GroqChat's failures (adapters/groq_chat.py; plan 006, Track A) on a fake transport: every
+"""GroqChat's failures (adapters/groq_chat.py) on a fake transport: every
 failure a `ProviderError` with its kind, `retryable` and `retry_after_s`, asked once (a 429 with
 its `retry-after`, a 5xx, a timeout, a lost connection, a 4xx, an answer it cannot read); an
 error Groq sends inside the stream (`tool_use_failed`) `rejected` with its code, never a silent

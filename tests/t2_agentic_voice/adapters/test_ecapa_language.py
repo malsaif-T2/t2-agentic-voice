@@ -1,5 +1,5 @@
-"""ECAPA on VoxLingua107 behind the `LanguageClassifier` port (adapters/ecapa_language.py; plan
-007's Block H, Q15), with an injected runner or stand-in torch and SpeechBrain modules, so no
+"""ECAPA on VoxLingua107 behind the `LanguageClassifier` port (adapters/ecapa_language.py;
+D-086, plan 007's Q15), with an injected runner or stand-in torch and SpeechBrain modules, so no
 model and no torch: its label map (index 3 Arabic, 20 English, checked against the model's label
 encoder), its log-probabilities exponentiated and renormalized over the codes asked, the
 caller's PCM16 as float32, the thread count; the module imports alone in a new process without

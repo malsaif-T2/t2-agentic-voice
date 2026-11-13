@@ -1,6 +1,7 @@
 """What the clause cache's tests share (test_clause_cache.py, test_clause_cache_files.py): a cache
 over a fake text-to-speech in a test's own folder, a clause said through it and its take kept,
-the take a fake gives for a text, and a few odd fakes. Nothing here reads `var/`."""
+the take a fake gives for a text, a few odd fakes, and the read limit the tests read takes
+within. Nothing here reads `var/`."""
 
 from __future__ import annotations
 
@@ -17,6 +18,10 @@ from t2_agentic_voice.domain.ports.text_to_speech import AudioChunk, TextToSpeec
 from tests.t2_agentic_voice.fakes import FakeTextToSpeech, tone
 
 VOICES = TtsSettings().languages
+# Far past any read of a take, however loaded the machine: the clause cache's own limit
+# (`READ_TIMEOUT_S`, 0.1 s) turns a read that a busy machine delays into a miss
+# (conftest.py's `relaxed_reads`).
+RELAXED_READ_S = 30.0
 TEXT = "Your request is open, and we will call you back today."
 
 

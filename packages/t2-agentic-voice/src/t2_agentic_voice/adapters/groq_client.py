@@ -26,8 +26,12 @@ everything but the request, as plan 002's decision log reads groq 1.7.0
   line of that variable changes what the SDK hands back.
 - Every exception the SDK raises becomes a `ProviderError` (`failure`), raised after the
   handler and from None, so no exception chain leads to the SDK's error, which holds the request
-  and its headers. A cancel is never caught: the request ends at once and its connection is
-  closed.
+  and its headers; a streamed answer's read that times out or loses its connection, which the
+  SDK does not wrap, is `timeout` or `connection_lost` (`stream_failure`). A cancel is never
+  caught: the request ends at once and its connection is closed.
+- The key an adapter's `from_settings` takes is the settings' (`settings_key`): inline or in
+  its file, and a ConfigurationError naming the variable under the settings' prefix when none
+  is set.
 - `GROQ_LOG`, which `groq` reads when it is imported, is undone: `groq` is imported here alone,
   inside `core.logging.logging_unchanged`, which removes the root handler the SDK adds and puts
   the `groq` and `httpx` loggers' levels back (only `core` may import `logging`, ARCH-OWNER). An
@@ -50,6 +54,7 @@ from email.utils import parsedate_to_datetime
 import httpx
 from pydantic import JsonValue, SecretStr, ValidationError
 
+from t2_agentic_voice.core.config import VoiceSettings
 from t2_agentic_voice.core.errors import ConfigurationError, ProviderError
 from t2_agentic_voice.core.logging import logging_unchanged
 from t2_agentic_voice.core.settings.base import setting_name
@@ -260,6 +265,17 @@ def failure(error: Exception) -> ProviderError:
     return ProviderError("rejected", False, details=details)
 
 
+def stream_failure(error: Exception) -> ProviderError:
+    """`failure`, and the httpx errors a streamed answer's read raises, which the SDK wraps only
+    while it sends: a timeout is `timeout`, any other transport error `connection_lost`, each
+    named by its class alone."""
+    if isinstance(error, httpx.TimeoutException):
+        return ProviderError("timeout", True, details={"error": type(error).__name__})
+    if isinstance(error, httpx.TransportError):
+        return ProviderError("connection_lost", True, details={"error": type(error).__name__})
+    return failure(error)
+
+
 def retry_after(value: str | None) -> float | None:
     """The delay a `retry-after` header asks for, in seconds; None unless it is a finite number of
     seconds, 0 or more (an HTTP date is not read)."""
@@ -281,6 +297,20 @@ def no_key(
         "holds the key.",
         details={"setting": setting},
     )
+
+
+def settings_key(settings: VoiceSettings) -> SecretStr:
+    """The key the settings give (`groq.resolved_api_key()`, inline or in its file): a
+    ConfigurationError naming `T2V_GROQ__API_KEY` (under the settings' prefix) when none is set,
+    a blank one included, saying so when `GROQ_API_KEY` is set instead (`no_key`)."""
+    key = settings.groq.resolved_api_key(settings.prefix)
+    if key is None:
+        raise no_key(
+            settings.env_name("groq", "api_key"),
+            settings.env_name("groq", "api_key_file"),
+            settings.saw("GROQ_API_KEY"),
+        )
+    return key
 
 
 def checked(api_key: SecretStr, base_url: str, *groups: GroupCheck) -> SecretStr:

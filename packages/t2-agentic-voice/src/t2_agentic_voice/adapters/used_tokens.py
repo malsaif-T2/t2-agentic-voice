@@ -22,12 +22,12 @@ and, for SQLite, in one `BEGIN IMMEDIATE` transaction whose insert is ignored wh
 held, so its answer is True exactly once and durable before it returns. A failure anywhere in
 that transaction, its `COMMIT` included (busy while a reader holds the file), rolls it back
 unless SQLite already has, and is raised: it refuses that one join, and the next one starts a
-transaction of its own. The SQLite work runs
-in a worker thread (`asyncio.to_thread`), so a commit's write to disk never stalls the event
-loop that paces every call's audio; one connection serves every thread, its lock held for each
-statement. Times are kept as whole microseconds since the epoch, so a millisecond either side
-of an instant compares exactly. The store's clock is `datetime.now(UTC)` unless a test gives
-its own (`_now`).
+transaction of its own. The SQLite work runs in a worker thread (`asyncio.to_thread`), so a
+commit's write to disk never stalls the event loop that paces every call's audio; one
+connection serves every thread, its lock held for each statement. The file is opened and its
+times kept as adapters/sqlite_files.py says (whole microseconds since the epoch, so a
+millisecond either side of an instant compares exactly). The store's clock is
+`datetime.now(UTC)` unless a test gives its own (`_now`).
 """
 
 from __future__ import annotations
@@ -36,11 +36,11 @@ import asyncio
 import sqlite3
 import threading
 from collections.abc import Callable
-from datetime import UTC, datetime, timedelta
+from datetime import datetime
 from pathlib import Path
 
-_EPOCH = datetime(1970, 1, 1, tzinfo=UTC)
-_MICROSECOND = timedelta(microseconds=1)
+from t2_agentic_voice.adapters.sqlite_files import connect, micros, utc_now
+
 _SCHEMA = (
     "CREATE TABLE IF NOT EXISTS used_tokens "
     "(token_id TEXT PRIMARY KEY, expires_at INTEGER NOT NULL) WITHOUT ROWID",
@@ -50,35 +50,12 @@ _PRUNE = "DELETE FROM used_tokens WHERE expires_at < ?"
 _RECORD = "INSERT OR IGNORE INTO used_tokens (token_id, expires_at) VALUES (?, ?)"
 
 
-def _utc_now() -> datetime:
-    """The time now, aware, in UTC: a store's clock unless a test gives its own."""
-    return datetime.now(UTC)
-
-
 def _aware(expires_at: datetime) -> datetime:
     """`expires_at` when it is an aware time; a naive one is refused, since the store cannot
     tell which instant it names."""
     if expires_at.utcoffset() is None:
         raise ValueError("expires_at must be an aware time (with a time zone), as UTC is")
     return expires_at
-
-
-def _micros(instant: datetime) -> int:
-    """`instant` as whole microseconds since the epoch: exact, where a float timestamp is not."""
-    return (instant - _EPOCH) // _MICROSECOND
-
-
-def _connect(path: Path) -> sqlite3.Connection:
-    """The store's database at `path`, its folder and table created when missing."""
-    path.parent.mkdir(parents=True, exist_ok=True)
-    connection = sqlite3.connect(path, isolation_level=None, check_same_thread=False)
-    try:
-        for statement in _SCHEMA:
-            connection.execute(statement)
-    except BaseException:
-        connection.close()
-        raise
-    return connection
 
 
 class SqliteUsedTokens:
@@ -91,21 +68,21 @@ class SqliteUsedTokens:
         self._lock = threading.Lock()
 
     @classmethod
-    async def open(cls, path: Path, *, _now: Callable[[], datetime] = _utc_now) -> SqliteUsedTokens:
+    async def open(cls, path: Path, *, _now: Callable[[], datetime] = utc_now) -> SqliteUsedTokens:
         """The store in the file at `path`, created with its folder when missing; called at the
         runtime's start. Close it with `aclose()`."""
-        connection = await asyncio.to_thread(_connect, path)
+        connection = await asyncio.to_thread(connect, path, _SCHEMA)
         return cls(connection, _now)
 
     async def use(self, token_id: str, *, expires_at: datetime) -> bool:
         """Record `token_id` as used (the `UsedTokens` port's `use`): True the first time."""
-        until = _micros(_aware(expires_at))
+        until = micros(_aware(expires_at))
         return await asyncio.to_thread(self._use, token_id, until)
 
     def _use(self, token_id: str, until: int) -> bool:
         """`use`'s work, in a worker thread: prune, then record, in one transaction."""
         with self._lock:
-            now = _micros(self._now())
+            now = micros(self._now())
             try:
                 self._connection.execute("BEGIN IMMEDIATE")
                 self._connection.execute(_PRUNE, (now,))
@@ -132,7 +109,7 @@ class SqliteUsedTokens:
 class MemoryUsedTokens:
     """The used tokens in memory, gone when the process ends."""
 
-    def __init__(self, *, _now: Callable[[], datetime] = _utc_now) -> None:
+    def __init__(self, *, _now: Callable[[], datetime] = utc_now) -> None:
         self._now = _now
         self._used: dict[str, datetime] = {}
         self._lock = threading.Lock()
