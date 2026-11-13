@@ -20,7 +20,6 @@ from t2_agentic_voice.actions.memory_outbox import MemoryOutbox
 from t2_agentic_voice.actions.tools import CallContext
 from t2_agentic_voice.core.conversation import ConversationLine
 from t2_agentic_voice.core.errors import ActionNotSent, ActionRejected
-from t2_agentic_voice.core.events import Event
 from t2_agentic_voice.core.identity import Caller
 from t2_agentic_voice.core.settings.tts import LanguageTag
 from t2_agentic_voice.core.yes_inputs import (
@@ -209,7 +208,7 @@ def confirmed_of(
 
 
 class Rig:
-    """One runner over a backend of `mode`, its outbox, its clock and the events it emitted."""
+    """One runner over a backend of `mode`, its outbox and its clock."""
 
     def __init__(
         self,
@@ -223,8 +222,7 @@ class Rig:
         self.outbox: Outbox = outbox if outbox is not None else MemoryOutbox()
         self.backend = Backend(mode, outbox=self.outbox, clock=self.clock)
         self.action = an_action(self.backend, lookup=lookup, **changes)
-        self.events: list[Event] = []
-        self.runner = ActionRunner([self.action], outbox=self.outbox, emit=self.events.append)
+        self.runner = ActionRunner([self.action], outbox=self.outbox)
 
     async def plan(
         self,

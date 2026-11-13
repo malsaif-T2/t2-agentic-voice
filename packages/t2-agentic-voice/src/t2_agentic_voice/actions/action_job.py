@@ -5,7 +5,7 @@ start finds left `sending`.
 - **A job** is started by `start`, which waits for it shielded: a stop, a cancel of the caller's
   wait or the call's end never cuts it in half, and it runs to its end. Its request ID comes
   from the confirmed action (`request_id_of`), so the same one asked twice finds its row
-  (`INSERT OR IGNORE`) and is never written again: its row's outcome is said, with no event.
+  (`INSERT OR IGNORE`) and is never written again: its row's outcome is said.
   Otherwise the row is written `sending` before the write; the write's meaning
   (actions/action_writes.py) marks the row `done`, `rejected`, `not_sent` or `flagged`, after a
   lookup by the request ID when no reply came; only `done` adds a `CompletedAction` to the
@@ -18,8 +18,8 @@ start finds left `sending`.
 
 The outcome's line is the action's `done`, `failed` or `unknown`, or the library's, read in the
 read-back's wording (an MSA caller's in MSA: actions/spoken_lines.py); a `done` the result
-cannot fill says the library's `unknown`, which claims nothing. `ActionCompleted` or
-`ActionUnconfirmed` goes to `emit`, when given, as each job ends.
+cannot fill says the library's `unknown`, which claims nothing. A job makes no event: the
+session builds `ActionCompleted` or `ActionUnconfirmed` from the `ActionOutcome` it returns.
 """
 
 from __future__ import annotations
@@ -27,7 +27,7 @@ from __future__ import annotations
 import asyncio
 import json
 import uuid
-from collections.abc import Callable, Mapping
+from collections.abc import Mapping
 from dataclasses import dataclass
 from functools import partial
 from typing import Final
@@ -41,7 +41,7 @@ from t2_agentic_voice.actions.spoken_lines import outcome_line
 from t2_agentic_voice.actions.tools import RecordedAction
 from t2_agentic_voice.core.clock import Clock
 from t2_agentic_voice.core.conversation import ConversationLine
-from t2_agentic_voice.core.events import ActionCompleted, ActionUnconfirmed, CallId, Event, TurnId
+from t2_agentic_voice.core.events import CallId
 from t2_agentic_voice.core.identity import Caller
 from t2_agentic_voice.core.logging import get_logger
 from t2_agentic_voice.core.settings.tts import LanguageTag
@@ -51,10 +51,6 @@ from t2_agentic_voice.domain.ports.outbox import Outbox, OutboxEntry, OutboxStat
 from t2_agentic_voice.domain.yes_rule import ConfirmedAction
 
 _log = get_logger(__name__)
-# Where the runner's public events go, when it is given a sink (voice/session/io.py's
-# `EventSink`, which `actions` may not import). The runtime gives none: the session reports
-# each outcome from the `ActionOutcome` (api/actions.py).
-EventSink = Callable[[Event], None]
 # The namespace of the request IDs, each a UUID 5 of the call and the confirmed action.
 _REQUESTS = uuid.UUID("6f3a7c2e-0b1d-5e8f-9a4c-2d7e1b5f8c30")
 _UNKEPT = HeardConsent(words="", source="speech_to_text", speech_at=None)
@@ -76,7 +72,6 @@ class JobCall:
     caller: Caller
     call_id: CallId
     language: LanguageTag
-    turn_id: TurnId
     conversation: tuple[ConversationLine, ...]
     clock: Clock
     record: ActionRecord
@@ -84,11 +79,10 @@ class JobCall:
 
 
 class Writes:
-    """The jobs of one runner, against its `outbox`, their events to `emit`."""
+    """The jobs of one runner, against its `outbox`."""
 
-    def __init__(self, outbox: Outbox, emit: EventSink | None) -> None:
+    def __init__(self, outbox: Outbox) -> None:
         self._outbox = outbox
-        self._emit = emit
         self._jobs: set[asyncio.Future[ActionOutcome]] = set()
         self.running: set[str] = set()
 
@@ -202,11 +196,11 @@ class Writes:
         if result is not None:
             if not call.record.holds(request_id):
                 _recorded(action, request_id, result, call)
-            return self._ended(action, request_id, "done", call, result=result, emit=False)
+            return self._ended(action, request_id, "done", call, result=result)
         kind: OutcomeKind = "unknown"
         if row is not None and row.state in ("rejected", "not_sent"):
             kind = "failed"
-        return self._ended(action, request_id, kind, call, draft=draft, emit=False)
+        return self._ended(action, request_id, kind, call, draft=draft)
 
     def _ended(
         self,
@@ -217,32 +211,9 @@ class Writes:
         *,
         draft: BaseModel | None = None,
         result: BaseModel | None = None,
-        emit: bool = True,
     ) -> ActionOutcome:
-        """How the write ended, its line read in the read-back's wording, and its event."""
+        """How the write ended, its line read in the read-back's wording."""
         line = _line(action, kind, draft=draft, result=result, tag=call.wording)
-        if emit and self._emit is not None:
-            at = call.clock.wall()
-            event: Event
-            if kind == "done":
-                event = ActionCompleted(
-                    call_id=call.call_id,
-                    turn_id=call.turn_id,
-                    at=at,
-                    action=action.name,
-                    request_id=request_id,
-                    result=_json_of(result),
-                )
-            else:
-                event = ActionUnconfirmed(
-                    call_id=call.call_id,
-                    turn_id=call.turn_id,
-                    at=at,
-                    action=action.name,
-                    request_id=request_id,
-                    kind=kind,
-                )
-            self._emit(event)
         return ActionOutcome(
             action=action.name,
             request_id=request_id,
@@ -357,7 +328,8 @@ def _line(
     result: BaseModel | None,
     tag: LanguageTag,
 ) -> SpokenLine:
-    """The outcome's line; the library's `unknown` when the action's own cannot be said."""
+    """The outcome's line; when the action's own cannot be said, the library's: its `failed`
+    for a failed outcome, else its `unknown`."""
     try:
         return outcome_line(action, kind, draft=draft, result=result, tag=tag)
     except (KeyError, ValueError):

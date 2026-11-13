@@ -52,7 +52,7 @@ def outbox_path(settings: VoiceSettings, agent: VoiceAgent) -> Path:
 
 
 def _runner(agent: VoiceAgent, settings: VoiceSettings, outbox: Outbox) -> ActionRunner:
-    """The runner, with no `emit`: the session reports each outcome's event (the module's
+    """The runner, which emits no event: the session reports each outcome's (the module's
     docstring)."""
     return ActionRunner(
         actions_of(agent),

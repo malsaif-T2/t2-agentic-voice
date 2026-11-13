@@ -18,7 +18,6 @@ from t2_agentic_voice.actions import spoken_lines
 from t2_agentic_voice.actions.action_runner import NOT_CONFIRMED, ActionRunner
 from t2_agentic_voice.actions.memory_outbox import MemoryOutbox
 from t2_agentic_voice.actions.record import ActionRecord
-from t2_agentic_voice.core.events import ActionCompleted, ActionUnconfirmed
 from t2_agentic_voice.domain.action_lines import ActionLines
 from t2_agentic_voice.domain.completed_action import is_recorded
 from t2_agentic_voice.domain.ports.outbox import OutboxEntry
@@ -77,16 +76,6 @@ def test_a_write_has_its_outbox_row_before_it_is_sent_and_is_recorded_once_done(
     [entry] = rig.runner.record(CALL_ID).entries()
     assert is_recorded(entry) and entry.request_id == outcome.request_id
     assert ISSUED in entry.evidence and entry.action == "open_request"
-    assert rig.events == [
-        ActionCompleted(
-            call_id=CALL_ID,
-            turn_id=9,
-            at=rig.clock.wall(),
-            action="open_request",
-            request_id=outcome.request_id,
-            result=entry.result_json,
-        )
-    ]
     assert outcome.result_json == entry.result_json and ISSUED in outcome.result_json
 
 
@@ -131,8 +120,7 @@ def test_a_write_definitely_not_done_is_failed_never_looked_up_and_never_recorde
     assert (row.state, row.note) == (state, state)
     assert rig.backend.lookups == [] and len(rig.backend.writes) == 1
     assert rig.runner.record(CALL_ID).entries() == ()
-    [event] = rig.events
-    assert isinstance(event, ActionUnconfirmed) and event.kind == "failed"
+    assert (outcome.request_id, outcome.result_json) == (row.request_id, "")
 
 
 @pytest.mark.parametrize(
@@ -172,12 +160,11 @@ def test_a_write_with_no_reply_is_looked_up_by_its_request_id_and_never_sent_aga
     entries = rig.runner.record(CALL_ID).entries()
     if kind == "done":
         assert outcome.line.text == f"Done, your number is {ISSUED}." and len(entries) == 1
-        assert isinstance(rig.events[0], ActionCompleted)
+        assert outcome.result_json == entries[0].result_json
     else:
         assert outcome.line.text == "I could not confirm it went through." and entries == ()
         assert ISSUED not in outcome.line.text and "two zero" not in outcome.line.spoken
-        [event] = rig.events
-        assert isinstance(event, ActionUnconfirmed) and event.kind == "unknown"
+        assert outcome.result_json == ""
 
 
 @pytest.mark.parametrize("lookup", [True, False], ids=["with a lookup", "without"])
@@ -211,7 +198,7 @@ def test_the_same_confirmed_action_twice_is_carried_out_once(mode: Mode) -> None
     first, second = asyncio.run(scenario())
     assert len(rig.backend.writes) == 1
     assert first.request_id == second.request_id and first.kind == second.kind
-    assert len(rig.events) == 1  # the second says its row's outcome, with no event
+    assert first.result_json == second.result_json  # the second says its row's outcome
     assert len(rig.runner.record(CALL_ID).entries()) == (1 if mode == "answer" else 0)
 
 
@@ -228,12 +215,13 @@ def test_a_stop_never_cuts_a_write_in_half() -> None:
         rig.backend.gate.set()
         await until(lambda: bool(rig.runner.record(CALL_ID).entries()))
         [entry] = rig.runner.record(CALL_ID).entries()
-        await until(lambda: bool(rig.events))
-        return waiting.cancelled(), await _row(rig, entry.request_id)
+        async with asyncio.timeout(10):  # the row is marked once the write is recorded
+            while (row := await _row(rig, entry.request_id)).state != "done":
+                await asyncio.sleep(0.001)
+        return waiting.cancelled(), row
 
     cancelled, row = asyncio.run(scenario())
     assert cancelled and row.state == "done" and len(rig.backend.writes) == 1
-    assert isinstance(rig.events[0], ActionCompleted)
 
 
 def test_anything_but_a_confirmed_action_the_yes_rule_issued_is_refused() -> None:
@@ -271,7 +259,7 @@ def test_each_calls_record_holds_only_its_own_writes() -> None:
 
 
 def test_a_runner_given_a_record_fills_that_one_and_keeps_it() -> None:
-    """Block 0's `record=` (TextCall's one call): the jobs and the talker's guard share it."""
+    """`record=` (TextCall's one call): the jobs and the talker's guard share it."""
     rig = Rig()
     given = ActionRecord()
     rig.runner = ActionRunner([rig.action], outbox=rig.outbox, record=given)
@@ -294,7 +282,6 @@ def test_nothing_shown_holds_a_drafts_value_or_a_backends_reason(
         **shown(caplog=caplog),
         "outcome": repr(outcome),
         "line": outcome.line.text + outcome.line.spoken,
-        "events": repr(rig.events),
     }
     assert holding(SUMMARY, surfaces) == [] and holding(REASON, surfaces) == []
 
