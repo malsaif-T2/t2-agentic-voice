@@ -48,7 +48,7 @@ class HeardClause:
 @dataclass(frozen=True, kw_only=True)
 class HeardReply:
     """One of the agent's replies as the caller heard it: its number, the turn it answers (None
-    for the greeting or a notice), and its clauses in order."""
+    for one that answers none: io.py's replies), and its clauses in order."""
 
     reply_id: ReplyId
     turn_id: TurnId | None

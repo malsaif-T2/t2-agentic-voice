@@ -36,7 +36,7 @@ audio, the turn's own `Transcribed` is that request's result again, with no requ
 
 Every request, each part's, names the language `languages` gives it as it goes (voice/
 stt_language.py's `TurnLanguages`: the one last named, `listen_in`, unless a classifier chose
-another for the turn, plan 007's Block H), its `Transcribing` carrying it, and carries that
+another for the turn), its `Transcribing` carrying it, and carries that
 language's Whisper prompt: the call's `prompts`, built once a call by `call_prompts`, the prompt
 run W's arm W1 measured and kept (plan 006, Q23). A request that names no language, or one whose
 prompt holds no word, carries none, as W1 sent none; with `stt.send_prompt` off, none carries one.
@@ -83,7 +83,7 @@ from t2_agentic_voice.voice.session.session_events import (
     TurnHeld,
     TurnOpened,
 )
-from t2_agentic_voice.voice.session_bridge import CallEvents
+from t2_agentic_voice.voice.session_bridge import EventStream
 from t2_agentic_voice.voice.stt_language import TurnLanguages
 from t2_agentic_voice.voice.stt_turn import HeldOverlap, HeldTurn
 from t2_agentic_voice.voice.turn_hold import HoldResumedFrame, TurnHeldFrame
@@ -103,8 +103,8 @@ TRAIL_S = 0.3
 # past any request of the golden set; a longer turn keeps its first half minute (the agent's
 # value).
 MAX_TURN_S = 30.0
-# What an overlap's parts hold before the detector heard its speech begin: the 300 ms of
-# padding before the speech that plan 002's window runs held (plan 005's decision log).
+# What an overlap's parts hold before the detector heard its speech begin: the padding before the
+# speech that plan 002's window runs held (plan 005's decision log).
 OVERLAP_LEAD_S = 0.3
 
 
@@ -131,7 +131,7 @@ class TurnSTTBridge(STTService):
         self,
         *,
         stt: SpeechToText,
-        events: CallEvents,
+        events: EventStream,
         report: FailureReport,
         start_s: float,
         early: bool = False,

@@ -129,7 +129,7 @@ def test_a_clause_cut_while_it_plays_keeps_the_share_of_its_audio_sent(
 def test_a_clause_cut_before_any_played_is_measured_at_a_calm_rate(settings: VoiceSettings) -> None:
     """With no clause played yet in the call (the phrase cache lacks the greeting), a cut
     clause's length is estimated at `SECONDS_PER_CHARACTER`."""
-    from t2_agentic_voice.voice.session.speaker import SECONDS_PER_CHARACTER
+    from t2_agentic_voice.voice.session.cut_share import SECONDS_PER_CHARACTER
 
     from tests.t2_agentic_voice.fakes import FakePhrases
 

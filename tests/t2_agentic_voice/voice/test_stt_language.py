@@ -1,14 +1,14 @@
 """Each turn's language in the speech-to-text bridge (voice/stt_language.py's `TurnLanguages`, in
-voice/stt_bridge.py; plan 007's Block H, Q17 and Q18), with a fake classifier
-(tests/t2_agentic_voice/language_fakes.py) and a fake speech-to-text: classification starts once
-the turn's audio holds `from_s` from its speech's first byte, never on the clock, at most once a
-turn, and a shorter turn never asks; each request names the language in hand as it goes, its
-`Transcribing` carrying it, never waiting on the classifier: the held request in the same step
-as `TurnHeld`, a verdict still running `late`, a classifier that blocks 2 s delaying no frame
-and no request; an overlap's parts name the current language with a verdict in hand; the turn's
-own request names what its hold decided, in a call with no talker too; resumed speech decides
-again; `drop` cancels the classification and a late result is never used; a busy or failing
-classifier keeps the language; and only `classified` moves the call's current language."""
+voice/stt_bridge.py), with a fake classifier (tests/t2_agentic_voice/language_fakes.py) and a fake
+speech-to-text: classification starts once the turn's audio holds `from_s` from its speech's first
+byte, never on the clock, at most once a turn, and a shorter turn never asks; each request names the
+language in hand as it goes, its `Transcribing` carrying it, never waiting on the classifier: the
+held request the next event after `TurnHeld`, the verdict still running, `late`; a classifier that
+blocks 2 s on a thread delaying no frame and no request, the loop running all through its block; an
+overlap's parts name the current language with a verdict in hand; the turn's own request names what
+its hold decided, in a call with no talker too; resumed speech decides again; `drop` cancels the
+classification and a late result is never used; a busy or failing classifier keeps the language; and
+only `classified` moves the call's current language."""
 
 from __future__ import annotations
 
@@ -21,7 +21,6 @@ from typing import TYPE_CHECKING
 import pytest
 from t2_agentic_voice.core.errors import ProviderError
 from t2_agentic_voice.domain.turn_language import LanguageRule
-from t2_agentic_voice.voice.calls import TICKER_BOUND_S
 from t2_agentic_voice.voice.pipecat_events import FailureReport
 from t2_agentic_voice.voice.session.io import SYSTEM_CLOCK
 from t2_agentic_voice.voice.session.session_events import (
@@ -30,7 +29,7 @@ from t2_agentic_voice.voice.session.session_events import (
     TurnClosed,
     TurnHeld,
 )
-from t2_agentic_voice.voice.session_bridge import CallEvents
+from t2_agentic_voice.voice.session_bridge import EventStream
 from t2_agentic_voice.voice.stt_bridge import TurnSTTBridge
 from t2_agentic_voice.voice.stt_language import TurnLanguages
 from t2_agentic_voice.voice.turn_hold import HoldResumedFrame, TurnHeldFrame
@@ -51,6 +50,11 @@ if TYPE_CHECKING:
     from pipecat.pipeline.worker import PipelineWorker
 
 RULE = LanguageRule(from_s=2.0, min_share=0.7)
+# How long the blocking classifier works on its thread, and the most a tick on the loop may be
+# late by meanwhile: half the block, so a classifier run on the loop, which holds every tick for
+# the whole block, fails it, with room for a machine under load (whose stalls measured 0.2 s).
+BLOCK_S = 2.0
+LATE_S = BLOCK_S / 2
 ENGLISH = {"ar": 0.1, "en": 0.9}
 PROMPTS = {"ar": "arabic prompt", "en": "english prompt"}
 
@@ -72,7 +76,7 @@ Body = Callable[[Rig, "PipelineWorker"], Awaitable[None]]
 def _run(classifier: FakeLanguageClassifier, body: Body, *, early: bool = False) -> Rig:
     """The bridge with `TurnLanguages` of Arabic and English on `classifier`, the call named
     Arabic, fed by `body`."""
-    events, session = CallEvents(SYSTEM_CLOCK), Recorder()
+    events, session = EventStream(SYSTEM_CLOCK), Recorder()
     report = FailureReport(call_id="call-1", emit=lambda event: None, clock=SYSTEM_CLOCK)
     port = FakeSpeechToText(["heard"] * 8, delay_s=0.05)
     languages = TurnLanguages(
@@ -203,7 +207,7 @@ def test_the_held_request_names_the_verdict_in_hand_and_a_later_short_turn_keeps
     assert (first.language, first.language_by, first.share) == ("en", "classified", 0.9)
     assert first.verdict_at is not None and first.verdict_at <= first.at
     assert rig.sent("turn") == []  # each turn reuses its held result, with no request
-    assert (second.language, second.language_by) == ("en", "short")  # Q17
+    assert (second.language, second.language_by) == ("en", "short")  # the verdict kept
     assert [call[1:] for call in rig.port.calls] == [("en", "english prompt")] * 2
 
 
@@ -211,38 +215,44 @@ def test_a_verdict_still_running_is_late_and_the_held_request_goes_with_turn_hel
     gate = asyncio.Event()
     classifier = FakeLanguageClassifier([ENGLISH], gate=gate)
 
+    answered_then: list[int] = []
+
     async def body(rig: Rig, worker: PipelineWorker) -> None:
         await _queue(worker, _opened(2.5))
         await until(lambda: len(rig.classifier.calls) == 1)
         await _queue(worker, [*_stopped(), TurnHeldFrame()])
         await until(lambda: bool(rig.sent("held")))  # the verdict still held back
+        answered_then.append(rig.classifier.answered)
         await _closed(rig, worker)
         gate.set()
 
     rig = _run(classifier, body, early=True)
     (held,) = rig.sent("held")
     assert (held.language, held.language_by, held.share) == ("ar", "late", None)
+    # In the same step as `TurnHeld`: the next event, while the verdict could not yet come (its
+    # gate shut), so nothing waited on it; the verdict came only after.
     kinds = [type(e).__name__ for e in rig.session.events]
     assert kinds[kinds.index("TurnHeld") + 1] == "Transcribing"
-    (began,) = rig.session.of(TurnHeld)
-    assert held.at - began.at < 0.05 and rig.classifier.answered == 1  # it came after
+    assert answered_then == [0] and rig.classifier.answered == 1
 
 
 def test_a_classifier_that_blocks_two_seconds_delays_no_frame_and_no_request() -> None:
     """At real-time pace, with a 20 ms ticker on the loop: the classifier works on a thread for
-    2 s from the turn's second second; the turn closes and its request goes, `late`, while it
-    works, and no tick is late by more than voice's bound."""
+    `BLOCK_S` from the turn's second second; the turn closes and its request goes, `late`, while
+    it works; the ticker ticks all through its block, and no tick is late by `LATE_S`."""
     from pipecat.frames.frames import UserStoppedSpeakingFrame
 
-    classifier = FakeLanguageClassifier([ENGLISH], block_s=2.0)
+    classifier = FakeLanguageClassifier([ENGLISH], block_s=BLOCK_S)
     worst: list[float] = []
+    woke: list[float] = []
     closed_at: list[float] = []
 
     async def ticker(stop: asyncio.Event) -> None:
         while not stop.is_set():
             due = time.monotonic() + 0.02
             await asyncio.sleep(0.02)
-            worst.append(time.monotonic() - due)
+            woke.append(time.monotonic())
+            worst.append(woke[-1] - due)
 
     async def body(rig: Rig, worker: PipelineWorker) -> None:
         stop = asyncio.Event()
@@ -254,7 +264,7 @@ def test_a_classifier_that_blocks_two_seconds_delays_no_frame_and_no_request() -
         await worker.queue_frame(UserStoppedSpeakingFrame())
         await until(lambda: bool(rig.sent("turn")))
         sent_at = time.monotonic()
-        assert rig.classifier.answered == 0 and sent_at - closed_at[0] < 0.5
+        assert rig.classifier.answered == 0 and sent_at - closed_at[0] < LATE_S
         await until(lambda: rig.classifier.answered == 1, timeout=5)
         stop.set()
         await ticks
@@ -262,7 +272,9 @@ def test_a_classifier_that_blocks_two_seconds_delays_no_frame_and_no_request() -
     rig = _run(classifier, body)
     (sent,) = rig.sent("turn")
     assert (sent.language, sent.language_by) == ("ar", "late")
-    assert max(worst) < TICKER_BOUND_S
+    (began,), (ended,) = rig.classifier.began, rig.classifier.ended
+    assert [at for at in woke if began < at < ended]  # the loop ran while it worked
+    assert max(worst) < LATE_S
     (closed,) = rig.session.of(TurnClosed)
     assert closed.at <= sent.at
 

@@ -1,5 +1,5 @@
 """What follows a window's repeat request, and a decision that fails (voice/session/interrupter.py,
-overlap.py; plan 005's Track B review), the rule a fake (conftest.py's `rule`): a repeat request
+overlap.py), the rule a fake (conftest.py's `rule`): a repeat request
 the window heard stops the reply and brings the voice back at once, but says the last reply again
 only once the whole overlap's transcript has come, so never while the caller still speaks, and
 answers new words the whole overlap holds instead; a rule that raises decides its overlap as going

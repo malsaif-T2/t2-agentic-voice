@@ -16,7 +16,7 @@ was, so one request is never counted or reported twice. A transcript the filter 
 text from silence takes for no words (domain/silence.py, under `stt.no_speech_max` and
 `stt.caption_filter`, both on by default) is heard as nothing, so it is said back as nothing.
 
-A turn's language (plan 007's Block H) is the one its first request named, whatever its part,
+A turn's language is the one its first request named, whatever its part,
 and how it was chosen, as that request's `Transcribing` says: in a call with a talker the held
 request decides the turn, and a reused result hands no request of the turn's own. Speech resumed
 in the hold decides it again. It is traced on the turn's speech-to-text span, with the
@@ -55,8 +55,8 @@ from t2_agentic_voice.voice.session.session_events import (
 )
 
 # The loudest a 16-bit sample of the agent's audio may be and still be silence: about -40 dBFS
-# (328 of 32768), the agent's value, testing/timed_speech.py's `NOISE_FLOOR` for a take's first
-# sound, below the quietest speech and above a model's dither.
+# (328 of 32768), the agent's value, below the quietest speech and above a model's dither; also
+# testing/timed_speech.py's `NOISE_FLOOR`, for a take's first sound.
 AUDIBLE_FLOOR = 328
 
 

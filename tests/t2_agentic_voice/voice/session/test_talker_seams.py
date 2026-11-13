@@ -1,11 +1,13 @@
-"""The session's seams for the talker (plan 006): the speaker opens a reply before its first
-clause (speaker.py's `open_reply`, open_reply.py's `OpenReply`), which asks for each clause as it
-comes, shows a card, and ends once closed and played; a clause added after a stop is not asked
-for; an open reply needs its speaker; and the hold's signals are session events now."""
+"""The session's seams for the talker: the speaker opens a reply before its first clause
+(speaker.py's `open_reply`, open_reply.py's `OpenReply`), which asks for each clause as it comes,
+shows a card, and ends once closed and played; a clause added after a stop is not asked for; a
+fixed phrase the phrase audio does not hold goes unsaid, logged by its language and the reply's
+number alone; and the hold's signals are session events."""
 
 from __future__ import annotations
 
 import asyncio
+import logging
 from typing import get_args
 
 import pytest
@@ -14,9 +16,8 @@ from t2_agentic_voice.domain.cards import Card
 from t2_agentic_voice.voice.protocol import ShowCard
 from t2_agentic_voice.voice.session.books import CallBooks
 from t2_agentic_voice.voice.session.commands import Speak, StopSpeaking
-from t2_agentic_voice.voice.session.open_reply import OpenReply, speech_of
+from t2_agentic_voice.voice.session.open_reply import speech_of
 from t2_agentic_voice.voice.session.playback import Reply, ReplyKind
-from t2_agentic_voice.voice.session.scope import CancelScope
 from t2_agentic_voice.voice.session.session_events import (
     SESSION_EVENTS,
     ClausePlayed,
@@ -27,6 +28,8 @@ from t2_agentic_voice.voice.session.session_events import (
 from t2_agentic_voice.voice.session.speaker import Speaker
 
 from tests.t2_agentic_voice.session_fakes import FakeSessionIO
+
+UNDECLARED = "A made-up line no phrase declares."
 
 
 def _speaker(settings: VoiceSettings) -> tuple[FakeSessionIO, Speaker, list[Reply]]:
@@ -90,11 +93,22 @@ def test_a_reply_closed_with_nothing_to_play_ends_at_once_and_a_stop_asks_for_no
     assert len(io.commands.of(StopSpeaking)) == 1 and not io.commands.sent
 
 
-def test_an_open_reply_needs_its_speaker(settings: VoiceSettings) -> None:
-    io = FakeSessionIO(settings)
-    reply = OpenReply(reply_id=1, scope=CancelScope(name="reply-1", clock=io.clock))
-    with pytest.raises(RuntimeError, match=r"Speaker.open_reply"):
-        asyncio.run(reply.finish(1.0))
+def test_a_phrase_not_declared_goes_unsaid_logged_by_its_language_and_reply(
+    settings: VoiceSettings, caplog: pytest.LogCaptureFixture
+) -> None:
+    caplog.set_level(logging.INFO)
+    io, speaker, _ = _speaker(settings)
+    said: list[bool] = []
+
+    async def scene() -> None:
+        reply = await speaker.open_reply(1.0, turn_id=0)
+        said.append(await reply.add_phrase(UNDECLARED, language="en", at=1.0))
+
+    asyncio.run(scene())
+    assert said == [False] and io.commands.of(Speak) == []
+    [record] = [r for r in caplog.records if r.getMessage() == "phrase_not_declared"]
+    assert dict(record.fields) == {"language": "en", "reply_id": 0}  # type: ignore[attr-defined]
+    assert UNDECLARED not in caplog.text
 
 
 def test_a_clause_is_said_as_the_speaking_rules_say_it_and_captioned_as_written(

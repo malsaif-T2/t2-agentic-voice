@@ -1,8 +1,8 @@
 """The session's I/O: how one call's session (`voice/session/`, which imports no Pipecat:
-ARCH-BAN) and voice's Pipecat modules meet, so each side builds against these modules alone
-(plan 003, step 10; Track D builds the session, Track E the Pipecat side). This module holds the
-protocols each side meets, the call's clock (core/clock.py's, given here too) and what a session
-starts with; the events are session_events.py's, the commands commands.py's.
+ARCH-BAN) and voice's Pipecat modules meet, so each side builds against these modules alone. This
+module holds the protocols each side meets, the call's clock (core/clock.py's, given here too),
+the step a task of the session's runs its result as (`Guarded`) and what a session starts with;
+the events are session_events.py's, the commands commands.py's.
 
 The Pipecat side (the transport, the speech detector and the turn analyzer, the speech bridges,
 the session bridge) tells the session what happened: each `SessionEvent` goes to
@@ -23,11 +23,13 @@ items cited are plan 003's appendix, "Changes to the plan's interfaces".
   included (item 4), the `Transcribed` after the turn's `Transcribing` when a request went,
   unless the call ends first (the end, below); an overlap's turn has besides at most one
   `Transcribed` of each of its `window` and `overlap` parts (overlaps, below).
-- **Replies** are the agent's, numbered by the session from 0: the greeting, said once
-  connected, is reply 0, and each echo and each spoken notice the next. The session speaks a
-  reply clause by clause (`Speak`), each clause keyed on its reply and its index there, and
-  naming the caller's turn the reply answers (none for the greeting or a notice), so a turn
-  and a reply never share a key. Each clause is within the provider's `max_chars`, so the
+- **Replies** are the agent's, numbered by the session from 0 (playback.py's `ReplyKind`): the
+  greeting, said once connected, is reply 0; each turn's echo, each spoken notice, a reply said
+  again at the caller's request, and each of the talker's answers (an action's read-back, its
+  lines and its outcome among them) is the next. The session speaks a reply clause by clause
+  (`Speak`), each clause keyed on its reply and its index there, and naming the caller's turn
+  the reply answers (none for the greeting, a notice or an action's outcome), so a turn and a
+  reply never share a key. Each clause is within the provider's `max_chars`, so the
   text-to-speech bridge's TOKEN aggregation sends one request per clause (item 9), handing its
   `Synthesizing` as it goes; a fixed phrase (the greeting, the frame, a notice) is one clause
   whatever its length, played from the phrase cache with no request. Each reports `ClauseQueued`
@@ -37,25 +39,25 @@ items cited are plan 003's appendix, "Changes to the plan's interfaces".
   `ClauseFailed`, at its place in the output, sending no frame and opening no text-to-speech
   context, since Pipecat 1.15.0 reports a context that ends with no audio as an error.
 - **The drop rule** (plan 003's decision log). A turn whose speech began (`speech_at`) while any
-  reply played, the greeting included, or within 300 ms after a reply's last clause played, is
-  not answered, so the agent never answers its own voice leaking past the browser's echo
-  cancellation. The turn is still closed and transcribed, and kept on the timeline. It is the
-  rule under `interruptions.mode = "drop"`, the half-duplex call plan 003 built, which gives
-  no `HearOverlap`.
-- **Overlaps** (plan 005). Under `interruptions.mode = "two_step"`, the default (the owner's
-  ruling of 2026-11-06), such a turn is an overlap instead: the session sends `duck` at once
-  (`Send`) and gives `HearOverlap`, and the
-  speech-to-text bridge sends the overlap's `window` and `overlap` parts as that command says,
-  each a `Transcribing` and a `Transcribed` naming its part; a `HearOverlap` that reaches the
-  bridge after the detector heard the turn's speech stop gets its `overlap` part sent at once,
-  with no window; one that reaches it after the turn closed gives the turn's own `Transcribed`,
-  then an `overlap` part reusing it, with no `Transcribing` of its own. The session's rule
-  judges each transcript as it comes: a stop (new words included) or a repeat gives
-  `StopSpeaking` (and cancels the reply's work), then `unduck` right after it; anything else
-  `unduck` once the overlap's own transcript has come, the turn not answered. So every `duck`
-  ends with exactly one `unduck` once its overlap is decided, whatever the verdict, and no
-  reply after it plays lowered; an overlap the call's end cuts gets none, since the client
-  restores the volume when the call ends.
+  reply played, the greeting included, or within `DROP_AFTER_S` after a reply's last clause played
+  (playback.py's `Reply.over`), is not answered, so the agent never answers its own voice leaking
+  past the browser's echo cancellation. A reply the caller's own `stop` ended leaves no such tail,
+  since nothing of it plays on to echo (TD-060). The turn is still closed and transcribed, and kept
+  on the timeline. It is the rule under `interruptions.mode = "drop"`, the half-duplex call plan 003
+  built, which gives no `HearOverlap`.
+- **Overlaps.** Under `interruptions.mode = "two_step"`, the default (the owner's ruling of
+  2026-11-06), such a turn is an overlap instead: the session sends `duck` at once (`Send`) and
+  gives `HearOverlap`, and the speech-to-text bridge sends the overlap's `window` and `overlap`
+  parts as that command says, each a `Transcribing` and a `Transcribed` naming its part; a
+  `HearOverlap` that reaches the bridge after the detector heard the turn's speech stop gets its
+  `overlap` part sent at once, with no window; one that reaches it after the turn closed gives the
+  turn's own `Transcribed`, then an `overlap` part reusing it, with no `Transcribing` of its own.
+  The session's rule judges each transcript as it comes: a stop (new words included) or a repeat
+  gives `StopSpeaking` (and cancels the reply's work), then `unduck` right after it; anything else
+  `unduck` once the overlap's own transcript has come, the turn not answered. So every `duck` ends
+  with exactly one `unduck` once its overlap is decided, whatever the verdict, and no reply after it
+  plays lowered; an overlap the call's end cuts gets none, since the client restores the volume when
+  the call ends.
 - **The stop path** (item 7). `StopSpeaking` drops the agent's speech at once: the session
   bridge, upstream of the text-to-speech bridge, calls `broadcast_interruption()`, and every
   processor drops its queued frames up to the output transport, so a stop drops every clause
@@ -101,7 +103,7 @@ items cited are plan 003's appendix, "Changes to the plan's interfaces".
   follows it. Once it has handed the last of those reports, the Pipecat side ends the call's
   stream with `Session.aclose`, and no event follows.
 
-- **The early start** (plan 006, Q2). In a call with a talker, a turn said while the agent was
+- **The early start.** In a call with a talker, a turn said while the agent was
   silent (no overlap) whose end Smart Turn calls complete has its hold signalled (`TurnHeld`):
   the speech-to-text bridge sends its speech so far at once as the turn's `held` request (a
   `Transcribing` and a `Transcribed` of that part), and the session starts the talker on it,
@@ -118,7 +120,7 @@ entry point (`voice/calls.py`).
 
 from __future__ import annotations
 
-from collections.abc import Callable
+from collections.abc import Awaitable, Callable
 from dataclasses import dataclass
 from typing import Protocol
 
@@ -144,6 +146,9 @@ from t2_agentic_voice.voice.session.session_events import SessionEvent
 # Where the session's public events go (core/events.py): the runtime's observers, queued off the
 # call's path (the design's 6.6). It returns at once and never raises.
 EventSink = Callable[[Event], None]
+# A step of the session's, by its name, run under its lock, one at a time (call.py's `_guarded`):
+# what a task of the session's own (a talker's reply, a chat model's word) runs its result as.
+Guarded = Callable[[str, Callable[[], Awaitable[None]]], Awaitable[None]]
 
 
 class PhraseAudio(Protocol):

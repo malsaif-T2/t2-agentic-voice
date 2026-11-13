@@ -1,56 +1,40 @@
-"""One call's session (the design's 12.2), built by plan 003's Track D.
+"""One call's session (the design's 12.2): `CallSession`, which the Pipecat side drives through
+io.py's `Session` protocol, one event at a time, and which answers with commands. It meets Pipecat
+only through io.py, its events (session_events.py) and its commands (commands.py), so a call fed
+from text or a file runs the same code as one over WebRTC. io.py says what each side promises.
 
-In echo mode (`session.mode`, Q3) it holds the whole call in its language (`setup.language`,
-fixed at join), names it to the speech-to-text bridge (`ListenIn`), greets the caller once
-connected (reply 0), then says each turn back in that language's voice, one voice per reply:
-the cached frame first, once the turn's transcript is in, then the heard words, clause by
-clause, while the text-to-speech request runs; an empty transcript is said back as nothing and
-kept on the timeline. Each reply is the next from 0, its clauses keyed on it (io.py's replies).
-A turn whose speech began while any reply played, the greeting included, or within 300 ms after
-a reply's last clause played (none after the caller's own `stop`), is not said back under
-`interruptions.mode = "drop"` (io.py's drop rule; plan 003's decision log), so the agent never
-echoes its own voice; under `two_step` it is an overlap, which interrupter.py takes (io.py's
-overlaps), as it takes a stop, pause or repeat request said whole while the agent is silent,
-never said back. A client's `stop` drops at once every clause asked for so far, whatever its reply
-(`StopSpeaking` naming the newest reply: io.py's stop path), each reply it drops counted as done
-and its cancel scope cancelled, and the session listens again; `hangup` ends the call. It tells the
-caller of a failure, and of an end it chose, with the call language's notices
-(`setup.language.notices`; domain/declaration.py's `NoticeKind`): `error` after a turn it would
-say back whose transcript failed, or an echo one of whose clauses failed; `ended` when it ends
-the call at a limit, `limits.max_call_s` or `limits.idle_s` (plan 003, Q4), hanging up once the
-notice has played or failed, or at once when a stop drops it. Each goes out as a `notice`
-message, whose text the client shows, and is spoken from the phrase cache as the next reply,
-naming no turn; `busy` is admission control's, at join. Whatever ends the call, its `HangUp`
-leaves a turn still open, or with its transcript still to come, unfinished (io.py's end).
+What it does, and where each part is:
 
-It says the heard words as echo.py says them, a fixed phrase from the phrase cache; a
-transcript the filter for text from silence takes for no words (turn_book.py; on by default
-since the registered rule F, D-063) is said back as nothing.
+- **The call.** It holds the call in its language (`setup.language`, fixed at join), names it to
+  the speech-to-text bridge (`ListenIn`, naming none under `stt.live_language = "auto"`), greets
+  the caller once connected (reply 0), and ends the call on the caller's `hangup`, a limit
+  (`limits.max_call_s`, `limits.idle_s`: limits.py's timers, the `ended` notice played first), a
+  transport failure, or the runtime's end; whatever ends it, its `HangUp` comes last and a turn
+  still open is unfinished (io.py's end). A client's `stop` drops every reply in progress at
+  once (io.py's stop path).
+- **The turns** are turn_book.py's; a turn whose speech began over a reply is not answered under
+  `interruptions.mode = "drop"` (io.py's drop rule) and is an overlap under `two_step`, which
+  interrupter.py takes, as it takes a command said whole while the agent is silent.
+- **The answer.** In echo mode (`session.mode`) each turn is said back in the call's language,
+  the cached frame first, then the heard words, clause by clause (echo.py; nothing for a turn
+  heard as nothing); with a talker (`setup.talker`) the talker answers (talking.py), its early
+  start in Smart Turn's hold and its reply kept behind a newer turn included. An action's
+  read-back, the confirming state and its receipt are read_back.py's, the caller's answer to it
+  yes_turns.py's, and a confirmed action's job and outcome action_job.py's.
+- **Speaking** is speaker.py's (each reply clause by clause, each notice, a stop, a repeat), and
+  the replies as they play playback.py's. It tells the caller of a failure and of an end it chose
+  with the call language's notices (domain/declaration.py's `NoticeKind`): `error` after a turn
+  whose transcript failed, or a reply one of whose clauses failed; `ended` at a limit.
+- **Its books** (books.py): the usage of each model, counted from each request's report
+  (usage.py); the `CallReport`, written with no text of the call under `storage.var_dir` once
+  the call's stream has ended (`aclose`; report.py); each turn's trace and its time to first
+  audio (turn_book.py); the recording, kept only when `privacy.record_audio` is on and
+  `allows_recording(setup.consent)` (core/identity.py) says the consent allows it (invariant 8),
+  asked of `setup.consent` itself (recording.py); the heard words, which only voice builds
+  (`HeardWords`, invariant 1; heard.py); and what the caller heard (history.py).
 
-It counts each model's usage from each request's report (io.py's usage), a request the call's
-end cancelled included, keeps the call's `CallReport` and writes its numbers, with no text of
-the call, to a file under `storage.var_dir`, once the call's stream has ended (`aclose`);
-traces each turn; records the call only when `privacy.record_audio` is on and
-`allows_recording(setup.consent)` (core/identity.py) says the consent allows it (invariant 8),
-asked by the recorder of `setup.consent` itself, never of a copy or of a consent rebuilt or
-built here (recording.py); builds `HeardWords`, which only `voice` may build (invariant 1); and
-keeps what the caller heard (history.py), all in its books (books.py). It meets Pipecat only
-through io.py and its events and commands. Its turns are turn_book.py's, its limit timers
-limits.py's, how it speaks speaker.py's, and its overlaps interrupter.py's. Its tests are under
-tests/t2_agentic_voice/voice/session/, each module's docstring saying which it holds.
-
-With a talker (`setup.talker`, plan 006) it answers each turn with the talker instead of the
-echo (talking.py): the turn's caption, then the talker's reply, spoken clause by clause as it is
-written; the interruptions are handed to it (interrupter.py); and a turn said while the agent
-was silent starts it early, at Smart Turn's "complete", playing nothing before the hold ends
-(io.py's early start), nor after a client's `stop` in the hold or once the call ends or is
-ending; and while a newer turn, no overlap of the talker's reply, is open, nothing more of that
-reply plays until the turn is taken: its words stop the reply, and a turn heard as nothing lets
-it go on (talking.py's kept reply). Every turn's time to first audio is timed to the reply's
-first audible frame sent, and to the browser's playback of it (turn_book.py). An action's
-read-back, the call's confirming state and its receipt are read_back.py's (plan 007); the
-caller's answer to it is the yes rule's (yes_turns.py), and a confirmed action's job and its
-outcome action_job.py's.
+Its tests are under tests/t2_agentic_voice/voice/session/, each module's docstring saying which it
+holds.
 """
 
 from __future__ import annotations
@@ -177,7 +161,11 @@ class CallSession:
                 elif self._talking is not None:
                     self._talking.opened(self._turns.turn(event.turn_id))
             case on.TurnHeld() | on.HoldResumed():
-                await self._hold(event)
+                held = self._turns.hold(event)
+                line = "turn_held" if held else "hold_resumed"
+                self._recorder.line(event.at, line, turn_id=event.turn_id)
+                if self._talking is not None:
+                    await self._talking.hold(event.turn_id, held=held)
             case on.TurnClosed():
                 self._limits.heard(event.at)
                 self._turns.closed(event)
@@ -187,7 +175,10 @@ class CallSession:
                 self._turns.transcribing(event)
                 self._interrupter.requested(event)
             case on.Transcribed() if event.part == "held":
-                await self._held(event)
+                heard = self._turns.held(event)
+                # a stop or pause request said whole starts nothing (io.py's early start)
+                if self._talking is not None and self._interrupter.command(heard) != "stop":
+                    await self._talking.held(self._turns.turn(event.turn_id), heard)
             case on.Transcribed() if event.part != "turn":
                 await self._interrupter.heard(event)
             case on.Transcribed():
@@ -242,33 +233,6 @@ class CallSession:
             await self._interrupter.alone(turn, heard, event)
             if self._talking is not None:
                 await self._talking.taken(turn)
-
-    async def _hold(self, event: on.TurnHeld | on.HoldResumed) -> None:
-        """The turn's hold began, or the caller resumed within it (io.py's early start)."""
-        held = self._turns.hold(event)
-        self._recorder.line(
-            event.at, "turn_held" if held else "hold_resumed", turn_id=event.turn_id
-        )
-        if self._talking is None:
-            return
-        if held:
-            self._talking.hold_began(event.turn_id)
-        else:
-            await self._talking.resumed(event.turn_id)
-
-    async def _held(self, event: on.Transcribed) -> None:
-        """A turn's `held` transcript, its speech so far when its hold began: with a talker,
-        the talker starts on it for a turn said while the agent was silent, unless it is a stop
-        or pause request said whole (io.py's early start) or answers a read-back (the yes
-        rule's, yes_turns.py)."""
-        heard = self._turns.held(event)
-        turn = self._turns.turn(event.turn_id)
-        if self._talking is None or heard is None or self._over():
-            return
-        if turn.overlap or turn.dropped or turn.closed or self._talking.yes.takes(heard):
-            return
-        if self._interrupter.command(heard) != "stop":
-            await self._talking.held(turn, heard)
 
     async def _answer(self, turn: TurnLog, heard: HeardWords | None, event: on.Transcribed) -> None:
         """Say the turn back, unless dropped or the call has ended: its caption, then the

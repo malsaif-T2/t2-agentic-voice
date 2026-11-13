@@ -25,7 +25,6 @@ from __future__ import annotations
 
 from typing import Protocol
 
-from t2_agentic_voice.core.logging import get_logger
 from t2_agentic_voice.core.settings.tts import LanguageTag
 from t2_agentic_voice.domain.action_lines import SpokenLine
 from t2_agentic_voice.domain.cards import Card
@@ -34,12 +33,10 @@ from t2_agentic_voice.domain.ports.text_to_speech import AudioChunk
 from t2_agentic_voice.domain.text.invisible import provider_text
 from t2_agentic_voice.domain.text.speaking import speak_digits
 from t2_agentic_voice.voice.protocol import ClauseIndex, ReplyId
-from t2_agentic_voice.voice.session.echo import BEAT_S, padded, said
+from t2_agentic_voice.voice.session.echo import BEAT_S, padded, phrase_audio, said
 from t2_agentic_voice.voice.session.io import CallSetup
 from t2_agentic_voice.voice.session.playback import ReadBackPart
 from t2_agentic_voice.voice.session.scope import CancelScope
-
-_log = get_logger(__name__)
 
 
 class ReplyWriter(Protocol):
@@ -88,44 +85,22 @@ def speech_of(setup: CallSetup, text: str, tag: LanguageTag) -> list[tuple[str, 
     return [(provider_text(request), request) for request in requests]
 
 
-def phrase_audio(setup: CallSetup, text: str, tag: LanguageTag) -> AudioChunk | None:
-    """A fixed phrase's audio in `tag`'s voice, from the phrase cache; None, logged by its
-    language alone, when the cache does not hold it (it then goes unsaid, and no request is
-    sent for it)."""
-    try:
-        return setup.phrases.audio(text, language=tag)
-    except LookupError:
-        _log.warning("phrase_not_declared", language=tag)
-        return None
-
-
 class OpenReply:
     """A reply of the talker's, open while it is written: its number and its cancel scope,
     which the talker's work starts in, written by `writer` (the speaker) for the call `setup`
     gives."""
 
     def __init__(
-        self,
-        *,
-        reply_id: ReplyId,
-        scope: CancelScope,
-        writer: ReplyWriter | None = None,
-        setup: CallSetup | None = None,
+        self, *, reply_id: ReplyId, scope: CancelScope, writer: ReplyWriter, setup: CallSetup
     ) -> None:
         self.reply_id, self.scope = reply_id, scope
         self._writer, self._setup = writer, setup
 
-    def _parts(self) -> tuple[ReplyWriter, CallSetup]:
-        if self._writer is None or self._setup is None:
-            raise RuntimeError("an open reply is opened by the speaker (Speaker.open_reply)")
-        return self._writer, self._setup
-
     async def add_clause(self, text: str, *, language: LanguageTag, at: float) -> None:
         """Ask for the reply's next clause, `text` in `language`'s voice, at `at`; nothing once
         a stop or the call's end dropped the reply."""
-        writer, setup = self._parts()
-        for request, caption in speech_of(setup, text, language):
-            asked = await writer.write(
+        for request, caption in speech_of(self._setup, text, language):
+            asked = await self._writer.write(
                 self.reply_id, text=request, caption=caption, language=language, at=at
             )
             if asked is None:
@@ -144,12 +119,11 @@ class OpenReply:
         template, which the output guard does not check: the design's 8.2), captioned with its
         `text` when it fits one request; the indexes asked for, none once a stop or the call's
         end dropped the reply."""
-        writer, setup = self._parts()
-        requests = speech_of(setup, line.spoken, language)
+        requests = speech_of(self._setup, line.spoken, language)
         captions = [line.text] if len(requests) == 1 else [caption for _, caption in requests]
         asked: list[ClauseIndex] = []
         for (request, _), caption in zip(requests, captions, strict=True):
-            index = await writer.write(
+            index = await self._writer.write(
                 self.reply_id, text=request, caption=caption, language=language, at=at, part=part
             )
             if index is None:
@@ -170,14 +144,13 @@ class OpenReply:
         reply's next clause (`progress` for a progress line, timed apart and followed by a beat
         of silence, so the answer does not run into it; `beat_before` for a line said after the
         reply's words); whether it was."""
-        writer, setup = self._parts()
-        audio = phrase_audio(setup, text, language)
+        audio = phrase_audio(self._setup, text, language, reply_id=self.reply_id)
         if audio is None:
             return False
         audio = padded(
             audio, before_s=BEAT_S if beat_before else 0.0, after_s=BEAT_S if progress else 0.0
         )
-        asked = await writer.write(
+        asked = await self._writer.write(
             self.reply_id,
             text=text,
             caption=text,
@@ -190,11 +163,9 @@ class OpenReply:
 
     async def card(self, card: Card) -> None:
         """Show the caller `card`, as `t2v/1`'s `card`."""
-        writer, _ = self._parts()
-        await writer.show_card(self.reply_id, card)
+        await self._writer.show_card(self.reply_id, card)
 
     async def finish(self, at: float) -> None:
         """Close the reply at `at`: no clause follows, and its work is done, so it ends once its
         last clause has played (at once when it has none left to play)."""
-        writer, _ = self._parts()
-        await writer.close(self.reply_id, at)
+        await self._writer.close(self.reply_id, at)

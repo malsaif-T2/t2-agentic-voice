@@ -26,6 +26,7 @@ from t2_agentic_voice.core.config import VoiceSettings
 from t2_agentic_voice.core.conversation import TalkerTurn
 from t2_agentic_voice.core.events import ConfirmationAnswered
 from t2_agentic_voice.core.settings.tts import LanguageTag
+from t2_agentic_voice.core.settings.words import primary_code
 from t2_agentic_voice.domain.action_lines import ReadBackPlan, SpokenLine
 from t2_agentic_voice.domain.presets import ACTION_LINES
 from t2_agentic_voice.testing.llm_fakes import ScriptedLLM
@@ -62,7 +63,7 @@ class Lines:
 
     @property
     def heard_in(self) -> str:
-        return "en" if self.plan.language == "en" else "ar"
+        return primary_code(self.plan.language)
 
 
 def _plan(tag: LanguageTag, summary: str, question: str) -> ReadBackPlan:

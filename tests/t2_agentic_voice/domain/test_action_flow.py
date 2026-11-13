@@ -12,6 +12,7 @@ from t2_agentic_voice.domain.action_flow import (
     ActionState,
     FlowEvent,
     advance,
+    moved,
 )
 
 # Every move, as the design's 6.4 and the owner's rulings of plan 007 have them.
@@ -35,6 +36,13 @@ MOVES: dict[tuple[ActionState, FlowEvent], ActionState] = {
 @pytest.mark.parametrize(("move", "after"), MOVES.items(), ids=[f"{s}-{e}" for s, e in MOVES])
 def test_each_move_of_the_lifecycle(move: tuple[ActionState, FlowEvent], after: str) -> None:
     assert advance(*move) == after
+
+
+def test_moved_gives_each_move_and_none_for_any_other() -> None:
+    """The refusal-tolerant reading of the same table, for a caller that logs a refusal."""
+    for state in ACTION_STATES:
+        for event in FLOW_EVENTS:
+            assert moved(state, event) == MOVES.get((state, event))
 
 
 def test_every_other_move_is_refused_naming_its_state_and_event() -> None:

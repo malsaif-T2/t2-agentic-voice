@@ -18,9 +18,10 @@ The moves (`advance`), each the only one its state and event have:
   and no lookup found it: `unknown`. Nothing else: a stop never cuts a write in half.
 - The four ends are never left.
 
-The action runner's job moves each action from `confirmed` on (actions/action_job.py's `Flow`),
-and logs a move the table refuses, never raising it into a call. The outbox's own states are
-domain/ports/outbox.py's.
+The call's confirming state moves each read-back's action while it is `confirming`
+(voice/session/read_back.py's `Confirming`), and the action runner's job from `confirmed` on
+(actions/action_job.py's `Flow`); each logs a move the table refuses (`moved` gives None, `advance`
+raises), never raising it into a call. The outbox's own states are domain/ports/outbox.py's.
 """
 
 from __future__ import annotations
@@ -74,9 +75,14 @@ _MOVES: Mapping[tuple[ActionState, FlowEvent], ActionState] = {
 }
 
 
+def moved(state: ActionState, event: FlowEvent) -> ActionState | None:
+    """The state after `event` in `state`; None for a move the lifecycle has not."""
+    return _MOVES.get((state, event))
+
+
 def advance(state: ActionState, event: FlowEvent) -> ActionState:
     """The state after `event` in `state`; ValueError for a move the lifecycle has not."""
-    moved = _MOVES.get((state, event))
-    if moved is None:
+    after = moved(state, event)
+    if after is None:
         raise ValueError(f"an action in state {state} has no move on {event}")
-    return moved
+    return after

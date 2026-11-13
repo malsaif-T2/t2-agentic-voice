@@ -1,11 +1,11 @@
 """Adversarial tests of the caller's answer to a read-back, end to end in the session with fakes
-(GP-08; docs/SECURITY.md, invariants 1 and 6; voice/session/yes_turns.py, action_job.py; plan
-007, Track C): an eager yes never confirms; a bare yes over the closing question is asked again,
-and one with a send word there confirms; neither the talker's text nor a tool call reaches the
-yes rule as heard words; a verdict landing late denies the receipt; a yes the rule did not issue
-for the turn's own receipt, or a rule that fails, sends nothing; a confirmed action's job starts
-once, a stop or the call's end never cuts it, and its outcome is said once, never over the
-caller. The yes rule, the interruption rule and the port are the tests' fakes."""
+(GP-08; docs/SECURITY.md, invariants 1 and 6; voice/session/yes_turns.py, action_job.py): an eager
+yes never confirms; a bare yes over the closing question is asked again, and one with a send word
+there confirms; neither the talker's text nor a tool call reaches the yes rule as heard words; a
+verdict landing late denies the receipt; a yes the rule did not issue for the turn's own receipt, or
+a rule that fails, sends nothing; a confirmed action's job starts once, a stop or the call's end
+never cuts it, and its outcome is said once, never over the caller. The yes rule, the interruption
+rule and the port are the tests' fakes."""
 
 from __future__ import annotations
 

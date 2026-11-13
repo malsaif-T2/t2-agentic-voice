@@ -1,5 +1,5 @@
-"""A turn said while the agent was silent (voice/session/interrupter.py's `alone`; plan 005's
-Track B review), with Track A's rule and words, not a fake: under `interruptions.mode =
+"""A turn said while the agent was silent (voice/session/interrupter.py's `alone`), with the real
+rule and words, not a fake: under `interruptions.mode =
 "two_step"` a repeat request says the last reply the caller heard again and a stop or pause
 request is never said back, each a command, while a sentence holding one of their words is
 answered; under `drop` every one is said back, as plan 003's echo says it. The rehearsal's stop

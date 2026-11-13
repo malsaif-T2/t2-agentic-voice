@@ -11,7 +11,7 @@ import pytest
 from t2_agentic_voice.core.errors import InvalidRequestError
 from t2_agentic_voice.voice import transport as transport_module
 from t2_agentic_voice.voice.session.io import SYSTEM_CLOCK
-from t2_agentic_voice.voice.session_bridge import CallEvents, ClauseEndFrame, context_id
+from t2_agentic_voice.voice.session_bridge import ClauseEndFrame, EventStream, context_id
 from t2_agentic_voice.voice.transport import (
     IN_RATE,
     OUT_RATE,
@@ -150,7 +150,7 @@ def test_the_output_tap_reports_only_the_clauses_contexts() -> None:
     """A stop frame of a text-to-speech context that is no clause's is passed on, unreported."""
     from pipecat.frames.frames import TTSStoppedFrame
 
-    events, played = CallEvents(SYSTEM_CLOCK), list[tuple[int, int]]()
+    events, played = EventStream(SYSTEM_CLOCK), list[tuple[int, int]]()
     tap, tail = OutputTap(events, played.append), Tail()
 
     async def feed(worker: PipelineWorker) -> None:
@@ -167,7 +167,7 @@ def test_the_gate_drops_every_frame_of_a_clause_a_stop_dropped() -> None:
     it) is dropped before the output: audio, a stop frame or a marker of a dropped clause."""
     from pipecat.frames.frames import TTSAudioRawFrame, TTSStoppedFrame
 
-    events, tail = CallEvents(SYSTEM_CLOCK), Tail()
+    events, tail = EventStream(SYSTEM_CLOCK), Tail()
     events.dropped.add((1, 0))
     dropped, kept = context_id((1, 0)), context_id((2, 0))
 

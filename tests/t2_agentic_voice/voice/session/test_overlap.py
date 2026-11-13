@@ -89,9 +89,9 @@ def test_an_overlap_opens_with_duck_then_hear_overlap(settings: VoiceSettings) -
     custom = two_step(settings, duck_level=0.4, first_window_ms=600)
     overlaps = Overlaps(FakeSessionIO(custom).setup)
     assert (overlaps.get(3), overlaps.open_turns) == (None, ())
-    commands = overlaps.open(3, reply_id=2, speech_at=10.0, at=10.34)
+    commands = overlaps.open(3, reply_id=2, speech_at=10.0)
     assert commands == [Send(message=Duck(level=0.4)), HearOverlap(turn_id=3, window_ms=600)]
-    assert overlaps.get(3) == OverlapState(turn_id=3, reply_id=2, speech_at=10.0, ducked_at=10.34)
+    assert overlaps.get(3) == OverlapState(turn_id=3, reply_id=2, speech_at=10.0)
     assert overlaps.open_turns == (3,) and overlaps.settle() == 0  # undecided: no unduck yet
 
 
@@ -102,7 +102,7 @@ def test_a_window_that_goes_on_waits_and_the_whole_overlap_decides(
     verdict to go on included; once decided, nothing more is judged. The window's speech runs
     to its request, the whole overlap's to its request less the detector's stop delay."""
     overlaps = Overlaps(FakeSessionIO(two_step(settings)).setup)
-    overlaps.open(0, reply_id=1, speech_at=1.0, at=1.34)
+    overlaps.open(0, reply_id=1, speech_at=1.0)
     overlaps.requested(_asked(0, "window"))
     overlaps.requested(_asked(0, "overlap"))
     overlaps.requested(_asked(5, "overlap"))  # no overlap: nothing kept
@@ -136,7 +136,7 @@ def test_a_window_that_stops_decides_and_the_rule_reads_the_calls_words_bounds_a
     custom = two_step(settings, min_words=3, short_words=1, short_s=1.2)
     setup = FakeSessionIO(custom.model_copy(update={"stt": stt})).setup
     overlaps = Overlaps(setup)
-    overlaps.open(0, reply_id=1, speech_at=1.0, at=1.3)
+    overlaps.open(0, reply_id=1, speech_at=1.0)
     heard = _heard(0, STOP_TEXT, part="window", sent_at=None, at=1.2, no_speech_prob=0.1)
     assert overlaps.judge(heard, played=()) == STOP
     assert overlaps.get(0).decided_by == "window"  # type: ignore[union-attr]
@@ -150,8 +150,8 @@ def test_unducks_wait_until_no_overlap_is_undecided(
     settings: VoiceSettings, rule: FakeRule
 ) -> None:
     overlaps = Overlaps(FakeSessionIO(two_step(settings)).setup)
-    overlaps.open(0, reply_id=1, speech_at=1.0, at=1.3)
-    overlaps.open(1, reply_id=1, speech_at=3.0, at=3.3)
+    overlaps.open(0, reply_id=1, speech_at=1.0)
+    overlaps.open(1, reply_id=1, speech_at=3.0)
     overlaps.judge(_heard(0, LISTENING_TEXT, part="overlap", sent_at=2.5), played=())
     assert overlaps.open_turns == (1,) and overlaps.settle() == 0
     overlaps.judge(_heard(1, None, part="overlap", sent_at=None, at=4.0), played=())
@@ -171,7 +171,7 @@ def test_the_turns_own_transcript_is_judged_again_only_when_speech_followed(
     judged: bool,
 ) -> None:
     overlaps = Overlaps(FakeSessionIO(two_step(settings)).setup)
-    overlaps.open(0, reply_id=1, speech_at=1.0, at=1.3)
+    overlaps.open(0, reply_id=1, speech_at=1.0)
     turn = _heard(0, f"{LISTENING_TEXT} {NEW_TEXT}", part="turn", sent_at=4.0)
     assert overlaps.judge_after(turn, played=(), ended_at=3.5) is None  # not decided yet
     for part in asked:
@@ -194,12 +194,12 @@ def test_a_turn_that_decided_its_overlap_is_not_judged_again(
     second verdict on the same words; nor after a verdict that stopped the agent."""
     rule.script[NEW_TEXT] = LISTENING
     overlaps = Overlaps(FakeSessionIO(two_step(settings)).setup)
-    overlaps.open(0, reply_id=1, speech_at=1.0, at=1.3)
+    overlaps.open(0, reply_id=1, speech_at=1.0)
     overlaps.requested(_asked(0, "turn"))
     turn = _heard(0, NEW_TEXT, part="turn", sent_at=3.0)
     assert overlaps.judge(turn, played=(), ended_at=2.0) == LISTENING
     assert overlaps.judge_after(turn, played=(), ended_at=2.0) is None
-    overlaps.open(1, reply_id=1, speech_at=5.0, at=5.3)
+    overlaps.open(1, reply_id=1, speech_at=5.0)
     overlaps.requested(_asked(1, "turn"))
     overlaps.judge(_heard(1, STOP_TEXT, part="window", sent_at=5.5), played=())
     assert (
@@ -216,7 +216,7 @@ def test_a_part_asked_for_sooner_than_the_stop_delay_has_no_speech_below_zero(
     """The whole overlap's request went 100 ms after its speech began, under the detector's
     200 ms stop delay: its speech is 0 s, never below (the rule's `Overlap` refuses it)."""
     overlaps = Overlaps(FakeSessionIO(two_step(settings)).setup)
-    overlaps.open(0, reply_id=1, speech_at=1.0, at=1.3)
+    overlaps.open(0, reply_id=1, speech_at=1.0)
     overlaps.judge(_heard(0, LISTENING_TEXT, part="overlap", sent_at=1.1), played=())
     assert rule.judged[0].speech_s == 0.0
 
@@ -230,7 +230,7 @@ def test_after_a_windows_repeat_request_or_stop_the_whole_overlap_is_judged_deci
     """A window may hold only a request's first word, so after its stop too the whole overlap
     is judged, its verdict kept beside the window's, which decided (plan 005's review)."""
     overlaps = Overlaps(FakeSessionIO(two_step(settings)).setup)
-    overlaps.open(0, reply_id=1, speech_at=1.0, at=1.3)
+    overlaps.open(0, reply_id=1, speech_at=1.0)
     overlaps.requested(_asked(0, "window"))
     assert overlaps.judge(_heard(0, text, part="window", sent_at=1.8), played=()) == verdict
     state = overlaps.get(0)
@@ -253,7 +253,7 @@ def test_a_rule_that_raises_decides_its_overlap_as_going_on(
 ) -> None:
     """Even on a window, whose verdict to go on would leave the overlap open."""
     overlaps = Overlaps(FakeSessionIO(two_step(settings)).setup)
-    overlaps.open(0, reply_id=1, speech_at=1.0, at=1.3)
+    overlaps.open(0, reply_id=1, speech_at=1.0)
     window = _heard(0, FAILING_TEXT, part="window", sent_at=1.8)
     assert overlaps.judge(window, played=()) == NO_WORDS
     assert overlaps.open_turns == () and overlaps.settle() == 1

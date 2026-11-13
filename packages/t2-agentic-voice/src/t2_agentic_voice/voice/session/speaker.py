@@ -1,14 +1,10 @@
 """How one call's session speaks (voice/session/call.py): the `Speaker` asks for each reply clause
 by clause, each in a cancel scope of its own (scope.py), captions each clause as it plays, tells
 the caller each notice, stops, says the last reply again (each clause as it was sent, in its own
-language, so a take the clause cache held is found again), and ends each reply, counted, traced,
+language), and ends each reply, counted, traced,
 recorded and kept in the heard history (history.py). The replies as they play: playback.py's.
 
-What the caller heard of a clause a stop or the call's end cut is the agent's audio the output
-sent since that clause began playing (its first audio queued, or the clause before it ended:
-`AgentAudio` reaches the session in order with each clause's `ClausePlayed`, voice/transport.py's
-`OutputTap`), over the clause's length, estimated from this call's clauses played so far, seconds
-per caption character (`SECONDS_PER_CHARACTER` before any played), as a reply's share counts.
+What the caller heard of a clause a stop or the call's end cut is cut_share.py's.
 
 A reply's scope is cancelled once the reply ends, however, so a reply that will ask for more
 clauses while its work runs (the talker's) must not end before that work is done: such a reply
@@ -43,6 +39,7 @@ from t2_agentic_voice.voice.protocol import (
 )
 from t2_agentic_voice.voice.session.books import CallBooks
 from t2_agentic_voice.voice.session.commands import Send, Speak, StopSpeaking
+from t2_agentic_voice.voice.session.cut_share import CutShare
 from t2_agentic_voice.voice.session.echo import BEAT_S, Line, again, fixed, padded
 from t2_agentic_voice.voice.session.io import CallSetup, Commands
 from t2_agentic_voice.voice.session.open_reply import OpenReply
@@ -61,11 +58,6 @@ from t2_agentic_voice.voice.session.session_events import (
     ClauseQueued,
     Synthesizing,
 )
-
-# How long a clause's audio lasts per character of its caption until a clause of the call has
-# played (the agent's estimate: about 14 characters a second, a calm speaking rate), for the share
-# of a clause cut before any other played.
-SECONDS_PER_CHARACTER = 0.07
 
 
 class Speaker:
@@ -95,8 +87,7 @@ class Speaker:
         self._two_step = setup.settings.interruptions.mode == "two_step"
         self._state: CallState | None = None
         self._scopes: dict[int, CancelScope] = {}
-        self._since_s = 0.0  # the agent's audio sent since the clause playing began
-        self._played_s, self._played_chars = 0.0, 0  # the clauses played whole so far
+        self._share = CutShare()  # of the clause playing, should a stop cut it
 
     async def send(self, message: SessionMessage) -> None:
         await self._commands.run(Send(message=message))
@@ -141,14 +132,7 @@ class Speaker:
     ) -> Reply:
         """Ask for the reply `lines` say, clause by clause, its scope and its span opened."""
         reply = self.playback.ask(kind, lines, turn_id=turn_id, notice=notice)
-        self._scopes[reply.reply_id] = CancelScope(
-            name=f"reply-{reply.reply_id}", clock=self._setup.clock
-        )
-        self._history.asked(reply.reply_id, turn_id, tuple(line.caption for line in lines))
-        voice = self._voice
-        self._trace.tts_started(
-            reply.reply_id, turn_id, model=voice.model, voice=voice.voice, language=self._tag
-        )
+        self._opened(reply, tuple(line.caption for line in lines))
         for line in lines:
             if line.speak.audio is not None:
                 self._usage.cached(self._tag)
@@ -164,17 +148,23 @@ class Speaker:
         work began in) and its span opened, its clauses added as they come, closed once its
         work is done (open_reply.py)."""
         reply = self.playback.open("answer", turn_id=turn_id)
-        reply_id = reply.reply_id
+        opened = self._opened(reply, (), scope=scope)
+        return OpenReply(reply_id=reply.reply_id, scope=opened, writer=self, setup=self._setup)
+
+    def _opened(
+        self, reply: Reply, captions: tuple[str, ...], *, scope: CancelScope | None = None
+    ) -> CancelScope:
+        """`reply` is asked for, its clauses' `captions` known so far: its scope (a new one, or
+        `scope`), its entry in the heard history and its span opened; its scope."""
+        reply_id, turn_id = reply.reply_id, reply.turn_id
         name = f"reply-{reply_id}"
-        self._scopes[reply_id] = scope or CancelScope(name=name, clock=self._setup.clock)
-        self._history.asked(reply_id, turn_id, ())
+        opened = self._scopes[reply_id] = scope or CancelScope(name=name, clock=self._setup.clock)
+        self._history.asked(reply_id, turn_id, captions)
         voice = self._voice
         self._trace.tts_started(
             reply_id, turn_id, model=voice.model, voice=voice.voice, language=self._tag
         )
-        return OpenReply(
-            reply_id=reply_id, scope=self._scopes[reply_id], writer=self, setup=self._setup
-        )
+        return opened
 
     async def say_line(
         self, line: SpokenLine, *, language: LanguageTag, at: float, turn_id: TurnId | None
@@ -275,8 +265,7 @@ class Speaker:
 
     def heard_audio(self, event: AgentAudio) -> None:
         """The output sent a piece of the agent's audio: counted toward the clause playing."""
-        if event.sample_rate > 0:
-            self._since_s += len(event.pcm16) / 2 / event.sample_rate
+        self._share.heard(event)
 
     async def queued(self, event: ClauseQueued) -> Reply | None:
         """A clause's first audio was queued: its caption goes out (a notice shows as its
@@ -289,7 +278,7 @@ class Speaker:
             self._usage.cached(clause.language or self._tag)
         now = self.playback.playing()
         if now is not None and now[0] is reply and now[1] == event.clause:
-            self._since_s = 0.0  # it plays now: its audio counts from here
+            self._share.restart()  # it plays now: its audio counts from here
         if reply.kind != "notice":
             await self.send(self._caption(reply, event.clause, clause))
         return reply
@@ -301,13 +290,11 @@ class Speaker:
         if found is None:
             return
         reply, clause = found
-        self._since_s = 0.0
+        self._share.restart()
         if isinstance(event, ClausePlayed):
             self._usage.played(clause.language or self._tag, event)
             self._history.played(reply.reply_id, event.clause)
-            if event.audio_s > 0:
-                self._played_s += event.audio_s
-                self._played_chars += len(clause.caption)
+            self._share.played(clause, event.audio_s)
         else:
             self._events.failed(event.failure, event.retryable, reply.turn_id)
             if reply.kind in ("echo", "repeat", "answer") and not reply.told and tell:
@@ -354,15 +341,10 @@ class Speaker:
         playing = self.playback.playing()
         if playing is not None:
             reply, index = playing
-            fraction = self._since_s / self._length_s(reply.clauses[index])
+            fraction = self._share.fraction(reply.clauses[index])
             self._history.stopped(reply.reply_id, playing=index, fraction=fraction)
-        self._since_s = 0.0
+        self._share.restart()
         return playing
-
-    def _length_s(self, clause: Clause) -> float:
-        """How long `clause`'s audio lasts, estimated by its caption's characters."""
-        rate = self._played_s / self._played_chars if self._played_chars else SECONDS_PER_CHARACTER
-        return max(rate * len(clause.caption), 1e-3)
 
     def _caption(self, reply: Reply, index: int, clause: Clause, *, cut: bool = False) -> Caption:
         return Caption(

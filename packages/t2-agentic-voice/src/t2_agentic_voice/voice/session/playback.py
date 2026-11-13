@@ -12,10 +12,10 @@ plays on to echo (TD-060). Its clauses tell which one plays now
 (`playing`), and which played lately, whose words the agent's own voice heard back would say
 (`heard_since`).
 
-The talker's reply is written while it plays (plan 006): it is opened with no clause (`open`),
+The talker's reply is written while it plays: it is opened with no clause (`open`),
 each clause added as it comes (`add`), and closed once its work is done (`close`); until then it
 does not end when its clauses have all played, and while it has nothing left to play it is
-thinking, not speaking. An action's read-back (plan 007) is clauses of such a reply, each marked
+thinking, not speaking. An action's read-back is clauses of such a reply, each marked
 with its `part`, the summary's or the closing question's, so whoever reads the reply can tell
 them apart (read_back.py).
 """
@@ -41,8 +41,9 @@ from t2_agentic_voice.voice.session.session_events import (
 # How long after a reply ends a turn's speech still counts as the agent's own voice, leaked past
 # the browser's echo cancellation (plan 003's decision log): seconds.
 DROP_AFTER_S = 0.3
-# What a reply is: the greeting (reply 0), a turn's echo, a spoken notice, the last reply said
-# again at the caller's request, or the talker's answer, spoken while it is written (plan 006).
+# What a reply is (io.py's replies): the greeting (reply 0), a turn's echo, a spoken notice, the
+# last reply said again at the caller's request, or the talker's answer, spoken while it is
+# written (an action's read-back, its lines and its outcome among them).
 ReplyKind = Literal["greeting", "echo", "notice", "repeat", "answer"]
 # Which part of an action's read-back a clause says: the summary, which the receipt covers, or
 # the closing question.
@@ -79,13 +80,13 @@ class Clause:
 
 @dataclass(kw_only=True)
 class Reply:
-    """One of the agent's replies: its number, what it is, the caller's turn it answers (None
-    for the greeting or a notice), the notice it speaks, its clauses, when it began and ended
-    playing (`ended_at` set however it ended), whether a clause failed and the caller was told
-    of it (`told`: one `error` notice a reply), whether a stop dropped it (`stopped`), or a stop
-    or the call's end (`cut`), how long after its end speech still counts as over it (`tail_s`:
-    none after the caller's own `stop`), and whether it is still being written (`open`: the
-    talker's, until closed)."""
+    """One of the agent's replies: its number, what it is, the caller's turn it answers (None for
+    one that answers none: io.py's replies), the notice it speaks, its clauses, when it began and
+    ended playing (`ended_at` set however it ended), whether a clause failed and the caller was told
+    of it (`told`: one `error` notice a reply), whether a stop dropped it (`stopped`), or a stop or
+    the call's end (`cut`), how long after its end speech still counts as over it (`tail_s`: none
+    after the caller's own `stop`), and whether it is still being written (`open`: the talker's,
+    until closed)."""
 
     reply_id: ReplyId
     kind: ReplyKind
@@ -247,6 +248,15 @@ class Playback:
     def in_progress(self) -> list[Reply]:
         """The replies asked for that have not ended, oldest first."""
         return [reply for reply in self._replies.values() if reply.ended_at is None]
+
+    def earlier(self, turn_id: TurnId) -> list[Reply]:
+        """The replies in progress that answer the caller's turns earlier than `turn_id`, oldest
+        first, which a reply to it stops first; none when one answers `turn_id` or a later turn
+        (the stop would drop it too), or none is in progress."""
+        answering = [reply for reply in self.in_progress() if reply.turn_id is not None]
+        if not answering or max(reply.turn_id or 0 for reply in answering) >= turn_id:
+            return []
+        return answering
 
     def drop(self, at: float, *, tail: bool = True) -> list[Reply]:
         """End at `at` every reply asked for that has not ended, as a stop or the call's end

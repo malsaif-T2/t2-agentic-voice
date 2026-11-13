@@ -1,6 +1,7 @@
-"""What Track E's tests of voice's Pipecat modules share: a speech detector and a turn analyzer
-that need no ONNX model, a scripted session in place of `CallSession` (Track D's), and voice's
-entry point built from the fakes (tests/t2_agentic_voice/fakes.py and session_fakes.py).
+"""What the tests of voice's Pipecat modules share: a speech detector and a turn analyzer that
+need no ONNX model, a scripted session in place of `CallSession`, voice's entry point built from
+the fakes (tests/t2_agentic_voice/fakes.py and session_fakes.py), and the bound a ticker on the
+loop is held to (`TICKER_BOUND_S`).
 
 - `ToneVAD`: a Pipecat `VADAnalyzer` that hears speech in any 20 ms of audio louder than a
   whisper, so the fakes' tone is speech and digital silence is not;
@@ -85,6 +86,10 @@ from t2_agentic_voice.voice.session.session_events import (  # noqa: E402 - afte
 
 # The tone detector's start and stop delays: short, so a test's turns are short.
 START_S, STOP_S = 0.1, 0.2
+# The bound a 20 ms ticker on the loop is held to while `VoiceCalls.answer` builds a call whose
+# detector factory blocks for 0.2 s (test_calls.py): half the block, so a factory run on the loop
+# fails it, with room for a machine under load and Windows' 15.6 ms timer (the agent's value).
+TICKER_BOUND_S = 0.1
 
 
 class ToneVAD(VADAnalyzer):

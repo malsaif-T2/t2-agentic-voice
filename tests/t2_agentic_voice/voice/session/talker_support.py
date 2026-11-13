@@ -1,7 +1,6 @@
-"""What the tests of the session's talker share (plan 006, Track C): a fake talker of the tests'
-own, since Track B's `ChatTalker` is built in parallel (every track builds against Block 0's
-shapes, never another track's unfinished code), and a call of an instructed agent whose session
-runs it.
+"""What the tests of the session's talker share: a fake talker of the tests' own, so these tests
+pin the session's side alone (agent/'s `ChatTalker` has tests of its own), and a call of an
+instructed agent whose session runs it.
 
 `FakeTalker` gives each turn the events its `script` gives that turn (agent/talker.py's
 `TalkerEvent`s), and runs a `Work(seconds)` of the script as a task of the reply's scope that

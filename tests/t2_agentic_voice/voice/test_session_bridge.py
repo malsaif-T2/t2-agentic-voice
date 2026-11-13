@@ -32,7 +32,7 @@ from t2_agentic_voice.voice.session.session_events import (
     TurnOpened,
 )
 from t2_agentic_voice.voice.session_bridge import (
-    CallEvents,
+    EventStream,
     SessionBridge,
     SessionCommands,
     SpeakFrame,
@@ -59,7 +59,7 @@ def test_the_stream_hands_events_in_order_and_holds_what_cannot_come() -> None:
     them; after the end only a request's report is handed; after the close, nothing."""
 
     async def run() -> Recorder:
-        events, session = CallEvents(FakeClock(), record=True), Recorder()
+        events, session = EventStream(FakeClock(), record=True), Recorder()
         session.block = asyncio.Event()
         events.start(session)
         events.hand(Connected(at=1.0))
@@ -85,7 +85,7 @@ def test_the_stream_hands_events_in_order_and_holds_what_cannot_come() -> None:
 
 def test_the_session_hanging_up_lets_only_a_requests_report_through() -> None:
     async def run() -> Recorder:
-        events, session = CallEvents(FakeClock()), Recorder()
+        events, session = EventStream(FakeClock()), Recorder()
         session.block = asyncio.Event()
         events.start(session)
         events.hand(_played(0))
@@ -117,7 +117,7 @@ def test_a_session_that_raises_or_hangs_never_holds_the_stream(
             raise RuntimeError("the session's own text")
 
     async def run(session: Recorder) -> None:
-        events = CallEvents(SYSTEM_CLOCK)
+        events = EventStream(SYSTEM_CLOCK)
         events.start(session)
         events.hand(Connected(at=1.0))
         events.hand(_played(0))
@@ -136,7 +136,7 @@ def test_a_session_that_raises_or_hangs_never_holds_the_stream(
 
 
 def test_closing_a_stream_never_started_ends_at_once() -> None:
-    events = CallEvents(SYSTEM_CLOCK)
+    events = EventStream(SYSTEM_CLOCK)
     asyncio.run(events.close())
     assert events.closed and events.ended
 
@@ -151,7 +151,7 @@ def test_the_bridge_hands_the_client_messages_and_passes_every_other_frame(
     from pipecat.processors.frame_processor import FrameDirection
 
     caplog.set_level(logging.INFO)
-    events, session, tail = CallEvents(SYSTEM_CLOCK), Recorder(), Tail()
+    events, session, tail = EventStream(SYSTEM_CLOCK), Recorder(), Tail()
     bridge = SessionBridge(events)
 
     async def feed(worker: object) -> None:
@@ -185,7 +185,7 @@ def test_the_commands_are_carried_out_in_order_and_never_raise(
 
     caplog.set_level(logging.DEBUG, logger="t2_agentic_voice")
     clock = FakeClock()
-    events, tail = CallEvents(clock), Tail()
+    events, tail = EventStream(clock), Tail()
     bridge = SessionBridge(events)
     heard: list[str | None] = []
     marked: list[tuple[int, int]] = []
@@ -239,7 +239,7 @@ def test_every_command_of_the_session_has_its_case(caplog: pytest.LogCaptureFixt
     own: none falls to the line kept for a command after the end. A new command type fails
     here until it has a sample below, and a case."""
     caplog.set_level(logging.DEBUG, logger="t2_agentic_voice")
-    events = CallEvents(FakeClock())
+    events = EventStream(FakeClock())
     bridge = SessionBridge(events)
     done: list[str] = []
     commands = SessionCommands(

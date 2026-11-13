@@ -36,8 +36,17 @@ TurnFate = Literal[
 # said whole while it waits, after which the talker asks what to change, its draft kept (the
 # owner's stop ruling); or no clear answer after the read-back's `max_attempts`.
 DeclineKind = Literal["no", "correction", "stopped", "unclear"]
-# A language as a transcript names it, in the provider's code ("ar", "en").
-_Heard = Annotated[str, Field(min_length=2, max_length=16)]
+# A language as a transcript names it, in the provider's code ("ar", "en"): its shortest and
+# longest.
+_HEARD_CHARS = (2, 16)
+_Heard = Annotated[str, Field(min_length=_HEARD_CHARS[0], max_length=_HEARD_CHARS[1])]
+
+
+def heard_language(language: str | None) -> str | None:
+    """`language`, a transcript's, as a `TalkerTurn` takes it: None for none, or for a name
+    shorter or longer than a language's (`_Heard`)."""
+    shortest, longest = _HEARD_CHARS
+    return language if language is not None and shortest <= len(language) <= longest else None
 
 
 class _Plain(BaseModel):

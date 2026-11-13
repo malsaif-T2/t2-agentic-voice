@@ -1,5 +1,5 @@
-"""An action's read-back in the session, and its receipt (voice/session/read_back.py; plan 007,
-Track C; docs/SECURITY.md, invariant 1): the talker's `ReadBackRequested` plays the summary, then
+"""An action's read-back in the session, and its receipt (voice/session/read_back.py;
+docs/SECURITY.md, invariant 1): the talker's `ReadBackRequested` plays the summary, then
 the closing question, as the reply's next clauses, each said in its spoken form, captioned in its
 text and marked with its part, and the client is shown `confirming` whenever no reply plays; it
 plays when the talker's event plays, so an early start let go before then confirms nothing. The

@@ -17,14 +17,14 @@ a key the text held twice reaches a call with its last value.
 
 The caller speaks in turns and the agent in replies, and neither shares the other's numbers: a
 caller's turn is numbered by the speech-to-text bridge (`TurnId`), and each reply of the
-agent's by the session, from 0, the greeting reply 0 and each echo and each spoken notice the
-next (`ReplyId`), spoken clause by clause (`ClauseIndex`). An agent's caption and a client's
+agent's by the session, from 0, the greeting reply 0 (`ReplyId`; session/io.py's replies),
+spoken clause by clause (`ClauseIndex`). An agent's caption and a client's
 `playback` report name a clause by its reply and its index, so the greeting's first clause and
 a turn's echo never share a key.
 
 SmallWebRTC, which carries the messages, keeps two names for itself (Pipecat 1.15.0's
-`transports/smallwebrtc/connection.py`, lines 82 and 376-380; plan 003's appendix, item 13): a
-message typed `signalling` is its own, and raw text starting with `ping` its keep-alive. Every
+`pipecat/transports/smallwebrtc/connection.py`, lines 82 and 376-380; plan 003's appendix, item 13):
+a message typed `signalling` is its own, and raw text starting with `ping` its keep-alive. Every
 `t2v/1` message is a JSON object with a `type`, and none has either name.
 
 Plain pydantic with no Pipecat: the session (`voice/session/`, which imports no Pipecat) parses
@@ -260,13 +260,13 @@ _CLIENT: TypeAdapter[ClientMessage] = TypeAdapter(
 
 
 def parse_client_message(message: object) -> ClientMessage:
-    """The client's message, from the object Pipecat's transport parsed from its text, or from
-    the text itself (a str or bytes). A call takes the object path: SmallWebRTC's connection
-    runs `json.loads` on each data-channel message before its `on_app_message` event hands it
-    on (Pipecat 1.15.0's `transports/smallwebrtc/connection.py`, lines 376-387), so the bound
-    is measured on the object written back as compact JSON (UTF-8, no space), and a key the
-    text held twice reaches it once, with its last value. The text path, for a transport that
-    hands on the text, measures the text's own bytes and refuses a key held twice.
+    """The client's message, from the object Pipecat's transport parsed from its text, or from the
+    text itself (a str or bytes). A call takes the object path: SmallWebRTC's connection runs
+    `json.loads` on each data-channel message before its `on_app_message` event hands it on (Pipecat
+    1.15.0's `pipecat/transports/smallwebrtc/connection.py`, lines 376-387), so the bound is
+    measured on the object written back as compact JSON (UTF-8, no space), and a key the text held
+    twice reaches it once, with its last value. The text path, for a transport that hands on the
+    text, measures the text's own bytes and refuses a key held twice.
 
     InvalidRequestError for anything else: a message over MAX_CLIENT_MESSAGE_BYTES
     (`too_large`), text that is not one JSON value in UTF-8 or an object JSON cannot write

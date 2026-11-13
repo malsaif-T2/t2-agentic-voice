@@ -27,7 +27,7 @@ from t2_agentic_voice.voice.session.session_events import (
     Synthesizing,
 )
 from t2_agentic_voice.voice.session_bridge import (
-    CallEvents,
+    EventStream,
     SessionBridge,
     SessionCommands,
     SpeakFrame,
@@ -55,7 +55,7 @@ def _speak(reply: int, text: str, *, clause: int = 0, audio: AudioChunk | None =
 class Rig:
     """One clause path: its stream, session, commands, bridge, output and public events."""
 
-    events: CallEvents
+    events: EventStream
     session: Recorder
     commands: SessionCommands
     tts: ClauseTTSBridge
@@ -69,7 +69,7 @@ class Rig:
 def _rig(port: TextToSpeech, *, realtime: bool = False) -> tuple[Rig, list[FrameProcessor]]:
     from pipecat.transports.base_transport import TransportParams
 
-    events, session, emitted = CallEvents(SYSTEM_CLOCK), Recorder(), list[Event]()
+    events, session, emitted = EventStream(SYSTEM_CLOCK), Recorder(), list[Event]()
     report = FailureReport(call_id="call-1", emit=emitted.append, clock=SYSTEM_CLOCK)
     bridge = SessionBridge(events)
     tts = ClauseTTSBridge(tts=port, events=events, report=report, timeout_s=6.0)
@@ -234,7 +234,7 @@ def test_an_unusable_bridge_fails_each_clause_and_a_dropped_one_is_never_spoken(
 
 
 def test_outside_a_clause_the_bridge_speaks_nothing_and_names_contexts_as_pipecat_does() -> None:
-    events = CallEvents(SYSTEM_CLOCK)
+    events = EventStream(SYSTEM_CLOCK)
     report = FailureReport(call_id="call-1", emit=lambda event: None, clock=SYSTEM_CLOCK)
     tts = ClauseTTSBridge(tts=FakeTextToSpeech(), events=events, report=report, timeout_s=6.0)
 

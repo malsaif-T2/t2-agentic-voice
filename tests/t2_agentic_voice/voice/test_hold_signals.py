@@ -23,7 +23,7 @@ from t2_agentic_voice.voice.session.session_events import (
     TurnHeld,
     TurnOpened,
 )
-from t2_agentic_voice.voice.session_bridge import CallEvents
+from t2_agentic_voice.voice.session_bridge import EventStream
 from t2_agentic_voice.voice.stt_bridge import TurnSTTBridge
 from t2_agentic_voice.voice.turn_hold import HeldTurnStop, HoldResumedFrame, TurnHeldFrame
 from t2_agentic_voice.voice.turns import turn_processors
@@ -124,7 +124,7 @@ def _bridge(port: FakeSpeechToText, frames: list[Frame], *, early: bool) -> Reco
     """The bridge, with the early start on or off, fed `frames`, then the turn's end."""
     from pipecat.frames.frames import UserStoppedSpeakingFrame
 
-    events, session, emitted = CallEvents(SYSTEM_CLOCK), Recorder(), list[Event]()
+    events, session, emitted = EventStream(SYSTEM_CLOCK), Recorder(), list[Event]()
     report = FailureReport(call_id="call-1", emit=emitted.append, clock=SYSTEM_CLOCK)
     stt = TurnSTTBridge(stt=port, events=events, report=report, start_s=START_S, early=early)
 

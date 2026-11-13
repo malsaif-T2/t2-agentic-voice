@@ -32,7 +32,7 @@ from t2_agentic_voice.voice.session.session_events import (
     Transcribed,
     TransportFailure,
 )
-from t2_agentic_voice.voice.session_bridge import CallEvents
+from t2_agentic_voice.voice.session_bridge import EventStream
 from t2_agentic_voice.voice.stt_bridge import TurnSTTBridge
 from t2_agentic_voice.voice.tts_bridge import ClauseTTSBridge
 
@@ -78,7 +78,7 @@ def test_an_error_frame_is_a_line_with_no_content_and_a_speech_bridges_a_provide
 
     emitted: list[Event] = []
     report = FailureReport(call_id="call-1", emit=emitted.append, clock=FakeClock())
-    events = CallEvents(SYSTEM_CLOCK)
+    events = EventStream(SYSTEM_CLOCK)
     stt = TurnSTTBridge(stt=FakeSpeechToText(), events=events, report=report, start_s=0.2)
     tts = ClauseTTSBridge(tts=FakeTextToSpeech(), events=events, report=report, timeout_s=6.0)
     output = capturing_output(Captured())
@@ -248,7 +248,7 @@ def test_a_report_logs_what_the_session_hears_of_and_stamps_its_own_event_on_the
     report.provider_failed("speech_to_text", "timeout", True, turn_id=0)
     report.transport_failed("connect")
     assert emitted == []
-    events = CallEvents(SYSTEM_CLOCK)
+    events = EventStream(SYSTEM_CLOCK)
     stt = TurnSTTBridge(stt=FakeSpeechToText(), events=events, report=report, start_s=0.2)
     frame = ErrorFrame(error=SECRET, processor=stt, exception=LIMITED)
     assert report.error_frame(frame, speech=[(stt, "speech_to_text")]) is None

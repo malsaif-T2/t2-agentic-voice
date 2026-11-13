@@ -37,10 +37,9 @@ from t2_agentic_voice.domain.action_lines import SpokenLine
 from t2_agentic_voice.domain.ports.action_jobs import ActionOutcome
 from t2_agentic_voice.domain.yes_rule import ConfirmedAction
 from t2_agentic_voice.voice.session.books import CallBooks
-from t2_agentic_voice.voice.session.io import CallSetup
+from t2_agentic_voice.voice.session.io import CallSetup, Guarded
 from t2_agentic_voice.voice.session.read_back import Confirming
 from t2_agentic_voice.voice.session.speaker import Speaker
-from t2_agentic_voice.voice.session.talker_play import Guarded
 from t2_agentic_voice.voice.session.turn_book import TurnBook
 
 _log = get_logger(__name__)

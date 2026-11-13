@@ -109,6 +109,12 @@ class Verdict(BaseModel):
     reason: VerdictReason
 
 
+# The verdicts the rule gives on a stop or pause word (step 2) and on a whole repeat request
+# (step 3), which the session gives too for one said whole as a reply began.
+STOP_WORD = Verdict(action="stop", kind="stop", reason="stop_word")
+REPEAT_WORD = Verdict(action="repeat", kind="new_words", reason="repeat_word")
+
+
 def judge(
     overlap: Overlap,
     *,
@@ -125,7 +131,7 @@ def judge(
     if from_silence(
         overlap.text, overlap.no_speech_prob, no_speech_max=no_speech_max, captions=captions
     ):
-        return _goes_on("no_words")
+        return goes_on("no_words")
     heard = rule_form(overlap.text).split()
     spoken = [rule_form(text) for text in overlap.played]
     lists = _lists(words)
@@ -135,28 +141,28 @@ def judge(
     stops = _of_kinds(tokens, kinds, "stop", "wait")
     echo = 0 < len(stops) < len(tokens) and _said_back(stops, spoken)
     if echo and own_words(heard, spoken):
-        return _goes_on("own_words")
+        return goes_on("own_words")
     if stops or _noisy_stop(tokens, kinds, questions):
-        return Verdict(action="stop", kind="stop", reason="stop_word")
+        return STOP_WORD
     if _only(kinds, "repeat"):
         forms = [form for form, held in lists.items() if "repeat" in held]
         if any(_said_back((form,), spoken, after_and=True) for form in forms):
-            return _goes_on("own_words")
-        return Verdict(action="repeat", kind="new_words", reason="repeat_word")
+            return goes_on("own_words")
+        return REPEAT_WORD
     if own_words(heard, spoken):
-        return _goes_on("own_words")
+        return goes_on("own_words")
     if all("backchannel" in kind for kind in kinds):
-        return _goes_on("listening")
+        return goes_on("listening")
     asks = any(mark in overlap.text for mark in QUESTION_MARKS)
     asks = asks or _opens_with_question(heard[0], questions)
     listed = _held(kinds, "stop", "wait", "repeat", "no")
     if len(tokens) <= short_words and overlap.speech_s < short_s and not (listed or asks):
-        return _goes_on("short_output")
+        return goes_on("short_output")
     real = [kind for kind in kinds if "backchannel" not in kind]
     if len(real) >= min_words:
         said: InterruptionKind = "correction" if "no" in real[0] else "new_words"
         return Verdict(action="stop", kind=said, reason="enough_words")
-    return _goes_on("too_few_words")
+    return goes_on("too_few_words")
 
 
 def word_count(text: str, *, words: Words) -> int:
@@ -216,7 +222,7 @@ def after_command(text: str, command: WholeCommand, *, words: Words) -> str:
     return " ".join(written[at:]) if count == lead else " ".join(heard[lead:])
 
 
-def _goes_on(reason: VerdictReason) -> Verdict:
+def goes_on(reason: VerdictReason) -> Verdict:
     """The verdict that lets the reply go on, for `reason`."""
     return Verdict(action="go_on", kind="false", reason=reason)
 

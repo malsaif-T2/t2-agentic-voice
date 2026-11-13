@@ -1,12 +1,12 @@
 """The session's commands: what one call's session asks of voice's Pipecat modules, each carried
-out in order by `Commands.run` (plan 003, step 10). io.py says how the two sides meet; the
+out in order by `Commands.run`. io.py says how the two sides meet; the
 events are session_events.py's. Frozen dataclasses with no Pipecat type, and no time: the
 Pipecat side stamps when each reached it, on the call's clock, where it needs one (the
 file-fed transport's `FedCall`).
 
-The agent speaks in replies the session numbers from 0 (the greeting reply 0, each echo and each
-spoken notice the next), each clause keyed on its reply and its index there, never on the
-caller's turn: a reply that answers a turn names it too.
+The agent speaks in replies the session numbers from 0 (io.py's replies), each clause keyed on
+its reply and its index there, never on the caller's turn: a reply that answers a turn names it
+too.
 """
 
 from __future__ import annotations
@@ -30,17 +30,17 @@ class ListenIn:
 
 @dataclass(frozen=True, kw_only=True)
 class HearOverlap:
-    """The caller's turn `turn_id` is an overlap: its speech began while a reply played, or
-    within 300 ms after one (io.py's overlaps). Besides the turn's own transcript, the
+    """The caller's turn `turn_id` is an overlap: its speech began while a reply played, or within
+    `DROP_AFTER_S` after one (playback.py; io.py's overlaps). Besides the turn's own transcript, the
     speech-to-text bridge sends the overlap's two parts, each reported with its `part`: its
-    `window`, the first `window_ms` of it counted from 300 ms before the speech detector heard
-    its speech begin, if the speech still goes on then; and the `overlap`, all of its speech,
-    once the detector hears it stop, never waiting for the turn's end. A `HearOverlap` that
-    reaches the bridge after the detector heard the turn's speech stop gets its `overlap` sent
-    at once, with no window. At most these two requests decide an overlap: the turn's own
-    `Transcribed` reuses the overlap's transcript, with no request of its own, when no speech
-    followed it. Once the overlap is decided, whatever the verdict, the session sends one
-    `unduck`, right after `StopSpeaking` on a stop or a repeat (io.py's overlaps)."""
+    `window`, the first `window_ms` of it counted from `OVERLAP_LEAD_S` (voice/stt_bridge.py) before
+    the speech detector heard its speech begin, if the speech still goes on then; and the `overlap`,
+    all of its speech, once the detector hears it stop, never waiting for the turn's end. A
+    `HearOverlap` that reaches the bridge after the detector heard the turn's speech stop gets its
+    `overlap` sent at once, with no window. At most these two requests decide an overlap: the turn's
+    own `Transcribed` reuses the overlap's transcript, with no request of its own, when no speech
+    followed it. Once the overlap is decided, whatever the verdict, the session sends one `unduck`,
+    right after `StopSpeaking` on a stop or a repeat (io.py's overlaps)."""
 
     turn_id: TurnId
     window_ms: int
@@ -49,12 +49,12 @@ class HearOverlap:
 @dataclass(frozen=True, kw_only=True)
 class Speak:
     """Say one clause of a reply in the voice of `language`: clause `clause` of reply
-    `reply_id`, which answers the caller's turn `turn_id` (None for the greeting or a spoken
-    notice); `text`, at most the provider's `max_chars`, in one text-to-speech request, sent as
-    it is (the session made it the provider's text: call.py); or, for a fixed phrase, `audio`
-    from the phrase cache, played with no request (`text`, the whole phrase as written whatever
-    its length, kept for its caption and its span: one clause). Clauses play in the order they
-    were asked for."""
+    `reply_id`, which answers the caller's turn `turn_id` (None for one that answers none:
+    io.py's replies); `text`, at most the provider's `max_chars`, in one text-to-speech request,
+    sent as it is (the session made it the provider's text: call.py); or, for a fixed phrase,
+    `audio` from the phrase cache, played with no request (`text`, the whole phrase as written
+    whatever its length, kept for its caption and its span: one clause). Clauses play in the
+    order they were asked for."""
 
     reply_id: ReplyId
     clause: ClauseIndex

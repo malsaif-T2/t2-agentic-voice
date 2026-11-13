@@ -1,15 +1,15 @@
 """What the caller says over an action's read-back, and while it is confirming
-(voice/session/read_back.py, overlap.py, interrupter.py; plan 007, Track C, and the owner's
-rulings of 2026-11-10; docs/SECURITY.md, invariant 1): yes words, send words, fillers and
-listening sounds over the summary are ignored, whatever the rule would say, the summary playing
-on and the words counting for nothing, but never words with a stop or pause word (a team's
-added ones included, on a filler too); a stop or pause word over the read-back stops it with no
-receipt, the confirming state ends, and the turn reaches the talker with the action declined as
-stopped, so it asks what to change; real words over the summary do the same, as a correction,
-or as a no when they are a plain no by the yes rule's lists (D-081, amended 2026-11-11); a
-repeat request over it, or said whole while it is confirming, has the session say it again, the
-earlier read-back void; real words over the closing question leave the read-back to the yes rule;
-the client's stop and the call's end end it. The rule is the tests' fake (overlap_support.py)."""
+(voice/session/read_back.py, overlap.py, interrupter.py; the owner's rulings of 2026-11-10;
+docs/SECURITY.md, invariant 1): yes words, send words, fillers and listening sounds over the summary
+are ignored, whatever the rule would say, the summary playing on and the words counting for nothing,
+but never words with a stop or pause word (a team's added ones included, on a filler too); a stop or
+pause word over the read-back stops it with no receipt, the confirming state ends, and the turn
+reaches the talker with the action declined as stopped, so it asks what to change; real words over
+the summary do the same, as a correction, or as a no when they are a plain no by the yes rule's
+lists (D-081, amended 2026-11-11); a repeat request over it, or said whole while it is confirming,
+has the session say it again, the earlier read-back void; real words over the closing question leave
+the read-back to the yes rule; the client's stop and the call's end end it. The rule is the tests'
+fake (overlap_support.py)."""
 
 from __future__ import annotations
 

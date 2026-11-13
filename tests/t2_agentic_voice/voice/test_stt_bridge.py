@@ -30,7 +30,7 @@ from t2_agentic_voice.voice.session.session_events import (
     TurnClosed,
     TurnOpened,
 )
-from t2_agentic_voice.voice.session_bridge import CallEvents
+from t2_agentic_voice.voice.session_bridge import EventStream
 from t2_agentic_voice.voice.stt_bridge import PREROLL_PAD_S, TRAIL_S, TurnSTTBridge
 
 from tests.t2_agentic_voice.fakes import FakeSpeechToText, tone
@@ -54,14 +54,14 @@ CALLER, CONSENT = Caller(subject="made-up"), Consent(version=None, record_audio=
 
 @dataclass
 class Rig:
-    events: CallEvents
+    events: EventStream
     session: Recorder
     stt: TurnSTTBridge
     emitted: list[Event]
 
 
 def _run(port: FakeSpeechToText, body: Callable[[Rig, PipelineWorker], Awaitable[None]]) -> Rig:
-    events, session, emitted = CallEvents(SYSTEM_CLOCK), Recorder(), list[Event]()
+    events, session, emitted = EventStream(SYSTEM_CLOCK), Recorder(), list[Event]()
     report = FailureReport(call_id="call-1", emit=emitted.append, clock=SYSTEM_CLOCK)
     stt = TurnSTTBridge(stt=port, events=events, report=report, start_s=START_S)
     rig = Rig(events, session, stt, emitted)
@@ -263,7 +263,7 @@ def test_at_the_calls_end_the_held_audio_is_dropped_and_a_request_cancelled() ->
 
 
 def test_the_bridge_sends_no_request_for_a_frame_and_times_no_stream() -> None:
-    events = CallEvents(SYSTEM_CLOCK)
+    events = EventStream(SYSTEM_CLOCK)
     report = FailureReport(call_id="call-1", emit=lambda event: None, clock=SYSTEM_CLOCK)
     stt = TurnSTTBridge(stt=FakeSpeechToText(), events=events, report=report, start_s=0.2)
 
