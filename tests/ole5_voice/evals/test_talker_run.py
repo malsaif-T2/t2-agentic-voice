@@ -216,6 +216,7 @@ def test_the_days_limit_stops_a_run_which_resume_goes_on_with(setup: Setup) -> N
     assert talker_run.main([*setup.argv(), *DEV, "--resume"], parts=setup.parts()) == 0
     card = _card(setup)
     assert card.complete and len(card.variants) == 6 and len(card.sessions) == 2
+    assert [session.variants for session in card.sessions] == [4, 2]  # each session's own
     assert card.cost_usd == pytest.approx(sum(s.cost_usd for s in card.sessions))
     lines = [line for line, path in setup.lines.lines if path.name == "history.jsonl"]
     assert [line.session for line in lines[::2]] == [1, 2]  # type: ignore[attr-defined]

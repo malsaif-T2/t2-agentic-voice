@@ -231,7 +231,7 @@ def _built(args: argparse.Namespace, parts: TalkerParts, closing: Closing) -> in
         _close(
             info,
             folder,
-            done + found.results,
+            (done, found.results),
             found.stopped,
             expected,
             sessions,
@@ -297,7 +297,7 @@ async def _measure(
 def _close(
     info: TalkerRun,
     folder: RunFolder,
-    records: list[VariantRecord],
+    measured: tuple[list[VariantRecord], list[VariantRecord]],
     stopped: Stopped | None,
     expected: int,
     sessions: list[Session],
@@ -306,14 +306,17 @@ def _close(
     parts: TalkerParts,
     history: Path,
 ) -> None:
-    """The session, the scorecard and the session's history line, whatever stopped the run."""
+    """The session, the scorecard and the session's history line, whatever stopped the run:
+    `measured` holds the earlier sessions' records and this session's own."""
+    earlier, own = measured
+    records = [*earlier, *own]
     complete = stopped is None and len(records) == expected
     if info.split == "held-out" and not complete:
         records = []  # a held-out run that did not finish keeps no result: it is run again whole
     session = Session(
         started_at=began,
         stopped=stopped,
-        variants=len(records),
+        variants=len(own),
         spend=spend.spent(),
         cost_usd=spend.session_usd(),
     )
