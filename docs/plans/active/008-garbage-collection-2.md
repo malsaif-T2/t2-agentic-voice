@@ -358,6 +358,19 @@ open as written (TD-001, 011, 036, 039, 041, 042, 044, 047, 053, 055, 064, 089, 
   branch (the clause cache's 0.1 s reads, the chat deadline, `test_stt_language.py`, a loopback
   duck): a mistake seen more than twice, so W2 and W3 make each independent of the machine's
   speed, and W6 records the rule (step 5). W2 and W3 started from 9648cf6.
+- 2026-11-13: W6 split in two, so that the docs not tied to voice's or the adapters' code need not
+  wait: W6a (the living docs, the debt list, ARCHITECTURE.md's and CLAUDE.md's maps for W1, W4 and
+  W5, and the small leftovers W1 and W4 found) from 756718e beside W2 and W3; the rest after them
+  (the plan-time-words check, the real-time tests' rule, TD-140's sizes, TD-141, the maps of voice,
+  adapters, api and testing, the grades). W6a merged (2f80e43, six commits 5fcbe36 to 96adca4):
+  doc-1 to doc-18 but doc-13 (the owner's "Leave them out"); five paid rows removed (GP-19's test
+  pointer, the session tests' stand-ins and the gate's warning, the guide's slips, the two files
+  under the cap, the knowledge tool's screen text), TD-125's paid part dropped, 26 rows brought up to date or given a real trigger,
+  sizes kept in TD-140 alone, TD-148 (tst-4) and TD-149 (tst-8) added; `ActionName` on every
+  action field (the models' JSON schemas byte-identical before and after); `SpeechGuard.check`
+  returns `GuardVerdict`. Changes a caller notices, each tested: run K's held-out refusal says
+  "at least 3 items" as the other eight checks do; run S's `--repeats 0` is refused at parse
+  time, exit 2 as before. Its gate: 7872 passed, 1 skipped, coverage 99.26%.
 
 ## Decision log
 
@@ -366,8 +379,8 @@ open as written (TD-001, 011, 036, 039, 041, 042, 044, 047, 053, 055, 064, 089, 
   everywhere. (2) `api/status.py`, "Keep them": `status` and `Status` stay public, and the Ole5 app's
   `app.py` with them; only the docstring pointing at the runtime's health route is fixed. (3) TD-141,
   "Wire them in": the live guard and `TextCall`'s check build on `check_clause`, and each action's
-  state moves through `advance`. (4) The two working rules, "Leave them out": WORKING-RULES.md is not
-  changed. The agent took its own recommendation on (6): `[gc] due_after_commits` goes to 100, about
+  state moves through `advance`. (4) The two working rules, "Leave them out": neither is added to
+  WORKING-RULES.md (its launch.json line, doc-14, is still corrected). The agent took its own recommendation on (6): `[gc] due_after_commits` goes to 100, about
   one milestone, and the duplication score is looked at in W5.
 - 2026-11-13: How the blocks run. W1 (core, domain, agent, actions, with the cross-layer reuses it
   introduces) first, since W2 and W3 build on its definitions; W4 (the app's evals) and W5 (the
