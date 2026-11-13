@@ -235,8 +235,8 @@ were left out, and Ole5 needed no word additions (plan 005).
 time to the first useful audio meets a target registered in its plan before any run; and the
 rehearsal's password, archiving, and English questions pass. *Done* on 2026-11-09
 ([006](completed/006-talker-and-knowledge-answers.md)), with registered targets missed and its
-live calls moved to M7, by the owner's word: on held-out, an expected passage was retrieved for
-0.816 of the variants (bound 0.90) and right answers read 0.408 (bound 0.80, unverified, since the
+live calls moved to M7, by the owner's word: on held-out, the share with an expected passage
+retrieved was 0.816 (bound 0.90) and right answers read 0.408 (bound 0.80, unverified, since the
 judge's check failed); with a search, the first audio's median and 90th percentile held (2,532
 and 3,044 ms), but 5 of 40 replies had not begun by 3.0 s with no progress line. `t2v check` was
 not built (TD-143).

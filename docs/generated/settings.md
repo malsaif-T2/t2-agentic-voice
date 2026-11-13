@@ -63,7 +63,7 @@ The chat model the talker writes its replies with: the adapter, the model, how m
 | `T2V_LLM__REASONING_EFFORT` | one of low, medium, high | `medium` | — | How much a reasoning model thinks before it answers: low, medium or high. Sent only to a model that takes it (the gpt-oss models). Medium, as the owner ruled on run K's dev pass (plan 006, Q26): gpt-oss-120b invented 6 answers of 136 against 18 at low, for about 0.33 s more to the first clause. |
 | `T2V_LLM__MAX_OUTPUT_TOKENS` | integer | `1024` | — | The most tokens one model request may write, its reasoning included: a spoken reply is one to three short sentences, or every step of a procedure. |
 | `T2V_LLM__TIMEOUT_S` | number | `8` | seconds | The longest one model request may take before it is a timeout. |
-| `T2V_LLM__VARY_FIRST_LINE` | true or false | `true` | — | Whether each request's system message opens with a line new on every request, so no two requests share a prefix the provider has cached. Groq's cache can be slow: on openai/gpt-oss-120b with Ole5's prompt, 3 of the 8 requests it served from its cache took 1.03, 1.25 and 5.71 s to the first token, while 12 requests with a first line of their own all took 0.15 to 0.30 s (2026-11-07, D-072). |
+| `T2V_LLM__VARY_FIRST_LINE` | true or false | `true` | — | Whether each request's system message opens with a line new on every request, so no two requests share a prefix the provider has cached. Groq's cache can be slow: on openai/gpt-oss-120b with one app's system prompt, 3 of the 8 requests it served from its cache took 1.03, 1.25 and 5.71 s to the first token, while 12 requests with a first line of their own all took 0.15 to 0.30 s (2026-11-07, D-072). |
 
 ## `tts`
 
