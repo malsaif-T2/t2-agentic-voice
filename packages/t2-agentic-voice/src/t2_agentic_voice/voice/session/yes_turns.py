@@ -166,11 +166,8 @@ class YesTurns:
         at: float,
     ) -> None:
         """The yes rule's verdict on a chat model's word (yes_ask.py), carried out as any
-        answer's; a `Yes` that is not `receipt`'s for `turn` is unclear, as `_decided` says."""
-        if isinstance(outcome, Yes) and not _issued_for(outcome.confirmed, receipt, turn.turn_id):
-            call_id = self._setup.call_id
-            _log.error("yes_rule_failed", call_id=call_id, turn_id=turn.turn_id, failure="receipt")
-            outcome = AskAgain()
+        answer's, once checked (`_checked`)."""
+        outcome = self._checked(outcome, receipt, turn)
         await self._settled(turn, heard, outcome, plan, at, by="model")
 
     async def _settled(
@@ -228,17 +225,24 @@ class YesTurns:
     def _decided(
         self, turn: TurnLog, heard: HeardWords, receipt: ReadBackReceipt, plan: ReadBackPlan
     ) -> YesOutcome:
-        """The yes rule's word on `heard`, `receipt` the read-back's of `plan`: unclear when the
-        rule fails, or when its yes's confirmed action is not `receipt`'s for `turn`."""
-        call_id = self._setup.call_id
+        """The yes rule's word on `heard`, `receipt` the read-back's of `plan`, checked
+        (`_checked`): unclear when the rule fails."""
         try:
             words = self._confirming.words(plan)
             outcome = decide(heard, receipt, words=words, env=self._setup.settings.env)
         except Exception as error:  # a bug: never a yes
             failure = type(error).__qualname__
+            call_id = self._setup.call_id
             _log.error("yes_rule_failed", call_id=call_id, turn_id=turn.turn_id, failure=failure)
             return AskAgain()
+        return self._checked(outcome, receipt, turn)
+
+    def _checked(self, outcome: YesOutcome, receipt: ReadBackReceipt, turn: TurnLog) -> YesOutcome:
+        """`outcome`, the yes rule's, by its lists or a model's word: unclear, logged as the
+        rule failing, when it is a `Yes` whose confirmed action is not `receipt`'s for `turn`,
+        unchanged since the rule issued it (`_issued_for`)."""
         if isinstance(outcome, Yes) and not _issued_for(outcome.confirmed, receipt, turn.turn_id):
+            call_id = self._setup.call_id
             _log.error("yes_rule_failed", call_id=call_id, turn_id=turn.turn_id, failure="receipt")
             return AskAgain()
         return outcome
@@ -249,7 +253,7 @@ class YesTurns:
         """A yes: confirming ends; `plan`'s `sending` line said as the reply answering `turn`,
         then `confirmed` handed to the call's `ActionJobs`; with none, the `error` notice, and
         nothing sent."""
-        self._confirming.finish()
+        self._confirming.confirmed()
         if not self.jobs.wired:
             call_id = self._setup.call_id
             _log.warning("action_not_sent", call_id=call_id, action=plan.action, reason="no_jobs")

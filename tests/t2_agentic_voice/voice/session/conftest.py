@@ -1,18 +1,20 @@
-"""Fixtures for the session's tests (plan 003's Track D, plan 005's Track B).
+"""Fixtures for the session's tests.
 
 The session cuts and says the heard words with the library's own clause splitter and
 pronunciation map (`domain/text/clauses.py`, `pronounce.py`), and the tests compute what they
 expect through the session's `echo.said`.
 
-The interruption rule (domain/interruptions.py's `judge`) is plan 005's Track A's, built in
-parallel: a test that judges an overlap takes `rule`, a fake the test scripts, patched where the
-session calls it, and never runs Track A's code. So for the yes rule's words (plan 007's Track
-A's `consent_words`): a test of what is said over a read-back takes `consent`; and for the yes
-rule itself (its `decide`): a test of the caller's answer to a read-back takes `yes_rule`.
+The rules the session calls are the tests' fakes, patched where the session calls them, so these
+tests pin the session's side alone (the rules have tests of their own under domain/): a test
+that judges an overlap takes `rule`, the interruption rule's `judge` as the test scripts it; a
+test of what is said over a read-back takes `consent`, the yes rule's words; and a test of the
+caller's answer to a read-back takes `yes_rule`, the yes rule's `decide`.
 
 Every step the session takes is guarded (it logs a failure by its kind and goes on, as the
 `Session` protocol asks), so a test would not see a bug that raised inside it: every test here
-fails on a `session_step_failed` line unless it takes `step_failures`, which allows them.
+fails on a `session_step_failed` line unless it takes `step_failures`, which allows them; and on
+an `action_flow_refused` line (a move the lifecycle's table refuses, read_back_flow.py) unless it
+takes `flow_refusals`.
 """
 
 from __future__ import annotations
@@ -32,8 +34,8 @@ from tests.t2_agentic_voice.voice.session.yes_support import FakeYesRule
 
 @pytest.fixture
 def rule(monkeypatch: pytest.MonkeyPatch) -> FakeRule:
-    """The starting rule as the test scripts it (overlap_support.py's `FakeRule`), standing in
-    for Track A's `judge` where the session calls it: these tests never run Track A's code."""
+    """The interruption rule as the test scripts it (overlap_support.py's `FakeRule`), in place
+    of `judge` where the session calls it (overlap.py)."""
     fake = FakeRule()
     monkeypatch.setattr(overlap, "judge", fake)
     return fake
@@ -42,8 +44,8 @@ def rule(monkeypatch: pytest.MonkeyPatch) -> FakeRule:
 @pytest.fixture
 def consent(monkeypatch: pytest.MonkeyPatch) -> list[dict[str, Any]]:
     """The yes rule's words as the read-back's tests give them (read_back_support.py's
-    `CONSENT`), standing in for Track A's `consent_words` where the session calls it
-    (read_back.py): these tests never run Track A's code. Each call's arguments are kept."""
+    `CONSENT`), in place of `consent_words` where the session calls it (read_back.py). Each
+    call's arguments are kept."""
     calls: list[dict[str, Any]] = []
 
     def words(code: str, **given: Any) -> ConsentWords:
@@ -56,9 +58,8 @@ def consent(monkeypatch: pytest.MonkeyPatch) -> list[dict[str, Any]]:
 
 @pytest.fixture
 def yes_rule(monkeypatch: pytest.MonkeyPatch, consent: list[dict[str, Any]]) -> FakeYesRule:
-    """The yes rule as the tests give it (yes_support.py's `FakeYesRule`), standing in for
-    Track A's `decide` where the session calls it (yes_turns.py), with the tests' words
-    (`consent`): these tests never run Track A's code."""
+    """The yes rule as the tests give it (yes_support.py's `FakeYesRule`), in place of `decide`
+    where the session calls it (yes_turns.py), with the tests' words (`consent`)."""
     fake = FakeYesRule()
     monkeypatch.setattr(yes_turns, "decide", fake)
     return fake
@@ -69,13 +70,22 @@ def step_failures() -> None:
     """A test that takes this allows the session to log a step's failure."""
 
 
+@pytest.fixture
+def flow_refusals() -> None:
+    """A test that takes this allows the session to log a move the table refuses."""
+
+
 @pytest.fixture(autouse=True)
 def _no_step_failed(
     caplog: pytest.LogCaptureFixture, request: pytest.FixtureRequest
 ) -> Iterator[None]:
     caplog.set_level(logging.INFO)
     yield
-    if "step_failures" in request.fixturenames:
-        return
-    failed = [r for r in caplog.records if r.getMessage() == "session_step_failed"]
-    assert not failed, [getattr(r, "fields", None) for r in failed]
+    for line, allowed in (
+        ("session_step_failed", "step_failures"),
+        ("action_flow_refused", "flow_refusals"),
+    ):
+        if allowed in request.fixturenames:
+            continue
+        failed = [r for r in caplog.records if r.getMessage() == line]
+        assert not failed, [getattr(r, "fields", None) for r in failed]
