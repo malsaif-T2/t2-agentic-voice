@@ -1,9 +1,9 @@
-"""What the overlap tests share (plan 005's Track B): settings under `interruptions.mode =
-"two_step"`, a fake of the starting rule, and a call whose echo plays when the caller speaks.
+"""What the overlap tests share: settings under `interruptions.mode = "two_step"`, a fake of the
+interruption rule, and a call whose echo plays when the caller speaks.
 
-The rule is Track A's (domain/interruptions.py's `judge`), built in parallel, so these tests never
-run it: `FakeRule` stands in for it, patched where the session calls it (overlap.py), and gives
-each text the verdict a test scripts for it, so a test drives each verdict through the session.
+`FakeRule` stands in for the rule (domain/interruptions.py's `judge`, which has tests of its
+own), patched where the session calls it (overlap.py), and gives each text the verdict a test
+scripts for it, so a test drives each verdict through the session.
 The texts are written for the tests, none a golden item's; the repeat request is built from the
 English preset's lists, since the session reads what follows a repeat request in the same turn
 with them (interrupter.py's what followed), and takes it for one.

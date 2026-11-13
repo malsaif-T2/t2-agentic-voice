@@ -1,8 +1,7 @@
-"""What the tests of an action's read-back in the session share (plan 007, Track C): a read-back
-plan of the tests' own, a talker that reads it back as its reply to turn 0, the yes rule's words
-as Track A will give them (`CONSENT`: its `consent_words` is Block 0's stub, so these tests patch
-it where the session calls it, through conftest.py's `consent`, and never run Track A's code),
-and the steps a read-back's reply plays through.
+"""What the tests of an action's read-back in the session share: a read-back plan of the tests'
+own, a talker that reads it back as its reply to turn 0, the yes rule's words as the tests give
+them (`CONSENT`, patched where the session calls `consent_words`, through conftest.py's
+`consent`), and the steps a read-back's reply plays through.
 
 Turn 0's reply is reply 1 (the greeting is reply 0): its clause 0 the summary and clause 1 the
 closing question, one request each. The texts are written for these tests, none a golden item.
@@ -52,7 +51,7 @@ PLAN = ReadBackPlan(
     language="en",
     max_attempts=2,
 )
-# The yes rule's words, as the tests give them in place of Track A's presets: made-up words but
+# The yes rule's words, as the tests give them in place of the presets': made-up words but
 # for the plain yes, and the call language's listening sounds are the preset's (domain/words.py).
 CONSENT = ConsentWords(
     yes=("yes", "made-up-yes"),

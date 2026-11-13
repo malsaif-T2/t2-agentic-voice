@@ -1,5 +1,5 @@
 """What a turn says that is no words (voice/session/turn_book.py, echo.py): a transcript the
-filter for text from silence takes for no words (domain/silence.py's `from_silence`, Track A's,
+filter for text from silence takes for no words (domain/silence.py's `from_silence`,
 here a fake) is said back as nothing, the filter asked only when `stt.no_speech_max` or
 `stt.caption_filter` turns it on (both on by default, by the registered rule F, so each test
 here sets them); and a clause with no letter or digit (a symbol Whisper writes on noise) is
@@ -36,7 +36,7 @@ OFF = SttSettings(no_speech_max=None, caption_filter=False)  # the filter off, b
 
 
 class FakeFilter:
-    """Track A's `from_silence` as the test has it: text from silence when the text is
+    """The filter's `from_silence` as the test has it: text from silence when the text is
     `CAPTION`; every call kept."""
 
     def __init__(self) -> None:

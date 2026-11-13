@@ -1,8 +1,8 @@
-"""Which calls classify each turn's language (voice/stt_language.py's `turn_languages`; plan 007's
-Block H): only under `stt.live_language = "classified"`, with a classifier, for an agent of two
-codes or more; any other call names the session's language on every request, `session`. And what
-a decided turn's request carries for run H (testing/turn_languages.py): when its language was
-decided, at its hold's start or its close, and the seconds of its speech then."""
+"""Which calls classify each turn's language (voice/stt_language.py's `turn_languages`): only under
+`stt.live_language = "classified"`, with a classifier, for an agent of two codes or more; any other
+call names the session's language on every request, `session`. And what a decided turn's request
+carries for run H (testing/turn_languages.py): when its language was decided, at its hold's start or
+its close, and the seconds of its speech then."""
 
 from __future__ import annotations
 

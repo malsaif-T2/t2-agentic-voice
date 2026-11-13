@@ -1,5 +1,5 @@
 """What observers see of each turn's language (voice/session/turn_book.py, report.py; core/
-tracing.py, tracing_tts.py; plan 007's Block H): the language a turn's request named and how
+tracing.py, tracing_tts.py): the language a turn's request named and how
 (`by`) come from the turn's first `Transcribing`, whatever its part, so a talker call's held
 request decides the turn and a reused held result, which hands no request of the turn's own,
 is named too; speech resumed in the hold decides again. The call report's `TurnRecord.language`

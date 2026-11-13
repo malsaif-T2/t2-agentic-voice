@@ -19,7 +19,7 @@ from t2_agentic_voice.voice.session.commands import Command, HearOverlap, Send, 
 from t2_agentic_voice.voice.session_bridge import SessionCommands
 
 from tests.t2_agentic_voice.fakes import quiet_pipecat
-from tests.t2_agentic_voice.loopback_audio import Frame, pitch
+from tests.t2_agentic_voice.loopback_audio import BIN_HZ, Frame, pitch
 
 quiet_pipecat()
 
@@ -38,14 +38,14 @@ class Watched:
     """What the server side of a call did, each with when: each command the session gave
     (`given`); each processor that broadcast Pipecat's interruption (`broadcasts`); when each
     `InterruptionFrame` was made, wherever (`interruptions`); when the output transport handled
-    each (`reached`); and each 10 ms of the agent's audio its WebRTC track gave aiortc, and
-    whether it was loud (`sent`)."""
+    each (`reached`); and each 10 ms of the agent's audio its WebRTC track gave aiortc, with its
+    pitch, None when quiet (`sent`)."""
 
     given: list[tuple[float, Command]] = field(default_factory=list)
     broadcasts: list[str] = field(default_factory=list)
     interruptions: list[float] = field(default_factory=list)
     reached: list[float] = field(default_factory=list)
-    sent: list[tuple[float, bool]] = field(default_factory=list)
+    sent: list[tuple[float, float | None]] = field(default_factory=list)
 
     def stops(self) -> list[float]:
         """When the session gave each `StopSpeaking`."""
@@ -64,7 +64,12 @@ class Watched:
 
     def loud_after(self, at: float) -> list[float]:
         """When each loud 10 ms of the agent's audio left the track after `at`."""
-        return [sent for sent, loud in self.sent if loud and sent > at]
+        return [sent for sent, hz in self.sent if hz is not None and sent > at]
+
+    def given_s(self, hz: float, *, by: float) -> float:
+        """How much of the agent's audio at `hz` the track gave aiortc by `by`, 10 ms a frame."""
+        given = [at for at, heard in self.sent if heard is not None and abs(heard - hz) <= BIN_HZ]
+        return 0.01 * len([at for at in given if at <= by])
 
 
 def watch(monkeypatch: pytest.MonkeyPatch) -> Watched:
@@ -97,7 +102,7 @@ def watch(monkeypatch: pytest.MonkeyPatch) -> Watched:
 
     async def sending(self: RawAudioTrack) -> Any:  # a PyAV frame
         frame = await recv(self)
-        watched.sent.append((time.perf_counter(), pitch(cast(Frame, frame)) is not None))
+        watched.sent.append((time.perf_counter(), pitch(cast(Frame, frame))))
         return frame
 
     monkeypatch.setattr(SessionCommands, "run", running)

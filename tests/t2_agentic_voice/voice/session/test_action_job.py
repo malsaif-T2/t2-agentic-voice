@@ -1,4 +1,4 @@
-"""A confirmed action's write and its outcome (voice/session/action_job.py; plan 007, Track C;
+"""A confirmed action's write and its outcome (voice/session/action_job.py;
 docs/SECURITY.md, invariant 6): a write that definitely failed or whose end is unknown is
 reported `ActionUnconfirmed` of that kind, never `ActionCompleted`, its own line still said once
 at a turn boundary; the job reads its lines in the read-back's wording, an MSA caller's in MSA,

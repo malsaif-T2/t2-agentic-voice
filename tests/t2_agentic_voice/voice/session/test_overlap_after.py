@@ -1,13 +1,12 @@
 """What follows a stop word or a repeat request over a reply (voice/session/interrupter.py's what
-followed, overlap.py's `asked_again`; plan 005's whole-plan review), with Track A's rule and
-words, not a fake: a window that reads a request's first word as the stop word stops the reply,
-and the whole overlap's new words are answered; the words said after a stop word in the same
-turn (Smart Turn holding it open) are read with the stop taken off, a whole repeat request saying
-the last reply again, a stop or nothing leaving the turn a command, anything else answered
-without the stop; new words after a repeat request are answered, after the reply said again or
-instead of it, and anything else leaves the repeat. The rehearsal's stop and repeat steps
-(docs/project/DESCRIPTION.md, steps 1 and 2) run as one turn and as two. A lone word is built
-from the lists, so no test writes an item's text."""
+followed, overlap.py's `asked_again`), with the real rule and words, not a fake: a window that reads
+a request's first word as the stop word stops the reply, and the whole overlap's new words are
+answered; the words said after a stop word in the same turn (Smart Turn holding it open) are read
+with the stop taken off, a whole repeat request saying the last reply again, a stop or nothing
+leaving the turn a command, anything else answered without the stop; new words after a repeat
+request are answered, after the reply said again or instead of it, and anything else leaves the
+repeat. The rehearsal's stop and repeat steps (docs/project/DESCRIPTION.md, steps 1 and 2) run as
+one turn and as two. A lone word is built from the lists, so no test writes an item's text."""
 
 from __future__ import annotations
 

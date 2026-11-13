@@ -1,5 +1,5 @@
-"""The caller's answer to an action's read-back (voice/session/yes_turns.py, action_job.py; plan
-007, Track C, and the owner's rulings of 2026-11-10): while the call is confirming, a turn whose
+"""The caller's answer to an action's read-back (voice/session/yes_turns.py, action_job.py; the
+owner's rulings of 2026-11-10): while the call is confirming, a turn whose
 speech began once the summary played goes to the yes rule with its own heard words and the
 receipt built then; a yes says the sending line, then hands the confirmed action to the call's
 `ActionJobs`, its outcome said once the sending line has played, and nothing else claims it; a

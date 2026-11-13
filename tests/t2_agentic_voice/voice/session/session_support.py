@@ -1,4 +1,4 @@
-"""What the session's tests share (Track D): a `CallSession` on the fake session I/O
+"""What the session's tests share: a `CallSession` on the fake session I/O
 (tests/t2_agentic_voice/session_fakes.py), traced to memory when a test reads its spans, the
 settings of the half-duplex call (`drop`), and the steps a call takes, each at the fake clock's
 time."""

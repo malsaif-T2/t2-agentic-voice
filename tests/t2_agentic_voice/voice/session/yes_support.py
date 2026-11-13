@@ -1,14 +1,14 @@
-"""What the tests of the caller's answer to a read-back share (plan 007, Track C): the yes rule as
-these tests give it, the `ActionJobs` port as they give it, and a confirming call's steps.
+"""What the tests of the caller's answer to a read-back share: the yes rule as these tests give
+it, the `ActionJobs` port as they give it, and a confirming call's steps.
 
-The yes rule (domain/yes_rule.py's `decide`) is Track A's, and Block 0's stub until it merges, so
-these tests never run it: `FakeYesRule` stands in for it, patched where the session calls it
-(yes_turns.py), through conftest.py's `yes_rule`. Unless a test forces its answer, it reads the
-design's 8.3 on the words the session hands it (read_back_support.py's `CONSENT`): speech begun
-before the summary ended counts for nothing; a word of no list is a correction; a no word is a
-no; a yes over the closing question (its end not reported, or the speech begun before it) needs a
-send word; anything else with no yes is asked again. The action's write (`FakeJobs`) takes
-`seconds` on the call's clock, then gives its outcome, or raises the `error` given.
+`FakeYesRule` stands in for the yes rule (domain/yes_rule.py's `decide`, which has tests of its
+own), patched where the session calls it (yes_turns.py), through conftest.py's `yes_rule`. Unless a
+test forces its answer, it reads the design's 8.3 on the words the session hands it
+(read_back_support.py's `CONSENT`): speech begun before the summary ended counts for nothing; a word
+of no list is a correction; a no word is a no; a yes over the closing question (its end not
+reported, or the speech begun before it) needs a send word; anything else with no yes is asked
+again. The action's write (`FakeJobs`) takes `seconds` on the call's clock, then gives its outcome,
+or raises the `error` given.
 
 Turn 0's reply (reply 1) reads `PLAN` back; the texts are made up, none a golden item.
 """

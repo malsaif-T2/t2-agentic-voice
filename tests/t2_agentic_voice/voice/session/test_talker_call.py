@@ -1,4 +1,4 @@
-"""The talker in the call (voice/session/talking.py; plan 006, Track C): a turn answered by the
+"""The talker in the call (voice/session/talking.py): a turn answered by the
 talker instead of the echo, from the heard history, its reply opened before its first clause and
 spoken clause by clause as the talker writes it, in the reply's scope; each of the talker's
 events played (a card, a tool's start and end, a progress line, a blocked clause, the model's
