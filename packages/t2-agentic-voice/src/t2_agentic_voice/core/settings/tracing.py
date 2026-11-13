@@ -53,4 +53,3 @@ class TracingSettings(Group):
                     f"pattern {index} is not a regular expression Python's re module compiles"
                 )
         return value
-

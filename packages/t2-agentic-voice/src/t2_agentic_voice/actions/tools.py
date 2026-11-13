@@ -26,8 +26,9 @@ to have its result discarded (the design's 3.2).
   return one itself; the runner makes one of any other return, its value as JSON.
 - **Failures** (the design's 6.4): `ToolError(message)` (core/errors.py) is an expected failure
   whose message the talker gets; any other exception, or the timeout, gives the talker a generic
-  "the tool failed", its type and stack logged at ERROR with no argument values (the runner,
-  actions/runner.py).
+  "the tool failed" (the runner, actions/runner.py): an exception logged at ERROR by its type
+  and its frames, a timeout at WARNING as `tool_timed_out` with its `timeout_s`, never an
+  argument's value.
 
 A function `from_function` cannot call by its parameters' names (a `*args`, a parameter with no
 annotation, a `bind=` for a parameter it lacks), or a field `Tool` refuses, is a
@@ -36,6 +37,7 @@ ConfigurationError naming the field, with a FIX line, never the value (actions/s
 
 from __future__ import annotations
 
+import json
 from collections.abc import Awaitable, Callable, Mapping, Sequence
 from typing import Annotated, Any, Final, Literal, Self
 
@@ -71,6 +73,8 @@ _ATTRIBUTES = "attributes."
 # said by default: under 3.0 s by the cached line's own leading silence (up to about 0.25 s) and
 # the way out, so the caller hears it by then (plan 006, Q27).
 PROGRESS_AFTER_S: Final = 2.6
+# The seconds a tool's call may take by default before it is a timeout.
+TIMEOUT_S: Final = 5.0
 # What fixes each field of a tool that `from_function` cannot build.
 _FIXES = {
     "name": 'name the tool with letters, digits, underscores and hyphens, as name="lookup_device"',
@@ -163,6 +167,11 @@ class ToolResult(_Frozen):
     ok: bool = True
     failure: str | None = None
 
+    def texts(self) -> tuple[str, ...]:
+        """The texts the output guard reads as this result's evidence: its data as JSON, then
+        its evidence texts."""
+        return (json.dumps(self.data, ensure_ascii=False), *self.evidence)
+
 
 class Tool(_Frozen):
     """One read tool, as the module says. Build one with `@tool` or `Tool.from_function`; the
@@ -172,7 +181,7 @@ class Tool(_Frozen):
     description: str = Field(min_length=1)
     parameters: type[BaseModel]
     function: Callable[..., Any]
-    timeout_s: float = Field(default=5.0, gt=0, allow_inf_nan=False)
+    timeout_s: float = Field(default=TIMEOUT_S, gt=0, allow_inf_nan=False)
     progress: ProgressKey | None = None
     progress_after_s: float = Field(default=PROGRESS_AFTER_S, gt=0, allow_inf_nan=False)
     on_interrupt: OnInterrupt = "cancel"
@@ -201,7 +210,7 @@ class Tool(_Frozen):
         *,
         description: str,
         name: str | None = None,
-        timeout_s: float = 5.0,
+        timeout_s: float = TIMEOUT_S,
         progress: str | None = None,
         progress_after_s: float = PROGRESS_AFTER_S,
         on_interrupt: OnInterrupt = "cancel",
@@ -251,7 +260,7 @@ def tool(
     *,
     description: str,
     name: str | None = None,
-    timeout_s: float = 5.0,
+    timeout_s: float = TIMEOUT_S,
     progress: str | None = None,
     progress_after_s: float = PROGRESS_AFTER_S,
     on_interrupt: OnInterrupt = "cancel",

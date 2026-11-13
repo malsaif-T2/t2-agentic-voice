@@ -14,6 +14,7 @@ from typing import Any, ClassVar, Final, final
 from pydantic import Field
 
 from t2_agentic_voice.core.seal import SealedModel, still_sealed
+from t2_agentic_voice.core.yes_inputs import ActionName
 
 # The seal a validation of a `CompletedAction` must be given.
 RECORD_SEAL: Final[object] = object()
@@ -29,7 +30,7 @@ class CompletedAction(SealedModel):
         "elsewhere, read the call's record."
     )
 
-    action: str = Field(min_length=1)
+    action: ActionName
     request_id: str = Field(min_length=1)
     result_json: str = Field(repr=False)
     evidence: tuple[str, ...] = Field(default=(), repr=False)

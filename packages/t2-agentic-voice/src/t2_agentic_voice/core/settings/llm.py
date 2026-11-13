@@ -19,6 +19,10 @@ LlmModel = Literal[
     "llama-3.3-70b-versatile",
     "llama-3.1-8b-instant",
 ]
+# The models that take `reasoning_effort` (groq 1.7.0's reference for the field: "openai/gpt-oss-
+# 20b and openai/gpt-oss-120b support 'low', 'medium', or 'high'"); Groq refuses it for the
+# others the settings name, the Llama models, so they are sent none.
+REASONING_MODELS: frozenset[LlmModel] = frozenset({"openai/gpt-oss-120b", "openai/gpt-oss-20b"})
 # How hard a reasoning model thinks before it answers, as Groq's API names the levels.
 ReasoningEffort = Literal["low", "medium", "high"]
 

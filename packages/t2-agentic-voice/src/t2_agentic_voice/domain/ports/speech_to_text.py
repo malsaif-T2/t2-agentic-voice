@@ -9,9 +9,9 @@ looks a close up by name. Public, and stable, through the `ports` facade (D-021)
 
 from __future__ import annotations
 
-from typing import Protocol
+from typing import Annotated, Protocol
 
-from pydantic import BaseModel, ConfigDict, Field, field_validator
+from pydantic import AfterValidator, BaseModel, ConfigDict, Field
 
 
 class DataFlow(BaseModel):
@@ -26,25 +26,35 @@ class DataFlow(BaseModel):
     retention: str  # how long, and the switches that change it
 
 
+def _whole_samples(value: bytes) -> bytes:
+    """`value` when it holds whole 16-bit samples."""
+    if len(value) % 2:
+        raise ValueError("pcm16 holds whole 16-bit samples: an even number of bytes")
+    return value
+
+
+# Mono, 16-bit little-endian PCM, in whole samples of two bytes: a clip's audio, and a chunk's of
+# the text-to-speech port.
+Pcm16 = Annotated[bytes, AfterValidator(_whole_samples)]
+
+
+def pcm16_seconds(pcm16: bytes, sample_rate: int) -> float:
+    """How long `pcm16` plays at `sample_rate` samples a second."""
+    return len(pcm16) / 2 / sample_rate
+
+
 class AudioClip(BaseModel):
     """One stretch of speech: mono, 16-bit little-endian PCM, `sample_rate` samples a second."""
 
     model_config = ConfigDict(frozen=True, extra="forbid")
 
-    pcm16: bytes
+    pcm16: Pcm16
     sample_rate: int = Field(default=16_000, gt=0)
-
-    @field_validator("pcm16")
-    @classmethod
-    def _whole_samples(cls, value: bytes) -> bytes:
-        if len(value) % 2:
-            raise ValueError("pcm16 holds whole 16-bit samples: an even number of bytes")
-        return value
 
     @property
     def seconds(self) -> float:
         """How long the clip lasts."""
-        return len(self.pcm16) / 2 / self.sample_rate
+        return pcm16_seconds(self.pcm16, self.sample_rate)
 
 
 class Transcript(BaseModel):

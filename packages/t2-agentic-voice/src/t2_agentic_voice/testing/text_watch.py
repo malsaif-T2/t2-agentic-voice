@@ -174,7 +174,7 @@ class RecordingRunner(ToolRunner):
             text
             for _, result in self.calls.values()
             if result is not None
-            for text in (json.dumps(result.data, ensure_ascii=False), *result.evidence)
+            for text in result.texts()
         )
 
 

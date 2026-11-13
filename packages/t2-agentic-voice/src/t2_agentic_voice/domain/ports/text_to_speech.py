@@ -22,9 +22,9 @@ from collections.abc import AsyncIterator
 from datetime import datetime
 from typing import Protocol, runtime_checkable
 
-from pydantic import BaseModel, ConfigDict, Field, field_validator
+from pydantic import BaseModel, ConfigDict, Field
 
-from t2_agentic_voice.domain.ports.speech_to_text import DataFlow
+from t2_agentic_voice.domain.ports.speech_to_text import DataFlow, Pcm16, pcm16_seconds
 
 
 class AudioChunk(BaseModel):
@@ -34,7 +34,7 @@ class AudioChunk(BaseModel):
 
     model_config = ConfigDict(frozen=True, extra="forbid")
 
-    pcm16: bytes
+    pcm16: Pcm16
     sample_rate: int = Field(gt=0)
     # What the provider still allows its key, as the response that carried this chunk reported
     # it (Groq's `x-ratelimit-remaining-requests` and `-tokens`): on the first chunk of a
@@ -45,17 +45,10 @@ class AudioChunk(BaseModel):
     # clause was cut short; flagged, not made again (plan 003's decision log).
     cut_short: bool = False
 
-    @field_validator("pcm16")
-    @classmethod
-    def _whole_samples(cls, value: bytes) -> bytes:
-        if len(value) % 2:
-            raise ValueError("pcm16 holds whole 16-bit samples: an even number of bytes")
-        return value
-
     @property
     def seconds(self) -> float:
         """How long the chunk plays."""
-        return len(self.pcm16) / 2 / self.sample_rate
+        return pcm16_seconds(self.pcm16, self.sample_rate)
 
 
 class TextToSpeech(Protocol):

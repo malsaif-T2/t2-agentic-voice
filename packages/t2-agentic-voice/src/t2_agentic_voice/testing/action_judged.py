@@ -26,7 +26,7 @@ from dataclasses import dataclass
 
 from t2_agentic_voice.core.errors import ProviderError
 from t2_agentic_voice.core.events import ConfirmationAnswered, ConfirmationDecision
-from t2_agentic_voice.core.settings.words import LanguageCode
+from t2_agentic_voice.core.settings.words import LanguageCode, primary_code
 from t2_agentic_voice.domain.consent_check import TIMEOUT_S
 from t2_agentic_voice.domain.interruption_words import QUESTION_MARKS
 from t2_agentic_voice.testing.action_scenes import SETTLE_S, Scene, check, clean
@@ -100,9 +100,7 @@ MIXED: dict[LanguageCode, MixedLines] = {
 def _other(scene: Scene) -> LanguageCode | None:
     """The agent's language other than the call's, which a mixed answer is heard in; None for
     an agent of one language."""
-    codes: set[LanguageCode] = {
-        "en" if each.tag == "en" else "ar" for each in scene.agent.languages
-    }
+    codes: set[LanguageCode] = {primary_code(each.tag) for each in scene.agent.languages}
     others = sorted(codes - {scene.code})
     return others[0] if others else None
 

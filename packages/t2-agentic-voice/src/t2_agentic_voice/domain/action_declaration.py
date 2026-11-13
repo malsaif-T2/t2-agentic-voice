@@ -33,7 +33,7 @@ from typing import cast, final, get_args
 
 from t2_agentic_voice.core.errors import ConfigurationError
 from t2_agentic_voice.core.settings.tts import LanguageTag
-from t2_agentic_voice.core.settings.words import LanguageCode
+from t2_agentic_voice.core.settings.words import LanguageCode, primary_code
 from t2_agentic_voice.domain.text.invisible import holds_refused_character, provider_text
 
 _TAGS: frozenset[str] = frozenset(get_args(LanguageTag))
@@ -53,12 +53,8 @@ def refused(field: str, what: str, fix: str) -> ConfigurationError:
     )
 
 
-def _primary(tag: LanguageTag) -> LanguageCode:
-    return "en" if tag == "en" else "ar"
-
-
 def _covers(keys: Collection[str], tag: LanguageTag) -> bool:
-    return tag in keys or _primary(tag) in keys
+    return tag in keys or primary_code(tag) in keys
 
 
 def read_in(tag: LanguageTag) -> tuple[LanguageTag, ...]:

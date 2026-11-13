@@ -211,7 +211,7 @@ def test_a_parameter_type_pydantic_cannot_parse_is_a_configuration_error() -> No
     assert raised.value.details == {"field": "function"}
 
 
-def _unreadable(query: Missing) -> str:  # type: ignore[name-defined]  # noqa: F821
+def _unreadable(query: Missing) -> str:  # type: ignore[name-defined]  # noqa: F821 - undefined on purpose
     return str(query)
 
 

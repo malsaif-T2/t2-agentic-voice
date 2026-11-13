@@ -39,7 +39,8 @@ from collections.abc import Collection, Mapping, Sequence
 from pydantic import BaseModel, ConfigDict, field_validator
 
 from t2_agentic_voice.core.settings.words import LanguageCode
-from t2_agentic_voice.domain.words import PRESET_WORDS, rule_form
+from t2_agentic_voice.domain.text.words import phrase_tokens
+from t2_agentic_voice.domain.words import PRESET_WORDS, heard_code, rule_form
 
 
 class ConsentWords(BaseModel):
@@ -216,15 +217,7 @@ def covered(text: str, phrases: Collection[str]) -> bool:
     forms = {form for form in (rule_form(phrase) for phrase in phrases) if form}
     if not heard or not forms:
         return False
-    longest = max(len(form.split()) for form in forms)
-    at = 0
-    while at < len(heard):
-        sizes = range(min(longest, len(heard) - at), 0, -1)
-        size = next((n for n in sizes if " ".join(heard[at : at + n]) in forms), 0)
-        if not size:
-            return False
-        at += size
-    return True
+    return all(token in forms for token in phrase_tokens(heard, forms))
 
 
 def consent_words(
@@ -247,13 +240,6 @@ def consent_words(
     )
 
 
-def _code(language: str | None) -> str | None:
-    """The primary code a transcript's language names, a code or the provider's name of it in
-    any case ("ar", "Arabic", "en-US"); None for none."""
-    named = (language or "").casefold()
-    return next((code for code in PRESET_CONSENT if named.startswith(code)), None)
-
-
 def rails_for(
     words: ConsentWords, *, heard: str | None, read_back: LanguageCode, spoken: Sequence[str]
 ) -> ConsentWords:
@@ -261,7 +247,7 @@ def rails_for(
     language `read_back`, when the words were `heard` in it; else `words` with the no words and
     the change markers of every language of `spoken` (the agent's primary codes) beside its
     own."""
-    if _code(heard) == read_back:
+    if heard_code(heard) == read_back:
         return words
     others = [each for code, each in PRESET_CONSENT.items() if code in spoken]
     return ConsentWords(

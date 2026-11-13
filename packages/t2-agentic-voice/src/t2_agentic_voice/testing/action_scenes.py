@@ -31,7 +31,7 @@ from t2_agentic_voice.actions.action import Action
 from t2_agentic_voice.actions.tools import Tool
 from t2_agentic_voice.core.identity import Caller
 from t2_agentic_voice.core.settings.tts import LanguageTag
-from t2_agentic_voice.core.settings.words import LanguageCode
+from t2_agentic_voice.core.settings.words import LanguageCode, primary_code
 from t2_agentic_voice.domain.consent_check import is_consent_check
 from t2_agentic_voice.domain.declaration import Language, VoiceAgent
 from t2_agentic_voice.domain.ports.chat_model import ChatRequest, Done
@@ -78,7 +78,7 @@ class Scene:
 
     @property
     def code(self) -> LanguageCode:
-        return "en" if self.tag == "en" else "ar"
+        return primary_code(self.tag)
 
     @property
     def asks(self) -> bool:

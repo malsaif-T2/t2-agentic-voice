@@ -23,7 +23,8 @@ import re
 from collections.abc import Mapping
 
 from t2_agentic_voice.core.settings.tts import LanguageTag
-from t2_agentic_voice.domain.text.arabic import _MARKS
+from t2_agentic_voice.core.settings.words import primary_code
+from t2_agentic_voice.domain.text.arabic import ARABIC_MARKS
 
 # Each written form to how each language says it, by a language's primary code (`ar`, `en`),
 # which both Arabic tags share: `VoiceAgent.pronounce`'s type.
@@ -31,7 +32,7 @@ type Pronunciations = Mapping[str, Mapping[str, str]]
 
 # A character a word is made of: a word character, or one of the marks `normalize_arabic`
 # removes (harakat, tatweel), which are not word characters.
-_WORD_CHARACTER = re.compile(rf"\w|{_MARKS.pattern}")
+_WORD_CHARACTER = re.compile(rf"\w|{ARABIC_MARKS.pattern}")
 
 
 def _is_word_character(char: str) -> bool:
@@ -41,15 +42,15 @@ def _is_word_character(char: str) -> bool:
 
 def _pattern(form: str) -> str:
     """The pattern that finds `form` standing as whole words."""
-    before = rf"(?<!\w)(?<!{_MARKS.pattern})" if _is_word_character(form[0]) else ""
-    after = rf"(?!\w|{_MARKS.pattern})" if _is_word_character(form[-1]) else ""
+    before = rf"(?<!\w)(?<!{ARABIC_MARKS.pattern})" if _is_word_character(form[0]) else ""
+    after = rf"(?!\w|{ARABIC_MARKS.pattern})" if _is_word_character(form[-1]) else ""
     return f"{before}{re.escape(form)}{after}"
 
 
 def pronounce(text: str, pronunciations: Pronunciations, *, language: LanguageTag) -> str:
     """`text` with each written form of `pronunciations` that stands as whole words replaced by
     how `language` says it; a form with no entry for the language is left as written."""
-    code = "en" if language == "en" else "ar"
+    code = primary_code(language)
     said = {form: entry[code] for form, entry in pronunciations.items() if code in entry}
     if not said:
         return text

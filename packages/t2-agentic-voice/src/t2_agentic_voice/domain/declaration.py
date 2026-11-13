@@ -40,6 +40,7 @@ from pydantic import (
 
 from t2_agentic_voice.core.settings.base import FROZEN, PLAIN
 from t2_agentic_voice.core.settings.tts import LanguageTag
+from t2_agentic_voice.core.settings.words import LanguageCode, primary_code
 from t2_agentic_voice.domain.declaration_errors import FROM_PRESET, Declared
 from t2_agentic_voice.domain.presets import ECHO_FRAMES, NOTICES
 from t2_agentic_voice.domain.talker_declaration import (
@@ -74,8 +75,6 @@ AGENT_NAME = re.compile(r"[a-z][a-z0-9-]{0,63}")
 _DEVICES = frozenset(
     {"con", "prn", "aux", "nul", *(f"{port}{n}" for port in ("com", "lpt") for n in range(1, 10))}
 )
-# A pronunciation names a language by its primary code, which both Arabic tags share.
-_CODES = ("ar", "en")
 
 # What a phrase may not hold, said whole, since the team cannot see the character it means.
 _UNSEEN = (
@@ -110,7 +109,7 @@ def _form(value: str) -> str:
 
 def _code(value: str) -> str:
     """`value` when it is a primary language code a pronunciation is keyed by."""
-    if value not in _CODES:
+    if value not in get_args(LanguageCode):  # a pronunciation's language, by its code
         raise ValueError("a pronunciation names its language `ar` (both Arabic presets) or `en`")
     return value
 
@@ -210,10 +209,10 @@ class Language(Declared):
         return cls.model_validate(fields, context=FROM_PRESET)
 
     @property
-    def primary(self) -> Literal["ar", "en"]:
+    def primary(self) -> LanguageCode:
         """The tag's primary language, the code a speech-to-text provider is told (`ar` for
         both Arabic presets)."""
-        return "en" if self.tag == "en" else "ar"
+        return primary_code(self.tag)
 
     @property
     def words(self) -> Words:

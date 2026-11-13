@@ -24,7 +24,13 @@ from datetime import UTC, datetime, timedelta
 from pathlib import Path
 from typing import Any, Self
 
-from t2_agentic_voice.domain.ports.outbox import NOT_WRITTEN, OutboxEntry, OutboxState
+from t2_agentic_voice.domain.ports.outbox import (
+    NO_ROW,
+    NOT_WRITTEN,
+    OutboxEntry,
+    OutboxState,
+    aware_since,
+)
 
 _EPOCH = datetime(1970, 1, 1, tzinfo=UTC)
 _MICROSECOND = timedelta(microseconds=1)
@@ -63,8 +69,6 @@ _COUNT = (
     "SELECT COUNT(*) FROM outbox WHERE subject = ? AND action = ? "  # noqa: S608 - fixed states
     f"AND created_at >= ? AND state NOT IN ({', '.join('?' for _ in NOT_WRITTEN)})"
 )
-# What `mark` says of a request ID the file does not hold, never the ID itself.
-NO_ROW = "The outbox holds no row of that request ID."
 
 
 def _utc_now() -> datetime:
@@ -78,13 +82,6 @@ def _micros(instant: datetime) -> int:
 
 def _instant(micros: int) -> datetime:
     return _EPOCH + micros * _MICROSECOND
-
-
-def _aware(since: datetime) -> datetime:
-    """`since` when it is an aware time; a naive one is refused, since it names no instant."""
-    if since.utcoffset() is None:
-        raise ValueError("since must be an aware time (with a time zone), as UTC is")
-    return since
 
 
 def _row(entry: OutboxEntry) -> tuple[Any, ...]:
@@ -185,7 +182,7 @@ class SqliteOutbox:
         """How many writes of `action` `subject` asked for since `since` that may have reached
         the system: every row but one in `NOT_WRITTEN`, so a state that list does not name
         counts."""
-        parameters = (subject, action, _micros(_aware(since)), *NOT_WRITTEN)
+        parameters = (subject, action, _micros(aware_since(since)), *NOT_WRITTEN)
         rows = await asyncio.to_thread(self._all, _COUNT, parameters)
         counted: int = rows[0][0]
         return counted

@@ -99,6 +99,7 @@ from t2_agentic_voice.core.conversation import TalkerTurn
 from t2_agentic_voice.core.errors import ProviderError
 from t2_agentic_voice.core.identity import Caller
 from t2_agentic_voice.core.logging import get_logger
+from t2_agentic_voice.core.settings.llm import REASONING_MODELS
 from t2_agentic_voice.core.settings.tts import LanguageTag
 from t2_agentic_voice.domain.cards import Card
 from t2_agentic_voice.domain.declaration import VoiceAgent
@@ -118,8 +119,6 @@ from t2_agentic_voice.domain.text.clauses import ClauseStream
 _log = get_logger(__name__)
 # The most model requests one turn makes; the last offers no tool, so the turn ends in words.
 MAX_REQUESTS = 3
-# The models that take a reasoning effort (`llm.reasoning_effort`); the others are sent none.
-_REASONING = frozenset({"openai/gpt-oss-120b", "openai/gpt-oss-20b"})
 
 
 @dataclass
@@ -281,7 +280,7 @@ class Turn:
             messages=tuple(messages),
             tools=tools,
             model=llm.model,
-            reasoning_effort=llm.reasoning_effort if llm.model in _REASONING else None,
+            reasoning_effort=llm.reasoning_effort if llm.model in REASONING_MODELS else None,
             max_output_tokens=llm.max_output_tokens,
         )
 
@@ -379,8 +378,7 @@ class Turn:
     def _shown(self, card: Card, tool: str) -> bool:
         """Whether `card`'s text passes the guard; a card that does not is not shown, and is
         logged by its tool's name alone."""
-        texts = [card.title, *card.steps, *([card.source] if card.source else [])]
-        if self.guard.ids_pass(texts):
+        if self.guard.ids_pass(card.texts()):
             return True
         _log.warning("talker_card_blocked", turn_id=self.turn.turn_id, tool=tool)
         return False

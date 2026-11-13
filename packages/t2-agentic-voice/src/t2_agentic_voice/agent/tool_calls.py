@@ -83,7 +83,7 @@ class Memory:
     def took(self, result: ToolResult, *, reports_on: Sequence[str] = ()) -> None:
         """Keep `result`'s data and evidence as the guard's evidence, and, when it succeeded,
         as the evidence of claims about each action its tool `reports_on`."""
-        texts = [json.dumps(result.data, ensure_ascii=False), *result.evidence]
+        texts = result.texts()
         self.evidence += texts
         if result.ok:
             for action in reports_on:

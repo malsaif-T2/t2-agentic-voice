@@ -16,6 +16,7 @@ from __future__ import annotations
 from pydantic import BaseModel, ConfigDict, Field
 
 from t2_agentic_voice.core.settings.tts import LanguageTag
+from t2_agentic_voice.core.yes_inputs import ActionName, DraftJson
 from t2_agentic_voice.domain.presets import ACTION_LINES
 
 
@@ -50,9 +51,9 @@ class ReadBackPlan(_Line):
     `ConfirmedAction`, before the job's outcome. It is a fixed line, never a claim that the
     action is done."""
 
-    action: str = Field(min_length=1)
+    action: ActionName
     tool_call_id: str = Field(min_length=1)
-    draft_json: str = Field(min_length=2, repr=False)
+    draft_json: DraftJson
     summary: SpokenLine
     question: SpokenLine
     asked_again: SpokenLine

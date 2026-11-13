@@ -29,6 +29,12 @@ WordLists = Annotated[Mapping[LanguageCode, tuple[_Word, ...]], FROZEN, PLAIN]
 _AS = 'as a JSON object from a language\'s code (ar, en) to a list: {"ar": ["..."]}'
 
 
+def primary_code(tag: str) -> LanguageCode:
+    """The primary code of the language tag `tag` (a `LanguageTag`, or a speech port's tag as
+    a string): `en` for English, `ar` for both Arabic tags."""
+    return "en" if tag == "en" else "ar"
+
+
 def _additions(what: str) -> Any:
     """A word list's field: none by default, read-only once loaded."""
     return Field(

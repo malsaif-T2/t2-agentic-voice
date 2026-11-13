@@ -10,12 +10,13 @@ a `groq` type (the design's 5.3). Public through the `groq` facade (D-021).
 - **The request.** The messages (the instructions, the caller's words, the model's own with the
   tool calls it asked for, each tool's result naming its call), the tools as functions, the
   request's `model`, its `max_output_tokens` as Groq's `max_completion_tokens`, its temperature,
-  and its `reasoning_effort` only to a model that takes it (`REASONING_MODELS`: Groq refuses the
-  field for the Llama models); a value the request leaves out is not sent, so Groq's default
-  holds. groq 1.7.0 builds the body in its parameters' order, the messages first, with no space
-  (groq/resources/chat/completions.py; groq/_utils/_json.py), and sends JSON as its `Accept` for
-  a streamed request too (the client's `default_headers`): Groq streams because the body asks
-  (`"stream":true`), so the request hook sends the SDK's own values.
+  and its `reasoning_effort` only to a model that takes it (core/settings/llm.py's
+  `REASONING_MODELS`: Groq refuses the field for the Llama models); a value the request leaves
+  out is not sent, so Groq's default holds. groq 1.7.0 builds the body in its parameters' order,
+  the messages first, with no space (groq/resources/chat/completions.py; groq/_utils/_json.py),
+  and sends JSON as its `Accept` for a streamed request too (the client's `default_headers`):
+  Groq streams because the body asks (`"stream":true`), so the request hook sends the SDK's own
+  values.
 - **The events**, in order: a `TextDelta` for each piece of the reply's text, never the model's
   reasoning (which gpt-oss streams beside it, in `delta.reasoning`); each tool call whole once
   its choice has finished, its pieces joined by index (the id and the name from the first piece
@@ -74,16 +75,12 @@ from t2_agentic_voice.adapters.groq_client import (
 )
 from t2_agentic_voice.core.config import VoiceSettings
 from t2_agentic_voice.core.errors import ProviderError
-from t2_agentic_voice.core.settings.llm import LlmSettings
+from t2_agentic_voice.core.settings.llm import REASONING_MODELS, LlmSettings
 from t2_agentic_voice.domain.ports.chat_model import ChatEvent, ChatRequest
 from t2_agentic_voice.domain.ports.speech_to_text import DataFlow
 
 # The SDK's chat body opens with its first field, the messages (above).
 _OPENS_WITH = b'{"messages":'
-# The models that take `reasoning_effort` (groq 1.7.0's reference for the field: "openai/gpt-oss-
-# 20b and openai/gpt-oss-120b support 'low', 'medium', or 'high'"); Groq refuses it for the
-# others the settings name, the Llama models of runs K and U (plan 006).
-REASONING_MODELS = frozenset({"openai/gpt-oss-120b", "openai/gpt-oss-20b"})
 
 
 class GroqChat:

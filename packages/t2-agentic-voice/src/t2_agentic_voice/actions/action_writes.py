@@ -20,15 +20,15 @@ from __future__ import annotations
 
 import asyncio
 import functools
-from collections.abc import Callable, Coroutine
+from collections.abc import Coroutine
 from dataclasses import dataclass
 from typing import Any, Literal
 
 from pydantic import BaseModel, ValidationError
 
 from t2_agentic_voice.actions.action import Action, ActionContext
-from t2_agentic_voice.actions.runner import frames_of
-from t2_agentic_voice.actions.signature import context_parameter, is_async
+from t2_agentic_voice.actions.runner import called, frames_of, within
+from t2_agentic_voice.actions.signature import context_parameter
 from t2_agentic_voice.actions.tools import CallContext
 from t2_agentic_voice.core.clock import Clock
 from t2_agentic_voice.core.errors import ActionNotSent, ActionRejected, ToolError
@@ -63,22 +63,6 @@ class Lost:
 type Written = Returned | Refused | Lost
 
 
-async def _called(function: Callable[..., Any], *args: Any, **kwargs: Any) -> Any:
-    if is_async(function):
-        return await function(*args, **kwargs)
-    return await asyncio.to_thread(function, *args, **kwargs)
-
-
-async def within(work: asyncio.Future[Any], seconds: float, clock: Clock) -> bool:
-    """Wait for `work` at most `seconds` on `clock`, never cancelling it: whether it ended."""
-    timer = asyncio.ensure_future(clock.sleep(seconds))
-    try:
-        await asyncio.wait((work, timer), return_when=asyncio.FIRST_COMPLETED)
-    finally:
-        timer.cancel()
-    return work.done()
-
-
 def parsed_result(model: type[BaseModel], value: object) -> BaseModel | None:
     """`value` as `model`, None when `model` refuses it."""
     if isinstance(value, model):
@@ -106,7 +90,7 @@ async def write(action: Action, ctx: ActionContext, draft: BaseModel, clock: Clo
     own = context_parameter(action.execute, context=ActionContext)
     if own is not None:
         kwargs[own] = ctx
-    work = asyncio.ensure_future(_called(action.execute, **kwargs))
+    work = asyncio.ensure_future(called(action.execute, **kwargs))
     if not await within(work, action.timeout_s, clock):
         _LATE.add(work)
         work.add_done_callback(functools.partial(_ended_late, action.name))
@@ -160,7 +144,7 @@ async def look_up(action: Action, ctx: ActionContext, clock: Clock) -> BaseModel
     finder = action.finder
     if finder is None:
         return None
-    call = _called(finder, ctx, ctx.request_id)
+    call = called(finder, ctx, ctx.request_id)
     gave, value = await _read(action.name, "lookup", call, action.timeout_s, clock)
     if not gave or value is None:
         return None
@@ -179,7 +163,7 @@ async def validated(
     validate = action.validate
     if validate is None:
         return True, None
-    work = _kept_tool_error(_called(validate, ctx, draft))
+    work = _kept_tool_error(called(validate, ctx, draft))
     return await _read(action.name, "validate", work, action.timeout_s, clock)
 
 

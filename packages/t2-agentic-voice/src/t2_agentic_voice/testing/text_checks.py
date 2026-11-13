@@ -29,8 +29,6 @@ talker's clause, never the caller's words or a draft's values (GP-19).
 
 from __future__ import annotations
 
-import json
-
 from t2_agentic_voice.actions.action import Action
 from t2_agentic_voice.agent.events import ReadBackRequested, SpokenClause, ToolEnded
 from t2_agentic_voice.core.config import VoiceSettings
@@ -89,7 +87,7 @@ def _id_evidence(reads: TextReads) -> list[str]:
     evidence += _action_results(reads)
     for turn_id in reads.said:
         for card in TextTurn(reads, turn_id).cards:
-            evidence += [card.title, *card.steps, *([card.source] if card.source else [])]
+            evidence += card.texts()
     # A completed action's result whole and its texts, as the guard reads the record
     # (agent/speech_guard.py).
     evidence += [text for done in _completed(reads) for text in (done.result_json, *done.evidence)]
@@ -123,7 +121,7 @@ def _evidence(reads: TextReads, *, year: int) -> list[ActionEvidence]:
         tool = runner.tool(request.name)
         if tool is None or result is None or not result.ok:
             continue
-        texts = (*result.evidence, json.dumps(result.data, ensure_ascii=False))
+        texts = result.texts()
         if holds_an_id(texts, settings=settings, year=year):
             found += [
                 ActionEvidence(action=name, texts=texts, source="status")

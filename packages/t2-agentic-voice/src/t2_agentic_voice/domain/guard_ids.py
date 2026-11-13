@@ -51,7 +51,7 @@ from pydantic import BaseModel, ConfigDict
 
 from t2_agentic_voice.core.settings.guard import GuardSettings
 from t2_agentic_voice.domain.text.arabic import normalize_arabic
-from t2_agentic_voice.domain.text.digits import _DIGIT_CHARACTERS, normalize_digits
+from t2_agentic_voice.domain.text.digits import DIGIT_CHARACTERS, normalize_digits
 from t2_agentic_voice.domain.text.words import holds_words
 
 # A word of ASCII digits only, as normalizing leaves a number; and a run of them in a word.
@@ -86,13 +86,13 @@ class IdVerdict(BaseModel):
 def guard_form(text: str) -> str:
     """`text` as the guard reads it (the module's docstring): ASCII digits, the canonical
     normalizer's form, digits said one at a time joined."""
-    return normalize_digits(normalize_arabic(text.translate(_DIGIT_CHARACTERS)))
+    return normalize_digits(normalize_arabic(text.translate(DIGIT_CHARACTERS)))
 
 
 def _pieces(text: str) -> list[str]:
     """`text` as the guard reads it (`guard_form`), cut around each number of an `_APART` form, at
     a NUL, which no clause holds, put on each side of it."""
-    written = text.translate(_DIGIT_CHARACTERS)
+    written = text.translate(DIGIT_CHARACTERS)
     cut = _APART.sub(lambda apart: "\0" + _APART_MARK.sub("\0", apart.group()) + "\0", written)
     return [guard_form(piece) for piece in cut.split("\0")]
 
@@ -156,7 +156,7 @@ def check_ids(
     ]
     unsupported += [run for run in inside if len(run) >= shortest and run not in known]
     if settings.id_patterns:
-        written = clause.translate(_DIGIT_CHARACTERS)
+        written = clause.translate(DIGIT_CHARACTERS)
         normals = [guard_form(text) for text in texts]
         for pattern in settings.id_patterns:
             for match in re.finditer(pattern, written):

@@ -13,7 +13,7 @@ from typing import Annotated, Literal, Self
 
 from pydantic import BaseModel, ConfigDict, Field, JsonValue, model_validator
 
-from t2_agentic_voice.core.conversation import ClauseFate
+from t2_agentic_voice.core.conversation import ClauseFate, check_share
 from t2_agentic_voice.core.settings.base import FROZEN, PLAIN
 from t2_agentic_voice.core.settings.tts import LanguageTag
 
@@ -48,9 +48,7 @@ class HeardClause(_Data):
 
     @model_validator(mode="after")
     def _share_of_its_fate(self) -> Self:
-        whole = {"played": 1.0, "unplayed": 0.0}.get(self.fate)
-        if whole is not None and self.played_fraction != whole:
-            raise ValueError("a played clause played 1 of its audio, an unplayed one 0")
+        check_share(self.fate, self.played_fraction)
         return self
 
 

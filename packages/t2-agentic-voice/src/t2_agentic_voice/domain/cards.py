@@ -33,3 +33,8 @@ class Card(BaseModel):
     title: _Text
     steps: tuple[_Text, ...] = Field(default=(), max_length=50)
     source: _Text | None = None
+
+    def texts(self) -> tuple[str, ...]:
+        """The card's texts, as the output guard reads them: its title, its steps, then its
+        source when it has one."""
+        return (self.title, *self.steps, *((self.source,) if self.source else ()))

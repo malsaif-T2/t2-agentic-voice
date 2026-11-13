@@ -15,7 +15,7 @@ import re
 # small high letters above the text (U+0610 to U+061A); the harakat, tanween, shadda, sukun and
 # the combining hamza and madda forms (U+064B to U+065F); the superscript alef (U+0670); the
 # Quranic annotation marks (U+06D6 to U+06ED); and the tatweel (U+0640).
-_MARKS = re.compile("[\u0610-\u061a\u064b-\u065f\u0670\u06d6-\u06ed\u0640]")
+ARABIC_MARKS = re.compile("[\u0610-\u061a\u064b-\u065f\u0670\u06d6-\u06ed\u0640]")
 
 # Anything that is neither a word character nor a space: punctuation in every script, symbols
 # and emoji, and the format characters (the bidirectional marks, the zero-width joiners), each
@@ -41,5 +41,5 @@ def normalize_arabic(text: str) -> str:
     hamza, teh marbuta and alef maksura forms folded; Latin letters in lower case; an
     underscore, punctuation, symbols and emoji read as spaces; runs of space made one, and the
     ends trimmed. Digits are kept as written (`normalize_digits` reads them)."""
-    text = _MARKS.sub("", text).translate(_FOLD).lower().replace("_", " ")
+    text = ARABIC_MARKS.sub("", text).translate(_FOLD).lower().replace("_", " ")
     return " ".join(_NOT_WORD.sub(" ", text).split())

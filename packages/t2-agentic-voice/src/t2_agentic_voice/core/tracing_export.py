@@ -144,7 +144,7 @@ class ExportSession(requests.Session):
     adds `OTEL_EXPORTER_OTLP_HEADERS` (or its `_TRACES_` form) under any headers it is given
     (plan 002's decision log), and requests a `.netrc` login."""
 
-    def request(  # type: ignore[override]
+    def request(  # type: ignore[override]  # requests' keywords, taken whole as **kwargs
         self, method: str, url: str | bytes, **kwargs: Any
     ) -> requests.Response:
         """The exporter's headers are replaced before requests checks them, since requests puts

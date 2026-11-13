@@ -28,8 +28,11 @@ import unicodedata
 # The marks that end a clause: ARABIC COMMA, ARABIC SEMICOLON, ARABIC QUESTION MARK, ARABIC FULL
 # STOP; the English punctuation; HORIZONTAL ELLIPSIS.
 _ENDS = frozenset("\u060c\u061b\u061f\u06d4" + ",;:.?!" + "\u2026")
-# The marks that end a sentence: the Arabic question mark and full stop, and the English ones.
-_SENTENCE_ENDS = frozenset("\u061f\u06d4" + ".?!" + "\u2026")
+# The marks that end a sentence: the Arabic question mark and full stop, and the English ones,
+# as a regular expression's character class holds them; the leak check reads the same
+# (agent/leaked_reasoning.py).
+SENTENCE_ENDS = "\u061f\u06d4" + ".?!" + "\u2026"
+_SENTENCE_ENDS = frozenset(SENTENCE_ENDS)
 # Under `whole_sentences`, how long a clause must be for a comma, colon or semicolon to end it.
 LONG_CLAUSE_CHARS = 120
 # What may follow a clause's mark in its word: quotes and closing brackets, the right-pointing
@@ -41,9 +44,12 @@ _SAID = frozenset("LNS")
 # The combining marks a word may end in, a letter's diacritics: the Latin ones and the Arabic
 # harakat, tanween among them («حالياً.»), and the superscript alef.
 WORD_MARKS = "\u0300-\u036f\u064b-\u065f\u0670"
+# Where a sentence's end mark is glued to the word before it, as a lookbehind: after a letter,
+# a digit or a letter's mark.
+AFTER_WORD = rf"(?<=[^\W_]|[{WORD_MARKS}])"
 # A sentence's end glued to the next sentence (the module's docstring): the mark is kept on the
 # word it ends.
-_GLUED = re.compile(rf"(?<=[^\W_]|[{WORD_MARKS}])([\u061f\u06d4.?!\u2026])(?=[^\W\d_a-z])")
+_GLUED = re.compile(rf"{AFTER_WORD}([{SENTENCE_ENDS}])(?=[^\W\d_a-z])")
 
 
 def _words(text: str) -> list[str]:

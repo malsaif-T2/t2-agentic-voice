@@ -99,7 +99,6 @@ class ToolRunner:
         self._contexts = {
             each.name: context_parameter(each.function, context=CallContext) for each in self.tools
         }
-        self._async = {each.name: is_async(each.function) for each in self.tools}
 
     def schemas(self) -> tuple[ToolSchema, ...]:
         """Each tool as the talker is told of it (`Tool.tool_schema`), in order."""
@@ -131,12 +130,7 @@ class ToolRunner:
         context = self._contexts[tool.name]
         if context is not None:
             kwargs[context] = ctx
-        call = (
-            _awaited(tool.function, kwargs)
-            if self._async[tool.name]
-            else _threaded(tool.function, kwargs)
-        )
-        return await _within(tool, call, clock)
+        return await _within(tool, called(tool.function, **kwargs), clock)
 
 
 def parsed_arguments(parameters: type[BaseModel], text: str) -> BaseModel | ToolResult:
@@ -162,22 +156,32 @@ def parsed_arguments(parameters: type[BaseModel], text: str) -> BaseModel | Tool
     return failed_result(f"invalid arguments: {told}", "bad_arguments")
 
 
-async def _awaited(function: Callable[..., Any], kwargs: dict[str, Any]) -> Any:
-    return await function(**kwargs)
+async def called(function: Callable[..., Any], /, *args: Any, **kwargs: Any) -> Any:
+    """`function` called with the arguments given: awaited when it is async, else run in a
+    worker thread. A team's tool, and an action's write, lookup and `validate`, are called so
+    (actions/action_writes.py)."""
+    if is_async(function):
+        return await function(*args, **kwargs)
+    return await asyncio.to_thread(function, *args, **kwargs)
 
 
-async def _threaded(function: Callable[..., Any], kwargs: dict[str, Any]) -> Any:
-    return await asyncio.to_thread(function, **kwargs)
-
-
-async def _within(tool: Tool, call: Coroutine[Any, Any, Any], clock: Clock) -> ToolResult:
-    """`call` run within `tool`'s timeout on `clock`, its outcome made the talker's result."""
-    work = asyncio.ensure_future(call)
-    timer = asyncio.ensure_future(clock.sleep(tool.timeout_s))
+async def within(work: asyncio.Future[Any], seconds: float, clock: Clock) -> bool:
+    """Wait for `work` at most `seconds` on `clock`, never cancelling it: whether it ended."""
+    timer = asyncio.ensure_future(clock.sleep(seconds))
     try:
         await asyncio.wait((work, timer), return_when=asyncio.FIRST_COMPLETED)
     finally:
         timer.cancel()
+    return work.done()
+
+
+async def _within(tool: Tool, call: Coroutine[Any, Any, Any], clock: Clock) -> ToolResult:
+    """`call` run within `tool`'s timeout on `clock`, cancelled past it, its outcome made the
+    talker's result."""
+    work = asyncio.ensure_future(call)
+    try:
+        await within(work, tool.timeout_s, clock)
+    finally:
         if not work.done():
             work.cancel()
     if not work.done() or work.cancelled():

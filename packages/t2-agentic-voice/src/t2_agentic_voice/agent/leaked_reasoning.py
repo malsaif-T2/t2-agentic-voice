@@ -40,7 +40,7 @@ from typing import Final
 
 from t2_agentic_voice.core.events import CallId, TurnId
 from t2_agentic_voice.core.logging import get_logger
-from t2_agentic_voice.domain.text.clauses import WORD_MARKS
+from t2_agentic_voice.domain.text.clauses import AFTER_WORD, SENTENCE_ENDS
 
 _log = get_logger(__name__)
 
@@ -67,12 +67,12 @@ TELLS: Final = (
     "I should",
 )
 _LONGEST: Final = max(len(tell) for tell in TELLS)
-# A sentence's end mark: the full stop, question mark, exclamation mark and ellipsis, and the
-# Arabic question mark and full stop.
-_ENDS: Final = ".?!\u2026\u061f\u06d4"
-# A sentence's start: the text's first character that is no space, or one after an end mark,
-# glued (group `glued`, the mark after a letter, a digit or a letter's mark) or after spaces.
-_START = re.compile(rf"(?:^\s*|(?<=[^\W_]|[{WORD_MARKS}])(?P<glued>[{_ENDS}])|[{_ENDS}]\s+)(?=\S)")
+# A sentence's start: the text's first character that is no space, or one after a sentence's
+# end mark (the clause splitter's), glued (group `glued`, the mark after a letter, a digit or a
+# letter's mark) or after spaces.
+_START = re.compile(
+    rf"(?:^\s*|{AFTER_WORD}(?P<glued>[{SENTENCE_ENDS}])|[{SENTENCE_ENDS}]\s+)(?=\S)"
+)
 
 
 def _latin_capital(char: str) -> bool:

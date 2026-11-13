@@ -11,11 +11,11 @@ from __future__ import annotations
 
 import re
 
-from t2_agentic_voice.domain.text.arabic import _MARKS, normalize_arabic
+from t2_agentic_voice.domain.text.arabic import ARABIC_MARKS, normalize_arabic
 
 # Arabic-Indic digits (U+0660 to U+0669) and Persian, or Extended Arabic-Indic, digits (U+06F0
 # to U+06F9), each read as its ASCII digit.
-_DIGIT_CHARACTERS = str.maketrans(
+DIGIT_CHARACTERS = str.maketrans(
     {chr(0x0660 + digit): str(digit) for digit in range(10)}
     | {chr(0x06F0 + digit): str(digit) for digit in range(10)}
 )
@@ -51,7 +51,7 @@ _DIGIT_NAMES: dict[str, str] = {
 _ASCII_DIGITS = frozenset("0123456789")
 # A word: its word characters, and the marks `normalize_arabic` removes (harakat, tatweel), which
 # are not word characters, so a digit's name written with its harakat is read whole.
-_WORD = re.compile(rf"(?:\w|{_MARKS.pattern})+")
+_WORD = re.compile(rf"(?:\w|{ARABIC_MARKS.pattern})+")
 
 
 def _digit(word: str) -> str | None:
@@ -69,7 +69,7 @@ def normalize_digits(text: str) -> str:
     "57", while "45 21" stays two numbers. Everything else is left as it is, so the names are found
     as whole words in any text; after `normalize_arabic`, whatever punctuation stood between
     them is a space too."""
-    text = text.translate(_DIGIT_CHARACTERS)
+    text = text.translate(DIGIT_CHARACTERS)
     pieces: list[str] = []
     done = 0  # where the text not yet copied to `pieces` starts
     run: list[str] = []  # the digits of the run being read

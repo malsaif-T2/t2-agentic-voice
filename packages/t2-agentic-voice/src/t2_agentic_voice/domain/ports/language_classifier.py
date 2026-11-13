@@ -80,7 +80,8 @@ class LanguageScores(BaseModel):
             raise _malformed()
         values = [float(probabilities[code]) for code in among]
         total = sum(values)
-        if not all(math.isfinite(v) and v >= 0 for v in values) or not 0 < total <= 1 + 1e-6:
+        probable = all(math.isfinite(v) and v >= 0 for v in values)
+        if not probable or not 0 < total <= 1 + SUM_TOLERANCE:
             raise _malformed()
         shares = {code: value / total for code, value in zip(among, values, strict=True)}
         return cls.parsed(shares, among=among, mass=min(total, 1.0))

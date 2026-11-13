@@ -16,21 +16,17 @@ import threading
 from collections.abc import Callable
 from datetime import UTC, datetime
 
-from t2_agentic_voice.domain.ports.outbox import NOT_WRITTEN, OutboxEntry, OutboxState
-
-# What `mark` says of a request ID the store does not hold, never the ID itself.
-NO_ROW = "The outbox holds no row of that request ID."
+from t2_agentic_voice.domain.ports.outbox import (
+    NO_ROW,
+    NOT_WRITTEN,
+    OutboxEntry,
+    OutboxState,
+    aware_since,
+)
 
 
 def _utc_now() -> datetime:
     return datetime.now(UTC)
-
-
-def _aware(since: datetime) -> datetime:
-    """`since` when it is an aware time; a naive one is refused, since it names no instant."""
-    if since.utcoffset() is None:
-        raise ValueError("since must be an aware time (with a time zone), as UTC is")
-    return since
 
 
 class MemoryOutbox:
@@ -95,7 +91,7 @@ class MemoryOutbox:
     async def count(self, *, subject: str, action: str, since: datetime) -> int:
         """How many writes of `action` `subject` asked for since `since` that may have reached
         the system: every row but one in `NOT_WRITTEN`."""
-        _aware(since)
+        aware_since(since)
         rows = await self.entries(subject=subject, action=action)
         return sum(1 for row in rows if row.created_at >= since and row.state not in NOT_WRITTEN)
 
