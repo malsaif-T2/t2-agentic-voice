@@ -26,6 +26,7 @@ from typing import ClassVar, Final
 from pydantic import BaseModel
 from t2_agentic_voice import get_logger
 
+from ole5_voice.evals.cli import count
 from ole5_voice.evals.factories import Closing
 from ole5_voice.evals.items import HISTORY_FILE, GoldenSetError
 from ole5_voice.evals.judge import JUDGE_REQUESTS, Judge
@@ -70,15 +71,9 @@ def _parser() -> argparse.ArgumentParser:
     parser = argparse.ArgumentParser(prog="poe eval-scenarios", description=_DESCRIPTION)
     add_common(parser)
     parser.add_argument(
-        "--repeats", type=int, default=REPEATS, help=f"plays a scenario ({REPEATS})"
+        "--repeats", type=count, default=REPEATS, help=f"plays a scenario ({REPEATS})"
     )
     return parser
-
-
-def _require(parser: argparse.ArgumentParser, args: argparse.Namespace) -> None:
-    require(parser, args)
-    if args.repeats < 1:
-        parser.error("--repeats is 1 or more")
 
 
 def _scenarios(data_dir: Path, data: KnowledgeData) -> tuple[Scenario, ...]:
@@ -226,7 +221,7 @@ def main(argv: Sequence[str] | None = None, *, parts: TalkerParts | None = None)
     parser = _parser()
     args = parser.parse_args(argv)
     found = TalkerParts() if parts is None else parts
-    return main_of(parser, args, _require, lambda given: _run(given, found), "scenarios_refused")
+    return main_of(parser, args, require, lambda given: _run(given, found), "scenarios_refused")
 
 
 if __name__ == "__main__":

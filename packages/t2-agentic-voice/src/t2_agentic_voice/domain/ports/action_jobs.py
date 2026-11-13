@@ -18,6 +18,7 @@ from t2_agentic_voice.core.conversation import ConversationLine
 from t2_agentic_voice.core.events import CallId, TurnId
 from t2_agentic_voice.core.identity import Caller
 from t2_agentic_voice.core.settings.tts import LanguageTag
+from t2_agentic_voice.core.yes_inputs import ActionName
 from t2_agentic_voice.domain.action_lines import SpokenLine
 from t2_agentic_voice.domain.yes_rule import ConfirmedAction
 
@@ -34,7 +35,7 @@ class ActionOutcome(BaseModel):
 
     model_config = ConfigDict(frozen=True, extra="forbid")
 
-    action: str = Field(min_length=1)
+    action: ActionName
     request_id: str = Field(min_length=1)
     kind: OutcomeKind
     line: SpokenLine

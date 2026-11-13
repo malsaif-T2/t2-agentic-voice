@@ -181,10 +181,13 @@ Only for projects that measure something ([evaluation.md](docs/design/evaluation
 
 A change to something a person looks at (a page, a report, a command's output) is checked by
 running it, not only by its tests. For a server or a UI, `.claude/launch.json` tells Claude
-Code how to start it and preview it (a name, the command, the port). It holds the recorder's
-entry (`poe record` on port 8765, its takes under `var/recorder-preview`), whose `--replies`
+Code how to start it and preview it (a name, the command, the port). It holds three entries:
+`recorder` (`poe record` on port 8765, its takes under `var/recorder-preview`), whose `--replies`
 assumes the prototype's talk-over lab beside the repository (`../voice-lab/assets/talkover`,
-read only: D-010). A new surface adds its entry there, with no machine-specific path.
+read only: D-010); `minimal-dev` (`t2v dev` on the minimal example, port 7860, with the shell's
+`T2V_*` variables); and `ole5-dev` (the Ole5 app's server on port 7861, with `--env-file .env`),
+which reads the owner's key, so its start and every call it serves spend on Groq. A new surface
+adds its entry there, with no machine-specific path.
 
 ## Machine notes (Windows)
 

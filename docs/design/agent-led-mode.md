@@ -127,10 +127,11 @@ One action, end to end:
 
 Their final answer is spoken once the run ends, sentence by sentence through the output guard,
 shaped by rules, not rewritten by a model: markdown, lists and links removed, the team's spoken
-forms for IDs and its pronunciation map applied. By default the first two sentences are spoken
-and "The full steps are on your screen" follows, since Orpheus's limits are tight; the screen
-gets the full text. Their text is never evidence for a claim. No rewrite and no translation in
-the first version.
+forms for IDs and its pronunciation map applied. Nothing is put on a screen or relies on one
+(D-075): every step of the answer is said, and said again whole, or one step, or one step in
+more detail, when the caller asks. How a long answer is spoken (whole, or a first part with an
+offer to go on, since Orpheus's limits are tight) is the phase's own question, below. Their
+text is never evidence for a claim. No rewrite and no translation in the first version.
 
 ## What it costs
 
@@ -178,7 +179,8 @@ the first version.
 - Whether a write tool must accept our request ID before it may be labelled act in production,
   or "could not confirm" is accepted after a lost reply.
 - The double ask for agents that confirm in plain text, or a way to ask once.
-- How much of an answer is spoken by default, the rest on screen.
+- How a team agent's long answer is spoken, every step said with no screen (D-075): whole, or a
+  first part with an offer to go on.
 - Capacity: a separate Groq organization or provider for agent-led agents.
 - English-only agents with Arabic callers: forward and speak English, or a fixed "English only"
   line; no translation until it is measured.

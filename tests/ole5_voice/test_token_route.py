@@ -29,8 +29,8 @@ from pydantic import SecretStr
 from t2_agentic_voice import Caller, Consent
 
 from tests.leaks import holding, shown
+from tests.ole5_voice.server_support import CODE
 
-CODE = "made-up-access-code-0123"
 WRONG = "not-the-code-at-all-0123"
 CONSENT = {"version": "m2-owner-test-1", "record_audio": True}
 CUSTOMER = "made-up.customer@example.com"

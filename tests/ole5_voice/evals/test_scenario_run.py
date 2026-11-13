@@ -260,7 +260,7 @@ def test_what_a_run_refuses_before_anything_is_sent(
 @pytest.mark.parametrize(
     ("extra", "words"),
     [
-        (["--repeats", "0"], "--repeats is 1 or more"),
+        (["--repeats", "0"], "argument --repeats: must be 1 or more"),
         (["--resume", "--smoke-only"], "no --smoke-only"),
         (["--arm", "K"], "--arm is not a name"),
         (["--note", "{{" + "X" + "}}"], "install placeholder"),

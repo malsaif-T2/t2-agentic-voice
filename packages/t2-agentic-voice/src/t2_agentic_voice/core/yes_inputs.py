@@ -24,14 +24,15 @@ from typing import Annotated, Any, ClassVar, Final, Literal, final
 
 from pydantic import Field
 
-from t2_agentic_voice.core.events import ReplyId, TurnId
+from t2_agentic_voice.core.ids import ReplyId, TurnId
 from t2_agentic_voice.core.seal import SealedModel, still_sealed
 
 # Where heard words came from: a speech-to-text result, or text a test typed.
 HeardSource = Literal["speech_to_text", "typed"]
 # An action's name, and the draft read back as JSON text (kept out of a repr), as every model a
 # draft passes through holds them: the read-back's plan, its receipt, the confirmed action, the
-# outbox's entry and the record's completed action.
+# outbox's entry and the record's completed action. The action's events, its outcome and a
+# declined action name it the same way.
 ActionName = Annotated[str, Field(min_length=1)]
 DraftJson = Annotated[str, Field(min_length=2, repr=False)]
 # The seals a validation of each class must be given, compared by identity; only the modules

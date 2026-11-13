@@ -5,7 +5,8 @@ network and your Groq account, and what comes with it.
 
 ## Python and systems
 
-- **CPython 3.12 or later**, running asyncio.
+- **CPython 3.12**, running asyncio. The package allows later versions (`requires-python` is
+  `>=3.12`), but only 3.12 has been run (below).
 - **Systems.** The library is built and tested on Windows 11 x64. Production is meant to run on
   Linux x86_64 (the design's 11), which no run has checked yet: the gate runs only on the
   developer's machine until the repository has a remote for CI (TD-001). macOS is not checked.

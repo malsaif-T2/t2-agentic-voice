@@ -27,11 +27,10 @@ from t2_agentic_voice import (
 )
 from t2_agentic_voice.voice.calls import Calls
 
+from tests.ole5_voice.server_support import CODE, KEY
 from tests.t2_agentic_voice.api.runtime_support import OFFER_SDP, patch_stores
 from tests.t2_agentic_voice.fakes import FakeCalls, FakeSpeechToText, FakeTextToSpeech
 
-CODE = "made-up-access-code-0123"
-KEY = "a-made-up-join-key-of-forty-bytes-0123456"
 VERSION = "m2-owner-test-1"  # the widget's consent version
 LOOPBACK = ("127.0.0.1", 50000)
 LOCAL = "http://127.0.0.1:7861"

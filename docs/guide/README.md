@@ -22,8 +22,8 @@ is an **echo**, which says back what it heard: a team's first audio check. Aroun
 process of its own, or mounted in your FastAPI app), signed join tokens, the reference browser
 client, settings, logs, traces, and a call held in text for your tests, with a safety suite for
 your actions ([testing.md](testing.md)). Actions are tested in text calls on fake models, on the
-example's action and on Ole5's mock ticket system; their scenario runs on a real model and their
-first live calls are still to come (plan 007). Not built yet: the deployment with TURN, which
+example's action and on Ole5's mock ticket system, in Ole5's scripted calls on a real model (run
+A), and in the owner's first live calls against that mock (plan 007). Not built yet: the deployment with TURN, which
 has a plan of its own once a server is available ([roadmap](../plans/roadmap.md)). The library
 is used from Python only (D-014), and no tagged version exists to install yet: until the first
 one, run it from this repository's workspace ([quickstart](quickstart.md)). The design is
@@ -151,7 +151,7 @@ Each page is written when the part it describes is built. The pages written so f
 | [safety.md](safety.md) | How the yes rule decides and why a yes over the closing question needs a send word; the model check of the words its lists cannot place; the output guard's ID and claim rules; what the library guarantees, what stays yours, and what the rules do not catch | Written |
 | [writing-for-voice.md](writing-for-voice.md) | Instructions written for the ear, every step said by voice, numbers as digits, a plain "I cannot", no promise the agent cannot keep, tool descriptions, greetings and progress lines; an action's words: the read-back's summary and closing question, the lines while the write runs and when no clear answer came, claim phrases and send words; and why no fixed line holds a command word; each with a weak and a better example | Written |
 | [languages.md](languages.md) | The presets, the call's language and each reply's, Saudi Arabic and MSA, product terms inside Arabic, the pronunciation map, numbers and IDs, the vocabulary | Written |
-| [latency.md](latency.md) | The time to first audio, from where to where; where the time goes in a turn; the early start, connections kept open and progress lines; the budget; measuring yours | Written; the measured numbers once Ole5's run has run |
+| [latency.md](latency.md) | The time to first audio, from where to where; where the time goes in a turn; the early start, connections kept open and progress lines; the budget; measuring yours | Written |
 | [serving.md](serving.md) | The sidecar or the mount, one process per data folder, identity and join tokens, which agent a served app runs, the routes, cross-origin pages, the browser protocol | Written |
 | [browser-client.md](browser-client.md) | The reference browser client: starting a call, its events and states, cards and the agent thinking, tokens and consent, Stop and Esc, the agent's voice lowered, cut captions, push-to-talk, errors, browser support | Written |
 | [tracing-and-logs.md](tracing-and-logs.md) | The logging policy and `configure_logging`, Pipecat's own lines, Phoenix or your own tracer provider, what a trace holds, redaction | Written |
@@ -164,6 +164,6 @@ Each page is written when the part it describes is built. The pages written so f
 | `providers.md` | Writing an adapter for another speech, model or voice provider | Not written yet: with the guide's last pages |
 | `deployment.md` | The process model, containers, TURN, drain, health, capacity | With the deployment |
 | `runbook.md` | Rate limits and outages, a stuck write, key rotation, a deletion request | With the deployment |
-| `cookbook/` | Worked use cases with no Ole5 code: an IT helpdesk, HR leave | With confirmed actions, and the guide's last pages |
+| `cookbook/` | Worked use cases with no Ole5 code: an IT helpdesk, HR leave | With the guide's last pages (M7) |
 | `reference/api.md` (generated) | The public modules, from their docstrings, with each module's stability | The first version a teammate installs |
 | `upgrading.md` | Versions, stability levels, deprecations, behaviour changes | The first version a teammate installs |

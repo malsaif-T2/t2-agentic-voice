@@ -160,7 +160,7 @@ secret.
 | `name` | Optional: how the caller is named (`display_name`) |
 | `locale` | Optional: a BCP 47 tag, such as `ar-SA`; it picks the call's language when the page sends none |
 | `attrs` | Optional: at most 16 short names to texts (a department, a role) |
-| `consent` | Required: `{"version": <text or null>, "record_audio": <true or false>}`, what the caller chose on your consent screen; `record_audio` a JSON boolean |
+| `consent` | Required: `{"version": <text or null>, "record_audio": <true or false>}`, what the caller chose on your consent screen, with both keys and no other; `version` 1 to 64 printable ASCII characters with no space, and `record_audio` a JSON boolean |
 | `jti` | Required: an ID used once, 1 to 128 printable ASCII characters with no space |
 | `iat`, `exp` | Required: whole seconds since 1970; `exp` minus `iat` at most `join.ttl_s` |
 
@@ -291,8 +291,8 @@ each with `"v": 1` and a `type` from a closed list. The client sends `hello`, `s
 `client_stats` (its connection's view: the candidate type, the time to connect, whether echo
 cancellation applied, when the first audio played) and `playback` (when each clause of the
 agent's reply started and ended playing); the session sends `hello` (the call's ID and
-languages), `state` (`thinking` while the talker or a tool works), `caption`, `card` (a reply's
-whole answer for the screen), `duck` and `unduck` (the agent's voice lowered while the caller
-speaks over it, and brought back), `notice` and `ended`. The session parses every client message
+languages), `state` (`thinking` while the talker or a tool works), `caption`, `card` (an extra
+a tool of your own returned, for a client with a screen), `duck` and `unduck` (the agent's
+voice lowered while the caller speaks over it, and brought back), `notice` and `ended`. The session parses every client message
 strictly, and no message can set the caller or their consent (D-039). The reference client
 speaks all of it: [browser-client.md](browser-client.md).

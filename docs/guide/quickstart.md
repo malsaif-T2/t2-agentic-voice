@@ -176,7 +176,8 @@ uv run t2v dev minimal_example.app:make_runtime
 ```
 
 - **`t2v doctor`** checks what a first call needs, with no synthesis: the key, each language's
-  model and voice in Groq's model list (one request), the ONNX files of Silero VAD and Smart
+  model and voice in Groq's model list (one request for each language of `tts.languages`, three
+  by default), the ONNX files of Silero VAD and Smart
   Turn, and this machine's clock against Groq's, read from the model list's `Date` (its skew,
   to the second, within `join.max_clock_skew_s`). Every line starts `ok` or `FAIL`; a `FAIL`
   says what to fix. `t2v doctor --synthesize` also sends one short synthesis per language, the
@@ -573,6 +574,7 @@ Start with `uv run t2v doctor`, then this list.
 | --- | --- |
 | `FAIL key` | The line names the setting: set `T2V_GROQ__API_KEY_FILE` to the full path of a file that holds only the key (or `T2V_GROQ__API_KEY`). The library never reads `GROQ_API_KEY`. |
 | `FAIL model and voice <tag>` | The key cannot see that model: open the model to the key's organization in Groq's console, or ask Groq for access (the Arabic model). |
+| `FAIL model and voice` for every language, each `(rejected)` with no FIX | Groq refused the key itself: check that the key's file holds the whole key and nothing else, and that the key is still active in Groq's console. |
 | `FAIL synthesis <tag>` (with `--synthesize`) | The model's terms are not accepted: accept them in Groq's console, as the line's FIX says. |
 | `FAIL onnx <file>` | The installed Pipecat is damaged: `uv sync --reinstall-package pipecat-ai`. |
 | `FAIL clock` | This machine's clock is off Groq's by more than join tokens allow (`join.max_clock_skew_s`, with 1 s for the reading): set it, on Windows with Settings > Time & language > Date & time > **Sync now** (or `w32tm /resync`), elsewhere with NTP. A line saying the skew was not measured passes: no language check passed, or Groq's answers gave no readable `Date`. |

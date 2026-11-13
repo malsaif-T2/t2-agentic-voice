@@ -103,7 +103,11 @@ folder, after Phoenix's (D-087).
    with zero violations ([evaluation.md](design/evaluation.md), hard constraints).
 3. **Identity comes from the session, never from the call.** Whose tickets are read or written
    is fixed by the join token when the call starts. Nothing said or typed during the call
-   changes it. Enforced by adversarial tests in the plan that builds ticket status.
+   changes it. Enforced by adversarial tests of Ole5's tickets: another customer's ticket is never
+   read, found or noted, by its number or through an outbox row
+   (`tests/ole5_voice/tickets/test_status.py`, `test_mock.py`, `test_actions.py`), a call's status
+   answer names only the caller's own (`tests/ole5_voice/tickets/test_ticket_calls.py`), and a
+   token request naming another customer gets no token (`tests/ole5_voice/test_customer.py`).
 4. **Model output is parsed, never trusted.** Tool arguments are parsed into pydantic models;
    values with a fixed set (queue, type, priority) are taken only from the ticket system's own
    lists; text from a transcript, a passage, or a tool result never selects a tool by itself.
