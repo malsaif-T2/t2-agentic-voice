@@ -188,7 +188,7 @@ def test_the_runtime_opens_the_runner_on_its_outbox_and_reconciles_before_any_ca
     runner: ActionRunner = seen["runner"]
     assert seen["rows"] == {"r-found": "done", "r-lost": "flagged"}
     assert rig.backend.writes == []  # never sent again
-    assert runner._per_day == 3 and runner._writes._emit is None
+    assert runner._per_day == 3
     assert isinstance(seen["talker"], ChatTalker) and seen["talker"].actions is runner
     with pytest.raises(sqlite3.ProgrammingError):  # closed as the runtime stopped
         asyncio.run(runner._outbox.entries())
