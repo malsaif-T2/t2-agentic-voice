@@ -129,6 +129,11 @@ class Scene:
         held = json.dumps(self.arguments, ensure_ascii=False)
         return next(number for number in _NUMBERS if number not in held)
 
+    def call(self, agent: VoiceAgent, model: FunctionLLM) -> TextCall:
+        """The case's call: `agent` (the team's, its action watched or faulted) talking on
+        `model`, in the case's language, with its caller."""
+        return TextCall(agent, llm=model, language=self.tag, caller=self.caller)
+
     def call_action(self, **extra: JsonValue) -> tuple[ScriptStep, ...]:
         """The model's call of the action with the draft, and `extra` arguments beside it."""
         return ScriptedLLM.call_tool(self.action.name, **{**self.arguments, **extra})

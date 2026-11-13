@@ -1,4 +1,4 @@
-"""The check of a classifier's model files (adapters/model_files.py; plan 007's Block H, Q16): each
+"""The check of a classifier's model files (adapters/model_files.py; D-086, plan 007's Q16): each
 file in `stt.classifier_dir` against its pinned size and SHA-256, at every load and by `t2v
 doctor`. A missing file, a wrong size and a wrong hash are each refused with a
 ConfigurationError naming the file, the setting and the guide's page, never the file's bytes

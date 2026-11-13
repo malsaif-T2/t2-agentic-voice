@@ -1,6 +1,6 @@
 """Fakes of the session's I/O (voice/session/io.py, with its events in session_events.py and
 its commands in commands.py), with the port fakes in fakes.py, for the session's tests and the
-Pipecat side's (plan 003's Tracks D and E; plan 005's B and C). Each implements one protocol of
+Pipecat side's. Each implements one protocol of
 io.py, or plays one side of it; tests/t2_agentic_voice/test_session_fakes.py checks each, and
 test_session_scenes.py plays the scenes the session builds on. They live apart from fakes.py,
 which would otherwise pass the 400 lines a module may hold (ARCH-SIZE):

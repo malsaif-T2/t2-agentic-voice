@@ -1,4 +1,4 @@
-"""GroqTTS against a fake Groq (plan 003, Track B): Block 0's baseline request, the audio as it
+"""GroqTTS against a fake Groq: the baseline request, the audio as it
 streams (its sample rate read, its headroom on the first chunk, a take cut short flagged on the
 last, the silence trimmed only when asked), the text refused over `max_chars`, and each failure
 as a ProviderError, a model whose terms are not accepted with its FIX. The prototype's call was

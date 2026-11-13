@@ -1,15 +1,19 @@
-"""The one error shape of `t2v/1`'s routes, and how a route reads its body (api/runtime.py,
-"Bodies" and "Errors"; D-029; GP-19).
+"""The one error shape of `t2v/1`'s routes, and how a route reads its body (D-029; GP-19).
 
-A route raises `Refusal` with a status and a code its `BODIES` entry lists; `answering` turns it
-into api/protocol.py's `ErrorBody`, with a message fixed per code that never holds a value the
-request sent, and a reference made for the request and logged with the refusal's event. A
-crash is answered the same way, 500 `internal_error`, and logged by its type alone. The quiet
-409s, which a connected client ignores, are logged at DEBUG.
+A route raises `Refusal` with a status and a code its `BODIES` entry lists (api/protocol.py);
+`answering` turns it into api/protocol.py's `ErrorBody`, with a message fixed per code that never
+holds a value the request sent, and a reference, random, made for the request and logged with
+the refusal's event, so a caller's report leads to its log lines. A crash is answered the same
+way, 500 `internal_error`, and logged by its type alone. The quiet 409s, which a connected client
+ignores, are logged at DEBUG.
 
-`read_body` reads a route's body as the router does: `application/json` alone (415 before a
-byte is read), never past the route's cap (413, from a `Content-Length` over it or as the body
-streams past it), so no body is buffered whole.
+`add_routes` adds each route to a router through `answering`, so every route the router and
+the test console serve answers in that shape, and none is in an OpenAPI schema.
+
+`read_body` reads a route's body as the router does: `application/json` alone (415
+`unsupported_media_type` before a byte is read), never past the route's cap (`BODIES`; 413
+`too_large`, from a `Content-Length` over it or as the body streams past it), so no body is
+buffered whole; the route then parses it with `model_validate_json`.
 """
 
 from __future__ import annotations
@@ -18,17 +22,18 @@ import secrets
 from collections.abc import Awaitable, Callable
 from typing import Final
 
-from fastapi import HTTPException, Request, Response
+from fastapi import APIRouter, HTTPException, Request, Response
 
-from t2_agentic_voice.api.protocol import ErrorBody, ErrorCode, Route, is_json
+from t2_agentic_voice.api.protocol import INVALID_BODY, ErrorBody, ErrorCode, Route, is_json
 from t2_agentic_voice.core.logging import get_logger
 
 # The message of each code, safe to show the caller: it never holds a value the request sent.
+# `protocol_mismatch` has none here: its body is always api/protocol.py's `version_mismatch`,
+# with its own message and the notice that comes with that code alone.
 MESSAGES: Final[dict[ErrorCode, str]] = {
-    "invalid_request": "The request's body is not one t2v/1 takes.",
+    "invalid_request": f"{INVALID_BODY}.",
     "too_large": "The request's body is larger than this route takes.",
     "unsupported_media_type": "The request's body must be sent as application/json.",
-    "protocol_mismatch": "The client speaks another version of the protocol than this server's.",
     "join_rejected": "The join token was refused.",
     "forbidden": "The offer secret is missing, wrong or not this call's.",
     "already_offered": "This call's offer was taken already.",
@@ -92,6 +97,18 @@ def answering(route: str, handler: Callable[[Request, str], Awaitable[Response]]
             return error_response(500, error_body("internal_error", reference=ref))
 
     return answer
+
+
+def add_routes(
+    router: APIRouter, *routes: tuple[str, str, Callable[[Request, str], Awaitable[Response]]]
+) -> None:
+    """Add each route, `(method, path, handler)`, to `router`, answering as `answering` says
+    and named by its method and path in its log lines (`POST /join`)."""
+    for method, path, handler in routes:
+        route = f"{method} {path}"
+        router.add_api_route(
+            path, answering(route, handler), methods=[method], include_in_schema=False
+        )
 
 
 async def read_body(request: Request, route: Route | int) -> bytes:

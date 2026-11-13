@@ -1,5 +1,5 @@
 """A fake spoken-language classifier (domain/ports/language_classifier.py's `LanguageClassifier`)
-for the tests of the session, the bridge and the wiring (plan 007's Block H): no model, no
+for the tests of the session, the bridge and the wiring (D-086): no model, no
 thread of its own unless asked, each answer scripted.
 
 Each entry of its script is one classification's answer: a mapping of shares by code (parsed at

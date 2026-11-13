@@ -1,6 +1,6 @@
 """The scenes the session builds on (voice/session/io.py), each played through the fake session
 I/O (tests/t2_agentic_voice/session_fakes.py) by a scripted session that gives the commands
-`CallSession` will (Track D's tests drive the real one): the greeting, with a turn that opens
+`CallSession` will (the session's tests drive the real one): the greeting, with a turn that opens
 while it plays; a stop that drops a reply queued behind another; the call's end, whatever ends
 it, with a turn's transcript still to come; and every request that went counted. Every fixed
 phrase plays from the cache, and no heard words reach it. Only the first scene greets: the
@@ -73,7 +73,7 @@ def test_the_greeting_and_a_turn_that_opens_while_it_plays_never_share_a_key(
     settings: VoiceSettings,
 ) -> None:
     """The greeting is reply 0, naming no turn. The caller's turn 0 opens while it plays, so
-    the drop rule leaves it unanswered (the session's part, Track D's test); turn 1 opens after
+    the drop rule leaves it unanswered (the session's part, tested there); turn 1 opens after
     the greeting, and its echo is reply 1, naming turn 1. A scripted session plays the
     greeting's commands here, as `CallSession` will: every key of a reply's clause, and every
     caption's, is its own, and the call's end leaves the echo's queued clause with no event."""
@@ -149,7 +149,7 @@ def test_a_call_that_ends_with_a_turn_open_hands_none_of_the_turns_events(
     settings: VoiceSettings,
 ) -> None:
     """The caller leaves mid-turn: the `Ending` ends the call, so no `TurnClosed` or
-    `Transcribed` of the turn follows, and the session hangs up (Track D keeps the turn in the
+    `Transcribed` of the turn follows, and the session hangs up (keeping the turn in the
     report as unfinished)."""
     io = FakeSessionIO(settings)
 

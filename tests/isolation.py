@@ -21,7 +21,7 @@ import pytest
 PREFIX = "T2V_"
 VAR_DIR_VARIABLE = f"{PREFIX}STORAGE__VAR_DIR"
 # The Ole5 app's own prefix (the design's 7.3), under which its settings read its env and its
-# access code: plan 003's Track G ties the app's settings to it in its settings test, as
+# access code: tests/ole5_voice/test_settings.py ties the app's settings to it, as
 # tests/harness/test_isolation.py ties PREFIX to the library's.
 APP_PREFIX = "OLE5_VOICE_"
 # The general names T2's knowledge-base service is reached under, which the Ole5 app reads with

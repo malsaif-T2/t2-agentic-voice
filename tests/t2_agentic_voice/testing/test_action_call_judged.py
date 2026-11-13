@@ -5,7 +5,7 @@ the real yes rule and its check, the guard, the interruption rule and the action
 each answer said once the closing question ended and over it: the brief's table of expected
 answers, each judged answer told `by="model"`, the lists' answers asking no model.
 
-«اكيد» and "sure" are on the lists' yes words (Track A's), so they ask no model: they send once
+«اكيد» and "sure" are on the lists' yes words, so they ask no model: they send once
 the question ended and are asked again over it, as the table says, by the words; «صح» and "sure
 thing", on no list, are the model's `yes`, and land the same, by the model.
 

@@ -51,7 +51,7 @@ cut short is kept in memory for this run, its flag on its audio, which the sessi
 disk would cut that phrase in every call until someone deleted its file, so the next start asks
 for it again.
 
-Track B's tests, beyond the plan's: with `FakeTextToSpeech(limit=200)`
+Its tests hold: with `FakeTextToSpeech(limit=200)`
 (tests/t2_agentic_voice/fakes.py), a 204-character greeting of eight sentences sends two
 requests, each within 200, and its `audio` is the two takes joined; a phrase within 200 that
 holds a comma sends one; a 429 and then a success waits once, the delay asked for, and sends the

@@ -1,4 +1,4 @@
-"""The phrase cache's files (adapters/phrase_cache.py, plan 003's Track B): keyed by a hash of the
+"""The phrase cache's files (adapters/phrase_cache.py): keyed by a hash of the
 text sent, the model and the voice (the design's 10.4); written whole, to a temporary name then
 renamed; a file that cannot be read made anew; nothing written for a take cut short, or with
 `tts.cache_phrases` off. Against `FakeTextToSpeech`, in a test's own folder."""
@@ -23,11 +23,8 @@ from tests.t2_agentic_voice.adapters.phrase_support import (
     declare,
     english,
     take,
-    track_a,
 )
 from tests.t2_agentic_voice.fakes import FakeTextToSpeech
-
-__all__ = ["track_a"]  # Track A's stand-ins, used by every test here too
 
 ARABIC: TtsModel = "canopylabs/orpheus-arabic-saudi"
 

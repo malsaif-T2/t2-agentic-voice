@@ -1,7 +1,7 @@
-"""`@action`'s declaration (the design's 4.4 and 6.4; plan 007, Block 0): what it reads of the
+"""`@action`'s declaration (the design's 4.4 and 6.4; plan 007): what it reads of the
 function, the schema the talker sees, each boundary check, a ConfigurationError naming the
 field, with a FIX line, never a value, and the order its texts are read in, an MSA text first
-for `ar`. What an action does when it runs is Track B's."""
+for `ar`. What an action does when it runs is tested with the action runner."""
 
 from __future__ import annotations
 

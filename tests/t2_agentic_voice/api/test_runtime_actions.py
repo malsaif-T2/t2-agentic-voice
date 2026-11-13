@@ -1,10 +1,10 @@
-"""The composition of an agent's actions (api/actions.py, api/providers.py, api/runtime.py; plan
-007, Track B): one action runner for every call of the runtime, on the SQLite outbox under
-`storage.var_dir/<agent>/outbox.sqlite3`, the per-caller cap from the settings, emitting no
-event of its own (the session reports each outcome); the rows an earlier process left `sending`
-reconciled as the runtime starts, before any call, never sent again (invariant 6); each call's
-talker given the runner and its own call's record; a call's record let go as it ends; the
-outbox closed as the runtime stops; and an agent with no actions opening no outbox."""
+"""The composition of an agent's actions (api/actions.py, actions/agent_tools.py, agent/talker.py,
+api/runtime.py): one action runner for every call of the runtime, on the SQLite outbox under
+`storage.var_dir/<agent>/outbox.sqlite3`, the per-caller cap from the settings, emitting no event of
+its own (the session reports each outcome); the rows an earlier process left `sending` reconciled as
+the runtime starts, before any call, never sent again (invariant 6); each call's talker given the
+runner and its own call's record; a call's record let go as it ends; the outbox closed as the
+runtime stops; and an agent with no actions opening no outbox."""
 
 from __future__ import annotations
 
@@ -20,12 +20,13 @@ from fastapi import FastAPI
 from pydantic import BaseModel
 from t2_agentic_voice.actions.action import Action
 from t2_agentic_voice.actions.action_runner import ActionRunner
+from t2_agentic_voice.actions.agent_tools import actions_of, tools_of
 from t2_agentic_voice.actions.memory_outbox import MemoryOutbox
 from t2_agentic_voice.actions.tools import Tool
 from t2_agentic_voice.adapters.outbox import SqliteOutbox
-from t2_agentic_voice.agent.talker import ChatTalker, TalkerCall
+from t2_agentic_voice.agent.talker import ChatTalker, TalkerCall, chat_talkers
 from t2_agentic_voice.api.actions import OUTBOX_NAME, outbox_path
-from t2_agentic_voice.api.providers import Providers, actions_of, talkers, tools_of
+from t2_agentic_voice.api.providers import Providers
 from t2_agentic_voice.api.runtime import VoiceRuntime
 from t2_agentic_voice.core.config import VoiceSettings
 from t2_agentic_voice.core.events import (
@@ -146,7 +147,7 @@ def test_each_calls_talker_is_given_the_one_runner_and_its_own_calls_record(
 ) -> None:
     action = an_action(Backend(outbox=MemoryOutbox(), clock=FakeClock()))
     runner = ActionRunner([action], outbox=MemoryOutbox())
-    factory = talkers(_agent(action), settings, _Chat(), runner)
+    factory = chat_talkers(_agent(action), settings, _Chat(), runner)
     assert factory is not None
     first = factory(
         TalkerCall(call_id="c-1", caller=Caller(subject="s"), language="en"), FakeClock()

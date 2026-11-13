@@ -1,9 +1,12 @@
-"""testing: what a team uses to test and measure its voice agent.
+"""testing: what a team tests and measures its voice agent with: calls held in text
+(`TextCall`) and replayed from audio (`AudioCall`, the turn and echo timings) on the real
+session, the fake chat models and knowledge base, the adversarial suite of an action
+(`ActionSafetySuite`), and the scorers (word and character error rates, on jiwer). Public
+through the `evals` facade.
 
-The evaluation scorers today (word and character error rates, on jiwer), the signatures of the
-measurements on the file-fed pipeline (`turns.py`, `echo_timing.py`), and later the testing kit:
-the fakes of every port, text-mode calls, the adversarial suite and simulated callers. It sits
-beside api, above voice: it may import voice and every layer below it, but never adapters (it
-reaches a provider only through a port a test passes in) and never api, so a team's tests need
-no HTTP stack (harness.toml [layers], D-019). It is the only layer that may import jiwer.
+It sits beside api, above voice: it may import voice and every layer below it, but never
+adapters (it reaches a provider only through a port a test passes in) and never api, so a team's
+tests need no HTTP stack (harness.toml [layers], D-019); it is the only layer that may import
+jiwer. ARCHITECTURE.md's "Layers" maps the layers and what each owns; each module's docstring
+says what it holds.
 """

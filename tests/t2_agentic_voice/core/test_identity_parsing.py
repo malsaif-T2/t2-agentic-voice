@@ -23,8 +23,8 @@ from tests.leaks import holding, shown
 
 MARK = "zx-made-up-mark-41"  # a value no error may repeat
 LONG = MARK * 15  # over MAX_TEXT
-# Where a model's own refusal carries the input it refused, as pydantic's always do: Track C's
-# `verify` answers with a JoinRejected that holds no value, never with these.
+# Where a model's own refusal carries the input it refused, as pydantic's always do: an identity
+# source's `verify` answers with a JoinRejected that holds no value, never with these.
 CARRIED = {"errors", "errors json"}
 
 

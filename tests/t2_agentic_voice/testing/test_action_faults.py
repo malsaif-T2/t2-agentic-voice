@@ -1,4 +1,4 @@
-"""The faults `ActionSafetySuite` gives an action (testing/action_faults.py; plan 007, Track D),
+"""The faults `ActionSafetySuite` gives an action (testing/action_faults.py; plan 007),
 each called as the action runner will call it, by its parameters' names: the team's own write
 counted and kept, async or sync, with or without its context; a write done whose reply is lost,
 found by the lookup or by none; a backend that never answers; and a write refused, each

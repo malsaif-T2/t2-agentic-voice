@@ -1,9 +1,8 @@
-"""What the tests of a talker with actions share (plan 007, Track B): the made-up request action of
+"""What the tests of a talker with actions share (plan 007): the made-up request action of
 the action runner's tests (tests/t2_agentic_voice/actions/action_support.py) declared beside
 read tools, its runner on an in-memory outbox, a talker of the call given that runner, and a
-stand-in for the guard's rule A (`check_claims` and `default_claims` are Track A's, built in
-parallel): a plain substring match that keeps what each call was given, honouring Block 0's
-signature."""
+stand-in for the guard's rule A (`check_claims` and `default_claims`): a plain substring match
+that keeps what each call was given, honouring the real one's signature."""
 
 from __future__ import annotations
 
@@ -84,7 +83,7 @@ class FakeClaims:
 
 
 def fake_rule_a(monkeypatch: pytest.MonkeyPatch) -> FakeClaims:
-    """Rule A's stand-in in place of Track A's `check_claims` and `default_claims`."""
+    """Rule A's stand-in in place of domain/claims.py's `check_claims` and `default_claims`."""
     fake = FakeClaims()
     monkeypatch.setattr(guard, "check_claims", fake.check)
     monkeypatch.setattr(claims, "default_claims", lambda code: ANY_ACTION[code])

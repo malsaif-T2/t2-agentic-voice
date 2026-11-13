@@ -151,7 +151,7 @@ def test_the_walk_finds_a_client_or_a_banned_import(tmp_path: Path) -> None:
 
 def test_every_module_a_ban_names_is_in_the_installed_package() -> None:
     """A module renamed or moved by a new version would leave its ban guarding nothing. A whole
-    library only the `ecapa` extra installs (EXTRA_ONLY: plan 007's Block H) is read from the lock
+    library only the `ecapa` extra installs (EXTRA_ONLY, D-086) is read from the lock
     instead, so the answer is one with or without the `language-id` group."""
     names = {n for ban in load_config(ROOT).arch.bans for n in (*ban.modules, *ban.allowed)}
     extra = {n for n in names if n.split(".")[0] in EXTRA_ONLY}

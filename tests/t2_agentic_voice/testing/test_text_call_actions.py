@@ -1,10 +1,9 @@
-"""`TextCall` with an action (testing/text_call.py; plan 007, Track D), on the real session: a turn
+"""`TextCall` with an action (testing/text_call.py; plan 007), on the real session: a turn
 said over a read-back's summary or its closing question, as each plays; a fault armed for the
 next summary; the caller's words typed, as the yes rule reads them; the part that acts put on
 the call's setup, over its outbox; and what a turn did with an action, as its expectations read
-it. Tracks B and C fill the talker's read-back and the session's confirming, so the talker here
-is the tests' scripted one, keeping each plan from the session and saying its lines as clauses,
-and the part that acts is a fake (action_support.py)."""
+it. The talker here is the tests' scripted one, keeping each plan from the session and saying its
+lines as clauses, and the part that acts is a fake (action_support.py)."""
 
 from __future__ import annotations
 
@@ -50,7 +49,7 @@ OUTCOME = "Done, number 5101."
 
 def _booking(turn: TalkerTurn) -> list[Step]:
     """The read-back first; the ask-again over a bare yes; the sending line and the outcome
-    after a yes, as Track C's session will say them."""
+    after a yes, as the session says them."""
     if turn.turn_id == 0:
         return list(read_back_steps(PLAN))
     if turn.words == "yes":
@@ -169,8 +168,8 @@ def test_the_part_that_acts_is_put_on_the_calls_setup_over_its_outbox() -> None:
 
 
 async def _confirm(call: ScriptedCall, turn_id: int, *, speech_at: float) -> FakeJobs:
-    """The session's hand-off of the yes of turn `turn_id` to the part that acts, as Track C's
-    will make it, to a fake of Track B's runner."""
+    """The session's hand-off of the yes of turn `turn_id` to the part that acts, as the session
+    makes it, to a fake of the action runner."""
     jobs = call._jobs
     assert jobs is not None
     fake = FakeJobs()
@@ -286,7 +285,7 @@ def _status(number: str) -> tuple[Tool, Ran]:
 def test_a_claim_is_a_violation_unless_a_record_or_a_status_backs_it(
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
-    """Rule A is Track A's, stood in for: it is asked of every clause the talker said, with the
+    """Rule A is the guard's, stood in for: it is asked of every clause the talker said, with the
     action's own phrases, the defaults, and what backs each action."""
     claimed = stand_in_claims(monkeypatch)
     tool, ran = _status("5101")

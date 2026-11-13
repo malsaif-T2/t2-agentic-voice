@@ -30,6 +30,7 @@ from t2_agentic_voice import (
     VoiceAgent,
     VoiceSettings,
 )
+from t2_agentic_voice.core.settings.words import primary_code
 from t2_agentic_voice.domain.claims import (
     ClaimVerdict,
     any_action_claims,
@@ -205,7 +206,7 @@ def test_only_a_closing_question_holds_a_word_the_caller_commands_with(tmp_path:
             code: tuple(words) for code, words in lines.SEND_WORDS.items()
         }
         for tag in WORDINGS:
-            code: Literal["ar", "en"] = "en" if tag == "en" else "ar"
+            code = primary_code(tag)
             for name, text in _lines_of(made, tag).items():
                 found = held(text.replace("{", " ").replace("}", " "), code, talker)
                 if name == "question":

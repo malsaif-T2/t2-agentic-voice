@@ -1,4 +1,4 @@
-"""The Groq client every Groq adapter builds (adapters/groq_client.py, plan 003's Block 0), shown
+"""The Groq client every Groq adapter builds (adapters/groq_client.py), shown
 on a JSON request, the kind `GroqTTS` sends: every request carries the adapter's own eight
 headers whatever `GROQ_CUSTOM_HEADERS` says, and a `content-type` line that makes the SDK build a
 form instead of the adapter's JSON fails the request, unsent, with no key in anything shown; on
@@ -134,7 +134,7 @@ def test_a_content_type_line_that_makes_a_form_fails_the_request_unsent(
 def test_a_get_through_the_same_client_carries_only_the_adapters_headers(
     shell: dict[str, str], monkeypatch: pytest.MonkeyPatch
 ) -> None:
-    """The model list and one model (Track B's `check_language`, `t2v doctor`): the hook takes a
+    """The model list and one model (`GroqTTS.check_language`, `t2v doctor`): the hook takes a
     request with no body, sends JSON as its `Accept`, and no `Content-Type` or length, so it
     goes through under the `content-type` line that fails a POST."""
     for name, value in shell.items():

@@ -1,4 +1,4 @@
-"""The browser side of plan 006's cards and `thinking` (Track D): the reference client
+"""The browser side of plan 006's cards and `thinking`: the reference client
 `api/static/t2v-client.js` hands the page every message of the session's, a `card` (voice/
 protocol.py's `ShowCard`) as one `card` event and a `state` among t2v/1's four, `thinking`
 included, and drops a card or a state that is not one; the dev page shows the agent's state and

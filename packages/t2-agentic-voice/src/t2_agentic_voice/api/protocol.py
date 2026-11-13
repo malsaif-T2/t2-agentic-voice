@@ -106,6 +106,9 @@ JSON_TYPE = "application/json"
 # the caller, in Arabic and in English, since no language the caller picked is read from a body
 # of another version (the agent's words, for the owner to change).
 MISMATCH_MESSAGE = "The client speaks another version of the protocol than this server's, t2v/1."
+# What a body no route takes is told: before the kinds of problem found (`refusal`), or alone
+# (api/http_errors.py's `MESSAGES`).
+INVALID_BODY = "The request's body is not one t2v/1 takes"
 MISMATCH_NOTICE = (
     "هذه الصفحة قديمة: أعد تحميلها لتتصل من جديد. "
     "This page is out of date: reload it to call again."
@@ -297,7 +300,7 @@ def refusal(error: ValidationError, *, reference: str) -> ErrorBody:
     problems = ", ".join(sorted({each["type"] for each in found}))
     return ErrorBody(
         code="invalid_request",
-        message=f"The request's body is not one t2v/1 takes ({problems}).",
+        message=f"{INVALID_BODY} ({problems}).",
         reference=reference,
     )
 

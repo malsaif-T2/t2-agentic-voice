@@ -21,9 +21,7 @@ Public through the `groq` facade (D-021).
 from __future__ import annotations
 
 import asyncio
-import io
 import secrets
-import wave
 
 import httpx
 from pydantic import BaseModel, ConfigDict, Field, SecretStr
@@ -34,18 +32,15 @@ from t2_agentic_voice.adapters.groq_client import (
     failure,
     groq_client,
     headroom,
-    no_key,
     omit,
     own_headers,
     raw_response,
+    settings_key,
 )
+from t2_agentic_voice.adapters.wav_files import wav_of
 from t2_agentic_voice.core.config import VoiceSettings
-from t2_agentic_voice.core.settings.stt import SttModel, SttSettings
+from t2_agentic_voice.core.settings.stt import WHISPER_MIN_BILLED_S, SttModel, SttSettings
 from t2_agentic_voice.domain.ports.speech_to_text import AudioClip, DataFlow, Transcript
-
-# Groq bills every transcription request at least this long (its pricing, plan 002's
-# registration, read 2026-11-01; the design's 10.4).
-_MIN_BILLED_S = 10.0
 
 
 class GroqSTT:
@@ -97,13 +92,7 @@ class GroqSTT:
         `stt.model` and `stt.timeout_s`. ConfigurationError naming `T2V_GROQ__API_KEY` (under
         the settings' prefix) when no key is set, a blank one included, and saying so when
         `GROQ_API_KEY` is set instead: the library never reads it (the design's 7.3)."""
-        key = settings.groq.resolved_api_key(settings.prefix)
-        if key is None:
-            raise no_key(
-                settings.env_name("groq", "api_key"),
-                settings.env_name("groq", "api_key_file"),
-                settings.saw("GROQ_API_KEY"),
-            )
+        key = settings_key(settings)
         return cls(
             api_key=key,
             model=settings.stt.model,
@@ -134,7 +123,7 @@ class GroqSTT:
                 with raw_response():
                     answer = await self._groq.audio.transcriptions.with_raw_response.create(
                         model=self._model,
-                        file=("speech.wav", _wav(clip), "audio/wav"),
+                        file=("speech.wav", wav_of(clip), "audio/wav"),
                         language=language or omit,
                         prompt=prompt or omit,
                         response_format="verbose_json",
@@ -144,7 +133,7 @@ class GroqSTT:
                 result = await answer.parse()
             transcript = _Answer.model_validate(result.to_dict()).transcript(
                 language or None,
-                billed_seconds=max(_MIN_BILLED_S, clip.seconds),
+                billed_seconds=max(WHISPER_MIN_BILLED_S, clip.seconds),
                 remaining=headroom(answer.headers),
             )
         except Exception as error:  # every failure, the SDK's and the answer's; never a cancel
@@ -211,14 +200,3 @@ def _by_length(parts: list[tuple[float, float]]) -> float | None:
     with no segment (the prototype's `_by_length`)."""
     total = sum(length for length, _ in parts)
     return sum(length * value for length, value in parts) / total if parts else None
-
-
-def _wav(clip: AudioClip) -> bytes:
-    """`clip` as a WAV file: mono, 16-bit, at the clip's sample rate."""
-    buffer = io.BytesIO()
-    with wave.open(buffer, "wb") as writer:
-        writer.setnchannels(1)
-        writer.setsampwidth(2)
-        writer.setframerate(clip.sample_rate)
-        writer.writeframes(clip.pcm16)
-    return buffer.getvalue()

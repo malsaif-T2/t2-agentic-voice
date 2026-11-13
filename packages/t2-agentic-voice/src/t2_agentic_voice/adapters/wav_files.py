@@ -1,8 +1,9 @@
 """The WAV files the caches keep (the phrase cache, adapters/phrase_cache.py, and the clause cache,
-adapters/clause_cache.py): a take written as a WAV file, mono and 16-bit at its sample rate
-(`wav_of`); read back only when it reads as one of those, its frames all there (`take_of`); and
-written whole, to a temporary name beside it and then renamed onto it (`write_whole`), so a
-stopped write leaves no half file under the real name.
+adapters/clause_cache.py), and the WAV a speech-to-text request sends (adapters/groq_stt.py):
+audio written as a WAV file, mono and 16-bit at its sample rate (`wav_of`); a take read back only
+when it reads as one of those, its frames all there (`take_of`); and a file written whole, to a
+temporary name beside it and then renamed onto it (`write_whole`), so a stopped write leaves no
+half file under the real name.
 """
 
 from __future__ import annotations
@@ -12,11 +13,12 @@ import secrets
 import wave
 from pathlib import Path
 
+from t2_agentic_voice.domain.ports.speech_to_text import AudioClip
 from t2_agentic_voice.domain.ports.text_to_speech import AudioChunk
 
 
-def wav_of(audio: AudioChunk) -> bytes:
-    """`audio` as a WAV file: mono, 16-bit, at its sample rate."""
+def wav_of(audio: AudioChunk | AudioClip) -> bytes:
+    """`audio` (a take, or a caller's clip) as a WAV file: mono, 16-bit, at its sample rate."""
     buffer = io.BytesIO()
     with wave.open(buffer, "wb") as writer:
         writer.setnchannels(1)

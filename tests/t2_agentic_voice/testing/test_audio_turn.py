@@ -20,6 +20,7 @@ from t2_agentic_voice.agent.talker import (
     SpokenClause,
     TalkerCall,
     TalkerEvent,
+    chat_talkers,
 )
 from t2_agentic_voice.core.clock import SYSTEM_CLOCK, Clock
 from t2_agentic_voice.core.config import VoiceSettings
@@ -31,7 +32,6 @@ from t2_agentic_voice.domain.ports.text_to_speech import AudioChunk
 from t2_agentic_voice.evals import AudioCall, TurnReplay
 from t2_agentic_voice.languages import whisper_prompt
 from t2_agentic_voice.testing import audio_call
-from t2_agentic_voice.testing.text_watch import chat_talkers
 from t2_agentic_voice.testing.turn_replay import OPENING_S, turn_replay_of
 from t2_agentic_voice.voice.calls import VoiceCalls
 from t2_agentic_voice.voice.file_transport import FedCall

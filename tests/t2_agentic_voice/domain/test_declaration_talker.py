@@ -1,5 +1,5 @@
-"""The declaration's talker parts (domain/talker_declaration.py, domain/declaration.py; plan 006,
-Block 0): `instructions`, `tools`, `vocabulary` and `version` on `VoiceAgent`, and the progress
+"""The declaration's talker parts (domain/talker_declaration.py, domain/declaration.py; plan 006):
+`instructions`, `tools`, `vocabulary` and `version` on `VoiceAgent`, and the progress
 lines on `Language`, all optional, so an agent declared before the talker loads unchanged and
 runs the echo; an agent with instructions runs the talker. Each refusal a ConfigurationError
 naming the field, with a FIX line, never the value. And a card (domain/cards.py), and the

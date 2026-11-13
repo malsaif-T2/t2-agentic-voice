@@ -1,4 +1,4 @@
-"""ECAPA on VoxLingua107 behind the `LanguageClassifier` port (plan 007's Block H, Q15):
+"""ECAPA on VoxLingua107 behind the `LanguageClassifier` port (D-086; plan 007's Q15):
 SpeechBrain's `EncoderClassifier` on torch, on the CPU, through the library's `ecapa` extra.
 
 **torch only here, only when asked.** The base install holds no torch (the torch check), so this
@@ -38,11 +38,11 @@ import numpy as np
 
 from t2_agentic_voice.adapters.model_files import (
     GUIDE,
-    ONE_AT_A_TIME,
     ModelFile,
     Samples,
     checked,
     heard_codes,
+    run_alone,
     samples,
 )
 from t2_agentic_voice.core.config import VoiceSettings
@@ -209,11 +209,8 @@ def _model(folder: Path, threads: int) -> Runner:
 def _classified(runner: Runner, given: Samples, among: tuple[str, ...]) -> LanguageScores | None:
     """On a worker thread: the model's probabilities of the codes `among`; None while another
     classification runs."""
-    if not ONE_AT_A_TIME.acquire(blocking=False):
+    log_probs = run_alone(runner, given)
+    if log_probs is None:
         return None
-    try:
-        log_probs = np.asarray(runner(given), dtype=np.float64)
-    finally:
-        ONE_AT_A_TIME.release()
     found = {code: float(np.exp(log_probs[ECAPA_LABELS[code][1]])) for code in among}
     return LanguageScores.renormalized(found, among=among)

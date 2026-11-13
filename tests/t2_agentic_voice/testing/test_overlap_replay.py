@@ -9,13 +9,14 @@ overlap. The results are frozen."""
 from __future__ import annotations
 
 from datetime import UTC, datetime
+from typing import get_args
 
 import pytest
 from pydantic import ValidationError
 from t2_agentic_voice.core.events import Interrupted, InterruptionKind, InterruptionReason
 from t2_agentic_voice.domain.ports.speech_to_text import Transcript
 from t2_agentic_voice.evals import OverlapReplay, OverlapRequest
-from t2_agentic_voice.testing.overlap_replay import replay_of
+from t2_agentic_voice.testing.overlap_replay import RequestPart, replay_of
 from t2_agentic_voice.voice.file_transport import FedCall
 from t2_agentic_voice.voice.protocol import Duck, Unduck
 from t2_agentic_voice.voice.session.commands import (
@@ -268,3 +269,9 @@ def test_a_replays_results_are_frozen() -> None:
         None,
         (),
     )
+
+
+def test_a_requests_part_is_one_the_session_names() -> None:
+    """`RequestPart`, spelt out for the public signature, is voice's `TranscriptPart`: a part
+    added to one is added to the other."""
+    assert get_args(RequestPart) == get_args(TranscriptPart)

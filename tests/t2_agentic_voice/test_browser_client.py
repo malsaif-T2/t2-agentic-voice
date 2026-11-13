@@ -1,4 +1,4 @@
-"""The browser side of `t2v/1` (plan 003's Track G): the reference client
+"""The browser side of `t2v/1` (plan 003): the reference client
 `api/static/t2v-client.js` and the dev page `api/static/dev.html`, read as text, since the suite
 runs no browser (the agent's browser pane and the owner's Chrome and Edge check the rest: plan
 003, step 16 and 18). The client speaks the protocol the fixture lists, every message of the
@@ -28,7 +28,7 @@ LIBRARY = ROOT / "packages" / "t2-agentic-voice"
 STATIC = LIBRARY / "src" / "t2_agentic_voice" / "api" / "static"
 CLIENT = STATIC / "t2v-client.js"
 DEV_PAGE = STATIC / "dev.html"
-# The t2v/1 message list every track builds against (Block 0).
+# The committed t2v/1 message list (test_protocol_list.py holds the models to it).
 FIXTURE = Path(__file__).parent / "fixtures" / "t2v_protocol.json"
 # What inserts markup rather than text (the browser criteria of plan 003).
 MARKUP = re.compile(r"\b(innerHTML|outerHTML|insertAdjacentHTML)\b|document\s*\.\s*write")

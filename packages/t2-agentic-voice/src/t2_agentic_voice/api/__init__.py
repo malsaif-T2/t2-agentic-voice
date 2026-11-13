@@ -1,12 +1,10 @@
-"""api: the outermost layer, the backend's HTTP surface and composition root.
+"""api: the outermost layer, the backend's HTTP surface and composition root: it serves `t2v/1`
+(a call's join and its WebRTC offer, handed to voice, which answers it), the health and ready
+routes, the reference client (`t2v-client.js`) and, on a dev machine, the dev page and the test
+console; an app's widget is the app's to serve. It builds the adapters from the settings and
+injects them into the layers below, maps every error to one shape for its transport (GP-19),
+serves a runtime (`serve`, the sidecar) and gives the `t2v` command.
 
-It serves `t2v/1`: it starts a call (checks the join token and hands the WebRTC offer to voice,
-which answers it), reports health, and serves the reference client (`t2v-client.js`) and the dev
-page; an app's widget is the app's to serve. It builds the adapters from the settings and
-injects them into the layers below, and maps every error to one shape for its transport
-(GP-19). It may import every other layer. Built: the health report (`status.py`); the `t2v/1`
-HTTP bodies, their caps and their one error body (`protocol.py`); the runtime and its lifespan
-(`runtime.py`, `lockfile.py`); the router, its records of the calls and its error shape
-(`router.py`, `offers.py`, `http_errors.py`); serving (`server.py`); and the `t2v` command
-(`cli.py`, `doctor.py`).
+It may import every other layer. ARCHITECTURE.md's "Layers" maps the layers and what each owns;
+each module's docstring says what it holds.
 """

@@ -1,9 +1,8 @@
-"""A call's set-up through the router (api/runtime.py, "The router"; the design's 5.5; D-029;
-invariant 7): the join, its token verified once and its consent version checked, the call's
-language fixed; the offer and its candidates behind the call's own offer secret, in a header or
-the body and never in a URL; one offer per call; the quiet 409s once ICE completed, the call
-ended or before the offer was answered; and a 403 for any other secret, the same whether the
-call exists or not."""
+"""A call's set-up through the router (api/router.py; the design's 5.5; D-029; invariant 7): the
+join, its token verified once and its consent version checked, the call's language fixed; the offer
+and its candidates behind the call's own offer secret, in a header or the body and never in a URL;
+one offer per call; the quiet 409s once ICE completed, the call ended or before the offer was
+answered; and a 403 for any other secret, the same whether the call exists or not."""
 
 from __future__ import annotations
 

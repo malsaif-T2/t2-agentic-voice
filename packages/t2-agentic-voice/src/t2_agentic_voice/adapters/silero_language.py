@@ -1,5 +1,5 @@
-"""Silero's 95-language spoken-language classifier behind the `LanguageClassifier` port (plan 007's
-Block H): `lang_classifier_95.onnx` on onnxruntime, on the CPU, with no torch.
+"""Silero's 95-language spoken-language classifier behind the `LanguageClassifier` port (D-086):
+`lang_classifier_95.onnx` on onnxruntime, on the CPU, with no torch.
 
 **The files** (adapters/model_files.py): the model and its label map, from the Hugging Face
 repository `deepghs/silero-lang95-onnx` at commit `bf21c4f59503dc182ab4d69328889b93c51bf70f`, a
@@ -27,11 +27,11 @@ from typing import Final, Self
 import numpy as np
 
 from t2_agentic_voice.adapters.model_files import (
-    ONE_AT_A_TIME,
     ModelFile,
     Samples,
     checked,
     heard_codes,
+    run_alone,
     samples,
 )
 from t2_agentic_voice.core.config import VoiceSettings
@@ -143,12 +143,9 @@ class SileroLanguage:
 def _classified(runner: Runner, given: Samples, among: tuple[str, ...]) -> LanguageScores | None:
     """On a worker thread: the model's softmax over the codes `among`; None while another
     classification runs."""
-    if not ONE_AT_A_TIME.acquire(blocking=False):
+    logits = run_alone(runner, given)
+    if logits is None:
         return None
-    try:
-        logits = np.asarray(runner(given), dtype=np.float64)
-    finally:
-        ONE_AT_A_TIME.release()
     exp = np.exp(logits - logits.max())
     probabilities = exp / exp.sum()
     found = {code: float(probabilities[SILERO_LABELS[code]]) for code in among}

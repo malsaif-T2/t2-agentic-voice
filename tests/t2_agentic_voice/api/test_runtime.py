@@ -293,7 +293,7 @@ def _classifying(
     tmp_path: Path, classifier: Any, *, agent: Any = AGENT, live: str = "classified"
 ) -> tuple[VoiceRuntime, list[dict[str, Any]]]:
     """A runtime of `agent` whose providers hold `classifier`, under `stt.live_language` `live`
-    (plan 007's Block H), and the arguments its calls were built with."""
+    (D-086), and the arguments its calls were built with."""
     from t2_agentic_voice.core.settings.stt import SttSettings
 
     built: list[dict[str, Any]] = []

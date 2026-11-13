@@ -1,5 +1,5 @@
-"""The architecture's rules for the spoken-language classifiers' libraries (harness.toml; plan 007's
-Block H): torch, torchaudio and SpeechBrain are `adapters`' alone (ARCH-OWNER), read in an import
+"""The architecture's rules for the spoken-language classifiers' libraries (harness.toml; D-086):
+torch, torchaudio and SpeechBrain are `adapters`' alone (ARCH-OWNER), read in an import
 statement and in a call that loads a literal name alike, so an import of torch outside
 `adapters` is reported with its fix; `huggingface_hub` stays out of the library's own code
 (ARCH-BAN), so no adapter fetches a model at run time (the design's 11); every module the ECAPA

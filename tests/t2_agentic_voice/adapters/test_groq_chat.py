@@ -1,4 +1,4 @@
-"""GroqChat's stream (adapters/groq_chat.py; plan 006, Track A) on a fake transport: the request
+"""GroqChat's stream (adapters/groq_chat.py) on a fake transport: the request
 as Groq takes it (every kind of message, the tools, the model's settings, `reasoning_effort`
 only to a model that takes it), and the events in order (the text as it comes and never the
 reasoning, each tool call whole however its pieces came, the usage with and without cached

@@ -1,16 +1,16 @@
 {
   "about": [
-    "The canonical Arabic normalizer's characterization table: plan 002, Block 0, step 11.",
+    "The canonical Arabic normalizer's characterization table: plan 002, step 11.",
     "Each row gives an input and what the prototype makes of it, written by reading its",
     "code, never by running it (D-010): `normalize` is rules.normalize",
     "(Ole5-chatbot/src/ole5_chat/voice/rules.py, lines 11-19), what every rule matched on;",
     "`norm` is stt_eval.norm (Ole5-chatbot/scripts/stt_eval.py, lines 1059-1066), what the",
     "scorer compared: normalize, then Arabic-Indic and Persian digits as ASCII, then every",
-    "space removed. Track A's normalize_arabic matches the `normalize` column, and its",
+    "space removed. normalize_arabic matches the `normalize` column, and its",
     "verdict's comparison (normalize_arabic, normalize_digits, spaces removed) the `norm`",
     "column, except on a row with a `gap`: there the spelling guide rules otherwise than the",
     "prototype (plan 002, Q8: digits said one by one count as those digits), its note gives",
-    "the guide's verdict string, and Track A's output is the guide's, with the row's",
+    "the guide's verdict string, and the library's output is the guide's, with the row's",
     "departure named in the plan's progress log. Q8 folds only the prototype's letter forms,",
     "so every other form (alef wasla, Farsi yeh, keheh, a lone hamza) is kept, as here."
   ],

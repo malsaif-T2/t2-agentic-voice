@@ -1,4 +1,4 @@
-"""The fake chat models (testing/llm_fakes.py; plan 006, Track A): `ScriptedLLM` plays one entry
+"""The fake chat models (testing/llm_fakes.py; plan 006): `ScriptedLLM` plays one entry
 per request, each a reply in a stream's pieces or tool calls, with its usage, its pauses on the
 fake's clock and its errors, keeps every request, and fails clearly once its script has run out;
 `FunctionLLM` answers each request as its function decides. Both keep the port's rules: one

@@ -26,7 +26,8 @@ a `groq` type (the design's 5.3). Public through the `groq` facade (D-021).
   reason (`function_call` read as `tool_calls`).
 - **Failures** go through `groq_client.failure` (a 429 with its `retry-after`, a 5xx, a timeout,
   a lost connection, a 4xx `rejected`). A read of the stream that times out or loses its
-  connection, which the SDK does not wrap, is `timeout` or `connection_lost`. An error Groq sends
+  connection, which the SDK does not wrap, is `timeout` or `connection_lost`
+  (`groq_client.stream_failure`). An error Groq sends
   inside the stream (an SSE `error` event, such as `tool_use_failed` when a Llama model wrote its
   own function text: plan 006's spike) is `rejected`, its code in the details when it is a plain
   name; a stream that ends with no finish reason is a `server_error` (`no_finish`), never a
@@ -67,11 +68,11 @@ from t2_agentic_voice.adapters.groq_client import (
     APIError,
     APIStatusError,
     checked,
-    failure,
     groq_client,
-    no_key,
     omit,
     own_headers,
+    settings_key,
+    stream_failure,
 )
 from t2_agentic_voice.core.config import VoiceSettings
 from t2_agentic_voice.core.errors import ProviderError
@@ -129,13 +130,7 @@ class GroqChat:
         """The adapter the settings describe: `groq.resolved_api_key()`, `groq.base_url` and
         `llm.timeout_s`. ConfigurationError naming `T2V_GROQ__API_KEY` (under the settings'
         prefix) when no key is set, as `GroqSTT`'s."""
-        key = settings.groq.resolved_api_key(settings.prefix)
-        if key is None:
-            raise no_key(
-                settings.env_name("groq", "api_key"),
-                settings.env_name("groq", "api_key_file"),
-                settings.saw("GROQ_API_KEY"),
-            )
+        key = settings_key(settings)
         return cls(
             api_key=key,
             base_url=settings.groq.base_url,
@@ -192,13 +187,9 @@ def _failure(error: Exception) -> ProviderError:
     """The ProviderError for a failure of a chat request (the module's docstring)."""
     if isinstance(error, UnfinishedError):
         return ProviderError("server_error", False, details={"error": "no_finish"})
-    if isinstance(error, httpx.TimeoutException):
-        return ProviderError("timeout", True, details={"error": type(error).__name__})
-    if isinstance(error, httpx.TransportError):
-        return ProviderError("connection_lost", True, details={"error": type(error).__name__})
     if isinstance(error, APIError) and not isinstance(error, APIStatusError | APIConnectionError):
         details: dict[str, JsonValue] = {"error": "stream_error"}
         if code := stream_error_code(error.body):
             details["code"] = code
         return ProviderError("rejected", False, details=details)
-    return failure(error)
+    return stream_failure(error)

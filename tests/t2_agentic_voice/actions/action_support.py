@@ -1,10 +1,10 @@
-"""What the action runner's tests share (plan 007, Track B): a made-up request system that answers,
+"""What the action runner's tests share (plan 007): a made-up request system that answers,
 refuses, raises, times out, loses its reply or replies late, its action with or without a
 lookup, a confirmed action built through the seals as the yes rule issues one (the yes rule
-itself is Track A's), and a run of the runner on a test's clock.
+itself is domain/yes_rule.py's), and a run of the runner on a test's clock.
 
 Every line of the action is its own here, so no test reaches the library's default lines
-(Track A's `default_action_lines`) unless it monkeypatches them."""
+(domain/action_lines.py's `default_action_lines`) unless it monkeypatches them."""
 
 from __future__ import annotations
 

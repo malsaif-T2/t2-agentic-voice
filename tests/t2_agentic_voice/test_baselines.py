@@ -1,8 +1,8 @@
-"""The baselines the tracks are compared with stay consistent: plan 002's (Block 0, step 11),
+"""The baselines the code is compared with stay consistent: plan 002's (step 11),
 whose fixed clip rebuilds to the hash the Groq request records and whose normalizer table agrees
-with itself row by row; and plan 003's speech request (Block 0, step 11), which holds the fields
+with itself row by row; and plan 003's speech request (step 11), which holds the fields
 the plan registers and is what the installed groq SDK sends for them, through the client every
-Groq adapter builds. What the tracks build is tested in their own files."""
+Groq adapter builds. The code compared with them is tested in its own files."""
 
 from __future__ import annotations
 

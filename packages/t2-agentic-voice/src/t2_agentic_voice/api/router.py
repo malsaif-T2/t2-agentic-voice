@@ -1,21 +1,40 @@
-"""The routes a runtime serves (api/runtime.py, "The router"; the design's 4.5 and 5.5; D-029),
-after the prefix an app includes them under: `t2v/1`'s `POST /join`, `POST` and `PATCH /offer`,
-and `GET /health`, `GET /ready`, `GET /client/1/t2v-client.js`, and `GET /dev` only with `env`
-dev and the dev page on, to loopback clients.
+"""The routes a runtime serves (api/runtime.py; the design's 4.5 and 5.5; D-029), after the prefix
+an app includes them under: `t2v/1`'s `POST /join`, `POST` and `PATCH /offer`, and `GET /health`
+(what the design's 10.5 lists that is built: the environment and the live calls), `GET /ready`
+and `GET /client/1/t2v-client.js`; and `GET /dev`, no `t2v/1` route, only with `env` dev and
+the dev page on, to loopback clients, `env` checked before the client's address is read, any
+other getting the server's plain 404. With the dev page come the test console's routes, under
+`/dev/` (api/dev_console.py).
 
-Every route answers 503 `not_started` while the runtime's lifespan has not run, or has ended,
-in the one error shape; every refusal and crash of a route is answered in it too
-(api/http_errors.py). No route declares a body parameter: each reads and parses its own body.
-With the dev page come the test console's routes, under `/dev/` (api/dev_console.py).
-`/join` mints no TURN credentials (plan 003, the owner's ruling of 2026-11-03; TD-048): it
-answers `server.ice_servers` as they are set. The browser's files, `t2v-client.js` and
-`dev.html`, are read from `STATIC` when first asked for, off the event loop, and kept.
+- **`/join`** reads the client's protocol version first, and answers a body of another version
+  400 `protocol_mismatch`, with its notice, before the strict parse and before the token is
+  verified; verifies the token once; refuses a `SignedConsent` whose version is not
+  `privacy.consent_version` when that is set (a plain `Consent`, as `DevIdentity` gives, is not
+  compared: D-029); fixes the call's language (`agent.call_language(request.language,
+  locale=caller.locale)`, kept to the call's end); and mints the call's ID and offer secret
+  (api/offers.py). It answers `server.ice_servers` as they are set, with no user name or
+  credential: it mints no TURN credentials (the owner's ruling of 2026-11-03; TD-048).
+- **`POST /offer`** hands voice the call's caller, consent and language with the offer
+  (`Calls.answer`). A call takes one offer: a second, or one after voice refused the first, gets
+  409 `already_offered`. The offer secret, in the `X-T2V-Offer-Secret` header or the body, never
+  in a URL, stops working when ICE completes or the call ends, and the call's own secret then
+  gets a 409, never a 403: a PATCH a quiet 409, logged at DEBUG with no value, `ice_completed`
+  once the call's `phase` is `connected`, and `call_ended` once it is `ended`, or None once
+  voice has forgotten it. A PATCH with the call's own secret before voice answered its offer
+  (not yet, or refused) gets the quiet 409 `not_offered`; `forbidden` (403) is for a secret
+  that is missing, wrong or not this call's, or a call whose record was dropped. A client's
+  `pc_id` never reaches Pipecat (plan 003's appendix, item 10).
+- **Every route**, `/health`, `/ready`, the client script and `/dev` included, answers 503
+  `not_started` while the runtime's lifespan has not run, or has ended (the decision log,
+  2026-11-03), in the one error shape; every refusal and crash of a route is answered in it too
+  (api/http_errors.py). No route declares a body parameter: each reads and parses its own body.
+  The browser's files, `t2v-client.js` and `dev.html`, are read from `STATIC` when first asked
+  for, off the event loop, and kept.
 """
 
 from __future__ import annotations
 
 import asyncio
-import ipaddress
 from collections.abc import Callable
 from contextlib import AbstractAsyncContextManager
 from dataclasses import dataclass, field
@@ -25,8 +44,10 @@ from typing import Final, Literal
 from fastapi import APIRouter, HTTPException, Request, Response
 from pydantic import BaseModel, ConfigDict, SecretStr, ValidationError
 
-from t2_agentic_voice.api.dev_console import DevFeed, mount_console
-from t2_agentic_voice.api.http_errors import Refusal, answering, read_body
+from t2_agentic_voice.adapters.dev_identity import is_loopback
+from t2_agentic_voice.api.dev_console import mount_console
+from t2_agentic_voice.api.dev_feed import DevFeed
+from t2_agentic_voice.api.http_errors import Refusal, add_routes, read_body
 from t2_agentic_voice.api.offers import CallRecord, CallRecords
 from t2_agentic_voice.api.protocol import (
     BODIES,
@@ -50,12 +71,12 @@ from t2_agentic_voice.voice.calls import Calls, Candidate
 from t2_agentic_voice.voice.protocol import PROTOCOL
 from t2_agentic_voice.voice.session.io import Clock
 
-# The browser's files the router serves: Track G's, shipped in the library's wheel.
+# The browser's files the router serves, shipped in the library's wheel.
 STATIC: Final = Path(__file__).parent / "static"
 CLIENT_SCRIPT: Final = "t2v-client.js"
 DEV_PAGE: Final = "dev.html"
 _SCRIPT_HEADERS: Final = {"X-Content-Type-Options": "nosniff", "Cache-Control": "no-cache"}
-# The dev page's headers: Track G's policy, which loads the client script alone, talks only to
+# The dev page's headers: a policy that loads the client script alone, talks only to
 # the page's own origin, takes only a data: image (the page's empty icon) and is never framed
 # (the browser criterion), since dev.html holds no script, style or handler of its own; no
 # referrer, the microphone for the page itself.
@@ -124,22 +145,17 @@ def build_router(
     """The runtime's routes over `served`, carrying `lifespan`."""
     routes = _Routes(served)
     router = APIRouter(lifespan=lifespan)
-    for path, method, handler in (
-        ("/join", "POST", routes.join),
-        ("/offer", "POST", routes.offer),
-        ("/offer", "PATCH", routes.candidates),
-        ("/health", "GET", routes.health),
-        ("/ready", "GET", routes.ready),
-        (f"/client/{PROTOCOL}/{CLIENT_SCRIPT}", "GET", routes.client),
-    ):
-        route = f"{method} {path}"
-        router.add_api_route(
-            path, answering(route, handler), methods=[method], include_in_schema=False
-        )
+    add_routes(
+        router,
+        ("POST", "/join", routes.join),
+        ("POST", "/offer", routes.offer),
+        ("PATCH", "/offer", routes.candidates),
+        ("GET", "/health", routes.health),
+        ("GET", "/ready", routes.ready),
+        ("GET", f"/client/{PROTOCOL}/{CLIENT_SCRIPT}", routes.client),
+    )
     if served.dev_page:
-        router.add_api_route(
-            "/dev", answering("GET /dev", routes.dev), methods=["GET"], include_in_schema=False
-        )
+        add_routes(router, ("GET", "/dev", routes.dev))
         if served.feed is not None:
             mount_console(
                 router,
@@ -284,8 +300,9 @@ class _Routes:
 
     async def dev(self, request: Request, reference: str) -> Response:
         """The dev page: `env` dev is checked before the client's address is read, and any other
-        `env`, or a client that is not loopback, gets the server's plain 404."""
-        if self._settings.env != "dev" or not loopback(_host(request)):
+        `env`, or a client that is not loopback (adapters/dev_identity.py's `is_loopback`, as the
+        dev caller and the test console read it), gets the server's plain 404."""
+        if self._settings.env != "dev" or not is_loopback(_host(request)):
             raise HTTPException(status_code=404)
         self._running()
         page = await self._file(DEV_PAGE)
@@ -328,14 +345,3 @@ def _json(model: BaseModel) -> Response:
 def _host(request: Request) -> str | None:
     """The client's address as the server saw it (a trusted proxy's forwarded one included)."""
     return None if request.client is None else request.client.host
-
-
-def loopback(host: str | None) -> bool:
-    """Whether `host` is this machine's loopback address, an IPv4-mapped one included."""
-    try:
-        address = ipaddress.ip_address((host or "").partition("%")[0])
-    except ValueError:
-        return False
-    if isinstance(address, ipaddress.IPv6Address) and address.ipv4_mapped is not None:
-        return address.ipv4_mapped.is_loopback
-    return address.is_loopback

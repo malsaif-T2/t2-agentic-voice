@@ -1,9 +1,7 @@
-"""What plan 007's Block 0 settled for its tracks holds: the yes rule's inputs bind the draft that
+"""The actions' contracts (plan 007) hold: the yes rule's inputs bind the draft that
 was read back, the outbox's row is frozen and hides what was said, the states are the design's,
 a read-back carries the line that ends it with no yes and the line said while the write runs,
-and a declined action says how. Its
-stubs' own tests are in the files named test_stubs_track_*.py, each its track's to delete as it
-fills them."""
+and a declined action says how."""
 
 from __future__ import annotations
 

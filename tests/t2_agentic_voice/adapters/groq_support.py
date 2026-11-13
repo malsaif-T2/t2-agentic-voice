@@ -1,9 +1,11 @@
-"""What the Groq adapter's tests share (test_groq_stt.py, test_groq_stt_checks.py): made-up keys,
-Block 0's fixed clip and baseline request, a fake Groq answering on a fake transport, and one
-transcription through the adapter. Nothing leaves the machine."""
+"""What the Groq adapters' tests share: made-up keys, the fixed clip and the baseline request of
+test_groq_stt.py and test_groq_stt_checks.py, a fake Groq answering on a fake transport, one
+transcription through the adapter, and the wait for the tasks a stream closed early leaves
+(`settle`, which the chat and speech checks read). Nothing leaves the machine."""
 
 from __future__ import annotations
 
+import asyncio
 import json
 import struct
 from collections.abc import Awaitable, Callable
@@ -22,7 +24,7 @@ FIXTURE = Path(__file__).parents[1] / "fixtures" / "groq_stt_request.json"
 BASELINE = json.loads(FIXTURE.read_text(encoding="utf-8"))
 KEY, OTHER = "made-up-settings-key-0123", "made-up-shell-key-4567"
 SETTING = "T2V_GROQ__API_KEY"
-# Block 0's fixed clip: 1 s at 16 kHz, sample i = (i * 97) % 4096 - 2048.
+# The fixed clip: 1 s at 16 kHz, sample i = (i * 97) % 4096 - 2048.
 CLIP = AudioClip(pcm16=b"".join(struct.pack("<h", (i * 97) % 4096 - 2048) for i in range(16_000)))
 SEGMENTS = [
     {"id": 0, "start": 0.0, "end": 0.6, "avg_logprob": -0.2, "no_speech_prob": 0.1},
@@ -78,3 +80,15 @@ def parts(request: httpx.Request) -> dict[str, tuple[dict[str, str], bytes]]:
         headers = {name.lower(): value for name, value in lines}
         found[headers["content-disposition"].split('"')[1]] = (headers, data)
     return found
+
+
+async def settle() -> set[asyncio.Task[Any]]:
+    """The tasks still pending once the loop has settled, this one's aside: a stream closed
+    between events or chunks leaves the SDK's and httpx's own async generators suspended, and
+    each one's finalizer, a task, closes the next on a later turn of the loop."""
+    for _ in range(100):
+        left = asyncio.all_tasks() - {asyncio.current_task()}
+        if not left:
+            break
+        await asyncio.sleep(0)
+    return left

@@ -1,4 +1,4 @@
-"""GroqChat's shell (adapters/groq_chat.py; plan 006, Block 0): built from the settings or in
+"""GroqChat's shell (adapters/groq_chat.py): built from the settings or in
 code on the client every Groq adapter shares, refusing what the settings refuse (GP-20); Groq's
 data flow; the key in no repr; and no `groq` type in its signatures (the design's 5.3). Its
 stream is tested in test_groq_chat.py and test_groq_chat_checks.py. Nothing leaves the machine:

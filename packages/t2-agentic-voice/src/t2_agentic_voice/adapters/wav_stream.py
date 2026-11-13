@@ -1,4 +1,4 @@
-"""A WAV file read as it streams in (plan 003, Track B). Groq's Orpheus answers each request with a
+"""A WAV file read as it streams in. Groq's Orpheus answers each request with a
 WAV whose bytes arrive in chunks split anywhere, even inside a sample, so `WavStream` takes the
 bytes as they come and gives back the PCM they hold, always in whole samples.
 

@@ -28,7 +28,7 @@ from t2_agentic_voice.actions.action_runner import ActionRunner
 from t2_agentic_voice.actions.runner import ToolRunner
 from t2_agentic_voice.actions.tools import ToolResult
 from t2_agentic_voice.agent.context import call_context
-from t2_agentic_voice.core.settings.words import LanguageCode
+from t2_agentic_voice.core.settings.words import primary_code
 from t2_agentic_voice.core.yes_inputs import (
     HEARD_WORDS_SEAL,
     READ_BACK_SEAL,
@@ -64,7 +64,7 @@ CONVERSATION = (
 def confirmed(plan: ReadBackPlan, words: str | None = None, *, turn_id: int = 3) -> ConfirmedAction:
     """The confirmed action of `plan`'s draft as the real yes rule issues it: `words` (a yes
     with the send word unless given) heard after the closing question ended."""
-    code: LanguageCode = "en" if plan.language == "en" else "ar"
+    code = primary_code(plan.language)
     heard = HeardWords.model_validate(
         {
             "turn_id": turn_id,

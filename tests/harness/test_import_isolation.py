@@ -2,7 +2,7 @@
 fixture runs: `groq` reads `GROQ_LOG` on import and `opentelemetry.context` reads
 `OTEL_PYTHON_CONTEXT` (plan 002's step 2), and Pipecat, loguru, websockets and fastapi read
 their own (plan 003's reading of step 4). This module imports groq and the context at its top,
-as Track B's adapter and core's tracing do, and records what it saw then;
+as the Groq adapters and core's tracing do, and records what it saw then;
 tests/harness/test_isolation.py runs it in a child whose shell sets them all."""
 
 from __future__ import annotations

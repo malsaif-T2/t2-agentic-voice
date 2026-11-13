@@ -15,6 +15,10 @@ from t2_agentic_voice.core.settings.base import Group
 
 SttProvider = Literal["groq"]
 SttModel = Literal["whisper-large-v3", "whisper-large-v3-turbo"]
+# The least Groq bills a transcription request, in seconds, however short its audio (its
+# pricing, read 2026-11-01; the design's 10.4): the adapter's billed seconds, the session's
+# usage and the echo timings count it so.
+WHISPER_MIN_BILLED_S = 10.0
 # The language a live call sends Whisper: the session's, none (for Whisper to detect), or each
 # turn's from a spoken-language classifier.
 LiveLanguage = Literal["session", "auto", "classified"]

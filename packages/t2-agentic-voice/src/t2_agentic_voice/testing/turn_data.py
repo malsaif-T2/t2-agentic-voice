@@ -2,8 +2,8 @@
 runner that scores a call (a judge of the reply, its language, a search made when needed, the
 guard's blocks, the time to the first clause) reads what the caller heard and what the talker
 did through the public `evals` facade, never through the talker's own events, which are not
-public. Frozen, a misspelt key an error. Plan 006's Track C fills them from the session and the
-talker; this module holds their shapes.
+public. Frozen, a misspelt key an error. The text call fills them from the session and the
+talker (testing/text_turn.py); this module holds their shapes.
 """
 
 from __future__ import annotations

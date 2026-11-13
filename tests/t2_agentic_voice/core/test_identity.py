@@ -150,7 +150,7 @@ def test_only_a_signed_consent_is_a_verified_tokens_and_only_adapters_build_one(
 
 
 # What a module might write to reach the seal or build a signed consent, with the lines
-# `poe arch` reports, read with this repository's harness.toml as Track D's recorder.
+# `poe arch` reports, read with this repository's harness.toml as the session's recorder.
 STAR = "from t2_agentic_voice.core.identity import *\n"
 MODULE = "from t2_agentic_voice.core import identity\n"
 REACHES: dict[str, tuple[str, list[int]]] = {

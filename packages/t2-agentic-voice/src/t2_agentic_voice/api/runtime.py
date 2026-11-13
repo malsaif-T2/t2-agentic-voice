@@ -38,48 +38,13 @@ plan's interfaces".
   closed the same way. It runs once at a time: a second entry while it runs (a router included
   twice) is a ConfigurationError. No error it raises holds a secret: Starlette sends its
   traceback's text to uvicorn's error log.
-- **The router** (api/router.py) serves, after its prefix, the `t2v/1` routes, `POST /join`,
-  `POST` and `PATCH /offer` (each with the call's offer secret, in the `X-T2V-Offer-Secret`
-  header or the body, never in a URL), and `GET /health` (what the design's 10.5 lists that is
-  built: the environment and the live calls), `GET /ready` and `GET /client/1/t2v-client.js`.
-  `GET /dev` is no `t2v/1` route: it is mounted only with `env` dev and the dev page on
-  (`server.dev_page`, or `t2v dev`), and a client that is not loopback, or any `env` but dev,
-  checked before the client's address is read, gets the server's plain 404; the test console
-  comes with it, its feed an observer of every event (api/dev_console.py). `/join` reads the
-  client's protocol version first, verifies the token once, refuses a `SignedConsent` whose
-  version is not `privacy.consent_version` when that is set (a plain `Consent`, as `DevIdentity`
-  gives, is not compared: D-029), fixes the call's language
-  (`agent.call_language(request.language, locale=caller.locale)`, kept to the call's end), and
-  mints the call's ID and offer secret. It answers `server.ice_servers` as they are set, with no
-  user name or credential: no TURN credentials are minted until the deployment (the owner,
-  2026-11-03; TD-048). `POST /offer` hands voice the call's caller, consent and language with
-  the offer (`Calls.answer`). A call takes one offer: a second, or one after voice refused the
-  first, gets 409 `already_offered`. The offer secret stops working when ICE completes or the call
-  ends, and the call's own secret then gets a 409, never a 403: a PATCH a quiet 409, logged at
-  DEBUG with no value, `ice_completed` once the call's `phase` is `connected`, and `call_ended`
-  once it is `ended`, or None once voice has forgotten it. A PATCH with the call's own secret
-  before voice answered its offer (not yet, or refused) gets the quiet 409 `not_offered`;
-  `forbidden` (403) is for a secret that is missing, wrong or not this call's. A client's
-  `pc_id` never reaches Pipecat (item 10). Every route the router serves, `/health`, `/ready`,
-  the client script and `/dev` included, answers "runtime not started" (503 `not_started`) while
-  the lifespan has not run (the decision log, 2026-11-03). The router carries the lifespan,
-  which FastAPI merges when the router is included. In the mount, the app's own CORS
-  middleware answers, and the runtime says so at startup (the design's 5.5).
-- **The record of each call** (api/offers.py). The router keeps its own record of each call it
-  joined, on the runtime's clock: a join never offered is dropped once its join token's window
-  has passed, `join.ttl_s` plus twice `join.max_clock_skew_s` after the join; and an offered
-  call's record `FORGOTTEN_KEPT_S` (60 s) after voice holds it no longer (`phase` None), counted
-  from the first sweep that finds it so. The lifespan sweeps every `SWEEP_PERIOD_S`. A request
-  for a call whose record was dropped gets 403 `forbidden`, as for a call never joined.
-- **Bodies and errors** (api/http_errors.py). Each `t2v/1` route answers a `Content-Type` other
-  than JSON 415 `unsupported_media_type` before it reads a byte, reads its raw body itself under
-  its route's cap (`BODIES`, 413 `too_large`), and parses it with `model_validate_json`; no
-  route declares a FastAPI body parameter. `/join` answers a body of another protocol version
-  400 `protocol_mismatch`, with its notice, before the strict parse and before the token is
-  verified. Every error of every route, a crash included, answers api/protocol.py's
-  `ErrorBody`, with a status and a code its `BODIES` entry lists (GP-19); its reference is
-  random and logged with the refusal's event, and its message never holds a value the request
-  sent.
+- **The router** (api/router.py, which says what each route does): after its prefix, the
+  `t2v/1` routes and, with `env` dev and the dev page on (`server.dev_page`, or `t2v dev`),
+  `GET /dev` and the test console, its feed an observer of every event (api/dev_feed.py). It
+  carries the lifespan, which FastAPI merges when the router is included; in the mount, the
+  app's own CORS middleware answers, and the runtime says so at startup (the design's 5.5). Its
+  record of each call is api/offers.py's, swept every `SWEEP_PERIOD_S` on the runtime's clock;
+  its bodies and its one error shape are api/http_errors.py's (GP-19).
 - **Observers** (`on`) run off the call's path: queued (at most `OBSERVER_QUEUE` events; past
   it an event is dropped and logged), each with a timeout (`OBSERVER_TIMEOUT_S`); one that raises
   or runs over is logged by its type and the call goes on; none can change a call (the design's
@@ -102,12 +67,13 @@ from typing import Any, Final
 from fastapi import APIRouter
 
 from t2_agentic_voice.actions.action_runner import ActionRunner
+from t2_agentic_voice.agent.talker import chat_talkers
 from t2_agentic_voice.api import router as routing
 from t2_agentic_voice.api.actions import open_actions
-from t2_agentic_voice.api.dev_console import DevFeed
-from t2_agentic_voice.api.lockfile import LockFile
+from t2_agentic_voice.api.dev_feed import DevFeed
+from t2_agentic_voice.api.lockfile import LockFile, agent_folder
 from t2_agentic_voice.api.offers import FORGOTTEN_KEPT_S, CallRecords
-from t2_agentic_voice.api.providers import Providers, opened, talkers
+from t2_agentic_voice.api.providers import Providers, opened
 from t2_agentic_voice.api.router import Running
 from t2_agentic_voice.api.voices import open_voices
 from t2_agentic_voice.core.config import VoiceSettings
@@ -268,7 +234,7 @@ class VoiceRuntime:
         tracing = Tracing.from_settings(settings, tracer_provider=self._tracer_provider)
         stack.push_async_callback(asyncio.to_thread, tracing.shutdown)
         await asyncio.to_thread(_warm)
-        folder = settings.storage.var_dir / agent.name
+        folder = agent_folder(settings, agent)
         voices = await open_voices(agent, settings, providers.tts, stack=stack)
         used_tokens = await SqliteUsedTokens.open(folder / "used_tokens.sqlite3")
         stack.push_async_callback(used_tokens.aclose)
@@ -277,7 +243,7 @@ class VoiceRuntime:
         stack.push_async_callback(_drained, self._events, observing)
         actions = await open_actions(agent, settings, clock=self._clock, stack=stack)
         self._actions = actions
-        talker = talkers(agent, settings, providers.chat, actions)  # each call's, for the talker
+        talker = chat_talkers(agent, settings, providers.chat, actions)  # each call's talker
         talking: dict[str, Any] = {} if classifier is None else {"classifier": classifier}
         if talker is not None:
             talking |= {"talker": talker, "chat": providers.chat}

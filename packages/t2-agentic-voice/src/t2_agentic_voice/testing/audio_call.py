@@ -22,13 +22,13 @@ nowhere but the replay, which reads its `Interrupted` and keeps every one of the
 (`emitted`), so a test reads the path the call took through the session (the parity test of
 `TextCall` and `AudioCall`, the design's 9.5).
 
-A team's agent may be given (`agent`, with `chat`, the chat model the library's talker writes
-with, for one that runs the talker), so a clip is replayed through its own talker and tools,
-each call's `ChatTalker` built as the runtime builds it (testing/text_watch.py's
-`chat_talkers`); each call then greets with the reply in that agent's language of the
-clip's tag. `turn` replays a clip as a turn said while the agent is silent, once the greeting
-has played, and reads its time to first audio (turn_replay.py's `TurnReplay`), run T's measure
-(plan 006).
+A team's agent may be given (`agent`, with `chat`, the chat model the library's talker writes with,
+for one that runs the talker), so a clip is replayed through its own talker and tools, each call's
+`ChatTalker` built as the runtime builds it (agent/talker.py's `chat_talkers`, its actions' runner
+actions/agent_tools.py's `action_runner`); each call then greets with the reply in that agent's
+language of the clip's tag. `turn` replays a clip as a turn said while the agent is silent, once the
+greeting has played, and reads its time to first audio (turn_replay.py's `TurnReplay`), run T's
+measure (plan 006).
 
 Each call takes the live path, so each of its speech-to-text requests carries the Whisper prompt
 a live call sends (voice/stt_bridge.py's `call_prompts`, plan 006's Q23): the agent's vocabulary,
@@ -42,7 +42,9 @@ from collections.abc import Callable, Sequence
 from typing import TYPE_CHECKING
 
 from t2_agentic_voice.actions.action_runner import ActionRunner
+from t2_agentic_voice.actions.agent_tools import action_runner, actions_of
 from t2_agentic_voice.actions.memory_outbox import MemoryOutbox
+from t2_agentic_voice.agent.talker import chat_talkers
 from t2_agentic_voice.core.config import VoiceSettings
 from t2_agentic_voice.core.errors import ConfigurationError
 from t2_agentic_voice.core.events import Event, Interrupted
@@ -60,7 +62,6 @@ from t2_agentic_voice.testing.overlap_replay import (
     RequestPart,
     replay_of,
 )
-from t2_agentic_voice.testing.text_watch import actions_of, chat_talkers
 from t2_agentic_voice.testing.turn_replay import TurnReplay, turn_replay_of
 from t2_agentic_voice.testing.turns import CLIP_RATE
 from t2_agentic_voice.voice.calls import VoiceCalls
@@ -154,10 +155,9 @@ class AudioCall:
             for line in language.progress.values():
                 key = (line, language.tag)
                 self._phrases.lines[key] = await self._said(line, language.tag)
-        actions = actions_of(self.agent or _AGENT)
-        if actions:  # the part that acts, as the runtime gives it: one runner for every call
-            per_day = self.settings.limits.actions_per_caller_per_day
-            self.actions = ActionRunner(actions, outbox=self.outbox, per_caller_per_day=per_day)
+        agent = self.agent or _AGENT
+        if actions_of(agent):  # the part that acts, as the runtime gives it: one for every call
+            self.actions = action_runner(agent, self.settings, outbox=self.outbox)
         self._calls = VoiceCalls(
             agent=self.agent or _AGENT,
             settings=self.settings,

@@ -1,14 +1,14 @@
-"""What the tests of `TextCall`'s actions and of `ActionSafetySuite` share (plan 007, Track D): a
+"""What the tests of `TextCall`'s actions and of `ActionSafetySuite` share (plan 007): a
 made-up action over a made-up desk, an agent that declares it, the read-back the session would
 play for it, a `ConfirmedAction` and a record entry built through their seals as only the yes
-rule and the record build them, and stand-ins for the parts other tracks fill (the claims of
-Track A, the jobs of Track B), each patched in the test that needs it alone.
+rule and the record build them, and stand-ins for the guard's rule A (`check_claims`) and the
+action runner's jobs, each patched in the test that needs it alone.
 
 A test's scripted talker keeps each plan from the session (`read_back_steps`, text_call_support's
 `Asked`) and says the plan's lines as clauses: the session plays them as it plays any clause,
 captioned as written, which is how the text call finds a read-back's parts, and never starts
-confirming, so a test's yes goes to the talker, and the tests hold before and after Track C's
-session reads a read-back back itself."""
+confirming, so a test's yes goes to the talker, and the tests hold whether or not the session
+reads a read-back back itself."""
 
 from __future__ import annotations
 
@@ -163,7 +163,7 @@ def context(request_id: str = "r-1") -> ActionContext:
 
 @dataclass
 class FakeJobs:
-    """The part that acts, as Track B fills it: each job ends as `kind`, with `line`."""
+    """The part that acts, as the action runner fills it: each job ends as `kind`, with `line`."""
 
     kind: OutcomeKind = "done"
     line: SpokenLine = field(default_factory=lambda: line("Done, number 5101."))
@@ -190,7 +190,7 @@ class FakeJobs:
 
 @dataclass
 class Claimed:
-    """A stand-in for Track A's rule A: a clause holding a phrase of `claims` or `any_action`
+    """A stand-in for the guard's rule A: a clause holding a phrase of `claims` or `any_action`
     passes only when an evidence of that action holds every number the clause holds."""
 
     calls: list[dict[str, Any]] = field(default_factory=list)
@@ -227,12 +227,12 @@ class Claimed:
 def stand_in_record(
     monkeypatch: pytest.MonkeyPatch, entries: tuple[CompletedAction, ...] = ()
 ) -> None:
-    """Track B's record of completed actions, stood in for in this test alone."""
+    """The action record's completed actions, stood in for in this test alone."""
     monkeypatch.setattr(ActionRecord, "entries", lambda self: entries)
 
 
 def stand_in_claims(monkeypatch: pytest.MonkeyPatch) -> Claimed:
-    """Track A's claim rule, stood in for in this test alone."""
+    """The guard's claim rule, stood in for in this test alone."""
     claimed = Claimed()
     monkeypatch.setattr(guard, "check_claims", claimed.check)
     monkeypatch.setattr(rule_a, "default_claims", lambda code: ("i've booked",))

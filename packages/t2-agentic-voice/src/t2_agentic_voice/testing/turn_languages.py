@@ -1,7 +1,7 @@
-"""Each turn's language in a file-fed call of an agent of two languages (plan 007's Block H, run
-H's H1): `turn_languages`, which `poe eval-languages` runs over the golden set, and `chosen`,
-the language each of those turns would go in for a call held in any of them; provisional,
-re-exported by the `evals` facade, since an app imports only public modules.
+"""Each turn's language in a file-fed call of an agent of two languages (D-086, run H's H1):
+`turn_languages`, which `poe eval-languages` runs over the golden set, and `chosen`, the language
+each of those turns would go in for a call held in any of them; provisional, re-exported by the
+`evals` facade, since an app imports only public modules.
 
 Shaped as testing/turns.py's `turn_ends`: each clip a fresh call of one `VoiceCalls`, started
 once, fed at real-time pace with `lead_s` of silence before it and `tail_s` after it; a

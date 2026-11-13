@@ -1,13 +1,14 @@
-"""The outbox on SQLite (domain/ports/outbox.py), kept under `storage.var_dir` in its own file, on
-the shape of adapters/used_tokens.py. `INSERT OR IGNORE` on the request ID is what makes a write
-never go twice, and a row is durable before `add` returns.
+"""The outbox on SQLite (domain/ports/outbox.py), kept under `storage.var_dir` in its own file,
+opened as the used-token store's is (adapters/sqlite_files.py). `INSERT OR IGNORE` on the request
+ID is what makes a write never go twice, and a row is durable before `add` returns.
 
 **How.** The file is the one `open` is given, its folder made when missing; the caller of
 `open` puts it under `storage.var_dir`. Every statement commits on its own (autocommit) with
 `synchronous` FULL, so a row is on disk before `add` or `mark` returns. The SQLite work runs in
 a worker thread (`asyncio.to_thread`), so a commit never stalls the event loop that paces every
 call's audio; one connection serves every thread, its lock held for each statement. Times are
-kept as whole microseconds since the epoch, read back in UTC; rows come oldest first, by
+kept as whole microseconds since the epoch, read back in UTC (sqlite_files.py's `micros` and
+`instant`); rows come oldest first, by
 `created_at`, then the order they were added. A row read back is parsed into an `OutboxEntry`
 (a boundary). `mark` refuses a request ID the file does not hold (LookupError, naming no value),
 and `count` a naive `since`; `count` leaves out the rows the caps never count (`NOT_WRITTEN`).
@@ -20,10 +21,11 @@ import asyncio
 import sqlite3
 import threading
 from collections.abc import Callable
-from datetime import UTC, datetime, timedelta
+from datetime import datetime
 from pathlib import Path
 from typing import Any, Self
 
+from t2_agentic_voice.adapters.sqlite_files import connect, instant, micros, utc_now
 from t2_agentic_voice.domain.ports.outbox import (
     NO_ROW,
     NOT_WRITTEN,
@@ -32,8 +34,6 @@ from t2_agentic_voice.domain.ports.outbox import (
     aware_since,
 )
 
-_EPOCH = datetime(1970, 1, 1, tzinfo=UTC)
-_MICROSECOND = timedelta(microseconds=1)
 _COLUMNS = (
     "request_id",
     "call_id",
@@ -71,45 +71,19 @@ _COUNT = (
 )
 
 
-def _utc_now() -> datetime:
-    return datetime.now(UTC)
-
-
-def _micros(instant: datetime) -> int:
-    """`instant` as whole microseconds since the epoch: exact, where a float timestamp is not."""
-    return (instant - _EPOCH) // _MICROSECOND
-
-
-def _instant(micros: int) -> datetime:
-    return _EPOCH + micros * _MICROSECOND
-
-
 def _row(entry: OutboxEntry) -> tuple[Any, ...]:
     values = entry.model_dump()
-    values["created_at"] = _micros(entry.created_at)
-    values["updated_at"] = _micros(entry.updated_at)
+    values["created_at"] = micros(entry.created_at)
+    values["updated_at"] = micros(entry.updated_at)
     return tuple(values[name] for name in _COLUMNS)
 
 
 def _entry(row: tuple[Any, ...]) -> OutboxEntry:
     """A row read back, parsed."""
     values = dict(zip(_COLUMNS, row, strict=True))
-    values["created_at"] = _instant(values["created_at"])
-    values["updated_at"] = _instant(values["updated_at"])
+    values["created_at"] = instant(values["created_at"])
+    values["updated_at"] = instant(values["updated_at"])
     return OutboxEntry.model_validate(values)
-
-
-def _connect(path: Path) -> sqlite3.Connection:
-    """The store's database at `path`, its folder and table created when missing."""
-    path.parent.mkdir(parents=True, exist_ok=True)
-    connection = sqlite3.connect(path, isolation_level=None, check_same_thread=False)
-    try:
-        for statement in _SCHEMA:
-            connection.execute(statement)
-    except BaseException:
-        connection.close()
-        raise
-    return connection
 
 
 class SqliteOutbox:
@@ -122,10 +96,10 @@ class SqliteOutbox:
         self._lock = threading.Lock()
 
     @classmethod
-    async def open(cls, path: Path, *, _now: Callable[[], datetime] = _utc_now) -> Self:
+    async def open(cls, path: Path, *, _now: Callable[[], datetime] = utc_now) -> Self:
         """The store kept in the file `path`, created when absent; called at the runtime's
         start. Close it with `aclose()`."""
-        connection = await asyncio.to_thread(_connect, path)
+        connection = await asyncio.to_thread(connect, path, _SCHEMA)
         return cls(connection, _now)
 
     def _run(self, statement: str, parameters: tuple[Any, ...]) -> sqlite3.Cursor:
@@ -153,7 +127,7 @@ class SqliteOutbox:
     ) -> None:
         """Move the row `request_id` to `state` (the `Outbox` port's `mark`), its result kept
         when none is given."""
-        parameters = (state, note, result_json, _micros(self._now()), request_id)
+        parameters = (state, note, result_json, micros(self._now()), request_id)
         cursor = await asyncio.to_thread(self._run, _MARK, parameters)
         if cursor.rowcount != 1:
             raise LookupError(NO_ROW)
@@ -182,7 +156,7 @@ class SqliteOutbox:
         """How many writes of `action` `subject` asked for since `since` that may have reached
         the system: every row but one in `NOT_WRITTEN`, so a state that list does not name
         counts."""
-        parameters = (subject, action, _micros(aware_since(since)), *NOT_WRITTEN)
+        parameters = (subject, action, micros(aware_since(since)), *NOT_WRITTEN)
         rows = await asyncio.to_thread(self._all, _COUNT, parameters)
         counted: int = rows[0][0]
         return counted

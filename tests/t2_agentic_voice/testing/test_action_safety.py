@@ -1,12 +1,11 @@
-"""`ActionSafetySuite` (testing/action_safety.py, testing/action_scenes.py; plan 007, Track D): the
+"""`ActionSafetySuite` (testing/action_safety.py, testing/action_scenes.py; plan 007): the
 design's 9.3 cases, one `test_` method each, which pytest finds on a team's subclass and never on
 the base; what a subclass must give, and what the suite refuses of it; and each case's setting:
 the caller's lines in the call's language, the fake model answering by what each request holds,
 the action swapped for its watched or faulted copy, and the suite's own tools beside it.
 
-The cases themselves run a `TextCall` through Tracks A to C's code, which raises in this
-worktree: they are run on the minimal example's action once the tracks merge (the plan's
-integration)."""
+The cases themselves run a `TextCall` on the real session, the yes rule and the action runner:
+tests/minimal_example/test_callback_safety.py runs them on the minimal example's action."""
 
 from __future__ import annotations
 
@@ -60,7 +59,7 @@ CASES = [
     "test_a_model_yes_over_the_closing_question_with_no_send_word_is_asked_again",
     "test_the_closing_question_heard_back_as_it_plays_confirms_nothing",
     "test_an_unlisted_yes_once_the_question_ended_confirms_once",
-    # Said in the agent's other language than the read-back's (plan 007's Block H).
+    # Said in the agent's other language than the read-back's (D-086).
     "test_a_yes_with_a_change_in_another_language_is_a_correction",
     "test_a_no_word_in_another_language_is_never_a_yes",
 ]
@@ -80,7 +79,7 @@ class _Booking(ActionSafetySuite):
 
 
 def _words(monkeypatch: pytest.MonkeyPatch) -> list[tuple[str, tuple[str, ...]]]:
-    """Track A's word lists, stood in for: each call's code and the action's send words."""
+    """The yes rule's word lists, stood in for: each call's code and the action's send words."""
     asked: list[tuple[str, tuple[str, ...]]] = []
 
     def words(code: str, *, action_send: tuple[str, ...] = (), **added: object) -> ConsentWords:

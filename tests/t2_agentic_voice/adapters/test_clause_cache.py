@@ -15,6 +15,7 @@ from pathlib import Path
 
 import pytest
 from t2_agentic_voice.adapters import clause_cache
+from t2_agentic_voice.adapters.clause_cache import READ_TIMEOUT_S
 from t2_agentic_voice.adapters.clause_counts import ClauseCounts
 from t2_agentic_voice.adapters.wav_files import write_whole
 from t2_agentic_voice.core.errors import ProviderError
@@ -23,6 +24,7 @@ from t2_agentic_voice.domain.ports.text_to_speech import AudioChunk, HeldSpeech
 
 from tests.leaks import holding, shown
 from tests.t2_agentic_voice.adapters.clause_support import (
+    RELAXED_READ_S,
     TEXT,
     VOICES,
     OddSpeech,
@@ -34,6 +36,9 @@ from tests.t2_agentic_voice.adapters.clause_support import (
     takes_in,
 )
 from tests.t2_agentic_voice.fakes import FakeTextToSpeech
+
+# Each test here reads its takes within a limit no machine's load reaches (conftest.py).
+pytestmark = pytest.mark.usefixtures("relaxed_reads")
 
 ARABIC = "طلبك مفتوح، وبنتصل عليك اليوم."
 
@@ -212,8 +217,9 @@ def test_two_takes_of_one_clause_at_once_keep_one_file(tmp_path: Path) -> None:
 def test_a_slow_read_is_a_miss_its_entry_kept_and_a_file_gone_is_dropped(
     tmp_path: Path, monkeypatch: pytest.MonkeyPatch
 ) -> None:
-    """A read past 100 ms is a miss, the clause then requested as today, and its entry stays;
-    a file someone removed is a miss, its entry dropped and the clause kept anew."""
+    """A read past 100 ms (the cache's own limit, set back for that read alone) is a miss, the
+    clause then requested as today, and its entry stays; a file someone removed is a miss, its
+    entry dropped and the clause kept anew."""
     fake = FakeTextToSpeech()
 
     async def scene() -> None:
@@ -227,9 +233,11 @@ def test_a_slow_read_is_a_miss_its_entry_kept_and_a_file_gone_is_dropped(
             return read(key)
 
         monkeypatch.setattr(cache._files, "read", slow)
+        monkeypatch.setattr(clause_cache, "READ_TIMEOUT_S", READ_TIMEOUT_S)
         started = time.perf_counter()
         assert await cache.held(TEXT, language="en") is None
         assert time.perf_counter() - started < 0.35
+        monkeypatch.setattr(clause_cache, "READ_TIMEOUT_S", RELAXED_READ_S)
         monkeypatch.setattr(cache._files, "read", read)
         assert await cache.held(TEXT, language="en") is not None  # its entry stayed
         (path,) = takes_in(tmp_path)

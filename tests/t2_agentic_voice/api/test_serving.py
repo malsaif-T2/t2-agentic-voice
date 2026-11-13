@@ -1,6 +1,6 @@
 """A real server (api/server.py): `serve()` in a child process, on this machine's loopback, on the
 fakes. It answers `/health`, `/ready` and a join; voice's entry point starts on a selector event
-loop, which uvicorn takes from `asyncio.run` (D-029: UNVERIFIED until Track F ran one); and with
+loop, which uvicorn takes from `asyncio.run` (D-029); and with
 a global tracer, meter and logger provider and `FASTAPI_OTEL_AUTO_CONFIGURE=true`, FastAPI's
 telemetry records nothing (D-023). The child is serving_child.py."""
 

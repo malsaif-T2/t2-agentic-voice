@@ -3,7 +3,7 @@ token route and the library's router in one app with FastAPI's telemetry off and
 CORS, and uvicorn trusting proxy headers only from `server.forwarded_allow_ips`; the token
 route naming the settings' demo customer, and the mock ticket system kept where the settings
 say, its page served (tests/ole5_voice/tickets/test_page.py tests the page). The library's
-runtime is Track F's: these tests give the app a router of their own, and `make_app` fakes of
+runtime has its own tests: these tests give the app a router of their own, and `make_app` fakes of
 the runtime and the signed tokens."""
 
 from __future__ import annotations

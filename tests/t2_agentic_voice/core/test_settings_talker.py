@@ -1,4 +1,4 @@
-"""The talker's settings (plan 006, Block 0): the `llm` and `guard` groups, `words.vocabulary` and
+"""The talker's settings (plan 006): the `llm` and `guard` groups, `words.vocabulary` and
 `session.mode`'s `talker`, each with the design's 7.6 default, refused when wrong under its own
 name, and `session.mode` left unset so that no setting changes its meaning: an echo agent still
 runs the echo, `echo` still runs it, and only an agent that declares instructions runs the
