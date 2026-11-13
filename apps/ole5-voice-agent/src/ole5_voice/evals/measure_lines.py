@@ -15,7 +15,6 @@ items, and a secret setting is shown only as set or not set.
 
 from __future__ import annotations
 
-from collections.abc import Iterable, Mapping
 from datetime import datetime
 from typing import Annotated, Literal, Self
 
@@ -24,9 +23,8 @@ from pydantic import Field, model_validator
 from ole5_voice.evals.first_audio_cache import ClauseSummary
 from ole5_voice.evals.first_audio_score import PathStats, ReplyPath
 from ole5_voice.evals.models import Commit, Model, Name, Sha256, Split
-from ole5_voice.evals.runs import HELD_OUT_MIN_ITEMS, Note, Plain, Shown
+from ole5_voice.evals.runs import ModelName, Note, Plain, Shown, check_groups
 
-ModelName = Annotated[Plain, Field(min_length=1, max_length=128)]
 _Ms = Annotated[float, Field(ge=0, allow_inf_nan=False)]
 _Usd = Annotated[float, Field(ge=0, allow_inf_nan=False)]
 
@@ -85,7 +83,8 @@ class UncertainLine(Model):
 
     @model_validator(mode="after")
     def _held_out_groups(self) -> Self:
-        _groups_fit(self.split, self.arm.items, self.breakdowns.values())
+        counts = [group.items for values in self.breakdowns.values() for group in values.values()]
+        check_groups(self.split, self.arm.items, counts, "stratum values")
         return self
 
 
@@ -143,19 +142,7 @@ class FirstAudioLine(Model):
 
     @model_validator(mode="after")
     def _held_out_groups(self) -> Self:
-        _groups_fit(self.split, self.items, [self.ends])
-        return self
-
-
-def _groups_fit(
-    split: Split, items: int, strata: Iterable[Mapping[str, UncertainCount | FirstAudioGroup]]
-) -> None:
-    """ValueError when a group covers more items than the run, or a held-out run's covers fewer
-    than `HELD_OUT_MIN_ITEMS`."""
-    counts = [group.items for values in strata for group in values.values()]
-    if any(count > items for count in counts):
-        raise ValueError("a stratum value covers no more items than the run")
-    if split == "held-out" and any(count < HELD_OUT_MIN_ITEMS for count in counts):
-        raise ValueError(
-            f"a held-out run's stratum values each cover at least {HELD_OUT_MIN_ITEMS} items"
+        check_groups(
+            self.split, self.items, [g.items for g in self.ends.values()], "stratum values"
         )
+        return self

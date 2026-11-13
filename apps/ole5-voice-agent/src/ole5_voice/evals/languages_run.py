@@ -1,4 +1,4 @@
-"""`poe eval-languages`: run H's H1 (plan 007's Block H), each turn's language on the golden set,
+"""`poe eval-languages`: plan 007's run H, its H1, each turn's language on the golden set,
 offline and with no spend, into a new folder, `--out`; and `--read`, condition 4 of its keep
 rule read across a commit's passes.
 
@@ -46,15 +46,14 @@ from t2_agentic_voice import (
     evals,
     get_logger,
 )
-from t2_agentic_voice.ports import AudioClip, LanguageClassifier
+from t2_agentic_voice.ports import LanguageClassifier
 
 from ole5_voice import LOGGERS
 from ole5_voice.agent import ECHO_AGENT
 from ole5_voice.evals import history
-from ole5_voice.evals.audio import read_wav
+from ole5_voice.evals.cli import require
 from ole5_voice.evals.eot import LEAD_S, TAIL_S
 from ole5_voice.evals.eot_score import Decision, judge
-from ole5_voice.evals.items import HISTORY_FILE
 from ole5_voice.evals.languages_card import (
     PAUSED_KIND,
     TURNS_FILE,
@@ -80,8 +79,16 @@ from ole5_voice.evals.languages_setup import (
 )
 from ole5_voice.evals.models import NAME_RULE, Split, is_name
 from ole5_voice.evals.run_lines import AnyLine
-from ole5_voice.evals.run_parts import DATA, Choice, Parts, Todo, audio_roots, load_plan
-from ole5_voice.evals.runs import holds_placeholder
+from ole5_voice.evals.run_parts import (
+    DATA,
+    Choice,
+    Parts,
+    Todo,
+    audio_roots,
+    clip_of,
+    load_plan,
+    marked_end,
+)
 from ole5_voice.evals.worktree import check_out, refused, run_checkout
 
 _DESCRIPTION = "Measure each turn's language on the golden set, offline, into a new folder --out."
@@ -113,26 +120,9 @@ def _require(parser: argparse.ArgumentParser, args: argparse.Namespace) -> None:
         if any(getattr(args, n) for n in ("split", "classifier", "out", "note", "smoke_only")):
             parser.error("--read takes the passes alone")
         return
-    named = ("split", "classifier", "out", "note")
-    missing = [f"--{name}" for name in named if not getattr(args, name)]
-    if missing:
-        parser.error(f"a pass needs {', '.join(missing)}")
-    if holds_placeholder(args.note):
-        parser.error("--note holds an install placeholder, which the docs check refuses")
+    require(parser, args, ("split", "classifier", "out", "note"), noun="pass")
     if args.smoke_only and args.split != "dev":
         parser.error("--smoke-only is a dev run: its variant is the first dev one")
-
-
-def _true_end(todo: Todo) -> float:
-    marks = todo.variant.turn_ends_ms
-    if not marks:
-        raise refused("a paused request has no turn end marked", "mark it in the recorder")
-    return float(marks[-1])
-
-
-def _clip(todo: Todo) -> AudioClip:
-    """A variant's audio, its segments joined in order (16 kHz mono PCM16, as checked)."""
-    return AudioClip(pcm16=b"".join(read_wav(path).pcm16 for path in todo.request.segments))
 
 
 def _result(todo: Todo, side: Split, turns: tuple[evals.LanguageTurn, ...]) -> LanguageResult:
@@ -140,7 +130,7 @@ def _result(todo: Todo, side: Split, turns: tuple[evals.LanguageTurn, ...]) -> L
     judged = None
     if item.kind == PAUSED_KIND:
         ends = [Decision(speech_stop_ms=t.speech_stop_ms, end_ms=t.end_ms) for t in turns]
-        judged = judge(ends, _true_end(todo), labelled=True)
+        judged = judge(ends, marked_end(todo), labelled=True)
     return LanguageResult(
         item=item.id,
         variant=variant.id,
@@ -199,7 +189,7 @@ async def _fed(
 ) -> None:
     """Each variant through the pipeline, as a fresh call, in order; the classifier closed at
     the end."""
-    clips = [_clip(each) for each in todo]
+    clips = [clip_of(each) for each in todo]
     found = turn_languages(
         clips,
         languages=ECHO_AGENT.languages,
@@ -242,7 +232,7 @@ def _run(
     todo = [plan.smoke] if args.smoke_only else list(plan.todo)
     for each in todo:
         if each.item.kind == PAUSED_KIND:
-            _true_end(each)
+            marked_end(each)
     info = LanguagesRun(
         name=out.name,
         started_at=parts.now(),
@@ -292,8 +282,7 @@ def _close(
     write_pass(out, card, kept if complete or not held_out else None)
     if not smoke_only:
         line: LanguagesLine = line_of(card)
-        append_line(line, top / DATA / HISTORY_FILE)
-        append_line(line, out / HISTORY_FILE)
+        history.record_line(append_line, line, top / DATA, out)
     numbers = card.card
     log.info(
         "run_finished",

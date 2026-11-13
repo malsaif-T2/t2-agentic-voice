@@ -20,7 +20,7 @@ from ole5_voice.evals import knowledge_depth
 from ole5_voice.evals.knowledge_depth_card import DepthLine, DepthScorecard
 from ole5_voice.evals.run_folder import RESULTS_FILE, RUN_FILE
 from ole5_voice.evals.runs import SCORECARD_FILE
-from t2_agentic_voice import Caller
+from t2_agentic_voice import Caller, T2VoiceError
 from t2_agentic_voice.ports import Passage
 
 from tests.ole5_voice.evals.talker_fakes import DOCUMENT, FakeKnowledgeBase
@@ -187,6 +187,24 @@ def test_an_error_the_run_does_not_score_is_raised_once_its_scorecard_is_written
     with pytest.raises(RuntimeError, match="made up"):
         knowledge_depth.main(_argv(setup), parts=setup.parts())
     assert _card(setup).stopped == "error" and kb.closed
+
+
+def test_a_library_error_once_the_run_began_ends_it_as_not_complete(setup: Setup) -> None:
+    """Exit 1, as run T's, with its scorecard and line written (2, refused, before: evl-11): a
+    clock that raises stands for any library error a variant's search meets past the base's."""
+    ticks: list[int] = []
+
+    def clock() -> float:
+        ticks.append(1)
+        if len(ticks) == 3:  # the second variant's start
+            raise T2VoiceError("Made up.")
+        return 0.0
+
+    parts = dataclasses.replace(setup.parts(), clock=clock)
+    assert knowledge_depth.main(_argv(setup), parts=parts) == 1
+    card = _card(setup)
+    assert card.stopped == "error" and len(card.records) == 1 and setup.kb.closed
+    assert len(setup.lines.lines) == 2
 
 
 def _refused(setup: Setup, argv: list[str], words: str, capsys: pytest.CaptureFixture[str]) -> None:

@@ -1,7 +1,8 @@
 """The tables of `docs/generated/eval-history.md` beside `poe eval`'s own (history.py renders the
 page): a table for each kind of run that has one, end-of-turn, timing and overlap runs, and each
-run's numbers by stratum value; with the cell helpers every table writes with, so a note renders
-as the text it is.
+run's numbers by stratum value; with the table and cell helpers every table of the page writes
+with (`table`, `block`, `ruled`; `row`, `cell`), so each header has the separator its columns
+need and a note renders as the text it is.
 """
 
 from __future__ import annotations
@@ -24,34 +25,31 @@ def strata(line: HistoryLine | EotLine | TimingLine | OverlapLine) -> list[str]:
     end-of-turn run's, each with its items; each step's median for a timing run's; the right
     verdicts, stops and false stops, then whether each target held, for an overlap run's."""
     if isinstance(line, HistoryLine):
-        header = "| Stratum | Value | Items | Accuracy |\n| --- | --- | --- | --- |"
+        header = "| Stratum | Value | Items | Accuracy |"
         rows = [
             row(cell(stratum), cell(value), str(shown.items), percent(shown.accuracy))
             for stratum, values in sorted(line.breakdowns.items())
             for value, shown in sorted(values.items())
         ]
     elif isinstance(line, EotLine):
-        header = (
-            "| Stratum | Value | Items | Variants | Cut-offs | Misses |\n"
-            "| --- | --- | --- | --- | --- | --- |"
-        )
+        header = "| Stratum | Value | Items | Variants | Cut-offs | Misses |"
         rows = [
             row(cell(stratum), cell(value), *map(str, (c.items, c.variants, c.cut_offs, c.misses)))
             for stratum, values in sorted(line.breakdowns.items())
             for value, c in sorted(values.items())
         ]
     elif isinstance(line, TimingLine):
-        header = "| Step | Median (ms) |\n| --- | --- |"
+        header = "| Step | Median (ms) |"
         rows = [row(cell(step), ms(median)) for step, median in line.medians_ms.items()]
     else:
         return _overlap_strata(line)
-    return ["", header, *rows] if rows else []
+    return block(header, rows)
 
 
 def _overlap_strata(line: OverlapLine) -> list[str]:
     header = (
         "| Stratum | Value | Items | Variants | Right | Stopped of those that should "
-        "| False stops |\n| --- | --- | --- | --- | --- | --- | --- |"
+        "| False stops |"
     )
     rows = [
         row(
@@ -68,20 +66,19 @@ def _overlap_strata(line: OverlapLine) -> list[str]:
     ]
     held = {True: "holds", False: "fails", None: "—"}
     targets = [row(cell(name), held[holds]) for name, holds in line.targets.items()]
-    found = ["", header, *rows] if rows else []
-    return found + (["", "| Target | Held |\n| --- | --- |", *targets] if targets else [])
+    return block(header, rows) + block("| Target | Held |", targets)
 
 
 def eot_rows(lines: Sequence[tuple[int, EotLine]]) -> list[str]:
     """The end-of-turn runs' table, when there is one."""
-    if not lines:
-        return []
-    return [
-        "\n## End-of-turn runs\n",
+    header = (
         "| # | Time | Run | Commit | Answerer | Split | Items | Variants | Cut-offs | Misses "
-        "| Median delay (ms) | 90th percentile (ms) | Secondary cut-offs | Complete |\n"
-        "| --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- |",
-        *(
+        "| Median delay (ms) | 90th percentile (ms) | Secondary cut-offs | Complete |"
+    )
+    return table(
+        "End-of-turn runs",
+        header,
+        [
             row(
                 str(number),
                 line.time.isoformat(timespec="seconds"),
@@ -101,20 +98,21 @@ def eot_rows(lines: Sequence[tuple[int, EotLine]]) -> list[str]:
                 "yes" if line.complete else "no",
             )
             for number, line in lines
-        ),
-    ]
+        ],
+    )
 
 
 def languages_rows(lines: Sequence[tuple[int, LanguagesLine]]) -> list[str]:
-    """Run H's passes' table (plan 007's Block H), when there is one: each turn's language."""
-    if not lines:
-        return []
-    return [
-        "\n## Each turn's language\n",
+    """Run H's passes' table, when there is one: each turn's language."""
+    header = (
         "| # | Time | Run | Commit | Classifier | Split | Variants | Turns | In time | Late "
         "| Median verdict (ms) | Median late (ms) | Cut-offs | Changed (label, ar, en) "
-        "| Disagreements | Peak memory (MB) | Complete |\n" + "| --- " * 17 + "|",
-        *(
+        "| Disagreements | Peak memory (MB) | Complete |"
+    )
+    return table(
+        "Each turn's language",
+        header,
+        [
             row(
                 str(number),
                 line.time.isoformat(timespec="seconds"),
@@ -135,8 +133,8 @@ def languages_rows(lines: Sequence[tuple[int, LanguagesLine]]) -> list[str]:
                 "yes" if line.complete else "no",
             )
             for number, line in lines
-        ),
-    ]
+        ],
+    )
 
 
 def languages_strata(line: LanguagesLine) -> list[str]:
@@ -153,14 +151,14 @@ def languages_strata(line: LanguagesLine) -> list[str]:
 
 def timing_rows(lines: Sequence[tuple[int, TimingLine]]) -> list[str]:
     """The timing runs' table, when there is one."""
-    if not lines:
-        return []
-    return [
-        "\n## Timing runs\n",
+    header = (
         "| # | Time | Run | Commit | Split | Variants | Cut into turns | Failures | Requests "
-        "| Billed seconds | Cost | Complete |\n"
-        "| --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- |",
-        *(
+        "| Billed seconds | Cost | Complete |"
+    )
+    return table(
+        "Timing runs",
+        header,
+        [
             row(
                 str(number),
                 line.time.isoformat(timespec="seconds"),
@@ -176,22 +174,21 @@ def timing_rows(lines: Sequence[tuple[int, TimingLine]]) -> list[str]:
                 "yes" if line.complete else "no",
             )
             for number, line in lines
-        ),
-    ]
+        ],
+    )
 
 
 def overlap_rows(lines: Sequence[tuple[int, OverlapLine]]) -> list[str]:
     """The overlap runs' table, when there is one."""
-    if not lines:
-        return []
-    return [
-        "\n## Overlap runs\n",
+    header = (
         "| # | Time | Run | Commit | Answerer | Split | Items | Variants | Failed | Right "
         "| Stop median (ms) | 90th percentile (ms) | Most requests | Targets held | Requests "
-        "| Billed seconds | Cost | Complete |\n"
-        "| --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- "
-        "| --- | --- | --- | --- |",
-        *(
+        "| Billed seconds | Cost | Complete |"
+    )
+    return table(
+        "Overlap runs",
+        header,
+        [
             row(
                 str(number),
                 line.time.isoformat(timespec="seconds"),
@@ -213,8 +210,24 @@ def overlap_rows(lines: Sequence[tuple[int, OverlapLine]]) -> list[str]:
                 "yes" if line.complete else "no",
             )
             for number, line in lines
-        ),
-    ]
+        ],
+    )
+
+
+def table(title: str, header: str, rows: Sequence[str]) -> list[str]:
+    """A table of `rows` under `title` and its `header` (one row of column names, `ruled`);
+    nothing without a row."""
+    return [f"\n## {title}\n", ruled(header), *rows] if rows else []
+
+
+def block(header: str, rows: Sequence[str]) -> list[str]:
+    """`table`'s rows without a title, after an empty line."""
+    return ["", ruled(header), *rows] if rows else []
+
+
+def ruled(header: str) -> str:
+    """`header`, one row of column names, with the separator row its columns need."""
+    return header + "\n" + "| --- " * (header.count("|") - 1) + "|"
 
 
 def ms(value: float | None) -> str:

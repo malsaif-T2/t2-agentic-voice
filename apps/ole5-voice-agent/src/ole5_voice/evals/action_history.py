@@ -21,9 +21,8 @@ from pydantic import Field, model_validator
 
 from ole5_voice.evals.action_card import ActionScorecard, Share
 from ole5_voice.evals.models import Commit, Model, Name, Sha256, Split
-from ole5_voice.evals.runs import SCORECARD_FILE, Note, Shown
-from ole5_voice.evals.talker_data import ModelName
-from ole5_voice.evals.talker_score import PriceShown, Session
+from ole5_voice.evals.runs import SCORECARD_FILE, ModelName, Note, Shown
+from ole5_voice.evals.talker_score import PriceShown, Session, requests_of, tokens_of
 
 _Share = Annotated[float, Field(ge=0, le=1, allow_inf_nan=False)]
 _Usd = Annotated[float, Field(ge=0, allow_inf_nan=False)]
@@ -108,8 +107,8 @@ def action_line(card: ActionScorecard, session: Session, number: int, scenarios:
         targets_met=card.targets_met,
         passed_run=card.passed,
         passed={count.scenario: count.passed for count in card.scenarios},
-        requests={spend.model: spend.requests for spend in session.spend},
-        tokens={spend.model: spend.input_tokens + spend.output_tokens for spend in session.spend},
+        requests=requests_of(session),
+        tokens=tokens_of(session),
         prices=run.prices,
         estimate_usd=run.estimate_usd,
         cost_usd=session.cost_usd,

@@ -8,6 +8,10 @@ its error class and its wording. `read_text` and `read_lines` read a file as UTF
 refusal is raised outside the handler, so no exception chain leads to the input: a pydantic
 `ValidationError` holds the input it refused even where its text hides it, and a decode error
 holds the file's bytes.
+
+And how a run writes a file it writes whole, its scorecard among them: `write_whole` and
+`write_json`, into a partial file first and then moved into place, so an interrupted write
+leaves no half file.
 """
 
 from __future__ import annotations
@@ -16,7 +20,7 @@ import tomllib
 from collections.abc import Callable
 from pathlib import Path
 
-from pydantic import TypeAdapter, ValidationError
+from pydantic import BaseModel, TypeAdapter, ValidationError
 
 # Builds a caller's error from what went wrong, which names fields only.
 Refuse = Callable[[str], Exception]
@@ -47,6 +51,20 @@ def read_lines(path: Path) -> tuple[str, ...] | None:
         return None
     lines = (line.strip() for line in text.splitlines())
     return tuple(line for line in lines if line and not line.startswith("#"))
+
+
+def write_whole(out: Path, name: str, text: str) -> None:
+    """`text`, as UTF-8, written as `out / name` whole: into `.<name>.partial` beside it, then
+    moved into place, replacing an earlier file of that name."""
+    partial = out / f".{name}.partial"
+    partial.write_bytes(text.encode("utf-8"))
+    partial.replace(out / name)
+
+
+def write_json(out: Path, name: str, model: BaseModel) -> None:
+    """`model`'s JSON, indented by two with an LF at the end, written whole as `out / name`
+    (`write_whole`): how every run writes its scorecard."""
+    write_whole(out, name, model.model_dump_json(indent=2) + "\n")
 
 
 def parse_json[T](shape: type[T] | TypeAdapter[T], text: str | bytes, refuse: Refuse) -> T:

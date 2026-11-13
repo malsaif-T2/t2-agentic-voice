@@ -1,4 +1,4 @@
-"""The scorer of `poe eval-languages` (plan 007's Block H, run H's H1): a pass's numbers, its
+"""The scorer of `poe eval-languages` (plan 007's run H, its H1): a pass's numbers, its
 history line, its folder written and read back, and condition 4 of the keep rule read across the
 passes; what they are shaped as is languages_card.py's.
 
@@ -49,7 +49,7 @@ from pydantic import ValidationError
 from t2_agentic_voice import evals
 
 from ole5_voice.evals.eot_score import Decision, EotResult, Judged, metrics
-from ole5_voice.evals.files import parse_json, read_lines, read_text
+from ole5_voice.evals.files import parse_json, read_lines, read_text, write_json, write_whole
 from ole5_voice.evals.languages_card import (
     CALLS,
     TURNS_FILE,
@@ -229,13 +229,9 @@ def write_pass(
 ) -> None:
     """A pass's scorecard and every variant's turns (None: no turns file) into `out`, each
     written whole."""
-    files = [(SCORECARD_FILE, scorecard.model_dump_json(indent=2) + "\n")]
     if results is not None:
-        files.insert(0, (TURNS_FILE, "".join(r.model_dump_json() + "\n" for r in results)))
-    for name, text in files:
-        partial = out / f".{name}.partial"
-        partial.write_bytes(text.encode("utf-8"))
-        partial.replace(out / name)
+        write_whole(out, TURNS_FILE, "".join(r.model_dump_json() + "\n" for r in results))
+    write_json(out, SCORECARD_FILE, scorecard)
 
 
 def load_pass(folder: Path) -> tuple[LanguagesScorecard, tuple[LanguageResult, ...]]:

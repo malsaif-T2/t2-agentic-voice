@@ -96,7 +96,7 @@ def pick(args: argparse.Namespace, parts: Parts) -> int:
         )
     out = check_out(args.out, inspect(parts.folder, parts.git), parts.git)
     out.mkdir(parents=True)
-    chosen = random.Random(args.seed).sample(found, args.count)  # noqa: S311  # a pick, not a key
+    chosen = random.Random(args.seed).sample(found, args.count)  # noqa: S311 - a pick, not a key
     lines = [
         "# The owner's check of run T1 (plan 006's registration, T): listen to each file and",
         '# set its `clipped` to "yes" where its first syllable is cut, "no" where it is whole.',

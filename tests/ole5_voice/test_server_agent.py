@@ -25,8 +25,8 @@ from pydantic import SecretStr
 from t2_agentic_voice import ConfigurationError, VoiceSettings
 
 from tests.leaks import holding, shown
+from tests.ole5_voice.server_support import CODE
 
-CODE = "made-up-access-code-0123"
 PASSWORD = "made-up-kb-password-0123"
 ACCESS = {
     "qdrant_url": "https://made-up.example/team/qdrant",
@@ -194,15 +194,6 @@ def test_the_app_refuses_a_knowledge_base_set_only_in_part(fakes: list[object]) 
     with pytest.raises(ConfigurationError, match="QDRANT_LOGIN_EMAIL and QDRANT_LOGIN_PASSWORD"):
         server.make_app(_settings(**partial))
     assert _Runtime.made == [] and _KnowledgeBase.made == []
-
-
-@pytest.fixture
-def environment(monkeypatch: pytest.MonkeyPatch) -> pytest.MonkeyPatch:
-    monkeypatch.setenv("T2V_ENV", "dev")
-    monkeypatch.setenv("T2V_JOIN__KEYS", '{"k1": "a-made-up-join-key-of-forty-bytes-0123456"}')
-    monkeypatch.setenv("T2V_JOIN__CURRENT_KID", "k1")
-    monkeypatch.setenv("OLE5_VOICE_ACCESS_CODE", CODE)
-    return monkeypatch
 
 
 def test_the_command_refuses_to_start_with_the_access_set_in_part(

@@ -23,19 +23,7 @@ from t2_agentic_voice import ConfigurationError
 
 from tests.isolation import APP_PREFIX, dropped
 from tests.leaks import holding, shown
-
-CODE = "made-up-access-code-0123"  # 24 characters
-KEY = "a-made-up-join-key-of-forty-bytes-0123456"
-
-
-@pytest.fixture
-def environment(monkeypatch: pytest.MonkeyPatch) -> pytest.MonkeyPatch:
-    """The variables the app's server needs, made up; the session's var dir is conftest's."""
-    monkeypatch.setenv("T2V_ENV", "dev")
-    monkeypatch.setenv("T2V_JOIN__KEYS", f'{{"k1": "{KEY}"}}')
-    monkeypatch.setenv("T2V_JOIN__CURRENT_KID", "k1")
-    monkeypatch.setenv("OLE5_VOICE_ACCESS_CODE", CODE)
-    return monkeypatch
+from tests.ole5_voice.server_support import CODE
 
 
 def test_the_apps_prefix_is_the_one_the_suite_drops() -> None:

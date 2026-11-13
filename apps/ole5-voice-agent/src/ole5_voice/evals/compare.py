@@ -234,13 +234,13 @@ def _paired(
     smallest = smallest_change(changed, whole.items, sign_test)
     lines = [
         "## Variant by variant\n",
-        f"Compared {len(changes)} variant(s) of {whole.items} item(s): " + _counts(changes),
-        "Fixed (wrong in A, right in B): " + _names(changes, 1),
-        "Broken (right in A, wrong in B): " + _names(changes, -1),
+        f"Compared {len(changes)} variant(s) of {whole.items} item(s): " + change_counts(changes),
+        "Fixed (wrong in A, right in B): " + changed_ids(changes, 1),
+        "Broken (right in A, wrong in B): " + changed_ids(changes, -1),
         f"Left out of both runs: {len(left_out)}.",
         *(f"- {name}: {why}" for name, why in left_out),
         "\n## The sign test by item\n",
-        _verdict(whole),
+        sign_verdict(whole),
         f"\nIf A and B ran the same code, this is the noise: {changed} item(s) changed, so the "
         "smallest change one run can detect is "
         + ("more than this set holds." if smallest is None else f"{smallest} item(s)."),
@@ -258,27 +258,31 @@ def _paired(
         lines += [
             f"\n## Focus: {len(targets)} item(s), shown apart\n",
             "The verdict above is still every item's.",
-            "Variants: " + _counts(aimed),
-            "Fixed: " + _names(aimed, 1),
-            "Broken: " + _names(aimed, -1),
-            _verdict(by_item(aimed, sign_test)),
+            "Variants: " + change_counts(aimed),
+            "Fixed: " + changed_ids(aimed, 1),
+            "Broken: " + changed_ids(aimed, -1),
+            sign_verdict(by_item(aimed, sign_test)),
         ]
     return [*lines, ""]
 
 
-def _counts(changes: Sequence[Change]) -> str:
+def change_counts(changes: Sequence[Change]) -> str:
+    """The variants fixed, broken and unchanged, and the net, as a comparison says them."""
     fixed = sum(1 for change in changes if change.delta > 0)
     broken = sum(1 for change in changes if change.delta < 0)
     unchanged = len(changes) - fixed - broken
     return f"fixed {fixed}, broken {broken}, net {fixed - broken:+d}; unchanged {unchanged}."
 
 
-def _names(changes: Sequence[Change], delta: int) -> str:
+def changed_ids(changes: Sequence[Change], delta: int) -> str:
+    """The `item/variant` IDs of the changes of `delta` (1 fixed, -1 broken), or none."""
     names = [f"{change.item}/{change.variant}" for change in changes if change.delta == delta]
     return ", ".join(names) if names else "none"
 
 
-def _verdict(result: ByItem) -> str:
+def sign_verdict(result: ByItem) -> str:
+    """The sign test's items better, worse and unchanged, its p, and whether that is beyond the
+    noise, as a comparison says them (evaluation.md, "Judging a change")."""
     unchanged = result.items - result.better - result.worse
     beyond = "beyond the noise" if result.p < ALPHA else "within the noise"
     return (

@@ -1,9 +1,9 @@
-"""What runs K and S share before anything is sent (plan 006's registration): the command line's
-model, judge, prices, limits, cap, agent and data, each pinned there; the settings they become;
-the parts a run is built from (`TalkerParts`, each replaceable by a test's fake); the knowledge
-set and the points' text the judge reads, with the digest of every file a run depends on; and
-the paced chat model every request goes through; and the checks of the cap and the day's limit
-before a run starts.
+"""What runs K, S and A share before anything is sent (plan 006's registration, and plan 007's
+for A): the command line's model, judge, prices, limits, cap, agent and data, each pinned there,
+and its checks (`require`); the settings they become; the parts a run is built from
+(`TalkerParts`, each replaceable by a test's fake, which run K0 is built from too); the paced
+chat model every request goes through; and the checks of the cap and the day's limit before a
+run starts.
 
 Two settings a run uses: the chat adapter's, loaded from the environment and `--env-file` (or
 the working folder's `.env`, `run_settings.DOTENV`) for the key alone, its base URL `--base-url`
@@ -18,11 +18,10 @@ from __future__ import annotations
 
 import argparse
 import asyncio
-import math
 import re
 import time
 from collections import Counter
-from collections.abc import Callable, Mapping
+from collections.abc import Callable, Mapping, Sequence
 from dataclasses import dataclass, field
 from datetime import UTC, date, datetime
 from pathlib import Path
@@ -34,21 +33,35 @@ from t2_agentic_voice.evals import TextCall
 from t2_agentic_voice.groq import GroqChat
 from t2_agentic_voice.ports import ChatModel
 
-from ole5_voice.evals import run_folder, run_settings
+from ole5_voice.evals import cli, run_folder, run_settings
 from ole5_voice.evals.chat_pacing import Limits, ModelPacer, PacedChat, Price, Spend
-from ole5_voice.evals.factories import env_file_of, load_factory
+from ole5_voice.evals.cli import EFFORTS, amount, count, seconds
+from ole5_voice.evals.factories import load_factory
 from ole5_voice.evals.groq_answerer import Clock, Sleep
 from ole5_voice.evals.judge import JUDGE_MODEL
 from ole5_voice.evals.models import NAME_RULE, is_name
-from ole5_voice.evals.runs import holds_placeholder
 from ole5_voice.evals.talker_call import CallFactory
 from ole5_voice.evals.worktree import Git, refused, run_git
 
 MODELS: Final = get_args(LlmSettings.model_fields["model"].annotation)  # `llm.model`'s choices
-EFFORTS: Final = get_args(LlmSettings.model_fields["reasoning_effort"].annotation)
 INPUT_BUDGET: Final = 6000  # tokens a request is budgeted to read: the prompt, history, passages
 _SECRET = re.compile(r"(^|_)(key|keys|secret|token|password|file)$")
 _LIMITS: Final = ("rpm", "tpm", "rpd")
+# The flags every run of K, S and A needs (`require`), in the order a refusal names them.
+_NEEDED: Final = (
+    "arm",
+    "model",
+    "reasoning_effort",
+    "max_output_tokens",
+    "timeout_s",
+    "cap_usd",
+    "agent",
+    "knowledge",
+    "search_tool",
+    "points_text",
+    "out",
+    "note",
+)
 log = get_logger(__name__)
 
 
@@ -62,9 +75,10 @@ def _here() -> Path:
 
 @dataclass(frozen=True)
 class TalkerParts:
-    """What a run of K or S is built from, each replaceable by a test's fake: the folder whose
-    checkout runs, `git`, the chat adapter, the call (`TextCall`), the factories' loader, the
-    shared history's appender and checks, and the clocks."""
+    """What a run of K, S, A or K0 is built from, each replaceable by a test's fake: the folder
+    whose checkout runs, `git`, the chat adapter, the call (`TextCall`), the factories' loader,
+    the shared history's appender and checks, and the clocks (run A adds its own:
+    `action_run.ActionParts`)."""
 
     folder: Path = field(default_factory=_here)
     git: Git = run_git
@@ -77,24 +91,6 @@ class TalkerParts:
     now: Callable[[], datetime] = _now
     clock: Clock = time.perf_counter
     sleep: Sleep = asyncio.sleep
-
-
-def count(text: str) -> int:
-    if (value := int(text)) < 1:
-        raise argparse.ArgumentTypeError("must be 1 or more")
-    return value
-
-
-def amount(text: str) -> float:
-    if not math.isfinite(value := float(text)) or value < 0:
-        raise argparse.ArgumentTypeError("must be a finite number, 0 or more")
-    return value
-
-
-def seconds(text: str) -> float:
-    if not math.isfinite(value := float(text)) or value <= 0:
-        raise argparse.ArgumentTypeError("must be a finite number of seconds above 0")
-    return value
 
 
 def price(text: str) -> tuple[str, Price]:
@@ -113,7 +109,7 @@ def limit(text: str) -> tuple[str, int]:
 
 
 def add_common(parser: argparse.ArgumentParser) -> None:
-    """The flags runs K and S share."""
+    """The flags runs K, S and A share."""
     add = parser.add_argument
     add("--arm", help="the arm's name, such as k1")
     add("--model", choices=MODELS, help="llm.model, the talker's model")
@@ -141,28 +137,33 @@ def add_common(parser: argparse.ArgumentParser) -> None:
     add("--smoke-only", action="store_true", help="run the smoke test alone")
 
 
-def require(parser: argparse.ArgumentParser, args: argparse.Namespace, *also: str) -> None:
-    """The command line's checks runs K and S share: every flag a run needs (`also` too), a
-    note with no install placeholder, an arm that is a name, a judge that is not the talker's
-    model (Q6), and no smoke test alone in a resumed run."""
-    named = ["arm", "model", "reasoning_effort", "max_output_tokens", "timeout_s", "cap_usd"]
-    named += ["agent", "knowledge", "search_tool", "points_text", "out", "note", *also]
-    if lacking := [f"--{n.replace('_', '-')}" for n in named if getattr(args, n) is None]:
-        parser.error(f"a run needs {', '.join(lacking)}")
-    if holds_placeholder(args.note):
-        parser.error("--note holds an install placeholder, which the docs check refuses")
+def require(
+    parser: argparse.ArgumentParser,
+    args: argparse.Namespace,
+    *also: str,
+    without: Sequence[str] = (),
+) -> None:
+    """The command line's checks runs K, S and A share: every flag a run needs (`also` too, and
+    none of `without`, the flags a run of its kind does not read) given and not empty, and a
+    note with no install placeholder (`cli.require`); an arm that is a name; a judge that is not
+    the talker's model (Q6); no smoke test alone in a resumed run; and a held-out run in one
+    whole session."""
+    named = [each for each in _NEEDED if each not in without]
+    cli.require(parser, args, [*named, *also])
     if not is_name(args.arm):
         parser.error(f"--arm is not a name, which is {NAME_RULE}")
     if args.judge_model == args.model:
         parser.error("--judge-model is a model other than the talker's (Q6)")
     if args.resume and args.smoke_only:
         parser.error("--resume goes on with a run's work: no --smoke-only")
+    if getattr(args, "split", None) == "held-out" and (args.resume or args.smoke_only):
+        parser.error("a held-out run is one whole session: no --resume or --smoke-only")
 
 
 def chat_settings(args: argparse.Namespace) -> VoiceSettings:
     """The chat adapter's settings: the key from the environment and the `.env`, the base URL
     and the timeout from the command line."""
-    loaded = VoiceSettings.from_env(env_file=env_file_of(args), env="dev")
+    loaded = VoiceSettings.from_env(env_file=run_settings.env_file_of(args), env="dev")
     data = loaded.model_dump()
     data["groq"]["base_url"] = args.base_url or run_settings.GROQ_BASE_URL
     data["llm"]["timeout_s"] = args.timeout_s

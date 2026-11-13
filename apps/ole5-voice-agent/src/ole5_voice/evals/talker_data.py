@@ -27,7 +27,7 @@ from t2_agentic_voice.languages import register_of
 
 from ole5_voice.evals.knowledge_set import SpokenLanguage
 from ole5_voice.evals.models import Model
-from ole5_voice.evals.runs import Plain
+from ole5_voice.evals.runs import ModelName
 
 # The library's language tags (`Language.tag`), which a reply is spoken in.
 Tag = Literal["ar-SA", "ar", "en"]
@@ -64,8 +64,6 @@ VERDICTS: Final = get_args(Verdict)
 # Why a variant or a scenario has no result to score, which is not an answer: a provider's
 # failure, its wall-clock limit passed, or a judge that gave no valid verdict.
 Failure = Literal["provider", "stuck", "judge"]
-# A model's name, as a run keys its spend and its pacers by it.
-ModelName = Annotated[Plain, Field(min_length=1, max_length=128)]
 _Seconds = Annotated[float, Field(ge=0, allow_inf_nan=False)]
 
 

@@ -19,7 +19,6 @@ from __future__ import annotations
 
 import argparse
 import asyncio
-import math
 import sys
 from collections.abc import Callable, Sequence
 from dataclasses import dataclass, field
@@ -42,13 +41,14 @@ from t2_agentic_voice.stores import PhraseCache
 
 from ole5_voice import LOGGERS
 from ole5_voice.evals import history, run_settings
+from ole5_voice.evals.cli import amount, count, model_price, require, seconds
 from ole5_voice.evals.eot import LEAD_S, PAUSED_KIND, TAIL_S
-from ole5_voice.evals.items import HISTORY_FILE
+from ole5_voice.evals.files import write_json
 from ole5_voice.evals.models import NAME_RULE, is_name
 from ole5_voice.evals.pacers import MinutePacer
 from ole5_voice.evals.run_lines import AnyLine, TimingLine
 from ole5_voice.evals.run_parts import DATA, Choice, Parts, Todo, audio_roots, load_plan
-from ole5_voice.evals.runs import SCORECARD_FILE, holds_placeholder
+from ole5_voice.evals.runs import SCORECARD_FILE
 from ole5_voice.evals.timing_run import (
     AGENT,
     TAGS,
@@ -98,48 +98,29 @@ class TimingParts:
     append_line: AppendLine = history.append_line
 
 
-def _amount(text: str) -> float:
-    if not math.isfinite(value := float(text)) or value < 0:
-        raise argparse.ArgumentTypeError("must be a finite number, 0 or more")
-    return value
-
-
-def _count(text: str) -> int:
-    if (value := int(text)) < 1:
-        raise argparse.ArgumentTypeError("must be 1 or more")
-    return value
-
-
-def _price(text: str) -> tuple[str, float]:
-    model, equals, amount = text.partition("=")
-    if not equals or not model:
-        raise argparse.ArgumentTypeError("give a price as MODEL=USD, per million characters")
-    return model, _amount(amount)
-
-
 def _parser() -> argparse.ArgumentParser:
     parser = argparse.ArgumentParser(prog="poe eval-timing", description=_DESCRIPTION)
     add = parser.add_argument
     add("--split", choices=("dev",), help="dev: a timing run spends, and no held-out run does")
     add("--model", choices=run_settings.MODELS, help="stt.model for this run")
-    add("--timeout-s", type=_amount, help="stt.timeout_s for this run")
+    add("--timeout-s", type=seconds, help="stt.timeout_s for this run")
     add("--base-url", help=f"groq.base_url for this run ({run_settings.GROQ_BASE_URL})")
     add("--env-file", type=Path, help="the .env file the settings load from (never printed)")
     add("--var-dir", type=Path, help="the settings' var_dir, which holds the phrase cache")
     add("--audio", action="append", default=[], metavar="ROOT=FOLDER", help="an audio root")
     add("--out", type=Path, help="a new folder, outside the worktree, that git ignores")
-    add("--price-per-hour", type=_amount, help="USD an hour of Whisper's billed audio")
+    add("--price-per-hour", type=amount, help="USD an hour of Whisper's billed audio")
     add(
         "--tts-price",
-        type=_price,
+        type=model_price,
         action="append",
         default=[],
         metavar="MODEL=USD",
         help="USD per million characters of an Orpheus model, once per model",
     )
-    add("--cap-usd", type=_amount, help="the most the run may spend")
-    add("--stt-rpm", type=_count, default=STT_RPM, help=f"Whisper requests a minute ({STT_RPM})")
-    add("--tts-rpm", type=_count, default=TTS_RPM, help=f"each Orpheus model's ({TTS_RPM})")
+    add("--cap-usd", type=amount, help="the most the run may spend")
+    add("--stt-rpm", type=count, default=STT_RPM, help=f"Whisper requests a minute ({STT_RPM})")
+    add("--tts-rpm", type=count, default=TTS_RPM, help=f"each Orpheus model's ({TTS_RPM})")
     add("--smoke-only", action="store_true", help="run the smoke test alone")
     add("--note", help="why the run is made")
     parser.set_defaults(tracing_endpoint=None)  # a timing run is untraced
@@ -148,11 +129,7 @@ def _parser() -> argparse.ArgumentParser:
 
 def _require(parser: argparse.ArgumentParser, args: argparse.Namespace) -> None:
     named = ("split", "model", "timeout_s", "out", "price_per_hour", "cap_usd", "note")
-    missing = [f"--{name.replace('_', '-')}" for name in named if getattr(args, name) is None]
-    if missing:
-        parser.error(f"a run needs {', '.join(missing)}")
-    if holds_placeholder(args.note):
-        parser.error("--note holds an install placeholder, which the docs check refuses")
+    require(parser, args, named)
 
 
 def _checked(settings: VoiceSettings, args: argparse.Namespace) -> dict[str, float]:
@@ -318,12 +295,8 @@ def _run(args: argparse.Namespace, parts: TimingParts) -> int:
         cost_usd=prices.of(measuring.usages),
         variants=tuple(found.results),
     )
-    partial = out / f".{SCORECARD_FILE}.partial"
-    partial.write_bytes((card.model_dump_json(indent=2) + "\n").encode("utf-8"))
-    partial.replace(out / SCORECARD_FILE)
-    line = line_of(card)
-    parts.append_line(line, checkout.top / DATA / HISTORY_FILE)
-    parts.append_line(line, out / HISTORY_FILE)
+    write_json(out, SCORECARD_FILE, card)
+    history.record_line(parts.append_line, line_of(card), checkout.top / DATA, out)
     log.info("run_finished", complete=complete, variants=len(found.results), cost_usd=card.cost_usd)
     return 0 if complete else 1
 

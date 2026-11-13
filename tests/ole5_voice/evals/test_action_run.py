@@ -26,7 +26,7 @@ from ole5_voice.evals.items import HISTORY_FILE
 from ole5_voice.evals.run_folder import RESULTS_FILE
 from ole5_voice.evals.run_parts import DATA
 from ole5_voice.evals.runs import SCORECARD_FILE
-from t2_agentic_voice import ProviderError
+from t2_agentic_voice import ProviderError, T2VoiceError
 from t2_agentic_voice.evals import TextCall
 
 from tests.ole5_voice.evals.action_run_support import (
@@ -154,6 +154,25 @@ def test_an_interrupt_keeps_what_was_played(setup: ActionSetup) -> None:
     assert card.stopped == "interrupted" and len(card.plays) == 1 and card.passed is None
 
 
+def test_a_library_error_once_the_run_began_ends_it_as_not_complete(
+    setup: ActionSetup,
+) -> None:
+    """Exit 1, as run T's, with its scorecard and line written (2, refused, before: evl-11)."""
+    calls: list[str] = []
+
+    def failing(agent: Any, **given: Any) -> TextCall:
+        calls.append(agent.name)
+        if len(calls) == 3:
+            raise T2VoiceError("Made up.")
+        return virtual(agent, **given)
+
+    setup.call = failing
+    assert _main(setup) == 1
+    card = _card(setup)
+    assert card.stopped == "error" and len(card.plays) == 1 and not card.complete
+    assert len(setup.lines.lines) == 2
+
+
 def _unscripted(setup: ActionSetup, scenario: str) -> None:
     """`scenario`'s yes, in the run's data, scripted as a turn the session asks again after,
     and a yes with the send word after it: the session confirms the write all the same, on a
@@ -261,6 +280,8 @@ def test_what_a_run_refuses_before_anything_is_sent(
         (["--points-text", "points.jsonl"], "no --points-text"),
         (["--arm", "A"], "--arm is not a name"),
         (["--judge-model", TALKER], "other than the talker's"),
+        (["--note", ""], "a run needs --note"),
+        (["--split", "held-out", "--smoke-only"], "one whole session"),
     ],
 )
 def test_the_command_line_refuses_what_a_run_cannot_be(

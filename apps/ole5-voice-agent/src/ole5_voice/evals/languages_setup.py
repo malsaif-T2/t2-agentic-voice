@@ -1,5 +1,5 @@
-"""What a pass of `poe eval-languages` runs with (languages_run.py; plan 007's Block H, run H's
-H1): the settings, the environment's and `--env-file`'s as `poe eot` loads them, with the pass's
+"""What a pass of `poe eval-languages` runs with (languages_run.py; plan 007's run H, its H1):
+the settings, the environment's and `--env-file`'s as `poe eot` loads them, with the pass's
 classifier on top (`--classifier off` under `stt.live_language = "session"`, `silero` or `ecapa`
 under `classified`, its files in `--classifier-dir` or `stt.classifier_dir`), refused under a
 rule other than the registered one (Q20, `REGISTERED`); what of them a pass records (`shown`,
@@ -68,12 +68,9 @@ def peak_mb() -> float | None:
 
 
 def settings_of(args: argparse.Namespace) -> VoiceSettings:
-    """The settings, as `poe eot` loads them, with the pass's classifier on top; refused under
-    a rule other than the registered one."""
-    env_file = args.env_file
-    if env_file is None and run_settings.DOTENV is not None and run_settings.DOTENV.is_file():
-        env_file = run_settings.DOTENV
-    loaded = VoiceSettings.from_env(env_file=env_file, env="dev")
+    """The settings, as `poe eot` loads them (`run_settings.env_settings`), with the pass's
+    classifier on top; refused under a rule other than the registered one."""
+    loaded = run_settings.env_settings(args)
     stt = loaded.stt
     if any(getattr(stt, name) != value for name, value in REGISTERED.items()):
         raise ConfigurationError(
@@ -87,10 +84,7 @@ def settings_of(args: argparse.Namespace) -> VoiceSettings:
     if not off:
         update |= {"classifier": args.classifier}
         update |= {"classifier_dir": args.classifier_dir or stt.classifier_dir}
-    changed: dict[str, object] = {"stt": stt.model_copy(update=update)}
-    if args.var_dir is not None:
-        changed["storage"] = loaded.storage.model_copy(update={"var_dir": args.var_dir})
-    return loaded.model_copy(update=changed)
+    return loaded.model_copy(update={"stt": stt.model_copy(update=update)})
 
 
 def shown(settings: VoiceSettings, args: argparse.Namespace) -> dict[str, str]:

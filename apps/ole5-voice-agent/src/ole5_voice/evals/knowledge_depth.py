@@ -31,12 +31,13 @@ from pathlib import Path
 from typing import Final, get_args
 
 from pydantic import TypeAdapter, ValidationError
-from t2_agentic_voice import T2VoiceError, configure_logging, get_logger
+from t2_agentic_voice import T2VoiceError, get_logger
 from t2_agentic_voice.ports import KnowledgeBase, Passage
 
-from ole5_voice import LOGGERS
-from ole5_voice.evals.factories import Closing, env_file_of, knowledge_of
-from ole5_voice.evals.items import HISTORY_FILE, GoldenSetError, read_toml
+from ole5_voice.evals.cli import require, seconds
+from ole5_voice.evals.factories import Closing, knowledge_of
+from ole5_voice.evals.history import record_line
+from ole5_voice.evals.items import GoldenSetError, read_toml
 from ole5_voice.evals.kb_points import PointIndex, digest
 from ole5_voice.evals.knowledge_depth_card import (
     DEPTH,
@@ -54,8 +55,9 @@ from ole5_voice.evals.knowledge_set import KNOWLEDGE_DIR, POINTS_FILE, Points, l
 from ole5_voice.evals.models import Split
 from ole5_voice.evals.run_folder import RunFolder, folder_for
 from ole5_voice.evals.run_parts import DATA
-from ole5_voice.evals.runs import holds_placeholder
-from ole5_voice.evals.talker_args import TalkerParts, seconds
+from ole5_voice.evals.run_settings import env_file_of
+from ole5_voice.evals.session_runner import closed, main_of, measured
+from ole5_voice.evals.talker_args import TalkerParts
 from ole5_voice.evals.talker_data import TAGS
 from ole5_voice.evals.talker_measure import CALLER, Todo, todo_of
 from ole5_voice.evals.worktree import refused, run_checkout
@@ -105,13 +107,9 @@ def _parser() -> argparse.ArgumentParser:
 
 
 def _require(parser: argparse.ArgumentParser, args: argparse.Namespace) -> None:
-    named = ("split", "knowledge", "out", "note")
-    if lacking := [f"--{name}" for name in named if getattr(args, name) is None]:
-        parser.error(f"a run needs {', '.join(lacking)}")
+    require(parser, args, ("split", "knowledge", "out", "note"))
     if args.split != "dev":
         parser.error("held-out is never read by K0: give --split dev")
-    if holds_placeholder(args.note):
-        parser.error("--note holds an install placeholder, which the docs check refuses")
 
 
 def _shown(args: argparse.Namespace) -> dict[str, str]:
@@ -210,12 +208,7 @@ async def _measure(
 
 
 def _run(args: argparse.Namespace, parts: TalkerParts) -> int:
-    """The run, what it built closed whenever it ends, a refusal's included."""
-    closing = Closing()
-    try:
-        return _built(args, parts, closing)
-    finally:
-        closing.close_now()
+    return closed(lambda closing: _built(args, parts, closing))
 
 
 def _built(args: argparse.Namespace, parts: TalkerParts, closing: Closing) -> int:
@@ -233,40 +226,28 @@ def _built(args: argparse.Namespace, parts: TalkerParts, closing: Closing) -> in
     )
     folder.begin(run)
     found: list[DepthRecord] = []
-    stopped: Stopped | None = None
+    stopped: Stopped | None = "error"  # until the measuring returns why it stopped
     log.info("run_started", run=run.name, variants=len(data.todo))
     try:
-        stopped = asyncio.run(_measure(kb, data, found, folder, args, parts, closing))
-    except KeyboardInterrupt:
-        stopped = "interrupted"
-        log.warning("run_interrupted", done=len(found), of=len(data.todo))
-    except BaseException as error:
-        stopped = "error"
-        log.error("run_failed", error=type(error).__name__, done=len(found))
-        raise
+        measuring = _measure(kb, data, found, folder, args, parts, closing)
+        stopped = measured(measuring, done=lambda: len(found), of=len(data.todo))
     finally:
         complete = stopped is None and len(found) == len(data.todo)
         card = scorecard(run, found, complete=complete, stopped=stopped)
         folder.write_scorecard(card)
-        line = depth_line(card)
-        parts.append_line(line, checkout.top / DATA / HISTORY_FILE)
-        parts.append_line(line, folder.out / HISTORY_FILE)
+        record_line(parts.append_line, depth_line(card), checkout.top / DATA, folder.out)
         log.info("run_finished", complete=complete, variants=len(found), kept_k=card.kept_k)
     return 0 if stopped is None else 1
 
 
 def main(argv: Sequence[str] | None = None, *, parts: TalkerParts | None = None) -> int:
     """`uv run poe knowledge-depth`: run K0 on dev. 0 when the run is complete, 1 when it is
-    not (a failed smoke search, an interrupt), 2 when it is refused before anything is sent."""
+    not (a failed smoke search, an interrupt, a library error once it began), 2 when it is
+    refused before anything is sent."""
     parser = _parser()
     args = parser.parse_args(argv)
-    _require(parser, args)
-    configure_logging(loggers=LOGGERS)
-    try:
-        return _run(args, TalkerParts() if parts is None else parts)
-    except T2VoiceError as error:
-        log.error("depth_refused", code=error.code, message=error.message)
-        return 2
+    found = TalkerParts() if parts is None else parts
+    return main_of(parser, args, _require, lambda given: _run(given, found), "depth_refused")
 
 
 if __name__ == "__main__":

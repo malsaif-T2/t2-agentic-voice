@@ -36,7 +36,7 @@ from ole5_voice.evals.worktree import check_out, inspect
 MODELS = ("whisper-large-v3", "whisper-large-v3-turbo")
 GROQ_BASE_URL = "https://api.groq.com"  # the SDK's own, `groq.base_url`'s default
 # The `.env` a run's settings load from when `--env-file` names none: the working folder's.
-# tests/conftest.py sets it to None, so no test reads the developer's.
+# tests/conftest.py sets it to None, so no test reads the developer's (`env_file_of`).
 DOTENV: Path | None = Path(".env")
 # A setting shown only as set or not set: a secret, a key map, or a secret's file.
 _SECRET = re.compile(r"(^|_)(key|keys|secret|token|password|file)$")
@@ -58,14 +58,30 @@ _URL_FLAGS = {
 }
 
 
-def load_settings(args: argparse.Namespace) -> VoiceSettings:
-    """The settings from the environment and `--env-file` (or `DOTENV`), the command line's on
-    top. The run is traced only when `--tracing-endpoint` says so, whatever `tracing.endpoint`
-    holds, and sends to `--base-url` or the SDK's own address, whatever `groq.base_url` holds."""
-    env_file = args.env_file
+def env_file_of(args: argparse.Namespace) -> Path | None:
+    """The env file a run's settings (and its knowledge base's access) load from: `--env-file`,
+    or the working folder's `.env` when it names none and there is one (`DOTENV`)."""
+    env_file: Path | None = args.env_file
     if env_file is None and DOTENV is not None and DOTENV.is_file():
         env_file = DOTENV
-    loaded = VoiceSettings.from_env(env_file=env_file, env="dev")
+    return env_file
+
+
+def env_settings(args: argparse.Namespace) -> VoiceSettings:
+    """The settings `poe eot` and a language pass run with: the environment's and
+    `env_file_of(args)`'s, as `env=dev`, with `--var-dir` on top."""
+    loaded = VoiceSettings.from_env(env_file=env_file_of(args), env="dev")
+    if args.var_dir is None:
+        return loaded
+    storage = loaded.storage.model_copy(update={"var_dir": args.var_dir})
+    return loaded.model_copy(update={"storage": storage})
+
+
+def load_settings(args: argparse.Namespace) -> VoiceSettings:
+    """The settings from the environment and `env_file_of(args)`, the command line's on top.
+    The run is traced only when `--tracing-endpoint` says so, whatever `tracing.endpoint`
+    holds, and sends to `--base-url` or the SDK's own address, whatever `groq.base_url` holds."""
+    loaded = VoiceSettings.from_env(env_file=env_file_of(args), env="dev")
     data = loaded.model_dump()
     data["tracing"]["endpoint"] = args.tracing_endpoint
     data["groq"]["base_url"] = args.base_url or GROQ_BASE_URL

@@ -1,10 +1,10 @@
 """The tables of `docs/generated/eval-history.md` for plan 006's and plan 007's runs (history.py
-renders the page; history_tables.py holds the other kinds' tables and the cell helpers): a table
-for each kind that has a run, K's talker runs, S's scenario runs, U's uncertain-middle runs, T's
-first-audio runs, K0's knowledge-depth runs and A's action runs, and each run's numbers by
-stratum value (K0's by k, S's and A's by scenario), its targets and its prices. Of these runs
-only T bills audio, so only its section shows a price per hour; K0 sends no chat request, so its
-section shows no price.
+renders the page; history_tables.py holds the other kinds' tables, and the table and cell
+helpers every table writes with): a table for each kind that has a run, K's talker runs, S's
+scenario runs, U's uncertain-middle runs, T's first-audio runs, K0's knowledge-depth runs and
+A's action runs, and each run's numbers by stratum value (K0's by k, S's and A's by scenario),
+its targets and its prices. Of these runs only T bills audio, so only its section shows a price
+per hour; K0 sends no chat request, so its section shows no price.
 """
 
 from __future__ import annotations
@@ -14,7 +14,7 @@ from typing import Final
 
 from ole5_voice.evals.action_history import ActionLine
 from ole5_voice.evals.first_audio_score import PathStats, ReplyPath
-from ole5_voice.evals.history_tables import cell, ms, percent, row
+from ole5_voice.evals.history_tables import block, cell, ms, percent, row, table
 from ole5_voice.evals.knowledge_depth_card import DEPTH, DepthAt, DepthLine
 from ole5_voice.evals.measure_lines import FirstAudioLine, UncertainLine
 from ole5_voice.evals.talker_lines import ScenarioLine, TalkerLine
@@ -52,21 +52,6 @@ _FIRST_AUDIO: Final = (
     "| No search 90th (ms) | Search median (ms) | Search 90th (ms) | Progress late "
     "| Targets held | Billed seconds | Cost | Complete |"
 )
-
-
-def table(title: str, header: str, rows: Sequence[str]) -> list[str]:
-    """A table of `rows` under `title` and its `header` (one row of column names), with the
-    separator its columns need; nothing without a row."""
-    if not rows:
-        return []
-    columns = header.count("|") - 1
-    return [f"\n## {title}\n", header + "\n" + "| --- " * columns + "|", *rows]
-
-
-def _block(header: str, rows: Sequence[str]) -> list[str]:
-    """`table`'s rows without a title, after an empty line."""
-    found = table("", header, rows)
-    return ["", *found[1:]] if found else []
 
 
 def _seconds(value: float | None) -> str:
@@ -228,11 +213,11 @@ def measure_strata(line: MeasureLine) -> list[str]:
     """A run's numbers by stratum value, then whether each target held."""
     if isinstance(line, ScenarioLine):
         rows = [row(cell(name), str(n)) for name, n in sorted(line.passed.items())]
-        return _block("| Scenario | Passing plays |", rows)
+        return block("| Scenario | Passing plays |", rows)
     if isinstance(line, ActionLine):  # a held-out run's line holds no scenario's count
         rows = [row(cell(name), str(n)) for name, n in sorted(line.passed.items())]
         targets = [row(cell(name), _HELD[holds]) for name, holds in line.targets.items()]
-        return _block("| Scenario | Passing plays |", rows) + _block("| Target | Held |", targets)
+        return block("| Scenario | Passing plays |", rows) + block("| Target | Held |", targets)
     if isinstance(line, TalkerLine):
         header = "| Stratum | Value | Items | Variants | Failures | Answers | Passing |"
         rows = [
@@ -268,7 +253,7 @@ def measure_strata(line: MeasureLine) -> list[str]:
             for end, g in sorted(line.ends.items())
         ]
     targets = [row(cell(name), _HELD[holds]) for name, holds in line.targets.items()]
-    return _block(header, rows) + _block("| Target | Held |", targets)
+    return block(header, rows) + block("| Target | Held |", targets)
 
 
 def _at(line: DepthLine, k: int | None) -> DepthAt | None:
@@ -310,4 +295,4 @@ def depth_strata(line: DepthLine) -> list[str]:
         )
         for at in line.depths
     ]
-    return _block(_DEPTH_AT, rows)
+    return block(_DEPTH_AT, rows)

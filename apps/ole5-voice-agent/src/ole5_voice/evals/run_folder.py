@@ -23,7 +23,7 @@ from typing import Final
 
 from pydantic import BaseModel, TypeAdapter, ValidationError
 
-from ole5_voice.evals.files import parse_json, read_model, read_text
+from ole5_voice.evals.files import parse_json, read_model, read_text, write_json
 from ole5_voice.evals.history import append_line, read_history
 from ole5_voice.evals.models import NAME_RULE, is_name
 from ole5_voice.evals.run_lines import AnyLine
@@ -127,10 +127,8 @@ class RunFolder:
         self._append(SESSIONS_FILE, session)
 
     def write_scorecard(self, card: BaseModel) -> None:
-        """The scorecard, written whole and then moved into place."""
-        partial = self.out / f".{SCORECARD_FILE}.partial"
-        partial.write_bytes((card.model_dump_json(indent=2) + "\n").encode("utf-8"))
-        partial.replace(self.out / SCORECARD_FILE)
+        """The scorecard, written whole and then moved into place (`files.write_json`)."""
+        write_json(self.out, SCORECARD_FILE, card)
 
     def _lines[M: BaseModel](self, name: str, shape: type[M]) -> list[M]:
         path = self.out / name

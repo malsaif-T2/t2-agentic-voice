@@ -1,4 +1,4 @@
-"""Run H's H2 arms (plan 007's Block H, "Run H") as `poe eval`'s options (`run.py`): Whisper on
+"""Run H's H2 arms (plan 007's "Run H") as `poe eval`'s options (`run.py`): Whisper on
 each variant in the language an H1 pass's rule named for it.
 
 - **`--language-from PASS`**, a pass of `poe eval-languages` (languages_run.py) at this commit,

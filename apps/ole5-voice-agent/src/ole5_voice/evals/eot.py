@@ -27,11 +27,10 @@ from pathlib import Path
 from typing import Final, get_args
 
 from t2_agentic_voice import T2VoiceError, VoiceSettings, configure_logging, evals, get_logger
-from t2_agentic_voice.ports import AudioClip
 
 from ole5_voice import LOGGERS
 from ole5_voice.evals import history, run_settings
-from ole5_voice.evals.audio import read_wav
+from ole5_voice.evals.cli import require
 from ole5_voice.evals.eot_score import (
     Decision,
     EotResult,
@@ -42,11 +41,20 @@ from ole5_voice.evals.eot_score import (
     proxy_end,
     set_card,
 )
-from ole5_voice.evals.items import HISTORY_FILE
+from ole5_voice.evals.files import write_json
 from ole5_voice.evals.models import NAME_RULE, Split, is_name
 from ole5_voice.evals.run_lines import AnyLine, EotCount, EotLine
-from ole5_voice.evals.run_parts import DATA, Choice, Parts, Todo, audio_roots, load_plan
-from ole5_voice.evals.runs import SCORECARD_FILE, holds_placeholder
+from ole5_voice.evals.run_parts import (
+    DATA,
+    Choice,
+    Parts,
+    Todo,
+    audio_roots,
+    clip_of,
+    load_plan,
+    marked_end,
+)
+from ole5_voice.evals.runs import SCORECARD_FILE
 from ole5_voice.evals.worktree import check_out, refused, run_checkout
 
 ANSWERERS: Final = ("reference", "pipeline")
@@ -87,28 +95,9 @@ def _parser() -> argparse.ArgumentParser:
 
 
 def _require(parser: argparse.ArgumentParser, args: argparse.Namespace) -> None:
-    missing = [
-        f"--{name}" for name in ("answerer", "split", "out", "note") if not getattr(args, name)
-    ]
-    if missing:
-        parser.error(f"a run needs {', '.join(missing)}")
-    if holds_placeholder(args.note):
-        parser.error("--note holds an install placeholder, which the docs check refuses")
+    require(parser, args, ("answerer", "split", "out", "note"))
     if args.secondary and (args.answerer != "pipeline" or args.split != "dev"):
         parser.error("--secondary is a dev run of the pipeline: its true ends are Silero's own")
-
-
-def _settings(args: argparse.Namespace) -> VoiceSettings:
-    """The settings, as `poe eval` loads them: the environment and `--env-file` (or the working
-    folder's `.env`), as `env=dev`, with `--var-dir` on top."""
-    env_file = args.env_file
-    if env_file is None and run_settings.DOTENV is not None and run_settings.DOTENV.is_file():
-        env_file = run_settings.DOTENV
-    loaded = VoiceSettings.from_env(env_file=env_file, env="dev")
-    if args.var_dir is None:
-        return loaded
-    storage = loaded.storage.model_copy(update={"var_dir": args.var_dir})
-    return loaded.model_copy(update={"storage": storage})
 
 
 def shown(settings: VoiceSettings, args: argparse.Namespace) -> dict[str, str]:
@@ -122,23 +111,10 @@ def shown(settings: VoiceSettings, args: argparse.Namespace) -> dict[str, str]:
     return {"env": settings.env, **turns, **run, "run.secondary": str(args.secondary).lower()}
 
 
-def _true_end(todo: Todo) -> float:
-    marks = todo.variant.turn_ends_ms
-    if not marks:
-        raise refused("a paused request has no turn end marked", "mark it in the recorder")
-    return float(marks[-1])
-
-
-def _clip(todo: Todo) -> AudioClip:
-    """A variant's audio, its segments joined in order (16 kHz mono PCM16, as checked)."""
-    pcm16 = b"".join(read_wav(path).pcm16 for path in todo.request.segments)
-    return AudioClip(pcm16=pcm16)
-
-
 def _result(todo: Todo, side: Split, which: EotSet, ends: Sequence[Decision]) -> EotResult:
     item, variant = todo.item, todo.variant
     labelled = which == "paused"
-    true_end = _true_end(todo) if labelled else proxy_end(ends)
+    true_end = marked_end(todo) if labelled else proxy_end(ends)
     return EotResult(
         item=item.id,
         variant=variant.id,
@@ -189,7 +165,7 @@ async def _fed(
     side: Split,
 ) -> None:
     """Each variant through the pipeline, as a fresh call, in order."""
-    clips = [_clip(each) for each, _ in todo]
+    clips = [clip_of(each) for each, _ in todo]
     found = turn_ends(clips, settings=settings, lead_s=LEAD_S, tail_s=TAIL_S)
     try:
         index = 0
@@ -207,7 +183,7 @@ async def _fed(
 def _run(
     args: argparse.Namespace, parts: Parts, turn_ends: TurnEnds, append_line: AppendLine
 ) -> int:
-    settings = _settings(args)
+    settings = run_settings.env_settings(args)
     checkout = run_checkout(parts.folder, parts.git)
     out = check_out(args.out, checkout, parts.git)
     if not is_name(out.name):
@@ -224,7 +200,7 @@ def _run(
     todo = [(t, sets[0]) for t in paused] + [(t, sets[1]) for t in others]
     if not paused:
         raise refused("the split holds no paused request the owner has checked", "check --split")
-    true_ends = [_true_end(each) for each in paused]
+    true_ends = [marked_end(each) for each in paused]
     info = EotRun(
         name=out.name,
         started_at=parts.now(),
@@ -276,13 +252,9 @@ def _close(
         secondary=set_card(others, held_out=False) if secondary else None,
         variants=() if held_out else tuple(kept),
     )
-    partial = out / f".{SCORECARD_FILE}.partial"
-    partial.write_bytes((card.model_dump_json(indent=2) + "\n").encode("utf-8"))
-    partial.replace(out / SCORECARD_FILE)
+    write_json(out, SCORECARD_FILE, card)
     if info.answerer == "pipeline":
-        line = line_of(card)
-        append_line(line, top / DATA / HISTORY_FILE)
-        append_line(line, out / HISTORY_FILE)
+        history.record_line(append_line, line_of(card), top / DATA, out)
     totals = card.paused.totals
     log.info(
         "run_finished",

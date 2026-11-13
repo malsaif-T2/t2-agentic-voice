@@ -7,7 +7,7 @@ and as strict: a scorecard read back, by `eval-compare` or a person, is checked 
 from __future__ import annotations
 
 import re
-from collections.abc import Iterable, Sequence
+from collections.abc import Callable, Iterable, Mapping, Sequence
 from datetime import datetime
 from pathlib import Path
 from typing import Annotated, Final, Literal, Protocol, Self
@@ -15,6 +15,7 @@ from typing import Annotated, Final, Literal, Protocol, Self
 from pydantic import AfterValidator, Field, model_validator
 
 from ole5_voice.evals.models import (
+    OTHER,
     Commit,
     Device,
     Kind,
@@ -77,6 +78,16 @@ def _shown(value: dict[str, str]) -> dict[str, str]:
 Shown = Annotated[dict[str, str], AfterValidator(_shown)]
 # Text a run writes into the committed history, which is never edited.
 Plain = Annotated[str, AfterValidator(_no_placeholder)]
+# A model's name, as a run keys its spend, its pacers and its history line's numbers by it
+# (`whisper-large-v3`, `canopylabs/orpheus-arabic-saudi`).
+ModelName = Annotated[Plain, Field(min_length=1, max_length=128)]
+# What a held-out run's numbers are broken into, as `check_groups` names them: a history line's
+# stratum values, a scorecard's groups; and its refusal of a group larger than the run.
+Groups = Literal["stratum values", "groups"]
+_LARGER: Final[Mapping[Groups, str]] = {
+    "stratum values": "a stratum value covers no more items than the run",
+    "groups": "a group covers no more items than the run's totals",
+}
 
 
 class Request(Model):
@@ -256,9 +267,35 @@ class RunInfo(Model):
         return self
 
 
-def _too_small(split: Split, counts: Iterable[int]) -> bool:
-    """Whether a held-out run's groups, given by the items each covers, hold one too small."""
-    return split == "held-out" and any(items < HELD_OUT_MIN_ITEMS for items in counts)
+def check_groups(split: Split, items: int | None, counts: Iterable[int], what: Groups) -> None:
+    """ValueError when a group, given by the items it covers, covers more than the run's
+    `items` (None: not checked), or a held-out run's covers fewer than `HELD_OUT_MIN_ITEMS`;
+    `what` names the groups as the refusal says them. Every scorecard and history line checks
+    its groups with it as it is read."""
+    counts = list(counts)
+    if items is not None and any(count > items for count in counts):
+        raise ValueError(_LARGER[what])
+    if split == "held-out" and any(count < HELD_OUT_MIN_ITEMS for count in counts):
+        raise ValueError(f"a held-out run's {what} each cover at least {HELD_OUT_MIN_ITEMS} items")
+
+
+def pool_small[K, T](
+    groups: Mapping[K, list[T]], items: Callable[[list[T]], int], least: int = HELD_OUT_MIN_ITEMS
+) -> dict[K | Other, list[T]]:
+    """A held-out run's `groups`, `items` counting the items of some of their members: the
+    groups that cover fewer than `least` items are pooled into one, `OTHER`, last, its numbers
+    taken over all their members as any group's are, and left out when it too covers fewer.
+    Items are counted, not variants (an item's devices and takes)."""
+    shown: dict[K | Other, list[T]] = {}
+    pooled: list[T] = []
+    for key, members in groups.items():
+        if items(members) < least:
+            pooled += members
+        else:
+            shown[key] = members
+    if items(pooled) >= least:
+        shown[OTHER] = pooled
+    return shown
 
 
 class Scorecard(Model):
@@ -283,12 +320,7 @@ class Scorecard(Model):
             raise ValueError("a held-out run's scorecard holds aggregates only, and is untraced")
         groups = [m.items for values in self.breakdowns.values() for m in values.values()]
         groups += [window.items for window in self.windows]
-        if any(items > self.totals.items for items in groups):
-            raise ValueError("a group covers no more items than the run's totals")
-        if _too_small(self.run.split, groups):
-            raise ValueError(
-                f"a held-out run's groups each cover at least {HELD_OUT_MIN_ITEMS} items"
-            )
+        check_groups(self.run.split, self.totals.items, groups, "groups")
         if any(result.split != self.run.split for result in self.variants):
             raise ValueError("a scorecard holds only its own split's variants")
         keys = [(result.item, result.variant) for result in self.variants]
@@ -332,12 +364,7 @@ class HistoryLine(Model):
     @model_validator(mode="after")
     def _held_out_groups(self) -> Self:
         counts = [value.items for values in self.breakdowns.values() for value in values.values()]
-        if any(items > self.items for items in counts):
-            raise ValueError("a stratum value covers no more items than the run")
-        if _too_small(self.split, counts):
-            raise ValueError(
-                f"a held-out run's stratum values each cover at least {HELD_OUT_MIN_ITEMS} items"
-            )
+        check_groups(self.split, self.items, counts, "stratum values")
         return self
 
 

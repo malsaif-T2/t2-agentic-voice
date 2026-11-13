@@ -20,10 +20,16 @@ from typing import Annotated, Literal, Self
 from pydantic import Field, model_validator
 
 from ole5_voice.evals.models import Commit, Model, Name, Sha256, Split
-from ole5_voice.evals.runs import HELD_OUT_MIN_ITEMS, SCORECARD_FILE, Note, Shown
+from ole5_voice.evals.runs import SCORECARD_FILE, ModelName, Note, Shown, check_groups
 from ole5_voice.evals.scenario_score import ScenarioScorecard
-from ole5_voice.evals.talker_data import ModelName
-from ole5_voice.evals.talker_score import PriceShown, Rate, Session, TalkerScorecard
+from ole5_voice.evals.talker_score import (
+    PriceShown,
+    Rate,
+    Session,
+    TalkerScorecard,
+    requests_of,
+    tokens_of,
+)
 
 _Share = Annotated[float, Field(ge=0, le=1, allow_inf_nan=False)]
 _Usd = Annotated[float, Field(ge=0, allow_inf_nan=False)]
@@ -86,12 +92,7 @@ class TalkerLine(Model):
     @model_validator(mode="after")
     def _held_out_groups(self) -> Self:
         counts = [value.items for values in self.breakdowns.values() for value in values.values()]
-        if any(items > self.items for items in counts):
-            raise ValueError("a stratum value covers no more items than the run")
-        if self.split == "held-out" and any(items < HELD_OUT_MIN_ITEMS for items in counts):
-            raise ValueError(
-                f"a held-out run's stratum values each cover at least {HELD_OUT_MIN_ITEMS} items"
-            )
+        check_groups(self.split, self.items, counts, "stratum values")
         return self
 
 
@@ -172,8 +173,8 @@ def talker_line(card: TalkerScorecard, session: Session, number: int) -> TalkerL
             }
             for stratum, values in card.breakdowns.items()
         },
-        requests={spend.model: spend.requests for spend in session.spend},
-        tokens={spend.model: spend.input_tokens + spend.output_tokens for spend in session.spend},
+        requests=requests_of(session),
+        tokens=tokens_of(session),
         prices=run.prices,
         cost_usd=session.cost_usd,
         session=number,
@@ -202,8 +203,8 @@ def scenario_line(card: ScenarioScorecard, session: Session, number: int) -> Sce
         passed={count.scenario: count.passed for count in card.scenarios},
         targets_met=card.targets_met,
         violations=card.violations,
-        requests={spend.model: spend.requests for spend in session.spend},
-        tokens={spend.model: spend.input_tokens + spend.output_tokens for spend in session.spend},
+        requests=requests_of(session),
+        tokens=tokens_of(session),
         prices=run.prices,
         cost_usd=session.cost_usd,
         session=number,

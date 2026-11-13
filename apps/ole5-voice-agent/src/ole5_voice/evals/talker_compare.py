@@ -25,12 +25,13 @@ from t2_agentic_voice import T2VoiceError, configure_logging, evals, get_logger
 
 from ole5_voice import LOGGERS
 from ole5_voice.evals.compare import (
-    ALPHA,
-    ByItem,
     Change,
     ComparisonError,
     SignTest,
     by_item,
+    change_counts,
+    changed_ids,
+    sign_verdict,
     smallest_change,
 )
 from ole5_voice.evals.judge_check import load_card, marked
@@ -150,13 +151,13 @@ def report(a: TalkerScorecard, b: TalkerScorecard, *, sign_test: SignTest) -> st
         f"Both at commit {a.run.commit}, on the same data. Every number describes one speaker, "
         "the owner (D-006).\n",
         "## Variant by variant\n",
-        f"Compared {len(found)} variant(s) of {whole.items} item(s): {_counts(found)}",
-        "Fixed: " + _names(found, 1),
-        "Broken: " + _names(found, -1),
+        f"Compared {len(found)} variant(s) of {whole.items} item(s): {change_counts(found)}",
+        "Fixed: " + changed_ids(found, 1),
+        "Broken: " + changed_ids(found, -1),
         f"Left out of both runs: {len(left_out)}.",
         *(f"- {why}" for why in left_out),
         "\n## The sign test by item\n",
-        _verdict(whole),
+        sign_verdict(whole),
         "\n## The noise\n",
         f"Variants whose verdict differs: {len(unstable)} of {len(pairs)}"
         + (f" ({', '.join(unstable)})." if unstable else "."),
@@ -183,27 +184,6 @@ def _guard(found: Sequence[Change], sign_test: SignTest) -> list[str]:
             r = by_item([change for change in found if key(change) == value], sign_test)
             rows.append(f"| {stratum} | {value} | {r.items} | {r.better} | {r.worse} | {r.p:.4f} |")
     return rows
-
-
-def _counts(found: Sequence[Change]) -> str:
-    fixed = sum(change.delta > 0 for change in found)
-    broken = sum(change.delta < 0 for change in found)
-    same = len(found) - fixed - broken
-    return f"fixed {fixed}, broken {broken}, net {fixed - broken:+d}; unchanged {same}."
-
-
-def _names(found: Sequence[Change], delta: int) -> str:
-    names = [f"{change.item}/{change.variant}" for change in found if change.delta == delta]
-    return ", ".join(names) if names else "none"
-
-
-def _verdict(result: ByItem) -> str:
-    beyond = "beyond the noise" if result.p < ALPHA else "within the noise"
-    return (
-        f"Items better {result.better}, worse {result.worse}, unchanged "
-        f"{result.items - result.better - result.worse}: p = {result.p:.4f}, {beyond} "
-        f"(p < {ALPHA} is beyond it)."
-    )
 
 
 def main(argv: Sequence[str] | None = None, *, sign_test: SignTest = evals.sign_test) -> int:

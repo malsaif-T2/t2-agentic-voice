@@ -1,4 +1,4 @@
-"""What a pass of `poe eval-languages` records (plan 007's Block H, run H's H1; scored by
+"""What a pass of `poe eval-languages` records (plan 007's run H, its H1; scored by
 languages_score.py): the pass itself (`LanguagesRun`), each variant's turns with its strata and,
 for a paused request, its turn ends judged against the owner's mark (`LanguageResult`, one line
 of a pass's `TURNS_FILE`), its numbers (`LanguagesCard`, by call language `CallCard`), its

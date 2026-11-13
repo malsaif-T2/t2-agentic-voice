@@ -30,10 +30,10 @@ from pydantic import Field, model_validator
 
 from ole5_voice.evals.judge import Judged
 from ole5_voice.evals.knowledge_set import KnowledgeKind, SpokenLanguage
-from ole5_voice.evals.models import OTHER, Commit, Model, Name, Sha256, Split
-from ole5_voice.evals.runs import HELD_OUT_MIN_ITEMS, Note, Plain, Shown
+from ole5_voice.evals.models import Commit, Model, Name, Sha256, Split
+from ole5_voice.evals.runs import HELD_OUT_MIN_ITEMS, ModelName, Note, Plain, Shown, pool_small
 from ole5_voice.evals.scorecard import quantile
-from ole5_voice.evals.talker_data import VERDICTS, Failure, HeardTurn, ModelName, ModelSpend, Tag
+from ole5_voice.evals.talker_data import VERDICTS, Failure, HeardTurn, ModelSpend, Tag
 
 # Why a run stopped before its end: its smoke test failed, the cap, the key's daily limit, an
 # interrupt, or an error it does not score (logged by its type, then raised).
@@ -165,6 +165,16 @@ class Session(Model):
     cost_usd: _Usd = 0.0
 
 
+def requests_of(session: Session) -> dict[str, int]:
+    """Each model's requests in `session`, as a session's history line counts them."""
+    return {spend.model: spend.requests for spend in session.spend}
+
+
+def tokens_of(session: Session) -> dict[str, int]:
+    """Each model's tokens in `session`, read and written, as its history line counts them."""
+    return {spend.model: spend.input_tokens + spend.output_tokens for spend in session.spend}
+
+
 class TalkerScorecard(Model):
     """Run K's scorecard (the module's docstring), checked as it is read; `keep_time` names the
     time the keep rule reads (talker_keep.py)."""
@@ -288,20 +298,10 @@ def breakdowns(
         groups: dict[str, list[VariantRecord]] = defaultdict(list)
         for record in records:
             groups[key(record)].append(record)
-        if held_out:
-            groups = _pooled(groups)
+        if held_out:  # each group of fewer answered items pooled (`runs.pool_small`)
+            groups = pool_small(groups, _items)
         found[stratum] = {v: metrics(g, least=least) for v, g in sorted(groups.items())}
     return found
-
-
-def _pooled(groups: dict[str, list[VariantRecord]]) -> dict[str, list[VariantRecord]]:
-    """Each group of `HELD_OUT_MIN_ITEMS` answered items or more, the others pooled as `other`,
-    left out when it too covers fewer."""
-    kept = {value: group for value, group in groups.items() if _items(group) >= HELD_OUT_MIN_ITEMS}
-    small = [record for value, group in groups.items() if value not in kept for record in group]
-    if _items(small) >= HELD_OUT_MIN_ITEMS:
-        kept[OTHER] = small
-    return kept
 
 
 def _items(records: Iterable[VariantRecord]) -> int:

@@ -5,9 +5,10 @@ every line of `history.jsonl` is read as, a line with no `kind` being `poe eval`
 (`runs.HistoryLine`, whose lines predate the field). `AnyLine` also takes plan 006's runs: K's
 `TalkerLine` and S's `ScenarioLine` (talker_lines.py), U's `UncertainLine` and T's
 `FirstAudioLine` (measure_lines.py), and K0's `DepthLine` (knowledge_depth_card.py); and plan
-007's run H, a pass's `LanguagesLine` (languages_card.py). Strict as
-every history line: a held-out run's breakdowns hold no group of fewer than `HELD_OUT_MIN_ITEMS`
-items, and a secret setting is shown only as set or not set.
+007's runs: A's `ActionLine` (action_history.py) and H's, a pass's `LanguagesLine`
+(languages_card.py). Strict as every history line: a held-out run's breakdowns hold no group of
+fewer than `HELD_OUT_MIN_ITEMS` items (`runs.check_groups`), and a secret setting is shown only
+as set or not set.
 """
 
 from __future__ import annotations
@@ -22,12 +23,15 @@ from ole5_voice.evals.knowledge_depth_card import DepthLine
 from ole5_voice.evals.languages_card import LanguagesLine
 from ole5_voice.evals.measure_lines import FirstAudioLine, UncertainLine
 from ole5_voice.evals.models import Commit, Model, Name, Sha256, Split
-from ole5_voice.evals.runs import HELD_OUT_MIN_ITEMS, HistoryLine, Note, Plain, Shown
+from ole5_voice.evals.runs import (
+    HistoryLine,
+    ModelName,
+    Note,
+    Shown,
+    check_groups,
+)
 from ole5_voice.evals.talker_lines import ScenarioLine, TalkerLine
 
-# A model's name as a history line keys its numbers by it (`whisper-large-v3`,
-# `canopylabs/orpheus-arabic-saudi`).
-ModelName = Annotated[Plain, Field(min_length=1, max_length=128)]
 _Ms = Annotated[float, Field(allow_inf_nan=False)]
 _Usd = Annotated[float, Field(ge=0, allow_inf_nan=False)]
 
@@ -70,12 +74,7 @@ class EotLine(Model):
     @model_validator(mode="after")
     def _held_out_groups(self) -> Self:
         counts = [value.items for values in self.breakdowns.values() for value in values.values()]
-        if any(items > self.items for items in counts):
-            raise ValueError("a stratum value covers no more items than the run")
-        if self.split == "held-out" and any(items < HELD_OUT_MIN_ITEMS for items in counts):
-            raise ValueError(
-                f"a held-out run's stratum values each cover at least {HELD_OUT_MIN_ITEMS} items"
-            )
+        check_groups(self.split, self.items, counts, "stratum values")
         return self
 
 
@@ -161,12 +160,7 @@ class OverlapLine(Model):
     @model_validator(mode="after")
     def _held_out_groups(self) -> Self:
         counts = [value.items for values in self.breakdowns.values() for value in values.values()]
-        if any(items > self.items for items in counts):
-            raise ValueError("a stratum value covers no more items than the run")
-        if self.split == "held-out" and any(items < HELD_OUT_MIN_ITEMS for items in counts):
-            raise ValueError(
-                f"a held-out run's stratum values each cover at least {HELD_OUT_MIN_ITEMS} items"
-            )
+        check_groups(self.split, self.items, counts, "stratum values")
         return self
 
 

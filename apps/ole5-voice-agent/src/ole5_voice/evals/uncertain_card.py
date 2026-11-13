@@ -17,7 +17,8 @@ from typing import Annotated, Final, Literal
 from pydantic import Field
 from t2_agentic_voice import get_logger
 
-from ole5_voice.evals.items import HISTORY_FILE
+from ole5_voice.evals.files import write_json
+from ole5_voice.evals.history import record_line
 from ole5_voice.evals.measure_lines import UncertainCount, UncertainLine
 from ole5_voice.evals.models import Commit, Model, Name, Sha256
 from ole5_voice.evals.overlap_card import AppendLine
@@ -166,12 +167,8 @@ def close_run(
         cost_usd=asking.spent_usd,
         results=tuple(results),
     )
-    partial = out / f".{SCORECARD_FILE}.partial"
-    partial.write_bytes((card.model_dump_json(indent=2) + "\n").encode("utf-8"))
-    partial.replace(out / SCORECARD_FILE)
-    line = line_of(card)
-    append_line(line, data / HISTORY_FILE)
-    append_line(line, out / HISTORY_FILE)
+    write_json(out, SCORECARD_FILE, card)
+    record_line(append_line, line_of(card), data, out)
     keep = card.keep
     log.info(
         "run_finished",

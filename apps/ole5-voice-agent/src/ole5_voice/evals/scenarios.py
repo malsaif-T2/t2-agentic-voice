@@ -38,7 +38,7 @@ from typing import Annotated, Final, Literal
 
 from pydantic import Field
 
-from ole5_voice.evals.items import GoldenSetError, read_toml
+from ole5_voice.evals.items import read_folder
 from ole5_voice.evals.knowledge_set import KnowledgeItem, Text
 from ole5_voice.evals.models import Model, Name
 from ole5_voice.evals.talker_data import HELD_TO, Register, Tag, registers_held
@@ -105,16 +105,9 @@ class Scenario(Model):
 
 def load_scenarios(folder: Path) -> tuple[Scenario, ...]:
     """Every scenario under `folder`, one TOML file each named by its ID, in the order of their
-    IDs; GoldenSetError naming a file that cannot be read, or holds another ID."""
-    if not folder.is_dir():
-        raise GoldenSetError(f"{folder.name}: no such folder of scenarios")
-    found = []
-    for path in sorted(folder.glob("*.toml")):
-        scenario = read_toml(path, Scenario)
-        if scenario.id != path.stem:
-            raise GoldenSetError(f"{path.name}: holds the scenario '{scenario.id}'")
-        found.append(scenario)
-    return tuple(found)
+    IDs; GoldenSetError naming a file that cannot be read, or holds another ID
+    (`items.read_folder`)."""
+    return tuple(read_folder(folder, Scenario, "scenario"))
 
 
 def problems(scenarios: Sequence[Scenario], items: Sequence[KnowledgeItem]) -> list[str]:

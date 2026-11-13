@@ -16,7 +16,7 @@ from ole5_voice.evals.run_folder import RESULTS_FILE, SESSIONS_FILE
 from ole5_voice.evals.runs import SCORECARD_FILE
 from ole5_voice.evals.talker_lines import TalkerLine
 from ole5_voice.evals.talker_score import TalkerScorecard
-from t2_agentic_voice import ProviderError
+from t2_agentic_voice import ProviderError, T2VoiceError
 
 from tests.ole5_voice.evals.talker_fakes import JUDGE, TALKER, Scripted, passage
 from tests.ole5_voice.evals.talker_support import Setup, item, make_setup
@@ -216,6 +216,7 @@ def test_the_days_limit_stops_a_run_which_resume_goes_on_with(setup: Setup) -> N
     assert talker_run.main([*setup.argv(), *DEV, "--resume"], parts=setup.parts()) == 0
     card = _card(setup)
     assert card.complete and len(card.variants) == 6 and len(card.sessions) == 2
+    assert [session.variants for session in card.sessions] == [4, 2]  # each session's own
     assert card.cost_usd == pytest.approx(sum(s.cost_usd for s in card.sessions))
     lines = [line for line, path in setup.lines.lines if path.name == "history.jsonl"]
     assert [line.session for line in lines[::2]] == [1, 2]  # type: ignore[attr-defined]
@@ -269,6 +270,15 @@ def test_an_error_the_run_does_not_score_is_raised_once_its_scorecard_is_written
     with pytest.raises(RuntimeError, match="made up"):
         talker_run.main([*setup.argv(), *DEV], parts=setup.parts())
     assert _card(setup).stopped == "error"
+
+
+def test_a_library_error_once_the_run_began_ends_it_as_not_complete(setup: Setup) -> None:
+    """Exit 1, as run T's, with its scorecard and line written (2, refused, before: evl-11)."""
+    setup.calls.script["How do I print? a2"] = Scripted(error=T2VoiceError("Made up."))
+    assert talker_run.main([*setup.argv(), *DEV], parts=setup.parts()) == 1
+    card = _card(setup)
+    assert card.stopped == "error" and not card.complete and len(card.variants) == 2
+    assert len(setup.lines.lines) == 2 and setup.chat.closed
 
 
 def test_a_held_out_run_that_does_not_finish_keeps_no_result(setup: Setup) -> None:
