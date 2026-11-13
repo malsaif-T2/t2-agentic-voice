@@ -1,16 +1,25 @@
 """The garbage-collection report (scripts/gc_report.py, and its doc sections in gc_docs.py)
-finds what it claims to find, and nothing it should ignore."""
+finds what it claims to find, and nothing it should ignore; and this repository's [gc]
+calibration silences its own kinds of noise without hiding a stale path, name or method."""
 
 from __future__ import annotations
 
 from pathlib import Path
 
-from scripts.gc_docs import comments_and_docstrings, unknown_names, unresolved_paths
+from scripts.gc_docs import (
+    comments_and_docstrings,
+    name_file_texts,
+    path_bases,
+    unknown_names,
+    unresolved_paths,
+)
 from scripts.gc_report import (
     ROOT,
+    Run,
     code_tokens,
     duplicates,
     large_modules,
+    repeated_runs,
     report,
     suppressions,
     unreferenced,
@@ -33,6 +42,31 @@ def test_a_copied_block_is_reported_once_with_both_places() -> None:
     [found] = duplicates(sources, min_tokens=20)
     assert (found.first, found.second) == ("a.py:3", "b.py:4")
     assert found.tokens >= 30
+
+
+def test_a_run_repeated_in_three_places_is_one_run_with_every_place() -> None:
+    """`poe gc` prints one line per run; `duplicates` (what `poe quality` counts) keeps one
+    entry per pair of places, three here."""
+    sources = {"a.py": SHARED, "b.py": "x = 1\n" + SHARED, "c.py": SHARED + "\ny = 2\n"}
+    pairs = duplicates(sources, min_tokens=20)
+    assert [(d.first, d.second) for d in pairs] == [
+        ("a.py:2", "b.py:3"),
+        ("a.py:2", "c.py:2"),
+        ("b.py:3", "c.py:2"),
+    ]
+    tokens = pairs[0].tokens
+    assert repeated_runs(sources, min_tokens=20) == [
+        Run(tokens, tokens, ("a.py:2", "b.py:3", "c.py:2"), pairs=3)
+    ]
+
+
+def test_a_run_whose_copies_run_on_for_different_lengths_gives_both() -> None:
+    longer = SHARED + "    print(result)\n"
+    sources = {"a.py": longer, "b.py": longer, "c.py": SHARED}
+    [run] = repeated_runs(sources, min_tokens=20)
+    lengths = sorted({d.tokens for d in duplicates(sources, min_tokens=20)})
+    assert (run.shortest, run.longest, run.pairs) == (lengths[0], lengths[-1], 3)
+    assert run.shortest < run.longest
 
 
 def test_imports_and_dunder_methods_are_not_duplication() -> None:
@@ -132,9 +166,14 @@ def test_names_the_docs_cite_must_be_in_the_code() -> None:
         "docs/b.md": "Plain words in backticks: `poe`, `dev`, `AsyncClient`.\n",
         # Another library's names: a last part, a whole name, or under a dotted prefix.
         "docs/c.md": "`httpx.AsyncClient`, `vendor.FrameStats`, `vendor.sub.Frame_Out`.\n",
+        # A template's placeholder is no name; a name beside it still is.
+        "docs/t.md": "Each `chunk_NNN` file, once `chunk_reader`.\n",
     }
     foreign = frozenset({"AsyncClient", "vendor.FrameStats", "vendor.sub"})
-    assert unknown_names(code, docs, foreign) == ["docs/a.md:1 old_helper"]
+    assert unknown_names(code, docs, foreign) == [
+        "docs/a.md:1 old_helper",
+        "docs/t.md:1 chunk_reader",
+    ]
     assert unknown_names(code, {"d.md": "`vendors.Frame_Out`"}, foreign) == [
         "d.md:1 vendors.Frame_Out"
     ]
@@ -152,14 +191,20 @@ def test_in_tests_only_comments_and_docstrings_name_files() -> None:
 
 
 def test_the_report_runs_on_a_small_project(tmp_path: Path) -> None:
+    """Every section, on a project of a few files (`poe gc` reads the whole repository, which
+    takes a worker half a minute)."""
     loaded = config(tmp_path)
     write(
         tmp_path,
         {
             "src/app/__init__.py": "",
             "src/app/core/a.py": SHARED,
-            "src/app/domain/b.py": SHARED,
-            "docs/a.md": "See `missing_name` in src/app/core/gone.py.\n",
+            "src/app/domain/b.py": SHARED + "\ndef unused():  # noqa: B001\n    pass\n",
+            # A path from the package's source root (`src`) resolves, as one from its folder.
+            "docs/a.md": (
+                "See `missing_name` in src/app/core/gone.py, app/core/a.py, core/a.py and "
+                "app/core/lost.py.\n"
+            ),
             # History keeps the names and paths of its time ([docs] historical).
             "docs/plans/completed/001-old.md": "Once `old_helper` in src/app/old.py.\n",
             # A planned doc's are counted ([gc] planned_docs).
@@ -169,18 +214,62 @@ def test_the_report_runs_on_a_small_project(tmp_path: Path) -> None:
         },
     )
     text = report(tmp_path, loaded)
-    assert "## Duplicates (1 runs of 20+ tokens" in text
+    assert "## Duplicates (1 runs of 20+ tokens outside tests/, in 1 pairs of places)\n" in text
+    assert " tokens: src/app/core/a.py:2 = src/app/domain/b.py:2\n" in text
     assert (
-        "## Unresolved paths (2)\n- tests/test_a.py:1 src/app/core/lost.py\n"
-        "- docs/a.md:1 src/app/core/gone.py\n"
+        "## Unreferenced definitions (3)\n- src/app/core/a.py:2 total\n"
+        "- src/app/domain/b.py:2 total\n- src/app/domain/b.py:9 unused\n"
+    ) in text
+    assert "## Suppressions\n- `# noqa`: 1\n" in text
+    assert "- `noqa` without a reason: src/app/domain/b.py:9\n" in text
+    assert "## Modules above 30 lines (0)\n- none\n" in text
+    assert (
+        "## Unresolved paths (3)\n- tests/test_a.py:1 src/app/core/lost.py\n"
+        "- docs/a.md:1 src/app/core/gone.py\n- docs/a.md:1 app/core/lost.py\n"
         "- docs/design/plan.md: 1 more, planned ([gc] planned_docs)\n"
     ) in text
     assert "## Names in docs that the code does not have (1)\n- docs/a.md:1 missing_name\n" in text
     assert "- docs/design/plan.md: 2 more, planned ([gc] planned_docs)\n" in text
 
 
-def test_the_report_runs_on_this_repository() -> None:
-    text = report(ROOT, load_config(ROOT))
-    for section in ("Duplicates", "Unreferenced", "Suppressions", "Modules above", "Unresolved"):
-        assert f"## {section}" in text
-    assert "## Names in docs" in text
+def test_this_repositorys_path_settings_hide_no_stale_path() -> None:
+    """[gc] path_bases and path_ignored, with the source roots `poe gc` adds: each kind of path
+    the calibration resolves or ignores does, and a stale one beside each is still reported."""
+    loaded = load_config(ROOT)
+    kept = (
+        "ole5_voice/agent.py t2_agentic_voice/voice/session/io.py knowledge/split.json "
+        "evals/split.json voice/kit.py voice/rules.py voice/tts.py web/voice.js agent/handlers.py "
+        "pipecat/transports/smallwebrtc/connection.py transports/smallwebrtc/connection.py"
+    )
+    stale = (
+        "ole5_voice/gone.py t2_agentic_voice/voice/gone.py knowledge/gone.json voice/kit_gone.py "
+        "voice/rules_gone.py voice/tts_bridge_gone.py web/gone.js agent/gone.py"
+    )
+    texts = {"notes.md": f"{kept}\n{stale}\n"}
+    found = unresolved_paths(ROOT, texts, path_bases(loaded), loaded.gc.path_ignored)
+    assert [entry.split(" ", 1)[1] for entry in found] == stale.split()
+
+
+def test_this_repositorys_name_settings_hide_no_stale_name_or_method() -> None:
+    """[gc] name_files, foreign_names and hooks: a name only a script or a split holds is the
+    code's, another library's is not listed, and a made-up one beside them still is; a hook is
+    never unreferenced, and an unused method named like one still is."""
+    gc = load_config(ROOT).gc
+    code = "\n".join(name_file_texts(ROOT, gc.name_files))
+    cited = (
+        "`VoiceClientError` `microphone_busy` `PLAYBACK_QUIET_MS` `Array.fromAsync` "
+        "`q33_human_agent` `create_agent` `PHOENIX_HOST` `VoiceClientGone` `q99_gone_item`"
+    )
+    assert unknown_names(code, {"d.md": cited}, gc.foreign_names) == [
+        "d.md:1 VoiceClientGone",
+        "d.md:1 q99_gone_item",
+    ]
+    sources = {
+        "lib.py": (
+            "class Answer(BaseModel):\n    def model_post_init(self, context): ...\n"
+            "    def model_post_initialize(self): ...\n"
+            "class Bridge(STTService):\n    async def process_audio_frame(self, frame, d): ...\n"
+        ),
+        "app.py": "from lib import Answer, Bridge\nAnswer()\nBridge()\n",
+    }
+    assert unreferenced(sources, ["lib.py"], gc.hooks) == ["lib.py:3 model_post_initialize"]

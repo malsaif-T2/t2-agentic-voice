@@ -23,10 +23,12 @@ from tests.t2_agentic_voice.loopback_audio import Frame, pitch
 
 quiet_pipecat()
 
-from pipecat.frames.frames import InterruptionFrame  # noqa: E402
-from pipecat.processors.frame_processor import FrameProcessor  # noqa: E402
-from pipecat.transports.base_output import BaseOutputTransport  # noqa: E402
-from pipecat.transports.smallwebrtc.transport import RawAudioTrack  # noqa: E402
+from pipecat.frames.frames import InterruptionFrame  # noqa: E402 - after quiet_pipecat()
+from pipecat.processors.frame_processor import FrameProcessor  # noqa: E402 - after quiet_pipecat()
+from pipecat.transports.base_output import BaseOutputTransport  # noqa: E402 - after quiet_pipecat()
+from pipecat.transports.smallwebrtc.transport import (  # noqa: E402 - after quiet_pipecat()
+    RawAudioTrack,
+)
 
 _Sender = BaseOutputTransport.MediaSender
 

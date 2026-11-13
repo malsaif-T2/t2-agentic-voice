@@ -80,7 +80,7 @@ class QualityConfig:
     doc: str
     weights: Mapping[str, int]
     suppressions_floor: float
-    duplication_floor: int
+    duplication_floor: float
 
 
 @dataclass(frozen=True)
@@ -169,7 +169,7 @@ def parse_config(data: dict[str, Any], lines: Lines) -> HarnessConfig:
         doc=quality.string("doc"),
         weights={k: weights.integer(k, minimum=0) for k in WEIGHTS},
         suppressions_floor=quality.number("suppressions_floor"),
-        duplication_floor=quality.integer("duplication_floor"),
+        duplication_floor=quality.number("duplication_floor"),
     )
     for table in (docs, plans, refs, gc, quality, weights):
         table.finish()

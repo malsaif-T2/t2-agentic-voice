@@ -42,7 +42,7 @@ def milestone(number: int) -> str:
 
 
 def _grade(layer: str, coverage: float | None, letter: str = "A") -> Grade:
-    return Grade(layer, 4, 1000, coverage, 1.0, (200, "a.py"), 0.0, 0, 1.0, 95.0, letter)
+    return Grade(layer, 4, 1000, coverage, 1.0, (200, "a.py"), 0.0, 0, 0.0, 1.0, 95.0, letter)
 
 
 def test_grades_are_compared_only_when_coverage_is_measured_alike() -> None:

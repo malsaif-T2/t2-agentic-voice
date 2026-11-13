@@ -27,7 +27,8 @@ _PATH = re.compile(
     r"(?<![\w./{-])((?:\.?[A-Za-z_][\w.-]*/)+[\w-]+"
     r"\.(?:py|md|toml|jsonl|json|yaml|yml|js|html|css|txt))\b"
 )
-_PLACEHOLDER = "NNN"  # a template's placeholder (`active/NNN-short-slug.md`), not a path
+# A template's placeholder (`active/NNN-short-slug.md`, `chunk_NNN`): not a path, nor a name.
+_PLACEHOLDER = "NNN"
 _FIXTURE_FILES = ("tests/harness/",)  # the harness's tests name imaginary files
 _NAME = re.compile(r"`([A-Za-z_]\w*(?:\.[A-Za-z_]\w*)*)(?:\(\))?`")
 
@@ -63,13 +64,16 @@ def unknown_names(
     code: str, docs: dict[str, str], foreign: frozenset[str] = frozenset()
 ) -> list[str]:
     """`doc:line name` for each code-like name in backticks (an underscore or an inner capital,
-    four characters or more) that `code` never mentions. A `foreign` name is another library's:
-    its last part, or the whole name, or a dotted prefix of it (`pipecat` for `pipecat.x.y`)."""
+    four characters or more) that `code` never mentions, a placeholder's (`chunk_NNN`) aside. A
+    `foreign` name is another library's: its last part, or the whole name, or a dotted prefix of
+    it (`pipecat` for `pipecat.x.y`)."""
     missing = []
     for name, text in docs.items():
         for number, line in enumerate(text.splitlines(), start=1):
             for match in _NAME.finditer(line):
                 full = match.group(1)
+                if _PLACEHOLDER in full:
+                    continue
                 last = full.split(".")[-1]
                 code_like = "_" in last or any(c.isupper() for c in last[1:])
                 theirs = {full, last} & foreign or any(full.startswith(f"{f}.") for f in foreign)
@@ -94,6 +98,20 @@ def comments_and_docstrings(source: str) -> str:
     return "".join(f"{line}\n" for line in kept)
 
 
+def path_bases(config: HarnessConfig) -> tuple[str, ...]:
+    """Where a named path may be relative to: [gc] path_bases, then the library's and each app's
+    source root (`<root>`, for a path that starts with the package: `ole5_voice/agent.py`) and
+    package folder (`<root>/<name>`, for a path inside it: `voice/session/io.py`)."""
+    roots = (config.arch.package_root, *(app.root for app in config.arch.apps))
+    return (*config.gc.path_bases, *roots, *config.product_dirs)
+
+
+def name_file_texts(root: Path, patterns: Sequence[str]) -> list[str]:
+    """The text of every file that one of `patterns` ([gc] name_files) matches."""
+    found = [p for pattern in patterns for p in sorted(root.glob(pattern)) if p.is_file()]
+    return [p.read_text(encoding="utf-8") for p in found]
+
+
 def _planned(found: list[str]) -> list[str]:
     """One line per planned doc ([gc] planned_docs): how many entries it has."""
     counts = Counter(entry.split(":", 1)[0] for entry in found)
@@ -111,13 +129,12 @@ def doc_sections(root: Path, config: HarnessConfig, code: dict[str, str]) -> lis
         n: comments_and_docstrings(t) if n.startswith("tests/") else t for n, t in code.items()
     }
     lines: list[str] = []
-    bases = (*gc.path_bases, *config.product_dirs)
+    bases = path_bases(config)
     paths = unresolved_paths(root, cited | current, bases, gc.path_ignored)
     lines += ["", f"## Unresolved paths ({len(paths)})"]
     lines += [f"- {p}" for p in paths] or ["- none"]
     lines += _planned(unresolved_paths(root, planned, bases, gc.path_ignored))
-    named = [p for pattern in gc.name_files for p in sorted(root.glob(pattern)) if p.is_file()]
-    every = "\n".join([*code.values(), *(p.read_text(encoding="utf-8") for p in named)])
+    every = "\n".join([*code.values(), *name_file_texts(root, gc.name_files)])
     names = unknown_names(every, current, gc.foreign_names)
     lines += ["", f"## Names in docs that the code does not have ({len(names)})"]
     lines += [f"- {n}" for n in names] or ["- none"]

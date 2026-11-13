@@ -469,32 +469,70 @@ golden_principles = "docs/harness/golden-principles.md"
 invariants = "docs/SECURITY.md"
 
 # `uv run poe gc`: whether a garbage-collection round is due, and its candidates. Not a gate.
-# Calibrated by the first round against what its read found to be noise (plan 004, decision log).
+# Calibrated by each round against what its read found to be noise (plans 004 and 008, their
+# decision logs).
 [gc]
-# Commits, merges left out, that make a round due.
-due_after_commits = 40
+# Commits, merges left out, that make a round due: about one milestone (the four after round 1
+# took 58 to 169 commits; plan 008).
+due_after_commits = 100
 # The shortest repeated token run reported (and counted by `poe quality`): this code's real
-# copies run 25 to 34 tokens.
+# copies run 25 to 49 tokens (plans 004 and 008).
 min_tokens = 25
 # Modules above this many lines are listed: 100 lines under [modules] max_lines is about one
 # large change (plan 004 measured the growth per commit).
 size_watch = 300
 # Where a path named in a doc or a comment may be relative to (the library's and each app's
-# package folder are always added): the root, the docs' folders, and the app's member folder,
-# whose data folder (`evals/`) docs and code name.
-path_bases = ["", "docs", "docs/design", "docs/plans", "apps/ole5-voice-agent"]
-# Path prefixes that are not ours to resolve: runtime output, the prototype beside the
-# repository that code cites as a spec (D-010), and installed libraries' files.
-path_ignored = ["var/", "Ole5-chatbot/", "groq/", "httpx/", "requests/", "opentelemetry/"]
+# source root and package folder are always added): the root, the docs' folders, the app's
+# member folder and its data folder, whose files (`evals/split.json`, `knowledge/split.json`)
+# docs and code name, and the library's tests, whose helpers (`voice/kit.py`) its tests name.
+path_bases = [
+    "",
+    "docs",
+    "docs/design",
+    "docs/plans",
+    "apps/ole5-voice-agent",
+    "apps/ole5-voice-agent/evals",
+    "tests/t2_agentic_voice",
+]
+# Path prefixes that are not ours to resolve: runtime output; the prototype beside the
+# repository that code cites as a spec (D-010), by its folder or by the files the library cites
+# (the library's src/ cannot name the prototype's folder: ARCH-WORDS); and installed libraries'
+# files, by their package's folder or, for Pipecat's transports, below it.
+path_ignored = [
+    "var/",
+    "Ole5-chatbot/",
+    "voice/rules.py",
+    "voice/stt.py",
+    "voice/tts.py",
+    "web/voice.js",
+    "agent/handlers.py",
+    "groq/",
+    "httpx/",
+    "requests/",
+    "opentelemetry/",
+    "pipecat/",
+    "transports/smallwebrtc/",
+]
 # Methods a library calls on our subclasses, so they are never "unreferenced": logging's and
 # http.server's handlers (emit; do_GET, do_POST, log_message), OpenTelemetry's span processor
-# (on_end).
-hooks = ["emit", "do_GET", "do_POST", "log_message", "on_end"]
+# (on_end), pydantic's (model_post_init) and Pipecat's speech-to-text service's
+# (process_audio_frame).
+hooks = [
+    "emit",
+    "do_GET",
+    "do_POST",
+    "log_message",
+    "on_end",
+    "model_post_init",
+    "process_audio_frame",
+]
 # Names a doc may cite in backticks that are not in our code: another library's last part, whole
 # name, or dotted prefix (`pipecat` for `pipecat.services.x`). ListAgents and SendMessage are
-# Claude Code's tools for messaging other sessions (WORKING-RULES.md); the others are Pipecat's,
-# the standard library's, OpenTelemetry's, the Groq SDK's, httpx's and requests', FastAPI's, and
-# the environment variables those libraries read.
+# Claude Code's tools for messaging other sessions (WORKING-RULES.md); _unconfirmed_voice_yes is
+# the prototype's (D-010); the others are Pipecat's, Python's and its standard library's,
+# OpenTelemetry's, the Groq SDK's, httpx's and requests', FastAPI's and uvicorn's, LangGraph's
+# (create_agent, StateGraph), the browser's (getSynchronizationSources, AbortSignal), and the
+# environment variables those libraries and Phoenix read.
 foreign_names = [
     "ListAgents",
     "SendMessage",
@@ -520,10 +558,32 @@ foreign_names = [
     "PIPECAT_ALLOWED_FILE_URL_NETWORKS",
     "PIPECAT_ALLOWED_ORIGINS",
     "smart_turn_audio_log",
+    "AudioContextTTSService",
+    "InitVar",
+    "__package__",
+    "CookieConflict",
+    "ProxyHeadersMiddleware",
+    "create_agent",
+    "StateGraph",
+    "getSynchronizationSources",
+    "AbortSignal",
+    "PHOENIX_HOST",
+    "PHOENIX_DEFAULT_RETENTION_POLICY_DAYS",
+    "_unconfirmed_voice_yes",
 ]
 # Non-Python files whose text counts as code when docs cite names (globs from the root): the
-# config files, and the apps' own scripts (never a node_modules/ beside them).
-name_files = ["pyproject.toml", "harness.toml", ".env.example", "apps/*/src/**/*.js"]
+# config files; the library's, the apps' and the widget's scripts and the tests' browser driver
+# (never a node_modules/ beside them); and the golden sets' splits, which name every item.
+name_files = [
+    "pyproject.toml",
+    "harness.toml",
+    ".env.example",
+    "packages/*/src/**/*.js",
+    "apps/*/src/**/*.js",
+    "apps/*/web/*.js",
+    "tests/*.mjs",
+    "apps/*/evals/**/split.json",
+]
 # Docs that describe planned code, so most names and paths they cite do not exist yet: each is
 # counted, not listed. The design names the API of the milestones to come.
 planned_docs = ["docs/design/package-design.md"]
@@ -533,9 +593,10 @@ planned_docs = ["docs/design/package-design.md"]
 [quality]
 doc = "docs/harness/quality.md"
 suppressions_floor = 10.0
-# The duplicate runs ([gc] min_tokens) that score a unit's duplication zero. At 25 tokens the
-# look-alike runs the first round kept would cost a unit a letter at 5 (plan 004).
-duplication_floor = 10
+# The duplicate pairs of places ([gc] min_tokens) per 1,000 of a unit's lines that score its
+# duplication zero, as suppressions_floor does for suppressions. A count alone (10 pairs) scored
+# 8 of 11 units zero in round 2, whatever their size (plan 008).
+duplication_floor = 10.0
 
 [quality.weights]
 coverage = 40

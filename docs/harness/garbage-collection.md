@@ -17,7 +17,7 @@ and why (`scripts/gc_due.py`). Counted after the commit that moved the last roun
 `completed/` (before the first round, after the repository's first commit):
 - a milestone completed (a completed plan's Status line names it, and no active plan's does);
 - a set number of commits landed, merges left out, since a merge repeats its branch's commits
-  (`[gc] due_after_commits` in `harness.toml`; 40);
+  (`[gc] due_after_commits` in `harness.toml`; 100, about one milestone);
 - a layer grades below what [quality.md](quality.md) records (compared only when coverage was
   measured alike).
 
@@ -30,7 +30,7 @@ crossing the size watch in the candidates below the signal.
 1. **Measure.** `uv run poe gc` lists candidates after its signal (not a gate: each one needs
    judgment):
    - duplicated code outside `tests/` (runs of `[gc] min_tokens` tokens or more; imports,
-     dunder methods, comments and layout ignored);
+     dunder methods, comments and layout ignored), one line per run with every place it starts;
    - unreferenced top-level definitions and methods (decorated ones, `main`, tests, and the
      framework hooks listed in `[gc] hooks` excepted);
    - suppressions per file, and every `noqa` without a reason;
@@ -48,7 +48,8 @@ crossing the size watch in the candidates below the signal.
      re-implementations);
    - models and helpers that restate a core definition instead of reusing it;
    - docs, docstrings, and comments that no longer match the code;
-   - tests that are slow for no reason (`uv run pytest --durations=20`);
+   - tests that are slow for no reason (`uv run pytest -n auto --durations=20`, as `poe test`
+     runs them);
    - tech-debt rows that have become cheap, or are stale;
    - every number and reason in the docs written since the last round, traced to a
      measurement, a command's output, or the owner's words (GP-16);
@@ -67,9 +68,11 @@ crossing the size watch in the candidates below the signal.
    each layer's gaps in words.
 8. **Close.** Docs updated, plan completed, gate green.
 
-The first round also calibrates the thresholds in `harness.toml`'s `[gc]` (the duplicate run
-length, the size watch, the commit count, the lists of hooks and foreign names) against what its
-read found to be noise, and records the values it chose in its decision log.
+Every round also checks the thresholds in `harness.toml`'s `[gc]` (the duplicate run length,
+the size watch, the commit count, the path bases, the lists of hooks and foreign names) against
+what its read found to be noise, and records each value it changes in its decision log; the
+harness's tests show that each kind of noise silenced still leaves a stale path or name beside
+it reported.
 
 ## Rules of thumb
 

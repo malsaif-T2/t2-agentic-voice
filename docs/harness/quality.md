@@ -13,12 +13,13 @@ docstring share, and a layer with no other module is graded `empty`. It is not a
 | Coverage | the share of the layer's statements the tests run | 40 |
 | Size | the share of its modules within the size watch (below the hard limit `poe arch` enforces) | 20 |
 | Suppressions | `noqa`, `type: ignore`, and `pragma: no cover` per 1,000 lines; 10 or more scores zero | 15 |
-| Duplication | repeated runs of code that touch the layer (`poe gc`'s detector); 10 or more scores zero | 15 |
+| Duplication | the pairs of places that repeat a run of code (`poe gc`'s detector) and touch the layer, per 1,000 lines; 10 or more scores zero | 15 |
 | Docstrings | the share of its modules that say what they are for | 10 |
 
 The weights and the two zero points are set in `harness.toml` (`[quality]`), and the size watch
 is `[gc] size_watch`; the duplicate runs are those of `[gc] min_tokens` tokens or more, so a
-recalibration of either moves the grades. The score is out of 100. Without coverage data, it is
+recalibration of either moves the grades. A run copied in three places is three pairs, and a
+pair between two units counts in both. The score is out of 100. Without coverage data, it is
 out of the other signals. A grade is A from 90, B from 80, C from 70, and D below. The command
 lives in `scripts/quality.py`. Every [garbage-collection round](garbage-collection.md) updates
 the table below and writes each unit's gaps in words: a number shows where to look, and only a

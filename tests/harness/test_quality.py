@@ -93,6 +93,37 @@ def test_a_layer_is_measured_from_its_modules(tmp_path: Path) -> None:
     assert f"| adapters | **{found.letter}** |" in table
 
 
+COPIED = """
+def total(rows):
+    result = 0
+    for row in rows:
+        if row.amount is not None and row.currency == "EUR":
+            result += row.amount * row.rate
+    return round(result, 2)
+"""
+
+
+def test_duplication_is_scored_by_the_pairs_per_1000_lines(tmp_path: Path) -> None:
+    """One copy between core and domain touches both, and costs the smaller unit more: zero at
+    [quality] duplication_floor pairs per 1,000 lines (5 in the synthetic config)."""
+    loaded = config(tmp_path)
+    filler = "# a line of no code\n"
+    sources = {
+        "src/app/core/a.py": DOC + COPIED + filler * 392,  # 400 lines: 2.5 per 1,000
+        "src/app/domain/b.py": DOC + COPIED + filler * 192,  # 200 lines: 5 per 1,000
+        "src/app/api/c.py": DOC + "x = 1\n" + filler * 398,  # 400 lines, no copy
+    }
+    core, domain, api = (grade(sources, {}, layer, loaded) for layer in ("core", "domain", "api"))
+    assert (core.lines, domain.lines, api.lines) == (400, 200, 400)
+    assert (core.duplicate_pairs, domain.duplicate_pairs, api.duplicate_pairs) == (1, 1, 0)
+    assert (core.duplicates_per_kloc, domain.duplicates_per_kloc) == (2.5, 5.0)
+    # Each module is above the size watch and has its docstring, so only duplication differs:
+    # it weighs 15 of the 60 known without coverage.
+    assert api.score - core.score == pytest.approx(100 * 15 * 0.5 / 60)
+    assert api.score - domain.score == pytest.approx(100 * 15 / 60)
+    assert "| core | **" in render([core], 30) and "| 1 (2.5) |" in render([core], 30)
+
+
 def test_the_table_reads_back_as_poe_gc_reads_it(tmp_path: Path) -> None:
     """What `render` writes into quality.md, `recorded_grades` reads: each layer's letter, and
     whether its coverage was measured, so the 'graded lower' signal never goes quiet."""
