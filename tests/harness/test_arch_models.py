@@ -6,16 +6,15 @@ statement and in a call that loads a literal name alike, so an import of torch o
 adapter loads is provided by a requirement of the library's `ecapa` extra, read from the source
 and the pyproject, never from what is installed, so the answer is one with or without the
 `language-id` group; and importing every module of the library, in a new process, loads neither
-torch nor SpeechBrain, so `poe check` imports no torch with the group installed either. The rules
-are this repository's own, rendered onto the synthetic project of support.py, whose `adapters`
-layer stands in for the library's."""
+torch nor SpeechBrain, so `poe check` imports no torch with the group installed either (that
+child is test_arch_ban.py's, which also keeps Pipecat's runner out). The rules are this
+repository's own, rendered onto the synthetic project of support.py, whose `adapters` layer
+stands in for the library's."""
 
 from __future__ import annotations
 
 import ast
-import json
 import re
-import subprocess
 import sys
 import tomllib
 from pathlib import Path
@@ -24,7 +23,6 @@ from scripts.arch_ban import imported
 from scripts.check_architecture import check_repo
 from scripts.harness_config import load_config
 from tests.harness.support import ARCHITECTURE, SYNTHETIC, config, write
-from tests.isolation import child_shell
 
 ROOT = Path(__file__).resolve().parents[2]
 ARCH = load_config(ROOT).arch
@@ -118,36 +116,3 @@ def test_every_module_the_ecapa_adapter_loads_comes_with_the_ecapa_extra() -> No
     for module in outside:
         assert _normalized(module) in extra | base, module
     assert {_normalized(m) for m in outside} & base == {"numpy"}  # all else is the extra's
-
-
-# The child: import every module of the library, then report which of torch's and SpeechBrain's
-# modules are loaded. It writes its report to the file it is given.
-_CHILD = """
-import importlib, json, pkgutil, sys
-
-import t2_agentic_voice
-
-for found in pkgutil.walk_packages(t2_agentic_voice.__path__, "t2_agentic_voice."):
-    importlib.import_module(found.name)
-heavy = ("torch", "torchaudio", "speechbrain", "huggingface_hub")
-loaded = sorted(n for n in sys.modules if n.split(".")[0] in heavy)
-with open(sys.argv[1], "w", encoding="utf-8") as out:
-    json.dump(loaded, out)
-"""
-
-
-def test_importing_every_module_of_the_library_loads_no_torch(tmp_path: Path) -> None:
-    """Whether or not the `language-id` group is installed, importing the library, every one of
-    its modules, loads neither torch nor SpeechBrain nor Hugging Face's client: only ECAPA's
-    `load` does (`poe check` loads no model)."""
-    report = tmp_path / "report.json"
-    done = subprocess.run(
-        [sys.executable, "-I", "-X", "utf8", "-c", _CHILD, str(report)],
-        cwd=ROOT,
-        env=child_shell(),
-        capture_output=True,
-        timeout=300,
-        check=False,
-    )
-    assert done.returncode == 0, done.stderr.decode("utf-8", errors="replace")
-    assert json.loads(report.read_text(encoding="utf-8")) == []

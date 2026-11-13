@@ -2,8 +2,8 @@
 bans, in any form, wherever the import sits, nor reaches one through its own package's other
 modules, its allowed modules aside. The rule's tests run on the synthetic project of support.py;
 then this repository's bans are checked against what plan 003 asks (and, in
-test_installed_pipecat.py, against the installed Pipecat), and importing `voice` is shown to
-leave Pipecat's runner out."""
+test_installed_pipecat.py, against the installed Pipecat), and importing the library, `voice`
+with it, is shown to leave Pipecat's runner out (and torch, for test_arch_models.py)."""
 
 from __future__ import annotations
 
@@ -312,25 +312,35 @@ def test_a_ban_whose_code_was_renamed_fails_the_config() -> None:
     ]
 
 
-# The child: import `voice` and every module under it, then report which of Pipecat's runner's
-# modules are loaded. It writes its report to the file it is given.
+# The child: import every module of the library, `voice`'s among them, then report which of
+# Pipecat's runner's modules are loaded, and which of torch's, torchaudio's, SpeechBrain's and
+# Hugging Face's client's. It writes its report to the file it is given. One child answers both
+# (importing the whole library takes a worker half a minute under the gate's load).
 _CHILD = """
 import importlib, json, pkgutil, sys
 
-import t2_agentic_voice.voice as voice
+import t2_agentic_voice
 
-for found in pkgutil.walk_packages(voice.__path__, "t2_agentic_voice.voice."):
+for found in pkgutil.walk_packages(t2_agentic_voice.__path__, "t2_agentic_voice."):
     importlib.import_module(found.name)
-loaded = sorted(n for n in sys.modules if n.startswith("pipecat.runner.run"))
+heavy = ("torch", "torchaudio", "speechbrain", "huggingface_hub")
+loaded = {
+    "runner": sorted(n for n in sys.modules if n.startswith("pipecat.runner.run")),
+    "heavy": sorted(n for n in sys.modules if n.split(".")[0] in heavy),
+    "voice": "t2_agentic_voice.voice.pipeline" in sys.modules,
+}
 with open(sys.argv[1], "w", encoding="utf-8") as out:
     json.dump(loaded, out)
 """
 
 
-def test_importing_voice_leaves_pipecats_runner_out(tmp_path: Path) -> None:
-    """`pipecat.runner.run` loads a `.env` with override when it is imported (plan 003's reading
-    of step 4); ARCH-BAN keeps it out of the library's own imports, and this, in a new process,
-    out of everything `voice` imports."""
+def test_importing_the_library_leaves_pipecats_runner_and_torch_out(tmp_path: Path) -> None:
+    """In a new process, importing every module of the library, so everything `voice` imports:
+    - `pipecat.runner.run` stays out: it loads a `.env` with override when it is imported (plan
+      003's reading of step 4), and ARCH-BAN keeps it out of the library's own imports;
+    - torch, SpeechBrain and Hugging Face's client stay out whether or not the `language-id`
+      group is installed: only ECAPA's `load` imports them, so `poe check` loads no model
+      (test_arch_models.py has the rules)."""
     report = tmp_path / "report.json"
     done = subprocess.run(
         [sys.executable, "-I", "-X", "utf8", "-c", _CHILD, str(report)],
@@ -341,7 +351,10 @@ def test_importing_voice_leaves_pipecats_runner_out(tmp_path: Path) -> None:
         check=False,
     )
     assert done.returncode == 0, done.stderr.decode("utf-8", errors="replace")
-    assert json.loads(report.read_text(encoding="utf-8")) == []
+    loaded = json.loads(report.read_text(encoding="utf-8"))
+    assert loaded["voice"], "the child imported no module of voice"
+    assert loaded["runner"] == [], "Pipecat's runner loads a .env with override"
+    assert loaded["heavy"] == [], "importing the library loaded a model's libraries"
 
 
 @pytest.mark.parametrize(
