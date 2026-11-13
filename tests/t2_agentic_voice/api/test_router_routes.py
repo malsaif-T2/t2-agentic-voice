@@ -1,9 +1,8 @@
-"""The router's other routes (api/runtime.py, "The router"; the design's 4.5 and 10.5): every
-route answers 503 `not_started` while the lifespan has not run, `/health`, `/ready`, the client
-script and `/dev` included (the decision log, 2026-11-03); `/health` holds what is built and no
-path; the browser's files from the static folder with their headers; and `/dev` only with `env`
-dev and the dev page on, to loopback clients, `env` checked before the client's address is
-read."""
+"""The router's other routes (api/router.py; the design's 4.5 and 10.5): every route answers 503
+`not_started` while the lifespan has not run, `/health`, `/ready`, the client script and `/dev`
+included (the decision log, 2026-11-03); `/health` holds what is built and no path; the browser's
+files from the static folder with their headers; and `/dev` only with `env` dev and the dev page on,
+to loopback clients, `env` checked before the client's address is read."""
 
 from __future__ import annotations
 

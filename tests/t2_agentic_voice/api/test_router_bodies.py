@@ -1,8 +1,7 @@
-"""How each `t2v/1` route reads its body (api/runtime.py, "Bodies and errors"; D-029): JSON alone,
-415 before a byte is read; never past its cap, 413 from a true length, from none (chunked) and
-from one that lies; each body the protocol's own test refuses answered 400 in the one shape,
-echoing nothing it sent; and a join of another protocol version answered with its notice before
-the token is verified."""
+"""How each `t2v/1` route reads its body (api/http_errors.py; D-029): JSON alone, 415 before a byte
+is read; never past its cap, 413 from a true length, from none (chunked) and from one that lies;
+each body the protocol's own test refuses answered 400 in the one shape, echoing nothing it sent;
+and a join of another protocol version answered with its notice before the token is verified."""
 
 from __future__ import annotations
 
