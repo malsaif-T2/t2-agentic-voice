@@ -1,4 +1,4 @@
-"""`t2v doctor`'s section for the spoken-language classifier (api/doctor.py; plan 007's Block H),
+"""`t2v doctor`'s section for the spoken-language classifier (api/doctor.py; D-086),
 shown only under `stt.live_language = "classified"`: each model file in `stt.classifier_dir`
 against its pinned SHA-256, as the ONNX files are checked, a changed or missing one failing with
 the guide's page, no folder failing with a fix; and under `stt.classifier = "ecapa"` whether
@@ -37,8 +37,8 @@ def _pins(folder: Path) -> tuple[ModelFile, ...]:
 def test_the_classifiers_section_shows_only_under_classified_each_file_against_its_pin(
     tmp_path: Path,
 ) -> None:
-    """Plan 007's Block H: each model file's SHA-256 against its pin, as the ONNX files are
-    checked, a changed one failing with the guide's page; no section under `session`."""
+    """Each model file's SHA-256 against its pin, as the ONNX files are checked, a changed one
+    failing with the guide's page; no section under `session`."""
     files = _pins(tmp_path)
     assert classifier_checks(VoiceSettings(env="dev"), files=files) == []
     found = _by_name(classifier_checks(_classified(tmp_path), files=files))

@@ -1,4 +1,4 @@
-"""Where a text call's read-backs play (testing/text_read_back.py; plan 007, Track D), read from a
+"""Where a text call's read-backs play (testing/text_read_back.py; plan 007), read from a
 real `Playback` against the plans the talker asked for: a read-back said in one clause each, or
 cut into clauses captioned as said; a corrected draft's reading told from the first's; a
 summary that played whole, or was cut short, said with no audio or failed, and one whose reply a

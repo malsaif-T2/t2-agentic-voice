@@ -97,7 +97,7 @@ def test_a_repeat_request_over_a_reply_holding_any_repeat_word_goes_on(
     played: str, text: str, language: LanguageCode
 ) -> None:
     """Whisper may spell the repeat word of the agent's echo otherwise than the reply did, and
-    the repeat would say it again and again (plan 005's Track B review): a repeat request over
+    the repeat would say it again and again (plan 005's session review): a repeat request over
     a reply that holds any repeat word is the agent's own. A sentence is left to the steps
     after, as any other."""
     assert judged(text, language, played=(played,)) == went_on("own_words")

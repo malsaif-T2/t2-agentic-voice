@@ -48,8 +48,8 @@ REFERENCE = "made-up-ref-0123"
 # Where a model's own refusal carries the input it refused (FastAPI's 422 sends `errors()`).
 CARRIED = {"errors", "errors json"}
 OFFER = {"call_id": "c-1", "type": "offer"}
-# Bodies no route takes, each refused as the route parses it (its JSON text): Track F's router
-# test posts each one (api/runtime.py).
+# Bodies no route takes, each refused as the route parses it (its JSON text): the router's test
+# posts each one (test_router_bodies.py).
 ADVERSARIAL: list[tuple[type[BaseModel], dict[str, Any]]] = [
     (JoinRequest, {"token": TOKEN}),
     (JoinRequest, {"protocol": 1}),

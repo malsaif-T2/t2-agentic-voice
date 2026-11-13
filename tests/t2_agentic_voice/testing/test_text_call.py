@@ -1,10 +1,10 @@
-"""`TextCall` (testing/text_call.py; plan 006, Track C): the real session and its talker held in
-text on a virtual clock: a turn's reply as the caller hears it, its tool calls, cards, blocked
-clauses, times, requests and usage; a turn said over the reply playing, or while a search runs;
-the client's Stop; the guard's checks of the call; an echo agent's call; and what it refuses.
-The talker is the tests' scripted one (text_call_support.py), but where a fake model's clock is
-tested: the library's talker on a `ScriptedLLM`, whose pauses run on each call's own clock, and
-whose script, once it has run out, fails the test."""
+"""`TextCall` (testing/text_call.py): the real session and its talker held in text on a virtual
+clock: a turn's reply as the caller hears it, its tool calls, cards, blocked clauses, times,
+requests and usage; a turn said over the reply playing, or while a search runs; the client's Stop;
+the guard's checks of the call; an echo agent's call; and what it refuses. The talker is the tests'
+scripted one (text_call_support.py), but where a fake model's clock is tested: the library's talker
+on a `ScriptedLLM`, whose pauses run on each call's own clock, and whose script, once it has run
+out, fails the test."""
 
 from __future__ import annotations
 
@@ -162,7 +162,7 @@ def test_the_clients_stop_stops_the_reply_and_its_work() -> None:
 def test_the_guards_checks_run_on_every_clause_the_talker_said(
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
-    """Rule B is Track B's, built in parallel: the tests' stand-in passes a token found in the
+    """Rule B (the guard's `check_ids`) stood in for: the stand-in passes a token found in the
     evidence (the caller's words, the tools' evidence, the cards) and fails any other."""
 
     def check(clause: str, *, evidence: Any, settings: Any, year: int) -> IdVerdict:

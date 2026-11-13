@@ -5,7 +5,7 @@ a number matched only among them, said back by its last four digits (plan 007's 
 
 Invariant 3's adversarial cases (docs/SECURITY.md): a caller naming another customer's ticket
 number, or an email, gets nothing of theirs, whatever the outbox holds. The outbox is a fake
-(`PastContext`): `past_actions` is the library's, built by plan 007's Track B."""
+(`PastContext`): `past_actions` is the library's, over the action runner's outbox."""
 
 from __future__ import annotations
 

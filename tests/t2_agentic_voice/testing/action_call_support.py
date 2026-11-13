@@ -21,7 +21,7 @@ from t2_agentic_voice.agent.context import DECLINED
 from t2_agentic_voice.core.conversation import DeclineKind
 from t2_agentic_voice.core.events import Event
 from t2_agentic_voice.core.settings.tts import LanguageTag
-from t2_agentic_voice.core.settings.words import LanguageCode
+from t2_agentic_voice.core.settings.words import LanguageCode, primary_code
 from t2_agentic_voice.domain.action_declaration import Claims, ReadBack, Say
 from t2_agentic_voice.domain.consent_check import is_consent_check
 from t2_agentic_voice.domain.declaration import Language, VoiceAgent
@@ -131,7 +131,7 @@ class Words:
 
     @property
     def code(self) -> LanguageCode:
-        return "en" if self.tag == "en" else "ar"
+        return primary_code(self.tag)
 
     @property
     def yes_send(self) -> str:

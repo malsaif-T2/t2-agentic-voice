@@ -1,4 +1,4 @@
-"""Ole5's widget in plan 006 (Track D): the agent's `thinking` on the state line, beside a dot
+"""Ole5's widget in plan 006: the agent's `thinking` on the state line, beside a dot
 that pulses (still for a caller who asks for less motion), and a reply's card above the
 captions: its title, its steps numbered and its source with the label in the widget's language,
 each line in the direction of its own first strong character (`dir="auto"`: an Arabic step right

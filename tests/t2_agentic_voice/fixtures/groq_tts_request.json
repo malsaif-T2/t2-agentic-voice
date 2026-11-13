@@ -1,6 +1,6 @@
 {
   "about": [
-    "The request GroqTTS sends for one fixed text: plan 003, Block 0, step 11. Track B's tests",
+    "The request GroqTTS sends for one fixed text: plan 003, step 11. GroqTTS's tests",
     "compare the request its fake transport receives with this, field by field and byte for",
     "byte. Its sources: Groq's Orpheus page as plan 003 quotes it",
     "(console.groq.com/docs/text-to-speech/orpheus, read 2026-11-02 by the research step: wav",

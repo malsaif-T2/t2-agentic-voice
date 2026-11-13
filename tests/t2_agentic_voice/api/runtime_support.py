@@ -1,7 +1,7 @@
-"""What the runtime's tests share (plan 003, Track F): a runtime built on Block 0's fakes, served
-in-process through httpx's ASGI transport with its lifespan run, and the fakes of the parts the
-lifespan opens that other tracks build (the phrase cache, Track B's; the used-token store and the
-identity sources, Track C's), so these tests run on Block 0's contracts alone.
+"""What the runtime's tests share (plan 003): a runtime built on the fakes of fakes.py, served
+in-process through httpx's ASGI transport with its lifespan run, and fakes of the parts the
+lifespan opens (the phrase cache, the used-token store and the identity sources), so these tests
+run on the ports' contracts alone.
 
 `patch_stores` (the `patched_stores` fixture of this folder's conftest.py) swaps the adapters'
 `PhraseCache` and `SqliteUsedTokens` for fakes, which the runtime imports when its lifespan

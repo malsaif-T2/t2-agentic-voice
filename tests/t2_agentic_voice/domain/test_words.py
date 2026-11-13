@@ -2,7 +2,7 @@
 lists, the agent's `phrases` start from the presets' and a team extends them, each kind by
 language code, after the words already there and none twice, read-only; one language's lists
 come whole; and what cannot be taken is a ConfigurationError naming the kind, or for the
-declaration the field, never a word (plan 005, Block 0). The presets' lists (Track A) are in the
+declaration the field, never a word (plan 005). The presets' lists are in the
 rule's form, each word once and of one kind, in its language's script; and no preset's fixed
 phrase holds a word of its stop, wait, repeat or listening list, nor makes the rule stop or
 repeat on any run of its words, since the agent's echo would, its greeting among them and a

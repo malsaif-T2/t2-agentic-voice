@@ -193,7 +193,7 @@ def test_the_runtime_hands_its_calls_the_talkers_and_closes_the_chat_model(
 def test_the_providers_build_a_classifier_only_under_classified(
     tmp_path: Path, monkeypatch: pytest.MonkeyPatch
 ) -> None:
-    """Plan 007's Block H: Silero's by default, ECAPA's when named, each on the settings'
+    """The classifier (D-086): Silero's by default, ECAPA's when named, each on the settings'
     folder and threads, built with no IO (its files are checked when the runtime loads it);
     `replace` keeps it, or puts another in its place."""
     from t2_agentic_voice.adapters.ecapa_language import EcapaLanguage

@@ -1,10 +1,10 @@
-"""The composition of an agent's actions (api/actions.py, api/providers.py, api/runtime.py; plan
-007, Track B): one action runner for every call of the runtime, on the SQLite outbox under
-`storage.var_dir/<agent>/outbox.sqlite3`, the per-caller cap from the settings, emitting no
-event of its own (the session reports each outcome); the rows an earlier process left `sending`
-reconciled as the runtime starts, before any call, never sent again (invariant 6); each call's
-talker given the runner and its own call's record; a call's record let go as it ends; the
-outbox closed as the runtime stops; and an agent with no actions opening no outbox."""
+"""The composition of an agent's actions (api/actions.py, actions/agent_tools.py, agent/talker.py,
+api/runtime.py): one action runner for every call of the runtime, on the SQLite outbox under
+`storage.var_dir/<agent>/outbox.sqlite3`, the per-caller cap from the settings, emitting no event of
+its own (the session reports each outcome); the rows an earlier process left `sending` reconciled as
+the runtime starts, before any call, never sent again (invariant 6); each call's talker given the
+runner and its own call's record; a call's record let go as it ends; the outbox closed as the
+runtime stops; and an agent with no actions opening no outbox."""
 
 from __future__ import annotations
 

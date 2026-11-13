@@ -1,5 +1,5 @@
 """The yes rule's rails with a turn heard in another language than the read-back's
-(domain/yes_words.py's `rails_for`, domain/yes_rule.py's `judged`; plan 007's Block H;
+(domain/yes_words.py's `rails_for`, domain/yes_rule.py's `judged`; D-086;
 docs/SECURITY.md, invariant 1). With each turn's language from a classifier, an English answer
 over an Arabic read-back is routine, and the read-back's own lists hold none of its no words or
 change markers: so whenever the heard words' language is not the read-back's, `judged`'s rails

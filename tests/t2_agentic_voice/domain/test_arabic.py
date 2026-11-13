@@ -1,5 +1,5 @@
 """normalize_arabic: the prototype's normalizer, ported rule for rule (D-010), checked against
-Block 0's characterization table, and the spelling guide's rulings on comparing texts (plan
+the characterization table, and the spelling guide's rulings on comparing texts (plan
 002, Q8: "Use these rules")."""
 
 from __future__ import annotations

@@ -1,5 +1,5 @@
 """The rule that picks the language each turn is sent to speech-to-text in (domain/turn_language.py;
-plan 007's Block H, Q17 and Q18): in order, `short` when the turn's speech had not reached
+D-086, plan 007's Q17 and Q18): in order, `short` when the turn's speech had not reached
 `from_s` when its request went, then `late`, `busy`, `failed`, `unsure` (the best share under
 `min_share`), else `classified`; only `classified` moves the call's current language, and under
 `session` (no rule) the call's language stands whatever the verdict. Every share here is made up

@@ -1,6 +1,6 @@
 """What the tests of Ole5's actions and status tool share: the session's caller, a call's context
-with a record of what it made, the outbox as a fake (`past_actions` is the library's Track B's,
-not built here), and an action's context once the caller said yes."""
+with a record of what it made, the outbox as a fake (`past_actions` is the library's, tested
+there), and an action's context once the caller said yes."""
 
 from __future__ import annotations
 

@@ -1,6 +1,6 @@
-"""Fakes for the library's tests and for the tracks that build against Block 0's interfaces (plan
-003, step 10). Each implements one protocol and nothing else, so a test of one part runs without
-the parts it calls; tests/t2_agentic_voice/test_fakes.py checks each against its protocol:
+"""Fakes for the library's tests (plan 003, step 10). Each implements one protocol and nothing
+else, so a test of one part runs without the parts it calls; tests/t2_agentic_voice/test_fakes.py
+checks each against its protocol:
 
 - `FakeSpeechToText` and `FakeTextToSpeech`: the ports (domain/ports/);
 - `FakeClock`: a call's `Clock` (voice/session/io.py), whose time moves only when a test moves it;

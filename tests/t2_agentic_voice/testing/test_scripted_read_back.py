@@ -1,8 +1,8 @@
-"""A read-back in the tests' scripted talker (text_call_support.py's `Asked`; plan 007, Track D):
+"""A read-back in the tests' scripted talker (text_call_support.py's `Asked`; plan 007):
 its plan is kept where the text call finds it and never handed to the session, which plays only
 the clauses the script says and hands the caller's next words to the talker, so the tests of
 test_text_call_actions.py hold whether or not the session reads a read-back back itself and
-confirms (Track C's)."""
+confirms."""
 
 from __future__ import annotations
 

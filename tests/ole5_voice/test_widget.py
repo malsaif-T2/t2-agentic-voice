@@ -1,4 +1,4 @@
-"""Ole5's widget in plan 005 (Track D): a push-to-talk switch, the fallback when the agent's
+"""Ole5's widget in plan 005: a push-to-talk switch, the fallback when the agent's
 voice comes back through the laptop's speakers, with the microphone on only while Space or the
 talk button is held; and a clause a stop cut, styled cut. Read as text, as test_server.py reads
 the widget (the suite runs no browser); its page's headers, and no inline script or style, are
@@ -80,7 +80,7 @@ def test_a_cut_clause_is_styled_cut() -> None:
 
 def test_the_talk_button_waits_for_the_call_so_no_hold_is_lost_while_it_starts() -> None:
     # Held while the call was starting, the button showed held and reached no call, and the hold
-    # was lost once the call came (Track D's review, 2026-11-03).
+    # was lost once the call came (the widget's review, 2026-11-03).
     script = _text("widget.js")
     talkable = _between(script, "function talkable() {", "\n}\n")
     assert "!page.call" in talkable

@@ -1,8 +1,8 @@
-"""What an agent with no actions is sent must not change by accident (plan 007, Block 0; the plan
-README's "Parallel tracks"): the talker's system prompt, a tool's schema, the words of a turn, and
-the lists the interruption rule reads, measured on the five kinds it has. The fixture holds them
-as they were before the tracks. A change here is deliberate: a rule added for actions goes only
-to an agent that declares one, and the yes and send words stay out of `domain/words.py`."""
+"""What an agent with no actions is sent must not change by accident (plan 007): the talker's
+system prompt, a tool's schema, the words of a turn, and the lists the interruption rule reads,
+measured on the five kinds it has. The fixture holds them as they were before actions. A change
+here is deliberate: a rule added for actions goes only to an agent that declares one, and the yes
+and send words stay out of `domain/words.py`."""
 
 from __future__ import annotations
 

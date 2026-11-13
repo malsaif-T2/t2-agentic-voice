@@ -22,7 +22,7 @@ from ole5_voice.tickets.lines import SEND_WORDS
 from ole5_voice.tickets.mock import MockTicketSystem
 from ole5_voice.tickets.tools import with_ticket_claims
 from t2_agentic_voice import Caller, VoiceAgent, VoiceSettings
-from t2_agentic_voice.core.settings.words import LanguageCode
+from t2_agentic_voice.core.settings.words import primary_code
 from t2_agentic_voice.domain.uncertain_overlaps import UNCERTAIN_OVERLAP_INSTRUCTION
 from t2_agentic_voice.domain.words import PRESET_WORDS
 from t2_agentic_voice.domain.yes_words import PRESET_CONSENT
@@ -52,33 +52,29 @@ SETTLE_S: Final = 30.0
 _OVER: Final = "The caller said over it:"
 
 
-def code(tag: Tag) -> LanguageCode:
-    return "en" if tag == "en" else "ar"
-
-
 def yes(tag: Tag) -> str:
     """A bare yes: the language preset's first yes word."""
-    return PRESET_CONSENT[code(tag)].yes[0]
+    return PRESET_CONSENT[primary_code(tag)].yes[0]
 
 
 def yes_send(tag: Tag) -> str:
     """A yes with the send word Ole5's closing question holds («نعم أرسلها», "yes send it")."""
-    return f"{yes(tag)} {SEND_WORDS[code(tag)][0]}"
+    return f"{yes(tag)} {SEND_WORDS[primary_code(tag)][0]}"
 
 
 def stop_word(tag: Tag) -> str:
     """The language preset's first stop word."""
-    return PRESET_WORDS[code(tag)].stop[0]
+    return PRESET_WORDS[primary_code(tag)].stop[0]
 
 
 def wait_word(tag: Tag) -> str:
     """The language preset's first word asking the agent to pause."""
-    return PRESET_WORDS[code(tag)].wait[0]
+    return PRESET_WORDS[primary_code(tag)].wait[0]
 
 
 def repeat_word(tag: Tag) -> str:
     """The language preset's first repeat word."""
-    return PRESET_WORDS[code(tag)].repeat[0]
+    return PRESET_WORDS[primary_code(tag)].repeat[0]
 
 
 def ole5(folder: Path, passages: Sequence[Passage] = ()) -> tuple[VoiceAgent, MockTicketSystem]:

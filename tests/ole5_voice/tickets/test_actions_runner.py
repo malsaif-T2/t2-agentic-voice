@@ -32,7 +32,7 @@ from ole5_voice.tickets.status import TICKET_STATUS, StatusAnswer
 from ole5_voice.tickets.system import TicketRef
 from t2_agentic_voice import ToolError
 from t2_agentic_voice.core.settings.tts import LanguageTag
-from t2_agentic_voice.core.settings.words import LanguageCode
+from t2_agentic_voice.core.settings.words import primary_code
 from t2_agentic_voice.domain.action_lines import ReadBackPlan, default_action_lines
 from t2_agentic_voice.domain.ports.action_jobs import ActionOutcome
 from t2_agentic_voice.domain.ports.chat_model import ChatRequest
@@ -71,10 +71,6 @@ def draft(tag: LanguageTag = "en") -> TicketDraft:
     return TicketDraft(summary=SUMMARIES[tag], type="Bug", priority="High")
 
 
-def code(tag: LanguageTag) -> LanguageCode:
-    return "en" if tag == "en" else "ar"
-
-
 @pytest.mark.parametrize("tag", TAGS)
 def test_the_ticket_is_read_back_by_its_labels_with_ole5s_own_lines(
     tmp_path: Path, tag: LanguageTag
@@ -90,7 +86,7 @@ def test_the_ticket_is_read_back_by_its_labels_with_ole5s_own_lines(
     assert plan.declined.text == lines.TICKET_DECLINED.for_language(tag)
     library = default_action_lines(tag)
     assert (plan.sending.text, plan.declined.text) != (library.sending, library.declined)
-    assert plan.send_words == tuple(lines.SEND_WORDS[code(tag)])
+    assert plan.send_words == tuple(lines.SEND_WORDS[primary_code(tag)])
     assert json.loads(plan.draft_json) == draft(tag).model_dump(mode="json")
     assert plan.language == tag
     assert rig.system.listed() == ()

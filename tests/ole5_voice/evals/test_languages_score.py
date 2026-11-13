@@ -1,4 +1,4 @@
-"""The scorer of `poe eval-languages` (plan 007's Block H, run H's H1; languages_score.py): how
+"""The scorer of `poe eval-languages` (D-086, run H's H1; languages_score.py): how
 each turn's language was chosen, the same in every call language; the classifications in time
 and late, and their times; each call language's variants whose first turn the rule changed, and
 those whose turns got different languages; the paused requests judged as `poe eot` judges them;

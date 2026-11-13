@@ -1,5 +1,5 @@
 """The output guard's rule A on the talker's clauses (agent/speech_guard.py; the design's 8.2;
-docs/SECURITY.md, invariant 2, GP-08), with a stand-in for Track A's `check_claims` that honours
+docs/SECURITY.md, invariant 2, GP-08), with a stand-in for `check_claims` that honours
 its signature (action_talk_support.py): model text claiming the action with no record is
 blocked, by its reason, with a developer note; a write the record holds supports the claim and
 its number, and no other number; a result of a tool whose `reports_on` names the action supports

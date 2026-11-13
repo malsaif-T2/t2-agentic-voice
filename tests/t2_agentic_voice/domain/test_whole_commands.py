@@ -1,5 +1,5 @@
 """A turn said while the agent was silent, read whole (domain/interruptions.py's `whole_command`,
-plan 005's Track B review): stop or pause words, or a spelling only Whisper writes for the stop
+plan 005's session review): stop or pause words, or a spelling only Whisper writes for the stop
 word, with only polite words and listening sounds beside them, ask it to stop; repeat words
 with only those beside them ask for the last reply again; anything else asks nothing, a
 sentence holding one of the words included. What follows the stop or repeat request a turn opens

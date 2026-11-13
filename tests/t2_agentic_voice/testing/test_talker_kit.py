@@ -1,9 +1,9 @@
 """The talker's testing kit (testing/llm_fakes.py, knowledge_fake.py, text_call.py,
-turn_data.py; plan 006, Block 0): the fake knowledge base answers from a test's passages and keeps
+turn_data.py; plan 006): the fake knowledge base answers from a test's passages and keeps
 every search; the fake chat models are `ChatModel`s that send nothing anywhere, and `TextCall`
 holds the injections and expectations the plan's criteria list, and each turn what it did as
 data, for a runner to score (the clauses heard, the tool calls, the cards, the blocked clauses,
-the times and the usage), their behaviour stubs that raise (Tracks A and C)."""
+the times and the usage). Their behaviour is tested in test_llm_fakes.py and test_text_call.py."""
 
 from __future__ import annotations
 
@@ -49,7 +49,7 @@ def test_the_fake_knowledge_base_answers_from_its_passages_and_keeps_each_search
 
 
 def test_the_fake_chat_models_send_nothing_and_keep_each_request() -> None:
-    """Their behaviour, Track A's, is tested in test_llm_fakes.py."""
+    """Their behaviour is tested in test_llm_fakes.py."""
     scripted, function = ScriptedLLM([[]]), FunctionLLM(lambda request: [])
     models: list[ChatModel] = [scripted, function]  # mypy checks the port's shape
     assert [(m.name, m.data_flow) for m in models] == [

@@ -1,4 +1,4 @@
-"""The browser side of plan 005's interruptions (Track D): the reference client
+"""The browser side of plan 005's interruptions: the reference client
 `api/static/t2v-client.js` lowers the agent's playback on `duck` and brings it back on `unduck`,
 on its own `stop()`, on a new reply's first caption and at the call's end; a caption marked `cut`
 ends its clause's playback and reaches the page marked; and push-to-talk, off by default, turns
@@ -116,7 +116,7 @@ def test_the_dev_page_shows_the_volume_and_the_cut_mark_and_offers_push_to_talk(
 
 
 def test_the_dev_page_talk_button_waits_for_the_call() -> None:
-    # As the widget's: a hold begun while the call starts would reach no call (Track D's review).
+    # As the widget's: a hold begun while the call starts would reach no call (the browser review).
     source = _source()
     talkable = _between(source, "  const talkable = () => {", "\n  };\n")
     assert "!call" in talkable

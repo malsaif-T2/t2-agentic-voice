@@ -1,5 +1,5 @@
 """Ole5's actions over the mock ticket system (ole5_voice/tickets/actions.py), run as the library's
-runner will run them once the caller said yes (plan 007's Track B), against a mock on each test's
+runner will run them once the caller said yes, against a mock on each test's
 own folder: a ticket made for the session's customer alone, whatever the draft says
 (docs/SECURITY.md, invariant 3), its queue following its type; each failure given the meaning the
 design's 6.4 gives it, a write with no reply looked up by its request ID and never sent twice

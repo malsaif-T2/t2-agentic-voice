@@ -1,4 +1,4 @@
-"""`poe eval-languages` (plan 007's Block H, run H's H1; its scorer is test_languages_score.py's):
+"""`poe eval-languages` (D-086, run H's H1; its scorer is test_languages_score.py's):
 a pass through a fake `turn_languages` and a fake classifier, so no model loads and no time
 passes: the settings and the classifier each pass gives the calls, the classifier loaded before
 any clip and closed once; the turns written as each variant finishes, the scorecard and the

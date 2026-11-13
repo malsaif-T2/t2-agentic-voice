@@ -1,4 +1,4 @@
-"""The talker as the session sees it (agent/talker.py, prompt.py; plan 006, Block 0): the events
+"""The talker as the session sees it (agent/talker.py, prompt.py; plan 006): the events
 it streams load and refuse a wrong value; the session's cancel scope is the scope it starts its
 work in, and the call's clock the one it times its work on; and the loop and the prompt are
 given."""

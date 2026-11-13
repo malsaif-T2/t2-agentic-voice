@@ -1,7 +1,6 @@
-"""An agent declares its actions among its tools (the design's 4.3; plan 007, Block 0): each text
-of an action in every language the agent speaks (an MSA text beside a Saudi one taken, though
-the agent speaks no MSA), a tool's `reports_on` naming one of its own actions, and the settings
-the actions read."""
+"""An agent declares its actions among its tools (the design's 4.3): each text of an action in every
+language the agent speaks (an MSA text beside a Saudi one taken, though the agent speaks no MSA), a
+tool's `reports_on` naming one of its own actions, and the settings the actions read."""
 
 from __future__ import annotations
 

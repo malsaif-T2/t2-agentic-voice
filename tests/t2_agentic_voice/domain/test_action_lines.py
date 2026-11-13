@@ -8,7 +8,7 @@ from __future__ import annotations
 import pytest
 from t2_agentic_voice.core.settings.guard import GuardSettings
 from t2_agentic_voice.core.settings.tts import LanguageTag
-from t2_agentic_voice.core.settings.words import LanguageCode
+from t2_agentic_voice.core.settings.words import primary_code
 from t2_agentic_voice.domain.action_lines import ActionLines, default_action_lines
 from t2_agentic_voice.domain.claims import check_claims, default_claims
 from t2_agentic_voice.domain.presets import ACTION_LINES
@@ -37,7 +37,7 @@ def test_the_saudi_and_the_msa_lines_differ_in_register() -> None:
 def test_no_line_claims_the_action_was_done(tag: LanguageTag) -> None:
     """The guard never checks a template, but no default line would pass its claim rule with
     no record either: the sending line is progress, never "done"."""
-    code: LanguageCode = "en" if tag == "en" else "ar"
+    code = primary_code(tag)
     for field, text in ACTION_LINES[tag].items():
         verdict = check_claims(
             text,

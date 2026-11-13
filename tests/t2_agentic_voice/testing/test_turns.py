@@ -5,7 +5,7 @@ call's output holds an audio frame of its greeting; a speech-to-text that answer
 nothing heard), one call a clip with the lead and the tail given, each turn end counted from the
 clip's first frame, and the calls started once and closed however the iteration ends. That the
 clip's first frame is due `lead_s` after the greeting's `ClausePlayed` is the file-fed
-transport's own rule, which Track E's test of `feed_file` holds."""
+transport's own rule, which test_file_transport.py's test of `feed_file` holds."""
 
 from __future__ import annotations
 

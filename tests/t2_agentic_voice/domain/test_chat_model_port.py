@@ -1,5 +1,5 @@
-"""The chat model port and the knowledge port (domain/ports/chat_model.py, knowledge.py; plan 006,
-Block 0): each request, message, event and passage a frozen model checked at the boundary
+"""The chat model port and the knowledge port (domain/ports/chat_model.py, knowledge.py; plan 006):
+each request, message, event and passage a frozen model checked at the boundary
 (invariant 4), refusing what the provider or a team could get wrong; a tool call's arguments kept
 as the raw text the model wrote, for the tool runner to parse."""
 

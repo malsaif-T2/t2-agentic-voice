@@ -11,8 +11,8 @@ own talker on a scripted model that calls the action, the session's read-back an
 the yes rule, the guard and the action runner over a `MemoryOutbox`. A yes over the read-back and
 a bare yes over its closing question book nothing; a yes with a send word, heard once it played,
 books once. Its yes and send words are the yes rule's presets' (domain/yes_words.py, read in
-their rule form, domain/words.py: the only imports from inside the library). `ActionSafetySuite`
-runs on it in test_callback_safety.py."""
+their rule form, domain/words.py, by a tag's primary code, core/settings/words.py: the only
+imports from inside the library). `ActionSafetySuite` runs on it in test_callback_safety.py."""
 
 from __future__ import annotations
 
@@ -41,6 +41,7 @@ from t2_agentic_voice import (
     VoiceAgent,
     render_prompt,
 )
+from t2_agentic_voice.core.settings.words import primary_code
 from t2_agentic_voice.domain.words import rule_form
 from t2_agentic_voice.domain.yes_words import PRESET_CONSENT
 from t2_agentic_voice.evals import ScriptedLLM, TextCall
@@ -156,7 +157,7 @@ def test_each_agent_made_books_at_a_desk_of_its_own() -> None:
 
 def test_each_calls_yes_and_send_words_are_the_presets() -> None:
     for tag, (_, _, _, yes, send) in CALLS.items():
-        words = PRESET_CONSENT["en" if tag == "en" else "ar"]
+        words = PRESET_CONSENT[primary_code(tag)]
         assert rule_form(yes) in words.yes and rule_form(send) in words.send
 
 

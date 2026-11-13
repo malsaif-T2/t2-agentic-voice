@@ -1,4 +1,4 @@
-"""The call as the talker reads it (core/conversation.py; plan 006, Block 0): plain frozen models
+"""The call as the talker reads it (core/conversation.py; plan 006): plain frozen models
 the session builds from its heard history, a clause's share of its audio agreeing with its fate,
 the turn handed over holding its words, its heard language, the reply it was said over and the
 one it cut."""

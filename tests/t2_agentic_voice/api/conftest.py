@@ -1,4 +1,4 @@
-"""Fixtures of the api tests (plan 003, Track F)."""
+"""Fixtures of the api tests (plan 003)."""
 
 from __future__ import annotations
 

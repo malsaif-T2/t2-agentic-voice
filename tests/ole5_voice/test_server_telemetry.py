@@ -1,6 +1,6 @@
 """FastAPI's own telemetry in the Ole5 app's server (ole5_voice/server.py): off, so a global
 tracer, meter or logger provider receives nothing from the app (D-023), as plan 003's serving
-criterion asks of both shapes; this file holds the mount's, Track F's tests the sidecar's."""
+criterion asks of both shapes; this file holds the mount's, the runtime's tests the sidecar's."""
 
 from __future__ import annotations
 

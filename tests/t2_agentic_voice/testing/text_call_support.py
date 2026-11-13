@@ -1,6 +1,6 @@
-"""What the tests of `TextCall` share (testing/text_call.py; plan 006, Track C): a scripted
-talker of the tests' own, since Track B's `ChatTalker` is built in parallel, given to the call
-through the private method that builds its talker (`_talker`), and an instructed agent.
+"""What the tests of `TextCall` share (testing/text_call.py; plan 006): a scripted talker of the
+tests' own in place of `ChatTalker`, given to the call through the private method that builds its
+talker (`_talker`), and an instructed agent.
 
 `ScriptTalker` gives each turn the steps its `script` gives that turn: a talker event, `Work`
 (a wait of so many seconds on the call's clock, in the reply's scope, as a search would take),

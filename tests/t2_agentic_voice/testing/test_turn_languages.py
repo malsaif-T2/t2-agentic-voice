@@ -1,4 +1,4 @@
-"""Each turn's language in a file-fed call (testing/turn_languages.py; plan 007's Block H, run H's
+"""Each turn's language in a file-fed call (testing/turn_languages.py; D-086, run H's
 H1), against a fake `VoiceCalls` and a fake `feed_file` that play a call's events and ask the
 classifier the helper gave them, on a clock that moves only when the test moves it, so no model
 loads and no time passes: what each turn records (its end, the language its request named and

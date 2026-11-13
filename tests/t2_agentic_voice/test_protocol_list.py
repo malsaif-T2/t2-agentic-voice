@@ -1,7 +1,7 @@
-"""The `t2v/1` message list (plan 003, Block 0, step 11): the models of voice/protocol.py and
+"""The `t2v/1` message list (plan 003, step 11): the models of voice/protocol.py and
 api/protocol.py match the committed fixture exactly, every message by direction, type and field,
 and every route by its bodies, its success status and its error codes by status, with the one
-error body, so a track that changes the protocol changes the fixture with it, in plain view.
+error body, so a change to the protocol changes the fixture with it, in plain view.
 
 Each field is written as the fixture's `about` says, from the model's own annotation; a client's
 field is `(optional)` when it has a default, and every inbound model is the strict kind."""

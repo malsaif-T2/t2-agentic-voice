@@ -1,4 +1,4 @@
-"""The tools' shapes (actions/tools.py, runner.py, knowledge.py; plan 006, Block 0): a `Tool`
+"""The tools' shapes (actions/tools.py, runner.py, knowledge.py; plan 006): a `Tool`
 loads with the design's fields and refuses what it cannot run with; a bound parameter names a
 field of the verified caller and is never one the talker fills; `CallContext` holds the caller
 read-only; `ToolError` has its stable code; and every behaviour the shapes name is given:
