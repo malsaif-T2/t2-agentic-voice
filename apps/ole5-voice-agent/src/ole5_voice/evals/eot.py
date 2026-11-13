@@ -27,11 +27,9 @@ from pathlib import Path
 from typing import Final, get_args
 
 from t2_agentic_voice import T2VoiceError, VoiceSettings, configure_logging, evals, get_logger
-from t2_agentic_voice.ports import AudioClip
 
 from ole5_voice import LOGGERS
 from ole5_voice.evals import history, run_settings
-from ole5_voice.evals.audio import read_wav
 from ole5_voice.evals.cli import require
 from ole5_voice.evals.eot_score import (
     Decision,
@@ -46,7 +44,16 @@ from ole5_voice.evals.eot_score import (
 from ole5_voice.evals.files import write_json
 from ole5_voice.evals.models import NAME_RULE, Split, is_name
 from ole5_voice.evals.run_lines import AnyLine, EotCount, EotLine
-from ole5_voice.evals.run_parts import DATA, Choice, Parts, Todo, audio_roots, load_plan
+from ole5_voice.evals.run_parts import (
+    DATA,
+    Choice,
+    Parts,
+    Todo,
+    audio_roots,
+    clip_of,
+    load_plan,
+    marked_end,
+)
 from ole5_voice.evals.runs import SCORECARD_FILE
 from ole5_voice.evals.worktree import check_out, refused, run_checkout
 
@@ -104,23 +111,10 @@ def shown(settings: VoiceSettings, args: argparse.Namespace) -> dict[str, str]:
     return {"env": settings.env, **turns, **run, "run.secondary": str(args.secondary).lower()}
 
 
-def _true_end(todo: Todo) -> float:
-    marks = todo.variant.turn_ends_ms
-    if not marks:
-        raise refused("a paused request has no turn end marked", "mark it in the recorder")
-    return float(marks[-1])
-
-
-def _clip(todo: Todo) -> AudioClip:
-    """A variant's audio, its segments joined in order (16 kHz mono PCM16, as checked)."""
-    pcm16 = b"".join(read_wav(path).pcm16 for path in todo.request.segments)
-    return AudioClip(pcm16=pcm16)
-
-
 def _result(todo: Todo, side: Split, which: EotSet, ends: Sequence[Decision]) -> EotResult:
     item, variant = todo.item, todo.variant
     labelled = which == "paused"
-    true_end = _true_end(todo) if labelled else proxy_end(ends)
+    true_end = marked_end(todo) if labelled else proxy_end(ends)
     return EotResult(
         item=item.id,
         variant=variant.id,
@@ -171,7 +165,7 @@ async def _fed(
     side: Split,
 ) -> None:
     """Each variant through the pipeline, as a fresh call, in order."""
-    clips = [_clip(each) for each, _ in todo]
+    clips = [clip_of(each) for each, _ in todo]
     found = turn_ends(clips, settings=settings, lead_s=LEAD_S, tail_s=TAIL_S)
     try:
         index = 0
@@ -206,7 +200,7 @@ def _run(
     todo = [(t, sets[0]) for t in paused] + [(t, sets[1]) for t in others]
     if not paused:
         raise refused("the split holds no paused request the owner has checked", "check --split")
-    true_ends = [_true_end(each) for each in paused]
+    true_ends = [marked_end(each) for each in paused]
     info = EotRun(
         name=out.name,
         started_at=parts.now(),

@@ -46,12 +46,11 @@ from t2_agentic_voice import get_logger
 from t2_agentic_voice.evals import OverlapReplay
 from t2_agentic_voice.ports import AudioChunk, AudioClip, DataFlow, SpeechToText
 
-from ole5_voice.evals.audio import read_wav
 from ole5_voice.evals.groq_answerer import GROQ_MINIMUM_S, Sleep
 from ole5_voice.evals.models import Split
 from ole5_voice.evals.overlap_score import Action, OverlapResult, Verdict, judge
 from ole5_voice.evals.pacers import MinutePacer
-from ole5_voice.evals.run_parts import Todo
+from ole5_voice.evals.run_parts import Todo, clip_of
 from ole5_voice.evals.runs import cost_usd
 
 AT_S: Final = 1.0  # how far into the reply each clip starts (the registration's O)
@@ -238,7 +237,7 @@ class Measuring:
     async def smoke(self, overlap: Overlap) -> bool:
         """The smoke test: `overlap` played once; whether it sent a request and every request
         was answered."""
-        verdict = await self._call(_clip(overlap), overlap)
+        verdict = await self._call(clip_of(overlap.todo), overlap)
         failures = [r.failure for r in verdict.requests if r.failure is not None]
         if failures or not verdict.requests:
             log.error("smoke_failed", requests=len(verdict.requests), failures=failures)
@@ -249,7 +248,7 @@ class Measuring:
     async def variant(self, overlap: Overlap, side: Split) -> OverlapResult:
         """One clip's replay, played again while it meets a rate limit; `RateLimitedError` when
         its last call still met one."""
-        clip = _clip(overlap)
+        clip = clip_of(overlap.todo)
         attempts = 0
         while True:
             attempts += 1
@@ -292,9 +291,3 @@ def stt_budget(clip_s: float) -> int:
     """The most Whisper requests a clip of `clip_s` seconds is budgeted: `STT_PER_SPAN` for each
     started `SPAN_S` of it and its tail."""
     return STT_PER_SPAN * math.ceil((clip_s + TAIL_S) / SPAN_S)
-
-
-def _clip(overlap: Overlap) -> AudioClip:
-    """The clip's audio, its segments joined."""
-    segments = overlap.todo.request.segments
-    return AudioClip(pcm16=b"".join(read_wav(path).pcm16 for path in segments))

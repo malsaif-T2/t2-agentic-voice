@@ -132,7 +132,7 @@ def test_each_committed_turn_held_to_arabic_accepts_either_register_and_never_no
 
 
 def test_a_folder_that_cannot_be_read_is_refused(tmp_path: Path) -> None:
-    with pytest.raises(GoldenSetError, match="no such folder"):
+    with pytest.raises(GoldenSetError, match=r"^none: no such folder of scenarios$"):
         load_scenarios(tmp_path / "none")
     folder = tmp_path / "scenarios"
     folder.mkdir()
@@ -140,7 +140,8 @@ def test_a_folder_that_cannot_be_read_is_refused(tmp_path: Path) -> None:
         'id = "s2"\nrehearsal = false\nlanguage = "en"\nnotes = "x"\n[[turns]]\nsays = "hi"\n',
         encoding="utf-8",
     )
-    with pytest.raises(GoldenSetError, match="holds the scenario 's2'"):
+    # The words every TOML folder's reader says (items.read_folder), ", not 's1'" new to them.
+    with pytest.raises(GoldenSetError, match=r"^s1.toml: holds the scenario 's2', not 's1'$"):
         load_scenarios(folder)
     # No turn expects a correction to cancel a search, which TextCall's calm speech outlasts.
     (folder / "s1.toml").write_text(

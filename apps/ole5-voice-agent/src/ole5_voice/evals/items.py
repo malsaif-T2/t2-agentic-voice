@@ -17,7 +17,7 @@ from __future__ import annotations
 import json
 import re
 from collections import Counter
-from collections.abc import Iterable, Sequence
+from collections.abc import Collection, Iterable, Sequence
 from pathlib import Path
 from typing import Final
 
@@ -88,17 +88,30 @@ def references(item: Item, variant: Variant) -> tuple[str, ...]:
     return (variant.reference, *item.alternatives)
 
 
+def read_folder[M: BaseModel](
+    folder: Path, shape: type[M], noun: str, skip: Collection[str] = ()
+) -> list[M]:
+    """Every `noun` under `folder`, one TOML file each named by its ID (its `id`), in the order
+    of their file names, the files `skip` names left out: the golden set's items, the knowledge
+    set's, run S's and run A's scenarios. GoldenSetError when there is no such folder, or naming
+    a file that cannot be read (`read_toml`) or holds another ID."""
+    if not folder.is_dir():
+        raise GoldenSetError(f"{folder.name}: no such folder of {noun}s")
+    found = []
+    for path in sorted(folder.glob("*.toml")):
+        if path.name in skip:
+            continue
+        each = read_toml(path, shape)
+        if (named := getattr(each, "id", None)) != path.stem:
+            raise GoldenSetError(f"{path.name}: holds the {noun} '{named}', not '{path.stem}'")
+        found.append(each)
+    return found
+
+
 def load_items(folder: Path) -> tuple[Item, ...]:
     """Every item under `folder`, one TOML file each, in the order of their IDs. Each file is
-    named by its item's ID, and no two variants share an ID."""
-    if not folder.is_dir():
-        raise GoldenSetError(f"{folder.name}: no such folder of items")
-    items = []
-    for path in sorted(folder.glob("*.toml")):
-        item = read_toml(path, Item)
-        if item.id != path.stem:
-            raise GoldenSetError(f"{path.name}: holds the item '{item.id}', not '{path.stem}'")
-        items.append(item)
+    named by its item's ID (`read_folder`), and no two variants share an ID."""
+    items = read_folder(folder, Item, "item")
     twice = [v for v, n in Counter(v.id for i in items for v in i.variants).items() if n > 1]
     if twice:
         raise GoldenSetError(f"variants with the same ID in two places: {', '.join(twice)}")

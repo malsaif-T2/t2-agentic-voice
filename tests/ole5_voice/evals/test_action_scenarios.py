@@ -249,7 +249,8 @@ def test_a_scenario_file_is_read_strictly(tmp_path: Path) -> None:
         load_action_scenarios(tmp_path / "none")
     written = (EVALS / ACTIONS_DIR / "a01_plain_ticket_saudi.toml").read_text(encoding="utf-8")
     (tmp_path / "a99_other.toml").write_text(written, encoding="utf-8")
-    with pytest.raises(GoldenSetError, match="holds the scenario 'a01_plain_ticket_saudi'"):
+    held = r"^a99_other.toml: holds the scenario 'a01_plain_ticket_saudi', not 'a99_other'$"
+    with pytest.raises(GoldenSetError, match=held):
         load_action_scenarios(tmp_path)
     with pytest.raises(ValidationError):
         ActionScenario.model_validate(_valid(confirmed=True))

@@ -31,8 +31,8 @@ from ole5_voice.evals.items import (
     GOLDEN_DIR,
     SPLIT_FILE,
     STRATA_FILE,
-    GoldenSetError,
     load_items,
+    read_folder,
     read_toml,
 )
 from ole5_voice.evals.models import Item, Model, Name, Split, SplitFile
@@ -138,18 +138,9 @@ class KnowledgeStrata(Model):
 
 
 def load_knowledge_items(folder: Path) -> tuple[KnowledgeItem, ...]:
-    """Every item under `folder`, one TOML file each named by its ID, in the order of their IDs;
-    `points.toml` and `strata.toml` are not items."""
-    if not folder.is_dir():
-        raise GoldenSetError(f"{folder.name}: no such folder of items")
-    items = []
-    for path in sorted(folder.glob("*.toml")):
-        if path.name in (POINTS_FILE, STRATA_FILE):
-            continue
-        item = read_toml(path, KnowledgeItem)
-        if item.id != path.stem:
-            raise GoldenSetError(f"{path.name}: holds the item '{item.id}', not '{path.stem}'")
-        items.append(item)
+    """Every item under `folder`, one TOML file each named by its ID (`items.read_folder`), in
+    the order of their IDs; `points.toml` and `strata.toml` are not items."""
+    items = read_folder(folder, KnowledgeItem, "item", skip=(POINTS_FILE, STRATA_FILE))
     return tuple(sorted(items, key=lambda item: item.id))
 
 

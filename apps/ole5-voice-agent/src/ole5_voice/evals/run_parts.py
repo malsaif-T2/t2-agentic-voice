@@ -23,7 +23,7 @@ from datetime import UTC, datetime
 from pathlib import Path
 
 from t2_agentic_voice import VoiceSettings, get_logger
-from t2_agentic_voice.ports import SpeechToText
+from t2_agentic_voice.ports import AudioClip, SpeechToText
 from t2_agentic_voice.tracing import Tracing
 
 from ole5_voice.evals import cli, history, items, matcher, scorecard, split
@@ -134,6 +134,20 @@ class Todo:
             judged=judged,
             right=right,
         )
+
+
+def clip_of(todo: Todo) -> AudioClip:
+    """A variant's audio, its segments joined in order (16 kHz mono PCM16, as checked): what
+    every run that feeds or replays a variant sends."""
+    return AudioClip(pcm16=b"".join(read_wav(path).pcm16 for path in todo.request.segments))
+
+
+def marked_end(todo: Todo) -> float:
+    """A paused request's turn end, the owner's last mark, in ms; refused when it has none."""
+    marks = todo.variant.turn_ends_ms
+    if not marks:
+        raise refused("a paused request has no turn end marked", "mark it in the recorder")
+    return float(marks[-1])
 
 
 @dataclass(frozen=True)

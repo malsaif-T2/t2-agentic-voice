@@ -12,7 +12,15 @@ from pathlib import Path
 from typing import Any
 
 import pytest
-from ole5_voice.evals import audio, eot, items, languages_run, languages_setup, run_settings
+from ole5_voice.evals import (
+    audio,
+    eot,
+    items,
+    languages_run,
+    languages_setup,
+    run_parts,
+    run_settings,
+)
 from ole5_voice.evals.eot_score import (
     EotScorecard,
 )
@@ -41,7 +49,7 @@ def test_the_reference_answerer_scores_the_committed_paused_requests_at_0_cut_of
     """Plan 003's step 16: `poe eot --answerer reference` over the committed golden set, each
     variant given a made-up confirmation (none is confirmed before the owner's review), gives
     every paused request its own mark: 0 cut-offs, 0 misses, 0 ms."""
-    for module in (audio, eot):
+    for module in (audio, run_parts):
         monkeypatch.setattr(module, "read_wav", _no_audio)
     world = make_world(tmp_path)
     shutil.copytree(EVALS / "golden", world.data / "golden")

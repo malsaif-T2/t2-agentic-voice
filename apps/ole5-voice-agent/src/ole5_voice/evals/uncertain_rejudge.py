@@ -28,7 +28,6 @@ from typing import Final
 from t2_agentic_voice import VoiceSettings, get_logger
 from t2_agentic_voice.ports import AudioClip, DataFlow, Transcript
 
-from ole5_voice.evals.audio import read_wav
 from ole5_voice.evals.overlap_card import OverlapScorecard
 from ole5_voice.evals.overlap_run import (
     AT_S,
@@ -39,7 +38,7 @@ from ole5_voice.evals.overlap_run import (
     ReplySpeech,
 )
 from ole5_voice.evals.overlap_score import Heard, OverlapResult, Verdict
-from ole5_voice.evals.run_parts import Todo
+from ole5_voice.evals.run_parts import Todo, clip_of
 from ole5_voice.evals.timing_run import TAGS, Tag
 from ole5_voice.evals.worktree import refused
 
@@ -147,7 +146,7 @@ async def _replayed(
     heard = stored.verdict.requests
     if any(r.failure is not None for r in heard):
         return None
-    clip = AudioClip(pcm16=b"".join(read_wav(path).pcm16 for path in todo.request.segments))
+    clip = clip_of(todo)
     overlap = Overlap(
         todo=todo,
         expected=stored.expected,
