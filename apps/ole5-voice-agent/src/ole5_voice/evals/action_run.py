@@ -294,8 +294,10 @@ def main(argv: Sequence[str] | None = None, *, parts: ActionParts | None = None)
     complete, 1 when it is not (a failed smoke test, the cap, the day's limit, an interrupt, a
     library error once it began), 2 when it is refused before anything is sent; whether it
     passed is its scorecard's."""
+    parser = _parser()
+    args = parser.parse_args(argv)
     found = ActionParts() if parts is None else parts
-    return main_of(_parser(), argv, _require, lambda args: _run(args, found), "actions_refused")
+    return main_of(parser, args, _require, lambda given: _run(given, found), "actions_refused")
 
 
 if __name__ == "__main__":

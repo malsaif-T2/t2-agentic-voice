@@ -63,15 +63,14 @@ class _Scripted(Protocol):
 
 def main_of(
     parser: argparse.ArgumentParser,
-    argv: Sequence[str] | None,
+    args: argparse.Namespace,
     require: Callable[[argparse.ArgumentParser, argparse.Namespace], None],
     run: Callable[[argparse.Namespace], int],
     refusal: str,
 ) -> int:
-    """A spending run's command: its command line read and checked, logging set up, a held-out
-    run's library lines but its errors held back, and the run; a refusal logged as `refusal`,
-    exit 2. The exit codes are the module's docstring's."""
-    args = parser.parse_args(argv)
+    """A spending run's command, its command line `args` as `parser` read them: checked, logging
+    set up, a held-out run's library lines but its errors held back, and the run; a refusal
+    logged as `refusal`, exit 2. The exit codes are the module's docstring's."""
     require(parser, args)
     configure_logging(loggers=LOGGERS)
     if getattr(args, "split", None) == "held-out":  # they would tell each unit's path apart

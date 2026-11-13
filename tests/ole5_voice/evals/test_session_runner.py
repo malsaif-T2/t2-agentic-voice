@@ -39,7 +39,9 @@ def _main(argv: list[str], result: int | BaseException) -> int:
             raise result
         return result
 
-    return session_runner.main_of(_parser(), argv, lambda p, a: None, run, "made_up_refused")
+    parser = _parser()
+    given = parser.parse_args(argv)
+    return session_runner.main_of(parser, given, lambda p, a: None, run, "made_up_refused")
 
 
 def test_a_refusal_before_anything_is_sent_exits_2_and_a_result_is_the_runs(

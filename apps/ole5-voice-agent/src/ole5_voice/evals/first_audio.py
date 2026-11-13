@@ -294,8 +294,10 @@ def main(argv: Sequence[str] | None = None, *, parts: FirstAudioParts | None = N
     complete, 1 when it is not (the phrase cache, a failed smoke test, the cap, a model's day,
     an interrupt, a library error once it started), 2 when it is refused before anything is
     sent."""
+    parser = _parser()
+    args = parser.parse_args(argv)
     found = FirstAudioParts() if parts is None else parts
-    return main_of(_parser(), argv, _require, lambda args: _run(args, found), "first_audio_refused")
+    return main_of(parser, args, _require, lambda given: _run(given, found), "first_audio_refused")
 
 
 if __name__ == "__main__":

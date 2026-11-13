@@ -223,8 +223,10 @@ def main(argv: Sequence[str] | None = None, *, parts: TalkerParts | None = None)
     """`uv run poe eval-scenarios`: play run S's scenarios. 0 when the run is complete, 1 when
     it is not (a failed smoke test, the cap, the day's limit, an interrupt, a library error once
     it began), 2 when it is refused before anything is sent."""
+    parser = _parser()
+    args = parser.parse_args(argv)
     found = TalkerParts() if parts is None else parts
-    return main_of(_parser(), argv, _require, lambda args: _run(args, found), "scenarios_refused")
+    return main_of(parser, args, _require, lambda given: _run(given, found), "scenarios_refused")
 
 
 if __name__ == "__main__":
