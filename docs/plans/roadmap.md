@@ -30,8 +30,8 @@ keep entropy down; they and other side work get a plan but no row. While such a 
 it is linked from the line below (DOC-PLAN fails on an active plan the roadmap does not link),
 and the link is removed when it completes.
 
-Outside the milestones: none active; the last, [004](completed/004-garbage-collection-1.md), was
-garbage collection round 1.
+Outside the milestones: [008](active/008-garbage-collection-2.md), garbage collection round 2,
+active; the last, [004](completed/004-garbage-collection-1.md), was round 1.
 
 ## Milestones
 
