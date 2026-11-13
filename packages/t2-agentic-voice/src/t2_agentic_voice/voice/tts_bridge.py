@@ -69,9 +69,9 @@ from t2_agentic_voice.voice.session.session_events import (
     Synthesizing,
 )
 from t2_agentic_voice.voice.session_bridge import (
-    CallEvents,
     ClauseEndFrame,
     ClauseKey,
+    EventStream,
     SpeakFrame,
     clause_of,
 )
@@ -87,7 +87,7 @@ class ClauseTTSBridge(TTSService):
     request) is ended, as Pipecat ends one gone quiet."""
 
     def __init__(
-        self, *, tts: TextToSpeech, events: CallEvents, report: FailureReport, timeout_s: float
+        self, *, tts: TextToSpeech, events: EventStream, report: FailureReport, timeout_s: float
     ) -> None:
         super().__init__(
             text_aggregation_mode=TextAggregationMode.TOKEN,

@@ -26,7 +26,7 @@ from t2_agentic_voice.voice.session.session_events import (
     TurnClosed,
     TurnOpened,
 )
-from t2_agentic_voice.voice.session_bridge import CallEvents
+from t2_agentic_voice.voice.session_bridge import EventStream
 from t2_agentic_voice.voice.stt_bridge import OVERLAP_LEAD_S, TurnSTTBridge
 
 from tests.t2_agentic_voice.fake_session import FakeSession
@@ -91,7 +91,7 @@ class Rig:
 
 
 def _run(port: FakeSpeechToText, body: Callable[[Rig], Awaitable[None]], *, mark: bool) -> Rig:
-    events = CallEvents(SYSTEM_CLOCK)
+    events = EventStream(SYSTEM_CLOCK)
     report = FailureReport(call_id="call-1", emit=lambda event: None, clock=SYSTEM_CLOCK)
     stt = TurnSTTBridge(stt=port, events=events, report=report, start_s=START_S)
     rig = Rig(Marking(stt, mark=mark), stt)

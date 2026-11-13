@@ -44,7 +44,7 @@ from t2_agentic_voice.domain.ports.text_to_speech import TextToSpeech
 from t2_agentic_voice.voice.pipecat_events import FailureReport
 from t2_agentic_voice.voice.session.io import CallSetup, Session
 from t2_agentic_voice.voice.session.session_events import Connected, Ending, TransportFailure
-from t2_agentic_voice.voice.session_bridge import CallEvents, SessionBridge, SessionCommands
+from t2_agentic_voice.voice.session_bridge import EventStream, SessionBridge, SessionCommands
 from t2_agentic_voice.voice.stt_bridge import TurnSTTBridge, call_prompts
 from t2_agentic_voice.voice.stt_language import turn_languages
 from t2_agentic_voice.voice.transport import (
@@ -96,7 +96,7 @@ class CallPipeline:
     ) -> None:
         self.setup = setup
         self.report = FailureReport(call_id=setup.call_id, emit=setup.emit, clock=setup.clock)
-        self.events = events = CallEvents(setup.clock, record=record)
+        self.events = events = EventStream(setup.clock, record=record)
         self.stt_bridge = TurnSTTBridge(
             stt=stt,
             events=events,

@@ -1,35 +1,35 @@
-"""The session's overlaps (io.py's overlaps; plan 005): under `interruptions.mode = "two_step"`,
-a turn whose speech began while a reply played, or within 300 ms after one, is an overlap of that
-reply. The session opens it at the turn's `TurnOpened` (`open`: `duck` at
-`interruptions.duck_level`, then `HearOverlap` with `interruptions.first_window_ms`), judges each
-of its transcripts with the rule as it comes (`judge`: domain/interruptions.py's `judge`, with the
-call language's words, `call_words`, and the texts of the clauses that played within
-`interruptions.own_words_s` and the one playing now), and keeps what decided it: a stop or a
-repeat (`StopSpeaking`, then `unduck` right after it), or the reply going on (`unduck` once the
-whole overlap's transcript has come, the turn not answered). A window's verdict decides only when
-it stops the agent; the whole overlap's decides whatever it says. Every overlap's `duck` ends with
-exactly one `unduck` once it is decided, whatever the verdict, but none while another overlap of
-the call is still undecided (`settle`), so one decision never raises the agent's voice over speech
-still being judged; an overlap the call's end cuts gets none (the client restores the volume when
-the call ends). A rule that raises (a bug) decides the overlap at once as going on, logged by its
-kind with no text, so its `unduck` follows and no later one waits on it. At most two requests
-decide one overlap, its window's and its whole overlap's; once one stops the agent, the other's
-verdict changes nothing, but after a stop or a repeat request its window heard: the whole overlap
-is judged still (`asked_again`; its verdict says what follows the stop, interrupter.py's), since a
-window may hold only a request's first word. The turn's own transcript decides only an overlap
-whose whole-overlap request had not gone when it came (its `HearOverlap` reached the bridge after
-the turn closed: the whole overlap then reuses the turn's result, and changes nothing), and is
+"""The session's overlaps (io.py's overlaps): under `interruptions.mode = "two_step"`, a turn whose
+speech began while a reply played, or within its tail after it ended (playback.py's `Reply.over`,
+`DROP_AFTER_S`), is an overlap of that reply. The session opens it at the turn's `TurnOpened`
+(`open`: `duck` at `interruptions.duck_level`, then `HearOverlap` with
+`interruptions.first_window_ms`), judges each of its transcripts with the rule as it comes (`judge`:
+domain/interruptions.py's `judge`, with the call language's words, `call_words`, and the texts of
+the clauses that played within `interruptions.own_words_s` and the one playing now), and keeps what
+decided it: a stop or a repeat (`StopSpeaking`, then `unduck` right after it), or the reply going on
+(`unduck` once the whole overlap's transcript has come, the turn not answered). A window's verdict
+decides only when it stops the agent; the whole overlap's decides whatever it says. Every overlap's
+`duck` ends with exactly one `unduck` once it is decided, whatever the verdict, but none while
+another overlap of the call is still undecided (`settle`), so one decision never raises the agent's
+voice over speech still being judged; an overlap the call's end cuts gets none (the client restores
+the volume when the call ends). A rule that raises (a bug) decides the overlap at once as going on,
+logged by its kind with no text, so its `unduck` follows and no later one waits on it. At most two
+requests decide one overlap, its window's and its whole overlap's; once one stops the agent, the
+other's verdict changes nothing, but after a stop or a repeat request its window heard: the whole
+overlap is judged still (`asked_again`; its verdict says what follows the stop, interrupter.py's),
+since a window may hold only a request's first word. The turn's own transcript decides only an
+overlap whose whole-overlap request had not gone when it came (its `HearOverlap` reached the bridge
+after the turn closed: the whole overlap then reuses the turn's result, and changes nothing), and is
 judged again after a verdict to go on when speech followed it (`followed`, `judge_after`), at no
-request. When the rule lets the transcript that decides go on for want of words, on two or more,
-and the call's agent asks for it (domain/uncertain_overlaps.py, D-069), the overlap stays
-undecided (`asking`) until a chat model's word (overlap_ask.py), so its `unduck` waits too.
+request. When the rule lets the transcript that decides go on for want of words, on two or more, and
+the call's agent asks for it (domain/uncertain_overlaps.py, D-069), the overlap stays undecided
+(`asking`) until a chat model's word (overlap_ask.py), so its `unduck` waits too.
 
 The rule reads each transcript's speech time (`Overlap.speech_s`) from the turn's `speech_at`: a
 window's to its request, the speech still going on; the whole overlap's to its request less the
 speech detector's stop delay (`turns.vad_stop_ms`), since that request goes once the detector
 hears the speech stop; and the turn's own to when its speech ended.
 
-Over an action's read-back (plan 007), a transcript of yes words, send words, fillers and
+Over an action's read-back, a transcript of yes words, send words, fillers and
 listening sounds whose speech began over its summary is a listening sound, whatever the rule
 would say, so the summary plays on (read_back.py's `ignored`); but one that holds a stop or wait
 word of the call's (`call_words`, as the rule reads them: domain/interruptions.py's

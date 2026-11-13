@@ -497,7 +497,7 @@ path_bases = [
 # Path prefixes that are not ours to resolve: runtime output; the prototype beside the
 # repository that code cites as a spec (D-010), by its folder or by the files the library cites
 # (the library's src/ cannot name the prototype's folder: ARCH-WORDS); and installed libraries'
-# files, by their package's folder or, for Pipecat's transports, below it.
+# files, by their package's folder.
 path_ignored = [
     "var/",
     "Ole5-chatbot/",
@@ -511,7 +511,6 @@ path_ignored = [
     "requests/",
     "opentelemetry/",
     "pipecat/",
-    "transports/smallwebrtc/",
 ]
 # Methods a library calls on our subclasses, so they are never "unreferenced": logging's and
 # http.server's handlers (emit; do_GET, do_POST, log_message), OpenTelemetry's span processor

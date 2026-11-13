@@ -48,7 +48,7 @@ from pipecat.transports.smallwebrtc.transport import SmallWebRTCTransport
 from t2_agentic_voice.core.errors import InvalidRequestError
 from t2_agentic_voice.core.logging import get_logger
 from t2_agentic_voice.voice.session.session_events import AgentAudio, CallerAudio
-from t2_agentic_voice.voice.session_bridge import CallEvents, ClauseEndFrame, ClauseKey, clause_of
+from t2_agentic_voice.voice.session_bridge import ClauseEndFrame, ClauseKey, EventStream, clause_of
 
 log = get_logger(__name__)
 
@@ -216,7 +216,7 @@ class CallerTap(FrameProcessor):
     """After the input: each piece of the caller's audio, as the pipeline hears it, to the
     session (`CallerAudio`)."""
 
-    def __init__(self, events: CallEvents) -> None:
+    def __init__(self, events: EventStream) -> None:
         super().__init__(name="t2v-caller-tap")
         self._events = events
 
@@ -239,7 +239,7 @@ def _clause(frame: Frame) -> ClauseKey | None:
 class ClauseGate(FrameProcessor):
     """Before the output: drops every frame of a clause a stop dropped."""
 
-    def __init__(self, events: CallEvents) -> None:
+    def __init__(self, events: EventStream) -> None:
         super().__init__(name="t2v-clause-gate")
         self._events = events
 
@@ -254,7 +254,7 @@ class OutputTap(FrameProcessor):
     """After the output: the agent's audio as the output transport sent it, to the session
     (`AgentAudio`), and each clause's end as it leaves the output, to `played`."""
 
-    def __init__(self, events: CallEvents, played: Callable[[ClauseKey], None]) -> None:
+    def __init__(self, events: EventStream, played: Callable[[ClauseKey], None]) -> None:
         super().__init__(name="t2v-output-tap")
         self._events = events
         self._played = played

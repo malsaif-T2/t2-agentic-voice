@@ -23,7 +23,7 @@ again, were still heard as the turn's speech began, each reply playing or within
 after it ended (read_back.py's `over_read_back` and `over_follow_up`), so its echo rail reads
 only a line the caller was hearing; and, for words heard in another language than the
 read-back's, the no words and change markers of every language the agent speaks
-(domain/yes_words.py's `rails_for`; plan 007's Block H), so an English "yes, but ..." over an
+(domain/yes_words.py's `rails_for`), so an English "yes, but ..." over an
 Arabic read-back is a correction.
 A newer turn that answers the read-back cancels a request still in flight (`cancel`, which
 yes_turns.py calls first), and so do the client's stop (`cancel`) and the call's end: each

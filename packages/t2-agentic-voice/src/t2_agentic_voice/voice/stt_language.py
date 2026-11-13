@@ -1,5 +1,5 @@
 """Each turn's language in one call's speech-to-text bridge (voice/stt_bridge.py), under
-`stt.live_language = "classified"` (plan 007's Block H; Q17 and Q18): `TurnLanguages`.
+`stt.live_language = "classified"`: `TurnLanguages`.
 
 Built with the agent's codes, a classifier and the rule (domain/turn_language.py), it keeps, by
 turn, what it heard and decided. With no classifier (any other setting, or an agent of one

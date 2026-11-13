@@ -2,7 +2,7 @@
 a plain `FrameProcessor` between the speech-to-text bridge and the text-to-speech bridge (the
 design's 13; plan 003's appendix, "Changes to the plan's interfaces", items 3 and 7).
 
-- `CallEvents` is the call's stream of session events. Every Pipecat module of the call (the
+- `EventStream` is the call's stream of session events. Every Pipecat module of the call (the
   bridges, the transport's taps, its connection) hands each event here as it happens, and one
   task gives them to `Session.handle`, one at a time, in that order, so no module waits on the
   session. It holds what io.py says cannot come: an event of a clause a `StopSpeaking` dropped
@@ -108,7 +108,7 @@ def _key(event: SessionEvent) -> ClauseKey | None:
     return (event.reply_id, event.clause) if isinstance(event, _CLAUSE_EVENTS) else None
 
 
-class CallEvents:
+class EventStream:
     """One call's stream of session events, handed to its session in the order they happened.
     `asked` holds every clause the session asked for, `dropped` those a stop dropped; `ended`
     says whether the call has ended. With `record`, `handed` keeps every event the session was
@@ -200,7 +200,7 @@ class SessionBridge(FrameProcessor):
     """The plain processor between the speech-to-text bridge and the text-to-speech bridge: it
     hands the session each client message, and passes every other frame on."""
 
-    def __init__(self, events: CallEvents) -> None:
+    def __init__(self, events: EventStream) -> None:
         super().__init__(name="t2v-session-bridge")
         self._events = events
 
@@ -232,7 +232,7 @@ class SessionCommands:
     def __init__(
         self,
         bridge: SessionBridge,
-        events: CallEvents,
+        events: EventStream,
         *,
         listen: Callable[[str | None], None],
         hear: Callable[[int, int], None],

@@ -2,28 +2,29 @@
 the same voice modules as a call over WebRTC (the speech detector, the turn analyzer, the speech
 bridges, the session bridge and the session), its output captured, never sent. Internal, for the
 tests, `poe eot`, `poe overlap` and runs T1 and T2, which reach it through testing's
-`turn_ends`, `echo_timings` and `AudioCall` (plan 003's decision log; plan 005); the parity test
-comes later (the design's 9.5). Each call fed gets its own speech detector and turn analyzer,
+`turn_ends`, `echo_timings` and `AudioCall` (plan 003's decision log), and the parity test of a
+text call against an audio one (tests/t2_agentic_voice/testing/test_parity.py; the design's 9.5).
+Each call fed gets its own speech detector and turn analyzer,
 built off the event loop as voice/calls.py builds a call's, so no state passes from one clip to
 the next; `calls.start` warmed the models once before (its import of onnxruntime is the slow
 part).
 
 The session greets the caller once connected, and the drop rule covers any reply, the greeting
-included (session/io.py): a turn whose speech began while the greeting played, or within 300 ms
-after it, is not answered. So the transport feeds digital silence until the greeting's last
-clause has played (its `ClausePlayed`, or its `ClauseFailed`), and only then the clip's lead,
-counted from that event's time: the clip never overlaps the greeting, and a lead over the
-rule's 0.3 s (the registration's 1 s) keeps its first speech from being dropped. A clip fed
-`over_reply` (testing's `AudioCall`, plan 005) is the other way round: its lead counts from the
-greeting's first audio queued for the output (its `ClauseQueued`), so the clip lies over the
-greeting as it plays, and the overlap rule (or the drop rule) judges its speech as it would a
-caller's over a reply (D-037). The greeting is a fixed phrase, played from the
-phrase audio `calls` was built with (voice's `PhraseAudio`), so a file-fed call sends no request
-for it: the requests that synthesized it are the phrase cache's, before the first call, and they
-count in run T's budget as `PhraseCache.declare` returns them (adapters/phrase_cache.py: one for
-each request it packed, about n / `max_chars` for a phrase of n characters, none for a phrase its
-folder held). A call whose phrase audio is silence of no length, as testing's `turn_ends` gives
-its own, has played its greeting once connected, so its lead starts there.
+included (session/io.py): a turn whose speech began while the greeting played, or within
+`DROP_AFTER_S` after it (session/playback.py), is not answered. So the transport feeds digital
+silence until the greeting's last clause has played (its `ClausePlayed`, or its `ClauseFailed`), and
+only then the clip's lead, counted from that event's time: the clip never overlaps the greeting, and
+a lead over the rule's `DROP_AFTER_S` (the registration's 1 s) keeps its first speech from being
+dropped. A clip fed `over_reply` (testing's `AudioCall`) is the other way round: its lead counts
+from the greeting's first audio queued for the output (its `ClauseQueued`), so the clip lies over
+the greeting as it plays, and the overlap rule (or the drop rule) judges its speech as it would a
+caller's over a reply (D-037). The greeting is a fixed phrase, played from the phrase audio `calls`
+was built with (voice's `PhraseAudio`), so a file-fed call sends no request for it: the requests
+that synthesized it are the phrase cache's, before the first call, and they count in run T's budget
+as `PhraseCache.declare` returns them (adapters/phrase_cache.py: one for each request it packed,
+about n / `max_chars` for a phrase of n characters, none for a phrase its folder held). A call whose
+phrase audio is silence of no length, as testing's `turn_ends` gives its own, has played its
+greeting once connected, so its lead starts there.
 
 The clip is fed at real-time pace, so Pipecat's timers run as in a call: 20 ms frames, each due
 at an absolute deadline on `time.perf_counter` (the call's start plus n frames), since relative
@@ -190,10 +191,9 @@ async def feed_file(
     last frame the caller leaves (an `Ending`, `caller_left`); what the call did is returned
     once its session has hung up. Every aiortc peer it may build gets no ICE server (it builds
     none). InvalidRequestError for a clip at another rate; T2VoiceError when the greeting has
-    not played (or, `over_reply`, begun) within `GREETING_WAIT_S`. Track E's tests: with a
-    greeting that plays for a while, the clip's first frame is due after the greeting's last
-    `ClausePlayed` plus `lead_s`, or, `over_reply`, after its `ClauseQueued` plus `lead_s`,
-    while it still plays."""
+    not played (or, `over_reply`, begun) within `GREETING_WAIT_S`. With a greeting that plays for
+    a while, the clip's first frame is due after the greeting's last `ClausePlayed` plus
+    `lead_s`, or, `over_reply`, after its `ClauseQueued` plus `lead_s`, while it still plays."""
     from pipecat.frames.frames import InputAudioRawFrame
 
     if clip.sample_rate != RATE:

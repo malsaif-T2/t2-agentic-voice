@@ -91,7 +91,7 @@ class Transcribing:
     comes of it, so a request the call's end cancels is still counted (io.py's usage). It names
     the `language` the request named and how it was chosen (`language_by`: voice/
     stt_language.py) and, with a classifier's verdict in hand, its best `share` and when it came
-    (`verdict_at`, on the call's clock; plan 007's Block H); under a classifier, when the turn's
+    (`verdict_at`, on the call's clock); under a classifier, when the turn's
     language was decided (`decided_at`: its hold's start, or its close with no hold) and the
     seconds of its speech held then (`speech_s`), which run H reads (testing/turn_languages.py)."""
 

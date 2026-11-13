@@ -34,7 +34,6 @@ from t2_agentic_voice.voice import pipeline as pipeline_module
 from t2_agentic_voice.voice import transport as transport_module
 from t2_agentic_voice.voice.calls import (
     REFUSED_VARIABLES,
-    TICKER_BOUND_S,
     Calls,
     CallsFactory,
     Candidate,
@@ -58,6 +57,7 @@ from tests.t2_agentic_voice.fakes import (
 )
 from tests.t2_agentic_voice.session_fakes import AGENT
 from tests.t2_agentic_voice.voice.kit import (
+    TICKER_BOUND_S,
     Built,
     ToneVAD,
     client_answered,

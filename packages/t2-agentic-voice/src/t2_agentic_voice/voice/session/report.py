@@ -82,7 +82,7 @@ class TurnLog:
     stray-script filter took out of, or rewrote in, what its reply's model requests wrote, and
     `stray_scripts` labels their kinds (agent/stray_script.py), never a character. `language`,
     `language_by` and `language_share` are what its first request named, how, and the verdict's
-    best share (plan 007's Block H), from its first `Transcribing`, whatever its part, as
+    best share, from its first `Transcribing`, whatever its part, as
     turn_book.py keeps them."""
 
     turn_id: TurnId
