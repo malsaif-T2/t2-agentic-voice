@@ -36,7 +36,7 @@ from t2_agentic_voice.ports import KnowledgeBase, Passage
 
 from ole5_voice import LOGGERS
 from ole5_voice.evals.cli import require, seconds
-from ole5_voice.evals.factories import Closing, env_file_of, knowledge_of
+from ole5_voice.evals.factories import Closing, knowledge_of
 from ole5_voice.evals.items import HISTORY_FILE, GoldenSetError, read_toml
 from ole5_voice.evals.kb_points import PointIndex, digest
 from ole5_voice.evals.knowledge_depth_card import (
@@ -55,6 +55,7 @@ from ole5_voice.evals.knowledge_set import KNOWLEDGE_DIR, POINTS_FILE, Points, l
 from ole5_voice.evals.models import Split
 from ole5_voice.evals.run_folder import RunFolder, folder_for
 from ole5_voice.evals.run_parts import DATA
+from ole5_voice.evals.run_settings import env_file_of
 from ole5_voice.evals.talker_args import TalkerParts
 from ole5_voice.evals.talker_data import TAGS
 from ole5_voice.evals.talker_measure import CALLER, Todo, todo_of

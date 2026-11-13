@@ -2,7 +2,8 @@
 named on the command line as `module:name` inside `ole5_voice` (`load_factory`), so a run
 measures the app's own declaration through the library's public API, each run the same way.
 
-- `--knowledge` names the knowledge base's factory, given the run's env file (`env_file_of`):
+- `--knowledge` names the knowledge base's factory, given the run's env file
+  (`run_settings.env_file_of`):
   Ole5's is `ole5_voice.knowledge_base:knowledge_base`, which reads the knowledge base's access
   alone, so a run needs no access code or widget setting.
 - `--agent` names the agent's factory, given that knowledge base: Ole5's is
@@ -16,7 +17,6 @@ variant, an interrupt, an error, or a refusal that comes once they are built.
 
 from __future__ import annotations
 
-import argparse
 import asyncio
 import importlib
 from collections.abc import Callable
@@ -26,7 +26,6 @@ from typing import TypeVar
 from t2_agentic_voice import VoiceAgent
 from t2_agentic_voice.ports import KnowledgeBase
 
-from ole5_voice.evals import run_settings
 from ole5_voice.evals.worktree import refused
 
 AgentFactory = Callable[[KnowledgeBase | None], VoiceAgent]
@@ -49,16 +48,6 @@ def load_factory(spec: str) -> Callable[..., object]:
     if not callable(found):
         raise refused(f"{spec} names no callable", fix)
     return found
-
-
-def env_file_of(args: argparse.Namespace) -> Path | None:
-    """The env file a run's settings and knowledge base load from: `--env-file`, or the working
-    folder's `.env` when it names none (`run_settings.DOTENV`)."""
-    env_file: Path | None = args.env_file
-    dotenv = run_settings.DOTENV
-    if env_file is None and dotenv is not None and dotenv.is_file():
-        env_file = dotenv
-    return env_file
 
 
 def knowledge_of(load: Loader, spec: str, env_file: Path | None) -> KnowledgeBase:

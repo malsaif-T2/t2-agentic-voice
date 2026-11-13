@@ -36,7 +36,7 @@ from t2_agentic_voice.ports import ChatModel
 from ole5_voice.evals import cli, run_folder, run_settings
 from ole5_voice.evals.chat_pacing import Limits, ModelPacer, PacedChat, Price, Spend
 from ole5_voice.evals.cli import EFFORTS, amount, count, seconds
-from ole5_voice.evals.factories import env_file_of, load_factory
+from ole5_voice.evals.factories import load_factory
 from ole5_voice.evals.groq_answerer import Clock, Sleep
 from ole5_voice.evals.judge import JUDGE_MODEL
 from ole5_voice.evals.models import NAME_RULE, is_name
@@ -163,7 +163,7 @@ def require(
 def chat_settings(args: argparse.Namespace) -> VoiceSettings:
     """The chat adapter's settings: the key from the environment and the `.env`, the base URL
     and the timeout from the command line."""
-    loaded = VoiceSettings.from_env(env_file=env_file_of(args), env="dev")
+    loaded = VoiceSettings.from_env(env_file=run_settings.env_file_of(args), env="dev")
     data = loaded.model_dump()
     data["groq"]["base_url"] = args.base_url or run_settings.GROQ_BASE_URL
     data["llm"]["timeout_s"] = args.timeout_s

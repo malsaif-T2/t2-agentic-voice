@@ -19,7 +19,7 @@ from t2_agentic_voice.stores import PhraseCache
 
 from ole5_voice.evals import history, run_settings
 from ole5_voice.evals.audio import read_wav
-from ole5_voice.evals.factories import Closing, Loader, env_file_of, knowledge_of, load_factory
+from ole5_voice.evals.factories import Closing, Loader, knowledge_of, load_factory
 from ole5_voice.evals.factories import agent_of as built_agent
 from ole5_voice.evals.first_audio_replay import audio_replay
 from ole5_voice.evals.first_audio_run import (
@@ -102,7 +102,7 @@ def agent_of(args: argparse.Namespace, load: Loader, closing: Closing) -> VoiceA
     not there or gives no talker's agent, and for one that gives tools with no knowledge base."""
     kb = None
     if not args.no_tools:
-        kb = closing.add(knowledge_of(load, args.knowledge, env_file_of(args)))
+        kb = closing.add(knowledge_of(load, args.knowledge, run_settings.env_file_of(args)))
     agent = built_agent(load, args.agent, kb)
     if not agent.instructed:
         raise refused(

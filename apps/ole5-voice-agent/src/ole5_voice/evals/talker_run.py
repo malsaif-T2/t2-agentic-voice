@@ -35,7 +35,7 @@ from t2_agentic_voice import T2VoiceError, VoiceAgent, configure_logging, get_lo
 
 from ole5_voice import LOGGERS
 from ole5_voice.evals.chat_pacing import Spend
-from ole5_voice.evals.factories import Closing, env_file_of, knowledge_of
+from ole5_voice.evals.factories import Closing, knowledge_of
 from ole5_voice.evals.factories import agent_of as built_agent
 from ole5_voice.evals.items import HISTORY_FILE
 from ole5_voice.evals.judge import JUDGE_REQUESTS, Judge
@@ -43,6 +43,7 @@ from ole5_voice.evals.kb_points import KnowledgeData, RecordingKnowledge, load_k
 from ole5_voice.evals.models import Split
 from ole5_voice.evals.run_folder import RunFolder, folder_for
 from ole5_voice.evals.run_parts import DATA
+from ole5_voice.evals.run_settings import env_file_of
 from ole5_voice.evals.talker_args import (
     TalkerParts,
     add_common,

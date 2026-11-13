@@ -12,7 +12,7 @@ from pathlib import Path
 from typing import Any
 
 import pytest
-from ole5_voice.evals import audio, eot, items, run_settings
+from ole5_voice.evals import audio, eot, items, languages_run, languages_setup, run_settings
 from ole5_voice.evals.eot_score import (
     EotScorecard,
 )
@@ -269,17 +269,27 @@ def test_the_flags_a_run_needs_together(
 def test_the_settings_load_as_poe_evals_with_the_var_dir_on_top(
     tmp_path: Path, monkeypatch: pytest.MonkeyPatch
 ) -> None:
+    """`poe eot` and a language pass load alike (`run_settings.env_settings`): the env file
+    named, else the working folder's `.env` when there is one (`env_file_of`), as every run's."""
     env = tmp_path / "made-up.env"
     env.write_text("T2V_TURNS__VAD_STOP_MS=300\n", encoding="utf-8")
     args = eot._parser().parse_args(["--env-file", str(env), "--var-dir", str(tmp_path / "v")])
-    loaded = eot._settings(args)
+    loaded = run_settings.env_settings(args)
     assert (loaded.turns.vad_stop_ms, loaded.storage.var_dir, loaded.env) == (
         300,
         tmp_path / "v",
         "dev",
     )
+    unnamed = eot._parser().parse_args([])
+    assert run_settings.env_file_of(unnamed) is None  # the suite's DOTENV is None
+    monkeypatch.setattr(run_settings, "DOTENV", tmp_path / "none.env")
+    assert run_settings.env_file_of(unnamed) is None  # no such file
     monkeypatch.setattr(run_settings, "DOTENV", env)
-    assert eot._settings(eot._parser().parse_args([])).turns.vad_stop_ms == 300
+    assert run_settings.env_file_of(unnamed) == env
+    assert run_settings.env_settings(unnamed).turns.vad_stop_ms == 300
+    passing = languages_run._parser().parse_args(["--classifier", "off", "--var-dir", "w"])
+    assert languages_setup.settings_of(passing).turns.vad_stop_ms == 300
+    assert languages_setup.settings_of(passing).storage.var_dir == Path("w")
 
 
 def test_the_hold_after_smart_turns_complete_is_set_and_shown_as_every_turn_setting(
@@ -291,9 +301,9 @@ def test_the_hold_after_smart_turns_complete_is_set_and_shown_as_every_turn_sett
     env = tmp_path / "made-up.env"
     env.write_text("T2V_TURNS__COMPLETE_HOLD_MS=300\n", encoding="utf-8")
     args = eot._parser().parse_args(["--env-file", str(env)])
-    assert eot.shown(eot._settings(args), args)["turns.complete_hold_ms"] == "300"
+    assert eot.shown(run_settings.env_settings(args), args)["turns.complete_hold_ms"] == "300"
     monkeypatch.setenv("T2V_TURNS__COMPLETE_HOLD_MS", "500")
-    loaded = eot._settings(args)
+    loaded = run_settings.env_settings(args)
     assert (loaded.turns.complete_hold_ms, eot.shown(loaded, args)["turns.complete_hold_ms"]) == (
         500,
         "500",

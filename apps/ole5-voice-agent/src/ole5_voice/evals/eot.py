@@ -93,19 +93,6 @@ def _require(parser: argparse.ArgumentParser, args: argparse.Namespace) -> None:
         parser.error("--secondary is a dev run of the pipeline: its true ends are Silero's own")
 
 
-def _settings(args: argparse.Namespace) -> VoiceSettings:
-    """The settings, as `poe eval` loads them: the environment and `--env-file` (or the working
-    folder's `.env`), as `env=dev`, with `--var-dir` on top."""
-    env_file = args.env_file
-    if env_file is None and run_settings.DOTENV is not None and run_settings.DOTENV.is_file():
-        env_file = run_settings.DOTENV
-    loaded = VoiceSettings.from_env(env_file=env_file, env="dev")
-    if args.var_dir is None:
-        return loaded
-    storage = loaded.storage.model_copy(update={"var_dir": args.var_dir})
-    return loaded.model_copy(update={"storage": storage})
-
-
 def shown(settings: VoiceSettings, args: argparse.Namespace) -> dict[str, str]:
     """What a run's turn ends depend on, by dotted name: every `turns` setting, and the run's
     padding and sets."""
@@ -202,7 +189,7 @@ async def _fed(
 def _run(
     args: argparse.Namespace, parts: Parts, turn_ends: TurnEnds, append_line: AppendLine
 ) -> int:
-    settings = _settings(args)
+    settings = run_settings.env_settings(args)
     checkout = run_checkout(parts.folder, parts.git)
     out = check_out(args.out, checkout, parts.git)
     if not is_name(out.name):
