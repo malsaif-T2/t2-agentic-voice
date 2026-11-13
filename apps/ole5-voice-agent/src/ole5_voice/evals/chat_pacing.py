@@ -17,7 +17,7 @@ tokens, the cached tokens at the input price.
 
 The daily limit comes from the command line (`--rpd`), the day's requests so far from the run
 history's lines of that day: the chat port's events carry no response headers, so Groq's
-`x-ratelimit-*` headers are not read (the track's report says so).
+`x-ratelimit-*` headers are not read.
 """
 
 from __future__ import annotations

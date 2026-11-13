@@ -21,19 +21,7 @@ from pydantic import SecretStr, ValidationError
 from t2_agentic_voice import ConfigurationError, StorageSettings, VoiceSettings
 
 from tests.leaks import holding, shown
-
-CODE = "made-up-access-code-0123"
-KEY = "a-made-up-join-key-of-forty-bytes-0123456"
-
-
-@pytest.fixture
-def environment(monkeypatch: pytest.MonkeyPatch) -> pytest.MonkeyPatch:
-    """The variables the app's server needs, made up."""
-    monkeypatch.setenv("T2V_ENV", "dev")
-    monkeypatch.setenv("T2V_JOIN__KEYS", f'{{"k1": "{KEY}"}}')
-    monkeypatch.setenv("T2V_JOIN__CURRENT_KID", "k1")
-    monkeypatch.setenv("OLE5_VOICE_ACCESS_CODE", CODE)
-    return monkeypatch
+from tests.ole5_voice.server_support import CODE
 
 
 def test_the_ticket_settings_have_their_defaults(environment: pytest.MonkeyPatch) -> None:

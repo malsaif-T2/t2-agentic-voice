@@ -4,7 +4,9 @@ fake providers, builds and runs its lifespan with `storage.var_dir` under the te
 opening the agent's outbox there and never under a `var/` of the repository's; and `build_app`
 with the same mock serves `/tickets`, listing what the talker's own `create_ticket` made in it.
 Nothing reaches a network: the speech providers and the chat model are fakes, the knowledge
-base the library's `FakeKnowledgeBase`, and voice's detectors load their bundled models."""
+base the library's `FakeKnowledgeBase`, and voice's calls run on the test kit's detectors
+(`ToneVAD`, `PauseAnalyzer`), so no Silero or Smart Turn model is loaded: the test reads
+only the outbox's file and the tickets' page."""
 
 from __future__ import annotations
 
@@ -12,6 +14,7 @@ import asyncio
 from collections.abc import AsyncIterator
 from datetime import datetime
 from pathlib import Path
+from typing import Any
 
 from fastapi.testclient import TestClient
 from ole5_voice.agent import talker_agent
@@ -33,11 +36,13 @@ from t2_agentic_voice import (
 from t2_agentic_voice.evals import FakeKnowledgeBase, ScriptedLLM
 from t2_agentic_voice.identity import DevIdentity
 from t2_agentic_voice.ports import AudioChunk, AudioClip, DataFlow, Transcript
+from t2_agentic_voice.voice.calls import VoiceCalls
 
+from tests.ole5_voice.server_support import CODE
 from tests.ole5_voice.tickets.action_support import action_context
 from tests.ole5_voice.tickets.ticket_support import SUMMARY
+from tests.t2_agentic_voice.voice.kit import PauseAnalyzer, ToneVAD
 
-CODE = "made-up-access-code-0123"
 FLOW = DataFlow(provider="none", processed_in="the test", stored_in="nowhere", retention="none")
 # The fake text-to-speech's rate, and how long each text it says lasts.
 RATE, SAID_S = 24_000, 0.05
@@ -87,6 +92,11 @@ class _Minter:
         return "made-up-token"
 
 
+def _detected(**given: Any) -> VoiceCalls:
+    """Voice's calls on the test kit's detectors, which load no model."""
+    return VoiceCalls(**given, speech_detector=ToneVAD, turn_analyzer=PauseAnalyzer)
+
+
 def _create_ticket(agent: VoiceAgent) -> Action:
     (found,) = [t for t in agent.tools if isinstance(t, Action) and t.name == "create_ticket"]
     return found
@@ -104,6 +114,7 @@ def test_the_talker_with_tickets_serves_its_outbox_and_page_from_the_tests_folde
         settings=voice,
         identity=DevIdentity(),
         providers=Providers(stt=_Silence(), tts=tts, chat=ScriptedLLM([])),
+        _calls=_detected,
     )
     settings = Settings(app=AppSettings(access_code=SecretStr(CODE)), voice=voice)
     app = build_app(settings, router=runtime.router(), minter=_Minter(), tickets=tickets)

@@ -1,5 +1,5 @@
-"""What a pass of `poe eval-languages` runs with (languages_run.py; plan 007's Block H, run H's
-H1): the settings, the environment's and `--env-file`'s as `poe eot` loads them, with the pass's
+"""What a pass of `poe eval-languages` runs with (languages_run.py; plan 007's run H, its H1):
+the settings, the environment's and `--env-file`'s as `poe eot` loads them, with the pass's
 classifier on top (`--classifier off` under `stt.live_language = "session"`, `silero` or `ecapa`
 under `classified`, its files in `--classifier-dir` or `stt.classifier_dir`), refused under a
 rule other than the registered one (Q20, `REGISTERED`); what of them a pass records (`shown`,

@@ -5,9 +5,10 @@ every line of `history.jsonl` is read as, a line with no `kind` being `poe eval`
 (`runs.HistoryLine`, whose lines predate the field). `AnyLine` also takes plan 006's runs: K's
 `TalkerLine` and S's `ScenarioLine` (talker_lines.py), U's `UncertainLine` and T's
 `FirstAudioLine` (measure_lines.py), and K0's `DepthLine` (knowledge_depth_card.py); and plan
-007's run H, a pass's `LanguagesLine` (languages_card.py). Strict as
-every history line: a held-out run's breakdowns hold no group of fewer than `HELD_OUT_MIN_ITEMS`
-items, and a secret setting is shown only as set or not set.
+007's runs: A's `ActionLine` (action_history.py) and H's, a pass's `LanguagesLine`
+(languages_card.py). Strict as every history line: a held-out run's breakdowns hold no group of
+fewer than `HELD_OUT_MIN_ITEMS` items (`runs.check_groups`), and a secret setting is shown only
+as set or not set.
 """
 
 from __future__ import annotations

@@ -1,4 +1,4 @@
-"""`poe eval-languages`: run H's H1 (plan 007's Block H), each turn's language on the golden set,
+"""`poe eval-languages`: plan 007's run H, its H1, each turn's language on the golden set,
 offline and with no spend, into a new folder, `--out`; and `--read`, condition 4 of its keep
 rule read across a commit's passes.
 

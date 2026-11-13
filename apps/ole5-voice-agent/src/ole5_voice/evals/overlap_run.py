@@ -15,7 +15,7 @@ tail by `REPLY_MARGIN_S`. A clip is budgeted the most it may send by its length
 for each started `SPAN_S` of the clip and its tail, since a long clip, such as an echo item's,
 may open an overlap in each (TD-108). Before each clip the run waits until its pacer has room
 for that budget, at the run's Whisper requests a minute (`--stt-rpm`, 10 by default, half the
-published 20: plan 003's Track H), or, for a budget above the limit, for a whole empty minute,
+published 20, as plan 003's T set it), or, for a budget above the limit, for a whole empty minute,
 so a long clip starts on one; and it refuses to start a clip whose budgeted cost, each request
 billed the clip's length and at least 10 s, would take the run past `--cap-usd`. A clip one of
 whose requests met a rate limit is played again after `RATE_LIMIT_PAUSE_S`, up to

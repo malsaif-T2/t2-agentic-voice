@@ -41,9 +41,9 @@ from t2_agentic_voice import Caller, Consent, JoinSettings, ServerSettings, Voic
 from t2_agentic_voice.api import protocol
 
 from tests.leaks import holding, shown
+from tests.ole5_voice.server_support import CODE
 from tests.ole5_voice.tickets.ticket_support import new_ticket
 
-CODE = "made-up-access-code-0123"
 WRONG = "not-the-code-at-all-0123"
 ORIGIN = "https://www.example.com"
 BODY = {"code": WRONG, "consent": {"version": None, "record_audio": False}}
@@ -314,15 +314,6 @@ def test_the_app_names_its_demo_customer_and_keeps_its_tickets_where_the_setting
     assert isinstance(identity, _Tokens)
     [(caller, _)] = identity.minted
     assert customer_email(caller) == "another.demo@example.com"
-
-
-@pytest.fixture
-def environment(monkeypatch: pytest.MonkeyPatch) -> pytest.MonkeyPatch:
-    monkeypatch.setenv("T2V_ENV", "dev")
-    monkeypatch.setenv("T2V_JOIN__KEYS", '{"k1": "a-made-up-join-key-of-forty-bytes-0123456"}')
-    monkeypatch.setenv("T2V_JOIN__CURRENT_KID", "k1")
-    monkeypatch.setenv("OLE5_VOICE_ACCESS_CODE", CODE)
-    return monkeypatch
 
 
 def test_the_command_serves_the_app(environment: pytest.MonkeyPatch) -> None:

@@ -1,4 +1,4 @@
-"""The scorer of `poe eval-languages` (plan 007's Block H, run H's H1): a pass's numbers, its
+"""The scorer of `poe eval-languages` (plan 007's run H, its H1): a pass's numbers, its
 history line, its folder written and read back, and condition 4 of the keep rule read across the
 passes; what they are shaped as is languages_card.py's.
 
