@@ -3,7 +3,8 @@
 The code is here; the data (items, manifests, the split, the strata, the history) is in
 `apps/ole5-voice-agent/evals/`, and the audio is never in git. `models.py` holds the shapes
 of the golden set, `runs.py` those of a run, `takes.py` the recorder's files and `audio.py` the
-WAV files; `files.py` reads every file one way and `cli.py` parses what the commands share. The
+WAV files; `files.py` reads every file one way, `cli.py` parses what the commands share, and
+`session_runner.py` holds what the runs that spend share once their command line is read. The
 commands `poe golden`, `poe eval`, `poe eval-compare`, `poe eval-history` and `poe record` run
 `golden.py`, `run.py`, `compare.py`, `history.py` and `recorder.py`; `knowledge_set.py` reads
 and checks the knowledge set, the requests the talker is measured on. The library is reached

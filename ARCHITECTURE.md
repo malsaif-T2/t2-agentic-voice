@@ -26,7 +26,9 @@ One repository, a uv workspace (D-013):
 ```
 packages/t2-agentic-voice/   the library teammates install: src/t2_agentic_voice/, its layers
 apps/ole5-voice-agent/       the Ole5 Voice Agent: src/ole5_voice/, Ole5's prompt, tools,
-                             knowledge base and ticket system, and its web widget
+                             knowledge base and ticket system, and its web widget; its
+                             measurement commands in src/ole5_voice/evals/ (the spending
+                             runs on one session loop, session_runner.py), their data in evals/
 examples/minimal/            the smallest app: the guide's quickstart, and a test of the library
 tests/                       one subfolder per package, harness/ for the checks' own tests, and
                              the helpers every package's tests share (leaks.py, isolation.py)
@@ -34,7 +36,8 @@ tests/                       one subfolder per package, harness/ for the checks'
 
 The library's **public API is its package root and the facades beside it**: the root's
 `__init__.py` re-exports the main names, and each public facade (`ports`, `groq`, `languages`,
-`evals` and `tracing`, D-021; `identity`, `server`, `stores` and `events`, D-032)
+`evals` and `tracing`, D-021; `identity`, `server`, `stores` and `events`, D-032;
+`classifiers`, D-086)
 re-exports one area's names and holds nothing else (ARCH-FACADE);
 `[package] public` in harness.toml lists the modules an app may import, and `[package] facades`
 the facades among them. An app imports nothing else from the library and no other app, and the
@@ -90,13 +93,13 @@ An arrow or a line down means "may import"; `api` may import every layer, `testi
 
 | Layer | Responsibility | May import | Owns (only it may import) |
 | --- | --- | --- | --- |
-| `core` | Settings (`VoiceSettings` in `core/config.py`, the only module that reads the environment, and its groups in `core/settings/`), structured logging (`core/logging.py`), the error types (`core/errors.py`: `T2VoiceError` and its subclasses, each with a stable `code`), tracing to Phoenix, and the types every layer shares | none | `logging`, `structlog`, `pydantic_settings`, `opentelemetry`, `openinference`, `phoenix`, `requests` |
+| `core` | Settings (`VoiceSettings` in `core/config.py`, the only module that reads the environment, and its groups in `core/settings/`), structured logging (`core/logging.py`), the error types (`core/errors.py`: `T2VoiceError` and its subclasses, each with a stable `code`), tracing to Phoenix, and the types every layer shares: the numbers that name a call's parts (`core/ids.py`), a call's events and its report (`core/events.py`, `core/call_report.py`), a caller's identity (`core/identity.py`) and the yes rule's inputs (`core/yes_inputs.py`) | none | `logging`, `structlog`, `pydantic_settings`, `opentelemetry`, `openinference`, `phoenix`, `requests` |
 | `domain` | The rules of a support call, with no IO: what counts as a clear yes, an action's states, what an interruption is, Arabic text normalization, how numbers (through num2words) and ticket IDs are spoken, the evaluation scorers' pure parts (term recall, ID recall, text from silence, the sign test), and the ports (protocols) every outside service is reached through | core | `num2words` |
 | `adapters` | One adapter per port: speech-to-text, the chat model and text-to-speech (Groq), each chosen by a setting; the spoken-language classifiers (Silero on onnxruntime, ECAPA on torch through the library's `ecapa` extra) and the check of their model files; the signed join tokens, the SQLite stores (the used tokens and the outbox), the TURN credentials, the phrase cache and the clause cache (D-087) | core, domain | `groq`, `httpx`, `qdrant_client`, `torch`, `torchaudio`, `speechbrain`, `jwt`, `sqlite3` |
 | `actions` | The backend that acts: runs the talker's tools through the ports, carries out each confirmed action as a job, keeps each call's record of completed actions, words every outcome from a real result | core, domain | — |
-| `agent` | The talker: prompts, the few tool definitions, the reply language, one turn from the user's words to a reply and tool calls; the output guard on every sentence | core, domain, actions | — |
+| `agent` | The talker: prompts, the few tool definitions, the reply language, one turn from the caller's words to a reply and tool calls (`agent/turn.py`), each clause through the gate of `agent/clause_gate.py` before it is said: the question limit and the output guard (`agent/speech_guard.py`) | core, domain, actions | — |
 | `voice` | One call's real-time pipeline: answers the WebRTC offer (Pipecat's peer connection), audio in and out, speech detection, end of turn, interruptions, each reply's cancel scope, speech-to-text and text-to-speech wired to the talker; Pipecat's logger (loguru), kept off | core, domain, agent | `pipecat`, `loguru` |
-| `testing` | What a team tests and measures its agent with: the evaluation scorers (word and character error rates), the turn-end and echo timings and the replay of a clip over a reply (`AudioCall`) the measurements run on, today; later the fakes of every port, text-mode calls, the adversarial suite and simulated callers (D-019) | core, domain, actions, agent, voice | `jiwer` |
+| `testing` | What a team tests and measures its agent with: the evaluation scorers (word and character error rates), the turn-end and echo timings and the replay of a clip over a reply (`AudioCall`) the measurements run on; the call held in text (`TextCall`) with the fake chat models and knowledge base it runs on, and the safety suite a team runs on its actions (`ActionSafetySuite`); later the fakes of the other ports and simulated callers (D-019) | core, domain, actions, agent, voice | `jiwer` |
 | `api` | The HTTP surface and composition root: call set-up, health, the reference client (`t2v-client.js`) and the dev page (an app's widget is the app's to serve); builds the adapters from the settings and injects them, maps every error to one shape | core, domain, adapters, actions, agent, voice, testing | `fastapi`, `starlette`, `uvicorn` |
 
 `harness.toml` holds the same rules in `[layers]` (who may import whom) and `[[owners]]` (which
@@ -125,8 +128,8 @@ The agent's reasoning, from the questions the kit asks (D-003 records the altern
 - **What is the outermost surface?** `api`, the HTTP routes and the composition root that
   builds every adapter from the settings.
 - **Where do a team's tests and measurements get their tools?** From `testing` (D-019), beside
-  `api` and above `voice`: the scorers now, and the testing kit later, which runs the real
-  pipeline's session code with fakes. It never imports `adapters`, so a test reaches a provider
+  `api` and above `voice`: the scorers, the measurements and the testing kit, whose calls run
+  the real pipeline's session code with fakes. It never imports `adapters`, so a test reaches a provider
   only through a port it passes in, and never `api`, so a team's tests need no HTTP stack.
 - **What may only one layer create?** A confirmed action (`ConfirmedAction`), issued only by
   `domain`'s yes rule, `domain/yes_rule.py`; its two inputs, the caller's heard words and the
@@ -178,7 +181,7 @@ run").
   ([SECURITY.md](docs/SECURITY.md), invariant 8).
 - `voice` uses Pipecat for its pipeline, its WebRTC transport, speech detection, and the base
   classes of its speech-to-text and text-to-speech services (D-018). Its own subclasses of those
-  call the speech-to-text and text-to-speech ports, and `agent`'s turn will run inside the
+  call the speech-to-text and text-to-speech ports, and `agent`'s turn runs inside the
   cancel scope of the reply that answers it. Pipecat's ready-made provider services (its Groq
   speech-to-text, model, and text-to-speech services), its model services, and its own
   interruptions are never used: a provider service would reach Groq without a port (GP-22).
