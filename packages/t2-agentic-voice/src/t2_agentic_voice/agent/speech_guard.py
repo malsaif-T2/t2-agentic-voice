@@ -1,10 +1,11 @@
 """The output guard on what the talker writes (the design's 8.2; docs/SECURITY.md, invariant 2):
-rule A, then rule B, on each clause before it goes to text-to-speech, and rule B on a card's
-text. Rule C, the text after an action call, is the turn's (agent/turn.py): it is dropped before
-any clause of it reaches here.
+rule A, then rule B, on each clause before it goes to text-to-speech, through domain/guard.py's
+`check_clause`, and rule B on a card's text. Rule C, the text after an action call, is the
+turn's (agent/turn.py): it is dropped before any clause of it reaches here.
 
 - **Rule A, claims** (domain/claims.py's `check_claims`), for an agent that declares actions
-  only: a rule added for actions goes only to an agent that declares one (plan 007's baseline).
+  only, which alone is given claim phrases: a rule added for actions goes only to an agent
+  that declares one.
   A clause holding a claim phrase of an action (its `claims`) or one that claims any action
   (the library's default phrases, with the settings' `guard.claims`), every language's
   whatever the reply's, since a model may write a claim in another, passes only on that
@@ -17,9 +18,9 @@ any clause of it reaches here.
   keeps the clauses it passed in this reply, in order, for that. A clause it blocked was never
   said, so it is not kept. A passage, or any other tool's result, is no evidence of a claim. A
   clause it blocks is `unsupported_claim`.
-- **Rule B, IDs** (domain/guard.py's `check_ids`), on a clause that claims nothing: its
-  evidence is every tool result of this call (passages included), the record's results and
-  the caller's heard words.
+- **Rule B, IDs** (domain/guard.py's `check_ids`): its evidence is every tool result of this
+  call (passages included), the record's results and the caller's heard words, so a claim
+  rule A passed, whose numbers are its action's, passes it too.
 
 Both run on what the record and the tools hold as each clause comes, so a write that completes
 during a reply is evidence from then on.
@@ -37,7 +38,7 @@ from t2_agentic_voice.core.events import GuardReason
 from t2_agentic_voice.core.settings.guard import GuardSettings
 from t2_agentic_voice.domain import claims as rule_a
 from t2_agentic_voice.domain.completed_action import CompletedAction, is_recorded
-from t2_agentic_voice.domain.guard import check_ids
+from t2_agentic_voice.domain.guard import check_clause, check_ids
 
 
 @dataclass(frozen=True, slots=True)
@@ -84,23 +85,18 @@ class SpeechGuard:
         return tuple(self._passed)
 
     def _checked(self, clause: str) -> Checked:
-        if self.actions:
-            claims, any_action = self._claim_phrases()
-            verdict = rule_a.check_claims(
-                clause,
-                claims=claims,
-                any_action=any_action,
-                evidence=self.action_evidence(),
-                settings=self.settings,
-                year=self.year,
-                earlier=tuple(self._passed),
-            )
-            if not verdict.passed:
-                return Checked(False, "unsupported_claim", verdict.unsupported)
-            if verdict.claimed:
-                return Checked(True)
-        ids = check_ids(clause, evidence=self.evidence(), settings=self.settings, year=self.year)
-        return Checked(ids.passed, "unsupported_id", ids.unsupported)
+        claims, any_action = self._claim_phrases() if self.actions else ({}, ())
+        verdict = check_clause(
+            clause,
+            evidence=[*self.memory.evidence, *self.heard],
+            claims=claims,
+            any_action=any_action,
+            actions=self.action_evidence(),
+            settings=self.settings,
+            year=self.year,
+            earlier=tuple(self._passed),
+        )
+        return Checked(verdict.passed, verdict.reason or "unsupported_id", verdict.unsupported)
 
     def ids_pass(self, texts: Iterable[str]) -> bool:
         """Whether every text passes rule B (a card's)."""

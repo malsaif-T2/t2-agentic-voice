@@ -11,6 +11,12 @@ start finds left `sending`.
   lookup by the request ID when no reply came; only `done` adds a `CompletedAction` to the
   call's record. A row that cannot be written means nothing was sent: `failed`. A row that
   cannot be marked stays as it was, for `reconcile` at the next start.
+- **The action's state** moves through the lifecycle's table (domain/action_flow.py's
+  `advance`) as the job moves it, from the yes rule's `confirmed`: `sent` once its row is
+  written, then `returned`, `found` by the lookup, `refused` or `lost`; `refused` too when
+  nothing could be sent. A move the table refuses is a bug: logged as `action_flow_refused`
+  (the call, the action, the state and the event as `flow_event`, no content), never raised
+  into a call.
 - **`reconcile`** looks up each row left `sending` by an earlier process, never sending it
   again: found, `done`; else, or with no lookup, `flagged`. Asked to (`t2v outbox reconcile`),
   it looks each `flagged` row up again too: found, `done`; else left as it was. The outbox
@@ -45,6 +51,7 @@ from t2_agentic_voice.core.events import CallId
 from t2_agentic_voice.core.identity import Caller
 from t2_agentic_voice.core.logging import get_logger
 from t2_agentic_voice.core.settings.tts import LanguageTag
+from t2_agentic_voice.domain.action_flow import ActionState, FlowEvent, advance
 from t2_agentic_voice.domain.action_lines import SpokenLine, default_action_lines
 from t2_agentic_voice.domain.ports.action_jobs import ActionOutcome, OutcomeKind
 from t2_agentic_voice.domain.ports.outbox import Outbox, OutboxEntry, OutboxState
@@ -78,6 +85,29 @@ class JobCall:
     wording: LanguageTag
 
 
+@dataclass(slots=True)
+class Flow:
+    """One job's action as the lifecycle's table moves it (the module's docstring): `state`,
+    from the yes rule's `confirmed`."""
+
+    call_id: CallId
+    action: str
+    state: ActionState = "confirmed"
+
+    def move(self, event: FlowEvent) -> None:
+        """Move on `event`; a move the table refuses is logged, and the state stays."""
+        try:
+            self.state = advance(self.state, event)
+        except ValueError:
+            _log.error(
+                "action_flow_refused",
+                call_id=self.call_id,
+                action=self.action,
+                state=self.state,
+                flow_event=event,  # `event` is the log line's own name
+            )
+
+
 class Writes:
     """The jobs of one runner, against its `outbox`."""
 
@@ -105,10 +135,12 @@ class Writes:
         self, action: Action, confirmed: ConfirmedAction, call: JobCall
     ) -> ActionOutcome:
         request_id = request_id_of(call.call_id, confirmed)
+        flow = Flow(call.call_id, action.name)
         try:
             draft = action.parameters.model_validate_json(confirmed.draft_json)
         except ValidationError:
             _log.error("action_draft_unreadable", action=action.name)
+            flow.move("refused")
             return self._ended(action, request_id, "failed", call)
         now = call.clock.wall()
         entry = OutboxEntry(
@@ -124,12 +156,14 @@ class Writes:
             added = await self._outbox.add(entry)
         except Exception as error:  # nothing was sent: definitely not done
             _log.error("outbox_unwritten", action=action.name, failure=type(error).__qualname__)
+            flow.move("refused")
             return self._ended(action, request_id, "failed", call, draft=draft)
-        if not added:
+        if not added:  # carried out before: its own job moved it
             return await self._again(action, request_id, draft, call)
+        flow.move("sent")
         self.running.add(request_id)
         try:
-            return await self._carried_out(action, confirmed, request_id, draft, call)
+            return await self._carried_out(action, confirmed, request_id, draft, call, flow)
         finally:
             self.running.discard(request_id)
 
@@ -140,6 +174,7 @@ class Writes:
         request_id: str,
         draft: BaseModel,
         call: JobCall,
+        flow: Flow,
     ) -> ActionOutcome:
         consent = HeardConsent(
             words=confirmed.words, source=confirmed.source, speech_at=confirmed.speech_at
@@ -155,13 +190,17 @@ class Writes:
         ).reading_past(partial(done_rows, self._outbox))
         written = await write(action, ctx, draft, call.clock)
         if isinstance(written, Returned):
+            flow.move("returned")
             return await self._done(action, request_id, written.result, call)
         if isinstance(written, Refused):
+            flow.move("refused")
             await mark_row(self._outbox, request_id, state=written.state, note=written.state)
             return self._ended(action, request_id, "failed", call, draft=draft)
         found = await look_up(action, ctx, call.clock)
         if found is not None:
+            flow.move("found")
             return await self._done(action, request_id, found, call, note="looked_up")
+        flow.move("lost")
         missed = "not_found" if action.finder is not None else "no_lookup"
         note = f"{written.note}, {missed}"
         await mark_row(self._outbox, request_id, state="flagged", note=note)

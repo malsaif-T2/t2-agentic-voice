@@ -18,7 +18,9 @@ The moves (`advance`), each the only one its state and event have:
   and no lookup found it: `unknown`. Nothing else: a stop never cuts a write in half.
 - The four ends are never left.
 
-The outbox's own states are domain/ports/outbox.py's.
+The action runner's job moves each action from `confirmed` on (actions/action_job.py's `Flow`),
+and logs a move the table refuses, never raising it into a call. The outbox's own states are
+domain/ports/outbox.py's.
 """
 
 from __future__ import annotations
