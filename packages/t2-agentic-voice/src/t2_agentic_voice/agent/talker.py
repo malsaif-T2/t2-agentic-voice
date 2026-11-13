@@ -24,7 +24,7 @@ times); and the reply's end (`ReplyDone`), after its last clause and its work, w
 the talker's clauses it left unsaid once it stopped before a question past its limit
 (`unsaid_clauses`, agent/question_limit.py, D-085). A `ProviderError` from the model is
 raised from the stream instead, after any clause already given, for the session to say the
-`error` notice: no event says it (plan 006's Track B report).
+`error` notice: no event says it.
 
 **A clause's length.** The talker cuts the model's text with the clause splitter at no limit,
 for it knows no voice: the session fits each clause to the voice's `max_chars` once it has said

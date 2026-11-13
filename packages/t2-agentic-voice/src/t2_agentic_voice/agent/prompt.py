@@ -61,7 +61,8 @@ from t2_agentic_voice.core.settings.tts import LanguageTag
 from t2_agentic_voice.domain.declaration import VoiceAgent
 from t2_agentic_voice.domain.ports.chat_model import ToolSchema
 
-# The wrapper a tool's result is given to the model in (agent/talker.py frames each one).
+# The wrapper a tool's result is given to the model in (agent/tool_calls.py's `framed` frames
+# each one).
 DATA_TAG = "data"
 # How the history marks a clause a stop cut while it played (agent/context.py).
 CUT_MARK = "[cut: about {percent}% heard]"

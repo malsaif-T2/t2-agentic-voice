@@ -82,6 +82,8 @@ from t2_agentic_voice.core.config import Environment
 from t2_agentic_voice.core.events import ReplyId, TurnId
 from t2_agentic_voice.core.seal import SealedModel, still_sealed
 from t2_agentic_voice.core.yes_inputs import (
+    ActionName,
+    DraftJson,
     HeardSource,
     HeardWords,
     ReadBackReceipt,
@@ -91,6 +93,7 @@ from t2_agentic_voice.core.yes_inputs import (
 from t2_agentic_voice.domain.consent_check import ConsentAnswer
 from t2_agentic_voice.domain.interruption_words import QUESTION_MARKS
 from t2_agentic_voice.domain.interruptions import own_words
+from t2_agentic_voice.domain.text.words import holds_words, phrase_tokens
 from t2_agentic_voice.domain.words import rule_form
 from t2_agentic_voice.domain.yes_words import ConsentWords
 
@@ -113,8 +116,8 @@ class ConfirmedAction(SealedModel):
         "receipt; call decide() instead of building one."
     )
 
-    action: str = Field(min_length=1)
-    draft_json: str = Field(min_length=2, repr=False)
+    action: ActionName
+    draft_json: DraftJson
     reply_id: ReplyId
     turn_id: TurnId
     words: str = Field(repr=False)
@@ -219,19 +222,12 @@ def _kinds(text: str, words: ConsentWords) -> set[_Kind]:
     longest that starts at a word first; a word on no list after waw (and) is a send word when
     the rest of it is one."""
     listed = _listed(words)
-    heard = text.split()
-    longest = max((len(phrase.split()) for phrase in listed), default=1)
     found: set[_Kind] = set()
-    at = 0
-    while at < len(heard):
-        sizes = range(min(longest, len(heard) - at), 0, -1)
-        size = next((n for n in sizes if " ".join(heard[at : at + n]) in listed), 1)
-        word = " ".join(heard[at : at + size])
+    for word in phrase_tokens(text.split(), listed.keys()):
         kind = listed.get(word)
         if kind is None and word.startswith(_AND) and listed.get(word[1:]) == "send":
             kind = "send"
         found.add(kind or "content")
-        at += size
     return found
 
 
@@ -299,8 +295,7 @@ def _stands(receipt: ReadBackReceipt, current: ReadBackReceipt | None) -> bool:
 def _marked(text: str, markers: tuple[str, ...]) -> bool:
     """Whether `text`, in the rule's form, holds a change marker as whole words, or one after
     waw (and) written onto it."""
-    padded = f" {text} "
-    if any(f" {marker} " in padded for marker in markers):
+    if any(holds_words(text, marker) for marker in markers):
         return True
     return any(word.startswith(_AND) and word[1:] in markers for word in text.split())
 

@@ -1,6 +1,7 @@
-"""agent: the talker, the model that speaks, asks, and calls tools.
+"""agent: the talker, the model that speaks, asks, and calls tools: one turn from the caller's
+words to a reply and tool calls, in the reply's language, every clause checked by the output
+guard before it is said. It never words an outcome itself: actions do.
 
-Its prompts, its few tool definitions, the language it replies in, and one turn: the user's
-words in, a reply and tool calls out. It never words an outcome itself: actions do, and the
-output guard checks every sentence against the call's record of completed actions.
+It imports core, domain and actions, never adapters or voice. ARCHITECTURE.md's "Layers" maps
+the layers and what each owns; each module's docstring says what it holds.
 """

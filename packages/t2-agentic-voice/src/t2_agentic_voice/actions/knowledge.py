@@ -21,17 +21,19 @@ from __future__ import annotations
 
 from typing import Annotated
 
-from pydantic import Field, TypeAdapter
+from pydantic import Field, JsonValue, TypeAdapter
 
 from t2_agentic_voice.actions.tools import CallContext, Tool, ToolResult
 from t2_agentic_voice.core.errors import ConfigurationError
 from t2_agentic_voice.domain.ports.knowledge import KnowledgeBase, Passage
 
-# The tool's name as the talker calls it; about the most of a passage's text the talker reads,
-# by default (the first app's median passage holds 660 characters, its 90th percentile 1,469);
-# the share of it a cut at a line's end keeps at least, else the cut is at a word; and what
-# follows a cut; and the key the talker reads the best passage's steps under.
+# The tool's name as the talker calls it; the most passages a search reads, by default (the
+# k); about the most of a passage's text the talker reads, by default (the first app's median
+# passage holds 660 characters, its 90th percentile 1,469); the share of it a cut at a line's
+# end keeps at least, else the cut is at a word; and what follows a cut; and the key the talker
+# reads the best passage's steps under.
 NAME = "search_knowledge"
+LIMIT = 5
 PASSAGE_CHARS = 1500
 LINE_NEAR = 0.75
 MORE = " ..."
@@ -52,7 +54,7 @@ def knowledge_tool(
     *,
     description: str,
     progress: str | None = None,
-    limit: int = 5,
+    limit: int = LIMIT,
     passage_chars: int = PASSAGE_CHARS,
 ) -> Tool:
     """A read tool that searches `kb` once per question (the module's docstring): `description`
@@ -60,8 +62,10 @@ def knowledge_tool(
     search runs long (`Language.progress`); `limit` caps the passages it reads (the k), and
     `passage_chars` is about the most of each passage's text the talker reads.
     ConfigurationError for a `limit` or a `passage_chars` under 1."""
-    _at_least_one(limit, "limit", "the most passages a search reads", 5)
-    _at_least_one(passage_chars, "passage_chars", "about the most of a passage's text", 1500)
+    _at_least_one(limit, "limit", "the most passages a search reads", LIMIT)
+    _at_least_one(
+        passage_chars, "passage_chars", "about the most of a passage's text", PASSAGE_CHARS
+    )
 
     async def search_knowledge(ctx: CallContext, query: Query) -> ToolResult:
         found = await kb.search(query, language=ctx.language, caller=ctx.caller, limit=limit)
@@ -84,16 +88,16 @@ def _at_least_one(value: object, field: str, meaning: str, example: int) -> None
 
 def answer(passages: list[Passage], *, passage_chars: int = PASSAGE_CHARS) -> ToolResult:
     """What a search that found `passages`, best first, gives back (the module's docstring)."""
-    data: dict[str, object] = {
+    data: dict[str, JsonValue] = {
         "passages": [
             {"id": passage.id, "title": passage.title, "text": _text(passage.text, passage_chars)}
             for passage in passages
         ],
     }
     if steps := [step for step in (passages[0].steps if passages else ()) if step.strip()]:
-        data[STEPS] = steps
+        data[STEPS] = list[JsonValue](steps)
     evidence = tuple(text for p in passages for text in (p.title, p.text, *p.steps))
-    return ToolResult(data=data, evidence=evidence)  # type: ignore[arg-type]
+    return ToolResult(data=data, evidence=evidence)
 
 
 def _text(text: str, most: int) -> str:

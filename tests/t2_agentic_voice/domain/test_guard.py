@@ -231,3 +231,28 @@ def test_a_claim_phrase_added_in_the_settings_is_a_default_one() -> None:
         year=2026,
     )
     assert verdict == GuardVerdict(passed=False, reason="unsupported_claim")
+
+
+def test_a_status_backs_a_claim_with_no_number_after_an_earlier_clause_named_one() -> None:
+    """Rule A reads the reply's `earlier` clauses the guard passed (D-081), as the live guard
+    and TextCall's checks pass them."""
+    status = ActionEvidence(
+        action="create_ticket", texts=(f'{{"ticket": "{_TICKET}"}}',), source="status"
+    )
+    clause, before = "Ticket opened for you.", f"Your ticket {_TICKET} is in the system."
+
+    def verdict(*earlier: str) -> GuardVerdict:
+        return check_clause(
+            clause,
+            evidence=(),
+            claims={"create_ticket": ("ticket opened",)},
+            actions=(status,),
+            settings=SETTINGS,
+            year=2026,
+            earlier=earlier,
+        )
+
+    assert verdict() == GuardVerdict(
+        passed=False, reason="unsupported_claim", claimed=("create_ticket",)
+    )
+    assert verdict(before) == GuardVerdict(passed=True, claimed=("create_ticket",))

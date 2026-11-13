@@ -27,6 +27,7 @@ hold them as other words (domain/interruption_words.py, plan 005's review).
 from __future__ import annotations
 
 from collections.abc import Mapping, Sequence
+from typing import get_args
 
 from pydantic import BaseModel, ConfigDict, Field, ValidationError
 
@@ -53,6 +54,13 @@ class Words(BaseModel):
     repeat: tuple[str, ...] = ()
     backchannel: tuple[str, ...] = ()
     no: tuple[str, ...] = ()
+
+
+def heard_code(language: str | None) -> LanguageCode | None:
+    """The primary code a transcript's language names, a code or the provider's name of it in
+    any case ("ar", "Arabic", "en-US"); None for another or none."""
+    named = (language or "").casefold()
+    return next((code for code in get_args(LanguageCode) if named.startswith(code)), None)
 
 
 def rule_form(text: str) -> str:

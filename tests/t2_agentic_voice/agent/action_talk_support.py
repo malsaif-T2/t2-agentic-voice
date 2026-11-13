@@ -24,7 +24,7 @@ from t2_agentic_voice.core.config import VoiceSettings
 from t2_agentic_voice.core.settings.guard import GuardSettings
 from t2_agentic_voice.core.settings.tts import LanguageTag
 from t2_agentic_voice.core.settings.words import LanguageCode
-from t2_agentic_voice.domain import claims
+from t2_agentic_voice.domain import claims, guard
 from t2_agentic_voice.domain.claims import ActionEvidence, ClaimVerdict
 from t2_agentic_voice.domain.declaration import VoiceAgent
 from t2_agentic_voice.domain.ports.chat_model import ChatModel
@@ -86,7 +86,7 @@ class FakeClaims:
 def fake_rule_a(monkeypatch: pytest.MonkeyPatch) -> FakeClaims:
     """Rule A's stand-in in place of Track A's `check_claims` and `default_claims`."""
     fake = FakeClaims()
-    monkeypatch.setattr(claims, "check_claims", fake.check)
+    monkeypatch.setattr(guard, "check_claims", fake.check)
     monkeypatch.setattr(claims, "default_claims", lambda code: ANY_ACTION[code])
     return fake
 

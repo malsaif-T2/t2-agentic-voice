@@ -18,6 +18,7 @@ from typing import Final, Literal, Protocol
 from pydantic import AwareDatetime, BaseModel, ConfigDict, Field
 
 from t2_agentic_voice.core.events import CallId
+from t2_agentic_voice.core.yes_inputs import ActionName, DraftJson
 
 # Where a row stands: the write is under way or its reply never came; it `done`; the backend
 # `rejected` it; it was `not_sent` (definitely not done); or it is `flagged` for a person to
@@ -27,6 +28,16 @@ OutboxState = Literal["sending", "done", "rejected", "not_sent", "flagged"]
 # not done, so the caller may try again (the owner's ruling of 2026-11-10). Every other row
 # (`sending`, `done`, `flagged`) may have reached the system, and counts.
 NOT_WRITTEN: Final[tuple[OutboxState, ...]] = ("rejected", "not_sent")
+# What `mark` says of a request ID the store does not hold, never the ID itself.
+NO_ROW = "The outbox holds no row of that request ID."
+
+
+def aware_since(since: datetime) -> datetime:
+    """`since` when it is an aware time; a naive one is refused (ValueError), since it names no
+    instant: what `count` checks first, in every store."""
+    if since.utcoffset() is None:
+        raise ValueError("since must be an aware time (with a time zone), as UTC is")
+    return since
 
 
 class OutboxEntry(BaseModel):
@@ -40,8 +51,8 @@ class OutboxEntry(BaseModel):
     request_id: str = Field(min_length=1, max_length=128)
     call_id: CallId
     subject: str = Field(min_length=1)
-    action: str = Field(min_length=1)
-    draft_json: str = Field(min_length=2, repr=False)
+    action: ActionName
+    draft_json: DraftJson
     state: OutboxState = "sending"
     note: str | None = None
     result_json: str | None = Field(default=None, repr=False)
@@ -65,7 +76,9 @@ class Outbox(Protocol):
         note: str | None = None,
         result_json: str | None = None,
     ) -> None:
-        """Move the row `request_id` to `state`, with its `note` and `result_json`."""
+        """Move the row `request_id` to `state`, with its `note` and its `result_json`; a row's
+        result is kept when none is given, so a later move never clears one. A request ID the
+        store does not hold is a LookupError of `NO_ROW`, naming no value."""
 
     async def get(self, request_id: str) -> OutboxEntry | None:
         """The row `request_id`, None when there is none."""
@@ -81,8 +94,8 @@ class Outbox(Protocol):
 
     async def count(self, *, subject: str, action: str, since: datetime) -> int:
         """How many writes of `action` `subject` asked for since `since` that may have reached
-        the system: every row but one `rejected` or `not_sent` (`NOT_WRITTEN`). The per-caller
-        cap reads it."""
+        the system: every row but one `rejected` or `not_sent` (`NOT_WRITTEN`). A naive `since`
+        is refused (`aware_since`). The per-caller cap reads it."""
 
     async def aclose(self) -> None:
         """Close what the store holds open; one that holds none returns at once."""

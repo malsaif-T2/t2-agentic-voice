@@ -16,6 +16,7 @@ from __future__ import annotations
 from pydantic import BaseModel, ConfigDict, Field
 
 from t2_agentic_voice.core.settings.tts import LanguageTag
+from t2_agentic_voice.core.yes_inputs import ActionName, DraftJson
 from t2_agentic_voice.domain.presets import ACTION_LINES
 
 
@@ -45,14 +46,14 @@ class ReadBackPlan(_Line):
     a correction the talker answers in its own words, and this line is not spoken (the owner's
     ruling, plan 007).
 
-    `sending` is rendered by Track B's `propose` from the action's `sending`, or the library's
-    line when it is left out. Track C's session speaks it once the yes rule issues the
-    `ConfirmedAction`, before the job's outcome. It is a fixed line, never a claim that the
-    action is done."""
+    `sending` is rendered by the action runner's `propose` (actions/action_runner.py) from the
+    action's `sending`, or the library's line when it is left out. The session speaks it once
+    the yes rule issues the `ConfirmedAction`, before the job's outcome. It is a fixed line,
+    never a claim that the action is done."""
 
-    action: str = Field(min_length=1)
+    action: ActionName
     tool_call_id: str = Field(min_length=1)
-    draft_json: str = Field(min_length=2, repr=False)
+    draft_json: DraftJson
     summary: SpokenLine
     question: SpokenLine
     asked_again: SpokenLine

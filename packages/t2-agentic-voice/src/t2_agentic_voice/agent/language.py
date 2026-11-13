@@ -39,9 +39,9 @@ from typing import Literal
 
 from t2_agentic_voice.core.conversation import TalkerTurn
 from t2_agentic_voice.core.settings.tts import LanguageTag
-from t2_agentic_voice.domain.words import rule_form
+from t2_agentic_voice.core.settings.words import LanguageCode, primary_code
+from t2_agentic_voice.domain.words import heard_code, rule_form
 
-Code = Literal["ar", "en"]
 Register = Literal["saudi", "msa"]
 # The fewest words in the other script that can switch a turn's language.
 SWITCH_WORDS = 3
@@ -50,23 +50,7 @@ _ARABIC_LETTER = re.compile("[\u0621-\u063a\u0641-\u064a\u0671-\u06d3]")
 _LATIN_LETTER = re.compile("[A-Za-z]")
 
 
-def code_of(tag: LanguageTag) -> Code:
-    """The primary language of `tag`, which both Arabic tags share."""
-    return "en" if tag == "en" else "ar"
-
-
-def _heard(language: str | None) -> Code | None:
-    """The code of a transcript's language, a code or a name of it in any case; None for
-    another or none."""
-    named = (language or "").casefold()
-    if named.startswith("ar"):
-        return "ar"
-    if named.startswith("en"):
-        return "en"
-    return None
-
-
-def _written(words: str, heard: Code | None) -> Code | None:
+def _written(words: str, heard: LanguageCode | None) -> LanguageCode | None:
     """The language the script of `words` plainly says, when it is not `heard`."""
     arabic = latin = 0
     for word in words.split():
@@ -86,7 +70,7 @@ def reply_language(
 ) -> LanguageTag:
     """The tag the reply to `turn` is in, in a call held in `call` by an agent that speaks
     `spoken` (the module's docstring)."""
-    heard = _heard(turn.language)
+    heard = heard_code(turn.language)
     return tag_of(_written(turn.words, heard) or heard, call=call, spoken=spoken)
 
 
@@ -95,11 +79,11 @@ def tag_of(
 ) -> LanguageTag:
     """The agent's tag of `language` (a code, or a provider's name of it): the call's own when
     its language is the same, else the first of `spoken` in it, else the call's. The call
-    report names a turn's language so (plan 007's Block H)."""
-    code = _heard(language) or code_of(call)
-    if code_of(call) == code:
+    report names a turn's language so (D-086)."""
+    code = heard_code(language) or primary_code(call)
+    if primary_code(call) == code:
         return call
-    return next((tag for tag in spoken if code_of(tag) == code), call)
+    return next((tag for tag in spoken if primary_code(tag) == code), call)
 
 
 # The Saudi and Gulf dialect forms the caller's Arabic is read by (`register_of`), each a whole

@@ -16,8 +16,9 @@ runner is for a tool. One serves every call of an agent, against its outbox.
 - **`run`** meets the `ActionJobs` port: it takes only a `ConfirmedAction` the yes rule issued
   (`is_confirmed`; anything else is a TypeError, and nothing is written or sent), and carries
   it out as a job outside the turn (actions/action_job.py): the outbox row before the write,
-  the error meanings, the lookup, the record, the outcome's line, read in the read-back's
-  `wording` (its language when none is given), and its event.
+  the error meanings, the lookup, the record, and the outcome's line, read in the read-back's
+  `wording` (its language when none is given). The session builds each outcome's event from
+  the `ActionOutcome` it is returned (core/events.py: `voice` builds the events).
 - **`reconcile`**, at the runtime's start, looks up or flags each row left `sending`; it never
   sends one again. `t2v outbox reconcile` looks the flagged rows up again too.
 - **`past`** reads what a caller had done, in any call: the outbox's `done` rows
@@ -25,8 +26,8 @@ runner is for a tool. One serves every call of an agent, against its outbox.
 
 Each call's record is kept here by the call's ID (`record`), so call A's entries never reach
 call B; the runtime drops it with `forget` once the call has ended. A runner given one call's
-`record` (Block 0's keyword, `TextCall`'s) fills that one instead. No log line, error or event
-holds a draft's value, a result, the caller's words or a reason a backend gave.
+`record` (`TextCall`'s) fills that one instead. No log line or error holds a draft's value, a
+result, the caller's words or a reason a backend gave.
 """
 
 from __future__ import annotations
@@ -38,7 +39,7 @@ from typing import Final
 from pydantic import BaseModel
 
 from t2_agentic_voice.actions.action import Action
-from t2_agentic_voice.actions.action_job import EventSink, JobCall, Writes, done_rows
+from t2_agentic_voice.actions.action_job import JobCall, Writes, done_rows
 from t2_agentic_voice.actions.action_writes import parsed_result, validated
 from t2_agentic_voice.actions.record import ActionRecord
 from t2_agentic_voice.actions.runner import FAILED, failed_result, parsed_arguments
@@ -76,9 +77,7 @@ _ACTIONS_FIX = "FIX: build each action with @action, each with its own name."
 
 class ActionRunner:
     """One agent's `actions`, against its `outbox`, for every call (the module's docstring).
-    Given `record` (one call's, as `TextCall` gives it), every job adds to that one. Its events
-    go to `emit` when given; the runtime gives none, since the session reports each outcome
-    from the `ActionOutcome` it is returned (core/events.py: `voice` builds the events)."""
+    Given `record` (one call's, as `TextCall` gives it), every job adds to that one."""
 
     def __init__(
         self,
@@ -87,7 +86,6 @@ class ActionRunner:
         outbox: Outbox,
         record: ActionRecord | None = None,
         per_caller_per_day: int = PER_CALLER_PER_DAY,
-        emit: EventSink | None = None,
     ) -> None:
         if not all(isinstance(each, Action) for each in actions):
             raise ConfigurationError(
@@ -101,7 +99,7 @@ class ActionRunner:
             )
         self._outbox = outbox
         self._per_day = per_caller_per_day
-        self._writes = Writes(outbox, emit)
+        self._writes = Writes(outbox)
         self._record = record
         self._records: dict[str, ActionRecord] = {}
 
@@ -213,7 +211,8 @@ class ActionRunner:
         clock: Clock,
         wording: LanguageTag | None = None,
     ) -> ActionOutcome:
-        """Carries out `confirmed` (the `ActionJobs` port; the module's docstring)."""
+        """Carries out `confirmed` (the `ActionJobs` port; the module's docstring). The port's
+        `turn_id` names the turn that said yes, which the session's events carry."""
         if not is_confirmed(confirmed):
             _log.warning("action_not_confirmed")
             raise TypeError(NOT_CONFIRMED)
@@ -225,7 +224,7 @@ class ActionRunner:
             )
         record = self.record(call_id)
         read = wording or language
-        call = JobCall(caller, call_id, language, turn_id, conversation, clock, record, read)
+        call = JobCall(caller, call_id, language, conversation, clock, record, read)
         return await self._writes.start(action, confirmed, call)
 
     async def reconcile(self, *, clock: Clock = SYSTEM_CLOCK, flagged: bool = False) -> int:

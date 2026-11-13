@@ -1,8 +1,7 @@
 """What a call's traces carry beside the turn and its speech-to-text span (core/tracing.py): the
 text-to-speech span of one reply, the attributes the design's 10.1 gives a trace's resource with
 the digest of the settings that leaves out every secret, and `CallTrace`, which holds one call's
-spans for the session, so `voice` never names an OpenTelemetry type (ARCH-OWNER; plan 003, Track
-D).
+spans for the session, so `voice` never names an OpenTelemetry type (ARCH-OWNER).
 
 The resource attributes go on each trace's root span (a turn's, and the call's own), not on a
 provider's `Resource`: a team's provider keeps its own, and the agent and the consent version are

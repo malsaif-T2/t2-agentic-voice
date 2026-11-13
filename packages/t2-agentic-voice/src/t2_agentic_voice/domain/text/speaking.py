@@ -37,8 +37,9 @@ import threading
 from num2words import num2words
 
 from t2_agentic_voice.core.settings.tts import LanguageTag
+from t2_agentic_voice.core.settings.words import primary_code
 from t2_agentic_voice.domain.text.arabic import normalize_arabic
-from t2_agentic_voice.domain.text.digits import _DIGIT_CHARACTERS
+from t2_agentic_voice.domain.text.digits import DIGIT_CHARACTERS
 from t2_agentic_voice.domain.text.words import ARABIC_PREFIXES
 
 # Each digit's name, 0 to 9, read one at a time in an ID: in Arabic the MSA forms num2words
@@ -61,7 +62,7 @@ _DIGIT_WORDS: dict[str, tuple[str, ...]] = {
 
 # A digit as a text may write it: ASCII, Arabic-Indic (U+0660 to U+0669) or Persian (U+06F0 to
 # U+06F9).
-_DIGIT = "[0-9\u0660-\u0669\u06f0-\u06f9]"
+DIGIT = "[0-9\u0660-\u0669\u06f0-\u06f9]"
 # The cues that name a number's last digits (plan 003's decision log), each standing as whole
 # words: "ending in", in any case; and in Arabic "akhiruha" and "yantahi bi" (its beh with or
 # without a tatweel), either one after "wa" or "fa" or none.
@@ -77,14 +78,14 @@ _CUES = rf"(?<!\w)(?:{_ENDING_IN}|{_WA_OR_FA}(?:{_AKHIRUHA}|{_YANTAHI_BI}))"
 # ARABIC DECIMAL SEPARATOR), if any. Any other run of digits is read as a run alone.
 _SEPARATORS = "[,\u066c]"  # the comma, ARABIC THOUSANDS SEPARATOR
 _MARKS = "[.,\u066b\u066c]"  # a point or a separator: ARABIC DECIMAL and THOUSANDS SEPARATORS
-_FREE_BEFORE = rf"(?<!{_DIGIT})(?<!{_DIGIT}{_MARKS})"
-_FREE_AFTER = rf"(?!{_MARKS}?{_DIGIT})"
+_FREE_BEFORE = rf"(?<!{DIGIT})(?<!{DIGIT}{_MARKS})"
+_FREE_AFTER = rf"(?!{_MARKS}?{DIGIT})"
 _FORMED = (
-    rf"{_FREE_BEFORE}(?P<whole>{_DIGIT}{{1,3}}(?:{_SEPARATORS}{_DIGIT}{{3}})+|{_DIGIT}+)"
-    rf"(?:[.\u066b](?P<fraction>{_DIGIT}+))?{_FREE_AFTER}"
+    rf"{_FREE_BEFORE}(?P<whole>{DIGIT}{{1,3}}(?:{_SEPARATORS}{DIGIT}{{3}})+|{DIGIT}+)"
+    rf"(?:[.\u066b](?P<fraction>{DIGIT}+))?{_FREE_AFTER}"
 )
 # A number or a run of digits, with the cue before it when one stands there.
-_RUN = re.compile(rf"(?P<cue>{_CUES}\s*)?(?:{_FORMED}|(?P<run>{_DIGIT}+))")
+_RUN = re.compile(rf"(?P<cue>{_CUES}\s*)?(?:{_FORMED}|(?P<run>{DIGIT}+))")
 # The letters an Arabic prefix may be written with, right before a number: hamza to yeh, and
 # the tatweel.
 _PREFIX_LETTERS = re.compile("[\u0621-\u064a\u0640]+\\Z")
@@ -105,11 +106,6 @@ _RANGE = {"ar": 10**51}
 _ONE_AT_A_TIME = threading.Lock()
 
 
-def _code(language: LanguageTag) -> str:
-    """The primary code of `language`'s tag, which both Arabic tags share."""
-    return "en" if language == "en" else "ar"
-
-
 def speak_number(number: int, *, language: LanguageTag) -> str:
     """`number` in words, in `language` (MSA forms for both Arabic tags); past num2words' range,
     its digits one by one. TypeError for anything but an int, a bool included."""
@@ -117,7 +113,7 @@ def speak_number(number: int, *, language: LanguageTag) -> str:
         raise TypeError(
             "speak_number says a whole number (an int), never a bool; say a decimal another way"
         )
-    code = _code(language)
+    code = primary_code(language)
     words: str | None = None
     if abs(number) < _RANGE.get(code, abs(number) + 1):
         try:
@@ -136,16 +132,16 @@ def speak_number(number: int, *, language: LanguageTag) -> str:
 def speak_id(digits: str, *, language: LanguageTag) -> str:
     """`digits` (ASCII or Arabic-Indic) read one by one in `language`, from the library's own
     table."""
-    ascii_digits = digits.translate(_DIGIT_CHARACTERS)
+    ascii_digits = digits.translate(DIGIT_CHARACTERS)
     if not (ascii_digits.isascii() and ascii_digits.isdigit()):
         raise ValueError("speak_id reads a text of digits only, at least one")
-    names = _DIGIT_WORDS[_code(language)]
+    names = _DIGIT_WORDS[primary_code(language)]
     return " ".join(names[int(digit)] for digit in ascii_digits)
 
 
 def _is_id(run: str, *, cued: bool) -> bool:
     """Whether a run of digits is read as an ID (the rule above)."""
-    return cued or len(run) >= _ID_DIGITS or run.translate(_DIGIT_CHARACTERS).startswith("0")
+    return cued or len(run) >= _ID_DIGITS or run.translate(DIGIT_CHARACTERS).startswith("0")
 
 
 def _glued(text: str, at: int) -> bool:
@@ -163,11 +159,11 @@ def _glued(text: str, at: int) -> bool:
 def _amount(whole: str, fraction: str | None, *, language: LanguageTag) -> str:
     """A number written with thousands separators or a fraction, in words: its whole part as a
     number, then the point and the fraction's digits one by one."""
-    number = int(re.sub(_SEPARATORS, "", whole).translate(_DIGIT_CHARACTERS))
+    number = int(re.sub(_SEPARATORS, "", whole).translate(DIGIT_CHARACTERS))
     words = speak_number(number, language=language)
     if fraction is None:
         return words
-    return f"{words} {_POINT[_code(language)]} {speak_id(fraction, language=language)}"
+    return f"{words} {_POINT[primary_code(language)]} {speak_id(fraction, language=language)}"
 
 
 def speak_digits(text: str, *, language: LanguageTag) -> str:
@@ -186,7 +182,7 @@ def speak_digits(text: str, *, language: LanguageTag) -> str:
         elif _is_id(digits, cued=bool(cue)):
             words = speak_id(digits, language=language)
         else:
-            words = speak_number(int(digits.translate(_DIGIT_CHARACTERS)), language=language)
+            words = speak_number(int(digits.translate(DIGIT_CHARACTERS)), language=language)
         start = match.start("run" if whole is None else "whole")
         before = cue[-1:] if cue else text[start - 1 : start]
         after = text[match.end() : match.end() + 1]
@@ -198,9 +194,13 @@ def speak_digits(text: str, *, language: LanguageTag) -> str:
     return _RUN.sub(said, text)
 
 
+# The two heavy arrows people type, said as "then" too (HEAVY WIDE-HEADED RIGHTWARDS ARROW,
+# HEAVY ROUND-TIPPED RIGHTWARDS ARROW): Dingbats, which the script filter keeps for it
+# (domain/text/scripts.py).
+HEAVY_ARROWS = "\u2794\u279c"
 # The arrow characters a text may hold: the Arrows and Supplemental Arrows-A blocks' and the two
-# heavy arrows people type.
-_ARROWS = re.compile("[\u2190-\u21ff\u27f0-\u27ff\u2794\u279c]")
+# heavy arrows.
+_ARROWS = re.compile(f"[\u2190-\u21ff\u27f0-\u27ff{HEAVY_ARROWS}]")
 # What an arrow is said as: thumma (then), theh, meem.
 _THEN_ARABIC = "\u062b\u0645"
 

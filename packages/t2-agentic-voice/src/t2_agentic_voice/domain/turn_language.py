@@ -1,5 +1,5 @@
 """The language each turn is sent to speech-to-text in, under `stt.live_language = "classified"`
-(plan 007's Block H; Q17 and Q18), as a pure rule. Pure: no IO, no clock.
+(D-086; plan 007's Q17 and Q18), as a pure rule. Pure: no IO, no clock.
 
 Whisper writes a turn in the language it is told, so an English question in an Arabic call,
 told Arabic, comes back as Arabic sounds. A spoken-language classifier hears the turn's first

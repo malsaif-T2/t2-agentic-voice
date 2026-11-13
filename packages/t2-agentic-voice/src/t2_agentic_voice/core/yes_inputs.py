@@ -20,7 +20,7 @@ lands after the last clause can still deny it one.
 
 from __future__ import annotations
 
-from typing import Any, ClassVar, Final, Literal, final
+from typing import Annotated, Any, ClassVar, Final, Literal, final
 
 from pydantic import Field
 
@@ -29,6 +29,11 @@ from t2_agentic_voice.core.seal import SealedModel, still_sealed
 
 # Where heard words came from: a speech-to-text result, or text a test typed.
 HeardSource = Literal["speech_to_text", "typed"]
+# An action's name, and the draft read back as JSON text (kept out of a repr), as every model a
+# draft passes through holds them: the read-back's plan, its receipt, the confirmed action, the
+# outbox's entry and the record's completed action.
+ActionName = Annotated[str, Field(min_length=1)]
+DraftJson = Annotated[str, Field(min_length=2, repr=False)]
 # The seals a validation of each class must be given, compared by identity; only the modules
 # their `[[restricted]]` rows list name them.
 HEARD_WORDS_SEAL: Final[object] = object()
@@ -68,8 +73,8 @@ class ReadBackReceipt(SealedModel):
         "that a read-back's summary played whole."
     )
 
-    action: str = Field(min_length=1)
-    draft_json: str = Field(min_length=2, repr=False)
+    action: ActionName
+    draft_json: DraftJson
     reply_id: ReplyId
     summary_played_at: float
     question_ended_at: float | None = None

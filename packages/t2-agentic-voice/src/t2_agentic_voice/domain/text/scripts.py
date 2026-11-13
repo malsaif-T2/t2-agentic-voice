@@ -42,6 +42,7 @@ from dataclasses import dataclass
 from typing import Literal
 
 from t2_agentic_voice.core.settings.tts import LanguageTag
+from t2_agentic_voice.domain.text.speaking import HEAVY_ARROWS
 
 type Script = Literal["arabic", "latin"]
 type _Ranges = tuple[tuple[int, int], ...]
@@ -101,7 +102,7 @@ _CJK: _Ranges = (
 # star and the heavy circle. The copyright, registered and trade mark signs, the double
 # exclamation and exclamation question marks and the arrows of the Arrows block stay symbols.
 _PICTOGRAPHS: _Ranges = ((0x1F000, 0x1FAFF), (0x2600, 0x27BF))
-_HEAVY_ARROWS = frozenset({0x2794, 0x279C})
+_HEAVY_ARROWS = frozenset(ord(arrow) for arrow in HEAVY_ARROWS)
 _EMOJI: _Ranges = (
     (0x231A, 0x231B),
     (0x2328, 0x2328),

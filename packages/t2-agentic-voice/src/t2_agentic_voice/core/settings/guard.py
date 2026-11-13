@@ -9,12 +9,11 @@ runtime's own templates are not.
 
 from __future__ import annotations
 
-import re
 from typing import Annotated, Literal
 
 from pydantic import Field, field_validator
 
-from t2_agentic_voice.core.settings.base import Group
+from t2_agentic_voice.core.settings.base import Group, compiled
 from t2_agentic_voice.core.settings.words import WordLists
 
 # What a blocked clause drops: it and the rest of the reply, or only it.
@@ -86,12 +85,9 @@ class GuardSettings(Group):
     @classmethod
     def _patterns(cls, value: tuple[str, ...]) -> tuple[str, ...]:
         for index, pattern in enumerate(value):
-            try:
-                compiled = re.compile(pattern)
-            except re.error:
-                compiled = None  # its error repeats the pattern: not chained
-            if compiled is None:
+            regex = compiled(pattern)
+            if regex is None:
                 raise ValueError(f"pattern {index} is not a regular expression Python reads")
-            if compiled.fullmatch(""):
+            if regex.fullmatch(""):
                 raise ValueError(f"pattern {index} matches the empty text, so every clause")
         return value

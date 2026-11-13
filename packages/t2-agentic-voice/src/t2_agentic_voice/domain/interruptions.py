@@ -32,8 +32,8 @@ domain/interruption_words.py. Its steps, in order:
    first is a no word; fewer: go on.
 
 Step 2's echo and its whole spellings, and step 3's exception, changed the registered rule on
-2026-11-03, after Track A's review: the agent says back what it heard, so a reply can hold any
-word the caller said; Track B's review widened step 3's to any repeat word the reply holds,
+2026-11-03, after plan 005's reviews (D-061): the agent says back what it heard, so a reply can
+hold any word the caller said; and step 3's exception covers any repeat word the reply holds,
 since Whisper may spell the one heard back otherwise.
 
 `whole_command` reads a turn said while the agent was silent, which `judge` never sees: a stop
@@ -45,7 +45,7 @@ says whether a transcript holds a stop or wait word, read as step 2 reads it.
 
 from __future__ import annotations
 
-from collections.abc import Collection, Iterable, Mapping, Sequence
+from collections.abc import Collection, Iterable, Sequence
 from typing import Literal
 
 from pydantic import BaseModel, ConfigDict, Field
@@ -64,7 +64,7 @@ from t2_agentic_voice.domain.interruption_words import (
     QUESTION_WORDS,
 )
 from t2_agentic_voice.domain.silence import from_silence
-from t2_agentic_voice.domain.text.words import holds_words, one_edit
+from t2_agentic_voice.domain.text.words import holds_words, one_edit, phrase_tokens
 from t2_agentic_voice.domain.words import WORD_KINDS, Words, rule_form
 
 # What the session does with the reply an overlap spoke over: stop it, stop it and say the last
@@ -129,7 +129,7 @@ def judge(
     heard = rule_form(overlap.text).split()
     spoken = [rule_form(text) for text in overlap.played]
     lists = _lists(words)
-    tokens = _tokens(heard, lists)
+    tokens = phrase_tokens(heard, lists)
     kinds = [lists.get(token, frozenset()) for token in tokens]
     questions = QUESTION_WORDS[overlap.language]
     stops = _of_kinds(tokens, kinds, "stop", "wait")
@@ -160,8 +160,8 @@ def judge(
 
 
 def word_count(text: str, *, words: Words) -> int:
-    """How many words the rule reads in `text`, each listed phrase one (`_tokens`)."""
-    return len(_tokens(rule_form(text).split(), _lists(words)))
+    """How many words the rule reads in `text`, each listed phrase one (`phrase_tokens`)."""
+    return len(phrase_tokens(rule_form(text).split(), _lists(words)))
 
 
 def holds_stop(text: str, *, words: Words) -> bool:
@@ -170,7 +170,7 @@ def holds_stop(text: str, *, words: Words) -> bool:
     the call language's `words`: speech over an action's read-back that holds one is never
     ignored, so the rule judges it (voice/session/overlap.py)."""
     lists = _lists(words)
-    tokens = _tokens(rule_form(text).split(), lists)
+    tokens = phrase_tokens(rule_form(text).split(), lists)
     kinds = [lists.get(token, frozenset()) for token in tokens]
     return bool(_of_kinds(tokens, kinds, "stop", "wait"))
 
@@ -183,7 +183,8 @@ def whole_command(text: str, *, words: Words) -> WholeCommand | None:
     words and listening sounds beside them. None for anything else, a sentence that holds one
     of them included."""
     lists = _lists(words)
-    kinds = [lists.get(token, frozenset()) for token in _tokens(rule_form(text).split(), lists)]
+    tokens = phrase_tokens(rule_form(text).split(), lists)
+    kinds = [lists.get(token, frozenset()) for token in tokens]
     if _only(kinds, "stop", "wait") or (
         _only(kinds, "stop", "wait", "noisy") and len(kinds) <= NOISY_WORDS
     ):
@@ -201,7 +202,7 @@ def after_command(text: str, command: WholeCommand, *, words: Words) -> str:
     written = [word for word in text.split() if rule_form(word)]
     heard = [form for word in written for form in rule_form(word).split()]
     lead, held = 0, False
-    for token in _tokens(heard, lists):
+    for token in phrase_tokens(heard, lists):
         kind = lists.get(token, frozenset())
         if not kind & {"polite", "backchannel", *wanted}:
             break
@@ -233,19 +234,6 @@ def _lists(words: Words) -> dict[str, frozenset[str]]:
         for form in forms:
             held.setdefault(form, set()).add(kind)
     return {form: frozenset(kinds) for form, kinds in held.items()}
-
-
-def _tokens(heard: Sequence[str], lists: Mapping[str, object]) -> list[str]:
-    """`heard`'s words, each listed phrase one word, the longest that starts at a word first."""
-    longest = max(len(phrase.split()) for phrase in lists)
-    tokens: list[str] = []
-    at = 0
-    while at < len(heard):
-        sizes = range(min(longest, len(heard) - at), 1, -1)
-        size = next((size for size in sizes if " ".join(heard[at : at + size]) in lists), 1)
-        tokens.append(" ".join(heard[at : at + size]))
-        at += size
-    return tokens
 
 
 def _held(kinds: Iterable[frozenset[str]], *wanted: str) -> bool:

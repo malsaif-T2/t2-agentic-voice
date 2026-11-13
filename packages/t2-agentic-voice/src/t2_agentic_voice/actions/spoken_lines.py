@@ -28,26 +28,22 @@ from pydantic import BaseModel
 
 from t2_agentic_voice.actions.action import Action
 from t2_agentic_voice.core.settings.tts import LanguageTag
-from t2_agentic_voice.core.settings.words import LanguageCode
+from t2_agentic_voice.core.settings.words import primary_code
 from t2_agentic_voice.domain.action_declaration import Say, Spoken, read_in
 from t2_agentic_voice.domain.action_lines import ReadBackPlan, SpokenLine, default_action_lines
 from t2_agentic_voice.domain.ports.action_jobs import OutcomeKind
-from t2_agentic_voice.domain.text.speaking import speak_id
+from t2_agentic_voice.domain.text.speaking import DIGIT, speak_id
 
 # The lines the library has a default of (`ActionLines`' fields).
 DefaultLine = Literal["sending", "failed", "unknown", "declined", "asked_again"]
 # A run of digits as a value may write it: ASCII, Arabic-Indic or Persian.
-_DIGITS = re.compile("[0-9\u0660-\u0669\u06f0-\u06f9]+")
+_DIGITS = re.compile(f"{DIGIT}+")
 # A run of digits said in groups from this length, each group this long.
 _GROUPED_FROM = 8
 _GROUP = 4
 # What stands between two groups: a comma, the Arabic comma in Arabic.
 _COMMA = {"en": ", ", "ar": "\u060c "}
 _DIGIT_BY_DIGIT = "id"
-
-
-def _primary(tag: LanguageTag) -> LanguageCode:
-    return "en" if tag == "en" else "ar"
 
 
 def _text(value: object) -> str:
@@ -83,7 +79,7 @@ def _digit_by_digit(value: str, tag: LanguageTag) -> str:
         groups = [run]
         if len(run) >= _GROUPED_FROM:
             groups = [run[at : at + _GROUP] for at in range(0, len(run), _GROUP)]
-        words = _COMMA[_primary(tag)].join(speak_id(group, language=tag) for group in groups)
+        words = _COMMA[primary_code(tag)].join(speak_id(group, language=tag) for group in groups)
         return f" {words} "
 
     return " ".join(_DIGITS.sub(said, value).split())
@@ -148,7 +144,7 @@ def read_back_plan(
         sending=line_of(action.sending, "sending", values, read),
         language=tag,
         wording=read,
-        send_words=action.read_back.send_words.get(_primary(tag), ()),
+        send_words=action.read_back.send_words.get(primary_code(tag), ()),
         max_attempts=action.read_back.max_attempts,
     )
 

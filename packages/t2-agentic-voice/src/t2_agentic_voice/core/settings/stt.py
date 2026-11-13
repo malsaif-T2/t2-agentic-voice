@@ -1,8 +1,8 @@
 """The `stt` group: speech-to-text, and the filter for text from silence (plan 005), on by
 default since the registered rule F held on plan 002's runs R1 and R3 (GP-18); the Whisper
 prompt each request sends, on by default since run W kept its arm W1 (plan 006, Q23); and the
-spoken-language classifier of `live_language = "classified"`, off by default until run H's keep
-rule (plan 007's Block H, Q19 and Q20)."""
+spoken-language classifier of `live_language = "classified"`, off by default, since run H kept
+no arm (D-086, as amended on 2026-11-12)."""
 
 from __future__ import annotations
 

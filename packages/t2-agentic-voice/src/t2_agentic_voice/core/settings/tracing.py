@@ -3,11 +3,9 @@ owner's Phoenix runs on this machine with no authentication (plan 003, the owner
 
 from __future__ import annotations
 
-import re
-
 from pydantic import Field, field_validator
 
-from t2_agentic_voice.core.settings.base import Group, url
+from t2_agentic_voice.core.settings.base import Group, compiled, url
 
 
 class TracingSettings(Group):
@@ -50,21 +48,8 @@ class TracingSettings(Group):
     @classmethod
     def _patterns(cls, value: tuple[str, ...]) -> tuple[str, ...]:
         for index, pattern in enumerate(value):
-            if not _compiles(pattern):
+            if compiled(pattern) is None:
                 raise ValueError(
                     f"pattern {index} is not a regular expression Python's re module compiles"
                 )
         return value
-
-
-def _compiles(pattern: str) -> bool:
-    """Whether `re` compiles `pattern`. Every error it may raise is caught here, and in no
-    chain: `re.error`, whose text may quote the pattern (a group's name); an OverflowError, for
-    a repetition count past the engine's limit; a RecursionError, for groups nested too deep;
-    and any other. Raised in the validator, any but a ValueError would stop the load at once,
-    uncollected, and a ValueError's text would reach the settings' error."""
-    try:
-        re.compile(pattern)
-    except Exception:  # re.error, OverflowError, RecursionError and the like
-        return False
-    return True

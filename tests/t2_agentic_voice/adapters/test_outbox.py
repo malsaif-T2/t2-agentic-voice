@@ -14,9 +14,9 @@ from pathlib import Path
 from typing import Any
 
 import pytest
-from t2_agentic_voice.actions.memory_outbox import NO_ROW, MemoryOutbox
+from t2_agentic_voice.actions.memory_outbox import MemoryOutbox
 from t2_agentic_voice.adapters.outbox import SqliteOutbox
-from t2_agentic_voice.domain.ports.outbox import Outbox, OutboxEntry, OutboxState
+from t2_agentic_voice.domain.ports.outbox import NO_ROW, Outbox, OutboxEntry, OutboxState
 
 AT = datetime(2026, 11, 10, 12, 0, tzinfo=UTC)
 LATER = AT + timedelta(minutes=5)

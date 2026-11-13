@@ -22,7 +22,7 @@ from t2_agentic_voice.core.config import VoiceSettings
 from t2_agentic_voice.core.conversation import Conversation, PastTurn, TalkerTurn
 from t2_agentic_voice.core.errors import ToolError
 from t2_agentic_voice.core.settings.guard import GuardSettings
-from t2_agentic_voice.domain import claims
+from t2_agentic_voice.domain import claims, guard
 from t2_agentic_voice.domain.action_lines import ReadBackPlan
 from t2_agentic_voice.domain.ports.knowledge import Passage
 from t2_agentic_voice.testing.knowledge_fake import FakeKnowledgeBase
@@ -209,7 +209,7 @@ def test_an_agent_with_no_actions_never_asks_rule_a(monkeypatch: pytest.MonkeyPa
     def refuse(*args: object, **kwargs: object) -> object:
         raise AssertionError("rule A is asked of an agent with no actions")
 
-    monkeypatch.setattr(claims, "check_claims", refuse)
+    monkeypatch.setattr(guard, "check_claims", refuse)
     monkeypatch.setattr(claims, "default_claims", refuse)
     events = reply(talker(FakeChat(said("I have created nothing yet."))), TURN)
     assert _spoken(events) == ["I have created nothing yet."]

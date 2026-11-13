@@ -12,8 +12,7 @@ from typing import Any, get_args
 
 import httpx
 import pytest
-from t2_agentic_voice.adapters.groq_chat import REASONING_MODELS
-from t2_agentic_voice.core.settings.llm import LlmModel
+from t2_agentic_voice.core.settings.llm import REASONING_MODELS, LlmModel
 from t2_agentic_voice.domain.ports.chat_model import (
     ChatMessage,
     ChatRequest,

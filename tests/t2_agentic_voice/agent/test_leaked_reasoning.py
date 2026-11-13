@@ -71,6 +71,31 @@ def test_the_tells_in_english(text: str, given: str | None) -> None:
         assert leak.found is (given is not None)
 
 
+@pytest.mark.parametrize(
+    ("pieces", "arabic"),
+    [
+        (["Okay.\n\n", "User: hi"], False),
+        (["Okay.", "\n\n", "User: hi"], False),
+        (["Okay.  ", "User: hi"], False),
+        (["Okay. ", " ", "User: hi"], False),
+        (["Okay...\n", "\n", "Us", "er: hi"], False),
+        (["\n\n\n", "User: hi"], False),
+        (["تم.", "\n\n", "Assistant: x"], True),  # tamm, done
+    ],
+)
+def test_a_label_after_spaces_given_apart_is_found_as_in_one_piece(
+    pieces: list[str], arabic: bool
+) -> None:
+    """A sentence's start after an end mark and two or more spaces or line breaks, where an
+    earlier piece ended in some of them, is read as it is in one piece."""
+    whole = LeakedReasoning(arabic=arabic)
+    whole_given = whole.text("".join(pieces)) + whole.close()
+    leak = LeakedReasoning(arabic=arabic)
+    given = "".join(leak.text(piece) for piece in pieces) + leak.close()
+    assert whole.found
+    assert (given, leak.found, leak.dropped) == (whole_given, True, whole.dropped)
+
+
 def test_an_arabic_reply_with_latin_words_and_numbers_is_no_leak() -> None:
     # iftah Ole5 w-ikhtar Settings, ba'deen zur ds.t2.sa, open Ole5, choose Settings, then visit.
     text = "افتح Ole5 واختر Settings، بعدين زر ds.t2.sa أو الإصدار 3.5.ثم اضغط Ctrl + Shift + R."

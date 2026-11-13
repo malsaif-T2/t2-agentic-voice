@@ -50,6 +50,7 @@ from t2_agentic_voice.api.runtime import Providers
 from t2_agentic_voice.core.config import VoiceSettings
 from t2_agentic_voice.core.errors import ConfigurationError, ProviderError
 from t2_agentic_voice.core.settings.tts import LanguageTag
+from t2_agentic_voice.core.settings.words import primary_code
 
 # The distribution whose ONNX models a call runs on.
 PIPECAT: Final = "pipecat-ai"
@@ -176,7 +177,7 @@ async def _synthesis(providers: Providers, tag: LanguageTag) -> Check:
     name = f"synthesis {tag}"
     seconds, cut_short = 0.0, False
     try:
-        async for chunk in providers.tts.synthesize(SAMPLES[_primary(tag)], language=tag):
+        async for chunk in providers.tts.synthesize(SAMPLES[primary_code(tag)], language=tag):
             seconds += chunk.seconds
             cut_short = cut_short or chunk.cut_short
     except (ConfigurationError, ProviderError) as error:
@@ -312,7 +313,3 @@ def _failure(error: ConfigurationError | ProviderError) -> str:
     shown = f"{error.message} ({error.kind})"
     fix = error.details.get("fix")
     return f"{shown} {fix}" if isinstance(fix, str) else shown
-
-
-def _primary(tag: LanguageTag) -> str:
-    return "en" if tag == "en" else "ar"

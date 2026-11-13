@@ -43,6 +43,15 @@ class _Plain(BaseModel):
     model_config = ConfigDict(frozen=True, extra="forbid")
 
 
+def check_share(fate: ClauseFate, played_fraction: float) -> None:
+    """Raise ValueError unless `played_fraction` is the share of a clause's audio its `fate`
+    allows: 1 for one played, 0 for one unplayed, any for one cut. A model's validator calls it,
+    here and in the testing kit's `HeardClause` (testing/turn_data.py)."""
+    whole = {"played": 1.0, "unplayed": 0.0}.get(fate)
+    if whole is not None and played_fraction != whole:
+        raise ValueError("a played clause played 1 of its audio, an unplayed one 0")
+
+
 class SaidClause(_Plain):
     """One clause of a reply as the caller heard it: its text, what became of it, and the share
     of its audio that played: 1 for one played, 0 for one unplayed, the share for one cut."""
@@ -53,9 +62,7 @@ class SaidClause(_Plain):
 
     @model_validator(mode="after")
     def _share_of_its_fate(self) -> Self:
-        whole = {"played": 1.0, "unplayed": 0.0}.get(self.fate)
-        if whole is not None and self.played_fraction != whole:
-            raise ValueError("a played clause played 1 of its audio, an unplayed one 0")
+        check_share(self.fate, self.played_fraction)
         return self
 
 

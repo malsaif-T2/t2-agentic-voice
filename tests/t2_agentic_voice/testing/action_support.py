@@ -28,6 +28,7 @@ from t2_agentic_voice.core.identity import Caller
 from t2_agentic_voice.core.settings.guard import GuardSettings
 from t2_agentic_voice.core.settings.tts import LanguageTag
 from t2_agentic_voice.domain import claims as rule_a
+from t2_agentic_voice.domain import guard
 from t2_agentic_voice.domain.action_declaration import Claims, ReadBack, Say
 from t2_agentic_voice.domain.action_lines import ReadBackPlan, SpokenLine
 from t2_agentic_voice.domain.claims import ActionEvidence, ClaimVerdict
@@ -35,7 +36,6 @@ from t2_agentic_voice.domain.completed_action import RECORD_SEAL, CompletedActio
 from t2_agentic_voice.domain.declaration import Language, VoiceAgent
 from t2_agentic_voice.domain.ports.action_jobs import ActionOutcome, OutcomeKind
 from t2_agentic_voice.domain.yes_rule import CONFIRMED_SEAL, ConfirmedAction
-from t2_agentic_voice.testing import text_checks
 
 from tests.t2_agentic_voice.testing.text_call_support import Asked, Step
 
@@ -234,6 +234,6 @@ def stand_in_record(
 def stand_in_claims(monkeypatch: pytest.MonkeyPatch) -> Claimed:
     """Track A's claim rule, stood in for in this test alone."""
     claimed = Claimed()
-    monkeypatch.setattr(text_checks, "check_claims", claimed.check)
+    monkeypatch.setattr(guard, "check_claims", claimed.check)
     monkeypatch.setattr(rule_a, "default_claims", lambda code: ("i've booked",))
     return claimed

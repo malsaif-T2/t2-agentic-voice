@@ -1,4 +1,4 @@
-"""The spoken-language classifier port (plan 007's Block H): a few seconds of a turn's speech in,
+"""The spoken-language classifier port (D-086): a few seconds of a turn's speech in,
 the share of each language asked out, so each turn can be sent to speech-to-text in the
 language the caller spoke (domain/turn_language.py's rule).
 
@@ -80,7 +80,8 @@ class LanguageScores(BaseModel):
             raise _malformed()
         values = [float(probabilities[code]) for code in among]
         total = sum(values)
-        if not all(math.isfinite(v) and v >= 0 for v in values) or not 0 < total <= 1 + 1e-6:
+        probable = all(math.isfinite(v) and v >= 0 for v in values)
+        if not probable or not 0 < total <= 1 + SUM_TOLERANCE:
             raise _malformed()
         shares = {code: value / total for code, value in zip(among, values, strict=True)}
         return cls.parsed(shares, among=among, mass=min(total, 1.0))

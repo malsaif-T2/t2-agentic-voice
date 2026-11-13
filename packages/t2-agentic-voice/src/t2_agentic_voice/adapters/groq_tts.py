@@ -65,6 +65,7 @@ from t2_agentic_voice.core.config import VoiceSettings
 from t2_agentic_voice.core.errors import ConfigurationError, ProviderError
 from t2_agentic_voice.core.settings.base import setting_name
 from t2_agentic_voice.core.settings.tts import LanguageTag, TtsModel, TtsSettings, TtsVoice
+from t2_agentic_voice.core.settings.words import primary_code
 from t2_agentic_voice.domain.ports.speech_to_text import DataFlow
 from t2_agentic_voice.domain.ports.text_to_speech import AudioChunk
 
@@ -249,7 +250,7 @@ def cut_short(text: str, language: str, speech_s: float) -> bool:
     first sound to its end, came back shorter than its text needs (above)."""
     if len(text) < SHORT_TEXT:
         return False
-    ceiling = CHARS_PER_SECOND_MAX["en" if language == "en" else "ar"]
+    ceiling = CHARS_PER_SECOND_MAX[primary_code(language)]
     return speech_s <= 0 or len(text) / speech_s > ceiling
 
 

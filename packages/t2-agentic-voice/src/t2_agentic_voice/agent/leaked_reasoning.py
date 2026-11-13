@@ -17,10 +17,10 @@ a2-dev saw too («…حالياً.We need to respond accordingly.…»).
   said: the clause splitter cuts it there (domain/text/clauses.py), and the question limit
   counts its question.
 - **What goes.** From a leak's first character, every piece of the model's text in that request
-  goes, unspoken and unblocked; what came before it is said. The reply then stops, as the
-  question limit stops one (agent/question_limit.py): the model's stream is closed, as a blocked
-  clause's `drop_rest` closes it, no tool of that request runs and no request follows. What the
-  model wrote is kept without the leak, so no later request reads it.
+  goes, unspoken and unblocked; what came before it is said. The reply then stops as a blocked
+  clause's `drop_rest` stops it (agent/turn.py): the model's stream is closed, no tool of that
+  request runs and no request follows. What the model wrote is kept without the leak, so no
+  later request reads it.
 - **As it streams** (`text`): the text after a possible beginning is held until it is one or
   cannot be (a few characters: the longest opening), so the clause before it is never held.
   `close` gives what is held at the end of a request's text, when it is none; each request of
@@ -40,7 +40,7 @@ from typing import Final
 
 from t2_agentic_voice.core.events import CallId, TurnId
 from t2_agentic_voice.core.logging import get_logger
-from t2_agentic_voice.domain.text.clauses import WORD_MARKS
+from t2_agentic_voice.domain.text.clauses import AFTER_WORD, SENTENCE_ENDS
 
 _log = get_logger(__name__)
 
@@ -67,12 +67,12 @@ TELLS: Final = (
     "I should",
 )
 _LONGEST: Final = max(len(tell) for tell in TELLS)
-# A sentence's end mark: the full stop, question mark, exclamation mark and ellipsis, and the
-# Arabic question mark and full stop.
-_ENDS: Final = ".?!\u2026\u061f\u06d4"
-# A sentence's start: the text's first character that is no space, or one after an end mark,
-# glued (group `glued`, the mark after a letter, a digit or a letter's mark) or after spaces.
-_START = re.compile(rf"(?:^\s*|(?<=[^\W_]|[{WORD_MARKS}])(?P<glued>[{_ENDS}])|[{_ENDS}]\s+)(?=\S)")
+# A sentence's start: the text's first character that is no space, or one after a sentence's
+# end mark (the clause splitter's), glued (group `glued`, the mark after a letter, a digit or a
+# letter's mark) or after spaces.
+_START = re.compile(
+    rf"(?:^\s*|{AFTER_WORD}(?P<glued>[{SENTENCE_ENDS}])|[{SENTENCE_ENDS}]\s+)(?=\S)"
+)
 
 
 def _latin_capital(char: str) -> bool:
@@ -107,7 +107,12 @@ class LeakedReasoning:
 
     def _give(self, *, closing: bool) -> str:
         until = len(self._text)
-        for start in _START.finditer(self._text, max(0, self._given - 2)):
+        # A start not yet read follows an end mark that is the given text's last character
+        # other than a space, however many spaces were given after it: the scan resumes at
+        # that character (at the text's beginning while it holds only spaces), so the text
+        # streamed is read as it is in one piece.
+        back = len(self._text[: self._given].rstrip())
+        for start in _START.finditer(self._text, max(0, back - 1)):
             at = start.end()
             if at < self._given:
                 continue

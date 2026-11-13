@@ -8,14 +8,15 @@ what the yes rule let through, so `call.violations` says what a guard or a rule 
   actions, as the output guard reads them.
 - For an agent that declares an action (plan 007), and only then, so an agent with none is
   checked as before:
-  - **Rule A** (domain/claims.py): a clause that claims an action, in any language's phrases,
-    is backed by the record or by a result of a tool that `reports_on` it holding an ID-shaped
-    token, every ID it holds a value of that result. A status backs it only when it names one
-    of the status's numbers, or names none after an earlier clause of the same reply named
-    one, a clause the guard would have passed (rules A and B found nothing in it), as the
-    guard keeps the clauses it passed (agent/speech_guard.py). A turn's talker reply is one
-    reply: the talker answers each turn once, and its other replies (a read-back, an outcome)
-    are the runtime's lines, not checked.
+  - **Rule A** (domain/claims.py), through the guard's `check_clause` (domain/guard.py), as the
+    live guard runs it: a clause that claims an action, in any language's phrases, is backed
+    by the record or by a result of a tool that `reports_on` it holding an ID-shaped token,
+    every ID it holds a value of that result. A status backs it only when it names one of the
+    status's numbers, or names none after an earlier clause of the same reply named one, a
+    clause the guard would have passed, as the guard keeps the clauses it passed
+    (agent/speech_guard.py). A turn's talker reply is one reply: the talker answers each turn
+    once, and its other replies (a read-back, an outcome) are the runtime's lines, not
+    checked.
   - **Rule C**: once the talker asked for a read-back, it spoke no more words of its own in
     that turn.
   - **The yes rule**: every action the session confirmed was confirmed by words begun once a
@@ -29,20 +30,17 @@ talker's clause, never the caller's words or a draft's values (GP-19).
 
 from __future__ import annotations
 
-import json
-
 from t2_agentic_voice.actions.action import Action
 from t2_agentic_voice.agent.events import ReadBackRequested, SpokenClause, ToolEnded
 from t2_agentic_voice.core.config import VoiceSettings
 from t2_agentic_voice.domain.claims import (
     ActionEvidence,
     any_action_claims,
-    check_claims,
     every_language,
     holds_an_id,
 )
 from t2_agentic_voice.domain.completed_action import CompletedAction
-from t2_agentic_voice.domain.guard import check_ids
+from t2_agentic_voice.domain.guard import check_clause, check_ids
 from t2_agentic_voice.domain.yes_rule import is_confirmed
 from t2_agentic_voice.testing.text_actions import own_lines
 from t2_agentic_voice.testing.text_read_back import is_template, readings, summary_played_at
@@ -89,7 +87,7 @@ def _id_evidence(reads: TextReads) -> list[str]:
     evidence += _action_results(reads)
     for turn_id in reads.said:
         for card in TextTurn(reads, turn_id).cards:
-            evidence += [card.title, *card.steps, *([card.source] if card.source else [])]
+            evidence += card.texts()
     # A completed action's result whole and its texts, as the guard reads the record
     # (agent/speech_guard.py).
     evidence += [text for done in _completed(reads) for text in (done.result_json, *done.evidence)]
@@ -123,7 +121,7 @@ def _evidence(reads: TextReads, *, year: int) -> list[ActionEvidence]:
         tool = runner.tool(request.name)
         if tool is None or result is None or not result.ok:
             continue
-        texts = (*result.evidence, json.dumps(result.data, ensure_ascii=False))
+        texts = result.texts()
         if holds_an_id(texts, settings=settings, year=year):
             found += [
                 ActionEvidence(action=name, texts=texts, source="status")
@@ -144,22 +142,20 @@ def _rule_a(
     passed: dict[int, list[str]] = {}  # each turn's reply: the clauses the guard would pass
     for turn_id, clause in heard:
         earlier = passed.setdefault(turn_id, [])
-        verdict = check_claims(
+        verdict = check_clause(
             clause.text,
+            evidence=ids,
             claims=claims,
             any_action=any_action,
-            evidence=evidence,
+            actions=evidence,
             settings=settings.guard,
             year=year,
             earlier=tuple(earlier),
         )
-        if not verdict.passed:
+        if verdict.reason == "unsupported_claim":
             what = ", ".join(verdict.claimed) or "an action"
             found.append(f"turn {turn_id} claimed {what} with no record: {clause.text!r}")
-            continue
-        # Kept as the guard keeps a clause it passed: a claim rule A passed, or rule B's pass.
-        rule_b = check_ids(clause.text, evidence=ids, settings=settings.guard, year=year)
-        if verdict.claimed or rule_b.passed:
+        elif verdict.passed:  # kept as the guard keeps a clause it passed
             earlier.append(clause.text)
     return found
 

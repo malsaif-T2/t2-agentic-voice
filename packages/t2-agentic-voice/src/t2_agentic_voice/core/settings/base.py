@@ -1,7 +1,7 @@
 """What the settings groups share: the base of a group and of the settings, how a setting's
 environment name is made, the checks several groups' values take (a URL; a key's characters; a
-shared secret's least length; a secret given as a file), and the read-only form of a map
-setting.
+shared secret's least length; a secret given as a file; a regular expression), and the read-only
+form of a map setting.
 
 Every error names the setting and never the value it rejected, which may be a key pasted into
 the wrong setting (GP-19). A group's checks raise ValueError with fixed text, which pydantic
@@ -171,6 +171,19 @@ def url(value: str, schemes: frozenset[str]) -> str:
     if parts.username is not None or parts.password is not None:
         raise ValueError("must not hold a user name or password; secrets go in their own setting")
     return value
+
+
+def compiled(pattern: str) -> re.Pattern[str] | None:
+    """`pattern` compiled by `re`, or None when it cannot be. Every error `re` may raise is
+    caught here, and in no chain: `re.error`, whose text may quote the pattern (a group's name);
+    an OverflowError, for a repetition count past the engine's limit; a RecursionError, for
+    groups nested too deep; and any other. Raised in a validator, any but a ValueError would
+    stop the load at once, uncollected, and a ValueError's text would reach the settings'
+    error."""
+    try:
+        return re.compile(pattern)
+    except Exception:  # re.error, OverflowError, RecursionError and the like
+        return None
 
 
 def _split(value: str) -> SplitResult | None:

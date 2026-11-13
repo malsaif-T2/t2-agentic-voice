@@ -4,10 +4,11 @@ characters no one sees made a space or dropped), the pronunciation map (`VoiceAg
 type, and the function that applies one), the check of a team's spelling guide, and the Whisper
 prompt of a call's language (`whisper_prompt`: the vocabulary's terms, then the command words as
 they should be written), and the register of an Arabic turn as the talker reads it (`register_of`:
-Saudi when its words hold a Saudi or Gulf dialect form, MSA when they hold none), which a team's
-measurement holds a reply to; and the stray-script rule (`remove_stray_script`, giving `Kept`):
-a text as the talker says it, each character of a script the agent's languages do not write
-taken out or rewritten. Provisional (D-021). A facade: it only re-exports (ARCH-FACADE)."""
+Saudi when its words hold a Saudi or Gulf dialect form or no Arabic word, MSA when its Arabic
+holds no such form), which a team's measurement holds a reply to; and the stray-script rule
+(`remove_stray_script`, giving `Kept`): a text as the talker says it, each character of a script
+the agent's languages do not write taken out or rewritten. Provisional (D-021). A facade: it
+only re-exports (ARCH-FACADE)."""
 
 from t2_agentic_voice.agent.language import register_of
 from t2_agentic_voice.domain.text.arabic import normalize_arabic
