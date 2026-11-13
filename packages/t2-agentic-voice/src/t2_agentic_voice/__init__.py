@@ -10,7 +10,8 @@ can build one in code (`VoiceSettings(env="dev", server=ServerSettings(...))`), 
 
 `VoiceRuntime` and `Providers` are imported when first named (`__getattr__`): the runtime's
 module imports FastAPI, which costs seconds, so `import t2_agentic_voice` (an eval command, a
-child process, `t2v --help`) imports neither.
+child process, `t2v --help`) imports neither, and naming `Providers` (api/providers.py) imports
+no FastAPI either.
 """
 
 import importlib
@@ -68,11 +69,12 @@ from t2_agentic_voice.domain.talker_declaration import DeclaredTool, Vocabulary
 from t2_agentic_voice.domain.words import Phrases, Words
 
 if TYPE_CHECKING:
-    from t2_agentic_voice.api.runtime import Providers, VoiceRuntime
+    from t2_agentic_voice.api.providers import Providers
+    from t2_agentic_voice.api.runtime import VoiceRuntime
 
 # The names imported when first named, by the module that defines them.
 _LAZY = {
-    "Providers": "t2_agentic_voice.api.runtime",
+    "Providers": "t2_agentic_voice.api.providers",
     "VoiceRuntime": "t2_agentic_voice.api.runtime",
 }
 

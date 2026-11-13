@@ -23,7 +23,7 @@ members = ["packages/*", "apps/*", "examples/*"]
 t2-agentic-voice = { workspace = true }
 ole5-voice-agent = { workspace = true }
 t2-agentic-voice-minimal-example = { workspace = true }
-# On Linux, torch and torchaudio (the library's `ecapa` extra, plan 007's Block H) come from
+# On Linux, torch and torchaudio (the library's `ecapa` extra, D-086) come from
 # PyTorch's CPU index, whose wheels bring no CUDA package, so this workspace's lock holds none
 # (tests/harness/test_install.py). uv reads an index only inside its own workspace: a team that
 # adds the extra on Linux puts the same lines in its own pyproject.toml (the guide's languages
@@ -232,7 +232,7 @@ module = ["num2words", "num2words.*"]
 ignore_missing_imports = true
 
 # onnxruntime 1.31.1 ships no types either (no py.typed in its wheel): Silero's spoken-language
-# classifier opens its session through it (adapters/silero_language.py, plan 007's Block H).
+# classifier opens its session through it (adapters/silero_language.py, D-086).
 [[tool.mypy.overrides]]
 module = ["onnxruntime", "onnxruntime.*"]
 ignore_missing_imports = true

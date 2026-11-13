@@ -1113,7 +1113,7 @@ From lowest to highest precedence:
 - **Unknown keys.** A key in the TOML file that matches no field is an error. So is an environment variable that carries the prefix but matches no field, raised at `from_env()`, so a typo never falls back silently to a default. The error says that the prefix must belong to the library alone. `from_env(unknown="warn")` turns it into a warning.
 - **Cross-checks at runtime construction.** There must be a TTS model and voice for every agent language, and each model's `max_chars` must suit the templates. There must be an identity source before serving (section 6.5).
 - **Provider checks at `lifespan` start**, behind `startup_checks=true`: each language passes `check_language`, and each model is reachable with the key.
-- **Outside `dev`**, the library refuses `server.dev_page=true`, `DevIdentity` and `logging.content=true`. Ole5's `api/status.py` already refuses DEBUG in production.
+- **Outside `dev`**, the library refuses `server.dev_page=true`, `DevIdentity` and `logging.content=true`, and staging and prod refuse DEBUG logging, checked at every load (`core/config.py`).
 - **Every failure** is a `ConfigurationError` with a FIX line. `t2v check` and the `/health` payload show the environment in force.
 
 ### 7.5 Secrets
@@ -1254,7 +1254,7 @@ sent. `guard.questions_per_reply`, 1 by default, raises the limit; None, in code
 
 False positives cost a sentence. They show up in traces for review. `t2v check` prints the effective lexicon.
 
-*As built (plan 007):* rule B is `domain/guard_ids.py`'s, rule A `domain/claims.py`'s, and `domain/guard.py`'s `check_clause` runs them in order; the talker's turn composes the two in `agent/speech_guard.py` and `TextCall` in its checks (TD-141).
+*As built (plans 007 and 008):* rule B is `domain/guard_ids.py`'s, rule A `domain/claims.py`'s, and `domain/guard.py`'s `check_clause` runs them in order; the talker's turn (`agent/speech_guard.py`) and `TextCall`'s checks (`testing/text_checks.py`) both call it, so the order and each rule's evidence are written once. Each action's state moves through `domain/action_flow.py`'s table where the session's read-back (`voice/session/read_back_flow.py`) and the runner's jobs (`actions/action_job.py`) move it; a move the table refuses is logged as `action_flow_refused`, never raised into a call.
 
 ### 8.3 How the yes rule decides
 

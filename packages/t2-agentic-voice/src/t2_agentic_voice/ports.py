@@ -1,7 +1,7 @@
 """The ports: the protocols an outside service is reached through, and their data types (the
 design's 6.1, 6.3, 6.4 and 6.5). Stable (D-021), `UsedTokens`, `KnowledgeBase` and `Outbox`
-provisional (the design's 5.1), as are `LanguageClassifier` and `LanguageScores` (plan 007's
-Block H). A facade: it only re-exports (ARCH-FACADE)."""
+provisional (the design's 5.1), as are `LanguageClassifier` and `LanguageScores` (D-086). A
+facade: it only re-exports (ARCH-FACADE)."""
 
 from t2_agentic_voice.domain.ports.chat_model import (
     ChatEvent,

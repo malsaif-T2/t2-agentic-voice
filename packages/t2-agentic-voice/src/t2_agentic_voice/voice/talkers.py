@@ -1,9 +1,9 @@
 """How voice's entry point gives each call its talker (voice/calls.py; plan 006): the agent's mode
 (`session.mode`, `SessionSettings.mode_for`) says whether its calls run the talker, and a call
-that does gets one built for it, by the factory the composition root gives (api/providers.py's
-`talkers`: the library's `ChatTalker` on the runtime's chat model and the agent's tools, which
-voice may not build itself, since it may not import the tools' layer: harness.toml [layers]), on
-the call's clock, the one its session runs on. A call of the echo gets none.
+that does gets one built for it, by the factory the composition root gives (agent/talker.py's
+`chat_talkers`, which api/providers.py builds on the runtime's chat model: the library's
+`ChatTalker` with the agent's tools), on the call's clock, the one its session runs on. A call
+of the echo gets none.
 """
 
 from __future__ import annotations

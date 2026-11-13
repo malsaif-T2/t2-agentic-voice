@@ -12,7 +12,7 @@ module of its own (the design's 5.1); and the chat model's requests a call makes
 uncertain overlap's (D-069) and the yes rule's check of an answer its lists leave unplaced
 (D-082), so a fake or a measurement tells them apart and answers them; and each turn's language
 in a file-fed call of an agent of two languages, with the rule read back for any call's
-language (`turn_languages`, `chosen`; plan 007's Block H, run H).
+language (`turn_languages`, `chosen`; D-086, run H).
 Provisional (D-021). A facade: it only re-exports (ARCH-FACADE)."""
 
 from t2_agentic_voice.domain.consent_check import (

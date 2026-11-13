@@ -40,7 +40,8 @@ from ole5_voice.evals.runs import (
 from ole5_voice.evals.windows import Measure
 
 # Groq bills each request at least 10 s of audio (plan 002, "The cost and the time"; the
-# design's 10.4): the library adapter's own minimum, which a test ties it to. The answerer
+# design's 10.4): the library's own minimum (core/settings/stt.py's `WHISPER_MIN_BILLED_S`),
+# which a test ties it to. The answerer
 # charges a request before it is sent, so it cannot take the minimum from the transcript.
 GROQ_MINIMUM_S = 10.0
 RATE_LIMIT_PAUSE_S = 20.0  # the least pause after a rate limit (stt_eval.py, line 581)

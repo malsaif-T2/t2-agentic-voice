@@ -1,4 +1,4 @@
-"""The spoken-language classifiers behind the `LanguageClassifier` port (plan 007's Block H):
+"""The spoken-language classifiers behind the `LanguageClassifier` port (D-086):
 Silero's, on onnxruntime, and ECAPA's, on torch through the library's `ecapa` extra, each
 loading only from the folder `stt.classifier_dir` names. Provisional. A facade: it only
 re-exports (ARCH-FACADE)."""

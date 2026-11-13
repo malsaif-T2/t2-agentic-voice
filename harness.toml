@@ -162,7 +162,7 @@ fix = "Score through the evaluation helpers in testing/scorers.py (`wer`, `cer`,
 
 # The consent a verified signed join token carried (core/identity.py): only it lets a call's
 # audio be recorded (docs/SECURITY.md, invariant 8), so only the identity source that checks a
-# token's signature builds one (plan 003, Track C).
+# token's signature builds one (plan 003).
 [[restricted]]
 classes = ["SignedConsent"]
 layers = ["adapters"]
@@ -181,7 +181,7 @@ fix = "Only adapters/join_tokens.py's SignedJoinTokens gives CONSENT_SEAL, to bu
 
 # The caller's heard words (core/yes_inputs.py): the only words a later rule takes as the
 # caller's own, built from a speech-to-text result (docs/SECURITY.md, invariant 1), so only voice
-# builds them (plan 003, Track D), and the class checks a seal as SignedConsent does.
+# builds them (plan 003), and the class checks a seal as SignedConsent does.
 [[restricted]]
 classes = ["HeardWords"]
 layers = ["voice"]
