@@ -331,6 +331,33 @@ open as written (TD-001, 011, 036, 039, 041, 042, 044, 047, 053, 055, 064, 089, 
 
 - 2026-11-13: Branch `garbage-collection-2` from main fdb4040, worktree `.claude/worktrees/gc-2`;
   `uv run poe gc` measured; six readers started.
+- 2026-11-13: The inventory recorded (8b82900). Blocks W1, W4 and W5 started from it, each in its
+  own worktree and branch (`gc2-w1`, `gc2-w4`, `gc2-w5`).
+- 2026-11-13: W5 merged (7ec3be6, from a021b09, 9e68f23, ca1d2e4): the calibration in the decision
+  log. `poe gc` after it: 13 unresolved paths, 11 of them this plan's and 2 outside it (the guide's
+  planned `reference/api.md`, and tech-debt.md's `agent/clauses.py`, real, for W6); 14 names, 7 of
+  them this plan's and 7 outside it (tech-debt.md's `SessionSetup`, real, for W6; the rest a row's
+  proposed or missing names); 0 unreferenced; 1 `noqa` without a reason (27 before), another
+  block's. tes-3: one child imports the whole library for both architecture tests, 9.3 s alone
+  (the two took 8.0 and 8.4 s). tes-4: the report's test on a small project, 15.4 s to 0.20 s.
+- 2026-11-13: W1 merged (391dba3, seven commits e19e480 to 00de0aa). agt-1 and core-1 fixed, each
+  with a failing test first; the copies made one; act-1's unused event path removed (the tests
+  assert on the returned `ActionOutcome`); TD-141's guard and action-job parts; `agent/turn.py`
+  386 to 344 lines with `agent/clause_gate.py`, `core/events.py` 371 to 229 with
+  `core/call_report.py` and `core/ids.py`. Gate on W1 and W5: 7823 passed, 1 skipped, coverage
+  99.24%.
+- 2026-11-13: W4 merged (9648cf6, nine commits b09e759 to c010cba). evl-1 and evl-3 fixed with
+  failing tests first; E1 to E6 with `evals/session_runner.py`; tes-1, and tes-5 (the tickets
+  server test 12.0 s to 0.3 s). Changes a caller notices beyond the inventory's, each tested: a
+  scenario file holding another ID says "holds the scenario '<id>', not '<stem>'", as items did;
+  run S logs `run_resumable` as K and A do; `run_failed` carries `of=` in every run; the session
+  lines come from the `session_runner` logger. Gate on W1, W4 and W5: lint, types, arch and docs
+  OK, 7870 passed, 2 failed, coverage 99.26%; the two failed only their real-time bound under
+  the load of the two blocks starting (0.229 s for 0.03 s, 0.215 s for 0.1 s) and passed alone.
+- 2026-11-13: Real-time tests failed under load in W1's, W4's and W5's gates and on the merged
+  branch (the clause cache's 0.1 s reads, the chat deadline, `test_stt_language.py`, a loopback
+  duck): a mistake seen more than twice, so W2 and W3 make each independent of the machine's
+  speed, and W6 records the rule (step 5). W2 and W3 started from 9648cf6.
 
 ## Decision log
 
@@ -350,3 +377,25 @@ open as written (TD-001, 011, 036, 039, 041, 042, 044, 047, 053, 055, 064, 089, 
   The plan-time-words check (`DOC-PLANWORDS`, promoted in W6) comes after the code blocks have
   removed those words, so no block's gate fails on another's files. Each layer's `__init__`
   docstring describes its layer and points at ARCHITECTURE.md's map, in that layer's block.
+- 2026-11-13: W5's `[gc]` and `[quality]` values, each measured with `poe gc` on its branch (the
+  counts outside this plan, which cites paths and names to come). `path_bases` gains the source
+  roots (in `gc_docs.path_bases`), `apps/ole5-voice-agent/evals` and `tests/t2_agentic_voice`;
+  `path_ignored` gains the prototype's five files, `pipecat/`, and `transports/smallwebrtc/`
+  until W2 writes voice's Pipecat paths as `pipecat/transports/...`: unresolved paths 59 to 2.
+  `name_files` gains the library's and the widget's JavaScript, the tests' `.mjs` and the golden
+  sets' `split.json`, `foreign_names` 12 names, and a placeholder (`NNN`) is skipped: names 40 to
+  7. `hooks` gains `model_post_init` and `process_audio_frame`: unreferenced 6 to 0.
+  `due_after_commits` 40 to 100. `min_tokens` 25 and `size_watch` 300 kept. The duplicates print
+  one line per repeated run (861 lines to 375 runs, 100 of them in three or more places; the
+  pairs `poe quality` counts are unchanged). `[quality] duplication_floor` 10 pairs to 10.0 pairs
+  per 1,000 lines, as suppressions are scored: units scoring zero 8 of 11 to 2 (testing 33.3,
+  ole5_voice 24.3); a small unit is now as sensitive as its suppressions score already was.
+  Each kind of noise silenced is tested to leave a stale path or name beside it reported.
+- 2026-11-13: The blocks' departures from the inventory, read before each merge. W1: `primary_code`
+  takes a `str`, since the text-to-speech port passes the language as one; `core/ids.py` holds the
+  ID types, so `core/events.py` and `core/call_report.py` do not import each other; `within` and
+  `called` are public, as another module imports them; the session's read-back moves through a
+  pure helper of `domain/action_flow.py`, since voice may not import actions (W2). W4: the TOML
+  folder reader is in `items.py` and `table()` in `history_tables.py`, each to avoid an import
+  cycle; the comparison helpers are `change_counts`, `changed_ids`, `sign_verdict`; the server
+  tests' constants are in `tests/ole5_voice/server_support.py`, not a conftest.
