@@ -38,6 +38,28 @@ def test_code_never_cites_milestones(tmp_path: Path) -> None:
     assert doc_rules(tmp_path, files) == [("src/app/mod.py", 1, "DOC-MILESTONE")]
 
 
+def test_code_and_the_root_toml_never_name_a_plans_track_or_block(tmp_path: Path) -> None:
+    files = {
+        "CLAUDE.md": "[roadmap](docs/plans/roadmap.md)",
+        "docs/plans/roadmap.md": ROADMAP + "\nTrack A of plan 001 is history here.\n",
+        "src/app/a.py": '"""Built in Track A."""\n',
+        "src/app/b.py": "# the stand-ins of Tracks A to D\n",
+        "src/app/c.py": "x = 1  # Block 0's stub\n",
+        "src/app/d.py": "# Block H's run\n",
+        "scripts/tool.py": "# a block of code, the track's end, ClauseBlocked, Block\n",
+        "harness.toml": "# kept for plan 003, Track C\n",
+        "docs/guide/page.md": "Block 0 in a doc is not code.\n",
+    }
+    found = [f for f in doc_rules(tmp_path, files) if f[2] == "DOC-PLANWORDS"]
+    assert found == [
+        ("harness.toml", 1, "DOC-PLANWORDS"),
+        ("src/app/a.py", 1, "DOC-PLANWORDS"),
+        ("src/app/b.py", 1, "DOC-PLANWORDS"),
+        ("src/app/c.py", 1, "DOC-PLANWORDS"),
+        ("src/app/d.py", 1, "DOC-PLANWORDS"),
+    ]
+
+
 REGISTRY_DOCS = {
     "CLAUDE.md": (
         "[decisions](docs/design/decisions.md) [debt](docs/plans/tech-debt.md) "

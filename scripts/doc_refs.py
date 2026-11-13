@@ -1,9 +1,13 @@
-"""DOC-MILESTONE and DOC-REF, for the docs check (scripts/check_docs.py): what docs and code
-cite must exist.
+"""DOC-MILESTONE, DOC-PLANWORDS and DOC-REF, for the docs check (scripts/check_docs.py): what
+docs and code cite must exist, and code names nothing that a completed plan leaves meaningless.
 
 - Milestone numbers change when the roadmap is re-planned, so references to them rot silently.
   Living docs cite only milestones in the roadmap's table (rows `| Mx | ...`); code never cites
   one. History ([docs] historical) keeps the numbers of its time.
+- A plan's tracks and blocks (the word and a letter or a number after it) mean nothing once the
+  plan is completed, so code never names one (DOC-PLANWORDS): it names the capability, the
+  decision or the plan. Read in the code and in the root's TOML files, whose comments are read
+  as the code's.
 - Every cited decision (D-NNN), tech-debt item (TD-NNN), golden principle (GP-NN), plan
   (plan NNN), and security invariant (invariant N) exists where harness.toml's [references]
   says it is recorded. History may cite retired debt, principles, and invariants, but never a
@@ -30,6 +34,12 @@ from scripts.harness_config import DocsConfig, HarnessConfig
 # A code with a decimal part (M2.5, a clothing size, a diagnosis code) is not a milestone.
 _MILESTONE = re.compile(r"\bM(\d{1,2})\b(?!\.\d)")
 _ROADMAP_ROW = re.compile(r"^\|\s*M(\d{1,2})\s*\|", re.MULTILINE)
+# A plan's work unit: one of its tracks or blocks, named by a capital letter or a number.
+_PLAN_UNIT = re.compile(r"\b(?:Tracks?|Blocks?)\s+(?:[A-Z]|\d+)\b")
+_PLAN_UNIT_FIX = (
+    "A plan's tracks and blocks mean nothing once it is completed: name the capability, or "
+    "cite the decision (D-NNN) or the plan (plan NNN) instead."
+)
 
 
 def code_files(root: Path, docs: DocsConfig) -> list[Path]:
@@ -77,6 +87,20 @@ def check_milestones(
                         "decision (D-NNN) or name the capability instead.",
                     )
                 )
+    return violations
+
+
+def check_plan_words(root: Path, config: HarnessConfig) -> list[Violation]:
+    """DOC-PLANWORDS: no code file, nor a TOML file at the root, names a plan's track or block."""
+    files = [*code_files(root, config.docs), *sorted(root.glob("*.toml"))]
+    violations: list[Violation] = []
+    for path in files:
+        for lineno, line in lines_of(path):
+            found = _PLAN_UNIT.search(line)
+            if found:
+                problem = f"code names a plan's work unit, '{found.group(0)}'"
+                rel = path.relative_to(root).as_posix()
+                violations.append(Violation(rel, lineno, "DOC-PLANWORDS", problem, _PLAN_UNIT_FIX))
     return violations
 
 

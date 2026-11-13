@@ -441,9 +441,10 @@ historical = [
     "docs/design/decisions.md",
     "docs/generated/eval-history.md",
 ]
-# Code that may not cite milestones, and whose citations must exist (DOC-MILESTONE, DOC-REF).
+# Code that may not cite milestones nor name a plan's tracks and blocks, and whose citations
+# must exist (DOC-MILESTONE, DOC-PLANWORDS, DOC-REF).
 code_dirs = ["packages", "apps", "examples", "scripts", "tests"]
-# Code exempt from those two rules: the harness tests whose fixtures cite made-up entries.
+# Code exempt from those three rules: the harness tests whose fixtures cite made-up entries.
 code_exempt = [
     "tests/harness/test_check_docs.py",
     "tests/harness/test_doc_refs.py",

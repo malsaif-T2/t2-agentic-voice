@@ -19,6 +19,8 @@ Rules
   DOC-REGISTER     no two plans, decisions, debt rows, principles, or invariants share a
                    number, and decision headings keep their shape (scripts/doc_registers.py)
   DOC-MILESTONE    living docs cite only roadmap milestones; code never cites milestones
+  DOC-PLANWORDS    code and the root's TOML files never name a plan's track or block
+                   (scripts/doc_refs.py)
   DOC-REF          every cited D-NNN, TD-NNN, GP-NN, plan NNN, and invariant N exists
                    (scripts/doc_refs.py, both)
   DOC-SAMPLE       a code block after a link to a .py file is a run of that file's lines,
@@ -35,7 +37,7 @@ from pathlib import Path
 
 from scripts._common import Violation
 from scripts.doc_plans import check_plans
-from scripts.doc_refs import check_milestones, check_references
+from scripts.doc_refs import check_milestones, check_plan_words, check_references
 from scripts.doc_registers import check_registers
 from scripts.doc_samples import check_samples
 from scripts.doc_text import extract_links, markdown_files
@@ -125,6 +127,7 @@ def check_repo(root: Path, config: HarnessConfig) -> tuple[list[Violation], int]
     violations += check_line_endings(root, config, files)
     violations += check_control_characters(root, files)
     violations += check_milestones(root, config, files)
+    violations += check_plan_words(root, config)
     violations += check_references(root, config, files)
     violations += check_samples(root, config, files)
     return violations, len(files)
