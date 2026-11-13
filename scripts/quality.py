@@ -8,8 +8,8 @@ scripts/, is graded from mechanical signals:
 - size: the share of its modules at or under [gc] size_watch lines;
 - suppressions: `noqa`, `type: ignore`, and `pragma: no cover` per 1,000 lines (`fmt: skip`
   marks data tables, so it does not count);
-- duplication: runs of repeated tokens that touch the layer (the detector of `poe gc`), the
-  copies between an app and the library included;
+- duplication: the pairs of places that repeat a run of tokens and touch the layer (the
+  detector of `poe gc`), the copies between an app and the library included, per 1,000 lines;
 - docstrings: the share of its modules that say what they are for.
 
 A module that holds only its docstring (an empty layer's `__init__.py`) counts in neither
@@ -76,7 +76,8 @@ class Grade:
     small: float  # share of modules within the size watch
     largest: tuple[int, str]  # (lines, module)
     suppressions_per_kloc: float
-    duplicate_runs: int
+    duplicate_pairs: int
+    duplicates_per_kloc: float
     docstrings: float
     score: float
     letter: str
@@ -126,16 +127,17 @@ def grade(
     suppressed = sum(c[kind] for c in counts.values() for kind in COUNTED)
     found = duplicates(sources, config.gc.min_tokens) if runs is None else runs
     places = ((d.first.split(":")[0], d.second.split(":")[0]) for d in found)
-    mine_runs = [pair for pair in places if layer in {layer_of(path, config) for path in pair}]
+    mine_pairs = [pair for pair in places if layer in {layer_of(path, config) for path in pair}]
     measured = [coverage[path] for path in mine if path in coverage]
     statements = sum(s for s, _ in measured)
     modules = max(len(coded), 1)
     per_kloc = 1000 * suppressed / lines if lines else 0.0
+    duplicates_per_kloc = 1000 * len(mine_pairs) / lines if lines else 0.0
     signals = Signals(
         coverage=1 - sum(m for _, m in measured) / statements if statements else None,
         size=sum(1 for n in sizes.values() if n <= config.gc.size_watch) / modules,
         suppressions=max(0.0, 1 - per_kloc / rules.suppressions_floor),
-        duplication=max(0.0, 1 - len(mine_runs) / rules.duplication_floor),
+        duplication=max(0.0, 1 - duplicates_per_kloc / rules.duplication_floor),
         docstrings=sum(1 for t in coded.values() if ast.get_docstring(ast.parse(t))) / modules,
     )
     value = score(signals, rules.weights)
@@ -147,7 +149,8 @@ def grade(
         small=signals.size,
         largest=max(((n, path) for path, n in sizes.items()), default=(0, "-")),
         suppressions_per_kloc=per_kloc,
-        duplicate_runs=len(mine_runs),
+        duplicate_pairs=len(mine_pairs),
+        duplicates_per_kloc=duplicates_per_kloc,
         docstrings=signals.docstrings,
         score=value,
         letter=letter(value) if coded else EMPTY,
@@ -189,7 +192,7 @@ def render(grades: Sequence[Grade], size_watch: int) -> str:
     """The grade table that docs/harness/quality.md keeps, and recorded_grades reads back."""
     lines = [
         f"| Layer | Grade | Score | Coverage | Modules within {size_watch} lines | Largest "
-        "| Suppressions per 1,000 lines | Duplicate runs | Docstrings |",
+        "| Suppressions per 1,000 lines | Duplicate pairs (per 1,000 lines) | Docstrings |",
         "| --- | --- | --- | --- | --- | --- | --- | --- | --- |",
     ]
     for g in grades:
@@ -200,7 +203,7 @@ def render(grades: Sequence[Grade], size_watch: int) -> str:
         lines.append(
             f"| {g.layer} | **{g.letter}** | {g.score:.0f} | {coverage} | {g.small:.0%} "
             f"| {g.largest[0]} `{g.largest[1].split('/')[-1]}` | {g.suppressions_per_kloc:.1f} "
-            f"| {g.duplicate_runs} | {g.docstrings:.0%} |"
+            f"| {g.duplicate_pairs} ({g.duplicates_per_kloc:.1f}) | {g.docstrings:.0%} |"
         )
     return "\n".join(lines) + "\n"
 
