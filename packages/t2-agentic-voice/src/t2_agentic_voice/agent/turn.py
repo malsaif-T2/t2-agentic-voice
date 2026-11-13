@@ -13,23 +13,26 @@ turn and the call as it was heard to the events the session plays, within the re
 - **Speech as it is written.** Each piece the model writes, and each tool call's arguments, are
   filtered first (agent/stray_script.py: no script the agent's languages do not write), so all
   that follows reads one text; a clause the filter left with no letter or digit is none. The
-  text goes through the clause splitter as it streams (`ClauseStream`), any note of the
-  history's it copied taken out first (agent/context.py's `Unnoted`), and each whole clause,
-  once the output guard passed it (agent/speech_guard.py: rule A on claims, for an agent with
-  actions, then rule B against the evidence seen this call: its tools' results, the call's
-  record, the caller's heard words), is yielded at once. A blocked one is `ClauseBlocked`, with
-  its rule's reason, and by `guard.on_block` the rest of the reply goes with it (`drop_rest`:
-  no more clause, request or tool) or only it; the next turn's history holds a developer note.
+  text then goes through the leak check (agent/leaked_reasoning.py): from a leak of the
+  model's reasoning on, nothing of the request's text is said, and the reply stops there as a
+  blocked clause's `drop_rest` stops it. What is left goes through the clause splitter as it
+  streams (`ClauseStream`), any note of the history's it copied taken out first
+  (agent/context.py's `Unnoted`), and each whole clause, once the output guard passed it
+  (agent/speech_guard.py: rule A on claims, for an agent with actions, then rule B against the
+  evidence seen this call: its tools' results, the call's record, the caller's heard words),
+  is yielded at once (agent/clause_gate.py). A blocked one is `ClauseBlocked`, with its rule's
+  reason, and by `guard.on_block` the rest of the reply goes with it (`drop_rest`: no more
+  clause, request or tool) or only it; the next turn's history holds a developer note.
 - **Questions.** Before the guard, a clause that asks the caller a question past
   `guard.questions_per_reply` (agent/question_limit.py) is dropped with every clause after it,
   unspoken and unblocked: the reply stops there, but its request's tool calls still run and are
   kept, and no request follows them. `ReplyDone` counts the clauses dropped.
 - **Tools** (agent/tool_calls.py). Each call the model asks for starts at once, in the reply's
-  scope, and runs through the runner; the first with a progress line gives it, for the
-  session to say if the wait runs long (one a reply); each result goes back to the model
-  framed as data, a
-  result's card is shown once the guard passed its text, and the calls and results are kept
-  for the call's next `KEPT_TURNS` turns, which the heard history does not hold.
+  scope, and runs through the runner; of those with a progress line, the soonest gives it, for
+  the session to say if the wait runs long (one a reply); each result goes back to the model
+  framed as data, a result's card is shown once the guard passed its text, and the calls and
+  results are kept for the call's next `KEPT_TURNS` turns, which the heard history does not
+  hold.
 - **Actions** (the design's 6.4 and 8.2). A request offers the agent's actions beside its tools
   (agent/prompt.py's `tool_definitions`). Rule C: once the model calls an action in a request,
   its text after the call is dropped, unspoken and unblocked, with what the splitter held. The
@@ -53,16 +56,15 @@ turn and the call as it was heard to the events the session plays, within the re
 
 from __future__ import annotations
 
-from collections.abc import AsyncGenerator, Iterable, Sequence
+from collections.abc import AsyncGenerator, Sequence
 from dataclasses import dataclass, field
 
 from t2_agentic_voice.actions.action_runner import ActionRunner
 from t2_agentic_voice.actions.record import ActionRecord
 from t2_agentic_voice.actions.runner import ToolRunner
 from t2_agentic_voice.actions.tools import ToolResult
+from t2_agentic_voice.agent.clause_gate import ClauseGate
 from t2_agentic_voice.agent.context import (
-    BLOCKED,
-    CLAIM_BLOCKED,
     Unnoted,
     call_context,
     continued,
@@ -72,13 +74,11 @@ from t2_agentic_voice.agent.context import (
     without_calls,
 )
 from t2_agentic_voice.agent.events import (
-    ClauseBlocked,
     ModelReplied,
     ModelRequested,
     ReadBackRequested,
     ReplyDone,
     ReplyScope,
-    SpokenClause,
     TalkerEvent,
 )
 from t2_agentic_voice.agent.language import call_register, reply_language
@@ -89,8 +89,6 @@ from t2_agentic_voice.agent.prompt import (
     tool_definitions,
     with_first_line,
 )
-from t2_agentic_voice.agent.question_limit import QuestionLimit
-from t2_agentic_voice.agent.speech_guard import SpeechGuard
 from t2_agentic_voice.agent.stray_script import StrayScript
 from t2_agentic_voice.agent.tool_calls import Memory, ToolCalls, exchange
 from t2_agentic_voice.core.clock import Clock
@@ -101,7 +99,6 @@ from t2_agentic_voice.core.identity import Caller
 from t2_agentic_voice.core.logging import get_logger
 from t2_agentic_voice.core.settings.llm import REASONING_MODELS
 from t2_agentic_voice.core.settings.tts import LanguageTag
-from t2_agentic_voice.domain.cards import Card
 from t2_agentic_voice.domain.declaration import VoiceAgent
 from t2_agentic_voice.domain.ports.chat_model import (
     ChatMessage,
@@ -163,18 +160,18 @@ class Turn:
         heard = [t.words for t in turn.conversation.turns if t.fate != "dropped" and t.words]
         self.heard = (*heard, turn.words)
         self.register = call_register(self.heard)  # the call's so far, this turn's among it
-        self.stopped = False  # a blocked clause dropped the rest of the reply
-        self.blocked = 0
-        self.guard = SpeechGuard(
+        self.scripts = StrayScript.of(agent, settings)
+        self.gate = ClauseGate(
             settings=settings.guard,
             year=clock.wall().year,
+            language=self.language,
+            turn_id=turn.turn_id,
             actions=() if actions is None else actions.actions,
             record=record,
             memory=memory,
             heard=self.heard,
+            scripts=self.scripts,
         )
-        self.scripts = StrayScript.of(agent, settings)
-        self.questions = QuestionLimit(settings.guard.questions_per_reply)
         self.leak = LeakedReasoning(arabic=self.language != "en")  # D-089
         self.tools = ToolCalls(
             runner=runner,
@@ -183,7 +180,7 @@ class Turn:
             scope=scope,
             memory=memory,
             turn_id=turn.turn_id,
-            shown=self._shown,
+            shown=self.gate.shown,
             actions=actions,
             register=self.register,
         )
@@ -227,7 +224,7 @@ class Turn:
                 stray_characters=stray,
                 stray_scripts=scripts,
             )
-            if self.stopped or self.leak.found or not answer.calls:
+            if self.gate.stopped or self.leak.found or not answer.calls:
                 break
             if not tools:
                 _log.warning("talker_tool_call_ignored", turn_id=self.turn.turn_id)
@@ -249,9 +246,9 @@ class Turn:
             if self.tools.plan is not None:  # read back: nothing more of the model this turn
                 yield ReadBackRequested(plan=self.tools.plan)
                 break
-            if self.questions.stopped:  # nothing more of the reply is said: no more request
+            if self.gate.questions.stopped:  # nothing more of the reply is said: no request
                 break
-        self.questions.logged(call_id=self.ctx.call_id, turn_id=self.turn.turn_id)
+        self.gate.questions.logged(call_id=self.ctx.call_id, turn_id=self.turn.turn_id)
         self.leak.logged(call_id=self.ctx.call_id, turn_id=self.turn.turn_id)
         _log.info(
             "talker_replied",
@@ -260,10 +257,10 @@ class Turn:
             language=self.language,
             requests=requests,
             tools=tools_run,
-            blocked=self.blocked,
+            blocked=self.gate.blocked,
             read_back=self.tools.plan is not None,
         )
-        yield ReplyDone(unsaid_clauses=self.questions.unsaid)
+        yield ReplyDone(unsaid_clauses=self.gate.questions.unsaid)
 
     def _request(
         self, messages: Sequence[ChatMessage], tools: tuple[ToolSchema, ...], *, after_tools: bool
@@ -305,9 +302,9 @@ class Turn:
                     if isinstance(event, TextDelta) and not acted:
                         piece = self.leak.text(self.scripts.text(event.text))
                         answer.text += piece
-                        for said in self._said(splitter.feed(unnoted.feed(piece))):
+                        for said in self.gate.said(splitter.feed(unnoted.feed(piece))):
                             yield said
-                        if self.stopped:
+                        if self.gate.stopped:
                             return
                         if self.leak.found:  # the rest is reasoning: what was held is said
                             break
@@ -343,42 +340,5 @@ class Turn:
                 _log.info("talker_text_after_action_dropped", turn_id=self.turn.turn_id)
             return
         rest = unnoted.feed(self.leak.close()) + unnoted.close()
-        for said in self._said((*splitter.feed(rest), *splitter.close())):
+        for said in self.gate.said((*splitter.feed(rest), *splitter.close())):
             yield said
-
-    def _said(self, clauses: Iterable[str]) -> list[TalkerEvent]:
-        """`clauses`, each spoken once the guard passed it, or blocked, or dropped past the
-        reply's question limit (the module's docstring)."""
-        events: list[TalkerEvent] = []
-        for text in clauses:
-            if self.stopped:
-                break
-            if self.scripts.changed and not any(char.isalnum() for char in text):
-                continue  # the filter left it nothing to say: never a clause said as silence
-            if self.questions.drops(text, said=self.guard.passed):
-                continue  # a question past the reply's limit, or a clause after one: unsaid
-            checked = self.guard.check(text)
-            if checked.passed:
-                events.append(SpokenClause(text=text, language=self.language))
-                continue
-            self.blocked += 1
-            claim = checked.reason == "unsupported_claim"
-            self.memory.notes[self.turn.turn_id] = CLAIM_BLOCKED if claim else BLOCKED
-            events.append(
-                ClauseBlocked(
-                    text=text,
-                    language=self.language,
-                    unsupported=checked.unsupported,
-                    reason=checked.reason,
-                )
-            )
-            self.stopped = self.settings.guard.on_block == "drop_rest"
-        return events
-
-    def _shown(self, card: Card, tool: str) -> bool:
-        """Whether `card`'s text passes the guard; a card that does not is not shown, and is
-        logged by its tool's name alone."""
-        if self.guard.ids_pass(card.texts()):
-            return True
-        _log.warning("talker_card_blocked", turn_id=self.turn.turn_id, tool=tool)
-        return False
