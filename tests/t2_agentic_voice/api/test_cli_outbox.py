@@ -32,7 +32,10 @@ from tests.t2_agentic_voice.fakes import FakeClock
 
 APP = "zx_outbox_app:make_runtime"
 SUBJECT = "made-up-subject-4471"
-SUMMARY = "made-up summary 5309 of the laptop"
+# A part of the draft that no log line's own text can hold: digits alone can sit in a line's
+# timestamp (its microseconds once read "...255309Z").
+PART = "q5309x"
+SUMMARY = f"made-up summary {PART} of the laptop"
 NUMBER = "2026111082000123"
 START = datetime(2026, 11, 10, 9, 0, tzinfo=UTC)
 
@@ -105,7 +108,7 @@ def app(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> _App:
 
 
 def _no_content(out: str) -> None:
-    for value in (SUBJECT, SUMMARY, "5309", NUMBER, "draft_json", "result_json"):
+    for value in (SUBJECT, SUMMARY, PART, NUMBER, "draft_json", "result_json"):
         assert value not in out, value
 
 
