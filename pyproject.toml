@@ -255,11 +255,15 @@ faulthandler_timeout = 120
 # An exception escaping a thread or a finalizer is a bug, never only a warning. Pipecat 1.15.0's
 # `pipecat/audio/utils.py` imports the standard library's `audioop`, which Python 3.12 marks
 # deprecated (3.13 removes it, and the lock brings `audioop-lts` there): a test that imports
-# Pipecat can do nothing about it.
+# Pipecat can do nothing about it. So for Pipecat's own `AudioContextWordTTSService`, which
+# subclasses its deprecated `AudioContextTTSService` when `pipecat.services.tts_service` is
+# imported (the library's bridge subclasses `TTSService`): the warning names `<frozen abc>`,
+# the class's creation, so only its message can be matched.
 filterwarnings = [
     "error::pytest.PytestUnhandledThreadExceptionWarning",
     "error::pytest.PytestUnraisableExceptionWarning",
     "ignore:'audioop' is deprecated:DeprecationWarning:pipecat.audio.utils",
+    "ignore:`AudioContextTTSService` is deprecated:DeprecationWarning",
 ]
 # Tests that need something outside the repository declare a marker here and skip themselves
 # when it is absent, so CI and a fresh clone stay green.

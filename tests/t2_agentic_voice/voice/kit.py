@@ -33,39 +33,49 @@ from tests.t2_agentic_voice.session_fakes import AGENT
 
 quiet_pipecat()
 
-from aiortc import (  # noqa: E402
+from aiortc import (  # noqa: E402 - after quiet_pipecat()
     RTCConfiguration,
     RTCDataChannel,
     RTCPeerConnection,
     RTCSessionDescription,
 )
-from aiortc.mediastreams import AudioStreamTrack  # noqa: E402
-from pipecat.audio.turn.base_turn_analyzer import (  # noqa: E402
+from aiortc.mediastreams import AudioStreamTrack  # noqa: E402 - after quiet_pipecat()
+from pipecat.audio.turn.base_turn_analyzer import (  # noqa: E402 - after quiet_pipecat()
     BaseTurnAnalyzer,
     BaseTurnParams,
     EndOfTurnState,
 )
-from pipecat.audio.vad.vad_analyzer import VADAnalyzer, VADParams  # noqa: E402
-from pipecat.frames.frames import Frame, InputAudioRawFrame, StartFrame  # noqa: E402
-from pipecat.metrics.metrics import MetricsData  # noqa: E402
-from pipecat.pipeline.pipeline import Pipeline  # noqa: E402
-from pipecat.pipeline.worker import PipelineWorker  # noqa: E402
-from pipecat.processors.frame_processor import FrameDirection, FrameProcessor  # noqa: E402
-from pipecat.workers.runner import WorkerRunner  # noqa: E402
-from t2_agentic_voice.core.config import VoiceSettings  # noqa: E402
-from t2_agentic_voice.core.events import Event  # noqa: E402
-from t2_agentic_voice.core.tracing import Tracing  # noqa: E402
-from t2_agentic_voice.domain.declaration import VoiceAgent  # noqa: E402
-from t2_agentic_voice.voice.calls import VoiceCalls  # noqa: E402
-from t2_agentic_voice.voice.pipeline import CallPipeline  # noqa: E402
-from t2_agentic_voice.voice.session.commands import (  # noqa: E402
+from pipecat.audio.vad.vad_analyzer import (  # noqa: E402 - after quiet_pipecat()
+    VADAnalyzer,
+    VADParams,
+)
+from pipecat.frames.frames import (  # noqa: E402 - after quiet_pipecat()
+    Frame,
+    InputAudioRawFrame,
+    StartFrame,
+)
+from pipecat.metrics.metrics import MetricsData  # noqa: E402 - after quiet_pipecat()
+from pipecat.pipeline.pipeline import Pipeline  # noqa: E402 - after quiet_pipecat()
+from pipecat.pipeline.worker import PipelineWorker  # noqa: E402 - after quiet_pipecat()
+from pipecat.processors.frame_processor import (  # noqa: E402 - after quiet_pipecat()
+    FrameDirection,
+    FrameProcessor,
+)
+from pipecat.workers.runner import WorkerRunner  # noqa: E402 - after quiet_pipecat()
+from t2_agentic_voice.core.config import VoiceSettings  # noqa: E402 - after quiet_pipecat()
+from t2_agentic_voice.core.events import Event  # noqa: E402 - after quiet_pipecat()
+from t2_agentic_voice.core.tracing import Tracing  # noqa: E402 - after quiet_pipecat()
+from t2_agentic_voice.domain.declaration import VoiceAgent  # noqa: E402 - after quiet_pipecat()
+from t2_agentic_voice.voice.calls import VoiceCalls  # noqa: E402 - after quiet_pipecat()
+from t2_agentic_voice.voice.pipeline import CallPipeline  # noqa: E402 - after quiet_pipecat()
+from t2_agentic_voice.voice.session.commands import (  # noqa: E402 - after quiet_pipecat()
     Command,
     HangUp,
     ListenIn,
     Speak,
 )
-from t2_agentic_voice.voice.session.io import Session  # noqa: E402
-from t2_agentic_voice.voice.session.session_events import (  # noqa: E402
+from t2_agentic_voice.voice.session.io import Session  # noqa: E402 - after quiet_pipecat()
+from t2_agentic_voice.voice.session.session_events import (  # noqa: E402 - after quiet_pipecat()
     Connected,
     Ending,
     SessionEvent,

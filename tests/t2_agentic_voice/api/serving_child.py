@@ -80,8 +80,8 @@ def main(port: int, folder: Path) -> None:
     logger_provider.add_log_record_processor(SimpleLogRecordProcessor(logs))
     _logs.set_logger_provider(logger_provider)
     setattr(phrase_cache, "PhraseCache", FakePhraseCache)  # noqa: B010 - a stand-in
-    setattr(used_tokens, "SqliteUsedTokens", FakeUsedTokens)  # noqa: B010
-    setattr(uvicorn, "Server", _Server)  # noqa: B010
+    setattr(used_tokens, "SqliteUsedTokens", FakeUsedTokens)  # noqa: B010 - a stand-in
+    setattr(uvicorn, "Server", _Server)  # noqa: B010 - a stand-in
     harness = Harness(dev_settings(folder), calls=_LoopCalls())
     threading.Thread(target=_stop_when, args=(folder / STOP,), daemon=True).start()
     serve(lambda: harness.runtime, port=port)

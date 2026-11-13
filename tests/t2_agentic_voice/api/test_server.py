@@ -133,9 +133,10 @@ def test_serve_runs_the_runtime_with_its_settings(
     tmp_path: Path, ran: list[uvicorn.Config]
 ) -> None:
     harness = Harness(dev_settings(tmp_path))
-    serve(lambda: harness.runtime, host="0.0.0.0", port=9000, prefix="/calls")  # noqa: S104
+    every_interface = "0.0.0.0"  # noqa: S104 - never bound: `ran` keeps the config instead
+    serve(lambda: harness.runtime, host=every_interface, port=9000, prefix="/calls")
     [config] = ran
-    assert (config.host, config.port) == ("0.0.0.0", 9000)  # noqa: S104
+    assert (config.host, config.port) == (every_interface, 9000)
     assert asyncio.run(_statuses(config, "/calls/health", "/calls/dev")) == [503, 404]
 
 
