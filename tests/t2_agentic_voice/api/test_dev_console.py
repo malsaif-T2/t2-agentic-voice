@@ -1,8 +1,8 @@
-"""The test console (api/dev_console.py, D-083): its feed keeps the runtime's events in memory,
-bounded by calls and records, and answers a page's long poll at once, on a new record, or when
-its wait ends; its routes come with the dev page alone and answer only a loopback client that
-names a loopback host, under `env` dev; its setup holds no secret; and its page holds no script
-or style of its own, every id its script reads among the page's."""
+"""The test console (api/dev_console.py, api/dev_feed.py; D-083): its feed keeps the runtime's
+events in memory, bounded by calls and records, and answers a page's long poll at once, on a new
+record, or when its wait ends; its routes come with the dev page alone and answer only a loopback
+client that names a loopback host, under `env` dev; its setup holds no secret; and its page holds no
+script or style of its own, every id its script reads among the page's."""
 
 from __future__ import annotations
 
@@ -23,7 +23,8 @@ import pytest
 from fastapi import FastAPI
 from pydantic import SecretStr
 from t2_agentic_voice.api import dev_console
-from t2_agentic_voice.api.dev_console import DevFeed, FeedQuery, loopback_host, setup_of
+from t2_agentic_voice.api.dev_console import FeedQuery, loopback_host, setup_of
+from t2_agentic_voice.api.dev_feed import CONSOLE_FOLDER, DevFeed
 from t2_agentic_voice.core.config import VoiceSettings
 from t2_agentic_voice.core.events import (
     CallStarted,
@@ -195,7 +196,7 @@ def test_a_file_that_cannot_be_written_is_logged_by_its_kind_and_the_event_kept(
 
 def test_a_runtimes_feed_saves_under_its_data_folder(tmp_path: Path) -> None:
     harness, app = _app(tmp_path)
-    folder = harness.settings.storage.var_dir / dev_console.CONSOLE_FOLDER
+    folder = harness.settings.storage.var_dir / CONSOLE_FOLDER
 
     async def scene() -> None:
         async with _serving(app):

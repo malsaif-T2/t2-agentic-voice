@@ -1,5 +1,5 @@
-"""The router's record of each call it joined (api/runtime.py, "The record of each call"; D-029):
-the call's ID and its offer secret, and, until its offer, who joined and in which language.
+"""The router's record of each call it joined (api/router.py; D-029): the call's ID and its offer
+secret, and, until its offer, who joined and in which language.
 
 `/join` mints each call's ID and its offer secret here, random and for that call only; `POST`
 and `PATCH /offer` find the call's record with the secret the client sent, compared in constant

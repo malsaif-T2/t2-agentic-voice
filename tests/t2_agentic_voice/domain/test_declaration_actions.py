@@ -11,14 +11,13 @@ from typing import Any
 import pytest
 from pydantic import BaseModel
 from t2_agentic_voice.actions.action import Action, action
+from t2_agentic_voice.actions.agent_tools import tools_of
 from t2_agentic_voice.actions.tools import Tool, tool
-from t2_agentic_voice.api import providers
 from t2_agentic_voice.core.config import VoiceSettings
 from t2_agentic_voice.core.errors import ConfigurationError
 from t2_agentic_voice.domain.action_declaration import Claims, ReadBack, Say
 from t2_agentic_voice.domain.declaration import Language, VoiceAgent
 from t2_agentic_voice.domain.talker_declaration import DeclaredAction, DeclaredTool
-from t2_agentic_voice.testing import text_watch
 
 ENGLISH = Language.english(greeting="Hi! How can I help?")
 SAUDI = Language.saudi_arabic(greeting="هلا! وش أقدر أساعدك فيه؟")
@@ -144,13 +143,11 @@ def test_an_action_is_not_a_tool_the_runner_runs_and_nothing_else_is_taken_for_o
 
     made = _action()
     agent = VoiceAgent(name="branch-helper", languages=[ENGLISH, SAUDI], tools=[search, made])
-    for module in (providers, text_watch):
-        assert module.tools_of(agent) == (search,)
-        assert all(isinstance(each, Tool) for each in module.tools_of(agent))
+    assert tools_of(agent) == (search,)
+    assert all(isinstance(each, Tool) for each in tools_of(agent))
     other = VoiceAgent(name="branch-helper", languages=[ENGLISH, SAUDI], tools=[Stranger()])
-    for module in (providers, text_watch):
-        with pytest.raises(ConfigurationError):
-            module.tools_of(other)
+    with pytest.raises(ConfigurationError):
+        tools_of(other)
 
 
 def test_the_settings_an_action_reads_default_to_adding_nothing() -> None:

@@ -1,8 +1,9 @@
 """The agent's voices, as the runtime's start opens them (api/runtime.py; the design's 10.4): the
 phrase cache, which has the agent's fixed phrases at hand under `storage.var_dir/<agent
-name>/phrases`, declared on the providers' text-to-speech; and, with `tts.cache_clauses` on and
-an agent whose calls run the talker (`session.mode_for`, as api/providers.py reads it), the clause
-cache over that text-to-speech under `<agent name>/clauses`, opened, its own close pushed on the
+name>/phrases` (api/lockfile.py's `agent_folder`), declared on the providers' text-to-speech;
+and, with `tts.cache_clauses` on and an agent whose calls run the talker (`session.mode_for`, as
+agent/talker.py's `chat_talkers` reads it), the clause cache over that text-to-speech under
+`<agent name>/clauses`, opened, its own close pushed on the
 runtime's stack. Otherwise the calls get the providers' text-to-speech itself. An echo agent's
 calls never have a clause cache: the echo says the caller's words back, and the cache keeps only
 what the agent produced (plan 007). The cache never closes the text-to-speech it wraps: the
@@ -14,6 +15,7 @@ from __future__ import annotations
 from contextlib import AsyncExitStack
 from dataclasses import dataclass
 
+from t2_agentic_voice.api.lockfile import agent_folder
 from t2_agentic_voice.core.config import VoiceSettings
 from t2_agentic_voice.domain.declaration import VoiceAgent
 from t2_agentic_voice.domain.ports.text_to_speech import TextToSpeech
@@ -37,7 +39,7 @@ async def open_voices(
     the agent call for one (the module's docstring), its close pushed on `stack`."""
     from t2_agentic_voice.adapters.phrase_cache import PhraseCache  # at first use: a test swaps it
 
-    folder = settings.storage.var_dir / agent.name
+    folder = agent_folder(settings, agent)
     phrases = PhraseCache.from_settings(settings, tts, folder=folder / "phrases")
     requests = await phrases.declare(agent)
     spoken = tts

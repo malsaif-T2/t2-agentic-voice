@@ -4,10 +4,7 @@ each reply's events with when they came (`WatchedTalker`), the read-backs among 
 (`plans_of`), and each tool call's arguments and result (`RecordingRunner`, the tool runner the
 text call's talker is given), the results' evidence being what the output guard's checks of the
 call read; each confirmed action the session hands the part that acts, and how it ended
-(`RecordingJobs`, the `ActionJobs` the text call's session is given); and the agent's tools as
-the runner runs them (`tools_of`), its actions (`actions_of`), and the factory of each call's
-talker a replayed call uses (`chat_talkers`, as api/providers.py's `talkers` builds the
-runtime's).
+(`RecordingJobs`, the `ActionJobs` the text call's session is given).
 """
 
 from __future__ import annotations
@@ -20,77 +17,23 @@ from typing import Any
 
 from pydantic import JsonValue
 
-from t2_agentic_voice.actions.action import Action
-from t2_agentic_voice.actions.action_runner import ActionRunner
 from t2_agentic_voice.actions.runner import ToolRunner
 from t2_agentic_voice.actions.tools import CallContext, Tool, ToolResult
 from t2_agentic_voice.agent.events import ReadBackRequested
 from t2_agentic_voice.agent.talker import (
-    ChatTalker,
     ReplyScope,
     Talker,
-    TalkerCall,
     TalkerEvent,
 )
 from t2_agentic_voice.core.clock import Clock
-from t2_agentic_voice.core.config import VoiceSettings
 from t2_agentic_voice.core.conversation import ConversationLine, TalkerTurn
-from t2_agentic_voice.core.errors import ConfigurationError
 from t2_agentic_voice.core.events import CallId, TurnId
 from t2_agentic_voice.core.identity import Caller
 from t2_agentic_voice.core.settings.tts import LanguageTag
 from t2_agentic_voice.domain.action_lines import ReadBackPlan
-from t2_agentic_voice.domain.declaration import VoiceAgent
 from t2_agentic_voice.domain.ports.action_jobs import ActionJobs, ActionOutcome
-from t2_agentic_voice.domain.ports.chat_model import ChatModel, ToolCallRequest
+from t2_agentic_voice.domain.ports.chat_model import ToolCallRequest
 from t2_agentic_voice.domain.yes_rule import ConfirmedAction
-from t2_agentic_voice.voice.talkers import TalkerFactory
-
-
-def tools_of(agent: VoiceAgent) -> tuple[Tool, ...]:
-    """The agent's tools, each the library's `Tool` the runner runs, its actions left to their
-    own runner; ConfigurationError for any other."""
-    tools = tuple(tool for tool in agent.tools if isinstance(tool, Tool))
-    if len(tools) + sum(isinstance(tool, Action) for tool in agent.tools) != len(agent.tools):
-        raise ConfigurationError(
-            "A tool the agent declares is not one the library runs. FIX: build each with @tool, "
-            "Tool.from_function, knowledge_tool or @action."
-        )
-    return tools
-
-
-def actions_of(agent: VoiceAgent) -> tuple[Action, ...]:
-    """The agent's actions, in the order it declares them."""
-    return tuple(tool for tool in agent.tools if isinstance(tool, Action))
-
-
-def chat_talkers(
-    agent: VoiceAgent,
-    settings: VoiceSettings,
-    chat: ChatModel | None,
-    actions: ActionRunner | None = None,
-) -> TalkerFactory | None:
-    """The factory of each call's talker: the library's `ChatTalker` on `chat`, with one tool
-    runner of the agent's tools and `actions`, the agent's action runner, one for every call;
-    None for an agent whose calls run the echo, or with no chat model (voice's entry point then
-    refuses an agent that runs the talker)."""
-    mode = settings.session.mode_for(instructed=agent.instructed, prefix=settings.prefix)
-    if mode != "talker" or chat is None:
-        return None
-    runner, model = ToolRunner(tools_of(agent)), chat
-
-    def build(call: TalkerCall, clock: Clock) -> Talker:
-        return ChatTalker(
-            agent,
-            model=model,
-            runner=runner,
-            settings=settings,
-            call=call,
-            clock=clock,
-            actions=actions,
-        )
-
-    return build
 
 
 @dataclass(kw_only=True)

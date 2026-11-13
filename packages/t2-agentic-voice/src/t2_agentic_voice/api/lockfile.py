@@ -9,6 +9,10 @@ its first byte, POSIX's `fcntl.flock`; it goes with the process, so a process th
 leaves the file but no lock, and the next start takes it. Each module is imported by name when
 the lock is taken (`importlib`), so this module imports on every platform, and its tests run
 each one's calls on any platform with a stand-in.
+
+Under the same folder each agent keeps its own files in a folder named after it
+(`agent_folder`): its phrases and clauses (api/voices.py), its used-token store (api/runtime.py)
+and its outbox (api/actions.py).
 """
 
 from __future__ import annotations
@@ -19,8 +23,10 @@ import sys
 from pathlib import Path
 from typing import Final
 
+from t2_agentic_voice.core.config import VoiceSettings
 from t2_agentic_voice.core.errors import ConfigurationError
 from t2_agentic_voice.core.logging import get_logger
+from t2_agentic_voice.domain.declaration import VoiceAgent
 
 # The lock file's name under `storage.var_dir`.
 LOCK_NAME: Final = "runtime.lock"
@@ -31,6 +37,12 @@ _FIX = (
 )
 
 log = get_logger(__name__)
+
+
+def agent_folder(settings: VoiceSettings, agent: VoiceAgent) -> Path:
+    """The folder `agent`'s own files are kept in under `storage.var_dir` (the module's
+    docstring)."""
+    return settings.storage.var_dir / agent.name
 
 
 class LockFile:

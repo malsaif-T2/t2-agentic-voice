@@ -1,4 +1,5 @@
-"""The composition of the talker (api/providers.py, voice/talkers.py, voice/calls.py; plan 006):
+"""The composition of the talker (api/providers.py, agent/talker.py's `chat_talkers`,
+voice/talkers.py, voice/calls.py; plan 006):
 the providers gain the chat model, Groq's from the settings; each call of an agent that runs
 the talker gets its own `ChatTalker`, on the runtime's chat model, one tool runner of the agent's
 tools and the call's clock; an agent that runs the echo gets none; voice's entry point refuses an
@@ -14,11 +15,12 @@ from typing import Any
 
 import pytest
 from pydantic import BaseModel, SecretStr
+from t2_agentic_voice.actions.agent_tools import tools_of
 from t2_agentic_voice.actions.tools import Tool
 from t2_agentic_voice.adapters import groq_tts
 from t2_agentic_voice.adapters.groq_chat import GroqChat
-from t2_agentic_voice.agent.talker import ChatTalker, TalkerCall
-from t2_agentic_voice.api.providers import Providers, talkers, tools_of
+from t2_agentic_voice.agent.talker import ChatTalker, TalkerCall, chat_talkers
+from t2_agentic_voice.api.providers import Providers
 from t2_agentic_voice.api.runtime import VoiceRuntime
 from t2_agentic_voice.core.config import VoiceSettings
 from t2_agentic_voice.core.errors import ConfigurationError
@@ -101,7 +103,7 @@ def test_each_call_of_an_instructed_agent_gets_a_talker_of_its_own(
     settings: VoiceSettings,
 ) -> None:
     chat, clock = _Chat(), FakeClock()
-    factory = talkers(AGENT, settings, chat)
+    factory = chat_talkers(AGENT, settings, chat)
     assert factory is not None
     call = TalkerCall(call_id="c-1", caller=Caller(subject="s-1"), language="en")
     first, second = factory(call, clock), factory(call, clock)
@@ -109,9 +111,10 @@ def test_each_call_of_an_instructed_agent_gets_a_talker_of_its_own(
     assert first is not second
     assert (first.model, first.settings, first.call, first.clock) == (chat, settings, call, clock)
     assert first.runner is second.runner and first.runner.tools == (SEARCH,)  # one runner
-    assert talkers(ECHO, settings, chat) is None and talkers(AGENT, settings, None) is None
+    assert chat_talkers(ECHO, settings, chat) is None
+    assert chat_talkers(AGENT, settings, None) is None
     echo = settings.model_copy(update={"session": SessionSettings(mode="echo")})
-    assert talkers(AGENT, echo, chat) is None  # a team's first audio check
+    assert chat_talkers(AGENT, echo, chat) is None  # a team's first audio check
 
 
 def test_a_tool_the_library_cannot_run_is_refused() -> None:

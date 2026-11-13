@@ -1,7 +1,8 @@
 """What the application is running with: a typed summary of its settings, without secrets.
 
-It takes core's VoiceSettings and returns a typed model; the health route the api layer serves
-decides how to show it.
+`status` takes core's VoiceSettings and returns a typed model, `Status`, public at the package
+root for an app's own health report, which an app builds on it. The runtime's own `GET /health`
+(api/router.py) does not use it: it answers its environment and the calls voice holds live.
 """
 
 from __future__ import annotations

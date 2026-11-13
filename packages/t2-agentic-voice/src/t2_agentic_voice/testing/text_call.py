@@ -63,10 +63,10 @@ from types import TracebackType
 from typing import Literal, Self
 
 from t2_agentic_voice.actions.action_runner import ActionRunner
+from t2_agentic_voice.actions.agent_tools import action_runner, actions_of, tools_of
 from t2_agentic_voice.actions.memory_outbox import MemoryOutbox
 from t2_agentic_voice.actions.record import ActionRecord
-from t2_agentic_voice.actions.runner import ToolRunner
-from t2_agentic_voice.agent.talker import ChatTalker, Talker, TalkerCall
+from t2_agentic_voice.agent.talker import Talker, TalkerCall, talker_factory
 from t2_agentic_voice.core.clock import SYSTEM_CLOCK, Clock
 from t2_agentic_voice.core.config import VoiceSettings
 from t2_agentic_voice.core.errors import ConfigurationError
@@ -97,9 +97,7 @@ from t2_agentic_voice.testing.text_watch import (
     RecordingJobs,
     RecordingRunner,
     WatchedTalker,
-    actions_of,
     plans_of,
-    tools_of,
 )
 from t2_agentic_voice.voice.protocol import Hangup, Stop
 from t2_agentic_voice.voice.session.call import CallSession
@@ -174,18 +172,11 @@ class TextCall:
         self._time: Clock = SYSTEM_CLOCK
 
     def _talker(self, call: TalkerCall, settings: VoiceSettings, clock: Clock) -> Talker:
-        """The call's talker: the library's, on the test's model, the agent's tools and its
-        actions' runner, the one the session's jobs go to."""
-        runner: ToolRunner = self._runner or ToolRunner(tools_of(self.agent))
-        return ChatTalker(
-            self.agent,
-            model=self.llm,
-            runner=runner,
-            settings=settings,
-            call=call,
-            clock=clock,
-            actions=self._actions,
-        )
+        """The call's talker: the library's, built as the runtime builds it (agent/talker.py's
+        `talker_factory`), on the test's model, the agent's tools through the recording runner,
+        and its actions' runner, the one the session's jobs go to."""
+        build = talker_factory(self.agent, settings, self.llm, self._actions, runner=self._runner)
+        return build(call, clock)
 
     async def __aenter__(self) -> Self:
         settings = self.settings or VoiceSettings(env="test")
@@ -203,17 +194,16 @@ class TextCall:
             self.llm.clock = clock  # this call's, whatever an earlier call set
         caller = self.caller or Caller(subject="text-call")
         language = self.agent.call_language(self.language, locale=caller.locale)
-        if actions := actions_of(self.agent):  # the part that acts, as the runtime gives it
+        agent = self.agent
+        if actions_of(agent):  # the part that acts, as the runtime gives it
             self._record = ActionRecord()
-            per_day = settings.limits.actions_per_caller_per_day
-            self._actions = ActionRunner(
-                actions, outbox=self.outbox, record=self._record, per_caller_per_day=per_day
-            )
+            self._actions = action_runner(agent, settings, outbox=self.outbox, record=self._record)
             self._jobs = RecordingJobs(self._actions)
         talker: Talker | None = None
-        if settings.session.mode_for(instructed=self.agent.instructed) == "talker":
+        mode = settings.session.mode_for(instructed=agent.instructed, prefix=settings.prefix)
+        if mode == "talker":
             call = TalkerCall(call_id=CALL_ID, caller=caller, language=language.tag)
-            self._runner = RecordingRunner(tools_of(self.agent))
+            self._runner = RecordingRunner(tools_of(agent))
             self._watched = talker = WatchedTalker(self._talker(call, settings, clock), clock)
         side = self._side = TextSide(clock, chars_per_second=self.chars_per_second)
         side.fault = self._faulted

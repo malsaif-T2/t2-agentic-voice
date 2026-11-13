@@ -31,6 +31,7 @@ talker's clause, never the caller's words or a draft's values (GP-19).
 from __future__ import annotations
 
 from t2_agentic_voice.actions.action import Action
+from t2_agentic_voice.actions.agent_tools import actions_of
 from t2_agentic_voice.agent.events import ReadBackRequested, SpokenClause, ToolEnded
 from t2_agentic_voice.core.config import VoiceSettings
 from t2_agentic_voice.domain.claims import (
@@ -46,7 +47,7 @@ from t2_agentic_voice.testing.text_actions import own_lines
 from t2_agentic_voice.testing.text_read_back import is_template, readings, summary_played_at
 from t2_agentic_voice.testing.text_reads import TextReads
 from t2_agentic_voice.testing.text_turn import TextTurn
-from t2_agentic_voice.testing.text_watch import actions_of, plans_of
+from t2_agentic_voice.testing.text_watch import plans_of
 from t2_agentic_voice.testing.turn_data import HeardClause
 
 

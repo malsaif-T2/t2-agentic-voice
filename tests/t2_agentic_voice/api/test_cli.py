@@ -51,11 +51,15 @@ for argv in {HELPS!r}:
         except SystemExit as stopped:
             found["helps"].append([stopped.code, out.getvalue()])
 found["help"] = sorted(m for m in HEAVY if m in sys.modules)
+import t2_agentic_voice.api.doctor
+found["doctor"] = sorted(m for m in HEAVY if m in sys.modules)
 print(json.dumps(found))
 """
 
 
 def test_help_only_prints_help_and_imports_nothing_heavy() -> None:
+    """Nor does `t2v doctor`'s module, which reads `Providers` from api/providers.py: FastAPI,
+    which api/runtime.py imports, costs about a second at import."""
     done = subprocess.run(
         [sys.executable, "-c", _CHILD],
         cwd=ROOT,
@@ -68,7 +72,7 @@ def test_help_only_prints_help_and_imports_nothing_heavy() -> None:
     )
     assert done.stderr == ""
     found = json.loads(done.stdout)
-    assert found["import"] == [] and found["help"] == []
+    assert found["import"] == [] and found["help"] == [] and found["doctor"] == []
     assert len(found["helps"]) == len(HELPS)
     for code, text in found["helps"]:
         assert code == 0 and text.startswith("usage: t2v")

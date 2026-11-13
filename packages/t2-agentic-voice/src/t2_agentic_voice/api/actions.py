@@ -1,8 +1,9 @@
-"""The actions of a runtime's agent, composed (plan 007, Track B; the design's 6.4 and 10.6): the
-composition root's part, since only api may build an adapter (harness.toml [layers]).
+"""The actions of a runtime's agent, composed (the design's 6.4 and 10.6): the composition root's
+part, since only api may build an adapter (harness.toml [layers]).
 
 - **`open_actions`**, in the runtime's lifespan: for an agent that declares actions, one
-  `ActionRunner` for every call of the runtime, on the SQLite outbox at `outbox_path`
+  `ActionRunner` for every call of the runtime (actions/agent_tools.py's `action_runner`, as the
+  test calls build theirs), on the SQLite outbox at `outbox_path`
   (`storage.var_dir/<agent name>/outbox.sqlite3`), the per-caller cap from
   `limits.actions_per_caller_per_day`; the rows an earlier process left `sending` reconciled
   before any call starts (invariant 6); the outbox closed as the lifespan ends. An agent with
@@ -29,14 +30,14 @@ from pathlib import Path
 from typing import Final
 
 from t2_agentic_voice.actions.action_runner import ActionRunner
-from t2_agentic_voice.api.lockfile import LockFile
-from t2_agentic_voice.api.providers import actions_of
+from t2_agentic_voice.actions.agent_tools import action_runner, actions_of
+from t2_agentic_voice.api.lockfile import LockFile, agent_folder
 from t2_agentic_voice.core.clock import SYSTEM_CLOCK, Clock
 from t2_agentic_voice.core.config import VoiceSettings
 from t2_agentic_voice.core.errors import NotFoundError
 from t2_agentic_voice.core.logging import get_logger
 from t2_agentic_voice.domain.declaration import VoiceAgent
-from t2_agentic_voice.domain.ports.outbox import Outbox, OutboxEntry, OutboxState
+from t2_agentic_voice.domain.ports.outbox import OutboxEntry, OutboxState
 
 # The outbox's file under the agent's folder of `storage.var_dir`.
 OUTBOX_NAME: Final = "outbox.sqlite3"
@@ -48,17 +49,7 @@ log = get_logger(__name__)
 
 def outbox_path(settings: VoiceSettings, agent: VoiceAgent) -> Path:
     """Where `agent`'s outbox is kept: its folder of `storage.var_dir`."""
-    return settings.storage.var_dir / agent.name / OUTBOX_NAME
-
-
-def _runner(agent: VoiceAgent, settings: VoiceSettings, outbox: Outbox) -> ActionRunner:
-    """The runner, which emits no event: the session reports each outcome's (the module's
-    docstring)."""
-    return ActionRunner(
-        actions_of(agent),
-        outbox=outbox,
-        per_caller_per_day=settings.limits.actions_per_caller_per_day,
-    )
+    return agent_folder(settings, agent) / OUTBOX_NAME
 
 
 async def open_actions(
@@ -72,7 +63,7 @@ async def open_actions(
         return None
     outbox = await SqliteOutbox.open(outbox_path(settings, agent))
     stack.push_async_callback(outbox.aclose)
-    runner = _runner(agent, settings, outbox)
+    runner = action_runner(agent, settings, outbox=outbox)
     reconciled = await runner.reconcile(clock=clock)
     log.info("actions_opened", actions=len(runner.actions), reconciled=reconciled)
     return runner
@@ -125,7 +116,8 @@ async def reconciled(
     try:
         outbox = await SqliteOutbox.open(path)
         try:
-            return await _runner(agent, settings, outbox).reconcile(clock=clock, flagged=True)
+            runner = action_runner(agent, settings, outbox=outbox)
+            return await runner.reconcile(clock=clock, flagged=True)
         finally:
             await outbox.aclose()
     finally:

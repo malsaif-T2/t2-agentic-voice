@@ -13,9 +13,10 @@ from typing import cast
 
 import pytest
 from fastapi import HTTPException, Request
+from t2_agentic_voice.adapters.dev_identity import is_loopback
 from t2_agentic_voice.api import router as routing
 from t2_agentic_voice.api.offers import CallRecords
-from t2_agentic_voice.api.router import Served, _Routes, loopback
+from t2_agentic_voice.api.router import Served, _Routes
 from t2_agentic_voice.core.config import VoiceSettings
 from t2_agentic_voice.core.settings.server import ServerSettings
 
@@ -229,11 +230,14 @@ def test_the_dev_page_refuses_any_env_but_dev_before_it_reads_the_address(
         ("::ffff:127.0.0.1", True),
         ("::ffff:10.0.0.1", False),
         ("10.0.0.1", False),
+        ("::1%lo", True),
         ("fe80::1%eth0", False),
+        ("127.0.0.1%lo", False),  # no IPv4 address has a zone: no client's, so not this machine's
         ("testclient", False),
         ("", False),
         (None, False),
     ],
 )
 def test_loopback_is_this_machine_alone(host: str | None, local: bool) -> None:
-    assert loopback(host) is local
+    """The dev page's rule, the dev caller's and the test console's (`is_loopback`)."""
+    assert is_loopback(host) is local

@@ -20,7 +20,7 @@ from pydantic import SecretStr
 from t2_agentic_voice.adapters.groq_tts import GroqTTS
 from t2_agentic_voice.api.cli import main
 from t2_agentic_voice.api.doctor import SAMPLES, Check, Wall, checks, onnx
-from t2_agentic_voice.api.runtime import Providers
+from t2_agentic_voice.api.providers import Providers
 from t2_agentic_voice.core.config import VoiceSettings
 from t2_agentic_voice.core.errors import ProviderError
 from t2_agentic_voice.core.settings.groq import GroqSettings
@@ -115,6 +115,26 @@ def test_a_model_whose_terms_are_not_accepted_fails_with_its_fix_line(
     assert english.endswith(f"(rejected) {TERMS_FIX}")
     [arabic] = [line for line in lines if line.startswith("FAIL  synthesis ar")]
     assert arabic.endswith("(rejected)")
+
+
+def test_the_providers_it_built_are_each_closed_though_one_close_fails(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    """Every provider the settings built is closed after the checks, in order, the ones after a
+    close that failed included; then the failure is raised."""
+
+    class _Failing(FakeSpeechToText):
+        async def aclose(self) -> None:
+            await super().aclose()
+            raise OSError("made-up close failure")
+
+    stt, tts = _Failing(), FakeTextToSpeech()
+    monkeypatch.setattr(
+        Providers, "from_settings", classmethod(lambda cls, s: Providers(stt=stt, tts=tts))
+    )
+    with pytest.raises(OSError, match="made-up close failure"):
+        asyncio.run(checks(_settings(tmp_path), synthesize=False))
+    assert stt.closed and tts.closed
 
 
 def test_a_synthesis_with_no_audio_fails(tmp_path: Path) -> None:

@@ -44,15 +44,23 @@ tool's `ms`, a request's `first_token_s`, and the prompt's date (`compose_prompt
 date of `clock.wall()`). So a test that moves its clock on brings what is due by then, and only
 that.
 
+**Built for each call** by one factory of a call's `ChatTalker` (`talker_factory`), which the
+runtime (api/runtime.py) and the audio call (testing/audio_call.py) reach through
+`chat_talkers`, and the text call (testing/text_call.py) directly: the agent's mode, read under
+the settings' prefix (`session.mode_for`), says whether its calls run the talker; one tool
+runner of the agent's tools serves every call, and so does the agent's action runner, when it
+declares actions.
+
 What one reply does, request by request, is agent/turn.py's.
 """
 
 from __future__ import annotations
 
-from collections.abc import AsyncIterator
+from collections.abc import AsyncIterator, Callable
 from typing import Protocol
 
 from t2_agentic_voice.actions.action_runner import ActionRunner
+from t2_agentic_voice.actions.agent_tools import tools_of
 from t2_agentic_voice.actions.runner import ToolRunner
 from t2_agentic_voice.agent.events import (
     ClauseBlocked,
@@ -96,6 +104,8 @@ __all__ = [
     "TalkerEvent",
     "ToolBegan",
     "ToolEnded",
+    "chat_talkers",
+    "talker_factory",
 ]
 
 
@@ -159,3 +169,49 @@ class ChatTalker:
             record=self.record,
         )
         return run.events()
+
+
+def chat_talkers(
+    agent: VoiceAgent,
+    settings: VoiceSettings,
+    chat: ChatModel | None,
+    actions: ActionRunner | None = None,
+    *,
+    runner: ToolRunner | None = None,
+) -> Callable[[TalkerCall, Clock], Talker] | None:
+    """The factory of each call's talker (the module's docstring), `talker_factory`'s on
+    `chat`; None for an agent whose calls run the echo, or with no chat model (voice's entry
+    point then refuses an agent that runs the talker, saying so). A ConfigurationError naming
+    `session.mode` under the settings' prefix when it is talker for an agent with no
+    instructions."""
+    mode = settings.session.mode_for(instructed=agent.instructed, prefix=settings.prefix)
+    if mode != "talker" or chat is None:
+        return None
+    return talker_factory(agent, settings, chat, actions, runner=runner)
+
+
+def talker_factory(
+    agent: VoiceAgent,
+    settings: VoiceSettings,
+    model: ChatModel,
+    actions: ActionRunner | None = None,
+    *,
+    runner: ToolRunner | None = None,
+) -> Callable[[TalkerCall, Clock], Talker]:
+    """The factory of each call's `ChatTalker` of an agent whose calls run the talker: on
+    `model`, with `runner` (one of the agent's tools unless given) and `actions`, the agent's
+    action runner, for every call."""
+    tools = runner if runner is not None else ToolRunner(tools_of(agent))
+
+    def build(call: TalkerCall, clock: Clock) -> Talker:
+        return ChatTalker(
+            agent,
+            model=model,
+            runner=tools,
+            settings=settings,
+            call=call,
+            clock=clock,
+            actions=actions,
+        )
+
+    return build

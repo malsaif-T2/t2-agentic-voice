@@ -213,6 +213,19 @@ def test_a_text_call_refuses_another_env_and_use_outside_its_block(settings: Voi
         asyncio.run(TextCall(AGENT, llm=NoModel()).user("hello"))
 
 
+def test_talker_set_for_an_agent_with_no_instructions_names_the_setting_under_its_prefix(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """As the runtime's error does (agent/talker.py's `chat_talkers`): the variable to change,
+    under the prefix the settings were loaded with."""
+    monkeypatch.setenv("HELPDESK_VOICE_ENV", "test")
+    monkeypatch.setenv("HELPDESK_VOICE_SESSION__MODE", "talker")
+    settings = VoiceSettings.from_env(prefix="HELPDESK_VOICE_")
+    echo = VoiceAgent(name="echo", languages=[Language.english(greeting="Hello.")])
+    with pytest.raises(ConfigurationError, match="HELPDESK_VOICE_SESSION__MODE is talker"):
+        asyncio.run(TextCall(echo, llm=NoModel(), settings=settings).__aenter__())
+
+
 def test_on_the_system_clock_a_turn_returns_once_its_reply_is_written() -> None:
     def script(turn: TalkerTurn) -> list[Step]:
         return [Work(0.05), *answer("Done.")]

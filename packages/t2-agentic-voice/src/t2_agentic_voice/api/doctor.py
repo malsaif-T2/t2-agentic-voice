@@ -7,7 +7,7 @@ can check without a call, each a `Check` that passes or says what to fix.
   shows only with `--synthesize`.
 - **The ONNX files** Silero VAD and Smart Turn run on, each file's SHA-256 against the one the
   installed Pipecat wheel's record holds, read from its metadata: Pipecat is not imported.
-- **The classifier's files** (plan 007's Block H), under `stt.live_language = "classified"`:
+- **The classifier's files** (D-086), under `stt.live_language = "classified"`:
   each model file in `stt.classifier_dir` against its pinned size and SHA-256
   (adapters/model_files.py), as the ONNX files are checked; and under `stt.classifier =
   "ecapa"`, whether torch is installed and any CUDA package (`nvidia-*`, `cuda-*`) or triton
@@ -37,6 +37,7 @@ import base64
 import hashlib
 import math
 from collections.abc import Callable, Mapping, Sequence
+from contextlib import AsyncExitStack
 from dataclasses import dataclass
 from datetime import UTC, datetime
 from importlib import metadata
@@ -46,7 +47,7 @@ from typing import Final
 from t2_agentic_voice.adapters.ecapa_language import ECAPA_FILES
 from t2_agentic_voice.adapters.model_files import ModelFile, digest, folder_problem, problem
 from t2_agentic_voice.adapters.silero_language import SILERO_FILES
-from t2_agentic_voice.api.runtime import Providers
+from t2_agentic_voice.api.providers import Providers
 from t2_agentic_voice.core.config import VoiceSettings
 from t2_agentic_voice.core.errors import ConfigurationError, ProviderError
 from t2_agentic_voice.core.settings.tts import LanguageTag
@@ -109,8 +110,8 @@ async def checks(
     wall: Wall = _utc_now,
 ) -> list[Check]:
     """Every check, in order; `providers` are the settings' own unless given (a test's fakes),
-    and are closed after when built here; `wall` is this machine's UTC time unless given (a
-    test's)."""
+    and are closed after when built here, each of them even when one's close fails; `wall` is
+    this machine's UTC time unless given (a test's)."""
     found = [_key(settings)]
     built = providers is None
     if providers is None:
@@ -120,7 +121,10 @@ async def checks(
             clock = _clock(settings, wall(), "no language check ran")
             found += [Check("providers", False, error.message), *onnx()]
             return [*found, *classifier_checks(settings), clock]
-    try:
+    async with AsyncExitStack() as stack:
+        if built:  # closed in order, speech-to-text first, each whatever the one before did
+            for provider in reversed(providers.each()):
+                stack.push_async_callback(provider.aclose)
         measured: _Reading | None = None
         passed = False
         for tag in settings.tts.languages:
@@ -136,13 +140,6 @@ async def checks(
         if synthesize:
             for tag in settings.tts.languages:
                 found.append(await _synthesis(providers, tag))
-    finally:
-        if built:
-            await providers.stt.aclose()
-            await providers.tts.aclose()
-            for other in (providers.chat, providers.classifier):
-                if other is not None:
-                    await other.aclose()
     return found
 
 
