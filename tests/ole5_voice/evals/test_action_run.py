@@ -261,6 +261,8 @@ def test_what_a_run_refuses_before_anything_is_sent(
         (["--points-text", "points.jsonl"], "no --points-text"),
         (["--arm", "A"], "--arm is not a name"),
         (["--judge-model", TALKER], "other than the talker's"),
+        (["--note", ""], "a run needs --note"),
+        (["--split", "held-out", "--smoke-only"], "one whole session"),
     ],
 )
 def test_the_command_line_refuses_what_a_run_cannot_be(

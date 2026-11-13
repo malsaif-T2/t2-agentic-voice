@@ -25,7 +25,6 @@ from __future__ import annotations
 
 import argparse
 import asyncio
-import math
 import sys
 from collections.abc import Mapping, Sequence
 from pathlib import Path
@@ -42,6 +41,7 @@ from t2_agentic_voice import (
 from ole5_voice import LOGGERS
 from ole5_voice.evals import history
 from ole5_voice.evals.answerers import ANSWERERS, RunAnswerer, make_answerer
+from ole5_voice.evals.cli import amount, count, require, seconds
 from ole5_voice.evals.groq_answerer import Budget, CapReachedError, Policy, least_billed
 from ole5_voice.evals.items import HISTORY_FILE
 from ole5_voice.evals.language_arms import flag_problem, language_arm
@@ -83,24 +83,6 @@ _CLIPS_HELP = "a windows run's source of clip answers: the model's first dev sco
 log = get_logger(__name__)
 
 
-def _count(text: str) -> int:
-    if (value := int(text)) < 1:
-        raise argparse.ArgumentTypeError("must be 1 or more")
-    return value
-
-
-def _amount(text: str) -> float:
-    if not math.isfinite(value := float(text)) or value < 0:
-        raise argparse.ArgumentTypeError("must be a finite number, 0 or more")
-    return value
-
-
-def _seconds(text: str) -> float:
-    if not math.isfinite(value := float(text)) or value <= 0:
-        raise argparse.ArgumentTypeError("must be a finite number of seconds above 0")
-    return value
-
-
 def _parser() -> argparse.ArgumentParser:
     parser = argparse.ArgumentParser(prog="poe eval", description=_DESCRIPTION)
     add = parser.add_argument
@@ -108,7 +90,7 @@ def _parser() -> argparse.ArgumentParser:
     add("--answerer", choices=ANSWERERS, help="reference (sends nothing) or groq (Whisper)")
     add("--split", choices=get_args(Split), help="the split the run covers, all of it")
     add("--model", choices=MODELS, help="stt.model for this run (groq needs it)")
-    add("--timeout-s", type=_seconds, help="stt.timeout_s for this run (groq needs it)")
+    add("--timeout-s", type=seconds, help="stt.timeout_s for this run (groq needs it)")
     add("--base-url", help=f"groq.base_url for this run ({GROQ_BASE_URL})")
     add("--language-hint", choices=("label", "auto", "ar", "en"), default="label", help=_HINT_HELP)
     add("--prompt-agent", help=_PROMPT_HELP)
@@ -119,22 +101,22 @@ def _parser() -> argparse.ArgumentParser:
     add("--audio", action="append", default=[], metavar="ROOT=FOLDER", help=_AUDIO_HELP)
     add("--out", type=Path, help=_OUT_HELP)
     rpm, attempts, limit = policy.max_rpm, policy.max_attempts, policy.variant_timeout_s
-    add("--max-rpm", type=_count, default=rpm, help=f"requests a minute, at most ({rpm})")
+    add("--max-rpm", type=count, default=rpm, help=f"requests a minute, at most ({rpm})")
     add(
         "--max-attempts",
-        type=_count,
+        type=count,
         default=attempts,
         help=f"attempts of each request ({attempts})",
     )
     add(
         "--variant-timeout-s",
-        type=_seconds,
+        type=seconds,
         default=limit,
         help=f"each variant's limit ({limit:g})",
     )
-    add("--price-per-hour", type=_amount, help="USD an hour of billed audio (groq needs it)")
-    add("--cap-usd", type=_amount, help="the most the run may spend (groq needs it)")
-    add("--windows-ms", type=_count, nargs="+", default=[], help=_WINDOWS_HELP)
+    add("--price-per-hour", type=amount, help="USD an hour of billed audio (groq needs it)")
+    add("--cap-usd", type=amount, help="the most the run may spend (groq needs it)")
+    add("--windows-ms", type=count, nargs="+", default=[], help=_WINDOWS_HELP)
     add("--clips-from", type=Path, help=_CLIPS_HELP)
     add("--questions", type=Path, help="a dev screen file, one item/variant a line: only these")
     add("--tracing-endpoint", help="trace the run to this OTLP endpoint (dev only)")
@@ -148,16 +130,10 @@ def _require(parser: argparse.ArgumentParser, args: argparse.Namespace) -> None:
     """The flags a run needs together; `--show-settings` needs none."""
     if args.show_settings:
         return
-    named = ("answerer", "split", "out", "note")
-    missing = [f"--{name}" for name in named if not getattr(args, name)]
+    named = ["answerer", "split", "out", "note"]
     if args.answerer == "groq":
-        pinned = {"--model": args.model, "--timeout-s": args.timeout_s}
-        pinned |= {"--price-per-hour": args.price_per_hour, "--cap-usd": args.cap_usd}
-        missing += [flag for flag, value in pinned.items() if value is None]
-    if missing:
-        parser.error(f"a run needs {', '.join(missing)}")
-    if holds_placeholder(args.note):
-        parser.error("--note holds an install placeholder, which the docs check refuses")
+        named += ["model", "timeout_s", "price_per_hour", "cap_usd"]
+    require(parser, args, named)
     if args.split == "held-out" and (args.questions or args.smoke_only or args.tracing_endpoint):
         parser.error(
             "a held-out run covers its whole split, untraced: no --questions, "

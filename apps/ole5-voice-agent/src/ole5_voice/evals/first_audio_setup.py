@@ -80,18 +80,6 @@ class FirstAudioParts:
     load_factory: Loader = load_factory
 
 
-def price(text: str) -> tuple[str, float]:
-    """An argparse type: `--tts-price MODEL=USD`, per million characters."""
-    model, equals, amount = text.partition("=")
-    try:
-        value = float(amount)
-    except ValueError:
-        value = -1.0
-    if not equals or not model or not value >= 0 or value == float("inf"):
-        raise argparse.ArgumentTypeError("give a price as MODEL=USD, per million characters")
-    return model, value
-
-
 def settings_of(args: argparse.Namespace) -> VoiceSettings:
     """The settings `poe eval` loads, untraced, with the arm's from the flags (the clause
     cache's among them, so the run records it) and each `--set` on top."""

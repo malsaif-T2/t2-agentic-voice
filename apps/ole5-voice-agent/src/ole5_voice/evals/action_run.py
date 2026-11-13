@@ -57,21 +57,20 @@ from ole5_voice.evals.action_setup import (
     most_usd,
 )
 from ole5_voice.evals.chat_pacing import Spend
+from ole5_voice.evals.cli import count
 from ole5_voice.evals.factories import Closing, env_file_of, knowledge_of
 from ole5_voice.evals.items import HISTORY_FILE
 from ole5_voice.evals.judge import Judge
 from ole5_voice.evals.kb_points import RecordingKnowledge, digest
-from ole5_voice.evals.models import NAME_RULE, is_name
 from ole5_voice.evals.run_folder import RunFolder, folder_for
 from ole5_voice.evals.run_parts import DATA
-from ole5_voice.evals.runs import holds_placeholder
 from ole5_voice.evals.talker_args import (
     TalkerParts,
     add_common,
     call_settings,
     chat_settings,
-    count,
     pacing,
+    require,
     shown,
 )
 from ole5_voice.evals.talker_measure import StopRun
@@ -111,22 +110,9 @@ def _parser() -> argparse.ArgumentParser:
 def _require(parser: argparse.ArgumentParser, args: argparse.Namespace) -> None:
     """The command line's checks, as runs K's and S's (`talker_args.require`), but for the
     points' text, which run A does not read."""
-    named = ["arm", "max_output_tokens", "timeout_s", "agent", "knowledge", "search_tool"]
-    named += ["out", "note", "split"]
-    if lacking := [f"--{n.replace('_', '-')}" for n in named if getattr(args, n) is None]:
-        parser.error(f"a run needs {', '.join(lacking)}")
+    require(parser, args, "split", without=("points_text",))
     if args.points_text is not None:
         parser.error("run A reads no knowledge item's points: no --points-text")
-    if holds_placeholder(args.note):
-        parser.error("--note holds an install placeholder, which the docs check refuses")
-    if not is_name(args.arm):
-        parser.error(f"--arm is not a name, which is {NAME_RULE}")
-    if args.judge_model == args.model:
-        parser.error("--judge-model is a model other than the talker's (Q6)")
-    if args.resume and args.smoke_only:
-        parser.error("--resume goes on with a run's work: no --smoke-only")
-    if args.split == "held-out" and (args.resume or args.smoke_only):
-        parser.error("a held-out run is one whole session: no --resume or --smoke-only")
 
 
 @dataclass

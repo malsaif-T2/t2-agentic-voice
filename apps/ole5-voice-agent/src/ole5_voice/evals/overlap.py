@@ -28,7 +28,6 @@ from __future__ import annotations
 
 import argparse
 import asyncio
-import math
 import sys
 from collections.abc import Callable, Sequence
 from dataclasses import dataclass, field
@@ -48,6 +47,7 @@ from t2_agentic_voice.ports import SpeechToText
 
 from ole5_voice import LOGGERS
 from ole5_voice.evals import history, run_settings
+from ole5_voice.evals.cli import amount, count, require, seconds
 from ole5_voice.evals.import_calls import load_replies
 from ole5_voice.evals.items import SCRIPT_FILE, GoldenSetError, read_toml
 from ole5_voice.evals.models import NAME_RULE, Split, is_name
@@ -76,7 +76,6 @@ from ole5_voice.evals.overlap_run import (
 )
 from ole5_voice.evals.pacers import MinutePacer
 from ole5_voice.evals.run_parts import DATA, Choice, Parts, audio_roots, load_plan
-from ole5_voice.evals.runs import holds_placeholder
 from ole5_voice.evals.takes import Script
 from ole5_voice.evals.worktree import check_out, refused, run_checkout
 
@@ -98,18 +97,6 @@ class OverlapParts:
     append_line: AppendLine = history.append_line
 
 
-def _amount(text: str) -> float:
-    if not math.isfinite(value := float(text)) or value < 0:
-        raise argparse.ArgumentTypeError("must be a finite number, 0 or more")
-    return value
-
-
-def _count(text: str) -> int:
-    if (value := int(text)) < 1:
-        raise argparse.ArgumentTypeError("must be 1 or more")
-    return value
-
-
 def _parser() -> argparse.ArgumentParser:
     parser = argparse.ArgumentParser(prog="poe overlap", description=_DESCRIPTION)
     add = parser.add_argument
@@ -117,15 +104,15 @@ def _parser() -> argparse.ArgumentParser:
     add("--split", choices=get_args(Split), help="the split the run covers, all of it")
     add("--set", type=setting, action="append", default=[], metavar="GROUP.NAME=VALUE")
     add("--model", choices=run_settings.MODELS, help="stt.model for this run")
-    add("--timeout-s", type=_amount, help="stt.timeout_s for this run")
+    add("--timeout-s", type=seconds, help="stt.timeout_s for this run")
     add("--base-url", help=f"groq.base_url for this run ({run_settings.GROQ_BASE_URL})")
     add("--env-file", type=Path, help="the .env file the settings load from (never printed)")
     add("--var-dir", type=Path, help="the settings' var_dir")
     add("--audio", action="append", default=[], metavar="ROOT=FOLDER", help="an audio root")
     add("--replies", type=Path, help="the folder of the lab's replies.json")
-    add("--price-per-hour", type=_amount, help="USD an hour of Whisper's billed audio")
-    add("--cap-usd", type=_amount, help="the most the run may spend")
-    add("--stt-rpm", type=_count, default=STT_RPM, help=f"Whisper requests a minute ({STT_RPM})")
+    add("--price-per-hour", type=amount, help="USD an hour of Whisper's billed audio")
+    add("--cap-usd", type=amount, help="the most the run may spend")
+    add("--stt-rpm", type=count, default=STT_RPM, help=f"Whisper requests a minute ({STT_RPM})")
     add("--out", type=Path, help="a new folder, outside the worktree, that git ignores")
     add("--note", help="why the run is made")
     parser.set_defaults(tracing_endpoint=None)  # an overlap run is untraced
@@ -136,11 +123,7 @@ def _require(parser: argparse.ArgumentParser, args: argparse.Namespace) -> None:
     named = ["answerer", "split", "out", "note"]
     if args.answerer == "pipeline":
         named += ["model", "timeout_s", "price_per_hour", "cap_usd"]
-    missing = [f"--{name.replace('_', '-')}" for name in named if getattr(args, name) is None]
-    if missing:
-        parser.error(f"a run needs {', '.join(missing)}")
-    if holds_placeholder(args.note):
-        parser.error("--note holds an install placeholder, which the docs check refuses")
+    require(parser, args, named)
 
 
 def shown(settings: VoiceSettings, args: argparse.Namespace) -> dict[str, str]:

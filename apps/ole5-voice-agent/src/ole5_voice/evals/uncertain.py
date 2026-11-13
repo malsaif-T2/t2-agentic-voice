@@ -27,7 +27,6 @@ from __future__ import annotations
 
 import argparse
 import asyncio
-import math
 import sys
 from collections.abc import Callable, Sequence
 from dataclasses import dataclass, field
@@ -41,13 +40,14 @@ from t2_agentic_voice.ports import ChatModel
 from ole5_voice import LOGGERS
 from ole5_voice.evals import history, run_settings
 from ole5_voice.evals.audio import sha256_file
+from ole5_voice.evals.cli import EFFORTS, amount, count, require, seconds
 from ole5_voice.evals.files import read_model
 from ole5_voice.evals.models import NAME_RULE, is_name
 from ole5_voice.evals.overlap_card import AppendLine, OverlapScorecard
 from ole5_voice.evals.overlap_plan import setting, with_set
 from ole5_voice.evals.pacers import MinutePacer
 from ole5_voice.evals.run_parts import DATA, Choice, Parts, audio_roots, load_plan
-from ole5_voice.evals.runs import SCORECARD_FILE, holds_placeholder
+from ole5_voice.evals.runs import SCORECARD_FILE
 from ole5_voice.evals.uncertain_card import UncertainRun, close_run
 from ole5_voice.evals.uncertain_rejudge import ReplayerFactory, rejudged
 from ole5_voice.evals.uncertain_run import Asking, Found, Prices, asked, request_of
@@ -73,40 +73,28 @@ class UncertainParts:
     append_line: AppendLine = history.append_line
 
 
-def _amount(text: str) -> float:
-    if not math.isfinite(value := float(text)) or value < 0:
-        raise argparse.ArgumentTypeError("must be a finite number, 0 or more")
-    return value
-
-
-def _count(text: str) -> int:
-    if (value := int(text)) < 1:
-        raise argparse.ArgumentTypeError("must be 1 or more")
-    return value
-
-
 def _parser() -> argparse.ArgumentParser:
     parser = argparse.ArgumentParser(prog="poe uncertain", description=_DESCRIPTION)
     add = parser.add_argument
     add("--overlaps", type=Path, help="a dev overlap run's scorecard, or its --out folder")
     add("--audio", action="append", default=[], metavar="ROOT=FOLDER", help="an audio root")
     add("--model", help="llm.model: the arm's chat model")
-    add("--reasoning-effort", choices=("low", "medium", "high"), help="llm.reasoning_effort")
-    add("--max-output-tokens", type=_count, help="llm.max_output_tokens")
-    add("--timeout-s", type=_amount, help="llm.timeout_s")
-    add("--temperature", type=_amount, default=0.0, help="the requests' temperature (0)")
+    add("--reasoning-effort", choices=EFFORTS, help="llm.reasoning_effort")
+    add("--max-output-tokens", type=count, help="llm.max_output_tokens")
+    add("--timeout-s", type=seconds, help="llm.timeout_s")
+    add("--temperature", type=amount, default=0.0, help="the requests' temperature (0)")
     add("--base-url", help=f"groq.base_url for this run ({run_settings.GROQ_BASE_URL})")
     add("--env-file", type=Path, help="the .env file the settings load from (never printed)")
     add("--var-dir", type=Path, help="the settings' var_dir")
     add("--set", type=setting, action="append", default=[], metavar="GROUP.NAME=VALUE")
-    add("--price-input", type=_amount, help="USD per million tokens read")
-    add("--price-cached", type=_amount, help="USD per million cached tokens (the input's)")
-    add("--price-output", type=_amount, help="USD per million tokens written")
-    add("--cap-usd", type=_amount, help="the most the run may spend")
-    add("--rpm", type=_count, default=RPM, help=f"chat requests a minute, at most ({RPM})")
-    add("--day-requests", type=_count, help="the requests the key may still send today")
-    add("--max-attempts", type=_count, default=MAX_ATTEMPTS, help=f"each's ({MAX_ATTEMPTS})")
-    add("--item-timeout-s", type=_amount, default=ITEM_TIMEOUT_S, help="each request's limit")
+    add("--price-input", type=amount, help="USD per million tokens read")
+    add("--price-cached", type=amount, help="USD per million cached tokens (the input's)")
+    add("--price-output", type=amount, help="USD per million tokens written")
+    add("--cap-usd", type=amount, help="the most the run may spend")
+    add("--rpm", type=count, default=RPM, help=f"chat requests a minute, at most ({RPM})")
+    add("--day-requests", type=count, help="the requests the key may still send today")
+    add("--max-attempts", type=count, default=MAX_ATTEMPTS, help=f"each's ({MAX_ATTEMPTS})")
+    add("--item-timeout-s", type=seconds, default=ITEM_TIMEOUT_S, help="each request's limit")
     add("--out", type=Path, help="a new folder, outside the worktree, that git ignores")
     add("--note", help="why the run is made")
     add("--smoke-only", action="store_true", help="ask the smoke test alone")
@@ -116,11 +104,7 @@ def _parser() -> argparse.ArgumentParser:
 def _require(parser: argparse.ArgumentParser, args: argparse.Namespace) -> None:
     named = ["overlaps", "model", "reasoning_effort", "max_output_tokens", "timeout_s"]
     named += ["price_input", "price_output", "cap_usd", "day_requests", "out", "note"]
-    missing = [f"--{name.replace('_', '-')}" for name in named if getattr(args, name) is None]
-    if missing:
-        parser.error(f"a run needs {', '.join(missing)}")
-    if holds_placeholder(args.note):
-        parser.error("--note holds an install placeholder, which the docs check refuses")
+    require(parser, args, named)
 
 
 def _settings(args: argparse.Namespace) -> VoiceSettings:

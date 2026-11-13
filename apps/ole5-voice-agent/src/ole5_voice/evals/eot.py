@@ -32,6 +32,7 @@ from t2_agentic_voice.ports import AudioClip
 from ole5_voice import LOGGERS
 from ole5_voice.evals import history, run_settings
 from ole5_voice.evals.audio import read_wav
+from ole5_voice.evals.cli import require
 from ole5_voice.evals.eot_score import (
     Decision,
     EotResult,
@@ -46,7 +47,7 @@ from ole5_voice.evals.items import HISTORY_FILE
 from ole5_voice.evals.models import NAME_RULE, Split, is_name
 from ole5_voice.evals.run_lines import AnyLine, EotCount, EotLine
 from ole5_voice.evals.run_parts import DATA, Choice, Parts, Todo, audio_roots, load_plan
-from ole5_voice.evals.runs import SCORECARD_FILE, holds_placeholder
+from ole5_voice.evals.runs import SCORECARD_FILE
 from ole5_voice.evals.worktree import check_out, refused, run_checkout
 
 ANSWERERS: Final = ("reference", "pipeline")
@@ -87,13 +88,7 @@ def _parser() -> argparse.ArgumentParser:
 
 
 def _require(parser: argparse.ArgumentParser, args: argparse.Namespace) -> None:
-    missing = [
-        f"--{name}" for name in ("answerer", "split", "out", "note") if not getattr(args, name)
-    ]
-    if missing:
-        parser.error(f"a run needs {', '.join(missing)}")
-    if holds_placeholder(args.note):
-        parser.error("--note holds an install placeholder, which the docs check refuses")
+    require(parser, args, ("answerer", "split", "out", "note"))
     if args.secondary and (args.answerer != "pipeline" or args.split != "dev"):
         parser.error("--secondary is a dev run of the pipeline: its true ends are Silero's own")
 

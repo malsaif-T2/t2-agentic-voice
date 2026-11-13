@@ -64,6 +64,8 @@ def test_a_run_needs_each_flag(
         (["--resume", "--smoke-only"], "no --smoke-only"),
         (["--arm", "K1"], "--arm is not a name"),
         (["--note", "a {{" + "NAME" + "}}"], "install placeholder"),
+        (["--note", ""], "a run needs --note"),
+        (["--search-tool", ""], "a run needs --search-tool"),
     ],
 )
 def test_the_command_line_refuses_what_a_run_cannot_be(

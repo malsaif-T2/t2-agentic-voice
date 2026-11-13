@@ -92,8 +92,6 @@ def _parser() -> argparse.ArgumentParser:
 
 def _require(parser: argparse.ArgumentParser, args: argparse.Namespace) -> None:
     require(parser, args, "split", "call_language")
-    if args.split == "held-out" and (args.resume or args.smoke_only):
-        parser.error("a held-out run is one whole session: no --resume or --smoke-only")
 
 
 @dataclass

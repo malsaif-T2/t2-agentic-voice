@@ -37,7 +37,6 @@ from __future__ import annotations
 import argparse
 import asyncio
 import logging
-import math
 import sys
 from collections.abc import Sequence
 from pathlib import Path
@@ -52,6 +51,7 @@ from t2_agentic_voice import (
 
 from ole5_voice import LOGGERS
 from ole5_voice.evals import run_settings
+from ole5_voice.evals.cli import EFFORTS, amount, count, missing, model_price, require, seconds
 from ole5_voice.evals.factories import Closing
 from ole5_voice.evals.first_audio_cache import CLAUSES_DIR
 from ole5_voice.evals.first_audio_card import AudioRun, Stopped, close_run
@@ -69,7 +69,6 @@ from ole5_voice.evals.first_audio_setup import (
     NEEDED,
     FirstAudioParts,
     agent_of,
-    price,
     prices_of,
     recorded,
     seconds_of,
@@ -81,7 +80,6 @@ from ole5_voice.evals.models import NAME_RULE, Split, is_name
 from ole5_voice.evals.overlap_plan import setting
 from ole5_voice.evals.pacers import MinutePacer
 from ole5_voice.evals.run_parts import DATA, Todo
-from ole5_voice.evals.runs import holds_placeholder
 from ole5_voice.evals.timing_run import TAGS
 from ole5_voice.evals.worktree import check_out, refused, run_checkout
 
@@ -91,18 +89,6 @@ LLM_RPM: Final = 20  # chat requests a minute (the agent's: under the key's limi
 RESULTS_FILE: Final = "results.jsonl"
 _DESCRIPTION = "Run T: the time to first audio of the agent's replies to the recorded requests."
 log = get_logger(__name__)
-
-
-def _amount(text: str) -> float:
-    if not math.isfinite(value := float(text)) or value < 0:
-        raise argparse.ArgumentTypeError("must be a finite number, 0 or more")
-    return value
-
-
-def _count(text: str) -> int:
-    if (value := int(text)) < 1:
-        raise argparse.ArgumentTypeError("must be 1 or more")
-    return value
 
 
 def _parser() -> argparse.ArgumentParser:
@@ -115,26 +101,26 @@ def _parser() -> argparse.ArgumentParser:
     add("--trim-silence", choices=("on", "off"), help="tts.trim_silence: on (T1) or off (T0)")
     add("--clause-cache", choices=("on", "off"), default="off", help="tts.cache_clauses (I1)")
     add("--model", choices=run_settings.MODELS, help="stt.model")
-    add("--timeout-s", type=_amount, help="stt.timeout_s")
+    add("--timeout-s", type=seconds, help="stt.timeout_s")
     add("--llm-model", help="llm.model")
-    add("--llm-reasoning-effort", choices=("low", "medium", "high"), help="llm.reasoning_effort")
-    add("--llm-max-output-tokens", type=_count, help="llm.max_output_tokens")
-    add("--llm-timeout-s", type=_amount, help="llm.timeout_s")
-    add("--llm-input-tokens", type=_count, help="the most one model request reads, budgeted")
+    add("--llm-reasoning-effort", choices=EFFORTS, help="llm.reasoning_effort")
+    add("--llm-max-output-tokens", type=count, help="llm.max_output_tokens")
+    add("--llm-timeout-s", type=seconds, help="llm.timeout_s")
+    add("--llm-input-tokens", type=count, help="the most one model request reads, budgeted")
     add("--base-url", help=f"groq.base_url for this run ({run_settings.GROQ_BASE_URL})")
     add("--env-file", type=Path, help="the .env file the settings load from (never printed)")
     add("--var-dir", type=Path, help="the settings' var_dir, which holds the phrase cache")
     add("--audio", action="append", default=[], metavar="ROOT=FOLDER", help="an audio root")
     add("--set", type=setting, action="append", default=[], metavar="GROUP.NAME=VALUE")
-    add("--price-per-hour", type=_amount, help="USD an hour of Whisper's billed audio")
-    add("--tts-price", type=price, action="append", default=[], metavar="MODEL=USD")
-    add("--llm-price-input", type=_amount, help="USD per million tokens the chat model reads")
-    add("--llm-price-cached", type=_amount, help="USD per million cached tokens (the input's)")
-    add("--llm-price-output", type=_amount, help="USD per million tokens it writes")
-    add("--cap-usd", type=_amount, help="the most the run may spend")
-    add("--stt-rpm", type=_count, default=STT_RPM, help=f"Whisper requests a minute ({STT_RPM})")
-    add("--tts-rpm", type=_count, default=TTS_RPM, help=f"each voice's ({TTS_RPM})")
-    add("--llm-rpm", type=_count, default=LLM_RPM, help=f"the chat model's ({LLM_RPM})")
+    add("--price-per-hour", type=amount, help="USD an hour of Whisper's billed audio")
+    add("--tts-price", type=model_price, action="append", default=[], metavar="MODEL=USD")
+    add("--llm-price-input", type=amount, help="USD per million tokens the chat model reads")
+    add("--llm-price-cached", type=amount, help="USD per million cached tokens (the input's)")
+    add("--llm-price-output", type=amount, help="USD per million tokens it writes")
+    add("--cap-usd", type=amount, help="the most the run may spend")
+    add("--stt-rpm", type=count, default=STT_RPM, help=f"Whisper requests a minute ({STT_RPM})")
+    add("--tts-rpm", type=count, default=TTS_RPM, help=f"each voice's ({TTS_RPM})")
+    add("--llm-rpm", type=count, default=LLM_RPM, help=f"the chat model's ({LLM_RPM})")
     add("--out", type=Path, help="a new folder, outside the worktree, that git ignores")
     add("--note", help="why the run is made")
     add("--smoke-only", action="store_true", help="run the smoke test alone")
@@ -142,14 +128,10 @@ def _parser() -> argparse.ArgumentParser:
 
 
 def _require(parser: argparse.ArgumentParser, args: argparse.Namespace) -> None:
-    missing = [f"--{name.replace('_', '-')}" for name in NEEDED if getattr(args, name) is None]
-    if missing:
-        parser.error(f"a run needs {', '.join(missing)}")
-    if holds_placeholder(args.note):
-        parser.error("--note holds an install placeholder, which the docs check refuses")
+    require(parser, args, NEEDED)
     if args.no_tools and args.knowledge is not None:
         parser.error("--no-tools builds no knowledge base: no --knowledge")
-    if not args.no_tools and args.knowledge is None:
+    if not args.no_tools and missing(args.knowledge):
         parser.error("a run needs --knowledge, or --no-tools for Tn")
 
 

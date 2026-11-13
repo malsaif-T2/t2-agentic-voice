@@ -35,6 +35,7 @@ from t2_agentic_voice import T2VoiceError, configure_logging, get_logger
 from t2_agentic_voice.ports import KnowledgeBase, Passage
 
 from ole5_voice import LOGGERS
+from ole5_voice.evals.cli import require, seconds
 from ole5_voice.evals.factories import Closing, env_file_of, knowledge_of
 from ole5_voice.evals.items import HISTORY_FILE, GoldenSetError, read_toml
 from ole5_voice.evals.kb_points import PointIndex, digest
@@ -54,8 +55,7 @@ from ole5_voice.evals.knowledge_set import KNOWLEDGE_DIR, POINTS_FILE, Points, l
 from ole5_voice.evals.models import Split
 from ole5_voice.evals.run_folder import RunFolder, folder_for
 from ole5_voice.evals.run_parts import DATA
-from ole5_voice.evals.runs import holds_placeholder
-from ole5_voice.evals.talker_args import TalkerParts, seconds
+from ole5_voice.evals.talker_args import TalkerParts
 from ole5_voice.evals.talker_data import TAGS
 from ole5_voice.evals.talker_measure import CALLER, Todo, todo_of
 from ole5_voice.evals.worktree import refused, run_checkout
@@ -105,13 +105,9 @@ def _parser() -> argparse.ArgumentParser:
 
 
 def _require(parser: argparse.ArgumentParser, args: argparse.Namespace) -> None:
-    named = ("split", "knowledge", "out", "note")
-    if lacking := [f"--{name}" for name in named if getattr(args, name) is None]:
-        parser.error(f"a run needs {', '.join(lacking)}")
+    require(parser, args, ("split", "knowledge", "out", "note"))
     if args.split != "dev":
         parser.error("held-out is never read by K0: give --split dev")
-    if holds_placeholder(args.note):
-        parser.error("--note holds an install placeholder, which the docs check refuses")
 
 
 def _shown(args: argparse.Namespace) -> dict[str, str]:

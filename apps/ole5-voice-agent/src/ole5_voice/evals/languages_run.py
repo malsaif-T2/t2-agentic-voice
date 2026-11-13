@@ -52,6 +52,7 @@ from ole5_voice import LOGGERS
 from ole5_voice.agent import ECHO_AGENT
 from ole5_voice.evals import history
 from ole5_voice.evals.audio import read_wav
+from ole5_voice.evals.cli import require
 from ole5_voice.evals.eot import LEAD_S, TAIL_S
 from ole5_voice.evals.eot_score import Decision, judge
 from ole5_voice.evals.items import HISTORY_FILE
@@ -81,7 +82,6 @@ from ole5_voice.evals.languages_setup import (
 from ole5_voice.evals.models import NAME_RULE, Split, is_name
 from ole5_voice.evals.run_lines import AnyLine
 from ole5_voice.evals.run_parts import DATA, Choice, Parts, Todo, audio_roots, load_plan
-from ole5_voice.evals.runs import holds_placeholder
 from ole5_voice.evals.worktree import check_out, refused, run_checkout
 
 _DESCRIPTION = "Measure each turn's language on the golden set, offline, into a new folder --out."
@@ -113,12 +113,7 @@ def _require(parser: argparse.ArgumentParser, args: argparse.Namespace) -> None:
         if any(getattr(args, n) for n in ("split", "classifier", "out", "note", "smoke_only")):
             parser.error("--read takes the passes alone")
         return
-    named = ("split", "classifier", "out", "note")
-    missing = [f"--{name}" for name in named if not getattr(args, name)]
-    if missing:
-        parser.error(f"a pass needs {', '.join(missing)}")
-    if holds_placeholder(args.note):
-        parser.error("--note holds an install placeholder, which the docs check refuses")
+    require(parser, args, ("split", "classifier", "out", "note"), noun="pass")
     if args.smoke_only and args.split != "dev":
         parser.error("--smoke-only is a dev run: its variant is the first dev one")
 
