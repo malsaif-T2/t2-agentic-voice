@@ -22,28 +22,26 @@ count among them, D-084), never a text, and its mock's tickets kept under `--out
 run stopped by the key's daily limit, the cap or an interrupt goes on with `--resume`. A
 held-out run is one whole session: it writes no record, its progress lines are counts only, the
 library's lines but its errors held back, and one that does not finish keeps no result but its
-violations. Each session writes the scorecard (action_card.py) and appends its history line
-(`action_history.ActionLine`); one violation of the hard constraint, in any play, fails the run.
+violations. Each session, run as runs K's and S's are (session_runner.py), writes the scorecard
+(action_card.py) and appends its history line (`action_history.ActionLine`); one violation of
+the hard constraint, in any play, fails the run.
 """
 
 from __future__ import annotations
 
 import argparse
-import asyncio
-import logging
 import sys
 from collections.abc import Callable, Sequence
-from dataclasses import dataclass, field
-from datetime import datetime
+from dataclasses import dataclass
 from pathlib import Path
-from typing import Final
+from typing import ClassVar, Final
 
-from t2_agentic_voice import T2VoiceError, configure_logging, get_logger
+from pydantic import BaseModel
+from t2_agentic_voice import get_logger
 from t2_agentic_voice.evals import TextCall
 
-from ole5_voice import LOGGERS
 from ole5_voice.evals.action_call import ActionCallFactory
-from ole5_voice.evals.action_card import ActionRun, scorecard
+from ole5_voice.evals.action_card import ActionRun, ActionScorecard, scorecard
 from ole5_voice.evals.action_history import action_line
 from ole5_voice.evals.action_play import ActionPlaying
 from ole5_voice.evals.action_scenarios import ACTIONS_DIR, SPLITS, ActionScenario
@@ -56,25 +54,32 @@ from ole5_voice.evals.action_setup import (
     load_scenarios,
     most_usd,
 )
-from ole5_voice.evals.chat_pacing import Spend
 from ole5_voice.evals.cli import count
 from ole5_voice.evals.factories import Closing, knowledge_of
 from ole5_voice.evals.items import HISTORY_FILE
 from ole5_voice.evals.judge import Judge
 from ole5_voice.evals.kb_points import RecordingKnowledge, digest
-from ole5_voice.evals.run_folder import RunFolder, folder_for
+from ole5_voice.evals.run_folder import folder_for
 from ole5_voice.evals.run_parts import DATA
 from ole5_voice.evals.run_settings import env_file_of
+from ole5_voice.evals.session_runner import (
+    SessionRun,
+    check_history,
+    closed,
+    earlier,
+    evenly,
+    first_session,
+    main_of,
+    paced_chat,
+)
 from ole5_voice.evals.talker_args import (
     TalkerParts,
     add_common,
     call_settings,
     chat_settings,
-    pacing,
     require,
     shown,
 )
-from ole5_voice.evals.talker_measure import StopRun
 from ole5_voice.evals.talker_score import PriceShown, Session, Stopped
 from ole5_voice.evals.worktree import refused, run_checkout
 from ole5_voice.tickets.tools import with_ticket_claims
@@ -116,25 +121,14 @@ def _require(parser: argparse.ArgumentParser, args: argparse.Namespace) -> None:
         parser.error("run A reads no knowledge item's points: no --points-text")
 
 
-@dataclass
-class _Found:
-    plays: list[ActionPlayRecord] = field(default_factory=list)
-    stopped: Stopped | None = None
-    dropped: int = 0  # the violations of the smoke tests, whose plays are not the run's
-
-
 def _run(args: argparse.Namespace, parts: ActionParts) -> int:
-    """The run, what it built closed whenever it ends, a refusal's included."""
-    closing = Closing()
-    try:
-        return _built(args, parts, closing)
-    finally:
-        closing.close_now()
+    return closed(lambda closing: _built(args, parts, closing))
 
 
 def _built(args: argparse.Namespace, parts: ActionParts, closing: Closing) -> int:
     checkout = run_checkout(parts.folder, parts.git)
-    folder_of_scenarios = checkout.top / DATA / ACTIONS_DIR
+    data_dir = checkout.top / DATA
+    folder_of_scenarios = data_dir / ACTIONS_DIR
     every = load_scenarios(folder_of_scenarios)
     split = [scenario for scenario in every if scenario.split == args.split]
     smoke = next(scenario for scenario in every if scenario.split == "dev")
@@ -143,7 +137,7 @@ def _built(args: argparse.Namespace, parts: ActionParts, closing: Closing) -> in
     recording = RecordingKnowledge(kb)
     make = AgentFactory(parts.load_factory(args.agent), args.agent)
     agent = checked_agent(make, recording, args.search_tool)
-    history = checkout.top / DATA / HISTORY_FILE
+    history = data_dir / HISTORY_FILE
     held_out = args.split == "held-out"
     if held_out and parts.held_out_run(history):
         raise refused(
@@ -151,20 +145,10 @@ def _built(args: argparse.Namespace, parts: ActionParts, closing: Closing) -> in
             "record its result; a target missed goes to the plan's Future improvements",
         )
     folder = folder_for(args.out, resume=args.resume, checkout=checkout, git=parts.git)
-    done: list[ActionPlayRecord] = []
-    sessions: list[Session] = []
-    if args.resume:
-        done, sessions = folder.results(ActionPlayRecord), folder.sessions(Session)
+    done, sessions = earlier(folder, ActionPlayRecord, resume=args.resume)
     smokes = [play for play in done if play.smoke]  # an earlier smoke test's violations
     done = [play for play in done if not play.smoke]
-    began = parts.now()
-    paced = pacing(
-        args,
-        closing.add(parts.chat(chat)),
-        today=parts.requests_today(history, began.date()),
-        before_usd=sum(session.cost_usd for session in sessions),
-        parts=parts,
-    )
+    began, paced = paced_chat(args, parts, closing, chat, history, sessions)
     info = ActionRun(
         name=folder.out.name,
         started_at=began,
@@ -187,19 +171,9 @@ def _built(args: argparse.Namespace, parts: ActionParts, closing: Closing) -> in
     if args.resume:
         info = folder.resumed(info)
     probe = scorecard(info, split, [], complete=False, stopped=None, sessions=[])
-    first = Session(started_at=info.started_at, stopped=None, variants=0)
-    if not parts.history_accepts(action_line(probe, first, 1, len(split))):
-        raise refused(
-            "the shared history takes no line of run A's kind yet",
-            "name action_history.ActionLine in run_lines.AnyLine, as the integration does",
-        )
-    keys = {(play.scenario, play.repeat) for play in done}
-    todo = [
-        (scenario, repeat)
-        for repeat in range(1, args.repeats + 1)
-        for scenario in split
-        if (scenario.id, repeat) not in keys
-    ]
+    line = action_line(probe, first_session(info.started_at), 1, len(split))
+    check_history(parts, line, "A", "action_history.ActionLine")
+    todo = evenly(split, args.repeats, ((play.scenario, play.repeat) for play in done))
     check_estimate(args, paced, [smoke, *(scenario for scenario, _ in todo)], whole_day=held_out)
     playing = ActionPlaying(
         agent=make,
@@ -215,151 +189,113 @@ def _built(args: argparse.Namespace, parts: ActionParts, closing: Closing) -> in
     )
     if not args.resume:
         folder.begin(info)
-    found = _Found(dropped=sum(len(play.violations) for play in smokes))
     log.info("run_started", run=info.name, split=info.split, plays=len(todo), done=len(done))
-    try:
-        asyncio.run(_measure(playing, smoke, todo, found, folder, args, closing))
-    except KeyboardInterrupt:
-        found.stopped = "interrupted"
-        log.warning("run_interrupted", done=len(found.plays), of=len(todo))
-    except BaseException as error:
-        found.stopped = "error"
-        log.error("run_failed", error=type(error).__name__, done=len(found.plays))
-        raise
-    finally:
-        expected = 1 if args.smoke_only else args.repeats * len(split)
-        _close(
-            info,
-            split,
-            folder,
-            [*done, *found.plays],
-            found,
-            expected=expected,
-            sessions=sessions,
-            spend=paced.spend,
-            began=began,
-            parts=parts,
-            history=history,
-        )
-    return 0 if found.stopped is None else 1
+    session = _Session(
+        folder=folder,
+        data=data_dir,
+        parts=parts,
+        closing=closing,
+        paced=paced,
+        began=began,
+        sessions=sessions,
+        done=done,
+        todo=todo,
+        expected=1 if args.smoke_only else args.repeats * len(split),
+        held_out=held_out,
+        smoke_only=args.smoke_only,
+        info=info,
+        split=split,
+        smoke=smoke,
+        playing=playing,
+        dropped=sum(len(play.violations) for play in smokes),
+    )
+    return session.run()
 
 
-async def _measure(
-    playing: ActionPlaying,
-    smoke: ActionScenario,
-    todo: Sequence[tuple[ActionScenario, int]],
-    found: _Found,
-    folder: RunFolder,
-    args: argparse.Namespace,
-    closing: Closing,
-) -> None:
-    held_out = args.split == "held-out"
-    spend = playing.paced.spend
-    try:
-        record = await playing.play(smoke, 1, name=f"smoke-{smoke.id}")
+@dataclass(kw_only=True)
+class _Session(SessionRun[tuple[ActionScenario, int], ActionPlayRecord, ActionScorecard]):
+    """A session of run A (session_runner.py): each scenario's play one call against its own
+    mock, checked turn by turn (action_play.py); the smoke test the first dev scenario, whose
+    violations are counted, and kept for a resumed dev run as a `smoke` record, though its play
+    is not the run's (`dropped`, with an unfinished held-out run's)."""
+
+    event: ClassVar[str] = "play_done"
+    info: ActionRun
+    split: list[ActionScenario]
+    smoke: ActionScenario
+    playing: ActionPlaying
+    dropped: int  # the violations of plays the scorecard does not keep
+
+    async def smoke_record(self) -> ActionPlayRecord:
+        record = await self.playing.play(self.smoke, 1, name=f"smoke-{self.smoke.id}")
         if record.violations:  # the hard constraint broken: counted, and kept for --resume
-            found.dropped += len(record.violations)
-            if not held_out:
-                folder.add_result(record.model_copy(update={"smoke": True}))
-        if record.failure is not None or record.violations or spend.retries_and_failures():
-            found.stopped = "smoke_failed"
-            log.error(
-                "smoke_failed",
-                failure=record.failure,
-                violations=len(record.violations),
-                requests=spend.requests(),
-            )
-            return
-        log.info("smoke_passed", requests=spend.requests())
-        if args.smoke_only:
-            found.plays.append(record)
-            folder.add_result(record)
-            return
-        for number, (scenario, repeat) in enumerate(todo, start=1):
-            record = await playing.play(scenario, repeat, name=f"{scenario.id}-r{repeat}")
-            found.plays.append(record)
-            if held_out:
-                log.info("play_done", done=number, of=len(todo))
-                continue
-            folder.add_result(record)
-            log.info(
-                "play_done",
-                done=number,
-                of=len(todo),
-                scenario=record.scenario,
-                repeat=repeat,
-                passed=record.passed,
-                failure=record.failure,
-                violations=len(record.violations),
-                stray_characters=record.stray_characters,
-                seconds=round(record.seconds, 2),
-            )
-    except StopRun as stop:
-        found.stopped = stop.reason
-        log.warning("run_stopped", reason=stop.reason, done=len(found.plays), of=len(todo))
-    finally:
-        await closing.aclose()  # the chat model and the knowledge base, in the run's own loop
+            self.dropped += len(record.violations)
+            if not self.held_out:
+                self.folder.add_result(record.model_copy(update={"smoke": True}))
+        return record
 
+    async def record(self, each: tuple[ActionScenario, int]) -> ActionPlayRecord:
+        scenario, repeat = each
+        return await self.playing.play(scenario, repeat, name=f"{scenario.id}-r{repeat}")
 
-def _close(
-    info: ActionRun,
-    split: Sequence[ActionScenario],
-    folder: RunFolder,
-    plays: list[ActionPlayRecord],
-    found: _Found,
-    *,
-    expected: int,
-    sessions: list[Session],
-    spend: Spend,
-    began: datetime,
-    parts: ActionParts,
-    history: Path,
-) -> None:
-    """The session, the scorecard and the session's history line, whatever stopped the run."""
-    stopped = found.stopped
-    complete = stopped is None and len(plays) == expected
-    dropped = found.dropped
-    if info.split == "held-out" and not complete:  # no result, but its violations: run again
-        dropped += sum(len(play.violations) for play in plays)
-        plays = []
-    session = Session(
-        started_at=began,
-        stopped=stopped,
-        variants=len(found.plays),
-        spend=spend.spent(),
-        cost_usd=spend.session_usd(),
-    )
-    folder.add_session(session)
-    every = [*sessions, session]
-    card = scorecard(
-        info, split, plays, complete=complete, stopped=stopped, sessions=every, dropped=dropped
-    )
-    folder.write_scorecard(card)
-    line = action_line(card, session, len(every), len(split))
-    parts.append_line(line, history)
-    parts.append_line(line, folder.out / HISTORY_FILE)
-    if card.held is False:
-        log.warning("hard_constraint_broken", violations=card.totals.violations)
-    if stopped in ("daily_limit", "cap", "interrupted") and info.split == "dev":
-        log.warning("run_resumable", fix="run the same command with --resume to go on")
-    log.info("run_finished", complete=complete, plays=len(plays), passed=card.passed)
+    def smoke_check(self, record: ActionPlayRecord) -> tuple[bool, dict[str, object]]:
+        broke = record.failure is not None or bool(record.violations)
+        return broke, {"failure": record.failure, "violations": len(record.violations)}
+
+    def shown(
+        self, each: tuple[ActionScenario, int], record: ActionPlayRecord
+    ) -> dict[str, object]:
+        return {
+            "scenario": record.scenario,
+            "repeat": each[1],
+            "passed": record.passed,
+            "failure": record.failure,
+            "violations": len(record.violations),
+            "stray_characters": record.stray_characters,
+            "seconds": round(record.seconds, 2),
+        }
+
+    def kept(self, every: list[ActionPlayRecord], complete: bool) -> list[ActionPlayRecord]:
+        """As every run's, but an unfinished held-out run's violations are counted still."""
+        kept = super().kept(every, complete)
+        if kept is not every:  # no result, but its violations: it is run again
+            self.dropped += sum(len(play.violations) for play in every)
+        return kept
+
+    def scorecard(
+        self,
+        records: list[ActionPlayRecord],
+        *,
+        complete: bool,
+        stopped: Stopped | None,
+        sessions: list[Session],
+    ) -> ActionScorecard:
+        return scorecard(
+            self.info,
+            self.split,
+            records,
+            complete=complete,
+            stopped=stopped,
+            sessions=sessions,
+            dropped=self.dropped,
+        )
+
+    def line(self, card: ActionScorecard, session: Session, number: int) -> BaseModel:
+        return action_line(card, session, number, len(self.split))
+
+    def finished(self, card: ActionScorecard, records: list[ActionPlayRecord]) -> dict[str, object]:
+        if card.held is False:
+            log.warning("hard_constraint_broken", violations=card.totals.violations)
+        return {"plays": len(records), "passed": card.passed}
 
 
 def main(argv: Sequence[str] | None = None, *, parts: ActionParts | None = None) -> int:
     """`uv run poe eval-actions`: play run A's scenarios over one split. 0 when the run is
-    complete, 1 when it is not (a failed smoke test, the cap, the day's limit, an interrupt), 2
-    when it is refused before anything is sent; whether it passed is its scorecard's."""
-    parser = _parser()
-    args = parser.parse_args(argv)
-    _require(parser, args)
-    configure_logging(loggers=LOGGERS)
-    if args.split == "held-out":  # the library's lines would tell each play's path apart
-        logging.getLogger("t2_agentic_voice").setLevel(logging.ERROR)
-    try:
-        return _run(args, ActionParts() if parts is None else parts)
-    except T2VoiceError as error:
-        log.error("actions_refused", code=error.code, message=error.message)
-        return 2
+    complete, 1 when it is not (a failed smoke test, the cap, the day's limit, an interrupt, a
+    library error once it began), 2 when it is refused before anything is sent; whether it
+    passed is its scorecard's."""
+    found = ActionParts() if parts is None else parts
+    return main_of(_parser(), argv, _require, lambda args: _run(args, found), "actions_refused")
 
 
 if __name__ == "__main__":

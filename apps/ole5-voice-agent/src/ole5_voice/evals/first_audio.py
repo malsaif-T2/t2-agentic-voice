@@ -35,8 +35,6 @@ beside it, every request counted.
 from __future__ import annotations
 
 import argparse
-import asyncio
-import logging
 import sys
 from collections.abc import Sequence
 from pathlib import Path
@@ -44,12 +42,9 @@ from typing import Final, get_args
 
 from t2_agentic_voice import (
     ProviderError,
-    T2VoiceError,
-    configure_logging,
     get_logger,
 )
 
-from ole5_voice import LOGGERS
 from ole5_voice.evals import run_settings
 from ole5_voice.evals.cli import EFFORTS, amount, count, missing, model_price, require, seconds
 from ole5_voice.evals.factories import Closing
@@ -80,6 +75,7 @@ from ole5_voice.evals.models import NAME_RULE, Split, is_name
 from ole5_voice.evals.overlap_plan import setting
 from ole5_voice.evals.pacers import MinutePacer
 from ole5_voice.evals.run_parts import DATA, Todo
+from ole5_voice.evals.session_runner import closed, main_of, measured
 from ole5_voice.evals.timing_run import TAGS
 from ole5_voice.evals.worktree import check_out, refused, run_checkout
 
@@ -193,12 +189,7 @@ async def _measure(
 
 
 def _run(args: argparse.Namespace, parts: FirstAudioParts) -> int:
-    """The run, what it built closed whenever it ends, a refusal's included."""
-    closing = Closing()
-    try:
-        return _built(args, parts, closing)
-    finally:
-        closing.close_now()
+    return closed(lambda closing: _built(args, parts, closing))
 
 
 def _built(args: argparse.Namespace, parts: FirstAudioParts, closing: Closing) -> int:
@@ -290,15 +281,9 @@ def _built(args: argparse.Namespace, parts: FirstAudioParts, closing: Closing) -
     log.info("run_started", run=info.name, split=info.split, variants=len(todo))
     stopped: Stopped | None = "error"  # until the measuring returns why it stopped
     total = 0 if args.smoke_only else len(todo)
-    try:
-        stopped = asyncio.run(_measure(measuring, dev[0], todo, found, args, out))
-    except KeyboardInterrupt:
-        stopped = "interrupted"
-        log.warning("run_interrupted", done=len(found), of=len(todo))
-    except Exception as error:  # requests were spent: the card and line written all the same
-        log.error("run_failed", error=type(error).__name__, done=len(found), of=len(todo))
-        if not isinstance(error, T2VoiceError):
-            raise  # a bug's traceback, once its card and line are written
+    try:  # requests were spent: the card and line written whatever ends it
+        running = _measure(measuring, dev[0], todo, found, args, out)
+        stopped = measured(running, done=lambda: len(found), of=len(todo))
     finally:
         ended = close_run(info, found, stopped, total, measuring, out, data, parts.append_line)
     return ended
@@ -309,17 +294,8 @@ def main(argv: Sequence[str] | None = None, *, parts: FirstAudioParts | None = N
     complete, 1 when it is not (the phrase cache, a failed smoke test, the cap, a model's day,
     an interrupt, a library error once it started), 2 when it is refused before anything is
     sent."""
-    parser = _parser()
-    args = parser.parse_args(argv)
-    _require(parser, args)
-    configure_logging(loggers=LOGGERS)
-    if args.split == "held-out":  # the talker's lines would tell each recording's path apart
-        logging.getLogger("t2_agentic_voice").setLevel(logging.ERROR)
-    try:
-        return _run(args, FirstAudioParts() if parts is None else parts)
-    except T2VoiceError as error:
-        log.error("first_audio_refused", code=error.code, message=error.message)
-        return 2
+    found = FirstAudioParts() if parts is None else parts
+    return main_of(_parser(), argv, _require, lambda args: _run(args, found), "first_audio_refused")
 
 
 if __name__ == "__main__":

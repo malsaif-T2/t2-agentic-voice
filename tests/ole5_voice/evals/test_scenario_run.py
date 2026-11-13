@@ -28,7 +28,7 @@ from ole5_voice.evals.scenarios import ScriptTurn
 from ole5_voice.evals.talker_data import Clause, HeardTurn, ToolUse
 from ole5_voice.evals.talker_lines import ScenarioLine
 from pydantic import ValidationError
-from t2_agentic_voice import ProviderError
+from t2_agentic_voice import ProviderError, T2VoiceError
 
 from tests.ole5_voice.evals.talker_fakes import JUDGE, TALKER, TOOL, Scripted
 from tests.ole5_voice.evals.talker_support import Setup, make_setup
@@ -219,6 +219,14 @@ def test_an_error_is_raised_once_the_scorecard_is_written(setup: Setup) -> None:
     with pytest.raises(RuntimeError):
         _main(setup)
     assert _card(setup).stopped == "error"
+
+
+def test_a_library_error_once_the_run_began_ends_it_as_not_complete(setup: Setup) -> None:
+    """Exit 1, as run T's, with its scorecard and line written (2, refused, before: evl-11)."""
+    setup.calls.script["question 4"] = Scripted(error=T2VoiceError("Made up."))
+    assert _main(setup) == 1
+    assert _card(setup).stopped == "error" and len(_card(setup).plays) == 3
+    assert len(setup.lines.lines) == 2
 
 
 def test_the_cap_stops_a_run(setup: Setup) -> None:

@@ -10,49 +10,59 @@ once, then every scenario again, until each has its repeats, so a run stopped ea
 the scenarios evenly. Each play is one call, then checked turn by turn (`scenario_play.py`); its
 record is written as it finishes, with a progress line of identifiers and verdicts, never a
 text. A run stopped by the key's daily limit, the cap or an interrupt goes on with `--resume`.
-Each session writes the scorecard and appends its history line (`talker_lines.ScenarioLine`).
+Each session, run as runs K's and A's are (session_runner.py), writes the scorecard and appends
+its history line (`talker_lines.ScenarioLine`).
 """
 
 from __future__ import annotations
 
 import argparse
-import asyncio
 import sys
 from collections.abc import Sequence
-from dataclasses import dataclass, field
+from dataclasses import dataclass
 from pathlib import Path
-from typing import Final
+from typing import ClassVar, Final
 
-from t2_agentic_voice import T2VoiceError, configure_logging, get_logger
+from pydantic import BaseModel
+from t2_agentic_voice import get_logger
 
-from ole5_voice import LOGGERS
 from ole5_voice.evals.factories import Closing
 from ole5_voice.evals.items import HISTORY_FILE, GoldenSetError
 from ole5_voice.evals.judge import JUDGE_REQUESTS, Judge
 from ole5_voice.evals.kb_points import KnowledgeData, load_knowledge
-from ole5_voice.evals.run_folder import RunFolder, folder_for
+from ole5_voice.evals.run_folder import folder_for
 from ole5_voice.evals.run_parts import DATA
 from ole5_voice.evals.scenario_play import Playing
-from ole5_voice.evals.scenario_score import PlayRecord, ScenarioRun, scorecard
+from ole5_voice.evals.scenario_score import PlayRecord, ScenarioRun, ScenarioScorecard, scorecard
 from ole5_voice.evals.scenarios import SCENARIOS_DIR, Scenario, load_scenarios, problems
+from ole5_voice.evals.session_runner import (
+    SessionRun,
+    check_history,
+    closed,
+    earlier,
+    evenly,
+    first_session,
+    main_of,
+    paced_chat,
+)
 from ole5_voice.evals.talker_args import (
     TalkerParts,
     add_common,
     call_settings,
     chat_settings,
     check_budget,
-    pacing,
     require,
     shown,
 )
 from ole5_voice.evals.talker_lines import scenario_line
-from ole5_voice.evals.talker_measure import TALKER_REQUESTS, StopRun
+from ole5_voice.evals.talker_measure import TALKER_REQUESTS
 from ole5_voice.evals.talker_run import agent_of
 from ole5_voice.evals.talker_score import PriceShown, Session, Stopped
 from ole5_voice.evals.worktree import refused, run_checkout
 
 REPEATS: Final = 3  # each scenario three times (the registration's S)
 _DESCRIPTION = "Play run S's scripted calls with the kept arm, each three times, into --out."
+_LINE: Final = "talker_lines.ScenarioLine"
 log = get_logger(__name__)
 
 
@@ -71,12 +81,6 @@ def _require(parser: argparse.ArgumentParser, args: argparse.Namespace) -> None:
         parser.error("--repeats is 1 or more")
 
 
-@dataclass
-class _Found:
-    plays: list[PlayRecord] = field(default_factory=list)
-    stopped: Stopped | None = None
-
-
 def _scenarios(data_dir: Path, data: KnowledgeData) -> tuple[Scenario, ...]:
     try:
         found = load_scenarios(data_dir / SCENARIOS_DIR)
@@ -89,12 +93,7 @@ def _scenarios(data_dir: Path, data: KnowledgeData) -> tuple[Scenario, ...]:
 
 
 def _run(args: argparse.Namespace, parts: TalkerParts) -> int:
-    """The run, what it built closed whenever it ends, a refusal's included."""
-    closing = Closing()
-    try:
-        return _built(args, parts, closing)
-    finally:
-        closing.close_now()
+    return closed(lambda closing: _built(args, parts, closing))
 
 
 def _built(args: argparse.Namespace, parts: TalkerParts, closing: Closing) -> int:
@@ -123,35 +122,13 @@ def _built(args: argparse.Namespace, parts: TalkerParts, closing: Closing) -> in
         repeats=args.repeats,
         smoke_only=args.smoke_only,
     )
-    done: list[PlayRecord] = []
-    sessions: list[Session] = []
     if args.resume:
         info = folder.resumed(info)
-        done, sessions = folder.results(PlayRecord), folder.sessions(Session)
-    history = checkout.top / DATA / HISTORY_FILE
+    done, sessions = earlier(folder, PlayRecord, resume=args.resume)
     probe = scorecard(info, scenarios, [], complete=False, stopped=None, sessions=[])
-    if not parts.history_accepts(
-        scenario_line(probe, Session(started_at=info.started_at, stopped=None, variants=0), 1)
-    ):
-        raise refused(
-            "the shared history takes no line of run S's kind yet",
-            "name talker_lines.ScenarioLine in run_lines.AnyLine, as the integration does",
-        )
-    began = parts.now()
-    paced = pacing(
-        args,
-        closing.add(parts.chat(chat)),
-        today=parts.requests_today(history, began.date()),
-        before_usd=sum(session.cost_usd for session in sessions),
-        parts=parts,
-    )
-    keys = {(play.scenario, play.repeat) for play in done}
-    todo = [
-        (scenario, repeat)
-        for repeat in range(1, args.repeats + 1)
-        for scenario in scenarios
-        if (scenario.id, repeat) not in keys
-    ]
+    check_history(parts, scenario_line(probe, first_session(info.started_at), 1), "S", _LINE)
+    began, paced = paced_chat(args, parts, closing, chat, data_dir / HISTORY_FILE, sessions)
+    todo = evenly(scenarios, args.repeats, ((play.scenario, play.repeat) for play in done))
     turns = max(len(scenario.turns) for scenario in scenarios)
     requests = {args.model: TALKER_REQUESTS * turns, args.judge_model: JUDGE_REQUESTS * turns}
     check_budget(args, paced, units=len(todo) + 1, requests=requests, whole_day=False)
@@ -169,99 +146,85 @@ def _built(args: argparse.Namespace, parts: TalkerParts, closing: Closing) -> in
     )
     if not args.resume:
         folder.begin(info)
-    found = _Found()
     log.info("run_started", run=info.name, plays=len(todo), done=len(done))
-    try:
-        asyncio.run(_measure(playing, scenarios[0], todo, found, folder, args.smoke_only, closing))
-    except KeyboardInterrupt:
-        found.stopped = "interrupted"
-        log.warning("run_interrupted", done=len(found.plays), of=len(todo))
-    except BaseException as error:
-        found.stopped = "error"
-        log.error("run_failed", error=type(error).__name__, done=len(found.plays))
-        raise
-    finally:
-        expected = 1 if args.smoke_only else args.repeats * len(scenarios)
-        every = done + found.plays
-        complete = found.stopped is None and len(every) == expected
-        session = Session(
-            started_at=began,
-            stopped=found.stopped,
-            variants=len(found.plays),
-            spend=paced.spend.spent(),
-            cost_usd=paced.spend.session_usd(),
-        )
-        folder.add_session(session)
-        card = scorecard(
-            info,
-            scenarios,
-            every,
+    session = _Session(
+        folder=folder,
+        data=data_dir,
+        parts=parts,
+        closing=closing,
+        paced=paced,
+        began=began,
+        sessions=sessions,
+        done=done,
+        todo=todo,
+        expected=1 if args.smoke_only else args.repeats * len(scenarios),
+        held_out=False,
+        smoke_only=args.smoke_only,
+        info=info,
+        scenarios=scenarios,
+        playing=playing,
+    )
+    return session.run()
+
+
+@dataclass(kw_only=True)
+class _Session(SessionRun[tuple[Scenario, int], PlayRecord, ScenarioScorecard]):
+    """A session of run S (session_runner.py): each scenario's play one call, checked turn by
+    turn (scenario_play.py), the smoke test the first scenario played once."""
+
+    event: ClassVar[str] = "play_done"
+    info: ScenarioRun
+    scenarios: tuple[Scenario, ...]
+    playing: Playing
+
+    async def smoke_record(self) -> PlayRecord:
+        return await self.playing.play(self.scenarios[0], 1)
+
+    async def record(self, each: tuple[Scenario, int]) -> PlayRecord:
+        return await self.playing.play(*each)
+
+    def smoke_check(self, record: PlayRecord) -> tuple[bool, dict[str, object]]:
+        return record.failure is not None, {"failure": record.failure}
+
+    def shown(self, each: tuple[Scenario, int], record: PlayRecord) -> dict[str, object]:
+        return {
+            "scenario": record.scenario,
+            "repeat": each[1],
+            "passed": record.passed,
+            "failure": record.failure,
+            "seconds": round(record.seconds, 2),
+        }
+
+    def scorecard(
+        self,
+        records: list[PlayRecord],
+        *,
+        complete: bool,
+        stopped: Stopped | None,
+        sessions: list[Session],
+    ) -> ScenarioScorecard:
+        return scorecard(
+            self.info,
+            self.scenarios,
+            records,
             complete=complete,
-            stopped=found.stopped,
-            sessions=[*sessions, session],
+            stopped=stopped,
+            sessions=sessions,
         )
-        folder.write_scorecard(card)
-        line = scenario_line(card, session, len(sessions) + 1)
-        parts.append_line(line, history)
-        parts.append_line(line, folder.out / HISTORY_FILE)
-        log.info("run_finished", complete=complete, plays=len(every), cost_usd=card.cost_usd)
-    return 0 if found.stopped is None else 1
 
+    def line(self, card: ScenarioScorecard, session: Session, number: int) -> BaseModel:
+        return scenario_line(card, session, number)
 
-async def _measure(
-    playing: Playing,
-    smoke: Scenario,
-    todo: Sequence[tuple[Scenario, int]],
-    found: _Found,
-    folder: RunFolder,
-    smoke_only: bool,
-    closing: Closing,
-) -> None:
-    spend = playing.paced.spend
-    try:
-        record = await playing.play(smoke, 1)
-        if record.failure is not None or spend.retries_and_failures():
-            found.stopped = "smoke_failed"
-            log.error("smoke_failed", failure=record.failure, requests=spend.requests())
-            return
-        log.info("smoke_passed", requests=spend.requests())
-        if smoke_only:
-            found.plays.append(record)
-            folder.add_result(record)
-            return
-        for number, (scenario, repeat) in enumerate(todo, start=1):
-            record = await playing.play(scenario, repeat)
-            found.plays.append(record)
-            folder.add_result(record)
-            log.info(
-                "play_done",
-                done=number,
-                of=len(todo),
-                scenario=record.scenario,
-                repeat=repeat,
-                passed=record.passed,
-                failure=record.failure,
-                seconds=round(record.seconds, 2),
-            )
-    except StopRun as stop:
-        found.stopped = stop.reason
-        log.warning("run_stopped", reason=stop.reason, done=len(found.plays), of=len(todo))
-    finally:
-        await closing.aclose()  # the chat model and the knowledge base, in the run's own loop
+    def finished(self, card: ScenarioScorecard, records: list[PlayRecord]) -> dict[str, object]:
+        return {"plays": len(records), "cost_usd": card.cost_usd}
 
 
 def main(argv: Sequence[str] | None = None, *, parts: TalkerParts | None = None) -> int:
     """`uv run poe eval-scenarios`: play run S's scenarios. 0 when the run is complete, 1 when
-    it is not, 2 when it is refused before anything is sent."""
-    parser = _parser()
-    args = parser.parse_args(argv)
-    _require(parser, args)
-    configure_logging(loggers=LOGGERS)
-    try:
-        return _run(args, TalkerParts() if parts is None else parts)
-    except T2VoiceError as error:
-        log.error("scenarios_refused", code=error.code, message=error.message)
-        return 2
+    it is not (a failed smoke test, the cap, the day's limit, an interrupt, a library error once
+    it began), 2 when it is refused before anything is sent."""
+    found = TalkerParts() if parts is None else parts
+    return main_of(_parser(), argv, _require, lambda args: _run(args, found), "scenarios_refused")
 
 
 if __name__ == "__main__":
