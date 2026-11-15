@@ -23,6 +23,7 @@ decisions (`D-NNN`), which are permanent. Living docs cite only milestones in th
 | M5 | Tickets, ticket status, and handoff | done ([007](completed/007-tickets-status-handoff.md)); its background try moved to its Future improvements |
 | M6 | Reliability and operations | planned |
 | M7 | The rehearsal: the owner's script passes | planned |
+| M9 | The voice experience at the level of top-tier voice agents | in progress ([010](active/010-top-tier-voice-experience.md), drafted, waiting for the owner) |
 
 Status is `planned`, `in progress` (with links to its active plans) or `done` (with links to
 its completed plans). Between milestones, [garbage-collection rounds](../harness/garbage-collection.md)
