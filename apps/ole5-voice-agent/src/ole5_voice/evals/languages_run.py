@@ -53,21 +53,13 @@ from ole5_voice.agent import ECHO_AGENT
 from ole5_voice.evals import history
 from ole5_voice.evals.cli import require
 from ole5_voice.evals.eot import LEAD_S, TAIL_S
-from ole5_voice.evals.eot_score import Decision, judge
-from ole5_voice.evals.languages_card import (
-    PAUSED_KIND,
-    TURNS_FILE,
-    ClassifierName,
-    LanguageResult,
-    LanguagesLine,
-    LanguagesRun,
-)
-from ole5_voice.evals.languages_score import (
-    line_of,
-    load_pass,
-    read_passes,
-    scorecard_of,
-    write_pass,
+from ole5_voice.evals.languages_card import PAUSED_KIND, TURNS_FILE, ClassifierName, LanguagesRun
+from ole5_voice.evals.languages_pass import (
+    AppendLine,
+    Progress,
+    close_pass,
+    read_condition_4,
+    result_of,
 )
 from ole5_voice.evals.languages_setup import (
     CODES,
@@ -78,7 +70,6 @@ from ole5_voice.evals.languages_setup import (
     shown,
 )
 from ole5_voice.evals.models import NAME_RULE, Split, is_name
-from ole5_voice.evals.run_lines import AnyLine
 from ole5_voice.evals.run_parts import (
     DATA,
     Choice,
@@ -95,7 +86,6 @@ _DESCRIPTION = "Measure each turn's language on the golden set, offline, into a 
 log = get_logger(__name__)
 TurnLanguages = Callable[..., AsyncIterator[tuple[evals.LanguageTurn, ...]]]
 MakeClassifier = Callable[[VoiceSettings], LanguageClassifier]
-AppendLine = Callable[[AnyLine, Path], None]  # `history.append_line`, or a test's
 Peak = Callable[[], float | None]
 
 
@@ -125,51 +115,6 @@ def _require(parser: argparse.ArgumentParser, args: argparse.Namespace) -> None:
         parser.error("--smoke-only is a dev run: its variant is the first dev one")
 
 
-def _result(todo: Todo, side: Split, turns: tuple[evals.LanguageTurn, ...]) -> LanguageResult:
-    item, variant = todo.item, todo.variant
-    judged = None
-    if item.kind == PAUSED_KIND:
-        ends = [Decision(speech_stop_ms=t.speech_stop_ms, end_ms=t.end_ms) for t in turns]
-        judged = judge(ends, marked_end(todo), labelled=True)
-    return LanguageResult(
-        item=item.id,
-        variant=variant.id,
-        split=side,
-        kind=item.kind,
-        language=item.language,
-        device=variant.device,
-        turns=turns,
-        judged=judged,
-    )
-
-
-class _Progress:
-    """The results so far, each written and logged as it comes (counts only when held out)."""
-
-    def __init__(self, total: int, turns_file: Path | None) -> None:
-        self.total, self.turns_file = total, turns_file
-        self.results: list[LanguageResult] = []
-        self.interrupted = False
-
-    def add(self, result: LanguageResult) -> None:
-        self.results.append(result)
-        done = len(self.results)
-        if self.turns_file is None:
-            log.info("progress", done=done, of=self.total)
-            return
-        with self.turns_file.open("a", encoding="utf-8", newline="\n") as file:
-            file.write(result.model_dump_json() + "\n")
-        heard = [turn.by or "none" for turn in result.turns]
-        log.info(
-            "variant_done",
-            done=done,
-            of=self.total,
-            item=result.item,
-            variant=result.variant,
-            by=",".join(heard) or "none",
-        )
-
-
 async def _loaded(classifier: LanguageClassifier) -> None:
     """The classifier loaded with Ole5's codes, or closed and refused."""
     try:
@@ -181,7 +126,7 @@ async def _loaded(classifier: LanguageClassifier) -> None:
 
 async def _fed(
     todo: Sequence[Todo],
-    progress: _Progress,
+    progress: Progress,
     settings: VoiceSettings,
     classifier: LanguageClassifier | None,
     turn_languages: TurnLanguages,
@@ -201,7 +146,7 @@ async def _fed(
     try:
         index = 0
         async for turns in found:
-            progress.add(_result(todo[index], side, turns))
+            progress.add(result_of(todo[index], side, turns))
             index += 1
     finally:
         close = getattr(found, "aclose", None)
@@ -254,7 +199,7 @@ def _run(
         asyncio.run(_loaded(classifier))
     held_out = args.split == "held-out"
     out.mkdir(parents=True)
-    progress = _Progress(len(todo), None if held_out else out / TURNS_FILE)
+    progress = Progress(len(todo), None if held_out else out / TURNS_FILE)
     log.info("run_started", run=info.name, split=info.split, variants=len(todo))
     try:
         asyncio.run(_fed(todo, progress, settings, classifier, turn_languages, args.split))
@@ -262,64 +207,7 @@ def _run(
         progress.interrupted = True
         log.warning("run_interrupted", done=len(progress.results), of=len(todo))
     info = info.model_copy(update={"peak_mb": peak()})
-    return _close(info, progress, len(todo), args.smoke_only, out, checkout.top, append_line)
-
-
-def _close(
-    info: LanguagesRun,
-    progress: _Progress,
-    total: int,
-    smoke_only: bool,
-    out: Path,
-    top: Path,
-    append_line: AppendLine,
-) -> int:
-    """The scorecard and, for a whole pass, its history line; 0 when complete."""
-    complete = not progress.interrupted and len(progress.results) == total
-    held_out = info.split == "held-out"
-    kept = progress.results if complete or not held_out else []
-    card = scorecard_of(info, kept, complete=complete)
-    write_pass(out, card, kept if complete or not held_out else None)
-    if not smoke_only:
-        line: LanguagesLine = line_of(card)
-        history.record_line(append_line, line, top / DATA, out)
-    numbers = card.card
-    log.info(
-        "run_finished",
-        complete=complete,
-        variants=numbers.variants,
-        turns=numbers.turns,
-        in_time=numbers.in_time,
-        late=numbers.late,
-        cut_offs=numbers.paused.cut_offs,
-        disagreements=numbers.disagreements,
-    )
-    return 0 if complete else 1
-
-
-def _read(folders: Sequence[Path]) -> int:
-    """Condition 4 of each classifier pass of `folders` (the module's docstring), logged."""
-    passes = [load_pass(folder) for folder in folders]
-    try:
-        readings = read_passes(passes)
-    except ValueError as error:
-        raise refused(
-            str(error), "give the complete passes of one commit, two of them off"
-        ) from None
-    for reading in readings:
-        log.info(
-            "condition_4",
-            run=reading.run,
-            classifier=reading.classifier,
-            cut_offs=reading.cut_offs,
-            allowed=reading.allowed,
-            pairs=reading.pairs,
-            unpaired=reading.unpaired,
-            delay_ms=None if reading.delay_ms is None else round(reading.delay_ms, 1),
-            off_ms=None if reading.off_ms is None else round(reading.off_ms, 1),
-            holds=reading.holds,
-        )
-    return 0
+    return close_pass(info, progress, len(todo), args.smoke_only, out, checkout.top, append_line)
 
 
 def main(
@@ -340,7 +228,7 @@ def main(
     configure_logging(loggers=LOGGERS)
     try:
         if args.read:
-            return _read(args.read)
+            return read_condition_4(args.read)
         parts = Parts() if parts is None else parts
         return _run(args, parts, turn_languages, make_classifier, append_line, peak)
     except T2VoiceError as error:
