@@ -76,6 +76,14 @@ def _fixture() -> dict[str, Any]:
     return loaded
 
 
+def _message_objects() -> dict[str, type[BaseModel]]:
+    """The objects the messages nest (a card's option rows), by name."""
+    objects = dict[str, type[BaseModel]]()
+    for model in (*CLIENT_MESSAGES, *SESSION_MESSAGES):
+        _fields(model, objects, skip=ENVELOPE)
+    return objects
+
+
 def test_the_data_channels_messages_are_the_lists() -> None:
     fixture, objects = _fixture(), dict[str, type[BaseModel]]()
     assert (fixture["protocol"], PROTOCOL) == (1, 1)
@@ -91,7 +99,10 @@ def test_the_data_channels_messages_are_the_lists() -> None:
         for model in models:
             assert model.model_config.get("strict") is strict, model
             assert get_args(model.model_fields["v"].annotation) == (PROTOCOL,), model
-    assert objects == {}  # no message nests an object
+    assert list(objects) == ["CardRow"]  # a session's card nests its option rows; nothing else
+    for name, nested in objects.items():
+        assert _fields(nested, {}) == fixture["objects"][name], name
+        assert nested.model_config.get("strict") is None, name
 
 
 def test_the_http_bodies_and_their_objects_are_the_lists() -> None:
@@ -108,7 +119,7 @@ def test_the_http_bodies_and_their_objects_are_the_lists() -> None:
     }
     assert list(built) == list(fixture["http"])
     assert built == fixture["http"]
-    nested = {name: _fields(model, {}) for name, model in objects.items()}
+    nested = {name: _fields(model, {}) for name, model in (objects | _message_objects()).items()}
     assert nested == fixture["objects"]
     assert {route.request.model_config.get("strict") for route in BODIES.values()} == {True}
 
