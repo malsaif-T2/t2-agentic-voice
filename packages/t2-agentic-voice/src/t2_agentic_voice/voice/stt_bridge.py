@@ -34,14 +34,9 @@ hold began (turn_hold.py's `TurnHeldFrame`) hands `TurnHeld` and sends its speec
 (`HoldResumedFrame`) cancels that request, then hands `HoldResumed`. When no speech followed its
 audio, the turn's own `Transcribed` is that request's result again, with no request.
 
-Every request, each part's, names the language `languages` gives it as it goes (voice/
-stt_language.py's `TurnLanguages`: the one last named, `listen_in`, unless a classifier chose
-another for the turn), its `Transcribing` carrying it, and carries that
-language's Whisper prompt: the call's `prompts`, built once a call by `call_prompts`, the prompt
-run W's arm W1 measured and kept (plan 006, Q23). A request that names no language, or one whose
-prompt holds no word, carries none, as W1 sent none; with `stt.send_prompt` off, none carries one.
-The bridge tells `languages` of each turn's audio, its hold (whatever `early` says), its overlap
-and its close, and never waits on it.
+Every request is stt_requests.py's: each names the language `languages` gives it as it goes, with
+that language's Whisper prompt (`call_prompts`). The bridge tells `languages` of each turn's
+audio, its hold (whatever `early` says), its overlap and its close, and never waits on it.
 
 `drop` ends the call's side here (io.py's end): the held audio is dropped, never flushed, and
 every request in flight cancelled, a part's included, its `Transcribing` already handed, and
@@ -52,9 +47,7 @@ from __future__ import annotations
 
 import asyncio
 from collections import deque
-from collections.abc import AsyncGenerator, Coroutine, Mapping
-from dataclasses import replace
-from typing import Any
+from collections.abc import AsyncGenerator, Mapping
 
 from pipecat.frames.frames import (
     Frame,
@@ -68,23 +61,19 @@ from pipecat.processors.frame_processor import FrameDirection
 from pipecat.services.settings import STTSettings
 from pipecat.services.stt_service import STTService
 
-from t2_agentic_voice.core.config import VoiceSettings
-from t2_agentic_voice.core.errors import ProviderError, ProviderErrorKind
 from t2_agentic_voice.core.logging import get_logger
-from t2_agentic_voice.domain.declaration import VoiceAgent
-from t2_agentic_voice.domain.ports.speech_to_text import AudioClip, SpeechToText, Transcript
-from t2_agentic_voice.domain.whisper_prompt import COMMAND_SPELLINGS, whisper_prompt
+from t2_agentic_voice.domain.ports.speech_to_text import SpeechToText
 from t2_agentic_voice.voice.pipecat_events import FailureReport
 from t2_agentic_voice.voice.session.session_events import (
     HoldResumed,
     Transcribed,
-    TranscriptPart,
     TurnClosed,
     TurnHeld,
     TurnOpened,
 )
 from t2_agentic_voice.voice.session_bridge import EventStream
 from t2_agentic_voice.voice.stt_language import TurnLanguages
+from t2_agentic_voice.voice.stt_requests import SttRequests
 from t2_agentic_voice.voice.stt_turn import HeldOverlap, HeldTurn
 from t2_agentic_voice.voice.turn_hold import HoldResumedFrame, TurnHeldFrame
 
@@ -106,18 +95,6 @@ MAX_TURN_S = 30.0
 # What an overlap's parts hold before the detector heard its speech begin: the padding before the
 # speech that plan 002's window runs held (plan 005's decision log).
 OVERLAP_LEAD_S = 0.3
-
-
-def call_prompts(agent: VoiceAgent, settings: VoiceSettings) -> dict[str, str]:
-    """The Whisper prompt of each language a call of `agent` may name, by its primary code:
-    `whisper_prompt` of the declaration's vocabulary, the `words.vocabulary` setting's terms
-    after it, as run W's arm W1 built it (its `--prompt-agent`); none with `stt.send_prompt`
-    off, and none for a language whose prompt holds no word."""
-    if not settings.stt.send_prompt:
-        return {}
-    terms = (*agent.vocabulary.terms, *settings.words.vocabulary)
-    prompts = {code: whisper_prompt(terms, code).text for code in COMMAND_SPELLINGS}
-    return {code: text for code, text in prompts.items() if text}
 
 
 class TurnSTTBridge(STTService):
@@ -143,9 +120,7 @@ class TurnSTTBridge(STTService):
             settings=STTSettings(model=None, language=None),
             name="t2v-stt-bridge",
         )
-        self._stt = stt
         self._events = events
-        self._report = report
         self._preroll_s = start_s + PREROLL_PAD_S
         self._preroll: deque[bytes] = deque()
         self._preroll_bytes = 0
@@ -157,10 +132,16 @@ class TurnSTTBridge(STTService):
         self._speech_from: int | None = None  # the byte held where the speech last began
         self._stopped_at: float | None = None
         self._languages = languages or TurnLanguages(clock=events.clock)
-        self._requests: set[asyncio.Task[Transcribed]] = set()
+        self._requests = SttRequests(
+            self,
+            stt=stt,
+            events=events,
+            report=report,
+            prompts=prompts or {},
+            languages=self._languages,
+        )
         self._dropped = False
         self._early = early
-        self._prompts = dict(prompts or {})
 
     @property
     def supports_ttfs(self) -> bool:
@@ -190,10 +171,10 @@ class TurnSTTBridge(STTService):
                 else:
                     self._send_overlap(turn, overlap)
         elif self._last is not None and self._last[0] == turn_id:
-            self._track(self._reuse(self._last[1], "overlap"))
+            self._requests.reuse(self._last[1], "overlap")
         else:
             log.warning("overlap_turn_unknown", turn_id=turn_id)
-            self._track(self._transcribe(turn_id, b"", "overlap"))
+            self._requests.send(turn_id, b"", "overlap")
 
     async def run_stt(self, audio: bytes) -> AsyncGenerator[Frame | None, None]:
         """Nothing: the base calls this only from `process_audio_frame`, which the bridge
@@ -255,7 +236,7 @@ class TurnSTTBridge(STTService):
         if began and turn.held is None:
             self._events.hand(TurnHeld(turn_id=turn.turn_id, at=now))
             audio = turn.request(int(TRAIL_S * self.sample_rate) * 2)
-            turn.held = self._track(self._transcribe(turn.turn_id, audio, "held"))
+            turn.held = self._requests.send(turn.turn_id, audio, "held")
             turn.held_starts = turn.starts
         elif not began and turn.held is not None:
             held, turn.held = turn.held, None
@@ -287,74 +268,22 @@ class TurnSTTBridge(STTService):
         self._languages.closed(turn, self.sample_rate)
         reused = turn.reused()
         if reused is not None:
-            request = self._track(self._reuse(reused, "turn"))
+            request = self._requests.reuse(reused, "turn")
         else:
             audio = turn.request(int(TRAIL_S * self.sample_rate) * 2)
-            request = self._track(self._transcribe(turn.turn_id, audio, "turn"))
+            request = self._requests.send(turn.turn_id, audio, "turn")
         self._last = (turn.turn_id, request)
 
     def _window_due(self, turn: HeldTurn) -> None:
         """The overlap's window, once the audio held covers it, while the speech goes on."""
         window = turn.window()
         if window is not None:
-            self._track(self._transcribe(turn.turn_id, window, "window"))
+            self._requests.send(turn.turn_id, window, "window")
 
     def _send_overlap(self, turn: HeldTurn, overlap: HeldOverlap) -> None:
         """The overlap's whole speech, to where the detector last heard it stop."""
         audio = turn.overlap_part(overlap)
-        overlap.part = self._track(self._transcribe(turn.turn_id, audio, "overlap"))
-
-    def _track(self, work: Coroutine[Any, Any, Transcribed]) -> asyncio.Task[Transcribed]:
-        """Run `work` on a task of its own, cancelled at the call's end."""
-        request: asyncio.Task[Transcribed] = self.create_task(work, name="t2v-stt-request")
-        self._requests.add(request)
-        request.add_done_callback(self._requests.discard)
-        return request
-
-    async def _transcribe(self, turn_id: int, audio: bytes, part: TranscriptPart) -> Transcribed:
-        """One request of the turn's `part`, its `Transcribing` handed as it goes, and its one
-        `Transcribed`, handed and returned; none goes for no audio or an unusable bridge."""
-        events, clock = self._events, self._events.clock
-        heard = Transcribed(
-            turn_id=turn_id, at=0.0, audio_s=0.0, sent_at=None, transcript=None, part=part
-        )
-        if not audio or not self.is_usable:
-            heard = replace(heard, at=clock.now())
-            events.hand(heard)
-            return heard
-        clip = AudioClip(pcm16=audio, sample_rate=self.sample_rate)
-        sent_at, named = clock.now(), self._languages.named(turn_id, part)
-        events.hand(named.transcribing(turn_id, at=sent_at, audio_s=clip.seconds, part=part))
-        transcript: Transcript | None = None
-        failure: ProviderErrorKind | None = None
-        retryable, language = False, named.language
-        prompt = None if language is None else self._prompts.get(language)
-        try:
-            transcript = await self._stt.transcribe(clip, language=language, prompt=prompt)
-        except ProviderError as error:
-            failure, retryable = error.kind, error.retryable
-        except Exception as error:  # an adapter's bug: still exactly one result for the part
-            log.error("stt_request_failed", turn_id=turn_id, error=type(error).__name__)
-            failure = "server_error"
-        if failure is not None:
-            self._report.provider_failed("speech_to_text", failure, retryable, turn_id=turn_id)
-        heard = replace(
-            heard,
-            at=clock.now(),
-            audio_s=clip.seconds,
-            sent_at=sent_at,
-            transcript=transcript,
-            failure=failure,
-            retryable=retryable,
-        )
-        events.hand(heard)
-        return heard
-
-    async def _reuse(self, source: asyncio.Task[Transcribed], part: TranscriptPart) -> Transcribed:
-        """`source`'s result again, once it came, as the turn's `part`, with no request."""
-        heard = replace(await asyncio.shield(source), part=part, at=self._events.clock.now())
-        self._events.hand(heard)
-        return heard
+        overlap.part = self._requests.send(turn.turn_id, audio, "overlap")
 
     async def drop(self) -> None:
         """The call has ended: drop the audio held, never sending it, and cancel every request
@@ -362,6 +291,5 @@ class TurnSTTBridge(STTService):
         self._dropped = True
         self._turn = self._last = None
         self._preroll.clear()
-        for request in list(self._requests):
-            await self.cancel_task(request)
+        await self._requests.drop()
         await self._languages.drop()

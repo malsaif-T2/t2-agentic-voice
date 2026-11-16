@@ -31,7 +31,7 @@ greeting has played, and reads its time to first audio (turn_replay.py's `TurnRe
 measure (plan 006).
 
 Each call takes the live path, so each of its speech-to-text requests carries the Whisper prompt
-a live call sends (voice/stt_bridge.py's `call_prompts`, plan 006's Q23): the agent's vocabulary,
+a live call sends (voice/stt_requests.py's `call_prompts`, plan 006's Q23): the agent's vocabulary,
 then the command words of the call's language, the command words alone for the replay's own
 agent, none with `stt.send_prompt` off. So a replay, run T's included, measures what ships.
 """
