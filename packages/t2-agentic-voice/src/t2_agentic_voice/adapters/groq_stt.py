@@ -41,6 +41,7 @@ from t2_agentic_voice.adapters.wav_files import wav_of
 from t2_agentic_voice.core.config import VoiceSettings
 from t2_agentic_voice.core.settings.stt import WHISPER_MIN_BILLED_S, SttModel, SttSettings
 from t2_agentic_voice.domain.ports.speech_to_text import AudioClip, DataFlow, Transcript
+from t2_agentic_voice.domain.words import heard_code
 
 
 class GroqSTT:
@@ -111,7 +112,8 @@ class GroqSTT:
         self, clip: AudioClip, *, language: str | None, prompt: str | None
     ) -> Transcript:
         """What was said in `clip` (the port's `transcribe`): Whisper's text with the space around
-        it removed, the language named (else the one Groq reports), the confidence (Whisper's
+        it removed, the language named (else the code of the one Groq reports, its name mapped
+        exactly, and None for a language not the library's: TD-011), the confidence (Whisper's
         `avg_logprob`, a log-probability of 0 or below) and the no-speech estimate, each the
         mean over Whisper's segments weighted by their length, as the prototype weighted them,
         the billed seconds, never under Groq's minimum of 10 s, and the headroom Groq reported
@@ -186,7 +188,7 @@ class _Answer(BaseModel):
         ]
         return Transcript(
             text=self.text.strip(),
-            language=language or self.language or None,
+            language=language or heard_code(self.language),
             confidence=_by_length(confidence),
             billed_seconds=billed_seconds,
             no_speech_prob=_by_length(silence),

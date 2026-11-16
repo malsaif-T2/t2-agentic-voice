@@ -116,7 +116,7 @@ def test_the_menu_lists_each_provider_with_a_key_and_never_a_key(
     assert [(o.provider, o.models) for o in alone.providers] == [
         ("groq", ("whisper-large-v3", "whisper-large-v3-turbo"))
     ]
-    assert alone.live_languages == ("session", "auto")
+    assert alone.live_languages == ("session", "auto", "detected")
     assert alone.default == SttChoice(
         provider="groq", model="whisper-large-v3", live_language="session"
     )

@@ -258,12 +258,14 @@ class FakeSessionIO:
         failure: ProviderErrorKind | None = None,
         retryable: bool = False,
         part: TranscriptPart = "turn",
+        switched: bool = False,
     ) -> Transcribed:
-        """The turn's transcript of `part`, `text` heard in `language`, its request's audio
-        billed as Groq bills it; or None, with `failure` when the request failed and with no
-        request otherwise. A request that went is the turn's last `Transcribing` of `part`,
-        which gives the result its audio and when it went, or for the `turn` part of an
-        overlap's turn with none of its own, the overlap's, whose transcript it reuses; for an
+        """The turn's transcript of `part`, `text` heard in `language` (a detecting request's,
+        moving the call, when `switched`), its request's audio billed as Groq bills it; or
+        None, with `failure` when the request failed and with no request otherwise. A request
+        that went is the turn's last `Transcribing` of `part`, which gives the result its audio
+        and when it went, or for the `turn` part of an overlap's turn with none of its own, the
+        overlap's, whose transcript it reuses; for an
         `overlap` part with none of its own (its `HearOverlap` reached the bridge after the turn
         closed), the turn's: RuntimeError when none was handed."""
         sent = self._sent(turn_id, part)
@@ -290,6 +292,7 @@ class FakeSessionIO:
             failure=failure,
             retryable=retryable,
             part=part,
+            switched=switched,
         )
         return await self._hand(event)
 

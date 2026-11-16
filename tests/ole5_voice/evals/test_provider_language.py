@@ -51,7 +51,7 @@ def _heard(language: str | None, probability: float | None = None) -> Transcript
 
 def test_the_providers_that_report_a_language_are_the_passes_classifiers() -> None:
     assert PROVIDERS == ("groq", "elevenlabs", "soniox")
-    assert get_args(ClassifierName) == ("off", "silero", "ecapa", *PROVIDERS)
+    assert get_args(ClassifierName) == ("off", "silero", "ecapa", "detected", *PROVIDERS)
     assert not ARMS["speechmatics"].hears_language and not ARMS["cohere"].hears_language
 
 

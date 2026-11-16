@@ -62,7 +62,7 @@ from types import TracebackType
 from typing import Literal, Self
 
 from t2_agentic_voice.actions.action_runner import ActionRunner
-from t2_agentic_voice.actions.agent_tools import action_runner, actions_of, tools_of
+from t2_agentic_voice.actions.agent_tools import action_runner, actions_of, talker_tools
 from t2_agentic_voice.actions.memory_outbox import MemoryOutbox
 from t2_agentic_voice.actions.record import ActionRecord
 from t2_agentic_voice.agent.talker import Talker, TalkerCall, talker_factory
@@ -197,7 +197,7 @@ class TextCall:
         mode = settings.session.mode_for(instructed=agent.instructed, prefix=settings.prefix)
         if mode == "talker":
             call = TalkerCall(call_id=CALL_ID, caller=caller, language=language.tag)
-            self._runner = RecordingRunner(tools_of(agent))
+            self._runner = RecordingRunner(talker_tools(agent, settings))
             self._watched = talker = WatchedTalker(self._talker(call, settings, clock), clock)
         side = self._side = TextSide(clock, chars_per_second=self.chars_per_second)
         side.fault = self._faulted

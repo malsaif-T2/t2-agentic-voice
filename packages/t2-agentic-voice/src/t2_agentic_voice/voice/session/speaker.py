@@ -241,7 +241,7 @@ class Speaker:
     async def notice(self, kind: NoticeKind, at: float) -> Reply | None:
         """Tell the caller the notice of `kind`: its `notice` message, then spoken from the
         phrase cache as the next reply (none when the cache does not hold it)."""
-        text = self._setup.language.notices[kind]
+        text = self._setup.now.language.notices[kind]
         await self.send(Notice(kind=kind, text=text))
         line = fixed(self._setup, text, reply_id=self.playback.next_id)
         if line is None:

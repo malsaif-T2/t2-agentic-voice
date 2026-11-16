@@ -136,8 +136,8 @@ def test_a_call_with_a_chosen_speech_to_text_is_heard_by_it_and_no_other_call_is
 
     one, other = pipeline("chosen"), pipeline("other")
     assert asked == ["chosen", "other"]
-    assert one.stt_bridge._stt is chosen_stt and one.setup.settings is chosen_settings
-    assert other.stt_bridge._stt is calls._stt and other.setup.settings is settings
+    assert one.stt_bridge._requests._stt is chosen_stt and one.setup.settings is chosen_settings
+    assert other.stt_bridge._requests._stt is calls._stt and other.setup.settings is settings
     default = _calls(settings, ECHO)  # no lookup given: every call the runtime's (GP-18)
     alone = default._pipeline(
         "alone",
@@ -147,4 +147,4 @@ def test_a_call_with_a_chosen_speech_to_text_is_heard_by_it_and_no_other_call_is
         language=ECHO.languages[0],
         output=file_output(),
     )
-    assert alone.stt_bridge._stt is default._stt and alone.setup.settings is settings
+    assert alone.stt_bridge._requests._stt is default._stt and alone.setup.settings is settings

@@ -309,6 +309,39 @@ def test_a_call_with_no_classifier_names_the_sessions_language(feed: ScriptedFee
     assert [asked["call_id"] for asked in feed.asked] == ["turn-languages-0", "turn-languages-1"]
 
 
+def test_a_detected_call_records_which_turns_also_went_naming_no_language(
+    feed: ScriptedFeed,
+) -> None:
+    """Under `detected`, a long turn's request in the call's language comes first and one naming
+    none beside it; a short turn's goes alone. The record keeps the first, and `detects`."""
+
+    async def call(built: dict[str, Any]) -> FedCall:
+        assert built["classifier"] is None
+        events = (
+            TurnOpened(turn_id=0, at=1.2, speech_at=1.1),
+            _request(0, 3.0, "session", "ar"),
+            Transcribing(turn_id=0, at=3.0, audio_s=2.0, language=None, language_by="detected"),
+            TurnClosed(turn_id=0, at=3.0, speech_ended_at=2.8),
+            TurnOpened(turn_id=1, at=4.0, speech_at=3.9),
+            _request(1, 4.8, "session", "ar"),
+            TurnClosed(turn_id=1, at=4.8, speech_ended_at=4.5),
+        )
+        return FedCall(started_at=1.0, events=events, commands=())
+
+    feed.scripts = [call]
+    found = turn_languages(
+        [SECOND],
+        languages=LANGUAGES,
+        settings=_settings("detected"),
+        classifier=None,
+        lead_s=1.0,
+        tail_s=4.5,
+    )
+    ((long, short),) = _run(found)
+    assert (long.named, long.by, long.detects) == ("ar", "session", True)
+    assert (short.named, short.by, short.detects) == ("ar", "session", False)
+
+
 @pytest.mark.parametrize(
     ("clips", "languages", "live", "given", "says"),
     [
@@ -316,7 +349,8 @@ def test_a_call_with_no_classifier_names_the_sessions_language(feed: ScriptedFee
         ([SECOND], LANGUAGES[:1], "session", False, "two languages"),
         ([SECOND], LANGUAGES, "classified", False, "classified"),
         ([SECOND], LANGUAGES, "session", True, "classified"),
-        ([SECOND], LANGUAGES, "auto", False, "session or classified"),
+        ([SECOND], LANGUAGES, "detected", True, "classified"),
+        ([SECOND], LANGUAGES, "auto", False, "session, classified or detected"),
     ],
 )
 def test_what_cannot_be_measured_is_refused_before_any_call(

@@ -23,7 +23,9 @@ from t2_agentic_voice.voice.protocol import ClauseIndex, ReplyId, SessionMessage
 class ListenIn:
     """The language the speech-to-text bridge names to the provider for every turn from now on:
     the call's `Language`'s `primary` code (`ar`, `en`) under `stt.live_language = "session"`,
-    or None under `auto`, when the provider detects it. Until the first, none is named."""
+    or None under `auto`, when the provider detects it; under `detected`, the code the call
+    moved to on a spoken switch request too (language_moves.py). Until the first, none is
+    named."""
 
     language: str | None
 

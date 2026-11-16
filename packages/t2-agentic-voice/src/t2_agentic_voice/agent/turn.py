@@ -10,9 +10,10 @@ turn and the call as it was heard to the events the session plays, within the re
   last none, so the turn ends in words, told so and holding the results with the calls that
   asked for them dropped (agent/context.py's `without_calls`); a tool call the last one makes
   anyway is not run.
-- **Speech as it is written.** Each piece the model writes, and each tool call's arguments, are
-  filtered first (agent/stray_script.py: no script the agent's languages do not write), so all
-  that follows reads one text; a clause the filter left with no letter or digit is none. The
+- **Speech as it is written** (each request's answer streamed by agent/turn_answer.py). Each
+  piece the model writes, and each tool call's arguments, are filtered first
+  (agent/stray_script.py: no script the agent's languages do not write), so all that follows
+  reads one text; a clause the filter left with no letter or digit is none. The
   text then goes through the leak check (agent/leaked_reasoning.py): from a leak of the
   model's reasoning on, nothing of the request's text is said, and the reply stops there as a
   blocked clause's `drop_rest` stops it. What is left goes through the clause splitter as it
@@ -32,7 +33,10 @@ turn and the call as it was heard to the events the session plays, within the re
   the session to say if the wait runs long (one a reply); each result goes back to the model
   framed as data, a result's card is shown once the guard passed its text, and the calls and
   results are kept for the call's next `KEPT_TURNS` turns, which the heard history does not
-  hold.
+  hold. Once the library's `switch_language` tool (actions/language_tool.py) moved the reply
+  into another of the agent's languages, the rest of the turn is in it: the system prompt, the
+  line after the results, the clauses' tag, the leak check and the tools' context, and
+  `LanguageMoved` tells the session.
 - **Actions** (the design's 6.4 and 8.2). A request offers the agent's actions beside its tools
   (agent/prompt.py's `tool_definitions`). Rule C: once the model calls an action in a request,
   its text after the call is dropped, unspoken and unblocked, with what the splitter held. The
@@ -57,15 +61,14 @@ turn and the call as it was heard to the events the session plays, within the re
 from __future__ import annotations
 
 from collections.abc import AsyncGenerator, Sequence
-from dataclasses import dataclass, field
 
 from t2_agentic_voice.actions.action_runner import ActionRunner
+from t2_agentic_voice.actions.language_tool import switched_to
 from t2_agentic_voice.actions.record import ActionRecord
 from t2_agentic_voice.actions.runner import ToolRunner
 from t2_agentic_voice.actions.tools import ToolResult
 from t2_agentic_voice.agent.clause_gate import ClauseGate
 from t2_agentic_voice.agent.context import (
-    Unnoted,
     call_context,
     continued,
     declined_note,
@@ -74,6 +77,7 @@ from t2_agentic_voice.agent.context import (
     without_calls,
 )
 from t2_agentic_voice.agent.events import (
+    LanguageMoved,
     ModelReplied,
     ModelRequested,
     ReadBackRequested,
@@ -81,7 +85,7 @@ from t2_agentic_voice.agent.events import (
     ReplyScope,
     TalkerEvent,
 )
-from t2_agentic_voice.agent.language import call_register, reply_language
+from t2_agentic_voice.agent.language import call_register, reply_language, wording
 from t2_agentic_voice.agent.leaked_reasoning import LeakedReasoning
 from t2_agentic_voice.agent.prompt import (
     compose_prompt,
@@ -91,42 +95,20 @@ from t2_agentic_voice.agent.prompt import (
 )
 from t2_agentic_voice.agent.stray_script import StrayScript
 from t2_agentic_voice.agent.tool_calls import Memory, ToolCalls, exchange
+from t2_agentic_voice.agent.turn_answer import Answer, answer_events
 from t2_agentic_voice.core.clock import Clock
 from t2_agentic_voice.core.config import VoiceSettings
 from t2_agentic_voice.core.conversation import TalkerTurn
-from t2_agentic_voice.core.errors import ProviderError
 from t2_agentic_voice.core.identity import Caller
 from t2_agentic_voice.core.logging import get_logger
 from t2_agentic_voice.core.settings.llm import REASONING_MODELS
 from t2_agentic_voice.core.settings.tts import LanguageTag
 from t2_agentic_voice.domain.declaration import VoiceAgent
-from t2_agentic_voice.domain.ports.chat_model import (
-    ChatMessage,
-    ChatModel,
-    ChatRequest,
-    Done,
-    TextDelta,
-    ToolCallRequest,
-    ToolSchema,
-    Usage,
-    closing,
-)
-from t2_agentic_voice.domain.text.clauses import ClauseStream
+from t2_agentic_voice.domain.ports.chat_model import ChatMessage, ChatModel, ChatRequest, ToolSchema
 
 _log = get_logger(__name__)
 # The most model requests one turn makes; the last offers no tool, so the turn ends in words.
 MAX_REQUESTS = 3
-
-
-@dataclass
-class _Answer:
-    """What one model request gave: its text, its tool calls, its usage, its first token's
-    time."""
-
-    text: str = ""
-    calls: list[ToolCallRequest] = field(default_factory=list)
-    usage: Usage | None = None
-    first_token_s: float | None = None
 
 
 class Turn:
@@ -209,8 +191,8 @@ class Turn:
             request = self._request(messages, tools, after_tools=tools_run > 0)
             requests += 1
             yield ModelRequested(model=request.model)
-            answer = _Answer()
-            asked = self._asked(request, answer)
+            answer = Answer()
+            asked = answer_events(self, request, answer)
             try:
                 async for event in asked:
                     yield event
@@ -243,6 +225,12 @@ class Turn:
                 *done[1:],
             ]
             self.memory.keep(self.turn.turn_id, done)
+            moved = switched_to(answer.calls, results)
+            if moved is not None and moved != self.language:
+                self._moved(moved)  # the rest of the reply, in the language the caller asked for
+                prompt = compose_prompt(self.agent, language=moved, today=today, register=register)
+                messages[0] = ChatMessage.system(prompt)
+                yield LanguageMoved(language=moved)
             if self.tools.plan is not None:  # read back: nothing more of the model this turn
                 yield ReadBackRequested(plan=self.tools.plan)
                 break
@@ -262,6 +250,14 @@ class Turn:
         )
         yield ReplyDone(unsaid_clauses=self.gate.questions.unsaid)
 
+    def _moved(self, tag: LanguageTag) -> None:
+        """The reply goes on in `tag`, which the `switch_language` tool moved it to: its clauses,
+        its leak check, its tools' context and its lines' wording."""
+        self.language = self.gate.language = tag
+        self.leak = LeakedReasoning(arabic=tag != "en")  # nothing held: each request closed it
+        self.ctx = self.tools.ctx = self.ctx.model_copy(update={"language": tag})
+        self.tools.wording = wording(tag, self.register)
+
     def _request(
         self, messages: Sequence[ChatMessage], tools: tuple[ToolSchema, ...], *, after_tools: bool
     ) -> ChatRequest:
@@ -280,65 +276,3 @@ class Turn:
             reasoning_effort=llm.reasoning_effort if llm.model in REASONING_MODELS else None,
             max_output_tokens=llm.max_output_tokens,
         )
-
-    async def _asked(
-        self, request: ChatRequest, answer: _Answer
-    ) -> AsyncGenerator[TalkerEvent, None]:
-        """The clauses of the model's answer to `request`, as it streams; `answer` gathers the
-        rest."""
-        started = self.clock.now()
-        whole_sentences = self.language == "en"  # D-077
-        splitter = ClauseStream(max_chars=None, whole_sentences=whole_sentences)
-        unnoted = Unnoted()
-        acted = False  # rule C: an action was called, and what the model writes after is dropped
-        dropped = False  # whether it wrote any
-        try:
-            async with closing(self.model.stream(request)) as stream:
-                async for event in stream:
-                    if answer.first_token_s is None and isinstance(
-                        event, TextDelta | ToolCallRequest
-                    ):
-                        answer.first_token_s = max(0.0, self.clock.now() - started)
-                    if isinstance(event, TextDelta) and not acted:
-                        piece = self.leak.text(self.scripts.text(event.text))
-                        answer.text += piece
-                        for said in self.gate.said(splitter.feed(unnoted.feed(piece))):
-                            yield said
-                        if self.gate.stopped:
-                            return
-                        if self.leak.found:  # the rest is reasoning: what was held is said
-                            break
-                    elif isinstance(event, TextDelta):
-                        dropped = dropped or bool(event.text.strip())
-                    elif isinstance(event, ToolCallRequest):
-                        if all(event.id != known.id for known in answer.calls):  # each id once
-                            answer.calls.append(self.scripts.call(event))
-                        acted = acted or self.tools.is_action(event.name)
-                    elif isinstance(event, Usage):
-                        answer.usage = event
-                    elif isinstance(event, Done) and event.finish_reason == "length":
-                        _log.warning(
-                            "talker_reply_truncated",
-                            call_id=self.ctx.call_id,
-                            turn_id=self.turn.turn_id,
-                            model=request.model,
-                            finish_reason=event.finish_reason,
-                        )
-        except ProviderError as error:
-            _log.warning(
-                "talker_model_failed",
-                call_id=self.ctx.call_id,
-                turn_id=self.turn.turn_id,
-                kind=error.kind,
-                retryable=error.retryable,
-            )
-            raise
-        if acted:  # rule C: what the splitter held goes too, unspoken
-            held = [*splitter.feed(unnoted.feed(self.leak.close()) + unnoted.close())]
-            held += splitter.close()
-            if dropped or any(text.strip() for text in held):
-                _log.info("talker_text_after_action_dropped", turn_id=self.turn.turn_id)
-            return
-        rest = unnoted.feed(self.leak.close()) + unnoted.close()
-        for said in self.gate.said((*splitter.feed(rest), *splitter.close())):
-            yield said

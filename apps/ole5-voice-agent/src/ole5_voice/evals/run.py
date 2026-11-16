@@ -27,7 +27,7 @@ from __future__ import annotations
 import argparse
 import asyncio
 import sys
-from collections.abc import Mapping, Sequence
+from collections.abc import Sequence
 from pathlib import Path
 from typing import get_args
 
@@ -40,28 +40,27 @@ from t2_agentic_voice import (
 )
 
 from ole5_voice import LOGGERS
-from ole5_voice.evals import history
-from ole5_voice.evals.answerers import ANSWERERS, RunAnswerer, make_answerer
+from ole5_voice.evals.answerers import ANSWERERS, make_answerer
 from ole5_voice.evals.cli import amount, count, require, seconds
-from ole5_voice.evals.groq_answerer import Budget, CapReachedError, Policy
+from ole5_voice.evals.groq_answerer import Budget, Policy
 from ole5_voice.evals.language_arms import flag_problem, language_arm
-from ole5_voice.evals.models import NAME_RULE, Split, Variant, is_name
+from ole5_voice.evals.models import NAME_RULE, Split, is_name
+from ole5_voice.evals.run_answer import answer_all, close_run
 from ole5_voice.evals.run_arms import AnswerOptions, answer_options
 from ole5_voice.evals.run_parts import (
     DATA,
     Choice,
     Parts,
-    Plan,
     Progress,
     audio_roots,
     clip_answers,
     load_plan,
 )
 from ole5_voice.evals.run_settings import GROQ_BASE_URL, MODELS, load_settings, show, shown
-from ole5_voice.evals.runs import Answer, RunInfo, holds_placeholder
+from ole5_voice.evals.runs import RunInfo, holds_placeholder
 from ole5_voice.evals.stt_arms import ARMS, arm_problem, arm_settings, check_cost, recorded_model
 from ole5_voice.evals.windows import measurer
-from ole5_voice.evals.worktree import Checkout, check_out, refused, run_checkout
+from ole5_voice.evals.worktree import check_out, refused, run_checkout
 
 RESULTS_FILE = "results.jsonl"  # a dev run's results, one line each as it finishes
 _DESCRIPTION = "Run an answerer over the golden set, writing its results and scorecard into --out."
@@ -151,40 +150,6 @@ def _require(parser: argparse.ArgumentParser, args: argparse.Namespace) -> None:
         parser.error(problem)
 
 
-async def _answer_all(
-    plan: Plan,
-    answerer: RunAnswerer,
-    progress: Progress,
-    args: argparse.Namespace,
-    copied: Mapping[Variant, Answer],
-) -> None:
-    """The smoke test, then every variant, in order, the arm's baseline answers unsent; the run
-    ends early at the cap."""
-    try:
-        smoke = await answerer.answer(plan.smoke.variant, plan.smoke.request)
-        if smoke.failure or any(r.outcome != "ok" or r.attempt > 1 for r in smoke.requests):
-            outcomes = [r.outcome for r in smoke.requests]
-            log.error("smoke_failed", failure=smoke.failure, outcomes=outcomes)
-            return
-        progress.smoke_passed = True
-        # The language the provider reported, a code or a name: how R7's smoke step reads the
-        # form Groq gives when no language is sent (TD-011). A label, never a transcript.
-        log.info("smoke_passed", requests=len(smoke.requests), language=smoke.language)
-        if args.smoke_only:
-            progress.add(plan.smoke.result(smoke, plan.matcher, args.split, True))
-            return
-        for todo in plan.todo:
-            answer = copied.get(todo.variant)
-            if answer is None:
-                answer = await answerer.answer(todo.variant, todo.request)
-            progress.add(todo.result(answer, plan.matcher, args.split, not args.windows_ms))
-    except CapReachedError:
-        progress.capped = True
-        log.warning("cap_reached", done=len(progress.results), of=progress.total)
-    finally:
-        await answerer.aclose()
-
-
 def _run(
     args: argparse.Namespace, settings: VoiceSettings, parts: Parts, options: AnswerOptions
 ) -> int:
@@ -269,44 +234,15 @@ def _run(
         )
         log.info("run_started", run=info.name, split=info.split, variants=progress.total)
         try:
-            asyncio.run(_answer_all(plan, answerer, progress, args, arm.copied))
+            asyncio.run(answer_all(plan, answerer, progress, args, arm.copied, arm.merge))
         except KeyboardInterrupt:
             progress.interrupted = True
             log.warning("run_interrupted", done=len(progress.results), of=progress.total)
-        return _close(info, progress, budget, answerer.spends, out, checkout, parts)
+        return close_run(info, progress, budget, answerer.spends, out, checkout, parts)
     finally:
         if tracer is not None:
             tracer.shutdown()
             log.info("tracing_closed", dropped_spans=tracer.dropped_spans)
-
-
-def _close(
-    info: RunInfo,
-    progress: Progress,
-    budget: Budget,
-    spends: bool,
-    out: Path,
-    checkout: Checkout,
-    parts: Parts,
-) -> int:
-    """The scorecard and, for a run that spent, its history line; 0 when the run is complete."""
-    complete = progress.smoke_passed and not (progress.capped or progress.interrupted)
-    complete = complete and len(progress.results) == progress.total
-    # A held-out run that did not finish keeps no result: it is run again whole.
-    kept = progress.results if complete or info.split == "dev" else []
-    card = parts.write_scorecard(info, kept, complete=complete, out=out)
-    if spends:  # every request sent, the smoke test's and a capped variant's included
-        line = history.line_of(
-            card,
-            items=len({r.item for r in kept}),
-            billed_seconds=budget.billed_seconds,
-            cost_usd=budget.cost_usd,
-        )
-        history.record_line(parts.append_line, line, checkout.top / DATA, out)
-    failures = sum(r.answer.failure is not None for r in kept)
-    log.info("run_finished", complete=complete, variants=len(kept), failures=failures)
-    log.info("run_spent", requests=budget.requests, billed_s=budget.billed_seconds, out=str(out))
-    return 0 if complete else 1
 
 
 def main(argv: Sequence[str] | None = None, *, parts: Parts | None = None) -> int:

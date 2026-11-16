@@ -22,6 +22,8 @@ rule decides, each the public `ConfirmationAnswered`:
   A check that gives no word (it failed or ran out of time) on words that hold a no word is a
   no too, so a cancel for another action reaches the talker, never the ask-again line (the
   owner's "Yes, all three", 2026-11-11); on any other words it asks again.
+- **the call moved** into another language since it was read back (read_back_moved.py): no
+  verdict; it is read again in the new language, a new receipt required.
 - **unclear**, or no receipt (the summary not played whole with audio, or an overlap of it still
   undecided): the plan's `asked_again` line, at most its `max_attempts` times, each a follow-up
   of the read-back; after the last, the plan's `declined` line, and confirming ends.
@@ -62,6 +64,7 @@ from t2_agentic_voice.voice.session.action_job import ActionJob
 from t2_agentic_voice.voice.session.books import CallBooks
 from t2_agentic_voice.voice.session.io import CallSetup, Guarded
 from t2_agentic_voice.voice.session.read_back import Confirming
+from t2_agentic_voice.voice.session.read_back_moved import moved_since, read_moved
 from t2_agentic_voice.voice.session.report import TurnLog
 from t2_agentic_voice.voice.session.speaker import Speaker
 from t2_agentic_voice.voice.session.turn_book import TurnBook
@@ -148,6 +151,10 @@ class YesTurns:
             return
         await self.asks.cancel()  # a newer answer: an earlier one's request decides nothing
         plan = read_back.plan
+        if moved_since(self._setup, self._speaker.playback, read_back):  # read_back_moved.py
+            if not await read_moved(self._setup, self._speaker, self._confirming, turn, plan, at):
+                await self._talk(turn, heard, at)
+            return
         receipt = self._receipt(heard.speech_at)
         outcome = AskAgain() if receipt is None else self._decided(turn, heard, receipt, plan)
         if receipt is not None and self.asks.wanted(outcome):

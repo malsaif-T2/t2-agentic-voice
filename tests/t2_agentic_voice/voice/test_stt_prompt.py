@@ -1,4 +1,4 @@
-"""The Whisper prompt a call sends (voice/stt_bridge.py's `call_prompts`, voice/pipeline.py; plan
+"""The Whisper prompt a call sends (voice/stt_requests.py's `call_prompts`, voice/pipeline.py; plan
 006, Q23): every speech-to-text request of a call, an overlap's window and overlap, its turn's
 and the early start's `held`, carries `whisper_prompt` of the agent's vocabulary in the language
 the request names, byte for byte the prompt run W's arm W1 measured, built once a call; with
@@ -25,7 +25,7 @@ from t2_agentic_voice.domain.declaration import Language, VoiceAgent
 from t2_agentic_voice.domain.talker_declaration import Vocabulary
 from t2_agentic_voice.domain.whisper_prompt import COMMAND_SPELLINGS
 from t2_agentic_voice.languages import WhisperPrompt, whisper_prompt
-from t2_agentic_voice.voice import stt_bridge as bridge_module
+from t2_agentic_voice.voice import stt_requests as requests_module
 from t2_agentic_voice.voice.calls import VoiceCalls
 from t2_agentic_voice.voice.session.commands import Command, HangUp, HearOverlap, ListenIn, Speak
 from t2_agentic_voice.voice.session.session_events import (
@@ -153,7 +153,7 @@ def _counted(monkeypatch: pytest.MonkeyPatch) -> Counter[str]:
         built[language] += 1
         return whisper_prompt(terms, language)
 
-    monkeypatch.setattr(bridge_module, "whisper_prompt", counting)
+    monkeypatch.setattr(requests_module, "whisper_prompt", counting)
     return built
 
 
@@ -194,7 +194,7 @@ def test_the_calls_prompts_are_w1s_with_the_settings_terms_after_the_declaration
     `words.vocabulary` setting's; the command words alone for an agent with no vocabulary;
     nothing with the setting off; and a language whose prompt holds no word left out, so its
     requests send none."""
-    prompts = bridge_module.call_prompts
+    prompts = requests_module.call_prompts
     assert prompts(ECHO, settings) == {c: whisper_prompt(TERMS, c).text for c in ("ar", "en")}
     added = settings.model_copy(update={"words": WordSettings(vocabulary=("Teams", "VPN"))})
     both = (*TERMS, "Teams", "VPN")
