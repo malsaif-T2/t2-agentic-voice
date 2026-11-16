@@ -1,8 +1,9 @@
 """What a pass of `poe eval-languages` runs with (languages_run.py; plan 007's run H, its H1):
 the settings, the environment's and `--env-file`'s as `poe eot` loads them, with the pass's
 classifier on top (`--classifier off` under `stt.live_language = "session"`, `silero` or `ecapa`
-under `classified`, its files in `--classifier-dir` or `stt.classifier_dir`), refused under a
-rule other than the registered one (Q20, `REGISTERED`); what of them a pass records (`shown`,
+under `classified`, its files in `--classifier-dir` or `stt.classifier_dir`, `detected` under
+`detected`), refused under a rule other than the registered one (Q20, `REGISTERED`; and
+`stt.detect_from_s` 1.2, `DETECT_FROM_S`, D-038's amendment); what of them a pass records (`shown`,
 never the classifier's folder, a local path); the classifier the `classifiers` facade builds from
 them; Ole5's codes the classifier is loaded with and the language every pass's calls are held in;
 and the process's peak memory, where the platform tells it (`peak_mb`).
@@ -26,6 +27,7 @@ from ole5_voice.evals.eot import LEAD_S, TAIL_S
 REGISTERED: Final = {"classifier_from_s": 2.0, "classifier_min_share": 0.7, "classifier_threads": 2}
 CODES: Final = tuple(dict.fromkeys(language.primary for language in ECHO_AGENT.languages))
 HELD_IN: Final = ECHO_AGENT.languages[0].primary  # every pass's calls are held in it
+DETECT_FROM_S: Final = 1.2  # the voiced seconds a turn needs to go naming no language too
 
 
 def classifier_of(settings: VoiceSettings) -> LanguageClassifier:
@@ -79,6 +81,16 @@ def settings_of(args: argparse.Namespace) -> VoiceSettings:
             "set those values.",
             details={"setting": "stt.classifier_from_s, stt.classifier_min_share"},
         )
+    if args.classifier == "detected":
+        if stt.detect_from_s != DETECT_FROM_S:
+            raise ConfigurationError(
+                "Run H's detected pass runs at the registered stt.detect_from_s 1.2. FIX: "
+                "unset it, or set that value.",
+                details={"setting": "stt.detect_from_s"},
+            )
+        return loaded.model_copy(
+            update={"stt": stt.model_copy(update={"live_language": "detected"})}
+        )
     off = args.classifier == "off"
     update: dict[str, object] = {"live_language": "session" if off else "classified"}
     if not off:
@@ -97,7 +109,8 @@ def shown(settings: VoiceSettings, args: argparse.Namespace) -> dict[str, str]:
     stt = settings.stt
     heard = {
         "stt.live_language": stt.live_language,
-        "stt.classifier": "none" if args.classifier == "off" else stt.classifier,
+        "stt.classifier": stt.classifier if stt.live_language == "classified" else "none",
+        "stt.detect_from_s": str(stt.detect_from_s),
         **{f"stt.{name}": str(getattr(stt, name)) for name in REGISTERED},
     }
     run = {"run.lead_s": str(LEAD_S), "run.tail_s": str(TAIL_S)}

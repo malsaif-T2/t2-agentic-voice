@@ -130,6 +130,7 @@ NAMES = {
         "is_consent_check",
         "sign_test",
         "silence_output",
+        "switch_to",
         "term_recall",
         "turn_ends",
         "turn_languages",

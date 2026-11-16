@@ -10,6 +10,9 @@ that say every text as silence of no length (turns.py's), so no request leaves t
 Every call is an echo call held in the first of `languages`. Under `stt.live_language =
 "classified"` the calls hear each turn's language through `classifier` (voice/stt_language.py),
 loaded once with the languages' codes before the first call and closed by its owner, the caller.
+Under `detected` (D-038's amendment) no classifier is heard: each record says whether the turn's
+request also went naming no language (`detects`, its voiced speech long enough), which a pass
+with Whisper reads to send that request too; the speech-to-text hears nothing, so no call moves.
 The helper wraps it to keep when each classification was asked and came, on the calls' clock,
 and what it gave. One call runs at a time, so a turn finds the classifier busy only when an
 earlier turn of its own call still holds it.
@@ -76,8 +79,9 @@ class LanguageTurn(BaseModel):
     clip's first frame: when the speech detector last heard the speech stop before its end and
     when the turn ended; the language its request named and how (`by`: None when no request
     went); when its language was decided and the seconds of its speech then (none under
-    `session`, or for an overlap); and when its classification was asked and came, and what it
-    gave (none when it was not asked, and no verdict for one the call's end cancelled)."""
+    `session`, or for an overlap); when its classification was asked and came, and what it
+    gave (none when it was not asked, and no verdict for one the call's end cancelled); and
+    whether a request of it also went naming no language, under `detected`."""
 
     model_config = ConfigDict(frozen=True, extra="forbid")
 
@@ -90,6 +94,7 @@ class LanguageTurn(BaseModel):
     asked_ms: float | None = None
     verdict_ms: float | None = None
     verdict: Answered | None = None
+    detects: bool = False
 
 
 @dataclass
@@ -154,8 +159,8 @@ async def turn_languages(
     module's docstring). The calls are one `VoiceCalls`, started before the first clip and
     closed after the last, or when the caller stops iterating and closes the iterator.
     ValueError, before any call: a clip at another rate; languages of one code; a setting
-    other than `session` and `classified`; a classifier under `session`, or none under
-    `classified`."""
+    other than `session`, `classified` and `detected`; a classifier other than under
+    `classified`, or none there."""
     from t2_agentic_voice.voice.file_transport import feed_file  # Pipecat's side, at first use
 
     clips = list(clips)
@@ -166,8 +171,10 @@ async def turn_languages(
     if len(codes) < 2:
         raise ValueError("the calls' agent speaks two languages or more, each its own code")
     live = settings.stt.live_language
-    if live not in ("session", "classified"):
-        raise ValueError("the calls are held under stt.live_language session or classified")
+    if live not in ("session", "classified", "detected"):
+        raise ValueError(
+            "the calls are held under stt.live_language session, classified or detected"
+        )
     if (live == "classified") != (classifier is not None):
         raise ValueError("a classifier is heard under stt.live_language classified, and only there")
     recording = None if classifier is None else _Recording(classifier, _clock)
@@ -215,8 +222,11 @@ def _turns(fed: FedCall, asks: Sequence[_Ask]) -> tuple[LanguageTurn, ...]:
 
     opened = [event for event in fed.events if isinstance(event, TurnOpened)]
     sent: dict[int, Transcribing] = {}
+    detects: set[int] = set()
     for event in fed.events:
-        if isinstance(event, Transcribing):
+        if isinstance(event, Transcribing) and event.language_by == "detected":
+            detects.add(event.turn_id)
+        elif isinstance(event, Transcribing):
             sent.setdefault(event.turn_id, event)
     asked: dict[int, _Ask] = {}
     for ask in asks:
@@ -239,6 +249,7 @@ def _turns(fed: FedCall, asks: Sequence[_Ask]) -> tuple[LanguageTurn, ...]:
                 asked_ms=None if made is None else ms(made.asked_at),
                 verdict_ms=None if made is None else ms(made.came_at),
                 verdict=None if made is None else made.verdict,
+                detects=event.turn_id in detects,
             )
         )
     return tuple(turns)

@@ -23,8 +23,9 @@ from ole5_voice.evals.runs import Note, Shown
 # The call languages a pass's choices are read for: the item's own, Arabic, English.
 CallLanguage = Literal["label", "ar", "en"]
 CALLS: Final[tuple[CallLanguage, ...]] = get_args(CallLanguage)
-# A pass's classifier: none (`session`), Silero's or ECAPA's.
-ClassifierName = Literal["off", "silero", "ecapa"]
+# A pass's classifier: none (`session`), Silero's or ECAPA's, or Whisper's own detection
+# (`detected`, D-038's amendment: each turn records whether it also went naming no language).
+ClassifierName = Literal["off", "silero", "ecapa", "detected"]
 TURNS_FILE: Final = "turns.jsonl"  # every variant's turns, in a dev pass and a held-out one
 PAUSED_KIND: Final = "paused_request"
 _Ms = Annotated[float, Field(allow_inf_nan=False)]

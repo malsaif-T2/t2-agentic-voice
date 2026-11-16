@@ -274,8 +274,10 @@ given after the task's name:
   variant of a split through the file-fed pipeline at real-time pace, with no spend, Ole5's two
   languages and a speech-to-text that answers at once, `--classifier off`, `silero` or `ecapa`
   at the registered rule (`stt.classifier_from_s` 2.0, `stt.classifier_min_share` 0.7, 2
-  threads; others refused), the classifier's files in `--classifier-dir`; each turn's
-  classification, decision and end kept in the pass's `turns.jsonl` (a held-out pass's whole,
+  threads; others refused), the classifier's files in `--classifier-dir`, or `--classifier
+  detected` under `stt.live_language = "detected"` (D-038's amendment; `stt.detect_from_s` 1.2,
+  others refused), no classifier, each turn recording whether it also goes naming no language
+  (`detects`), which the Whisper arm reads; each turn's classification, decision and end kept in the pass's `turns.jsonl` (a held-out pass's whole,
   once complete, never shown by variant), its scorecard by `languages_score.py`, and a
   languages line appended (it refuses the main checkout; `--smoke-only` feeds one dev variant
   and appends none); `--read <passes>` logs condition 4 for each classifier pass against the

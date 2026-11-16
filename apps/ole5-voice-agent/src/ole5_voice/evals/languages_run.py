@@ -1,13 +1,13 @@
-"""`poe eval-languages`: plan 007's run H, its H1, each turn's language on the golden set,
-offline and with no spend, into a new folder, `--out`; and `--read`, condition 4 of its keep
-rule read across a commit's passes.
+"""`poe eval-languages`: run H's H1, each turn's language on the golden set, offline, no spend,
+into a new folder, `--out`; `--read`, condition 4 of its keep rule across a commit's passes.
 
 A pass feeds every checked variant of its split through the file-fed pipeline, each a fresh call
 at real-time pace with `eot.LEAD_S` of silence before it and `eot.TAIL_S` after it, held in
 Arabic with Ole5's two languages (`ECHO_AGENT`), through the `evals` facade's `turn_languages`:
 `--classifier off` under `stt.live_language = "session"`; `silero` or `ecapa` under
 `classified`, with the classifier the `classifiers` facade builds from the settings, its files
-in `--classifier-dir` (or `stt.classifier_dir`), loaded before any clip is fed. The rule's
+in `--classifier-dir` (or `stt.classifier_dir`), loaded before any clip is fed; `detected` under
+`detected`, no classifier, each turn recording whether it also goes naming no language. The rule's
 numbers are the registered ones (Q20: `stt.classifier_from_s` 2.0, `stt.classifier_min_share`
 0.7 and `stt.classifier_threads` 2), and a pass under others is refused. One call runs at a
 time, so no turn finds the classifier busy with another call's.
@@ -103,7 +103,7 @@ def _parser() -> argparse.ArgumentParser:
     parser = argparse.ArgumentParser(prog="poe eval-languages", description=_DESCRIPTION)
     add = parser.add_argument
     add("--split", choices=get_args(Split), help="the split the pass covers, all of it")
-    add("--classifier", choices=get_args(ClassifierName), help="off (session), silero or ecapa")
+    add("--classifier", choices=get_args(ClassifierName), help="off, silero, ecapa or detected")
     add("--classifier-dir", type=Path, help="the classifier's model files (stt.classifier_dir)")
     add("--env-file", type=Path, help="the .env file the settings load from (never printed)")
     add("--var-dir", type=Path, help="the settings' var_dir")
@@ -249,7 +249,7 @@ def _run(
         held_in=HELD_IN,
         note=args.note,
     )
-    classifier = None if args.classifier == "off" else make_classifier(settings)
+    classifier = None if args.classifier in ("off", "detected") else make_classifier(settings)
     if classifier is not None:
         asyncio.run(_loaded(classifier))
     held_out = args.split == "held-out"
