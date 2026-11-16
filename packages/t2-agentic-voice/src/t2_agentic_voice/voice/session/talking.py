@@ -67,7 +67,7 @@ voice/session/call.py.
 Every event the talker gives is played as one step of the session's (`guarded`, under its lock,
 in the order they came), so it never interleaves with one the Pipecat side hands; the client is
 told what the agent is doing after each (`sync`). Each reply's run, what it keeps and lets out,
-and its close are talker_play.py's `TalkRunner`.
+and its close are talk_runner.py's `TalkRunner`.
 """
 
 from __future__ import annotations
@@ -86,7 +86,8 @@ from t2_agentic_voice.voice.session.read_back import Confirming
 from t2_agentic_voice.voice.session.report import TurnLog
 from t2_agentic_voice.voice.session.scope import CancelScope
 from t2_agentic_voice.voice.session.speaker import Speaker
-from t2_agentic_voice.voice.session.talker_play import Talk, TalkPlayer, TalkRunner
+from t2_agentic_voice.voice.session.talk_runner import TalkRunner
+from t2_agentic_voice.voice.session.talker_play import Talk, TalkPlayer
 from t2_agentic_voice.voice.session.talker_progress import ProgressLines
 from t2_agentic_voice.voice.session.turn_book import TurnBook
 from t2_agentic_voice.voice.session.yes_turns import Receipt, YesTurns
