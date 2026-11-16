@@ -2,8 +2,9 @@
 language_arms.py) as `poe eval --language-from <a detected pass> --language-base <base>`: only
 the variants whose first turn detects are sent, naming no language and with no prompt; each
 answer read with the library's rule against the baseline's, the detecting request's words kept
-only when the call would move, never for a short reply or a third language; the pass and base
-a detected pass with no base refused before anything is sent."""
+only when the call would move, never for a short reply or a third language; each detecting
+request's time logged beside the baseline's, moved or not, never its words; a detected pass with
+no base refused before anything is sent."""
 
 from __future__ import annotations
 
@@ -78,10 +79,13 @@ def test_an_english_question_heard_by_detection_is_the_arms_answer_and_moves_the
     ids=["a short reply", "a third language", "one word"],
 )
 def test_a_detection_the_rule_refuses_keeps_the_baselines_answer(
-    tmp_path: Path, heard: Transcript
+    tmp_path: Path, heard: Transcript, capsys: pytest.CaptureFixture[str]
 ) -> None:
     _, (base, arm), _ = _arm(tmp_path, heard)
     assert arm == base
+    logged = [line for line in capsys.readouterr().out.splitlines() if "detect_answered" in line]
+    assert len(logged) == 1 and "latency_ms=" in logged[0] and "base_ms=" in logged[0]
+    assert "variant=a" in logged[0] and heard.text not in logged[0]
 
 
 def test_a_detected_pass_needs_the_call_languages_base(

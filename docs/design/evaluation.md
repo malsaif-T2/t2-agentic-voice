@@ -267,7 +267,9 @@ given after the task's name:
   detected`, D-038's amendment) takes `--language-base` on dev (`detect_arm.py`): only the
   variants whose first turn also went naming no language are sent, naming none with no prompt,
   and each answer is read with the library's rule (`evals.switch_to`) against the baseline's,
-  the detecting request's words kept only when the call would move;
+  the detecting request's words kept only when the call would move, and each detecting
+  request's time logged beside the baseline's for the same audio (`detect_answered`), the wait
+  a live turn adds;
 - `uv run poe eval-history` (`history.py`) renders `evals/history.jsonl` into the generated
   [eval-history.md](../generated/eval-history.md);
 - `uv run poe eot` (`eot.py`) measures end of turn on the paused requests with the reference

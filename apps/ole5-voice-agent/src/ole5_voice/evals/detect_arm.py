@@ -12,7 +12,10 @@ with no prompt, as the live request goes. Its answer is then read with the libra
 rule moves the call, the variant's answer is the detecting request's, its language the code moved
 to; otherwise, and when the detecting request failed, the baseline's stands. Every other variant's
 answer is the baseline's, unsent. Each move is logged by the variant's identifiers, its kind and
-the code, never its words.
+the code, never its words; and each detecting request's answer, moved or not, by the variant's
+identifiers, its time (its requests' latency, retries included) and whether it failed, so the
+wait a live turn adds, the slower of its two requests, is read against the baseline's own time
+for the same audio.
 """
 
 from __future__ import annotations
@@ -45,6 +48,16 @@ class Detecting:
         """The variant's answer once its detecting request came: the detecting request's when
         the library's rule moves the call, else the baseline's (the module's docstring)."""
         base, (code, item) = self.base[variant], self.named[variant]
+        log.info(
+            "detect_answered",
+            item=item.id,
+            variant=variant.id,
+            kind=item.kind,
+            latency_ms=round(sum(r.latency_ms for r in answer.requests), 1),
+            base_ms=round(sum(r.latency_ms for r in base.requests), 1),
+            attempts=len(answer.requests),
+            failure=answer.failure,
+        )
         if answer.failure is not None or answer.text is None:
             return base
         moved = evals.switch_to(
