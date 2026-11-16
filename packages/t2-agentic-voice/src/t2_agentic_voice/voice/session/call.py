@@ -219,14 +219,16 @@ class CallSession:
         await self._sync_state()
 
     async def _transcribed(self, event: on.Transcribed) -> None:
-        """A turn's own transcript: an overlap's taken by its overlap, any other's answered
-        unless, under `two_step`, it is a command said whole (interrupter.py's `alone`); then,
-        with a talker, a reply kept behind it goes on unless it stopped it (talking.py)."""
+        """A turn's own transcript: the call moved first if the turn, not dropped, moved it (an
+        overlap's switch request too: language_moves.py); then an overlap's taken by its overlap,
+        any other's answered unless, under `two_step`, a command said whole (interrupter.py's
+        `alone`), and with a talker a reply kept behind it goes on unless it stopped it."""
         turn, heard = self._turns.transcribed(event)
+        if not turn.dropped:
+            await follow(self._setup, self._commands, turn, heard, event)
         if turn.overlap:
             await self._interrupter.turn_heard(turn, heard, event)
         else:
-            await follow(self._setup, self._commands, turn, heard, event)
             await self._interrupter.alone(turn, heard, event)
             if self._talking is not None:
                 await self._talking.taken(turn)

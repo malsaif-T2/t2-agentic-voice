@@ -56,11 +56,14 @@ in either script). Then the turn's heard words are that request's, its reply, vo
 follow them, and every later request names the new language, so the next short "yes" is heard in
 it. Otherwise the transcript in the current language stands and nothing moves. A shorter turn
 never detects. The rule is `domain/language_switch.py`'s; each long turn costs a second Whisper
-request.
+request. A provider that reports no language it heard (`speechmatics`, `cohere`, whose model is
+always sent Arabic when no language is named) gets no second request, so on it only a switch
+request or the talker's tool below moves the call.
 
 A caller may also ask in words: a turn made only of a switch request ("English please",
 «بالعربي لو سمحت», in either script, with how Whisper writes it told the other language) moves
-the call too, and its reply is in the language asked for. Once the call has moved, the session's
+the call too, and its reply is in the language asked for; said over a reply under `two_step`, it
+moves the call whether the reply stops or goes on. Once the call has moved, the session's
 notices, its fixed phrases, the echo and the interruption rule's words are the new language's
 (`CallSetup.now`, `voice/session/call_language.py`), and the call report names a detected turn's
 language with `language_by = "detected"`. Under `session` and `auto` the call never moves.

@@ -16,6 +16,11 @@ from t2_agentic_voice.core.settings.base import Group
 # The speech-to-text adapters a setting picks: Groq's Whisper, the default and the fallback, and
 # the providers measured beside it (D-100), each needing its own key group's key.
 SttProvider = Literal["groq", "elevenlabs", "speechmatics", "cohere", "soniox"]
+# The providers that report no language they heard (Speechmatics' ar_en pack, Cohere's Arabic
+# model), so a request naming none detects nothing: under `live_language = "detected"` their
+# calls send no second request, and keep the call's language until a switch request or the
+# talker moves it.
+HEARS_NO_LANGUAGE: frozenset[SttProvider] = frozenset({"speechmatics", "cohere"})
 SttModel = Literal["whisper-large-v3", "whisper-large-v3-turbo"]
 # The least Groq bills a transcription request, in seconds, however short its audio (its
 # pricing, read 2026-11-01; the design's 10.4): the adapter's billed seconds, the session's
@@ -70,8 +75,10 @@ class SttSettings(Group):
             "names the call's current language, and a turn with `stt.detect_from_s` seconds of "
             "voiced speech or more is also sent naming none, at the same time: when Whisper "
             "hears the agent's other language in a question or request, never a short reply, "
-            "that transcript is the turn's and the call moves to that language). A registered "
-            "measurement sets the default (GP-18)."
+            "that transcript is the turn's and the call moves to that language; on speechmatics "
+            "or cohere, which report no language heard, no second request goes, and only a "
+            "switch request or the talker moves the call). A registered measurement sets the "
+            "default (GP-18)."
         ),
     )
     detect_from_s: float = Field(

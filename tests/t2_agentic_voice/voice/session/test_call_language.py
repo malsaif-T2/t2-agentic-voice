@@ -1,7 +1,8 @@
 """The call's current language (voice/session/call_language.py, language_moves.py): under
 `stt.live_language = "detected"` a turn the detecting request heard in the agent's other language
 moves the call, its record naming the language, detected, with no `ListenIn` (the bridge moved
-itself); a spoken switch request moves it too, the bridge told, the talker's turn asking for it;
+itself); a spoken switch request moves it too, the bridge told, the talker's turn asking for it,
+said over a reply as well;
 the talker's `switch_language` tool (`LanguageMoved`) moves it, the bridge told after the step;
 the notices and the overlap words follow the moved language. Under `session`, the library's
 default (GP-18), nothing moves; and `CallLanguage`'s own rules."""
@@ -22,6 +23,8 @@ from t2_agentic_voice.voice.session.overlap import call_words
 
 from tests.leaks import holding, shown
 from tests.t2_agentic_voice.session_fakes import FakeSessionIO
+from tests.t2_agentic_voice.voice.session.overlap_ask_support import over_the_reply, two_clauses
+from tests.t2_agentic_voice.voice.session.overlap_support import two_step
 from tests.t2_agentic_voice.voice.session.session_support import (
     GAP_S,
     greeted,
@@ -102,6 +105,30 @@ def test_a_spoken_switch_request_moves_the_call_and_its_reply(
     moved = [r for r in caplog.records if r.getMessage() == "call_language_moved"]
     assert len(moved) == 1
     assert holding(ASK_ENGLISH, shown(caplog=caplog)) == []
+
+
+@pytest.mark.parametrize(
+    ("text", "handed"), [("Sorry, English please", True), ("English please", False)]
+)
+def test_a_switch_request_said_over_a_reply_moves_the_call(text: str, handed: bool) -> None:
+    """Under `two_step` (the default) speech over a reply is an overlap: a switch request said
+    over one moves the call whether the rule stops the reply and hands the turn to the talker,
+    or lets the reply go on for its two words; the next turn is named in English."""
+    io, _, talker = talker_call(two_step(DETECTED), two_clauses, language="ar-SA")
+
+    async def drive() -> None:
+        await over_the_reply(io, text)
+        await io.turn_closed(1)
+        await io.transcribed(1, text, language="en")
+        await settle()
+        await io.ending()
+        await io.close()
+
+    asyncio.run(drive())
+    assert io.setup.now.language == ENGLISH
+    assert io.commands.of(ListenIn) == [ListenIn(language="ar"), ListenIn(language="en")]
+    asked = [turn.asked for turn in talker.turns if turn.turn_id == 1]
+    assert asked == (["en"] if handed else [])
 
 
 def test_the_talkers_switch_tool_moves_the_call_and_tells_the_bridge(

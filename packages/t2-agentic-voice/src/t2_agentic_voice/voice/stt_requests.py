@@ -15,11 +15,14 @@ turn held at least `stt.detect_from_s` seconds of voiced speech, and is no overl
 once: as above, and naming no language with no prompt, for Whisper to detect it, its
 `Transcribing` by `detected`, so no time is lost waiting for one before the other; the language
 it heard is the transcript's `heard_language` where the provider reports one (D-100), else its
-`language` (Whisper's). When domain/language_switch.py's `switch_to` says the turn moves the
-call, the turn's `Transcribed` is the detecting request's (`switched`), and once it is the turn's
-own, the call's current language moves to it (`TurnLanguages.listen_in`), so every later request
-names it; otherwise the request in the current language stands, its failure the turn's. A failed
-detecting request is logged by its kind alone and changes nothing.
+`language` (Whisper's; an adapter names none for a request naming none unless it heard one, as
+the port says). A provider that reports no language heard (core/settings/stt.py's
+`HEARS_NO_LANGUAGE`: Speechmatics, Cohere) gets no second request. When
+domain/language_switch.py's `switch_to` says the turn moves the call, the turn's `Transcribed`
+is the detecting request's (`switched`), and once it is the turn's own, the call's current
+language moves to it (`TurnLanguages.listen_in`), so every later request names it; otherwise
+the request in the current language stands, its failure the turn's. A failed detecting request
+is logged by its kind alone and changes nothing.
 
 `drop` cancels every request in flight at the call's end, its `Transcribing` already handed.
 """
@@ -36,6 +39,7 @@ from pipecat.services.stt_service import STTService
 from t2_agentic_voice.core.config import VoiceSettings
 from t2_agentic_voice.core.errors import ProviderError, ProviderErrorKind
 from t2_agentic_voice.core.logging import get_logger
+from t2_agentic_voice.core.settings.stt import HEARS_NO_LANGUAGE
 from t2_agentic_voice.domain.declaration import VoiceAgent
 from t2_agentic_voice.domain.language_switch import DetectRule, switch_to
 from t2_agentic_voice.domain.ports.speech_to_text import AudioClip, SpeechToText, Transcript
@@ -67,9 +71,13 @@ def call_prompts(agent: VoiceAgent, settings: VoiceSettings) -> dict[str, str]:
 
 def detect_rule(agent: VoiceAgent, settings: VoiceSettings) -> DetectRule | None:
     """When a call of `agent` also sends a turn naming no language: under `stt.live_language =
-    "detected"` for an agent of two codes or more, from `stt.detect_from_s`; else never."""
+    "detected"` for an agent of two codes or more, from `stt.detect_from_s`; else never, and
+    never on a provider that reports no language it heard (`HEARS_NO_LANGUAGE`)."""
     codes = tuple(code for code in map(heard_code, spoken_codes(agent)) if code is not None)
-    if settings.stt.live_language != "detected" or len(set(codes)) < 2:
+    stt = settings.stt
+    if stt.live_language != "detected" or stt.provider in HEARS_NO_LANGUAGE:
+        return None
+    if len(set(codes)) < 2:
         return None
     return DetectRule(from_s=settings.stt.detect_from_s, codes=codes)
 

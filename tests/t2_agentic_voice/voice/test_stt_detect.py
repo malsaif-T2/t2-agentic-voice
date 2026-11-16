@@ -64,7 +64,7 @@ class Whisper:
     once."""
 
     told: list[str]
-    detected: list[tuple[str, str] | ProviderError] = field(default_factory=list)
+    detected: list[tuple[str, str | None] | ProviderError] = field(default_factory=list)
     delay_s: float = 0.1
     calls: list[tuple[str | None, str | None]] = field(default_factory=list)
     held: int = 0
@@ -266,3 +266,27 @@ def test_by_default_a_long_turn_goes_once_in_the_calls_language() -> None:
 
     _run(port, body, detect=None)
     assert port.calls == [("ar", "arabic prompt")]
+
+
+@pytest.mark.parametrize("provider", ["cohere", "speechmatics"])
+def test_a_provider_that_detects_no_language_sends_no_second_request(provider: str) -> None:
+    """Cohere's model and Speechmatics' pack report no language they heard: a second request
+    would only wait for an answer naming none (or, from Cohere, the Arabic it was sent)."""
+    stt = SttSettings(live_language="detected", provider=provider)  # type: ignore[arg-type]
+    assert detect_rule(AGENT, VoiceSettings(env="test", stt=stt)) is None
+
+
+def test_a_detecting_answer_naming_no_language_moves_nothing() -> None:
+    """What a provider that hears no language answers a request naming none (Cohere's adapter
+    reports none, though it sends Arabic): the turn in the call's language stands."""
+    port = Whisper(told=[TRANSLATED, "next"], detected=[(QUESTION, None)])
+
+    async def body(session: Recorder, worker: PipelineWorker) -> None:
+        await _say(session, worker, _turn(2.0))
+        await _say(session, worker, _turn(0.4))
+
+    session = _run(port, body)
+    first, _ = _own(session)
+    assert not first.switched and first.transcript is not None
+    assert (first.transcript.text, first.transcript.language) == (TRANSLATED, "ar")
+    assert port.calls[-1] == ("ar", "arabic prompt")

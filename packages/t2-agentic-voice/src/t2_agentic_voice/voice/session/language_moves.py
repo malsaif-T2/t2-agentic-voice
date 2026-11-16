@@ -1,6 +1,7 @@
 """How the session follows the caller into another of the agent's languages, under
 `stt.live_language = "detected"` (D-038's amendment; the call's current language is
-call_language.py's): `follow`, at each turn's own transcript that is no overlap (call.py), and
+call_language.py's): `follow`, at each turn's own transcript, an overlap's included, unless the
+turn was dropped (call.py), and
 `tool_moved`, as the talker's `LanguageMoved` plays (talker_play.py)."""
 
 from __future__ import annotations
@@ -32,7 +33,8 @@ async def follow(
     """Move the call when the turn `turn` (its transcript `event`, its heard words `heard`)
     moved it: a turn the detecting request heard in another of the agent's languages
     (`switched`; the speech-to-text bridge moved already), its record then naming that
-    language, detected; or a spoken switch request (call_language.py's `asked`), the new
+    language, detected (never an overlap's: it goes with no detecting request); or a spoken
+    switch request (call_language.py's `asked`), said over a reply or not, the new
     language then named to the bridge (`ListenIn`). How the call moved, logged with the language
     alone; None when it did not."""
     now, transcript = setup.now, event.transcript
