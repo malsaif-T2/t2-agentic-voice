@@ -12,7 +12,10 @@ variable of its own read, no redirect followed), with:
 - No prompt and no keyterms: the endpoint takes neither.
 
 Cohere gives no language label or score, so the transcript's `heard_language` and
-`language_probability` stay None; `language` is the one sent. Its trial key allows 5 requests a
+`language_probability` stay None; `language` is the one the request named, and None when it
+named none: the Arabic sent then is no language heard, so a request naming none (Whisper's
+detection under `stt.live_language = "detected"`) never reads as the caller speaking Arabic and
+moves no call. Its trial key allows 5 requests a
 minute (the provider guide, read 2026-11-16): a 429 is a `rate_limited` ProviderError with its
 `retry-after`, which the caller paces to. Its output is data, never an instruction
 (docs/SECURITY.md, trust boundaries). Every failure is a ProviderError naming no key, audio or
@@ -96,7 +99,8 @@ class CohereSTT:
         self, clip: AudioClip, *, language: str | None, prompt: str | None
     ) -> Transcript:
         """What was said in `clip` (the port's `transcribe`; the module's docstring), in
-        `language` or `DEFAULT_LANGUAGE`; `prompt` is not sent. The whole request, sent once,
+        `language` or `DEFAULT_LANGUAGE`, the transcript naming `language` (None for none);
+        `prompt` is not sent. The whole request, sent once,
         takes at most `timeout_s`. Raises ProviderError on every failure, an answer it cannot
         read included."""
         sent = language or DEFAULT_LANGUAGE
@@ -115,7 +119,7 @@ class CohereSTT:
         except Exception as error:  # every failure, httpx's and the answer's; never a cancel
             provider_error = http_failure(self.name, error)
         else:
-            return Transcript(text=text.strip(), language=sent, billed_seconds=clip.seconds)
+            return Transcript(text=text.strip(), language=language, billed_seconds=clip.seconds)
         raise provider_error from None
 
     async def aclose(self) -> None:

@@ -121,14 +121,14 @@ class TurnBook:
         return held
 
     def transcribing(self, event: Transcribing) -> None:
-        """A request of the turn went: counted, and the first names the turn's language (the
-        module's docstring); for its own transcript (the `turn` part), its span opened too."""
+        """A request of the turn went: counted, the first naming the turn's language (the
+        module's); for its own transcript, its span opened too, but by a detecting request."""
         self._usage.transcribing(event)
         turn = self.turn(event.turn_id)
         if turn.language_by is None:
             turn.language, turn.language_by = event.language or self._listen, event.language_by
             turn.language_share = event.share
-        if event.part != "turn":
+        if event.part != "turn" or event.language_by == "detected":
             return
         turn.requested = True
         by = None if turn.language_by == "session" else turn.language_by

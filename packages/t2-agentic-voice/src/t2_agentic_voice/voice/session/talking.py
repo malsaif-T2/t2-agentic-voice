@@ -67,7 +67,7 @@ voice/session/call.py.
 Every event the talker gives is played as one step of the session's (`guarded`, under its lock,
 in the order they came), so it never interleaves with one the Pipecat side hands; the client is
 told what the agent is doing after each (`sync`). Each reply's run, what it keeps and lets out,
-and its close are talker_play.py's `TalkRunner`.
+and its close are talk_runner.py's `TalkRunner`.
 """
 
 from __future__ import annotations
@@ -86,7 +86,8 @@ from t2_agentic_voice.voice.session.read_back import Confirming
 from t2_agentic_voice.voice.session.report import TurnLog
 from t2_agentic_voice.voice.session.scope import CancelScope
 from t2_agentic_voice.voice.session.speaker import Speaker
-from t2_agentic_voice.voice.session.talker_play import Talk, TalkPlayer, TalkRunner
+from t2_agentic_voice.voice.session.talk_runner import TalkRunner
+from t2_agentic_voice.voice.session.talker_play import Talk, TalkPlayer
 from t2_agentic_voice.voice.session.talker_progress import ProgressLines
 from t2_agentic_voice.voice.session.turn_book import TurnBook
 from t2_agentic_voice.voice.session.yes_turns import Receipt, YesTurns
@@ -271,12 +272,13 @@ class Talking:
 
     def _turn(self, turn: TurnLog, heard: HeardWords) -> TalkerTurn:
         """The turn as the talker reads it: its words whole, the language they were heard in,
-        the replies it spoke over and cut, the action it declined (a read-back still current is
-        declined by it: read_back.py's `handed`), and the call before it as the caller heard it."""
+        the language it asked for (call_language.py), the replies it spoke over and cut, the
+        action it declined (read_back.py's `handed`), and the call before it as heard."""
         return TalkerTurn(
             turn_id=turn.turn_id,
             words=heard.text,
             language=heard_language(heard.language),
+            asked=self._setup.now.asked_tag(heard.text),
             over_reply=turn.over_reply,
             cut_reply=turn.cut_reply,
             declined=self._confirming.handed(turn.turn_id, words=heard.text),
@@ -284,8 +286,8 @@ class Talking:
         )
 
     def _start(self, talk: Talk, turn: TalkerTurn) -> None:
-        spoken = [language.tag for language in self._setup.agent.languages]
-        talk.language = reply_language(turn, call=self._setup.language.tag, spoken=spoken)
+        now = self._setup.now  # the call's current language, and the agent's (call_language.py)
+        talk.language = reply_language(turn, call=now.tag, spoken=now.spoken)
         self._talks[talk.turn_id] = talk
         talk.scope.start(self._runner.run(talk, turn), name=f"talker-{talk.turn_id}")
 

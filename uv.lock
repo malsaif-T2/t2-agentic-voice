@@ -3306,6 +3306,7 @@ dependencies = [
     { name = "requests" },
     { name = "structlog" },
     { name = "uvicorn" },
+    { name = "websockets" },
 ]
 
 [package.optional-dependencies]
@@ -3343,6 +3344,7 @@ requires-dist = [
     { name = "torchaudio", marker = "sys_platform == 'linux' and extra == 'ecapa'", specifier = ">=2.11", index = "https://download.pytorch.org/whl/cpu" },
     { name = "torchaudio", marker = "sys_platform != 'linux' and extra == 'ecapa'", specifier = ">=2.11" },
     { name = "uvicorn", specifier = ">=0.54.0" },
+    { name = "websockets", specifier = ">=17.4" },
 ]
 provides-extras = ["ecapa"]
 

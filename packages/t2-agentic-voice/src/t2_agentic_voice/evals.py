@@ -12,7 +12,8 @@ module of its own (the design's 5.1); and the chat model's requests a call makes
 uncertain overlap's (D-069) and the yes rule's check of an answer its lists leave unplaced
 (D-082), so a fake or a measurement tells them apart and answers them; and each turn's language
 in a file-fed call of an agent of two languages, with the rule read back for any call's
-language (`turn_languages`, `chosen`; D-086, run H).
+language (`turn_languages`, `chosen`; D-086, run H), and the rule that moves a call to the
+language Whisper detected (`switch_to`, D-038's amendment), so a measurement applies it exactly.
 Provisional (D-021). A facade: it only re-exports (ARCH-FACADE)."""
 
 from t2_agentic_voice.domain.consent_check import (
@@ -20,6 +21,7 @@ from t2_agentic_voice.domain.consent_check import (
     consent_check_request,
     is_consent_check,
 )
+from t2_agentic_voice.domain.language_switch import switch_to
 from t2_agentic_voice.domain.recall import Recall
 from t2_agentic_voice.domain.scoring import id_recall, silence_output, term_recall
 from t2_agentic_voice.domain.sign_test import sign_test
@@ -82,6 +84,7 @@ __all__ = [
     "is_consent_check",
     "sign_test",
     "silence_output",
+    "switch_to",
     "term_recall",
     "turn_ends",
     "turn_languages",

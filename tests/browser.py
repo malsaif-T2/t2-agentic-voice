@@ -68,11 +68,14 @@ def browse(
     location: str,
     steps: list[Step],
     page: Path | None = None,
+    answers: Mapping[str, Any] | None = None,
+    storage: Mapping[str, str] | None = None,
 ) -> Shown:
     """Copy `files` (each a path under `folder`, from its source) into `folder` as ES modules,
-    open `page` (none: an empty one) at `location` with `entry` imported, and take `steps`. What
-    browser.mjs wrote: its snapshots, the started client's events, the messages sent, the
-    requests made; no listener of the page failed."""
+    open `page` (none: an empty one) at `location` with `entry` imported, and take `steps`,
+    the routes answering `answers` too, and the page given `storage` as its localStorage (none:
+    no localStorage). What browser.mjs wrote: its snapshots, the started client's events, the
+    messages sent, the requests made, the storage left; no listener of the page failed."""
     node = shutil.which("node")
     if node is None:
         pytest.skip("Node is not on this machine: the fake browser runs under it")
@@ -85,6 +88,8 @@ def browse(
         "location": location,
         "page": [] if page is None else page_elements(page),
         "steps": steps,
+        "answers": dict(answers or {}),
+        "storage": None if storage is None else dict(storage),
     }
     done = subprocess.run(
         [node, str(HARNESS)],

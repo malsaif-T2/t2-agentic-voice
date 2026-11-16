@@ -1,8 +1,11 @@
 """The keys of the providers measured beside Groq (D-100): one group per account, `elevenlabs`,
-`speechmatics`, `cohere`, `soniox`, `openai` and `inworld`, each a key inline or in its file, as
-the `groq` group's (core/settings/groq.py). Every key is optional: with none, its provider is
-unavailable, and an adapter asked for it raises a ConfigurationError naming the setting to set.
-Groq stays the default and the fallback until a bake-off and the owner's ruling (D-100)."""
+`speechmatics`, `cohere`, `soniox`, `openai`, `inworld`, `telnyx`, `humain` and `nabrah`, each
+a key inline or in its file, as the `groq` group's (core/settings/groq.py). Every key is
+optional: with none, its provider is unavailable, and an adapter asked for it raises a
+ConfigurationError naming the setting to set. Groq stays the default and the fallback until a
+bake-off and the owner's ruling (D-100). The providers that hear a turn over a WebSocket
+(`telnyx`'s HUMAIN engine, `nabrah`) also bound the turn's time, the wait for its first final
+and the quiet that ends it."""
 
 from __future__ import annotations
 
@@ -23,6 +26,9 @@ from t2_agentic_voice.core.settings.base import (
 
 # Speechmatics' regions for its batch and streaming endpoints: the EU (eu1) or the US (us1).
 SpeechmaticsRegion = Literal["eu", "us"]
+# The Telnyx speech-to-text models its adapter takes: HUMAIN's engine on the streaming WebSocket,
+# then the two Arabic-capable models of its batch endpoint (its docs, read 2026-11-16).
+TelnyxSttModel = Literal["humain/realtime", "deepgram/nova-3", "openai/whisper-large-v3-turbo"]
 
 
 class ProviderKey(Group):
@@ -143,3 +149,84 @@ class InworldSettings(ProviderKey):
     copies."""
 
     GROUP: ClassVar[str] = "inworld"
+
+
+class StreamedTurn(ProviderKey):
+    """A provider that hears a turn over its streaming WebSocket: how long one turn may take,
+    how long the adapter waits for the provider's first final once the audio is sent, and the
+    quiet after a final that ends the turn when the provider does not close the socket."""
+
+    turn_timeout_s: float = Field(
+        default=30.0,
+        gt=0,
+        le=120,
+        allow_inf_nan=False,
+        description=(
+            "The longest one turn may take over the provider's WebSocket, from the connection "
+            "to its last transcript; its time is measured, never assumed."
+        ),
+    )
+    final_wait_s: float = Field(
+        default=3.0,
+        gt=0,
+        le=30,
+        allow_inf_nan=False,
+        description=(
+            "Once the turn's audio is sent, the longest the adapter waits for the provider's "
+            "first final transcript; none by then, the turn heard no words. Part of the turn's "
+            "measured time."
+        ),
+    )
+    quiet_s: float = Field(
+        default=0.5,
+        gt=0,
+        le=10,
+        allow_inf_nan=False,
+        description=(
+            "Once a final transcript has come and the audio is sent, how long a quiet socket "
+            "(no message) means the provider has said all it heard, when it does not close the "
+            "socket itself; part of the turn's measured time."
+        ),
+    )
+
+
+class TelnyxSettings(StreamedTurn):
+    """Telnyx: speech-to-text through its engines, HUMAIN's Arabic engine among them; measured
+    beside Groq (D-100)."""
+
+    GROUP: ClassVar[str] = "telnyx"
+
+    stt_model: TelnyxSttModel = Field(
+        default="humain/realtime",
+        description=(
+            "The Telnyx speech-to-text model: humain/realtime (HUMAIN's Arabic engine with "
+            "Arabic-English code-switching, on Telnyx's streaming WebSocket, the default), or "
+            "deepgram/nova-3 or openai/whisper-large-v3-turbo (its batch endpoint)."
+        ),
+    )
+    chunk_gap_ms: int = Field(
+        default=50,
+        ge=25,
+        le=100,
+        description=(
+            "The wait between two 100 ms chunks of a turn's audio sent to a streamed model, in "
+            "milliseconds: 100 is real time, 50 (the default) twice as fast. HUMAIN's engine "
+            "dropped most of a turn sent all at once and the end of one sent four times as fast "
+            "(25), and heard two 5 s turns whole at 50 and 33 (probed 2026-11-16). A turn's "
+            "time grows by its length times this gap over 100."
+        ),
+    )
+
+
+class HumainSettings(ProviderKey):
+    """HUMAIN: its own key, kept for its speech, voice and chat APIs once their reference is
+    given; no adapter reads it yet (D-100)."""
+
+    GROUP: ClassVar[str] = "humain"
+
+
+class NabrahSettings(StreamedTurn):
+    """Nabrah: Saudi Arabic speech-to-text on its streaming WebSocket; measured beside Groq
+    (D-100)."""
+
+    GROUP: ClassVar[str] = "nabrah"

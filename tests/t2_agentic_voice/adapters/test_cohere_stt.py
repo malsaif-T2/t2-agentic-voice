@@ -60,12 +60,15 @@ def test_the_request_names_the_model_and_the_language_and_sends_no_prompt() -> N
     assert wav[:4] == b"RIFF" and len(wav) == 44 + len(CLIP.pcm16)
 
 
-def test_with_no_language_named_arabic_is_sent_since_the_model_detects_none() -> None:
+def test_with_no_language_named_arabic_is_sent_and_no_language_is_reported() -> None:
+    """The model detects none: the Arabic sent is no language heard, so the transcript names
+    none, and a request naming none never reads as the caller speaking Arabic."""
     fake = FakeProvider(answering(200, ANSWER))
     transcript = _run(fake, language=None)
     assert texts(fake.requests[0])["language"] == ["ar"]
-    assert (transcript.text, transcript.language, transcript.billed_seconds) == (HEARD, "ar", 1.0)
+    assert (transcript.text, transcript.language, transcript.billed_seconds) == (HEARD, None, 1.0)
     assert (transcript.heard_language, transcript.language_probability) == (None, None)
+    assert _run(FakeProvider(answering(200, ANSWER)), language="en").language == "en"
 
 
 FAILURES = [

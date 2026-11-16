@@ -1671,7 +1671,7 @@ twice; DOC-REF: every `D-NNN` cited anywhere is a heading here), so keep its sha
   `tests/t2_agentic_voice/voice/session/test_io.py` and
   `tests/t2_agentic_voice/test_protocol_list.py`.
 
-## D-038 · A call's language is fixed at join · 2026-11-03 · Proposed (the agent's, plan 003's Block 0 after its review; beyond the design's 5.5)
+## D-038 · A call's language is fixed at join · 2026-11-03 · Amended by D-103 (the call's language may move, 2026-11-16)
 
 - **Context:** live calls send Whisper the call's language, from the language the caller picks
   in the widget and the token's `locale` (`stt.live_language = "session"`, plan 003's decision
@@ -3684,3 +3684,71 @@ twice; DOC-REF: every `D-NNN` cited anywhere is a heading here), so keep its sha
 - **Evidence:** the owner's words above, and their answers to Q23 of 2026-11-16: "Spoken +
   optional cards (Recommended)", "Read-back + spoken yes (Recommended)", "A male Saudi voice, name
   later (Recommended)", "Its own page (Recommended)".
+
+## D-102 · websockets declared by the library and owned by its adapters · 2026-11-16 · Proposed (the agent's; needed by the two streamed providers the owner asked to test on 2026-11-16, with no download)
+
+- **Context:** the owner asked on 2026-11-16 to test HUMAIN's speech engine and Nabrah's. Both
+  hear a turn only over a WebSocket: HUMAIN's through Telnyx's streaming endpoint
+  (`humain/realtime`), Nabrah's on its own. websockets 17.4 was already installed, under
+  Pipecat, and ARCH-DEPS refuses an import the library does not declare.
+- **Decision:** the library declares `websockets>=17.4` (uv.lock gained only the declaration;
+  nothing was downloaded) and harness.toml's owners give it to the adapters layer beside httpx,
+  with ARCHITECTURE.md's table to match. Its connections take no proxy variable and a logger
+  that logs nothing (`adapters/provider_socket.py`), since its debug log writes the handshake's
+  headers and every frame, and Nabrah's key travels in a frame. Its TLS keeps Python's default
+  context, which still reads `SSL_CERT_FILE` and `SSL_CERT_DIR`: TD-004 and TD-015 cover it.
+- **Consequences:** a streamed provider sits behind the batch speech-to-text port, one turn a
+  connection, and pays its pacing there (TD-152) until a streaming port exists (plan 010's 5.1).
+- **Evidence:** both adapters' smokes on 2026-11-16 (`b02_eh` heard right: Telnyx's HUMAIN engine
+  in 4.8 s, Nabrah in 1.3 s); their tests on a fake socket.
+
+## D-103 · A call's language may move within the call: any question or request in the other language moves it · 2026-11-16 · Accepted (the owner's ruling of 2026-11-16 under plan 010's Q20; off by default until run H keeps it)
+
+- **Context:** D-038 fixed a call's language at join, so Whisper, told the call's language,
+  translates an English question in an Arabic call into fluent wrong Arabic. On 2026-11-16 the
+  owner ruled: "No, any English question or request should be enough to change the language and
+  vice versa. We can achieve this be trying other providers STT, maybe they have auto-detection,
+  they give probabilities or we use a language classifier to lock the language between Arabic
+  and English."
+- **Decision:** a fourth value of `stt.live_language`, `detected`, keeps the call's current
+  language, the join's at first, as `session` does; each request names it with its prompt. A
+  turn with at least `stt.detect_from_s` (1.2) seconds of voiced speech, counted from where the
+  speech detector heard it begin to where it last stopped, never the silence after (ECAPA's gate
+  failed by counting it, D-086), also goes at the same time naming no language and with no
+  prompt. When that request hears the agent's other language (the provider's name mapped
+  exactly, `domain/words.py`'s `heard_code`) and the turn is a question or request (two words or
+  more, and not only the short replies of either language in either script,
+  `domain/language_switch.py`), the turn's heard words are that request's and the call's current
+  language moves to it: later requests name it, and the reply, the voice, the fixed phrases and
+  the knowledge query follow. A spoken switch request ("English please", in both scripts,
+  including how Whisper writes it told the other language) moves the call too, said over a
+  reply or not, and the talker's `switch_language` tool moves it for any other wording. A
+  read-back waiting when the call moves is dropped unconfirmed and read again in the new
+  language, a new receipt required (invariant 1). A provider that reports no language it heard
+  (Speechmatics' pack, Cohere, Telnyx's HUMAIN engine, Nabrah: `HEARS_NO_LANGUAGE`) gets no second
+  request; its calls move only on a switch request or the tool.
+- **Consequences:** each long turn costs one more Whisper request. `session` stays the library's
+  default (GP-18); the Ole5 app turns `detected` on only when run H keeps the arm, by the rule
+  plan 010 registered before any run. The dev console can choose it per call (D-104). A short
+  "English please" said over an Arabic reply lets that reply play to its end, and the next one
+  is English; stopping the reply would change the interruption rule, a measured outcome.
+- **Evidence:** the owner's words above; tests `tests/t2_agentic_voice/domain/test_language_switch.py`,
+  `tests/t2_agentic_voice/voice/test_stt_detect.py`, `tests/t2_agentic_voice/voice/session/test_call_language.py`,
+  `tests/t2_agentic_voice/testing/test_audio_switch.py`; run H's numbers are added when it reads.
+
+## D-104 · The dev console may choose one call's speech-to-text provider, model and language mode · 2026-11-16 · Accepted (the owner's request of 2026-11-16)
+
+- **Context:** the owner, 2026-11-16: "A teammate wants to try them so as a way of trying them
+  myself and my teammate in github, give me the option to try these deferent provider/models
+  through the dev console as a quick way to try/switch them."
+- **Decision:** the dev console's own routes (`<prefix>/dev/stt`, under `env` dev with the dev
+  page on, loopback only) list the speech-to-text providers whose key is set (Groq's always), the
+  models each takes, and the language modes, never a key or its path; a choice made before a
+  call's offer is held to that closed list and taken by that call alone. No join token and no
+  `t2v/1` message can choose. Each turn's line in the console, and its record, name the provider
+  and model that heard it, with the request's time.
+- **Consequences:** a developer tries each provider on a live call with their own keys in their
+  `.env`; it measures nothing and moves no default (D-100 unchanged). A call heard by another
+  provider still reports its usage under `stt.model`'s name (TD-153).
+- **Evidence:** `tests/t2_agentic_voice/api/test_dev_stt.py`,
+  `tests/t2_agentic_voice/voice/test_calls_talker.py`, the browser tests `test_browser_stt_choice.py`.

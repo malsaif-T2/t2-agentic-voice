@@ -344,7 +344,7 @@ def test_a_timer_that_fails_gives_up_and_the_call_goes_on(
     async def broken(limit: str) -> None:
         raise RuntimeError("the test's own failure")
 
-    monkeypatch.setattr(session, "_limit", broken)
+    monkeypatch.setattr(session._close, "_limit", broken)
 
     async def drive() -> None:
         await greeted(io)

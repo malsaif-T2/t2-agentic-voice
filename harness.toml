@@ -91,7 +91,7 @@ layers = ["core"]
 fix = "Only core's tracing uses requests, as the OTLP exporter's session; reach an outside service through its port in domain/ports."
 
 [[owners]]
-modules = ["groq", "httpx", "qdrant_client"]
+modules = ["groq", "httpx", "qdrant_client", "websockets"]
 layers = ["adapters"]
 fix = "Reach an outside service through its port in domain/ports; the adapter that implements it lives in adapters/ and the api layer injects it."
 

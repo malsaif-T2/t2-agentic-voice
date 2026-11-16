@@ -115,8 +115,9 @@ class Transcribed:
     `audio_s`, the seconds of audio sent; `sent_at`, when the request went (its `Transcribing`'s
     `at`; None when none went); `at`, when the answer came; `part`, which of the turn's requests
     it answers (an overlap's turn may reuse its `overlap` transcript as its `turn`'s, with no
-    request: io.py's overlaps); and `source`, where the words came from, `typed` only in a
-    test's text call."""
+    request: io.py's overlaps); `source`, where the words came from, `typed` only in a test's
+    text call; and `switched`, whether its words are a detecting request's in another of the
+    agent's languages, which the call moves to (voice/stt_requests.py)."""
 
     turn_id: TurnId
     at: float
@@ -127,6 +128,7 @@ class Transcribed:
     retryable: bool = False
     part: TranscriptPart = "turn"
     source: HeardSource = "speech_to_text"
+    switched: bool = False
 
 
 @dataclass(frozen=True, kw_only=True)

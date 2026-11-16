@@ -315,3 +315,51 @@ returned, and its token starts a call as your dev caller, every route of the con
 only under `env` dev, to a browser on this machine that names it `localhost`, `127.0.0.1` or
 `[::1]`; any other request gets a plain 404. The token itself never goes to a log: the line
 `dev_token_minted` says only whether its consent keeps the audio.
+
+## Trying speech-to-text providers in the dev console
+
+The test console can hear each of its own calls with another speech-to-text provider and model,
+so you and a teammate can try them side by side without changing the server's settings. Groq's
+Whisper stays the default for every other call (D-100).
+
+**1. Paste the keys** you have into the `.env` at the repository's root (never committed), one
+line each; a provider with no key is simply not offered. Each key may instead live in a file
+outside the repository, named by its `_FILE` form:
+
+```bash
+T2V_GROQ__API_KEY=gsk_...                       # always needed: the chat model and the voice
+T2V_ELEVENLABS__API_KEY=sk_...                  # Scribe v3
+T2V_SPEECHMATICS__API_KEY=...                   # the ar_en pack (T2V_SPEECHMATICS__REGION=eu)
+T2V_COHERE__API_KEY=...                         # Transcribe Arabic
+T2V_SONIOX__API_KEY=...                         # stt-async-v6
+T2V_TELNYX__API_KEY=...                         # HUMAIN's Arabic engine (humain/realtime) and Telnyx's batch models
+T2V_NABRAH__API_KEY=...                         # Nabrah's Saudi Arabic model
+T2V_SONIOX__API_KEY_FILE=C:/keys/soniox.txt     # or: the key's file, in place of the line above
+```
+
+Every provider the library takes is listed with its key's name in
+[the settings reference](../generated/settings.md); each one added later is offered the same way
+once its key is set.
+
+**2. Start the dev console.** Set `T2V_ENV=dev` and `T2V_SERVER__DEV_PAGE=true` in the `.env`
+too, then start your app's server on this machine; for Ole5,
+`uv run python -m ole5_voice.server --env-file .env`, and open
+`http://127.0.0.1:7861/voice/dev/console` (with `t2v dev`, `http://127.0.0.1:7860/voice/dev/console`).
+The server logs `stt_choices_offered` with the providers it offers, never a key.
+
+**3. Pick, then press Start call.** Beside the join token: **Speech-to-text** (the providers this
+server has a key for), **Model** (the ones that provider takes: Groq's `whisper-large-v3` and
+`whisper-large-v3-turbo`, one each for the others), and **Language mode** (the call's language
+`session`, none for the provider to detect `auto`, and the others `stt.live_language` has). The
+pickers start on the server's own settings, and your last pick is remembered in this browser.
+The choice applies to the call you start, and only to it; the line under the pickers says what
+the server's own settings are. Each turn then reads **Heard by** the provider and model that
+heard it, with the time its request took, and the console's saved records (`dev-console/` under
+the data folder) carry the same `heard_by`, so two calls can be compared turn by turn.
+
+A choice the server does not offer is refused with a plain error before the call starts. Only
+this console may choose: its routes (`GET` and `POST dev/stt`) answer only under `env` dev, to a
+browser on this machine, and no join token or page of your app can set a call's speech-to-text.
+A chosen call's audio goes to that provider; what each keeps is in
+[data-and-privacy.md](data-and-privacy.md). The measured comparison of the providers on the
+golden set, with the numbers to choose by, will be the speech-to-text bake-off's report.

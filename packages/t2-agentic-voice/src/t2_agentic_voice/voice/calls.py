@@ -7,12 +7,9 @@
   loading its ONNX model on the CPU there, never at import: importing onnxruntime takes 8 to
   12 s a process (item 24). This module imports no Pipecat at its top, since api imports it
   when the library is imported, and `import t2_agentic_voice` and `t2v --help` import no
-  Pipecat (GP-17). Pipecat's loguru namespace is switched off before voice
-  first imports Pipecat (Q2, item 16); the transport loggers are held at WARNING unless
-  `logging.content` is on (`core.logging.hold_transport_loggers`); `PIPECAT_SETUP_FILES` and
-  `PIPECAT_SMART_TURN_LOG_DATA` set to a value are refused (item 17), each named in a
-  ConfigurationError, never its value. voice reads no variable itself (ARCH-ENV): it asks
-  `core.config.foreign_set`, which answers by name however the settings were built.
+  Pipecat (GP-17). Before it warms them, it sets what voice/calls_start.py's `prepare` says
+  (Pipecat's loguru off, its variables that change every call refused, the transport loggers
+  held).
 - **The detectors.** Each call gets its own speech detector and turn analyzer, since each of
   Pipecat's keeps one stream's state (a `VADAnalyzer`'s buffer, Silero's model state, Smart
   Turn's audio) and its public constructor loads its own ONNX session, sharing none:
@@ -63,11 +60,11 @@ import asyncio
 from collections.abc import Awaitable, Callable, Sequence
 from typing import TYPE_CHECKING
 
-from t2_agentic_voice.core.config import VoiceSettings, foreign_set
-from t2_agentic_voice.core.errors import ConfigurationError, InvalidRequestError, NotFoundError
+from t2_agentic_voice.core.config import VoiceSettings
+from t2_agentic_voice.core.errors import InvalidRequestError, NotFoundError
 from t2_agentic_voice.core.events import CallId
 from t2_agentic_voice.core.identity import Caller, Consent
-from t2_agentic_voice.core.logging import get_logger, hold_transport_loggers
+from t2_agentic_voice.core.logging import get_logger
 from t2_agentic_voice.core.tracing import Tracing
 from t2_agentic_voice.domain.declaration import Language, VoiceAgent
 from t2_agentic_voice.domain.ports.action_jobs import ActionJobs
@@ -75,13 +72,14 @@ from t2_agentic_voice.domain.ports.chat_model import ChatModel
 from t2_agentic_voice.domain.ports.language_classifier import LanguageClassifier
 from t2_agentic_voice.domain.ports.speech_to_text import SpeechToText
 from t2_agentic_voice.domain.ports.text_to_speech import TextToSpeech
+from t2_agentic_voice.voice.calls_start import prepare
 
 # The contract api meets is entry.py's; these names are given here too, where api imports them.
 from t2_agentic_voice.voice.entry import CallPhase as CallPhase
 from t2_agentic_voice.voice.entry import Calls as Calls
 from t2_agentic_voice.voice.entry import CallsFactory as CallsFactory
 from t2_agentic_voice.voice.entry import Candidate as Candidate
-from t2_agentic_voice.voice.loguru_policy import switch_pipecat_off
+from t2_agentic_voice.voice.entry import ChosenStt as ChosenStt
 from t2_agentic_voice.voice.session.call import CallSession
 from t2_agentic_voice.voice.session.io import (
     SYSTEM_CLOCK,
@@ -103,11 +101,6 @@ if TYPE_CHECKING:  # named in annotations only: this module imports no Pipecat (
 
 log = get_logger(__name__)
 
-# Pipecat's variables that change what a call does whatever is passed in code: one executes the
-# files it names in every pipeline, the other writes every turn's audio to disk (plan 003's
-# appendix, item 17). `start` refuses either when set.
-REFUSED_VARIABLES = ("PIPECAT_SETUP_FILES", "PIPECAT_SMART_TURN_LOG_DATA")
-
 
 class VoiceCalls:
     """Every call of one runtime over SmallWebRTC, each its own Pipecat pipeline and session, for
@@ -122,8 +115,9 @@ class VoiceCalls:
     lists leave unplaced (D-082). `action_jobs` carries out each call's confirmed actions, one
     for every call, which it tells apart by the call's ID; with none, a call's confirmed yes is
     told as the `error` notice and nothing is sent. `classifier`, loaded by the runtime, hears
-    each turn's language under `stt.live_language = "classified"`. Built cheaply, with no IO;
-    `start` imports onnxruntime and warms one pair of models."""
+    each turn's language under `stt.live_language = "classified"`. `chosen` gives a call the
+    dev console chose a speech-to-text for its `ChosenStt` (entry.py), taken once, at its
+    offer. Built cheaply, with no IO; `start` imports onnxruntime and warms one pair of models."""
 
     def __init__(
         self,
@@ -140,6 +134,7 @@ class VoiceCalls:
         chat: ChatModel | None = None,
         action_jobs: ActionJobs | None = None,
         classifier: LanguageClassifier | None = None,
+        chosen: Callable[[CallId], ChosenStt | None] = lambda call_id: None,
         speech_detector: Callable[[], VADAnalyzer] | None = None,
         turn_analyzer: Callable[[], BaseTurnAnalyzer] | None = None,
     ) -> None:
@@ -148,6 +143,7 @@ class VoiceCalls:
         self._agent, self._settings, self._stt, self._tts = agent, settings, stt, tts
         self._phrases, self._tracing, self._emit, self._clock = phrases, tracing, emit, clock
         self._speech_detector, self._turn_analyzer = speech_detector, turn_analyzer
+        self._chosen = chosen
         self._calls: dict[CallId, WebRTCCall] = {}
         self._answering: set[CallId] = set()
         self._started = False
@@ -155,17 +151,7 @@ class VoiceCalls:
     async def start(self) -> None:
         """Import onnxruntime and warm one Silero VAD and one Smart Turn v3.2 (the `Calls`
         protocol's `start`)."""
-        switch_pipecat_off()
-        refused = sorted(foreign_set(REFUSED_VARIABLES))
-        if refused:
-            raise ConfigurationError(
-                f"Pipecat reads {' and '.join(refused)}, which change what every call does "
-                "(one runs the files it names in each pipeline, the other writes every turn's "
-                "audio to disk). FIX: unset it in the server's environment.",
-                details={"variables": list(refused)},
-            )
-        if not self._settings.logging.content:
-            hold_transport_loggers()
+        prepare(self._settings)
         await asyncio.to_thread(self._detectors)
         self._started = True
 
@@ -263,17 +249,18 @@ class VoiceCalls:
         on_finished: Callable[[], None] = lambda: None,
         record: bool = False,
     ) -> CallPipeline:
-        """One call's pipeline, with this runtime's agent, settings, providers and phrases (the
-        file-fed transport builds its calls here too)."""
+        """One call's pipeline, with this runtime's agent, settings, providers and phrases, or
+        the call's `ChosenStt`'s settings and speech-to-text (the file-fed transport's too)."""
         from t2_agentic_voice.voice.pipeline import CallPipeline
 
+        chosen = self._chosen(call_id)
         setup = CallSetup(
             call_id=call_id,
             caller=caller,
             consent=consent,
             agent=self._agent,
             language=language,
-            settings=self._settings,
+            settings=self._settings if chosen is None else chosen.settings,
             phrases=self._phrases,
             max_chars=self._tts.max_chars,
             tracing=self._tracing,
@@ -288,7 +275,7 @@ class VoiceCalls:
         detector, analyzer = detectors
         return CallPipeline(
             setup=setup,
-            stt=self._stt,
+            stt=self._stt if chosen is None else chosen.stt,
             tts=self._tts,
             detector=detector,
             analyzer=analyzer,

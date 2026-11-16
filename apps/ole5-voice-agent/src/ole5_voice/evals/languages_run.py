@@ -1,14 +1,14 @@
-"""`poe eval-languages`: plan 007's run H, its H1, each turn's language on the golden set,
-offline and with no spend, or through a speech-to-text provider's own language, which spends,
-into a new folder, `--out`; and `--read`, condition 4 of its keep rule read across a commit's
-passes.
+"""`poe eval-languages`: run H's H1, each turn's language on the golden set, offline and with no
+spend, or through a speech-to-text provider's own language, which spends, into a new folder,
+`--out`; and `--read`, condition 4 of its keep rule read across a commit's passes.
 
 A pass feeds every checked variant of its split through the file-fed pipeline, each a fresh call
 at real-time pace with `eot.LEAD_S` of silence before it and `eot.TAIL_S` after it, held in
 Arabic with Ole5's two languages (`ECHO_AGENT`), through the `evals` facade's `turn_languages`:
 `--classifier off` under `stt.live_language = "session"`; `silero` or `ecapa` under
 `classified`, with the classifier the `classifiers` facade builds from the settings, its files
-in `--classifier-dir` (or `stt.classifier_dir`), loaded before any clip is fed; `groq`,
+in `--classifier-dir` (or `stt.classifier_dir`), loaded before any clip is fed; `detected` under
+`detected`, no classifier, each turn recording whether it also goes naming no language; `groq`,
 `elevenlabs` or `soniox` under `classified`, through that provider's own language
 (provider_language.py, D-100), each classified turn's first seconds sent to it with no language
 named. A provider's pass needs `--price-per-hour` and `--cap-usd`, logs its dry estimate (the
@@ -113,7 +113,7 @@ def _parser() -> argparse.ArgumentParser:
     add(
         "--classifier",
         choices=get_args(ClassifierName),
-        help="off (session), silero or ecapa; or groq, elevenlabs or soniox, which spend",
+        help="off (session), silero, ecapa or detected; or groq, elevenlabs or soniox, which spend",
     )
     add("--classifier-dir", type=Path, help="the classifier's model files (stt.classifier_dir)")
     add("--env-file", type=Path, help="the .env file the settings load from (never printed)")
@@ -237,7 +237,8 @@ def _run(
         if estimate == "estimated":
             return 0
         provider = make_provider(settings)
-    built = provider or (None if args.classifier == "off" else make_classifier(settings))
+    unclassified = args.classifier in ("off", "detected")
+    built = provider or (None if unclassified else make_classifier(settings))
     classifier: LanguageClassifier | None = built
     if classifier is not None:
         asyncio.run(_loaded(classifier))

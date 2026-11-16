@@ -52,6 +52,8 @@ http://127.0.0.1:7861/voice/dev/console on the same machine. Leave **Join token*
 press **Start call**: the console makes a token for the demo customer, as the widget's are, so
 the call makes and reads that customer's tickets. It asks for no access code and leaves the
 widget's 10 tokens a day alone. Tick **Keep the call's audio** only if it should be kept.
+To hear a call with another speech-to-text provider or model, pick it above **Start call**
+([the guide's section](../../docs/guide/browser-client.md#trying-speech-to-text-providers-in-the-dev-console)).
 
 ## The mock ticket system
 

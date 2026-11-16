@@ -5,13 +5,13 @@ from text or a file runs the same code as one over WebRTC. io.py says what each 
 
 What it does, and where each part is:
 
-- **The call.** It holds the call in its language (`setup.language`, fixed at join), names it to
+- **The call.** It holds the call in its language (`setup.language` at join, `setup.now` as it
+  moves under `stt.live_language = "detected"`: language_moves.py), names it to
   the speech-to-text bridge (`ListenIn`, naming none under `stt.live_language = "auto"`), greets
   the caller once connected (reply 0), and ends the call on the caller's `hangup`, a limit
-  (`limits.max_call_s`, `limits.idle_s`: limits.py's timers, the `ended` notice played first), a
-  transport failure, or the runtime's end; whatever ends it, its `HangUp` comes last and a turn
-  still open is unfinished (io.py's end). A client's `stop` drops every reply in progress at
-  once (io.py's stop path).
+  (`limits.max_call_s`, `limits.idle_s`), a transport failure, or the runtime's end (call_life.py's
+  start, end and finish). A client's `stop` drops every reply in progress at once (io.py's stop
+  path).
 - **The turns** are turn_book.py's; a turn whose speech began over a reply is not answered under
   `interruptions.mode = "drop"` (io.py's drop rule) and is an overlap under `two_step`, which
   interrupter.py takes, as it takes a command said whole while the agent is silent.
@@ -27,8 +27,8 @@ What it does, and where each part is:
   whose transcript failed, or a reply one of whose clauses failed; `ended` at a limit.
 - **Its books** (books.py): the usage of each model, counted from each request's report
   (usage.py); the `CallReport`, written with no text of the call under `storage.var_dir` once
-  the call's stream has ended (`aclose`; report.py); each turn's trace and its time to first
-  audio (turn_book.py); the recording, kept only when `privacy.record_audio` is on and
+  the call's stream has ended (`aclose`; call_life.py, report.py); each turn's trace and its time
+  to first audio (turn_book.py); the recording, kept only when `privacy.record_audio` is on and
   `allows_recording(setup.consent)` (core/identity.py) says the consent allows it (invariant 8),
   asked of `setup.consent` itself (recording.py); the heard words, which only voice builds
   (`HeardWords`, invariant 1; heard.py); and what the caller heard (history.py).
@@ -43,20 +43,20 @@ import asyncio
 from collections.abc import Awaitable, Callable
 from functools import partial
 
-from t2_agentic_voice.core.events import ClientConnection, EndReason
 from t2_agentic_voice.core.logging import get_logger
 from t2_agentic_voice.core.yes_inputs import HeardWords
 from t2_agentic_voice.voice import protocol as wire
 from t2_agentic_voice.voice.session import session_events as on
 from t2_agentic_voice.voice.session.books import CallBooks
-from t2_agentic_voice.voice.session.commands import HangUp, ListenIn
+from t2_agentic_voice.voice.session.call_life import CallLife
+from t2_agentic_voice.voice.session.commands import ListenIn
 from t2_agentic_voice.voice.session.echo import echo
 from t2_agentic_voice.voice.session.interrupter import Interrupter
 from t2_agentic_voice.voice.session.io import CallSetup, Commands
-from t2_agentic_voice.voice.session.limits import CallLimits, Limit
+from t2_agentic_voice.voice.session.language_moves import follow
 from t2_agentic_voice.voice.session.playback import Playback, Reply
 from t2_agentic_voice.voice.session.read_back import Confirming
-from t2_agentic_voice.voice.session.report import TurnLog, call_report, file_report, merged
+from t2_agentic_voice.voice.session.report import TurnLog, merged
 from t2_agentic_voice.voice.session.speaker import Speaker
 from t2_agentic_voice.voice.session.talking import Talking
 from t2_agentic_voice.voice.session.turn_book import TurnBook
@@ -71,13 +71,13 @@ class CallSession:
     `aclose`."""
 
     def __init__(self, setup: CallSetup, commands: Commands) -> None:
-        settings, language = setup.settings, setup.language
-        self._setup, self._commands, self._language = setup, commands, language
-        self._listen = None if settings.stt.live_language == "auto" else language.primary
+        self._setup, self._commands = setup, commands
+        live = setup.settings.stt.live_language
+        self._listen = None if live == "auto" else setup.language.primary
         self._lock = asyncio.Lock()
         books = CallBooks.of(setup)
         self._usage, self._recorder, self._events = books.usage, books.recorder, books.events
-        self._trace, self.history = books.trace, books.history  # what the caller heard
+        self.history = books.history  # what the caller heard
         self._speaker = Speaker(
             setup, commands, books, ended=self._reply_ended, stopped=self._replies_stopped
         )
@@ -110,12 +110,19 @@ class CallSession:
                 confirming=self._confirming,
                 receipt=self._interrupter.receipt,
             )
-        self._limits = CallLimits(setup, over=self._over, reached=self._reached)
-        self._started_at = self._ended_at = setup.clock.wall()
-        self._connected = self._closed = False
-        self._ended: EndReason | None = None
-        self._ending: Limit | None = None  # the limit whose `ended` notice is to play
-        self._client: ClientConnection | None = None
+        self._close = CallLife(
+            setup,
+            commands,
+            books,
+            speaker=self._speaker,
+            turns=self._turns,
+            confirming=self._confirming,
+            interrupter=self._interrupter,
+            talking=self._talking,
+            guarded=self._guarded,
+            sync=self._sync_state,
+        )
+        self._limits = self._close.limits
 
     async def handle(self, event: on.SessionEvent) -> None:
         """Take one event, as the `Session` protocol says: return soon, never raise."""
@@ -124,7 +131,7 @@ class CallSession:
     async def aclose(self) -> None:
         """Finish the call once its stream has ended, as the `Session` protocol says: the
         report written, never raise."""
-        await self._guarded("aclose", self._finish)
+        await self._guarded("aclose", self._close.finish)
 
     async def _guarded(self, step: str, run: Callable[[], Awaitable[None]]) -> None:
         """Run one step of the session's, one at a time; a failure is logged by its kind alone,
@@ -137,7 +144,7 @@ class CallSession:
             _log.error("session_step_failed", call_id=self._id, step=step, failure=failure)
 
     async def _take(self, event: on.SessionEvent) -> None:
-        if self._ended is not None:  # only a request's report comes after the end
+        if self._close.ended is not None:  # only a request's report comes after the end
             if isinstance(event, on.Transcribing):
                 self._usage.transcribing(event)
             elif isinstance(event, on.Synthesizing):
@@ -152,7 +159,7 @@ class CallSession:
             case on.CallerAudio():
                 return
             case on.Connected():
-                await self._connected_at(event.at)
+                await self._close.connect(event.at, listen=self._listen)
             case on.TurnOpened():
                 self._limits.heard(event.at)
                 over = self._turns.opened(event)
@@ -191,42 +198,34 @@ class CallSession:
                     self._turns.first_audio(reply, event.clause, event.at)
                     self._confirming.queued(reply, event.clause)
             case on.ClausePlayed() | on.ClauseFailed():
-                await self._speaker.done(event, tell=self._ending is None)
+                await self._speaker.done(event, tell=self._close.ending is None)
             case on.FromClient(message=wire.Stop()):
                 self._confirming.stopped()
                 await self._speaker.stop(event.at, client=True)
                 if self._talking is not None:
                     await self._talking.stopped()
             case on.FromClient(message=wire.Hangup()):
-                await self._end("hangup", event.at, tell=True)
+                await self._close.end("hangup", event.at, tell=True)
             case on.FromClient(message=wire.ClientStats() as stats):
-                self._client = merged(self._client, stats)
+                self._close.client = merged(self._close.client, stats)
             case on.FromClient(message=wire.Playback(event="started") as played):
                 reply = self._playback.reply(played.reply_id)
                 self._turns.browser_played(reply, played.clause, event.at)
             case on.TransportFailure():
                 self._events.transport(event.stage)
-                await self._end("transport", event.at, tell=False)
+                await self._close.end("transport", event.at, tell=False)
             case on.Ending():
-                await self._end(event.reason, event.at, tell=event.reason == "server")
+                await self._close.end(event.reason, event.at, tell=event.reason == "server")
         await self._sync_state()
 
-    async def _connected_at(self, at: float) -> None:
-        if self._connected:
-            return
-        self._connected, self._started_at = True, self._events.started()
-        self._trace.started()
-        self._recorder.started(at, self._started_at.isoformat())
-        await self._commands.run(ListenIn(language=self._listen))
-        await self._speaker.greet(at)
-        self._limits.start(at)
-        _log.info("call_started", call_id=self._id, language=self._language.tag)
-
     async def _transcribed(self, event: on.Transcribed) -> None:
-        """A turn's own transcript: an overlap's taken by its overlap, any other's answered
-        unless, under `two_step`, it is a command said whole (interrupter.py's `alone`); then,
-        with a talker, a reply kept behind it goes on unless it stopped it (talking.py)."""
+        """A turn's own transcript: the call moved first if the turn, not dropped, moved it (an
+        overlap's switch request too: language_moves.py); then an overlap's taken by its overlap,
+        any other's answered unless, under `two_step`, a command said whole (interrupter.py's
+        `alone`), and with a talker a reply kept behind it goes on unless it stopped it."""
         turn, heard = self._turns.transcribed(event)
+        if not turn.dropped:
+            await follow(self._setup, self._commands, turn, heard, event)
         if turn.overlap:
             await self._interrupter.turn_heard(turn, heard, event)
         else:
@@ -238,22 +237,23 @@ class CallSession:
         """Say the turn back, unless dropped or the call has ended: its caption, then the
         `error` notice when its request failed, or its echo (nothing for nothing heard); with a
         talker, the talker's reply instead of the echo."""
-        if self._ended is None and not turn.dropped:
+        ending = self._close.ending
+        if self._close.ended is None and not turn.dropped:
             if heard is not None:
                 caption = wire.Caption(
                     speaker="caller", text=heard.text, final=True, turn_id=turn.turn_id
                 )
                 await self._speaker.send(caption)
-            if self._ending is None and event.failure is not None:
+            if ending is None and event.failure is not None:
                 await self._speaker.notice("error", event.at)
-            elif self._ending is None and heard is not None and self._talking is not None:
+            elif ending is None and heard is not None and self._talking is not None:
                 await self._talking.answer(turn, heard, event.at)
-            elif self._ending is None and heard is not None:
+            elif ending is None and heard is not None:
                 lines = echo(self._setup, heard, reply_id=self._playback.next_id)
                 if lines:
                     reply = await self._speaker.say("echo", lines, event.at, turn_id=turn.turn_id)
                     turn.reply_id = reply.reply_id
-            if self._ending is None and turn.reply_id is None and turn.fate == "pending":
+            if ending is None and turn.reply_id is None and turn.fate == "pending":
                 self._turns.ended(turn, "answered")
         self._turns.settle(turn)
 
@@ -268,73 +268,11 @@ class CallSession:
         self._turns.reply_ended(reply)
         self._confirming.reply_ended(reply)
         if reply.notice == "ended" and reply.ended_at is not None:
-            await self._end(self._ending or "max_call", reply.ended_at, tell=True)
-
-    async def _end(self, reason: EndReason, at: float, *, tell: bool) -> None:
-        """End the call for `reason`: the `ended` message when `tell`, then `HangUp`."""
-        if self._ended is not None:
-            return
-        await self._mark_end(reason, at)
-        if tell:
-            await self._speaker.send(wire.Ended(reason=reason))
-        await self._commands.run(HangUp(reason=reason))
-
-    async def _mark_end(self, reason: EndReason, at: float) -> None:
-        """The call ended: its timers stop, every reply still asked for is cut, and every turn
-        not yet heard is unfinished."""
-        self._ended, self._ended_at = reason, self._setup.clock.wall()
-        self._confirming.end()
-        self._limits.stop()
-        await self._interrupter.asks.end()
-        await self._speaker.cut(at)
-        if self._talking is not None:
-            await self._talking.end()
-        self._turns.end()
-        self._recorder.line(at, "ended", reason=reason)
-        _log.info("call_ended", call_id=self._id, reason=reason)
+            await self._close.end(self._close.ending or "max_call", reply.ended_at, tell=True)
 
     def _over(self) -> bool:
-        """Whether the call has ended, or is ending at a limit: no limit is asked for again."""
-        return self._ended is not None or self._ending is not None
-
-    async def _reached(self, limit: Limit) -> None:
-        await self._guarded(limit, partial(self._limit, limit))
-
-    async def _limit(self, limit: Limit) -> None:
-        """At `limit`: the `ended` notice, then the call ends once it has played (or at once
-        when the cache does not hold it). `idle` holds off while the caller's turn is open."""
-        now = self._setup.clock.now()
-        if self._over() or not self._limits.passed(limit, now):
-            return
-        if limit == "idle" and not self._turns.all_closed:
-            self._limits.heard(now)
-            return
-        self._ending = limit
-        if await self._speaker.notice("ended", now) is None:
-            await self._end(limit, now, tell=True)
-        await self._sync_state()
-
-    async def _finish(self) -> None:
-        """The call's stream ended: its timers and its recording finish first, whatever comes
-        after, then its traces end, its report is written, and `CallEnded` goes out."""
-        if self._closed:
-            return
-        self._closed = True
-        await self._limits.aclose()
-        await self._recorder.aclose()
-        if self._ended is None:  # a stream that ended with no end: as the runtime stopping
-            await self._mark_end("server", self._setup.clock.now())
-        turns = self._turns.close()  # each trace not yet ended ends with how it ended
-        report = call_report(
-            self._setup,
-            started_at=self._started_at,
-            ended_at=self._ended_at,
-            ended_by=self._ended or "server",
-            turns=turns,
-            usage=self._usage.report(),
-            client=self._client,
-        )
-        await file_report(report, self._setup, trace=self._trace, events=self._events)
+        """Whether the call has ended, or is ending at a limit (call_life.py's)."""
+        return self._close.over()
 
     @property
     def setup(self) -> CallSetup:
@@ -353,7 +291,9 @@ class CallSession:
     async def _sync_state(self) -> None:
         """After each step: an action's outcome due at a turn boundary said (action_job.py),
         then the client told what the agent is doing, when it changed."""
-        if self._ended is None and self._connected:
+        if self._close.ended is None and self._close.connected:
+            if (code := self._setup.now.untold()) is not None:  # the talker's tool moved the call
+                await self._commands.run(ListenIn(language=code))
             if self._talking is not None:
                 await self._talking.yes.flush(self._setup.clock.now())
             confirming = self._confirming.active

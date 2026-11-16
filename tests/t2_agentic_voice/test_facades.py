@@ -130,6 +130,7 @@ NAMES = {
         "is_consent_check",
         "sign_test",
         "silence_output",
+        "switch_to",
         "term_recall",
         "turn_ends",
         "turn_languages",
@@ -151,6 +152,9 @@ NAMES = {
 # declaration (`Say`, `ReadBack`, `Claims`, `Spoken`), and `ActionRejected` and `ActionNotSent`.
 # Plan 010 adds the key groups of the providers measured beside Groq (D-100).
 ROOT_NAMES = {
+    "TelnyxSettings",
+    "NabrahSettings",
+    "HumainSettings",
     "Action",
     "ActionContext",
     "ActionNotSent",

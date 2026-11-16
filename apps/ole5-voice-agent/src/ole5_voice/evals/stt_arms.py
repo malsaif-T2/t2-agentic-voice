@@ -4,11 +4,13 @@ providers measured beside it, each asked through the library's port by `groq_ans
 answerer, with its pacer, budget and retries.
 
 - `SttArm`: what a run of one provider needs to know of it: the model its scorecard and history
-  line record (Groq's is `stt.model`; another's is its adapter's fixed model, which a test ties
-  to the adapter), the least it bills a request, the most requests a minute its key allows,
+  line record (Groq's is `stt.model`, Telnyx's `telnyx.stt_model`; another's is its adapter's
+  fixed model, which a test ties to the adapter), the least it bills a request, the audio
+  a request carries past its clip (`run_arm`: Telnyx's streamed engine hears 1.5 s of
+  silence after each turn, which it bills), the most requests a minute its key allows,
   whether it needs the language named (Cohere detects none), and whether its answer names the
   language it heard, so a pass of `poe eval-languages` can hear turns through it
-  (provider_language.py; Speechmatics' pack and Cohere name none).
+  (provider_language.py; Speechmatics' pack, Cohere, Telnyx and Nabrah name none).
 - `arm_problem`: what the parser refuses of a provider's flags, before anything is sent:
   `--model` and `--base-url` are Groq's; `--language-hint auto` for a provider that detects no
   language; a `--max-rpm` past its key's limit.
@@ -23,7 +25,7 @@ from __future__ import annotations
 
 import argparse
 from collections.abc import Sequence
-from dataclasses import dataclass
+from dataclasses import dataclass, replace
 from typing import Final, Literal
 
 from t2_agentic_voice import VoiceSettings, get_logger
@@ -37,8 +39,8 @@ log = get_logger(__name__)
 
 @dataclass(frozen=True)
 class SttArm:
-    """One provider as `poe eval` runs it (the module's docstring); `model` None for Groq's,
-    which is `stt.model`."""
+    """One provider as `poe eval` runs it (the module's docstring); `model` None for one whose
+    model is a setting (Groq's `stt.model`, Telnyx's `telnyx.stt_model`)."""
 
     provider: str
     model: str | None
@@ -46,18 +48,35 @@ class SttArm:
     max_rpm: int
     names_language: bool = False
     hears_language: bool = False
+    extra_s: float = 0.0
 
 
 # The minimums: Groq bills 10 s a request at the least; the others bill the audio sent, by the
 # provider guide's reading of their pricing (2026-11-16; Speechmatics' and Soniox's rounding
-# unconfirmed). Cohere's trial key allows 5 requests a minute.
+# unconfirmed; Telnyx bills by the minute and Nabrah 100 credits a minute, their rounding
+# unconfirmed too). Cohere's trial key allows 5 requests a minute.
 ARMS: Final = {
     "groq": SttArm("groq", None, GROQ_MINIMUM_S, 20, hears_language=True),
     "elevenlabs": SttArm("elevenlabs", "scribe_v3", 0.0, 20, hears_language=True),
     "speechmatics": SttArm("speechmatics", "ar_en-enhanced", 0.0, 20),
     "cohere": SttArm("cohere", "cohere-transcribe-arabic-07-2026", 0.0, 5, names_language=True),
     "soniox": SttArm("soniox", "stt-async-v6", 0.0, 20, hears_language=True),
+    "telnyx": SttArm("telnyx", None, 0.0, 20),
+    "nabrah": SttArm("nabrah", "nabrah_stt_v1", 0.0, 20),
 }
+# Telnyx's models heard only on its WebSocket, and the silence its adapter sends after each
+# turn there (adapters/telnyx_stt.py's STREAMED and TAIL_S, which a test ties them to).
+TELNYX_STREAMED: Final = frozenset({"humain/realtime"})
+TELNYX_TAIL_S: Final = 1.5
+
+
+def run_arm(settings: VoiceSettings, answerer: str) -> SttArm:
+    """The arm a run of `answerer` bills by: Telnyx's with its tail of silence on each request
+    when `telnyx.stt_model` is a streamed one, any other as `ARMS` holds it."""
+    arm = ARMS[answerer]
+    if answerer == "telnyx" and settings.telnyx.stt_model in TELNYX_STREAMED:
+        return replace(arm, extra_s=TELNYX_TAIL_S)
+    return arm
 
 
 def arm_problem(args: argparse.Namespace) -> str | None:
@@ -87,20 +106,25 @@ def arm_settings(settings: VoiceSettings, answerer: str) -> VoiceSettings:
 
 
 def recorded_model(settings: VoiceSettings, answerer: str) -> str:
-    """The model a run of `answerer` records: Groq's `stt.model`, or the provider's own."""
+    """The model a run of `answerer` records: Groq's `stt.model`, Telnyx's
+    `telnyx.stt_model`, or the provider's own."""
     arm = ARMS.get(answerer)
-    return settings.stt.model if arm is None or arm.model is None else arm.model
+    if arm is not None and arm.model is not None:
+        return arm.model
+    return settings.telnyx.stt_model if answerer == "telnyx" else settings.stt.model
 
 
 def check_cost(
-    arm: SttArm, sent: Sequence[AnswerRequest], price_per_hour_usd: float, args: argparse.Namespace
+    settings: VoiceSettings, sent: Sequence[AnswerRequest], args: argparse.Namespace
 ) -> Literal["estimated", "within"]:
     """Log the run's dry estimate (the module's docstring), then refuse it when its least cost
-    passes `--cap-usd`: each request sent once, billed as the provider bills it (a retry, a
-    windows run's requests and a batch job's own wait come on top). `estimated` when the run
-    is `--estimate-only`, so nothing is sent; else `within`."""
+    passes `--cap-usd`: each request sent once, billed as `--answerer`'s provider bills it
+    (`run_arm`; a retry, a windows run's requests and a batch job's own wait come on top), at
+    `--price-per-hour`. `estimated` when the run is `--estimate-only`, so nothing is sent;
+    else `within`."""
+    arm, price_per_hour_usd = run_arm(settings, args.answerer), args.price_per_hour or 0.0
     cap_usd, max_rpm = args.cap_usd, args.max_rpm
-    billed = least_billed(sent, minimum_s=arm.minimum_s)
+    billed = least_billed(sent, minimum_s=arm.minimum_s, extra_s=arm.extra_s)
     requests = sum(len(request.segments) for request in sent)
     least = cost_usd(billed, price_per_hour_usd)
     log.info(

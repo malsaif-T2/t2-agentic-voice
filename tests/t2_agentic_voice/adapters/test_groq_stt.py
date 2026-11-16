@@ -120,10 +120,16 @@ def test_the_result_billed_10_s_or_more(seconds: float, billed: float) -> None:
 
 
 @pytest.mark.parametrize("language", [None, ""])
-def test_with_no_language_named_and_no_segment(language: str | None) -> None:
-    fake = FakeGroq(httpx.Response(200, json={"text": "made-up", "language": "English"}))
+@pytest.mark.parametrize(
+    ("reported", "code"),
+    [("English", "en"), ("arabic", "ar"), ("Armenian", None), ("Spanish", None), (None, None)],
+)
+def test_with_no_language_named_and_no_segment(  # Groq's name mapped exactly (TD-011)
+    language: str | None, reported: str | None, code: str | None
+) -> None:
+    fake = FakeGroq(httpx.Response(200, json={"text": "made-up", "language": reported}))
     result = asyncio.run(call(fake, language=language, prompt="Made-up terms"))
-    assert (result.language, result.confidence, result.no_speech_prob) == ("English", None, None)
+    assert (result.language, result.confidence, result.no_speech_prob) == (code, None, None)
     found = parts(fake.requests[0])
     assert "language" not in found and found["prompt"][1] == b"Made-up terms"
 

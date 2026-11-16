@@ -91,16 +91,52 @@ Inworld: voices to measure beside Groq's (D-100); the key in the Base64 form the
 | `T2V_INWORLD__API_KEY` | secret, or unset | unset | — | The provider's API key; unset, its adapters are unavailable and say so when chosen. Or give api_key_file instead. |
 | `T2V_INWORLD__API_KEY_FILE` | path, or unset | unset | — | Or the full path of a file outside the repository that holds only the key, so the key can live outside .env. |
 
+## `telnyx`
+
+Telnyx: speech-to-text through its engines, HUMAIN's Arabic engine among them; measured beside Groq (D-100).
+
+| Variable | Type | Default | Unit | Description |
+| --- | --- | --- | --- | --- |
+| `T2V_TELNYX__API_KEY` | secret, or unset | unset | — | The provider's API key; unset, its adapters are unavailable and say so when chosen. Or give api_key_file instead. |
+| `T2V_TELNYX__API_KEY_FILE` | path, or unset | unset | — | Or the full path of a file outside the repository that holds only the key, so the key can live outside .env. |
+| `T2V_TELNYX__TURN_TIMEOUT_S` | number | `30` | seconds | The longest one turn may take over the provider's WebSocket, from the connection to its last transcript; its time is measured, never assumed. |
+| `T2V_TELNYX__FINAL_WAIT_S` | number | `3` | seconds | Once the turn's audio is sent, the longest the adapter waits for the provider's first final transcript; none by then, the turn heard no words. Part of the turn's measured time. |
+| `T2V_TELNYX__QUIET_S` | number | `0.5` | seconds | Once a final transcript has come and the audio is sent, how long a quiet socket (no message) means the provider has said all it heard, when it does not close the socket itself; part of the turn's measured time. |
+| `T2V_TELNYX__STT_MODEL` | one of humain/realtime, deepgram/nova-3, openai/whisper-large-v3-turbo | `humain/realtime` | — | The Telnyx speech-to-text model: humain/realtime (HUMAIN's Arabic engine with Arabic-English code-switching, on Telnyx's streaming WebSocket, the default), or deepgram/nova-3 or openai/whisper-large-v3-turbo (its batch endpoint). |
+| `T2V_TELNYX__CHUNK_GAP_MS` | integer | `50` | milliseconds | The wait between two 100 ms chunks of a turn's audio sent to a streamed model, in milliseconds: 100 is real time, 50 (the default) twice as fast. HUMAIN's engine dropped most of a turn sent all at once and the end of one sent four times as fast (25), and heard two 5 s turns whole at 50 and 33 (probed 2026-11-16). A turn's time grows by its length times this gap over 100. |
+
+## `humain`
+
+HUMAIN: its own key, kept for its speech, voice and chat APIs once their reference is given; no adapter reads it yet (D-100).
+
+| Variable | Type | Default | Unit | Description |
+| --- | --- | --- | --- | --- |
+| `T2V_HUMAIN__API_KEY` | secret, or unset | unset | — | The provider's API key; unset, its adapters are unavailable and say so when chosen. Or give api_key_file instead. |
+| `T2V_HUMAIN__API_KEY_FILE` | path, or unset | unset | — | Or the full path of a file outside the repository that holds only the key, so the key can live outside .env. |
+
+## `nabrah`
+
+Nabrah: Saudi Arabic speech-to-text on its streaming WebSocket; measured beside Groq (D-100).
+
+| Variable | Type | Default | Unit | Description |
+| --- | --- | --- | --- | --- |
+| `T2V_NABRAH__API_KEY` | secret, or unset | unset | — | The provider's API key; unset, its adapters are unavailable and say so when chosen. Or give api_key_file instead. |
+| `T2V_NABRAH__API_KEY_FILE` | path, or unset | unset | — | Or the full path of a file outside the repository that holds only the key, so the key can live outside .env. |
+| `T2V_NABRAH__TURN_TIMEOUT_S` | number | `30` | seconds | The longest one turn may take over the provider's WebSocket, from the connection to its last transcript; its time is measured, never assumed. |
+| `T2V_NABRAH__FINAL_WAIT_S` | number | `3` | seconds | Once the turn's audio is sent, the longest the adapter waits for the provider's first final transcript; none by then, the turn heard no words. Part of the turn's measured time. |
+| `T2V_NABRAH__QUIET_S` | number | `0.5` | seconds | Once a final transcript has come and the audio is sent, how long a quiet socket (no message) means the provider has said all it heard, when it does not close the socket itself; part of the turn's measured time. |
+
 ## `stt`
 
 Speech-to-text: the adapter, the Whisper model, how long a request may take, the language and the prompt a call sends, the classifier of each turn's language, and the filter for text from silence.
 
 | Variable | Type | Default | Unit | Description |
 | --- | --- | --- | --- | --- |
-| `T2V_STT__PROVIDER` | one of groq, elevenlabs, speechmatics, cohere, soniox | `groq` | — | Which adapter turns speech into text: groq (Whisper, the default), or one measured beside it (D-100): elevenlabs (Scribe), speechmatics (its ar_en pack, a batch job), cohere (Transcribe Arabic, the language always named) or soniox (stt-async-v6, a batch job); a provider with no key set is refused when chosen, naming its key's setting. |
+| `T2V_STT__PROVIDER` | one of groq, elevenlabs, speechmatics, cohere, soniox, telnyx, nabrah | `groq` | — | Which adapter turns speech into text: groq (Whisper, the default), or one measured beside it (D-100): elevenlabs (Scribe), speechmatics (its ar_en pack, a batch job), cohere (Transcribe Arabic, the language always named), soniox (stt-async-v6, a batch job), telnyx (the model telnyx.stt_model names, HUMAIN's Arabic engine by default, a turn on its WebSocket) or nabrah (its Saudi Arabic model, a turn on its WebSocket); a provider with no key set is refused when chosen, naming its key's setting. |
 | `T2V_STT__MODEL` | one of whisper-large-v3, whisper-large-v3-turbo | `whisper-large-v3` | — | The Whisper model: whisper-large-v3 or whisper-large-v3-turbo. The default stayed large-v3 on a registered measurement (D-025), and changes only on another (GP-18). |
 | `T2V_STT__TIMEOUT_S` | number | `6` | seconds | The longest one transcription request may take before it is a timeout. |
-| `T2V_STT__LIVE_LANGUAGE` | one of session, auto, classified | `session` | — | The language a live call sends Whisper: session (the call's language, fixed when it joins from the caller's pick or the join token's locale), auto (none, so Whisper detects it) or classified (each turn's, chosen among the agent's languages by the classifier `stt.classifier` names from the turn's first `stt.classifier_from_s` seconds; a short, unsure, late, busy or failed turn keeps the language last classified, the call's until one is). A registered measurement sets the default (GP-18). |
+| `T2V_STT__LIVE_LANGUAGE` | one of session, auto, classified, detected | `session` | — | The language a live call sends Whisper: session (the call's language, fixed when it joins from the caller's pick or the join token's locale), auto (none, so Whisper detects it) or classified (each turn's, chosen among the agent's languages by the classifier `stt.classifier` names from the turn's first `stt.classifier_from_s` seconds; a short, unsure, late, busy or failed turn keeps the language last classified, the call's until one is) or detected (each request names the call's current language, and a turn with `stt.detect_from_s` seconds of voiced speech or more is also sent naming none, at the same time: when Whisper hears the agent's other language in a question or request, never a short reply, that transcript is the turn's and the call moves to that language; on speechmatics or cohere, which report no language heard, no second request goes, and only a switch request or the talker moves the call). A registered measurement sets the default (GP-18). |
+| `T2V_STT__DETECT_FROM_S` | number | `1.2` | seconds | Under live_language detected, the seconds of voiced speech a turn needs, from where the speech detector heard it begin to where it last heard it stop (never the silence after), for its second request naming no language; a shorter turn keeps the call's current language. 1.2, registered for run H (D-038's amendment). |
 | `T2V_STT__CLASSIFIER` | one of silero, ecapa | `silero` | — | The spoken-language classifier under live_language classified: silero (Silero's 95 languages, on onnxruntime) or ecapa (ECAPA on VoxLingua107, on torch through SpeechBrain, which needs the library's ecapa extra: uv sync --group language-id in this workspace). |
 | `T2V_STT__CLASSIFIER_DIR` | path, or unset | unset | — | The folder of the classifier's model files, fetched once by hand as the guide's languages page says and each checked against its pinned SHA-256 at every start and by t2v doctor; never under a repository or var/. No default: live_language classified is refused at start without it. |
 | `T2V_STT__CLASSIFIER_FROM_S` | number | `2` | seconds | The seconds of a turn's audio, from where the speech detector heard its speech begin, that the classifier hears; pauses inside the turn count. A turn whose request goes with less keeps the current language (short). 2.0, registered for run H (plan 007, Q20). |
