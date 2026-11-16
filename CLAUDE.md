@@ -83,10 +83,10 @@ packages/t2-agentic-voice/src/t2_agentic_voice/   the library; public API: __ini
   voice/      one call's real-time pipeline: WebRTC, end of turn, interruptions, cancel scopes
   testing/    what a team tests and measures with: wer, cer, timings, AudioCall, TextCall, fakes
   api/        HTTP and the composition root: call set-up, health, the client and the dev page
-apps/ole5-voice-agent/src/ole5_voice/   the Ole5 app: only the library's public API (ARCH-PUBLIC)
+apps/ole5-voice-agent/   the Ole5 app, src/ole5_voice/ and its widget in web/: the public API alone
   evals/      the golden set's commands (data in apps/ole5-voice-agent/evals/, no audio)
-apps/ole5-voice-agent/web/   Ole5's browser widget (plain HTML/JS/CSS), served by the Ole5 app
-apps/flight-voice-agent/src/flight_voice/   the flight agent (D-101); its mock airline in airline/
+apps/flight-voice-agent/   the flight agent (D-101): src/flight_voice/ (its mock airline in
+  airline/, its server on 7862) and its page in web/ (plain HTML/JS/CSS)
 examples/minimal/src/minimal_example/   the smallest app: the quickstart, a test of the library
 scripts/      the harness: the checks of arch, docs, gc and quality, and their helpers; all
               read harness.toml through harness_config.py

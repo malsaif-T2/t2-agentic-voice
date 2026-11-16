@@ -254,8 +254,9 @@ with the dev page on, to a browser on the same machine ([quickstart.md](quicksta
 `<prefix>/dev/console` is a page for the engineers who test an agent (D-083): every call on the
 runtime, turn by turn, read from the runtime's own events. It comes with the dev page, so `t2v
 dev` serves it, and so does an app's server under `env` dev with `T2V_SERVER__DEV_PAGE=true`: for
-Ole5, `http://127.0.0.1:7861/voice/dev/console`. It shows calls made from any page on that
-runtime, and can make its own.
+Ole5, `http://127.0.0.1:7861/voice/dev/console`, and for the flight agent
+`http://127.0.0.1:7862/voice/dev/console`. It shows calls made from any page on that runtime,
+and can make its own.
 
 To start a call from the console, leave **Join token** empty and press **Start call**. When your
 app declares a dev caller (below), the console makes a signed join token for that caller

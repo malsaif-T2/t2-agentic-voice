@@ -1,6 +1,6 @@
 """The flight agent speaks in its own words, never the public demo's (the build spec's 6.1): its
-greetings, progress lines, instructions, tool descriptions, `say` hints and failure messages
-hold none of the demo's own strings, read case-blind."""
+greetings, progress lines, instructions, tool descriptions, `say` hints and failure messages,
+and its page's texts, hold none of the demo's own strings, read case-blind."""
 
 from __future__ import annotations
 
@@ -10,6 +10,7 @@ from flight_voice import persona
 from flight_voice.agent import declare
 from flight_voice.airline.system import Airline
 from flight_voice.persona import Names
+from flight_voice.server import WEB
 from flight_voice.tools import results
 from flight_voice.trip import TripBook
 
@@ -50,6 +51,11 @@ def held(texts: list[str]) -> list[tuple[str, str]]:
 def test_the_agents_texts_hold_none_of_the_demos_strings() -> None:
     texts = agent_texts()
     assert len(texts) > 20
+    assert held(texts) == []
+
+
+def test_the_pages_texts_hold_none_of_the_demos_strings() -> None:
+    texts = [(WEB / name).read_text(encoding="utf-8") for name in ("texts.js", "index.html")]
     assert held(texts) == []
 
 
