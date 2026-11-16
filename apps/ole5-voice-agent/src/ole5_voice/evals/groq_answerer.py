@@ -83,11 +83,16 @@ class Budget:
         self.requests += 1
 
 
-def least_billed(requests: Sequence[AnswerRequest], *, minimum_s: float = GROQ_MINIMUM_S) -> float:
+def least_billed(
+    requests: Sequence[AnswerRequest], *, minimum_s: float = GROQ_MINIMUM_S, extra_s: float = 0.0
+) -> float:
     """The fewest seconds a provider billing at least `minimum_s` a request (Groq's 10 s by
-    default) bills for `requests`, each segment sent once: the cap's check before a run starts
-    (a retry, or a request over the cap, comes on top)."""
-    return sum(max(minimum_s, read_wav(path).seconds) for r in requests for path in r.segments)
+    default), and `extra_s` past each clip (the audio its adapter adds), bills for `requests`,
+    each segment sent once: the cap's check before a run starts (a retry, or a request over the
+    cap, comes on top)."""
+    return sum(
+        max(minimum_s, read_wav(path).seconds) + extra_s for r in requests for path in r.segments
+    )
 
 
 @dataclass(frozen=True)
@@ -121,7 +126,8 @@ class Pacer:
 class GroqAnswerer:
     """Asks the speech-to-text port for each segment of a variant, or for each of its windows,
     in the language its policy sends or the run hints, with its policy's prompt for it; `name`
-    is the provider's, and each request is billed at least `minimum_s`."""
+    is the provider's, and each request is billed at least `minimum_s`, and `extra_s` more for
+    the audio its adapter adds past the clip."""
 
     name: str = "groq"
     spends = True
@@ -142,8 +148,9 @@ class GroqAnswerer:
         sleep: Sleep,
         name: str = "groq",
         minimum_s: float = GROQ_MINIMUM_S,
+        extra_s: float = 0.0,
     ) -> None:
-        self.name, self._minimum_s = name, minimum_s
+        self.name, self._minimum_s, self._extra_s = name, minimum_s, extra_s
         self._stt, self._model, self._policy, self._budget = stt, model, policy, budget
         self._measure, self._reuse, self._tracing, self._run = measure, reuse, tracing, run_name
         self._clock, self._sleep = clock, sleep
@@ -207,7 +214,7 @@ class GroqAnswerer:
     ) -> Transcript | None:
         """One clip's transcript, asked again while the provider turns it away with a failure
         that may pass; None after the last attempt, or after a refusal no retry mends."""
-        billed = max(self._minimum_s, clip.seconds)
+        billed = max(self._minimum_s, clip.seconds) + self._extra_s
         attempt = 0
         while True:
             attempt += 1

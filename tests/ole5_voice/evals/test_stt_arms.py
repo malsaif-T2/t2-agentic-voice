@@ -11,7 +11,7 @@ from typing import get_args
 import pytest
 from ole5_voice.evals import run
 from ole5_voice.evals.answerers import ANSWERERS
-from ole5_voice.evals.stt_arms import ARMS, recorded_model
+from ole5_voice.evals.stt_arms import ARMS, TELNYX_STREAMED, TELNYX_TAIL_S, recorded_model
 from t2_agentic_voice import VoiceSettings
 from t2_agentic_voice.adapters import (
     cohere_stt,
@@ -116,6 +116,32 @@ def test_a_groq_estimate_counts_its_ten_second_minimum_and_the_cap_still_refuses
     assert "least_billed_s=40.0" in capsys.readouterr().out
     assert setup.main("--price-per-hour", "3600", out="r2") == 2  # $40 at the least, cap $1
     assert setup.calls() == 0
+
+
+def _least_billed_s(out: str) -> float:
+    """The dry estimate's least billed seconds, from the run's logged lines."""
+    (shown,) = [word for word in out.split() if word.startswith("least_billed_s=")]
+    return float(shown.removeprefix("least_billed_s="))
+
+
+def test_a_streamed_telnyx_turn_is_estimated_and_charged_with_its_tail_of_silence(
+    tmp_path: Path, capsys: pytest.CaptureFixture[str], monkeypatch: pytest.MonkeyPatch
+) -> None:
+    assert TELNYX_TAIL_S == telnyx_stt.TAIL_S and frozenset(telnyx_stt.STREAMED) == TELNYX_STREAMED
+    setup, _ = _provider_setup(tmp_path)
+    assert setup.main("--estimate-only", answerer="elevenlabs") == 0
+    clips_s = _least_billed_s(capsys.readouterr().out)
+    assert setup.main("--estimate-only", answerer="telnyx") == 0
+    assert _least_billed_s(capsys.readouterr().out) == pytest.approx(
+        clips_s + 4 * TELNYX_TAIL_S, abs=0.11
+    )
+    assert setup.main(answerer="telnyx") == 0
+    line, _ = setup.history.lines
+    assert line.billed_seconds == pytest.approx(clips_s + 4 * TELNYX_TAIL_S, abs=0.11)
+    capsys.readouterr()  # the run's own estimate
+    monkeypatch.setenv("T2V_TELNYX__STT_MODEL", "deepgram/nova-3")  # a batch model: no tail
+    assert setup.main("--estimate-only", answerer="telnyx", out="r2") == 0
+    assert _least_billed_s(capsys.readouterr().out) == clips_s
 
 
 @pytest.mark.parametrize(

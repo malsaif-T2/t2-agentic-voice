@@ -221,7 +221,7 @@ def _run(
     if spends and not args.windows_ms:  # the cap, before anything is sent
         todo = [] if args.smoke_only else [t for t in plan.todo if t.variant not in arm.copied]
         sent = [plan.smoke.request, *(t.request for t in todo)]
-        if check_cost(ARMS[args.answerer], sent, budget.price_per_hour_usd, args) == "estimated":
+        if check_cost(settings, sent, args) == "estimated":
             return 0
     policy = Policy(
         args.max_attempts,

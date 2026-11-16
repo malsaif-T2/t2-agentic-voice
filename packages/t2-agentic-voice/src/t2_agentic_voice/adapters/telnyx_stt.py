@@ -72,16 +72,20 @@ STREAMED: Final[dict[str, str]] = {"humain/realtime": "Humain"}
 CODESWITCH: Final = "codeswitch"  # HUMAIN's language for Arabic and English in one turn
 TAIL_S: Final = 1.5  # the silence after a turn's audio, in seconds, so the engine ends it
 CHUNK_S: Final = 0.1  # each audio message's length, in seconds
-# Where Telnyx processes and keeps speech-to-text requests, as far as its pages say (read
-# 2026-11-16); its data terms are to be read before callers' audio goes (docs/SECURITY.md).
+# Where Telnyx processes and keeps speech-to-text requests, and its training terms, as far as
+# its pages say (AI Services Terms 2.1 and its data-residency page, read 2026-11-16).
 DATA_FLOW: Final = DataFlow(
     provider="Telnyx",
     processed_in=(
-        "Telnyx's network (US-based); the humain/realtime engine is HUMAIN's, run through "
-        "Telnyx, where it runs not stated"
+        "Telnyx's network (US-based) for its batch models; humain/realtime is a third-party "
+        "engine Telnyx sends the audio to, HUMAIN's, where it runs not stated"
     ),
     stored_in="not stated by Telnyx for speech-to-text requests",
-    retention="not stated on its speech-to-text pages",
+    retention=(
+        "not stated; Telnyx trains on no input without the customer's written opt-in (its AI "
+        "terms, 5.3), but HUMAIN processes under its own terms, its training not stated: "
+        "callers' audio goes only once the owner has confirmed HUMAIN trains on none (D-100)"
+    ),
 )
 
 

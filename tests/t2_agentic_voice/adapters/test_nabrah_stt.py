@@ -12,7 +12,7 @@ import struct
 
 import pytest
 from pydantic import SecretStr
-from t2_agentic_voice.adapters.nabrah_stt import NabrahSTT, at_16k
+from t2_agentic_voice.adapters.nabrah_stt import DATA_FLOW, NabrahSTT, at_16k
 from t2_agentic_voice.api.providers import Providers
 from t2_agentic_voice.core.config import VoiceSettings
 from t2_agentic_voice.core.errors import ConfigurationError, ProviderError
@@ -199,3 +199,9 @@ def test_stt_provider_picks_nabrah() -> None:
     assert (chosen.name, chosen.data_flow.provider) == ("nabrah", "Nabrah")
     assert KEY not in repr(chosen)
     asyncio.run(chosen.aclose())
+
+
+def test_its_data_flow_states_the_training_terms_d100_asks_for() -> None:
+    # D-100's condition (4): Nabrah trains on customer data unless the customer opts out.
+    assert "opts out" in DATA_FLOW.retention and "D-100" in DATA_FLOW.retention
+    assert "Saudi Arabia" in DATA_FLOW.stored_in

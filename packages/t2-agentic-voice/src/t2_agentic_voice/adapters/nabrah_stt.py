@@ -59,13 +59,17 @@ MOST_TERMS: Final = 100  # the most priority words a session takes
 LONGEST_TERM: Final = 50  # the longest one the adapter sends, in characters
 STRENGTH: Final = 0.5  # the priority words' strength Nabrah suggests for a small vocabulary
 EOT: Final = "<eot>"
-# Where Nabrah processes and keeps speech-to-text sessions, as far as its pages say (read
-# 2026-11-16); its terms are to be read before callers' audio goes (docs/SECURITY.md).
+# Where Nabrah processes and keeps speech-to-text sessions, and its training terms, as far as
+# its privacy policy says (updated 04-10-2026, sections 5, 8 and 9; read 2026-11-16).
 DATA_FLOW: Final = DataFlow(
     provider="Nabrah",
-    processed_in="Nabrah Cloud (a Saudi company, Riyadh); the cloud's region not stated",
-    stored_in="not stated for streaming sessions",
-    retention="not stated on its developer pages",
+    processed_in="Nabrah Cloud (a Saudi company, Riyadh), some transfers abroad",
+    stored_in="primarily servers in Saudi Arabia",
+    retention=(
+        "as the customer's retention controls set it; used to train its models unless the "
+        "customer opts out by email (enterprise plans never): callers' audio goes only once "
+        "the owner has opted out (D-100)"
+    ),
 )
 
 

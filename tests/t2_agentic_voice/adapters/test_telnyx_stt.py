@@ -14,7 +14,7 @@ from urllib.parse import parse_qs, urlsplit
 
 import pytest
 from pydantic import SecretStr
-from t2_agentic_voice.adapters.telnyx_stt import TelnyxSTT
+from t2_agentic_voice.adapters.telnyx_stt import DATA_FLOW, TelnyxSTT
 from t2_agentic_voice.api.providers import Providers
 from t2_agentic_voice.core.config import VoiceSettings
 from t2_agentic_voice.core.errors import ConfigurationError, ProviderError
@@ -254,3 +254,9 @@ def test_stt_provider_picks_telnyx() -> None:
     assert (chosen.name, chosen.data_flow.provider) == ("telnyx", "Telnyx")
     assert KEY not in repr(chosen) and "humain/realtime" in repr(chosen)
     asyncio.run(chosen.aclose())
+
+
+def test_its_data_flow_states_the_training_terms_d100_asks_for() -> None:
+    # D-100's condition (4): training off before callers' audio goes; HUMAIN's own terms apply.
+    assert "written opt-in" in DATA_FLOW.retention and "HUMAIN" in DATA_FLOW.retention
+    assert "D-100" in DATA_FLOW.retention
