@@ -953,6 +953,12 @@ Block 0.
   noise; median 514 ms against 259), Speechmatics' ar_en pack 183 (0.627; median 1,982 ms),
   Cohere's Transcribe Arabic 165 (0.565, at 3d5dd4b; 306 characters from silence). Telnyx's
   HUMAIN engine and Nabrah run next.
+- 2026-11-16: the bake-off's first pass completed and reported in
+  [stt-report-2026-11-16.md](../../project/stt-report-2026-11-16.md): Nabrah's Saudi model 141
+  right (0.483; Saudi 20 items better and 1 worse, English 0 better and 16 worse), HUMAIN's engine
+  through Telnyx 137 (0.482, 8 failed; 29 better, 23 worse, within the noise; median 6,367 ms on
+  the batch port, TD-152); the six dev runs' history lines recorded. One run each, dev only: the
+  registered rule's second run and held-out read remain, and ElevenLabs' language pass.
 
 ## Decision log
 
