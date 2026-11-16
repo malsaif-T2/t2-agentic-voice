@@ -66,9 +66,10 @@ class Providers:
     @staticmethod
     def speech_to_text(settings: VoiceSettings) -> SpeechToText:
         """The speech-to-text adapter `stt.provider` names, built from the settings with no IO:
-        Groq's Whisper, ElevenLabs' Scribe or Speechmatics' ar_en pack (D-100). A
-        ConfigurationError naming the key's setting when that provider has none set; the eval
-        commands build theirs here too."""
+        Groq's Whisper, ElevenLabs' Scribe, Speechmatics' ar_en pack or Cohere's Transcribe
+        Arabic (D-100). A ConfigurationError naming the key's setting when that provider has
+        none set; the eval commands build theirs here too."""
+        from t2_agentic_voice.adapters.cohere_stt import CohereSTT
         from t2_agentic_voice.adapters.elevenlabs_stt import ElevenLabsSTT
         from t2_agentic_voice.adapters.groq_stt import GroqSTT
         from t2_agentic_voice.adapters.speechmatics_stt import SpeechmaticsSTT
@@ -77,6 +78,7 @@ class Providers:
             "groq": GroqSTT.from_settings,
             "elevenlabs": ElevenLabsSTT.from_settings,
             "speechmatics": SpeechmaticsSTT.from_settings,
+            "cohere": CohereSTT.from_settings,
         }
         return built[settings.stt.provider](settings)
 
