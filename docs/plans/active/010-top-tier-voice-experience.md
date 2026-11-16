@@ -777,7 +777,9 @@ and F, each once, the kept arm and its baseline; none for TTS (the panel's lines
   hand-checked on 3 calls in both languages; the same model, given the turn's words, flags off-topic
   turns, which the acceptance exempts; *no search:* no `search_knowledge` started in that turn. *An
   identical repeat:* the same normalized text as an earlier reply; *a near repeat:* the same first
-  clause, or a token overlap of 0.8 or more; both leave out asked repeats and read-backs said again.
+  clause (of 3 words or more as written, amended 2026-11-17 before any result: a shorter one,
+  such as "Sure," or «تمام،», is an opener, read by the overlap alone), or a token overlap of
+  0.8 or more; both leave out asked repeats and read-backs said again.
   *A fallback turn:* one ended by the silence timeout (0.7's end reason; in the old logs,
   `end_of_turn_ms` 100-300 ms over the configured stop with no `turn_complete_ms`), reported with
   those turns' median `end_of_turn_ms` and first audio. *Baselines* (hand counts, recomputed by the
@@ -1025,6 +1027,132 @@ Block 0.
   talker_score, already over 300 lines, a little longer from the moved imports. Still to build: the
   scenarios and their runner (A10 to A12), the library's B6 and B7, and the flight tools' cards sent
   as rows (the page already shows rows when a card has them).
+- 2026-11-16: the flight agent's scripted calls (A10 of its spec; d8070d5): the scenario model read
+  at the boundary (`flight_voice/evals/scenarios.py`: split, language, kind, needs from a closed
+  list with each one's docstring, the airline's modes, today 2026-11-16, turns said when or the
+  client's Stop at a point, and each turn's expectations: the tools and the values they held, each
+  date beside the form the caller's words name, the trip read back with no total, the outcome,
+  words said and never said, language and register, length and options, the repeat, cut, reference,
+  card and progress flags), the rules a set keeps (`rules.py`'s `problems`: ids once, every kind in
+  dev and held-out, no leg shared across the splits, needs on the list, every date the airline's
+  own resolution of its form, every flight read back flying on its day with seats on a searched
+  day, a return on the outbound's route back, a cut's repeat right after a stop), and the dev calls
+  f01 to f28, their dates and flights drafted from the mock airline; the dev set breaks no rule but
+  the twelve kinds still waiting for their held-out calls. f09 and f10 wait: a typed turn in
+  `TextCall` is heard in the language the call joined in even after it moved, so a short turn in
+  the new language is answered in the old one (`testing/text_parts.py`'s `hand_typed`; naming
+  `session.setup.now.primary` there would let `language_switch` play in text). Still to build: the
+  runner (A11) and the held-out set (A12), which covers the twelve kinds, `unavailable`, `profile`
+  and `booking_outcome` among them.
+- 2026-11-16: the flight library's step B6 (L8): the repeat measures of a call's replies in
+  `testing/repeats.py`, through the `evals` facade (`find_repeat`, `Repeat`, `first_clause`,
+  `token_overlap`, `cut_reply_share`, `repeats_cut_reply`). These are rule C's identical repeat
+  (the same normalized text) and near repeat (the same first clause, or a token overlap of 0.8 or
+  more, read over the longer reply's tokens as a multiset), rule L's cut repeat (0.6 of the cut
+  reply's whole-text tokens), and the two exemptions (an asked repeat, a read-back said again), all
+  on the scorers' normalization and the library's clause splitter. Documented in the guide's
+  evaluation page and package-design.md. It moves no outcome, so there is no setting. The
+  integration merge was a fast-forward to 1ef7b35, with no merge commit. Full gate passed (9135
+  passed, 1 skipped) (6984f59).
+- 2026-11-16: the repeat measures' review fix: a first clause makes a near repeat only when it
+  holds 3 words or more as written (`MIN_CLAUSE_TOKENS`), so two replies that open with the same
+  filler ("Sure,", "I'm sorry,", «تمام،», «أبشر،») and go on apart are no repeat; only their token
+  overlap reads them. A shared first clause of 3 words or more still is one. Tests on Saudi, MSA
+  and English openers; the guide's evaluation page and package-design.md updated. Full gate passed
+  (9140 passed, 1 skipped) (bb1ab52).
+- 2026-11-17: the flight runner's branch took in the library's repeat measures
+  (`plan-010-flight-library`, bb1ab52) with no conflict; integration was already in it (7e930f6).
+- 2026-11-17: the flight calls' seam to `TextCall` and their checks in code (A11,
+  `flight_voice/evals/call.py`, `checks.py`): a play of the app's agent over a new mock airline and
+  trip book, modes and today pinned, each turn said with its `when` and `stop`; each turn's checks
+  and the play's, the long-call checks from the library's `find_repeat` and `repeats_cut_reply`;
+  `BookingStore.made` (05f784b).
+- 2026-11-17: `poe eval-flights` (A11, `run.py`, `run_setup.py`, `score.py`, `folder.py`): refuses
+  the main checkout, a dirty tree, an `--out` in the worktree or in use, a broken set, an unpriced
+  model, a differing resume, and an estimate past `--cap-usd` 10; smoke play, then every scenario
+  once and again; records, `scorecard.json` and `.md` (2 of 3 plays, violations per play), one
+  history line a session read by `requests_today` over both apps; exit 0, 1, 2; registered in
+  pyproject and CLAUDE.md (8632758).
+- 2026-11-17: a resumed flight run keeps a failed smoke play's violations; the chat adapter is
+  built before the folder; an interrupt is recorded, exit 1 (8bd8512). Full gate passed at 8bd8512:
+  9230 passed, 1 skipped.
+- 2026-11-17: the flight runner's review fixes (b400b1d): a play pins the talker's prompt date to
+  the scenario's today, as the airline is (`TextCall(today=)`); `--resume` goes on at a later
+  commit whose changes since the run's are only the apps' `evals/history.jsonl`
+  (`folder.histories_only`), the run keeping its first commit and each `Session` recording its own,
+  the test's fake git now moving HEAD and dirty until the history line is committed; the repeat
+  check no longer exempts the talker's own words in a turn carrying a runtime line (those lines are
+  already outside the compared text). The gate ran on the integration merge (below).
+- 2026-11-17: run F's held-out set, h01-h15, written by a builder who saw no dev result: fifteen,
+  not about twelve, so every dev kind has its held-out scenario (`problems()` refuses a kind
+  without one; the spec's twelve left booking_outcome, profile and unavailable out, now h13 a late
+  write the lookup finds, h14 the profile's last London trip, h15 a city not served); "the second
+  one" moved from Singapore (one flight a day) to Paris (h01), Singapore to the long Saudi call
+  with a cut (h11); no dev and held-out pair shares a leg, every pick checked against the airline's
+  own listing; h06 waits for `language_switch`. The whole set breaks no rule; `--split held-out`
+  lists it (tested with the fake play only; no held-out call played) (cdfa72f); the full gate
+  passed on cdfa72f.
+- 2026-11-17: the held-out set's review fixes: h01's caller said «يوم اثنين ديسمبر», which reads as
+  "the second of December" and as "a Monday in December", so its verdict would rest on the script's
+  wording; it now says «يوم أربعة ديسمبر» (T2 453 on 12-04, back on T2 454 on 12-09, each still the
+  second listed), and a test refuses any Arabic day said by its number that is also a weekday's
+  name (c80de6c); its gate ran on the integration merge (below).
+- 2026-11-17: the flight cards' options sent as rows (the library's `CardRow`): a listed flight's
+  times as its title, its length, stops, flight and aircraft as its detail, its fare as its value,
+  the cheapest marked best and a full one unavailable; the trip's chosen legs marked chosen, then
+  the travelers and the total; the fare calendar's seven days, the three said marked best; the
+  cabins compared, the trip's cabin chosen and one full or not offered unavailable; every card of
+  every tool passes the output guard's ID rule in each language (0224bf9).
+- 2026-11-17: the flight page shows a card's rows, each part as text with `dir="auto"`, its mark
+  from the closed set as `data-mark`, styled in app.css and shown with the page's own word ("Lowest
+  fare" / «أقل سعر», "Your pick" / «اختيارك», "Not available" / «غير متاح»), a mark not in the set
+  dropped; the fake-browser test of a card with rows (2a2488c).
+- 2026-11-17: the warm-up's first part, as the builder stopped by the freeze of 2026-11-16 left it:
+  voice/spare.py (a call's detectors made one ahead) and the start's import of the offer's modules
+  in a thread (TD-089), committed unfinished (48f105d).
+- 2026-11-17: integration merged into the warm-up's branch; calls_start.py had come to both sides
+  from the same move, the warm-up's additions kept beside integration's ChosenStt (8d18243).
+- 2026-11-17: a move: calls.py's start and detectors paragraphs and the body of `start` to
+  calls_start.py (`warm`), calls.py 306 → 284 lines before 1.13 grows it (633564e).
+- 2026-11-17: 1.13's start part behind a new settings group, `warmup.at_start` (off by default,
+  GP-18): the offer's modules imported in a thread and each call's detectors made one ahead at the
+  server's start; `calls_warmed` logs the start's times; the default's characterization test. Left:
+  P3's port and GroqChat.warm(), the warm requests at join (ElevenLabs by default since D-105,
+  Whisper under groq, Orpheus, the chat model when cold), the reconnect after a cancel (TD-115),
+  the connect's timing lines (57af78a).
+- 2026-11-17: 1.13's join and cancel parts behind `warmup.at_join` and `warmup.after_cancel` (both
+  off by default, GP-18): P3's `ConnectionWarmth` port taken from the team's-agent plan (branch
+  `plan-009-integration`) beside a new `WarmUp` port; GroqChat's `warm()` and `warm_up()` (a free
+  GET of the model list); GroqSTT's and ElevenLabsSTT's `warm_up()` (each a free GET of its model
+  list); voice/join_warmth.py sends each joining call's warm requests once in the background (its
+  speech-to-text's `warm_up`, its text-to-speech's `check_language`, the chat model's `warm_up`
+  when not warm), logged as `call_warmed`, a failure never failing the call; GroqChat reopens its
+  connection in the background after a cancelled stream (TD-115); `call_answered` and
+  `call_connected` log the connect's server steps as times alone. Full gate passed on 9123292 (9123
+  passed, 1 skipped, coverage 99.27%). Left: rule W (9123292).
+- 2026-11-17: review fix: P3's per-request warm flag. `warm_now`
+  (domain/ports/connection_warmth.py) reads the chat model's `warm()` just before each request,
+  None from a model that does not say; the talker's `ModelReplied.warm_connection` carries it, its
+  turn's `talker_replied` line the first request's; the call report's `TurnRecord.warm_connection`
+  and the turn span's `turn.warm_connection` keep the turn's first request's; the session's own
+  chat request logs it as `model_word_sent`. Fake-only tests: a cold request, a warm one, one after
+  a cancel. Left: rule W; the gate ran on the integration merge (below) (254d58a).
+- 2026-11-17: the flight scenarios, their runner and held-out set (plan-010-flight), the cards as
+  rows (plan-010-flight-library) and the warm-up (plan-010-warm-up) merged into integration
+  (6d5248a, 3e0bbae; the flight README's and package-design.md's one paragraph each kept both
+  sides). f09, f10 and h06 play in text (b1749ba): a typed turn in `TextCall` is heard in the
+  call's language as it stands (`setup.now`), as a real call's speech-to-text is told a move (the
+  scenarios job's proposed TD, so no row), and run F plays a call that needs `language_switch`
+  under `stt.live_language = "detected"` (D-103), every other call under the app's default. Rule
+  C's near repeat amended before any result reads it (below). Open for the lead: the warm-up's
+  ports in the public API (D-021; a team's adapter takes part by shape today),
+  voice/session/report.py at 369 lines, a public `TextCall` wait for a moment (TD-155). The gate
+  ran on b1749ba plus these records.
+- 2026-11-17: rule C's near repeat amended by the lead before any result reads near repeats (the
+  hand counts of 2026-11-15 hold identical replies only; for the owner to confirm): a first clause
+  counts only when it holds 3 words or more as written, so two replies that open with the same
+  filler ("Sure,", "I'm sorry,", «تمام،», «أبشر،») are read by their token overlap alone
+  (`MIN_CLAUSE_TOKENS`, bb1ab52). Rule L and rows 1.3 and 1.6 read the same definition.
 
 ## Decision log
 

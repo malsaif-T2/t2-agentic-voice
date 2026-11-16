@@ -8,8 +8,8 @@ goes on with --resume once its history line is committed, each play played once,
 that differs is refused: in its command line, or at a commit that changed more than the run
 histories. Named, `--split held-out` lists the committed held-out set, each scenario once a
 repeat, behind the dev smoke play, the switch call alone under `stt.live_language = "detected"`
-(the fake play alone: no held-out scenario is played here). The fake git's HEAD moves on with each fake
-commit, and its tree is dirty while the history file holds a line not committed."""
+(the fake play alone: no held-out scenario is played here). The fake git's HEAD moves on with
+each fake commit, and its tree is dirty while the history file holds a line not committed."""
 
 from __future__ import annotations
 

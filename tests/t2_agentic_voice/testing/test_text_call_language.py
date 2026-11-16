@@ -28,8 +28,8 @@ def _detected() -> VoiceSettings:
     return settings.model_copy(update={"stt": stt})
 
 
-def _heard(settings: VoiceSettings, said: tuple[str, ...]) -> list[str]:
-    async def scene() -> list[str]:
+def _heard(settings: VoiceSettings, said: tuple[str, ...]) -> list[str | None]:
+    async def scene() -> list[str | None]:
         async with ScriptedCall(_script, settings=settings, language="ar-SA") as call:
             for words in said:
                 await call.user(words)

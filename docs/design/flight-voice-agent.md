@@ -572,8 +572,10 @@ words, and say when to call them. Each one's schema is the only thing the talker
 
 ### 3.4 What each result shows on the page (`tools/cards.py`)
 
-Today's `Card` holds a title, up to 50 steps and a source. Until L5 lands, each option is one
-step string; the page splits nothing and shows each step as a line.
+Each option is one of the card's rows (`CardRow`, L5): a title, a detail, a value and a mark
+(`best`, `chosen`, `unavailable`); a card that lists options sends no steps. The page shows
+each row's parts as text and maps its mark to a style and a word of its own (as built,
+0224bf9 and 2a2488c).
 
 **The ID rule on cards.** `clause_gate.shown` drops a card whose texts fail the output guard's
 ID rule, and the rule reads numbers that stand next to each other with only marks between them
@@ -588,18 +590,19 @@ no result holds, so the card is dropped (checked with `check_ids` and the defaul
   airline data and computed values, never caller words), and its data holds every number the
   card shows (the calendar's seven days, not only the three said).
 
-| Result | Title (en / ar) | Steps |
+| Result | Title (en / ar) | Rows |
 | --- | --- | --- |
-| search, choose (return list) | "Riyadh to London, Thu 17 Dec" / «الرياض إلى لندن، الخميس ١٧ ديسمبر» | one per option, times local at each end: "09:10 to 16:15, 7 h 5 min, nonstop, flight T2 401 on a 787-9 for 2,450 SAR, lowest fare" / «٠٩:١٠ إلى ١٦:١٥، ٧ س ٥ د، مباشرة، رحلة T2 401 على 787-9 بسعر ٢٬٤٥٠ ريال، أقل سعر» |
-| choose (complete), get_trip, change_trip | "Your trip" / «رحلتك» | each leg as above, then "1 traveler in economy", then "Total 5,120 SAR" |
-| fare_calendar | "Cheapest days to Istanbul in January" | seven days: "Wed 13 Jan: 1,180 SAR" |
-| compare_cabins | "Cabins on flight T2 401, Thu 17 Dec" | "Economy for 2,450 SAR", "Business for 7,840 SAR", "First for 13,480 SAR" |
+| search, choose (return list) | "Riyadh to London, Thu 17 Dec" / «الرياض إلى لندن، الخميس ١٧ ديسمبر» | one per option, at most four: title the times local at each end ("09:10 to 16:15", «٠٩:١٠ إلى ١٦:١٥», "next day" when it lands then), detail "7 h 5 min, nonstop, flight T2 401 on a 787-9", value "2,450 SAR"; the cheapest with seats marked best, one with no seat for every traveler unavailable |
+| choose (complete), get_trip, change_trip | "Your trip" / «رحلتك» | each chosen leg (title the route and day, detail its times and flight, value its fare, marked chosen), then "1 traveler in economy", then "Total" with "5,120 SAR" as its value |
+| fare_calendar | "Cheapest days to Istanbul in January" | seven days, each "Wed 13 Jan" with "1,180 SAR" as its value, the three said marked best |
+| compare_cabins | "Cabins on flight T2 401, Thu 17 Dec" | "Economy" with "2,450 SAR", "Business class", "First class"; the trip's cabin marked chosen; one full ("full") or not offered ("not offered on an A321neo") marked unavailable |
 | traveler_profile | none | (the page's "Your trips" shows bookings) |
 
 (These strings were checked with `check_ids` against a result holding the same numbers: they
 pass. The arrival time in the first row is an illustration.) Card text is the airline's fixed
-data only, never caller words. A card is never needed: the reply says the same. The mark is
-"Lowest fare" / «أقل سعر», our own words.
+data only, never caller words. A card is never needed: the reply says the same. The page shows
+the marks with its own words: "Lowest fare" / «أقل سعر», "Your pick" / «اختيارك», "Not
+available" / «غير متاح».
 
 Tests (in A5 and A6): every card of every status, of every tool, in both languages, passes
 `check_ids` with the default `GuardSettings` against its own result's evidence.
@@ -971,9 +974,8 @@ agents with the fake-microphone rig, F.4's recordings, tester days), one token p
 ### 6.3 What it needs from the library
 
 Today's client already gives `state`, `caption`, `card`, `notice`, `ended`, `duck`, `unduck`,
-`volume`. The cards work today as titled step lists. L5 (section 9) proposes option rows on
-cards for a better look; the page reads `rows` when present and `steps` otherwise, so it works
-before and after L5.
+`volume`. The flight cards send option rows (L5); the page reads `rows` when present and `steps`
+otherwise.
 
 ## 7. The measurement
 
@@ -1079,6 +1081,13 @@ English fare calendar failure; an MSA "no" then a booking on another day; a Saud
 يوم الثلاثاء»; an English "yes, but make it one way"; a long Saudi call with a cut and a repeat;
 an English call with a detail kept from turn 1 to turn 6.
 
+As built (h01-h15): fifteen, so every dev kind has one (booking_outcome: a late write the
+lookup finds, MSA; profile: the last London trip, English; unavailable: a city not served,
+Saudi); "the second one" is on Paris (h01), since Singapore flies once a day, and Singapore is
+the long Saudi call with a cut (h11). A turn also carries `forms` (the date form of each
+expected date), `asks_reference`, `shows_card` and `hears_progress`; `problems()` is in
+`evals/rules.py`.
+
 `problems()` refuses a set that breaks a rule: an id twice, a dev and held-out pair that share a
 route and a date, a kind with no dev or no held-out scenario, a `needs` name not on the closed
 list, an expected date the airline cannot resolve, a `repeat_of_cut` turn not right after a
@@ -1136,6 +1145,19 @@ run F's L checks (f25-f28) and Ole5's L.
 f02's) on the public demo and on ours, recorded; we read first audio, the words heard, turns to
 book and listeners' scores into `docs/project/` (plan 010's F.4). The demo's typed timings
 (about 1 s to speak after a tool) are not voice timings, so only the recordings compare.
+
+As built (A11, 2026-11-17): the runner is seven modules, `call.py`, `checks.py`, `score.py`,
+`folder.py` (the out folder, its `run.lock`, `scorecard.md`), `run_setup.py` (arguments, the
+set's rules, prices and limits, the estimate, each play's settings) and `run.py`; a booking is
+expected when a turn's outcome is `done`; `declined` and `none` are checked alike; said checks
+read what the caller heard (the runtime's lines among it), the language, register, words,
+options and repeat checks the talker's own words; the defaults are `gpt-oss-120b` at
+0.15/0.60, 30/100000/10000, an input budget of 8000; the history line must be committed before
+`--resume`, which goes on at the run's commit or a later one that changed only the apps'
+`evals/history.jsonl`, the run keeping its first commit and each session recording its own;
+the talker's prompt says the scenario's today, as the mock airline does; a call that needs
+`language_switch` plays under `stt.live_language = "detected"` (D-103), a typed turn heard in
+the call's language as it stands (b1749ba).
 
 ### 7.4 What a recording session adds (0.6's list gains these)
 
