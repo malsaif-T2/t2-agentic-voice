@@ -19,7 +19,10 @@ and what every app's measurement run that spends shares (D-101): the paced, capp
 at each model's `Price`, each model's `ModelUse` and `ModelSpend`), the day's requests of one
 key counted over every app's run history (`requests_today`, `every_history`), and the checks
 before a run, the main checkout refused and an out folder that may not be lost or committed
-(`run_checkout`, `check_out`). Provisional (D-021). A facade: it only re-exports (ARCH-FACADE)."""
+(`run_checkout`, `check_out`); and the repeat measures of a call's replies, an identical or a
+near repeat of an earlier reply and how much of a cut reply the next says again (`find_repeat`,
+`Repeat`, `first_clause`, `token_overlap`, `cut_reply_share`, `repeats_cut_reply`), one
+definition for every app's runs. Provisional (D-021). A facade: it only re-exports (ARCH-FACADE)."""
 
 from t2_agentic_voice.domain.consent_check import (
     consent_check_answer,
@@ -47,6 +50,14 @@ from t2_agentic_voice.testing.llm_fakes import (
     ScriptStep,
 )
 from t2_agentic_voice.testing.paced_chat import PacedChat
+from t2_agentic_voice.testing.repeats import (
+    Repeat,
+    cut_reply_share,
+    find_repeat,
+    first_clause,
+    repeats_cut_reply,
+    token_overlap,
+)
 from t2_agentic_voice.testing.run_checkout import (
     Checkout,
     Git,
@@ -104,6 +115,7 @@ __all__ = [
     "PhraseAudio",
     "Price",
     "Recall",
+    "Repeat",
     "RunClock",
     "RunHistoryError",
     "RunSleep",
@@ -123,11 +135,15 @@ __all__ = [
     "chosen",
     "consent_check_answer",
     "consent_check_request",
+    "cut_reply_share",
     "echo_timings",
     "every_history",
+    "find_repeat",
+    "first_clause",
     "id_recall",
     "inspect_checkout",
     "is_consent_check",
+    "repeats_cut_reply",
     "requests_today",
     "run_checkout",
     "run_git",
@@ -136,6 +152,7 @@ __all__ = [
     "silence_output",
     "switch_to",
     "term_recall",
+    "token_overlap",
     "turn_ends",
     "turn_languages",
     "uncertain_overlap_answer",
