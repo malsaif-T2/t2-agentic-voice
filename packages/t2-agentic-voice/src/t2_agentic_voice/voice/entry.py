@@ -17,7 +17,7 @@ the call then gets 403 `forbidden`, as for a call never joined.
 
 from __future__ import annotations
 
-from collections.abc import Sequence
+from collections.abc import Callable, Sequence
 from dataclasses import dataclass
 from typing import Literal, Protocol
 
@@ -49,6 +49,16 @@ class Candidate:
     candidate: str
     sdp_mid: str
     sdp_mline_index: int
+
+
+@dataclass(frozen=True)
+class ChosenStt:
+    """One call's own speech-to-text, chosen on the dev console (api/stt_choices.py): the
+    adapter its turns are heard by, and the settings it runs with in place of the runtime's
+    (its `stt` group, and its provider's model setting, alone differ)."""
+
+    stt: SpeechToText
+    settings: VoiceSettings
 
 
 class Calls(Protocol):
@@ -103,5 +113,6 @@ class CallsFactory(Protocol):
         chat: ChatModel | None = None,
         action_jobs: ActionJobs | None = None,
         classifier: LanguageClassifier | None = None,
+        chosen: Callable[[CallId], ChosenStt | None] = lambda call_id: None,
     ) -> Calls:
         """voice's entry point for the runtime's calls, built with no IO."""

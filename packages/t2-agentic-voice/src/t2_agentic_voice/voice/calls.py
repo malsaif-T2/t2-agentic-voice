@@ -79,6 +79,7 @@ from t2_agentic_voice.voice.entry import CallPhase as CallPhase
 from t2_agentic_voice.voice.entry import Calls as Calls
 from t2_agentic_voice.voice.entry import CallsFactory as CallsFactory
 from t2_agentic_voice.voice.entry import Candidate as Candidate
+from t2_agentic_voice.voice.entry import ChosenStt as ChosenStt
 from t2_agentic_voice.voice.session.call import CallSession
 from t2_agentic_voice.voice.session.io import (
     SYSTEM_CLOCK,
@@ -114,8 +115,9 @@ class VoiceCalls:
     lists leave unplaced (D-082). `action_jobs` carries out each call's confirmed actions, one
     for every call, which it tells apart by the call's ID; with none, a call's confirmed yes is
     told as the `error` notice and nothing is sent. `classifier`, loaded by the runtime, hears
-    each turn's language under `stt.live_language = "classified"`. Built cheaply, with no IO;
-    `start` imports onnxruntime and warms one pair of models."""
+    each turn's language under `stt.live_language = "classified"`. `chosen` gives a call the
+    dev console chose a speech-to-text for its `ChosenStt` (entry.py), taken once, at its
+    offer. Built cheaply, with no IO; `start` imports onnxruntime and warms one pair of models."""
 
     def __init__(
         self,
@@ -132,6 +134,7 @@ class VoiceCalls:
         chat: ChatModel | None = None,
         action_jobs: ActionJobs | None = None,
         classifier: LanguageClassifier | None = None,
+        chosen: Callable[[CallId], ChosenStt | None] = lambda call_id: None,
         speech_detector: Callable[[], VADAnalyzer] | None = None,
         turn_analyzer: Callable[[], BaseTurnAnalyzer] | None = None,
     ) -> None:
@@ -140,6 +143,7 @@ class VoiceCalls:
         self._agent, self._settings, self._stt, self._tts = agent, settings, stt, tts
         self._phrases, self._tracing, self._emit, self._clock = phrases, tracing, emit, clock
         self._speech_detector, self._turn_analyzer = speech_detector, turn_analyzer
+        self._chosen = chosen
         self._calls: dict[CallId, WebRTCCall] = {}
         self._answering: set[CallId] = set()
         self._started = False
@@ -245,17 +249,18 @@ class VoiceCalls:
         on_finished: Callable[[], None] = lambda: None,
         record: bool = False,
     ) -> CallPipeline:
-        """One call's pipeline, with this runtime's agent, settings, providers and phrases (the
-        file-fed transport builds its calls here too)."""
+        """One call's pipeline, with this runtime's agent, settings, providers and phrases, or
+        the call's `ChosenStt`'s settings and speech-to-text (the file-fed transport's too)."""
         from t2_agentic_voice.voice.pipeline import CallPipeline
 
+        chosen = self._chosen(call_id)
         setup = CallSetup(
             call_id=call_id,
             caller=caller,
             consent=consent,
             agent=self._agent,
             language=language,
-            settings=self._settings,
+            settings=self._settings if chosen is None else chosen.settings,
             phrases=self._phrases,
             max_chars=self._tts.max_chars,
             tracing=self._tracing,
@@ -270,7 +275,7 @@ class VoiceCalls:
         detector, analyzer = detectors
         return CallPipeline(
             setup=setup,
-            stt=self._stt,
+            stt=self._stt if chosen is None else chosen.stt,
             tts=self._tts,
             detector=detector,
             analyzer=analyzer,
