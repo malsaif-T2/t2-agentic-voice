@@ -164,8 +164,8 @@ def test_a_limit_whose_deadline_moved_waits_on(settings: VoiceSettings) -> None:
 
     async def drive() -> None:
         await greeted(io)
-        await session._limit("idle")  # well before its deadline
-        await session._limit("max_call")
+        await session._close._limit("idle")  # well before its deadline
+        await session._close._limit("max_call")
 
     asyncio.run(drive())
     assert not sent(io, Notice)
