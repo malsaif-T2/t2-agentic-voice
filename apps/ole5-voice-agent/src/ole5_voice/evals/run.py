@@ -234,7 +234,7 @@ def _run(
         )
         log.info("run_started", run=info.name, split=info.split, variants=progress.total)
         try:
-            asyncio.run(answer_all(plan, answerer, progress, args, arm.copied))
+            asyncio.run(answer_all(plan, answerer, progress, args, arm.copied, arm.merge))
         except KeyboardInterrupt:
             progress.interrupted = True
             log.warning("run_interrupted", done=len(progress.results), of=progress.total)

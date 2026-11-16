@@ -6,7 +6,7 @@ the cap; and `close_run`, the scorecard and, for a run that spent, its history l
 from __future__ import annotations
 
 import argparse
-from collections.abc import Mapping
+from collections.abc import Callable, Mapping
 from pathlib import Path
 
 from t2_agentic_voice import get_logger
@@ -28,9 +28,10 @@ async def answer_all(
     progress: Progress,
     args: argparse.Namespace,
     copied: Mapping[Variant, Answer],
+    merge: Callable[[Variant, Answer], Answer] | None = None,
 ) -> None:
-    """The smoke test, then every variant, in order, the arm's baseline answers unsent; the run
-    ends early at the cap."""
+    """The smoke test, then every variant, in order, the arm's baseline answers unsent, each
+    answer sent read by the arm's `merge` when it has one; the run ends early at the cap."""
     try:
         smoke = await answerer.answer(plan.smoke.variant, plan.smoke.request)
         if smoke.failure or any(r.outcome != "ok" or r.attempt > 1 for r in smoke.requests):
@@ -48,6 +49,7 @@ async def answer_all(
             answer = copied.get(todo.variant)
             if answer is None:
                 answer = await answerer.answer(todo.variant, todo.request)
+                answer = answer if merge is None else merge(todo.variant, answer)
             progress.add(todo.result(answer, plan.matcher, args.split, not args.windows_ms))
     except CapReachedError:
         progress.capped = True

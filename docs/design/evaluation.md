@@ -263,7 +263,11 @@ given after the task's name:
   pass at another commit, on other data or with no classifier; with `--language-base <run>`, the
   baseline of that call language, a dev run sends only the variants whose language the rule
   changed and takes every other answer from the baseline, unsent, and is read against it with
-  `poe eval-compare BASE ARM --allow-setting run.language_from`;
+  `poe eval-compare BASE ARM --allow-setting run.language_from`; a detected pass (`--classifier
+  detected`, D-038's amendment) takes `--language-base` on dev (`detect_arm.py`): only the
+  variants whose first turn also went naming no language are sent, naming none with no prompt,
+  and each answer is read with the library's rule (`evals.switch_to`) against the baseline's,
+  the detecting request's words kept only when the call would move;
 - `uv run poe eval-history` (`history.py`) renders `evals/history.jsonl` into the generated
   [eval-history.md](../generated/eval-history.md);
 - `uv run poe eot` (`eot.py`) measures end of turn on the paused requests with the reference
