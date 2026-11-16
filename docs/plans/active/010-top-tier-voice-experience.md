@@ -909,6 +909,23 @@ Block 0.
   1.13, 1.14 and the baselines, five builders at once) froze the laptop and was stopped half built,
   its work kept uncommitted in its worktrees; the owner asked for a flight-booking demo agent (Phase
   F, Q23) and put the STT model and the language switch first; the `kb-source` folder made for Q4.
+- 2026-11-16: the speech-to-text providers, merged into plan-010-integration (6546633):
+  core/config.py's load helpers moved to core/settings/loading.py (424060f, a pure move); Phase 4's
+  Block 0 started with the key settings of the guide's six accounts (ElevenLabs, Speechmatics with
+  its region, Cohere, Soniox, OpenAI with its address, Inworld), each a SecretStr with a _FILE
+  form, all optional (39b1082); ElevenLabs Scribe v3 behind the speech-to-text port, keyterms from
+  the call's prompt, its language and probability on the Transcript's new `heard_language` and
+  `language_probability`, `stt.provider` loosened and built by the composition root (18f5dc0);
+  Speechmatics' ar_en batch pack, one job a clip on eu1, deleted once read (4e69b4f); Cohere's
+  Transcribe Arabic, the language always named, no prompt (efeae69); Soniox's stt-async-v6, the
+  agent's two languages as strict hints, the prompt's terms as context, the language most words
+  carry as `heard_language` with no score (9fd510b); `poe eval` takes each provider as an answerer,
+  its model pinned on the scorecard, a dry estimate first and `--estimate-only` needing no key
+  (1e96116, 6681049); run H's H3, `poe eval-languages --classifier groq|elevenlabs|soniox`, each
+  turn's first 2 s sent with no language named, under `--price-per-hour` and `--cap-usd` (b44a4cd,
+  16ae48e, f5fc2ff); the review's one fix: a provider's score below an even share counts as unsure
+  instead of switching to a language it never heard (3d5dd4b). Each provider's SECURITY.md row
+  added; nothing measured yet, no key; the full gate passed (8065 passed, 1 skipped).
 
 ## Decision log
 
