@@ -15,7 +15,7 @@ from t2_agentic_voice.core.settings.base import Group
 
 # The speech-to-text adapters a setting picks: Groq's Whisper, the default and the fallback, and
 # the providers measured beside it (D-100), each needing its own key group's key.
-SttProvider = Literal["groq", "elevenlabs"]
+SttProvider = Literal["groq", "elevenlabs", "speechmatics"]
 SttModel = Literal["whisper-large-v3", "whisper-large-v3-turbo"]
 # The least Groq bills a transcription request, in seconds, however short its audio (its
 # pricing, read 2026-11-01; the design's 10.4): the adapter's billed seconds, the session's
@@ -37,9 +37,9 @@ class SttSettings(Group):
     provider: SttProvider = Field(
         default="groq",
         description=(
-            "Which adapter turns speech into text: groq (Whisper, the default) or elevenlabs "
-            "(Scribe), measured beside it (D-100); a provider with no key set is refused when "
-            "chosen, naming its key's setting."
+            "Which adapter turns speech into text: groq (Whisper, the default), or one measured "
+            "beside it (D-100): elevenlabs (Scribe) or speechmatics (its ar_en pack, a batch "
+            "job); a provider with no key set is refused when chosen, naming its key's setting."
         ),
     )
     model: SttModel = Field(

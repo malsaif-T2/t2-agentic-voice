@@ -80,6 +80,17 @@ class SpeechmaticsSettings(ProviderKey):
             "default, the region its data terms were read for (D-100)."
         ),
     )
+    job_timeout_s: float = Field(
+        default=60.0,
+        gt=0,
+        le=600,
+        allow_inf_nan=False,
+        description=(
+            "The longest one batch transcription may take, from the job's upload to its "
+            "transcript: a batch job queues and polls, so it takes longer than stt.timeout_s "
+            "allows one request, and its time is measured, never assumed."
+        ),
+    )
 
 
 class CohereSettings(ProviderKey):

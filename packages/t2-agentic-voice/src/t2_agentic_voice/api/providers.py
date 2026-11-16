@@ -66,14 +66,17 @@ class Providers:
     @staticmethod
     def speech_to_text(settings: VoiceSettings) -> SpeechToText:
         """The speech-to-text adapter `stt.provider` names, built from the settings with no IO:
-        Groq's Whisper, or ElevenLabs' Scribe (D-100). A ConfigurationError naming the key's
-        setting when that provider has none set; the eval commands build theirs here too."""
+        Groq's Whisper, ElevenLabs' Scribe or Speechmatics' ar_en pack (D-100). A
+        ConfigurationError naming the key's setting when that provider has none set; the eval
+        commands build theirs here too."""
         from t2_agentic_voice.adapters.elevenlabs_stt import ElevenLabsSTT
         from t2_agentic_voice.adapters.groq_stt import GroqSTT
+        from t2_agentic_voice.adapters.speechmatics_stt import SpeechmaticsSTT
 
         built: dict[str, Callable[[VoiceSettings], SpeechToText]] = {
             "groq": GroqSTT.from_settings,
             "elevenlabs": ElevenLabsSTT.from_settings,
+            "speechmatics": SpeechmaticsSTT.from_settings,
         }
         return built[settings.stt.provider](settings)
 
