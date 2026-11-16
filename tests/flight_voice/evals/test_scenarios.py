@@ -1,7 +1,8 @@
 """The flight agent's scripted calls (flight_voice/evals/scenarios.py) as committed: every file
 reads, the whole set, dev and held-out, breaks no rule (a dev and a held-out scenario never share
 a leg, and every kind has both), the held-out set covers every kind in both languages, every
-expected date is the one the airline's date code gives the caller's words, every flight a
+expected date is the one the airline's date code gives the caller's words (and no Arabic day said
+by its number is also a weekday's name), every flight a
 read-back holds flies on its day, and every need is on the closed list; and the model refuses each
 malformed shape at the boundary, naming it."""
 
@@ -91,6 +92,21 @@ def test_every_expected_date_is_the_airlines_resolution_of_the_callers_words() -
                 assert isinstance(back, Resolved) and back.day == args.return_date, scenario.id
                 checked += 1
     assert checked >= 30
+
+
+def test_an_arabic_day_said_by_its_number_is_never_also_a_weekdays_name() -> None:
+    # «يوم اثنين ديسمبر» is both "the second of December" and "a Monday in December": a
+    # verdict on such a line would rest on the script's wording, not on the agent.
+    bare = {"اثنين", "ثلاثاء", "أربعاء", "خميس", "جمعة", "سبت", "أحد"}
+    clashes = [
+        scenario.id
+        for scenario in SCENARIOS
+        for turn in scenario.turns
+        if scenario.language != "en"
+        and "on" in {f.kind for f in (turn.forms.depart, turn.forms.return_date) if f}
+        and bare & set((turn.says or "").split())
+    ]
+    assert clashes == []
 
 
 def test_every_flight_a_read_back_holds_flies_on_its_day_with_seats() -> None:
