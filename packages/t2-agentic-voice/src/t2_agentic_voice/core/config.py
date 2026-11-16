@@ -59,14 +59,10 @@ from pydantic import (
     model_validator,
 )
 from pydantic.config import ExtraValues
-from pydantic_settings import BaseSettings, DotEnvSettingsSource, SettingsConfigDict
 
 from t2_agentic_voice.core.errors import ConfigurationError
-from t2_agentic_voice.core.logging import get_logger
 from t2_agentic_voice.core.settings.base import (
-    NOT_UTF8,
     PREFIX,
-    UNREADABLE,
     ReadOnlyModel,
     prefix_of,
     setting_name,
@@ -77,6 +73,14 @@ from t2_agentic_voice.core.settings.interruptions import InterruptionSettings
 from t2_agentic_voice.core.settings.join import JoinSettings
 from t2_agentic_voice.core.settings.limits import LimitSettings
 from t2_agentic_voice.core.settings.llm import LlmSettings
+from t2_agentic_voice.core.settings.loading import (
+    Unknown,
+    cannot_load,
+    dotenv,
+    named,
+    refuse_strangers,
+    refused,
+)
 from t2_agentic_voice.core.settings.logs import LoggingSettings
 from t2_agentic_voice.core.settings.names import Problem, gathered, leaf
 from t2_agentic_voice.core.settings.privacy import PrivacySettings
@@ -90,19 +94,11 @@ from t2_agentic_voice.core.settings.turns import TurnSettings
 from t2_agentic_voice.core.settings.words import WordSettings
 
 Environment = Literal["dev", "test", "staging", "prod"]
-Unknown = Literal["error", "warn"]
 # What a prefix is: letters, digits and `_`, from a letter to a final `_` (the design's 7.3).
 _PREFIX_RULE = re.compile(r"[A-Za-z][A-Za-z0-9_]*_")
 # A provider's variable the library never reads: `from_env` notes whether it is set, by its name
 # alone, so the error for the setting to set instead (`groq.api_key`) can say so.
 _UNREAD = ("GROQ_API_KEY",)
-# Names the settings had before the design's groups, under the prefix, by where each is now, so
-# a `.env` written for them says what to rename rather than only that the name is unknown.
-_MOVED = {
-    "VAR_DIR": ("storage", "var_dir"),
-    "LOG_LEVEL": ("logging", "level"),
-    "LOG_FORMAT": ("logging", "format"),
-}
 # What the validation context holds when `from_env` loads the settings, so a failure's FIX line
 # says where its values came from; and the settings it found it cannot load before validating
 # (a value that is not JSON, a name set twice), named with the rest.
@@ -110,8 +106,6 @@ _LOADED = "from_env"
 _EARLIER = "from_env_problems"
 _FIX_LOADED = "FIX: correct each one in the environment, the .env file or the code values given."
 _FIX_CODE = "FIX: correct each one in the code that builds the settings."
-
-log = get_logger(__name__)
 
 
 class VoiceSettings(ReadOnlyModel):
@@ -170,7 +164,7 @@ class VoiceSettings(ReadOnlyModel):
             settings = handler(data)
         except ValidationError as error:
             problems = [
-                (_named(leaf(cls, problem["loc"]), prefix), problem["msg"])
+                (named(leaf(cls, problem["loc"]), prefix), problem["msg"])
                 for problem in error.errors(include_input=False, include_url=False)
             ]
         else:
@@ -178,7 +172,7 @@ class VoiceSettings(ReadOnlyModel):
                 settings.check_environment(prefix)
                 return settings
             problems = []
-        raise _cannot_load([*earlier, *problems], _FIX_LOADED if loaded else _FIX_CODE)
+        raise cannot_load([*earlier, *problems], _FIX_LOADED if loaded else _FIX_CODE)
 
     @classmethod
     def model_validate_json(
@@ -206,7 +200,7 @@ class VoiceSettings(ReadOnlyModel):
             )
         except ValidationError:
             pass  # its errors() hold the text: not chained
-        raise _cannot_load([("the settings", "is not valid JSON")], _FIX_CODE)
+        raise cannot_load([("the settings", "is not valid JSON")], _FIX_CODE)
 
     @property
     def prefix(self) -> str:
@@ -229,7 +223,7 @@ class VoiceSettings(ReadOnlyModel):
         prod, DEBUG (the design's 7.4). Every load runs it; `status` and `VoiceRuntime`'s
         construction run it again, for settings copied with a change, which skips validation."""
         prefix = self._prefix if prefix is None else prefix
-        problem = _refused(self)
+        problem = refused(self)
         if problem is None:
             return
         location, why, fix = problem
@@ -272,10 +266,10 @@ class VoiceSettings(ReadOnlyModel):
                 details={"setting": "env_file"},
             )
         marked = prefix.upper()
-        sources = [] if env_file is None else [_dotenv(env_file.expanduser(), marked)]
+        sources = [] if env_file is None else [dotenv(env_file.expanduser(), marked)]
         sources.append({n: os.environ[n] for n in os.environ if n.upper().startswith(marked)})
         data, strangers, problems = gathered(cls, sources, prefix)
-        _refuse_strangers(strangers, prefix, unknown)
+        refuse_strangers(strangers, prefix, unknown)
         for name, value in values.items():
             given = data.get(name)
             if isinstance(value, Mapping) and isinstance(given, dict):
@@ -297,96 +291,3 @@ def foreign_set(names: Iterable[str]) -> frozenset[str]:
     wanted = {name.upper(): name for name in names}
     found = [name.upper() for name, value in os.environ.items() if value]
     return frozenset(wanted[name] for name in found if name in wanted)
-
-
-def _named(location: tuple[str, ...], prefix: str) -> str:
-    """The variable of the setting at `location`, or "the settings" for a failure of the whole
-    (data that is no mapping)."""
-    return setting_name(*location, prefix=prefix) if location else "the settings"
-
-
-def _cannot_load(problems: list[Problem], fix: str) -> ConfigurationError:
-    """The one error for the settings that cannot load, each named with why, never a value."""
-    return ConfigurationError(
-        "These settings cannot load: "
-        + "; ".join(f"{name} ({why})" for name, why in problems)
-        + f". {fix}",
-        details={"settings": [{"setting": name, "problem": why} for name, why in problems]},
-    )
-
-
-def _refused(settings: VoiceSettings) -> tuple[tuple[str, str], str, str] | None:
-    """The first setting `settings.env` refuses: its location, what it holds, and the fix."""
-    if settings.env != "dev" and settings.server.dev_page:
-        fix = "turn it off; the dev page is for one machine, under env=dev."
-        return ("server", "dev_page"), "is on", fix
-    if settings.env != "dev" and settings.logging.content:
-        fix = "turn it off; log lines hold what was said only under env=dev."
-        return ("logging", "content"), "is on", fix
-    if settings.env in ("staging", "prod") and settings.logging.level == "DEBUG":
-        fix = "give INFO or above; DEBUG lines may carry data that should not be kept."
-        return ("logging", "level"), "is DEBUG", fix
-    return None
-
-
-class _DotEnv(BaseSettings):
-    """No settings: only its `.env` reader is used, so a file is read as pydantic-settings
-    reads one (quotes, `export`, comments)."""
-
-    model_config = SettingsConfigDict(extra="ignore")
-
-
-def _dotenv(path: Path, marked: str) -> dict[str, str | None]:
-    """The variables of the `.env` file `path` whose names start with `marked`, in any case,
-    as written (a byte-order mark dropped, as Notepad may write one). A file whose text is not
-    UTF-8 (Windows PowerShell 5.1's `>` writes UTF-16), or that cannot be opened or read, is a
-    ConfigurationError with the FIX for which it is, holding none of its bytes: a decode error
-    holds the whole file, keys and all, so it is not chained."""
-    try:
-        reader = _reader(path)
-    except OSError as error:
-        why, fix = f"cannot be read ({type(error).__name__})", UNREADABLE
-    else:
-        if reader is not None:
-            return {n: v for n, v in reader.env_vars.items() if n.upper().startswith(marked)}
-        why, fix = "is not UTF-8 text", NOT_UTF8
-    raise ConfigurationError(f"The env file given {why}. {fix}", details={"setting": "env_file"})
-
-
-def _reader(path: Path) -> DotEnvSettingsSource | None:
-    """pydantic-settings' reader of the `.env` file `path`; None when its text is not UTF-8,
-    a NUL in it included: UTF-16 written with no byte-order mark (by .NET's encoders) decodes
-    as UTF-8, a NUL after each character, and would give names that match no setting, every
-    line dropped unseen."""
-    if b"\x00" in path.read_bytes():
-        return None
-    try:
-        return DotEnvSettingsSource(
-            _DotEnv, env_file=path, env_file_encoding="utf-8-sig", case_sensitive=True
-        )
-    except UnicodeDecodeError:  # it holds the file's bytes: not chained
-        return None
-
-
-def _refuse_strangers(strangers: list[str], prefix: str, unknown: Unknown) -> None:
-    """Each variable under the prefix that names no setting: a ConfigurationError naming them
-    all, never a value, or with `unknown="warn"` a warning each (the design's 7.4)."""
-    if not strangers:
-        return
-    fix = (
-        f"FIX: correct each name, or unset it: every variable under {prefix} is the library's, "
-        "since the prefix belongs to its settings alone (a team's own settings take another; "
-        "from_env(prefix=...) picks the library's)."
-    )
-    if unknown == "warn":
-        for name in strangers:
-            log.warning("setting_unknown", variable=name, fix=fix)
-        return
-    moved = {name: _MOVED.get(name[len(prefix) :].upper()) for name in strangers}
-    hints = [f"; {n} is {setting_name(*to, prefix=prefix)} now" for n, to in moved.items() if to]
-    raise ConfigurationError(
-        f"{', '.join(sorted(strangers))} names no setting{''.join(sorted(hints))}. {fix}",
-        details={
-            "settings": [{"setting": n, "problem": "names no setting"} for n in sorted(strangers)]
-        },
-    )
