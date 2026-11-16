@@ -13,7 +13,14 @@ from ole5_voice.evals import run
 from ole5_voice.evals.answerers import ANSWERERS
 from ole5_voice.evals.stt_arms import ARMS, recorded_model
 from t2_agentic_voice import VoiceSettings
-from t2_agentic_voice.adapters import cohere_stt, elevenlabs_stt, soniox_stt, speechmatics_stt
+from t2_agentic_voice.adapters import (
+    cohere_stt,
+    elevenlabs_stt,
+    nabrah_stt,
+    soniox_stt,
+    speechmatics_stt,
+    telnyx_stt,
+)
 from t2_agentic_voice.core.settings.stt import WHISPER_MIN_BILLED_S, SttProvider
 from t2_agentic_voice.ports import SpeechToText
 
@@ -32,12 +39,17 @@ def test_every_provider_the_library_takes_is_an_answerer_with_its_adapters_model
         "speechmatics": f"{speechmatics_stt.LANGUAGE_PACK}-enhanced",
         "cohere": cohere_stt.MODEL,
         "soniox": soniox_stt.MODEL,
+        "telnyx": None,
+        "nabrah": nabrah_stt.MODEL,
     }
     assert ARMS["groq"].minimum_s == WHISPER_MIN_BILLED_S
     assert [name for name, arm in ARMS.items() if arm.names_language] == ["cohere"]
     settings = VoiceSettings.model_validate({"env": "test"})
     assert recorded_model(settings, "groq") == "whisper-large-v3"
     assert recorded_model(settings, "soniox") == "stt-async-v6"
+    assert recorded_model(settings, "telnyx") == telnyx_stt.MODEL == "humain/realtime"
+    nova = VoiceSettings.model_validate({"env": "test", "telnyx": {"stt_model": "deepgram/nova-3"}})
+    assert recorded_model(nova, "telnyx") == "deepgram/nova-3"
 
 
 def _provider_setup(tmp_path: Path) -> tuple[Setup, list[str]]:

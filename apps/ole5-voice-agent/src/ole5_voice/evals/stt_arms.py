@@ -4,11 +4,12 @@ providers measured beside it, each asked through the library's port by `groq_ans
 answerer, with its pacer, budget and retries.
 
 - `SttArm`: what a run of one provider needs to know of it: the model its scorecard and history
-  line record (Groq's is `stt.model`; another's is its adapter's fixed model, which a test ties
-  to the adapter), the least it bills a request, the most requests a minute its key allows,
-  whether it needs the language named (Cohere detects none), and whether its answer names the
-  language it heard, so a pass of `poe eval-languages` can hear turns through it
-  (provider_language.py; Speechmatics' pack and Cohere name none).
+  line record (Groq's is `stt.model`, Telnyx's `telnyx.stt_model`; another's is its adapter's
+  fixed model, which a test ties to the adapter), the least it bills a request, the most
+  requests a minute its key allows, whether it needs the language named (Cohere detects none),
+  and whether its answer names the language it heard, so a pass of `poe eval-languages` can
+  hear turns through it (provider_language.py; Speechmatics' pack, Cohere, Telnyx and Nabrah
+  name none).
 - `arm_problem`: what the parser refuses of a provider's flags, before anything is sent:
   `--model` and `--base-url` are Groq's; `--language-hint auto` for a provider that detects no
   language; a `--max-rpm` past its key's limit.
@@ -37,8 +38,8 @@ log = get_logger(__name__)
 
 @dataclass(frozen=True)
 class SttArm:
-    """One provider as `poe eval` runs it (the module's docstring); `model` None for Groq's,
-    which is `stt.model`."""
+    """One provider as `poe eval` runs it (the module's docstring); `model` None for one whose
+    model is a setting (Groq's `stt.model`, Telnyx's `telnyx.stt_model`)."""
 
     provider: str
     model: str | None
@@ -50,13 +51,16 @@ class SttArm:
 
 # The minimums: Groq bills 10 s a request at the least; the others bill the audio sent, by the
 # provider guide's reading of their pricing (2026-11-16; Speechmatics' and Soniox's rounding
-# unconfirmed). Cohere's trial key allows 5 requests a minute.
+# unconfirmed; Telnyx bills by the minute and Nabrah 100 credits a minute, their rounding
+# unconfirmed too). Cohere's trial key allows 5 requests a minute.
 ARMS: Final = {
     "groq": SttArm("groq", None, GROQ_MINIMUM_S, 20, hears_language=True),
     "elevenlabs": SttArm("elevenlabs", "scribe_v3", 0.0, 20, hears_language=True),
     "speechmatics": SttArm("speechmatics", "ar_en-enhanced", 0.0, 20),
     "cohere": SttArm("cohere", "cohere-transcribe-arabic-07-2026", 0.0, 5, names_language=True),
     "soniox": SttArm("soniox", "stt-async-v6", 0.0, 20, hears_language=True),
+    "telnyx": SttArm("telnyx", None, 0.0, 20),
+    "nabrah": SttArm("nabrah", "nabrah_stt_v1", 0.0, 20),
 }
 
 
@@ -87,9 +91,12 @@ def arm_settings(settings: VoiceSettings, answerer: str) -> VoiceSettings:
 
 
 def recorded_model(settings: VoiceSettings, answerer: str) -> str:
-    """The model a run of `answerer` records: Groq's `stt.model`, or the provider's own."""
+    """The model a run of `answerer` records: Groq's `stt.model`, Telnyx's
+    `telnyx.stt_model`, or the provider's own."""
     arm = ARMS.get(answerer)
-    return settings.stt.model if arm is None or arm.model is None else arm.model
+    if arm is not None and arm.model is not None:
+        return arm.model
+    return settings.telnyx.stt_model if answerer == "telnyx" else settings.stt.model
 
 
 def check_cost(
