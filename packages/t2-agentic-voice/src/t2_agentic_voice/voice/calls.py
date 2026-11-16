@@ -2,27 +2,10 @@
 (`VoiceCalls`, which meets entry.py's `Calls` protocol). The items cited are plan 003's appendix,
 "Changes to the plan's interfaces".
 
-- **Start.** The runtime's lifespan builds one `VoiceCalls` and starts it (`start`), which
-  imports onnxruntime and warms one pair of models, a Silero VAD and a Smart Turn v3.2, each
-  loading its ONNX model on the CPU there, never at import: importing onnxruntime takes 8 to
-  12 s a process (item 24). This module imports no Pipecat at its top, since api imports it
-  when the library is imported, and `import t2_agentic_voice` and `t2v --help` import no
-  Pipecat (GP-17). First it sets what voice/calls_start.py's `prepare` says, then imports in a
-  thread the modules an offer needs (`import_call_modules`: Pipecat's pipeline, aiortc's peer),
-  so the first offer does not wait 2 to 4 s for them on the event loop (TD-089), logging each
-  part's time (`calls_warmed`).
-- **The detectors.** Each call gets its own speech detector and turn analyzer, since each of
-  Pipecat's keeps one stream's state (a `VADAnalyzer`'s buffer, Silero's model state, Smart
-  Turn's audio) and its public constructor loads its own ONNX session, sharing none:
-  `VoiceCalls` makes them with the factories it is given, and with none builds Silero and Smart
-  Turn v3.2 from the settings' `turns` group, each loading its model again for the call (85.2
-  to 134.2 ms each on the owner's machine). So it makes each pair off the event loop, one ahead
-  (voice/spare.py's `Spare`): the pair `start` warms is the first call's, and each call that
-  takes one has the next made in the background, so no offer and no live call's audio waits for
-  one. A test gives fakes (a generated signal through a fake speech detector), through the
-  runtime's private `_calls` (api/runtime.py); `start` warms the factories it is given, so a
-  test's fakes load no ONNX model. With `turns.smart_turn` off, no turn analyzer is built:
-  every pause ends a turn.
+- **Start and the detectors** (`start`): voice/calls_start.py says what is set, imported and
+  warmed there, and how each call's speech detector and turn analyzer are made. This module
+  imports no Pipecat at its top, since api imports it when the library is imported, and
+  `import t2_agentic_voice` and `t2v --help` import no Pipecat (GP-17).
 - **The offer** (`answer`). One Pipecat pipeline per call, its session a `CallSession`
   (`voice/session/`). Pipecat's request handler keys its connections on a `pc_id` it chooses,
   which holds `#`; it renegotiates a live call for whoever names that ID, and leaves a stale key
@@ -59,7 +42,6 @@ from __future__ import annotations
 
 import asyncio
 from collections.abc import Awaitable, Callable, Sequence
-from time import perf_counter
 from typing import TYPE_CHECKING
 
 from t2_agentic_voice.core.config import VoiceSettings
@@ -74,7 +56,7 @@ from t2_agentic_voice.domain.ports.chat_model import ChatModel
 from t2_agentic_voice.domain.ports.language_classifier import LanguageClassifier
 from t2_agentic_voice.domain.ports.speech_to_text import SpeechToText
 from t2_agentic_voice.domain.ports.text_to_speech import TextToSpeech
-from t2_agentic_voice.voice.calls_start import elapsed_ms, import_call_modules, prepare
+from t2_agentic_voice.voice.calls_start import warm
 
 # The contract api meets is entry.py's; these names are given here too, where api imports them.
 from t2_agentic_voice.voice.entry import CallPhase as CallPhase
@@ -155,12 +137,7 @@ class VoiceCalls:
     async def start(self) -> None:
         """Import an offer's modules, and onnxruntime, and warm one Silero VAD and one Smart
         Turn v3.2, kept for the first call (the `Calls` protocol's `start`)."""
-        prepare(self._settings)
-        began = perf_counter()
-        await asyncio.to_thread(import_call_modules)
-        imported = perf_counter()
-        await self._spare.fill()
-        log.info("calls_warmed", import_ms=elapsed_ms(began, imported), detectors_ms=elapsed_ms(imported))
+        await warm(self._settings, self._spare)
         self._started = True
 
     async def answer(
