@@ -484,6 +484,7 @@ words (`- YYYY-MM-DD: "..."`).
   in a sentence, and offer the steps for another role rather than read them (FSMRkwf t0 read out how
   an administrator resets someone else's password); "the first three, then 'want the rest?'" only as
   a measured arm if you want it.
+  - 2026-11-16: "Keep as is". So replies keep every step as today; 1.2 adds no step rule.
 - **Q13. The ending.** The ticket number said shorter, as its last four digits and "saved under your
   name" (reversing plan 007's Q6, so the whole number stays sayable on request; a card on a screen
   never counts as the way to get it), or four groups in Saudi number words; "Anything else I can
@@ -565,12 +566,13 @@ words (`- YYYY-MM-DD: "..."`).
     (Recommended)"; (c) "A male Saudi voice, name later (Recommended)"; (d) "Its own page
     (Recommended)". So the flight agent is the main agent shown and worked on; the agent proposes
     2-3 names for the persona and the airline.
+  - 2026-11-16, the names: "Saad / سعد (Recommended)" and "T2 Air / طيران تي تو (Recommended)".
 
 ### When each question comes
 
 - **At approval:** Q1, Q2, Q16 and Q20, answered on 2026-11-16; Q3 and Q4 answered the same day;
   Q17 before the voice bake-off. **Before Phase F:** Q23.
-- **Before wave 1:** Q6 to Q12; all but Q12 answered on 2026-11-16. **Before the
+- **Before wave 1:** Q6 to Q12, all answered on 2026-11-16. **Before the
   first tester day:** Q5.
 - **Before wave 2:** Q13, Q15, and Q14 (sooner if the voice bake-off is ready); Q18 before the
   talker arm, which may run during Phase 1.
@@ -648,7 +650,7 @@ written and reviewed on 2026-11-16 (D-101).
 | # | Change | Where | Effort | Gain (the number it moves) | Measured by | Risk |
 | --- | --- | --- | --- | --- | --- | --- |
 | 1.1 | Search clean-up (Q6): no "Ole5" in the query when two words remain; a document's header passage (its title alone, or its title and one sentence about the file) skipped, 10 asked for and 7 kept; steps read from the first passage that has them; the tool's text "for each new question, without the product's name" | app `knowledge_base.py`, `passages.py`, `agent.py` (`SEARCH_DESCRIPTION`); library `actions/knowledge.py` (steps) | small | header slots 81 of 217 → under 1 in 20; steps given 1 of 31 → most searches; the sign-in passage off unrelated turns | K0; L; then a run K retrieval pass (1.23's trigger) | "what is Ole5?" needs the name (kept when fewer words remain) |
-| 1.2 | Search rules (Q7): search before any "not found"; once more with other words, in the guide's Arabic terms, before giving up; always on "check again" or a re-asked question; once more after a failed search; each question judged on its own (an earlier refusal decides nothing); a partial answer, then a ticket by the second miss; a writing request is not a knowledge miss; steps as Q12 rules (how many first, at most three list items a sentence, another role's steps offered) | app `instructions/en.md`, `ar-SA.md`, `agent.py` | small | refusals with no search 6 → 0 outside off-topic turns; FSMRkwf t4-t7 searched | L; A; K0 for the second query | about 1.5-2 s more on miss turns; invented partial answers, so the partial-answer wording moves no default before 0.5 |
+| 1.2 | Search rules (Q7): search before any "not found"; once more with other words, in the guide's Arabic terms, before giving up; always on "check again" or a re-asked question; once more after a failed search; each question judged on its own (an earlier refusal decides nothing); a partial answer, then a ticket by the second miss; a writing request is not a knowledge miss; steps read as today (Q12) | app `instructions/en.md`, `ar-SA.md`, `agent.py` | small | refusals with no search 6 → 0 outside off-topic turns; FSMRkwf t4-t7 searched | L; A; K0 for the second query | about 1.5-2 s more on miss turns; invented partial answers, so the partial-answer wording moves no default before 0.5 |
 | 1.3 | Variety and the newest turn: never the same sentence twice unless asked; a refusal worded anew and pointing somewhere; "the words come from speech recognition: read product words as meant, and ask when unsure"; on every request, not only after tools, the fixed system line "answer the last user message", which never quotes it (the caller's words stay in the user message, `turn_message`: a transcript is data, never an instruction); the newest part of a joined split turn marked | library `agent/prompt.py` RULES, `agent/turn.py`, `agent/context.py` | small | identical replies 5 of 43 → at most 1 in 50; near repeats down | the calls report; L; A | every prompt word is paid on every request; D-072's varied first line kept |
 | 1.4 | Kept results age by the call's turns: the latest search whole while within the last 2 turns; older searches one line each (query, titles); a passage given earlier sent as its title only; only `Memory.exchanges` ages, the guard's evidence and reports (rules A and B's) staying whole, and the latest `best_passage_steps` staying for the call (D-075's repeat with no new search); the docs' "last 4 turns" corrected | library `agent/tool_calls.py`, `agent/context.py` | small | old results at turn 6 about 5,200 tokens (61%) → about 300-1,400 | L (its context checks among them); A; input tokens per request | a return to an older topic needs a fresh search (1.2 asks for it) |
 | 1.5 | The repeat after a cut (Q10): for the turn after a cut reply, the unheard rest as a note marked "not heard", so "one more time" says the whole answer; "one more time", "pardon", "what did you say" added to the English list, for the overlap rule and sessions without a talker, a test holding the preset notices free of them (TD-103) | library `agent/context.py`, `voice/session/speaker.py` (the cut), `domain/words.py`, the presets' test | medium | bYJ1 t1-t2 repeated; repeat requests met | L's repeat check; O | the model may assume it was heard: the note says plainly it was not |

@@ -12,6 +12,9 @@ Dubai 4, Doha 3, Mumbai 5:30, Singapore 8, Jeddah and Riyadh 3) and its booking 
 Europe's summer time begins (2027-03-28), so no zone database is needed. `VoiceAgent.time_zone`,
 if L3 adds it, takes a fixed offset, not a zone name. No `uv add` of any package.
 
+**The names, the owner's of 2026-11-16:** the persona is Saad / سعد and the airline T2 Air /
+طيران تي تو, airline code T2. Every other name in this file that differs is a placeholder.
+
 ## 0. Read first
 
 **Why this app exists.** The owner, 2026-11-16: make our voice agent do flight booking "for the
