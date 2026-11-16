@@ -3,7 +3,8 @@
 Whisper that writes each request in the language it is told, or, told none, in the one it
 detects: a turn with `detect_from_s` of voiced speech goes twice at once, the second naming no
 language and carrying no prompt; an English question in an Arabic call is the turn's words and
-moves the call, so the next short turn is sent in English; a short reply heard as English moves
+moves the call, so the next short turn is sent in English, and so does the language a provider
+reports it heard (`heard_language`, D-100); a short reply heard as English moves
 nothing; a turn whose voiced speech is short goes once, however long the silence after it (the
 classifier's length gate counted silence: D-086's amendment); the held request detects and the
 turn's own reuse of it moves the call; a failed detecting request changes nothing and logs no
@@ -57,8 +58,10 @@ YES = "ايه"  # eh, yes: alef, yeh, heh
 @dataclass
 class Whisper:
     """A fake Whisper: told a language, it writes the next of `told`; told none, the next of
-    `detected` (text and the language it heard, or an error), each after `delay_s`; it records
-    each request's language and prompt, and the most requests it held at once."""
+    `detected` (text and the language it heard, or an error), each after `delay_s`, the language
+    heard in `heard_language` with `language` None when `reports_heard` (as ElevenLabs and Soniox
+    give it); it records each request's language and prompt, and the most requests it held at
+    once."""
 
     told: list[str]
     detected: list[tuple[str, str] | ProviderError] = field(default_factory=list)
@@ -66,6 +69,7 @@ class Whisper:
     calls: list[tuple[str | None, str | None]] = field(default_factory=list)
     held: int = 0
     most: int = 0
+    reports_heard: bool = False
     name: str = "fake"
     data_flow = FAKE_FLOW
 
@@ -84,6 +88,8 @@ class Whisper:
         entry = self.detected.pop(0)
         if isinstance(entry, ProviderError):
             raise entry
+        if self.reports_heard:
+            return Transcript(text=entry[0], language=None, heard_language=entry[1])
         return Transcript(text=entry[0], language=entry[1], billed_seconds=10.0)
 
     async def aclose(self) -> None:
@@ -173,6 +179,21 @@ def test_an_english_question_in_an_arabic_call_moves_it_and_the_next_yes_goes_in
     assert second.transcript.language == "en"
     sent = [(e.turn_id, e.language, e.language_by) for e in session.of(Transcribing)]
     assert sent == [(0, "ar", "session"), (0, None, "detected"), (1, "en", "session")]
+
+
+def test_a_provider_that_reports_the_language_it_heard_moves_the_call_by_it() -> None:
+    """ElevenLabs and Soniox leave `language` the request's (none) and give `heard_language`."""
+    port = Whisper(told=[TRANSLATED, "yes"], detected=[(QUESTION, "en")], reports_heard=True)
+
+    async def body(session: Recorder, worker: PipelineWorker) -> None:
+        await _say(session, worker, _turn(2.0))
+        await _say(session, worker, _turn(0.4))
+
+    session = _run(port, body)
+    first, _ = _own(session)
+    assert first.switched and first.transcript is not None
+    assert (first.transcript.text, first.transcript.language) == (QUESTION, "en")
+    assert port.calls[-1] == ("en", "english prompt")
 
 
 def test_a_short_reply_heard_as_the_other_language_moves_nothing() -> None:

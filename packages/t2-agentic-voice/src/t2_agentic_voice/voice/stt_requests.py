@@ -13,12 +13,13 @@ word, carries none, as W1 sent none; with `stt.send_prompt` off, none carries on
 Under `stt.live_language = "detected"` (`detect_rule`), a turn's `held` or `turn` request whose
 turn held at least `stt.detect_from_s` seconds of voiced speech, and is no overlap, goes twice at
 once: as above, and naming no language with no prompt, for Whisper to detect it, its
-`Transcribing` by `detected`, so no time is lost waiting for one before the other. When
-domain/language_switch.py's `switch_to` says the turn moves the call, the turn's `Transcribed` is
-the detecting request's (`switched`), and once it is the turn's own, the call's current language
-moves to it (`TurnLanguages.listen_in`), so every later request names it; otherwise the request in
-the current language stands, its failure the turn's. A failed detecting request is logged by its
-kind alone and changes nothing.
+`Transcribing` by `detected`, so no time is lost waiting for one before the other; the language
+it heard is the transcript's `heard_language` where the provider reports one (D-100), else its
+`language` (Whisper's). When domain/language_switch.py's `switch_to` says the turn moves the
+call, the turn's `Transcribed` is the detecting request's (`switched`), and once it is the turn's
+own, the call's current language moves to it (`TurnLanguages.listen_in`), so every later request
+names it; otherwise the request in the current language stands, its failure the turn's. A failed
+detecting request is logged by its kind alone and changes nothing.
 
 `drop` cancels every request in flight at the call's end, its `Transcribing` already handed.
 """
@@ -156,7 +157,7 @@ class SttRequests:
                 said = None if transcript is None else transcript.text
                 moved = switch_to(
                     language,
-                    found.language,
+                    found.heard_language or found.language,
                     codes=self._detect.codes,
                     named_text=said,
                     detected_text=found.text,
