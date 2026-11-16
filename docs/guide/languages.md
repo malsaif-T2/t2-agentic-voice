@@ -58,6 +58,13 @@ it. Otherwise the transcript in the current language stands and nothing moves. A
 never detects. The rule is `domain/language_switch.py`'s; each long turn costs a second Whisper
 request.
 
+A caller may also ask in words: a turn made only of a switch request ("English please",
+«بالعربي لو سمحت», in either script, with how Whisper writes it told the other language) moves
+the call too, and its reply is in the language asked for. Once the call has moved, the session's
+notices, its fixed phrases, the echo and the interruption rule's words are the new language's
+(`CallSetup.now`, `voice/session/call_language.py`), and the call report names a detected turn's
+language with `language_by = "detected"`. Under `session` and `auto` the call never moves.
+
 ## Each turn's language from a classifier
 
 `stt.live_language = "classified"` (D-086, provisional) sends each turn to Whisper in the

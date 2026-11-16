@@ -1,7 +1,9 @@
 """When a turn moves the call to the agent's other language (domain/language_switch.py): a question
 or request heard in the other language moves it, both ways; a short reply, a turn of one word, a
 third language, the language already named, or a turn whose words in the call's language are a
-short reply never does; Whisper's names are read exactly (TD-011); and the rule's own checks."""
+short reply never does; Whisper's names are read exactly (TD-011); the rule's own checks; and
+the spoken switch requests (`asked_language`), in both scripts, a turn asking for neither or both
+asking for none."""
 
 from __future__ import annotations
 
@@ -11,6 +13,7 @@ from t2_agentic_voice.domain.language_switch import (
     FEWEST_WORDS,
     SHORT_REPLIES,
     DetectRule,
+    asked_language,
     short_reply,
     switch_to,
 )
@@ -114,3 +117,30 @@ def test_the_detect_rule_reads_voiced_speech_and_refuses_a_bad_shape() -> None:
         DetectRule(from_s=0, codes=CODES)
     with pytest.raises(ValueError, match="two of the agent's languages"):
         DetectRule(from_s=1.2, codes=("ar", "ar"))
+
+
+@pytest.mark.parametrize(
+    ("text", "asked"),
+    [
+        ("English please", "en"),
+        ("Can you speak English?", "en"),
+        ("in English, please", "en"),
+        ("بالانجليزي لو سمحت", "en"),  # bil-ingleezi law samaht, heard in an Arabic call
+        ("الإنجليزية من فضلك", "en"),  # al-ingleeziyya min fadlak, its hamza and teh marbuta
+        ("ممكن تكلم انجليزي؟", "en"),  # mumkin takallam ingleezi, can you speak English
+        ("al ingleeziyya min fadlak", "en"),  # the same heard in an English call
+        ("Arabic please", "ar"),
+        ("in Arabic", "ar"),
+        ("arabi law samaht", "ar"),
+        ("بالعربي لو سمحت", "ar"),  # bil-arabi law samaht
+        ("اريبك", "ar"),  # "Arabic" heard in an Arabic call
+        ("English or Arabic", None),  # both: none
+        ("is the menu in English", None),  # a question about English, not a request for it
+        ("what time is my flight", None),
+        ("please", None),  # no language asked for
+        ("تمام", None),
+        ("", None),
+    ],
+)
+def test_a_spoken_switch_request_asks_for_its_language(text: str, asked: str | None) -> None:
+    assert asked_language(text) == asked

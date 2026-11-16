@@ -271,12 +271,13 @@ class Talking:
 
     def _turn(self, turn: TurnLog, heard: HeardWords) -> TalkerTurn:
         """The turn as the talker reads it: its words whole, the language they were heard in,
-        the replies it spoke over and cut, the action it declined (a read-back still current is
-        declined by it: read_back.py's `handed`), and the call before it as the caller heard it."""
+        the language it asked for (call_language.py), the replies it spoke over and cut, the
+        action it declined (read_back.py's `handed`), and the call before it as heard."""
         return TalkerTurn(
             turn_id=turn.turn_id,
             words=heard.text,
             language=heard_language(heard.language),
+            asked=self._setup.now.asked_tag(heard.text),
             over_reply=turn.over_reply,
             cut_reply=turn.cut_reply,
             declined=self._confirming.handed(turn.turn_id, words=heard.text),
@@ -284,8 +285,8 @@ class Talking:
         )
 
     def _start(self, talk: Talk, turn: TalkerTurn) -> None:
-        spoken = [language.tag for language in self._setup.agent.languages]
-        talk.language = reply_language(turn, call=self._setup.language.tag, spoken=spoken)
+        now = self._setup.now  # the call's current language, and the agent's (call_language.py)
+        talk.language = reply_language(turn, call=now.tag, spoken=now.spoken)
         self._talks[talk.turn_id] = talk
         talk.scope.start(self._runner.run(talk, turn), name=f"talker-{talk.turn_id}")
 

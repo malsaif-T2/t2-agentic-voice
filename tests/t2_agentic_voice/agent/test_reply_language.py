@@ -42,3 +42,12 @@ def test_the_reply_follows_the_turns_language(
 def test_an_agent_with_no_tag_in_the_language_keeps_the_calls() -> None:
     turn = TalkerTurn(turn_id=0, words="How do I change my password?", language="en")
     assert reply_language(turn, call="ar-SA", spoken=["ar-SA"]) == "ar-SA"
+
+
+def test_a_turn_that_asked_for_a_language_is_answered_in_it() -> None:
+    """A spoken switch request heard in Arabic (`TalkerTurn.asked`) is answered in English; a
+    language the agent does not speak is not followed."""
+    asked = TalkerTurn(turn_id=0, words="بالانجليزي لو سمحت", language="ar", asked="en")
+    assert reply_language(asked, call="ar-SA", spoken=SPOKEN) == "en"
+    other = TalkerTurn(turn_id=0, words="ابي اغير كلمة السر", language="ar", asked="fr")
+    assert reply_language(other, call="ar-SA", spoken=SPOKEN) == "ar-SA"

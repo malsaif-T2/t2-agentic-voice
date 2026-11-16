@@ -121,7 +121,7 @@ entry point (`voice/calls.py`).
 from __future__ import annotations
 
 from collections.abc import Awaitable, Callable
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 from typing import Protocol
 
 from t2_agentic_voice.agent.talker import Talker
@@ -140,6 +140,7 @@ from t2_agentic_voice.domain.declaration import Language, VoiceAgent
 from t2_agentic_voice.domain.ports.action_jobs import ActionJobs
 from t2_agentic_voice.domain.ports.chat_model import ChatModel
 from t2_agentic_voice.domain.ports.text_to_speech import AudioChunk
+from t2_agentic_voice.voice.session.call_language import CallLanguage
 from t2_agentic_voice.voice.session.commands import Command
 from t2_agentic_voice.voice.session.session_events import SessionEvent
 
@@ -193,8 +194,9 @@ class Commands(Protocol):
 class CallSetup:
     """What one call's session starts with, from voice's entry point: the call's ID; who is
     calling and what they consented to, as the identity source verified them at join; the agent,
-    and the call's language, one of the agent's, fixed at join (`VoiceAgent.call_language`) and
-    kept for the whole call; the settings; the runtime's phrase audio; the most characters
+    and the call's language at join, one of the agent's (`VoiceAgent.call_language`), which
+    `now` holds as the call's current one, moving only under `stt.live_language = "detected"`
+    (call_language.py); the settings; the runtime's phrase audio; the most characters
     one text-to-speech request of a language takes (the provider's `max_chars`, which the clause
     splitter honours); the runtime's tracing; where the session's public events go; the call's
     clock; the call's talker, built for it when the agent runs the talker (`session.mode`,
@@ -218,3 +220,9 @@ class CallSetup:
     talker: Talker | None = None
     overlap_model: ChatModel | None = None
     action_jobs: ActionJobs | None = None
+    now: CallLanguage = field(init=False, compare=False, repr=False)
+
+    def __post_init__(self) -> None:
+        moves = self.settings.stt.live_language == "detected"
+        now = CallLanguage(self.language, self.agent.languages, moves=moves)
+        object.__setattr__(self, "now", now)

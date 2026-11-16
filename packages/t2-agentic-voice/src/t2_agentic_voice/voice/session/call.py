@@ -5,7 +5,8 @@ from text or a file runs the same code as one over WebRTC. io.py says what each 
 
 What it does, and where each part is:
 
-- **The call.** It holds the call in its language (`setup.language`, fixed at join), names it to
+- **The call.** It holds the call in its language (`setup.language` at join, `setup.now` as it
+  moves under `stt.live_language = "detected"`: language_moves.py), names it to
   the speech-to-text bridge (`ListenIn`, naming none under `stt.live_language = "auto"`), greets
   the caller once connected (reply 0), and ends the call on the caller's `hangup`, a limit
   (`limits.max_call_s`, `limits.idle_s`), a transport failure, or the runtime's end (call_life.py's
@@ -51,6 +52,7 @@ from t2_agentic_voice.voice.session.call_life import CallLife
 from t2_agentic_voice.voice.session.echo import echo
 from t2_agentic_voice.voice.session.interrupter import Interrupter
 from t2_agentic_voice.voice.session.io import CallSetup, Commands
+from t2_agentic_voice.voice.session.language_moves import follow
 from t2_agentic_voice.voice.session.playback import Playback, Reply
 from t2_agentic_voice.voice.session.read_back import Confirming
 from t2_agentic_voice.voice.session.report import TurnLog, merged
@@ -223,6 +225,7 @@ class CallSession:
         if turn.overlap:
             await self._interrupter.turn_heard(turn, heard, event)
         else:
+            await follow(self._setup, self._commands, turn, heard, event)
             await self._interrupter.alone(turn, heard, event)
             if self._talking is not None:
                 await self._talking.taken(turn)

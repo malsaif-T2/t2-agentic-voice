@@ -67,7 +67,7 @@ class ReplyWriter(Protocol):
 def language_of(setup: CallSetup, tag: LanguageTag) -> Language:
     """The agent's language of `tag`, or the call's when the agent speaks no such language."""
     found = [each for each in setup.agent.languages if each.tag == tag]
-    return found[0] if found else setup.language
+    return found[0] if found else setup.now.language
 
 
 def speech_of(setup: CallSetup, text: str, tag: LanguageTag) -> list[tuple[str, str]]:

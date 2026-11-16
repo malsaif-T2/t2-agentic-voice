@@ -16,8 +16,12 @@ request in the call's current language (voice/stt_requests.py). `switch_to` then
    Whisper writes «تمام» told English, "Tamam", or "okay" told Arabic, «اوكي»).
 
 Then the turn's heard words are the detecting request's and the call's current language moves to
-that code; otherwise the transcript in the current language stands and nothing moves. The lists
-are a fast path, as every word list of the library's is.
+that code; otherwise the transcript in the current language stands and nothing moves.
+
+A caller may also ask for the other language in words: `asked_language` reads a turn made only of
+one language's `SWITCH_REQUESTS` («بالانجليزي لو سمحت», "Arabic please", in either script), the
+words they are asked with and the short replies. The lists are a fast path, as every word list of
+the library's is: the talker's `switch_language` tool takes any other wording (actions/).
 """
 
 from __future__ import annotations
@@ -141,6 +145,100 @@ def _short_replies() -> frozenset[str]:
 SHORT_REPLIES: frozenset[str] = _short_replies()
 
 
+# The spoken switch requests, the fast path (the talker's `switch_language` tool takes any other
+# wording): what asks for each language, in both scripts, with how Whisper writes a request told
+# the other language («الإنجليزية من فضلك» heard in an English call as "al ingleeziyya", "Arabic
+# please" heard in an Arabic call as «اريبك»). Each comment gives the words' sound and meaning,
+# then their letters.
+_TO_ENGLISH: tuple[str, ...] = (
+    "english",
+    "in english",
+    "english please",
+    "ingleezi",
+    "inglizi",
+    "bil ingleezi",
+    "al ingleezi",
+    "al ingleeziyya",
+    "inglish",
+    # al-ingleezi, English: alef, lam, alef, noon, jeem, lam, yeh, zain, yeh
+    "\u0627\u0644\u0627\u0646\u062c\u0644\u064a\u0632\u064a",
+    # ingleezi, English: alef, noon, jeem, lam, yeh, zain, yeh
+    "\u0627\u0646\u062c\u0644\u064a\u0632\u064a",
+    # bil-ingleezi, in English: beh, alef, lam, alef, noon, jeem, lam, yeh, zain, yeh
+    "\u0628\u0627\u0644\u0627\u0646\u062c\u0644\u064a\u0632\u064a",
+    # al-ingleeziyya min fadlak, English please: al-ingleezi's letters, heh; meem, noon; feh, dad,
+    # lam, kaf
+    "\u0627\u0644\u0627\u0646\u062c\u0644\u064a\u0632\u064a\u0647 "
+    "\u0645\u0646 \u0641\u0636\u0644\u0643",
+    # bil-ingleezi law samaht, in English please: bil-ingleezi's letters; lam, waw; seen, meem,
+    # hah, teh
+    "\u0628\u0627\u0644\u0627\u0646\u062c\u0644\u064a\u0632\u064a "
+    "\u0644\u0648 \u0633\u0645\u062d\u062a",
+    # takallam ingleezi, speak English: teh, kaf, lam, meem, alef, noon, jeem, lam, yeh, zain, yeh
+    "\u062a\u0643\u0644\u0645 \u0627\u0646\u062c\u0644\u064a\u0632\u064a",
+    # kallimni ingleezi, speak English to me: kaf, lam, meem, noon, yeh; ingleezi's letters
+    "\u0643\u0644\u0645\u0646\u064a \u0627\u0646\u062c\u0644\u064a\u0632\u064a",
+    # abi ingleezi, I want English: alef, beh, yeh, alef, noon, jeem, lam, yeh, zain, yeh
+    "\u0627\u0628\u064a \u0627\u0646\u062c\u0644\u064a\u0632\u064a",
+    # al-lugha al-ingleeziyya, the English language: alef, lam, lam, ghain, heh; al-ingleeziyya's
+    "\u0627\u0644\u0644\u063a\u0647 \u0627\u0644\u0627\u0646\u062c\u0644\u064a\u0632\u064a\u0647",
+    "\u0627\u0646\u0642\u0644\u0634",  # inglish, English: alef, noon, qaf, lam, sheen
+    "\u0627\u0646\u062c\u0644\u0634",  # inglish, English: alef, noon, jeem, lam, sheen
+)
+_TO_ARABIC: tuple[str, ...] = (
+    "arabic",
+    "in arabic",
+    "arabic please",
+    "arabi",
+    "bil arabi",
+    "al arabi",
+    "al arabiyya",
+    "\u0627\u0644\u0639\u0631\u0628\u064a",  # al-arabi, Arabic: alef, lam, ain, reh, beh, yeh
+    "\u0639\u0631\u0628\u064a",  # arabi, Arabic: ain, reh, beh, yeh
+    # bil-arabi, in Arabic: beh, alef, lam, ain, reh, beh, yeh
+    "\u0628\u0627\u0644\u0639\u0631\u0628\u064a",
+    # al-arabiyya min fadlak, Arabic please: al-arabi's letters, heh; meem, noon; feh, dad, lam, kaf
+    "\u0627\u0644\u0639\u0631\u0628\u064a\u0647 \u0645\u0646 \u0641\u0636\u0644\u0643",
+    # bil-arabi law samaht, in Arabic please: bil-arabi's letters; lam, waw; seen, meem, hah, teh
+    "\u0628\u0627\u0644\u0639\u0631\u0628\u064a \u0644\u0648 \u0633\u0645\u062d\u062a",
+    # takallam arabi, speak Arabic: teh, kaf, lam, meem, ain, reh, beh, yeh
+    "\u062a\u0643\u0644\u0645 \u0639\u0631\u0628\u064a",
+    # kallimni arabi, speak Arabic to me: kaf, lam, meem, noon, yeh, ain, reh, beh, yeh
+    "\u0643\u0644\u0645\u0646\u064a \u0639\u0631\u0628\u064a",
+    # abi arabi, I want Arabic: alef, beh, yeh, ain, reh, beh, yeh
+    "\u0627\u0628\u064a \u0639\u0631\u0628\u064a",
+    # al-lugha al-arabiyya, the Arabic language: alef, lam, lam, ghain, heh; al-arabiyya's
+    "\u0627\u0644\u0644\u063a\u0647 \u0627\u0644\u0639\u0631\u0628\u064a\u0647",
+    "\u0627\u0631\u064a\u0628\u0643",  # arabic, Arabic: alef, reh, yeh, beh, kaf
+)
+SWITCH_REQUESTS: dict[LanguageCode, tuple[str, ...]] = {"en": _TO_ENGLISH, "ar": _TO_ARABIC}
+# The words a switch request is asked with, besides `SHORT_REPLIES` (which hold "please" and
+# its Arabic forms).
+_ASKING: tuple[str, ...] = (
+    "can you",
+    "could you",
+    "can we",
+    "do you",
+    "speak",
+    "talk",
+    "to me",
+    "with me",
+    "in",
+    "switch to",
+    "change to",
+    "let s",
+    "i want",
+    "i prefer",
+    "language",
+    "the",
+    "law samaht",
+    "min fadlak",
+    "\u0645\u0645\u0643\u0646",  # mumkin, can you: meem, meem, kaf, noon
+    "\u062e\u0644\u0646\u0627",  # khallna, let us: khah, lam, noon, alef
+    "\u0646\u062a\u0643\u0644\u0645",  # natkallam, we speak: noon, teh, kaf, lam, meem
+)
+
+
 @dataclass(frozen=True, kw_only=True)
 class DetectRule:
     """When a turn is also sent naming no language: with at least `from_s` seconds of voiced
@@ -185,3 +283,16 @@ def switch_to(
     if short_reply(detected_text) or covered(named_text or "", SHORT_REPLIES):
         return None
     return code
+
+
+def asked_language(text: str) -> LanguageCode | None:
+    """The language a spoken switch request in `text` asks for: the one whose requests, with
+    the words they are asked with and the short replies, cover every word of `text`, one of its
+    requests among them; None for a turn that asks for neither language, or for both."""
+    asking = (*_ASKING, *SHORT_REPLIES)
+    found = [
+        code
+        for code, requests in SWITCH_REQUESTS.items()
+        if covered(text, (*requests, *asking)) and not covered(text, asking)
+    ]
+    return found[0] if len(found) == 1 else None

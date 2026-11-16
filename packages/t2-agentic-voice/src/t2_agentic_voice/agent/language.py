@@ -69,7 +69,11 @@ def reply_language(
     turn: TalkerTurn, *, call: LanguageTag, spoken: Sequence[LanguageTag]
 ) -> LanguageTag:
     """The tag the reply to `turn` is in, in a call held in `call` by an agent that speaks
-    `spoken` (the module's docstring)."""
+    `spoken` (the module's docstring); the language the turn asked the call to move to, when it
+    asked for one the agent speaks (`TalkerTurn.asked`)."""
+    asked = next((tag for tag in spoken if tag == turn.asked), None)
+    if asked is not None:
+        return asked
     heard = heard_code(turn.language)
     return tag_of(_written(turn.words, heard) or heard, call=call, spoken=spoken)
 
