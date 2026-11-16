@@ -278,6 +278,7 @@ REFUSED_IN_CODE = [
     (("stt", "model"), MADE_UP_KEY),
     (("openai", "base_url"), f"https://user:{MADE_UP_KEY}@api.openai.com/v1"),
     (("speechmatics", "region"), MADE_UP_KEY),
+    (("telnyx", "stt_model"), MADE_UP_KEY),
     (("tracing", "endpoint"), f"https://user:{MADE_UP_KEY}@127.0.0.1:6006/v1/traces"),
     (("server", "allowed_origins"), (f"https://{MADE_UP_KEY}.example/path",)),
     (("server", "allowed_origins"), (f"https://{MADE_UP_KEY}.example:443",)),

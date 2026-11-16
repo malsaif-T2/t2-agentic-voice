@@ -91,6 +91,38 @@ Inworld: voices to measure beside Groq's (D-100); the key in the Base64 form the
 | `T2V_INWORLD__API_KEY` | secret, or unset | unset | — | The provider's API key; unset, its adapters are unavailable and say so when chosen. Or give api_key_file instead. |
 | `T2V_INWORLD__API_KEY_FILE` | path, or unset | unset | — | Or the full path of a file outside the repository that holds only the key, so the key can live outside .env. |
 
+## `telnyx`
+
+Telnyx: speech-to-text through its engines, HUMAIN's Arabic engine among them; measured beside Groq (D-100).
+
+| Variable | Type | Default | Unit | Description |
+| --- | --- | --- | --- | --- |
+| `T2V_TELNYX__API_KEY` | secret, or unset | unset | — | The provider's API key; unset, its adapters are unavailable and say so when chosen. Or give api_key_file instead. |
+| `T2V_TELNYX__API_KEY_FILE` | path, or unset | unset | — | Or the full path of a file outside the repository that holds only the key, so the key can live outside .env. |
+| `T2V_TELNYX__TURN_TIMEOUT_S` | number | `20` | seconds | The longest one turn may take over the provider's WebSocket, from the connection to its last transcript; its time is measured, never assumed. |
+| `T2V_TELNYX__QUIET_S` | number | `1.5` | seconds | Once the turn's audio is sent, how long a quiet socket (no message) means the provider has said all it heard, when it does not close the socket itself; this wait is part of the turn's measured time. |
+| `T2V_TELNYX__STT_MODEL` | one of humain/realtime, deepgram/nova-3, openai/whisper-large-v3-turbo | `humain/realtime` | — | The Telnyx speech-to-text model: humain/realtime (HUMAIN's Arabic engine with Arabic-English code-switching, on Telnyx's streaming WebSocket, the default), or deepgram/nova-3 or openai/whisper-large-v3-turbo (its batch endpoint). |
+
+## `humain`
+
+HUMAIN: its own key, kept for its speech, voice and chat APIs once their reference is given; no adapter reads it yet (D-100).
+
+| Variable | Type | Default | Unit | Description |
+| --- | --- | --- | --- | --- |
+| `T2V_HUMAIN__API_KEY` | secret, or unset | unset | — | The provider's API key; unset, its adapters are unavailable and say so when chosen. Or give api_key_file instead. |
+| `T2V_HUMAIN__API_KEY_FILE` | path, or unset | unset | — | Or the full path of a file outside the repository that holds only the key, so the key can live outside .env. |
+
+## `nabrah`
+
+Nabrah: Saudi Arabic speech-to-text on its streaming WebSocket; measured beside Groq (D-100).
+
+| Variable | Type | Default | Unit | Description |
+| --- | --- | --- | --- | --- |
+| `T2V_NABRAH__API_KEY` | secret, or unset | unset | — | The provider's API key; unset, its adapters are unavailable and say so when chosen. Or give api_key_file instead. |
+| `T2V_NABRAH__API_KEY_FILE` | path, or unset | unset | — | Or the full path of a file outside the repository that holds only the key, so the key can live outside .env. |
+| `T2V_NABRAH__TURN_TIMEOUT_S` | number | `20` | seconds | The longest one turn may take over the provider's WebSocket, from the connection to its last transcript; its time is measured, never assumed. |
+| `T2V_NABRAH__QUIET_S` | number | `1.5` | seconds | Once the turn's audio is sent, how long a quiet socket (no message) means the provider has said all it heard, when it does not close the socket itself; this wait is part of the turn's measured time. |
+
 ## `stt`
 
 Speech-to-text: the adapter, the Whisper model, how long a request may take, the language and the prompt a call sends, the classifier of each turn's language, and the filter for text from silence.

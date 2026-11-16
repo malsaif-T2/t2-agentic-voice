@@ -151,6 +151,9 @@ NAMES = {
 # declaration (`Say`, `ReadBack`, `Claims`, `Spoken`), and `ActionRejected` and `ActionNotSent`.
 # Plan 010 adds the key groups of the providers measured beside Groq (D-100).
 ROOT_NAMES = {
+    "TelnyxSettings",
+    "NabrahSettings",
+    "HumainSettings",
     "Action",
     "ActionContext",
     "ActionNotSent",

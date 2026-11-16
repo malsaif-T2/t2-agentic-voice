@@ -57,10 +57,13 @@ from t2_agentic_voice.core.settings.privacy import PrivacySettings
 from t2_agentic_voice.core.settings.provider_keys import (
     CohereSettings,
     ElevenLabsSettings,
+    HumainSettings,
     InworldSettings,
+    NabrahSettings,
     OpenAISettings,
     SonioxSettings,
     SpeechmaticsSettings,
+    TelnyxSettings,
 )
 from t2_agentic_voice.core.settings.server import ServerSettings
 from t2_agentic_voice.core.settings.session import SessionSettings
@@ -105,6 +108,7 @@ __all__ = [
     "GroqSettings",
     "GuardSettings",
     "HeardConsent",
+    "HumainSettings",
     "InterruptionSettings",
     "InvalidRequestError",
     "InworldSettings",
@@ -114,6 +118,7 @@ __all__ = [
     "LimitSettings",
     "LlmSettings",
     "LoggingSettings",
+    "NabrahSettings",
     "NotFoundError",
     "OpenAISettings",
     "Phrases",
@@ -133,6 +138,7 @@ __all__ = [
     "StructuredLogger",
     "SttSettings",
     "T2VoiceError",
+    "TelnyxSettings",
     "Tool",
     "ToolError",
     "ToolResult",
