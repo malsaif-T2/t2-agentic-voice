@@ -44,6 +44,7 @@ from flight_voice.airline.schedule import (
 from flight_voice.airline.system import Airline, AirlineUnavailableError
 from flight_voice.said import Tag
 from flight_voice.tools import cards
+from flight_voice.tools.listing import listable, listing, options
 from flight_voice.tools.results import (
     SAY,
     SEARCH_FAILED,
@@ -54,9 +55,6 @@ from flight_voice.tools.results import (
     NoSeats,
     NotServed,
     date_said,
-    listable,
-    listing,
-    options,
     result,
     said,
 )
