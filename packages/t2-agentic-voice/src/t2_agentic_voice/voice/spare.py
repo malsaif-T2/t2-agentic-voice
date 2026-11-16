@@ -8,6 +8,10 @@ or two offers close together), it makes one for the caller in a thread, as befor
 of `make` reaches the caller that needs it. A background make that fails is logged by its type
 and leaves the spare empty, so the next `take` makes its own. `aclose` drops the one it holds
 and stops waiting for a make in flight (a thread cannot be stopped; what it makes is dropped).
+
+`Spare(make, ahead=False)` keeps none, as voice did before (`warmup.at_start` off): `fill`
+makes one in a thread and drops it, so what `make` loads once a process (onnxruntime) is
+loaded, and each `take` makes its own in a thread.
 """
 
 from __future__ import annotations
@@ -23,17 +27,20 @@ log = get_logger(__name__)
 class Spare[T]:
     """One `T` from `make` kept ready (the module's docstring)."""
 
-    def __init__(self, make: Callable[[], T]) -> None:
+    def __init__(self, make: Callable[[], T], *, ahead: bool = True) -> None:
         self._make = make
+        self._ahead = ahead
         self._held: T | None = None
         self._making: asyncio.Task[None] | None = None
         self._open = True
 
     async def fill(self) -> None:
-        """Make one now, in a thread, unless one is held; an error of `make` is raised."""
+        """Make one now, in a thread, unless one is held, and keep it when `ahead`; an error of
+        `make` is raised."""
         self._open = True
         if self._held is None:
-            self._held = await asyncio.to_thread(self._make)
+            made = await asyncio.to_thread(self._make)
+            self._held = made if self._ahead else None
 
     async def take(self) -> T:
         """The one held, the next made in the background; else one made now, in a thread."""

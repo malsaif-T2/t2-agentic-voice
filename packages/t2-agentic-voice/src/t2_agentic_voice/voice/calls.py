@@ -131,7 +131,8 @@ class VoiceCalls:
         self._chosen = chosen
         self._calls: dict[CallId, WebRTCCall] = {}
         self._answering: set[CallId] = set()
-        self._spare = Spare(self._detectors)  # the next call's detectors, made ahead
+        # The next call's detectors, made ahead under `warmup.at_start` (voice/calls_start.py).
+        self._spare = Spare(self._detectors, ahead=settings.warmup.at_start)
         self._started = False
 
     async def start(self) -> None:

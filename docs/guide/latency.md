@@ -70,6 +70,12 @@ result, before step 5.
   the prototype that came before the library put 1.1 to 1.3 s on its first sound after a search
   by closing idle connections, against 0.23 to 0.25 s with them kept open. A runtime's first
   answer still opens the chat model's connection: it is not warmed at the start.
+- **The first call after a restart.** By default the first offer imports Pipecat's pipeline and
+  aiortc's peer on the server's event loop (2 to 4 s), and each call's offer builds its own
+  speech detector and turn analyzer (about 0.1 s each). With `T2V_WARMUP__AT_START=true` the
+  server's start imports them in a thread and keeps one call's detectors made ahead, the next
+  built in the background as each call takes one: a slower start and a little more memory, for
+  a first call that waits for none of it. Its `calls_warmed` log line gives the start's times.
 - **A first line new on every request.** Each request's system message opens with a line of its
   own (such as `Request 7f3a9c21.`), so no two requests share a prefix Groq has cached, for its
   cache can be the slow path. In 24 short requests to `openai/gpt-oss-120b` with Ole5's system

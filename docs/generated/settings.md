@@ -319,3 +319,11 @@ Storage: one folder for everything the library keeps.
 | Variable | Type | Default | Unit | Description |
 | --- | --- | --- | --- | --- |
 | `T2V_STORAGE__VAR_DIR` | path | `var` | — | Local runtime data (git-ignored): databases, run outputs, caches. Every path under it comes from here, so one setting moves a whole run, a test session included. |
+
+## `warmup`
+
+The warm-up: what the server's start readies for the calls to come.
+
+| Variable | Type | Default | Unit | Description |
+| --- | --- | --- | --- | --- |
+| `T2V_WARMUP__AT_START` | true or false | `false` | — | Whether the server's start imports the modules a call's offer needs (Pipecat's pipeline, aiortc's peer) in a thread, and keeps one call's speech detector and turn analyzer made ahead, the next made in the background as each call takes one. Off: the first offer imports them on the event loop, and each call makes its own. |

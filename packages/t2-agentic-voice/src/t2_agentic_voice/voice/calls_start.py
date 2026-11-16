@@ -8,19 +8,22 @@ appendix, "Changes to the plan's interfaces".
   takes 8 to 12 s a process (item 24). First it sets what `prepare` says, then imports in a
   thread the modules an offer needs (`import_call_modules`: Pipecat's pipeline, aiortc's peer),
   so the first offer does not wait 2 to 4 s for them on the event loop (TD-089), logging each
-  part's time (`calls_warmed`).
+  part's time (`calls_warmed`). That import, and the detectors made ahead below, run only under
+  `warmup.at_start` (core/settings/warmup.py: off by default until the warm-up's measurement
+  keeps it, GP-18); off, the first offer imports the modules, as before.
 - **The detectors.** Each call gets its own speech detector and turn analyzer, since each of
   Pipecat's keeps one stream's state (a `VADAnalyzer`'s buffer, Silero's model state, Smart
   Turn's audio) and its public constructor loads its own ONNX session, sharing none:
   `VoiceCalls` makes them with the factories it is given, and with none builds Silero and Smart
   Turn v3.2 from the settings' `turns` group, each loading its model again for the call (85.2
   to 134.2 ms each on the owner's machine). So it makes each pair off the event loop, one ahead
-  (voice/spare.py's `Spare`): the pair `start` warms is the first call's, and each call that
-  takes one has the next made in the background, so no offer and no live call's audio waits for
-  one. A test gives fakes (a generated signal through a fake speech detector), through the
-  runtime's private `_calls` (api/runtime.py); `start` warms the factories it is given, so a
-  test's fakes load no ONNX model. With `turns.smart_turn` off, no turn analyzer is built:
-  every pause ends a turn.
+  (voice/spare.py's `Spare`) under `warmup.at_start`: the pair `start` warms is the first
+  call's, and each call that takes one has the next made in the background, so no offer and no
+  live call's audio waits for one. Off, `start` makes one pair and drops it (onnxruntime loaded),
+  and each call's offer makes its own in a thread. A test gives fakes (a generated signal
+  through a fake speech detector), through the runtime's private `_calls` (api/runtime.py);
+  `start` warms the factories it is given, so a test's fakes load no ONNX model. With
+  `turns.smart_turn` off, no turn analyzer is built: every pause ends a turn.
 
 Pipecat's loguru namespace is switched off before voice first imports Pipecat (Q2, item 16); the
 transport loggers are held at WARNING unless `logging.content` is on
@@ -58,15 +61,19 @@ log = get_logger(__name__)
 
 
 async def warm[T](settings: VoiceSettings, spare: Spare[T]) -> None:
-    """What `start` does (the module's docstring): `prepare`, the offer's modules imported and
-    `spare` filled, each in a thread, and their times logged."""
+    """What `start` does (the module's docstring): `prepare`, the offer's modules imported (under
+    `warmup.at_start`) and `spare` filled, each in a thread, and their times logged."""
     prepare(settings)
     began = perf_counter()
-    await asyncio.to_thread(import_call_modules)
+    if settings.warmup.at_start:
+        await asyncio.to_thread(import_call_modules)
     imported = perf_counter()
     await spare.fill()
     log.info(
-        "calls_warmed", import_ms=elapsed_ms(began, imported), detectors_ms=elapsed_ms(imported)
+        "calls_warmed",
+        at_start=settings.warmup.at_start,
+        import_ms=elapsed_ms(began, imported),
+        detectors_ms=elapsed_ms(imported),
     )
 
 
