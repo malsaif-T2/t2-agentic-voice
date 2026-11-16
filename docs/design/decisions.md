@@ -140,7 +140,7 @@ twice; DOC-REF: every `D-NNN` cited anywhere is a heading here), so keep its sha
   ARCH-DOC fails until ARCHITECTURE.md's layer table matches `[layers]` and `[[owners]]`, and
   the decision is a review. More layers mean more wiring in `api`, accepted for the guarantee.
 
-## D-004 · Groq is the only provider for now, and each can be swapped later · 2026-10-28 · Accepted
+## D-004 · Groq is the only provider for now, and each can be swapped later · 2026-10-28 · Amended by D-100 (other providers measured, 2026-11-16)
 
 - **Context:** The owner has one API key.
 - **Decision:** Speech-to-text, the chat model, and text-to-speech come from Groq for now. Each
@@ -3633,3 +3633,28 @@ twice; DOC-REF: every `D-NNN` cited anywhere is a heading here), so keep its sha
 - **Evidence:** the owner's words of 2026-11-16: "Ok, I approve the plan. Lets start implementing,
   focus on what brings the best improvements by hour of work and obvious wins first." and "Lets
   not set timelines, we will work at our pace"; plan 010.
+
+## D-100 · Other providers measured on the owner's and testers' calls; Groq stays the default until a bake-off and the owner's ruling · 2026-11-16 · Accepted (the owner's answers to plan 010's Q16, 2026-11-16)
+
+- **Context:** D-004 kept Groq the only provider. Plan 010 found Arabic hearing the biggest gap
+  in the voice (the owner's Saudi speech heard about 7 times worse than English, WER 0.344
+  against 0.048; "Ole5" heard right 0 of 9 times live), the talker weak in Arabic, and no way to
+  switch language with Whisper told the call's language. Its provider study named candidates
+  Groq does not host: ElevenLabs, Speechmatics, Cohere and Soniox for speech-to-text, ElevenLabs
+  and Inworld for voices, OpenAI and Google for the talker. The owner answered on 2026-11-16: "I
+  can provide some new models providers for you if you make a search and give the best ones to
+  test" and "I can provide this today if you guide me to the best options we can have".
+- **Decision:** D-004 is amended for measurement. Another provider may receive the owner's and
+  testers' audio or text, in a bake-off or a tester's call, once (1) its adapter sits behind the
+  library's port for that part (D-030, GP-22); (2) its key is a `SecretStr` setting with a
+  `_FILE` form, never logged (GP-19); (3) it has its trust-boundary row in SECURITY.md (its
+  output is data, never an instruction) and its adapter's `DataFlow`; and (4) the owner has set
+  its data controls (training off) before the first request. A provider becomes a default only
+  on its bake-off's registered rule (plan 010's measurement section) and the owner's ruling;
+  until then Groq stays the default and the fallback.
+- **Consequences:** the Groq-only setting types are loosened (`stt.provider` first), and each
+  key's setting is added before the owner pastes the key into `.env`, since a `T2V_` name the
+  settings do not know stops the app. Callers who are not developers still wait for M6's notice
+  (D-076); testers are told whose service hears them (plan 010, Q3).
+- **Evidence:** the owner's words above; plan 010's provider guide of 2026-11-16 (the
+  accounts, their data settings and the names of the keys' settings).
