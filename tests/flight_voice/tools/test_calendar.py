@@ -133,10 +133,15 @@ def test_a_span_with_no_flight_at_all_offers_the_nearest_days() -> None:
 def test_the_card_shows_the_seven_days_and_passes_the_id_rule(tag: Tag) -> None:
     for arguments in ({"month": 1}, {"from_date": {"kind": "on", "day": 17, "month": 12}}):
         made = _calendar(tag, destination="Istanbul", **arguments)
-        assert made.card is not None and len(made.card.steps) == 7 and card_passes(made)
+        assert made.card is not None and len(made.card.rows) == 7 and card_passes(made)
+        assert made.card.steps == () and all(row.value for row in made.card.rows)
     english = _calendar("en", destination="Istanbul", month=1).card
     assert english is not None and english.title == "Riyadh to Istanbul, cheapest days in January"
-    assert sum(", among the cheapest" in s for s in english.steps) == 3
+    assert [row.mark for row in english.rows].count("best") == 3
+    assert {row.mark for row in english.rows} == {"best", None}
+    cheapest = sorted(english.rows, key=lambda row: int(row.value.split()[0].replace(",", "")))
+    assert {row.mark for row in cheapest[:3]} == {"best"}
+    assert english.rows[0].title.split()[0] in {"Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"}
     arabic = _calendar("ar-SA", destination="إسطنبول", month=1).card
     assert arabic is not None and arabic.title == "الرياض إلى إسطنبول، أرخص الأيام في يناير"
 

@@ -16,6 +16,7 @@ from flight_voice.said import Tag
 from flight_voice.tools.choose import CHOOSE_FLIGHT, choose_flight
 from flight_voice.tools.results import SAY, SEARCH_FAILED
 from flight_voice.trip import Shown, TripBook, TripDraft
+from t2_agentic_voice import CardRow
 
 from tests.flight_voice.scenario_dates import TODAY, business_sold_out, cheapest_departs_last
 from tests.flight_voice.tools.tool_support import (
@@ -71,15 +72,20 @@ def test_the_last_pick_gives_the_trip_whole_and_sends_the_talker_to_book_it(tag:
     expected = priced(call.draft.legs(), "economy", 1, TODAY)
     assert trip["missing"] == [] and trip["total_sar"] == expected
     assert "mark" not in trip["outbound"] and "mark" not in trip["return_flight"]
-    assert done.card is not None and len(done.card.steps) == 4 and card_passes(done)
+    assert done.card is not None and len(done.card.rows) == 4 and card_passes(done)
+    out, back, party, whole = done.card.rows
+    assert (out.mark, back.mark, party.mark, whole.mark) == ("chosen", "chosen", None, None)
     total = f"{expected:,}"
     if tag == "en":
         assert done.card.title == "Your trip"
-        assert done.card.steps[0].startswith("Riyadh to London, Thu 17 Dec: 09:10 to 13:15")
-        assert done.card.steps[2:] == ("1 traveler in economy", f"Total {total} SAR")
+        assert out.title == "Riyadh to London, Thu 17 Dec"
+        assert out.detail is not None and out.detail.startswith("09:10 to 13:15, 7 h 5 min,")
+        assert back.title == "London to Riyadh, Sun 20 Dec"
+        assert party == CardRow(title="1 traveler in economy")
+        assert whole == CardRow(title="Total", value=f"{total} SAR")
     else:
-        assert done.card.title == "رحلتك" and done.card.steps[2] == "مسافر واحد في الدرجة السياحية"
-        assert done.card.steps[3].startswith("المجموع ")
+        assert done.card.title == "رحلتك" and party.title == "مسافر واحد في الدرجة السياحية"
+        assert whole.title == "المجموع" and whole.value is not None and whole.value.endswith("ريال")
 
 
 def test_a_one_way_trip_is_complete_at_its_one_pick() -> None:

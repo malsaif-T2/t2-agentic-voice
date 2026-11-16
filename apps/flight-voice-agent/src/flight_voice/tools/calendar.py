@@ -17,7 +17,7 @@ from datetime import date, timedelta
 from typing import Annotated, Final, Literal
 
 from pydantic import Field
-from t2_agentic_voice import CallContext, Card, Tool, ToolError, ToolResult, tool
+from t2_agentic_voice import CallContext, Card, CardRow, Tool, ToolError, ToolResult, tool
 
 from flight_voice.airline.airports import HOME, airport, find_airport
 from flight_voice.airline.dates import DateProblem, DateSpec, resolve_departure
@@ -54,8 +54,6 @@ _CABIN: Final = "The cabin, when the caller named one; else leave it out."
 SPAN_DAYS: Final = 30
 SHOWN: Final = 7
 SAID: Final = 3
-AMONG_EN: Final = "among the cheapest"
-AMONG_AR: Final = "من الأرخص"
 
 
 class CalendarDay(_Result):
@@ -206,8 +204,8 @@ def fare_calendar(airline: Airline) -> Tool:
 
 
 def calendar_card(answer: Calendar, route: str, tag: Tag) -> Card:
-    """The calendar's card: the route and the span, then each of the seven days with its fare,
-    the three said marked."""
+    """The calendar's card: the route and the span, then a row for each of the seven days, its
+    fare as the value, the three said marked `best`."""
     first = date.fromisoformat(answer.first.iso)
     if arabic(tag):
         span = f"في {answer.month_said}" if answer.month_said else f"من {day_title(first, tag)}"
@@ -215,10 +213,12 @@ def calendar_card(answer: Calendar, route: str, tag: Tag) -> Card:
     else:
         span = f"in {answer.month_said}" if answer.month_said else f"from {day_title(first, tag)}"
         title = f"{route}, cheapest days {span}"
-    steps = []
-    for d in answer.days:
-        step = f"{day_title(date.fromisoformat(d.date.iso), tag)}: {money(d.fare_sar, tag)}"
-        if d.mark:
-            step += f"، {AMONG_AR}" if arabic(tag) else f", {AMONG_EN}"
-        steps.append(step)
-    return Card(title=title, steps=tuple(steps))
+    rows = tuple(
+        CardRow(
+            title=day_title(date.fromisoformat(d.date.iso), tag),
+            value=money(d.fare_sar, tag),
+            mark="best" if d.mark else None,
+        )
+        for d in answer.days
+    )
+    return Card(title=title, rows=rows)

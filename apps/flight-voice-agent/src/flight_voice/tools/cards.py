@@ -1,5 +1,8 @@
 """The card each flight result shows on the page, in the reply's script: an extra that mirrors
-what the reply says, never needed (D-075). Each option is one step string.
+what the reply says, never needed (D-075). Each option is one of the card's rows (`CardRow`): a
+listed flight's times as its title, its length, stops, flight and aircraft as its detail, its fare
+as its value, and its mark (`best` on the cheapest, `chosen` on a leg picked, `unavailable` on one
+full in the cabin), which the page maps to a style; a listing holds at most four.
 
 A card's text is the airline's fixed data and values the code computed, never the caller's
 words, and every number on it is in its result's data, so the output guard's ID rule passes it.
@@ -14,7 +17,7 @@ from __future__ import annotations
 from datetime import date
 from typing import TYPE_CHECKING, Final
 
-from t2_agentic_voice import Card
+from t2_agentic_voice import Card, CardRow
 
 from flight_voice.airline.airports import AIRPORTS, Code
 from flight_voice.airline.schedule import Cabin
@@ -26,10 +29,6 @@ if TYPE_CHECKING:
     from flight_voice.tools.trip_view import TripView
 
 _INDIC: Final = str.maketrans("0123456789,", "٠١٢٣٤٥٦٧٨٩٬")
-LOWEST_EN: Final = "lowest fare"
-LOWEST_AR: Final = "أقل سعر"
-FULL_EN: Final = "full in this cabin"
-FULL_AR: Final = "ممتلئة في هذه الدرجة"
 
 
 def indic(text: str) -> str:
@@ -69,34 +68,53 @@ def route_title(origin: Code, destination: Code, tag: Tag) -> str:
     return f"{start.city_en} to {end.city_en}"
 
 
-def option_step(option: Option, tag: Tag) -> str:
-    """One option as a card's step: its times, length, flight, aircraft and fare, and its mark."""
+def times(option: Option, tag: Tag) -> str:
+    """A flight's local times at each end, joined by a word: "09:10 to 16:15", with "next day"
+    when it lands the day after."""
     if arabic(tag):
-        times = indic(f"{option.departs} إلى {option.arrives}")
-        times += " من اليوم التالي" if option.next_day else ""
-        step = (
-            f"{times}، {length(option.duration, tag)}، مباشرة، رحلة {option.flight} على "
-            f"{option.aircraft} بسعر {money(option.fare_sar, tag)}"
-        )
-        mark = LOWEST_AR if option.mark else (FULL_AR if not option.seats_ok else "")
-        return f"{step}، {mark}" if mark else step
-    times = f"{option.departs} to {option.arrives}" + (" next day" if option.next_day else "")
+        joined = indic(f"{option.departs} إلى {option.arrives}")
+        return joined + (" من اليوم التالي" if option.next_day else "")
+    return f"{option.departs} to {option.arrives}" + (" next day" if option.next_day else "")
+
+
+def flown(option: Option, tag: Tag) -> str:
+    """A flight's length, stops, name and aircraft: "7 h 5 min, nonstop, flight T2 401 on a
+    787-9"."""
+    if arabic(tag):
+        return f"{length(option.duration, tag)}، مباشرة، رحلة {option.flight} على {option.aircraft}"
     article = "an" if option.aircraft.startswith("A") else "a"
-    step = (
-        f"{times}, {length(option.duration, tag)}, nonstop, flight {option.flight} on {article} "
-        f"{option.aircraft} for {money(option.fare_sar, tag)}"
+    return f"{length(option.duration, tag)}, nonstop, flight {option.flight} on {article} " + (
+        option.aircraft
     )
-    mark = LOWEST_EN if option.mark else (FULL_EN if not option.seats_ok else "")
-    return f"{step}, {mark}" if mark else step
+
+
+def option_row(
+    option: Option, tag: Tag, *, title: str | None = None, chosen: bool = False
+) -> CardRow:
+    """One option as a card's row: its times (or `title`, with the times moved to the detail),
+    its flight, its fare, and its mark: `unavailable` when it has no seat for every traveler,
+    else `chosen` when picked, else `best` on the cheapest."""
+    sep = "، " if arabic(tag) else ", "
+    detail = (
+        flown(option, tag) if title is None else f"{times(option, tag)}{sep}{flown(option, tag)}"
+    )
+    return CardRow(
+        title=times(option, tag) if title is None else title,
+        detail=detail,
+        value=money(option.fare_sar, tag),
+        mark="unavailable"
+        if not option.seats_ok
+        else ("chosen" if chosen else ("best" if option.mark else None)),
+    )
 
 
 def listing_card(listing: Listing, origin: Code, destination: Code, day: date, tag: Tag) -> Card:
-    """A leg's options on `day`: the route and the day, then one step per option."""
+    """A leg's options on `day`: the route and the day, then one row per option."""
     title = route_title(origin, destination, tag)
     sep = "، " if arabic(tag) else ", "
     return Card(
         title=f"{title}{sep}{day_title(day, tag)}",
-        steps=tuple(option_step(o, tag) for o in listing.options),
+        rows=tuple(option_row(o, tag) for o in listing.options),
     )
 
 
@@ -115,26 +133,27 @@ def party(travelers: int, cabin: Cabin, tag: Tag) -> str:
 
 
 def trip_card(trip: TripView, draft: TripDraft, tag: Tag) -> Card | None:
-    """The trip planned so far: each chosen leg's route, day and flight, then the travelers and
-    the cabin, then the total once every leg is chosen; none while nothing is planned."""
+    """The trip planned so far: a row for each chosen leg (its route and day, its flight, its
+    fare, marked chosen), then the travelers and the cabin, then the total once every leg is
+    chosen; none while nothing is planned."""
     if draft.destination is None:
         return None
-    steps: list[str] = []
+    rows: list[CardRow] = []
     legs = (
         (trip.outbound, draft.chosen_outbound, False),
         (trip.return_flight, draft.chosen_return, True),
     )
+    sep = "، " if arabic(tag) else ", "
     for option, chosen, back in legs:
         if option is None or chosen is None:
             continue
         start, end = (
             (draft.destination, draft.origin) if back else (draft.origin, draft.destination)
         )
-        sep = "، " if arabic(tag) else ", "
         where = f"{route_title(start, end, tag)}{sep}{day_title(chosen.day, tag)}"
-        steps.append(f"{where}: {option_step(option, tag)}")
-    steps.append(party(trip.travelers, trip.cabin, tag))
+        rows.append(option_row(option, tag, title=where, chosen=True))
+    rows.append(CardRow(title=party(trip.travelers, trip.cabin, tag)))
     if trip.total_sar is not None:
-        total = money(trip.total_sar, tag)
-        steps.append(f"المجموع {total}" if arabic(tag) else f"Total {total}")
-    return Card(title=TRIP_AR if arabic(tag) else TRIP_EN, steps=tuple(steps))
+        total = "المجموع" if arabic(tag) else "Total"
+        rows.append(CardRow(title=total, value=money(trip.total_sar, tag)))
+    return Card(title=TRIP_AR if arabic(tag) else TRIP_EN, rows=tuple(rows))
