@@ -149,6 +149,19 @@ h3 { font-size: 1rem; margin-block: 0 6px; }
 .card { padding: 12px; border: 1px solid var(--line); border-inline-start: 4px solid var(--accent); border-radius: 12px; }
 .card ul { margin: 0; padding-inline-start: 1.2em; }
 .card ul li { margin-block: 2px; }
+.card ul.rows { padding-inline-start: 0; list-style: none; display: grid; gap: 4px; }
+.row { display: flex; flex-wrap: wrap; align-items: baseline; gap: 4px 8px; padding-block: 6px; padding-inline: 8px; border-radius: 8px; border-inline-start: 3px solid transparent; }
+.row-title { font-weight: 600; }
+.row-detail { flex-basis: 100%; order: 3; color: var(--muted); font-size: 0.9em; }
+.row-value { margin-inline-start: auto; font-weight: 600; }
+.row-mark { padding-block: 1px; padding-inline: 8px; border-radius: 999px; font-size: 0.8em; }
+.row[data-mark="best"] { border-inline-start-color: var(--accent); background: var(--page); }
+.row[data-mark="best"] .row-mark { background: var(--accent); color: var(--accent-ink); }
+.row[data-mark="chosen"] { border-inline-start-color: var(--orb-speak); background: var(--page); }
+.row[data-mark="chosen"] .row-mark { background: var(--orb-speak); color: #ffffff; }
+.row[data-mark="unavailable"] { color: var(--muted); }
+.row[data-mark="unavailable"] .row-title, .row[data-mark="unavailable"] .row-value { text-decoration: line-through; }
+.row[data-mark="unavailable"] .row-mark { border: 1px solid var(--line); }
 
 .fold { margin-block-start: 12px; }
 .fold summary { cursor: pointer; color: var(--muted); }

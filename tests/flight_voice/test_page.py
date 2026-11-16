@@ -3,8 +3,10 @@
 page right to left in Arabic and left to right in English, its toggle setting the call's starting
 language; the profile's names and the lines the caller could say shown as text; the orb and the
 state line following the call's state; cards newest first, at most three, each line `dir="auto"`,
-every text as text, never as markup; "Your trips" listed and filtered by reference on the page;
-"Start over" asking first; and no call started without the access code."""
+every text as text, never as markup; a card's option rows in place of its steps, each part as
+text and its mark as `data-mark` with the page's own word for it, a mark not in the set dropped;
+"Your trips" listed and filtered by reference on the page; "Start over" asking first; and no
+call started without the access code."""
 
 from __future__ import annotations
 
@@ -12,6 +14,7 @@ from pathlib import Path
 from typing import Any
 
 from flight_voice.server import VOICE_PREFIX, WEB
+from t2_agentic_voice import CardRow
 from t2_agentic_voice.voice.protocol import ShowCard, State, wire
 
 from tests.browser import Shown, Step, browse, descendants, receive, text
@@ -161,6 +164,48 @@ def test_cards_are_newest_first_at_most_three_every_text_as_text(tmp_path: Path)
     assert text(title) == SCRIPT
     assert [text(line) for line in lines["children"]] == list(sent[0].steps)
     assert [e["tag"] for e in descendants(only)] == ["h3", "ul", "li", "li"]
+
+
+def test_a_cards_rows_show_their_parts_as_text_and_their_mark_as_data(tmp_path: Path) -> None:
+    rows = (
+        CardRow(title="09:10 to 13:15", detail=SCRIPT, value="3,560 SAR", mark="best"),
+        CardRow(title="14:40 to 18:45", value="3,780 SAR", mark="unavailable"),
+        CardRow(title="Riyadh to London, Thu 17 Dec", mark="chosen"),
+        CardRow(title="<i>1 traveler</i> in economy"),
+    )
+    listed = wire(ShowCard(title="Riyadh to London", steps=("not shown",), rows=rows))
+    odd = {"title": "a mark not in the set", "detail": None, "value": None, "mark": "<b>"}
+    forged = wire(ShowCard(title="Forged", rows=rows[:1])) | {"rows": [odd, wire_row(rows[0])]}
+    shown = _page(
+        tmp_path,
+        [ENGLISH, *_call(receive(forged), receive(listed), _look("cards"))],
+    )
+    (cards,) = shown["snapshots"]
+    newest, oldest = cards["children"]
+    title, lines = newest["children"]
+    assert text(title) == "Riyadh to London" and lines["attrs"]["class"] == "rows"
+    best, full, chosen, plain = lines["children"]
+    assert best["attrs"] == {"class": "row", "data-mark": "best"}
+    assert [(part["attrs"]["class"], text(part)) for part in best["children"]] == [
+        ("row-title", "09:10 to 13:15"),
+        ("row-detail", SCRIPT),
+        ("row-value", "3,560 SAR"),
+        ("row-mark", "Lowest fare"),
+    ]
+    assert all(part["attrs"]["dir"] == "auto" for part in best["children"])
+    assert full["attrs"]["data-mark"] == "unavailable" and text(full).endswith("Not available")
+    assert chosen["attrs"]["data-mark"] == "chosen" and text(chosen).endswith("Your pick")
+    assert plain["attrs"] == {"class": "row"} and text(plain) == "<i>1 traveler</i> in economy"
+    spans = [len(row["children"]) for row in lines["children"]]
+    assert spans == [4, 3, 2, 1]
+    assert {e["tag"] for e in descendants(lines)} == {"li", "span"}
+    (only,) = oldest["children"][1]["children"]
+    assert only["attrs"]["data-mark"] == "best"
+
+
+def wire_row(row: CardRow) -> dict[str, Any]:
+    """`row` as the session's JSON holds it."""
+    return row.model_dump(mode="json")
 
 
 def test_your_trips_lists_the_bookings_and_filters_them_by_reference(tmp_path: Path) -> None:
