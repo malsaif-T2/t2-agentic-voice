@@ -13,6 +13,7 @@ from typing import get_args
 import pytest
 from t2_agentic_voice.core.config import VoiceSettings
 from t2_agentic_voice.domain.cards import Card
+from t2_agentic_voice.domain.text.speaking import speak_digits
 from t2_agentic_voice.voice.protocol import ShowCard
 from t2_agentic_voice.voice.session.books import CallBooks
 from t2_agentic_voice.voice.session.commands import Speak, StopSpeaking
@@ -126,3 +127,29 @@ def test_the_holds_signals_are_session_events() -> None:
     held, resumed = TurnHeld(turn_id=3, at=1.5), HoldResumed(turn_id=3, at=1.8)
     assert (held.turn_id, resumed.at) == (3, 1.8)
     assert {TurnHeld, HoldResumed} <= set(SESSION_EVENTS)
+
+
+def test_a_clause_s_numbers_are_said_as_written_by_default(settings: VoiceSettings) -> None:
+    """The characterization of `tts.spoken_numbers`' default: the speaking rules alone, so a
+    time is two runs of digits and a number num2words' MSA, whatever the caller's register."""
+    assert settings.tts.spoken_numbers == "as_written"
+    io = FakeSessionIO(settings)
+    text = "رحلتك الساعة 09:10 بسعر 2450 ريال"
+    ((said, _),) = speech_of(io.setup, text, "ar-SA", "saudi")
+    assert said == speak_digits(text, language="ar-SA")
+    assert "ألفان وأربعمائة وخمسون" in said
+
+
+def test_by_register_a_clause_s_time_and_numbers_follow_the_callers_register(
+    settings: VoiceSettings,
+) -> None:
+    shaped = settings.model_copy(
+        update={"tts": settings.tts.model_copy(update={"spoken_numbers": "by_register"})}
+    )
+    io = FakeSessionIO(shaped)
+    text = "رحلتك الساعة 09:10 بسعر 2450 ريال"
+    ((saudi, caption),) = speech_of(io.setup, text, "ar-SA", "saudi")
+    assert saudi == "رحلتك الساعة تسع وعشر دقايق الصبح بسعر ألفين وأربع مية وخمسين ريال"
+    assert caption == text  # captioned as written
+    ((msa, _),) = speech_of(io.setup, text, "ar-SA", "msa")
+    assert msa == "رحلتك الساعة التاسعة وعشر دقائق صباحًا بسعر ألفان وأربعمئة وخمسون ريال"

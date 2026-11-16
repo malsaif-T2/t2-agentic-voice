@@ -30,8 +30,10 @@ from t2_agentic_voice.domain.action_lines import SpokenLine
 from t2_agentic_voice.domain.cards import Card
 from t2_agentic_voice.domain.declaration import Language
 from t2_agentic_voice.domain.ports.text_to_speech import AudioChunk
+from t2_agentic_voice.domain.text.arabic_numbers import Register
 from t2_agentic_voice.domain.text.invisible import provider_text
 from t2_agentic_voice.domain.text.speaking import speak_digits
+from t2_agentic_voice.domain.text.spoken_text import speak_text
 from t2_agentic_voice.voice.protocol import ClauseIndex, ReplyId
 from t2_agentic_voice.voice.session.echo import BEAT_S, padded, phrase_audio, said
 from t2_agentic_voice.voice.session.io import CallSetup
@@ -70,12 +72,22 @@ def language_of(setup: CallSetup, tag: LanguageTag) -> Language:
     return found[0] if found else setup.now.language
 
 
-def speech_of(setup: CallSetup, text: str, tag: LanguageTag) -> list[tuple[str, str]]:
+def speech_of(
+    setup: CallSetup, text: str, tag: LanguageTag, register: Register | None = None
+) -> list[tuple[str, str]]:
     """`text`, a clause of the talker's in `tag`, as its requests say it: each request's text as
-    the provider takes it and its caption (the module's docstring); none when it says nothing."""
+    the provider takes it and its caption (the module's docstring); none when it says nothing.
+    Its numbers are said in `register`, the caller's, when `tts.spoken_numbers` is
+    `by_register` (domain/text/spoken_text.py), else as written."""
     language = language_of(setup, tag)
+    by_register = setup.settings.tts.spoken_numbers == "by_register"
+    shaped = (
+        speak_text(text, language=tag, register=register)
+        if by_register
+        else speak_digits(text, language=tag)
+    )
     requests = said(
-        speak_digits(text, language=tag),
+        shaped,
         agent=setup.agent,
         language=language,
         max_chars=setup.max_chars(tag),
@@ -96,10 +108,13 @@ class OpenReply:
         self.reply_id, self.scope = reply_id, scope
         self._writer, self._setup = writer, setup
 
-    async def add_clause(self, text: str, *, language: LanguageTag, at: float) -> None:
-        """Ask for the reply's next clause, `text` in `language`'s voice, at `at`; nothing once
-        a stop or the call's end dropped the reply."""
-        for request, caption in speech_of(self._setup, text, language):
+    async def add_clause(
+        self, text: str, *, language: LanguageTag, at: float, register: Register | None = None
+    ) -> None:
+        """Ask for the reply's next clause, `text` in `language`'s voice, at `at`, its numbers
+        in the caller's `register` when the setting asks; nothing once a stop or the call's
+        end dropped the reply."""
+        for request, caption in speech_of(self._setup, text, language, register):
             asked = await self._writer.write(
                 self.reply_id, text=request, caption=caption, language=language, at=at
             )

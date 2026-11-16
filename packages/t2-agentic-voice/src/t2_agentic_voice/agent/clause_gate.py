@@ -26,6 +26,7 @@ from t2_agentic_voice.core.logging import get_logger
 from t2_agentic_voice.core.settings.guard import GuardSettings
 from t2_agentic_voice.core.settings.tts import LanguageTag
 from t2_agentic_voice.domain.cards import Card
+from t2_agentic_voice.domain.text.arabic_numbers import Register
 
 _log = get_logger(__name__)
 
@@ -33,7 +34,8 @@ _log = get_logger(__name__)
 class ClauseGate:
     """The gate of one reply in `language`, the turn `turn_id`'s (the module's docstring); the
     guard reads `actions`, the call's `record`, the talker's `memory` and the caller's `heard`
-    words, and `scripts` is the reply's stray-script filter."""
+    words, and `scripts` is the reply's stray-script filter; each Arabic clause carries the
+    caller's `register`."""
 
     def __init__(
         self,
@@ -47,8 +49,10 @@ class ClauseGate:
         memory: Memory,
         heard: Sequence[str],
         scripts: StrayScript,
+        register: Register | None = None,
     ) -> None:
         self.settings, self.language, self.turn_id = settings, language, turn_id
+        self.register = register
         self.memory, self.scripts = memory, scripts
         self.guard = SpeechGuard(
             settings=settings,
@@ -75,7 +79,10 @@ class ClauseGate:
                 continue  # a question past the reply's limit, or a clause after one: unsaid
             checked = self.guard.check(text)
             if checked.passed:
-                events.append(SpokenClause(text=text, language=self.language))
+                register = None if self.language == "en" else self.register
+                events.append(
+                    SpokenClause(text=text, language=self.language, caller_register=register)
+                )
                 continue
             self.blocked += 1
             claim = checked.reason == "unsupported_claim"

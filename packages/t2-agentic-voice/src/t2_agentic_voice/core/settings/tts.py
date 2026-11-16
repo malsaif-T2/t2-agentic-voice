@@ -12,6 +12,8 @@ from t2_agentic_voice.core.settings.base import FROZEN, PLAIN, Group
 TtsProvider = Literal["groq"]
 # The declaration's language presets (the design's 5.2): Saudi Arabic, MSA and English.
 LanguageTag = Literal["ar-SA", "ar", "en"]
+# How a reply's numbers, times and dates are said (`TtsSettings.spoken_numbers`).
+SpokenNumbers = Literal["as_written", "by_register"]
 # Groq's Orpheus models (the design's 7.6).
 TtsModel = Literal["canopylabs/orpheus-arabic-saudi", "canopylabs/orpheus-v1-english"]
 _ARABIC: TtsModel = "canopylabs/orpheus-arabic-saudi"
@@ -82,6 +84,15 @@ class TtsSettings(Group):
         description=(
             "The most disk the clause cache keeps, in megabytes; past it, the clauses played "
             "longest ago are removed."
+        ),
+    )
+    spoken_numbers: SpokenNumbers = Field(
+        default="as_written",
+        description=(
+            "How a reply's numbers, times and dates are said: as_written reads each run of "
+            "digits as a number (num2words' MSA in Arabic) or an ID; by_register says them in "
+            "the caller's register, Saudi or MSA words in Arabic, a time as a clock says it "
+            "with its part of the day, an ISO date with its weekday and month."
         ),
     )
     trim_silence: bool = Field(

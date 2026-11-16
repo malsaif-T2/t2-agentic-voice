@@ -321,6 +321,15 @@ prefix written onto a number stays on its first word («و٢١» is said «وو�
 `languages` facade's `speak_number` and `speak_id` say one alone; num2words gives the Arabic
 forms, in MSA, and a native speaker's check of them is still to come (TD-058).
 
+**Said in the caller's register.** `T2V_TTS__SPOKEN_NUMBERS=by_register` says a reply's numbers
+in the register of the caller's Arabic (the talker gives each Arabic clause the call's register):
+«ألفين وأربع مية وخمسين» for 2450 to a Saudi caller, «ألفان وأربعمئة وخمسون» to an MSA one; a
+time written "09:10" as a clock says it, with its part of the day («تسع وعشر دقايق الصبح»,
+"nine ten in the morning", the part said once when the reply already says it after the time);
+and an ISO date "2026-12-17" with its weekday and month, never its year. IDs are still read
+digit by digit, and captions keep the digits. The default, `as_written`, says them as above;
+the setting is a change to what callers hear, so it moves only on a measured run (GP-18).
+
 **Numbers, times, dates and amounts in your own lines.** A line your code renders (a booking's
 read-back, its `done`) is not the talker's, so you say its numbers yourself, in the reply's
 register: the `languages` facade's `speak_time(time(9, 10), language="ar-SA")` gives «تسع وعشر

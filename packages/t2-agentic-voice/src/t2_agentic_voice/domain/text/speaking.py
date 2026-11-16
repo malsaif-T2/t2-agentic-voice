@@ -167,33 +167,37 @@ def _glued(text: str, at: int) -> bool:
     return normalize_arabic(found.group()) in ARABIC_PREFIXES
 
 
-def _amount(whole: str, fraction: str | None, *, language: LanguageTag) -> str:
+def _amount(
+    whole: str, fraction: str | None, *, language: LanguageTag, register: Register | None
+) -> str:
     """A number written with thousands separators or a fraction, in words: its whole part as a
     number, then the point and the fraction's digits one by one."""
     number = int(re.sub(_SEPARATORS, "", whole).translate(DIGIT_CHARACTERS))
-    words = speak_number(number, language=language)
+    words = speak_number(number, language=language, register=register)
     if fraction is None:
         return words
     return f"{words} {_POINT[primary_code(language)]} {speak_id(fraction, language=language)}"
 
 
-def speak_digits(text: str, *, language: LanguageTag) -> str:
+def speak_digits(text: str, *, language: LanguageTag, register: Register | None = None) -> str:
     """`text` with every run of digits in words, each an ID or a number by the rule above, a
     decimal and a number with thousands separators as amounts (the module's docstring), the
     rest of the text as it was, but a space put between the words and a letter or digit the run
     was written against ("T2" says "T two"), unless that letter is an Arabic prefix written onto
-    the number, which stays on its first word."""
+    the number, which stays on its first word. A `register` says each number in its words
+    (`speak_number`'s)."""
 
     def said(match: re.Match[str]) -> str:
         cue = match.group("cue") or ""
         whole, fraction, run = match.group("whole"), match.group("fraction"), match.group("run")
         digits = run if whole is None else whole
         if whole is not None and (fraction is not None or re.search(_SEPARATORS, whole)):
-            words = _amount(whole, fraction, language=language)
+            words = _amount(whole, fraction, language=language, register=register)
         elif _is_id(digits, cued=bool(cue)):
             words = speak_id(digits, language=language)
         else:
-            words = speak_number(int(digits.translate(DIGIT_CHARACTERS)), language=language)
+            number = int(digits.translate(DIGIT_CHARACTERS))
+            words = speak_number(number, language=language, register=register)
         start = match.start("run" if whole is None else "whole")
         before = cue[-1:] if cue else text[start - 1 : start]
         after = text[match.end() : match.end() + 1]

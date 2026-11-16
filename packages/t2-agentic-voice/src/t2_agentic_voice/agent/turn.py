@@ -153,6 +153,7 @@ class Turn:
             memory=memory,
             heard=self.heard,
             scripts=self.scripts,
+            register=self.register,
         )
         self.leak = LeakedReasoning(arabic=self.language != "en")  # D-089
         self.tools = ToolCalls(
