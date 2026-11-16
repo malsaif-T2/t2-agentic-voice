@@ -708,7 +708,7 @@ Stability levels are defined in section 5.4. "Provisional" covers everything tha
 | `t2_agentic_voice.testing.simulate` | `simulate`, `SimulatedCaller`, the hard checks | provisional |
 | `t2_agentic_voice.testing.audio` | `AudioCall` (audio replay) | provisional |
 | `t2_agentic_voice.events` | Frozen event classes (section 6.6) | provisional |
-| `t2_agentic_voice.languages` | Presets, `normalize_arabic`, `normalize_digits`, `speak_number`, `speak_id`, `speak_date`, script detection, the stray-script rule (`remove_stray_script`, giving `Kept`; section 8.2, D-084) | provisional |
+| `t2_agentic_voice.languages` | Presets, `normalize_arabic`, `normalize_digits`, `speak_number` (with a register, Saudi or MSA), `speak_id`, `speak_time`, `speak_date`, `speak_duration`, `speak_amount` (the spoken forms by register, `domain/text/spoken_forms.py`), script detection, the stray-script rule (`remove_stray_script`, giving `Kept`; section 8.2, D-084) | provisional |
 | `t2_agentic_voice.knowledge` | `knowledge_tool(kb, ...)` | provisional |
 | `t2_agentic_voice.stores` | `SqliteOutbox`, `SqliteUsedTokens`, `MemoryOutbox`, `MemoryUsedTokens` | provisional |
 | `t2_agentic_voice.tracing` | Tracing setup from settings, `Redactor`, Saudi PII patterns | provisional |

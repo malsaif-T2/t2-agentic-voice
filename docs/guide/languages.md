@@ -321,6 +321,18 @@ prefix written onto a number stays on its first word («و٢١» is said «وو�
 `languages` facade's `speak_number` and `speak_id` say one alone; num2words gives the Arabic
 forms, in MSA, and a native speaker's check of them is still to come (TD-058).
 
+**Numbers, times, dates and amounts in your own lines.** A line your code renders (a booking's
+read-back, its `done`) is not the talker's, so you say its numbers yourself, in the reply's
+register: the `languages` facade's `speak_time(time(9, 10), language="ar-SA")` gives «تسع وعشر
+دقايق الصبح», `speak_date`, `speak_duration` and `speak_amount` (riyals) the same way, and
+`speak_number(2450, language="ar-SA", register="saudi")` «ألفين وأربع مية وخمسين». Each takes
+`register="saudi"` or `"msa"` for an Arabic reply: pass the call's (an `ar-SA` reply to an MSA
+caller is said in MSA, as its words are); with none, `ar-SA` is Saudi and `ar` MSA, but
+`speak_number` with no register keeps num2words' MSA. English is one form ("nine ten in the
+morning", "Thursday the seventeenth of December", "two thousand four hundred fifty riyals").
+The Arabic words come from the library's own tables (0 to 999 999); the Saudi ones are the
+agent's until a native speaker checks them (TD-058).
+
 ## The vocabulary
 
 An agent declares the product terms its callers say, as a transcript should write them:

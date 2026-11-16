@@ -27,6 +27,11 @@ an ID; an Arabic prefix written onto a number (و، ف، ب، ل، ك and the ot
 is refused, never said as 1 or 0; and a number past num2words' range (from 10**51 in Arabic) is
 read digit by digit, after "minus" («سالب») when it is negative. The native speaker's check of
 num2words' Arabic is still to come (TD-058).
+
+A number said in a register (`speak_number(..., register=)`, Saudi or MSA) reads the library's
+own tables instead (domain/text/arabic_numbers.py), as do the times, dates, durations and
+amounts said by register (domain/text/spoken_forms.py); with no register, a number is said as
+before.
 """
 
 from __future__ import annotations
@@ -39,6 +44,7 @@ from num2words import num2words
 from t2_agentic_voice.core.settings.tts import LanguageTag
 from t2_agentic_voice.core.settings.words import primary_code
 from t2_agentic_voice.domain.text.arabic import normalize_arabic
+from t2_agentic_voice.domain.text.arabic_numbers import HIGHEST, Register, arabic_number
 from t2_agentic_voice.domain.text.digits import DIGIT_CHARACTERS
 from t2_agentic_voice.domain.text.words import ARABIC_PREFIXES
 
@@ -106,14 +112,19 @@ _RANGE = {"ar": 10**51}
 _ONE_AT_A_TIME = threading.Lock()
 
 
-def speak_number(number: int, *, language: LanguageTag) -> str:
-    """`number` in words, in `language` (MSA forms for both Arabic tags); past num2words' range,
-    its digits one by one. TypeError for anything but an int, a bool included."""
+def speak_number(number: int, *, language: LanguageTag, register: Register | None = None) -> str:
+    """`number` in words, in `language`: with a `register`, an Arabic number from 0 to
+    999 999 in that register's words, from the library's own tables (domain/text/
+    arabic_numbers.py: «ألفين وأربع مية وخمسين» in Saudi); else, and for English, num2words'
+    (MSA forms for both Arabic tags); past num2words' range, its digits one by one. TypeError
+    for anything but an int, a bool included."""
     if isinstance(number, bool) or not isinstance(number, int):
         raise TypeError(
             "speak_number says a whole number (an int), never a bool; say a decimal another way"
         )
     code = primary_code(language)
+    if register is not None and code == "ar" and 0 <= number <= HIGHEST:
+        return arabic_number(number, register)
     words: str | None = None
     if abs(number) < _RANGE.get(code, abs(number) + 1):
         try:
