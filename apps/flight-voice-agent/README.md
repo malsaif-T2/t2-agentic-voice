@@ -12,7 +12,7 @@ Its build spec is [flight-voice-agent.md](../../docs/design/flight-voice-agent.m
 
 | Folder | What it holds |
 | --- | --- |
-| `src/flight_voice/airline/` | The mock airline: its ten airports, with their names in both languages, the names a caller may give each and a fixed offset from UTC. |
+| `src/flight_voice/airline/` | The mock airline: its ten airports, with their names in both languages, the names a caller may give each and a fixed offset from UTC; its timetable (every route starts or ends in Riyadh, no Singapore flight on Tuesdays, first class only on the 787-9, no day sold after 2027-03-27, where the fixed offsets stop holding); its fares in Saudi riyals, one way and per person, seeded from SHA-256, and the seats left in each cabin. |
 
 Everything in the mock airline is fixed data or computed from fixed data, so the same inputs give
 the same answer on every run and a call's facts are checked in code. Its tests are in
