@@ -25,7 +25,7 @@ const $ = (id) => document.getElementById(id);
 const page = { language: "ar-SA", call: null, code: "", profile: {}, captions: new Map() };
 const english = () => page.language === "en";
 const words = () => wordsOf(page.language);
-const cards = new Cards($("cards"), $("cards-section"));
+const cards = new Cards($("cards"), $("cards-section"), () => words().marks);
 const trips = new Trips($("trips-list"), $("trips-filter"), $("trips-note"));
 
 class TokenError extends Error {
@@ -69,6 +69,7 @@ function render() {
     }),
   );
   trips.render(page.language, words());
+  cards.render();
 }
 
 async function profile() {

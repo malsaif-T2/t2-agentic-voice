@@ -14,6 +14,7 @@ from flight_voice.airline.schedule import departure, find_flight
 from flight_voice.said import Tag
 from flight_voice.tools.cabins import COMPARE_CABINS, compare_cabins
 from flight_voice.tools.results import SAY, SEARCH_FAILED
+from t2_agentic_voice import CardRow
 
 from tests.flight_voice.scenario_dates import business_sold_out
 from tests.flight_voice.tools.tool_support import (
@@ -45,8 +46,10 @@ def test_a_787_flight_has_all_three_cabins_with_their_fares() -> None:
     assert fares == {c: fare(flown, c) for c in ("economy", "business", "first")}
     assert [c.get("current") for c in found["cabins"]] == [True, None, None]
     assert made.card is not None and made.card.title == "Cabins on flight T2 401, Thu 17 Dec"
-    assert made.card.steps[0] == f"Economy for {fares['economy']:,} SAR"
-    assert made.card.steps[2].startswith("First class for ")
+    economy, business, first = made.card.rows
+    assert economy == CardRow(title="Economy", value=f"{fares['economy']:,} SAR", mark="chosen")
+    assert business == CardRow(title="Business class", value=f"{fares['business']:,} SAR")
+    assert first.title == "First class" and first.mark is None and made.card.steps == ()
     assert call.draft == before and card_passes(made)
 
 
@@ -59,8 +62,12 @@ def test_first_class_is_marked_not_offered_on_an_aircraft_without_it(tag: Tag) -
     assert (first["cabin"], first["offered"]) == ("first", False)
     assert "fare_sar" not in first and "seats_ok" not in first
     assert made.card is not None and card_passes(made)
+    missing = made.card.rows[2]
+    assert missing.mark == "unavailable" and missing.value is None
     if tag == "en":
-        assert made.card.steps[2] == "First class not offered on an A321neo"
+        assert missing == CardRow(
+            title="First class", detail="not offered on an A321neo", mark="unavailable"
+        )
 
 
 def test_a_sold_out_cabin_is_said_full() -> None:
@@ -75,7 +82,9 @@ def test_a_sold_out_cabin_is_said_full() -> None:
     made = _compare(call, {"pick": "number", "n": n})
     business = data(made)["cabins"][1]
     assert (business["cabin"], business["seats_ok"]) == ("business", False)
-    assert made.card is not None and made.card.steps[1].endswith(", full")
+    assert made.card is not None and card_passes(made)
+    full = made.card.rows[1]
+    assert (full.title, full.detail, full.mark) == ("Business class", "full", "unavailable")
 
 
 def test_a_flight_not_listed_or_not_clear_is_said_so() -> None:

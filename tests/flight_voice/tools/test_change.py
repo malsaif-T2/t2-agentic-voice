@@ -56,7 +56,8 @@ def test_more_travelers_on_a_complete_trip_price_it_again_and_send_it_to_book() 
     assert (found["changed"], found["say"]) == (["travelers"], SAY["complete"])
     assert found["trip"]["travelers"] == 2 and found["trip"]["total_sar"] == 2 * (one or 0)
     assert call.draft.travelers == 2 and card_passes(changed)
-    assert changed.card is not None and "2 travelers in economy" in changed.card.steps
+    assert changed.card is not None
+    assert "2 travelers in economy" in [row.title for row in changed.card.rows]
 
 
 def test_a_cabin_the_chosen_flight_has_no_seat_in_drops_that_leg_and_lists_it_again() -> None:

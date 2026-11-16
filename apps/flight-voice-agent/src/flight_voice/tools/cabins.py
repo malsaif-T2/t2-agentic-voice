@@ -15,7 +15,7 @@ from functools import partial
 from typing import Annotated, Final, Literal
 
 from pydantic import Field
-from t2_agentic_voice import CallContext, Card, Tool, ToolError, ToolResult, tool
+from t2_agentic_voice import CallContext, Card, CardRow, Tool, ToolError, ToolResult, tool
 
 from flight_voice.airline.airports import Register
 from flight_voice.airline.fares import fare, seats_left
@@ -145,28 +145,31 @@ def compare_cabins(airline: Airline, trips: TripBook) -> Tool:
     return compare
 
 
-def cabin_step(cabin: CabinFare, aircraft: str, tag: Tag) -> str:
-    """One cabin as a card's step: "Business class for 7,840 SAR", with "full" when it has no
-    seat for every traveler, or "not offered on a 787-9"."""
-    name = cabin.cabin_said
-    if arabic(tag):
-        if cabin.fare_sar is None:
-            return f"{name} غير متوفرة على {aircraft}"
-        step = f"{name} بسعر {money(cabin.fare_sar, tag)}"
-        return step if cabin.seats_ok else f"{step}، ممتلئة"
-    name = name[0].upper() + name[1:]
+def cabin_row(cabin: CabinFare, aircraft: str, tag: Tag) -> CardRow:
+    """One cabin as a card's row: its name and its fare, "full" when it has no seat for every
+    traveler, or "not offered on a 787-9"; marked `unavailable` then, else `chosen` when it is
+    the trip's cabin now."""
+    name = cabin.cabin_said if arabic(tag) else cabin.cabin_said[0].upper() + cabin.cabin_said[1:]
     if cabin.fare_sar is None:
         article = "an" if aircraft.startswith("A") else "a"
-        return f"{name} not offered on {article} {aircraft}"
-    step = f"{name} for {money(cabin.fare_sar, tag)}"
-    return step if cabin.seats_ok else f"{step}, full"
+        missing = (
+            f"غير متوفرة على {aircraft}" if arabic(tag) else f"not offered on {article} {aircraft}"
+        )
+        return CardRow(title=name, detail=missing, mark="unavailable")
+    full = None if cabin.seats_ok else ("ممتلئة" if arabic(tag) else "full")
+    return CardRow(
+        title=name,
+        detail=full,
+        value=money(cabin.fare_sar, tag),
+        mark="unavailable" if full else ("chosen" if cabin.current else None),
+    )
 
 
 def cabins_card(answer: Cabins, day: date, tag: Tag) -> Card:
-    """The cabins' card: the flight and its day, then each cabin."""
+    """The cabins' card: the flight and its day, then a row for each cabin."""
     if arabic(tag):
         title = f"الدرجات على رحلة {answer.flight}، {day_title(day, tag)}"
     else:
         title = f"Cabins on flight {answer.flight}, {day_title(day, tag)}"
-    steps = tuple(cabin_step(c, answer.aircraft, tag) for c in answer.cabins)
-    return Card(title=title, steps=steps)
+    rows = tuple(cabin_row(c, answer.aircraft, tag) for c in answer.cabins)
+    return Card(title=title, rows=rows)
