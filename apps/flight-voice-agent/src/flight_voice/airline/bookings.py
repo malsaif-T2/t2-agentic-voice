@@ -257,6 +257,11 @@ class BookingStore:
             None,
         )
 
+    @property
+    def made(self) -> tuple[Booking, ...]:
+        """Every booking made since the seed, whoever's, in the order they were made."""
+        return self._made
+
     def listed(self, traveler_id: str) -> tuple[Booking, ...]:
         """Every booking of `traveler_id`, newest first: those made since the seed, the last
         first, then the past trips, the last flown first."""

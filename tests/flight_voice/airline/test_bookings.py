@@ -176,3 +176,13 @@ def test_another_travelers_id_sees_nothing_and_takes_nothing() -> None:
     other = asyncio.run(store.create(_new("req-2", traveler_id="T-0002")))
     assert store.listed("T-0002") == (other,)
     assert other not in store.listed(TRAVELER.id)
+
+
+def test_made_holds_every_booking_since_the_seed_whoever_made_it() -> None:
+    store = _store()
+    assert list(store.made) == []
+    mine = asyncio.run(store.create(_new()))
+    other = asyncio.run(store.create(_new("req-2", traveler_id="T-0002")))
+    assert list(store.made) == [mine, other]
+    store.reset()
+    assert list(store.made) == []
