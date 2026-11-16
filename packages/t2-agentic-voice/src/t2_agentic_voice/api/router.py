@@ -61,6 +61,7 @@ from t2_agentic_voice.api.protocol import (
     version_mismatch,
 )
 from t2_agentic_voice.api.protocol import refusal as refused_body
+from t2_agentic_voice.api.stt_calls import CallStts
 from t2_agentic_voice.core.config import Environment, VoiceSettings
 from t2_agentic_voice.core.errors import InvalidRequestError, JoinRejected, NotFoundError
 from t2_agentic_voice.core.identity import Consent, SignedConsent
@@ -107,7 +108,8 @@ class Running:
 class Served:
     """What the router serves: the agent with its settings and identity source, the records of
     its calls, the runtime's clock, what it runs (None until started), where the browser's files
-    are, whether `/dev` is mounted, and the test console's feed (mounted with `/dev`)."""
+    are, whether `/dev` is mounted, the test console's feed (mounted with `/dev`), and the
+    dev console's choices of each call's speech-to-text (with the feed)."""
 
     agent: VoiceAgent
     settings: VoiceSettings
@@ -118,6 +120,7 @@ class Served:
     static: Path = STATIC
     dev_page: bool = False
     feed: DevFeed | None = None
+    stt: CallStts | None = None
     _files: dict[str, bytes] = field(default_factory=dict)
 
 
@@ -164,6 +167,8 @@ def build_router(
                 feed=served.feed,
                 running=served.running,
                 read=routes._file,
+                records=served.records,
+                stt=served.stt,
             )
     return router
 

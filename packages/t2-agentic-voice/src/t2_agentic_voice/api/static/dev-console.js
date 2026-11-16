@@ -3,14 +3,18 @@
 // them by call and by turn, and shows the chosen call: what was heard, the time of each step,
 // each tool call's arguments and result, interruptions, the read-back, the yes rule's decision,
 // the action's write, the models' usage and the connection. It also starts a call of its own
-// through the library's client. Every text is set with textContent, never as HTML: the events
-// hold what callers said and what tools returned.
+// through the library's client, heard by the speech-to-text provider, model and language mode
+// its pickers name (GET dev/stt lists what this process can use; the call's choice goes as
+// POST dev/stt before its offer), remembered in this browser. Every text is set with
+// textContent, never as HTML: the events hold what callers said and what tools returned.
 
 import { VoiceClient } from "../client/1/t2v-client.js";
 
 const $ = (id) => document.getElementById(id);
 const FEED_RETRY_MS = 2000;
 const MAX_LOG_ROWS = 400;
+// Where this browser remembers the speech-to-text pickers.
+const STT_KEY = "t2v.dev-console.stt";
 
 // ---------------------------------------------------------------------------------------------
 // Elements, made with text only.
@@ -91,6 +95,7 @@ function turnOf(call, id, at) {
       id,
       firstAt: at,
       heard: null,
+      heardBy: null, // the provider and model that heard the turn
       times: null,
       usage: null,
       tools: [],
@@ -124,8 +129,10 @@ function apply(record) {
       break;
     case "UserTurnEnded":
       turn.heard = event.heard;
+      turn.heardBy = record.heard_by ?? turn.heardBy;
       break;
     case "TurnMetrics":
+      turn.heardBy = record.heard_by ?? turn.heardBy;
       turn.times = event;
       turn.usage = event.usage;
       if (!call.report) call.usage = event.usage;
@@ -376,6 +383,10 @@ function turnCard(call, turn, scale, previousUsage) {
   );
   const heard = el("p", { class: "heard", dir: "auto" }, el("span", { class: "who", text: "Heard" }), turn.heard === null ? el("span", { class: "muted", text: "(no transcript yet)" }) : turn.heard || el("span", { class: "muted", text: "(nothing)" }));
   const parts = [head, heard];
+  if (turn.heardBy) {
+    const by = `${turn.heardBy.provider} · ${turn.heardBy.model}`;
+    parts.push(el("p", { class: "muted small heard-by", text: `Heard by ${by} · request ${ms(times?.stt_ms)}` }));
+  }
   if (times) {
     const toolMs = tools.reduce((sum, t) => sum + (t.ms ?? 0), 0);
     parts.push(steps({ ...times, _tools: toolMs }), bars(times, scale));
@@ -675,6 +686,71 @@ async function joinToken() {
   return { token: "dev", from: "dev (no token made: no dev caller, or no join key that signs)" };
 }
 
+// ---------------------------------------------------------------------------------------------
+// The speech-to-text pickers: what this process can use (GET dev/stt), the settings' own choice
+// first, the last one picked remembered in this browser alone.
+
+const stt = { menu: null };
+
+function remembered() {
+  try {
+    return JSON.parse(localStorage.getItem(STT_KEY) ?? "null");
+  } catch {
+    return null;
+  }
+}
+
+function remember(choice) {
+  try {
+    localStorage.setItem(STT_KEY, JSON.stringify(choice));
+  } catch {
+    // no storage here (a private window, blocked site data): the pickers still work
+  }
+}
+
+function options(select, values, chosen) {
+  select.replaceChildren(...values.map((value) => el("option", { value, text: value })));
+  select.value = values.includes(chosen) ? chosen : values[0];
+}
+
+function models() {
+  const option = stt.menu.providers.find((p) => p.provider === $("stt-provider").value);
+  options($("stt-model"), option ? option.models : [], $("stt-model").value);
+}
+
+function pickedChoice() {
+  if (!stt.menu) return null;
+  return { provider: $("stt-provider").value, model: $("stt-model").value, live_language: $("stt-language").value };
+}
+
+async function loadStt() {
+  try {
+    const response = await fetch("stt", { cache: "no-store" });
+    if (!response.ok) throw new Error(`HTTP ${response.status}`);
+    stt.menu = await response.json();
+  } catch (error) {
+    $("stt-note").textContent = `Speech-to-text choices unavailable (${error.message}): calls use the settings' own.`;
+    return;
+  }
+  const menu = stt.menu;
+  const kept = remembered() ?? {};
+  const pick = (value, allowed, fallback) => (allowed.includes(value) ? value : fallback);
+  const providers = menu.providers.map((p) => p.provider);
+  options($("stt-provider"), providers, pick(kept.provider, providers, menu.default.provider));
+  const option = menu.providers.find((p) => p.provider === $("stt-provider").value);
+  options($("stt-model"), option.models, pick(kept.model, option.models, option.models[0]));
+  options($("stt-language"), menu.live_languages, pick(kept.live_language, menu.live_languages, menu.default.live_language));
+  for (const id of ["stt-provider", "stt-model", "stt-language"]) $(id).disabled = false;
+  const d = menu.default;
+  $("stt-note").textContent = `The settings' own: ${d.provider} · ${d.model} · ${d.live_language}. Only providers with a key set are listed.`;
+}
+
+$("stt-provider").addEventListener("change", () => {
+  models();
+  remember(pickedChoice());
+});
+for (const id of ["stt-model", "stt-language"]) $(id).addEventListener("change", () => remember(pickedChoice()));
+
 async function start() {
   running(true);
   captions.clear();
@@ -693,6 +769,7 @@ async function start() {
         return joining.token;
       },
       language: $("language").value || undefined,
+      sttChoice: pickedChoice() ?? undefined,
       pushToTalk: $("push-to-talk").checked,
       on: {
         hello: (h) => {
@@ -756,4 +833,5 @@ setInterval(() => {
 }, 1000);
 
 loadSetup().then(() => drawChosen());
+loadStt();
 poll();

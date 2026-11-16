@@ -6,6 +6,9 @@ part, since only api may build an adapter (harness.toml [layers]).
   picks a built-in adapter (`from_settings`: Groq's, D-004; Silero's or ECAPA's classifier,
   `stt.classifier`), and any other is passed in code:
   `Providers.from_settings(settings).replace(stt=...)`; `each` lists the ones given.
+- `stt_kinds`: each speech-to-text provider `stt.provider` names (`SttKind`): its builder, its
+  key's group and the models it takes, the one place the dev console's choice reads them from
+  (api/stt_choices.py).
 - `opened`: the runtime's start of them: each one's close pushed on its stack, and the
   classifier loaded, off the event loop, with the agent's codes, when the calls hear each
   turn's language (an agent of one code runs none).
@@ -18,14 +21,89 @@ from __future__ import annotations
 from collections.abc import Callable
 from contextlib import AsyncExitStack
 from dataclasses import dataclass
+from typing import get_args
 
 from t2_agentic_voice.core.config import VoiceSettings
+from t2_agentic_voice.core.settings.provider_keys import TelnyxSttModel
+from t2_agentic_voice.core.settings.stt import SttModel
 from t2_agentic_voice.domain.declaration import VoiceAgent
 from t2_agentic_voice.domain.ports.chat_model import ChatModel
 from t2_agentic_voice.domain.ports.language_classifier import LanguageClassifier
 from t2_agentic_voice.domain.ports.speech_to_text import SpeechToText
 from t2_agentic_voice.domain.ports.text_to_speech import TextToSpeech
 from t2_agentic_voice.domain.turn_language import spoken_codes
+
+
+@dataclass(frozen=True, kw_only=True)
+class SttKind:
+    """One speech-to-text provider `stt.provider` picks: how its adapter is built from the
+    settings (`build`), the settings group that holds its key (`key_group`), the models it
+    takes (`models`, as the eval's scorecards name them), and the setting that names its model
+    when it takes more than one (`model_setting`, a group and a field; None: its one model,
+    always used)."""
+
+    build: Callable[[VoiceSettings], SpeechToText]
+    key_group: str
+    models: tuple[str, ...]
+    model_setting: tuple[str, str] | None = None
+
+    def model_of(self, settings: VoiceSettings) -> str:
+        """The model `settings` have this provider use."""
+        if self.model_setting is None:
+            return self.models[0]
+        group, field = self.model_setting
+        return str(getattr(getattr(settings, group), field))
+
+
+def stt_kinds() -> dict[str, SttKind]:
+    """Every speech-to-text provider a setting picks, by its `stt.provider` name, Groq's first:
+    Groq's Whisper, ElevenLabs' Scribe, Speechmatics' ar_en pack, Cohere's Transcribe Arabic
+    and Soniox's stt-async-v6, Telnyx's model (HUMAIN's engine by default) and Nabrah's (D-100).
+    The one place that names them: the dev console's choice of provider and model is read from it
+    too."""
+    from t2_agentic_voice.adapters import (
+        cohere_stt,
+        elevenlabs_stt,
+        nabrah_stt,
+        soniox_stt,
+        speechmatics_stt,
+        telnyx_stt,
+    )
+    from t2_agentic_voice.adapters.groq_stt import GroqSTT
+
+    return {
+        "groq": SttKind(
+            build=GroqSTT.from_settings,
+            key_group="groq",
+            models=get_args(SttModel),
+            model_setting=("stt", "model"),
+        ),
+        "elevenlabs": SttKind(
+            build=elevenlabs_stt.ElevenLabsSTT.from_settings,
+            key_group="elevenlabs",
+            models=(elevenlabs_stt.MODEL,),
+        ),
+        "speechmatics": SttKind(
+            build=speechmatics_stt.SpeechmaticsSTT.from_settings,
+            key_group="speechmatics",
+            models=(f"{speechmatics_stt.LANGUAGE_PACK}-enhanced",),  # its pack, operating point
+        ),
+        "cohere": SttKind(
+            build=cohere_stt.CohereSTT.from_settings, key_group="cohere", models=(cohere_stt.MODEL,)
+        ),
+        "soniox": SttKind(
+            build=soniox_stt.SonioxSTT.from_settings, key_group="soniox", models=(soniox_stt.MODEL,)
+        ),
+        "telnyx": SttKind(
+            build=telnyx_stt.TelnyxSTT.from_settings,
+            key_group="telnyx",
+            models=get_args(TelnyxSttModel),
+            model_setting=("telnyx", "stt_model"),
+        ),
+        "nabrah": SttKind(
+            build=nabrah_stt.NabrahSTT.from_settings, key_group="nabrah", models=(nabrah_stt.MODEL,)
+        ),
+    }
 
 
 @dataclass(frozen=True, kw_only=True)
@@ -65,29 +143,10 @@ class Providers:
 
     @staticmethod
     def speech_to_text(settings: VoiceSettings) -> SpeechToText:
-        """The speech-to-text adapter `stt.provider` names, built from the settings with no IO:
-        Groq's Whisper, ElevenLabs' Scribe, Speechmatics' ar_en pack, Cohere's Transcribe
-        Arabic, Soniox's stt-async-v6, Telnyx's model (HUMAIN's engine by default) or Nabrah's
-        (D-100). A ConfigurationError naming the key's setting
-        when that provider has none set; the eval commands build theirs here too."""
-        from t2_agentic_voice.adapters.cohere_stt import CohereSTT
-        from t2_agentic_voice.adapters.elevenlabs_stt import ElevenLabsSTT
-        from t2_agentic_voice.adapters.groq_stt import GroqSTT
-        from t2_agentic_voice.adapters.nabrah_stt import NabrahSTT
-        from t2_agentic_voice.adapters.soniox_stt import SonioxSTT
-        from t2_agentic_voice.adapters.speechmatics_stt import SpeechmaticsSTT
-        from t2_agentic_voice.adapters.telnyx_stt import TelnyxSTT
-
-        built: dict[str, Callable[[VoiceSettings], SpeechToText]] = {
-            "groq": GroqSTT.from_settings,
-            "elevenlabs": ElevenLabsSTT.from_settings,
-            "speechmatics": SpeechmaticsSTT.from_settings,
-            "cohere": CohereSTT.from_settings,
-            "soniox": SonioxSTT.from_settings,
-            "telnyx": TelnyxSTT.from_settings,
-            "nabrah": NabrahSTT.from_settings,
-        }
-        return built[settings.stt.provider](settings)
+        """The speech-to-text adapter `stt.provider` names (`stt_kinds`), built from the
+        settings with no IO. A ConfigurationError naming the key's setting when that provider
+        has none set; the eval commands build theirs here too."""
+        return stt_kinds()[settings.stt.provider].build(settings)
 
     def each(self) -> tuple[SpeechToText | TextToSpeech | ChatModel | LanguageClassifier, ...]:
         """Every provider given, in order: speech-to-text, text-to-speech, then the chat model

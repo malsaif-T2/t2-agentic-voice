@@ -10,7 +10,9 @@ action's write and its outcome, the models' usage). It is for engineers, never f
   (what the agent runs with: its tools, actions, languages, models and the settings that shape
   a turn's timing, never a secret), `GET /dev/feed?after=N` (the records after `N`, at once
   when there are any, else once one comes or `WAIT_S` passes: long-polling) and
-  `POST /dev/token`, the token the page's Start joins with when its field is left empty.
+  `POST /dev/token`, the token the page's Start joins with when its field is left empty; and,
+  given the runtime's `CallStts`, `GET` and `POST /dev/stt`, the choice of a call's
+  speech-to-text provider, model and language mode (api/dev_stt.py).
 - **The token** (the owner, 2026-11-11): a signed join token, as the app's own token route
   mints, from `SignedJoinTokens.from_settings(settings.join)`, for the caller the app declares
   (`server.dev_caller`), never one a request names (invariant 3). Its body is the page's
@@ -40,7 +42,10 @@ from pydantic import BaseModel, ConfigDict, Field, JsonValue, StrictBool, Valida
 from t2_agentic_voice.adapters.dev_identity import is_loopback
 from t2_agentic_voice.adapters.join_tokens import SignedJoinTokens
 from t2_agentic_voice.api.dev_feed import DevFeed
+from t2_agentic_voice.api.dev_stt import mount_stt
 from t2_agentic_voice.api.http_errors import Refusal, add_routes, read_body
+from t2_agentic_voice.api.offers import CallRecords
+from t2_agentic_voice.api.stt_calls import CallStts
 from t2_agentic_voice.core.config import VoiceSettings
 from t2_agentic_voice.core.errors import ConfigurationError
 from t2_agentic_voice.core.identity import Consent
@@ -141,9 +146,12 @@ def mount_console(
     feed: DevFeed,
     running: Callable[[], object | None],
     read: Read,
+    records: CallRecords | None = None,
+    stt: CallStts | None = None,
 ) -> None:
     """Add the console's routes to `router` (the module's docstring): its files read with
-    `read`, its feed `feed`, each route 503 `not_started` while `running` gives None."""
+    `read`, its feed `feed`, each route 503 `not_started` while `running` gives None; the
+    choice of speech-to-text with `stt`, each call found in `records`."""
     setup = setup_of(agent, settings)
 
     def admitted(request: Request) -> None:
@@ -208,6 +216,8 @@ def mount_console(
         ("GET", "/dev/setup", setup_route),
         ("POST", "/dev/token", token_route),
     )
+    if stt is not None and records is not None:
+        mount_stt(router, choices=stt, records=records, admitted=admitted, json=_json)
 
 
 def _signer(settings: VoiceSettings) -> SignedJoinTokens | None:
