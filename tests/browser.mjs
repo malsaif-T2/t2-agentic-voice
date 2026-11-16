@@ -5,11 +5,16 @@
 //   location  the page's address;
 //   page      its elements in document order, each {tag, attrs, parent, text}, parent an index;
 //   steps     what to do, in order, each {do, ...}: "click" an element, "set" an element's
-//             value, "start" a VoiceClient with listeners on every event, "open" the newest
+//             value, "change" it (its change event), "start" a VoiceClient with listeners on every event, "open" the newest
 //             data channel, "receive" text on it, "snapshot" an element; an element is named
-//             by its `id`, or by `query`, [selector, n], the nth the selector finds.
+//             by its `id`, or by `query`, [selector, n], the nth the selector finds;
+//   answers   optional: more routes' answers, by "METHOD last-segment", as ANSWERS holds them,
+//             or {"sequence": [answer, ...]}: each request the next, the last kept;
+//   storage   optional: the page's localStorage, as text by key (none given: no localStorage,
+//             as a browser that blocks it).
 // It writes one JSON object on stdout: each snapshot, the events the started client gave, the
-// messages the client sent, the requests it made, and every console.error.
+// messages the client sent, the requests it made, every console.error, and the localStorage
+// left, then exits, whatever timers the page left running.
 // Writing markup (innerHTML, outerHTML, insertAdjacentHTML, document.write) throws, so a page
 // that tried would fail its test.
 
@@ -97,7 +102,9 @@ class FakeElement extends FakeNode {
     return this.childNodes.filter((node) => node instanceof FakeElement);
   }
 
+  style = {};
   focus() {}
+  scrollIntoView() {}
   setPointerCapture() {}
   set innerHTML(_) { NO_MARKUP(); }
   get innerHTML() { return NO_MARKUP(); }
@@ -227,7 +234,8 @@ async function fetch(input, init = {}) {
   const url = new URL(String(input), globalThis.location.href);
   const method = init.method ?? "GET";
   out.requests.push({ method, path: url.pathname, body: JSON.parse(init.body ?? "null") });
-  const [status, body] = ANSWERS[`${method} ${url.pathname.split("/").pop()}`] ?? [404, {}];
+  const given = ANSWERS[`${method} ${url.pathname.split("/").pop()}`] ?? [404, {}];
+  const [status, body] = given.sequence ? (given.sequence.length > 1 ? given.sequence.shift() : given.sequence[0]) : given;
   return { ok: status < 400, status, json: async () => body, headers: { get: () => null } };
 }
 
@@ -249,6 +257,15 @@ function snapshot(node) {
 }
 
 const input = JSON.parse(Buffer.concat(await Array.fromAsync(process.stdin)).toString("utf8"));
+Object.assign(ANSWERS, input.answers ?? {});
+if (input.storage) {
+  const kept = new Map(Object.entries(input.storage));
+  define("localStorage", {
+    getItem: (key) => (kept.has(key) ? kept.get(key) : null),
+    setItem: (key, value) => kept.set(key, String(value)),
+  });
+  out.storage = kept;
+}
 define("location", { href: input.location });
 define("navigator", {
   mediaDevices: { getUserMedia: async () => {
@@ -257,6 +274,7 @@ define("navigator", {
   } },
 });
 define("fetch", fetch);
+define("Node", FakeNode);
 define("RTCPeerConnection", FakePeer);
 define("Audio", class { autoplay = false; volume = 1; srcObject = null; play() { return Promise.resolve(); } });
 define("addEventListener", () => {});
@@ -274,6 +292,7 @@ for (const step of input.steps) {
     : step.query && (globalThis.document.querySelectorAll(step.query[0])[step.query[1]] ?? null);
   if (named && !element) throw new Error(`no element ${JSON.stringify(step.id ?? step.query)}`);
   if (step.do === "click") element.dispatchEvent(new Event("click"));
+  else if (step.do === "change") element.dispatchEvent(new Event("change"));
   else if (step.do === "set") element.value = step.value;
   else if (step.do === "start") {
     const on = Object.fromEntries(EVENTS.map((name) => [name, (value) => out.events.push([name, value])]));
@@ -288,4 +307,5 @@ for (const step of input.steps) {
   else throw new Error(`no step ${step.do}`);
   await settle();
 }
-process.stdout.write(JSON.stringify(out));
+if (out.storage) out.storage = Object.fromEntries(out.storage);
+process.stdout.write(JSON.stringify(out), () => process.exit(0));

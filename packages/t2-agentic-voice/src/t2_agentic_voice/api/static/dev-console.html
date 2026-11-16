@@ -3,7 +3,8 @@
      only: api/dev_console.py, D-083): every call on the runtime, turn by turn, from the
      runtime's events (GET dev/feed), and a call of its own through t2v-client.js, with the
      token typed, or, the field left empty, one the console makes for the app's dev caller
-     (POST dev/token), else `dev`. For the engineers who test an agent, never for callers. No
+     (POST dev/token), else `dev`, heard by the speech-to-text its pickers name (GET and POST
+     dev/stt). For the engineers who test an agent, never for callers. No
      inline script or style: its script is dev-console.js, its style dev-console.css, and every
      text is set with textContent. -->
 <html lang="en">
@@ -47,6 +48,19 @@
       <option value="en">en</option>
     </select>
   </div>
+  <div class="field">
+    <label for="stt-provider">Speech-to-text</label>
+    <select id="stt-provider" disabled><option value="">The settings' own</option></select>
+  </div>
+  <div class="field">
+    <label for="stt-model">Model</label>
+    <select id="stt-model" disabled><option value="">The settings' own</option></select>
+  </div>
+  <div class="field">
+    <label for="stt-language">Language mode</label>
+    <select id="stt-language" disabled><option value="">The settings' own</option></select>
+  </div>
+  <p class="status small" id="stt-note">Speech-to-text choices: loading.</p>
   <div class="buttons">
     <button type="button" id="start" class="primary">Start call</button>
     <button type="button" id="stop" disabled>Stop</button>

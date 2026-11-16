@@ -204,6 +204,7 @@ Under the prefix (`/voice` above), the runtime serves:
 | `GET /client/1/t2v-client.js` | The reference browser client ([browser-client.md](browser-client.md)). |
 | `GET /dev` | The dev page: `env` dev, with the dev page on (`t2v dev`, or `server.dev_page`), to loopback clients only; any other client gets a plain 404. |
 | `GET /dev/console` | The test console, with `dev/feed`, `dev/setup` and its script and style: mounted with the dev page, answering only a loopback client that names a loopback host ([browser-client.md](browser-client.md), "The test console"). |
+| `GET /dev/stt` · `POST /dev/stt` | The test console's choice of a call's speech-to-text: the menu of the providers this server has a key for, with their models and the language modes, never a key; then one joined call's `{"call_id", "offer_secret", "provider", "model", "live_language"}` before its offer, 204, or 400 for a choice not on the menu. Under the console's guard alone ([browser-client.md](browser-client.md), "Trying speech-to-text providers in the dev console"). |
 | `POST /dev/token` | The test console's join token: `{"record_audio": false}` in, `{"token": ...}` out, a signed token for the dev caller the app declares (`server.dev_caller`), never one the request names. Under the console's guard alone; a plain 404 when no dev caller is declared or no join key signs. |
 
 - Every body is JSON, sent as `application/json` (anything else gets 415), under a size cap
