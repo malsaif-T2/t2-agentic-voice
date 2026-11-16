@@ -204,10 +204,13 @@ def test_a_key_given_in_code_is_held_to_the_settings_rules(bad: str) -> None:
     assert holding(KEY, shown(raised.value)) == []
 
 
-def test_stt_provider_picks_the_adapter_and_groq_stays_the_default() -> None:
-    chosen = Providers.speech_to_text(keyed("elevenlabs", provider="elevenlabs"))
+def test_elevenlabs_is_the_default_and_groq_is_picked_by_name() -> None:
+    """D-105: Scribe v3 is the default; Whisper, the fallback, is chosen by `stt.provider`."""
+    chosen = Providers.speech_to_text(keyed("elevenlabs"))
     default = Providers.speech_to_text(
-        VoiceSettings.model_validate({"env": "test", "groq": {"api_key": KEY}})
+        VoiceSettings.model_validate(
+            {"env": "test", "groq": {"api_key": KEY}, "stt": {"provider": "groq"}}
+        )
     )
     assert isinstance(chosen, ElevenLabsSTT) and isinstance(default, GroqSTT)
     port: SpeechToText = chosen  # the port, as mypy reads it

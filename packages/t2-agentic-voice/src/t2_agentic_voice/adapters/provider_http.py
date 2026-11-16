@@ -112,7 +112,8 @@ def no_key(vendor: str, setting: str) -> ConfigurationError:
     """The error for a provider chosen with no key: which variable to set."""
     return ConfigurationError(
         f"No {vendor} API key is set, so its adapter is unavailable. FIX: set {setting}, or "
-        f"{setting}_FILE to a file that holds the key.",
+        f"{setting}_FILE to a file that holds the key, or pick another speech-to-text provider "
+        "with stt.provider (groq, Whisper, needs only the Groq key).",
         details={"setting": setting},
     )
 

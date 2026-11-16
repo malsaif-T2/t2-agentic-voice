@@ -124,7 +124,16 @@ its recordings were heard right; p below 0.05 is beyond what chance explains):
   golden set yet; the recording session adds them.
 - **Soniox** (no key) and **HUMAIN's own API** (no public API reference).
 
-## Decisions for the owner
+## What was decided
+
+- **The second run confirmed ElevenLabs:** `el-dev2` heard 215 right (74%; 50 items better and 5
+  worse than Whisper, beyond the noise, Saudi, MSA and English each better beyond it), its median
+  669 ms against Whisper's second run at 348 ms (both slower than their first runs, with the
+  laptop busier).
+- **The owner made ElevenLabs Scribe v3 the default on 2026-11-16 (D-105)**, accepting its extra
+  time per turn; Whisper is the fallback (`T2V_STT__PROVIDER=groq`).
+
+## Decisions for the owner (as asked)
 
 1. **Which speech-to-text the flight agent and Ole5 use by default.** Plan 010's registered rule
    keeps a candidate only when it is better beyond the noise twice and no slower than Whisper

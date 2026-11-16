@@ -58,6 +58,9 @@ SCRIBE = {"provider": "elevenlabs", "model": "scribe_v3", "live_language": "sess
 
 
 def _settings(tmp_path: Path, *, dev_page: bool = True, **groups: Any) -> VoiceSettings:
+    """Settings on Groq's Whisper unless a test names its own `stt`: the menu's rules are the
+    same whatever the default provider is (D-105 made it ElevenLabs')."""
+    groups.setdefault("stt", SttSettings(provider="groq"))
     return dev_settings(tmp_path, server=ServerSettings(dev_page=dev_page), **groups)
 
 
@@ -146,7 +149,7 @@ def test_a_key_file_that_cannot_be_read_leaves_its_provider_out_unnamed(
 def test_the_settings_own_provider_and_model_are_the_default_and_listed_first(
     tmp_path: Path,
 ) -> None:
-    settings = _settings(tmp_path, stt=SttSettings(model="whisper-large-v3-turbo"))
+    settings = _settings(tmp_path, stt=SttSettings(provider="groq", model="whisper-large-v3-turbo"))
     menu = menu_of(settings, classifier=False)
     assert menu.providers[0].models == ("whisper-large-v3-turbo", "whisper-large-v3")
     assert menu.default.model == "whisper-large-v3-turbo"

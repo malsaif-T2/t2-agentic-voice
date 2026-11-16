@@ -27,6 +27,7 @@ from t2_agentic_voice.core.errors import ConfigurationError
 from t2_agentic_voice.core.identity import Caller
 from t2_agentic_voice.core.settings.groq import GroqSettings
 from t2_agentic_voice.core.settings.session import SessionSettings
+from t2_agentic_voice.core.settings.stt import SttSettings
 from t2_agentic_voice.core.tracing import Tracing
 from t2_agentic_voice.domain.declaration import Language, VoiceAgent
 from t2_agentic_voice.testing.llm_fakes import FAKE_DATA_FLOW
@@ -89,7 +90,9 @@ def test_the_providers_from_the_settings_hold_groqs_chat_model(
     tmp_path: Path, monkeypatch: pytest.MonkeyPatch
 ) -> None:
     monkeypatch.setattr(groq_tts, "GroqTTS", _Tts)
-    settings = dev_settings(tmp_path, groq=GroqSettings(api_key=SecretStr(KEY)))
+    settings = dev_settings(
+        tmp_path, groq=GroqSettings(api_key=SecretStr(KEY)), stt=SttSettings(provider="groq")
+    )
     providers = Providers.from_settings(settings)
     assert isinstance(providers.chat, GroqChat)
     chat = _Chat()
@@ -198,15 +201,17 @@ def test_the_providers_build_a_classifier_only_under_classified(
     `replace` keeps it, or puts another in its place."""
     from t2_agentic_voice.adapters.ecapa_language import EcapaLanguage
     from t2_agentic_voice.adapters.silero_language import SileroLanguage
-    from t2_agentic_voice.core.settings.stt import SttSettings
 
     monkeypatch.setattr(groq_tts, "GroqTTS", _Tts)
     groq = GroqSettings(api_key=SecretStr(KEY))
-    plain = Providers.from_settings(dev_settings(tmp_path, groq=groq))
+    plain = Providers.from_settings(
+        dev_settings(tmp_path, groq=groq, stt=SttSettings(provider="groq"))
+    )
     assert plain.classifier is None
     folder = tmp_path / "models"
     for name, kind in (("silero", SileroLanguage), ("ecapa", EcapaLanguage)):
         stt = SttSettings(
+            provider="groq",
             live_language="classified",
             classifier=name,  # type: ignore[arg-type]
             classifier_dir=folder,

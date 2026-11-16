@@ -319,30 +319,34 @@ only under `env` dev, to a browser on this machine that names it `localhost`, `1
 ## Trying speech-to-text providers in the dev console
 
 The test console can hear each of its own calls with another speech-to-text provider and model,
-so you and a teammate can try them side by side without changing the server's settings. Groq's
-Whisper stays the default for every other call (D-100).
+so you and a teammate can try them side by side without changing the server's settings.
+ElevenLabs' Scribe v3 is the default for every other call (D-105), and Groq's Whisper the
+fallback ([the comparison of 2026-11-16](../project/stt-report-2026-11-16.md) says why).
 
 **1. Paste the keys** you have into the `.env` at the repository's root (never committed), one
-line each; a provider with no key is simply not offered. Each key may instead live in a file
-outside the repository, named by its `_FILE` form:
+line each, each the key string itself as its provider's dashboard shows it (the team keeps keys
+this way, the owner's choice of 2026-11-16; a `_FILE` form naming a file that holds the key also
+works). A provider with no key is simply not offered:
 
 ```bash
 T2V_GROQ__API_KEY=gsk_...                       # always needed: the chat model and the voice
-T2V_ELEVENLABS__API_KEY=sk_...                  # Scribe v3
+T2V_ELEVENLABS__API_KEY=sk_...                  # needed: Scribe v3, the default speech-to-text
 T2V_SPEECHMATICS__API_KEY=...                   # the ar_en pack (T2V_SPEECHMATICS__REGION=eu)
 T2V_COHERE__API_KEY=...                         # Transcribe Arabic
 T2V_SONIOX__API_KEY=...                         # stt-async-v6
 T2V_TELNYX__API_KEY=...                         # HUMAIN's Arabic engine (humain/realtime) and Telnyx's batch models
 T2V_NABRAH__API_KEY=...                         # Nabrah's Saudi Arabic model
-T2V_SONIOX__API_KEY_FILE=C:/keys/soniox.txt     # or: the key's file, in place of the line above
+T2V_ENV=dev                                     # the test console runs only under dev
+T2V_SERVER__DEV_PAGE=true
 ```
 
 Every provider the library takes is listed with its key's name in
 [the settings reference](../generated/settings.md); each one added later is offered the same way
 once its key is set.
 
-**2. Start the dev console.** Set `T2V_ENV=dev` and `T2V_SERVER__DEV_PAGE=true` in the `.env`
-too, then start your app's server on this machine; for Ole5,
+**2. Start the dev console.** With those two lines in the `.env` and the app's own ones (for
+Ole5, its README's table: the access code, the join key and the knowledge base's sign-in;
+[.env.example](../../.env.example) lists every line), start your app's server on this machine; for Ole5,
 `uv run python -m ole5_voice.server --env-file .env`, and open
 `http://127.0.0.1:7861/voice/dev/console` (with `t2v dev`, `http://127.0.0.1:7860/voice/dev/console`).
 The server logs `stt_choices_offered` with the providers it offers, never a key.

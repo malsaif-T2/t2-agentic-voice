@@ -65,7 +65,7 @@ From a checkout of this repository, with a Groq key in a file outside it
 
 ```bash
 uv sync
-T2V_ENV=dev T2V_GROQ__API_KEY_FILE=/path/to/groq_api_key uv run t2v dev minimal_example.app:make_runtime
+T2V_ENV=dev T2V_STT__PROVIDER=groq T2V_GROQ__API_KEY_FILE=/path/to/groq_api_key uv run t2v dev minimal_example.app:make_runtime
 # then, in Chrome or Edge on the same machine: http://127.0.0.1:7860/voice/dev
 ```
 

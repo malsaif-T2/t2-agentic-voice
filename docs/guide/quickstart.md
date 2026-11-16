@@ -165,6 +165,7 @@ In a shell at the repository's root (Git Bash shown; in PowerShell, set each var
 uv sync
 export T2V_ENV=dev
 export T2V_GROQ__API_KEY_FILE=/full/path/to/groq_api_key
+export T2V_STT__PROVIDER=groq   # Whisper on the Groq key alone; or set T2V_ELEVENLABS__API_KEY for the default, Scribe v3 (D-105)
 uv run t2v doctor
 uv run t2v dev minimal_example.app:make_echo_runtime
 ```

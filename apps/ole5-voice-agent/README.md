@@ -9,7 +9,9 @@ Ole5's knowledge base, in Saudi Arabic, MSA and English. It uses only the librar
 
 | Name | What it is |
 | --- | --- |
-| `T2V_GROQ__API_KEY` | The Groq key: speech-to-text, the chat model and the voice. |
+| `T2V_GROQ__API_KEY` | The Groq key: the chat model and the voice (and Whisper, the fallback speech-to-text). |
+| `T2V_ELEVENLABS__API_KEY` | The ElevenLabs key: Scribe v3, the default speech-to-text (D-105). Without it, set `T2V_STT__PROVIDER=groq` to hear calls with Whisper on the Groq key alone. |
+| `T2V_ENV`, `T2V_SERVER__DEV_PAGE` | `dev` and `true` to open the test console at http://127.0.0.1:7861/voice/dev/console, where each call can pick its speech-to-text provider ([the guide](../../docs/guide/browser-client.md#trying-speech-to-text-providers-in-the-dev-console)). |
 | `QDRANT_URL`, `QDRANT_LOGIN_EMAIL`, `QDRANT_LOGIN_PASSWORD` | Ole5's knowledge base. With none of the three set, the agent is the echo, which says your words back. |
 | `OLE5_VOICE_ACCESS_CODE` | The code the widget asks for before a call. |
 | `T2V_JOIN__KEYS`, `T2V_JOIN__CURRENT_KID` | The key that signs a call's join token: `T2V_JOIN__KEYS={"key-1": "<secret>"}` and `T2V_JOIN__CURRENT_KID=key-1`. |
@@ -32,8 +34,8 @@ lines it speaks. `--port` serves another port.
 
 **Then**, in Chrome or Edge on the same machine, open http://127.0.0.1:7861/:
 
-1. Pick العربية or English. Ask English questions in an English call: Whisper is told the
-   call's language, and English words in an Arabic call are written as Arabic.
+1. Pick العربية or English. Ask English questions in an English call: the speech-to-text is
+   told the call's language, and English words in an Arabic call may be written as Arabic.
 2. Give the access code, tick the box only if the call's audio should be kept, and allow the
    microphone.
 3. Ask about Ole5. While it searches it shows "Thinking", and it says the steps aloud. Say «وقف» or "stop" to stop it, «لحظة» to make it wait, «ممكن تعيد؟» to

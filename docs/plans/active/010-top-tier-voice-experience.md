@@ -959,6 +959,12 @@ Block 0.
   through Telnyx 137 (0.482, 8 failed; 29 better, 23 worse, within the noise; median 6,367 ms on
   the batch port, TD-152); the six dev runs' history lines recorded. One run each, dev only: the
   registered rule's second run and held-out read remain, and ElevenLabs' language pass.
+- 2026-11-16: ElevenLabs' second dev run, `el-dev2`, 215 right (50 items better and 5 worse than
+  Whisper); the owner made ElevenLabs Scribe v3 the default (D-105), Whisper the fallback; the
+  keys moved into the owner's `.env` as key strings, at their request; `.env.example` gained the
+  Ole5 app's own settings (scripts/settings_ref.py, tests/ole5_voice/test_env_example_app.py);
+  the dev console's header lost the talker's model, the speech-to-text model and the voices, at
+  the owner's request (a call's speech-to-text is now chosen per call).
 
 ## Decision log
 

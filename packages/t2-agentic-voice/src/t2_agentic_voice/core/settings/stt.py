@@ -13,8 +13,9 @@ from pydantic import Field
 
 from t2_agentic_voice.core.settings.base import Group
 
-# The speech-to-text adapters a setting picks: Groq's Whisper, the default and the fallback, and
-# the providers measured beside it (D-100), each needing its own key group's key.
+# The speech-to-text adapters a setting picks: ElevenLabs' Scribe v3, the default by the owner's
+# ruling (D-105); Groq's Whisper, the fallback; and the other providers measured beside them
+# (D-100), each needing its own key group's key.
 SttProvider = Literal["groq", "elevenlabs", "speechmatics", "cohere", "soniox", "telnyx", "nabrah"]
 # The providers that report no language they heard (Speechmatics' ar_en pack, Cohere's Arabic
 # model, Telnyx's streamed HUMAIN engine, Nabrah's Saudi model), so a request naming none detects
@@ -43,10 +44,11 @@ class SttSettings(Group):
     filter for text from silence."""
 
     provider: SttProvider = Field(
-        default="groq",
+        default="elevenlabs",
         description=(
-            "Which adapter turns speech into text: groq (Whisper, the default), or one measured "
-            "beside it (D-100): elevenlabs (Scribe), speechmatics (its ar_en pack, a batch "
+            "Which adapter turns speech into text: elevenlabs (Scribe v3, the default, D-105; it "
+            "needs T2V_ELEVENLABS__API_KEY), groq (Whisper, the fallback, on the Groq key alone), "
+            "or one measured beside them (D-100): speechmatics (its ar_en pack, a batch "
             "job), cohere (Transcribe Arabic, the language always named), soniox "
             "(stt-async-v6, a batch job), telnyx (the model telnyx.stt_model names, HUMAIN's "
             "Arabic engine by default, a turn on its WebSocket) or nabrah (its Saudi Arabic "

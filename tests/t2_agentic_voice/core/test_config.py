@@ -41,7 +41,7 @@ def test_built_in_code_takes_the_defaults_and_its_arguments_alone(
     )
     assert (settings.groq.api_key, settings.groq.base_url) == (None, "https://api.groq.com")
     assert (settings.stt.provider, settings.stt.model, settings.stt.timeout_s) == (
-        "groq",
+        "elevenlabs",
         "whisper-large-v3",
         6.0,
     )

@@ -29,6 +29,7 @@ from t2_agentic_voice.core.config import VoiceSettings
 from t2_agentic_voice.core.errors import ConfigurationError, ProviderError
 from t2_agentic_voice.core.settings.groq import GroqSettings
 from t2_agentic_voice.core.settings.join import JoinSettings
+from t2_agentic_voice.core.settings.stt import SttSettings
 from t2_agentic_voice.core.settings.tts import TtsSettings
 from t2_agentic_voice.core.tracing import Tracing
 from t2_agentic_voice.domain.declaration import Language, VoiceAgent
@@ -106,7 +107,9 @@ def test_the_providers_from_the_settings_are_groqs(
     tmp_path: Path, monkeypatch: pytest.MonkeyPatch
 ) -> None:
     monkeypatch.setattr(groq_tts, "GroqTTS", _Tts)
-    settings = dev_settings(tmp_path, groq=GroqSettings(api_key=SecretStr(KEY)))
+    settings = dev_settings(
+        tmp_path, groq=GroqSettings(api_key=SecretStr(KEY)), stt=SttSettings(provider="groq")
+    )
     providers = Providers.from_settings(settings)
     assert isinstance(providers.stt, GroqSTT) and isinstance(providers.tts, _Tts)
     assert _Tts.built == [settings]

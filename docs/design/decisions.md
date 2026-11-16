@@ -3752,3 +3752,30 @@ twice; DOC-REF: every `D-NNN` cited anywhere is a heading here), so keep its sha
   provider still reports its usage under `stt.model`'s name (TD-153).
 - **Evidence:** `tests/t2_agentic_voice/api/test_dev_stt.py`,
   `tests/t2_agentic_voice/voice/test_calls_talker.py`, the browser tests `test_browser_stt_choice.py`.
+
+## D-105 · ElevenLabs' Scribe v3 is the default speech-to-text; Groq's Whisper the fallback · 2026-11-16 · Accepted (the owner's ruling of 2026-11-16, over the latency condition of plan 010's registered rule)
+
+- **Context:** plan 010's comparison of 2026-11-16 (docs/project/stt-report-2026-11-16.md) ran
+  seven providers on the golden set's dev split, 292 recordings of the owner's voice. ElevenLabs'
+  Scribe v3 heard 209 right in its first run and 215 in its second, against Whisper large-v3's
+  129 in both of its runs: 47 and 50 items better, 7 and 5 worse, beyond the noise each time, and
+  better beyond the noise in Saudi Arabic and MSA in both runs (and in English in the second).
+  Product terms caught 90% and 93% against 33%, ticket numbers 90% and 95% against 57%. It was
+  slower: a request's median 514 ms and 669 ms from this laptop against Whisper's 259 ms and
+  348 ms, so the registered rule's condition "no slower than Whisper plus its spread" fails, and
+  the rule alone keeps Whisper. Asked "Make ElevenLabs Scribe v3 the default once its second run
+  confirms it?", the owner answered on 2026-11-16: "Yes make ElevenLabs Scribe v3 the defualt".
+- **Decision:** `stt.provider` defaults to `elevenlabs` (Scribe v3, keyterms from the agent's
+  vocabulary, the language it heard and its probability on each transcript). Groq's Whisper is
+  the fallback, chosen with `stt.provider = "groq"`. With the default and no ElevenLabs key, the
+  runtime refuses to start, naming `T2V_ELEVENLABS__API_KEY` and the Whisper fallback in its FIX.
+- **Consequences:** a call waits about a quarter to a third of a second more per turn for its
+  words, until a streaming port lets Scribe v3 Live hear the caller while they speak (plan 010's
+  5.1). Every developer needs an ElevenLabs key beside the Groq key, or sets the fallback; the
+  quickstart sets it, to keep its one key. The audio of every call goes to ElevenLabs (D-100's
+  conditions, its trust-boundary row in SECURITY.md); callers who are not developers still wait
+  for M6's notice (D-076). The team keeps provider keys in `.env` as the key strings themselves
+  (the owner, 2026-11-16: "I want the variables in .env to hold the real key strings and not a
+  path to it").
+- **Evidence:** the runs `b0-groq`, `el-dev` and `el-dev2` and the switch's Whisper baseline
+  `sw2-dev-label`, in the run history (docs/generated/eval-history.md); the owner's words above.

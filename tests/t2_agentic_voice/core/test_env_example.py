@@ -40,7 +40,10 @@ def _at(settings: VoiceSettings, location: tuple[str, ...]) -> object:
 
 
 def test_env_example_lists_every_setting() -> None:
-    documented, expected = set(_example()), set(names())
+    """The library's: every name under its prefix; the apps' own settings that follow are
+    checked by each app's tests (tests/ole5_voice/test_env_example_app.py)."""
+    documented = {name for name in _example() if name.startswith(PREFIX)}
+    expected = set(names())
     assert documented == expected, (
         "Keep .env.example in sync with VoiceSettings in core/config.py: "
         f"missing={sorted(expected - documented)} unknown={sorted(documented - expected)}. "

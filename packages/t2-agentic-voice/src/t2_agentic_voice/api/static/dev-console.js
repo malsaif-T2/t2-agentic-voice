@@ -238,13 +238,9 @@ async function loadSetup() {
     return;
   }
   const s = view.setup;
-  const voices = Object.entries(s.settings.tts.languages ?? {}).map(([tag, v]) => `${tag} ${v.voice}`);
   $("setup-chips").replaceChildren(
     el("span", { class: "chip strong", text: s.agent }),
     el("span", { class: "chip", text: `${s.mode} · env ${s.env}` }),
-    el("span", { class: "chip", text: s.settings.llm.model, title: "the talker's model" }),
-    el("span", { class: "chip", text: s.settings.stt.model, title: "speech-to-text" }),
-    el("span", { class: "chip", text: voices.join(", ") || s.settings.tts.provider, title: "the voices" }),
   );
   const pairs = (object) =>
     el("dl", { class: "pairs" }, Object.entries(object).flatMap(([key, value]) => [
