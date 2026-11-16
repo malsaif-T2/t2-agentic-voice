@@ -99,6 +99,7 @@ The personas below are the agent's assumptions, written to test the design. No T
 
 | Persona | Who | What they need most | What ends their evaluation |
 | --- | --- | --- | --- |
+| The flight-booking agent (the owner) | The second app and the main one shown (D-101): a mock airline's booking line, built only on the public API | Booking calls end to end in Saudi Arabic, MSA and English, every option spoken, a booking only on the read-back and a spoken yes | The same as Ole5's: any need to reach into the library's internals |
 | The Ole5 app (the owner) | The first user. Built only on the public API, it drives every milestone | The 28 Oct rehearsal passes (DESCRIPTION.md) | Any need to reach into the library's internals. If Ole5 needs one, so will everyone |
 | Sara, a backend developer (assumed) | Owns a FastAPI service with existing tools (device lookup, open a request; HR leave for a colleague). Knows tool calling and RAG; does not know audio or WebRTC | A demo of her own tools quickly; adding voice beside her service behind her SSO without changing how it is deployed; offline tests; tuning through settings, not code | One false "I opened your request"; Pipecat in her code; a library that takes over logging, OpenTelemetry or the environment; no browser client; a Python floor above her service's |
 | An agent-graph owner (assumed) | Owns a LangGraph chatbot like Ole5's, and was burned by the October voice mode bolted onto it | Voice without bending the text agent; reusing existing tool functions; later, the graph's reasoning as the thinker | Being asked to add `channel == "voice"` branches; a thinker with no tests; clashes with langchain or numpy pins |
@@ -1558,6 +1559,9 @@ t2-agentic-voice/                     the repository (renamed from Ole5-voice-ag
     src/ole5_voice/                   today one package; core/ domain/ adapters/ agent/ api/ (proposed, 12.3)
     web/                              the Ole5 widget, built on t2v-client.js
     evals/                            items, references, manifests and hashes (D-006, D-011); no audio; never shipped
+  apps/flight-voice-agent/
+    pyproject.toml                    t2-agentic-voice from the workspace (D-101)
+    src/flight_voice/                 one package: the mock airline (airline/), its tools, the booking
   examples/minimal/
     pyproject.toml  src/minimal_example/   (app.py of section 4.2 when the API exists)
   docs/guide/                         the teammate guide (section 14)

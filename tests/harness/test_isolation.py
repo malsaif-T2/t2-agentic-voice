@@ -26,8 +26,10 @@ from tests import isolation
 ROOT = Path(__file__).resolve().parents[2]
 REPO_VAR = ROOT / "var"
 VAR_DIR_VARIABLE = setting_name("storage", "var_dir")
-# The Ole5 app's own prefix (the design's 7.3): its env and its access code.
+# The Ole5 app's own prefix (the design's 7.3): its env and its access code; and the
+# flight-booking agent's (D-101): its access code, its pinned today, its modes.
 APP_PREFIX = "OLE5_VOICE_"
+APP_PREFIXES = (APP_PREFIX, "FLIGHT_VOICE_")
 FOREIGN_PREFIXES = ("GROQ_", "OTEL_", "PHOENIX_")
 FOREIGN_NAMES = ("REQUESTS_CA_BUNDLE", "CURL_CA_BUNDLE")
 # T2's knowledge-base service's general names, which the Ole5 app reads with no prefix.
@@ -90,8 +92,8 @@ def test_no_setting_comes_from_the_shell() -> None:
 
 
 def test_no_app_setting_comes_from_the_shell() -> None:
-    """The Ole5 app's own settings (an access code, its env) never reach a test."""
-    inherited = sorted(n for n in os.environ if n.upper().startswith(APP_PREFIX))
+    """The apps' own settings (an access code, an env, a pinned today) never reach a test."""
+    inherited = sorted(n for n in os.environ if n.upper().startswith(APP_PREFIXES))
     assert inherited == [], f"Tests inherit {inherited}. {FIX}"
 
 
@@ -140,8 +142,10 @@ def test_the_isolation_lists_name_the_librarys_variables() -> None:
     """tests/isolation.py imports nothing of the library, so its names are checked here."""
     assert (isolation.PREFIX, isolation.VAR_DIR_VARIABLE) == (PREFIX, VAR_DIR_VARIABLE)
     assert isolation.APP_PREFIX == APP_PREFIX
+    assert isolation.APP_PREFIXES == APP_PREFIXES
     names = {"T2V_ENV", "GROQ_LOG", "pipecat_setup_files", "WEB_CONCURRENCY", "LOGURU_LEVEL"}
     names |= {"OLE5_VOICE_ACCESS_CODE", "ole5_voice_env"}
+    names |= {"FLIGHT_VOICE_ACCESS_CODE", "FLIGHT_VOICE_TODAY", "flight_voice_booking_mode"}
     names |= {"QDRANT_URL", "qdrant_login_password", "EMBEDDING_URL"}
     assert (isolation.KB_PREFIXES, isolation.KB_NAMES) == (KB_PREFIXES, KB_NAMES)
     assert {n for n in names if isolation.dropped(n)} == names
@@ -250,6 +254,8 @@ def test_a_shell_that_sets_this_projects_variables_changes_no_test() -> None:
         "PYTHON_DOTENV_DISABLED": "0",
         f"{APP_PREFIX}ENV": "prod",
         f"{APP_PREFIX}ACCESS_CODE": "made-up-access-code-from-the-shell",
+        "FLIGHT_VOICE_ACCESS_CODE": "made-up-access-code-from-the-shell",
+        "FLIGHT_VOICE_SEARCH_MODE": "fail",
         "QDRANT_URL": "https://made-up.example/qdrant",
         "QDRANT_LOGIN_PASSWORD": "made-up-password-from-the-shell",
         "EMBEDDING_URL": "https://made-up.example/embed",

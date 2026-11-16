@@ -48,7 +48,7 @@ facades = [
 # their own services, so the library stays free of any one app (ARCH-WORDS). Read in the path
 # below [package] root of every file, and in the text of its source and text files, never in
 # __pycache__/.
-banned_words = ["ole5", "otrs", "ds.t2.sa"]
+banned_words = ["ole5", "otrs", "ds.t2.sa", "flight_voice"]
 
 # Each layer of the package (a folder directly under src/<name>/) and the other layers it may
 # import. A layer always may import itself. The graph may not have a cycle. Code must sit inside
@@ -376,7 +376,7 @@ fix = "The session never imports Pipecat (the design's 12.2): exchange the event
 [[bans]]
 modules = ["pipecat", "aiortc"]
 allowed = []
-within = ["ole5_voice", "minimal_example"]
+within = ["ole5_voice", "minimal_example", "flight_voice"]
 fix = "An app builds on the library's public API, never on Pipecat or aiortc (the design's 12.5): run calls through what the library exports, and when something is missing, change the library rather than work around it in the app."
 
 # Packages built on the library, as a teammate's app would be (ARCH-PUBLIC, D-013): each imports
@@ -390,6 +390,10 @@ root = "apps/ole5-voice-agent/src"
 [[apps]]
 name = "minimal_example"
 root = "examples/minimal/src"
+
+[[apps]]
+name = "flight_voice"
+root = "apps/flight-voice-agent/src"
 
 # Narrower import rules for a subpackage inside a layer (ARCH-LAYER). Example:
 #
@@ -609,7 +613,7 @@ docstrings = 10
 # `uv run poe test` runs `pytest --cov --cov-config=harness.toml`. The floor is a ratchet: set it
 # a little under what CI measures, and raise it as coverage grows.
 [tool.coverage.run]
-source = ["t2_agentic_voice", "ole5_voice", "minimal_example", "scripts"]
+source = ["t2_agentic_voice", "ole5_voice", "minimal_example", "flight_voice", "scripts"]
 # Line coverage on Python 3.12's sys.monitoring costs almost nothing; branch coverage falls back
 # to the slower tracer.
 core = "sysmon"
