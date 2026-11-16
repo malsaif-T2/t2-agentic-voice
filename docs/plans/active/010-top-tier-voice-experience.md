@@ -1178,6 +1178,26 @@ Block 0.
   violation): a smoke play stuck on the agent's own turn is now its verdict, kept, and the run goes
   on; a provider's failure, a retry or a violation still stops it. Seen for the baseline: an empty
   answer after a tool's result is told as an error, a library matter (TD-115's row).
+- 2026-11-17: rule F amended by the lead before any of its results is read (f-dev-3 runs under the
+  checks as they were, read for a diagnosis alone; the baseline is the first pass under these): (1)
+  `register`, on a turn held Saudi, fails when the agent's own words hold a form only MSA says
+  (سوف، لن، الآن، أريد، تريد، ماذا، لماذا، لدينا، لديك، ليس، هكذا، حسنا، يمكنك), and on a turn held
+  MSA, when they hold a Saudi form (the library's `register_of`, the caller's list, and the agent's
+  own: ودك، تبي، تبون، حقت، الصبح، رايح، لقيت، أبشر، زين); `register_of` alone read the caller's
+  words and failed the Saudi forms the instructions prescribe («متى ودك ترجع؟»: the flight reviews,
+  both skeptics); (2) a new turn check, `notice`, fails when the caller heard a failure notice (the
+  error or cut-off line) or a clause the guard blocked: the flight spec's f13 asks it ("the
+  talker's own 'nothing is booked' not blocked, no fixed error phrase"), and f-dev-2's "the morning
+  one" heard the error line, which no check read. Both in code, no judge, as rule F.
+- 2026-11-17: f-dev-3 stopped after 8 plays, a diagnosis alone (the checks as they were): a play
+  stuck on the agent's turn took about 236 s against 45-65 s for one that went on, since
+  `TextCall`'s wait for a moment summed its sleeps (about 195 s of wall time for its 120 s) and
+  went on after the call had ended idle (`limits.idle_s`, 120 s). The library's wait now gives up
+  at once when the call has ended and counts the system clock's own time (`testing/text_side.py`);
+  run F's plays end 60 s after the caller's last turn (`run_setup.IDLE_S`), which only a play stuck
+  on the agent's turn reaches (a booking's timeout and a slow search take about 20 s), so no
+  verdict moves. The amended checks (`evals/spoken.py`: the register; `notice`) and the speed land
+  together; the baseline is the next pass, f-dev-4.
 
 ## Decision log
 

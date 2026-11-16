@@ -15,14 +15,18 @@ reads the trip back says no number of its own before it (no summary of the agent
 
 On the talker's own words (no fixed phrase, none of the runtime's lines, which code renders):
 `language`, every clause in the turn's language and its script (an Arabic reply as many Arabic
-letters as Latin ones or more, an English one none); `register`, an Arabic reply's register
-(`register_of`) the one held (`held_register`); `max_words`; `max_options`, the distinct
-departure times of the airline's flights it says; and the long-call checks, the library's
-repeat measures (`find_repeat`, `repeats_cut_reply`), never a copy: `repeat`, no identical or
-near repeat of an earlier reply unless the turn `asks_repeat` or the reply is a read-back said
-again; `cut_repeat`, the turn right after a stop holds 60% of the cut reply's tokens (its whole
-text, heard or not).
-`card`, a card shown (`shows_card`); `progress`, a fixed phrase heard (`hears_progress`).
+letters as Latin ones or more, an English one none); `register`, an Arabic reply in the register
+held (`held_register`; rule F's amendment of 2026-11-17): a Saudi one says no form only MSA says
+(`MSA_ONLY`, spoken.py), an MSA one no Saudi form (the library's `register_of`, which reads the
+caller's words, or the agent's own, `SAUDI_FORMS`); `max_words`; `max_options`, the distinct
+departure times of the airline's flights it says; and the long-call checks, the library's repeat
+measures (`find_repeat`, `repeats_cut_reply`), never a copy: `repeat`, no identical or near repeat
+of an earlier reply unless the turn `asks_repeat` or the reply is a read-back said again;
+`cut_repeat`, the turn right after a stop holds 60% of the cut reply's tokens (its whole text,
+heard or not). `card`, a card shown (`shows_card`); `progress`, a fixed phrase heard
+(`hears_progress`); `notice`, on every turn, no failure notice heard (the error or cut-off line,
+`failure_notices`) and no clause the guard blocked (rule F's amendment of 2026-11-17; the flight
+spec's f13).
 
 **The play's checks:** `failure`, the play ran to its end; `violations`, none (rules A to C and
 the yes rule: zero in every play is the hard constraint); `booked`, one booking when a turn's
@@ -41,7 +45,7 @@ from typing import Final
 
 from pydantic import JsonValue, TypeAdapter, ValidationError
 from t2_agentic_voice.evals import HeardClause, TextToolCall, find_repeat, repeats_cut_reply
-from t2_agentic_voice.languages import normalize_arabic, normalize_digits, register_of
+from t2_agentic_voice.languages import normalize_digits
 
 from flight_voice.airline.airports import AIRPORTS, HOME, find_airport
 from flight_voice.airline.dates import DateSpec, Resolved, resolve_departure, resolve_return
@@ -49,6 +53,7 @@ from flight_voice.airline.profile import TRAVELER
 from flight_voice.airline.schedule import flights
 from flight_voice.evals.call import PlayRead, TurnRead
 from flight_voice.evals.scenarios import Args, ReadBack, Scenario, Turn, held_register
+from flight_voice.evals.spoken import failure_notices, form, register_held
 
 _DATES: Final[TypeAdapter[DateSpec]] = TypeAdapter(DateSpec)
 _ARABIC: Final = re.compile(r"[؀-ۿ]")
@@ -70,11 +75,6 @@ class Failed:
 
     check: str
     turn: int | None = None
-
-
-def form(text: str) -> str:
-    """`text` in the scorers' form, so words compare alike in either script."""
-    return normalize_digits(normalize_arabic(text))
 
 
 def said(clauses: Sequence[HeardClause]) -> str:
@@ -153,7 +153,7 @@ def _language(scenario: Scenario, turn: Turn, words: Sequence[HeardClause]) -> I
     if words and not script:
         yield "language"
     wanted = held_register(scenario, turn)
-    if wanted is not None and arabic and register_of(text) != wanted:
+    if wanted is not None and arabic and not register_held(text, wanted):
         yield "register"
 
 
@@ -199,6 +199,8 @@ def turn_checks(
         yield "card"
     if turn.hears_progress and not any(c.phrase for c in read.heard):
         yield "progress"
+    if read.blocked or any(c.phrase and form(c.text) in failure_notices() for c in read.heard):
+        yield "notice"
 
 
 def _cut_repeated(read: TurnRead, cut: TurnRead | None) -> bool:

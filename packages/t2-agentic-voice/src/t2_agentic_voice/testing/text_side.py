@@ -289,10 +289,14 @@ class TextDriver:
         self.side, self.clock = side, clock
 
     async def until(self, ready: Callable[[], bool], failure: str) -> None:
-        """Move the clock on (on the system clock, wait) until `ready()`, at most MAX_WAIT_S;
-        AssertionError saying `failure` otherwise."""
-        waited = 0.0
+        """Move the clock on (on the system clock, wait) until `ready()`, at most MAX_WAIT_S on
+        the call's clock (the system's: the time that passed, the session's quiet rounds among
+        it); AssertionError saying `failure` otherwise, at once when the call has ended, since
+        no moment of its comes then."""
+        began, waited = self.clock.now(), 0.0
         while not ready():
+            if self.side.ended is not None:
+                raise AssertionError(f"{failure} (the call ended: {self.side.ended})")
             clock = self.clock
             if isinstance(clock, VirtualClock):
                 due = clock.next_due
@@ -303,7 +307,7 @@ class TextDriver:
                 waited += step
             else:
                 await asyncio.sleep(0.02)
-                waited += 0.02
+                waited = clock.now() - began
                 if waited > MAX_WAIT_S:
                     raise AssertionError(f"{failure} (the call waited {waited:.1f} s)")
             await self.quiet()

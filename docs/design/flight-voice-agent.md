@@ -1009,7 +1009,12 @@ its expectations:
 - `said_any`: keyword groups, each a list of variants in both scripts ("couldn't", «ما قدرت»;
   "per person", «للشخص»); `said_none`: words that must not be said ("no trips", «ما سافرت»,
   "search_flights", a reference's digits unless asked);
-- `language` (held by script and, for Arabic, by `register_of`: `saudi` or `msa`);
+- `language` (held by script and, for Arabic, by register: `saudi` or `msa`; amended 2026-11-17
+  before any result, rule F's: a Saudi reply says no form only MSA says, an MSA one no Saudi form,
+  the caller's list of `register_of` or the agent's own, `evals/spoken.py`, since `register_of`
+  alone, which reads the caller's words, failed the Saudi forms of 5.2);
+- `notice`, on every turn (amended 2026-11-17, rule F's): no failure notice heard (the error or
+  cut-off line) and no clause the guard blocked, which f13 below asks;
 - `max_words` (45 by default), `max_options` (3: how many listed options' departure times the
   reply says, digits normalized);
 - `asks_repeat` (true when the caller asks to hear something again: the repeat check is off);

@@ -41,6 +41,10 @@ from flight_voice.evals.scenarios import Scenario, ScenarioError, load, waiting
 from flight_voice.evals.score import RunInfo
 
 MODEL: Final = "openai/gpt-oss-120b"  # the talker's model unless named (D-074)
+# A play's call ends this long after the caller's last turn, not the library's 120 s: no play
+# that goes on waits that long for the agent (a booking's timeout and a slow search are about
+# 20 s), so only a play stuck on the agent's turn reaches it, and it ends sooner.
+IDLE_S: Final = 60.0
 INPUT_BUDGET: Final = 8000  # tokens a request is budgeted to read: the prompt, history, results
 APP: Final = Path("apps") / "flight-voice-agent"
 CALLS: Final = APP / "evals" / "calls"  # under the run's tree
@@ -118,9 +122,14 @@ def checked_scenarios(folder: Path) -> tuple[Scenario, ...]:
 
 
 def call_settings(model: str, effort: str) -> VoiceSettings:
-    """The call's settings: the library's defaults, the talker's model and effort the run's."""
+    """The call's settings: the library's defaults, the talker's model and effort the run's,
+    and a call that ends `IDLE_S` after the caller's last turn."""
     return VoiceSettings.model_validate(
-        {"env": "test", "llm": {"model": model, "reasoning_effort": effort}}
+        {
+            "env": "test",
+            "llm": {"model": model, "reasoning_effort": effort},
+            "limits": {"idle_s": IDLE_S},
+        }
     )
 
 

@@ -54,8 +54,7 @@ OutcomeKind = Literal["done", "failed", "unknown"]
 OUTCOME_KINDS: Final[tuple[OutcomeKind, ...]] = get_args(OutcomeKind)
 Stuck = Literal["stuck", "provider"]
 ClockKind = Literal["virtual", "system"]
-# Builds a call as `TextCall(agent, llm=..., settings=..., caller=..., language=...,
-# clock=..., today=...)`.
+# Builds a call as `TextCall(agent, llm=..., settings=..., caller=..., language=..., today=...)`.
 CallFactory = Callable[..., TextCall]
 # Builds the agent a play measures, over its airline and trip book: the app's own.
 AgentOf = Callable[[Airline, TripBook], VoiceAgent]
@@ -100,8 +99,7 @@ def read_back_values(read_back: ReadBack, today: date) -> dict[str, JsonValue]:
 
 @dataclass(frozen=True)
 class TurnRead:
-    """What one said turn did (the module's docstring); `index` is its place in the scenario,
-    from 0."""
+    """What one said turn did (the module's docstring); `index`, its place in the scenario."""
 
     index: int
     fate: str
@@ -113,6 +111,7 @@ class TurnRead:
     asked_again: bool = False
     confirmed: bool = False
     ended: OutcomeKind | None = None
+    blocked: int = 0  # the reply's clauses the output guard blocked
 
 
 @dataclass(frozen=True)
@@ -186,6 +185,7 @@ class _Saying:
             asked_again=asked_again,
             confirmed=_holds(turn.expect.confirmed, BOOK_TRIP),
             ended=_ended(turn),
+            blocked=len(turn.blocked),
         )
 
 

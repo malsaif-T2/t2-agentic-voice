@@ -17,6 +17,7 @@ from flight_voice.evals.call import PlayRead, TurnRead
 from flight_voice.evals.checks import Failed, failures, options_said, turn_checks
 from flight_voice.evals.scenarios import Scenario
 from pydantic import JsonValue
+from t2_agentic_voice import Language
 from t2_agentic_voice.evals import HeardClause, TextToolCall
 
 TOMORROW: JsonValue = {"kind": "relative", "when": "tomorrow"}
@@ -153,6 +154,35 @@ def test_the_language_and_the_register_are_read_from_the_talkers_own_words() -> 
     assert failed(saudi, read(clause("أبي أعرف وش اليوم اللي تبيه", language="ar-SA"))) == []
     msa = clause("هل تريد السفر في الصباح أم في المساء؟", language="ar-SA")
     assert failed(saudi, read(msa)) == ["register"]
+
+
+def test_the_register_is_the_agents_own_saudi_or_msa() -> None:
+    """Rule F's amendment of 2026-11-17: the Saudi forms the instructions prescribe hold a Saudi
+    turn (`register_of` alone, the caller's list, read them as MSA); a form only MSA says fails
+    it; an MSA turn fails on a Saudi form, the agent's own among them."""
+    saudi = scenario({"says": "أبي أروح دبي"}, language="ar-SA")
+    for reply in ("متى ودك ترجع؟", "تمام، أي يوم تبون تسافرون؟", "أبشر.", "طيب."):
+        assert failed(saudi, read(clause(reply, language="ar-SA"))) == [], reply
+    for reply in ("سوف أبحث لك عن رحلة.", "ماذا تريد؟", "ولن أحجز شيئا."):
+        assert failed(saudi, read(clause(reply, language="ar-SA"))) == ["register"], reply
+    msa = scenario({"says": "أريد السفر إلى دبي"}, language="ar")
+    assert failed(msa, read(clause("متى تريد العودة؟", language="ar-SA"))) == []
+    for reply in ("متى ودك ترجع؟", "وش اليوم اللي تبيه؟"):
+        assert failed(msa, read(clause(reply, language="ar-SA"))) == ["register"], reply
+
+
+def test_a_failure_notice_or_a_blocked_clause_fails_the_turn() -> None:
+    made = scenario({"says": "No, don't book it."})
+    error = clause("Something went wrong on our side. Could you say that again?", phrase=True)
+    assert failed(made, read(error)) == ["notice"]
+    cut = clause("Sorry, that answer got cut off. Do you want it from the start?", phrase=True)
+    assert failed(made, read(clause("Alright."), cut)) == ["notice"]
+    assert failed(made, read(clause("Alright, nothing is booked."), blocked=1)) == ["notice"]
+    progress = clause("One moment, I'm checking.", phrase=True)  # a progress line is no failure
+    assert failed(made, read(progress, clause("Alright, nothing is booked."))) == []
+    saudi = scenario({"says": "لا تحجز"}, language="ar-SA")
+    notice = Language.saudi_arabic(greeting="هلا.").notices["error"]
+    assert failed(saudi, read(clause(notice, language="ar-SA", phrase=True))) == ["notice"]
 
 
 def test_the_words_and_the_options_said_are_counted() -> None:
