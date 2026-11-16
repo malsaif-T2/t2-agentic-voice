@@ -23,7 +23,7 @@ decisions (`D-NNN`), which are permanent. Living docs cite only milestones in th
 | M5 | Tickets, ticket status, and handoff | done ([007](completed/007-tickets-status-handoff.md)); its background try moved to its Future improvements |
 | M6 | Reliability and operations | planned |
 | M7 | The rehearsal: the owner's script passes | planned |
-| M9 | The voice experience at the level of top-tier voice agents | in progress ([010](active/010-top-tier-voice-experience.md), drafted, waiting for the owner) |
+| M9 | The voice experience at the level of top-tier voice agents | in progress ([010](active/010-top-tier-voice-experience.md)) |
 
 Status is `planned`, `in progress` (with links to its active plans) or `done` (with links to
 its completed plans). Between milestones, [garbage-collection rounds](../harness/garbage-collection.md)
@@ -378,6 +378,25 @@ targets hold at the cap on live calls.
   public API reviewed, each provisional module promoted or kept; versions stay `0.x` (D-018).
 
 *Done when* the script passes on every device and the owner accepts the report.
+
+**M9 · The voice experience at the level of top-tier voice agents.** On 2026-11-12, with M5 done,
+the owner asked to "skip M6 and M7 for now"; on 2026-11-15, after testers' calls, they asked to
+take the voice experience to the level of top-tier voice agents, Arabic first, and ruled to build
+it on main without a team's own agent; on 2026-11-16 they approved plan 010 as M9, with M6 and M7
+after it (D-099).
+- Each new question answered on its own, a search before any "I don't know", no reply said twice
+  unless asked; "Ole5" and its terms said the owner's way; the silence timer and the first connect
+  no longer the slow part of a call; a graceful ending.
+- The call's language following the caller: any question or request in the other language
+  switches it (the owner, 2026-11-16).
+- STT, voice and talker candidates measured against Whisper, Orpheus and `gpt-oss-120b` on our own
+  voices and calls; a half-cascade speech-to-speech trial, never the product path while every
+  sentence is checked before it is spoken.
+- *Library:* the fixes in the talker, the speaking rules and the session, each behind a setting
+  where it moves a measured outcome; each new provider an adapter behind its port.
+
+*Done when* plan 010's acceptance criteria hold: the long-call scenarios and run A pass, and two
+tester days read by the calls report meet its targets.
 
 ## The next phase, after M7
 

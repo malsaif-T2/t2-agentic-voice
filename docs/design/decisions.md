@@ -3611,3 +3611,25 @@ twice; DOC-REF: every `D-NNN` cited anywhere is a heading here), so keep its sha
   `tests/t2_agentic_voice/adapters/test_groq_chat_checks.py`,
   `tests/t2_agentic_voice/voice/test_stt_language.py` and
   `tests/t2_agentic_voice/test_loopback_interruptions.py`.
+
+## D-099 · M9, the voice experience at the level of top-tier voice agents, comes now, before M6 and M7 · 2026-11-16 · Accepted (the owner's approval of plan 010 on 2026-11-16)
+
+- **Context:** M5 closed on 2026-11-12, and that day the owner asked to skip M6 and M7: "Ok, now
+  that the pure voice agent is done, I want to skip M6 and M7 for now". On 2026-11-15 testers'
+  calls showed what still keeps the voice behind top-tier agents (old search results drowning new
+  questions, refusals without a search, repeats, Arabic hearing, the silence timer, the first
+  connect), and the owner asked to take the voice experience to that level. Voice for a team's own
+  agent is built on its own branch (`plan-009-integration`), which main does not hold; the owner
+  ruled on 2026-11-15: "No I want to build on todays main, while only getting voice improvements
+  from plan-9, I am not interested by integrating Langchain/Langgraph agents now. I just want to
+  elevate the voice experience".
+- **Decision:** plan 010 is M9 and comes now, built on main; M6 and M7 come after it. It takes
+  from the team's-agent branch only five voice pieces, by path, each commit naming its source.
+  The plan sets no dates and orders its work by gain per hour of work, the obvious wins first.
+- **Consequences:** M6's reliability work and M7's rehearsal wait. The roadmap holds no M8 on
+  main, since the team's-agent branch uses that number. If that branch is ever merged after this
+  plan, its pure-move splits conflict with this plan's edits in `agent/` and `voice/`: a later
+  decision, only if the owner wants it.
+- **Evidence:** the owner's words of 2026-11-16: "Ok, I approve the plan. Lets start implementing,
+  focus on what brings the best improvements by hour of work and obvious wins first." and "Lets
+  not set timelines, we will work at our pace"; plan 010.

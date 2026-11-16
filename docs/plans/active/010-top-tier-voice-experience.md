@@ -3,8 +3,11 @@
 Status: active · Milestone: M9 · Started: 2026-11-15
 
 *Drafted on 2026-11-15 at the owner's request of that day, from 13 studies, two skeptics per
-decision-driving claim and three reviews; built on today's main, as the owner ruled. Not yet
-approved; each question is asked, explained, when the work first needs it. Every number describes
+decision-driving claim and three reviews; built on today's main, as the owner ruled. Approved by
+the owner on 2026-11-16 with their amendments ("The owner's decisions"): no dates, the language
+switched by any question or request in the other language, the providers' keys offered at once,
+and the work ordered by gain per hour of work. Each open question is asked, explained, when the
+work first needs it. Every number describes
 the calls of 2026-11-11, 11-12 and 11-15 on the owner's laptop, or the owner's own voice on the
 golden set (D-006), unless it names another source. Builders read "Notes for the builders" first.*
 
@@ -22,8 +25,10 @@ golden set (D-006), unless it names another source. Builders read "Notes for the
   left out), and 5 copied an earlier reply word for word.
 - **Nobody can change language mid-call today.** The language is fixed at join (D-038), and
   Whisper, told the wrong language, translates into fluent wrong text, so no check of the text can
-  catch it. A switch on request is reliable and needs no new provider; detecting a switch nobody
-  asked for works on longer turns with Whisper's own detection, not with the classifier (D-086).
+  catch it. The owner ruled that any question or request in the other language switches the call,
+  both ways (2026-11-16), so each turn's language is detected, Arabic or English only: Whisper's
+  own detection works on longer turns today, and the providers' language scores and a classifier
+  held to the two languages are measured beside it (2.5).
 - **Much of what sounds slow or broken is not a model.** 1 turn in 7 waits for a 3-second silence
   timer (24 of 168): about half of them short finished turns such as "hello", most of the rest
   finished sentences. The first call after a restart took 24 s to connect (TD-089). The "let me
@@ -40,32 +45,37 @@ golden set (D-006), unless it names another source. Builders read "Notes for the
   before it is spoken): a model that speaks directly speaks before our guard reads its text. In two
   calls the guard blocked two replies, a reply leaked the talker's reasoning and one ran on into a
   dozen questions, all caught in text first. Audio in, text out keeps the guard: a trial at the end.
-- **Two lines of work at once.** Without a new provider, from the day of approval: measuring
-  (Phase 0); Phase 1's fixes (the search, the answers' rules, the repeats, how "Ole5" and symbols
+- **Two lines of work at once.** Without a new provider: measuring (Phase 0); Phase 1's fixes (the search, the answers' rules, the repeats, how "Ole5" and symbols
   are said, the silence timer, the first connect, the widget's quick fixes, a short line as the
-  search starts); then turn-taking and the switch by voice (2) and the widget's redesign (3).
-  Beside it, as the owner's D-004 amendment, keys and listeners arrive: the STT, voice and talker
-  bake-offs (4), then streaming STT and language detection (5) and the speech-to-speech trial (6).
+  search starts); then turn-taking and the language switch (2) and the widget's redesign (3).
+  Beside it, on the keys the owner offered (2026-11-16) and the listeners: the STT, voice and
+  talker bake-offs (4), then streaming STT (5) and the speech-to-speech trial (6). No dates are
+  set: the work goes by gain per hour of work, the obvious wins first, as the owner asked.
 - **The owner's time:** about 4-5 hours of the owner's own, two tester days, 1.5 hours of someone
   who knows Ole5, and an hour each from 5-10 native Saudi listeners ("What the owner does").
 
 ## What happens first
 
-Once the plan is approved (Q1, Q2), with Q3, Q4, Q16 and Q17 asked the same day so that the
-recordings, the Ole5 tester, the keys and the listeners arrive while the work runs:
+The owner approved the plan on 2026-11-16 and asked for the best improvement per hour of work and
+the obvious wins first, with no dates. So each step starts as soon as what it needs is done:
 
-1. **Days 1-2: four fixes with a direct test** (evaluation.md's exception for reliability fixes),
-   each with the pure-move split its module needs: "Ole5" said the owner's way (1.7); "OTP" no
-   longer taken for the agent's echo (1.12); the first call after a restart connecting in under 2 s
-   (1.13); the widget's quick fixes and a feedback button after each call (1.14).
+1. **The obvious wins with a direct test** (evaluation.md's exception for reliability fixes), each
+   with the pure-move split its module needs: "Ole5" said the owner's way (1.7); "OTP" no longer
+   taken for the agent's echo (1.12); the first call after a restart connecting in under 2 s
+   (1.13); the widget's quick fixes and a feedback button after each call (1.14); the line at the
+   search (1.15) once Q8 is answered.
 2. **Beside them:** the calls report over the stored logs (0.1); today's code run once at be1a588 in
-   a clean worktree as the baseline (run S's ten, run A dev, K0, `poe eot`); the recording session
+   a clean worktree as the baseline (run S's ten, run A dev, K0, `poe eot`); the long-call
+   scenarios (0.2); a guide to the providers whose keys the owner offered; the recording session
    (0.6) once Q3 is answered.
-3. **From day 2-3:** Block 0, then wave 1 (about 4-5 agent-days), Phase 0's other rows beside it.
-4. **The first tester day about 7-9 agent-days after approval,** on wave 1 (wave 2 built meanwhile
-   behind settings left off); **the second about 8-10 agent-days later,** on wave 2 and Phase 2.
-5. **Beside all of it:** the STT bake-off once keys and 0.6's recordings exist; the voice bake-off
-   once Q14 picks the voice's gender; the Qwen arm (Groq) in Phase 1; the redesign after 1.14.
+3. **Then wave 1's search and answer fixes** in L's registered order (1.1, 1.4, 1.2 with 1.3, 1.5
+   with 1.6), each kept on its rule, with 1.11 and 1.8 beside them once Q9 and Q11 are answered.
+4. **The first tester day** on wave 1 (wave 2 built meanwhile behind settings left off); **the
+   second** on wave 2 and Phase 2.
+5. **Beside all of it:** the STT bake-off, each candidate's language detection among its measures,
+   as soon as keys exist (on today's dev split first, 0.6's items added once recorded); the voice
+   bake-off once Q14 picks the voice's gender; the Qwen arm (Groq) in Phase 1; the redesign after
+   1.14.
 
 ## Words used here
 
@@ -290,7 +300,7 @@ The owner asked how top-tier agents do it, to follow them or do better. From the
 | Search before "I don't know", retry once with other words; a variety rule and a loop breaker | OpenAI's and ElevenLabs' prompting guides, Decagon | 1.2, 1.3, 1.6 | Same |
 | The latest turn over the first; old tool results trimmed | Laban et al.; Pipecat's summaries | 1.4 | Same |
 | "Say that again" replays the last answer word for word | OpenAI's guide | 1.5, with the unheard rest after a cut | Same, and more |
-| A switch tool the model calls, most permissive early in the call, moving voice, instructions and retrieval together | ElevenLabs (`language_detection`), Deepgram, Retell | 2.5 by voice; 5.3 by detection; Q20 | Same |
+| A switch tool the model calls, most permissive early in the call, moving voice, instructions and retrieval together | ElevenLabs (`language_detection`), Deepgram, Retell | 2.5: each turn's language detected, any question or request in the other language switching the call (the owner's ruling) | Same, held to Arabic and English |
 | Text normalized for speech after the model | ElevenLabs, Vapi | 1.7, 1.8 | Same |
 | One voice for both languages | ElevenLabs' and Inworld's voices | a criterion in Phase 4; 1.9 until then | Same goal |
 | An audio-reactive orb and a live transcript | ElevenLabs UI, ChatGPT voice | Phase 3, subtitles by default | Same, captions optional: no caller must read (D-075) |
@@ -303,8 +313,8 @@ The owner asked how top-tier agents do it, to follow them or do better. From the
 A caller, Saudi, MSA or English, gets a call that feels like a top-tier agent's: it hears them right
 the first time, answers each new question on its own, searches before it says it does not know,
 never says the same thing twice unless asked, starts speaking about as fast as a person would, says
-Ole5 and its numbers the way the owner chose, ends a call gracefully, and lets the caller change
-language by voice. Every invariant holds as written, the library and app stay split, and nothing
+Ole5 and its numbers the way the owner chose, ends a call gracefully, and follows the caller into
+the other language as soon as they ask a question in it. Every invariant holds as written, the library and app stay split, and nothing
 relies on a screen. Each gain is measured by a rule registered before its result, each provider or
 model change kept only when it wins on our own calls and voices. The plan builds on today's main and
 takes from the team's-agent branch only what improves the voice on its own.
@@ -332,17 +342,19 @@ takes from the team's-agent branch only what improves the voice on its own.
   at most 3.0 s and p90 at most 4.0 s; live ones by outcome with each n, a p90 only on 20 or more.
 - [ ] Each ported piece names its source commit; the team's-agent branch is unchanged.
 
-**Phase 2 (turn-taking and the switch by voice)**
+**Phase 2 (turn-taking and the language switch)**
 - [ ] Turns ended by the silence timeout under 2% live (today 14%); cut-offs not up on `poe eot`, its
   long-pause items among them; zero sends on the "yes, [pause] but" items; splits judged on its
-  pause items. A spoken switch works both ways in one turn, none on the dev split's ordinary turns.
+  pause items. A question or request in the other language switches the call in that turn, both
+  ways; no switch on the dev split's ordinary turns or on short replies ("yes", "okay").
 
 **Phases 3 to 6**
 - [ ] The widget's redesign reviewed by the owner, with no rise in false stops.
 - [ ] Each bake-off decided by its registered rule and the owner's ruling, Orpheus, Whisper and
   `gpt-oss-120b` staying the baselines and fallbacks; no audio or text reaches a new provider before
   its trust-boundary row, data flow and secret setting exist.
-- [ ] Streaming STT only if a candidate keeps its batch accuracy; detection only on run H's rule; the
+- [ ] Streaming STT only if a candidate keeps its batch accuracy; a provider's language scores only
+  on run H's rule; the
   speech-to-speech trial reported, every hard metric at zero.
 
 **Every phase**
@@ -356,6 +368,16 @@ The owner's ruling of 2026-11-15, given while the first draft was being written:
 - 2026-11-15: "No I want to build on todays main, while only getting voice improvements from
   plan-9, I am not interested by integrating Langchain/Langgraph agents now. I just want to elevate
   the voice experience"
+
+The owner's approval of 2026-11-16, given with replies to the draft's report (their answers to Q1,
+Q2, Q16 and Q20 are under those questions):
+
+- 2026-11-16, on the draft's "Days 1-2: four quick fixes": "Lets not set timelines, we will work at
+  our pace"
+- 2026-11-16: "Ok, I approve the plan. Lets start implementing, focus on what brings the best
+  improvements by hour of work and obvious wins first."
+
+So the plan sets no dates and orders its work by gain per hour ("What happens first").
 
 So this plan builds on main at be1a588, does not wait for the team's-agent branch or build on it,
 and takes none of its team's-agent work (LangChain, LangGraph, the relay, the talker front, the
@@ -372,6 +394,7 @@ words (`- YYYY-MM-DD: "..."`).
   level of top-tier voice agents" (the number before it is the team's-agent branch's), linking this plan, as the owner said on 2026-11-12 ("I want to
   skip M6 and M7 for now"); a new decision on main, since that order's entry exists only on the
   team's-agent branch. **Recommended:** approve.
+  - 2026-11-16: "Ok, I approve the plan." Recorded as D-099.
 - **Q2. The five pieces from the team's-agent branch**, each commit naming its source: (1) the check
   that lets a short "looking up X" line play only if every word came from the caller (1.17); (2) the
   rules for sending several sentences to the voice in one request, for fewer pauses (wiring them in
@@ -379,6 +402,7 @@ words (`- YYYY-MM-DD: "..."`).
   (3) the chat connection kept warm, so the first reply is not slow (1.13); (4) a longer wait when
   the caller stops on a word like "with" or «في» (2.3); (5) each turn's record of how sure the STT
   and the end-of-turn model were (0.7, 1.21). **Recommended:** these five; nothing else.
+  - 2026-11-16: "Ok, I approve the plan." So the five, each by path, the packing behind a setting.
 - **Q3. Recordings, and what testers are told.** No tester audio was kept on 11-15. (a) A 30-minute
   recording session (0.6): you and any tester who agrees read a list of today's failures. (b)
   Testers' live calls recorded: the widget's signed token, the box ticked, `privacy.record_audio` on.
@@ -447,6 +471,14 @@ words (`- YYYY-MM-DD: "..."`).
   (STT, the speech-to-speech trial, a listening sample); Inworld, SILMA, optionally Voho (TTS);
   Google (a Gemini Flash talker arm, a Gemini Live sample); xAI (a Grok Voice sample).
   **Recommended:** amend it for measurement on the owner's and testers' calls; production stays Groq.
+  - 2026-11-16, on the draft's "Arabic speech-to-text is the biggest gap": "I can provide some new
+    models providers for you if you make a search and give the best ones to test"
+  - 2026-11-16, on the draft's "Once you allow other providers and send keys: Side-by-side
+    comparisons of speech-to-text, voice and talker models": "I can provide this today if you
+    guide me to the best options we can have"
+  - So other providers are measured on the owner's and testers' calls, after a guide to the best
+    ones to sign up for; a provider becomes a default only on its bake-off and the owner's ruling.
+    The amendment of D-004 is written when the first provider's adapter lands (Phase 4's Block 0).
 - **Q17. The cost cap and the listeners.** $10 a spending run after a dry estimate; 5-10 native Saudi
   listeners, about an hour each, rating about 40 lines from at most three candidates and Orpheus,
   blind. **Recommended:** as said.
@@ -461,6 +493,16 @@ words (`- YYYY-MM-DD: "..."`).
   long turn in the other language, switch the reply at once, only in the first two turns, or after
   two such turns; the classifiers (D-086) retired if unused. **Recommended:** on request at once; on
   detection in the first two turns or after two long turns.
+  - 2026-11-16, on the draft's "Switching when the caller asks ("English please") is reliable and
+    needs no new provider": "No, any English question or request should be enough to change the
+    language and vice versa. We can achieve this be trying other providers STT, maybe they have
+    auto-detection, they give probabilities or we use a language classifier to lock the language
+    between Arabic and English."
+  - So any question or request in the other language switches the call in that turn, both ways;
+    short replies ("yes", "okay", "thanks"), names and product words keep the call's language.
+    Each turn's language is detected, held to Arabic and English: Whisper's own detection first
+    (Groq), then each STT candidate's language and score and a two-language classifier, kept on H
+    (2.5). D-038's amendment is written when 2.5 lands.
 - **Q21. The widget.** Who it is for (testers here, or the website later); captions off, a subtitle
   line or the full transcript; a card with the ticket number (opt-in, an extra D-075 allows); a
   "caller speaking" message in `t2v/1`. **Recommended:** subtitles and the card; the message proposed.
@@ -470,12 +512,13 @@ words (`- YYYY-MM-DD: "..."`).
 
 ### When each question comes
 
-- **At approval:** Q1, Q2; and Q3, Q4, Q16, Q17, so the recordings, the Ole5 tester, the keys and
-  the listeners arrive while Phases 0 and 1 are built.
-- **Before wave 1 (days 2-3):** Q6 to Q12. **Before the first tester day:** Q5.
+- **At approval:** Q1, Q2, Q16 and Q20, answered on 2026-11-16; Q3, Q4 and Q17 next, so the
+  recordings, the Ole5 tester and the listeners arrive while Phases 0 and 1 are built.
+- **Before wave 1:** Q6 to Q12, Q8 and Q9 first (their rows are the cheapest wins). **Before the
+  first tester day:** Q5.
 - **Before wave 2:** Q13, Q15, and Q14 (sooner if the voice bake-off is ready); Q18 before the
   talker arm, which may run during Phase 1.
-- **Before Phase 2:** Q20. **Before Phase 3:** Q21. **After Phase 4's STT result:** Q19. **Before
+- **Before Phase 3:** Q21. **After Phase 4's STT result:** Q19. **Before
   Phase 6:** Q22. **Not scheduled:** whether the team's-agent branch is ever merged after this.
 
 ## What we take from the team's-agent branch
@@ -569,7 +612,7 @@ violations; the held-out long scenarios read once; then the first tester day (Q5
 
 **Gate:** each wave 2 change kept or dropped on its own rule; then the second tester day.
 
-### Phase 2 · Turn-taking and the switch by voice (no new provider)
+### Phase 2 · Turn-taking and the language switch (no new provider first)
 
 Built after wave 1, beside wave 2; its rules (E2, E3, 2.4's, H) registered at its Block 0.
 
@@ -579,7 +622,7 @@ Built after wave 1, beside wave 2; its rules (E2, E3, 2.4's, H) registered at it
 | 2.2 | Start at the detector's stop, about 225 ms before Smart Turn's verdict, kept or dropped by it; an early start for turns said over a reply (TD-117) | library `voice/turn_hold.py`, `voice/session/talking.py` | medium | about 225 ms off every turn; about 370 ms off turns said over a reply | E's cut-offs unchanged; live first audio by kind, with each n | races in the early-start logic |
 | 2.3 | The hold set by the words (P4): a longer grace when the held transcript ends on a function word (0.6 s, as the branch settled), a short one after a finished question | library `voice/turn_hold.py`, `talking.py`, `core/settings/turns.py`, `domain/heard_match.py` (P4) | medium | fewer split turns; 300-400 ms off once the model is faster | E3 on the long-pause and new function-word pause items | text judged from a possibly wrong transcript |
 | 2.4 | A duplicate chat request when no first token arrives by about 900 ms: no tool of either request runs until one is chosen; the loser is cancelled in its own cancel scope (D-060) and leaves nothing in the history or `Memory` | library `adapters/groq_chat.py`, `agent/turn.py` | medium | the first token's tail (p90 1,072 ms after the transcript, max 2,719) | run K's model's own time, p90 over two passes; requests per call | double requests on a slow minute |
-| 2.5 | The switch by voice, both ways (Q20): a short list in both scripts, including how Whisper writes these phrases when told the other language («الإنجليزية من فضلك»), and a library `switch_language` tool for every other wording; one call-language value then moves the STT language, the reply, the voice, the fixed phrases and the knowledge query's language together, and the talker says one line in the new language; a switch while a read-back waits drops it unconfirmed and reads it again in the new language, a new receipt required; TD-011 paid (Whisper's names mapped to codes exactly) | library `agent/language.py`, `voice/stt_language.py`, `voice/session/call.py` (360: a split first), `domain/words.py`, the tool in `actions/` (amending D-038) | medium | a caller who picked the wrong language, or wants the other, gets it in one turn | H on 0.6's switch items; a scripted two-turn call each way; no switch on the dev split's ordinary turns | a false trigger ("is there an English version of the form?"): the model's rail |
+| 2.5 | The language switch, both ways (Q20, the owner's ruling): each turn's language detected, Arabic or English only; first arm, Whisper told no language on turns of at least 1.2 s of voiced speech (from where the speech stopped), sent beside the call-language request so no time is lost; later arms, each STT candidate's own language and score (Phase 4) and a classifier held to the two languages (D-086's, its length gate counting voiced speech only); a question or request in the other language switches the call at once, short replies (yes, okay, thanks), names and product words keeping the call's language; a short list of switch requests in both scripts, including how Whisper writes them when told the other language («الإنجليزية من فضلك»), and a library `switch_language` tool for every other wording; one call-language value then moves the STT language, the reply, the voice, the fixed phrases and the knowledge query's language together, and the talker answers that turn in the new language; a switch while a read-back waits drops it unconfirmed and reads it again in the new language, a new receipt required; TD-011 paid (Whisper's names mapped to codes exactly) | library `agent/language.py`, `voice/stt_language.py`, `domain/turn_language.py`, `voice/session/call.py` (360: a split first), `domain/words.py`, the tool in `actions/` (amending D-038) | medium | a caller who asks in the other language is answered in it that turn | H on 0.6's switch items and the dev split's mixed items, each arm; a scripted call each way; no switch on the dev split's ordinary turns or short replies | an English product word or quote in an Arabic question flipping the call: the two-language score and the length gate |
 
 **The latency budget** (a plain turn, medians, live): today about 2.1 s from the caller's last sound
 to audio heard; after Phase 1 about 1.5 s; after 2.1-2.3, still Groq only, about 1.1-1.3 s; under
@@ -587,7 +630,7 @@ to audio heard; after Phase 1 about 1.5 s; after 2.1-2.3, still Groq only, about
 
 ### Phase 3 · The widget's redesign
 
-Track F, once 1.14 lands, about 3-4 agent-days beside the rest (Q21): **an orb and three screens**
+Track F, once 1.14 lands, beside the rest (Q21): **an orb and three screens**
 (before the call: the language, one large call button, a collapsed options panel, "headphones work
 best"; during it: an orb driven by both voices' levels, a visible "I hear you" during an overlap,
 subtitles, Mute, CC and a red End within thumb reach, mirrored right to left; after it: the
@@ -610,7 +653,7 @@ this laptop, a candidate past the bound going to the owner before its dev passes
 
 | Area | Arms (baseline first), with their exact settings | Why these | Expected | Owner's part |
 | --- | --- | --- | --- | --- |
-| STT, batch (today's port) | B0 Whisper large-v3 + W1, twice; W2 the Arabic vocabulary (Groq, no key); Scribe v3 (keyterms: the app's `VOCABULARY` and 0.6's Arabic terms, registered before the run; Arabic with English as second language); Cohere Transcribe Arabic (no detection, so ar for Arabic and mixed items and en for English, the owner's call before the run; at the trial key's 5 requests a minute a dev pass takes about 1 hour and two replicates use about 60% of its 1,000 calls a month, a production key if you want it faster); Speechmatics' Arabic-English pack; OpenAI `gpt-transcribe`, language named, the W1 prompt | the best independent Saudi and code-switching results, and drop-ins for one request a turn | gains on terms and mixed sentences (term recall 0.333; 2 of 26 mixed variants right) and short Saudi words; little room on full Saudi sentences (0.344 is near the published floor); under about 6 items on exact match cannot be told from noise (D-024), hence CER too | keys; 0.6's recordings |
+| STT, batch (today's port), each candidate's language detection and score read for 2.5 | B0 Whisper large-v3 + W1, twice; W2 the Arabic vocabulary (Groq, no key); Scribe v3 (keyterms: the app's `VOCABULARY` and 0.6's Arabic terms, registered before the run; Arabic with English as second language); Cohere Transcribe Arabic (no detection, so ar for Arabic and mixed items and en for English, the owner's call before the run; at the trial key's 5 requests a minute a dev pass takes about 1 hour and two replicates use about 60% of its 1,000 calls a month, a production key if you want it faster); Speechmatics' Arabic-English pack; OpenAI `gpt-transcribe`, language named, the W1 prompt | the best independent Saudi and code-switching results, and drop-ins for one request a turn | gains on terms and mixed sentences (term recall 0.333; 2 of 26 mixed variants right) and short Saudi words; little room on full Saudi sentences (0.344 is near the published floor); under about 6 items on exact match cannot be told from noise (D-024), hence CER too | keys; 0.6's recordings |
 | STT, streaming (Phase 5's port) | Scribe v3 Live (multilingual, a keyterm library; raw WebSocket, not the SDKs or Pipecat), Soniox stt-rt-v6 (language hints; the agent's own text fed in to drop its echo), Speechmatics' agent endpoint | partial words, end-of-turn signals, language tags | only for the batch winner's vendor, the same items at real-time pace | Q19 |
 | TTS | Orpheus (abdullah, troy); ElevenLabs Flash v2.5 (stream-input WebSocket, dictionaries in its first message) and v4 Turbo with 2-3 Saudi library voices; Inworld TTS-2 (Saudi, and Najdi if it changes anything); SILMA's Najdi model (250 characters a request on its simple WebSocket, no cap on its streaming-input one); Voho optional | one voice for both languages, pronunciation dictionaries, streaming input, Saudi voices | a gain only where listeners judge a voice Saudi; the one independent number (dialect MOS 3.70) proves nothing for ours | keys; Q14's voice; Q17's listeners |
 | Talker | `gpt-oss-120b` at medium (today); `qwen/qwen3.8-27b` with no reasoning (Groq, Q18, may run during Phase 1); Gemini 3.5 or 3.7 Flash at its lowest thinking (Q16) | the Arabic answer-from-passages scores (5.98; 7.29 for Qwen's predecessor; 9.29; judged by GPT-4.1); an English 30-turn agent benchmark gives qwen3.8 96.0% on another host against gpt-oss-120b's archived 86.3% | more long scenarios passing every check; faithful Arabic answers, read by the trusted check | Q16, Q18 |
@@ -618,15 +661,15 @@ this laptop, a candidate past the bound going to the owner before its dev passes
 If hosting in the Kingdom becomes a rule, the open models (Cohere, Jais-ASR, Audar, Voxtral Arabic;
 Fasee7-Najdi) and Speechmatics' containers are the routes, in M6.
 
-### Phase 5 · Streaming STT, the early search and language detection
+### Phase 5 · Streaming STT and the early search
 
-After Phase 4's STT result (Q19, Q20). The classifiers (D-086) retire if 5.3 passes.
+After Phase 4's STT result (Q19). The classifiers (D-086) retire if 2.5 keeps another arm.
 
 | # | Change | Where | Effort | Gain | Measured by | Risk |
 | --- | --- | --- | --- | --- | --- | --- |
 | 5.1 | A streaming STT port and bridge, partial words feeding the overlap rule and the end of turn | library `domain/ports/`, `voice/stt_bridge.py` | large | 150-300 ms a turn; overlap decisions without window requests | the streaming arm; `poe eot`, `poe overlap`, run T | the largest rewrite here; streaming accuracy below batch |
 | 5.2 | A search on the heard words started as the turn ends, its passages given to the first request as data (the model may search again): an amendment of invariant 4 limited to the read-only knowledge search, no action's tool by this path, no result recorded as the model's own call | library `agent/turn.py`, `agent/tool_calls.py` | large | most knowledge turns skip a round trip | run T, L, K's retrieval | a design change, proposed first; noise in small talk |
-| 5.3 | Detection: the chosen STT's segment language if Phase 4 picks a code-switching one; else Whisper with no language named on turns of at least 1.2 s of voiced speech (from where the speech stopped, not the bytes held), in three registered prompt arms (none, the current language's, both languages' terms), the gate fixed before the run; hysteresis on the reply language only (Q20), never on the STT's | library `domain/turn_language.py`, `voice/stt_language.py`, `voice/stt_bridge.py` | medium | an unannounced switch followed | H | an English quote flipping an Arabic call's reply: the hysteresis |
+| 5.3 | The streaming STT's own language: its segment language and score replace 2.5's detection if Phase 4 picks a code-switching or language-scoring streaming candidate and it is better on H; the switch rule unchanged | library `domain/turn_language.py`, `voice/stt_language.py`, `voice/stt_bridge.py` | small | the switch decided on partial words, before the turn ends | H | a partial word flipping the reply: the rule reads the whole turn |
 
 ### Phase 6 · Speech-to-speech, a measured trial
 
@@ -698,14 +741,14 @@ H, each once, the kept arm and its baseline; none for TTS (the panel's lines are
 | STT · Bake-off | Phase 4 | D-025's rule on the dev split with 0.6's items; B0 and each candidate twice, in the same session; a focus set named before the run (`--focus`: mixed, terms, Saudi confirmations, 0.6's live failures); B0 first reproduces W1's 129 of 292 on the items it had | better beyond the noise in both replicates by the sign test by item on exact match or on per-item CER, neither worse; term recall no worse on at least 10 term items a language (Ole5, OTP, كلمة المرور, تسجيل الدخول, معلّق); small strata (mixed, MSA, each device) at most 1 item worse, Saudi and English by the sign test; stop words not worse; rule F (at least 3 of 9 empty references blanked, 0 of the speech); latency no worse than B0's plus its spread; 8 kHz and price reported | see Phase 4's table |
 | TTS · Bake-off | Phase 4 | about 30 Arabic and 10 English lines from these calls and the golden set. A pre-screen to at most three candidates and Orpheus: the objective table (first audio p50 and p90 from this laptop, edge and join silence, characters a second, round-trip CER through Whisper), a 20-line smoke, the owner's ear on 5 lines each. Then the blind, shuffled panel (Q17), dialect and naturalness 1-5 per line, flags for a wrong word, a wrong pause, "not Saudi", clipped, a voice change; 3-4 hidden repeats a listener, one whose repeats differ by more than 1 point on average set aside; about an hour | the mean over listeners beats Orpheus's by 0.5 or more on both dialect and naturalness and is better on at least 21 of 30 Arabic lines (two-sided sign test, p < 0.05); no more wrong-word flags (one counts when two listeners flag the same clip); first audio p90 no worse than Orpheus's in the same session plus 100 ms; to speak English too, no worse than troy; the owner chooses among those that pass | see Phase 4's table |
 | T · Talker | Phase 4 (T1 may run in Phase 1) | L, A, the model's own time in text runs, twice an arm, one run T for the kept one: T0 `gpt-oss-120b` medium, T1 `qwen/qwen3.8-27b` no reasoning, T2 Gemini Flash at its lowest thinking | zero violations in every play; more L scenarios passing every target check in 3 of 3 than T0, none failing one T0 passed; the first clause no slower beyond T0's spread; the owner's ear accepts its Saudi register; no more invented answers than T0; once the judge is trusted, right answers better or equal by the sign test; else `gpt-oss-120b` stays | see Phase 4's table |
-| H · Language | 2.5, 5.3 | run H on the dev split and 0.6's switch items; a scripted two-turn call each way | run H's keep rule (conditions 1 to 4); the re-send rate reported | a switch in one turn; detection as replayed (37 of 37, 104 of 121) |
+| H · Language | 2.5, 5.3 | run H on the dev split, its mixed items and 0.6's switch items; arms H1 Whisper told no language (Groq), H2 the two-language classifier, H3 each STT candidate's own language and score; a scripted two-turn call each way | run H's keep rule (conditions 1 to 4), short replies never switching; the re-send rate reported | a switch in the turn asked; detection as replayed (37 of 37, 104 of 121) |
 | S2S · Trial | Phase 6 | run K's audio arm on the 136 spoken dev variants against the cascade run again on them at the trial's commit (sign test by item, by stratum); run A as audio; run T | worth a plan when Saudi strata are better beyond the noise (read only after the trusted check passes on the audio arm's own answers) and first audio stays within the budget; any violation fails the arm; any control token, reasoning or unguarded claim ends the trial | unknown: no S2S model has Saudi evidence |
 
 **Run budget** (wall clock from plans 006 and 007 where measured, else the agent's estimate):
 
 | Run | When | Passes | Wall clock a pass | Cost a pass |
 | --- | --- | --- | --- | --- |
-| Baselines at be1a588: run S's ten, run A dev, K0, `poe eot` | days 1-2 | 1 each | about 1.5 h in all | about $0.3 |
+| Baselines at be1a588: run S's ten, run A dev, K0, `poe eot` | first | 1 each | about 1.5 h in all | about $0.3 |
 | L (run S's machinery, three plays) | wave 1 (4 steps), wave 2 (about 4) | about 9 | about 30-45 min | about $0.1-0.2 |
 | A dev (three plays) | waves 1 and 2, the talker arms | about 6 | 31-36 min | $0.10-0.12 |
 | K0; run K's retrieval | wave 1 | 2; 1 | minutes; about 30 min | $0; about $0.2 |
@@ -722,22 +765,19 @@ pass per run kind at a wave's commit serves C, L, R0, T0, P0 and J0 together.
 ## What the owner does
 
 - **At approval, about 1 hour:** approve (Q1, Q2); answer Q3, Q4, Q16, Q17; sign up for Q16's keys.
-- **Days 1-3, about 45 minutes:** the recording session (0.6, with any tester who agrees); Q6-Q12.
+- **Early, about 45 minutes:** the recording session (0.6, with any tester who agrees); Q6-Q12.
 - **Someone who knows Ole5, about 1.5 hours:** the judge's sheet or the blind read; the scenario
   facts the agent drafts from the knowledge base.
 - **About six short listens of 10-15 minutes:** Q11's spoken forms; the English voice nearest
   abdullah (1.9); the joins (J); the rotated lines (1.15); the read-back and ending lines (1.18,
   1.19); the talker arm's Saudi register (T). **One persona session**, about 30 minutes (Q14).
-- **Two tester days** (Q5), about 2 hours each to run: about 7-9 agent-days after approval, then
-  about 8-10 later. **The voice bake-off:** your ear on 5 lines a candidate (15 minutes); 5-10
+- **Two tester days** (Q5), about 2 hours each to run: the first after wave 1, the second after
+  wave 2 and Phase 2. **The voice bake-off:** your ear on 5 lines a candidate (15 minutes); 5-10
   native Saudi listeners, an hour each (Q17). **The widget:** its recorded demo (15 minutes).
-
-The agent's time, roughly: Phase 0 and wave 1 about 7-9 agent-days; wave 2 and Phase 2 about 8-10;
-Phase 3 about 3-4 beside them; Phase 4 about 4-6 once the keys arrive; Phase 5 about 5-8; Phase 6 3.
 
 ## Tracks
 
-The day 1-2 fixes (1.7, 1.12, 1.13, 1.14) land first, with their splits (`domain/interruptions.py`,
+The obvious wins (1.7, 1.12, 1.13, 1.14, and 1.15 once Q8 is answered) land first, with their splits (`domain/interruptions.py`,
 `voice/calls.py`). Then **Block 0**, one agent, merged before the tracks: the calls report's event
 reader; the scenario format's new fields (the held-out flag, keyword checks with variants); the
 Groq-only type changes (`qwen/qwen3.8-27b` in `LlmModel`, `reasoning_effort` "none", the
@@ -790,9 +830,17 @@ Block 0.
   review and two skeptics per decision-driving claim; rewritten the same day to build on main after
   the owner's ruling; revised after three reviews (the order, the safety of each new spoken path, the
   measurement's rules); waiting for the owner's approval.
+- 2026-11-16: approved by the owner, with their replies recorded under "The owner's decisions"
+  and Q1, Q2, Q16 and Q20; dates removed, "What happens first" ordered by gain per hour, 2.5 made
+  the switch on any question or request in the other language, 5.3 left to a streaming STT's own
+  language; D-099 written and the roadmap row set in progress.
 
 ## Decision log
 
 - 2026-11-15: the plan drafted as M9 on today's main, measurement first, in two lines of work (no new
   provider; the owner's keys), taking five voice pieces from the team's-agent branch by path;
   nothing decided until the owner answers Q1 and Q2.
+- 2026-11-16: the owner approved the plan as M9 (D-099) with the five ported pieces; other
+  providers measured on the keys they offered, a guide to the best ones first; the call's language
+  switched by any question or request in the other language, from each turn's detected language
+  held to Arabic and English; no dates, the work by gain per hour, the obvious wins first.
