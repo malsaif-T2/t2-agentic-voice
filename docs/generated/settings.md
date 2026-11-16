@@ -172,6 +172,7 @@ Text-to-speech: the adapter, a model and a voice for each language, and what is 
 | `T2V_TTS__CACHE_CLAUSES` | true or false | `true` | — | Whether every clause the agent speaks in a call with a talker is kept on disk under the storage folder by its exact text, its language, its voice and the adapter that made it, so the same clause plays again with no request; the echo's words said back are never kept. On by default, as the owner ruled: it costs only disk, bounded by clause_cache_mb. |
 | `T2V_TTS__CLAUSE_CACHE_MB` | integer | `512` | — | The most disk the clause cache keeps, in megabytes; past it, the clauses played longest ago are removed. |
 | `T2V_TTS__SPOKEN_NUMBERS` | one of as_written, by_register | `as_written` | — | How a reply's numbers, times and dates are said: as_written reads each run of digits as a number (num2words' MSA in Arabic) or an ID; by_register says them in the caller's register, Saudi or MSA words in Arabic, a time as a clock says it with its part of the day, an ISO date with its weekday and month. |
+| `T2V_TTS__SPOKEN_KEY_COMBINATIONS` | true or false | `false` | — | Whether a key combination in a reply is said as its keys, its plus signs left out ("Ctrl + Shift + R" is said "Control Shift R"; in Arabic, by the Arabic names of its keys); off, it is said as written. |
 | `T2V_TTS__TRIM_SILENCE` | true or false | `false` | — | Whether the silence the model puts before its speech is trimmed; off, the audio plays as it comes. |
 
 ## `turns`

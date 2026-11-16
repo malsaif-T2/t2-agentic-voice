@@ -10,14 +10,16 @@ holds no such form), which a team's measurement holds a reply to; and the stray-
 the agent's languages do not write taken out or rewritten; and numbers, times, dates, lengths
 of time and amounts said by register (`speak_number`'s `register`, `speak_time`, `speak_date`,
 `speak_duration`, `speak_amount`, each taking a `register` of "saudi" or "msa" for an Arabic
-reply), for the lines a team renders in code. Provisional (D-021). A facade: it only re-exports
-(ARCH-FACADE)."""
+reply), for the lines a team renders in code; and key combinations said as their keys
+(`speak_keys`) and capitals spelled (`spell_letters`, for a pronunciation map). Provisional
+(D-021). A facade: it only re-exports (ARCH-FACADE)."""
 
 from t2_agentic_voice.agent.language import register_of
 from t2_agentic_voice.domain.text.arabic import normalize_arabic
 from t2_agentic_voice.domain.text.clauses import split_clauses
 from t2_agentic_voice.domain.text.digits import normalize_digits
 from t2_agentic_voice.domain.text.invisible import provider_text
+from t2_agentic_voice.domain.text.keys import speak_keys, spell_letters
 from t2_agentic_voice.domain.text.pronounce import Pronunciations, pronounce
 from t2_agentic_voice.domain.text.rulings import SpellingIssue, SpellingRule
 from t2_agentic_voice.domain.text.scripts import Kept, remove_stray_script
@@ -47,8 +49,10 @@ __all__ = [
     "speak_date",
     "speak_duration",
     "speak_id",
+    "speak_keys",
     "speak_number",
     "speak_time",
+    "spell_letters",
     "spelling_issues",
     "split_clauses",
     "whisper_prompt",

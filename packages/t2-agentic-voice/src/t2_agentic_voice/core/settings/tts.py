@@ -95,6 +95,14 @@ class TtsSettings(Group):
             "with its part of the day, an ISO date with its weekday and month."
         ),
     )
+    spoken_key_combinations: bool = Field(
+        default=False,
+        description=(
+            "Whether a key combination in a reply is said as its keys, its plus signs left out "
+            '("Ctrl + Shift + R" is said "Control Shift R"; in Arabic, by the Arabic names of '
+            "its keys); off, it is said as written."
+        ),
+    )
     trim_silence: bool = Field(
         default=False,
         description=(

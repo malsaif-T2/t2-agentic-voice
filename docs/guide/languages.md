@@ -330,6 +330,14 @@ and an ISO date "2026-12-17" with its weekday and month, never its year. IDs are
 digit by digit, and captions keep the digits. The default, `as_written`, says them as above;
 the setting is a change to what callers hear, so it moves only on a measured run (GP-18).
 
+**Key combinations and spelled terms.** `T2V_TTS__SPOKEN_KEY_COMBINATIONS=true` says a key combination in a
+reply as its keys, its plus signs left out: "Ctrl + Shift + R" is said "Control Shift R", and in
+Arabic «كنترول شفت آر» (a Latin letter by its English name, as Saudi callers say it). It is off
+by default, for the same reason. For a term your callers hear spelled, the `languages` facade's
+`spell_letters("OTP", language="ar-SA")` gives «أو تي بي» ("O T P" in English), which your
+pronunciation map can hold: `pronounce={"OTP": {"ar": spell_letters("OTP", language="ar"),
+"en": "O T P"}}`.
+
 **Numbers, times, dates and amounts in your own lines.** A line your code renders (a booking's
 read-back, its `done`) is not the talker's, so you say its numbers yourself, in the reply's
 register: the `languages` facade's `speak_time(time(9, 10), language="ar-SA")` gives «تسع وعشر

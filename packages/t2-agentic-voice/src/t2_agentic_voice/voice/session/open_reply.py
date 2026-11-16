@@ -15,9 +15,11 @@ or at once when a stop or the call's end drops it (closed or not), as every repl
 
 A clause is said as the echo says the heard words (echo.py's `said`): its numbers spoken by the
 speaking rules (domain/text/speaking.py, after the output guard read its digits: the design's
-8.2), the agent's pronunciation map applied in its language, and cut at the provider's
-`max_chars`; a clause that fits one request is captioned as the talker wrote it, digits and all,
-and one cut into several is captioned as said, part by part. A clause with nothing to say once
+8.2; in the caller's register, and its key combinations as their keys, when the
+`tts.spoken_numbers` and `tts.spoken_key_combinations` settings ask), the agent's pronunciation
+map applied in its language, and cut at the provider's `max_chars`; a clause that fits one
+request is captioned as the talker wrote it, digits and all, and one cut into several is
+captioned as said, part by part. A clause with nothing to say once
 said is never sent.
 """
 
@@ -32,6 +34,7 @@ from t2_agentic_voice.domain.declaration import Language
 from t2_agentic_voice.domain.ports.text_to_speech import AudioChunk
 from t2_agentic_voice.domain.text.arabic_numbers import Register
 from t2_agentic_voice.domain.text.invisible import provider_text
+from t2_agentic_voice.domain.text.keys import speak_keys
 from t2_agentic_voice.domain.text.speaking import speak_digits
 from t2_agentic_voice.domain.text.spoken_text import speak_text
 from t2_agentic_voice.voice.protocol import ClauseIndex, ReplyId
@@ -78,13 +81,16 @@ def speech_of(
     """`text`, a clause of the talker's in `tag`, as its requests say it: each request's text as
     the provider takes it and its caption (the module's docstring); none when it says nothing.
     Its numbers are said in `register`, the caller's, when `tts.spoken_numbers` is
-    `by_register` (domain/text/spoken_text.py), else as written."""
+    `by_register` (domain/text/spoken_text.py), else as written; its key combinations as their
+    keys when `tts.spoken_key_combinations` is on (domain/text/keys.py)."""
     language = language_of(setup, tag)
-    by_register = setup.settings.tts.spoken_numbers == "by_register"
+    tts = setup.settings.tts
+    keyed = speak_keys(text, language=tag) if tts.spoken_key_combinations else text
+    by_register = tts.spoken_numbers == "by_register"
     shaped = (
-        speak_text(text, language=tag, register=register)
+        speak_text(keyed, language=tag, register=register)
         if by_register
-        else speak_digits(text, language=tag)
+        else speak_digits(keyed, language=tag)
     )
     requests = said(
         shaped,
