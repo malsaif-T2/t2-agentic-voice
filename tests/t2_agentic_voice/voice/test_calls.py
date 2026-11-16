@@ -32,13 +32,8 @@ from t2_agentic_voice.core.tracing import Tracing
 from t2_agentic_voice.voice import calls as calls_module
 from t2_agentic_voice.voice import pipeline as pipeline_module
 from t2_agentic_voice.voice import transport as transport_module
-from t2_agentic_voice.voice.calls import (
-    REFUSED_VARIABLES,
-    Calls,
-    CallsFactory,
-    Candidate,
-    VoiceCalls,
-)
+from t2_agentic_voice.voice.calls import Calls, CallsFactory, Candidate, VoiceCalls
+from t2_agentic_voice.voice.calls_start import REFUSED_VARIABLES
 from t2_agentic_voice.voice.protocol import MAX_CLIENT_MESSAGE_BYTES, Stop
 from t2_agentic_voice.voice.session.session_events import (
     ClausePlayed,
