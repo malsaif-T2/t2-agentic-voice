@@ -3,22 +3,23 @@ evaluation.md's "Running" says.
 
 Before anything is sent, a run refuses the main checkout and a dirty tree, an `--out` that exists
 or that git would track (`worktree.py`), audio that is not the file its manifest hashed, and a
-`groq` run whose least cost (each request once, billed as Groq bills it; a windows run's aside)
-would pass `--cap-usd`. Its settings load with `VoiceSettings.from_env` (`--env-file`, or the
-working folder's `.env`), the command line's on top (`run_settings.py`): a `groq` run names its
-model and timeout, and its base URL is `--base-url` or the SDK's own, whatever the environment
+provider's run whose least cost (each request once, billed as it bills; a windows run's aside)
+would pass `--cap-usd`, its dry estimate logged first (`stt_arms.py`; `--estimate-only` stops
+there). Each speech-to-text provider is an answerer of its name: `groq`, or one beside it (D-100).
+Its settings load with `VoiceSettings.from_env` (`--env-file`, or the working folder's `.env`),
+the command line's on top (`run_settings.py`), `stt.provider` the answerer's: a `groq` run names
+its model and timeout, its base URL `--base-url` or the SDK's own, whatever the environment
 holds, so no `T2V_` variable changes a registered arm; `--show-settings` shows each resolved, a
 secret only as set or not set. Run W's arms are its options too (`run_arms.answer_options`): the
 Whisper prompt the agent `--prompt-agent` names would ship, and every variant sent as Arabic with
 `--language-hint ar` or as English with `en`; run H's H2 arm is `--language-from`, with
 `--language-base` (`language_arms.py`). A smoke test of one dev variant comes first and must
-pass with no failed, retried or refused request. Then each variant is answered, and its result
+pass with no failed, retried or refused request. Then each variant is answered, its result
 written as it finishes (a dev run's `results.jsonl`), with a progress line of identifiers,
-verdicts and timings, never a transcript. The scorecard is written by `scorecard.py` and, for
-a run that calls a provider, its history line is appended to the worktree's `history.jsonl` and
-copied beside the scorecard. A held-out run writes no per-variant output, its lines hold counts
-only, it is never traced, and one that does not finish keeps no result. A run's name is its
-`--out` folder's name.
+verdicts and timings, never a transcript. The scorecard is `scorecard.py`'s; a run that calls a
+provider appends its history line to the worktree's `history.jsonl`, a copy beside the card.
+A held-out run writes no per-variant output, its lines hold counts only, it is never traced, and
+one that does not finish keeps no result. A run's name is its `--out` folder's name.
 """
 
 from __future__ import annotations
@@ -42,7 +43,7 @@ from ole5_voice import LOGGERS
 from ole5_voice.evals import history
 from ole5_voice.evals.answerers import ANSWERERS, RunAnswerer, make_answerer
 from ole5_voice.evals.cli import amount, count, require, seconds
-from ole5_voice.evals.groq_answerer import Budget, CapReachedError, Policy, least_billed
+from ole5_voice.evals.groq_answerer import Budget, CapReachedError, Policy
 from ole5_voice.evals.language_arms import flag_problem, language_arm
 from ole5_voice.evals.models import NAME_RULE, Split, Variant, is_name
 from ole5_voice.evals.run_arms import AnswerOptions, answer_options
@@ -57,7 +58,8 @@ from ole5_voice.evals.run_parts import (
     load_plan,
 )
 from ole5_voice.evals.run_settings import GROQ_BASE_URL, MODELS, load_settings, show, shown
-from ole5_voice.evals.runs import Answer, RunInfo, cost_usd, holds_placeholder
+from ole5_voice.evals.runs import Answer, RunInfo, holds_placeholder
+from ole5_voice.evals.stt_arms import ARMS, arm_problem, arm_settings, check_cost, recorded_model
 from ole5_voice.evals.windows import measurer
 from ole5_voice.evals.worktree import Checkout, check_out, refused, run_checkout
 
@@ -86,10 +88,10 @@ def _parser() -> argparse.ArgumentParser:
     parser = argparse.ArgumentParser(prog="poe eval", description=_DESCRIPTION)
     add = parser.add_argument
     policy = Policy()  # the run policy's defaults, which the flags below take
-    add("--answerer", choices=ANSWERERS, help="reference (sends nothing) or groq (Whisper)")
+    add("--answerer", choices=ANSWERERS, help="reference (sends nothing), or a provider")
     add("--split", choices=get_args(Split), help="the split the run covers, all of it")
     add("--model", choices=MODELS, help="stt.model for this run (groq needs it)")
-    add("--timeout-s", type=seconds, help="stt.timeout_s for this run (groq needs it)")
+    add("--timeout-s", type=seconds, help="stt.timeout_s for this run (a provider needs it)")
     add("--base-url", help=f"groq.base_url for this run ({GROQ_BASE_URL})")
     add("--language-hint", choices=("label", "auto", "ar", "en"), default="label", help=_HINT_HELP)
     add("--prompt-agent", help=_PROMPT_HELP)
@@ -113,8 +115,8 @@ def _parser() -> argparse.ArgumentParser:
         default=limit,
         help=f"each variant's limit ({limit:g})",
     )
-    add("--price-per-hour", type=amount, help="USD an hour of billed audio (groq needs it)")
-    add("--cap-usd", type=amount, help="the most the run may spend (groq needs it)")
+    add("--price-per-hour", type=amount, help="USD an hour of billed audio (a provider needs it)")
+    add("--cap-usd", type=amount, help="the most the run may spend (a provider needs it)")
     add("--windows-ms", type=count, nargs="+", default=[], help=_WINDOWS_HELP)
     add("--clips-from", type=Path, help=_CLIPS_HELP)
     add("--questions", type=Path, help="a dev screen file, one item/variant a line: only these")
@@ -122,6 +124,7 @@ def _parser() -> argparse.ArgumentParser:
     add("--note", help="why the run is made")
     add("--show-settings", action="store_true", help="show each setting and path, send nothing")
     add("--smoke-only", action="store_true", help="run the smoke test alone")
+    add("--estimate-only", action="store_true", help="log the dry estimate alone, send nothing")
     return parser
 
 
@@ -130,8 +133,8 @@ def _require(parser: argparse.ArgumentParser, args: argparse.Namespace) -> None:
     if args.show_settings:
         return
     named = ["answerer", "split", "out", "note"]
-    if args.answerer == "groq":
-        named += ["model", "timeout_s", "price_per_hour", "cap_usd"]
+    if args.answerer in ARMS:
+        named += ["model"] * (args.answerer == "groq") + ["timeout_s", "price_per_hour", "cap_usd"]
     require(parser, args, named)
     if args.split == "held-out" and (args.questions or args.smoke_only or args.tracing_endpoint):
         parser.error(
@@ -144,7 +147,7 @@ def _require(parser: argparse.ArgumentParser, args: argparse.Namespace) -> None:
         parser.error("--clips-from serves a windows run (--windows-ms)")
     if args.prompt_agent and args.language_hint == "auto":
         parser.error("--prompt-agent builds a prompt for the language sent: not with auto")
-    if (problem := flag_problem(args)) is not None:
+    if (problem := flag_problem(args) or arm_problem(args)) is not None:
         parser.error(problem)
 
 
@@ -200,7 +203,7 @@ def _run(
             f"the --out folder's name, the run's, is not a name, which is {NAME_RULE}",
             "name the folder like r1-large-v3",
         )
-    spends = args.answerer == "groq"
+    spends = args.answerer in ARMS
     choice = Choice(
         split=args.split,
         windows_ms=tuple(args.windows_ms),
@@ -210,7 +213,7 @@ def _run(
         needs_audio=spends,
     )
     plan = load_plan(checkout.top / DATA, choice, parts)
-    model = settings.stt.model
+    model = recorded_model(settings, args.answerer)
     arm = language_arm(args, plan, commit=checkout.commit, model=model, prompt=options.shown)
     plan, recorded = arm.plan, recorded | dict(arm.recorded)
     reuse = clip_answers(args.clips_from, plan.todo, commit=checkout.commit, model=model)
@@ -218,11 +221,8 @@ def _run(
     if spends and not args.windows_ms:  # the cap, before anything is sent
         todo = [] if args.smoke_only else [t for t in plan.todo if t.variant not in arm.copied]
         sent = [plan.smoke.request, *(t.request for t in todo)]
-        if (least := cost_usd(least_billed(sent), budget.price_per_hour_usd)) > args.cap_usd:
-            raise refused(
-                f"the run's least cost, ${least:.4f}, passes --cap-usd",
-                "raise --cap-usd, or check --price-per-hour",
-            )
+        if check_cost(ARMS[args.answerer], sent, budget.price_per_hour_usd, args) == "estimated":
+            return 0
     policy = Policy(
         args.max_attempts,
         args.max_rpm,
@@ -250,7 +250,7 @@ def _run(
             started_at=parts.now(),
             commit=checkout.commit,
             answerer=answerer.name,
-            model=settings.stt.model if answerer.spends else None,
+            model=model if answerer.spends else None,
             split=args.split,
             settings=recorded,
             price_per_hour_usd=budget.price_per_hour_usd,
@@ -320,7 +320,7 @@ def main(argv: Sequence[str] | None = None, *, parts: Parts | None = None) -> in
     # The library's defaults, until the settings name the level and format.
     configure_logging(loggers=LOGGERS)
     try:
-        settings = load_settings(args)
+        settings = arm_settings(load_settings(args), args.answerer or "")
         logs = settings.logging
         configure_logging(logs.level, logs.format, loggers=LOGGERS, content=logs.content)
         options = answer_options(args)

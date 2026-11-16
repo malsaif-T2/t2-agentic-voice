@@ -159,6 +159,11 @@ def shown(
     )
 
 
+def group_shown(settings: VoiceSettings, group: str) -> dict[str, str]:
+    """Every setting of `group`, by its dotted name, as a run records it (`_others`)."""
+    return {name: value for name, value in _others(settings) if name.startswith(f"{group}.")}
+
+
 def _others(settings: VoiceSettings) -> list[tuple[str, str]]:
     """Every setting of every group, `storage.var_dir` aside, by its dotted name, as text: a
     secret, a key map and a secret's file only as set or not set, a list as its length, a map

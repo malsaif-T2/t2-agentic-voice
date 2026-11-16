@@ -1,11 +1,14 @@
 """What a pass of `poe eval-languages` runs with (languages_run.py; plan 007's run H, its H1):
 the settings, the environment's and `--env-file`'s as `poe eot` loads them, with the pass's
 classifier on top (`--classifier off` under `stt.live_language = "session"`, `silero` or `ecapa`
-under `classified`, its files in `--classifier-dir` or `stt.classifier_dir`), refused under a
-rule other than the registered one (Q20, `REGISTERED`); what of them a pass records (`shown`,
-never the classifier's folder, a local path); the classifier the `classifiers` facade builds from
-them; Ole5's codes the classifier is loaded with and the language every pass's calls are held in;
-and the process's peak memory, where the platform tells it (`peak_mb`).
+under `classified`, its files in `--classifier-dir` or `stt.classifier_dir`; a provider's own
+language, `groq`, `elevenlabs` or `soniox`, under `classified` with `stt.provider` the
+provider's, D-100), refused under a rule other than the registered one (Q20, `REGISTERED`); what
+of them a pass records (`shown`, never the classifier's folder, a local path; for a provider's
+pass its model, `stt.timeout_s`, its group's settings, a key only as set or not, and the price);
+the classifier the `classifiers` facade builds from them; Ole5's codes the classifier is loaded
+with and the language every pass's calls are held in; and the process's peak
+memory, where the platform tells it (`peak_mb`).
 """
 
 from __future__ import annotations
@@ -21,6 +24,8 @@ from t2_agentic_voice.ports import LanguageClassifier
 from ole5_voice.agent import ECHO_AGENT
 from ole5_voice.evals import run_settings
 from ole5_voice.evals.eot import LEAD_S, TAIL_S
+from ole5_voice.evals.provider_language import PROVIDERS
+from ole5_voice.evals.stt_arms import recorded_model
 
 # The rule's numbers run H registered (Q20), each checked before a pass.
 REGISTERED: Final = {"classifier_from_s": 2.0, "classifier_min_share": 0.7, "classifier_threads": 2}
@@ -81,7 +86,9 @@ def settings_of(args: argparse.Namespace) -> VoiceSettings:
         )
     off = args.classifier == "off"
     update: dict[str, object] = {"live_language": "session" if off else "classified"}
-    if not off:
+    if args.classifier in PROVIDERS:
+        update |= {"provider": args.classifier}
+    elif not off:
         update |= {"classifier": args.classifier}
         update |= {"classifier_dir": args.classifier_dir or stt.classifier_dir}
     return loaded.model_copy(update={"stt": stt.model_copy(update=update)})
@@ -95,11 +102,20 @@ def shown(settings: VoiceSettings, args: argparse.Namespace) -> dict[str, str]:
         for name, value in settings.turns.model_dump().items()
     }
     stt = settings.stt
+    provider = args.classifier in PROVIDERS
     heard = {
         "stt.live_language": stt.live_language,
-        "stt.classifier": "none" if args.classifier == "off" else stt.classifier,
+        "stt.classifier": "none" if args.classifier == "off" or provider else stt.classifier,
         **{f"stt.{name}": str(getattr(stt, name)) for name in REGISTERED},
     }
+    if provider:
+        heard |= {
+            "stt.provider": stt.provider,
+            "stt.model": recorded_model(settings, stt.provider),
+            "stt.timeout_s": str(stt.timeout_s),
+            **run_settings.group_shown(settings, stt.provider),
+            "run.price_per_hour": str(args.price_per_hour),
+        }
     run = {"run.lead_s": str(LEAD_S), "run.tail_s": str(TAIL_S)}
     return {
         "env": settings.env,

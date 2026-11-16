@@ -15,6 +15,7 @@ Each call's talker is built by agent/talker.py's `chat_talkers`, on the chat mod
 
 from __future__ import annotations
 
+from collections.abc import Callable
 from contextlib import AsyncExitStack
 from dataclasses import dataclass
 
@@ -43,12 +44,11 @@ class Providers:
 
     @classmethod
     def from_settings(cls, settings: VoiceSettings) -> Providers:
-        """The built-in adapters the settings pick (`stt.provider`, `tts.provider`,
-        `llm.provider`: Groq's; `stt.classifier` under `classified`), built from the settings
-        with no IO; built in the runtime's lifespan when none are given."""
+        """The built-in adapters the settings pick (`stt.provider`: `speech_to_text`;
+        `tts.provider` and `llm.provider`: Groq's; `stt.classifier` under `classified`), built
+        from the settings with no IO; built in the runtime's lifespan when none are given."""
         from t2_agentic_voice.adapters.ecapa_language import EcapaLanguage
         from t2_agentic_voice.adapters.groq_chat import GroqChat
-        from t2_agentic_voice.adapters.groq_stt import GroqSTT
         from t2_agentic_voice.adapters.groq_tts import GroqTTS
         from t2_agentic_voice.adapters.silero_language import SileroLanguage
 
@@ -57,11 +57,32 @@ class Providers:
             kind = EcapaLanguage if settings.stt.classifier == "ecapa" else SileroLanguage
             classifier = kind.from_settings(settings)
         return cls(
-            stt=GroqSTT.from_settings(settings),
+            stt=cls.speech_to_text(settings),
             tts=GroqTTS.from_settings(settings),
             chat=GroqChat.from_settings(settings),
             classifier=classifier,
         )
+
+    @staticmethod
+    def speech_to_text(settings: VoiceSettings) -> SpeechToText:
+        """The speech-to-text adapter `stt.provider` names, built from the settings with no IO:
+        Groq's Whisper, ElevenLabs' Scribe, Speechmatics' ar_en pack, Cohere's Transcribe
+        Arabic or Soniox's stt-async-v6 (D-100). A ConfigurationError naming the key's setting
+        when that provider has none set; the eval commands build theirs here too."""
+        from t2_agentic_voice.adapters.cohere_stt import CohereSTT
+        from t2_agentic_voice.adapters.elevenlabs_stt import ElevenLabsSTT
+        from t2_agentic_voice.adapters.groq_stt import GroqSTT
+        from t2_agentic_voice.adapters.soniox_stt import SonioxSTT
+        from t2_agentic_voice.adapters.speechmatics_stt import SpeechmaticsSTT
+
+        built: dict[str, Callable[[VoiceSettings], SpeechToText]] = {
+            "groq": GroqSTT.from_settings,
+            "elevenlabs": ElevenLabsSTT.from_settings,
+            "speechmatics": SpeechmaticsSTT.from_settings,
+            "cohere": CohereSTT.from_settings,
+            "soniox": SonioxSTT.from_settings,
+        }
+        return built[settings.stt.provider](settings)
 
     def each(self) -> tuple[SpeechToText | TextToSpeech | ChatModel | LanguageClassifier, ...]:
         """Every provider given, in order: speech-to-text, text-to-speech, then the chat model
