@@ -3,7 +3,8 @@ languages_score.py): the pass itself (`LanguagesRun`), each variant's turns with
 for a paused request, its turn ends judged against the owner's mark (`LanguageResult`, one line
 of a pass's `TURNS_FILE`), its numbers (`LanguagesCard`, by call language `CallCard`), its
 scorecard, aggregates only for a held-out pass (`LanguagesScorecard`), and its history line
-(`LanguagesLine`, which spends nothing). The three call languages (`CALLS`) are the ordinary
+(`LanguagesLine`, which spends only in a provider's pass, with its price and what it sent at
+the most). The three call languages (`CALLS`) are the ordinary
 call (`label`: English items in an English call, the rest in an Arabic one, `call_code`), an
 Arabic call and an English one.
 """
@@ -23,8 +24,10 @@ from ole5_voice.evals.runs import Note, Shown
 # The call languages a pass's choices are read for: the item's own, Arabic, English.
 CallLanguage = Literal["label", "ar", "en"]
 CALLS: Final[tuple[CallLanguage, ...]] = get_args(CallLanguage)
-# A pass's classifier: none (`session`), Silero's or ECAPA's.
-ClassifierName = Literal["off", "silero", "ecapa"]
+# A pass's classifier: none (`session`), Silero's or ECAPA's, or a speech-to-text provider's
+# own language (provider_language.py's `PROVIDERS`, which a test ties to these).
+ClassifierName = Literal["off", "silero", "ecapa", "groq", "elevenlabs", "soniox"]
+_Usd = Annotated[float, Field(ge=0, allow_inf_nan=False)]
 TURNS_FILE: Final = "turns.jsonl"  # every variant's turns, in a dev pass and a held-out one
 PAUSED_KIND: Final = "paused_request"
 _Ms = Annotated[float, Field(allow_inf_nan=False)]
@@ -42,7 +45,8 @@ class LanguagesRun(Model):
     """What a pass was: when, at which commit, on which split and data, with which classifier,
     settings and rule (Q20's registered numbers), the language its calls were held in
     (`held_in`), the silence fed around each clip, the process's peak memory where the platform
-    tells it, and why."""
+    tells it, and why; for a provider's pass, its price per hour of audio and what it sent at
+    the most (provider_language.py)."""
 
     name: Name
     started_at: datetime
@@ -59,6 +63,9 @@ class LanguagesRun(Model):
     held_in: Literal["ar", "en"]
     note: Note
     peak_mb: float | None = Field(default=None, ge=0, allow_inf_nan=False)
+    price_per_hour_usd: _Usd | None = None
+    billed_seconds: _Usd = 0
+    cost_usd: _Usd = 0
 
 
 class LanguageResult(Model):
@@ -130,7 +137,7 @@ class LanguagesScorecard(Model):
 
 class LanguagesLine(Model):
     """One line of `history.jsonl` for a pass of `poe eval-languages`: its numbers, in counts
-    and times. It spends nothing."""
+    and times, and, for a provider's pass, its price and what it sent at the most."""
 
     kind: Literal["languages"] = "languages"
     time: datetime
@@ -154,6 +161,9 @@ class LanguagesLine(Model):
     mixed: dict[CallLanguage, int]
     disagreements: int = Field(ge=0)
     peak_mb: float | None = Field(default=None, ge=0, allow_inf_nan=False)
+    price_per_hour_usd: _Usd | None = None
+    billed_seconds: _Usd = 0
+    cost_usd: _Usd = 0
     scorecard: str
     data_digest: Sha256
     note: Note

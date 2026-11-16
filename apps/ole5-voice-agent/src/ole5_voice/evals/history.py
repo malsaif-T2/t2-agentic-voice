@@ -46,6 +46,7 @@ from ole5_voice.evals.history_measures import (
 from ole5_voice.evals.history_tables import (
     cell,
     eot_rows,
+    languages_prices,
     languages_rows,
     languages_strata,
     overlap_rows,
@@ -69,10 +70,10 @@ DOC: Final = EVALS.parents[2] / "docs" / "generated" / "eval-history.md"  # the 
 _DESCRIPTION = "Render the golden set's run history into docs/generated/eval-history.md."
 log = get_logger(__name__)
 _LINE: Final[TypeAdapter[AnyLine]] = TypeAdapter(AnyLine)
-# The kinds whose lines bill audio, those whose lines spend nothing, and plan 006's kinds
-# (history_measures.py).
-_BILLED: Final = (HistoryLine, TimingLine, OverlapLine, FirstAudioLine)
-_UNPRICED: Final = (EotLine, DepthLine, LanguagesLine)
+# The kinds whose lines bill audio (a languages line only in a provider's pass), those whose
+# lines spend nothing, and plan 006's kinds (history_measures.py).
+_BILLED: Final = (HistoryLine, TimingLine, OverlapLine, FirstAudioLine, LanguagesLine)
+_UNPRICED: Final = (EotLine, DepthLine)
 _MEASURES: Final = (TalkerLine, ScenarioLine, UncertainLine, FirstAudioLine, ActionLine)
 _HEADER = """# Run history
 
@@ -223,6 +224,8 @@ def render_history(lines: Sequence[AnyLine]) -> str:
         parts.append(row("Scorecard", cell(line.scorecard)))
         if isinstance(line, _MEASURES):
             parts += measure_prices(line)
+        elif isinstance(line, LanguagesLine):
+            parts += languages_prices(line)
         elif not isinstance(line, _UNPRICED):
             parts.append(row("Price per hour of audio", f"${line.price_per_hour_usd:g}"))
         if isinstance(line, TimingLine):

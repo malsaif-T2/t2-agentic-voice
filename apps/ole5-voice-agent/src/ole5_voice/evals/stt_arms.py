@@ -5,8 +5,10 @@ answerer, with its pacer, budget and retries.
 
 - `SttArm`: what a run of one provider needs to know of it: the model its scorecard and history
   line record (Groq's is `stt.model`; another's is its adapter's fixed model, which a test ties
-  to the adapter), the least it bills a request, the most requests a minute its key allows, and
-  whether it needs the language named (Cohere detects none).
+  to the adapter), the least it bills a request, the most requests a minute its key allows,
+  whether it needs the language named (Cohere detects none), and whether its answer names the
+  language it heard, so a pass of `poe eval-languages` can hear turns through it
+  (provider_language.py; Speechmatics' pack and Cohere name none).
 - `arm_problem`: what the parser refuses of a provider's flags, before anything is sent:
   `--model` and `--base-url` are Groq's; `--language-hint auto` for a provider that detects no
   language; a `--max-rpm` past its key's limit.
@@ -43,17 +45,18 @@ class SttArm:
     minimum_s: float
     max_rpm: int
     names_language: bool = False
+    hears_language: bool = False
 
 
 # The minimums: Groq bills 10 s a request at the least; the others bill the audio sent, by the
 # provider guide's reading of their pricing (2026-11-16; Speechmatics' and Soniox's rounding
 # unconfirmed). Cohere's trial key allows 5 requests a minute.
 ARMS: Final = {
-    "groq": SttArm("groq", None, GROQ_MINIMUM_S, 20),
-    "elevenlabs": SttArm("elevenlabs", "scribe_v3", 0.0, 20),
+    "groq": SttArm("groq", None, GROQ_MINIMUM_S, 20, hears_language=True),
+    "elevenlabs": SttArm("elevenlabs", "scribe_v3", 0.0, 20, hears_language=True),
     "speechmatics": SttArm("speechmatics", "ar_en-enhanced", 0.0, 20),
     "cohere": SttArm("cohere", "cohere-transcribe-arabic-07-2026", 0.0, 5, names_language=True),
-    "soniox": SttArm("soniox", "stt-async-v6", 0.0, 20),
+    "soniox": SttArm("soniox", "stt-async-v6", 0.0, 20, hears_language=True),
 }
 
 

@@ -274,7 +274,13 @@ given after the task's name:
   variant of a split through the file-fed pipeline at real-time pace, with no spend, Ole5's two
   languages and a speech-to-text that answers at once, `--classifier off`, `silero` or `ecapa`
   at the registered rule (`stt.classifier_from_s` 2.0, `stt.classifier_min_share` 0.7, 2
-  threads; others refused), the classifier's files in `--classifier-dir`; each turn's
+  threads; others refused), the classifier's files in `--classifier-dir`; or `--classifier
+  groq`, `elevenlabs` or `soniox`, a speech-to-text provider's own language (D-100,
+  `provider_language.py`): each classified turn's first 2 s sent to it with no language named,
+  its language and score (ElevenLabs') read as the turn's scores, which spends, so it takes
+  `--price-per-hour` and `--cap-usd`, logs the most it can send and cost before any clip and
+  stops there with `--estimate-only` (no key needed), its line recording its price and what it
+  sent at the most; each turn's
   classification, decision and end kept in the pass's `turns.jsonl` (a held-out pass's whole,
   once complete, never shown by variant), its scorecard by `languages_score.py`, and a
   languages line appended (it refuses the main checkout; `--smoke-only` feeds one dev variant
