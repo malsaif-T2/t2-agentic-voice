@@ -1,7 +1,13 @@
 """A leg's flights as the talker is given them: the flights a listing holds (`listable`: those
-that sell the cabin, at most four, in departure order), each as an option with its fare, the
+that sell the cabin, at most four, in the order said), each as an option with its fare, the
 cheapest of those with seats marked (`options`), and the listing with the fare's basis said once
-and the fixed `say` for it (`listing`), which asks for three aloud and how many more."""
+and the fixed `say` for it (`listing`), which asks for options 1 to 3 aloud and when the one
+more leaves.
+
+The order said is the numbers' order, so "the third one" is the third the caller heard: the
+three said, in departure order, then the one left out. They are the first three to leave, unless
+the cheapest with a seat for every traveler leaves last: then it is said, and the one left out
+is, of the first three, a full one first, then the dearest, then the last to leave."""
 
 from __future__ import annotations
 
@@ -23,10 +29,22 @@ MAX_OPTIONS: Final = 4
 SAID_ALOUD: Final = 3
 
 
-def listable(found: Sequence[Departure], cabin: Cabin) -> tuple[Departure, ...]:
-    """The flights of `found` a listing holds: those that sell `cabin`, `MAX_OPTIONS` at most,
-    in departure order."""
-    return tuple(d for d in found if cabin in d.flight.cabins)[:MAX_OPTIONS]
+def listable(found: Sequence[Departure], cabin: Cabin, travelers: int) -> tuple[Departure, ...]:
+    """The flights of `found` (in departure order) a listing holds: those that sell `cabin`,
+    `MAX_OPTIONS` at most, in the order said for `travelers` (the module's docstring)."""
+    kept = tuple(d for d in found if cabin in d.flight.cabins)[:MAX_OPTIONS]
+    if len(kept) <= SAID_ALOUD:
+        return kept
+    cost = [fare(d, cabin) or 0 for d in kept]  # every kept flight sells the cabin
+    seated = [i for i, d in enumerate(kept) if seats_left(d.flight, d.day, cabin) >= travelers]
+    cheapest = min(seated, key=lambda i: (cost[i], i)) if seated else 0
+    if cheapest < SAID_ALOUD:
+        return kept
+    full = [i not in seated for i in range(len(kept))]
+    out = max(range(SAID_ALOUD), key=lambda i: (full[i], cost[i], i))
+    said_aloud = [d for i, d in enumerate(kept[:SAID_ALOUD]) if i != out] + [kept[cheapest]]
+    rest = [kept[out]] + [d for i, d in enumerate(kept) if i >= SAID_ALOUD and i != cheapest]
+    return (*said_aloud, *rest)
 
 
 def options(
@@ -37,11 +55,11 @@ def options(
     tag: Tag,
     name: Callable[[int], str],
 ) -> tuple[Option, ...]:
-    """The `listable` flights of `found` as options, numbered in departure order, each with its
+    """The `listable` flights of `found` as options, numbered in the order said, each with its
     fare in `cabin`, the cheapest of those with seats marked; `name` writes a flight's number as
     a card does."""
     made: list[Option] = []
-    for n, d in enumerate(listable(found, cabin), start=1):
+    for n, d in enumerate(listable(found, cabin, travelers), start=1):
         price = fare(d, cabin) or 0  # `listable` keeps the flights that sell the cabin
         minutes = int(d.flight.duration.total_seconds()) // 60
         part, part_msa = said(partial(words.part_said, d.flight.departs), tag)

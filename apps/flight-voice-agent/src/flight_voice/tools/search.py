@@ -154,8 +154,8 @@ def search_flights(airline: Airline, trips: TripBook) -> Tool:
             offered = tuple(c for c in CABINS if c in sold)
             return result(CabinNotOffered(cabin=kept, offered=offered))
         try:
-            outs = await airline.departures(start.code, end.code, out.day)
-            backs = () if back is None else await airline.departures(end.code, start.code, back.day)
+            back_day = None if back is None else back.day
+            outs, backs = await airline.trip_departures(start.code, end.code, out.day, back_day)
         except AirlineUnavailableError:
             raise ToolError(SEARCH_FAILED) from None
         empty = _no_flights("outbound", start, end, out.day, outs, today, tag)
@@ -163,7 +163,7 @@ def search_flights(airline: Airline, trips: TripBook) -> Tool:
             empty = _no_flights("return", end, start, back.day, backs, today, tag)
         if empty is not None:
             return empty
-        found = listable(outs, kept)
+        found = listable(outs, kept, party)
         listed = options(found, cabin=kept, travelers=party, tag=tag, name=airline.flight_name)
         if not any(o.seats_ok for o in listed):
             return _no_seats(found, out.day, kept, party, tag)
@@ -182,7 +182,6 @@ def search_flights(airline: Airline, trips: TripBook) -> Tool:
             Shown(n=o.n, flight=d.flight.number, day=out.day)
             for o, d in zip(listed, found, strict=True)
         )
-        back_day = None if back is None else back.day
         made = _searched(draft, start, end, (out.day, back_day), one_way, party, kept)
         trips.put(ctx.call_id, made.listed("outbound", shown))
         card = cards.listing_card(answer, start.code, end.code, out.day, tag)

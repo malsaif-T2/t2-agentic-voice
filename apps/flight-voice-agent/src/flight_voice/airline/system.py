@@ -3,7 +3,8 @@ the flights of a day, the fare calendar, the traveler's profile, and the booking
 
 Its reads answer by their modes, set by the settings or a scripted call: `search_mode` for the
 flights, the calendar and the cabins (`answer`; `fail`, which raises `AirlineUnavailableError`;
-`slow`, which answers after `slow_s`, so a call's progress line plays), and `profile_mode` for
+`slow`, which answers after `slow_s` once a read, so a call's progress line plays; a trip's two
+days are one read, `trip_departures`), and `profile_mode` for
 the profile (`answer`, `fail`). Each tool turns `AirlineUnavailableError` into a failure it
 says, never into "nothing found". The profile answers only for the traveler ID it is given.
 """
@@ -11,7 +12,7 @@ says, never into "nothing found". The profile answers only for the traveler ID i
 from __future__ import annotations
 
 import asyncio
-from collections.abc import Callable
+from collections.abc import Awaitable, Callable
 from datetime import date, datetime
 from typing import Final, Literal, get_args
 
@@ -64,7 +65,7 @@ class Profile(BaseModel):
 class Airline:
     """The mock airline, today being `today()`, its code `code`, its bookings in `bookings` (a
     new store when none is given), its reads answered by their modes, a slow read taking
-    `slow_s`."""
+    `slow_s`, waited by `sleep`."""
 
     def __init__(
         self,
@@ -75,6 +76,7 @@ class Airline:
         profile_mode: ProfileMode = "answer",
         slow_s: float = SLOW_S,
         code: str = AIRLINE_CODE,
+        sleep: Callable[[float], Awaitable[None]] = asyncio.sleep,
     ) -> None:
         self._today = today
         self.code = code
@@ -82,6 +84,7 @@ class Airline:
         self.search_mode: SearchMode = search_mode
         self.profile_mode: ProfileMode = profile_mode
         self.slow_s = slow_s
+        self._sleep = sleep
 
     def flight_name(self, number: int) -> str:
         """A flight as a card writes it: "T2 401"."""
@@ -97,6 +100,15 @@ class Airline:
         """The route's flights on `day`, as the search mode says."""
         await self._search()
         return schedule.departures(origin, destination, day)
+
+    async def trip_departures(
+        self, origin: Code, destination: Code, out: date, back: date | None
+    ) -> tuple[tuple[schedule.Departure, ...], tuple[schedule.Departure, ...]]:
+        """The route's flights on `out` and, when `back` is given, the way back's on `back`, in
+        one read as the search mode says: a slow round trip waits once, inside a tool's time."""
+        await self._search()
+        backs = () if back is None else schedule.departures(destination, origin, back)
+        return schedule.departures(origin, destination, out), backs
 
     async def calendar(
         self, origin: Code, destination: Code, first: date, last: date, cabin: Cabin = "economy"
@@ -126,4 +138,4 @@ class Airline:
         if self.search_mode == "fail":
             raise AirlineUnavailableError("search")
         if self.search_mode == "slow":
-            await asyncio.sleep(self.slow_s)
+            await self._sleep(self.slow_s)

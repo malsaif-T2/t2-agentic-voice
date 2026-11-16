@@ -6,10 +6,12 @@ Riyadh keeps UTC+3 all year, so today there is a fixed offset's date. A spec is 
 next week, the week from the next Sunday, as the Saudi week starts on Sunday; or the one after
 the coming one), `on` (a day of the month, this month if not past, else next month; with a
 month, its next date on or after today), `in_days`, and two for a return only, `nights` after
-the departure and `weekday_after` it. A day that does not exist, a day before today or past the
-booking window, a return before its departure, and a return-only form for a departure are each
-a `DateProblem`, never a guess. `assumed` marks a date whose month or year the code chose, so
-the caller hears it back with its weekday.
+the departure and `weekday_after` it. A return's day of the month with no month, and its coming
+weekday, count from the departure, not from today ("December 17th, back on the 20th"). A day
+that does not exist, a day before today or past the booking window, a return before its
+departure, and a return-only form for a departure are each a `DateProblem`, never a guess.
+`assumed` marks a date whose month or year the code chose, so the caller hears it back with its
+weekday.
 """
 
 from __future__ import annotations
@@ -126,6 +128,10 @@ def resolve_return(spec: DateSpec, departure: date, today: date) -> Resolved | D
     elif isinstance(spec, WeekdayAfter):
         ahead = (WEEKDAYS.index(spec.weekday) - week_index(departure) - 1) % 7 + 1
         resolved = Resolved(departure + timedelta(days=ahead))
+    elif isinstance(spec, OnDay) and spec.month is None:
+        resolved = _on(spec, departure)  # "back on the 20th": the next 20th from the departure
+    elif isinstance(spec, OnWeekday) and spec.which == "coming":
+        resolved = Resolved(_weekday(spec, departure), assumed=True)
     else:
         resolved = _resolve(spec, today)
     checked = _checked(resolved, today)

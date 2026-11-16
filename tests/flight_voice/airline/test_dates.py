@@ -141,6 +141,26 @@ def test_each_return_form_after_a_thursday_departure(spec: DateSpec, expected: d
     assert isinstance(resolved, Resolved) and resolved.day == expected
 
 
+@pytest.mark.parametrize(
+    ("spec", "expected"),
+    [
+        (OnDay(day=20), date(2026, 12, 20)),
+        (OnDay(day=17), date(2026, 12, 17)),  # back the same day
+        (OnDay(day=5), date(2027, 1, 5)),  # the 5th has passed by the departure
+        (OnWeekday(weekday="sun"), date(2026, 12, 20)),
+        (OnWeekday(weekday="thu"), date(2026, 12, 24)),  # the coming one is never the same day
+    ],
+)
+def test_a_return_without_its_month_counts_from_the_departure(
+    spec: DateSpec, expected: date
+) -> None:
+    """ "December 17th, back on the 20th", «١٧ ديسمبر وأرجع يوم ٢٠»: the return's day of the
+    month, or its coming weekday, is the next one from the departure, not from today, and the
+    code marks the month it chose."""
+    resolved = resolve_return(spec, date(2026, 12, 17), MONDAY)
+    assert resolved == Resolved(expected, assumed=True)
+
+
 def test_a_return_before_its_departure_is_a_problem() -> None:
     back = resolve_return(Relative(when="tomorrow"), date(2026, 11, 19), MONDAY)
     assert back == DateProblem("return_before_departure", date(2027, 3, 16))

@@ -5,8 +5,8 @@ number in them in the reply's language (`*_said`, and `*_said_msa` beside a Saud
 `say`, one of the app's fixed strings (`SAY`) telling the talker what to say next, never built
 from the caller's words or any free text.
 
-A listing (`listing.py`) holds at most four options, in departure order, the cheapest with
-seats marked, and the fare's basis ("per person, one way") said once. A read of the airline
+A listing (`listing.py`) holds at most four options, numbered in the order said, the cheapest
+with seats marked, and the fare's basis ("per person, one way") said once. A read of the airline
 that fails is never a result: it is a `ToolError` whose message names the failure and forbids
 reading it as nothing found (`SEARCH_FAILED`, `PROFILE_FAILED`).
 """
@@ -40,8 +40,8 @@ _LISTED: Final = (
     "say flight numbers."
 )
 _MORE: Final = (
-    "Say three of these flights, the cheapest among them, each by its departure time and fare, "
-    "then how many more there are and when they leave. Say once that fares are one way, per "
+    "Say options 1 to 3 in order, each by its departure time and fare, the cheapest marked, then "
+    "that there is one more and when it leaves. Say once that fares are one way, per "
     "person. Then ask which one they want. Do not say flight numbers."
 )
 _FULL: Final = " A flight with seats_ok false is full in this cabin: if you name it, say so."

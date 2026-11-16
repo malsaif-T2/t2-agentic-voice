@@ -113,6 +113,23 @@ def test_a_slow_search_answers_after_its_wait() -> None:
     assert [d.fare for d in days] == [1920, 1730, 1700]
 
 
+def test_a_slow_search_waits_once_for_a_trips_two_days() -> None:
+    waits: list[float] = []
+
+    async def wait(seconds: float) -> None:
+        waits.append(seconds)
+
+    slow = Airline(today=lambda: TODAY, search_mode="slow", slow_s=4.0, sleep=wait)
+    outs, backs = asyncio.run(
+        slow.trip_departures("RUH", "LHR", date(2026, 12, 17), date(2026, 12, 20))
+    )
+    assert [d.flight.number for d in outs] == [401, 403]
+    assert [d.flight.number for d in backs] == [402, 404]
+    assert waits == [4.0]
+    one_way = asyncio.run(slow.trip_departures("RUH", "LHR", date(2026, 12, 17), None))
+    assert one_way[1] == () and waits == [4.0, 4.0]
+
+
 def test_today_is_the_airlines_clock() -> None:
     assert _airline().today() == TODAY
     store = BookingStore(today=lambda: TODAY)

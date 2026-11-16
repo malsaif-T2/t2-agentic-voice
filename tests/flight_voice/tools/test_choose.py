@@ -11,12 +11,13 @@ from datetime import date
 
 import pytest
 from flight_voice.airline.bookings import Leg, priced
+from flight_voice.airline.schedule import Flight, departures
 from flight_voice.said import Tag
 from flight_voice.tools.choose import CHOOSE_FLIGHT, choose_flight
 from flight_voice.tools.results import SAY, SEARCH_FAILED
 from flight_voice.trip import Shown, TripBook, TripDraft
 
-from tests.flight_voice.scenario_dates import TODAY, business_sold_out
+from tests.flight_voice.scenario_dates import TODAY, business_sold_out, cheapest_departs_last
 from tests.flight_voice.tools.tool_support import (
     CALL_ID,
     CHEAPEST,
@@ -163,6 +164,27 @@ def test_an_outbound_pick_on_a_round_trip_with_no_return_day_asks_for_it() -> No
     assert call.draft.chosen_outbound is not None
 
 
+def test_the_third_one_is_the_third_said_when_the_cheapest_leaves_last() -> None:
+    """Both legs of a Jeddah trip whose cheapest flight leaves last: «الثالثة» picks the third
+    flight said, the cheapest, never the flight left out."""
+    out, back = cheapest_departs_last("RUH", "JED"), cheapest_departs_last("JED", "RUH")
+    assert out is not None and back is not None
+    call = Call("ar-SA")
+    call.search(
+        destination="جدة",
+        depart={"kind": "on", "day": out.day, "month": out.month},
+        return_date={"kind": "on", "day": back.day, "month": back.month},
+    )
+    third = {"pick": "number", "n": 3}
+    returns = data(call.choose("outbound", third))["returns"]
+    assert [o["departs"] for o in returns["options"]] == ["07:45", "12:30", "23:00", "17:15"]
+    assert returns["options"][2]["mark"] == "cheapest"
+    assert call.choose("return", third).ok
+    late = {(d.origin, d.departs.strftime("%H:%M")): d.number for d in _flights(out, back)}
+    assert call.draft.chosen_outbound == Leg(flight=late[("RUH", "21:00")], day=out)
+    assert call.draft.chosen_return == Leg(flight=late[("JED", "23:00")], day=back)
+
+
 def test_a_return_listing_that_does_not_answer_is_a_failure_and_changes_nothing() -> None:
     call = london()
     before = call.draft
@@ -180,3 +202,8 @@ def test_the_talker_sees_the_leg_and_the_pick_and_nothing_bound() -> None:
     assert dict(schema.parameters)["required"] == ["leg", "choice"]
     refused = run(tool, leg="outbound", choice={"pick": "flight", "number": 401})
     assert not refused.ok and "choice" in str(refused.data)
+
+
+def _flights(out: date, back: date) -> list[Flight]:
+    there = [d.flight for d in departures("RUH", "JED", out)]
+    return there + [d.flight for d in departures("JED", "RUH", back)]

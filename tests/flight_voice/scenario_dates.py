@@ -8,7 +8,7 @@ from __future__ import annotations
 from datetime import date, timedelta
 
 from flight_voice.airline.airports import Code
-from flight_voice.airline.fares import deal_day, seats_left
+from flight_voice.airline.fares import deal_day, fare, seats_left
 from flight_voice.airline.schedule import departures, flies_on, window
 
 # The day runs and tests pin as today: Monday 2026-11-16.
@@ -42,3 +42,18 @@ def business_sold_out(
 def no_flight_day(origin: Code, destination: Code, after: date = TODAY) -> date | None:
     """The first day of the route, on or after `after`, with no flight."""
     return next((d for d in _days(after) if not flies_on(origin, destination, d)), None)
+
+
+def cheapest_departs_last(origin: Code, destination: Code, after: date = TODAY) -> date | None:
+    """The first day of the route, on or after `after`, with four economy flights whose last
+    to leave is cheaper than each of the three before it, and has a seat."""
+    for day in _days(after):
+        flown = departures(origin, destination, day)
+        fares = [fare(d, "economy") or 0 for d in flown]
+        if (
+            len(flown) == 4
+            and seats_left(flown[3].flight, day, "economy") > 0
+            and all(fares[3] < f for f in fares[:3])
+        ):
+            return day
+    return None

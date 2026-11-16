@@ -12,13 +12,14 @@ from typing import Any
 
 import pytest
 from flight_voice.airline.fares import seats_left
-from flight_voice.airline.schedule import find_flight
+from flight_voice.airline.schedule import departures, find_flight
+from flight_voice.airline.system import Airline
 from flight_voice.said import Tag
 from flight_voice.tools.results import SAY, SEARCH_FAILED
 from flight_voice.tools.search import SEARCH_FLIGHTS, search_flights
 from flight_voice.trip import Shown, TripBook
 
-from tests.flight_voice.scenario_dates import business_sold_out
+from tests.flight_voice.scenario_dates import TODAY, business_sold_out, cheapest_departs_last
 from tests.flight_voice.tools.tool_support import CALL_ID, TAGS, airline, data, run
 
 DEC_17: dict[str, Any] = {"kind": "on", "day": 17, "month": 12}
@@ -199,6 +200,59 @@ def test_a_day_the_code_chose_the_month_of_is_marked_to_be_said_back() -> None:
         "weekday": "Tuesday",
         "assumed": True,
     }
+
+
+@pytest.mark.parametrize(("day", "back"), [(20, "2026-12-20"), (5, "2027-01-05")])
+def test_a_return_said_without_its_month_is_the_next_such_day_from_the_departure(
+    day: int, back: str
+) -> None:
+    """ "December 17th, back on the 20th", «١٧ ديسمبر وأرجع يوم ٢٠»: the talker passes the
+    return's day alone, and the code counts it from the departure, its month said back."""
+    found = _search(destination="London", depart=DEC_17, return_date={"kind": "on", "day": day})
+    assert found["status"] == "ok" and found["say"] == SAY["listed"]
+    assert found["return_date"]["iso"] == back and found["return_date"]["assumed"] is True
+
+
+def test_a_slow_round_trip_waits_once_inside_the_tools_time() -> None:
+    """The slow mode plays the progress line and then answers: a round trip's two days are one
+    slow read, so a wait just under the tool's time still answers."""
+    waits: list[float] = []
+
+    async def wait(seconds: float) -> None:
+        waits.append(seconds)
+
+    timeout = search_flights(airline(), TripBook()).timeout_s
+    slow = Airline(today=lambda: TODAY, search_mode="slow", slow_s=0.9 * timeout, sleep=wait)
+    found = run(
+        search_flights(slow, TripBook()), destination="London", depart=DEC_17, return_date=DEC_20
+    )
+    assert found.ok and data(found)["say"] == SAY["listed"]
+    assert sum(waits) < timeout and len(waits) == 1
+
+
+def test_a_cheapest_flight_that_leaves_last_is_said_among_the_three() -> None:
+    """Four flights, the last to leave the cheapest: the three said are numbered 1 to 3 in
+    departure order, the cheapest among them, and the one left out is 4, so "the third one" is
+    the third the caller heard."""
+    day = cheapest_departs_last("RUH", "JED")
+    assert day is not None
+    trips = TripBook()
+    on: dict[str, Any] = {"kind": "on", "day": day.day, "month": day.month}
+    found = _search("en", trips, destination="Jeddah", depart=on, one_way=True)
+    options = found["options"]
+    assert [o["departs"] for o in options] == ["06:00", "10:30", "21:00", "15:00"]
+    assert [o["n"] for o in options] == [1, 2, 3, 4] and options[2]["mark"] == "cheapest"
+    assert found["more"] == 1 and found["say"] == SAY["listed_more"]
+    assert "options 1 to 3 in order" in found["say"]
+    by_time = {
+        d.departs_at.strftime("%H:%M"): d.flight.number for d in departures("RUH", "JED", day)
+    }
+    assert [(s.n, s.flight) for s in trips.get(CALL_ID).shown_outbound] == [
+        (1, by_time["06:00"]),
+        (2, by_time["10:30"]),
+        (3, by_time["21:00"]),
+        (4, by_time["15:00"]),
+    ]
 
 
 @pytest.mark.parametrize("tag", TAGS)

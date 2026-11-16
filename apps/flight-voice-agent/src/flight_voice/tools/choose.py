@@ -145,7 +145,7 @@ async def _next(
         chosen = Chosen(leg=leg, trip=seen, say=SAY["chosen_needs_return"])
         return draft, chosen, cards.trip_card(seen, draft, tag)
     start, end, day = draft.destination, draft.origin, draft.return_date
-    found = listable(await airline.departures(start, end, day), draft.cabin)
+    found = listable(await airline.departures(start, end, day), draft.cabin, draft.travelers)
     listed = options(
         found, cabin=draft.cabin, travelers=draft.travelers, tag=tag, name=airline.flight_name
     )

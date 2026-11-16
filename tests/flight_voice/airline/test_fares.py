@@ -28,6 +28,7 @@ from flight_voice.airline.schedule import CABINS, Departure, departure, departur
 from tests.flight_voice.scenario_dates import (
     TODAY,
     business_sold_out,
+    cheapest_departs_last,
     first_deal_day,
     no_flight_day,
 )
@@ -179,3 +180,8 @@ def test_the_pinned_no_flight_day_still_holds() -> None:
     assert no_flight_day("RUH", "SIN", date(2026, 11, 18)) == date(2026, 11, 24)
     assert no_flight_day("RUH", "LHR") is None
     assert TODAY.weekday() == 0
+
+
+def test_the_pinned_days_whose_cheapest_flight_leaves_last_still_hold() -> None:
+    assert cheapest_departs_last("RUH", "JED") == date(2026, 11, 18)
+    assert cheapest_departs_last("JED", "RUH") == date(2026, 11, 21)
