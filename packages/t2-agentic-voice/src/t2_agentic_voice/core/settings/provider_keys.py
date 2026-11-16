@@ -104,6 +104,17 @@ class SonioxSettings(ProviderKey):
 
     GROUP: ClassVar[str] = "soniox"
 
+    job_timeout_s: float = Field(
+        default=60.0,
+        gt=0,
+        le=600,
+        allow_inf_nan=False,
+        description=(
+            "The longest one async transcription may take, from the file's upload to its "
+            "transcript: the job queues and polls, so its time is measured, never assumed."
+        ),
+    )
+
 
 class OpenAISettings(ProviderKey):
     """OpenAI: a talker and speech-to-text to measure beside Groq (D-100)."""

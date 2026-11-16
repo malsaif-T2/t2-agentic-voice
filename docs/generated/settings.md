@@ -70,6 +70,7 @@ Soniox: speech-to-text, batch and streaming; measured beside Groq (D-100).
 | --- | --- | --- | --- | --- |
 | `T2V_SONIOX__API_KEY` | secret, or unset | unset | — | The provider's API key; unset, its adapters are unavailable and say so when chosen. Or give api_key_file instead. |
 | `T2V_SONIOX__API_KEY_FILE` | path, or unset | unset | — | Or the full path of a file outside the repository that holds only the key, so the key can live outside .env. |
+| `T2V_SONIOX__JOB_TIMEOUT_S` | number | `60` | seconds | The longest one async transcription may take, from the file's upload to its transcript: the job queues and polls, so its time is measured, never assumed. |
 
 ## `openai`
 
@@ -96,7 +97,7 @@ Speech-to-text: the adapter, the Whisper model, how long a request may take, the
 
 | Variable | Type | Default | Unit | Description |
 | --- | --- | --- | --- | --- |
-| `T2V_STT__PROVIDER` | one of groq, elevenlabs, speechmatics, cohere | `groq` | — | Which adapter turns speech into text: groq (Whisper, the default), or one measured beside it (D-100): elevenlabs (Scribe), speechmatics (its ar_en pack, a batch job) or cohere (Transcribe Arabic, the language always named); a provider with no key set is refused when chosen, naming its key's setting. |
+| `T2V_STT__PROVIDER` | one of groq, elevenlabs, speechmatics, cohere, soniox | `groq` | — | Which adapter turns speech into text: groq (Whisper, the default), or one measured beside it (D-100): elevenlabs (Scribe), speechmatics (its ar_en pack, a batch job), cohere (Transcribe Arabic, the language always named) or soniox (stt-async-v6, a batch job); a provider with no key set is refused when chosen, naming its key's setting. |
 | `T2V_STT__MODEL` | one of whisper-large-v3, whisper-large-v3-turbo | `whisper-large-v3` | — | The Whisper model: whisper-large-v3 or whisper-large-v3-turbo. The default stayed large-v3 on a registered measurement (D-025), and changes only on another (GP-18). |
 | `T2V_STT__TIMEOUT_S` | number | `6` | seconds | The longest one transcription request may take before it is a timeout. |
 | `T2V_STT__LIVE_LANGUAGE` | one of session, auto, classified | `session` | — | The language a live call sends Whisper: session (the call's language, fixed when it joins from the caller's pick or the join token's locale), auto (none, so Whisper detects it) or classified (each turn's, chosen among the agent's languages by the classifier `stt.classifier` names from the turn's first `stt.classifier_from_s` seconds; a short, unsure, late, busy or failed turn keeps the language last classified, the call's until one is). A registered measurement sets the default (GP-18). |
