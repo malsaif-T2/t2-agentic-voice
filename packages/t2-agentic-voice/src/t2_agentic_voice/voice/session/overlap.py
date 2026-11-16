@@ -77,8 +77,8 @@ def call_words(setup: CallSetup) -> Words:
     """The words a call's rule reads, for its language's primary code: the language preset's,
     the agent's `phrases` and the `words` settings group's additions, each kind in that order,
     none twice."""
-    code = setup.language.primary
-    sources = (setup.language.words, setup.agent.phrases.words(code))
+    code = setup.now.language.primary
+    sources = (setup.now.language.words, setup.agent.phrases.words(code))
     added = setup.settings.words
     lists: dict[str, tuple[str, ...]] = {}
     for kind in WORD_KINDS:
@@ -181,7 +181,6 @@ class Overlaps:
         self._stop_s = settings.turns.vad_stop_ms / 1000
         self._no_speech_max = settings.stt.no_speech_max
         self._captions = CAPTIONS if settings.stt.caption_filter else ()
-        self._words = call_words(setup)
         self._asks_model = (
             setup.agent.ask_on_uncertain_overlaps
             and setup.talker is not None
@@ -264,8 +263,8 @@ class Overlaps:
 
     @property
     def words(self) -> Words:
-        """The words the call's rule reads (`call_words`)."""
-        return self._words
+        """The words the call's rule reads, in its current language (`call_words`)."""
+        return call_words(self._setup)
 
     def get(self, turn_id: TurnId) -> OverlapState | None:
         """The overlap of the caller's turn `turn_id`; None when it is none."""
@@ -289,7 +288,7 @@ class Overlaps:
         """Whether a chat model decides the transcript the rule let go on for want of words
         (domain/uncertain_overlaps.py)."""
         text = "" if event.transcript is None else event.transcript.text
-        return self._asks_model and is_uncertain(verdict, text, words=self._words)
+        return self._asks_model and is_uncertain(verdict, text, words=self.words)
 
     def _verdict(
         self,
@@ -321,7 +320,7 @@ class Overlaps:
     ) -> Verdict:
         transcript = event.transcript
         text = "" if transcript is None else transcript.text
-        confirming, words = self._confirming, self._words
+        confirming, words = self._confirming, self.words
         if (
             confirming is not None
             and not holds_stop(text, words=words)  # a stop or wait word is the rule's
@@ -338,12 +337,12 @@ class Overlaps:
             no_speech_prob=None if transcript is None else transcript.no_speech_prob,
             speech_s=max(0.0, ended_at - state.speech_at),
             played=tuple(played),
-            language=self._setup.language.primary,
+            language=self._setup.now.language.primary,
         )
         rules = self._rules
         return judge(
             overlap,
-            words=self._words,
+            words=self.words,
             no_speech_max=self._no_speech_max,
             captions=self._captions,
             min_words=rules.min_words,

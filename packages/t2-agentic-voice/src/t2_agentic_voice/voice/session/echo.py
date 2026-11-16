@@ -64,7 +64,7 @@ def fixed(
     """A fixed phrase of the call's language as the one clause of `reply_id` (its first, or the
     echo's frame), its audio from the phrase audio (`phrase_audio`), captioned as written; None
     when the phrase audio does not hold it."""
-    language = setup.language.tag
+    language = setup.now.tag
     audio = phrase_audio(setup, text, language, reply_id=reply_id)
     if audio is None:
         return None
@@ -120,7 +120,7 @@ def echo(setup: CallSetup, heard: HeardWords, *, reply_id: ReplyId) -> list[Line
     """The echo of the turn `heard`: the call language's cached frame, then the heard words as
     said, each packed request a clause of the reply, at most `MAX_ECHO_REQUESTS`; none when the
     words say nothing once said, so an empty turn is said back as nothing."""
-    language = setup.language
+    language = setup.now.language
     max_chars = setup.max_chars(language.tag)
     requests = said(heard.text, agent=setup.agent, language=language, max_chars=max_chars)
     if not requests:

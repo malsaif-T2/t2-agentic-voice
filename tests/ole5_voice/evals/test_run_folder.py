@@ -1,6 +1,7 @@
 """A run's folder and what runs K and S read of the shared history (run_folder.py): the run, its
 results and sessions written and read back strictly, a resume only of the same run, the day's
-requests counted from the history, and the history's kinds checked before a line is added."""
+requests counted from the history and every other app's, and the history's kinds checked before
+a line is added."""
 
 from __future__ import annotations
 
@@ -18,10 +19,11 @@ from ole5_voice.evals.run_folder import (
     requests_today,
 )
 from ole5_voice.evals.run_lines import TimingLine
+from ole5_voice.evals.scorecard import EvalDataError
 from ole5_voice.evals.talker_data import TalkerDataError
 from ole5_voice.evals.talker_score import PriceShown, Session, TalkerRun
-from ole5_voice.evals.worktree import inspect
 from t2_agentic_voice import InvalidRequestError
+from t2_agentic_voice.evals import inspect_checkout
 
 from tests.ole5_voice.evals.run_support import make_world
 from tests.ole5_voice.evals.samples import WHEN
@@ -110,7 +112,7 @@ def test_a_folders_unreadable_file_is_refused_by_name(tmp_path: Path) -> None:
 
 def test_the_folder_of_a_new_run_or_of_a_resumed_one(tmp_path: Path) -> None:
     world = make_world(tmp_path)
-    checkout = inspect(world.top, world.git)
+    checkout = inspect_checkout(world.top, world.git)
     out = world.main / "var" / "runs" / "k1-a"
     assert folder_for(out, resume=False, checkout=checkout, git=world.git).out == out
     with pytest.raises(InvalidRequestError, match="holds no run"):
@@ -131,6 +133,27 @@ def test_the_days_requests_are_counted_from_the_history(tmp_path: Path) -> None:
     found = requests_today(history, date(2026, 11, 7))
     assert found == {"whisper-large-v3": 5, "orpheus": 2}
     assert len(read_history(history)) == 3
+
+
+def test_the_days_requests_are_counted_over_every_apps_history(tmp_path: Path) -> None:
+    """The apps spend on one key: Ole5's runs start the day from the flight agent's runs too, and
+    the shared history is still read strictly."""
+    apps = tmp_path / "apps"
+    history = apps / "ole5-voice-agent" / "evals" / "history.jsonl"
+    history.parent.mkdir(parents=True)
+    append_shared(
+        _timing(datetime(2026, 11, 7, 9, tzinfo=UTC), {"openai/gpt-oss-120b": 4}), history
+    )
+    flights = apps / "flight-voice-agent" / "evals" / "history.jsonl"
+    flights.parent.mkdir(parents=True)
+    line = '{"kind": "flights", "time": "2026-11-07T11:00:00+00:00", "requests": '
+    flights.write_bytes((line + '{"openai/gpt-oss-120b": 30, "judge": 2}}\n').encode())
+    found = requests_today(history, date(2026, 11, 7))
+    assert found == {"openai/gpt-oss-120b": 34, "judge": 2}
+    with history.open("ab") as file:
+        file.write(b'{"kind": "flights", "time": "2026-11-07T11:00:00+00:00"}\n')
+    with pytest.raises(EvalDataError, match="line 2: not a history line"):
+        requests_today(history, date(2026, 11, 7))
 
 
 def test_the_history_takes_only_its_own_kinds(tmp_path: Path) -> None:

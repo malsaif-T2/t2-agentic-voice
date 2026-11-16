@@ -25,6 +25,10 @@ from pathlib import Path
 from types import NoneType, UnionType
 from typing import Annotated, Literal, Union, get_args, get_origin
 
+from flight_voice.settings import PREFIX as FLIGHT_PREFIX
+from flight_voice.settings import AppSettings as FlightSettings
+from ole5_voice.settings import PREFIX as OLE5_PREFIX
+from ole5_voice.settings import AppSettings
 from pydantic import BaseModel, SecretStr
 from pydantic.fields import FieldInfo
 from t2_agentic_voice.core.config import VoiceSettings
@@ -58,7 +62,8 @@ _ENV_HEADER = f"""\
 # settings.groq.api_key), a list or a map is JSON, and a blank value keeps the default. Every
 # key below is blank, its default given in the comment just above it: write a value only to
 # change one, so a copy follows a default that changes later. docs/generated/settings.md
-# describes each setting in a table.
+# describes each setting in a table. The apps' own settings follow the library's, each under its
+# app's prefix (and T2's shared services under their general names).
 """
 _REFERENCE_HEADER = f"""\
 # Settings reference
@@ -161,8 +166,41 @@ def default_text(value: object) -> str | None:
     return str(value)
 
 
+# Each app's own settings, after the library's: its heading, its settings model, its prefix.
+APPS: tuple[tuple[str, type[BaseModel], str], ...] = (
+    (
+        "The Ole5 app's own settings (apps/ole5-voice-agent, ole5_voice/settings.py), read by its "
+        "server: its own under OLE5_VOICE_, and T2's knowledge base and embedding service under "
+        "the general names the owner set. Not the library's: the prefix T2V_ is the library's "
+        "alone.",
+        AppSettings,
+        OLE5_PREFIX,
+    ),
+    (
+        "The flight-booking agent's own settings (apps/flight-voice-agent, "
+        "flight_voice/settings.py), read by its server, under FLIGHT_VOICE_: its access code, its "
+        "page, the mock airline's today and modes, and the persona's names. Not the library's: "
+        "the prefix T2V_ is the library's alone.",
+        FlightSettings,
+        FLIGHT_PREFIX,
+    ),
+)
+
+
+def app_settings() -> Iterator[tuple[str, list[tuple[str, FieldInfo]]]]:
+    """Each app's heading and its settings, each with the variable that sets it: its alias
+    when it has one, else its app's prefix and its name."""
+    for text, model, prefix in APPS:
+        rows = []
+        for name, field in model.model_fields.items():
+            alias = field.validation_alias
+            rows.append((alias if isinstance(alias, str) else f"{prefix}{name.upper()}", field))
+        yield text, rows
+
+
 def render_env_example() -> str:
-    """.env.example: every setting, blank, under its description and its default."""
+    """.env.example: every setting, blank, under its description and its default: the
+    library's, then each app's own."""
     lines = [_ENV_HEADER.rstrip("\n")]
     for _, text, settings in groups():
         lines.append("")
@@ -172,6 +210,16 @@ def render_env_example() -> str:
             default = default_text(setting.default())
             lines += [] if default is None else [f"# Default: {default}"]
             lines.append(f"{setting.name}=")
+    for text, rows in app_settings():
+        lines += ["", *_comment(text)]
+        for name, field in rows:
+            lines += _comment(" ".join((field.description or "").split()))
+            required = field.is_required()
+            value = REQUIRED if required else field.get_default(call_default_factory=True)
+            default = default_text(value)
+            lines += ["# Required."] if required else []
+            lines += [] if default is None else [f"# Default: {default}"]
+            lines.append(f"{name}=")
     return "\n".join(lines) + "\n"
 
 

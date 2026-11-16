@@ -4,6 +4,8 @@ testing/audio_call.py) build alike, so a call in a test runs on the parts a serv
 
 - `tools_of`: the agent's tools, each a `Tool` the tool runner runs, its actions left to their
   own runner; a ConfigurationError, with a FIX line, for a tool the library cannot run.
+- `talker_tools`: the tools the talker is given, the agent's and, under
+  `stt.live_language = "detected"`, the library's `switch_language` (actions/language_tool.py).
 - `actions_of`: the agent's actions, in the order it declares them.
 - `action_runner`: the one `ActionRunner` of the agent's actions, against `outbox`, its cap per
   caller per day `limits.actions_per_caller_per_day`; given one call's `record` (a text call's),
@@ -14,6 +16,7 @@ from __future__ import annotations
 
 from t2_agentic_voice.actions.action import Action
 from t2_agentic_voice.actions.action_runner import ActionRunner
+from t2_agentic_voice.actions.language_tool import with_language_tool
 from t2_agentic_voice.actions.record import ActionRecord
 from t2_agentic_voice.actions.tools import Tool
 from t2_agentic_voice.core.config import VoiceSettings
@@ -32,6 +35,11 @@ def tools_of(agent: VoiceAgent) -> tuple[Tool, ...]:
             "Tool.from_function, knowledge_tool or @action."
         )
     return tools
+
+
+def talker_tools(agent: VoiceAgent, settings: VoiceSettings) -> tuple[Tool, ...]:
+    """The tools the talker is given (the module's docstring)."""
+    return with_language_tool(tools_of(agent), agent.languages, settings)
 
 
 def actions_of(agent: VoiceAgent) -> tuple[Action, ...]:

@@ -62,7 +62,7 @@ that throws is logged to the console and the others still run.
 | `hello` | `{call_id, languages}`, once the data channel opens: the call's languages, its own first |
 | `state` | `{state}`: `listening`; `thinking`, while a reply asked for has no audio yet (the talker or one of its tools at work) or a turn's transcript is awaited; `speaking` (below, "The agent thinking"); or `confirming`, while an action's read-back waits for the caller's answer and nothing plays ([tools-and-actions.md](tools-and-actions.md)) |
 | `caption` | `{speaker, text, final, turn_id, reply_id, clause, cut}`: the caller's turn once heard (`speaker` `caller`, named by `turn_id`), or the agent's reply clause by clause as each starts playing (`agent`, named by `reply_id` and `clause`); `cut` is true for an agent's clause a stop cut while it played, sent again with the mark (below) |
-| `card` | `{title, steps, source}`: an extra a tool of your own returned, for a client with a screen, its steps a list of text in order (empty when its source lists none) and `source` the document it comes from, `null` when there is none (below, "Cards") |
+| `card` | `{title, steps, rows, source}`: an extra a tool of your own returned, for a client with a screen, its steps a list of text in order (empty when its source lists none), its `rows` the options it lists, each `{title, detail, value, mark}` (empty when it lists none) and `source` the document it comes from, `null` when there is none (below, "Cards") |
 | `duck` | `{level}`: the caller is speaking over the agent, whose voice now plays at `level` (0 to 1) of its volume until the session decides |
 | `unduck` | `{}`: the session has decided, and the agent's voice is back to full volume |
 | `volume` | `{level}`: the client changed the agent's volume, 1 at full; the client's own event, sent on each change, whatever caused it |
@@ -117,7 +117,13 @@ returning a `ToolResult` with a `card`; the knowledge tool shows none
 read its text, as it reads a clause's.
 
 The client hands the page each card as one `card` event, and drops a message that is not one
-(no title, steps that are not text). Show it beside the captions, a new card in place of the
+(no title, steps that are not text). A card's option `rows` (a tool's `CardRow`s: the flights or
+plans a reply listed, at most 8) come each as `{title, detail, value, mark}`: a title of up to 80
+characters, a detail of up to 120 and a value of up to 40, each text or `null`, and a `mark` of
+`best`, `chosen` or `unavailable`, or `null`. The client drops a row that is not one and keeps
+the rest; a card from a session that sends no rows has an empty list. Map a mark to a style
+(Ole5's widget and the dev page set it as the line's `data-mark`), never to markup, and show a
+row's texts as text, as every other text of the card. Show it beside the captions, a new card in place of the
 last, and every text as text (`textContent`): a passage's steps are the knowledge base's words,
 not your page's. Ole5's widget shows the card above the captions, so the captions growing below
 never move it, with its steps numbered and each line in the direction of its own first strong
@@ -254,8 +260,9 @@ with the dev page on, to a browser on the same machine ([quickstart.md](quicksta
 `<prefix>/dev/console` is a page for the engineers who test an agent (D-083): every call on the
 runtime, turn by turn, read from the runtime's own events. It comes with the dev page, so `t2v
 dev` serves it, and so does an app's server under `env` dev with `T2V_SERVER__DEV_PAGE=true`: for
-Ole5, `http://127.0.0.1:7861/voice/dev/console`. It shows calls made from any page on that
-runtime, and can make its own.
+Ole5, `http://127.0.0.1:7861/voice/dev/console`, and for the flight agent
+`http://127.0.0.1:7862/voice/dev/console`. It shows calls made from any page on that runtime,
+and can make its own.
 
 To start a call from the console, leave **Join token** empty and press **Start call**. When your
 app declares a dev caller (below), the console makes a signed join token for that caller
@@ -315,3 +322,55 @@ returned, and its token starts a call as your dev caller, every route of the con
 only under `env` dev, to a browser on this machine that names it `localhost`, `127.0.0.1` or
 `[::1]`; any other request gets a plain 404. The token itself never goes to a log: the line
 `dev_token_minted` says only whether its consent keeps the audio.
+
+## Trying speech-to-text providers in the dev console
+
+The test console can hear each of its own calls with another speech-to-text provider and model,
+so you and a teammate can try them side by side without changing the server's settings.
+ElevenLabs' Scribe v3 is the default for every other call (D-105), and Groq's Whisper the
+fallback ([the comparison of 2026-11-16](../project/stt-report-2026-11-16.md) says why).
+
+**1. Paste the keys** you have into the `.env` at the repository's root (never committed), one
+line each, each the key string itself as its provider's dashboard shows it (the team keeps keys
+this way, the owner's choice of 2026-11-16; a `_FILE` form naming a file that holds the key also
+works). A provider with no key is simply not offered:
+
+```bash
+T2V_GROQ__API_KEY=gsk_...                       # always needed: the chat model and the voice
+T2V_ELEVENLABS__API_KEY=sk_...                  # needed: Scribe v3, the default speech-to-text
+T2V_SPEECHMATICS__API_KEY=...                   # the ar_en pack (T2V_SPEECHMATICS__REGION=eu)
+T2V_COHERE__API_KEY=...                         # Transcribe Arabic
+T2V_SONIOX__API_KEY=...                         # stt-async-v6
+T2V_TELNYX__API_KEY=...                         # HUMAIN's Arabic engine (humain/realtime) and Telnyx's batch models
+T2V_NABRAH__API_KEY=...                         # Nabrah's Saudi Arabic model
+T2V_ENV=dev                                     # the test console runs only under dev
+T2V_SERVER__DEV_PAGE=true
+```
+
+Every provider the library takes is listed with its key's name in
+[the settings reference](../generated/settings.md); each one added later is offered the same way
+once its key is set.
+
+**2. Start the dev console.** With those two lines in the `.env` and the app's own ones (for
+Ole5, its README's table: the access code, the join key and the knowledge base's sign-in;
+[.env.example](../../.env.example) lists every line), start your app's server on this machine; for Ole5,
+`uv run python -m ole5_voice.server --env-file .env`, and open
+`http://127.0.0.1:7861/voice/dev/console` (with `t2v dev`, `http://127.0.0.1:7860/voice/dev/console`).
+The server logs `stt_choices_offered` with the providers it offers, never a key.
+
+**3. Pick, then press Start call.** Beside the join token: **Speech-to-text** (the providers this
+server has a key for), **Model** (the ones that provider takes: Groq's `whisper-large-v3` and
+`whisper-large-v3-turbo`, one each for the others), and **Language mode** (the call's language
+`session`, none for the provider to detect `auto`, and the others `stt.live_language` has). The
+pickers start on the server's own settings, and your last pick is remembered in this browser.
+The choice applies to the call you start, and only to it; the line under the pickers says what
+the server's own settings are. Each turn then reads **Heard by** the provider and model that
+heard it, with the time its request took, and the console's saved records (`dev-console/` under
+the data folder) carry the same `heard_by`, so two calls can be compared turn by turn.
+
+A choice the server does not offer is refused with a plain error before the call starts. Only
+this console may choose: its routes (`GET` and `POST dev/stt`) answer only under `env` dev, to a
+browser on this machine, and no join token or page of your app can set a call's speech-to-text.
+A chosen call's audio goes to that provider; what each keeps is in
+[data-and-privacy.md](data-and-privacy.md). The measured comparison of the providers on the
+golden set, with the numbers to choose by, will be the speech-to-text bake-off's report.

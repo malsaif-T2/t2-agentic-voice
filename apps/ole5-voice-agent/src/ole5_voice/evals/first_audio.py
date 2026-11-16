@@ -44,6 +44,7 @@ from t2_agentic_voice import (
     ProviderError,
     get_logger,
 )
+from t2_agentic_voice.evals import MinutePacer, check_out, run_checkout, run_refused
 
 from ole5_voice.evals import run_settings
 from ole5_voice.evals.cli import EFFORTS, amount, count, missing, model_price, require, seconds
@@ -73,11 +74,9 @@ from ole5_voice.evals.first_audio_setup import (
 )
 from ole5_voice.evals.models import NAME_RULE, Split, is_name
 from ole5_voice.evals.overlap_plan import setting
-from ole5_voice.evals.pacers import MinutePacer
 from ole5_voice.evals.run_parts import DATA, Todo
 from ole5_voice.evals.session_runner import closed, main_of, measured
 from ole5_voice.evals.timing_run import TAGS
-from ole5_voice.evals.worktree import check_out, refused, run_checkout
 
 STT_RPM: Final = 10  # Whisper requests a minute: half the published 20 (plan 003's T)
 TTS_RPM: Final = 5  # requests a minute to each voice (the golden set's timing runs')
@@ -195,7 +194,7 @@ def _run(args: argparse.Namespace, parts: FirstAudioParts) -> int:
 def _built(args: argparse.Namespace, parts: FirstAudioParts, closing: Closing) -> int:
     settings = settings_of(args)
     if settings.tts.cache_clauses and args.split == "held-out":
-        raise refused(
+        raise run_refused(
             "the clause cache (--clause-cache on) runs on dev only: run I runs no held-out",
             "give --split dev, or leave the clause cache off",
         )
@@ -203,7 +202,7 @@ def _built(args: argparse.Namespace, parts: FirstAudioParts, closing: Closing) -
     checkout = run_checkout(plan.folder, plan.git)
     out = check_out(args.out, checkout, plan.git)
     if not is_name(out.name):
-        raise refused(
+        raise run_refused(
             f"the --out folder's name, the run's, is not a name, which is {NAME_RULE}",
             "name the folder like t1",
         )
@@ -211,7 +210,7 @@ def _built(args: argparse.Namespace, parts: FirstAudioParts, closing: Closing) -
     digest, todo = recorded(data, args.split, args, plan)
     dev = todo if args.split == "dev" else recorded(data, "dev", args, plan)[1]
     if not todo or not dev:
-        raise refused(
+        raise run_refused(
             "the split holds no recorded request the owner has checked, or dev none for the "
             "smoke test",
             "check --split and the committed split",
@@ -219,13 +218,13 @@ def _built(args: argparse.Namespace, parts: FirstAudioParts, closing: Closing) -
     agent = agent_of(args, parts.load_factory, closing)
     languages = {t.item.language for t in [*todo, dev[0]]}
     if unspoken := sorted({TAGS[each] for each in languages if not speaks(agent, each)}):
-        raise refused(f"the agent speaks no {', '.join(unspoken)}", "give the Ole5 agent")
+        raise run_refused(f"the agent speaks no {', '.join(unspoken)}", "give the Ole5 agent")
     voices = sorted({settings.tts.languages[language.tag].model for language in agent.languages})
     prices = prices_of(args, settings, voices)
     played = [dev[0], *(() if args.smoke_only else todo)]
     most = sum(prices.budget(seconds_of(t), voice_of(settings, agent, t)) for t in played)
     if most > args.cap_usd:
-        raise refused(
+        raise run_refused(
             f"the run's budget, ${most:.2f} at most, passes --cap-usd",
             "raise --cap-usd, or check the prices and --llm-input-tokens",
         )

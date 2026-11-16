@@ -11,7 +11,15 @@ import json
 from pathlib import Path
 from typing import get_args
 
-from ole5_voice.evals import answerers, groq_answerer, matcher, run, run_settings, scorecard
+from ole5_voice.evals import (
+    action_setup,
+    answerers,
+    groq_answerer,
+    matcher,
+    run,
+    run_settings,
+    scorecard,
+)
 from ole5_voice.evals.run_parts import Parts
 from ole5_voice.evals.runs import Answer, SegmentAnswer
 from pydantic import BaseModel
@@ -20,6 +28,7 @@ from t2_agentic_voice.core.settings.groq import GroqSettings
 from t2_agentic_voice.core.settings.stt import WHISPER_MIN_BILLED_S, SttModel, SttProvider
 from t2_agentic_voice.domain.scoring import scored_form
 from t2_agentic_voice.ports import Transcript
+from t2_agentic_voice.testing import paced_chat
 
 TABLE = Path(__file__).parents[2] / "t2_agentic_voice" / "fixtures"
 TABLE /= "arabic_normalizer_characterization.json"
@@ -52,6 +61,11 @@ def test_the_answerers_billing_minimum_is_the_adapters() -> None:
     assert groq_answerer.GROQ_MINIMUM_S == WHISPER_MIN_BILLED_S
 
 
+def test_the_action_runs_output_budget_is_the_paced_chat_models() -> None:
+    """Run A budgets a request that names no output bound as the paced chat model counts it."""
+    assert action_setup.OUTPUT_BUDGET == paced_chat.OUTPUT_BUDGET
+
+
 def test_an_answer_bounds_the_no_speech_estimate_as_a_transcript_does() -> None:
     bounds = Transcript.model_fields["no_speech_prob"]
     for model in (Answer, SegmentAnswer):
@@ -60,7 +74,13 @@ def test_an_answer_bounds_the_no_speech_estimate_as_a_transcript_does() -> None:
 
 
 def test_each_speech_to_text_provider_the_settings_take_has_an_adapter() -> None:
-    assert set(answerers._ADAPTERS) == set(get_args(SttProvider))
+    """`poe eval` builds its adapter through the library, so each name `stt.provider` takes
+    builds one, the one it names."""
+    key = "made-up-key-for-each-provider-0123"
+    for provider in get_args(SttProvider):
+        data = {"env": "test", provider: {"api_key": key}, "stt": {"provider": provider}}
+        built = answerers.adapter(VoiceSettings.model_validate(data))
+        assert built.name == provider
 
 
 def _leaves(model: type[BaseModel], prefix: str = "") -> set[str]:

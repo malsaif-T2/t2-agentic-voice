@@ -14,6 +14,10 @@ each variant in the language an H1 pass's rule named for it.
   `poe eval-compare BASE RUN --allow-setting run.language_from` reads the arm against it. A
   held-out arm takes no base: it sends every variant.
 
+- **A detected pass** (`--classifier detected`) with `--language-base` on dev: detect_arm.py's
+  arm, only the variants whose first turn also goes naming no language sent, naming none, each
+  answer read with the library's rule against the baseline's.
+
 The arm is recorded as `run.language_from`: the pass, its classifier, the call language, how
 many variants the rule changed and how many got different languages, and the base. Each refusal
 comes before anything is sent and names no variant.
@@ -22,14 +26,16 @@ comes before anything is sent and names no variant.
 from __future__ import annotations
 
 import argparse
-from collections.abc import Mapping
+from collections.abc import Callable, Mapping
 from dataclasses import dataclass, field, replace
 from pathlib import Path
 from typing import Final
 
 from t2_agentic_voice import get_logger
+from t2_agentic_voice.evals import run_refused
 
 from ole5_voice.evals import scorecard
+from ole5_voice.evals.detect_arm import detected_plan
 from ole5_voice.evals.languages_card import (
     CallLanguage,
     LanguageResult,
@@ -41,7 +47,6 @@ from ole5_voice.evals.models import Variant
 from ole5_voice.evals.run_parts import Plan
 from ole5_voice.evals.runs import Answer, Scorecard
 from ole5_voice.evals.scorecard import EvalDataError
-from ole5_voice.evals.worktree import refused
 
 SETTING: Final = "run.language_from"  # how a run records the arm
 log = get_logger(__name__)
@@ -65,12 +70,13 @@ def flag_problem(args: argparse.Namespace) -> str | None:
 @dataclass(frozen=True)
 class LanguageArm:
     """What the arm makes of a run's plan: its plan, each request in the language the pass
-    named; the answers the baseline gives for the variants not sent; and what the run records
-    (none without an arm)."""
+    named; the answers the baseline gives for the variants not sent; what the run records
+    (none without an arm); and, for a detected pass, how a sent variant's answer is read."""
 
     plan: Plan
     copied: Mapping[Variant, Answer] = field(default_factory=dict)
     recorded: Mapping[str, str] = field(default_factory=dict)
+    merge: Callable[[Variant, Answer], Answer] | None = None
 
 
 def language_arm(
@@ -85,10 +91,12 @@ def language_arm(
     found, results = _pass(args.language_from, args.split, commit, plan.digest)
     by_variant = {(r.item, r.variant): r for r in results}
     if any((t.item.id, t.variant.id) not in by_variant for t in plan.todo):
-        raise refused(
+        raise run_refused(
             "the --language-from pass did not feed every variant of the run",
             "give a complete pass of the run's split, at this commit",
         )
+    if found.run.classifier == "detected":
+        return _detected(args, plan, by_variant, found.run.name, commit, model, prompt)
     run, todo, changed, mixed = found.run, [], set(), 0
     for each in plan.todo:
         heard = by_variant[(each.item.id, each.variant.id)]
@@ -112,6 +120,35 @@ def language_arm(
     return LanguageArm(replace(plan, todo=tuple(todo)), copied, {SETTING: shown})
 
 
+def _detected(
+    args: argparse.Namespace,
+    plan: Plan,
+    heard: Mapping[tuple[str, str], LanguageResult],
+    name: str,
+    commit: str,
+    model: str,
+    prompt: str,
+) -> LanguageArm:
+    """The arm of a detected pass (detect_arm.py), on dev against the call language's base."""
+    if args.language_base is None:
+        raise run_refused(
+            "a detected pass's arm reads each answer against the call language's baseline",
+            "give --language-base",
+        )
+    base = _base(args.language_base, args, commit=commit, model=model, prompt=prompt, plan=plan)
+    answers = {r.variant: r.answer for r in base.variants}
+    by_variant = {t.variant: answers[t.variant.id] for t in plan.todo}
+    sent, arm = detected_plan(plan, heard, args.language_hint, by_variant)
+    copied = {v: a for v, a in by_variant.items() if v not in arm.named}
+    call = args.language_hint
+    shown = (
+        f"{name} (detected), call {call}, {len(arm.named)} of {len(plan.todo)} variants sent "
+        f"naming no language, the rest from {base.run.name}"
+    )
+    log.info("language_arm", run=name, call=call, detecting=len(arm.named))
+    return LanguageArm(sent, copied, {SETTING: shown}, arm.merge)
+
+
 def _pass(
     path: Path, split: str, commit: str, digest: str
 ) -> tuple[LanguagesScorecard, tuple[LanguageResult, ...]]:
@@ -119,17 +156,18 @@ def _pass(
     try:
         found, results = load_pass(path)
     except EvalDataError as error:
-        raise refused(f"--language-from {error.message}", "give an H1 pass's folder") from None
+        raise run_refused(f"--language-from {error.message}", "give an H1 pass's folder") from None
     problems = (
         (not found.complete, "is not complete"),
         (found.run.commit != commit, "is not at this commit"),
         (found.run.split != split, "is not of the run's split"),
         (found.run.data_digest != digest, "is not on the run's data"),
         (found.run.classifier == "off", "classifies nothing (an off pass)"),
+        (found.run.classifier == "detected" and split != "dev", "is detected: dev only, yet"),
     )
     for wrong, says in problems:
         if wrong:
-            raise refused(
+            raise run_refused(
                 f"the --language-from pass {says}", "give a complete pass of H1, at this commit"
             )
     return found, results
@@ -144,7 +182,7 @@ def _base(
     except EvalDataError:
         base = None
     if base is None:
-        raise refused("--language-base is not a scorecard", "give the baseline run's folder")
+        raise run_refused("--language-base is not a scorecard", "give the baseline run's folder")
     settings = base.run.settings
     same = (
         base.run.split == args.split
@@ -157,12 +195,14 @@ def _base(
         and base.complete
     )
     if not same:
-        raise refused(
+        raise run_refused(
             "--language-base is not a baseline of this call language and prompt: a complete "
             "run of the same model, commit and data, with no arm of its own",
             "give the baseline run of this --language-hint",
         )
     known = {r.variant for r in base.variants}
     if any(t.variant.id not in known for t in plan.todo):
-        raise refused("--language-base does not hold every variant", "give a whole dev baseline")
+        raise run_refused(
+            "--language-base does not hold every variant", "give a whole dev baseline"
+        )
     return base

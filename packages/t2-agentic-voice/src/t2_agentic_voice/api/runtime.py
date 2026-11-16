@@ -40,7 +40,8 @@ plan's interfaces".
   traceback's text to uvicorn's error log.
 - **The router** (api/router.py, which says what each route does): after its prefix, the
   `t2v/1` routes and, with `env` dev and the dev page on (`server.dev_page`, or `t2v dev`),
-  `GET /dev` and the test console, its feed an observer of every event (api/dev_feed.py). It
+  `GET /dev` and the test console, its feed an observer of every event (api/dev_feed.py), and
+  the console's choice of each call's speech-to-text (api/stt_calls.py), handed to voice. It
   carries the lifespan, which FastAPI merges when the router is included; in the mount, the
   app's own CORS middleware answers, and the runtime says so at startup (the design's 5.5). Its
   record of each call is api/offers.py's, swept every `SWEEP_PERIOD_S` on the runtime's clock;
@@ -75,6 +76,7 @@ from t2_agentic_voice.api.lockfile import LockFile, agent_folder
 from t2_agentic_voice.api.offers import FORGOTTEN_KEPT_S, CallRecords
 from t2_agentic_voice.api.providers import Providers, opened
 from t2_agentic_voice.api.router import Running
+from t2_agentic_voice.api.stt_calls import CallStts, chosen_calls
 from t2_agentic_voice.api.voices import open_voices
 from t2_agentic_voice.core.config import VoiceSettings
 from t2_agentic_voice.core.errors import ConfigurationError
@@ -135,6 +137,7 @@ class VoiceRuntime:
         self._events: asyncio.Queue[Event] | None = None
         self._actions: ActionRunner | None = None  # the agent's, set as the lifespan starts
         self._running: Running | None = None
+        self._stts: CallStts | None = None  # the dev console's choices, made with its routes
         self._entered = False
         # Set by `serve()`, whose app answers CORS for `server.allowed_origins`.
         self._served = False
@@ -186,7 +189,8 @@ class VoiceRuntime:
             log.warning("dev_identity", fix="pass identity= to serve real callers")
             identity = DevIdentity()
         dev_page = env == "dev" and (dev or self._settings.server.dev_page)
-        feed = DevFeed.of(self._settings) if dev_page else None
+        self._stts = CallStts(self._settings) if dev_page else None
+        feed = DevFeed.of(self._settings, self._stts) if dev_page else None
         if feed is not None:
             self.on(Event)(feed.observe)
         served = routing.Served(
@@ -199,6 +203,7 @@ class VoiceRuntime:
             static=routing.STATIC,
             dev_page=dev_page,
             feed=feed,
+            stt=self._stts,
         )
         return routing.build_router(served, lifespan=self.lifespan)
 
@@ -247,6 +252,7 @@ class VoiceRuntime:
         talking: dict[str, Any] = {} if classifier is None else {"classifier": classifier}
         if talker is not None:
             talking |= {"talker": talker, "chat": providers.chat}
+        talking |= await chosen_calls(self._stts, classifier=classifier is not None, stack=stack)
         calls = self._calls(
             agent=agent,
             settings=settings,

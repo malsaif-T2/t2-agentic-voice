@@ -101,9 +101,10 @@ def test_a_stop_said_over_the_reply_lands_after_the_scenarios_wait_and_cuts_it()
     llm = _answers({"نسيت"}, LONG, "وبعدها.")
     held = _play("s01_password_stop_go_on", kb, llm)
     first, stop, go_on = held.turns
-    assert (
-        _at("advance 1") >= _at("returned") and _at("user agent_speaking") - _at("advance 1") >= 1.0
-    )
+    # The 1 s wait is read on two clock readings; a millisecond's room keeps the clock's own
+    # precision from failing it (D-090: 0.9999359 s once, under a full gate's load).
+    waited = _at("user agent_speaking") - _at("advance 1")
+    assert _at("advance 1") >= _at("returned") and waited >= 1.0 - 1e-3
     # Cut in its first clause (`rolled_back`, which the scenario's cut check takes as `cut`);
     # TextCall taps no audio, so the share heard of a cut clause reads 0 (the report's note).
     (cut,) = [clause for clause in first.clauses if not clause.phrase]

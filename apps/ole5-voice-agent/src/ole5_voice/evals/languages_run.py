@@ -1,13 +1,19 @@
-"""`poe eval-languages`: plan 007's run H, its H1, each turn's language on the golden set,
-offline and with no spend, into a new folder, `--out`; and `--read`, condition 4 of its keep
-rule read across a commit's passes.
+"""`poe eval-languages`: run H's H1, each turn's language on the golden set, offline and with no
+spend, or through a speech-to-text provider's own language, which spends, into a new folder,
+`--out`; and `--read`, condition 4 of its keep rule read across a commit's passes.
 
 A pass feeds every checked variant of its split through the file-fed pipeline, each a fresh call
 at real-time pace with `eot.LEAD_S` of silence before it and `eot.TAIL_S` after it, held in
 Arabic with Ole5's two languages (`ECHO_AGENT`), through the `evals` facade's `turn_languages`:
 `--classifier off` under `stt.live_language = "session"`; `silero` or `ecapa` under
 `classified`, with the classifier the `classifiers` facade builds from the settings, its files
-in `--classifier-dir` (or `stt.classifier_dir`), loaded before any clip is fed. The rule's
+in `--classifier-dir` (or `stt.classifier_dir`), loaded before any clip is fed; `detected` under
+`detected`, no classifier, each turn recording whether it also goes naming no language; `groq`,
+`elevenlabs` or `soniox` under `classified`, through that provider's own language
+(provider_language.py, D-100), each classified turn's first seconds sent to it with no language
+named. A provider's pass needs `--price-per-hour` and `--cap-usd`, logs its dry estimate (the
+most it can send and cost) before any clip is fed and is refused past the cap; `--estimate-only`
+stops there, building no adapter, so it needs no key, and making no folder. The rule's
 numbers are the registered ones (Q20: `stt.classifier_from_s` 2.0, `stt.classifier_min_share`
 0.7 and `stt.classifier_threads` 2), and a pass under others is refused. One call runs at a
 time, so no turn finds the classifier busy with another call's.
@@ -20,13 +26,14 @@ finishes (`TURNS_FILE`) with a progress line of identifiers and counts, never an
 held-out pass logs counts only and keeps its turns whole once complete, for run H's held-out
 H2 runs and condition 4 to read, never printed or shown by variant. The scorecard
 (languages_score.py) is written whole at the end, with the process's peak memory where the
-platform tells it (`peak_mb`), and the pass's history line is appended to the worktree's history
-and copied beside the scorecard, spending nothing; `--smoke-only` feeds the run's first dev
+platform tells it (`peak_mb`), and, for a provider's pass, its price and what it sent at the
+most, and the pass's history line is appended to the worktree's history and copied beside the
+scorecard; `--smoke-only` feeds the run's first dev
 variant alone and appends no line. Every pass of run H runs at one commit, each alone, its line
 kept aside until the last has run (plan 007's "Run H").
 
 `--read RUN ...` reads the complete passes of one commit, split and data, exactly two of them
-off, and logs condition 4 for each classifier pass (languages_score.read_passes), writing
+off, and logs condition 4 for each classifier pass (languages_reading.read_passes), writing
 nothing.
 """
 
@@ -46,6 +53,7 @@ from t2_agentic_voice import (
     evals,
     get_logger,
 )
+from t2_agentic_voice.evals import check_out, run_checkout, run_refused
 from t2_agentic_voice.ports import LanguageClassifier
 
 from ole5_voice import LOGGERS
@@ -53,21 +61,13 @@ from ole5_voice.agent import ECHO_AGENT
 from ole5_voice.evals import history
 from ole5_voice.evals.cli import require
 from ole5_voice.evals.eot import LEAD_S, TAIL_S
-from ole5_voice.evals.eot_score import Decision, judge
-from ole5_voice.evals.languages_card import (
-    PAUSED_KIND,
-    TURNS_FILE,
-    ClassifierName,
-    LanguageResult,
-    LanguagesLine,
-    LanguagesRun,
-)
-from ole5_voice.evals.languages_score import (
-    line_of,
-    load_pass,
-    read_passes,
-    scorecard_of,
-    write_pass,
+from ole5_voice.evals.languages_card import PAUSED_KIND, TURNS_FILE, ClassifierName, LanguagesRun
+from ole5_voice.evals.languages_pass import (
+    AppendLine,
+    Progress,
+    close_pass,
+    read_condition_4,
+    result_of,
 )
 from ole5_voice.evals.languages_setup import (
     CODES,
@@ -78,7 +78,12 @@ from ole5_voice.evals.languages_setup import (
     shown,
 )
 from ole5_voice.evals.models import NAME_RULE, Split, is_name
-from ole5_voice.evals.run_lines import AnyLine
+from ole5_voice.evals.provider_language import (
+    PROVIDERS,
+    ProviderLanguage,
+    check_pass_cost,
+    provider_language,
+)
 from ole5_voice.evals.run_parts import (
     DATA,
     Choice,
@@ -89,13 +94,15 @@ from ole5_voice.evals.run_parts import (
     load_plan,
     marked_end,
 )
-from ole5_voice.evals.worktree import check_out, refused, run_checkout
+from ole5_voice.evals.runs import cost_usd
+from ole5_voice.evals.stt_arms import ARMS
 
 _DESCRIPTION = "Measure each turn's language on the golden set, offline, into a new folder --out."
 log = get_logger(__name__)
 TurnLanguages = Callable[..., AsyncIterator[tuple[evals.LanguageTurn, ...]]]
 MakeClassifier = Callable[[VoiceSettings], LanguageClassifier]
-AppendLine = Callable[[AnyLine, Path], None]  # `history.append_line`, or a test's
+MakeProvider = Callable[[VoiceSettings], ProviderLanguage]
+_PRICED = ("price_per_hour", "cap_usd")
 Peak = Callable[[], float | None]
 
 
@@ -103,7 +110,11 @@ def _parser() -> argparse.ArgumentParser:
     parser = argparse.ArgumentParser(prog="poe eval-languages", description=_DESCRIPTION)
     add = parser.add_argument
     add("--split", choices=get_args(Split), help="the split the pass covers, all of it")
-    add("--classifier", choices=get_args(ClassifierName), help="off (session), silero or ecapa")
+    add(
+        "--classifier",
+        choices=get_args(ClassifierName),
+        help="off (session), silero, ecapa or detected; or groq, elevenlabs or soniox, which spend",
+    )
     add("--classifier-dir", type=Path, help="the classifier's model files (stt.classifier_dir)")
     add("--env-file", type=Path, help="the .env file the settings load from (never printed)")
     add("--var-dir", type=Path, help="the settings' var_dir")
@@ -111,6 +122,9 @@ def _parser() -> argparse.ArgumentParser:
     add("--out", type=Path, help="a new folder, outside the worktree, that git ignores")
     add("--note", help="why the pass is made")
     add("--smoke-only", action="store_true", help="feed the first dev variant alone")
+    add("--price-per-hour", type=float, help="a provider's price per hour of audio, in USD")
+    add("--cap-usd", type=float, help="the most a provider's pass may cost, in USD")
+    add("--estimate-only", action="store_true", help="log a provider's estimate, send nothing")
     add("--read", nargs="+", type=Path, metavar="RUN", help="read passes' folders: condition 4")
     return parser
 
@@ -120,54 +134,13 @@ def _require(parser: argparse.ArgumentParser, args: argparse.Namespace) -> None:
         if any(getattr(args, n) for n in ("split", "classifier", "out", "note", "smoke_only")):
             parser.error("--read takes the passes alone")
         return
-    require(parser, args, ("split", "classifier", "out", "note"), noun="pass")
+    provider = args.classifier in PROVIDERS
+    priced = _PRICED if provider else ()
+    require(parser, args, ("split", "classifier", "out", "note", *priced), noun="pass")
+    if not provider and (args.estimate_only or any(getattr(args, n) is not None for n in _PRICED)):
+        parser.error("--price-per-hour, --cap-usd and --estimate-only serve a provider's pass")
     if args.smoke_only and args.split != "dev":
         parser.error("--smoke-only is a dev run: its variant is the first dev one")
-
-
-def _result(todo: Todo, side: Split, turns: tuple[evals.LanguageTurn, ...]) -> LanguageResult:
-    item, variant = todo.item, todo.variant
-    judged = None
-    if item.kind == PAUSED_KIND:
-        ends = [Decision(speech_stop_ms=t.speech_stop_ms, end_ms=t.end_ms) for t in turns]
-        judged = judge(ends, marked_end(todo), labelled=True)
-    return LanguageResult(
-        item=item.id,
-        variant=variant.id,
-        split=side,
-        kind=item.kind,
-        language=item.language,
-        device=variant.device,
-        turns=turns,
-        judged=judged,
-    )
-
-
-class _Progress:
-    """The results so far, each written and logged as it comes (counts only when held out)."""
-
-    def __init__(self, total: int, turns_file: Path | None) -> None:
-        self.total, self.turns_file = total, turns_file
-        self.results: list[LanguageResult] = []
-        self.interrupted = False
-
-    def add(self, result: LanguageResult) -> None:
-        self.results.append(result)
-        done = len(self.results)
-        if self.turns_file is None:
-            log.info("progress", done=done, of=self.total)
-            return
-        with self.turns_file.open("a", encoding="utf-8", newline="\n") as file:
-            file.write(result.model_dump_json() + "\n")
-        heard = [turn.by or "none" for turn in result.turns]
-        log.info(
-            "variant_done",
-            done=done,
-            of=self.total,
-            item=result.item,
-            variant=result.variant,
-            by=",".join(heard) or "none",
-        )
 
 
 async def _loaded(classifier: LanguageClassifier) -> None:
@@ -181,7 +154,7 @@ async def _loaded(classifier: LanguageClassifier) -> None:
 
 async def _fed(
     todo: Sequence[Todo],
-    progress: _Progress,
+    progress: Progress,
     settings: VoiceSettings,
     classifier: LanguageClassifier | None,
     turn_languages: TurnLanguages,
@@ -201,7 +174,7 @@ async def _fed(
     try:
         index = 0
         async for turns in found:
-            progress.add(_result(todo[index], side, turns))
+            progress.add(result_of(todo[index], side, turns))
             index += 1
     finally:
         close = getattr(found, "aclose", None)
@@ -216,6 +189,7 @@ def _run(
     parts: Parts,
     turn_languages: TurnLanguages,
     make_classifier: MakeClassifier,
+    make_provider: MakeProvider,
     append_line: AppendLine,
     peak: Peak,
 ) -> int:
@@ -223,7 +197,7 @@ def _run(
     checkout = run_checkout(parts.folder, parts.git)
     out = check_out(args.out, checkout, parts.git)
     if not is_name(out.name):
-        raise refused(
+        raise run_refused(
             f"the --out folder's name, the run's, is not a name, which is {NAME_RULE}",
             "name the folder like lid1-dev-silero",
         )
@@ -249,77 +223,41 @@ def _run(
         held_in=HELD_IN,
         note=args.note,
     )
-    classifier = None if args.classifier == "off" else make_classifier(settings)
+    provider: ProviderLanguage | None = None
+    if args.classifier in PROVIDERS:
+        estimate = check_pass_cost(
+            ARMS[args.classifier],
+            [clip_of(each).seconds for each in todo],
+            from_s=settings.stt.classifier_from_s,
+            tail_s=TAIL_S,
+            price_per_hour_usd=args.price_per_hour,
+            cap_usd=args.cap_usd,
+            estimate_only=args.estimate_only,
+        )
+        if estimate == "estimated":
+            return 0
+        provider = make_provider(settings)
+    unclassified = args.classifier in ("off", "detected")
+    built = provider or (None if unclassified else make_classifier(settings))
+    classifier: LanguageClassifier | None = built
     if classifier is not None:
         asyncio.run(_loaded(classifier))
     held_out = args.split == "held-out"
     out.mkdir(parents=True)
-    progress = _Progress(len(todo), None if held_out else out / TURNS_FILE)
+    progress = Progress(len(todo), None if held_out else out / TURNS_FILE)
     log.info("run_started", run=info.name, split=info.split, variants=len(todo))
     try:
         asyncio.run(_fed(todo, progress, settings, classifier, turn_languages, args.split))
     except KeyboardInterrupt:
         progress.interrupted = True
         log.warning("run_interrupted", done=len(progress.results), of=len(todo))
-    info = info.model_copy(update={"peak_mb": peak()})
-    return _close(info, progress, len(todo), args.smoke_only, out, checkout.top, append_line)
-
-
-def _close(
-    info: LanguagesRun,
-    progress: _Progress,
-    total: int,
-    smoke_only: bool,
-    out: Path,
-    top: Path,
-    append_line: AppendLine,
-) -> int:
-    """The scorecard and, for a whole pass, its history line; 0 when complete."""
-    complete = not progress.interrupted and len(progress.results) == total
-    held_out = info.split == "held-out"
-    kept = progress.results if complete or not held_out else []
-    card = scorecard_of(info, kept, complete=complete)
-    write_pass(out, card, kept if complete or not held_out else None)
-    if not smoke_only:
-        line: LanguagesLine = line_of(card)
-        history.record_line(append_line, line, top / DATA, out)
-    numbers = card.card
-    log.info(
-        "run_finished",
-        complete=complete,
-        variants=numbers.variants,
-        turns=numbers.turns,
-        in_time=numbers.in_time,
-        late=numbers.late,
-        cut_offs=numbers.paused.cut_offs,
-        disagreements=numbers.disagreements,
-    )
-    return 0 if complete else 1
-
-
-def _read(folders: Sequence[Path]) -> int:
-    """Condition 4 of each classifier pass of `folders` (the module's docstring), logged."""
-    passes = [load_pass(folder) for folder in folders]
-    try:
-        readings = read_passes(passes)
-    except ValueError as error:
-        raise refused(
-            str(error), "give the complete passes of one commit, two of them off"
-        ) from None
-    for reading in readings:
-        log.info(
-            "condition_4",
-            run=reading.run,
-            classifier=reading.classifier,
-            cut_offs=reading.cut_offs,
-            allowed=reading.allowed,
-            pairs=reading.pairs,
-            unpaired=reading.unpaired,
-            delay_ms=None if reading.delay_ms is None else round(reading.delay_ms, 1),
-            off_ms=None if reading.off_ms is None else round(reading.off_ms, 1),
-            holds=reading.holds,
-        )
-    return 0
+    spent: dict[str, float | None] = {"peak_mb": peak()}
+    if provider is not None:
+        price, billed = args.price_per_hour, provider.billed_seconds
+        spent |= {"price_per_hour_usd": price, "billed_seconds": billed}
+        spent |= {"cost_usd": cost_usd(billed, price)}
+    info = info.model_copy(update=spent)
+    return close_pass(info, progress, len(todo), args.smoke_only, out, checkout.top, append_line)
 
 
 def main(
@@ -328,6 +266,7 @@ def main(
     parts: Parts | None = None,
     turn_languages: TurnLanguages = evals.turn_languages,
     make_classifier: MakeClassifier = classifier_of,
+    make_provider: MakeProvider = provider_language,
     append_line: AppendLine = history.append_line,
     peak: Peak = peak_mb,
 ) -> int:
@@ -340,9 +279,10 @@ def main(
     configure_logging(loggers=LOGGERS)
     try:
         if args.read:
-            return _read(args.read)
+            return read_condition_4(args.read)
         parts = Parts() if parts is None else parts
-        return _run(args, parts, turn_languages, make_classifier, append_line, peak)
+        makers = (make_classifier, make_provider)
+        return _run(args, parts, turn_languages, *makers, append_line, peak)
     except T2VoiceError as error:
         log.error("eval_languages_refused", code=error.code, message=error.message)
         return 2

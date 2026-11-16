@@ -263,7 +263,13 @@ given after the task's name:
   pass at another commit, on other data or with no classifier; with `--language-base <run>`, the
   baseline of that call language, a dev run sends only the variants whose language the rule
   changed and takes every other answer from the baseline, unsent, and is read against it with
-  `poe eval-compare BASE ARM --allow-setting run.language_from`;
+  `poe eval-compare BASE ARM --allow-setting run.language_from`; a detected pass (`--classifier
+  detected`, D-038's amendment) takes `--language-base` on dev (`detect_arm.py`): only the
+  variants whose first turn also went naming no language are sent, naming none with no prompt,
+  and each answer is read with the library's rule (`evals.switch_to`) against the baseline's,
+  the detecting request's words kept only when the call would move, and each detecting
+  request's time logged beside the baseline's for the same audio (`detect_answered`), the wait
+  a live turn adds;
 - `uv run poe eval-history` (`history.py`) renders `evals/history.jsonl` into the generated
   [eval-history.md](../generated/eval-history.md);
 - `uv run poe eot` (`eot.py`) measures end of turn on the paused requests with the reference
@@ -274,7 +280,16 @@ given after the task's name:
   variant of a split through the file-fed pipeline at real-time pace, with no spend, Ole5's two
   languages and a speech-to-text that answers at once, `--classifier off`, `silero` or `ecapa`
   at the registered rule (`stt.classifier_from_s` 2.0, `stt.classifier_min_share` 0.7, 2
-  threads; others refused), the classifier's files in `--classifier-dir`; each turn's
+  threads; others refused), the classifier's files in `--classifier-dir`; or `--classifier
+  detected` under `stt.live_language = "detected"` (D-038's amendment; `stt.detect_from_s` 1.2,
+  others refused), no classifier, each turn recording whether it also goes naming no language
+  (`detects`), which the Whisper arm reads; or `--classifier groq`, `elevenlabs` or `soniox`, a
+  speech-to-text provider's own language (D-100, `provider_language.py`): each classified turn's
+  first 2 s sent to it with no language named, its language and score (ElevenLabs') read as the
+  turn's scores, a score below an even share leaving the turn unsure rather than handing it to the
+  other language, which spends, so it takes `--price-per-hour` and `--cap-usd`, logs the most it
+  can send and cost before any clip and stops there with `--estimate-only` (no key needed), its
+  line recording its price and what it sent at the most; each turn's
   classification, decision and end kept in the pass's `turns.jsonl` (a held-out pass's whole,
   once complete, never shown by variant), its scorecard by `languages_score.py`, and a
   languages line appended (it refuses the main checkout; `--smoke-only` feeds one dev variant

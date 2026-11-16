@@ -130,7 +130,9 @@ class DeclinedAction(_Plain):
 class TalkerTurn(_Plain):
     """One turn of the caller's, as the session hands it to the talker: its number; its heard
     words, whole (a turn the caller went on with after a pause, within the hold, is one turn);
-    the language its transcript was heard in (None when the provider named none); the reply its
+    the language its transcript was heard in (None when the provider named none); the tag of the
+    language it asked the call to move to (`asked`, a spoken switch request under
+    `stt.live_language = "detected"`; None for none), which its reply is in; the reply its
     speech began over (`over_reply`, None when it was said while the agent was silent) and the
     reply it stopped (`cut_reply`, None when it stopped none; a turn said alone may stop a
     reply to an earlier turn before it played); the action this turn declined, if any; and the
@@ -139,6 +141,7 @@ class TalkerTurn(_Plain):
     turn_id: TurnId
     words: str = Field(min_length=1)
     language: _Heard | None = None
+    asked: _Heard | None = None
     over_reply: ReplyId | None = None
     cut_reply: ReplyId | None = None
     declined: DeclinedAction | None = None

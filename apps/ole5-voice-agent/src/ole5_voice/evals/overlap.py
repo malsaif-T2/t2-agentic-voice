@@ -42,6 +42,7 @@ from t2_agentic_voice import (
     evals,
     get_logger,
 )
+from t2_agentic_voice.evals import MinutePacer, check_out, run_checkout, run_refused
 from t2_agentic_voice.groq import GroqSTT
 from t2_agentic_voice.ports import SpeechToText
 
@@ -74,10 +75,8 @@ from ole5_voice.evals.overlap_run import (
     ReplySpeech,
     reference,
 )
-from ole5_voice.evals.pacers import MinutePacer
 from ole5_voice.evals.run_parts import DATA, Choice, Parts, audio_roots, load_plan
 from ole5_voice.evals.takes import Script
-from ole5_voice.evals.worktree import check_out, refused, run_checkout
 
 ANSWERERS: Final = ("reference", "pipeline")
 STT_RPM: Final = 10  # Whisper requests a minute, at most: half the published 20 (plan 003's T)
@@ -196,7 +195,7 @@ def _run(args: argparse.Namespace, parts: OverlapParts) -> int:
     checkout = run_checkout(parts.plan.folder, parts.plan.git)
     out = check_out(args.out, checkout, parts.plan.git)
     if not is_name(out.name):
-        raise refused(
+        raise run_refused(
             f"the --out folder's name, the run's, is not a name, which is {NAME_RULE}",
             "name the folder like o1-dev",
         )
@@ -207,13 +206,13 @@ def _run(args: argparse.Namespace, parts: OverlapParts) -> int:
         lines = {line.id: line for line in read_toml(data / SCRIPT_FILE, Script).lines}
         called = load_replies(data)
     except GoldenSetError:
-        raise refused(
+        raise run_refused(
             "the golden set's script or replies do not load", "run `poe golden`"
         ) from None
     lab = (read_lab_replies(args.replies) if args.replies else {}) if pipeline else None
     todo = overlaps_of(plan.todo, lines, lab, called)
     if not todo:
-        raise refused("the split holds no overlap clip the owner has checked", "check --split")
+        raise run_refused("the split holds no overlap clip the owner has checked", "check --split")
     smoke = overlap_of(plan.smoke, lines, lab, called)
     info = OverlapRun(
         name=out.name,

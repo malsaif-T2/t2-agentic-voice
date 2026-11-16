@@ -137,6 +137,17 @@ def languages_rows(lines: Sequence[tuple[int, LanguagesLine]]) -> list[str]:
     )
 
 
+def languages_prices(line: LanguagesLine) -> list[str]:
+    """A provider's pass's price and what it sent at the most; nothing for another pass."""
+    if line.price_per_hour_usd is None:
+        return []
+    return [
+        row("Price per hour of audio", f"${line.price_per_hour_usd:g}"),
+        row("Billed seconds, at the most", f"{line.billed_seconds:.1f}"),
+        row("Cost, at the most", f"${line.cost_usd:.4f}"),
+    ]
+
+
 def languages_strata(line: LanguagesLine) -> list[str]:
     """A pass's turns by how their language was chosen, and each call language's counts."""
     return [

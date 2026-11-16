@@ -240,14 +240,15 @@ run (evaluation.md, "Registering a measurement"). Then:
    Plan 002's measurement commit was 1c3c4dc, and all 13 of its runs were made in one worktree
    there.
 3. **Name every flag.** Every run needs `--answerer`, `--split`, `--out` and `--note`, and a
-   `groq` run also `--model`, `--timeout-s`, `--price-per-hour` and `--cap-usd`; a run missing
-   one is refused before anything is sent.
+   provider's run also `--timeout-s`, `--price-per-hour` and `--cap-usd` (a `groq` run
+   `--model` too); a run missing one is refused before anything is sent.
 
    | Flag | What it sets |
    | --- | --- |
-   | `--answerer` | `groq`, or `reference`, which sends nothing |
+   | `--answerer` | a speech-to-text provider, which sets `stt.provider` for the run whatever the environment holds: `groq` (Whisper), or one measured beside it (D-100): `elevenlabs` (`scribe_v3`), `speechmatics` (the `ar_en` pack), `cohere` (Transcribe Arabic, which detects no language, so not with `--language-hint auto`, and at most `--max-rpm 5` on its trial key) `soniox` (`stt-async-v6`), `telnyx` (the model `telnyx.stt_model` names, HUMAIN's `humain/realtime` by default, a turn on Telnyx's WebSocket at twice real time within `telnyx.turn_timeout_s` rather than `--timeout-s`, always code-switching, whatever `--language-hint` gives) or `nabrah` (its default `nabrah_stt_v1`, a turn on its WebSocket within `nabrah.turn_timeout_s`; it takes no language, so `--language-hint` changes nothing), each needing its key; or `reference`, which sends nothing. The scorecard and the history line record the provider's model, and its requests are billed as it bills (Groq at least 10 s each, the others the audio sent; Telnyx's turns on its WebSocket carry 1.5 s of silence more, which the dry estimate, the cap and the recorded spend count) |
+   | `--estimate-only` | log the run's dry estimate (its requests, the least seconds and dollars billed, the least minutes at `--max-rpm`) and stop, sending nothing and building no adapter, so it needs no key; every provider's run logs the same estimate before its smoke test |
    | `--split` | `dev` or `held-out`: a run covers one split, all of it |
-   | `--model` | `stt.model`: `whisper-large-v3` or `whisper-large-v3-turbo` |
+   | `--model` | `stt.model`: `whisper-large-v3` or `whisper-large-v3-turbo` (a `groq` run only) |
    | `--timeout-s` | `stt.timeout_s`, in seconds |
    | `--base-url` | Groq's address; left out, the SDK's own `https://api.groq.com`, whatever the environment or the env file holds |
    | `--language-hint` | the language sent: `label`, unless given, sends the item's label's (`ar`, or `en` for English); `auto` sends none |
@@ -297,6 +298,20 @@ run (evaluation.md, "Registering a measurement"). Then:
    (`git checkout -- apps/ole5-voice-agent/evals/history.jsonl`), so the next run starts clean at
    the measurement commit. plan 002 carried each of its 13 lines so (`Plan 002: history, run R1` and
    the like).
+
+### What every app's runs share
+
+A run of your own that spends (scripted calls on a real chat model, say) takes its money, its
+limits and its refusals from the `evals` facade, as Ole5's and the flight agent's runs do
+(D-101), so every app stops at the same cap and counts one key's day once:
+
+| Name | What it gives |
+| --- | --- |
+| `PacedChat(inner, pacers=, spend=, input_budget=, attempts=, sleep=)` | A `ChatModel` around your adapter: each request waits for room in its model's minute, is refused at the day's limit (`DailyLimitError`) or past the cap (`CapReachedError`), each setting `stopped`, and a request turned away before any event is sent again after its `retry-after`, up to `attempts` sends; every send is counted at its usage, or at its budget when the provider reported none |
+| `ModelPacer(Limits(rpm, tpm, rpd), used_today=, clock=, sleep=)`, `MinutePacer` | One model's requests and tokens in any minute and its requests of the day; a `RunClock` (`time.perf_counter`) and a `RunSleep` (`asyncio.sleep`) a test replaces |
+| `Spend(prices=, cap_usd=, before_usd=)`, `Price`, `ModelUse`, `ModelSpend` | What the run spent by model at your prices (USD per million tokens), a resumed run's earlier sessions included, and each model's spend as a strict model your run files keep |
+| `requests_today(histories, day)`, `every_history(history)`, `RunHistoryError` | Each model's requests on a UTC day over the run histories given; `every_history` finds every app's history at the same path under `apps/`. A line is counted when it holds `requests` (an object of each model's count) and `time`; a line it cannot read stops the run |
+| `run_checkout(folder)`, `check_out(out, checkout)`, `inspect_checkout`, `run_refused` | The checks before a run: a clean linked worktree, never the main checkout, and an `--out` folder that is new, outside every worktree that may be removed, and inside the repository only where git ignores it; a refusal is an `InvalidRequestError` with a FIX |
 
 ## Reading a scorecard
 

@@ -18,11 +18,11 @@ from ole5_voice.evals.languages_card import (
     LanguagesScorecard,
     call_code,
 )
+from ole5_voice.evals.languages_reading import read_passes
 from ole5_voice.evals.languages_score import (
     card_of,
     line_of,
     load_pass,
-    read_passes,
     scorecard_of,
 )
 from ole5_voice.evals.scorecard import EvalDataError

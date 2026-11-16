@@ -218,7 +218,7 @@ class Speaker:
         reply = self.playback.reply(reply_id)
         if reply is None or reply.ended_at is not None:
             return False
-        await self.send(ShowCard(title=card.title, steps=card.steps, source=card.source))
+        await self.send(ShowCard.of(card))
         return True
 
     async def close(self, reply_id: ReplyId, at: float) -> None:
@@ -241,7 +241,7 @@ class Speaker:
     async def notice(self, kind: NoticeKind, at: float) -> Reply | None:
         """Tell the caller the notice of `kind`: its `notice` message, then spoken from the
         phrase cache as the next reply (none when the cache does not hold it)."""
-        text = self._setup.language.notices[kind]
+        text = self._setup.now.language.notices[kind]
         await self.send(Notice(kind=kind, text=text))
         line = fixed(self._setup, text, reply_id=self.playback.next_id)
         if line is None:

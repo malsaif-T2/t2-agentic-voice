@@ -20,7 +20,6 @@ from t2_agentic_voice import VoiceAgent, VoiceSettings
 from t2_agentic_voice.evals import EchoTiming
 from t2_agentic_voice.ports import AudioClip, TextToSpeech
 
-from tests.ole5_voice.evals.test_pacers import most_in_a_minute
 from tests.ole5_voice.evals.timing_support import (
     ARABIC,
     WHISPER,
@@ -31,6 +30,7 @@ from tests.ole5_voice.evals.timing_support import (
     make_setup,
 )
 from tests.t2_agentic_voice.fakes import FakeTextToSpeech
+from tests.t2_agentic_voice.testing.test_run_pacing import most_in_a_minute
 
 
 @pytest.fixture

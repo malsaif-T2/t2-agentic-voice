@@ -35,14 +35,13 @@ from __future__ import annotations
 import itertools
 import re
 from collections.abc import Sequence
-from typing import Literal
 
 from t2_agentic_voice.core.conversation import TalkerTurn
 from t2_agentic_voice.core.settings.tts import LanguageTag
 from t2_agentic_voice.core.settings.words import LanguageCode, primary_code
+from t2_agentic_voice.domain.text.arabic_numbers import Register as Register  # re-exported
 from t2_agentic_voice.domain.words import heard_code, rule_form
 
-Register = Literal["saudi", "msa"]
 # The fewest words in the other script that can switch a turn's language.
 SWITCH_WORDS = 3
 # An Arabic letter: hamza to ghain, feh to yeh (the tatweel left out), alef wasla to yeh barree.
@@ -69,7 +68,11 @@ def reply_language(
     turn: TalkerTurn, *, call: LanguageTag, spoken: Sequence[LanguageTag]
 ) -> LanguageTag:
     """The tag the reply to `turn` is in, in a call held in `call` by an agent that speaks
-    `spoken` (the module's docstring)."""
+    `spoken` (the module's docstring); the language the turn asked the call to move to, when it
+    asked for one the agent speaks (`TalkerTurn.asked`)."""
+    asked = next((tag for tag in spoken if tag == turn.asked), None)
+    if asked is not None:
+        return asked
     heard = heard_code(turn.language)
     return tag_of(_written(turn.words, heard) or heard, call=call, spoken=spoken)
 

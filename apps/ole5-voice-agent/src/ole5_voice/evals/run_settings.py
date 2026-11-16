@@ -21,6 +21,7 @@ from pathlib import Path
 
 from pydantic import BaseModel
 from t2_agentic_voice import ConfigurationError, T2VoiceError, VoiceSettings, get_logger
+from t2_agentic_voice.evals import check_out, inspect_checkout
 
 from ole5_voice.evals.items import (
     GOLDEN_DIR,
@@ -29,7 +30,6 @@ from ole5_voice.evals.items import (
     SPLIT_FILE,
 )
 from ole5_voice.evals.run_parts import DATA, Parts, audio_roots
-from ole5_voice.evals.worktree import check_out, inspect
 
 # The models a run may name, and the address it sends to unless `--base-url` gives another: the
 # library's own (`stt.model`'s choices, `groq.base_url`'s default), which a test ties them to.
@@ -159,6 +159,11 @@ def shown(
     )
 
 
+def group_shown(settings: VoiceSettings, group: str) -> dict[str, str]:
+    """Every setting of `group`, by its dotted name, as a run records it (`_others`)."""
+    return {name: value for name, value in _others(settings) if name.startswith(f"{group}.")}
+
+
 def _others(settings: VoiceSettings) -> list[tuple[str, str]]:
     """Every setting of every group, `storage.var_dir` aside, by its dotted name, as text: a
     secret, a key map and a secret's file only as set or not set, a list as its length, a map
@@ -196,7 +201,7 @@ def show(
     for name, value in (shown(settings, args, prompt=prompt) | var_dir).items():
         log.info("setting", name=name, value=value)
     try:
-        checkout = inspect(parts.folder, parts.git)
+        checkout = inspect_checkout(parts.folder, parts.git)
     except T2VoiceError as error:
         log.info("worktree", state=error.message)
         return

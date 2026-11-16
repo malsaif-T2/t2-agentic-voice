@@ -1,9 +1,10 @@
 """What the talker streams to the session (agent/talker.py, which re-exports every name here, so
 the session imports them from there): a clause to speak, a card to show, a tool begun and
 ended, a progress line due, a clause the output guard blocked, an action's read-back to say,
-each model request as it goes and as it ends, and the reply's end; and the reply's cancel scope,
-which the talker starts its work in. They live apart from the talker so that the loop
-(agent/turn.py) and the talker (agent/talker.py) both import them, and neither the other.
+the reply moved into another language, each model request as it goes and as it ends, and the
+reply's end; and the reply's cancel scope, which the talker starts its work in. They live apart
+from the talker so that the loop (agent/turn.py) and the talker (agent/talker.py) both import
+them, and neither the other.
 """
 
 from __future__ import annotations
@@ -20,6 +21,7 @@ from t2_agentic_voice.domain.action_lines import ReadBackPlan
 from t2_agentic_voice.domain.cards import Card
 from t2_agentic_voice.domain.ports.chat_model import Usage
 from t2_agentic_voice.domain.talker_declaration import ProgressKey
+from t2_agentic_voice.domain.text.arabic_numbers import Register
 
 
 class _Event(BaseModel):
@@ -29,10 +31,12 @@ class _Event(BaseModel):
 class SpokenClause(_Event):
     """A clause to speak, whole, in `language`, checked by the output guard. Cut by the clause
     splitter with no length limit: the session fits it to the voice's `max_chars`, after the
-    speaking rules have said its digits (agent/talker.py's docstring)."""
+    speaking rules have said its digits (agent/talker.py's docstring), in the `caller_register`
+    of the caller's Arabic (agent/language.py's `call_register`) when the setting asks."""
 
     text: str = Field(min_length=1)
     language: LanguageTag
+    caller_register: Register | None = None  # the caller's Arabic's, its numbers' if asked
 
 
 class ShownCard(_Event):
@@ -93,6 +97,14 @@ class ReadBackRequested(_Event):
     plan: ReadBackPlan
 
 
+class LanguageMoved(_Event):
+    """The talker's `switch_language` tool (actions/language_tool.py) moved the reply into
+    `language`: the rest of it is said in that language, and the session moves the call to it
+    (voice/session/call_language.py)."""
+
+    language: LanguageTag
+
+
 class ModelRequested(_Event):
     """A request to `model` went: counted in the call's usage, answered or not."""
 
@@ -128,6 +140,7 @@ type TalkerEvent = (
     | ProgressDue
     | ClauseBlocked
     | ReadBackRequested
+    | LanguageMoved
     | ModelRequested
     | ModelReplied
     | ReplyDone

@@ -37,17 +37,16 @@ from pathlib import Path
 from typing import Final, Protocol
 
 from t2_agentic_voice import Tool, VoiceAgent, VoiceSettings, get_logger
-from t2_agentic_voice.evals import PhraseAudio
+from t2_agentic_voice.evals import MinutePacer, PhraseAudio, RunSleep
 from t2_agentic_voice.events import ModelUsage
 from t2_agentic_voice.ports import AudioClip
 
 from ole5_voice.evals.audio import read_wav, write_wav
 from ole5_voice.evals.first_audio_cache import ClauseCall
 from ole5_voice.evals.first_audio_score import AudioResult, ChatSpend, ReplayedCall, result_of
-from ole5_voice.evals.groq_answerer import GROQ_MINIMUM_S, Sleep
+from ole5_voice.evals.groq_answerer import GROQ_MINIMUM_S
 from ole5_voice.evals.models import Language as ItemLanguage
 from ole5_voice.evals.models import Split
-from ole5_voice.evals.pacers import MinutePacer
 from ole5_voice.evals.run_parts import Todo
 from ole5_voice.evals.timing_run import TAGS, Tag
 from ole5_voice.evals.timing_score import cost
@@ -196,7 +195,7 @@ class Measuring:
     phrases: Phrases
     pacers: Mapping[str, MinutePacer]
     prices: Prices
-    sleep: Sleep
+    sleep: RunSleep
     replies: Path | None  # None for a held-out run, which keeps no reply
     tail_s: float  # the silence after each recording (`tail_of`)
     adapters: tuple[Closes, ...] = ()  # the speech, voice and chat adapters, closed at the end

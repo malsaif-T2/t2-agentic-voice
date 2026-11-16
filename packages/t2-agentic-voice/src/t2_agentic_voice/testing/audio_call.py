@@ -31,7 +31,7 @@ greeting has played, and reads its time to first audio (turn_replay.py's `TurnRe
 measure (plan 006).
 
 Each call takes the live path, so each of its speech-to-text requests carries the Whisper prompt
-a live call sends (voice/stt_bridge.py's `call_prompts`, plan 006's Q23): the agent's vocabulary,
+a live call sends (voice/stt_requests.py's `call_prompts`, plan 006's Q23): the agent's vocabulary,
 then the command words of the call's language, the command words alone for the replay's own
 agent, none with `stt.send_prompt` off. So a replay, run T's included, measures what ships.
 """
@@ -39,12 +39,14 @@ agent, none with `stt.send_prompt` off. So a replay, run T's included, measures 
 from __future__ import annotations
 
 from collections.abc import Callable, Sequence
+from datetime import date
 from typing import TYPE_CHECKING
 
 from t2_agentic_voice.actions.action_runner import ActionRunner
 from t2_agentic_voice.actions.agent_tools import action_runner, actions_of
 from t2_agentic_voice.actions.memory_outbox import MemoryOutbox
 from t2_agentic_voice.agent.talker import chat_talkers
+from t2_agentic_voice.core.clock import SYSTEM_CLOCK, DatedClock
 from t2_agentic_voice.core.config import VoiceSettings
 from t2_agentic_voice.core.errors import ConfigurationError
 from t2_agentic_voice.core.events import Event, Interrupted
@@ -112,7 +114,8 @@ class AudioCall:
     `turns` groups among them), `stt` and `tts`, neither of which it closes; of `agent` (the
     replay's own unless given), its talker writing with `chat` when it runs one, and its actions'
     writes kept in `outbox` (one in memory unless given) by one runner (`actions`, set at
-    `start` for an agent that declares an action)."""
+    `start` for an agent that declares an action); each call on the day `today` in the agent's
+    time zone when given (core/clock.py's `DatedClock`), else on the system's."""
 
     def __init__(
         self,
@@ -123,8 +126,9 @@ class AudioCall:
         agent: VoiceAgent | None = None,
         chat: ChatModel | None = None,
         outbox: Outbox | None = None,
+        today: date | None = None,
     ) -> None:
-        self.settings = settings
+        self.settings, self.today = settings, today
         self.stt = stt
         self.tts = tts
         self.agent, self.chat = agent, chat
@@ -169,6 +173,9 @@ class AudioCall:
             talker=self._talkers(),
             chat=self.chat,
             action_jobs=self.actions,
+            clock=SYSTEM_CLOCK
+            if self.today is None
+            else DatedClock(SYSTEM_CLOCK, self.today, agent.zone),
         )
         await self._calls.start()
 

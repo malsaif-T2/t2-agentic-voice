@@ -9,6 +9,10 @@ the runtime emits (core/events.py), which the console's page reads (`GET /dev/fe
   reads the newest `FEED_CALLS` files back, oldest first, before it keeps its first event or
   answers its first page, each line parsed as the event its `type` names, a line that is not
   one skipped.
+- **Who heard each turn**: a record of a turn's end (`UserTurnEnded`) or of its times
+  (`TurnMetrics`) carries `heard_by`, the provider and model its call was heard by
+  (api/stt_calls.py), in its saved line too; none with no dev console's choices, nor for a line
+  saved without it.
 - Nothing of it is logged: the events hold call content (docs/SECURITY.md, invariant 8); a file
   that cannot be written or read is logged by the failure's kind alone. A restart starts a new
   feed, named apart (`name`), so the page knows to start over.
@@ -22,12 +26,19 @@ import secrets
 from collections import deque
 from contextlib import suppress
 from pathlib import Path
-from typing import Final
+from typing import Final, Protocol
 
 from pydantic import JsonValue
 
 from t2_agentic_voice.core.config import VoiceSettings
-from t2_agentic_voice.core.events import EVENTS, CallEnded, Event
+from t2_agentic_voice.core.events import (
+    EVENTS,
+    CallEnded,
+    CallId,
+    Event,
+    TurnMetrics,
+    UserTurnEnded,
+)
 from t2_agentic_voice.core.logging import get_logger
 
 # The calls whose records the feed keeps, and the most records in all.
@@ -38,7 +49,16 @@ CONSOLE_FOLDER: Final = "dev-console"
 # Each event's class by the name a saved line gives as its `type`.
 _EVENT_TYPES: Final[dict[str, type[Event]]] = {kind.__name__: kind for kind in EVENTS}
 
+# The events whose record names who heard its turn.
+HEARD_EVENTS: Final = (UserTurnEnded, TurnMetrics)
+
 _log = get_logger(__name__)
+
+
+class Hearers(Protocol):
+    """Who heard each call's turns: api/stt_calls.py's `CallStts`."""
+
+    def heard_by(self, call_id: CallId) -> dict[str, str] | None: ...
 
 
 class DevFeed:
@@ -46,9 +66,15 @@ class DevFeed:
     given (the module's docstring)."""
 
     def __init__(
-        self, *, folder: Path | None = None, calls: int = FEED_CALLS, records: int = FEED_RECORDS
+        self,
+        *,
+        folder: Path | None = None,
+        calls: int = FEED_CALLS,
+        records: int = FEED_RECORDS,
+        hearers: Hearers | None = None,
     ) -> None:
         self.name = secrets.token_hex(4)
+        self._hearers = hearers
         self._folder, self._calls, self._most = folder, calls, records
         self._records: deque[dict[str, JsonValue]] = deque()
         self._order: list[str] = []  # the calls kept, oldest first
@@ -58,9 +84,10 @@ class DevFeed:
         self._loaded = folder is None
 
     @classmethod
-    def of(cls, settings: VoiceSettings) -> DevFeed:
-        """The feed of a runtime run with `settings`, its calls saved under `storage.var_dir`."""
-        return cls(folder=settings.storage.var_dir / CONSOLE_FOLDER)
+    def of(cls, settings: VoiceSettings, hearers: Hearers | None = None) -> DevFeed:
+        """The feed of a runtime run with `settings`, its calls saved under `storage.var_dir`,
+        each turn's hearer from `hearers`."""
+        return cls(folder=settings.storage.var_dir / CONSOLE_FOLDER, hearers=hearers)
 
     @property
     def last(self) -> int:
@@ -70,11 +97,15 @@ class DevFeed:
     async def observe(self, event: Event) -> None:
         """The runtime's observer of every event: kept, then saved in its call's file."""
         await self.ready()
-        record = self.add(event)
+        heard = None
+        if self._hearers is not None and isinstance(event, HEARD_EVENTS):
+            heard = self._hearers.heard_by(event.call_id)
+        record = self.add(event, heard_by=heard)
         if self._folder is not None:
-            line = json.dumps(
-                {"type": record["type"], "event": record["event"]}, ensure_ascii=False
-            )
+            saved: dict[str, JsonValue] = {"type": record["type"], "event": record["event"]}
+            if heard is not None:
+                saved["heard_by"] = record["heard_by"]
+            line = json.dumps(saved, ensure_ascii=False)
             await asyncio.to_thread(_save, self._folder, event.call_id, line)
 
     async def ready(self) -> None:
@@ -83,11 +114,11 @@ class DevFeed:
             return
         async with self._loading:
             if not self._loaded:
-                for event in await asyncio.to_thread(self._saved, self._folder):
-                    self.add(event)
+                for event, heard in await asyncio.to_thread(self._saved, self._folder):
+                    self.add(event, heard_by=heard)
                 self._loaded = True
 
-    def _saved(self, folder: Path) -> list[Event]:
+    def _saved(self, folder: Path) -> list[tuple[Event, dict[str, str] | None]]:
         """The events of the newest FEED_CALLS calls saved in `folder`, the oldest call's first,
         each call's in order."""
         try:
@@ -95,7 +126,7 @@ class DevFeed:
         except OSError as error:
             _log.warning("dev_console_not_read", failure=type(error).__name__)
             return []
-        events: list[Event] = []
+        events: list[tuple[Event, dict[str, str] | None]] = []
         skipped = 0
         for path in files[-self._calls :]:
             try:
@@ -104,15 +135,16 @@ class DevFeed:
                 _log.warning("dev_console_not_read", failure=type(error).__name__)
                 continue
             for line in lines:
-                event = _event_of(line)
-                skipped += event is None
-                if event is not None:
-                    events.append(event)
+                found = _event_of(line)
+                skipped += found is None
+                if found is not None:
+                    events.append(found)
         _log.info("dev_console_read", calls=min(len(files), self._calls), skipped=skipped)
         return events
 
-    def add(self, event: Event) -> dict[str, JsonValue]:
-        """Keep `event` as the newest record, returned; the oldest call's records go once more
+    def add(self, event: Event, *, heard_by: dict[str, str] | None = None) -> dict[str, JsonValue]:
+        """Keep `event` as the newest record, returned, with who heard its turn (`heard_by`,
+        when given); the oldest call's records go once more
         calls than FEED_CALLS are kept, and the oldest records once more than FEED_RECORDS."""
         if event.call_id not in self._order:
             self._order.append(event.call_id)
@@ -128,6 +160,8 @@ class DevFeed:
             "ended": isinstance(event, CallEnded),
             "event": event.model_dump(mode="json"),
         }
+        if heard_by is not None:
+            record["heard_by"] = dict(heard_by)
         self._records.append(record)
         while len(self._records) > self._most:
             self._records.popleft()
@@ -166,14 +200,22 @@ def _save(folder: Path, call_id: str, line: str) -> None:
         _log.warning("dev_console_not_saved", call_id=call_id, failure=type(error).__name__)
 
 
-def _event_of(line: str) -> Event | None:
-    """The event a saved line holds, parsed as the class its `type` names; None for a line that
-    is not one (blank, not JSON, an unknown type, or fields its class refuses)."""
+def _event_of(line: str) -> tuple[Event, dict[str, str] | None] | None:
+    """The event a saved line holds, parsed as the class its `type` names, and who heard its
+    turn when the line names one (each a short name); None for a line that is not an event
+    (blank, not JSON, an unknown type, or fields its class refuses)."""
     try:
         saved = json.loads(line)
-        return _EVENT_TYPES[saved["type"]].model_validate(saved["event"])
+        event = _EVENT_TYPES[saved["type"]].model_validate(saved["event"])
     except (ValueError, KeyError, TypeError):
         return None
+    heard = saved.get("heard_by")
+    if not isinstance(heard, dict):
+        return event, None
+    named = {key: value for key, value in heard.items() if key in ("provider", "model")}
+    return event, named if all(
+        isinstance(v, str) and len(v) <= 80 for v in named.values()
+    ) else None
 
 
 def _seq(record: dict[str, JsonValue]) -> int:

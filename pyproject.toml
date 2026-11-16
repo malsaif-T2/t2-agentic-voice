@@ -1,5 +1,6 @@
-# The workspace root of T2 Agentic Voice: the library (packages/t2-agentic-voice), the Ole5
-# Voice Agent built on it (apps/ole5-voice-agent), and the examples (examples/). The root is not
+# The workspace root of T2 Agentic Voice: the library (packages/t2-agentic-voice), the apps built
+# on it (the Ole5 Voice Agent, apps/ole5-voice-agent, and the flight-booking agent,
+# apps/flight-voice-agent), and the examples (examples/). The root is not
 # a package itself: it holds the members, the shared dev tools, and the one gate for all of them.
 [project]
 name = "t2-agentic-voice-workspace"
@@ -9,6 +10,7 @@ requires-python = ">=3.12"
 dependencies = [
     "t2-agentic-voice",
     "ole5-voice-agent",
+    "flight-voice-agent",
     "t2-agentic-voice-minimal-example",
 ]
 
@@ -22,6 +24,7 @@ members = ["packages/*", "apps/*", "examples/*"]
 [tool.uv.sources]
 t2-agentic-voice = { workspace = true }
 ole5-voice-agent = { workspace = true }
+flight-voice-agent = { workspace = true }
 t2-agentic-voice-minimal-example = { workspace = true }
 # On Linux, torch and torchaudio (the library's `ecapa` extra, D-086) come from
 # PyTorch's CPU index, whose wheels bring no CUDA package, so this workspace's lock holds none
@@ -73,7 +76,7 @@ ignore_fail = "return_non_zero"
 
 [tool.poe.tasks.types]
 help = "Static type check (mypy strict) of the members, scripts/, and tests/"
-cmd = "mypy packages/t2-agentic-voice/src apps/ole5-voice-agent/src examples/minimal/src scripts tests"
+cmd = "mypy packages/t2-agentic-voice/src apps/ole5-voice-agent/src apps/flight-voice-agent/src examples/minimal/src scripts tests"
 
 [tool.poe.tasks.arch]
 help = "Enforce the layers and module rules of harness.toml (a FIX line for every violation)"
@@ -136,7 +139,7 @@ help = "Time each step of an echo call on the golden set's dev paused requests (
 cmd = "python -m ole5_voice.evals.timing"
 
 [tool.poe.tasks.eval-languages]
-help = "Run H's H1: each turn's language from a classifier on the golden set, offline and with no spend (`--classifier off`, `silero` or `ecapa`); `--read` gives condition 4 across the passes"
+help = "Run H's H1: each turn's language from a classifier on the golden set, offline and with no spend (`--classifier off`, `silero` or `ecapa`), or a speech-to-text provider's own language, which spends (`groq`, `elevenlabs` or `soniox`, with `--price-per-hour`, `--cap-usd`, `--estimate-only`); `--read` gives condition 4 across the passes"
 cmd = "python -m ole5_voice.evals.languages_run"
 
 # Runs K and S (plan 006's registration): the talker's model, retrieval and answers, and the
@@ -222,7 +225,12 @@ plugins = ["pydantic.mypy"]
 # Each member's src/ holds its package; scripts/ and tests/ are importable from the repository
 # root. tests/ has no __init__.py files (pytest's importlib mode), so module names come from
 # these bases.
-mypy_path = ["packages/t2-agentic-voice/src", "apps/ole5-voice-agent/src", "examples/minimal/src"]
+mypy_path = [
+    "packages/t2-agentic-voice/src",
+    "apps/ole5-voice-agent/src",
+    "apps/flight-voice-agent/src",
+    "examples/minimal/src",
+]
 explicit_package_bases = true
 
 # num2words 0.5.14 ships no types (no py.typed in its wheel: plan 003, step 3); pipecat-ai,

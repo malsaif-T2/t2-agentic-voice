@@ -1,5 +1,6 @@
-"""The `groq` answerer of `poe eval`: it asks Groq's Whisper through the library's speech-to-text
-port, with the run's pacer and budget, in a module of its own as each answerer is.
+"""The speech-to-text answerer of `poe eval`: it asks Groq's Whisper, or a provider measured
+beside it (`stt_arms.py`, D-100), through the library's speech-to-text port, with the run's pacer
+and budget, in a module of its own as each answerer is; its `name` is the provider's.
 
 It sends one request at a time, the starts paced to `--max-rpm`. A request the provider turns
 away is asked again, up to `--max-attempts` times in all, after a pause: the larger of the
@@ -7,11 +8,11 @@ provider's `retry-after` and 20 s for a rate limit, 3 s for another failure that
 the prototype's scorer paused (`Ole5-chatbot/scripts/stt_eval.py`, lines 575-585); after the
 last attempt, or on a refusal no retry can mend, the variant is a provider failure, an answer and
 not an exception. A variant still running at `--variant-timeout-s` is stuck. Before each request
-the run's `Budget` is charged what Groq bills for it, and a request that would take the run past
-`--cap-usd` is never sent. Each request goes in the language the run's policy sends every one
-in (run W's arm X sends `ar`, as an Arabic call does), or else the item's, with the policy's
-Whisper prompt for that language, if it holds one (run W's arm W1). No line it logs holds a
-transcript or names a variant.
+the run's `Budget` is charged what the provider bills for it (Groq: at least 10 s), and a request
+that would take the run past `--cap-usd` is never sent. Each request goes in the language the
+run's policy sends every one in (run W's arm X sends `ar`, as an Arabic call does), or else the
+item's, with the policy's Whisper prompt for that language, if it holds one (run W's arm W1).
+No line it logs holds a transcript or names a variant.
 """
 
 from __future__ import annotations
@@ -22,10 +23,12 @@ from contextlib import asynccontextmanager
 from dataclasses import dataclass, field
 
 from t2_agentic_voice import ProviderError, get_logger
+from t2_agentic_voice.evals import RunClock, RunSleep
 from t2_agentic_voice.ports import AudioClip, SpeechToText, Transcript
 from t2_agentic_voice.tracing import Tracing
 
 from ole5_voice.evals.audio import leading_window, read_wav
+from ole5_voice.evals.combined_answer import combined
 from ole5_voice.evals.models import Variant
 from ole5_voice.evals.reference_answerer import measured
 from ole5_voice.evals.runs import (
@@ -33,7 +36,6 @@ from ole5_voice.evals.runs import (
     AnswerRequest,
     Outcome,
     Request,
-    SegmentAnswer,
     Window,
     cost_usd,
 )
@@ -49,8 +51,6 @@ RETRY_PAUSE_S = 3.0  # the pause after another failure that may pass (stt_eval.p
 
 log = get_logger(__name__)
 
-Clock = Callable[[], float]  # seconds, from any start: `time.perf_counter`, monotonic and fine
-Sleep = Callable[[float], Awaitable[None]]
 _Send = Callable[[AudioClip, str | None], Awaitable[Transcript]]
 
 
@@ -82,10 +82,16 @@ class Budget:
         self.requests += 1
 
 
-def least_billed(requests: Sequence[AnswerRequest]) -> float:
-    """The fewest seconds Groq bills for `requests`, each segment sent once: the cap's check
-    before a run starts (a retry, or a request over the cap, comes on top)."""
-    return sum(max(GROQ_MINIMUM_S, read_wav(path).seconds) for r in requests for path in r.segments)
+def least_billed(
+    requests: Sequence[AnswerRequest], *, minimum_s: float = GROQ_MINIMUM_S, extra_s: float = 0.0
+) -> float:
+    """The fewest seconds a provider billing at least `minimum_s` a request (Groq's 10 s by
+    default), and `extra_s` past each clip (the audio its adapter adds), bills for `requests`,
+    each segment sent once: the cap's check before a run starts (a retry, or a request over the
+    cap, comes on top)."""
+    return sum(
+        max(minimum_s, read_wav(path).seconds) + extra_s for r in requests for path in r.segments
+    )
 
 
 @dataclass(frozen=True)
@@ -104,7 +110,7 @@ class Policy:
 class Pacer:
     """Spaces the starts of requests at least 60 / `max_rpm` seconds apart."""
 
-    def __init__(self, max_rpm: int, clock: Clock, sleep: Sleep) -> None:
+    def __init__(self, max_rpm: int, clock: RunClock, sleep: RunSleep) -> None:
         self._gap = 60 / max_rpm
         self._clock, self._sleep = clock, sleep
         self._last: float | None = None
@@ -118,9 +124,11 @@ class Pacer:
 
 class GroqAnswerer:
     """Asks the speech-to-text port for each segment of a variant, or for each of its windows,
-    in the language its policy sends or the run hints, with its policy's prompt for it."""
+    in the language its policy sends or the run hints, with its policy's prompt for it; `name`
+    is the provider's, and each request is billed at least `minimum_s`, and `extra_s` more for
+    the audio its adapter adds past the clip."""
 
-    name = "groq"
+    name: str = "groq"
     spends = True
     needs_audio = True
 
@@ -135,9 +143,13 @@ class GroqAnswerer:
         reuse: Mapping[Variant, str],
         tracing: Tracing | None,
         run_name: str,
-        clock: Clock,
-        sleep: Sleep,
+        clock: RunClock,
+        sleep: RunSleep,
+        name: str = "groq",
+        minimum_s: float = GROQ_MINIMUM_S,
+        extra_s: float = 0.0,
     ) -> None:
+        self.name, self._minimum_s, self._extra_s = name, minimum_s, extra_s
         self._stt, self._model, self._policy, self._budget = stt, model, policy, budget
         self._measure, self._reuse, self._tracing, self._run = measure, reuse, tracing, run_name
         self._clock, self._sleep = clock, sleep
@@ -172,7 +184,7 @@ class GroqAnswerer:
                 if transcript is None:
                     return Answer(variant=variant.id, requests=tuple(self._log), failure="provider")
                 parts.append((wav.seconds, transcript))
-        return _combined(variant.id, parts, tuple(self._log))
+        return combined(variant.id, parts, tuple(self._log))
 
     async def _windows(self, variant: Variant, request: AnswerRequest, send: _Send) -> Answer:
         """The windows of the first segment. One at least as long as the clip is not sent again
@@ -201,7 +213,7 @@ class GroqAnswerer:
     ) -> Transcript | None:
         """One clip's transcript, asked again while the provider turns it away with a failure
         that may pass; None after the last attempt, or after a refusal no retry mends."""
-        billed = max(GROQ_MINIMUM_S, clip.seconds)
+        billed = max(self._minimum_s, clip.seconds) + self._extra_s
         attempt = 0
         while True:
             attempt += 1
@@ -264,47 +276,3 @@ class GroqAnswerer:
     async def _send(self, clip: AudioClip, language: str | None) -> Transcript:
         prompt = None if language is None else self._policy.prompts.get(language)
         return await self._stt.transcribe(clip, language=language, prompt=prompt)
-
-
-def _combined(
-    variant: str, parts: Sequence[tuple[float, Transcript]], requests: tuple[Request, ...]
-) -> Answer:
-    """One variant's answer from its segments' transcripts, joined with a space; for a variant
-    of several, each segment's own answer too, and the language of the longest."""
-    text = " ".join(t.text.strip() for _, t in parts if t.text.strip())
-    if len(parts) == 1:
-        only = parts[0][1]
-        return Answer(
-            variant=variant,
-            text=text,
-            language=only.language,
-            confidence=only.confidence,
-            no_speech_prob=only.no_speech_prob,
-            requests=requests,
-        )
-    return Answer(
-        variant=variant,
-        text=text,
-        language=max(parts, key=lambda part: part[0])[1].language,
-        confidence=_by_length([(s, t.confidence) for s, t in parts]),
-        no_speech_prob=_by_length([(s, t.no_speech_prob) for s, t in parts]),
-        segments=tuple(
-            SegmentAnswer(
-                text=t.text,
-                language=t.language,
-                confidence=t.confidence,
-                no_speech_prob=t.no_speech_prob,
-            )
-            for _, t in parts
-        ),
-        requests=requests,
-    )
-
-
-def _by_length(values: Sequence[tuple[float, float | None]]) -> float | None:
-    """The mean of a value over the segments that have one, each weighted by its length, as the
-    prototype weighs Whisper's segments (`Ole5-chatbot/src/ole5_chat/voice/stt.py`, lines
-    249-252); None when none has one."""
-    known = [(seconds, value) for seconds, value in values if value is not None]
-    total = sum(seconds for seconds, _ in known)
-    return sum(seconds * value for seconds, value in known) / total if total else None

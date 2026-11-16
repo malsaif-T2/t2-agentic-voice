@@ -40,6 +40,48 @@ value sends each turn in the language a classifier heard (next section); whether
 measured before it is promised (plan 007's run H). Until then, a caller who will ask in English
 picks English in the client.
 
+## The call follows the caller into the other language
+
+`stt.live_language = "detected"` (D-038 as amended, provisional) lets a question or request in
+the agent's other language move the call there, both ways, with no new provider: Whisper's own
+detection decides. It is off by default (GP-18) until run H keeps it. Each request names the
+call's current language as under `session`; a turn with `stt.detect_from_s` (1.2) seconds of
+voiced speech or more, counted from where the speech detector heard it begin to where it last
+heard it stop (never the silence after it, which the classifier's gate counted), is also sent
+naming no language and with no prompt, at the same time, so the turn waits for no extra round
+trip. The call moves when that second request hears the other of the agent's languages (Groq's
+name of it mapped exactly, so "Armenian" is never Arabic) and the turn is a question or request:
+two words or more, and not only short replies ("yes", "okay", "thanks", «ايه», «تمام», «طيب»,
+in either script). Then the turn's heard words are that request's, its reply, voice and search
+follow them, and every later request names the new language, so the next short "yes" is heard in
+it. Otherwise the transcript in the current language stands and nothing moves. A shorter turn
+never detects. The rule is `domain/language_switch.py`'s; each long turn costs a second Whisper
+request. A provider that reports no language it heard (`speechmatics`, `cohere`, whose model is
+always sent Arabic when no language is named) gets no second request, so on it only a switch
+request or the talker's tool below moves the call.
+
+A caller may also ask in words: a turn made only of a switch request ("English please",
+«بالعربي لو سمحت», in either script, with how Whisper writes it told the other language) moves
+the call too, and its reply is in the language asked for; said over a reply under `two_step`, it
+moves the call whether the reply stops or goes on. Once the call has moved, the session's
+notices, its fixed phrases, the echo and the interruption rule's words are the new language's
+(`CallSetup.now`, `voice/session/call_language.py`), and the call report names a detected turn's
+language with `language_by = "detected"`. Under `session` and `auto` the call never moves.
+
+The list is a fast path only. For any other wording ("can we do this in English?", «ممكن نتكلم
+بلغة ثانية») the talker is given the library's `switch_language` tool
+(`actions/language_tool.py`), under `detected` and for an agent of two languages or more, unless
+the agent declares a tool of that name. The model calls it with the code asked for (`en`, `ar`);
+the rest of that reply is then in the new language (its prompt, its clauses' voice, its tools'
+context), the call moves, and the speech-to-text bridge is told after the step. A language the
+agent does not speak is refused to the model as a tool error, and the call stays where it is.
+
+An action's read-back is never confirmed across a move. When the call moves while a read-back
+waits for its answer, the turn that moved it is no answer: the read-back is read again in the
+new language, from the same draft, and only a yes after that new read-back played in full
+confirms it, with its own receipt (invariant 1; `voice/session/read_back_moved.py`). An action
+with no lines in the new language is declined instead, and the talker answers the turn.
+
 ## Each turn's language from a classifier
 
 `stt.live_language = "classified"` (D-086, provisional) sends each turn to Whisper in the
@@ -278,6 +320,35 @@ any other run is a number. Arabic-Indic digits are read as well as ASCII ones, a
 prefix written onto a number stays on its first word («و٢١» is said «وواحد وعشرون»). The
 `languages` facade's `speak_number` and `speak_id` say one alone; num2words gives the Arabic
 forms, in MSA, and a native speaker's check of them is still to come (TD-058).
+
+**Said in the caller's register.** `T2V_TTS__SPOKEN_NUMBERS=by_register` says a reply's numbers
+in the register of the caller's Arabic (the talker gives each Arabic clause the call's register):
+«ألفين وأربع مية وخمسين» for 2450 to a Saudi caller, «ألفان وأربعمئة وخمسون» to an MSA one; a
+time written "09:10" as a clock says it, with its part of the day («تسع وعشر دقايق الصبح»,
+"nine ten in the morning", the part said once when the reply already says it after the time);
+and an ISO date "2026-12-17" with its weekday and month, never its year. IDs are still read
+digit by digit, and captions keep the digits. The default, `as_written`, says them as above;
+the setting is a change to what callers hear, so it moves only on a measured run (GP-18).
+
+**Key combinations and spelled terms.** `T2V_TTS__SPOKEN_KEY_COMBINATIONS=true` says a key combination in a
+reply as its keys, its plus signs left out: "Ctrl + Shift + R" is said "Control Shift R", and in
+Arabic «كنترول شفت آر» (a Latin letter by its English name, as Saudi callers say it). It is off
+by default, for the same reason. For a term your callers hear spelled, the `languages` facade's
+`spell_letters("OTP", language="ar-SA")` gives «أو تي بي» ("O T P" in English), which your
+pronunciation map can hold: `pronounce={"OTP": {"ar": spell_letters("OTP", language="ar"),
+"en": "O T P"}}`.
+
+**Numbers, times, dates and amounts in your own lines.** A line your code renders (a booking's
+read-back, its `done`) is not the talker's, so you say its numbers yourself, in the reply's
+register: the `languages` facade's `speak_time(time(9, 10), language="ar-SA")` gives «تسع وعشر
+دقايق الصبح», `speak_date`, `speak_duration` and `speak_amount` (riyals) the same way, and
+`speak_number(2450, language="ar-SA", register="saudi")` «ألفين وأربع مية وخمسين». Each takes
+`register="saudi"` or `"msa"` for an Arabic reply: pass the call's (an `ar-SA` reply to an MSA
+caller is said in MSA, as its words are); with none, `ar-SA` is Saudi and `ar` MSA, but
+`speak_number` with no register keeps num2words' MSA. English is one form ("nine ten in the
+morning", "Thursday the seventeenth of December", "two thousand four hundred fifty riyals").
+The Arabic words come from the library's own tables (0 to 999 999); the Saudi ones are the
+agent's until a native speaker checks them (TD-058).
 
 ## The vocabulary
 

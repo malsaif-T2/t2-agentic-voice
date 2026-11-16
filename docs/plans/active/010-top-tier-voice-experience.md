@@ -51,31 +51,30 @@ golden set (D-006), unless it names another source. Builders read "Notes for the
   Beside it, on the keys the owner offered (2026-11-16) and the listeners: the STT, voice and
   talker bake-offs (4), then streaming STT (5) and the speech-to-speech trial (6). No dates are
   set: the work goes by gain per hour of work, the obvious wins first, as the owner asked.
-- **The owner's time:** about 4-5 hours of the owner's own, two tester days, 1.5 hours of someone
-  who knows Ole5, and an hour each from 5-10 native Saudi listeners ("What the owner does").
+- **The owner's time:** about 4-5 hours of the owner's own, two tester days, the knowledge base's
+  source files, and an hour each from 5-10 native Saudi listeners ("What the owner does").
 
 ## What happens first
 
 The owner approved the plan on 2026-11-16 and asked for the best improvement per hour of work and
-the obvious wins first, with no dates. So each step starts as soon as what it needs is done:
+the obvious wins first, with no dates; the same day they put the STT model and the language switch
+first, and a flight-booking demo agent beside Ole5. So each step starts as soon as what it needs is
+done, never more than two building at once (the laptop froze under five):
 
-1. **The obvious wins with a direct test** (evaluation.md's exception for reliability fixes), each
-   with the pure-move split its module needs: "Ole5" said the owner's way (1.7); "OTP" no longer
-   taken for the agent's echo (1.12); the first call after a restart connecting in under 2 s
-   (1.13); the widget's quick fixes and a feedback button after each call (1.14); the line at the
-   search (1.15) once Q8 is answered.
-2. **Beside them:** the calls report over the stored logs (0.1); today's code run once at be1a588 in
-   a clean worktree as the baseline (run S's ten, run A dev, K0, `poe eot`); the long-call
-   scenarios (0.2); a guide to the providers whose keys the owner offered; the recording session
-   (0.6) once Q3 is answered.
-3. **Then wave 1's search and answer fixes** in L's registered order (1.1, 1.4, 1.2 with 1.3, 1.5
-   with 1.6), each kept on its rule, with 1.11 and 1.8 beside them once Q9 and Q11 are answered.
-4. **The first tester day** on wave 1 (wave 2 built meanwhile behind settings left off); **the
-   second** on wave 2 and Phase 2.
-5. **Beside all of it:** the STT bake-off, each candidate's language detection among its measures,
-   as soon as keys exist (on today's dev split first, 0.6's items added once recorded); the voice
-   bake-off once Q14 picks the voice's gender; the Qwen arm (Groq) in Phase 1; the redesign after
-   1.14.
+1. **The STT model and the language switch.** The provider guide, then the keys' settings and the
+   candidates' adapters (Phase 4's Block 0, written before any key is pasted, since an unknown `T2V_`
+   name stops the app), then the STT bake-off on the dev split, 0.6's items added once recorded. The
+   switch (2.5) built now with Whisper's own detection on Groq, each STT candidate's own language
+   measured beside it on H.
+2. **The flight-booking demo agent** (Phase F) once Q23 is answered: the app, its mock airline, its
+   scenarios as the main set.
+3. **The obvious wins already half built,** finished one at a time: the calls report (0.1), "Ole5"
+   said the owner's way (1.7), "OTP" no longer taken for the agent's echo (1.12), the warm-up (1.13),
+   the widget's quick fixes and feedback (1.14); then the line at the search (1.15).
+4. **Then wave 1's search and answer fixes** in L's registered order (1.1, 1.4, 1.2 with 1.3, 1.5
+   with 1.6), each kept on its rule, with 1.11 and 1.8 beside them, on the flight set and Ole5's.
+5. **The tester days** on wave 1, then on wave 2 and Phase 2; the voice bake-off once Q14 picks the
+   voice's gender; the Qwen arm (Groq) in Phase 1; the redesign after 1.14.
 
 ## Words used here
 
@@ -379,6 +378,24 @@ Q2, Q16 and Q20 are under those questions):
 
 So the plan sets no dates and orders its work by gain per hour ("What happens first").
 
+The owner's request of 2026-11-16, after the laptop froze under the first build:
+
+- 2026-11-16: "Also I have found a really good demo of an excellent Voice agent in
+  "https://humain-air.share.sanad.ink/" I made an agent tear it down and analyze it (I have provided
+  the file). For the sake of comparison, lets make our voice agent do a similar use-case (flight
+  booking), and let make the ole5 as a reference or an assurance that both benefit from the
+  improvements and a prove that the improvements are general, but lets make the demo and testing and
+  comparing using the flight booking agent. Lets do the most important improvements now like the
+  (STT model and language switching). Continue"
+
+So a flight-booking agent joins Ole5 as a second app on the library (Phase F, Q23), and becomes the
+main agent, the demo, the main test set and the comparison; Ole5 stays as the check that each change is general;
+the STT bake-off and the language switch go first ("What happens first"). The teardown the owner
+gave (a cascade of an Arabic-first in-house ASR, Gemma 4 and an in-house Gulf voice on LiveKit,
+tools run in the page, a filler line at about 1.2 s and slow tools moved to the background at
+about 4 s, its voice ducked before it stops, a typed code to confirm a booking) is read as a list of
+practices, each one taken only through this plan's rows and rules.
+
 So this plan builds on main at be1a588, does not wait for the team's-agent branch or build on it,
 and takes none of its team's-agent work (LangChain, LangGraph, the relay, the talker front, the
 board, the agent shapes); it ports only "What we take", and that branch stays untouched. Two
@@ -410,11 +427,20 @@ words (`- YYYY-MM-DD: "..."`).
   their voice goes to Groq, an outside company, and in a bake-off to Q16's providers; the box's text
   says so. (d) The new long-call scenarios and today's missed questions (OTP, changing the email,
   Ole5's technology, sign-up) added as dev items to the registered sets. **Recommended:** all four.
-- **Q4. One person who knows Ole5, about 1.5 hours.** (a) The judge's check (24 answers from the
+  - 2026-11-16: "All four (Recommended)". So the recording session, testers' calls recorded with
+    the box ticked, the box's text naming Groq and the bake-off's providers, and the new dev items.
+- **Q4. One person who knows Ole5, about 1.5 hours** (answered: the agent reads, see below). (a) The judge's check (24 answers from the
   baseline's run and the first answer change's, partial answers and unanswerable questions among
   them); (b) if the judge fails again, a blind read of about 40-60 such answers, about an hour; (c)
   the facts the agent drafts for the long scenarios, about 30 minutes. Until (a) or (b), no change
   whose risk is invented answers moves a default. **Recommended:** yes.
+  - 2026-11-16: "Can you judge it yourself? I have the files the knowledge-base is made from and
+    they are not many. I can give them to you to judge."
+  - 2026-11-16, on the agent's proposal (two readers that never see which version wrote an answer,
+    each with the full source files, a third on disagreements, the owner spot-checking 5 verdicts):
+    "Yes please." And on where the files go: "Yes, just create the folder and tell me to put them
+    there". So the files go in `kb-source`, beside the repository and outside git; they are read
+    only on this laptop; 0.5 is that read, and no person who knows Ole5 is needed.
 - **Q5. The tester protocol.** About 10 tasks (guide questions, one not in the guide, a ticket, a
   repeat, a correction, a topic change, a language switch once 2.5 exists), half on a headset, both
   languages, a phone's browser if the laptop can serve it, the feedback button after each call; the
@@ -424,32 +450,41 @@ words (`- YYYY-MM-DD: "..."`).
   document's header passage (its title alone, or its title and one sentence about the file), asking
   for 10 passages and keeping 7; the knowledge-base owners are asked to fix the stubs.
   **Recommended:** app-only now, the owners asked.
+  - 2026-11-16: "App fix only". So the clean-up is in the app, and the knowledge-base owners are not
+    asked.
 - **Q7. Honest misses.** A partial answer says what the guide does say; two misses offer a ticket.
   May the agent explain a common term the guide uses but never defines (OTP)? A question about how
   the agent was built gets one short line saying it cannot share that. **Recommended:** partial
   answers; general terms only when the guide uses them; the short line.
+  - 2026-11-16: "All three (Recommended)".
 - **Q8. The line at the search** (reversing part of D-073's 2.6 s timer). (a) Now: as the search
   starts, a short fixed line («لحظة، أشوف لك», "One moment, I'm checking") from 3-4 wordings, never
   the one said last, the pause after it cut to 0.1 s: first sound at about 1.4 s instead of 3.0 s
   (1.15). (b) Then, measured: the model's own line ("Resetting your password, one moment"), played
   only if every word came from the caller, so it cannot say anything wrong; about 1 in 5 pass (1.17).
   **Recommended:** (a) now; (b) only on its measurement.
+  - 2026-11-16: "(a) now, (b) if measured (Recommended)".
 - **Q9. The 3 s fallback.** Lowered to 1,800 ms, except while the caller answers a read-back ("yes,
   but change ..." must not be cut after "yes"), kept only if it cuts no more long pauses (E); then a
   word check at each pause (2.1). **Recommended:** both, in order.
+  - 2026-11-16: "Both, in order (Recommended)".
 - **Q10. The repeat after a cut.** After a cut reply, the talker knows only that its first sentence
   was partly heard. We propose the unheard rest as a note marked "not heard" (amending D-064), and
   "one more time", "pardon" and "what did you say" among the English repeat words (amending D-062's
   lists, the notices' words kept out). **Recommended:** yes.
+  - 2026-11-16: "Yes, both (Recommended)". D-064's and D-062's amendments are written when 1.5
+    lands.
 - **Q11. How terms are said.** As you chose "Ole5", choose among 2-3 spoken forms each for Ctrl +
   Shift + R, IP, OTP and the Arabic menu names English replies write in Latin letters (`en.md:8`).
   **Recommended:** "Control Shift R", "I P", "O T P"; «كنترول شفت آر», «آي بي», «أو تي بي»; menu names
   by their English meaning.
+  - 2026-11-16: "As proposed (Recommended)".
 - **Q12. Steps per reply.** D-075 keeps every step in one reply; 18 of 30 replies over 30 words were
   cut. **Recommended:** keep it, but lead with how many steps there are, say at most three list items
   in a sentence, and offer the steps for another role rather than read them (FSMRkwf t0 read out how
   an administrator resets someone else's password); "the first three, then 'want the rest?'" only as
   a measured arm if you want it.
+  - 2026-11-16: "Keep as is". So replies keep every step as today; 1.2 adds no step rule.
 - **Q13. The ending.** The ticket number said shorter, as its last four digits and "saved under your
   name" (reversing plan 007's Q6, so the whole number stays sayable on request; a card on a screen
   never counts as the way to get it), or four groups in Saudi number words; "Anything else I can
@@ -510,11 +545,34 @@ words (`- YYYY-MM-DD: "..."`).
   out, our guard and TTS), never the product path while invariant 2 stands. Would the owner ever
   accept a false claim caught after it is spoken? **Recommended:** the trial; no to that.
 
+- **Q23. The flight-booking demo agent** (the owner's request of 2026-11-16, Phase F). A second app
+  on the library's public API, `apps/flight-voice-agent/`, beside Ole5: a mock airline (about a dozen
+  airports in the Kingdom and the region, each with its Arabic and English names, a fixed seed of
+  daily flights, fares and cabins over a booking window, a demo traveler with a home airport and past
+  trips); read-only tools (flights searched, a month's cheapest days, cabins compared, the trip so
+  far, the traveler's profile), each result saying plainly what failed when it fails; and one
+  action, booking the trip, read back in full and confirmed by a spoken yes (invariant 1). Its run S
+  and run A scenarios (booking calls in Saudi Arabic, MSA and English, mid-call switches,
+  corrections such as "no, the 14th", "the cheaper one", relative dates) become the plan's demo and
+  main test set; Ole5's sets stay as the check that each improvement is general. To decide: (a)
+  voice only, or the spoken options plus a card list on the page that mirrors what was said and is
+  never needed (D-075's opt-in extra); (b) the read-back and the spoken yes, or also a typed code as
+  the public demo does; (c) the persona's name and voice (with Q14); (d) its own page served by the
+  app, or a switch on Ole5's page. **Recommended:** (a) spoken, with the optional cards; (b) the
+  spoken yes; (c) chosen with Q14; (d) its own page.
+  - 2026-11-16: "I want the flight agent to be our main agent we show and work on. You can
+    investigate "https://humain-air.share.sanad.ink/" to see how they did it"
+  - 2026-11-16: (a) "Spoken + optional cards (Recommended)"; (b) "Read-back + spoken yes
+    (Recommended)"; (c) "A male Saudi voice, name later (Recommended)"; (d) "Its own page
+    (Recommended)". So the flight agent is the main agent shown and worked on; the agent proposes
+    2-3 names for the persona and the airline.
+  - 2026-11-16, the names: "Saad / سعد (Recommended)" and "T2 Air / طيران تي تو (Recommended)".
+
 ### When each question comes
 
-- **At approval:** Q1, Q2, Q16 and Q20, answered on 2026-11-16; Q3, Q4 and Q17 next, so the
-  recordings, the Ole5 tester and the listeners arrive while Phases 0 and 1 are built.
-- **Before wave 1:** Q6 to Q12, Q8 and Q9 first (their rows are the cheapest wins). **Before the
+- **At approval:** Q1, Q2, Q16 and Q20, answered on 2026-11-16; Q3 and Q4 answered the same day;
+  Q17 before the voice bake-off. **Before Phase F:** Q23.
+- **Before wave 1:** Q6 to Q12, all answered on 2026-11-16. **Before the
   first tester day:** Q5.
 - **Before wave 2:** Q13, Q15, and Q14 (sooner if the voice bake-off is ready); Q18 before the
   talker arm, which may run during Phase 1.
@@ -565,12 +623,25 @@ new provider:** Phases 0 to 3. **Line two, on the owner's answers and keys:** Ph
 | 0.2 | Long-call scenarios, 6-8 turns, split dev and held-out by scenario before any run. Dev: FSMRkwf replayed in English and Saudi; a miss then two answerable questions; off-topic then an Ole5 question; a repeat after an early cut; "check again"; a correction that widens the problem (_Hdmiy0's outage); a return to an earlier topic; a ticket call ending with thanks. Held-out: 3-4 written apart, on other topics, both languages, the same checks | app `evals/scenarios/` (run S), `evals/actions/` (run A) | small | the testers' failures (turns 4 to 7) measurable; today's longest scenario has 3 turns | L | facts drafted by the agent from the knowledge base, checked by Q4's tester |
 | 0.3 | Today's 25 calls replayed by their heard words | the testing kit's `TextCall` | small | a free regression of the exact failures | L's checks | none |
 | 0.4 | A simulated caller: `gpt-oss-120b` on Groq with a persona (Saudi, MSA, English), 3-5 topic changes, repairs, product names misheard as today (Oli5, OTB, «كلمة المنور»), an out-of-scope ask; it drives `TextCall`, a few through Orpheus into `AudioCall`. Not a gate | library `testing/` (the caller's protocol), app persona files | medium | long calls between tester days | judge-free checks, scenarios registered before results | a model caller drifts: scripted goals, a turn cap |
-| 0.5 | The trusted check of answers (Q4): the judge's check on 24 answers drawn from the baseline's run and the first answer change's, or the blind read of 40-60 none-item and partial answers | `poe judge-check`, the tester | small | the invented-answer risk of 1.2, 1.22 and the talker arms readable | the judge's rule (at most 3 of 24 disagreements), or the blind read | if neither is done, those defaults wait |
+| 0.5 | The trusted check of answers (Q4): the judge's check on 24 answers drawn from the baseline's run and the first answer change's, or the blind read of 40-60 none-item and partial answers | `poe judge-check`; two agent readers blind to the arms, holding the knowledge base's source files, a third on disagreements, the owner's spot-check of 5 (Q4) | small | the invented-answer risk of 1.2, 1.22 and the talker arms readable | the judge's rule (at most 3 of 24 disagreements), or the blind read | if neither is done, those defaults wait |
 | 0.6 | The recording session (Q3), through `poe record`, you and any tester who agrees reading a scripted list: «إي نعم», «ايه نعم»; Ole5 and OTP in both languages; «كلمة المرور», «تسجيل الدخول», «معلّق»; at least 10 term items a language; mixed sentences; about 10 long-pause items, 2-3 variants each in Saudi and English, with pauses of 1.2-2.8 s (a ticket number read in groups, "I want to ... change my email", a list); "yes, [pause] but ..." items; switch requests. Testers' live calls recorded once Q3 allows | `poe record`, `import_calls`, `evals/golden/`, `split --keep` | small | every STT, turn and language candidate judged on the failures and on more voices than the owner's | `poe golden --check`; W1 run twice on the final split for the noise | held-out must take the new voices evenly |
 | 0.7 | Each call explains itself: each turn's confidence and Smart Turn's end probability (P5); each turn's end reason (Smart Turn's "complete" and the hold, the silence timeout, the longest silence); the longest silence after an "incomplete" the caller resumed from; an event naming why each notice played; a span per chat request (effort, input, cached, reasoning and output tokens, first token, how it ended); the chat model's rate-limit headers; Q5's device fields; Phoenix on 127.0.0.1 on tester days | library `voice/stt_bridge.py`, `voice/smart_turn.py`, `voice/session/turn_book.py`, `session_events.py`, `report.py`, `core/call_report.py`, `adapters/groq_chat.py`, `voice/protocol.py`, `api/static/dev-console.js`, `t2v-client.js` | small | false stops traced to speakers; the fallback counted by its mechanism; no hand-rebuilt diagnoses | the calls report reads them | `stt_bridge.py` (367) and `report.py` (364) split first; the protocol fields closed values only |
 
 Phase 0 has no gate of its own: wave 1 starts after Block 0, read against the baselines run at
 be1a588 and the last kept arm; the trusted check (0.5) holds back only defaults that risk invention.
+
+### Phase F · The flight-booking demo agent (the owner's request of 2026-11-16, Q23)
+
+The main agent shown and worked on (Q23). Its build spec, the mock airline, the tools, the booking
+action, the page, run F and the build order, is [flight-voice-agent.md](../../design/flight-voice-agent.md),
+written and reviewed on 2026-11-16 (D-101).
+
+| # | Change | Where | Effort | Gain | Measured by | Risk |
+| --- | --- | --- | --- | --- | --- | --- |
+| F.1 | The app: its settings, server, page and persona, on the library's public API only (ARCH-PUBLIC), registered in `harness.toml` beside Ole5 | `apps/flight-voice-agent/`, `harness.toml`, the root `pyproject.toml` | medium | a second app proving the library general | the gate; a call through the page | the harness's app rules |
+| F.2 | The mock airline: airports with Arabic and English names, a seeded schedule and fares, cabins, a demo traveler; read-only tools whose failures say so; the booking action with its read-back | the app's `airline/`, `tools/`, `actions` | medium | booking calls end to end, in both languages | unit tests; run A's booking scenarios at zero violations | a tool failure read as "nothing found": each failure result says what failed |
+| F.3 | The flight set: run F's scripted flight calls (the flight spec's 7.1; rule F below), dev and held-out, with switches, corrections and relative dates; 0.6's recording list gains its city, date and number items | the app's `evals/` | small | the demo and the main test set | rule F, L's checks among its checks | facts drafted from the mock airline, so exact |
+| F.4 | The comparison: the same scripted booking call made on the public demo and on ours, recorded by the owner, read for first audio, words heard, turns to book and listeners' scores | `docs/project/` (a report) | small | where we stand against the demo | the owner's recordings | the demo's typed timings are not voice timings |
 
 ### Phase 1 · What needs no new provider
 
@@ -579,7 +650,7 @@ be1a588 and the last kept arm; the trusted check (0.5) holds back only defaults 
 | # | Change | Where | Effort | Gain (the number it moves) | Measured by | Risk |
 | --- | --- | --- | --- | --- | --- | --- |
 | 1.1 | Search clean-up (Q6): no "Ole5" in the query when two words remain; a document's header passage (its title alone, or its title and one sentence about the file) skipped, 10 asked for and 7 kept; steps read from the first passage that has them; the tool's text "for each new question, without the product's name" | app `knowledge_base.py`, `passages.py`, `agent.py` (`SEARCH_DESCRIPTION`); library `actions/knowledge.py` (steps) | small | header slots 81 of 217 → under 1 in 20; steps given 1 of 31 → most searches; the sign-in passage off unrelated turns | K0; L; then a run K retrieval pass (1.23's trigger) | "what is Ole5?" needs the name (kept when fewer words remain) |
-| 1.2 | Search rules (Q7): search before any "not found"; once more with other words, in the guide's Arabic terms, before giving up; always on "check again" or a re-asked question; once more after a failed search; each question judged on its own (an earlier refusal decides nothing); a partial answer, then a ticket by the second miss; a writing request is not a knowledge miss; steps as Q12 rules (how many first, at most three list items a sentence, another role's steps offered) | app `instructions/en.md`, `ar-SA.md`, `agent.py` | small | refusals with no search 6 → 0 outside off-topic turns; FSMRkwf t4-t7 searched | L; A; K0 for the second query | about 1.5-2 s more on miss turns; invented partial answers, so the partial-answer wording moves no default before 0.5 |
+| 1.2 | Search rules (Q7): search before any "not found"; once more with other words, in the guide's Arabic terms, before giving up; always on "check again" or a re-asked question; once more after a failed search; each question judged on its own (an earlier refusal decides nothing); a partial answer, then a ticket by the second miss; a writing request is not a knowledge miss; steps read as today (Q12) | app `instructions/en.md`, `ar-SA.md`, `agent.py` | small | refusals with no search 6 → 0 outside off-topic turns; FSMRkwf t4-t7 searched | L; A; K0 for the second query | about 1.5-2 s more on miss turns; invented partial answers, so the partial-answer wording moves no default before 0.5 |
 | 1.3 | Variety and the newest turn: never the same sentence twice unless asked; a refusal worded anew and pointing somewhere; "the words come from speech recognition: read product words as meant, and ask when unsure"; on every request, not only after tools, the fixed system line "answer the last user message", which never quotes it (the caller's words stay in the user message, `turn_message`: a transcript is data, never an instruction); the newest part of a joined split turn marked | library `agent/prompt.py` RULES, `agent/turn.py`, `agent/context.py` | small | identical replies 5 of 43 → at most 1 in 50; near repeats down | the calls report; L; A | every prompt word is paid on every request; D-072's varied first line kept |
 | 1.4 | Kept results age by the call's turns: the latest search whole while within the last 2 turns; older searches one line each (query, titles); a passage given earlier sent as its title only; only `Memory.exchanges` ages, the guard's evidence and reports (rules A and B's) staying whole, and the latest `best_passage_steps` staying for the call (D-075's repeat with no new search); the docs' "last 4 turns" corrected | library `agent/tool_calls.py`, `agent/context.py` | small | old results at turn 6 about 5,200 tokens (61%) → about 300-1,400 | L (its context checks among them); A; input tokens per request | a return to an older topic needs a fresh search (1.2 asks for it) |
 | 1.5 | The repeat after a cut (Q10): for the turn after a cut reply, the unheard rest as a note marked "not heard", so "one more time" says the whole answer; "one more time", "pardon", "what did you say" added to the English list, for the overlap rule and sessions without a talker, a test holding the preset notices free of them (TD-103) | library `agent/context.py`, `voice/session/speaker.py` (the cut), `domain/words.py`, the presets' test | medium | bYJ1 t1-t2 repeated; repeat requests met | L's repeat check; O | the model may assume it was heard: the note says plainly it was not |
@@ -697,8 +768,8 @@ partial answers, R1, R2, T1, T2) moves no default until invented answers on run 
 dev variants; `k1-dev-spoken` had 7) are read by that check for the arm and its baseline. **Latency
 noise:** each latency rule is read against the spread of a repeated baseline pass (or each arm run
 twice); a median inside it counts as unchanged, and a p90 is read only on paths of 40 turns or more.
-**Held-out at M9, at most seven reads:** L (at wave 1's close), P, E (at Phase 2's close), STT, T and
-H, each once, the kept arm and its baseline; none for TTS (the panel's lines are fresh) or the trial.
+**Held-out at M9, at most eight reads:** L (at wave 1's close), P, E (at Phase 2's close), STT, T, H
+and F, each once, the kept arm and its baseline; none for TTS (the panel's lines are fresh) or the trial.
 
 - **C · The calls report's definitions.** *Abandoned:* 0 turns, ended by leaving, or a hang-up within
   10 s of the greeting's end. *A refusal:* a reply on the refusal lists (both languages), or
@@ -729,6 +800,7 @@ H, each once, the kept arm and its baseline; none for TTS (the panel's lines are
 | Rule | For | Data and arms | Kept when | Expected |
 | --- | --- | --- | --- | --- |
 | A · Ticket calls | 1.2-1.4, 1.17-1.20, the talker arms | run A dev, every scenario, three plays | zero violations in every play; the action targets (right action, type, faithful summary, language) no worse than `a5-dev` | unchanged |
+| F · Flight calls | Phase F, and from then on every row that can move a measured outcome (rows 1.x and 2.x, with Ole5's A and L as the check that it is general, D-101) | run F (the flight spec's 7.1): the flight app's scripted calls in text through `TextCall`, the real talker on the mock airline, each scenario three times against a new airline per play, today pinned to 2026-11-16, every fact checked in code (no judge); dev f01-f28, the held-out set written by a builder who has seen no dev result; a scenario's `needs` skipped and reported until its capability lands (`language_switch`: row 2.5, landed with D-103) | a scenario passes when every check holds in at least 2 of 3 plays; a change is kept when no dev scenario that passed before fails, the targeted ones pass and violations are zero in every play; for a target among L's checks (f25-f28), L's rule, all three plays; held-out read once at M9, `--split held-out` named | the first dev pass is the baseline |
 | K0 · Search | 1.1 | no model: the talker's own stored queries from `k1-dev-spoken` (87 with "Ole5", each with its expected points) and the 31 live ones, with and without 1.1; the header share counts exactly the passages 1.1 skips | the share under 1 in 20, and no item loses its expected point at k = 7 unless another gains one (deterministic, so no sign test) | 81 of 217 → near 0 |
 | E · End of turn | 1.11, 2.1, 2.3 | `poe eot` (GP-18): E0 3,000 ms, E1 1,800 ms; later E2 (2.1) and E3 (2.3), each against the last kept; the paused requests, 0.6's long-pause items, and its "yes, [pause] but" items as their own stratum; 0.7's resumed-silence field read first on the owner's calls | on the long-pause items, no more cut turns than the last kept arm plus D-067's noise (1 verdict), per language; zero sends on the "yes, but" items; then the tester day's live turns that resumed after 1.8 s counted | E1: timeout turns at about 2.0 s; E2: under 2% of turns |
 | O · Overlap | 1.5's words, 1.12 | `poe overlap` on dev | no verdict goes from right to wrong (D-068's noise: 0 of 163) | FSMRkwf t2's kind answered |
@@ -751,6 +823,7 @@ H, each once, the kept arm and its baseline; none for TTS (the panel's lines are
 | Baselines at be1a588: run S's ten, run A dev, K0, `poe eot` | first | 1 each | about 1.5 h in all | about $0.3 |
 | L (run S's machinery, three plays) | wave 1 (4 steps), wave 2 (about 4) | about 9 | about 30-45 min | about $0.1-0.2 |
 | A dev (three plays) | waves 1 and 2, the talker arms | about 6 | 31-36 min | $0.10-0.12 |
+| F dev (three plays) | Phase F's baseline, then each row that can move an outcome | about 8 | about 25-35 min (the spec's estimate) | under $0.20 |
 | K0; run K's retrieval | wave 1 | 2; 1 | minutes; about 30 min | $0; about $0.2 |
 | E (`poe eot`) | wave 1, Phase 2 | about 4 | under 1 h | under $0.5 |
 | J (offline synthesis of 40 replies) | wave 1 | 3 | about 15 min | under $0.2 |
@@ -766,8 +839,8 @@ pass per run kind at a wave's commit serves C, L, R0, T0, P0 and J0 together.
 
 - **At approval, about 1 hour:** approve (Q1, Q2); answer Q3, Q4, Q16, Q17; sign up for Q16's keys.
 - **Early, about 45 minutes:** the recording session (0.6, with any tester who agrees); Q6-Q12.
-- **Someone who knows Ole5, about 1.5 hours:** the judge's sheet or the blind read; the scenario
-  facts the agent drafts from the knowledge base.
+- **The knowledge base's source files** into `kb-source` (Q4), and a spot-check of 5 of the readers'
+  verdicts, about 15 minutes.
 - **About six short listens of 10-15 minutes:** Q11's spoken forms; the English voice nearest
   abdullah (1.9); the joins (J); the rotated lines (1.15); the read-back and ending lines (1.18,
   1.19); the talker arm's Saudi register (T). **One persona session**, about 30 minutes (Q14).
@@ -834,6 +907,124 @@ Block 0.
   and Q1, Q2, Q16 and Q20; dates removed, "What happens first" ordered by gain per hour, 2.5 made
   the switch on any question or request in the other language, 5.3 left to a streaming STT's own
   language; D-099 written and the roadmap row set in progress.
+- 2026-11-16: the owner answered Q3, Q4 and Q6 to Q11; the first build (the calls report, 1.7, 1.12,
+  1.13, 1.14 and the baselines, five builders at once) froze the laptop and was stopped half built,
+  its work kept uncommitted in its worktrees; the owner asked for a flight-booking demo agent (Phase
+  F, Q23) and put the STT model and the language switch first; the `kb-source` folder made for Q4.
+- 2026-11-16: the speech-to-text providers, merged into plan-010-integration (6546633):
+  core/config.py's load helpers moved to core/settings/loading.py (424060f, a pure move); Phase 4's
+  Block 0 started with the key settings of the guide's six accounts (ElevenLabs, Speechmatics with
+  its region, Cohere, Soniox, OpenAI with its address, Inworld), each a SecretStr with a _FILE
+  form, all optional (39b1082); ElevenLabs Scribe v3 behind the speech-to-text port, keyterms from
+  the call's prompt, its language and probability on the Transcript's new `heard_language` and
+  `language_probability`, `stt.provider` loosened and built by the composition root (18f5dc0);
+  Speechmatics' ar_en batch pack, one job a clip on eu1, deleted once read (4e69b4f); Cohere's
+  Transcribe Arabic, the language always named, no prompt (efeae69); Soniox's stt-async-v6, the
+  agent's two languages as strict hints, the prompt's terms as context, the language most words
+  carry as `heard_language` with no score (9fd510b); `poe eval` takes each provider as an answerer,
+  its model pinned on the scorecard, a dry estimate first and `--estimate-only` needing no key
+  (1e96116, 6681049); run H's H3, `poe eval-languages --classifier groq|elevenlabs|soniox`, each
+  turn's first 2 s sent with no language named, under `--price-per-hour` and `--cap-usd` (b44a4cd,
+  16ae48e, f5fc2ff); the review's one fix: a provider's score below an even share counts as unsure
+  instead of switching to a language it never heard (3d5dd4b). Each provider's SECURITY.md row
+  added; nothing measured yet, no key; the full gate passed (8065 passed, 1 skipped).
+- 2026-11-16: Telnyx and Nabrah merged into plan-010-integration (6f9ff53): their key settings
+  and HUMAIN's (kept until its API reference is given) (e9ee5d5); Telnyx's HUMAIN engine
+  (`humain/realtime`, only on Telnyx's streaming WebSocket; its batch models deepgram/nova-3 and
+  whisper-large-v3-turbo on the batch endpoint) and Nabrah's Saudi model, each a turn on one
+  WebSocket behind the speech-to-text port, websockets declared (D-102) (e71a54f); `poe eval`
+  answerers (f19a3f8); the first Telnyx smoke heard nothing, so a turn goes at twice real time
+  with code-switching and 1.5 s of silence; both smokes then passed (d977af0); D-100's condition
+  (4) stated from each vendor's terms (5a0a7a0). HUMAIN's own API not built: its wire protocol
+  is not public.
+- 2026-11-16: the dev console's choice of speech-to-text merged (56e14b6, D-104): a call's
+  provider, model and language mode chosen before its offer, from the providers whose key is
+  set, each turn naming who heard it (634b222, 2717440, 74adeee); the merge gave `stt_kinds()`
+  Telnyx's and Nabrah's rows.
+- 2026-11-16: the language switch merged (17ebf4d, D-103): `stt.live_language = "detected"`, the
+  session following the moved language, spoken switch requests, the talker's `switch_language`
+  tool, a read-back read again in the new language, run H's detected arm (the splits 9849b80,
+  cc47c9e, 175a72e, a961c8b, 513da5e; the build 5eeb9e5 to 21ad96c); the review's two fixes, Cohere
+  no longer moving a long English turn to Arabic and a switch request said over a reply now
+  moving the call (0ee08f4); the merge put Telnyx and Nabrah in `HEARS_NO_LANGUAGE`. Its full
+  gate passed at 0ee08f4 (8176 passed, 1 skipped). Run H's baselines ran at 21ad96c; its arms
+  wait.
+- 2026-11-16: the speech-to-text bake-off on the golden set's dev split (292 variants, the
+  owner's voice), at dc9c37d: Whisper large-v3 with W1 129 right (0.442, as recorded), ElevenLabs
+  Scribe v3 209 (0.716; 47 items better, 7 worse, p < 0.0001; Saudi and MSA better beyond the
+  noise; median 514 ms against 259), Speechmatics' ar_en pack 183 (0.627; median 1,982 ms),
+  Cohere's Transcribe Arabic 165 (0.565, at 3d5dd4b; 306 characters from silence). Telnyx's
+  HUMAIN engine and Nabrah run next.
+- 2026-11-16: the bake-off's first pass completed and reported in
+  [stt-report-2026-11-16.md](../../project/stt-report-2026-11-16.md): Nabrah's Saudi model 141
+  right (0.483; Saudi 20 items better and 1 worse, English 0 better and 16 worse), HUMAIN's engine
+  through Telnyx 137 (0.482, 8 failed; 29 better, 23 worse, within the noise; median 6,367 ms on
+  the batch port, TD-152); the six dev runs' history lines recorded. One run each, dev only: the
+  registered rule's second run and held-out read remain, and ElevenLabs' language pass.
+- 2026-11-16: ElevenLabs' second dev run, `el-dev2`, 215 right (50 items better and 5 worse than
+  Whisper); the owner made ElevenLabs Scribe v3 the default (D-105), Whisper the fallback; the
+  keys moved into the owner's `.env` as key strings, at their request; `.env.example` gained the
+  Ole5 app's own settings (scripts/settings_ref.py, tests/ole5_voice/test_env_example_app.py);
+  the dev console's header lost the talker's model, the speech-to-text model and the voices, at
+  the owner's request (a call's speech-to-text is now chosen per call).
+- 2026-11-16: the flight agent's library steps merged (B1 to B3 of its spec; D-106, D-107): the
+  access-code route and the page headers in the library's server facade (`access_code_router`,
+  `AccessCodeGuard`, `TokenMinter`, `page_headers`), Ole5 switched to them; the agent's time zone
+  as a fixed offset and a test call's pinned date; numbers, times, dates and amounts in the
+  caller's register and key combinations as their keys, each behind a setting off by default;
+  the review's one fix, `TextCall` finding a read-back said in its shaped form (eaf3308).
+- 2026-11-16: the flight-booking agent's app merged, steps A1 to A7 (Phase F's F.1 and F.2): the
+  skeleton registered, the mock airline (ten airports, a seeded timetable and fares, a demo
+  traveler, an in-memory store), the trip each call plans, seven tools (search, choose, change,
+  the trip read, the fare calendar, the cabins compared, the traveler's profile), and `book_trip`
+  read back whole in words in three registers and written only on a clear yes; the review's three
+  fixes, a bare return day counted from the departure, a slow search no longer timing out, and
+  "the third one" matched to the order the caller heard (f2f268a). Still to build: the agent,
+  persona, settings, server and page (A8, A9), the scenarios and their runner (A10 to A12), and
+  the library's steps B4 to B7.
+- 2026-11-16: the flight agent, its persona, settings and server (A8 of its spec; b2c45b8): the
+  declaration on the public API (Saudi Arabic then English, Riyadh's fixed UTC+3 by D-106, the
+  seven read tools and book_trip, a chat model on uncertain overlaps and unlisted answers); the
+  persona's greetings, progress lines, instructions, the airline code's pronunciation and the
+  vocabulary built from the names in FLIGHT_VOICE_* settings (Saad / سعد, T2 Air / طيران تي تو by
+  default), a name breaking the lines' rule refused at load by its setting; the runtime's folder
+  always nested under flight/, 50 bookings a caller a day unless set, the demo traveler the
+  console's dev caller under dev; the server on 127.0.0.1:7862 with the library's access-code route
+  (50 tokens a day) and page headers, GET /api/profile, and on this machine alone GET /api/bookings
+  and POST /api/demo/reset (JSON only, an empty object); .env.example lists the app's settings. No
+  echo: the runtime needs the Groq key whatever the agent.
+- 2026-11-16: the flight agent's page (A9 of its spec; b095982): our own design on the library's
+  client, the airline's mark and name, "Your trips" with a filter by reference, the traveler,
+  "Start over" asked first, the language toggle (Arabic first, right to left, setting the call's
+  starting language), the orb and the state line following the call, the lines the caller could say
+  as text, cards newest first and at most three, the conversation and the options folded away;
+  every text our own and set as text, tested in the fake browser. Proved once through the lock: the
+  page, the token route's refusals (400 without the code, 415 as a form) and the dev console served
+  from the owner's .env (a made-up access code in the process's environment, since .env has none
+  yet); 14 fixed lines recorded at the first start, no call made. Still to build: the scenarios and
+  their runner (A10 to A12).
+- 2026-11-16: the flight agent's library step B4 (L6): what every app's spending runs share moved
+  from the Ole5 app into the library's testing kit, through the `evals` facade (D-101): the paced,
+  capped chat model (`PacedChat`, `ModelPacer`, `MinutePacer`, `Limits`, `DailyLimitError`,
+  `RunClock`, `RunSleep`), the spend (`Spend`, `Price`, `ModelUse`, `ModelSpend`,
+  `CapReachedError`), the checks before a run (`run_checkout`, `check_out`, `inspect_checkout`,
+  `run_refused`) and a day counter over every app's run history (`requests_today`, `every_history`,
+  `RunHistoryError`); Ole5's runners switched, their tests moved with the same assertions, and
+  Ole5's day now counts the flight agent's history too (e56f0a5).
+- 2026-11-16: the flight agent's library step B5 (L5): option rows on a card (`Card.rows`,
+  `CardRow`: at most 8, title 80, detail 120, value 40, a mark of best, chosen or unavailable),
+  read by the output guard with the card's texts, carried by `t2v/1`'s `card`, checked by the
+  reference client and shown as text with the mark as `data-mark` on the dev page, the dev console
+  and Ole5's widget; a card with no rows shows as before (30cbe05). The flight app's own cards move
+  to rows with its page (A9).
+- 2026-11-16: the `t2v/1` list spells a card's rows as `[CardRow]`, its one nested object, listed
+  under `objects` with the bodies' (08e417f); the full gate passed on 08e417f.
+- 2026-11-16: both merged into integration, the gate green on the merge (the agent and its page,
+  then the library's B4 and B5); open for the lead: the presets' yes words in the public API, so an
+  app's lines' rule at load reads them (today a test holds them), and Ole5's talker_args, eot and
+  talker_score, already over 300 lines, a little longer from the moved imports. Still to build: the
+  scenarios and their runner (A10 to A12), the library's B6 and B7, and the flight tools' cards sent
+  as rows (the page already shows rows when a card has them).
 
 ## Decision log
 
@@ -844,3 +1035,12 @@ Block 0.
   providers measured on the keys they offered, a guide to the best ones first; the call's language
   switched by any question or request in the other language, from each turn's detected language
   held to Arabic and English; no dates, the work by gain per hour, the obvious wins first.
+- 2026-11-16: answers are read by two blind agent readers with the knowledge base's source files
+  (Q4); the search clean-up stays in the app (Q6); a flight-booking agent becomes the demo and main
+  test set, Ole5 the check that each change is general; the STT model and the switch go first; at
+  most two builders at once.
+- 2026-11-16: rule F registered before any run F result (the flight spec's 7.1, a dated amendment
+  before its scenarios are written): run F, the flight app's scripted calls checked in code, its
+  kept rule (every check in 2 of 3 plays; no dev scenario that passed fails, violations zero in
+  every play; L's targets in all three), its held-out read the eighth M9 read; F.3 reads run F in
+  place of "run S and run A scenarios"; `language_switch` is row 2.5's, landed with D-103.

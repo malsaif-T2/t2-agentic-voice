@@ -2,7 +2,7 @@
 under `T2V_`, both read from the environment and, only when one is given, a `.env` file; the
 environment wins over the file. This is the only module of the app that reads the environment.
 
-The app's own, for its server (server.py) and its token route (token_route.py):
+The app's own, for its server (server.py) and its token route (the library's, server.py):
 - `OLE5_VOICE_ACCESS_CODE`, required: the code the owner types in the widget to get a join
   token (plan 003, Q4), at least 16 characters, made with `GENERATOR`;
 - `OLE5_VOICE_WEBSITE_ORIGIN`: the website allowed to frame the widget's page

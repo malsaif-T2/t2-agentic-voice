@@ -33,7 +33,12 @@ from pathlib import Path
 from typing import Final
 
 from t2_agentic_voice import VoiceAgent, get_logger
-from t2_agentic_voice.evals import consent_check_request, uncertain_overlap_request
+from t2_agentic_voice.evals import (
+    PacedChat,
+    consent_check_request,
+    run_refused,
+    uncertain_overlap_request,
+)
 from t2_agentic_voice.ports import KnowledgeBase
 
 from ole5_voice.evals.action_scenarios import (
@@ -43,12 +48,10 @@ from ole5_voice.evals.action_scenarios import (
     load_action_scenarios,
 )
 from ole5_voice.evals.action_scenarios import problems as scenario_problems
-from ole5_voice.evals.chat_pacing import OUTPUT_BUDGET, PacedChat
 from ole5_voice.evals.history import read_history
 from ole5_voice.evals.items import GoldenSetError
 from ole5_voice.evals.judge import JUDGE_ATTEMPTS
 from ole5_voice.evals.talker_measure import TALKER_REQUESTS
-from ole5_voice.evals.worktree import refused
 from ole5_voice.tickets.mock import MockTicketSystem
 from ole5_voice.tickets.status import TICKET_STATUS
 from ole5_voice.tickets.system import TicketSystem
@@ -63,6 +66,9 @@ OVER: Final = frozenset({"agent_speaking", "read_back", "closing_question"})
 # The request a call's session sends on an answer to a read-back that the yes rule's lists leave
 # unplaced (`VoiceAgent.ask_on_unlisted_answers`, D-082): its model and bound, the library's.
 CHECK: Final = consent_check_request("-", "-", "-")
+# The output tokens the paced chat model budgets a request that names none, the library's
+# (tied in test_library_copies.py).
+OUTPUT_BUDGET: Final = 1024
 _UNUSED: Final = Path("run-a-probe")  # the folder of the mock the check builds, never used
 log = get_logger(__name__)
 
@@ -72,9 +78,13 @@ def load_scenarios(folder: Path) -> tuple[ActionScenario, ...]:
     try:
         found = load_action_scenarios(folder)
     except GoldenSetError as error:
-        raise refused(f"the scenarios cannot be read ({error})", "fix them; `poe check`") from None
+        raise run_refused(
+            f"the scenarios cannot be read ({error})", "fix them; `poe check`"
+        ) from None
     if broken := scenario_problems(found):
-        raise refused(f"the scenarios break {len(broken)} rule(s), first: {broken[0]}", "fix them")
+        raise run_refused(
+            f"the scenarios break {len(broken)} rule(s), first: {broken[0]}", "fix them"
+        )
     return found
 
 
@@ -89,7 +99,7 @@ class AgentFactory:
     def __call__(self, kb: KnowledgeBase, tickets: TicketSystem) -> VoiceAgent:
         agent = self.factory(kb, tickets=tickets)
         if not isinstance(agent, VoiceAgent):
-            raise refused(f"--agent {self.spec} gave no VoiceAgent", "name the agent's factory")
+            raise run_refused(f"--agent {self.spec} gave no VoiceAgent", "name the agent's factory")
         return agent
 
 
@@ -99,7 +109,7 @@ def checked_agent(make: AgentFactory, kb: KnowledgeBase, search_tool: str) -> Vo
     agent = make(kb, MockTicketSystem(_UNUSED))
     names = {tool.name for tool in agent.tools}
     if lacking := [name for name in (search_tool, *TICKET_TOOLS) if name not in names]:
-        raise refused(
+        raise run_refused(
             f"the agent has no tool {', '.join(lacking)}",
             "give the factory of an agent with its knowledge tool and the ticket tools",
         )
@@ -147,7 +157,7 @@ def requests_of(args: argparse.Namespace, plays: Sequence[ActionScenario]) -> Ma
 
 def most_usd(args: argparse.Namespace, paced: PacedChat, plays: Sequence[ActionScenario]) -> float:
     """The most `plays` spend (the module's docstring), at the run's prices; a model with no
-    price is never sent a request (`chat_pacing`)."""
+    price is never sent a request (`PacedChat`)."""
     prices, read = paced.spend.prices, args.input_budget_tokens
     return sum(
         n * prices[model].of(read, written)
@@ -169,7 +179,7 @@ def check_estimate(
     most, spent = most_usd(args, paced, plays), paced.spend.cost_usd()
     log.info("run_estimate", plays=len(plays), most_usd=round(most, 4), spent_usd=round(spent, 4))
     if spent + most > args.cap_usd:
-        raise refused(
+        raise run_refused(
             f"its most spend, {most:.4f} USD, with {spent:.4f} spent, passes --cap-usd "
             f"{args.cap_usd:g}",
             "lower --input-budget-tokens or --max-output-tokens, or raise the cap within the "
@@ -179,7 +189,7 @@ def check_estimate(
         if (pacer := paced.pacers.get(model)) is None:
             continue
         if (left := pacer.limits.rpd - pacer.today) < n:
-            raise refused(
+            raise run_refused(
                 f"{model}'s daily limit leaves {left} requests today, and the run may send {n}",
                 "run it on a day with room, since a held-out run is never resumed",
             )

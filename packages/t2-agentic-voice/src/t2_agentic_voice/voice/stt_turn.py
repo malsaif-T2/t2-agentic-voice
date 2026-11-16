@@ -49,6 +49,12 @@ class HeldTurn:
         """The detector heard the speech stop: the turn's audio is cut here."""
         self.cut_at, self.cut_starts = len(self.audio), self.starts
 
+    def voiced_s(self, sample_rate: int) -> float:
+        """The seconds of voiced speech held: from where the detector heard the speech begin to
+        where it last heard it stop (all held, with no stop yet), never the silence after."""
+        end = len(self.audio) if self.cut_at is None else self.cut_at
+        return max(0, end - self.speech) / (2 * sample_rate)
+
     def mark(self, lead: int, window: int) -> HeldOverlap:
         """Mark the turn an overlap whose parts start `lead` bytes before its speech, its window
         `window` bytes long from there."""

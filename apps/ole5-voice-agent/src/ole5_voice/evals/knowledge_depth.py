@@ -32,6 +32,7 @@ from typing import Final, get_args
 
 from pydantic import TypeAdapter, ValidationError
 from t2_agentic_voice import T2VoiceError, get_logger
+from t2_agentic_voice.evals import run_checkout, run_refused
 from t2_agentic_voice.ports import KnowledgeBase, Passage
 
 from ole5_voice.evals.cli import require, seconds
@@ -60,7 +61,6 @@ from ole5_voice.evals.session_runner import closed, main_of, measured
 from ole5_voice.evals.talker_args import TalkerParts
 from ole5_voice.evals.talker_data import TAGS
 from ole5_voice.evals.talker_measure import CALLER, Todo, todo_of
-from ole5_voice.evals.worktree import refused, run_checkout
 
 _DESCRIPTION = "Run K0: each answerable dev variant searched once, k from 1 to 8, into --out."
 _PASSAGES: Final = TypeAdapter(list[Passage])
@@ -85,12 +85,12 @@ def _load(data: Path) -> _Data:
         items = load_knowledge_items(folder)
         points = read_toml(folder / POINTS_FILE, Points)
     except GoldenSetError as error:
-        raise refused(
+        raise run_refused(
             f"the knowledge set cannot be read ({error})", "fix it; `poe check`"
         ) from None
     todo = [each for each in todo_of(items, "dev") if each.item.kind == "answerable"]
     if not todo:
-        raise refused("the knowledge set holds no answerable dev item", "fix it; `poe check`")
+        raise run_refused("the knowledge set holds no answerable dev item", "fix it; `poe check`")
     return _Data(todo, PointIndex(points), digest(sorted(folder.glob("*.toml"))))
 
 

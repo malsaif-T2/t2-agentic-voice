@@ -43,13 +43,12 @@ from pathlib import Path
 from typing import Final, Literal, Protocol
 
 from t2_agentic_voice import get_logger
-from t2_agentic_voice.evals import OverlapReplay
+from t2_agentic_voice.evals import MinutePacer, OverlapReplay, RunSleep
 from t2_agentic_voice.ports import AudioChunk, AudioClip, DataFlow, SpeechToText
 
-from ole5_voice.evals.groq_answerer import GROQ_MINIMUM_S, Sleep
+from ole5_voice.evals.groq_answerer import GROQ_MINIMUM_S
 from ole5_voice.evals.models import Split
 from ole5_voice.evals.overlap_score import Action, OverlapResult, Verdict, judge
-from ole5_voice.evals.pacers import MinutePacer
 from ole5_voice.evals.run_parts import Todo, clip_of
 from ole5_voice.evals.runs import cost_usd
 
@@ -226,7 +225,7 @@ class Measuring:
     pacer: MinutePacer
     price_per_hour_usd: float
     cap_usd: float
-    sleep: Sleep
+    sleep: RunSleep
     requests: int = 0
     billed_seconds: float = 0.0
 

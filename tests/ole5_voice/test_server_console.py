@@ -15,8 +15,8 @@ import pytest
 from fastapi.testclient import TestClient
 from ole5_voice import server
 from ole5_voice.customer import CUSTOMER_EMAIL, CUSTOMER_FIELD, SUBJECT, customer_email
+from ole5_voice.server import TOKENS_PER_DAY
 from ole5_voice.settings import DEMO_CUSTOMER_EMAIL, load
-from ole5_voice.token_route import TOKENS_PER_DAY
 from t2_agentic_voice import (
     Caller,
     ConfigurationError,

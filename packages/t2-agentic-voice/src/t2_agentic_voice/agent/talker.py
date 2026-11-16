@@ -18,13 +18,14 @@ the output guard blocked (`ClauseBlocked`, never spoken: the session speaks the 
 `error` notice in its place and emits `GuardBlocked` with its `reason`, and the talker keeps a
 developer note); an action's read-back to say (`ReadBackRequested`, the reply's last event
 before its end: the session reads it back and asks; nothing the talker gives confirms it);
-each model request as it goes and as it ends (`ModelRequested`, `ModelReplied`, for the
-call's usage and the turn's
-times); and the reply's end (`ReplyDone`), after its last clause and its work, with how many of
-the talker's clauses it left unsaid once it stopped before a question past its limit
-(`unsaid_clauses`, agent/question_limit.py, D-085). A `ProviderError` from the model is
-raised from the stream instead, after any clause already given, for the session to say the
-`error` notice: no event says it.
+the reply moved into another of the agent's languages by the `switch_language` tool
+(`LanguageMoved`, after the tool's result: its later clauses in that language, and the
+session moves the call); each model request as it goes and as it ends (`ModelRequested`,
+`ModelReplied`, for the call's usage and the turn's times); and the reply's end (`ReplyDone`),
+after its last clause and its work, with how many of the talker's clauses it left unsaid once it
+stopped before a question past its limit (`unsaid_clauses`, agent/question_limit.py, D-085). A
+`ProviderError` from the model is raised from the stream instead, after any clause already
+given, for the session to say the `error` notice: no event says it.
 
 **A clause's length.** The talker cuts the model's text with the clause splitter at no limit,
 for it knows no voice: the session fits each clause to the voice's `max_chars` once it has said
@@ -41,14 +42,14 @@ ends the stream at once, with no `ReplyDone`.
 the session runs on: `SYSTEM_CLOCK` in a call, `TextCall`'s virtual clock in a test), never on
 asyncio's own time or the system's: the tool's timeout (the runner's `run` takes the clock), a
 tool's `ms`, a request's `first_token_s`, and the prompt's date (`compose_prompt`'s `today`, the
-date of `clock.wall()`). So a test that moves its clock on brings what is due by then, and only
-that.
+date of `clock.wall()` in the agent's `time_zone`). So a test that moves its clock on brings
+what is due by then, and only that.
 
 **Built for each call** by one factory of a call's `ChatTalker` (`talker_factory`), which the
 runtime (api/runtime.py) and the audio call (testing/audio_call.py) reach through
 `chat_talkers`, and the text call (testing/text_call.py) directly: the agent's mode, read under
 the settings' prefix (`session.mode_for`), says whether its calls run the talker; one tool
-runner of the agent's tools serves every call, and so does the agent's action runner, when it
+runner of the talker's tools serves every call, and so does the agent's action runner, when it
 declares actions.
 
 What one reply does, request by request, is agent/turn.py's.
@@ -60,10 +61,11 @@ from collections.abc import AsyncIterator, Callable
 from typing import Protocol
 
 from t2_agentic_voice.actions.action_runner import ActionRunner
-from t2_agentic_voice.actions.agent_tools import tools_of
+from t2_agentic_voice.actions.agent_tools import talker_tools
 from t2_agentic_voice.actions.runner import ToolRunner
 from t2_agentic_voice.agent.events import (
     ClauseBlocked,
+    LanguageMoved,
     ModelReplied,
     ModelRequested,
     ProgressDue,
@@ -91,6 +93,7 @@ from t2_agentic_voice.domain.ports.chat_model import ChatModel
 __all__ = [
     "ChatTalker",
     "ClauseBlocked",
+    "LanguageMoved",
     "ModelReplied",
     "ModelRequested",
     "ProgressDue",
@@ -199,9 +202,9 @@ def talker_factory(
     runner: ToolRunner | None = None,
 ) -> Callable[[TalkerCall, Clock], Talker]:
     """The factory of each call's `ChatTalker` of an agent whose calls run the talker: on
-    `model`, with `runner` (one of the agent's tools unless given) and `actions`, the agent's
-    action runner, for every call."""
-    tools = runner if runner is not None else ToolRunner(tools_of(agent))
+    `model`, with `runner` (one of the talker's tools unless given: actions/agent_tools.py's
+    `talker_tools`) and `actions`, the agent's action runner, for every call."""
+    tools = runner if runner is not None else ToolRunner(talker_tools(agent, settings))
 
     def build(call: TalkerCall, clock: Clock) -> Talker:
         return ChatTalker(

@@ -140,7 +140,7 @@ twice; DOC-REF: every `D-NNN` cited anywhere is a heading here), so keep its sha
   ARCH-DOC fails until ARCHITECTURE.md's layer table matches `[layers]` and `[[owners]]`, and
   the decision is a review. More layers mean more wiring in `api`, accepted for the guarantee.
 
-## D-004 · Groq is the only provider for now, and each can be swapped later · 2026-10-28 · Accepted
+## D-004 · Groq is the only provider for now, and each can be swapped later · 2026-10-28 · Amended by D-100 (other providers measured, 2026-11-16)
 
 - **Context:** The owner has one API key.
 - **Decision:** Speech-to-text, the chat model, and text-to-speech come from Groq for now. Each
@@ -1671,7 +1671,7 @@ twice; DOC-REF: every `D-NNN` cited anywhere is a heading here), so keep its sha
   `tests/t2_agentic_voice/voice/session/test_io.py` and
   `tests/t2_agentic_voice/test_protocol_list.py`.
 
-## D-038 · A call's language is fixed at join · 2026-11-03 · Proposed (the agent's, plan 003's Block 0 after its review; beyond the design's 5.5)
+## D-038 · A call's language is fixed at join · 2026-11-03 · Amended by D-103 (the call's language may move, 2026-11-16)
 
 - **Context:** live calls send Whisper the call's language, from the language the caller picks
   in the widget and the token's `locale` (`stt.live_language = "session"`, plan 003's decision
@@ -3633,3 +3633,180 @@ twice; DOC-REF: every `D-NNN` cited anywhere is a heading here), so keep its sha
 - **Evidence:** the owner's words of 2026-11-16: "Ok, I approve the plan. Lets start implementing,
   focus on what brings the best improvements by hour of work and obvious wins first." and "Lets
   not set timelines, we will work at our pace"; plan 010.
+
+## D-100 · Other providers measured on the owner's and testers' calls; Groq stays the default until a bake-off and the owner's ruling · 2026-11-16 · Accepted (the owner's answers to plan 010's Q16, 2026-11-16)
+
+- **Context:** D-004 kept Groq the only provider. Plan 010 found Arabic hearing the biggest gap
+  in the voice (the owner's Saudi speech heard about 7 times worse than English, WER 0.344
+  against 0.048; "Ole5" heard right 0 of 9 times live), the talker weak in Arabic, and no way to
+  switch language with Whisper told the call's language. Its provider study named candidates
+  Groq does not host: ElevenLabs, Speechmatics, Cohere and Soniox for speech-to-text, ElevenLabs
+  and Inworld for voices, OpenAI and Google for the talker. The owner answered on 2026-11-16: "I
+  can provide some new models providers for you if you make a search and give the best ones to
+  test" and "I can provide this today if you guide me to the best options we can have".
+- **Decision:** D-004 is amended for measurement. Another provider may receive the owner's and
+  testers' audio or text, in a bake-off or a tester's call, once (1) its adapter sits behind the
+  library's port for that part (D-030, GP-22); (2) its key is a `SecretStr` setting with a
+  `_FILE` form, never logged (GP-19); (3) it has its trust-boundary row in SECURITY.md (its
+  output is data, never an instruction) and its adapter's `DataFlow`; and (4) the owner has set
+  its data controls (training off) before the first request. A provider becomes a default only
+  on its bake-off's registered rule (plan 010's measurement section) and the owner's ruling;
+  until then Groq stays the default and the fallback.
+- **Consequences:** the Groq-only setting types are loosened (`stt.provider` first), and each
+  key's setting is added before the owner pastes the key into `.env`, since a `T2V_` name the
+  settings do not know stops the app. Callers who are not developers still wait for M6's notice
+  (D-076); testers are told whose service hears them (plan 010, Q3).
+- **Evidence:** the owner's words above; plan 010's provider guide of 2026-11-16 (the
+  accounts, their data settings and the names of the keys' settings).
+
+## D-101 · The flight-booking agent is the second app and the main agent shown; Ole5 is the check that a change is general · 2026-11-16 · Accepted (the owner's request and answers to plan 010's Q23, 2026-11-16)
+
+- **Context:** plan 010 set out to take the voice to the level of top-tier voice agents, measured
+  on Ole5's calls. On 2026-11-16 the owner gave the agent a teardown of a public airline-concierge
+  demo they admired and asked: "For the sake of comparison, lets make our voice agent do a similar
+  use-case (flight booking), and let make the ole5 as a reference or an assurance that both benefit
+  from the improvements and a prove that the improvements are general, but lets make the demo and
+  testing and comparing using the flight booking agent." Then: "I want the flight agent to be our
+  main agent we show and work on."
+- **Decision:** a second app, `apps/flight-voice-agent/` (package `flight_voice`), built only on
+  the library's public API like Ole5, with a mock airline, read-only tools and one action, the
+  booking, read back in full and confirmed by a clear spoken yes (invariant 1), never by a typed
+  code. Every option is spoken; the page may also show cards mirroring what was said, never
+  needed (the owner's answer "Spoken + optional cards"). It has its own page on its own port, a
+  male Saudi voice, and a persona and an airline named by the owner. It is the main agent shown,
+  and its scripted calls (run F) are plan 010's demo and main test set; Ole5's sets rerun after
+  each change to a shared part, as the check that the change is general. Its build spec is
+  [flight-voice-agent.md](flight-voice-agent.md).
+- **Consequences:** the library gains what a second app needs (the access-code route, the call's
+  date, spoken numbers by register, card rows, the measurement's paced model), each used by Ole5
+  too. The library's checks and docs count two apps. Nothing is copied from the demo's brand, text
+  or prompt.
+- **Evidence:** the owner's words above, and their answers to Q23 of 2026-11-16: "Spoken +
+  optional cards (Recommended)", "Read-back + spoken yes (Recommended)", "A male Saudi voice, name
+  later (Recommended)", "Its own page (Recommended)".
+
+## D-102 · websockets declared by the library and owned by its adapters · 2026-11-16 · Proposed (the agent's; needed by the two streamed providers the owner asked to test on 2026-11-16, with no download)
+
+- **Context:** the owner asked on 2026-11-16 to test HUMAIN's speech engine and Nabrah's. Both
+  hear a turn only over a WebSocket: HUMAIN's through Telnyx's streaming endpoint
+  (`humain/realtime`), Nabrah's on its own. websockets 17.4 was already installed, under
+  Pipecat, and ARCH-DEPS refuses an import the library does not declare.
+- **Decision:** the library declares `websockets>=17.4` (uv.lock gained only the declaration;
+  nothing was downloaded) and harness.toml's owners give it to the adapters layer beside httpx,
+  with ARCHITECTURE.md's table to match. Its connections take no proxy variable and a logger
+  that logs nothing (`adapters/provider_socket.py`), since its debug log writes the handshake's
+  headers and every frame, and Nabrah's key travels in a frame. Its TLS keeps Python's default
+  context, which still reads `SSL_CERT_FILE` and `SSL_CERT_DIR`: TD-004 and TD-015 cover it.
+- **Consequences:** a streamed provider sits behind the batch speech-to-text port, one turn a
+  connection, and pays its pacing there (TD-152) until a streaming port exists (plan 010's 5.1).
+- **Evidence:** both adapters' smokes on 2026-11-16 (`b02_eh` heard right: Telnyx's HUMAIN engine
+  in 4.8 s, Nabrah in 1.3 s); their tests on a fake socket.
+
+## D-103 · A call's language may move within the call: any question or request in the other language moves it · 2026-11-16 · Accepted (the owner's ruling of 2026-11-16 under plan 010's Q20; off by default until run H keeps it)
+
+- **Context:** D-038 fixed a call's language at join, so Whisper, told the call's language,
+  translates an English question in an Arabic call into fluent wrong Arabic. On 2026-11-16 the
+  owner ruled: "No, any English question or request should be enough to change the language and
+  vice versa. We can achieve this be trying other providers STT, maybe they have auto-detection,
+  they give probabilities or we use a language classifier to lock the language between Arabic
+  and English."
+- **Decision:** a fourth value of `stt.live_language`, `detected`, keeps the call's current
+  language, the join's at first, as `session` does; each request names it with its prompt. A
+  turn with at least `stt.detect_from_s` (1.2) seconds of voiced speech, counted from where the
+  speech detector heard it begin to where it last stopped, never the silence after (ECAPA's gate
+  failed by counting it, D-086), also goes at the same time naming no language and with no
+  prompt. When that request hears the agent's other language (the provider's name mapped
+  exactly, `domain/words.py`'s `heard_code`) and the turn is a question or request (two words or
+  more, and not only the short replies of either language in either script,
+  `domain/language_switch.py`), the turn's heard words are that request's and the call's current
+  language moves to it: later requests name it, and the reply, the voice, the fixed phrases and
+  the knowledge query follow. A spoken switch request ("English please", in both scripts,
+  including how Whisper writes it told the other language) moves the call too, said over a
+  reply or not, and the talker's `switch_language` tool moves it for any other wording. A
+  read-back waiting when the call moves is dropped unconfirmed and read again in the new
+  language, a new receipt required (invariant 1). A provider that reports no language it heard
+  (Speechmatics' pack, Cohere, Telnyx's HUMAIN engine, Nabrah: `HEARS_NO_LANGUAGE`) gets no second
+  request; its calls move only on a switch request or the tool.
+- **Consequences:** each long turn costs one more Whisper request. `session` stays the library's
+  default (GP-18); the Ole5 app turns `detected` on only when run H keeps the arm, by the rule
+  plan 010 registered before any run. The dev console can choose it per call (D-104). A short
+  "English please" said over an Arabic reply lets that reply play to its end, and the next one
+  is English; stopping the reply would change the interruption rule, a measured outcome.
+- **Evidence:** the owner's words above; tests `tests/t2_agentic_voice/domain/test_language_switch.py`,
+  `tests/t2_agentic_voice/voice/test_stt_detect.py`, `tests/t2_agentic_voice/voice/session/test_call_language.py`,
+  `tests/t2_agentic_voice/testing/test_audio_switch.py`; run H's numbers are added when it reads.
+
+## D-104 · The dev console may choose one call's speech-to-text provider, model and language mode · 2026-11-16 · Accepted (the owner's request of 2026-11-16)
+
+- **Context:** the owner, 2026-11-16: "A teammate wants to try them so as a way of trying them
+  myself and my teammate in github, give me the option to try these deferent provider/models
+  through the dev console as a quick way to try/switch them."
+- **Decision:** the dev console's own routes (`<prefix>/dev/stt`, under `env` dev with the dev
+  page on, loopback only) list the speech-to-text providers whose key is set (Groq's always), the
+  models each takes, and the language modes, never a key or its path; a choice made before a
+  call's offer is held to that closed list and taken by that call alone. No join token and no
+  `t2v/1` message can choose. Each turn's line in the console, and its record, name the provider
+  and model that heard it, with the request's time.
+- **Consequences:** a developer tries each provider on a live call with their own keys in their
+  `.env`; it measures nothing and moves no default (D-100 unchanged). A call heard by another
+  provider still reports its usage under `stt.model`'s name (TD-153).
+- **Evidence:** `tests/t2_agentic_voice/api/test_dev_stt.py`,
+  `tests/t2_agentic_voice/voice/test_calls_talker.py`, the browser tests `test_browser_stt_choice.py`.
+
+## D-105 · ElevenLabs' Scribe v3 is the default speech-to-text; Groq's Whisper the fallback · 2026-11-16 · Accepted (the owner's ruling of 2026-11-16, over the latency condition of plan 010's registered rule)
+
+- **Context:** plan 010's comparison of 2026-11-16 (docs/project/stt-report-2026-11-16.md) ran
+  seven providers on the golden set's dev split, 292 recordings of the owner's voice. ElevenLabs'
+  Scribe v3 heard 209 right in its first run and 215 in its second, against Whisper large-v3's
+  129 in both of its runs: 47 and 50 items better, 7 and 5 worse, beyond the noise each time, and
+  better beyond the noise in Saudi Arabic and MSA in both runs (and in English in the second).
+  Product terms caught 90% and 93% against 33%, ticket numbers 90% and 95% against 57%. It was
+  slower: a request's median 514 ms and 669 ms from this laptop against Whisper's 259 ms and
+  348 ms, so the registered rule's condition "no slower than Whisper plus its spread" fails, and
+  the rule alone keeps Whisper. Asked "Make ElevenLabs Scribe v3 the default once its second run
+  confirms it?", the owner answered on 2026-11-16: "Yes make ElevenLabs Scribe v3 the defualt".
+- **Decision:** `stt.provider` defaults to `elevenlabs` (Scribe v3, keyterms from the agent's
+  vocabulary, the language it heard and its probability on each transcript). Groq's Whisper is
+  the fallback, chosen with `stt.provider = "groq"`. With the default and no ElevenLabs key, the
+  runtime refuses to start, naming `T2V_ELEVENLABS__API_KEY` and the Whisper fallback in its FIX.
+- **Consequences:** a call waits about a quarter to a third of a second more per turn for its
+  words, until a streaming port lets Scribe v3 Live hear the caller while they speak (plan 010's
+  5.1). Every developer needs an ElevenLabs key beside the Groq key, or sets the fallback; the
+  quickstart sets it, to keep its one key. The audio of every call goes to ElevenLabs (D-100's
+  conditions, its trust-boundary row in SECURITY.md); callers who are not developers still wait
+  for M6's notice (D-076). The team keeps provider keys in `.env` as the key strings themselves
+  (the owner, 2026-11-16: "I want the variables in .env to hold the real key strings and not a
+  path to it").
+- **Evidence:** the runs `b0-groq`, `el-dev` and `el-dev2` and the switch's Whisper baseline
+  `sw2-dev-label`, in the run history (docs/generated/eval-history.md); the owner's words above.
+
+## D-106 · An agent's time zone is a fixed offset from UTC, and a test call's date can be pinned · 2026-11-16 · Accepted (the lead's ruling of 2026-11-16 under D-101: no tzdata download)
+
+- **Context:** the flight-booking agent (D-101) resolves "next Thursday" and «الخميس الجاي»
+  against today in Riyadh, and its scripted calls need a fixed today. Python's zone names need
+  the tzdata package on Windows, which is not installed and would be a download the owner has not
+  approved; Riyadh keeps UTC+3 all year.
+- **Decision:** `VoiceAgent.time_zone` is a `timedelta` or a fixed `datetime.timezone`, whole
+  minutes from -12:00 to +14:00, UTC by default; a zone's name or anything else is refused when
+  the agent is declared, naming the field. The prompt's "Today is" and the guard's year read in
+  that zone. `TextCall(today=...)` and `AudioCall(today=...)` pin a test call's date.
+- **Consequences:** an agent in a zone with summer time must give the offset it runs in; the
+  flight agent's mock airline gives each airport a fixed offset and keeps its booking window in
+  winter. Ole5 is unchanged (UTC).
+- **Evidence:** the tests of `VoiceAgent.time_zone` and the pinned date (the flight library job,
+  2026-11-16).
+
+## D-107 · Numbers, times, dates and key combinations said in the caller's register, behind settings · 2026-11-16 · Accepted (the owner's answer to plan 010's Q11, "As proposed", 2026-11-16; off by default until row 1.8's measurement, GP-18)
+
+- **Context:** replies said "Ctrl + Shift + R" symbol by symbol and numbers in one MSA form
+  (num2words), and the flight agent says times, dates and fares in every turn. Q11's spoken forms
+  were answered "As proposed" on 2026-11-16.
+- **Decision:** `tts.spoken_numbers = "by_register"` says a reply's numbers, times, ISO dates and
+  amounts in the caller's register (Saudi, MSA, English; `domain/text/arabic_numbers.py`,
+  `spoken_words.py`), and `tts.spoken_key_combinations` says key combinations as their keys and
+  spells capitals («كنترول شفت آر», "Control Shift R"). Both are off by default: they change what
+  callers hear, so row 1.8's measurement keeps them first. Captions keep the text the guard read.
+- **Consequences:** the Saudi forms are the agent's, unchecked by a native speaker (TD-058's
+  15-minute check before the first demo). `TextCall` finds a read-back said in its shaped form.
+- **Evidence:** the tests of the spoken forms (every timetable time, every day of a month and
+  every number up to about 250,000 said with no digit) and of `TextCall`'s read-back forms.

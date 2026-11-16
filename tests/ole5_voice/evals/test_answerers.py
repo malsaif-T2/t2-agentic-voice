@@ -15,7 +15,7 @@ from ole5_voice.evals.models import Variant
 from ole5_voice.evals.reference_answerer import ReferenceAnswerer
 from ole5_voice.evals.runs import Answer, AnswerRequest
 from ole5_voice.evals.windows import measurer
-from t2_agentic_voice import ProviderError, VoiceSettings
+from t2_agentic_voice import ProviderError, Providers, VoiceSettings
 from t2_agentic_voice.ports import Transcript
 
 from tests.ole5_voice.evals.fakes import (
@@ -294,7 +294,7 @@ def test_the_adapter_is_the_one_stt_provider_names(
     settings: VoiceSettings, monkeypatch: pytest.MonkeyPatch
 ) -> None:
     fake = FakeSpeechToText()
-    monkeypatch.setattr(answerers, "_ADAPTERS", {"groq": lambda given: fake})
+    monkeypatch.setattr(Providers, "speech_to_text", staticmethod(lambda given: fake))
     assert answerers.adapter(settings) is fake
     made = make_answerer("groq", settings)
     assert isinstance(made, GroqAnswerer) and made._stt is fake

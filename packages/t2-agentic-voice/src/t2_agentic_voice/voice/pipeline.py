@@ -45,8 +45,9 @@ from t2_agentic_voice.voice.pipecat_events import FailureReport
 from t2_agentic_voice.voice.session.io import CallSetup, Session
 from t2_agentic_voice.voice.session.session_events import Connected, Ending, TransportFailure
 from t2_agentic_voice.voice.session_bridge import EventStream, SessionBridge, SessionCommands
-from t2_agentic_voice.voice.stt_bridge import TurnSTTBridge, call_prompts
+from t2_agentic_voice.voice.stt_bridge import TurnSTTBridge
 from t2_agentic_voice.voice.stt_language import turn_languages
+from t2_agentic_voice.voice.stt_requests import call_prompts, detect_rule
 from t2_agentic_voice.voice.transport import (
     CLOSE_TIMEOUT_S,
     CONNECT_DEADLINE_S,
@@ -105,6 +106,7 @@ class CallPipeline:
             early=setup.talker is not None,  # the early start is the talker's (plan 006, Q2)
             prompts=call_prompts(setup.agent, setup.settings),  # once a call (plan 006, Q23)
             languages=turn_languages(setup.agent, setup.settings, classifier, setup.clock),
+            detect=detect_rule(setup.agent, setup.settings),
         )
         bridge = SessionBridge(events)
         timeout_s = setup.settings.tts.timeout_s

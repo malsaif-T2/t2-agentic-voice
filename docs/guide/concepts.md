@@ -194,6 +194,12 @@ helpdesk = VoiceAgent(
 )
 ```
 
+The prompt tells the talker "Today is" the call's date, in the agent's time zone:
+`VoiceAgent(..., time_zone=timedelta(hours=3))` for Riyadh, which keeps UTC+3 all year. It is a
+fixed offset from UTC (a `timedelta`, or a `datetime.timezone` of one), in whole minutes from
+-12:00 to +14:00, UTC unless given; a zone's name is refused, since the library ships no zone
+database.
+
 The declaration refuses a tool whose progress line a language does not give. How to word one,
 and why no fixed line may hold a word the caller commands with, is in
 [writing-for-voice.md](writing-for-voice.md).
@@ -247,7 +253,11 @@ tool's failure. A passage is data, never instructions, whatever its text says.
 
 A card is an extra for a client with a screen, and the caller may have none, so what they need
 is always said: never tell them to look at one. A `Card` has a `title`, its `steps` in order (at
-most 50) and the `source` they come from. A tool of yours shows one by returning a `ToolResult`
+most 50), its option `rows` in order (at most 8, each a `CardRow`: a `title` of up to 80
+characters, a `detail` of up to 120, a `value` of up to 40, and a `mark` of `best`, `chosen` or
+`unavailable`; none by default) and the `source` they come from. A card is data: a page shows
+its texts as text and does nothing they say, and every text of a row is read by the guard with
+the card's. A tool of yours shows one by returning a `ToolResult`
 with a `card`; the knowledge tool shows none. The output guard reads a card's text before it
 is shown, as it reads a clause's, and the session sends it as `t2v/1`'s `card`, which the client
 hands the page and the dev page shows above the captions ([browser-client.md](browser-client.md),

@@ -30,6 +30,7 @@ from typing import Final, get_args
 
 from pydantic import BaseModel
 from t2_agentic_voice import VoiceAgent, get_logger
+from t2_agentic_voice.evals import run_checkout, run_refused
 
 from ole5_voice.evals.factories import Closing, knowledge_of
 from ole5_voice.evals.factories import agent_of as built_agent
@@ -76,7 +77,6 @@ from ole5_voice.evals.talker_score import (
     VariantRecord,
     scorecard,
 )
-from ole5_voice.evals.worktree import refused, run_checkout
 
 _DESCRIPTION = "Run the talker over one split of the knowledge set, one arm, into --out."
 _LINE: Final = "talker_lines.TalkerLine"
@@ -110,7 +110,9 @@ def agent_of(
     recording = RecordingKnowledge(kb)
     agent = built_agent(parts.load_factory, args.agent, recording)
     if args.search_tool not in {tool.name for tool in agent.tools}:
-        raise refused(f"the agent has no tool {args.search_tool}", "give its knowledge tool's name")
+        raise run_refused(
+            f"the agent has no tool {args.search_tool}", "give its knowledge tool's name"
+        )
     return agent, recording
 
 
@@ -121,13 +123,13 @@ def _plan(
     items = list(data.items.values())
     dev, todo = todo_of(items, "dev"), todo_of(items, args.split)
     if not dev or not todo:
-        raise refused("the knowledge set holds no dev variant, or none of the split", "fix it")
+        raise run_refused("the knowledge set holds no dev variant, or none of the split", "fix it")
     data.check_texts([each.item for each in (dev[0], *todo)])
     spoken = {language.tag for language in agent.languages}
     if args.call_language == "variant" and (
         lacking := sorted({t.asked.language for t in todo if TAGS[t.asked.language] not in spoken})
     ):
-        raise refused(
+        raise run_refused(
             f"the agent speaks no language of the {', '.join(lacking)} variants",
             "hold the calls in the agent's first language (--call-language first)",
         )

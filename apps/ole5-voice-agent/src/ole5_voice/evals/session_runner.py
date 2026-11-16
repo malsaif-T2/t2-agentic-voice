@@ -40,16 +40,15 @@ from typing import Any, ClassVar, Final, Literal, Protocol
 
 from pydantic import BaseModel
 from t2_agentic_voice import T2VoiceError, VoiceSettings, configure_logging, get_logger
+from t2_agentic_voice.evals import PacedChat, run_refused
 
 from ole5_voice import LOGGERS
-from ole5_voice.evals.chat_pacing import PacedChat
 from ole5_voice.evals.factories import Closing
 from ole5_voice.evals.history import record_line
 from ole5_voice.evals.run_folder import RunFolder
 from ole5_voice.evals.talker_args import TalkerParts, pacing
 from ole5_voice.evals.talker_measure import StopRun
 from ole5_voice.evals.talker_score import Session, Stopped
-from ole5_voice.evals.worktree import refused
 
 # Why a dev run that stopped can go on with `--resume`: its finished results are kept.
 RESUMABLE: Final = ("daily_limit", "cap", "interrupted")
@@ -112,7 +111,7 @@ def measured[S](
 def check_history(parts: TalkerParts, line: BaseModel, run: str, kind: str) -> None:
     """Refused when the shared history takes no line of run `run`'s kind, `kind`."""
     if not parts.history_accepts(line):
-        raise refused(
+        raise run_refused(
             f"the shared history takes no line of run {run}'s kind yet",
             f"name {kind} in run_lines.AnyLine, as the integration does",
         )

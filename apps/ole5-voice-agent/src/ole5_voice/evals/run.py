@@ -2,23 +2,24 @@
 evaluation.md's "Running" says.
 
 Before anything is sent, a run refuses the main checkout and a dirty tree, an `--out` that exists
-or that git would track (`worktree.py`), audio that is not the file its manifest hashed, and a
-`groq` run whose least cost (each request once, billed as Groq bills it; a windows run's aside)
-would pass `--cap-usd`. Its settings load with `VoiceSettings.from_env` (`--env-file`, or the
-working folder's `.env`), the command line's on top (`run_settings.py`): a `groq` run names its
-model and timeout, and its base URL is `--base-url` or the SDK's own, whatever the environment
+or that git would track (`check_out`), audio that is not the file its manifest hashed, and a
+provider's run whose least cost (each request once, billed as it bills; a windows run's aside)
+would pass `--cap-usd`, its dry estimate logged first (`stt_arms.py`; `--estimate-only` stops
+there). Each speech-to-text provider is an answerer of its name: `groq`, or one beside it (D-100).
+Its settings load with `VoiceSettings.from_env` (`--env-file`, or the working folder's `.env`),
+the command line's on top (`run_settings.py`), `stt.provider` the answerer's: a `groq` run names
+its model and timeout, its base URL `--base-url` or the SDK's own, whatever the environment
 holds, so no `T2V_` variable changes a registered arm; `--show-settings` shows each resolved, a
 secret only as set or not set. Run W's arms are its options too (`run_arms.answer_options`): the
 Whisper prompt the agent `--prompt-agent` names would ship, and every variant sent as Arabic with
 `--language-hint ar` or as English with `en`; run H's H2 arm is `--language-from`, with
 `--language-base` (`language_arms.py`). A smoke test of one dev variant comes first and must
-pass with no failed, retried or refused request. Then each variant is answered, and its result
+pass with no failed, retried or refused request. Then each variant is answered, its result
 written as it finishes (a dev run's `results.jsonl`), with a progress line of identifiers,
-verdicts and timings, never a transcript. The scorecard is written by `scorecard.py` and, for
-a run that calls a provider, its history line is appended to the worktree's `history.jsonl` and
-copied beside the scorecard. A held-out run writes no per-variant output, its lines hold counts
-only, it is never traced, and one that does not finish keeps no result. A run's name is its
-`--out` folder's name.
+verdicts and timings, never a transcript. The scorecard is `scorecard.py`'s; a run that calls a
+provider appends its history line to the worktree's `history.jsonl`, a copy beside the card.
+A held-out run writes no per-variant output, its lines hold counts only, it is never traced, and
+one that does not finish keeps no result. A run's name is its `--out` folder's name.
 """
 
 from __future__ import annotations
@@ -26,7 +27,7 @@ from __future__ import annotations
 import argparse
 import asyncio
 import sys
-from collections.abc import Mapping, Sequence
+from collections.abc import Sequence
 from pathlib import Path
 from typing import get_args
 
@@ -37,29 +38,29 @@ from t2_agentic_voice import (
     configure_logging,
     get_logger,
 )
+from t2_agentic_voice.evals import check_out, run_checkout, run_refused
 
 from ole5_voice import LOGGERS
-from ole5_voice.evals import history
-from ole5_voice.evals.answerers import ANSWERERS, RunAnswerer, make_answerer
+from ole5_voice.evals.answerers import ANSWERERS, make_answerer
 from ole5_voice.evals.cli import amount, count, require, seconds
-from ole5_voice.evals.groq_answerer import Budget, CapReachedError, Policy, least_billed
+from ole5_voice.evals.groq_answerer import Budget, Policy
 from ole5_voice.evals.language_arms import flag_problem, language_arm
-from ole5_voice.evals.models import NAME_RULE, Split, Variant, is_name
+from ole5_voice.evals.models import NAME_RULE, Split, is_name
+from ole5_voice.evals.run_answer import answer_all, close_run
 from ole5_voice.evals.run_arms import AnswerOptions, answer_options
 from ole5_voice.evals.run_parts import (
     DATA,
     Choice,
     Parts,
-    Plan,
     Progress,
     audio_roots,
     clip_answers,
     load_plan,
 )
 from ole5_voice.evals.run_settings import GROQ_BASE_URL, MODELS, load_settings, show, shown
-from ole5_voice.evals.runs import Answer, RunInfo, cost_usd, holds_placeholder
+from ole5_voice.evals.runs import RunInfo, holds_placeholder
+from ole5_voice.evals.stt_arms import ARMS, arm_problem, arm_settings, check_cost, recorded_model
 from ole5_voice.evals.windows import measurer
-from ole5_voice.evals.worktree import Checkout, check_out, refused, run_checkout
 
 RESULTS_FILE = "results.jsonl"  # a dev run's results, one line each as it finishes
 _DESCRIPTION = "Run an answerer over the golden set, writing its results and scorecard into --out."
@@ -86,10 +87,10 @@ def _parser() -> argparse.ArgumentParser:
     parser = argparse.ArgumentParser(prog="poe eval", description=_DESCRIPTION)
     add = parser.add_argument
     policy = Policy()  # the run policy's defaults, which the flags below take
-    add("--answerer", choices=ANSWERERS, help="reference (sends nothing) or groq (Whisper)")
+    add("--answerer", choices=ANSWERERS, help="reference (sends nothing), or a provider")
     add("--split", choices=get_args(Split), help="the split the run covers, all of it")
     add("--model", choices=MODELS, help="stt.model for this run (groq needs it)")
-    add("--timeout-s", type=seconds, help="stt.timeout_s for this run (groq needs it)")
+    add("--timeout-s", type=seconds, help="stt.timeout_s for this run (a provider needs it)")
     add("--base-url", help=f"groq.base_url for this run ({GROQ_BASE_URL})")
     add("--language-hint", choices=("label", "auto", "ar", "en"), default="label", help=_HINT_HELP)
     add("--prompt-agent", help=_PROMPT_HELP)
@@ -113,8 +114,8 @@ def _parser() -> argparse.ArgumentParser:
         default=limit,
         help=f"each variant's limit ({limit:g})",
     )
-    add("--price-per-hour", type=amount, help="USD an hour of billed audio (groq needs it)")
-    add("--cap-usd", type=amount, help="the most the run may spend (groq needs it)")
+    add("--price-per-hour", type=amount, help="USD an hour of billed audio (a provider needs it)")
+    add("--cap-usd", type=amount, help="the most the run may spend (a provider needs it)")
     add("--windows-ms", type=count, nargs="+", default=[], help=_WINDOWS_HELP)
     add("--clips-from", type=Path, help=_CLIPS_HELP)
     add("--questions", type=Path, help="a dev screen file, one item/variant a line: only these")
@@ -122,6 +123,7 @@ def _parser() -> argparse.ArgumentParser:
     add("--note", help="why the run is made")
     add("--show-settings", action="store_true", help="show each setting and path, send nothing")
     add("--smoke-only", action="store_true", help="run the smoke test alone")
+    add("--estimate-only", action="store_true", help="log the dry estimate alone, send nothing")
     return parser
 
 
@@ -130,8 +132,8 @@ def _require(parser: argparse.ArgumentParser, args: argparse.Namespace) -> None:
     if args.show_settings:
         return
     named = ["answerer", "split", "out", "note"]
-    if args.answerer == "groq":
-        named += ["model", "timeout_s", "price_per_hour", "cap_usd"]
+    if args.answerer in ARMS:
+        named += ["model"] * (args.answerer == "groq") + ["timeout_s", "price_per_hour", "cap_usd"]
     require(parser, args, named)
     if args.split == "held-out" and (args.questions or args.smoke_only or args.tracing_endpoint):
         parser.error(
@@ -144,42 +146,8 @@ def _require(parser: argparse.ArgumentParser, args: argparse.Namespace) -> None:
         parser.error("--clips-from serves a windows run (--windows-ms)")
     if args.prompt_agent and args.language_hint == "auto":
         parser.error("--prompt-agent builds a prompt for the language sent: not with auto")
-    if (problem := flag_problem(args)) is not None:
+    if (problem := flag_problem(args) or arm_problem(args)) is not None:
         parser.error(problem)
-
-
-async def _answer_all(
-    plan: Plan,
-    answerer: RunAnswerer,
-    progress: Progress,
-    args: argparse.Namespace,
-    copied: Mapping[Variant, Answer],
-) -> None:
-    """The smoke test, then every variant, in order, the arm's baseline answers unsent; the run
-    ends early at the cap."""
-    try:
-        smoke = await answerer.answer(plan.smoke.variant, plan.smoke.request)
-        if smoke.failure or any(r.outcome != "ok" or r.attempt > 1 for r in smoke.requests):
-            outcomes = [r.outcome for r in smoke.requests]
-            log.error("smoke_failed", failure=smoke.failure, outcomes=outcomes)
-            return
-        progress.smoke_passed = True
-        # The language the provider reported, a code or a name: how R7's smoke step reads the
-        # form Groq gives when no language is sent (TD-011). A label, never a transcript.
-        log.info("smoke_passed", requests=len(smoke.requests), language=smoke.language)
-        if args.smoke_only:
-            progress.add(plan.smoke.result(smoke, plan.matcher, args.split, True))
-            return
-        for todo in plan.todo:
-            answer = copied.get(todo.variant)
-            if answer is None:
-                answer = await answerer.answer(todo.variant, todo.request)
-            progress.add(todo.result(answer, plan.matcher, args.split, not args.windows_ms))
-    except CapReachedError:
-        progress.capped = True
-        log.warning("cap_reached", done=len(progress.results), of=progress.total)
-    finally:
-        await answerer.aclose()
 
 
 def _run(
@@ -196,11 +164,11 @@ def _run(
     checkout = run_checkout(parts.folder, parts.git)
     out = check_out(args.out, checkout, parts.git)
     if not is_name(out.name):
-        raise refused(
+        raise run_refused(
             f"the --out folder's name, the run's, is not a name, which is {NAME_RULE}",
             "name the folder like r1-large-v3",
         )
-    spends = args.answerer == "groq"
+    spends = args.answerer in ARMS
     choice = Choice(
         split=args.split,
         windows_ms=tuple(args.windows_ms),
@@ -210,7 +178,7 @@ def _run(
         needs_audio=spends,
     )
     plan = load_plan(checkout.top / DATA, choice, parts)
-    model = settings.stt.model
+    model = recorded_model(settings, args.answerer)
     arm = language_arm(args, plan, commit=checkout.commit, model=model, prompt=options.shown)
     plan, recorded = arm.plan, recorded | dict(arm.recorded)
     reuse = clip_answers(args.clips_from, plan.todo, commit=checkout.commit, model=model)
@@ -218,11 +186,8 @@ def _run(
     if spends and not args.windows_ms:  # the cap, before anything is sent
         todo = [] if args.smoke_only else [t for t in plan.todo if t.variant not in arm.copied]
         sent = [plan.smoke.request, *(t.request for t in todo)]
-        if (least := cost_usd(least_billed(sent), budget.price_per_hour_usd)) > args.cap_usd:
-            raise refused(
-                f"the run's least cost, ${least:.4f}, passes --cap-usd",
-                "raise --cap-usd, or check --price-per-hour",
-            )
+        if check_cost(settings, sent, args) == "estimated":
+            return 0
     policy = Policy(
         args.max_attempts,
         args.max_rpm,
@@ -250,7 +215,7 @@ def _run(
             started_at=parts.now(),
             commit=checkout.commit,
             answerer=answerer.name,
-            model=settings.stt.model if answerer.spends else None,
+            model=model if answerer.spends else None,
             split=args.split,
             settings=recorded,
             price_per_hour_usd=budget.price_per_hour_usd,
@@ -269,44 +234,15 @@ def _run(
         )
         log.info("run_started", run=info.name, split=info.split, variants=progress.total)
         try:
-            asyncio.run(_answer_all(plan, answerer, progress, args, arm.copied))
+            asyncio.run(answer_all(plan, answerer, progress, args, arm.copied, arm.merge))
         except KeyboardInterrupt:
             progress.interrupted = True
             log.warning("run_interrupted", done=len(progress.results), of=progress.total)
-        return _close(info, progress, budget, answerer.spends, out, checkout, parts)
+        return close_run(info, progress, budget, answerer.spends, out, checkout, parts)
     finally:
         if tracer is not None:
             tracer.shutdown()
             log.info("tracing_closed", dropped_spans=tracer.dropped_spans)
-
-
-def _close(
-    info: RunInfo,
-    progress: Progress,
-    budget: Budget,
-    spends: bool,
-    out: Path,
-    checkout: Checkout,
-    parts: Parts,
-) -> int:
-    """The scorecard and, for a run that spent, its history line; 0 when the run is complete."""
-    complete = progress.smoke_passed and not (progress.capped or progress.interrupted)
-    complete = complete and len(progress.results) == progress.total
-    # A held-out run that did not finish keeps no result: it is run again whole.
-    kept = progress.results if complete or info.split == "dev" else []
-    card = parts.write_scorecard(info, kept, complete=complete, out=out)
-    if spends:  # every request sent, the smoke test's and a capped variant's included
-        line = history.line_of(
-            card,
-            items=len({r.item for r in kept}),
-            billed_seconds=budget.billed_seconds,
-            cost_usd=budget.cost_usd,
-        )
-        history.record_line(parts.append_line, line, checkout.top / DATA, out)
-    failures = sum(r.answer.failure is not None for r in kept)
-    log.info("run_finished", complete=complete, variants=len(kept), failures=failures)
-    log.info("run_spent", requests=budget.requests, billed_s=budget.billed_seconds, out=str(out))
-    return 0 if complete else 1
 
 
 def main(argv: Sequence[str] | None = None, *, parts: Parts | None = None) -> int:
@@ -320,7 +256,7 @@ def main(argv: Sequence[str] | None = None, *, parts: Parts | None = None) -> in
     # The library's defaults, until the settings name the level and format.
     configure_logging(loggers=LOGGERS)
     try:
-        settings = load_settings(args)
+        settings = arm_settings(load_settings(args), args.answerer or "")
         logs = settings.logging
         configure_logging(logs.level, logs.format, loggers=LOGGERS, content=logs.content)
         options = answer_options(args)

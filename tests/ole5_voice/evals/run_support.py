@@ -6,8 +6,8 @@ from the library's console logging (the suite's `_default_logging`)."""
 
 from __future__ import annotations
 
-from collections.abc import Callable, Sequence
-from dataclasses import dataclass, field
+from collections.abc import Callable
+from dataclasses import dataclass
 from pathlib import Path
 
 from ole5_voice.evals import run
@@ -15,7 +15,6 @@ from ole5_voice.evals.audio import sha256_of, write_wav
 from ole5_voice.evals.models import AudioRef, Confirmation, Item, Language, SplitFile, Variant
 from ole5_voice.evals.run_parts import DATA, Parts
 from ole5_voice.evals.runs import VariantResult
-from ole5_voice.evals.worktree import GitResult
 from t2_agentic_voice import VoiceSettings
 from t2_agentic_voice.ports import SpeechToText
 
@@ -30,62 +29,14 @@ from tests.ole5_voice.evals.fakes import (
 )
 from tests.ole5_voice.evals.samples import WHEN
 
-COMMIT = "ab" * 20
+# The library's run fakes, which the runner's tests take from here too.
+from tests.t2_agentic_voice.testing.run_fakes import COMMIT as COMMIT
+from tests.t2_agentic_voice.testing.run_fakes import FakeClock as FakeClock
+from tests.t2_agentic_voice.testing.run_fakes import FakeGit as FakeGit
+
 # A run's flags with the reference answerer, which sends nothing; each case adds its own.
 DEV = ["--answerer", "reference", "--split", "dev", "--out", "x", "--note", "n"]
 HELD_OUT = ["--answerer", "reference", "--split", "held-out", "--out", "x", "--note", "n"]
-
-
-@dataclass
-class FakeGit:
-    """A `Git` that answers the commands `worktree.py` asks, for a run worktree `top` linked to
-    the checkout `main` (or the main checkout itself, when `top` is `main`)."""
-
-    top: Path
-    main: Path
-    dirty: bool = False
-    ignored: tuple[Path, ...] = ()  # folders whose paths git ignores, in the main checkout
-    commit: str = COMMIT
-    failing: tuple[str, ...] = ()  # commands that fail, by their first word after options
-    calls: list[tuple[tuple[str, ...], Path]] = field(default_factory=list)
-
-    def __call__(self, args: Sequence[str], cwd: Path) -> GitResult:
-        command = tuple(args)
-        self.calls.append((command, cwd))
-        verb = next(word for word in command if not word.startswith("-"))
-        if verb in self.failing:
-            return GitResult(128, "")
-        if command[:2] == ("rev-parse", "--path-format=absolute"):
-            return GitResult(0, f"{self.top.as_posix()}\n")
-        if command[:2] == ("worktree", "list"):
-            trees = [self.main] + ([self.top] if self.top != self.main else [])
-            return GitResult(
-                0, "".join(f"worktree {t.as_posix()}\0HEAD {COMMIT}\0\0" for t in trees)
-            )
-        if command[:2] == ("rev-parse", "--verify"):
-            return GitResult(0, f"{self.commit}\n")
-        if verb == "status":
-            return GitResult(0, " M apps/x.py\0" if self.dirty else "")
-        if verb == "check-ignore":
-            path = Path(command[-1])
-            inside = any(path.is_relative_to(i.resolve()) for i in self.ignored)
-            return GitResult(0 if inside else 1, "")
-        raise AssertionError(f"git {command} is not faked")
-
-
-class FakeClock:
-    """Seconds that pass only when the run pauses, each pause recorded."""
-
-    def __init__(self) -> None:
-        self.now = 1000.0
-        self.pauses: list[float] = []
-
-    def __call__(self) -> float:
-        return self.now
-
-    async def sleep(self, seconds: float) -> None:
-        self.pauses.append(seconds)
-        self.now += seconds
 
 
 @dataclass
@@ -208,9 +159,9 @@ class Setup:
     def main(self, *extra: str, answerer: str = "groq", split: str = "dev", out: str = "r1") -> int:
         argv = ["--answerer", answerer, "--split", split, "--out", str(self.out(out))]
         argv += ["--note", "a made-up run", "--audio", f"owner={self.world.audio}"]
-        if answerer == "groq":
-            argv += ["--price-per-hour", "0.111", "--cap-usd", "1"]
-            argv += ["--model", "whisper-large-v3", "--timeout-s", "6"]
+        if answerer != "reference":  # a provider's run: Groq's names its model too
+            argv += ["--price-per-hour", "0.111", "--cap-usd", "1", "--timeout-s", "6"]
+            argv += ["--model", "whisper-large-v3"] if answerer == "groq" else []
         return run.main([*argv, *extra], parts=self.parts())
 
     def results(self) -> tuple[VariantResult, ...]:

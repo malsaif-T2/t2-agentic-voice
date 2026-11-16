@@ -54,6 +54,17 @@ from t2_agentic_voice.core.settings.limits import LimitSettings
 from t2_agentic_voice.core.settings.llm import LlmSettings
 from t2_agentic_voice.core.settings.logs import LoggingSettings
 from t2_agentic_voice.core.settings.privacy import PrivacySettings
+from t2_agentic_voice.core.settings.provider_keys import (
+    CohereSettings,
+    ElevenLabsSettings,
+    HumainSettings,
+    InworldSettings,
+    NabrahSettings,
+    OpenAISettings,
+    SonioxSettings,
+    SpeechmaticsSettings,
+    TelnyxSettings,
+)
 from t2_agentic_voice.core.settings.server import ServerSettings
 from t2_agentic_voice.core.settings.session import SessionSettings
 from t2_agentic_voice.core.settings.storage import StorageSettings
@@ -63,7 +74,7 @@ from t2_agentic_voice.core.settings.tts import TtsSettings, TtsVoice
 from t2_agentic_voice.core.settings.turns import TurnSettings
 from t2_agentic_voice.core.settings.words import WordSettings
 from t2_agentic_voice.domain.action_declaration import Claims, ReadBack, Say, Spoken
-from t2_agentic_voice.domain.cards import Card
+from t2_agentic_voice.domain.cards import Card, CardRow
 from t2_agentic_voice.domain.declaration import Language, VoiceAgent
 from t2_agentic_voice.domain.talker_declaration import DeclaredTool, Vocabulary
 from t2_agentic_voice.domain.words import Phrases, Words
@@ -86,24 +97,31 @@ __all__ = [
     "CallContext",
     "Caller",
     "Card",
+    "CardRow",
     "Claims",
+    "CohereSettings",
     "ConfigurationError",
     "Consent",
     "ConversationLine",
     "DeclaredTool",
+    "ElevenLabsSettings",
     "FromCaller",
     "GroqSettings",
     "GuardSettings",
     "HeardConsent",
+    "HumainSettings",
     "InterruptionSettings",
     "InvalidRequestError",
+    "InworldSettings",
     "JoinRejected",
     "JoinSettings",
     "Language",
     "LimitSettings",
     "LlmSettings",
     "LoggingSettings",
+    "NabrahSettings",
     "NotFoundError",
+    "OpenAISettings",
     "Phrases",
     "PrivacySettings",
     "ProviderError",
@@ -113,12 +131,15 @@ __all__ = [
     "Say",
     "ServerSettings",
     "SessionSettings",
+    "SonioxSettings",
+    "SpeechmaticsSettings",
     "Spoken",
     "Status",
     "StorageSettings",
     "StructuredLogger",
     "SttSettings",
     "T2VoiceError",
+    "TelnyxSettings",
     "Tool",
     "ToolError",
     "ToolResult",

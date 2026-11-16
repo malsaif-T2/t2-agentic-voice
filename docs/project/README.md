@@ -9,6 +9,8 @@ Every document here is linked from this list (or from a document that is), since
 fails on an orphan (DOC-ORPHAN):
 
 - [DESCRIPTION.md](DESCRIPTION.md): what is being built, in the owner's terms.
+- [stt-report-2026-11-16.md](stt-report-2026-11-16.md): the speech-to-text comparison of
+  2026-11-16, seven providers on the owner's voice (plan 010).
 
 ## Meeting notes and the owner's messages
 

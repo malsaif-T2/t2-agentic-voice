@@ -22,6 +22,7 @@ from typing import Final, Literal
 
 from pydantic import Field
 from t2_agentic_voice import T2VoiceError, configure_logging, get_logger
+from t2_agentic_voice.evals import check_out, inspect_checkout, run_refused
 
 from ole5_voice import LOGGERS
 from ole5_voice.evals.files import read_model
@@ -29,7 +30,6 @@ from ole5_voice.evals.first_audio_card import AudioScorecard
 from ole5_voice.evals.models import Model, Name
 from ole5_voice.evals.run_parts import Parts
 from ole5_voice.evals.runs import SCORECARD_FILE
-from ole5_voice.evals.worktree import check_out, inspect, refused
 
 COUNT: Final = 10  # the registration's ten replies
 SHEET_FILE: Final = "sheet.toml"
@@ -72,9 +72,9 @@ def _card(path: Path) -> tuple[AudioScorecard, Path]:
     try:
         card = read_model(file, AudioScorecard, lambda problem: ValueError(problem))
     except ValueError:
-        raise refused("--run is not a run T scorecard", "give run T1's --out folder") from None
+        raise run_refused("--run is not a run T scorecard", "give run T1's --out folder") from None
     if card.run.split != "dev" or card.run.settings.get("tts.trim_silence") != "true":
-        raise refused(
+        raise run_refused(
             "--run is not a dev run with tts.trim_silence on", "give run T1's --out folder"
         )
     return card, file.parent
@@ -90,11 +90,11 @@ def pick(args: argparse.Namespace, parts: Parts) -> int:
         if path is not None
     ]
     if args.count < 1 or len(found) < args.count:
-        raise refused(
+        raise run_refused(
             f"the run kept {len(found)} reply openings, fewer than --count {args.count}",
             "give a complete dev run of T1",
         )
-    out = check_out(args.out, inspect(parts.folder, parts.git), parts.git)
+    out = check_out(args.out, inspect_checkout(parts.folder, parts.git), parts.git)
     out.mkdir(parents=True)
     chosen = random.Random(args.seed).sample(found, args.count)  # noqa: S311 - a pick, not a key
     lines = [
@@ -119,7 +119,9 @@ def read(path: Path) -> int:
     try:
         sheet = read_model(path, Sheet, lambda problem: ValueError(problem), toml=True)
     except ValueError:
-        raise refused("--read is not a listening sheet", f"give the {SHEET_FILE} written") from None
+        raise run_refused(
+            "--read is not a listening sheet", f"give the {SHEET_FILE} written"
+        ) from None
     marks = [mark.clipped for mark in sheet.replies]
     clipped, whole, unmarked = (marks.count(m) for m in ("yes", "no", "?"))
     verdict = "unmarked" if unmarked else "fails" if clipped else "passes"

@@ -26,6 +26,7 @@ from dataclasses import dataclass, field
 from typing import Final
 
 from t2_agentic_voice import VoiceSettings, get_logger
+from t2_agentic_voice.evals import run_refused
 from t2_agentic_voice.ports import AudioClip, DataFlow, Transcript
 
 from ole5_voice.evals.overlap_card import OverlapScorecard
@@ -40,7 +41,6 @@ from ole5_voice.evals.overlap_run import (
 from ole5_voice.evals.overlap_score import Heard, OverlapResult, Verdict
 from ole5_voice.evals.run_parts import Todo, clip_of
 from ole5_voice.evals.timing_run import TAGS, Tag
-from ole5_voice.evals.worktree import refused
 
 _FLOW: Final = DataFlow(
     provider="none", processed_in="this process", stored_in="nowhere", retention="none"
@@ -113,7 +113,7 @@ async def rejudged(
     """Each variant of `card` replayed under this commit's rule (the module's docstring), its
     audio `todo`'s by variant; the run's refusal for a variant `todo` does not hold."""
     if missing := sorted(r.variant for r in card.variants if r.variant not in todo):
-        raise refused(
+        raise run_refused(
             f"the golden set holds no checked variant {missing[0]} of the stored run",
             "give --audio the roots of the stored run's recordings, in a checkout of its items",
         )

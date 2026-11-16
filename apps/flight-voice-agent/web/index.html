@@ -1,0 +1,82 @@
+<!doctype html>
+<!-- The flight agent's page, served by its server (flight_voice/server.py) with the library's
+     page headers: no inline script or style. Every text is set by app.js with textContent, in
+     the language the caller picks (Arabic first, the page then rtl). The call is the product: the
+     lines the caller could say are text, never buttons, and the cards only mirror what the
+     agent said. -->
+<html lang="ar" dir="rtl">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title data-text="title"></title>
+<link rel="icon" href="mark.svg" type="image/svg+xml">
+<link rel="stylesheet" href="app.css">
+<script type="module" src="app.js"></script>
+</head>
+<body>
+<header class="bar">
+  <p class="brand"><img src="mark.svg" alt="" width="28" height="28"> <span id="airline" dir="auto"></span></p>
+  <button type="button" id="trips-toggle" class="link" aria-expanded="false" aria-controls="trips" data-text="trips"></button>
+  <p id="traveler" class="muted" dir="auto"></p>
+  <button type="button" id="start-over" class="link" data-text="startOver"></button>
+  <nav class="languages" aria-label="Language">
+    <button type="button" class="language" data-language="ar-SA" lang="ar" aria-pressed="true">العربية</button>
+    <button type="button" class="language" data-language="en" lang="en" aria-pressed="false">English</button>
+  </nav>
+</header>
+
+<section id="reset-ask" class="ask" role="alertdialog" aria-labelledby="reset-question" hidden>
+  <p id="reset-question" data-text="askReset"></p>
+  <p class="controls">
+    <button type="button" id="reset-yes" class="primary" data-text="resetYes"></button>
+    <button type="button" id="reset-no" data-text="resetNo"></button>
+  </p>
+</section>
+
+<main class="layout">
+  <section id="call" class="call">
+    <h1 id="heading" dir="auto"></h1>
+    <div class="agent">
+      <div id="orb" class="orb" data-state="" aria-hidden="true"></div>
+      <p id="assistant" dir="auto"></p>
+    </div>
+    <p class="controls">
+      <button type="button" id="start" class="primary" data-text="start"></button>
+      <button type="button" id="end" data-text="end" disabled></button>
+    </p>
+    <p id="state" class="state" role="status" aria-live="polite"></p>
+    <p id="message" class="message" role="alert"></p>
+    <section class="could-say">
+      <h2 data-text="youCouldSay"></h2>
+      <ul id="lines" class="lines"></ul>
+    </section>
+    <section id="cards-section" class="cards" aria-labelledby="cards-title" hidden>
+      <h2 id="cards-title" data-text="cardsTitle"></h2>
+      <ol id="cards" class="card-list"></ol>
+    </section>
+    <details class="fold">
+      <summary data-text="conversation"></summary>
+      <ol id="captions" class="captions" aria-live="polite"></ol>
+    </details>
+    <details id="options" class="fold">
+      <summary data-text="options"></summary>
+      <p><label><span data-text="code"></span>
+        <input type="password" id="code" autocomplete="off" spellcheck="false" dir="ltr"></label></p>
+      <p><label class="box"><input type="checkbox" id="record"> <span data-text="record"></span></label></p>
+      <p class="controls">
+        <label class="box"><input type="checkbox" id="push-to-talk"> <span data-text="pushToTalk"></span></label>
+        <button type="button" id="talk" data-text="talk" aria-pressed="false" disabled></button>
+      </p>
+    </details>
+  </section>
+
+  <aside id="trips" class="trips" aria-labelledby="trips-title" hidden>
+    <h2 id="trips-title" data-text="trips"></h2>
+    <p><label><span data-text="filter"></span>
+      <input type="search" id="trips-filter" inputmode="numeric" autocomplete="off" dir="ltr"></label></p>
+    <ul id="trips-list" class="trip-list"></ul>
+    <p id="trips-note" class="muted" role="status"></p>
+  </aside>
+</main>
+</body>
+</html>
