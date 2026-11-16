@@ -29,6 +29,9 @@ apps/ole5-voice-agent/       the Ole5 Voice Agent: src/ole5_voice/, Ole5's promp
                              knowledge base and ticket system, and its web widget; its
                              measurement commands in src/ole5_voice/evals/ (the spending
                              runs on one session loop, session_runner.py), their data in evals/
+apps/flight-voice-agent/     the flight-booking agent, the main one shown (D-101): src/flight_voice/,
+                             its mock airline (airline/), exact and deterministic; Ole5 stays
+                             the check that a change to the library is general
 examples/minimal/            the smallest app: the guide's quickstart, and a test of the library
 tests/                       one subfolder per package, harness/ for the checks' own tests, and
                              the helpers every package's tests share (leaks.py, isolation.py)
@@ -41,8 +44,9 @@ The library's **public API is its package root and the facades beside it**: the 
 re-exports one area's names and holds nothing else (ARCH-FACADE);
 `[package] public` in harness.toml lists the modules an app may import, and `[package] facades`
 the facades among them. An app imports nothing else from the library and no other app, and the
-library never imports an app (ARCH-PUBLIC). So the Ole5 app uses the library exactly as a
-teammate's app would, and the minimal example breaks if the library starts to depend on Ole5.
+library never imports an app (ARCH-PUBLIC). So the Ole5 app and the flight-booking agent use the
+library exactly as a teammate's app would, and the minimal example breaks if the library starts
+to depend on Ole5.
 Inside the library, a layer imports from the layer that defines a name, never from the package
 root or a facade. The library's `src/` never names an app (ARCH-WORDS).
 

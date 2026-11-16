@@ -24,6 +24,11 @@ VAR_DIR_VARIABLE = f"{PREFIX}STORAGE__VAR_DIR"
 # access code: tests/ole5_voice/test_settings.py ties the app's settings to it, as
 # tests/harness/test_isolation.py ties PREFIX to the library's.
 APP_PREFIX = "OLE5_VOICE_"
+# The flight-booking agent's own prefix (D-101): its access code, its pinned today, its booking
+# and search modes.
+FLIGHT_PREFIX = "FLIGHT_VOICE_"
+# Every app's prefix, each dropped from the shell.
+APP_PREFIXES = (APP_PREFIX, FLIGHT_PREFIX)
 # The general names T2's knowledge-base service is reached under, which the Ole5 app reads with
 # no prefix (the owner's, plan 006): its Qdrant's address and account, its sign-in and embedding
 # addresses. ole5_voice/settings.py's `UNPREFIXED` lists them; its settings test ties the two.
@@ -68,8 +73,8 @@ CALL_NAMES = (
     "ORT_LOAD_CONFIG_FROM_MODEL",
 )
 # Every prefix and name dropped from the shell: the providers', the tracing tools', the call's
-# packages', the knowledge base's and this project's own, the library's and the app's.
-DROPPED_PREFIXES = (*FOREIGN_PREFIXES, *CALL_PREFIXES, *KB_PREFIXES, PREFIX, APP_PREFIX)
+# packages', the knowledge base's and this project's own, the library's and the apps'.
+DROPPED_PREFIXES = (*FOREIGN_PREFIXES, *CALL_PREFIXES, *KB_PREFIXES, PREFIX, *APP_PREFIXES)
 DROPPED_NAMES = (*FOREIGN_NAMES, *CALL_NAMES, *KB_NAMES)
 # Set for the session, a second guard on Pipecat's runner, which the library never imports:
 # python-dotenv's `load_dotenv` loads nothing while it is set. `pipecat.runner.run` calls it

@@ -2,10 +2,11 @@
 
 T2 Agentic Voice is a Python library that T2's teams install for speech-first voice agents
 (turn-taking, interruptions, answers, actions only on a clear yes, in Saudi Arabic, MSA and
-English). Its first app, the **Ole5 Voice Agent**, is built here on its public API (D-013). The
-owner's full description is in [DESCRIPTION.md](docs/project/DESCRIPTION.md). Stack: Python 3.12
-· a uv workspace · pydantic; the product libraries (Pipecat, FastAPI, Groq, Phoenix) are recorded
-in [decisions.md](docs/design/decisions.md) (D-002). Groq is the only provider for now (D-004).
+English). Two apps are built here on its public API (D-013): the **Ole5 Voice Agent**, and the
+**flight-booking agent**, the main one shown, with Ole5 the check that a change is general
+(D-101). The owner's full description is in [DESCRIPTION.md](docs/project/DESCRIPTION.md).
+Stack: Python 3.12 · a uv workspace · pydantic; the product libraries (Pipecat, FastAPI, Groq,
+Phoenix) are in [decisions.md](docs/design/decisions.md) (D-002); Groq is the default (D-100).
 
 This file is a **map, not a manual**. Open the linked doc when your task touches that area.
 
@@ -70,9 +71,8 @@ owned libraries, required docs, size caps, the coverage floor) live in [harness.
 ## Code map
 
 ```
-packages/t2-agentic-voice/src/t2_agentic_voice/   the library; its public API is __init__.py
-  and the facades beside it (re-exports only): ports.py groq.py identity.py server.py
-  stores.py events.py languages.py evals.py tracing.py classifiers.py
+packages/t2-agentic-voice/src/t2_agentic_voice/   the library; public API: __init__.py and
+  its facades: ports groq identity server stores events languages evals tracing classifiers
   core/       settings, logging, errors (T2VoiceError), tracing, the shared types (identity, events)
   domain/     the call's rules, no IO: the ports, the declaration (VoiceAgent), normalization,
               the speaking rules, the interruption rule and the presets' words (D-061, D-062),
@@ -84,13 +84,13 @@ packages/t2-agentic-voice/src/t2_agentic_voice/   the library; its public API is
   testing/    what a team tests and measures with: wer, cer, timings, AudioCall, TextCall, fakes
   api/        HTTP and the composition root: call set-up, health, the client and the dev page
 apps/ole5-voice-agent/src/ole5_voice/   the Ole5 app: only the library's public API (ARCH-PUBLIC)
-  evals/      the golden set's commands; its data in apps/ole5-voice-agent/evals/, no audio
-examples/minimal/src/minimal_example/   the smallest app: the quickstart, a test of the library
+  evals/      the golden set's commands (data in apps/ole5-voice-agent/evals/, no audio)
 apps/ole5-voice-agent/web/   Ole5's browser widget (plain HTML/JS/CSS), served by the Ole5 app
-scripts/      the harness: check_architecture.py (arch), check_docs.py (docs), gc_due.py and
-              gc_report.py (gc), quality.py, and their helpers; all read harness.toml
-              through harness_config.py
-tests/        one folder per package (t2_agentic_voice/, ole5_voice/, minimal_example/);
+apps/flight-voice-agent/src/flight_voice/   the flight agent (D-101); its mock airline in airline/
+examples/minimal/src/minimal_example/   the smallest app: the quickstart, a test of the library
+scripts/      the harness: the checks of arch, docs, gc and quality, and their helpers; all
+              read harness.toml through harness_config.py
+tests/        one folder per package (t2_agentic_voice/, ole5_voice/, flight_voice/, ...);
               harness/ tests the checks themselves; leaks.py (what an error, a log line or an
               output may show, GP-19) and isolation.py are shared by every package's tests
 docs/generated/  produced by commands, never edited by hand (a test fails when stale)
