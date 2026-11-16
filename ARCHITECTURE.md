@@ -30,8 +30,9 @@ apps/ole5-voice-agent/       the Ole5 Voice Agent: src/ole5_voice/, Ole5's promp
                              measurement commands in src/ole5_voice/evals/ (the spending
                              runs on one session loop, session_runner.py), their data in evals/
 apps/flight-voice-agent/     the flight-booking agent, the main one shown (D-101): src/flight_voice/,
-                             its mock airline (airline/), exact and deterministic; Ole5 stays
-                             the check that a change to the library is general
+                             its mock airline (airline/), exact and deterministic, its tools,
+                             booking, persona and server (port 7862); Ole5 stays the check
+                             that a change to the library is general
 examples/minimal/            the smallest app: the guide's quickstart, and a test of the library
 tests/                       one subfolder per package, harness/ for the checks' own tests, and
                              the helpers every package's tests share (leaks.py, isolation.py)

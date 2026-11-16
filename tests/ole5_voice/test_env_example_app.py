@@ -22,8 +22,8 @@ def test_every_app_setting_is_listed_blank_once() -> None:
     for _, rows in app_settings():
         for name, _field in rows:
             assert lines.count(f"{name}=") == 1, f"FIX: run `uv run poe settings-ref` ({name})"
-    listed = {name for _, rows in app_settings() for name, _ in rows}
-    assert len(listed) == len(AppSettings.model_fields)
+    (ole5,) = [rows for text, rows in app_settings() if text.startswith("The Ole5 app's")]
+    assert len({name for name, _ in ole5}) == len(AppSettings.model_fields)
 
 
 def test_each_app_setting_gives_its_default_or_says_it_is_required() -> None:

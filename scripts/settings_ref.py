@@ -25,6 +25,8 @@ from pathlib import Path
 from types import NoneType, UnionType
 from typing import Annotated, Literal, Union, get_args, get_origin
 
+from flight_voice.settings import PREFIX as FLIGHT_PREFIX
+from flight_voice.settings import AppSettings as FlightSettings
 from ole5_voice.settings import PREFIX as OLE5_PREFIX
 from ole5_voice.settings import AppSettings
 from pydantic import BaseModel, SecretStr
@@ -173,6 +175,14 @@ APPS: tuple[tuple[str, type[BaseModel], str], ...] = (
         "alone.",
         AppSettings,
         OLE5_PREFIX,
+    ),
+    (
+        "The flight-booking agent's own settings (apps/flight-voice-agent, "
+        "flight_voice/settings.py), read by its server, under FLIGHT_VOICE_: its access code, its "
+        "page, the mock airline's today and modes, and the persona's names. Not the library's: "
+        "the prefix T2V_ is the library's alone.",
+        FlightSettings,
+        FLIGHT_PREFIX,
     ),
 )
 
