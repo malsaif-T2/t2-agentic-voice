@@ -926,6 +926,33 @@ Block 0.
   16ae48e, f5fc2ff); the review's one fix: a provider's score below an even share counts as unsure
   instead of switching to a language it never heard (3d5dd4b). Each provider's SECURITY.md row
   added; nothing measured yet, no key; the full gate passed (8065 passed, 1 skipped).
+- 2026-11-16: Telnyx and Nabrah merged into plan-010-integration (6f9ff53): their key settings
+  and HUMAIN's (kept until its API reference is given) (e9ee5d5); Telnyx's HUMAIN engine
+  (`humain/realtime`, only on Telnyx's streaming WebSocket; its batch models deepgram/nova-3 and
+  whisper-large-v3-turbo on the batch endpoint) and Nabrah's Saudi model, each a turn on one
+  WebSocket behind the speech-to-text port, websockets declared (D-102) (e71a54f); `poe eval`
+  answerers (f19a3f8); the first Telnyx smoke heard nothing, so a turn goes at twice real time
+  with code-switching and 1.5 s of silence; both smokes then passed (d977af0); D-100's condition
+  (4) stated from each vendor's terms (5a0a7a0). HUMAIN's own API not built: its wire protocol
+  is not public.
+- 2026-11-16: the dev console's choice of speech-to-text merged (56e14b6, D-104): a call's
+  provider, model and language mode chosen before its offer, from the providers whose key is
+  set, each turn naming who heard it (634b222, 2717440, 74adeee); the merge gave `stt_kinds()`
+  Telnyx's and Nabrah's rows.
+- 2026-11-16: the language switch merged (17ebf4d, D-103): `stt.live_language = "detected"`, the
+  session following the moved language, spoken switch requests, the talker's `switch_language`
+  tool, a read-back read again in the new language, run H's detected arm (the splits 9849b80,
+  cc47c9e, 175a72e, a961c8b, 513da5e; the build 5eeb9e5 to 21ad96c); the review's two fixes, Cohere
+  no longer moving a long English turn to Arabic and a switch request said over a reply now
+  moving the call (0ee08f4); the merge put Telnyx and Nabrah in `HEARS_NO_LANGUAGE`. Its full
+  gate passed at 0ee08f4 (8176 passed, 1 skipped). Run H's baselines ran at 21ad96c; its arms
+  wait.
+- 2026-11-16: the speech-to-text bake-off on the golden set's dev split (292 variants, the
+  owner's voice), at dc9c37d: Whisper large-v3 with W1 129 right (0.442, as recorded), ElevenLabs
+  Scribe v3 209 (0.716; 47 items better, 7 worse, p < 0.0001; Saudi and MSA better beyond the
+  noise; median 514 ms against 259), Speechmatics' ar_en pack 183 (0.627; median 1,982 ms),
+  Cohere's Transcribe Arabic 165 (0.565, at 3d5dd4b; 306 characters from silence). Telnyx's
+  HUMAIN engine and Nabrah run next.
 
 ## Decision log
 
