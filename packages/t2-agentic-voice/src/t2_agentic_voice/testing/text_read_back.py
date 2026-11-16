@@ -7,9 +7,11 @@ summary, and the call's checks told when a summary played whole.
 **A reading** of a plan is a run of clauses of one reply whose captions, joined, say the plan's
 summary whole, and the run after it that says its closing question, if any. A caption is
 compared folded (no case, no space, no mark), and a line in each form it may be said in: its
-plain text, its spoken form, and either with its digits said one by one, since the session says
-a long line in several clauses, each captioned as said. A reply said again at the caller's
-request reads the same way.
+plain text, its spoken form, and either as the session may say it, since the session says a long
+line in several clauses, each captioned as said (voice/session/open_reply.py's `speech_of`): its
+key combinations as their keys or as written (`tts.spoken_key_combinations`), then its numbers
+by the speaking rules or in either Arabic register (`tts.spoken_numbers`). A reply said again
+at the caller's request reads the same way.
 
 **The runtime's own lines** (the read-back, `asked_again`, `declined`, `sending`, an outcome)
 are templates, which the output guard's rules never check (the design's 8.2): `templates`
@@ -20,16 +22,23 @@ from __future__ import annotations
 
 from collections.abc import Iterable, Sequence
 from dataclasses import dataclass
+from functools import lru_cache
 from typing import Literal
 
 from t2_agentic_voice.core.settings.tts import LanguageTag
 from t2_agentic_voice.domain.action_lines import ReadBackPlan, SpokenLine
+from t2_agentic_voice.domain.text.arabic_numbers import Register
+from t2_agentic_voice.domain.text.keys import speak_keys
 from t2_agentic_voice.domain.text.speaking import speak_digits
+from t2_agentic_voice.domain.text.spoken_text import speak_text
 from t2_agentic_voice.voice.protocol import ClauseIndex, ReplyId
 from t2_agentic_voice.voice.session.playback import Playback, Reply
 
 # The two parts of a read-back a turn may be said over.
 Part = Literal["summary", "question"]
+
+# The registers a line's numbers may be said in: the tag's own (None), or either Arabic one.
+_REGISTERS: tuple[Register | None, ...] = (None, "saudi", "msa")
 
 
 def fold(text: str) -> str:
@@ -37,11 +46,22 @@ def fold(text: str) -> str:
     return "".join(character for character in text.casefold() if character.isalnum())
 
 
+def _said(text: str, language: LanguageTag) -> set[str]:
+    """`text` as the session may say it in `language`, under any of the settings that shape
+    it (the module's docstring)."""
+    found: set[str] = set()
+    for keyed in {text, speak_keys(text, language=language)}:
+        found |= {keyed, speak_digits(keyed, language=language)}
+        found |= {speak_text(keyed, language=language, register=r) for r in _REGISTERS}
+    return found
+
+
+@lru_cache(maxsize=1024)
 def forms(line: SpokenLine, language: LanguageTag) -> frozenset[str]:
     """Each folded form `line`, said in `language`, may be captioned in (the module's
     docstring)."""
-    said = [speak_digits(text, language=language) for text in (line.text, line.spoken)]
-    return frozenset(fold(text) for text in (line.text, line.spoken, *said)) - {""}
+    said = _said(line.text, language) | _said(line.spoken, language)
+    return frozenset(fold(text) for text in said) - {""}
 
 
 @dataclass(frozen=True, kw_only=True)
