@@ -41,6 +41,13 @@ under `env="test"`, the one place typed text may stand in for heard words (a run
 be served under `test`), and writes its call's report to a folder of its own, never to your
 `var/`. It is a test, not a chat channel. Everything below comes from the `evals` facade.
 
+**The call's day.** The talker's prompt says "Today is" the call's date in your agent's time zone
+(`VoiceAgent(time_zone=timedelta(hours=3))`, a fixed offset from UTC; UTC unless you give one).
+A text call's virtual clock starts at 2026-01-01 09:00 UTC; `TextCall(agent, llm=..., today=
+date(2026, 11, 16))` holds it on that day in the agent's zone instead, its time of day kept, so a
+scenario that says "tomorrow" reads the same on every run. `AudioCall(..., today=...)` does the
+same for a replay's calls, which run on the system clock.
+
 **The model** is the test's:
 
 - **`ScriptedLLM`** plays a script, one entry per model request:

@@ -321,6 +321,35 @@ prefix written onto a number stays on its first word («و٢١» is said «وو�
 `languages` facade's `speak_number` and `speak_id` say one alone; num2words gives the Arabic
 forms, in MSA, and a native speaker's check of them is still to come (TD-058).
 
+**Said in the caller's register.** `T2V_TTS__SPOKEN_NUMBERS=by_register` says a reply's numbers
+in the register of the caller's Arabic (the talker gives each Arabic clause the call's register):
+«ألفين وأربع مية وخمسين» for 2450 to a Saudi caller, «ألفان وأربعمئة وخمسون» to an MSA one; a
+time written "09:10" as a clock says it, with its part of the day («تسع وعشر دقايق الصبح»,
+"nine ten in the morning", the part said once when the reply already says it after the time);
+and an ISO date "2026-12-17" with its weekday and month, never its year. IDs are still read
+digit by digit, and captions keep the digits. The default, `as_written`, says them as above;
+the setting is a change to what callers hear, so it moves only on a measured run (GP-18).
+
+**Key combinations and spelled terms.** `T2V_TTS__SPOKEN_KEY_COMBINATIONS=true` says a key combination in a
+reply as its keys, its plus signs left out: "Ctrl + Shift + R" is said "Control Shift R", and in
+Arabic «كنترول شفت آر» (a Latin letter by its English name, as Saudi callers say it). It is off
+by default, for the same reason. For a term your callers hear spelled, the `languages` facade's
+`spell_letters("OTP", language="ar-SA")` gives «أو تي بي» ("O T P" in English), which your
+pronunciation map can hold: `pronounce={"OTP": {"ar": spell_letters("OTP", language="ar"),
+"en": "O T P"}}`.
+
+**Numbers, times, dates and amounts in your own lines.** A line your code renders (a booking's
+read-back, its `done`) is not the talker's, so you say its numbers yourself, in the reply's
+register: the `languages` facade's `speak_time(time(9, 10), language="ar-SA")` gives «تسع وعشر
+دقايق الصبح», `speak_date`, `speak_duration` and `speak_amount` (riyals) the same way, and
+`speak_number(2450, language="ar-SA", register="saudi")` «ألفين وأربع مية وخمسين». Each takes
+`register="saudi"` or `"msa"` for an Arabic reply: pass the call's (an `ar-SA` reply to an MSA
+caller is said in MSA, as its words are); with none, `ar-SA` is Saudi and `ar` MSA, but
+`speak_number` with no register keeps num2words' MSA. English is one form ("nine ten in the
+morning", "Thursday the seventeenth of December", "two thousand four hundred fifty riyals").
+The Arabic words come from the library's own tables (0 to 999 999); the Saudi ones are the
+agent's until a native speaker checks them (TD-058).
+
 ## The vocabulary
 
 An agent declares the product terms its callers say, as a transcript should write them:

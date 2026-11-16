@@ -117,9 +117,9 @@ class TalkPlayer:
         wall = self._setup.clock.wall()
         call_id, emit = self._setup.call_id, self._setup.emit
         match event:
-            case SpokenClause(text=text, language=tag):
+            case SpokenClause(text=text, language=tag, caller_register=register):
                 talk.said, talk.language = talk.said + 1, tag
-                await reply.add_clause(text, language=tag, at=at)
+                await reply.add_clause(text, language=tag, at=at, register=register)
             case ShownCard(card=card):
                 await reply.card(card)
             case ToolBegan(call_id=tool_call, tool=tool, arguments=arguments):

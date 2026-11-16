@@ -41,7 +41,7 @@ from tests.ole5_voice.tickets.ticket_support import Clock
 
 # The two languages Ole5 speaks (agent.py).
 Tag = Literal["ar-SA", "en"]
-# The demo customer, as the token route mints every caller (token_route.py, customer.py).
+# The demo customer, as the token route mints every caller (server.py, customer.py).
 CALLER: Final = Caller(subject=SUBJECT, attributes={CUSTOMER_EMAIL: DEMO_CUSTOMER_EMAIL})
 # A text call's settings: the library's, its guard reading Ole5's phrases for a ticket's number
 # as claims, as the server's talker runs (server.py).

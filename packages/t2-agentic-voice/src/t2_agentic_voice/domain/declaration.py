@@ -27,6 +27,7 @@ from __future__ import annotations
 
 import re
 from collections.abc import Mapping, Sequence
+from datetime import timedelta, timezone
 from typing import Annotated, Literal, Self, final, get_args
 
 from pydantic import (
@@ -34,6 +35,8 @@ from pydantic import (
     BeforeValidator,
     Field,
     PlainValidator,
+    TypeAdapter,
+    ValidationError,
     ValidationInfo,
     field_validator,
 )
@@ -42,6 +45,7 @@ from t2_agentic_voice.core.settings.base import FROZEN, PLAIN
 from t2_agentic_voice.core.settings.tts import LanguageTag
 from t2_agentic_voice.core.settings.words import LanguageCode, primary_code
 from t2_agentic_voice.domain.declaration_errors import FROM_PRESET, Declared
+from t2_agentic_voice.domain.declared_phrases import DeclaredPronunciations, Phrase
 from t2_agentic_voice.domain.presets import ECHO_FRAMES, NOTICES
 from t2_agentic_voice.domain.talker_declaration import (
     DeclaredTool,
@@ -53,7 +57,6 @@ from t2_agentic_voice.domain.talker_declaration import (
     instructions_for,
     tools_for,
 )
-from t2_agentic_voice.domain.text.invisible import holds_refused_character, provider_text
 from t2_agentic_voice.domain.words import PRESET_WORDS, Phrases, Words
 
 # A notice's kind (the design's 5.5), each told in the call's language: `busy`, a call that
@@ -72,46 +75,13 @@ SPOKEN_NOTICES: tuple[NoticeKind, ...] = ("error", "cut_off", "ended")
 AGENT_NAME = re.compile(r"[a-z][a-z0-9-]{0,63}")
 # The names Windows keeps for its devices, which no folder can take (CPython 3.12's `pathlib`
 # lists the same, `_WIN_RESERVED_NAMES`); the owner develops on Windows (plan 003's review).
+# How an offset given as an ISO 8601 duration is read (lax: only from a text).
+_DURATION = TypeAdapter(timedelta)
+# The farthest a time zone is from UTC, behind it and ahead of it: the world's span.
+_MOST_OFFSET = (timedelta(hours=12), timedelta(hours=14))
 _DEVICES = frozenset(
     {"con", "prn", "aux", "nul", *(f"{port}{n}" for port in ("com", "lpt") for n in range(1, 10))}
 )
-
-# What a phrase may not hold, said whole, since the team cannot see the character it means.
-_UNSEEN = (
-    "a text in it holds a control or format character, a line or paragraph separator, a lone "
-    "surrogate or a space other than U+0020; of these, a phrase may hold only the no-break "
-    "spaces U+00A0 and U+202F, the joiners U+200C and U+200D and the direction marks U+200E, "
-    "U+200F and U+061C"
-)
-
-
-def _phrase(value: str) -> str:
-    """`value`, when it holds no character a spoken phrase may not (domain/text/invisible.py)
-    and says something once a provider's text is made of it; the error never repeats the
-    value."""
-    if holds_refused_character(value):
-        raise ValueError(_UNSEEN)
-    if not provider_text(value).strip():
-        raise ValueError("a text in it says nothing: it is empty, or only spaces and marks")
-    return value
-
-
-def _form(value: str) -> str:
-    """`value` as a written form to look for: a phrase with no space at either end, which would
-    keep it from ever standing as whole words."""
-    _phrase(value)
-    if value != value.strip():
-        raise ValueError(
-            "a written form starts or ends with a space, so it never stands as whole words"
-        )
-    return value
-
-
-def _code(value: str) -> str:
-    """`value` when it is a primary language code a pronunciation is keyed by."""
-    if value not in get_args(LanguageCode):  # a pronunciation's language, by its code
-        raise ValueError("a pronunciation names its language `ar` (both Arabic presets) or `en`")
-    return value
 
 
 def _every_kind[T](value: Mapping[NoticeKind, T]) -> Mapping[NoticeKind, T]:
@@ -126,21 +96,25 @@ def _every_kind[T](value: Mapping[NoticeKind, T]) -> Mapping[NoticeKind, T]:
     return value
 
 
+def _offset_of(value: object) -> object:
+    """`value`'s offset from UTC when it is a fixed `datetime.timezone`, or an ISO 8601 duration
+    as `model_dump_json` writes one ("PT3H"); any other value as it is, for the field's own check
+    (a zone by its name, which needs a zone database, is none)."""
+    if isinstance(value, timezone):
+        return value.utcoffset(None)
+    if isinstance(value, str) and value.removeprefix("-").startswith("P"):
+        try:
+            return _DURATION.validate_python(value)
+        except ValidationError:
+            raise ValueError("the time zone is not a duration") from None
+    return value
+
+
 def _a_language(value: object) -> object:
     """`value` when it may be a `Language`: one built, or the fields of one."""
     if not isinstance(value, Language | Mapping):
         raise ValueError("an item is not a language")
     return value
-
-
-_Phrase = Annotated[str, AfterValidator(_phrase)]
-# A pronunciation: how each language says one written form.
-_Said = Annotated[
-    Mapping[Annotated[str, AfterValidator(_code)], _Phrase], Field(min_length=1), FROZEN, PLAIN
-]
-# A pronunciation map as `VoiceAgent.pronounce` holds it: the languages facade's
-# `Pronunciations`, each entry checked and kept read-only.
-_Pronunciations = Annotated[Mapping[Annotated[str, AfterValidator(_form)], _Said], FROZEN, PLAIN]
 
 
 class Language(Declared):
@@ -156,10 +130,10 @@ class Language(Declared):
     the model and voice `tts.languages` gives it."""
 
     tag: LanguageTag
-    greeting: _Phrase
-    echo_frame: _Phrase
-    notices: Annotated[Mapping[NoticeKind, _Phrase], AfterValidator(_every_kind), FROZEN, PLAIN]
-    progress: Annotated[Mapping[ProgressKey, _Phrase], FROZEN, PLAIN] = Field(
+    greeting: Phrase
+    echo_frame: Phrase
+    notices: Annotated[Mapping[NoticeKind, Phrase], AfterValidator(_every_kind), FROZEN, PLAIN]
+    progress: Annotated[Mapping[ProgressKey, Phrase], FROZEN, PLAIN] = Field(
         default_factory=dict, validate_default=True
     )
 
@@ -237,14 +211,16 @@ class VoiceAgent(Declared):
     chat model decides the short overlaps of two or more words the rule would let go on (D-069;
     False, so an agent that does not ask for it, and any test script, sees no new request); and
     `ask_on_unlisted_answers`, whether a chat model judges an answer to an action's read-back
-    that the yes rule's lists leave unplaced, within the rule's rails (D-082; False, likewise).
-    It runs the talker when it declares instructions (`instructed`). Frozen, with no IO; built
-    once and handed to the runtime."""
+    that the yes rule's lists leave unplaced, within the rule's rails (D-082; False, likewise);
+    and `time_zone`, its fixed offset from UTC (a `timedelta`, or a `datetime.timezone` of one;
+    UTC unless given), whose date the talker's prompt says as "Today is". It runs the talker
+    when it declares instructions (`instructed`). Frozen, with no IO; built once and handed to
+    the runtime."""
 
     name: str
     # Given as any sequence (a list, as the design writes it), kept as a tuple.
     languages: Sequence[Annotated[Language, BeforeValidator(_a_language)]]
-    pronounce: _Pronunciations = Field(default_factory=dict, validate_default=True)
+    pronounce: DeclaredPronunciations = Field(default_factory=dict, validate_default=True)
     phrases: Phrases = Field(default_factory=Phrases.defaults)
     instructions: Instructions | None = None
     tools: Sequence[Annotated[DeclaredTool, PlainValidator(a_tool)]] = ()
@@ -252,6 +228,7 @@ class VoiceAgent(Declared):
     version: str | None = Field(default=None, pattern=r"^[\x21-\x7e]{1,64}$")
     ask_on_uncertain_overlaps: bool = False
     ask_on_unlisted_answers: bool = False
+    time_zone: Annotated[timedelta, BeforeValidator(_offset_of), Field(strict=True)] = timedelta(0)
 
     @field_validator("name")
     @classmethod
@@ -286,6 +263,20 @@ class VoiceAgent(Declared):
     def _tooled(cls, value: Sequence[DeclaredTool], info: ValidationInfo) -> Sequence[DeclaredTool]:
         lines = {each.tag: each.progress for each in info.data.get("languages", ())}
         return tools_for(value, lines)
+
+    @field_validator("time_zone")
+    @classmethod
+    def _zoned(cls, value: timedelta) -> timedelta:
+        if not -_MOST_OFFSET[0] <= value <= _MOST_OFFSET[1] or value % timedelta(minutes=1):
+            raise ValueError(
+                "the time zone is a fixed offset from UTC in whole minutes, from -12:00 to +14:00"
+            )
+        return value
+
+    @property
+    def zone(self) -> timezone:
+        """Its time zone, `time_zone` as a `datetime.timezone`."""
+        return timezone(self.time_zone)
 
     @property
     def instructed(self) -> bool:

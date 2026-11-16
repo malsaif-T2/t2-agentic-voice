@@ -14,6 +14,7 @@ from datetime import date
 
 import pytest
 from t2_agentic_voice.actions.knowledge import NAME, knowledge_tool
+from t2_agentic_voice.agent.events import SpokenClause
 from t2_agentic_voice.agent.language import (
     DIALECT_OPENERS,
     DIALECT_WORDS,
@@ -253,3 +254,23 @@ def test_an_actions_lines_are_read_in_msa_for_an_saudi_reply_to_an_msa_caller() 
     assert wording("ar-SA", "msa") == "ar" and wording("ar-SA", "saudi") == "ar-SA"
     assert wording("ar", "saudi") == "ar" and wording("ar", "msa") == "ar"
     assert wording("en", "msa") == "en" and wording("en", "saudi") == "en"
+
+
+@pytest.mark.parametrize(
+    ("words", "register"),
+    [("أبي أطبع الملف", "saudi"), ("كيف أطبع الرسالة من النظام؟", "msa")],
+)
+def test_each_arabic_clause_carries_the_callers_register_for_its_numbers(
+    words: str, register: str
+) -> None:
+    chat = talker(FakeChat(said("الرحلة الساعة 09:10.")), language="ar-SA")
+    events = reply(chat, TalkerTurn(turn_id=1, words=words, language="ar"))
+    clauses = [event for event in events if isinstance(event, SpokenClause)]
+    assert [clause.caller_register for clause in clauses] == [register]
+
+
+def test_an_english_clause_carries_no_register() -> None:
+    chat = talker(FakeChat(said("The flight leaves at 09:10.")), language="en")
+    events = reply(chat, TalkerTurn(turn_id=1, words="when does it leave", language="en"))
+    clauses = [event for event in events if isinstance(event, SpokenClause)]
+    assert clauses and all(clause.caller_register is None for clause in clauses)

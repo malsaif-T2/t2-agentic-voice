@@ -55,9 +55,8 @@ first clause, and the model requests and their usage (testing/text_turn.py).
 
 from __future__ import annotations
 
-import dataclasses
 import tempfile
-from pathlib import Path
+from datetime import date
 from types import TracebackType
 from typing import Literal, Self
 
@@ -68,29 +67,20 @@ from t2_agentic_voice.actions.record import ActionRecord
 from t2_agentic_voice.agent.talker import Talker, TalkerCall, talker_factory
 from t2_agentic_voice.core.clock import SYSTEM_CLOCK, Clock
 from t2_agentic_voice.core.config import VoiceSettings
-from t2_agentic_voice.core.errors import ConfigurationError
 from t2_agentic_voice.core.events import Event
-from t2_agentic_voice.core.identity import Caller, Consent
-from t2_agentic_voice.core.settings.storage import StorageSettings
+from t2_agentic_voice.core.identity import Caller
 from t2_agentic_voice.core.settings.tts import LanguageTag
-from t2_agentic_voice.core.tracing import Tracing
 from t2_agentic_voice.domain.declaration import VoiceAgent
 from t2_agentic_voice.domain.ports.chat_model import ChatModel
 from t2_agentic_voice.domain.ports.outbox import Outbox
-from t2_agentic_voice.domain.ports.speech_to_text import Transcript
-from t2_agentic_voice.testing import text_moments
+from t2_agentic_voice.testing import text_moments, text_parts
 from t2_agentic_voice.testing.llm_fakes import FunctionLLM, ScriptedLLM
 from t2_agentic_voice.testing.text_checks import call_violations
 from t2_agentic_voice.testing.text_moments import At, During
+from t2_agentic_voice.testing.text_parts import CALL_ID, hand_typed, text_session, text_settings
 from t2_agentic_voice.testing.text_read_back import part_at, readings
 from t2_agentic_voice.testing.text_reads import TextReads, TurnSaid
-from t2_agentic_voice.testing.text_side import (
-    ClauseFault,
-    TextDriver,
-    TextPhrases,
-    TextSide,
-    VirtualClock,
-)
+from t2_agentic_voice.testing.text_side import ClauseFault, TextDriver, TextSide
 from t2_agentic_voice.testing.text_turn import TextTurn, TurnExpectations
 from t2_agentic_voice.testing.text_watch import (
     RecordingJobs,
@@ -101,16 +91,7 @@ from t2_agentic_voice.testing.text_watch import (
 from t2_agentic_voice.voice.protocol import Hangup, Stop
 from t2_agentic_voice.voice.session.call import CallSession
 from t2_agentic_voice.voice.session.commands import Speak
-from t2_agentic_voice.voice.session.io import CallSetup
-from t2_agentic_voice.voice.session.session_events import (
-    Connected,
-    FromClient,
-    Transcribed,
-    Transcribing,
-    TranscriptPart,
-    TurnClosed,
-    TurnOpened,
-)
+from t2_agentic_voice.voice.session.session_events import Connected, FromClient
 
 __all__ = ["TextCall", "TextTurn", "TurnExpectations"]
 
@@ -120,19 +101,15 @@ ClockKind = Literal["virtual", "system"]
 # The pace the fake text-to-speech plays each clause at: about 15 characters a second, a calm
 # speaking rate.
 CHARS_PER_SECOND = 15.0
-# The most characters a text call's text-to-speech request takes: Orpheus's (the design's 3.1).
-MAX_CHARS = 200
-# The call's ID.
-CALL_ID = "text-call"
 _OUTSIDE = "A text call is used inside `async with`. FIX: enter it first."
 
 
 class TextCall:
     """A call of `agent` held in text (the module's docstring), its talker on `llm`, with
     `settings` (`env` test, the library's defaults, unless given), its caller `caller` (a made-up
-    one unless given) in `language` (the agent's first unless given), on `clock` (a virtual one
-    unless `system` is given), its actions' writes kept in `outbox` (one in memory unless given).
-    Enter it (`async with`) to connect the call, greeted; leaving it hangs up."""
+    one unless given) in `language` (the agent's first unless given), on `clock` (virtual unless
+    `system`), on the day `today` in the agent's time zone if given, its actions' writes kept in
+    `outbox` (in memory unless given). Enter it (`async with`) to connect the call, greeted."""
 
     def __init__(
         self,
@@ -145,10 +122,11 @@ class TextCall:
         chars_per_second: float = CHARS_PER_SECOND,
         clock: ClockKind = "virtual",
         outbox: Outbox | None = None,
+        today: date | None = None,
     ) -> None:
         self.agent, self.llm, self.settings = agent, llm, settings
         self.caller, self.language, self.chars_per_second = caller, language, chars_per_second
-        self.clock = clock
+        self.clock, self.today = clock, today
         self.outbox: Outbox = outbox if outbox is not None else MemoryOutbox()
         self._said: dict[int, TurnSaid] = {}
         self._emitted: list[Event] = []
@@ -173,16 +151,8 @@ class TextCall:
         return build(call, clock)
 
     async def __aenter__(self) -> Self:
-        settings = self.settings or VoiceSettings(env="test")
-        if settings.env != "test":
-            raise ConfigurationError(
-                f"A text call runs under env=test, not env={settings.env}: only there may typed "
-                "text stand in for heard words. FIX: give it settings with env='test'."
-            )
-        self._folder = tempfile.TemporaryDirectory(prefix="t2v-text-call-")
-        storage = StorageSettings(var_dir=Path(self._folder.name))
-        settings = settings.model_copy(update={"storage": storage})
-        clock: Clock = VirtualClock() if self.clock == "virtual" else SYSTEM_CLOCK
+        settings, self._folder = text_settings(self.settings)
+        clock = text_parts.text_clock(self.clock == "virtual", self.today, self.agent.zone)
         self._time = clock
         if isinstance(self.llm, ScriptedLLM | FunctionLLM):
             self.llm.clock = clock  # this call's, whatever an earlier call set
@@ -193,7 +163,7 @@ class TextCall:
             self._record = ActionRecord()
             self._actions = action_runner(agent, settings, outbox=self.outbox, record=self._record)
             self._jobs = RecordingJobs(self._actions)
-        talker: Talker | None = None
+        talker: WatchedTalker | None = None
         mode = settings.session.mode_for(instructed=agent.instructed, prefix=settings.prefix)
         if mode == "talker":
             call = TalkerCall(call_id=CALL_ID, caller=caller, language=language.tag)
@@ -202,23 +172,18 @@ class TextCall:
         side = self._side = TextSide(clock, chars_per_second=self.chars_per_second)
         side.fault = self._faulted
         self._driver = TextDriver(side, clock)
-        setup = CallSetup(
-            call_id=CALL_ID,
-            caller=caller,
-            consent=Consent(version=None, record_audio=False),
-            agent=self.agent,
-            language=language,
+        self._session = text_session(
+            agent,
             settings=settings,
-            phrases=TextPhrases(self.agent),
-            max_chars=lambda tag: MAX_CHARS,
-            tracing=Tracing(),
-            emit=self._emitted.append,
+            caller=caller,
+            language=language,
             clock=clock,
+            side=side,
             talker=talker,
-            overlap_model=self.llm,
-            action_jobs=self._jobs,
+            llm=self.llm,
+            jobs=self._jobs,
+            emit=self._emitted.append,
         )
-        self._session = CallSession(setup, side)
         side.start(self._session)
         side.hand(Connected(at=clock.now()))
         await self._drive().quiet()
@@ -268,27 +233,16 @@ class TextCall:
         side, session = self._parts()
         reads = self._reads()
         await self._drive().until(*text_moments.moment(reads, during, at, now=self._time.now))
-        turn_id, start = self._next_turn, self._time.now()
+        turn_id = self._next_turn
         self._next_turn += 1
-        first_reply = session.playback.next_id
-        side.hand(TurnOpened(turn_id=turn_id, at=start, speech_at=start))
-        await self._drive().quiet()
-        speech_s = max(len(text), 1) / self.chars_per_second
-        await self._drive().advance(speech_s + session.setup.settings.turns.vad_stop_ms / 1000)
-        end = self._time.now()
-        heard = Transcript(text=text, language=session.setup.language.primary)
-        own = Transcribed(
-            turn_id=turn_id, at=end, audio_s=speech_s, sent_at=end, transcript=heard, source="typed"
-        )
-        closed = TurnClosed(turn_id=turn_id, at=end, speech_ended_at=end)
-        if turn_id in side.overlaps:
-            part: TranscriptPart = "overlap"
-            side.hand(Transcribing(turn_id=turn_id, at=end, audio_s=speech_s, part=part))
-            side.hand_all([dataclasses.replace(own, part=part), closed, own])
-        else:
-            side.hand_all([closed, Transcribing(turn_id=turn_id, at=end, audio_s=speech_s), own])
-        self._said[turn_id] = TurnSaid(
-            turn_id=turn_id, text=text, handed_at=end, spoke_at=start, first_reply=first_reply
+        self._said[turn_id] = await hand_typed(
+            side,
+            session,
+            self._drive(),
+            self._time,
+            turn_id=turn_id,
+            text=text,
+            chars_per_second=self.chars_per_second,
         )
         await self._drive().quiet()
         if self.clock == "system":

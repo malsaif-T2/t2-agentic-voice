@@ -194,6 +194,12 @@ helpdesk = VoiceAgent(
 )
 ```
 
+The prompt tells the talker "Today is" the call's date, in the agent's time zone:
+`VoiceAgent(..., time_zone=timedelta(hours=3))` for Riyadh, which keeps UTC+3 all year. It is a
+fixed offset from UTC (a `timedelta`, or a `datetime.timezone` of one), in whole minutes from
+-12:00 to +14:00, UTC unless given; a zone's name is refused, since the library ships no zone
+database.
+
 The declaration refuses a tool whose progress line a language does not give. How to word one,
 and why no fixed line may hold a word the caller commands with, is in
 [writing-for-voice.md](writing-for-voice.md).

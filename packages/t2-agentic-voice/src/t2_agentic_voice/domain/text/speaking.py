@@ -27,6 +27,11 @@ an ID; an Arabic prefix written onto a number (و، ف، ب، ل، ك and the ot
 is refused, never said as 1 or 0; and a number past num2words' range (from 10**51 in Arabic) is
 read digit by digit, after "minus" («سالب») when it is negative. The native speaker's check of
 num2words' Arabic is still to come (TD-058).
+
+A number said in a register (`speak_number(..., register=)`, Saudi or MSA) reads the library's
+own tables instead (domain/text/arabic_numbers.py), as do the times, dates, durations and
+amounts said by register (domain/text/spoken_forms.py); with no register, a number is said as
+before.
 """
 
 from __future__ import annotations
@@ -39,6 +44,7 @@ from num2words import num2words
 from t2_agentic_voice.core.settings.tts import LanguageTag
 from t2_agentic_voice.core.settings.words import primary_code
 from t2_agentic_voice.domain.text.arabic import normalize_arabic
+from t2_agentic_voice.domain.text.arabic_numbers import HIGHEST, Register, arabic_number
 from t2_agentic_voice.domain.text.digits import DIGIT_CHARACTERS
 from t2_agentic_voice.domain.text.words import ARABIC_PREFIXES
 
@@ -106,14 +112,19 @@ _RANGE = {"ar": 10**51}
 _ONE_AT_A_TIME = threading.Lock()
 
 
-def speak_number(number: int, *, language: LanguageTag) -> str:
-    """`number` in words, in `language` (MSA forms for both Arabic tags); past num2words' range,
-    its digits one by one. TypeError for anything but an int, a bool included."""
+def speak_number(number: int, *, language: LanguageTag, register: Register | None = None) -> str:
+    """`number` in words, in `language`: with a `register`, an Arabic number from 0 to
+    999 999 in that register's words, from the library's own tables (domain/text/
+    arabic_numbers.py: «ألفين وأربع مية وخمسين» in Saudi); else, and for English, num2words'
+    (MSA forms for both Arabic tags); past num2words' range, its digits one by one. TypeError
+    for anything but an int, a bool included."""
     if isinstance(number, bool) or not isinstance(number, int):
         raise TypeError(
             "speak_number says a whole number (an int), never a bool; say a decimal another way"
         )
     code = primary_code(language)
+    if register is not None and code == "ar" and 0 <= number <= HIGHEST:
+        return arabic_number(number, register)
     words: str | None = None
     if abs(number) < _RANGE.get(code, abs(number) + 1):
         try:
@@ -156,33 +167,37 @@ def _glued(text: str, at: int) -> bool:
     return normalize_arabic(found.group()) in ARABIC_PREFIXES
 
 
-def _amount(whole: str, fraction: str | None, *, language: LanguageTag) -> str:
+def _amount(
+    whole: str, fraction: str | None, *, language: LanguageTag, register: Register | None
+) -> str:
     """A number written with thousands separators or a fraction, in words: its whole part as a
     number, then the point and the fraction's digits one by one."""
     number = int(re.sub(_SEPARATORS, "", whole).translate(DIGIT_CHARACTERS))
-    words = speak_number(number, language=language)
+    words = speak_number(number, language=language, register=register)
     if fraction is None:
         return words
     return f"{words} {_POINT[primary_code(language)]} {speak_id(fraction, language=language)}"
 
 
-def speak_digits(text: str, *, language: LanguageTag) -> str:
+def speak_digits(text: str, *, language: LanguageTag, register: Register | None = None) -> str:
     """`text` with every run of digits in words, each an ID or a number by the rule above, a
     decimal and a number with thousands separators as amounts (the module's docstring), the
     rest of the text as it was, but a space put between the words and a letter or digit the run
     was written against ("T2" says "T two"), unless that letter is an Arabic prefix written onto
-    the number, which stays on its first word."""
+    the number, which stays on its first word. A `register` says each number in its words
+    (`speak_number`'s)."""
 
     def said(match: re.Match[str]) -> str:
         cue = match.group("cue") or ""
         whole, fraction, run = match.group("whole"), match.group("fraction"), match.group("run")
         digits = run if whole is None else whole
         if whole is not None and (fraction is not None or re.search(_SEPARATORS, whole)):
-            words = _amount(whole, fraction, language=language)
+            words = _amount(whole, fraction, language=language, register=register)
         elif _is_id(digits, cued=bool(cue)):
             words = speak_id(digits, language=language)
         else:
-            words = speak_number(int(digits.translate(DIGIT_CHARACTERS)), language=language)
+            number = int(digits.translate(DIGIT_CHARACTERS))
+            words = speak_number(number, language=language, register=register)
         start = match.start("run" if whole is None else "whole")
         before = cue[-1:] if cue else text[start - 1 : start]
         after = text[match.end() : match.end() + 1]

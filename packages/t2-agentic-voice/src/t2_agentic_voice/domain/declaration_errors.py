@@ -68,6 +68,10 @@ _FIXES: dict[str, str] = {
     "version": (
         'give `version` printable ASCII with no space, up to 64 characters, as "2026-11-06.1".'
     ),
+    "time_zone": (
+        "give `time_zone` a fixed offset from UTC, as time_zone=timedelta(hours=3) for Riyadh "
+        "(UTC+3 all year), or timezone(timedelta(hours=3)); a zone's name is not taken."
+    ),
 }
 # The notices' FIX, by the way the language was built: through its preset, which gives the text
 # of each kind it is not given, or without one (`model_validate`), which gives none.

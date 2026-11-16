@@ -21,6 +21,7 @@ from t2_agentic_voice.domain.action_lines import ReadBackPlan
 from t2_agentic_voice.domain.cards import Card
 from t2_agentic_voice.domain.ports.chat_model import Usage
 from t2_agentic_voice.domain.talker_declaration import ProgressKey
+from t2_agentic_voice.domain.text.arabic_numbers import Register
 
 
 class _Event(BaseModel):
@@ -30,10 +31,12 @@ class _Event(BaseModel):
 class SpokenClause(_Event):
     """A clause to speak, whole, in `language`, checked by the output guard. Cut by the clause
     splitter with no length limit: the session fits it to the voice's `max_chars`, after the
-    speaking rules have said its digits (agent/talker.py's docstring)."""
+    speaking rules have said its digits (agent/talker.py's docstring), in the `caller_register`
+    of the caller's Arabic (agent/language.py's `call_register`) when the setting asks."""
 
     text: str = Field(min_length=1)
     language: LanguageTag
+    caller_register: Register | None = None  # the caller's Arabic's, its numbers' if asked
 
 
 class ShownCard(_Event):
