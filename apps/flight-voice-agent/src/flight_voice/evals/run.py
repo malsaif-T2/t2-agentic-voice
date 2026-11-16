@@ -224,8 +224,7 @@ def _built(args: argparse.Namespace, parts: RunParts) -> _Run:
     settings = for_the_app(setup.call_settings(args.model, args.effort))
     prices, limits = setup.prices_and_limits(args.model, args.price, args.limits)
     done, sessions = read_folder(folder) if args.resume else ([], [])
-    done = [r for r in done if not r.smoke]
-    played = {(r.scenario, r.repeat) for r in done}
+    played = {(r.scenario, r.repeat) for r in done if not r.smoke}  # a smoke's kept: its violations
     todo = [(s, r) for r in range(1, args.repeats + 1) for s in playable if (s.id, r) not in played]
     before = sum(s.cost_usd for s in sessions)
     most = setup.most_usd([smoke, *(s for s, _ in todo)], args, settings, prices)
@@ -241,10 +240,11 @@ def _built(args: argparse.Namespace, parts: RunParts) -> _Run:
         for m, x in limits.items()
     }
     spend = Spend(prices=prices, cap_usd=args.cap_usd, before_usd=before)
+    inner = parts.chat(args.env_file)  # refused before the folder is made: no key, say
     if not args.resume:
         folder.begin(info)
     paced = PacedChat(
-        parts.chat(args.env_file),
+        inner,
         pacers=pacers,
         spend=spend,
         input_budget=args.input_budget_tokens,
@@ -281,6 +281,8 @@ def main(argv: Sequence[str] | None = None, *, parts: RunParts | None = None) ->
         stopped: Stopped | None = "interrupted"
         try:
             stopped = asyncio.run(run.measure())
+        except KeyboardInterrupt:  # recorded as an interrupt, and resumed with --resume
+            log.warning("run_interrupted")
         finally:
             code = run.close(stopped)
     log.info("run_session_ended", stopped=stopped, code=code)

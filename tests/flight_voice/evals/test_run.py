@@ -11,6 +11,7 @@ from __future__ import annotations
 import json
 import shutil
 from collections.abc import Sequence
+from dataclasses import replace
 from datetime import UTC, date, datetime
 from pathlib import Path
 from typing import Any
@@ -21,7 +22,7 @@ from flight_voice.evals.call import PlayRead
 from flight_voice.evals.folder import LOCK_FILE
 from flight_voice.evals.run import RunParts, main
 from flight_voice.evals.scenarios import CALLS, Scenario, load
-from t2_agentic_voice import InvalidRequestError, VoiceSettings
+from t2_agentic_voice import ConfigurationError, InvalidRequestError, VoiceSettings
 from t2_agentic_voice.agent.turn import MAX_REQUESTS
 from t2_agentic_voice.evals import FunctionLLM, GitResult, PacedChat, ScriptedLLM, requests_today
 from t2_agentic_voice.ports import ChatModel
@@ -220,3 +221,26 @@ def test_a_set_that_breaks_a_rule_is_refused_but_the_missing_held_out_set(tmp_pa
     (folder / f"{TWO[1]}.toml").write_bytes(broken.encode("utf-8"))
     with pytest.raises(InvalidRequestError, match=r"break 2 rule\(s\), first: f02.*FIX: write"):
         run_setup.checked_scenarios(folder)
+
+
+def test_a_failed_smoke_plays_violations_stay_counted_when_the_run_goes_on(tmp_path: Path) -> None:
+    tree = Tree(tmp_path)
+    assert _run(tree, Plays(violations=("rule A: a claim",))) == 1
+    assert _run(tree, Plays(), "--resume") == 0
+    out = tree.main / "var" / "runs" / "f-dev-1"
+    card = json.loads((out / "scorecard.json").read_text(encoding="utf-8"))
+    assert card["complete"] and not card["held"] and card["totals"]["violations"] == 1
+
+
+def test_a_chat_model_that_cannot_be_built_is_refused_before_the_folder_is_made(
+    tmp_path: Path,
+) -> None:
+    tree, plays = Tree(tmp_path), Plays()
+
+    def no_key(env_file: Path | None) -> ChatModel:
+        raise ConfigurationError("GROQ_API_KEY is not set. FIX: set it.")
+
+    parts = replace(_parts(tree, plays), chat=no_key)
+    out = tree.main / "var" / "runs" / "f-dev-1"
+    assert main(["--split", "dev", "--out", str(out)], parts=parts) == 2
+    assert plays.played == [] and not out.exists()
