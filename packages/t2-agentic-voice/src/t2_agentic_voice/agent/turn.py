@@ -145,7 +145,7 @@ class Turn:
         self.scripts = StrayScript.of(agent, settings)
         self.gate = ClauseGate(
             settings=settings.guard,
-            year=clock.wall().year,
+            year=clock.wall().astimezone(agent.zone).year,
             language=self.language,
             turn_id=turn.turn_id,
             actions=() if actions is None else actions.actions,
@@ -170,7 +170,8 @@ class Turn:
     async def events(self) -> AsyncGenerator[TalkerEvent, None]:
         """The reply's events, in order, ending with `ReplyDone` unless cancelled."""
         named = frozenset(r for r in (self.turn.over_reply, self.turn.cut_reply) if r is not None)
-        today, register = self.clock.wall().date(), self.register
+        today = self.clock.wall().astimezone(self.agent.zone).date()  # in the agent's zone
+        register = self.register
         prompt = compose_prompt(self.agent, language=self.language, today=today, register=register)
         past = history(
             self.turn.conversation,

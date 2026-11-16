@@ -1,5 +1,6 @@
 """The parts a text call (testing/text_call.py) is built from: its settings, `env` test alone,
-with a folder of its own (`text_settings`); its session, as the runtime builds one, on the
+with a folder of its own (`text_settings`); its clock, on a pinned day when given one
+(`text_clock`); its session, as the runtime builds one, on the
 call's clock and the text side (`text_session`); and a typed turn handed to the session as heard
 words (`hand_typed`)."""
 
@@ -8,9 +9,10 @@ from __future__ import annotations
 import dataclasses
 import tempfile
 from collections.abc import Callable
+from datetime import date, datetime, timedelta, tzinfo
 from pathlib import Path
 
-from t2_agentic_voice.core.clock import Clock
+from t2_agentic_voice.core.clock import SYSTEM_CLOCK, Clock, DatedClock, day_shift
 from t2_agentic_voice.core.config import VoiceSettings
 from t2_agentic_voice.core.errors import ConfigurationError
 from t2_agentic_voice.core.events import Event
@@ -21,7 +23,13 @@ from t2_agentic_voice.domain.declaration import Language, VoiceAgent
 from t2_agentic_voice.domain.ports.chat_model import ChatModel
 from t2_agentic_voice.domain.ports.speech_to_text import Transcript
 from t2_agentic_voice.testing.text_reads import TurnSaid
-from t2_agentic_voice.testing.text_side import TextDriver, TextPhrases, TextSide
+from t2_agentic_voice.testing.text_side import (
+    VIRTUAL_START,
+    TextDriver,
+    TextPhrases,
+    TextSide,
+    VirtualClock,
+)
 from t2_agentic_voice.testing.text_watch import RecordingJobs, WatchedTalker
 from t2_agentic_voice.voice.session.call import CallSession
 from t2_agentic_voice.voice.session.io import CallSetup
@@ -53,6 +61,29 @@ def text_settings(
     folder = tempfile.TemporaryDirectory(prefix="t2v-text-call-")
     storage = StorageSettings(var_dir=Path(folder.name))
     return settings.model_copy(update={"storage": storage}), folder
+
+
+class DatedVirtualClock(VirtualClock):
+    """A virtual clock whose `wall` is moved by `shift`, whole days: on a pinned day, at the
+    virtual clock's time of day."""
+
+    def __init__(self, shift: timedelta) -> None:
+        super().__init__()
+        self._shift = shift
+
+    def wall(self) -> datetime:
+        return super().wall() + self._shift
+
+
+def text_clock(virtual: bool, today: date | None, zone: tzinfo) -> Clock:
+    """The call's clock: a virtual one, moved only by its `advance`, when `virtual`, else the
+    system's; on `today` in `zone` when given (core/clock.py's `day_shift`), its time of day
+    kept."""
+    if virtual and today is not None:
+        return DatedVirtualClock(day_shift(VIRTUAL_START, today, zone))
+    if virtual:
+        return VirtualClock()
+    return SYSTEM_CLOCK if today is None else DatedClock(SYSTEM_CLOCK, today, zone)
 
 
 def text_session(

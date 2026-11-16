@@ -42,8 +42,8 @@ ends the stream at once, with no `ReplyDone`.
 the session runs on: `SYSTEM_CLOCK` in a call, `TextCall`'s virtual clock in a test), never on
 asyncio's own time or the system's: the tool's timeout (the runner's `run` takes the clock), a
 tool's `ms`, a request's `first_token_s`, and the prompt's date (`compose_prompt`'s `today`, the
-date of `clock.wall()`). So a test that moves its clock on brings what is due by then, and only
-that.
+date of `clock.wall()` in the agent's `time_zone`). So a test that moves its clock on brings
+what is due by then, and only that.
 
 **Built for each call** by one factory of a call's `ChatTalker` (`talker_factory`), which the
 runtime (api/runtime.py) and the audio call (testing/audio_call.py) reach through

@@ -27,6 +27,7 @@ from __future__ import annotations
 
 import re
 from collections.abc import Mapping, Sequence
+from datetime import timedelta, timezone
 from typing import Annotated, Literal, Self, final, get_args
 
 from pydantic import (
@@ -34,6 +35,8 @@ from pydantic import (
     BeforeValidator,
     Field,
     PlainValidator,
+    TypeAdapter,
+    ValidationError,
     ValidationInfo,
     field_validator,
 )
@@ -72,6 +75,10 @@ SPOKEN_NOTICES: tuple[NoticeKind, ...] = ("error", "cut_off", "ended")
 AGENT_NAME = re.compile(r"[a-z][a-z0-9-]{0,63}")
 # The names Windows keeps for its devices, which no folder can take (CPython 3.12's `pathlib`
 # lists the same, `_WIN_RESERVED_NAMES`); the owner develops on Windows (plan 003's review).
+# How an offset given as an ISO 8601 duration is read (lax: only from a text).
+_DURATION = TypeAdapter(timedelta)
+# The farthest a time zone is from UTC, behind it and ahead of it: the world's span.
+_MOST_OFFSET = (timedelta(hours=12), timedelta(hours=14))
 _DEVICES = frozenset(
     {"con", "prn", "aux", "nul", *(f"{port}{n}" for port in ("com", "lpt") for n in range(1, 10))}
 )
@@ -86,6 +93,20 @@ def _every_kind[T](value: Mapping[NoticeKind, T]) -> Mapping[NoticeKind, T]:
         raise ValueError(
             f"it has no text for {listed}; each of busy, error, cut_off and ended needs one"
         )
+    return value
+
+
+def _offset_of(value: object) -> object:
+    """`value`'s offset from UTC when it is a fixed `datetime.timezone`, or an ISO 8601 duration
+    as `model_dump_json` writes one ("PT3H"); any other value as it is, for the field's own check
+    (a zone by its name, which needs a zone database, is none)."""
+    if isinstance(value, timezone):
+        return value.utcoffset(None)
+    if isinstance(value, str) and value.removeprefix("-").startswith("P"):
+        try:
+            return _DURATION.validate_python(value)
+        except ValidationError:
+            raise ValueError("the time zone is not a duration") from None
     return value
 
 
@@ -190,9 +211,11 @@ class VoiceAgent(Declared):
     chat model decides the short overlaps of two or more words the rule would let go on (D-069;
     False, so an agent that does not ask for it, and any test script, sees no new request); and
     `ask_on_unlisted_answers`, whether a chat model judges an answer to an action's read-back
-    that the yes rule's lists leave unplaced, within the rule's rails (D-082; False, likewise).
-    It runs the talker when it declares instructions (`instructed`). Frozen, with no IO; built
-    once and handed to the runtime."""
+    that the yes rule's lists leave unplaced, within the rule's rails (D-082; False, likewise);
+    and `time_zone`, its fixed offset from UTC (a `timedelta`, or a `datetime.timezone` of one;
+    UTC unless given), whose date the talker's prompt says as "Today is". It runs the talker
+    when it declares instructions (`instructed`). Frozen, with no IO; built once and handed to
+    the runtime."""
 
     name: str
     # Given as any sequence (a list, as the design writes it), kept as a tuple.
@@ -205,6 +228,7 @@ class VoiceAgent(Declared):
     version: str | None = Field(default=None, pattern=r"^[\x21-\x7e]{1,64}$")
     ask_on_uncertain_overlaps: bool = False
     ask_on_unlisted_answers: bool = False
+    time_zone: Annotated[timedelta, BeforeValidator(_offset_of), Field(strict=True)] = timedelta(0)
 
     @field_validator("name")
     @classmethod
@@ -239,6 +263,20 @@ class VoiceAgent(Declared):
     def _tooled(cls, value: Sequence[DeclaredTool], info: ValidationInfo) -> Sequence[DeclaredTool]:
         lines = {each.tag: each.progress for each in info.data.get("languages", ())}
         return tools_for(value, lines)
+
+    @field_validator("time_zone")
+    @classmethod
+    def _zoned(cls, value: timedelta) -> timedelta:
+        if not -_MOST_OFFSET[0] <= value <= _MOST_OFFSET[1] or value % timedelta(minutes=1):
+            raise ValueError(
+                "the time zone is a fixed offset from UTC in whole minutes, from -12:00 to +14:00"
+            )
+        return value
+
+    @property
+    def zone(self) -> timezone:
+        """Its time zone, `time_zone` as a `datetime.timezone`."""
+        return timezone(self.time_zone)
 
     @property
     def instructed(self) -> bool:

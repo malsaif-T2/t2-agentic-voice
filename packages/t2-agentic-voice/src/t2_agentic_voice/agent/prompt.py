@@ -166,9 +166,11 @@ def tool_definitions(
 
 
 def render_prompt(agent: VoiceAgent, language: LanguageTag) -> str:
-    """The system prompt `agent`'s talker is given in `language` today, for a team to read.
+    """The system prompt `agent`'s talker is given in `language` today, in its time zone, for a
+    team to read.
     ValueError for a language the agent does not speak, or an agent with no instructions."""
-    return compose_prompt(agent, language=language, today=SYSTEM_CLOCK.wall().date())
+    today = SYSTEM_CLOCK.wall().astimezone(agent.zone).date()
+    return compose_prompt(agent, language=language, today=today)
 
 
 def request_id() -> str:

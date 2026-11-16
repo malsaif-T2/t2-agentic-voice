@@ -56,6 +56,7 @@ first clause, and the model requests and their usage (testing/text_turn.py).
 from __future__ import annotations
 
 import tempfile
+from datetime import date
 from types import TracebackType
 from typing import Literal, Self
 
@@ -72,14 +73,14 @@ from t2_agentic_voice.core.settings.tts import LanguageTag
 from t2_agentic_voice.domain.declaration import VoiceAgent
 from t2_agentic_voice.domain.ports.chat_model import ChatModel
 from t2_agentic_voice.domain.ports.outbox import Outbox
-from t2_agentic_voice.testing import text_moments
+from t2_agentic_voice.testing import text_moments, text_parts
 from t2_agentic_voice.testing.llm_fakes import FunctionLLM, ScriptedLLM
 from t2_agentic_voice.testing.text_checks import call_violations
 from t2_agentic_voice.testing.text_moments import At, During
 from t2_agentic_voice.testing.text_parts import CALL_ID, hand_typed, text_session, text_settings
 from t2_agentic_voice.testing.text_read_back import part_at, readings
 from t2_agentic_voice.testing.text_reads import TextReads, TurnSaid
-from t2_agentic_voice.testing.text_side import ClauseFault, TextDriver, TextSide, VirtualClock
+from t2_agentic_voice.testing.text_side import ClauseFault, TextDriver, TextSide
 from t2_agentic_voice.testing.text_turn import TextTurn, TurnExpectations
 from t2_agentic_voice.testing.text_watch import (
     RecordingJobs,
@@ -106,9 +107,9 @@ _OUTSIDE = "A text call is used inside `async with`. FIX: enter it first."
 class TextCall:
     """A call of `agent` held in text (the module's docstring), its talker on `llm`, with
     `settings` (`env` test, the library's defaults, unless given), its caller `caller` (a made-up
-    one unless given) in `language` (the agent's first unless given), on `clock` (a virtual one
-    unless `system` is given), its actions' writes kept in `outbox` (one in memory unless given).
-    Enter it (`async with`) to connect the call, greeted; leaving it hangs up."""
+    one unless given) in `language` (the agent's first unless given), on `clock` (virtual unless
+    `system`), on the day `today` in the agent's time zone if given, its actions' writes kept in
+    `outbox` (in memory unless given). Enter it (`async with`) to connect the call, greeted."""
 
     def __init__(
         self,
@@ -121,10 +122,11 @@ class TextCall:
         chars_per_second: float = CHARS_PER_SECOND,
         clock: ClockKind = "virtual",
         outbox: Outbox | None = None,
+        today: date | None = None,
     ) -> None:
         self.agent, self.llm, self.settings = agent, llm, settings
         self.caller, self.language, self.chars_per_second = caller, language, chars_per_second
-        self.clock = clock
+        self.clock, self.today = clock, today
         self.outbox: Outbox = outbox if outbox is not None else MemoryOutbox()
         self._said: dict[int, TurnSaid] = {}
         self._emitted: list[Event] = []
@@ -150,7 +152,7 @@ class TextCall:
 
     async def __aenter__(self) -> Self:
         settings, self._folder = text_settings(self.settings)
-        clock: Clock = VirtualClock() if self.clock == "virtual" else SYSTEM_CLOCK
+        clock = text_parts.text_clock(self.clock == "virtual", self.today, self.agent.zone)
         self._time = clock
         if isinstance(self.llm, ScriptedLLM | FunctionLLM):
             self.llm.clock = clock  # this call's, whatever an earlier call set
