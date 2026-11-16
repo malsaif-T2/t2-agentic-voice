@@ -1,0 +1,31 @@
+# The flight agent's scripted calls (flight_voice/evals/scenarios.py): an English round trip
+# to London, each leg picked as the cheaper one.
+id = "f05_cheaper_one_english"
+split = "dev"
+language = "en"
+kind = "round_trip"
+notes = "Next Thursday and a Sunday back resolve in code; per person is said on the first listing; the cheaper one on each leg is read by code, and the read-back holds both."
+
+[[turns]]
+says = "I'd like to fly to London next Thursday and come back on Sunday."
+calls = ["search_flights"]
+args = { destination = "LHR", depart = "2026-11-19", return_date = "2026-11-22" }
+forms = { depart = { kind = "weekday", weekday = "thu" }, return_date = { kind = "weekday", weekday = "sun" } }
+said_any = [["per person", "a person"]]
+
+[[turns]]
+says = "The cheaper one."
+calls = ["choose_flight"]
+args = { leg = "outbound", pick = "cheapest" }
+
+[[turns]]
+says = "And the cheaper one coming back too."
+calls = ["choose_flight", "book_trip"]
+args = { leg = "return", pick = "cheapest" }
+outcome = "read_back"
+read_back = { outbound = "T2 401@2026-11-19", return = "T2 402@2026-11-22", one_way = false, travelers = 1, cabin = "economy" }
+
+[[turns]]
+says = "Yes, book it."
+when = "closing_question"
+outcome = "done"

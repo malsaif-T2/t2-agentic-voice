@@ -1,0 +1,32 @@
+# The flight agent's scripted calls (flight_voice/evals/scenarios.py): a Saudi round trip
+# to London, its dates said as the caller says them, picked by part of the day and as the last.
+id = "f01_round_trip_saudi"
+split = "dev"
+language = "ar-SA"
+kind = "round_trip"
+notes = "A coming Thursday and the Sunday after it resolve in code; fares said once as per person; the morning one, then the last return, sends the trip straight to its read-back, round trip; a yes with the send word books it."
+
+[[turns]]
+says = "أبي أروح لندن الخميس الجاي وأرجع الأحد اللي بعده"
+calls = ["search_flights"]
+args = { destination = "LHR", depart = "2026-11-19", return_date = "2026-11-22" }
+forms = { depart = { kind = "weekday", weekday = "thu" }, return_date = { kind = "weekday_after", weekday = "sun" } }
+said_any = [["للشخص", "للفرد", "per person"]]
+
+[[turns]]
+says = "حقت الصبح"
+calls = ["choose_flight"]
+args = { leg = "outbound", pick = "part_of_day", part = "morning" }
+
+[[turns]]
+says = "الأخيرة"
+calls = ["choose_flight", "book_trip"]
+args = { leg = "return", pick = "latest" }
+outcome = "read_back"
+read_back = { outbound = "T2 401@2026-11-19", return = "T2 404@2026-11-22", one_way = false, travelers = 1, cabin = "economy" }
+said_any = [["رايح جاي"]]
+
+[[turns]]
+says = "إي احجزها"
+when = "closing_question"
+outcome = "done"

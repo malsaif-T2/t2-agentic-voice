@@ -1,0 +1,27 @@
+# The flight agent's scripted calls (flight_voice/evals/scenarios.py): an English one-way
+# trip to Dubai tomorrow, picked as the earliest.
+id = "f02_one_way_english"
+split = "dev"
+language = "en"
+kind = "one_way"
+notes = "Tomorrow resolves in code; one way is passed, never asked about; the earliest flight sends the trip straight to a read-back that says one way; a yes with the send word books it."
+
+[[turns]]
+says = "I need a one-way flight to Dubai tomorrow morning."
+calls = ["search_flights"]
+args = { destination = "DXB", depart = "2026-11-17", one_way = true }
+forms = { depart = { kind = "relative", when = "tomorrow" } }
+said_any = [["per person", "a person"]]
+
+[[turns]]
+says = "The earliest one, please."
+calls = ["choose_flight", "book_trip"]
+args = { leg = "outbound", pick = "earliest" }
+outcome = "read_back"
+read_back = { outbound = "T2 201@2026-11-17", one_way = true, travelers = 1, cabin = "economy" }
+said_any = [["one way"]]
+
+[[turns]]
+says = "Yes, book it."
+when = "closing_question"
+outcome = "done"

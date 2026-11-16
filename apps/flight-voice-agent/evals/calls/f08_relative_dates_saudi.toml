@@ -1,0 +1,13 @@
+# The flight agent's scripted calls (flight_voice/evals/scenarios.py): a Saudi round trip
+# to Doha, both its days said relative to today and to the departure.
+id = "f08_relative_dates_saudi"
+split = "dev"
+language = "ar-SA"
+kind = "dates"
+notes = "The day after tomorrow, and back three days after leaving, resolve in code to the 18th and the 21st."
+
+[[turns]]
+says = "بعد بكرة للدوحة وأرجع بعد ثلاث أيام"
+calls = ["search_flights"]
+args = { destination = "DOH", depart = "2026-11-18", return_date = "2026-11-21" }
+forms = { depart = { kind = "relative", when = "day_after_tomorrow" }, return_date = { kind = "nights", nights = 3 } }

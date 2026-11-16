@@ -1,0 +1,29 @@
+# The flight agent's scripted calls (flight_voice/evals/scenarios.py): after a booking, the
+# caller asks for its reference, the one reply that may say it.
+id = "f20_reference_asked_english"
+split = "dev"
+language = "en"
+kind = "booking_outcome"
+notes = "The done line holds no reference; asked for it, the reply says its six digits; no reply before the ask says them."
+
+[[turns]]
+says = "One way to Cairo next Monday, please."
+calls = ["search_flights"]
+args = { destination = "CAI", depart = "2026-11-23", one_way = true }
+forms = { depart = { kind = "weekday", weekday = "mon" } }
+
+[[turns]]
+says = "The morning one."
+calls = ["choose_flight", "book_trip"]
+args = { leg = "outbound", pick = "part_of_day", part = "morning" }
+outcome = "read_back"
+read_back = { outbound = "T2 301@2026-11-23", one_way = true, travelers = 1, cabin = "economy" }
+
+[[turns]]
+says = "Yes, book it."
+when = "closing_question"
+outcome = "done"
+
+[[turns]]
+says = "What's my booking reference?"
+asks_reference = true

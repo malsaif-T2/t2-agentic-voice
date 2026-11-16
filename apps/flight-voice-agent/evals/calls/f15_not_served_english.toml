@@ -1,0 +1,21 @@
+# The flight agent's scripted calls (flight_voice/evals/scenarios.py): a trip between two
+# cities other than Riyadh is not sold; the same trip from Riyadh is.
+id = "f15_not_served_english"
+split = "dev"
+language = "en"
+kind = "unavailable"
+notes = "Jeddah to Dubai is not served: the reply says the airline flies to and from Riyadh; Riyadh to Dubai on the same day then lists flights."
+
+[[turns]]
+says = "I want to fly from Jeddah to Dubai next Sunday."
+calls = ["search_flights"]
+args = { origin = "JED", destination = "DXB", depart = "2026-11-22" }
+forms = { depart = { kind = "weekday", weekday = "sun" } }
+said_any = [["Riyadh"]]
+
+[[turns]]
+says = "Okay, then from Riyadh to Dubai that day, one way."
+calls = ["search_flights"]
+args = { destination = "DXB", depart = "2026-11-22", one_way = true }
+forms = { depart = { kind = "weekday", weekday = "sun" } }
+said_any = [["per person", "a person"]]

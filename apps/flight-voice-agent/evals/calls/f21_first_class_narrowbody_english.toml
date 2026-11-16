@@ -1,0 +1,14 @@
+# The flight agent's scripted calls (flight_voice/evals/scenarios.py): first class asked on
+# a route whose aircraft has none.
+id = "f21_first_class_narrowbody_english"
+split = "dev"
+language = "en"
+kind = "unavailable"
+notes = "First class to Dubai is not offered on its aircraft: the reply says so and offers business."
+
+[[turns]]
+says = "I'd like to fly first class to Dubai next Wednesday, one way."
+calls = ["search_flights"]
+args = { destination = "DXB", depart = "2026-11-18", one_way = true, cabin = "first" }
+forms = { depart = { kind = "weekday", weekday = "wed" } }
+said_any = [["business"]]

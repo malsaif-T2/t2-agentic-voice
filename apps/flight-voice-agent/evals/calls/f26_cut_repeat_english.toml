@@ -1,0 +1,35 @@
+# The flight agent's scripted calls (flight_voice/evals/scenarios.py): the listing of London
+# flights is stopped early, and asked again, its words come back.
+id = "f26_cut_repeat_english"
+split = "dev"
+language = "en"
+kind = "long_call"
+notes = "The client's Stop cuts the listing about a tenth in; 'one more time' brings back a reply sharing most of the cut reply's words; the trip then runs to its read-back."
+
+[[turns]]
+says = "I'd like to fly to London on December 3rd and come back on the 10th."
+calls = ["search_flights"]
+args = { destination = "LHR", depart = "2026-12-03", return_date = "2026-12-10" }
+forms = { depart = { kind = "on", day = 3, month = 12 }, return_date = { kind = "on", day = 10 } }
+
+[[turns]]
+stop = true
+at = "agent_speaking"
+after_s = 1.0
+
+[[turns]]
+says = "Sorry, one more time?"
+asks_repeat = true
+repeat_of_cut = true
+
+[[turns]]
+says = "The morning one."
+calls = ["choose_flight"]
+args = { leg = "outbound", pick = "part_of_day", part = "morning" }
+
+[[turns]]
+says = "The later one."
+calls = ["choose_flight", "book_trip"]
+args = { leg = "return", pick = "latest" }
+outcome = "read_back"
+read_back = { outbound = "T2 401@2026-12-03", return = "T2 404@2026-12-10", one_way = false, travelers = 1, cabin = "economy" }

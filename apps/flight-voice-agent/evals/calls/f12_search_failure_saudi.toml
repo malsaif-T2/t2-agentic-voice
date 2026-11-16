@@ -1,0 +1,16 @@
+# The flight agent's scripted calls (flight_voice/evals/scenarios.py): the flight search
+# fails, and the reply says it could not check instead of saying there are no flights.
+id = "f12_search_failure_saudi"
+split = "dev"
+language = "ar-SA"
+kind = "tool_trouble"
+notes = "The search fails: the reply says it could not check just now and offers to try again, and never that there are no flights or seats."
+modes = { search = "fail" }
+
+[[turns]]
+says = "أبي أروح دبي يوم الخميس الجاي وأرجع الأحد"
+calls = ["search_flights"]
+args = { destination = "DXB", depart = "2026-11-19", return_date = "2026-11-22" }
+forms = { depart = { kind = "weekday", weekday = "thu" }, return_date = { kind = "weekday", weekday = "sun" } }
+said_any = [["ما قدرت", "ما أقدر", "ما اقدر", "ما تمكنت", "تعذر", "لم أتمكن", "ما زبط", "ما ضبط"]]
+said_none = ["ما فيه رحلات", "ما في رحلات", "مافي رحلات", "مافيه رحلات", "لا توجد رحلات", "ما فيه مقاعد", "ما في مقاعد"]

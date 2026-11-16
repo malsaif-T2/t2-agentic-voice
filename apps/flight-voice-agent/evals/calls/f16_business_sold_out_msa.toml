@@ -1,0 +1,19 @@
+# The flight agent's scripted calls (flight_voice/evals/scenarios.py): an MSA caller picks a
+# flight whose business cabin has no seat left that day.
+id = "f16_business_sold_out_msa"
+split = "dev"
+language = "ar"
+kind = "unavailable"
+notes = "The morning flight to Cairo on the 18th has no business seat (the airline's seats, found in code): the reply says so and offers economy or the evening flight, in MSA."
+
+[[turns]]
+says = "أريد السفر إلى القاهرة بعد غد على درجة رجال الأعمال، ذهاب فقط"
+calls = ["search_flights"]
+args = { destination = "CAI", depart = "2026-11-18", one_way = true, cabin = "business" }
+forms = { depart = { kind = "relative", when = "day_after_tomorrow" } }
+
+[[turns]]
+says = "الرحلة الصباحية من فضلك"
+calls = ["choose_flight"]
+args = { leg = "outbound", pick = "part_of_day", part = "morning" }
+said_any = [["السياحية", "الاقتصادية", "رحلة أخرى", "الرحلة الأخرى", "المسائية", "مساء"]]

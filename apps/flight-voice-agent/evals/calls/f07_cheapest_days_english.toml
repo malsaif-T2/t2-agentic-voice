@@ -1,0 +1,14 @@
+# The flight agent's scripted calls (flight_voice/evals/scenarios.py): an English caller
+# asks for the cheapest days to Istanbul in a month.
+id = "f07_cheapest_days_english"
+split = "dev"
+language = "en"
+kind = "cheapest_days"
+notes = "The fare calendar for January: three days said with their fares, and its card shown, not dropped by the output guard."
+
+[[turns]]
+says = "When is it cheapest to fly to Istanbul in January?"
+calls = ["fare_calendar"]
+args = { destination = "IST", month = 1 }
+said_any = [["January"]]
+shows_card = true

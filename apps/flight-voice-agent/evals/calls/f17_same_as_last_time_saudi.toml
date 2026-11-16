@@ -1,0 +1,13 @@
+# The flight agent's scripted calls (flight_voice/evals/scenarios.py): a Saudi caller asks
+# for the same trip as last time: the profile is read, then the dates asked.
+id = "f17_same_as_last_time_saudi"
+split = "dev"
+language = "ar-SA"
+kind = "profile"
+notes = "'The same as my last Dubai trip': traveler_profile is read, the reply asks when, one question, and never claims a booking."
+
+[[turns]]
+says = "أبي نفس رحلتي الأخيرة لدبي"
+calls = ["traveler_profile"]
+said_any = [["متى", "أي يوم", "وش اليوم"]]
+said_none = ["حجزت لك", "حجزتها لك", "انحجزت", "حجزك مؤكد", "أكدت لك الحجز"]

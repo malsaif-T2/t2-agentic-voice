@@ -1,0 +1,32 @@
+# The flight agent's scripted calls (flight_voice/evals/scenarios.py): an MSA round trip to
+# Cairo, its return a week after its departure.
+id = "f03_round_trip_msa"
+split = "dev"
+language = "ar"
+kind = "round_trip"
+notes = "A day of December and a week later resolve in code; every reply is in MSA; the first outbound and the second return send the trip to its read-back; a yes with the send word books it."
+
+[[turns]]
+says = "أريد السفر إلى القاهرة في العاشر من ديسمبر والعودة بعد أسبوع"
+calls = ["search_flights"]
+args = { destination = "CAI", depart = "2026-12-10", return_date = "2026-12-17" }
+forms = { depart = { kind = "on", day = 10, month = 12 }, return_date = { kind = "nights", nights = 7 } }
+said_any = [["للشخص", "للفرد", "per person"]]
+
+[[turns]]
+says = "الرحلة الأولى من فضلك"
+calls = ["choose_flight"]
+args = { leg = "outbound", pick = "number", n = 1 }
+
+[[turns]]
+says = "والعودة على الرحلة الثانية"
+calls = ["choose_flight", "book_trip"]
+args = { leg = "return", pick = "number", n = 2 }
+outcome = "read_back"
+read_back = { outbound = "T2 301@2026-12-10", return = "T2 304@2026-12-17", one_way = false, travelers = 1, cabin = "economy" }
+said_any = [["ذهاب وعودة"]]
+
+[[turns]]
+says = "نعم، احجزها"
+when = "closing_question"
+outcome = "done"

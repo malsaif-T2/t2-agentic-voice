@@ -1,0 +1,48 @@
+# The flight agent's scripted calls (flight_voice/evals/scenarios.py): three turns on Istanbul,
+# then Paris instead: the search runs again, and Istanbul is never said after.
+id = "f28_city_change_msa"
+split = "dev"
+language = "ar"
+kind = "long_call"
+notes = "Istanbul for three turns, then Paris on the same days: a new search, no later reply names Istanbul, and the read-back holds Paris."
+
+[[turns]]
+says = "أريد السفر إلى إسطنبول"
+calls = []
+
+[[turns]]
+says = "في الخامس من ديسمبر، والعودة في الثاني عشر"
+calls = ["search_flights"]
+args = { destination = "IST", depart = "2026-12-05", return_date = "2026-12-12" }
+forms = { depart = { kind = "on", day = 5, month = 12 }, return_date = { kind = "on", day = 12 } }
+
+[[turns]]
+says = "كم سعر درجة رجال الأعمال على الرحلة الصباحية؟"
+calls = ["compare_cabins"]
+args = { leg = "outbound", pick = "part_of_day", part = "morning" }
+
+[[turns]]
+says = "لا، أفضّل باريس في نفس الموعد"
+calls = ["search_flights"]
+args = { destination = "CDG", depart = "2026-12-05", return_date = "2026-12-12" }
+forms = { depart = { kind = "on", day = 5, month = 12 }, return_date = { kind = "on", day = 12 } }
+said_none = ["إسطنبول", "اسطنبول", "Istanbul"]
+
+[[turns]]
+says = "الرحلة الصباحية"
+calls = ["choose_flight"]
+args = { leg = "outbound", pick = "part_of_day", part = "morning" }
+said_none = ["إسطنبول", "اسطنبول", "Istanbul"]
+
+[[turns]]
+says = "والعودة على الرحلة الأولى"
+calls = ["choose_flight", "book_trip"]
+args = { leg = "return", pick = "number", n = 1 }
+outcome = "read_back"
+read_back = { outbound = "T2 453@2026-12-05", return = "T2 452@2026-12-12", one_way = false, travelers = 1, cabin = "economy" }
+said_none = ["إسطنبول", "اسطنبول", "Istanbul"]
+
+[[turns]]
+says = "نعم، احجزها"
+when = "closing_question"
+outcome = "done"

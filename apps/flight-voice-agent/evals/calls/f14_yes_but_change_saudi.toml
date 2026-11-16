@@ -1,0 +1,34 @@
+# The flight agent's scripted calls (flight_voice/evals/scenarios.py): a yes with a change
+# over the read-back's summary: the trip is changed and read back again.
+id = "f14_yes_but_change_saudi"
+split = "dev"
+language = "ar-SA"
+kind = "confirmation"
+notes = "'Yes, but for two' over the summary is a change, not a yes: change_trip sets two travelers, a new read-back plays, and a yes with the send word books it for two."
+
+[[turns]]
+says = "أبي رحلة لجدة بكرة، رايح بس"
+calls = ["search_flights"]
+args = { destination = "JED", depart = "2026-11-17", one_way = true }
+forms = { depart = { kind = "relative", when = "tomorrow" } }
+
+[[turns]]
+says = "حقت العصر"
+calls = ["choose_flight", "book_trip"]
+args = { leg = "outbound", pick = "part_of_day", part = "afternoon" }
+outcome = "read_back"
+read_back = { outbound = "T2 105@2026-11-17", one_way = true, travelers = 1, cabin = "economy" }
+
+[[turns]]
+says = "إي بس خلها لشخصين"
+when = "read_back"
+after_s = 1.5
+calls = ["change_trip", "book_trip"]
+args = { travelers = 2 }
+outcome = "read_back"
+read_back = { outbound = "T2 105@2026-11-17", one_way = true, travelers = 2, cabin = "economy" }
+
+[[turns]]
+says = "إي احجزها"
+when = "closing_question"
+outcome = "done"

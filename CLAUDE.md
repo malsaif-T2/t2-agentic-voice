@@ -86,7 +86,7 @@ packages/t2-agentic-voice/src/t2_agentic_voice/   the library; public API: __ini
 apps/ole5-voice-agent/   the Ole5 app, src/ole5_voice/ and its widget in web/: the public API alone
   evals/      the golden set's commands (data in apps/ole5-voice-agent/evals/, no audio)
 apps/flight-voice-agent/   the flight agent (D-101): src/flight_voice/ (its mock airline in
-  airline/, its server on 7862) and its page in web/ (plain HTML/JS/CSS)
+  airline/, its server on 7862, its scripted calls' model in evals/), web/, evals/calls/
 examples/minimal/src/minimal_example/   the smallest app: the quickstart, a test of the library
 scripts/      the harness: the checks of arch, docs, gc and quality, and their helpers; all
               read harness.toml through harness_config.py

@@ -1565,6 +1565,7 @@ t2-agentic-voice/                     the repository (renamed from Ole5-voice-ag
     pyproject.toml                    t2-agentic-voice from the workspace (D-101)
     src/flight_voice/                 one package: the mock airline (airline/), its tools, the booking,
                                       the persona, the agent and its server (port 7862)
+    evals/calls/                      the scripted flight calls, one TOML file each, dev and held-out
   examples/minimal/
     pyproject.toml  src/minimal_example/   (app.py of section 4.2 when the API exists)
   docs/guide/                         the teammate guide (section 14)

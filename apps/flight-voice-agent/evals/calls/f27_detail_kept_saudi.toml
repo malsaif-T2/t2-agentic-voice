@@ -1,0 +1,44 @@
+# The flight agent's scripted calls (flight_voice/evals/scenarios.py): two travelers in
+# business, said in the first turn and never again, are still the trip's at its read-back.
+id = "f27_detail_kept_saudi"
+split = "dev"
+language = "ar-SA"
+kind = "long_call"
+notes = "Turn one gives two travelers in business; the calendar, the search and a date change all keep them; the pick in turn six reads back two in business, neither said again."
+
+[[turns]]
+says = "أنا وزوجتي نبي نسافر على البزنس"
+calls = []
+
+[[turns]]
+says = "لدبي"
+calls = []
+
+[[turns]]
+says = "متى أرخص يوم في ديسمبر؟"
+calls = ["fare_calendar"]
+args = { destination = "DXB", month = 12, cabin = "business" }
+
+[[turns]]
+says = "طيب يوم خمسطعش ديسمبر، رايح بس"
+calls = ["search_flights"]
+args = { destination = "DXB", depart = "2026-12-15", one_way = true, travelers = 2, cabin = "business" }
+forms = { depart = { kind = "on", day = 15, month = 12 } }
+
+[[turns]]
+says = "لا خلها ستطعش"
+calls = ["search_flights"]
+args = { destination = "DXB", depart = "2026-12-16", one_way = true, travelers = 2, cabin = "business" }
+forms = { depart = { kind = "on", day = 16, month = 12 } }
+
+[[turns]]
+says = "حقت الصبح"
+calls = ["choose_flight", "book_trip"]
+args = { leg = "outbound", pick = "part_of_day", part = "morning" }
+outcome = "read_back"
+read_back = { outbound = "T2 201@2026-12-16", one_way = true, travelers = 2, cabin = "business" }
+
+[[turns]]
+says = "إي احجزها"
+when = "closing_question"
+outcome = "done"

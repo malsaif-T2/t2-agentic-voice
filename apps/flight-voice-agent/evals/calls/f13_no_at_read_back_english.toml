@@ -1,0 +1,26 @@
+# The flight agent's scripted calls (flight_voice/evals/scenarios.py): a plain no over the
+# closing question: nothing is booked, and the talker's own words saying so are not blocked.
+id = "f13_no_at_read_back_english"
+split = "dev"
+language = "en"
+kind = "confirmation"
+notes = "A no over the closing question declines the booking; the talker's own 'nothing is booked' passes the guard, with no violation and no fixed error phrase."
+
+[[turns]]
+says = "One way to Doha the day after tomorrow, please."
+calls = ["search_flights"]
+args = { destination = "DOH", depart = "2026-11-18", one_way = true }
+forms = { depart = { kind = "relative", when = "day_after_tomorrow" } }
+
+[[turns]]
+says = "The morning one."
+calls = ["choose_flight", "book_trip"]
+args = { leg = "outbound", pick = "part_of_day", part = "morning" }
+outcome = "read_back"
+read_back = { outbound = "T2 251@2026-11-18", one_way = true, travelers = 1, cabin = "economy" }
+
+[[turns]]
+says = "No, don't book it."
+when = "closing_question"
+outcome = "declined"
+said_none = ["I've booked", "I have booked", "you're booked", "you are booked", "booking is confirmed", "booking confirmed"]

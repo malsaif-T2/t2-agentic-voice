@@ -1,0 +1,43 @@
+# The flight agent's scripted calls (flight_voice/evals/scenarios.py): a call that starts in
+# English and moves to Saudi Arabic when the caller asks.
+id = "f10_switch_en_to_ar"
+split = "dev"
+language = "en"
+kind = "language_switch"
+needs = ["language_switch"]
+notes = "The caller asks in Saudi Arabic to go on in Arabic: every reply from then on is Saudi Arabic, and the Singapore booking runs to done in it."
+
+[[turns]]
+says = "Hi, I want to book a flight."
+calls = []
+
+[[turns]]
+says = "طيب كمل معي عربي، أبي سنغافورة"
+language = "ar-SA"
+
+[[turns]]
+says = "يوم خمسة وعشرين وأرجع بعد أسبوع"
+calls = ["search_flights"]
+args = { destination = "SIN", depart = "2026-11-25", return_date = "2026-12-02" }
+forms = { depart = { kind = "on", day = 25 }, return_date = { kind = "nights", nights = 7 } }
+language = "ar-SA"
+
+[[turns]]
+says = "إي هذي الرحلة"
+calls = ["choose_flight"]
+args = { leg = "outbound", pick = "number", n = 1 }
+language = "ar-SA"
+
+[[turns]]
+says = "والرجعة نفس الشي، هذي"
+calls = ["choose_flight", "book_trip"]
+args = { leg = "return", pick = "number", n = 1 }
+outcome = "read_back"
+read_back = { outbound = "T2 601@2026-11-25", return = "T2 602@2026-12-02", one_way = false, travelers = 1, cabin = "economy" }
+language = "ar-SA"
+
+[[turns]]
+says = "إي احجزها"
+when = "closing_question"
+outcome = "done"
+language = "ar-SA"

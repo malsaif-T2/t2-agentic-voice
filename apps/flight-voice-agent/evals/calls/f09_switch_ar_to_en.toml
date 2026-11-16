@@ -1,0 +1,38 @@
+# The flight agent's scripted calls (flight_voice/evals/scenarios.py): a call that starts in
+# Saudi Arabic and moves to English when the caller asks.
+id = "f09_switch_ar_to_en"
+split = "dev"
+language = "ar-SA"
+kind = "language_switch"
+needs = ["language_switch"]
+notes = "The caller asks in English to go on in English, with the trip in the same turn: every reply from then on is English, and the booking runs to done in English."
+
+[[turns]]
+says = "هلا، أبي أحجز رحلة"
+calls = []
+
+[[turns]]
+says = "Can we do this in English? Mumbai on the third of December, back on the tenth."
+args = { destination = "BOM", depart = "2026-12-03", return_date = "2026-12-10" }
+forms = { depart = { kind = "on", day = 3, month = 12 }, return_date = { kind = "on", day = 10 } }
+language = "en"
+
+[[turns]]
+says = "The first one."
+calls = ["choose_flight"]
+args = { leg = "outbound", pick = "number", n = 1 }
+language = "en"
+
+[[turns]]
+says = "The evening one."
+calls = ["choose_flight", "book_trip"]
+args = { leg = "return", pick = "part_of_day", part = "evening" }
+outcome = "read_back"
+read_back = { outbound = "T2 501@2026-12-03", return = "T2 504@2026-12-10", one_way = false, travelers = 1, cabin = "economy" }
+language = "en"
+
+[[turns]]
+says = "Yes, book it."
+when = "closing_question"
+outcome = "done"
+language = "en"

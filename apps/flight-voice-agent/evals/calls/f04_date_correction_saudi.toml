@@ -1,0 +1,19 @@
+# The flight agent's scripted calls (flight_voice/evals/scenarios.py): a Saudi caller
+# corrects the day they said, and the search runs again on the new one.
+id = "f04_date_correction_saudi"
+split = "dev"
+language = "ar-SA"
+kind = "dates"
+notes = "The thirteenth of December, then the fourteenth said alone as a correction: the search runs again on the fourteenth, the trip one way as first said."
+
+[[turns]]
+says = "أبي رحلة لجدة يوم ثلطعش ديسمبر، رايح بس"
+calls = ["search_flights"]
+args = { destination = "JED", depart = "2026-12-13", one_way = true }
+forms = { depart = { kind = "on", day = 13, month = 12 } }
+
+[[turns]]
+says = "لا لا، أربعطعش"
+calls = ["search_flights"]
+args = { destination = "JED", depart = "2026-12-14", one_way = true }
+forms = { depart = { kind = "on", day = 14, month = 12 } }

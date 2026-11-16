@@ -1,0 +1,14 @@
+# The flight agent's scripted calls (flight_voice/evals/scenarios.py): a day the route does
+# not fly: the nearest days are offered instead.
+id = "f23_singapore_tuesday_english"
+split = "dev"
+language = "en"
+kind = "unavailable"
+notes = "Singapore has no flight on Tuesdays: the reply says there is none that day and offers the nearest days with flights."
+
+[[turns]]
+says = "I want to go to Singapore on Tuesday, one way."
+calls = ["search_flights"]
+args = { destination = "SIN", depart = "2026-11-17", one_way = true }
+forms = { depart = { kind = "weekday", weekday = "tue" } }
+said_any = [["Monday", "Wednesday", "today"]]

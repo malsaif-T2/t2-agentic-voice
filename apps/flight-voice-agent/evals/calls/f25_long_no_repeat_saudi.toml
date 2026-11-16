@@ -1,0 +1,51 @@
+# The flight agent's scripted calls (flight_voice/evals/scenarios.py): a long Saudi call:
+# a city, the cheapest days, two date changes, a cabin question and a pick, with no repeats.
+id = "f25_long_no_repeat_saudi"
+split = "dev"
+language = "ar-SA"
+kind = "long_call"
+notes = "Eight turns to Cairo: no reply repeats an earlier one, whole or near; each date change searches again; the cabins are compared; the morning one goes to its read-back and is booked."
+
+[[turns]]
+says = "أبي أسافر للقاهرة"
+calls = []
+
+[[turns]]
+says = "متى أرخص وقت في ديسمبر؟"
+calls = ["fare_calendar"]
+args = { destination = "CAI", month = 12 }
+
+[[turns]]
+says = "طيب يوم عشرة ديسمبر، رايح بس"
+calls = ["search_flights"]
+args = { destination = "CAI", depart = "2026-12-10", one_way = true }
+forms = { depart = { kind = "on", day = 10, month = 12 } }
+
+[[turns]]
+says = "لا خلها يوم ثمانية"
+calls = ["search_flights"]
+args = { destination = "CAI", depart = "2026-12-08", one_way = true }
+forms = { depart = { kind = "on", day = 8, month = 12 } }
+
+[[turns]]
+says = "لا لا، خلها يوم تسعة أحسن"
+calls = ["search_flights"]
+args = { destination = "CAI", depart = "2026-12-09", one_way = true }
+forms = { depart = { kind = "on", day = 9, month = 12 } }
+
+[[turns]]
+says = "كم سعر البزنس على حقت الصبح؟"
+calls = ["compare_cabins"]
+args = { leg = "outbound", pick = "part_of_day", part = "morning" }
+
+[[turns]]
+says = "طيب خذ حقت الصبح على السياحي"
+calls = ["choose_flight", "book_trip"]
+args = { leg = "outbound", pick = "part_of_day", part = "morning" }
+outcome = "read_back"
+read_back = { outbound = "T2 301@2026-12-09", one_way = true, travelers = 1, cabin = "economy" }
+
+[[turns]]
+says = "إي احجزها"
+when = "closing_question"
+outcome = "done"

@@ -1,0 +1,14 @@
+# The flight agent's scripted calls (flight_voice/evals/scenarios.py): the travel profile
+# fails to load, and the reply says so instead of reading it as no trips.
+id = "f11_profile_failure_english"
+split = "dev"
+language = "en"
+kind = "tool_trouble"
+notes = "The profile read fails: the reply says it could not open the travel history just now, and never that the caller has no trips."
+modes = { profile = "fail" }
+
+[[turns]]
+says = "How many times have I flown to London?"
+calls = ["traveler_profile"]
+said_any = [["couldn't", "could not", "can't", "cannot", "unable", "wasn't able", "not able"]]
+said_none = ["no trips", "haven't flown", "have not flown", "never flown", "no past trips", "zero times"]

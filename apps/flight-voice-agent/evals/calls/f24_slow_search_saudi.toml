@@ -1,0 +1,16 @@
+# The flight agent's scripted calls (flight_voice/evals/scenarios.py): a slow search: the
+# progress line plays while it runs, then the flights.
+id = "f24_slow_search_saudi"
+split = "dev"
+language = "ar-SA"
+kind = "tool_trouble"
+notes = "The search answers after four seconds: the progress line plays, then the flights are listed with per person said once."
+modes = { search = "slow" }
+
+[[turns]]
+says = "أبي أروح إسطنبول يوم الأحد الجاي وأرجع الخميس اللي بعده"
+calls = ["search_flights"]
+args = { destination = "IST", depart = "2026-11-22", return_date = "2026-11-26" }
+forms = { depart = { kind = "weekday", weekday = "sun" }, return_date = { kind = "weekday_after", weekday = "thu" } }
+hears_progress = true
+said_any = [["للشخص", "للفرد", "per person"]]

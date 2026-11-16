@@ -1,0 +1,27 @@
+# The flight agent's scripted calls (flight_voice/evals/scenarios.py): the booking system
+# turns the booking down after the caller's yes.
+id = "f18_booking_refused_english"
+split = "dev"
+language = "en"
+kind = "booking_outcome"
+notes = "The booking store refuses the write: the failed line is said, and no reply claims a booking."
+modes = { booking = "refuse" }
+
+[[turns]]
+says = "A one-way to Jeddah tomorrow, please."
+calls = ["search_flights"]
+args = { destination = "JED", depart = "2026-11-17", one_way = true }
+forms = { depart = { kind = "relative", when = "tomorrow" } }
+
+[[turns]]
+says = "The 10:30 one."
+calls = ["choose_flight", "book_trip"]
+args = { leg = "outbound", pick = "time", departs = "10:30" }
+outcome = "read_back"
+read_back = { outbound = "T2 103@2026-11-17", one_way = true, travelers = 1, cabin = "economy" }
+
+[[turns]]
+says = "Yes, book it."
+when = "closing_question"
+outcome = "failed"
+said_none = ["I've booked", "I have booked", "you're booked", "you are booked", "booking is confirmed", "booking confirmed"]

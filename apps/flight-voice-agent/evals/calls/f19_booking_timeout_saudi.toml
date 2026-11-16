@@ -1,0 +1,32 @@
+# The flight agent's scripted calls (flight_voice/evals/scenarios.py): the booking's reply
+# never comes and its lookup finds nothing; a second try is refused in code.
+id = "f19_booking_timeout_saudi"
+split = "dev"
+language = "ar-SA"
+kind = "booking_outcome"
+notes = "The write times out and the lookup by request finds nothing: the unknown line is said; asked to book again, the one-booking-a-call cap refuses it in code, so the store sees one write and nothing is booked twice."
+modes = { booking = "timeout", lookup = true }
+
+[[turns]]
+says = "أبي رحلة للدوحة بكرة، رايح بس"
+calls = ["search_flights"]
+args = { destination = "DOH", depart = "2026-11-17", one_way = true }
+forms = { depart = { kind = "relative", when = "tomorrow" } }
+
+[[turns]]
+says = "الأخيرة"
+calls = ["choose_flight", "book_trip"]
+args = { leg = "outbound", pick = "latest" }
+outcome = "read_back"
+read_back = { outbound = "T2 255@2026-11-17", one_way = true, travelers = 1, cabin = "economy" }
+
+[[turns]]
+says = "إي احجزها"
+when = "closing_question"
+outcome = "unknown"
+said_none = ["حجزت لك", "حجزتها لك", "انحجزت", "حجزك مؤكد", "أكدت لك الحجز"]
+
+[[turns]]
+says = "طيب جرب تحجزها مرة ثانية"
+outcome = "none"
+said_none = ["حجزت لك", "حجزتها لك", "انحجزت", "حجزك مؤكد", "أكدت لك الحجز"]
