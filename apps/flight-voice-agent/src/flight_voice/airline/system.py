@@ -28,6 +28,8 @@ SEARCH_MODES: Final[tuple[SearchMode, ...]] = get_args(SearchMode)
 ProfileMode = Literal["answer", "fail"]
 PROFILE_MODES: Final[tuple[ProfileMode, ...]] = get_args(ProfileMode)
 SLOW_S: Final = 4.0
+# The airline's code, before each flight's number on a card ("T2 401"); a setting may change it.
+AIRLINE_CODE: Final = "T2"
 # The travelers the airline knows, by ID: the demo traveler alone.
 TRAVELERS: Final[dict[str, Traveler]] = {TRAVELER.id: TRAVELER}
 
@@ -59,8 +61,9 @@ class Profile(BaseModel):
 
 
 class Airline:
-    """The mock airline, today being `today()`, its bookings in `bookings` (a new store when
-    none is given), its reads answered by their modes, a slow read taking `slow_s`."""
+    """The mock airline, today being `today()`, its code `code`, its bookings in `bookings` (a
+    new store when none is given), its reads answered by their modes, a slow read taking
+    `slow_s`."""
 
     def __init__(
         self,
@@ -70,12 +73,18 @@ class Airline:
         search_mode: SearchMode = "answer",
         profile_mode: ProfileMode = "answer",
         slow_s: float = SLOW_S,
+        code: str = AIRLINE_CODE,
     ) -> None:
         self._today = today
+        self.code = code
         self.bookings = bookings if bookings is not None else BookingStore(today=today)
         self.search_mode: SearchMode = search_mode
         self.profile_mode: ProfileMode = profile_mode
         self.slow_s = slow_s
+
+    def flight_name(self, number: int) -> str:
+        """A flight as a card writes it: "T2 401"."""
+        return f"{self.code} {number}"
 
     def today(self) -> date:
         """Today in Riyadh, as the airline counts it."""

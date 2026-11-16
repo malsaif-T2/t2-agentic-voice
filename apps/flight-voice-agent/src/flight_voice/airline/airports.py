@@ -159,11 +159,11 @@ _AROUND: Final = frozenset(
 
 def _names() -> dict[str, Code]:
     """Every name of every airport, normalized, to its code: the city's in both scripts, the
-    airport's own and the aliases, each with the words around a name dropped."""
+    airport's own, the aliases and its code, each with the words around a name dropped."""
     names: dict[str, Code] = {}
     for airport in AIRPORTS.values():
         given = (airport.city_en, airport.city_ar, airport.name_en, airport.name_ar)
-        for name in (*given, *airport.aliases):
+        for name in (*given, *airport.aliases, airport.code):
             names[_core(normalize_arabic(name))] = airport.code
     return names
 
@@ -176,9 +176,10 @@ NAMES: Final[dict[str, Code]] = _names()
 
 
 def find_airport(said: str) -> Airport | None:
-    """The airport `said` names (a city, a country with one airport here, an airport's name, in
-    either script, with "to" or "from" around it), or `None` when it names none. A Saudi «ل» or
-    «لل» on the name («للرياض», «لدبي») is read off when the whole word names none."""
+    """The airport `said` names (a city, a country with one airport here, an airport's name or
+    code, in either script, with "to" or "from" around it), or `None` when it names none. A
+    Saudi «ل» or «لل» on the name («للرياض», «لدبي») is read off when the whole word names
+    none."""
     core = _core(normalize_arabic(said))
     for candidate in (core, *_without_lam(core)):
         if candidate in NAMES:

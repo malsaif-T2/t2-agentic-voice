@@ -54,7 +54,7 @@ def test_there_are_ten_airports_riyadh_the_home() -> None:
 @pytest.mark.parametrize("code", CODES)
 def test_every_name_of_an_airport_finds_it(code: Code) -> None:
     place = AIRPORTS[code]
-    names = (place.city_en, place.city_ar, place.name_en, place.name_ar, *place.aliases)
+    names = (place.city_en, place.city_ar, place.name_en, place.name_ar, *place.aliases, code)
     for name in names:
         for said in (name, name.upper(), f"  {name}. ", f"to {name}", f"إلى {name}"):
             found = find_airport(said)
@@ -66,7 +66,7 @@ def test_no_name_belongs_to_two_airports() -> None:
     seen: dict[str, str] = {}
     for place in AIRPORTS.values():
         given = (place.city_en, place.city_ar, place.name_en, place.name_ar, *place.aliases)
-        for name in {normalize_arabic(n) for n in given}:
+        for name in {normalize_arabic(n) for n in (*given, place.code)}:
             assert seen.setdefault(name, place.code) == place.code, name
     assert set(NAMES.values()) == set(CODES)
 
