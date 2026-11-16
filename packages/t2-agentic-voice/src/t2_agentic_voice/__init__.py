@@ -54,6 +54,14 @@ from t2_agentic_voice.core.settings.limits import LimitSettings
 from t2_agentic_voice.core.settings.llm import LlmSettings
 from t2_agentic_voice.core.settings.logs import LoggingSettings
 from t2_agentic_voice.core.settings.privacy import PrivacySettings
+from t2_agentic_voice.core.settings.provider_keys import (
+    CohereSettings,
+    ElevenLabsSettings,
+    InworldSettings,
+    OpenAISettings,
+    SonioxSettings,
+    SpeechmaticsSettings,
+)
 from t2_agentic_voice.core.settings.server import ServerSettings
 from t2_agentic_voice.core.settings.session import SessionSettings
 from t2_agentic_voice.core.settings.storage import StorageSettings
@@ -87,16 +95,19 @@ __all__ = [
     "Caller",
     "Card",
     "Claims",
+    "CohereSettings",
     "ConfigurationError",
     "Consent",
     "ConversationLine",
     "DeclaredTool",
+    "ElevenLabsSettings",
     "FromCaller",
     "GroqSettings",
     "GuardSettings",
     "HeardConsent",
     "InterruptionSettings",
     "InvalidRequestError",
+    "InworldSettings",
     "JoinRejected",
     "JoinSettings",
     "Language",
@@ -104,6 +115,7 @@ __all__ = [
     "LlmSettings",
     "LoggingSettings",
     "NotFoundError",
+    "OpenAISettings",
     "Phrases",
     "PrivacySettings",
     "ProviderError",
@@ -113,6 +125,8 @@ __all__ = [
     "Say",
     "ServerSettings",
     "SessionSettings",
+    "SonioxSettings",
+    "SpeechmaticsSettings",
     "Spoken",
     "Status",
     "StorageSettings",

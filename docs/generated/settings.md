@@ -33,6 +33,62 @@ Groq, the provider of every model for now (D-004). The library reads only these 
 | `T2V_GROQ__API_KEY_FILE` | path, or unset | unset | — | Or the full path of a file outside the repository that holds only the key, so the key can live outside .env. |
 | `T2V_GROQ__BASE_URL` | text | `https://api.groq.com` | — | Groq's API address, always passed to the SDK so it never falls back to GROQ_BASE_URL. HTTPS only, since the key travels with every request. |
 
+## `elevenlabs`
+
+ElevenLabs: speech-to-text (Scribe) now, voices later; measured beside Groq (D-100).
+
+| Variable | Type | Default | Unit | Description |
+| --- | --- | --- | --- | --- |
+| `T2V_ELEVENLABS__API_KEY` | secret, or unset | unset | — | The provider's API key; unset, its adapters are unavailable and say so when chosen. Or give api_key_file instead. |
+| `T2V_ELEVENLABS__API_KEY_FILE` | path, or unset | unset | — | Or the full path of a file outside the repository that holds only the key, so the key can live outside .env. |
+
+## `speechmatics`
+
+Speechmatics: speech-to-text, its Arabic-English pack; measured beside Groq (D-100).
+
+| Variable | Type | Default | Unit | Description |
+| --- | --- | --- | --- | --- |
+| `T2V_SPEECHMATICS__API_KEY` | secret, or unset | unset | — | The provider's API key; unset, its adapters are unavailable and say so when chosen. Or give api_key_file instead. |
+| `T2V_SPEECHMATICS__API_KEY_FILE` | path, or unset | unset | — | Or the full path of a file outside the repository that holds only the key, so the key can live outside .env. |
+| `T2V_SPEECHMATICS__REGION` | one of eu, us | `eu` | — | Where Speechmatics processes the audio: eu (its eu1 endpoints) or us (us1). eu by default, the region its data terms were read for (D-100). |
+
+## `cohere`
+
+Cohere: speech-to-text (Transcribe Arabic); measured beside Groq (D-100).
+
+| Variable | Type | Default | Unit | Description |
+| --- | --- | --- | --- | --- |
+| `T2V_COHERE__API_KEY` | secret, or unset | unset | — | The provider's API key; unset, its adapters are unavailable and say so when chosen. Or give api_key_file instead. |
+| `T2V_COHERE__API_KEY_FILE` | path, or unset | unset | — | Or the full path of a file outside the repository that holds only the key, so the key can live outside .env. |
+
+## `soniox`
+
+Soniox: speech-to-text, batch and streaming; measured beside Groq (D-100).
+
+| Variable | Type | Default | Unit | Description |
+| --- | --- | --- | --- | --- |
+| `T2V_SONIOX__API_KEY` | secret, or unset | unset | — | The provider's API key; unset, its adapters are unavailable and say so when chosen. Or give api_key_file instead. |
+| `T2V_SONIOX__API_KEY_FILE` | path, or unset | unset | — | Or the full path of a file outside the repository that holds only the key, so the key can live outside .env. |
+
+## `openai`
+
+OpenAI: a talker and speech-to-text to measure beside Groq (D-100).
+
+| Variable | Type | Default | Unit | Description |
+| --- | --- | --- | --- | --- |
+| `T2V_OPENAI__API_KEY` | secret, or unset | unset | — | The provider's API key; unset, its adapters are unavailable and say so when chosen. Or give api_key_file instead. |
+| `T2V_OPENAI__API_KEY_FILE` | path, or unset | unset | — | Or the full path of a file outside the repository that holds only the key, so the key can live outside .env. |
+| `T2V_OPENAI__BASE_URL` | text | `https://api.openai.com/v1` | — | OpenAI's API address; another only for a regional route OpenAI gives the account. HTTPS only, since the key travels with every request. |
+
+## `inworld`
+
+Inworld: voices to measure beside Groq's (D-100); the key in the Base64 form the portal copies.
+
+| Variable | Type | Default | Unit | Description |
+| --- | --- | --- | --- | --- |
+| `T2V_INWORLD__API_KEY` | secret, or unset | unset | — | The provider's API key; unset, its adapters are unavailable and say so when chosen. Or give api_key_file instead. |
+| `T2V_INWORLD__API_KEY_FILE` | path, or unset | unset | — | Or the full path of a file outside the repository that holds only the key, so the key can live outside .env. |
+
 ## `stt`
 
 Speech-to-text: the adapter, the Whisper model, how long a request may take, the language and the prompt a call sends, the classifier of each turn's language, and the filter for text from silence.

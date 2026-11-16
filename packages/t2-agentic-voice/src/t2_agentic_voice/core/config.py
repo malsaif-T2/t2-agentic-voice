@@ -84,6 +84,14 @@ from t2_agentic_voice.core.settings.loading import (
 from t2_agentic_voice.core.settings.logs import LoggingSettings
 from t2_agentic_voice.core.settings.names import Problem, gathered, leaf
 from t2_agentic_voice.core.settings.privacy import PrivacySettings
+from t2_agentic_voice.core.settings.provider_keys import (
+    CohereSettings,
+    ElevenLabsSettings,
+    InworldSettings,
+    OpenAISettings,
+    SonioxSettings,
+    SpeechmaticsSettings,
+)
 from t2_agentic_voice.core.settings.server import ServerSettings
 from t2_agentic_voice.core.settings.session import SessionSettings
 from t2_agentic_voice.core.settings.storage import StorageSettings
@@ -126,6 +134,12 @@ class VoiceSettings(ReadOnlyModel):
         ),
     )
     groq: GroqSettings = Field(default_factory=GroqSettings)
+    elevenlabs: ElevenLabsSettings = Field(default_factory=ElevenLabsSettings)
+    speechmatics: SpeechmaticsSettings = Field(default_factory=SpeechmaticsSettings)
+    cohere: CohereSettings = Field(default_factory=CohereSettings)
+    soniox: SonioxSettings = Field(default_factory=SonioxSettings)
+    openai: OpenAISettings = Field(default_factory=OpenAISettings)
+    inworld: InworldSettings = Field(default_factory=InworldSettings)
     stt: SttSettings = Field(default_factory=SttSettings)
     llm: LlmSettings = Field(default_factory=LlmSettings)
     tts: TtsSettings = Field(default_factory=TtsSettings)
