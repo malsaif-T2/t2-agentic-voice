@@ -87,6 +87,7 @@ from t2_agentic_voice.core.settings.stt import SttSettings
 from t2_agentic_voice.core.settings.tracing import TracingSettings
 from t2_agentic_voice.core.settings.tts import TtsSettings
 from t2_agentic_voice.core.settings.turns import TurnSettings
+from t2_agentic_voice.core.settings.warmup import WarmupSettings
 from t2_agentic_voice.core.settings.words import WordSettings
 
 Environment = Literal["dev", "test", "staging", "prod"]
@@ -146,6 +147,7 @@ class VoiceSettings(ReadOnlyModel):
     tracing: TracingSettings = Field(default_factory=TracingSettings)
     limits: LimitSettings = Field(default_factory=LimitSettings)
     storage: StorageSettings = Field(default_factory=StorageSettings)
+    warmup: WarmupSettings = Field(default_factory=WarmupSettings)
 
     # What `from_env` learned as it loaded: the prefix, and the provider variables it saw set.
     # A copy (`model_copy`) keeps them; settings rebuilt from a dump take the defaults.

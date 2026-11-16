@@ -83,7 +83,8 @@ class TurnLog:
     `stray_scripts` labels their kinds (agent/stray_script.py), never a character. `language`,
     `language_by` and `language_share` are what its first request named, how, and the verdict's
     best share, from its first `Transcribing`, whatever its part, as
-    turn_book.py keeps them."""
+    turn_book.py keeps them. `warm_connection`: whether its first chat request went out on a
+    kept-alive connection, None when the model does not say (talker_play.py)."""
 
     turn_id: TurnId
     speech_at: float | None = None
@@ -120,6 +121,7 @@ class TurnLog:
     language: str | None = None
     language_by: LanguageBy | None = None
     language_share: float | None = None
+    warm_connection: bool | None = None
 
     @property
     def transcribed(self) -> bool:
@@ -175,12 +177,14 @@ class TurnLog:
             dropped=self.dropped,
             stopped=self.stopped,
             unfinished=self.unfinished,
+            warm_connection=self.warm_connection,
             times=self.times(),
         )
 
     def outcome(self) -> dict[str, str | bool | int | float]:
         """Its outcome and times as span attributes: no text. A turn whose reply lost a
-        character to the stray-script filter says how many and their labels, comma-separated."""
+        character to the stray-script filter says how many and their labels, comma-separated; one
+        whose first chat request's model says, whether it went out on a warm connection."""
         found: dict[str, str | bool | int | float] = {
             "turn.dropped": self.dropped,
             "turn.stopped": self.stopped,
@@ -188,6 +192,8 @@ class TurnLog:
         }
         times = self.times().model_dump(exclude_none=True)
         found |= {f"turn.{name}": value for name, value in times.items()}
+        if self.warm_connection is not None:
+            found["turn.warm_connection"] = self.warm_connection
         if self.stray_characters:
             found["turn.stray_characters"] = self.stray_characters
             found["turn.stray_scripts"] = ",".join(self.stray_scripts)

@@ -8,7 +8,9 @@ of the talker's as a `Talk` (each reply's run is talk_runner.py's `TalkRunner`).
   or a kept reply let go before then leaves nothing (read_back.py); it counts as said, so no
   `error` notice follows a reply that only read back. What the stray-script filter took out of a
   model request's answer (`ModelReplied`'s count and labels) is added to its turn's log, for the
-  turn's span, and logged by its count and labels alone.
+  turn's span, and logged by its count and labels alone. Whether the turn's first model request
+  went out on a kept-alive connection (`ModelReplied.warm_connection`) is kept on its turn's log,
+  for its record in the call's report and its span.
 """
 
 from __future__ import annotations
@@ -173,6 +175,8 @@ class TalkPlayer:
                 asked = talk.request_at
                 if log.first_token_at is None and first is not None and asked is not None:
                     log.first_token_at = asked + first
+                if log.warm_connection is None:  # one chat model a call: its first that says
+                    log.warm_connection = event.warm_connection
                 self._stray(log, event)
             case ReplyDone():
                 if not talk.said:  # an empty answer, or one cut before a word: never silence

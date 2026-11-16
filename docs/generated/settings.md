@@ -319,3 +319,13 @@ Storage: one folder for everything the library keeps.
 | Variable | Type | Default | Unit | Description |
 | --- | --- | --- | --- | --- |
 | `T2V_STORAGE__VAR_DIR` | path | `var` | — | Local runtime data (git-ignored): databases, run outputs, caches. Every path under it comes from here, so one setting moves a whole run, a test session included. |
+
+## `warmup`
+
+The warm-up: what the server's start and each call's join ready for the turns to come.
+
+| Variable | Type | Default | Unit | Description |
+| --- | --- | --- | --- | --- |
+| `T2V_WARMUP__AT_START` | true or false | `false` | — | Whether the server's start imports the modules a call's offer needs (Pipecat's pipeline, aiortc's peer) in a thread, and keeps one call's speech detector and turn analyzer made ahead, the next made in the background as each call takes one. Off: the first offer imports them on the event loop, and each call makes its own. |
+| `T2V_WARMUP__AT_JOIN` | true or false | `false` | — | Whether each call, as it joins, sends one request that costs nothing to the call's speech-to-text and its text-to-speech (and to the chat model when its connection is not warm), in the background, so their connections are open before the first turn. A failed one is logged and never fails the call. |
+| `T2V_WARMUP__AFTER_CANCEL` | true or false | `false` | — | Whether the Groq chat adapter opens a fresh connection in the background after a cancelled or closed stream, which closes its connection, so the next request does not pay a new handshake. |

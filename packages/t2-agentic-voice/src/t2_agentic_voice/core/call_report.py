@@ -112,8 +112,9 @@ class TurnRecord(_Frozen):
     sent in (the call's, unless a classifier moved it) and how that was chosen (`language_by`);
     what the agent said back; whether the turn was dropped (its speech began while the agent
     spoke, the greeting included, or just after), its reply stopped by the caller, or the turn
-    left unfinished (the call ended before its transcript came, so nothing was heard); and its
-    times. Provisional."""
+    left unfinished (the call ended before its transcript came, so nothing was heard); whether
+    its first chat request went out on a kept-alive connection (`warm_connection`, None when no
+    request went or the chat model does not say); and its times. Provisional."""
 
     turn_id: TurnId
     language: LanguageTag | None = None
@@ -123,6 +124,7 @@ class TurnRecord(_Frozen):
     dropped: bool = False
     stopped: bool = False
     unfinished: bool = False
+    warm_connection: bool | None = None
     times: TurnTimes = Field(default_factory=TurnTimes)
 
 

@@ -113,13 +113,15 @@ class ModelRequested(_Event):
 
 class ModelReplied(_Event):
     """A request to `model` ended: its `usage`, when the provider reported one, the time from
-    the request to its first token (`first_token_s`), None when none came, and how many
+    the request to its first token (`first_token_s`), None when none came, whether it went out
+    on a kept-alive connection (`warm_connection`, None when the model does not say), and how many
     characters of its answer the stray-script filter took out or rewrote (`stray_characters`,
     agent/stray_script.py), with a label for each kind (`stray_scripts`), never a character."""
 
     model: str = Field(min_length=1)
     usage: Usage | None = None
     first_token_s: float | None = Field(default=None, ge=0, allow_inf_nan=False)
+    warm_connection: bool | None = None
     stray_characters: int = Field(default=0, ge=0)
     stray_scripts: tuple[str, ...] = ()
 

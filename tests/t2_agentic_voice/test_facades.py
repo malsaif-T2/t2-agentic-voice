@@ -193,7 +193,8 @@ NAMES = {
 # `guard` groups' classes. Plan 007 adds the actions: `action`, `Action`, what it is told
 # (`ActionContext`, `HeardConsent`, `RecordedAction`, `ConversationLine`), the words of its
 # declaration (`Say`, `ReadBack`, `Claims`, `Spoken`), and `ActionRejected` and `ActionNotSent`.
-# Plan 010 adds the key groups of the providers measured beside Groq (D-100).
+# Plan 010 adds the key groups of the providers measured beside Groq (D-100), and the warm-up's
+# group (TD-089).
 ROOT_NAMES = {
     "TelnyxSettings",
     "NabrahSettings",
@@ -252,6 +253,7 @@ ROOT_NAMES = {
     "TtsSettings",
     "TtsVoice",
     "TurnSettings",
+    "WarmupSettings",
     "Vocabulary",
     "VoiceAgent",
     "VoiceRuntime",

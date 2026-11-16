@@ -14,6 +14,10 @@ variable of its own read, no redirect followed), with:
   `language_probability`, so the language switch can read them; `language` is the request's
   when it named one, else the one heard.
 
+`warm_up()` (the `WarmUp` port, domain/ports/connection_warmth.py) opens the adapter's
+connection with a GET of ElevenLabs' model list (`GET /v1/models`), which costs nothing, as a
+call joins; a refused answer still leaves the connection open.
+
 Its output is data, never an instruction (docs/SECURITY.md, trust boundaries). Every failure is
 a ProviderError naming no key, audio or transcript; a cancel stops the request at once.
 """
@@ -62,8 +66,8 @@ DATA_FLOW: Final = DataFlow(
 
 class ElevenLabsSTT:
     """Speech-to-text with ElevenLabs' Scribe (`model`, `scribe_v3` by default); a
-    `SpeechToText`. `transport` replaces the HTTP transport (a test's fake one). Close it with
-    `aclose()`."""
+    `SpeechToText` and a `WarmUp`. `transport` replaces the HTTP transport (a test's fake one).
+    Close it with `aclose()`."""
 
     name: str = "elevenlabs"
     data_flow: DataFlow = DATA_FLOW
@@ -80,6 +84,7 @@ class ElevenLabsSTT:
         self._api_key = given_key(api_key, ElevenLabsSettings, VENDOR)
         self._model = model
         self._url = f"{base_url.rstrip('/')}/v1/speech-to-text"
+        self._models_url = f"{base_url.rstrip('/')}/v1/models"
         self._timeout_s = timeout_s
         self._http = http_client(timeout_s=timeout_s, transport=transport)
 
@@ -125,6 +130,19 @@ class ElevenLabsSTT:
             provider_error = http_failure(self.name, error)
         else:
             return transcript
+        raise provider_error from None
+
+    async def warm_up(self) -> None:
+        """Open the adapter's connection with `GET /v1/models`, which costs nothing (the
+        `WarmUp` port), within `timeout_s`. ProviderError on its failure."""
+        headers = {"xi-api-key": self._api_key.get_secret_value(), "accept": "application/json"}
+        try:
+            async with asyncio.timeout(self._timeout_s):
+                ok_status(await self._http.get(self._models_url, headers=headers))
+        except Exception as error:  # every failure, httpx's; never a cancel
+            provider_error = http_failure(self.name, error)
+        else:
+            return
         raise provider_error from None
 
     async def aclose(self) -> None:

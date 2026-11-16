@@ -6,7 +6,9 @@ The request is a call's chat request, made only with the call's chat model
 counted however it ends. It runs as a task of the asker's cancel scope (scope.py), within its
 timeout on the call's clock: the model's whole answer, its text deltas joined, as the asker
 reads it; `failed` for its failure, logged by its kind alone under the asker's line, never the
-words; `timeout` once the timeout passed first, the request then cancelled.
+words; `timeout` once the timeout passed first, the request then cancelled. As it goes it is logged
+(`model_word_sent`: the asker, the turn and whether the request went out on a kept-alive
+connection, domain/ports/connection_warmth.py's `warm_now`), never its words.
 """
 
 from __future__ import annotations
@@ -19,6 +21,7 @@ from t2_agentic_voice.core.errors import ProviderError
 from t2_agentic_voice.core.events import TurnId
 from t2_agentic_voice.core.logging import get_logger
 from t2_agentic_voice.domain.ports.chat_model import ChatRequest, TextDelta, Usage
+from t2_agentic_voice.domain.ports.connection_warmth import warm_now
 from t2_agentic_voice.voice.session.io import CallSetup
 from t2_agentic_voice.voice.session.scope import CancelScope
 from t2_agentic_voice.voice.session.usage import Usage as CallUsage
@@ -44,7 +47,7 @@ async def model_word[T](
     `turn_id`, within `timeout_s` on the call's clock, in `scope` (the module's docstring), read
     by `read_as`: its tasks named `<name>-read-<turn>` and `<name>-timer-<turn>`, a failure
     logged as `failed_line`."""
-    answer = _answer(setup, usage, request, failed_line)
+    answer = _answer(setup, usage, request, failed_line, name=name, turn_id=turn_id)
     read = scope.start(answer, name=f"{name}-read-{turn_id}")
     timer = scope.start(setup.clock.sleep(timeout_s), name=f"{name}-timer-{turn_id}")
     await asyncio.wait((read, timer), return_when=asyncio.FIRST_COMPLETED)
@@ -57,13 +60,23 @@ async def model_word[T](
 
 
 async def _answer(
-    setup: CallSetup, usage: CallUsage, request: ChatRequest, failed_line: str
+    setup: CallSetup,
+    usage: CallUsage,
+    request: ChatRequest,
+    failed_line: str,
+    *,
+    name: str,
+    turn_id: TurnId,
 ) -> str | None:
     """The model's whole answer; None for its failure, logged by kind. Never raises (the scope
     would log its own line) but for a cancel."""
     model = setup.overlap_model
     if model is None:  # never so: each asker asks only with a model
         return None
+    warm = warm_now(model)
+    _log.info(
+        "model_word_sent", call_id=setup.call_id, asker=name, turn_id=turn_id, warm_connection=warm
+    )
     usage.chat_requested(request.model)
     replied: Usage | None = None
     parts: list[str] = []

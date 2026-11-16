@@ -2,26 +2,10 @@
 (`VoiceCalls`, which meets entry.py's `Calls` protocol). The items cited are plan 003's appendix,
 "Changes to the plan's interfaces".
 
-- **Start.** The runtime's lifespan builds one `VoiceCalls` and starts it (`start`), which
-  imports onnxruntime and warms one pair of models, a Silero VAD and a Smart Turn v3.2, each
-  loading its ONNX model on the CPU there, never at import: importing onnxruntime takes 8 to
-  12 s a process (item 24). This module imports no Pipecat at its top, since api imports it
-  when the library is imported, and `import t2_agentic_voice` and `t2v --help` import no
-  Pipecat (GP-17). Before it warms them, it sets what voice/calls_start.py's `prepare` says
-  (Pipecat's loguru off, its variables that change every call refused, the transport loggers
-  held).
-- **The detectors.** Each call gets its own speech detector and turn analyzer, since each of
-  Pipecat's keeps one stream's state (a `VADAnalyzer`'s buffer, Silero's model state, Smart
-  Turn's audio) and its public constructor loads its own ONNX session, sharing none:
-  `VoiceCalls` makes them with the factories it is given, and with none builds Silero and Smart
-  Turn v3.2 from the settings' `turns` group, each loading its model again for the call (after
-  the warm-up, the review's probe on the owner's machine took 85.2 to 102.3 ms for Silero and
-  106.6 to 134.2 ms for Smart Turn). So `VoiceCalls` calls each factory off the event loop
-  (`await asyncio.to_thread(factory)`) before it answers the offer, and no live call's audio
-  waits on a join. A test gives fakes (a generated signal through a fake speech detector),
-  through the runtime's private `_calls` (api/runtime.py); `start` warms the factories it is
-  given, so a test's fakes load no ONNX model. With `turns.smart_turn` off, no turn analyzer is
-  built: every pause ends a turn.
+- **Start and the detectors** (`start`): voice/calls_start.py says what is set, imported and
+  warmed there, and how each call's speech detector and turn analyzer are made. This module
+  imports no Pipecat at its top, since api imports it when the library is imported, and
+  `import t2_agentic_voice` and `t2v --help` import no Pipecat (GP-17).
 - **The offer** (`answer`). One Pipecat pipeline per call, its session a `CallSession`
   (`voice/session/`). Pipecat's request handler keys its connections on a `pc_id` it chooses,
   which holds `#`; it renegotiates a live call for whoever names that ID, and leaves a stale key
@@ -36,7 +20,10 @@
   `connect`, so a failed call shows sooner than Pipecat's timeout, and the F7 hang ends too
   (items 11 and 21). Each
   aiortc peer gets an explicit ICE server list, never aiortc's default, which asks Google's STUN
-  server (the design's 11: the library contacts nothing beyond its outbound hosts).
+  server (the design's 11: the library contacts nothing beyond its outbound hosts). Each
+  answered offer sends its warm requests under `warmup.at_join` (voice/join_warmth.py) and logs
+  its server steps as times alone, never an address or a candidate (`call_answered`;
+  `call_connected` in voice/pipeline.py).
 - **Candidates** (`add_candidates`). Each one is checked before Pipecat sees it, since aiortc
   answers a malformed line with an AssertionError (item 10); an empty one marks their end, the
   client's end-of-candidates PATCH, which reaches aioice (item 11).
@@ -58,6 +45,7 @@ from __future__ import annotations
 
 import asyncio
 from collections.abc import Awaitable, Callable, Sequence
+from time import perf_counter
 from typing import TYPE_CHECKING
 
 from t2_agentic_voice.core.config import VoiceSettings
@@ -72,7 +60,7 @@ from t2_agentic_voice.domain.ports.chat_model import ChatModel
 from t2_agentic_voice.domain.ports.language_classifier import LanguageClassifier
 from t2_agentic_voice.domain.ports.speech_to_text import SpeechToText
 from t2_agentic_voice.domain.ports.text_to_speech import TextToSpeech
-from t2_agentic_voice.voice.calls_start import prepare
+from t2_agentic_voice.voice.calls_start import elapsed_ms, warm
 
 # The contract api meets is entry.py's; these names are given here too, where api imports them.
 from t2_agentic_voice.voice.entry import CallPhase as CallPhase
@@ -80,6 +68,7 @@ from t2_agentic_voice.voice.entry import Calls as Calls
 from t2_agentic_voice.voice.entry import CallsFactory as CallsFactory
 from t2_agentic_voice.voice.entry import Candidate as Candidate
 from t2_agentic_voice.voice.entry import ChosenStt as ChosenStt
+from t2_agentic_voice.voice.join_warmth import JoinWarmth
 from t2_agentic_voice.voice.session.call import CallSession
 from t2_agentic_voice.voice.session.io import (
     SYSTEM_CLOCK,
@@ -89,6 +78,7 @@ from t2_agentic_voice.voice.session.io import (
     PhraseAudio,
     Session,
 )
+from t2_agentic_voice.voice.spare import Spare
 from t2_agentic_voice.voice.talkers import TalkerFactory, talker_for, talks
 
 if TYPE_CHECKING:  # named in annotations only: this module imports no Pipecat (above)
@@ -146,13 +136,15 @@ class VoiceCalls:
         self._chosen = chosen
         self._calls: dict[CallId, WebRTCCall] = {}
         self._answering: set[CallId] = set()
+        # The next call's detectors, made ahead under `warmup.at_start` (voice/calls_start.py).
+        self._spare = Spare(self._detectors, ahead=settings.warmup.at_start)
+        self._warmth = JoinWarmth(on=settings.warmup.at_join, tts=tts, chat=self._chat)
         self._started = False
 
     async def start(self) -> None:
-        """Import onnxruntime and warm one Silero VAD and one Smart Turn v3.2 (the `Calls`
-        protocol's `start`)."""
-        prepare(self._settings)
-        await asyncio.to_thread(self._detectors)
+        """Import an offer's modules, and onnxruntime, and warm one Silero VAD and one Smart
+        Turn v3.2, kept for the first call (the `Calls` protocol's `start`)."""
+        await warm(self._settings, self._spare)
         self._started = True
 
     async def answer(
@@ -168,9 +160,12 @@ class VoiceCalls:
             raise InvalidRequestError("The call already has an answered offer.")
         check_offer(offer)
         self._answering.add(call_id)
+        began = perf_counter()
         try:
-            detectors = await asyncio.to_thread(self._detectors)
+            detectors = await self._spare.take()
+            took = perf_counter()
             peer = await WebRTCPeer.answer(offer, self._settings.server.ice_servers)
+            answered = perf_counter()
             try:
                 transport = peer.transport()
                 pipeline = self._pipeline(
@@ -184,14 +179,17 @@ class VoiceCalls:
                     closing=peer.close,
                     on_finished=lambda: self._forget(call_id),
                 )
-                call = WebRTCCall(pipeline, peer)
+                call = WebRTCCall(pipeline, peer, began=began)
                 await call.start(transport, self._session(pipeline))
+                self._warmth.joined(call_id, pipeline.stt, language.tag)
             except BaseException:
                 await peer.close()
                 raise
         finally:
             self._answering.discard(call_id)
         self._calls[call_id] = call
+        steps = {"detectors_ms": elapsed_ms(began, took), "peer_ms": elapsed_ms(took, answered)}
+        log.info("call_answered", call_id=call_id, **steps, pipeline_ms=elapsed_ms(answered))
         return peer.answer_sdp
 
     async def add_candidates(self, call_id: CallId, candidates: Sequence[Candidate]) -> None:
@@ -227,6 +225,8 @@ class VoiceCalls:
     async def aclose(self) -> None:
         """End every call, each close bounded (the `Calls` protocol's `aclose`)."""
         await asyncio.gather(*(self.end(call_id) for call_id in list(self._calls)))
+        await self._spare.aclose()
+        await self._warmth.aclose()
         self._started = False
 
     def _detectors(self) -> tuple[VADAnalyzer, BaseTurnAnalyzer | None]:

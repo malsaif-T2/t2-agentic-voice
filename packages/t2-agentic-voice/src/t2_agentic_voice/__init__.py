@@ -72,6 +72,7 @@ from t2_agentic_voice.core.settings.stt import SttSettings
 from t2_agentic_voice.core.settings.tracing import TracingSettings
 from t2_agentic_voice.core.settings.tts import TtsSettings, TtsVoice
 from t2_agentic_voice.core.settings.turns import TurnSettings
+from t2_agentic_voice.core.settings.warmup import WarmupSettings
 from t2_agentic_voice.core.settings.words import WordSettings
 from t2_agentic_voice.domain.action_declaration import Claims, ReadBack, Say, Spoken
 from t2_agentic_voice.domain.cards import Card, CardRow
@@ -151,6 +152,7 @@ __all__ = [
     "VoiceAgent",
     "VoiceRuntime",
     "VoiceSettings",
+    "WarmupSettings",
     "WordSettings",
     "Words",
     "action",

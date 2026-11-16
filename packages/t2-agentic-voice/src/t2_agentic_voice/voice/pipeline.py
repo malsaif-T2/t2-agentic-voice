@@ -24,6 +24,7 @@ from __future__ import annotations
 
 import asyncio
 from collections.abc import Awaitable, Callable
+from time import perf_counter
 
 from pipecat.audio.turn.base_turn_analyzer import BaseTurnAnalyzer
 from pipecat.audio.vad.vad_analyzer import VADAnalyzer
@@ -96,6 +97,7 @@ class CallPipeline:
         classifier: LanguageClassifier | None = None,
     ) -> None:
         self.setup = setup
+        self.stt = stt  # the speech-to-text the call hears with, which its join warms
         self.report = FailureReport(call_id=setup.call_id, emit=setup.emit, clock=setup.clock)
         self.events = events = EventStream(setup.clock, record=record)
         self.stt_bridge = TurnSTTBridge(
@@ -236,11 +238,13 @@ class CallPipeline:
 class WebRTCCall:
     """One call over WebRTC: its pipeline over `peer`, and voice's own deadline from offer to
     connected (`CONNECT_DEADLINE_S`), after which a call not connected ends as a
-    `TransportFailure` at `connect`."""
+    `TransportFailure` at `connect`. Its connect is logged as a time alone, from `began` (the
+    offer's arrival, on `perf_counter`), never an address (`call_connected`)."""
 
-    def __init__(self, pipeline: CallPipeline, peer: WebRTCPeer) -> None:
+    def __init__(self, pipeline: CallPipeline, peer: WebRTCPeer, *, began: float) -> None:
         self.pipeline = pipeline
         self.peer = peer
+        self._began = began
         self._deadline: asyncio.Task[None] | None = None
 
     async def start(self, transport: SmallWebRTCTransport, session: Session) -> None:
@@ -251,6 +255,8 @@ class WebRTCCall:
         pipeline = self.pipeline
 
         async def connected(transport: object, connection: object) -> None:
+            ms = round((perf_counter() - self._began) * 1000, 1)
+            log.info("call_connected", call_id=pipeline.setup.call_id, offer_to_connected_ms=ms)
             pipeline.connect()
             self.stop_deadline()
 

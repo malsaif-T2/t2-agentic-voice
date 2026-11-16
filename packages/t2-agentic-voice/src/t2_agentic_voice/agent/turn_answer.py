@@ -2,7 +2,9 @@
 rules): its clauses as the answer streams (`answer_events`), each piece through the stray-script
 filter, the leak check, the clause splitter and the output guard, an action's text after its
 call dropped (rule C), a cut at `max_output_tokens` and a model's failure logged; and the rest
-of the answer (`Answer`): its text, its tool calls, its usage and its first token's time.
+of the answer (`Answer`): its text, its tool calls, its usage, its first token's time, and
+whether the request went out on a kept-alive connection (`warm`, read from the model just before
+it went: domain/ports/connection_warmth.py's `warm_now`, None when the model does not say).
 """
 
 from __future__ import annotations
@@ -23,6 +25,7 @@ from t2_agentic_voice.domain.ports.chat_model import (
     Usage,
     closing,
 )
+from t2_agentic_voice.domain.ports.connection_warmth import warm_now
 from t2_agentic_voice.domain.text.clauses import ClauseStream
 
 if TYPE_CHECKING:
@@ -34,12 +37,13 @@ _log = get_logger(__name__)
 @dataclass
 class Answer:
     """What one model request gave: its text, its tool calls, its usage, its first token's
-    time."""
+    time, and whether it went out on a kept-alive connection (`warm`)."""
 
     text: str = ""
     calls: list[ToolCallRequest] = field(default_factory=list)
     usage: Usage | None = None
     first_token_s: float | None = None
+    warm: bool | None = None
 
 
 async def answer_events(
@@ -47,6 +51,7 @@ async def answer_events(
 ) -> AsyncGenerator[TalkerEvent, None]:
     """The clauses of the model's answer to `request` in the turn `reply`, as it streams;
     `answer` gathers the rest."""
+    answer.warm = warm_now(reply.model)
     started = reply.clock.now()
     whole_sentences = reply.language == "en"  # D-077
     splitter = ClauseStream(max_chars=None, whole_sentences=whole_sentences)
