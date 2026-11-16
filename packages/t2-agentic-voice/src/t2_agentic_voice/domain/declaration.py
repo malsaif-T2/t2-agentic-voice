@@ -42,6 +42,7 @@ from t2_agentic_voice.core.settings.base import FROZEN, PLAIN
 from t2_agentic_voice.core.settings.tts import LanguageTag
 from t2_agentic_voice.core.settings.words import LanguageCode, primary_code
 from t2_agentic_voice.domain.declaration_errors import FROM_PRESET, Declared
+from t2_agentic_voice.domain.declared_phrases import DeclaredPronunciations, Phrase
 from t2_agentic_voice.domain.presets import ECHO_FRAMES, NOTICES
 from t2_agentic_voice.domain.talker_declaration import (
     DeclaredTool,
@@ -53,7 +54,6 @@ from t2_agentic_voice.domain.talker_declaration import (
     instructions_for,
     tools_for,
 )
-from t2_agentic_voice.domain.text.invisible import holds_refused_character, provider_text
 from t2_agentic_voice.domain.words import PRESET_WORDS, Phrases, Words
 
 # A notice's kind (the design's 5.5), each told in the call's language: `busy`, a call that
@@ -76,43 +76,6 @@ _DEVICES = frozenset(
     {"con", "prn", "aux", "nul", *(f"{port}{n}" for port in ("com", "lpt") for n in range(1, 10))}
 )
 
-# What a phrase may not hold, said whole, since the team cannot see the character it means.
-_UNSEEN = (
-    "a text in it holds a control or format character, a line or paragraph separator, a lone "
-    "surrogate or a space other than U+0020; of these, a phrase may hold only the no-break "
-    "spaces U+00A0 and U+202F, the joiners U+200C and U+200D and the direction marks U+200E, "
-    "U+200F and U+061C"
-)
-
-
-def _phrase(value: str) -> str:
-    """`value`, when it holds no character a spoken phrase may not (domain/text/invisible.py)
-    and says something once a provider's text is made of it; the error never repeats the
-    value."""
-    if holds_refused_character(value):
-        raise ValueError(_UNSEEN)
-    if not provider_text(value).strip():
-        raise ValueError("a text in it says nothing: it is empty, or only spaces and marks")
-    return value
-
-
-def _form(value: str) -> str:
-    """`value` as a written form to look for: a phrase with no space at either end, which would
-    keep it from ever standing as whole words."""
-    _phrase(value)
-    if value != value.strip():
-        raise ValueError(
-            "a written form starts or ends with a space, so it never stands as whole words"
-        )
-    return value
-
-
-def _code(value: str) -> str:
-    """`value` when it is a primary language code a pronunciation is keyed by."""
-    if value not in get_args(LanguageCode):  # a pronunciation's language, by its code
-        raise ValueError("a pronunciation names its language `ar` (both Arabic presets) or `en`")
-    return value
-
 
 def _every_kind[T](value: Mapping[NoticeKind, T]) -> Mapping[NoticeKind, T]:
     """`value` when it has a text for every kind of notice."""
@@ -133,16 +96,6 @@ def _a_language(value: object) -> object:
     return value
 
 
-_Phrase = Annotated[str, AfterValidator(_phrase)]
-# A pronunciation: how each language says one written form.
-_Said = Annotated[
-    Mapping[Annotated[str, AfterValidator(_code)], _Phrase], Field(min_length=1), FROZEN, PLAIN
-]
-# A pronunciation map as `VoiceAgent.pronounce` holds it: the languages facade's
-# `Pronunciations`, each entry checked and kept read-only.
-_Pronunciations = Annotated[Mapping[Annotated[str, AfterValidator(_form)], _Said], FROZEN, PLAIN]
-
-
 class Language(Declared):
     """One language a call can be held in: its `tag` (`ar-SA` Saudi Arabic, `ar` Modern Standard
     Arabic, `en` English), the `greeting` the agent opens a call with in it, the `echo_frame`
@@ -156,10 +109,10 @@ class Language(Declared):
     the model and voice `tts.languages` gives it."""
 
     tag: LanguageTag
-    greeting: _Phrase
-    echo_frame: _Phrase
-    notices: Annotated[Mapping[NoticeKind, _Phrase], AfterValidator(_every_kind), FROZEN, PLAIN]
-    progress: Annotated[Mapping[ProgressKey, _Phrase], FROZEN, PLAIN] = Field(
+    greeting: Phrase
+    echo_frame: Phrase
+    notices: Annotated[Mapping[NoticeKind, Phrase], AfterValidator(_every_kind), FROZEN, PLAIN]
+    progress: Annotated[Mapping[ProgressKey, Phrase], FROZEN, PLAIN] = Field(
         default_factory=dict, validate_default=True
     )
 
@@ -244,7 +197,7 @@ class VoiceAgent(Declared):
     name: str
     # Given as any sequence (a list, as the design writes it), kept as a tuple.
     languages: Sequence[Annotated[Language, BeforeValidator(_a_language)]]
-    pronounce: _Pronunciations = Field(default_factory=dict, validate_default=True)
+    pronounce: DeclaredPronunciations = Field(default_factory=dict, validate_default=True)
     phrases: Phrases = Field(default_factory=Phrases.defaults)
     instructions: Instructions | None = None
     tools: Sequence[Annotated[DeclaredTool, PlainValidator(a_tool)]] = ()
