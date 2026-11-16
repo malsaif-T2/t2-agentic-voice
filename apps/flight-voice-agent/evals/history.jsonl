@@ -1,0 +1,1 @@
+{"kind":"flights","time":"2026-11-16T22:56:25.503998Z","run":"f-dev-1","commit":"dc5b8c37987c5febce2ee21e771ba39473358747","split":"dev","model":"openai/gpt-oss-120b","effort":"medium","session":1,"complete":false,"stopped":"smoke_failed","plays":0,"passed":0,"played":28,"violations":0,"cost_usd":0.005443,"requests":{"openai/gpt-oss-120b":3}}
