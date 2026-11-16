@@ -73,6 +73,12 @@ the rest of that reply is then in the new language (its prompt, its clauses' voi
 context), the call moves, and the speech-to-text bridge is told after the step. A language the
 agent does not speak is refused to the model as a tool error, and the call stays where it is.
 
+An action's read-back is never confirmed across a move. When the call moves while a read-back
+waits for its answer, the turn that moved it is no answer: the read-back is read again in the
+new language, from the same draft, and only a yes after that new read-back played in full
+confirms it, with its own receipt (invariant 1; `voice/session/read_back_moved.py`). An action
+with no lines in the new language is declined instead, and the talker answers the turn.
+
 ## Each turn's language from a classifier
 
 `stt.live_language = "classified"` (D-086, provisional) sends each turn to Whisper in the

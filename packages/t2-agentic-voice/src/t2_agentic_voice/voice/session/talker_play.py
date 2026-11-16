@@ -159,7 +159,8 @@ class TalkPlayer:
                 emit(GuardBlocked(call_id=call_id, turn_id=turn_id, at=wall, reason=reason))
                 await self._told(talk, reply, tag, at)
             case LanguageMoved(language=tag):
-                talk.language = tag if tool_moved(self._setup, tag) is not None else talk.language
+                moved = tool_moved(self._setup, tag, turn_id)
+                talk.language = tag if moved is not None else talk.language
             case ReadBackRequested(plan=plan):  # its lines are templates: said, never guarded
                 talk.said, talk.language = talk.said + 1, plan.language
                 await self._confirming.read(reply, plan, at)

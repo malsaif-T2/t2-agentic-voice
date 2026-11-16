@@ -9,7 +9,9 @@ the caller moved the call to, in three ways:
 - the talker's `switch_language` tool, for any other wording (actions/language_tool.py; the
   talker's `LanguageMoved`).
 
-A move the bridge did not make itself is named to it after the step (`untold`, call.py).
+A move the bridge did not make itself is named to it after the step (`untold`, call.py). A
+read-back said before a move is read again in the new language before it can be confirmed
+(`moved_on`; read_back_moved.py).
 
 The session's notices, its fixed phrases, the echo, the overlap words and a reply's fallback
 tag read it; a reply follows each turn's heard language (agent/language.py), and a turn that asked
@@ -20,6 +22,7 @@ from __future__ import annotations
 
 from collections.abc import Sequence
 
+from t2_agentic_voice.core.events import TurnId
 from t2_agentic_voice.core.settings.tts import LanguageTag
 from t2_agentic_voice.core.settings.words import LanguageCode
 from t2_agentic_voice.domain.declaration import Language
@@ -34,11 +37,17 @@ class CallLanguage:
         self.language, self.moves = language, moves
         self._languages = tuple(languages)
         self._told = language  # the language the speech-to-text bridge was last named
+        self.moved_on: TurnId | None = None  # the turn the call last moved on
 
     @property
     def tag(self) -> LanguageTag:
         """The current language's tag."""
         return self.language.tag
+
+    @property
+    def primary(self) -> LanguageCode:
+        """The current language's primary code."""
+        return self.language.primary
 
     @property
     def spoken(self) -> list[LanguageTag]:
@@ -61,15 +70,15 @@ class CallLanguage:
         asked = self.asked(text)
         return None if asked is None else asked.tag
 
-    def move(self, language: str | None, *, told: bool = False) -> Language | None:
-        """Move the call to the agent's language of `language` (a tag or a code): that
-        language when the call moved, None when it may not move, the agent speaks no such
-        language, or the call is held in it already. `told`: the speech-to-text bridge moved
-        to it already (`untold`)."""
+    def move(self, language: str | None, *, on: TurnId, told: bool = False) -> Language | None:
+        """Move the call, on the turn `on` (its words, or the reply to it), to the agent's
+        language of `language` (a tag or a code): that language when the call moved, None when
+        it may not move, the agent speaks no such language, or the call is held in it already.
+        `told`: the speech-to-text bridge moved to it already (`untold`)."""
         found = self.of(language) if self.moves else None
         if found is None or found.primary == self.language.primary:
             return None
-        self.language = found
+        self.language, self.moved_on = found, on
         self._told = found if told else self._told
         return found
 

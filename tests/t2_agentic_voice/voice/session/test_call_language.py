@@ -159,14 +159,20 @@ def test_under_session_nothing_moves() -> None:
     assert talker.turns[0].asked is None
 
 
+def _moved_on(now: CallLanguage) -> int | None:
+    return now.moved_on
+
+
 def test_the_call_language_moves_only_to_another_of_the_agents() -> None:
     now = CallLanguage(ARABIC, AGENT.languages, moves=True)
-    assert now.move("fr") is None and now.move("ar") is None and now.move("ar-SA") is None
+    assert _moved_on(now) is None
+    assert now.move("fr", on=1) is None and now.move("ar", on=1) is None
+    assert now.move("ar-SA", on=1) is None
     assert now.asked("what time is it") is None
     assert now.asked_tag("English please") == "en"
-    assert now.move("en") == ENGLISH and now.tag == "en"
+    assert now.move("en", on=2) == ENGLISH and now.tag == "en" and _moved_on(now) == 2
     assert now.spoken == ["en", "ar-SA"]
     assert now.untold() == "en" and now.untold() is None  # named to the bridge once
-    assert now.move("ar", told=True) == ARABIC and now.untold() is None
+    assert now.move("ar", on=3, told=True) == ARABIC and now.untold() is None
     fixed = CallLanguage(ARABIC, AGENT.languages, moves=False)
-    assert fixed.move("en") is None and fixed.asked("English please") is None
+    assert fixed.move("en", on=1) is None and fixed.asked("English please") is None
