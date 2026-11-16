@@ -133,8 +133,9 @@ async def hand_typed(
 ) -> TurnSaid:
     """Hand the turn `turn_id`, `text` typed, to the session as heard words (text_call.py's
     injections): its speech for `len(text) / chars_per_second` seconds and the speech
-    detector's stop delay, then its transcript at once, an overlap's whole overlap part first;
-    the turn as said."""
+    detector's stop delay, then its transcript at once, in the call's language as it stands
+    (a real call's speech-to-text is told a move), an overlap's whole overlap part first; the
+    turn as said."""
     start = clock.now()
     first_reply = session.playback.next_id
     side.hand(TurnOpened(turn_id=turn_id, at=start, speech_at=start))
@@ -142,7 +143,7 @@ async def hand_typed(
     speech_s = max(len(text), 1) / chars_per_second
     await driver.advance(speech_s + session.setup.settings.turns.vad_stop_ms / 1000)
     end = clock.now()
-    heard = Transcript(text=text, language=session.setup.language.primary)
+    heard = Transcript(text=text, language=session.setup.now.language.primary)  # as it stands
     own = Transcribed(
         turn_id=turn_id, at=end, audio_s=speech_s, sent_at=end, transcript=heard, source="typed"
     )

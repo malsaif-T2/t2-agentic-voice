@@ -128,11 +128,12 @@ def test_every_flight_a_read_back_holds_flies_on_its_day_with_seats() -> None:
     assert legs >= 25
 
 
-def test_needs_come_only_from_the_closed_list_and_the_switch_waits() -> None:
+def test_needs_come_only_from_the_closed_list_and_the_switch_plays() -> None:
     assert list(NEEDS) == ["language_switch"]
     assert all(c.name == name and len(c.doc) > 40 for name, c in NEEDS.items())
     assert {n for s in SCENARIOS for n in s.needs} <= set(NEEDS)
-    assert [s.id for s in SCENARIOS if waiting(s)] == [
+    assert [s.id for s in SCENARIOS if waiting(s)] == []
+    assert [s.id for s in SCENARIOS if s.needs] == [
         "f09_switch_ar_to_en",
         "f10_switch_en_to_ar",
         "h06_switch_at_read_back_saudi",

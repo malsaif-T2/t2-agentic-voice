@@ -146,7 +146,8 @@ class _Run:
 
     async def _one(self, scenario: Scenario, repeat: int, *, smoke: bool = False) -> PlayRecord:
         start = self.parts.clock()
-        read = await self.parts.play(scenario, self.paced, self.settings)
+        settings = setup.play_settings(scenario, self.settings)
+        read = await self.parts.play(scenario, self.paced, settings)
         return record_of(scenario, repeat, read, self.parts.clock() - start, smoke=smoke)
 
     def _stopped(self) -> Stopped | None:

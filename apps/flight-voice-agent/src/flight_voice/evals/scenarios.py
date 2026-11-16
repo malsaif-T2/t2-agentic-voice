@@ -99,11 +99,12 @@ NEEDS: Final[Mapping[str, Capability]] = {
     "language_switch": Capability(
         "language_switch",
         "The caller moves the call to the agent's other language mid-call, by asking in any "
-        "words or by speaking it (D-103). It does not play in text yet: a typed turn is heard "
-        "in the language the call joined in, even after the call moved, so a short turn in the "
-        "new language (a pick, a yes) is answered and judged in the old one; a real call's "
-        "speech-to-text is told the new language.",
-        plays=False,
+        "words or by speaking it (D-103). It plays under `stt.live_language = detected` "
+        "(run_setup.py's `play_settings`), a typed turn heard in the call's language as it "
+        "stands, as a real call's speech-to-text is told a move (`TextCall`). In text the call "
+        "moves on a switch request or the talker's tool alone: no second speech-to-text "
+        "request hears the other language.",
+        plays=True,
     ),
 }
 

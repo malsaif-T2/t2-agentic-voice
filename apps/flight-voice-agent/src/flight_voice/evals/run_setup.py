@@ -10,6 +10,8 @@ model's price and limits, and the dry estimate of the run's most spend.
   (USD per million tokens read and written) and its limits (requests and tokens a minute,
   requests a day), the defaults of `PRICES` and `LIMITS` (the owner's key, as Ole5's runs give
   them) or `--price` and `--limits`; a model with neither is refused.
+- **A play's settings** (`play_settings`): the run's, a call that needs `language_switch` under
+  `stt.live_language = "detected"` (D-103).
 - **The dry estimate** (`most_usd`): for each play, each turn's most talker requests
   (`TALKER_REQUESTS`, the library's most a turn), an overlap's request for each turn said over
   the agent, and the yes rule's check for each turn that may answer a read-back (one said over
@@ -120,6 +122,16 @@ def call_settings(model: str, effort: str) -> VoiceSettings:
     return VoiceSettings.model_validate(
         {"env": "test", "llm": {"model": model, "reasoning_effort": effort}}
     )
+
+
+def play_settings(scenario: Scenario, settings: VoiceSettings) -> VoiceSettings:
+    """The settings `scenario` plays with: the run's, but `stt.live_language = "detected"`
+    (D-103, off by default) for one that needs `language_switch`, the setting that lets a call
+    move; every other scenario plays the app's default."""
+    if "language_switch" not in scenario.needs:
+        return settings
+    stt = settings.stt.model_copy(update={"live_language": "detected"})
+    return settings.model_copy(update={"stt": stt})
 
 
 def models_of(model: str) -> tuple[str, ...]:

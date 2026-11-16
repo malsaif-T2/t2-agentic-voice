@@ -6,9 +6,9 @@ is sent, the main checkout, a dirty tree, an out folder inside the worktree or i
 estimate past the cap; a smoke play that breaks a rule stops it; and a run stopped at the cap
 goes on with --resume once its history line is committed, each play played once, and a resume
 that differs is refused: in its command line, or at a commit that changed more than the run
-histories. Named, `--split held-out` lists the committed held-out set, each scenario that
-plays once a repeat and the one that waits skipped, behind the dev smoke play (the fake play
-alone: no held-out scenario is played here). The fake git's HEAD moves on with each fake
+histories. Named, `--split held-out` lists the committed held-out set, each scenario once a
+repeat, behind the dev smoke play, the switch call alone under `stt.live_language = "detected"`
+(the fake play alone: no held-out scenario is played here). The fake git's HEAD moves on with each fake
 commit, and its tree is dirty while the history file holds a line not committed."""
 
 from __future__ import annotations
@@ -90,18 +90,21 @@ class Tree:
 
 
 class Plays:
-    """A fake play: each scenario's id kept, an empty play returned; optionally the paced
-    model stopped at the `stop_at`th play, or a violation on every play."""
+    """A fake play: each scenario's id kept with the `stt.live_language` it played under, an
+    empty play returned; optionally the paced model stopped at the `stop_at`th play, or a
+    violation on every play."""
 
     def __init__(self, *, stop_at: int | None = None, violations: tuple[str, ...] = ()) -> None:
         self.played: list[str] = []
         self.models: set[str] = set()
+        self.live: dict[str, str] = {}
         self.stop_at, self.violations = stop_at, violations
 
     async def __call__(
         self, scenario: Scenario, llm: ChatModel, settings: VoiceSettings
     ) -> PlayRead:
         self.played.append(scenario.id)
+        self.live[scenario.id] = settings.stt.live_language
         if self.stop_at is not None and len(self.played) == self.stop_at:
             assert isinstance(llm, PacedChat)
             llm.stopped = "cap"
@@ -164,13 +167,13 @@ def test_the_held_out_split_named_lists_the_committed_held_out_set(tmp_path: Pat
     assert _run(tree, plays, "--split", "held-out", "--repeats", "1", out=out) == 0
     run = json.loads((out / "run.json").read_text(encoding="utf-8"))
     assert run["split"] == "held-out" and run["data"] == [s.id for s in held_out]
-    assert plays.played == [TWO[0], *(s.id for s in held_out if s.id not in waits)]
+    assert waits == [] and plays.played == [TWO[0], *(s.id for s in held_out)]
     card = json.loads((out / "scorecard.json").read_text(encoding="utf-8"))
-    assert (
-        [c["id"] for c in card["scenarios"] if c["skipped"]]
-        == waits
-        == ["h06_switch_at_read_back_saudi"]
-    )
+    assert [c["id"] for c in card["scenarios"] if c["skipped"]] == []
+    # The switch call alone plays under `detected` (D-103); every other the app's default.
+    moved = {i for i, live in plays.live.items() if live == "detected"}
+    assert moved == {"h06_switch_at_read_back_saudi"}
+    assert set(plays.live.values()) == {"session", "detected"}
 
 
 @pytest.mark.parametrize(
