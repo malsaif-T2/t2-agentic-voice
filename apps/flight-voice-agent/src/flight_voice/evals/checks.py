@@ -190,8 +190,8 @@ def turn_checks(
     if options_said(text) > turn.max_options:
         yield "max_options"
     earlier = [said(own(r.heard)) for r in reads[:n] if r is not None]
-    reading = any(c.template for c in read.heard)
-    if find_repeat(text, earlier, asks_repeat=turn.asks_repeat, read_back=reading) is not None:
+    # A read-back said again is exempt as the runtime's lines are left out of `text` (`own`).
+    if find_repeat(text, earlier, asks_repeat=turn.asks_repeat) is not None:
         yield "repeat"
     if turn.repeat_of_cut and not _cut_repeated(read, reads[n - 2] if n >= 2 else None):
         yield "cut_repeat"

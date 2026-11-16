@@ -117,10 +117,12 @@ class RunInfo(_Model):
 
 
 class Session(_Model):
-    """One session of a run: when it began, why it stopped (None when it ran to its end), the
-    plays it recorded, and what it spent."""
+    """One session of a run: when it began, at which commit (the run's, or a later one adding
+    only history lines), why it stopped (None when it ran to its end), the plays it recorded,
+    and what it spent."""
 
     started_at: datetime
+    commit: str
     stopped: Stopped | None = None
     plays: int = 0
     spend: tuple[ModelSpend, ...] = ()

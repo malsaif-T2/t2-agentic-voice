@@ -7,7 +7,9 @@ whole and then moved into place, and `scorecard.md`) and a copy of each session'
 A new run's folder must be one a run may write to (the library's `check_out`: a folder that does
 not exist yet, outside the run's own worktree and every other linked one, and inside the main
 checkout only where git ignores it, its `var/`); a resumed run's is the folder of a run already
-begun, outside the run's worktree. While a session runs the folder holds `run.lock`, made only
+begun, outside the run's worktree, at the run's commit or a later one that changed only the apps'
+run histories (`HISTORIES`: a stopped session's history line, committed so the tree is clean
+again). While a session runs the folder holds `run.lock`, made only
 when no other run holds it, so two sessions never write one folder: a folder holding it is in
 use, and refused. Its name, the run's, is a name (`NAME`).
 """
@@ -34,6 +36,7 @@ SCORECARD_MD: Final = "scorecard.md"
 HISTORY_FILE: Final = "history.jsonl"
 LOCK_FILE: Final = "run.lock"
 NAME: Final = re.compile(r"^[a-z0-9][a-z0-9._-]{0,79}$")
+HISTORIES: Final = re.compile(r"^apps/[^/]+/evals/history\.jsonl$")  # each app's run history
 
 
 def folder_for(out: Path, *, resume: bool, checkout: Checkout, git: Git) -> RunFolder:
@@ -98,17 +101,25 @@ class RunFolder:
     def info(self) -> RunInfo:
         return RunInfo.model_validate_json(self._read(RUN_FILE, RUN_FILE))
 
-    def resumed(self, info: RunInfo) -> RunInfo:
-        """The run begun in the folder, refused unless it is `info` but for when it began and
-        its estimate."""
+    def resumed(self, info: RunInfo, *, git: Git, top: Path) -> RunInfo:
+        """The run begun in the folder, its first commit kept, refused unless it is `info` but
+        for when it began, its estimate, and a commit `histories_only` allows (`git` in `top`)."""
         earlier = self.info()
         kept = {"started_at", "estimate_usd"}
         if differing := [
-            n for n in RunInfo.model_fields if n not in kept and _differs(n, earlier, info)
+            n
+            for n in RunInfo.model_fields
+            if n not in kept
+            and (
+                not histories_only(earlier.commit, info.commit, git, top)
+                if n == "commit"
+                else _differs(n, earlier, info)
+            )
         ]:
             raise run_refused(
                 f"--resume: the run in --out differs in {', '.join(differing)}",
-                "go on at the same commit, with the same command line and scenarios",
+                "go on at the run's commit, or one that only adds its history lines, with the "
+                "same command line and scenarios",
             )
         return earlier
 
@@ -150,6 +161,18 @@ class RunFolder:
 
 def _differs(name: str, one: RunInfo, two: RunInfo) -> bool:
     return bool(getattr(one, name) != getattr(two, name))
+
+
+def histories_only(earlier: str, now: str, git: Git, top: Path) -> bool:
+    """Whether commit `now` is `earlier`, or a later one whose changes since it are only to the
+    apps' run histories (`HISTORIES`), as `git` says in `top`."""
+    if now == earlier:
+        return True
+    if git(["merge-base", "--is-ancestor", earlier, now], top).returncode != 0:
+        return False
+    changed = git(["diff", "--name-only", "-z", earlier, now], top)
+    names = [name for name in changed.stdout.split("\0") if name]
+    return changed.returncode == 0 and all(HISTORIES.fullmatch(name) for name in names)
 
 
 def read_folder(folder: RunFolder) -> tuple[list[PlayRecord], list[Session]]:

@@ -55,7 +55,7 @@ OUTCOME_KINDS: Final[tuple[OutcomeKind, ...]] = get_args(OutcomeKind)
 Stuck = Literal["stuck", "provider"]
 ClockKind = Literal["virtual", "system"]
 # Builds a call as `TextCall(agent, llm=..., settings=..., caller=..., language=...,
-# clock=...)`.
+# clock=..., today=...)`.
 CallFactory = Callable[..., TextCall]
 # Builds the agent a play measures, over its airline and trip book: the app's own.
 AgentOf = Callable[[Airline, TripBook], VoiceAgent]
@@ -280,6 +280,7 @@ async def play(
             caller=demo_caller(),
             language=call_language(scenario),
             clock=clock,
+            today=scenario.today,
         ) as held:
             failure: Stuck | None = None
             try:

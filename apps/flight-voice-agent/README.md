@@ -72,7 +72,9 @@ gets each play's record (`plays.jsonl`, each turn's words kept for reading a fai
 in at least two of its three plays, and one violation in any play breaks the hard constraint.
 Each session appends one line to `evals/history.jsonl`, which the library's day counter reads
 with Ole5's, so both apps' runs share the key's day: commit that line before `--resume`, which
-goes on with a run stopped by the cap, the day's limit or an interrupt, each play played once.
+goes on with a run stopped by the cap, the day's limit or an interrupt, each play played once
+(at the run's commit, or a later one that changed only the apps' `evals/history.jsonl`; the
+run keeps its first commit, and each session records its own).
 It exits 0 when the run is complete, 1 when it is not, 2 when it is refused. `--price` and
 `--limits` give another model's price and limits; the defaults are `gpt-oss-120b`'s as Ole5's
 runs give them.

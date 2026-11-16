@@ -99,7 +99,7 @@ def test_a_record_names_each_failed_check_with_its_turn_and_never_a_text() -> No
 
 def test_the_history_line_is_one_the_days_counter_reads(tmp_path: Path) -> None:
     spent = ModelSpend(model="openai/gpt-oss-120b", requests=12, cost_usd=0.01)
-    session = Session(started_at=BEGAN, plays=3, spend=(spent,), cost_usd=0.01)
+    session = Session(started_at=BEGAN, commit="a" * 40, plays=3, spend=(spent,), cost_usd=0.01)
     played = [_record(True, n) for n in (1, 2, 3)]
     card = scorecard(INFO, [(F01, ())], played, stopped=None, sessions=[session])
     history = tmp_path / "history.jsonl"

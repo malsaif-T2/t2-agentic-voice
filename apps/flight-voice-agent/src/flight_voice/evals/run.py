@@ -22,7 +22,8 @@ model's limits, the day's requests counted from every app's run history (`reques
 the key's day is shared with Ole5's runs. Each play's record is written as it finishes, with a
 progress line of identifiers and verdicts, never a text. Whatever ends the session, it is
 recorded, the scorecard written and one line appended to the app's `evals/history.jsonl` (and
-copied beside the scorecard): commit it before `--resume`, since a dirty tree is refused. Exit 0
+copied beside the scorecard): commit it before `--resume`, since a dirty tree is refused (a
+resume goes on at a later commit that changed only the run histories, folder.py). Exit 0
 when the run is complete, 1 when it is not (the smoke play failed, the cap, the day's limit, an
 interrupt), 2 when it is refused.
 """
@@ -140,6 +141,7 @@ class _Run:
     done: list[PlayRecord]
     sessions: list[Session]
     began: datetime
+    commit: str  # HEAD as this session runs
     records: list[PlayRecord] = field(default_factory=list)
 
     async def _one(self, scenario: Scenario, repeat: int, *, smoke: bool = False) -> PlayRecord:
@@ -190,6 +192,7 @@ class _Run:
         spend = self.paced.spend
         session = Session(
             started_at=self.began,
+            commit=self.commit,
             stopped=stopped,
             plays=len(self.records),
             spend=spend.spent(),
@@ -232,7 +235,7 @@ def _built(args: argparse.Namespace, parts: RunParts) -> _Run:
     began = parts.now()
     data = tuple(s.id for s in split)
     info = setup.run_info(args, folder.out.name, began, checkout.commit, most, prices, limits, data)
-    info = folder.resumed(info) if args.resume else info
+    info = folder.resumed(info, git=parts.git, top=checkout.top) if args.resume else info
     history = checkout.top / setup.HISTORY
     today = requests_today(every_history(history), began.astimezone(UTC).date())
     pacers = {
@@ -265,6 +268,7 @@ def _built(args: argparse.Namespace, parts: RunParts) -> _Run:
         done,
         sessions,
         began,
+        checkout.commit,
     )
 
 

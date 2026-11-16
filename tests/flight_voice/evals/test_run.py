@@ -4,7 +4,10 @@ play, then every scenario once and again until each has its repeats, and writes 
 the scorecard and one history line the library's day counter reads; it refuses, before anything
 is sent, the main checkout, a dirty tree, an out folder inside the worktree or in use, and an
 estimate past the cap; a smoke play that breaks a rule stops it; and a run stopped at the cap
-goes on with --resume, each play played once, and a resume that differs is refused."""
+goes on with --resume once its history line is committed, each play played once, and a resume
+that differs is refused: in its command line, or at a commit that changed more than the run
+histories. The fake git's HEAD moves on with each fake commit, and its tree is dirty while the
+history file holds a line not committed."""
 
 from __future__ import annotations
 
@@ -33,12 +36,15 @@ TWO = ("f01_round_trip_saudi", "f02_one_way_english")
 
 
 class Tree:
-    """A main checkout with a linked worktree in it, as a fake git describes them."""
+    """A main checkout with a linked worktree in it, as a fake git describes them: its commits
+    in order, each with the files it changed, and the history file as last committed."""
 
     def __init__(self, root: Path, *, dirty: bool = False) -> None:
         self.main = root / "main"
         self.top = self.main / ".claude" / "worktrees" / "run"
         self.dirty = dirty
+        self.commits: list[tuple[str, tuple[str, ...]]] = [(COMMIT, ())]
+        self.saved: bytes | None = None
         calls = self.top / run_setup.CALLS
         calls.mkdir(parents=True)
         for name in TWO:
@@ -52,9 +58,15 @@ class Tree:
         if args[0] == "worktree":
             return GitResult(0, f"worktree {self.main}\0HEAD x\0\0worktree {self.top}\0HEAD x\0\0")
         if "HEAD" in args:
-            return GitResult(0, COMMIT + "\n")
+            return GitResult(0, self.commits[-1][0] + "\n")
         if "status" in args:
-            return GitResult(0, " M x\0" if self.dirty else "")
+            return GitResult(0, " M x\0" if self.dirty or self._unsaved() else "")
+        heads = [head for head, _ in self.commits]
+        if args[:2] == ["merge-base", "--is-ancestor"]:
+            return GitResult(0 if heads.index(args[2]) <= heads.index(args[3]) else 1, "")
+        if args[:3] == ["diff", "--name-only", "-z"]:
+            since = self.commits[heads.index(args[3]) + 1 : heads.index(args[4]) + 1]
+            return GitResult(0, "".join(f"{name}\0" for _, names in since for name in names))
         if args[0] == "check-ignore":
             ignored = Path(args[-1]).is_relative_to((self.main / "var").resolve())
             return GitResult(0 if ignored else 1, "")
@@ -63,6 +75,16 @@ class Tree:
     @property
     def history(self) -> Path:
         return self.top / run_setup.HISTORY
+
+    def _unsaved(self) -> bool:
+        return self.history.exists() and self.history.read_bytes() != self.saved
+
+    def commit(self, *also: str) -> str:
+        """A fake commit of the history file, and of the files `also` names; its HEAD."""
+        self.saved = self.history.read_bytes() if self.history.exists() else None
+        head = f"{len(self.commits):x}" * 40
+        self.commits.append((head, (run_setup.HISTORY.as_posix(), *also)))
+        return head
 
 
 class Plays:
@@ -146,6 +168,7 @@ def test_an_out_folder_inside_the_worktree_or_in_use_is_refused(tmp_path: Path) 
     tree, plays = Tree(tmp_path), Plays()
     assert _run(tree, plays, out=tree.top / "var" / "runs" / "f-dev-1") == 2
     assert _run(tree, Plays(stop_at=2)) == 1
+    tree.commit()
     out = tree.main / "var" / "runs" / "f-dev-1"
     (out / LOCK_FILE).write_bytes(b"")
     assert _run(tree, plays, "--resume") == 2
@@ -184,6 +207,8 @@ def test_a_run_stopped_at_the_cap_goes_on_with_resume_each_play_once(tmp_path: P
     tree, first = Tree(tmp_path), Plays(stop_at=3)
     assert _run(tree, first) == 1
     assert first.played == [TWO[0], TWO[0], TWO[1]]  # the third play's record is dropped
+    assert _run(tree, Plays(), "--resume") == 2  # the history line not committed: dirty
+    later = tree.commit()
     assert _run(tree, Plays(), "--resume", "--repeats", "2") == 2  # differs: refused
     again = Plays()
     assert _run(tree, again, "--resume") == 0
@@ -193,8 +218,21 @@ def test_a_run_stopped_at_the_cap_goes_on_with_resume_each_play_once(tmp_path: P
     assert sorted((r["scenario"], r["repeat"]) for r in records) == sorted(
         (name, repeat) for repeat in (1, 2, 3) for name in TWO
     )
-    assert [s["stopped"] for s in _lines(out / "sessions.jsonl")] == ["cap", None]
+    sessions = _lines(out / "sessions.jsonl")
+    assert [(s["stopped"], s["commit"]) for s in sessions] == [("cap", COMMIT), (None, later)]
+    assert json.loads((out / "run.json").read_text(encoding="utf-8"))["commit"] == COMMIT
     assert [line["session"] for line in _lines(tree.history)] == [1, 2]
+
+
+def test_a_resume_at_a_commit_that_changed_more_than_the_histories_is_refused(
+    tmp_path: Path,
+) -> None:
+    tree = Tree(tmp_path)
+    assert _run(tree, Plays(stop_at=3)) == 1
+    tree.commit("apps/flight-voice-agent/src/flight_voice/agent.py")
+    plays = Plays()
+    assert _run(tree, plays, "--resume") == 2
+    assert plays.played == []
 
 
 def test_the_estimate_counts_each_model_request_a_play_may_send() -> None:
@@ -226,6 +264,7 @@ def test_a_set_that_breaks_a_rule_is_refused_but_the_missing_held_out_set(tmp_pa
 def test_a_failed_smoke_plays_violations_stay_counted_when_the_run_goes_on(tmp_path: Path) -> None:
     tree = Tree(tmp_path)
     assert _run(tree, Plays(violations=("rule A: a claim",))) == 1
+    tree.commit()
     assert _run(tree, Plays(), "--resume") == 0
     out = tree.main / "var" / "runs" / "f-dev-1"
     card = json.loads((out / "scorecard.json").read_text(encoding="utf-8"))

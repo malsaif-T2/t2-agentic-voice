@@ -163,16 +163,22 @@ def test_the_words_and_the_options_said_are_counted() -> None:
     assert failed(made, read(times)) == ["max_options"]
 
 
-def test_a_near_repeat_is_caught_and_an_asked_repeat_and_a_read_back_are_exempt() -> None:
+def test_a_near_repeat_is_caught_and_an_asked_repeat_is_exempt() -> None:
     first = read(clause("The flights to London leave at nine and at two."), index=0)
     near = read(clause("The flights to London leave at nine, and one at night."), index=1)
     made = scenario({"says": "London"}, {"says": "and then?"})
     assert failed(made, first, near) == ["repeat"]
     asked = scenario({"says": "London"}, {"says": "say it again", "asks_repeat": True})
     assert failed(asked, first, near) == []
-    line = clause("One way to London on Thursday.", template=True)
-    again = read(clause("One way to London on Thursday.", template=True), line, index=1)
-    assert failed(made, read(line, index=0), again) == []
+
+
+def test_the_talkers_own_repeat_is_caught_beside_a_read_back_said_again() -> None:
+    made = scenario({"says": "London"}, {"says": "the earliest"})
+    mine = clause("Sure, the morning flight to London on Thursday is the earliest one.")
+    line = clause("One way to London on Thursday, economy, one traveler.", template=True)
+    before = read(mine, line, index=0)
+    assert failed(made, before, read(line, index=1)) == []
+    assert failed(made, before, read(mine, line, index=1)) == ["repeat"]
 
 
 def test_a_cut_repeat_is_measured_on_the_cut_replys_whole_text() -> None:

@@ -136,6 +136,25 @@ def test_each_play_gets_a_new_airline_with_the_scenarios_modes_and_today() -> No
     assert one.today().isoformat() == "2026-12-01"
 
 
+def _prompted(scenario: Scenario) -> str:
+    """The system message of the first request a play of `scenario` sends the model."""
+    systems: list[str] = []
+
+    def talker(request: ChatRequest) -> Sequence[ScriptStep]:
+        systems.extend(m.content for m in request.messages if m.role == "system")
+        return ScriptedLLM.reply("Okay.")
+
+    _played(scenario, FunctionLLM(talker))
+    return systems[0]
+
+
+def test_the_talkers_prompt_says_the_scenarios_today_as_the_airline_does() -> None:
+    one_turn = [{"says": ASKED}]
+    assert "Today is 2026-11-16." in _prompted(_scenario(turns=one_turn))
+    later = _scenario(turns=one_turn, today="2026-12-01")
+    assert "Today is 2026-12-01." in _prompted(later)
+
+
 def test_a_stop_cuts_the_reply_and_the_turn_after_it_is_read() -> None:
     long = " ".join(["The flights to Dubai leave in the morning and at night."] * 6)
 
