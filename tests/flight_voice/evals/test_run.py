@@ -23,7 +23,7 @@ from typing import Any
 
 import pytest
 from flight_voice.evals import run_setup
-from flight_voice.evals.call import PlayRead
+from flight_voice.evals.call import PlayRead, Stuck
 from flight_voice.evals.folder import LOCK_FILE
 from flight_voice.evals.run import RunParts, main
 from flight_voice.evals.scenarios import CALLS, Scenario, load
@@ -94,8 +94,15 @@ class Plays:
     empty play returned; optionally the paced model stopped at the `stop_at`th play, or a
     violation on every play."""
 
-    def __init__(self, *, stop_at: int | None = None, violations: tuple[str, ...] = ()) -> None:
+    def __init__(
+        self,
+        *,
+        stop_at: int | None = None,
+        violations: tuple[str, ...] = (),
+        failure: Stuck | None = None,
+    ) -> None:
         self.played: list[str] = []
+        self.failure = failure
         self.models: set[str] = set()
         self.live: dict[str, str] = {}
         self.stop_at, self.violations = stop_at, violations
@@ -109,7 +116,10 @@ class Plays:
             assert isinstance(llm, PacedChat)
             llm.stopped = "cap"
         self.models.add(settings.llm.model)
-        return PlayRead(turns=(None,) * len(scenario.turns), violations=self.violations)
+        failure = self.failure if len(self.played) == 1 else None  # the smoke play's alone
+        return PlayRead(
+            turns=(None,) * len(scenario.turns), violations=self.violations, failure=failure
+        )
 
 
 def _parts(tree: Tree, plays: Plays, *, folder: Path | None = None) -> RunParts:
@@ -226,6 +236,20 @@ def test_a_smoke_play_that_breaks_a_rule_stops_the_run(tmp_path: Path) -> None:
         (tree.main / "var" / "runs" / "f-dev-1" / "scorecard.json").read_text("utf-8")
     )
     assert card["stopped"] == "smoke_failed" and not card["held"] and not card["complete"]
+
+
+def test_a_smoke_play_whose_request_failed_stops_the_run_and_one_stuck_goes_on(
+    tmp_path: Path,
+) -> None:
+    tree, failed = Tree(tmp_path), Plays(failure="provider")
+    assert _run(tree, failed) == 1 and failed.played == [TWO[0]]
+    tree.commit()  # the stopped run's history line
+    stuck = Plays(failure="stuck")
+    out = tree.main / "var" / "runs" / "f-dev-2"
+    assert _run(tree, stuck, out=out) == 0  # the agent never reached a moment: its verdict
+    assert stuck.played == [TWO[0], TWO[0], TWO[1], TWO[0], TWO[1], TWO[0], TWO[1]]
+    first = _lines(out / "plays.jsonl")[0]
+    assert (first["smoke"], first["failure"]) == (True, "stuck")
 
 
 def test_a_run_stopped_at_the_cap_goes_on_with_resume_each_play_once(tmp_path: Path) -> None:

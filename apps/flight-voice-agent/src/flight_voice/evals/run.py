@@ -15,17 +15,17 @@ and the yes rule's check for each turn that may answer a read-back, each reading
 `--input-budget-tokens` and writing its model's most, at each model's price.
 
 **Then** the smoke play, the first dev scenario once, which must end with no failed, retried or
-refused request and no violation; then every scenario of the split once, then again, until each
-has its repeats (a scenario that needs a capability that does not play yet is skipped and
-reported). Every model request goes through the library's `PacedChat`, under the cap and each
-model's limits, the day's requests counted from every app's run history (`requests_today`), so
-the key's day is shared with Ole5's runs. Each play's record is written as it finishes, with a
-progress line of identifiers and verdicts, never a text. Whatever ends the session, it is
-recorded, the scorecard written and one line appended to the app's `evals/history.jsonl` (and
-copied beside the scorecard): commit it before `--resume`, since a dirty tree is refused (a
-resume goes on at a later commit that changed only the run histories, folder.py). Exit 0
-when the run is complete, 1 when it is not (the smoke play failed, the cap, the day's limit, an
-interrupt), 2 when it is refused.
+refused request and no violation (one stuck on the agent's own turn is its verdict, kept); then
+every scenario of the split once, then again, until each has its repeats (a scenario that needs a
+capability that does not play yet is skipped and reported). Every model request goes through the
+library's `PacedChat`, under the cap and each model's limits, the day's requests counted from every
+app's run history (`requests_today`), so the key's day is shared with Ole5's runs. Each play's
+record is written as it finishes, with a progress line of identifiers and verdicts, never a text.
+Whatever ends the session, it is recorded, the scorecard written and one line appended to the app's
+`evals/history.jsonl` (and copied beside the scorecard): commit it before `--resume`, since a dirty
+tree is refused (a resume goes on at a later commit that changed only the run histories,
+folder.py). Exit 0 when the run is complete, 1 when it is not (the smoke play failed, the cap, the
+day's limit, an interrupt), 2 when it is refused.
 """
 
 from __future__ import annotations
@@ -160,9 +160,11 @@ class _Run:
             smoke = await self._one(self.smoke, 0, smoke=True)
             if (stopped := self._stopped()) is not None:
                 return stopped
-            if smoke.failure is not None or smoke.violations or spend.retries_and_failures():
+            broken = smoke.failure == "provider" or smoke.violations or spend.retries_and_failures()
+            if broken or smoke.failure is not None:  # or stuck on the agent's own turn: kept
                 self.folder.add_play(smoke)
                 self.records.append(smoke)
+            if broken:
                 log.error("smoke_failed", scenario=smoke.scenario, failure=smoke.failure)
                 return "smoke_failed"
             log.info("smoke_passed", scenario=smoke.scenario, requests=spend.requests())

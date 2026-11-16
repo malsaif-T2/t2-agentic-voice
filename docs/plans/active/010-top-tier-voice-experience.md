@@ -1170,6 +1170,14 @@ Block 0.
   requests are as they were (a test holds it, GP-18); the flight tools' schemas are tested to hold
   none; the guide says to try a new tool once on the real model. f01's first turn, replayed on
   Groq, searched with `{kind: weekday, weekday: thu}` and listed the flights.
+- 2026-11-17: run F's second session (f-dev-2) asked nothing Groq refused, and its smoke play
+  stopped the run as `stuck`: f01's agent searched again and answered nothing on "the morning one"
+  (the library's error notice for an empty answer), so the read-back its last turn waits for never
+  came; replayed, the same turns chose the morning flight. The runner stopped on any failure,
+  stricter than its rule (the flight spec's 7.3: no failed, retried or refused request and no
+  violation): a smoke play stuck on the agent's own turn is now its verdict, kept, and the run goes
+  on; a provider's failure, a retry or a violation still stops it. Seen for the baseline: an empty
+  answer after a tool's result is told as an error, a library matter (TD-115's row).
 
 ## Decision log
 
