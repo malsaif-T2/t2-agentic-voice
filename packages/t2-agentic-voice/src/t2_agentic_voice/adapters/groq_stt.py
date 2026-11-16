@@ -13,6 +13,8 @@ with `GROQ_LOG` undone), and adds its own body's rule:
 - Each answer's headroom, the requests and tokens Groq says the key has left, rides on its
   `Transcript`: the adapter asks for the SDK's raw response (`raw_response`), whose headers it
   reads (`headroom`) before it parses the answer as before.
+- `warm_up()` (the `WarmUp` port, domain/ports/connection_warmth.py) opens the adapter's
+  connection with a GET of Groq's model list, which costs nothing, as a call joins.
 
 The SDK's types stay inside this module; no public signature names one (the design's 5.3).
 Public through the `groq` facade (D-021).
@@ -46,8 +48,9 @@ from t2_agentic_voice.domain.words import heard_code
 
 class GroqSTT:
     """Speech-to-text with Groq's `whisper-large-v3` or `whisper-large-v3-turbo`; a
-    `SpeechToText`. `transport` replaces the HTTP transport (a test's fake one); by default the
-    adapter talks to `base_url` over its own connection pool. Close it with `aclose()`."""
+    `SpeechToText` and a `WarmUp`. `transport` replaces the HTTP transport (a test's fake one);
+    by default the adapter talks to `base_url` over its own connection pool. Close it with
+    `aclose()`."""
 
     name: str = "groq"
     data_flow: DataFlow = DATA_FLOW
@@ -142,6 +145,18 @@ class GroqSTT:
             provider_error = failure(error)
         else:
             return transcript
+        raise provider_error from None
+
+    async def warm_up(self) -> None:
+        """Open the adapter's connection with a GET of Groq's model list, which costs nothing
+        (the `WarmUp` port), within `timeout_s`. ProviderError on its failure."""
+        try:
+            async with asyncio.timeout(self._timeout_s):
+                await self._groq.models.list()
+        except Exception as error:  # every failure, the SDK's and the answer's; never a cancel
+            provider_error = failure(error)
+        else:
+            return
         raise provider_error from None
 
     async def aclose(self) -> None:

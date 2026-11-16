@@ -40,7 +40,14 @@ a `groq` type (the design's 5.3). Public through the `groq` facade (D-021).
   50 ms, leaving no task, and the connection closed with it, since a half-read answer cannot
   carry another request.
 - **Connections** stay open between requests for five minutes (`groq_client.LIMITS`), not
-  httpx's 5 s (the prototype's D41).
+  httpx's 5 s (the prototype's D41). `warm()` (the `ConnectionWarmth` port) says whether the
+  next request goes out on one of them, from the adapter's own record, never httpx's internals:
+  true while less than the keep-alive expiry has passed since a request ended, read to its end
+  and closed; false before any, and after a stream that failed or was cancelled, which closes
+  its connection. `warm_up()` (the `WarmUp` port) opens one with a GET of Groq's model list,
+  which costs nothing. With `reopen_after_cancel` (`warmup.after_cancel`), a cancelled or
+  closed stream has a fresh connection opened that way in the background (TD-115), so the next
+  request does not pay a new handshake; a failure there is logged by its type alone.
 - **Tracing.** The adapter puts nothing on a span, as the speech adapters do not: its usage rides
   on its `Usage` event, and the talker times the first token on the call's clock, for the span
   the session records. No prompt or reply text goes anywhere but the request.
@@ -50,6 +57,7 @@ from __future__ import annotations
 
 import asyncio
 from collections.abc import AsyncIterator
+from time import monotonic
 
 import httpx
 from pydantic import JsonValue, SecretStr
@@ -64,6 +72,7 @@ from t2_agentic_voice.adapters.groq_chat_wire import (
 )
 from t2_agentic_voice.adapters.groq_client import (
     DATA_FLOW,
+    LIMITS,
     APIConnectionError,
     APIError,
     APIStatusError,
@@ -76,19 +85,22 @@ from t2_agentic_voice.adapters.groq_client import (
 )
 from t2_agentic_voice.core.config import VoiceSettings
 from t2_agentic_voice.core.errors import ProviderError
+from t2_agentic_voice.core.logging import get_logger
 from t2_agentic_voice.core.settings.llm import REASONING_MODELS, LlmSettings
 from t2_agentic_voice.domain.ports.chat_model import ChatEvent, ChatRequest
 from t2_agentic_voice.domain.ports.speech_to_text import DataFlow
+
+log = get_logger(__name__)
 
 # The SDK's chat body opens with its first field, the messages (above).
 _OPENS_WITH = b'{"messages":'
 
 
 class GroqChat:
-    """The chat models on Groq; a `ChatModel`. Each request names its own model
-    (`llm.model`), so one adapter serves every arm of a run. `transport` replaces the HTTP
-    transport (a test's fake one); by default the adapter talks to `base_url` over its own
-    connection pool. Close it with `aclose()`."""
+    """The chat models on Groq; a `ChatModel`, its `ConnectionWarmth` and its `WarmUp`. Each
+    request names its own model (`llm.model`), so one adapter serves every arm of a run.
+    `transport` replaces the HTTP transport (a test's fake one); by default the adapter talks to
+    `base_url` over its own connection pool. Close it with `aclose()`."""
 
     name: str = "groq"
     data_flow: DataFlow = DATA_FLOW
@@ -100,6 +112,7 @@ class GroqChat:
         base_url: str,
         timeout_s: float,
         transport: httpx.AsyncBaseTransport | None = None,
+        reopen_after_cancel: bool = False,
     ) -> None:
         """The adapter for these values, which it refuses as the settings would (GP-20), each
         error naming the setting and never the value."""
@@ -122,6 +135,12 @@ class GroqChat:
             hook=hook,
             transport=transport,
         )
+        # When a request last ended read to its end, on monotonic(); None: no connection is
+        # known to be open.
+        self._finished_at: float | None = None
+        self._reopen = reopen_after_cancel
+        self._reopening: asyncio.Task[None] | None = None
+        self._closed = False
 
     @classmethod
     def from_settings(
@@ -129,13 +148,15 @@ class GroqChat:
     ) -> GroqChat:
         """The adapter the settings describe: `groq.resolved_api_key()`, `groq.base_url` and
         `llm.timeout_s`. ConfigurationError naming `T2V_GROQ__API_KEY` (under the settings'
-        prefix) when no key is set, as `GroqSTT`'s."""
+        prefix) when no key is set, as `GroqSTT`'s; `warmup.after_cancel` its
+        `reopen_after_cancel`."""
         key = settings_key(settings)
         return cls(
             api_key=key,
             base_url=settings.groq.base_url,
             timeout_s=settings.llm.timeout_s,
             transport=transport,
+            reopen_after_cancel=settings.warmup.after_cancel,
         )
 
     def __repr__(self) -> str:
@@ -171,16 +192,69 @@ class GroqChat:
                     for event in reply.read(chunk.to_dict(warnings=False)):
                         yield event
             ending = reply.end()
+            self._finished_at = monotonic()  # read to its end and closed: kept alive
         except Exception as error:  # every failure, the SDK's and the answer's; never a cancel
+            self._finished_at = None  # its connection is not known to be kept
             problem = _failure(error)
+        except BaseException:  # a cancel, or a close between events, closed its connection
+            self._finished_at = None
+            self._reopened()
+            raise
         if problem is not None:
             raise problem from None
         for event in ending:
             yield event
 
+    def warm(self) -> bool:
+        """Whether the next request goes out on a kept-alive connection (the module's
+        docstring)."""
+        if self._finished_at is None:
+            return False
+        expiry = LIMITS.keepalive_expiry
+        return expiry is None or monotonic() - self._finished_at < expiry
+
+    async def warm_up(self) -> None:
+        """Open a connection with a GET of Groq's model list, which costs nothing (the
+        `WarmUp` port), within `timeout_s`. ProviderError on its failure."""
+        problem: ProviderError | None = None
+        try:
+            async with asyncio.timeout(self._timeout_s):
+                await self._groq.models.list()
+            self._finished_at = monotonic()
+        except Exception as error:  # every failure, the SDK's and the answer's; never a cancel
+            problem = _failure(error)
+        if problem is not None:
+            raise problem from None
+
     async def aclose(self) -> None:
-        """Close the adapter's HTTP connections."""
+        """Stop a reopen in flight and close the adapter's HTTP connections."""
+        self._closed = True
+        reopening, self._reopening = self._reopening, None
+        if reopening is not None and not reopening.done():
+            reopening.cancel()
+            await asyncio.gather(reopening, return_exceptions=True)
         await self._groq.close()
+
+    def _reopened(self) -> None:
+        """Under `reopen_after_cancel`, open a fresh connection in the background, one at a
+        time, unless the adapter is closed."""
+        if not self._reopen or self._closed:
+            return
+        try:
+            asyncio.get_running_loop()
+        except RuntimeError:  # a stream finalized with no loop running: nothing to reopen on
+            return
+        if self._reopening is None or self._reopening.done():
+            self._reopening = asyncio.create_task(self._reopen_now(), name="t2v-chat-reopen")
+
+    async def _reopen_now(self) -> None:
+        began = monotonic()
+        try:
+            await self.warm_up()
+        except ProviderError as error:
+            log.warning("chat_reopen_failed", error=error.kind)
+            return
+        log.info("chat_reopened", ms=round((monotonic() - began) * 1000, 1))
 
 
 def _failure(error: Exception) -> ProviderError:

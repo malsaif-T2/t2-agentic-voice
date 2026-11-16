@@ -20,7 +20,10 @@
   `connect`, so a failed call shows sooner than Pipecat's timeout, and the F7 hang ends too
   (items 11 and 21). Each
   aiortc peer gets an explicit ICE server list, never aiortc's default, which asks Google's STUN
-  server (the design's 11: the library contacts nothing beyond its outbound hosts).
+  server (the design's 11: the library contacts nothing beyond its outbound hosts). Each
+  answered offer sends its warm requests under `warmup.at_join` (voice/join_warmth.py) and logs
+  its server steps as times alone, never an address or a candidate (`call_answered`;
+  `call_connected` in voice/pipeline.py).
 - **Candidates** (`add_candidates`). Each one is checked before Pipecat sees it, since aiortc
   answers a malformed line with an AssertionError (item 10); an empty one marks their end, the
   client's end-of-candidates PATCH, which reaches aioice (item 11).
@@ -42,6 +45,7 @@ from __future__ import annotations
 
 import asyncio
 from collections.abc import Awaitable, Callable, Sequence
+from time import perf_counter
 from typing import TYPE_CHECKING
 
 from t2_agentic_voice.core.config import VoiceSettings
@@ -56,7 +60,7 @@ from t2_agentic_voice.domain.ports.chat_model import ChatModel
 from t2_agentic_voice.domain.ports.language_classifier import LanguageClassifier
 from t2_agentic_voice.domain.ports.speech_to_text import SpeechToText
 from t2_agentic_voice.domain.ports.text_to_speech import TextToSpeech
-from t2_agentic_voice.voice.calls_start import warm
+from t2_agentic_voice.voice.calls_start import elapsed_ms, warm
 
 # The contract api meets is entry.py's; these names are given here too, where api imports them.
 from t2_agentic_voice.voice.entry import CallPhase as CallPhase
@@ -64,6 +68,7 @@ from t2_agentic_voice.voice.entry import Calls as Calls
 from t2_agentic_voice.voice.entry import CallsFactory as CallsFactory
 from t2_agentic_voice.voice.entry import Candidate as Candidate
 from t2_agentic_voice.voice.entry import ChosenStt as ChosenStt
+from t2_agentic_voice.voice.join_warmth import JoinWarmth
 from t2_agentic_voice.voice.session.call import CallSession
 from t2_agentic_voice.voice.session.io import (
     SYSTEM_CLOCK,
@@ -133,6 +138,7 @@ class VoiceCalls:
         self._answering: set[CallId] = set()
         # The next call's detectors, made ahead under `warmup.at_start` (voice/calls_start.py).
         self._spare = Spare(self._detectors, ahead=settings.warmup.at_start)
+        self._warmth = JoinWarmth(on=settings.warmup.at_join, tts=tts, chat=self._chat)
         self._started = False
 
     async def start(self) -> None:
@@ -154,9 +160,12 @@ class VoiceCalls:
             raise InvalidRequestError("The call already has an answered offer.")
         check_offer(offer)
         self._answering.add(call_id)
+        began = perf_counter()
         try:
             detectors = await self._spare.take()
+            took = perf_counter()
             peer = await WebRTCPeer.answer(offer, self._settings.server.ice_servers)
+            answered = perf_counter()
             try:
                 transport = peer.transport()
                 pipeline = self._pipeline(
@@ -170,14 +179,17 @@ class VoiceCalls:
                     closing=peer.close,
                     on_finished=lambda: self._forget(call_id),
                 )
-                call = WebRTCCall(pipeline, peer)
+                call = WebRTCCall(pipeline, peer, began=began)
                 await call.start(transport, self._session(pipeline))
+                self._warmth.joined(call_id, pipeline.stt, language.tag)
             except BaseException:
                 await peer.close()
                 raise
         finally:
             self._answering.discard(call_id)
         self._calls[call_id] = call
+        steps = {"detectors_ms": elapsed_ms(began, took), "peer_ms": elapsed_ms(took, answered)}
+        log.info("call_answered", call_id=call_id, **steps, pipeline_ms=elapsed_ms(answered))
         return peer.answer_sdp
 
     async def add_candidates(self, call_id: CallId, candidates: Sequence[Candidate]) -> None:
@@ -214,6 +226,7 @@ class VoiceCalls:
         """End every call, each close bounded (the `Calls` protocol's `aclose`)."""
         await asyncio.gather(*(self.end(call_id) for call_id in list(self._calls)))
         await self._spare.aclose()
+        await self._warmth.aclose()
         self._started = False
 
     def _detectors(self) -> tuple[VADAnalyzer, BaseTurnAnalyzer | None]:

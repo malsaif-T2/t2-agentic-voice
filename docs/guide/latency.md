@@ -68,14 +68,26 @@ result, before step 5.
 - **Connections kept open.** Each Groq adapter, the chat model's included, keeps its connections
   open five minutes between requests, so a request seldom pays a new connection's handshake:
   the prototype that came before the library put 1.1 to 1.3 s on its first sound after a search
-  by closing idle connections, against 0.23 to 0.25 s with them kept open. A runtime's first
-  answer still opens the chat model's connection: it is not warmed at the start.
+  by closing idle connections, against 0.23 to 0.25 s with them kept open. By default a call's
+  first transcript and first answer each still open their connection. With
+  `T2V_WARMUP__AT_JOIN=true` each call, as it joins, sends in the background one request that
+  costs nothing to its speech-to-text (a GET of the provider's model list: ElevenLabs' and
+  Groq's adapters have one, `warm_up()`), to its text-to-speech (its `check_language`, which
+  synthesizes nothing) and, when its connection is not kept warm, to the chat model; a failed
+  one is logged and never fails the call. Your own adapter takes part by defining
+  `async def warm_up(self) -> None`. A cancelled answer (a barge-in, an early start dropped)
+  closes the chat model's connection; with `T2V_WARMUP__AFTER_CANCEL=true` the Groq chat adapter
+  opens a fresh one in the background. Each warm request is logged as `call_warmed` (the target,
+  the provider, the time, the outcome), each reopen as `chat_reopened` or `chat_reopen_failed`.
 - **The first call after a restart.** By default the first offer imports Pipecat's pipeline and
   aiortc's peer on the server's event loop (2 to 4 s), and each call's offer builds its own
   speech detector and turn analyzer (about 0.1 s each). With `T2V_WARMUP__AT_START=true` the
   server's start imports them in a thread and keeps one call's detectors made ahead, the next
   built in the background as each call takes one: a slower start and a little more memory, for
-  a first call that waits for none of it. Its `calls_warmed` log line gives the start's times.
+  a first call that waits for none of it. Its `calls_warmed` log line gives the start's times;
+  each call's `call_answered` gives its offer's server steps (the detectors, the peer's answer,
+  the pipeline's start) and `call_connected` the time from the offer to the connection, times
+  alone, never an address or a candidate.
 - **A first line new on every request.** Each request's system message opens with a line of its
   own (such as `Request 7f3a9c21.`), so no two requests share a prefix Groq has cached, for its
   cache can be the slow path. In 24 short requests to `openai/gpt-oss-120b` with Ole5's system
