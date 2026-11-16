@@ -79,6 +79,11 @@ result, before step 5.
   closes the chat model's connection; with `T2V_WARMUP__AFTER_CANCEL=true` the Groq chat adapter
   opens a fresh one in the background. Each warm request is logged as `call_warmed` (the target,
   the provider, the time, the outcome), each reopen as `chat_reopened` or `chat_reopen_failed`.
+  Whatever the settings, each chat request says whether it went out on a connection already
+  open, read from the model just before it went (a model that does not say gives none): the
+  call report's `TurnRecord.warm_connection` and its turn's `turn.warm_connection` attribute for
+  the turn's first request, its `talker_replied` line too, and `model_word_sent` for the
+  session's own requests (an uncertain overlap's or a yes's word).
 - **The first call after a restart.** By default the first offer imports Pipecat's pipeline and
   aiortc's peer on the server's event loop (2 to 4 s), and each call's offer builds its own
   speech detector and turn analyzer (about 0.1 s each). With `T2V_WARMUP__AT_START=true` the

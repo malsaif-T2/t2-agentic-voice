@@ -56,6 +56,8 @@ turn and the call as it was heard to the events the session plays, within the re
   is closed as the reply leaves it, whatever ends it (domain/ports/chat_model.py's `closing`).
 - **Time** is the call's clock's alone: a tool's `ms`, a request's
   `first_token_s` and the prompt's date (the runner times each tool's timeout on it too).
+- **Warmth.** Each request's `ModelReplied` says whether it went out on a kept-alive connection
+  (`warm_connection`, agent/turn_answer.py), and the turn's `talker_replied` line its first's.
 """
 
 from __future__ import annotations
@@ -187,6 +189,7 @@ class Turn:
             if note not in self.memory.exchanges.get(self.turn.turn_id, ()):
                 self.memory.keep(self.turn.turn_id, [note])
         requests = tools_run = 0
+        warm: bool | None = None  # whether the turn's first request went out on a warm connection
         for index in range(MAX_REQUESTS):
             last = index == MAX_REQUESTS - 1
             tools = () if last else tool_definitions(self.runner, self.actions)
@@ -205,9 +208,11 @@ class Turn:
                 model=request.model,
                 usage=answer.usage,
                 first_token_s=answer.first_token_s,
+                warm_connection=answer.warm,
                 stray_characters=stray,
                 stray_scripts=scripts,
             )
+            warm = answer.warm if requests == 1 else warm
             if self.gate.stopped or self.leak.found or not answer.calls:
                 break
             if not tools:
@@ -249,6 +254,7 @@ class Turn:
             tools=tools_run,
             blocked=self.gate.blocked,
             read_back=self.tools.plan is not None,
+            warm_connection=warm,
         )
         yield ReplyDone(unsaid_clauses=self.gate.questions.unsaid)
 

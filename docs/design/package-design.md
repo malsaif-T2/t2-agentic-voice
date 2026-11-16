@@ -1403,7 +1403,9 @@ Ole5's golden-set machinery stays in the app, under `apps/ole5-voice-agent/evals
     filter, `turn.stray_characters`, how many were taken out or rewritten, and
     `turn.stray_scripts`, their labels as one comma-separated string, D-084; under
     `stt.live_language = "classified"`, `turn.language` and `turn.language_by`, the language
-    the turn was sent in and how it was chosen, D-086);
+    the turn was sent in and how it was chosen, D-086; when the chat model says,
+    `turn.warm_connection`, whether the turn's first chat request went out on a kept-alive
+    connection, also `TurnRecord.warm_connection` in the call's report, TD-089);
   - speech-to-text (audio seconds, billed seconds, model, language; under `classified`,
     `stt.language_by` and a classified turn's `stt.language_share`, D-086);
   - the model (tokens, time to first token);
