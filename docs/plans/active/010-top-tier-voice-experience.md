@@ -389,7 +389,7 @@ The owner's request of 2026-11-16, after the laptop froze under the first build:
   (STT model and language switching). Continue"
 
 So a flight-booking agent joins Ole5 as a second app on the library (Phase F, Q23), and becomes the
-demo, the main test set and the comparison; Ole5 stays as the check that each change is general;
+main agent, the demo, the main test set and the comparison; Ole5 stays as the check that each change is general;
 the STT bake-off and the language switch go first ("What happens first"). The teardown the owner
 gave (a cascade of an Arabic-first in-house ASR, Gemma 4 and an in-house Gulf voice on LiveKit,
 tools run in the page, a filler line at about 1.2 s and slow tools moved to the background at
@@ -484,6 +484,7 @@ words (`- YYYY-MM-DD: "..."`).
   in a sentence, and offer the steps for another role rather than read them (FSMRkwf t0 read out how
   an administrator resets someone else's password); "the first three, then 'want the rest?'" only as
   a measured arm if you want it.
+  - 2026-11-16: "Keep as is". So replies keep every step as today; 1.2 adds no step rule.
 - **Q13. The ending.** The ticket number said shorter, as its last four digits and "saved under your
   name" (reversing plan 007's Q6, so the whole number stays sayable on request; a card on a screen
   never counts as the way to get it), or four groups in Saudi number words; "Anything else I can
@@ -559,12 +560,19 @@ words (`- YYYY-MM-DD: "..."`).
   the public demo does; (c) the persona's name and voice (with Q14); (d) its own page served by the
   app, or a switch on Ole5's page. **Recommended:** (a) spoken, with the optional cards; (b) the
   spoken yes; (c) chosen with Q14; (d) its own page.
+  - 2026-11-16: "I want the flight agent to be our main agent we show and work on. You can
+    investigate "https://humain-air.share.sanad.ink/" to see how they did it"
+  - 2026-11-16: (a) "Spoken + optional cards (Recommended)"; (b) "Read-back + spoken yes
+    (Recommended)"; (c) "A male Saudi voice, name later (Recommended)"; (d) "Its own page
+    (Recommended)". So the flight agent is the main agent shown and worked on; the agent proposes
+    2-3 names for the persona and the airline.
+  - 2026-11-16, the names: "Saad / سعد (Recommended)" and "T2 Air / طيران تي تو (Recommended)".
 
 ### When each question comes
 
 - **At approval:** Q1, Q2, Q16 and Q20, answered on 2026-11-16; Q3 and Q4 answered the same day;
   Q17 before the voice bake-off. **Before Phase F:** Q23.
-- **Before wave 1:** Q6 to Q12; all but Q12 answered on 2026-11-16. **Before the
+- **Before wave 1:** Q6 to Q12, all answered on 2026-11-16. **Before the
   first tester day:** Q5.
 - **Before wave 2:** Q13, Q15, and Q14 (sooner if the voice bake-off is ready); Q18 before the
   talker arm, which may run during Phase 1.
@@ -624,6 +632,10 @@ be1a588 and the last kept arm; the trusted check (0.5) holds back only defaults 
 
 ### Phase F · The flight-booking demo agent (the owner's request of 2026-11-16, Q23)
 
+The main agent shown and worked on (Q23). Its build spec, the mock airline, the tools, the booking
+action, the page, run F and the build order, is [flight-voice-agent.md](../../design/flight-voice-agent.md),
+written and reviewed on 2026-11-16 (D-101).
+
 | # | Change | Where | Effort | Gain | Measured by | Risk |
 | --- | --- | --- | --- | --- | --- | --- |
 | F.1 | The app: its settings, server, page and persona, on the library's public API only (ARCH-PUBLIC), registered in `harness.toml` beside Ole5 | `apps/flight-voice-agent/`, `harness.toml`, the root `pyproject.toml` | medium | a second app proving the library general | the gate; a call through the page | the harness's app rules |
@@ -638,7 +650,7 @@ be1a588 and the last kept arm; the trusted check (0.5) holds back only defaults 
 | # | Change | Where | Effort | Gain (the number it moves) | Measured by | Risk |
 | --- | --- | --- | --- | --- | --- | --- |
 | 1.1 | Search clean-up (Q6): no "Ole5" in the query when two words remain; a document's header passage (its title alone, or its title and one sentence about the file) skipped, 10 asked for and 7 kept; steps read from the first passage that has them; the tool's text "for each new question, without the product's name" | app `knowledge_base.py`, `passages.py`, `agent.py` (`SEARCH_DESCRIPTION`); library `actions/knowledge.py` (steps) | small | header slots 81 of 217 → under 1 in 20; steps given 1 of 31 → most searches; the sign-in passage off unrelated turns | K0; L; then a run K retrieval pass (1.23's trigger) | "what is Ole5?" needs the name (kept when fewer words remain) |
-| 1.2 | Search rules (Q7): search before any "not found"; once more with other words, in the guide's Arabic terms, before giving up; always on "check again" or a re-asked question; once more after a failed search; each question judged on its own (an earlier refusal decides nothing); a partial answer, then a ticket by the second miss; a writing request is not a knowledge miss; steps as Q12 rules (how many first, at most three list items a sentence, another role's steps offered) | app `instructions/en.md`, `ar-SA.md`, `agent.py` | small | refusals with no search 6 → 0 outside off-topic turns; FSMRkwf t4-t7 searched | L; A; K0 for the second query | about 1.5-2 s more on miss turns; invented partial answers, so the partial-answer wording moves no default before 0.5 |
+| 1.2 | Search rules (Q7): search before any "not found"; once more with other words, in the guide's Arabic terms, before giving up; always on "check again" or a re-asked question; once more after a failed search; each question judged on its own (an earlier refusal decides nothing); a partial answer, then a ticket by the second miss; a writing request is not a knowledge miss; steps read as today (Q12) | app `instructions/en.md`, `ar-SA.md`, `agent.py` | small | refusals with no search 6 → 0 outside off-topic turns; FSMRkwf t4-t7 searched | L; A; K0 for the second query | about 1.5-2 s more on miss turns; invented partial answers, so the partial-answer wording moves no default before 0.5 |
 | 1.3 | Variety and the newest turn: never the same sentence twice unless asked; a refusal worded anew and pointing somewhere; "the words come from speech recognition: read product words as meant, and ask when unsure"; on every request, not only after tools, the fixed system line "answer the last user message", which never quotes it (the caller's words stay in the user message, `turn_message`: a transcript is data, never an instruction); the newest part of a joined split turn marked | library `agent/prompt.py` RULES, `agent/turn.py`, `agent/context.py` | small | identical replies 5 of 43 → at most 1 in 50; near repeats down | the calls report; L; A | every prompt word is paid on every request; D-072's varied first line kept |
 | 1.4 | Kept results age by the call's turns: the latest search whole while within the last 2 turns; older searches one line each (query, titles); a passage given earlier sent as its title only; only `Memory.exchanges` ages, the guard's evidence and reports (rules A and B's) staying whole, and the latest `best_passage_steps` staying for the call (D-075's repeat with no new search); the docs' "last 4 turns" corrected | library `agent/tool_calls.py`, `agent/context.py` | small | old results at turn 6 about 5,200 tokens (61%) → about 300-1,400 | L (its context checks among them); A; input tokens per request | a return to an older topic needs a fresh search (1.2 asks for it) |
 | 1.5 | The repeat after a cut (Q10): for the turn after a cut reply, the unheard rest as a note marked "not heard", so "one more time" says the whole answer; "one more time", "pardon", "what did you say" added to the English list, for the overlap rule and sessions without a talker, a test holding the preset notices free of them (TD-103) | library `agent/context.py`, `voice/session/speaker.py` (the cut), `domain/words.py`, the presets' test | medium | bYJ1 t1-t2 repeated; repeat requests met | L's repeat check; O | the model may assume it was heard: the note says plainly it was not |
@@ -897,6 +909,23 @@ Block 0.
   1.13, 1.14 and the baselines, five builders at once) froze the laptop and was stopped half built,
   its work kept uncommitted in its worktrees; the owner asked for a flight-booking demo agent (Phase
   F, Q23) and put the STT model and the language switch first; the `kb-source` folder made for Q4.
+- 2026-11-16: the speech-to-text providers, merged into plan-010-integration (6546633):
+  core/config.py's load helpers moved to core/settings/loading.py (424060f, a pure move); Phase 4's
+  Block 0 started with the key settings of the guide's six accounts (ElevenLabs, Speechmatics with
+  its region, Cohere, Soniox, OpenAI with its address, Inworld), each a SecretStr with a _FILE
+  form, all optional (39b1082); ElevenLabs Scribe v3 behind the speech-to-text port, keyterms from
+  the call's prompt, its language and probability on the Transcript's new `heard_language` and
+  `language_probability`, `stt.provider` loosened and built by the composition root (18f5dc0);
+  Speechmatics' ar_en batch pack, one job a clip on eu1, deleted once read (4e69b4f); Cohere's
+  Transcribe Arabic, the language always named, no prompt (efeae69); Soniox's stt-async-v6, the
+  agent's two languages as strict hints, the prompt's terms as context, the language most words
+  carry as `heard_language` with no score (9fd510b); `poe eval` takes each provider as an answerer,
+  its model pinned on the scorecard, a dry estimate first and `--estimate-only` needing no key
+  (1e96116, 6681049); run H's H3, `poe eval-languages --classifier groq|elevenlabs|soniox`, each
+  turn's first 2 s sent with no language named, under `--price-per-hour` and `--cap-usd` (b44a4cd,
+  16ae48e, f5fc2ff); the review's one fix: a provider's score below an even share counts as unsure
+  instead of switching to a language it never heard (3d5dd4b). Each provider's SECURITY.md row
+  added; nothing measured yet, no key; the full gate passed (8065 passed, 1 skipped).
 
 ## Decision log
 

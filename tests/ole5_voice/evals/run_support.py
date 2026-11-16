@@ -208,9 +208,9 @@ class Setup:
     def main(self, *extra: str, answerer: str = "groq", split: str = "dev", out: str = "r1") -> int:
         argv = ["--answerer", answerer, "--split", split, "--out", str(self.out(out))]
         argv += ["--note", "a made-up run", "--audio", f"owner={self.world.audio}"]
-        if answerer == "groq":
-            argv += ["--price-per-hour", "0.111", "--cap-usd", "1"]
-            argv += ["--model", "whisper-large-v3", "--timeout-s", "6"]
+        if answerer != "reference":  # a provider's run: Groq's names its model too
+            argv += ["--price-per-hour", "0.111", "--cap-usd", "1", "--timeout-s", "6"]
+            argv += ["--model", "whisper-large-v3"] if answerer == "groq" else []
         return run.main([*argv, *extra], parts=self.parts())
 
     def results(self) -> tuple[VariantResult, ...]:

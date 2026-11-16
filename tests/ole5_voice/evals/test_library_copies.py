@@ -60,7 +60,13 @@ def test_an_answer_bounds_the_no_speech_estimate_as_a_transcript_does() -> None:
 
 
 def test_each_speech_to_text_provider_the_settings_take_has_an_adapter() -> None:
-    assert set(answerers._ADAPTERS) == set(get_args(SttProvider))
+    """`poe eval` builds its adapter through the library, so each name `stt.provider` takes
+    builds one, the one it names."""
+    key = "made-up-key-for-each-provider-0123"
+    for provider in get_args(SttProvider):
+        data = {"env": "test", provider: {"api_key": key}, "stt": {"provider": provider}}
+        built = answerers.adapter(VoiceSettings.model_validate(data))
+        assert built.name == provider
 
 
 def _leaves(model: type[BaseModel], prefix: str = "") -> set[str]:
