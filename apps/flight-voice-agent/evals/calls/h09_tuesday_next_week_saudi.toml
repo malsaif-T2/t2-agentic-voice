@@ -1,0 +1,14 @@
+# The flight agent's scripted calls (flight_voice/evals/scenarios.py), held out: a Saudi caller
+# names a weekday of next week, and a return on the first such weekday after it.
+id = "h09_tuesday_next_week_saudi"
+split = "held-out"
+language = "ar-SA"
+kind = "dates"
+notes = "Tuesday of next week (the week from Sunday the 22nd) and the Friday after it resolve in code to the 24th and the 27th; the Cairo flights are listed with per person said once."
+
+[[turns]]
+says = "أبي أروح القاهرة الأسبوع الجاي يوم الثلاثاء وأرجع الجمعة اللي بعده"
+calls = ["search_flights"]
+args = { destination = "CAI", depart = "2026-11-24", return_date = "2026-11-27" }
+forms = { depart = { kind = "weekday", weekday = "tue", which = "next_week" }, return_date = { kind = "weekday_after", weekday = "fri" } }
+said_any = [["للشخص", "للفرد", "per person"]]

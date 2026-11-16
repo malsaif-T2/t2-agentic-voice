@@ -1,0 +1,44 @@
+# The flight agent's scripted calls (flight_voice/evals/scenarios.py), held out: an MSA caller
+# declines a read-back, then books the same route on another day.
+id = "h08_no_then_other_day_msa"
+split = "held-out"
+language = "ar"
+kind = "confirmation"
+notes = "A no over the closing question declines the Doha trip on the 25th, nothing booked; the caller asks for the 27th, one way still: a new search, a new read-back, and a yes with the send word books that one alone."
+
+[[turns]]
+says = "أريد رحلة ذهاب فقط إلى الدوحة يوم الخامس والعشرين من هذا الشهر"
+calls = ["search_flights"]
+args = { destination = "DOH", depart = "2026-11-25", one_way = true }
+forms = { depart = { kind = "on", day = 25, month = 11 } }
+
+[[turns]]
+says = "رحلة بعد الظهر من فضلك"
+calls = ["choose_flight", "book_trip"]
+args = { leg = "outbound", pick = "part_of_day", part = "afternoon" }
+outcome = "read_back"
+read_back = { outbound = "T2 253@2026-11-25", one_way = true, travelers = 1, cabin = "economy" }
+
+[[turns]]
+says = "لا، لا تحجزها"
+when = "closing_question"
+outcome = "declined"
+said_none = ["تم الحجز", "حجزت لك", "حجزتها لك", "تم تأكيد الحجز", "حجزك مؤكد"]
+
+[[turns]]
+says = "ابحث لي عن السابع والعشرين بدلاً من ذلك"
+calls = ["search_flights"]
+args = { destination = "DOH", depart = "2026-11-27", one_way = true }
+forms = { depart = { kind = "on", day = 27 } }
+
+[[turns]]
+says = "الرحلة الصباحية"
+calls = ["choose_flight", "book_trip"]
+args = { leg = "outbound", pick = "part_of_day", part = "morning" }
+outcome = "read_back"
+read_back = { outbound = "T2 251@2026-11-27", one_way = true, travelers = 1, cabin = "economy" }
+
+[[turns]]
+says = "نعم، احجزها"
+when = "closing_question"
+outcome = "done"

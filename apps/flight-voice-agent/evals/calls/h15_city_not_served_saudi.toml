@@ -1,0 +1,21 @@
+# The flight agent's scripted calls (flight_voice/evals/scenarios.py), held out: a Saudi caller
+# asks for a city the airline does not fly to, then for one it does.
+id = "h15_city_not_served_saudi"
+split = "held-out"
+language = "ar-SA"
+kind = "unavailable"
+notes = "Abha is not served: the reply says so and names cities the airline flies to, never a guessed airport; Jeddah on the same coming Thursday, one way, then lists flights with per person said once."
+
+[[turns]]
+says = "أبي رحلة لأبها يوم الخميس الجاي، رايح بس"
+calls = ["search_flights"]
+args = { depart = "2026-11-19", one_way = true }
+forms = { depart = { kind = "weekday", weekday = "thu" } }
+said_any = [["جدة", "دبي", "الدوحة", "القاهرة", "إسطنبول", "اسطنبول", "لندن", "باريس", "مومباي", "سنغافورة"]]
+
+[[turns]]
+says = "طيب جدة نفس اليوم"
+calls = ["search_flights"]
+args = { destination = "JED", depart = "2026-11-19", one_way = true }
+forms = { depart = { kind = "weekday", weekday = "thu" } }
+said_any = [["للشخص", "للفرد", "per person"]]

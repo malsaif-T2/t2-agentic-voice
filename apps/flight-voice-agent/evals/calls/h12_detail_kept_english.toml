@@ -1,0 +1,44 @@
+# The flight agent's scripted calls (flight_voice/evals/scenarios.py), held out: three travelers,
+# said in the first turn and never again, are still the trip's at its read-back.
+id = "h12_detail_kept_english"
+split = "held-out"
+language = "en"
+kind = "long_call"
+notes = "Turn one gives three travelers; the city, the calendar, the search and a date change all keep them; the pick in turn six reads back three, never said again; a yes with the send word books it for three."
+
+[[turns]]
+says = "Hi, I'm booking flights for three people."
+calls = []
+
+[[turns]]
+says = "We want to go to Doha."
+calls = []
+
+[[turns]]
+says = "Which days are cheapest in January?"
+calls = ["fare_calendar"]
+args = { destination = "DOH", month = 1 }
+
+[[turns]]
+says = "Let's do January 12th, one way."
+calls = ["search_flights"]
+args = { destination = "DOH", depart = "2027-01-12", one_way = true, travelers = 3 }
+forms = { depart = { kind = "on", day = 12, month = 1 } }
+
+[[turns]]
+says = "Hmm, actually make it January 13th."
+calls = ["search_flights"]
+args = { destination = "DOH", depart = "2027-01-13", one_way = true, travelers = 3 }
+forms = { depart = { kind = "on", day = 13, month = 1 } }
+
+[[turns]]
+says = "The evening one."
+calls = ["choose_flight", "book_trip"]
+args = { leg = "outbound", pick = "part_of_day", part = "evening" }
+outcome = "read_back"
+read_back = { outbound = "T2 255@2027-01-13", one_way = true, travelers = 3, cabin = "economy" }
+
+[[turns]]
+says = "Perfect, book it."
+when = "closing_question"
+outcome = "done"

@@ -1,0 +1,36 @@
+# The flight agent's scripted calls (flight_voice/evals/scenarios.py), held out: an English
+# round trip to Istanbul whose return day the caller corrects before choosing.
+id = "h02_return_corrected_english"
+split = "held-out"
+language = "en"
+kind = "dates"
+notes = "January 7th out and the 14th back, then the 15th said as a correction of the return alone: the search runs again with the same departure and the 15th; the trip then runs to its read-back on the corrected day and is booked."
+
+[[turns]]
+says = "I'd like a return trip to Istanbul, leaving January 7th and coming back on the 14th."
+calls = ["search_flights"]
+args = { destination = "IST", depart = "2027-01-07", return_date = "2027-01-14" }
+forms = { depart = { kind = "on", day = 7, month = 1 }, return_date = { kind = "on", day = 14 } }
+
+[[turns]]
+says = "Sorry, I meant the 15th for the way back."
+calls = ["search_flights"]
+args = { destination = "IST", return_date = "2027-01-15" }
+forms = { return_date = { kind = "on", day = 15 } }
+
+[[turns]]
+says = "The 11:50 flight, please."
+calls = ["choose_flight"]
+args = { leg = "outbound", pick = "time", departs = "11:50" }
+
+[[turns]]
+says = "And the evening flight back."
+calls = ["choose_flight", "book_trip"]
+args = { leg = "return", pick = "part_of_day", part = "evening" }
+outcome = "read_back"
+read_back = { outbound = "T2 353@2027-01-07", return = "T2 354@2027-01-15", one_way = false, travelers = 1, cabin = "economy" }
+
+[[turns]]
+says = "Go ahead and book it."
+when = "closing_question"
+outcome = "done"

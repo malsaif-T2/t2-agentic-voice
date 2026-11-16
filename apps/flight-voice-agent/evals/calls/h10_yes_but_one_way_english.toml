@@ -1,0 +1,40 @@
+# The flight agent's scripted calls (flight_voice/evals/scenarios.py), held out: a yes with a
+# change over a round trip's read-back makes it one way, read back again.
+id = "h10_yes_but_one_way_english"
+split = "held-out"
+language = "en"
+kind = "confirmation"
+notes = "'Yes, but make it one way' over the summary is a change, not a yes: change_trip drops the return, a new read-back says one way with the outbound alone, and a yes with the send word books it."
+
+[[turns]]
+says = "I need a round trip to Jeddah on December 2nd, returning December 6th."
+calls = ["search_flights"]
+args = { destination = "JED", depart = "2026-12-02", return_date = "2026-12-06" }
+forms = { depart = { kind = "on", day = 2, month = 12 }, return_date = { kind = "on", day = 6, month = 12 } }
+
+[[turns]]
+says = "The 3 p.m. flight."
+calls = ["choose_flight"]
+args = { leg = "outbound", pick = "time", departs = "15:00" }
+
+[[turns]]
+says = "And the 12:30 one back."
+calls = ["choose_flight", "book_trip"]
+args = { leg = "return", pick = "time", departs = "12:30" }
+outcome = "read_back"
+read_back = { outbound = "T2 105@2026-12-02", return = "T2 104@2026-12-06", one_way = false, travelers = 1, cabin = "economy" }
+
+[[turns]]
+says = "Yes, but make it one way."
+when = "read_back"
+after_s = 1.5
+calls = ["change_trip", "book_trip"]
+args = { one_way = true }
+outcome = "read_back"
+read_back = { outbound = "T2 105@2026-12-02", one_way = true, travelers = 1, cabin = "economy" }
+said_any = [["one way"]]
+
+[[turns]]
+says = "Great, book it."
+when = "closing_question"
+outcome = "done"

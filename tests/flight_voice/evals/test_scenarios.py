@@ -1,12 +1,12 @@
 """The flight agent's scripted calls (flight_voice/evals/scenarios.py) as committed: every file
-reads, the dev set breaks no rule but the one the held-out set will settle, every expected date
-is the one the airline's date code gives the caller's words, every flight a read-back holds flies
-on its day, and every need is on the closed list; and the model refuses each malformed shape at
-the boundary, naming it."""
+reads, the whole set, dev and held-out, breaks no rule (a dev and a held-out scenario never share
+a leg, and every kind has both), the held-out set covers every kind in both languages, every
+expected date is the one the airline's date code gives the caller's words, every flight a
+read-back holds flies on its day, and every need is on the closed list; and the model refuses each
+malformed shape at the boundary, naming it."""
 
 from __future__ import annotations
 
-import re
 from pathlib import Path
 from typing import Any, get_args
 
@@ -16,7 +16,7 @@ from flight_voice.airline.dates import Resolved, resolve_departure, resolve_retu
 from flight_voice.airline.fares import seats_left
 from flight_voice.airline.schedule import departures, find_flight, window
 from flight_voice.airline.system import Airline
-from flight_voice.evals.rules import problems
+from flight_voice.evals.rules import legs, problems
 from flight_voice.evals.scenarios import (
     CALLS,
     NEEDS,
@@ -37,6 +37,7 @@ from tests.flight_voice import scenario_dates
 
 SCENARIOS = load()
 DEV_IDS = [f"f{n:02d}" for n in range(1, 29)]
+HELD_OUT_IDS = [f"h{n:02d}" for n in range(1, 16)]
 
 
 def _scenario(**fields: Any) -> dict[str, Any]:
@@ -58,14 +59,17 @@ def test_every_file_reads_and_the_dev_set_is_f01_to_f28() -> None:
     assert TODAY.weekday() == 0  # a Monday
 
 
-def test_the_set_breaks_no_rule_but_a_kind_waiting_for_its_held_out_scenario() -> None:
-    """Until the held-out set exists, the one problem left is each kind's missing held-out
-    scenario; once any held-out scenario is committed, the same check holds every rule, that one
-    included, to none."""
+def test_the_whole_set_dev_and_held_out_breaks_no_rule() -> None:
+    assert problems(SCENARIOS) == []
+
+
+def test_the_held_out_set_covers_every_kind_in_both_languages() -> None:
     held_out = [s for s in SCENARIOS if s.split == "held-out"]
-    kinds = sorted({s.kind for s in SCENARIOS})
-    expected = [] if held_out else [f"the kind '{k}' has no held-out scenario" for k in kinds]
-    assert [re.sub(r"\. FIX: .*$", "", p) for p in problems(SCENARIOS)] == expected
+    assert [s.id.split("_")[0] for s in held_out] == HELD_OUT_IDS
+    assert {s.kind for s in held_out} == {s.kind for s in SCENARIOS if s.split == "dev"}
+    assert {s.language for s in held_out} == {"ar-SA", "ar", "en"}
+    dev_legs = set().union(*(legs(s) for s in SCENARIOS if s.split == "dev"))
+    assert all(legs(s).isdisjoint(dev_legs) for s in held_out)
 
 
 def test_every_expected_date_is_the_airlines_resolution_of_the_callers_words() -> None:
@@ -112,7 +116,11 @@ def test_needs_come_only_from_the_closed_list_and_the_switch_waits() -> None:
     assert list(NEEDS) == ["language_switch"]
     assert all(c.name == name and len(c.doc) > 40 for name, c in NEEDS.items())
     assert {n for s in SCENARIOS for n in s.needs} <= set(NEEDS)
-    assert [s.id for s in SCENARIOS if waiting(s)] == ["f09_switch_ar_to_en", "f10_switch_en_to_ar"]
+    assert [s.id for s in SCENARIOS if waiting(s)] == [
+        "f09_switch_ar_to_en",
+        "f10_switch_en_to_ar",
+        "h06_switch_at_read_back_saudi",
+    ]
     assert waiting(Scenario.model_validate(_scenario(needs=["telepathy"]))) == ("telepathy",)
 
 

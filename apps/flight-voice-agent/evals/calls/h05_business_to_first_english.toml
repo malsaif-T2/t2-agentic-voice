@@ -1,0 +1,35 @@
+# The flight agent's scripted calls (flight_voice/evals/scenarios.py), held out: an English
+# round trip to London in business, changed to first class after the outbound is chosen.
+id = "h05_business_to_first_english"
+split = "held-out"
+language = "en"
+kind = "trip_change"
+notes = "Business first, then first class: change_trip re-prices the chosen afternoon outbound, which has a first-class seat that day; the return is listed in first, and the read-back holds first."
+
+[[turns]]
+says = "I want to fly business class to London on December 8th and come back on the 13th."
+calls = ["search_flights"]
+args = { destination = "LHR", depart = "2026-12-08", return_date = "2026-12-13", cabin = "business" }
+forms = { depart = { kind = "on", day = 8, month = 12 }, return_date = { kind = "on", day = 13 } }
+
+[[turns]]
+says = "The afternoon flight."
+calls = ["choose_flight"]
+args = { leg = "outbound", pick = "part_of_day", part = "afternoon" }
+
+[[turns]]
+says = "Actually, let's go first class instead."
+calls = ["change_trip"]
+args = { cabin = "first" }
+
+[[turns]]
+says = "The evening one coming back."
+calls = ["choose_flight", "book_trip"]
+args = { leg = "return", pick = "part_of_day", part = "evening" }
+outcome = "read_back"
+read_back = { outbound = "T2 403@2026-12-08", return = "T2 404@2026-12-13", one_way = false, travelers = 1, cabin = "first" }
+
+[[turns]]
+says = "Yes, please book it."
+when = "closing_question"
+outcome = "done"

@@ -1,0 +1,50 @@
+# The flight agent's scripted calls (flight_voice/evals/scenarios.py), held out: a long Saudi
+# call to Singapore whose listing is stopped early and asked again, then a cabin question and the
+# picks, with no repeats.
+id = "h11_long_cut_repeat_saudi"
+split = "held-out"
+language = "ar-SA"
+kind = "long_call"
+notes = "Eight turns: the client's Stop cuts the Singapore listing about a tenth in; asked again, the reply shares most of the cut reply's words; the business fare is compared on the night flight; no later reply repeats an earlier one; the night flight and the morning return go to the read-back and are booked."
+
+[[turns]]
+says = "أبي أسافر سنغافورة"
+calls = []
+
+[[turns]]
+says = "يوم ثلاثة ديسمبر وأرجع يوم ثلطعش"
+calls = ["search_flights"]
+args = { destination = "SIN", depart = "2026-12-03", return_date = "2026-12-13" }
+forms = { depart = { kind = "on", day = 3, month = 12 }, return_date = { kind = "on", day = 13 } }
+
+[[turns]]
+stop = true
+at = "agent_speaking"
+after_s = 1.0
+
+[[turns]]
+says = "معليش ما سمعت، عيدها"
+asks_repeat = true
+repeat_of_cut = true
+
+[[turns]]
+says = "كم سعر البزنس على حقت الليل؟"
+calls = ["compare_cabins"]
+args = { leg = "outbound", pick = "part_of_day", part = "night" }
+
+[[turns]]
+says = "طيب خلها سياحي، حقت الليل"
+calls = ["choose_flight"]
+args = { leg = "outbound", pick = "part_of_day", part = "night" }
+
+[[turns]]
+says = "والرجعة حقت الصبح"
+calls = ["choose_flight", "book_trip"]
+args = { leg = "return", pick = "part_of_day", part = "morning" }
+outcome = "read_back"
+read_back = { outbound = "T2 601@2026-12-03", return = "T2 602@2026-12-13", one_way = false, travelers = 1, cabin = "economy" }
+
+[[turns]]
+says = "أكيد احجزها"
+when = "closing_question"
+outcome = "done"

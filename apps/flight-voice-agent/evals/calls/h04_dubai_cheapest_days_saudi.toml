@@ -1,0 +1,32 @@
+# The flight agent's scripted calls (flight_voice/evals/scenarios.py), held out: a Saudi caller
+# asks for the cheapest days to Dubai in December, then books one of them.
+id = "h04_dubai_cheapest_days_saudi"
+split = "held-out"
+language = "ar-SA"
+kind = "cheapest_days"
+notes = "The fare calendar for December, its card shown, not dropped by the output guard; the caller then names the cheapest day, the eighth (a deal day), one way; the 7:15 flight goes to its read-back and is booked."
+
+[[turns]]
+says = "متى أرخص يوم أسافر فيه دبي في ديسمبر؟"
+calls = ["fare_calendar"]
+args = { destination = "DXB", month = 12 }
+said_any = [["ديسمبر"]]
+shows_card = true
+
+[[turns]]
+says = "طيب خلني على يوم ثمانية ديسمبر، رايح بس"
+calls = ["search_flights"]
+args = { destination = "DXB", depart = "2026-12-08", one_way = true }
+forms = { depart = { kind = "on", day = 8, month = 12 } }
+
+[[turns]]
+says = "حقت سبعة وربع"
+calls = ["choose_flight", "book_trip"]
+args = { leg = "outbound", pick = "time", departs = "07:15" }
+outcome = "read_back"
+read_back = { outbound = "T2 201@2026-12-08", one_way = true, travelers = 1, cabin = "economy" }
+
+[[turns]]
+says = "توكل على الله احجزها"
+when = "closing_question"
+outcome = "done"

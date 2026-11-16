@@ -1,0 +1,33 @@
+# The flight agent's scripted calls (flight_voice/evals/scenarios.py), held out: a Saudi caller
+# asks to go on in English while the read-back waits for an answer.
+id = "h06_switch_at_read_back_saudi"
+split = "held-out"
+language = "ar-SA"
+kind = "language_switch"
+needs = ["language_switch"]
+notes = "Four days from today resolves in code; the last Jeddah flight goes to its read-back in Saudi Arabic; over it the caller asks in English to go on in English: every reply from then on is English, and the booking runs to done in English."
+
+[[turns]]
+says = "أبي رحلة لجدة بعد أربع أيام، رايح بس"
+calls = ["search_flights"]
+args = { destination = "JED", depart = "2026-11-20", one_way = true }
+forms = { depart = { kind = "in_days", days = 4 } }
+
+[[turns]]
+says = "آخر وحدة"
+calls = ["choose_flight", "book_trip"]
+args = { leg = "outbound", pick = "latest" }
+outcome = "read_back"
+read_back = { outbound = "T2 107@2026-11-20", one_way = true, travelers = 1, cabin = "economy" }
+
+[[turns]]
+says = "Sorry, can we continue in English, please?"
+when = "read_back"
+after_s = 1.0
+language = "en"
+
+[[turns]]
+says = "Yes, book it."
+when = "closing_question"
+outcome = "done"
+language = "en"

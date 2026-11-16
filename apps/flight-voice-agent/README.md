@@ -51,7 +51,8 @@ time out for a demo of each.
 
 ## Its scripted calls (run F)
 
-Its scripted calls (`evals/calls/`, f01 to f28 the dev set) are read and checked by the tests,
+Its scripted calls (`evals/calls/`, f01 to f28 the dev set, h01 to h15 the held-out set, written
+apart on other days, routes and words, every kind held in both) are read and checked by the tests,
 and played by `poe eval-flights`, which spends: each scenario of one split three times, on the
 system clock with this agent and the real talker (`openai/gpt-oss-120b` at medium unless
 `--model` and `--effort` say otherwise), against a new mock airline each play with the
@@ -77,4 +78,5 @@ goes on with a run stopped by the cap, the day's limit or an interrupt, each pla
 run keeps its first commit, and each session records its own).
 It exits 0 when the run is complete, 1 when it is not, 2 when it is refused. `--price` and
 `--limits` give another model's price and limits; the defaults are `gpt-oss-120b`'s as Ole5's
-runs give them.
+runs give them. The held-out set is read rarely, by the lead, with `--split held-out` named; its
+smoke play is still the first dev scenario, so no held-out call is played but in its own run.

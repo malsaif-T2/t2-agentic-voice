@@ -1,0 +1,15 @@
+# The flight agent's scripted calls (flight_voice/evals/scenarios.py), held out: the fare
+# calendar cannot be read.
+id = "h07_calendar_failure_english"
+split = "held-out"
+language = "en"
+kind = "tool_trouble"
+notes = "The airline's searches fail, the fare calendar among them: the reply says it could not check the fares just now, and never that there are no flights, fares or seats."
+modes = { search = "fail" }
+
+[[turns]]
+says = "What are the cheapest days to fly to Paris in February?"
+calls = ["fare_calendar"]
+args = { destination = "CDG", month = 2 }
+said_any = [["couldn't", "could not", "can't", "cannot", "unable", "wasn't able", "not able"]]
+said_none = ["no flights", "no fares", "no seats", "sold out", "fully booked", "nothing available"]

@@ -1,0 +1,32 @@
+# The flight agent's scripted calls (flight_voice/evals/scenarios.py), held out: a Saudi round
+# trip to Paris, each leg picked by its place in the list.
+id = "h01_paris_second_saudi"
+split = "held-out"
+language = "ar-SA"
+kind = "round_trip"
+notes = "The second of December and the Wednesday after it resolve in code; fares said once as per person; the second outbound, then the second return, send the trip to its read-back, round trip; a yes with the send word books it."
+
+[[turns]]
+says = "ودي أسافر باريس يوم اثنين ديسمبر وأرجع الأربعاء اللي بعده"
+calls = ["search_flights"]
+args = { destination = "CDG", depart = "2026-12-02", return_date = "2026-12-09" }
+forms = { depart = { kind = "on", day = 2, month = 12 }, return_date = { kind = "weekday_after", weekday = "wed" } }
+said_any = [["للشخص", "للفرد", "per person"]]
+
+[[turns]]
+says = "أبي الثانية"
+calls = ["choose_flight"]
+args = { leg = "outbound", pick = "number", n = 2 }
+
+[[turns]]
+says = "والرجعة بعد الثانية"
+calls = ["choose_flight", "book_trip"]
+args = { leg = "return", pick = "number", n = 2 }
+outcome = "read_back"
+read_back = { outbound = "T2 453@2026-12-02", return = "T2 454@2026-12-09", one_way = false, travelers = 1, cabin = "economy" }
+said_any = [["رايح جاي"]]
+
+[[turns]]
+says = "تمام احجزها"
+when = "closing_question"
+outcome = "done"

@@ -6,8 +6,10 @@ is sent, the main checkout, a dirty tree, an out folder inside the worktree or i
 estimate past the cap; a smoke play that breaks a rule stops it; and a run stopped at the cap
 goes on with --resume once its history line is committed, each play played once, and a resume
 that differs is refused: in its command line, or at a commit that changed more than the run
-histories. The fake git's HEAD moves on with each fake commit, and its tree is dirty while the
-history file holds a line not committed."""
+histories. Named, `--split held-out` lists the committed held-out set, each scenario that
+plays once a repeat and the one that waits skipped, behind the dev smoke play (the fake play
+alone: no held-out scenario is played here). The fake git's HEAD moves on with each fake
+commit, and its tree is dirty while the history file holds a line not committed."""
 
 from __future__ import annotations
 
@@ -149,6 +151,26 @@ def test_a_dev_run_plays_the_smoke_play_then_each_scenario_its_repeats(tmp_path:
     assert line["kind"] == "flights" and line["complete"] and _lines(out / "history.jsonl")
     assert requests_today([tree.history], date(2026, 11, 16)) == {}  # nothing was sent
     assert not (out / LOCK_FILE).exists()
+
+
+def test_the_held_out_split_named_lists_the_committed_held_out_set(tmp_path: Path) -> None:
+    tree, plays = Tree(tmp_path), Plays()
+    calls = tree.top / run_setup.CALLS
+    for path in CALLS.glob("*.toml"):
+        shutil.copy(path, calls / path.name)
+    held_out = [s for s in load() if s.split == "held-out"]
+    waits = [s.id for s in held_out if run_setup.waiting(s)]
+    out = tree.main / "var" / "runs" / "f-held-out-1"
+    assert _run(tree, plays, "--split", "held-out", "--repeats", "1", out=out) == 0
+    run = json.loads((out / "run.json").read_text(encoding="utf-8"))
+    assert run["split"] == "held-out" and run["data"] == [s.id for s in held_out]
+    assert plays.played == [TWO[0], *(s.id for s in held_out if s.id not in waits)]
+    card = json.loads((out / "scorecard.json").read_text(encoding="utf-8"))
+    assert (
+        [c["id"] for c in card["scenarios"] if c["skipped"]]
+        == waits
+        == ["h06_switch_at_read_back_saudi"]
+    )
 
 
 @pytest.mark.parametrize(

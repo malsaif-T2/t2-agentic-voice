@@ -1,0 +1,27 @@
+# The flight agent's scripted calls (flight_voice/evals/scenarios.py), held out: an MSA one-way
+# to Mumbai for three travelers.
+id = "h03_mumbai_three_msa"
+split = "held-out"
+language = "ar"
+kind = "one_way"
+notes = "The coming Sunday resolves in code; one way and three travelers are passed in the search, never asked about; the first flight sends the trip to a read-back for three that says one way, in MSA; a yes with the send word books it."
+
+[[turns]]
+says = "أريد حجز رحلة ذهاب فقط إلى مومباي يوم الأحد القادم لثلاثة أشخاص"
+calls = ["search_flights"]
+args = { destination = "BOM", depart = "2026-11-22", one_way = true, travelers = 3 }
+forms = { depart = { kind = "weekday", weekday = "sun" } }
+said_any = [["للشخص", "للفرد", "per person"]]
+
+[[turns]]
+says = "الرحلة الأولى"
+calls = ["choose_flight", "book_trip"]
+args = { leg = "outbound", pick = "number", n = 1 }
+outcome = "read_back"
+read_back = { outbound = "T2 501@2026-11-22", one_way = true, travelers = 3, cabin = "economy" }
+said_any = [["ذهاب فقط"]]
+
+[[turns]]
+says = "نعم، احجزها من فضلك"
+when = "closing_question"
+outcome = "done"

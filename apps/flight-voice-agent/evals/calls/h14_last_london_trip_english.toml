@@ -1,0 +1,18 @@
+# The flight agent's scripted calls (flight_voice/evals/scenarios.py), held out: an English
+# caller asks about past trips, answered from the profile's precomputed facts.
+id = "h14_last_london_trip_english"
+split = "held-out"
+language = "en"
+kind = "profile"
+notes = "traveler_profile is read: the last London trip was in September, in business; asked how many trips in all, five; no past booking's reference is said, and no booking is claimed."
+
+[[turns]]
+says = "When did I last fly to London, and which cabin was it?"
+calls = ["traveler_profile"]
+said_any = [["September"], ["business"]]
+said_none = ["517204", "I've booked", "I have booked", "you're booked", "you are booked"]
+
+[[turns]]
+says = "And how many trips have I taken with you in total?"
+said_any = [["five", "5"]]
+said_none = ["482913", "517204", "390655", "604118", "275930"]

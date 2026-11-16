@@ -1,0 +1,26 @@
+# The flight agent's scripted calls (flight_voice/evals/scenarios.py), held out: the booking is
+# made but its answer comes too late, and the lookup by request finds it.
+id = "h13_booking_late_msa"
+split = "held-out"
+language = "ar"
+kind = "booking_outcome"
+notes = "The store books at once but answers after the action's timeout; the lookup by request finds the booking, so the done line is said, in MSA, and the store holds exactly one booking."
+modes = { booking = "late", lookup = true }
+
+[[turns]]
+says = "أريد حجز رحلة ذهاب فقط إلى دبي يوم الجمعة القادم"
+calls = ["search_flights"]
+args = { destination = "DXB", depart = "2026-11-20", one_way = true }
+forms = { depart = { kind = "weekday", weekday = "fri" } }
+
+[[turns]]
+says = "الرحلة المسائية من فضلك"
+calls = ["choose_flight", "book_trip"]
+args = { leg = "outbound", pick = "part_of_day", part = "evening" }
+outcome = "read_back"
+read_back = { outbound = "T2 205@2026-11-20", one_way = true, travelers = 1, cabin = "economy" }
+
+[[turns]]
+says = "نعم، احجزها لو سمحت"
+when = "closing_question"
+outcome = "done"
