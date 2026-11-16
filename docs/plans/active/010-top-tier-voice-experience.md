@@ -389,7 +389,7 @@ The owner's request of 2026-11-16, after the laptop froze under the first build:
   (STT model and language switching). Continue"
 
 So a flight-booking agent joins Ole5 as a second app on the library (Phase F, Q23), and becomes the
-demo, the main test set and the comparison; Ole5 stays as the check that each change is general;
+main agent, the demo, the main test set and the comparison; Ole5 stays as the check that each change is general;
 the STT bake-off and the language switch go first ("What happens first"). The teardown the owner
 gave (a cascade of an Arabic-first in-house ASR, Gemma 4 and an in-house Gulf voice on LiveKit,
 tools run in the page, a filler line at about 1.2 s and slow tools moved to the background at
@@ -559,6 +559,12 @@ words (`- YYYY-MM-DD: "..."`).
   the public demo does; (c) the persona's name and voice (with Q14); (d) its own page served by the
   app, or a switch on Ole5's page. **Recommended:** (a) spoken, with the optional cards; (b) the
   spoken yes; (c) chosen with Q14; (d) its own page.
+  - 2026-11-16: "I want the flight agent to be our main agent we show and work on. You can
+    investigate "https://humain-air.share.sanad.ink/" to see how they did it"
+  - 2026-11-16: (a) "Spoken + optional cards (Recommended)"; (b) "Read-back + spoken yes
+    (Recommended)"; (c) "A male Saudi voice, name later (Recommended)"; (d) "Its own page
+    (Recommended)". So the flight agent is the main agent shown and worked on; the agent proposes
+    2-3 names for the persona and the airline.
 
 ### When each question comes
 
