@@ -24,6 +24,7 @@ dependencies = [
     "requests>=2.34.2",
     "structlog>=26.1.0",
     "uvicorn>=0.54.0",
+    "websockets>=17.4",
 ]
 
 [project.scripts]

@@ -69,10 +69,18 @@ def http_failure(provider: str, error: Exception) -> ProviderError:
         return ProviderError("connection_lost", True, details=details)
     if not isinstance(error, httpx.HTTPStatusError):
         return ProviderError("server_error", False, details=details)
-    status = error.response.status_code
+    response = error.response
+    return status_failure(details, response.status_code, response.headers.get("retry-after"))
+
+
+def status_failure(
+    details: dict[str, JsonValue], status: int, retry_after_header: str | None
+) -> ProviderError:
+    """The ProviderError for a refused HTTP status (`http_failure`'s rule), `details` with the
+    status added; a WebSocket handshake's refusal maps the same way."""
     details["status"] = status
     if status == 429:
-        delay = retry_after(error.response.headers.get("retry-after"))
+        delay = retry_after(retry_after_header)
         return ProviderError("rate_limited", True, delay, details=details)
     if status == 408:
         return ProviderError("timeout", True, details=details)

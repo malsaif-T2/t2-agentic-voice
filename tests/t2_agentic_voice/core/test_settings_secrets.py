@@ -28,7 +28,17 @@ from tests.t2_agentic_voice.core.settings_support import LONG_SECRET, MADE_UP_KE
 
 SECRET_NAME = re.compile(r"(^|_)(key|keys|secret|token|password)$")
 SHORT = "made-up-31-bytes-secret-0123456"  # one byte short
-PROVIDER_KEYS = ["elevenlabs", "speechmatics", "cohere", "soniox", "openai", "inworld"]
+PROVIDER_KEYS = [
+    "elevenlabs",
+    "speechmatics",
+    "cohere",
+    "soniox",
+    "openai",
+    "inworld",
+    "telnyx",
+    "humain",
+    "nabrah",
+]
 SECRETS = [
     ("groq", "api_key"),
     *((group, "api_key") for group in PROVIDER_KEYS),

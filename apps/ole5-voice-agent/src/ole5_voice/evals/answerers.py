@@ -23,7 +23,7 @@ from ole5_voice.evals.groq_answerer import Budget, Clock, GroqAnswerer, Policy, 
 from ole5_voice.evals.models import Variant
 from ole5_voice.evals.reference_answerer import ReferenceAnswerer
 from ole5_voice.evals.runs import Answerer
-from ole5_voice.evals.stt_arms import ARMS, recorded_model
+from ole5_voice.evals.stt_arms import ARMS, recorded_model, run_arm
 from ole5_voice.evals.windows import Measure
 
 ANSWERERS = ("reference", *ARMS)
@@ -66,6 +66,7 @@ def make_answerer(
         return ReferenceAnswerer(measure)
     if name not in ARMS:
         raise ValueError(f"no answerer is called {name!r}; one of {', '.join(ANSWERERS)}")
+    arm = run_arm(settings, name)
     return GroqAnswerer(
         adapter(settings) if stt is None else stt,
         model=recorded_model(settings, name),
@@ -78,5 +79,6 @@ def make_answerer(
         clock=clock,
         sleep=sleep,
         name=name,
-        minimum_s=ARMS[name].minimum_s,
+        minimum_s=arm.minimum_s,
+        extra_s=arm.extra_s,
     )

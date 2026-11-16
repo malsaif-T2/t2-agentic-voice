@@ -67,13 +67,16 @@ class Providers:
     def speech_to_text(settings: VoiceSettings) -> SpeechToText:
         """The speech-to-text adapter `stt.provider` names, built from the settings with no IO:
         Groq's Whisper, ElevenLabs' Scribe, Speechmatics' ar_en pack, Cohere's Transcribe
-        Arabic or Soniox's stt-async-v6 (D-100). A ConfigurationError naming the key's setting
+        Arabic, Soniox's stt-async-v6, Telnyx's model (HUMAIN's engine by default) or Nabrah's
+        (D-100). A ConfigurationError naming the key's setting
         when that provider has none set; the eval commands build theirs here too."""
         from t2_agentic_voice.adapters.cohere_stt import CohereSTT
         from t2_agentic_voice.adapters.elevenlabs_stt import ElevenLabsSTT
         from t2_agentic_voice.adapters.groq_stt import GroqSTT
+        from t2_agentic_voice.adapters.nabrah_stt import NabrahSTT
         from t2_agentic_voice.adapters.soniox_stt import SonioxSTT
         from t2_agentic_voice.adapters.speechmatics_stt import SpeechmaticsSTT
+        from t2_agentic_voice.adapters.telnyx_stt import TelnyxSTT
 
         built: dict[str, Callable[[VoiceSettings], SpeechToText]] = {
             "groq": GroqSTT.from_settings,
@@ -81,6 +84,8 @@ class Providers:
             "speechmatics": SpeechmaticsSTT.from_settings,
             "cohere": CohereSTT.from_settings,
             "soniox": SonioxSTT.from_settings,
+            "telnyx": TelnyxSTT.from_settings,
+            "nabrah": NabrahSTT.from_settings,
         }
         return built[settings.stt.provider](settings)
 

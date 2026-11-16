@@ -11,9 +11,16 @@ from typing import get_args
 import pytest
 from ole5_voice.evals import run
 from ole5_voice.evals.answerers import ANSWERERS
-from ole5_voice.evals.stt_arms import ARMS, recorded_model
+from ole5_voice.evals.stt_arms import ARMS, TELNYX_STREAMED, TELNYX_TAIL_S, recorded_model
 from t2_agentic_voice import VoiceSettings
-from t2_agentic_voice.adapters import cohere_stt, elevenlabs_stt, soniox_stt, speechmatics_stt
+from t2_agentic_voice.adapters import (
+    cohere_stt,
+    elevenlabs_stt,
+    nabrah_stt,
+    soniox_stt,
+    speechmatics_stt,
+    telnyx_stt,
+)
 from t2_agentic_voice.core.settings.stt import WHISPER_MIN_BILLED_S, SttProvider
 from t2_agentic_voice.ports import SpeechToText
 
@@ -32,12 +39,17 @@ def test_every_provider_the_library_takes_is_an_answerer_with_its_adapters_model
         "speechmatics": f"{speechmatics_stt.LANGUAGE_PACK}-enhanced",
         "cohere": cohere_stt.MODEL,
         "soniox": soniox_stt.MODEL,
+        "telnyx": None,
+        "nabrah": nabrah_stt.MODEL,
     }
     assert ARMS["groq"].minimum_s == WHISPER_MIN_BILLED_S
     assert [name for name, arm in ARMS.items() if arm.names_language] == ["cohere"]
     settings = VoiceSettings.model_validate({"env": "test"})
     assert recorded_model(settings, "groq") == "whisper-large-v3"
     assert recorded_model(settings, "soniox") == "stt-async-v6"
+    assert recorded_model(settings, "telnyx") == telnyx_stt.MODEL == "humain/realtime"
+    nova = VoiceSettings.model_validate({"env": "test", "telnyx": {"stt_model": "deepgram/nova-3"}})
+    assert recorded_model(nova, "telnyx") == "deepgram/nova-3"
 
 
 def _provider_setup(tmp_path: Path) -> tuple[Setup, list[str]]:
@@ -104,6 +116,32 @@ def test_a_groq_estimate_counts_its_ten_second_minimum_and_the_cap_still_refuses
     assert "least_billed_s=40.0" in capsys.readouterr().out
     assert setup.main("--price-per-hour", "3600", out="r2") == 2  # $40 at the least, cap $1
     assert setup.calls() == 0
+
+
+def _least_billed_s(out: str) -> float:
+    """The dry estimate's least billed seconds, from the run's logged lines."""
+    (shown,) = [word for word in out.split() if word.startswith("least_billed_s=")]
+    return float(shown.removeprefix("least_billed_s="))
+
+
+def test_a_streamed_telnyx_turn_is_estimated_and_charged_with_its_tail_of_silence(
+    tmp_path: Path, capsys: pytest.CaptureFixture[str], monkeypatch: pytest.MonkeyPatch
+) -> None:
+    assert TELNYX_TAIL_S == telnyx_stt.TAIL_S and frozenset(telnyx_stt.STREAMED) == TELNYX_STREAMED
+    setup, _ = _provider_setup(tmp_path)
+    assert setup.main("--estimate-only", answerer="elevenlabs") == 0
+    clips_s = _least_billed_s(capsys.readouterr().out)
+    assert setup.main("--estimate-only", answerer="telnyx") == 0
+    assert _least_billed_s(capsys.readouterr().out) == pytest.approx(
+        clips_s + 4 * TELNYX_TAIL_S, abs=0.11
+    )
+    assert setup.main(answerer="telnyx") == 0
+    line, _ = setup.history.lines
+    assert line.billed_seconds == pytest.approx(clips_s + 4 * TELNYX_TAIL_S, abs=0.11)
+    capsys.readouterr()  # the run's own estimate
+    monkeypatch.setenv("T2V_TELNYX__STT_MODEL", "deepgram/nova-3")  # a batch model: no tail
+    assert setup.main("--estimate-only", answerer="telnyx", out="r2") == 0
+    assert _least_billed_s(capsys.readouterr().out) == clips_s
 
 
 @pytest.mark.parametrize(

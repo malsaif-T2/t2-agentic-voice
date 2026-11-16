@@ -61,12 +61,8 @@ from pydantic import (
 from pydantic.config import ExtraValues
 
 from t2_agentic_voice.core.errors import ConfigurationError
-from t2_agentic_voice.core.settings.base import (
-    PREFIX,
-    ReadOnlyModel,
-    prefix_of,
-    setting_name,
-)
+from t2_agentic_voice.core.settings import provider_keys as keys
+from t2_agentic_voice.core.settings.base import PREFIX, ReadOnlyModel, prefix_of, setting_name
 from t2_agentic_voice.core.settings.groq import GroqSettings
 from t2_agentic_voice.core.settings.guard import GuardSettings
 from t2_agentic_voice.core.settings.interruptions import InterruptionSettings
@@ -84,14 +80,6 @@ from t2_agentic_voice.core.settings.loading import (
 from t2_agentic_voice.core.settings.logs import LoggingSettings
 from t2_agentic_voice.core.settings.names import Problem, gathered, leaf
 from t2_agentic_voice.core.settings.privacy import PrivacySettings
-from t2_agentic_voice.core.settings.provider_keys import (
-    CohereSettings,
-    ElevenLabsSettings,
-    InworldSettings,
-    OpenAISettings,
-    SonioxSettings,
-    SpeechmaticsSettings,
-)
 from t2_agentic_voice.core.settings.server import ServerSettings
 from t2_agentic_voice.core.settings.session import SessionSettings
 from t2_agentic_voice.core.settings.storage import StorageSettings
@@ -134,12 +122,15 @@ class VoiceSettings(ReadOnlyModel):
         ),
     )
     groq: GroqSettings = Field(default_factory=GroqSettings)
-    elevenlabs: ElevenLabsSettings = Field(default_factory=ElevenLabsSettings)
-    speechmatics: SpeechmaticsSettings = Field(default_factory=SpeechmaticsSettings)
-    cohere: CohereSettings = Field(default_factory=CohereSettings)
-    soniox: SonioxSettings = Field(default_factory=SonioxSettings)
-    openai: OpenAISettings = Field(default_factory=OpenAISettings)
-    inworld: InworldSettings = Field(default_factory=InworldSettings)
+    elevenlabs: keys.ElevenLabsSettings = Field(default_factory=keys.ElevenLabsSettings)
+    speechmatics: keys.SpeechmaticsSettings = Field(default_factory=keys.SpeechmaticsSettings)
+    cohere: keys.CohereSettings = Field(default_factory=keys.CohereSettings)
+    soniox: keys.SonioxSettings = Field(default_factory=keys.SonioxSettings)
+    openai: keys.OpenAISettings = Field(default_factory=keys.OpenAISettings)
+    inworld: keys.InworldSettings = Field(default_factory=keys.InworldSettings)
+    telnyx: keys.TelnyxSettings = Field(default_factory=keys.TelnyxSettings)
+    humain: keys.HumainSettings = Field(default_factory=keys.HumainSettings)
+    nabrah: keys.NabrahSettings = Field(default_factory=keys.NabrahSettings)
     stt: SttSettings = Field(default_factory=SttSettings)
     llm: LlmSettings = Field(default_factory=LlmSettings)
     tts: TtsSettings = Field(default_factory=TtsSettings)
