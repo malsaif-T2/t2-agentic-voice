@@ -38,7 +38,8 @@ from t2_agentic_voice.actions.action_checks import (
     check_templates,
     draft_and_result,
 )
-from t2_agentic_voice.actions.tools import CallContext, untitled_schema
+from t2_agentic_voice.actions.tool_schema import model_schema
+from t2_agentic_voice.actions.tools import CallContext
 from t2_agentic_voice.core.conversation import ConversationLine
 from t2_agentic_voice.core.errors import ConfigurationError
 from t2_agentic_voice.core.yes_inputs import HeardSource
@@ -154,7 +155,7 @@ class Action:
     def tool_schema(self) -> ToolSchema:
         """The action as the talker is told of it: its name, its description and the draft's
         schema, and nothing more."""
-        schema = untitled_schema(self.parameters.model_json_schema())
+        schema = model_schema(self.parameters.model_json_schema())
         return ToolSchema(name=self.name, description=self.description, parameters=schema)
 
     @property

@@ -90,16 +90,15 @@ def find(article: Article, title: str) -> str:
 def test_a_schema_keeps_descriptions_and_a_property_named_title_and_drops_titles() -> None:
     schema: Any = Tool.from_function(find, description="Find an article.").tool_schema().parameters
     assert set(schema["properties"]) == {"article", "title"}
-    assert schema["$defs"] == {
-        "Article": {
-            "description": "An article.",
-            "properties": {
-                "title": {"description": "The article's title", "type": "string"},
-                "tags": {"default": [], "items": {"type": "string"}, "type": "array"},
-            },
-            "required": ["title"],
-            "type": "object",
-        }
+    assert "$defs" not in schema  # the nested model inlined (actions/tool_schema.py)
+    assert schema["properties"]["article"] == {
+        "description": "An article.",
+        "properties": {
+            "title": {"description": "The article's title", "type": "string"},
+            "tags": {"default": [], "items": {"type": "string"}, "type": "array"},
+        },
+        "required": ["title"],
+        "type": "object",
     }
     assert '"title": "' not in str(schema).replace("'", '"')  # no schema title is left
 

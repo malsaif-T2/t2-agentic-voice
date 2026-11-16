@@ -46,7 +46,12 @@ Both go in the agent's `tools`, each name once.
   thread, so it never blocks the call.
 - **Its parameters** come from the signature, and they are the only schema the talker sees.
   Each value is parsed and checked before the function runs; a wrong one goes back to the
-  talker with its field named, never its value.
+  talker with its field named, never its value. A parameter may be a pydantic model, or a
+  union of models told apart by a `Literal` field (`Field(discriminator="kind")`): the talker is
+  shown each model in place, the union as its choices and the tag as required, the form gpt-oss
+  on Groq fills in (a referenced model reached it as a bare name, and it wrote a string Groq
+  refused: `actions/tool_schema.py`). Try a new tool once on the real model before you rely on
+  it: a scripted model never sends what Groq refuses.
 - **`bind=`** fills a parameter from the call's verified caller, never from the talker, and
   hides it from the schema: `from_caller("subject")`, `"display_name"`, `"locale"` or
   `"attributes.<key>"`. A parameter annotated `CallContext` gets the caller, the call's ID and

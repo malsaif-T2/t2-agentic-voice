@@ -1153,6 +1153,23 @@ Block 0.
   counts only when it holds 3 words or more as written, so two replies that open with the same
   filler ("Sure,", "I'm sorry,", «تمام،», «أبشر،») are read by their token overlap alone
   (`MIN_CLAUSE_TOKENS`, bb1ab52). Rule L and rows 1.3 and 1.6 read the same definition.
+- 2026-11-17: run F's first session (f-dev-1, a9ee9ce) stopped at its smoke play: Groq refused
+  every talker request of f01 (400 `tool_use_failed`), the model having written `search_flights`'
+  date as text («الخميس الجاي») where the schema asks for a date form; the library reads it as
+  `rejected`, not retried, so the turn failed. Saad could not have searched a date in a live call
+  either: no test had sent a tool to the real model. Measured on run F's 28 first turns, twice
+  each, the requests as the talker sends them (a scratchpad harness, about $0.05): the schema as it
+  was, 37 of 56 refused and no date form right; its references inlined, none refused and 39 of the
+  40 date turns' forms valid (one left out `kind`, then optional); inlined with each union's tag
+  required, none refused, 40 of 40 valid and 36 right (the four others: f15 answered without
+  searching, f26 said the return's month, the same date); one flat date object, none refused and
+  every form valid but about 133 ms slower a turn (paired median); strict mode for tools refused by
+  Groq. Fix: the library shows a tool's parameters with each reference inlined, a union as `anyOf`
+  with no `discriminator`, and each constant required (`actions/tool_schema.py`, `model_schema`),
+  the arguments' shape unchanged; no Ole5 tool holds a reference, union or constant, so its
+  requests are as they were (a test holds it, GP-18); the flight tools' schemas are tested to hold
+  none; the guide says to try a new tool once on the real model. f01's first turn, replayed on
+  Groq, searched with `{kind: weekday, weekday: thu}` and listed the flights.
 
 ## Decision log
 

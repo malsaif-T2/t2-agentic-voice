@@ -53,6 +53,7 @@ from pydantic import (
 )
 
 from t2_agentic_voice.actions.signature import arguments_model
+from t2_agentic_voice.actions.tool_schema import model_schema
 from t2_agentic_voice.core.errors import ConfigurationError
 from t2_agentic_voice.core.events import CallId
 from t2_agentic_voice.core.identity import Caller
@@ -252,7 +253,7 @@ class Tool(_Frozen):
         of `parameters`, no bound parameter in it (`from_function` leaves them out, and a
         `parameters` model given whole may not hold one), the schema's titles left out, which
         the model reads at every request and needs none of."""
-        schema = untitled_schema(self.parameters.model_json_schema())
+        schema = model_schema(self.parameters.model_json_schema())
         return ToolSchema(name=self.name, description=self.description, parameters=schema)
 
 
@@ -284,22 +285,3 @@ def tool(
         )
 
     return made
-
-
-# The keys of a JSON schema whose value maps names to schemas, not keywords to values.
-_SCHEMA_MAPS = frozenset({"properties", "$defs", "definitions", "patternProperties"})
-
-
-def untitled_schema(node: Any) -> Any:
-    """A JSON schema with its `title` keywords left out (a property named "title" kept)."""
-    if isinstance(node, list):
-        return [untitled_schema(item) for item in node]
-    if not isinstance(node, dict):
-        return node
-    kept: dict[str, Any] = {}
-    for key, value in node.items():
-        if key in _SCHEMA_MAPS and isinstance(value, dict):
-            kept[key] = {name: untitled_schema(schema) for name, schema in value.items()}
-        elif not (key == "title" and isinstance(value, str)):
-            kept[key] = untitled_schema(value)
-    return kept
