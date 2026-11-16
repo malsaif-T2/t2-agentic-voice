@@ -199,6 +199,7 @@ ROOT_NAMES = {
     "CallContext",
     "Caller",
     "Card",
+    "CardRow",
     "Claims",
     "CohereSettings",
     "ConfigurationError",

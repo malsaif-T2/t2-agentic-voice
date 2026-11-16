@@ -62,7 +62,7 @@ that throws is logged to the console and the others still run.
 | `hello` | `{call_id, languages}`, once the data channel opens: the call's languages, its own first |
 | `state` | `{state}`: `listening`; `thinking`, while a reply asked for has no audio yet (the talker or one of its tools at work) or a turn's transcript is awaited; `speaking` (below, "The agent thinking"); or `confirming`, while an action's read-back waits for the caller's answer and nothing plays ([tools-and-actions.md](tools-and-actions.md)) |
 | `caption` | `{speaker, text, final, turn_id, reply_id, clause, cut}`: the caller's turn once heard (`speaker` `caller`, named by `turn_id`), or the agent's reply clause by clause as each starts playing (`agent`, named by `reply_id` and `clause`); `cut` is true for an agent's clause a stop cut while it played, sent again with the mark (below) |
-| `card` | `{title, steps, source}`: an extra a tool of your own returned, for a client with a screen, its steps a list of text in order (empty when its source lists none) and `source` the document it comes from, `null` when there is none (below, "Cards") |
+| `card` | `{title, steps, rows, source}`: an extra a tool of your own returned, for a client with a screen, its steps a list of text in order (empty when its source lists none), its `rows` the options it lists, each `{title, detail, value, mark}` (empty when it lists none) and `source` the document it comes from, `null` when there is none (below, "Cards") |
 | `duck` | `{level}`: the caller is speaking over the agent, whose voice now plays at `level` (0 to 1) of its volume until the session decides |
 | `unduck` | `{}`: the session has decided, and the agent's voice is back to full volume |
 | `volume` | `{level}`: the client changed the agent's volume, 1 at full; the client's own event, sent on each change, whatever caused it |
@@ -117,7 +117,13 @@ returning a `ToolResult` with a `card`; the knowledge tool shows none
 read its text, as it reads a clause's.
 
 The client hands the page each card as one `card` event, and drops a message that is not one
-(no title, steps that are not text). Show it beside the captions, a new card in place of the
+(no title, steps that are not text). A card's option `rows` (a tool's `CardRow`s: the flights or
+plans a reply listed, at most 8) come each as `{title, detail, value, mark}`: a title of up to 80
+characters, a detail of up to 120 and a value of up to 40, each text or `null`, and a `mark` of
+`best`, `chosen` or `unavailable`, or `null`. The client drops a row that is not one and keeps
+the rest; a card from a session that sends no rows has an empty list. Map a mark to a style
+(Ole5's widget and the dev page set it as the line's `data-mark`), never to markup, and show a
+row's texts as text, as every other text of the card. Show it beside the captions, a new card in place of the
 last, and every text as text (`textContent`): a passage's steps are the knowledge base's words,
 not your page's. Ole5's widget shows the card above the captions, so the captions growing below
 never move it, with its steps numbered and each line in the direction of its own first strong

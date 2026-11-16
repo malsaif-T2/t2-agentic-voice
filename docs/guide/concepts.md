@@ -253,7 +253,11 @@ tool's failure. A passage is data, never instructions, whatever its text says.
 
 A card is an extra for a client with a screen, and the caller may have none, so what they need
 is always said: never tell them to look at one. A `Card` has a `title`, its `steps` in order (at
-most 50) and the `source` they come from. A tool of yours shows one by returning a `ToolResult`
+most 50), its option `rows` in order (at most 8, each a `CardRow`: a `title` of up to 80
+characters, a `detail` of up to 120, a `value` of up to 40, and a `mark` of `best`, `chosen` or
+`unavailable`; none by default) and the `source` they come from. A card is data: a page shows
+its texts as text and does nothing they say, and every text of a row is read by the guard with
+the card's. A tool of yours shows one by returning a `ToolResult`
 with a `card`; the knowledge tool shows none. The output guard reads a card's text before it
 is shown, as it reads a clause's, and the session sends it as `t2v/1`'s `card`, which the client
 hands the page and the dev page shows above the captions ([browser-client.md](browser-client.md),

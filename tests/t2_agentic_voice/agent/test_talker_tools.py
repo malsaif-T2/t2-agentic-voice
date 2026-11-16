@@ -13,6 +13,7 @@ import asyncio
 import json
 from typing import Any
 
+import pytest
 from t2_agentic_voice.actions.knowledge import NAME, knowledge_tool
 from t2_agentic_voice.actions.runner import FAILED
 from t2_agentic_voice.actions.tools import from_caller, tool
@@ -28,7 +29,7 @@ from t2_agentic_voice.core.conversation import (
     TalkerTurn,
 )
 from t2_agentic_voice.core.errors import ToolError
-from t2_agentic_voice.domain.cards import Card
+from t2_agentic_voice.domain.cards import Card, CardRow
 from t2_agentic_voice.domain.ports.knowledge import Passage
 from t2_agentic_voice.testing.knowledge_fake import FakeKnowledgeBase
 from t2_agentic_voice.voice.session.scope import CancelScope
@@ -222,6 +223,41 @@ def test_a_card_whose_text_holds_an_id_with_no_evidence_is_not_shown() -> None:
     model = FakeChat(calls(call("carded")), said("Done."))
     events = reply(talker(model, carded), TURN)
     assert "ShownCard" not in kinds(events)
+
+
+@pytest.mark.parametrize(
+    "row",
+    [
+        CardRow(title="Flight 7788"),
+        CardRow(title="Flight", detail="seat 7788"),
+        CardRow(title="Flight", value="7,788 SAR"),
+    ],
+)
+def test_a_card_whose_row_holds_an_id_with_no_evidence_is_not_shown(row: CardRow) -> None:
+    """Adversarial: a row's every text is read with the card's, so a number the call has no
+    evidence for never reaches the screen through a row."""
+
+    @tool(description="Made up.")
+    async def carded() -> Any:
+        from t2_agentic_voice.actions.tools import ToolResult
+
+        return ToolResult(data={"ok": True}, card=Card(title="Flights", rows=(row,)))
+
+    model = FakeChat(calls(call("carded")), said("Done."))
+    assert "ShownCard" not in kinds(reply(talker(model, carded), TURN))
+
+
+def test_a_card_whose_rows_hold_only_evidenced_numbers_is_shown() -> None:
+    card = Card(title="Flights", rows=(CardRow(title="Flight 7788", value="2,450 SAR"),))
+
+    @tool(description="Made up.")
+    async def carded() -> Any:
+        from t2_agentic_voice.actions.tools import ToolResult
+
+        return ToolResult(data={"flight": 7788, "fare": 2450}, card=card)
+
+    model = FakeChat(calls(call("carded")), said("Done."))
+    assert ShownCard(card=card) in reply(talker(model, carded), TURN)
 
 
 def test_a_cancel_of_the_scope_stops_the_tool_and_the_model_at_once() -> None:
