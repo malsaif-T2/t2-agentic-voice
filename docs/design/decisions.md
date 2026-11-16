@@ -3779,3 +3779,34 @@ twice; DOC-REF: every `D-NNN` cited anywhere is a heading here), so keep its sha
   path to it").
 - **Evidence:** the runs `b0-groq`, `el-dev` and `el-dev2` and the switch's Whisper baseline
   `sw2-dev-label`, in the run history (docs/generated/eval-history.md); the owner's words above.
+
+## D-106 · An agent's time zone is a fixed offset from UTC, and a test call's date can be pinned · 2026-11-16 · Accepted (the lead's ruling of 2026-11-16 under D-101: no tzdata download)
+
+- **Context:** the flight-booking agent (D-101) resolves "next Thursday" and «الخميس الجاي»
+  against today in Riyadh, and its scripted calls need a fixed today. Python's zone names need
+  the tzdata package on Windows, which is not installed and would be a download the owner has not
+  approved; Riyadh keeps UTC+3 all year.
+- **Decision:** `VoiceAgent.time_zone` is a `timedelta` or a fixed `datetime.timezone`, whole
+  minutes from -12:00 to +14:00, UTC by default; a zone's name or anything else is refused when
+  the agent is declared, naming the field. The prompt's "Today is" and the guard's year read in
+  that zone. `TextCall(today=...)` and `AudioCall(today=...)` pin a test call's date.
+- **Consequences:** an agent in a zone with summer time must give the offset it runs in; the
+  flight agent's mock airline gives each airport a fixed offset and keeps its booking window in
+  winter. Ole5 is unchanged (UTC).
+- **Evidence:** the tests of `VoiceAgent.time_zone` and the pinned date (the flight library job,
+  2026-11-16).
+
+## D-107 · Numbers, times, dates and key combinations said in the caller's register, behind settings · 2026-11-16 · Accepted (the owner's answer to plan 010's Q11, "As proposed", 2026-11-16; off by default until row 1.8's measurement, GP-18)
+
+- **Context:** replies said "Ctrl + Shift + R" symbol by symbol and numbers in one MSA form
+  (num2words), and the flight agent says times, dates and fares in every turn. Q11's spoken forms
+  were answered "As proposed" on 2026-11-16.
+- **Decision:** `tts.spoken_numbers = "by_register"` says a reply's numbers, times, ISO dates and
+  amounts in the caller's register (Saudi, MSA, English; `domain/text/arabic_numbers.py`,
+  `spoken_words.py`), and `tts.spoken_key_combinations` says key combinations as their keys and
+  spells capitals («كنترول شفت آر», "Control Shift R"). Both are off by default: they change what
+  callers hear, so row 1.8's measurement keeps them first. Captions keep the text the guard read.
+- **Consequences:** the Saudi forms are the agent's, unchecked by a native speaker (TD-058's
+  15-minute check before the first demo). `TextCall` finds a read-back said in its shaped form.
+- **Evidence:** the tests of the spoken forms (every timetable time, every day of a month and
+  every number up to about 250,000 said with no digit) and of `TextCall`'s read-back forms.

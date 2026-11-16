@@ -965,6 +965,21 @@ Block 0.
   Ole5 app's own settings (scripts/settings_ref.py, tests/ole5_voice/test_env_example_app.py);
   the dev console's header lost the talker's model, the speech-to-text model and the voices, at
   the owner's request (a call's speech-to-text is now chosen per call).
+- 2026-11-16: the flight agent's library steps merged (B1 to B3 of its spec; D-106, D-107): the
+  access-code route and the page headers in the library's server facade (`access_code_router`,
+  `AccessCodeGuard`, `TokenMinter`, `page_headers`), Ole5 switched to them; the agent's time zone
+  as a fixed offset and a test call's pinned date; numbers, times, dates and amounts in the
+  caller's register and key combinations as their keys, each behind a setting off by default;
+  the review's one fix, `TextCall` finding a read-back said in its shaped form (eaf3308).
+- 2026-11-16: the flight-booking agent's app merged, steps A1 to A7 (Phase F's F.1 and F.2): the
+  skeleton registered, the mock airline (ten airports, a seeded timetable and fares, a demo
+  traveler, an in-memory store), the trip each call plans, seven tools (search, choose, change,
+  the trip read, the fare calendar, the cabins compared, the traveler's profile), and `book_trip`
+  read back whole in words in three registers and written only on a clear yes; the review's three
+  fixes, a bare return day counted from the departure, a slow search no longer timing out, and
+  "the third one" matched to the order the caller heard (f2f268a). Still to build: the agent,
+  persona, settings, server and page (A8, A9), the scenarios and their runner (A10 to A12), and
+  the library's steps B4 to B7.
 
 ## Decision log
 

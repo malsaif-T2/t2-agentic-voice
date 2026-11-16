@@ -130,7 +130,7 @@ apps/flight-voice-agent/
     said/numbers.py              ONLY until L4 lands: the read-back's Saudi number, time
                                  and date words behind L4's function names; deleted
                                  when L4 lands                                           <=200
-    tools/__init__.py            flight_tools(airline, trips) -> the six tools            <=40
+    tools/__init__.py            flight_tools(airline, trips) -> the seven tools            <=40
     tools/results.py             result models, fixed `say` hints, failure messages      <=260
     tools/cards.py               the card for each result, and its evidence texts        <=220
     tools/search.py              search_flights                                          <=280
@@ -458,7 +458,7 @@ own (`no_flights_that_day`), with the nearest days that have flights.
 
 ### 3.3 The tools
 
-All six are read tools (`@tool`), `timeout_s` 5, `progress` `searching` (search, calendar,
+All seven are read tools (`@tool`), `timeout_s` 5, `progress` `searching` (search, calendar,
 cabins) after 2.6 s, the library's default. Their descriptions are in English, short, our own
 words, and say when to call them. Each one's schema is the only thing the talker sees of it.
 
