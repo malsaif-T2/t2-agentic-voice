@@ -69,6 +69,13 @@ class Transcript(BaseModel):
     # The provider's own confidence, when it gives one, on the provider's own scale (Whisper's:
     # the mean log-probability of its segments, 0 or below, not a share from 0 to 1).
     confidence: float | None = None
+    # How sure the provider is of the language it heard, from 0 to 1, when it gives a score
+    # (ElevenLabs' `language_probability`); None when it gives none (Whisper on Groq). With it,
+    # the language a provider heard is `heard_language`, which the language switch reads (D-100).
+    language_probability: float | None = Field(default=None, ge=0, le=1)
+    # The language the provider itself heard, in its code mapped to the agent's ("ar", "en"),
+    # whatever the request named; None when it reports none. `language` stays the request's.
+    heard_language: str | None = None
     # What the provider bills for the request, for usage metering.
     billed_seconds: float | None = Field(default=None, ge=0)
     # The provider's own estimate that the clip holds no speech (Whisper gives one), kept so a

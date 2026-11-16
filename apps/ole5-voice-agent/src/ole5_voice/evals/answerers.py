@@ -10,11 +10,10 @@ from __future__ import annotations
 
 import asyncio
 import time
-from collections.abc import Callable, Mapping
+from collections.abc import Mapping
 from typing import Protocol
 
-from t2_agentic_voice import VoiceSettings
-from t2_agentic_voice.groq import GroqSTT
+from t2_agentic_voice import Providers, VoiceSettings
 from t2_agentic_voice.ports import SpeechToText
 from t2_agentic_voice.tracing import Tracing
 
@@ -25,8 +24,6 @@ from ole5_voice.evals.runs import Answerer
 from ole5_voice.evals.windows import Measure
 
 ANSWERERS = ("reference", "groq")
-# The speech-to-text adapter of each `stt.provider` (GP-22: a provider is swapped by a setting).
-_ADAPTERS: Mapping[str, Callable[[VoiceSettings], SpeechToText]] = {"groq": GroqSTT.from_settings}
 
 
 class RunAnswerer(Answerer, Protocol):
@@ -41,9 +38,9 @@ class RunAnswerer(Answerer, Protocol):
 
 
 def adapter(settings: VoiceSettings) -> SpeechToText:
-    """The speech-to-text adapter `stt.provider` names, built from the settings (Groq's:
-    ConfigurationError when no key is set)."""
-    return _ADAPTERS[settings.stt.provider](settings)
+    """The speech-to-text adapter `stt.provider` names, built from the settings by the library
+    (GP-22: a provider is swapped by a setting): ConfigurationError when its key is not set."""
+    return Providers.speech_to_text(settings)
 
 
 def make_answerer(

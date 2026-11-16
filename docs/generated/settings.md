@@ -95,7 +95,7 @@ Speech-to-text: the adapter, the Whisper model, how long a request may take, the
 
 | Variable | Type | Default | Unit | Description |
 | --- | --- | --- | --- | --- |
-| `T2V_STT__PROVIDER` | one of groq | `groq` | — | Which adapter turns speech into text; only Groq's exists for now (D-004). |
+| `T2V_STT__PROVIDER` | one of groq, elevenlabs | `groq` | — | Which adapter turns speech into text: groq (Whisper, the default) or elevenlabs (Scribe), measured beside it (D-100); a provider with no key set is refused when chosen, naming its key's setting. |
 | `T2V_STT__MODEL` | one of whisper-large-v3, whisper-large-v3-turbo | `whisper-large-v3` | — | The Whisper model: whisper-large-v3 or whisper-large-v3-turbo. The default stayed large-v3 on a registered measurement (D-025), and changes only on another (GP-18). |
 | `T2V_STT__TIMEOUT_S` | number | `6` | seconds | The longest one transcription request may take before it is a timeout. |
 | `T2V_STT__LIVE_LANGUAGE` | one of session, auto, classified | `session` | — | The language a live call sends Whisper: session (the call's language, fixed when it joins from the caller's pick or the join token's locale), auto (none, so Whisper detects it) or classified (each turn's, chosen among the agent's languages by the classifier `stt.classifier` names from the turn's first `stt.classifier_from_s` seconds; a short, unsure, late, busy or failed turn keeps the language last classified, the call's until one is). A registered measurement sets the default (GP-18). |
