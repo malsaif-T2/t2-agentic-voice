@@ -15,6 +15,12 @@ if L3 adds it, takes a fixed offset, not a zone name. No `uv add` of any package
 **The names, the owner's of 2026-11-16:** the persona is Saad / سعد and the airline T2 Air /
 طيران تي تو, airline code T2. Every other name in this file that differs is a placeholder.
 
+**L6 as built (B4, 2026-11-16):** `Clock` and `Sleep` are named `RunClock` and `RunSleep` (the
+library's core already has a `Clock` protocol), the main-checkout refusal is `run_checkout`,
+`check_out` and `run_refused`, and the day counter is `requests_today(histories, day)` with
+`every_history(history)`. A flight history line is counted when it has a `requests` object
+(model to count) and a `time` (ISO 8601).
+
 ## 0. Read first
 
 **Why this app exists.** The owner, 2026-11-16: make our voice agent do flight booking "for the

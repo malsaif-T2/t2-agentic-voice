@@ -980,6 +980,49 @@ Block 0.
   "the third one" matched to the order the caller heard (f2f268a). Still to build: the agent,
   persona, settings, server and page (A8, A9), the scenarios and their runner (A10 to A12), and
   the library's steps B4 to B7.
+- 2026-11-16: the flight agent, its persona, settings and server (A8 of its spec; b2c45b8): the
+  declaration on the public API (Saudi Arabic then English, Riyadh's fixed UTC+3 by D-106, the
+  seven read tools and book_trip, a chat model on uncertain overlaps and unlisted answers); the
+  persona's greetings, progress lines, instructions, the airline code's pronunciation and the
+  vocabulary built from the names in FLIGHT_VOICE_* settings (Saad / سعد, T2 Air / طيران تي تو by
+  default), a name breaking the lines' rule refused at load by its setting; the runtime's folder
+  always nested under flight/, 50 bookings a caller a day unless set, the demo traveler the
+  console's dev caller under dev; the server on 127.0.0.1:7862 with the library's access-code route
+  (50 tokens a day) and page headers, GET /api/profile, and on this machine alone GET /api/bookings
+  and POST /api/demo/reset (JSON only, an empty object); .env.example lists the app's settings. No
+  echo: the runtime needs the Groq key whatever the agent.
+- 2026-11-16: the flight agent's page (A9 of its spec; b095982): our own design on the library's
+  client, the airline's mark and name, "Your trips" with a filter by reference, the traveler,
+  "Start over" asked first, the language toggle (Arabic first, right to left, setting the call's
+  starting language), the orb and the state line following the call, the lines the caller could say
+  as text, cards newest first and at most three, the conversation and the options folded away;
+  every text our own and set as text, tested in the fake browser. Proved once through the lock: the
+  page, the token route's refusals (400 without the code, 415 as a form) and the dev console served
+  from the owner's .env (a made-up access code in the process's environment, since .env has none
+  yet); 14 fixed lines recorded at the first start, no call made. Still to build: the scenarios and
+  their runner (A10 to A12).
+- 2026-11-16: the flight agent's library step B4 (L6): what every app's spending runs share moved
+  from the Ole5 app into the library's testing kit, through the `evals` facade (D-101): the paced,
+  capped chat model (`PacedChat`, `ModelPacer`, `MinutePacer`, `Limits`, `DailyLimitError`,
+  `RunClock`, `RunSleep`), the spend (`Spend`, `Price`, `ModelUse`, `ModelSpend`,
+  `CapReachedError`), the checks before a run (`run_checkout`, `check_out`, `inspect_checkout`,
+  `run_refused`) and a day counter over every app's run history (`requests_today`, `every_history`,
+  `RunHistoryError`); Ole5's runners switched, their tests moved with the same assertions, and
+  Ole5's day now counts the flight agent's history too (e56f0a5).
+- 2026-11-16: the flight agent's library step B5 (L5): option rows on a card (`Card.rows`,
+  `CardRow`: at most 8, title 80, detail 120, value 40, a mark of best, chosen or unavailable),
+  read by the output guard with the card's texts, carried by `t2v/1`'s `card`, checked by the
+  reference client and shown as text with the mark as `data-mark` on the dev page, the dev console
+  and Ole5's widget; a card with no rows shows as before (30cbe05). The flight app's own cards move
+  to rows with its page (A9).
+- 2026-11-16: the `t2v/1` list spells a card's rows as `[CardRow]`, its one nested object, listed
+  under `objects` with the bodies' (08e417f); the full gate passed on 08e417f.
+- 2026-11-16: both merged into integration, the gate green on the merge (the agent and its page,
+  then the library's B4 and B5); open for the lead: the presets' yes words in the public API, so an
+  app's lines' rule at load reads them (today a test holds them), and Ole5's talker_args, eot and
+  talker_score, already over 300 lines, a little longer from the moved imports. Still to build: the
+  scenarios and their runner (A10 to A12), the library's B6 and B7, and the flight tools' cards sent
+  as rows (the page already shows rows when a card has them).
 
 ## Decision log
 
