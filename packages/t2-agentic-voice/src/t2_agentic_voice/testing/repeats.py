@@ -3,8 +3,10 @@ and its long-call checks; D-101), one definition for every app's runs. Pure func
 texts they are given: no call, no clock, no model.
 
 - **An identical repeat:** a reply whose normalized text is the same as an earlier reply's.
-- **A near repeat:** a reply whose first clause, normalized, is the same as an earlier reply's, or
-  whose token overlap with an earlier reply is `NEAR_REPEAT_OVERLAP` (0.8) or more.
+- **A near repeat:** a reply whose first clause, normalized, is the same as an earlier reply's
+  and holds `MIN_CLAUSE_TOKENS` (3) words or more, or whose token overlap with an earlier reply
+  is `NEAR_REPEAT_OVERLAP` (0.8) or more. A shorter first clause ("Sure,", "I'm sorry,",
+  «تمام،») is an opener, not a copy, so only the overlap reads it.
 - **The exemptions:** a reply in a turn that asks to hear something again, and a read-back said
   again, are never repeats; the caller of `find_repeat` says which a reply is.
 - **The cut repeat:** after a reply cut short, the reply to "one more time" repeats it when it
@@ -33,6 +35,8 @@ from t2_agentic_voice.domain.text.clauses import split_clauses
 
 # The token overlap at or above which a reply is a near repeat of an earlier one.
 NEAR_REPEAT_OVERLAP = 0.8
+# The words a first clause holds, as written, for two alike to make a near repeat.
+MIN_CLAUSE_TOKENS = 3
 # The share of a cut reply's tokens the reply to "one more time" holds when it repeats it.
 CUT_REPEAT_SHARE = 0.6
 
@@ -59,11 +63,17 @@ def first_clause(text: str) -> str:
     """The first clause of `text`, as the library's splitter cuts it, normalized (`scored_form`);
     empty when `text` says nothing. «تمام، خلني أشوف» gives «تمام»; "Let me check the guide.
     One moment." gives "let me check the guide"."""
+    return _first_clause_words(text)[0]
+
+
+def _first_clause_words(text: str) -> tuple[str, int]:
+    """`first_clause(text)`, and the words it holds as written (each saying something), so
+    "I'm sorry" is two words though its normalized form reads "i m sorry"."""
     for clause in split_clauses(text, max_chars=None):
         form = scored_form(clause)
         if form:
-            return form
-    return ""
+            return form, sum(1 for word in clause.split() if scored_form(word))
+    return "", 0
 
 
 def token_overlap(first: str, second: str) -> float:
@@ -111,7 +121,9 @@ def find_repeat(
     text = scored_form(reply)
     if asks_repeat or read_back or not text:
         return None
-    clause = first_clause(reply)
+    clause, words = _first_clause_words(reply)
+    if words < MIN_CLAUSE_TOKENS:
+        clause = ""  # an opener: only the overlap reads it
     near: Repeat | None = None
     for place in range(len(earlier) - 1, -1, -1):
         before = earlier[place]

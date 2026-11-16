@@ -14,7 +14,11 @@ from t2_agentic_voice.evals import (
     repeats_cut_reply,
     token_overlap,
 )
-from t2_agentic_voice.testing.repeats import CUT_REPEAT_SHARE, NEAR_REPEAT_OVERLAP
+from t2_agentic_voice.testing.repeats import (
+    CUT_REPEAT_SHARE,
+    MIN_CLAUSE_TOKENS,
+    NEAR_REPEAT_OVERLAP,
+)
 
 LISTING_EN = "There are three flights to London on Thursday, at nine, noon and six."
 LISTING_SAUDI = "عندي لك ثلاث رحلات للرياض بكرة، الصبح والظهر والليل."
@@ -55,11 +59,30 @@ def test_the_same_first_clause_is_a_near_repeat(before: str, reply: str) -> None
     assert found.overlap < NEAR_REPEAT_OVERLAP
 
 
-def test_a_one_word_opener_is_a_first_clause_as_registered() -> None:
-    """The registered definition reads any first clause, so two replies opening with «تمام،»
-    or "Sure," and going on apart are a near repeat."""
-    assert find_repeat("Sure, two travelers.", ["Sure, which day?"]) is not None
-    assert find_repeat("تمام، كم مسافر؟", ["تمام، أي يوم؟"]) is not None
+@pytest.mark.parametrize(
+    ("before", "reply"),
+    [
+        ("Sure, which day?", "Sure, two travelers."),
+        ("تمام، أي يوم؟", "تمام، كم مسافر؟"),
+        ("أبشر، وش التاريخ؟", "أبشر، كم شخص؟"),
+        ("I'm sorry, which city?", "I'm sorry, the date again?"),
+        ("حسنًا، ما المدينة؟", "حسنا، كم عدد المسافرين؟"),
+    ],
+)
+def test_a_shared_opener_under_three_tokens_is_no_repeat(before: str, reply: str) -> None:
+    """A first clause of one or two tokens ("Sure,", «تمام،») is an opener, not a copy: only
+    the token overlap reads such replies."""
+    assert find_repeat(reply, [before]) is None
+
+
+def test_a_shared_first_clause_of_three_tokens_is_a_near_repeat() -> None:
+    assert MIN_CLAUSE_TOKENS == 3
+    found = find_repeat("Let me see, two travelers.", ["Let me see, which day?"])
+    assert found is not None
+    assert (found.kind, found.by) == ("near", "first_clause")
+    arabic = find_repeat("خلني أشيك لك، كم مسافر؟", ["خلني اشيك لك، أي يوم؟"])
+    assert arabic is not None
+    assert arabic.by == "first_clause"
 
 
 @pytest.mark.parametrize(
@@ -100,7 +123,10 @@ def test_an_identical_repeat_is_preferred_and_the_latest_named() -> None:
     replies = [LISTING_EN, "Which day?", LISTING_EN, LISTING_EN.replace("six", "six tonight")]
     found = find_repeat(LISTING_EN, replies)
     assert found == Repeat(kind="identical", earlier=2, by="text", overlap=1.0)
-    near = find_repeat("Which day? Or a week later.", ["Which day, then?", "Which day?"])
+    near = find_repeat(
+        "Which day suits you? Or a week later.",
+        ["Which day suits you, then?", "Which day suits you?"],
+    )
     assert near is not None
     assert (near.kind, near.earlier) == ("near", 1)
 

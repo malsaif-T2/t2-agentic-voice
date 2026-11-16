@@ -324,15 +324,16 @@ difference, and a token is a word of that form):
 
 | Name | What it gives |
 | --- | --- |
-| `find_repeat(reply, earlier, asks_repeat=, read_back=)`, `Repeat` | The repeat `reply` makes of the replies said before it, in order, or None: an *identical* repeat when its normalized text is an earlier reply's, else a *near* repeat when its first clause is an earlier reply's or its token overlap with one is 0.8 or more. A `Repeat` holds its `kind`, the place of the reply it repeats (the latest, an identical one before a near one), what it was found `by` (`text`, `first_clause` or `overlap`) and the `overlap`. None too for the two exemptions, a turn that asks to hear something again (`asks_repeat`) and a read-back said again (`read_back`), and for a reply that says nothing |
+| `find_repeat(reply, earlier, asks_repeat=, read_back=)`, `Repeat` | The repeat `reply` makes of the replies said before it, in order, or None: an *identical* repeat when its normalized text is an earlier reply's, else a *near* repeat when its first clause is an earlier reply's and holds 3 words or more, or its token overlap with one is 0.8 or more. A `Repeat` holds its `kind`, the place of the reply it repeats (the latest, an identical one before a near one), what it was found `by` (`text`, `first_clause` or `overlap`) and the `overlap`. None too for the two exemptions, a turn that asks to hear something again (`asks_repeat`) and a read-back said again (`read_back`), and for a reply that says nothing |
 | `first_clause(text)` | The first clause the library's splitter gives (`split_clauses`: the Arabic comma, semicolon, question mark and full stop, and the English punctuation), normalized: «تمام، خلني أشوف» gives «تمام». Empty when the text says nothing |
 | `token_overlap(first, second)` | The tokens two texts share, counted as a multiset, over the tokens of the longer one: 0.8 says each holds four in five of the other's, so a short reply whose words a long one holds is no repeat. 0.0 when either says nothing |
 | `cut_reply_share(reply, cut_reply)`, `repeats_cut_reply(reply, cut_reply)` | After a reply cut short, the share of the cut reply's tokens (its whole text, not only what was heard) that the reply to "one more time" holds; it repeats the cut reply at 0.6 or more. 0.0, so no repeat, when the cut reply says nothing |
 
 Which turns ask to hear something again, and which replies are read-backs, is yours to say: a
 scenario marks them (run F's `asks_repeat`), or a report reads them from the call's events. The
-first clause is read as written, so two replies that open with the same one word ("Sure,",
-«تمام،») and go on apart are a near repeat.
+first clause counts only at 3 words or more as written: a shorter one ("Sure,", "I'm sorry,",
+«تمام،») is an opener, not a copy, so two replies that open with it and go on apart are no
+repeat, and only their token overlap reads them.
 
 ## Reading a scorecard
 
