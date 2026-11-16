@@ -67,6 +67,35 @@ SAY: Final[dict[str, str]] = {
     "no_flights_that_day": "Say there is no flight that day and offer these days.",
     "no_seats": "Say the flights that day are full in this cabin for this many travelers, and "
     "offer the cabins in cabins_with_seats or another day.",
+    "no_seats_flight": "Say that flight is full in this cabin for this many travelers, and "
+    "offer the cabins in cabins_with_seats or the other flights in other_flights.",
+    "nothing_listed": "Search first.",
+    "unclear_choice": "Say the flights the caller could mean, each by its departure time and "
+    "fare, and ask which one they want.",
+    "chosen_then_return": "Say the choice back in a few words, then the return flights, at most "
+    "three, and how many more if there are more, and ask which one. Say once that fares are one "
+    "way, per person.",
+    "chosen_then_outbound": "Say the choice back in a few words, then ask which outbound flight "
+    "they want.",
+    "chosen_needs_return": "Say the choice back in a few words, then ask when they would like to "
+    "come back.",
+    "chosen_return_full": "Say the choice back in a few words, then that no return flight that "
+    "day has a seat in this cabin for this many travelers, and offer another return day or cabin.",
+    "complete": "Call book_trip now and say nothing yourself; the caller hears the trip read back "
+    "and is asked to confirm it.",
+    "changed": "Say what changed in a few words, then ask for what is still missing.",
+    "changed_relist": "Say what changed in a few words, then these flights again with their "
+    "new fares, at most three, and ask which one they want.",
+    "changed_lost": "Say what changed, then that the flight chosen for that leg has no seats "
+    "for it now, then that leg's flights, at most three, and ask which one they want.",
+    "changed_needs_return": "Say what changed, then ask when they would like to come back.",
+    "trip": "Answer from this trip. If something is missing, ask for the first thing missing.",
+    "trip_empty": "Nothing is planned yet. Ask where they would like to go.",
+    "calendar": "Say the three cheapest days with their fares, then ask which day suits them.",
+    "cabins": "Say each cabin's fare on this flight, one way, per person, and ask which cabin "
+    "they want. To change the cabin, call change_trip.",
+    "profile": "Answer from these counts. Say a past trip as one they flew, never as one you "
+    "booked. Never read a booking reference unless the caller asks for it.",
 }
 
 
@@ -177,7 +206,8 @@ class NoFlights(_Result):
 
 
 class NoSeats(_Result):
-    """A day whose flights are all short of seats in the cabin, and the cabins that have them."""
+    """A day whose flights are all short of seats in the cabin (or a picked flight that is), the
+    cabins that have them, and, for a picked flight, the other flights that day with seats."""
 
     status: Literal["no_seats"] = "no_seats"
     leg: LegKind
@@ -185,7 +215,26 @@ class NoSeats(_Result):
     cabin: Cabin
     travelers: int
     cabins_with_seats: tuple[Cabin, ...]
+    other_flights: tuple[Option, ...] = ()
     say: str = SAY["no_seats"]
+
+
+class NothingListed(_Result):
+    """A pick for a leg whose flights were not listed yet."""
+
+    status: Literal["nothing_listed"] = "nothing_listed"
+    leg: LegKind
+    say: str = SAY["nothing_listed"]
+
+
+class Unclear(_Result):
+    """A pick that names no listed option, or more than one: the options it could mean (all
+    those listed when it names none)."""
+
+    status: Literal["unclear_choice"] = "unclear_choice"
+    leg: LegKind
+    options: tuple[Option, ...]
+    say: str = SAY["unclear_choice"]
 
 
 def said(form: Callable[[Register], str], tag: Tag) -> tuple[str, str | None]:

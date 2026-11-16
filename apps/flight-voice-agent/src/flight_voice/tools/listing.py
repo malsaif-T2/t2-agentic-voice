@@ -14,8 +14,9 @@ from flight_voice.airline.airports import Code
 from flight_voice.airline.fares import fare, seats_left
 from flight_voice.airline.schedule import Cabin, Departure
 from flight_voice.said import Tag, words
+from flight_voice.tools.picks import departure_of
 from flight_voice.tools.results import SAY, DateSaid, Duration, Listing, Option, date_said, said
-from flight_voice.trip import LegKind
+from flight_voice.trip import LegKind, Shown
 
 # The most options a listing holds, and the most the talker says aloud in a turn.
 MAX_OPTIONS: Final = 4
@@ -59,11 +60,17 @@ def options(
                 seats_ok=seats_left(d.flight, d.day, cabin) >= travelers,
             )
         )
+    return marked(made)
+
+
+def marked(made: Sequence[Option]) -> tuple[Option, ...]:
+    """`made` with the cheapest option that has seats marked (the first listed of two as
+    cheap), and no other; none marked when none has seats."""
     selling = [o for o in made if o.seats_ok]
-    if not selling:
-        return tuple(made)
-    cheapest = min(selling, key=lambda o: (o.fare_sar, o.n)).n
-    return tuple(o.model_copy(update={"mark": "cheapest"}) if o.n == cheapest else o for o in made)
+    cheapest = min(selling, key=lambda o: (o.fare_sar, o.n)).n if selling else None
+    return tuple(
+        o.model_copy(update={"mark": "cheapest" if o.n == cheapest else None}) for o in made
+    )
 
 
 def listing(
@@ -104,3 +111,22 @@ def listing(
 
 def _full(listed: tuple[Option, ...]) -> str:
     return "_full" if any(not o.seats_ok for o in listed) else ""
+
+
+def listed_again(
+    shown: Sequence[Shown],
+    *,
+    cabin: Cabin,
+    travelers: int,
+    tag: Tag,
+    name: Callable[[int], str],
+    mark: bool = True,
+) -> tuple[Option, ...]:
+    """Options already listed, priced again in `cabin` for `travelers`, each keeping its number
+    in the list as said, the cheapest with seats marked unless `mark` is false. One whose
+    flight does not sell the cabin is left out."""
+    made: list[Option] = []
+    for s in shown:
+        priced = options([departure_of(s)], cabin=cabin, travelers=travelers, tag=tag, name=name)
+        made += [o.model_copy(update={"n": s.n, "mark": None}) for o in priced]
+    return marked(made) if mark else tuple(made)

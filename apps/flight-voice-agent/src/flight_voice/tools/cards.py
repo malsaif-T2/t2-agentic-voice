@@ -12,13 +12,18 @@ a flight's name and its aircraft keep their Latin letters and digits.
 from __future__ import annotations
 
 from datetime import date
-from typing import Final
+from typing import TYPE_CHECKING, Final
 
 from t2_agentic_voice import Card
 
 from flight_voice.airline.airports import AIRPORTS, Code
+from flight_voice.airline.schedule import Cabin
 from flight_voice.said import Tag, arabic, register, words
 from flight_voice.tools.results import Duration, Listing, Option
+from flight_voice.trip import TripDraft
+
+if TYPE_CHECKING:
+    from flight_voice.tools.trip_view import TripView
 
 _INDIC: Final = str.maketrans("0123456789,", "٠١٢٣٤٥٦٧٨٩٬")
 LOWEST_EN: Final = "lowest fare"
@@ -93,3 +98,43 @@ def listing_card(listing: Listing, origin: Code, destination: Code, day: date, t
         title=f"{title}{sep}{day_title(day, tag)}",
         steps=tuple(option_step(o, tag) for o in listing.options),
     )
+
+
+TRIP_EN: Final = "Your trip"
+TRIP_AR: Final = "رحلتك"
+
+
+def party(travelers: int, cabin: Cabin, tag: Tag) -> str:
+    """The travelers and the cabin as a card writes them: "2 travelers in business class",
+    «مسافران في درجة رجال الأعمال»."""
+    if arabic(tag):
+        counted = {1: "مسافر واحد", 2: "مسافران"}.get(travelers, f"{indic(str(travelers))} مسافرين")
+        return f"{counted} في {words.cabin(cabin, register(tag))}"
+    noun = "traveler" if travelers == 1 else "travelers"
+    return f"{travelers} {noun} in {words.cabin(cabin, 'en')}"
+
+
+def trip_card(trip: TripView, draft: TripDraft, tag: Tag) -> Card | None:
+    """The trip planned so far: each chosen leg's route, day and flight, then the travelers and
+    the cabin, then the total once every leg is chosen; none while nothing is planned."""
+    if draft.destination is None:
+        return None
+    steps: list[str] = []
+    legs = (
+        (trip.outbound, draft.chosen_outbound, False),
+        (trip.return_flight, draft.chosen_return, True),
+    )
+    for option, chosen, back in legs:
+        if option is None or chosen is None:
+            continue
+        start, end = (
+            (draft.destination, draft.origin) if back else (draft.origin, draft.destination)
+        )
+        sep = "، " if arabic(tag) else ", "
+        where = f"{route_title(start, end, tag)}{sep}{day_title(chosen.day, tag)}"
+        steps.append(f"{where}: {option_step(option, tag)}")
+    steps.append(party(trip.travelers, trip.cabin, tag))
+    if trip.total_sar is not None:
+        total = money(trip.total_sar, tag)
+        steps.append(f"المجموع {total}" if arabic(tag) else f"Total {total}")
+    return Card(title=TRIP_AR if arabic(tag) else TRIP_EN, steps=tuple(steps))
